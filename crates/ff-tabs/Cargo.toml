@@ -1,0 +1,25 @@
+[package]
+name = "ff-tabs"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Multi-tab editor subsystem for FileForgeWorkbench — tab collections, per-tab state, MRU ordering, pinned tabs, context menus"
+
+[dependencies]
+ff-command = { path = "../ff-command" }
+ff-document-model = { path = "../ff-document-model" }
+ff-layout = { path = "../ff-layout" }
+ff-vfs = { path = "../ff-vfs" }
+ff-config = { path = "../ff-config" }
+ff-undo-redo = { path = "../ff-undo-redo" }
+ff-logging = { path = "../ff-logging" }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

@@ -1,0 +1,22 @@
+[package]
+name = "ff-help"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Context-sensitive help system for FileForgeWorkbench — F1 context detection, Help Panel model, topic registry, search, navigation, content loading"
+
+[dependencies]
+ff-command = { path = "../ff-command" }
+ff-layout = { path = "../ff-layout" }
+ff-config = { path = "../ff-config" }
+ff-plugin = { path = "../ff-plugin" }
+ff-logging = { path = "../ff-logging" }
+thiserror = { workspace = true }
+serde = { workspace = true }
+dirs = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

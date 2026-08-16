@@ -1,0 +1,22 @@
+[package]
+name = "ff-menu"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Menu bar, context menus, status bar, and primary command field for FileForgeWorkbench"
+
+[dependencies]
+ff-command = { path = "../ff-command" }
+ff-config = { path = "../ff-config" }
+ff-core = { path = "../ff-core" }
+ff-logging = { path = "../ff-logging" }
+ff-plugin = { path = "../ff-plugin" }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

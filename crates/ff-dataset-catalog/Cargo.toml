@@ -1,0 +1,14 @@
+[package]
+name = "ff-dataset-catalog"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Dataset Catalog for FileForgeWorkbench — dataset definitions, catalog entries, DSN resolution, naming validation, GDG management, and the CatalogService trait interface."
+
+[dependencies]
+thiserror = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }

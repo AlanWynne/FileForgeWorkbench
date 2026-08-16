@@ -1,0 +1,19 @@
+[package]
+name = "ff-whitespace-guides"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Whitespace visibility, indent guides, edge column indicators, and wrap markers for FileForgeWorkbench"
+
+[dependencies]
+ff-config = { path = "../ff-config" }
+ff-command = { path = "../ff-command" }
+ff-logging = { path = "../ff-logging" }
+thiserror = { workspace = true }
+serde = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

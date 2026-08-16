@@ -1,0 +1,469 @@
+# Requirements Document
+
+## Introduction
+
+This spec defines the **Virtual Catalog Manager** for FileForgeWorkbench — the unified UI subsystem
+that owns POM Option 1 ("Files") and provides all dialogs and panels for creating, managing, and
+browsing virtual file catalogs of four distinct types:
+
+| Catalog Type | VFS Scheme | Description |
+|---|---|---|
+| **Mainframe** | `catalog` | z/OS-style datasets (PS, PDS, GDG) backed by `ff-dscatalog` |
+| **POSIX** | `posix` | POSIX-style hierarchical filesystem emulation (new provider) |
+| **Native** | `local` | The host platform's local filesystem (Windows, Linux, or macOS) surfaced through the VFS |
+
+The Virtual Catalog Manager is rendered as a full-tab panel when the user selects option `1` from
+the Primary Option Menu (or types `1` / `FILES` in any command field). It replaces the previous
+behaviour of option 1 opening the native Windows file explorer.
+
+### Design Principles
+
+1. **All catalog types are first-class.** Mainframe, POSIX, Windows, and Local catalogs are
+   presented with equal prominence in the same unified explorer.
+2. **VFS-backed throughout.** Every file operation goes through the VFS abstraction layer
+   (FFW-ARCH-001). The UI never calls `std::fs` directly.
+3. **Dialog-driven management.** Catalog creation, dataset allocation, and POSIX file management
+   are performed through modal dialogs launched from the explorer panel.
+4. **ISPF heritage.** Dialog layouts and terminology follow ISPF conventions where applicable
+   (e.g., dataset allocation uses RECFM/LRECL/BLKSIZE field names).
+
+### Source References
+
+- **[ISPF-POM]** = ISPF Primary Option Menu heritage
+- **[DSC]** = Dataset Catalog Brief (mainframe catalog operations)
+- **[WB]** = Workbench Architecture Brief (VFS principle FFW-ARCH-001)
+- **[FFE-TREE]** = FileForgeEditor file-tree-panel specification
+
+### Cross-References
+
+| Sub-Project | Relationship |
+|---|---|
+| `startup-and-session` | POM option 1 routes to this panel (Req 14.6 extension) |
+| `virtual-file-system` | All resource access goes through VFS providers |
+| `dataset-catalog` | Mainframe catalog CRUD delegated to `ff-dscatalog` |
+| `file-tree-panel` | Explorer tree reused/embedded within the Files panel |
+| `connector-local-fs` | Windows/Local catalog type backed by this provider |
+
+---
+
+## Glossary
+
+| Term | Definition |
+|---|---|
+| **Virtual_Catalog** | A named, typed container registered with the VFS that groups related files or datasets. Has one of four types: Mainframe, POSIX, Windows, Local. |
+| **Catalog_Type** | The classification of a Virtual_Catalog: `Mainframe` (z/OS dataset emulation), `POSIX` (hierarchical POSIX filesystem emulation), `Native` (the host platform's local filesystem — Windows, Linux, or macOS). |
+| **Files_Panel** | The full-tab panel rendered when POM option 1 is selected. Contains the catalog tree, toolbar, and action buttons. |
+| **Catalog_Manager_Dialog** | The modal dialog for creating, editing, and deleting Virtual_Catalogs. |
+| **Dataset_Allocation_Dialog** | The modal dialog for allocating (creating) a new mainframe-style dataset within a Mainframe catalog. |
+| **POSIX_File_Dialog** | The modal dialog for creating, renaming, and deleting files and directories within a POSIX catalog. |
+| **Catalog_Registry** | The in-memory and persisted list of all defined Virtual_Catalogs, keyed by catalog name and type. |
+| **POSIX_Catalog** | A Virtual_Catalog of type POSIX — a directory on the local filesystem presented as a POSIX-style hierarchical filesystem through the `posix` VFS provider. |
+| **POSIX_Provider** | A new VFS provider (scheme `posix`) that maps a root directory to a POSIX-style namespace, enforcing POSIX path conventions and permissions model. |
+
+---
+
+## Requirements
+
+### Requirement 1: POM Option 1 — Files Panel
+
+**User Story:** As an ISPF-familiar operator, I want POM option 1 to open a dedicated Files panel
+that gives me access to all my virtual file catalogs, so that I can manage mainframe datasets,
+POSIX files, and local files from a single unified interface.
+
+**Source:** [ISPF-POM] option 1 re-definition; [WB] VFS-unified explorer.
+
+#### Acceptance Criteria
+
+1.1 WHEN the user selects option `1` from the Primary Option Menu (or types `1` or `FILES` in any
+    `Command ===>` field), THE shell SHALL transform the current POM tab into a Files_Panel tab
+    with title `[FILES]`. [ISPF-POM]
+
+1.2 THE Files_Panel SHALL display a split layout: a left-side catalog tree (showing all registered
+    Virtual_Catalogs grouped by type) and a right-side content area (showing the contents of the
+    selected catalog node). [WB]
+
+1.3 THE Files_Panel SHALL display a toolbar at the top with the following actions: `New Catalog`,
+    `Open`, `Refresh`, `Properties`, and a search/filter input. [WB]
+
+1.4 THE catalog tree SHALL group catalogs under three collapsible section headers:
+    `Mainframe Catalogs`, `POSIX Catalogs`, `Native Catalogs`. The `Native Catalogs` header
+    SHALL include a parenthetical platform label at runtime: e.g., `Native Catalogs (Windows)`,
+    `Native Catalogs (Linux)`, `Native Catalogs (macOS)`. [WB]
+
+1.5 WHEN no catalogs of a given type exist, THE section header SHALL display a greyed child node
+    reading `No catalogs defined — click New Catalog to create one`. [WB]
+
+1.8 THE Files_Panel SHALL display three catalog type sections (not four). There is no separate
+    "Windows" and "Local" distinction — both are unified under `Native`. [WB]
+
+1.6 THE Files_Panel SHALL be navigable via the `Command ===>` field: typing a DSN or path and
+    pressing Enter SHALL navigate the tree to that resource. [ISPF-POM]
+
+1.7 WHEN the user presses `PF3` / `F3` or types `END` in the Files_Panel command field, THE shell
+    SHALL return the tab to the Primary Option Menu view. [ISPF-POM]
+
+---
+
+### Requirement 2: Catalog Registry
+
+**User Story:** As a user, I want all my virtual catalogs persisted and restored across sessions,
+so that I never have to re-register them after restarting the workbench.
+
+**Source:** [WB] session persistence; [DSC] catalog mount persistence.
+
+#### Acceptance Criteria
+
+2.1 THE Catalog_Registry SHALL persist all defined Virtual_Catalogs to the workbench configuration
+    under the `[virtual_catalogs]` TOML table, including: name, type, path/repository, description,
+    and auto-mount flag. [WB]
+
+2.2 WHEN the workbench starts, THE Catalog_Registry SHALL load all persisted catalogs and
+    auto-mount those with `auto_mount = true`. [WB]
+
+2.3 THE Catalog_Registry SHALL support registering a new catalog, updating an existing catalog's
+    properties, and removing a catalog (with optional deletion of backing storage). [WB]
+
+2.4 WHEN a catalog is registered, THE Catalog_Registry SHALL validate that the name is unique
+    across all catalog types and that the backing path is accessible. [WB]
+
+2.5 THE Catalog_Registry SHALL expose a query API: list all catalogs, list by type, get by name,
+    check existence. [WB]
+
+---
+
+### Requirement 3: Catalog Manager Dialog — Create
+
+**User Story:** As a user, I want a dialog to create new virtual catalogs of any type, so that I
+can set up my working environment without editing configuration files manually.
+
+**Source:** [DSC] catalog creation; [WB] dialog-driven management.
+
+#### Acceptance Criteria
+
+3.1 WHEN the user clicks `New Catalog` in the Files_Panel toolbar or right-clicks a section header
+    and selects `New Catalog`, THE shell SHALL open the Catalog_Manager_Dialog. [WB]
+
+3.2 THE Catalog_Manager_Dialog SHALL present a `Catalog Type` selector with three options:
+    `Mainframe`, `POSIX`, `Native`. [WB]
+
+3.3 THE Catalog_Manager_Dialog SHALL present the following common fields for all catalog types:
+    - `Catalog Name` (required, 1–32 alphanumeric/hyphen/underscore characters)
+    - `Description` (optional, free text up to 120 characters)
+    - `Auto-mount on startup` (checkbox, default: checked)
+    [WB]
+
+3.4 WHEN `Mainframe` is selected, THE dialog SHALL additionally present:
+    - `Repository Path` (required — directory where `catalog.db` and storage subdirs will be created)
+    - `Default HLQ` (optional — prepended to bare qualifiers)
+    - `Create repository now` (checkbox, default: checked)
+    [DSC]
+
+3.5 WHEN `POSIX` is selected, THE dialog SHALL additionally present:
+    - `Root Directory` (required — the local directory that becomes the POSIX catalog root)
+    - `Mount Point` (optional — the POSIX path prefix, default: `/`)
+    - `Read-Only` (checkbox, default: unchecked)
+    [WB]
+
+3.6 WHEN `Native` is selected, THE dialog SHALL additionally present:
+    - `Root Path` (required — the local directory path to expose, using the host platform's
+      path conventions: backslash on Windows, forward-slash on Linux/macOS)
+    - `Read-Only` (checkbox, default: unchecked)
+    [WB]
+
+3.7 WHEN the user confirms the dialog, THE system SHALL validate all fields, create the catalog
+    (initialising the repository for Mainframe type), register it in the Catalog_Registry, and
+    mount it immediately if `Auto-mount` is checked. [WB]
+
+3.8 WHEN validation fails (duplicate name, inaccessible path, invalid characters), THE dialog
+    SHALL display an inline error message adjacent to the offending field without closing. [WB]
+
+---
+
+### Requirement 4: Catalog Manager Dialog — Edit and Delete
+
+**User Story:** As a user, I want to edit catalog properties and delete catalogs I no longer need,
+so that I can keep my catalog registry clean and up to date.
+
+**Source:** [DSC] catalog lifecycle; [WB] dialog-driven management.
+
+#### Acceptance Criteria
+
+4.1 WHEN the user right-clicks a catalog node and selects `Properties`, THE shell SHALL open the
+    Catalog_Manager_Dialog pre-populated with the catalog's current properties. [WB]
+
+4.2 THE edit dialog SHALL allow changing: Description, Auto-mount flag, Read-Only flag (POSIX/
+    Windows/Local), and Default HLQ (Mainframe). The Catalog Name and Type SHALL NOT be editable
+    after creation. [WB]
+
+4.3 WHEN the user right-clicks a catalog node and selects `Delete Catalog`, THE shell SHALL
+    display a confirmation dialog: `Delete catalog "{name}"? This will unmount it. Optionally
+    delete all backing files.` with options `Delete Catalog Only`, `Delete Catalog and Files`,
+    and `Cancel`. [WB]
+
+4.4 WHEN `Delete Catalog Only` is confirmed, THE system SHALL unmount the catalog and remove it
+    from the Catalog_Registry without touching the backing files. [WB]
+
+4.5 WHEN `Delete Catalog and Files` is confirmed, THE system SHALL unmount the catalog, remove it
+    from the Catalog_Registry, and recursively delete the backing repository/directory. [WB]
+
+---
+
+### Requirement 5: Mainframe Dataset Allocation Dialog
+
+**User Story:** As a mainframe developer, I want a dialog to allocate new datasets within a
+Mainframe catalog using familiar ISPF-style fields, so that I can create datasets without
+memorising command syntax.
+
+**Source:** [DSC] dataset allocation; [ISPF-POM] ISPF dialog heritage.
+
+#### Acceptance Criteria
+
+5.1 WHEN the user right-clicks a Mainframe catalog node (or any node within it) and selects
+    `Allocate Dataset`, THE shell SHALL open the Dataset_Allocation_Dialog. [DSC]
+
+5.2 THE Dataset_Allocation_Dialog SHALL present the following fields in ISPF style:
+    - `Dataset Name` (required — full DSN or partial; HLQ prepended if configured)
+    - `Dataset Organization` (DSORG selector: PS, PO, PDSE, GDG)
+    - `Record Format` (RECFM selector: FB, F, VB, V, U)
+    - `Logical Record Length` (LRECL — integer, default 80)
+    - `Block Size` (BLKSIZE — integer, default 27920)
+    - `Directory Blocks` (integer, shown only when DSORG = PO or PDSE, default 10)
+    - `GDG Limit` (integer 1–255, shown only when DSORG = GDG)
+    - `Scratch on Roll-off` (checkbox, shown only when DSORG = GDG, default: checked)
+    - `Description` (optional free text)
+    [DSC]
+
+5.3 WHEN the user confirms the dialog, THE system SHALL validate all fields per the rules in
+    `dataset-catalog` Requirement 7 and Requirement 2, then invoke `dataset.allocate` via the
+    command framework. [DSC]
+
+5.4 WHEN allocation succeeds, THE dialog SHALL close and the new dataset SHALL appear in the
+    catalog tree immediately. [DSC]
+
+5.5 WHEN allocation fails (duplicate DSN, invalid parameters), THE dialog SHALL display the error
+    inline without closing. [DSC]
+
+5.6 THE dialog SHALL support an `Allocate Like` mode: WHEN launched from a right-click on an
+    existing dataset node with `Allocate Like`, all fields SHALL be pre-populated from the source
+    dataset's attributes, requiring only the new DSN to be entered. [DSC]
+
+---
+
+### Requirement 6: Mainframe Dataset Management
+
+**User Story:** As a mainframe developer, I want to rename, delete, and view properties of
+datasets and PDS members directly from the Files panel, so that I can manage my catalog without
+leaving the workbench.
+
+**Source:** [DSC] dataset CRUD; [ISPF-POM] ISPF heritage.
+
+#### Acceptance Criteria
+
+6.1 WHEN the user right-clicks a sequential dataset (PS) node, THE context menu SHALL include:
+    `Open`, `Rename`, `Delete`, `Properties`, `Copy DSN`, `Allocate Like`. [DSC]
+
+6.2 WHEN the user right-clicks a partitioned dataset (PDS/PDSE) node, THE context menu SHALL
+    include: `New Member`, `Rename`, `Delete`, `Properties`, `Copy DSN`, `Allocate Like`. [DSC]
+
+6.3 WHEN the user right-clicks a PDS member node, THE context menu SHALL include:
+    `Open`, `Rename`, `Delete`, `Copy Member Name`. [DSC]
+
+6.4 WHEN the user right-clicks a GDG base node, THE context menu SHALL include:
+    `New Generation`, `List Generations`, `Properties`, `Delete GDG`, `Modify Limit`. [DSC]
+
+6.5 WHEN `Rename` is selected on a dataset, THE shell SHALL display an inline rename field
+    pre-filled with the current DSN, validated on Enter. [DSC]
+
+6.6 WHEN `Delete` is selected on a dataset, THE shell SHALL display a confirmation dialog before
+    dispatching `dataset.delete`. [DSC]
+
+6.7 WHEN `Properties` is selected, THE shell SHALL display a Properties panel showing all dataset
+    attributes as defined in `dataset-catalog` Requirement 11. [DSC]
+
+---
+
+### Requirement 7: POSIX Catalog Provider
+
+**User Story:** As a developer, I want a POSIX virtual filesystem catalog that maps a local
+directory to a POSIX-style namespace, so that I can work with files using POSIX path conventions
+within the workbench.
+
+**Source:** [WB] VFS extensibility; new requirement.
+
+#### Acceptance Criteria
+
+7.1 THE workbench SHALL provide a `posix` VFS provider (scheme `posix`) that maps a configured
+    root directory to a POSIX-style hierarchical namespace. [WB]
+
+7.2 THE POSIX provider SHALL implement the `VfsProvider` trait, supporting: `read`, `write`,
+    `create`, `delete`, `rename`, `list`, `stat`, `exists`. [WB]
+
+7.3 THE POSIX provider SHALL enforce POSIX path conventions: forward-slash separator, case-
+    sensitive names, no drive letters, paths starting with `/` relative to the catalog root. [WB]
+
+7.4 WHEN a POSIX catalog is mounted, THE provider SHALL register under scheme `posix` with a
+    catalog-name sub-path, making resources addressable as `vfs://posix/{catalog-name}/{path}`. [WB]
+
+7.5 THE POSIX provider SHALL support creating directories (`mkdir`) and files, and deleting them
+    recursively when requested. [WB]
+
+7.6 WHEN a POSIX catalog is configured as read-only, THE provider SHALL return
+    `VfsError::PermissionDenied` for any write, create, delete, or rename operation. [WB]
+
+7.7 THE POSIX provider SHALL advertise capabilities: `Read`, `Write`, `List`, `Metadata`,
+    `Create`, `Delete`, `Rename`, `Watch` (delegated to the underlying local filesystem watcher). [WB]
+
+---
+
+### Requirement 8: POSIX File Management Dialog
+
+**User Story:** As a developer, I want dialogs to create, rename, and delete files and directories
+within a POSIX catalog, so that I can manage POSIX-style files without leaving the workbench.
+
+**Source:** [WB] dialog-driven management; new requirement.
+
+#### Acceptance Criteria
+
+8.1 WHEN the user right-clicks a POSIX catalog node or directory within it, THE context menu
+    SHALL include: `New File`, `New Directory`, `Rename`, `Delete`, `Properties`, `Copy Path`. [WB]
+
+8.2 WHEN `New File` is selected, THE shell SHALL display an inline input for the filename,
+    validated on Enter (no path separators, no null bytes, length 1–255). [WB]
+
+8.3 WHEN `New Directory` is selected, THE shell SHALL display an inline input for the directory
+    name with the same validation rules. [WB]
+
+8.4 WHEN `Rename` is selected, THE shell SHALL display an inline rename field pre-filled with the
+    current name. [WB]
+
+8.5 WHEN `Delete` is selected on a non-empty directory, THE shell SHALL display a confirmation
+    dialog: `Delete directory "{name}" and all its contents? This cannot be undone.` [WB]
+
+8.6 WHEN `Properties` is selected, THE shell SHALL display a properties panel showing: full POSIX
+    path, size, last modified, permissions (read/write/execute), and catalog name. [WB]
+
+---
+
+### Requirement 9: Native Catalog Browsing
+
+**User Story:** As a user on any platform, I want to register local directories as named Native
+catalogs so that I can access them from the Files panel alongside my mainframe and POSIX catalogs,
+regardless of whether the host OS is Windows, Linux, or macOS.
+
+**Source:** [WB] unified explorer; [FFE-TREE] local filesystem browsing.
+
+#### Acceptance Criteria
+
+9.1 WHEN a Native catalog is mounted, THE Files_Panel SHALL display it under the `Native Catalogs`
+    section header (with platform label) with its configured name. [WB]
+
+9.2 THE content area for a Native catalog SHALL render the directory tree via the
+    `connector-local-fs` VFS provider, identical to the existing File_Tree_Panel behaviour.
+    The provider handles path conventions for the host platform transparently. [WB]
+
+9.3 WHEN the user right-clicks a file node in a Native catalog, THE context menu SHALL include:
+    `Open`, `Rename`, `Delete`, `Copy Path`, and platform-appropriate shell actions:
+    - On Windows: `Open Containing Folder in Explorer`, `Open in CMD`, `Open in PowerShell`
+    - On Linux: `Open Containing Folder in Files`, `Open in Terminal`
+    - On macOS: `Reveal in Finder`, `Open in Terminal`
+    [WB]
+
+9.4 WHEN the user right-clicks a directory node in a Native catalog, THE context menu SHALL
+    include: `New File`, `New Folder`, `Rename`, `Delete`, `Copy Path`,
+    `Open in Native File Manager`, `Refresh`. [WB]
+
+9.5 WHEN a Native catalog is configured as read-only, ALL write operations (create, rename,
+    delete) SHALL be disabled in the context menu and return an error if attempted via command. [WB]
+
+---
+
+### Requirement 10: Files Panel — Unified Explorer View
+
+**User Story:** As a user, I want the right-side content area of the Files panel to show the
+contents of whatever catalog node I have selected, so that I can browse files without expanding
+the tree manually.
+
+**Source:** [WB] unified explorer; [FFE-TREE] content area.
+
+#### Acceptance Criteria
+
+10.1 WHEN the user selects a catalog node in the left tree, THE right content area SHALL display
+     the immediate children of that node in a list/grid view with columns: Name, Type, Size,
+     Modified Date. [WB]
+
+10.2 THE content area SHALL support sorting by any column header (click to sort ascending,
+     click again to sort descending). [WB]
+
+10.3 WHEN the user double-clicks a file/member/dataset node in the content area, THE shell SHALL
+     open it in a new editor tab. [WB]
+
+10.4 WHEN the user double-clicks a directory/container node in the content area, THE shell SHALL
+     navigate into that node (updating both the tree selection and the content area). [WB]
+
+10.5 THE content area SHALL display a breadcrumb path bar at the top showing the current location
+     within the catalog hierarchy, with each segment clickable for navigation. [WB]
+
+10.6 THE content area SHALL support a filter/search input that filters the displayed entries by
+     name (case-insensitive substring match). [WB]
+
+---
+
+### Requirement 12: Catalog Storage Default Paths
+
+**User Story:** As a user, I want the workbench to suggest sensible default storage locations
+when I create a new Mainframe or POSIX catalog, so that I do not have to type a path from
+scratch every time, and so that all catalog data is stored in a predictable, well-organised
+location by default.
+
+**Source:** [WB] configuration-system; [DSC] repository root.
+
+#### Acceptance Criteria
+
+12.1 WHEN the Catalog_Manager_Dialog opens for a new Mainframe catalog, THE `Repository Path`
+     field SHALL be pre-populated with the value of the configuration key
+     `catalogs.default_mainframe_root`, with the new catalog name appended as a subdirectory
+     (e.g., `{default_mainframe_root}/{catalog-name}`). [WB]
+
+12.2 WHEN the Catalog_Manager_Dialog opens for a new POSIX catalog, THE `Root Directory`
+     field SHALL be pre-populated with the value of the configuration key
+     `catalogs.default_posix_root`. [WB]
+
+12.3 THE configuration key `catalogs.default_mainframe_root` SHALL have a built-in default
+     value of `{user_data_dir}/catalogs/mainframe`, where `{user_data_dir}` is the
+     platform-appropriate user data directory resolved by `ff-core`. [WB]
+
+12.4 THE configuration key `catalogs.default_posix_root` SHALL have a built-in default
+     value of `{user_data_dir}/catalogs/posix`, where `{user_data_dir}` is the
+     platform-appropriate user data directory resolved by `ff-core`. [WB]
+
+12.5 BOTH configuration keys SHALL be registered in the `ff-config` schema under the
+     `[catalogs]` namespace with type `String`, their respective defaults, and a
+     human-readable description suitable for display in the Settings panel. [WB]
+
+12.6 WHEN a user changes either key in the Settings panel, THE new value SHALL be persisted
+     to the user-layer configuration file and SHALL take effect immediately for any
+     subsequently opened Catalog_Manager_Dialog (no restart required). [WB]
+
+12.7 WHEN the pre-populated path does not exist on disk, THE dialog SHALL display it as a
+     suggestion only — the path is created only when the user confirms the dialog with
+     `Create repository now` checked (Mainframe) or when the POSIX catalog is first mounted. [WB]
+
+---
+
+### Requirement 11: POM Option 1 Label Update
+
+**User Story:** As an ISPF-familiar operator, I want POM option 1 to be clearly labelled as the
+Files/Catalog manager, so that the menu accurately reflects what the option does.
+
+**Source:** [ISPF-POM] Req 14.3 update.
+
+#### Acceptance Criteria
+
+11.1 THE Primary Option Menu option `1` label SHALL read `Files` with description
+     `Virtual File Catalogs — Mainframe, POSIX, Native`. [ISPF-POM]
+
+11.2 WHEN the user selects option `1`, THE tab title SHALL change to `[FILES]` and the tab kind
+     SHALL be `FilesPanel` (a new `TabKind` variant). [ISPF-POM]
+
+11.3 THE `[FILES]` tab SHALL persist in the session and be restored on next launch as a
+     `FilesPanel` tab kind. [WB]

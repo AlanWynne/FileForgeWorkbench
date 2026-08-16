@@ -1,0 +1,21 @@
+[package]
+name = "ff-line-commands"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "ISPF line command engine for FileForgeWorkbench — prefix-area command parsing, block pairing, pending state, and execution"
+
+[dependencies]
+ff-document-model = { path = "../ff-document-model" }
+ff-edit-operations = { path = "../ff-edit-operations" }
+ff-display-line-mapping = { path = "../ff-display-line-mapping" }
+ff-undo-redo = { path = "../ff-undo-redo" }
+ff-command = { path = "../ff-command" }
+ff-config = { path = "../ff-config" }
+ff-logging = { path = "../ff-logging" }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }

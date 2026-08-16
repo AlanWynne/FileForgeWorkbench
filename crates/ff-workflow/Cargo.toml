@@ -1,0 +1,23 @@
+[package]
+name = "ff-workflow"
+version = "0.1.0"
+edition = "2021"
+description = "State-machine-based workflow execution engine for FileForgeWorkbench"
+authors = ["FileForge Contributors"]
+
+[dependencies]
+ff-logging = { path = "../ff-logging" }
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros", "time", "fs"] }
+tokio-util = "0.7"
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { workspace = true }
+thiserror = { workspace = true }
+uuid = { version = "1", features = ["v4"] }
+dirs = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+tempfile = { workspace = true }
+pretty_assertions = { workspace = true }

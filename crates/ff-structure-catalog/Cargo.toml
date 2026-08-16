@@ -1,0 +1,23 @@
+[package]
+name = "ff-structure-catalog"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Structure catalog management for FileForgeWorkbench — persistent library of named Record Structure definitions, field grid browse/edit, COBOL copybook import, and auto-association."
+
+[dependencies]
+ff-logging = { path = "../ff-logging" }
+ff-command = { path = "../ff-command" }
+ff-config = { path = "../ff-config" }
+ff-vfs = { path = "../ff-vfs" }
+thiserror = { workspace = true }
+serde = { workspace = true }
+toml = { workspace = true }
+chrono = { workspace = true }
+glob = "0.3"
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

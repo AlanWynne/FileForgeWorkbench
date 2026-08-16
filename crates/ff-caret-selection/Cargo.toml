@@ -1,0 +1,17 @@
+[package]
+name = "ff-caret-selection"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Caret appearance, selection display, and virtual space management for FileForgeWorkbench"
+
+[dependencies]
+ff-edit-operations = { path = "../ff-edit-operations" }
+ff-logging = { path = "../ff-logging" }
+thiserror = { workspace = true }
+serde = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }

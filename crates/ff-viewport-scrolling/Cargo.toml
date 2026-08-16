@@ -1,0 +1,16 @@
+[package]
+name = "ff-viewport-scrolling"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "GUI-independent viewport and scrolling model for FileForgeWorkbench"
+
+[dependencies]
+ff-logging = { path = "../ff-logging" }
+thiserror.workspace = true
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+proptest.workspace = true
+pretty_assertions.workspace = true

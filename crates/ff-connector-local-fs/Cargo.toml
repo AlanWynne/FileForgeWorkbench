@@ -1,0 +1,26 @@
+[package]
+name = "ff-connector-local-fs"
+version = "0.1.0"
+edition = "2021"
+description = "Local filesystem VFS provider for FileForgeWorkbench"
+authors = ["FileForge Contributors"]
+
+[dependencies]
+ff-vfs = { path = "../ff-vfs" }
+ff-logging = { path = "../ff-logging" }
+tokio = { version = "1", features = ["fs", "sync", "time", "rt", "io-util"] }
+tokio-stream = "0.1"
+notify = "6"
+memmap2 = "0.9"
+async-trait = "0.1"
+tokio-util = "0.7"
+thiserror = { workspace = true }
+dirs = { workspace = true }
+futures-core = "0.3"
+percent-encoding = "2"
+
+[dev-dependencies]
+proptest = { workspace = true }
+tempfile = { workspace = true }
+pretty_assertions = { workspace = true }
+tokio = { version = "1", features = ["test-util", "macros", "rt-multi-thread", "fs", "sync", "time", "io-util"] }

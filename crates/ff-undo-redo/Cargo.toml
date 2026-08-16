@@ -1,0 +1,21 @@
+[package]
+name = "ff-undo-redo"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Undo/redo transaction system for FileForgeWorkbench"
+
+[dependencies]
+ff-logging = { path = "../ff-logging" }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+crc32fast = { workspace = true }
+dirs = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

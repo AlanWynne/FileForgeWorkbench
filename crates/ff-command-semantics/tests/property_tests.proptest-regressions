@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc e4e70f22ea43139f87f1317ca953ebc994beec637c90b47b11069c9852e83d16 # shrinks to command_name = "AAAAAAAAAA", description = "𐀀ࠀࠀ¡𐀀𐀀ࠀA𐀀𐀀𐀀¡𐀀 0 0AA𐀀¡\0\0𐀀\u{b}0\u{b}𐀀𐀀¡ a¡¡ \u{80}\u{80}ࠀ0\0a 0A𐀀  \u{b}  \u{80}aࠀaA𐀀¡\u{b}0\u{b}𐀀𐀀A\0¡ 0A𐀀a𐀀a \0ࠀѨyÔ.\u{1}\t\0\0\u{4563f}\u{9ea68}¥\u{1b}", severity = 1

@@ -1,0 +1,16 @@
+[package]
+name = "ff-core"
+version = "0.1.0"
+edition = "2021"
+description = "GUI-independent central orchestration layer for FileForgeWorkbench"
+authors = ["FileForge Contributors"]
+
+[dependencies]
+ff-logging = { path = "../ff-logging" }
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "signal", "macros", "time"] }
+tokio-util = "0.7"
+thiserror = { workspace = true }
+async-trait = "0.1"
+
+[dev-dependencies]
+proptest = { workspace = true }

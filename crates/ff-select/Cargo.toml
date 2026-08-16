@@ -1,0 +1,20 @@
+[package]
+name = "ff-select"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Record selection criteria engine for FileForgeWorkbench — field-based filtering, comparison operators, logical combination, persistence, and command integration."
+
+[dependencies]
+ff-logging = { path = "../ff-logging" }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true }
+regex = "1"
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

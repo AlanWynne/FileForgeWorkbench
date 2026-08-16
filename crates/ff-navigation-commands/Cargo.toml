@@ -1,0 +1,20 @@
+[package]
+name = "ff-navigation-commands"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Navigation commands for FileForgeWorkbench: LOCATE, SORT, COLS, BOUNDS, viewport scroll, paragraph/word/word-part navigation, vertical caret movement, and document start/end."
+
+[dependencies]
+ff-document-model = { path = "../ff-document-model" }
+ff-viewport-scrolling = { path = "../ff-viewport-scrolling" }
+ff-command = { path = "../ff-command" }
+ff-undo-redo = { path = "../ff-undo-redo" }
+ff-config = { path = "../ff-config" }
+ff-logging = { path = "../ff-logging" }
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+pretty_assertions.workspace = true

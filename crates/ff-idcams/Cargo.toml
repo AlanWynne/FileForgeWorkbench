@@ -1,0 +1,17 @@
+[package]
+name = "ff-idcams"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "IDCAMS (Access Method Services) command interpreter and orchestration layer for FileForgeWorkbench — parses IDCAMS control statements and delegates execution to downstream catalog, VSAM, and allocator services."
+
+[features]
+test-helpers = []
+
+[dependencies]
+thiserror = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }

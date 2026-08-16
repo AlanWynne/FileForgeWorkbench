@@ -1,0 +1,18 @@
+[package]
+name = "ff-jes"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "FileForge Workbench Job Entry Subsystem — mainframe-style batch job management with FFJCL parsing, priority scheduling, initiator pool execution, SDSF-style monitoring, and dataset catalog integration."
+
+[dependencies]
+thiserror = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

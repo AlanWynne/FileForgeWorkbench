@@ -1,0 +1,22 @@
+[package]
+name = "ff-command"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Command framework for FileForgeWorkbench — registry, dispatch, shortcuts, scripting bridge, history"
+
+[dependencies]
+ff-logging = { path = "../ff-logging" }
+thiserror = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = { workspace = true }
+async-trait = "0.1"
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }

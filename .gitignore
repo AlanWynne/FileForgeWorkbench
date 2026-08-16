@@ -1,0 +1,47 @@
+# ── Rust build output ────────────────────────────────────────────────────────
+target/
+
+# ── Debug / profiling artefacts ──────────────────────────────────────────────
+*.pdb
+*.d
+*.rlib
+
+# ── OS artefacts ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Editor / IDE state ───────────────────────────────────────────────────────
+.vscode/*.log
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Emacs flycheck artefacts ─────────────────────────────────────────────────
+target/flycheck*/
+
+# ── Kiro AI cache ────────────────────────────────────────────────────────────
+.kiro/cache/
+
+# ── Portable Git bundled in project (never commit a full Git install) ────────
+git/
+
+# ── Temporary / scratch files ────────────────────────────────────────────────
+*.log
+*.tmp
+FailedTest.txt
+test_output.txt
+Tests.txt
+
+# ── One-off patch scripts (session-specific, not project artefacts) ──────────
+patch_*.ps1
+ffwb_cmp.ps1
+
+# ── Internal documentation artefacts not intended for public repo ────────────
+docs/fix_*.pdb
+docs/bugs_Sample.md
+FileForegeWorkbench-Primay-Screen.md
+
+# ── Kiro AI internal config files ────────────────────────────────────────────
+**/.config.kiro

@@ -1,0 +1,95 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/ff-auto-indent",
+    "crates/ff-background-io",
+    "crates/ff-caret-selection",
+    "crates/ff-clipboard",
+    "crates/ff-command",
+    "crates/ff-completion",
+    "crates/ff-command-semantics",
+    "crates/ff-config",
+    "crates/ff-connector-extensibility",
+    "crates/ff-connector-local-fs",
+    "crates/ff-core",
+    "crates/ff-display-line-mapping",
+    "crates/ff-document-model",
+    "crates/ff-edit-operations",
+    "crates/ff-encoding",
+    "crates/ff-exclude-show-filter",
+    "crates/ff-external-mod",
+    "crates/ff-file-ops",
+    "crates/ff-find-and-replace",
+    "crates/ff-help",
+    "crates/ff-keys",
+    "crates/ff-language-service",
+    "crates/ff-layout",
+    "crates/ff-line-commands",
+    "crates/ff-logging",
+    "crates/ff-lua",
+    "crates/ff-menu",
+    "crates/ff-navigation-commands",
+    "crates/ff-plugin",
+    "crates/ff-session",
+    "crates/ff-shell",
+    "crates/ff-syntax-highlighting",
+    "crates/ff-tabs",
+    "crates/ff-tabmask",
+    "crates/ff-text-decorations",
+    "crates/ff-theme",
+    "crates/ff-undo-redo",
+    "crates/ff-vfs",
+    "crates/ff-viewport-scrolling",
+    "crates/ff-whitespace-guides",
+    "crates/ff-workflow",
+    "crates/ff-wrap",
+    "crates/ff-zoom",
+    "crates/ff-hex",
+    "crates/ff-seqnum",
+    "crates/ff-viewers",
+    "crates/ff-asa",
+    "crates/ff-forge",
+    "crates/ff-structure-catalog",
+    "crates/ff-select",
+    "crates/ff-dsalloc",
+    "crates/ff-idcams",
+    "crates/ff-dataset-catalog",
+    "crates/ff-vsam-services",
+    "crates/ff-governance-tests",
+    "crates/ff-dscatalog",
+    "crates/ff-idle-processing",
+    "crates/ff-large-file-performance",
+    "crates/ff-database-tool",
+    "crates/ff-file-tree",
+    "crates/ff-compare-merge",
+    "crates/ff-jes",
+    "crates/ff-desktop",
+    "crates/ff-toolchain-api",
+    "crates/ff-gcc-toolchain",
+    "crates/ff-rust-toolchain",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["FileForge Contributors"]
+license = "Apache-2.0"
+
+[workspace.dependencies]
+# Shared dependency versions for workspace members
+chrono = { version = "0.4", features = ["clock", "serde"] }
+crossbeam-channel = "0.5"
+thiserror = "2"
+dirs = "5"
+toml = "0.8"
+proptest = "1"
+tempfile = "3"
+pretty_assertions = "1"
+unicode-segmentation = "1.11"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+crc32fast = "1"
+anyhow = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal"] }
+egui = "0.29"
+eframe = { version = "0.29", features = ["default_fonts"] }

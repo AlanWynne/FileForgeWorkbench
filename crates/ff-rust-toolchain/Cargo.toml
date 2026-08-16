@@ -1,0 +1,16 @@
+[package]
+name = "ff-rust-toolchain"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Rust toolchain detection, installation, cargo build invocation, and JSON diagnostic parsing for FileForge"
+
+[dependencies]
+ff-toolchain-api = { path = "../ff-toolchain-api" }
+serde_json.workspace = true
+which = "8"
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug FileForge",
+            "cargo": {
+                "args": ["build", "--bin=fileforge", "--package=ff-forge"],
+                "filter": { "name": "fileforge", "kind": "bin" }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

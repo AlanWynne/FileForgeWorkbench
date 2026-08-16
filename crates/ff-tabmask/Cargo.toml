@@ -1,0 +1,18 @@
+[package]
+name = "ff-tabmask"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Tab stop management and insert mask template subsystem for FileForgeWorkbench — TABS/MASK display commands, Tab key advancement, mask application, shift-to-tab-stop logic."
+
+[dependencies]
+ff-logging = { path = "../ff-logging" }
+thiserror = { workspace = true }
+serde = { workspace = true }
+toml = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

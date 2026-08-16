@@ -1,0 +1,19 @@
+[package]
+name = "ff-language-service"
+version = "0.1.0"
+edition = "2021"
+description = "Language detection, definition management, multi-line lexer state, and content-based language identification for FileForgeWorkbench"
+authors = ["FileForge Contributors"]
+
+[dependencies]
+ff-logging = { path = "../ff-logging" }
+ff-config = { path = "../ff-config" }
+serde = { workspace = true }
+toml = { workspace = true }
+thiserror = { workspace = true }
+regex = "1"
+
+[dev-dependencies]
+proptest = { workspace = true }
+tempfile = { workspace = true }
+pretty_assertions = { workspace = true }

@@ -1,0 +1,21 @@
+[package]
+name = "ff-connector-extensibility"
+version = "0.1.0"
+edition = "2021"
+description = "Connector extensibility framework for FileForgeWorkbench VFS connectors"
+authors = ["FileForge Contributors"]
+
+[dependencies]
+ff-vfs = { path = "../ff-vfs" }
+ff-plugin = { path = "../ff-plugin" }
+ff-core = { path = "../ff-core" }
+ff-logging = { path = "../ff-logging" }
+async-trait = "0.1"
+thiserror = { workspace = true }
+tokio = { version = "1", features = ["sync", "time", "macros"] }
+tokio-util = "0.7"
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros", "time"] }

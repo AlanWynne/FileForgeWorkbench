@@ -1,0 +1,16 @@
+[package]
+name = "ff-database-tool"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Full-featured integrated Database IDE plugin for FileForgeWorkbench — connection management, SQL editor, result grid, schema browser, ER diagram, data transfer"
+
+[dependencies]
+thiserror = { workspace = true }
+serde = { workspace = true }
+toml = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }

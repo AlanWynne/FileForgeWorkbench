@@ -1,0 +1,16 @@
+[package]
+name = "ff-gcc-toolchain"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "GCC toolchain detection, installation, build invocation, and diagnostic parsing for FileForge"
+
+[dependencies]
+ff-toolchain-api = { path = "../ff-toolchain-api" }
+regex = "1"
+which = "8"
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

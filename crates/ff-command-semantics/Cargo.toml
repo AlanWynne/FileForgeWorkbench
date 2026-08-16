@@ -1,0 +1,16 @@
+[package]
+name = "ff-command-semantics"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "ISPF-inspired command execution pipeline — parser, scope resolver, engine, and status reporting"
+
+[dependencies]
+ff-command = { path = "../ff-command" }
+ff-logging = { path = "../ff-logging" }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }

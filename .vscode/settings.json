@@ -1,0 +1,11 @@
+{
+    "editor.formatOnSave": true,
+    "rust-analyzer.cargo.features": "all",
+    "rust-analyzer.checkOnSave": true,
+    "rust-analyzer.check.command": "clippy",
+    "files.exclude": {
+        "target/": true,
+        "git/": true,
+        ".kiro/cache/": true
+    }
+}

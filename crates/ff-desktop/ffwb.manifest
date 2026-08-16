@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <assemblyIdentity
+    version="1.0.0.0"
+    processorArchitecture="*"
+    name="FileForgeWorkbench"
+    type="win32"
+  />
+  <description>FileForge Workbench</description>
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <!--
+        PerMonitor (v1) DPI awareness: Windows sends WM_DPICHANGED but does NOT
+        automatically resize the window. This prevents the mid-drag stutter caused
+        by PerMonitorV2's immediate synchronous resize on monitor boundary crossing.
+        winit/eframe handle the DPI change on the next frame after the drag completes.
+      -->
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">
+        true/pm
+      </dpiAware>
+    </windowsSettings>
+  </application>
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <!-- Windows 10 and 11 -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"/>
+      <!-- Windows 8.1 -->
+      <supportedOS Id="{1f676c76-80e1-4239-95bb-83d0f6d0da78}"/>
+    </application>
+  </compatibility>
+</assembly>

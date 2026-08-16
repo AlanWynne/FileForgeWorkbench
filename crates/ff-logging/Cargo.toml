@@ -1,0 +1,18 @@
+[package]
+name = "ff-logging"
+version = "0.1.0"
+edition = "2021"
+description = "Structured logging subsystem for FileForgeWorkbench"
+authors = ["FileForge Contributors"]
+
+[dependencies]
+chrono = { version = "0.4", features = ["clock"] }
+crossbeam-channel = "0.5"
+thiserror = "2"
+dirs = "5"
+toml = "0.8"
+
+[dev-dependencies]
+proptest = "1"
+tempfile = "3"
+pretty_assertions = "1"

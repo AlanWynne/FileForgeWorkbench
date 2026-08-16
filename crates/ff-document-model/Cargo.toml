@@ -1,0 +1,20 @@
+[package]
+name = "ff-document-model"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Document model with gap-buffer text storage, line indexing, and streaming file loading for FileForgeWorkbench"
+
+[dependencies]
+ff-vfs = { path = "../ff-vfs" }
+ff-logging = { path = "../ff-logging" }
+thiserror = { workspace = true }
+tokio = { version = "1", features = ["sync", "rt", "macros", "io-util"] }
+tokio-util = "0.7"
+async-trait = "0.1"
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }
+tokio-test = "0.4"

@@ -1,0 +1,10 @@
+[package]
+name = "ff-toolchain-api"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Shared ToolchainPlugin trait and types for FileForge compiler toolchain integration"
+
+[dependencies]
+thiserror.workspace = true

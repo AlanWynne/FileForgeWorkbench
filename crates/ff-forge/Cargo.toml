@@ -1,0 +1,17 @@
+[package]
+name = "ff-forge"
+version = "0.1.0"
+edition = "2021"
+description = "FileForge flat-file processing engine for FileForgeWorkbench — structure parsing, EBCDIC, COMP-3, VB binary, ASA detection"
+authors = ["FileForge Contributors"]
+
+[dependencies]
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }
+regex = "1"

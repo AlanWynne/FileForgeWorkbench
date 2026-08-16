@@ -1,0 +1,25 @@
+[package]
+name = "ff-file-ops"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "File operations for FileForgeWorkbench — New, Open, Save, Save As, Revert, Recent Files"
+
+[dependencies]
+ff-vfs = { path = "../ff-vfs" }
+ff-command = { path = "../ff-command" }
+ff-document-model = { path = "../ff-document-model" }
+ff-undo-redo = { path = "../ff-undo-redo" }
+ff-config = { path = "../ff-config" }
+ff-logging = { path = "../ff-logging" }
+thiserror = { workspace = true }
+serde = { workspace = true }
+async-trait = "0.1"
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }
+tokio = { version = "1", features = ["rt", "macros"] }
+async-trait = "0.1"

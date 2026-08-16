@@ -1,0 +1,16 @@
+[package]
+name = "ff-governance-tests"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Architectural compliance tests for the Dataset Ownership Model governance — verifies dependency direction, ownership boundaries, and trait-based coupling."
+publish = false
+
+[dependencies]
+toml = { workspace = true }
+
+[dev-dependencies]
+ff-dataset-catalog = { path = "../ff-dataset-catalog" }
+ff-vsam-services = { path = "../ff-vsam-services" }
+pretty_assertions = { workspace = true }

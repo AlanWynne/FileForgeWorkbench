@@ -1,0 +1,19 @@
+[package]
+name = "ff-zoom"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Per-editor-instance zoom offset management for FileForgeWorkbench"
+
+[dependencies]
+ff-logging = { path = "../ff-logging" }
+ff-command = { path = "../ff-command" }
+ff-config = { path = "../ff-config" }
+thiserror.workspace = true
+serde = { version = "1", features = ["derive"] }
+serde_json.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+pretty_assertions.workspace = true

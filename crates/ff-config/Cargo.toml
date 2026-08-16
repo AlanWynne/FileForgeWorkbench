@@ -1,0 +1,21 @@
+[package]
+name = "ff-config"
+version = "0.1.0"
+edition = "2021"
+description = "Central configuration management layer for FileForgeWorkbench"
+authors = ["FileForge Contributors"]
+
+[dependencies]
+ff-core = { path = "../ff-core" }
+ff-logging = { path = "../ff-logging" }
+toml = { workspace = true }
+notify = "6"
+dirs = { workspace = true }
+regex = "1"
+thiserror = { workspace = true }
+serde = { version = "1", features = ["derive"] }
+glob = "0.3"
+
+[dev-dependencies]
+proptest = { workspace = true }
+tempfile = { workspace = true }

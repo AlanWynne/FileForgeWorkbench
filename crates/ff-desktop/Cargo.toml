@@ -1,0 +1,50 @@
+[package]
+name = "ff-desktop"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "FileForgeWorkbench desktop shell — egui GUI entry point (ffwb binary)"
+
+[[bin]]
+name = "ffwb"
+path = "src/main.rs"
+
+[dependencies]
+ff-core                = { path = "../ff-core" }
+ff-config              = { path = "../ff-config" }
+ff-logging             = { path = "../ff-logging" }
+ff-theme               = { path = "../ff-theme" }
+ff-document-model      = { path = "../ff-document-model" }
+ff-viewport-scrolling  = { path = "../ff-viewport-scrolling" }
+ff-connector-local-fs  = { path = "../ff-connector-local-fs" }
+ff-vfs                 = { path = "../ff-vfs" }
+ff-command             = { path = "../ff-command" }
+ff-command-semantics   = { path = "../ff-command-semantics" }
+ff-find-and-replace    = { path = "../ff-find-and-replace" }
+ff-navigation-commands  = { path = "../ff-navigation-commands" }
+ff-exclude-show-filter  = { path = "../ff-exclude-show-filter" }
+ff-display-line-mapping = { path = "../ff-display-line-mapping" }
+ff-keys                 = { path = "../ff-keys" }
+ff-session             = { path = "../ff-session" }
+ff-zoom                = { path = "../ff-zoom" }
+ff-toolchain-api       = { path = "../ff-toolchain-api" }
+ff-gcc-toolchain       = { path = "../ff-gcc-toolchain" }
+ff-rust-toolchain      = { path = "../ff-rust-toolchain" }
+anyhow     = { workspace = true }
+tokio      = { workspace = true }
+egui       = { workspace = true }
+eframe     = { workspace = true }
+serde      = { workspace = true }
+toml       = { workspace = true }
+async-trait = "0.1"
+rfd        = "0.17"
+chrono     = { version = "0.4", default-features = false, features = ["clock", "std"] }
+regex      = "1"
+
+[build-dependencies]
+winres = "0.1"
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

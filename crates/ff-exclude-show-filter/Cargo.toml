@@ -1,0 +1,18 @@
+[package]
+name = "ff-exclude-show-filter"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "ISPF-style line visibility management engine for FileForgeWorkbench — EXCLUDE/SHOW/RESET commands and X/Xn/XX line commands"
+
+[dependencies]
+ff-command = { path = "../ff-command" }
+ff-display-line-mapping = { path = "../ff-display-line-mapping" }
+ff-logging = { path = "../ff-logging" }
+regex = "1"
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+pretty_assertions.workspace = true

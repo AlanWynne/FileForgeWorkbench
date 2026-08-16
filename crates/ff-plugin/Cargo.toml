@@ -1,0 +1,17 @@
+[package]
+name = "ff-plugin"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Plugin architecture and extensibility framework for FileForgeWorkbench"
+
+[dependencies]
+ff-logging = { path = "../ff-logging" }
+thiserror.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+tempfile.workspace = true
+pretty_assertions.workspace = true

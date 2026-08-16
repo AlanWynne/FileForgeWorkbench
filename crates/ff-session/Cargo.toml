@@ -1,0 +1,22 @@
+[package]
+name = "ff-session"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Startup sequence orchestration, session persistence, CLI handling, exit sequence, and crash recovery for FileForgeWorkbench"
+
+[dependencies]
+ff-config = { path = "../ff-config" }
+ff-logging = { path = "../ff-logging" }
+thiserror = { workspace = true }
+serde = { workspace = true }
+toml = { workspace = true }
+chrono = { workspace = true }
+dirs = { workspace = true }
+
+
+[dev-dependencies]
+proptest = { workspace = true }
+tempfile = { workspace = true }
+pretty_assertions = { workspace = true }

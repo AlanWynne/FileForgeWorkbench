@@ -1,0 +1,16 @@
+[package]
+name = "ff-seqnum"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Sequence number detection, stripping, numbering, and display overlay for FileForgeWorkbench"
+
+[dependencies]
+ff-logging = { path = "../ff-logging" }
+thiserror = { workspace = true }
+serde = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }

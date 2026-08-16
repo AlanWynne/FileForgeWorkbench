@@ -1,0 +1,21 @@
+[package]
+name = "ff-lua"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Lua 5.4 macro engine for FileForgeWorkbench — scripting, editor API, event hooks, and per-buffer state"
+
+[dependencies]
+ff-command = { path = "../ff-command" }
+ff-plugin = { path = "../ff-plugin" }
+ff-config = { path = "../ff-config" }
+ff-logging = { path = "../ff-logging" }
+mlua = { version = "0.10", features = ["lua54", "send", "vendored"] }
+thiserror.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+pretty_assertions.workspace = true
+tempfile.workspace = true

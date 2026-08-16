@@ -1,0 +1,22 @@
+[package]
+name = "ff-background-io"
+version = "0.1.0"
+edition = "2021"
+description = "Async file loading/saving with progress, cancellation, and large-file support for FileForgeWorkbench"
+authors = ["FileForge Contributors"]
+
+[dependencies]
+ff-vfs = { path = "../ff-vfs" }
+ff-logging = { path = "../ff-logging" }
+ff-core = { path = "../ff-core" }
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros", "time", "io-util"] }
+tokio-util = { version = "0.7", features = ["io"] }
+async-trait = "0.1"
+thiserror = { workspace = true }
+rand = "0.9"
+
+[dev-dependencies]
+proptest = { workspace = true }
+tokio-test = "0.4"
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

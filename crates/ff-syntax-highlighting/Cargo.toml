@@ -1,0 +1,17 @@
+[package]
+name = "ff-syntax-highlighting"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Syntax highlighting engine for FileForgeWorkbench — lexer trait, incremental re-highlight, keyword matching, sub-styles, fold levels"
+
+[dependencies]
+ff-logging = { path = "../ff-logging" }
+thiserror = { workspace = true }
+serde = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

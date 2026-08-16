@@ -1,0 +1,14 @@
+[package]
+name = "ff-idle-processing"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Cooperative idle-time background work scheduler for FileForgeWorkbench — priority dispatch, time budget enforcement, cancellation, progress tracking"
+
+[dependencies]
+thiserror = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }

@@ -1,0 +1,22 @@
+[package]
+name = "ff-vfs"
+version = "0.1.0"
+edition = "2021"
+description = "Virtual File System abstraction layer for FileForgeWorkbench (FFW-ARCH-001)"
+authors = ["FileForge Contributors"]
+
+[dependencies]
+ff-core = { path = "../ff-core" }
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros", "time", "io-util"] }
+tokio-util = "0.7"
+tokio-stream = "0.1"
+async-trait = "0.1"
+thiserror = { workspace = true }
+pin-project-lite = "0.2"
+futures-core = "0.3"
+
+[dev-dependencies]
+proptest = { workspace = true }
+tokio-test = "0.4"
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

@@ -1,0 +1,19 @@
+[package]
+name = "ff-text-decorations"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Text decorations subsystem for FileForgeWorkbench — indicators, line markers, hover, and rendering queries"
+
+[dependencies]
+ff-logging = { path = "../ff-logging" }
+ff-command = { path = "../ff-command" }
+ff-config = { path = "../ff-config" }
+thiserror = { workspace = true }
+serde = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

@@ -1,0 +1,13 @@
+[package]
+name = "ff-encoding"
+version = "0.1.0"
+edition = "2021"
+description = "Encoding detection, conversion, and character handling for FileForgeWorkbench"
+authors = ["FileForge Contributors"]
+
+[dependencies]
+thiserror = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }

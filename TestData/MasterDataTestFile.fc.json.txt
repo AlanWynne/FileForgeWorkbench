@@ -1,0 +1,124 @@
+{
+    "TITLE": "Flat Text file to csv, json conversion",
+    "INSTRUCTIONS": "Utility to do conversions on Data:\\n\\n\\tInvoking this utility without parametrs will,\\n\\tcreate a file in current working directory called \"file_conversion_configuration_template.fc.json\".\\n\\tin order to use this utility, you need to edit this file and save it with a name of your choice,\\n\\twith the extension of \".fc.json\". The file name should be the same name as the file you wish to convert.\\n\\n\\tInvoking this utility with a parametrs of the file name you wish to convert, will cause the utility to look\\n\\tfor the \"your_file_name.fc.json\" file. If found it will try to use it to do the file conversion. If it cannot\\n\\tfind the file it will create the file with default settings, conversion will fail, and you will have to edit the\\n\\tfile to have the desired settings.\\n",
+    "source_file_name": "file_conversion_configuration_template",
+    "field_delimiter": ",",
+    "text_qualifier": "'",
+    "output_type": "csv",
+    "record_structures": {
+        "Customer": {
+            "Record Id": {
+                "offset": 0,
+                "length": 2,
+                "decimals": 0,
+                "data_type": "<class 'str'>",
+                "identifiers": ["CI"],
+                "filters": []
+            },
+            "Customer Number": {
+                "offset": 2,
+                "length": 10,
+                "decimals": 0,
+                "data_type": "<class 'str'>",
+                "identifiers": [],
+                "filters": []
+            },
+            "First Name": {
+                "offset": 12,
+                "length": 20,
+                "decimals": 0,
+                "data_type": "<class 'str'>",
+                "identifiers": [],
+                "filters": []
+            },            
+			"Last Name": {
+                "offset": 32,
+                "length": 20,
+                "decimals": 0,
+                "data_type": "<class 'str'>",
+                "identifiers": [],
+                "filters": []
+            },            
+			"Company Name": {
+                "offset": 52,
+                "length": 40,
+                "decimals": 0,
+                "data_type": "<class 'str'>",
+                "identifiers": [],
+                "filters": []
+            },            
+			"Address": {
+                "offset": 92,
+                "length": 40,
+                "decimals": 0,
+                "data_type": "<class 'str'>",
+                "identifiers": [],
+                "filters": []
+            },            
+			"City": {
+                "offset": 132,
+                "length": 25,
+                "decimals": 0,
+                "data_type": "<class 'str'>",
+                "identifiers": [],
+                "filters": []
+            },            
+			"County": {
+                "offset": 157,
+                "length": 25,
+                "decimals": 0,
+                "data_type": "<class 'str'>",
+                "identifiers": [],
+                "filters": []
+            },            
+			"State": {
+                "offset": 182,
+                "length": 2,
+                "decimals": 0,
+                "data_type": "<class 'str'>",
+                "identifiers": [],
+                "filters": []
+            },            
+			"Zip": {
+                "offset": 184,
+                "length": 5,
+                "decimals": 0,
+                "data_type": "<class 'str'>",
+                "identifiers": [],
+                "filters": []
+            },            
+			"Phone 1": {
+                "offset": 189,
+                "length": 16,
+                "decimals": 0,
+                "data_type": "<class 'str'>",
+                "identifiers": [],
+                "filters": []
+            },            
+			"Phone 2": {
+                "offset": 205,
+                "length": 16,
+                "decimals": 0,
+                "data_type": "<class 'str'>",
+                "identifiers": [],
+                "filters": []
+            },            
+			"E-mail": {
+                "offset": 221,
+                "length": 35,
+                "decimals": 0,
+                "data_type": "<class 'str'>",
+                "identifiers": [],
+                "filters": []
+            },            
+			"Web": {
+                "offset": 258,
+                "length": 50,
+                "decimals": 0,
+                "data_type": "<class 'str'>",
+                "identifiers": [],
+                "filters": []
+            }			
+        }
+	}
+}

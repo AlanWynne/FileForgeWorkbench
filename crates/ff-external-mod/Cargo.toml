@@ -1,0 +1,25 @@
+[package]
+name = "ff-external-mod"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "External file modification detection, reload prompt, and mtime tracking for FileForgeWorkbench"
+
+[dependencies]
+ff-vfs = { path = "../ff-vfs" }
+ff-document-model = { path = "../ff-document-model" }
+ff-config = { path = "../ff-config" }
+ff-command = { path = "../ff-command" }
+ff-logging = { path = "../ff-logging" }
+thiserror = { workspace = true }
+serde = { workspace = true }
+tokio = { version = "1", features = ["rt", "sync", "macros", "time"] }
+async-trait = "0.1"
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }
+tokio-test = "0.4"
+tokio-util = "0.7"

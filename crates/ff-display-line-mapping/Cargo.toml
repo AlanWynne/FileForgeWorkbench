@@ -1,0 +1,15 @@
+[package]
+name = "ff-display-line-mapping"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Display-line mapping subsystem for FileForgeWorkbench — bidirectional document-to-display line conversion with folding, exclusion, and word wrap support"
+
+[dependencies]
+ff-logging = { path = "../ff-logging" }
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+pretty_assertions.workspace = true

@@ -1,0 +1,48 @@
+[package]
+name = "ff-dscatalog"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Mainframe dataset catalog emulation for FileForgeWorkbench — SQLite-backed catalog DB, DSN validation, PDS/PDSE/GDG types, catalog operations"
+
+[dependencies]
+ff-vfs = { path = "../ff-vfs" }
+ff-command = { path = "../ff-command" }
+ff-config = { path = "../ff-config" }
+ff-logging = { path = "../ff-logging" }
+
+# Database
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+# Async runtime
+tokio = { version = "1", features = ["fs", "io-util", "sync", "rt"] }
+async-trait = "0.1"
+
+# Serialization (for export manifest)
+serde = { version = "1", features = ["derive"] }
+serde_json = { workspace = true }
+
+# Archive operations
+zip = { version = "2", default-features = false, features = ["deflate"] }
+
+# Error handling
+thiserror = { workspace = true }
+
+# Walkdir for export
+walkdir = "2"
+
+# Percent-encoding for national characters
+percent-encoding = "2"
+
+# Timestamp generation
+chrono = { workspace = true }
+
+# Stream support
+futures-core = "0.3"
+
+[dev-dependencies]
+proptest = { workspace = true }
+tempfile = { workspace = true }
+pretty_assertions = { workspace = true }
+tokio = { version = "1", features = ["full", "test-util"] }

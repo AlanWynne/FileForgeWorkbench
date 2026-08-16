@@ -1,0 +1,17 @@
+[package]
+name = "ff-layout"
+version = "0.1.0"
+edition = "2021"
+description = "GUI-independent layout engine for FileForgeWorkbench — panels, dock zones, tab groups, floating windows, personas"
+authors = ["FileForge Contributors"]
+
+[dependencies]
+ff-logging = { path = "../ff-logging" }
+serde = { version = "1", features = ["derive"] }
+toml = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+tempfile = { workspace = true }
+pretty_assertions = { workspace = true }

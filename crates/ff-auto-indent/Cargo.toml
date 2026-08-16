@@ -1,0 +1,16 @@
+[package]
+name = "ff-auto-indent"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Language-aware automatic indentation engine for FileForgeWorkbench"
+
+[dependencies]
+ff-logging = { path = "../ff-logging" }
+regex = "1"
+thiserror = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }
