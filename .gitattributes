@@ -1,0 +1,30 @@
+# Normalise all text files to LF in the repository.
+# Git will convert to CRLF on checkout on Windows (core.autocrlf = true),
+# but the repo always stores LF — silences the LF->CRLF warnings on push.
+
+* text=auto eol=lf
+
+# Rust source
+*.rs text eol=lf
+
+# TOML / config
+*.toml text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
+
+# Markdown / docs
+*.md   text eol=lf
+*.txt  text eol=lf
+
+# Scripts — keep platform-native endings
+*.ps1  text eol=crlf
+*.bat  text eol=crlf
+*.sh   text eol=lf
+
+# Binaries — no line-ending conversion
+*.exe  binary
+*.dll  binary
+*.pdb  binary
+*.png  binary
+*.ico  binary
