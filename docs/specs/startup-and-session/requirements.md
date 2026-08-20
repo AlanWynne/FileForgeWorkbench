@@ -305,7 +305,7 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 14.3 THE Primary Option Menu SHALL display a numbered list of menu options, each with a short label and a one-line description. The built-in options SHALL be, at minimum:
    - `0 Settings` — FFWB Settings and Client Parameters
    - `1 File Catalogs` — Virtual File Catalogs — Mainframe, POSIX, Native
-   - `2 Files` — View Edit Create and Delete of files
+   - `2 Files` — File Explorer — Browse catalogs and files in a tree view
    - `3 Utilities` — Perform utility functions
    - `4 Compilers` — Interactive language processing
    - `5 Lua Scripts` — Run and manage Lua macros
@@ -453,4 +453,38 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 13.3 WHEN the cursor is positioned on a line, THE desktop shell SHALL render a visible highlight (frame or background) on the current cursor line so that the user can clearly identify their editing position within the document. [FFE-MVP-2]
 
 13.4 WHEN the cursor is positioned at a column, THE desktop shell SHALL render a visible caret (vertical bar or block) at that column position within the highlighted line. [FFE-MVP-2]
+
+---
+
+### Requirement 19: File Explorer Panel (POM Option 2)
+
+**User Story:** As an ISPF-familiar operator, I want POM option 2 to open a File Explorer panel that shows all open catalogs as tree nodes with their files listed beneath them, so that I can browse and navigate the file system from a familiar tree interface.
+
+**Source:** [ISPF-POM] option 2 re-definition; [WB] VFS-unified explorer; [FFE-TREE] file tree panel.
+
+#### Acceptance Criteria
+
+19.1 WHEN the user types `=2` into any `Command ===>` field and presses Enter, THE shell SHALL close the current context (transform the current tab to the File_Explorer_Panel view) and switch the window to the Files context. [ISPF-POM]
+
+19.2 WHEN the user types `=FILES` (case-insensitive) into any `Command ===>` field and presses Enter, THE shell SHALL close the current context and switch the window to the Files context, identical to `=2`. [ISPF-POM]
+
+19.3 WHEN the user types `FILES` (case-insensitive, without the `=` prefix) into any `Command ===>` field and presses Enter, THE shell SHALL open a NEW tab in the Files context without closing the current tab. [ISPF-POM]
+
+19.4 WHEN the user selects option `2` from the Primary Option Menu (by clicking the option button or typing `2` in the command field of a POM tab), THE shell SHALL transform the current POM tab into a File_Explorer_Panel tab with title `[FILES]`. [ISPF-POM]
+
+19.5 THE File_Explorer_Panel SHALL display a tree view where each open/mounted catalog appears as a top-level expandable node, labelled with the catalog name. [WB, FFE-TREE]
+
+19.6 WHEN a catalog node is expanded, THE File_Explorer_Panel SHALL list the files and datasets belonging to that catalog as child nodes in the tree, using the same node types and icons as the `file-tree-panel` specification (sequential datasets, PDS members, directories, files). [FFE-TREE]
+
+19.7 THE File_Explorer_Panel tree SHALL include a node for each catalog type registered in the Catalog_Registry: Mainframe catalogs, POSIX catalogs, and Native catalogs, each grouped under their respective section headers. [WB]
+
+19.8 WHEN no catalogs are mounted, THE File_Explorer_Panel SHALL display a placeholder message "No catalogs open — use File Catalogs (option 1) to create or mount a catalog" in the tree area. [WB]
+
+19.9 WHEN the user double-clicks a file node or PDS member node in the File_Explorer_Panel tree, THE shell SHALL open that file in a new editor tab. [FFE-TREE]
+
+19.10 WHEN the user presses `PF3` / `F3` or types `END` in the File_Explorer_Panel command field, THE shell SHALL return the tab to the Primary Option Menu view. [ISPF-POM]
+
+19.11 THE File_Explorer_Panel tab title in the tab bar SHALL be displayed as `[FILES]` to distinguish it from file editor tabs and the POM tab. [ISPF-POM]
+
+19.12 THE `[FILES]` tab kind SHALL be persisted in the session and restored on next launch as a `FileExplorerPanel` tab kind. [WB]
 

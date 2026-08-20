@@ -247,6 +247,17 @@ memorising command syntax.
     existing dataset node with `Allocate Like`, all fields SHALL be pre-populated from the source
     dataset's attributes, requiring only the new DSN to be entered. [DSC]
 
+5.7 WHEN the Allocate Dataset dialog opens for a Mainframe catalog that has a Default HLQ
+    configured, THE `Dataset Name` field SHALL be pre-populated with `"{HLQ}."` so the user
+    only needs to type the remaining qualifiers. [DSC]
+
+5.8 WHEN the user confirms the Allocate Dataset dialog for a Mainframe catalog, THE system
+    SHALL convert the Dataset Name to uppercase before validation and storage. [DSC]
+
+5.9 WHEN the user confirms the Allocate Dataset dialog, THE system SHALL reject the allocation
+    if a dataset with the same name (case-insensitive) already exists in the target catalog,
+    displaying an inline error without closing the dialog. [DSC]
+
 ---
 
 ### Requirement 6: Mainframe Dataset Management
@@ -447,6 +458,85 @@ location by default.
 12.7 WHEN the pre-populated path does not exist on disk, THE dialog SHALL display it as a
      suggestion only — the path is created only when the user confirms the dialog with
      `Create repository now` checked (Mainframe) or when the POSIX catalog is first mounted. [WB]
+
+---
+
+### Requirement 13: Allocated Dataset Persistence and Display
+
+**User Story:** As a mainframe developer, I want datasets I allocate via the Dataset Allocation
+Dialog to appear immediately in the Files Panel content area and persist across sessions, so that
+my work is not lost and I can see what I have created.
+
+**Source:** [DSC] dataset CRUD; [WB] session persistence.
+
+#### Acceptance Criteria
+
+13.1 THE `FilesPanelState` SHALL maintain a `datasets` map keyed by catalog name, storing a
+     `Vec<AllocatedDataset>` for each catalog. Each `AllocatedDataset` SHALL carry: `name`
+     (DSN string), `dsorg` (PS/PO/PDSE/GDG), `recfm`, `lrecl`, `blksize`, and `description`.
+
+13.2 WHEN the Dataset_Allocation_Dialog confirms with `AllocOutcome::Confirmed`, THE shell SHALL
+     extract the validated `AllocParams` from the form and insert a new `AllocatedDataset` entry
+     into the `datasets` map under the catalog name that was right-clicked to open the dialog.
+
+13.3 WHEN a catalog node is selected in the left tree, THE right content area SHALL populate
+     `ContentAreaState::entries` from the `datasets` map for that catalog, converting each
+     `AllocatedDataset` to a `ContentEntry` (name, dsorg as type, empty size, empty modified,
+     `is_container = false` for PS; `is_container = true` for PO/PDSE/GDG).
+
+13.4 THE `datasets` map SHALL be persisted to the session TOML under
+     `[catalog_datasets.<catalog_name>]` and restored on next launch so that allocated datasets
+     survive application restarts.
+
+13.5 WHEN a catalog is deleted from the registry, ALL datasets stored under that catalog name
+     SHALL also be removed from the `datasets` map.
+
+---
+
+### Requirement 14: Default Home Catalog on First Launch
+
+**User Story:** As a new user, I want the workbench to automatically create a Native catalog
+pointing to my home directory when no Native catalogs exist, so that the Files panel shows
+useful content immediately without any manual setup.
+
+**Source:** [WB] first-run experience; [FFE-STARTUP] graceful startup.
+
+#### Acceptance Criteria
+
+14.1 WHEN the workbench starts and the loaded `CatalogRegistry` contains no catalogs of type
+     `Native`, THE startup sequence SHALL automatically create a `VirtualCatalog` with:
+     - `name = "Home"`
+     - `catalog_type = CatalogType::Native`
+     - `path` = the user's home directory (resolved via `dirs::home_dir()` or equivalent,
+       falling back to the process working directory if the home directory cannot be determined)
+     - `auto_mount = true`
+     - `read_only = false`
+     - `description = Some("Default home directory catalog")`
+     [WB]
+
+14.2 WHEN the default Home catalog is created, THE startup sequence SHALL register it in the
+     `CatalogRegistry` immediately so it is visible in the Files panel on the same launch. [WB]
+
+14.3 WHEN the default Home catalog is created, THE `CatalogRegistry` SHALL be persisted to
+     `catalogs.toml` before the first frame is rendered, so that the catalog survives
+     application restart without being re-created. [WB]
+
+14.4 WHEN the `CatalogRegistry` already contains one or more `Native` catalogs on startup,
+     THE startup sequence SHALL NOT create the default Home catalog — the user's existing
+     Native catalogs take precedence. [WB]
+
+14.5 WHEN the home directory cannot be determined at startup, THE startup sequence SHALL
+     fall back to the process working directory as the catalog path, log a WARN-level record,
+     and still create and persist the catalog. [WB]
+
+14.6 THE default Home catalog named `"Home"` SHALL be protected from deletion: WHEN the
+     user attempts to delete a catalog whose name is `"Home"` and whose type is `Native`,
+     THE Catalog Manager Dialog SHALL reject the deletion and display an inline error:
+     `"The Home catalog cannot be deleted. Rename or edit it instead."` [WB]
+
+14.7 THE Home catalog MAY be renamed or edited (path, description, auto-mount, read-only)
+     via the Catalog Manager Dialog. WHEN it is renamed, the name-based deletion guard
+     (Req 14.6) no longer applies to the renamed catalog. [WB]
 
 ---
 

@@ -1339,6 +1339,82 @@ WorkbenchShell::update()
 | `0`–`8` (on POM tab) | Transform current tab to selected feature |
 | `EDIT <path>` | Open file in new editor tab |
 | `POM` | Open new POM tab (alias for START) |
+| `=2` | Close current context; switch current tab to File Explorer (FileExplorerPanel) |
+| `=FILES` | Close current context; switch current tab to File Explorer (FileExplorerPanel) |
+| `FILES` | Open a NEW tab in the File Explorer context (current tab unchanged) |
+
+---
+
+### File Explorer Panel (Requirement 19)
+
+#### Overview
+
+POM option 2 opens a **File Explorer Panel** — a tree-view panel that shows all open/mounted catalogs as top-level nodes with their files listed beneath them. This is distinct from the Files Panel (option 1, `FilesPanel` / `[FILES]`) which is the catalog management UI.
+
+The File Explorer Panel reuses the catalog tree data from the `CatalogRegistry` (already implemented in `catalog_registry.rs`) and renders it as a simple expandable tree. It does not duplicate the full `file-tree-panel` crate implementation — it is a lightweight shell-level panel that reads from the existing catalog registry.
+
+#### Design Decisions
+
+- **New `TabKind` variant**: `FileExplorerPanel` is added to the `TabKind` enum alongside `PrimaryOptionMenu`, `FileEditor`, `Untitled`, `FilesPanel`, `SettingsPanel`.
+- **Tab title**: `[FILES]` — same as `FilesPanel`. The tab bar title distinguishes the two by kind, not by title string. *(Note: if both are open simultaneously, both show `[FILES]` — this is acceptable ISPF behaviour.)*
+- **`=2` / `=FILES` routing**: These are **context-switch** commands. They transform the current tab in-place to `FileExplorerPanel` (same as how option numbers transform a POM tab). The `=` prefix signals "close current context and switch".
+- **`FILES` routing** (no `=` prefix): Opens a **new** tab with `FileExplorerPanel` kind. The current tab is unchanged.
+- **Tree content**: The panel renders a tree with one top-level node per catalog in the `CatalogRegistry`, grouped under section headers (Mainframe, POSIX, Native). Each catalog node is expandable to show its files/datasets via the VFS.
+- **Empty state**: When no catalogs are registered, a placeholder message is shown.
+- **File open**: Double-clicking a file/member node dispatches `file.open` with the VFS URI.
+- **F3/END**: Returns the tab to POM view (same as `FilesPanel`).
+- **Session persistence**: `FileExplorerPanel` tab kind is persisted and restored.
+
+#### Module Structure
+
+```
+crates/ff-desktop/src/
+├── file_explorer_panel.rs   ← NEW: FileExplorerPanelState, render()
+├── tab_manager.rs           ← MODIFIED: add FileExplorerPanel to TabKind
+└── shell.rs
+    ├── handle_command()     ← MODIFIED: route =2, =FILES, FILES
+    ├── render_central_panel() ← MODIFIED: dispatch FileExplorerPanel
+    └── session_manager.rs   ← MODIFIED: persist/restore FileExplorerPanel kind
+```
+
+#### Command Dispatch Logic
+
+```
+handle_command(cmd):
+  "=2" | "=FILES" (case-insensitive):
+    → transform_active_tab(TabKind::FileExplorerPanel, "[FILES]")
+    // closes current context, switches in-place
+
+  "FILES" (no = prefix, case-insensitive):
+    → open_new_tab(TabKind::FileExplorerPanel, "[FILES]")
+    // opens new tab, current tab unchanged
+
+  "2" (on POM tab):
+    → transform_active_pom_tab(TabKind::FileExplorerPanel, "[FILES]")
+    // same as other POM option numbers
+```
+
+#### Tree Structure
+
+```
+[FILES] tab
+└── Tree view
+    ├── ▶ Mainframe Catalogs
+    │   ├── ▶ MY.CATALOG
+    │   │   ├── ▶ MY.DATASET.PS  (sequential)
+    │   │   └── ▶ MY.PDS         (partitioned)
+    │   │       ├── MEMBER1
+    │   │       └── MEMBER2
+    │   └── (No catalogs defined)  ← when empty
+    ├── ▶ POSIX Catalogs
+    │   └── ▶ my-posix-catalog
+    │       ├── src/
+    │       └── README.md
+    └── ▶ Native Catalogs (Windows)
+        └── ▶ my-local-catalog
+            ├── Documents/
+            └── file.txt
+```
 
 ### Tab Context Menu Exit Item (Requirement 14.38)
 

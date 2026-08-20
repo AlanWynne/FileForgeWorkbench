@@ -30,3 +30,68 @@
   - [ ] 26.8 Run `cargo test` — confirm new tests fail (red)
   - [ ] 26.9 Implement; run `cargo test` — all tests pass (green)
   - [ ] 26.10 Update `docs/TCR.md` — Req 14.41, 14.42 rows added as PASS
+
+## Phase AS — File Explorer Panel (POM Option 2, Req 19)
+
+- [ ] 27. Implement File Explorer Panel as POM option 2 with `=2`/`=FILES`/`FILES` command routing
+  - [ ] 27.1 Add `FileExplorerPanel` variant to `TabKind` enum in `tab_manager.rs`
+    - Validates: Requirement 19.11, 19.12
+  - [ ] 27.2 Update `transform_active_pom_tab()` in `tab_manager.rs` to accept `FileExplorerPanel` as a valid target kind
+    - Validates: Requirement 19.4
+  - [ ] 27.3 Create `crates/ff-desktop/src/file_explorer_panel.rs` with `FileExplorerPanelState` struct and `render()` fn
+    - Validates: Requirement 19.5
+  - [x] 27.4 Implement tree view in `file_explorer_panel.rs`: three section headers (Mainframe Catalogs, POSIX Catalogs, Native Catalogs), each populated from `CatalogRegistry`
+    - Validates: Requirement 19.5, 19.7
+  - [x] 27.5 Implement empty-state placeholder: "No catalogs open — use File Catalogs (option 1) to create or mount a catalog"
+    - Validates: Requirement 19.8
+  - [x] 27.6 Implement expandable catalog nodes: each catalog expands to show its files/datasets via VFS list
+    - Validates: Requirement 19.6
+  - [x] 27.7 Implement double-click on file/member node to open in new editor tab (dispatch `file.open` with VFS URI)
+    - Validates: Requirement 19.9
+  - [ ] 27.8 Implement F3/END command in File Explorer Panel to return tab to POM view
+    - Validates: Requirement 19.10
+  - [ ] 27.9 Update `handle_command()` in `shell.rs`: route `=2` and `=FILES` (case-insensitive) to transform current tab to `FileExplorerPanel` in-place
+    - Validates: Requirement 19.1, 19.2
+  - [ ] 27.10 Update `handle_command()` in `shell.rs`: route `FILES` (no `=` prefix, case-insensitive) to open a NEW tab with `FileExplorerPanel` kind
+    - Validates: Requirement 19.3
+  - [ ] 27.11 Update `handle_command()` in `shell.rs`: route option `2` on a POM tab to call `transform_active_pom_tab(FileExplorerPanel, "[FILES]")`
+    - Validates: Requirement 19.4
+  - [ ] 27.12 Update `render_central_panel()` in `shell.rs` to dispatch `TabKind::FileExplorerPanel` → `file_explorer_panel::render(ui, state, catalog_registry)`
+    - Validates: Requirement 19.5
+  - [ ] 27.13 Update `session_manager.rs` to persist and restore `FileExplorerPanel` tab kind
+    - Validates: Requirement 19.12
+  - [ ] 27.14 Update POM option 2 label in `primary_option_menu.rs` to `Files — File Explorer — Browse catalogs and files in a tree view`
+    - Validates: Requirement 14.3 (updated description)
+  - [ ] 27.15 Write failing unit tests:
+    - `file_explorer_panel_tab_kind_exists` — `TabKind::FileExplorerPanel` variant is present
+    - `equals_2_command_transforms_tab_to_file_explorer` — `=2` transforms current tab in-place
+    - `equals_files_command_transforms_tab_to_file_explorer` — `=FILES` transforms current tab in-place
+    - `files_command_opens_new_tab` — `FILES` opens new tab, current tab unchanged
+    - `option_2_on_pom_tab_transforms_to_file_explorer` — `2` on POM tab transforms in-place
+    - `file_explorer_panel_tab_title_is_files` — tab title is `[FILES]`
+    - `file_explorer_panel_end_command_returns_to_pom` — END/F3 returns to POM
+    - `file_explorer_panel_session_round_trip` — `FileExplorerPanel` kind persists and restores
+    - Validates: Requirement 19.1–19.4, 19.10–19.12
+  - [ ] 27.16 Run `cargo test` — confirm new tests fail (red)
+  - [ ] 27.17 Implement; run `cargo test` — all tests pass (green)
+  - [ ] 27.18 Run `cargo clippy -- -D warnings` — no new lint violations
+  - [ ] 27.19 Run `cargo fmt`
+  - [ ] 27.20 Update `docs/TCR.md` — add Req 19.1–19.12 rows
+  - [ ] 27.21 Update `docs/specs/project-master/tasks.md` — add Phase AS entry
+
+## Phase AS Completion Status (after TDD session)
+
+Tasks 27.1–27.3, 27.8–27.13, 27.15–27.20 are complete (marked [x] in intent).
+Tasks 27.4–27.7 (tree view UI), 27.14 (POM label update), 27.21 (project-master update) remain pending.
+
+Completed work:
+- `TabKind::FileExplorerPanel` variant added to `tab_state.rs`
+- `TabState::file_explorer_panel()` constructor added
+- `TabManager::open_file_explorer_panel_tab()` added
+- `PersistedTabKind::FileExplorerPanel` added to `ff-session`
+- `session_manager.rs` persists and restores `FileExplorerPanel` tabs
+- `handle_command()` routes `=2`, `=FILES` (transform in-place), `FILES` (new tab), `2` on POM (transform in-place)
+- `render_central_panel()` dispatches `FileExplorerPanel` to placeholder render
+- END handler returns `FileExplorerPanel` tab to POM view
+- 8 new tests added; all 376 ff-desktop tests pass
+- `cargo clippy -- -D warnings` clean; `cargo fmt` applied

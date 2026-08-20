@@ -174,6 +174,111 @@ time; no subscription is needed inside the dialog itself.
 Because both keys are registered in the schema with descriptions, the auto-generated Settings
 panel (when implemented) will surface them under a `Catalogs` section without additional code.
 
+## 7. Allocated Dataset Store (Requirement 13)
+
+### 7.1 In-Memory Structure
+
+A new `AllocatedDataset` struct is added to `files_panel.rs`:
+
+```rust
+pub struct AllocatedDataset {
+    pub name: String,        // DSN string
+    pub dsorg: String,       // "PS", "PO", "PDSE", "GDG"
+    pub recfm: String,       // "FB", "F", "VB", "V", "U"
+    pub lrecl: u32,
+    pub blksize: u32,
+    pub description: String,
+}
+```
+
+`FilesPanelState` gains a `datasets: HashMap<String, Vec<AllocatedDataset>>` field keyed by
+catalog name.
+
+### 7.2 Allocation Confirm Flow
+
+When `AllocOutcome::Confirmed` fires in `shell.rs`, the shell reads the validated `AllocParams`
+from the form and calls a new helper `files_panel_state.add_dataset(catalog_name, params)`.
+The `catalog_name` is the name that was right-clicked to open the dialog — already stored in
+`FilesPanelState::pending_alloc_catalog`.
+
+### 7.3 Content Area Population
+
+When a catalog node is clicked in the left tree, `render_content_area` now calls a new helper
+`load_entries_from_datasets(catalog_name)` that converts `AllocatedDataset` entries to
+`ContentEntry` values and writes them into `ContentAreaState::entries`.
+
+### 7.4 Session Persistence
+
+Datasets are serialised to `session.toml` as a TOML array-of-tables under each catalog name.
+The `CatalogRegistry::save_to_toml()` / `load_from_toml()` pattern is extended to include
+a `[catalog_datasets]` section. On load, datasets are restored into `FilesPanelState::datasets`.
+
+### 7.5 No Contradictions
+
+- `ff-dscatalog` is not involved — this is a lightweight UI-layer store for the desktop shell.
+- The `AllocDatasetForm` already validates all parameters; no new validation logic is needed.
+- `ContentAreaState::entries` is already a `Vec<ContentEntry>` — only the population path changes.
+
+## 8. Default Home Catalog (Requirement 14)
+
+### 8.1 Trigger Point
+
+The check runs inside the one-shot startup block in `update.rs`, immediately after
+`session.load_catalog_registry()` assigns the loaded registry to `self.files_panel.registry`.
+
+### 8.2 Logic
+
+```rust
+if self.files_panel.registry.list_by_type(CatalogType::Native).is_empty() {
+    let home = dirs_home_dir().unwrap_or_else(|| std::env::current_dir()
+        .unwrap_or_else(|_| std::path::PathBuf::from(".")));
+    let catalog = VirtualCatalog {
+        name: "Home".to_string(),
+        catalog_type: CatalogType::Native,
+        path: home.to_string_lossy().into_owned(),
+        description: Some("Default home directory catalog".to_string()),
+        auto_mount: true,
+        default_hlq: None,
+        mount_point: None,
+        read_only: false,
+    };
+    // register() only fails on duplicate name or invalid name — neither applies here
+    let _ = self.files_panel.registry.register(catalog);
+    // Persist immediately so the catalog survives restart
+    if let Some(session) = &self.session {
+        session.save_catalog_registry(&self.files_panel.registry);
+    }
+}
+```
+
+### 8.3 Home Directory Resolution
+
+The `dirs` crate is already a transitive dependency via `ff-session`. We use
+`dirs::home_dir()` directly in `update.rs`. No new crate dependency is required.
+
+### 8.4 Deletion Guard
+
+In `catalog_manager_dialog.rs`, `execute_delete()` gains an early guard:
+
+```rust
+if confirm.name == "Home" && confirm.catalog_type == CatalogType::Native {
+    return Err("The Home catalog cannot be deleted. Rename or edit it instead.".to_string());
+}
+```
+
+This is a name+type check, not a special flag on `VirtualCatalog`, so no schema change is
+needed. Once the user renames the catalog the guard no longer fires.
+
+### 8.5 No Contradictions
+
+- The check is purely additive — it only fires when `list_by_type(Native).is_empty()`.
+- Existing catalogs are never modified.
+- The `register()` call is idempotent in the sense that it only runs when no Native
+  catalog exists, so the `"Home"` name cannot collide with an existing Native catalog.
+  (A Mainframe or POSIX catalog named `"Home"` would cause `DuplicateName` — the `let _ =`
+  silently ignores this edge case, which is acceptable.)
+- The immediate `save_catalog_registry()` call reuses the existing persistence path.
+
 ## 6. No Contradictions with Existing Architecture
 
 - `ff-dscatalog` is unchanged — the dialog calls its existing command API

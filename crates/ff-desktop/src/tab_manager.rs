@@ -151,6 +151,20 @@ impl TabManager {
         let _ = runtime;
     }
 
+    /// Open the File Explorer Panel (POM option 2) tab.
+    ///
+    /// Always opens a new tab (unlike FilesPanel which deduplicates).
+    /// Validates: Requirement 19.3, 19.11
+    pub fn open_file_explorer_panel_tab(&mut self, runtime: &Runtime) {
+        let document = ff_document_model::new_document();
+        let id = TabId(self.next_id);
+        self.next_id += 1;
+        let tab = crate::tab_state::TabState::file_explorer_panel(id, document);
+        self.tabs.push(tab);
+        self.active = self.tabs.len() - 1;
+        let _ = runtime;
+    }
+
     /// Transform the active tab in-place from `PrimaryOptionMenu` to a new kind.
     ///
     /// No-op if the active tab is not a `PrimaryOptionMenu` tab.

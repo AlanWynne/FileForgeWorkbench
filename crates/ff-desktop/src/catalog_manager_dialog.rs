@@ -580,14 +580,27 @@ pub fn render_delete(ctx: &egui::Context, confirm: &DeleteCatalogConfirm) -> Del
 /// - `CatalogOnly`: removes from registry, leaves files.
 /// - `CatalogAndFiles`: removes from registry, then recursively deletes `path`.
 ///
+/// The catalog named `"Home"` of type `Native` is protected and cannot be
+/// deleted via this function.
+///
 /// Returns `Ok(())` on success or an error string on failure.
 ///
-/// Validates: Requirement 4.4, 4.5
+/// Validates: Requirement 4.4, 4.5, 14.6
 pub fn execute_delete(
     choice: &DeleteChoice,
     confirm: &DeleteCatalogConfirm,
     registry: &mut CatalogRegistry,
 ) -> Result<(), String> {
+    // Validates: Requirement 14.6 — Home Native catalog is protected from deletion.
+    if choice != &DeleteChoice::Cancel {
+        if let Some(cat) = registry.get_by_name(&confirm.name) {
+            if cat.name == "Home" && cat.catalog_type == CatalogType::Native {
+                return Err(
+                    "The Home catalog cannot be deleted. Rename or edit it instead.".to_string(),
+                );
+            }
+        }
+    }
     match choice {
         DeleteChoice::CatalogOnly => registry
             .remove(&confirm.name)
@@ -1102,6 +1115,68 @@ mod tests {
         let confirm = DeleteCatalogConfirm::from_catalog(&cat);
         execute_delete(&DeleteChoice::Cancel, &confirm, &mut registry).unwrap();
         assert!(registry.exists("PAYROLL"));
+    }
+
+    /// Validates: Requirement 14.6 — deleting the "Home" Native catalog is rejected.
+    #[test]
+    fn delete_home_native_catalog_is_rejected() {
+        // Validates: Requirement 14.6
+        let mut registry = empty_registry();
+        registry
+            .register(VirtualCatalog {
+                name: "Home".to_string(),
+                catalog_type: CatalogType::Native,
+                path: "C:/Users/user".to_string(),
+                description: Some("Default home directory catalog".to_string()),
+                auto_mount: true,
+                default_hlq: None,
+                mount_point: None,
+                read_only: false,
+            })
+            .unwrap();
+        let confirm = DeleteCatalogConfirm {
+            name: "Home".to_string(),
+            path: "C:/Users/user".to_string(),
+        };
+        let result = execute_delete(&DeleteChoice::CatalogOnly, &confirm, &mut registry);
+        assert!(
+            result.is_err(),
+            "deleting Home Native catalog must be rejected"
+        );
+        let msg = result.unwrap_err();
+        assert!(
+            msg.contains("cannot be deleted"),
+            "error message must mention cannot be deleted, got: {msg}"
+        );
+        // Registry must be unchanged
+        assert!(registry.exists("Home"));
+    }
+
+    /// Validates: Requirement 14.7 — a Native catalog renamed away from "Home" can be deleted.
+    #[test]
+    fn delete_renamed_home_catalog_is_permitted() {
+        // Validates: Requirement 14.7
+        // A catalog that was once "Home" but is now named "MyHome" is not protected.
+        let mut registry = empty_registry();
+        registry
+            .register(VirtualCatalog {
+                name: "MyHome".to_string(),
+                catalog_type: CatalogType::Native,
+                path: "C:/Users/user".to_string(),
+                description: None,
+                auto_mount: true,
+                default_hlq: None,
+                mount_point: None,
+                read_only: false,
+            })
+            .unwrap();
+        let confirm = DeleteCatalogConfirm {
+            name: "MyHome".to_string(),
+            path: "C:/Users/user".to_string(),
+        };
+        let result = execute_delete(&DeleteChoice::CatalogOnly, &confirm, &mut registry);
+        assert!(result.is_ok(), "renamed catalog must be deletable");
+        assert!(!registry.exists("MyHome"));
     }
 
     // ── Req 12 — Catalog storage default paths ────────────────────────────

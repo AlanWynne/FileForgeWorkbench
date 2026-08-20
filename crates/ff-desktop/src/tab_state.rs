@@ -25,6 +25,10 @@ pub enum TabKind {
     ///
     /// Validates: Requirement 15.1, 15.9
     SettingsPanel,
+    /// File Explorer Panel — POM option 2 (tree view of catalog contents).
+    ///
+    /// Validates: Requirement 19.11, 19.12
+    FileExplorerPanel,
 }
 
 /// A single undoable edit stored as the inverse operation to apply.
@@ -179,6 +183,29 @@ impl TabState {
             id,
             kind: TabKind::SettingsPanel,
             title: "[SETTINGS]".to_string(),
+            path: None,
+            document,
+            viewport,
+            cursor: CursorModel::new(),
+            is_modified: false,
+            line_count: 1,
+            line_end_mode: LineEndMode::Default,
+            undo_stack: Vec::new(),
+            prefix_inputs: HashMap::new(),
+            is_floating: false,
+        }
+    }
+
+    /// Create a File Explorer Panel tab (POM option 2).
+    ///
+    /// Validates: Requirement 19.11, 19.12
+    pub fn file_explorer_panel(id: TabId, document: DocumentHandle) -> Self {
+        let mut viewport = ViewportModel::with_line_count(1);
+        viewport.set_line_height(16);
+        Self {
+            id,
+            kind: TabKind::FileExplorerPanel,
+            title: "[FILES]".to_string(),
             path: None,
             document,
             viewport,

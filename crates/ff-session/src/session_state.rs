@@ -125,6 +125,10 @@ pub enum PersistedTabKind {
     PrimaryOptionMenu,
     /// The Virtual Catalog Manager (Files Panel) tab.
     FilesPanel,
+    /// The File Explorer Panel tab (POM option 2 — tree view of catalog contents).
+    ///
+    /// Validates: Requirement 19.12
+    FileExplorerPanel,
     /// An untitled buffer with no backing file.
     Untitled,
 }

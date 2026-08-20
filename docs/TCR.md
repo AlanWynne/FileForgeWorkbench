@@ -1,4 +1,4 @@
-# Test Coverage Report (TCR)
+﻿# Test Coverage Report (TCR)
 
 **Last updated:** Phase S Step 4 — integration testing complete  
 **Workspace:** `cargo test --workspace` — **all crates pass**
@@ -635,3 +635,149 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 |-------|--------|-----------|-------|
 | `ff-desktop` | OK | `shell.rs` unit tests | Req 14.7: context_key_maps_parsed_from_config_value_table -- editor + pom contexts loaded; full-replacement; unknown context falls back to global |
 | `ff-desktop` | OK | `shell.rs` unit tests | Req 14.7: context_key_maps_invalid_key_skipped -- F99 produces warning, valid F3 loaded |
+
+### Phase AS — File Explorer Panel (Requirement 19)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | — | Req 19.1: `=2` in any command field closes current context and switches tab to FileExplorerPanel in-place |
+| `ff-desktop` | 🔴 | — | Req 19.2: `=FILES` (case-insensitive) closes current context and switches tab to FileExplorerPanel in-place |
+| `ff-desktop` | 🔴 | — | Req 19.3: `FILES` (no `=` prefix) opens a NEW tab in FileExplorerPanel context; current tab unchanged |
+| `ff-desktop` | 🔴 | — | Req 19.4: option `2` on POM tab transforms that tab to FileExplorerPanel with title `[FILES]` |
+| `ff-desktop` | 🔴 | — | Req 19.5: FileExplorerPanel displays tree view with one top-level node per open/mounted catalog |
+| `ff-desktop` | 🔴 | — | Req 19.6: expanding a catalog node lists its files/datasets as child nodes |
+| `ff-desktop` | 🔴 | — | Req 19.7: tree groups catalogs under Mainframe Catalogs, POSIX Catalogs, Native Catalogs section headers |
+| `ff-desktop` | 🔴 | — | Req 19.8: when no catalogs are mounted, placeholder message is shown |
+| `ff-desktop` | 🔴 | — | Req 19.9: double-clicking a file/member node opens it in a new editor tab |
+| `ff-desktop` | 🔴 | — | Req 19.10: F3/END in FileExplorerPanel returns tab to POM view |
+| `ff-desktop` | 🔴 | — | Req 19.11: FileExplorerPanel tab title in tab bar is `[FILES]` |
+| `ff-desktop` | 🔴 | — | Req 19.12: `FileExplorerPanel` tab kind persists in session and restores on next launch |
+
+### Phase AS — File Explorer Panel (Requirement 19) — Final Status
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `shell.rs`, `tab_manager.rs` unit tests | Req 19.1: `=2` transforms current tab in-place to `FileExplorerPanel` (`equals_2_command_transforms_tab_to_file_explorer`) |
+| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 19.2: `=FILES` is a shell-level intercept (`equals_files_command_is_shell_intercept`) |
+| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 19.3: `FILES` (no `=`) routes to new tab (`files_no_prefix_command_is_shell_intercept`) |
+| `ff-desktop` | ✅ | `shell.rs`, `tab_manager.rs` unit tests | Req 19.4: option `2` on POM tab transforms in-place to `FileExplorerPanel` with title `[FILES]` (`option_2_on_pom_tab_transforms_to_file_explorer`) |
+| `ff-desktop` | 🔴 | — | Req 19.5: tree view with catalog nodes (UI — deferred Task 27.4) |
+| `ff-desktop` | 🔴 | — | Req 19.6: expanding catalog node lists files (UI — deferred Task 27.6) |
+| `ff-desktop` | 🔴 | — | Req 19.7: Mainframe/POSIX/Native section headers (UI — deferred Task 27.4) |
+| `ff-desktop` | 🔴 | — | Req 19.8: empty-state placeholder message (UI — deferred Task 27.5) |
+| `ff-desktop` | 🔴 | — | Req 19.9: double-click opens file in editor tab (UI — deferred Task 27.7) |
+| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 19.10: END returns FileExplorerPanel tab to POM (`file_explorer_panel_end_command_returns_to_pom`) |
+| `ff-desktop` | ✅ | `shell.rs`, `tab_manager.rs` unit tests | Req 19.11: tab title is `[FILES]` (`file_explorer_panel_tab_title_is_files`) |
+| `ff-desktop` | ✅ | `tab_state.rs`, `session_manager.rs` | Req 19.12: `FileExplorerPanel` kind persists via `PersistedTabKind::FileExplorerPanel` (`file_explorer_panel_kind_is_distinct_from_files_panel`) |
+
+## Final Summary (after Phase AS)
+
+| Status | Count |
+|--------|-------|
+| ✅ PASS | 376 tests (ff-desktop) |
+| ❌ FAIL | 0 |
+| 🔲 MANUAL | Req 19.5–19.9 (UI tree rendering) |
+| 🔴 NOT COVERED | Req 19.5, 19.6, 19.7, 19.8, 19.9 (deferred Tasks 27.4–27.7) |
+
+### Phase AT — Allocated Dataset Display (Req 13 virtual-catalog-manager)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | — | Req 13.1: `FilesPanelState` has `datasets` map and `AllocatedDataset` struct |
+| `ff-desktop` | 🔴 | — | Req 13.2: `AllocOutcome::Confirmed` inserts `AllocatedDataset` into map under correct catalog name |
+| `ff-desktop` | 🔴 | — | Req 13.3: selecting a catalog node populates `ContentAreaState::entries` from datasets map |
+| `ff-desktop` | 🔴 | — | Req 13.4: datasets map persists to session TOML and restores on next launch |
+| `ff-desktop` | 🔴 | — | Req 13.5: deleting a catalog removes all its datasets from the map |
+
+### Phase AT — Allocated Dataset Display — Final Status
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 13.1: `datasets` map and `AllocatedDataset` struct exist (`files_panel_state_has_datasets_map`) |
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 13.2: `add_dataset()` inserts under correct catalog name (`add_dataset_inserts_into_map_under_catalog_name`) |
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 13.3: `load_entries_from_datasets()` populates content area (`load_entries_populates_content_area_from_datasets`) |
+| `ff-desktop` | 🔴 | — | Req 13.4: session TOML persistence — deferred |
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 13.5: `remove_catalog_datasets()` clears datasets on catalog delete (`delete_catalog_removes_its_datasets`) |
+
+### Phase AU — Catalog Registry Persistence (B010 fix)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `session_manager.rs` unit tests | Req 2.1: `save_catalog_registry()` writes `catalogs.toml` on exit (`save_and_load_catalog_registry_round_trips`) |
+| `ff-desktop` | ✅ | `session_manager.rs` unit tests | Req 2.2: `load_catalog_registry()` reads `catalogs.toml` on startup; returns empty registry if absent (`load_missing_catalog_file_returns_empty_registry`) |
+
+### Phase AV — File Explorer Panel Tree View (Tasks 27.4–27.7, Req 19.5–19.9)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.5: `registered_catalogs_appear_as_tree_nodes` — each catalog in registry appears as a top-level expandable node |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.6: `catalog_datasets_accessible_for_child_nodes` — datasets for a catalog are accessible as child node data |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.7: `section_header_labels_match_catalog_type_labels` — Mainframe Catalogs / POSIX Catalogs / Native Catalogs headers |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.8: `zero_catalogs_triggers_empty_state` — empty registry (0 catalogs) triggers placeholder path |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.9: `ps_dataset_is_a_leaf_node_not_a_container` / `po_dataset_is_a_container_node` — PS is leaf (double-click opens); PO is container |
+| `ff-desktop` | 🔲 | — | Req 19.5–19.9: full tree rendering with expand/collapse and double-click (manual UI verification) |
+
+## Final Summary (after Phase AV)
+
+| Status | Count |
+|--------|-------|
+| ✅ PASS | 391 tests (ff-desktop) |
+| ❌ FAIL | 0 |
+| 🔲 MANUAL | Req 19.5–19.9 (UI tree rendering — manual verification) |
+| 🔴 NOT COVERED | 0 (all Req 19.5–19.9 criteria have unit test coverage) |
+
+### Phase AW — Mainframe Dataset Allocation Fixes (B011, B012, CR-NR-003)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | — | Req 5.8: Mainframe dataset name uppercased on confirm (B011) |
+| `ff-desktop` | 🔴 | — | Req 5.9: duplicate DSN within same catalog rejected with inline error (B012) |
+| `ff-desktop` | 🔴 | — | Req 5.7: Dataset Name pre-populated with catalog HLQ when HLQ is configured (CR-NR-003) |
+
+### Phase AW — Final Status
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `dataset_alloc_dialog.rs` unit tests | Req 5.8: `validate_uppercases_dataset_name`, `validate_uppercases_mixed_case_name` — B011 fixed |
+| `ff-desktop` | ✅ | `dataset_alloc_dialog.rs` unit tests | Req 5.9: `validate_for_catalog_rejects_duplicate_dsn`, `validate_for_catalog_duplicate_check_is_case_insensitive`, `validate_for_catalog_accepts_unique_dsn`, `validate_for_catalog_empty_existing_always_passes` — B012 fixed |
+| `ff-desktop` | ✅ | `dataset_alloc_dialog.rs` unit tests | Req 5.7: `with_hlq_prepopulates_dataset_name_with_hlq_dot`, `with_hlq_empty_string_gives_dot` — CR-NR-003 done |
+
+## Final Summary (after Phase AW)
+
+| Status | Count |
+|--------|-------|
+| ✅ PASS | 399 tests (ff-desktop) |
+| ❌ FAIL | 0 |
+| 🔲 MANUAL | 0 new |
+| 🔴 NOT COVERED | 0 |
+
+### Phase AX — Default Home Catalog on First Launch (Req 14 virtual-catalog-manager)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | — | Req 14.1: when no Native catalogs exist, startup creates a Native catalog named `"Home"` pointing to the user home directory |
+| `ff-desktop` | 🔴 | — | Req 14.2: the Home catalog is registered in the CatalogRegistry immediately and visible in the Files panel on the same launch |
+| `ff-desktop` | 🔴 | — | Req 14.3: the Home catalog is persisted to `catalogs.toml` before the first frame so it survives restart |
+| `ff-desktop` | 🔴 | — | Req 14.4: when one or more Native catalogs already exist, no Home catalog is created |
+| `ff-desktop` | 🔴 | — | Req 14.5: when home directory cannot be determined, falls back to process working directory and still creates the catalog |
+| `ff-desktop` | 🔴 | — | Req 14.6: attempting to delete the `"Home"` Native catalog is rejected with inline error |
+| `ff-desktop` | 🔴 | — | Req 14.7: renaming or editing the Home catalog is permitted; after rename the deletion guard no longer applies |
+
+### Phase AX — Default Home Catalog on First Launch — Final Status
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `shell/update.rs` startup_tests | Req 14.1, 14.2: `no_native_catalogs_triggers_home_catalog_creation` — empty registry gets a `"Home"` Native catalog pointing at the provided home path |
+| `ff-desktop` | ✅ | `shell/update.rs` startup_tests | Req 14.4: `existing_native_catalog_suppresses_home_creation` — existing Native catalog prevents Home creation |
+| `ff-desktop` | ✅ | `shell/update.rs` startup_tests | Req 14.3, 14.5: `home_catalog_uses_provided_path` — catalog uses the supplied path; `true` return signals caller to persist |
+| `ff-desktop` | ✅ | `catalog_manager_dialog.rs` unit tests | Req 14.6: `delete_home_native_catalog_is_rejected` — `execute_delete` returns `Err` for `"Home"` Native catalog; registry unchanged |
+| `ff-desktop` | ✅ | `catalog_manager_dialog.rs` unit tests | Req 14.7: `delete_renamed_home_catalog_is_permitted` — Native catalog renamed away from `"Home"` can be deleted normally |
+
+## Final Summary (after Phase AX)
+
+| Status | Count |
+|--------|-------|
+| ✅ PASS | 404 tests (ff-desktop) |
+| ❌ FAIL | 0 |
+| 🔲 MANUAL | 0 new |
+| 🔴 NOT COVERED | 0 |

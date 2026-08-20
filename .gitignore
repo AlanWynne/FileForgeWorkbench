@@ -27,6 +27,9 @@ target/flycheck*/
 # ── Portable Git bundled in project (never commit a full Git install) ────────
 git/
 
+# ── Large test data files (exceed GitHub 100 MB limit) ──────────────────────
+TestData/Large_File-157653-records.txt
+
 # ── Temporary / scratch files ────────────────────────────────────────────────
 *.log
 *.tmp

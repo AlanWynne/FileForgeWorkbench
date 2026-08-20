@@ -345,3 +345,19 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 ### Phase AR -- [context_key_maps] TOML Config Parsing (Req 14.7 function-keys-and-history)
 
 - [x] AR.1 Add load_context_maps_from_config() in ff-desktop shell.rs; call at startup; 2 unit tests (Task 32)
+
+### Phase AS — File Explorer Panel (Req 19 startup-and-session)
+
+- [ ] AS.1 Add `FileExplorerPanel` TabKind; route `=2`, `=FILES`, `FILES` commands; implement tree view showing open catalogs and their files; session persistence (Tasks 27.1–27.21 in startup-and-session/tasks.md)
+
+### Phase AT — Allocated Dataset Display (Req 13 virtual-catalog-manager)
+
+- [ ] AT.1 Add `AllocatedDataset` store to `FilesPanelState`; wire `AllocOutcome::Confirmed` to insert into store; populate content area from store on catalog select; persist/restore via session TOML (Tasks 12.1–12.14 in virtual-catalog-manager/tasks.md)
+
+### Phase AX — Default Home Catalog on First Launch (Req 14 virtual-catalog-manager)
+
+- [x] AX.1 Add `ensure_default_home_catalog()` helper; wire into startup block in `update.rs`; deletion guard in `execute_delete()`; 5 unit tests (Tasks 14.1–14.11 in virtual-catalog-manager/tasks.md)
+
+### Phase AU — Catalog Registry Persistence (B010 fix, Req 2.1, 2.2 virtual-catalog-manager)
+
+- [x] AU.1 Add `save_catalog_registry()` / `load_catalog_registry()` to `SessionManager`; wire into `on_exit()` and startup; 2 unit tests (Tasks 13.1–13.9 in virtual-catalog-manager/tasks.md)

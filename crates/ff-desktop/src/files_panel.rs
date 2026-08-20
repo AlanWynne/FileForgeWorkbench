@@ -7,11 +7,13 @@
 
 #![allow(dead_code)]
 
+use std::collections::HashMap;
+
 use eframe::egui;
 
 use crate::catalog_manager_dialog::{DeleteCatalogConfirm, EditCatalogForm, NewCatalogForm};
 use crate::catalog_registry::{CatalogRegistry, CatalogType, VirtualCatalog};
-use crate::dataset_alloc_dialog::AllocDatasetForm;
+use crate::dataset_alloc_dialog::{AllocDatasetForm, AllocParams, Dsorg};
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -233,6 +235,25 @@ impl ContentAreaState {
     }
 }
 
+/// A dataset allocated within a catalog, stored in the UI-layer dataset map.
+///
+/// Validates: Requirement 13.1
+#[derive(Debug, Clone)]
+pub struct AllocatedDataset {
+    /// Dataset name (DSN string).
+    pub name: String,
+    /// Dataset organisation label: "PS", "PO", "PDSE", "GDG".
+    pub dsorg: String,
+    /// Record format label: "FB", "F", "VB", "V", "U".
+    pub recfm: String,
+    /// Logical record length.
+    pub lrecl: u32,
+    /// Block size.
+    pub blksize: u32,
+    /// Optional description.
+    pub description: String,
+}
+
 /// Persistent state for the Files Panel tab.
 pub struct FilesPanelState {
     /// Catalog registry — source of truth for all virtual catalogs.
@@ -249,6 +270,14 @@ pub struct FilesPanelState {
     ///
     /// Validates: Requirement 10.1–10.6
     pub content: ContentAreaState,
+    /// Allocated datasets keyed by catalog name.
+    ///
+    /// Validates: Requirement 13.1
+    pub datasets: HashMap<String, Vec<AllocatedDataset>>,
+    /// Catalog name that opened the current Allocate Dataset dialog.
+    ///
+    /// Validates: Requirement 13.2
+    pub pending_alloc_catalog: Option<String>,
 }
 
 impl FilesPanelState {
@@ -261,7 +290,73 @@ impl FilesPanelState {
             command: String::new(),
             dialog: FilesDialogState::None,
             content: ContentAreaState::default(),
+            datasets: HashMap::new(),
+            pending_alloc_catalog: None,
         }
+    }
+
+    /// Insert an allocated dataset under the given catalog name.
+    ///
+    /// Validates: Requirement 13.2
+    pub fn add_dataset(&mut self, catalog_name: &str, params: AllocParams) {
+        let dsorg = match params.dsorg {
+            Dsorg::Ps => "PS",
+            Dsorg::Po => "PO",
+            Dsorg::Pdse => "PDSE",
+            Dsorg::Gdg => "GDG",
+        };
+        let recfm = match params.recfm {
+            crate::dataset_alloc_dialog::Recfm::Fb => "FB",
+            crate::dataset_alloc_dialog::Recfm::F => "F",
+            crate::dataset_alloc_dialog::Recfm::Vb => "VB",
+            crate::dataset_alloc_dialog::Recfm::V => "V",
+            crate::dataset_alloc_dialog::Recfm::U => "U",
+        };
+        let entry = AllocatedDataset {
+            name: params.dataset_name,
+            dsorg: dsorg.to_string(),
+            recfm: recfm.to_string(),
+            lrecl: params.lrecl,
+            blksize: params.blksize,
+            description: params.description.unwrap_or_default(),
+        };
+        self.datasets
+            .entry(catalog_name.to_string())
+            .or_default()
+            .push(entry);
+    }
+
+    /// Populate `content.entries` from the datasets stored for `catalog_name`.
+    ///
+    /// Validates: Requirement 13.3
+    pub fn load_entries_from_datasets(&mut self, catalog_name: &str) {
+        let entries = self
+            .datasets
+            .get(catalog_name)
+            .map(|datasets| {
+                datasets
+                    .iter()
+                    .map(|d| {
+                        let is_container = d.dsorg == "PO" || d.dsorg == "PDSE" || d.dsorg == "GDG";
+                        ContentEntry {
+                            name: d.name.clone(),
+                            entry_type: d.dsorg.clone(),
+                            size: String::new(),
+                            modified: String::new(),
+                            is_container,
+                        }
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        self.content.entries = entries;
+    }
+
+    /// Remove all datasets stored under `catalog_name`.
+    ///
+    /// Validates: Requirement 13.5
+    pub fn remove_catalog_datasets(&mut self, catalog_name: &str) {
+        self.datasets.remove(catalog_name);
     }
 
     /// Returns the platform label appended to the Native section header.
@@ -484,7 +579,7 @@ fn render_section(
 
 /// Render the right-side content area.
 ///
-/// Validates: Requirement 10.1–10.6
+/// Validates: Requirement 10.1–10.6, 13.3
 fn render_content_area(ui: &mut egui::Ui, state: &mut FilesPanelState) -> Option<FilesPanelAction> {
     let mut action: Option<FilesPanelAction> = None;
 
@@ -495,6 +590,11 @@ fn render_content_area(ui: &mut egui::Ui, state: &mut FilesPanelState) -> Option
                 .weak(),
         );
         return None;
+    }
+
+    // Req 13.3 — populate entries from the dataset store for the selected catalog
+    if let Some(cat) = state.content.selected_catalog.clone() {
+        state.load_entries_from_datasets(&cat);
     }
 
     // ── Breadcrumb bar — Req 10.5 ─────────────────────────────────────────
@@ -1514,5 +1614,95 @@ mod tests {
         let state = FilesPanelState::new();
         assert!(state.content.selected_catalog.is_none());
         assert!(state.content.entries.is_empty());
+    }
+
+    // ── Phase AT: Allocated Dataset Persistence and Display (Req 13) ─────────
+
+    fn make_alloc_params(
+        name: &str,
+        dsorg: crate::dataset_alloc_dialog::Dsorg,
+    ) -> crate::dataset_alloc_dialog::AllocParams {
+        crate::dataset_alloc_dialog::AllocParams {
+            dataset_name: name.to_string(),
+            dsorg,
+            recfm: crate::dataset_alloc_dialog::Recfm::Fb,
+            lrecl: 80,
+            blksize: 27920,
+            dir_blocks: None,
+            gdg_limit: None,
+            scratch: false,
+            description: None,
+        }
+    }
+
+    /// Validates: Requirement 13.1 — FilesPanelState has a datasets map.
+    #[test]
+    fn files_panel_state_has_datasets_map() {
+        // Validates: Requirement 13.1
+        let state = FilesPanelState::new();
+        assert!(state.datasets.is_empty());
+    }
+
+    /// Validates: Requirement 13.2 — add_dataset inserts AllocatedDataset under the catalog name.
+    #[test]
+    fn add_dataset_inserts_into_map_under_catalog_name() {
+        // Validates: Requirement 13.2
+        let mut state = FilesPanelState::new();
+        let params = make_alloc_params("DEV.TEST.PSFB80", crate::dataset_alloc_dialog::Dsorg::Ps);
+        state.add_dataset("development", params);
+        let datasets = state
+            .datasets
+            .get("development")
+            .expect("catalog entry must exist");
+        assert_eq!(datasets.len(), 1);
+        assert_eq!(datasets[0].name, "DEV.TEST.PSFB80");
+        assert_eq!(datasets[0].dsorg, "PS");
+    }
+
+    /// Validates: Requirement 13.3 — load_entries_from_datasets populates content area entries.
+    #[test]
+    fn load_entries_populates_content_area_from_datasets() {
+        // Validates: Requirement 13.3
+        let mut state = FilesPanelState::new();
+        state.add_dataset(
+            "development",
+            make_alloc_params("DEV.SEQ", crate::dataset_alloc_dialog::Dsorg::Ps),
+        );
+        state.add_dataset(
+            "development",
+            make_alloc_params("DEV.LIB", crate::dataset_alloc_dialog::Dsorg::Po),
+        );
+        state.load_entries_from_datasets("development");
+        assert_eq!(state.content.entries.len(), 2);
+        let seq = state
+            .content
+            .entries
+            .iter()
+            .find(|e| e.name == "DEV.SEQ")
+            .expect("SEQ must be present");
+        assert_eq!(seq.entry_type, "PS");
+        assert!(!seq.is_container);
+        let lib = state
+            .content
+            .entries
+            .iter()
+            .find(|e| e.name == "DEV.LIB")
+            .expect("LIB must be present");
+        assert_eq!(lib.entry_type, "PO");
+        assert!(lib.is_container);
+    }
+
+    /// Validates: Requirement 13.5 — removing a catalog also removes its datasets.
+    #[test]
+    fn delete_catalog_removes_its_datasets() {
+        // Validates: Requirement 13.5
+        let mut state = FilesPanelState::new();
+        state.add_dataset(
+            "development",
+            make_alloc_params("DEV.TEST", crate::dataset_alloc_dialog::Dsorg::Ps),
+        );
+        assert!(state.datasets.contains_key("development"));
+        state.remove_catalog_datasets("development");
+        assert!(!state.datasets.contains_key("development"));
     }
 }

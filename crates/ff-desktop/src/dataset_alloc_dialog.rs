@@ -110,6 +110,18 @@ impl Default for AllocDatasetForm {
 }
 
 impl AllocDatasetForm {
+    /// Create a form with the Dataset Name pre-populated from the catalog's Default HLQ.
+    ///
+    /// The field is set to `"{hlq}."` so the user only needs to type the remaining qualifiers.
+    ///
+    /// Validates: Requirement 5.7
+    pub fn with_hlq(hlq: &str) -> Self {
+        Self {
+            dataset_name: format!("{hlq}."),
+            ..Default::default()
+        }
+    }
+
     /// Pre-populate the form from an existing dataset's attributes (Allocate Like).
     ///
     /// Validates: Requirement 5.6
@@ -171,7 +183,7 @@ pub struct AllocParams {
 ///
 /// Returns `Ok(AllocParams)` on success or `Err(message)` on failure.
 ///
-/// Validates: Requirement 5.3, dataset-catalog Requirement 7.10
+/// Validates: Requirement 5.3, 5.8, dataset-catalog Requirement 7.10
 pub fn validate(form: &AllocDatasetForm) -> Result<AllocParams, String> {
     // Dataset name required
     if form.dataset_name.trim().is_empty() {
@@ -237,8 +249,11 @@ pub fn validate(form: &AllocDatasetForm) -> Result<AllocParams, String> {
         Some(form.description.trim().to_string())
     };
 
+    // Req 5.8 — Mainframe DSNs are always uppercase
+    let dataset_name = form.dataset_name.trim().to_uppercase();
+
     Ok(AllocParams {
-        dataset_name: form.dataset_name.trim().to_string(),
+        dataset_name,
         dsorg: form.dsorg,
         recfm: form.recfm,
         lrecl,
@@ -248,6 +263,27 @@ pub fn validate(form: &AllocDatasetForm) -> Result<AllocParams, String> {
         scratch: form.scratch,
         description,
     })
+}
+
+/// Validate the allocation form AND check for duplicate DSN within the existing dataset list.
+///
+/// `existing_names` is a slice of already-allocated DSNs for the target catalog.
+/// Returns `Ok(AllocParams)` on success or `Err(message)` on failure.
+///
+/// Validates: Requirement 5.9
+pub fn validate_for_catalog(
+    form: &AllocDatasetForm,
+    existing_names: &[String],
+) -> Result<AllocParams, String> {
+    let params = validate(form)?;
+    let upper = params.dataset_name.to_uppercase();
+    if existing_names.iter().any(|n| n.to_uppercase() == upper) {
+        return Err(format!(
+            "Dataset '{}' already exists in this catalog.",
+            upper
+        ));
+    }
+    Ok(params)
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
@@ -700,5 +736,83 @@ mod tests {
         form.description = "Payroll input file".to_string();
         let params = validate(&form).unwrap();
         assert_eq!(params.description.as_deref(), Some("Payroll input file"));
+    }
+
+    // ── Req 5.8: uppercase ────────────────────────────────────────────────
+
+    /// Validates: Requirement 5.8 — dataset name is uppercased by validate.
+    #[test]
+    fn validate_uppercases_dataset_name() {
+        // Validates: Requirement 5.8
+        let mut form = valid_ps_form();
+        form.dataset_name = "payroll.input".to_string();
+        let params = validate(&form).unwrap();
+        assert_eq!(params.dataset_name, "PAYROLL.INPUT");
+    }
+
+    /// Validates: Requirement 5.8 — mixed-case name is uppercased.
+    #[test]
+    fn validate_uppercases_mixed_case_name() {
+        // Validates: Requirement 5.8
+        let mut form = valid_ps_form();
+        form.dataset_name = "Payroll.Input".to_string();
+        let params = validate(&form).unwrap();
+        assert_eq!(params.dataset_name, "PAYROLL.INPUT");
+    }
+
+    // ── Req 5.7: HLQ pre-population ──────────────────────────────────────
+
+    /// Validates: Requirement 5.7 — with_hlq pre-populates dataset_name with HLQ dot.
+    #[test]
+    fn with_hlq_prepopulates_dataset_name_with_hlq_dot() {
+        // Validates: Requirement 5.7
+        let form = AllocDatasetForm::with_hlq("PAYROLL");
+        assert_eq!(form.dataset_name, "PAYROLL.");
+    }
+
+    /// Validates: Requirement 5.7 — with_hlq empty string gives just a dot.
+    #[test]
+    fn with_hlq_empty_string_gives_dot() {
+        // Validates: Requirement 5.7
+        let form = AllocDatasetForm::with_hlq("");
+        assert_eq!(form.dataset_name, ".");
+    }
+
+    // ── Req 5.9: duplicate detection ─────────────────────────────────────
+
+    /// Validates: Requirement 5.9 — validate_for_catalog rejects duplicate DSN.
+    #[test]
+    fn validate_for_catalog_rejects_duplicate_dsn() {
+        // Validates: Requirement 5.9
+        let form = valid_ps_form(); // dataset_name = "PAYROLL.INPUT"
+        let existing = vec!["PAYROLL.INPUT".to_string()];
+        assert!(validate_for_catalog(&form, &existing).is_err());
+    }
+
+    /// Validates: Requirement 5.9 — duplicate check is case-insensitive.
+    #[test]
+    fn validate_for_catalog_duplicate_check_is_case_insensitive() {
+        // Validates: Requirement 5.9
+        let mut form = valid_ps_form();
+        form.dataset_name = "payroll.input".to_string();
+        let existing = vec!["PAYROLL.INPUT".to_string()];
+        assert!(validate_for_catalog(&form, &existing).is_err());
+    }
+
+    /// Validates: Requirement 5.9 — unique DSN passes catalog validation.
+    #[test]
+    fn validate_for_catalog_accepts_unique_dsn() {
+        // Validates: Requirement 5.9
+        let form = valid_ps_form(); // PAYROLL.INPUT
+        let existing = vec!["PAYROLL.OTHER".to_string()];
+        assert!(validate_for_catalog(&form, &existing).is_ok());
+    }
+
+    /// Validates: Requirement 5.9 — empty existing list always passes.
+    #[test]
+    fn validate_for_catalog_empty_existing_always_passes() {
+        // Validates: Requirement 5.9
+        let form = valid_ps_form();
+        assert!(validate_for_catalog(&form, &[]).is_ok());
     }
 }

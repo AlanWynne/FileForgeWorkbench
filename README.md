@@ -7,28 +7,44 @@ FileForge Workbench is a cross-platform enterprise file editor and mainframe wor
 
 ## Status
 
-**Initial implementation complete.** All 60 library crates and the `ff-desktop` runnable binary have been built. The binary (`ffwb`) is functional for file viewing and navigation.
+**Phase AX complete.** All 64 crates and the `ff-desktop` binary (`ffwb`) are built and passing 404 tests with 0 failures.
 
 ### What works today
 
-- Launch with one or more files: `ffwb file.txt other.rs`
-- Multi-tab editor — open files via `EDIT <path>` in the command field or `File > Open…`
+- ISPF-style Primary Option Menu (POM) — tabbed, with live calendar, month navigation, and interactive option buttons
+- Multi-tab editor — open files via `EDIT <path>`, `File > Open…`, or CLI arguments
+- Keyboard text input — typed characters insert, Backspace deletes, Enter splits lines
+- File save — `File > Save` and `Ctrl+S` write to disk
 - Per-tab viewport and cursor state — switching tabs restores scroll position and cursor
-- Keyboard navigation — Arrow keys, Page Up/Down
+- Keyboard navigation — Arrow keys, Page Up/Down, mouse click to position cursor
+- Ctrl+Z undo — restores document and cursor to previous state
 - Live status bar — line/column, encoding, line count, modified indicator
-- Session persistence — open tabs are saved on exit and restored on next launch
-- Three built-in themes — dark, light, high-contrast (View menu)
-- ISPF-style `Command ===>` field — supports `EDIT <path>`, `EXIT`, `QUIT`, `=X`
+- Session persistence — open tabs, zoom levels, key bar visibility, and catalog registry saved on exit and restored on next launch
+- Three built-in themes — dark, light, high-contrast; user-configurable colour tokens via TOML
+- ISPF-style `Command ===>` field — `EDIT`, `EXIT`, `QUIT`, `=X`, `=0`–`=8`, `=FILES`, `FILES`, `KEYS`, `PFSHOW`, `END`, `RETURN`, `FIND`, `CHANGE`, `LOCATE`, `SORT`, `EXCLUDE`, `SHOW`, `RESET`
+- Virtual Catalog Manager — create, edit, delete Mainframe / POSIX / Native / Cloud catalogs; catalog registry persisted across restarts
+- Default Home catalog — on first launch, a Native catalog pointing to the user's home directory is created automatically and cannot be deleted
+- Dataset Allocation dialog — ISPF-style fields, HLQ pre-population, duplicate detection, uppercase enforcement
+- File Explorer panel — `=2` / `=FILES` / `FILES` commands; tree view grouped by catalog type
+- Settings panel — all config keys browsable, editable, and resettable; filter input; provenance badges
+- Key Configuration dialog — 24-key grid per scope, modifier bindings (Shift/Ctrl/Alt+Fn), TOML persistence
+- 24-key label bar — two rows, clickable slots, PFSHOW ON/OFF, session persistence
+- Compiler Toolchain panel — GCC and Rust detection, install, build, diagnostic parsing and display
+- Detachable tab windows — tabs can be moved to separate OS windows and redocked
+- Tab-order focus cycle — Tab/Shift+Tab through command field, POM options, calendar, menu bar, tab headers
+- Help > About dialog
 
-### Known gaps (Phase S)
+### Known gaps
 
-- `File > Open…` menu item does not yet show a native file-open dialog
-- Keyboard text input is not yet wired (editor is read-only)
-- `File > Save` and `File > Save As…` are not yet implemented
+- File Explorer tree view (expand/collapse, double-click to open) — UI rendering deferred
+- `File > Open…` native dialog on some platforms may need testing
+- Per-context key maps TOML config parsing — deferred
+- Contextual help (`HELP` command) — not yet implemented
+- `File > Save As…` — not yet implemented
 
 ## Architecture
 
-60 library crates organised in dependency waves, assembled into the `ff-desktop` binary:
+64 crates organised in dependency waves, assembled into the `ff-desktop` binary:
 
 | Wave | Crates |
 |------|--------|
@@ -49,6 +65,7 @@ FileForge Workbench is a cross-platform enterprise file editor and mainframe wor
 | File Explorer | `ff-tree`, `ff-compare` |
 | Performance | `ff-idle`, `ff-largefile` |
 | Database Tool | `ff-dbtool` |
+| Compiler Toolchain | `ff-toolchain-api`, `ff-gcc-toolchain`, `ff-rust-toolchain` |
 
 ## Building
 
@@ -69,13 +86,24 @@ cargo clippy -- -D warnings        # lint
 
 ## Features
 
-- Text and binary file editing
+- Text file editing with keyboard input, undo, and save
+- ISPF-style Primary Option Menu with live calendar
+- Virtual Catalog Manager — Mainframe, POSIX, Native, and Cloud catalog types
+- Default Home catalog auto-created on first launch
+- Dataset Allocation dialog with ISPF-style fields
+- File Explorer panel with catalog tree view
+- Settings panel — all config keys browsable and editable
+- Key Configuration dialog — 24-key grid with modifier bindings
+- Compiler Toolchain panel — GCC and Rust detection, build, diagnostics
+- Detachable tab windows
 - Source code support (syntax highlighting etc.)
 - Plugin architecture
 - Dataset Catalogues
 - Dataset Allocation
 - IDCAMS emulation
 - JES emulation
+- User-configurable themes via TOML
+- Session persistence across restarts
 - Windows, Linux and macOS support
 
 ## Planned Plugin Capabilities

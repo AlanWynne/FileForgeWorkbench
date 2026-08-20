@@ -13,6 +13,7 @@ mod catalog_registry;
 mod dataset_alloc_dialog;
 mod editor_panel;
 mod exclude_manager;
+mod file_explorer_panel;
 mod files_panel;
 mod find_manager;
 mod key_config_dialog;

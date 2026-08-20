@@ -8,6 +8,7 @@
 use ff_session::session_state::{PersistedTabKind, TabState as SessionTabState};
 use ff_session::{SessionFile, SessionState, UserDataDir};
 
+use crate::catalog_registry::CatalogRegistry;
 use crate::tab_manager::TabManager;
 use crate::tab_state::TabKind;
 
@@ -82,6 +83,19 @@ impl SessionManager {
                     is_pinned: false,
                     zoom_offset: 0,
                 }),
+                TabKind::FileExplorerPanel => Some(SessionTabState {
+                    tab_id: format!("{}", t.id.0),
+                    tab_kind: PersistedTabKind::FileExplorerPanel,
+                    uri: None,
+                    viewport_top_line: 1,
+                    viewport_horizontal_offset: 0,
+                    caret_line: 1,
+                    caret_column: 1,
+                    selections: Vec::new(),
+                    language_override: None,
+                    is_pinned: false,
+                    zoom_offset: 0,
+                }),
                 TabKind::PrimaryOptionMenu | TabKind::Untitled | TabKind::SettingsPanel => None,
             })
             .collect();
@@ -91,9 +105,13 @@ impl SessionManager {
             match active.kind {
                 TabKind::FileEditor => active.path.as_ref().map(|_| format!("{}", active.id.0)),
                 TabKind::FilesPanel => Some(format!("{}", active.id.0)),
-                TabKind::PrimaryOptionMenu | TabKind::Untitled | TabKind::SettingsPanel => None,
+                TabKind::PrimaryOptionMenu
+                | TabKind::Untitled
+                | TabKind::SettingsPanel
+                | TabKind::FileExplorerPanel => None,
             }
         };
+        // Note: FileExplorerPanel active_tab_id is None (no URI to track)
 
         let state = SessionState {
             tabs: session_tabs,
@@ -105,6 +123,38 @@ impl SessionManager {
 
         // Best-effort — ignore write errors (graceful degradation)
         let _ = self.session_file.save(&state);
+    }
+
+    /// Persist the catalog registry to `catalogs.toml` next to `session.toml`.
+    ///
+    /// Best-effort — write errors are silently ignored (graceful degradation).
+    /// Validates: Requirement 2.1 (virtual-catalog-manager)
+    pub fn save_catalog_registry(&self, registry: &CatalogRegistry) {
+        let path = self.catalogs_path();
+        let toml_str = registry.save_to_toml();
+        // Best-effort — ignore write errors (graceful degradation)
+        let _ = std::fs::write(&path, toml_str);
+    }
+
+    /// Load the catalog registry from `catalogs.toml` next to `session.toml`.
+    ///
+    /// Returns an empty registry if the file is absent or unreadable.
+    /// Validates: Requirement 2.2 (virtual-catalog-manager)
+    pub fn load_catalog_registry(&self) -> CatalogRegistry {
+        let path = self.catalogs_path();
+        match std::fs::read_to_string(&path) {
+            Ok(contents) => CatalogRegistry::load_from_toml(&contents),
+            Err(_) => CatalogRegistry::new(),
+        }
+    }
+
+    /// Path to `catalogs.toml` — sibling of `session.toml`.
+    fn catalogs_path(&self) -> std::path::PathBuf {
+        let session_path = self.session_file.path();
+        session_path
+            .parent()
+            .unwrap_or_else(|| std::path::Path::new("."))
+            .join("catalogs.toml")
     }
 
     /// Extract the ordered list of file URIs from a `SessionState`.
@@ -305,6 +355,50 @@ mod tests {
         let loaded = mgr.load();
         assert_eq!(SessionManager::tab_uris(&loaded), vec!["/a.txt"]);
         assert_eq!(SessionManager::files_panel_tab_ids(&loaded), vec!["2"]);
+    }
+
+    /// Validates: Requirement 2.1 (virtual-catalog-manager) — save_catalog_registry
+    /// writes catalogs.toml and load_catalog_registry reads it back.
+    #[test]
+    fn save_and_load_catalog_registry_round_trips() {
+        // Validates: Requirement 2.1
+        use crate::catalog_registry::{CatalogRegistry, CatalogType, VirtualCatalog};
+        let tmp = TempDir::new().expect("tempdir");
+        let mgr = SessionManager::with_path(make_session_file(&tmp));
+
+        let mut reg = CatalogRegistry::new();
+        reg.register(VirtualCatalog {
+            name: "PAYROLL".to_string(),
+            catalog_type: CatalogType::Mainframe,
+            path: "/catalogs/payroll".to_string(),
+            description: Some("Payroll datasets".to_string()),
+            auto_mount: true,
+            default_hlq: Some("PAYROLL".to_string()),
+            mount_point: None,
+            read_only: false,
+        })
+        .expect("register");
+
+        mgr.save_catalog_registry(&reg);
+        let loaded = mgr.load_catalog_registry();
+
+        assert_eq!(loaded.list().len(), 1);
+        assert_eq!(loaded.list()[0].name, "PAYROLL");
+    }
+
+    /// Validates: Requirement 2.2 (virtual-catalog-manager) — load_catalog_registry
+    /// returns an empty registry when catalogs.toml does not exist.
+    #[test]
+    fn load_missing_catalog_file_returns_empty_registry() {
+        // Validates: Requirement 2.2
+        let tmp = TempDir::new().expect("tempdir");
+        let mgr = SessionManager::with_path(make_session_file(&tmp));
+
+        let loaded = mgr.load_catalog_registry();
+        assert!(
+            loaded.list().is_empty(),
+            "absent catalogs.toml must yield empty registry"
+        );
     }
 
     /// Validates: Requirement 12.4 (function-keys-and-history) — key_bar_visible
