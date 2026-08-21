@@ -329,4 +329,396 @@ All resource access flows through the VFS abstraction layer (FFW-ARCH-001) — t
 6. THE File_Tree_Panel SHALL render indent guides (vertical lines connecting parent to child nodes) using the theme colour `ui.indent_guide` to visually communicate hierarchy depth.
 7. TREE nodes representing resources currently open in an editor tab SHALL display a subtle "open" indicator (e.g., a dot or modified background) so the user can identify which files are already open.
 
+---
 
+### Requirement 15: Native Catalog Recursive Directory Expansion and Scrollable Panel
+
+**User Story:** As a user, I want to expand subdirectory nodes within a Native catalog in the File Explorer so that I can browse nested folder structures, and I want the panel to be scrollable so that I can page through large directory listings.
+
+**Source:** CR-NR-005 — user request Phase AY.
+
+#### Acceptance Criteria
+
+1. WHEN the user clicks the expand arrow on a directory node inside a Native catalog, THE File_Explorer_Panel SHALL display that directory's children (subdirectories and files) as nested child nodes, sorted directories-first then alphabetically.
+2. WHEN a directory node is expanded, THE child nodes SHALL themselves be expandable if they are directories, supporting arbitrary nesting depth.
+3. THE File_Explorer_Panel content area SHALL be wrapped in a vertical scroll region so that the user can scroll to see entries that extend beyond the visible panel height.
+
+---
+
+### Requirement 16: File Explorer Context Menu
+
+**User Story:** As a user, I want a right-click context menu on any node in the File Explorer Panel so that I can perform file operations directly from the tree without leaving the workbench.
+
+**Source:** CR-NR-006 — Phase AZ.
+
+#### Glossary additions
+
+- **Context_Menu_Group**: A set of related menu items separated from adjacent groups by a horizontal divider.
+- **Greyed_Out**: A menu item rendered in a disabled/muted style that is visible but not clickable. Used for deferred features.
+- **Inline_Rename**: An editable text field that replaces the node label in the tree, pre-filled with the current name.
+- **Copy_To_Dialog**: A modal dialog that lets the user pick a target catalog/directory and confirm or edit the proposed name after naming-rule transformation.
+- **Move_To_Dialog**: Identical to Copy_To_Dialog but deletes the source after a successful copy.
+- **Progress_Indicator**: A non-blocking overlay or status-bar entry showing background I/O progress via `ff-bgio`.
+- **Extension_Rule**: A data-driven record mapping a glob pattern (e.g. `*.jcl`) to a set of menu item overrides (enable, disable, add).
+
+#### Acceptance Criteria
+
+**16.1 — Trigger**
+
+1. WHEN the user right-clicks any non-section-header node in the File Explorer Panel, THE panel SHALL display a Context_Menu appropriate to that node's catalog type and node kind.
+2. WHEN the user right-clicks a section header node ("Mainframe Catalogs", "POSIX Catalogs", "Native Catalogs"), THE panel SHALL display no context menu (section headers are not actionable).
+3. THE Context_Menu SHALL be dismissed when the user clicks outside it, presses Escape, or selects an item.
+
+**16.2 — Native File context menu**
+
+WHEN the user right-clicks a file node inside a Native catalog, THE panel SHALL display the following items in order, with dividers as shown:
+
+```
+Open
+Open in New Tab
+Open in New Window
+Open With…
+────────────────
+Copy
+────────────────
+Rename
+Move To…
+Copy To…
+────────────────
+New File
+New Folder
+────────────────
+Copy File Name
+Copy Relative Path
+Copy Full Path
+────────────────
+Open Containing Folder
+Reveal in Explorer
+────────────────
+Git ▶  [Greyed_Out — deferred]
+────────────────
+Properties
+```
+
+**16.3 — Native Directory context menu**
+
+WHEN the user right-clicks a directory node inside a Native catalog, THE panel SHALL display:
+
+```
+Open in New Tab
+────────────────
+New File
+New Folder
+────────────────
+Copy
+────────────────
+Rename
+Move To…
+Copy To…
+────────────────
+Copy Full Path
+────────────────
+Reveal in Explorer
+────────────────
+Git ▶  [Greyed_Out — deferred]
+────────────────
+Properties
+```
+
+**16.4 — POSIX File context menu**
+
+WHEN the user right-clicks a file node inside a POSIX catalog (read-only), THE panel SHALL display:
+
+```
+Open
+Open in New Tab
+Open in New Window
+Open With…
+────────────────
+Copy
+────────────────
+Copy File Name
+Copy Relative Path
+Copy Full Path
+────────────────
+Properties
+```
+
+No Rename, Move To, Copy To, New File, New Folder — POSIX catalogs are read-only.
+
+**16.5 — Mainframe Sequential Dataset (PS) context menu**
+
+WHEN the user right-clicks a PS dataset node inside a Mainframe catalog, THE panel SHALL display:
+
+```
+Open
+Open in New Tab
+────────────────
+Compare…
+────────────────
+Copy To…
+────────────────
+Copy Dataset Name
+Copy Full Path
+────────────────
+Dataset Properties
+────────────────
+Refresh
+```
+
+**16.6 — Mainframe PDS / Library context menu**
+
+WHEN the user right-clicks a PDS dataset node inside a Mainframe catalog, THE panel SHALL display:
+
+```
+New Member
+────────────────
+Copy To…
+────────────────
+Copy Dataset Name
+────────────────
+Dataset Properties
+────────────────
+Refresh
+```
+
+**16.7 — Mainframe PDS Member context menu**
+
+WHEN the user right-clicks a PDS member node inside a Mainframe catalog, THE panel SHALL display:
+
+```
+Open
+Open in New Tab
+────────────────
+Submit JCL  [Greyed_Out — deferred pending SDSF]
+Compare…
+────────────────
+Copy Member
+Rename Member
+────────────────
+Copy Member Name
+Copy Dataset Name
+Copy Dataset(Member)
+────────────────
+Member Properties
+Dataset Properties
+────────────────
+Refresh
+```
+
+**16.8 — Mainframe GDG Base context menu**
+
+WHEN the user right-clicks a GDG Base node inside a Mainframe catalog, THE panel SHALL display:
+
+```
+New Generation
+────────────────
+Copy Dataset Name
+────────────────
+Dataset Properties
+────────────────
+Refresh
+```
+
+**16.9 — Mainframe GDG Generation context menu**
+
+WHEN the user right-clicks a GDG Generation node inside a Mainframe catalog, THE panel SHALL display:
+
+```
+Open
+Open in New Tab
+────────────────
+Copy Dataset Name
+────────────────
+Dataset Properties
+────────────────
+Refresh
+```
+
+**16.10 — Copy action**
+
+1. WHEN the user selects "Copy" from any context menu, THE panel SHALL write the node's full path (Native/POSIX) or fully-qualified dataset name (Mainframe) as plain UTF-8 text to the OS clipboard.
+2. WHEN the user subsequently pastes into the FFWB Command_Field, THE full path string SHALL be inserted as plain text.
+3. WHEN the user subsequently pastes into an open FFWB editor tab, THE panel SHALL display a modal prompt with two options: **"Insert File Name"** and **"Insert File Contents"**.
+4. WHEN the user selects "Insert File Name" from the paste prompt, THE full path string SHALL be inserted at the caret position.
+5. WHEN the user selects "Insert File Contents" from the paste prompt, THE file's text content SHALL be read and inserted at the caret position as if via the COPY file-insert command.
+6. WHEN the user selects "Insert File Contents" and the file cannot be read, THE panel SHALL display an inline error and make no document change.
+
+**16.11 — Rename (inline)**
+
+1. WHEN the user selects "Rename" or "Rename Member" from a context menu, THE panel SHALL replace the node's label with an editable text field pre-filled with the current name.
+2. WHEN the user presses Enter in the inline rename field, THE panel SHALL attempt to rename the resource: for Native files/directories this renames on disk; for Mainframe PDS members this renames within the dataset store.
+3. WHEN the user presses Escape in the inline rename field, THE rename SHALL be cancelled and the original label restored with no change to disk or store.
+4. WHEN renaming a Mainframe PDS member, THE panel SHALL enforce 8-character uppercase naming: if the entered name exceeds 8 characters or contains invalid characters, THE panel SHALL display an inline error beneath the field and SHALL NOT confirm the rename until the name is valid.
+5. WHEN a rename completes successfully, THE tree node label SHALL update to the new name in place.
+
+**16.12 — Move To… and Copy To… dialogs**
+
+1. WHEN the user selects "Move To…" or "Copy To…", THE panel SHALL open a modal dialog containing: a target catalog/directory picker, a proposed new name field (pre-filled and transformed per target naming rules), and Confirm / Cancel buttons.
+2. WHEN the target is a Mainframe PDS, THE dialog SHALL automatically uppercase and truncate the proposed name to 8 characters, stripping invalid characters, and display the transformed name to the user before confirmation.
+3. WHEN the target is a Native or POSIX directory, THE dialog SHALL apply OS filename rules with no automatic transformation.
+4. WHEN the target is a Native directory and the source is a Mainframe member, THE dialog SHALL propose the member name lowercased with no extension, and allow the user to edit it.
+5. THE user SHALL be able to edit the proposed name in the dialog before confirming.
+6. WHEN the edited name violates the target's naming rules, THE dialog SHALL display an inline error and SHALL NOT allow confirmation until the name is valid.
+7. WHEN the user confirms, THE operation SHALL be dispatched to `ff-bgio` as a background task with a Progress_Indicator shown in the status bar.
+8. WHEN the background operation completes successfully, THE Progress_Indicator SHALL be dismissed and the tree SHALL refresh the affected nodes.
+9. WHEN the background operation fails, THE panel SHALL display an error message and leave the source node unchanged.
+10. For "Move To…", THE source node SHALL only be removed from the tree after the background copy confirms success.
+
+**16.13 — Open With…**
+
+1. WHEN the user selects "Open With…" on Windows, THE panel SHALL invoke the native Windows "Open with" dialog via `ShellExecuteEx` with verb `"openwith"`.
+2. WHEN the user selects "Open With…" on macOS, THE panel SHALL invoke `open -a` to present the Finder application picker.
+3. WHEN the user selects "Open With…" on Linux, THE panel SHALL display a built-in FFWB "Choose Application" dialog listing applications discovered via `xdg-mime query default` and `/usr/share/applications/*.desktop` entries, with a text field for a custom command.
+
+**16.14 — Reveal in Explorer / Open Containing Folder**
+
+1. WHEN the user selects "Reveal in Explorer" (Windows) / "Reveal in Finder" (macOS) / "Open Containing Folder" (Linux), THE panel SHALL open the OS file manager at the parent directory of the selected node with the node highlighted where the platform supports it.
+2. THE label for this item SHALL be platform-appropriate: "Reveal in Explorer" on Windows, "Reveal in Finder" on macOS, "Open Containing Folder" on Linux.
+
+**16.15 — Git submenu (deferred)**
+
+1. THE context menu for Native file and directory nodes SHALL include a "Git ▶" submenu item rendered as Greyed_Out.
+2. THE Git submenu SHALL NOT be interactive in this release; clicking it SHALL have no effect.
+3. The submenu items (Diff, History, Commit, Blame) SHALL be visible but greyed-out to communicate future intent.
+
+**16.16 — Submit JCL (deferred)**
+
+1. THE context menu for Mainframe PDS member nodes SHALL include a "Submit JCL" item rendered as Greyed_Out.
+2. "Submit JCL" SHALL NOT be interactive in this release; clicking it SHALL have no effect.
+
+**16.17 — Extension rules**
+
+1. THE panel SHALL maintain a data-driven `Vec<ExtensionRule>` table mapping glob patterns to menu item overrides (enable, disable, add extra items).
+2. In this release the table SHALL be defined in code; no TOML configuration is required yet.
+3. The table SHALL be structured so that future TOML-driven configuration can replace or extend it without code changes.
+4. WHEN a file's extension matches an Extension_Rule that enables a previously Greyed_Out item (e.g. `*.jcl` enabling Submit JCL), THE item SHALL become active for that node.
+
+**16.18 — Copy path variants**
+
+1. "Copy File Name" SHALL write only the file's base name (no directory) to the OS clipboard.
+2. "Copy Relative Path" SHALL write the path relative to the catalog's root path to the OS clipboard.
+3. "Copy Full Path" SHALL write the absolute path to the OS clipboard.
+4. "Copy Dataset Name" SHALL write the fully-qualified dataset name (e.g. `PAYROLL.DATA`) to the OS clipboard.
+5. "Copy Member Name" SHALL write only the member name (e.g. `MYJOB`) to the OS clipboard.
+6. "Copy Dataset(Member)" SHALL write the combined form (e.g. `PAYROLL.JCL(MYJOB)`) to the OS clipboard.
+
+---
+
+### Requirement 17: Open With Default Application
+
+**User Story:** As a user, I want double-clicking a file node or selecting "Open" from the context menu to launch the platform-appropriate default application for that file type, so that non-text files (Word documents, spreadsheets, PDFs, images, etc.) open in the correct program rather than in the FFWB text editor.
+
+**Source:** CR-NR-007 — Phase BA.
+
+#### Glossary additions
+
+- **FileClass**: A classification of a file node that determines whether it opens inside FFWB (`Text`, `FfwbStructured`) or in the OS default application (`External`).
+- **MagicByteScan**: Reading the first 512 bytes of a file to detect binary content (presence of null bytes or high proportion of non-UTF-8 bytes).
+- **DefaultAppLaunch**: A non-blocking `std::process::Command::spawn()` call that hands the file to the OS for opening.
+
+#### Acceptance Criteria
+
+**17.1 — Text files open in FFWB editor**
+
+WHEN the user opens a file whose extension maps to `FileClass::Text` or `FileClass::FfwbStructured`, THE panel SHALL open the file in a new FFWB editor tab (existing behaviour, no change).
+
+**17.2 — External files launch OS default application**
+
+WHEN the user opens a file whose extension maps to `FileClass::External`, THE panel SHALL perform a DefaultAppLaunch using the platform mechanism:
+- Windows: `ShellExecuteEx` with verb `"open"` and the file path, via `std::process::Command::new("cmd").args(["/c", "start", "", path])`
+- macOS: `std::process::Command::new("open").arg(path).spawn()`
+- Linux: `std::process::Command::new("xdg-open").arg(path).spawn()`
+
+**17.3 — Unknown extensions use magic-byte fallback**
+
+WHEN a file's extension has no matching `FileClass` rule, THE panel SHALL perform a MagicByteScan of the first 512 bytes. IF the file appears to be valid UTF-8 text (no null bytes, fewer than 5% non-UTF-8 bytes), THE panel SHALL open it in the FFWB editor. OTHERWISE THE panel SHALL perform a DefaultAppLaunch.
+
+**17.4 — Launch failure falls back to FFWB editor**
+
+WHEN a DefaultAppLaunch fails (spawn returns an error, or on Linux `xdg-open` exits non-zero), THE panel SHALL open the file in the FFWB editor tab and display a status-bar message: `"No application registered for .<ext> — opened in editor"`.
+
+**17.5 — Open With… shows platform picker**
+
+WHEN the user selects "Open With…" from the context menu:
+- Windows: `std::process::Command::new("cmd").args(["/c", "start", "", path])` with the `openwith` shell verb via `ShellExecuteEx`
+- macOS: `std::process::Command::new("open").args(["-a", path]).spawn()`
+- Linux: THE panel SHALL display a built-in FFWB "Choose Application" dialog listing applications from `xdg-mime query default` and `/usr/share/applications/*.desktop` entries, with a free-text field for a custom command
+
+**17.6 — Non-blocking launch**
+
+THE DefaultAppLaunch SHALL use `Command::spawn()` (fire-and-forget). THE panel SHALL NOT wait for the launched application to exit. THE UI thread SHALL NOT block.
+
+**17.7 — Mainframe datasets always open in FFWB**
+
+WHEN the user opens any Mainframe catalog node (PS dataset, PDS member, GDG generation), THE panel SHALL always open the content in a FFWB editor tab regardless of the node's name or content. DefaultAppLaunch does not apply to Mainframe nodes.
+
+**17.8 — FileClass extension table**
+
+THE `ExtensionRule` table in `context_menu.rs` SHALL include a `file_class` field on each rule. The following extensions SHALL be pre-classified as `FileClass::External`:
+
+| Category | Extensions |
+|---|---|
+| Microsoft Office | `docx`, `xlsx`, `pptx`, `doc`, `xls`, `ppt`, `odt`, `ods`, `odp` |
+| PDF / eBook | `pdf`, `epub`, `mobi` |
+| Images | `png`, `jpg`, `jpeg`, `gif`, `bmp`, `tiff`, `webp`, `svg`, `ico` |
+| Audio / Video | `mp3`, `mp4`, `wav`, `flac`, `avi`, `mkv`, `mov`, `wmv` |
+| Archives | `zip`, `tar`, `gz`, `bz2`, `xz`, `7z`, `rar` |
+| Executables | `exe`, `dll`, `so`, `dylib`, `app` |
+| Database | `db`, `sqlite`, `mdb`, `accdb` |
+
+All other extensions default to `FileClass::Text` unless the magic-byte scan detects binary content (Req 17.3).
+
+**17.9 — POSIX catalog nodes follow same rules**
+
+WHEN the user opens a POSIX catalog file node, THE same FileClass classification and DefaultAppLaunch rules SHALL apply as for Native catalog file nodes.
+
+
+
+---
+
+### Requirement 18: Native Catalog File Listing — Sorted Order and File Attributes
+
+**User Story:** As a user, I want the files in a Native catalog directory to be sorted alphabetically and to see file attributes (size, timestamps, permissions) alongside each file name, so that I can quickly find files and understand their state without leaving the workbench.
+
+**Source:** CR-NR-008 — Phase BB.
+
+#### Acceptance Criteria
+
+**18.1 — Sort order**
+
+WHEN a Native catalog directory node is expanded, THE File_Explorer_Panel SHALL display its children sorted directories-first then files, with each group sorted alphabetically case-insensitive by file name.
+
+**18.2 — File size**
+
+EACH file node in a Native catalog SHALL display the file size in a human-readable format (e.g. `1.2 KB`, `3.4 MB`, `512 B`). Directories SHALL display `<DIR>` in the size column.
+
+**18.3 — Created timestamp**
+
+EACH file and directory node in a Native catalog SHALL display the file creation timestamp in `YYYY-MM-DD HH:MM` format.
+
+**18.4 — Modified timestamp**
+
+EACH file and directory node in a Native catalog SHALL display the last-modified timestamp in `YYYY-MM-DD HH:MM` format.
+
+**18.5 — Accessed timestamp**
+
+EACH file and directory node in a Native catalog SHALL display the last-accessed timestamp in `YYYY-MM-DD HH:MM` format.
+
+**18.6 — Permission attributes**
+
+EACH file and directory node in a Native catalog SHALL display permission attributes in a user-friendly format:
+- On Windows: a compact flag string showing `R` (read-only), `H` (hidden), `S` (system), `A` (archive) where set; e.g. `RH`, `A`, or `—` if none.
+- On Linux/macOS: a compact Unix-style string e.g. `rwxr-xr-x`.
+
+**18.7 — Inaccessible entries silently skipped**
+
+WHEN `std::fs::metadata()` returns an error for an entry (e.g. permission denied on a junction point or locked file), THE File_Explorer_Panel SHALL silently skip that entry — it SHALL NOT appear in the listing and SHALL NOT display an error message for that individual entry. The remaining entries in the directory SHALL still be listed normally.
+
+**18.8 — Locked-file open error**
+
+WHEN the user attempts to open a file that is locked by another process (OS error 32 on Windows), THE File_Explorer_Panel SHALL display a status-bar message: `"Cannot open '<filename>': file is in use by another process"` and SHALL NOT open an editor tab for that file.
+
+**18.9 — Column layout**
+
+THE file attribute columns SHALL be rendered to the right of the file name in the following order: Size, Modified, Created, Accessed, Permissions. Columns SHALL be right-aligned for Size and left-aligned for timestamps and permissions.

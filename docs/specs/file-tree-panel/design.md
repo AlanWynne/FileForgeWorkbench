@@ -1186,6 +1186,45 @@ The following properties should be verified using `proptest` with a minimum of 1
 
 **Validates: Requirements 12.1, 12.2, 12.3, 12.4**
 
+### Requirement 15: Native Catalog Recursive Directory Expansion (Phase AY)
+
+The `render_native_children()` function in `ff-desktop/src/file_explorer_panel.rs` currently renders a flat list of entries for a Native catalog's root path. To support recursive expansion:
+
+- Replace the flat `selectable_label` for directory entries with a `CollapsingHeader` that recursively calls `render_native_children()` with the child directory's path.
+- The `CollapsingHeader` `id_salt` must be the full path to avoid ID collisions between directories with the same name at different depths.
+- The entire panel content area is wrapped in `egui::ScrollArea::vertical()` to satisfy the scrollability requirement.
+- No new crate dependencies are required — this is a pure `ff-desktop` rendering change.
+
+### Requirement 16: File Explorer Context Menu (Phase AZ)
+
+Context menus are rendered using `egui::Context::show_context_menu` on the response of each tree node's `CollapsingHeader` or `selectable_label`. The menu items and their enabled/disabled state are determined by a `ContextMenuSpec` value computed from the node's `CatalogType` and `NodeKind`.
+
+**Key design decisions:**
+
+- A `NodeKind` enum (`NativeFile`, `NativeDir`, `PosixFile`, `MfPs`, `MfPds`, `MfMember`, `MfGdgBase`, `MfGdgGen`) is added to `file_explorer_panel.rs` to drive menu dispatch.
+- A `ContextMenuSpec` struct holds the ordered list of `MenuItem` values for a given node. `MenuItem` is an enum with variants for every action plus `Separator` and `Disabled(label)`.
+- The `build_context_menu(catalog_type, node_kind, extension)` free function returns a `ContextMenuSpec`, consulting the `ExtensionRule` table for overrides.
+- Copy To… / Move To… open a `CopyMoveDialog` modal (new file `copy_move_dialog.rs`) that holds target picker state, proposed name, and dispatches to `ff-bgio`.
+- Inline rename state is held in `FileExplorerPanelState` as `Option<(String, String)>` (full_path, edit_buffer); rendered as a `TextEdit` in place of the node label.
+- "Copy" writes to the OS clipboard via `arboard` (already a transitive dependency through `ff-clipboard`). The paste-into-editor prompt is handled in the shell's paste dispatch path.
+- Git submenu and Submit JCL are rendered via `ui.add_enabled(false, egui::Button::new(...))` — visible but not clickable.
+- `ExtensionRule` is a struct `{ pattern: glob::Pattern, overrides: Vec<MenuOverride> }` stored in a `const` slice in `context_menu.rs`.
+- No new crate dependencies beyond what `ff-desktop` already uses (`egui`, `arboard` via `ff-clipboard`).
+
+### Requirement 17: Open With Default Application (Phase BA)
+
+File type classification and OS default application launch is handled entirely within `context_menu.rs` and `file_explorer_panel.rs`. No new crate dependencies are required.
+
+**Key design decisions:**
+
+- `ExtensionRule` gains a `file_class: FileClass` field. `FileClass` is an enum: `Text`, `FfwbStructured`, `External`.
+- A `EXTERNAL_EXTENSIONS` constant `&[&str]` slice in `context_menu.rs` lists all extensions that map to `FileClass::External` (Office, PDF, images, audio/video, archives, executables, databases).
+- `classify_file(path: &str) -> FileClass` is a free function that: (1) checks the extension against `EXTERNAL_EXTENSIONS`; (2) if no match, reads the first 512 bytes and returns `Text` if valid UTF-8 with no null bytes, `External` otherwise.
+- `open_file_node(path: &str, state: &mut FileExplorerPanelState) -> Option<String>` replaces the direct `*open_path = Some(...)` call in `handle_menu_action`. It returns `Some(path)` only for `FileClass::Text`/`FfwbStructured` (to open in FFWB editor); for `External` it calls `launch_default_app(path)` and returns `None`.
+- `launch_default_app(path: &str)` uses `std::process::Command::spawn()` with the platform-appropriate command. On Windows: `cmd /c start "" "<path>"`. On macOS: `open "<path>"`. On Linux: `xdg-open "<path>"`.
+- Launch errors are stored in `FileExplorerPanelState::last_error: Option<String>` and displayed in the status bar by the shell on the next frame.
+- Mainframe nodes bypass `classify_file` entirely — `handle_menu_action` for `Open` on Mainframe nodes always returns `Some(path)` directly.
+
 ---
 
 ## Testing Strategy
@@ -1210,3 +1249,19 @@ The following properties should be verified using `proptest` with a minimum of 1
 - `AsyncLoader` communicates via async channels (no shared mutable state).
 - `WatchManager` receives events on background threads; buffers them for UI-thread consumption via channel.
 - The `Vfs` handle is `Arc`-wrapped and thread-safe for use in spawned Tokio tasks.
+
+### Requirement 18: Native Catalog File Listing — Sorted Order and File Attributes (Phase BB)
+
+File attribute display is handled entirely within `ff-desktop/src/file_explorer_panel.rs` and `render.rs`. No new crate dependencies are required.
+
+**Key design decisions:**
+
+- `render_native_children()` calls `std::fs::read_dir()` and collects entries. For each entry, `entry.metadata()` is called. If metadata returns an error (junction point, permission denied, locked), the entry is **silently skipped** — no error node is inserted (Req 18.7).
+- Entries are sorted: directories first, then files, both groups alphabetically case-insensitive (Req 18.1). This replaces the current unsorted listing.
+- A `FileEntryRow` struct holds `{ name, is_dir, size_bytes, created, modified, accessed, permissions_str }` and is built from `std::fs::Metadata`.
+- `format_size(bytes: u64) -> String` formats as `B`, `KB`, `MB`, `GB` with one decimal place.
+- `format_timestamp(t: SystemTime) -> String` formats as `YYYY-MM-DD HH:MM` using `chrono` (already a transitive dependency) or manual calculation to avoid adding a new dep.
+- `format_permissions(meta: &Metadata) -> String` uses `meta.permissions().readonly()` on all platforms plus `std::os::windows::fs::MetadataExt` for Windows file attributes (`FILE_ATTRIBUTE_HIDDEN`, `FILE_ATTRIBUTE_SYSTEM`, `FILE_ATTRIBUTE_ARCHIVE`) and `std::os::unix::fs::PermissionsExt` on Unix.
+- The locked-file open error (Req 18.8, B018) is caught in the `open_file_node()` path: if the VFS read returns OS error 32, the error message is stored in `FileExplorerPanelState::last_error` and displayed in the status bar.
+- Windows junction points (Req 18.7, B017) are handled by the silent-skip rule: `metadata()` on a junction typically returns `PermissionDenied`; the entry is dropped from the listing.
+- Column layout (Req 18.9): each row is rendered as a horizontal `egui::Grid` or manual `ui.horizontal()` with fixed-width labels for Size (right-aligned, ~70px), Modified (~120px), Created (~120px), Accessed (~120px), Permissions (~80px).

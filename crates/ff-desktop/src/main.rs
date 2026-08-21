@@ -10,6 +10,8 @@
 mod about_dialog;
 mod catalog_manager_dialog;
 mod catalog_registry;
+mod context_menu;
+mod copy_move_dialog;
 mod dataset_alloc_dialog;
 mod editor_panel;
 mod exclude_manager;

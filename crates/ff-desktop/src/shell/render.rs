@@ -224,6 +224,35 @@ impl WorkbenchShell {
     // ── Central panel ────────────────────────────────────────────────────
 
     pub(super) fn render_central_panel(&mut self, ctx: &egui::Context) {
+        // ── File Explorer side panel (ctx-level, resizable) ────────────
+        // Must be shown before CentralPanel so egui allocates space correctly.
+        // Validates: Requirement 1.3 file-tree-panel, fix B019
+        let is_file_explorer = self.tabs.active_tab().kind == TabKind::FileExplorerPanel;
+        if is_file_explorer {
+            let open_path = egui::SidePanel::left("file_explorer_side")
+                .resizable(true)
+                .min_width(120.0)
+                .max_width(600.0)
+                .default_width(self.file_explorer_panel_width)
+                .show(ctx, |ui| {
+                    file_explorer_panel::render(
+                        ui,
+                        &mut self.file_explorer_panel,
+                        &self.files_panel.registry,
+                        &self.files_panel,
+                    )
+                });
+            self.file_explorer_panel_width = open_path.response.rect.width().clamp(120.0, 600.0);
+            if let Some(path) = open_path.inner {
+                let mut p = ff_command::CommandParams::new();
+                p.insert("path", path.as_str());
+                let _ = self.dispatch.execute_command("file.open", p);
+            }
+            if let Some(err) = self.file_explorer_panel.last_error.take() {
+                self.open_error = Some(err);
+            }
+        }
+
         // ── Toolchain Panel (bottom dock) ────────────────────────────────
         if self.show_toolchain_panel {
             egui::TopBottomPanel::bottom("toolchain_panel")
@@ -389,17 +418,7 @@ impl WorkbenchShell {
                     );
                 }
                 TabKind::FileExplorerPanel => {
-                    // Validates: Requirement 19.5, 19.6, 19.7, 19.8, 19.9
-                    if let Some(path) = file_explorer_panel::render(
-                        ui,
-                        &mut self.file_explorer_panel,
-                        &self.files_panel.registry,
-                        &self.files_panel,
-                    ) {
-                        let mut p = ff_command::CommandParams::new();
-                        p.insert("path", path.as_str());
-                        let _ = self.dispatch.execute_command("file.open", p);
-                    }
+                    // Rendered via ctx-level SidePanel below — nothing to do here
                 }
             }
         });

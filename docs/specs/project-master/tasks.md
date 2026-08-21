@@ -305,14 +305,14 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 
 ### Phase AM — Per-Context Key Maps, PFSHOW, 24-Key Bar, Hotspots, END/RETURN, LIST+RETRIEVE (Req 12–19 function-keys-and-history)
 
-- [ ] AM.1 PFSHOW command — register `keys.pfshow`, session persistence, shell wiring (Task 15)
-- [ ] AM.2 Two-row Key Label Bar — 24-slot model, two-row render in ff-desktop (Task 16)
-- [ ] AM.3 Per-context key map — `KeyMapResolver` context support, tab-switch wiring, TOML config (Task 17)
-- [ ] AM.4 Built-in default 24-key set — `KeyMap::default_global()`, fallback wiring (Task 18)
-- [ ] AM.5 Key Label Bar hotspots — clickable slots, tooltip, dispatch on click (Task 19)
-- [ ] AM.6 END and RETURN commands — register, tab-history stack, exit semantics (Task 20)
-- [ ] AM.7 Contextual help fallback — "not available yet" status message in ff-help (Task 21)
-- [ ] AM.8 LIST + RETRIEVE history browser — `ShowList` variant, modal overlay, selection (Task 22)
+- [x] AM.1 PFSHOW command — register `keys.pfshow`, session persistence, shell wiring (Task 15)
+- [x] AM.2 Two-row Key Label Bar — 24-slot model, two-row render in ff-desktop (Task 16)
+- [x] AM.3 Per-context key map — `KeyMapResolver` context support, tab-switch wiring, TOML config (Task 17)
+- [x] AM.4 Built-in default 24-key set — `KeyMap::default_global()`, fallback wiring (Task 18)
+- [x] AM.5 Key Label Bar hotspots — clickable slots, tooltip, dispatch on click (Task 19)
+- [x] AM.6 END and RETURN commands — register, tab-history stack, exit semantics (Task 20)
+- [x] AM.7 Contextual help fallback — "not available yet" status message in ff-help (Task 21)
+- [x] AM.8 LIST + RETRIEVE history browser — `ShowList` variant, modal overlay, selection (Task 22)
 
 ### Phase AN — Key Configuration Dialog (Req 20 function-keys-and-history)
 
@@ -328,7 +328,7 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 - [x] AN.2 `KeyMapResolver` call sites updated; modifier dispatch in `ff-desktop` shell (Tasks 25–26)
 - [x] AN.3 `key_config_dialog.rs` — scope tabs, 24-row grid, Save/Cancel/Reset (Tasks 27–29)
 - [x] AN.4 `KEYS` command + `Edit > Key Assignments…` menu item wired (Task 28)
-- [ ] AN.5 Property-based tests for `ModifiedKey` round-trip — deferred (Task 30)
+- [x] AN.5 Property-based tests for `ModifiedKey` round-trip — deferred (Task 30)
 
 ### Phase AP — PFSHOW Session Persistence (Req 12.4 function-keys-and-history)
 
@@ -348,11 +348,11 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 
 ### Phase AS — File Explorer Panel (Req 19 startup-and-session)
 
-- [ ] AS.1 Add `FileExplorerPanel` TabKind; route `=2`, `=FILES`, `FILES` commands; implement tree view showing open catalogs and their files; session persistence (Tasks 27.1–27.21 in startup-and-session/tasks.md)
+- [x] AS.1 Add `FileExplorerPanel` TabKind; route `=2`, `=FILES`, `FILES` commands; implement tree view showing open catalogs and their files; session persistence (Tasks 27.1–27.21 in startup-and-session/tasks.md)
 
 ### Phase AT — Allocated Dataset Display (Req 13 virtual-catalog-manager)
 
-- [ ] AT.1 Add `AllocatedDataset` store to `FilesPanelState`; wire `AllocOutcome::Confirmed` to insert into store; populate content area from store on catalog select; persist/restore via session TOML (Tasks 12.1–12.14 in virtual-catalog-manager/tasks.md)
+- [x] AT.1 Add `AllocatedDataset` store to `FilesPanelState`; wire `AllocOutcome::Confirmed` to insert into store; populate content area from store on catalog select; persist/restore via session TOML (Tasks 12.1–12.14 in virtual-catalog-manager/tasks.md)
 
 ### Phase AX — Default Home Catalog on First Launch (Req 14 virtual-catalog-manager)
 
@@ -361,3 +361,33 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 ### Phase AU — Catalog Registry Persistence (B010 fix, Req 2.1, 2.2 virtual-catalog-manager)
 
 - [x] AU.1 Add `save_catalog_registry()` / `load_catalog_registry()` to `SessionManager`; wire into `on_exit()` and startup; 2 unit tests (Tasks 13.1–13.9 in virtual-catalog-manager/tasks.md)
+
+### Phase AY — File Explorer: Expandable Subdirectories and Scrollable Panel (Req 15 file-tree-panel)
+
+- [x] AY.1 Wrap File Explorer Panel content in `ScrollArea::vertical()`; replace flat directory entries with recursive `CollapsingHeader` nodes in `render_native_children()` (Tasks 18.1–18.3 in file-tree-panel/tasks.md)
+
+### Phase AZ — File Explorer Context Menu (Req 16 file-tree-panel)
+
+- [x] AZ.1 `NodeKind` + `MenuItem` enums; `build_context_menu()` for all 8 node kinds; egui context_menu wiring; Git/Submit JCL greyed-out (Tasks 19.1–19.3)
+- [x] AZ.2 Inline rename with Enter/Escape; Mainframe 8-char uppercase enforcement (Task 19.4)
+- [x] AZ.3 Copy to clipboard (full path/DSN); all Copy path variants (Tasks 19.5–19.6)
+- [x] AZ.4 Reveal in Explorer — platform-appropriate OS file manager launch (Task 19.7)
+- [x] AZ.5 Copy To… / Move To… dialog with naming-rule transformation and ff-bgio progress (Task 19.8)
+- [x] AZ.6 Unit tests for all above (Task 19.9)
+
+### Phase BA — Open With Default Application (Req 17 file-tree-panel)
+
+- [x] BA.1 `FileClass` enum + `EXTERNAL_EXTENSIONS` table covering Office, PDF, images, audio/video, archives, executables, databases (Task 20.1)
+- [x] BA.2 `classify_file()` with extension lookup and magic-byte fallback (Task 20.2)
+- [x] BA.3 `launch_default_app()` platform dispatch Windows/macOS/Linux non-blocking (Task 20.3)
+- [x] BA.4 `open_file_node()` routing Text→editor, External→OS launch; Mainframe bypass (Task 20.4)
+- [x] BA.5 Status-bar error display for failed launches (Task 20.5)
+- [x] BA.6 Unit tests for all above (Task 20.6)
+
+### Phase BB — Native Catalog Sorted Listing and File Attributes (CR-NR-008, B017, B018)
+
+- [x] BB.1 Refactor `render_native_children()` — sort dirs-first/alpha, silent-skip inaccessible entries (junction points, locked files), build `FileEntryRow` with metadata (Req 18.1, 18.7, B017)
+- [x] BB.2 Implement `format_size`, `format_timestamp`, `format_permissions` helpers (Req 18.2–18.6)
+- [x] BB.3 Render attribute columns per row: Size, Modified, Created, Accessed, Permissions (Req 18.9)
+- [x] BB.4 Catch OS error 32 in `open_file_node()` — status-bar message, no editor tab (Req 18.8, B018)
+- [x] BB.5 Unit tests for all helpers and sort/skip behaviour (Task 21.8)

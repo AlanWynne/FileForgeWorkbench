@@ -49,6 +49,27 @@ New capabilities that did not previously exist.
 - **Status**: DONE
 - **Linked spec**: `docs/specs/virtual-catalog-manager/requirements.md` Requirement 5.2 (new criterion 5.7)
 
+### CR-NR-006 — File Explorer context menu with file operations
+- **Date/Phase**: Phase AZ
+- **Prompt**: "When right clicking on a file in the file tree a popup menu should appear with normal file operations listed..."
+- **Description**: Right-clicking any node in the File Explorer Panel shall display a context menu whose items are determined by the combination of catalog type, node kind, and file extension. Menus cover Native files/directories, POSIX files (read-only), and Mainframe datasets/members/GDG. Copy puts the full file path on the OS clipboard; pasting into an editor tab prompts for file name vs file contents. Rename is inline label edit. Move To / Copy To use ff-bgio with a progress indicator. Git submenu and Submit JCL are present but greyed-out (deferred).
+- **Status**: DONE — Phase AZ complete, 431 ff-desktop tests passing
+- **Linked spec**: `docs/specs/file-tree-panel/requirements.md` (new Requirement 16)
+
+### CR-NR-007 — Open With Default Application (file type association launch)
+- **Date/Phase**: Phase BA
+- **Prompt**: "In Windows file extensions often determine the type of file... When double clicking on these files... The application should launch the appropriate application and open the file."
+- **Description**: Double-clicking or selecting "Open" on a Native/POSIX file node shall launch the OS default application when the file is binary or maps to an external file class (.docx, .xlsx, .pdf, .png, etc.). Text/source files continue to open in the FFWB editor. Platform dispatch: Windows=ShellExecuteEx verb "open", macOS=`open`, Linux=`xdg-open`. "Open With..." shows the platform picker. Non-blocking via `Command::spawn()`. Mainframe datasets always open in FFWB.
+- **Status**: DONE — Phase BA complete, 443 ff-desktop tests passing
+- **Linked spec**: `docs/specs/file-tree-panel/requirements.md` (new Requirement 17)
+
+### CR-NR-005 — File Explorer: expandable subdirectories and scrollable panel
+- **Date/Phase**: Phase AY
+- **Prompt**: "i have created a Native catalog called CDRIVE which now shows all the directories and files from the Root directory, Each directory should be able to be expanded to show the files in it, Also the Screen should be scrollable so that we can page down to see more files"
+- **Description**: Native catalog directory nodes in the File Explorer shall be expandable (click to show children recursively) and the panel content area shall be scrollable so the user can page through large directory listings.
+- **Status**: DONE
+- **Linked spec**: `docs/specs/file-tree-panel/requirements.md` (new criteria 15.1–15.3)
+
 ---
 
 ## Change Requests
@@ -61,6 +82,13 @@ Modifications to existing behaviour that already works.
 - **Description**: POM option 2 label updated from "View Edit Create and Delete of files" to "File Explorer — Browse catalogs and files in a tree view".
 - **Affects**: `ff-desktop` `primary_option_menu.rs`, `startup-and-session/requirements.md`
 - **Status**: PENDING GATE
+
+### CR-CH-003 — Help fallback message uses human-readable context label
+- **Date/Phase**: Phase AV
+- **Prompt**: "When a help is not available for a specific context the message should display something like 'help not yet available for Context' in a way that we can determine which help needs to be built"
+- **Description**: The `resolve_with_fallback` message shall replace the raw `TopicKey` string (e.g. `cmd:FIND`) with a human-readable label (e.g. `command "FIND"`) so developers can identify exactly which help topic needs authoring.
+- **Affects**: `ff-help` `context_detector.rs`
+- **Status**: DONE
 
 ### CR-CH-002 — Home catalog deletion blocked
 - **Date/Phase**: Phase AX
@@ -76,3 +104,10 @@ Modifications to existing behaviour that already works.
 | Phase | Change |
 |-------|--------|
 | Phase AS | File created. CR-NR-001 logged — prompt triage steering rule. |
+
+### CR-NR-008 — File Explorer: sorted file listing with file attributes
+- **Date/Phase**: Phase BB
+- **Prompt**: "The files list displays in no particular order, we should sort the file by filename order. We should also see more than just the file name but some of the file attributes, like file size, Timestamp created, timestamp Modified, Timestamp accessed. Also perhaps some of the other attributes like the permission attributes in a user friendly way?"
+- **Description**: Native catalog file and directory nodes in the File Explorer shall be sorted alphabetically (directories first, then files, both case-insensitive). Each file node shall display file size, created timestamp, modified timestamp, accessed timestamp, and permission attributes (read/write/execute, hidden, system) in a user-friendly format alongside the file name.
+- **Status**: PENDING GATE
+- **Linked spec**: `docs/specs/file-tree-panel/requirements.md` (new Requirement 18)

@@ -26,12 +26,14 @@ ff-navigation-commands  = { path = "../ff-navigation-commands" }
 ff-exclude-show-filter  = { path = "../ff-exclude-show-filter" }
 ff-display-line-mapping = { path = "../ff-display-line-mapping" }
 ff-keys                 = { path = "../ff-keys" }
+ff-help                 = { path = "../ff-help" }
 ff-session             = { path = "../ff-session" }
 ff-zoom                = { path = "../ff-zoom" }
 ff-toolchain-api       = { path = "../ff-toolchain-api" }
 ff-gcc-toolchain       = { path = "../ff-gcc-toolchain" }
 ff-rust-toolchain      = { path = "../ff-rust-toolchain" }
 anyhow     = { workspace = true }
+arboard    = "3"
 tokio      = { workspace = true }
 egui       = { workspace = true }
 eframe     = { workspace = true }

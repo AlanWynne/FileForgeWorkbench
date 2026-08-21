@@ -3,6 +3,7 @@
 //! The `ContextDetector` inspects the current editor state and resolves the
 //! most relevant `TopicKey` for the Help Panel to display.
 
+use crate::registry::HelpTopicRegistry;
 use crate::topic_key::TopicKey;
 
 /// Editor mode identifiers for context detection.
@@ -127,6 +128,46 @@ impl ContextDetector {
 
         // Priority 5: Fallback to index
         TopicKey::index()
+    }
+
+    /// Resolve a `TopicKey` and check whether content exists in the registry.
+    ///
+    /// Returns `Ok(key)` when the resolved topic exists in `registry`.
+    /// Returns `Err(message)` with a human-readable "not available yet" message
+    /// that identifies the exact context so missing topics can be tracked.
+    ///
+    /// Validates: Requirement 18.1, 18.2
+    pub fn resolve_with_fallback(
+        ctx: &EditorContext,
+        registry: &HelpTopicRegistry,
+    ) -> Result<TopicKey, String> {
+        let key = Self::resolve(ctx);
+        if registry.contains(&key) {
+            Ok(key)
+        } else {
+            let label = Self::human_label(&key);
+            Err(format!(
+                "Help not yet available for {label} [topic-key: {}]",
+                key.as_str()
+            ))
+        }
+    }
+
+    /// Converts a `TopicKey` into a human-readable context description.
+    ///
+    /// Examples: `cmd:FIND` → `command "FIND"`, `line:CC` → `line command "CC"`,
+    /// `mode:hex` → `mode "hex"`, `index` → `the Help Index`.
+    fn human_label(key: &TopicKey) -> String {
+        use crate::topic_key::TopicCategory;
+        match key.category() {
+            TopicCategory::Command => format!("command \"{}\"", key.identifier()),
+            TopicCategory::LineCommand => format!("line command \"{}\"", key.identifier()),
+            TopicCategory::Mode => format!("mode \"{}\"", key.identifier()),
+            TopicCategory::Feature => format!("feature \"{}\"", key.identifier()),
+            TopicCategory::Config => format!("config key \"{}\"", key.identifier()),
+            TopicCategory::Api => format!("API function \"{}\"", key.identifier()),
+            TopicCategory::Index | TopicCategory::GettingStarted => "the Help Index".to_string(),
+        }
     }
 
     /// Determine if F1 should toggle the Help Panel closed (same topic redisplay).
@@ -258,6 +299,53 @@ mod tests {
             ..default_context()
         };
         assert!(!ContextDetector::should_toggle_close(&ctx, &resolved));
+    }
+
+    // Validates: Requirement 18.1 — missing topic produces human-readable fallback message
+    #[test]
+    fn resolve_with_fallback_missing_topic_returns_err() {
+        use crate::registry::HelpTopicRegistry;
+        let registry = HelpTopicRegistry::new(); // empty — no topics registered
+        let ctx = EditorContext {
+            command_line_text: "FIND".to_string(),
+            command_line_has_focus: true,
+            ..default_context()
+        };
+        let result = ContextDetector::resolve_with_fallback(&ctx, &registry);
+        assert!(result.is_err());
+        let msg = result.unwrap_err();
+        assert!(msg.contains("Help not yet available for"), "msg: {msg}");
+        assert!(msg.contains("command \"FIND\""), "msg: {msg}");
+        assert!(
+            msg.contains("cmd:FIND"),
+            "topic-key missing from msg: {msg}"
+        );
+    }
+
+    // Validates: Requirement 18.1 — existing topic returns Ok
+    #[test]
+    fn resolve_with_fallback_existing_topic_returns_ok() {
+        use crate::registry::HelpTopicRegistry;
+        use crate::topic::{HelpTopic, TopicSource};
+        use std::path::PathBuf;
+        let registry = HelpTopicRegistry::new();
+        let key = TopicKey::command("FIND");
+        registry.register_file_topic(HelpTopic::new(
+            key.clone(),
+            "FIND".to_string(),
+            "Find help body".to_string(),
+            TopicSource::FileBased {
+                file_path: PathBuf::from("find.help.md"),
+            },
+        ));
+        let ctx = EditorContext {
+            command_line_text: "FIND".to_string(),
+            command_line_has_focus: true,
+            ..default_context()
+        };
+        let result = ContextDetector::resolve_with_fallback(&ctx, &registry);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), key);
     }
 
     // Validates: Requirement 1.9 — All editor modes supported

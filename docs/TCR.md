@@ -781,3 +781,111 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | ❌ FAIL | 0 |
 | 🔲 MANUAL | 0 new |
 | 🔴 NOT COVERED | 0 |
+
+### Phase AV (CR-CH-003) — Help Fallback Human-Readable Message (Req 18.1, 18.2)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-help` | ✅ | `context_detector.rs` unit tests | Req 18.1: `resolve_with_fallback_missing_topic_returns_err` — message contains `"Help not yet available for"`, human-readable label (e.g. `command "FIND"`), and raw topic-key (`cmd:FIND`) for diagnostics |
+| `ff-help` | ✅ | `context_detector.rs` unit tests | Req 18.2: `resolve_with_fallback_existing_topic_returns_ok` — registered topic returns `Ok(key)`; no fallback message emitted |
+
+## Final Summary (after CR-CH-003)
+
+| Status | Count |
+|--------|-------|
+| ✅ PASS | 404 tests (ff-desktop) + 12 (ff-help) |
+| ❌ FAIL | 0 |
+| 🔲 MANUAL | 0 new |
+| 🔴 NOT COVERED | 0 |
+
+### Phase AN.5 — ModifiedKey Property-Based Tests (Task 30)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-keys` | ✅ | `tests/modified_key_pbt.rs` | Req 20.11, 20.12: `modified_key_toml_name_always_round_trips` — all 96 ModifiedKey TOML names parse back to original (200 cases) |
+| `ff-keys` | ✅ | `tests/modified_key_pbt.rs` | Req 20.9, 20.12: `get_plain_unaffected_by_modifier_bindings` — plain binding unchanged regardless of Shift/Ctrl/Alt entries on same key (200 cases) |
+| `ff-keys` | ✅ | `tests/modified_key_pbt.rs` | Req 20.11, 20.12: `from_toml_table_mixed_modifiers_no_cross_contamination` — mixed modifier TOML produces exactly expected entries, no cross-contamination (200 cases) |
+
+## Final Summary (after AN.5)
+
+| Status | Count |
+|--------|-------|
+| ✅ PASS | 404 (ff-desktop) + 12 (ff-help) + 10 PBTs (ff-keys) |
+| ❌ FAIL | 0 |
+| 🔲 MANUAL | 0 new |
+| 🔴 NOT COVERED | 0 |
+
+### Phase AY — File Explorer: Expandable Subdirectories and Scrollable Panel (Req 15 file-tree-panel)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | — | Req 15.1: clicking expand arrow on a directory node inside a Native catalog shows its children sorted dirs-first alphabetically |
+| `ff-desktop` | 🔴 | — | Req 15.2: child directory nodes are themselves expandable, supporting arbitrary nesting depth |
+| `ff-desktop` | 🔴 | — | Req 15.3: File Explorer Panel content area is wrapped in a vertical scroll region |
+
+### Phase AY — Final Status
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 15.2: `nested_directory_structure_readable_two_levels_deep` — two-level nested dirs readable via `std::fs::read_dir` |
+| `ff-desktop` | 🔲 | — | Req 15.1: directory `CollapsingHeader` nodes expand to show children (manual UI verification) |
+| `ff-desktop` | 🔲 | — | Req 15.2: child dirs are themselves expandable recursively (manual UI verification) |
+| `ff-desktop` | 🔲 | — | Req 15.3: panel content scrollable via `ScrollArea::vertical()` (manual UI verification) |
+
+## Final Summary (after Phase AY)
+
+| Status | Count |
+|--------|-------|
+| ✅ PASS | 405 tests (ff-desktop) |
+| ❌ FAIL | 0 |
+| 🔲 MANUAL | Req 15.1, 15.2, 15.3 (UI rendering — manual verification) |
+| 🔴 NOT COVERED | 0 |
+
+### Phase AZ — File Explorer Context Menu (Requirement 16)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 16.1: right-click on any non-header node shows context menu; right-click on section header shows nothing |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 16.2: Native File menu contains correct items in correct group order |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 16.3: Native Directory menu contains correct items in correct group order |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 16.4: POSIX File menu is read-only subset (no Rename, Move To, Copy To, New File, New Folder) |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 16.5: Mainframe PS dataset menu contains correct items |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 16.6: Mainframe PDS menu contains correct items |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 16.7: Mainframe PDS Member menu contains correct items; Submit JCL greyed-out |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 16.8: Mainframe GDG Base menu contains correct items |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 16.9: Mainframe GDG Generation menu contains correct items |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 16.10: Copy writes full path/DSN to OS clipboard; paste into editor prompts file name vs file contents |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 16.11: Rename activates inline TextEdit; Enter confirms on disk/store; Escape cancels; Mainframe enforces 8-char uppercase |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 16.12: Copy To / Move To dialog shows target picker, proposed name with naming-rule transform, dispatches to ff-bgio with progress indicator |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 16.13: Open With invokes platform-appropriate mechanism (Windows ShellExecuteEx / macOS open -a / Linux xdg chooser) |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 16.14: Reveal in Explorer opens OS file manager at parent directory with platform-appropriate label |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 16.15: Git submenu present but greyed-out and non-interactive |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 16.16: Submit JCL present but greyed-out and non-interactive |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 16.17: ExtensionRule table is data-driven; *.jcl rule would enable Submit JCL when implemented |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 16.18: Copy File Name / Relative Path / Full Path / Dataset Name / Member Name / Dataset(Member) each write correct string to clipboard |
+
+### Phase BA — Open With Default Application (Requirement 17 file-tree-panel)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 17.1: Text/source files open in FFWB editor tab (no external launch) |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 17.2: External file class launches OS default app (Windows cmd start / macOS open / Linux xdg-open) |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 17.3: Unknown extension uses magic-byte scan; UTF-8 text opens in editor, binary launches OS app |
+| `ff-desktop` | 🔲 | — | Req 17.4: Launch failure falls back to FFWB editor with status-bar message |
+| `ff-desktop` | 🔲 | — | Req 17.5: Open With shows platform picker (Windows openwith / macOS open -a / Linux xdg chooser) |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 17.6: DefaultAppLaunch is non-blocking (Command::spawn, UI thread not blocked) |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 17.7: Mainframe nodes always open in FFWB editor regardless of content |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 17.8: EXTERNAL_EXTENSIONS table covers all required categories (Office, PDF, images, audio/video, archives, executables, databases) |
+| `ff-desktop` | 🔲 | — | Req 17.9: POSIX catalog file nodes follow same FileClass classification and launch rules as Native nodes |
+
+### Phase BB — Native Catalog Sorted Listing and File Attributes (Requirement 18)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 18.1: Native catalog directory children sorted directories-first then alphabetically case-insensitive — `collect_native_entries_sorts_dirs_first_then_alpha` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 18.2: Each file node displays human-readable size; `format_size_produces_correct_strings` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 18.3, 18.4, 18.5: Timestamps in `YYYY-MM-DD HH:MM` format — `format_timestamp_produces_correct_format` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 18.6: Permission attributes returned as non-empty string — `format_permissions_returns_nonempty_string` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 18.7: Valid entries collected without error; inaccessible entries silently skipped via `metadata().ok()?` — `collect_native_entries_returns_valid_entries` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 18.8: Opening unreadable file stores error in `last_error`; no editor tab opened — `open_file_node_stores_error_for_nonexistent_file` |
+| `ff-desktop` | 🔲 | — | Req 18.9: Attribute columns rendered in correct order and alignment (manual UI verification) |

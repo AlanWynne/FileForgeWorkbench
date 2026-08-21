@@ -40,9 +40,8 @@
 | B011 | FIXED | Medium | `ff-desktop` | Mainframe dataset names entered in the Allocate Dataset dialog are stored as-is (mixed case). Mainframe DSNs must be uppercase. | Req 5.8 | — | Fixed Phase AW: `validate()` now calls `.to_uppercase()` on the trimmed dataset name before storing in `AllocParams`. 399 tests pass. |
 | B012 | FIXED | High | `ff-desktop` | Two datasets with the same name can be allocated within the same catalog. The `add_dataset()` function pushes without checking for duplicates. | Req 5.9 | — | Fixed Phase AW: `validate_for_catalog()` added; shell confirm handler uses it with existing DSN list; duplicate rejected with inline error. 399 tests pass. |
 
----
-
-## How to file a new bug
+| B013 | FIXED | High | `ff-desktop` | Application opens without the Home catalog — File Explorer shows "No catalogs open" message. Root cause: `ffwb.exe` binary (built 2026/08/20 22:14) predates `update.rs` (modified 2026/08/20 22:46) which contains the Phase AX `ensure_default_home_catalog` wiring. Stale binary never wrote `catalogs.toml`. | Req 14.1, 14.2, 14.3 | — | Fixed by `cargo build`. No code change required. |
+| B014 | FIXED | High | `ff-desktop` | Expanding a Native catalog node in the File Explorer shows "(no files)" — Native catalogs should list actual files from disk but the tree only reads from `files_panel.datasets` (allocated dataset store), never from the filesystem. | Req 19.6 | — | Fixed: `render_native_children()` added — reads `std::fs::read_dir` for Native catalogs; directories listed first then files alphabetically; double-click opens files. Mainframe/POSIX catalogs continue to use dataset store via `render_dataset_children()`. 404 tests pass. |
 
 1. Assign the next `B###` ID.
 2. Set `Status` to `OPEN`.
@@ -67,3 +66,13 @@
 | Phase AU | B010 FIXED — `save_catalog_registry()` / `load_catalog_registry()` wired into `shell.rs` `on_exit()` and startup; 382 tests pass |
 | Phase AW | B011 added — Mainframe dataset names not uppercased on allocation (FIXED) |
 | Phase AW | B012 added — duplicate dataset names allowed within same catalog (FIXED) |
+| Phase AX | B013 added — Home catalog missing on launch; stale binary predated Phase AX wiring; FIXED by `cargo build` |
+| Phase AX | B014 added — Native catalog expansion showed "(no files)"; fixed by adding `render_native_children()` using `std::fs::read_dir` |
+| Phase BB | B019 added — File Explorer Panel not resizable; fills entire central panel with no splitter |
+| Phase BB | B019 FIXED — `SidePanel::left` with `resizable(true)`, min 120px, max 600px, default 260px |
+
+| B015 | OPEN | High | `ff-desktop` | Tab close button ("×") is missing — tabs have no visible close button on their headers. | Req 3.8 multi-tab-editor | — | Reported via prompt: "Tabs don't have a [x] button." |
+| B016 | OPEN | Low | `ff-desktop` | Tab header bracket style is inconsistent — some tabs render with `[]` delimiters, others have none. No documented rule governs which tabs get brackets. | Req 3.2, 3.3 multi-tab-editor | — | Reported via prompt: "Some Tabs have [] around them, some have nothing. What is the general rule?" |
+| B017 | FIXED | Medium | `ff-desktop` | Windows junction points (e.g. `C:\Users\<user>\My Documents`) appear as directories in the File Explorer and produce "permission denied" errors when expanded. These are OS-level compatibility junctions that Windows intentionally restricts. | Req 15.1 file-tree-panel | — | Fixed Phase BB: `collect_native_entries()` calls `metadata().ok()?` — entries where metadata fails are silently skipped; junction points never appear in the listing. |
+| B018 | FIXED | Medium | `ff-desktop` | Locked system files (e.g. `NTUSER.DAT`) produce an I/O error ("process cannot access the file because it is being used by another process") when the user attempts to open them in the editor. | Req 1.8 multi-tab-editor | — | Fixed Phase BB: `open_file_node()` attempts `File::open()` before handing to editor; OS error 32 stored in `last_error` and shown in status bar; no editor tab opened. |
+| B019 | FIXED | Medium | `ff-desktop` | The File Explorer Panel (`=2` / `=FILES`) is not resizable — it fills the entire central panel as a tab with no splitter or drag handle. The user cannot adjust the width of the file listing area. | Req 1.3 file-tree-panel | — | Fixed: `render_central_panel` now uses `egui::SidePanel::left("file_explorer_side").resizable(true).min_width(120.0).max_width(600.0)` with a `CentralPanel` placeholder alongside it. Width persisted in `file_explorer_panel_width` field. |

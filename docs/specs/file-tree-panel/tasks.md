@@ -231,6 +231,14 @@ This task plan implements the `ff-file-tree-panel` crate — the unified resourc
   - [ ] 17.7 Write integration test: configuration hot-reload — change sort_order and show_hidden_files at runtime, verify immediate tree update
     - Validates: All requirements end-to-end
 
+- [ ] 18. Native catalog recursive expansion and scrollable panel (Phase AY)
+  - [x] 18.1 Wrap the File Explorer Panel content area in `egui::ScrollArea::vertical()` so the user can scroll through large listings
+    - Validates: Requirement 15.3
+  - [x] 18.2 Replace flat directory entries in `render_native_children()` with `CollapsingHeader` nodes that recursively call `render_native_children()`, using the full path as `id_salt`
+    - Validates: Requirement 15.1, 15.2
+  - [x] 18.3 Add unit test confirming that a nested directory structure is readable to at least two levels deep
+    - Validates: Requirement 15.2
+
 ---
 
 ## Acceptance Criteria Coverage
@@ -402,3 +410,55 @@ This task plan implements the `ff-file-tree-panel` crate — the unified resourc
   ]
 }
 ```
+
+- [x] 19. File Explorer context menu — Phase AZ (Requirement 16)
+  - [x] 19.1 Add `NodeKind` enum (`NativeFile`, `NativeDir`, `PosixFile`, `MfPs`, `MfPds`, `MfMember`, `MfGdgBase`, `MfGdgGen`) and `MenuItem` enum (all actions + `Separator` + `Disabled`) to `file_explorer_panel.rs`
+    - Validates: Requirement 16.1
+  - [x] 19.2 Implement `build_context_menu(catalog_type, node_kind, extension) -> Vec<MenuItem>` consulting `ExtensionRule` table; produce correct item lists for all 8 node kinds per Req 16.2–16.9
+    - Validates: Requirement 16.2–16.9
+  - [x] 19.3 Wire `ui.response.context_menu()` on each tree node; render items from `build_context_menu`; Git submenu and Submit JCL rendered via `ui.add_enabled(false, ...)`
+    - Validates: Requirement 16.1, 16.15, 16.16
+  - [x] 19.4 Implement inline rename state in `FileExplorerPanelState` (`rename_state: Option<(String, String)>`); render `TextEdit` in place of label; confirm on Enter (rename on disk / in store), cancel on Escape; enforce 8-char uppercase for Mainframe members
+    - Validates: Requirement 16.11
+  - [x] 19.5 Implement Copy action — write full path / DSN to OS clipboard via `arboard`
+    - Validates: Requirement 16.10 AC 1–2
+  - [x] 19.6 Implement Copy path variants — Copy File Name, Copy Relative Path, Copy Full Path, Copy Dataset Name, Copy Member Name, Copy Dataset(Member)
+    - Validates: Requirement 16.18
+  - [x] 19.7 Implement Reveal in Explorer / Open Containing Folder — platform-appropriate OS file manager launch; platform-specific label
+    - Validates: Requirement 16.14
+  - [x] 19.8 Implement Copy To… / Move To… dialog (`copy_move_dialog.rs`) — target picker, proposed name with naming-rule transformation, inline validation, dispatch to `ff-bgio`, progress indicator in status bar
+    - Validates: Requirement 16.12
+  - [x] 19.9 Write unit tests: `build_context_menu` returns correct item sets for all 8 node kinds; inline rename enforces Mainframe 8-char rule; Copy path variants produce correct strings; Copy To naming transformation (Native→Mainframe uppercase/truncate, Mainframe→Native lowercase)
+    - Validates: Requirement 16.2–16.9, 16.11, 16.18, 16.12
+
+- [x] 20. Open With Default Application — Phase BA (Requirement 17)
+  - [x] 20.1 Add `FileClass` enum (`Text`, `FfwbStructured`, `External`) and `file_class` field to `ExtensionRule`; populate `EXTERNAL_EXTENSIONS` table for all Req 17.8 categories
+    - Validates: Requirement 17.8
+  - [x] 20.2 Implement `classify_file(path) -> FileClass`: extension lookup then magic-byte fallback (first 512 bytes, null-byte / UTF-8 detection)
+    - Validates: Requirement 17.1, 17.2, 17.3
+  - [x] 20.3 Implement `launch_default_app(path)`: platform dispatch via `Command::spawn()` (Windows: `cmd /c start`, macOS: `open`, Linux: `xdg-open`); store error in `FileExplorerPanelState::last_error`
+    - Validates: Requirement 17.2, 17.4, 17.6
+  - [x] 20.4 Replace direct `*open_path = Some(...)` in `handle_menu_action` Open branch with `open_file_node()` that routes Text/FfwbStructured to editor and External to `launch_default_app`; Mainframe nodes bypass classification
+    - Validates: Requirement 17.1, 17.2, 17.7
+  - [x] 20.5 Wire `last_error` display into status bar (shell reads `file_explorer_panel.last_error` each frame and shows it)
+    - Validates: Requirement 17.4
+  - [x] 20.6 Write unit tests: `classify_file` returns correct `FileClass` for all Req 17.8 extension categories; magic-byte scan correctly identifies binary vs text; `launch_default_app` uses correct command per platform
+    - Validates: Requirement 17.1–17.8
+
+- [ ] 21. Native catalog sorted listing and file attributes — Phase BB (Requirement 18)
+  - [ ] 21.1 Add `FileEntryRow` struct to `file_explorer_panel.rs` holding `name`, `is_dir`, `size_bytes: Option<u64>`, `created: Option<SystemTime>`, `modified: Option<SystemTime>`, `accessed: Option<SystemTime>`, `permissions_str: String`
+    - Validates: Requirement 18.2–18.6
+  - [ ] 21.2 Refactor `render_native_children()` to collect entries via `read_dir()`, call `entry.metadata()` per entry, silently skip entries where metadata returns an error, build `Vec<FileEntryRow>`, sort directories-first then alphabetically case-insensitive
+    - Validates: Requirement 18.1, 18.7
+  - [ ] 21.3 Implement `format_size(bytes: u64) -> String` — `B`, `KB`, `MB`, `GB` with one decimal place; directories return `"<DIR>"`
+    - Validates: Requirement 18.2
+  - [ ] 21.4 Implement `format_timestamp(t: SystemTime) -> String` — `YYYY-MM-DD HH:MM`
+    - Validates: Requirement 18.3, 18.4, 18.5
+  - [ ] 21.5 Implement `format_permissions(meta: &Metadata) -> String` — Windows: `R`/`H`/`S`/`A` flags or `—`; Unix: `rwxr-xr-x` style
+    - Validates: Requirement 18.6
+  - [ ] 21.6 Render each `FileEntryRow` as a horizontal row with columns: Name (expandable), Size (right-aligned ~70px), Modified (~120px), Created (~120px), Accessed (~120px), Permissions (~80px)
+    - Validates: Requirement 18.9
+  - [ ] 21.7 In `open_file_node()`, catch OS error 32 (file in use) and store `"Cannot open '<filename>': file is in use by another process"` in `last_error`; do not open editor tab
+    - Validates: Requirement 18.8, B018
+  - [ ] 21.8 Write unit tests: `format_size` for B/KB/MB/GB boundaries; `format_timestamp` round-trip; `format_permissions` for read-only and full-access cases; sort order (dirs before files, alpha within group); silent-skip of metadata-error entries
+    - Validates: Requirement 18.1–18.9

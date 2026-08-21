@@ -5,6 +5,7 @@
 
 use ff_command::{CommandParams, CommandResult};
 use ff_command_semantics::StatusKind;
+use ff_help::{ContextDetector, EditorContext, EditorMode, HelpTopicRegistry};
 use ff_keys::RetrieveResult;
 
 use crate::tab_state::TabKind;
@@ -55,6 +56,24 @@ impl WorkbenchShell {
             let idx = self.tabs.active_index();
             self.tabs.close_tab(idx);
             self.open_error = None;
+            return;
+        }
+
+        // ── HELP / F1 fallback — Validates: Requirement 18.1, 18.2 ————————
+        if upper == "HELP" {
+            let registry = HelpTopicRegistry::new(); // empty registry — no topics loaded yet
+            let ctx = EditorContext {
+                command_line_text: self.command_text.clone(),
+                command_line_has_focus: true,
+                prefix_area_text: None,
+                prefix_area_has_focus: false,
+                active_mode: EditorMode::Edit,
+                help_panel_open: false,
+                current_help_topic: None,
+            };
+            if let Err(msg) = ContextDetector::resolve_with_fallback(&ctx, &registry) {
+                self.open_error = Some(msg);
+            }
             return;
         }
 
