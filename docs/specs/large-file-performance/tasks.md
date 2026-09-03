@@ -1,4 +1,4 @@
-# Implementation Plan: Large File Performance (`ff-large-file-performance`)
+﻿# Implementation Plan: Large File Performance (`ff-large-file-performance`)
 
 ## Overview
 
@@ -12,171 +12,171 @@ This is a **Wave 15 (Background Processing and Performance)** sub-project that d
 
 ## Tasks
 
-- [ ] 1. Crate scaffolding and module structure
-  - [ ] 1.1 Create `crates/ff-large-file-performance/Cargo.toml` with dependencies (thiserror, parking_lot, proptest dev-dep) and workspace crate dependencies on `ff-document-model`, `ff-viewport-and-scrolling`, `ff-display-line-mapping`, `ff-configuration-system`, `ff-logging`
-  - [ ] 1.2 Create `crates/ff-large-file-performance/src/lib.rs` with module declarations and public API re-exports
-  - [ ] 1.3 Create module files: `types.rs`, `error.rs`, `position_cache.rs`, `line_layout.rs`, `line_layout_cache.rs`, `chunked_measurement.rs`, `viewport_renderer.rs`, `lazy_computation.rs`, `invalidation.rs`, `scroll_performance.rs`, `status_indicator.rs`, `memory_budget.rs`, `config.rs`
-  - [ ] 1.4 Add `ff-large-file-performance` to workspace `Cargo.toml` members list
+- [x] 1. Crate scaffolding and module structure
+  - [x] 1.1 Create `crates/ff-large-file-performance/Cargo.toml` with dependencies (thiserror, parking_lot, proptest dev-dep) and workspace crate dependencies on `ff-document-model`, `ff-viewport-and-scrolling`, `ff-display-line-mapping`, `ff-configuration-system`, `ff-logging`
+  - [x] 1.2 Create `crates/ff-large-file-performance/src/lib.rs` with module declarations and public API re-exports
+  - [x] 1.3 Create module files: `types.rs`, `error.rs`, `position_cache.rs`, `line_layout.rs`, `line_layout_cache.rs`, `chunked_measurement.rs`, `viewport_renderer.rs`, `lazy_computation.rs`, `invalidation.rs`, `scroll_performance.rs`, `status_indicator.rs`, `memory_budget.rs`, `config.rs`
+  - [x] 1.4 Add `ff-large-file-performance` to workspace `Cargo.toml` members list
   - Covers: Structural foundation for all requirements
 
-- [ ] 2. Core types and configuration
-  - [ ] 2.1 Define `LineNumber(u64)` re-export or alias from document-model, `DisplayLine(u64)`, `BytePosition(u64)`, `CharOffset(u64)` newtypes
-  - [ ] 2.2 Define `StyleSlotIndex(u16)` newtype for style slot keying
-  - [ ] 2.3 Define `FontMetricsKey` struct with fields: font_family, font_size, font_weight, font_style, zoom_level — implement Hash, Eq
-  - [ ] 2.4 Define `CacheLevel` enum: `Viewport`, `Page`, `Document` with auto-selection logic
-  - [ ] 2.5 Define `CacheValidity` enum: `Invalid`, `CheckTextAndStyle`, `Positions`, `Lines`
-  - [ ] 2.6 Define `LargeFilePerformanceConfig` struct with all configurable parameters: long_line_threshold, position_cache_size, overscan_lines, frame_budget_ms, layout_cache_memory_mb, long_line_overscan_chars, render_chunk_size, line_layout_cache_level
-  - [ ] 2.7 Implement config loading from configuration-system with clamping for all bounded ranges
-  - [ ] 2.8 Write unit tests for config clamping and FontMetricsKey hashing
+- [x] 2. Core types and configuration
+  - [x] 2.1 Define `LineNumber(u64)` re-export or alias from document-model, `DisplayLine(u64)`, `BytePosition(u64)`, `CharOffset(u64)` newtypes
+  - [x] 2.2 Define `StyleSlotIndex(u16)` newtype for style slot keying
+  - [x] 2.3 Define `FontMetricsKey` struct with fields: font_family, font_size, font_weight, font_style, zoom_level — implement Hash, Eq
+  - [x] 2.4 Define `CacheLevel` enum: `Viewport`, `Page`, `Document` with auto-selection logic
+  - [x] 2.5 Define `CacheValidity` enum: `Invalid`, `CheckTextAndStyle`, `Positions`, `Lines`
+  - [x] 2.6 Define `LargeFilePerformanceConfig` struct with all configurable parameters: long_line_threshold, position_cache_size, overscan_lines, frame_budget_ms, layout_cache_memory_mb, long_line_overscan_chars, render_chunk_size, line_layout_cache_level
+  - [x] 2.7 Implement config loading from configuration-system with clamping for all bounded ranges
+  - [x] 2.8 Write unit tests for config clamping and FontMetricsKey hashing
   - Covers: Requirement 1 (AC 1.5, 1.9), Requirement 2 (AC 2.3, 2.9), Requirement 3 (AC 3.2, 3.3, 3.5), Requirement 4 (AC 4.2, 4.6)
 
-- [ ] 3. Error types
-  - [ ] 3.1 Define `LargeFilePerformanceError` enum with variants: LineNotAvailable, PositionOutOfRange, CacheFull, MeasurementTimeout, ConfigInvalid, MemoryBudgetExceeded
-  - [ ] 3.2 Implement `Display` and `Error` traits via thiserror
-  - [ ] 3.3 Write unit tests for error formatting
+- [x] 3. Error types
+  - [x] 3.1 Define `LargeFilePerformanceError` enum with variants: LineNotAvailable, PositionOutOfRange, CacheFull, MeasurementTimeout, ConfigInvalid, MemoryBudgetExceeded
+  - [x] 3.2 Implement `Display` and `Error` traits via thiserror
+  - [x] 3.3 Write unit tests for error formatting
   - Covers: Cross-cutting error handling requirements
 
-- [ ] 4. PositionCache (font metrics measurement cache)
-  - [ ] 4.1 Implement `PositionCacheEntry` struct with fields: style_slot_index, unicode_flag, text_content (for verification), x_positions array, clock timestamp
-  - [ ] 4.2 Implement `PositionCache` struct with hash-table storage, configurable capacity (default 1024), and monotonic clock counter
-  - [ ] 4.3 Implement hash function for (style_slot, text_content) tuple keys
-  - [ ] 4.4 Implement two-way associative probing: compute two candidate slot indices per lookup, examine both
-  - [ ] 4.5 Implement cache lookup: on hit, copy positions to caller buffer and update entry clock
-  - [ ] 4.6 Implement cache insertion: on miss, evict the candidate with lower clock value, store new entry
-  - [ ] 4.7 Implement clock wrapping: when counter exceeds u16::MAX, reset all entry clocks to 1
-  - [ ] 4.8 Implement `clear()` method that invalidates all entries (called on global invalidation events)
-  - [ ] 4.9 Implement thread-safety via `Mutex` guard for concurrent access from render and idle threads
-  - [ ] 4.10 Implement per-style `FontMetricsKey` tracking; when any key component changes, invalidate entries for that style
-  - [ ] 4.11 Write unit tests for insertion, lookup, eviction, clock wrapping, and thread safety
+- [x] 4. PositionCache (font metrics measurement cache)
+  - [x] 4.1 Implement `PositionCacheEntry` struct with fields: style_slot_index, unicode_flag, text_content (for verification), x_positions array, clock timestamp
+  - [x] 4.2 Implement `PositionCache` struct with hash-table storage, configurable capacity (default 1024), and monotonic clock counter
+  - [x] 4.3 Implement hash function for (style_slot, text_content) tuple keys
+  - [x] 4.4 Implement two-way associative probing: compute two candidate slot indices per lookup, examine both
+  - [x] 4.5 Implement cache lookup: on hit, copy positions to caller buffer and update entry clock
+  - [x] 4.6 Implement cache insertion: on miss, evict the candidate with lower clock value, store new entry
+  - [x] 4.7 Implement clock wrapping: when counter exceeds u16::MAX, reset all entry clocks to 1
+  - [x] 4.8 Implement `clear()` method that invalidates all entries (called on global invalidation events)
+  - [x] 4.9 Implement thread-safety via `Mutex` guard for concurrent access from render and idle threads
+  - [x] 4.10 Implement per-style `FontMetricsKey` tracking; when any key component changes, invalidate entries for that style
+  - [x] 4.11 Write unit tests for insertion, lookup, eviction, clock wrapping, and thread safety
   - Covers: Requirement 2 (AC 2.1–2.9)
 
-- [ ] 5. LineLayout data structure
-  - [ ] 5.1 Implement `LineLayout` struct with fields: line_number, text_content, style_assignments, x_positions (Vec<f32>), sub_line_breaks (Vec<usize>), wrap_indent, validity (CacheValidity), contains_caret, measured_range (Option for partial layouts)
-  - [ ] 5.2 Implement `is_valid_for(line_number, text_length)` reuse check: line matches, text length matches, validity permits reuse
-  - [ ] 5.3 Implement `invalidate(level: CacheValidity)` setting validity to the specified level
-  - [ ] 5.4 Implement `memory_usage()` returning estimated byte size of the entry (for memory budgeting)
-  - [ ] 5.5 Implement partial LineLayout support for long lines: store start_offset and measured_range_boundary
-  - [ ] 5.6 Write unit tests for validity checks, memory estimation, and partial layout metadata
+- [x] 5. LineLayout data structure
+  - [x] 5.1 Implement `LineLayout` struct with fields: line_number, text_content, style_assignments, x_positions (Vec<f32>), sub_line_breaks (Vec<usize>), wrap_indent, validity (CacheValidity), contains_caret, measured_range (Option for partial layouts)
+  - [x] 5.2 Implement `is_valid_for(line_number, text_length)` reuse check: line matches, text length matches, validity permits reuse
+  - [x] 5.3 Implement `invalidate(level: CacheValidity)` setting validity to the specified level
+  - [x] 5.4 Implement `memory_usage()` returning estimated byte size of the entry (for memory budgeting)
+  - [x] 5.5 Implement partial LineLayout support for long lines: store start_offset and measured_range_boundary
+  - [x] 5.6 Write unit tests for validity checks, memory estimation, and partial layout metadata
   - Covers: Requirement 3 (AC 3.4, 3.5, 3.9), Requirement 1 (AC 1.3)
 
-- [ ] 6. LineLayoutCache
-  - [ ] 6.1 Implement `LineLayoutCache` struct with storage (Vec or HashMap of LineLayout entries), capacity, cache level, memory budget tracking
-  - [ ] 6.2 Implement auto-selection of cache level based on document size: Document for <10K lines, Page for <1M lines, Viewport for >=1M lines
-  - [ ] 6.3 Implement capacity computation: Viewport level = visible_count entries; Page level = visible_count + 2*overscan entries
-  - [ ] 6.4 Implement `get(line_number)` returning Option<&LineLayout> if cached and valid
-  - [ ] 6.5 Implement `insert(line_layout)` with LRU eviction when at capacity, prioritising retention of caret line and visible lines
-  - [ ] 6.6 Implement `invalidate_line(line_number)` setting entry validity to Invalid
-  - [ ] 6.7 Implement `invalidate_from(line_number)` invalidating all entries at or after the given line (for line-count-changing edits)
-  - [ ] 6.8 Implement `invalidate_wrap_data()` setting all entries to Positions validity (positions valid, breaks need recalc)
-  - [ ] 6.9 Implement `clear()` invalidating all entries (for font/zoom changes)
-  - [ ] 6.10 Implement memory budget enforcement: track total memory, evict LRU entries when budget exceeds configured limit, evict until below 90%
-  - [ ] 6.11 Implement manual cache level override via configuration
-  - [ ] 6.12 Write unit tests for insertion, eviction, invalidation, memory budget, and level auto-selection
+- [x] 6. LineLayoutCache
+  - [x] 6.1 Implement `LineLayoutCache` struct with storage (Vec or HashMap of LineLayout entries), capacity, cache level, memory budget tracking
+  - [x] 6.2 Implement auto-selection of cache level based on document size: Document for <10K lines, Page for <1M lines, Viewport for >=1M lines
+  - [x] 6.3 Implement capacity computation: Viewport level = visible_count entries; Page level = visible_count + 2*overscan entries
+  - [x] 6.4 Implement `get(line_number)` returning Option<&LineLayout> if cached and valid
+  - [x] 6.5 Implement `insert(line_layout)` with LRU eviction when at capacity, prioritising retention of caret line and visible lines
+  - [x] 6.6 Implement `invalidate_line(line_number)` setting entry validity to Invalid
+  - [x] 6.7 Implement `invalidate_from(line_number)` invalidating all entries at or after the given line (for line-count-changing edits)
+  - [x] 6.8 Implement `invalidate_wrap_data()` setting all entries to Positions validity (positions valid, breaks need recalc)
+  - [x] 6.9 Implement `clear()` invalidating all entries (for font/zoom changes)
+  - [x] 6.10 Implement memory budget enforcement: track total memory, evict LRU entries when budget exceeds configured limit, evict until below 90%
+  - [x] 6.11 Implement manual cache level override via configuration
+  - [x] 6.12 Write unit tests for insertion, eviction, invalidation, memory budget, and level auto-selection
   - Covers: Requirement 3 (AC 3.1–3.9), Requirement 7 (AC 7.4, 7.5)
 
-- [ ] 7. Long-line chunked measurement
-  - [ ] 7.1 Implement `is_long_line(line_length, threshold)` detection function
-  - [ ] 7.2 Implement `ChunkedMeasurement` struct tracking: line_number, measured_start_offset, measured_end_offset, x_positions for measured range, horizontal_overscan_chars
-  - [ ] 7.3 Implement `measure_chunk(line_content, viewport_start_char, viewport_width_chars, overscan)` computing x-positions only for the visible sub-range plus overscan margins
-  - [ ] 7.4 Implement chunk extension on horizontal scroll: detect overlap with current measured range, measure only the newly exposed portion, splice into existing positions
-  - [ ] 7.5 Implement chunk shifting when scroll moves beyond overlap: discard old positions, measure new range from scratch
-  - [ ] 7.6 Implement render-chunk subdivision: split visible chunk into segments of max 300 chars (configurable) for draw calls
-  - [ ] 7.7 Implement lazy total-line-width estimation: compute from average character width when full measurement is not available
-  - [ ] 7.8 Implement just-in-time measurement for horizontal scroll beyond measured chunk within frame budget, deferring extended pre-computation to idle
-  - [ ] 7.9 Implement sub-range line content request interface (for memory-efficient document model integration)
-  - [ ] 7.10 Write unit tests for chunk measurement, extension, shifting, subdivision, and width estimation
+- [x] 7. Long-line chunked measurement
+  - [x] 7.1 Implement `is_long_line(line_length, threshold)` detection function
+  - [x] 7.2 Implement `ChunkedMeasurement` struct tracking: line_number, measured_start_offset, measured_end_offset, x_positions for measured range, horizontal_overscan_chars
+  - [x] 7.3 Implement `measure_chunk(line_content, viewport_start_char, viewport_width_chars, overscan)` computing x-positions only for the visible sub-range plus overscan margins
+  - [x] 7.4 Implement chunk extension on horizontal scroll: detect overlap with current measured range, measure only the newly exposed portion, splice into existing positions
+  - [x] 7.5 Implement chunk shifting when scroll moves beyond overlap: discard old positions, measure new range from scratch
+  - [x] 7.6 Implement render-chunk subdivision: split visible chunk into segments of max 300 chars (configurable) for draw calls
+  - [x] 7.7 Implement lazy total-line-width estimation: compute from average character width when full measurement is not available
+  - [x] 7.8 Implement just-in-time measurement for horizontal scroll beyond measured chunk within frame budget, deferring extended pre-computation to idle
+  - [x] 7.9 Implement sub-range line content request interface (for memory-efficient document model integration)
+  - [x] 7.10 Write unit tests for chunk measurement, extension, shifting, subdivision, and width estimation
   - Covers: Requirement 1 (AC 1.1–1.9), Requirement 7 (AC 7.6)
 
-- [ ] 8. Viewport renderer (chunked viewport rendering)
-  - [ ] 8.1 Implement `ViewportRenderer` struct tracking visible_range (top_line, visible_count), overscan_buffer_lines, and frame budget
-  - [ ] 8.2 Implement `visible_lines()` returning iterator over only the lines in the visible viewport (O(visible_count) complexity)
-  - [ ] 8.3 Implement `lines_to_render()` returning the visible lines that need paint (excludes overscan-only lines)
-  - [ ] 8.4 Implement `overscan_lines()` returning lines in the overscan buffer (above and below viewport) for pre-measurement
-  - [ ] 8.5 Implement frame budget tracking: start timer at frame begin, check remaining budget before each line measurement, defer if budget exceeded
-  - [ ] 8.6 Implement viewport-change detection and notification emission for triggering overscan pre-computation
-  - [ ] 8.7 Implement significant-line tracking: mark caret line, top line, and visible lines for priority cache retention
-  - [ ] 8.8 Implement repaint-only-visible on full repaint triggers (resize, theme change)
-  - [ ] 8.9 Write unit tests for visible range computation, overscan range, frame budget enforcement, and O(visible_count) complexity
+- [x] 8. Viewport renderer (chunked viewport rendering)
+  - [x] 8.1 Implement `ViewportRenderer` struct tracking visible_range (top_line, visible_count), overscan_buffer_lines, and frame budget
+  - [x] 8.2 Implement `visible_lines()` returning iterator over only the lines in the visible viewport (O(visible_count) complexity)
+  - [x] 8.3 Implement `lines_to_render()` returning the visible lines that need paint (excludes overscan-only lines)
+  - [x] 8.4 Implement `overscan_lines()` returning lines in the overscan buffer (above and below viewport) for pre-measurement
+  - [x] 8.5 Implement frame budget tracking: start timer at frame begin, check remaining budget before each line measurement, defer if budget exceeded
+  - [x] 8.6 Implement viewport-change detection and notification emission for triggering overscan pre-computation
+  - [x] 8.7 Implement significant-line tracking: mark caret line, top line, and visible lines for priority cache retention
+  - [x] 8.8 Implement repaint-only-visible on full repaint triggers (resize, theme change)
+  - [x] 8.9 Write unit tests for visible range computation, overscan range, frame budget enforcement, and O(visible_count) complexity
   - Covers: Requirement 4 (AC 4.1–4.8)
 
-- [ ] 9. Viewport-aware lazy computation
-  - [ ] 9.1 Implement `LazyComputationEngine` struct tracking measured_frontier, unmeasured_count, and scroll direction
-  - [ ] 9.2 Implement `ensure_layout_to(display_line)` that computes layouts on demand for all lines up to the target without computing intermediate lines when jumping
-  - [ ] 9.3 Implement navigation-triggered computation: on GOTO or FIND, compute layout for target line and its overscan buffer only
-  - [ ] 9.4 Implement progressive-loading coordination: skip measurement for lines not yet delivered by background-io, reporting them as "not yet available"
-  - [ ] 9.5 Implement measured-frontier tracking: record the furthest line with valid layout, never measure beyond background-io delivery boundary
-  - [ ] 9.6 Implement idle-time pre-computation: measure overscan lines ahead of scroll direction (predictive pre-fetch based on recent scroll momentum)
-  - [ ] 9.7 Implement unmeasured-line count exposure for status bar progress display
-  - [ ] 9.8 Write unit tests for lazy computation, frontier tracking, navigation jumps, and progressive loading coordination
+- [x] 9. Viewport-aware lazy computation
+  - [x] 9.1 Implement `LazyComputationEngine` struct tracking measured_frontier, unmeasured_count, and scroll direction
+  - [x] 9.2 Implement `ensure_layout_to(display_line)` that computes layouts on demand for all lines up to the target without computing intermediate lines when jumping
+  - [x] 9.3 Implement navigation-triggered computation: on GOTO or FIND, compute layout for target line and its overscan buffer only
+  - [x] 9.4 Implement progressive-loading coordination: skip measurement for lines not yet delivered by background-io, reporting them as "not yet available"
+  - [x] 9.5 Implement measured-frontier tracking: record the furthest line with valid layout, never measure beyond background-io delivery boundary
+  - [x] 9.6 Implement idle-time pre-computation: measure overscan lines ahead of scroll direction (predictive pre-fetch based on recent scroll momentum)
+  - [x] 9.7 Implement unmeasured-line count exposure for status bar progress display
+  - [x] 9.8 Write unit tests for lazy computation, frontier tracking, navigation jumps, and progressive loading coordination
   - Covers: Requirement 5 (AC 5.1–5.7)
 
-- [ ] 10. Cache invalidation engine
-  - [ ] 10.1 Implement `InvalidationEvent` enum: LineEdit(line), LineCountChange(from_line, delta), FontChange, ZoomChange, ViewportWidthChange, StyleChange(line), FoldToggle(line)
-  - [ ] 10.2 Implement single-line edit invalidation: set edited line's LineLayout to Invalid
-  - [ ] 10.3 Implement line-count-change invalidation: invalidate all entries at or after edit position
-  - [ ] 10.4 Implement font/zoom change invalidation: clear entire PositionCache and invalidate all LineLayout entries
-  - [ ] 10.5 Implement viewport-width change: set all entries to Positions validity (wrap breaks need recalc, positions remain valid), do NOT clear PositionCache
-  - [ ] 10.6 Implement style-change invalidation: set affected line to CheckTextAndStyle, triggering re-measurement only if style actually differs
-  - [ ] 10.7 Implement batch coalescing: multiple edits within a single frame produce a single coalesced invalidation covering the affected range
-  - [ ] 10.8 Implement fold/visibility-change handling: do NOT invalidate cached data for hidden lines (cache remains valid for when line becomes visible again)
-  - [ ] 10.9 Implement `invalidation_count` metric tracking (events per second) at DEBUG log level
-  - [ ] 10.10 Write unit tests for each invalidation type, batch coalescing, and fold-toggle non-invalidation
+- [x] 10. Cache invalidation engine
+  - [x] 10.1 Implement `InvalidationEvent` enum: LineEdit(line), LineCountChange(from_line, delta), FontChange, ZoomChange, ViewportWidthChange, StyleChange(line), FoldToggle(line)
+  - [x] 10.2 Implement single-line edit invalidation: set edited line's LineLayout to Invalid
+  - [x] 10.3 Implement line-count-change invalidation: invalidate all entries at or after edit position
+  - [x] 10.4 Implement font/zoom change invalidation: clear entire PositionCache and invalidate all LineLayout entries
+  - [x] 10.5 Implement viewport-width change: set all entries to Positions validity (wrap breaks need recalc, positions remain valid), do NOT clear PositionCache
+  - [x] 10.6 Implement style-change invalidation: set affected line to CheckTextAndStyle, triggering re-measurement only if style actually differs
+  - [x] 10.7 Implement batch coalescing: multiple edits within a single frame produce a single coalesced invalidation covering the affected range
+  - [x] 10.8 Implement fold/visibility-change handling: do NOT invalidate cached data for hidden lines (cache remains valid for when line becomes visible again)
+  - [x] 10.9 Implement `invalidation_count` metric tracking (events per second) at DEBUG log level
+  - [x] 10.10 Write unit tests for each invalidation type, batch coalescing, and fold-toggle non-invalidation
   - Covers: Requirement 9 (AC 9.1–9.9)
 
-- [ ] 11. Scroll performance optimisation
-  - [ ] 11.1 Implement scroll-velocity detection: categorise as slow (<5 lines/frame), medium, or fast (>20 lines/frame)
-  - [ ] 11.2 Implement simplified layout fallback for cache misses during fast scroll: use monospace approximation or last-known average character width
-  - [ ] 11.3 Implement scroll-stop detection (no scroll event for 100ms) triggering a refinement pass
-  - [ ] 11.4 Implement refinement pass: replace simplified layouts with accurate measurements for all visible lines, repaint only if visual differences detected
-  - [ ] 11.5 Implement per-line measurement budget enforcement: defer measurement exceeding 2ms per line, render with approximate metrics
-  - [ ] 11.6 Implement adaptive overscan pre-computation: slow scroll pre-computes exact layouts, fast scroll uses simplified until stop
-  - [ ] 11.7 Implement horizontal scroll 60fps target using chunked measurement (delegate to task 7) with idle-time horizontal overscan pre-computation
-  - [ ] 11.8 Implement warm-cache guarantee for normal-speed scrolling (<3 lines/event) via idle-time overscan pre-computation
-  - [ ] 11.9 Write unit tests for velocity detection, fallback layout, refinement triggering, and per-line budget
+- [x] 11. Scroll performance optimisation
+  - [x] 11.1 Implement scroll-velocity detection: categorise as slow (<5 lines/frame), medium, or fast (>20 lines/frame)
+  - [x] 11.2 Implement simplified layout fallback for cache misses during fast scroll: use monospace approximation or last-known average character width
+  - [x] 11.3 Implement scroll-stop detection (no scroll event for 100ms) triggering a refinement pass
+  - [x] 11.4 Implement refinement pass: replace simplified layouts with accurate measurements for all visible lines, repaint only if visual differences detected
+  - [x] 11.5 Implement per-line measurement budget enforcement: defer measurement exceeding 2ms per line, render with approximate metrics
+  - [x] 11.6 Implement adaptive overscan pre-computation: slow scroll pre-computes exact layouts, fast scroll uses simplified until stop
+  - [x] 11.7 Implement horizontal scroll 60fps target using chunked measurement (delegate to task 7) with idle-time horizontal overscan pre-computation
+  - [x] 11.8 Implement warm-cache guarantee for normal-speed scrolling (<3 lines/event) via idle-time overscan pre-computation
+  - [x] 11.9 Write unit tests for velocity detection, fallback layout, refinement triggering, and per-line budget
   - Covers: Requirement 8 (AC 8.1–8.8)
 
-- [ ] 12. Large-file status indicators
-  - [ ] 12.1 Implement `LargeFileStatus` struct with fields: file_size_display, line_count_display, loading_progress, layout_progress, is_paused
-  - [ ] 12.2 Implement file-size display logic: show human-readable format (e.g., "245 MB") only when file exceeds large-file threshold (100 MB)
-  - [ ] 12.3 Implement line-count display: show "counting…" placeholder during progressive loading, switch to actual count when complete
-  - [ ] 12.4 Implement loading progress indicator: percentage loaded + estimated time remaining during background-io streaming
-  - [ ] 12.5 Implement layout progress indicator: fraction of lines with computed layouts (e.g., "Layout: 60%")
-  - [ ] 12.6 Implement completion transition: progress → static summary → fade/remove after 5 seconds
-  - [ ] 12.7 Implement paused state display when idle-processing yields to user input
-  - [ ] 12.8 Implement suppression for files below the large-file threshold
-  - [ ] 12.9 Write unit tests for status formatting, threshold suppression, and state transitions
+- [x] 12. Large-file status indicators
+  - [x] 12.1 Implement `LargeFileStatus` struct with fields: file_size_display, line_count_display, loading_progress, layout_progress, is_paused
+  - [x] 12.2 Implement file-size display logic: show human-readable format (e.g., "245 MB") only when file exceeds large-file threshold (100 MB)
+  - [x] 12.3 Implement line-count display: show "counting…" placeholder during progressive loading, switch to actual count when complete
+  - [x] 12.4 Implement loading progress indicator: percentage loaded + estimated time remaining during background-io streaming
+  - [x] 12.5 Implement layout progress indicator: fraction of lines with computed layouts (e.g., "Layout: 60%")
+  - [x] 12.6 Implement completion transition: progress → static summary → fade/remove after 5 seconds
+  - [x] 12.7 Implement paused state display when idle-processing yields to user input
+  - [x] 12.8 Implement suppression for files below the large-file threshold
+  - [x] 12.9 Write unit tests for status formatting, threshold suppression, and state transitions
   - Covers: Requirement 6 (AC 6.1–6.7)
 
-- [ ] 13. Memory-efficient document model integration
-  - [ ] 13.1 Implement line-content access via document-model's line API using borrowed `&str` slices (avoid owned String allocation for measurement-only access)
-  - [ ] 13.2 Implement coordination with background-io progressive loading: query line availability before measurement, handle "not yet available" gracefully
-  - [ ] 13.3 Implement sub-range character request for long lines: request only needed character range from document model when range-access is supported
-  - [ ] 13.4 Implement 64-bit line number support throughout all cache keys and lookup indices (documents exceeding 2^31 lines)
-  - [ ] 13.5 Write unit tests for borrowed-slice access, unavailable-line handling, and 64-bit line number edge cases
+- [x] 13. Memory-efficient document model integration
+  - [x] 13.1 Implement line-content access via document-model's line API using borrowed `&str` slices (avoid owned String allocation for measurement-only access)
+  - [x] 13.2 Implement coordination with background-io progressive loading: query line availability before measurement, handle "not yet available" gracefully
+  - [x] 13.3 Implement sub-range character request for long lines: request only needed character range from document model when range-access is supported
+  - [x] 13.4 Implement 64-bit line number support throughout all cache keys and lookup indices (documents exceeding 2^31 lines)
+  - [x] 13.5 Write unit tests for borrowed-slice access, unavailable-line handling, and 64-bit line number edge cases
   - Covers: Requirement 7 (AC 7.1–7.7)
 
-- [ ] 14. Surface trait and measurement abstraction
-  - [ ] 14.1 Define `MeasurementSurface` trait with methods: `measure_text(text: &str, style: StyleSlotIndex) -> Vec<f32>` (x-positions), `measure_range(text: &str, start: usize, end: usize, style: StyleSlotIndex) -> Vec<f32>`, `average_char_width(style: StyleSlotIndex) -> f32`
-  - [ ] 14.2 Implement mock `MeasurementSurface` for testing (fixed-width character metrics)
-  - [ ] 14.3 Integrate MeasurementSurface into PositionCache and ChunkedMeasurement as the measurement backend
-  - [ ] 14.4 Write unit tests verifying platform-independence (all cache logic works with mock surface)
+- [x] 14. Surface trait and measurement abstraction
+  - [x] 14.1 Define `MeasurementSurface` trait with methods: `measure_text(text: &str, style: StyleSlotIndex) -> Vec<f32>` (x-positions), `measure_range(text: &str, start: usize, end: usize, style: StyleSlotIndex) -> Vec<f32>`, `average_char_width(style: StyleSlotIndex) -> f32`
+  - [x] 14.2 Implement mock `MeasurementSurface` for testing (fixed-width character metrics)
+  - [x] 14.3 Integrate MeasurementSurface into PositionCache and ChunkedMeasurement as the measurement backend
+  - [x] 14.4 Write unit tests verifying platform-independence (all cache logic works with mock surface)
   - Covers: NFR-4 (Platform Independence)
 
-- [ ] 15. Property-based tests
-  - [ ] 15.1 Write PBT: PositionCache eviction fairness
-  - [ ] 15.2 Write PBT: LineLayoutCache consistency after invalidation sequences
-  - [ ] 15.3 Write PBT: chunked measurement overlap correctness
-  - [ ] 15.4 Write PBT: viewport rendering O(visible_count) complexity
-  - [ ] 15.5 Write PBT: cache invalidation completeness under random edits
-  - [ ] 15.6 Write PBT: scroll clamping and frame budget adherence
+- [x] 15. Property-based tests
+  - [x] 15.1 Write PBT: PositionCache eviction fairness
+  - [x] 15.2 Write PBT: LineLayoutCache consistency after invalidation sequences
+  - [x] 15.3 Write PBT: chunked measurement overlap correctness
+  - [x] 15.4 Write PBT: viewport rendering O(visible_count) complexity
+  - [x] 15.5 Write PBT: cache invalidation completeness under random edits
+  - [x] 15.6 Write PBT: scroll clamping and frame budget adherence
   - Covers: Requirements 1, 2, 3, 4, 8, 9 (see Property-Based Test Definitions below)
 
-- [ ] 16. Integration tests
-  - [ ] 16.1 Write integration test: full measurement lifecycle (measure → cache → invalidate → re-measure)
-  - [ ] 16.2 Write integration test: long-line horizontal scroll with chunk extension and re-measurement
-  - [ ] 16.3 Write integration test: viewport scroll through 1M-line document with cache warm/cold transitions
-  - [ ] 16.4 Write integration test: concurrent access from render thread and idle-processing thread
-  - [ ] 16.5 Write integration test: memory budget enforcement under sustained measurement load
+- [x] 16. Integration tests
+  - [x] 16.1 Write integration test: full measurement lifecycle (measure → cache → invalidate → re-measure)
+  - [x] 16.2 Write integration test: long-line horizontal scroll with chunk extension and re-measurement
+  - [x] 16.3 Write integration test: viewport scroll through 1M-line document with cache warm/cold transitions
+  - [x] 16.4 Write integration test: concurrent access from render thread and idle-processing thread
+  - [x] 16.5 Write integration test: memory budget enforcement under sustained measurement load
   - Covers: End-to-end validation across Requirements 1–9
 
 ---

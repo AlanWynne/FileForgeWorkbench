@@ -1,4 +1,4 @@
-# Implementation Plan: Auto-Indentation (`ff-auto-indent`)
+﻿# Implementation Plan: Auto-Indentation (`ff-auto-indent`)
 
 ## Overview
 
@@ -17,169 +17,169 @@ This is a **Wave 7 (Language and Highlighting)** sub-project. It depends on:
 
 ## Tasks
 
-- [ ] 1. Crate scaffolding and core types
-  - [ ] 1.1 Create `crates/ff-auto-indent/Cargo.toml` with dependencies (regex, thiserror, tracing, proptest dev-dep) and deps on `ff-logging`, `ff-command`, `ff-config`, `ff-document-model`, `ff-edit-operations`, `ff-undo-redo`, `ff-language-service`
-  - [ ] 1.2 Create `crates/ff-auto-indent/src/lib.rs` with module declarations and public API re-exports
-  - [ ] 1.3 Create module files: `config/mod.rs`, `config/indent_config.rs`, `config/mode.rs`, `engine.rs`, `compute/mod.rs`, `compute/maintain.rs`, `compute/smart.rs`, `compute/brace_expand.rs`, `compute/comment_continue.rs`, `pattern/mod.rs`, `pattern/matcher.rs`, `pattern/indent_patterns.rs`, `commands/mod.rs`, `commands/indent.rs`, `commands/unindent.rs`, `types.rs`, `error.rs`
-  - [ ] 1.4 Add `ff-auto-indent` to workspace `Cargo.toml` members list
-  - [ ] 1.5 Define `AutoIndentMode` enum (None, Maintain, Smart) with `Default` impl returning Smart
-  - [ ] 1.6 Define `IndentStyle` enum (Tabs, Spaces) with `Default` impl returning Spaces
-  - [ ] 1.7 Define `IndentConfig` struct with fields: `indent_size` (u8), `tab_size` (u8), `style` (IndentStyle)
-  - [ ] 1.8 Implement `IndentConfig::indent_string()` returning tab char or N spaces based on style
-  - [ ] 1.9 Implement `IndentConfig::whitespace_for_level(level)` computing physical whitespace for a given indent level
-  - [ ] 1.10 Implement `IndentConfig::columns_to_level()` and `level_to_columns()` conversion methods
-  - [ ] 1.11 Define `IndentLevel` newtype with `new()`, `value()`, `increment()`, and `decrement()` (clamped at zero)
-  - [ ] 1.12 Write unit tests for AutoIndentMode default, IndentConfig indent_string computation, whitespace_for_level, columns/level conversions, IndentLevel increment/decrement clamping
+- [x] 1. Crate scaffolding and core types
+  - [x] 1.1 Create `crates/ff-auto-indent/Cargo.toml` with dependencies (regex, thiserror, tracing, proptest dev-dep) and deps on `ff-logging`, `ff-command`, `ff-config`, `ff-document-model`, `ff-edit-operations`, `ff-undo-redo`, `ff-language-service`
+  - [x] 1.2 Create `crates/ff-auto-indent/src/lib.rs` with module declarations and public API re-exports
+  - [x] 1.3 Create module files: `config/mod.rs`, `config/indent_config.rs`, `config/mode.rs`, `engine.rs`, `compute/mod.rs`, `compute/maintain.rs`, `compute/smart.rs`, `compute/brace_expand.rs`, `compute/comment_continue.rs`, `pattern/mod.rs`, `pattern/matcher.rs`, `pattern/indent_patterns.rs`, `commands/mod.rs`, `commands/indent.rs`, `commands/unindent.rs`, `types.rs`, `error.rs`
+  - [x] 1.4 Add `ff-auto-indent` to workspace `Cargo.toml` members list
+  - [x] 1.5 Define `AutoIndentMode` enum (None, Maintain, Smart) with `Default` impl returning Smart
+  - [x] 1.6 Define `IndentStyle` enum (Tabs, Spaces) with `Default` impl returning Spaces
+  - [x] 1.7 Define `IndentConfig` struct with fields: `indent_size` (u8), `tab_size` (u8), `style` (IndentStyle)
+  - [x] 1.8 Implement `IndentConfig::indent_string()` returning tab char or N spaces based on style
+  - [x] 1.9 Implement `IndentConfig::whitespace_for_level(level)` computing physical whitespace for a given indent level
+  - [x] 1.10 Implement `IndentConfig::columns_to_level()` and `level_to_columns()` conversion methods
+  - [x] 1.11 Define `IndentLevel` newtype with `new()`, `value()`, `increment()`, and `decrement()` (clamped at zero)
+  - [x] 1.12 Write unit tests for AutoIndentMode default, IndentConfig indent_string computation, whitespace_for_level, columns/level conversions, IndentLevel increment/decrement clamping
   - Covers: Requirement 1 (AC 1.1, 1.5), Requirement 4 (AC 4.6)
 
-- [ ] 2. Configuration integration and mode management
-  - [ ] 2.1 Implement `AutoIndentMode::from_str()` parsing "none", "maintain", "smart" (case-insensitive) with `UnknownMode` error for unrecognised values
-  - [ ] 2.2 Implement configuration-system integration: read `editor.auto_indent`, `editor.indent_size`, `editor.tab_size`, `editor.use_tabs` keys from `ff-config`
-  - [ ] 2.3 Implement per-language override: when language TOML defines `[indent]` table with `indent_size`, `tab_size`, `use_tabs`, override global settings
-  - [ ] 2.4 Implement hot-reload callback: on configuration change, update `AutoIndentEngine` mode and config without document close/reopen
-  - [ ] 2.5 Implement EditorConfig precedence: when `indent_style` and `indent_size` from EditorConfig are active, override global config for that file
-  - [ ] 2.6 Implement `effective_mode()` logic: return Smart if language has indent patterns, Maintain otherwise, unless user explicitly set mode
-  - [ ] 2.7 Write unit tests for mode parsing (valid/invalid), config loading, per-language override, EditorConfig precedence, effective_mode fallback
+- [x] 2. Configuration integration and mode management
+  - [x] 2.1 Implement `AutoIndentMode::from_str()` parsing "none", "maintain", "smart" (case-insensitive) with `UnknownMode` error for unrecognised values
+  - [x] 2.2 Implement configuration-system integration: read `editor.auto_indent`, `editor.indent_size`, `editor.tab_size`, `editor.use_tabs` keys from `ff-config`
+  - [x] 2.3 Implement per-language override: when language TOML defines `[indent]` table with `indent_size`, `tab_size`, `use_tabs`, override global settings
+  - [x] 2.4 Implement hot-reload callback: on configuration change, update `AutoIndentEngine` mode and config without document close/reopen
+  - [x] 2.5 Implement EditorConfig precedence: when `indent_style` and `indent_size` from EditorConfig are active, override global config for that file
+  - [x] 2.6 Implement `effective_mode()` logic: return Smart if language has indent patterns, Maintain otherwise, unless user explicitly set mode
+  - [x] 2.7 Write unit tests for mode parsing (valid/invalid), config loading, per-language override, EditorConfig precedence, effective_mode fallback
   - Covers: Requirement 1 (AC 1.2–1.6)
 
-- [ ] 3. Maintain-indent logic
-  - [ ] 3.1 Define `LineIndentInfo` struct with fields: `whitespace` (String), `column_width` (u32), `level` (IndentLevel), `first_content_column` (u32)
-  - [ ] 3.2 Implement `parse_line_indent(line_text, tab_size) -> LineIndentInfo` scanning leading whitespace, expanding tabs to column positions
-  - [ ] 3.3 Implement `MaintainIndentComputer::compute(config, context) -> IndentResult` copying reference line's leading whitespace to new line
-  - [ ] 3.4 Implement caret-at-column-zero case: when `caret_column == 0`, return `SimpleIndent { whitespace: "" }` (zero indent)
-  - [ ] 3.5 Implement caret-within-indent case: when caret is within leading whitespace, reproduce only whitespace before caret position using `extract_whitespace_to_column()`
-  - [ ] 3.6 Implement `extract_whitespace_to_column(line_text, column, tab_size) -> String` generating whitespace up to the specified column respecting use_tabs setting
-  - [ ] 3.7 Write unit tests for maintain-indent with spaces-only lines, tabs-only lines, mixed tabs/spaces, caret-at-column-zero, caret-within-indent, empty reference line
+- [x] 3. Maintain-indent logic
+  - [x] 3.1 Define `LineIndentInfo` struct with fields: `whitespace` (String), `column_width` (u32), `level` (IndentLevel), `first_content_column` (u32)
+  - [x] 3.2 Implement `parse_line_indent(line_text, tab_size) -> LineIndentInfo` scanning leading whitespace, expanding tabs to column positions
+  - [x] 3.3 Implement `MaintainIndentComputer::compute(config, context) -> IndentResult` copying reference line's leading whitespace to new line
+  - [x] 3.4 Implement caret-at-column-zero case: when `caret_column == 0`, return `SimpleIndent { whitespace: "" }` (zero indent)
+  - [x] 3.5 Implement caret-within-indent case: when caret is within leading whitespace, reproduce only whitespace before caret position using `extract_whitespace_to_column()`
+  - [x] 3.6 Implement `extract_whitespace_to_column(line_text, column, tab_size) -> String` generating whitespace up to the specified column respecting use_tabs setting
+  - [x] 3.7 Write unit tests for maintain-indent with spaces-only lines, tabs-only lines, mixed tabs/spaces, caret-at-column-zero, caret-within-indent, empty reference line
   - Covers: Requirement 2 (AC 2.1–2.6)
 
-- [ ] 4. Smart-indent pattern engine
-  - [ ] 4.1 Define `CompiledPattern` struct wrapping `regex::Regex` with source string for diagnostics
-  - [ ] 4.2 Implement `CompiledPattern::try_compile(source) -> Option<Self>` with WARN log on invalid regex, returning None
-  - [ ] 4.3 Implement `CompiledPattern::is_match(text) -> bool` delegating to compiled regex
-  - [ ] 4.4 Define `IndentPatterns` struct with optional fields: `increase_pattern`, `decrease_pattern`, `statement_pattern`, `statement_end_pattern`, `block_start`, `block_end`
-  - [ ] 4.5 Implement `PatternMatcher::from_language_definition()` constructing from raw TOML pattern strings, compiling each with `try_compile`, caching results
-  - [ ] 4.6 Implement `PatternMatcher` convenience methods: `matches_increase()`, `matches_decrease()`, `matches_statement()`, `matches_statement_end()`, `matches_block_start()`, `matches_block_end()`
-  - [ ] 4.7 Implement pattern matching against non-comment content: strip comment/string portions of line before matching (using syntax state from language-service)
-  - [ ] 4.8 Write unit tests for valid regex compilation, invalid regex handling, pattern matching against sample lines, non-comment content extraction, empty pattern (None) never matches
+- [x] 4. Smart-indent pattern engine
+  - [x] 4.1 Define `CompiledPattern` struct wrapping `regex::Regex` with source string for diagnostics
+  - [x] 4.2 Implement `CompiledPattern::try_compile(source) -> Option<Self>` with WARN log on invalid regex, returning None
+  - [x] 4.3 Implement `CompiledPattern::is_match(text) -> bool` delegating to compiled regex
+  - [x] 4.4 Define `IndentPatterns` struct with optional fields: `increase_pattern`, `decrease_pattern`, `statement_pattern`, `statement_end_pattern`, `block_start`, `block_end`
+  - [x] 4.5 Implement `PatternMatcher::from_language_definition()` constructing from raw TOML pattern strings, compiling each with `try_compile`, caching results
+  - [x] 4.6 Implement `PatternMatcher` convenience methods: `matches_increase()`, `matches_decrease()`, `matches_statement()`, `matches_statement_end()`, `matches_block_start()`, `matches_block_end()`
+  - [x] 4.7 Implement pattern matching against non-comment content: strip comment/string portions of line before matching (using syntax state from language-service)
+  - [x] 4.8 Write unit tests for valid regex compilation, invalid regex handling, pattern matching against sample lines, non-comment content extraction, empty pattern (None) never matches
   - Covers: Requirement 3 (AC 3.2, 3.4), Requirement 9 (AC 9.1–9.2, 9.7)
 
-- [ ] 5. Indent increase logic
-  - [ ] 5.1 Implement `SmartIndentComputer::compute_newline(config, patterns, context) -> IndentResult` examining reference line against increase_pattern
-  - [ ] 5.2 Implement indent-increase detection: if reference line matches increase_pattern (and not decrease_pattern), new line gets reference_level + 1
-  - [ ] 5.3 Implement net-effect calculation via `compute_net_adjustment()`: when both increase and decrease match, effects cancel (net = 0)
-  - [ ] 5.4 Implement fallback to Maintain when no increase_pattern is defined for active language
-  - [ ] 5.5 Implement statement-indent logic: when reference line matches `statement_pattern`, indent only the immediately following line by one level; subsequent lines return to original
-  - [ ] 5.6 Implement statement-end detection: when reference line matches `statement_end_pattern`, signal return to pre-statement indent level
-  - [ ] 5.7 Write unit tests for increase-only match, decrease-only match, both match (net cancel), no patterns (fallback), statement continuation indent, statement end return
+- [x] 5. Indent increase logic
+  - [x] 5.1 Implement `SmartIndentComputer::compute_newline(config, patterns, context) -> IndentResult` examining reference line against increase_pattern
+  - [x] 5.2 Implement indent-increase detection: if reference line matches increase_pattern (and not decrease_pattern), new line gets reference_level + 1
+  - [x] 5.3 Implement net-effect calculation via `compute_net_adjustment()`: when both increase and decrease match, effects cancel (net = 0)
+  - [x] 5.4 Implement fallback to Maintain when no increase_pattern is defined for active language
+  - [x] 5.5 Implement statement-indent logic: when reference line matches `statement_pattern`, indent only the immediately following line by one level; subsequent lines return to original
+  - [x] 5.6 Implement statement-end detection: when reference line matches `statement_end_pattern`, signal return to pre-statement indent level
+  - [x] 5.7 Write unit tests for increase-only match, decrease-only match, both match (net cancel), no patterns (fallback), statement continuation indent, statement end return
   - Covers: Requirement 3 (AC 3.1, 3.3, 3.5–3.6)
 
-- [ ] 6. Indent decrease logic
-  - [ ] 6.1 Implement `SmartIndentComputer::check_decrease_trigger(config, patterns, line_text, caret_column) -> Option<IndentLevel>` detecting when a typed character completes a decrease pattern
-  - [ ] 6.2 Implement real-time decrease detection: evaluate decrease_pattern against leading whitespace + characters typed so far on the line
-  - [ ] 6.3 Implement guard: decrease only triggers when line content before caret is only whitespace (no pre-existing non-whitespace content)
-  - [ ] 6.4 Implement floor clamping: indent level never reduced below zero (column 0)
-  - [ ] 6.5 Implement `compute_char_indent()` on AutoIndentEngine as the public API for character-typed decrease trigger
-  - [ ] 6.6 Implement no-op when decrease_pattern is not defined for active language
-  - [ ] 6.7 Write unit tests for decrease trigger on `}`, decrease on `end`, no trigger when line has content before caret, floor clamping at zero, no pattern defined
+- [x] 6. Indent decrease logic
+  - [x] 6.1 Implement `SmartIndentComputer::check_decrease_trigger(config, patterns, line_text, caret_column) -> Option<IndentLevel>` detecting when a typed character completes a decrease pattern
+  - [x] 6.2 Implement real-time decrease detection: evaluate decrease_pattern against leading whitespace + characters typed so far on the line
+  - [x] 6.3 Implement guard: decrease only triggers when line content before caret is only whitespace (no pre-existing non-whitespace content)
+  - [x] 6.4 Implement floor clamping: indent level never reduced below zero (column 0)
+  - [x] 6.5 Implement `compute_char_indent()` on AutoIndentEngine as the public API for character-typed decrease trigger
+  - [x] 6.6 Implement no-op when decrease_pattern is not defined for active language
+  - [x] 6.7 Write unit tests for decrease trigger on `}`, decrease on `end`, no trigger when line has content before caret, floor clamping at zero, no pattern defined
   - Covers: Requirement 4 (AC 4.1–4.7)
 
-- [ ] 7. Block expansion (Enter between braces)
-  - [ ] 7.1 Implement `BraceExpander::try_expand(config, patterns, context) -> Option<IndentResult>` detecting caret between block_start and block_end on same line
-  - [ ] 7.2 Implement three-line expansion: (a) split at caret, (b) middle line indented one level deeper, (c) closing delimiter at original indent level
-  - [ ] 7.3 Implement `BraceExpansion` variant of IndentResult with `middle_whitespace`, `closing_whitespace`, and `closing_text` fields
-  - [ ] 7.4 Implement caret positioning: result indicates caret should be at end of indentation on middle line
-  - [ ] 7.5 Implement no-op when block_start or block_end patterns are not defined for active language
-  - [ ] 7.6 Implement pattern detection: verify character immediately before caret matches block_start and character immediately after caret matches block_end
-  - [ ] 7.7 Write unit tests for `{}` expansion, `()` expansion (if configured), nested braces, no expansion when patterns undefined, no expansion when caret not between delimiters
+- [x] 7. Block expansion (Enter between braces)
+  - [x] 7.1 Implement `BraceExpander::try_expand(config, patterns, context) -> Option<IndentResult>` detecting caret between block_start and block_end on same line
+  - [x] 7.2 Implement three-line expansion: (a) split at caret, (b) middle line indented one level deeper, (c) closing delimiter at original indent level
+  - [x] 7.3 Implement `BraceExpansion` variant of IndentResult with `middle_whitespace`, `closing_whitespace`, and `closing_text` fields
+  - [x] 7.4 Implement caret positioning: result indicates caret should be at end of indentation on middle line
+  - [x] 7.5 Implement no-op when block_start or block_end patterns are not defined for active language
+  - [x] 7.6 Implement pattern detection: verify character immediately before caret matches block_start and character immediately after caret matches block_end
+  - [x] 7.7 Write unit tests for `{}` expansion, `()` expansion (if configured), nested braces, no expansion when patterns undefined, no expansion when caret not between delimiters
   - Covers: Requirement 5 (AC 5.1–5.5)
 
-- [ ] 8. Comment continuation
-  - [ ] 8.1 Define `CommentMarkers` struct with fields: `block_start`, `block_end`, `block_continue`, `line_prefix`, `continue_line` (bool)
-  - [ ] 8.2 Implement `CommentContinuer::compute(config, markers, context) -> Option<IndentResult>` detecting comment context and producing continuation marker
-  - [ ] 8.3 Implement block comment continuation: when caret is inside block comment (not on closing line), insert `block_continue` marker aligned with preceding comment line
-  - [ ] 8.4 Implement line comment continuation: when reference line is a line-comment and `continue_line` is enabled, prefix new line with `line_prefix` + space
-  - [ ] 8.5 Implement end-of-block-comment detection: when reference line contains block_end (`*/`), do NOT insert continuation marker
-  - [ ] 8.6 Implement double-Enter break-out: when reference line has only whitespace + continuation marker (no content after), and user presses Enter again, produce `RemovePreviousContinuation` result removing the marker from previous line
-  - [ ] 8.7 Implement `is_empty_continuation(line_text, markers) -> bool` detecting lines with only whitespace + marker
-  - [ ] 8.8 Implement syntax-state-based detection: consult `in_comment` / `in_block_comment` from IndentContext (sourced from language-service syntax state) rather than text-only heuristics
-  - [ ] 8.9 Write unit tests for block comment continue (`/* ... */`), line comment continue (`//`), end-of-block no-continue, double-Enter break-out, continue_line disabled, markers not defined
+- [x] 8. Comment continuation
+  - [x] 8.1 Define `CommentMarkers` struct with fields: `block_start`, `block_end`, `block_continue`, `line_prefix`, `continue_line` (bool)
+  - [x] 8.2 Implement `CommentContinuer::compute(config, markers, context) -> Option<IndentResult>` detecting comment context and producing continuation marker
+  - [x] 8.3 Implement block comment continuation: when caret is inside block comment (not on closing line), insert `block_continue` marker aligned with preceding comment line
+  - [x] 8.4 Implement line comment continuation: when reference line is a line-comment and `continue_line` is enabled, prefix new line with `line_prefix` + space
+  - [x] 8.5 Implement end-of-block-comment detection: when reference line contains block_end (`*/`), do NOT insert continuation marker
+  - [x] 8.6 Implement double-Enter break-out: when reference line has only whitespace + continuation marker (no content after), and user presses Enter again, produce `RemovePreviousContinuation` result removing the marker from previous line
+  - [x] 8.7 Implement `is_empty_continuation(line_text, markers) -> bool` detecting lines with only whitespace + marker
+  - [x] 8.8 Implement syntax-state-based detection: consult `in_comment` / `in_block_comment` from IndentContext (sourced from language-service syntax state) rather than text-only heuristics
+  - [x] 8.9 Write unit tests for block comment continue (`/* ... */`), line comment continue (`//`), end-of-block no-continue, double-Enter break-out, continue_line disabled, markers not defined
   - Covers: Requirement 6 (AC 6.1–6.7)
 
-- [ ] 9. Indent/Unindent commands
-  - [ ] 9.1 Implement `IndentCommand` struct with `register(registry)` registering `edit.indent` command with Tab keybinding and display name "Indent"
-  - [ ] 9.2 Implement `IndentCommand::execute(engine, line_contents) -> IndentCommandAction` prepending one indent_string to each line
-  - [ ] 9.3 Implement whitespace normalisation on indent: when lines have mixed leading whitespace, normalise to current `use_tabs` setting before adding new level
-  - [ ] 9.4 Implement `UnindentCommand` struct with `register(registry)` registering `edit.unindent` command with Shift+Tab keybinding and display name "Unindent"
-  - [ ] 9.5 Implement `UnindentCommand::execute(engine, line_contents) -> IndentCommandAction` removing one indent_level from each line
-  - [ ] 9.6 Implement unindent floor: when line has less than one full indent_level of whitespace, remove all remaining whitespace (result is column 0)
-  - [ ] 9.7 Implement unindent whitespace handling: one tab counts as tab_size columns, remove spaces up to indent_size columns per unindent
-  - [ ] 9.8 Implement single-line unindent: when no selection, `edit.unindent` unindents the caret's current line
-  - [ ] 9.9 Implement Tab delegation: when no multi-line selection is active, Tab delegates to normal tab insertion in edit-operations (not indent command)
-  - [ ] 9.10 Implement rectangular selection support: when rectangular selection is active, indent/unindent all lines spanned by the selection
-  - [ ] 9.11 Define `IndentCommandAction` struct with `lines: Vec<u64>` and `new_indents: Vec<Option<String>>` describing the result
-  - [ ] 9.12 Write unit tests for indent single/multi-line, unindent single/multi-line, unindent below floor, mixed whitespace normalisation, Tab delegation, rectangular selection, modified line marker setting
+- [x] 9. Indent/Unindent commands
+  - [x] 9.1 Implement `IndentCommand` struct with `register(registry)` registering `edit.indent` command with Tab keybinding and display name "Indent"
+  - [x] 9.2 Implement `IndentCommand::execute(engine, line_contents) -> IndentCommandAction` prepending one indent_string to each line
+  - [x] 9.3 Implement whitespace normalisation on indent: when lines have mixed leading whitespace, normalise to current `use_tabs` setting before adding new level
+  - [x] 9.4 Implement `UnindentCommand` struct with `register(registry)` registering `edit.unindent` command with Shift+Tab keybinding and display name "Unindent"
+  - [x] 9.5 Implement `UnindentCommand::execute(engine, line_contents) -> IndentCommandAction` removing one indent_level from each line
+  - [x] 9.6 Implement unindent floor: when line has less than one full indent_level of whitespace, remove all remaining whitespace (result is column 0)
+  - [x] 9.7 Implement unindent whitespace handling: one tab counts as tab_size columns, remove spaces up to indent_size columns per unindent
+  - [x] 9.8 Implement single-line unindent: when no selection, `edit.unindent` unindents the caret's current line
+  - [x] 9.9 Implement Tab delegation: when no multi-line selection is active, Tab delegates to normal tab insertion in edit-operations (not indent command)
+  - [x] 9.10 Implement rectangular selection support: when rectangular selection is active, indent/unindent all lines spanned by the selection
+  - [x] 9.11 Define `IndentCommandAction` struct with `lines: Vec<u64>` and `new_indents: Vec<Option<String>>` describing the result
+  - [x] 9.12 Write unit tests for indent single/multi-line, unindent single/multi-line, unindent below floor, mixed whitespace normalisation, Tab delegation, rectangular selection, modified line marker setting
   - Covers: Requirement 7 (AC 7.1–7.6), Requirement 8 (AC 8.1–8.7), Requirement 10 (AC 10.6)
 
-- [ ] 10. AutoIndentEngine facade and integration
-  - [ ] 10.1 Implement `AutoIndentEngine` struct composing mode, config, patterns, comment_markers with constructor `new()` and `with_config()`
-  - [ ] 10.2 Implement `compute_newline_indent(context) -> IndentResult` as the main entry point coordinating mode selection: None → NoIndent, Maintain → MaintainIndentComputer, Smart → priority order (BraceExpander → CommentContinuer → SmartIndentComputer)
-  - [ ] 10.3 Implement `compute_char_indent(line_text, caret_column) -> Option<String>` as the character-typed entry point delegating to SmartIndentComputer decrease check
-  - [ ] 10.4 Implement `set_language_patterns()` and `set_comment_markers()` for language change events
-  - [ ] 10.5 Implement `set_mode()` and `set_config()` for hot-reload callbacks
-  - [ ] 10.6 Define `IndentContext` struct with fields: `reference_line`, `reference_text`, `caret_column`, `in_comment`, `in_block_comment`, `is_empty_comment_continuation`
-  - [ ] 10.7 Implement EditorTransaction integration: auto-indent result is applied within the same transaction as the newline insertion (coordination with edit-operations)
-  - [ ] 10.8 Implement multi-caret support: compute indent independently for each caret's reference line, all within the same UndoGroup
-  - [ ] 10.9 Implement "don't fight the user" logic: after auto-indent is applied, do not re-indent if user immediately edits the whitespace
-  - [ ] 10.10 Implement DEBUG-level logging for each indent decision: reference line number, matched pattern (if any), resulting indent level
-  - [ ] 10.11 Write unit tests for engine facade coordination, mode dispatch, None mode returns NoIndent, multi-caret independence, transaction grouping, DEBUG logging output
+- [x] 10. AutoIndentEngine facade and integration
+  - [x] 10.1 Implement `AutoIndentEngine` struct composing mode, config, patterns, comment_markers with constructor `new()` and `with_config()`
+  - [x] 10.2 Implement `compute_newline_indent(context) -> IndentResult` as the main entry point coordinating mode selection: None → NoIndent, Maintain → MaintainIndentComputer, Smart → priority order (BraceExpander → CommentContinuer → SmartIndentComputer)
+  - [x] 10.3 Implement `compute_char_indent(line_text, caret_column) -> Option<String>` as the character-typed entry point delegating to SmartIndentComputer decrease check
+  - [x] 10.4 Implement `set_language_patterns()` and `set_comment_markers()` for language change events
+  - [x] 10.5 Implement `set_mode()` and `set_config()` for hot-reload callbacks
+  - [x] 10.6 Define `IndentContext` struct with fields: `reference_line`, `reference_text`, `caret_column`, `in_comment`, `in_block_comment`, `is_empty_comment_continuation`
+  - [x] 10.7 Implement EditorTransaction integration: auto-indent result is applied within the same transaction as the newline insertion (coordination with edit-operations)
+  - [x] 10.8 Implement multi-caret support: compute indent independently for each caret's reference line, all within the same UndoGroup
+  - [x] 10.9 Implement "don't fight the user" logic: after auto-indent is applied, do not re-indent if user immediately edits the whitespace
+  - [x] 10.10 Implement DEBUG-level logging for each indent decision: reference line number, matched pattern (if any), resulting indent level
+  - [x] 10.11 Write unit tests for engine facade coordination, mode dispatch, None mode returns NoIndent, multi-caret independence, transaction grouping, DEBUG logging output
   - Covers: Requirement 10 (AC 10.1–10.7), Requirement 1 (AC 1.4)
 
-- [ ] 11. Language TOML definition support
-  - [ ] 11.1 Implement loading `[indent]` table from language TOML: `increase_pattern`, `decrease_pattern`, `statement_pattern`, `statement_end_pattern`, `block_start`, `block_end`
-  - [ ] 11.2 Implement loading `[indent]` override keys: `indent_size`, `tab_size`, `use_tabs` taking precedence over global editor settings
-  - [ ] 11.3 Implement loading `[comment]` table: `block_start`, `block_end`, `block_continue`, `line_prefix`, `continue_line`
-  - [ ] 11.4 Implement language change response: when active language changes (via language-service event), reload patterns and markers from new definition
-  - [ ] 11.5 Implement fallback: when language definition lacks `[indent]` table, use global settings with Maintain behaviour
-  - [ ] 11.6 Implement regex caching: compile all patterns at language load time, cache compiled regexes, log WARN for invalid patterns
-  - [ ] 11.7 Write unit tests for TOML loading (complete definition, partial definition, missing indent table, invalid regex pattern handling, comment table loading)
+- [x] 11. Language TOML definition support
+  - [x] 11.1 Implement loading `[indent]` table from language TOML: `increase_pattern`, `decrease_pattern`, `statement_pattern`, `statement_end_pattern`, `block_start`, `block_end`
+  - [x] 11.2 Implement loading `[indent]` override keys: `indent_size`, `tab_size`, `use_tabs` taking precedence over global editor settings
+  - [x] 11.3 Implement loading `[comment]` table: `block_start`, `block_end`, `block_continue`, `line_prefix`, `continue_line`
+  - [x] 11.4 Implement language change response: when active language changes (via language-service event), reload patterns and markers from new definition
+  - [x] 11.5 Implement fallback: when language definition lacks `[indent]` table, use global settings with Maintain behaviour
+  - [x] 11.6 Implement regex caching: compile all patterns at language load time, cache compiled regexes, log WARN for invalid patterns
+  - [x] 11.7 Write unit tests for TOML loading (complete definition, partial definition, missing indent table, invalid regex pattern handling, comment table loading)
   - Covers: Requirement 9 (AC 9.1–9.7)
 
-- [ ] 12. Error handling
-  - [ ] 12.1 Define `AutoIndentError` enum: `PatternCompileError`, `InvalidConfig`, `LineOutOfRange`, `UnknownMode`, `CommandRegistration`
-  - [ ] 12.2 Implement `thiserror::Error` derive with `[auto-indent] operation: description` message format for all variants
-  - [ ] 12.3 Implement graceful degradation: invalid patterns treated as non-matching (WARN log), invalid config values fall back to defaults (WARN log)
-  - [ ] 12.4 Write unit tests for all error variants, message formatting (≤200 chars), and graceful degradation paths
+- [x] 12. Error handling
+  - [x] 12.1 Define `AutoIndentError` enum: `PatternCompileError`, `InvalidConfig`, `LineOutOfRange`, `UnknownMode`, `CommandRegistration`
+  - [x] 12.2 Implement `thiserror::Error` derive with `[auto-indent] operation: description` message format for all variants
+  - [x] 12.3 Implement graceful degradation: invalid patterns treated as non-matching (WARN log), invalid config values fall back to defaults (WARN log)
+  - [x] 12.4 Write unit tests for all error variants, message formatting (≤200 chars), and graceful degradation paths
   - Covers: Cross-cutting error handling standard
 
-- [ ] 13. Property-based tests
-  - [ ] 13.1 Write PBT: indent level never goes negative (Property 1)
-  - [ ] 13.2 Write PBT: maintain-indent exactly reproduces reference line's leading whitespace (Property 2)
-  - [ ] 13.3 Write PBT: enter at column zero produces no indent (Property 3)
-  - [ ] 13.4 Write PBT: smart indent with increase_pattern always adds exactly one indent_level (Property 4)
-  - [ ] 13.5 Write PBT: smart indent net cancellation when both patterns match (Property 5)
-  - [ ] 13.6 Write PBT: indent command adds one indent_string per line (Property 6)
-  - [ ] 13.7 Write PBT: unindent never goes below zero (Property 7)
-  - [ ] 13.8 Write PBT: unindent removes exactly one level when possible (Property 8)
-  - [ ] 13.9 Write PBT: None mode always produces NoIndent (Property 9)
-  - [ ] 13.10 Write PBT: indent string consistency with style (Property 10)
-  - [ ] 13.11 Write PBT: brace expansion middle line is one level deeper (Property 11)
-  - [ ] 13.12 Write PBT: indent/unindent roundtrip is identity (Property 12)
-  - [ ] 13.13 Write PBT: invalid regex safety — try_compile returns None, matcher never matches (Property 13)
-  - [ ] 13.14 Write PBT: caret-within-indent preserves partial whitespace (Property 14)
+- [x] 13. Property-based tests
+  - [x] 13.1 Write PBT: indent level never goes negative (Property 1)
+  - [x] 13.2 Write PBT: maintain-indent exactly reproduces reference line's leading whitespace (Property 2)
+  - [x] 13.3 Write PBT: enter at column zero produces no indent (Property 3)
+  - [x] 13.4 Write PBT: smart indent with increase_pattern always adds exactly one indent_level (Property 4)
+  - [x] 13.5 Write PBT: smart indent net cancellation when both patterns match (Property 5)
+  - [x] 13.6 Write PBT: indent command adds one indent_string per line (Property 6)
+  - [x] 13.7 Write PBT: unindent never goes below zero (Property 7)
+  - [x] 13.8 Write PBT: unindent removes exactly one level when possible (Property 8)
+  - [x] 13.9 Write PBT: None mode always produces NoIndent (Property 9)
+  - [x] 13.10 Write PBT: indent string consistency with style (Property 10)
+  - [x] 13.11 Write PBT: brace expansion middle line is one level deeper (Property 11)
+  - [x] 13.12 Write PBT: indent/unindent roundtrip is identity (Property 12)
+  - [x] 13.13 Write PBT: invalid regex safety — try_compile returns None, matcher never matches (Property 13)
+  - [x] 13.14 Write PBT: caret-within-indent preserves partial whitespace (Property 14)
   - Covers: Requirements 1–10 (see Property-Based Test Definitions below)
 
-- [ ] 14. Integration tests
-  - [ ] 14.1 Write integration test: full newline indent cycle — configure engine with C-like patterns, insert newline after `{`, verify indent increased by one level
-  - [ ] 14.2 Write integration test: decrease on closing brace — type `}` on indented blank line, verify indent decreased by one level
-  - [ ] 14.3 Write integration test: enter-between-braces — press Enter between `{}`, verify three-line expansion with correct relative indentation
-  - [ ] 14.4 Write integration test: block comment continuation — press Enter inside `/* ... */`, verify `* ` marker inserted and aligned
-  - [ ] 14.5 Write integration test: line comment continuation — press Enter after `// comment`, verify `// ` prefix on new line
-  - [ ] 14.6 Write integration test: double-Enter comment break-out — press Enter twice on empty continuation line, verify marker removed
-  - [ ] 14.7 Write integration test: indent/unindent multi-line selection — select 5 lines, Tab indents all, Shift+Tab unindents all, verify roundtrip
-  - [ ] 14.8 Write integration test: language change — switch from C to Python patterns, verify next indent uses new language rules
-  - [ ] 14.9 Write integration test: hot-reload — change indent_size from 4 to 2 via config, verify subsequent indents use new size
-  - [ ] 14.10 Write integration test: multi-caret indent — two carets on different lines, Enter pressed, each gets independent correct indent
-  - [ ] 14.11 Write integration test: None mode — configure None mode, press Enter, verify new line at column 0 with no whitespace
+- [x] 14. Integration tests
+  - [x] 14.1 Write integration test: full newline indent cycle — configure engine with C-like patterns, insert newline after `{`, verify indent increased by one level
+  - [x] 14.2 Write integration test: decrease on closing brace — type `}` on indented blank line, verify indent decreased by one level
+  - [x] 14.3 Write integration test: enter-between-braces — press Enter between `{}`, verify three-line expansion with correct relative indentation
+  - [x] 14.4 Write integration test: block comment continuation — press Enter inside `/* ... */`, verify `* ` marker inserted and aligned
+  - [x] 14.5 Write integration test: line comment continuation — press Enter after `// comment`, verify `// ` prefix on new line
+  - [x] 14.6 Write integration test: double-Enter comment break-out — press Enter twice on empty continuation line, verify marker removed
+  - [x] 14.7 Write integration test: indent/unindent multi-line selection — select 5 lines, Tab indents all, Shift+Tab unindents all, verify roundtrip
+  - [x] 14.8 Write integration test: language change — switch from C to Python patterns, verify next indent uses new language rules
+  - [x] 14.9 Write integration test: hot-reload — change indent_size from 4 to 2 via config, verify subsequent indents use new size
+  - [x] 14.10 Write integration test: multi-caret indent — two carets on different lines, Enter pressed, each gets independent correct indent
+  - [x] 14.11 Write integration test: None mode — configure None mode, press Enter, verify new line at column 0 with no whitespace
   - Covers: End-to-end validation across Requirements 1–10
 
 ---

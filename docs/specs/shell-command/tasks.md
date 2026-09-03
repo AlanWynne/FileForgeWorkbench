@@ -1,4 +1,4 @@
-# Implementation Plan: Shell Command Subsystem (`ff-shell`)
+﻿# Implementation Plan: Shell Command Subsystem (`ff-shell`)
 
 ## Overview
 
@@ -14,208 +14,208 @@ The implementation is structured in 16 phases proceeding from crate scaffolding 
 
 ## Tasks
 
-- [ ] 1. Crate scaffolding and module structure
-  - [ ] 1.1 Create `crates/ff-shell/Cargo.toml` with all dependencies from design
-  - [ ] 1.2 Create `crates/ff-shell/src/lib.rs` with module declarations and crate-level docs
-  - [ ] 1.3 Create `crates/ff-shell/src/error.rs` with `ShellError` enum (all variants from design)
-  - [ ] 1.4 Create module stub files for all submodules (engine, config, platform, profile, executor/*, capture, pipe, environment, working_dir, process, terminal/*, panel/*, commands)
-  - [ ] 1.5 Add `ff-shell` to workspace `Cargo.toml` members list
-  - [ ] 1.6 Verify `cargo check -p ff-shell` compiles with stubs
+- [x] 1. Crate scaffolding and module structure
+  - [x] 1.1 Create `crates/ff-shell/Cargo.toml` with all dependencies from design
+  - [x] 1.2 Create `crates/ff-shell/src/lib.rs` with module declarations and crate-level docs
+  - [x] 1.3 Create `crates/ff-shell/src/error.rs` with `ShellError` enum (all variants from design)
+  - [x] 1.4 Create module stub files for all submodules (engine, config, platform, profile, executor/*, capture, pipe, environment, working_dir, process, terminal/*, panel/*, commands)
+  - [x] 1.5 Add `ff-shell` to workspace `Cargo.toml` members list
+  - [x] 1.6 Verify `cargo check -p ff-shell` compiles with stubs
 
-- [ ] 2. Shell resolution and platform detection
-  - [ ] 2.1 Implement `PlatformDetector` in `src/platform.rs` with Windows default (`cmd.exe`)
-  - [ ] 2.2 Implement POSIX shell resolution (`$SHELL` → `bash` → `sh` fallback chain)
-  - [ ] 2.3 Implement `shell.default_shell` config override logic
-  - [ ] 2.4 Implement shell override parsing (first argument to SHELL as shell name)
-  - [ ] 2.5 Implement executable existence check (PATH lookup and absolute path validation)
-  - [ ] 2.6 Return `ShellError::ShellNotFound` when no valid shell is resolved
-  - [ ] 2.7 Write unit tests for platform detection (mock env vars and PATH)
+- [x] 2. Shell resolution and platform detection
+  - [x] 2.1 Implement `PlatformDetector` in `src/platform.rs` with Windows default (`cmd.exe`)
+  - [x] 2.2 Implement POSIX shell resolution (`$SHELL` → `bash` → `sh` fallback chain)
+  - [x] 2.3 Implement `shell.default_shell` config override logic
+  - [x] 2.4 Implement shell override parsing (first argument to SHELL as shell name)
+  - [x] 2.5 Implement executable existence check (PATH lookup and absolute path validation)
+  - [x] 2.6 Return `ShellError::ShellNotFound` when no valid shell is resolved
+  - [x] 2.7 Write unit tests for platform detection (mock env vars and PATH)
 
-- [ ] 3. Shell profile resolver
-  - [ ] 3.1 Implement `ProfileResolver` in `src/profile.rs` with profile table lookup
-  - [ ] 3.2 Implement exact name matching against `[shell.profiles]` keys
-  - [ ] 3.3 Implement fallback to raw PATH resolution when no profile matches
-  - [ ] 3.4 Implement profile `args` and `env` extraction
-  - [ ] 3.5 Write unit tests for profile matching and fallback behaviour
+- [x] 3. Shell profile resolver
+  - [x] 3.1 Implement `ProfileResolver` in `src/profile.rs` with profile table lookup
+  - [x] 3.2 Implement exact name matching against `[shell.profiles]` keys
+  - [x] 3.3 Implement fallback to raw PATH resolution when no profile matches
+  - [x] 3.4 Implement profile `args` and `env` extraction
+  - [x] 3.5 Write unit tests for profile matching and fallback behaviour
 
-- [ ] 4. Configuration provider and hot-reload
-  - [ ] 4.1 Implement `ShellConfigProvider` in `src/config.rs` with `ff-config` integration
-  - [ ] 4.2 Implement typed reading of all `shell.*` keys with defaults
-  - [ ] 4.3 Implement validation: invalid `shell.mode` → warning + fallback to `"prompt"`
-  - [ ] 4.4 Implement validation: invalid `shell.timeout_seconds` → warning + fallback to 30
-  - [ ] 4.5 Implement `Reload_Callback` registration for hot-reload support
-  - [ ] 4.6 Implement unknown key logging (warn and continue)
-  - [ ] 4.7 Write unit tests for config parsing, defaults, and invalid value handling
+- [x] 4. Configuration provider and hot-reload
+  - [x] 4.1 Implement `ShellConfigProvider` in `src/config.rs` with `ff-config` integration
+  - [x] 4.2 Implement typed reading of all `shell.*` keys with defaults
+  - [x] 4.3 Implement validation: invalid `shell.mode` → warning + fallback to `"prompt"`
+  - [x] 4.4 Implement validation: invalid `shell.timeout_seconds` → warning + fallback to 30
+  - [x] 4.5 Implement `Reload_Callback` registration for hot-reload support
+  - [x] 4.6 Implement unknown key logging (warn and continue)
+  - [x] 4.7 Write unit tests for config parsing, defaults, and invalid value handling
 
-- [ ] 5. Environment builder
-  - [ ] 5.1 Implement `EnvironmentBuilder` in `src/environment.rs` with OS env inheritance
-  - [ ] 5.2 Implement `shell.env` table merging (override on collision)
-  - [ ] 5.3 Implement Windows variable expansion (`%VAR%` syntax)
-  - [ ] 5.4 Implement POSIX variable expansion (`$VAR` and `${VAR}` syntax)
-  - [ ] 5.5 Implement undefined variable substitution (empty string + DEBUG log)
-  - [ ] 5.6 Implement per-profile env overlay merging
-  - [ ] 5.7 Write unit tests for env merging and variable expansion
+- [x] 5. Environment builder
+  - [x] 5.1 Implement `EnvironmentBuilder` in `src/environment.rs` with OS env inheritance
+  - [x] 5.2 Implement `shell.env` table merging (override on collision)
+  - [x] 5.3 Implement Windows variable expansion (`%VAR%` syntax)
+  - [x] 5.4 Implement POSIX variable expansion (`$VAR` and `${VAR}` syntax)
+  - [x] 5.5 Implement undefined variable substitution (empty string + DEBUG log)
+  - [x] 5.6 Implement per-profile env overlay merging
+  - [x] 5.7 Write unit tests for env merging and variable expansion
 
-- [ ] 6. Working directory resolver
-  - [ ] 6.1 Implement `WorkingDirResolver` in `src/working_dir.rs`
-  - [ ] 6.2 Implement `project_root` mode with project-open check
-  - [ ] 6.3 Implement `project_root` fallback to home directory when no project is open
-  - [ ] 6.4 Implement `file_directory` mode with active file path extraction
-  - [ ] 6.5 Implement `file_directory` fallback chain (project root → home)
-  - [ ] 6.6 Write unit tests for all resolution paths and fallback chains
+- [x] 6. Working directory resolver
+  - [x] 6.1 Implement `WorkingDirResolver` in `src/working_dir.rs`
+  - [x] 6.2 Implement `project_root` mode with project-open check
+  - [x] 6.3 Implement `project_root` fallback to home directory when no project is open
+  - [x] 6.4 Implement `file_directory` mode with active file path extraction
+  - [x] 6.5 Implement `file_directory` fallback chain (project root → home)
+  - [x] 6.6 Write unit tests for all resolution paths and fallback chains
 
-- [ ] 7. Command executor (async process spawning and output streaming)
-  - [ ] 7.1 Implement `CommandExecutor` in `src/executor/spawn.rs` with `tokio::process::Command`
-  - [ ] 7.2 Implement async stdout/stderr capture via `tokio::io::BufReader` line streaming
-  - [ ] 7.3 Implement `OutputCapture` struct with incremental append in `src/executor/output.rs`
-  - [ ] 7.4 Implement non-blocking execution (spawn on background task, never block GUI thread)
-  - [ ] 7.5 Implement process exit status collection (exit code, signal, force-kill)
-  - [ ] 7.6 Implement `ProcessHandle` in `src/process.rs` with state tracking
-  - [ ] 7.7 Write unit tests for spawn, output capture, and exit status parsing
+- [x] 7. Command executor (async process spawning and output streaming)
+  - [x] 7.1 Implement `CommandExecutor` in `src/executor/spawn.rs` with `tokio::process::Command`
+  - [x] 7.2 Implement async stdout/stderr capture via `tokio::io::BufReader` line streaming
+  - [x] 7.3 Implement `OutputCapture` struct with incremental append in `src/executor/output.rs`
+  - [x] 7.4 Implement non-blocking execution (spawn on background task, never block GUI thread)
+  - [x] 7.5 Implement process exit status collection (exit code, signal, force-kill)
+  - [x] 7.6 Implement `ProcessHandle` in `src/process.rs` with state tracking
+  - [x] 7.7 Write unit tests for spawn, output capture, and exit status parsing
 
-- [ ] 8. Document capture mode
-  - [ ] 8.1 Implement `CaptureHandler` in `src/capture.rs` with stdout-only collection
-  - [ ] 8.2 Implement line splitting (LF, CRLF, CR) into individual logical lines
-  - [ ] 8.3 Implement trailing newline suppression (no extra empty line)
-  - [ ] 8.4 Implement `CaptureTarget` with After/Before position calculation
-  - [ ] 8.5 Implement document insertion via `ff-document-model` line insertion API
-  - [ ] 8.6 Implement content preservation (no trimming or whitespace modification)
-  - [ ] 8.7 Implement non-zero exit code rejection (no insertion + retain target marker)
-  - [ ] 8.8 Implement partial output rejection on I/O error (no insertion)
-  - [ ] 8.9 Implement stderr routing to Output Panel (not into document)
-  - [ ] 8.10 Implement `CaptureResult` with lines_inserted count and undo_record
-  - [ ] 8.11 Write unit tests for line splitting, position calculation, and error cases
+- [x] 8. Document capture mode
+  - [x] 8.1 Implement `CaptureHandler` in `src/capture.rs` with stdout-only collection
+  - [x] 8.2 Implement line splitting (LF, CRLF, CR) into individual logical lines
+  - [x] 8.3 Implement trailing newline suppression (no extra empty line)
+  - [x] 8.4 Implement `CaptureTarget` with After/Before position calculation
+  - [x] 8.5 Implement document insertion via `ff-document-model` line insertion API
+  - [x] 8.6 Implement content preservation (no trimming or whitespace modification)
+  - [x] 8.7 Implement non-zero exit code rejection (no insertion + retain target marker)
+  - [x] 8.8 Implement partial output rejection on I/O error (no insertion)
+  - [x] 8.9 Implement stderr routing to Output Panel (not into document)
+  - [x] 8.10 Implement `CaptureResult` with lines_inserted count and undo_record
+  - [x] 8.11 Write unit tests for line splitting, position calculation, and error cases
 
-- [ ] 9. Undo support for document capture
-  - [ ] 9.1 Implement `CaptureUndoRecord` implementing `ff-command::UndoRecord` trait
-  - [ ] 9.2 Store insertion position, line count, and command metadata in undo record
-  - [ ] 9.3 Implement undo action: remove inserted lines, restore document state
-  - [ ] 9.4 Return `CommandResult::OkUndoable` from capture handler
-  - [ ] 9.5 Write unit tests for undo/redo round-trip integrity
+- [x] 9. Undo support for document capture
+  - [x] 9.1 Implement `CaptureUndoRecord` implementing `ff-command::UndoRecord` trait
+  - [x] 9.2 Store insertion position, line count, and command metadata in undo record
+  - [x] 9.3 Implement undo action: remove inserted lines, restore document state
+  - [x] 9.4 Return `CommandResult::OkUndoable` from capture handler
+  - [x] 9.5 Write unit tests for undo/redo round-trip integrity
 
-- [ ] 10. Stdin piping from document
-  - [ ] 10.1 Implement `StdinPiper` in `src/pipe.rs` with document content delivery
-  - [ ] 10.2 Implement selection-only piping (pipe selected text when selection is active)
-  - [ ] 10.3 Implement stdin handle closure after content write (EOF signal)
-  - [ ] 10.4 Implement combined pipe + capture mode (stdin pipe with A/B target insertion)
-  - [ ] 10.5 Implement pipe without target (output to Output Panel)
-  - [ ] 10.6 Implement empty document piping (immediate EOF)
-  - [ ] 10.7 Write unit tests for stdin delivery and EOF signalling
+- [x] 10. Stdin piping from document
+  - [x] 10.1 Implement `StdinPiper` in `src/pipe.rs` with document content delivery
+  - [x] 10.2 Implement selection-only piping (pipe selected text when selection is active)
+  - [x] 10.3 Implement stdin handle closure after content write (EOF signal)
+  - [x] 10.4 Implement combined pipe + capture mode (stdin pipe with A/B target insertion)
+  - [x] 10.5 Implement pipe without target (output to Output Panel)
+  - [x] 10.6 Implement empty document piping (immediate EOF)
+  - [x] 10.7 Write unit tests for stdin delivery and EOF signalling
 
-- [ ] 11. Terminal emulator (VT100 state machine)
-  - [ ] 11.1 Implement `Cell`, `CellAttributes`, and `TerminalColor` in `src/terminal/cell.rs`
-  - [ ] 11.2 Implement `TerminalGrid` in `src/terminal/grid.rs` with row-major storage
-  - [ ] 11.3 Implement grid operations: clear, scroll up, scroll down, line insert/delete
-  - [ ] 11.4 Implement `TerminalEmulator` in `src/terminal/emulator.rs` with parser state machine
-  - [ ] 11.5 Implement ANSI escape parsing: CSI sequences (cursor movement, erase, SGR)
-  - [ ] 11.6 Implement SGR attribute parsing (bold, italic, underline, foreground/background colors)
-  - [ ] 11.7 Implement cursor positioning (CUP, CUF, CUB, CUU, CUD, home, save/restore)
-  - [ ] 11.8 Implement screen clearing (ED — erase display, EL — erase line)
-  - [ ] 11.9 Implement scrollback buffer management (push lines above visible area)
-  - [ ] 11.10 Implement `feed()` method: byte stream → parsed sequences → grid state updates
-  - [ ] 11.11 Implement `resize()` method: reflow content to new dimensions
-  - [ ] 11.12 Write unit tests for escape sequence parsing and grid state transitions
+- [x] 11. Terminal emulator (VT100 state machine)
+  - [x] 11.1 Implement `Cell`, `CellAttributes`, and `TerminalColor` in `src/terminal/cell.rs`
+  - [x] 11.2 Implement `TerminalGrid` in `src/terminal/grid.rs` with row-major storage
+  - [x] 11.3 Implement grid operations: clear, scroll up, scroll down, line insert/delete
+  - [x] 11.4 Implement `TerminalEmulator` in `src/terminal/emulator.rs` with parser state machine
+  - [x] 11.5 Implement ANSI escape parsing: CSI sequences (cursor movement, erase, SGR)
+  - [x] 11.6 Implement SGR attribute parsing (bold, italic, underline, foreground/background colors)
+  - [x] 11.7 Implement cursor positioning (CUP, CUF, CUB, CUU, CUD, home, save/restore)
+  - [x] 11.8 Implement screen clearing (ED — erase display, EL — erase line)
+  - [x] 11.9 Implement scrollback buffer management (push lines above visible area)
+  - [x] 11.10 Implement `feed()` method: byte stream → parsed sequences → grid state updates
+  - [x] 11.11 Implement `resize()` method: reflow content to new dimensions
+  - [x] 11.12 Write unit tests for escape sequence parsing and grid state transitions
 
-- [ ] 12. PTY abstraction and terminal manager
-  - [ ] 12.1 Define `PtyHandle` trait in `src/terminal/pty.rs`
-  - [ ] 12.2 Implement `UnixPty` for Linux/macOS using `nix` crate (`openpty`/`forkpty`)
-  - [ ] 12.3 Implement `WindowsConPty` for Windows using `windows-rs` ConPTY API
-  - [ ] 12.4 Implement PTY resize support on both platforms
-  - [ ] 12.5 Implement `TerminalManager` in `src/terminal/manager.rs` with session lifecycle
-  - [ ] 12.6 Implement session creation: spawn shell in PTY with resolved env/cwd
-  - [ ] 12.7 Implement session close: terminate PTY child, clean up resources
-  - [ ] 12.8 Implement `write_input()`: route keyboard bytes to active session PTY
-  - [ ] 12.9 Implement `poll_output()`: read PTY output, feed into emulator
-  - [ ] 12.10 Implement multiple concurrent sessions (tab model)
-  - [ ] 12.11 Write unit tests for session lifecycle and PTY mocking
+- [x] 12. PTY abstraction and terminal manager
+  - [x] 12.1 Define `PtyHandle` trait in `src/terminal/pty.rs`
+  - [x] 12.2 Implement `UnixPty` for Linux/macOS using `nix` crate (`openpty`/`forkpty`)
+  - [x] 12.3 Implement `WindowsConPty` for Windows using `windows-rs` ConPTY API
+  - [x] 12.4 Implement PTY resize support on both platforms
+  - [x] 12.5 Implement `TerminalManager` in `src/terminal/manager.rs` with session lifecycle
+  - [x] 12.6 Implement session creation: spawn shell in PTY with resolved env/cwd
+  - [x] 12.7 Implement session close: terminate PTY child, clean up resources
+  - [x] 12.8 Implement `write_input()`: route keyboard bytes to active session PTY
+  - [x] 12.9 Implement `poll_output()`: read PTY output, feed into emulator
+  - [x] 12.10 Implement multiple concurrent sessions (tab model)
+  - [x] 12.11 Write unit tests for session lifecycle and PTY mocking
 
-- [ ] 13. Output panel (scrollback and history)
-  - [ ] 13.1 Implement `OutputPanel` in `src/panel/output_panel.rs` with `DockablePanel` trait
-  - [ ] 13.2 Implement `OutputEntry` creation with command text, working directory, and timestamp header
-  - [ ] 13.3 Implement scrollback buffer with configurable maximum (`output_buffer_lines`)
-  - [ ] 13.4 Implement overflow trimming (discard oldest entries when limit exceeded)
-  - [ ] 13.5 Implement incremental line append (streaming output as it arrives)
-  - [ ] 13.6 Implement exit code display in entry header (success/error indicator)
-  - [ ] 13.7 Implement `clear()` action (command ID: `"shell.output.clear"`)
-  - [ ] 13.8 Implement file reference parsing (`<path>:<line>` and `<path>(<line>)` patterns)
-  - [ ] 13.9 Implement text selection and copy-to-clipboard via `clipboard-operations`
-  - [ ] 13.10 Implement separator line between command entries (command + timestamp)
-  - [ ] 13.11 Register panel with `ff-layout` PanelRegistry (panel ID: `"shell.output"`, zone: Bottom)
-  - [ ] 13.12 Write unit tests for scrollback management, overflow, and file reference parsing
+- [x] 13. Output panel (scrollback and history)
+  - [x] 13.1 Implement `OutputPanel` in `src/panel/output_panel.rs` with `DockablePanel` trait
+  - [x] 13.2 Implement `OutputEntry` creation with command text, working directory, and timestamp header
+  - [x] 13.3 Implement scrollback buffer with configurable maximum (`output_buffer_lines`)
+  - [x] 13.4 Implement overflow trimming (discard oldest entries when limit exceeded)
+  - [x] 13.5 Implement incremental line append (streaming output as it arrives)
+  - [x] 13.6 Implement exit code display in entry header (success/error indicator)
+  - [x] 13.7 Implement `clear()` action (command ID: `"shell.output.clear"`)
+  - [x] 13.8 Implement file reference parsing (`<path>:<line>` and `<path>(<line>)` patterns)
+  - [x] 13.9 Implement text selection and copy-to-clipboard via `clipboard-operations`
+  - [x] 13.10 Implement separator line between command entries (command + timestamp)
+  - [x] 13.11 Register panel with `ff-layout` PanelRegistry (panel ID: `"shell.output"`, zone: Bottom)
+  - [x] 13.12 Write unit tests for scrollback management, overflow, and file reference parsing
 
-- [ ] 14. Terminal panel (tabbed sessions)
-  - [ ] 14.1 Implement `TerminalPanel` in `src/panel/terminal_panel.rs` with `DockablePanel` trait
-  - [ ] 14.2 Implement tabbed session display (one tab per active terminal session)
-  - [ ] 14.3 Implement keyboard focus capture: all input routed to active session when focused
-  - [ ] 14.4 Implement focus return: restore focus to previous editor panel on session close
-  - [ ] 14.5 Implement working directory display in panel title/status area
-  - [ ] 14.6 Implement shell profile selection for new terminal tabs
-  - [ ] 14.7 Register panel with `ff-layout` PanelRegistry (panel ID: `"shell.terminal"`, zone: Bottom)
-  - [ ] 14.8 Write unit tests for tab management and focus routing
+- [x] 14. Terminal panel (tabbed sessions)
+  - [x] 14.1 Implement `TerminalPanel` in `src/panel/terminal_panel.rs` with `DockablePanel` trait
+  - [x] 14.2 Implement tabbed session display (one tab per active terminal session)
+  - [x] 14.3 Implement keyboard focus capture: all input routed to active session when focused
+  - [x] 14.4 Implement focus return: restore focus to previous editor panel on session close
+  - [x] 14.5 Implement working directory display in panel title/status area
+  - [x] 14.6 Implement shell profile selection for new terminal tabs
+  - [x] 14.7 Register panel with `ff-layout` PanelRegistry (panel ID: `"shell.terminal"`, zone: Bottom)
+  - [x] 14.8 Write unit tests for tab management and focus routing
 
-- [ ] 15. Cancellation, timeout, and signal delivery
-  - [ ] 15.1 Implement `TimeoutGuard` in `src/executor/timeout.rs` with configurable deadline
-  - [ ] 15.2 Implement timeout trigger: terminate process when `timeout_seconds` elapses
-  - [ ] 15.3 Implement signal delivery in `src/executor/signal.rs` (SIGTERM on POSIX, TerminateProcess on Windows)
-  - [ ] 15.4 Implement escalation sequence: SIGTERM → wait 5s → SIGKILL/force-kill
-  - [ ] 15.5 Implement `CancellationToken` integration with `ff-workflow` for user-triggered cancel
-  - [ ] 15.6 Implement cancel action: user triggers cancel → token signalled → process terminated
-  - [ ] 15.7 Implement timeout exclusion for interactive terminal sessions
-  - [ ] 15.8 Implement timeout disabled when `timeout_seconds` is 0
-  - [ ] 15.9 Implement cancellation message display in Output Panel
-  - [ ] 15.10 Implement document capture abort on cancellation (no partial output insertion)
-  - [ ] 15.11 Write unit tests for timeout triggering, escalation, and cancellation flow
+- [x] 15. Cancellation, timeout, and signal delivery
+  - [x] 15.1 Implement `TimeoutGuard` in `src/executor/timeout.rs` with configurable deadline
+  - [x] 15.2 Implement timeout trigger: terminate process when `timeout_seconds` elapses
+  - [x] 15.3 Implement signal delivery in `src/executor/signal.rs` (SIGTERM on POSIX, TerminateProcess on Windows)
+  - [x] 15.4 Implement escalation sequence: SIGTERM → wait 5s → SIGKILL/force-kill
+  - [x] 15.5 Implement `CancellationToken` integration with `ff-workflow` for user-triggered cancel
+  - [x] 15.6 Implement cancel action: user triggers cancel → token signalled → process terminated
+  - [x] 15.7 Implement timeout exclusion for interactive terminal sessions
+  - [x] 15.8 Implement timeout disabled when `timeout_seconds` is 0
+  - [x] 15.9 Implement cancellation message display in Output Panel
+  - [x] 15.10 Implement document capture abort on cancellation (no partial output insertion)
+  - [x] 15.11 Write unit tests for timeout triggering, escalation, and cancellation flow
 
-- [ ] 16. Security mode gate
-  - [ ] 16.1 Implement `check_security_gate()` in `ShellEngine` with mode dispatch
-  - [ ] 16.2 Implement `Disabled` mode: refuse all invocations with informative error
-  - [ ] 16.3 Implement `Prompt` mode: delegate confirmation dialog to UI layer
-  - [ ] 16.4 Implement `Enabled` mode: execute without prompting
-  - [ ] 16.5 Implement default fallback: absent config → `"prompt"`
-  - [ ] 16.6 Implement macro dual-gate: require BOTH `shell.mode` AND macro security to permit
-  - [ ] 16.7 Implement macro rejection when mode is `"prompt"` (cannot show UI prompt from macro)
-  - [ ] 16.8 Write unit tests for all mode/source combinations
+- [x] 16. Security mode gate
+  - [x] 16.1 Implement `check_security_gate()` in `ShellEngine` with mode dispatch
+  - [x] 16.2 Implement `Disabled` mode: refuse all invocations with informative error
+  - [x] 16.3 Implement `Prompt` mode: delegate confirmation dialog to UI layer
+  - [x] 16.4 Implement `Enabled` mode: execute without prompting
+  - [x] 16.5 Implement default fallback: absent config → `"prompt"`
+  - [x] 16.6 Implement macro dual-gate: require BOTH `shell.mode` AND macro security to permit
+  - [x] 16.7 Implement macro rejection when mode is `"prompt"` (cannot show UI prompt from macro)
+  - [x] 16.8 Write unit tests for all mode/source combinations
 
-- [ ] 17. Command registration and shell engine
-  - [ ] 17.1 Implement `ShellEngine` struct in `src/engine.rs` as central coordinator
-  - [ ] 17.2 Implement command form validation (Requirements 9.1–9.6)
-  - [ ] 17.3 Implement mode routing: no args → terminal, args + no target → execute, args + A/B → capture
-  - [ ] 17.4 Implement invalid form rejection (source line commands, no args + target, multiple targets)
-  - [ ] 17.5 Implement `register_commands()` in `src/commands.rs` — register `shell.execute`, `shell.terminal`, `shell.capture`, `shell.output.clear`
-  - [ ] 17.6 Implement `CommandHandler` trait for each command ID with metadata
-  - [ ] 17.7 Implement TSO alias normalisation to canonical `"shell.execute"` command ID
-  - [ ] 17.8 Implement progress indicator emission via `ff-workflow::ProgressReporter`
-  - [ ] 17.9 Implement sequential execution queue (commands run sequentially by default)
-  - [ ] 17.10 Wire all components together: security gate → resolution → executor → output
-  - [ ] 17.11 Write unit tests for command form validation and mode routing
+- [x] 17. Command registration and shell engine
+  - [x] 17.1 Implement `ShellEngine` struct in `src/engine.rs` as central coordinator
+  - [x] 17.2 Implement command form validation (Requirements 9.1–9.6)
+  - [x] 17.3 Implement mode routing: no args → terminal, args + no target → execute, args + A/B → capture
+  - [x] 17.4 Implement invalid form rejection (source line commands, no args + target, multiple targets)
+  - [x] 17.5 Implement `register_commands()` in `src/commands.rs` — register `shell.execute`, `shell.terminal`, `shell.capture`, `shell.output.clear`
+  - [x] 17.6 Implement `CommandHandler` trait for each command ID with metadata
+  - [x] 17.7 Implement TSO alias normalisation to canonical `"shell.execute"` command ID
+  - [x] 17.8 Implement progress indicator emission via `ff-workflow::ProgressReporter`
+  - [x] 17.9 Implement sequential execution queue (commands run sequentially by default)
+  - [x] 17.10 Wire all components together: security gate → resolution → executor → output
+  - [x] 17.11 Write unit tests for command form validation and mode routing
 
-- [ ] 18. Property-based tests
-  - [ ] 18.1 Write property test: Shell resolution always produces valid path or error (Property 1)
-  - [ ] 18.2 Write property test: Document capture preserves line content exactly (Property 2)
-  - [ ] 18.3 Write property test: Capture undo restores document state (Property 3)
-  - [ ] 18.4 Write property test: Environment builder produces superset of OS environment (Property 4)
-  - [ ] 18.5 Write property test: Environment variable expansion is idempotent on literals (Property 5)
-  - [ ] 18.6 Write property test: Output panel scrollback respects maximum size (Property 6)
-  - [ ] 18.7 Write property test: Shell mode gate consistency (Property 7)
-  - [ ] 18.8 Write property test: Command form validation is complete (Property 8)
-  - [ ] 18.9 Write property test: Timeout guard terminates within bounded time (Property 9)
-  - [ ] 18.10 Write property test: Working directory resolution is deterministic (Property 10)
-  - [ ] 18.11 Write property test: Terminal emulator grid dimensions are invariant (Property 11)
-  - [ ] 18.12 Write property test: Profile resolution falls back to PATH lookup (Property 12)
-  - [ ] 18.13 Write property test: Configuration hot-reload convergence (Property 13)
-  - [ ] 18.14 Write property test: Exit code is always reported for completed commands (Property 14)
+- [x] 18. Property-based tests
+  - [x] 18.1 Write property test: Shell resolution always produces valid path or error (Property 1)
+  - [x] 18.2 Write property test: Document capture preserves line content exactly (Property 2)
+  - [x] 18.3 Write property test: Capture undo restores document state (Property 3)
+  - [x] 18.4 Write property test: Environment builder produces superset of OS environment (Property 4)
+  - [x] 18.5 Write property test: Environment variable expansion is idempotent on literals (Property 5)
+  - [x] 18.6 Write property test: Output panel scrollback respects maximum size (Property 6)
+  - [x] 18.7 Write property test: Shell mode gate consistency (Property 7)
+  - [x] 18.8 Write property test: Command form validation is complete (Property 8)
+  - [x] 18.9 Write property test: Timeout guard terminates within bounded time (Property 9)
+  - [x] 18.10 Write property test: Working directory resolution is deterministic (Property 10)
+  - [x] 18.11 Write property test: Terminal emulator grid dimensions are invariant (Property 11)
+  - [x] 18.12 Write property test: Profile resolution falls back to PATH lookup (Property 12)
+  - [x] 18.13 Write property test: Configuration hot-reload convergence (Property 13)
+  - [x] 18.14 Write property test: Exit code is always reported for completed commands (Property 14)
 
-- [ ] 19. Integration tests
-  - [ ] 19.1 Write integration test: end-to-end command execution with real shell (echo, exit codes)
-  - [ ] 19.2 Write integration test: document capture with actual command output and undo verification
-  - [ ] 19.3 Write integration test: stdin piping from document content to command
-  - [ ] 19.4 Write integration test: terminal session lifecycle (open, write, read, close)
-  - [ ] 19.5 Write integration test: configuration hot-reload with in-memory config changes
-  - [ ] 19.6 Write integration test: command timeout and process termination
-  - [ ] 19.7 Write integration test: cancellation flow with long-running command
-  - [ ] 19.8 Write integration test: multiple sequential command execution with output panel history
-  - [ ] 19.9 Write integration test: shell profile resolution and override
-  - [ ] 19.10 Write integration test: working directory modes (project root vs file directory)
+- [x] 19. Integration tests
+  - [x] 19.1 Write integration test: end-to-end command execution with real shell (echo, exit codes)
+  - [x] 19.2 Write integration test: document capture with actual command output and undo verification
+  - [x] 19.3 Write integration test: stdin piping from document content to command
+  - [x] 19.4 Write integration test: terminal session lifecycle (open, write, read, close)
+  - [x] 19.5 Write integration test: configuration hot-reload with in-memory config changes
+  - [x] 19.6 Write integration test: command timeout and process termination
+  - [x] 19.7 Write integration test: cancellation flow with long-running command
+  - [x] 19.8 Write integration test: multiple sequential command execution with output panel history
+  - [x] 19.9 Write integration test: shell profile resolution and override
+  - [x] 19.10 Write integration test: working directory modes (project root vs file directory)
 
 ---
 

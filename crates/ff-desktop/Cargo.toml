@@ -43,7 +43,8 @@ async-trait = "0.1"
 rfd        = "0.17"
 chrono     = { version = "0.4", default-features = false, features = ["clock", "std"] }
 regex      = "1"
-dirs       = { workspace = true }
+dirs              = { workspace = true }
+egui-file-dialog  = "0.6"
 
 [build-dependencies]
 winres = "0.1"

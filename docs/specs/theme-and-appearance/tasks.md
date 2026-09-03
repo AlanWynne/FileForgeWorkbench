@@ -1,4 +1,4 @@
-# Implementation Plan: Theme & Appearance (`ff-theme`)
+﻿# Implementation Plan: Theme & Appearance (`ff-theme`)
 
 ## Overview
 
@@ -10,174 +10,174 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configura
 
 ## Tasks
 
-- [ ] 1. Crate scaffolding and module structure
-  - [ ] 1.1 Create `crates/ff-theme/Cargo.toml` with dependencies (serde, toml, thiserror, proptest dev-dep) and deps on `ff-configuration-system`, `ff-logging`
-  - [ ] 1.2 Create `crates/ff-theme/src/lib.rs` with module declarations and public API re-exports
-  - [ ] 1.3 Create module files: `colour.rs`, `palette.rs`, `style_slot.rs`, `font.rs`, `visual_mode.rs`, `design_tokens.rs`, `element.rs`, `extension.rs`, `loader.rs`, `serialiser.rs`, `api.rs`, `error.rs`, `types.rs`
-  - [ ] 1.4 Add `ff-theme` to workspace `Cargo.toml` members list
+- [x] 1. Crate scaffolding and module structure
+  - [x] 1.1 Create `crates/ff-theme/Cargo.toml` with dependencies (serde, toml, thiserror, proptest dev-dep) and deps on `ff-configuration-system`, `ff-logging`
+  - [x] 1.2 Create `crates/ff-theme/src/lib.rs` with module declarations and public API re-exports
+  - [x] 1.3 Create module files: `colour.rs`, `palette.rs`, `style_slot.rs`, `font.rs`, `visual_mode.rs`, `design_tokens.rs`, `element.rs`, `extension.rs`, `loader.rs`, `serialiser.rs`, `api.rs`, `error.rs`, `types.rs`
+  - [x] 1.4 Add `ff-theme` to workspace `Cargo.toml` members list
   - Covers: Structural foundation for all requirements
 
-- [ ] 2. Core colour types and representation
-  - [ ] 2.1 Define `ColourRGBA { r: u8, g: u8, b: u8, a: u8 }` struct with constructors, Display, serde support
-  - [ ] 2.2 Implement `from_hex` parser supporting `#RRGGBB` and `#RRGGBBAA` formats with validation
-  - [ ] 2.3 Implement `to_hex` serialiser producing `#RRGGBB` for opaque colours, `#RRGGBBAA` for translucent
-  - [ ] 2.4 Implement `to_color32` conversion method producing egui-compatible `Color32` value
-  - [ ] 2.5 Define `ColourToken` enum with all semantic token names organised by group (editor, syntax, file_tree, tab_bar, chrome, decorations, indicators, ui)
-  - [ ] 2.6 Implement compile-time token verification via exhaustive enum matching
-  - [ ] 2.7 Write unit tests for hex parsing (valid/invalid), round-trip, Color32 conversion, alpha handling
+- [x] 2. Core colour types and representation
+  - [x] 2.1 Define `ColourRGBA { r: u8, g: u8, b: u8, a: u8 }` struct with constructors, Display, serde support
+  - [x] 2.2 Implement `from_hex` parser supporting `#RRGGBB` and `#RRGGBBAA` formats with validation
+  - [x] 2.3 Implement `to_hex` serialiser producing `#RRGGBB` for opaque colours, `#RRGGBBAA` for translucent
+  - [x] 2.4 Implement `to_color32` conversion method producing egui-compatible `Color32` value
+  - [x] 2.5 Define `ColourToken` enum with all semantic token names organised by group (editor, syntax, file_tree, tab_bar, chrome, decorations, indicators, ui)
+  - [x] 2.6 Implement compile-time token verification via exhaustive enum matching
+  - [x] 2.7 Write unit tests for hex parsing (valid/invalid), round-trip, Color32 conversion, alpha handling
   - Covers: Requirement 2 (AC 2.9), Requirement 8 (AC 8.7, 8.8)
 
-- [ ] 3. Theme palette structure
-  - [ ] 3.1 Define `EditorColours` struct: background, foreground, accent, muted, modified_indicator, current_line_background, selection_secondary_background
-  - [ ] 3.2 Define `SyntaxColours` struct: keyword, comment, string, number, operator, type_name, function, macro_name, preprocessor, default_text
-  - [ ] 3.3 Define `FileTreeColours` struct: binary, structured, text, unknown, directory, symlink
-  - [ ] 3.4 Define `TabBarColours` struct: active_bg, inactive_bg, active_text, inactive_text, modified_indicator, close_button, drop_target
-  - [ ] 3.5 Define `ChromeColours` struct: cursor_row_border, cursor_column_indicator, line_number_fg, line_number_bg, fold_margin_bg, fold_margin_fg, margin_separator
-  - [ ] 3.6 Define `DecorationColours` struct: search_highlight, error_underline, warning_underline, info_underline, change_added, change_modified, change_deleted, bookmark
-  - [ ] 3.7 Define `IndicatorColours` struct: find_match, brace_match, brace_mismatch, hotspot_underline, user_defined (array of 32 slots)
-  - [ ] 3.8 Define `UiColours` struct: panel_bg, panel_fg, panel_border, button_bg, button_fg, button_hover, input_bg, input_border, input_fg, scrollbar_track, scrollbar_thumb, tooltip_bg, tooltip_fg
-  - [ ] 3.9 Define `ThemePalette` struct composing all colour groups with `allows_translucent` flags per token
-  - [ ] 3.10 Implement `ThemePalette::colour(&self, token: ColourToken) -> ColourRGBA` accessor
-  - [ ] 3.11 Write unit tests for palette construction, token lookup, translucent flag checking
+- [x] 3. Theme palette structure
+  - [x] 3.1 Define `EditorColours` struct: background, foreground, accent, muted, modified_indicator, current_line_background, selection_secondary_background
+  - [x] 3.2 Define `SyntaxColours` struct: keyword, comment, string, number, operator, type_name, function, macro_name, preprocessor, default_text
+  - [x] 3.3 Define `FileTreeColours` struct: binary, structured, text, unknown, directory, symlink
+  - [x] 3.4 Define `TabBarColours` struct: active_bg, inactive_bg, active_text, inactive_text, modified_indicator, close_button, drop_target
+  - [x] 3.5 Define `ChromeColours` struct: cursor_row_border, cursor_column_indicator, line_number_fg, line_number_bg, fold_margin_bg, fold_margin_fg, margin_separator
+  - [x] 3.6 Define `DecorationColours` struct: search_highlight, error_underline, warning_underline, info_underline, change_added, change_modified, change_deleted, bookmark
+  - [x] 3.7 Define `IndicatorColours` struct: find_match, brace_match, brace_mismatch, hotspot_underline, user_defined (array of 32 slots)
+  - [x] 3.8 Define `UiColours` struct: panel_bg, panel_fg, panel_border, button_bg, button_fg, button_hover, input_bg, input_border, input_fg, scrollbar_track, scrollbar_thumb, tooltip_bg, tooltip_fg
+  - [x] 3.9 Define `ThemePalette` struct composing all colour groups with `allows_translucent` flags per token
+  - [x] 3.10 Implement `ThemePalette::colour(&self, token: ColourToken) -> ColourRGBA` accessor
+  - [x] 3.11 Write unit tests for palette construction, token lookup, translucent flag checking
   - Covers: Requirement 2 (AC 2.1–2.10)
 
-- [ ] 4. Style slot system
-  - [ ] 4.1 Define `CaseTransform` enum: None, Upper, Lower, Camel
-  - [ ] 4.2 Define `StyleSlot` struct: foreground, background, font_family (Option), bold, italic, underline, case_transform
-  - [ ] 4.3 Define `StyleSlotTable` with 256-entry indexed storage and reserved index constants (DEFAULT=32, LINE_NUMBER=33, BRACE_HIGHLIGHT=34, BRACE_MISMATCH=35, CONTROL_CHAR=36, INDENT_GUIDE=37, CALL_TIP=38, FOLD_DISPLAY=39)
-  - [ ] 4.4 Implement default-inheritance: undefined slots inherit all attributes from slot 32 (Default)
-  - [ ] 4.5 Implement `allocate_extended_range(count: usize) -> Option<u8>` for syntax-highlighting slot allocation
-  - [ ] 4.6 Implement font-family resolution through font stack mechanism with fallback
-  - [ ] 4.7 Write unit tests for slot lookup, inheritance, allocation, font resolution
+- [x] 4. Style slot system
+  - [x] 4.1 Define `CaseTransform` enum: None, Upper, Lower, Camel
+  - [x] 4.2 Define `StyleSlot` struct: foreground, background, font_family (Option), bold, italic, underline, case_transform
+  - [x] 4.3 Define `StyleSlotTable` with 256-entry indexed storage and reserved index constants (DEFAULT=32, LINE_NUMBER=33, BRACE_HIGHLIGHT=34, BRACE_MISMATCH=35, CONTROL_CHAR=36, INDENT_GUIDE=37, CALL_TIP=38, FOLD_DISPLAY=39)
+  - [x] 4.4 Implement default-inheritance: undefined slots inherit all attributes from slot 32 (Default)
+  - [x] 4.5 Implement `allocate_extended_range(count: usize) -> Option<u8>` for syntax-highlighting slot allocation
+  - [x] 4.6 Implement font-family resolution through font stack mechanism with fallback
+  - [x] 4.7 Write unit tests for slot lookup, inheritance, allocation, font resolution
   - Covers: Requirement 3 (AC 3.1–3.7)
 
-- [ ] 5. Font configuration system
-  - [ ] 5.1 Define `FontStack` struct: families (Vec<String>), base_size_points (f32)
-  - [ ] 5.2 Define `FontConfig` struct with monospace and proportional FontStack fields
-  - [ ] 5.3 Implement default font sizes: 14.0pt monospace, 13.0pt proportional
-  - [ ] 5.4 Implement font size validation: clamp to 6.0–72.0 range with WARN log for out-of-range
-  - [ ] 5.5 Implement platform-default fallback when font stack is empty or all families unavailable
-  - [ ] 5.6 Implement `ZoomLevel` (i32) with effective size calculation: base_size + zoom_level
-  - [ ] 5.7 Implement zoom clamping: effective size clamped to 2.0–128.0 without modifying zoom value
-  - [ ] 5.8 Implement font family availability checking with DEBUG-level logging for unavailable fonts
-  - [ ] 5.9 Implement `apply_to_egui(ctx: &egui::Context)` method to set FontDefinitions and Style
-  - [ ] 5.10 Write unit tests for size validation, zoom clamping, fallback logic, stack resolution
+- [x] 5. Font configuration system
+  - [x] 5.1 Define `FontStack` struct: families (Vec<String>), base_size_points (f32)
+  - [x] 5.2 Define `FontConfig` struct with monospace and proportional FontStack fields
+  - [x] 5.3 Implement default font sizes: 14.0pt monospace, 13.0pt proportional
+  - [x] 5.4 Implement font size validation: clamp to 6.0–72.0 range with WARN log for out-of-range
+  - [x] 5.5 Implement platform-default fallback when font stack is empty or all families unavailable
+  - [x] 5.6 Implement `ZoomLevel` (i32) with effective size calculation: base_size + zoom_level
+  - [x] 5.7 Implement zoom clamping: effective size clamped to 2.0–128.0 without modifying zoom value
+  - [x] 5.8 Implement font family availability checking with DEBUG-level logging for unavailable fonts
+  - [x] 5.9 Implement `apply_to_egui(ctx: &egui::Context)` method to set FontDefinitions and Style
+  - [x] 5.10 Write unit tests for size validation, zoom clamping, fallback logic, stack resolution
   - Covers: Requirement 4 (AC 4.1–4.10)
 
-- [ ] 6. Visual modes (Dark / Light / High-Contrast)
-  - [ ] 6.1 Define `VisualMode` enum: Dark, Light, HighContrast with serde support
-  - [ ] 6.2 Implement per-mode palette storage: base palette with mode-specific overrides in TOML sections (`[dark]`, `[light]`, `[high_contrast]`)
-  - [ ] 6.3 Implement mode switching: replace active palette with mode-appropriate values
-  - [ ] 6.4 Implement `theme.mode` configuration key integration with configuration-system
-  - [ ] 6.5 Implement built-in default palettes for all three modes with appropriate colour choices
-  - [ ] 6.6 Implement High-Contrast mode WCAG AAA validation: verify 7:1 minimum contrast ratio for all fg/bg pairs
-  - [ ] 6.7 Implement runtime mode switch: apply within one frame without restart
-  - [ ] 6.8 Implement consumer notification on mode change via callback/event registration
-  - [ ] 6.9 Write unit tests for mode switching, contrast ratio validation, default palette completeness
+- [x] 6. Visual modes (Dark / Light / High-Contrast)
+  - [x] 6.1 Define `VisualMode` enum: Dark, Light, HighContrast with serde support
+  - [x] 6.2 Implement per-mode palette storage: base palette with mode-specific overrides in TOML sections (`[dark]`, `[light]`, `[high_contrast]`)
+  - [x] 6.3 Implement mode switching: replace active palette with mode-appropriate values
+  - [x] 6.4 Implement `theme.mode` configuration key integration with configuration-system
+  - [x] 6.5 Implement built-in default palettes for all three modes with appropriate colour choices
+  - [x] 6.6 Implement High-Contrast mode WCAG AAA validation: verify 7:1 minimum contrast ratio for all fg/bg pairs
+  - [x] 6.7 Implement runtime mode switch: apply within one frame without restart
+  - [x] 6.8 Implement consumer notification on mode change via callback/event registration
+  - [x] 6.9 Write unit tests for mode switching, contrast ratio validation, default palette completeness
   - Covers: Requirement 5 (AC 5.1–5.7)
 
-- [ ] 7. Design system tokens
-  - [ ] 7.1 Define `SpacingLevel` enum: Xs, Sm, Md, Lg, Xl with default values in logical pixels
-  - [ ] 7.2 Define `RadiusLevel` enum: None, Sm, Md, Lg, Full with default values
-  - [ ] 7.3 Define `ShadowDefinition` struct: offset_x, offset_y, blur_radius, spread, colour
-  - [ ] 7.4 Define `ShadowLevel` enum: Sm, Md, Lg with default ShadowDefinition for each
-  - [ ] 7.5 Define `AnimationTiming` struct: duration_ms (u32), easing (EasingCurve enum)
-  - [ ] 7.6 Define `AnimationLevel` enum: Fast, Normal, Slow with default timings
-  - [ ] 7.7 Define `DesignTokens` struct composing spacing scale, border radii, shadows, animations
-  - [ ] 7.8 Implement TOML deserialization with fallback to defaults for missing tokens
-  - [ ] 7.9 Implement typed accessor methods: `spacing(SpacingLevel) -> f32`, `border_radius(RadiusLevel) -> f32`, etc.
-  - [ ] 7.10 Write unit tests for token access, TOML override, fallback to defaults
+- [x] 7. Design system tokens
+  - [x] 7.1 Define `SpacingLevel` enum: Xs, Sm, Md, Lg, Xl with default values in logical pixels
+  - [x] 7.2 Define `RadiusLevel` enum: None, Sm, Md, Lg, Full with default values
+  - [x] 7.3 Define `ShadowDefinition` struct: offset_x, offset_y, blur_radius, spread, colour
+  - [x] 7.4 Define `ShadowLevel` enum: Sm, Md, Lg with default ShadowDefinition for each
+  - [x] 7.5 Define `AnimationTiming` struct: duration_ms (u32), easing (EasingCurve enum)
+  - [x] 7.6 Define `AnimationLevel` enum: Fast, Normal, Slow with default timings
+  - [x] 7.7 Define `DesignTokens` struct composing spacing scale, border radii, shadows, animations
+  - [x] 7.8 Implement TOML deserialization with fallback to defaults for missing tokens
+  - [x] 7.9 Implement typed accessor methods: `spacing(SpacingLevel) -> f32`, `border_radius(RadiusLevel) -> f32`, etc.
+  - [x] 7.10 Write unit tests for token access, TOML override, fallback to defaults
   - Covers: Requirement 6 (AC 6.1–6.7)
 
-- [ ] 8. Theme loading and configuration integration
-  - [ ] 8.1 Implement `ThemeLoader` struct with configuration-system API integration
-  - [ ] 8.2 Implement `theme.active` configuration key reading to determine active theme file
-  - [ ] 8.3 Implement TOML theme file parsing with structural validation
-  - [ ] 8.4 Implement missing-file fallback: load built-in default dark theme with WARN log
-  - [ ] 8.5 Implement invalid-TOML-syntax handling: retain previous theme with WARN log
-  - [ ] 8.6 Implement partial-definition support: missing tokens inherit from built-in default for active mode
-  - [ ] 8.7 Implement per-value validation: out-of-range/invalid values get defaults with per-token WARN log
-  - [ ] 8.8 Implement layered override participation: user → project → profile layers via configuration-system
-  - [ ] 8.9 Implement startup blocking: theme fully resolved before first frame renders
-  - [ ] 8.10 Implement 50ms loading performance target for typical (<10KB) theme files
-  - [ ] 8.11 Write unit tests for file loading, fallback, partial definitions, invalid values, layered overrides
+- [x] 8. Theme loading and configuration integration
+  - [x] 8.1 Implement `ThemeLoader` struct with configuration-system API integration
+  - [x] 8.2 Implement `theme.active` configuration key reading to determine active theme file
+  - [x] 8.3 Implement TOML theme file parsing with structural validation
+  - [x] 8.4 Implement missing-file fallback: load built-in default dark theme with WARN log
+  - [x] 8.5 Implement invalid-TOML-syntax handling: retain previous theme with WARN log
+  - [x] 8.6 Implement partial-definition support: missing tokens inherit from built-in default for active mode
+  - [x] 8.7 Implement per-value validation: out-of-range/invalid values get defaults with per-token WARN log
+  - [x] 8.8 Implement layered override participation: user → project → profile layers via configuration-system
+  - [x] 8.9 Implement startup blocking: theme fully resolved before first frame renders
+  - [x] 8.10 Implement 50ms loading performance target for typical (<10KB) theme files
+  - [x] 8.11 Write unit tests for file loading, fallback, partial definitions, invalid values, layered overrides
   - Covers: Requirement 1 (AC 1.1–1.7), Requirement 7 (AC 7.1, 7.4)
 
-- [ ] 9. Hot-reload and shared palette access
-  - [ ] 9.1 Implement `Arc<ThemePalette>` shared reference for thread-safe read-only palette access
-  - [ ] 9.2 Implement hot-reload callback registration with configuration-system for theme file changes
-  - [ ] 9.3 Implement hot-reload callback for `theme.active` and `theme.mode` configuration key changes
-  - [ ] 9.4 Implement atomic palette swap on hot-reload: no mixed old/new values in any frame
-  - [ ] 9.5 Implement change event/notification emission for palette consumers to invalidate caches
-  - [ ] 9.6 Implement font re-application to egui context on theme change
-  - [ ] 9.7 Write unit tests for arc sharing, atomic swap, change notification delivery, reload triggers
+- [x] 9. Hot-reload and shared palette access
+  - [x] 9.1 Implement `Arc<ThemePalette>` shared reference for thread-safe read-only palette access
+  - [x] 9.2 Implement hot-reload callback registration with configuration-system for theme file changes
+  - [x] 9.3 Implement hot-reload callback for `theme.active` and `theme.mode` configuration key changes
+  - [x] 9.4 Implement atomic palette swap on hot-reload: no mixed old/new values in any frame
+  - [x] 9.5 Implement change event/notification emission for palette consumers to invalidate caches
+  - [x] 9.6 Implement font re-application to egui context on theme change
+  - [x] 9.7 Write unit tests for arc sharing, atomic swap, change notification delivery, reload triggers
   - Covers: Requirement 7 (AC 7.2, 7.3, 7.5–7.7)
 
-- [ ] 10. Element-based colour system
-  - [ ] 10.1 Define `Element` enum: SelectionBg, SelectionFg, AdditionalSelectionBg, AdditionalSelectionFg, CaretFg, AdditionalCaretFg, CaretLineBg, WhitespaceFg, WhitespaceBg, FoldLineColour, FoldLineHighlight, HiddenLineIndicator
-  - [ ] 10.2 Implement `element_colour(element: Element) -> Option<ColourRGBA>` returning None for unset elements
-  - [ ] 10.3 Implement `element_allows_translucent(element: Element) -> bool` per-element translucent flag
-  - [ ] 10.4 Implement alpha enforcement: force alpha to 255 for elements not in translucent set
-  - [ ] 10.5 Implement user-set vs base element colour distinction: user overrides base
-  - [ ] 10.6 Implement `set_element_colour(element: Element, colour: ColourRGBA)` for runtime overrides
-  - [ ] 10.7 Implement `reset_element(element: Element)` to clear runtime override and revert to base/theme
-  - [ ] 10.8 Write unit tests for element lookup, translucent enforcement, set/reset, None for unset
+- [x] 10. Element-based colour system
+  - [x] 10.1 Define `Element` enum: SelectionBg, SelectionFg, AdditionalSelectionBg, AdditionalSelectionFg, CaretFg, AdditionalCaretFg, CaretLineBg, WhitespaceFg, WhitespaceBg, FoldLineColour, FoldLineHighlight, HiddenLineIndicator
+  - [x] 10.2 Implement `element_colour(element: Element) -> Option<ColourRGBA>` returning None for unset elements
+  - [x] 10.3 Implement `element_allows_translucent(element: Element) -> bool` per-element translucent flag
+  - [x] 10.4 Implement alpha enforcement: force alpha to 255 for elements not in translucent set
+  - [x] 10.5 Implement user-set vs base element colour distinction: user overrides base
+  - [x] 10.6 Implement `set_element_colour(element: Element, colour: ColourRGBA)` for runtime overrides
+  - [x] 10.7 Implement `reset_element(element: Element)` to clear runtime override and revert to base/theme
+  - [x] 10.8 Write unit tests for element lookup, translucent enforcement, set/reset, None for unset
   - Covers: Requirement 10 (AC 10.1–10.6)
 
-- [ ] 11. Plugin theme extensions
-  - [ ] 11.1 Define `ThemeExtension` struct: token_name, defaults per VisualMode (dark, light, high_contrast), description
-  - [ ] 11.2 Implement `register_extension(plugin_id: &str, extension: ThemeExtension) -> Result<(), ThemeError>` with namespace scoping
-  - [ ] 11.3 Implement collision detection: reject registration if token name collides with core palette names
-  - [ ] 11.4 Implement TOML integration: read `[plugins.{plugin-id}]` section for user-defined overrides
-  - [ ] 11.5 Implement mode-aware resolution: plugin tokens resolve to mode-specific user value or plugin default
-  - [ ] 11.6 Implement deregistration on plugin unload: remove tokens from active palette, preserve theme file values
-  - [ ] 11.7 Implement hot-reload participation: plugin tokens update on theme file changes with callback notification
-  - [ ] 11.8 Write unit tests for registration, collision rejection, mode resolution, deregistration, hot-reload
+- [x] 11. Plugin theme extensions
+  - [x] 11.1 Define `ThemeExtension` struct: token_name, defaults per VisualMode (dark, light, high_contrast), description
+  - [x] 11.2 Implement `register_extension(plugin_id: &str, extension: ThemeExtension) -> Result<(), ThemeError>` with namespace scoping
+  - [x] 11.3 Implement collision detection: reject registration if token name collides with core palette names
+  - [x] 11.4 Implement TOML integration: read `[plugins.{plugin-id}]` section for user-defined overrides
+  - [x] 11.5 Implement mode-aware resolution: plugin tokens resolve to mode-specific user value or plugin default
+  - [x] 11.6 Implement deregistration on plugin unload: remove tokens from active palette, preserve theme file values
+  - [x] 11.7 Implement hot-reload participation: plugin tokens update on theme file changes with callback notification
+  - [x] 11.8 Write unit tests for registration, collision rejection, mode resolution, deregistration, hot-reload
   - Covers: Requirement 11 (AC 11.1–11.7)
 
-- [ ] 12. Theme serialisation
-  - [ ] 12.1 Implement `serialise(palette: &ThemePalette) -> String` producing valid TOML with section grouping
-  - [ ] 12.2 Implement colour output format: `#RRGGBB` for opaque, `#RRGGBBAA` for translucent
-  - [ ] 12.3 Implement section comments: descriptive header comment for each colour group section
-  - [ ] 12.4 Implement full palette serialisation: colour groups, style slots, font config, design tokens, mode overrides
-  - [ ] 12.5 Implement round-trip property: `parse(serialise(palette)) == palette` for all valid palettes
-  - [ ] 12.6 Write unit tests for TOML output validity, colour format, round-trip equality, comment presence
+- [x] 12. Theme serialisation
+  - [x] 12.1 Implement `serialise(palette: &ThemePalette) -> String` producing valid TOML with section grouping
+  - [x] 12.2 Implement colour output format: `#RRGGBB` for opaque, `#RRGGBBAA` for translucent
+  - [x] 12.3 Implement section comments: descriptive header comment for each colour group section
+  - [x] 12.4 Implement full palette serialisation: colour groups, style slots, font config, design tokens, mode overrides
+  - [x] 12.5 Implement round-trip property: `parse(serialise(palette)) == palette` for all valid palettes
+  - [x] 12.6 Write unit tests for TOML output validity, colour format, round-trip equality, comment presence
   - Covers: Requirement 9 (AC 9.1–9.5)
 
-- [ ] 13. Hardcoded colour replacement API
-  - [ ] 13.1 Implement public `ThemeApi` facade exposing: `colour(token)`, `element_colour(element)`, `style_slot(index)`, `font_config()`, `design_tokens()`, `visual_mode()`
-  - [ ] 13.2 Implement `colour` method returning egui `Color32` directly (no conversion needed by caller)
-  - [ ] 13.3 Implement compile-time token safety via `ColourToken` enum — misspelled tokens are compile errors
-  - [ ] 13.4 Implement `ThemeApi` as the single access point consumed by all rendering subsystems
-  - [ ] 13.5 Write unit tests verifying API surface completeness and Color32 conversion correctness
+- [x] 13. Hardcoded colour replacement API
+  - [x] 13.1 Implement public `ThemeApi` facade exposing: `colour(token)`, `element_colour(element)`, `style_slot(index)`, `font_config()`, `design_tokens()`, `visual_mode()`
+  - [x] 13.2 Implement `colour` method returning egui `Color32` directly (no conversion needed by caller)
+  - [x] 13.3 Implement compile-time token safety via `ColourToken` enum — misspelled tokens are compile errors
+  - [x] 13.4 Implement `ThemeApi` as the single access point consumed by all rendering subsystems
+  - [x] 13.5 Write unit tests verifying API surface completeness and Color32 conversion correctness
   - Covers: Requirement 8 (AC 8.1–8.8)
 
-- [ ] 14. Theme inheritance and extensibility
-  - [ ] 14.1 Implement `base` key support in theme TOML: `base = "theme-name"` declares parent theme
-  - [ ] 14.2 Implement token resolution chain: current theme → base theme → built-in default
-  - [ ] 14.3 Implement missing-base handling: WARN log and fall back to built-in defaults for unresolved tokens
-  - [ ] 14.4 Implement unrecognised section preservation: ignore unknown TOML sections without error, preserve in serialisation
-  - [ ] 14.5 Implement sub-structure organisation: palette groups as independent sub-structs for backward-compatible extension
-  - [ ] 14.6 Implement thread-safe shared access: `Arc<ThemePalette>` accessible from workbench context and PluginContext
-  - [ ] 14.7 Write unit tests for inheritance resolution, missing base fallback, unknown section preservation
+- [x] 14. Theme inheritance and extensibility
+  - [x] 14.1 Implement `base` key support in theme TOML: `base = "theme-name"` declares parent theme
+  - [x] 14.2 Implement token resolution chain: current theme → base theme → built-in default
+  - [x] 14.3 Implement missing-base handling: WARN log and fall back to built-in defaults for unresolved tokens
+  - [x] 14.4 Implement unrecognised section preservation: ignore unknown TOML sections without error, preserve in serialisation
+  - [x] 14.5 Implement sub-structure organisation: palette groups as independent sub-structs for backward-compatible extension
+  - [x] 14.6 Implement thread-safe shared access: `Arc<ThemePalette>` accessible from workbench context and PluginContext
+  - [x] 14.7 Write unit tests for inheritance resolution, missing base fallback, unknown section preservation
   - Covers: Requirement 12 (AC 12.1–12.6)
 
-- [ ] 15. Error handling
-  - [ ] 15.1 Define `ThemeError` enum: InvalidColourFormat, FileNotFound, ParseError, InvalidFontSize, SlotAllocationExhausted, ExtensionCollision, InvalidBase, ContrastViolation
-  - [ ] 15.2 Implement error message formatting per `[theme] operation: description` standard (≤200 chars)
-  - [ ] 15.3 Implement WARN-level logging for all recoverable errors (missing files, invalid values, unavailable fonts)
-  - [ ] 15.4 Implement graceful degradation: never crash on theme errors, always fall back to built-in defaults
-  - [ ] 15.5 Write unit tests for all error variants, message formatting, and fallback behaviour
+- [x] 15. Error handling
+  - [x] 15.1 Define `ThemeError` enum: InvalidColourFormat, FileNotFound, ParseError, InvalidFontSize, SlotAllocationExhausted, ExtensionCollision, InvalidBase, ContrastViolation
+  - [x] 15.2 Implement error message formatting per `[theme] operation: description` standard (≤200 chars)
+  - [x] 15.3 Implement WARN-level logging for all recoverable errors (missing files, invalid values, unavailable fonts)
+  - [x] 15.4 Implement graceful degradation: never crash on theme errors, always fall back to built-in defaults
+  - [x] 15.5 Write unit tests for all error variants, message formatting, and fallback behaviour
   - Covers: Cross-cutting Requirement 8 (Error Message Standards)
 
-- [ ] 16. Property-based tests
-  - [ ] 16.1 Write PBT: colour hex round-trip correctness
-  - [ ] 16.2 Write PBT: theme serialisation round-trip correctness
-  - [ ] 16.3 Write PBT: font size clamping correctness
-  - [ ] 16.4 Write PBT: zoom level effective size calculation correctness
-  - [ ] 16.5 Write PBT: style slot inheritance correctness
-  - [ ] 16.6 Write PBT: high-contrast mode WCAG AAA contrast ratio enforcement
-  - [ ] 16.7 Write PBT: element colour alpha enforcement correctness
+- [x] 16. Property-based tests
+  - [x] 16.1 Write PBT: colour hex round-trip correctness
+  - [x] 16.2 Write PBT: theme serialisation round-trip correctness
+  - [x] 16.3 Write PBT: font size clamping correctness
+  - [x] 16.4 Write PBT: zoom level effective size calculation correctness
+  - [x] 16.5 Write PBT: style slot inheritance correctness
+  - [x] 16.6 Write PBT: high-contrast mode WCAG AAA contrast ratio enforcement
+  - [x] 16.7 Write PBT: element colour alpha enforcement correctness
   - Covers: Requirements 2–5, 9, 10 (see Property-Based Test Definitions below)
 
 - [x] 18. Legacy theme colour semantics (Phase AE)
@@ -212,14 +212,14 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configura
   - [x] 19.9 Write unit tests: `theme_discovery_finds_toml_files`, `list_themes_includes_builtins`, `export_theme_round_trips`, `invalid_colour_falls_back_to_default`, `base_inheritance_resolves_missing_tokens`
     - Covers: Requirement 14.1–14.10
 
-- [ ] 17. Integration tests
-  - [ ] 17.1 Write integration test: full theme load from TOML → palette access → colour retrieval lifecycle
-  - [ ] 17.2 Write integration test: visual mode switch (Dark → Light → HighContrast) with consumer notification
-  - [ ] 17.3 Write integration test: hot-reload cycle (modify file → detect → reload → notify consumers)
-  - [ ] 17.4 Write integration test: plugin extension registration → theme override → mode switch → deregistration
-  - [ ] 17.5 Write integration test: theme inheritance chain (child → base → built-in defaults)
-  - [ ] 17.6 Write integration test: partial theme file with missing tokens inheriting from defaults
-  - [ ] 17.7 Write integration test: style slot allocation by syntax-highlighting consumer
+- [x] 17. Integration tests
+  - [x] 17.1 Write integration test: full theme load from TOML → palette access → colour retrieval lifecycle
+  - [x] 17.2 Write integration test: visual mode switch (Dark → Light → HighContrast) with consumer notification
+  - [x] 17.3 Write integration test: hot-reload cycle (modify file → detect → reload → notify consumers)
+  - [x] 17.4 Write integration test: plugin extension registration → theme override → mode switch → deregistration
+  - [x] 17.5 Write integration test: theme inheritance chain (child → base → built-in defaults)
+  - [x] 17.6 Write integration test: partial theme file with missing tokens inheriting from defaults
+  - [x] 17.7 Write integration test: style slot allocation by syntax-highlighting consumer
   - Covers: End-to-end validation across Requirements 1–12
 
 ---

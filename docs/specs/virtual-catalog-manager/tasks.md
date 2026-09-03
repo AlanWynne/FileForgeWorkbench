@@ -98,6 +98,8 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
   - [x] 6.6 Run `cargo test` — confirm green
 
 - [x] 7. Dataset Allocation Dialog
+  - [x] 7.8 Change default BLKSIZE in `AllocDatasetForm::default()` from `"27920"` to `"0"`; update the existing `default_form_blksize_is_27920` test to assert `"0"`; update `validate()` to accept BLKSIZE=0 (skip the `blksize >= lrecl` check when blksize is 0)
+    - Validates: Requirement 5.2
   - [x] 7.1 Create `crates/ff-desktop/src/dataset_alloc_dialog.rs` with `AllocDatasetForm`
     - Validates: Requirement 5.1–5.6
   - [x] 7.2 Implement all ISPF-style fields with conditional visibility (Directory Blocks, GDG Limit, Scratch)
@@ -164,38 +166,55 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
 - [x] 10. Session persistence for FilesPanel tab and catalog registry
   - [x] 10.1 Update `session_manager.rs` to persist/restore `FilesPanel` tab kind
     - Validates: Requirement 11.3
-  - [ ] 10.2 Integrate `CatalogRegistry::save()` into `on_exit()` session save
+  - [x] 10.2 Integrate `CatalogRegistry::save()` into `on_exit()` session save
     - Validates: Requirement 2.1
-    - ⚠️ BLOCKED: marked done in error — wiring code was never written (B010)
-  - [ ] 10.3 Integrate `CatalogRegistry::load()` into startup sequence
+  - [x] 10.3 Integrate `CatalogRegistry::load()` into startup sequence
     - Validates: Requirement 2.2
-    - ⚠️ BLOCKED: marked done in error — wiring code was never written (B010)
   - [x] 10.4 Write unit tests for FilesPanel tab round-trip through session
     - Validates: Requirement 11.3
   - [x] 10.5 Run `cargo test --workspace` — all tests pass
   - [x] 10.6 Update `docs/TCR.md`
   - [x] 10.7 Update `docs/specs/project-master/tasks.md`
 
-- [ ] 14. Default Home Catalog on First Launch (Req 14)
-  - [ ] 14.1 Write failing test `no_native_catalogs_triggers_home_catalog_creation` in `session_manager.rs` or a new `startup_tests.rs` — verifies that after the startup logic runs on an empty registry, a Native catalog named `"Home"` is present
+- [x] 15. Catalog Properties — Repository Path Display (Req 15)
+  - [x] 15.1 In `catalog_manager_dialog.rs` `render_edit()`: add a read-only `Repository Path:` label row displaying `form.path` as monospace weak text
+    - Validates: Requirement 15.1, 15.2, 15.3
+  - [x] 15.2 Write failing test `edit_form_displays_repository_path` — verifies `EditCatalogForm` carries the path field from the source catalog
+    - Validates: Requirement 15.1
+  - [x] 15.3 Run `cargo test -p ff-desktop` — confirm green
+
+- [x] 16. VFS Dataset Path Resolution (Req 16)
+  - [x] 16.1 Add `resolve_dataset_path(repository_path: &str, dsn: &str) -> Option<PathBuf>` pure function to `files_panel.rs`
+    - Validates: Requirement 16.5
+  - [x] 16.2 Write failing tests: `resolve_dataset_path_maps_dsn_to_subpath`, `resolve_dataset_path_empty_repo_returns_none`, `resolve_dataset_path_empty_dsn_returns_none`
+    - Validates: Requirement 16.1, 16.4, 16.5
+  - [x] 16.3 In `render.rs` `FilesPanelAction::OpenFile` Mainframe handler: replace the "not yet implemented" message with `resolve_dataset_path` logic — open file if path exists, show "not found" message if not, show "no repository path" message if None
+    - Validates: Requirement 16.2, 16.3, 16.4
+  - [x] 16.4 In `file_explorer_panel.rs` `render_dataset_children()` double-click handler: apply same resolution logic — set `open_path` if file exists, set `state.last_error` with appropriate message otherwise
+    - Validates: Requirement 16.2, 16.3, 16.4
+  - [x] 16.5 Run `cargo test -p ff-desktop` — confirm green
+  - [x] 16.6 Run `cargo clippy -p ff-desktop -- -D warnings` — clean
+
+
+  - [x] 14.1 Write failing test `no_native_catalogs_triggers_home_catalog_creation` in `session_manager.rs` or a new `startup_tests.rs` — verifies that after the startup logic runs on an empty registry, a Native catalog named `"Home"` is present
     - Validates: Requirement 14.1, 14.2
-  - [ ] 14.2 Write failing test `existing_native_catalog_suppresses_home_creation` — verifies that when a Native catalog already exists, no `"Home"` catalog is added
+  - [x] 14.2 Write failing test `existing_native_catalog_suppresses_home_creation` — verifies that when a Native catalog already exists, no `"Home"` catalog is added
     - Validates: Requirement 14.4
-  - [ ] 14.3 Write failing test `home_catalog_persisted_immediately` — verifies that `save_catalog_registry` is called and the catalog survives a load round-trip
+  - [x] 14.3 Write failing test `home_catalog_persisted_immediately` — verifies that `save_catalog_registry` is called and the catalog survives a load round-trip
     - Validates: Requirement 14.3
-  - [ ] 14.4 Write failing test `delete_home_native_catalog_is_rejected` — verifies that `execute_delete` returns an error when the catalog name is `"Home"` and type is `Native`
+  - [x] 14.4 Write failing test `delete_home_native_catalog_is_rejected` — verifies that `execute_delete` returns an error when the catalog name is `"Home"` and type is `Native`
     - Validates: Requirement 14.6
-  - [ ] 14.5 Write failing test `delete_renamed_home_catalog_is_permitted` — verifies that a Native catalog formerly named `"Home"` but now renamed can be deleted
+  - [x] 14.5 Write failing test `delete_renamed_home_catalog_is_permitted` — verifies that a Native catalog formerly named `"Home"` but now renamed can be deleted
     - Validates: Requirement 14.7
-  - [ ] 14.6 Add `ensure_default_home_catalog()` free function in `shell/update.rs` that encapsulates the check-and-create logic; takes `&mut CatalogRegistry` and `home_path: PathBuf`
+  - [x] 14.6 Add `ensure_default_home_catalog()` free function in `shell/update.rs` that encapsulates the check-and-create logic; takes `&mut CatalogRegistry` and `home_path: PathBuf`
     - Validates: Requirement 14.1, 14.4, 14.5
-  - [ ] 14.7 Call `ensure_default_home_catalog()` in the one-shot startup block in `update.rs`, immediately after `self.files_panel.registry = session.load_catalog_registry()`; follow with `session.save_catalog_registry()` when a catalog was added
+  - [x] 14.7 Call `ensure_default_home_catalog()` in the one-shot startup block in `update.rs`, immediately after `self.files_panel.registry = session.load_catalog_registry()`; follow with `session.save_catalog_registry()` when a catalog was added
     - Validates: Requirement 14.2, 14.3
-  - [ ] 14.8 In `catalog_manager_dialog.rs` `execute_delete()`: guard against deleting a catalog named `"Home"` of type `Native`; return `Err("The Home catalog cannot be deleted. Rename or edit it instead.".to_string())`
+  - [x] 14.8 In `catalog_manager_dialog.rs` `execute_delete()`: guard against deleting a catalog named `"Home"` of type `Native`; return `Err("The Home catalog cannot be deleted. Rename or edit it instead.".to_string())`
     - Validates: Requirement 14.6
-  - [ ] 14.9 Run `cargo test -p ff-desktop` — all tests pass
-  - [ ] 14.10 Run `cargo clippy -p ff-desktop -- -D warnings` — clean
-  - [ ] 14.11 Update `docs/TCR.md` and `docs/specs/project-master/tasks.md`
+  - [x] 14.9 Run `cargo test -p ff-desktop` — 449 tests pass
+  - [x] 14.10 Run `cargo clippy -p ff-desktop -- -D warnings` — clean
+  - [x] 14.11 Update `docs/TCR.md` and `docs/specs/project-master/tasks.md`
 
   - [x] 13.1 Add `catalogs_path()` helper to `SessionManager` returning `{session_dir}/catalogs.toml`
     - Validates: Requirement 2.1
@@ -212,28 +231,43 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
   - [x] 13.7 Run `cargo test -p ff-desktop` — 382 tests pass
   - [x] 13.8 Run `cargo clippy -p ff-desktop -- -D warnings` — clean
   - [x] 13.9 Update `docs/TCR.md` and `docs/specs/project-master/tasks.md`
-  - [ ] 12.1 Add `AllocatedDataset` struct to `files_panel.rs` with fields: `name`, `dsorg`, `recfm`, `lrecl`, `blksize`, `description`
+  - [x] 12.1 Add `AllocatedDataset` struct to `files_panel.rs` with fields: `name`, `dsorg`, `recfm`, `lrecl`, `blksize`, `description`
     - Validates: Requirement 13.1
-  - [ ] 12.2 Add `datasets: HashMap<String, Vec<AllocatedDataset>>` field to `FilesPanelState`; add `pending_alloc_catalog: Option<String>` to track which catalog opened the dialog
+  - [x] 12.2 Add `datasets: HashMap<String, Vec<AllocatedDataset>>` field to `FilesPanelState`; add `pending_alloc_catalog: Option<String>` to track which catalog opened the dialog
     - Validates: Requirement 13.1, 13.2
-  - [ ] 12.3 In `shell.rs` `AllocateDataset` action handler: store the catalog name in `files_panel.pending_alloc_catalog` before opening the dialog
+  - [x] 12.3 In `shell.rs` `AllocateDataset` action handler: store the catalog name in `files_panel.pending_alloc_catalog` before opening the dialog
     - Validates: Requirement 13.2
-  - [ ] 12.4 In `shell.rs` `AllocOutcome::Confirmed` handler: read `AllocParams` from form, call `files_panel.add_dataset(catalog_name, params)` to insert into the map
+  - [x] 12.4 In `shell.rs` `AllocOutcome::Confirmed` handler: read `AllocParams` from form, call `files_panel.add_dataset(catalog_name, params)` to insert into the map
     - Validates: Requirement 13.2
-  - [ ] 12.5 Add `add_dataset()` method to `FilesPanelState` that converts `AllocParams` into `AllocatedDataset` and appends to the correct catalog entry
+  - [x] 12.5 Add `add_dataset()` method to `FilesPanelState` that converts `AllocParams` into `AllocatedDataset` and appends to the correct catalog entry
     - Validates: Requirement 13.2
-  - [ ] 12.6 In `render_content_area()`: when a catalog is selected, call `load_entries_from_datasets()` to populate `ContentAreaState::entries` from the datasets map
+  - [x] 12.6 In `render_content_area()`: when a catalog is selected, call `load_entries_from_datasets()` to populate `ContentAreaState::entries` from the datasets map
     - Validates: Requirement 13.3
-  - [ ] 12.7 Add `load_entries_from_datasets()` helper that converts `AllocatedDataset` to `ContentEntry` (dsorg as type string; `is_container = true` for PO/PDSE/GDG)
+  - [x] 12.7 Add `load_entries_from_datasets()` helper that converts `AllocatedDataset` to `ContentEntry` (dsorg as type string; `is_container = true` for PO/PDSE/GDG)
     - Validates: Requirement 13.3
-  - [ ] 12.8 Extend `CatalogRegistry::save_to_toml()` / `load_from_toml()` to serialise/deserialise the `datasets` map under `[catalog_datasets]`
+  - [x] 12.8 Extend `CatalogRegistry::save_to_toml()` / `load_from_toml()` to serialise/deserialise the `datasets` map under `[catalog_datasets]`
     - Validates: Requirement 13.4
-  - [ ] 12.9 Wire dataset save/load into `session_manager.rs` `save()` and `load()` paths
+  - [x] 12.9 Wire dataset save/load into `session_manager.rs` `save()` and `load()` paths
     - Validates: Requirement 13.4
-  - [ ] 12.10 In catalog delete handler: remove all datasets for the deleted catalog from the map
+  - [x] 12.10 In catalog delete handler: remove all datasets for the deleted catalog from the map
     - Validates: Requirement 13.5
-  - [ ] 12.11 Write unit tests: `add_dataset_inserts_into_map`, `load_entries_populates_content_area`, `delete_catalog_removes_datasets`, `dataset_map_round_trips_through_toml`
+  - [x] 12.11 Write unit tests: `add_dataset_inserts_into_map`, `load_entries_populates_content_area`, `delete_catalog_removes_datasets`, `dataset_map_round_trips_through_toml`
     - Validates: Requirement 13.1–13.5
-  - [ ] 12.12 Run `cargo test -p ff-desktop` — all tests pass
-  - [ ] 12.13 Run `cargo clippy -p ff-desktop -- -D warnings` — clean
-  - [ ] 12.14 Update `docs/TCR.md` and `docs/specs/project-master/tasks.md`
+  - [x] 12.12 Run `cargo test -p ff-desktop` — 449 tests pass
+  - [x] 12.13 Run `cargo clippy -p ff-desktop -- -D warnings` — clean
+  - [x] 12.14 Update `docs/TCR.md` and `docs/specs/project-master/tasks.md`
+
+- [ ] 17. Dataset file creation on first open (Req 16.3, 16.6)
+  - [ ] 17.1 Write failing test `opening_missing_dataset_creates_file_and_parent_dirs` — calls the open handler with a resolved path whose parent exists but the file does not; asserts the file is created on disk
+    - Validates: Requirement 16.3
+  - [ ] 17.2 Write failing test `opening_missing_dataset_creates_parent_dirs` — resolved path whose parent directory does not exist; asserts both parent and file are created
+    - Validates: Requirement 16.3
+  - [ ] 17.3 Add `create_dataset_file(path: &Path) -> Result<(), std::io::Error>` pure helper in `files_panel.rs` that calls `fs::create_dir_all(parent)` then `fs::File::create(path)`
+    - Validates: Requirement 16.3
+  - [ ] 17.4 In `render.rs` `FilesPanelAction::OpenFile` Mainframe handler: replace the "file not found" error branch with a call to `create_dataset_file`; on success dispatch `file.open`; on failure show the creation error message
+    - Validates: Requirement 16.3, 16.6
+  - [ ] 17.5 In `file_explorer_panel.rs` `render_dataset_children()` double-click handler: apply the same creation logic
+    - Validates: Requirement 16.3, 16.6
+  - [ ] 17.6 Run `cargo test -p ff-desktop` — confirm green
+  - [ ] 17.7 Run `cargo clippy -p ff-desktop -- -D warnings` — clean
+  - [ ] 17.8 Update `docs/TCR.md` Req 16.3 and 16.6 rows to ✅ PASS

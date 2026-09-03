@@ -4,7 +4,7 @@
 
 ## Introduction
 
-This feature specifies the Dataset Catalog subsystem for FileForgeWorkbench (`ff-dataset-catalog` crate). The Dataset Catalog provides **mainframe dataset filesystem emulation on the local desktop** — enabling developers to work with mainframe-style dataset naming, organization, and management without access to a z/OS system.
+This feature specifies the Dataset Catalog subsystem for FileForgeWorkbench (`ff-dscatalog` crate). The Dataset Catalog provides **mainframe dataset filesystem emulation on the local desktop** — enabling developers to work with mainframe-style dataset naming, organization, and management without access to a z/OS system.
 
 The subsystem implements a SQLite-backed catalog database that maps mainframe dataset names (HLQ.qualifier format) to physical files stored in a structured repository layout on the local filesystem. It supports sequential datasets (PS), partitioned datasets (PDS/PDSE), and Generation Data Groups (GDG). The catalog integrates with the VFS layer as a dedicated provider (scheme `catalog`), making datasets addressable as `vfs://catalog/HLQ.QUALIFIER.NAME` throughout the workbench.
 
@@ -32,6 +32,8 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 | `fileforge-integration` | **Integration** | FileForge-mode datasets (EBCDIC, COMP-3) are stored in and resolved from the catalog. |
 | `command-framework` | **Dependency** | All catalog/dataset operations are registered as commands dispatched through the framework. |
 | `configuration-system` | **Dependency** | Mounted catalogs, default HLQ, and repository paths stored in `[catalog]` config namespace. |
+
+> **Crate name:** The actual workspace crate is `ff-dscatalog`. Any reference to `ff-dataset-catalog` in older documents is incorrect and should be read as `ff-dscatalog`.
 
 ## Glossary
 
@@ -122,7 +124,13 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 ---
 
-### Requirement 4: Repository Layout
+### Requirement 4: Repository Layout (Legacy DSN-Derived Layout)
+
+> **SUPERSEDED FOR NEW ALLOCATIONS by Requirement 20 (UUID-Based Physical Object Layout).**
+> All new dataset allocations SHALL use the UUID-based layout defined in Requirement 20.
+> Requirement 4 describes the legacy DSN-derived layout and is retained solely as a reference
+> for import/export compatibility with catalogs created before Requirement 20 was adopted.
+> Implementations SHALL NOT use DSN-derived paths for new allocations.
 
 **User Story:** As a workbench user, I want dataset content stored in a well-defined directory structure on my local filesystem, so that I can understand where files are physically stored, back them up with standard tools, and verify content outside the workbench if needed.
 
@@ -131,9 +139,9 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 #### Acceptance Criteria
 
 1. A Repository SHALL be a directory with the following structure at its root: `catalog.db` (SQLite catalog database), `storage/` (sequential dataset files), `pds/` (partitioned dataset directories), `gdg/` (GDG base directories with generation subdirectories), and `temp/` (temporary allocations, automatically cleaned on startup).
-2. SEQUENTIAL datasets SHALL be stored as files within `storage/`, using a filesystem-safe encoding of the DSN as the filename (dots replaced with directory separators or a configurable encoding scheme that preserves the qualifier structure).
-3. PARTITIONED datasets SHALL be stored as directories within `pds/`, with the directory name derived from the DSN; each member SHALL be stored as an individual file within that directory using the member name as the filename (uppercased).
-4. GDG bases SHALL be stored as directories within `gdg/`, with each generation stored as a file or directory (depending on generation DSORG) within the GDG base directory, named using the generation identifier format `GnnnnVnn`.
+2. SEQUENTIAL datasets SHALL be stored as files within `storage/`, using a filesystem-safe encoding of the DSN as the filename (dots replaced with directory separators or a configurable encoding scheme that preserves the qualifier structure). NOTE: new allocations use UUID layout (Req 20.2) instead.
+3. PARTITIONED datasets SHALL be stored as directories within `pds/`, with the directory name derived from the DSN; each member SHALL be stored as an individual file within that directory using the member name as the filename (uppercased). NOTE: new allocations use UUID layout (Req 20.2) instead.
+4. GDG bases SHALL be stored as directories within `gdg/`, with each generation stored as a file or directory (depending on generation DSORG) within the GDG base directory, named using the generation identifier format `GnnnnVnn`. NOTE: new allocations use UUID layout (Req 20.2) instead.
 5. THE mapping from DSN to physical path SHALL be stored in the catalog database (`storage_path` column), allowing the physical layout to be reconstructed or relocated.
 6. WHEN a repository is created (first catalog initialization), THE system SHALL create all required subdirectories (`storage/`, `pds/`, `gdg/`, `temp/`) and the catalog database with the correct schema.
 7. THE system SHALL handle filesystem-safe name encoding for DSNs containing national characters (`@`, `#`, `$`): these SHALL be percent-encoded in physical directory names (e.g., `#` → `%23`) to ensure cross-platform compatibility.
@@ -197,7 +205,7 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 3. IF a dataset with the specified DSN already exists in any mounted catalog, THEN THE system SHALL return an error indicating the dataset already exists and identify the catalog containing the duplicate.
 4. THE system SHALL support deleting a dataset by DSN: removing the catalog entry, deleting the physical storage (file for PS, directory and members for PDS, all generations for GDG), and confirming deletion.
 5. WHEN a PDS is deleted, ALL its members SHALL be deleted along with the PDS directory; the operation SHALL be atomic (either all members and the directory are removed, or none are).
-6. THE system SHALL support renaming a dataset by specifying the current DSN and new DSN; renaming SHALL update the catalog entry and, if physical paths are DSN-derived, rename the physical storage path accordingly.
+6. THE system SHALL support renaming a dataset by specifying the current DSN and new DSN; renaming SHALL update the catalogue entry only -- the physical object SHALL NOT be moved or renamed (see Requirement 20.6). For legacy DSN-derived repositories (Requirement 4), a migration path to UUID layout is required before rename can be performed without physical move.
 7. WHEN renaming a dataset, THE system SHALL validate that the new DSN conforms to naming rules and does not already exist in any mounted catalog.
 8. THE system SHALL support a resolve operation: given a DSN, return the physical filesystem path to the dataset's content, the catalog that provided the resolution, and the dataset's metadata.
 9. WHEN a resolve is attempted for a DSN that does not exist in any mounted catalog, THE system SHALL return a `VfsError::NotFound` error containing the DSN.
@@ -366,3 +374,374 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 4. THE system SHALL support an "Allocate Like" operation that copies all attributes (DSORG, RECFM, LRECL, BLKSIZE) from an existing dataset to serve as defaults for a new dataset, requiring only the new DSN to be specified.
 5. THE system SHALL allow all default values to be overridden by explicit parameters at allocation time — explicit values always take precedence over defaults.
 6. THE system SHALL provide configurable allocation defaults in the `[catalog.defaults]` configuration table, allowing users to customise the default RECFM, LRECL, and BLKSIZE for each DSORG type.
+
+---
+
+## Non-Functional Requirements
+
+### Performance
+
+- Catalog mount (opening the SQLite database and validating schema) SHALL complete within 1 second for catalogs with up to 10,000 datasets.
+- DSN resolution (lookup by name) SHALL complete within 50 milliseconds for catalogs with up to 10,000 datasets.
+- LISTCAT with a wildcard filter SHALL return results within 500 milliseconds for catalogs with up to 10,000 datasets.
+
+### Reliability
+
+- THE catalog database SHALL use WAL journal mode to support concurrent read access during write operations without blocking.
+- WHEN the catalog database file is corrupt or unreadable, THE system SHALL return a descriptive error and SHALL NOT crash or corrupt other mounted catalogs.
+
+### Scalability
+
+- THE catalog subsystem SHALL support up to 50 simultaneously mounted catalogs without performance degradation.
+- A single catalog SHALL support up to 100,000 dataset entries.
+
+### Data Integrity
+
+- ALL dataset CRUD operations SHALL be atomic: a failed operation SHALL leave the catalog in its pre-operation state with no partial writes.
+- THE catalog database SHALL enforce the UNIQUE constraint on DSN at the database level, not only in application code.
+
+---
+
+## Requirements Added by CR-NR-016 — Mainframe Dataset Architecture
+
+> **Source documents:** `docs/FileForgeWorkbench_Mainframe_Dataset_Architecture.md` and
+> `docs/FileForgeWorkbench_Virtual_File_and_Dataset_Storage_Requirements.md`
+
+---
+
+### Requirement 16: Record-Oriented Storage — No Text-Line Boundaries
+
+**User Story:** As a mainframe developer, I want datasets stored as record-oriented binary objects so that mainframe record semantics are preserved exactly and no CRLF or LF byte is ever silently inserted as a record delimiter.
+
+**Source:** [ARCH] §2 Principle 2; [VFS-REQ] §10 FFW-VFS-REC-001 to REC-005.
+
+#### Acceptance Criteria
+
+16.1 WHEN a mainframe dataset is written, THE system SHALL NOT use CRLF, LF, or any host text-line terminator as a record boundary — record boundaries SHALL be derived solely from RECFM, LRECL, RDW, or VSAM key structure.
+
+16.2 WHEN a fixed-length (F or FB) dataset is stored, THE system SHALL pack records contiguously as `N × LRECL` bytes with no inter-record delimiters; record `n` SHALL be located at byte offset `n × LRECL`.
+
+16.3 WHEN a variable-length (V or VB) dataset is stored, EACH record SHALL be preceded by a 4-byte Record Descriptor Word (RDW) encoding the total record length including the RDW itself; no CRLF or LF delimiter SHALL follow the data bytes.
+
+16.4 WHEN a dataset with RECFM=U (undefined) is stored, THE system SHALL treat the content as an opaque binary stream and preserve bytes exactly without interpretation.
+
+16.5 WHEN a dataset is opened for display in the editor, THE system SHALL present records as lines using the applicable codec without altering the underlying binary storage.
+
+16.6 WHEN a dataset is saved after editing, THE system SHALL re-encode the displayed lines back to the binary record format using the same codec, preserving RECFM and LRECL exactly.
+
+16.7 WHEN a record codec encounters an invalid record length or malformed RDW, THE system SHALL return a diagnostic error containing the dataset identity, record position, and the expected constraint.
+
+---
+
+### Requirement 17: Record Codecs as Independent Components
+
+**User Story:** As a platform developer, I want record codecs separated from storage providers so that encoding logic can be tested independently and reused across different storage backends.
+
+**Source:** [VFS-REQ] §10 FFW-VFS-REC-001 to REC-005; [ARCH] §11 DatasetProvider trait.
+
+#### Acceptance Criteria
+
+17.1 THE system SHALL implement record codecs as a separate module (or crate) independent of any storage provider; codecs SHALL have no dependency on SQLite, the filesystem, or egui.
+
+17.2 THE system SHALL provide a `FixedCodec` that encodes and decodes fixed-length records given an LRECL value.
+
+17.3 THE system SHALL provide a `VariableCodec` that encodes and decodes variable-length records using 4-byte RDW headers.
+
+17.4 THE system SHALL provide a `BinaryCodec` that passes bytes through unchanged for RECFM=U datasets.
+
+17.5 THE system SHALL provide a `TextCodec` that maps host text lines to/from fixed-length records using a configurable encoding profile, used only for explicit import/export operations — never applied silently during normal dataset I/O.
+
+17.6 WHEN encoding or decoding, EACH codec SHALL be independently testable using in-memory byte buffers without any filesystem or database dependency.
+
+17.7 WHEN an import or export operation requires encoding conversion, THE system SHALL require an explicit codec and encoding policy to be specified; the system SHALL NOT infer a codec from file extension or host line endings alone.
+
+---
+
+### Requirement 18: Hybrid Storage Architecture — SQLite Catalogue + Native Files
+
+**User Story:** As a platform architect, I want the catalogue to use SQLite for metadata and native files for sequential/library content so that datasets are accessible to external tools, Git, and backup utilities without requiring workbench-specific extraction.
+
+**Source:** [VFS-REQ] §3 Decision Matrix; [ARCH] §4 Physical Storage Strategy; [VFS-REQ] §15 Prohibited Designs.
+
+#### Acceptance Criteria
+
+18.1 THE system SHALL store PS dataset content as native files on the host filesystem; the catalogue SHALL record the provider locator but SHALL NOT store PS payload bytes as SQLite BLOBs.
+
+18.2 THE system SHALL store PDS and PDSE member content as individual native files within a native directory; the catalogue SHALL record member metadata but SHALL NOT store member payload bytes as SQLite BLOBs.
+
+18.3 THE system SHALL store GDG generation content as native files; the catalogue SHALL record generation lineage and lifecycle state.
+
+18.4 THE system SHALL store VSAM KSDS records in a SQLite-backed keyed record store (separate from the catalogue database) because keyed access semantics require transactional database support.
+
+18.5 THE system SHALL store VSAM RRDS records in a SQLite-backed relative-record store for the same reason.
+
+18.6 THE system SHALL store VSAM ESDS records in an append-oriented native file; an optional sidecar index SHALL be rebuildable from the data file.
+
+18.7 THE system SHALL store POSIX files as native host filesystem objects; the catalogue MAY register a POSIX root as a provider locator but SHALL NOT copy POSIX file contents into SQLite.
+
+18.8 THE system SHALL NOT store PS, PDS, GDG, or POSIX content as BLOBs in the central catalogue database — this design is explicitly prohibited.
+
+---
+
+### Requirement 19: StorageProvider Abstraction Layer
+
+**User Story:** As a platform developer, I want a StorageProvider interface that separates physical access from catalogue resolution so that alternative storage backends can be added without changing dataset editors or catalogue consumers.
+
+**Source:** [VFS-REQ] §8 FFW-VFS-SPI-001 to SPI-004; [ARCH] §11 DatasetProvider trait.
+
+#### Acceptance Criteria
+
+19.1 THE system SHALL define a `StorageProvider` trait exposing at minimum: `allocate`, `open`, `stat`, `rename`, `delete`, `list`, and `reconcile` operations; the exact Rust API may differ from the specification sketch but the responsibilities SHALL remain separated.
+
+19.2 EACH provider SHALL declare its capabilities (stream read/write, record read/write, keyed access, relative access, append-only, member operations, atomic rename, locking, snapshotting, watch notifications) rather than requiring callers to infer them from dataset type.
+
+19.3 THE native-filesystem provider and the SQLite record provider SHALL implement a common error taxonomy mapping to `VfsError` variants.
+
+19.4 Provider-specific locators SHALL be opaque outside the provider and catalogue services; user-interface code SHALL NOT construct or parse raw provider paths.
+
+19.5 THE system SHALL provide a `NativeFileProvider` implementing `StorageProvider` for PS, PDS/PDSE, GDG, and POSIX content stored as native files and directories.
+
+19.6 THE system SHALL provide a `SqliteRecordProvider` implementing `StorageProvider` for VSAM KSDS, RRDS, and ISAM content requiring keyed or relative access.
+
+19.7 WHEN a future storage provider is added, THE system SHALL not require changes to dataset editors, catalogue consumers, or the VFS layer — only a new `StorageProvider` implementation and registration are needed.
+
+---
+
+### Requirement 20: UUID-Based Physical Object Layout
+
+**User Story:** As a platform developer, I want physical dataset objects identified by stable UUIDs rather than DSN-derived paths so that logical renames do not require physical file moves and path-safety issues are eliminated.
+
+**Source:** [VFS-REQ] §9 FFW-VFS-NAM-001 to NAM-005; preferred layout in §9.
+
+#### Acceptance Criteria
+
+20.1 THE system SHALL assign each managed physical object a stable internal UUID at allocation time; this UUID SHALL be stored in the catalogue and used as the physical filename or directory name.
+
+20.2 THE preferred repository layout SHALL be:
+```
+workspace/
+  catalog.db
+  datasets/
+    objects/
+      <dataset-uuid>.dat
+      <library-uuid>/
+        <member-uuid>.dat
+    staging/
+  indexed/
+    <dataset-uuid>.sqlite
+  recovery/
+```
+
+20.3 THE logical dataset name SHALL NOT be used as the physical path; the catalogue SHALL be the sole authority mapping logical names to physical locators.
+
+20.4 THE physical mapping SHALL be deterministic and persisted so that a dataset can be found after restart without scanning the filesystem.
+
+20.5 THE system SHALL NOT rely on dots in a dataset name being translated directly into directory separators for the UUID-based layout.
+
+20.6 WHEN a dataset is renamed, THE physical object SHALL NOT be moved or renamed — only the catalogue entry SHALL be updated.
+
+20.7 THE system SHALL protect against path traversal, reserved device names, illegal characters, case-folding collisions, and maximum path-length constraints when constructing physical paths.
+
+---
+
+### Requirement 21: VSAM KSDS Support
+
+**User Story:** As a mainframe developer, I want VSAM Key-Sequenced Dataset emulation so that applications using keyed record access work correctly in the local environment.
+
+**Source:** [VFS-REQ] §7.5 FFW-VFS-KSDS-001 to KSDS-007; [ARCH] §8 VSAM Architecture.
+
+#### Acceptance Criteria
+
+21.1 THE system SHALL implement a KSDS provider using a dedicated SQLite database (one per KSDS dataset) with a table keyed by the primary key field.
+
+21.2 EACH KSDS SHALL define a primary key offset, key length, key type/collation, and uniqueness rule stored in the catalogue.
+
+21.3 THE KSDS provider SHALL support: keyed read by primary key, ordered sequential read, insert, update, delete, and range retrieval.
+
+21.4 Primary-key uniqueness SHALL be enforced transactionally within the SQLite database.
+
+21.5 Alternate indexes SHALL be represented as explicit metadata and additional SQLite indexes or mapping tables within the KSDS database.
+
+21.6 Record data SHALL be stored independently of catalogue rows so that catalogue queries do not scan dataset payloads.
+
+21.7 THE design SHALL permit a KSDS to use a dedicated SQLite database or another provider when isolation, scale, backup, or contention requirements justify it.
+
+---
+
+### Requirement 22: VSAM RRDS Support
+
+**User Story:** As a mainframe developer, I want VSAM Relative-Record Dataset emulation so that applications using relative record number access work correctly.
+
+**Source:** [VFS-REQ] §7.6 FFW-VFS-RRDS-001 to RRDS-003; [ARCH] §8 VSAM Architecture.
+
+#### Acceptance Criteria
+
+22.1 THE system SHALL implement an RRDS provider using a SQLite-backed record store keyed by relative record number.
+
+22.2 THE provider SHALL distinguish an unallocated relative record slot from an allocated record containing zero or blank content — these two states SHALL be distinguishable by the caller.
+
+22.3 THE provider SHALL support: direct retrieval by relative record number, replacement, deletion, and sequential iteration.
+
+---
+
+### Requirement 23: VSAM ESDS Support
+
+**User Story:** As a mainframe developer, I want VSAM Entry-Sequenced Dataset emulation so that append-oriented workloads are supported.
+
+**Source:** [VFS-REQ] §7.7 FFW-VFS-ESDS-001 to ESDS-004; [ARCH] §8 VSAM Architecture.
+
+#### Acceptance Criteria
+
+23.1 THE system SHALL implement an ESDS provider storing records in insertion order in an append-oriented native file.
+
+23.2 THE provider SHALL issue a stable record address or equivalent logical token for each appended record.
+
+23.3 WHEN a sidecar index is used, it SHALL be rebuildable from the data file or protected by an integrity and recovery mechanism.
+
+23.4 Update and deletion semantics SHALL be explicitly documented; if they differ from append-only behaviour the documentation SHALL describe the exact behaviour.
+
+---
+
+### Requirement 24: ISAM Support
+
+**User Story:** As a mainframe developer, I want ISAM-style indexed file emulation so that legacy indexed file access patterns are supported.
+
+**Source:** [VFS-REQ] §7.8 FFW-VFS-ISAM-001 to ISAM-003.
+
+#### Acceptance Criteria
+
+24.1 ISAM-style files SHALL use the common indexed-record interface shared with KSDS.
+
+24.2 THE default ISAM provider SHALL use SQLite indexes for primary and secondary access paths.
+
+24.3 ISAM implementation details SHALL remain encapsulated behind the `StorageProvider` interface so a future native B-tree provider can be introduced without changing callers.
+
+---
+
+### Requirement 25: Staged Transaction Protocol
+
+**User Story:** As a platform developer, I want a staged transaction protocol for operations that span both SQLite and the filesystem so that interrupted operations leave the system in a recoverable state rather than a corrupt one.
+
+**Source:** [VFS-REQ] §11 FFW-VFS-TXN-001 to TXN-006.
+
+#### Acceptance Criteria
+
+25.1 WHEN a dataset is created, THE system SHALL: (a) stage the physical content in the `datasets/staging/` area, (b) create or reserve the catalogue entry, (c) publish the physical object to its final location, (d) mark the catalogue entry active — in that order.
+
+25.2 WHEN a dataset is deleted, THE system SHALL: (a) mark the catalogue entry pending-deletion, (b) move or tombstone the physical content where practical, (c) finalise catalogue state — in that order.
+
+25.3 Interrupted operations SHALL be discoverable through operation journals or transitional catalogue states on the next startup.
+
+25.4 WHEN the system starts, THE system SHALL detect incomplete operations and offer deterministic recovery — either completing or rolling back each incomplete operation.
+
+25.5 Concurrent modification SHALL be controlled using SQLite transactions, version tokens, provider-specific locking, or a documented combination.
+
+25.6 THE system SHALL NOT report an operation as successful until both catalogue and provider state satisfy the operation's postconditions.
+
+---
+
+### Requirement 26: Integrity, Backup, and Restore
+
+**User Story:** As a workbench user, I want workspace backup and restore to capture all catalogue and physical content together so that I can recover a complete, consistent workspace after a failure or migration.
+
+**Source:** [VFS-REQ] §12 FFW-VFS-INT-001 to INT-006.
+
+#### Acceptance Criteria
+
+26.1 THE system SHALL support optional checksums on managed content to detect unexpected physical modification or corruption.
+
+26.2 A workspace backup SHALL capture: the catalogue database, all SQLite record stores, all native dataset files, all library directories, and operation journals — as one recoverable unit.
+
+26.3 A backup SHALL include a manifest containing: schema version, provider configuration, object inventory, and integrity information.
+
+26.4 Restore SHALL support restoration to the original workspace or remapping to a different root without changing logical dataset names.
+
+26.5 THE system SHALL provide diagnostics for orphaned physical objects (present on disk but absent from catalogue) and dangling catalogue entries (in catalogue but missing on disk).
+
+26.6 Repair operations SHALL be previewable, auditable, and reversible where practical.
+
+---
+
+### Requirement 27: Catalogue Reconciliation
+
+**User Story:** As a workbench administrator, I want a reconciliation operation that compares catalogue state with provider state and reports discrepancies without automatically changing data, so that I can review and approve corrections.
+
+**Source:** [VFS-REQ] §7.1 FFW-VFS-CAT-007 to CAT-008; [VFS-REQ] §8 FFW-VFS-SPI-001 reconcile.
+
+#### Acceptance Criteria
+
+27.1 THE system SHALL provide a reconciliation operation that compares catalogue entries with the physical objects reported by each provider.
+
+27.2 THE reconciliation operation SHALL detect: entries whose physical objects are missing, inaccessible, duplicated, or inconsistent.
+
+27.3 THE reconciliation operation SHALL report proposed corrective actions without automatically changing data — the user SHALL approve each correction.
+
+27.4 THE catalogue SHALL record create, rename, move, delete, restore, import, export, and allocation changes in an audit trail.
+
+27.5 Schema changes SHALL be versioned and performed through forward migration scripts; no schema change SHALL be applied without a corresponding migration.
+
+---
+
+### Requirement 28: Security — Path Safety and Audit
+
+**User Story:** As a security-conscious operator, I want all physical paths constrained to authorised workspace roots and all sensitive data excluded from logs so that the workbench cannot be used to traverse or leak filesystem content.
+
+**Source:** [VFS-REQ] §13 FFW-VFS-SEC-001 to SEC-006.
+
+#### Acceptance Criteria
+
+28.1 ALL resolved physical paths SHALL be constrained to authorised workspace roots unless the user explicitly mounts an external root.
+
+28.2 Path canonicalisation and traversal checks SHALL occur before any filesystem access.
+
+28.3 Catalogue metadata SHALL NOT be treated as a substitute for host operating-system access controls.
+
+28.4 Sensitive dataset contents and credentials SHALL NOT be written to logs.
+
+28.5 ALL SQLite connections SHALL use parameterised statements; schema identifiers SHALL be controlled and not interpolated from user input.
+
+28.6 Audit events SHALL identify: action, object, outcome, timestamp, and initiating principal or process where available.
+
+---
+
+### Requirement 29: Catalogue Hierarchy — Master and User Catalogues
+
+**User Story:** As a mainframe developer, I want master and user catalogue concepts so that the catalogue hierarchy mirrors z/OS conventions and multi-project environments can be organised cleanly.
+
+**Source:** [VFS-REQ] §7.1 FFW-VFS-CAT-003; [ARCH] §3 Catalogue Architecture.
+
+#### Acceptance Criteria
+
+29.1 THE catalogue SHALL support master and user-catalogue concepts, or an equivalent scoped catalogue hierarchy, so that datasets can be organised by project or ownership scope.
+
+29.2 THE catalogue SHALL map each managed logical dataset name to exactly one active storage provider and provider-specific locator within a catalogue scope.
+
+29.3 THE catalogue SHALL support logical rename and physical relocation as separate operations — renaming a dataset SHALL NOT require moving its physical content.
+
+29.4 THE catalogue SHALL validate uniqueness according to the configured naming scope and collation rules.
+
+---
+
+### Requirement 30: Non-Functional — Portability, Git Compatibility, and Data Fidelity
+
+**User Story:** As a developer, I want the storage architecture to work identically on Windows, Linux, and macOS, to be compatible with Git for text-oriented members, and to never silently alter bytes or record boundaries.
+
+**Source:** [VFS-REQ] §14 FFW-VFS-NFR-001 to NFR-008.
+
+#### Acceptance Criteria
+
+30.1 THE architecture SHALL operate on Windows, Linux, and macOS without changing the logical dataset model.
+
+30.2 Catalogue listing SHALL query metadata without loading dataset payloads.
+
+30.3 THE design SHALL permit large datasets and large libraries without placing all content into the central catalogue database.
+
+30.4 Catalogue, codec, and provider components SHALL be independently testable using temporary workspaces and deterministic fixtures.
+
+30.5 Storage operations SHALL emit structured diagnostic events with correlation identifiers.
+
+30.6 A future storage provider SHALL be addable without rewriting dataset editors or catalogue consumers.
+
+30.7 Text-oriented PDS/PDSE members and selected sequential datasets SHALL be capable of being represented as ordinary files suitable for external version-control tooling (Git compatibility).
+
+30.8 THE system SHALL NOT silently alter bytes, encoding, record boundaries, keys, or generation identity — any conversion SHALL require an explicit codec and encoding policy.

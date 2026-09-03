@@ -118,6 +118,7 @@ fn arb_session_state() -> impl Strategy<Value = SessionState> {
                 show_pom: true,
                 global_zoom_offset: 0,
                 key_bar_visible: true,
+                file_explorer_sidebar_width: 200.0,
             },
         )
 }

@@ -69,25 +69,25 @@ This spec covers:
 
 #### Acceptance Criteria
 
-1.1 THE caret renderer SHALL support three caret styles: Invisible (not drawn), Line (vertical bar), and Block (solid rectangle spanning one character cell width and line height). [SCI-VS-8]
+1. THE caret renderer SHALL support three caret styles: Invisible (not drawn), Line (vertical bar), and Block (solid rectangle spanning one character cell width and line height). [SCI-VS-8]
 
-1.2 THE default caret style SHALL be Line. [SCI-VS-8]
+2. THE default caret style SHALL be Line. [SCI-VS-8]
 
-1.3 WHEN the editor is in Overstrike Mode, THE caret renderer SHALL display a Block-shaped caret (overstrike block) to visually distinguish the mode from Insert Mode. [SCI-VS-8]
+3. WHEN the editor is in Overstrike Mode, THE caret renderer SHALL display a Block-shaped caret (overstrike block) to visually distinguish the mode from Insert Mode. [SCI-VS-8]
 
-1.4 WHEN the caret style is Line, THE caret renderer SHALL draw the caret as a vertical bar with a configurable width in pixels. [SCI-VS-8]
+4. WHEN the caret style is Line, THE caret renderer SHALL draw the caret as a vertical bar with a configurable width in pixels. [SCI-VS-8]
 
-1.5 THE default caret width SHALL be 1 pixel. [SCI-VS-8]
+5. THE default caret width SHALL be 1 pixel. [SCI-VS-8]
 
-1.6 WHEN the caret width is configured, THE caret renderer SHALL accept values in the range [1, 20] pixels, clamping out-of-range values to the nearest bound. [SCI-VS-8]
+6. WHEN the caret width is configured, THE caret renderer SHALL accept values in the range [1, 20] pixels, clamping out-of-range values to the nearest bound. [SCI-VS-8]
 
-1.7 WHEN the caret style is Block, THE caret renderer SHALL draw the caret as a filled rectangle covering the full character cell at the caret position. [SCI-VS-8]
+7. WHEN the caret style is Block, THE caret renderer SHALL draw the caret as a filled rectangle covering the full character cell at the caret position. [SCI-VS-8]
 
-1.8 WHEN the caret style is Block and the caret is at the end of a line (no character underneath), THE caret renderer SHALL draw the block with the width of a space character. [SCI-VS-8]
+8. WHEN the caret style is Block and the caret is at the end of a line (no character underneath), THE caret renderer SHALL draw the block with the width of a space character. [SCI-VS-8]
 
-1.9 WHEN the caret style is Invisible, THE caret renderer SHALL not draw any caret graphic. [SCI-VS-8]
+9. WHEN the caret style is Invisible, THE caret renderer SHALL not draw any caret graphic. [SCI-VS-8]
 
-1.10 THE caret style setting SHALL be configurable via the theme system (cross-reference: `theme-and-appearance`). [WB]
+10. THE caret style setting SHALL be configurable via the theme system (cross-reference: `theme-and-appearance`). [WB]
 
 ---
 
@@ -97,19 +97,19 @@ This spec covers:
 
 #### Acceptance Criteria
 
-2.1 THE caret renderer SHALL use the `Caret` element colour for rendering the primary caret (the caret of the main SelectionRange). [SCI-VS-8]
+1. THE caret renderer SHALL use the `Caret` element colour for rendering the primary caret (the caret of the main SelectionRange). [SCI-VS-8]
 
-2.2 THE default `Caret` element colour SHALL be black (#000000). [SCI-VS-8]
+2. THE default `Caret` element colour SHALL be black (#000000). [SCI-VS-8]
 
-2.3 THE caret renderer SHALL use the `CaretAdditional` element colour for rendering additional carets (non-main carets in a multi-caret scenario). [SCI-VS-8]
+3. THE caret renderer SHALL use the `CaretAdditional` element colour for rendering additional carets (non-main carets in a multi-caret scenario). [SCI-VS-8]
 
-2.4 THE default `CaretAdditional` element colour SHALL be grey (#7F7F7F). [SCI-VS-8]
+4. THE default `CaretAdditional` element colour SHALL be grey (#7F7F7F). [SCI-VS-8]
 
-2.5 WHEN the `Caret` element colour is configured via the theme, THE caret renderer SHALL use the theme-specified colour for the primary caret. [WB]
+5. WHEN the `Caret` element colour is configured via the theme, THE caret renderer SHALL use the theme-specified colour for the primary caret. [WB]
 
-2.6 WHEN the `CaretAdditional` element colour is configured via the theme, THE caret renderer SHALL use the theme-specified colour for additional carets. [WB]
+6. WHEN the `CaretAdditional` element colour is configured via the theme, THE caret renderer SHALL use the theme-specified colour for additional carets. [WB]
 
-2.7 WHEN a Block-style caret is drawn, THE caret renderer SHALL render the character underneath the block using the inverse of the caret colour (or the configured selection text colour) to maintain legibility. [SCI-VS-8]
+7. WHEN a Block-style caret is drawn, THE caret renderer SHALL render the character underneath the block using the inverse of the caret colour (or the configured selection text colour) to maintain legibility. [SCI-VS-8]
 
 ---
 
@@ -119,19 +119,19 @@ This spec covers:
 
 #### Acceptance Criteria
 
-3.1 THE caret-and-selection model SHALL expose a `blink_period_ms` configuration value representing the total blink cycle duration in milliseconds. [WB]
+1. THE caret-and-selection model SHALL expose a `blink_period_ms` configuration value representing the total blink cycle duration in milliseconds. [WB]
 
-3.2 THE default `blink_period_ms` SHALL be 530 milliseconds (matching typical desktop editor defaults). [WB]
+2. THE default `blink_period_ms` SHALL be 530 milliseconds (matching typical desktop editor defaults). [WB]
 
-3.3 WHEN `blink_period_ms` is set to 0, THE caret SHALL remain permanently visible (no blinking). [WB]
+3. WHEN `blink_period_ms` is set to 0, THE caret SHALL remain permanently visible (no blinking). [WB]
 
-3.4 THE blink timer SHALL be owned and driven by the GUI shell — the caret-and-selection model SHALL expose only the period value and a `visible_phase` query method. The model SHALL NOT contain a timer implementation. [WB]
+4. THE blink timer SHALL be owned and driven by the GUI shell — the caret-and-selection model SHALL expose only the period value and a `visible_phase` query method. The model SHALL NOT contain a timer implementation. [WB]
 
-3.5 WHEN the GUI shell queries the blink state, THE model SHALL report whether the caret is in the visible phase or hidden phase based on elapsed time modulo `blink_period_ms`. [WB]
+5. WHEN the GUI shell queries the blink state, THE model SHALL report whether the caret is in the visible phase or hidden phase based on elapsed time modulo `blink_period_ms`. [WB]
 
-3.6 WHEN the caret position changes (user typed, navigated, or clicked), THE blink cycle SHALL reset to the visible phase to ensure the caret is immediately visible after movement. [WB]
+6. WHEN the caret position changes (user typed, navigated, or clicked), THE blink cycle SHALL reset to the visible phase to ensure the caret is immediately visible after movement. [WB]
 
-3.7 THE `blink_period_ms` value SHALL be configurable via the configuration system and overridable by the theme (cross-reference: `configuration-system`). [WB]
+7. THE `blink_period_ms` value SHALL be configurable via the configuration system and overridable by the theme (cross-reference: `configuration-system`). [WB]
 
 ---
 
@@ -141,31 +141,31 @@ This spec covers:
 
 #### Acceptance Criteria
 
-4.1 THE caret renderer SHALL support highlighting the current caret line using either a background fill OR a frame (border/outline), but not both simultaneously. [FFE-MVP-2, SCI-VS-8]
+1. THE caret renderer SHALL support highlighting the current caret line using either a background fill OR a frame (border/outline), but not both simultaneously. [FFE-MVP-2, SCI-VS-8]
 
-4.2 THE default caret-line highlight mode SHALL be Frame (border/outline) with no background fill, consistent with the FFE visual design. [FFE-MVP-2]
+2. THE default caret-line highlight mode SHALL be Frame (border/outline) with no background fill, consistent with the FFE visual design. [FFE-MVP-2]
 
-4.3 WHEN caret-line highlighting is configured as Frame mode, THE renderer SHALL draw a border/outline around the entire caret line row. The frame width SHALL be configurable, defaulting to 1 pixel. [FFE-MVP-2, SCI-VS-8]
+3. WHEN caret-line highlighting is configured as Frame mode, THE renderer SHALL draw a border/outline around the entire caret line row. The frame width SHALL be configurable, defaulting to 1 pixel. [FFE-MVP-2, SCI-VS-8]
 
-4.4 WHEN caret-line highlighting is configured as Fill mode, THE renderer SHALL draw the `CaretLineBack` element colour as the background for the entire caret line. Text colour SHALL remain unchanged. [SCI-VS-8]
+4. WHEN caret-line highlighting is configured as Fill mode, THE renderer SHALL draw the `CaretLineBack` element colour as the background for the entire caret line. Text colour SHALL remain unchanged. [SCI-VS-8]
 
-4.5 THE caret-line frame width SHALL be clamped to the range [1, lineHeight / 3] to prevent visual overflow. [SCI-VS-8]
+5. THE caret-line frame width SHALL be clamped to the range [1, lineHeight / 3] to prevent visual overflow. [SCI-VS-8]
 
-4.6 THE caret-line highlight SHALL support a `layer` setting: Base (drawn under text, opaque) or OverText (drawn over text, translucent). [SCI-VS-8]
+6. THE caret-line highlight SHALL support a `layer` setting: Base (drawn under text, opaque) or OverText (drawn over text, translucent). [SCI-VS-8]
 
-4.7 THE default caret-line layer SHALL be Base. [SCI-VS-8]
+7. THE default caret-line layer SHALL be Base. [SCI-VS-8]
 
-4.8 THE caret-line highlight SHALL support an `always_show` flag. WHEN `always_show` is true, THE highlight SHALL be visible even when the editor pane does not have keyboard focus. WHEN `always_show` is false, THE highlight SHALL only appear when the pane is focused. [SCI-VS-8]
+8. THE caret-line highlight SHALL support an `always_show` flag. WHEN `always_show` is true, THE highlight SHALL be visible even when the editor pane does not have keyboard focus. WHEN `always_show` is false, THE highlight SHALL only appear when the pane is focused. [SCI-VS-8]
 
-4.9 THE default `always_show` value SHALL be false. [SCI-VS-8]
+9. THE default `always_show` value SHALL be false. [SCI-VS-8]
 
-4.10 THE caret-line highlight SHALL support a `sub_line` flag. WHEN `sub_line` is true and word-wrap is active, THE highlight SHALL apply only to the wrapped sub-line containing the caret, not the entire document line. WHEN `sub_line` is false, THE highlight SHALL span the full document line (all wrapped sub-lines). [SCI-VS-8]
+10. THE caret-line highlight SHALL support a `sub_line` flag. WHEN `sub_line` is true and word-wrap is active, THE highlight SHALL apply only to the wrapped sub-line containing the caret, not the entire document line. WHEN `sub_line` is false, THE highlight SHALL span the full document line (all wrapped sub-lines). [SCI-VS-8]
 
-4.11 THE default `sub_line` value SHALL be false (highlight the full line). [SCI-VS-8]
+11. THE default `sub_line` value SHALL be false (highlight the full line). [SCI-VS-8]
 
-4.12 THE `CaretLineBack` element colour SHALL be configurable via the theme system, defaulting to a subtle highlight appropriate for the current colour scheme. [WB]
+12. THE `CaretLineBack` element colour SHALL be configurable via the theme system, defaulting to a subtle highlight appropriate for the current colour scheme. [WB]
 
-4.13 WHEN the editor has multiple carets, THE caret-line highlight SHALL apply to the line containing the main (primary) caret only. [SCI-VS-8]
+13. WHEN the editor has multiple carets, THE caret-line highlight SHALL apply to the line containing the main (primary) caret only. [SCI-VS-8]
 
 ---
 
@@ -175,25 +175,25 @@ This spec covers:
 
 #### Acceptance Criteria
 
-5.1 THE selection renderer SHALL display selected text using a distinct background colour that contrasts with the default text background. [FFE-MVP-8]
+1. THE selection renderer SHALL display selected text using a distinct background colour that contrasts with the default text background. [FFE-MVP-8]
 
-5.2 THE selection renderer SHALL NOT obscure selected text — text SHALL remain legible through the selection highlighting. [FFE-MVP-8]
+2. THE selection renderer SHALL NOT obscure selected text — text SHALL remain legible through the selection highlighting. [FFE-MVP-8]
 
-5.3 THE selection renderer SHALL support a `visible` flag. WHEN `visible` is false, THE selection SHALL not be rendered visually (though the logical selection remains active in `edit-operations`). [SCI-VS-7]
+3. THE selection renderer SHALL support a `visible` flag. WHEN `visible` is false, THE selection SHALL not be rendered visually (though the logical selection remains active in `edit-operations`). [SCI-VS-7]
 
-5.4 THE default selection visibility SHALL be true. [SCI-VS-7]
+4. THE default selection visibility SHALL be true. [SCI-VS-7]
 
-5.5 THE selection renderer SHALL support a `layer` setting controlling compositing mode: Base (opaque background drawn under text, replacing the default background) or OverText (translucent, alpha-blended over both text and background). [SCI-VS-7]
+5. THE selection renderer SHALL support a `layer` setting controlling compositing mode: Base (opaque background drawn under text, replacing the default background) or OverText (translucent, alpha-blended over both text and background). [SCI-VS-7]
 
-5.6 THE default selection layer SHALL be Base (opaque). [SCI-VS-7]
+6. THE default selection layer SHALL be Base (opaque). [SCI-VS-7]
 
-5.7 WHEN the selection layer is Base, THE renderer SHALL draw the selection background colour underneath the text, and optionally override the text foreground colour with the SelectionText element. [SCI-VS-7]
+7. WHEN the selection layer is Base, THE renderer SHALL draw the selection background colour underneath the text, and optionally override the text foreground colour with the SelectionText element. [SCI-VS-7]
 
-5.8 WHEN the selection layer is OverText, THE renderer SHALL draw the selection as a translucent overlay above the text, using the alpha channel of the selection colour elements. [SCI-VS-7]
+8. WHEN the selection layer is OverText, THE renderer SHALL draw the selection as a translucent overlay above the text, using the alpha channel of the selection colour elements. [SCI-VS-7]
 
-5.9 THE selection renderer SHALL support an `eol_filled` flag. WHEN `eol_filled` is true, THE selection background SHALL extend from the last character on a selected line to the right edge of the text area. WHEN false, THE selection background SHALL end at the last selected character. [SCI-VS-7]
+9. THE selection renderer SHALL support an `eol_filled` flag. WHEN `eol_filled` is true, THE selection background SHALL extend from the last character on a selected line to the right edge of the text area. WHEN false, THE selection background SHALL end at the last selected character. [SCI-VS-7]
 
-5.10 THE default `eol_filled` value SHALL be false. [SCI-VS-7]
+10. THE default `eol_filled` value SHALL be false. [SCI-VS-7]
 
 ---
 
@@ -203,29 +203,29 @@ This spec covers:
 
 #### Acceptance Criteria
 
-6.1 THE selection renderer SHALL support the following element colour pairs, each with a text (foreground) and back (background) component: [SCI-VS-7]
+1. THE selection renderer SHALL support the following element colour pairs, each with a text (foreground) and back (background) component: [SCI-VS-7]
 - `SelectionText` / `SelectionBack` — primary selection colours
 - `SelectionAdditionalText` / `SelectionAdditionalBack` — additional (non-primary) multi-selection colours
 - `SelectionSecondaryText` / `SelectionSecondaryBack` — secondary selection colours (e.g., find-all highlights)
 - `SelectionInactiveText` / `SelectionInactiveBack` — inactive pane selection colours
 
-6.2 THE default `SelectionBack` colour SHALL be grey (#C0C0C0) fully opaque. [SCI-VS-7]
+2. THE default `SelectionBack` colour SHALL be grey (#C0C0C0) fully opaque. [SCI-VS-7]
 
-6.3 THE default `SelectionAdditionalBack` colour SHALL be grey (#D7D7D7) fully opaque. [SCI-VS-7]
+3. THE default `SelectionAdditionalBack` colour SHALL be grey (#D7D7D7) fully opaque. [SCI-VS-7]
 
-6.4 THE default `SelectionSecondaryBack` colour SHALL be grey (#B0B0B0) fully opaque. [SCI-VS-7]
+4. THE default `SelectionSecondaryBack` colour SHALL be grey (#B0B0B0) fully opaque. [SCI-VS-7]
 
-6.5 THE default `SelectionInactiveBack` colour SHALL be grey (#808080) with alpha 0x3F (translucent). [SCI-VS-7]
+5. THE default `SelectionInactiveBack` colour SHALL be grey (#808080) with alpha 0x3F (translucent). [SCI-VS-7]
 
-6.6 WHEN a SelectionText element colour is set, THE renderer SHALL override the text foreground colour within the selection with that element colour. WHEN no SelectionText colour is set, THE text SHALL retain its original syntax-highlighted foreground colour. [SCI-VS-7]
+6. WHEN a SelectionText element colour is set, THE renderer SHALL override the text foreground colour within the selection with that element colour. WHEN no SelectionText colour is set, THE text SHALL retain its original syntax-highlighted foreground colour. [SCI-VS-7]
 
-6.7 ALL selection element colours SHALL support translucent (alpha-blended) values. [SCI-VS-7]
+7. ALL selection element colours SHALL support translucent (alpha-blended) values. [SCI-VS-7]
 
-6.8 ALL selection element colours SHALL be configurable via the theme system (cross-reference: `theme-and-appearance`). [WB]
+8. ALL selection element colours SHALL be configurable via the theme system (cross-reference: `theme-and-appearance`). [WB]
 
-6.9 WHEN a secondary selection exists (e.g., find-all match highlights that are not the primary selection), THE renderer SHALL use the `SelectionSecondary*` colour pair for display. [SCI-VS-7]
+9. WHEN a secondary selection exists (e.g., find-all match highlights that are not the primary selection), THE renderer SHALL use the `SelectionSecondary*` colour pair for display. [SCI-VS-7]
 
-6.10 WHEN the editor pane loses keyboard focus and a selection is active, THE renderer SHALL switch to the `SelectionInactive*` colour pair for that selection. [SCI-VS-7]
+10. WHEN the editor pane loses keyboard focus and a selection is active, THE renderer SHALL switch to the `SelectionInactive*` colour pair for that selection. [SCI-VS-7]
 
 ---
 
@@ -235,17 +235,17 @@ This spec covers:
 
 #### Acceptance Criteria
 
-7.1 WHEN the caret's virtual space offset (from the logical SelectionPosition in `edit-operations`) is greater than zero, THE caret renderer SHALL display the caret at a horizontal position computed as: end-of-line-content + (virtual_space × space_width). [SCI-SEL-4.1]
+1. WHEN the caret's virtual space offset (from the logical SelectionPosition in `edit-operations`) is greater than zero, THE caret renderer SHALL display the caret at a horizontal position computed as: end-of-line-content + (virtual_space × space_width). [SCI-SEL-4.1]
 
-7.2 THE virtual space area between line-end and the caret SHALL be rendered as empty space (no visible characters) with the default line background colour. [SCI-SEL-4.1]
+2. THE virtual space area between line-end and the caret SHALL be rendered as empty space (no visible characters) with the default line background colour. [SCI-SEL-4.1]
 
-7.3 WHEN a rectangular selection spans virtual space (columns beyond a line's content), THE selection renderer SHALL display the selection highlight in the virtual space area as if space characters existed there. [SCI-SEL-4.1]
+3. WHEN a rectangular selection spans virtual space (columns beyond a line's content), THE selection renderer SHALL display the selection highlight in the virtual space area as if space characters existed there. [SCI-SEL-4.1]
 
-7.4 WHEN virtual space is part of a selection range, THE selection highlight SHALL extend through the virtual space region between line-end and the selection boundary. [SCI-SEL-4.1]
+4. WHEN virtual space is part of a selection range, THE selection highlight SHALL extend through the virtual space region between line-end and the selection boundary. [SCI-SEL-4.1]
 
-7.5 THE caret SHALL visually occupy virtual space identically to how it occupies real text positions — same style, width, and colour apply. [SCI-SEL-4.1]
+5. THE caret SHALL visually occupy virtual space identically to how it occupies real text positions — same style, width, and colour apply. [SCI-SEL-4.1]
 
-7.6 THE virtual space display SHALL NOT render any visible whitespace indicators in the virtual region (whitespace visibility applies only to real content). [SCI-SEL-4.1]
+6. THE virtual space display SHALL NOT render any visible whitespace indicators in the virtual region (whitespace visibility applies only to real content). [SCI-SEL-4.1]
 
 ---
 
@@ -255,15 +255,15 @@ This spec covers:
 
 #### Acceptance Criteria
 
-8.1 WHEN a rectangular selection is active (selType is rectangle or thin in `edit-operations`), THE selection renderer SHALL display the selection as a vertical column band — one selection segment per line spanning the same left-to-right column range. [SCI-SEL-4.1]
+1. WHEN a rectangular selection is active (selType is rectangle or thin in `edit-operations`), THE selection renderer SHALL display the selection as a vertical column band — one selection segment per line spanning the same left-to-right column range. [SCI-SEL-4.1]
 
-8.2 THE rectangular selection highlight SHALL use the same `SelectionBack` colour as stream selections, drawn with the same layer mode. [SCI-SEL-4.1]
+2. THE rectangular selection highlight SHALL use the same `SelectionBack` colour as stream selections, drawn with the same layer mode. [SCI-SEL-4.1]
 
-8.3 WHEN the rectangular selection spans lines of differing lengths and the right column exceeds a line's content length, THE renderer SHALL display the selection highlight extending into virtual space for that line. [SCI-SEL-4.1]
+3. WHEN the rectangular selection spans lines of differing lengths and the right column exceeds a line's content length, THE renderer SHALL display the selection highlight extending into virtual space for that line. [SCI-SEL-4.1]
 
-8.4 WHEN a rectangular selection of type "thin" is active (zero-width column selection), THE renderer SHALL display a thin vertical line at the column position on each affected line, indicating the insertion point for column operations. [SCI-SEL-4.1]
+4. WHEN a rectangular selection of type "thin" is active (zero-width column selection), THE renderer SHALL display a thin vertical line at the column position on each affected line, indicating the insertion point for column operations. [SCI-SEL-4.1]
 
-8.5 THE rectangular selection SHALL display one caret per line at the caret-column edge of the selection (right edge for left-to-right selections, left edge for right-to-left). [SCI-SEL-4.1]
+5. THE rectangular selection SHALL display one caret per line at the caret-column edge of the selection (right edge for left-to-right selections, left edge for right-to-left). [SCI-SEL-4.1]
 
 ---
 
@@ -273,17 +273,17 @@ This spec covers:
 
 #### Acceptance Criteria
 
-9.1 WHEN multiple carets are active (multiple SelectionRanges in the Selection container from `edit-operations`), THE renderer SHALL draw a caret at each caret position. [SCI-SEL-4.1]
+1. WHEN multiple carets are active (multiple SelectionRanges in the Selection container from `edit-operations`), THE renderer SHALL draw a caret at each caret position. [SCI-SEL-4.1]
 
-9.2 THE primary caret (from the main SelectionRange) SHALL be rendered using the `Caret` element colour. [SCI-VS-8]
+2. THE primary caret (from the main SelectionRange) SHALL be rendered using the `Caret` element colour. [SCI-VS-8]
 
-9.3 ALL additional carets (non-main SelectionRanges) SHALL be rendered using the `CaretAdditional` element colour. [SCI-VS-8]
+3. ALL additional carets (non-main SelectionRanges) SHALL be rendered using the `CaretAdditional` element colour. [SCI-VS-8]
 
-9.4 ALL carets (primary and additional) SHALL use the same caret style (Line, Block, or Invisible) as configured globally. [SCI-VS-8]
+4. ALL carets (primary and additional) SHALL use the same caret style (Line, Block, or Invisible) as configured globally. [SCI-VS-8]
 
-9.5 WHEN each additional caret has its own selection range (anchor ≠ caret), THE renderer SHALL display selection highlighting for each range using `SelectionAdditionalBack` / `SelectionAdditionalText` colours. [SCI-VS-7]
+5. WHEN each additional caret has its own selection range (anchor ≠ caret), THE renderer SHALL display selection highlighting for each range using `SelectionAdditionalBack` / `SelectionAdditionalText` colours. [SCI-VS-7]
 
-9.6 THE caret blink cycle SHALL apply identically to all visible carets — all carets blink in phase (simultaneously visible, simultaneously hidden). [WB]
+6. THE caret blink cycle SHALL apply identically to all visible carets — all carets blink in phase (simultaneously visible, simultaneously hidden). [WB]
 
 ---
 
@@ -293,15 +293,15 @@ This spec covers:
 
 #### Acceptance Criteria
 
-10.1 WHEN a line's modified flag is set (logical state from `edit-operations`), THE renderer SHALL display a `*` character in the prefix area for that line. [FFE-MVP-2]
+1. WHEN a line's modified flag is set (logical state from `edit-operations`), THE renderer SHALL display a `*` character in the prefix area for that line. [FFE-MVP-2]
 
-10.2 THE modified line marker SHALL be rendered using the theme-configured marker colour (cross-reference: `theme-and-appearance`). [WB]
+2. THE modified line marker SHALL be rendered using the theme-configured marker colour (cross-reference: `theme-and-appearance`). [WB]
 
-10.3 THE modified line marker position SHALL be fixed within the prefix area and SHALL NOT shift when line numbers change width. [FFE-MVP-2]
+3. THE modified line marker position SHALL be fixed within the prefix area and SHALL NOT shift when line numbers change width. [FFE-MVP-2]
 
-10.4 WHEN a SAVE operation clears all modified flags (via `edit-operations`), THE renderer SHALL immediately remove all `*` markers from the display. [FFE-MVP-2]
+4. WHEN a SAVE operation clears all modified flags (via `edit-operations`), THE renderer SHALL immediately remove all `*` markers from the display. [FFE-MVP-2]
 
-10.5 THE modified line marker SHALL remain visible regardless of caret-line highlighting — the marker SHALL NOT be obscured by the caret-line background or frame. [FFE-MVP-2, WB]
+5. THE modified line marker SHALL remain visible regardless of caret-line highlighting — the marker SHALL NOT be obscured by the caret-line background or frame. [FFE-MVP-2, WB]
 
 ---
 
@@ -311,7 +311,7 @@ This spec covers:
 
 #### Acceptance Criteria
 
-11.1 THE following caret and selection settings SHALL be configurable through the theme system (cross-reference: `theme-and-appearance`, `configuration-system`): [WB]
+1. THE following caret and selection settings SHALL be configurable through the theme system (cross-reference: `theme-and-appearance`, `configuration-system`): [WB]
 - Caret style (Invisible, Line, Block)
 - Caret width (pixels)
 - Caret colour (element: Caret)
@@ -329,13 +329,13 @@ This spec covers:
 - All selection element colours (SelectionText, SelectionBack, SelectionAdditionalText, SelectionAdditionalBack, SelectionSecondaryText, SelectionSecondaryBack, SelectionInactiveText, SelectionInactiveBack)
 - Modified line marker colour
 
-11.2 WHEN the theme is hot-reloaded (cross-reference: `configuration-system`), THE caret and selection renderer SHALL apply the new visual settings on the next frame without requiring a restart. [WB]
+2. WHEN the theme is hot-reloaded (cross-reference: `configuration-system`), THE caret and selection renderer SHALL apply the new visual settings on the next frame without requiring a restart. [WB]
 
-11.3 WHEN a theme does not specify a particular caret/selection setting, THE renderer SHALL use the default values defined in this specification. [WB]
+3. WHEN a theme does not specify a particular caret/selection setting, THE renderer SHALL use the default values defined in this specification. [WB]
 
-11.4 THE caret-and-selection model SHALL be GUI-independent — it SHALL store configuration and expose query methods without depending on any rendering framework type. GUI shells consume the model to perform actual drawing. [WB]
+4. THE caret-and-selection model SHALL be GUI-independent — it SHALL store configuration and expose query methods without depending on any rendering framework type. GUI shells consume the model to perform actual drawing. [WB]
 
-11.5 WHEN configuration values are changed programmatically (e.g., via a settings dialog or command), THE changes SHALL take effect immediately on the next render frame. [WB]
+5. WHEN configuration values are changed programmatically (e.g., via a settings dialog or command), THE changes SHALL take effect immediately on the next render frame. [WB]
 
 ---
 
@@ -345,11 +345,11 @@ This spec covers:
 
 #### Acceptance Criteria
 
-12.1 WHEN the caret moves to a new line via arrow key, Page Up/Down, mouse click, or command, THE GUI shell SHALL give keyboard focus to the text content at the caret position, making the caret visible and input-ready. [FFE-MVP-2]
+1. WHEN the caret moves to a new line via arrow key, Page Up/Down, mouse click, or command, THE GUI shell SHALL give keyboard focus to the text content at the caret position, making the caret visible and input-ready. [FFE-MVP-2]
 
-12.2 WHEN the caret is positioned within the viewport and the editor pane has focus, THE caret SHALL always be visible (not obscured by other UI elements). [FFE-MVP-2]
+2. WHEN the caret is positioned within the viewport and the editor pane has focus, THE caret SHALL always be visible (not obscured by other UI elements). [FFE-MVP-2]
 
-12.3 WHEN the editor pane receives keyboard focus (e.g., user clicks in the editor area), THE caret SHALL immediately become visible in its current position and the blink cycle SHALL reset to the visible phase. [WB]
+3. WHEN the editor pane receives keyboard focus (e.g., user clicks in the editor area), THE caret SHALL immediately become visible in its current position and the blink cycle SHALL reset to the visible phase. [WB]
 
 ---
 

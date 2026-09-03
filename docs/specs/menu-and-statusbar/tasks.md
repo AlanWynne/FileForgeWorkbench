@@ -1,4 +1,4 @@
-# Implementation Plan: Menu & Status Bar (`ff-menu`)
+﻿# Implementation Plan: Menu & Status Bar (`ff-menu`)
 
 ## Overview
 
@@ -10,173 +10,173 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-command` 
 
 ## Tasks
 
-- [ ] 1. Crate scaffolding and module structure
-  - [ ] 1.1 Create `crates/ff-menu/Cargo.toml` with dependencies (ff-command, ff-core, ff-logging, ff-config, ff-plugin, egui, thiserror, serde, proptest dev-dep)
-  - [ ] 1.2 Create `crates/ff-menu/src/lib.rs` with module declarations and public API re-exports
-  - [ ] 1.3 Create module files: `menu_bar.rs`, `menu_item.rs`, `menu_model.rs`, `context_menu.rs`, `status_bar.rs`, `status_segment.rs`, `command_field.rs`, `recent_files.rs`, `keyboard_nav.rs`, `extensibility.rs`, `error.rs`
-  - [ ] 1.4 Add `ff-menu` to workspace `Cargo.toml` members list
+- [x] 1. Crate scaffolding and module structure
+  - [x] 1.1 Create `crates/ff-menu/Cargo.toml` with dependencies (ff-command, ff-core, ff-logging, ff-config, ff-plugin, egui, thiserror, serde, proptest dev-dep)
+  - [x] 1.2 Create `crates/ff-menu/src/lib.rs` with module declarations and public API re-exports
+  - [x] 1.3 Create module files: `menu_bar.rs`, `menu_item.rs`, `menu_model.rs`, `context_menu.rs`, `status_bar.rs`, `status_segment.rs`, `command_field.rs`, `recent_files.rs`, `keyboard_nav.rs`, `extensibility.rs`, `error.rs`
+  - [x] 1.4 Add `ff-menu` to workspace `Cargo.toml` members list
   - Covers: Structural foundation for all requirements
 
-- [ ] 2. Menu model types and data structures
-  - [ ] 2.1 Define `MenuId` newtype for unique menu identification
-  - [ ] 2.2 Define `MenuItem` enum with variants: Action(CommandBinding), Separator, Submenu(SubMenu), Toggle(ToggleBinding)
-  - [ ] 2.3 Define `CommandBinding` struct with fields: command_id, display_name, shortcut_text (Option), icon (Option), access_key (Option<char>)
-  - [ ] 2.4 Define `ToggleBinding` struct extending CommandBinding with a checked-state predicate
-  - [ ] 2.5 Define `SubMenu` struct with fields: label, items (Vec<MenuItem>), access_key (Option<char>)
-  - [ ] 2.6 Define `MenuDefinition` struct representing a complete top-level menu (label, items, access_key)
-  - [ ] 2.7 Write unit tests for menu model construction and traversal
+- [x] 2. Menu model types and data structures
+  - [x] 2.1 Define `MenuId` newtype for unique menu identification
+  - [x] 2.2 Define `MenuItem` enum with variants: Action(CommandBinding), Separator, Submenu(SubMenu), Toggle(ToggleBinding)
+  - [x] 2.3 Define `CommandBinding` struct with fields: command_id, display_name, shortcut_text (Option), icon (Option), access_key (Option<char>)
+  - [x] 2.4 Define `ToggleBinding` struct extending CommandBinding with a checked-state predicate
+  - [x] 2.5 Define `SubMenu` struct with fields: label, items (Vec<MenuItem>), access_key (Option<char>)
+  - [x] 2.6 Define `MenuDefinition` struct representing a complete top-level menu (label, items, access_key)
+  - [x] 2.7 Write unit tests for menu model construction and traversal
   - Covers: Requirement 1 (AC 1.1-1.8), Requirement 2 (AC 2.1)
 
-- [ ] 3. Menu-command binding and predicate evaluation
-  - [ ] 3.1 Implement `MenuCommandBinding` struct linking a MenuItem to a Command_ID in the command registry
-  - [ ] 3.2 Implement shortcut text resolution — query ShortcutRegistry for bound command's shortcut and format as display text
-  - [ ] 3.3 Implement enabled-state evaluation — query command's EnabledPredicate against current ExecutionContext
-  - [ ] 3.4 Implement visibility evaluation — query command's VisibilityPredicate against current ExecutionContext
-  - [ ] 3.5 Implement menu item activation — call `execute_command(command_id, params)` on the command dispatcher when item is clicked
-  - [ ] 3.6 Write unit tests for binding resolution, disabled rendering, hidden items, and dispatch invocation
+- [x] 3. Menu-command binding and predicate evaluation
+  - [x] 3.1 Implement `MenuCommandBinding` struct linking a MenuItem to a Command_ID in the command registry
+  - [x] 3.2 Implement shortcut text resolution — query ShortcutRegistry for bound command's shortcut and format as display text
+  - [x] 3.3 Implement enabled-state evaluation — query command's EnabledPredicate against current ExecutionContext
+  - [x] 3.4 Implement visibility evaluation — query command's VisibilityPredicate against current ExecutionContext
+  - [x] 3.5 Implement menu item activation — call `execute_command(command_id, params)` on the command dispatcher when item is clicked
+  - [x] 3.6 Write unit tests for binding resolution, disabled rendering, hidden items, and dispatch invocation
   - Covers: Requirement 2 (AC 2.1-2.4, 2.10)
 
-- [ ] 4. Default menu bar definitions
-  - [ ] 4.1 Define File menu structure: New (`file.new`), Open (`file.open`), Open Recent (submenu), separator, Save (`file.save`), Save As (`file.save_as`), separator, Close (`file.close`), separator, Exit (`workbench.exit`)
-  - [ ] 4.2 Define Edit menu structure: Undo (`edit.undo`), Redo (`edit.redo`), separator, Cut (`edit.cut`), Copy (`edit.copy`), Paste (`edit.paste`), separator, Select All (`edit.select_all`)
-  - [ ] 4.3 Define Search menu structure: Find (`find.show`), Find Next (`find.next`), Find Previous (`find.previous`), separator, Change (`find.replace_show`), Go to Line (`navigate.goto_line`)
-  - [ ] 4.4 Define View menu structure: Zoom In (`view.zoom_in`), Zoom Out (`view.zoom_out`), Reset Zoom (`view.zoom_reset`), separator, Word Wrap toggle (`view.word_wrap`), Show Whitespace toggle (`view.show_whitespace`), Show Line Numbers toggle (`view.show_line_numbers`), separator, Theme submenu
-  - [ ] 4.5 Define Help menu structure: Help Topics (`help.topics`), Keyboard Shortcuts (`help.shortcuts`), About (`help.about`)
-  - [ ] 4.6 Define Tools menu placeholder (between View and Help) for plugin contributions
-  - [ ] 4.7 Write unit tests verifying default menu structure contains all required items in correct order
+- [x] 4. Default menu bar definitions
+  - [x] 4.1 Define File menu structure: New (`file.new`), Open (`file.open`), Open Recent (submenu), separator, Save (`file.save`), Save As (`file.save_as`), separator, Close (`file.close`), separator, Exit (`workbench.exit`)
+  - [x] 4.2 Define Edit menu structure: Undo (`edit.undo`), Redo (`edit.redo`), separator, Cut (`edit.cut`), Copy (`edit.copy`), Paste (`edit.paste`), separator, Select All (`edit.select_all`)
+  - [x] 4.3 Define Search menu structure: Find (`find.show`), Find Next (`find.next`), Find Previous (`find.previous`), separator, Change (`find.replace_show`), Go to Line (`navigate.goto_line`)
+  - [x] 4.4 Define View menu structure: Zoom In (`view.zoom_in`), Zoom Out (`view.zoom_out`), Reset Zoom (`view.zoom_reset`), separator, Word Wrap toggle (`view.word_wrap`), Show Whitespace toggle (`view.show_whitespace`), Show Line Numbers toggle (`view.show_line_numbers`), separator, Theme submenu
+  - [x] 4.5 Define Help menu structure: Help Topics (`help.topics`), Keyboard Shortcuts (`help.shortcuts`), About (`help.about`)
+  - [x] 4.6 Define Tools menu placeholder (between View and Help) for plugin contributions
+  - [x] 4.7 Write unit tests verifying default menu structure contains all required items in correct order
   - Covers: Requirement 1 (AC 1.2-1.7), Requirement 2 (AC 2.5-2.9), Requirement 10 (AC 10.5)
 
-- [ ] 5. Menu bar rendering (egui)
-  - [ ] 5.1 Implement `MenuBarWidget` struct with `render(&self, ui: &mut egui::Ui)` method
-  - [ ] 5.2 Implement top-level menu heading rendering — each heading opens dropdown on click
-  - [ ] 5.3 Implement dropdown submenu rendering with items, separators, and nested submenus
-  - [ ] 5.4 Implement disabled-item greyed-out rendering style
-  - [ ] 5.5 Implement hidden-item filtering (skip items whose visibility predicate returns false)
-  - [ ] 5.6 Implement shortcut text display right-aligned in menu entries
-  - [ ] 5.7 Implement toggle-item checkmark rendering for active toggles
-  - [ ] 5.8 Write unit tests for menu rendering state logic (mocked egui context)
+- [x] 5. Menu bar rendering (egui)
+  - [x] 5.1 Implement `MenuBarWidget` struct with `render(&self, ui: &mut egui::Ui)` method
+  - [x] 5.2 Implement top-level menu heading rendering — each heading opens dropdown on click
+  - [x] 5.3 Implement dropdown submenu rendering with items, separators, and nested submenus
+  - [x] 5.4 Implement disabled-item greyed-out rendering style
+  - [x] 5.5 Implement hidden-item filtering (skip items whose visibility predicate returns false)
+  - [x] 5.6 Implement shortcut text display right-aligned in menu entries
+  - [x] 5.7 Implement toggle-item checkmark rendering for active toggles
+  - [x] 5.8 Write unit tests for menu rendering state logic (mocked egui context)
   - Covers: Requirement 1 (AC 1.1, 1.8), Requirement 2 (AC 2.2-2.4)
 
-- [ ] 6. Recent files management
-  - [ ] 6.1 Define `RecentFilesManager` struct with bounded list storage and configuration reference
-  - [ ] 6.2 Implement `add_or_promote(path: &Path)` — adds path to top, removes duplicate, trims to max
-  - [ ] 6.3 Implement configurable max entries from `menu.recent_files_max` (default 10, max 50)
-  - [ ] 6.4 Implement list query method returning ordered entries for submenu rendering
-  - [ ] 6.5 Implement stale-path detection: render non-existent paths with visual indication
-  - [ ] 6.6 Implement stale-path removal after failed open attempt
-  - [ ] 6.7 Implement `clear_all()` method for the "Clear Recent Files" menu action
-  - [ ] 6.8 Implement persistence: serialize to/from JSON in workbench data directory
-  - [ ] 6.9 Implement session-load on startup and session-save on shutdown
-  - [ ] 6.10 Write unit tests for add/promote, max clamping, stale detection, clear, and persistence round-trip
+- [x] 6. Recent files management
+  - [x] 6.1 Define `RecentFilesManager` struct with bounded list storage and configuration reference
+  - [x] 6.2 Implement `add_or_promote(path: &Path)` — adds path to top, removes duplicate, trims to max
+  - [x] 6.3 Implement configurable max entries from `menu.recent_files_max` (default 10, max 50)
+  - [x] 6.4 Implement list query method returning ordered entries for submenu rendering
+  - [x] 6.5 Implement stale-path detection: render non-existent paths with visual indication
+  - [x] 6.6 Implement stale-path removal after failed open attempt
+  - [x] 6.7 Implement `clear_all()` method for the "Clear Recent Files" menu action
+  - [x] 6.8 Implement persistence: serialize to/from JSON in workbench data directory
+  - [x] 6.9 Implement session-load on startup and session-save on shutdown
+  - [x] 6.10 Write unit tests for add/promote, max clamping, stale detection, clear, and persistence round-trip
   - Covers: Requirement 3 (AC 3.1-3.7)
 
-- [ ] 7. Context menu system
-  - [ ] 7.1 Define `ContextMenuDefinition` struct with target context type and items
-  - [ ] 7.2 Define `ContextType` enum: EditorArea, TabHeader, PanelHeader, FileTreeNode
-  - [ ] 7.3 Implement editor-area context menu: Cut, Copy, Paste, Select All, separator, Find, Change
-  - [ ] 7.4 Implement tab-header context menu: Close, Close Others, Close All, Close to the Right, separator, Copy Path, Reveal in File Tree
-  - [ ] 7.5 Implement context menu rendering via egui popup
-  - [ ] 7.6 Implement command binding for context menu items (same predicate evaluation as menu bar items)
-  - [ ] 7.7 Implement plugin extension point for context menu contributions (per context type)
-  - [ ] 7.8 Write unit tests for context menu construction, item enablement, and plugin contribution
+- [x] 7. Context menu system
+  - [x] 7.1 Define `ContextMenuDefinition` struct with target context type and items
+  - [x] 7.2 Define `ContextType` enum: EditorArea, TabHeader, PanelHeader, FileTreeNode
+  - [x] 7.3 Implement editor-area context menu: Cut, Copy, Paste, Select All, separator, Find, Change
+  - [x] 7.4 Implement tab-header context menu: Close, Close Others, Close All, Close to the Right, separator, Copy Path, Reveal in File Tree
+  - [x] 7.5 Implement context menu rendering via egui popup
+  - [x] 7.6 Implement command binding for context menu items (same predicate evaluation as menu bar items)
+  - [x] 7.7 Implement plugin extension point for context menu contributions (per context type)
+  - [x] 7.8 Write unit tests for context menu construction, item enablement, and plugin contribution
   - Covers: Requirement 4 (AC 4.1-4.5)
 
-- [ ] 8. Status bar layout and rendering
-  - [ ] 8.1 Define `StatusBar` struct with segment collection and layout configuration
-  - [ ] 8.2 Define `StatusSegment` struct with fields: id (String), content_provider, alignment, min_width, priority
-  - [ ] 8.3 Define `SegmentAlignment` enum: Left, Center, Right
-  - [ ] 8.4 Implement `StatusBar::render(&self, ui: &mut egui::Ui)` rendering segments in order by alignment and priority
-  - [ ] 8.5 Implement segment ID validation: 1-64 ASCII alphanumeric or underscore characters
-  - [ ] 8.6 Implement fixed-height rendering (single text line at current UI font size)
-  - [ ] 8.7 Implement full-width spanning at bottom of Primary_Window
-  - [ ] 8.8 Implement placeholder display when no editor tab is active (mode="--", line/col="--/--", encoding="--")
-  - [ ] 8.9 Write unit tests for layout ordering, ID validation, and placeholder behavior
+- [x] 8. Status bar layout and rendering
+  - [x] 8.1 Define `StatusBar` struct with segment collection and layout configuration
+  - [x] 8.2 Define `StatusSegment` struct with fields: id (String), content_provider, alignment, min_width, priority
+  - [x] 8.3 Define `SegmentAlignment` enum: Left, Center, Right
+  - [x] 8.4 Implement `StatusBar::render(&self, ui: &mut egui::Ui)` rendering segments in order by alignment and priority
+  - [x] 8.5 Implement segment ID validation: 1-64 ASCII alphanumeric or underscore characters
+  - [x] 8.6 Implement fixed-height rendering (single text line at current UI font size)
+  - [x] 8.7 Implement full-width spanning at bottom of Primary_Window
+  - [x] 8.8 Implement placeholder display when no editor tab is active (mode="--", line/col="--/--", encoding="--")
+  - [x] 8.9 Write unit tests for layout ordering, ID validation, and placeholder behavior
   - Covers: Requirement 5 (AC 5.1-5.7)
 
-- [ ] 9. Status bar core segments — mode and state
-  - [ ] 9.1 Implement editor mode segment displaying "Browse", "Edit", or "View"
-  - [ ] 9.2 Implement mode segment reactive update on Editor_Mode change
-  - [ ] 9.3 Implement insert/overstrike segment displaying "INS" or "OVR"
-  - [ ] 9.4 Implement insert/overstrike reactive update on state toggle
-  - [ ] 9.5 Implement modified indicator segment: "●" when document has unsaved changes, empty when clean
-  - [ ] 9.6 Implement modified indicator clearing on successful save
-  - [ ] 9.7 Write unit tests for mode display values, state transitions, and modified indicator lifecycle
+- [x] 9. Status bar core segments — mode and state
+  - [x] 9.1 Implement editor mode segment displaying "Browse", "Edit", or "View"
+  - [x] 9.2 Implement mode segment reactive update on Editor_Mode change
+  - [x] 9.3 Implement insert/overstrike segment displaying "INS" or "OVR"
+  - [x] 9.4 Implement insert/overstrike reactive update on state toggle
+  - [x] 9.5 Implement modified indicator segment: "●" when document has unsaved changes, empty when clean
+  - [x] 9.6 Implement modified indicator clearing on successful save
+  - [x] 9.7 Write unit tests for mode display values, state transitions, and modified indicator lifecycle
   - Covers: Requirement 6 (AC 6.1-6.6)
 
-- [ ] 10. Status bar core segments — position and file info
-  - [ ] 10.1 Implement line/column segment displaying "Ln {line}, Col {col}" (1-based)
-  - [ ] 10.2 Implement line/column reactive update on cursor movement (within one frame)
-  - [ ] 10.3 Implement file encoding segment displaying detected encoding string
-  - [ ] 10.4 Implement total line count segment displaying "{count} lines"
-  - [ ] 10.5 Implement line count reactive update on document content change
-  - [ ] 10.6 Implement all-segment update on active tab switch (within one frame)
-  - [ ] 10.7 Write unit tests for position formatting, encoding display, line count updates, and tab-switch propagation
+- [x] 10. Status bar core segments — position and file info
+  - [x] 10.1 Implement line/column segment displaying "Ln {line}, Col {col}" (1-based)
+  - [x] 10.2 Implement line/column reactive update on cursor movement (within one frame)
+  - [x] 10.3 Implement file encoding segment displaying detected encoding string
+  - [x] 10.4 Implement total line count segment displaying "{count} lines"
+  - [x] 10.5 Implement line count reactive update on document content change
+  - [x] 10.6 Implement all-segment update on active tab switch (within one frame)
+  - [x] 10.7 Write unit tests for position formatting, encoding display, line count updates, and tab-switch propagation
   - Covers: Requirement 7 (AC 7.1-7.6)
 
-- [ ] 11. Status bar extensibility
-  - [ ] 11.1 Define `StatusSegmentProvider` trait with methods: `segment_id()`, `render()`, `alignment()`, `priority()`
-  - [ ] 11.2 Implement plugin segment registration in the StatusBar
-  - [ ] 11.3 Implement segment layout update on plugin registration (insert according to alignment and priority)
-  - [ ] 11.4 Implement segment removal on plugin unload
-  - [ ] 11.5 Implement duplicate segment ID rejection with WARN-level log
-  - [ ] 11.6 Implement configurable segment layout from `statusbar.segments` config table (hide, reorder, resize)
-  - [ ] 11.7 Write unit tests for provider registration, duplicate rejection, unload cleanup, and config-driven layout
+- [x] 11. Status bar extensibility
+  - [x] 11.1 Define `StatusSegmentProvider` trait with methods: `segment_id()`, `render()`, `alignment()`, `priority()`
+  - [x] 11.2 Implement plugin segment registration in the StatusBar
+  - [x] 11.3 Implement segment layout update on plugin registration (insert according to alignment and priority)
+  - [x] 11.4 Implement segment removal on plugin unload
+  - [x] 11.5 Implement duplicate segment ID rejection with WARN-level log
+  - [x] 11.6 Implement configurable segment layout from `statusbar.segments` config table (hide, reorder, resize)
+  - [x] 11.7 Write unit tests for provider registration, duplicate rejection, unload cleanup, and config-driven layout
   - Covers: Requirement 8 (AC 8.1-8.6)
 
-- [ ] 12. Primary command field
-  - [ ] 12.1 Implement `PrimaryCommandField` widget with "Command ===>" label and expanding text input
-  - [ ] 12.2 Implement horizontal expansion to fill available width between label and right panel edge
-  - [ ] 12.3 Implement Enter key handling: submit text to CommandEngine for parsing and dispatch
-  - [ ] 12.4 Implement field clearing on successful command dispatch
-  - [ ] 12.5 Implement error display in status bar for unrecognized commands (field content preserved)
-  - [ ] 12.6 Implement command history recall: Up Arrow cycles backwards, Down Arrow cycles forwards
-  - [ ] 12.7 Implement Down Arrow focus-transfer to editor when field is empty
-  - [ ] 12.8 Write unit tests for submit/clear flow, error preservation, history navigation, and focus transfer
+- [x] 12. Primary command field
+  - [x] 12.1 Implement `PrimaryCommandField` widget with "Command ===>" label and expanding text input
+  - [x] 12.2 Implement horizontal expansion to fill available width between label and right panel edge
+  - [x] 12.3 Implement Enter key handling: submit text to CommandEngine for parsing and dispatch
+  - [x] 12.4 Implement field clearing on successful command dispatch
+  - [x] 12.5 Implement error display in status bar for unrecognized commands (field content preserved)
+  - [x] 12.6 Implement command history recall: Up Arrow cycles backwards, Down Arrow cycles forwards
+  - [x] 12.7 Implement Down Arrow focus-transfer to editor when field is empty
+  - [x] 12.8 Write unit tests for submit/clear flow, error preservation, history navigation, and focus transfer
   - Covers: Requirement 9 (AC 9.1-9.7)
 
-- [ ] 13. Menu extensibility (plugin contributions)
-  - [ ] 13.1 Define `MenuContribution` descriptor struct: target_menu_path, command_id, position (Before/After/End), separator spec
-  - [ ] 13.2 Implement plugin menu item insertion at specified position within target menu
-  - [ ] 13.3 Implement new top-level menu creation for paths that don't exist (inserted before Help)
-  - [ ] 13.4 Implement menu item removal on plugin unload, collapsing empty top-level menus
-  - [ ] 13.5 Implement plugin menu items respecting same enabled/visibility/shortcut rules as built-in items
-  - [ ] 13.6 Write unit tests for contribution insertion, new menu creation, unload cleanup, and predicate respect
+- [x] 13. Menu extensibility (plugin contributions)
+  - [x] 13.1 Define `MenuContribution` descriptor struct: target_menu_path, command_id, position (Before/After/End), separator spec
+  - [x] 13.2 Implement plugin menu item insertion at specified position within target menu
+  - [x] 13.3 Implement new top-level menu creation for paths that don't exist (inserted before Help)
+  - [x] 13.4 Implement menu item removal on plugin unload, collapsing empty top-level menus
+  - [x] 13.5 Implement plugin menu items respecting same enabled/visibility/shortcut rules as built-in items
+  - [x] 13.6 Write unit tests for contribution insertion, new menu creation, unload cleanup, and predicate respect
   - Covers: Requirement 10 (AC 10.1-10.6)
 
-- [ ] 14. Keyboard navigation
-  - [ ] 14.1 Implement Alt+letter access key activation for top-level menus (e.g., Alt+F opens File)
-  - [ ] 14.2 Implement Up/Down Arrow navigation within open dropdown
-  - [ ] 14.3 Implement Right Arrow to open submenus, Left Arrow to close submenus
-  - [ ] 14.4 Implement Left/Right Arrow to jump between top-level menus while dropdown is open
-  - [ ] 14.5 Implement Escape to close open menu and return focus to previously focused element
-  - [ ] 14.6 Implement per-item access key activation (underlined character) within open menu
-  - [ ] 14.7 Implement F10 key activation of first top-level menu
-  - [ ] 14.8 Write unit tests for keyboard navigation state machine transitions
+- [x] 14. Keyboard navigation
+  - [x] 14.1 Implement Alt+letter access key activation for top-level menus (e.g., Alt+F opens File)
+  - [x] 14.2 Implement Up/Down Arrow navigation within open dropdown
+  - [x] 14.3 Implement Right Arrow to open submenus, Left Arrow to close submenus
+  - [x] 14.4 Implement Left/Right Arrow to jump between top-level menus while dropdown is open
+  - [x] 14.5 Implement Escape to close open menu and return focus to previously focused element
+  - [x] 14.6 Implement per-item access key activation (underlined character) within open menu
+  - [x] 14.7 Implement F10 key activation of first top-level menu
+  - [x] 14.8 Write unit tests for keyboard navigation state machine transitions
   - Covers: Requirement 11 (AC 11.1-11.6)
 
-- [ ] 15. Error types
-  - [ ] 15.1 Define `MenuError` enum with variants: DuplicateSegmentId, InvalidSegmentId, CommandNotFound, PluginContributionError, RecentFilesIoError
-  - [ ] 15.2 Implement `Display` and `thiserror::Error` derives with descriptive messages following `[ff-menu] operation: description` format
-  - [ ] 15.3 Write unit tests for error display output
+- [x] 15. Error types
+  - [x] 15.1 Define `MenuError` enum with variants: DuplicateSegmentId, InvalidSegmentId, CommandNotFound, PluginContributionError, RecentFilesIoError
+  - [x] 15.2 Implement `Display` and `thiserror::Error` derives with descriptive messages following `[ff-menu] operation: description` format
+  - [x] 15.3 Write unit tests for error display output
   - Covers: All requirements (error paths)
 
-- [ ] 16. Integration wiring
-  - [ ] 16.1 Wire MenuBar into Primary_Window layout (below title bar, above command area)
-  - [ ] 16.2 Wire StatusBar into Primary_Window layout (bottom of window, full width)
-  - [ ] 16.3 Wire PrimaryCommandField into editor panel layout (above editor content)
-  - [ ] 16.4 Wire context menu triggers (right-click events) to context menu display
-  - [ ] 16.5 Wire status segment updates to editor state change events (mode, cursor, encoding, line count, modified)
-  - [ ] 16.6 Wire recent files update on file open/save events
-  - [ ] 16.7 Write integration tests verifying end-to-end menu activation -> command dispatch
+- [x] 16. Integration wiring
+  - [x] 16.1 Wire MenuBar into Primary_Window layout (below title bar, above command area)
+  - [x] 16.2 Wire StatusBar into Primary_Window layout (bottom of window, full width)
+  - [x] 16.3 Wire PrimaryCommandField into editor panel layout (above editor content)
+  - [x] 16.4 Wire context menu triggers (right-click events) to context menu display
+  - [x] 16.5 Wire status segment updates to editor state change events (mode, cursor, encoding, line count, modified)
+  - [x] 16.6 Wire recent files update on file open/save events
+  - [x] 16.7 Write integration tests verifying end-to-end menu activation -> command dispatch
   - Covers: All requirements (system integration)
 
-- [ ] 17. Property-based tests
-  - [ ] 17.1 Write PBT: Recent files list bounded-size property
-  - [ ] 17.2 Write PBT: Recent files add-or-promote ordering property
-  - [ ] 17.3 Write PBT: Status segment ID uniqueness property
-  - [ ] 17.4 Write PBT: Menu item command binding consistency property
-  - [ ] 17.5 Write PBT: Context menu predicate evaluation consistency property
-  - [ ] 17.6 Write PBT: Command field history navigation property
+- [x] 17. Property-based tests
+  - [x] 17.1 Write PBT: Recent files list bounded-size property
+  - [x] 17.2 Write PBT: Recent files add-or-promote ordering property
+  - [x] 17.3 Write PBT: Status segment ID uniqueness property
+  - [x] 17.4 Write PBT: Menu item command binding consistency property
+  - [x] 17.5 Write PBT: Context menu predicate evaluation consistency property
+  - [x] 17.6 Write PBT: Command field history navigation property
   - Covers: All requirements (property-based validation)
 
 ---

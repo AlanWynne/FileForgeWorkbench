@@ -1,4 +1,4 @@
-# Implementation Plan: `ff-encoding` Crate
+﻿# Implementation Plan: `ff-encoding` Crate
 
 ## Overview
 
@@ -13,150 +13,150 @@ The implementation follows a bottom-up strategy: foundational types and utilitie
 
 ## Tasks
 
-- [ ] 1. Crate scaffolding, core types, and Encoding Registry
-  - [ ] 1.1 Create `crates/ff-encoding/Cargo.toml` with dependencies (`thiserror`, dev: `proptest`, `pretty_assertions`)
-  - [ ] 1.2 Create `src/lib.rs` with crate-level documentation and public re-exports (placeholder modules)
-  - [ ] 1.3 Implement `src/error.rs` — `EncodingError` enum with all variants per design (thiserror derive)
-  - [ ] 1.4 Implement `src/encoding.rs` — `Encoding` struct, `EncodingFamily` enum (`SingleByte`, `Utf8`, `Dbcs`, `Utf16`), `EncodingMetadata` struct
-  - [ ] 1.5 Implement `src/registry.rs` — `EncodingRegistry` with lookup by name, code page, and alias; pre-populated with all required encodings (UTF-8, UTF-16LE/BE, UTF-32LE/BE, ISO-8859-1–15, Windows-1250–1258, Shift-JIS, GBK, EUC-KR, Big5, EUC-JP, EBCDIC CP037/CP500/CP1047)
-  - [ ] 1.6 Implement `encoding_family(code_page)` function returning correct `EncodingFamily` for any registered code page
-  - [ ] 1.7 Write unit tests for encoding types, registry lookup, family classification
+- [x] 1. Crate scaffolding, core types, and Encoding Registry
+  - [x] 1.1 Create `crates/ff-encoding/Cargo.toml` with dependencies (`thiserror`, dev: `proptest`, `pretty_assertions`)
+  - [x] 1.2 Create `src/lib.rs` with crate-level documentation and public re-exports (placeholder modules)
+  - [x] 1.3 Implement `src/error.rs` — `EncodingError` enum with all variants per design (thiserror derive)
+  - [x] 1.4 Implement `src/encoding.rs` — `Encoding` struct, `EncodingFamily` enum (`SingleByte`, `Utf8`, `Dbcs`, `Utf16`), `EncodingMetadata` struct
+  - [x] 1.5 Implement `src/registry.rs` — `EncodingRegistry` with lookup by name, code page, and alias; pre-populated with all required encodings (UTF-8, UTF-16LE/BE, UTF-32LE/BE, ISO-8859-1–15, Windows-1250–1258, Shift-JIS, GBK, EUC-KR, Big5, EUC-JP, EBCDIC CP037/CP500/CP1047)
+  - [x] 1.6 Implement `encoding_family(code_page)` function returning correct `EncodingFamily` for any registered code page
+  - [x] 1.7 Write unit tests for encoding types, registry lookup, family classification
     - Validates: Requirements 11.1, 11.2, 14.7, 14.8
 
-- [ ] 2. BOM detection and writing
-  - [ ] 2.1 Implement `src/bom.rs` — `BomInfo` struct, `BomEncoding` enum
-  - [ ] 2.2 Implement `detect_bom(bytes)` — checks UTF-32 4-byte BOMs before UTF-16 2-byte to disambiguate UTF-32LE from UTF-16LE+NUL
-  - [ ] 2.3 Implement `bom_bytes(encoding)` — returns static BOM byte slice for each BomEncoding
-  - [ ] 2.4 Implement `write_bom(encoding, writer)` — writes BOM to a `std::io::Write`
-  - [ ] 2.5 Write unit tests for BOM detection (all 5 encodings), disambiguation (UTF-32LE vs UTF-16LE), no-BOM case, and BOM writing
+- [x] 2. BOM detection and writing
+  - [x] 2.1 Implement `src/bom.rs` — `BomInfo` struct, `BomEncoding` enum
+  - [x] 2.2 Implement `detect_bom(bytes)` — checks UTF-32 4-byte BOMs before UTF-16 2-byte to disambiguate UTF-32LE from UTF-16LE+NUL
+  - [x] 2.3 Implement `bom_bytes(encoding)` — returns static BOM byte slice for each BomEncoding
+  - [x] 2.4 Implement `write_bom(encoding, writer)` — writes BOM to a `std::io::Write`
+  - [x] 2.5 Write unit tests for BOM detection (all 5 encodings), disambiguation (UTF-32LE vs UTF-16LE), no-BOM case, and BOM writing
     - Validates: Requirements 2.1, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8
 
-- [ ] 3. Encoding detection (heuristic + BOM cascade)
-  - [ ] 3.1 Implement `src/detect.rs` — `DetectionResult`, `DetectionConfidence` types
-  - [ ] 3.2 Implement BOM-first detection strategy (delegates to `detect_bom`)
-  - [ ] 3.3 Implement UTF-8 validity check — scan bytes for RFC 3629 conformance, classify as UTF-8 if valid
-  - [ ] 3.4 Implement null-byte pattern analysis for UTF-16/UTF-32 detection (alternating nulls, triple nulls)
-  - [ ] 3.5 Implement DBCS lead/trail byte pattern analysis for Shift-JIS, GBK, Big5, EUC-KR heuristics
-  - [ ] 3.6 Implement statistical byte-frequency heuristics and configurable fallback
-  - [ ] 3.7 Implement `detect_encoding(bytes, max_bytes)` composing all strategies in priority order
-  - [ ] 3.8 Implement `detect_encoding_with_fallback(bytes, max_bytes, fallback)` for explicit fallback override
-  - [ ] 3.9 Write unit tests for detection with known samples (BOM-marked, valid UTF-8, DBCS, Latin-1, EBCDIC)
+- [x] 3. Encoding detection (heuristic + BOM cascade)
+  - [x] 3.1 Implement `src/detect.rs` — `DetectionResult`, `DetectionConfidence` types
+  - [x] 3.2 Implement BOM-first detection strategy (delegates to `detect_bom`)
+  - [x] 3.3 Implement UTF-8 validity check — scan bytes for RFC 3629 conformance, classify as UTF-8 if valid
+  - [x] 3.4 Implement null-byte pattern analysis for UTF-16/UTF-32 detection (alternating nulls, triple nulls)
+  - [x] 3.5 Implement DBCS lead/trail byte pattern analysis for Shift-JIS, GBK, Big5, EUC-KR heuristics
+  - [x] 3.6 Implement statistical byte-frequency heuristics and configurable fallback
+  - [x] 3.7 Implement `detect_encoding(bytes, max_bytes)` composing all strategies in priority order
+  - [x] 3.8 Implement `detect_encoding_with_fallback(bytes, max_bytes, fallback)` for explicit fallback override
+  - [x] 3.9 Write unit tests for detection with known samples (BOM-marked, valid UTF-8, DBCS, Latin-1, EBCDIC)
     - Validates: Requirements 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8
 
-- [ ] 4. UTF-8 validation and repair
-  - [ ] 4.1 Implement `src/utf8.rs` — `utf8_byte_length_from_lead(byte)` returning 1–4 or 1 for invalid leads
-  - [ ] 4.2 Implement `utf8_classify(bytes)` — returns (byte_length, is_valid) for first character
-  - [ ] 4.3 Implement `utf8_validate(bytes)` — full RFC 3629 validation (rejects overlongs, surrogates, >U+10FFFF)
-  - [ ] 4.4 Implement `utf8_fix_invalid(bytes)` — replace invalid sequences with U+FFFD, preserve valid content
-  - [ ] 4.5 Write unit tests for validation (valid sequences, overlongs, surrogates, boundary cases), repair, and lead-byte classification
+- [x] 4. UTF-8 validation and repair
+  - [x] 4.1 Implement `src/utf8.rs` — `utf8_byte_length_from_lead(byte)` returning 1–4 or 1 for invalid leads
+  - [x] 4.2 Implement `utf8_classify(bytes)` — returns (byte_length, is_valid) for first character
+  - [x] 4.3 Implement `utf8_validate(bytes)` — full RFC 3629 validation (rejects overlongs, surrogates, >U+10FFFF)
+  - [x] 4.4 Implement `utf8_fix_invalid(bytes)` — replace invalid sequences with U+FFFD, preserve valid content
+  - [x] 4.5 Write unit tests for validation (valid sequences, overlongs, surrogates, boundary cases), repair, and lead-byte classification
     - Validates: Requirements 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7
 
-- [ ] 5. Encoding conversion (to/from UTF-8, streaming decoder/encoder)
-  - [ ] 5.1 Implement `src/convert.rs` — `ConversionResult`, `ConversionIssue`, `UnmappableAction` types
-  - [ ] 5.2 Implement single-byte encoding conversion tables (ISO-8859-x, Windows-125x, EBCDIC → Unicode mapping arrays)
-  - [ ] 5.3 Implement `convert_to_utf8(bytes, source_encoding)` — full conversion with U+FFFD replacement and issue logging
-  - [ ] 5.4 Implement UTF-16LE/BE and UTF-32LE/BE to UTF-8 conversion (handle surrogate pairs, supplementary planes)
-  - [ ] 5.5 Implement DBCS-to-UTF-8 conversion using code-page-specific mapping tables
-  - [ ] 5.6 Implement `convert_from_utf8(text, target_encoding, unmappable_action)` — UTF-8 to target encoding
-  - [ ] 5.7 Implement `StreamDecoder` for chunk-based decoding (maintains state across chunk boundaries)
-  - [ ] 5.8 Implement `StreamEncoder` for chunk-based encoding (maintains state for multi-byte character splits)
-  - [ ] 5.9 Write unit tests for load conversion (each encoding family), save conversion, unmappable handling, streaming with split multi-byte chars
+- [x] 5. Encoding conversion (to/from UTF-8, streaming decoder/encoder)
+  - [x] 5.1 Implement `src/convert.rs` — `ConversionResult`, `ConversionIssue`, `UnmappableAction` types
+  - [x] 5.2 Implement single-byte encoding conversion tables (ISO-8859-x, Windows-125x, EBCDIC → Unicode mapping arrays)
+  - [x] 5.3 Implement `convert_to_utf8(bytes, source_encoding)` — full conversion with U+FFFD replacement and issue logging
+  - [x] 5.4 Implement UTF-16LE/BE and UTF-32LE/BE to UTF-8 conversion (handle surrogate pairs, supplementary planes)
+  - [x] 5.5 Implement DBCS-to-UTF-8 conversion using code-page-specific mapping tables
+  - [x] 5.6 Implement `convert_from_utf8(text, target_encoding, unmappable_action)` — UTF-8 to target encoding
+  - [x] 5.7 Implement `StreamDecoder` for chunk-based decoding (maintains state across chunk boundaries)
+  - [x] 5.8 Implement `StreamEncoder` for chunk-based encoding (maintains state for multi-byte character splits)
+  - [x] 5.9 Write unit tests for load conversion (each encoding family), save conversion, unmappable handling, streaming with split multi-byte chars
     - Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8
 
-- [ ] 6. CharClassify (256-byte table, configurable word chars)
-  - [ ] 6.1 Implement `src/classify.rs` — `CharacterClass` enum, `CharClassify` struct with 256-entry array
-  - [ ] 6.2 Implement `CharClassify::new(include_word_class)` with default classification rules
-  - [ ] 6.3 Implement `classify(byte)`, `is_word(byte)` — O(1) lookup methods
-  - [ ] 6.4 Implement `set_char_classes(chars, class)`, `set_word_chars`, `set_whitespace_chars`, `set_punctuation_chars`, `reset_word_chars`
-  - [ ] 6.5 Implement `get_chars_of_class(class)` — return all byte values for a given class
-  - [ ] 6.6 Write unit tests for default classification, custom word chars, reset, class enumeration
+- [x] 6. CharClassify (256-byte table, configurable word chars)
+  - [x] 6.1 Implement `src/classify.rs` — `CharacterClass` enum, `CharClassify` struct with 256-entry array
+  - [x] 6.2 Implement `CharClassify::new(include_word_class)` with default classification rules
+  - [x] 6.3 Implement `classify(byte)`, `is_word(byte)` — O(1) lookup methods
+  - [x] 6.4 Implement `set_char_classes(chars, class)`, `set_word_chars`, `set_whitespace_chars`, `set_punctuation_chars`, `reset_word_chars`
+  - [x] 6.5 Implement `get_chars_of_class(class)` — return all byte values for a given class
+  - [x] 6.6 Write unit tests for default classification, custom word chars, reset, class enumeration
     - Validates: Requirements 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 13.1, 13.2, 13.3, 13.4, 13.5
 
-- [ ] 7. CharacterCategoryMap (Unicode General Category, UAX #31)
-  - [ ] 7.1 Create `data/UnicodeData.txt` placeholder and `build.rs` script to generate category tables at build time
-  - [ ] 7.2 Implement `src/category_map.rs` — `CharacterCategory` enum (30 categories), `CharacterCategoryMap` struct
-  - [ ] 7.3 Implement dense BMP array (U+0000–U+FFFF) and sorted range binary search for supplementary planes
-  - [ ] 7.4 Implement `category_for(code_point)` — O(1) BMP lookup, O(log n) supplementary lookup
-  - [ ] 7.5 Implement `optimize(count_characters)` — pre-allocate dense array up to specified range
-  - [ ] 7.6 Implement `is_id_start`, `is_id_continue`, `is_xid_start`, `is_xid_continue` predicates (UAX #31)
-  - [ ] 7.7 Implement `is_word_char(code_point)` — true for categories L*, Nd, Nl, Pc
-  - [ ] 7.8 Write unit tests for known code points (ASCII letters, CJK, Cyrillic, emoji), identifier predicates, word-char classification
+- [x] 7. CharacterCategoryMap (Unicode General Category, UAX #31)
+  - [x] 7.1 Create `data/UnicodeData.txt` placeholder and `build.rs` script to generate category tables at build time
+  - [x] 7.2 Implement `src/category_map.rs` — `CharacterCategory` enum (30 categories), `CharacterCategoryMap` struct
+  - [x] 7.3 Implement dense BMP array (U+0000–U+FFFF) and sorted range binary search for supplementary planes
+  - [x] 7.4 Implement `category_for(code_point)` — O(1) BMP lookup, O(log n) supplementary lookup
+  - [x] 7.5 Implement `optimize(count_characters)` — pre-allocate dense array up to specified range
+  - [x] 7.6 Implement `is_id_start`, `is_id_continue`, `is_xid_start`, `is_xid_continue` predicates (UAX #31)
+  - [x] 7.7 Implement `is_word_char(code_point)` — true for categories L*, Nd, Nl, Pc
+  - [x] 7.8 Write unit tests for known code points (ASCII letters, CJK, Cyrillic, emoji), identifier predicates, word-char classification
     - Validates: Requirements 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7
 
-- [ ] 8. DBCS code pages (lead/trail byte, safe segmentation)
-  - [ ] 8.1 Implement `src/dbcs.rs` — `DbcsCodePage` enum, `DbcsCodePageDef` struct with lead/trail byte ranges for all 5 code pages
-  - [ ] 8.2 Implement `is_dbcs_code_page(code_page)` — returns true for CP932, CP936, CP949, CP950, CP1361
-  - [ ] 8.3 Implement `dbcs_is_lead_byte(code_page, byte)` — range-based lookup per code page
-  - [ ] 8.4 Implement `dbcs_is_trail_byte(code_page, byte)` — range-based lookup per code page
-  - [ ] 8.5 Implement `is_dbcs_valid_single_byte(code_page, byte)` — half-width katakana etc.
-  - [ ] 8.6 Implement `safe_segment(data, code_page)` — return longest prefix ending on character boundary
-  - [ ] 8.7 Implement `DBCSFoldMap` per code page for case-insensitive search in DBCS content
-  - [ ] 8.8 Write unit tests for each code page's lead/trail byte ranges, safe segmentation, fold maps
+- [x] 8. DBCS code pages (lead/trail byte, safe segmentation)
+  - [x] 8.1 Implement `src/dbcs.rs` — `DbcsCodePage` enum, `DbcsCodePageDef` struct with lead/trail byte ranges for all 5 code pages
+  - [x] 8.2 Implement `is_dbcs_code_page(code_page)` — returns true for CP932, CP936, CP949, CP950, CP1361
+  - [x] 8.3 Implement `dbcs_is_lead_byte(code_page, byte)` — range-based lookup per code page
+  - [x] 8.4 Implement `dbcs_is_trail_byte(code_page, byte)` — range-based lookup per code page
+  - [x] 8.5 Implement `is_dbcs_valid_single_byte(code_page, byte)` — half-width katakana etc.
+  - [x] 8.6 Implement `safe_segment(data, code_page)` — return longest prefix ending on character boundary
+  - [x] 8.7 Implement `DBCSFoldMap` per code page for case-insensitive search in DBCS content
+  - [x] 8.8 Write unit tests for each code page's lead/trail byte ranges, safe segmentation, fold maps
     - Validates: Requirements 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8
 
-- [ ] 9. Case folding (fold/upper/lower, ICaseConverter trait)
-  - [ ] 9.1 Create `data/CaseFolding.txt` placeholder and extend `build.rs` to generate case-folding tables at build time
-  - [ ] 9.2 Implement `src/case_fold.rs` — `CaseMode` enum, `CaseFoldResult` struct, `ICaseConverter` trait
-  - [ ] 9.3 Implement `CaseFolder::new()` with compiled static data tables
-  - [ ] 9.4 Implement `case_convert(code_point, mode)` — single code point conversion with multi-byte expansion support
-  - [ ] 9.5 Implement `case_convert_string(text, mode)` — full string conversion handling expansions (ß→ss, ﬁ→fi)
-  - [ ] 9.6 Implement `ICaseConverter` for `CaseFolder` (trait impl for find-and-replace integration)
-  - [ ] 9.7 Write unit tests for fold (ß→ss, ﬁ→fi, ΐ), upper/lower ASCII+Unicode, multi-char expansion, trait usage
+- [x] 9. Case folding (fold/upper/lower, ICaseConverter trait)
+  - [x] 9.1 Create `data/CaseFolding.txt` placeholder and extend `build.rs` to generate case-folding tables at build time
+  - [x] 9.2 Implement `src/case_fold.rs` — `CaseMode` enum, `CaseFoldResult` struct, `ICaseConverter` trait
+  - [x] 9.3 Implement `CaseFolder::new()` with compiled static data tables
+  - [x] 9.4 Implement `case_convert(code_point, mode)` — single code point conversion with multi-byte expansion support
+  - [x] 9.5 Implement `case_convert_string(text, mode)` — full string conversion handling expansions (ß→ss, ﬁ→fi)
+  - [x] 9.6 Implement `ICaseConverter` for `CaseFolder` (trait impl for find-and-replace integration)
+  - [x] 9.7 Write unit tests for fold (ß→ss, ﬁ→fi, ΐ), upper/lower ASCII+Unicode, multi-char expansion, trait usage
     - Validates: Requirements 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 10.8
 
-- [ ] 10. Grapheme cluster boundaries (UAX #29)
-  - [ ] 10.1 Create `data/GraphemeBreakProperty.txt` placeholder and extend `build.rs` for grapheme break property tables
-  - [ ] 10.2 Implement `src/grapheme.rs` — `GraphemeMode` enum, `GraphemeIterator` struct
-  - [ ] 10.3 Implement UAX #29 grapheme break rules state machine (GB1–GB999 rules)
-  - [ ] 10.4 Implement `is_grapheme_boundary(text, byte_offset)` — boundary test at position
-  - [ ] 10.5 Implement `next_grapheme_boundary(text, byte_offset)` and `prev_grapheme_boundary(text, byte_offset)`
-  - [ ] 10.6 Handle combining marks, emoji modifiers, ZWJ sequences, regional indicators, Hangul syllables
-  - [ ] 10.7 Implement simplified mode (code-point-level only, for large files)
-  - [ ] 10.8 Implement `GraphemeIterator` yielding grapheme cluster string slices
-  - [ ] 10.9 Write unit tests for combining marks (é), emoji ZWJ (👨‍👩‍👧), flags (🇺🇸), Hangul, simplified mode
+- [x] 10. Grapheme cluster boundaries (UAX #29)
+  - [x] 10.1 Create `data/GraphemeBreakProperty.txt` placeholder and extend `build.rs` for grapheme break property tables
+  - [x] 10.2 Implement `src/grapheme.rs` — `GraphemeMode` enum, `GraphemeIterator` struct
+  - [x] 10.3 Implement UAX #29 grapheme break rules state machine (GB1–GB999 rules)
+  - [x] 10.4 Implement `is_grapheme_boundary(text, byte_offset)` — boundary test at position
+  - [x] 10.5 Implement `next_grapheme_boundary(text, byte_offset)` and `prev_grapheme_boundary(text, byte_offset)`
+  - [x] 10.6 Handle combining marks, emoji modifiers, ZWJ sequences, regional indicators, Hangul syllables
+  - [x] 10.7 Implement simplified mode (code-point-level only, for large files)
+  - [x] 10.8 Implement `GraphemeIterator` yielding grapheme cluster string slices
+  - [x] 10.9 Write unit tests for combining marks (é), emoji ZWJ (👨‍👩‍👧), flags (🇺🇸), Hangul, simplified mode
     - Validates: Requirements 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8
 
-- [ ] 11. Word-part navigation (camelCase/snake_case sub-word)
-  - [ ] 11.1 Implement `src/word_part.rs` — `is_word_part_separator(code_point)` predicate
-  - [ ] 11.2 Implement `word_part_left(text, position, classify)` — find previous word-part boundary
-  - [ ] 11.3 Implement `word_part_right(text, position, classify)` — find next word-part boundary
-  - [ ] 11.4 Handle camelCase transitions (lower→upper), PascalCase runs (uppercase sequence→lowercase), underscore boundaries, letter↔digit transitions
-  - [ ] 11.5 Respect CharClassify — non-Word characters act as hard boundaries
-  - [ ] 11.6 Support Unicode Lu/Ll transitions (not just ASCII A-Z/a-z)
-  - [ ] 11.7 Write unit tests for camelCase (`getDocumentModel`), snake_case (`get_document_model`), PascalCase (`XMLParser`), digit transitions (`line42count`), Unicode identifiers
+- [x] 11. Word-part navigation (camelCase/snake_case sub-word)
+  - [x] 11.1 Implement `src/word_part.rs` — `is_word_part_separator(code_point)` predicate
+  - [x] 11.2 Implement `word_part_left(text, position, classify)` — find previous word-part boundary
+  - [x] 11.3 Implement `word_part_right(text, position, classify)` — find next word-part boundary
+  - [x] 11.4 Handle camelCase transitions (lower→upper), PascalCase runs (uppercase sequence→lowercase), underscore boundaries, letter↔digit transitions
+  - [x] 11.5 Respect CharClassify — non-Word characters act as hard boundaries
+  - [x] 11.6 Support Unicode Lu/Ll transitions (not just ASCII A-Z/a-z)
+  - [x] 11.7 Write unit tests for camelCase (`getDocumentModel`), snake_case (`get_document_model`), PascalCase (`XMLParser`), digit transitions (`line42count`), Unicode identifiers
     - Validates: Requirements 12.1, 12.2, 12.3, 12.4, 12.5, 12.6
 
-- [ ] 12. Property-based tests
-  - [ ] 12.1 Create `tests/property_tests.rs` with proptest framework setup
-  - [ ] 12.2 Property 1: Encoding roundtrip preservation — convert_to_utf8(convert_from_utf8(text, enc)) == text for mappable text
+- [x] 12. Property-based tests
+  - [x] 12.1 Create `tests/property_tests.rs` with proptest framework setup
+  - [x] 12.2 Property 1: Encoding roundtrip preservation — convert_to_utf8(convert_from_utf8(text, enc)) == text for mappable text
     - **Validates: Requirements 3, 4**
-  - [ ] 12.3 Property 2: BOM detection accuracy — prepending BOM bytes always yields correct detection
+  - [x] 12.3 Property 2: BOM detection accuracy — prepending BOM bytes always yields correct detection
     - **Validates: Requirements 2.1, 2.2, 2.3**
-  - [ ] 12.4 Property 3: Case fold idempotence — folding an already-folded string yields the same result
+  - [x] 12.4 Property 3: Case fold idempotence — folding an already-folded string yields the same result
     - **Validates: Requirements 10.1, 10.4, 10.6**
-  - [ ] 12.5 Property 4: UTF-8 validation consistency — utf8_validate agrees with std::str::from_utf8
+  - [x] 12.5 Property 4: UTF-8 validation consistency — utf8_validate agrees with std::str::from_utf8
     - **Validates: Requirements 5.1, 5.4, 5.5**
-  - [ ] 12.6 Property 5: UTF-8 fix produces valid UTF-8 — utf8_fix_invalid output is always valid
+  - [x] 12.6 Property 5: UTF-8 fix produces valid UTF-8 — utf8_fix_invalid output is always valid
     - **Validates: Requirements 5.3**
-  - [ ] 12.7 Property 6: CharClassify completeness — every byte 0–255 has exactly one class
+  - [x] 12.7 Property 6: CharClassify completeness — every byte 0–255 has exactly one class
     - **Validates: Requirements 6.1**
-  - [ ] 12.8 Property 7: Grapheme boundary monotonicity — next always advances, prev always retreats
+  - [x] 12.8 Property 7: Grapheme boundary monotonicity — next always advances, prev always retreats
     - **Validates: Requirements 9.2, 9.3, 9.4**
-  - [ ] 12.9 Property 8: DBCS lead+trail byte disjointness — no ASCII byte is a lead byte
+  - [x] 12.9 Property 8: DBCS lead+trail byte disjointness — no ASCII byte is a lead byte
     - **Validates: Requirements 8.2, 8.3**
-  - [ ] 12.10 Property 9: Word-part navigation termination — left always ≤ pos, right always ≥ pos
+  - [x] 12.10 Property 9: Word-part navigation termination — left always ≤ pos, right always ≥ pos
     - **Validates: Requirements 12.2, 12.3**
-  - [ ] 12.11 Property 10: Encoding family consistency — DBCS code pages map to Dbcs family
+  - [x] 12.11 Property 10: Encoding family consistency — DBCS code pages map to Dbcs family
     - **Validates: Requirements 11.1, 11.2**
 
-- [ ] 13. Integration tests
-  - [ ] 13.1 Create `tests/detect_tests.rs` — end-to-end encoding detection with reference files (UTF-8, UTF-16LE with BOM, Shift-JIS, Latin-1, EBCDIC)
-  - [ ] 13.2 Create `tests/convert_tests.rs` — roundtrip conversion of known reference files through load+save pipeline
-  - [ ] 13.3 Create `tests/classify_tests.rs` — CharClassify + CharacterCategoryMap combined word-boundary scenarios
-  - [ ] 13.4 Create `tests/case_fold_tests.rs` — case folding integration with ICaseConverter trait consumers
-  - [ ] 13.5 Create `tests/grapheme_tests.rs` — grapheme iteration over complex Unicode text (mixed scripts, emoji, combining marks)
-  - [ ] 13.6 Create `tests/streaming_tests.rs` — StreamDecoder/StreamEncoder with multi-chunk input splitting at various byte boundaries
-  - [ ] 13.7 Verify crate builds cleanly with `cargo clippy -- -D warnings` and `cargo test` passes
+- [x] 13. Integration tests
+  - [x] 13.1 Create `tests/detect_tests.rs` — end-to-end encoding detection with reference files (UTF-8, UTF-16LE with BOM, Shift-JIS, Latin-1, EBCDIC)
+  - [x] 13.2 Create `tests/convert_tests.rs` — roundtrip conversion of known reference files through load+save pipeline
+  - [x] 13.3 Create `tests/classify_tests.rs` — CharClassify + CharacterCategoryMap combined word-boundary scenarios
+  - [x] 13.4 Create `tests/case_fold_tests.rs` — case folding integration with ICaseConverter trait consumers
+  - [x] 13.5 Create `tests/grapheme_tests.rs` — grapheme iteration over complex Unicode text (mixed scripts, emoji, combining marks)
+  - [x] 13.6 Create `tests/streaming_tests.rs` — StreamDecoder/StreamEncoder with multi-chunk input splitting at various byte boundaries
+  - [x] 13.7 Verify crate builds cleanly with `cargo clippy -- -D warnings` and `cargo test` passes
 
 ---
 

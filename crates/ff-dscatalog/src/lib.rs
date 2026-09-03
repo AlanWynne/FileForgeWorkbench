@@ -29,6 +29,7 @@
 
 pub mod catalog;
 pub mod catalog_registry;
+pub mod codecs;
 pub mod commands;
 pub mod config;
 pub mod context_menu;
@@ -42,6 +43,7 @@ pub mod pds;
 pub mod properties;
 pub mod repository;
 pub mod schema;
+pub mod storage;
 pub mod vfs_provider;
 
 // Re-exports for public API

@@ -247,13 +247,13 @@ All function key assignments route through the command framework — pressing a 
 
 #### Acceptance Criteria
 
-12.1. WHEN the user submits the primary command `PFSHOW ON`, THE workbench SHALL make the Key_Label_Bar visible in the footer region if it is not already visible.
-12.2. WHEN the user submits the primary command `PFSHOW OFF`, THE workbench SHALL hide the Key_Label_Bar from the footer region.
-12.3. WHEN the user submits the primary command `PFSHOW` with no argument, THE workbench SHALL toggle the Key_Label_Bar visibility: if currently visible it SHALL be hidden; if currently hidden it SHALL be made visible.
-12.4. THE PFSHOW visibility state SHALL be persisted in the session state so that the Key_Label_Bar is restored to its last-known visibility on the next workbench launch.
-12.5. THE `PFSHOW` command SHALL be registered in the command framework with Command_ID `"keys.pfshow"` and SHALL be invocable from the Primary_Command_Field.
-12.6. WHEN `PFSHOW ON` is issued and the bar is already visible, THE workbench SHALL produce no visible change and SHALL NOT emit an error.
-12.7. WHEN `PFSHOW OFF` is issued and the bar is already hidden, THE workbench SHALL produce no visible change and SHALL NOT emit an error.
+1. WHEN the user submits the primary command `PFSHOW ON`, THE workbench SHALL make the Key_Label_Bar visible in the footer region if it is not already visible.
+2. WHEN the user submits the primary command `PFSHOW OFF`, THE workbench SHALL hide the Key_Label_Bar from the footer region.
+3. WHEN the user submits the primary command `PFSHOW` with no argument, THE workbench SHALL toggle the Key_Label_Bar visibility: if currently visible it SHALL be hidden; if currently hidden it SHALL be made visible.
+4. THE PFSHOW visibility state SHALL be persisted in the session state so that the Key_Label_Bar is restored to its last-known visibility on the next workbench launch.
+5. THE `PFSHOW` command SHALL be registered in the command framework with Command_ID `"keys.pfshow"` and SHALL be invocable from the Primary_Command_Field.
+6. WHEN `PFSHOW ON` is issued and the bar is already visible, THE workbench SHALL produce no visible change and SHALL NOT emit an error.
+7. WHEN `PFSHOW OFF` is issued and the bar is already hidden, THE workbench SHALL produce no visible change and SHALL NOT emit an error.
 
 ---
 
@@ -265,29 +265,29 @@ All function key assignments route through the command framework — pressing a 
 
 #### Acceptance Criteria
 
-13.1. THE Key_Label_Bar SHALL display function key assignments in two rows of up to 12 slots each: the first row SHALL display F1–F12 and the second row SHALL display F13–F24.
-13.2. WHEN a function key has no assignment in the active Key_Map, THE Key_Label_Bar SHALL display that key's slot as blank (key name shown, label area empty) rather than omitting the slot entirely, so that the two-row grid layout is preserved.
-13.3. THE Key_Label_Bar SHALL display each slot as a pair: the key name (e.g., "F3") followed by the short label (e.g., "END"), separated by a space or visual divider consistent with the active theme.
-13.4. THE two-row layout SHALL be rendered in the workbench footer region below the main editing surface, occupying at most two lines of display height.
-13.5. WHEN the Key_Label_Bar is visible and the active Key_Map changes, THE two-row display SHALL update within the same rendering frame.
+1. THE Key_Label_Bar SHALL display function key assignments in two rows of up to 12 slots each: the first row SHALL display F1–F12 and the second row SHALL display F13–F24.
+2. WHEN a function key has no assignment in the active Key_Map, THE Key_Label_Bar SHALL display that key's slot as blank (key name shown, label area empty) rather than omitting the slot entirely, so that the two-row grid layout is preserved.
+3. THE Key_Label_Bar SHALL display each slot as a pair: the key name (e.g., "F3") followed by the short label (e.g., "END"), separated by a space or visual divider consistent with the active theme.
+4. THE two-row layout SHALL be rendered in the workbench footer region below the main editing surface, occupying at most two lines of display height.
+5. WHEN the Key_Label_Bar is visible and the active Key_Map changes, THE two-row display SHALL update within the same rendering frame.
 
 ---
 
 ### Requirement 14: Per-Context Key Map
 
-**User Story:** As a workbench user, I want each window context (POM, editor, settings panel, file browser, etc.) to have its own function key assignments that load automatically when that context becomes active, so that the most relevant shortcuts are always available for the current task.
+**User Story:** As a workbench user, I want each Workspace Context (POM, editor, settings panel, file browser, etc.) to have its own function key assignments that load automatically when that context becomes active, so that the most relevant shortcuts are always available for the current task.
 
-**Source:** New requirement — extends Requirement 2 (Profile-Specific Key Map) to cover all window contexts, not just language profiles.
+**Source:** New requirement — extends Requirement 2 (Profile-Specific Key Map) to cover all Workspace Contexts, not just language profiles.
 
 #### Acceptance Criteria
 
-14.1. THE Key_Map_Resolver SHALL support a Context_Key_Map for each named window context. A Context_Key_Map is defined in the workbench configuration under a `[context_key_maps.<context_name>]` section using the same schema as `[global_key_map]`.
-14.2. WHEN a window context is loaded into a tab (e.g., POM, SettingsPanel, FilesPanel, FileEditor, HexDisplay), THE Key_Map_Resolver SHALL check whether a Context_Key_Map is defined for that context name and, if so, activate it as the effective key map for that tab.
-14.3. WHEN no Context_Key_Map is defined for the active context, THE Key_Map_Resolver SHALL apply the Global_Key_Map as the effective key map.
-14.4. WHEN the active tab changes, THE Key_Map_Resolver SHALL recompute the effective key map for the newly active tab's context and update the Key_Label_Bar within the same rendering frame.
-14.5. THE Context_Key_Map model SHALL use the same full-replacement semantics as the Profile_Key_Map: when a Context_Key_Map is active, the Global_Key_Map is entirely inactive for that context; keys not defined in the Context_Key_Map are unassigned.
-14.6. THE context name used for lookup SHALL be a stable string identifier assigned to each tab kind: `"pom"` for the Primary Option Menu, `"editor"` for file editor tabs, `"settings"` for the Settings Panel, `"files"` for the Files Panel, `"hex"` for hex display mode, `"toolchain"` for the Toolchain Panel.
-14.7. THE configuration system SHALL accept a `[context_key_maps]` section at the top level of the workbench configuration, containing one sub-table per context name.
+1. THE Key_Map_Resolver SHALL support a Context_Key_Map for each named Workspace Context. A Context_Key_Map is defined in the workbench configuration under a `[context_key_maps.<context_name>]` section using the same schema as `[global_key_map]`.
+2. WHEN a Workspace Context is loaded into a tab (e.g., POM, SettingsPanel, FilesPanel, FileEditor, HexDisplay), THE Key_Map_Resolver SHALL check whether a Context_Key_Map is defined for that context name and, if so, activate it as the effective key map for that tab.
+3. WHEN no Context_Key_Map is defined for the active context, THE Key_Map_Resolver SHALL apply the Global_Key_Map as the effective key map.
+4. WHEN the active tab changes, THE Key_Map_Resolver SHALL recompute the effective key map for the newly active tab's context and update the Key_Label_Bar within the same rendering frame.
+5. THE Context_Key_Map model SHALL use the same full-replacement semantics as the Profile_Key_Map: when a Context_Key_Map is active, the Global_Key_Map is entirely inactive for that context; keys not defined in the Context_Key_Map are unassigned.
+6. THE context name used for lookup SHALL be a stable string identifier assigned to each tab kind: `"pom"` for the Primary Option Menu, `"editor"` for file editor tabs, `"settings"` for the Settings Panel, `"files"` for the Files Panel, `"hex"` for hex display mode, `"toolchain"` for the Toolchain Panel.
+7. THE configuration system SHALL accept a `[context_key_maps]` section at the top level of the workbench configuration, containing one sub-table per context name.
 
 ---
 
@@ -299,7 +299,7 @@ All function key assignments route through the command framework — pressing a 
 
 #### Acceptance Criteria
 
-15.1. THE workbench SHALL ship with a built-in default Global_Key_Map containing the following assignments as the baseline when no user configuration overrides them:
+1. THE workbench SHALL ship with a built-in default Global_Key_Map containing the following assignments as the baseline when no user configuration overrides them:
 
 | Key | Command | Label |
 |-----|---------|-------|
@@ -309,9 +309,9 @@ All function key assignments route through the command framework — pressing a 
 | F8  | DOWN MAX | Down |
 | F12 | RETRIEVE | Retrieve |
 
-15.2. THE built-in default assignments for F2, F4–F6, F9–F11, F13–F24 SHALL be unassigned in the baseline default map, leaving those slots blank in the Key_Label_Bar until the user configures them.
-15.3. THE built-in default key map SHALL be overridable in full by providing a `[global_key_map]` section in the user configuration file; user-provided entries replace the built-in defaults entirely (full-replacement model).
-15.4. THE built-in default key map SHALL be documented in the workbench help system under Topic_Key `"feature:function_keys"`.
+2. THE built-in default assignments for F2, F4–F6, F9–F11, F13–F24 SHALL be unassigned in the baseline default map, leaving those slots blank in the Key_Label_Bar until the user configures them.
+3. THE built-in default key map SHALL be overridable in full by providing a `[global_key_map]` section in the user configuration file; user-provided entries replace the built-in defaults entirely (full-replacement model).
+4. THE built-in default key map SHALL be documented in the workbench help system under Topic_Key `"feature:function_keys"`.
 
 ---
 
@@ -323,11 +323,11 @@ All function key assignments route through the command framework — pressing a 
 
 #### Acceptance Criteria
 
-16.1. WHEN the Key_Label_Bar is visible and the user clicks on a slot that has an assigned command, THE workbench SHALL dispatch that slot's command through the command framework exactly as if the corresponding function key had been pressed.
-16.2. WHEN the user clicks on a slot that has no assignment (blank label), THE workbench SHALL produce no action and no error.
-16.3. THE clickable area for each slot SHALL encompass both the key name and the label text, providing a generous hit target.
-16.4. WHEN the user hovers over an assigned slot, THE workbench SHALL display a tooltip showing the full command string assigned to that key (e.g., "UP MAX" for a slot labelled "Up").
-16.5. THE hotspot click SHALL follow the same history and exclusion rules as a physical function key press: the dispatched command is recorded in Command_History unless it is an Excluded_Command.
+1. WHEN the Key_Label_Bar is visible and the user clicks on a slot that has an assigned command, THE workbench SHALL dispatch that slot's command through the command framework exactly as if the corresponding function key had been pressed.
+2. WHEN the user clicks on a slot that has no assignment (blank label), THE workbench SHALL produce no action and no error.
+3. THE clickable area for each slot SHALL encompass both the key name and the label text, providing a generous hit target.
+4. WHEN the user hovers over an assigned slot, THE workbench SHALL display a tooltip showing the full command string assigned to that key (e.g., "UP MAX" for a slot labelled "Up").
+5. THE hotspot click SHALL follow the same history and exclusion rules as a physical function key press: the dispatched command is recorded in Command_History unless it is an Excluded_Command.
 
 ---
 
@@ -339,13 +339,13 @@ All function key assignments route through the command framework — pressing a 
 
 #### Acceptance Criteria
 
-17.1. WHEN the user submits the primary command `END` (or presses the key assigned to END), THE workbench SHALL close the current context tab and navigate to the tab that was active immediately before the current context was opened. If no prior tab exists, the workbench SHALL navigate to the POM tab.
-17.2. WHEN `END` is issued from the POM tab, THE workbench SHALL treat it as equivalent to `EXIT` and terminate the application (after any unsaved-changes prompts).
-17.3. WHEN the user submits the primary command `RETURN` (or presses the key assigned to RETURN), THE workbench SHALL navigate directly to the POM tab, making it the active tab, regardless of the current context depth.
-17.4. WHEN `RETURN` is issued from the POM tab, THE workbench SHALL treat it as equivalent to `EXIT` and terminate the application (after any unsaved-changes prompts).
-17.5. THE `END` command SHALL be registered in the command framework with Command_ID `"nav.end"` and SHALL be invocable from the Primary_Command_Field and via function key assignment.
-17.6. THE `RETURN` command SHALL be registered in the command framework with Command_ID `"nav.return"` and SHALL be invocable from the Primary_Command_Field and via function key assignment.
-17.7. NEITHER `END` NOR `RETURN` SHALL be added to Command_History (they are navigation meta-commands, not substantive editing commands). Both SHALL be added to the Excluded_Command set.
+1. WHEN the user submits the primary command `END` (or presses the key assigned to END), THE workbench SHALL close the current context tab and navigate to the tab that was active immediately before the current context was opened. If no prior tab exists, the workbench SHALL navigate to the POM tab.
+2. WHEN `END` is issued from the POM tab, THE workbench SHALL treat it as equivalent to `EXIT` and terminate the application (after any unsaved-changes prompts).
+3. WHEN the user submits the primary command `RETURN` (or presses the key assigned to RETURN), THE workbench SHALL navigate directly to the POM tab, making it the active tab, regardless of the current context depth.
+4. WHEN `RETURN` is issued from the POM tab, THE workbench SHALL treat it as equivalent to `EXIT` and terminate the application (after any unsaved-changes prompts).
+5. THE `END` command SHALL be registered in the command framework with Command_ID `"nav.end"` and SHALL be invocable from the Primary_Command_Field and via function key assignment.
+6. THE `RETURN` command SHALL be registered in the command framework with Command_ID `"nav.return"` and SHALL be invocable from the Primary_Command_Field and via function key assignment.
+7. NEITHER `END` NOR `RETURN` SHALL be added to Command_History (they are navigation meta-commands, not substantive editing commands). Both SHALL be added to the Excluded_Command set.
 
 ---
 
@@ -357,9 +357,9 @@ All function key assignments route through the command framework — pressing a 
 
 #### Acceptance Criteria
 
-18.1. WHEN F1 is pressed (or the HELP command is dispatched) and the Context_Detector resolves a specific Topic_Key but no help content exists for that key in the Help_Topic_Registry, THE workbench SHALL display a non-modal informational message reading: "Help not available yet for: <context>. Press F1 again or type HELP for the Help Index."
-18.2. THE "not available yet" message SHALL be displayed in the status bar or as a brief overlay notification — it SHALL NOT open the full Help_Panel.
-18.3. WHEN F1 is pressed and the Context_Detector cannot resolve any specific context (generic UI element), THE workbench SHALL open the Help_Panel displaying the Help_Index (existing behaviour per context-help Requirement 1.7).
+1. WHEN F1 is pressed (or the HELP command is dispatched) and the Context_Detector resolves a specific Topic_Key but no help content exists for that key in the Help_Topic_Registry, THE workbench SHALL display a non-modal informational message reading: "Help not available yet for: <context>. Press F1 again or type HELP for the Help Index."
+2. THE "not available yet" message SHALL be displayed in the status bar or as a brief overlay notification — it SHALL NOT open the full Help_Panel.
+3. WHEN F1 is pressed and the Context_Detector cannot resolve any specific context (generic UI element), THE workbench SHALL open the Help_Panel displaying the Help_Index (existing behaviour per context-help Requirement 1.7).
 
 ---
 
@@ -371,13 +371,13 @@ All function key assignments route through the command framework — pressing a 
 
 #### Acceptance Criteria
 
-19.1. WHEN the Primary_Command_Field contains the text `LIST` (case-insensitive) AND the user invokes the RETRIEVE command (by typing RETRIEVE, pressing the key assigned to RETRIEVE, or pressing the RETRIEVE function key), THE workbench SHALL display the Command_History as a selectable list rather than performing single-step recall.
-19.2. THE history list display SHALL show Command_History entries in most-recent-first order, deduplicated per the standard deduplication rules (Requirement 7).
-19.3. WHEN the user selects an entry from the history list (via mouse click or keyboard navigation + Enter), THE workbench SHALL populate the Primary_Command_Field with the selected command text without executing it, and SHALL close the history list.
-19.4. WHEN the user dismisses the history list without selecting an entry (via Escape or clicking outside), THE Primary_Command_Field SHALL be cleared and the history list SHALL close.
-19.5. WHEN Command_History is empty and the LIST+RETRIEVE trigger is activated, THE workbench SHALL display the history list with an empty-state message: "No command history."
-19.6. THE `LIST` text in the command field SHALL NOT itself be added to Command_History when used as the RETRIEVE trigger.
-19.7. THE history list SHALL be rendered as a modal or near-modal overlay anchored to the Primary_Command_Field, consistent with the History_Dropdown defined in Requirement 10 but triggered by the LIST keyword rather than a dropdown control.
+1. WHEN the Primary_Command_Field contains the text `LIST` (case-insensitive) AND the user invokes the RETRIEVE command (by typing RETRIEVE, pressing the key assigned to RETRIEVE, or pressing the RETRIEVE function key), THE workbench SHALL display the Command_History as a selectable list rather than performing single-step recall.
+2. THE history list display SHALL show Command_History entries in most-recent-first order, deduplicated per the standard deduplication rules (Requirement 7).
+3. WHEN the user selects an entry from the history list (via mouse click or keyboard navigation + Enter), THE workbench SHALL populate the Primary_Command_Field with the selected command text without executing it, and SHALL close the history list.
+4. WHEN the user dismisses the history list without selecting an entry (via Escape or clicking outside), THE Primary_Command_Field SHALL be cleared and the history list SHALL close.
+5. WHEN Command_History is empty and the LIST+RETRIEVE trigger is activated, THE workbench SHALL display the history list with an empty-state message: "No command history."
+6. THE `LIST` text in the command field SHALL NOT itself be added to Command_History when used as the RETRIEVE trigger.
+7. THE history list SHALL be rendered as a modal or near-modal overlay anchored to the Primary_Command_Field, consistent with the History_Dropdown defined in Requirement 10 but triggered by the LIST keyword rather than a dropdown control.
 
 ---
 
@@ -389,11 +389,11 @@ All function key assignments route through the command framework — pressing a 
 
 #### Acceptance Criteria
 
-20.1. THE workbench SHALL provide a Key_Configuration_Dialog accessible via the command `KEYS` entered in the Primary_Command_Field, and via a menu item (e.g., `Edit > Key Assignments…`).
+1. THE workbench SHALL provide a Key_Configuration_Dialog accessible via the command `KEYS` entered in the Primary_Command_Field, and via a menu item (e.g., `Edit > Key Assignments…`).
 
-20.2. THE Key_Configuration_Dialog SHALL display a tab or selector for each configurable key map scope: one tab labelled **Default (Global)** and one tab per named context (`pom`, `editor`, `settings`, `files`, `hex`, `toolchain`).
+2. THE Key_Configuration_Dialog SHALL display a tab or selector for each configurable key map scope: one tab labelled **Default (Global)** and one tab per named context (`pom`, `editor`, `settings`, `files`, `hex`, `toolchain`).
 
-20.3. WITHIN each scope tab, THE dialog SHALL display a grid of 24 rows — one per function key F1–F24 — with the following columns:
+3. WITHIN each scope tab, THE dialog SHALL display a grid of 24 rows — one per function key F1–F24 — with the following columns:
 
 | Column | Content |
 |--------|---------|
@@ -407,26 +407,26 @@ All function key assignments route through the command framework — pressing a 
 | Alt+Key Command | Editable text field for the Alt+Fn command string |
 | Alt+Key Description | Editable text field for the Alt+Fn description |
 
-20.4. WHEN the user edits a Command field and moves focus away (or presses Enter), THE dialog SHALL validate that the command string is non-empty if provided; an empty string SHALL be treated as "unassigned" (clearing the binding).
+4. WHEN the user edits a Command field and moves focus away (or presses Enter), THE dialog SHALL validate that the command string is non-empty if provided; an empty string SHALL be treated as "unassigned" (clearing the binding).
 
-20.5. THE dialog SHALL provide **Save** and **Cancel** buttons. WHEN **Save** is clicked, THE dialog SHALL write all changes to the workbench configuration (user-layer TOML) and close. WHEN **Cancel** is clicked, THE dialog SHALL discard all unsaved changes and close.
+5. THE dialog SHALL provide **Save** and **Cancel** buttons. WHEN **Save** is clicked, THE dialog SHALL write all changes to the workbench configuration (user-layer TOML) and close. WHEN **Cancel** is clicked, THE dialog SHALL discard all unsaved changes and close.
 
-20.6. WHEN the dialog opens, THE dialog SHALL pre-populate all fields from the currently effective key map for each scope (global map for the Default tab; the registered context map for each context tab), showing blank fields for unassigned keys.
+6. WHEN the dialog opens, THE dialog SHALL pre-populate all fields from the currently effective key map for each scope (global map for the Default tab; the registered context map for each context tab), showing blank fields for unassigned keys.
 
-20.7. THE dialog SHALL display the current effective label for each plain key binding in a read-only **Label** column adjacent to the Command column, derived using the same label-derivation rules as the Key_Label_Bar (explicit label if set, otherwise first token of command).
+7. THE dialog SHALL display the current effective label for each plain key binding in a read-only **Label** column adjacent to the Command column, derived using the same label-derivation rules as the Key_Label_Bar (explicit label if set, otherwise first token of command).
 
-20.8. WHEN the user saves changes to the Default (Global) scope, THE workbench SHALL update the `[global_key_map]` section in the user-layer configuration file. WHEN the user saves changes to a context scope, THE workbench SHALL update the corresponding `[context_key_maps.<name>]` section.
+8. WHEN the user saves changes to the Default (Global) scope, THE workbench SHALL update the `[global_key_map]` section in the user-layer configuration file. WHEN the user saves changes to a context scope, THE workbench SHALL update the corresponding `[context_key_maps.<name>]` section.
 
-20.9. THE Key_Configuration_Dialog SHALL support modifier-key bindings (Shift+Fn, Ctrl+Fn, Alt+Fn) as independent assignments stored alongside the plain binding. Each modifier variant has its own command string and description, independent of the plain binding.
+9. THE Key_Configuration_Dialog SHALL support modifier-key bindings (Shift+Fn, Ctrl+Fn, Alt+Fn) as independent assignments stored alongside the plain binding. Each modifier variant has its own command string and description, independent of the plain binding.
 
-20.10. WHEN a modifier-key binding is assigned in the dialog and the user presses that modifier+key combination in the workbench, THE workbench SHALL dispatch the modifier binding's command string through the command framework, following the same history and exclusion rules as plain function key presses.
+10. WHEN a modifier-key binding is assigned in the dialog and the user presses that modifier+key combination in the workbench, THE workbench SHALL dispatch the modifier binding's command string through the command framework, following the same history and exclusion rules as plain function key presses.
 
-20.11. THE modifier key bindings SHALL be stored in the TOML configuration using an extended key name syntax: `SF1`–`SF24` for Shift, `CF1`–`CF24` for Ctrl, `AF1`–`AF24` for Alt, within the same `[global_key_map]` or `[context_key_maps.<name>]` section.
+11. THE modifier key bindings SHALL be stored in the TOML configuration using an extended key name syntax: `SF1`–`SF24` for Shift, `CF1`–`CF24` for Ctrl, `AF1`–`AF24` for Alt, within the same `[global_key_map]` or `[context_key_maps.<name>]` section.
 
-20.12. THE `FunctionKey` type (or a new `ModifiedKey` type) SHALL be extended to represent the four modifier variants (plain, Shift, Ctrl, Alt) for each of F1–F24, giving a total of 96 addressable key slots per key map.
+12. THE `FunctionKey` type (or a new `ModifiedKey` type) SHALL be extended to represent the four modifier variants (plain, Shift, Ctrl, Alt) for each of F1–F24, giving a total of 96 addressable key slots per key map.
 
-20.13. THE Key_Label_Bar SHALL continue to display only the plain (unmodified) F1–F24 bindings in its two-row layout. Modifier bindings are not shown in the Key_Label_Bar but are accessible via the Key_Configuration_Dialog and active at runtime.
+13. THE Key_Label_Bar SHALL continue to display only the plain (unmodified) F1–F24 bindings in its two-row layout. Modifier bindings are not shown in the Key_Label_Bar but are accessible via the Key_Configuration_Dialog and active at runtime.
 
-20.14. WHEN the Key_Configuration_Dialog is open, THE workbench SHALL continue to process function key presses normally (the dialog is non-blocking with respect to the rest of the workbench).
+14. WHEN the Key_Configuration_Dialog is open, THE workbench SHALL continue to process function key presses normally (the dialog is non-blocking with respect to the rest of the workbench).
 
-20.15. THE dialog SHALL include a **Reset to Defaults** button per scope tab. WHEN clicked, THE dialog SHALL restore all fields in that tab to the built-in defaults (for the Default tab) or clear all fields (for context tabs), without saving until **Save** is clicked.
+15. THE dialog SHALL include a **Reset to Defaults** button per scope tab. WHEN clicked, THE dialog SHALL restore all fields in that tab to the built-in defaults (for the Default tab) or clear all fields (for context tabs), without saving until **Save** is clicked.

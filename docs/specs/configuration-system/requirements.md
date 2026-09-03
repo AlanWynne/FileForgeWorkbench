@@ -202,15 +202,15 @@ workbench behaviour quickly and safely from within the application.
 
 #### Acceptance Criteria
 
-15.1 WHEN the user selects option `0` from the Primary Option Menu, OR types `0` or `SETTINGS`
+1. WHEN the user selects option `0` from the Primary Option Menu, OR types `0` or `SETTINGS`
      or `=0` in any `Command ===>` field, THE shell SHALL open the Settings panel as a new tab
      with title `[SETTINGS]` and tab kind `SettingsPanel`.
 
-15.2 THE Settings panel SHALL display all configuration keys registered in the `ff-config`
+2. THE Settings panel SHALL display all configuration keys registered in the `ff-config`
      schema, grouped by namespace (e.g., `Editor`, `Logging`, `Theme`, `Catalogs`, `VFS`),
      with each group rendered as a collapsible section.
 
-15.3 FOR each configuration key, THE Settings panel SHALL display:
+3. FOR each configuration key, THE Settings panel SHALL display:
      - The key's human-readable description (from the schema entry)
      - The current effective value
      - The provenance layer that provided the effective value (e.g., `Default`, `User`, `Project`)
@@ -220,32 +220,32 @@ workbench behaviour quickly and safely from within the application.
        - String with `allowed_values` → drop-down selector
        - String without constraints → single-line text field
 
-15.4 WHEN the user changes a value in the Settings panel and confirms (presses Enter or moves
+4. WHEN the user changes a value in the Settings panel and confirms (presses Enter or moves
      focus away from the field), THE shell SHALL validate the new value against the schema
      constraints; IF valid, THE shell SHALL write the new value to the user-layer configuration
      file and update the effective value immediately (no restart required).
 
-15.5 WHEN a value fails schema validation (out of range, not in allowed set, fails regex),
+5. WHEN a value fails schema validation (out of range, not in allowed set, fails regex),
      THE Settings panel SHALL display an inline error message adjacent to the field and SHALL
      NOT persist the invalid value.
 
-15.6 THE Settings panel SHALL display a `Reset to Default` button beside each key that has
+6. THE Settings panel SHALL display a `Reset to Default` button beside each key that has
      been overridden above the Defaults layer; WHEN clicked, THE shell SHALL remove the
      user-layer override for that key, restoring the schema default.
 
-15.7 THE Settings panel SHALL include a search/filter input at the top; WHEN the user types
+7. THE Settings panel SHALL include a search/filter input at the top; WHEN the user types
      in the filter, THE panel SHALL show only keys whose key path or description contains the
      filter text (case-insensitive substring match).
 
-15.8 THE Settings panel SHALL display a read-only `Source File` indicator showing the path of
+8. THE Settings panel SHALL display a read-only `Source File` indicator showing the path of
      the user-layer configuration file being edited.
 
-15.9 THE `[SETTINGS]` tab SHALL persist in the session and be restored on next launch as a
+9. THE `[SETTINGS]` tab SHALL persist in the session and be restored on next launch as a
      `SettingsPanel` tab kind.
 
-15.10 WHEN the user presses `PF3` / `F3` or types `END` in the Settings panel command field,
+10. WHEN the user presses `F3` or types `END` in the Settings panel command field,
       THE shell SHALL return the tab to the Primary Option Menu view.
 
-15.11 WHEN the user clicks `Settings` in the POM option list (option 0 button), THE shell
+11. WHEN the user clicks `Settings` in the POM option list (option 0 button), THE shell
       SHALL navigate to the Settings panel using the same routing as typing `0` in the command
       field.

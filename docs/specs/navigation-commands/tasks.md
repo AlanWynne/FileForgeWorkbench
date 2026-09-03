@@ -1,4 +1,4 @@
-# Implementation Plan: Navigation Commands (`ff-navigation-commands`)
+﻿# Implementation Plan: Navigation Commands (`ff-navigation-commands`)
 
 ## Overview
 
@@ -10,226 +10,226 @@ This is a **Wave 5 (Command Engine)** sub-project that depends on `ff-viewport-s
 
 ## Tasks
 
-- [ ] 1. Crate scaffolding and module structure
-  - [ ] 1.1 Create `crates/ff-navigation-commands/Cargo.toml` with dependencies (thiserror, proptest dev-dep) and deps on `ff-document-model`, `ff-viewport-scrolling`, `ff-command`, `ff-undo-redo`, `ff-configuration-system`, `ff-logging`
-  - [ ] 1.2 Create `crates/ff-navigation-commands/src/lib.rs` with module declarations and public API re-exports
-  - [ ] 1.3 Create module files: `locate.rs`, `sort.rs`, `cols.rs`, `bounds.rs`, `viewport_nav.rs`, `paragraph_nav.rs`, `word_nav.rs`, `word_part_nav.rs`, `vertical_caret.rs`, `doc_nav.rs`, `delegation.rs`, `commands.rs`, `config.rs`, `session_state.rs`, `char_class.rs`, `error.rs`, `types.rs`
-  - [ ] 1.4 Add `ff-navigation-commands` to workspace `Cargo.toml` members list
+- [x] 1. Crate scaffolding and module structure
+  - [x] 1.1 Create `crates/ff-navigation-commands/Cargo.toml` with dependencies (thiserror, proptest dev-dep) and deps on `ff-document-model`, `ff-viewport-scrolling`, `ff-command`, `ff-undo-redo`, `ff-configuration-system`, `ff-logging`
+  - [x] 1.2 Create `crates/ff-navigation-commands/src/lib.rs` with module declarations and public API re-exports
+  - [x] 1.3 Create module files: `locate.rs`, `sort.rs`, `cols.rs`, `bounds.rs`, `viewport_nav.rs`, `paragraph_nav.rs`, `word_nav.rs`, `word_part_nav.rs`, `vertical_caret.rs`, `doc_nav.rs`, `delegation.rs`, `commands.rs`, `config.rs`, `session_state.rs`, `char_class.rs`, `error.rs`, `types.rs`
+  - [x] 1.4 Add `ff-navigation-commands` to workspace `Cargo.toml` members list
   - Covers: Structural foundation for all requirements
 
-- [ ] 2. Core types and session state
-  - [ ] 2.1 Define `Bounds { left: u64, right: u64 }` struct with validation (left >= 1, right > left) and intersection logic
-  - [ ] 2.2 Define `ColsLine` struct representing a synthetic column ruler display artifact with anchor position
-  - [ ] 2.3 Define `BndsLine` struct representing a synthetic bounds display artifact with left/right markers
-  - [ ] 2.4 Define `SessionState` struct holding active bounds, COLS_Line list, BNDS_Line reference, and display artifact state
-  - [ ] 2.5 Define `SortOrder` enum (Ascending, Descending) and `SortScope` enum (All, Visible, Tagged, Block)
-  - [ ] 2.6 Define `SortRequest { col_start: Option<u64>, col_end: Option<u64>, order: SortOrder, scope: SortScope }` struct
-  - [ ] 2.7 Define `NavigationDirection` enum and `ScrollAmount` types for viewport nav commands
-  - [ ] 2.8 Write unit tests for Bounds validation, intersection, and SortRequest construction
+- [x] 2. Core types and session state
+  - [x] 2.1 Define `Bounds { left: u64, right: u64 }` struct with validation (left >= 1, right > left) and intersection logic
+  - [x] 2.2 Define `ColsLine` struct representing a synthetic column ruler display artifact with anchor position
+  - [x] 2.3 Define `BndsLine` struct representing a synthetic bounds display artifact with left/right markers
+  - [x] 2.4 Define `SessionState` struct holding active bounds, COLS_Line list, BNDS_Line reference, and display artifact state
+  - [x] 2.5 Define `SortOrder` enum (Ascending, Descending) and `SortScope` enum (All, Visible, Tagged, Block)
+  - [x] 2.6 Define `SortRequest { col_start: Option<u64>, col_end: Option<u64>, order: SortOrder, scope: SortScope }` struct
+  - [x] 2.7 Define `NavigationDirection` enum and `ScrollAmount` types for viewport nav commands
+  - [x] 2.8 Write unit tests for Bounds validation, intersection, and SortRequest construction
   - Covers: Requirement 2 (AC 2.1–2.4), Requirement 4 (AC 4.1–4.3), Requirement 5 (AC 5.1–5.6)
 
-- [ ] 3. Character classification system
-  - [ ] 3.1 Define `CharacterClass` enum (Space, NewLine, Word, Punctuation) per SCI-DOC-16
-  - [ ] 3.2 Implement `CharClassify` struct with configurable ASCII classification table (256-entry lookup)
-  - [ ] 3.3 Implement `classify(ch: char) -> CharacterClass` method with Unicode fallback for code points >= 0x80
-  - [ ] 3.4 Implement `SetCharClasses` API for application-level customisation of word characters
-  - [ ] 3.5 Implement `SetDefaultCharClasses` API to reset to built-in defaults
-  - [ ] 3.6 Implement integration with `editor.navigation.word_characters` config key to extend default word chars
-  - [ ] 3.7 Write unit tests for ASCII classification, Unicode categories, custom char class overrides
+- [x] 3. Character classification system
+  - [x] 3.1 Define `CharacterClass` enum (Space, NewLine, Word, Punctuation) per SCI-DOC-16
+  - [x] 3.2 Implement `CharClassify` struct with configurable ASCII classification table (256-entry lookup)
+  - [x] 3.3 Implement `classify(ch: char) -> CharacterClass` method with Unicode fallback for code points >= 0x80
+  - [x] 3.4 Implement `SetCharClasses` API for application-level customisation of word characters
+  - [x] 3.5 Implement `SetDefaultCharClasses` API to reset to built-in defaults
+  - [x] 3.6 Implement integration with `editor.navigation.word_characters` config key to extend default word chars
+  - [x] 3.7 Write unit tests for ASCII classification, Unicode categories, custom char class overrides
   - Covers: Requirement 7 (AC 7.1, 7.9), Requirement 8 (AC 8.5), Requirement 18 (AC 18.4)
 
-- [ ] 4. LOCATE command implementation
-  - [ ] 4.1 Implement `LocateCommand` struct with `execute(target: &str, viewport: &mut ViewportModel, cursor: &mut CursorModel, doc: &dyn DocumentModel)` method
-  - [ ] 4.2 Implement numeric argument parsing: interpret positive integer as target line number
-  - [ ] 4.3 Implement line-number validation: reject < 1 or > line_count with "Line number out of range" error
-  - [ ] 4.4 Implement label argument parsing: interpret non-numeric text as named label lookup
-  - [ ] 4.5 Implement label-not-found error: "Label not found: <label>" with viewport unchanged
-  - [ ] 4.6 Implement successful navigation: set top_line to target, update cursor_line to target, reset cursor_column to 1
-  - [ ] 4.7 Register LOCATE with command framework as non-undoable, valid in Browse and Edit modes
-  - [ ] 4.8 Write unit tests for numeric locate, out-of-range, label found, label not found, cursor reset
+- [x] 4. LOCATE command implementation
+  - [x] 4.1 Implement `LocateCommand` struct with `execute(target: &str, viewport: &mut ViewportModel, cursor: &mut CursorModel, doc: &dyn DocumentModel)` method
+  - [x] 4.2 Implement numeric argument parsing: interpret positive integer as target line number
+  - [x] 4.3 Implement line-number validation: reject < 1 or > line_count with "Line number out of range" error
+  - [x] 4.4 Implement label argument parsing: interpret non-numeric text as named label lookup
+  - [x] 4.5 Implement label-not-found error: "Label not found: <label>" with viewport unchanged
+  - [x] 4.6 Implement successful navigation: set top_line to target, update cursor_line to target, reset cursor_column to 1
+  - [x] 4.7 Register LOCATE with command framework as non-undoable, valid in Browse and Edit modes
+  - [x] 4.8 Write unit tests for numeric locate, out-of-range, label found, label not found, cursor reset
   - Covers: Requirement 1 (AC 1.1–1.6)
 
-- [ ] 5. SORT command implementation
-  - [ ] 5.1 Implement `SortCommand` struct with SORT argument parser: `SORT [col1 col2] [A|D] [TAGGED|VISIBLE]`
-  - [ ] 5.2 Implement scope resolution: no qualifier → all visible lines, TAGGED → tagged-only, VISIBLE → non-excluded, CC block → block range
-  - [ ] 5.3 Implement column-key extraction: slice characters col1..col2 from each line for comparison
-  - [ ] 5.4 Implement ascending (A) and descending (D) stable sort using the extracted column key
-  - [ ] 5.5 Implement Bounds integration: when no explicit columns given, use active Bounds as default key range
-  - [ ] 5.6 Implement Bounds intersection: when explicit columns AND Bounds are set, use intersection as effective range
-  - [ ] 5.7 Implement zero/one-line scope guard: display "Nothing to sort" without recording a transaction
-  - [ ] 5.8 Implement undo transaction recording: wrap the line reordering as a single undoable Transaction
-  - [ ] 5.9 Implement TAGGED scope: sort only tagged lines in-place, non-tagged lines retain positions
-  - [ ] 5.10 Register SORT with command framework as undoable, valid in Edit mode only
-  - [ ] 5.11 Write unit tests for all scope variants, column extraction, bounds interaction, stable sort, undo recording
+- [x] 5. SORT command implementation
+  - [x] 5.1 Implement `SortCommand` struct with SORT argument parser: `SORT [col1 col2] [A|D] [TAGGED|VISIBLE]`
+  - [x] 5.2 Implement scope resolution: no qualifier → all visible lines, TAGGED → tagged-only, VISIBLE → non-excluded, CC block → block range
+  - [x] 5.3 Implement column-key extraction: slice characters col1..col2 from each line for comparison
+  - [x] 5.4 Implement ascending (A) and descending (D) stable sort using the extracted column key
+  - [x] 5.5 Implement Bounds integration: when no explicit columns given, use active Bounds as default key range
+  - [x] 5.6 Implement Bounds intersection: when explicit columns AND Bounds are set, use intersection as effective range
+  - [x] 5.7 Implement zero/one-line scope guard: display "Nothing to sort" without recording a transaction
+  - [x] 5.8 Implement undo transaction recording: wrap the line reordering as a single undoable Transaction
+  - [x] 5.9 Implement TAGGED scope: sort only tagged lines in-place, non-tagged lines retain positions
+  - [x] 5.10 Register SORT with command framework as undoable, valid in Edit mode only
+  - [x] 5.11 Write unit tests for all scope variants, column extraction, bounds interaction, stable sort, undo recording
   - Covers: Requirement 2 (AC 2.1–2.13)
 
-- [ ] 6. Viewport navigation commands (UP, DOWN, LEFT, RIGHT, TOP, BOTTOM)
-  - [ ] 6.1 Implement `UpCommand` with optional integer argument: no arg = page scroll (visible_count lines), with arg = n lines
-  - [ ] 6.2 Implement `DownCommand` with optional integer argument: no arg = page scroll, with arg = n lines
-  - [ ] 6.3 Implement page overlap: subtract `editor.navigation.page_overlap_lines` from page scroll amount
-  - [ ] 6.4 Implement `LeftCommand` with optional integer argument: no arg = configured default columns, with arg = n columns
-  - [ ] 6.5 Implement `RightCommand` with optional integer argument: no arg = configured default columns, with arg = n columns
-  - [ ] 6.6 Implement `TopCommand`: scroll to line 1, update cursor_line to 1, reset cursor_column to 1
-  - [ ] 6.7 Implement `BottomCommand`: scroll to max_top_line, update cursor_line to last line, reset cursor_column to 1
-  - [ ] 6.8 Implement vertical clamping: top_line never < 1 and never > max_top_line, no error on overshoot
-  - [ ] 6.9 Implement horizontal clamping: horizontal_offset never < 0, no error on undershoot
-  - [ ] 6.10 Register all navigation commands with command framework as non-undoable, valid in both Browse and Edit modes
-  - [ ] 6.11 Implement configurable default horizontal scroll via `editor.navigation.horizontal_scroll_columns` (default 8)
-  - [ ] 6.12 Write unit tests for page scroll, line scroll, column scroll, clamping at boundaries, TOP/BOTTOM cursor updates
+- [x] 6. Viewport navigation commands (UP, DOWN, LEFT, RIGHT, TOP, BOTTOM)
+  - [x] 6.1 Implement `UpCommand` with optional integer argument: no arg = page scroll (visible_count lines), with arg = n lines
+  - [x] 6.2 Implement `DownCommand` with optional integer argument: no arg = page scroll, with arg = n lines
+  - [x] 6.3 Implement page overlap: subtract `editor.navigation.page_overlap_lines` from page scroll amount
+  - [x] 6.4 Implement `LeftCommand` with optional integer argument: no arg = configured default columns, with arg = n columns
+  - [x] 6.5 Implement `RightCommand` with optional integer argument: no arg = configured default columns, with arg = n columns
+  - [x] 6.6 Implement `TopCommand`: scroll to line 1, update cursor_line to 1, reset cursor_column to 1
+  - [x] 6.7 Implement `BottomCommand`: scroll to max_top_line, update cursor_line to last line, reset cursor_column to 1
+  - [x] 6.8 Implement vertical clamping: top_line never < 1 and never > max_top_line, no error on overshoot
+  - [x] 6.9 Implement horizontal clamping: horizontal_offset never < 0, no error on undershoot
+  - [x] 6.10 Register all navigation commands with command framework as non-undoable, valid in both Browse and Edit modes
+  - [x] 6.11 Implement configurable default horizontal scroll via `editor.navigation.horizontal_scroll_columns` (default 8)
+  - [x] 6.12 Write unit tests for page scroll, line scroll, column scroll, clamping at boundaries, TOP/BOTTOM cursor updates
   - Covers: Requirement 3 (AC 3.1–3.16), Requirement 18 (AC 18.1–18.2, 18.5)
 
-- [ ] 7. COLS command implementation
-  - [ ] 7.1 Implement `ColsCommand` struct managing COLS_Line insertion/removal in SessionState
-  - [ ] 7.2 Implement COLS_Line formatting: `----+----1----+----2----+----3...` ruler pattern with prefix indicator
-  - [ ] 7.3 Implement toggle behaviour: issuing COLS at same position removes existing COLS_Line
-  - [ ] 7.4 Implement multiple COLS_Lines: allow separate COLS at different cursor positions
-  - [ ] 7.5 Implement COLS line command: insert COLS_Line above the specified document line from prefix area
-  - [ ] 7.6 Implement COLS_Line as display-only artifact: excluded from document operations, not saved to disk
-  - [ ] 7.7 Implement COLS_Line scrolling: anchor to document lines so it scrolls with content
-  - [ ] 7.8 Implement RESET/RESET ALL/RESET COMMANDS integration: clear all COLS_Lines
-  - [ ] 7.9 Implement non-editable prefix cell display for COLS_Line showing "COLS" indicator
-  - [ ] 7.10 Register COLS with command framework as non-undoable, valid in both Browse and Edit modes
-  - [ ] 7.11 Write unit tests for insertion, toggle, multiple lines, RESET clearing, prefix display
+- [x] 7. COLS command implementation
+  - [x] 7.1 Implement `ColsCommand` struct managing COLS_Line insertion/removal in SessionState
+  - [x] 7.2 Implement COLS_Line formatting: `----+----1----+----2----+----3...` ruler pattern with prefix indicator
+  - [x] 7.3 Implement toggle behaviour: issuing COLS at same position removes existing COLS_Line
+  - [x] 7.4 Implement multiple COLS_Lines: allow separate COLS at different cursor positions
+  - [x] 7.5 Implement COLS line command: insert COLS_Line above the specified document line from prefix area
+  - [x] 7.6 Implement COLS_Line as display-only artifact: excluded from document operations, not saved to disk
+  - [x] 7.7 Implement COLS_Line scrolling: anchor to document lines so it scrolls with content
+  - [x] 7.8 Implement RESET/RESET ALL/RESET COMMANDS integration: clear all COLS_Lines
+  - [x] 7.9 Implement non-editable prefix cell display for COLS_Line showing "COLS" indicator
+  - [x] 7.10 Register COLS with command framework as non-undoable, valid in both Browse and Edit modes
+  - [x] 7.11 Write unit tests for insertion, toggle, multiple lines, RESET clearing, prefix display
   - Covers: Requirement 4 (AC 4.1–4.11)
 
-- [ ] 8. BOUNDS / BNDS command implementation
-  - [ ] 8.1 Implement `BoundsCommand` with argument parser: `BOUNDS [left right]` or `BNDS [left right]`
-  - [ ] 8.2 Implement bounds validation: left >= 1, right > left, both positive integers; error message for invalid input
-  - [ ] 8.3 Implement bounds storage in SessionState with set/clear operations
-  - [ ] 8.4 Implement BNDS_Line display artifact: show `<` at left column and `>` at right column
-  - [ ] 8.5 Implement no-argument clearing: issuing BOUNDS/BNDS with no args clears bounds and removes BNDS_Line
-  - [ ] 8.6 Implement BNDS_Line as display-only artifact: not a real document line, not saved to disk
-  - [ ] 8.7 Implement public query API: `get_active_bounds() -> Option<Bounds>` for other command executors
-  - [ ] 8.8 Implement bounds-affect-find integration via `editor.bounds.affect_find` config key
-  - [ ] 8.9 Implement non-undoable session state: bounds changes never recorded as transactions
-  - [ ] 8.10 Register BOUNDS and BNDS as non-undoable commands with alias support, valid in both modes
-  - [ ] 8.11 Write unit tests for set bounds, clear bounds, validation errors, BNDS_Line display, query API
+- [x] 8. BOUNDS / BNDS command implementation
+  - [x] 8.1 Implement `BoundsCommand` with argument parser: `BOUNDS [left right]` or `BNDS [left right]`
+  - [x] 8.2 Implement bounds validation: left >= 1, right > left, both positive integers; error message for invalid input
+  - [x] 8.3 Implement bounds storage in SessionState with set/clear operations
+  - [x] 8.4 Implement BNDS_Line display artifact: show `<` at left column and `>` at right column
+  - [x] 8.5 Implement no-argument clearing: issuing BOUNDS/BNDS with no args clears bounds and removes BNDS_Line
+  - [x] 8.6 Implement BNDS_Line as display-only artifact: not a real document line, not saved to disk
+  - [x] 8.7 Implement public query API: `get_active_bounds() -> Option<Bounds>` for other command executors
+  - [x] 8.8 Implement bounds-affect-find integration via `editor.bounds.affect_find` config key
+  - [x] 8.9 Implement non-undoable session state: bounds changes never recorded as transactions
+  - [x] 8.10 Register BOUNDS and BNDS as non-undoable commands with alias support, valid in both modes
+  - [x] 8.11 Write unit tests for set bounds, clear bounds, validation errors, BNDS_Line display, query API
   - Covers: Requirement 5 (AC 5.1–5.15), Requirement 18 (AC 18.3)
 
-- [ ] 9. Paragraph navigation implementation
-  - [ ] 9.1 Implement `ParagraphUpCommand`: move caret to beginning of previous paragraph boundary
-  - [ ] 9.2 Implement `ParagraphDownCommand`: move caret to beginning of next paragraph boundary
-  - [ ] 9.3 Implement paragraph boundary detection: blank/whitespace-only lines define boundaries
-  - [ ] 9.4 Implement boundary traversal: skip contiguous blank lines to reach the first content line after the gap
-  - [ ] 9.5 Implement document-start clamping: if no prior boundary, move to position 0 (first char of first line)
-  - [ ] 9.6 Implement document-end clamping: if no further boundary, move to last line of document
-  - [ ] 9.7 Implement excluded-line skipping: treat contiguous excluded lines as non-present for boundary detection
-  - [ ] 9.8 Implement viewport scroll-to-keep-caret-visible after paragraph navigation
-  - [ ] 9.9 Implement selection extension: Extend modifier extends selection from anchor to new caret position
-  - [ ] 9.10 Register PARA_UP and PARA_DOWN with command framework as non-undoable, valid in both modes
-  - [ ] 9.11 Write unit tests for boundary detection, excluded line skipping, clamping, selection extension
+- [x] 9. Paragraph navigation implementation
+  - [x] 9.1 Implement `ParagraphUpCommand`: move caret to beginning of previous paragraph boundary
+  - [x] 9.2 Implement `ParagraphDownCommand`: move caret to beginning of next paragraph boundary
+  - [x] 9.3 Implement paragraph boundary detection: blank/whitespace-only lines define boundaries
+  - [x] 9.4 Implement boundary traversal: skip contiguous blank lines to reach the first content line after the gap
+  - [x] 9.5 Implement document-start clamping: if no prior boundary, move to position 0 (first char of first line)
+  - [x] 9.6 Implement document-end clamping: if no further boundary, move to last line of document
+  - [x] 9.7 Implement excluded-line skipping: treat contiguous excluded lines as non-present for boundary detection
+  - [x] 9.8 Implement viewport scroll-to-keep-caret-visible after paragraph navigation
+  - [x] 9.9 Implement selection extension: Extend modifier extends selection from anchor to new caret position
+  - [x] 9.10 Register PARA_UP and PARA_DOWN with command framework as non-undoable, valid in both modes
+  - [x] 9.11 Write unit tests for boundary detection, excluded line skipping, clamping, selection extension
   - Covers: Requirement 6 (AC 6.1–6.9)
 
-- [ ] 10. Word navigation implementation
-  - [ ] 10.1 Implement `WordLeftCommand`: skip whitespace backwards, then skip same-class chars backwards to class transition
-  - [ ] 10.2 Implement `WordRightCommand`: skip current-class chars forwards, then skip whitespace to next non-space
-  - [ ] 10.3 Implement `WordEndRightCommand`: skip whitespace forwards, then skip word chars to next class transition
-  - [ ] 10.4 Implement line-boundary crossing: continue navigation on adjacent line when reaching line start/end
-  - [ ] 10.5 Implement document boundary clamping: clamp at position 0 (start) and document end without error
-  - [ ] 10.6 Implement character classification integration: use CharClassify for word/punctuation/space transitions
-  - [ ] 10.7 Implement viewport scroll-to-keep-caret-visible after word navigation
-  - [ ] 10.8 Implement selection extension: Extend modifier extends selection from anchor to new caret position
-  - [ ] 10.9 Register WORD_LEFT, WORD_RIGHT with command framework as non-undoable, valid in both modes
-  - [ ] 10.10 Write unit tests for word boundaries, line crossing, document clamping, Unicode chars, selection extend
+- [x] 10. Word navigation implementation
+  - [x] 10.1 Implement `WordLeftCommand`: skip whitespace backwards, then skip same-class chars backwards to class transition
+  - [x] 10.2 Implement `WordRightCommand`: skip current-class chars forwards, then skip whitespace to next non-space
+  - [x] 10.3 Implement `WordEndRightCommand`: skip whitespace forwards, then skip word chars to next class transition
+  - [x] 10.4 Implement line-boundary crossing: continue navigation on adjacent line when reaching line start/end
+  - [x] 10.5 Implement document boundary clamping: clamp at position 0 (start) and document end without error
+  - [x] 10.6 Implement character classification integration: use CharClassify for word/punctuation/space transitions
+  - [x] 10.7 Implement viewport scroll-to-keep-caret-visible after word navigation
+  - [x] 10.8 Implement selection extension: Extend modifier extends selection from anchor to new caret position
+  - [x] 10.9 Register WORD_LEFT, WORD_RIGHT with command framework as non-undoable, valid in both modes
+  - [x] 10.10 Write unit tests for word boundaries, line crossing, document clamping, Unicode chars, selection extend
   - Covers: Requirement 7 (AC 7.1–7.11)
 
-- [ ] 11. Word-part (camelCase/sub-word) navigation implementation
-  - [ ] 11.1 Implement `WordPartLeftCommand`: detect sub-word boundaries moving backwards within current word
-  - [ ] 11.2 Implement `WordPartRightCommand`: detect sub-word boundaries moving forwards within current word
-  - [ ] 11.3 Implement camelCase boundary detection: lowercase→uppercase transition (e.g., `get|Value`)
-  - [ ] 11.4 Implement UPPER_UPPER_lower boundary: last uppercase before lowercase run (e.g., `XML|Parser`)
-  - [ ] 11.5 Implement alpha↔non-alpha boundary: transitions between alphanumeric and separator characters
-  - [ ] 11.6 Implement digit↔alpha boundary: transitions between digits and letters
-  - [ ] 11.7 Implement word-boundary crossing: when at word start/end, cross to adjacent word's last/first part
-  - [ ] 11.8 Implement selection extension: Extend modifier extends selection from anchor to new caret position
-  - [ ] 11.9 Implement viewport scroll-to-keep-caret-visible after word-part navigation
-  - [ ] 11.10 Register WORD_PART_LEFT, WORD_PART_RIGHT with command framework as non-undoable, valid in both modes
-  - [ ] 11.11 Write unit tests for camelCase, snake_case, UPPER runs, digit boundaries, word crossing, selection
+- [x] 11. Word-part (camelCase/sub-word) navigation implementation
+  - [x] 11.1 Implement `WordPartLeftCommand`: detect sub-word boundaries moving backwards within current word
+  - [x] 11.2 Implement `WordPartRightCommand`: detect sub-word boundaries moving forwards within current word
+  - [x] 11.3 Implement camelCase boundary detection: lowercase→uppercase transition (e.g., `get|Value`)
+  - [x] 11.4 Implement UPPER_UPPER_lower boundary: last uppercase before lowercase run (e.g., `XML|Parser`)
+  - [x] 11.5 Implement alpha↔non-alpha boundary: transitions between alphanumeric and separator characters
+  - [x] 11.6 Implement digit↔alpha boundary: transitions between digits and letters
+  - [x] 11.7 Implement word-boundary crossing: when at word start/end, cross to adjacent word's last/first part
+  - [x] 11.8 Implement selection extension: Extend modifier extends selection from anchor to new caret position
+  - [x] 11.9 Implement viewport scroll-to-keep-caret-visible after word-part navigation
+  - [x] 11.10 Register WORD_PART_LEFT, WORD_PART_RIGHT with command framework as non-undoable, valid in both modes
+  - [x] 11.11 Write unit tests for camelCase, snake_case, UPPER runs, digit boundaries, word crossing, selection
   - Covers: Requirement 8 (AC 8.1–8.8)
 
-- [ ] 12. Vertical caret movement and column affinity
-  - [ ] 12.1 Implement column affinity storage: maintain `column_affinity` value across vertical movements
-  - [ ] 12.2 Implement vertical movement target computation: use column_affinity rather than current cursor_column
-  - [ ] 12.3 Implement short-line clamping: when target line is shorter than affinity, place caret at line end without modifying affinity
-  - [ ] 12.4 Implement affinity reset on horizontal movement: update column_affinity on char left/right, word nav, home, end
-  - [ ] 12.5 Implement line-up caret movement with affinity and clamping at line 1
-  - [ ] 12.6 Implement line-down caret movement with affinity and clamping at last document line
-  - [ ] 12.7 Implement page-up caret movement: move up by visible_count lines maintaining affinity
-  - [ ] 12.8 Implement page-down caret movement: move down by visible_count lines maintaining affinity
-  - [ ] 12.9 Implement viewport scroll delegation when caret moves off-screen
-  - [ ] 12.10 Implement selection extension for all vertical movements
-  - [ ] 12.11 Write unit tests for affinity preservation, short line clamping, page movements, boundary clamping
+- [x] 12. Vertical caret movement and column affinity
+  - [x] 12.1 Implement column affinity storage: maintain `column_affinity` value across vertical movements
+  - [x] 12.2 Implement vertical movement target computation: use column_affinity rather than current cursor_column
+  - [x] 12.3 Implement short-line clamping: when target line is shorter than affinity, place caret at line end without modifying affinity
+  - [x] 12.4 Implement affinity reset on horizontal movement: update column_affinity on char left/right, word nav, home, end
+  - [x] 12.5 Implement line-up caret movement with affinity and clamping at line 1
+  - [x] 12.6 Implement line-down caret movement with affinity and clamping at last document line
+  - [x] 12.7 Implement page-up caret movement: move up by visible_count lines maintaining affinity
+  - [x] 12.8 Implement page-down caret movement: move down by visible_count lines maintaining affinity
+  - [x] 12.9 Implement viewport scroll delegation when caret moves off-screen
+  - [x] 12.10 Implement selection extension for all vertical movements
+  - [x] 12.11 Write unit tests for affinity preservation, short line clamping, page movements, boundary clamping
   - Covers: Requirement 9 (AC 9.1–9.10)
 
-- [ ] 13. Document start and end navigation
-  - [ ] 13.1 Implement `DocStartCommand`: move caret to position 0 (line 1, column 1), scroll viewport to top
-  - [ ] 13.2 Implement `DocEndCommand`: move caret to end of last line, scroll viewport to show last page
-  - [ ] 13.3 Implement column affinity update: DOC_START resets affinity to 1, DOC_END updates to last-line position
-  - [ ] 13.4 Implement selection extension: Extend modifier extends selection from anchor to new position
-  - [ ] 13.5 Register DOC_START, DOC_END with command framework as non-undoable, valid in both modes
-  - [ ] 13.6 Write unit tests for position updates, affinity changes, viewport scroll, selection extension
+- [x] 13. Document start and end navigation
+  - [x] 13.1 Implement `DocStartCommand`: move caret to position 0 (line 1, column 1), scroll viewport to top
+  - [x] 13.2 Implement `DocEndCommand`: move caret to end of last line, scroll viewport to show last page
+  - [x] 13.3 Implement column affinity update: DOC_START resets affinity to 1, DOC_END updates to last-line position
+  - [x] 13.4 Implement selection extension: Extend modifier extends selection from anchor to new position
+  - [x] 13.5 Register DOC_START, DOC_END with command framework as non-undoable, valid in both modes
+  - [x] 13.6 Write unit tests for position updates, affinity changes, viewport scroll, selection extension
   - Covers: Requirement 10 (AC 10.1–10.6)
 
-- [ ] 14. Delegation command registrations
-  - [ ] 14.1 Register SAVE, CANCEL, END commands as delegation-only with appropriate metadata (owned by `file-operations`)
-  - [ ] 14.2 Register LOAD, RELOAD commands as delegation-only (owned by `file-operations`)
-  - [ ] 14.3 Register DELETE command as delegation-only (owned by `edit-operations`)
-  - [ ] 14.4 Register COPY command as delegation-only (owned by `edit-operations`)
-  - [ ] 14.5 Register MOVE command as delegation-only (owned by `edit-operations`)
-  - [ ] 14.6 Register MACRO, EXEC, RUN commands as delegation-only with alias support (owned by `lua-macro-engine`)
-  - [ ] 14.7 Register UNDO, REDO commands as delegation-only with special no-history flag (owned by `undo-redo-transactions`)
-  - [ ] 14.8 Implement dispatch routing to owning crate modules via command framework delegation trait
-  - [ ] 14.9 Write unit tests verifying delegation registrations and dispatch routing
+- [x] 14. Delegation command registrations
+  - [x] 14.1 Register SAVE, CANCEL, END commands as delegation-only with appropriate metadata (owned by `file-operations`)
+  - [x] 14.2 Register LOAD, RELOAD commands as delegation-only (owned by `file-operations`)
+  - [x] 14.3 Register DELETE command as delegation-only (owned by `edit-operations`)
+  - [x] 14.4 Register COPY command as delegation-only (owned by `edit-operations`)
+  - [x] 14.5 Register MOVE command as delegation-only (owned by `edit-operations`)
+  - [x] 14.6 Register MACRO, EXEC, RUN commands as delegation-only with alias support (owned by `lua-macro-engine`)
+  - [x] 14.7 Register UNDO, REDO commands as delegation-only with special no-history flag (owned by `undo-redo-transactions`)
+  - [x] 14.8 Implement dispatch routing to owning crate modules via command framework delegation trait
+  - [x] 14.9 Write unit tests verifying delegation registrations and dispatch routing
   - Covers: Requirements 11–17 (AC 11.1–11.4, 12.1–12.5, 13.1–13.5, 14.1–14.4, 15.1–15.4, 16.1–16.6, 17.1–17.4)
 
-- [ ] 15. Configuration integration
-  - [ ] 15.1 Implement config loading for `editor.navigation.horizontal_scroll_columns` (default 8)
-  - [ ] 15.2 Implement config loading for `editor.navigation.page_overlap_lines` (default 2)
-  - [ ] 15.3 Implement config loading for `editor.bounds.affect_find` (default false)
-  - [ ] 15.4 Implement config loading for `editor.navigation.word_characters` (default empty)
-  - [ ] 15.5 Implement fallback-to-default with warning emission when config values are missing or invalid
-  - [ ] 15.6 Write unit tests for config parsing, invalid value fallback, and warning emission
+- [x] 15. Configuration integration
+  - [x] 15.1 Implement config loading for `editor.navigation.horizontal_scroll_columns` (default 8)
+  - [x] 15.2 Implement config loading for `editor.navigation.page_overlap_lines` (default 2)
+  - [x] 15.3 Implement config loading for `editor.bounds.affect_find` (default false)
+  - [x] 15.4 Implement config loading for `editor.navigation.word_characters` (default empty)
+  - [x] 15.5 Implement fallback-to-default with warning emission when config values are missing or invalid
+  - [x] 15.6 Write unit tests for config parsing, invalid value fallback, and warning emission
   - Covers: Requirement 18 (AC 18.1–18.5)
 
-- [ ] 16. Command registration and metadata
-  - [ ] 16.1 Implement command metadata for all owned commands: display name, help_text, aliases, mode validity
-  - [ ] 16.2 Implement non-undoable classification for: LOCATE, UP, DOWN, LEFT, RIGHT, TOP, BOTTOM, COLS, BOUNDS, BNDS, PARA_UP, PARA_DOWN, WORD_LEFT, WORD_RIGHT, WORD_PART_LEFT, WORD_PART_RIGHT, DOC_START, DOC_END
-  - [ ] 16.3 Implement undoable classification for SORT
-  - [ ] 16.4 Implement delegation-only classification for: SAVE, CANCEL, END, LOAD, RELOAD, DELETE, COPY, MOVE, MACRO, EXEC, RUN, UNDO, REDO
-  - [ ] 16.5 Implement help_text field for each command providing syntax and description
-  - [ ] 16.6 Implement alias registration: BOUNDS/BNDS, MACRO/EXEC/RUN
-  - [ ] 16.7 Implement mode validity: navigation commands valid in Browse+Edit, SORT valid in Edit only
-  - [ ] 16.8 Write unit tests verifying all registrations, metadata, aliases, and mode flags
+- [x] 16. Command registration and metadata
+  - [x] 16.1 Implement command metadata for all owned commands: display name, help_text, aliases, mode validity
+  - [x] 16.2 Implement non-undoable classification for: LOCATE, UP, DOWN, LEFT, RIGHT, TOP, BOTTOM, COLS, BOUNDS, BNDS, PARA_UP, PARA_DOWN, WORD_LEFT, WORD_RIGHT, WORD_PART_LEFT, WORD_PART_RIGHT, DOC_START, DOC_END
+  - [x] 16.3 Implement undoable classification for SORT
+  - [x] 16.4 Implement delegation-only classification for: SAVE, CANCEL, END, LOAD, RELOAD, DELETE, COPY, MOVE, MACRO, EXEC, RUN, UNDO, REDO
+  - [x] 16.5 Implement help_text field for each command providing syntax and description
+  - [x] 16.6 Implement alias registration: BOUNDS/BNDS, MACRO/EXEC/RUN
+  - [x] 16.7 Implement mode validity: navigation commands valid in Browse+Edit, SORT valid in Edit only
+  - [x] 16.8 Write unit tests verifying all registrations, metadata, aliases, and mode flags
   - Covers: Requirement 19 (AC 19.1–19.6)
 
-- [ ] 17. Error handling
-  - [ ] 17.1 Define `NavigationError` enum: LineOutOfRange, LabelNotFound, NothingToSort, InvalidBounds, InvalidArgument, DelegationFailed
-  - [ ] 17.2 Implement error message formatting per `[navigation] command: description` standard (≤200 chars)
-  - [ ] 17.3 Implement LOCATE error messages: "Line number out of range", "Label not found: <label>"
-  - [ ] 17.4 Implement SORT error message: "Nothing to sort"
-  - [ ] 17.5 Implement BOUNDS error message: "Invalid bounds: left must be >= 1 and right must be > left"
-  - [ ] 17.6 Implement config warning format: identify key name and applied default
-  - [ ] 17.7 Write unit tests for all error variants and message formatting
+- [x] 17. Error handling
+  - [x] 17.1 Define `NavigationError` enum: LineOutOfRange, LabelNotFound, NothingToSort, InvalidBounds, InvalidArgument, DelegationFailed
+  - [x] 17.2 Implement error message formatting per `[navigation] command: description` standard (≤200 chars)
+  - [x] 17.3 Implement LOCATE error messages: "Line number out of range", "Label not found: <label>"
+  - [x] 17.4 Implement SORT error message: "Nothing to sort"
+  - [x] 17.5 Implement BOUNDS error message: "Invalid bounds: left must be >= 1 and right must be > left"
+  - [x] 17.6 Implement config warning format: identify key name and applied default
+  - [x] 17.7 Write unit tests for all error variants and message formatting
   - Covers: Cross-cutting Requirement 8 (Error Message Standards)
 
-- [ ] 18. Property-based tests
-  - [ ] 18.1 Write PBT: viewport navigation clamping correctness
-  - [ ] 18.2 Write PBT: SORT stability and key extraction correctness
-  - [ ] 18.3 Write PBT: word navigation class-transition correctness
-  - [ ] 18.4 Write PBT: word-part boundary detection correctness
-  - [ ] 18.5 Write PBT: column affinity preservation across vertical movements
-  - [ ] 18.6 Write PBT: paragraph boundary detection correctness
-  - [ ] 18.7 Write PBT: bounds validation and intersection correctness
+- [x] 18. Property-based tests
+  - [x] 18.1 Write PBT: viewport navigation clamping correctness
+  - [x] 18.2 Write PBT: SORT stability and key extraction correctness
+  - [x] 18.3 Write PBT: word navigation class-transition correctness
+  - [x] 18.4 Write PBT: word-part boundary detection correctness
+  - [x] 18.5 Write PBT: column affinity preservation across vertical movements
+  - [x] 18.6 Write PBT: paragraph boundary detection correctness
+  - [x] 18.7 Write PBT: bounds validation and intersection correctness
   - Covers: Requirements 1–10, 18 (see Property-Based Test Definitions below)
 
-- [ ] 19. Integration tests
-  - [ ] 19.1 Write integration test: LOCATE → viewport scroll → cursor update lifecycle
-  - [ ] 19.2 Write integration test: SORT with bounds interaction and undo/redo round-trip
-  - [ ] 19.3 Write integration test: word and word-part navigation across multi-line document
-  - [ ] 19.4 Write integration test: paragraph navigation with excluded lines
-  - [ ] 19.5 Write integration test: COLS/BOUNDS display artifact lifecycle (insert, toggle, RESET)
-  - [ ] 19.6 Write integration test: full navigation sequence (TOP → DOWN → LOCATE → BOTTOM) with clamping
-  - [ ] 19.7 Write integration test: vertical caret movement with affinity across lines of varying length
+- [x] 19. Integration tests
+  - [x] 19.1 Write integration test: LOCATE → viewport scroll → cursor update lifecycle
+  - [x] 19.2 Write integration test: SORT with bounds interaction and undo/redo round-trip
+  - [x] 19.3 Write integration test: word and word-part navigation across multi-line document
+  - [x] 19.4 Write integration test: paragraph navigation with excluded lines
+  - [x] 19.5 Write integration test: COLS/BOUNDS display artifact lifecycle (insert, toggle, RESET)
+  - [x] 19.6 Write integration test: full navigation sequence (TOP → DOWN → LOCATE → BOTTOM) with clamping
+  - [x] 19.7 Write integration test: vertical caret movement with affinity across lines of varying length
   - Covers: End-to-end validation across Requirements 1–19
 
 ---

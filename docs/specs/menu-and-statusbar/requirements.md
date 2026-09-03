@@ -8,7 +8,7 @@ The menu bar is the primary graphical command invocation surface for the workben
 
 The status bar is a workbench-level panel (not editor-specific) that displays contextual information in configurable segments. Core segments include editor mode, cursor position, file encoding, and modification state. Plugins can contribute additional segments via the plugin architecture.
 
-The primary command text field ("Command ===>") is an ISPF heritage element positioned above the editor area. It provides direct command entry and expands to fill all available horizontal space.
+The Command Field ("Command ===>") is an ISPF heritage element positioned above the editor area. It provides direct command entry and expands to fill all available horizontal space.
 
 **Source references:**
 - **FFE-MVP-4** = FileForgeEditor `mvp-implementation` Requirement 4 (menu bar, status bar, primary command field)
@@ -232,27 +232,27 @@ information at any time.
 
 #### Acceptance Criteria
 
-13.1 WHEN the user selects `Help > About` from the menu bar, THE shell SHALL open a modal
+1. WHEN the user selects `Help > About` from the menu bar, THE shell SHALL open a modal
      About dialog.
 
-13.2 THE About dialog SHALL display the application name `FileForge Workbench` as a prominent
+2. THE About dialog SHALL display the application name `FileForge Workbench` as a prominent
      heading.
 
-13.3 THE About dialog SHALL display the current application version string.
+3. THE About dialog SHALL display the current application version string.
 
-13.4 THE About dialog SHALL credit the creator: `Created by Alan R Wynne`.
+4. THE About dialog SHALL credit the creator: `Created by Alan R Wynne`.
 
-13.5 THE About dialog SHALL credit the AI assistant: `Built with Amazon Q Developer,
+5. THE About dialog SHALL credit the AI assistant: `Built with Amazon Q Developer,
      an AI coding assistant by Amazon Web Services (AWS)`.
 
-13.6 THE About dialog SHALL display a copyright notice in the form
+6. THE About dialog SHALL display a copyright notice in the form
      `© {year} Alan R Wynne. All rights reserved.`
 
-13.7 THE About dialog SHALL display a brief description of the application:
+7. THE About dialog SHALL display a brief description of the application:
      `A cross-platform enterprise file editor and mainframe workstation
      inspired by IBM ISPF and File-AID.`
 
-13.8 WHEN the user clicks the `Close` button or presses `Escape`, THE About dialog SHALL close.
+8. WHEN the user clicks the `Close` button or presses `Escape`, THE About dialog SHALL close.
 
 ---
 
@@ -283,40 +283,40 @@ that I can navigate the entire UI without a mouse.
 
 #### Acceptance Criteria
 
-16.1 WHEN the application launches, THE keyboard focus SHALL be placed on the
+1. WHEN the application launches, THE keyboard focus SHALL be placed on the
      Primary_Command_Field ("Command ===>") automatically, so that the user can begin
      typing a command immediately without clicking.
 
-16.2 WHEN the user types any printable character while the Primary_Command_Field has focus,
+2. WHEN the user types any printable character while the Primary_Command_Field has focus,
      THE character SHALL appear in the command field.
 
-16.3 WHEN the Primary_Command_Field has focus and the user presses Tab (forward), THE focus
+3. WHEN the Primary_Command_Field has focus and the user presses Tab (forward), THE focus
      SHALL move to the first POM option row (option `0 Settings`) if a POM tab is active,
      otherwise to the first top-level menu bar item.
 
-16.4 WHEN a POM option row has focus and the user presses Tab (forward), THE focus SHALL
+4. WHEN a POM option row has focus and the user presses Tab (forward), THE focus SHALL
      advance to the next option row in sequence (0 → 1 → 2 → … → 8).
 
-16.5 WHEN the last POM option row (option `8 Plugins`) has focus and the user presses Tab
+5. WHEN the last POM option row (option `8 Plugins`) has focus and the user presses Tab
      (forward), THE focus SHALL move to the POM exit line
      ("Enter X to Terminate using log/list defaults").
 
-16.6 WHEN the POM exit line has focus and the user presses Tab (forward), THE focus SHALL
+6. WHEN the POM exit line has focus and the user presses Tab (forward), THE focus SHALL
      move to the calendar `<` (previous-month) button.
 
-16.7 WHEN the calendar `<` button has focus and the user presses Tab (forward), THE focus
+7. WHEN the calendar `<` button has focus and the user presses Tab (forward), THE focus
      SHALL move to the calendar `>` (next-month) button.
 
-16.8 WHEN the calendar `>` button has focus and the user presses Tab (forward), THE focus
+8. WHEN the calendar `>` button has focus and the user presses Tab (forward), THE focus
      SHALL move to the first top-level menu bar item (the leftmost menu heading, `Settings`).
 
-16.9 WHEN a menu bar item has focus and the user presses Tab (forward), THE focus SHALL
+9. WHEN a menu bar item has focus and the user presses Tab (forward), THE focus SHALL
      advance to the next menu bar item to the right.
 
-16.10 WHEN the last menu bar item (`Help`) has focus and the user presses Tab (forward),
+10. WHEN the last menu bar item (`Help`) has focus and the user presses Tab (forward),
       THE focus SHALL move to the first tab header in the tab bar (the leftmost tab).
 
-16.11 Shift+Tab (Back Tab) SHALL be the exact reverse of the forward Tab cycle:
+11. Shift+Tab (Back Tab) SHALL be the exact reverse of the forward Tab cycle:
       - From Primary_Command_Field → last tab header
       - From first tab header → last menu bar item (`Help`)
       - From any tab header → previous tab header
@@ -328,40 +328,40 @@ that I can navigate the entire UI without a mouse.
       - From first POM option row (option `0`) → Primary_Command_Field
       - From any POM option row → previous POM option row
 
-16.20 WHEN a tab header has focus and the user presses Tab (forward), THE focus SHALL
+20. WHEN a tab header has focus and the user presses Tab (forward), THE focus SHALL
       advance to the next tab header to the right.
 
-16.21 WHEN the last tab header has focus and the user presses Tab (forward), THE focus
+21. WHEN the last tab header has focus and the user presses Tab (forward), THE focus
       SHALL wrap back to the Primary_Command_Field.
 
-16.22 WHEN the Tab cycle is active and the current tab is NOT a POM tab, the cycle
+22. WHEN the Tab cycle is active and the current tab is NOT a POM tab, the cycle
       SHALL be: Primary_Command_Field → menu bar items → tab headers → Primary_Command_Field
       (POM option rows, exit line, and calendar buttons are still skipped).
 
-16.12 WHEN a POM option row has focus (via Tab navigation), THE option row SHALL be rendered
+12. WHEN a POM option row has focus (via Tab navigation), THE option row SHALL be rendered
       with reversed colours — its background SHALL use the option label colour and its text
       SHALL use the panel background colour — providing a clear visual focus indicator.
 
-16.13 WHEN a focused POM option row is activated by pressing Enter or Space, THE shell SHALL
+13. WHEN a focused POM option row is activated by pressing Enter or Space, THE shell SHALL
       perform the same navigation action as clicking that option button.
 
-16.14 WHEN a focused POM exit line is activated by pressing Enter or Space, THE shell SHALL
+14. WHEN a focused POM exit line is activated by pressing Enter or Space, THE shell SHALL
       initiate the application exit sequence.
 
-16.15 WHEN a focused calendar `<` button is activated by pressing Enter or Space, THE calendar
+15. WHEN a focused calendar `<` button is activated by pressing Enter or Space, THE calendar
       SHALL navigate to the previous month.
 
-16.16 WHEN a focused calendar `>` button is activated by pressing Enter or Space, THE calendar
+16. WHEN a focused calendar `>` button is activated by pressing Enter or Space, THE calendar
       SHALL navigate to the next month.
 
-16.17 WHEN a menu bar item has focus (via Tab navigation), THE item SHALL receive a visible
+17. WHEN a menu bar item has focus (via Tab navigation), THE item SHALL receive a visible
       focus indicator (highlight or border) so the user can see which item is currently focused.
 
-16.18 WHEN a focused menu bar item is activated by pressing Enter or Space, THE item's
+18. WHEN a focused menu bar item is activated by pressing Enter or Space, THE item's
       dropdown menu SHALL open; subsequent Tab/Shift+Tab presses SHALL navigate within the
       open dropdown rather than moving to the next shell focus stop.
 
-16.19 WHEN the Tab cycle is active and the current tab is NOT a POM tab (e.g., a file editor
+19. WHEN the Tab cycle is active and the current tab is NOT a POM tab (e.g., a file editor
       tab), THE POM option rows, exit line, and calendar buttons SHALL be skipped; the cycle
       SHALL be: Primary_Command_Field → menu bar items → Primary_Command_Field.
 
@@ -378,35 +378,35 @@ know what I am looking at and can issue commands without hunting for the input f
 
 #### Acceptance Criteria
 
-17.1 WHEN any tab is displayed (whether docked or in a Floating_Window), THE tab's content
+1. WHEN any tab is displayed (whether docked or in a Floating_Window), THE tab's content
      area SHALL render the following three elements at the top, in order from top to bottom:
      (1) Tab_Header row, (2) Title_Line, (3) Primary_Command_Field ("Command ===>").
 
-17.2 THE Title_Line SHALL be a read-only, single-line display rendered between the Tab_Header
+2. THE Title_Line SHALL be a read-only, single-line display rendered between the Tab_Header
      row and the Primary_Command_Field. It SHALL NOT be editable by the user.
 
-17.3 WHEN the active tab is a Primary Option Menu tab, THE Title_Line SHALL display the
+3. WHEN the active tab is a Primary Option Menu tab, THE Title_Line SHALL display the
      application name and version in the format:
      `FileForge Workbench  vX.Y.Z`
 
-17.4 WHEN the active tab is a file editor tab with an open file, THE Title_Line SHALL display
+4. WHEN the active tab is a file editor tab with an open file, THE Title_Line SHALL display
      the full absolute path of the open file.
 
-17.5 WHEN the active tab is a file editor tab with no file open (untitled), THE Title_Line
+5. WHEN the active tab is a file editor tab with no file open (untitled), THE Title_Line
      SHALL display `[Untitled]`.
 
-17.6 WHEN the active tab is any other tab kind (Settings, Files Panel, etc.), THE Title_Line
+6. WHEN the active tab is any other tab kind (Settings, Files Panel, etc.), THE Title_Line
      SHALL display the tab's title string.
 
-17.7 THE Title_Line SHALL be styled using the active theme's primary text colour and SHALL
+7. THE Title_Line SHALL be styled using the active theme's primary text colour and SHALL
      be visually distinct from the editor content area (e.g., different background or a
      separator line below it).
 
-17.8 WHEN the Legacy theme is active, THE Title_Line SHALL be rendered with a blue background
+8. WHEN the Legacy theme is active, THE Title_Line SHALL be rendered with a blue background
      (`#0000AA`) and white text (`#FFFFFF`), consistent with ISPF primary menu heading
      colour semantics (Requirement 13.2 of theme-and-appearance).
 
-17.9 THE Primary_Command_Field SHALL remain the third element in the chrome, directly below
+9. THE Primary_Command_Field SHALL remain the third element in the chrome, directly below
      the Title_Line, and SHALL retain all existing behaviour defined in Requirement 9.
 
 ---
@@ -421,30 +421,30 @@ or view content side-by-side independently.
 
 #### Acceptance Criteria
 
-18.1 WHEN the user selects "Move to Other View" from a tab's context menu, THE shell SHALL
+1. WHEN the user selects "Move to Other View" from a tab's context menu, THE shell SHALL
      detach that tab into a new Floating_Window containing the full Tab_Window_Chrome
      (Tab_Header row, Title_Line, Primary_Command_Field) and the tab's content area.
 
-18.2 WHILE a tab is in a Floating_Window, THE tab SHALL provide full functionality identical
+2. WHILE a tab is in a Floating_Window, THE tab SHALL provide full functionality identical
      to the Primary_Window: the Title_Line SHALL update to reflect the tab's current state,
      the Primary_Command_Field SHALL accept commands, and all keyboard shortcuts SHALL work.
 
-18.3 WHEN a Floating_Window containing a tab is closed via the OS window close button,
+3. WHEN a Floating_Window containing a tab is closed via the OS window close button,
      THE shell SHALL redock the tab back into the Primary_Window's tab bar at its original
      position index; IF that index exceeds the current tab count, THE tab SHALL be appended
      at the end.
 
-18.4 WHEN a tab is detached into a Floating_Window, THE Primary_Window's tab bar SHALL
+4. WHEN a tab is detached into a Floating_Window, THE Primary_Window's tab bar SHALL
      remove that tab's Tab_Header from the bar. WHEN the tab is redocked, THE Tab_Header
      SHALL be restored at the correct position.
 
-18.5 THE Floating_Window title bar SHALL display the tab's Title_Line content followed by
+5. THE Floating_Window title bar SHALL display the tab's Title_Line content followed by
      " — FileForge Workbench", truncated to a maximum of 80 characters if necessary.
 
-18.6 WHEN the user drags a Tab_Header beyond 20 pixels outside the tab bar boundary and
+6. WHEN the user drags a Tab_Header beyond 20 pixels outside the tab bar boundary and
      releases it outside the Primary_Window, THE shell SHALL detach that tab into a new
      Floating_Window positioned at the mouse release coordinates.
 
-18.7 THE shell SHALL support up to 16 simultaneous Floating_Windows containing detached
+7. THE shell SHALL support up to 16 simultaneous Floating_Windows containing detached
      tabs. IF the user attempts to detach a tab beyond this limit, THE shell SHALL display
      a status message and SHALL NOT detach the tab.

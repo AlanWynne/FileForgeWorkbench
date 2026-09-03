@@ -1,4 +1,4 @@
-# Implementation Plan: Workflow Engine (`ff-workflow`)
+﻿# Implementation Plan: Workflow Engine (`ff-workflow`)
 
 ## Overview
 
@@ -10,162 +10,162 @@ This is a **Wave 2 (Platform Architecture)** sub-project. It depends on `ff-logg
 
 ## Tasks
 
-- [ ] 1. Crate scaffolding and module structure
-  - [ ] 1.1 Create `crates/ff-workflow/Cargo.toml` with dependencies (tokio, serde, thiserror, crossbeam-channel, proptest dev-dep)
-  - [ ] 1.2 Create `crates/ff-workflow/src/lib.rs` with module declarations and public API re-exports
-  - [ ] 1.3 Create module files: `definition.rs`, `step.rs`, `state.rs`, `context.rs`, `runner.rs`, `cancellation.rs`, `progress.rs`, `error_policy.rs`, `compensation.rs`, `registry.rs`, `persistence.rs`, `checkpoint.rs`, `error.rs`
-  - [ ] 1.4 Add `ff-workflow` to workspace `Cargo.toml` members list
+- [x] 1. Crate scaffolding and module structure
+  - [x] 1.1 Create `crates/ff-workflow/Cargo.toml` with dependencies (tokio, serde, thiserror, crossbeam-channel, proptest dev-dep)
+  - [x] 1.2 Create `crates/ff-workflow/src/lib.rs` with module declarations and public API re-exports
+  - [x] 1.3 Create module files: `definition.rs`, `step.rs`, `state.rs`, `context.rs`, `runner.rs`, `cancellation.rs`, `progress.rs`, `error_policy.rs`, `compensation.rs`, `registry.rs`, `persistence.rs`, `checkpoint.rs`, `error.rs`
+  - [x] 1.4 Add `ff-workflow` to workspace `Cargo.toml` members list
   - Covers: Structural foundation for all requirements
 
-- [ ] 2. Workflow context and typed key-value store
-  - [ ] 2.1 Define `WorkflowContext` struct with typed get/set accessors using `TypeId`-keyed storage
-  - [ ] 2.2 Implement `get::<T>(&self, key: &str) -> Option<&T>` and `set::<T>(&mut self, key: &str, value: T)`
-  - [ ] 2.3 Implement `Serialize`/`Deserialize` support for persistent workflows via trait bounds
-  - [ ] 2.4 Implement compile-time enforcement: persistent workflow contexts require all values to be `Serialize + Deserialize`
-  - [ ] 2.5 Write unit tests for typed access, overwrite semantics, and missing key behavior
+- [x] 2. Workflow context and typed key-value store
+  - [x] 2.1 Define `WorkflowContext` struct with typed get/set accessors using `TypeId`-keyed storage
+  - [x] 2.2 Implement `get::<T>(&self, key: &str) -> Option<&T>` and `set::<T>(&mut self, key: &str, value: T)`
+  - [x] 2.3 Implement `Serialize`/`Deserialize` support for persistent workflows via trait bounds
+  - [x] 2.4 Implement compile-time enforcement: persistent workflow contexts require all values to be `Serialize + Deserialize`
+  - [x] 2.5 Write unit tests for typed access, overwrite semantics, and missing key behavior
   - Covers: Requirement 2 (AC 2.2), Requirement 7 (AC 7.8)
 
-- [ ] 3. Workflow step definition and type system
-  - [ ] 3.1 Define `WorkflowStep` trait with `execute(&self, ctx: &mut WorkflowContext, progress: &ProgressReporter, cancel: &CancellationToken) -> Result<StepOutput>`
-  - [ ] 3.2 Define `StepDescriptor` struct declaring input types (read from context) and output types (written to context)
-  - [ ] 3.3 Implement support for both sync and async step implementations via `AsyncWorkflowStep` trait
-  - [ ] 3.4 Implement `CompensatingAction` trait for steps that define rollback behavior
-  - [ ] 3.5 Write unit tests for step descriptor validation and type compatibility checks
+- [x] 3. Workflow step definition and type system
+  - [x] 3.1 Define `WorkflowStep` trait with `execute(&self, ctx: &mut WorkflowContext, progress: &ProgressReporter, cancel: &CancellationToken) -> Result<StepOutput>`
+  - [x] 3.2 Define `StepDescriptor` struct declaring input types (read from context) and output types (written to context)
+  - [x] 3.3 Implement support for both sync and async step implementations via `AsyncWorkflowStep` trait
+  - [x] 3.4 Implement `CompensatingAction` trait for steps that define rollback behavior
+  - [x] 3.5 Write unit tests for step descriptor validation and type compatibility checks
   - Covers: Requirement 1 (AC 1.5), Requirement 2 (AC 2.3), Requirement 5 (AC 5.5)
 
-- [ ] 4. Workflow state machine and definition
-  - [ ] 4.1 Define `WorkflowDefinition` struct as a directed graph of states and transitions
-  - [ ] 4.2 Implement sequential step-sequencing mode (steps execute one after another)
-  - [ ] 4.3 Implement parallel step-sequencing mode (concurrent execution with join barrier)
-  - [ ] 4.4 Implement conditional transitions with predicates evaluated against `WorkflowContext`
-  - [ ] 4.5 Implement definition validation: exactly one initial state, at least one terminal state, no unreachable states
-  - [ ] 4.6 Implement builder API for constructing definitions from structured data
-  - [ ] 4.7 Implement input parameter declaration with types and optional defaults
-  - [ ] 4.8 Write unit tests for definition construction, validation success/failure cases
+- [x] 4. Workflow state machine and definition
+  - [x] 4.1 Define `WorkflowDefinition` struct as a directed graph of states and transitions
+  - [x] 4.2 Implement sequential step-sequencing mode (steps execute one after another)
+  - [x] 4.3 Implement parallel step-sequencing mode (concurrent execution with join barrier)
+  - [x] 4.4 Implement conditional transitions with predicates evaluated against `WorkflowContext`
+  - [x] 4.5 Implement definition validation: exactly one initial state, at least one terminal state, no unreachable states
+  - [x] 4.6 Implement builder API for constructing definitions from structured data
+  - [x] 4.7 Implement input parameter declaration with types and optional defaults
+  - [x] 4.8 Write unit tests for definition construction, validation success/failure cases
   - Covers: Requirement 1 (AC 1.1, 1.2, 1.3, 1.4, 1.5, 1.6)
 
-- [ ] 5. Cancellation token and cooperative cancellation
-  - [ ] 5.1 Define `CancellationToken` struct with atomic is_cancelled flag and waker notification
-  - [ ] 5.2 Implement `cancel()` method that sets the flag and notifies all waiters
-  - [ ] 5.3 Implement `is_cancelled()` polling method for sync steps
-  - [ ] 5.4 Implement `cancelled()` async method that resolves when cancellation is requested (for Tokio integration)
-  - [ ] 5.5 Implement configurable per-workflow cancellation timeout (default 5 seconds)
-  - [ ] 5.6 Implement propagation to child Tokio tasks and futures via token cloning
-  - [ ] 5.7 Write unit tests for cancellation signaling, timeout behavior, and propagation
+- [x] 5. Cancellation token and cooperative cancellation
+  - [x] 5.1 Define `CancellationToken` struct with atomic is_cancelled flag and waker notification
+  - [x] 5.2 Implement `cancel()` method that sets the flag and notifies all waiters
+  - [x] 5.3 Implement `is_cancelled()` polling method for sync steps
+  - [x] 5.4 Implement `cancelled()` async method that resolves when cancellation is requested (for Tokio integration)
+  - [x] 5.5 Implement configurable per-workflow cancellation timeout (default 5 seconds)
+  - [x] 5.6 Implement propagation to child Tokio tasks and futures via token cloning
+  - [x] 5.7 Write unit tests for cancellation signaling, timeout behavior, and propagation
   - Covers: Requirement 3 (AC 3.1, 3.4, 3.5)
 
-- [ ] 6. Progress reporting system
-  - [ ] 6.1 Define `ProgressEvent` struct with fields: workflow_name, step_name, step_index, total_steps, percentage, items_processed, total_items, status_message, elapsed_time, estimated_remaining
-  - [ ] 6.2 Implement determinate progress mode (known total with percentage calculation)
-  - [ ] 6.3 Implement indeterminate progress mode (unknown total with activity indicator flag)
-  - [ ] 6.4 Define `ProgressReporter` handle provided to steps for emitting intermediate progress
-  - [ ] 6.5 Implement progress aggregation: parent percentage = (completed_steps + current_step_fraction) / total_steps * 100
-  - [ ] 6.6 Implement progress throttling at 100ms maximum emission rate per workflow instance
-  - [ ] 6.7 Implement estimated time remaining calculation (items/second × remaining items)
-  - [ ] 6.8 Write unit tests for both progress modes, aggregation math, and throttle behavior
+- [x] 6. Progress reporting system
+  - [x] 6.1 Define `ProgressEvent` struct with fields: workflow_name, step_name, step_index, total_steps, percentage, items_processed, total_items, status_message, elapsed_time, estimated_remaining
+  - [x] 6.2 Implement determinate progress mode (known total with percentage calculation)
+  - [x] 6.3 Implement indeterminate progress mode (unknown total with activity indicator flag)
+  - [x] 6.4 Define `ProgressReporter` handle provided to steps for emitting intermediate progress
+  - [x] 6.5 Implement progress aggregation: parent percentage = (completed_steps + current_step_fraction) / total_steps * 100
+  - [x] 6.6 Implement progress throttling at 100ms maximum emission rate per workflow instance
+  - [x] 6.7 Implement estimated time remaining calculation (items/second × remaining items)
+  - [x] 6.8 Write unit tests for both progress modes, aggregation math, and throttle behavior
   - Covers: Requirement 4 (AC 4.1, 4.2, 4.3, 4.4, 4.6, 4.7, 4.8)
 
-- [ ] 7. Error policy and retry logic
-  - [ ] 7.1 Define `ErrorPolicy` enum: FailFast, ContinueOnError, Retry { max_attempts, delay }
-  - [ ] 7.2 Implement per-workflow default error policy configuration
-  - [ ] 7.3 Implement per-step error policy override that takes precedence over workflow-level policy
-  - [ ] 7.4 Implement retry logic: re-execute failed step up to max_attempts (default 3) with configurable delay (default 1s)
-  - [ ] 7.5 Implement escalation: after retries exhausted, apply next-level policy (skip or abort)
-  - [ ] 7.6 Implement user-interaction error mode: emit error event and wait for user response (Retry/Skip/Abort)
-  - [ ] 7.7 Write unit tests for each policy mode, retry exhaustion, and escalation paths
+- [x] 7. Error policy and retry logic
+  - [x] 7.1 Define `ErrorPolicy` enum: FailFast, ContinueOnError, Retry { max_attempts, delay }
+  - [x] 7.2 Implement per-workflow default error policy configuration
+  - [x] 7.3 Implement per-step error policy override that takes precedence over workflow-level policy
+  - [x] 7.4 Implement retry logic: re-execute failed step up to max_attempts (default 3) with configurable delay (default 1s)
+  - [x] 7.5 Implement escalation: after retries exhausted, apply next-level policy (skip or abort)
+  - [x] 7.6 Implement user-interaction error mode: emit error event and wait for user response (Retry/Skip/Abort)
+  - [x] 7.7 Write unit tests for each policy mode, retry exhaustion, and escalation paths
   - Covers: Requirement 5 (AC 5.1, 5.2, 5.3, 5.7)
 
-- [ ] 8. Compensating actions and rollback
-  - [ ] 8.1 Implement compensating action registration per step during definition
-  - [ ] 8.2 Implement rollback execution in reverse order of step completion when workflow aborts
-  - [ ] 8.3 Implement compensation failure handling: log ERROR, continue remaining compensations, collect all failures
-  - [ ] 8.4 Implement rollback on cancellation: execute compensating actions for completed steps in reverse order
-  - [ ] 8.5 Write unit tests for rollback ordering, partial rollback, and compensation failure resilience
+- [x] 8. Compensating actions and rollback
+  - [x] 8.1 Implement compensating action registration per step during definition
+  - [x] 8.2 Implement rollback execution in reverse order of step completion when workflow aborts
+  - [x] 8.3 Implement compensation failure handling: log ERROR, continue remaining compensations, collect all failures
+  - [x] 8.4 Implement rollback on cancellation: execute compensating actions for completed steps in reverse order
+  - [x] 8.5 Write unit tests for rollback ordering, partial rollback, and compensation failure resilience
   - Covers: Requirement 5 (AC 5.4, 5.5, 5.6), Requirement 3 (AC 3.3)
 
-- [ ] 9. Workflow runner — core execution engine
-  - [ ] 9.1 Implement `WorkflowRunner` that drives a workflow through its state machine
-  - [ ] 9.2 Implement sequential step execution with context passing between steps
-  - [ ] 9.3 Implement parallel step execution: spawn concurrent tasks with join barrier
-  - [ ] 9.4 Implement conditional transition evaluation against current context
-  - [ ] 9.5 Implement default transition fallback when no predicate matches (or transition to failure state)
-  - [ ] 9.6 Implement step-start and step-completion progress event emission
-  - [ ] 9.7 Implement cancellation check between steps and force-cancel timeout enforcement
-  - [ ] 9.8 Implement pause/resume: complete current step, persist state, stop advancing; resume from next pending step
-  - [ ] 9.9 Write unit tests for sequential, parallel, conditional flows, and pause/resume behavior
+- [x] 9. Workflow runner — core execution engine
+  - [x] 9.1 Implement `WorkflowRunner` that drives a workflow through its state machine
+  - [x] 9.2 Implement sequential step execution with context passing between steps
+  - [x] 9.3 Implement parallel step execution: spawn concurrent tasks with join barrier
+  - [x] 9.4 Implement conditional transition evaluation against current context
+  - [x] 9.5 Implement default transition fallback when no predicate matches (or transition to failure state)
+  - [x] 9.6 Implement step-start and step-completion progress event emission
+  - [x] 9.7 Implement cancellation check between steps and force-cancel timeout enforcement
+  - [x] 9.8 Implement pause/resume: complete current step, persist state, stop advancing; resume from next pending step
+  - [x] 9.9 Write unit tests for sequential, parallel, conditional flows, and pause/resume behavior
   - Covers: Requirement 2 (AC 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8), Requirement 3 (AC 3.2, 3.5)
 
-- [ ] 10. Error reporting and structured error context
-  - [ ] 10.1 Define `WorkflowError` enum covering step failure, cancellation, persistence, and definition errors
-  - [ ] 10.2 Implement structured error report: workflow name, failed step, error description with context chain, completed steps, skipped steps, rollback status
-  - [ ] 10.3 Implement error context preservation: original error, step name, step index, relevant context values at failure time
-  - [ ] 10.4 Integrate error reporting with `ff-logging` for structured diagnostic output
-  - [ ] 10.5 Write unit tests for error report completeness and context chain preservation
+- [x] 10. Error reporting and structured error context
+  - [x] 10.1 Define `WorkflowError` enum covering step failure, cancellation, persistence, and definition errors
+  - [x] 10.2 Implement structured error report: workflow name, failed step, error description with context chain, completed steps, skipped steps, rollback status
+  - [x] 10.3 Implement error context preservation: original error, step name, step index, relevant context values at failure time
+  - [x] 10.4 Integrate error reporting with `ff-logging` for structured diagnostic output
+  - [x] 10.5 Write unit tests for error report completeness and context chain preservation
   - Covers: Requirement 5 (AC 5.8, 5.9)
 
-- [ ] 11. Workflow registry
-  - [ ] 11.1 Define `WorkflowRegistry` struct with thread-safe internal storage (RwLock)
-  - [ ] 11.2 Implement `register(name, definition)` with duplicate name rejection
-  - [ ] 11.3 Implement category tagging: each workflow declares one or more category tags
-  - [ ] 11.4 Implement query by name (exact match), by category, and by input parameter type capability
-  - [ ] 11.5 Implement plugin workflow lifecycle: register on plugin load, remove all on plugin unload
-  - [ ] 11.6 Implement metadata exposure: display name, description, categories, input params, capabilities (cancel, pause, persist)
-  - [ ] 11.7 Implement thread-safe concurrent access for registration, unregistration, and queries
-  - [ ] 11.8 Write unit tests for registration, duplicate rejection, query modes, and plugin lifecycle
+- [x] 11. Workflow registry
+  - [x] 11.1 Define `WorkflowRegistry` struct with thread-safe internal storage (RwLock)
+  - [x] 11.2 Implement `register(name, definition)` with duplicate name rejection
+  - [x] 11.3 Implement category tagging: each workflow declares one or more category tags
+  - [x] 11.4 Implement query by name (exact match), by category, and by input parameter type capability
+  - [x] 11.5 Implement plugin workflow lifecycle: register on plugin load, remove all on plugin unload
+  - [x] 11.6 Implement metadata exposure: display name, description, categories, input params, capabilities (cancel, pause, persist)
+  - [x] 11.7 Implement thread-safe concurrent access for registration, unregistration, and queries
+  - [x] 11.8 Write unit tests for registration, duplicate rejection, query modes, and plugin lifecycle
   - Covers: Requirement 6 (AC 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7)
 
-- [ ] 12. Event bus integration for progress events
-  - [ ] 12.1 Implement `ProgressEvent` emission via the platform-core event bus
-  - [ ] 12.2 Implement event throttling logic (max one event per 100ms per workflow instance)
-  - [ ] 12.3 Implement coalescing of intermediate updates between throttle windows
-  - [ ] 12.4 Implement cancellation event emission (which step was active, partial results status)
-  - [ ] 12.5 Write unit tests for event emission, throttling, and coalescing behavior
+- [x] 12. Event bus integration for progress events
+  - [x] 12.1 Implement `ProgressEvent` emission via the platform-core event bus
+  - [x] 12.2 Implement event throttling logic (max one event per 100ms per workflow instance)
+  - [x] 12.3 Implement coalescing of intermediate updates between throttle windows
+  - [x] 12.4 Implement cancellation event emission (which step was active, partial results status)
+  - [x] 12.5 Write unit tests for event emission, throttling, and coalescing behavior
   - Covers: Requirement 4 (AC 4.5, 4.6), Requirement 3 (AC 3.7)
 
-- [ ] 13. Workflow persistence and checkpointing
-  - [ ] 13.1 Implement `supports_persistence` flag on `WorkflowDefinition`
-  - [ ] 13.2 Implement checkpoint serialization: context, current step index, step completion status, progress counters
-  - [ ] 13.3 Implement checkpoint storage to configurable directory (default: session data directory)
-  - [ ] 13.4 Implement unique workflow execution ID generation for checkpoint identification
-  - [ ] 13.5 Implement checkpoint on pause and graceful application shutdown
-  - [ ] 13.6 Implement startup scan for incomplete checkpoints with resumable workflow metadata
-  - [ ] 13.7 Implement checkpoint deserialization and workflow resumption from next pending step
-  - [ ] 13.8 Implement invalid checkpoint handling: log ERROR, remove from storage, report to user
-  - [ ] 13.9 Implement automatic checkpoint cleanup: success → immediate delete, failure → retain for configurable period (default 7 days)
-  - [ ] 13.10 Write unit tests for checkpoint round-trip, resume flow, invalid checkpoint handling, and cleanup
+- [x] 13. Workflow persistence and checkpointing
+  - [x] 13.1 Implement `supports_persistence` flag on `WorkflowDefinition`
+  - [x] 13.2 Implement checkpoint serialization: context, current step index, step completion status, progress counters
+  - [x] 13.3 Implement checkpoint storage to configurable directory (default: session data directory)
+  - [x] 13.4 Implement unique workflow execution ID generation for checkpoint identification
+  - [x] 13.5 Implement checkpoint on pause and graceful application shutdown
+  - [x] 13.6 Implement startup scan for incomplete checkpoints with resumable workflow metadata
+  - [x] 13.7 Implement checkpoint deserialization and workflow resumption from next pending step
+  - [x] 13.8 Implement invalid checkpoint handling: log ERROR, remove from storage, report to user
+  - [x] 13.9 Implement automatic checkpoint cleanup: success → immediate delete, failure → retain for configurable period (default 7 days)
+  - [x] 13.10 Write unit tests for checkpoint round-trip, resume flow, invalid checkpoint handling, and cleanup
   - Covers: Requirement 7 (AC 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8)
 
-- [ ] 14. Command framework integration
-  - [ ] 14.1 Implement workflow invocation via command framework: lookup by name, validate parameters, start execution
-  - [ ] 14.2 Implement parameter validation against workflow's declared input schema before execution
-  - [ ] 14.3 Implement UI cancellation entry points: cancel action, Escape key handling when progress dialog has focus
-  - [ ] 14.4 Write integration tests for command-to-workflow invocation flow
+- [x] 14. Command framework integration
+  - [x] 14.1 Implement workflow invocation via command framework: lookup by name, validate parameters, start execution
+  - [x] 14.2 Implement parameter validation against workflow's declared input schema before execution
+  - [x] 14.3 Implement UI cancellation entry points: cancel action, Escape key handling when progress dialog has focus
+  - [x] 14.4 Write integration tests for command-to-workflow invocation flow
   - Covers: Requirement 6 (AC 6.5), Requirement 3 (AC 3.6)
 
-- [ ] 15. Built-in workflow definitions
-  - [ ] 15.1 Implement data transfer workflow definition (source → transform → destination)
-  - [ ] 15.2 Implement file import/export workflow definition (read → validate → convert → write)
-  - [ ] 15.3 Implement compare-merge workflow definition (load-pair → diff → resolve → apply)
-  - [ ] 15.4 Implement bulk rename workflow definition (scan → preview → confirm → apply)
-  - [ ] 15.5 Write unit tests verifying each built-in definition passes validation
+- [x] 15. Built-in workflow definitions
+  - [x] 15.1 Implement data transfer workflow definition (source → transform → destination)
+  - [x] 15.2 Implement file import/export workflow definition (read → validate → convert → write)
+  - [x] 15.3 Implement compare-merge workflow definition (load-pair → diff → resolve → apply)
+  - [x] 15.4 Implement bulk rename workflow definition (scan → preview → confirm → apply)
+  - [x] 15.5 Write unit tests verifying each built-in definition passes validation
   - Covers: Requirement 1 (AC 1.7)
 
-- [ ] 16. Plugin workflow registration API
-  - [ ] 16.1 Define plugin-facing workflow registration trait accessible via `PluginContext`
-  - [ ] 16.2 Implement plugin workflow registration that routes through `WorkflowRegistry`
-  - [ ] 16.3 Implement automatic cleanup of plugin-registered workflows on plugin unload
-  - [ ] 16.4 Write unit tests for plugin registration and cleanup lifecycle
+- [x] 16. Plugin workflow registration API
+  - [x] 16.1 Define plugin-facing workflow registration trait accessible via `PluginContext`
+  - [x] 16.2 Implement plugin workflow registration that routes through `WorkflowRegistry`
+  - [x] 16.3 Implement automatic cleanup of plugin-registered workflows on plugin unload
+  - [x] 16.4 Write unit tests for plugin registration and cleanup lifecycle
   - Covers: Requirement 1 (AC 1.7), Requirement 6 (AC 6.3)
 
-- [ ] 17. Property-based tests
-  - [ ] 17.1 Write PBT: workflow definition validation property
-  - [ ] 17.2 Write PBT: progress aggregation correctness property
-  - [ ] 17.3 Write PBT: error policy determinism property
-  - [ ] 17.4 Write PBT: cancellation safety property
-  - [ ] 17.5 Write PBT: checkpoint round-trip property
-  - [ ] 17.6 Write PBT: registry uniqueness invariant property
-  - [ ] 17.7 Write PBT: context type safety property
-  - [ ] 17.8 Write PBT: retry exhaustion convergence property
+- [x] 17. Property-based tests
+  - [x] 17.1 Write PBT: workflow definition validation property
+  - [x] 17.2 Write PBT: progress aggregation correctness property
+  - [x] 17.3 Write PBT: error policy determinism property
+  - [x] 17.4 Write PBT: cancellation safety property
+  - [x] 17.5 Write PBT: checkpoint round-trip property
+  - [x] 17.6 Write PBT: registry uniqueness invariant property
+  - [x] 17.7 Write PBT: context type safety property
+  - [x] 17.8 Write PBT: retry exhaustion convergence property
   - Covers: All requirements via invariant verification
 
 ---

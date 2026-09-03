@@ -1,4 +1,4 @@
-# Implementation Plan: Line Commands (`ff-line-commands`)
+﻿# Implementation Plan: Line Commands (`ff-line-commands`)
 
 ## Overview
 
@@ -10,217 +10,217 @@ This is a **Wave 5 (Command Engine)** sub-project that depends on Wave 4 (`ff-do
 
 ## Tasks
 
-- [ ] 1. Crate scaffolding and module structure
-  - [ ] 1.1 Create `crates/ff-line-commands/Cargo.toml` with dependencies (thiserror, proptest dev-dep) and deps on `ff-document-model`, `ff-edit-operations`, `ff-display-line-mapping`, `ff-undo-redo-transactions`, `ff-command`, `ff-configuration-system`, `ff-logging`
-  - [ ] 1.2 Create `crates/ff-line-commands/src/lib.rs` with module declarations and public API re-exports
-  - [ ] 1.3 Create module files: `parser.rs`, `command.rs`, `pending.rs`, `block_pair.rs`, `compatibility.rs`, `resolution.rs`, `config.rs`, `error.rs`
-  - [ ] 1.4 Create execution submodule: `execution/mod.rs`, `execution/delete.rs`, `execution/insert.rs`, `execution/repeat.rs`, `execution/copy.rs`, `execution/move_cmd.rs`, `execution/exclude.rs`, `execution/tag.rs`, `execution/shift_right.rs`, `execution/shift_left.rs`, `execution/bounds_shift.rs`
-  - [ ] 1.5 Create `commands/mod.rs` and `commands/handlers.rs` for command framework registration
-  - [ ] 1.6 Add `ff-line-commands` to workspace `Cargo.toml` members list
+- [x] 1. Crate scaffolding and module structure
+  - [x] 1.1 Create `crates/ff-line-commands/Cargo.toml` with dependencies (thiserror, proptest dev-dep) and deps on `ff-document-model`, `ff-edit-operations`, `ff-display-line-mapping`, `ff-undo-redo-transactions`, `ff-command`, `ff-configuration-system`, `ff-logging`
+  - [x] 1.2 Create `crates/ff-line-commands/src/lib.rs` with module declarations and public API re-exports
+  - [x] 1.3 Create module files: `parser.rs`, `command.rs`, `pending.rs`, `block_pair.rs`, `compatibility.rs`, `resolution.rs`, `config.rs`, `error.rs`
+  - [x] 1.4 Create execution submodule: `execution/mod.rs`, `execution/delete.rs`, `execution/insert.rs`, `execution/repeat.rs`, `execution/copy.rs`, `execution/move_cmd.rs`, `execution/exclude.rs`, `execution/tag.rs`, `execution/shift_right.rs`, `execution/shift_left.rs`, `execution/bounds_shift.rs`
+  - [x] 1.5 Create `commands/mod.rs` and `commands/handlers.rs` for command framework registration
+  - [x] 1.6 Add `ff-line-commands` to workspace `Cargo.toml` members list
   - Covers: Structural foundation for all requirements
 
-- [ ] 2. Error types and configuration
-  - [ ] 2.1 Define `LineCommandError` enum with all variants (InvalidCommand, AwaitingPair, TooManyMarkers, OverlappingBlocks, TargetInsideSource, DuplicateTarget, IncompatibleCommands, SourceWithFilePath, NoBoundsActive, LineOutOfRange, AwaitingTarget, AwaitingSource, DocumentError) using thiserror
-  - [ ] 2.2 Define `LineCommandConfig` struct with `shift_width: u32` field and Default impl (default 2)
-  - [ ] 2.3 Implement configuration integration — read `editor.shift_width` from configuration system with hot-reload support
-  - [ ] 2.4 Write unit tests for error Display formatting verifying `[line-cmd] operation: description` format
+- [x] 2. Error types and configuration
+  - [x] 2.1 Define `LineCommandError` enum with all variants (InvalidCommand, AwaitingPair, TooManyMarkers, OverlappingBlocks, TargetInsideSource, DuplicateTarget, IncompatibleCommands, SourceWithFilePath, NoBoundsActive, LineOutOfRange, AwaitingTarget, AwaitingSource, DocumentError) using thiserror
+  - [x] 2.2 Define `LineCommandConfig` struct with `shift_width: u32` field and Default impl (default 2)
+  - [x] 2.3 Implement configuration integration — read `editor.shift_width` from configuration system with hot-reload support
+  - [x] 2.4 Write unit tests for error Display formatting verifying `[line-cmd] operation: description` format
   - Covers: Cross-cutting Requirement 8, Requirements 9.7, 10.7
 
-- [ ] 3. Command types and classification enums
-  - [ ] 3.1 Define `LineCommandKind` enum with all variants (Delete, DeleteCount, DeleteBlock, Insert, InsertCount, Repeat, RepeatCount, RepeatBlock, Copy, CopyBlock, Move, MoveBlock, After, Before, Exclude, ExcludeCount, ExcludeBlock, Tag, TagBlock, Untag, UntagBlock, ShiftRight, ShiftRightCount, ShiftRightBlock, ShiftLeft, ShiftLeftCount, ShiftLeftBlock, BoundsShiftRight, BoundsShiftRightBlock, BoundsShiftLeft, BoundsShiftLeftBlock)
-  - [ ] 3.2 Define `ParsedLineCommand` struct with `line: u64` and `kind: LineCommandKind`
-  - [ ] 3.3 Define `LineCommandCategory` enum (Immediate, Block, Source, Target) with classification logic
-  - [ ] 3.4 Define `BlockCommandKind` enum (Delete, Repeat, Exclude, Tag, Untag, ShiftRight, ShiftLeft, BoundsRight, BoundsLeft, Copy, Move)
-  - [ ] 3.5 Define `BlockPair` struct with `kind`, `start_line`, `end_line`
-  - [ ] 3.6 Define `SourceTarget` struct with `operation`, `source_start`, `source_end`, `target_line`, `target_position`
-  - [ ] 3.7 Define `SourceOperation` enum (Copy, Move) and `TargetPosition` enum (After, Before)
-  - [ ] 3.8 Define `ExecutableCommand` enum with all resolved command variants
-  - [ ] 3.9 Write unit tests for category classification of each LineCommandKind variant
+- [x] 3. Command types and classification enums
+  - [x] 3.1 Define `LineCommandKind` enum with all variants (Delete, DeleteCount, DeleteBlock, Insert, InsertCount, Repeat, RepeatCount, RepeatBlock, Copy, CopyBlock, Move, MoveBlock, After, Before, Exclude, ExcludeCount, ExcludeBlock, Tag, TagBlock, Untag, UntagBlock, ShiftRight, ShiftRightCount, ShiftRightBlock, ShiftLeft, ShiftLeftCount, ShiftLeftBlock, BoundsShiftRight, BoundsShiftRightBlock, BoundsShiftLeft, BoundsShiftLeftBlock)
+  - [x] 3.2 Define `ParsedLineCommand` struct with `line: u64` and `kind: LineCommandKind`
+  - [x] 3.3 Define `LineCommandCategory` enum (Immediate, Block, Source, Target) with classification logic
+  - [x] 3.4 Define `BlockCommandKind` enum (Delete, Repeat, Exclude, Tag, Untag, ShiftRight, ShiftLeft, BoundsRight, BoundsLeft, Copy, Move)
+  - [x] 3.5 Define `BlockPair` struct with `kind`, `start_line`, `end_line`
+  - [x] 3.6 Define `SourceTarget` struct with `operation`, `source_start`, `source_end`, `target_line`, `target_position`
+  - [x] 3.7 Define `SourceOperation` enum (Copy, Move) and `TargetPosition` enum (After, Before)
+  - [x] 3.8 Define `ExecutableCommand` enum with all resolved command variants
+  - [x] 3.9 Write unit tests for category classification of each LineCommandKind variant
   - Covers: Requirements 1–11, 12.1, 14.7
 
-- [ ] 4. Line command parser
-  - [ ] 4.1 Implement `LineCommandParser::parse()` — case-insensitive parsing of all valid line command strings to `ParsedLineCommand`
-  - [ ] 4.2 Implement numeric count extraction for D, I, R, X, >, < (e.g., "D5" → DeleteCount(5))
-  - [ ] 4.3 Implement block marker recognition for doubled commands (DD, RR, XX, TT, UU, >>, <<, )), (()
-  - [ ] 4.4 Implement `LineCommandParser::classify()` — map `LineCommandKind` to `LineCommandCategory`
-  - [ ] 4.5 Implement `LineCommandParser::is_block_marker()` helper
-  - [ ] 4.6 Return `LineCommandError::InvalidCommand` for unrecognised strings
-  - [ ] 4.7 Write unit tests for every recognised pattern (all variants, upper/lowercase, with/without counts)
-  - [ ] 4.8 Write unit tests for rejection of invalid inputs (gibberish, partial matches, empty strings)
+- [x] 4. Line command parser
+  - [x] 4.1 Implement `LineCommandParser::parse()` — case-insensitive parsing of all valid line command strings to `ParsedLineCommand`
+  - [x] 4.2 Implement numeric count extraction for D, I, R, X, >, < (e.g., "D5" → DeleteCount(5))
+  - [x] 4.3 Implement block marker recognition for doubled commands (DD, RR, XX, TT, UU, >>, <<, )), (()
+  - [x] 4.4 Implement `LineCommandParser::classify()` — map `LineCommandKind` to `LineCommandCategory`
+  - [x] 4.5 Implement `LineCommandParser::is_block_marker()` helper
+  - [x] 4.6 Return `LineCommandError::InvalidCommand` for unrecognised strings
+  - [x] 4.7 Write unit tests for every recognised pattern (all variants, upper/lowercase, with/without counts)
+  - [x] 4.8 Write unit tests for rejection of invalid inputs (gibberish, partial matches, empty strings)
   - Covers: Requirements 1–11 (parsing), 14.6
 
-- [ ] 5. Pending command store
-  - [ ] 5.1 Implement `PendingCommandStore::new()` with empty HashMap and counter
-  - [ ] 5.2 Implement `PendingCommandStore::add()` — store command with PendingReason and monotonic timestamp
-  - [ ] 5.3 Implement `PendingCommandStore::remove()` — remove command at a line, return Option
-  - [ ] 5.4 Implement `PendingCommandStore::get()` — lookup by line number
-  - [ ] 5.5 Implement `PendingCommandStore::by_category()` — filter all pending by LineCommandCategory
-  - [ ] 5.6 Implement `PendingCommandStore::pending_sources()` and `pending_targets()` — specialized queries
-  - [ ] 5.7 Implement `PendingCommandStore::pending_blocks()` — filter by specific block kind
-  - [ ] 5.8 Implement `PendingCommandStore::clear_all()` — reset all pending state
-  - [ ] 5.9 Implement `PendingCommandStore::all_pending()` — iterator over all entries
-  - [ ] 5.10 Implement `count()` and `is_empty()` helpers
-  - [ ] 5.11 Write unit tests for add/remove/query/clear operations
+- [x] 5. Pending command store
+  - [x] 5.1 Implement `PendingCommandStore::new()` with empty HashMap and counter
+  - [x] 5.2 Implement `PendingCommandStore::add()` — store command with PendingReason and monotonic timestamp
+  - [x] 5.3 Implement `PendingCommandStore::remove()` — remove command at a line, return Option
+  - [x] 5.4 Implement `PendingCommandStore::get()` — lookup by line number
+  - [x] 5.5 Implement `PendingCommandStore::by_category()` — filter all pending by LineCommandCategory
+  - [x] 5.6 Implement `PendingCommandStore::pending_sources()` and `pending_targets()` — specialized queries
+  - [x] 5.7 Implement `PendingCommandStore::pending_blocks()` — filter by specific block kind
+  - [x] 5.8 Implement `PendingCommandStore::clear_all()` — reset all pending state
+  - [x] 5.9 Implement `PendingCommandStore::all_pending()` — iterator over all entries
+  - [x] 5.10 Implement `count()` and `is_empty()` helpers
+  - [x] 5.11 Write unit tests for add/remove/query/clear operations
   - Covers: Requirement 14 (all criteria)
 
-- [ ] 6. Block pair validator
-  - [ ] 6.1 Implement `BlockPairValidator::normalize()` — ensure start ≤ end regardless of entry order
-  - [ ] 6.2 Implement `BlockPairValidator::validate_pair()` — form BlockPair from exactly two matching markers in pending store
-  - [ ] 6.3 Implement single-marker detection — return AwaitingPair error when only one marker present
-  - [ ] 6.4 Implement excess-marker detection — return TooManyMarkers error when >2 markers of same type present
-  - [ ] 6.5 Implement `BlockPairValidator::check_overlaps()` — detect overlapping ranges from different block types
-  - [ ] 6.6 Write unit tests for normalization, valid pairs, single marker pending, too many markers, and overlaps
+- [x] 6. Block pair validator
+  - [x] 6.1 Implement `BlockPairValidator::normalize()` — ensure start ≤ end regardless of entry order
+  - [x] 6.2 Implement `BlockPairValidator::validate_pair()` — form BlockPair from exactly two matching markers in pending store
+  - [x] 6.3 Implement single-marker detection — return AwaitingPair error when only one marker present
+  - [x] 6.4 Implement excess-marker detection — return TooManyMarkers error when >2 markers of same type present
+  - [x] 6.5 Implement `BlockPairValidator::check_overlaps()` — detect overlapping ranges from different block types
+  - [x] 6.6 Write unit tests for normalization, valid pairs, single marker pending, too many markers, and overlaps
   - Covers: Requirement 12 (all criteria)
 
-- [ ] 7. Compatibility matrix
-  - [ ] 7.1 Implement `CommandCompatibilityMatrix::check_compatibility()` — validate primary command against pending line commands
-  - [ ] 7.2 Define compatibility rules: COPY primary + C/CC source + A/B target = valid; COPY path + C/CC = error
-  - [ ] 7.3 Define compatibility rules: MOVE primary + M/MM source + A/B target = valid; MOVE path + M/MM = error
-  - [ ] 7.4 Implement `CommandCompatibilityMatrix::all_immediate()` — check if all pending are immediate commands
-  - [ ] 7.5 Implement blank primary command rule: only immediate commands may execute without a primary command
-  - [ ] 7.6 Write unit tests for compatible/incompatible combinations and error messages
+- [x] 7. Compatibility matrix
+  - [x] 7.1 Implement `CommandCompatibilityMatrix::check_compatibility()` — validate primary command against pending line commands
+  - [x] 7.2 Define compatibility rules: COPY primary + C/CC source + A/B target = valid; COPY path + C/CC = error
+  - [x] 7.3 Define compatibility rules: MOVE primary + M/MM source + A/B target = valid; MOVE path + M/MM = error
+  - [x] 7.4 Implement `CommandCompatibilityMatrix::all_immediate()` — check if all pending are immediate commands
+  - [x] 7.5 Implement blank primary command rule: only immediate commands may execute without a primary command
+  - [x] 7.6 Write unit tests for compatible/incompatible combinations and error messages
   - Covers: Requirement 13 (all criteria)
 
-- [ ] 8. Resolution engine
-  - [ ] 8.1 Implement `ResolutionEngine::resolve()` — main entry point processing new inputs and existing pending state
-  - [ ] 8.2 Implement parsing of new prefix-area inputs into pending store (step 1 of resolution)
-  - [ ] 8.3 Implement block pair resolution — form BlockPair when two markers present (step 2)
-  - [ ] 8.4 Implement source+target resolution — form SourceTarget when both C/CC/M/MM and A/B present (step 3)
-  - [ ] 8.5 Implement compatibility check against primary command (step 4)
-  - [ ] 8.6 Implement immediate command extraction — resolve D, Dn, I, In, R, Rn, X, Xn, T, U, >, <, ), ( without primary command
-  - [ ] 8.7 Define `ResolutionResult` struct with `executable`, `errors`, `still_pending` fields
-  - [ ] 8.8 Write unit tests for resolution of immediate commands, block pairs, source+target, and mixed scenarios
+- [x] 8. Resolution engine
+  - [x] 8.1 Implement `ResolutionEngine::resolve()` — main entry point processing new inputs and existing pending state
+  - [x] 8.2 Implement parsing of new prefix-area inputs into pending store (step 1 of resolution)
+  - [x] 8.3 Implement block pair resolution — form BlockPair when two markers present (step 2)
+  - [x] 8.4 Implement source+target resolution — form SourceTarget when both C/CC/M/MM and A/B present (step 3)
+  - [x] 8.5 Implement compatibility check against primary command (step 4)
+  - [x] 8.6 Implement immediate command extraction — resolve D, Dn, I, In, R, Rn, X, Xn, T, U, >, <, ), ( without primary command
+  - [x] 8.7 Define `ResolutionResult` struct with `executable`, `errors`, `still_pending` fields
+  - [x] 8.8 Write unit tests for resolution of immediate commands, block pairs, source+target, and mixed scenarios
   - Covers: Requirements 6.3, 6.4, 12–14
 
-- [ ] 9. Delete execution
-  - [ ] 9.1 Implement `ExecutionEngine::execute_delete()` — remove lines from document, return EditorTransaction
-  - [ ] 9.2 Handle single-line delete (D)
-  - [ ] 9.3 Handle counted delete (Dn) — delete n consecutive lines
-  - [ ] 9.4 Handle block delete (DD pair) — delete range [start, end]
-  - [ ] 9.5 Validate line range is within document bounds; return LineOutOfRange on failure
-  - [ ] 9.6 Write unit tests for single, counted, block delete, and out-of-range error
+- [x] 9. Delete execution
+  - [x] 9.1 Implement `ExecutionEngine::execute_delete()` — remove lines from document, return EditorTransaction
+  - [x] 9.2 Handle single-line delete (D)
+  - [x] 9.3 Handle counted delete (Dn) — delete n consecutive lines
+  - [x] 9.4 Handle block delete (DD pair) — delete range [start, end]
+  - [x] 9.5 Validate line range is within document bounds; return LineOutOfRange on failure
+  - [x] 9.6 Write unit tests for single, counted, block delete, and out-of-range error
   - Covers: Requirement 1 (AC 1.1–1.6)
 
-- [ ] 10. Insert execution
-  - [ ] 10.1 Implement `ExecutionEngine::execute_insert()` — insert blank lines after specified line, return EditorTransaction
-  - [ ] 10.2 Handle single insert (I) — one blank line
-  - [ ] 10.3 Handle counted insert (In) — n blank lines
-  - [ ] 10.4 Validate insertion point is within document bounds
-  - [ ] 10.5 Write unit tests for single insert, counted insert, and boundary validation
+- [x] 10. Insert execution
+  - [x] 10.1 Implement `ExecutionEngine::execute_insert()` — insert blank lines after specified line, return EditorTransaction
+  - [x] 10.2 Handle single insert (I) — one blank line
+  - [x] 10.3 Handle counted insert (In) — n blank lines
+  - [x] 10.4 Validate insertion point is within document bounds
+  - [x] 10.5 Write unit tests for single insert, counted insert, and boundary validation
   - Covers: Requirement 2 (AC 2.1–2.4)
 
-- [ ] 11. Repeat execution
-  - [ ] 11.1 Implement `ExecutionEngine::execute_repeat()` — duplicate line(s) in place, return EditorTransaction
-  - [ ] 11.2 Handle single repeat (R) — one duplicate after source line
-  - [ ] 11.3 Handle counted repeat (Rn) — n duplicates after source line
-  - [ ] 11.4 Implement `ExecutionEngine::execute_repeat_block()` — duplicate entire block range and insert after last line of block
-  - [ ] 11.5 Validate source line range is within document bounds
-  - [ ] 11.6 Write unit tests for single, counted, block repeat, and content verification
+- [x] 11. Repeat execution
+  - [x] 11.1 Implement `ExecutionEngine::execute_repeat()` — duplicate line(s) in place, return EditorTransaction
+  - [x] 11.2 Handle single repeat (R) — one duplicate after source line
+  - [x] 11.3 Handle counted repeat (Rn) — n duplicates after source line
+  - [x] 11.4 Implement `ExecutionEngine::execute_repeat_block()` — duplicate entire block range and insert after last line of block
+  - [x] 11.5 Validate source line range is within document bounds
+  - [x] 11.6 Write unit tests for single, counted, block repeat, and content verification
   - Covers: Requirement 3 (AC 3.1–3.6)
 
-- [ ] 12. Copy execution
-  - [ ] 12.1 Implement `ExecutionEngine::execute_copy()` — copy source lines to target position, return EditorTransaction
-  - [ ] 12.2 Handle single-line copy (C + A/B)
-  - [ ] 12.3 Handle block copy (CC pair + A/B) — copy entire range
-  - [ ] 12.4 Handle After target — insert copies after target line
-  - [ ] 12.5 Handle Before target — insert copies before target line
-  - [ ] 12.6 Verify source lines are unchanged after copy
-  - [ ] 12.7 Write unit tests for single/block copy with A and B targets
+- [x] 12. Copy execution
+  - [x] 12.1 Implement `ExecutionEngine::execute_copy()` — copy source lines to target position, return EditorTransaction
+  - [x] 12.2 Handle single-line copy (C + A/B)
+  - [x] 12.3 Handle block copy (CC pair + A/B) — copy entire range
+  - [x] 12.4 Handle After target — insert copies after target line
+  - [x] 12.5 Handle Before target — insert copies before target line
+  - [x] 12.6 Verify source lines are unchanged after copy
+  - [x] 12.7 Write unit tests for single/block copy with A and B targets
   - Covers: Requirement 4 (AC 4.1–4.6), Requirement 6 (AC 6.1–6.3)
 
-- [ ] 13. Move execution
-  - [ ] 13.1 Implement `ExecutionEngine::execute_move()` — remove source lines and insert at target position, return EditorTransaction
-  - [ ] 13.2 Handle single-line move (M + A/B)
-  - [ ] 13.3 Handle block move (MM pair + A/B) — move entire range
-  - [ ] 13.4 Validate target is not inside source block — return TargetInsideSource error
-  - [ ] 13.5 Handle After target — insert moved lines after target line
-  - [ ] 13.6 Handle Before target — insert moved lines before target line
-  - [ ] 13.7 Verify document line count is unchanged after move
-  - [ ] 13.8 Write unit tests for single/block move, target-inside-source rejection, and line count preservation
+- [x] 13. Move execution
+  - [x] 13.1 Implement `ExecutionEngine::execute_move()` — remove source lines and insert at target position, return EditorTransaction
+  - [x] 13.2 Handle single-line move (M + A/B)
+  - [x] 13.3 Handle block move (MM pair + A/B) — move entire range
+  - [x] 13.4 Validate target is not inside source block — return TargetInsideSource error
+  - [x] 13.5 Handle After target — insert moved lines after target line
+  - [x] 13.6 Handle Before target — insert moved lines before target line
+  - [x] 13.7 Verify document line count is unchanged after move
+  - [x] 13.8 Write unit tests for single/block move, target-inside-source rejection, and line count preservation
   - Covers: Requirement 5 (AC 5.1–5.7), Requirement 6 (AC 6.1–6.5)
 
-- [ ] 14. Exclude execution
-  - [ ] 14.1 Implement `ExecutionEngine::execute_exclude()` — set excluded flag on lines via DisplayLineMapping
-  - [ ] 14.2 Handle single exclude (X) — one line
-  - [ ] 14.3 Handle counted exclude (Xn) — n consecutive lines
-  - [ ] 14.4 Handle block exclude (XX pair) — range [start, end]
-  - [ ] 14.5 Verify operation does NOT produce an EditorTransaction (session-state only, bypasses undo)
-  - [ ] 14.6 Write unit tests for single, counted, block exclude, and no-transaction verification
+- [x] 14. Exclude execution
+  - [x] 14.1 Implement `ExecutionEngine::execute_exclude()` — set excluded flag on lines via DisplayLineMapping
+  - [x] 14.2 Handle single exclude (X) — one line
+  - [x] 14.3 Handle counted exclude (Xn) — n consecutive lines
+  - [x] 14.4 Handle block exclude (XX pair) — range [start, end]
+  - [x] 14.5 Verify operation does NOT produce an EditorTransaction (session-state only, bypasses undo)
+  - [x] 14.6 Write unit tests for single, counted, block exclude, and no-transaction verification
   - Covers: Requirement 7 (AC 7.1–7.6)
 
-- [ ] 15. Tag and Untag execution
-  - [ ] 15.1 Implement `ExecutionEngine::execute_tag()` — set tagged flag on lines
-  - [ ] 15.2 Handle single tag (T) and block tag (TT pair)
-  - [ ] 15.3 Implement `ExecutionEngine::execute_untag()` — clear tagged flag on lines
-  - [ ] 15.4 Handle single untag (U) and block untag (UU pair)
-  - [ ] 15.5 Verify operations do NOT produce EditorTransactions (session-state only, bypasses undo)
-  - [ ] 15.6 Write unit tests for tag/untag single and block, and no-transaction verification
+- [x] 15. Tag and Untag execution
+  - [x] 15.1 Implement `ExecutionEngine::execute_tag()` — set tagged flag on lines
+  - [x] 15.2 Handle single tag (T) and block tag (TT pair)
+  - [x] 15.3 Implement `ExecutionEngine::execute_untag()` — clear tagged flag on lines
+  - [x] 15.4 Handle single untag (U) and block untag (UU pair)
+  - [x] 15.5 Verify operations do NOT produce EditorTransactions (session-state only, bypasses undo)
+  - [x] 15.6 Write unit tests for tag/untag single and block, and no-transaction verification
   - Covers: Requirement 8 (AC 8.1–8.8)
 
-- [ ] 16. Shift right execution
-  - [ ] 16.1 Implement `ExecutionEngine::execute_shift_right()` — prepend spaces to line content, return EditorTransaction
-  - [ ] 16.2 Handle single shift (>) — shift by configured ShiftWidth
-  - [ ] 16.3 Handle counted shift (>n) — shift by n columns
-  - [ ] 16.4 Handle block shift (>> pair) — shift all lines in range by ShiftWidth
-  - [ ] 16.5 Read ShiftWidth from LineCommandConfig
-  - [ ] 16.6 Write unit tests for single, counted, block shift right with content verification
+- [x] 16. Shift right execution
+  - [x] 16.1 Implement `ExecutionEngine::execute_shift_right()` — prepend spaces to line content, return EditorTransaction
+  - [x] 16.2 Handle single shift (>) — shift by configured ShiftWidth
+  - [x] 16.3 Handle counted shift (>n) — shift by n columns
+  - [x] 16.4 Handle block shift (>> pair) — shift all lines in range by ShiftWidth
+  - [x] 16.5 Read ShiftWidth from LineCommandConfig
+  - [x] 16.6 Write unit tests for single, counted, block shift right with content verification
   - Covers: Requirement 9 (AC 9.1–9.7)
 
-- [ ] 17. Shift left execution
-  - [ ] 17.1 Implement `ExecutionEngine::execute_shift_left()` — remove leading whitespace, return EditorTransaction
-  - [ ] 17.2 Handle single shift (<) — shift by configured ShiftWidth
-  - [ ] 17.3 Handle counted shift (<n) — shift by n columns
-  - [ ] 17.4 Handle block shift (<< pair) — shift all lines in range by ShiftWidth
-  - [ ] 17.5 Implement data-loss prevention: truncate only up to first non-whitespace character
-  - [ ] 17.6 Read ShiftWidth from LineCommandConfig
-  - [ ] 17.7 Write unit tests for single, counted, block shift left, and non-destructive truncation verification
+- [x] 17. Shift left execution
+  - [x] 17.1 Implement `ExecutionEngine::execute_shift_left()` — remove leading whitespace, return EditorTransaction
+  - [x] 17.2 Handle single shift (<) — shift by configured ShiftWidth
+  - [x] 17.3 Handle counted shift (<n) — shift by n columns
+  - [x] 17.4 Handle block shift (<< pair) — shift all lines in range by ShiftWidth
+  - [x] 17.5 Implement data-loss prevention: truncate only up to first non-whitespace character
+  - [x] 17.6 Read ShiftWidth from LineCommandConfig
+  - [x] 17.7 Write unit tests for single, counted, block shift left, and non-destructive truncation verification
   - Covers: Requirement 10 (AC 10.1–10.8)
 
-- [ ] 18. Bounds-aware shift execution
-  - [ ] 18.1 Implement `ExecutionEngine::execute_bounds_shift_right()` — shift content within bounds right by one position, preserve content outside bounds
-  - [ ] 18.2 Implement `ExecutionEngine::execute_bounds_shift_left()` — shift content within bounds left by one position, preserve content outside bounds
-  - [ ] 18.3 Handle block bounds-shift right ()) pair) — apply to all lines in range
-  - [ ] 18.4 Handle block bounds-shift left ((( pair) — apply to all lines in range
-  - [ ] 18.5 Validate active bounds are set — return NoBoundsActive error if not
-  - [ ] 18.6 Return EditorTransaction for successful operations
-  - [ ] 18.7 Write unit tests for bounds-shift right/left, block variants, no-bounds error, and outer content preservation
+- [x] 18. Bounds-aware shift execution
+  - [x] 18.1 Implement `ExecutionEngine::execute_bounds_shift_right()` — shift content within bounds right by one position, preserve content outside bounds
+  - [x] 18.2 Implement `ExecutionEngine::execute_bounds_shift_left()` — shift content within bounds left by one position, preserve content outside bounds
+  - [x] 18.3 Handle block bounds-shift right ()) pair) — apply to all lines in range
+  - [x] 18.4 Handle block bounds-shift left ((( pair) — apply to all lines in range
+  - [x] 18.5 Validate active bounds are set — return NoBoundsActive error if not
+  - [x] 18.6 Return EditorTransaction for successful operations
+  - [x] 18.7 Write unit tests for bounds-shift right/left, block variants, no-bounds error, and outer content preservation
   - Covers: Requirement 11 (AC 11.1–11.8)
 
-- [ ] 19. Command framework integration
-  - [ ] 19.1 Register all line command operations as commands with `CommandRegistry` (linecmd.delete, linecmd.insert, linecmd.repeat, linecmd.copy, linecmd.move, linecmd.exclude, linecmd.tag, linecmd.untag, linecmd.shift_right, linecmd.shift_left, linecmd.bounds_shift_right, linecmd.bounds_shift_left, linecmd.resolve_cycle, linecmd.reset)
-  - [ ] 19.2 Implement `CommandHandler` trait for each registered command
-  - [ ] 19.3 Wire undoable operations to return `CommandResult::OkUndoable` with transaction
-  - [ ] 19.4 Wire session-state operations (exclude, tag, untag) to return `CommandResult::Ok` without undo records
-  - [ ] 19.5 Implement `linecmd.resolve_cycle` command — main entry point invoked by primary command execution cycle
-  - [ ] 19.6 Implement `linecmd.reset` command — clear all pending commands (RESET COMMANDS / RESET ALL)
-  - [ ] 19.7 Write unit tests verifying command dispatch and undo record production
+- [x] 19. Command framework integration
+  - [x] 19.1 Register all line command operations as commands with `CommandRegistry` (linecmd.delete, linecmd.insert, linecmd.repeat, linecmd.copy, linecmd.move, linecmd.exclude, linecmd.tag, linecmd.untag, linecmd.shift_right, linecmd.shift_left, linecmd.bounds_shift_right, linecmd.bounds_shift_left, linecmd.resolve_cycle, linecmd.reset)
+  - [x] 19.2 Implement `CommandHandler` trait for each registered command
+  - [x] 19.3 Wire undoable operations to return `CommandResult::OkUndoable` with transaction
+  - [x] 19.4 Wire session-state operations (exclude, tag, untag) to return `CommandResult::Ok` without undo records
+  - [x] 19.5 Implement `linecmd.resolve_cycle` command — main entry point invoked by primary command execution cycle
+  - [x] 19.6 Implement `linecmd.reset` command — clear all pending commands (RESET COMMANDS / RESET ALL)
+  - [x] 19.7 Write unit tests verifying command dispatch and undo record production
   - Covers: Requirement 14.8, Cross-cutting Requirement 4
 
-- [ ] 20. Integration tests
-  - [ ] 20.1 Write end-to-end test: enter D3 on line 5 → resolve → verify 3 lines deleted starting at line 5
-  - [ ] 20.2 Write end-to-end test: enter CC on line 2, CC on line 5, A on line 8 → resolve → verify copy of lines 2–5 inserted after line 8
-  - [ ] 20.3 Write end-to-end test: enter MM on line 3, MM on line 6, B on line 1 → resolve → verify move of lines 3–6 inserted before line 1
-  - [ ] 20.4 Write end-to-end test: enter >> on line 4, >> on line 7 → resolve → verify shift right on lines 4–7
-  - [ ] 20.5 Write end-to-end test: enter M on line 5, A on line 5 (target inside source) → verify TargetInsideSource error
-  - [ ] 20.6 Write end-to-end test: enter RR on line 2, no second RR → verify pending state retained with AwaitingPair reason
-  - [ ] 20.7 Write end-to-end test: verify RESET COMMANDS clears all pending state
-  - [ ] 20.8 Write end-to-end test: enter incompatible primary command with pending line commands → verify error
+- [x] 20. Integration tests
+  - [x] 20.1 Write end-to-end test: enter D3 on line 5 → resolve → verify 3 lines deleted starting at line 5
+  - [x] 20.2 Write end-to-end test: enter CC on line 2, CC on line 5, A on line 8 → resolve → verify copy of lines 2–5 inserted after line 8
+  - [x] 20.3 Write end-to-end test: enter MM on line 3, MM on line 6, B on line 1 → resolve → verify move of lines 3–6 inserted before line 1
+  - [x] 20.4 Write end-to-end test: enter >> on line 4, >> on line 7 → resolve → verify shift right on lines 4–7
+  - [x] 20.5 Write end-to-end test: enter M on line 5, A on line 5 (target inside source) → verify TargetInsideSource error
+  - [x] 20.6 Write end-to-end test: enter RR on line 2, no second RR → verify pending state retained with AwaitingPair reason
+  - [x] 20.7 Write end-to-end test: verify RESET COMMANDS clears all pending state
+  - [x] 20.8 Write end-to-end test: enter incompatible primary command with pending line commands → verify error
   - Covers: Requirements 1–14 (cross-requirement integration scenarios)
 
-- [ ] 21. Property-based tests
-  - [ ] 21.1 Write property test: Parser Round-Trip Consistency (Property 1)
-  - [ ] 21.2 Write property test: Block Pair Normalization (Property 2)
-  - [ ] 21.3 Write property test: Delete Preserves Document Integrity (Property 3)
-  - [ ] 21.4 Write property test: Insert Line Count (Property 4)
-  - [ ] 21.5 Write property test: Repeat Produces Exact Duplicates (Property 5)
-  - [ ] 21.6 Write property test: Shift Right Adds Exactly N Spaces (Property 6)
-  - [ ] 21.7 Write property test: Shift Left Non-Destructive (Property 7)
-  - [ ] 21.8 Write property test: Copy Does Not Modify Source (Property 8)
-  - [ ] 21.9 Write property test: Move Preserves Line Count (Property 9)
-  - [ ] 21.10 Write property test: Bounds-Aware Shift Preserves Outer Content (Property 10)
-  - [ ] 21.11 Write property test: Pending Store Size Monotonicity on Clear (Property 11)
-  - [ ] 21.12 Write property test: Resolution Engine Idempotence for Pending-Only State (Property 12)
-  - [ ] 21.13 Write property test: Compatibility Matrix Symmetry (Property 13)
+- [x] 21. Property-based tests
+  - [x] 21.1 Write property test: Parser Round-Trip Consistency (Property 1)
+  - [x] 21.2 Write property test: Block Pair Normalization (Property 2)
+  - [x] 21.3 Write property test: Delete Preserves Document Integrity (Property 3)
+  - [x] 21.4 Write property test: Insert Line Count (Property 4)
+  - [x] 21.5 Write property test: Repeat Produces Exact Duplicates (Property 5)
+  - [x] 21.6 Write property test: Shift Right Adds Exactly N Spaces (Property 6)
+  - [x] 21.7 Write property test: Shift Left Non-Destructive (Property 7)
+  - [x] 21.8 Write property test: Copy Does Not Modify Source (Property 8)
+  - [x] 21.9 Write property test: Move Preserves Line Count (Property 9)
+  - [x] 21.10 Write property test: Bounds-Aware Shift Preserves Outer Content (Property 10)
+  - [x] 21.11 Write property test: Pending Store Size Monotonicity on Clear (Property 11)
+  - [x] 21.12 Write property test: Resolution Engine Idempotence for Pending-Only State (Property 12)
+  - [x] 21.13 Write property test: Compatibility Matrix Symmetry (Property 13)
   - Covers: All correctness properties from design.md
 
 ---

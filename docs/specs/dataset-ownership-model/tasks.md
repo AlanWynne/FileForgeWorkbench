@@ -1,4 +1,4 @@
-# Implementation Plan: Dataset Ownership Model (Governance Infrastructure)
+﻿# Implementation Plan: Dataset Ownership Model (Governance Infrastructure)
 
 ## Overview
 
@@ -118,12 +118,12 @@ This task plan implements the architectural governance infrastructure for the Da
   - [x] 9.3 Include the resolution lifecycle sequence: DD parse → symbolic substitution → referback → catalog resolve_dsn → physical path return
     - Validates: Requirement 14 AC 1–5
 
-- [ ] 10. CI pipeline integration
-  - [ ] 10.1 Add `cargo test -p ff-governance-tests` step to CI pipeline configuration
+- [x] 10. CI pipeline integration
+  - [x] 10.1 Add `cargo test -p ff-governance-tests` step to CI pipeline configuration
     - Validates: Requirement 18 AC 5
-  - [ ] 10.2 Verify the step fails the build (non-zero exit code) when a prohibited dependency is introduced
+  - [x] 10.2 Verify the step fails the build (non-zero exit code) when a prohibited dependency is introduced
     - Validates: Requirement 18 AC 5
-  - [ ] 10.3 Document the CI step in the project's contributing guide, explaining how to update the fitness function when adding a new dataset-related crate
+  - [x] 10.3 Document the CI step in the project's contributing guide, explaining how to update the fitness function when adding a new dataset-related crate
     - Validates: Requirement 20 AC 4
 
 - [x] 11. Future extensibility documentation

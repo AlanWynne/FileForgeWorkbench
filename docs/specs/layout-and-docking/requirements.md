@@ -17,7 +17,7 @@ Panels are contributed by the plugin system — the layout engine itself is pane
 - **Layout_Engine**: The central coordinator within `ff-layout` that owns the layout tree, manages dock zones, tab groups, floating windows, and orchestrates all layout transitions. Replaces the FFE Dock_Manager with expanded responsibility. [FFE, WB]
 - **Dock_Zone**: A designated area within the primary application window where panels can be attached. Standard zones are: left, right, bottom, and center. Each zone can hold one or more panels as tabs. [FFE]
 - **Dockable_Panel**: Any UI panel that implements the `DockablePanel` trait, enabling it to be rendered inside a dock zone, within a tab group, or inside its own floating OS-level window. Panels are contributed via the plugin system. [FFE, WB]
-- **Floating_Window**: A separate OS-level window (platform viewport) containing one or more panels or editor tabs that have been detached from the main application window. Replaces the FFE Undocked_Window concept with support for multi-panel floating containers. [FFE]
+- **Floating_Window**: A separate OS-level window (platform viewport) — also called a Detached View — containing one or more panels or editor tabs that have been detached from the main application window. Replaces the FFE Undocked_Window concept with support for multi-panel floating containers. [FFE]
 - **Panel_Registry**: The registry of all known panel types and their default dock zone assignments. Plugins register panels here during initialization. [FFE, WB]
 - **Layout_State**: A serializable snapshot of the complete layout including dock zone contents, tab group arrangement, floating window positions/sizes, panel visibility, and splitter positions. [FFE, WB]
 - **Primary_Window**: The main FileForgeWorkbench application window containing the menu bar, dock zones, tab groups, and docked panels. [FFE]
@@ -245,30 +245,22 @@ Panels are contributed by the plugin system — the layout engine itself is pane
 
 ---
 
-### Requirement 11: Tab Window Chrome in Floating Windows
+### Requirement 11: Tab Window Chrome in Detached Views
 
-**User Story:** As a user, I want detached tab windows to show the same Title_Line and
-Command_Line chrome as the docked tab, so that the experience is consistent whether a
-tab is in the main window or floating independently.
+**User Story:** As a user, I want Detached Views to show the same Title_Line and
+Command Field chrome as the docked tab, so that the experience is consistent whether a
+tab is in the main window or detached independently.
 
 **Source:** menu-and-statusbar Requirement 17 and 18; user requirement (Phase AL).
 
 #### Acceptance Criteria
 
-11.1 WHEN a tab is displayed in a Floating_Window, THE Floating_Window SHALL render the
-     full Tab_Window_Chrome: Tab_Header row, Title_Line, and Primary_Command_Field — in
-     that order at the top of the window, above the tab's content area.
+1. WHEN a tab is displayed in a Detached View (Floating_Window), THE Detached View SHALL render the full Tab_Window_Chrome: Tab_Header row, Title_Line, and Primary_Command_Field — in that order at the top of the window, above the tab's content area.
 
-11.2 THE Title_Line in a Floating_Window SHALL display the same context-dependent text as
-     it would when the tab is docked (per menu-and-statusbar Requirement 17.3–17.6).
+2. THE Title_Line in a Detached View SHALL display the same context-dependent text as it would when the tab is docked (per menu-and-statusbar Requirement 17.3–17.6).
 
-11.3 THE Primary_Command_Field in a Floating_Window SHALL be fully functional: it SHALL
-     accept keyboard focus on window activation, accept typed commands, and dispatch them
-     through the same CommandEngine as the Primary_Window command field.
+3. THE Primary_Command_Field in a Detached View SHALL be fully functional: it SHALL accept keyboard focus on window activation, accept typed commands, and dispatch them through the same CommandEngine as the Primary_Window Command Field.
 
-11.4 WHEN the Legacy theme is active, THE Title_Line in a Floating_Window SHALL use the
-     same blue background / white text styling as the docked Title_Line
-     (menu-and-statusbar Requirement 17.8).
+4. WHEN the Legacy theme is active, THE Title_Line in a Detached View SHALL use the same blue background / white text styling as the docked Title_Line (menu-and-statusbar Requirement 17.8).
 
-11.5 THE Floating_Window title bar (OS chrome) SHALL display the Title_Line content
-     followed by " — FileForge Workbench" (menu-and-statusbar Requirement 18.5).
+5. THE Detached View title bar (OS chrome) SHALL display the Title_Line content followed by " — FileForge Workbench" (menu-and-statusbar Requirement 18.5).

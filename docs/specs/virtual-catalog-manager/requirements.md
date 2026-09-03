@@ -10,7 +10,7 @@ browsing virtual file catalogs of four distinct types:
 |---|---|---|
 | **Mainframe** | `catalog` | z/OS-style datasets (PS, PDS, GDG) backed by `ff-dscatalog` |
 | **POSIX** | `posix` | POSIX-style hierarchical filesystem emulation (new provider) |
-| **Native** | `local` | The host platform's local filesystem (Windows, Linux, or macOS) surfaced through the VFS |
+| **Native** | `local` | The host platform's local filesystem (the host platform (Windows, Linux, or macOS)) surfaced through the VFS |
 
 The Virtual Catalog Manager is rendered as a full-tab panel when the user selects option `1` from
 the Primary Option Menu (or types `1` / `FILES` in any command field). It replaces the previous
@@ -42,7 +42,7 @@ behaviour of option 1 opening the native Windows file explorer.
 | `virtual-file-system` | All resource access goes through VFS providers |
 | `dataset-catalog` | Mainframe catalog CRUD delegated to `ff-dscatalog` |
 | `file-tree-panel` | Explorer tree reused/embedded within the Files panel |
-| `connector-local-fs` | Windows/Local catalog type backed by this provider |
+| `connector-local-fs` | Native catalog type backed by this provider |
 
 ---
 
@@ -51,7 +51,7 @@ behaviour of option 1 opening the native Windows file explorer.
 | Term | Definition |
 |---|---|
 | **Virtual_Catalog** | A named, typed container registered with the VFS that groups related files or datasets. Has one of four types: Mainframe, POSIX, Windows, Local. |
-| **Catalog_Type** | The classification of a Virtual_Catalog: `Mainframe` (z/OS dataset emulation), `POSIX` (hierarchical POSIX filesystem emulation), `Native` (the host platform's local filesystem — Windows, Linux, or macOS). |
+| **Catalog_Type** | The classification of a Virtual_Catalog: `Mainframe` (z/OS dataset emulation), `POSIX` (hierarchical POSIX filesystem emulation), `Native` (the host platform's local filesystem — the host platform (Windows, Linux, or macOS)). |
 | **Files_Panel** | The full-tab panel rendered when POM option 1 is selected. Contains the catalog tree, toolbar, and action buttons. |
 | **Catalog_Manager_Dialog** | The modal dialog for creating, editing, and deleting Virtual_Catalogs. |
 | **Dataset_Allocation_Dialog** | The modal dialog for allocating (creating) a new mainframe-style dataset within a Mainframe catalog. |
@@ -192,7 +192,7 @@ so that I can keep my catalog registry clean and up to date.
     Catalog_Manager_Dialog pre-populated with the catalog's current properties. [WB]
 
 4.2 THE edit dialog SHALL allow changing: Description, Auto-mount flag, Read-Only flag (POSIX/
-    Windows/Local), and Default HLQ (Mainframe). The Catalog Name and Type SHALL NOT be editable
+    Native), and Default HLQ (Mainframe). The Catalog Name and Type SHALL NOT be editable
     after creation. [WB]
 
 4.3 WHEN the user right-clicks a catalog node and selects `Delete Catalog`, THE shell SHALL
@@ -226,7 +226,7 @@ memorising command syntax.
     - `Dataset Organization` (DSORG selector: PS, PO, PDSE, GDG)
     - `Record Format` (RECFM selector: FB, F, VB, V, U)
     - `Logical Record Length` (LRECL — integer, default 80)
-    - `Block Size` (BLKSIZE — integer, default 27920)
+    - `Block Size` (BLKSIZE — integer, default 0 — system-determined; 0 means the host OS and Rust I/O layer determine optimal buffering; IBM recommends `BLKSIZE=0` so that z/OS — or in FFWB's case the host OS — selects the optimal block size for the underlying storage device; a non-zero value may be entered as a user override)
     - `Directory Blocks` (integer, shown only when DSORG = PO or PDSE, default 10)
     - `GDG Limit` (integer 1–255, shown only when DSORG = GDG)
     - `Scratch on Roll-off` (checkbox, shown only when DSORG = GDG, default: checked)
@@ -359,7 +359,7 @@ within a POSIX catalog, so that I can manage POSIX-style files without leaving t
 
 **User Story:** As a user on any platform, I want to register local directories as named Native
 catalogs so that I can access them from the Files panel alongside my mainframe and POSIX catalogs,
-regardless of whether the host OS is Windows, Linux, or macOS.
+regardless of whether the host OS is the host platform (Windows, Linux, or macOS).
 
 **Source:** [WB] unified explorer; [FFE-TREE] local filesystem browsing.
 
@@ -404,6 +404,10 @@ the tree manually.
 
 10.2 THE content area SHALL support sorting by any column header (click to sort ascending,
      click again to sort descending). [WB]
+
+10.7 WHEN the content area is sorted by Name (the default), THE sort SHALL group container
+     entries (directories, PDS, GDG bases) before non-container entries (files, PS datasets,
+     members), with each group sorted case-insensitively in alphabetical order. [WB]
 
 10.3 WHEN the user double-clicks a file/member/dataset node in the content area, THE shell SHALL
      open it in a new editor tab. [WB]
@@ -540,7 +544,67 @@ useful content immediately without any manual setup.
 
 ---
 
-### Requirement 11: POM Option 1 Label Update
+### Requirement 15: Catalog Properties — Repository Path Display
+
+**User Story:** As a user, I want to see the repository path when viewing a catalog's properties,
+so that I know where the catalog's data is stored on disk.
+
+**Source:** CR-NR-012; [WB] dialog-driven management.
+
+#### Acceptance Criteria
+
+15.1 WHEN the user opens the Properties / Edit dialog for any catalog, THE dialog SHALL display
+     the catalog's repository path (the `path` field of `VirtualCatalog`) as a read-only labelled
+     field labelled `Repository Path:`. [WB]
+
+15.2 THE repository path field SHALL be visible for all catalog types: Mainframe, POSIX, and
+     Native. [WB]
+
+15.3 THE repository path field SHALL be read-only in the Edit dialog — the path cannot be changed
+     after catalog creation. [WB]
+
+---
+
+### Requirement 16: VFS Dataset Path Resolution from Catalog Repository
+
+**User Story:** As a mainframe developer, I want to open a Mainframe dataset in the editor and
+have FFWB locate the actual file on disk by combining the catalog's repository path with the
+dataset name, so that I can read and edit the dataset's content.
+
+**Source:** CR-NR-012; [WB] VFS-backed throughout; [DSC] dataset storage.
+
+#### Acceptance Criteria
+
+16.1 WHEN a Mainframe dataset is opened, THE system SHALL resolve its physical file path by
+     delegating to the StorageProvider via the catalogue locator stored for that dataset.
+     The catalogue is the sole authority mapping logical DSN to physical location (see
+     dataset-catalog Requirement 20.3). The physical path SHALL NOT be derived by replacing
+     dots in the DSN with directory separators -- that rule applied only to the legacy
+     DSN-derived layout (dataset-catalog Requirement 4, now superseded for new allocations).
+     For datasets allocated under the UUID layout, the resolved path will be of the form
+     `{workspace}/datasets/objects/<uuid>.dat`. [WB]
+
+16.2 WHEN the resolved physical path exists on disk, THE system SHALL open it in a new editor
+     tab using the existing `file.open` VFS path. [WB]
+
+16.3 WHEN the resolved physical path does not exist on disk, THE system SHALL create the
+     file and any missing parent directories using the staged create protocol defined in
+     dataset-catalog Requirement 25.1 (stage, reserve, publish, activate). For legacy
+     DSN-derived repositories only, direct file creation at the DSN-derived path is
+     permitted as a compatibility measure. This matches ISPF behaviour where allocating
+     a dataset reserves it and opening it for the first time creates the physical file. [WB]
+
+16.6 WHEN creating the physical file or its parent directories fails (e.g. permission
+     denied), THE system SHALL display an error message:
+     `'<DSN>': cannot create dataset file at <resolved_path>: <os_error>`. [WB]
+
+16.4 WHEN a catalog has no repository path configured (empty string), THE system SHALL display
+     the message: `'<DSN>': catalog has no repository path configured`. [WB]
+
+16.5 THE path resolution logic SHALL be a pure function `resolve_dataset_path(repository_path, dsn) -> Option<PathBuf>`, testable without VFS or egui. [WB]
+
+
+> **Note:** Requirement 11 was added during Phase AA after Requirements 12–16. The numbering is preserved for test annotation compatibility.
 
 **User Story:** As an ISPF-familiar operator, I want POM option 1 to be clearly labelled as the
 Files/Catalog manager, so that the menu accurately reflects what the option does.

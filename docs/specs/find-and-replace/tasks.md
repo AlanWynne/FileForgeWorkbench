@@ -1,4 +1,4 @@
-# Implementation Plan: Find and Replace (`ff-find-and-replace`)
+﻿# Implementation Plan: Find and Replace (`ff-find-and-replace`)
 
 ## Overview
 
@@ -10,233 +10,233 @@ This is a **Wave 5 (Command Engine)** sub-project that depends on Wave 4 (`ff-do
 
 ## Tasks
 
-- [ ] 1. Crate scaffolding and module structure
-  - [ ] 1.1 Create `crates/ff-find-and-replace/Cargo.toml` with dependencies (thiserror, regex, memchr, unicode-casefold, proptest dev-dep) and deps on `ff-document-model`, `ff-command`, `ff-logging`
-  - [ ] 1.2 Create `crates/ff-find-and-replace/src/lib.rs` with module declarations and public API re-exports
-  - [ ] 1.3 Create module files: `find_engine.rs`, `find_request.rs`, `find_result.rs`, `find_state.rs`, `search_mode.rs`, `direction.rs`, `scope.rs`, `column_range.rs`, `case_folder.rs`, `regex_engine.rs`, `substitution.rs`, `character_indexer.rs`, `incremental.rs`, `highlight.rs`, `commands.rs`, `error.rs`, `types.rs`
-  - [ ] 1.4 Add `ff-find-and-replace` to workspace `Cargo.toml` members list
+- [x] 1. Crate scaffolding and module structure
+  - [x] 1.1 Create `crates/ff-find-and-replace/Cargo.toml` with dependencies (thiserror, regex, memchr, unicode-casefold, proptest dev-dep) and deps on `ff-document-model`, `ff-command`, `ff-logging`
+  - [x] 1.2 Create `crates/ff-find-and-replace/src/lib.rs` with module declarations and public API re-exports
+  - [x] 1.3 Create module files: `find_engine.rs`, `find_request.rs`, `find_result.rs`, `find_state.rs`, `search_mode.rs`, `direction.rs`, `scope.rs`, `column_range.rs`, `case_folder.rs`, `regex_engine.rs`, `substitution.rs`, `character_indexer.rs`, `incremental.rs`, `highlight.rs`, `commands.rs`, `error.rs`, `types.rs`
+  - [x] 1.4 Add `ff-find-and-replace` to workspace `Cargo.toml` members list
   - Covers: Structural foundation for all requirements
 
-- [ ] 2. Core types and enums
-  - [ ] 2.1 Define `SearchMode` enum (Literal, Regex, HexBytes) with Display impl
-  - [ ] 2.2 Define `SearchDirection` enum (Forward, Backward, First, Last) with conversion from NEXT/PREV/FIRST/LAST command tokens
-  - [ ] 2.3 Define `SearchScope` enum (All, Visible, Excluded, Tagged, NonTagged) with filter predicate method
-  - [ ] 2.4 Define `ColumnRange { start: u64, end: u64 }` struct with intersection logic for Bounds overlap
-  - [ ] 2.5 Define `FindResult { byte_range: Range<u64>, line: LineNumber, captures: Vec<CaptureGroup> }` struct
-  - [ ] 2.6 Define `CaptureGroup { index: u8, byte_range: Range<u64> }` struct for regex groups 0–9
-  - [ ] 2.7 Define `FindRequest` value type capturing search term, mode, direction, scope, case sensitivity, word matching, and column range
-  - [ ] 2.8 Write unit tests for enum conversions, ColumnRange intersection, and FindRequest construction
+- [x] 2. Core types and enums
+  - [x] 2.1 Define `SearchMode` enum (Literal, Regex, HexBytes) with Display impl
+  - [x] 2.2 Define `SearchDirection` enum (Forward, Backward, First, Last) with conversion from NEXT/PREV/FIRST/LAST command tokens
+  - [x] 2.3 Define `SearchScope` enum (All, Visible, Excluded, Tagged, NonTagged) with filter predicate method
+  - [x] 2.4 Define `ColumnRange { start: u64, end: u64 }` struct with intersection logic for Bounds overlap
+  - [x] 2.5 Define `FindResult { byte_range: Range<u64>, line: LineNumber, captures: Vec<CaptureGroup> }` struct
+  - [x] 2.6 Define `CaptureGroup { index: u8, byte_range: Range<u64> }` struct for regex groups 0–9
+  - [x] 2.7 Define `FindRequest` value type capturing search term, mode, direction, scope, case sensitivity, word matching, and column range
+  - [x] 2.8 Write unit tests for enum conversions, ColumnRange intersection, and FindRequest construction
   - Covers: Requirement 1 (AC 1.1–1.5), Requirement 2 (AC 2.1–2.7), Requirement 3 (AC 3.4–3.5)
 
-- [ ] 3. CharacterIndexer trait definition
-  - [ ] 3.1 Define `CharacterIndexer` trait with `char_at(position: u64) -> u8` method
-  - [ ] 3.2 Add `slice(start: u64, end: u64) -> Option<&[u8]>` method with fallback semantics
-  - [ ] 3.3 Add `move_position_outside_char(position: u64, direction: Direction) -> u64` method
-  - [ ] 3.4 Add `line_range(line: LineNumber) -> (u64, u64)` method for line-scoped searches
-  - [ ] 3.5 Add `length() -> u64` method for document bounds checking
-  - [ ] 3.6 Implement a `SliceIndexer` adapter over `&[u8]` for testing purposes
-  - [ ] 3.7 Write unit tests for SliceIndexer verifying trait contract
+- [x] 3. CharacterIndexer trait definition
+  - [x] 3.1 Define `CharacterIndexer` trait with `char_at(position: u64) -> u8` method
+  - [x] 3.2 Add `slice(start: u64, end: u64) -> Option<&[u8]>` method with fallback semantics
+  - [x] 3.3 Add `move_position_outside_char(position: u64, direction: Direction) -> u64` method
+  - [x] 3.4 Add `line_range(line: LineNumber) -> (u64, u64)` method for line-scoped searches
+  - [x] 3.5 Add `length() -> u64` method for document bounds checking
+  - [x] 3.6 Implement a `SliceIndexer` adapter over `&[u8]` for testing purposes
+  - [x] 3.7 Write unit tests for SliceIndexer verifying trait contract
   - Covers: Requirement 18 (AC 18.1–18.6)
 
-- [ ] 4. CaseFolder implementation
-  - [ ] 4.1 Implement `CaseFolder` struct with Unicode Full Case Folding (status C + F mappings from CaseFolding.txt)
-  - [ ] 4.2 Implement `fold(&self, text: &[u8]) -> Vec<u8>` producing case-folded UTF-8 output
-  - [ ] 4.3 Implement one-to-many case mappings (e.g., ß → ss) correctly expanding output length
-  - [ ] 4.4 Implement multi-byte UTF-8 handling — never split code points across fold boundaries
-  - [ ] 4.5 Implement stateless, `Send + Sync` design for concurrent use
-  - [ ] 4.6 Implement configurable locale hint for Turkish dotted-I rules with locale-independent default
-  - [ ] 4.7 Implement `fold_char(&self, ch: char) -> SmallVec<[char; 3]>` for per-character folding in regex engine
-  - [ ] 4.8 Write unit tests for ASCII folding, German ß, Turkish İ/ı, multi-byte sequences, and thread safety
+- [x] 4. CaseFolder implementation
+  - [x] 4.1 Implement `CaseFolder` struct with Unicode Full Case Folding (status C + F mappings from CaseFolding.txt)
+  - [x] 4.2 Implement `fold(&self, text: &[u8]) -> Vec<u8>` producing case-folded UTF-8 output
+  - [x] 4.3 Implement one-to-many case mappings (e.g., ß → ss) correctly expanding output length
+  - [x] 4.4 Implement multi-byte UTF-8 handling — never split code points across fold boundaries
+  - [x] 4.5 Implement stateless, `Send + Sync` design for concurrent use
+  - [x] 4.6 Implement configurable locale hint for Turkish dotted-I rules with locale-independent default
+  - [x] 4.7 Implement `fold_char(&self, ch: char) -> SmallVec<[char; 3]>` for per-character folding in regex engine
+  - [x] 4.8 Write unit tests for ASCII folding, German ß, Turkish İ/ı, multi-byte sequences, and thread safety
   - Covers: Requirement 10 (AC 10.1–10.8)
 
-- [ ] 5. Literal search algorithm
-  - [ ] 5.1 Implement case-sensitive literal search using memchr + memcmp for fast byte scanning
-  - [ ] 5.2 Implement forward search from a given byte position returning first match
-  - [ ] 5.3 Implement backward search from a given byte position returning nearest preceding match
-  - [ ] 5.4 Implement case-insensitive literal search with pre-folded search term and lazy-folded document segments
-  - [ ] 5.5 Implement FIRST direction (search from document start)
-  - [ ] 5.6 Implement LAST direction (search backward from document end)
-  - [ ] 5.7 Implement ALL mode counting total matches across scope
-  - [ ] 5.8 Implement column-bounded search — extract bounded slice once per line
-  - [ ] 5.9 Write unit tests for all directions, case sensitivity modes, and column bounds
+- [x] 5. Literal search algorithm
+  - [x] 5.1 Implement case-sensitive literal search using memchr + memcmp for fast byte scanning
+  - [x] 5.2 Implement forward search from a given byte position returning first match
+  - [x] 5.3 Implement backward search from a given byte position returning nearest preceding match
+  - [x] 5.4 Implement case-insensitive literal search with pre-folded search term and lazy-folded document segments
+  - [x] 5.5 Implement FIRST direction (search from document start)
+  - [x] 5.6 Implement LAST direction (search backward from document end)
+  - [x] 5.7 Implement ALL mode counting total matches across scope
+  - [x] 5.8 Implement column-bounded search — extract bounded slice once per line
+  - [x] 5.9 Write unit tests for all directions, case sensitivity modes, and column bounds
   - Covers: Requirement 1 (AC 1.1–1.10), Requirement 19 (AC 19.3, 19.7)
 
-- [ ] 6. Hex byte search
-  - [ ] 6.1 Implement hex string parser: convert pairs of hex digits to raw byte sequence
-  - [ ] 6.2 Implement validation: reject odd-length hex strings with "Invalid hex pattern: odd number of digits"
-  - [ ] 6.3 Implement validation: reject non-hex characters with "Invalid hex pattern: non-hex character"
-  - [ ] 6.4 Implement hex byte search using the same direction/scope modifiers as literal search
-  - [ ] 6.5 Ensure hex search does NOT apply Unicode case folding — operates on raw bytes
-  - [ ] 6.6 Write unit tests for valid hex parsing, invalid hex errors, and hex search with all directions
+- [x] 6. Hex byte search
+  - [x] 6.1 Implement hex string parser: convert pairs of hex digits to raw byte sequence
+  - [x] 6.2 Implement validation: reject odd-length hex strings with "Invalid hex pattern: odd number of digits"
+  - [x] 6.3 Implement validation: reject non-hex characters with "Invalid hex pattern: non-hex character"
+  - [x] 6.4 Implement hex byte search using the same direction/scope modifiers as literal search
+  - [x] 6.5 Ensure hex search does NOT apply Unicode case folding — operates on raw bytes
+  - [x] 6.6 Write unit tests for valid hex parsing, invalid hex errors, and hex search with all directions
   - Covers: Requirement 3 (AC 3.1–3.7)
 
-- [ ] 7. Scope and visibility filtering
-  - [ ] 7.1 Implement `LineFilter` trait with `is_eligible(line: LineNumber) -> bool` method
-  - [ ] 7.2 Implement TAGGED filter checking line `tagged` flag
-  - [ ] 7.3 Implement EXCLUDED filter checking line `excluded` flag
-  - [ ] 7.4 Implement VISIBLE filter checking line `visible` flag
-  - [ ] 7.5 Implement NONTAGGED filter checking line `tagged == false`
-  - [ ] 7.6 Implement conjunctive composition — multiple scope modifiers combine with AND logic
-  - [ ] 7.7 Implement Bounds integration: when `bounds_affect_find` is true, restrict search to active Bounds columns
-  - [ ] 7.8 Implement explicit ColumnRange override that takes precedence over Bounds for single operation
-  - [ ] 7.9 Write unit tests for each filter, combinations, and Bounds/ColumnRange intersection
+- [x] 7. Scope and visibility filtering
+  - [x] 7.1 Implement `LineFilter` trait with `is_eligible(line: LineNumber) -> bool` method
+  - [x] 7.2 Implement TAGGED filter checking line `tagged` flag
+  - [x] 7.3 Implement EXCLUDED filter checking line `excluded` flag
+  - [x] 7.4 Implement VISIBLE filter checking line `visible` flag
+  - [x] 7.5 Implement NONTAGGED filter checking line `tagged == false`
+  - [x] 7.6 Implement conjunctive composition — multiple scope modifiers combine with AND logic
+  - [x] 7.7 Implement Bounds integration: when `bounds_affect_find` is true, restrict search to active Bounds columns
+  - [x] 7.8 Implement explicit ColumnRange override that takes precedence over Bounds for single operation
+  - [x] 7.9 Write unit tests for each filter, combinations, and Bounds/ColumnRange intersection
   - Covers: Requirement 2 (AC 2.1–2.8), Requirement 7 (AC 7.5–7.6)
 
-- [ ] 8. Whole-word and word-start matching
-  - [ ] 8.1 Implement word-boundary detection using character classification table (word vs non-word transitions)
-  - [ ] 8.2 Implement WORD modifier: verify transitions at both start and end of match
-  - [ ] 8.3 Implement WORDSTART modifier: verify transition at start only
-  - [ ] 8.4 Implement multi-byte UTF-8 character classification — classify by full code point, not individual bytes
-  - [ ] 8.5 Implement correct interaction with case folding: fold first, verify boundaries on original positions
-  - [ ] 8.6 Write unit tests for word boundaries with ASCII, multi-byte characters, and combined case+word mode
+- [x] 8. Whole-word and word-start matching
+  - [x] 8.1 Implement word-boundary detection using character classification table (word vs non-word transitions)
+  - [x] 8.2 Implement WORD modifier: verify transitions at both start and end of match
+  - [x] 8.3 Implement WORDSTART modifier: verify transition at start only
+  - [x] 8.4 Implement multi-byte UTF-8 character classification — classify by full code point, not individual bytes
+  - [x] 8.5 Implement correct interaction with case folding: fold first, verify boundaries on original positions
+  - [x] 8.6 Write unit tests for word boundaries with ASCII, multi-byte characters, and combined case+word mode
   - Covers: Requirement 11 (AC 11.1–11.5)
 
-- [ ] 9. RegexEngine — NFA compilation
-  - [ ] 9.1 Implement regex pattern parser supporting: `.`, `^`, `$`, `*`, `+`, `?`, lazy variants `*?`, `+?`, `??`
-  - [ ] 9.2 Implement character class parsing: `[set]`, `[^set]`, ranges `[a-z]`, dash/bracket at boundaries
-  - [ ] 9.3 Implement escape sequences: `\d`, `\D`, `\s`, `\S`, `\w`, `\W`, `\b`, `\<`, `\>`
-  - [ ] 9.4 Implement hex escape `\xHH` and C-style escapes `\a`, `\f`, `\n`, `\r`, `\t`, `\v`
-  - [ ] 9.5 Implement group capture with parentheses `(...)` supporting groups 0–9
-  - [ ] 9.6 Implement backreferences `\1`–`\9` within pattern
-  - [ ] 9.7 Implement NFA compilation from parsed AST with size limit check ("Pattern too long")
-  - [ ] 9.8 Implement error reporting: "Unmatched (", "Unmatched )", "Empty closure", "Illegal closure", "Undetermined reference", "Cyclical reference"
-  - [ ] 9.9 Implement empty-pattern reuse (reuse last compiled NFA) and "No previous regular expression" error
-  - [ ] 9.10 Write unit tests for each metacharacter, error case, and compiled NFA structure
+- [x] 9. RegexEngine — NFA compilation
+  - [x] 9.1 Implement regex pattern parser supporting: `.`, `^`, `$`, `*`, `+`, `?`, lazy variants `*?`, `+?`, `??`
+  - [x] 9.2 Implement character class parsing: `[set]`, `[^set]`, ranges `[a-z]`, dash/bracket at boundaries
+  - [x] 9.3 Implement escape sequences: `\d`, `\D`, `\s`, `\S`, `\w`, `\W`, `\b`, `\<`, `\>`
+  - [x] 9.4 Implement hex escape `\xHH` and C-style escapes `\a`, `\f`, `\n`, `\r`, `\t`, `\v`
+  - [x] 9.5 Implement group capture with parentheses `(...)` supporting groups 0–9
+  - [x] 9.6 Implement backreferences `\1`–`\9` within pattern
+  - [x] 9.7 Implement NFA compilation from parsed AST with size limit check ("Pattern too long")
+  - [x] 9.8 Implement error reporting: "Unmatched (", "Unmatched )", "Empty closure", "Illegal closure", "Undetermined reference", "Cyclical reference"
+  - [x] 9.9 Implement empty-pattern reuse (reuse last compiled NFA) and "No previous regular expression" error
+  - [x] 9.10 Write unit tests for each metacharacter, error case, and compiled NFA structure
   - Covers: Requirement 4 (AC 4.1–4.11), Requirement 12 (AC 12.1–12.9)
 
-- [ ] 10. RegexEngine — NFA execution
-  - [ ] 10.1 Implement NFA execution against CharacterIndexer within a byte range [start, end)
-  - [ ] 10.2 Implement fast-path: when NFA starts with literal character, use memchr to locate first candidate
-  - [ ] 10.3 Implement greedy matching: consume maximum then backtrack
-  - [ ] 10.4 Implement lazy matching: attempt shortest first then extend
-  - [ ] 10.5 Implement match-attempt limit per position (default 10,000 steps) to prevent catastrophic backtracking
-  - [ ] 10.6 Implement step-limit exceeded handling: skip position, log warning, continue search
-  - [ ] 10.7 Implement UTF-8 boundary validation: reject matches starting/ending inside multi-byte characters
-  - [ ] 10.8 Implement case-insensitive regex via CaseFolder integration during NFA character comparison
-  - [ ] 10.9 Write unit tests for greedy/lazy matching, backtracking limits, UTF-8 boundary rejection
+- [x] 10. RegexEngine — NFA execution
+  - [x] 10.1 Implement NFA execution against CharacterIndexer within a byte range [start, end)
+  - [x] 10.2 Implement fast-path: when NFA starts with literal character, use memchr to locate first candidate
+  - [x] 10.3 Implement greedy matching: consume maximum then backtrack
+  - [x] 10.4 Implement lazy matching: attempt shortest first then extend
+  - [x] 10.5 Implement match-attempt limit per position (default 10,000 steps) to prevent catastrophic backtracking
+  - [x] 10.6 Implement step-limit exceeded handling: skip position, log warning, continue search
+  - [x] 10.7 Implement UTF-8 boundary validation: reject matches starting/ending inside multi-byte characters
+  - [x] 10.8 Implement case-insensitive regex via CaseFolder integration during NFA character comparison
+  - [x] 10.9 Write unit tests for greedy/lazy matching, backtracking limits, UTF-8 boundary rejection
   - Covers: Requirement 4 (AC 4.12–4.13), Requirement 12 (AC 12.10–12.13), Requirement 19 (AC 19.4–19.5)
 
-- [ ] 11. SubstitutionTemplate and replacement logic
-  - [ ] 11.1 Implement `SubstitutionTemplate` parser recognizing `\0`–`\9` and `$0`–`$9` group references
-  - [ ] 11.2 Implement `substitute(template, captures) -> String` expanding group references against CaptureGroups
-  - [ ] 11.3 Implement unmatched group substitution: replace with empty string
-  - [ ] 11.4 Implement invalid escape sequence detection in replacement with descriptive error
-  - [ ] 11.5 Write unit tests for group expansion, unmatched groups, mixed `\N`/`$N` syntax, and error cases
+- [x] 11. SubstitutionTemplate and replacement logic
+  - [x] 11.1 Implement `SubstitutionTemplate` parser recognizing `\0`–`\9` and `$0`–`$9` group references
+  - [x] 11.2 Implement `substitute(template, captures) -> String` expanding group references against CaptureGroups
+  - [x] 11.3 Implement unmatched group substitution: replace with empty string
+  - [x] 11.4 Implement invalid escape sequence detection in replacement with descriptive error
+  - [x] 11.5 Write unit tests for group expansion, unmatched groups, mixed `\N`/`$N` syntax, and error cases
   - Covers: Requirement 8 (AC 8.1–8.8)
 
-- [ ] 12. FindEngine core — unified search dispatch
-  - [ ] 12.1 Implement `FindEngine` struct holding CaseFolder, last compiled regex, and configuration
-  - [ ] 12.2 Implement `find(&self, request: &FindRequest, indexer: &dyn CharacterIndexer, filter: &dyn LineFilter) -> Result<FindResult, FindError>` dispatching to literal/regex/hex by mode
-  - [ ] 12.3 Implement `find_all(&self, request: &FindRequest, indexer: &dyn CharacterIndexer, filter: &dyn LineFilter) -> Result<Vec<FindResult>, FindError>` for ALL mode
-  - [ ] 12.4 Implement empty-search-term handling: reuse previous term or error if none exists
-  - [ ] 12.5 Implement empty-document short-circuit returning "not found" immediately
-  - [ ] 12.6 Implement null-byte tolerance — treat 0x00 as regular byte value
-  - [ ] 12.7 Implement incomplete UTF-8 in literal search term — search raw bytes as-is
-  - [ ] 12.8 Write unit tests for dispatch, empty term, empty document, and null byte handling
+- [x] 12. FindEngine core — unified search dispatch
+  - [x] 12.1 Implement `FindEngine` struct holding CaseFolder, last compiled regex, and configuration
+  - [x] 12.2 Implement `find(&self, request: &FindRequest, indexer: &dyn CharacterIndexer, filter: &dyn LineFilter) -> Result<FindResult, FindError>` dispatching to literal/regex/hex by mode
+  - [x] 12.3 Implement `find_all(&self, request: &FindRequest, indexer: &dyn CharacterIndexer, filter: &dyn LineFilter) -> Result<Vec<FindResult>, FindError>` for ALL mode
+  - [x] 12.4 Implement empty-search-term handling: reuse previous term or error if none exists
+  - [x] 12.5 Implement empty-document short-circuit returning "not found" immediately
+  - [x] 12.6 Implement null-byte tolerance — treat 0x00 as regular byte value
+  - [x] 12.7 Implement incomplete UTF-8 in literal search term — search raw bytes as-is
+  - [x] 12.8 Write unit tests for dispatch, empty term, empty document, and null byte handling
   - Covers: Requirement 1 (AC 1.6–1.10), Requirement 20 (AC 20.1–20.3, 20.7–20.8)
 
-- [ ] 13. CHANGE (replacement) engine
-  - [ ] 13.1 Implement `change(&self, request: &FindRequest, replacement: &str, indexer: &mut dyn CharacterIndexer) -> Result<ChangeResult, FindError>` for single replacement
-  - [ ] 13.2 Implement `change_all(...)` iterating non-overlapping matches with position adjustment for length deltas
-  - [ ] 13.3 Implement zero-length match advancement (advance by at least one character to prevent infinite loops)
-  - [ ] 13.4 Implement regex replacement with SubstitutionTemplate expansion per match
-  - [ ] 13.5 Implement read-only document check: return "Document is read-only" error before searching
-  - [ ] 13.6 Implement CHANGE ALL returning total substitution count
-  - [ ] 13.7 Implement "not found" result with "'old' NOT FOUND" message when zero replacements made
-  - [ ] 13.8 Write unit tests for single/all replacement, length delta handling, zero-length matches, and read-only guard
+- [x] 13. CHANGE (replacement) engine
+  - [x] 13.1 Implement `change(&self, request: &FindRequest, replacement: &str, indexer: &mut dyn CharacterIndexer) -> Result<ChangeResult, FindError>` for single replacement
+  - [x] 13.2 Implement `change_all(...)` iterating non-overlapping matches with position adjustment for length deltas
+  - [x] 13.3 Implement zero-length match advancement (advance by at least one character to prevent infinite loops)
+  - [x] 13.4 Implement regex replacement with SubstitutionTemplate expansion per match
+  - [x] 13.5 Implement read-only document check: return "Document is read-only" error before searching
+  - [x] 13.6 Implement CHANGE ALL returning total substitution count
+  - [x] 13.7 Implement "not found" result with "'old' NOT FOUND" message when zero replacements made
+  - [x] 13.8 Write unit tests for single/all replacement, length delta handling, zero-length matches, and read-only guard
   - Covers: Requirement 6 (AC 6.1–6.8), Requirement 7 (AC 7.1–7.8), Requirement 8 (AC 8.5–8.7)
 
-- [ ] 14. FindState and session persistence
-  - [ ] 14.1 Implement `FindState` struct storing last FindRequest, last replacement, and per-document state
-  - [ ] 14.2 Implement search history ring buffer (configurable size, default 20 entries)
-  - [ ] 14.3 Implement replacement history ring buffer (configurable size, default 20 entries)
-  - [ ] 14.4 Implement RFIND logic: repeat last FIND advancing in same direction; FIRST→NEXT, LAST→PREV conversion
-  - [ ] 14.5 Implement RCHANGE logic: repeat last CHANGE on next occurrence; FIRST→NEXT, LAST→PREV conversion
-  - [ ] 14.6 Implement "No previous FIND to repeat" and "No previous CHANGE to repeat" errors
-  - [ ] 14.7 Implement RFIND wrap detection — report "NOT FOUND" without wrapping around document
-  - [ ] 14.8 Implement RESET clearing highlight/incremental state while retaining RFIND/RCHANGE parameters
-  - [ ] 14.9 Implement RESET ALL clearing last-search parameters but retaining history list
-  - [ ] 14.10 Implement per-document FindState isolation
-  - [ ] 14.11 Implement serialisation for session persistence across restarts
-  - [ ] 14.12 Write unit tests for RFIND/RCHANGE cycling, history overflow, RESET variants, and serialisation round-trip
+- [x] 14. FindState and session persistence
+  - [x] 14.1 Implement `FindState` struct storing last FindRequest, last replacement, and per-document state
+  - [x] 14.2 Implement search history ring buffer (configurable size, default 20 entries)
+  - [x] 14.3 Implement replacement history ring buffer (configurable size, default 20 entries)
+  - [x] 14.4 Implement RFIND logic: repeat last FIND advancing in same direction; FIRST→NEXT, LAST→PREV conversion
+  - [x] 14.5 Implement RCHANGE logic: repeat last CHANGE on next occurrence; FIRST→NEXT, LAST→PREV conversion
+  - [x] 14.6 Implement "No previous FIND to repeat" and "No previous CHANGE to repeat" errors
+  - [x] 14.7 Implement RFIND wrap detection — report "NOT FOUND" without wrapping around document
+  - [x] 14.8 Implement RESET clearing highlight/incremental state while retaining RFIND/RCHANGE parameters
+  - [x] 14.9 Implement RESET ALL clearing last-search parameters but retaining history list
+  - [x] 14.10 Implement per-document FindState isolation
+  - [x] 14.11 Implement serialisation for session persistence across restarts
+  - [x] 14.12 Write unit tests for RFIND/RCHANGE cycling, history overflow, RESET variants, and serialisation round-trip
   - Covers: Requirement 5 (AC 5.1–5.6), Requirement 9 (AC 9.1–9.6), Requirement 13 (AC 13.1–13.7)
 
-- [ ] 15. Incremental search
-  - [ ] 15.1 Implement `IncrementalSearch` struct managing partial-text state, start position, and cancellation token
-  - [ ] 15.2 Implement forward search from cursor with partial text within configurable time budget (default 50ms)
-  - [ ] 15.3 Implement cancellation on text change: abort in-progress search, restart with updated text
-  - [ ] 15.4 Implement backspace handling: re-search from original start position, not current match
-  - [ ] 15.5 Implement debouncing: only search the latest keystroke state when input faster than search
-  - [ ] 15.6 Implement empty-field handling: clear highlights and restore pre-search viewport
-  - [ ] 15.7 Implement mode respect: honour current case-sensitivity and literal/regex mode settings
-  - [ ] 15.8 Write unit tests for incremental search lifecycle, cancellation, debounce, and mode interaction
+- [x] 15. Incremental search
+  - [x] 15.1 Implement `IncrementalSearch` struct managing partial-text state, start position, and cancellation token
+  - [x] 15.2 Implement forward search from cursor with partial text within configurable time budget (default 50ms)
+  - [x] 15.3 Implement cancellation on text change: abort in-progress search, restart with updated text
+  - [x] 15.4 Implement backspace handling: re-search from original start position, not current match
+  - [x] 15.5 Implement debouncing: only search the latest keystroke state when input faster than search
+  - [x] 15.6 Implement empty-field handling: clear highlights and restore pre-search viewport
+  - [x] 15.7 Implement mode respect: honour current case-sensitivity and literal/regex mode settings
+  - [x] 15.8 Write unit tests for incremental search lifecycle, cancellation, debounce, and mode interaction
   - Covers: Requirement 14 (AC 14.1–14.8)
 
-- [ ] 16. Highlight-all-matches mode
-  - [ ] 16.1 Implement viewport-scoped match computation: find all matches in visible byte range
-  - [ ] 16.2 Implement async/time-budgeted execution to avoid blocking rendering
-  - [ ] 16.3 Implement viewport scroll update: recompute match set on scroll events
-  - [ ] 16.4 Implement search-term change: clear previous highlights, recompute for new term
-  - [ ] 16.5 Implement panel-close cleanup: clear all highlight-all decorations
-  - [ ] 16.6 Implement configurable match threshold (default 1000) with overflow reporting
-  - [ ] 16.7 Implement distinct decoration style separation from current-match highlight
-  - [ ] 16.8 Write unit tests for viewport match computation, threshold enforcement, and cleanup
+- [x] 16. Highlight-all-matches mode
+  - [x] 16.1 Implement viewport-scoped match computation: find all matches in visible byte range
+  - [x] 16.2 Implement async/time-budgeted execution to avoid blocking rendering
+  - [x] 16.3 Implement viewport scroll update: recompute match set on scroll events
+  - [x] 16.4 Implement search-term change: clear previous highlights, recompute for new term
+  - [x] 16.5 Implement panel-close cleanup: clear all highlight-all decorations
+  - [x] 16.6 Implement configurable match threshold (default 1000) with overflow reporting
+  - [x] 16.7 Implement distinct decoration style separation from current-match highlight
+  - [x] 16.8 Write unit tests for viewport match computation, threshold enforcement, and cleanup
   - Covers: Requirement 15 (AC 15.1–15.8)
 
-- [ ] 17. EXCLUDE/SHOW/RESET integration
-  - [ ] 17.1 Implement `find_for_exclude(...)` method: delegates to FindEngine literal/regex logic for line matching
-  - [ ] 17.2 Implement `find_for_show(...)` method: identifies excluded lines containing the search term
-  - [ ] 17.3 Ensure EXCLUDE/SHOW respect current case-sensitivity settings
-  - [ ] 17.4 Ensure EXCLUDE/SHOW do NOT update FindState (no RFIND/RCHANGE side effects)
-  - [ ] 17.5 Implement RESET integration: clear highlight-all and incremental state
-  - [ ] 17.6 Write unit tests for exclude/show delegation, state isolation, and RESET clearing
+- [x] 17. EXCLUDE/SHOW/RESET integration
+  - [x] 17.1 Implement `find_for_exclude(...)` method: delegates to FindEngine literal/regex logic for line matching
+  - [x] 17.2 Implement `find_for_show(...)` method: identifies excluded lines containing the search term
+  - [x] 17.3 Ensure EXCLUDE/SHOW respect current case-sensitivity settings
+  - [x] 17.4 Ensure EXCLUDE/SHOW do NOT update FindState (no RFIND/RCHANGE side effects)
+  - [x] 17.5 Implement RESET integration: clear highlight-all and incremental state
+  - [x] 17.6 Write unit tests for exclude/show delegation, state isolation, and RESET clearing
   - Covers: Requirement 16 (AC 16.1–16.6)
 
-- [ ] 18. Command framework integration
-  - [ ] 18.1 Register commands: `find`, `rfind`, `change`, `rchange`, `find_next`, `find_prev`, `find_all`, `replace_all` with metadata (display name, description, default keybinding, category "Search")
-  - [ ] 18.2 Implement undo transaction wrapping: all CHANGE/RCHANGE operations create a single undo transaction
-  - [ ] 18.3 Implement CHANGE ALL batch grouping: entire multi-replacement batch as one undo transaction
-  - [ ] 18.4 Implement FIND as read-only (no undo records created)
-  - [ ] 18.5 Implement RCHANGE as its own separate undo transaction per invocation
-  - [ ] 18.6 Implement event emission: find_started, match_found, find_completed, replace_completed
-  - [ ] 18.7 Implement Lua scripting bridge compatibility — same argument semantics as command-line input
-  - [ ] 18.8 Write unit tests for command registration, undo grouping, and event emission
+- [x] 18. Command framework integration
+  - [x] 18.1 Register commands: `find`, `rfind`, `change`, `rchange`, `find_next`, `find_prev`, `find_all`, `replace_all` with metadata (display name, description, default keybinding, category "Search")
+  - [x] 18.2 Implement undo transaction wrapping: all CHANGE/RCHANGE operations create a single undo transaction
+  - [x] 18.3 Implement CHANGE ALL batch grouping: entire multi-replacement batch as one undo transaction
+  - [x] 18.4 Implement FIND as read-only (no undo records created)
+  - [x] 18.5 Implement RCHANGE as its own separate undo transaction per invocation
+  - [x] 18.6 Implement event emission: find_started, match_found, find_completed, replace_completed
+  - [x] 18.7 Implement Lua scripting bridge compatibility — same argument semantics as command-line input
+  - [x] 18.8 Write unit tests for command registration, undo grouping, and event emission
   - Covers: Requirement 17 (AC 17.1–17.7)
 
-- [ ] 19. Performance and cancellation
-  - [ ] 19.1 Implement cancellation token for in-progress FIND ALL and CHANGE ALL operations
-  - [ ] 19.2 Implement periodic progress reporting (every N matches or M milliseconds, configurable)
-  - [ ] 19.3 Implement pre-allocated/amortised result collection for FIND ALL (avoid per-line allocation)
-  - [ ] 19.4 Implement bounded-slice-per-line optimisation for column-restricted searches
-  - [ ] 19.5 Write unit tests for cancellation mid-search, progress callback invocation, and allocation efficiency
+- [x] 19. Performance and cancellation
+  - [x] 19.1 Implement cancellation token for in-progress FIND ALL and CHANGE ALL operations
+  - [x] 19.2 Implement periodic progress reporting (every N matches or M milliseconds, configurable)
+  - [x] 19.3 Implement pre-allocated/amortised result collection for FIND ALL (avoid per-line allocation)
+  - [x] 19.4 Implement bounded-slice-per-line optimisation for column-restricted searches
+  - [x] 19.5 Write unit tests for cancellation mid-search, progress callback invocation, and allocation efficiency
   - Covers: Requirement 19 (AC 19.1–19.2, 19.6–19.7)
 
-- [ ] 20. Error handling and edge cases
-  - [ ] 20.1 Define `FindError` enum: NotFound, NoSearchTerm, NoPreviousFind, NoPreviousChange, InvalidHexPattern, InvalidRegex, DocumentReadOnly, InvalidEscape, PatternTooLong
-  - [ ] 20.2 Implement error message formatting per `[find] operation: description` standard
-  - [ ] 20.3 Implement empty document short-circuit
-  - [ ] 20.4 Implement read-only document guard for CHANGE commands
-  - [ ] 20.5 Implement zero-replacements message matching single-match "NOT FOUND" format
-  - [ ] 20.6 Write unit tests for all error variants and edge case responses
+- [x] 20. Error handling and edge cases
+  - [x] 20.1 Define `FindError` enum: NotFound, NoSearchTerm, NoPreviousFind, NoPreviousChange, InvalidHexPattern, InvalidRegex, DocumentReadOnly, InvalidEscape, PatternTooLong
+  - [x] 20.2 Implement error message formatting per `[find] operation: description` standard
+  - [x] 20.3 Implement empty document short-circuit
+  - [x] 20.4 Implement read-only document guard for CHANGE commands
+  - [x] 20.5 Implement zero-replacements message matching single-match "NOT FOUND" format
+  - [x] 20.6 Write unit tests for all error variants and edge case responses
   - Covers: Requirement 20 (AC 20.1–20.8)
 
-- [ ] 21. Property-based tests
-  - [ ] 21.1 Write PBT: literal search result correctness
-  - [ ] 21.2 Write PBT: case folding roundtrip and idempotency
-  - [ ] 21.3 Write PBT: regex match validity (matches within bounds, at character boundaries)
-  - [ ] 21.4 Write PBT: CHANGE ALL replacement count consistency
-  - [ ] 21.5 Write PBT: RFIND/RCHANGE state preservation
-  - [ ] 21.6 Write PBT: scope filter conjunction correctness
-  - [ ] 21.7 Write PBT: hex byte search equivalence to raw byte matching
+- [x] 21. Property-based tests
+  - [x] 21.1 Write PBT: literal search result correctness
+  - [x] 21.2 Write PBT: case folding roundtrip and idempotency
+  - [x] 21.3 Write PBT: regex match validity (matches within bounds, at character boundaries)
+  - [x] 21.4 Write PBT: CHANGE ALL replacement count consistency
+  - [x] 21.5 Write PBT: RFIND/RCHANGE state preservation
+  - [x] 21.6 Write PBT: scope filter conjunction correctness
+  - [x] 21.7 Write PBT: hex byte search equivalence to raw byte matching
   - Covers: Requirements 1–6, 8, 10, 11 (see Property-Based Test Definitions below)
 
-- [ ] 22. Integration tests
-  - [ ] 22.1 Write integration test: full FIND → RFIND → CHANGE → RCHANGE lifecycle
-  - [ ] 22.2 Write integration test: regex search with group capture and substitution
-  - [ ] 22.3 Write integration test: incremental search with debounce and cancellation
-  - [ ] 22.4 Write integration test: highlight-all with viewport scroll updates
-  - [ ] 22.5 Write integration test: large document (100K+ lines) FIND ALL with cancellation and progress
-  - [ ] 22.6 Write integration test: EXCLUDE/SHOW delegation through FindEngine
+- [x] 22. Integration tests
+  - [x] 22.1 Write integration test: full FIND → RFIND → CHANGE → RCHANGE lifecycle
+  - [x] 22.2 Write integration test: regex search with group capture and substitution
+  - [x] 22.3 Write integration test: incremental search with debounce and cancellation
+  - [x] 22.4 Write integration test: highlight-all with viewport scroll updates
+  - [x] 22.5 Write integration test: large document (100K+ lines) FIND ALL with cancellation and progress
+  - [x] 22.6 Write integration test: EXCLUDE/SHOW delegation through FindEngine
   - Covers: End-to-end validation across Requirements 1–20
 
 ---

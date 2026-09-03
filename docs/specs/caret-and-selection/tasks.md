@@ -1,4 +1,4 @@
-# Implementation Plan: Caret & Selection (`ff-caret-selection`)
+﻿# Implementation Plan: Caret & Selection (`ff-caret-selection`)
 
 ## Overview
 
@@ -16,146 +16,146 @@ It is consumed by the GUI shell layer (`ff-desktop`) for actual rendering.
 
 ## Tasks
 
-- [ ] 1. Crate scaffolding and module structure
-  - [ ] 1.1 Create `crates/ff-caret-selection/Cargo.toml` with dependencies (serde, thiserror, proptest dev-dep) and deps on `ff-edit-operations`, `ff-theme`, `ff-configuration-system`, `ff-logging`
-  - [ ] 1.2 Create `crates/ff-caret-selection/src/lib.rs` with module declarations and public API re-exports
-  - [ ] 1.3 Create module files: `caret.rs`, `caret_style.rs`, `caret_line.rs`, `blink.rs`, `selection_display.rs`, `selection_colours.rs`, `virtual_space.rs`, `rectangular.rs`, `multi_caret.rs`, `modified_marker.rs`, `config.rs`, `error.rs`
-  - [ ] 1.4 Add `ff-caret-selection` to workspace `Cargo.toml` members list
+- [x] 1. Crate scaffolding and module structure
+  - [x] 1.1 Create `crates/ff-caret-selection/Cargo.toml` with dependencies (serde, thiserror, proptest dev-dep) and deps on `ff-edit-operations`, `ff-theme`, `ff-configuration-system`, `ff-logging`
+  - [x] 1.2 Create `crates/ff-caret-selection/src/lib.rs` with module declarations and public API re-exports
+  - [x] 1.3 Create module files: `caret.rs`, `caret_style.rs`, `caret_line.rs`, `blink.rs`, `selection_display.rs`, `selection_colours.rs`, `virtual_space.rs`, `rectangular.rs`, `multi_caret.rs`, `modified_marker.rs`, `config.rs`, `error.rs`
+  - [x] 1.4 Add `ff-caret-selection` to workspace `Cargo.toml` members list
   - Covers: Structural foundation for all requirements
 
-- [ ] 2. Caret style and shape types
-  - [ ] 2.1 Define `CaretStyle` enum: Invisible, Line, Block with serde support and Default impl (Line)
-  - [ ] 2.2 Define `CaretWidth` newtype wrapping u8 with validation constructor clamping to [1, 20], default 1
-  - [ ] 2.3 Define `CaretShape` struct composing style, width, and overstrike-override flag
-  - [ ] 2.4 Implement `CaretShape::effective_style(&self, edit_mode: EditMode) -> CaretStyle` returning Block when overstrike mode, else configured style
-  - [ ] 2.5 Implement `CaretShape::effective_width(&self) -> u8` returning clamped width for Line style
-  - [ ] 2.6 Write unit tests for style defaults, width clamping (0→1, 25→20, valid pass-through), overstrike override
+- [x] 2. Caret style and shape types
+  - [x] 2.1 Define `CaretStyle` enum: Invisible, Line, Block with serde support and Default impl (Line)
+  - [x] 2.2 Define `CaretWidth` newtype wrapping u8 with validation constructor clamping to [1, 20], default 1
+  - [x] 2.3 Define `CaretShape` struct composing style, width, and overstrike-override flag
+  - [x] 2.4 Implement `CaretShape::effective_style(&self, edit_mode: EditMode) -> CaretStyle` returning Block when overstrike mode, else configured style
+  - [x] 2.5 Implement `CaretShape::effective_width(&self) -> u8` returning clamped width for Line style
+  - [x] 2.6 Write unit tests for style defaults, width clamping (0→1, 25→20, valid pass-through), overstrike override
   - Covers: Requirement 1 (AC 1.1–1.10)
 
-- [ ] 3. Caret colour model
-  - [ ] 3.1 Define `CaretColours` struct with `primary` (element: Caret) and `additional` (element: CaretAdditional) colour fields using `ColourRGBA` from ff-theme
-  - [ ] 3.2 Implement default colours: primary=#000000, additional=#7F7F7F
-  - [ ] 3.3 Implement `CaretColours::colour_for(&self, is_primary: bool) -> ColourRGBA` accessor
-  - [ ] 3.4 Implement block-caret text inversion logic: method `inverse_text_colour(caret_colour: ColourRGBA) -> ColourRGBA`
-  - [ ] 3.5 Write unit tests for default colours, colour-for selection, block text inversion
+- [x] 3. Caret colour model
+  - [x] 3.1 Define `CaretColours` struct with `primary` (element: Caret) and `additional` (element: CaretAdditional) colour fields using `ColourRGBA` from ff-theme
+  - [x] 3.2 Implement default colours: primary=#000000, additional=#7F7F7F
+  - [x] 3.3 Implement `CaretColours::colour_for(&self, is_primary: bool) -> ColourRGBA` accessor
+  - [x] 3.4 Implement block-caret text inversion logic: method `inverse_text_colour(caret_colour: ColourRGBA) -> ColourRGBA`
+  - [x] 3.5 Write unit tests for default colours, colour-for selection, block text inversion
   - Covers: Requirement 2 (AC 2.1–2.7)
 
-- [ ] 4. Caret blink model
-  - [ ] 4.1 Define `BlinkState` struct with `period_ms: u32` and `last_reset_timestamp_ms: u64` fields
-  - [ ] 4.2 Implement `BlinkState::new(period_ms: u32) -> Self` with default period 530ms
-  - [ ] 4.3 Implement `BlinkState::is_visible(&self, current_time_ms: u64) -> bool` computing visibility from elapsed time modulo period (visible in first half of cycle)
-  - [ ] 4.4 Implement `BlinkState::reset(&mut self, current_time_ms: u64)` to restart cycle at visible phase
-  - [ ] 4.5 Implement `BlinkState::set_period(&mut self, period_ms: u32)` for runtime configuration changes
-  - [ ] 4.6 Implement period=0 handling: `is_visible` always returns true when period is 0
-  - [ ] 4.7 Write unit tests for blink visibility timing, reset behaviour, period=0 always visible, default period
+- [x] 4. Caret blink model
+  - [x] 4.1 Define `BlinkState` struct with `period_ms: u32` and `last_reset_timestamp_ms: u64` fields
+  - [x] 4.2 Implement `BlinkState::new(period_ms: u32) -> Self` with default period 530ms
+  - [x] 4.3 Implement `BlinkState::is_visible(&self, current_time_ms: u64) -> bool` computing visibility from elapsed time modulo period (visible in first half of cycle)
+  - [x] 4.4 Implement `BlinkState::reset(&mut self, current_time_ms: u64)` to restart cycle at visible phase
+  - [x] 4.5 Implement `BlinkState::set_period(&mut self, period_ms: u32)` for runtime configuration changes
+  - [x] 4.6 Implement period=0 handling: `is_visible` always returns true when period is 0
+  - [x] 4.7 Write unit tests for blink visibility timing, reset behaviour, period=0 always visible, default period
   - Covers: Requirement 3 (AC 3.1–3.7)
 
-- [ ] 5. Caret line highlight model
-  - [ ] 5.1 Define `CaretLineMode` enum: None, Frame, Fill with serde support, Default=Frame
-  - [ ] 5.2 Define `CaretLineLayer` enum: Base, OverText with serde support, Default=Base
-  - [ ] 5.3 Define `CaretLineConfig` struct with mode, frame_width, layer, always_show (bool, default false), sub_line (bool, default false), colour (CaretLineBack element)
-  - [ ] 5.4 Implement frame width clamping: [1, line_height/3] via `CaretLineConfig::effective_frame_width(&self, line_height: u32) -> u32`
-  - [ ] 5.5 Implement `CaretLineConfig::should_show(&self, pane_focused: bool) -> bool` respecting always_show flag
-  - [ ] 5.6 Implement `CaretLineConfig::applies_to_subline(&self) -> bool` returning sub_line flag state
-  - [ ] 5.7 Write unit tests for mode defaults, frame width clamping, focus-dependent visibility, sub-line flag
+- [x] 5. Caret line highlight model
+  - [x] 5.1 Define `CaretLineMode` enum: None, Frame, Fill with serde support, Default=Frame
+  - [x] 5.2 Define `CaretLineLayer` enum: Base, OverText with serde support, Default=Base
+  - [x] 5.3 Define `CaretLineConfig` struct with mode, frame_width, layer, always_show (bool, default false), sub_line (bool, default false), colour (CaretLineBack element)
+  - [x] 5.4 Implement frame width clamping: [1, line_height/3] via `CaretLineConfig::effective_frame_width(&self, line_height: u32) -> u32`
+  - [x] 5.5 Implement `CaretLineConfig::should_show(&self, pane_focused: bool) -> bool` respecting always_show flag
+  - [x] 5.6 Implement `CaretLineConfig::applies_to_subline(&self) -> bool` returning sub_line flag state
+  - [x] 5.7 Write unit tests for mode defaults, frame width clamping, focus-dependent visibility, sub-line flag
   - Covers: Requirement 4 (AC 4.1–4.13)
 
-- [ ] 6. Selection display model
-  - [ ] 6.1 Define `SelectionLayer` enum: Base, OverText with serde support, Default=Base
-  - [ ] 6.2 Define `SelectionDisplayConfig` struct with visible (bool, default true), layer, eol_filled (bool, default false)
-  - [ ] 6.3 Implement `SelectionDisplayConfig::is_visible(&self) -> bool` accessor
-  - [ ] 6.4 Implement `SelectionDisplayConfig::extends_to_eol(&self) -> bool` accessor
-  - [ ] 6.5 Implement `SelectionDisplayConfig::is_translucent(&self) -> bool` returning true when layer is OverText
-  - [ ] 6.6 Write unit tests for default visibility, EOL fill flag, layer translucent check
+- [x] 6. Selection display model
+  - [x] 6.1 Define `SelectionLayer` enum: Base, OverText with serde support, Default=Base
+  - [x] 6.2 Define `SelectionDisplayConfig` struct with visible (bool, default true), layer, eol_filled (bool, default false)
+  - [x] 6.3 Implement `SelectionDisplayConfig::is_visible(&self) -> bool` accessor
+  - [x] 6.4 Implement `SelectionDisplayConfig::extends_to_eol(&self) -> bool` accessor
+  - [x] 6.5 Implement `SelectionDisplayConfig::is_translucent(&self) -> bool` returning true when layer is OverText
+  - [x] 6.6 Write unit tests for default visibility, EOL fill flag, layer translucent check
   - Covers: Requirement 5 (AC 5.1–5.10)
 
-- [ ] 7. Selection element colours
-  - [ ] 7.1 Define `SelectionColourSet` struct with text/back pairs for primary, additional, secondary, and inactive selections
-  - [ ] 7.2 Implement default colours: SelectionBack=#C0C0C0 opaque, SelectionAdditionalBack=#D7D7D7 opaque, SelectionSecondaryBack=#B0B0B0 opaque, SelectionInactiveBack=#808080 alpha=0x3F
-  - [ ] 7.3 Implement `SelectionColourSet::colours_for_context(&self, context: SelectionContext) -> (Option<ColourRGBA>, ColourRGBA)` returning (text_override, background) pair
-  - [ ] 7.4 Define `SelectionContext` enum: Primary, Additional, Secondary, Inactive
-  - [ ] 7.5 Implement text colour override semantics: return None when no SelectionText is configured (retain syntax colours)
-  - [ ] 7.6 Implement alpha support: all colour values support translucent alpha channels
-  - [ ] 7.7 Write unit tests for default colours, context-based resolution, None text override, alpha preservation
+- [x] 7. Selection element colours
+  - [x] 7.1 Define `SelectionColourSet` struct with text/back pairs for primary, additional, secondary, and inactive selections
+  - [x] 7.2 Implement default colours: SelectionBack=#C0C0C0 opaque, SelectionAdditionalBack=#D7D7D7 opaque, SelectionSecondaryBack=#B0B0B0 opaque, SelectionInactiveBack=#808080 alpha=0x3F
+  - [x] 7.3 Implement `SelectionColourSet::colours_for_context(&self, context: SelectionContext) -> (Option<ColourRGBA>, ColourRGBA)` returning (text_override, background) pair
+  - [x] 7.4 Define `SelectionContext` enum: Primary, Additional, Secondary, Inactive
+  - [x] 7.5 Implement text colour override semantics: return None when no SelectionText is configured (retain syntax colours)
+  - [x] 7.6 Implement alpha support: all colour values support translucent alpha channels
+  - [x] 7.7 Write unit tests for default colours, context-based resolution, None text override, alpha preservation
   - Covers: Requirement 6 (AC 6.1–6.10)
 
-- [ ] 8. Virtual space display logic
-  - [ ] 8.1 Define `VirtualSpaceRenderer` struct (stateless helper) with methods for virtual space position calculation
-  - [ ] 8.2 Implement `horizontal_offset(&self, line_end_x: f32, virtual_space: u64, space_width: f32) -> f32` computing caret X position in virtual space
-  - [ ] 8.3 Implement `selection_rect_in_virtual_space(&self, line_end_x: f32, vs_start: u64, vs_end: u64, space_width: f32, line_height: f32) -> Rect` computing highlight region for virtual space selection
-  - [ ] 8.4 Implement rule: no whitespace indicators rendered in virtual space region
-  - [ ] 8.5 Implement rule: caret in virtual space uses same style/width/colour as in real text
-  - [ ] 8.6 Write unit tests for offset calculation, selection rect computation, zero virtual space pass-through
+- [x] 8. Virtual space display logic
+  - [x] 8.1 Define `VirtualSpaceRenderer` struct (stateless helper) with methods for virtual space position calculation
+  - [x] 8.2 Implement `horizontal_offset(&self, line_end_x: f32, virtual_space: u64, space_width: f32) -> f32` computing caret X position in virtual space
+  - [x] 8.3 Implement `selection_rect_in_virtual_space(&self, line_end_x: f32, vs_start: u64, vs_end: u64, space_width: f32, line_height: f32) -> Rect` computing highlight region for virtual space selection
+  - [x] 8.4 Implement rule: no whitespace indicators rendered in virtual space region
+  - [x] 8.5 Implement rule: caret in virtual space uses same style/width/colour as in real text
+  - [x] 8.6 Write unit tests for offset calculation, selection rect computation, zero virtual space pass-through
   - Covers: Requirement 7 (AC 7.1–7.6)
 
-- [ ] 9. Rectangular selection display
-  - [ ] 9.1 Define `RectangularSelectionDisplay` struct with methods for column-band rendering computation
-  - [ ] 9.2 Implement `column_band_for_line(&self, left_col: u64, right_col: u64, line_content_len: u64, space_width: f32) -> (f32, f32)` computing pixel extents including virtual space
-  - [ ] 9.3 Implement thin-selection rendering: return zero-width rect (thin line) at column position for thin selection type
-  - [ ] 9.4 Implement per-line caret placement at the caret-column edge of rectangular selection
-  - [ ] 9.5 Write unit tests for column band calculation, virtual space extension, thin selection line, caret placement
+- [x] 9. Rectangular selection display
+  - [x] 9.1 Define `RectangularSelectionDisplay` struct with methods for column-band rendering computation
+  - [x] 9.2 Implement `column_band_for_line(&self, left_col: u64, right_col: u64, line_content_len: u64, space_width: f32) -> (f32, f32)` computing pixel extents including virtual space
+  - [x] 9.3 Implement thin-selection rendering: return zero-width rect (thin line) at column position for thin selection type
+  - [x] 9.4 Implement per-line caret placement at the caret-column edge of rectangular selection
+  - [x] 9.5 Write unit tests for column band calculation, virtual space extension, thin selection line, caret placement
   - Covers: Requirement 8 (AC 8.1–8.5)
 
-- [ ] 10. Multi-caret display coordination
-  - [ ] 10.1 Define `MultiCaretDisplay` struct wrapping selection container reference and caret configuration
-  - [ ] 10.2 Implement `caret_render_list(&self) -> Vec<CaretRenderInfo>` producing ordered list of all caret positions with primary/additional colour assignment
-  - [ ] 10.3 Define `CaretRenderInfo` struct: position (line, column, virtual_space), is_primary (bool), colour, style, width
-  - [ ] 10.4 Implement `selection_render_list(&self) -> Vec<SelectionRenderInfo>` producing list of selection ranges with appropriate colour context (Primary for main, Additional for others)
-  - [ ] 10.5 Define `SelectionRenderInfo` struct: start, end, colour_context (SelectionContext), is_rectangular (bool)
-  - [ ] 10.6 Implement uniform blink rule: all carets share the same blink phase (all visible or all hidden simultaneously)
-  - [ ] 10.7 Write unit tests for single caret (primary), multi-caret colour assignment, selection list context, uniform blink
+- [x] 10. Multi-caret display coordination
+  - [x] 10.1 Define `MultiCaretDisplay` struct wrapping selection container reference and caret configuration
+  - [x] 10.2 Implement `caret_render_list(&self) -> Vec<CaretRenderInfo>` producing ordered list of all caret positions with primary/additional colour assignment
+  - [x] 10.3 Define `CaretRenderInfo` struct: position (line, column, virtual_space), is_primary (bool), colour, style, width
+  - [x] 10.4 Implement `selection_render_list(&self) -> Vec<SelectionRenderInfo>` producing list of selection ranges with appropriate colour context (Primary for main, Additional for others)
+  - [x] 10.5 Define `SelectionRenderInfo` struct: start, end, colour_context (SelectionContext), is_rectangular (bool)
+  - [x] 10.6 Implement uniform blink rule: all carets share the same blink phase (all visible or all hidden simultaneously)
+  - [x] 10.7 Write unit tests for single caret (primary), multi-caret colour assignment, selection list context, uniform blink
   - Covers: Requirement 9 (AC 9.1–9.6)
 
-- [ ] 11. Modified line marker rendering
-  - [ ] 11.1 Define `ModifiedMarkerConfig` struct with marker_char (default '*'), colour (from theme), prefix_position
-  - [ ] 11.2 Implement `ModifiedMarkerConfig::should_render(&self, line: u64, tracker: &ModifiedLineTracker) -> bool` checking logical state
-  - [ ] 11.3 Implement `ModifiedMarkerConfig::render_char(&self) -> char` returning the marker character
-  - [ ] 11.4 Implement marker position: fixed within prefix area, not shifting with line number width changes
-  - [ ] 11.5 Implement marker visibility rule: marker not obscured by caret-line highlight (drawn after/above caret-line background)
-  - [ ] 11.6 Write unit tests for marker visibility check, position stability, draw-order over caret-line
+- [x] 11. Modified line marker rendering
+  - [x] 11.1 Define `ModifiedMarkerConfig` struct with marker_char (default '*'), colour (from theme), prefix_position
+  - [x] 11.2 Implement `ModifiedMarkerConfig::should_render(&self, line: u64, tracker: &ModifiedLineTracker) -> bool` checking logical state
+  - [x] 11.3 Implement `ModifiedMarkerConfig::render_char(&self) -> char` returning the marker character
+  - [x] 11.4 Implement marker position: fixed within prefix area, not shifting with line number width changes
+  - [x] 11.5 Implement marker visibility rule: marker not obscured by caret-line highlight (drawn after/above caret-line background)
+  - [x] 11.6 Write unit tests for marker visibility check, position stability, draw-order over caret-line
   - Covers: Requirement 10 (AC 10.1–10.5)
 
-- [ ] 12. Configuration and theme integration
-  - [ ] 12.1 Define `CaretSelectionConfig` aggregate struct composing CaretShape, CaretColours, BlinkState, CaretLineConfig, SelectionDisplayConfig, SelectionColourSet, ModifiedMarkerConfig
-  - [ ] 12.2 Implement `CaretSelectionConfig::from_theme(theme: &ThemeApi) -> Self` loading all settings from the theme system with defaults for missing values
-  - [ ] 12.3 Implement `CaretSelectionConfig::apply_theme_update(&mut self, theme: &ThemeApi)` for hot-reload: re-read all settings from theme on next frame
-  - [ ] 12.4 Implement GUI-independence: CaretSelectionConfig stores pure data with no rendering framework types
-  - [ ] 12.5 Implement programmatic change support: all fields have public setters that take effect on next render frame
-  - [ ] 12.6 Write unit tests for config construction from defaults, theme application, hot-reload update
+- [x] 12. Configuration and theme integration
+  - [x] 12.1 Define `CaretSelectionConfig` aggregate struct composing CaretShape, CaretColours, BlinkState, CaretLineConfig, SelectionDisplayConfig, SelectionColourSet, ModifiedMarkerConfig
+  - [x] 12.2 Implement `CaretSelectionConfig::from_theme(theme: &ThemeApi) -> Self` loading all settings from the theme system with defaults for missing values
+  - [x] 12.3 Implement `CaretSelectionConfig::apply_theme_update(&mut self, theme: &ThemeApi)` for hot-reload: re-read all settings from theme on next frame
+  - [x] 12.4 Implement GUI-independence: CaretSelectionConfig stores pure data with no rendering framework types
+  - [x] 12.5 Implement programmatic change support: all fields have public setters that take effect on next render frame
+  - [x] 12.6 Write unit tests for config construction from defaults, theme application, hot-reload update
   - Covers: Requirement 11 (AC 11.1–11.5)
 
-- [ ] 13. Keyboard focus integration
-  - [ ] 13.1 Implement `FocusState` struct tracking pane focus and caret visibility state
-  - [ ] 13.2 Implement `FocusState::on_focus_gained(&mut self, blink: &mut BlinkState, current_time_ms: u64)` resetting blink cycle to visible
-  - [ ] 13.3 Implement `FocusState::on_caret_moved(&mut self, blink: &mut BlinkState, current_time_ms: u64)` resetting blink cycle to visible
-  - [ ] 13.4 Implement `FocusState::is_caret_visible(&self) -> bool` returning true when pane focused and caret within viewport
-  - [ ] 13.5 Write unit tests for focus gain blink reset, caret move blink reset, visibility when unfocused
+- [x] 13. Keyboard focus integration
+  - [x] 13.1 Implement `FocusState` struct tracking pane focus and caret visibility state
+  - [x] 13.2 Implement `FocusState::on_focus_gained(&mut self, blink: &mut BlinkState, current_time_ms: u64)` resetting blink cycle to visible
+  - [x] 13.3 Implement `FocusState::on_caret_moved(&mut self, blink: &mut BlinkState, current_time_ms: u64)` resetting blink cycle to visible
+  - [x] 13.4 Implement `FocusState::is_caret_visible(&self) -> bool` returning true when pane focused and caret within viewport
+  - [x] 13.5 Write unit tests for focus gain blink reset, caret move blink reset, visibility when unfocused
   - Covers: Requirement 12 (AC 12.1–12.3)
 
-- [ ] 14. Error handling
-  - [ ] 14.1 Define `CaretSelectionError` enum: InvalidCaretWidth, InvalidFrameWidth, ConfigurationError
-  - [ ] 14.2 Implement error message formatting per `[caret-selection] operation: description` standard (≤200 chars)
-  - [ ] 14.3 Implement graceful degradation: invalid configuration values revert to defaults with WARN log
-  - [ ] 14.4 Write unit tests for all error variants and message formatting
+- [x] 14. Error handling
+  - [x] 14.1 Define `CaretSelectionError` enum: InvalidCaretWidth, InvalidFrameWidth, ConfigurationError
+  - [x] 14.2 Implement error message formatting per `[caret-selection] operation: description` standard (≤200 chars)
+  - [x] 14.3 Implement graceful degradation: invalid configuration values revert to defaults with WARN log
+  - [x] 14.4 Write unit tests for all error variants and message formatting
   - Covers: Cross-cutting Requirement 8 (Error Message Standards)
 
-- [ ] 15. Property-based tests
-  - [ ] 15.1 Write PBT: caret width clamping correctness
-  - [ ] 15.2 Write PBT: blink visibility timing correctness
-  - [ ] 15.3 Write PBT: caret-line frame width clamping correctness
-  - [ ] 15.4 Write PBT: virtual space horizontal offset calculation correctness
-  - [ ] 15.5 Write PBT: selection colour context resolution correctness
-  - [ ] 15.6 Write PBT: overstrike mode forces Block caret style
-  - [ ] 15.7 Write PBT: configuration round-trip from theme and back
+- [x] 15. Property-based tests
+  - [x] 15.1 Write PBT: caret width clamping correctness
+  - [x] 15.2 Write PBT: blink visibility timing correctness
+  - [x] 15.3 Write PBT: caret-line frame width clamping correctness
+  - [x] 15.4 Write PBT: virtual space horizontal offset calculation correctness
+  - [x] 15.5 Write PBT: selection colour context resolution correctness
+  - [x] 15.6 Write PBT: overstrike mode forces Block caret style
+  - [x] 15.7 Write PBT: configuration round-trip from theme and back
   - Covers: Requirements 1–9, 11 (see Property-Based Test Definitions below)
 
-- [ ] 16. Integration tests
-  - [ ] 16.1 Write integration test: full caret configuration load from theme → render info generation lifecycle
-  - [ ] 16.2 Write integration test: multi-caret scenario with mixed primary/additional colours and selections
-  - [ ] 16.3 Write integration test: rectangular selection spanning lines with virtual space extension
-  - [ ] 16.4 Write integration test: caret-line highlight mode switching (None → Frame → Fill) with hot-reload
-  - [ ] 16.5 Write integration test: focus gain/loss cycle with blink reset and inactive selection colour switch
-  - [ ] 16.6 Write integration test: modified line markers with save-clear cycle
+- [x] 16. Integration tests
+  - [x] 16.1 Write integration test: full caret configuration load from theme → render info generation lifecycle
+  - [x] 16.2 Write integration test: multi-caret scenario with mixed primary/additional colours and selections
+  - [x] 16.3 Write integration test: rectangular selection spanning lines with virtual space extension
+  - [x] 16.4 Write integration test: caret-line highlight mode switching (None → Frame → Fill) with hot-reload
+  - [x] 16.5 Write integration test: focus gain/loss cycle with blink reset and inactive selection colour switch
+  - [x] 16.6 Write integration test: modified line markers with save-clear cycle
   - Covers: End-to-end validation across Requirements 1–12
 
 ---

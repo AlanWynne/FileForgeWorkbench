@@ -227,29 +227,154 @@ impl WorkbenchShell {
         // ── File Explorer side panel (ctx-level, resizable) ────────────
         // Must be shown before CentralPanel so egui allocates space correctly.
         // Validates: Requirement 1.3 file-tree-panel, fix B019
+        // Validates: Requirement 20.1 -- Tab from CommandField in FilesPanel transfers focus
+        // to the first catalog node in the catalog tree.
+        // ── Tab from FilesPanel command field → first catalog node ──────
+        // Validates: Requirement 20.1
+        // The Files Panel has its own internal "Command ===>" TextEdit.
+        // When that field has egui focus and the user presses plain Tab,
+        // we consume the Tab event and request focus on the first catalog node.
+        // We cannot use focus_stop here because focus_stop tracks the shell's
+        // top-level command field, not the panel-internal one.
+        let is_files_panel = self.tabs.active_tab().kind == TabKind::FilesPanel;
+        if is_files_panel && !self.modal_open {
+            let files_cmd_id = egui::Id::new("files_panel_cmd");
+            let files_cmd_focused = ctx.memory(|m| m.focused() == Some(files_cmd_id));
+            if files_cmd_focused {
+                let tab_pressed = ctx.input_mut(|i| {
+                    if i.key_pressed(egui::Key::Tab) && !i.modifiers.shift {
+                        i.events.retain(|e| {
+                            !matches!(
+                                e,
+                                egui::Event::Key {
+                                    key: egui::Key::Tab,
+                                    ..
+                                }
+                            )
+                        });
+                        return true;
+                    }
+                    false
+                });
+                if tab_pressed {
+                    self.files_panel.tree_focus_requested = true;
+                }
+            }
+        }
+
         let is_file_explorer = self.tabs.active_tab().kind == TabKind::FileExplorerPanel;
         if is_file_explorer {
-            let open_path = egui::SidePanel::left("file_explorer_side")
-                .resizable(true)
-                .min_width(120.0)
-                .max_width(600.0)
-                .default_width(self.file_explorer_panel_width)
-                .show(ctx, |ui| {
-                    file_explorer_panel::render(
-                        ui,
-                        &mut self.file_explorer_panel,
+            let open_path = egui::CentralPanel::default().show(ctx, |ui| {
+                // Req 20.2–20.12 — keyboard handling when explorer has focus.
+                if self.file_explorer_panel.explorer_focused {
+                    let visible = file_explorer_panel::collect_visible_node_paths_with_dirs(
                         &self.files_panel.registry,
                         &self.files_panel,
-                    )
-                });
-            self.file_explorer_panel_width = open_path.response.rect.width().clamp(120.0, 600.0);
-            if let Some(path) = open_path.inner {
-                let mut p = ff_command::CommandParams::new();
-                p.insert("path", path.as_str());
-                let _ = self.dispatch.execute_command("file.open", p);
+                        &self.file_explorer_panel.open_catalogs,
+                        &self.file_explorer_panel.open_directories,
+                    );
+                    file_explorer_panel::handle_explorer_keyboard(
+                        ui,
+                        &mut self.file_explorer_panel,
+                        &visible,
+                    );
+                    if ui.input(|i| i.pointer.any_click())
+                        && !ui.rect_contains_pointer(ui.max_rect())
+                    {
+                        self.file_explorer_panel.explorer_focused = false;
+                    }
+                }
+
+                file_explorer_panel::render(
+                    ui,
+                    &mut self.file_explorer_panel,
+                    &self.files_panel.registry,
+                    &self.files_panel,
+                )
+            });
+            // Persist sidebar width from the state (updated inside render())
+            self.file_explorer_panel_width =
+                self.file_explorer_panel.sidebar_width.clamp(120.0, 600.0);
+            if let Some(dsn) = open_path.inner {
+                // Req 16 — for Mainframe/POSIX datasets, resolve physical path from
+                // catalog repository + DSN before dispatching file.open.
+                // Find which catalog owns this DSN by searching the datasets map.
+                let catalog_info = self
+                    .files_panel
+                    .datasets
+                    .iter()
+                    .find(|(_, datasets)| datasets.iter().any(|d| d.name == dsn))
+                    .and_then(|(cat_name, _)| self.files_panel.registry.get_by_name(cat_name))
+                    .map(|c| (c.catalog_type, c.path.clone()));
+                match catalog_info {
+                    Some((crate::catalog_registry::CatalogType::Mainframe, repo_path)) => {
+                        match crate::files_panel::FilesPanelState::resolve_dataset_path(
+                            &repo_path, &dsn,
+                        ) {
+                            None => {
+                                self.open_error = Some(format!(
+                                    "'{}': catalog has no repository path configured.",
+                                    dsn
+                                ));
+                            }
+                            Some(path) => {
+                                if !path.exists() {
+                                    if let Err(e) =
+                                        crate::files_panel::FilesPanelState::create_dataset_file(
+                                            &path,
+                                        )
+                                    {
+                                        self.open_error = Some(format!(
+                                            "'{}': cannot create dataset file at {}: {e}",
+                                            dsn,
+                                            path.display()
+                                        ));
+                                        return;
+                                    }
+                                }
+                                let path_str = path.to_string_lossy().into_owned();
+                                let mut p = ff_command::CommandParams::new();
+                                p.insert("path", path_str.as_str());
+                                let _ = self.dispatch.execute_command("file.open", p);
+                            }
+                        }
+                    }
+                    None => {
+                        // DSN not found in datasets map — show diagnostic
+                        self.open_error = Some(format!(
+                            "'{}': dataset not found in catalog registry (datasets map has {} entries)",
+                            dsn,
+                            self.files_panel.datasets.values().map(|v| v.len()).sum::<usize>()
+                        ));
+                    }
+                    _ => {
+                        // Native path or unknown — dispatch directly
+                        let mut p = ff_command::CommandParams::new();
+                        p.insert("path", dsn.as_str());
+                        let _ = self.dispatch.execute_command("file.open", p);
+                    }
+                }
             }
             if let Some(err) = self.file_explorer_panel.last_error.take() {
                 self.open_error = Some(err);
+            }
+
+            // Req 21.6 — paste-into-editor prompt when Ctrl+V pressed while
+            // file_copy_clipboard is non-empty. Write the file list to the OS
+            // clipboard as plain text so the user can paste it into any editor tab.
+            // Req 21.7 — one path per line.
+            if self.file_explorer_panel.paste_prompt_open {
+                self.file_explorer_panel.paste_prompt_open = false;
+                if let Some(ref cb) = self.file_explorer_panel.file_copy_clipboard.clone() {
+                    let text = cb.paths.join("\n");
+                    if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                        let _ = clipboard.set_text(&text);
+                    }
+                    self.open_error = Some(format!(
+                        "{} file path(s) copied to clipboard — press Ctrl+V in editor to paste",
+                        cb.paths.len()
+                    ));
+                }
             }
         }
 
@@ -280,147 +405,216 @@ impl WorkbenchShell {
         }
 
         // Validates: Requirement 14.8 — central panel dispatches on tab kind
-        egui::CentralPanel::default().show(ctx, |ui| {
-            match self.tabs.active_tab().kind {
-                TabKind::PrimaryOptionMenu => {
-                    // Validates: Requirement 14.1, 14.2-14.5, 14.39, 14.40, 14.41, 14.42
-                    // Validates: Requirement 13 (Legacy theme semantic colours)
-                    let pom_colours = self.legacy_pom_colours();
-                    let focused_pom_option = match self.focus_stop {
-                        FocusStop::PomOption { index } => Some(index),
-                        _ => None,
-                    };
-                    let pom_result = primary_option_menu::render(
-                        ui,
-                        self.pom_calendar_offset,
-                        pom_colours,
-                        focused_pom_option,
-                    );
-                    if let Some(nav) = pom_result.calendar_nav {
-                        match nav {
-                            primary_option_menu::CalendarNav::Prev => self.pom_calendar_offset -= 1,
-                            primary_option_menu::CalendarNav::Next => self.pom_calendar_offset += 1,
-                        }
-                    }
-                    if let Some(pom_action) = pom_result.action {
-                        match pom_action {
-                            primary_option_menu::PomAction::Navigate(key) => {
-                                self.handle_command(&key.to_string());
-                            }
-                            primary_option_menu::PomAction::Exit => {
-                                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                            }
-                        }
-                    }
-                }
-                TabKind::FilesPanel => {
-                    // Validates: Requirement 1.1, 1.7
-                    let action = files_panel::render(ui, &mut self.files_panel);
-                    match action {
-                        files_panel::FilesPanelAction::ReturnToPom => {
-                            self.pending_return_to_pom = true;
-                        }
-                        files_panel::FilesPanelAction::NewCatalog => {
-                            if matches!(
-                                self.files_panel.dialog,
-                                files_panel::FilesDialogState::None
-                            ) {
-                                // Req 12.1, 12.2 — pre-populate with configured defaults
-                                let mf_root = self
-                                    .config_handle
-                                    .get_string(ff_config::keys::catalogs::DEFAULT_MAINFRAME_ROOT)
-                                    .unwrap_or_default();
-                                let posix_root = self
-                                    .config_handle
-                                    .get_string(ff_config::keys::catalogs::DEFAULT_POSIX_ROOT)
-                                    .unwrap_or_default();
-                                self.files_panel.dialog = files_panel::FilesDialogState::NewCatalog(
-                                    NewCatalogForm::with_defaults(mf_root, posix_root),
-                                );
-                            }
-                        }
-                        files_panel::FilesPanelAction::EditCatalog(name) => {
-                            // Req 4.1 - open Edit Catalog dialog pre-populated
-                            if matches!(
-                                self.files_panel.dialog,
-                                files_panel::FilesDialogState::None
-                            ) {
-                                if let Some(cat) = self.files_panel.registry.get_by_name(&name) {
-                                    let form =
-                                        catalog_manager_dialog::EditCatalogForm::from_catalog(cat);
-                                    self.files_panel.dialog =
-                                        files_panel::FilesDialogState::EditCatalog(form);
+        if !is_file_explorer {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                match self.tabs.active_tab().kind {
+                    TabKind::PrimaryOptionMenu => {
+                        // Validates: Requirement 14.1, 14.2-14.5, 14.39, 14.40, 14.41, 14.42
+                        // Validates: Requirement 13 (Legacy theme semantic colours)
+                        let pom_colours = self.legacy_pom_colours();
+                        let focused_pom_option = match self.focus_stop {
+                            FocusStop::PomOption { index } => Some(index),
+                            _ => None,
+                        };
+                        let pom_result = primary_option_menu::render(
+                            ui,
+                            self.pom_calendar_offset,
+                            pom_colours,
+                            focused_pom_option,
+                        );
+                        if let Some(nav) = pom_result.calendar_nav {
+                            match nav {
+                                primary_option_menu::CalendarNav::Prev => {
+                                    self.pom_calendar_offset -= 1
+                                }
+                                primary_option_menu::CalendarNav::Next => {
+                                    self.pom_calendar_offset += 1
                                 }
                             }
                         }
-                        files_panel::FilesPanelAction::DeleteCatalog(name) => {
-                            // Req 4.3 - open Delete Catalog confirmation dialog
-                            if matches!(
-                                self.files_panel.dialog,
-                                files_panel::FilesDialogState::None
-                            ) {
-                                if let Some(cat) = self.files_panel.registry.get_by_name(&name) {
-                                    let confirm =
+                        if let Some(pom_action) = pom_result.action {
+                            match pom_action {
+                                primary_option_menu::PomAction::Navigate(key) => {
+                                    self.handle_command(&key.to_string());
+                                }
+                                primary_option_menu::PomAction::Exit => {
+                                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                                }
+                            }
+                        }
+                    }
+                    TabKind::FilesPanel => {
+                        // Validates: Requirement 1.1, 1.7
+                        let action = files_panel::render(ui, &mut self.files_panel);
+                        match action {
+                            files_panel::FilesPanelAction::ReturnToPom => {
+                                self.pending_return_to_pom = true;
+                            }
+                            files_panel::FilesPanelAction::NewCatalog => {
+                                if matches!(
+                                    self.files_panel.dialog,
+                                    files_panel::FilesDialogState::None
+                                ) {
+                                    // Req 12.1, 12.2 — pre-populate with configured defaults
+                                    let mf_root = self
+                                        .config_handle
+                                        .get_string(
+                                            ff_config::keys::catalogs::DEFAULT_MAINFRAME_ROOT,
+                                        )
+                                        .unwrap_or_default();
+                                    let posix_root = self
+                                        .config_handle
+                                        .get_string(ff_config::keys::catalogs::DEFAULT_POSIX_ROOT)
+                                        .unwrap_or_default();
+                                    self.files_panel.dialog =
+                                        files_panel::FilesDialogState::NewCatalog(
+                                            NewCatalogForm::with_defaults(mf_root, posix_root),
+                                        );
+                                }
+                            }
+                            files_panel::FilesPanelAction::EditCatalog(name) => {
+                                // Req 4.1 - open Edit Catalog dialog pre-populated
+                                if matches!(
+                                    self.files_panel.dialog,
+                                    files_panel::FilesDialogState::None
+                                ) {
+                                    if let Some(cat) = self.files_panel.registry.get_by_name(&name)
+                                    {
+                                        let form =
+                                            catalog_manager_dialog::EditCatalogForm::from_catalog(
+                                                cat,
+                                            );
+                                        self.files_panel.dialog =
+                                            files_panel::FilesDialogState::EditCatalog(form);
+                                    }
+                                }
+                            }
+                            files_panel::FilesPanelAction::DeleteCatalog(name) => {
+                                // Req 4.3 - open Delete Catalog confirmation dialog
+                                if matches!(
+                                    self.files_panel.dialog,
+                                    files_panel::FilesDialogState::None
+                                ) {
+                                    if let Some(cat) = self.files_panel.registry.get_by_name(&name)
+                                    {
+                                        let confirm =
                                         catalog_manager_dialog::DeleteCatalogConfirm::from_catalog(
                                             cat,
                                         );
-                                    self.files_panel.dialog =
-                                        files_panel::FilesDialogState::DeleteCatalog(confirm);
+                                        self.files_panel.dialog =
+                                            files_panel::FilesDialogState::DeleteCatalog(confirm);
+                                    }
                                 }
                             }
-                        }
 
-                        files_panel::FilesPanelAction::AllocateDataset(catalog_name) => {
-                            // Req 5.1 - open Allocate Dataset dialog
-                            // Req 13.2 - record which catalog opened the dialog
-                            if matches!(
-                                self.files_panel.dialog,
-                                files_panel::FilesDialogState::None
-                            ) {
-                                self.files_panel.pending_alloc_catalog = Some(catalog_name.clone());
-                                // Req 5.7 — pre-populate Dataset Name with catalog HLQ if set
-                                let form = self
-                                    .files_panel
-                                    .registry
-                                    .get_by_name(&catalog_name)
-                                    .and_then(|c| c.default_hlq.as_deref())
-                                    .map(dataset_alloc_dialog::AllocDatasetForm::with_hlq)
-                                    .unwrap_or_default();
-                                self.files_panel.dialog =
-                                    files_panel::FilesDialogState::AllocateDataset(form);
+                            files_panel::FilesPanelAction::AllocateDataset(catalog_name) => {
+                                // Req 5.1 - open Allocate Dataset dialog
+                                // Req 13.2 - record which catalog opened the dialog
+                                if matches!(
+                                    self.files_panel.dialog,
+                                    files_panel::FilesDialogState::None
+                                ) {
+                                    self.files_panel.pending_alloc_catalog =
+                                        Some(catalog_name.clone());
+                                    // Req 5.7 — pre-populate Dataset Name with catalog HLQ if set
+                                    let form = self
+                                        .files_panel
+                                        .registry
+                                        .get_by_name(&catalog_name)
+                                        .and_then(|c| c.default_hlq.as_deref())
+                                        .map(dataset_alloc_dialog::AllocDatasetForm::with_hlq)
+                                        .unwrap_or_default();
+                                    self.files_panel.dialog =
+                                        files_panel::FilesDialogState::AllocateDataset(form);
+                                }
                             }
+                            files_panel::FilesPanelAction::OpenFile(dsn) => {
+                                // Req 16 — resolve physical path from catalog repository + DSN
+                                let catalog_path = self
+                                    .files_panel
+                                    .content
+                                    .selected_catalog
+                                    .as_deref()
+                                    .and_then(|n| self.files_panel.registry.get_by_name(n))
+                                    .map(|c| c.path.clone())
+                                    .unwrap_or_default();
+                                let is_mainframe = self
+                                    .files_panel
+                                    .content
+                                    .selected_catalog
+                                    .as_deref()
+                                    .and_then(|n| self.files_panel.registry.get_by_name(n))
+                                    .map(|c| {
+                                        c.catalog_type
+                                            == crate::catalog_registry::CatalogType::Mainframe
+                                    })
+                                    .unwrap_or(false);
+                                if is_mainframe {
+                                    match crate::files_panel::FilesPanelState::resolve_dataset_path(
+                                        &catalog_path,
+                                        &dsn,
+                                    ) {
+                                        None => {
+                                            self.open_error = Some(format!(
+                                                "'{}': catalog has no repository path configured.",
+                                                dsn
+                                            ));
+                                        }
+                                        Some(path) => {
+                                            if !path.exists() {
+                                                if let Err(e) = crate::files_panel::FilesPanelState::create_dataset_file(&path) {
+                                                    self.open_error = Some(format!(
+                                                        "'{}': cannot create dataset file at {}: {e}",
+                                                        dsn,
+                                                        path.display()
+                                                    ));
+                                                    return;
+                                                }
+                                            }
+                                            let path_str = path.to_string_lossy().into_owned();
+                                            let mut p = ff_command::CommandParams::new();
+                                            p.insert("path", path_str.as_str());
+                                            let _ =
+                                                self.dispatch.execute_command("file.open", p);
+                                        }
+                                    }
+                                } else {
+                                    let mut p = ff_command::CommandParams::new();
+                                    p.insert("path", dsn.as_str());
+                                    let _ = self.dispatch.execute_command("file.open", p);
+                                }
+                            }
+                            files_panel::FilesPanelAction::NavigateInto(_) => {}
+                            files_panel::FilesPanelAction::None => {}
                         }
-                        files_panel::FilesPanelAction::OpenFile(_) => {}
-                        files_panel::FilesPanelAction::NavigateInto(_) => {}
-                        files_panel::FilesPanelAction::None => {}
+                    }
+                    TabKind::FileEditor | TabKind::Untitled => {
+                        let tab_id = self.tabs.active_tab().id;
+                        let tab = self.tabs.active_tab_mut();
+                        if let Some(err) = editor_panel::render(
+                            ui,
+                            tab,
+                            &self.runtime,
+                            &mut self.cmd_engine,
+                            &mut self.exclude_manager,
+                            tab_id,
+                        ) {
+                            self.open_error = Some(err);
+                        }
+                    }
+                    TabKind::SettingsPanel => {
+                        // Validates: Requirement 15.1, 15.2, 15.3
+                        crate::settings_panel::render(
+                            ui,
+                            &mut self.settings_panel,
+                            &self.config_handle,
+                        );
+                    }
+                    TabKind::FileExplorerPanel => {
+                        // Rendered above in the is_file_explorer block — unreachable here
                     }
                 }
-                TabKind::FileEditor | TabKind::Untitled => {
-                    let tab_id = self.tabs.active_tab().id;
-                    let tab = self.tabs.active_tab_mut();
-                    if let Some(err) = editor_panel::render(
-                        ui,
-                        tab,
-                        &self.runtime,
-                        &mut self.cmd_engine,
-                        &mut self.exclude_manager,
-                        tab_id,
-                    ) {
-                        self.open_error = Some(err);
-                    }
-                }
-                TabKind::SettingsPanel => {
-                    // Validates: Requirement 15.1, 15.2, 15.3
-                    crate::settings_panel::render(
-                        ui,
-                        &mut self.settings_panel,
-                        &self.config_handle,
-                    );
-                }
-                TabKind::FileExplorerPanel => {
-                    // Rendered via ctx-level SidePanel below — nothing to do here
-                }
-            }
-        });
+            });
+        } // end !is_file_explorer
     }
 }

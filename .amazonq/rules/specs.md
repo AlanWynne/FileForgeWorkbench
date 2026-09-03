@@ -84,9 +84,11 @@ The following specs are available under `docs/specs/`:
 
 ## Rules for Amazon Q
 
+- **All documentation files MUST use plain ASCII characters only.** Follow `.amazonq/rules/documentation-ascii.md` for the full list of prohibited characters and their substitutes. This applies to every `.md` file written or edited.
 - **When given any new requirement**, follow the full gate in `.amazonq/rules/new-requirements-gate.md` BEFORE touching any source file.
 - **Before implementing any feature**, read `docs/specs/<sub-project>/requirements.md` for that sub-project AND update it with any new or adjusted acceptance criteria before writing any code.
 - Before writing tests, confirm the acceptance criteria in `requirements.md` — every test must map to a criterion via `// Validates: Requirement X.Y`.
 - Before proposing a design, read `docs/specs/<sub-project>/design.md` to avoid contradicting existing architectural decisions.
 - When asked about task status, read `docs/specs/<sub-project>/tasks.md`.
 - The `docs/specs/project-master/` folder contains cross-cutting validation reports and the master requirements — read it for any work that spans multiple sub-projects.
+- Reuse project-specific maintenance scripts from `tools/`; follow `.amazonq/rules/project-tools.md` before creating, moving, or deleting scripts.

@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This feature specifies the Database Tool for FileForgeWorkbench — a full-featured integrated Database IDE delivered as a **workbench plugin** (`ff-database-tool` crate). The database tool adapts DBeaver Community Edition capabilities to the FileForgeWorkbench ecosystem, providing: a connection management panel, SQL editor panel, result grid panel, schema browser panel, data transfer workflows, ER diagram panel, and database administration views.
+This feature specifies the Database Tool for FileForgeWorkbench — a full-featured integrated Database IDE delivered as a **workbench plugin** (`ff-database-tool` crate). The database tool provides an integrated database IDE within the FileForgeWorkbench ecosystem, drawing on established database tool patterns, providing: a connection management panel, SQL editor panel, result grid panel, schema browser panel, data transfer workflows, ER diagram panel, and database administration views.
 
 The database tool is **not** a standalone application — it integrates with the workbench platform through:
 - **Plugin Architecture** (`ff-plugin`): registers as a `FileForgePlugin`, contributes panels, commands, and capabilities via `PluginContext`
@@ -72,7 +72,7 @@ The database tool is **not** a standalone application — it integrates with the
 
 **User Story:** As a database tool user, I want a registry of available Rust database drivers with automatic capability detection, so that I can connect to any supported database without manual driver configuration.
 
-**Source:** DBV-CORE §2 (Driver Registry), adapted from JDBC to Rust-native drivers. [DBV]
+**Source:** DBV-CORE §2 (Driver Registry), adapted to Rust-native drivers. [DBV]
 
 #### Acceptance Criteria
 
@@ -638,3 +638,27 @@ Credential handling SHALL follow the principle of least exposure: passwords neve
 | DBV-ADMIN | DBeaver metadata/admin research: users, sessions, locks, storage, statistics, config |
 | FFW-ARCH | FileForgeWorkbench architecture specs: command-framework, plugin-architecture, layout-and-docking, workflow-engine, VFS, connector-extensibility |
 
+---
+
+## Non-Functional Requirements
+
+### Performance
+
+- Query execution SHALL be fully async — the UI thread SHALL NOT block during any database operation.
+- Schema tree expansion (lazy loading) SHALL complete within 3 seconds for schemas with up to 1,000 objects on a local database.
+- Result grid SHALL render up to 200 rows without perceptible lag on a modern desktop.
+
+### Reliability
+
+- WHEN a database connection is lost, THE system SHALL detect the disconnection within 30 seconds and display a reconnection prompt.
+- WHEN a query is cancelled, THE system SHALL release the database connection back to the pool within 5 seconds.
+
+### Security
+
+- Credentials SHALL never appear in log output or connection strings displayed in the UI.
+- THE credential store SHALL use OS-native encryption (Windows Credential Manager, macOS Keychain, Linux Secret Service) where available.
+
+### Scalability
+
+- THE result grid SHALL support result sets of up to 1,000,000 rows via incremental batch fetching without loading the entire result set into memory.
+- THE schema browser SHALL support databases with up to 10,000 tables without performance degradation in tree rendering.

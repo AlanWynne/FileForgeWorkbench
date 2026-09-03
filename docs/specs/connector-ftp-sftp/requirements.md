@@ -120,3 +120,61 @@ criteria will be written when this connector moves to active development.
 - **WB**: Workbench Architecture Brief — VFS extensibility, FFW-ARCH-001
 - **FFW**: FileForgeWorkbench cross-cutting requirements (VFS Principle, Plugin Architecture)
 - Connector-extensibility requirements (Requirement 6: Future Connector Hooks)
+
+---
+
+## Formal Acceptance Criteria (DEFERRED — Future Release)
+
+> The following criteria are written in EARS format for traceability. All criteria
+> carry status **DEFERRED** — they are not scheduled for the initial release.
+> Full implementation details will be added to `design.md` when this connector
+> moves to active development.
+
+### Requirement 1: FTP Connectivity *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN the connector is configured with FTP credentials and a server address, THE connector SHALL establish a connection supporting active and passive transfer modes, and SHALL support directory listing, upload, download, rename, delete, and mkdir operations.
+
+---
+
+### Requirement 2: FTPS TLS Negotiation *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN the connector is configured for FTPS, THE connector SHALL negotiate TLS using either explicit STARTTLS on port 21 or implicit TLS on the configured port, validating the server certificate against the configured trust store.
+
+---
+
+### Requirement 3: SFTP via SSH *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN the connector is configured for SFTP, THE connector SHALL establish an SSH connection using key-based or password authentication, verify the server against the known-hosts store, and support all VFS file operations over the encrypted channel.
+
+---
+
+### Requirement 4: Transfer Modes *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN a file transfer is initiated, THE connector SHALL use binary transfer mode by default and SHALL support ASCII mode with line-ending conversion for FTP/FTPS. THE connector SHALL support resuming interrupted transfers where the protocol supports it.
+
+---
+
+### Requirement 5: Error Mapping to ConnectorError Taxonomy *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN a protocol operation fails, THE connector SHALL map FTP reply codes (4xx, 5xx) and SSH/SFTP error codes to the appropriate ConnectorError variant, including the remote server hostname and path in the error context.
+
+---
+
+### Requirement 6: File Watching (Polling-Based) *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN a directory node is expanded, THE connector SHALL register a polling-based watch at a configurable interval, comparing file metadata (size, mtime) across poll cycles and emitting VFS change events for detected differences. THE connector SHALL advertise the Watch capability with polling semantics.
+
+---
+

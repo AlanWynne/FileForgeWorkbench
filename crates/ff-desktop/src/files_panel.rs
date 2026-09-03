@@ -183,6 +183,16 @@ impl ContentAreaState {
             .filter(|e| filter.is_empty() || e.name.to_lowercase().contains(&filter))
             .collect();
         visible.sort_by(|a, b| {
+            // Validates: Requirement 10.7 — containers always sort before non-containers
+            // when sorting by Name; within each group sort by the chosen key.
+            let container_order = if self.sort_col == SortColumn::Name {
+                b.is_container.cmp(&a.is_container)
+            } else {
+                std::cmp::Ordering::Equal
+            };
+            if container_order != std::cmp::Ordering::Equal {
+                return container_order;
+            }
             let ka = a.sort_key(self.sort_col);
             let kb = b.sort_key(self.sort_col);
             match self.sort_dir {
@@ -278,6 +288,16 @@ pub struct FilesPanelState {
     ///
     /// Validates: Requirement 13.2
     pub pending_alloc_catalog: Option<String>,
+    /// When true, the next render pass should move keyboard focus to the first
+    /// catalog node in the tree (set by Tab from the command field).
+    ///
+    /// Validates: Requirement 20.1 file-tree-panel
+    pub tree_focus_requested: bool,
+    /// The catalog name that currently has keyboard focus in the tree, or `None`.
+    /// Driven by Tab-into-tree and arrow keys; rendered with a highlight border.
+    ///
+    /// Validates: Requirement 20.1 file-tree-panel
+    pub focused_catalog: Option<String>,
 }
 
 impl FilesPanelState {
@@ -292,6 +312,8 @@ impl FilesPanelState {
             content: ContentAreaState::default(),
             datasets: HashMap::new(),
             pending_alloc_catalog: None,
+            tree_focus_requested: false,
+            focused_catalog: None,
         }
     }
 
@@ -359,6 +381,45 @@ impl FilesPanelState {
         self.datasets.remove(catalog_name);
     }
 
+    /// Create a Mainframe dataset file on disk, including any missing parent directories.
+    ///
+    /// Called on first open of a newly-allocated dataset whose physical file does not yet
+    /// exist. Matches ISPF behaviour: allocation reserves the dataset; opening creates it.
+    ///
+    /// Validates: Requirement 16.3
+    pub fn create_dataset_file(path: &std::path::Path) -> Result<(), std::io::Error> {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::File::create(path)?;
+        Ok(())
+    }
+
+    /// Resolve a dataset's physical file path from the catalog's repository path and the DSN.
+    ///
+    /// Maps `PAYROLL.EMPLOYEE` in repo `C:/catalogs/payroll` to
+    /// `C:/catalogs/payroll/PAYROLL/EMPLOYEE` by splitting the DSN on `.` and
+    /// joining as path components.
+    ///
+    /// The repository path is normalised to the OS path separator before joining
+    /// so that mixed-separator paths (e.g. `mainframe/Payroll` on Windows) do
+    /// not produce invalid paths.
+    ///
+    /// Returns `None` when either argument is empty.
+    ///
+    /// Validates: Requirement 16.1, 16.4, 16.5
+    pub fn resolve_dataset_path(repository_path: &str, dsn: &str) -> Option<std::path::PathBuf> {
+        if repository_path.is_empty() || dsn.is_empty() {
+            return None;
+        }
+        // Normalise separators: replace `/` with the OS separator on Windows so
+        // that a catalog path stored with forward slashes (e.g. "mainframe/Payroll")
+        // does not produce a mixed-separator path when joined with DSN components.
+        let normalised = repository_path.replace('/', std::path::MAIN_SEPARATOR_STR);
+        let rel: std::path::PathBuf = dsn.split('.').collect();
+        Some(std::path::Path::new(&normalised).join(rel))
+    }
+
     /// Returns the platform label appended to the Native section header.
     ///
     /// Validates: Requirement 1.4
@@ -418,6 +479,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut FilesPanelState) -> FilesPanelActio
             ui.label("Command ===>");
             let resp = ui.add(
                 egui::TextEdit::singleline(&mut state.command)
+                    .id(egui::Id::new("files_panel_cmd"))
                     .desired_width(f32::INFINITY)
                     .font(egui::TextStyle::Monospace),
             );
@@ -476,46 +538,113 @@ fn render_catalog_tree(ui: &mut egui::Ui, state: &mut FilesPanelState) -> Option
     let filter = state.filter.to_lowercase();
     let mut action: Option<FilesPanelAction> = None;
 
-    render_section(
-        ui,
-        egui::RichText::new("Mainframe Catalogs")
-            .monospace()
-            .strong(),
-        state.sections.mainframe_open,
+    // Collect all visible catalog names across all sections in order.
+    let all_visible: Vec<String> = [
         state.registry.list_by_type(CatalogType::Mainframe),
-        &filter,
-        &mut state.content,
-        &mut action,
-    );
-    state.sections.mainframe_open = true;
-
-    render_section(
-        ui,
-        egui::RichText::new("POSIX Catalogs").monospace().strong(),
-        state.sections.posix_open,
         state.registry.list_by_type(CatalogType::Posix),
-        &filter,
-        &mut state.content,
-        &mut action,
-    );
-    state.sections.posix_open = true;
+        state.registry.list_by_type(CatalogType::Native),
+    ]
+    .into_iter()
+    .flatten()
+    .filter(|c| filter.is_empty() || c.name.to_lowercase().contains(&filter))
+    .map(|c| c.name.clone())
+    .collect();
 
+    // Tab-into-tree: move focus to the first catalog.
+    if state.tree_focus_requested {
+        state.tree_focus_requested = false;
+        state.focused_catalog = all_visible.first().cloned();
+    }
+
+    // Arrow-key navigation within the tree when a catalog has focus.
+    if state.focused_catalog.is_some() {
+        let down = ui.input(|i| i.key_pressed(egui::Key::ArrowDown));
+        let up = ui.input(|i| i.key_pressed(egui::Key::ArrowUp));
+        if down || up {
+            if let Some(ref cur) = state.focused_catalog.clone() {
+                let pos = all_visible.iter().position(|n| n == cur);
+                state.focused_catalog = match (down, pos) {
+                    (true, Some(i)) => all_visible.get(i + 1).cloned().or(Some(cur.clone())),
+                    (false, Some(0)) | (false, None) => Some(cur.clone()),
+                    (false, Some(i)) => all_visible.get(i - 1).cloned(),
+                    _ => Some(cur.clone()),
+                };
+            }
+        }
+        // Enter selects the focused catalog.
+        if ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+            if let Some(ref name) = state.focused_catalog.clone() {
+                state.content.selected_catalog = Some(name.clone());
+                state.content.path_segments.clear();
+                state.content.content_filter.clear();
+            }
+        }
+        // Tab out of tree clears focus.
+        if ui.input(|i| i.key_pressed(egui::Key::Tab)) {
+            state.focused_catalog = None;
+        }
+    }
+
+    // Snapshot open-state before borrowing state.content via sec_ctx.
+    let mf_open = state.sections.mainframe_open;
+    let px_open = state.sections.posix_open;
+    let nat_open = state.sections.native_open;
+    let mf_entries = state.registry.list_by_type(CatalogType::Mainframe);
+    let px_entries = state.registry.list_by_type(CatalogType::Posix);
+    let nat_entries = state.registry.list_by_type(CatalogType::Native);
     let native_header = format!(
         "Native Catalogs ({})",
         FilesPanelState::native_platform_label()
     );
-    render_section(
-        ui,
-        egui::RichText::new(native_header).monospace().strong(),
-        state.sections.native_open,
-        state.registry.list_by_type(CatalogType::Native),
-        &filter,
-        &mut state.content,
-        &mut action,
-    );
+    let focused = state.focused_catalog.clone();
+
+    {
+        let mut sec_ctx = SectionCtx {
+            content: &mut state.content,
+            action: &mut action,
+            focused: &focused,
+        };
+        render_section(
+            ui,
+            egui::RichText::new("Mainframe Catalogs")
+                .monospace()
+                .strong(),
+            mf_open,
+            mf_entries,
+            &filter,
+            &mut sec_ctx,
+        );
+        render_section(
+            ui,
+            egui::RichText::new("POSIX Catalogs").monospace().strong(),
+            px_open,
+            px_entries,
+            &filter,
+            &mut sec_ctx,
+        );
+        render_section(
+            ui,
+            egui::RichText::new(native_header).monospace().strong(),
+            nat_open,
+            nat_entries,
+            &filter,
+            &mut sec_ctx,
+        );
+    } // sec_ctx dropped here
+
+    state.sections.mainframe_open = true;
+    state.sections.posix_open = true;
     state.sections.native_open = true;
 
     action
+}
+
+/// Mutable context threaded through `render_section` to avoid exceeding the
+/// 7-argument Clippy limit.
+struct SectionCtx<'a> {
+    content: &'a mut ContentAreaState,
+    action: &'a mut Option<FilesPanelAction>,
+    focused: &'a Option<String>,
 }
 
 /// Render one collapsible section of the catalog tree.
@@ -527,8 +656,7 @@ fn render_section(
     default_open: bool,
     entries: Vec<&VirtualCatalog>,
     filter: &str,
-    content: &mut ContentAreaState,
-    action: &mut Option<FilesPanelAction>,
+    ctx: &mut SectionCtx<'_>,
 ) {
     egui::CollapsingHeader::new(header)
         .default_open(default_open)
@@ -544,31 +672,41 @@ fn render_section(
                         .weak(),
                 );
             } else {
-                for cat in visible {
-                    let is_selected = content
+                for cat in visible.iter() {
+                    let is_selected = ctx
+                        .content
                         .selected_catalog
                         .as_deref()
                         .is_some_and(|s| s == cat.name);
+                    let is_focused = ctx.focused.as_deref().is_some_and(|f| f == cat.name);
                     let label_text = egui::RichText::new(format!("  📁 {}", cat.name)).monospace();
                     let resp = ui.selectable_label(is_selected, label_text);
+                    // Validates: Requirement 20.1 -- draw focus highlight on keyboard-focused row.
+                    if is_focused {
+                        ui.painter().rect_stroke(
+                            resp.rect,
+                            2.0,
+                            egui::Stroke::new(1.5_f32, ui.visuals().selection.stroke.color),
+                        );
+                    }
                     // Left-click selects catalog — Req 10.1
                     if resp.clicked() {
-                        content.selected_catalog = Some(cat.name.clone());
-                        content.path_segments.clear();
-                        content.content_filter.clear();
+                        ctx.content.selected_catalog = Some(cat.name.clone());
+                        ctx.content.path_segments.clear();
+                        ctx.content.content_filter.clear();
                     }
                     // Right-click context menu — Req 4.1, 4.3, 5.1
                     resp.context_menu(|ui| {
                         if ui.button("Properties").clicked() {
-                            *action = Some(FilesPanelAction::EditCatalog(cat.name.clone()));
+                            *ctx.action = Some(FilesPanelAction::EditCatalog(cat.name.clone()));
                             ui.close_menu();
                         }
                         if ui.button("Allocate Dataset").clicked() {
-                            *action = Some(FilesPanelAction::AllocateDataset(cat.name.clone()));
+                            *ctx.action = Some(FilesPanelAction::AllocateDataset(cat.name.clone()));
                             ui.close_menu();
                         }
                         if ui.button("Delete Catalog").clicked() {
-                            *action = Some(FilesPanelAction::DeleteCatalog(cat.name.clone()));
+                            *ctx.action = Some(FilesPanelAction::DeleteCatalog(cat.name.clone()));
                             ui.close_menu();
                         }
                     });
@@ -1409,6 +1547,64 @@ mod tests {
         assert!(s.content_filter.is_empty());
     }
 
+    /// Validates: Requirement 10.7 — directories sort before files when sorting by Name.
+    #[test]
+    fn visible_entries_name_sort_groups_dirs_before_files() {
+        // Validates: Requirement 10.7
+        let mut s = ContentAreaState::default();
+        s.entries = vec![
+            make_entry("zebra.txt", "File", "", "", false),
+            make_entry("alpha", "Directory", "", "", true),
+            make_entry("mango.txt", "File", "", "", false),
+            make_entry("beta", "Directory", "", "", true),
+        ];
+        let names: Vec<&str> = s
+            .visible_entries()
+            .iter()
+            .map(|e| e.name.as_str())
+            .collect();
+        assert_eq!(names, vec!["alpha", "beta", "mango.txt", "zebra.txt"]);
+    }
+
+    /// Validates: Requirement 10.7 — directories within the directory group are sorted alphabetically.
+    #[test]
+    fn visible_entries_name_sort_dirs_are_alphabetical_within_group() {
+        // Validates: Requirement 10.7
+        let mut s = ContentAreaState::default();
+        s.entries = vec![
+            make_entry("Zebra", "Directory", "", "", true),
+            make_entry("alpha", "Directory", "", "", true),
+            make_entry("Mango", "Directory", "", "", true),
+        ];
+        let names: Vec<&str> = s
+            .visible_entries()
+            .iter()
+            .map(|e| e.name.as_str())
+            .collect();
+        // Case-insensitive: alpha < mango < zebra
+        assert_eq!(names, vec!["alpha", "Mango", "Zebra"]);
+    }
+
+    /// Validates: Requirement 10.7 — non-Name sort columns do not apply container grouping.
+    #[test]
+    fn visible_entries_type_sort_does_not_force_dir_grouping() {
+        // Validates: Requirement 10.7 (grouping only applies to Name column)
+        let mut s = ContentAreaState::default();
+        s.entries = vec![
+            make_entry("b_file", "PS", "", "", false),
+            make_entry("a_dir", "Directory", "", "", true),
+        ];
+        s.sort_col = SortColumn::Type;
+        s.sort_dir = SortDir::Ascending;
+        let types: Vec<&str> = s
+            .visible_entries()
+            .iter()
+            .map(|e| e.entry_type.as_str())
+            .collect();
+        // "Directory" < "PS" alphabetically
+        assert_eq!(types, vec!["Directory", "PS"]);
+    }
+
     /// Validates: Requirement 10.2 — visible_entries sorts by Name ascending by default.
     #[test]
     fn visible_entries_sorts_by_name_ascending_by_default() {
@@ -1627,7 +1823,7 @@ mod tests {
             dsorg,
             recfm: crate::dataset_alloc_dialog::Recfm::Fb,
             lrecl: 80,
-            blksize: 27920,
+            blksize: 0,
             dir_blocks: None,
             gdg_limit: None,
             scratch: false,
@@ -1704,5 +1900,78 @@ mod tests {
         assert!(state.datasets.contains_key("development"));
         state.remove_catalog_datasets("development");
         assert!(!state.datasets.contains_key("development"));
+    }
+
+    // ── Phase BJ: Dataset path resolution (Req 16) ───────────────────────
+
+    /// Validates: Requirement 16.1, 16.5 — DSN qualifiers become path components.
+    #[test]
+    fn resolve_dataset_path_maps_dsn_to_subpath() {
+        // Validates: Requirement 16.1, 16.5
+        let result =
+            FilesPanelState::resolve_dataset_path("C:/catalogs/payroll", "PAYROLL.EMPLOYEE");
+        assert!(result.is_some());
+        let path = result.unwrap();
+        // Should end with PAYROLL/EMPLOYEE (platform separator)
+        let components: Vec<_> = path.components().collect();
+        let last = components.last().unwrap().as_os_str().to_string_lossy();
+        let second_last = components[components.len() - 2]
+            .as_os_str()
+            .to_string_lossy();
+        assert_eq!(last, "EMPLOYEE");
+        assert_eq!(second_last, "PAYROLL");
+    }
+
+    /// Validates: Requirement 16.4, 16.5 — empty repository path returns None.
+    #[test]
+    fn resolve_dataset_path_empty_repo_returns_none() {
+        // Validates: Requirement 16.4, 16.5
+        let result = FilesPanelState::resolve_dataset_path("", "PAYROLL.EMPLOYEE");
+        assert!(result.is_none());
+    }
+
+    /// Validates: Requirement 16.5 — empty DSN returns None.
+    #[test]
+    fn resolve_dataset_path_empty_dsn_returns_none() {
+        // Validates: Requirement 16.5
+        let result = FilesPanelState::resolve_dataset_path("C:/catalogs/payroll", "");
+        assert!(result.is_none());
+    }
+
+    /// Validates: Requirement 16.1 — single-qualifier DSN resolves to one component under repo.
+    #[test]
+    fn resolve_dataset_path_single_qualifier_dsn() {
+        // Validates: Requirement 16.1
+        let result = FilesPanelState::resolve_dataset_path("C:/repo", "MYDATA");
+        assert!(result.is_some());
+        let path = result.unwrap();
+        let last = path.file_name().unwrap().to_string_lossy();
+        assert_eq!(last, "MYDATA");
+    }
+
+    /// Validates: Requirement 16.3 — create_dataset_file creates the file and parent dirs.
+    #[test]
+    fn opening_missing_dataset_creates_file_and_parent_dirs() {
+        // Validates: Requirement 16.3
+        use tempfile::TempDir;
+        let tmp = TempDir::new().expect("tempdir");
+        let target = tmp.path().join("PAYROLL").join("EMPLOYEE");
+        assert!(!target.exists());
+        FilesPanelState::create_dataset_file(&target).expect("create must succeed");
+        assert!(target.exists(), "file must be created");
+        assert!(target.is_file(), "must be a regular file");
+    }
+
+    /// Validates: Requirement 16.3 — create_dataset_file creates missing parent directories.
+    #[test]
+    fn opening_missing_dataset_creates_parent_dirs() {
+        // Validates: Requirement 16.3
+        use tempfile::TempDir;
+        let tmp = TempDir::new().expect("tempdir");
+        let target = tmp.path().join("A").join("B").join("C").join("DATASET");
+        assert!(!target.parent().unwrap().exists());
+        FilesPanelState::create_dataset_file(&target).expect("create must succeed");
+        assert!(target.exists());
+        assert!(target.parent().unwrap().is_dir());
     }
 }

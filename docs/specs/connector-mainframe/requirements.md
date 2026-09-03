@@ -148,3 +148,61 @@ criteria will be written when this connector moves to active development.
 - IBM z/OSMF REST API documentation
 - IBM FTP for z/OS documentation (JES, MVS dataset access)
 - RFC 2355 (TN3270E) and RFC 1576 (TN3270)
+
+---
+
+## Formal Acceptance Criteria (DEFERRED — Future Release)
+
+> The following criteria are written in EARS format for traceability. All criteria
+> carry status **DEFERRED** — they are not scheduled for the initial release.
+> Full implementation details will be added to `design.md` when this connector
+> moves to active development.
+
+### Requirement 1: z/OS FTP Dataset Transfer *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN the connector is configured with z/OS FTP credentials, THE connector SHALL connect to the z/OS FTP server, support MVS dataset naming conventions, navigate PDS members, retrieve JES spool output, and perform automatic EBCDIC to UTF-8 translation using the configured code page.
+
+---
+
+### Requirement 2: TN3270 Terminal Emulation *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN the connector is configured for TN3270, THE connector SHALL establish a TN3270/TN3270E connection, parse the 3270 data stream, support screen scraping and field input, and enable automated ISPF panel navigation.
+
+---
+
+### Requirement 3: z/OSMF REST API Integration *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN the connector is configured with z/OSMF credentials, THE connector SHALL authenticate via LTPA token or JWT, and SHALL support dataset operations (list, read, write, create, delete, rename), job operations (submit, monitor, retrieve output), and USS file operations via the z/OSMF REST API.
+
+---
+
+### Requirement 4: USS SSH Access *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN the connector is configured for USS SSH, THE connector SHALL establish an SSH connection to z/OS Unix System Services, support file operations (read, write, list, stat, mkdir, rm), execute shell commands, and respect USS file tags for code page identification.
+
+---
+
+### Requirement 5: Credential Management *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN connecting to a z/OS system, THE connector SHALL retrieve credentials from the workbench CredentialStore, supporting RACF user/password, PassTicket, client certificate, and SSH key authentication methods, with session token caching and automatic refresh.
+
+---
+
+### Requirement 6: Error Mapping and Reconnection *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN a z/OS operation fails, THE connector SHALL map z/OS FTP reply codes, TN3270 connection failures, z/OSMF HTTP status codes, and SSH errors to the appropriate ConnectorError variant, including LPAR name, job ID, and dataset name in the error context, and SHALL attempt automatic reconnection per the configured RetryPolicy.
+
+---
+

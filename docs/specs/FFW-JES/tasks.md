@@ -1,4 +1,4 @@
-# Implementation Plan: Job Entry Subsystem (`ff-jes`)
+﻿# Implementation Plan: Job Entry Subsystem (`ff-jes`)
 
 ## Overview
 
@@ -12,232 +12,232 @@ This task plan implements the `ff-jes` crate — the FileForge Workbench Job Ent
 
 ## Tasks
 
-- [ ] 1. Project scaffold and core types
-  - [ ] 1.1 Create `crates/ff-jes/Cargo.toml` with dependencies (tokio, async-trait, thiserror, anyhow, chrono, serde, serde_json, uuid, rusqlite with bundled feature, ff-plugin, ff-command, ff-layout, ff-workflow, ff-vfs, ff-config, ff-logging, ff-dataset-catalog, ff-dataset-allocator) and dev-dependencies (proptest, tempfile, pretty_assertions, tokio-test)
-  - [ ] 1.2 Create `crates/ff-jes/src/lib.rs` with crate-level doc comment and public module declarations (plugin, model, queue, scheduler, initiator, engine, ffjcl, dataset_bridge, log_manager, sysout, retention, panels, commands, provider, api, config, async_infra, error)
-  - [ ] 1.3 Implement `src/error.rs` — define `JesError` enum with variants (SubmissionFailed, ValidationError, SchedulerError, InitiatorFailed, CatalogResolutionFailed, PurgeError, ProviderUnavailable, QueuePersistenceError, JobNotFound, InvalidJobState, CancellationTimeout, FfjclParseError, LogAccessError)
-  - [ ] 1.4 Implement `src/model.rs` — define `Job` struct (id: JobId, name: String, owner: String, status: JobStatus, priority: u32, submit_time: DateTime, start_time: Option, end_time: Option, initiator_id: Option, return_code: Option, steps: Vec<JobStep>, definition: FfjclDefinition)
-  - [ ] 1.5 Implement `JobStatus` enum (Queued, Held, Active, Completed, Failed, Cancelled) with Display, PartialEq, Eq, Clone, Serialize, Deserialize
-  - [ ] 1.6 Implement `JobId` newtype wrapping u64, monotonically increasing, with Display, FromStr, Eq, Hash, Ord
-  - [ ] 1.7 Implement `JobStep` struct (name: String, program: String, dd_statements: Vec<DdStatement>, return_code: Option<i32>, status: StepStatus, start_time: Option, end_time: Option)
-  - [ ] 1.8 Implement `DdStatement` struct (dd_name: String, dsn: Option<String>, disp: Disposition, resolved_path: Option<PathBuf>)
-  - [ ] 1.9 Implement `Disposition` enum (New, Old, Shr, Mod) with from_str parsing
-  - [ ] 1.10 Write unit tests for model types: JobStatus transitions, JobId ordering, Disposition parsing, Display implementations
+- [x] 1. Project scaffold and core types
+  - [x] 1.1 Create `crates/ff-jes/Cargo.toml` with dependencies (tokio, async-trait, thiserror, anyhow, chrono, serde, serde_json, uuid, rusqlite with bundled feature, ff-plugin, ff-command, ff-layout, ff-workflow, ff-vfs, ff-config, ff-logging, ff-dataset-catalog, ff-dataset-allocator) and dev-dependencies (proptest, tempfile, pretty_assertions, tokio-test)
+  - [x] 1.2 Create `crates/ff-jes/src/lib.rs` with crate-level doc comment and public module declarations (plugin, model, queue, scheduler, initiator, engine, ffjcl, dataset_bridge, log_manager, sysout, retention, panels, commands, provider, api, config, async_infra, error)
+  - [x] 1.3 Implement `src/error.rs` — define `JesError` enum with variants (SubmissionFailed, ValidationError, SchedulerError, InitiatorFailed, CatalogResolutionFailed, PurgeError, ProviderUnavailable, QueuePersistenceError, JobNotFound, InvalidJobState, CancellationTimeout, FfjclParseError, LogAccessError)
+  - [x] 1.4 Implement `src/model.rs` — define `Job` struct (id: JobId, name: String, owner: String, status: JobStatus, priority: u32, submit_time: DateTime, start_time: Option, end_time: Option, initiator_id: Option, return_code: Option, steps: Vec<JobStep>, definition: FfjclDefinition)
+  - [x] 1.5 Implement `JobStatus` enum (Queued, Held, Active, Completed, Failed, Cancelled) with Display, PartialEq, Eq, Clone, Serialize, Deserialize
+  - [x] 1.6 Implement `JobId` newtype wrapping u64, monotonically increasing, with Display, FromStr, Eq, Hash, Ord
+  - [x] 1.7 Implement `JobStep` struct (name: String, program: String, dd_statements: Vec<DdStatement>, return_code: Option<i32>, status: StepStatus, start_time: Option, end_time: Option)
+  - [x] 1.8 Implement `DdStatement` struct (dd_name: String, dsn: Option<String>, disp: Disposition, resolved_path: Option<PathBuf>)
+  - [x] 1.9 Implement `Disposition` enum (New, Old, Shr, Mod) with from_str parsing
+  - [x] 1.10 Write unit tests for model types: JobStatus transitions, JobId ordering, Disposition parsing, Display implementations
     - Validates: Requirement 2 AC 2, AC 4; Requirement 6 AC 1–3
 
-- [ ] 2. FFJCL parser
-  - [ ] 2.1 Implement `src/ffjcl/mod.rs` — module structure with parser, ast, and validator sub-modules
-  - [ ] 2.2 Implement `src/ffjcl/ast.rs` — define `FfjclDefinition` struct (job_name: String, owner: Option<String>, priority: Option<u32>, class: Option<String>, steps: Vec<FfjclStep>, comments: Vec<String>), `FfjclStep` struct (step_name: String, program: String, dd_statements: Vec<FfjclDd>, condition: Option<StepCondition>), `FfjclDd` struct (dd_name, dsn, disp, space, dcb params)
-  - [ ] 2.3 Implement `src/ffjcl/parser.rs` — `parse_ffjcl(input: &str) -> Result<FfjclDefinition, JesError>` parsing job header (JOB statement), EXEC statements, DD statements with DSN/DISP/SPACE/DCB parameters, continuation lines, and comments
-  - [ ] 2.4 Implement `src/ffjcl/validator.rs` — `validate_definition(def: &FfjclDefinition) -> Result<(), Vec<ValidationIssue>>` checking: job name present, at least one step, DD names unique per step, DSN format valid (delegating to ff-dataset-catalog DSN validation), required fields present
-  - [ ] 2.5 Write unit tests for FFJCL parsing: valid single-step job, multi-step job, continuation lines, comments, invalid syntax, missing job name, duplicate DD names
+- [x] 2. FFJCL parser
+  - [x] 2.1 Implement `src/ffjcl/mod.rs` — module structure with parser, ast, and validator sub-modules
+  - [x] 2.2 Implement `src/ffjcl/ast.rs` — define `FfjclDefinition` struct (job_name: String, owner: Option<String>, priority: Option<u32>, class: Option<String>, steps: Vec<FfjclStep>, comments: Vec<String>), `FfjclStep` struct (step_name: String, program: String, dd_statements: Vec<FfjclDd>, condition: Option<StepCondition>), `FfjclDd` struct (dd_name, dsn, disp, space, dcb params)
+  - [x] 2.3 Implement `src/ffjcl/parser.rs` — `parse_ffjcl(input: &str) -> Result<FfjclDefinition, JesError>` parsing job header (JOB statement), EXEC statements, DD statements with DSN/DISP/SPACE/DCB parameters, continuation lines, and comments
+  - [x] 2.4 Implement `src/ffjcl/validator.rs` — `validate_definition(def: &FfjclDefinition) -> Result<(), Vec<ValidationIssue>>` checking: job name present, at least one step, DD names unique per step, DSN format valid (delegating to ff-dataset-catalog DSN validation), required fields present
+  - [x] 2.5 Write unit tests for FFJCL parsing: valid single-step job, multi-step job, continuation lines, comments, invalid syntax, missing job name, duplicate DD names
     - Validates: Requirement 2 AC 1, AC 7
-  - [ ] 2.6 Write property test: FFJCL round-trip (Property 1) — generate valid FfjclDefinition ASTs, serialize to FFJCL text, re-parse, assert structural equality
+  - [x] 2.6 Write property test: FFJCL round-trip (Property 1) — generate valid FfjclDefinition ASTs, serialize to FFJCL text, re-parse, assert structural equality
     - Validates: Requirement 2 AC 1
-  - [ ] 2.7 Write property test: FFJCL validation rejects invalid definitions (Property 2) — generate definitions missing required fields or with invalid DSN refs, assert ValidationError with meaningful messages
+  - [x] 2.7 Write property test: FFJCL validation rejects invalid definitions (Property 2) — generate definitions missing required fields or with invalid DSN refs, assert ValidationError with meaningful messages
     - Validates: Requirement 2 AC 7
 
-- [ ] 3. Job queue with persistence
-  - [ ] 3.1 Implement `src/queue/mod.rs` — module structure with store and operations sub-modules
-  - [ ] 3.2 Implement `src/queue/store.rs` — define `JobQueueStore` struct wrapping rusqlite Connection; implement schema (jobs table with columns: id, name, owner, status, priority, submit_time, start_time, end_time, initiator_id, return_code, definition_json, failure_reason, cancel_requester, cancel_time)
-  - [ ] 3.3 Implement `JobQueueStore::initialize(path)` — create SQLite database with WAL journal mode, execute schema migration
-  - [ ] 3.4 Implement `JobQueueStore::insert_job(job)` — persist new job to database, assign next monotonic JobId
-  - [ ] 3.5 Implement `JobQueueStore::update_status(id, new_status, metadata)` — update job status and associated timestamp fields atomically
-  - [ ] 3.6 Implement `JobQueueStore::get_job(id)` — retrieve single job by ID
-  - [ ] 3.7 Implement `JobQueueStore::query_jobs(filter)` — query jobs by status, owner, name pattern, date range; support sorting by priority, submit_time, name, id
-  - [ ] 3.8 Implement `JobQueueStore::next_job_id()` — return next monotonic ID (max(id)+1 or session-based counter)
-  - [ ] 3.9 Implement `JobQueueStore::get_eligible_jobs()` — return jobs with status=Queued ordered by priority DESC, submit_time ASC (preconditions met)
-  - [ ] 3.10 Write unit tests for queue store: insert/query/update lifecycle, persistence across re-open, monotonic ID generation, eligible job ordering
+- [x] 3. Job queue with persistence
+  - [x] 3.1 Implement `src/queue/mod.rs` — module structure with store and operations sub-modules
+  - [x] 3.2 Implement `src/queue/store.rs` — define `JobQueueStore` struct wrapping rusqlite Connection; implement schema (jobs table with columns: id, name, owner, status, priority, submit_time, start_time, end_time, initiator_id, return_code, definition_json, failure_reason, cancel_requester, cancel_time)
+  - [x] 3.3 Implement `JobQueueStore::initialize(path)` — create SQLite database with WAL journal mode, execute schema migration
+  - [x] 3.4 Implement `JobQueueStore::insert_job(job)` — persist new job to database, assign next monotonic JobId
+  - [x] 3.5 Implement `JobQueueStore::update_status(id, new_status, metadata)` — update job status and associated timestamp fields atomically
+  - [x] 3.6 Implement `JobQueueStore::get_job(id)` — retrieve single job by ID
+  - [x] 3.7 Implement `JobQueueStore::query_jobs(filter)` — query jobs by status, owner, name pattern, date range; support sorting by priority, submit_time, name, id
+  - [x] 3.8 Implement `JobQueueStore::next_job_id()` — return next monotonic ID (max(id)+1 or session-based counter)
+  - [x] 3.9 Implement `JobQueueStore::get_eligible_jobs()` — return jobs with status=Queued ordered by priority DESC, submit_time ASC (preconditions met)
+  - [x] 3.10 Write unit tests for queue store: insert/query/update lifecycle, persistence across re-open, monotonic ID generation, eligible job ordering
     - Validates: Requirement 2 AC 2, AC 3, AC 4, AC 6; Requirement 3 AC 1, AC 2
-  - [ ] 3.11 Write property test: monotonic JobId invariant (Property 3) — submit N jobs in arbitrary order, assert all IDs are strictly increasing
+  - [x] 3.11 Write property test: monotonic JobId invariant (Property 3) — submit N jobs in arbitrary order, assert all IDs are strictly increasing
     - Validates: Requirement 2 AC 2
-  - [ ] 3.12 Write property test: queue ordering correctness (Property 4) — insert jobs with random priorities and timestamps, query eligible, assert highest-priority first then FIFO within same priority
+  - [x] 3.12 Write property test: queue ordering correctness (Property 4) — insert jobs with random priorities and timestamps, query eligible, assert highest-priority first then FIFO within same priority
     - Validates: Requirement 3 AC 1, AC 2, AC 3
 
-- [ ] 4. Scheduler
-  - [ ] 4.1 Implement `src/scheduler.rs` — define `Scheduler` struct with fields: queue_store (Arc), initiator_pool (Arc), poll_interval_ms (configurable), running flag (AtomicBool), event_tx (broadcast channel sender)
-  - [ ] 4.2 Implement `Scheduler::start()` — spawn async background task that polls for eligible jobs and available initiators at configured interval
-  - [ ] 4.3 Implement `Scheduler::dispatch_loop()` — on each tick: query eligible jobs, query idle initiators, dispatch highest-priority job to first available initiator; change status from Queued→Active, record start_time and initiator_id
-  - [ ] 4.4 Implement `Scheduler::stop()` — set running flag to false, await task completion
-  - [ ] 4.5 Implement dispatch precondition checking — verify predecessor jobs completed (if defined in FFJCL), verify required datasets resolvable via catalog bridge
-  - [ ] 4.6 Implement scheduling strategy selection — support FIFO (default) and Priority strategies via configuration
-  - [ ] 4.7 Write unit tests for scheduler dispatch: FIFO ordering, priority ordering, held jobs skipped, cancelled jobs skipped, precondition blocking, concurrent dispatch up to pool capacity
+- [x] 4. Scheduler
+  - [x] 4.1 Implement `src/scheduler.rs` — define `Scheduler` struct with fields: queue_store (Arc), initiator_pool (Arc), poll_interval_ms (configurable), running flag (AtomicBool), event_tx (broadcast channel sender)
+  - [x] 4.2 Implement `Scheduler::start()` — spawn async background task that polls for eligible jobs and available initiators at configured interval
+  - [x] 4.3 Implement `Scheduler::dispatch_loop()` — on each tick: query eligible jobs, query idle initiators, dispatch highest-priority job to first available initiator; change status from Queued→Active, record start_time and initiator_id
+  - [x] 4.4 Implement `Scheduler::stop()` — set running flag to false, await task completion
+  - [x] 4.5 Implement dispatch precondition checking — verify predecessor jobs completed (if defined in FFJCL), verify required datasets resolvable via catalog bridge
+  - [x] 4.6 Implement scheduling strategy selection — support FIFO (default) and Priority strategies via configuration
+  - [x] 4.7 Write unit tests for scheduler dispatch: FIFO ordering, priority ordering, held jobs skipped, cancelled jobs skipped, precondition blocking, concurrent dispatch up to pool capacity
     - Validates: Requirement 3 AC 1–7
 
-- [ ] 5. Initiator pool
-  - [ ] 5.1 Implement `src/initiator/mod.rs` — module structure with pool and worker sub-modules
-  - [ ] 5.2 Implement `src/initiator/pool.rs` — define `InitiatorPool` struct with fields: workers (Vec<Initiator>), capacity (usize), config
-  - [ ] 5.3 Implement `Initiator` struct (id: InitiatorId, status: InitiatorStatus, current_job: Option<JobId>, handle: Option<JoinHandle>)
-  - [ ] 5.4 Implement `InitiatorStatus` enum (Idle, Starting, Active, Stopping, Stopped, Failed, Draining) with Display
-  - [ ] 5.5 Implement `InitiatorPool::new(capacity)` — create pool with configured number of initiators in Idle state
-  - [ ] 5.6 Implement `InitiatorPool::get_available()` — return first initiator with status Idle
-  - [ ] 5.7 Implement `InitiatorPool::dispatch(initiator_id, job)` — assign job to initiator, set status to Active, spawn execution task on Tokio runtime
-  - [ ] 5.8 Implement `InitiatorPool::start_initiator(id)` — transition specific initiator from Stopped→Idle
-  - [ ] 5.9 Implement `InitiatorPool::stop_initiator(id)` — set Stopping; if active job running, wait for completion then set Stopped
-  - [ ] 5.10 Implement `InitiatorPool::drain_initiator(id)` — set Draining; complete current job but accept no new work
-  - [ ] 5.11 Implement initiator failure recovery — when execution panics or errors unrecoverably, mark initiator as Failed, log error, continue with remaining initiators
-  - [ ] 5.12 Write unit tests for pool: capacity enforcement, dispatch to idle, stop with active job, drain semantics, failure recovery, concurrent dispatch limit
+- [x] 5. Initiator pool
+  - [x] 5.1 Implement `src/initiator/mod.rs` — module structure with pool and worker sub-modules
+  - [x] 5.2 Implement `src/initiator/pool.rs` — define `InitiatorPool` struct with fields: workers (Vec<Initiator>), capacity (usize), config
+  - [x] 5.3 Implement `Initiator` struct (id: InitiatorId, status: InitiatorStatus, current_job: Option<JobId>, handle: Option<JoinHandle>)
+  - [x] 5.4 Implement `InitiatorStatus` enum (Idle, Starting, Active, Stopping, Stopped, Failed, Draining) with Display
+  - [x] 5.5 Implement `InitiatorPool::new(capacity)` — create pool with configured number of initiators in Idle state
+  - [x] 5.6 Implement `InitiatorPool::get_available()` — return first initiator with status Idle
+  - [x] 5.7 Implement `InitiatorPool::dispatch(initiator_id, job)` — assign job to initiator, set status to Active, spawn execution task on Tokio runtime
+  - [x] 5.8 Implement `InitiatorPool::start_initiator(id)` — transition specific initiator from Stopped→Idle
+  - [x] 5.9 Implement `InitiatorPool::stop_initiator(id)` — set Stopping; if active job running, wait for completion then set Stopped
+  - [x] 5.10 Implement `InitiatorPool::drain_initiator(id)` — set Draining; complete current job but accept no new work
+  - [x] 5.11 Implement initiator failure recovery — when execution panics or errors unrecoverably, mark initiator as Failed, log error, continue with remaining initiators
+  - [x] 5.12 Write unit tests for pool: capacity enforcement, dispatch to idle, stop with active job, drain semantics, failure recovery, concurrent dispatch limit
     - Validates: Requirement 4 AC 1–8
-  - [ ] 5.13 Write property test: pool capacity invariant (Property 5) — dispatch N jobs to pool of capacity C, assert active count never exceeds C
+  - [x] 5.13 Write property test: pool capacity invariant (Property 5) — dispatch N jobs to pool of capacity C, assert active count never exceeds C
     - Validates: Requirement 4 AC 1; Requirement 3 AC 7
 
-- [ ] 6. Job execution engine
-  - [ ] 6.1 Implement `src/engine/mod.rs` — module structure with executor and step_runner sub-modules
-  - [ ] 6.2 Implement `src/engine/executor.rs` — define `JobExecutor` struct; implement `execute(job: &mut Job, log_writer: &dyn JobLogWriter)` that iterates through job steps sequentially
-  - [ ] 6.3 Implement step execution: for each JobStep, resolve DD statements via dataset bridge, spawn process for program, capture stdout/stderr as SYSOUT, record return code
-  - [ ] 6.4 Implement process spawning via `tokio::process::Command` with environment setup, working directory from DD resolution, stdin/stdout/stderr capture
-  - [ ] 6.5 Implement step condition evaluation — check COND parameter from FFJCL (e.g., COND=(0,NE) skips step if prior RC≠0)
-  - [ ] 6.6 Implement job completion handling — set status to Completed if all steps pass; set Failed if any step abends; record final return code (max RC across steps)
-  - [ ] 6.7 Implement cancellation handling — receive cancel signal via CancellationToken, send SIGTERM/TerminateProcess to active process, wait configurable timeout, force-kill if timeout expires
-  - [ ] 6.8 Implement elapsed time tracking — record start/end per step and overall job
-  - [ ] 6.9 Write unit tests for executor: single-step success, multi-step with condition codes, step failure propagation, cancellation signal handling, timeout force-kill
+- [x] 6. Job execution engine
+  - [x] 6.1 Implement `src/engine/mod.rs` — module structure with executor and step_runner sub-modules
+  - [x] 6.2 Implement `src/engine/executor.rs` — define `JobExecutor` struct; implement `execute(job: &mut Job, log_writer: &dyn JobLogWriter)` that iterates through job steps sequentially
+  - [x] 6.3 Implement step execution: for each JobStep, resolve DD statements via dataset bridge, spawn process for program, capture stdout/stderr as SYSOUT, record return code
+  - [x] 6.4 Implement process spawning via `tokio::process::Command` with environment setup, working directory from DD resolution, stdin/stdout/stderr capture
+  - [x] 6.5 Implement step condition evaluation — check COND parameter from FFJCL (e.g., COND=(0,NE) skips step if prior RC≠0)
+  - [x] 6.6 Implement job completion handling — set status to Completed if all steps pass; set Failed if any step abends; record final return code (max RC across steps)
+  - [x] 6.7 Implement cancellation handling — receive cancel signal via CancellationToken, send SIGTERM/TerminateProcess to active process, wait configurable timeout, force-kill if timeout expires
+  - [x] 6.8 Implement elapsed time tracking — record start/end per step and overall job
+  - [x] 6.9 Write unit tests for executor: single-step success, multi-step with condition codes, step failure propagation, cancellation signal handling, timeout force-kill
     - Validates: Requirement 6 AC 1–8; Requirement 15 AC 1
 
-- [ ] 7. Dataset resolution bridge
-  - [ ] 7.1 Implement `src/dataset_bridge.rs` — define `DatasetBridge` struct wrapping Arc<ff-dataset-allocator> and Arc<ff-dataset-catalog> references
-  - [ ] 7.2 Implement `DatasetBridge::resolve_dd(dd: &DdStatement) -> Result<ResolvedDd>` — resolve DSN through allocator API: OLD/SHR → catalog lookup, NEW → allocate via allocator, MOD → lookup existing or create new
-  - [ ] 7.3 Implement GDG relative reference resolution — `(+1)` triggers new generation allocation, `(0)` resolves to current, `(-N)` resolves to Nth prior generation
-  - [ ] 7.4 Implement allocation message generation — for each DD resolution, produce structured allocation messages (DSN, resolved path, disposition, catalog entry metadata) for the job log
-  - [ ] 7.5 Implement failure handling — if DSN not found and DISP≠NEW, return CatalogResolutionFailed with descriptive error written to job log
-  - [ ] 7.6 Write unit tests for dataset bridge: resolve OLD existing, resolve NEW allocation, resolve SHR, resolve MOD (existing/new), GDG relative refs, not-found failure, allocation message content
+- [x] 7. Dataset resolution bridge
+  - [x] 7.1 Implement `src/dataset_bridge.rs` — define `DatasetBridge` struct wrapping Arc<ff-dataset-allocator> and Arc<ff-dataset-catalog> references
+  - [x] 7.2 Implement `DatasetBridge::resolve_dd(dd: &DdStatement) -> Result<ResolvedDd>` — resolve DSN through allocator API: OLD/SHR → catalog lookup, NEW → allocate via allocator, MOD → lookup existing or create new
+  - [x] 7.3 Implement GDG relative reference resolution — `(+1)` triggers new generation allocation, `(0)` resolves to current, `(-N)` resolves to Nth prior generation
+  - [x] 7.4 Implement allocation message generation — for each DD resolution, produce structured allocation messages (DSN, resolved path, disposition, catalog entry metadata) for the job log
+  - [x] 7.5 Implement failure handling — if DSN not found and DISP≠NEW, return CatalogResolutionFailed with descriptive error written to job log
+  - [x] 7.6 Write unit tests for dataset bridge: resolve OLD existing, resolve NEW allocation, resolve SHR, resolve MOD (existing/new), GDG relative refs, not-found failure, allocation message content
     - Validates: Requirement 11 AC 1–7
-  - [ ] 7.7 Write property test: disposition resolution consistency (Property 6) — generate random DD statements with valid/invalid DSNs and dispositions, assert OLD/SHR fail on missing, NEW always creates, MOD handles both cases
+  - [x] 7.7 Write property test: disposition resolution consistency (Property 6) — generate random DD statements with valid/invalid DSNs and dispositions, assert OLD/SHR fail on missing, NEW always creates, MOD handles both cases
     - Validates: Requirement 11 AC 1, AC 2, AC 3
 
-- [ ] 8. Job log manager and SYSOUT handling
-  - [ ] 8.1 Implement `src/log_manager/mod.rs` — module structure with writer, reader, and storage sub-modules
-  - [ ] 8.2 Implement `src/log_manager/storage.rs` — define log storage layout: per-job directory (`spool/{JOB_ID}/`) containing `jeslog.txt`, `stepN_sysout.txt`, `stepN_stderr.txt`, `alloc_messages.txt`
-  - [ ] 8.3 Implement `JobLogWriter` trait — methods: write_jes_message, write_step_output, write_alloc_message, write_error, flush; implementations write to spool files
-  - [ ] 8.4 Implement `FileJobLogWriter` — writes log entries to spool files with timestamps and structured format
-  - [ ] 8.5 Implement `src/sysout.rs` — define `SysoutCapture` struct that captures process stdout/stderr via async channels, writes to spool, and supports live streaming to UI subscribers
-  - [ ] 8.6 Implement `SysoutCapture::subscribe()` — return async Receiver for live log streaming (new subscribers get buffered history + live tail)
-  - [ ] 8.7 Implement `JobLogReader` — methods: read_full_log(job_id), read_section(job_id, section), stream_live(job_id) returning async Stream of log lines
-  - [ ] 8.8 Implement log section parsing — partition stored logs into sections: JES Log, Step Logs (per step), SYSOUT, Error Output, Allocation Messages
-  - [ ] 8.9 Implement incremental log loading — for large logs, load by page/offset to avoid UI blocking
-  - [ ] 8.10 Write unit tests for log writer: write all message types, verify file structure; log reader: read sections, stream live lines, incremental loading
+- [x] 8. Job log manager and SYSOUT handling
+  - [x] 8.1 Implement `src/log_manager/mod.rs` — module structure with writer, reader, and storage sub-modules
+  - [x] 8.2 Implement `src/log_manager/storage.rs` — define log storage layout: per-job directory (`spool/{JOB_ID}/`) containing `jeslog.txt`, `stepN_sysout.txt`, `stepN_stderr.txt`, `alloc_messages.txt`
+  - [x] 8.3 Implement `JobLogWriter` trait — methods: write_jes_message, write_step_output, write_alloc_message, write_error, flush; implementations write to spool files
+  - [x] 8.4 Implement `FileJobLogWriter` — writes log entries to spool files with timestamps and structured format
+  - [x] 8.5 Implement `src/sysout.rs` — define `SysoutCapture` struct that captures process stdout/stderr via async channels, writes to spool, and supports live streaming to UI subscribers
+  - [x] 8.6 Implement `SysoutCapture::subscribe()` — return async Receiver for live log streaming (new subscribers get buffered history + live tail)
+  - [x] 8.7 Implement `JobLogReader` — methods: read_full_log(job_id), read_section(job_id, section), stream_live(job_id) returning async Stream of log lines
+  - [x] 8.8 Implement log section parsing — partition stored logs into sections: JES Log, Step Logs (per step), SYSOUT, Error Output, Allocation Messages
+  - [x] 8.9 Implement incremental log loading — for large logs, load by page/offset to avoid UI blocking
+  - [x] 8.10 Write unit tests for log writer: write all message types, verify file structure; log reader: read sections, stream live lines, incremental loading
     - Validates: Requirement 7 AC 1–7; Requirement 15 AC 3
 
-- [ ] 9. Retention and purge engine
-  - [ ] 9.1 Implement `src/retention/mod.rs` — module structure with policy and purge sub-modules
-  - [ ] 9.2 Implement `src/retention/policy.rs` — define `RetentionPolicy` struct (max_days: u32, max_jobs: u32) loaded from configuration
-  - [ ] 9.3 Implement `RetentionEngine::new(policy, queue_store, log_storage)` — construct engine with references to queue and spool storage
-  - [ ] 9.4 Implement `RetentionEngine::purge_job(job_id)` — remove job logs and SYSOUT from spool, update job record (mark purged), do NOT delete catalogued datasets unless explicit flag
-  - [ ] 9.5 Implement `RetentionEngine::batch_purge(filter)` — purge multiple jobs matching filter criteria (by date range, status, owner)
-  - [ ] 9.6 Implement `RetentionEngine::auto_purge()` — background task that runs on configurable schedule, identifies jobs exceeding retention policy (age > max_days OR total count > max_jobs), purges oldest first
-  - [ ] 9.7 Implement purge confirmation requirement — destructive purge actions emit a confirmation event that the UI must acknowledge before proceeding
-  - [ ] 9.8 Write unit tests for retention: policy evaluation, single purge, batch purge by filter, auto-purge ordering (oldest first), dataset preservation, confirmation flag
+- [x] 9. Retention and purge engine
+  - [x] 9.1 Implement `src/retention/mod.rs` — module structure with policy and purge sub-modules
+  - [x] 9.2 Implement `src/retention/policy.rs` — define `RetentionPolicy` struct (max_days: u32, max_jobs: u32) loaded from configuration
+  - [x] 9.3 Implement `RetentionEngine::new(policy, queue_store, log_storage)` — construct engine with references to queue and spool storage
+  - [x] 9.4 Implement `RetentionEngine::purge_job(job_id)` — remove job logs and SYSOUT from spool, update job record (mark purged), do NOT delete catalogued datasets unless explicit flag
+  - [x] 9.5 Implement `RetentionEngine::batch_purge(filter)` — purge multiple jobs matching filter criteria (by date range, status, owner)
+  - [x] 9.6 Implement `RetentionEngine::auto_purge()` — background task that runs on configurable schedule, identifies jobs exceeding retention policy (age > max_days OR total count > max_jobs), purges oldest first
+  - [x] 9.7 Implement purge confirmation requirement — destructive purge actions emit a confirmation event that the UI must acknowledge before proceeding
+  - [x] 9.8 Write unit tests for retention: policy evaluation, single purge, batch purge by filter, auto-purge ordering (oldest first), dataset preservation, confirmation flag
     - Validates: Requirement 8 AC 1–6
-  - [ ] 9.9 Write property test: retention policy correctness (Property 7) — generate N jobs with random completion dates, apply policy with max_days=D and max_jobs=M, assert retained set satisfies both constraints
+  - [x] 9.9 Write property test: retention policy correctness (Property 7) — generate N jobs with random completion dates, apply policy with max_days=D and max_jobs=M, assert retained set satisfies both constraints
     - Validates: Requirement 8 AC 1, AC 3
 
-- [ ] 10. Provider abstraction
-  - [ ] 10.1 Implement `src/provider/mod.rs` — module structure with trait definition and desktop provider
-  - [ ] 10.2 Implement `src/provider/trait.rs` — define `JobProvider` trait with async methods: list_jobs(filter), submit_job(definition), hold_job(id), release_job(id), cancel_job(id), get_job_log(id), subscribe_to_events() returning broadcast Receiver
-  - [ ] 10.3 Implement `src/provider/desktop.rs` — define `DesktopJesProvider` struct implementing `JobProvider` by delegating to local JobQueueStore, Scheduler, InitiatorPool, and LogManager
-  - [ ] 10.4 Implement `DesktopJesProvider::new(config)` — construct with all local subsystem references
-  - [ ] 10.5 Implement provider identification — each provider has a `name()` and `provider_id()` method; jobs carry a `source_provider` field
-  - [ ] 10.6 Implement `ProviderRegistry` — manages multiple registered providers, routes operations to correct provider based on job source
-  - [ ] 10.7 Implement provider error handling — connection errors per provider are isolated; one provider failing does not affect others
-  - [ ] 10.8 Write unit tests for provider trait: desktop provider delegates correctly, provider registry routes to correct provider, error isolation between providers
+- [x] 10. Provider abstraction
+  - [x] 10.1 Implement `src/provider/mod.rs` — module structure with trait definition and desktop provider
+  - [x] 10.2 Implement `src/provider/trait.rs` — define `JobProvider` trait with async methods: list_jobs(filter), submit_job(definition), hold_job(id), release_job(id), cancel_job(id), get_job_log(id), subscribe_to_events() returning broadcast Receiver
+  - [x] 10.3 Implement `src/provider/desktop.rs` — define `DesktopJesProvider` struct implementing `JobProvider` by delegating to local JobQueueStore, Scheduler, InitiatorPool, and LogManager
+  - [x] 10.4 Implement `DesktopJesProvider::new(config)` — construct with all local subsystem references
+  - [x] 10.5 Implement provider identification — each provider has a `name()` and `provider_id()` method; jobs carry a `source_provider` field
+  - [x] 10.6 Implement `ProviderRegistry` — manages multiple registered providers, routes operations to correct provider based on job source
+  - [x] 10.7 Implement provider error handling — connection errors per provider are isolated; one provider failing does not affect others
+  - [x] 10.8 Write unit tests for provider trait: desktop provider delegates correctly, provider registry routes to correct provider, error isolation between providers
     - Validates: Requirement 14 AC 1–7
 
-- [ ] 11. Job Monitor panel (SDSF-style)
-  - [ ] 11.1 Implement `src/panels/mod.rs` — module structure for JobMonitorPanel and JobLogViewerPanel
-  - [ ] 11.2 Implement `src/panels/job_monitor.rs` — define `JobMonitorPanel` struct implementing `DockablePanel` trait with `panel_id()`, `title()`, `default_dock_zone()` (Bottom), `render()`, `on_event()`
-  - [ ] 11.3 Implement tabbed sub-panels: InputQueueTab, ActiveJobsTab, HeldJobsTab, OutputTab, FailedTab, CancelledTab — each displaying job count in tab header
-  - [ ] 11.4 Implement job table rendering per tab — columns: Job Name, Job ID, Owner, Submit Time, Priority, Status, Start Time, Elapsed, Initiator, Return Code (as applicable per tab)
-  - [ ] 11.5 Implement table sorting — click column header to sort by that column; support ascending/descending toggle
-  - [ ] 11.6 Implement filtering UI — filter bar with fields: Owner, Job Name, Job ID, Status, Date Range, Return Code; filters persist across tab switches
-  - [ ] 11.7 Implement auto-refresh — configurable interval (default 2000ms) using event push where available, polling as fallback; refresh does NOT reset filters or scroll position
-  - [ ] 11.8 Implement visual status indicators — icons/colours distinguishing Queued, Held, Active, Completed, Failed, Cancelled states
-  - [ ] 11.9 Implement context menu per job row — actions: View Log, Hold, Release, Cancel, Purge, Properties; enable/disable based on job status
-  - [ ] 11.10 Implement active job details — for active jobs show: elapsed time (updating), current step, process metrics (PID, CPU%, Memory) where OS provides them
-  - [ ] 11.11 Write unit tests for panel: tab rendering with correct job counts, filter application, sort ordering, context menu enable/disable logic, auto-refresh state preservation
+- [x] 11. Job Monitor panel (SDSF-style)
+  - [x] 11.1 Implement `src/panels/mod.rs` — module structure for JobMonitorPanel and JobLogViewerPanel
+  - [x] 11.2 Implement `src/panels/job_monitor.rs` — define `JobMonitorPanel` struct implementing `DockablePanel` trait with `panel_id()`, `title()`, `default_dock_zone()` (Bottom), `render()`, `on_event()`
+  - [x] 11.3 Implement tabbed sub-panels: InputQueueTab, ActiveJobsTab, HeldJobsTab, OutputTab, FailedTab, CancelledTab — each displaying job count in tab header
+  - [x] 11.4 Implement job table rendering per tab — columns: Job Name, Job ID, Owner, Submit Time, Priority, Status, Start Time, Elapsed, Initiator, Return Code (as applicable per tab)
+  - [x] 11.5 Implement table sorting — click column header to sort by that column; support ascending/descending toggle
+  - [x] 11.6 Implement filtering UI — filter bar with fields: Owner, Job Name, Job ID, Status, Date Range, Return Code; filters persist across tab switches
+  - [x] 11.7 Implement auto-refresh — configurable interval (default 2000ms) using event push where available, polling as fallback; refresh does NOT reset filters or scroll position
+  - [x] 11.8 Implement visual status indicators — icons/colours distinguishing Queued, Held, Active, Completed, Failed, Cancelled states
+  - [x] 11.9 Implement context menu per job row — actions: View Log, Hold, Release, Cancel, Purge, Properties; enable/disable based on job status
+  - [x] 11.10 Implement active job details — for active jobs show: elapsed time (updating), current step, process metrics (PID, CPU%, Memory) where OS provides them
+  - [x] 11.11 Write unit tests for panel: tab rendering with correct job counts, filter application, sort ordering, context menu enable/disable logic, auto-refresh state preservation
     - Validates: Requirement 9 AC 1–10; Requirement 5 AC 1–5; Requirement 3 AC 8–10
 
-- [ ] 12. Job Log Viewer panel
-  - [ ] 12.1 Implement `src/panels/job_log_viewer.rs` — define `JobLogViewerPanel` struct implementing `DockablePanel` trait with `panel_id()`, `title()`, `default_dock_zone()` (Center), `render()`, `on_event()`
-  - [ ] 12.2 Implement sectioned display — tabs or collapsible sections for: JES Log, Step Log (per step), SYSOUT, Error Output, Allocation Messages
-  - [ ] 12.3 Implement search within log content — Ctrl+F search bar with next/previous navigation, highlight matches
-  - [ ] 12.4 Implement copy-to-clipboard and export-to-file (via VFS) actions
-  - [ ] 12.5 Implement live log streaming — for active jobs, append new output lines in real-time via SysoutCapture subscription
-  - [ ] 12.6 Implement large log virtualization — only render visible lines, load incrementally, maintain scroll position during live updates
-  - [ ] 12.7 Write unit tests for log viewer: section navigation, search highlight, live stream append without scroll reset, export generates valid VFS path
+- [x] 12. Job Log Viewer panel
+  - [x] 12.1 Implement `src/panels/job_log_viewer.rs` — define `JobLogViewerPanel` struct implementing `DockablePanel` trait with `panel_id()`, `title()`, `default_dock_zone()` (Center), `render()`, `on_event()`
+  - [x] 12.2 Implement sectioned display — tabs or collapsible sections for: JES Log, Step Log (per step), SYSOUT, Error Output, Allocation Messages
+  - [x] 12.3 Implement search within log content — Ctrl+F search bar with next/previous navigation, highlight matches
+  - [x] 12.4 Implement copy-to-clipboard and export-to-file (via VFS) actions
+  - [x] 12.5 Implement live log streaming — for active jobs, append new output lines in real-time via SysoutCapture subscription
+  - [x] 12.6 Implement large log virtualization — only render visible lines, load incrementally, maintain scroll position during live updates
+  - [x] 12.7 Write unit tests for log viewer: section navigation, search highlight, live stream append without scroll reset, export generates valid VFS path
     - Validates: Requirement 7 AC 1–7
 
-- [ ] 13. Command registration
-  - [ ] 13.1 Implement `src/commands/mod.rs` — module structure for all JES commands
-  - [ ] 13.2 Implement `jes.job.submit` command — params: jcl_source (path or inline text); parse FFJCL, validate, submit to queue; return JobId
-  - [ ] 13.3 Implement `jes.job.hold` command — params: job_id; validate job is Queued, change status to Held; error if Active
-  - [ ] 13.4 Implement `jes.job.release` command — params: job_id; validate job is Held, change status to Queued
-  - [ ] 13.5 Implement `jes.job.cancel` command — params: job_id; if Queued/Held set Cancelled; if Active send termination signal
-  - [ ] 13.6 Implement `jes.job.purge` command — params: job_id or filter; delegate to RetentionEngine with confirmation
-  - [ ] 13.7 Implement `jes.job.view_log` command — params: job_id; open JobLogViewerPanel with specified job's log
-  - [ ] 13.8 Implement `jes.monitor.refresh` command — trigger immediate refresh of JobMonitorPanel; default shortcut F5
-  - [ ] 13.9 Implement `jes.initiator.start` command — params: initiator_id; start specific initiator
-  - [ ] 13.10 Implement `jes.initiator.stop` command — params: initiator_id; stop specific initiator (graceful)
-  - [ ] 13.11 Implement `jes.initiator.drain` command — params: initiator_id; drain specific initiator
-  - [ ] 13.12 Implement `jes.catalog.browse` command — open file-tree-panel focused on Catalogs node
-  - [ ] 13.13 Implement command metadata — each command with: display name, description, category (jes.job | jes.initiator | jes.catalog), default keyboard shortcut where applicable
-  - [ ] 13.14 Implement enabled predicates — jes.job.cancel enabled only when job is Queued or Active; jes.job.hold only when Queued; jes.job.release only when Held
-  - [ ] 13.15 Write unit tests for command registration, parameter validation, enabled predicate logic, dispatch to correct subsystem operations
+- [x] 13. Command registration
+  - [x] 13.1 Implement `src/commands/mod.rs` — module structure for all JES commands
+  - [x] 13.2 Implement `jes.job.submit` command — params: jcl_source (path or inline text); parse FFJCL, validate, submit to queue; return JobId
+  - [x] 13.3 Implement `jes.job.hold` command — params: job_id; validate job is Queued, change status to Held; error if Active
+  - [x] 13.4 Implement `jes.job.release` command — params: job_id; validate job is Held, change status to Queued
+  - [x] 13.5 Implement `jes.job.cancel` command — params: job_id; if Queued/Held set Cancelled; if Active send termination signal
+  - [x] 13.6 Implement `jes.job.purge` command — params: job_id or filter; delegate to RetentionEngine with confirmation
+  - [x] 13.7 Implement `jes.job.view_log` command — params: job_id; open JobLogViewerPanel with specified job's log
+  - [x] 13.8 Implement `jes.monitor.refresh` command — trigger immediate refresh of JobMonitorPanel; default shortcut F5
+  - [x] 13.9 Implement `jes.initiator.start` command — params: initiator_id; start specific initiator
+  - [x] 13.10 Implement `jes.initiator.stop` command — params: initiator_id; stop specific initiator (graceful)
+  - [x] 13.11 Implement `jes.initiator.drain` command — params: initiator_id; drain specific initiator
+  - [x] 13.12 Implement `jes.catalog.browse` command — open file-tree-panel focused on Catalogs node
+  - [x] 13.13 Implement command metadata — each command with: display name, description, category (jes.job | jes.initiator | jes.catalog), default keyboard shortcut where applicable
+  - [x] 13.14 Implement enabled predicates — jes.job.cancel enabled only when job is Queued or Active; jes.job.hold only when Queued; jes.job.release only when Held
+  - [x] 13.15 Write unit tests for command registration, parameter validation, enabled predicate logic, dispatch to correct subsystem operations
     - Validates: Requirement 13 AC 1–4; Requirement 10 AC 1–4
 
-- [ ] 14. Job and Dataset APIs
-  - [ ] 14.1 Implement `src/api/mod.rs` — module structure for Job API and Dataset API
-  - [ ] 14.2 Implement `src/api/job_api.rs` — define `JobApi` struct exposing: submit, hold, release, cancel, query_status, retrieve_logs, retrieve_output, subscribe_events methods; accessible from other plugins and Lua macros
-  - [ ] 14.3 Implement `JobApi::subscribe_events()` — return broadcast Receiver delivering JobStatusChange events (job_id, old_status, new_status, timestamp)
-  - [ ] 14.4 Implement `src/api/dataset_api.rs` — define `DatasetApi` struct exposing: allocate, read, write, delete, resolve_dsn, query_metadata, open_in_editor methods; delegates to ff-dataset-allocator and ff-dataset-catalog
-  - [ ] 14.5 Implement Lua scripting bridge integration — register Job API operations as invocable via `workbench.execute("jes.job.submit", {jcl = "..."})` and similar patterns
-  - [ ] 14.6 Write unit tests for Job API: submit returns valid JobId, subscribe receives status transitions, cancel emits event; Dataset API: resolve delegates to allocator, allocate creates entry
+- [x] 14. Job and Dataset APIs
+  - [x] 14.1 Implement `src/api/mod.rs` — module structure for Job API and Dataset API
+  - [x] 14.2 Implement `src/api/job_api.rs` — define `JobApi` struct exposing: submit, hold, release, cancel, query_status, retrieve_logs, retrieve_output, subscribe_events methods; accessible from other plugins and Lua macros
+  - [x] 14.3 Implement `JobApi::subscribe_events()` — return broadcast Receiver delivering JobStatusChange events (job_id, old_status, new_status, timestamp)
+  - [x] 14.4 Implement `src/api/dataset_api.rs` — define `DatasetApi` struct exposing: allocate, read, write, delete, resolve_dsn, query_metadata, open_in_editor methods; delegates to ff-dataset-allocator and ff-dataset-catalog
+  - [x] 14.5 Implement Lua scripting bridge integration — register Job API operations as invocable via `workbench.execute("jes.job.submit", {jcl = "..."})` and similar patterns
+  - [x] 14.6 Write unit tests for Job API: submit returns valid JobId, subscribe receives status transitions, cancel emits event; Dataset API: resolve delegates to allocator, allocate creates entry
     - Validates: Requirement 12 AC 1–5
 
-- [ ] 15. Configuration
-  - [ ] 15.1 Implement `src/config.rs` — define `JesConfig` struct deserializable from `[plugins.ffw-jes]` TOML table with fields: initiator_count (default 3), retention_days (default 7), retention_max_jobs (default 1000), monitor_refresh_ms (default 2000), scheduler_poll_ms (default 500), job_cancel_timeout_ms (default 30000)
-  - [ ] 15.2 Implement `JesConfig::load(config_service)` — read from ff-config, validate values (initiator_count > 0, all intervals > 0, retention_days > 0)
-  - [ ] 15.3 Implement hot-reload support — subscribe to config change events, apply initiator count changes (grow/shrink pool), update intervals without restart
-  - [ ] 15.4 Write unit tests for config loading, validation, default values, hot-reload application
+- [x] 15. Configuration
+  - [x] 15.1 Implement `src/config.rs` — define `JesConfig` struct deserializable from `[plugins.ffw-jes]` TOML table with fields: initiator_count (default 3), retention_days (default 7), retention_max_jobs (default 1000), monitor_refresh_ms (default 2000), scheduler_poll_ms (default 500), job_cancel_timeout_ms (default 30000)
+  - [x] 15.2 Implement `JesConfig::load(config_service)` — read from ff-config, validate values (initiator_count > 0, all intervals > 0, retention_days > 0)
+  - [x] 15.3 Implement hot-reload support — subscribe to config change events, apply initiator count changes (grow/shrink pool), update intervals without restart
+  - [x] 15.4 Write unit tests for config loading, validation, default values, hot-reload application
     - Validates: Requirement 1 AC 4; Requirement 4 AC 1; Requirement 8 AC 1; Requirement 9 AC 7
 
-- [ ] 16. Async infrastructure
-  - [ ] 16.1 Implement `src/async_infra.rs` — define shared Tokio runtime configuration, cancellation token hierarchy (plugin-level → scheduler → initiators), graceful shutdown coordination
-  - [ ] 16.2 Implement async channel infrastructure — define typed channels: job_status_events (broadcast), log_lines (mpsc per job), scheduler_commands (mpsc), initiator_commands (mpsc per initiator)
-  - [ ] 16.3 Implement `spawn_blocking` wrappers for synchronous operations (SQLite writes, file I/O) that must not block the async runtime
-  - [ ] 16.4 Implement event-driven Job Monitor refresh — status change events push to UI subscription rather than polling where feasible
-  - [ ] 16.5 Write unit tests for async infrastructure: cancellation propagation, channel delivery, spawn_blocking does not block async tasks, event-driven refresh triggers UI update
+- [x] 16. Async infrastructure
+  - [x] 16.1 Implement `src/async_infra.rs` — define shared Tokio runtime configuration, cancellation token hierarchy (plugin-level → scheduler → initiators), graceful shutdown coordination
+  - [x] 16.2 Implement async channel infrastructure — define typed channels: job_status_events (broadcast), log_lines (mpsc per job), scheduler_commands (mpsc), initiator_commands (mpsc per initiator)
+  - [x] 16.3 Implement `spawn_blocking` wrappers for synchronous operations (SQLite writes, file I/O) that must not block the async runtime
+  - [x] 16.4 Implement event-driven Job Monitor refresh — status change events push to UI subscription rather than polling where feasible
+  - [x] 16.5 Write unit tests for async infrastructure: cancellation propagation, channel delivery, spawn_blocking does not block async tasks, event-driven refresh triggers UI update
     - Validates: Requirement 15 AC 1–5
 
-- [ ] 17. Plugin entry point
-  - [ ] 17.1 Implement `src/plugin.rs` — define `JesPlugin` struct implementing `FileForgePlugin` trait with fields: config, queue_store, scheduler, initiator_pool, log_manager, retention_engine, provider_registry, job_api, dataset_api
-  - [ ] 17.2 Implement `JesPlugin::metadata()` — return PluginMetadata with name="ffw-jes", capabilities=[Commands, Viewers, Providers], dependencies=[ff-vfs, ff-workflow, ff-dataset-catalog, ff-dataset-allocator]
-  - [ ] 17.3 Implement `JesPlugin::initialize(ctx: &PluginContext)` — register all JES commands with command registry under `jes.*` namespace
-  - [ ] 17.4 Implement `JesPlugin::activate(ctx: &PluginContext)` — register panels (JobMonitorPanel, JobLogViewerPanel), initialize initiator pool, start scheduler, start retention auto-purge background task
-  - [ ] 17.5 Implement `JesPlugin::deactivate(ctx: &PluginContext)` — stop scheduler, gracefully stop all initiators (allow active jobs to complete or cancel), persist queue state, deregister capabilities
-  - [ ] 17.6 Implement `JesPlugin::shutdown(ctx: &PluginContext)` — persist retained job output and catalog state, flush logs, close all resources (SQLite connections, channels)
-  - [ ] 17.7 Implement enable/disable support — plugin can be disabled without unloading; disabled state stops scheduler and ignores commands
-  - [ ] 17.8 Write unit tests for plugin lifecycle: initialize registers commands, activate starts subsystems, deactivate persists and stops, shutdown cleans up; verify independent enable/disable
+- [x] 17. Plugin entry point
+  - [x] 17.1 Implement `src/plugin.rs` — define `JesPlugin` struct implementing `FileForgePlugin` trait with fields: config, queue_store, scheduler, initiator_pool, log_manager, retention_engine, provider_registry, job_api, dataset_api
+  - [x] 17.2 Implement `JesPlugin::metadata()` — return PluginMetadata with name="ffw-jes", capabilities=[Commands, Viewers, Providers], dependencies=[ff-vfs, ff-workflow, ff-dataset-catalog, ff-dataset-allocator]
+  - [x] 17.3 Implement `JesPlugin::initialize(ctx: &PluginContext)` — register all JES commands with command registry under `jes.*` namespace
+  - [x] 17.4 Implement `JesPlugin::activate(ctx: &PluginContext)` — register panels (JobMonitorPanel, JobLogViewerPanel), initialize initiator pool, start scheduler, start retention auto-purge background task
+  - [x] 17.5 Implement `JesPlugin::deactivate(ctx: &PluginContext)` — stop scheduler, gracefully stop all initiators (allow active jobs to complete or cancel), persist queue state, deregister capabilities
+  - [x] 17.6 Implement `JesPlugin::shutdown(ctx: &PluginContext)` — persist retained job output and catalog state, flush logs, close all resources (SQLite connections, channels)
+  - [x] 17.7 Implement enable/disable support — plugin can be disabled without unloading; disabled state stops scheduler and ignores commands
+  - [x] 17.8 Write unit tests for plugin lifecycle: initialize registers commands, activate starts subsystems, deactivate persists and stops, shutdown cleans up; verify independent enable/disable
     - Validates: Requirement 1 AC 1–9
-  - [ ] 17.9 Write property test: plugin lifecycle state machine (Property 8) — generate random sequences of initialize/activate/deactivate/shutdown calls, assert no panics and correct state transitions (cannot activate before initialize, cannot double-activate, etc.)
+  - [x] 17.9 Write property test: plugin lifecycle state machine (Property 8) — generate random sequences of initialize/activate/deactivate/shutdown calls, assert no panics and correct state transitions (cannot activate before initialize, cannot double-activate, etc.)
     - Validates: Requirement 1 AC 1, AC 5, AC 6
 
-- [ ] 18. Hold and release operations
-  - [ ] 18.1 Implement `src/operations/hold_release.rs` — define `hold_job(queue_store, job_id)` — validate job status is Queued, update to Held; return error if Active or terminal
-  - [ ] 18.2 Implement `release_job(queue_store, job_id)` — validate job status is Held, update to Queued; return error if not Held
-  - [ ] 18.3 Implement status transition validation — enforce valid transitions: Queued→Held (hold), Held→Queued (release); reject all other hold/release combinations with descriptive errors
-  - [ ] 18.4 Write unit tests for hold/release: valid transitions, invalid transitions (hold Active, release Queued), error messages
+- [x] 18. Hold and release operations
+  - [x] 18.1 Implement `src/operations/hold_release.rs` — define `hold_job(queue_store, job_id)` — validate job status is Queued, update to Held; return error if Active or terminal
+  - [x] 18.2 Implement `release_job(queue_store, job_id)` — validate job status is Held, update to Queued; return error if not Held
+  - [x] 18.3 Implement status transition validation — enforce valid transitions: Queued→Held (hold), Held→Queued (release); reject all other hold/release combinations with descriptive errors
+  - [x] 18.4 Write unit tests for hold/release: valid transitions, invalid transitions (hold Active, release Queued), error messages
     - Validates: Requirement 10 AC 1–4
-  - [ ] 18.5 Write property test: job status transition validity (Property 9) — generate random (status, action) pairs, assert only valid transitions succeed and invalid ones return appropriate errors
+  - [x] 18.5 Write property test: job status transition validity (Property 9) — generate random (status, action) pairs, assert only valid transitions succeed and invalid ones return appropriate errors
     - Validates: Requirement 10 AC 1–4; Requirement 6 AC 1–3
 
-- [ ] 19. Integration tests and end-to-end validation
-  - [ ] 19.1 Write integration test: full job lifecycle — submit FFJCL job, observe Queued status, scheduler dispatches to initiator, job executes (simple echo program), observe Active→Completed, verify return code and job log content
-  - [ ] 19.2 Write integration test: job cancellation — submit job that sleeps, cancel while Active, verify SIGTERM sent, timeout triggers force-kill, final status is Cancelled with preserved partial logs
-  - [ ] 19.3 Write integration test: hold and release — submit job, hold before dispatch, verify scheduler skips it, release, verify scheduler dispatches it
-  - [ ] 19.4 Write integration test: dataset resolution — submit FFJCL with DSN references (existing OLD, new NEW allocation, GDG relative ref), verify allocation messages in job log, verify datasets created in catalog
-  - [ ] 19.5 Write integration test: retention and purge — submit and complete multiple jobs, configure short retention, trigger auto-purge, verify oldest jobs purged while datasets preserved
-  - [ ] 19.6 Write integration test: provider abstraction — register DesktopJesProvider, submit job through provider API, verify provider_id tagged on job, verify provider registry routes correctly
-  - [ ] 19.7 Write integration test: plugin lifecycle — initialize JesPlugin, verify commands registered; activate, verify panels and scheduler running; deactivate, verify persistence and cleanup; reinitialize and verify queue state restored
-  - [ ] 19.8 Write integration test: concurrent job execution — submit N jobs to pool of C initiators, verify max C run concurrently, all eventually complete, no race conditions on queue state
+- [x] 19. Integration tests and end-to-end validation
+  - [x] 19.1 Write integration test: full job lifecycle — submit FFJCL job, observe Queued status, scheduler dispatches to initiator, job executes (simple echo program), observe Active→Completed, verify return code and job log content
+  - [x] 19.2 Write integration test: job cancellation — submit job that sleeps, cancel while Active, verify SIGTERM sent, timeout triggers force-kill, final status is Cancelled with preserved partial logs
+  - [x] 19.3 Write integration test: hold and release — submit job, hold before dispatch, verify scheduler skips it, release, verify scheduler dispatches it
+  - [x] 19.4 Write integration test: dataset resolution — submit FFJCL with DSN references (existing OLD, new NEW allocation, GDG relative ref), verify allocation messages in job log, verify datasets created in catalog
+  - [x] 19.5 Write integration test: retention and purge — submit and complete multiple jobs, configure short retention, trigger auto-purge, verify oldest jobs purged while datasets preserved
+  - [x] 19.6 Write integration test: provider abstraction — register DesktopJesProvider, submit job through provider API, verify provider_id tagged on job, verify provider registry routes correctly
+  - [x] 19.7 Write integration test: plugin lifecycle — initialize JesPlugin, verify commands registered; activate, verify panels and scheduler running; deactivate, verify persistence and cleanup; reinitialize and verify queue state restored
+  - [x] 19.8 Write integration test: concurrent job execution — submit N jobs to pool of C initiators, verify max C run concurrently, all eventually complete, no race conditions on queue state
     - Validates: All requirements end-to-end
 
 ---

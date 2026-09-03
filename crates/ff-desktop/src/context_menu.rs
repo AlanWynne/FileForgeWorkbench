@@ -189,6 +189,7 @@ pub enum MenuAction {
     CopyDatasetMember,
     MemberProperties,
     NewGeneration,
+    CopyAsTextTree,
 }
 
 // === ExtensionRule ===========================================================
@@ -244,6 +245,7 @@ fn raw_menu(catalog_type: CatalogType, node_kind: NodeKind) -> Vec<MenuItem> {
             Action(OpenInNewWindow),
             Action(OpenWith),
             Separator,
+            Action(CopyAsTextTree),
             Action(Copy),
             Separator,
             Action(Rename),
@@ -272,6 +274,7 @@ fn raw_menu(catalog_type: CatalogType, node_kind: NodeKind) -> Vec<MenuItem> {
             Action(NewFile),
             Action(NewFolder),
             Separator,
+            Action(CopyAsTextTree),
             Action(Copy),
             Separator,
             Action(Rename),
@@ -434,6 +437,7 @@ impl MenuAction {
             MenuAction::CopyDatasetMember => "Copy Dataset(Member)",
             MenuAction::MemberProperties => "Member Properties",
             MenuAction::NewGeneration => "New Generation",
+            MenuAction::CopyAsTextTree => "Copy as Text Tree",
         }
     }
 

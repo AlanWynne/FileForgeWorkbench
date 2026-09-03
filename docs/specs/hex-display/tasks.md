@@ -1,4 +1,4 @@
-# Implementation Plan: Hex Display Mode (`ff-hex`)
+﻿# Implementation Plan: Hex Display Mode (`ff-hex`)
 
 ## Overview
 
@@ -18,213 +18,213 @@ The crate is **GUI-independent** — it manages the hex display model, cursor sy
 
 ## Tasks
 
-- [ ] 1. Crate scaffolding and module structure
-  - [ ] 1.1 Create `crates/ff-hex/Cargo.toml` with dependencies (thiserror, proptest dev-dep) and dependencies on `ff-document-model`, `ff-command`, `ff-undo-redo`, `ff-viewport`, `ff-config`, `ff-logging`
-  - [ ] 1.2 Create `crates/ff-hex/src/lib.rs` with module declarations and public API re-exports
-  - [ ] 1.3 Create module files: `state.rs`, `layout.rs`, `cursor.rs`, `navigation.rs`, `editing.rs`, `search.rs`, `clipboard.rs`, `commands.rs`, `config.rs`, `session.rs`, `dump.rs`, `fileforge.rs`, `error.rs`, `types.rs`
-  - [ ] 1.4 Add `ff-hex` to workspace `Cargo.toml` members list
+- [x] 1. Crate scaffolding and module structure
+  - [x] 1.1 Create `crates/ff-hex/Cargo.toml` with dependencies (thiserror, proptest dev-dep) and dependencies on `ff-document-model`, `ff-command`, `ff-undo-redo`, `ff-viewport`, `ff-config`, `ff-logging`
+  - [x] 1.2 Create `crates/ff-hex/src/lib.rs` with module declarations and public API re-exports
+  - [x] 1.3 Create module files: `state.rs`, `layout.rs`, `cursor.rs`, `navigation.rs`, `editing.rs`, `search.rs`, `clipboard.rs`, `commands.rs`, `config.rs`, `session.rs`, `dump.rs`, `fileforge.rs`, `error.rs`, `types.rs`
+  - [x] 1.4 Add `ff-hex` to workspace `Cargo.toml` members list
   - Covers: Structural foundation for all requirements
 
-- [ ] 2. Core types and error definitions
-  - [ ] 2.1 Define `ByteOffset(u64)` newtype with arithmetic ops, hex Display formatting, and From<u64> conversion
-  - [ ] 2.2 Define `NibblePosition` enum (High, Low) representing cursor position within a hex digit pair
-  - [ ] 2.3 Define `HexPane` enum (Hex, Ascii) representing which pane has editing focus
-  - [ ] 2.4 Define `HexDigitCase` enum (Uppercase, Lowercase) with formatting methods
-  - [ ] 2.5 Define `BytesPerRow` validated newtype accepting only 8, 16, 32, 64 with TryFrom<u8>
-  - [ ] 2.6 Define `HexModeState` enum (Active, Inactive) for tracking mode transitions
-  - [ ] 2.7 Define `ModifiedByte` struct tracking byte offset and original vs current value
-  - [ ] 2.8 Define `HexError` enum with variants: InvalidHexDigit, InvalidBytesPerRow, OffsetOutOfRange, ReadOnlyMode, InvalidHexPattern, HexModeAlreadyActive, HexModeAlreadyInactive
-  - [ ] 2.9 Write unit tests for ByteOffset formatting, BytesPerRow validation, NibblePosition transitions
+- [x] 2. Core types and error definitions
+  - [x] 2.1 Define `ByteOffset(u64)` newtype with arithmetic ops, hex Display formatting, and From<u64> conversion
+  - [x] 2.2 Define `NibblePosition` enum (High, Low) representing cursor position within a hex digit pair
+  - [x] 2.3 Define `HexPane` enum (Hex, Ascii) representing which pane has editing focus
+  - [x] 2.4 Define `HexDigitCase` enum (Uppercase, Lowercase) with formatting methods
+  - [x] 2.5 Define `BytesPerRow` validated newtype accepting only 8, 16, 32, 64 with TryFrom<u8>
+  - [x] 2.6 Define `HexModeState` enum (Active, Inactive) for tracking mode transitions
+  - [x] 2.7 Define `ModifiedByte` struct tracking byte offset and original vs current value
+  - [x] 2.8 Define `HexError` enum with variants: InvalidHexDigit, InvalidBytesPerRow, OffsetOutOfRange, ReadOnlyMode, InvalidHexPattern, HexModeAlreadyActive, HexModeAlreadyInactive
+  - [x] 2.9 Write unit tests for ByteOffset formatting, BytesPerRow validation, NibblePosition transitions
   - Covers: Requirement 1 (AC 1.4–1.5), Requirement 2 (AC 2.3), Requirement 3 (AC 3.1–3.4), Requirement 4 (AC 4.4), Requirement 13
 
-- [ ] 3. Hex mode state management
-  - [ ] 3.1 Implement `HexSession` struct holding: HexModeState, active pane, cursor byte offset, viewport top row, BytesPerRow, HexDigitCase, modified bytes set
-  - [ ] 3.2 Implement `activate()` method that transitions from Inactive to Active, mapping current text cursor BytePosition to hex row/column
-  - [ ] 3.3 Implement `deactivate()` method that transitions from Active to Inactive, mapping hex cursor byte offset back to text line/column
-  - [ ] 3.4 Implement `toggle()` method that calls activate or deactivate based on current state
-  - [ ] 3.5 Implement idempotent guards: activate when already active returns status message, deactivate when already inactive returns status message
-  - [ ] 3.6 Implement mode validity check across Browse, Edit, and View modes
-  - [ ] 3.7 Implement status bar indicator query `is_hex_active() -> bool`
-  - [ ] 3.8 Verify hex mode state change is NOT added to undo stack (display-only state)
-  - [ ] 3.9 Write unit tests for state transitions, idempotent guards, cursor position mapping on activation/deactivation
+- [x] 3. Hex mode state management
+  - [x] 3.1 Implement `HexSession` struct holding: HexModeState, active pane, cursor byte offset, viewport top row, BytesPerRow, HexDigitCase, modified bytes set
+  - [x] 3.2 Implement `activate()` method that transitions from Inactive to Active, mapping current text cursor BytePosition to hex row/column
+  - [x] 3.3 Implement `deactivate()` method that transitions from Active to Inactive, mapping hex cursor byte offset back to text line/column
+  - [x] 3.4 Implement `toggle()` method that calls activate or deactivate based on current state
+  - [x] 3.5 Implement idempotent guards: activate when already active returns status message, deactivate when already inactive returns status message
+  - [x] 3.6 Implement mode validity check across Browse, Edit, and View modes
+  - [x] 3.7 Implement status bar indicator query `is_hex_active() -> bool`
+  - [x] 3.8 Verify hex mode state change is NOT added to undo stack (display-only state)
+  - [x] 3.9 Write unit tests for state transitions, idempotent guards, cursor position mapping on activation/deactivation
   - Covers: Requirement 1 (AC 1.1–1.10)
 
-- [ ] 4. Hex layout model (offset, hex, ASCII columns)
-  - [ ] 4.1 Implement `HexRow` struct containing: row_offset (ByteOffset), bytes (Vec<u8>), byte_count (number of valid bytes in this row)
-  - [ ] 4.2 Implement `HexLayout` struct computing column positions: offset_column_width, hex_pane_start, hex_pane_width, ascii_pane_start, ascii_pane_width based on BytesPerRow
-  - [ ] 4.3 Implement offset column formatting: zero-padded 8-digit hex (expanding to more digits for documents > 4 GB)
-  - [ ] 4.4 Implement hex pane formatting: two uppercase/lowercase hex digits per byte, single space separator, additional space after every 8-byte group when BytesPerRow >= 16
-  - [ ] 4.5 Implement ASCII pane formatting: printable chars (0x20–0x7E) shown directly, non-printable bytes shown as `.`
-  - [ ] 4.6 Implement column separator character/theme token placement between offset, hex, and ASCII regions
-  - [ ] 4.7 Implement final-row padding: incomplete rows padded with spaces to maintain column alignment in both hex and ASCII panes
-  - [ ] 4.8 Implement empty document handling: single row with offset `00000000` and empty panes
-  - [ ] 4.9 Implement `total_row_count(document_length, bytes_per_row)` calculation as `ceil(doc_len / bytes_per_row)`
-  - [ ] 4.10 Implement `byte_offset_to_row_col(offset, bytes_per_row)` mapping and inverse `row_col_to_byte_offset`
-  - [ ] 4.11 Implement layout recalculation on BytesPerRow change preserving cursor byte offset
-  - [ ] 4.12 Write unit tests for layout calculations, offset formatting, row generation, padding, empty document, and large-file offset expansion
+- [x] 4. Hex layout model (offset, hex, ASCII columns)
+  - [x] 4.1 Implement `HexRow` struct containing: row_offset (ByteOffset), bytes (Vec<u8>), byte_count (number of valid bytes in this row)
+  - [x] 4.2 Implement `HexLayout` struct computing column positions: offset_column_width, hex_pane_start, hex_pane_width, ascii_pane_start, ascii_pane_width based on BytesPerRow
+  - [x] 4.3 Implement offset column formatting: zero-padded 8-digit hex (expanding to more digits for documents > 4 GB)
+  - [x] 4.4 Implement hex pane formatting: two uppercase/lowercase hex digits per byte, single space separator, additional space after every 8-byte group when BytesPerRow >= 16
+  - [x] 4.5 Implement ASCII pane formatting: printable chars (0x20–0x7E) shown directly, non-printable bytes shown as `.`
+  - [x] 4.6 Implement column separator character/theme token placement between offset, hex, and ASCII regions
+  - [x] 4.7 Implement final-row padding: incomplete rows padded with spaces to maintain column alignment in both hex and ASCII panes
+  - [x] 4.8 Implement empty document handling: single row with offset `00000000` and empty panes
+  - [x] 4.9 Implement `total_row_count(document_length, bytes_per_row)` calculation as `ceil(doc_len / bytes_per_row)`
+  - [x] 4.10 Implement `byte_offset_to_row_col(offset, bytes_per_row)` mapping and inverse `row_col_to_byte_offset`
+  - [x] 4.11 Implement layout recalculation on BytesPerRow change preserving cursor byte offset
+  - [x] 4.12 Write unit tests for layout calculations, offset formatting, row generation, padding, empty document, and large-file offset expansion
   - Covers: Requirement 2 (AC 2.1–2.10), Requirement 3 (AC 3.3, 3.6)
 
-- [ ] 5. Hex cursor and navigation
-  - [ ] 5.1 Implement `HexCursor` struct with fields: byte_offset (ByteOffset), nibble_position (NibblePosition), active_pane (HexPane)
-  - [ ] 5.2 Implement pane switching via configurable key (Tab default): changes active_pane while preserving byte_offset
-  - [ ] 5.3 Implement hex pane arrow key navigation: Left/Right move by nibble, Up/Down move by BytesPerRow bytes
-  - [ ] 5.4 Implement ASCII pane arrow key navigation: Left/Right move by one byte, Up/Down move by BytesPerRow bytes
-  - [ ] 5.5 Implement row wrapping: Right at end of row advances to start of next row, Left at start of row moves to end of previous row
-  - [ ] 5.6 Implement cursor clamping: cursor cannot move past document end (last byte)
-  - [ ] 5.7 Implement offset column row highlighting: current row indicated when cursor moves
-  - [ ] 5.8 Implement cursor synchronisation: moving in hex pane updates ASCII pane highlight and vice versa
-  - [ ] 5.9 Write unit tests for pane switching, nibble navigation, byte navigation, wrapping, clamping, and synchronisation
+- [x] 5. Hex cursor and navigation
+  - [x] 5.1 Implement `HexCursor` struct with fields: byte_offset (ByteOffset), nibble_position (NibblePosition), active_pane (HexPane)
+  - [x] 5.2 Implement pane switching via configurable key (Tab default): changes active_pane while preserving byte_offset
+  - [x] 5.3 Implement hex pane arrow key navigation: Left/Right move by nibble, Up/Down move by BytesPerRow bytes
+  - [x] 5.4 Implement ASCII pane arrow key navigation: Left/Right move by one byte, Up/Down move by BytesPerRow bytes
+  - [x] 5.5 Implement row wrapping: Right at end of row advances to start of next row, Left at start of row moves to end of previous row
+  - [x] 5.6 Implement cursor clamping: cursor cannot move past document end (last byte)
+  - [x] 5.7 Implement offset column row highlighting: current row indicated when cursor moves
+  - [x] 5.8 Implement cursor synchronisation: moving in hex pane updates ASCII pane highlight and vice versa
+  - [x] 5.9 Write unit tests for pane switching, nibble navigation, byte navigation, wrapping, clamping, and synchronisation
   - Covers: Requirement 6 (AC 6.1–6.8)
 
-- [ ] 6. Hex editing (byte modification with undo)
-  - [ ] 6.1 Implement hex pane input handler: valid hex digit (0–9, A–F, a–f) overwrites current nibble, advances to next nibble
-  - [ ] 6.2 Implement nibble-to-byte completion: after low nibble entry, cursor advances to high nibble of next byte
-  - [ ] 6.3 Implement ASCII pane input handler: printable character (0x20–0x7E) overwrites current byte, updates hex pane
-  - [ ] 6.4 Implement invalid hex digit rejection: non-hex input ignored with status message "Invalid hex digit"
-  - [ ] 6.5 Implement read-only mode guard: reject edits in Browse/View mode with "Cannot edit in Browse/View mode" message
-  - [ ] 6.6 Implement Edit_Operation recording: each byte modification emitted as a reversible operation to undo-redo system
-  - [ ] 6.7 Implement nibble coalescing: consecutive high+low nibble edits on same byte coalesced into single undo transaction
-  - [ ] 6.8 Implement modified byte tracking: mark edited bytes in modified set with distinct highlight until save
-  - [ ] 6.9 Implement EBCDIC warning: display "Hex editing on EBCDIC files modifies raw bytes directly" warning on first hex pane entry when EBCDIC encoding is active
-  - [ ] 6.10 Write unit tests for hex digit entry, nibble advancement, ASCII overwrite, invalid input rejection, read-only guard, undo recording, and coalescing
+- [x] 6. Hex editing (byte modification with undo)
+  - [x] 6.1 Implement hex pane input handler: valid hex digit (0–9, A–F, a–f) overwrites current nibble, advances to next nibble
+  - [x] 6.2 Implement nibble-to-byte completion: after low nibble entry, cursor advances to high nibble of next byte
+  - [x] 6.3 Implement ASCII pane input handler: printable character (0x20–0x7E) overwrites current byte, updates hex pane
+  - [x] 6.4 Implement invalid hex digit rejection: non-hex input ignored with status message "Invalid hex digit"
+  - [x] 6.5 Implement read-only mode guard: reject edits in Browse/View mode with "Cannot edit in Browse/View mode" message
+  - [x] 6.6 Implement Edit_Operation recording: each byte modification emitted as a reversible operation to undo-redo system
+  - [x] 6.7 Implement nibble coalescing: consecutive high+low nibble edits on same byte coalesced into single undo transaction
+  - [x] 6.8 Implement modified byte tracking: mark edited bytes in modified set with distinct highlight until save
+  - [x] 6.9 Implement EBCDIC warning: display "Hex editing on EBCDIC files modifies raw bytes directly" warning on first hex pane entry when EBCDIC encoding is active
+  - [x] 6.10 Write unit tests for hex digit entry, nibble advancement, ASCII overwrite, invalid input rejection, read-only guard, undo recording, and coalescing
   - Covers: Requirement 4 (AC 4.1–4.9), Requirement 7 (AC 7.1–7.6), Requirement 8 (AC 8.1–8.5)
 
-- [ ] 7. Undo/redo in hex mode
-  - [ ] 7.1 Implement `HexEditOperation` struct implementing the Edit_Operation trait with byte offset, old value, new value
-  - [ ] 7.2 Implement undo handler: restore original byte value, update both hex and ASCII panes
-  - [ ] 7.3 Implement redo handler: re-apply byte change, update both panes
-  - [ ] 7.4 Implement nibble pair coalescing into single transaction (high nibble + low nibble = one undo unit)
-  - [ ] 7.5 Implement modified byte indicator update on undo/redo: compare current value to saved-state value
-  - [ ] 7.6 Implement shared undo stack: hex edits and text edits share same undo stack
-  - [ ] 7.7 Write unit tests for undo/redo cycle, coalescing, modified indicator tracking, and shared stack behaviour
+- [x] 7. Undo/redo in hex mode
+  - [x] 7.1 Implement `HexEditOperation` struct implementing the Edit_Operation trait with byte offset, old value, new value
+  - [x] 7.2 Implement undo handler: restore original byte value, update both hex and ASCII panes
+  - [x] 7.3 Implement redo handler: re-apply byte change, update both panes
+  - [x] 7.4 Implement nibble pair coalescing into single transaction (high nibble + low nibble = one undo unit)
+  - [x] 7.5 Implement modified byte indicator update on undo/redo: compare current value to saved-state value
+  - [x] 7.6 Implement shared undo stack: hex edits and text edits share same undo stack
+  - [x] 7.7 Write unit tests for undo/redo cycle, coalescing, modified indicator tracking, and shared stack behaviour
   - Covers: Requirement 7 (AC 7.1–7.6)
 
-- [ ] 8. Modified byte indicators
-  - [ ] 8.1 Implement `ModifiedByteTracker` maintaining a HashSet<ByteOffset> of bytes differing from last-saved state
-  - [ ] 8.2 Implement `mark_modified(offset, original_value)` when byte is edited
-  - [ ] 8.3 Implement `clear_all()` on document save — all indicators removed
-  - [ ] 8.4 Implement `unmark_if_restored(offset, current_value, saved_value)` on undo — remove indicator if value matches saved state
-  - [ ] 8.5 Implement multi-modify-undo cycle correctness: byte modified, undone, re-modified tracks correctly
-  - [ ] 8.6 Implement theme token query for modified byte highlight (`hex.modified_byte`)
-  - [ ] 8.7 Write unit tests for mark, clear, unmark, and multi-cycle tracking
+- [x] 8. Modified byte indicators
+  - [x] 8.1 Implement `ModifiedByteTracker` maintaining a HashSet<ByteOffset> of bytes differing from last-saved state
+  - [x] 8.2 Implement `mark_modified(offset, original_value)` when byte is edited
+  - [x] 8.3 Implement `clear_all()` on document save — all indicators removed
+  - [x] 8.4 Implement `unmark_if_restored(offset, current_value, saved_value)` on undo — remove indicator if value matches saved state
+  - [x] 8.5 Implement multi-modify-undo cycle correctness: byte modified, undone, re-modified tracks correctly
+  - [x] 8.6 Implement theme token query for modified byte highlight (`hex.modified_byte`)
+  - [x] 8.7 Write unit tests for mark, clear, unmark, and multi-cycle tracking
   - Covers: Requirement 8 (AC 8.1–8.5)
 
-- [ ] 9. Hex search integration (FIND X'...')
-  - [ ] 9.1 Implement `HexPattern` parser: validate hex string is even length, parse digit pairs into byte sequence
-  - [ ] 9.2 Implement odd-digit-count error: "Hex pattern must contain an even number of digits"
-  - [ ] 9.3 Implement byte sequence matcher: raw byte matching without Unicode case folding
-  - [ ] 9.4 Implement auto-activate: when hex match found and hex mode is inactive, activate hex mode before highlighting
-  - [ ] 9.5 Implement match highlighting: highlight matched byte range in both hex pane (digit pairs) and ASCII pane (characters)
-  - [ ] 9.6 Implement scope modifier support: ALL, NEXT, PREV, FIRST, LAST passed through to find engine
-  - [ ] 9.7 Implement viewport scroll to match: scroll to reveal matching row, position cursor at first byte of match
-  - [ ] 9.8 Write unit tests for pattern parsing, validation, byte matching, auto-activate, highlighting, and scope modifiers
+- [x] 9. Hex search integration (FIND X'...')
+  - [x] 9.1 Implement `HexPattern` parser: validate hex string is even length, parse digit pairs into byte sequence
+  - [x] 9.2 Implement odd-digit-count error: "Hex pattern must contain an even number of digits"
+  - [x] 9.3 Implement byte sequence matcher: raw byte matching without Unicode case folding
+  - [x] 9.4 Implement auto-activate: when hex match found and hex mode is inactive, activate hex mode before highlighting
+  - [x] 9.5 Implement match highlighting: highlight matched byte range in both hex pane (digit pairs) and ASCII pane (characters)
+  - [x] 9.6 Implement scope modifier support: ALL, NEXT, PREV, FIRST, LAST passed through to find engine
+  - [x] 9.7 Implement viewport scroll to match: scroll to reveal matching row, position cursor at first byte of match
+  - [x] 9.8 Write unit tests for pattern parsing, validation, byte matching, auto-activate, highlighting, and scope modifiers
   - Covers: Requirement 5 (AC 5.1–5.8)
 
-- [ ] 10. Hex copy/paste (clipboard integration)
-  - [ ] 10.1 Implement hex pane copy: selected byte range copied as hex digit string (e.g., "0D0A4F")
-  - [ ] 10.2 Implement ASCII pane copy: selected byte range copied as ASCII text (non-printable as `.`)
-  - [ ] 10.3 Implement hex pane paste: validate clipboard content as hex digit pairs, overwrite bytes starting at cursor
-  - [ ] 10.4 Implement ASCII pane paste: overwrite bytes with pasted character ASCII values
-  - [ ] 10.5 Implement paste validation: reject invalid hex digit sequences on hex pane paste with error message
-  - [ ] 10.6 Write unit tests for copy format, paste overwrite, and validation
+- [x] 10. Hex copy/paste (clipboard integration)
+  - [x] 10.1 Implement hex pane copy: selected byte range copied as hex digit string (e.g., "0D0A4F")
+  - [x] 10.2 Implement ASCII pane copy: selected byte range copied as ASCII text (non-printable as `.`)
+  - [x] 10.3 Implement hex pane paste: validate clipboard content as hex digit pairs, overwrite bytes starting at cursor
+  - [x] 10.4 Implement ASCII pane paste: overwrite bytes with pasted character ASCII values
+  - [x] 10.5 Implement paste validation: reject invalid hex digit sequences on hex pane paste with error message
+  - [x] 10.6 Write unit tests for copy format, paste overwrite, and validation
   - Covers: Requirement 4 (AC 4.1–4.3), cross-cutting clipboard integration
 
-- [ ] 11. Hex dump export
-  - [ ] 11.1 Implement `HexDump` formatter producing three-column text output matching hex view layout
-  - [ ] 11.2 Implement full-document dump (no arguments)
-  - [ ] 11.3 Implement byte-range dump with start/end offset arguments
-  - [ ] 11.4 Implement selection-based dump: export only currently selected bytes when selection exists
-  - [ ] 11.5 Implement output destinations: new editor tab (`HEX DUMP EDIT`), clipboard (`HEX DUMP CLIP`), file (`HEX DUMP FILE 'path'`)
-  - [ ] 11.6 Implement dump formatting respecting current BytesPerRow and HexDigitCase settings
-  - [ ] 11.7 Write unit tests for dump output format, range extraction, and setting application
+- [x] 11. Hex dump export
+  - [x] 11.1 Implement `HexDump` formatter producing three-column text output matching hex view layout
+  - [x] 11.2 Implement full-document dump (no arguments)
+  - [x] 11.3 Implement byte-range dump with start/end offset arguments
+  - [x] 11.4 Implement selection-based dump: export only currently selected bytes when selection exists
+  - [x] 11.5 Implement output destinations: new editor tab (`HEX DUMP EDIT`), clipboard (`HEX DUMP CLIP`), file (`HEX DUMP FILE 'path'`)
+  - [x] 11.6 Implement dump formatting respecting current BytesPerRow and HexDigitCase settings
+  - [x] 11.7 Write unit tests for dump output format, range extraction, and setting application
   - Covers: Requirement 11 (AC 11.1–11.7)
 
-- [ ] 12. Goto offset command
-  - [ ] 12.1 Implement offset parser accepting hex (`X'1A4F'` or `0x1A4F`) and decimal (plain number) formats
-  - [ ] 12.2 Implement `goto_offset(target)`: position cursor at target byte, scroll viewport to reveal row
-  - [ ] 12.3 Implement auto-activate: if hex mode not active, activate before navigating to offset
-  - [ ] 12.4 Implement out-of-range guard: reject offset exceeding document size with "Offset X'...' exceeds document size" error
-  - [ ] 12.5 Implement offset column indication and cursor placement on successful navigation
-  - [ ] 12.6 Write unit tests for offset parsing (hex/decimal), navigation, auto-activate, and out-of-range rejection
+- [x] 12. Goto offset command
+  - [x] 12.1 Implement offset parser accepting hex (`X'1A4F'` or `0x1A4F`) and decimal (plain number) formats
+  - [x] 12.2 Implement `goto_offset(target)`: position cursor at target byte, scroll viewport to reveal row
+  - [x] 12.3 Implement auto-activate: if hex mode not active, activate before navigating to offset
+  - [x] 12.4 Implement out-of-range guard: reject offset exceeding document size with "Offset X'...' exceeds document size" error
+  - [x] 12.5 Implement offset column indication and cursor placement on successful navigation
+  - [x] 12.6 Write unit tests for offset parsing (hex/decimal), navigation, auto-activate, and out-of-range rejection
   - Covers: Requirement 12 (AC 12.1–12.6)
 
-- [ ] 13. HEX command handler (command framework registration)
-  - [ ] 13.1 Register `HEX ON` command with handler that delegates to `HexSession::activate()`
-  - [ ] 13.2 Register `HEX OFF` command with handler that delegates to `HexSession::deactivate()`
-  - [ ] 13.3 Register `HEX` (no arg) command with handler that delegates to `HexSession::toggle()`
-  - [ ] 13.4 Register `HEX DUMP` command with subcommand routing (EDIT, CLIP, FILE, range args)
-  - [ ] 13.5 Register `GOTO` command with offset argument parsing (X'...' and 0x and decimal forms)
-  - [ ] 13.6 Implement command compatibility: ensure FIND, CHANGE, SORT, EXCLUDE, line commands operate normally when hex mode active
-  - [ ] 13.7 Implement FIND text highlighting in hex mode: highlight matching hex digits and ASCII pane characters
-  - [ ] 13.8 Implement CHANGE live update: when text is changed while hex mode active, hex display refreshes immediately
-  - [ ] 13.9 Write unit tests for command registration, dispatch, argument parsing, and cross-command compatibility
+- [x] 13. HEX command handler (command framework registration)
+  - [x] 13.1 Register `HEX ON` command with handler that delegates to `HexSession::activate()`
+  - [x] 13.2 Register `HEX OFF` command with handler that delegates to `HexSession::deactivate()`
+  - [x] 13.3 Register `HEX` (no arg) command with handler that delegates to `HexSession::toggle()`
+  - [x] 13.4 Register `HEX DUMP` command with subcommand routing (EDIT, CLIP, FILE, range args)
+  - [x] 13.5 Register `GOTO` command with offset argument parsing (X'...' and 0x and decimal forms)
+  - [x] 13.6 Implement command compatibility: ensure FIND, CHANGE, SORT, EXCLUDE, line commands operate normally when hex mode active
+  - [x] 13.7 Implement FIND text highlighting in hex mode: highlight matching hex digits and ASCII pane characters
+  - [x] 13.8 Implement CHANGE live update: when text is changed while hex mode active, hex display refreshes immediately
+  - [x] 13.9 Write unit tests for command registration, dispatch, argument parsing, and cross-command compatibility
   - Covers: Requirement 1 (AC 1.1–1.3, 1.6), Requirement 11, Requirement 12, Requirement 16 (AC 16.1–16.4)
 
-- [ ] 14. Scrolling and viewport in hex mode
-  - [ ] 14.1 Implement hex viewport row count calculation: `ceil(document_byte_length / bytes_per_row)`
-  - [ ] 14.2 Implement Page Down: advance viewport by visible hex row count
-  - [ ] 14.3 Implement Page Up: move back by visible hex row count, clamped to row 0
-  - [ ] 14.4 Implement vertical scrollbar integration: map [0, total_rows) with proportional thumb
-  - [ ] 14.5 Implement cursor-follows-viewport: scroll to keep cursor row visible when cursor moves outside viewport
-  - [ ] 14.6 Implement horizontal scrollbar: hidden when row fits window width, enabled when it does not
-  - [ ] 14.7 Implement BytesPerRow change scrollbar recalculation without changing top byte offset
-  - [ ] 14.8 Implement complete-row rendering: never render partial rows at top or bottom of viewport
-  - [ ] 14.9 Write unit tests for row count, page navigation, clamping, scrollbar mapping, and layout change recalculation
+- [x] 14. Scrolling and viewport in hex mode
+  - [x] 14.1 Implement hex viewport row count calculation: `ceil(document_byte_length / bytes_per_row)`
+  - [x] 14.2 Implement Page Down: advance viewport by visible hex row count
+  - [x] 14.3 Implement Page Up: move back by visible hex row count, clamped to row 0
+  - [x] 14.4 Implement vertical scrollbar integration: map [0, total_rows) with proportional thumb
+  - [x] 14.5 Implement cursor-follows-viewport: scroll to keep cursor row visible when cursor moves outside viewport
+  - [x] 14.6 Implement horizontal scrollbar: hidden when row fits window width, enabled when it does not
+  - [x] 14.7 Implement BytesPerRow change scrollbar recalculation without changing top byte offset
+  - [x] 14.8 Implement complete-row rendering: never render partial rows at top or bottom of viewport
+  - [x] 14.9 Write unit tests for row count, page navigation, clamping, scrollbar mapping, and layout change recalculation
   - Covers: Requirement 9 (AC 9.1–9.8)
 
-- [ ] 15. Binary file detection and auto-activation
-  - [ ] 15.1 Implement binary detection query: check document for null bytes or non-text sequences (delegates to encoding-and-characters)
-  - [ ] 15.2 Implement auto-activation behaviour: prompt user when binary detected (configurable: always, prompt, never)
-  - [ ] 15.3 Implement text file hex handling: show line-ending bytes faithfully (CR=0D, LF=0A visible)
-  - [ ] 15.4 Implement binary file hex handling: strict byte-stream display, no line-end interpretation
-  - [ ] 15.5 Implement chunked/streamed access for large files: only load visible byte range from VFS
-  - [ ] 15.6 Implement byte offset correctness accounting for gap buffer gap position
-  - [ ] 15.7 Write unit tests for binary detection, auto-activation config, text vs binary display behaviour, and offset correctness
+- [x] 15. Binary file detection and auto-activation
+  - [x] 15.1 Implement binary detection query: check document for null bytes or non-text sequences (delegates to encoding-and-characters)
+  - [x] 15.2 Implement auto-activation behaviour: prompt user when binary detected (configurable: always, prompt, never)
+  - [x] 15.3 Implement text file hex handling: show line-ending bytes faithfully (CR=0D, LF=0A visible)
+  - [x] 15.4 Implement binary file hex handling: strict byte-stream display, no line-end interpretation
+  - [x] 15.5 Implement chunked/streamed access for large files: only load visible byte range from VFS
+  - [x] 15.6 Implement byte offset correctness accounting for gap buffer gap position
+  - [x] 15.7 Write unit tests for binary detection, auto-activation config, text vs binary display behaviour, and offset correctness
   - Covers: Requirement 10 (AC 10.1–10.6)
 
-- [ ] 16. Configuration system integration
-  - [ ] 16.1 Implement `editor.hex.bytes_per_row` config key with default 16, valid values [8, 16, 32, 64]
-  - [ ] 16.2 Implement `editor.hex.digit_case` config key with default "uppercase", valid values ["uppercase", "lowercase"]
-  - [ ] 16.3 Implement `editor.hex.auto_activate_binary` config key with default "prompt", valid values ["always", "prompt", "never"]
-  - [ ] 16.4 Implement live config reload: changing settings while hex mode active updates display immediately
-  - [ ] 16.5 Implement invalid config value rejection with error message and retention of current value
-  - [ ] 16.6 Write unit tests for config loading, validation, live update, and invalid value handling
+- [x] 16. Configuration system integration
+  - [x] 16.1 Implement `editor.hex.bytes_per_row` config key with default 16, valid values [8, 16, 32, 64]
+  - [x] 16.2 Implement `editor.hex.digit_case` config key with default "uppercase", valid values ["uppercase", "lowercase"]
+  - [x] 16.3 Implement `editor.hex.auto_activate_binary` config key with default "prompt", valid values ["always", "prompt", "never"]
+  - [x] 16.4 Implement live config reload: changing settings while hex mode active updates display immediately
+  - [x] 16.5 Implement invalid config value rejection with error message and retention of current value
+  - [x] 16.6 Write unit tests for config loading, validation, live update, and invalid value handling
   - Covers: Requirement 3 (AC 3.1–3.6), Requirement 13 (AC 13.1–13.7), Requirement 10 (AC 10.2)
 
-- [ ] 17. Hex mode session state persistence
-  - [ ] 17.1 Implement per-file session state struct: hex mode on/off, BytesPerRow, cursor byte offset, viewport top row, active pane
-  - [ ] 17.2 Implement session save: persist hex state to session history on file close
-  - [ ] 17.3 Implement session restore: re-activate hex mode and restore cursor/viewport when file reopened
-  - [ ] 17.4 Implement status bar HEX indicator query for persistent display
-  - [ ] 17.5 Write unit tests for session save/restore cycle, state completeness, and indicator correctness
+- [x] 17. Hex mode session state persistence
+  - [x] 17.1 Implement per-file session state struct: hex mode on/off, BytesPerRow, cursor byte offset, viewport top row, active pane
+  - [x] 17.2 Implement session save: persist hex state to session history on file close
+  - [x] 17.3 Implement session restore: re-activate hex mode and restore cursor/viewport when file reopened
+  - [x] 17.4 Implement status bar HEX indicator query for persistent display
+  - [x] 17.5 Write unit tests for session save/restore cycle, state completeness, and indicator correctness
   - Covers: Requirement 15 (AC 15.1–15.5)
 
-- [ ] 18. FileForge structured file integration
-  - [ ] 18.1 Implement field boundary detection from active Record_Structure offset/length definitions
-  - [ ] 18.2 Implement field boundary visual indicators in hex pane (separator or colour change at field boundaries)
-  - [ ] 18.3 Implement cell-to-hex mapping: selecting a FileForge grid cell highlights corresponding byte range in hex pane
-  - [ ] 18.4 Implement COMP-3 packed decimal annotation: decode and display numeric value as tooltip/inline annotation
-  - [ ] 18.5 Write unit tests for boundary detection, highlight mapping, and COMP-3 decoding
+- [x] 18. FileForge structured file integration
+  - [x] 18.1 Implement field boundary detection from active Record_Structure offset/length definitions
+  - [x] 18.2 Implement field boundary visual indicators in hex pane (separator or colour change at field boundaries)
+  - [x] 18.3 Implement cell-to-hex mapping: selecting a FileForge grid cell highlights corresponding byte range in hex pane
+  - [x] 18.4 Implement COMP-3 packed decimal annotation: decode and display numeric value as tooltip/inline annotation
+  - [x] 18.5 Write unit tests for boundary detection, highlight mapping, and COMP-3 decoding
   - Covers: Requirement 14 (AC 14.1–14.4)
 
-- [ ] 19. Property-based tests
-  - [ ] 19.1 Write PBT: hex layout row generation correctness
-  - [ ] 19.2 Write PBT: cursor navigation boundary safety
-  - [ ] 19.3 Write PBT: hex edit undo/redo round-trip integrity
-  - [ ] 19.4 Write PBT: hex pattern search byte-level accuracy
-  - [ ] 19.5 Write PBT: modified byte indicator correctness under edit/undo cycles
-  - [ ] 19.6 Write PBT: viewport scroll clamping in hex mode
-  - [ ] 19.7 Write PBT: hex dump export content fidelity
+- [x] 19. Property-based tests
+  - [x] 19.1 Write PBT: hex layout row generation correctness
+  - [x] 19.2 Write PBT: cursor navigation boundary safety
+  - [x] 19.3 Write PBT: hex edit undo/redo round-trip integrity
+  - [x] 19.4 Write PBT: hex pattern search byte-level accuracy
+  - [x] 19.5 Write PBT: modified byte indicator correctness under edit/undo cycles
+  - [x] 19.6 Write PBT: viewport scroll clamping in hex mode
+  - [x] 19.7 Write PBT: hex dump export content fidelity
   - Covers: Requirements 2, 4, 5, 6, 7, 8, 9, 11 (see Property-Based Test Definitions below)
 
-- [ ] 20. Integration tests
-  - [ ] 20.1 Write integration test: full hex mode lifecycle (activate → navigate → edit → undo → deactivate)
-  - [ ] 20.2 Write integration test: hex search with auto-activation and match highlighting
-  - [ ] 20.3 Write integration test: goto offset with viewport scroll and cursor positioning
-  - [ ] 20.4 Write integration test: hex dump export for full document, byte range, and selection
-  - [ ] 20.5 Write integration test: session state save and restore across file close/reopen
-  - [ ] 20.6 Write integration test: command compatibility — FIND, CHANGE, SORT operate correctly while hex mode active
-  - [ ] 20.7 Write integration test: binary file auto-detection and hex mode activation prompt
+- [x] 20. Integration tests
+  - [x] 20.1 Write integration test: full hex mode lifecycle (activate → navigate → edit → undo → deactivate)
+  - [x] 20.2 Write integration test: hex search with auto-activation and match highlighting
+  - [x] 20.3 Write integration test: goto offset with viewport scroll and cursor positioning
+  - [x] 20.4 Write integration test: hex dump export for full document, byte range, and selection
+  - [x] 20.5 Write integration test: session state save and restore across file close/reopen
+  - [x] 20.6 Write integration test: command compatibility — FIND, CHANGE, SORT operate correctly while hex mode active
+  - [x] 20.7 Write integration test: binary file auto-detection and hex mode activation prompt
   - Covers: End-to-end validation across Requirements 1–16
 
 ---

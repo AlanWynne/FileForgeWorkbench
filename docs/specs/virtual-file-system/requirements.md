@@ -195,3 +195,92 @@ The VFS defines **async method signatures** for all I/O operations (Tokio-based)
 7. SEARCH operations SHALL accept options including: case sensitivity (bool), whole word (bool), regex mode (bool), max results (limit), file pattern filter (include/exclude globs), and max file size to search.
 8. WHEN a search is requested on a provider scope that does not exist, THE VFS SHALL return a `VfsError::NotFound` error for the root URI.
 
+
+---
+
+## Requirements Added by CR-NR-016 — Mainframe Dataset Architecture
+
+> **Source documents:** `docs/FileForgeWorkbench_Mainframe_Dataset_Architecture.md` and
+> `docs/FileForgeWorkbench_Virtual_File_and_Dataset_Storage_Requirements.md`
+
+---
+
+### Requirement 9: StorageProvider Interface
+
+**User Story:** As a platform developer, I want a StorageProvider interface below the VfsProvider layer so that physical storage concerns are separated from VFS routing and new backends can be added without touching the VFS API.
+
+**Source:** [VFS-REQ] §8 FFW-VFS-SPI-001 to SPI-004.
+
+#### Acceptance Criteria
+
+9.1 THE `ff-vfs` crate (or a new `ff-storage-provider` crate) SHALL define a `StorageProvider` trait that all physical storage backends implement, separate from the `VfsProvider` trait.
+
+9.2 THE `StorageProvider` trait SHALL expose at minimum: `allocate`, `open`, `stat`, `rename`, `delete`, `list`, and `reconcile` operations.
+
+9.3 PROVIDERS SHALL declare capabilities rather than requiring callers to infer them from dataset type; declared capabilities SHALL include at minimum: stream-read, stream-write, record-read, record-write, keyed-access, relative-access, append-only, member-operations, atomic-rename, locking, snapshotting, watch-notifications.
+
+9.4 THE native-filesystem provider and the SQLite record provider SHALL implement a common error taxonomy that maps to `VfsError` variants.
+
+9.5 Provider-specific locators SHALL be opaque outside the provider and catalogue services; no user-interface or editor code SHALL construct or parse raw provider paths directly.
+
+---
+
+### Requirement 10: POSIX File Constraints
+
+**User Story:** As a platform developer, I want POSIX files to remain native host filesystem objects so that external tools, editors, Git, and backup utilities can access them without workbench-specific extraction.
+
+**Source:** [VFS-REQ] §7.9 FFW-VFS-POSIX-001 to POSIX-007; [ARCH] §9 POSIX Files.
+
+#### Acceptance Criteria
+
+10.1 POSIX files and directories SHALL remain native host filesystem objects by default; the system SHALL NOT copy POSIX file contents into SQLite.
+
+10.2 THE catalogue MAY register a POSIX root, file, or directory using a provider locator and optional metadata, but registration SHALL NOT move or copy the content.
+
+10.3 External changes to registered POSIX files SHALL be detected through refresh, filesystem notifications where supported, or reconciliation — the system SHALL NOT overwrite external changes silently.
+
+10.4 Symlink handling SHALL be configurable, with loop detection and prevention of traversal beyond authorised roots.
+
+10.5 Host permissions, file locking, case sensitivity, and path semantics SHALL be surfaced accurately and SHALL NOT be silently normalised into mainframe semantics.
+
+10.6 WHEN a POSIX catalog is configured as read-only, THE provider SHALL return `VfsError::PermissionDenied` for any write, create, delete, or rename operation.
+
+---
+
+### Requirement 11: Cross-Resource Consistency
+
+**User Story:** As a platform developer, I want operations that span SQLite and the filesystem to use a staged protocol so that interrupted operations leave the system in a recoverable state.
+
+**Source:** [VFS-REQ] §11 FFW-VFS-TXN-001 to TXN-006.
+
+#### Acceptance Criteria
+
+11.1 WHEN a VFS create operation affects both catalogue state and physical content, THE system SHALL use a staged protocol: stage physical content, reserve catalogue state, publish physical object, mark catalogue entry active.
+
+11.2 WHEN a VFS delete operation affects both catalogue state and physical content, THE system SHALL first mark the entry pending-deletion, then move or tombstone physical content, then finalise catalogue state.
+
+11.3 Interrupted operations SHALL be discoverable through operation journals or transitional catalogue states.
+
+11.4 On startup, THE system SHALL detect and offer deterministic recovery for incomplete operations.
+
+11.5 THE system SHALL NOT report a VFS operation as successful until both catalogue and provider state satisfy the operation's postconditions.
+
+---
+
+### Requirement 12: Workspace Backup and Restore via VFS
+
+**User Story:** As a workbench user, I want workspace backup and restore accessible through the VFS command layer so that I can protect and migrate my complete dataset environment.
+
+**Source:** [VFS-REQ] §12 FFW-VFS-INT-001 to INT-006.
+
+#### Acceptance Criteria
+
+12.1 THE VFS layer SHALL expose a `workspace.backup` command that captures: the catalogue database, all SQLite record stores, all native dataset files, all library directories, and operation journals as one recoverable unit.
+
+12.2 A backup SHALL include a manifest containing: schema version, provider configuration, object inventory, and integrity information.
+
+12.3 THE VFS layer SHALL expose a `workspace.restore` command that supports restoration to the original workspace or remapping to a different root without changing logical dataset names.
+
+12.4 THE system SHALL provide a `workspace.reconcile` command that compares catalogue state with provider state and reports discrepancies without automatically changing data.
+
+12.5 THE system SHALL provide a `workspace.diagnose` command that reports orphaned physical objects and dangling catalogue entries.

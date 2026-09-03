@@ -83,8 +83,14 @@ impl NewCatalogForm {
     /// Validates: Requirement 12.1, 12.2, 12.7
     pub fn with_defaults(mainframe_root: impl Into<String>, posix_root: impl Into<String>) -> Self {
         let posix_root = posix_root.into();
+        let mainframe_root = mainframe_root.into();
+        // Pre-populate repository_path with the configured root so the field is
+        // non-empty on dialog open (Req 12.1). It will be updated live as the
+        // user types the catalog name.
+        let repository_path = mainframe_root.clone();
         Self {
-            default_mainframe_root: mainframe_root.into(),
+            default_mainframe_root: mainframe_root,
+            repository_path,
             root_directory: posix_root.clone(),
             default_posix_root: posix_root,
             ..Default::default()
@@ -104,11 +110,10 @@ impl NewCatalogForm {
         if self.name.is_empty() {
             return self.default_mainframe_root.clone();
         }
-        format!(
-            "{}/{}",
-            self.default_mainframe_root.trim_end_matches('/'),
-            self.name
-        )
+        std::path::Path::new(&self.default_mainframe_root)
+            .join(&self.name)
+            .to_string_lossy()
+            .into_owned()
     }
 }
 
@@ -364,6 +369,8 @@ pub struct EditCatalogForm {
     pub read_only: bool,
     /// Editable default HLQ (Mainframe only).
     pub default_hlq: String,
+    /// Repository path — read-only display (Req 15.1, 15.3).
+    pub path: String,
     /// Inline error message, if any.
     pub error: Option<String>,
 }
@@ -371,7 +378,7 @@ pub struct EditCatalogForm {
 impl EditCatalogForm {
     /// Pre-populate the form from an existing catalog.
     ///
-    /// Validates: Requirement 4.1
+    /// Validates: Requirement 4.1, 15.1
     pub fn from_catalog(catalog: &VirtualCatalog) -> Self {
         Self {
             name: catalog.name.clone(),
@@ -380,6 +387,7 @@ impl EditCatalogForm {
             auto_mount: catalog.auto_mount,
             read_only: catalog.read_only,
             default_hlq: catalog.default_hlq.clone().unwrap_or_default(),
+            path: catalog.path.clone(),
             error: None,
         }
     }
@@ -428,6 +436,11 @@ pub fn render_edit(
                         .monospace()
                         .weak(),
                 );
+            });
+            // Repository path — read-only (Req 15.1, 15.2, 15.3)
+            ui.horizontal(|ui| {
+                ui.label("Repository Path:");
+                ui.label(egui::RichText::new(&form.path).monospace().weak());
             });
             ui.separator();
 
@@ -925,6 +938,27 @@ mod tests {
         cat
     }
 
+    /// Validates: Requirement 15.1 — EditCatalogForm carries the repository path from the catalog.
+    #[test]
+    fn edit_form_displays_repository_path() {
+        // Validates: Requirement 15.1
+        let mut registry = empty_registry();
+        let cat = registered_mainframe(&mut registry);
+        let form = EditCatalogForm::from_catalog(&cat);
+        assert_eq!(form.path, "/catalogs/payroll");
+    }
+
+    /// Validates: Requirement 15.2 — repository path is present for all catalog types.
+    #[test]
+    fn edit_form_repository_path_present_for_all_catalog_types() {
+        // Validates: Requirement 15.2
+        let mut registry = empty_registry();
+        let mf = registered_mainframe(&mut registry);
+        let px = registered_posix(&mut registry);
+        assert_eq!(EditCatalogForm::from_catalog(&mf).path, "/catalogs/payroll");
+        assert_eq!(EditCatalogForm::from_catalog(&px).path, "/projects/dev");
+    }
+
     /// Validates: Requirement 4.1 — EditCatalogForm is pre-populated from catalog.
     #[test]
     fn edit_form_prepopulated_from_catalog() {
@@ -1187,7 +1221,10 @@ mod tests {
         // Validates: Requirement 12.1
         let mut form = NewCatalogForm::with_defaults("C:/data", "C:/posix");
         form.name = "PAYROLL".to_string();
-        assert_eq!(form.suggested_mainframe_path(), "C:/data/PAYROLL");
+        let result = form.suggested_mainframe_path();
+        // Use PathBuf comparison to be platform-separator-agnostic
+        let expected = std::path::Path::new("C:/data").join("PAYROLL");
+        assert_eq!(std::path::Path::new(&result), expected);
     }
 
     /// Validates: Requirement 12.2 — POSIX root_directory is pre-populated from default.
@@ -1203,6 +1240,9 @@ mod tests {
     fn with_defaults_repository_path_is_editable() {
         // Validates: Requirement 12.7
         let mut form = NewCatalogForm::with_defaults("C:/data", "C:/posix");
+        // Pre-populated with the root on construction.
+        assert_eq!(form.repository_path, "C:/data");
+        // User can override it.
         form.repository_path = "custom/path".to_string();
         assert_eq!(form.repository_path, "custom/path");
     }

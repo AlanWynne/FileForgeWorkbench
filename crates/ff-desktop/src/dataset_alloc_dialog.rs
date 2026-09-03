@@ -3,6 +3,11 @@
 //! ISPF-style modal dialog for allocating (creating) a new mainframe dataset
 //! within a Mainframe catalog.
 //!
+//! BLKSIZE defaults to 0 (system-determined). IBM recommends specifying
+//! `BLKSIZE=0` and allowing z/OS (or the host OS in FFWB's case) to determine
+//! the optimal block size for the underlying storage device. A non-zero value
+//! may be entered as a user override.
+//!
 //! Validates: Requirement 5.1–5.6
 
 // from_like and allocate_like are wired in Task 8 context menus; suppress until then.
@@ -75,7 +80,7 @@ pub struct AllocDatasetForm {
     pub recfm: Recfm,
     /// Logical record length (default 80).
     pub lrecl: String,
-    /// Block size (default 27920).
+    /// Block size (default 0 — system-determined).
     pub blksize: String,
     /// Directory blocks — shown only for PO / PDSE (default 10).
     pub dir_blocks: String,
@@ -98,7 +103,7 @@ impl Default for AllocDatasetForm {
             dsorg: Dsorg::Ps,
             recfm: Recfm::Fb,
             lrecl: "80".to_string(),
-            blksize: "27920".to_string(),
+            blksize: "0".to_string(),
             dir_blocks: "10".to_string(),
             gdg_limit: "10".to_string(),
             scratch: true,
@@ -200,15 +205,15 @@ pub fn validate(form: &AllocDatasetForm) -> Result<AllocParams, String> {
         return Err(format!("LRECL must be between 1 and 32760 (got {lrecl})."));
     }
 
-    // BLKSIZE: integer, >= LRECL
+    // BLKSIZE: 0 = system-determined (accepted as-is); otherwise must be >= LRECL
     let blksize: u32 = form
         .blksize
         .trim()
         .parse()
-        .map_err(|_| "Block Size must be a positive integer.".to_string())?;
-    if blksize < lrecl {
+        .map_err(|_| "Block Size must be a non-negative integer.".to_string())?;
+    if blksize != 0 && blksize < lrecl {
         return Err(format!(
-            "Block Size ({blksize}) must be >= LRECL ({lrecl})."
+            "Block Size ({blksize}) must be >= LRECL ({lrecl}), or 0 for system-determined."
         ));
     }
 
@@ -417,7 +422,7 @@ mod tests {
             dsorg: Dsorg::Ps,
             recfm: Recfm::Fb,
             lrecl: "80".to_string(),
-            blksize: "27920".to_string(),
+            blksize: "0".to_string(),
             ..Default::default()
         }
     }
@@ -428,7 +433,7 @@ mod tests {
             dsorg: Dsorg::Po,
             recfm: Recfm::Fb,
             lrecl: "80".to_string(),
-            blksize: "27920".to_string(),
+            blksize: "0".to_string(),
             dir_blocks: "10".to_string(),
             ..Default::default()
         }
@@ -440,7 +445,7 @@ mod tests {
             dsorg: Dsorg::Gdg,
             recfm: Recfm::Fb,
             lrecl: "80".to_string(),
-            blksize: "27920".to_string(),
+            blksize: "0".to_string(),
             gdg_limit: "10".to_string(),
             scratch: true,
             ..Default::default()
@@ -473,12 +478,12 @@ mod tests {
         assert_eq!(form.lrecl, "80");
     }
 
-    /// Validates: Requirement 5.2 — default BLKSIZE is 27920.
+    /// Validates: Requirement 5.2 — default BLKSIZE is 0 (system-determined).
     #[test]
-    fn default_form_blksize_is_27920() {
+    fn default_form_blksize_is_zero() {
         // Validates: Requirement 5.2
         let form = AllocDatasetForm::default();
-        assert_eq!(form.blksize, "27920");
+        assert_eq!(form.blksize, "0");
     }
 
     /// Validates: Requirement 5.2 — default dir_blocks is 10.
@@ -507,7 +512,7 @@ mod tests {
         assert_eq!(params.dataset_name, "PAYROLL.INPUT");
         assert_eq!(params.dsorg, Dsorg::Ps);
         assert_eq!(params.lrecl, 80);
-        assert_eq!(params.blksize, 27920);
+        assert_eq!(params.blksize, 0);
         assert!(params.dir_blocks.is_none());
         assert!(params.gdg_limit.is_none());
     }
@@ -579,7 +584,7 @@ mod tests {
         // Validates: Requirement 5.3
         let mut form = valid_ps_form();
         form.lrecl = "32760".to_string();
-        form.blksize = "32760".to_string();
+        form.blksize = "0".to_string();
         assert!(validate(&form).is_ok());
     }
 
@@ -593,6 +598,15 @@ mod tests {
     }
 
     // ── Validation — BLKSIZE ─────────────────────────────────────────────
+
+    /// Validates: Requirement 5.2 — BLKSIZE 0 is accepted (system-determined).
+    #[test]
+    fn validate_accepts_blksize_zero() {
+        // Validates: Requirement 5.2
+        let mut form = valid_ps_form();
+        form.blksize = "0".to_string();
+        assert!(validate(&form).is_ok());
+    }
 
     /// Validates: Requirement 5.3, dataset-catalog Req 7.10 — BLKSIZE < LRECL fails.
     #[test]
@@ -712,8 +726,7 @@ mod tests {
     #[test]
     fn from_like_gdg_sets_gdg_limit() {
         // Validates: Requirement 5.6
-        let form =
-            AllocDatasetForm::from_like(Dsorg::Gdg, Recfm::Fb, 80, 27920, None, Some(5), true);
+        let form = AllocDatasetForm::from_like(Dsorg::Gdg, Recfm::Fb, 80, 0, None, Some(5), true);
         assert_eq!(form.gdg_limit, "5");
         assert!(form.scratch);
     }

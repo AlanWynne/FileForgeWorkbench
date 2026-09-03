@@ -279,7 +279,71 @@ needed. Once the user renames the catalog the guard no longer fires.
   silently ignores this edge case, which is acceptable.)
 - The immediate `save_catalog_registry()` call reuses the existing persistence path.
 
-## 6. No Contradictions with Existing Architecture
+## 9. Catalog Properties — Repository Path Display (Requirement 15)
+
+The `EditCatalogForm` already holds all `VirtualCatalog` fields. The only change needed is to
+render the `path` field as a read-only labelled row in `render_edit()` in
+`catalog_manager_dialog.rs`. No new state is required.
+
+```rust
+// In render_edit(), after the Name row:
+ui.horizontal(|ui| {
+    ui.label("Repository Path:");
+    ui.label(egui::RichText::new(&form.path).monospace().weak());
+});
+```
+
+The field is read-only (label, not TextEdit) because the path is set at creation time and
+cannot be changed without re-creating the catalog.
+
+## 10. VFS Dataset Path Resolution (Requirement 16)
+
+### 10.1 Resolution Rule
+
+Given:
+- `repository_path`: the catalog's `path` field (e.g. `C:/catalogs/payroll`)
+- `dsn`: the dataset name (e.g. `PAYROLL.EMPLOYEE`)
+
+Resolved path = `{repository_path}/{dsn_as_path}` where `dsn_as_path` replaces `.` with
+the platform path separator (`/` on all platforms via `std::path::Path`).
+
+Example: `C:/catalogs/payroll` + `PAYROLL.EMPLOYEE` → `C:/catalogs/payroll/PAYROLL/EMPLOYEE`
+
+### 10.2 Pure Function
+
+```rust
+pub fn resolve_dataset_path(repository_path: &str, dsn: &str) -> Option<std::path::PathBuf> {
+    if repository_path.is_empty() || dsn.is_empty() {
+        return None;
+    }
+    let rel: std::path::PathBuf = dsn.split('.').collect();
+    Some(std::path::Path::new(repository_path).join(rel))
+}
+```
+
+This is a pure function in `files_panel.rs` with no VFS or egui dependency.
+
+### 10.3 Open Flow
+
+In `render.rs`, the `FilesPanelAction::OpenFile(dsn)` handler for Mainframe catalogs is
+extended:
+
+1. Look up the catalog by `selected_catalog` name in the registry.
+2. Call `resolve_dataset_path(&catalog.path, &dsn)`.
+3. If `None` (empty repository path) → show `"catalog has no repository path configured"`.
+4. If `Some(path)` and `path.exists()` → dispatch `file.open` with the resolved path string.
+5. If `Some(path)` and `!path.exists()` → show `"dataset file not found at {path}"`.
+
+The same logic applies to the File Explorer Panel double-click path in
+`render_dataset_children()` — instead of setting `state.last_error` unconditionally, it
+now attempts resolution and opens the file if found.
+
+### 10.4 No New Crate Dependencies
+
+`std::path::Path` and `std::path::PathBuf` are already used throughout `ff-desktop`.
+No new crate dependencies are required.
+
+
 
 - `ff-dscatalog` is unchanged — the dialog calls its existing command API
 - `connector-local-fs` is unchanged — Native catalogs reuse it directly

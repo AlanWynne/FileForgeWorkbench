@@ -316,12 +316,6 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 
 ### Phase AN — Key Configuration Dialog (Req 20 function-keys-and-history)
 
-- [ ] AN.1 Add `KeyModifier` enum and `ModifiedKey` struct to `ff-keys`; update `KeyMap` to use `ModifiedKey` as key type; add `description` field to `KeyBinding`; update TOML parser for `SF`/`CF`/`AF` prefixes (Tasks 23–24)
-- [ ] AN.2 Update `KeyMapResolver` and `ff-desktop` modifier dispatch — read `egui::Modifiers`, construct `ModifiedKey`, dispatch modifier bindings (Tasks 25–26)
-- [ ] AN.3 Create `key_config_dialog.rs` in `ff-desktop` — scope tabs, 10-column grid, Save/Cancel/Reset, TOML write (Tasks 27–29)
-- [ ] AN.4 Wire `KEYS` command and `Edit > Key Assignments…` menu item (Task 28)
-- [ ] AN.5 Property-based tests for `ModifiedKey` round-trip and binding isolation (Task 30)
-
 ### Phase AN — Final Status (implementation complete)
 
 - [x] AN.1 `KeyModifier` + `ModifiedKey` in `ff-keys`; `KeyMap` uses `ModifiedKey`; `description` on `KeyBinding`; TOML parser extended for `SF`/`CF`/`AF` (Tasks 23–24)
@@ -391,3 +385,168 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 - [x] BB.3 Render attribute columns per row: Size, Modified, Created, Accessed, Permissions (Req 18.9)
 - [x] BB.4 Catch OS error 32 in `open_file_node()` — status-bar message, no editor tab (Req 18.8, B018)
 - [x] BB.5 Unit tests for all helpers and sort/skip behaviour (Task 21.8)
+
+### Phase BC — File Explorer content area: directories alphabetically sorted (CR-CH-004)
+
+- [x] BC.1 Fix `visible_entries()` sort in `files_panel.rs` — containers always before non-containers when sorting by Name; each group sorted case-insensitively; 3 new unit tests (Req 10.7)
+
+### Phase BD — File Explorer tree: drag-select and copy as text tree (CR-NR-009, Req 19 file-tree-panel)
+
+- [x] BD.1 Add `selected_nodes: HashSet<String>` and `anchor_node: Option<String>` to `FileExplorerPanelState`; wire plain-click, Shift+click, Ctrl+click, and drag-select input handling (Tasks 22.1–22.2)
+- [x] BD.2 Render selected nodes with selection background tint (Task 22.3)
+- [x] BD.3 Implement `build_text_tree()` pure function — indented ASCII tree with `[DIR]` prefix and tree connectors for hierarchical selections (Task 22.4)
+- [x] BD.4 Wire Ctrl+C and "Copy as Text Tree" context menu item to `build_text_tree` + clipboard write (Tasks 22.5–22.6)
+- [x] BD.5 Wire Escape to clear multi-selection (Task 22.7)
+- [x] BD.6 Unit tests for `build_text_tree` (Task 22.8)
+
+### Phase BD — File Explorer tree: drag-select and copy as text tree (Req 19 file-tree-panel)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | — | Req 19.1: drag-select highlights all visible nodes between start and current cursor position |
+| `ff-desktop` | 🔴 | — | Req 19.2: Shift+click extends selection from Anchor_Node to clicked node |
+| `ff-desktop` | 🔴 | — | Req 19.3: Ctrl+click toggles individual node membership without affecting others |
+| `ff-desktop` | 🔴 | — | Req 19.4: selected nodes rendered with `ui.selection_background` tint |
+| `ff-desktop` | 🔴 | — | Req 19.5: Ctrl+C with non-empty selection writes Text_Tree to OS clipboard |
+| `ff-desktop` | 🔴 | — | Req 19.6: `build_text_tree` produces correct indented ASCII output with `[DIR]` prefix and tree connectors |
+| `ff-desktop` | 🔴 | — | Req 19.7: "Copy as Text Tree" context menu item present above "Copy" group |
+| `ff-desktop` | 🔴 | — | Req 19.8: Escape clears multi-selection, reverts to single-node mode |
+| `ff-desktop` | 🔴 | — | Req 19.9: selection extends to nodes scrolled into view during drag |
+| `ff-desktop` | 🔴 | — | Req 19.10: Mainframe nodes use DSN in Text_Tree output |
+
+### Phase BJ — Catalog Repository Path Display + VFS Dataset Path Resolution (CR-NR-012)
+
+- [x] BJ.1 Show repository path as read-only field in Edit Catalog dialog for all catalog types (Task 15.1–15.3 in virtual-catalog-manager/tasks.md)
+- [x] BJ.2 Add `resolve_dataset_path()` pure function; wire into Files Panel and File Explorer open handlers (Tasks 16.1–16.6 in virtual-catalog-manager/tasks.md)
+
+### Phase BI — Default BLKSIZE=0 in Dataset Allocation Dialog (CR-CH-005)
+
+- [x] BI.1 Change default BLKSIZE to `"0"` in `AllocDatasetForm::default()`; update validate() to accept 0; update tests (Task 7.8 in virtual-catalog-manager/tasks.md)
+
+### Phase BE — File Explorer keyboard navigation + file copy/paste (CR-NR-010, CR-NR-011, Req 20–21 file-tree-panel)
+
+- [x] BE.1 Add `FocusStop::FileExplorer` variant; wire Tab from CommandField to Explorer_Focus; `cursor_node` field on `FileExplorerPanelState` (Task 23.1)
+- [x] BE.2 Implement `collect_visible_node_paths()` pure function (Task 23.2)
+- [x] BE.3 Wire Tab, Arrow, Shift+Arrow, Ctrl+Arrow, Ctrl+Space, Escape keyboard handling in Explorer render loop (Tasks 23.3–23.8)
+- [x] BE.4 Render cursor focus ring distinct from selection highlight (Task 23.9)
+- [x] BE.5 Unit tests for all keyboard navigation behaviours (Task 23.10)
+- [x] BE.6 Add `FileCopyClipboard`, `PasteProgress`, `PasteConflict` types; wire Ctrl+C, Ctrl+V (file list), Ctrl+V (editor), conflict modal, POSIX guard, Mainframe transform, pending-paste indicator (Tasks 24.1–24.8)
+- [x] BE.7 Unit tests for file copy/paste operations (Task 24.9)
+
+### Phase BL — B024 Tab Cycle Fix: exit tree + visual cursor highlight
+
+- [x] BL.1 Fix Tab cycle exit: Tab past last tree node exits `explorer_focused`, clears `cursor_node`, returns `focus_stop` to `CommandField` — previously wrapped infinitely
+- [x] BL.2 Add visual cursor highlight on catalog-level nodes (`rect_filled` behind `CollapsingHeader` when `cursor_node == "cat:NAME"`)
+- [x] BL.3 Extend file node `is_selected` to include `cursor_node` match so file rows show highlight when tabbed to
+- [x] BL.4 Consolidate two separate Tab branches into single unified branch handling enter/advance/exit cases
+
+### Phase BM — File Explorer Panel: egui-file-dialog look-and-feel with catalog mount points (CR-NR-014, Req 23 file-tree-panel)
+
+- [x] BM.1 Add `selected_catalog` + `sidebar_width` fields to `FileExplorerPanelState`; refactor `render()` into `render_sidebar()` + `render_content_pane()` two-pane layout (Tasks 26.1–26.4)
+- [x] BM.2 Implement `render_mainframe_content()` — dot-qualified dataset listing, PDS expandable, PS leaf, VFS open routing (Task 26.5)
+- [x] BM.3 Implement `render_posix_content()` — forward-slash path display, directory/file tree from `read_dir` (Task 26.6)
+- [x] BM.4 Empty sidebar placeholder; sidebar width persistence (Tasks 26.7–26.8)
+- [x] BM.5 Unit tests + `cargo test` green (Tasks 26.9–26.10)
+
+### Phase BK — Native File Browser: egui-file-dialog Integration (CR-NR-013, Req 22 file-tree-panel)
+
+- [x] BK.1 Add `egui-file-dialog = "0.6"` to `crates/ff-desktop/Cargo.toml`; vendored patch resolves egui 0.29 mismatch; `cargo check` passes (Task 25.1)
+- [x] BK.2 Add `NativeDialogSlot` newtype (manual `Debug`/`Clone`); `native_dialogs: HashMap<String, NativeDialogSlot>` on `FileExplorerPanelState` (Task 25.2)
+- [x] BK.3 Implement `render_native_dialog()` — lazy init, scoped borrow, `dialog.update(ctx)`, `take_selected()` → `open_file_node()` (Task 25.3)
+- [x] BK.4 Replace `render_native_children()` call in Native branch of `render()` with `render_native_dialog()`; dead-code helpers annotated `#[allow(dead_code)]` (Task 25.4)
+- [x] BK.5 Confirmed Mainframe/POSIX branches untouched; all 8 Mainframe/POSIX tests pass (Task 25.5)
+- [x] BK.6 `THIRD_PARTY_CREDITS.md` created at workspace root with full MIT licence text (Task 25.6)
+- [x] BK.7 `cargo test` 486 passing 0 failures; `cargo clippy` clean; `cargo build --release` succeeds (Tasks 25.7–25.9)
+
+### Phase BO — Bug Fix Sprint: Persistence Gaps (B020, B021, B022)
+
+- [x] BO.1 B020 — Call `save_catalog_registry()` immediately after `DialogOutcome::Confirmed` in NewCatalog and DeleteCatalog handlers in `update.rs` (not only in `on_exit()`)
+- [x] BO.2 B021 — Pre-populate `repository_path` with `mainframe_root.clone()` in `NewCatalogForm::with_defaults()` so the field is non-empty on dialog open
+- [x] BO.3 B022 — `save_datasets()`/`load_datasets()` added to `SessionManager`; wired into startup restore, `AllocateDataset` confirmed handler, and `on_exit()`
+- [x] BO.4 Mark task 26 (Phase BM) `[x]` in `file-tree-panel/tasks.md`; 496 tests passing 0 failures
+
+### Phase BP — Vendor Warning Elimination (egui-file-dialog future_incompatible + deprecated)
+
+- [x] BP.1 Fix `float_literal_f32_fallback` in `vendor/egui-file-dialog/src/file_dialog.rs` lines 1223 and 1360 — `1.0` → `1.0_f32` in two `egui::Stroke::new()` calls
+- [x] BP.2 Fix deprecated `ComboBox::from_id_source` → `from_id_salt` in `file_dialog.rs` line 1805
+- [x] BP.3 Fix `mismatched_lifetime_syntaxes` in `vendor/egui-file-dialog/src/data/directory_content.rs` — add `'s` to elided return-type lifetimes on `filtered_iter` and `filtered_iter_mut`
+- [x] BP.4 `cargo build -p egui-file-dialog` — 0 warnings; `cargo test -p ff-desktop` — 496 passed 0 failed
+
+### Phase BQ — Requirements Review and Modernisation (CR-NR-015)
+
+- [x] BQ.T1 Task 1 — Inventory & Baseline Audit (`docs/specs/requirements-review/inventory.md`)
+- [x] BQ.T2 Task 2 — Terminology Standardisation (`docs/specs/requirements-review/terminology-map.md`)
+- [x] BQ.T3 Task 3 — Architectural Domain Classification (`docs/specs/requirements-review/domain-classification.md`)
+- [x] BQ.T4 Task 4 — Gap Analysis (`docs/specs/requirements-review/gap-analysis.md`)
+- [x] BQ.T5 Task 5 — Rewrite: Core Platform & UX Layer Specs (10 specs)
+- [x] BQ.T6 Task 6 — Rewrite: Explorer & Content Layer Specs (15 specs)
+- [x] BQ.T7 Task 7 — Rewrite: Task Layer, Integration Layer & Domain Specs (14 specs)
+- [x] BQ.T8 Task 8 — Traceability Matrix (`docs/specs/requirements-review/traceability-matrix.md`)
+- [x] BQ.T9 Task 9 — Consolidation Report (`docs/specs/requirements-review/consolidation-report.md`)
+- [x] BQ.T10 Task 10 — Executive Assessment & Strategic Recommendations (`docs/specs/requirements-review/executive-assessment.md`)
+
+### Phase BT — Pre-BS Requirements Consistency Fixes (MUST complete before Phase BS code)
+
+> Resolves the four critical and two medium inconsistencies identified in the full requirements
+> review. No Phase BS source code may be written until all BT tasks are marked [x].
+
+- [x] BT.1 dataset-catalog/requirements.md Req 4 -- add superseded-by note pointing to Req 20
+        (UUID layout); retain Req 4 for import-compatibility reference only
+        (Task 31.1 in dataset-catalog/tasks.md)
+- [x] BT.2 dataset-catalog/requirements.md Req 7 AC 6 -- remove physical-rename clause;
+        replace with catalogue-only update cross-referencing Req 20.6
+        (Task 31.2 in dataset-catalog/tasks.md)
+- [x] BT.3 dataset-catalog/tasks.md + requirements.md -- replace all `ff-dataset-catalog`
+        references with `ff-dscatalog` to match actual workspace crate name
+        (Tasks 31.3, 31.4 in dataset-catalog/tasks.md)
+- [x] BT.4 virtual-catalog-manager/requirements.md Req 16.1 -- replace DSN-to-path mapping
+        rule with StorageProvider delegation note; align with UUID layout
+        (Task 31.5 in dataset-catalog/tasks.md)
+- [x] BT.5 virtual-catalog-manager/requirements.md Req 16.3 -- clarify staged-protocol
+        applies under UUID layout; legacy DSN-path note retained for import compat
+        (Task 31.6 in dataset-catalog/tasks.md)
+
+### Phase BS — Mainframe Dataset Architecture (CR-NR-016)
+
+> Implements the hybrid storage architecture, record codecs, StorageProvider layer, VSAM/ISAM support,
+> staged transactions, integrity/backup/restore, audit trail, and security hardening defined in
+> `docs/FileForgeWorkbench_Mainframe_Dataset_Architecture.md` and
+> `docs/FileForgeWorkbench_Virtual_File_and_Dataset_Storage_Requirements.md`.
+
+#### Wave 1 — Foundations (no dependencies on later waves)
+
+- [x] BS.1 Record codecs — `FixedCodec`, `VariableCodec`, `BinaryCodec`, `TextCodec` as independent module with full unit + property tests (Tasks 17.1–17.6 in dataset-catalog/tasks.md)
+- [x] BS.2 `StorageProvider` trait definition + capability enum (Task 18.1)
+- [x] BS.3 `NativeFileProvider` — UUID-based allocation, path-safety guards, PS/PDS/GDG layout (Tasks 18.2–18.5)
+
+#### Wave 2 — VSAM and ISAM Providers (depends on Wave 1)
+
+- [ ] BS.4 `SqliteRecordProvider` base + VSAM KSDS — keyed read/write, uniqueness, alternate indexes (Tasks 19.1–19.5)
+- [ ] BS.5 VSAM RRDS — relative-record store, unallocated vs blank distinction (Tasks 20.1–20.3)
+- [ ] BS.6 VSAM ESDS — append-oriented native file, stable record address, sidecar index (Tasks 21.1–21.4)
+- [ ] BS.7 ISAM — SQLite-backed, shared indexed-record interface with KSDS (Tasks 22.1–22.3)
+
+#### Wave 3 — Transactions, Integrity, and Governance (depends on Wave 2)
+
+- [ ] BS.8 Staged transaction protocol — `OperationJournal`, staged create/delete, startup recovery (Tasks 23.1–23.6)
+- [ ] BS.9 Integrity, backup, restore — checksums, `workspace.backup/restore/diagnose/reconcile` commands (Tasks 24.1–24.6)
+- [ ] BS.10 Catalogue audit trail + schema migrations (Tasks 25.1–25.3)
+- [ ] BS.11 Security hardening — parameterised SQL audit, log scrubbing, path-traversal property test (Tasks 26.1–26.3)
+
+#### Wave 4 — Catalogue Hierarchy and Editor Integration (depends on Wave 3)
+
+- [ ] BS.12 Master/user catalogue hierarchy, logical rename, scoped uniqueness (Tasks 27.1–27.4)
+- [ ] BS.13 Record-oriented editor integration — wire codecs into open/save path, integration tests (Tasks 28.1–28.4)
+- [ ] BS.14 Non-functional validation — cross-platform, performance, Git-compat, data-fidelity tests (Tasks 29.1–29.4)
+- [ ] BS.15 Update `dataset-catalog/design.md` for CR-NR-016 (Task 30.1)
+
+---
+
+## Summary (updated after Phase BT complete)
+
+| Status | Count |
+|--------|-------|
+| `[x]` Complete with real tests | 61 library crates + ff-desktop binary |
+| `[x]` Complete -- Phase BT | 5 doc-fix deliverables (BT.1--BT.5) |
+| `[ ]` Pending -- Phase BS | 15 deliverables (BS.1--BS.15) |
+| Active work | Phase BS -- Mainframe Dataset Architecture (CR-NR-016) |

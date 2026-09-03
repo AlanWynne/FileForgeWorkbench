@@ -1,4 +1,4 @@
-# Implementation Plan: Idle Processing (`ff-idle-processing`)
+﻿# Implementation Plan: Idle Processing (`ff-idle-processing`)
 
 ## Overview
 
@@ -12,247 +12,247 @@ This task plan implements the `ff-idle-processing` crate — the cooperative idl
 
 ## Tasks
 
-- [ ] 1. Crate scaffolding and core types
-  - [ ] 1.1 Create `crates/ff-idle-processing/Cargo.toml` with dependencies (ff-core, ff-logging, ff-configuration, thiserror) and dev-dependencies (proptest, pretty_assertions, mockall)
-  - [ ] 1.2 Create `crates/ff-idle-processing/src/lib.rs` with crate-level doc comment and public module declarations
-  - [ ] 1.3 Implement `src/types.rs` — define `WorkPriority` newtype (u32) with Ord/PartialOrd, well-known priority constants: `PRIORITY_SYNTAX_HIGHLIGHT` = 10, `PRIORITY_WRAP_CALCULATION` = 20, `PRIORITY_FOLD_COMPUTATION` = 30, `PRIORITY_SEARCH_INDEX` = 40
-  - [ ] 1.4 Implement `src/types.rs` — define `WorkStatus` enum with variants: `Continue` (more work remains), `Complete` (all work finished), `Interrupted` (cancelled by user input, progress saved)
-  - [ ] 1.5 Implement `src/types.rs` — define `WorkProgress` struct with fields: `completed_units: u64`, `total_units: u64`, `is_complete: bool`
-  - [ ] 1.6 Implement `src/context.rs` — define `IdleWorkContext` struct with methods: `time_remaining() → Duration`, `is_cancelled() → bool`, `elapsed() → Duration`
-  - [ ] 1.7 Write unit tests for WorkPriority ordering (lower value = higher priority), WorkStatus variants, WorkProgress construction
+- [x] 1. Crate scaffolding and core types
+  - [x] 1.1 Create `crates/ff-idle-processing/Cargo.toml` with dependencies (ff-core, ff-logging, ff-configuration, thiserror) and dev-dependencies (proptest, pretty_assertions, mockall)
+  - [x] 1.2 Create `crates/ff-idle-processing/src/lib.rs` with crate-level doc comment and public module declarations
+  - [x] 1.3 Implement `src/types.rs` — define `WorkPriority` newtype (u32) with Ord/PartialOrd, well-known priority constants: `PRIORITY_SYNTAX_HIGHLIGHT` = 10, `PRIORITY_WRAP_CALCULATION` = 20, `PRIORITY_FOLD_COMPUTATION` = 30, `PRIORITY_SEARCH_INDEX` = 40
+  - [x] 1.4 Implement `src/types.rs` — define `WorkStatus` enum with variants: `Continue` (more work remains), `Complete` (all work finished), `Interrupted` (cancelled by user input, progress saved)
+  - [x] 1.5 Implement `src/types.rs` — define `WorkProgress` struct with fields: `completed_units: u64`, `total_units: u64`, `is_complete: bool`
+  - [x] 1.6 Implement `src/context.rs` — define `IdleWorkContext` struct with methods: `time_remaining() → Duration`, `is_cancelled() → bool`, `elapsed() → Duration`
+  - [x] 1.7 Write unit tests for WorkPriority ordering (lower value = higher priority), WorkStatus variants, WorkProgress construction
     - Validates: Requirement 4 AC 1, AC 2
 
-- [ ] 2. IdleWorkSource trait and IdleNotifier trait
-  - [ ] 2.1 Implement `src/work_source.rs` — define `IdleWorkSource` trait with required methods: `perform_work(&mut self, context: &mut IdleWorkContext) → WorkStatus`, `priority(&self) → WorkPriority`, `name(&self) → &str`, `progress(&self) → WorkProgress`
-  - [ ] 2.2 Implement optional method `invalidate(&mut self)` on `IdleWorkSource` trait with default no-op implementation that resets progress to beginning
-  - [ ] 2.3 Ensure `IdleWorkSource` trait is object-safe (dyn-compatible) — verify `Box<dyn IdleWorkSource>` compiles and can be stored in heterogeneous collections
-  - [ ] 2.4 Implement `src/notifier.rs` — define `IdleNotifier` trait with methods: `request_idle_callback(&self)`, `cancel_idle_callback(&self)`
-  - [ ] 2.5 Implement `src/notifier.rs` — define `ManualIdleNotifier` struct implementing `IdleNotifier` for test/headless usage, with `trigger_idle()` method that directly invokes scheduler's `on_idle()`
-  - [ ] 2.6 Write unit tests verifying `IdleWorkSource` is object-safe (create `Vec<Box<dyn IdleWorkSource>>`, store heterogeneous implementations)
+- [x] 2. IdleWorkSource trait and IdleNotifier trait
+  - [x] 2.1 Implement `src/work_source.rs` — define `IdleWorkSource` trait with required methods: `perform_work(&mut self, context: &mut IdleWorkContext) → WorkStatus`, `priority(&self) → WorkPriority`, `name(&self) → &str`, `progress(&self) → WorkProgress`
+  - [x] 2.2 Implement optional method `invalidate(&mut self)` on `IdleWorkSource` trait with default no-op implementation that resets progress to beginning
+  - [x] 2.3 Ensure `IdleWorkSource` trait is object-safe (dyn-compatible) — verify `Box<dyn IdleWorkSource>` compiles and can be stored in heterogeneous collections
+  - [x] 2.4 Implement `src/notifier.rs` — define `IdleNotifier` trait with methods: `request_idle_callback(&self)`, `cancel_idle_callback(&self)`
+  - [x] 2.5 Implement `src/notifier.rs` — define `ManualIdleNotifier` struct implementing `IdleNotifier` for test/headless usage, with `trigger_idle()` method that directly invokes scheduler's `on_idle()`
+  - [x] 2.6 Write unit tests verifying `IdleWorkSource` is object-safe (create `Vec<Box<dyn IdleWorkSource>>`, store heterogeneous implementations)
     - Validates: Requirement 3 AC 6
-  - [ ] 2.7 Write unit tests for ManualIdleNotifier request/cancel tracking
+  - [x] 2.7 Write unit tests for ManualIdleNotifier request/cancel tracking
     - Validates: Requirement 9 AC 7
 
-- [ ] 3. IdleScheduler — core structure and registration API
-  - [ ] 3.1 Implement `src/scheduler.rs` — define `IdleScheduler` struct with fields: work source registry (Vec<Box<dyn IdleWorkSource>>), notifier reference, idle detection threshold, time budget, active/dormant state tracking, round-robin index, starvation counter
-  - [ ] 3.2 Implement `new(notifier: Box<dyn IdleNotifier>, config: IdleConfig) → IdleScheduler` constructor
-  - [ ] 3.3 Implement `register(&mut self, source: Box<dyn IdleWorkSource>)` — add work source to active set, request idle callback if currently idle or in no-op state
-  - [ ] 3.4 Implement `unregister(&mut self, name: &str) → Option<Box<dyn IdleWorkSource>>` — remove by name from both active and dormant sets, return ownership, cancel idle callback if no remaining active sources
-  - [ ] 3.5 Implement capacity: support at least 8 concurrent work sources without performance degradation in dispatch loop
-  - [ ] 3.6 Write unit tests for register/unregister lifecycle (register adds to active set, unregister removes and returns ownership)
+- [x] 3. IdleScheduler — core structure and registration API
+  - [x] 3.1 Implement `src/scheduler.rs` — define `IdleScheduler` struct with fields: work source registry (Vec<Box<dyn IdleWorkSource>>), notifier reference, idle detection threshold, time budget, active/dormant state tracking, round-robin index, starvation counter
+  - [x] 3.2 Implement `new(notifier: Box<dyn IdleNotifier>, config: IdleConfig) → IdleScheduler` constructor
+  - [x] 3.3 Implement `register(&mut self, source: Box<dyn IdleWorkSource>)` — add work source to active set, request idle callback if currently idle or in no-op state
+  - [x] 3.4 Implement `unregister(&mut self, name: &str) → Option<Box<dyn IdleWorkSource>>` — remove by name from both active and dormant sets, return ownership, cancel idle callback if no remaining active sources
+  - [x] 3.5 Implement capacity: support at least 8 concurrent work sources without performance degradation in dispatch loop
+  - [x] 3.6 Write unit tests for register/unregister lifecycle (register adds to active set, unregister removes and returns ownership)
     - Validates: Requirement 3 AC 3, AC 4
-  - [ ] 3.7 Write unit tests for registering during idle state triggers immediate service on next callback
+  - [x] 3.7 Write unit tests for registering during idle state triggers immediate service on next callback
     - Validates: Requirement 3 AC 5
-  - [ ] 3.8 Write unit tests for capacity (register 8+ sources, verify dispatch loop performance)
+  - [x] 3.8 Write unit tests for capacity (register 8+ sources, verify dispatch loop performance)
     - Validates: Requirement 3 AC 7
 
-- [ ] 4. Idle detection and state transitions
-  - [ ] 4.1 Implement `input_activity(&mut self)` method — records timestamp of last user input event, cancels current idle state if active, resets idle detection timer
-  - [ ] 4.2 Implement idle state transition logic — transition to idle when elapsed time since last `input_activity()` call exceeds Idle_Detection_Threshold (default 200ms, configurable)
-  - [ ] 4.3 Implement `src/config.rs` — define `IdleConfig` struct with fields: `idle_detection_threshold_ms` (u32, default 200), `time_budget_ms` (u32, default 10), `lines_per_slice` (u32, default 256)
-  - [ ] 4.4 Implement configuration loading from `ff-configuration` system for idle detection threshold
-  - [ ] 4.5 Write unit tests for idle state transition after threshold elapses with no input
+- [x] 4. Idle detection and state transitions
+  - [x] 4.1 Implement `input_activity(&mut self)` method — records timestamp of last user input event, cancels current idle state if active, resets idle detection timer
+  - [x] 4.2 Implement idle state transition logic — transition to idle when elapsed time since last `input_activity()` call exceeds Idle_Detection_Threshold (default 200ms, configurable)
+  - [x] 4.3 Implement `src/config.rs` — define `IdleConfig` struct with fields: `idle_detection_threshold_ms` (u32, default 200), `time_budget_ms` (u32, default 10), `lines_per_slice` (u32, default 256)
+  - [x] 4.4 Implement configuration loading from `ff-configuration` system for idle detection threshold
+  - [x] 4.5 Write unit tests for idle state transition after threshold elapses with no input
     - Validates: Requirement 1 AC 1, AC 2
-  - [ ] 4.6 Write unit tests for input_activity resetting idle detection timer
+  - [x] 4.6 Write unit tests for input_activity resetting idle detection timer
     - Validates: Requirement 1 AC 1
 
-- [ ] 5. Time-slice dispatch and priority ordering
-  - [ ] 5.1 Implement `on_idle(&mut self) → bool` method — the single entry point invoked by GUI shell's idle callback; dispatches one time slice to highest-priority active work source, returns `true` if more work remains
-  - [ ] 5.2 Implement priority selection in dispatch loop — always service the numerically lowest priority (highest-importance) work source with pending work first
-  - [ ] 5.3 Implement round-robin dispatch for equal-priority work sources — when multiple sources share same priority, cycle through them across successive idle callbacks
-  - [ ] 5.4 Implement time budget tracking within `on_idle()` — measure elapsed time, construct `IdleWorkContext` with remaining budget, signal work source to yield when budget approaches
-  - [ ] 5.5 Implement one-time-slice-per-callback rule — dispatch exactly one work source per `on_idle()` invocation
-  - [ ] 5.6 Implement continuous idle callback requests — continue requesting callbacks as long as any work source has pending work
-  - [ ] 5.7 Implement starvation prevention — if a higher-priority source continuously invalidates without completing, service lower-priority sources at least once every 10 idle cycles
-  - [ ] 5.8 Write unit tests for priority-ordered dispatch (lower priority value serviced first)
+- [x] 5. Time-slice dispatch and priority ordering
+  - [x] 5.1 Implement `on_idle(&mut self) → bool` method — the single entry point invoked by GUI shell's idle callback; dispatches one time slice to highest-priority active work source, returns `true` if more work remains
+  - [x] 5.2 Implement priority selection in dispatch loop — always service the numerically lowest priority (highest-importance) work source with pending work first
+  - [x] 5.3 Implement round-robin dispatch for equal-priority work sources — when multiple sources share same priority, cycle through them across successive idle callbacks
+  - [x] 5.4 Implement time budget tracking within `on_idle()` — measure elapsed time, construct `IdleWorkContext` with remaining budget, signal work source to yield when budget approaches
+  - [x] 5.5 Implement one-time-slice-per-callback rule — dispatch exactly one work source per `on_idle()` invocation
+  - [x] 5.6 Implement continuous idle callback requests — continue requesting callbacks as long as any work source has pending work
+  - [x] 5.7 Implement starvation prevention — if a higher-priority source continuously invalidates without completing, service lower-priority sources at least once every 10 idle cycles
+  - [x] 5.8 Write unit tests for priority-ordered dispatch (lower priority value serviced first)
     - Validates: Requirement 4 AC 3, AC 4
-  - [ ] 5.9 Write unit tests for round-robin among equal-priority sources
+  - [x] 5.9 Write unit tests for round-robin among equal-priority sources
     - Validates: Requirement 1 AC 5
-  - [ ] 5.10 Write unit tests for one time slice per callback invocation
+  - [x] 5.10 Write unit tests for one time slice per callback invocation
     - Validates: Requirement 1 AC 4
-  - [ ] 5.11 Write unit tests for continuous callback requests while work pending
+  - [x] 5.11 Write unit tests for continuous callback requests while work pending
     - Validates: Requirement 1 AC 6
-  - [ ] 5.12 Write unit tests for starvation prevention (lower-priority serviced within 10 cycles)
+  - [x] 5.12 Write unit tests for starvation prevention (lower-priority serviced within 10 cycles)
     - Validates: Requirement 4 AC 6
 
-- [ ] 6. Time budget enforcement
-  - [ ] 6.1 Implement time budget measurement — track elapsed time during each time slice using `std::time::Instant`, provide `time_remaining()` on `IdleWorkContext`
-  - [ ] 6.2 Implement budget overrun detection — when a work source exceeds Time_Budget by more than 2ms, log WARN identifying the offending source and actual elapsed time
-  - [ ] 6.3 Implement cooperative enforcement — scheduler does NOT forcibly terminate overrunning work sources; enforcement is via `time_remaining()` query only
-  - [ ] 6.4 Implement disabled mode — when Time_Budget is set to 0ms, no idle work is dispatched (scheduler effectively disabled)
-  - [ ] 6.5 Implement scheduler overhead budget — ensure scheduler's own bookkeeping (priority selection, progress tracking) consumes less than 1ms of the time budget
-  - [ ] 6.6 Write unit tests for time_remaining() accuracy within IdleWorkContext
+- [x] 6. Time budget enforcement
+  - [x] 6.1 Implement time budget measurement — track elapsed time during each time slice using `std::time::Instant`, provide `time_remaining()` on `IdleWorkContext`
+  - [x] 6.2 Implement budget overrun detection — when a work source exceeds Time_Budget by more than 2ms, log WARN identifying the offending source and actual elapsed time
+  - [x] 6.3 Implement cooperative enforcement — scheduler does NOT forcibly terminate overrunning work sources; enforcement is via `time_remaining()` query only
+  - [x] 6.4 Implement disabled mode — when Time_Budget is set to 0ms, no idle work is dispatched (scheduler effectively disabled)
+  - [x] 6.5 Implement scheduler overhead budget — ensure scheduler's own bookkeeping (priority selection, progress tracking) consumes less than 1ms of the time budget
+  - [x] 6.6 Write unit tests for time_remaining() accuracy within IdleWorkContext
     - Validates: Requirement 2 AC 2
-  - [ ] 6.7 Write unit tests for WARN log on budget overrun (>2ms over)
+  - [x] 6.7 Write unit tests for WARN log on budget overrun (>2ms over)
     - Validates: Requirement 2 AC 3
-  - [ ] 6.8 Write unit tests for cooperative-only enforcement (no forced termination)
+  - [x] 6.8 Write unit tests for cooperative-only enforcement (no forced termination)
     - Validates: Requirement 2 AC 4
-  - [ ] 6.9 Write unit tests for disabled mode (budget = 0 → no dispatch)
+  - [x] 6.9 Write unit tests for disabled mode (budget = 0 → no dispatch)
     - Validates: Requirement 2 AC 5
-  - [ ] 6.10 Write unit tests for scheduler overhead under 1ms
+  - [x] 6.10 Write unit tests for scheduler overhead under 1ms
     - Validates: Requirement 2 AC 6
 
-- [ ] 7. Cancellation on user input
-  - [ ] 7.1 Implement cancellation signalling — when `input_activity()` is called during an active time slice, set atomic cancellation flag visible to the active work source via `IdleWorkContext::is_cancelled()`
-  - [ ] 7.2 Implement low-latency cancellation — use `AtomicBool` or equivalent mechanism ensuring cancellation signal is visible to work source within less than 1ms (no message queue)
-  - [ ] 7.3 Implement post-cancellation cooldown — after cancellation, do not dispatch further time slices until Idle_Detection_Threshold elapses again with no new input
-  - [ ] 7.4 Implement interrupted work source handling — when work source returns `WorkStatus::Interrupted`, preserve its priority and progress position for resumption on next idle period
-  - [ ] 7.5 Write unit tests for cancellation flag visibility during active slice
+- [x] 7. Cancellation on user input
+  - [x] 7.1 Implement cancellation signalling — when `input_activity()` is called during an active time slice, set atomic cancellation flag visible to the active work source via `IdleWorkContext::is_cancelled()`
+  - [x] 7.2 Implement low-latency cancellation — use `AtomicBool` or equivalent mechanism ensuring cancellation signal is visible to work source within less than 1ms (no message queue)
+  - [x] 7.3 Implement post-cancellation cooldown — after cancellation, do not dispatch further time slices until Idle_Detection_Threshold elapses again with no new input
+  - [x] 7.4 Implement interrupted work source handling — when work source returns `WorkStatus::Interrupted`, preserve its priority and progress position for resumption on next idle period
+  - [x] 7.5 Write unit tests for cancellation flag visibility during active slice
     - Validates: Requirement 5 AC 1, AC 2
-  - [ ] 7.6 Write unit tests for cancellation latency (atomic flag, sub-1ms visibility)
+  - [x] 7.6 Write unit tests for cancellation latency (atomic flag, sub-1ms visibility)
     - Validates: Requirement 5 AC 5
-  - [ ] 7.7 Write unit tests for post-cancellation cooldown (no dispatch until threshold re-elapses)
+  - [x] 7.7 Write unit tests for post-cancellation cooldown (no dispatch until threshold re-elapses)
     - Validates: Requirement 5 AC 4
-  - [ ] 7.8 Write unit tests for interrupted source resumption without penalty
+  - [x] 7.8 Write unit tests for interrupted source resumption without penalty
     - Validates: Requirement 5 AC 3, AC 6
 
-- [ ] 8. Progress tracking
-  - [ ] 8.1 Implement `progress(&self, name: &str) → Option<WorkProgress>` on IdleScheduler — returns current progress of a named work source, or None if not registered
-  - [ ] 8.2 Implement `all_progress(&self) → Vec<(String, WorkProgress)>` on IdleScheduler — returns progress for all registered sources
-  - [ ] 8.3 Implement `is_all_complete(&self) → bool` on IdleScheduler — returns true only when all registered sources report is_complete = true
-  - [ ] 8.4 Implement progress update on WorkStatus::Complete — set source's is_complete = true and exclude from dispatch rotation
-  - [ ] 8.5 Implement progress reset on invalidation — set completed_units = 0, is_complete = false, re-include in dispatch rotation
-  - [ ] 8.6 Write unit tests for progress() query by name
+- [x] 8. Progress tracking
+  - [x] 8.1 Implement `progress(&self, name: &str) → Option<WorkProgress>` on IdleScheduler — returns current progress of a named work source, or None if not registered
+  - [x] 8.2 Implement `all_progress(&self) → Vec<(String, WorkProgress)>` on IdleScheduler — returns progress for all registered sources
+  - [x] 8.3 Implement `is_all_complete(&self) → bool` on IdleScheduler — returns true only when all registered sources report is_complete = true
+  - [x] 8.4 Implement progress update on WorkStatus::Complete — set source's is_complete = true and exclude from dispatch rotation
+  - [x] 8.5 Implement progress reset on invalidation — set completed_units = 0, is_complete = false, re-include in dispatch rotation
+  - [x] 8.6 Write unit tests for progress() query by name
     - Validates: Requirement 6 AC 2
-  - [ ] 8.7 Write unit tests for all_progress() returning all sources
+  - [x] 8.7 Write unit tests for all_progress() returning all sources
     - Validates: Requirement 6 AC 3
-  - [ ] 8.8 Write unit tests for is_all_complete() when all done vs some pending
+  - [x] 8.8 Write unit tests for is_all_complete() when all done vs some pending
     - Validates: Requirement 6 AC 5
-  - [ ] 8.9 Write unit tests for progress update on completion and reset on invalidation
+  - [x] 8.9 Write unit tests for progress update on completion and reset on invalidation
     - Validates: Requirement 6 AC 4, AC 6
 
-- [ ] 9. Work completion, dormancy, and invalidation
-  - [ ] 9.1 Implement dormancy — when work source returns WorkStatus::Complete, mark as dormant and exclude from active dispatch set
-  - [ ] 9.2 Implement no-op state — when all sources are dormant, stop requesting idle callbacks (zero CPU overhead)
-  - [ ] 9.3 Implement reactivation on invalidation — when dormant source is invalidated, return to active dispatch set, resume requesting idle callbacks
-  - [ ] 9.4 Implement `invalidate_source(&mut self, name: &str)` — externally invalidate a specific work source, reset progress, reactivate
-  - [ ] 9.5 Implement `invalidate_all(&mut self)` — invalidate all registered work sources simultaneously (full document reload scenario)
-  - [ ] 9.6 Implement full removal on unregister — source removed from both active and dormant sets, no further time slices or invalidation signals
-  - [ ] 9.7 Implement `SchedulerIdle` notification emission — when last active source completes and scheduler enters no-op state
-  - [ ] 9.8 Write unit tests for dormancy on completion (excluded from dispatch)
+- [x] 9. Work completion, dormancy, and invalidation
+  - [x] 9.1 Implement dormancy — when work source returns WorkStatus::Complete, mark as dormant and exclude from active dispatch set
+  - [x] 9.2 Implement no-op state — when all sources are dormant, stop requesting idle callbacks (zero CPU overhead)
+  - [x] 9.3 Implement reactivation on invalidation — when dormant source is invalidated, return to active dispatch set, resume requesting idle callbacks
+  - [x] 9.4 Implement `invalidate_source(&mut self, name: &str)` — externally invalidate a specific work source, reset progress, reactivate
+  - [x] 9.5 Implement `invalidate_all(&mut self)` — invalidate all registered work sources simultaneously (full document reload scenario)
+  - [x] 9.6 Implement full removal on unregister — source removed from both active and dormant sets, no further time slices or invalidation signals
+  - [x] 9.7 Implement `SchedulerIdle` notification emission — when last active source completes and scheduler enters no-op state
+  - [x] 9.8 Write unit tests for dormancy on completion (excluded from dispatch)
     - Validates: Requirement 7 AC 1
-  - [ ] 9.9 Write unit tests for no-op state (no idle callbacks requested when all dormant)
+  - [x] 9.9 Write unit tests for no-op state (no idle callbacks requested when all dormant)
     - Validates: Requirement 7 AC 2; Requirement 11 AC 2
-  - [ ] 9.10 Write unit tests for reactivation on invalidation (dormant → active, callbacks resume)
+  - [x] 9.10 Write unit tests for reactivation on invalidation (dormant → active, callbacks resume)
     - Validates: Requirement 7 AC 3
-  - [ ] 9.11 Write unit tests for invalidate_source and invalidate_all
+  - [x] 9.11 Write unit tests for invalidate_source and invalidate_all
     - Validates: Requirement 7 AC 4, AC 5
-  - [ ] 9.12 Write unit tests for full removal on unregister
+  - [x] 9.12 Write unit tests for full removal on unregister
     - Validates: Requirement 7 AC 6
-  - [ ] 9.13 Write unit tests for SchedulerIdle notification on no-op transition
+  - [x] 9.13 Write unit tests for SchedulerIdle notification on no-op transition
     - Validates: Requirement 7 AC 7
 
-- [ ] 10. Completion notification system
-  - [ ] 10.1 Implement `src/notifications.rs` — define `SubscriptionId` type and notification event types: `WorkSourceCompleted { name: String }`, `AllWorkCompleted`
-  - [ ] 10.2 Implement `subscribe_completion(&mut self, source_name: &str, callback: Box<dyn Fn()>) → SubscriptionId` — register callback for specific source completion
-  - [ ] 10.3 Implement `unsubscribe_completion(&mut self, source_name: &str, subscription_id: SubscriptionId)` — remove callback
-  - [ ] 10.4 Implement synchronous callback dispatch — invoke completion callbacks on same thread when source completes
-  - [ ] 10.5 Implement notification queue for cross-thread consumers — queue notifications for consumers that poll on next frame
-  - [ ] 10.6 Implement spurious notification prevention — when source is invalidated after completion (reactivated), do not emit completion notification until it completes new work cycle
-  - [ ] 10.7 Implement AllWorkCompleted notification — emit when scheduler transitions to no-op state
-  - [ ] 10.8 Write unit tests for subscribe/unsubscribe lifecycle
+- [x] 10. Completion notification system
+  - [x] 10.1 Implement `src/notifications.rs` — define `SubscriptionId` type and notification event types: `WorkSourceCompleted { name: String }`, `AllWorkCompleted`
+  - [x] 10.2 Implement `subscribe_completion(&mut self, source_name: &str, callback: Box<dyn Fn()>) → SubscriptionId` — register callback for specific source completion
+  - [x] 10.3 Implement `unsubscribe_completion(&mut self, source_name: &str, subscription_id: SubscriptionId)` — remove callback
+  - [x] 10.4 Implement synchronous callback dispatch — invoke completion callbacks on same thread when source completes
+  - [x] 10.5 Implement notification queue for cross-thread consumers — queue notifications for consumers that poll on next frame
+  - [x] 10.6 Implement spurious notification prevention — when source is invalidated after completion (reactivated), do not emit completion notification until it completes new work cycle
+  - [x] 10.7 Implement AllWorkCompleted notification — emit when scheduler transitions to no-op state
+  - [x] 10.8 Write unit tests for subscribe/unsubscribe lifecycle
     - Validates: Requirement 10 AC 5, AC 6
-  - [ ] 10.9 Write unit tests for WorkSourceCompleted notification on completion
+  - [x] 10.9 Write unit tests for WorkSourceCompleted notification on completion
     - Validates: Requirement 10 AC 2
-  - [ ] 10.10 Write unit tests for AllWorkCompleted notification on no-op transition
+  - [x] 10.10 Write unit tests for AllWorkCompleted notification on no-op transition
     - Validates: Requirement 10 AC 3
-  - [ ] 10.11 Write unit tests for synchronous callback and notification queue mechanisms
+  - [x] 10.11 Write unit tests for synchronous callback and notification queue mechanisms
     - Validates: Requirement 10 AC 4
-  - [ ] 10.12 Write unit tests for spurious notification prevention after invalidation
+  - [x] 10.12 Write unit tests for spurious notification prevention after invalidation
     - Validates: Requirement 10 AC 7
 
-- [ ] 11. No-op state and resource efficiency
-  - [ ] 11.1 Implement zero-overhead quiescent state — when no work sources are registered, no idle callbacks requested, no timer handles or pending callbacks allocated
-  - [ ] 11.2 Implement immediate callback request on new registration or invalidation from no-op state
-  - [ ] 11.3 Implement single-cycle transition — active to no-op occurs within one idle callback cycle after last source reports completion (no trailing callbacks)
-  - [ ] 11.4 Implement minimal memory footprint in no-op state — only registration table and per-source progress records retained
-  - [ ] 11.5 Write unit tests for zero overhead when no sources registered (no callbacks requested)
+- [x] 11. No-op state and resource efficiency
+  - [x] 11.1 Implement zero-overhead quiescent state — when no work sources are registered, no idle callbacks requested, no timer handles or pending callbacks allocated
+  - [x] 11.2 Implement immediate callback request on new registration or invalidation from no-op state
+  - [x] 11.3 Implement single-cycle transition — active to no-op occurs within one idle callback cycle after last source reports completion (no trailing callbacks)
+  - [x] 11.4 Implement minimal memory footprint in no-op state — only registration table and per-source progress records retained
+  - [x] 11.5 Write unit tests for zero overhead when no sources registered (no callbacks requested)
     - Validates: Requirement 11 AC 1
-  - [ ] 11.6 Write unit tests for immediate activation from no-op on register/invalidation
+  - [x] 11.6 Write unit tests for immediate activation from no-op on register/invalidation
     - Validates: Requirement 11 AC 3
-  - [ ] 11.7 Write unit tests for single-cycle transition to no-op (no trailing callbacks)
+  - [x] 11.7 Write unit tests for single-cycle transition to no-op (no trailing callbacks)
     - Validates: Requirement 11 AC 5
 
-- [ ] 12. GUI-independent architecture enforcement
-  - [ ] 12.1 Implement GUI-independent time source — use `std::time::Instant` for all timing, with injectable clock trait (`trait Clock { fn now(&self) -> Instant; }`) for deterministic testing
-  - [ ] 12.2 Implement `input_activity()` as the sole input state interface — no direct platform input API usage, GUI shell calls this method on each input event
-  - [ ] 12.3 Implement public API as struct with well-defined methods — no message passing or GUI event dispatch, direct programmatic control
-  - [ ] 12.4 Ensure IdleWorkSource trait has no GUI types in signature — operates on abstract document positions, line numbers, byte offsets only
-  - [ ] 12.5 Write unit tests exercising full scheduling logic with mock clock and synthetic input signals (no GUI)
+- [x] 12. GUI-independent architecture enforcement
+  - [x] 12.1 Implement GUI-independent time source — use `std::time::Instant` for all timing, with injectable clock trait (`trait Clock { fn now(&self) -> Instant; }`) for deterministic testing
+  - [x] 12.2 Implement `input_activity()` as the sole input state interface — no direct platform input API usage, GUI shell calls this method on each input event
+  - [x] 12.3 Implement public API as struct with well-defined methods — no message passing or GUI event dispatch, direct programmatic control
+  - [x] 12.4 Ensure IdleWorkSource trait has no GUI types in signature — operates on abstract document positions, line numbers, byte offsets only
+  - [x] 12.5 Write unit tests exercising full scheduling logic with mock clock and synthetic input signals (no GUI)
     - Validates: Requirement 12 AC 4
-  - [ ] 12.6 Write unit test verifying zero GUI framework dependencies in crate source (no egui, winit, platform-specific APIs)
+  - [x] 12.6 Write unit test verifying zero GUI framework dependencies in crate source (no egui, winit, platform-specific APIs)
     - Validates: Requirement 12 AC 1
-  - [ ] 12.7 Write unit tests for injectable clock (mock Instant for deterministic time-budget tests)
+  - [x] 12.7 Write unit tests for injectable clock (mock Instant for deterministic time-budget tests)
     - Validates: Requirement 12 AC 2
 
-- [ ] 13. Event loop integration (IdleNotifier)
-  - [ ] 13.1 Implement IdleNotifier request/cancel contract — scheduler calls `request_idle_callback()` when active sources exist and not in cancellation cooldown
-  - [ ] 13.2 Implement cancel_idle_callback on no-op transition — scheduler calls `cancel_idle_callback()` when entering no-op state to prevent unnecessary event loop overhead
-  - [ ] 13.3 Implement `on_idle()` return value semantics — returns bool indicating whether more idle work remains (GUI shell decides whether to re-request)
-  - [ ] 13.4 Ensure no direct GUI framework dependency — scheduler receives idle notifications through IdleNotifier trait only
-  - [ ] 13.5 Write unit tests for request_idle_callback called when active sources and not in cooldown
+- [x] 13. Event loop integration (IdleNotifier)
+  - [x] 13.1 Implement IdleNotifier request/cancel contract — scheduler calls `request_idle_callback()` when active sources exist and not in cancellation cooldown
+  - [x] 13.2 Implement cancel_idle_callback on no-op transition — scheduler calls `cancel_idle_callback()` when entering no-op state to prevent unnecessary event loop overhead
+  - [x] 13.3 Implement `on_idle()` return value semantics — returns bool indicating whether more idle work remains (GUI shell decides whether to re-request)
+  - [x] 13.4 Ensure no direct GUI framework dependency — scheduler receives idle notifications through IdleNotifier trait only
+  - [x] 13.5 Write unit tests for request_idle_callback called when active sources and not in cooldown
     - Validates: Requirement 9 AC 4
-  - [ ] 13.6 Write unit tests for cancel_idle_callback on no-op state
+  - [x] 13.6 Write unit tests for cancel_idle_callback on no-op state
     - Validates: Requirement 9 AC 5
-  - [ ] 13.7 Write unit tests for on_idle() return value (true when more work, false when all done)
+  - [x] 13.7 Write unit tests for on_idle() return value (true when more work, false when all done)
     - Validates: Requirement 9 AC 6
-  - [ ] 13.8 Write unit tests for GUI-independence (no framework references in scheduler)
+  - [x] 13.8 Write unit tests for GUI-independence (no framework references in scheduler)
     - Validates: Requirement 9 AC 2
 
-- [ ] 14. Built-in work source category contracts
-  - [ ] 14.1 Document and define the contract for syntax-highlighting idle work source — incremental styling from Styling_Position, bounded lines per slice (default 256), respects time budget via `time_remaining()` / `is_cancelled()`
-  - [ ] 14.2 Document and define the contract for wrap-calculation idle work source — incremental wrap height computation, updates display-line-mapping via `set_height`, saves progress position across slices
-  - [ ] 14.3 Document and define the contract for search-index idle work source — pre-computes match positions for highlight-all, rebuilds entirely on invalidation
-  - [ ] 14.4 Implement invalidation contracts — syntax highlighting invalidates to edited line start, wrap calculation invalidates to edited line, search index invalidates entirely
-  - [ ] 14.5 Write unit tests for mock syntax-highlighting source respecting time budget (yields when budget exhausted)
+- [x] 14. Built-in work source category contracts
+  - [x] 14.1 Document and define the contract for syntax-highlighting idle work source — incremental styling from Styling_Position, bounded lines per slice (default 256), respects time budget via `time_remaining()` / `is_cancelled()`
+  - [x] 14.2 Document and define the contract for wrap-calculation idle work source — incremental wrap height computation, updates display-line-mapping via `set_height`, saves progress position across slices
+  - [x] 14.3 Document and define the contract for search-index idle work source — pre-computes match positions for highlight-all, rebuilds entirely on invalidation
+  - [x] 14.4 Implement invalidation contracts — syntax highlighting invalidates to edited line start, wrap calculation invalidates to edited line, search index invalidates entirely
+  - [x] 14.5 Write unit tests for mock syntax-highlighting source respecting time budget (yields when budget exhausted)
     - Validates: Requirement 8 AC 5
-  - [ ] 14.6 Write unit tests for mock work sources saving/restoring progress across slices
+  - [x] 14.6 Write unit tests for mock work sources saving/restoring progress across slices
     - Validates: Requirement 8 AC 6
-  - [ ] 14.7 Write unit tests for invalidation to correct position on document edit
+  - [x] 14.7 Write unit tests for invalidation to correct position on document edit
     - Validates: Requirement 8 AC 7
 
-- [ ] 15. Property-based tests
-  - [ ] 15.1 Write property test: priority ordering invariant (Property 1) — for any set of N work sources with distinct priorities, the scheduler always dispatches the lowest-priority-value source first
+- [x] 15. Property-based tests
+  - [x] 15.1 Write property test: priority ordering invariant (Property 1) — for any set of N work sources with distinct priorities, the scheduler always dispatches the lowest-priority-value source first
     - Validates: Requirement 4 AC 3
-  - [ ] 15.2 Write property test: round-robin fairness (Property 2) — for N sources with identical priority, after N idle cycles each source has been serviced exactly once
+  - [x] 15.2 Write property test: round-robin fairness (Property 2) — for N sources with identical priority, after N idle cycles each source has been serviced exactly once
     - Validates: Requirement 1 AC 5
-  - [ ] 15.3 Write property test: time budget bound (Property 3) — for any work source execution, the time_remaining() value provided at context creation equals time_budget minus elapsed scheduler overhead, and elapsed never exceeds budget + 2ms without a WARN log
+  - [x] 15.3 Write property test: time budget bound (Property 3) — for any work source execution, the time_remaining() value provided at context creation equals time_budget minus elapsed scheduler overhead, and elapsed never exceeds budget + 2ms without a WARN log
     - Validates: Requirement 2 AC 2, AC 3
-  - [ ] 15.4 Write property test: cancellation atomicity (Property 4) — for any cancellation event during a time slice, is_cancelled() becomes true within less than 1ms and the work source can observe it
+  - [x] 15.4 Write property test: cancellation atomicity (Property 4) — for any cancellation event during a time slice, is_cancelled() becomes true within less than 1ms and the work source can observe it
     - Validates: Requirement 5 AC 5
-  - [ ] 15.5 Write property test: idle detection threshold (Property 5) — for any sequence of input events, the scheduler transitions to idle only after Idle_Detection_Threshold ms of silence, never before
+  - [x] 15.5 Write property test: idle detection threshold (Property 5) — for any sequence of input events, the scheduler transitions to idle only after Idle_Detection_Threshold ms of silence, never before
     - Validates: Requirement 1 AC 1, AC 2
-  - [ ] 15.6 Write property test: starvation prevention (Property 6) — given a high-priority source that is invalidated on every completion, lower-priority sources are still serviced at least once every 10 idle cycles
+  - [x] 15.6 Write property test: starvation prevention (Property 6) — given a high-priority source that is invalidated on every completion, lower-priority sources are still serviced at least once every 10 idle cycles
     - Validates: Requirement 4 AC 6
-  - [ ] 15.7 Write property test: no-op transition completeness (Property 7) — after all sources report Complete, the scheduler enters no-op within exactly one additional idle callback (no trailing callbacks)
+  - [x] 15.7 Write property test: no-op transition completeness (Property 7) — after all sources report Complete, the scheduler enters no-op within exactly one additional idle callback (no trailing callbacks)
     - Validates: Requirement 11 AC 5; Requirement 7 AC 2
-  - [ ] 15.8 Write property test: progress monotonicity (Property 8) — for any work source across successive time slices, completed_units is non-decreasing unless invalidated
+  - [x] 15.8 Write property test: progress monotonicity (Property 8) — for any work source across successive time slices, completed_units is non-decreasing unless invalidated
     - Validates: Requirement 6 AC 1, AC 4
-  - [ ] 15.9 Write property test: notification correctness (Property 9) — a completion notification is emitted if and only if a source transitions from non-complete to complete, and never emitted after invalidation until re-completion
+  - [x] 15.9 Write property test: notification correctness (Property 9) — a completion notification is emitted if and only if a source transitions from non-complete to complete, and never emitted after invalidation until re-completion
     - Validates: Requirement 10 AC 2, AC 7
-  - [ ] 15.10 Write property test: dormancy exclusion (Property 10) — dormant (complete) sources never receive time slices until invalidated
+  - [x] 15.10 Write property test: dormancy exclusion (Property 10) — dormant (complete) sources never receive time slices until invalidated
     - Validates: Requirement 7 AC 1; Requirement 11 AC 2
 
-- [ ] 16. Integration tests
-  - [ ] 16.1 Write integration test: full idle lifecycle — register sources, simulate input silence past threshold, verify on_idle dispatches to highest priority, verify completion and no-op transition
+- [x] 16. Integration tests
+  - [x] 16.1 Write integration test: full idle lifecycle — register sources, simulate input silence past threshold, verify on_idle dispatches to highest priority, verify completion and no-op transition
     - Validates: Requirement 1 AC 1, AC 3, AC 4, AC 6, AC 7; Requirement 7 AC 2
-  - [ ] 16.2 Write integration test: cancellation mid-slice — start idle processing, inject input event during work source execution, verify is_cancelled() true, verify WorkStatus::Interrupted returned, verify cooldown before next dispatch
+  - [x] 16.2 Write integration test: cancellation mid-slice — start idle processing, inject input event during work source execution, verify is_cancelled() true, verify WorkStatus::Interrupted returned, verify cooldown before next dispatch
     - Validates: Requirement 5 AC 1, AC 2, AC 3, AC 4
-  - [ ] 16.3 Write integration test: priority ordering with multiple sources — register 4 sources at different priorities, verify dispatch order matches priority values (lowest first)
+  - [x] 16.3 Write integration test: priority ordering with multiple sources — register 4 sources at different priorities, verify dispatch order matches priority values (lowest first)
     - Validates: Requirement 4 AC 3, AC 4; Requirement 1 AC 4
-  - [ ] 16.4 Write integration test: invalidation and reactivation — complete a source, invalidate it, verify it re-enters dispatch rotation and is serviced on next idle
+  - [x] 16.4 Write integration test: invalidation and reactivation — complete a source, invalidate it, verify it re-enters dispatch rotation and is serviced on next idle
     - Validates: Requirement 7 AC 3, AC 4; Requirement 6 AC 6
-  - [ ] 16.5 Write integration test: starvation prevention under continuous invalidation — high-priority source invalidates itself on each completion, verify low-priority sources still serviced within 10 cycles
+  - [x] 16.5 Write integration test: starvation prevention under continuous invalidation — high-priority source invalidates itself on each completion, verify low-priority sources still serviced within 10 cycles
     - Validates: Requirement 4 AC 6
-  - [ ] 16.6 Write integration test: disabled mode (budget = 0) — set time budget to 0, verify no work dispatched even with active sources and idle state
+  - [x] 16.6 Write integration test: disabled mode (budget = 0) — set time budget to 0, verify no work dispatched even with active sources and idle state
     - Validates: Requirement 2 AC 5
-  - [ ] 16.7 Write integration test: notification system end-to-end — subscribe to completion events, run sources to completion, verify callbacks invoked, verify AllWorkCompleted emitted
+  - [x] 16.7 Write integration test: notification system end-to-end — subscribe to completion events, run sources to completion, verify callbacks invoked, verify AllWorkCompleted emitted
     - Validates: Requirement 10 AC 2, AC 3, AC 4, AC 5
-  - [ ] 16.8 Write integration test: ManualIdleNotifier headless operation — use ManualIdleNotifier to drive scheduler without event loop, verify full scheduling cycle works
+  - [x] 16.8 Write integration test: ManualIdleNotifier headless operation — use ManualIdleNotifier to drive scheduler without event loop, verify full scheduling cycle works
     - Validates: Requirement 9 AC 7; Requirement 12 AC 4
-  - [ ] 16.9 Write integration test: multiple sources with same priority round-robin — register 3 sources at priority 20, verify each gets serviced in rotation across callbacks
+  - [x] 16.9 Write integration test: multiple sources with same priority round-robin — register 3 sources at priority 20, verify each gets serviced in rotation across callbacks
     - Validates: Requirement 1 AC 5
-  - [ ] 16.10 Write integration test: scheduler overhead measurement — verify scheduler's own bookkeeping (priority scan, state transitions) takes less than 1ms per on_idle call
+  - [x] 16.10 Write integration test: scheduler overhead measurement — verify scheduler's own bookkeeping (priority scan, state transitions) takes less than 1ms per on_idle call
     - Validates: Requirement 2 AC 6
 
 ---

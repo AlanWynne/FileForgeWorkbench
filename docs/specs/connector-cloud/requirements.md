@@ -135,3 +135,61 @@ criteria will be written when this connector moves to active development.
 - Connector-extensibility requirements (Requirement 6: Future Connector Hooks)
 - [Microsoft Graph API documentation](https://learn.microsoft.com/en-us/graph/overview)
 - [OAuth 2.0 Authorization Code with PKCE](https://datatracker.ietf.org/doc/html/rfc7636)
+
+---
+
+## Formal Acceptance Criteria (DEFERRED — Future Release)
+
+> The following criteria are written in EARS format for traceability. All criteria
+> carry status **DEFERRED** — they are not scheduled for the initial release.
+> Full implementation details will be added to `design.md` when this connector
+> moves to active development.
+
+### Requirement 1: OAuth 2.0 Authentication *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN the connector initiates a connection to a cloud service, THE connector SHALL perform the OAuth 2.0 Authorization Code flow with PKCE for desktop scenarios, store tokens securely in the OS-native credential store, refresh tokens automatically before expiry, and emit ConnectorStateChanged events on authentication success, failure, or expiry.
+
+---
+
+### Requirement 2: SharePoint Online Access *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN the connector is configured for SharePoint Online, THE connector SHALL enumerate accessible sites and document libraries, support hierarchical folder/file navigation, retrieve file metadata (size, dates, author, content type), and support version history access and check-out/check-in workflows.
+
+---
+
+### Requirement 3: OneDrive Access *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN the connector is configured for OneDrive, THE connector SHALL support personal and business OneDrive access, use delta sync for efficient incremental change tracking, resolve shared links, and support large file upload via resumable upload sessions.
+
+---
+
+### Requirement 4: File Operations via Graph API *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN a VFS operation is requested on a cloud resource, THE connector SHALL execute the corresponding Microsoft Graph API call: read (download with range support), write (upload), list (with pagination), create, delete (soft delete to recycle bin), and rename/move.
+
+---
+
+### Requirement 5: Offline Cache and Sync Conflict Resolution *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN a cloud resource is accessed, THE connector SHALL maintain a local cache of recently accessed metadata and content, detect conflicts when local edits collide with remote changes, and apply the configured conflict resolution strategy (last-writer-wins, prompt user, or fork copy).
+
+---
+
+### Requirement 6: Error Mapping *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN a Graph API call fails, THE connector SHALL map HTTP 4xx errors (401, 403, 404) and 5xx errors to the appropriate ConnectorError variant, respect Retry-After headers for 429 responses, and classify throttling, quota exceeded, and item-locked conditions as distinct error kinds.
+
+---
+

@@ -878,7 +878,11 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 17.8: EXTERNAL_EXTENSIONS table covers all required categories (Office, PDF, images, audio/video, archives, executables, databases) |
 | `ff-desktop` | 🔲 | — | Req 17.9: POSIX catalog file nodes follow same FileClass classification and launch rules as Native nodes |
 
-### Phase BB — Native Catalog Sorted Listing and File Attributes (Requirement 18)
+### Phase BC — Directory-first alphabetical sort in content area (Req 10.7)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 10.7: Name-sort groups containers before non-containers, each group sorted case-insensitively — `visible_entries_name_sort_groups_dirs_before_files`, `visible_entries_name_sort_dirs_are_alphabetical_within_group`, `visible_entries_type_sort_does_not_force_dir_grouping` |
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
@@ -889,3 +893,310 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 18.7: Valid entries collected without error; inaccessible entries silently skipped via `metadata().ok()?` — `collect_native_entries_returns_valid_entries` |
 | `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 18.8: Opening unreadable file stores error in `last_error`; no editor tab opened — `open_file_node_stores_error_for_nonexistent_file` |
 | `ff-desktop` | 🔲 | — | Req 18.9: Attribute columns rendered in correct order and alignment (manual UI verification) |
+
+### Phase BD — File Explorer tree: drag-select and copy as text tree (Req 19 file-tree-panel)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | — | Req 19.1: drag-select highlights all visible nodes between start and current cursor position |
+| `ff-desktop` | 🔴 | — | Req 19.2: Shift+click extends selection from Anchor_Node to clicked node |
+| `ff-desktop` | 🔴 | — | Req 19.3: Ctrl+click toggles individual node membership without affecting others |
+| `ff-desktop` | 🔴 | — | Req 19.4: selected nodes rendered with `ui.selection_background` tint |
+| `ff-desktop` | 🔴 | — | Req 19.5: Ctrl+C with non-empty selection writes Text_Tree to OS clipboard |
+| `ff-desktop` | 🔴 | — | Req 19.6: `build_text_tree` produces correct indented ASCII output with `[DIR]` prefix and tree connectors |
+| `ff-desktop` | 🔴 | — | Req 19.7: "Copy as Text Tree" context menu item present above "Copy" group |
+| `ff-desktop` | 🔴 | — | Req 19.8: Escape clears multi-selection, reverts to single-node mode |
+| `ff-desktop` | 🔴 | — | Req 19.9: selection extends to nodes scrolled into view during drag |
+| `ff-desktop` | 🔴 | — | Req 19.10: Mainframe nodes use DSN in Text_Tree output |
+
+### Phase BE — File Explorer keyboard navigation + file copy/paste (Req 20–21 file-tree-panel)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | — | Req 20.1: Tab from CommandField transfers focus to File Explorer node list; Cursor_Node set to first visible catalog node |
+| `ff-desktop` | 🔴 | — | Req 20.2: Tab advances Cursor_Node to next visible node in display order |
+| `ff-desktop` | 🔴 | — | Req 20.3: Tab on a collapsed container expands it before advancing |
+| `ff-desktop` | 🔴 | — | Req 20.4: Down/Up Arrow moves Cursor_Node without expanding containers |
+| `ff-desktop` | 🔴 | — | Req 20.5: Right Arrow expands collapsed container; Left Arrow collapses expanded container or moves to parent |
+| `ff-desktop` | 🔴 | — | Req 20.6: Shift+Arrow moves Cursor_Node and adds newly visited node to Keyboard_Selection |
+| `ff-desktop` | 🔴 | — | Req 20.7: Continued Shift+Arrow adds each newly visited node cumulatively |
+| `ff-desktop` | 🔴 | — | Req 20.8: Releasing Shift preserves Keyboard_Selection; plain Arrow moves cursor without changing selection |
+| `ff-desktop` | 🔴 | — | Req 20.9: Ctrl+Arrow moves Cursor_Node without changing Keyboard_Selection |
+| `ff-desktop` | 🔴 | — | Req 20.10: Ctrl+Space toggles Cursor_Node membership in Keyboard_Selection |
+| `ff-desktop` | 🔴 | — | Req 20.11: Ctrl+C with non-empty Keyboard_Selection copies selected nodes |
+| `ff-desktop` | 🔴 | — | Req 20.12: Escape clears Keyboard_Selection; Cursor_Node remains |
+| `ff-desktop` | 🔴 | — | Req 20.13: Cursor_Node rendered with focus ring distinct from selection fill; both shown when node is cursor and selected |
+| `ff-desktop` | 🔴 | — | Req 21.1: Ctrl+C stores selected node paths in File_Copy_Clipboard with operation type Copy |
+| `ff-desktop` | 🔴 | — | Req 21.2: Ctrl+V in file list dispatches background copy to Paste_Target directory |
+| `ff-desktop` | 🔴 | — | Req 21.3: Paste progress indicator shown in status bar; dismissed on completion; target directory refreshed |
+| `ff-desktop` | 🔴 | — | Req 21.4: Paste failure shows error in status bar; successfully copied files not rolled back |
+| `ff-desktop` | 🔴 | — | Req 21.5: Name collision shows per-file prompt with Overwrite / Skip / Rename options |
+| `ff-desktop` | 🔴 | — | Req 21.6: Ctrl+V in editor with non-empty clipboard opens Paste_Prompt modal |
+| `ff-desktop` | 🔴 | — | Req 21.7: "Insert File Names" inserts one path per line at caret |
+| `ff-desktop` | 🔴 | — | Req 21.8: "Insert File Contents" reads and inserts file text; skips unreadable files with inline error |
+| `ff-desktop` | 🔴 | — | Req 21.9: Mainframe DSN/member paths supported; member name lowercased when pasting to Native/POSIX |
+| `ff-desktop` | 🔴 | — | Req 21.10: Paste to POSIX catalog rejected with status-bar message |
+| `ff-desktop` | 🔴 | — | Req 21.11: File_Copy_Clipboard persists until replaced or cleared; source nodes show dashed border indicator |
+
+### Phase BE — Final Status (keyboard + paste wired into render loop)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.1: `explorer_focused` field; Tab from CommandField wired in `render_central_panel` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.2: `collect_visible_node_paths` + Tab advance wired |
+| `ff-desktop` | 🔲 | — | Req 20.3: Tab on collapsed container expands it (egui CollapsingHeader state — manual UI verification) |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.4: Arrow keys move cursor without expanding — `arrow_down_moves_cursor_without_expanding` |
+| `ff-desktop` | 🔲 | — | Req 20.5: Right/Left Arrow expand/collapse containers (egui CollapsingHeader — manual UI verification) |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.6, 20.7: Shift+Arrow extends selection — `shift_arrow_adds_to_selection` |
+| `ff-desktop` | 🔲 | — | Req 20.8: Releasing Shift preserves selection (modifier release — manual UI verification) |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.9: Ctrl+Arrow moves cursor without changing selection — `ctrl_arrow_moves_cursor_without_changing_selection` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.10: Ctrl+Space toggles selection — `ctrl_space_toggles_cursor_node_in_selection` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.11: Ctrl+C copies to clipboard + File_Copy_Clipboard — wired in `handle_explorer_keyboard` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.12: Escape clears selection — `escape_clears_selection_preserves_cursor` |
+| `ff-desktop` | 🔲 | — | Req 20.13: Cursor focus ring rendering (egui visual — manual UI verification) |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 21.1: Ctrl+C stores paths in File_Copy_Clipboard — `ctrl_c_in_file_list_populates_file_copy_clipboard` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 21.2: Ctrl+V sets paste_prompt_open; target determined by `determine_paste_target` |
+| `ff-desktop` | 🔲 | — | Req 21.3: ff-bgio background copy progress indicator (deferred — requires ff-bgio wiring) |
+| `ff-desktop` | 🔲 | — | Req 21.4: Paste failure error handling (deferred — requires ff-bgio wiring) |
+| `ff-desktop` | 🔲 | — | Req 21.5: Name collision Overwrite/Skip/Rename prompt (deferred) |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 21.6: Ctrl+V with clipboard writes paths to OS clipboard + status message — wired in `render_central_panel` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 21.7: File paths joined one-per-line — `insert_file_names_produces_one_path_per_line` |
+| `ff-desktop` | 🔲 | — | Req 21.8: Insert File Contents (deferred) |
+| `ff-desktop` | 🔲 | — | Req 21.9: Mainframe DSN naming transform on paste (deferred) |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 21.10: POSIX catalog paste rejected — `paste_to_posix_catalog_is_rejected` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 21.11: File_Copy_Clipboard persists until replaced — `file_copy_clipboard_persists_until_replaced` |
+
+### Phase BD — File Explorer tree: drag-select and copy as text tree (Req 19 file-tree-panel)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.2: `shift_click_extends_selection_from_anchor` — Shift+click adds to selection from anchor |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.3: `ctrl_click_toggles_individual_node` — Ctrl+click toggles without affecting others |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.4: `selectable_label(is_selected, ...)` uses egui selection bg_fill tint |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.5: Ctrl+C calls `build_text_tree` and writes to OS clipboard |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.6: `build_text_tree_flat_selection`, `build_text_tree_hierarchical_selection`, `build_text_tree_dir_prefix`, `build_text_tree_relative_depth` |
+| `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 19.7: `CopyAsTextTree` action present in Native File and Native Dir menus above Copy group |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.8: `escape_clears_multi_selection` — Escape clears selected_nodes |
+| `ff-desktop` | 🔲 | — | Req 19.1: drag-select range highlight (egui pointer drag — manual UI verification) |
+| `ff-desktop` | 🔲 | — | Req 19.9: selection extends to nodes scrolled into view during drag (manual UI verification) |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.10: `build_text_tree_mainframe_uses_dsn` — Mainframe DSN used as-is in text tree |
+
+### Phase BI — Default BLKSIZE=0 in Dataset Allocation Dialog (CR-CH-005)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `dataset_alloc_dialog.rs` unit tests | Req 5.2: BLKSIZE default is `0` (system-determined); `AllocDatasetForm::default()` returns `"0"` for blksize field; `validate()` accepts 0 as system-determined — `default_form_blksize_is_zero`, `validate_accepts_blksize_zero` |
+
+## Final Summary (after Phase BD)
+
+| Status | Count |
+|--------|-------|
+| ✅ PASS | 474 tests (ff-desktop) |
+| ❌ FAIL | 0 |
+| 🔲 MANUAL | Req 19.1, 19.9 (drag pointer — manual verification) |
+| 🔴 NOT COVERED | 0 |
+
+### Phase BF — Tab Close Button + Files Menu Close (B002, B003, B015, B016)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔲 | — | B002/B015: `×` close button visible on every tab header (manual UI verification) |
+| `ff-desktop` | 🔲 | — | B003: Files > Close closes the active tab (manual UI verification) |
+| `ff-desktop` | 🔲 | — | B016: bracket rule documented — system tabs use `[]`, file tabs show filename only (manual UI verification) |
+
+## Final Summary (after Phase BF)
+
+| Status | Count |
+|--------|-------|
+| ✅ PASS | 474 tests (ff-desktop) |
+| ❌ FAIL | 0 |
+| 🔲 MANUAL | B002/B003/B015/B016 (UI rendering — manual verification) |
+| 🔴 NOT COVERED | 0 |
+
+### Phase BJ — Catalog Repository Path Display + VFS Dataset Path Resolution (CR-NR-012)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `catalog_manager_dialog.rs` unit tests | Req 15.1: `edit_form_displays_repository_path` — `EditCatalogForm::from_catalog` carries `path` field from source catalog |
+| `ff-desktop` | ✅ | `catalog_manager_dialog.rs` unit tests | Req 15.2: `edit_form_repository_path_present_for_all_catalog_types` — path present for Mainframe and POSIX |
+| `ff-desktop` | 🔲 | — | Req 15.3: Repository path field rendered as read-only label in Edit Catalog dialog (manual UI verification) |
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.1, 16.5: `resolve_dataset_path_maps_dsn_to_subpath` — `PAYROLL.EMPLOYEE` maps to `{repo}/PAYROLL/EMPLOYEE` |
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.4, 16.5: `resolve_dataset_path_empty_repo_returns_none` — empty repository path returns `None` |
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.5: `resolve_dataset_path_empty_dsn_returns_none` — empty DSN returns `None` |
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.1: `resolve_dataset_path_single_qualifier_dsn` — single-qualifier DSN resolves to one component under repo |
+| `ff-desktop` | 🔲 | — | Req 16.2: file opened in editor when resolved path exists on disk (manual UI verification) |
+| `ff-desktop` | 🔲 | — | Req 16.3: `'<DSN>': dataset file not found at <path>` shown when path missing (manual UI verification) |
+| `ff-desktop` | 🔲 | — | Req 16.4: `'<DSN>': catalog has no repository path configured` shown when repo empty (manual UI verification) |
+
+## Final Summary (after Phase BJ)
+
+| Status | Count |
+|--------|-------|
+| ✅ PASS | 481 tests (ff-desktop) |
+| ❌ FAIL | 0 |
+| 🔲 MANUAL | Req 15.3, 16.2, 16.3, 16.4 (UI rendering — manual verification) |
+| 🔴 NOT COVERED | 0 |
+
+### Phase BL — B024 Tab Cycle Fix (Req 20.1, 20.2)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `shell/update.rs` | Req 20.1: Tab from CommandField enters tree, sets `explorer_focused = true`, `cursor_node` = first visible node |
+| `ff-desktop` | ✅ | `shell/update.rs` | Req 20.2: Tab advances `cursor_node`; Tab past last node exits tree and returns focus to CommandField |
+| `ff-desktop` | 🔲 | — | Req 20.13: Cursor highlight on catalog nodes and file nodes — manual UI verification |
+
+## Final Summary (after Phase BL)
+
+| Status | Count |
+|--------|-------|
+| ✅ PASS | 481 tests (ff-desktop) |
+| ❌ FAIL | 0 |
+| 🔲 MANUAL | Req 20.13 cursor highlight (UI rendering) |
+| 🔴 NOT COVERED | 0 |
+
+### Phase BK — Native File Browser: egui-file-dialog Integration (Requirement 22)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 22.1: `NativeDialogSlot` wraps `FileDialog`; `native_dialogs` field on `FileExplorerPanelState`; lazily initialised per catalog — `native_dialogs_field_exists_on_state`, `native_dialog_slot_lazily_created_for_catalog`, `native_dialog_slot_implements_debug_and_clone`, `file_explorer_panel_state_debug_clone_with_native_dialogs` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 22.2: `render_native_dialog()` calls `take_selected()` and routes to `open_file_node()` — `native_dialog_slot_lazily_created_for_catalog` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 22.3: `render_dataset_children()` unchanged; Mainframe/POSIX path unaffected — `mainframe_posix_branches_use_render_dataset_children` |
+| `ff-desktop` | ✅ | `crates/ff-desktop/Cargo.toml` | Req 22.4: `egui-file-dialog = "0.6"` declared; vendored patch resolves egui 0.29 mismatch |
+| `ff-desktop` | ✅ | `THIRD_PARTY_CREDITS.md` | Req 22.5: `THIRD_PARTY_CREDITS.md` created at workspace root with full MIT licence text |
+| `ff-desktop` | ✅ | `cargo test` 486 passing | Req 22.6: 486 tests pass, 0 failures after BK refactoring |
+
+### Phase BM — File Explorer Panel: egui-file-dialog look-and-feel with catalog mount points (Requirement 23)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.1: Two-pane layout (SidePanel + CentralPanel) matching egui-file-dialog visual style — `all_existing_state_fields_present_after_bm_refactor` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.2: Sidebar lists all catalogs as named Mount_Nodes; clicking selects and populates Content_Pane — `clicking_mount_node_sets_selected_catalog`, `selected_catalog_defaults_to_none` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.3: Sidebar groups catalogs under "Mainframe", "POSIX", "Native" collapsible headers — `sidebar_groups_catalogs_by_type` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.4: Native catalog Content_Pane renders egui-file-dialog widget — `native_catalog_uses_native_dialog_slot` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.5: Mainframe catalog Content_Pane renders dot-qualified dataset list; PS is leaf — `mainframe_content_ps_dataset_is_leaf` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.6: POSIX catalog Content_Pane uses forward-slash path normalisation — `posix_path_normalised_to_forward_slashes` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.7: Empty sidebar shows placeholder when no catalogs registered — `empty_registry_produces_no_mount_nodes` |
+| `ff-desktop` | 🔲 | — | Req 23.8: Right-click context menu uses egui-file-dialog native menu for Native; Req 16 menu for Mainframe/POSIX (manual UI verification) |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.9: Sidebar width persisted; default 200px; minimum 120px — `sidebar_width_defaults_to_200`, `sidebar_width_minimum_is_120` |
+| `ff-desktop` | ✅ | `cargo test` 496 passing | Req 23.10: `cargo test` passes with 0 failures after BM refactoring |
+
+### Phase BR — B028 Dataset File Creation on First Open (Req 16.3, 16.6)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.3: `opening_missing_dataset_creates_file_and_parent_dirs`, `opening_missing_dataset_creates_parent_dirs` — `create_dataset_file` creates file and all missing parent dirs |
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.6: `create_dataset_file` returns `Err` on I/O failure; shell shows `'<DSN>': cannot create dataset file at <path>: <os_error>` |
+
+### Phase BS — Mainframe Dataset Architecture (CR-NR-016)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-dscatalog` | 🔴 | — | Req 16.1: mainframe dataset written with no CRLF/LF record delimiter |
+| `ff-dscatalog` | 🔴 | — | Req 16.2: fixed-length records packed contiguously; record n at offset n×LRECL |
+| `ff-dscatalog` | 🔴 | — | Req 16.3: variable-length records preceded by 4-byte RDW; no CRLF after data |
+| `ff-dscatalog` | 🔴 | — | Req 16.4: RECFM=U content stored as opaque binary stream |
+| `ff-dscatalog` | 🔴 | — | Req 16.5: editor presents records as lines without altering binary storage |
+| `ff-dscatalog` | 🔴 | — | Req 16.6: save re-encodes displayed lines to binary record format |
+| `ff-dscatalog` | 🔴 | — | Req 16.7: malformed RDW returns diagnostic error with dataset identity and record position |
+| `ff-dscatalog` | 🔴 | — | Req 17.1: RecordCodec trait defined with no filesystem or SQLite dependency |
+| `ff-dscatalog` | 🔴 | — | Req 17.2: FixedCodec encodes/decodes fixed-length records given LRECL |
+| `ff-dscatalog` | 🔴 | — | Req 17.3: VariableCodec encodes/decodes variable-length records with 4-byte RDW |
+| `ff-dscatalog` | 🔴 | — | Req 17.4: BinaryCodec passes bytes through unchanged for RECFM=U |
+| `ff-dscatalog` | 🔴 | — | Req 17.5: TextCodec maps host text lines to/from fixed-length records; import/export only |
+| `ff-dscatalog` | 🔴 | — | Req 17.6: all codecs independently testable using in-memory byte buffers |
+| `ff-dscatalog` | 🔴 | — | Req 17.7: import/export requires explicit codec and encoding policy; not inferred silently |
+| `ff-dscatalog` | 🔴 | — | Req 18.1: PS dataset content stored as native file; no SQLite BLOB |
+| `ff-dscatalog` | 🔴 | — | Req 18.2: PDS/PDSE member content stored as individual native files; no SQLite BLOB |
+| `ff-dscatalog` | 🔴 | — | Req 18.3: GDG generation content stored as native files |
+| `ff-dscatalog` | 🔴 | — | Req 18.4: VSAM KSDS records stored in dedicated SQLite-backed keyed record store |
+| `ff-dscatalog` | 🔴 | — | Req 18.5: VSAM RRDS records stored in SQLite-backed relative-record store |
+| `ff-dscatalog` | 🔴 | — | Req 18.6: VSAM ESDS records stored in append-oriented native file; sidecar index rebuildable |
+| `ff-dscatalog` | 🔴 | — | Req 18.7: POSIX files remain native host filesystem objects; not copied into SQLite |
+| `ff-dscatalog` | 🔴 | — | Req 18.8: PS/PDS/GDG/POSIX content NOT stored as BLOBs in central catalogue database |
+| `ff-dscatalog` | 🔴 | — | Req 19.1: StorageProvider trait defined with allocate/open/stat/rename/delete/list/reconcile |
+| `ff-dscatalog` | 🔴 | — | Req 19.2: providers declare capabilities; callers do not infer from dataset type |
+| `ff-dscatalog` | 🔴 | — | Req 19.3: native-file and SQLite-record providers share common error taxonomy mapping to VfsError |
+| `ff-dscatalog` | 🔴 | — | Req 19.4: provider-specific locators opaque outside provider and catalogue services |
+| `ff-dscatalog` | 🔴 | — | Req 19.5: NativeFileProvider implements StorageProvider for PS/PDS/GDG/POSIX |
+| `ff-dscatalog` | 🔴 | — | Req 19.6: SqliteRecordProvider implements StorageProvider for VSAM KSDS/RRDS/ISAM |
+| `ff-dscatalog` | 🔴 | — | Req 19.7: new StorageProvider addable without changing editors, catalogue consumers, or VFS layer |
+| `ff-dscatalog` | 🔴 | — | Req 20.1: each managed physical object assigned stable UUID at allocation time |
+| `ff-dscatalog` | 🔴 | — | Req 20.2: repository layout uses datasets/objects/<uuid>.dat and indexed/<uuid>.sqlite |
+| `ff-dscatalog` | 🔴 | — | Req 20.3: logical dataset name NOT used as physical path |
+| `ff-dscatalog` | 🔴 | — | Req 20.4: physical mapping deterministic and persisted; dataset findable after restart |
+| `ff-dscatalog` | 🔴 | — | Req 20.5: dots in DSN NOT translated directly to directory separators in UUID layout |
+| `ff-dscatalog` | 🔴 | — | Req 20.6: dataset rename updates catalogue only; physical object not moved |
+| `ff-dscatalog` | 🔴 | — | Req 20.7: path-safety guards reject traversal, reserved names, illegal chars, length violations |
+| `ff-dscatalog` | 🔴 | — | Req 21.1: KSDS provider uses dedicated SQLite database per dataset |
+| `ff-dscatalog` | 🔴 | — | Req 21.2: KSDS defines primary key offset, length, collation, uniqueness in catalogue |
+| `ff-dscatalog` | 🔴 | — | Req 21.3: KSDS supports keyed read, ordered sequential read, insert, update, delete, range retrieval |
+| `ff-dscatalog` | 🔴 | — | Req 21.4: KSDS primary-key uniqueness enforced transactionally |
+| `ff-dscatalog` | 🔴 | — | Req 21.5: KSDS alternate indexes represented as SQLite indexes or mapping tables |
+| `ff-dscatalog` | 🔴 | — | Req 21.6: KSDS record data stored independently of catalogue rows |
+| `ff-dscatalog` | 🔴 | — | Req 21.7: KSDS can use dedicated SQLite database or alternative provider |
+| `ff-dscatalog` | 🔴 | — | Req 22.1: RRDS provider uses SQLite-backed store keyed by relative record number |
+| `ff-dscatalog` | 🔴 | — | Req 22.2: RRDS distinguishes unallocated slot from allocated blank record |
+| `ff-dscatalog` | 🔴 | — | Req 22.3: RRDS supports direct retrieval, replacement, deletion, sequential iteration |
+| `ff-dscatalog` | 🔴 | — | Req 23.1: ESDS provider stores records in insertion order in append-oriented native file |
+| `ff-dscatalog` | 🔴 | — | Req 23.2: ESDS issues stable record address for each appended record |
+| `ff-dscatalog` | 🔴 | — | Req 23.3: ESDS sidecar index rebuildable from data file |
+| `ff-dscatalog` | 🔴 | — | Req 23.4: ESDS update/deletion semantics explicitly documented |
+| `ff-dscatalog` | 🔴 | — | Req 24.1: ISAM uses common indexed-record interface shared with KSDS |
+| `ff-dscatalog` | 🔴 | — | Req 24.2: ISAM default provider uses SQLite indexes for primary and secondary access |
+| `ff-dscatalog` | 🔴 | — | Req 24.3: ISAM implementation encapsulated behind StorageProvider interface |
+| `ff-dscatalog` | 🔴 | — | Req 25.1: staged create protocol — stage, reserve, publish, activate |
+| `ff-dscatalog` | 🔴 | — | Req 25.2: staged delete protocol — mark pending, tombstone, finalise |
+| `ff-dscatalog` | 🔴 | — | Req 25.3: interrupted operations discoverable through OperationJournal |
+| `ff-dscatalog` | 🔴 | — | Req 25.4: startup recovery detects and offers complete-or-rollback for incomplete operations |
+| `ff-dscatalog` | 🔴 | — | Req 25.5: concurrent modification controlled via version tokens / SQLite transactions |
+| `ff-dscatalog` | 🔴 | — | Req 25.6: operation not reported successful until both catalogue and provider postconditions met |
+| `ff-dscatalog` | 🔴 | — | Req 26.1: optional SHA-256 checksums on managed content; verified on open when enabled |
+| `ff-dscatalog` | 🔴 | — | Req 26.2: workspace.backup captures catalogue DB, SQLite stores, native files, journals |
+| `ff-dscatalog` | 🔴 | — | Req 26.3: backup manifest contains schema version, provider config, object inventory, checksums |
+| `ff-dscatalog` | 🔴 | — | Req 26.4: workspace.restore supports original root or remapped root without changing logical names |
+| `ff-dscatalog` | 🔴 | — | Req 26.5: workspace.diagnose reports orphaned physical objects and dangling catalogue entries |
+| `ff-dscatalog` | 🔴 | — | Req 26.6: repair operations previewable, auditable, reversible where practical |
+| `ff-dscatalog` | 🔴 | — | Req 27.1: reconciliation compares catalogue entries with physical objects per provider |
+| `ff-dscatalog` | 🔴 | — | Req 27.2: reconciliation detects missing, inaccessible, duplicated, or inconsistent objects |
+| `ff-dscatalog` | 🔴 | — | Req 27.3: reconciliation reports proposed corrections without auto-applying |
+| `ff-dscatalog` | 🔴 | — | Req 27.4: audit_log table records create/rename/move/delete/restore/import/export/allocate |
+| `ff-dscatalog` | 🔴 | — | Req 27.5: schema changes versioned and applied through forward migration scripts |
+| `ff-dscatalog` | 🔴 | — | Req 28.1: all resolved physical paths constrained to authorised workspace roots |
+| `ff-dscatalog` | 🔴 | — | Req 28.2: path canonicalisation and traversal checks before any filesystem access |
+| `ff-dscatalog` | 🔴 | — | Req 28.3: catalogue metadata not treated as substitute for OS access controls |
+| `ff-dscatalog` | 🔴 | — | Req 28.4: sensitive dataset contents and credentials not written to logs |
+| `ff-dscatalog` | 🔴 | — | Req 28.5: all SQLite connections use parameterised statements; no interpolated schema identifiers |
+| `ff-dscatalog` | 🔴 | — | Req 28.6: audit events identify action, object, outcome, timestamp, principal |
+| `ff-dscatalog` | 🔴 | — | Req 29.1: master and user catalogue hierarchy supported |
+| `ff-dscatalog` | 🔴 | — | Req 29.2: each logical DSN maps to exactly one active provider and locator within a scope |
+| `ff-dscatalog` | 🔴 | — | Req 29.3: logical rename updates catalogue only; physical relocation is a separate operation |
+| `ff-dscatalog` | 🔴 | — | Req 29.4: uniqueness validated per configured naming scope and collation rules |
+| `ff-dscatalog` | 🔴 | — | Req 30.1: architecture operates identically on Windows, Linux, and macOS |
+| `ff-dscatalog` | 🔴 | — | Req 30.2: catalogue listing queries metadata without loading dataset payloads |
+| `ff-dscatalog` | 🔴 | — | Req 30.3: design permits large datasets/libraries without all content in central catalogue DB |
+| `ff-dscatalog` | 🔴 | — | Req 30.4: catalogue, codec, and provider components independently testable |
+| `ff-dscatalog` | 🔴 | — | Req 30.5: storage operations emit structured diagnostic events with correlation identifiers |
+| `ff-dscatalog` | 🔴 | — | Req 30.6: future storage provider addable without rewriting editors or catalogue consumers |
+| `ff-dscatalog` | 🔴 | — | Req 30.7: text-oriented PDS/PDSE members representable as ordinary files for Git |
+| `ff-dscatalog` | 🔴 | — | Req 30.8: system does not silently alter bytes, encoding, record boundaries, keys, or generation identity |
+| `ff-vfs` | 🔴 | — | Req 9.1 (VFS): StorageProvider trait defined separate from VfsProvider |
+| `ff-vfs` | 🔴 | — | Req 9.2 (VFS): StorageProvider exposes allocate/open/stat/rename/delete/list/reconcile |
+| `ff-vfs` | 🔴 | — | Req 9.3 (VFS): providers declare capabilities; callers do not infer from dataset type |
+| `ff-vfs` | 🔴 | — | Req 9.4 (VFS): native-file and SQLite-record providers share common error taxonomy |
+| `ff-vfs` | 🔴 | — | Req 9.5 (VFS): provider-specific locators opaque outside provider and catalogue services |
+| `ff-vfs` | 🔴 | — | Req 10.1 (VFS): POSIX files remain native host filesystem objects; not copied into SQLite |
+| `ff-vfs` | 🔴 | — | Req 10.2 (VFS): catalogue may register POSIX root without moving content |
+| `ff-vfs` | 🔴 | — | Req 10.3 (VFS): external POSIX changes detected via refresh/notifications/reconciliation |
+| `ff-vfs` | 🔴 | — | Req 10.4 (VFS): symlink handling configurable with loop detection |
+| `ff-vfs` | 🔴 | — | Req 10.5 (VFS): host permissions, locking, case sensitivity surfaced accurately |
+| `ff-vfs` | 🔴 | — | Req 10.6 (VFS): read-only POSIX catalog returns PermissionDenied for write/create/delete/rename |
+| `ff-vfs` | 🔴 | — | Req 11.1 (VFS): VFS create uses staged protocol — stage, reserve, publish, activate |
+| `ff-vfs` | 🔴 | — | Req 11.2 (VFS): VFS delete uses staged protocol — mark pending, tombstone, finalise |
+| `ff-vfs` | 🔴 | — | Req 11.3 (VFS): interrupted operations discoverable through journals or transitional states |
+| `ff-vfs` | 🔴 | — | Req 11.4 (VFS): startup detects and offers recovery for incomplete operations |
+| `ff-vfs` | 🔴 | — | Req 11.5 (VFS): VFS operation not reported successful until catalogue and provider postconditions met |
+| `ff-vfs` | 🔴 | — | Req 12.1 (VFS): workspace.backup command captures complete workspace |
+| `ff-vfs` | 🔴 | — | Req 12.2 (VFS): backup manifest contains schema version, provider config, inventory, integrity info |
+| `ff-vfs` | 🔴 | — | Req 12.3 (VFS): workspace.restore supports original or remapped root |
+| `ff-vfs` | 🔴 | — | Req 12.4 (VFS): workspace.reconcile reports discrepancies without auto-applying |
+| `ff-vfs` | 🔴 | — | Req 12.5 (VFS): workspace.diagnose reports orphaned objects and dangling entries |

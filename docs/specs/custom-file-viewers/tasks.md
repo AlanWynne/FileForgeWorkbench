@@ -1,4 +1,4 @@
-# Implementation Plan: Custom File Viewers (`ff-viewers`)
+﻿# Implementation Plan: Custom File Viewers (`ff-viewers`)
 
 ## Overview
 
@@ -12,115 +12,115 @@ This task plan implements the `ff-viewers` crate — the extensible file viewer 
 
 ## Tasks
 
-- [ ] 1. Project scaffold and error types
-  - [ ] 1.1 Create `crates/ff-viewers/Cargo.toml` with dependencies (egui, thiserror, toml, parking_lot or std sync, async-trait) and dev-dependencies (proptest, pretty_assertions, tempfile)
-  - [ ] 1.2 Create `crates/ff-viewers/src/lib.rs` with crate-level doc comment and public module declarations (trait_def, registry, command, built_in, plugin_bridge, panel, selection, refresh, config)
-  - [ ] 1.3 Implement `src/error.rs` — define `ViewerError` enum with variants: DuplicateKey, UnknownKey, InvalidKeyFormat, ViewerReadOnlyViolation, RenderError, ConfigError, PluginViewerUnavailable
-  - [ ] 1.4 Write unit tests for `ViewerError` Display output format compliance (all variants produce descriptive messages including the offending key where applicable)
+- [x] 1. Project scaffold and error types
+  - [x] 1.1 Create `crates/ff-viewers/Cargo.toml` with dependencies (egui, thiserror, toml, parking_lot or std sync, async-trait) and dev-dependencies (proptest, pretty_assertions, tempfile)
+  - [x] 1.2 Create `crates/ff-viewers/src/lib.rs` with crate-level doc comment and public module declarations (trait_def, registry, command, built_in, plugin_bridge, panel, selection, refresh, config)
+  - [x] 1.3 Implement `src/error.rs` — define `ViewerError` enum with variants: DuplicateKey, UnknownKey, InvalidKeyFormat, ViewerReadOnlyViolation, RenderError, ConfigError, PluginViewerUnavailable
+  - [x] 1.4 Write unit tests for `ViewerError` Display output format compliance (all variants produce descriptive messages including the offending key where applicable)
     - Validates: Requirement 1 AC 6, AC 8; Requirement 8 AC 4
 
-- [ ] 2. FileViewer trait definition
-  - [ ] 2.1 Implement `src/trait_def.rs` — define `FileViewer` trait with methods: `viewer_key`, `display_name`, `description`, `supported_extensions`, `supported_mime_types`, `can_render`, `render`, `on_content_changed`, and optional `configure` with default no-op
-  - [ ] 2.2 Add object-safety compile-time assertion (`fn _assert_object_safe(_: &dyn FileViewer) {}`)
-  - [ ] 2.3 Verify immutability constraints: `render` takes `&self` and `&[u8]`; only `on_content_changed` and `configure` take `&mut self`
-  - [ ] 2.4 Write unit tests: trait object construction compiles, default `configure` is no-op, method signatures enforce read-only render
+- [x] 2. FileViewer trait definition
+  - [x] 2.1 Implement `src/trait_def.rs` — define `FileViewer` trait with methods: `viewer_key`, `display_name`, `description`, `supported_extensions`, `supported_mime_types`, `can_render`, `render`, `on_content_changed`, and optional `configure` with default no-op
+  - [x] 2.2 Add object-safety compile-time assertion (`fn _assert_object_safe(_: &dyn FileViewer) {}`)
+  - [x] 2.3 Verify immutability constraints: `render` takes `&self` and `&[u8]`; only `on_content_changed` and `configure` take `&mut self`
+  - [x] 2.4 Write unit tests: trait object construction compiles, default `configure` is no-op, method signatures enforce read-only render
     - Validates: Requirement 2 AC 1–5; Requirement 8 AC 1
 
-- [ ] 3. Viewer Registry
-  - [ ] 3.1 Implement `src/registry.rs` — define `ViewerRegistry` struct with `Arc<RwLock<HashMap<String, Box<dyn FileViewer>>>>` storage
-  - [ ] 3.2 Implement `register()` — validate Viewer_Key format (non-empty, lowercase ASCII letters/digits/hyphens only), check uniqueness, insert viewer; return `ViewerError::DuplicateKey` on conflict
-  - [ ] 3.3 Implement `deregister()` — remove viewer by key, return error if not found
-  - [ ] 3.4 Implement `get()` — read-lock lookup by key, return reference or None
-  - [ ] 3.5 Implement `list_viewers()` — return Vec of (key, display_name, description, supported_extensions) tuples for all registered viewers
-  - [ ] 3.6 Implement `contains()` and `viewer_count()` utility accessors
-  - [ ] 3.7 Write unit tests for register/deregister/lookup lifecycle, duplicate key rejection, key format validation, thread-safety (spawn multiple threads)
+- [x] 3. Viewer Registry
+  - [x] 3.1 Implement `src/registry.rs` — define `ViewerRegistry` struct with `Arc<RwLock<HashMap<String, Box<dyn FileViewer>>>>` storage
+  - [x] 3.2 Implement `register()` — validate Viewer_Key format (non-empty, lowercase ASCII letters/digits/hyphens only), check uniqueness, insert viewer; return `ViewerError::DuplicateKey` on conflict
+  - [x] 3.3 Implement `deregister()` — remove viewer by key, return error if not found
+  - [x] 3.4 Implement `get()` — read-lock lookup by key, return reference or None
+  - [x] 3.5 Implement `list_viewers()` — return Vec of (key, display_name, description, supported_extensions) tuples for all registered viewers
+  - [x] 3.6 Implement `contains()` and `viewer_count()` utility accessors
+  - [x] 3.7 Write unit tests for register/deregister/lookup lifecycle, duplicate key rejection, key format validation, thread-safety (spawn multiple threads)
     - Validates: Requirement 1 AC 1–7
-  - [ ] 3.8 Write property test: Viewer_Key format validation (Property 1) — generate strings, assert only valid keys (lowercase ASCII + digits + hyphens, non-empty) are accepted
+  - [x] 3.8 Write property test: Viewer_Key format validation (Property 1) — generate strings, assert only valid keys (lowercase ASCII + digits + hyphens, non-empty) are accepted
     - Validates: Requirement 1 AC 1
-  - [ ] 3.9 Write property test: registry uniqueness (Property 2) — register N viewers with unique keys, then attempt duplicate registration, assert DuplicateKey error
+  - [x] 3.9 Write property test: registry uniqueness (Property 2) — register N viewers with unique keys, then attempt duplicate registration, assert DuplicateKey error
     - Validates: Requirement 1 AC 6
 
-- [ ] 4. Built-in viewer stubs
-  - [ ] 4.1 Implement `src/built_in/mod.rs` — module declarations and `register_built_in_viewers()` function that registers all built-ins into a ViewerRegistry
-  - [ ] 4.2 Implement `src/built_in/asa_report.rs` — `AsaReportViewer` struct implementing `FileViewer` with key `"asa-report"`, extensions `["lst", "rpt", "spool"]`, stub `render` method (placeholder rendering)
-  - [ ] 4.3 Implement `src/built_in/hex.rs` — `HexViewer` struct implementing `FileViewer` with key `"hex"`, empty extensions (activated explicitly), stub `render` method (offset + hex bytes + ASCII decode)
-  - [ ] 4.4 Implement `src/built_in/image.rs` — `ImageViewer` struct implementing `FileViewer` with key `"image"`, extensions `["png", "jpg", "jpeg", "gif", "bmp", "webp"]`, stub `render` with placeholder/error display
-  - [ ] 4.5 Implement `src/built_in/csv_table.rs` — `CsvTableViewer` struct implementing `FileViewer` with key `"csv-table"`, extensions `["csv", "tsv"]`, MIME `["text/csv"]`, stub `render` with grid layout
-  - [ ] 4.6 Write unit tests: all built-in viewers implement FileViewer correctly, `register_built_in_viewers` populates registry with 4 entries, each viewer returns correct key/name/extensions
+- [x] 4. Built-in viewer stubs
+  - [x] 4.1 Implement `src/built_in/mod.rs` — module declarations and `register_built_in_viewers()` function that registers all built-ins into a ViewerRegistry
+  - [x] 4.2 Implement `src/built_in/asa_report.rs` — `AsaReportViewer` struct implementing `FileViewer` with key `"asa-report"`, extensions `["lst", "rpt", "spool"]`, stub `render` method (placeholder rendering)
+  - [x] 4.3 Implement `src/built_in/hex.rs` — `HexViewer` struct implementing `FileViewer` with key `"hex"`, empty extensions (activated explicitly), stub `render` method (offset + hex bytes + ASCII decode)
+  - [x] 4.4 Implement `src/built_in/image.rs` — `ImageViewer` struct implementing `FileViewer` with key `"image"`, extensions `["png", "jpg", "jpeg", "gif", "bmp", "webp"]`, stub `render` with placeholder/error display
+  - [x] 4.5 Implement `src/built_in/csv_table.rs` — `CsvTableViewer` struct implementing `FileViewer` with key `"csv-table"`, extensions `["csv", "tsv"]`, MIME `["text/csv"]`, stub `render` with grid layout
+  - [x] 4.6 Write unit tests: all built-in viewers implement FileViewer correctly, `register_built_in_viewers` populates registry with 4 entries, each viewer returns correct key/name/extensions
     - Validates: Requirement 4 AC 1–5
-  - [ ] 4.7 Write property test: built-in viewer keys are stable and unique (Property 3) — assert all 4 built-in keys are distinct, non-empty, and format-compliant
+  - [x] 4.7 Write property test: built-in viewer keys are stable and unique (Property 3) — assert all 4 built-in keys are distinct, non-empty, and format-compliant
     - Validates: Requirement 4 AC 5; Requirement 1 AC 1
 
-- [ ] 5. PREVIEW command handler
-  - [ ] 5.1 Implement `src/command.rs` — define `PreviewCommand` struct and register command with ID `"viewer.preview"` accepting optional `action` parameter
-  - [ ] 5.2 Implement toggle logic (no argument): activate default viewer if none active, deactivate if one is showing
-  - [ ] 5.3 Implement `PREVIEW ON` — activate default viewer for current resource's content type; show available viewers message if no default found
-  - [ ] 5.4 Implement `PREVIEW <viewer-key>` — activate named viewer regardless of language profile default
-  - [ ] 5.5 Implement `PREVIEW OFF` — deactivate active viewer, hide Viewer_Panel
-  - [ ] 5.6 Implement `PREVIEW LIST` — display all registered viewers with key, display name, and description
-  - [ ] 5.7 Write unit tests: command ID registration, toggle on/off, explicit key activation, OFF hides panel, LIST returns all viewers, invalid key returns warning
+- [x] 5. PREVIEW command handler
+  - [x] 5.1 Implement `src/command.rs` — define `PreviewCommand` struct and register command with ID `"viewer.preview"` accepting optional `action` parameter
+  - [x] 5.2 Implement toggle logic (no argument): activate default viewer if none active, deactivate if one is showing
+  - [x] 5.3 Implement `PREVIEW ON` — activate default viewer for current resource's content type; show available viewers message if no default found
+  - [x] 5.4 Implement `PREVIEW <viewer-key>` — activate named viewer regardless of language profile default
+  - [x] 5.5 Implement `PREVIEW OFF` — deactivate active viewer, hide Viewer_Panel
+  - [x] 5.6 Implement `PREVIEW LIST` — display all registered viewers with key, display name, and description
+  - [x] 5.7 Write unit tests: command ID registration, toggle on/off, explicit key activation, OFF hides panel, LIST returns all viewers, invalid key returns warning
     - Validates: Requirement 3 AC 1–9
-  - [ ] 5.8 Write property test: PREVIEW command never produces an Undo_Record (Property 4) — issue various PREVIEW commands, assert no undo state is generated
+  - [x] 5.8 Write property test: PREVIEW command never produces an Undo_Record (Property 4) — issue various PREVIEW commands, assert no undo state is generated
     - Validates: Requirement 3 AC 9
 
-- [ ] 6. Plugin viewer bridge
-  - [ ] 6.1 Implement `src/plugin_bridge.rs` — define `register_viewer` function callable from PluginContext, delegating to ViewerRegistry with validation
-  - [ ] 6.2 Implement `deregister_viewer` function — remove plugin viewer by key, close any active Viewer_Panel using that viewer
-  - [ ] 6.3 Implement plugin shutdown hook — auto-deregister all viewers contributed by the shutting-down plugin, close affected panels gracefully
-  - [ ] 6.4 Write unit tests: plugin registration succeeds, duplicate key from plugin rejected, deregistration closes panel, shutdown auto-deregisters all plugin viewers
+- [x] 6. Plugin viewer bridge
+  - [x] 6.1 Implement `src/plugin_bridge.rs` — define `register_viewer` function callable from PluginContext, delegating to ViewerRegistry with validation
+  - [x] 6.2 Implement `deregister_viewer` function — remove plugin viewer by key, close any active Viewer_Panel using that viewer
+  - [x] 6.3 Implement plugin shutdown hook — auto-deregister all viewers contributed by the shutting-down plugin, close affected panels gracefully
+  - [x] 6.4 Write unit tests: plugin registration succeeds, duplicate key from plugin rejected, deregistration closes panel, shutdown auto-deregisters all plugin viewers
     - Validates: Requirement 5 AC 1–6
-  - [ ] 6.5 Write property test: plugin viewer lifecycle (Property 5) — register then deregister plugin viewers in random order, assert registry consistency (no dangling keys, count correct)
+  - [x] 6.5 Write property test: plugin viewer lifecycle (Property 5) — register then deregister plugin viewers in random order, assert registry consistency (no dangling keys, count correct)
     - Validates: Requirement 5 AC 2, AC 3
 
-- [ ] 7. Viewer selection and content matching
-  - [ ] 7.1 Implement `src/selection.rs` — define `select_viewer_by_extension()` that matches resource extension against all registered viewers' `supported_extensions`
-  - [ ] 7.2 Implement `select_viewer_by_language_profile()` — check active language profile `default_viewer` key, return matching viewer if it exists in registry
-  - [ ] 7.3 Implement `select_viewer_by_content_sniff()` — invoke `can_render` on all registered viewers with URI + content sample, return first match
-  - [ ] 7.4 Implement selection priority: language profile > extension match > content sniff > none
-  - [ ] 7.5 Implement notification suppression tracking — record dismissed viewer offers per resource per session
-  - [ ] 7.6 Write unit tests: extension match works, language profile overrides extension, content sniff fallback, no match returns None, dismissed notification not re-shown
+- [x] 7. Viewer selection and content matching
+  - [x] 7.1 Implement `src/selection.rs` — define `select_viewer_by_extension()` that matches resource extension against all registered viewers' `supported_extensions`
+  - [x] 7.2 Implement `select_viewer_by_language_profile()` — check active language profile `default_viewer` key, return matching viewer if it exists in registry
+  - [x] 7.3 Implement `select_viewer_by_content_sniff()` — invoke `can_render` on all registered viewers with URI + content sample, return first match
+  - [x] 7.4 Implement selection priority: language profile > extension match > content sniff > none
+  - [x] 7.5 Implement notification suppression tracking — record dismissed viewer offers per resource per session
+  - [x] 7.6 Write unit tests: extension match works, language profile overrides extension, content sniff fallback, no match returns None, dismissed notification not re-shown
     - Validates: Requirement 6 AC 1–6
-  - [ ] 7.7 Write property test: selection priority ordering (Property 6) — when language profile defines a default, it always wins over extension match; when no profile, extension wins over content sniff
+  - [x] 7.7 Write property test: selection priority ordering (Property 6) — when language profile defines a default, it always wins over extension match; when no profile, extension wins over content sniff
     - Validates: Requirement 6 AC 1, AC 2
 
-- [ ] 8. Viewer Panel (DockablePanel implementation)
-  - [ ] 8.1 Implement `src/panel.rs` — define `ViewerPanel` struct implementing `DockablePanel` trait with panel_id `"viewer"`, default dock zone Center
-  - [ ] 8.2 Implement `panel_title()` — return dynamic title including active Viewer_Key (e.g., `"Preview: asa-report"`)
-  - [ ] 8.3 Implement panel visibility lifecycle — show on PREVIEW activation, hide on PREVIEW OFF while preserving dock position
-  - [ ] 8.4 Implement `render_content()` — delegate to active FileViewer's `render` method, passing content as `&[u8]` and egui Ui reference
-  - [ ] 8.5 Implement read-only input filtering — reject keyboard/mouse input that would modify document, allow clipboard copy
-  - [ ] 8.6 Write unit tests: panel_id is "viewer", default zone is Center, title includes viewer key, visibility toggle preserves position, no editing affordances exposed
+- [x] 8. Viewer Panel (DockablePanel implementation)
+  - [x] 8.1 Implement `src/panel.rs` — define `ViewerPanel` struct implementing `DockablePanel` trait with panel_id `"viewer"`, default dock zone Center
+  - [x] 8.2 Implement `panel_title()` — return dynamic title including active Viewer_Key (e.g., `"Preview: asa-report"`)
+  - [x] 8.3 Implement panel visibility lifecycle — show on PREVIEW activation, hide on PREVIEW OFF while preserving dock position
+  - [x] 8.4 Implement `render_content()` — delegate to active FileViewer's `render` method, passing content as `&[u8]` and egui Ui reference
+  - [x] 8.5 Implement read-only input filtering — reject keyboard/mouse input that would modify document, allow clipboard copy
+  - [x] 8.6 Write unit tests: panel_id is "viewer", default zone is Center, title includes viewer key, visibility toggle preserves position, no editing affordances exposed
     - Validates: Requirement 7 AC 1–7; Requirement 8 AC 2, AC 3
-  - [ ] 8.7 Write property test: Viewer_Panel never exposes mutable content (Property 7) — render with various content inputs, assert no mutation path exists on the byte slice
+  - [x] 8.7 Write property test: Viewer_Panel never exposes mutable content (Property 7) — render with various content inputs, assert no mutation path exists on the byte slice
     - Validates: Requirement 8 AC 1–3
 
-- [ ] 9. Viewer refresh and debounce logic
-  - [ ] 9.1 Implement `src/refresh.rs` — define `RefreshController` struct with configurable debounce interval (default 300ms)
-  - [ ] 9.2 Implement debounce logic — on document change event, reset timer; after quiet period elapses, invoke active viewer's `on_content_changed`
-  - [ ] 9.3 Implement external change detection — on VFS file-watcher event, reload content and invoke `on_content_changed`
-  - [ ] 9.4 Implement error resilience — catch panics/errors from `on_content_changed`, log warning, display stale-content indicator in panel
-  - [ ] 9.5 Implement background refresh — ensure `on_content_changed` runs off the UI thread, never blocking editor input
-  - [ ] 9.6 Write unit tests: debounce groups rapid changes, single refresh after quiet period, external change triggers refresh, error in viewer shows stale indicator, refresh does not block UI thread
+- [x] 9. Viewer refresh and debounce logic
+  - [x] 9.1 Implement `src/refresh.rs` — define `RefreshController` struct with configurable debounce interval (default 300ms)
+  - [x] 9.2 Implement debounce logic — on document change event, reset timer; after quiet period elapses, invoke active viewer's `on_content_changed`
+  - [x] 9.3 Implement external change detection — on VFS file-watcher event, reload content and invoke `on_content_changed`
+  - [x] 9.4 Implement error resilience — catch panics/errors from `on_content_changed`, log warning, display stale-content indicator in panel
+  - [x] 9.5 Implement background refresh — ensure `on_content_changed` runs off the UI thread, never blocking editor input
+  - [x] 9.6 Write unit tests: debounce groups rapid changes, single refresh after quiet period, external change triggers refresh, error in viewer shows stale indicator, refresh does not block UI thread
     - Validates: Requirement 9 AC 1–6
-  - [ ] 9.7 Write property test: debounce coalesces rapid edits (Property 8) — generate sequences of N edits within debounce window, assert only 1 refresh call occurs per quiet period
+  - [x] 9.7 Write property test: debounce coalesces rapid edits (Property 8) — generate sequences of N edits within debounce window, assert only 1 refresh call occurs per quiet period
     - Validates: Requirement 9 AC 2, AC 3
 
-- [ ] 10. Viewer configuration
-  - [ ] 10.1 Implement `src/config.rs` — define `ViewerConfig` struct with fields: `auto_offer` (bool, default true), `default_position` (enum, default "split-right"), `split_ratio` (f32, 0.1–0.9, default 0.5), `refresh_debounce_ms` (u32, default 300)
-  - [ ] 10.2 Implement TOML parsing for `[viewers]` section — validate values, emit warning and apply defaults for invalid entries
-  - [ ] 10.3 Implement hot-reload support — detect config file changes, apply new values to next viewer activation without restart
-  - [ ] 10.4 Implement per-viewer config sub-sections — parse `[viewers.<viewer-key>]` and pass `toml::Value` to viewer's `configure()` method
-  - [ ] 10.5 Write unit tests: default config values, valid TOML parsing, invalid values fall back to defaults with warning, hot-reload picks up changes, per-viewer config passed to viewer
+- [x] 10. Viewer configuration
+  - [x] 10.1 Implement `src/config.rs` — define `ViewerConfig` struct with fields: `auto_offer` (bool, default true), `default_position` (enum, default "split-right"), `split_ratio` (f32, 0.1–0.9, default 0.5), `refresh_debounce_ms` (u32, default 300)
+  - [x] 10.2 Implement TOML parsing for `[viewers]` section — validate values, emit warning and apply defaults for invalid entries
+  - [x] 10.3 Implement hot-reload support — detect config file changes, apply new values to next viewer activation without restart
+  - [x] 10.4 Implement per-viewer config sub-sections — parse `[viewers.<viewer-key>]` and pass `toml::Value` to viewer's `configure()` method
+  - [x] 10.5 Write unit tests: default config values, valid TOML parsing, invalid values fall back to defaults with warning, hot-reload picks up changes, per-viewer config passed to viewer
     - Validates: Requirement 10 AC 1–4
-  - [ ] 10.6 Write property test: configuration validation bounds (Property 9) — generate split_ratio values, assert only 0.1–0.9 accepted; generate debounce_ms values, assert only positive integers accepted
+  - [x] 10.6 Write property test: configuration validation bounds (Property 9) — generate split_ratio values, assert only 0.1–0.9 accepted; generate debounce_ms values, assert only positive integers accepted
     - Validates: Requirement 10 AC 1, AC 2
 
-- [ ] 11. Read-only enforcement integration
-  - [ ] 11.1 Implement Command_Dispatch guard — when Viewer_Mode is active, intercept document-mutating commands and reject with `ViewerReadOnlyViolation` error
-  - [ ] 11.2 Implement performance warning — log warning if `on_content_changed` exceeds 100ms execution time
-  - [ ] 11.3 Write unit tests: mutating command rejected during Viewer_Mode, ViewerReadOnlyViolation error raised, 100ms warning logged for slow viewers
+- [x] 11. Read-only enforcement integration
+  - [x] 11.1 Implement Command_Dispatch guard — when Viewer_Mode is active, intercept document-mutating commands and reject with `ViewerReadOnlyViolation` error
+  - [x] 11.2 Implement performance warning — log warning if `on_content_changed` exceeds 100ms execution time
+  - [x] 11.3 Write unit tests: mutating command rejected during Viewer_Mode, ViewerReadOnlyViolation error raised, 100ms warning logged for slow viewers
     - Validates: Requirement 8 AC 4, AC 5
-  - [ ] 11.4 Write property test: read-only invariant under Viewer_Mode (Property 10) — generate random command sequences during active viewer, assert no document mutation occurs
+  - [x] 11.4 Write property test: read-only invariant under Viewer_Mode (Property 10) — generate random command sequences during active viewer, assert no document mutation occurs
     - Validates: Requirement 8 AC 3, AC 4
 
 ---

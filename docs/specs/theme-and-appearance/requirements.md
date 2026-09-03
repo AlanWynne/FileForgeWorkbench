@@ -288,7 +288,7 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 
 ---
 
-### Requirement 12: Extensibility and Forward Compatibility
+### Requirement 15: Extensibility and Forward Compatibility
 
 **User Story:** As a workbench developer, I want the theme system to be extensible so that new UI features can introduce additional tokens without modifying the core theme structure, and old theme files remain loadable.
 

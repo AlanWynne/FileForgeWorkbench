@@ -21,14 +21,14 @@ The `ff-file-tree-panel` crate is the **unified resource explorer panel** for th
 Wave 14 — File Explorer (depends on Wave 8 File I/O + Wave 13 Dataset Catalog)
 
 ┌─────────────────────────────────────────────────────────────┐
-│              Shell Layer: ff-desktop (egui)                   │
+│              Shell Layer: ff-desktop (egui)                 │
 ├─────────────────────────────────────────────────────────────┤
-│  ff-file-tree-panel (THIS CRATE) — Wave 14                   │
-│  Implements DockablePanel, renders tree UI via egui          │
+│  ff-file-tree-panel (THIS CRATE) — Wave 14                  │
+│  Implements DockablePanel, renders tree UI via egui         │
 ├─────────────────────────────────────────────────────────────┤
-│  ff-vfs │ ff-dataset-catalog │ ff-layout │ ff-command        │
-│  ff-config │ ff-logging │ ff-theme                           │
-│         (Waves 0–13 — Platform + VFS + Catalog)              │
+│  ff-vfs │ ff-dataset-catalog │ ff-layout │ ff-command       │
+│  ff-config │ ff-logging │ ff-theme                          │
+│         (Waves 0–13 — Platform + VFS + Catalog)             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -1265,3 +1265,94 @@ File attribute display is handled entirely within `ff-desktop/src/file_explorer_
 - The locked-file open error (Req 18.8, B018) is caught in the `open_file_node()` path: if the VFS read returns OS error 32, the error message is stored in `FileExplorerPanelState::last_error` and displayed in the status bar.
 - Windows junction points (Req 18.7, B017) are handled by the silent-skip rule: `metadata()` on a junction typically returns `PermissionDenied`; the entry is dropped from the listing.
 - Column layout (Req 18.9): each row is rendered as a horizontal `egui::Grid` or manual `ui.horizontal()` with fixed-width labels for Size (right-aligned, ~70px), Modified (~120px), Created (~120px), Accessed (~120px), Permissions (~80px).
+
+### Requirement 19: File Explorer Tree — Drag-Select and Copy as Text Tree (Phase BD)
+
+Multi-selection state and Text_Tree rendering are handled entirely within `ff-desktop/src/file_explorer_panel.rs`. No new crate dependencies are required beyond `arboard` (already present via `ff-clipboard`).
+
+**Key design decisions:**
+
+- `FileExplorerPanelState` gains two new fields:
+  - `selected_nodes: HashSet<String>` — keyed by full path/DSN string, holds all currently selected node paths.
+  - `anchor_node: Option<String>` — the path of the Anchor_Node for range-selection (set on plain click or drag start).
+- Each node row response is checked each frame for modifier state:
+  - Plain click: clear `selected_nodes`, insert this node's path, set `anchor_node`.
+  - Shift+click: compute the contiguous range of visible nodes from `anchor_node` to this node (by index in the current visible order), replace `selected_nodes` with that range.
+  - Ctrl+click: toggle this node's path in `selected_nodes`; leave `anchor_node` unchanged.
+  - Drag (primary button held + pointer moved): on each frame while the button is held, extend `selected_nodes` from `anchor_node` to the node whose row rect contains the current pointer position.
+- Selected nodes are rendered with `egui::RichText` background tinted to `ui.selection_background` via `ui.visuals().selection.bg_fill`.
+- `build_text_tree(selected_paths: &[&str], all_visible: &[NodeRow]) -> String` is a pure function (no egui, no I/O):
+  1. Filters `all_visible` to entries whose path is in `selected_paths`, preserving display order.
+  2. Finds the minimum depth among selected nodes — this becomes relative depth 0.
+  3. Detects parent-child relationships: if a selected node's path is a prefix of another selected node's path, tree connectors are used; otherwise each entry is listed with its full relative path from the catalog root.
+  4. Returns the formatted UTF-8 string.
+- Ctrl+C is detected via `ui.input(|i| i.key_pressed(egui::Key::C) && i.modifiers.ctrl)` in the panel render loop. When `selected_nodes` is non-empty, calls `build_text_tree` and writes the result to the OS clipboard via `arboard::Clipboard::new()?.set_text(text)`. Errors are stored in `last_error`.
+- The "Copy as Text Tree" context menu item calls the same `build_text_tree` path.
+- Escape is detected via `ui.input(|i| i.key_pressed(egui::Key::Escape))`; clears `selected_nodes` to a single-element set containing the last `anchor_node` (if any).
+- No new crate dependencies — `arboard` is already a transitive dependency through `ff-clipboard`.
+
+### Requirement 20: File Explorer Keyboard Navigation and Focus Transfer (Phase BE)
+
+Keyboard navigation enhancements are handled entirely within `ff-desktop/src/file_explorer_panel.rs`. No new crate dependencies are required.
+
+**Key design decisions:**
+
+- `FileExplorerPanelState` gains a `cursor_node: Option<String>` field (the path of the Cursor_Node, distinct from `selected_nodes`). This separates the keyboard cursor from the selection set, enabling Ctrl+Arrow movement without selection change.
+- Tab-key focus transfer from the Command_Field to the File Explorer is handled in the shell's Tab-cycle logic (`shell/commands.rs`). A new `FocusStop::FileExplorer` variant is added to the `FocusStop` enum. When this stop is active, the shell suppresses `command_field_focus_requested` and instead sets `file_explorer_panel.explorer_focused = true`.
+- Within the File Explorer render loop, when `explorer_focused` is true, the panel reads `ui.input()` for Tab, Arrow, Shift+Arrow, Ctrl+Arrow, Ctrl+Space, Ctrl+C, and Escape each frame.
+- Tab key: advances `cursor_node` to the next visible node in display order. If the current `cursor_node` is a collapsed container, it is expanded first (same as `CollapsingHeader` open state toggle), then the cursor advances.
+- Arrow keys (plain): move `cursor_node` up/down without touching `selected_nodes`.
+- Shift+Arrow: move `cursor_node` and add the newly visited node to `selected_nodes`. The `anchor_node` is set to the node that was current when Shift was first pressed (if `selected_nodes` was empty at that point).
+- Ctrl+Arrow: move `cursor_node` only; `selected_nodes` unchanged.
+- Ctrl+Space: toggle `cursor_node`'s path in `selected_nodes`.
+- Escape: clear `selected_nodes`; `cursor_node` remains.
+- The visible node order for keyboard navigation is computed by `collect_visible_node_paths()` — a pure function that walks the current expansion state of the tree and returns an ordered `Vec<String>` of visible node paths. This is the same ordering used by `build_text_tree()` (Req 19.6).
+- No new crate dependencies.
+
+### Requirement 21: File Copy and Paste Operations (Phase BE)
+
+File-level copy/paste is handled in `ff-desktop/src/file_explorer_panel.rs` with background I/O dispatched via `ff-bgio`. No new crate dependencies are required.
+
+**Key design decisions:**
+
+- `FileExplorerPanelState` gains a `file_copy_clipboard: Option<FileCopyClipboard>` field. `FileCopyClipboard` is a struct `{ paths: Vec<String>, operation: CopyOperation }` where `CopyOperation` is an enum `{ Copy, Cut }`.
+- Ctrl+C in the file list: when `selected_nodes` is non-empty, builds a `FileCopyClipboard { paths: selected_nodes.iter().cloned().collect(), operation: Copy }` and stores it. Also writes the Text_Tree string to the OS clipboard (Req 19.5) so that pasting into external tools still works.
+- Ctrl+V in the file list: reads `file_copy_clipboard`, determines the `Paste_Target` from `cursor_node` (container → use directly; non-container → use parent path), then dispatches one `ff-bgio` background copy task per source path. Progress is tracked in `paste_progress: Option<PasteProgress>` where `PasteProgress = { total: usize, done: usize, errors: Vec<String> }`.
+- Name collision detection: before dispatching each copy, check if the target path already exists using `std::path::Path::exists()`. If it does, push a `PasteConflict { source, target }` to a `pending_conflicts: VecDeque<PasteConflict>` queue. The panel renders a per-file conflict modal on the next frame.
+- Ctrl+V in the editor: the shell detects Ctrl+V when an editor tab is active and `file_copy_clipboard` is non-empty. It sets `paste_prompt_open = true` in `FileExplorerPanelState`. The panel renders the Paste_Prompt modal (`render_paste_prompt()`) which offers "Insert File Names" / "Insert File Contents". On confirm, the shell inserts the text at the editor caret via the existing document-model edit path.
+- POSIX read-only guard: before dispatching paste, check if the target catalog is of type `CatalogType::Posix`; if so, store an error in `last_error` and abort.
+- Source node "pending paste" indicator: nodes whose paths are in `file_copy_clipboard.paths` are rendered with a dashed border overlay (drawn as a `ui.painter().rect_stroke()` call with a dashed `Stroke`).
+- No new crate dependencies — `ff-bgio` is already wired into `ff-desktop`.
+
+### Requirement 23: File Explorer Panel — egui-file-dialog Look-and-Feel with Catalog Mount Points (Phase BM)
+
+The File Explorer Panel is redesigned from a flat three-section tree into a two-pane layout that mirrors the egui-file-dialog widget structure.
+
+**Key design decisions:**
+
+- The existing `render()` function in `file_explorer_panel.rs` is refactored into two sub-functions: `render_sidebar()` and `render_content_pane()`. The outer layout uses `egui::SidePanel::left("fep_sidebar")` for the sidebar and `egui::CentralPanel::default()` for the content pane, matching the egui-file-dialog two-pane structure.
+- `FileExplorerPanelState` gains a `selected_catalog: Option<String>` field (catalog name) to track which Mount_Node is active. The sidebar renders each catalog as a `selectable_label`; clicking sets `selected_catalog`.
+- Sidebar grouping uses three `CollapsingHeader` sections ("Mainframe", "POSIX", "Native") with `default_open(true)`. Each section lists its catalogs as `selectable_label` rows with a type icon prefix.
+- Content pane dispatch: when `selected_catalog` is `Some(name)`, look up the catalog type in the registry and call the appropriate renderer:
+  - `CatalogType::Native` → `render_native_dialog()` (existing, unchanged)
+  - `CatalogType::Mainframe` → `render_mainframe_content()` (new)
+  - `CatalogType::Posix` → `render_posix_content()` (new)
+- `render_mainframe_content()` reads from `files_panel.datasets` and renders each dataset name with dot separators. PDS datasets use a `CollapsingHeader`; PS datasets use `selectable_label`. Double-click routes through the existing `open_file_node()` / VFS path resolution.
+- `render_posix_content()` reads from `std::fs::read_dir` on the catalog’s repository path (same as the old `render_native_children()` but with forward-slash path normalisation for display). Directories use `CollapsingHeader`; files use `selectable_label`.
+- Sidebar width is stored in `FileExplorerPanelState::sidebar_width: f32` (default 200.0, min 120.0) and persisted via the existing session mechanism.
+- The old three-section `CollapsingHeader` tree ("Mainframe Catalogs" / "POSIX Catalogs" / "Native Catalogs") is removed from `render()`. The `render_dataset_children()` function is retained for use by `render_mainframe_content()` and its existing tests.
+- No new crate dependencies.
+
+### Requirement 22: Native File Browser — egui-file-dialog Integration (Phase BK)
+
+Native catalog browsing is replaced by the `egui-file-dialog` widget. All Mainframe and POSIX rendering is unchanged.
+
+**Key design decisions:**
+
+- `egui-file-dialog` (crate `egui-file-dialog`, MIT licence) is added as a direct dependency of `ff-desktop` only. It is not added to the workspace `Cargo.toml` because it is not shared across crates.
+- `FileExplorerPanelState` gains one new field per Native catalog: `native_dialogs: HashMap<String, egui_file_dialog::FileDialog>` keyed by catalog name. Each dialog is created lazily on first expansion and persists across frames so the widget retains its own internal navigation state.
+- `render_native_children()` is removed. In its place, `render_native_dialog()` is called from the Native catalog branch of `render()`. It calls `dialog.update(ctx)` each frame and checks `dialog.take_selected()` for a confirmed file selection.
+- When `take_selected()` returns `Some(path)`, the path is converted to a `String` and assigned to `open_path`, which the shell's existing `FilesPanelAction::OpenFile` handler picks up unchanged.
+- The file attribute columns (size, timestamps, permissions) introduced in Requirement 18 are no longer rendered for Native catalogs — `egui-file-dialog` provides its own metadata display. The `format_size`, `format_timestamp`, `format_permissions`, `collect_native_entries`, and `FileEntryRow` helpers remain in the file for use by any future non-dialog rendering path and for their existing unit tests.
+- No changes to `render_dataset_children()`, `resolve_dataset_path()`, `shell/render.rs` open-path dispatch, or any Mainframe/POSIX logic.
+- No new crate dependencies beyond `egui-file-dialog`.

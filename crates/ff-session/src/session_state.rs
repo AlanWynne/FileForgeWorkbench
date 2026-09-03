@@ -59,10 +59,20 @@ pub struct SessionState {
     /// Addresses: Requirement 12.4 (function-keys-and-history) — PFSHOW visibility persisted.
     #[serde(default = "default_true")]
     pub key_bar_visible: bool,
+
+    /// Width of the File Explorer Panel sidebar in logical pixels.
+    ///
+    /// Addresses: Requirement 23.9 (file-tree-panel) — sidebar width persisted.
+    #[serde(default = "default_sidebar_width")]
+    pub file_explorer_sidebar_width: f32,
 }
 
 fn default_true() -> bool {
     true
+}
+
+fn default_sidebar_width() -> f32 {
+    200.0
 }
 
 impl Default for SessionState {
@@ -79,6 +89,7 @@ impl Default for SessionState {
             show_pom: true,
             global_zoom_offset: 0,
             key_bar_visible: true,
+            file_explorer_sidebar_width: 200.0,
         }
     }
 }

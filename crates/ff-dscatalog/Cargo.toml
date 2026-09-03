@@ -35,6 +35,9 @@ walkdir = "2"
 # Percent-encoding for national characters
 percent-encoding = "2"
 
+# UUID generation for physical object layout (Req 20.1)
+uuid = { version = "1", features = ["v4"] }
+
 # Timestamp generation
 chrono = { workspace = true }
 

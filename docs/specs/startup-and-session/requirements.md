@@ -298,11 +298,11 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 
 #### Acceptance Criteria
 
-14.1 WHEN the workbench application starts for the first time (no saved session), THE desktop shell SHALL open with a single tab displaying the Primary Option Menu. WHEN a saved session exists, THE desktop shell SHALL restore the session to the exact state it was in when last closed — including all open tabs, their types, and their content. [ISPF-POM]
+1. WHEN the workbench application starts for the first time (no saved session), THE desktop shell SHALL open with a single tab displaying the Primary Option Menu. WHEN a saved session exists, THE desktop shell SHALL restore the session to the exact state it was in when last closed — including all open tabs, their types, and their content. [ISPF-POM]
 
-14.2 THE Primary Option Menu tab SHALL display a centred title line in the format `FileForge Workbench — Primary Option Menu` followed by the application version, a numbered list of menu options, and a live calendar panel. [ISPF-POM]
+2. THE Primary Option Menu tab SHALL display a centred title line in the format `FileForge Workbench — Primary Option Menu` followed by the application version, a numbered list of menu options, and a live calendar panel. [ISPF-POM]
 
-14.3 THE Primary Option Menu SHALL display a numbered list of menu options, each with a short label and a one-line description. The built-in options SHALL be, at minimum:
+3. THE Primary Option Menu SHALL display a numbered list of menu options, each with a short label and a one-line description. The built-in options SHALL be, at minimum:
    - `0 Settings` — FFWB Settings and Client Parameters
    - `1 File Catalogs` — Virtual File Catalogs — Mainframe, POSIX, Native
    - `2 Files` — File Explorer — Browse catalogs and files in a tree view
@@ -318,34 +318,34 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 
 14.3b Option `8` SHALL be labelled `Plugins` with description `Vendor added plugins`. WHEN selected, it SHALL open a Plugins management panel. [ISPF-POM]
 
-14.4 THE Primary Option Menu SHALL display a live calendar to the right of the option list showing the current month, year, day-of-week header, and highlighted current day. [ISPF-POM]
+4. THE Primary Option Menu SHALL display a live calendar to the right of the option list showing the current month, year, day-of-week header, and highlighted current day. [ISPF-POM]
 
-14.5 THE calendar panel SHALL also display the current time (HH:MM) and the day-of-year number, updated each frame. [ISPF-POM]
+5. THE calendar panel SHALL also display the current time (HH:MM) and the day-of-year number, updated each frame. [ISPF-POM]
 
-14.6 WHEN the user types a menu option number (e.g., `1`) into the `Command ===>` field of a Primary Option Menu tab and presses Enter, THE shell SHALL transform that tab's content to the corresponding feature view (e.g., option `1` opens a file browser / editor view within the same tab). [ISPF-POM]
+6. WHEN the user types a menu option number (e.g., `1`) into the `Command ===>` field of a Primary Option Menu tab and presses Enter, THE shell SHALL transform that tab's content to the corresponding feature view (e.g., option `1` opens a file browser / editor view within the same tab). [ISPF-POM]
 
-14.7 THE menu bar SHALL include top-level menus that mirror the Primary Option Menu entries: `Settings`, `File Catalogs`, `Files`, `Utilities`, `Compilers`, `Lua`, `Terminals`, `Databases`, `Plugins`, `Help`. [ISPF-POM]
+7. THE menu bar SHALL include top-level menus that mirror the Primary Option Menu entries: `Settings`, `File Catalogs`, `Files`, `Utilities`, `Compilers`, `Lua`, `Terminals`, `Databases`, `Plugins`, `Help`. [ISPF-POM]
 
-14.8 THE workbench tab bar SHALL act as a container for all open tabbed windows. Each tab represents an independent work context (Primary Option Menu, file editor, utility panel, etc.). ALL tabs SHALL be attached by default and MAY be detached into separate floating OS windows. [ISPF-POM, WB]
+8. THE workbench tab bar SHALL act as a container for all open tabbed windows. Each tab represents an independent work context (Primary Option Menu, file editor, utility panel, etc.). ALL tabs SHALL be attached by default and MAY be detached into separate floating OS windows. [ISPF-POM, WB]
 
-14.9 WHEN the user right-clicks on the empty space in the tab bar (not on a tab header), THE shell SHALL display a Tab_Bar_Context_Menu with the following items:
+9. WHEN the user right-clicks on the empty space in the tab bar (not on a tab header), THE shell SHALL display a Tab_Bar_Context_Menu with the following items:
    - `New` — opens a new Primary Option Menu tab
    - `New File` — opens a new untitled file editor tab
    [ISPF-POM]
 
-14.10 WHEN the user types `START` in any `Command ===>` field and presses Enter, THE shell SHALL open a new Primary Option Menu tab. [ISPF-POM]
+10. WHEN the user types `START` in any `Command ===>` field and presses Enter, THE shell SHALL open a new Primary Option Menu tab. [ISPF-POM]
 
-14.11 WHEN the user types `CLOSE` in any `Command ===>` field and presses Enter, THE shell SHALL close the current tab (following unsaved-changes rules). [ISPF-POM]
+11. WHEN the user types `CLOSE` in any `Command ===>` field and presses Enter, THE shell SHALL close the current tab (following unsaved-changes rules). [ISPF-POM]
 
-14.12 WHEN the user types `EXIT`, `=X`, or presses Ctrl+X in any `Command ===>` field, THE shell SHALL initiate the application exit sequence. [ISPF-POM]
+12. WHEN the user types `EXIT`, `=X`, or presses Ctrl+X in any `Command ===>` field, THE shell SHALL initiate the application exit sequence. [ISPF-POM]
 
-14.13 THE Primary Option Menu tab title in the tab bar SHALL be displayed as `[POM]` to distinguish it from file tabs. [ISPF-POM]
+13. THE Primary Option Menu tab title in the tab bar SHALL be displayed as `[POM]` to distinguish it from file tabs. [ISPF-POM]
 
-14.14 A new Primary Option Menu tab SHALL be openable at any time via the `Settings` menu bar entry, by typing `START` in any command field, or by right-clicking the tab bar empty space and selecting `New`. [ISPF-POM]
+14. A new Primary Option Menu tab SHALL be openable at any time via the `Settings` menu bar entry, by typing `START` in any command field, or by right-clicking the tab bar empty space and selecting `New`. [ISPF-POM]
 
-14.15 WHEN the user right-clicks a Tab_Header, THE shell SHALL display a Tab_Context_Menu whose contents are determined by the kind of the right-clicked tab, as defined in criteria 14.15a–14.15c. [ISPF-POM, WB]
+15. WHEN the user right-clicks a Tab_Header, THE shell SHALL display a Tab_Context_Menu whose contents are determined by the kind of the right-clicked tab, as defined in criteria 14.15a–14.15c. [ISPF-POM, WB]
 
-14.15a The following items SHALL appear in the Tab_Context_Menu for ALL tab kinds:
+15a. The following items SHALL appear in the Tab_Context_Menu for ALL tab kinds:
    - Close
    - Close All BUT This
    - Close All to the Left
@@ -360,7 +360,7 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
    - Exit
    [ISPF-POM, WB]
 
-14.15b The following items SHALL appear in the Tab_Context_Menu ONLY when the right-clicked tab is a file editor tab (TabKind::FileEditor):
+15b. The following items SHALL appear in the Tab_Context_Menu ONLY when the right-clicked tab is a file editor tab (TabKind::FileEditor):
    - *(separator)*
    - Open Containing Folder in Explorer
    - Open Containing Folder in CMD
@@ -379,62 +379,62 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
    - Reload
    [ISPF-POM, WB]
 
-14.15c The Tab_Context_Menu for a Primary Option Menu tab (TabKind::PrimaryOptionMenu) SHALL contain ONLY the universal items listed in 14.15a. No file-specific items SHALL appear — not even in a disabled state. [ISPF-POM]
+15c. The Tab_Context_Menu for a Primary Option Menu tab (TabKind::PrimaryOptionMenu) SHALL contain ONLY the universal items listed in 14.15a. No file-specific items SHALL appear — not even in a disabled state. [ISPF-POM]
 
-14.16 WHEN `Close` is selected from the Tab_Context_Menu, THE shell SHALL close the right-clicked tab following unsaved-changes confirmation rules. [ISPF-POM]
+16. WHEN `Close` is selected from the Tab_Context_Menu, THE shell SHALL close the right-clicked tab following unsaved-changes confirmation rules. [ISPF-POM]
 
-14.17 WHEN `Close All BUT This` is selected, THE shell SHALL close all tabs except the right-clicked tab, following unsaved-changes confirmation for each modified tab. [ISPF-POM]
+17. WHEN `Close All BUT This` is selected, THE shell SHALL close all tabs except the right-clicked tab, following unsaved-changes confirmation for each modified tab. [ISPF-POM]
 
-14.18 WHEN `Close All to the Left` is selected, THE shell SHALL close all tabs to the left of the right-clicked tab, following unsaved-changes confirmation for each modified tab. [ISPF-POM]
+18. WHEN `Close All to the Left` is selected, THE shell SHALL close all tabs to the left of the right-clicked tab, following unsaved-changes confirmation for each modified tab. [ISPF-POM]
 
-14.19 WHEN `Close All to the Right` is selected, THE shell SHALL close all tabs to the right of the right-clicked tab, following unsaved-changes confirmation for each modified tab. [ISPF-POM]
+19. WHEN `Close All to the Right` is selected, THE shell SHALL close all tabs to the right of the right-clicked tab, following unsaved-changes confirmation for each modified tab. [ISPF-POM]
 
-14.20 WHEN `Close All Unchanged` is selected, THE shell SHALL close all tabs that have no unsaved modifications, leaving modified tabs open. [ISPF-POM]
+20. WHEN `Close All Unchanged` is selected, THE shell SHALL close all tabs that have no unsaved modifications, leaving modified tabs open. [ISPF-POM]
 
-14.21 WHEN `Clone to Other Tab` is selected, THE shell SHALL create a duplicate of the right-clicked tab (same content, same type) as a new tab appended to the tab bar. [ISPF-POM]
+21. WHEN `Clone to Other Tab` is selected, THE shell SHALL create a duplicate of the right-clicked tab (same content, same type) as a new tab appended to the tab bar. [ISPF-POM]
 
-14.22 WHEN `Move to Other View` is selected, THE shell SHALL detach the right-clicked tab into a new floating OS window. [ISPF-POM, WB]
+22. WHEN `Move to Other View` is selected, THE shell SHALL detach the right-clicked tab into a new floating OS window. [ISPF-POM, WB]
 
-14.23 WHEN `Open Containing Folder in Explorer` is selected on a file tab, THE shell SHALL open the folder containing the file in the platform file explorer (Windows Explorer on Windows). [ISPF-POM]
+23. WHEN `Open Containing Folder in Explorer` is selected on a file tab, THE shell SHALL open the folder containing the file in the platform file explorer (Windows Explorer on Windows). [ISPF-POM]
 
-14.24 WHEN `Open Containing Folder in CMD` is selected on a file tab, THE shell SHALL open a CMD window at the folder containing the file. [ISPF-POM]
+24. WHEN `Open Containing Folder in CMD` is selected on a file tab, THE shell SHALL open a CMD window at the folder containing the file. [ISPF-POM]
 
-14.25 WHEN `Open Containing Folder in PowerShell` is selected on a file tab, THE shell SHALL open a PowerShell window at the folder containing the file. [ISPF-POM]
+25. WHEN `Open Containing Folder in PowerShell` is selected on a file tab, THE shell SHALL open a PowerShell window at the folder containing the file. [ISPF-POM]
 
-14.26 WHEN `Open Containing Folder in Terminal` is selected on a file tab, THE shell SHALL open the platform default terminal at the folder containing the file. [ISPF-POM]
+26. WHEN `Open Containing Folder in Terminal` is selected on a file tab, THE shell SHALL open the platform default terminal at the folder containing the file. [ISPF-POM]
 
-14.27 WHEN `Rename` is selected on a file tab, THE shell SHALL allow the user to rename the file on disk and update the tab title accordingly. [ISPF-POM]
+27. WHEN `Rename` is selected on a file tab, THE shell SHALL allow the user to rename the file on disk and update the tab title accordingly. [ISPF-POM]
 
-14.28 WHEN `Copy Name to Clipboard` is selected, THE shell SHALL copy the file name (without path) to the system clipboard. [ISPF-POM]
+28. WHEN `Copy Name to Clipboard` is selected, THE shell SHALL copy the file name (without path) to the system clipboard. [ISPF-POM]
 
-14.29 WHEN `Copy Path to Clipboard` is selected, THE shell SHALL copy the full absolute path of the file to the system clipboard. [ISPF-POM]
+29. WHEN `Copy Path to Clipboard` is selected, THE shell SHALL copy the full absolute path of the file to the system clipboard. [ISPF-POM]
 
-14.30 WHEN `Read-Only` is selected on a writable file tab, THE shell SHALL set the tab to read-only mode, preventing edits and updating the tab header with a read-only indicator. [ISPF-POM]
+30. WHEN `Read-Only` is selected on a writable file tab, THE shell SHALL set the tab to read-only mode, preventing edits and updating the tab header with a read-only indicator. [ISPF-POM]
 
-14.31 WHEN `Clear Read-Only Flag` is selected on a read-only file tab, THE shell SHALL restore the tab to editable mode. [ISPF-POM]
+31. WHEN `Clear Read-Only Flag` is selected on a read-only file tab, THE shell SHALL restore the tab to editable mode. [ISPF-POM]
 
-14.32 WHEN `Pin Tab` is selected, THE shell SHALL pin the tab (immune to bulk-close operations) and display a pin indicator on the tab header. [ISPF-POM]
+32. WHEN `Pin Tab` is selected, THE shell SHALL pin the tab (immune to bulk-close operations) and display a pin indicator on the tab header. [ISPF-POM]
 
-14.33 WHEN `Unpin Tab` is selected on a pinned tab, THE shell SHALL remove the pin flag. [ISPF-POM]
+33. WHEN `Unpin Tab` is selected on a pinned tab, THE shell SHALL remove the pin flag. [ISPF-POM]
 
-14.34 WHEN `Save` is selected on a modified file tab, THE shell SHALL save the file to disk. [ISPF-POM]
+34. WHEN `Save` is selected on a modified file tab, THE shell SHALL save the file to disk. [ISPF-POM]
 
-14.35 WHEN `Save As` is selected on a file tab, THE shell SHALL prompt the user for a new file path and save the content there, updating the tab title. [ISPF-POM]
+35. WHEN `Save As` is selected on a file tab, THE shell SHALL prompt the user for a new file path and save the content there, updating the tab title. [ISPF-POM]
 
-14.36 WHEN `Reload` is selected on a file tab, THE shell SHALL reload the file content from disk, discarding any unsaved changes after confirmation if the tab is modified. [ISPF-POM]
+36. WHEN `Reload` is selected on a file tab, THE shell SHALL reload the file content from disk, discarding any unsaved changes after confirmation if the tab is modified. [ISPF-POM]
 
-14.37 File-specific Tab_Context_Menu items (those listed in 14.15b) SHALL be OMITTED ENTIRELY from the menu when the right-clicked tab is not a file editor tab — they SHALL NOT appear in a disabled or greyed-out state. The menu for a non-file tab SHALL contain only the universal items from 14.15a (and any kind-specific items from 14.15c). [ISPF-POM]
+37. File-specific Tab_Context_Menu items (those listed in 14.15b) SHALL be OMITTED ENTIRELY from the menu when the right-clicked tab is not a file editor tab — they SHALL NOT appear in a disabled or greyed-out state. The menu for a non-file tab SHALL contain only the universal items from 14.15a (and any kind-specific items from 14.15c). [ISPF-POM]
 
-14.38 WHEN the user selects "Exit" from the Tab_Context_Menu (any tab kind), THE shell SHALL initiate the application exit sequence, closing the entire application. [ISPF-POM]
+38. WHEN the user selects "Exit" from the Tab_Context_Menu (any tab kind), THE shell SHALL initiate the application exit sequence, closing the entire application. [ISPF-POM]
 
-14.39 WHEN the Primary Option Menu is displayed, each numbered option entry (0–8) SHALL be rendered as an interactive button/hyperlink that the user can activate by mouse click or by tabbing to it and pressing Enter. WHEN an option button is activated, THE shell SHALL perform the same navigation action as typing that option number into the `Command ===>` field and pressing Enter. [ISPF-POM]
+39. WHEN the Primary Option Menu is displayed, each numbered option entry (0–8) SHALL be rendered as an interactive button/hyperlink that the user can activate by mouse click or by tabbing to it and pressing Enter. WHEN an option button is activated, THE shell SHALL perform the same navigation action as typing that option number into the `Command ===>` field and pressing Enter. [ISPF-POM]
 
-14.40 WHEN the Primary Option Menu is displayed, the exit line SHALL be rendered as the text `Enter X to Terminate using log/list defaults` as an interactive button/hyperlink. WHEN it is activated by mouse click or by tabbing to it and pressing Enter, THE shell SHALL initiate the application exit sequence. [ISPF-POM]
+40. WHEN the Primary Option Menu is displayed, the exit line SHALL be rendered as the text `Enter X to Terminate using log/list defaults` as an interactive button/hyperlink. WHEN it is activated by mouse click or by tabbing to it and pressing Enter, THE shell SHALL initiate the application exit sequence. [ISPF-POM]
    *(Changed from "Enter X to close application" — updated to ISPF-authentic wording.)*
 
-14.41 THE calendar panel header SHALL be rendered as `<   MonthName  YYYY   >` where `<` and `>` are interactive hotspot buttons flanking the centred month-and-year text. [ISPF-POM]
+41. THE calendar panel header SHALL be rendered as `<   MonthName  YYYY   >` where `<` and `>` are interactive hotspot buttons flanking the centred month-and-year text. [ISPF-POM]
 
-14.42 WHEN the user clicks the `<` hotspot or tabs to it and presses Enter, THE calendar SHALL navigate to the previous month. WHEN the user clicks the `>` hotspot or tabs to it and presses Enter, THE calendar SHALL navigate to the next month. The calendar grid, day-of-year, and time display SHALL update to reflect the selected month. The current day highlight SHALL only appear when the displayed month matches the current real month and year. [ISPF-POM]
+42. WHEN the user clicks the `<` hotspot or tabs to it and presses Enter, THE calendar SHALL navigate to the previous month. WHEN the user clicks the `>` hotspot or tabs to it and presses Enter, THE calendar SHALL navigate to the next month. The calendar grid, day-of-year, and time display SHALL update to reflect the selected month. The current day highlight SHALL only appear when the displayed month matches the current real month and year. [ISPF-POM]
 
 ---
 
@@ -446,13 +446,13 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 
 #### Acceptance Criteria
 
-13.1 WHEN the user clicks the mouse within the editor text area, THE desktop shell SHALL compute the document line and column corresponding to the click position (using line height and character width metrics) and move the cursor to that position. [FFE-MVP-8]
+1. WHEN the user clicks the mouse within the editor text area, THE desktop shell SHALL compute the document line and column corresponding to the click position (using line height and character width metrics) and move the cursor to that position. [FFE-MVP-8]
 
-13.2 WHEN the user presses Ctrl+Z, THE desktop shell SHALL undo the most recent edit operation by restoring the document content and cursor position from the most recent entry in the tab's undo stack, and SHALL clear the modified flag if the document returns to its saved state. [FFE-MVP-3]
+2. WHEN the user presses Ctrl+Z, THE desktop shell SHALL undo the most recent edit operation by restoring the document content and cursor position from the most recent entry in the tab's undo stack, and SHALL clear the modified flag if the document returns to its saved state. [FFE-MVP-3]
 
-13.3 WHEN the cursor is positioned on a line, THE desktop shell SHALL render a visible highlight (frame or background) on the current cursor line so that the user can clearly identify their editing position within the document. [FFE-MVP-2]
+3. WHEN the cursor is positioned on a line, THE desktop shell SHALL render a visible highlight (frame or background) on the current cursor line so that the user can clearly identify their editing position within the document. [FFE-MVP-2]
 
-13.4 WHEN the cursor is positioned at a column, THE desktop shell SHALL render a visible caret (vertical bar or block) at that column position within the highlighted line. [FFE-MVP-2]
+4. WHEN the cursor is positioned at a column, THE desktop shell SHALL render a visible caret (vertical bar or block) at that column position within the highlighted line. [FFE-MVP-2]
 
 ---
 
@@ -464,27 +464,27 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 
 #### Acceptance Criteria
 
-19.1 WHEN the user types `=2` into any `Command ===>` field and presses Enter, THE shell SHALL close the current context (transform the current tab to the File_Explorer_Panel view) and switch the window to the Files context. [ISPF-POM]
+1. WHEN the user types `=2` into any `Command ===>` field and presses Enter, THE shell SHALL close the current context (transform the current tab to the File_Explorer_Panel view) and switch the window to the Files context. [ISPF-POM]
 
-19.2 WHEN the user types `=FILES` (case-insensitive) into any `Command ===>` field and presses Enter, THE shell SHALL close the current context and switch the window to the Files context, identical to `=2`. [ISPF-POM]
+2. WHEN the user types `=FILES` (case-insensitive) into any `Command ===>` field and presses Enter, THE shell SHALL close the current context and switch the window to the Files context, identical to `=2`. [ISPF-POM]
 
-19.3 WHEN the user types `FILES` (case-insensitive, without the `=` prefix) into any `Command ===>` field and presses Enter, THE shell SHALL open a NEW tab in the Files context without closing the current tab. [ISPF-POM]
+3. WHEN the user types `FILES` (case-insensitive, without the `=` prefix) into any `Command ===>` field and presses Enter, THE shell SHALL open a NEW tab in the Files context without closing the current tab. [ISPF-POM]
 
-19.4 WHEN the user selects option `2` from the Primary Option Menu (by clicking the option button or typing `2` in the command field of a POM tab), THE shell SHALL transform the current POM tab into a File_Explorer_Panel tab with title `[FILES]`. [ISPF-POM]
+4. WHEN the user selects option `2` from the Primary Option Menu (by clicking the option button or typing `2` in the command field of a POM tab), THE shell SHALL transform the current POM tab into a File_Explorer_Panel tab with title `[FILES]`. [ISPF-POM]
 
-19.5 THE File_Explorer_Panel SHALL display a tree view where each open/mounted catalog appears as a top-level expandable node, labelled with the catalog name. [WB, FFE-TREE]
+5. THE File_Explorer_Panel SHALL display a tree view where each open/mounted catalog appears as a top-level expandable node, labelled with the catalog name. [WB, FFE-TREE]
 
-19.6 WHEN a catalog node is expanded, THE File_Explorer_Panel SHALL list the files and datasets belonging to that catalog as child nodes in the tree, using the same node types and icons as the `file-tree-panel` specification (sequential datasets, PDS members, directories, files). [FFE-TREE]
+6. WHEN a catalog node is expanded, THE File_Explorer_Panel SHALL list the files and datasets belonging to that catalog as child nodes in the tree, using the same node types and icons as the `file-tree-panel` specification (sequential datasets, PDS members, directories, files). [FFE-TREE]
 
-19.7 THE File_Explorer_Panel tree SHALL include a node for each catalog type registered in the Catalog_Registry: Mainframe catalogs, POSIX catalogs, and Native catalogs, each grouped under their respective section headers. [WB]
+7. THE File_Explorer_Panel tree SHALL include a node for each catalog type registered in the Catalog_Registry: Mainframe catalogs, POSIX catalogs, and Native catalogs, each grouped under their respective section headers. [WB]
 
-19.8 WHEN no catalogs are mounted, THE File_Explorer_Panel SHALL display a placeholder message "No catalogs open — use File Catalogs (option 1) to create or mount a catalog" in the tree area. [WB]
+8. WHEN no catalogs are mounted, THE File_Explorer_Panel SHALL display a placeholder message "No catalogs open — use File Catalogs (option 1) to create or mount a catalog" in the tree area. [WB]
 
-19.9 WHEN the user double-clicks a file node or PDS member node in the File_Explorer_Panel tree, THE shell SHALL open that file in a new editor tab. [FFE-TREE]
+9. WHEN the user double-clicks a file node or PDS member node in the File_Explorer_Panel tree, THE shell SHALL open that file in a new editor tab. [FFE-TREE]
 
-19.10 WHEN the user presses `PF3` / `F3` or types `END` in the File_Explorer_Panel command field, THE shell SHALL return the tab to the Primary Option Menu view. [ISPF-POM]
+10. WHEN the user presses F3 or types `END` in the File_Explorer_Panel command field, THE shell SHALL return the tab to the Primary Option Menu view. [ISPF-POM]
 
-19.11 THE File_Explorer_Panel tab title in the tab bar SHALL be displayed as `[FILES]` to distinguish it from file editor tabs and the POM tab. [ISPF-POM]
+11. THE File_Explorer_Panel tab title in the tab bar SHALL be displayed as `[FILES]` to distinguish it from file editor tabs and the POM tab. [ISPF-POM]
 
-19.12 THE `[FILES]` tab kind SHALL be persisted in the session and restored on next launch as a `FileExplorerPanel` tab kind. [WB]
+12. THE `[FILES]` tab kind SHALL be persisted in the session and restored on next launch as a `FileExplorerPanel` tab kind. [WB]
 

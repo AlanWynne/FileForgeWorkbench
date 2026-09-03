@@ -1,4 +1,4 @@
-# Implementation Plan: Whitespace & Guides (`ff-whitespace-guides`)
+﻿# Implementation Plan: Whitespace & Guides (`ff-whitespace-guides`)
 
 ## Overview
 
@@ -15,136 +15,136 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on:
 
 ## Tasks
 
-- [ ] 1. Crate scaffolding and module structure
-  - [ ] 1.1 Create `crates/ff-whitespace-guides/Cargo.toml` with dependencies (serde, thiserror, proptest dev-dep) and deps on `ff-configuration-system`, `ff-theme`, `ff-document-model`, `ff-display-line-mapping`, `ff-command`, `ff-logging`
-  - [ ] 1.2 Create `crates/ff-whitespace-guides/src/lib.rs` with module declarations and public API re-exports
-  - [ ] 1.3 Create module files: `whitespace.rs`, `indent_guides.rs`, `edge_column.rs`, `wrap_markers.rs`, `settings.rs`, `commands.rs`, `queries.rs`, `error.rs`
-  - [ ] 1.4 Add `ff-whitespace-guides` to workspace `Cargo.toml` members list
+- [x] 1. Crate scaffolding and module structure
+  - [x] 1.1 Create `crates/ff-whitespace-guides/Cargo.toml` with dependencies (serde, thiserror, proptest dev-dep) and deps on `ff-configuration-system`, `ff-theme`, `ff-document-model`, `ff-display-line-mapping`, `ff-command`, `ff-logging`
+  - [x] 1.2 Create `crates/ff-whitespace-guides/src/lib.rs` with module declarations and public API re-exports
+  - [x] 1.3 Create module files: `whitespace.rs`, `indent_guides.rs`, `edge_column.rs`, `wrap_markers.rs`, `settings.rs`, `commands.rs`, `queries.rs`, `error.rs`
+  - [x] 1.4 Add `ff-whitespace-guides` to workspace `Cargo.toml` members list
   - Covers: Structural foundation for all requirements; Requirement 9 (AC 9.1)
 
-- [ ] 2. Whitespace visibility types and configuration
-  - [ ] 2.1 Define `WhitespaceVisibility` enum: `Invisible`, `VisibleAlways`, `VisibleAfterIndent`, `VisibleOnlyInIndent` with serde support and `Default` impl (Invisible)
-  - [ ] 2.2 Define `TabDrawMode` enum: `LongArrow`, `Strikeout` with serde support and `Default` impl (LongArrow)
-  - [ ] 2.3 Define `WhitespaceConfig` struct: `visibility: WhitespaceVisibility`, `tab_draw_mode: TabDrawMode`, `whitespace_size: u8` (min 1, default 1)
-  - [ ] 2.4 Implement configuration-system integration: read from `editor.whitespace_mode`, `editor.tab_draw_mode`, `editor.whitespace_size` keys
-  - [ ] 2.5 Implement hot-reload subscription for all three whitespace configuration keys
-  - [ ] 2.6 Write unit tests for enum default values, config key parsing, size validation (clamp to min 1)
+- [x] 2. Whitespace visibility types and configuration
+  - [x] 2.1 Define `WhitespaceVisibility` enum: `Invisible`, `VisibleAlways`, `VisibleAfterIndent`, `VisibleOnlyInIndent` with serde support and `Default` impl (Invisible)
+  - [x] 2.2 Define `TabDrawMode` enum: `LongArrow`, `Strikeout` with serde support and `Default` impl (LongArrow)
+  - [x] 2.3 Define `WhitespaceConfig` struct: `visibility: WhitespaceVisibility`, `tab_draw_mode: TabDrawMode`, `whitespace_size: u8` (min 1, default 1)
+  - [x] 2.4 Implement configuration-system integration: read from `editor.whitespace_mode`, `editor.tab_draw_mode`, `editor.whitespace_size` keys
+  - [x] 2.5 Implement hot-reload subscription for all three whitespace configuration keys
+  - [x] 2.6 Write unit tests for enum default values, config key parsing, size validation (clamp to min 1)
   - Covers: Requirement 1 (AC 1.1, 1.2, 1.6), Requirement 2 (AC 2.1–2.6)
 
-- [ ] 3. Whitespace glyph position queries
-  - [ ] 3.1 Implement `WhitespaceGlyph` enum: `SpaceDot`, `TabArrow`, `TabStrikeout`
-  - [ ] 3.2 Implement `WhitespaceGlyphPosition` struct: `column: usize`, `glyph: WhitespaceGlyph`, `width: usize` (for tabs: tab span width)
-  - [ ] 3.3 Implement `compute_whitespace_glyphs(line: &str, tab_size: usize, visibility: WhitespaceVisibility, tab_draw_mode: TabDrawMode) -> Vec<WhitespaceGlyphPosition>` returning positions and glyph types for a given line based on the active visibility mode
-  - [ ] 3.4 Implement filtering logic: `VisibleAlways` returns all, `VisibleAfterIndent` skips leading, `VisibleOnlyInIndent` returns only leading, `Invisible` returns empty
-  - [ ] 3.5 Write unit tests for each visibility mode: empty line, all-whitespace line, mixed content, trailing whitespace, tabs mixed with spaces
+- [x] 3. Whitespace glyph position queries
+  - [x] 3.1 Implement `WhitespaceGlyph` enum: `SpaceDot`, `TabArrow`, `TabStrikeout`
+  - [x] 3.2 Implement `WhitespaceGlyphPosition` struct: `column: usize`, `glyph: WhitespaceGlyph`, `width: usize` (for tabs: tab span width)
+  - [x] 3.3 Implement `compute_whitespace_glyphs(line: &str, tab_size: usize, visibility: WhitespaceVisibility, tab_draw_mode: TabDrawMode) -> Vec<WhitespaceGlyphPosition>` returning positions and glyph types for a given line based on the active visibility mode
+  - [x] 3.4 Implement filtering logic: `VisibleAlways` returns all, `VisibleAfterIndent` skips leading, `VisibleOnlyInIndent` returns only leading, `Invisible` returns empty
+  - [x] 3.5 Write unit tests for each visibility mode: empty line, all-whitespace line, mixed content, trailing whitespace, tabs mixed with spaces
   - Covers: Requirement 1 (AC 1.3, 1.4, 1.5), Requirement 2 (AC 2.1, 2.2)
 
-- [ ] 4. Whitespace colour resolution
-  - [ ] 4.1 Implement `WhitespaceColours` struct: `foreground: ColourRGBA`, `background: Option<ColourRGBA>`
-  - [ ] 4.2 Implement `resolve_whitespace_colours(theme: &ThemeApi) -> WhitespaceColours` that reads whitespace-specific colours from the theme, falling back to default text foreground if unset
-  - [ ] 4.3 Write unit tests for colour resolution: explicit theme colours, fallback to text foreground, alpha channel handling
+- [x] 4. Whitespace colour resolution
+  - [x] 4.1 Implement `WhitespaceColours` struct: `foreground: ColourRGBA`, `background: Option<ColourRGBA>`
+  - [x] 4.2 Implement `resolve_whitespace_colours(theme: &ThemeApi) -> WhitespaceColours` that reads whitespace-specific colours from the theme, falling back to default text foreground if unset
+  - [x] 4.3 Write unit tests for colour resolution: explicit theme colours, fallback to text foreground, alpha channel handling
   - Covers: Requirement 2 (AC 2.7, 2.8, 2.9)
 
-- [ ] 5. Indent guide types and configuration
-  - [ ] 5.1 Define `IndentGuideMode` enum: `None`, `Real`, `LookForward`, `LookBoth` with serde support and `Default` impl (None)
-  - [ ] 5.2 Define `IndentGuideConfig` struct: `mode: IndentGuideMode`
-  - [ ] 5.3 Implement configuration-system integration: read from `editor.indent_guides` key
-  - [ ] 5.4 Implement hot-reload subscription for indent guide configuration key
-  - [ ] 5.5 Write unit tests for enum default, config key parsing, mode transitions
+- [x] 5. Indent guide types and configuration
+  - [x] 5.1 Define `IndentGuideMode` enum: `None`, `Real`, `LookForward`, `LookBoth` with serde support and `Default` impl (None)
+  - [x] 5.2 Define `IndentGuideConfig` struct: `mode: IndentGuideMode`
+  - [x] 5.3 Implement configuration-system integration: read from `editor.indent_guides` key
+  - [x] 5.4 Implement hot-reload subscription for indent guide configuration key
+  - [x] 5.5 Write unit tests for enum default, config key parsing, mode transitions
   - Covers: Requirement 3 (AC 3.1, 3.2, 3.7)
 
-- [ ] 6. Indent guide column computation
-  - [ ] 6.1 Implement `compute_indent_level(line: &str, tab_size: usize) -> usize` returning the indentation column count for a single line
-  - [ ] 6.2 Implement `compute_real_guides(line: &str, tab_size: usize) -> Vec<usize>` returning guide columns for a line using `Real` mode (guides at each tab-stop within leading whitespace)
-  - [ ] 6.3 Implement `compute_look_forward_guides(lines: &[&str], line_index: usize, tab_size: usize) -> Vec<usize>` that scans forward through blank/short-indent lines to determine guide columns
-  - [ ] 6.4 Implement `compute_look_both_guides(lines: &[&str], line_index: usize, tab_size: usize) -> Vec<usize>` that scans both forward and backward, using the max indent level
-  - [ ] 6.5 Implement `IndentGuideQuery::guides_for_line(line_index: usize) -> Vec<usize>` dispatcher that delegates to the appropriate computation based on active mode
-  - [ ] 6.6 Write unit tests for each mode: empty lines, lines with only whitespace, deeply nested blocks, tab/space mixing, blank-line spanning for LookForward and LookBoth
+- [x] 6. Indent guide column computation
+  - [x] 6.1 Implement `compute_indent_level(line: &str, tab_size: usize) -> usize` returning the indentation column count for a single line
+  - [x] 6.2 Implement `compute_real_guides(line: &str, tab_size: usize) -> Vec<usize>` returning guide columns for a line using `Real` mode (guides at each tab-stop within leading whitespace)
+  - [x] 6.3 Implement `compute_look_forward_guides(lines: &[&str], line_index: usize, tab_size: usize) -> Vec<usize>` that scans forward through blank/short-indent lines to determine guide columns
+  - [x] 6.4 Implement `compute_look_both_guides(lines: &[&str], line_index: usize, tab_size: usize) -> Vec<usize>` that scans both forward and backward, using the max indent level
+  - [x] 6.5 Implement `IndentGuideQuery::guides_for_line(line_index: usize) -> Vec<usize>` dispatcher that delegates to the appropriate computation based on active mode
+  - [x] 6.6 Write unit tests for each mode: empty lines, lines with only whitespace, deeply nested blocks, tab/space mixing, blank-line spanning for LookForward and LookBoth
   - Covers: Requirement 3 (AC 3.3, 3.4, 3.5, 3.6, 3.8)
 
-- [ ] 7. Active indent guide highlighting
-  - [ ] 7.1 Define `ActiveGuideState` struct: `column: Option<usize>` representing the currently highlighted guide column (None = no highlight)
-  - [ ] 7.2 Implement `compute_active_guide(caret_line: usize, caret_column: usize, lines: &[&str], tab_size: usize) -> Option<usize>` that determines the innermost scope indent level at the caret position
-  - [ ] 7.3 Implement scope detection heuristic: walk outward from caret line to find brace/scope boundaries and return the indentation column of the enclosing block
-  - [ ] 7.4 Implement `update_active_guide(new_caret_line: usize, new_caret_column: usize) -> bool` returning whether the active guide changed (for incremental repaint signalling)
-  - [ ] 7.5 Write unit tests for: caret at column 0 (no guide), caret inside nested block, caret movement changes guide, no matching braces found
+- [x] 7. Active indent guide highlighting
+  - [x] 7.1 Define `ActiveGuideState` struct: `column: Option<usize>` representing the currently highlighted guide column (None = no highlight)
+  - [x] 7.2 Implement `compute_active_guide(caret_line: usize, caret_column: usize, lines: &[&str], tab_size: usize) -> Option<usize>` that determines the innermost scope indent level at the caret position
+  - [x] 7.3 Implement scope detection heuristic: walk outward from caret line to find brace/scope boundaries and return the indentation column of the enclosing block
+  - [x] 7.4 Implement `update_active_guide(new_caret_line: usize, new_caret_column: usize) -> bool` returning whether the active guide changed (for incremental repaint signalling)
+  - [x] 7.5 Write unit tests for: caret at column 0 (no guide), caret inside nested block, caret movement changes guide, no matching braces found
   - Covers: Requirement 4 (AC 4.1, 4.2, 4.3, 4.4, 4.5)
 
-- [ ] 8. Edge column indicator types and configuration
-  - [ ] 8.1 Define `EdgeMode` enum: `None`, `Line`, `Background`, `MultiLine` with serde support and `Default` impl (None)
-  - [ ] 8.2 Define `EdgeProperties` struct: `column: usize`, `colour: ColourRGBA`
-  - [ ] 8.3 Define `EdgeConfig` struct: `mode: EdgeMode`, `column: usize` (default 80), `colour: ColourRGBA`, `multi_edges: Vec<EdgeProperties>`
-  - [ ] 8.4 Implement configuration-system integration: read from `editor.edge_mode`, `editor.edge_column`, `editor.edge_colour`, `editor.edge_columns` keys
-  - [ ] 8.5 Implement hot-reload subscription for all edge configuration keys
-  - [ ] 8.6 Write unit tests for enum defaults, config parsing, multi-edge array deserialization
+- [x] 8. Edge column indicator types and configuration
+  - [x] 8.1 Define `EdgeMode` enum: `None`, `Line`, `Background`, `MultiLine` with serde support and `Default` impl (None)
+  - [x] 8.2 Define `EdgeProperties` struct: `column: usize`, `colour: ColourRGBA`
+  - [x] 8.3 Define `EdgeConfig` struct: `mode: EdgeMode`, `column: usize` (default 80), `colour: ColourRGBA`, `multi_edges: Vec<EdgeProperties>`
+  - [x] 8.4 Implement configuration-system integration: read from `editor.edge_mode`, `editor.edge_column`, `editor.edge_colour`, `editor.edge_columns` keys
+  - [x] 8.5 Implement hot-reload subscription for all edge configuration keys
+  - [x] 8.6 Write unit tests for enum defaults, config parsing, multi-edge array deserialization
   - Covers: Requirement 5 (AC 5.1, 5.2, 5.6, 5.7, 5.8)
 
-- [ ] 9. Edge column queries
-  - [ ] 9.1 Implement `EdgeIndicator` enum: `VerticalLine { column: usize, colour: ColourRGBA }`, `BackgroundShading { start_column: usize, colour: ColourRGBA }`, `MultiVerticalLine { lines: Vec<EdgeProperties> }`
-  - [ ] 9.2 Implement `compute_edge_indicator(config: &EdgeConfig) -> Option<EdgeIndicator>` returning the appropriate indicator type based on the active mode
-  - [ ] 9.3 Implement multi-edge clearing: `clear_multi_edges()` resetting the list to empty
-  - [ ] 9.4 Write unit tests for: None mode returns None, Line mode returns single column, Background mode returns shading start, MultiLine mode returns all entries, clear resets
+- [x] 9. Edge column queries
+  - [x] 9.1 Implement `EdgeIndicator` enum: `VerticalLine { column: usize, colour: ColourRGBA }`, `BackgroundShading { start_column: usize, colour: ColourRGBA }`, `MultiVerticalLine { lines: Vec<EdgeProperties> }`
+  - [x] 9.2 Implement `compute_edge_indicator(config: &EdgeConfig) -> Option<EdgeIndicator>` returning the appropriate indicator type based on the active mode
+  - [x] 9.3 Implement multi-edge clearing: `clear_multi_edges()` resetting the list to empty
+  - [x] 9.4 Write unit tests for: None mode returns None, Line mode returns single column, Background mode returns shading start, MultiLine mode returns all entries, clear resets
   - Covers: Requirement 5 (AC 5.3, 5.4, 5.5, 5.9, 5.10)
 
-- [ ] 10. Wrap marker types and configuration
-  - [ ] 10.1 Define `WrapVisualFlag` bitfield struct supporting combinations of: `NONE`, `END`, `START`, `MARGIN` with serde support and `Default` impl (NONE)
-  - [ ] 10.2 Define `WrapVisualLocation` enum: `Default`, `EndByText`, `StartByText` with serde support
-  - [ ] 10.3 Define `WrapIndentMode` enum: `Fixed`, `Same`, `Indent`, `DeepIndent` with serde support and `Default` impl (Fixed)
-  - [ ] 10.4 Define `WrapMarkerConfig` struct: `flags: WrapVisualFlag`, `location: WrapVisualLocation`, `indent_mode: WrapIndentMode`, `start_indent: usize` (default 0)
-  - [ ] 10.5 Implement configuration-system integration: read from `editor.wrap_visual_flags`, `editor.wrap_visual_location`, `editor.wrap_indent_mode`, `editor.wrap_start_indent` keys
-  - [ ] 10.6 Implement hot-reload subscription for all wrap marker configuration keys
-  - [ ] 10.7 Write unit tests for bitfield combinations, enum defaults, config parsing, start_indent validation (non-negative)
+- [x] 10. Wrap marker types and configuration
+  - [x] 10.1 Define `WrapVisualFlag` bitfield struct supporting combinations of: `NONE`, `END`, `START`, `MARGIN` with serde support and `Default` impl (NONE)
+  - [x] 10.2 Define `WrapVisualLocation` enum: `Default`, `EndByText`, `StartByText` with serde support
+  - [x] 10.3 Define `WrapIndentMode` enum: `Fixed`, `Same`, `Indent`, `DeepIndent` with serde support and `Default` impl (Fixed)
+  - [x] 10.4 Define `WrapMarkerConfig` struct: `flags: WrapVisualFlag`, `location: WrapVisualLocation`, `indent_mode: WrapIndentMode`, `start_indent: usize` (default 0)
+  - [x] 10.5 Implement configuration-system integration: read from `editor.wrap_visual_flags`, `editor.wrap_visual_location`, `editor.wrap_indent_mode`, `editor.wrap_start_indent` keys
+  - [x] 10.6 Implement hot-reload subscription for all wrap marker configuration keys
+  - [x] 10.7 Write unit tests for bitfield combinations, enum defaults, config parsing, start_indent validation (non-negative)
   - Covers: Requirement 6 (AC 6.1, 6.2, 6.6, 6.7), Requirement 7 (AC 7.1, 7.2, 7.3, 7.4)
 
-- [ ] 11. Wrap marker and indentation queries
-  - [ ] 11.1 Implement `WrapMarkerPosition` struct: `sub_line_index: usize`, `marker_type: WrapMarkerType` (enum: End, Start, Margin), `position: WrapMarkerPlacement` (enum: AtEdge, ByText)
-  - [ ] 11.2 Implement `compute_wrap_markers(sub_line_count: usize, flags: WrapVisualFlag, location: WrapVisualLocation) -> Vec<WrapMarkerPosition>` returning markers for a wrapped document line
-  - [ ] 11.3 Implement `compute_continuation_indent(first_subline_indent: usize, tab_size: usize, mode: WrapIndentMode, start_indent: usize, viewport_width: usize) -> usize` returning the effective indentation for continuation sub-lines, clamped to 3/4 of viewport width
-  - [ ] 11.4 Implement guard: when word wrap is not active, all wrap marker queries return empty
-  - [ ] 11.5 Write unit tests for: no flags returns empty, End flag marks sub-lines, Start flag marks continuations, Margin flag, location variants, indent modes (Fixed/Same/Indent/DeepIndent), 3/4 viewport clamping, wrap-inactive guard
+- [x] 11. Wrap marker and indentation queries
+  - [x] 11.1 Implement `WrapMarkerPosition` struct: `sub_line_index: usize`, `marker_type: WrapMarkerType` (enum: End, Start, Margin), `position: WrapMarkerPlacement` (enum: AtEdge, ByText)
+  - [x] 11.2 Implement `compute_wrap_markers(sub_line_count: usize, flags: WrapVisualFlag, location: WrapVisualLocation) -> Vec<WrapMarkerPosition>` returning markers for a wrapped document line
+  - [x] 11.3 Implement `compute_continuation_indent(first_subline_indent: usize, tab_size: usize, mode: WrapIndentMode, start_indent: usize, viewport_width: usize) -> usize` returning the effective indentation for continuation sub-lines, clamped to 3/4 of viewport width
+  - [x] 11.4 Implement guard: when word wrap is not active, all wrap marker queries return empty
+  - [x] 11.5 Write unit tests for: no flags returns empty, End flag marks sub-lines, Start flag marks continuations, Margin flag, location variants, indent modes (Fixed/Same/Indent/DeepIndent), 3/4 viewport clamping, wrap-inactive guard
   - Covers: Requirement 6 (AC 6.3, 6.4, 6.5, 6.8, 6.9), Requirement 7 (AC 7.5, 7.6)
 
-- [ ] 12. Toggle commands
-  - [ ] 12.1 Implement `ToggleWhitespace` command: cycles `WhitespaceVisibility` through Invisible → VisibleAlways → VisibleAfterIndent → VisibleOnlyInIndent → Invisible
-  - [ ] 12.2 Implement `ToggleIndentGuides` command: cycles `IndentGuideMode` through None → Real → LookForward → LookBoth → None
-  - [ ] 12.3 Implement `ToggleEdgeColumn` command: toggles between `None` and previous non-None mode (defaulting to `Line` if no prior mode set)
-  - [ ] 12.4 Register all toggle commands with the `command-framework` including metadata (display name, description, category)
-  - [ ] 12.5 Implement configuration persistence: each toggle writes the new state to the user layer of the configuration-system
-  - [ ] 12.6 Implement change notification emission on each toggle so the viewport repaints immediately
-  - [ ] 12.7 Write unit tests for: whitespace cycling order, indent guide cycling order, edge toggle remembers previous mode, persistence to config, notification emission
+- [x] 12. Toggle commands
+  - [x] 12.1 Implement `ToggleWhitespace` command: cycles `WhitespaceVisibility` through Invisible → VisibleAlways → VisibleAfterIndent → VisibleOnlyInIndent → Invisible
+  - [x] 12.2 Implement `ToggleIndentGuides` command: cycles `IndentGuideMode` through None → Real → LookForward → LookBoth → None
+  - [x] 12.3 Implement `ToggleEdgeColumn` command: toggles between `None` and previous non-None mode (defaulting to `Line` if no prior mode set)
+  - [x] 12.4 Register all toggle commands with the `command-framework` including metadata (display name, description, category)
+  - [x] 12.5 Implement configuration persistence: each toggle writes the new state to the user layer of the configuration-system
+  - [x] 12.6 Implement change notification emission on each toggle so the viewport repaints immediately
+  - [x] 12.7 Write unit tests for: whitespace cycling order, indent guide cycling order, edge toggle remembers previous mode, persistence to config, notification emission
   - Covers: Requirement 8 (AC 8.1, 8.2, 8.3, 8.4, 8.5, 8.6)
 
-- [ ] 13. Aggregated settings struct and public API
-  - [ ] 13.1 Define `WhitespaceSettings` struct aggregating: `WhitespaceConfig`, `IndentGuideConfig`, `EdgeConfig`, `WrapMarkerConfig`, `ActiveGuideState`
-  - [ ] 13.2 Implement `WhitespaceSettings::from_config(config_system: &ConfigSystem) -> Self` constructor loading all settings from configuration
-  - [ ] 13.3 Implement hot-reload coordinator: subscribe to all relevant config keys and update `WhitespaceSettings` atomically on change
-  - [ ] 13.4 Implement `WhitespaceSettingsApi` facade with query methods: `whitespace_glyphs_for_line(...)`, `guides_for_line(...)`, `active_guide()`, `edge_indicator()`, `wrap_markers_for_line(...)`, `continuation_indent(...)`
-  - [ ] 13.5 Write unit tests for: settings construction from config, atomic update, facade delegates correctly
+- [x] 13. Aggregated settings struct and public API
+  - [x] 13.1 Define `WhitespaceSettings` struct aggregating: `WhitespaceConfig`, `IndentGuideConfig`, `EdgeConfig`, `WrapMarkerConfig`, `ActiveGuideState`
+  - [x] 13.2 Implement `WhitespaceSettings::from_config(config_system: &ConfigSystem) -> Self` constructor loading all settings from configuration
+  - [x] 13.3 Implement hot-reload coordinator: subscribe to all relevant config keys and update `WhitespaceSettings` atomically on change
+  - [x] 13.4 Implement `WhitespaceSettingsApi` facade with query methods: `whitespace_glyphs_for_line(...)`, `guides_for_line(...)`, `active_guide()`, `edge_indicator()`, `wrap_markers_for_line(...)`, `continuation_indent(...)`
+  - [x] 13.5 Write unit tests for: settings construction from config, atomic update, facade delegates correctly
   - Covers: Requirement 9 (AC 9.2, 9.3, 9.4, 9.5)
 
-- [ ] 14. Error handling
-  - [ ] 14.1 Define `WhitespaceGuidesError` enum: `InvalidWhitespaceMode`, `InvalidTabDrawMode`, `InvalidIndentGuideMode`, `InvalidEdgeMode`, `InvalidEdgeColumn`, `InvalidWrapFlags`, `ConfigReadError`
-  - [ ] 14.2 Implement error message formatting per `[whitespace-guides] operation: description` standard (≤200 chars)
-  - [ ] 14.3 Implement graceful fallback: invalid configuration values use defaults with WARN-level logging
-  - [ ] 14.4 Write unit tests for all error variants, message formatting, fallback behaviour
+- [x] 14. Error handling
+  - [x] 14.1 Define `WhitespaceGuidesError` enum: `InvalidWhitespaceMode`, `InvalidTabDrawMode`, `InvalidIndentGuideMode`, `InvalidEdgeMode`, `InvalidEdgeColumn`, `InvalidWrapFlags`, `ConfigReadError`
+  - [x] 14.2 Implement error message formatting per `[whitespace-guides] operation: description` standard (≤200 chars)
+  - [x] 14.3 Implement graceful fallback: invalid configuration values use defaults with WARN-level logging
+  - [x] 14.4 Write unit tests for all error variants, message formatting, fallback behaviour
   - Covers: Cross-cutting Requirement 8 (Error Message Standards)
 
-- [ ] 15. Property-based tests
-  - [ ] 15.1 Write PBT: whitespace glyph completeness — for any line and VisibleAlways mode, every space/tab character produces exactly one glyph
-  - [ ] 15.2 Write PBT: indent guide column alignment — all guide columns are multiples of tab_size
-  - [ ] 15.3 Write PBT: LookBoth produces superset of Real guides — for any document, guides in LookBoth mode at any line are a superset of guides in Real mode for that line
-  - [ ] 15.4 Write PBT: continuation indent clamping — effective wrap indent never exceeds 3/4 of viewport width
-  - [ ] 15.5 Write PBT: toggle command cycling — applying toggle N times returns to original state (N = number of enum variants)
-  - [ ] 15.6 Write PBT: edge indicator mode consistency — EdgeMode::None always yields no indicator, non-None always yields an indicator
+- [x] 15. Property-based tests
+  - [x] 15.1 Write PBT: whitespace glyph completeness — for any line and VisibleAlways mode, every space/tab character produces exactly one glyph
+  - [x] 15.2 Write PBT: indent guide column alignment — all guide columns are multiples of tab_size
+  - [x] 15.3 Write PBT: LookBoth produces superset of Real guides — for any document, guides in LookBoth mode at any line are a superset of guides in Real mode for that line
+  - [x] 15.4 Write PBT: continuation indent clamping — effective wrap indent never exceeds 3/4 of viewport width
+  - [x] 15.5 Write PBT: toggle command cycling — applying toggle N times returns to original state (N = number of enum variants)
+  - [x] 15.6 Write PBT: edge indicator mode consistency — EdgeMode::None always yields no indicator, non-None always yields an indicator
   - Covers: Requirements 1, 3, 5, 6, 7, 8 (see Property-Based Test Definitions below)
 
-- [ ] 16. Integration tests
-  - [ ] 16.1 Write integration test: full lifecycle — construct settings from config, toggle whitespace, verify glyph output changes
-  - [ ] 16.2 Write integration test: indent guide spanning — multi-line document with blank lines, verify LookBoth guides extend through blanks
-  - [ ] 16.3 Write integration test: edge column multi-line — configure multiple edges, verify all are returned
-  - [ ] 16.4 Write integration test: wrap marker end-to-end — enable wrap, set flags, compute markers for wrapped line
-  - [ ] 16.5 Write integration test: hot-reload cycle — modify config key, verify settings update and notification fires
-  - [ ] 16.6 Write integration test: headless testability — all queries work without windowing system
+- [x] 16. Integration tests
+  - [x] 16.1 Write integration test: full lifecycle — construct settings from config, toggle whitespace, verify glyph output changes
+  - [x] 16.2 Write integration test: indent guide spanning — multi-line document with blank lines, verify LookBoth guides extend through blanks
+  - [x] 16.3 Write integration test: edge column multi-line — configure multiple edges, verify all are returned
+  - [x] 16.4 Write integration test: wrap marker end-to-end — enable wrap, set flags, compute markers for wrapped line
+  - [x] 16.5 Write integration test: hot-reload cycle — modify config key, verify settings update and notification fires
+  - [x] 16.6 Write integration test: headless testability — all queries work without windowing system
   - Covers: End-to-end validation across Requirements 1–9
 
 ---

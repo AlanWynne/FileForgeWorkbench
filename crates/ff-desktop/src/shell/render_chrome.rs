@@ -1,4 +1,4 @@
-//! # Shell Chrome Rendering
+﻿//! # Shell Chrome Rendering
 //!
 //! Theme application, menu bar, and tab bar rendering for WorkbenchShell.
 
@@ -163,6 +163,12 @@ impl WorkbenchShell {
                         ui.close_menu();
                     }
                     ui.separator();
+                    if ui.button("Close").clicked() {
+                        let idx = self.tabs.active_index();
+                        self.tabs.close_tab(idx);
+                        ui.close_menu();
+                    }
+                    ui.separator();
                     if ui.button("Exit").clicked() {
                         ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                     }
@@ -313,7 +319,22 @@ impl WorkbenchShell {
                             activate_idx = Some(i);
                         }
 
-                        // ── Tab header right-click context menu ──────────
+                        // Validates: Requirement 3.8 multi-tab-editor — close button on tab header (B002/B015)
+                        let close_resp = ui.add(
+                            egui::Button::new(
+                                egui::RichText::new("\u{00d7}")
+                                    .color(text_color)
+                                    .monospace()
+                                    .small(),
+                            )
+                            .fill(bg)
+                            .stroke(egui::Stroke::NONE)
+                            .min_size(egui::vec2(16.0, 24.0)),
+                        );
+                        if close_resp.clicked() {
+                            close_idx = Some(i);
+                        }
+                        close_resp.on_hover_text("Close tab");
                         // Validates: Requirement 14.15, 14.15a, 14.15b, 14.15c
                         resp.context_menu(|ui| {
                             let tab_count_inner = self.tabs.len();

@@ -363,13 +363,13 @@ All resource access flows through the VFS abstraction layer (FFW-ARCH-001) — t
 
 #### Acceptance Criteria
 
-**16.1 — Trigger**
+**1. Trigger**
 
 1. WHEN the user right-clicks any non-section-header node in the File Explorer Panel, THE panel SHALL display a Context_Menu appropriate to that node's catalog type and node kind.
 2. WHEN the user right-clicks a section header node ("Mainframe Catalogs", "POSIX Catalogs", "Native Catalogs"), THE panel SHALL display no context menu (section headers are not actionable).
 3. THE Context_Menu SHALL be dismissed when the user clicks outside it, presses Escape, or selects an item.
 
-**16.2 — Native File context menu**
+**2. Native File context menu**
 
 WHEN the user right-clicks a file node inside a Native catalog, THE panel SHALL display the following items in order, with dividers as shown:
 
@@ -400,7 +400,7 @@ Git ▶  [Greyed_Out — deferred]
 Properties
 ```
 
-**16.3 — Native Directory context menu**
+**3. Native Directory context menu**
 
 WHEN the user right-clicks a directory node inside a Native catalog, THE panel SHALL display:
 
@@ -425,7 +425,7 @@ Git ▶  [Greyed_Out — deferred]
 Properties
 ```
 
-**16.4 — POSIX File context menu**
+**4. POSIX File context menu**
 
 WHEN the user right-clicks a file node inside a POSIX catalog (read-only), THE panel SHALL display:
 
@@ -446,7 +446,7 @@ Properties
 
 No Rename, Move To, Copy To, New File, New Folder — POSIX catalogs are read-only.
 
-**16.5 — Mainframe Sequential Dataset (PS) context menu**
+**5. Mainframe Sequential Dataset (PS) context menu**
 
 WHEN the user right-clicks a PS dataset node inside a Mainframe catalog, THE panel SHALL display:
 
@@ -466,7 +466,7 @@ Dataset Properties
 Refresh
 ```
 
-**16.6 — Mainframe PDS / Library context menu**
+**6. Mainframe PDS / Library context menu**
 
 WHEN the user right-clicks a PDS dataset node inside a Mainframe catalog, THE panel SHALL display:
 
@@ -482,7 +482,7 @@ Dataset Properties
 Refresh
 ```
 
-**16.7 — Mainframe PDS Member context menu**
+**7. Mainframe PDS Member context menu**
 
 WHEN the user right-clicks a PDS member node inside a Mainframe catalog, THE panel SHALL display:
 
@@ -506,7 +506,7 @@ Dataset Properties
 Refresh
 ```
 
-**16.8 — Mainframe GDG Base context menu**
+**8. Mainframe GDG Base context menu**
 
 WHEN the user right-clicks a GDG Base node inside a Mainframe catalog, THE panel SHALL display:
 
@@ -520,7 +520,7 @@ Dataset Properties
 Refresh
 ```
 
-**16.9 — Mainframe GDG Generation context menu**
+**9. Mainframe GDG Generation context menu**
 
 WHEN the user right-clicks a GDG Generation node inside a Mainframe catalog, THE panel SHALL display:
 
@@ -535,7 +535,7 @@ Dataset Properties
 Refresh
 ```
 
-**16.10 — Copy action**
+**10. Copy action**
 
 1. WHEN the user selects "Copy" from any context menu, THE panel SHALL write the node's full path (Native/POSIX) or fully-qualified dataset name (Mainframe) as plain UTF-8 text to the OS clipboard.
 2. WHEN the user subsequently pastes into the FFWB Command_Field, THE full path string SHALL be inserted as plain text.
@@ -544,7 +544,7 @@ Refresh
 5. WHEN the user selects "Insert File Contents" from the paste prompt, THE file's text content SHALL be read and inserted at the caret position as if via the COPY file-insert command.
 6. WHEN the user selects "Insert File Contents" and the file cannot be read, THE panel SHALL display an inline error and make no document change.
 
-**16.11 — Rename (inline)**
+**11. Rename (inline)**
 
 1. WHEN the user selects "Rename" or "Rename Member" from a context menu, THE panel SHALL replace the node's label with an editable text field pre-filled with the current name.
 2. WHEN the user presses Enter in the inline rename field, THE panel SHALL attempt to rename the resource: for Native files/directories this renames on disk; for Mainframe PDS members this renames within the dataset store.
@@ -552,7 +552,7 @@ Refresh
 4. WHEN renaming a Mainframe PDS member, THE panel SHALL enforce 8-character uppercase naming: if the entered name exceeds 8 characters or contains invalid characters, THE panel SHALL display an inline error beneath the field and SHALL NOT confirm the rename until the name is valid.
 5. WHEN a rename completes successfully, THE tree node label SHALL update to the new name in place.
 
-**16.12 — Move To… and Copy To… dialogs**
+**12. Move To… and Copy To… dialogs**
 
 1. WHEN the user selects "Move To…" or "Copy To…", THE panel SHALL open a modal dialog containing: a target catalog/directory picker, a proposed new name field (pre-filled and transformed per target naming rules), and Confirm / Cancel buttons.
 2. WHEN the target is a Mainframe PDS, THE dialog SHALL automatically uppercase and truncate the proposed name to 8 characters, stripping invalid characters, and display the transformed name to the user before confirmation.
@@ -565,36 +565,36 @@ Refresh
 9. WHEN the background operation fails, THE panel SHALL display an error message and leave the source node unchanged.
 10. For "Move To…", THE source node SHALL only be removed from the tree after the background copy confirms success.
 
-**16.13 — Open With…**
+**13. Open With…**
 
 1. WHEN the user selects "Open With…" on Windows, THE panel SHALL invoke the native Windows "Open with" dialog via `ShellExecuteEx` with verb `"openwith"`.
 2. WHEN the user selects "Open With…" on macOS, THE panel SHALL invoke `open -a` to present the Finder application picker.
 3. WHEN the user selects "Open With…" on Linux, THE panel SHALL display a built-in FFWB "Choose Application" dialog listing applications discovered via `xdg-mime query default` and `/usr/share/applications/*.desktop` entries, with a text field for a custom command.
 
-**16.14 — Reveal in Explorer / Open Containing Folder**
+**14. Reveal in Explorer / Open Containing Folder**
 
 1. WHEN the user selects "Reveal in Explorer" (Windows) / "Reveal in Finder" (macOS) / "Open Containing Folder" (Linux), THE panel SHALL open the OS file manager at the parent directory of the selected node with the node highlighted where the platform supports it.
 2. THE label for this item SHALL be platform-appropriate: "Reveal in Explorer" on Windows, "Reveal in Finder" on macOS, "Open Containing Folder" on Linux.
 
-**16.15 — Git submenu (deferred)**
+**15. Git submenu (deferred)**
 
 1. THE context menu for Native file and directory nodes SHALL include a "Git ▶" submenu item rendered as Greyed_Out.
 2. THE Git submenu SHALL NOT be interactive in this release; clicking it SHALL have no effect.
 3. The submenu items (Diff, History, Commit, Blame) SHALL be visible but greyed-out to communicate future intent.
 
-**16.16 — Submit JCL (deferred)**
+**16. Submit JCL (deferred)**
 
 1. THE context menu for Mainframe PDS member nodes SHALL include a "Submit JCL" item rendered as Greyed_Out.
 2. "Submit JCL" SHALL NOT be interactive in this release; clicking it SHALL have no effect.
 
-**16.17 — Extension rules**
+**17. Extension rules**
 
 1. THE panel SHALL maintain a data-driven `Vec<ExtensionRule>` table mapping glob patterns to menu item overrides (enable, disable, add extra items).
 2. In this release the table SHALL be defined in code; no TOML configuration is required yet.
 3. The table SHALL be structured so that future TOML-driven configuration can replace or extend it without code changes.
 4. WHEN a file's extension matches an Extension_Rule that enables a previously Greyed_Out item (e.g. `*.jcl` enabling Submit JCL), THE item SHALL become active for that node.
 
-**16.18 — Copy path variants**
+**18. Copy path variants**
 
 1. "Copy File Name" SHALL write only the file's base name (no directory) to the OS clipboard.
 2. "Copy Relative Path" SHALL write the path relative to the catalog's root path to the OS clipboard.
@@ -619,43 +619,43 @@ Refresh
 
 #### Acceptance Criteria
 
-**17.1 — Text files open in FFWB editor**
+**1. Text files open in FFWB editor**
 
 WHEN the user opens a file whose extension maps to `FileClass::Text` or `FileClass::FfwbStructured`, THE panel SHALL open the file in a new FFWB editor tab (existing behaviour, no change).
 
-**17.2 — External files launch OS default application**
+**2. External files launch OS default application**
 
 WHEN the user opens a file whose extension maps to `FileClass::External`, THE panel SHALL perform a DefaultAppLaunch using the platform mechanism:
 - Windows: `ShellExecuteEx` with verb `"open"` and the file path, via `std::process::Command::new("cmd").args(["/c", "start", "", path])`
 - macOS: `std::process::Command::new("open").arg(path).spawn()`
 - Linux: `std::process::Command::new("xdg-open").arg(path).spawn()`
 
-**17.3 — Unknown extensions use magic-byte fallback**
+**3. Unknown extensions use magic-byte fallback**
 
 WHEN a file's extension has no matching `FileClass` rule, THE panel SHALL perform a MagicByteScan of the first 512 bytes. IF the file appears to be valid UTF-8 text (no null bytes, fewer than 5% non-UTF-8 bytes), THE panel SHALL open it in the FFWB editor. OTHERWISE THE panel SHALL perform a DefaultAppLaunch.
 
-**17.4 — Launch failure falls back to FFWB editor**
+**4. Launch failure falls back to FFWB editor**
 
 WHEN a DefaultAppLaunch fails (spawn returns an error, or on Linux `xdg-open` exits non-zero), THE panel SHALL open the file in the FFWB editor tab and display a status-bar message: `"No application registered for .<ext> — opened in editor"`.
 
-**17.5 — Open With… shows platform picker**
+**5. Open With… shows platform picker**
 
 WHEN the user selects "Open With…" from the context menu:
 - Windows: `std::process::Command::new("cmd").args(["/c", "start", "", path])` with the `openwith` shell verb via `ShellExecuteEx`
 - macOS: `std::process::Command::new("open").args(["-a", path]).spawn()`
 - Linux: THE panel SHALL display a built-in FFWB "Choose Application" dialog listing applications from `xdg-mime query default` and `/usr/share/applications/*.desktop` entries, with a free-text field for a custom command
 
-**17.6 — Non-blocking launch**
+**6. Non-blocking launch**
 
 THE DefaultAppLaunch SHALL use `Command::spawn()` (fire-and-forget). THE panel SHALL NOT wait for the launched application to exit. THE UI thread SHALL NOT block.
 
-**17.7 — Mainframe datasets always open in FFWB**
+**7. Mainframe datasets always open in FFWB**
 
 WHEN the user opens any Mainframe catalog node (PS dataset, PDS member, GDG generation), THE panel SHALL always open the content in a FFWB editor tab regardless of the node's name or content. DefaultAppLaunch does not apply to Mainframe nodes.
 
-**17.8 — FileClass extension table**
+**8. FileClass extension table**
 
-THE `ExtensionRule` table in `context_menu.rs` SHALL include a `file_class` field on each rule. The following extensions SHALL be pre-classified as `FileClass::External`:
+THE `ExtensionRule` table  SHALL include a `file_class` field on each rule. The following extensions SHALL be pre-classified as `FileClass::External`:
 
 | Category | Extensions |
 |---|---|
@@ -669,7 +669,7 @@ THE `ExtensionRule` table in `context_menu.rs` SHALL include a `file_class` fiel
 
 All other extensions default to `FileClass::Text` unless the magic-byte scan detects binary content (Req 17.3).
 
-**17.9 — POSIX catalog nodes follow same rules**
+**9. POSIX catalog nodes follow same rules**
 
 WHEN the user opens a POSIX catalog file node, THE same FileClass classification and DefaultAppLaunch rules SHALL apply as for Native catalog file nodes.
 
@@ -685,40 +685,331 @@ WHEN the user opens a POSIX catalog file node, THE same FileClass classification
 
 #### Acceptance Criteria
 
-**18.1 — Sort order**
+**1. Sort order**
 
 WHEN a Native catalog directory node is expanded, THE File_Explorer_Panel SHALL display its children sorted directories-first then files, with each group sorted alphabetically case-insensitive by file name.
 
-**18.2 — File size**
+**2. File size**
 
 EACH file node in a Native catalog SHALL display the file size in a human-readable format (e.g. `1.2 KB`, `3.4 MB`, `512 B`). Directories SHALL display `<DIR>` in the size column.
 
-**18.3 — Created timestamp**
+**3. Created timestamp**
 
 EACH file and directory node in a Native catalog SHALL display the file creation timestamp in `YYYY-MM-DD HH:MM` format.
 
-**18.4 — Modified timestamp**
+**4. Modified timestamp**
 
 EACH file and directory node in a Native catalog SHALL display the last-modified timestamp in `YYYY-MM-DD HH:MM` format.
 
-**18.5 — Accessed timestamp**
+**5. Accessed timestamp**
 
 EACH file and directory node in a Native catalog SHALL display the last-accessed timestamp in `YYYY-MM-DD HH:MM` format.
 
-**18.6 — Permission attributes**
+**6. Permission attributes**
 
 EACH file and directory node in a Native catalog SHALL display permission attributes in a user-friendly format:
 - On Windows: a compact flag string showing `R` (read-only), `H` (hidden), `S` (system), `A` (archive) where set; e.g. `RH`, `A`, or `—` if none.
 - On Linux/macOS: a compact Unix-style string e.g. `rwxr-xr-x`.
 
-**18.7 — Inaccessible entries silently skipped**
+**7. Inaccessible entries silently skipped**
 
 WHEN `std::fs::metadata()` returns an error for an entry (e.g. permission denied on a junction point or locked file), THE File_Explorer_Panel SHALL silently skip that entry — it SHALL NOT appear in the listing and SHALL NOT display an error message for that individual entry. The remaining entries in the directory SHALL still be listed normally.
 
-**18.8 — Locked-file open error**
+**8. Locked-file open error**
 
 WHEN the user attempts to open a file that is locked by another process (OS error 32 on Windows), THE File_Explorer_Panel SHALL display a status-bar message: `"Cannot open '<filename>': file is in use by another process"` and SHALL NOT open an editor tab for that file.
 
-**18.9 — Column layout**
+**9. Column layout**
 
 THE file attribute columns SHALL be rendered to the right of the file name in the following order: Size, Modified, Created, Accessed, Permissions. Columns SHALL be right-aligned for Size and left-aligned for timestamps and permissions.
+
+---
+
+### Requirement 19: File Explorer Tree — Drag-Select and Copy as Text Tree
+
+**User Story:** As a user, I want to drag-select a range of nodes in the File Explorer tree and copy them as a formatted plain-text tree structure to the clipboard, so that I can paste the file listing into a text file, editor tab, or external tool.
+
+**Source:** CR-NR-009 — Phase BD.
+
+#### Glossary additions
+
+- **Drag_Selection**: A contiguous range of visible tree nodes selected by pressing and holding the left mouse button on a start node and dragging to an end node.
+- **Text_Tree**: A plain-text representation of the selected nodes rendered with ASCII indentation that mirrors the tree hierarchy.
+- **Anchor_Node**: The node where a drag-selection or Shift-click selection begins.
+
+#### Acceptance Criteria
+
+**1. Drag-select gesture**
+
+WHEN the user presses and holds the left mouse button on a tree node and drags to another node, THE File_Explorer_Panel SHALL highlight all visible nodes between the start node and the current cursor position (inclusive) as a Drag_Selection.
+
+**2. Shift-click extend**
+
+WHEN the user holds Shift and clicks a tree node, THE File_Explorer_Panel SHALL extend the current selection from the Anchor_Node to the clicked node, replacing any previous selection.
+
+**3. Ctrl-click toggle**
+
+WHEN the user holds Ctrl and clicks a tree node, THE File_Explorer_Panel SHALL toggle that node's membership in the current selection without affecting other selected nodes.
+
+**4. Selection highlight**
+
+EACH selected node SHALL be rendered with the theme selection background colour (`ui.selection_background`) so the selection is clearly visible.
+
+**5. Copy selection to clipboard (Ctrl+C)**
+
+WHEN one or more nodes are selected and the user presses Ctrl+C (or selects "Copy as Text Tree" from the context menu), THE File_Explorer_Panel SHALL build a Text_Tree string from the selected nodes and write it to the OS clipboard as plain UTF-8 text.
+
+**6. Text_Tree format**
+
+THE Text_Tree string SHALL be formatted as follows:
+- Each node is rendered on its own line.
+- Indentation uses two spaces per depth level relative to the shallowest selected node (depth 0 = no indent).
+- Directory nodes are prefixed with `[DIR] ` followed by their name.
+- File nodes are rendered with their name only (no prefix).
+- When the selection includes both a parent directory and its children, tree connector characters (`├── `, `└── `, `│   `) SHALL be used to show the hierarchy.
+- When only leaf nodes are selected with no parent-child relationship among the selection, each is listed on its own line with its full relative path from the catalog root.
+
+**7. Context menu item**
+
+WHEN one or more nodes are selected and the user right-clicks, THE context menu SHALL include a "Copy as Text Tree" item above the existing "Copy" group. Selecting it SHALL perform the same action as Ctrl+C (Req 19.5).
+
+**8. Escape clears selection**
+
+WHEN the user presses Escape, THE current multi-node selection SHALL be cleared and the panel SHALL revert to single-node selection mode (the most recently clicked node remains selected).
+
+**9. Selection survives scroll**
+
+WHEN the user scrolls the panel while a drag-selection is active, THE selection SHALL extend to include nodes scrolled into view under the cursor.
+
+**10. Mainframe and POSIX nodes included**
+
+THE drag-select and copy behaviour SHALL apply equally to Native, POSIX, and Mainframe catalog nodes. For Mainframe nodes the Text_Tree SHALL use the fully-qualified dataset name (DSN) in place of a file path.
+
+---
+
+### Requirement 20: File Explorer — Keyboard Navigation and Focus Transfer from Command Line
+
+**User Story:** As a user, I want to press Tab from the command line to move focus into the File Explorer tree, then navigate with arrow keys and select items with Shift+Arrow and Ctrl+Space, so that I can operate the file list entirely from the keyboard.
+
+**Source:** CR-NR-010 — Phase BE.
+
+#### Glossary additions
+
+- **Explorer_Focus**: The keyboard focus state where the File Explorer Panel's node list is the active input target.
+- **Keyboard_Selection**: One or more nodes highlighted as selected via keyboard gestures (Shift+Arrow, Ctrl+Space).
+- **Cursor_Node**: The node that currently has the keyboard cursor (focus ring), independent of the selection set.
+
+#### Acceptance Criteria
+
+**1. Tab from command line enters the file list**
+
+WHEN the File Explorer Panel is the active tab and the user presses Tab while the Command_Field has focus, THE keyboard focus SHALL transfer to the File Explorer node list and the Cursor_Node SHALL be set to the first visible catalog name node.
+
+**2. Tab advances through nodes**
+
+WHEN the File Explorer node list has Explorer_Focus and the user presses Tab, THE Cursor_Node SHALL advance to the next visible node in display order (wrapping from last to first).
+
+**3. Tab on a container node expands it**
+
+WHEN the user presses Tab and the Cursor_Node is a container (directory, catalog, PDS dataset, GDG base) that is currently collapsed, THE container SHALL be expanded to show its children before the Cursor_Node advances to the next node.
+
+**4. Arrow keys move the cursor without expanding**
+
+WHEN the File Explorer node list has Explorer_Focus and the user presses the Down Arrow or Up Arrow key, THE Cursor_Node SHALL move one position in the corresponding direction. Container nodes SHALL NOT be expanded by arrow key movement alone.
+
+**5. Left and Right Arrow keys on containers**
+
+WHEN the user presses the Right Arrow key on a collapsed container node, THE container SHALL expand (same as existing Req 8.3). WHEN the user presses the Left Arrow key on an expanded container node, THE container SHALL collapse (same as existing Req 8.5). WHEN the user presses the Left Arrow key on a non-container or collapsed node, THE Cursor_Node SHALL move to the parent node (same as existing Req 8.6).
+
+**6. Shift+Arrow extends the keyboard selection**
+
+WHEN the user holds Shift and presses Down Arrow or Up Arrow, THE Cursor_Node SHALL move one position in the corresponding direction AND the node moved onto SHALL be added to the Keyboard_Selection. The Anchor_Node is set on the first Shift+Arrow press if no selection exists.
+
+**7. Shift+Arrow selection is cumulative**
+
+WHEN the user continues to hold Shift and press Arrow keys, EACH newly visited node SHALL be added to the Keyboard_Selection. Nodes already in the selection SHALL remain selected.
+
+**8. Releasing Shift preserves the selection**
+
+WHEN the user releases the Shift key, THE Keyboard_Selection SHALL remain highlighted. Subsequent plain Arrow key presses SHALL move the Cursor_Node without changing the selection.
+
+**9. Ctrl+Arrow moves cursor without changing selection**
+
+WHEN the user holds Ctrl and presses Down Arrow or Up Arrow, THE Cursor_Node SHALL move one position in the corresponding direction WITHOUT adding or removing any node from the Keyboard_Selection.
+
+**10. Ctrl+Space toggles selection of the cursor node**
+
+WHEN the user holds Ctrl and presses Space, THE Cursor_Node's membership in the Keyboard_Selection SHALL toggle: if it was not selected it becomes selected; if it was selected it becomes deselected. All other selected nodes are unaffected.
+
+**11. Ctrl+C copies selected nodes**
+
+WHEN one or more nodes are in the Keyboard_Selection and the user presses Ctrl+C, THE File_Explorer_Panel SHALL copy the selected nodes' information to the OS clipboard (as per Req 19.5 — Text_Tree format for text paste, and as per Req 21.1 for file-level copy).
+
+**12. Escape clears keyboard selection**
+
+WHEN the user presses Escape while the File Explorer node list has Explorer_Focus, THE Keyboard_Selection SHALL be cleared. The Cursor_Node SHALL remain on the current node as a single-node selection.
+
+**13. Visual distinction between cursor and selection**
+
+THE Cursor_Node SHALL be rendered with a focus ring or border distinct from the selection highlight. Selected nodes SHALL use the theme `ui.selection_background` fill. A node that is both the Cursor_Node and selected SHALL show both indicators simultaneously.
+
+---
+
+### Requirement 21: File Explorer — File Copy and Paste Operations
+
+**User Story:** As a user, I want to select files in the File Explorer, press Ctrl+C to copy them, navigate to a new directory, and press Ctrl+V to copy the files there. I also want to be able to paste the list of selected file names into a file I am editing.
+
+**Source:** CR-NR-011 — Phase BE.
+
+#### Glossary additions
+
+- **File_Copy_Clipboard**: An internal clipboard payload (separate from the OS text clipboard) that holds a list of source file paths and the operation type (Copy or Cut).
+- **Paste_Target**: The directory node that is currently selected or focused when Ctrl+V is pressed.
+- **Paste_Prompt**: A modal dialog shown when the user pastes into an editor tab, offering the choice between inserting file names or file contents.
+
+#### Acceptance Criteria
+
+**1. Ctrl+C copies selected file paths to the internal clipboard**
+
+WHEN one or more nodes are selected in the File Explorer and the user presses Ctrl+C, THE File_Explorer_Panel SHALL store the selected nodes' full paths (Native/POSIX) or fully-qualified DSNs (Mainframe) in the File_Copy_Clipboard with operation type `Copy`.
+
+**2. Ctrl+V in the file list pastes files to the current directory**
+
+WHEN the File_Copy_Clipboard is non-empty and the user presses Ctrl+V while the File Explorer node list has Explorer_Focus, THE File_Explorer_Panel SHALL determine the Paste_Target as follows: if the Cursor_Node is a directory/container, use it as the target; otherwise use the Cursor_Node's parent directory. THE panel SHALL then dispatch a background copy operation (via `ff-bgio`) for each source path to the Paste_Target directory.
+
+**3. Paste progress indicator**
+
+WHEN a paste operation is in progress, THE File_Explorer_Panel SHALL display a Progress_Indicator in the status bar showing the number of files copied and the total. WHEN all copies complete, THE Progress_Indicator SHALL be dismissed and the Paste_Target directory SHALL be refreshed in the tree.
+
+**4. Paste failure handling**
+
+WHEN a background copy fails for one or more files (e.g. permission denied, disk full, name collision), THE File_Explorer_Panel SHALL display an error message in the status bar listing the failed file names and reasons. Successfully copied files SHALL NOT be rolled back.
+
+**5. Name collision on paste**
+
+WHEN a file being pasted has the same name as an existing file in the Paste_Target directory, THE File_Explorer_Panel SHALL display a per-file prompt with options: **Overwrite**, **Skip**, **Rename** (appends `_copy` suffix or increments a counter). The user's choice applies to that file only; subsequent collisions prompt again.
+
+**6. Paste into editor inserts file list**
+
+WHEN the File_Copy_Clipboard is non-empty and the user presses Ctrl+V while an editor tab has focus, THE File_Explorer_Panel SHALL display a Paste_Prompt modal with two options: **\"Insert File Names\"** and **\"Insert File Contents\"**.
+
+**7. Insert File Names**
+
+WHEN the user selects \"Insert File Names\" from the Paste_Prompt, THE full path (or DSN) of each selected file SHALL be inserted at the caret position in the editor, one path per line.
+
+**8. Insert File Contents**
+
+WHEN the user selects \"Insert File Contents\" from the Paste_Prompt, THE text content of each selected file SHALL be read and inserted at the caret position in the editor, files separated by a blank line. If any file cannot be read, that file is skipped and an inline error is shown; other files are still inserted.
+
+**9. Mainframe datasets supported**
+
+THE copy and paste operations SHALL support Mainframe catalog nodes. Copying a Mainframe PS dataset or PDS member SHALL store the DSN/member path in the File_Copy_Clipboard. Pasting to a Native or POSIX directory SHALL use the member name (lowercased, no extension) as the target file name, following the same naming-rule transformation as the Copy To… dialog (Req 16.12.4).
+
+**10. POSIX catalogs are read-only for paste**
+
+WHEN the Paste_Target is within a POSIX catalog, THE File_Explorer_Panel SHALL reject the paste operation and display a status-bar message: `\"Cannot paste: POSIX catalog '<name>' is read-only\"`.
+
+**11. File_Copy_Clipboard persists until replaced or cleared**
+
+THE File_Copy_Clipboard SHALL persist across navigation within the File Explorer until the user performs a new Ctrl+C, presses Escape to clear the selection, or closes the application. A visual indicator (e.g. dashed border on the source nodes) SHALL show which nodes are pending paste.
+
+---
+
+### Requirement 23: File Explorer Panel — egui-file-dialog Look-and-Feel with Catalog Mount Points
+
+**User Story:** As a user, I want the File Explorer Panel (POM option 2) to look and work like the egui-file-dialog widget, with each catalog appearing as a mounted node in a left sidebar, so that I can browse all catalog types through a single, consistent, polished interface.
+
+**Source:** CR-NR-014 — Phase BM.
+
+#### Glossary additions
+
+- **Sidebar**: The left pane of the File Explorer Panel listing all mounted catalogs as named nodes, analogous to the "Places" panel in egui-file-dialog.
+- **Content_Pane**: The right pane of the File Explorer Panel showing the files/datasets belonging to the currently selected catalog node.
+- **Mount_Node**: A catalog entry rendered in the Sidebar. Clicking it populates the Content_Pane with that catalog’s contents.
+- **Mainframe_Listing**: A flat or hierarchical list of dataset names rendered with dot-separated qualifiers (e.g. `PAYROLL.EMPLOYEE`) in the Content_Pane for Mainframe catalogs.
+- **POSIX_Listing**: A file/folder tree rendered with forward-slash paths (e.g. `/home/user/docs`) in the Content_Pane for POSIX catalogs.
+- **Native_Browser**: The egui-file-dialog widget embedded in the Content_Pane for Native catalogs (unchanged from Requirement 22).
+
+#### Acceptance Criteria
+
+**1. Two-pane layout**
+
+WHEN the File Explorer Panel is open, THE panel SHALL render a two-pane layout: a fixed-width left Sidebar and a resizable right Content_Pane, separated by a visible splitter. The overall visual style SHALL match the egui-file-dialog widget as closely as possible.
+
+**2. Sidebar lists all catalogs as mount nodes**
+
+THE Sidebar SHALL list every registered catalog (Mainframe, POSIX, and Native) as a named Mount_Node. Each node SHALL display the catalog name and a type icon (mainframe icon, POSIX icon, or folder icon for Native). Clicking a Mount_Node SHALL select it and populate the Content_Pane with that catalog’s contents.
+
+**3. Sidebar groups by catalog type**
+
+Mount_Nodes in the Sidebar SHALL be grouped under three collapsible section headers: "Mainframe", "POSIX", and "Native". Each section SHALL be independently collapsible. The selected Mount_Node SHALL be highlighted with the theme selection colour.
+
+**4. Native catalog: egui-file-dialog in Content_Pane**
+
+WHEN a Native catalog Mount_Node is selected, THE Content_Pane SHALL render the `egui-file-dialog` widget initialised to that catalog’s repository path (reusing the existing `render_native_dialog()` implementation from Requirement 22). File selection SHALL open the file in a new editor tab.
+
+**5. Mainframe catalog: dot-qualified dataset listing in Content_Pane**
+
+WHEN a Mainframe catalog Mount_Node is selected, THE Content_Pane SHALL display the catalog’s allocated datasets as a list. Each dataset SHALL be rendered with its fully-qualified name using dot separators (e.g. `PAYROLL.EMPLOYEE`). PDS datasets (DSORG=PO) SHALL be rendered as expandable nodes; sequential datasets (DSORG=PS) as leaf nodes. Double-clicking a PS dataset or PDS member SHALL attempt to open it in the editor via the existing VFS path resolution.
+
+**6. POSIX catalog: file/folder tree with forward-slash paths in Content_Pane**
+
+WHEN a POSIX catalog Mount_Node is selected, THE Content_Pane SHALL display the catalog’s files and directories as a tree. Directory nodes SHALL be expandable. All paths displayed SHALL use forward slashes as separators regardless of the host OS (e.g. `/home/user/docs/file.txt`). Files SHALL be rendered as leaf nodes. Double-clicking a file SHALL open it in the editor.
+
+**7. Empty sidebar state**
+
+WHEN no catalogs are registered, THE Sidebar SHALL display a placeholder message: "No catalogs mounted — use File Catalogs (option 1) to create or mount a catalog". The Content_Pane SHALL be empty.
+
+**8. Right-click context menu uses egui-file-dialog native menu**
+
+FOR this release, right-clicking any node in the Content_Pane SHALL use the context menu provided natively by the egui-file-dialog widget for Native catalogs. For Mainframe and POSIX nodes, the existing context menu from Requirement 16 SHALL continue to apply. No new custom context menu items are added in this requirement.
+
+**9. Sidebar width persistence**
+
+THE Sidebar width SHALL be persisted in the session state and restored on next launch. The default Sidebar width SHALL be 200 logical pixels. The minimum Sidebar width SHALL be 120 logical pixels.
+
+**10. All existing tests continue to pass**
+
+WHEN the refactoring is complete, `cargo test` SHALL pass with 0 failures. No existing test SHALL be removed or modified to accommodate the change.
+
+---
+
+### Requirement 22: Native File Browser — egui-file-dialog Integration
+
+> **Note:** Requirement 22 was added after Requirement 23 during Phase BK. The numbering reflects implementation order and is preserved for test annotation compatibility.
+
+**User Story:** As a user, I want the Native catalog file browser to use a polished, feature-complete file dialog widget so that I can navigate local directories with breadcrumbs, bookmarks, search, and keyboard shortcuts without the workbench having to maintain a custom tree renderer.
+
+**Source:** CR-NR-013 — Phase BK.
+
+#### Glossary additions
+
+- **egui_file_dialog**: The third-party egui widget crate (`egui-file-dialog`) that provides a ready-made file/folder picker rendered inside an egui panel or window.
+- **Native_Browser**: The portion of the File Explorer Panel that renders the contents of a Native catalog. Replaced by the `egui-file-dialog` widget in this requirement.
+- **Dataset_Browser**: The portion of the File Explorer Panel that renders Mainframe and POSIX catalog datasets. Unchanged by this requirement.
+
+#### Acceptance Criteria
+
+**1. egui-file-dialog replaces render_native_children**
+
+WHEN the user expands a Native catalog node in the File Explorer Panel, THE panel SHALL render the `egui-file-dialog` widget initialised to the catalog's repository path, replacing the previous `render_native_children()` recursive tree renderer.
+
+**2. File selection opens in editor**
+
+WHEN the user selects a file in the `egui-file-dialog` widget and confirms (double-click or Enter), THE File_Explorer_Panel SHALL dispatch the selected file's absolute path to the existing `open_path` handler, opening the file in a new editor tab (same behaviour as the previous double-click handler).
+
+**3. Mainframe and POSIX browsing unchanged**
+
+THE `render_dataset_children()` function and all Mainframe/POSIX catalog rendering logic SHALL remain unchanged. The `egui-file-dialog` widget SHALL only be used for Native catalog nodes.
+
+**4. Dependency declared in Cargo.toml**
+
+THE `ff-desktop` crate's `Cargo.toml` SHALL declare `egui-file-dialog` as a dependency with a pinned version. The workspace `Cargo.toml` SHALL NOT need to be modified (the dependency is local to `ff-desktop`).
+
+**5. Licence credited**
+
+THE `THIRD_PARTY_CREDITS.md` file at the workspace root SHALL contain an entry for `egui-file-dialog` listing its crate name, version, author, and licence (MIT).
+
+**6. All existing tests continue to pass**
+
+WHEN the refactoring is complete, `cargo test` SHALL pass with 0 failures. No existing test SHALL be removed or modified to accommodate the change.

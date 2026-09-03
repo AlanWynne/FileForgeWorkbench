@@ -50,6 +50,36 @@ pub(super) fn ensure_default_home_catalog(
     true
 }
 
+/// Auto-open a catalog or directory node when Tab lands on it.
+///
+/// For `cat:NAME` nodes: inserts into `open_catalogs` and opens the egui
+/// `CollapsingState` so files become visible immediately.
+/// For directory paths: inserts into `open_directories` and opens the egui
+/// `CollapsingState` keyed by `fep_dir_<path>`.
+///
+/// Validates: Requirement 20.2
+fn auto_open_node(
+    ctx: &egui::Context,
+    node: &str,
+    panel: &mut crate::file_explorer_panel::FileExplorerPanelState,
+) {
+    if let Some(name) = node.strip_prefix("cat:") {
+        panel.open_catalogs.insert(name.to_string());
+        let id = egui::Id::new(format!("fep_cat_{name}"));
+        let mut cs =
+            egui::collapsing_header::CollapsingState::load_with_default_open(ctx, id, false);
+        cs.set_open(true);
+        cs.store(ctx);
+    } else if std::path::Path::new(node).is_dir() {
+        panel.open_directories.insert(node.to_string());
+        let id = egui::Id::new(format!("fep_dir_{node}"));
+        let mut cs =
+            egui::collapsing_header::CollapsingState::load_with_default_open(ctx, id, false);
+        cs.set_open(true);
+        cs.store(ctx);
+    }
+}
+
 impl eframe::App for WorkbenchShell {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // One-shot startup
@@ -80,8 +110,14 @@ impl eframe::App for WorkbenchShell {
                 }
                 // Validates: Requirement 12.4 (function-keys-and-history) — restore PFSHOW state.
                 self.key_bar_visible = state.key_bar_visible;
+                // Validates: Requirement 23.9 (file-tree-panel) — restore sidebar width.
+                if state.file_explorer_sidebar_width >= 120.0 {
+                    self.file_explorer_panel.sidebar_width = state.file_explorer_sidebar_width;
+                }
                 // Validates: Requirement 2.1, 2.2 (virtual-catalog-manager) — restore catalog registry.
                 self.files_panel.registry = session.load_catalog_registry();
+                // Validates: Requirement 13.1, 13.2 — restore allocated datasets (fix B022).
+                self.files_panel.datasets = session.load_datasets();
                 // Validates: Requirement 14.1–14.5 — create default Home catalog when none exist.
                 let home_path = dirs::home_dir()
                     .or_else(|| std::env::current_dir().ok())
@@ -283,6 +319,10 @@ impl eframe::App for WorkbenchShell {
             let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
             let tab_count = self.tabs.len();
             let pom_active = self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu;
+            let is_file_explorer = self.tabs.active_tab().kind == TabKind::FileExplorerPanel;
+            let cmd_id = egui::Id::new("command_field_input");
+            let cmd_has_focus = ctx.memory(|m| m.focused() == Some(cmd_id));
+
             let (tab_pressed, shift_tab_pressed) = ctx.input_mut(|i| {
                 if self.modal_open {
                     return (false, false);
@@ -290,7 +330,6 @@ impl eframe::App for WorkbenchShell {
                 let shift = i.modifiers.shift;
                 let tab = i.key_pressed(egui::Key::Tab);
                 if tab {
-                    // consume so egui doesn't also move focus
                     i.events.retain(|e| {
                         !matches!(
                             e,
@@ -303,7 +342,84 @@ impl eframe::App for WorkbenchShell {
                 }
                 (tab && !shift, tab && shift)
             });
-            if tab_pressed {
+
+            // Validates: Requirement 20.1 — Tab from shell command field while File Explorer
+            // is active transfers focus into the explorer tree instead of cycling focus stops.
+            // Tab past the last tree node exits the tree and returns focus to CommandField.
+            // Escape while explorer has focus also exits the tree back to CommandField.
+            if !self.modal_open
+                && is_file_explorer
+                && self.file_explorer_panel.explorer_focused
+                && ctx.input(|i| i.key_pressed(egui::Key::Escape))
+            {
+                self.file_explorer_panel.explorer_focused = false;
+                self.file_explorer_panel.cursor_node = None;
+                self.focus_stop = FocusStop::CommandField;
+                self.command_field_focus_requested = true;
+            } else if tab_pressed
+                && is_file_explorer
+                && (cmd_has_focus || self.file_explorer_panel.explorer_focused)
+            {
+                let entering = !self.file_explorer_panel.explorer_focused;
+
+                if entering {
+                    // Entering from command field — open first catalog and land on
+                    // its first child.
+                    self.file_explorer_panel.explorer_focused = true;
+                    // Open the first catalog node immediately.
+                    let first_cat =
+                        crate::file_explorer_panel::collect_visible_node_paths_with_dirs(
+                            &self.files_panel.registry,
+                            &self.files_panel,
+                            &self.file_explorer_panel.open_catalogs,
+                            &self.file_explorer_panel.open_directories,
+                        )
+                        .into_iter()
+                        .next();
+                    if let Some(ref node) = first_cat {
+                        auto_open_node(ctx, node, &mut self.file_explorer_panel);
+                    }
+                    // Recompute with the catalog now open.
+                    let visible2 = crate::file_explorer_panel::collect_visible_node_paths_with_dirs(
+                        &self.files_panel.registry,
+                        &self.files_panel,
+                        &self.file_explorer_panel.open_catalogs,
+                        &self.file_explorer_panel.open_directories,
+                    );
+                    // Land on first child (index 1), or the catalog itself if empty.
+                    self.file_explorer_panel.cursor_node =
+                        visible2.into_iter().nth(1).or(first_cat);
+                } else {
+                    // Already inside the tree — open current container (if any) then advance.
+                    if let Some(ref cur) = self.file_explorer_panel.cursor_node.clone() {
+                        if cur.starts_with("cat:") || std::path::Path::new(cur.as_str()).is_dir() {
+                            auto_open_node(ctx, cur, &mut self.file_explorer_panel);
+                        }
+                    }
+                    // Recompute visible after any container open.
+                    let visible = crate::file_explorer_panel::collect_visible_node_paths_with_dirs(
+                        &self.files_panel.registry,
+                        &self.files_panel,
+                        &self.file_explorer_panel.open_catalogs,
+                        &self.file_explorer_panel.open_directories,
+                    );
+                    let current_idx = self
+                        .file_explorer_panel
+                        .cursor_node
+                        .as_ref()
+                        .and_then(|c| visible.iter().position(|p| p == c));
+                    let next = current_idx.map(|i| i + 1).unwrap_or(0);
+                    if next >= visible.len() {
+                        // Past the last node — exit tree, return to CommandField.
+                        self.file_explorer_panel.explorer_focused = false;
+                        self.file_explorer_panel.cursor_node = None;
+                        self.focus_stop = FocusStop::CommandField;
+                        self.command_field_focus_requested = true;
+                    } else {
+                        self.file_explorer_panel.cursor_node = visible.into_iter().nth(next);
+                    }
+                }
+            } else if tab_pressed {
                 self.focus_stop = self.focus_stop.next(menu_count, tab_count, pom_active);
                 if self.focus_stop == FocusStop::CommandField {
                     self.command_field_focus_requested = true;
@@ -490,7 +606,13 @@ impl eframe::App for WorkbenchShell {
             files_panel::FilesDialogState::NewCatalog(ref mut form) => {
                 let outcome =
                     catalog_manager_dialog::render(ctx, form, &mut self.files_panel.registry);
-                if outcome == DialogOutcome::Confirmed || outcome == DialogOutcome::Cancelled {
+                if outcome == DialogOutcome::Confirmed {
+                    // Persist immediately so a force-close does not lose the new catalog (B020).
+                    if let Some(session) = &self.session {
+                        session.save_catalog_registry(&self.files_panel.registry);
+                    }
+                    self.files_panel.dialog = files_panel::FilesDialogState::None;
+                } else if outcome == DialogOutcome::Cancelled {
                     self.files_panel.dialog = files_panel::FilesDialogState::None;
                 }
             }
@@ -515,6 +637,10 @@ impl eframe::App for WorkbenchShell {
                         // Req 13.5 — remove datasets for the deleted catalog
                         self.files_panel
                             .remove_catalog_datasets(&confirm_clone.name);
+                        // Persist immediately so a force-close does not lose the deletion (B020).
+                        if let Some(session) = &self.session {
+                            session.save_catalog_registry(&self.files_panel.registry);
+                        }
                     }
                 }
                 self.files_panel.dialog = files_panel::FilesDialogState::None;
@@ -535,6 +661,10 @@ impl eframe::App for WorkbenchShell {
                         Ok(params) => {
                             if let Some(cat) = self.files_panel.pending_alloc_catalog.take() {
                                 self.files_panel.add_dataset(&cat, params);
+                                // Persist immediately so datasets survive a force-close (B022).
+                                if let Some(session) = &self.session {
+                                    session.save_datasets(&self.files_panel.datasets);
+                                }
                             }
                         }
                         Err(e) => {
@@ -554,8 +684,14 @@ impl eframe::App for WorkbenchShell {
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         if let Some(session) = &self.session {
-            session.save(&self.tabs, self.zoom.offset().value(), self.key_bar_visible);
+            session.save(
+                &self.tabs,
+                self.zoom.offset().value(),
+                self.key_bar_visible,
+                self.file_explorer_panel.sidebar_width,
+            );
             session.save_catalog_registry(&self.files_panel.registry);
+            session.save_datasets(&self.files_panel.datasets);
         }
         self.runtime.block_on(self.app.shutdown());
     }

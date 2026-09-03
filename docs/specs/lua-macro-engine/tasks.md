@@ -1,4 +1,4 @@
-# Implementation Plan: Lua Macro Engine (`ff-macro`)
+﻿# Implementation Plan: Lua Macro Engine (`ff-macro`)
 
 ## Overview
 
@@ -10,217 +10,217 @@ This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-com
 
 ## Tasks
 
-- [ ] 1. Crate scaffolding and module structure
-  - [ ] 1.1 Create `crates/ff-macro/Cargo.toml` with dependencies (mlua with lua54+send features, ff-command, ff-document, ff-undo, ff-config, ff-logging, ff-plugin, thiserror, notify, serde, proptest dev-dep)
-  - [ ] 1.2 Create `crates/ff-macro/src/lib.rs` with module declarations and public API re-exports
-  - [ ] 1.3 Create module files: `engine.rs`, `runtime.rs`, `editor_api.rs`, `hooks.rs`, `hook_registry.rs`, `buffer_state.rs`, `discovery.rs`, `auto_reload.rs`, `commands.rs`, `security.rs`, `config.rs`, `transaction.rs`, `debug.rs`, `error.rs`
-  - [ ] 1.4 Add `ff-macro` to workspace `Cargo.toml` members list
+- [x] 1. Crate scaffolding and module structure
+  - [x] 1.1 Create `crates/ff-macro/Cargo.toml` with dependencies (mlua with lua54+send features, ff-command, ff-document, ff-undo, ff-config, ff-logging, ff-plugin, thiserror, notify, serde, proptest dev-dep)
+  - [x] 1.2 Create `crates/ff-macro/src/lib.rs` with module declarations and public API re-exports
+  - [x] 1.3 Create module files: `engine.rs`, `runtime.rs`, `editor_api.rs`, `hooks.rs`, `hook_registry.rs`, `buffer_state.rs`, `discovery.rs`, `auto_reload.rs`, `commands.rs`, `security.rs`, `config.rs`, `transaction.rs`, `debug.rs`, `error.rs`
+  - [x] 1.4 Add `ff-macro` to workspace `Cargo.toml` members list
   - Covers: Structural foundation for all requirements
 
-- [ ] 2. Error types and configuration model
-  - [ ] 2.1 Define `MacroError` enum with variants: RuntimeError, ScriptNotFound, SecurityDenied, InstructionLimitExceeded, MemoryLimitExceeded, RollbackFailed, ReloadError, InvalidLineNumber, ConfigError
-  - [ ] 2.2 Implement `Display` and `thiserror::Error` derives with descriptive messages including context (script name, line number, limits)
-  - [ ] 2.3 Define `MacroConfig` struct with fields: security_mode, directories, auto_reload, startup_script, debug_traceback, instruction_limit, memory_limit_mb, trusted_paths, auto_load_for extensions
-  - [ ] 2.4 Implement `MacroConfig::from_config(ff_config)` loading all `macro.*` configuration keys with defaults
-  - [ ] 2.5 Write unit tests for error display formatting and config loading with defaults
+- [x] 2. Error types and configuration model
+  - [x] 2.1 Define `MacroError` enum with variants: RuntimeError, ScriptNotFound, SecurityDenied, InstructionLimitExceeded, MemoryLimitExceeded, RollbackFailed, ReloadError, InvalidLineNumber, ConfigError
+  - [x] 2.2 Implement `Display` and `thiserror::Error` derives with descriptive messages including context (script name, line number, limits)
+  - [x] 2.3 Define `MacroConfig` struct with fields: security_mode, directories, auto_reload, startup_script, debug_traceback, instruction_limit, memory_limit_mb, trusted_paths, auto_load_for extensions
+  - [x] 2.4 Implement `MacroConfig::from_config(ff_config)` loading all `macro.*` configuration keys with defaults
+  - [x] 2.5 Write unit tests for error display formatting and config loading with defaults
   - Covers: Requirement 7 (AC 7.1, 7.7), Requirement 1 (AC 1.3, 1.4)
 
-- [ ] 3. Security mode gate
-  - [ ] 3.1 Define `SecurityMode` enum with variants: Disabled, Prompt, TrustedOnly, Enabled
-  - [ ] 3.2 Implement `SecurityGate` struct that evaluates whether a script path is permitted to execute under the current security mode
-  - [ ] 3.3 Implement `Disabled` mode: reject all execution with error message "Macro execution is disabled by security policy."
-  - [ ] 3.4 Implement `Prompt` mode: return a `SecurityDecision::NeedsPrompt` with options AllowOnce, AlwaysTrust, Deny
-  - [ ] 3.5 Implement `TrustedOnly` mode: allow only scripts in `macro.trusted_paths` or user-level Macro_Directories
-  - [ ] 3.6 Implement `Enabled` mode: allow all scripts without restriction
-  - [ ] 3.7 Implement restricted stdlib policy: block `os.execute`, `io.popen`, `loadfile` (arbitrary paths), `dofile` (arbitrary paths) for non-trusted scripts regardless of mode
-  - [ ] 3.8 Write unit tests for each security mode decision path and restricted function blocking
+- [x] 3. Security mode gate
+  - [x] 3.1 Define `SecurityMode` enum with variants: Disabled, Prompt, TrustedOnly, Enabled
+  - [x] 3.2 Implement `SecurityGate` struct that evaluates whether a script path is permitted to execute under the current security mode
+  - [x] 3.3 Implement `Disabled` mode: reject all execution with error message "Macro execution is disabled by security policy."
+  - [x] 3.4 Implement `Prompt` mode: return a `SecurityDecision::NeedsPrompt` with options AllowOnce, AlwaysTrust, Deny
+  - [x] 3.5 Implement `TrustedOnly` mode: allow only scripts in `macro.trusted_paths` or user-level Macro_Directories
+  - [x] 3.6 Implement `Enabled` mode: allow all scripts without restriction
+  - [x] 3.7 Implement restricted stdlib policy: block `os.execute`, `io.popen`, `loadfile` (arbitrary paths), `dofile` (arbitrary paths) for non-trusted scripts regardless of mode
+  - [x] 3.8 Write unit tests for each security mode decision path and restricted function blocking
   - Covers: Requirement 7 (AC 7.1, 7.2, 7.3, 7.4, 7.5, 7.6)
 
-- [ ] 4. Lua runtime initialization
-  - [ ] 4.1 Implement `LuaRuntimeBuilder` that creates an `mlua::Lua` instance with Lua 5.4 and configurable standard library loading
-  - [ ] 4.2 Implement standard library filtering: always load `base`, `string`, `table`, `math`, `utf8`, `coroutine`; conditionally load `io`, `os`, `debug` only when SecurityMode is `Enabled`
-  - [ ] 4.3 Implement configurable instruction count limit (default 10M) using mlua's hook mechanism
-  - [ ] 4.4 Implement configurable memory limit (default 64 MB) using mlua's memory limit API
-  - [ ] 4.5 Implement limit violation handling: terminate script, generate ScriptError with violation details, signal transaction rollback
-  - [ ] 4.6 Implement single-instance lifecycle: runtime created once at engine startup, reused across invocations, global state preserved
-  - [ ] 4.7 Write unit tests for runtime creation, stdlib availability by mode, instruction limit enforcement, memory limit enforcement
+- [x] 4. Lua runtime initialization
+  - [x] 4.1 Implement `LuaRuntimeBuilder` that creates an `mlua::Lua` instance with Lua 5.4 and configurable standard library loading
+  - [x] 4.2 Implement standard library filtering: always load `base`, `string`, `table`, `math`, `utf8`, `coroutine`; conditionally load `io`, `os`, `debug` only when SecurityMode is `Enabled`
+  - [x] 4.3 Implement configurable instruction count limit (default 10M) using mlua's hook mechanism
+  - [x] 4.4 Implement configurable memory limit (default 64 MB) using mlua's memory limit API
+  - [x] 4.5 Implement limit violation handling: terminate script, generate ScriptError with violation details, signal transaction rollback
+  - [x] 4.6 Implement single-instance lifecycle: runtime created once at engine startup, reused across invocations, global state preserved
+  - [x] 4.7 Write unit tests for runtime creation, stdlib availability by mode, instruction limit enforcement, memory limit enforcement
   - Covers: Requirement 1 (AC 1.1, 1.2, 1.3, 1.4, 1.5, 1.6)
 
-- [ ] 5. LuaMacroEngine core struct and plugin registration
-  - [ ] 5.1 Define `LuaMacroEngine` struct owning the Lua runtime, hook registry, buffer state map, config, and security gate
-  - [ ] 5.2 Implement `LuaMacroEngine::new(config: MacroConfig) -> Result<Self, MacroError>` performing full initialization
-  - [ ] 5.3 Implement `MacroCapability` trait for plugin registration via `ff-plugin`
-  - [ ] 5.4 Implement plugin lifecycle methods: `on_activate()`, `on_deactivate()`, `on_shutdown()` managing engine state
-  - [ ] 5.5 Write unit tests for engine construction, plugin capability registration, and lifecycle transitions
+- [x] 5. LuaMacroEngine core struct and plugin registration
+  - [x] 5.1 Define `LuaMacroEngine` struct owning the Lua runtime, hook registry, buffer state map, config, and security gate
+  - [x] 5.2 Implement `LuaMacroEngine::new(config: MacroConfig) -> Result<Self, MacroError>` performing full initialization
+  - [x] 5.3 Implement `MacroCapability` trait for plugin registration via `ff-plugin`
+  - [x] 5.4 Implement plugin lifecycle methods: `on_activate()`, `on_deactivate()`, `on_shutdown()` managing engine state
+  - [x] 5.5 Write unit tests for engine construction, plugin capability registration, and lifecycle transitions
   - Covers: Requirement 1 (AC 1.6, 1.7)
 
-- [ ] 6. Editor API — buffer content functions
-  - [ ] 6.1 Register Lua global table `editor` in the runtime with all required API functions
-  - [ ] 6.2 Implement `editor.lines()` returning total line count as Lua integer
-  - [ ] 6.3 Implement `editor.get_line(n)` returning 1-based line content as Lua string (excluding terminator)
-  - [ ] 6.4 Implement `editor.set_line(n, text)` replacing line content and recording change in Macro_Transaction
-  - [ ] 6.5 Implement `editor.insert_line(n, text)` inserting before line n, shifting subsequent lines, recording in transaction
-  - [ ] 6.6 Implement `editor.delete_line(n)` removing line n, shifting subsequent lines up, recording in transaction
-  - [ ] 6.7 Implement `editor.tag(n)` setting the tagged metadata flag on line n
-  - [ ] 6.8 Implement out-of-range line number validation: raise Lua error with descriptive message including invalid index and valid range
-  - [ ] 6.9 Write unit tests for each buffer function with valid inputs and boundary/error cases
+- [x] 6. Editor API — buffer content functions
+  - [x] 6.1 Register Lua global table `editor` in the runtime with all required API functions
+  - [x] 6.2 Implement `editor.lines()` returning total line count as Lua integer
+  - [x] 6.3 Implement `editor.get_line(n)` returning 1-based line content as Lua string (excluding terminator)
+  - [x] 6.4 Implement `editor.set_line(n, text)` replacing line content and recording change in Macro_Transaction
+  - [x] 6.5 Implement `editor.insert_line(n, text)` inserting before line n, shifting subsequent lines, recording in transaction
+  - [x] 6.6 Implement `editor.delete_line(n)` removing line n, shifting subsequent lines up, recording in transaction
+  - [x] 6.7 Implement `editor.tag(n)` setting the tagged metadata flag on line n
+  - [x] 6.8 Implement out-of-range line number validation: raise Lua error with descriptive message including invalid index and valid range
+  - [x] 6.9 Write unit tests for each buffer function with valid inputs and boundary/error cases
   - Covers: Requirement 2 (AC 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.11)
 
-- [ ] 7. Editor API — command dispatch and state queries
-  - [ ] 7.1 Implement `editor.command(str)` dispatching through the command framework's Scripting_Bridge, returning boolean success
-  - [ ] 7.2 Implement `editor.cursor_line()` returning 1-based cursor line number
-  - [ ] 7.3 Implement `editor.cursor_col()` returning 1-based cursor column
-  - [ ] 7.4 Implement `editor.selection()` returning start_line, start_col, end_line, end_col or nil if no selection
-  - [ ] 7.5 Implement `editor.language()` returning detected language name as string
-  - [ ] 7.6 Implement `editor.file_path()` returning absolute path of active buffer or nil for untitled
-  - [ ] 7.7 Implement `editor.config(key)` reading configuration value via ff-config and returning appropriate Lua type
-  - [ ] 7.8 Write unit tests for command dispatch integration, state query return values, and nil cases
+- [x] 7. Editor API — command dispatch and state queries
+  - [x] 7.1 Implement `editor.command(str)` dispatching through the command framework's Scripting_Bridge, returning boolean success
+  - [x] 7.2 Implement `editor.cursor_line()` returning 1-based cursor line number
+  - [x] 7.3 Implement `editor.cursor_col()` returning 1-based cursor column
+  - [x] 7.4 Implement `editor.selection()` returning start_line, start_col, end_line, end_col or nil if no selection
+  - [x] 7.5 Implement `editor.language()` returning detected language name as string
+  - [x] 7.6 Implement `editor.file_path()` returning absolute path of active buffer or nil for untitled
+  - [x] 7.7 Implement `editor.config(key)` reading configuration value via ff-config and returning appropriate Lua type
+  - [x] 7.8 Write unit tests for command dispatch integration, state query return values, and nil cases
   - Covers: Requirement 2 (AC 2.8, 2.9, 2.10)
 
-- [ ] 8. Event hook registry
-  - [ ] 8.1 Define `HookRegistry` struct with internal storage mapping event names to ordered handler lists
-  - [ ] 8.2 Define `HookEvent` enum with variants: OnOpen, OnBeforeSave, OnAfterSave, OnClose, OnSwitchBuffer, OnChar, OnKey, OnCommand, OnError
-  - [ ] 8.3 Define `HookHandler` struct containing: handler function reference, source script path, registration order, cancellable flag
-  - [ ] 8.4 Implement `register(event: HookEvent, handler: HookHandler)` adding handler in script-load order
-  - [ ] 8.5 Implement `unregister_by_script(script_path: &Path)` removing all handlers from a specific script
-  - [ ] 8.6 Implement `handlers_for(event: &HookEvent) -> &[HookHandler]` returning ordered handler list
-  - [ ] 8.7 Write unit tests for registration, ordering, per-script unregistration, and empty event queries
+- [x] 8. Event hook registry
+  - [x] 8.1 Define `HookRegistry` struct with internal storage mapping event names to ordered handler lists
+  - [x] 8.2 Define `HookEvent` enum with variants: OnOpen, OnBeforeSave, OnAfterSave, OnClose, OnSwitchBuffer, OnChar, OnKey, OnCommand, OnError
+  - [x] 8.3 Define `HookHandler` struct containing: handler function reference, source script path, registration order, cancellable flag
+  - [x] 8.4 Implement `register(event: HookEvent, handler: HookHandler)` adding handler in script-load order
+  - [x] 8.5 Implement `unregister_by_script(script_path: &Path)` removing all handlers from a specific script
+  - [x] 8.6 Implement `handlers_for(event: &HookEvent) -> &[HookHandler]` returning ordered handler list
+  - [x] 8.7 Write unit tests for registration, ordering, per-script unregistration, and empty event queries
   - Covers: Requirement 3 (AC 3.2, 3.3)
 
-- [ ] 9. Event hook discovery and invocation
-  - [ ] 9.1 Implement automatic discovery of global Lua functions matching hook names after script load (e.g., `function OnChar(ch)` → register as OnChar handler)
-  - [ ] 9.2 Implement hook invocation loop: invoke all handlers in load order, short-circuit on `false` for cancellable hooks
-  - [ ] 9.3 Implement `OnBeforeSave` as cancellable: returning false cancels save and displays status bar message identifying the cancelling macro
-  - [ ] 9.4 Implement `OnCommand` as cancellable: returning false prevents command execution
-  - [ ] 9.5 Implement `OnKey` as cancellable: returning false suppresses the default key action
-  - [ ] 9.6 Implement `OnChar` as non-cancellable: fires after character insertion, provides single-char string
-  - [ ] 9.7 Implement `OnOpen(file_path)` firing after file is fully loaded into buffer
-  - [ ] 9.8 Implement `OnClose(file_path)` firing before buffer is discarded
-  - [ ] 9.9 Implement `OnSwitchBuffer(file_path)` firing on tab/buffer switch with new buffer path
-  - [ ] 9.10 Implement `OnAfterSave(file_path)` firing after successful save
-  - [ ] 9.11 Implement `OnError(error_message)` firing after any Script_Error occurs
-  - [ ] 9.12 Write unit tests for hook discovery, cancellable vs non-cancellable behaviour, multi-handler ordering, and error hook cascading
+- [x] 9. Event hook discovery and invocation
+  - [x] 9.1 Implement automatic discovery of global Lua functions matching hook names after script load (e.g., `function OnChar(ch)` → register as OnChar handler)
+  - [x] 9.2 Implement hook invocation loop: invoke all handlers in load order, short-circuit on `false` for cancellable hooks
+  - [x] 9.3 Implement `OnBeforeSave` as cancellable: returning false cancels save and displays status bar message identifying the cancelling macro
+  - [x] 9.4 Implement `OnCommand` as cancellable: returning false prevents command execution
+  - [x] 9.5 Implement `OnKey` as cancellable: returning false suppresses the default key action
+  - [x] 9.6 Implement `OnChar` as non-cancellable: fires after character insertion, provides single-char string
+  - [x] 9.7 Implement `OnOpen(file_path)` firing after file is fully loaded into buffer
+  - [x] 9.8 Implement `OnClose(file_path)` firing before buffer is discarded
+  - [x] 9.9 Implement `OnSwitchBuffer(file_path)` firing on tab/buffer switch with new buffer path
+  - [x] 9.10 Implement `OnAfterSave(file_path)` firing after successful save
+  - [x] 9.11 Implement `OnError(error_message)` firing after any Script_Error occurs
+  - [x] 9.12 Write unit tests for hook discovery, cancellable vs non-cancellable behaviour, multi-handler ordering, and error hook cascading
   - Covers: Requirement 3 (AC 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10, 3.11)
 
-- [ ] 10. Per-buffer state management
-  - [ ] 10.1 Implement `BufferStateMap` struct maintaining a `HashMap<BufferId, mlua::Table>` of per-buffer Lua tables
-  - [ ] 10.2 Implement creation of fresh empty Lua table when a new buffer is opened
-  - [ ] 10.3 Implement buffer switch: save departing buffer's `buffer` global, restore arriving buffer's table as the global `buffer`
-  - [ ] 10.4 Implement buffer close: discard associated table and release memory
-  - [ ] 10.5 Implement nil `buffer` global during engine startup (before any buffer is active), ensuring scripts accessing it receive nil without crash
-  - [ ] 10.6 Implement timing guarantee: new buffer's table is active before `OnSwitchBuffer` handlers execute
-  - [ ] 10.7 Implement preservation of buffer tables across script auto-reloads
-  - [ ] 10.8 Write unit tests for table creation, switch lifecycle, close cleanup, nil-at-startup, and reload preservation
+- [x] 10. Per-buffer state management
+  - [x] 10.1 Implement `BufferStateMap` struct maintaining a `HashMap<BufferId, mlua::Table>` of per-buffer Lua tables
+  - [x] 10.2 Implement creation of fresh empty Lua table when a new buffer is opened
+  - [x] 10.3 Implement buffer switch: save departing buffer's `buffer` global, restore arriving buffer's table as the global `buffer`
+  - [x] 10.4 Implement buffer close: discard associated table and release memory
+  - [x] 10.5 Implement nil `buffer` global during engine startup (before any buffer is active), ensuring scripts accessing it receive nil without crash
+  - [x] 10.6 Implement timing guarantee: new buffer's table is active before `OnSwitchBuffer` handlers execute
+  - [x] 10.7 Implement preservation of buffer tables across script auto-reloads
+  - [x] 10.8 Write unit tests for table creation, switch lifecycle, close cleanup, nil-at-startup, and reload preservation
   - Covers: Requirement 4 (AC 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7)
 
-- [ ] 11. Macro transaction integration
-  - [ ] 11.1 Implement `MacroTransaction` struct wrapping ff-undo transaction lifecycle for a single macro invocation
-  - [ ] 11.2 Implement automatic transaction begin when MACRO/EXEC/RUN execution starts
-  - [ ] 11.3 Implement automatic transaction commit on successful completion (all changes become one undo unit)
-  - [ ] 11.4 Implement automatic transaction rollback on Lua runtime error (all partial changes reverted)
-  - [ ] 11.5 Implement rollback failure handling: log ERROR-level diagnostic, display user warning about manual undo
-  - [ ] 11.6 Write unit tests for transaction commit on success, rollback on error, and rollback failure path
+- [x] 11. Macro transaction integration
+  - [x] 11.1 Implement `MacroTransaction` struct wrapping ff-undo transaction lifecycle for a single macro invocation
+  - [x] 11.2 Implement automatic transaction begin when MACRO/EXEC/RUN execution starts
+  - [x] 11.3 Implement automatic transaction commit on successful completion (all changes become one undo unit)
+  - [x] 11.4 Implement automatic transaction rollback on Lua runtime error (all partial changes reverted)
+  - [x] 11.5 Implement rollback failure handling: log ERROR-level diagnostic, display user warning about manual undo
+  - [x] 11.6 Write unit tests for transaction commit on success, rollback on error, and rollback failure path
   - Covers: Requirement 5 (AC 5.4), Requirement 6 (AC 6.1, 6.4, 6.7)
 
-- [ ] 12. MACRO, EXEC, and RUN command handlers
-  - [ ] 12.1 Implement `MacroCommandHandler` for `MACRO <name>`: locate named `.lua` file in configured directories, load and execute
-  - [ ] 12.2 Implement `ExecCommandHandler` for `EXEC <lua_expression>`: evaluate inline Lua expression via dostring, display return value in status bar
-  - [ ] 12.3 Implement `RunCommandHandler` for `RUN <path>`: load and execute .lua file at absolute or workspace-relative path
-  - [ ] 12.4 Implement macro name resolution: search directories in priority order, match by filename without extension
-  - [ ] 12.5 Implement error reporting for `MACRO`: "Macro not found: <name>" when name doesn't resolve
-  - [ ] 12.6 Implement error reporting for `RUN`: "Cannot open macro file: <path>" when path is invalid
-  - [ ] 12.7 Register commands with framework: `"macro.run_named"`, `"macro.exec_inline"`, `"macro.run_file"` — invocable from shortcuts, menus, and macros
-  - [ ] 12.8 Write unit tests for name resolution, inline execution, path execution, error messages, and command registration
+- [x] 12. MACRO, EXEC, and RUN command handlers
+  - [x] 12.1 Implement `MacroCommandHandler` for `MACRO <name>`: locate named `.lua` file in configured directories, load and execute
+  - [x] 12.2 Implement `ExecCommandHandler` for `EXEC <lua_expression>`: evaluate inline Lua expression via dostring, display return value in status bar
+  - [x] 12.3 Implement `RunCommandHandler` for `RUN <path>`: load and execute .lua file at absolute or workspace-relative path
+  - [x] 12.4 Implement macro name resolution: search directories in priority order, match by filename without extension
+  - [x] 12.5 Implement error reporting for `MACRO`: "Macro not found: <name>" when name doesn't resolve
+  - [x] 12.6 Implement error reporting for `RUN`: "Cannot open macro file: <path>" when path is invalid
+  - [x] 12.7 Register commands with framework: `"macro.run_named"`, `"macro.exec_inline"`, `"macro.run_file"` — invocable from shortcuts, menus, and macros
+  - [x] 12.8 Write unit tests for name resolution, inline execution, path execution, error messages, and command registration
   - Covers: Requirement 5 (AC 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7)
 
-- [ ] 13. Macro error handling and rollback
-  - [ ] 13.1 Implement Lua runtime error capture: catch all errors from macro execution without panic or crash
-  - [ ] 13.2 Implement error message formatting: include macro name/expression, Lua error message, and conditional stack traceback
-  - [ ] 13.3 Implement error propagation to status bar display
-  - [ ] 13.4 Implement runtime resilience: subsequent macro invocations continue functioning after any error
-  - [ ] 13.5 Implement cancellable hook error policy: on handler error, treat as returning `true` (do not cancel), report error, continue invoking subsequent handlers
-  - [ ] 13.6 Implement `OnError(error_message)` hook firing after any macro error
-  - [ ] 13.7 Implement debug traceback inclusion when `macro.debug_traceback = true`
-  - [ ] 13.8 Write unit tests for error capture, message formatting, runtime continuity, hook error policy, and OnError firing
+- [x] 13. Macro error handling and rollback
+  - [x] 13.1 Implement Lua runtime error capture: catch all errors from macro execution without panic or crash
+  - [x] 13.2 Implement error message formatting: include macro name/expression, Lua error message, and conditional stack traceback
+  - [x] 13.3 Implement error propagation to status bar display
+  - [x] 13.4 Implement runtime resilience: subsequent macro invocations continue functioning after any error
+  - [x] 13.5 Implement cancellable hook error policy: on handler error, treat as returning `true` (do not cancel), report error, continue invoking subsequent handlers
+  - [x] 13.6 Implement `OnError(error_message)` hook firing after any macro error
+  - [x] 13.7 Implement debug traceback inclusion when `macro.debug_traceback = true`
+  - [x] 13.8 Write unit tests for error capture, message formatting, runtime continuity, hook error policy, and OnError firing
   - Covers: Requirement 6 (AC 6.1, 6.2, 6.3, 6.4, 6.5, 6.6)
 
-- [ ] 14. Macro directory scanning and discovery
-  - [ ] 14.1 Implement `MacroDiscovery` struct managing configured Macro_Directories and discovered script inventory
-  - [ ] 14.2 Implement startup scan: discover all `.lua` files recursively up to 3 directory levels
-  - [ ] 14.3 Implement name keying: register scripts by filename without extension (e.g., `format_cobol.lua` → `"format_cobol"`)
-  - [ ] 14.4 Implement directory priority: workspace macros override user macros on name collision, log DEBUG message for shadowing
-  - [ ] 14.5 Implement default directory configuration: user-level `~/.config/ffworkbench/macros/` and workspace-level `macros/` subdirectory
-  - [ ] 14.6 Implement startup script execution: run `macro.startup_script` once at initialization before any buffer is loaded
-  - [ ] 14.7 Implement per-extension auto-load: execute configured script when file with matching extension is opened
-  - [ ] 14.8 Implement hot-discovery: detect new `.lua` files appearing in monitored directories within 5 seconds
-  - [ ] 14.9 Write unit tests for recursive scan, name resolution, priority shadowing, startup script, extension auto-load, and hot-discovery
+- [x] 14. Macro directory scanning and discovery
+  - [x] 14.1 Implement `MacroDiscovery` struct managing configured Macro_Directories and discovered script inventory
+  - [x] 14.2 Implement startup scan: discover all `.lua` files recursively up to 3 directory levels
+  - [x] 14.3 Implement name keying: register scripts by filename without extension (e.g., `format_cobol.lua` → `"format_cobol"`)
+  - [x] 14.4 Implement directory priority: workspace macros override user macros on name collision, log DEBUG message for shadowing
+  - [x] 14.5 Implement default directory configuration: user-level `~/.config/ffworkbench/macros/` and workspace-level `macros/` subdirectory
+  - [x] 14.6 Implement startup script execution: run `macro.startup_script` once at initialization before any buffer is loaded
+  - [x] 14.7 Implement per-extension auto-load: execute configured script when file with matching extension is opened
+  - [x] 14.8 Implement hot-discovery: detect new `.lua` files appearing in monitored directories within 5 seconds
+  - [x] 14.9 Write unit tests for recursive scan, name resolution, priority shadowing, startup script, extension auto-load, and hot-discovery
   - Covers: Requirement 9 (AC 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7)
 
-- [ ] 15. Auto-reload on file change
-  - [ ] 15.1 Implement file watcher integration for all loaded macro script paths using `notify` crate (or ff-vfs watcher)
-  - [ ] 15.2 Implement change detection: re-execute modified script within 2 seconds of disk change
-  - [ ] 15.3 Implement hook cleanup on reload: unregister all event hooks from the specific reloading script before re-execution
-  - [ ] 15.4 Implement fresh hook registration: re-run script to register new hooks, preventing duplicate handlers
-  - [ ] 15.5 Implement reload error handling: retain previous version's hooks on failure, display error in status bar, log WARN diagnostic
-  - [ ] 15.6 Implement per-buffer state preservation: `buffer` tables unaffected by script reloads
-  - [ ] 15.7 Implement `macro.auto_reload` configuration gate: when disabled, no file monitoring occurs
-  - [ ] 15.8 Write unit tests for reload trigger, hook cleanup, error retention, buffer state preservation, and config gate
+- [x] 15. Auto-reload on file change
+  - [x] 15.1 Implement file watcher integration for all loaded macro script paths using `notify` crate (or ff-vfs watcher)
+  - [x] 15.2 Implement change detection: re-execute modified script within 2 seconds of disk change
+  - [x] 15.3 Implement hook cleanup on reload: unregister all event hooks from the specific reloading script before re-execution
+  - [x] 15.4 Implement fresh hook registration: re-run script to register new hooks, preventing duplicate handlers
+  - [x] 15.5 Implement reload error handling: retain previous version's hooks on failure, display error in status bar, log WARN diagnostic
+  - [x] 15.6 Implement per-buffer state preservation: `buffer` tables unaffected by script reloads
+  - [x] 15.7 Implement `macro.auto_reload` configuration gate: when disabled, no file monitoring occurs
+  - [x] 15.8 Write unit tests for reload trigger, hook cleanup, error retention, buffer state preservation, and config gate
   - Covers: Requirement 8 (AC 8.1, 8.2, 8.3, 8.4, 8.5, 8.6)
 
-- [ ] 16. Script debugging support
-  - [ ] 16.1 Implement `trace(message)` Lua global function: output to diagnostic log at INFO level with calling script name and line number prefix
-  - [ ] 16.2 Implement `print(...)` Lua global function: concatenate arguments with tabs, output to output panel or diagnostic log
-  - [ ] 16.3 Implement execution timing: measure and log duration of MACRO/EXEC/RUN invocations at DEBUG level
-  - [ ] 16.4 Implement EXEC return value display: format with `tostring()` and show in status bar
-  - [ ] 16.5 Implement instruction limit exceeded reporting: include instruction count in error message
-  - [ ] 16.6 Implement full stack traceback when `macro.debug_traceback = true`: include source file paths and line numbers
-  - [ ] 16.7 Write unit tests for trace output, print output, timing measurement, EXEC display, and traceback content
+- [x] 16. Script debugging support
+  - [x] 16.1 Implement `trace(message)` Lua global function: output to diagnostic log at INFO level with calling script name and line number prefix
+  - [x] 16.2 Implement `print(...)` Lua global function: concatenate arguments with tabs, output to output panel or diagnostic log
+  - [x] 16.3 Implement execution timing: measure and log duration of MACRO/EXEC/RUN invocations at DEBUG level
+  - [x] 16.4 Implement EXEC return value display: format with `tostring()` and show in status bar
+  - [x] 16.5 Implement instruction limit exceeded reporting: include instruction count in error message
+  - [x] 16.6 Implement full stack traceback when `macro.debug_traceback = true`: include source file paths and line numbers
+  - [x] 16.7 Write unit tests for trace output, print output, timing measurement, EXEC display, and traceback content
   - Covers: Requirement 10 (AC 10.1, 10.2, 10.3, 10.4, 10.5, 10.6)
 
-- [ ] 17. Configuration integration
-  - [ ] 17.1 Wire `macro.security_mode` to SecurityGate with default `Prompt`
-  - [ ] 17.2 Wire `macro.directories` array to MacroDiscovery with default user + workspace directories
-  - [ ] 17.3 Wire `macro.auto_reload` boolean to auto-reload system with default `true`
-  - [ ] 17.4 Wire `macro.startup_script` path to startup execution
-  - [ ] 17.5 Wire `macro.debug_traceback` boolean to error formatting
-  - [ ] 17.6 Wire `macro.instruction_limit` integer to runtime hook with default 10_000_000
-  - [ ] 17.7 Wire `macro.memory_limit_mb` integer to runtime memory limit with default 64
-  - [ ] 17.8 Wire `macro.trusted_paths` array to security gate for TrustedOnly mode
-  - [ ] 17.9 Wire `macro.auto_load_for.<extension>` map to per-extension auto-load
-  - [ ] 17.10 Write unit tests for each config key wiring, default values, and invalid config handling
+- [x] 17. Configuration integration
+  - [x] 17.1 Wire `macro.security_mode` to SecurityGate with default `Prompt`
+  - [x] 17.2 Wire `macro.directories` array to MacroDiscovery with default user + workspace directories
+  - [x] 17.3 Wire `macro.auto_reload` boolean to auto-reload system with default `true`
+  - [x] 17.4 Wire `macro.startup_script` path to startup execution
+  - [x] 17.5 Wire `macro.debug_traceback` boolean to error formatting
+  - [x] 17.6 Wire `macro.instruction_limit` integer to runtime hook with default 10_000_000
+  - [x] 17.7 Wire `macro.memory_limit_mb` integer to runtime memory limit with default 64
+  - [x] 17.8 Wire `macro.trusted_paths` array to security gate for TrustedOnly mode
+  - [x] 17.9 Wire `macro.auto_load_for.<extension>` map to per-extension auto-load
+  - [x] 17.10 Write unit tests for each config key wiring, default values, and invalid config handling
   - Covers: Requirement 1 (AC 1.3, 1.4), Requirement 7 (AC 7.7), Requirement 8 (AC 8.1, 8.5), Requirement 9 (AC 9.1, 9.5, 9.6)
 
-- [ ] 18. Command registration and integration wiring
-  - [ ] 18.1 Register `macro.run_named` command (MACRO) with command framework including metadata (display name, category, description)
-  - [ ] 18.2 Register `macro.exec_inline` command (EXEC) with command framework
-  - [ ] 18.3 Register `macro.run_file` command (RUN) with command framework
-  - [ ] 18.4 Wire OnChar/OnKey hooks to editor keypress pipeline integration point
-  - [ ] 18.5 Wire OnOpen/OnClose/OnSwitchBuffer hooks to document lifecycle events
-  - [ ] 18.6 Wire OnBeforeSave/OnAfterSave hooks to file save pipeline
-  - [ ] 18.7 Wire OnCommand hook to command dispatch pre-execution point
-  - [ ] 18.8 Write integration tests for command invocation end-to-end and hook firing from lifecycle events
+- [x] 18. Command registration and integration wiring
+  - [x] 18.1 Register `macro.run_named` command (MACRO) with command framework including metadata (display name, category, description)
+  - [x] 18.2 Register `macro.exec_inline` command (EXEC) with command framework
+  - [x] 18.3 Register `macro.run_file` command (RUN) with command framework
+  - [x] 18.4 Wire OnChar/OnKey hooks to editor keypress pipeline integration point
+  - [x] 18.5 Wire OnOpen/OnClose/OnSwitchBuffer hooks to document lifecycle events
+  - [x] 18.6 Wire OnBeforeSave/OnAfterSave hooks to file save pipeline
+  - [x] 18.7 Wire OnCommand hook to command dispatch pre-execution point
+  - [x] 18.8 Write integration tests for command invocation end-to-end and hook firing from lifecycle events
   - Covers: Requirement 5 (AC 5.7), Requirement 3 (AC 3.1)
 
-- [ ] 19. Property-based tests
-  - [ ] 19.1 Write PBT: Editor API line number validation property
-  - [ ] 19.2 Write PBT: Security mode decision consistency property
-  - [ ] 19.3 Write PBT: Hook invocation order preservation property
-  - [ ] 19.4 Write PBT: Per-buffer state isolation property
-  - [ ] 19.5 Write PBT: Macro transaction atomicity property
-  - [ ] 19.6 Write PBT: Instruction limit enforcement property
-  - [ ] 19.7 Write PBT: Directory scan name resolution property
-  - [ ] 19.8 Write PBT: Auto-reload hook deduplication property
+- [x] 19. Property-based tests
+  - [x] 19.1 Write PBT: Editor API line number validation property
+  - [x] 19.2 Write PBT: Security mode decision consistency property
+  - [x] 19.3 Write PBT: Hook invocation order preservation property
+  - [x] 19.4 Write PBT: Per-buffer state isolation property
+  - [x] 19.5 Write PBT: Macro transaction atomicity property
+  - [x] 19.6 Write PBT: Instruction limit enforcement property
+  - [x] 19.7 Write PBT: Directory scan name resolution property
+  - [x] 19.8 Write PBT: Auto-reload hook deduplication property
   - Covers: All requirements (property-based validation)
 
-- [ ] 20. Integration tests
-  - [ ] 20.1 Write integration test: full macro lifecycle — load script, execute, verify buffer modifications, undo all changes
-  - [ ] 20.2 Write integration test: hook cascade — register multiple OnBeforeSave handlers, verify ordering and cancellation
-  - [ ] 20.3 Write integration test: per-buffer state across tab switches — set state, switch, verify isolation, switch back, verify restoration
-  - [ ] 20.4 Write integration test: security gate — attempt execution in each mode, verify allow/deny decisions
-  - [ ] 20.5 Write integration test: error rollback — macro that modifies 5 lines then errors, verify all 5 changes reverted
-  - [ ] 20.6 Write integration test: auto-reload — modify script on disk, verify hooks re-registered without duplication
-  - [ ] 20.7 Write integration test: EXEC command — evaluate expressions, verify return value display
-  - [ ] 20.8 Write integration test: startup script and per-extension auto-load execution order
+- [x] 20. Integration tests
+  - [x] 20.1 Write integration test: full macro lifecycle — load script, execute, verify buffer modifications, undo all changes
+  - [x] 20.2 Write integration test: hook cascade — register multiple OnBeforeSave handlers, verify ordering and cancellation
+  - [x] 20.3 Write integration test: per-buffer state across tab switches — set state, switch, verify isolation, switch back, verify restoration
+  - [x] 20.4 Write integration test: security gate — attempt execution in each mode, verify allow/deny decisions
+  - [x] 20.5 Write integration test: error rollback — macro that modifies 5 lines then errors, verify all 5 changes reverted
+  - [x] 20.6 Write integration test: auto-reload — modify script on disk, verify hooks re-registered without duplication
+  - [x] 20.7 Write integration test: EXEC command — evaluate expressions, verify return value display
+  - [x] 20.8 Write integration test: startup script and per-extension auto-load execution order
   - Covers: All requirements (end-to-end validation)
 
 ---

@@ -1,4 +1,4 @@
-# Implementation Plan: Document Model (`ff-document-model`)
+﻿# Implementation Plan: Document Model (`ff-document-model`)
 
 ## Overview
 
@@ -10,180 +10,180 @@ This is a **Wave 4 (Core Editor)** sub-project that depends on Wave 3 (`ff-vfs`)
 
 ## Tasks
 
-- [ ] 1. Crate scaffolding and module structure
-  - [ ] 1.1 Create `crates/ff-document-model/Cargo.toml` with dependencies (thiserror, tokio, arc-swap, proptest dev-dep) and dependency on `ff-vfs` and `ff-logging`
-  - [ ] 1.2 Create `crates/ff-document-model/src/lib.rs` with module declarations and public API re-exports
-  - [ ] 1.3 Create module files: `gap_buffer.rs`, `text_buffer.rs`, `line_index.rs`, `sparse_line_index.rs`, `streaming.rs`, `document.rs`, `handle.rs`, `watcher.rs`, `encoding_nav.rs`, `viewport.rs`, `save_point.rs`, `line_end.rs`, `error.rs`, `types.rs`
-  - [ ] 1.4 Add `ff-document-model` to workspace `Cargo.toml` members list
+- [x] 1. Crate scaffolding and module structure
+  - [x] 1.1 Create `crates/ff-document-model/Cargo.toml` with dependencies (thiserror, tokio, arc-swap, proptest dev-dep) and dependency on `ff-vfs` and `ff-logging`
+  - [x] 1.2 Create `crates/ff-document-model/src/lib.rs` with module declarations and public API re-exports
+  - [x] 1.3 Create module files: `gap_buffer.rs`, `text_buffer.rs`, `line_index.rs`, `sparse_line_index.rs`, `streaming.rs`, `document.rs`, `handle.rs`, `watcher.rs`, `encoding_nav.rs`, `viewport.rs`, `save_point.rs`, `line_end.rs`, `error.rs`, `types.rs`
+  - [x] 1.4 Add `ff-document-model` to workspace `Cargo.toml` members list
   - Covers: Structural foundation for all requirements
 
-- [ ] 2. Core newtypes and shared types
-  - [ ] 2.1 Define `BytePosition(u64)` newtype with arithmetic ops and Display
-  - [ ] 2.2 Define `LineNumber(u64)` newtype with 0-based internal storage and 1-based display conversion
-  - [ ] 2.3 Define `CharacterExtracted { code_point: char, byte_width: u8 }` struct
-  - [ ] 2.4 Define `LineEndMode` enum (Default, Unicode) with associated utility methods
-  - [ ] 2.5 Define `LoadingState` enum (NotStarted, InProgress { bytes_loaded, estimated_total }, Complete, Failed { error })
-  - [ ] 2.6 Define `SplitView` struct with two-segment access (before-gap slice, after-gap slice)
-  - [ ] 2.7 Write unit tests for newtype arithmetic, display formatting, and conversions
+- [x] 2. Core newtypes and shared types
+  - [x] 2.1 Define `BytePosition(u64)` newtype with arithmetic ops and Display
+  - [x] 2.2 Define `LineNumber(u64)` newtype with 0-based internal storage and 1-based display conversion
+  - [x] 2.3 Define `CharacterExtracted { code_point: char, byte_width: u8 }` struct
+  - [x] 2.4 Define `LineEndMode` enum (Default, Unicode) with associated utility methods
+  - [x] 2.5 Define `LoadingState` enum (NotStarted, InProgress { bytes_loaded, estimated_total }, Complete, Failed { error })
+  - [x] 2.6 Define `SplitView` struct with two-segment access (before-gap slice, after-gap slice)
+  - [x] 2.7 Write unit tests for newtype arithmetic, display formatting, and conversions
   - Covers: Requirement 1 (AC 1.2), Requirement 3 (AC 3.7), Requirement 4 (AC 4.4), Requirement 5 (AC 5.1), Requirement 8 (AC 8.4)
 
-- [ ] 3. GapBuffer data structure
-  - [ ] 3.1 Implement `GapBuffer` struct with contiguous storage, gap_start, gap_end fields using u64 positions
-  - [ ] 3.2 Implement `allocate(capacity)` pre-allocation method
-  - [ ] 3.3 Implement gap movement to target position with `memmove`-style byte shifting
-  - [ ] 3.4 Implement `insert_at(position, bytes)` with automatic gap growth (configurable factor, default 2x)
-  - [ ] 3.5 Implement `delete_at(position, length)` by expanding gap over deleted range
-  - [ ] 3.6 Implement `char_at(position)` returning `Option<u8>` for safe byte access
-  - [ ] 3.7 Implement `get_range(position, length)` returning `Vec<u8>` without exposing gap internals
-  - [ ] 3.8 Implement `contiguous_view()` that compacts gap and returns `&[u8]`
-  - [ ] 3.9 Implement `split_view()` returning `SplitView` without gap movement
-  - [ ] 3.10 Implement `length()` method returning total content size (excluding gap)
-  - [ ] 3.11 Write unit tests for insertion, deletion, gap movement, range access, and growth
+- [x] 3. GapBuffer data structure
+  - [x] 3.1 Implement `GapBuffer` struct with contiguous storage, gap_start, gap_end fields using u64 positions
+  - [x] 3.2 Implement `allocate(capacity)` pre-allocation method
+  - [x] 3.3 Implement gap movement to target position with `memmove`-style byte shifting
+  - [x] 3.4 Implement `insert_at(position, bytes)` with automatic gap growth (configurable factor, default 2x)
+  - [x] 3.5 Implement `delete_at(position, length)` by expanding gap over deleted range
+  - [x] 3.6 Implement `char_at(position)` returning `Option<u8>` for safe byte access
+  - [x] 3.7 Implement `get_range(position, length)` returning `Vec<u8>` without exposing gap internals
+  - [x] 3.8 Implement `contiguous_view()` that compacts gap and returns `&[u8]`
+  - [x] 3.9 Implement `split_view()` returning `SplitView` without gap movement
+  - [x] 3.10 Implement `length()` method returning total content size (excluding gap)
+  - [x] 3.11 Write unit tests for insertion, deletion, gap movement, range access, and growth
   - Covers: Requirement 1 (AC 1.1–1.10)
 
-- [ ] 4. LineIndex (balanced partitioning structure)
-  - [ ] 4.1 Implement `LineIndex` struct using a sorted Vec or B-tree of line-start byte positions
-  - [ ] 4.2 Implement `line_count()` returning total lines (minimum 1 for empty document)
-  - [ ] 4.3 Implement `line_start(line: LineNumber)` with O(log n) lookup returning BytePosition
-  - [ ] 4.4 Implement `line_end(line: LineNumber)` returning position before line-end sequence
-  - [ ] 4.5 Implement `line_from_position(position: BytePosition)` with O(log n) binary search
-  - [ ] 4.6 Implement `insert_line(line: LineNumber, position: BytePosition)` for adding new line records
-  - [ ] 4.7 Implement `remove_lines(start_line, count)` for removing line records on deletion
-  - [ ] 4.8 Implement `adjust_positions(from_line, delta: i64)` for shifting positions after edits
-  - [ ] 4.9 Implement out-of-range handling: `line_start` past last line returns document length
-  - [ ] 4.10 Write unit tests for lookups, insertions, removals, and boundary conditions
+- [x] 4. LineIndex (balanced partitioning structure)
+  - [x] 4.1 Implement `LineIndex` struct using a sorted Vec or B-tree of line-start byte positions
+  - [x] 4.2 Implement `line_count()` returning total lines (minimum 1 for empty document)
+  - [x] 4.3 Implement `line_start(line: LineNumber)` with O(log n) lookup returning BytePosition
+  - [x] 4.4 Implement `line_end(line: LineNumber)` returning position before line-end sequence
+  - [x] 4.5 Implement `line_from_position(position: BytePosition)` with O(log n) binary search
+  - [x] 4.6 Implement `insert_line(line: LineNumber, position: BytePosition)` for adding new line records
+  - [x] 4.7 Implement `remove_lines(start_line, count)` for removing line records on deletion
+  - [x] 4.8 Implement `adjust_positions(from_line, delta: i64)` for shifting positions after edits
+  - [x] 4.9 Implement out-of-range handling: `line_start` past last line returns document length
+  - [x] 4.10 Write unit tests for lookups, insertions, removals, and boundary conditions
   - Covers: Requirement 3 (AC 3.1–3.6, 3.8)
 
-- [ ] 5. Character-count index (optional UTF-16/UTF-32 tracking)
-  - [ ] 5.1 Implement `CharCountIndex` struct with per-line UTF-16 and UTF-32 character counts
-  - [ ] 5.2 Implement reference-counted allocation (`allocate_char_count_index`, `release_char_count_index`)
-  - [ ] 5.3 Implement incremental maintenance on insert/delete operations
-  - [ ] 5.4 Implement deallocation when reference count drops to zero
-  - [ ] 5.5 Write unit tests for allocation lifecycle and incremental updates
+- [x] 5. Character-count index (optional UTF-16/UTF-32 tracking)
+  - [x] 5.1 Implement `CharCountIndex` struct with per-line UTF-16 and UTF-32 character counts
+  - [x] 5.2 Implement reference-counted allocation (`allocate_char_count_index`, `release_char_count_index`)
+  - [x] 5.3 Implement incremental maintenance on insert/delete operations
+  - [x] 5.4 Implement deallocation when reference count drops to zero
+  - [x] 5.5 Write unit tests for allocation lifecycle and incremental updates
   - Covers: Requirement 3 (AC 3.9, 3.10, 3.11)
 
-- [ ] 6. TextBuffer assembly (GapBuffer + LineIndex coordination)
-  - [ ] 6.1 Implement `TextBuffer` struct owning a `GapBuffer` and `LineIndex`
-  - [ ] 6.2 Implement `insert(position, text)` that detects line endings, updates LineIndex, and respects read-only state
-  - [ ] 6.3 Implement `delete(position, length)` that removes line records for deleted line endings and respects read-only state
-  - [ ] 6.4 Implement CRLF split handling: insertion between CR and LF creates new line boundary
-  - [ ] 6.5 Implement CRLF merge handling: deletion that causes CR to become adjacent to LF merges line records
-  - [ ] 6.6 Implement `set_read_only(bool)` and `is_read_only()` control methods
-  - [ ] 6.7 Implement read-only guard that returns error on mutation attempts
-  - [ ] 6.8 Write unit tests for insert/delete with line tracking, CRLF edge cases, and read-only enforcement
+- [x] 6. TextBuffer assembly (GapBuffer + LineIndex coordination)
+  - [x] 6.1 Implement `TextBuffer` struct owning a `GapBuffer` and `LineIndex`
+  - [x] 6.2 Implement `insert(position, text)` that detects line endings, updates LineIndex, and respects read-only state
+  - [x] 6.3 Implement `delete(position, length)` that removes line records for deleted line endings and respects read-only state
+  - [x] 6.4 Implement CRLF split handling: insertion between CR and LF creates new line boundary
+  - [x] 6.5 Implement CRLF merge handling: deletion that causes CR to become adjacent to LF merges line records
+  - [x] 6.6 Implement `set_read_only(bool)` and `is_read_only()` control methods
+  - [x] 6.7 Implement read-only guard that returns error on mutation attempts
+  - [x] 6.8 Write unit tests for insert/delete with line tracking, CRLF edge cases, and read-only enforcement
   - Covers: Requirement 2 (AC 2.1–2.8)
 
-- [ ] 7. Line end mode support
-  - [ ] 7.1 Implement line-end detection for Default mode (CR, LF, CRLF)
-  - [ ] 7.2 Implement line-end detection for Unicode mode (additionally LS, PS, NEL)
-  - [ ] 7.3 Implement `set_line_end_mode(mode)` triggering full LineIndex rebuild via rescan
-  - [ ] 7.4 Implement `line_end_mode()` query
-  - [ ] 7.5 Implement `contains_line_end(text)` utility method
-  - [ ] 7.6 Implement Unicode line-end overlap handling on insertion (multi-byte sequence break detection)
-  - [ ] 7.7 Write unit tests for mode switching, Unicode line endings, and overlap edge cases
+- [x] 7. Line end mode support
+  - [x] 7.1 Implement line-end detection for Default mode (CR, LF, CRLF)
+  - [x] 7.2 Implement line-end detection for Unicode mode (additionally LS, PS, NEL)
+  - [x] 7.3 Implement `set_line_end_mode(mode)` triggering full LineIndex rebuild via rescan
+  - [x] 7.4 Implement `line_end_mode()` query
+  - [x] 7.5 Implement `contains_line_end(text)` utility method
+  - [x] 7.6 Implement Unicode line-end overlap handling on insertion (multi-byte sequence break detection)
+  - [x] 7.7 Write unit tests for mode switching, Unicode line endings, and overlap edge cases
   - Covers: Requirement 5 (AC 5.1–5.6)
 
-- [ ] 8. Encoding-aware character navigation
-  - [ ] 8.1 Implement `char_length_at(position)` returning byte length (2 for CRLF, 1–4 for UTF-8, 1 for invalid)
-  - [ ] 8.2 Implement `move_position_outside_char(position, direction)` for adjusting mid-character positions
-  - [ ] 8.3 Implement `next_position(position, direction)` advancing to next valid character boundary
-  - [ ] 8.4 Implement `character_at(position)` returning `CharacterExtracted`
-  - [ ] 8.5 Implement `character_before(position)` scanning backwards through UTF-8
-  - [ ] 8.6 Implement `relative_position(start, char_offset)` advancing by character count
-  - [ ] 8.7 Implement CRLF atomic navigation (never landing between CR and LF)
-  - [ ] 8.8 Implement invalid UTF-8 fallback (treat each invalid byte as one character)
-  - [ ] 8.9 Write unit tests for all navigation methods including multi-byte, CRLF, and invalid sequences
+- [x] 8. Encoding-aware character navigation
+  - [x] 8.1 Implement `char_length_at(position)` returning byte length (2 for CRLF, 1–4 for UTF-8, 1 for invalid)
+  - [x] 8.2 Implement `move_position_outside_char(position, direction)` for adjusting mid-character positions
+  - [x] 8.3 Implement `next_position(position, direction)` advancing to next valid character boundary
+  - [x] 8.4 Implement `character_at(position)` returning `CharacterExtracted`
+  - [x] 8.5 Implement `character_before(position)` scanning backwards through UTF-8
+  - [x] 8.6 Implement `relative_position(start, char_offset)` advancing by character count
+  - [x] 8.7 Implement CRLF atomic navigation (never landing between CR and LF)
+  - [x] 8.8 Implement invalid UTF-8 fallback (treat each invalid byte as one character)
+  - [x] 8.9 Write unit tests for all navigation methods including multi-byte, CRLF, and invalid sequences
   - Covers: Requirement 8 (AC 8.1–8.8)
 
-- [ ] 9. Streaming file loading
-  - [ ] 9.1 Implement `StreamingFileReader` that reads from VFS `read_stream()` in configurable chunks (default 64 KB)
-  - [ ] 9.2 Implement progressive content availability — already-loaded portions readable while loading continues
-  - [ ] 9.3 Implement `loading_progress()` returning `LoadingState` enum with current state
-  - [ ] 9.4 Implement cancellation support — dropping the reader or explicit cancel stops the background task without leaks
-  - [ ] 9.5 Implement completion notification to all watchers when streaming finishes
-  - [ ] 9.6 Implement error-state transition with partial content preservation on VFS I/O failure
-  - [ ] 9.7 Implement empty-session initialization (no file path → empty buffer, single-line index)
-  - [ ] 9.8 Write unit tests using mock VFS provider for streaming, cancellation, and error paths
+- [x] 9. Streaming file loading
+  - [x] 9.1 Implement `StreamingFileReader` that reads from VFS `read_stream()` in configurable chunks (default 64 KB)
+  - [x] 9.2 Implement progressive content availability — already-loaded portions readable while loading continues
+  - [x] 9.3 Implement `loading_progress()` returning `LoadingState` enum with current state
+  - [x] 9.4 Implement cancellation support — dropping the reader or explicit cancel stops the background task without leaks
+  - [x] 9.5 Implement completion notification to all watchers when streaming finishes
+  - [x] 9.6 Implement error-state transition with partial content preservation on VFS I/O failure
+  - [x] 9.7 Implement empty-session initialization (no file path → empty buffer, single-line index)
+  - [x] 9.8 Write unit tests using mock VFS provider for streaming, cancellation, and error paths
   - Covers: Requirement 4 (AC 4.1–4.9)
 
-- [ ] 10. SparseLineIndex (incremental background indexing)
-  - [ ] 10.1 Implement `SparseLineIndex` that records one checkpoint per N lines (default 1000)
-  - [ ] 10.2 Implement incremental building in a background task as chunks arrive from streaming reader
-  - [ ] 10.3 Implement partial usability — already-indexed lines queryable before full index is complete
-  - [ ] 10.4 Implement finalization into complete LineIndex when streaming load finishes
-  - [ ] 10.5 Write unit tests for checkpoint accuracy, partial queries, and finalization correctness
+- [x] 10. SparseLineIndex (incremental background indexing)
+  - [x] 10.1 Implement `SparseLineIndex` that records one checkpoint per N lines (default 1000)
+  - [x] 10.2 Implement incremental building in a background task as chunks arrive from streaming reader
+  - [x] 10.3 Implement partial usability — already-indexed lines queryable before full index is complete
+  - [x] 10.4 Implement finalization into complete LineIndex when streaming load finishes
+  - [x] 10.5 Write unit tests for checkpoint accuracy, partial queries, and finalization correctness
   - Covers: Requirement 3 (AC 3.8), Requirement 4 (AC 4.3, 4.5)
 
-- [ ] 11. Document struct and lifecycle
-  - [ ] 11.1 Implement `Document` struct wrapping `TextBuffer` with encoding awareness, watcher list, and lifecycle state
-  - [ ] 11.2 Implement `DocumentHandle` as `Arc<RwLock<Document>>` type alias
-  - [ ] 11.3 Implement `Document::new()` for empty documents and `Document::from_streaming(reader)` for file loading
-  - [ ] 11.4 Implement `Send + Sync` bounds verification (compile-time assertion)
-  - [ ] 11.5 Implement read-only mode that blocks all mutation via RwLock read guards
-  - [ ] 11.6 Implement `Drop` notification to registered watchers via `notify_deleted()`
-  - [ ] 11.7 Write unit tests for handle cloning, drop semantics, and thread-safety
+- [x] 11. Document struct and lifecycle
+  - [x] 11.1 Implement `Document` struct wrapping `TextBuffer` with encoding awareness, watcher list, and lifecycle state
+  - [x] 11.2 Implement `DocumentHandle` as `Arc<RwLock<Document>>` type alias
+  - [x] 11.3 Implement `Document::new()` for empty documents and `Document::from_streaming(reader)` for file loading
+  - [x] 11.4 Implement `Send + Sync` bounds verification (compile-time assertion)
+  - [x] 11.5 Implement read-only mode that blocks all mutation via RwLock read guards
+  - [x] 11.6 Implement `Drop` notification to registered watchers via `notify_deleted()`
+  - [x] 11.7 Write unit tests for handle cloning, drop semantics, and thread-safety
   - Covers: Requirement 6 (AC 6.1–6.8)
 
-- [ ] 12. DocumentWatcher notification system
-  - [ ] 12.1 Define `DocumentWatcher` trait with callbacks: `notify_modify_attempt`, `notify_insert`, `notify_delete`, `notify_save_point`, `notify_deleted`, `notify_style_needed`
-  - [ ] 12.2 Implement `add_watcher(watcher)` returning `WatcherHandle` with duplicate detection
-  - [ ] 12.3 Implement `remove_watcher(handle)` for unregistration
-  - [ ] 12.4 Wire insert/delete operations to dispatch notifications to all watchers
-  - [ ] 12.5 Implement `notify_modify_attempt()` dispatch on read-only mutation attempt
-  - [ ] 12.6 Implement non-blocking notification dispatch (watchers must not block the notification path)
-  - [ ] 12.7 Write unit tests for watcher registration, deduplication, notification delivery, and removal
+- [x] 12. DocumentWatcher notification system
+  - [x] 12.1 Define `DocumentWatcher` trait with callbacks: `notify_modify_attempt`, `notify_insert`, `notify_delete`, `notify_save_point`, `notify_deleted`, `notify_style_needed`
+  - [x] 12.2 Implement `add_watcher(watcher)` returning `WatcherHandle` with duplicate detection
+  - [x] 12.3 Implement `remove_watcher(handle)` for unregistration
+  - [x] 12.4 Wire insert/delete operations to dispatch notifications to all watchers
+  - [x] 12.5 Implement `notify_modify_attempt()` dispatch on read-only mutation attempt
+  - [x] 12.6 Implement non-blocking notification dispatch (watchers must not block the notification path)
+  - [x] 12.7 Write unit tests for watcher registration, deduplication, notification delivery, and removal
   - Covers: Requirement 7 (AC 7.1–7.7)
 
-- [ ] 13. Viewport position management
-  - [ ] 13.1 Implement `top_line` field (1-based) with getter
-  - [ ] 13.2 Implement `scroll_page_down(visible_count)` with clamping to last displayable page
-  - [ ] 13.3 Implement `scroll_page_up(visible_count)` with clamping to line 1
-  - [ ] 13.4 Implement `scroll_line_down(count)` and `scroll_line_up(count)` with boundary clamping
-  - [ ] 13.5 Implement `set_top_line(line)` with clamping to valid range [1, max_top_line]
-  - [ ] 13.6 Implement `max_top_line(visible_count)` computed as `max(1, line_count - visible_count + 1)`
-  - [ ] 13.7 Implement idempotent boundary behavior (repeated scroll at boundaries has no effect)
-  - [ ] 13.8 Write unit tests for all scroll operations including boundary clamping and idempotency
+- [x] 13. Viewport position management
+  - [x] 13.1 Implement `top_line` field (1-based) with getter
+  - [x] 13.2 Implement `scroll_page_down(visible_count)` with clamping to last displayable page
+  - [x] 13.3 Implement `scroll_page_up(visible_count)` with clamping to line 1
+  - [x] 13.4 Implement `scroll_line_down(count)` and `scroll_line_up(count)` with boundary clamping
+  - [x] 13.5 Implement `set_top_line(line)` with clamping to valid range [1, max_top_line]
+  - [x] 13.6 Implement `max_top_line(visible_count)` computed as `max(1, line_count - visible_count + 1)`
+  - [x] 13.7 Implement idempotent boundary behavior (repeated scroll at boundaries has no effect)
+  - [x] 13.8 Write unit tests for all scroll operations including boundary clamping and idempotency
   - Covers: Requirement 9 (AC 9.1–9.8)
 
-- [ ] 14. Save point and modification state
-  - [ ] 14.1 Implement save-point marker tracking current undo position
-  - [ ] 14.2 Implement `set_save_point()` recording current state as saved
-  - [ ] 14.3 Implement `is_at_save_point()` comparing current undo position to marker
-  - [ ] 14.4 Implement watcher notification on save-point transitions (`notify_save_point(bool)`)
-  - [ ] 14.5 Implement automatic save-point setting after successful file load
-  - [ ] 14.6 Write unit tests for save-point state transitions and watcher notifications
+- [x] 14. Save point and modification state
+  - [x] 14.1 Implement save-point marker tracking current undo position
+  - [x] 14.2 Implement `set_save_point()` recording current state as saved
+  - [x] 14.3 Implement `is_at_save_point()` comparing current undo position to marker
+  - [x] 14.4 Implement watcher notification on save-point transitions (`notify_save_point(bool)`)
+  - [x] 14.5 Implement automatic save-point setting after successful file load
+  - [x] 14.6 Write unit tests for save-point state transitions and watcher notifications
   - Covers: Requirement 10 (AC 10.1–10.6)
 
-- [ ] 15. Error types and VFS integration
-  - [ ] 15.1 Define `DocumentModelError` enum with variants: LineOutOfRange, PositionOutOfRange, ReadOnly, LoadFailed, IoError, WatcherAlreadyRegistered
-  - [ ] 15.2 Implement `From<VfsError>` conversion for transparent VFS error propagation
-  - [ ] 15.3 Implement error message format following `[document-model] operation: description` standard
-  - [ ] 15.4 Ensure all VFS calls go through `ff-vfs` — no `std::fs` or `tokio::fs` usage
-  - [ ] 15.5 Write unit tests for error formatting and conversion
+- [x] 15. Error types and VFS integration
+  - [x] 15.1 Define `DocumentModelError` enum with variants: LineOutOfRange, PositionOutOfRange, ReadOnly, LoadFailed, IoError, WatcherAlreadyRegistered
+  - [x] 15.2 Implement `From<VfsError>` conversion for transparent VFS error propagation
+  - [x] 15.3 Implement error message format following `[document-model] operation: description` standard
+  - [x] 15.4 Ensure all VFS calls go through `ff-vfs` — no `std::fs` or `tokio::fs` usage
+  - [x] 15.5 Write unit tests for error formatting and conversion
   - Covers: Cross-cutting Requirement 8 (error standards), Requirement 4 (AC 4.8)
 
-- [ ] 16. Command framework integration surface
-  - [ ] 16.1 Define `DocumentCommand` trait for mutation operations routable through the command framework
-  - [ ] 16.2 Implement `InsertCommand` and `DeleteCommand` structs wrapping TextBuffer primitives
-  - [ ] 16.3 Implement undo-record emission hook (trait method that downstream `ff-undo-redo` will consume)
-  - [ ] 16.4 Document integration pattern — document-model provides primitives, command framework routes them
-  - [ ] 16.5 Write unit tests for command struct construction and execution
+- [x] 16. Command framework integration surface
+  - [x] 16.1 Define `DocumentCommand` trait for mutation operations routable through the command framework
+  - [x] 16.2 Implement `InsertCommand` and `DeleteCommand` structs wrapping TextBuffer primitives
+  - [x] 16.3 Implement undo-record emission hook (trait method that downstream `ff-undo-redo` will consume)
+  - [x] 16.4 Document integration pattern — document-model provides primitives, command framework routes them
+  - [x] 16.5 Write unit tests for command struct construction and execution
   - Covers: Requirement 2 (AC 2.9)
 
-- [ ] 17. Property-based tests
-  - [ ] 17.1 Write PBT: gap buffer content invariant
-  - [ ] 17.2 Write PBT: line index consistency after edits
-  - [ ] 17.3 Write PBT: character navigation boundary safety
-  - [ ] 17.4 Write PBT: viewport scroll clamping
-  - [ ] 17.5 Write PBT: CRLF atomicity under random edits
-  - [ ] 17.6 Write PBT: streaming load content integrity
+- [x] 17. Property-based tests
+  - [x] 17.1 Write PBT: gap buffer content invariant
+  - [x] 17.2 Write PBT: line index consistency after edits
+  - [x] 17.3 Write PBT: character navigation boundary safety
+  - [x] 17.4 Write PBT: viewport scroll clamping
+  - [x] 17.5 Write PBT: CRLF atomicity under random edits
+  - [x] 17.6 Write PBT: streaming load content integrity
   - Covers: Requirements 1, 2, 3, 8, 9 (see Property-Based Test Definitions below)
 
-- [ ] 18. Integration tests
-  - [ ] 18.1 Write integration test: full document lifecycle (create → load → edit → save-point → drop)
-  - [ ] 18.2 Write integration test: streaming load with mock VFS provider and progressive reading
-  - [ ] 18.3 Write integration test: multi-view shared ownership via DocumentHandle
-  - [ ] 18.4 Write integration test: large document stress test (>100K lines, verify O(log n) lookups)
+- [x] 18. Integration tests
+  - [x] 18.1 Write integration test: full document lifecycle (create → load → edit → save-point → drop)
+  - [x] 18.2 Write integration test: streaming load with mock VFS provider and progressive reading
+  - [x] 18.3 Write integration test: multi-view shared ownership via DocumentHandle
+  - [x] 18.4 Write integration test: large document stress test (>100K lines, verify O(log n) lookups)
   - Covers: End-to-end validation across Requirements 1–10
 
 ---

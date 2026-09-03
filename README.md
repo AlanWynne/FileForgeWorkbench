@@ -5,9 +5,32 @@
 
 FileForge Workbench is a cross-platform enterprise file editor and mainframe workstation inspired by IBM ISPF and File-AID.
 
+## Technology Stack
+
+| Concern | Choice | Notes |
+|---------|--------|-------|
+| Language | [Rust](https://www.rust-lang.org/) (stable) | Entire codebase — 64 crates |
+| GUI framework | [egui](https://github.com/emilk/egui) + [eframe](https://github.com/emilk/egui/tree/master/crates/eframe) | Immediate-mode UI; the GUI shell is a replaceable layer over a GUI-independent core |
+| Async runtime | [Tokio](https://tokio.rs/) (multi-threaded) | All background I/O — file ops, search, toolchain invocation |
+| Configuration | [TOML](https://toml.io/) | Themes, key maps, user preferences, session state, layout definitions |
+| Scripting | [Lua](https://www.lua.org/) via `ff-lua` | User macro engine with editor API and event hooks |
+| Error handling | [thiserror](https://github.com/dtolnay/thiserror) (library crates) + [anyhow](https://github.com/dtolnay/anyhow) (binary) | No `unwrap()` in library code |
+| Testing | Built-in `cargo test` + [proptest](https://github.com/proptest-rs/proptest) | Property-based tests alongside unit and integration tests |
+| Build system | Cargo workspace | Single `cargo build` compiles all 64 crates |
+
+The full architectural rationale — GUI-independence principle, command-driven execution model, plugin contract, and async model — is documented in [`docs/specs/workbench-requirements-merge/architecture-brief.md`](docs/specs/workbench-requirements-merge/architecture-brief.md).
+
 ## Status
 
 **Phase AX complete.** All 64 crates and the `ff-desktop` binary (`ffwb`) are built and passing 404 tests with 0 failures.
+
+### Project documentation
+
+- [Documentation index](docs/README.md)
+- [Current work dashboard](docs/status/current-work.md)
+- [Requirements source register](docs/requirements/source-register.md)
+- [Canonical feature specifications](docs/specs/)
+- [Reusable project tools](tools/)
 
 ### What works today
 
@@ -68,6 +91,8 @@ FileForge Workbench is a cross-platform enterprise file editor and mainframe wor
 | Compiler Toolchain | `ff-toolchain-api`, `ff-gcc-toolchain`, `ff-rust-toolchain` |
 
 ## Building
+
+**Prerequisites:** Rust stable toolchain (`rustup` recommended — https://rustup.rs). No other runtime dependencies are required.
 
 ```bash
 cargo build                        # debug build

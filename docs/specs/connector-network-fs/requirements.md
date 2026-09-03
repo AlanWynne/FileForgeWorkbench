@@ -114,3 +114,61 @@ criteria will be written when this connector moves to active development.
 - **WB**: Workbench Architecture Brief — VFS extensibility, FFW-ARCH-001
 - **FFW**: FileForgeWorkbench cross-cutting requirements (VFS Principle, Plugin Architecture)
 - Connector-extensibility requirements (Requirement 6: Future Connector Hooks)
+
+---
+
+## Formal Acceptance Criteria (DEFERRED — Future Release)
+
+> The following criteria are written in EARS format for traceability. All criteria
+> carry status **DEFERRED** — they are not scheduled for the initial release.
+> Full implementation details will be added to `design.md` when this connector
+> moves to active development.
+
+### Requirement 1: UNC Path Resolution *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN the connector receives a resource URI with a UNC path (`\\\\server\\share\\path`), THE connector SHALL resolve it to a normalised VFS resource URI under the `unc://` scheme.
+
+---
+
+### Requirement 2: SMB/CIFS Connectivity *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN the connector is configured with SMB/CIFS credentials, THE connector SHALL establish a connection to the specified share and support read, write, list, stat, rename, delete, and create-directory operations.
+
+---
+
+### Requirement 3: NFS Mount Support *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN the connector is configured for an NFS-exported directory, THE connector SHALL mount the export and support read, write, list, stat, rename, delete, and create-directory operations with UID/GID credential mapping.
+
+---
+
+### Requirement 4: Mapped Drive Resolution *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN the host OS is Windows and a mapped drive letter is configured, THE connector SHALL resolve the drive letter to its underlying UNC path and present a unified VFS view with no duplicate resources.
+
+---
+
+### Requirement 5: File Watching on Network Paths *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN a directory node is expanded under a network path, THE connector SHALL register a watch using the best available mechanism for the protocol (ReadDirectoryChangesW for SMB, polling for NFS) and advertise the Watch capability only when the underlying share supports it.
+
+---
+
+### Requirement 6: Error Mapping *(DEFERRED)*
+
+#### Acceptance Criteria
+
+1. WHEN a network operation fails, THE connector SHALL map the protocol-specific error (SMB error code, NFS errno, timeout) to the appropriate ConnectorError variant, including the remote server name and share in the error context.
+
+---
+

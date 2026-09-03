@@ -1,4 +1,4 @@
-# Implementation Plan: Structure Catalog (`ff-structure-catalog`)
+﻿# Implementation Plan: Structure Catalog (`ff-structure-catalog`)
 
 ## Overview
 
@@ -10,315 +10,315 @@ This is a **Wave 12 (FileForge Domain)** sub-project. It depends on `ff-logging`
 
 ## Tasks
 
-- [ ] 1. Crate scaffolding and module structure
-  - [ ] 1.1 Create `crates/ff-structure-catalog/Cargo.toml` with dependencies (ff-logging, ff-command, ff-config, ff-vfs, ff-fileforge, ff-plugin, thiserror, serde, toml, chrono, glob, proptest dev-dep)
-  - [ ] 1.2 Create `crates/ff-structure-catalog/src/lib.rs` with module declarations and public API re-exports
-  - [ ] 1.3 Create module files: `model.rs`, `field.rs`, `ffs_format.rs`, `catalog.rs`, `crud.rs`, `persistence.rs`, `browsing.rs`, `editor.rs`, `association.rs`, `import.rs`, `export.rs`, `versioning.rs`, `location.rs`, `config.rs`, `commands.rs`, `grid.rs`, `error.rs`
-  - [ ] 1.4 Add `ff-structure-catalog` to workspace `Cargo.toml` members list
+- [x] 1. Crate scaffolding and module structure
+  - [x] 1.1 Create `crates/ff-structure-catalog/Cargo.toml` with dependencies (ff-logging, ff-command, ff-config, ff-vfs, ff-fileforge, ff-plugin, thiserror, serde, toml, chrono, glob, proptest dev-dep)
+  - [x] 1.2 Create `crates/ff-structure-catalog/src/lib.rs` with module declarations and public API re-exports
+  - [x] 1.3 Create module files: `model.rs`, `field.rs`, `ffs_format.rs`, `catalog.rs`, `crud.rs`, `persistence.rs`, `browsing.rs`, `editor.rs`, `association.rs`, `import.rs`, `export.rs`, `versioning.rs`, `location.rs`, `config.rs`, `commands.rs`, `grid.rs`, `error.rs`
+  - [x] 1.4 Add `ff-structure-catalog` to workspace `Cargo.toml` members list
   - Covers: Structural foundation for all requirements
 
-- [ ] 2. CatalogEntry model (Structure_Definition)
-  - [ ] 2.1 Define `StructureMetadata` struct with fields: name (String), description (Option<String>), version (u32), created_at (DateTime), modified_at (Option<DateTime>), encoding (Option<String>), lrecl (Option<u32>), recfm (Option<RecordFormat>)
-  - [ ] 2.2 Define `RecordFormat` enum with variants: F, FB, V, FbBinary, VB, U
-  - [ ] 2.3 Define `RecordStructure` struct with fields: name (String), fields (Vec<FieldDefinition>)
-  - [ ] 2.4 Define `FileAssociations` struct with fields: file_patterns (Vec<String>)
-  - [ ] 2.5 Define `StructureDefinition` struct composing: metadata (StructureMetadata), associations (Option<FileAssociations>), record_structures (Vec<RecordStructure>)
-  - [ ] 2.6 Implement `Display`, `Debug`, `Clone`, `PartialEq` derives for all model types
-  - [ ] 2.7 Write unit tests for model construction, field access, and default values
+- [x] 2. CatalogEntry model (Structure_Definition)
+  - [x] 2.1 Define `StructureMetadata` struct with fields: name (String), description (Option<String>), version (u32), created_at (DateTime), modified_at (Option<DateTime>), encoding (Option<String>), lrecl (Option<u32>), recfm (Option<RecordFormat>)
+  - [x] 2.2 Define `RecordFormat` enum with variants: F, FB, V, FbBinary, VB, U
+  - [x] 2.3 Define `RecordStructure` struct with fields: name (String), fields (Vec<FieldDefinition>)
+  - [x] 2.4 Define `FileAssociations` struct with fields: file_patterns (Vec<String>)
+  - [x] 2.5 Define `StructureDefinition` struct composing: metadata (StructureMetadata), associations (Option<FileAssociations>), record_structures (Vec<RecordStructure>)
+  - [x] 2.6 Implement `Display`, `Debug`, `Clone`, `PartialEq` derives for all model types
+  - [x] 2.7 Write unit tests for model construction, field access, and default values
   - Covers: Requirement 2 (AC 2.1), Requirement 9 (AC 9.1, 9.3, 9.4)
 
-- [ ] 3. FieldDefinition model and field types
-  - [ ] 3.1 Define `FieldType` enum with variants: Alphanumeric, Numeric, PackedDecimal, Binary, Hex
-  - [ ] 3.2 Define `FieldDefinition` struct with fields: name (String), offset (usize), length (usize), field_type (FieldType), decimals (u8), identifiers (Vec<String>), filters (Vec<String>)
-  - [ ] 3.3 Implement field validation: name non-empty, offset >= 0, length >= 1, field_type valid enum, decimals >= 0
-  - [ ] 3.4 Implement `FieldDefinition::validate() -> Result<(), ValidationError>` returning all validation failures
-  - [ ] 3.5 Implement packed-decimal display logic: unpack COMP-3 bytes to signed decimal string with N decimal places
-  - [ ] 3.6 Implement numeric implied-decimal display: insert decimal point N positions from right
-  - [ ] 3.7 Implement packed-decimal validation: detect invalid nibble values (not 0-9 for digits, not C/D/F for sign)
-  - [ ] 3.8 Write unit tests for field validation, packed-decimal unpacking, numeric decimal display, and invalid nibble detection
+- [x] 3. FieldDefinition model and field types
+  - [x] 3.1 Define `FieldType` enum with variants: Alphanumeric, Numeric, PackedDecimal, Binary, Hex
+  - [x] 3.2 Define `FieldDefinition` struct with fields: name (String), offset (usize), length (usize), field_type (FieldType), decimals (u8), identifiers (Vec<String>), filters (Vec<String>)
+  - [x] 3.3 Implement field validation: name non-empty, offset >= 0, length >= 1, field_type valid enum, decimals >= 0
+  - [x] 3.4 Implement `FieldDefinition::validate() -> Result<(), ValidationError>` returning all validation failures
+  - [x] 3.5 Implement packed-decimal display logic: unpack COMP-3 bytes to signed decimal string with N decimal places
+  - [x] 3.6 Implement numeric implied-decimal display: insert decimal point N positions from right
+  - [x] 3.7 Implement packed-decimal validation: detect invalid nibble values (not 0-9 for digits, not C/D/F for sign)
+  - [x] 3.8 Write unit tests for field validation, packed-decimal unpacking, numeric decimal display, and invalid nibble detection
   - Covers: Requirement 2 (AC 2.2), Requirement 5 (AC 5.9), Requirement 6 (AC 6.1–6.8)
 
-- [ ] 4. Field type extensibility
-  - [ ] 4.1 Define `FieldTypeHandler` trait with methods: decode(bytes, field_def) -> DisplayValue, encode(display_str, field_def) -> Vec<u8>, validate(display_str, field_def) -> Result
-  - [ ] 4.2 Implement built-in handlers for Alphanumeric, Numeric, PackedDecimal, Binary, Hex
-  - [ ] 4.3 Define `FieldTypeRegistry` struct for registering custom handlers via the plugin trait system
-  - [ ] 4.4 Implement handler lookup by FieldType with fallback to built-in for unregistered types
-  - [ ] 4.5 Write unit tests for handler registration, lookup, decode/encode round-trips for each built-in type
+- [x] 4. Field type extensibility
+  - [x] 4.1 Define `FieldTypeHandler` trait with methods: decode(bytes, field_def) -> DisplayValue, encode(display_str, field_def) -> Vec<u8>, validate(display_str, field_def) -> Result
+  - [x] 4.2 Implement built-in handlers for Alphanumeric, Numeric, PackedDecimal, Binary, Hex
+  - [x] 4.3 Define `FieldTypeRegistry` struct for registering custom handlers via the plugin trait system
+  - [x] 4.4 Implement handler lookup by FieldType with fallback to built-in for unregistered types
+  - [x] 4.5 Write unit tests for handler registration, lookup, decode/encode round-trips for each built-in type
   - Covers: Requirement 6 (AC 6.9)
 
-- [ ] 5. FFS file format — TOML serialization
-  - [ ] 5.1 Implement `FfsSerializer` struct with `serialize(def: &StructureDefinition) -> Result<String, FfsError>` producing valid TOML v1.0
-  - [ ] 5.2 Implement `[metadata]` table serialization with all required and optional keys
-  - [ ] 5.3 Implement `[associations]` table serialization with file_patterns array
-  - [ ] 5.4 Implement `[[record_structures]]` and `[[record_structures.fields]]` array-of-tables serialization
-  - [ ] 5.5 Write unit tests verifying output is valid TOML and contains all expected keys/values
+- [x] 5. FFS file format — TOML serialization
+  - [x] 5.1 Implement `FfsSerializer` struct with `serialize(def: &StructureDefinition) -> Result<String, FfsError>` producing valid TOML v1.0
+  - [x] 5.2 Implement `[metadata]` table serialization with all required and optional keys
+  - [x] 5.3 Implement `[associations]` table serialization with file_patterns array
+  - [x] 5.4 Implement `[[record_structures]]` and `[[record_structures.fields]]` array-of-tables serialization
+  - [x] 5.5 Write unit tests verifying output is valid TOML and contains all expected keys/values
   - Covers: Requirement 2 (AC 2.1, 2.7, 2.8, 2.9)
 
-- [ ] 6. FFS file format — TOML deserialization and validation
-  - [ ] 6.1 Implement `FfsParser` struct with `parse(toml_str: &str) -> Result<StructureDefinition, FfsError>` parsing TOML v1.0
-  - [ ] 6.2 Implement TOML syntax error handling: reject with WARN log including file path and parse error details
-  - [ ] 6.3 Implement schema validation: check required keys (metadata.name, metadata.version, record_structures), valid field_type values, non-negative offset/length
-  - [ ] 6.4 Implement schema validation error reporting: WARN log with validation details, exclude from catalog listing
-  - [ ] 6.5 Implement version key validation: must be positive integer
-  - [ ] 6.6 Implement name uniqueness check hook (takes a predicate for collision detection)
-  - [ ] 6.7 Write unit tests for valid parsing, TOML syntax errors, schema validation failures, missing keys, invalid field_type values, negative offset/length
+- [x] 6. FFS file format — TOML deserialization and validation
+  - [x] 6.1 Implement `FfsParser` struct with `parse(toml_str: &str) -> Result<StructureDefinition, FfsError>` parsing TOML v1.0
+  - [x] 6.2 Implement TOML syntax error handling: reject with WARN log including file path and parse error details
+  - [x] 6.3 Implement schema validation: check required keys (metadata.name, metadata.version, record_structures), valid field_type values, non-negative offset/length
+  - [x] 6.4 Implement schema validation error reporting: WARN log with validation details, exclude from catalog listing
+  - [x] 6.5 Implement version key validation: must be positive integer
+  - [x] 6.6 Implement name uniqueness check hook (takes a predicate for collision detection)
+  - [x] 6.7 Write unit tests for valid parsing, TOML syntax errors, schema validation failures, missing keys, invalid field_type values, negative offset/length
   - Covers: Requirement 2 (AC 2.1–2.9), Requirement 2 (AC 2.3, 2.4, 2.5, 2.6)
 
-- [ ] 7. Catalog persistent store — directory management
-  - [ ] 7.1 Implement `CatalogStore` struct wrapping a VFS-backed catalog directory path
-  - [ ] 7.2 Implement directory creation on first use if Active_Catalog_Location does not exist, with INFO log
-  - [ ] 7.3 Implement platform-specific default path resolution (~/.config/ffworkbench/catalogs/ on Linux, %APPDATA%\FFWorkbench\catalogs\ on Windows, ~/Library/Application Support/FFWorkbench/catalogs/ on macOS)
-  - [ ] 7.4 Implement inaccessible location handling: WARN log, skip, continue with other locations
-  - [ ] 7.5 Implement multi-location support: load definitions from all configured Catalog_Locations
-  - [ ] 7.6 Implement VFS integration: all file I/O routed through `virtual-file-system` abstraction
-  - [ ] 7.7 Write unit tests for directory creation, default path, inaccessible handling, and multi-location scanning
+- [x] 7. Catalog persistent store — directory management
+  - [x] 7.1 Implement `CatalogStore` struct wrapping a VFS-backed catalog directory path
+  - [x] 7.2 Implement directory creation on first use if Active_Catalog_Location does not exist, with INFO log
+  - [x] 7.3 Implement platform-specific default path resolution (~/.config/ffworkbench/catalogs/ on Linux, %APPDATA%\FFWorkbench\catalogs\ on Windows, ~/Library/Application Support/FFWorkbench/catalogs/ on macOS)
+  - [x] 7.4 Implement inaccessible location handling: WARN log, skip, continue with other locations
+  - [x] 7.5 Implement multi-location support: load definitions from all configured Catalog_Locations
+  - [x] 7.6 Implement VFS integration: all file I/O routed through `virtual-file-system` abstraction
+  - [x] 7.7 Write unit tests for directory creation, default path, inaccessible handling, and multi-location scanning
   - Covers: Requirement 1 (AC 1.1, 1.3, 1.4, 1.5, 1.6, 1.8)
 
-- [ ] 8. Catalog persistence — load and index
-  - [ ] 8.1 Implement `CatalogIndex` struct: in-memory HashMap<String, StructureDefinition> keyed by name
-  - [ ] 8.2 Implement `load_catalog(location: &Path) -> CatalogIndex` scanning .ffs files, parsing each, skipping invalid with WARN log
-  - [ ] 8.3 Implement alphabetical sorting for list operations
-  - [ ] 8.4 Implement file-watcher integration: detect .ffs file changes via VFS watcher, reload affected definitions within 2 seconds
-  - [ ] 8.5 Implement index refresh on file add/modify/remove detected by watcher
-  - [ ] 8.6 Write unit tests for index loading, invalid file skipping, alphabetical ordering, and watcher-triggered reload
+- [x] 8. Catalog persistence — load and index
+  - [x] 8.1 Implement `CatalogIndex` struct: in-memory HashMap<String, StructureDefinition> keyed by name
+  - [x] 8.2 Implement `load_catalog(location: &Path) -> CatalogIndex` scanning .ffs files, parsing each, skipping invalid with WARN log
+  - [x] 8.3 Implement alphabetical sorting for list operations
+  - [x] 8.4 Implement file-watcher integration: detect .ffs file changes via VFS watcher, reload affected definitions within 2 seconds
+  - [x] 8.5 Implement index refresh on file add/modify/remove detected by watcher
+  - [x] 8.6 Write unit tests for index loading, invalid file skipping, alphabetical ordering, and watcher-triggered reload
   - Covers: Requirement 1 (AC 1.1, 1.2), Requirement 3 (AC 3.10), Requirement 4 (AC 4.10)
 
-- [ ] 9. Catalog CRUD operations — create and read
-  - [ ] 9.1 Implement `create(def: StructureDefinition) -> Result<(), CatalogError>` with validation, write to Active_Catalog_Location
-  - [ ] 9.2 Implement name uniqueness enforcement on create: reject with error if name already exists
-  - [ ] 9.3 Implement `read(name: &str) -> Result<StructureDefinition, CatalogError>` returning parsed definition or error
-  - [ ] 9.4 Implement `list() -> Vec<StructureDefinition>` returning all valid definitions sorted alphabetically
-  - [ ] 9.5 Implement DEBUG-level log on success, WARN-level log on failure for all operations
-  - [ ] 9.6 Write unit tests for create (success, duplicate rejection), read (found, not-found), list (sorted, empty)
+- [x] 9. Catalog CRUD operations — create and read
+  - [x] 9.1 Implement `create(def: StructureDefinition) -> Result<(), CatalogError>` with validation, write to Active_Catalog_Location
+  - [x] 9.2 Implement name uniqueness enforcement on create: reject with error if name already exists
+  - [x] 9.3 Implement `read(name: &str) -> Result<StructureDefinition, CatalogError>` returning parsed definition or error
+  - [x] 9.4 Implement `list() -> Vec<StructureDefinition>` returning all valid definitions sorted alphabetically
+  - [x] 9.5 Implement DEBUG-level log on success, WARN-level log on failure for all operations
+  - [x] 9.6 Write unit tests for create (success, duplicate rejection), read (found, not-found), list (sorted, empty)
   - Covers: Requirement 3 (AC 3.1, 3.2, 3.6, 3.9)
 
-- [ ] 10. Catalog CRUD operations — update, delete, duplicate
-  - [ ] 10.1 Implement `update(def: StructureDefinition) -> Result<(), CatalogError>` with version increment, validation, and write
-  - [ ] 10.2 Implement `delete(name: &str, confirmed: bool) -> Result<(), CatalogError>` with confirmation requirement
-  - [ ] 10.3 Implement unconfirmed delete rejection with descriptive error
-  - [ ] 10.4 Implement `duplicate(source_name: &str, new_name: &str) -> Result<(), CatalogError>` with version reset to 1
-  - [ ] 10.5 Implement duplicate name collision check for the new name
-  - [ ] 10.6 Write unit tests for update (version increment, validation failure), delete (confirmed, unconfirmed), duplicate (success, collision)
+- [x] 10. Catalog CRUD operations — update, delete, duplicate
+  - [x] 10.1 Implement `update(def: StructureDefinition) -> Result<(), CatalogError>` with version increment, validation, and write
+  - [x] 10.2 Implement `delete(name: &str, confirmed: bool) -> Result<(), CatalogError>` with confirmation requirement
+  - [x] 10.3 Implement unconfirmed delete rejection with descriptive error
+  - [x] 10.4 Implement `duplicate(source_name: &str, new_name: &str) -> Result<(), CatalogError>` with version reset to 1
+  - [x] 10.5 Implement duplicate name collision check for the new name
+  - [x] 10.6 Write unit tests for update (version increment, validation failure), delete (confirmed, unconfirmed), duplicate (success, collision)
   - Covers: Requirement 3 (AC 3.3, 3.4, 3.5, 3.7), Requirement 9 (AC 9.2, 9.7)
 
-- [ ] 11. Catalog browsing panel — data model and state
-  - [ ] 11.1 Define `BrowsingPanelState` struct: filtered list, search text, sort mode, selected index, preview content
-  - [ ] 11.2 Define `SortMode` enum: ByName, ByModifiedDate, ByFieldCount
-  - [ ] 11.3 Implement real-time substring filtering (case-insensitive) against name, field names, and file patterns
-  - [ ] 11.4 Implement sort switching logic
-  - [ ] 11.5 Implement preview generation: display Record_Structure names with field layouts on selection
-  - [ ] 11.6 Implement auto-refresh on catalog index change (watcher notification)
-  - [ ] 11.7 Write unit tests for filtering, sorting, preview generation, and refresh behavior
+- [x] 11. Catalog browsing panel — data model and state
+  - [x] 11.1 Define `BrowsingPanelState` struct: filtered list, search text, sort mode, selected index, preview content
+  - [x] 11.2 Define `SortMode` enum: ByName, ByModifiedDate, ByFieldCount
+  - [x] 11.3 Implement real-time substring filtering (case-insensitive) against name, field names, and file patterns
+  - [x] 11.4 Implement sort switching logic
+  - [x] 11.5 Implement preview generation: display Record_Structure names with field layouts on selection
+  - [x] 11.6 Implement auto-refresh on catalog index change (watcher notification)
+  - [x] 11.7 Write unit tests for filtering, sorting, preview generation, and refresh behavior
   - Covers: Requirement 4 (AC 4.1–4.5, 4.8, 4.10)
 
-- [ ] 12. Catalog browsing panel — actions and toolbar
-  - [ ] 12.1 Implement context menu actions model: OpenInEditor, ApplyToCurrentFile, Duplicate, Export, Delete
-  - [ ] 12.2 Implement toolbar actions model: NewStructure, Import, Refresh, LocationSelector
-  - [ ] 12.3 Implement Catalog_Location selector: switch active location and trigger reload
-  - [ ] 12.4 Implement panel registration with `layout-and-docking` system as dockable panel
-  - [ ] 12.5 Implement command `catalog.browse` for opening the panel
-  - [ ] 12.6 Write unit tests for action dispatch, location switching, and panel registration
+- [x] 12. Catalog browsing panel — actions and toolbar
+  - [x] 12.1 Implement context menu actions model: OpenInEditor, ApplyToCurrentFile, Duplicate, Export, Delete
+  - [x] 12.2 Implement toolbar actions model: NewStructure, Import, Refresh, LocationSelector
+  - [x] 12.3 Implement Catalog_Location selector: switch active location and trigger reload
+  - [x] 12.4 Implement panel registration with `layout-and-docking` system as dockable panel
+  - [x] 12.5 Implement command `catalog.browse` for opening the panel
+  - [x] 12.6 Write unit tests for action dispatch, location switching, and panel registration
   - Covers: Requirement 4 (AC 4.6, 4.7, 4.8, 4.9)
 
-- [ ] 13. Structure editor — field grid model
-  - [ ] 13.1 Define `EditorState` struct: active definition, dirty flag, selected record_structure tab, field list, validation errors
-  - [ ] 13.2 Implement add-field action: insert at position with defaults (empty name, next offset, length 1, alphanumeric)
-  - [ ] 13.3 Implement remove-field action: delete selected row, retain original offsets
-  - [ ] 13.4 Implement reorder-field action: move up/down or drag-drop, update display order without changing offsets
-  - [ ] 13.5 Implement "Auto-compute offsets" action: recalculate all offsets sequentially (each = prev.offset + prev.length)
-  - [ ] 13.6 Implement field_type dropdown model with packed-decimal/numeric enabling decimals column
-  - [ ] 13.7 Implement field validation on save with error cell highlighting model
-  - [ ] 13.8 Write unit tests for add/remove/reorder/auto-compute, validation, and type-specific behavior
+- [x] 13. Structure editor — field grid model
+  - [x] 13.1 Define `EditorState` struct: active definition, dirty flag, selected record_structure tab, field list, validation errors
+  - [x] 13.2 Implement add-field action: insert at position with defaults (empty name, next offset, length 1, alphanumeric)
+  - [x] 13.3 Implement remove-field action: delete selected row, retain original offsets
+  - [x] 13.4 Implement reorder-field action: move up/down or drag-drop, update display order without changing offsets
+  - [x] 13.5 Implement "Auto-compute offsets" action: recalculate all offsets sequentially (each = prev.offset + prev.length)
+  - [x] 13.6 Implement field_type dropdown model with packed-decimal/numeric enabling decimals column
+  - [x] 13.7 Implement field validation on save with error cell highlighting model
+  - [x] 13.8 Write unit tests for add/remove/reorder/auto-compute, validation, and type-specific behavior
   - Covers: Requirement 5 (AC 5.1–5.9)
 
-- [ ] 14. Structure editor — multi-structure tabs and dirty tracking
-  - [ ] 14.1 Implement multi-tab model: one tab per Record_Structure, add/rename/delete tabs
-  - [ ] 14.2 Implement unsaved-changes indicator: compare in-memory vs on-disk state
-  - [ ] 14.3 Implement save action: serialize to FFS, write via VFS, increment version, update modified_at
-  - [ ] 14.4 Implement discard action: reload from disk, reset dirty flag
-  - [ ] 14.5 Implement close/switch prompt when dirty (save, discard, cancel)
-  - [ ] 14.6 Implement command `catalog.edit_structure` for opening editor with a named structure
-  - [ ] 14.7 Write unit tests for tab management, dirty tracking, save/discard, and version increment
+- [x] 14. Structure editor — multi-structure tabs and dirty tracking
+  - [x] 14.1 Implement multi-tab model: one tab per Record_Structure, add/rename/delete tabs
+  - [x] 14.2 Implement unsaved-changes indicator: compare in-memory vs on-disk state
+  - [x] 14.3 Implement save action: serialize to FFS, write via VFS, increment version, update modified_at
+  - [x] 14.4 Implement discard action: reload from disk, reset dirty flag
+  - [x] 14.5 Implement close/switch prompt when dirty (save, discard, cancel)
+  - [x] 14.6 Implement command `catalog.edit_structure` for opening editor with a named structure
+  - [x] 14.7 Write unit tests for tab management, dirty tracking, save/discard, and version increment
   - Covers: Requirement 5 (AC 5.10, 5.11, 5.12), Requirement 9 (AC 9.2, 9.4, 9.5)
 
-- [ ] 15. Auto-association — file pattern matching
-  - [ ] 15.1 Implement `FileAssociationMap` struct: HashMap<glob_pattern, structure_name> built from all definitions
-  - [ ] 15.2 Implement map building at startup and on catalog reload by scanning all file_patterns
-  - [ ] 15.3 Implement conflict detection: same pattern in multiple definitions — WARN log, use first alphabetically
-  - [ ] 15.4 Implement `match_file(filename: &str) -> AssociationResult` returning None, Single(name), or Multiple(names)
-  - [ ] 15.5 Implement auto-apply on file open: Single match → apply and activate FileForge_Mode with status message
-  - [ ] 15.6 Implement multi-match handling: present structure selector to operator
-  - [ ] 15.7 Implement no-match handling: open in standard mode without error
-  - [ ] 15.8 Implement respect for `catalog.auto_associate` config flag (skip check when false)
-  - [ ] 15.9 Write unit tests for glob matching, conflict detection, single/multi/no-match scenarios, and config disable
+- [x] 15. Auto-association — file pattern matching
+  - [x] 15.1 Implement `FileAssociationMap` struct: HashMap<glob_pattern, structure_name> built from all definitions
+  - [x] 15.2 Implement map building at startup and on catalog reload by scanning all file_patterns
+  - [x] 15.3 Implement conflict detection: same pattern in multiple definitions — WARN log, use first alphabetically
+  - [x] 15.4 Implement `match_file(filename: &str) -> AssociationResult` returning None, Single(name), or Multiple(names)
+  - [x] 15.5 Implement auto-apply on file open: Single match → apply and activate FileForge_Mode with status message
+  - [x] 15.6 Implement multi-match handling: present structure selector to operator
+  - [x] 15.7 Implement no-match handling: open in standard mode without error
+  - [x] 15.8 Implement respect for `catalog.auto_associate` config flag (skip check when false)
+  - [x] 15.9 Write unit tests for glob matching, conflict detection, single/multi/no-match scenarios, and config disable
   - Covers: Requirement 10 (AC 10.1–10.9)
 
-- [ ] 16. Auto-association — pattern management in editor
-  - [ ] 16.1 Implement editable file_patterns section in Structure_Editor model
-  - [ ] 16.2 Implement add/edit/remove pattern actions with glob syntax validation
-  - [ ] 16.3 Write unit tests for pattern CRUD and validation
+- [x] 16. Auto-association — pattern management in editor
+  - [x] 16.1 Implement editable file_patterns section in Structure_Editor model
+  - [x] 16.2 Implement add/edit/remove pattern actions with glob syntax validation
+  - [x] 16.3 Write unit tests for pattern CRUD and validation
   - Covers: Requirement 10 (AC 10.10)
 
-- [ ] 17. Manual association command (APPLY STRUCTURE)
-  - [ ] 17.1 Register `APPLY STRUCTURE` primary command with `command-framework` (command ID: `catalog.apply_structure`)
-  - [ ] 17.2 Implement no-argument mode: open structure selector dialog with search/filter
-  - [ ] 17.3 Implement named-argument mode: look up by name, apply directly, error if not found
-  - [ ] 17.4 Implement FileForge_Mode activation/switch on successful apply
-  - [ ] 17.5 Implement companion config override message: note that catalog structure overrides file-local config for session
-  - [ ] 17.6 Implement optional offer to save association as File_Pattern_Mask in the definition's .ffs file
-  - [ ] 17.7 Implement no-active-file error when command issued without open file
-  - [ ] 17.8 Write unit tests for both modes, apply logic, override messaging, and error cases
+- [x] 17. Manual association command (APPLY STRUCTURE)
+  - [x] 17.1 Register `APPLY STRUCTURE` primary command with `command-framework` (command ID: `catalog.apply_structure`)
+  - [x] 17.2 Implement no-argument mode: open structure selector dialog with search/filter
+  - [x] 17.3 Implement named-argument mode: look up by name, apply directly, error if not found
+  - [x] 17.4 Implement FileForge_Mode activation/switch on successful apply
+  - [x] 17.5 Implement companion config override message: note that catalog structure overrides file-local config for session
+  - [x] 17.6 Implement optional offer to save association as File_Pattern_Mask in the definition's .ffs file
+  - [x] 17.7 Implement no-active-file error when command issued without open file
+  - [x] 17.8 Write unit tests for both modes, apply logic, override messaging, and error cases
   - Covers: Requirement 11 (AC 11.1–11.7)
 
-- [ ] 18. Grid browse mode — data model
-  - [ ] 18.1 Define `GridBrowseState` struct: records (Vec<GridRow>), column_defs (from active Record_Structure), scroll position
-  - [ ] 18.2 Define `GridRow` enum: Matched { fields: Vec<CellValue> } | Unmatched { raw_text: String }
-  - [ ] 18.3 Implement record parsing using active Record_Structure: extract field bytes, decode via FieldTypeHandler
-  - [ ] 18.4 Implement decimal display: packed-decimal and numeric fields with decimals > 0 shown with decimal point
-  - [ ] 18.5 Implement non-matching record display: full-width raw text with [NO MATCH] indicator
-  - [ ] 18.6 Implement record number column (1-based, fixed leftmost)
-  - [ ] 18.7 Implement keyboard navigation model: arrow keys, Page Up/Down, Home/End
-  - [ ] 18.8 Implement column resize model via drag handles
-  - [ ] 18.9 Implement field detail on row click: offset, length, raw bytes, decoded value
-  - [ ] 18.10 Write unit tests for record parsing, decimal display, non-matching records, and navigation
+- [x] 18. Grid browse mode — data model
+  - [x] 18.1 Define `GridBrowseState` struct: records (Vec<GridRow>), column_defs (from active Record_Structure), scroll position
+  - [x] 18.2 Define `GridRow` enum: Matched { fields: Vec<CellValue> } | Unmatched { raw_text: String }
+  - [x] 18.3 Implement record parsing using active Record_Structure: extract field bytes, decode via FieldTypeHandler
+  - [x] 18.4 Implement decimal display: packed-decimal and numeric fields with decimals > 0 shown with decimal point
+  - [x] 18.5 Implement non-matching record display: full-width raw text with [NO MATCH] indicator
+  - [x] 18.6 Implement record number column (1-based, fixed leftmost)
+  - [x] 18.7 Implement keyboard navigation model: arrow keys, Page Up/Down, Home/End
+  - [x] 18.8 Implement column resize model via drag handles
+  - [x] 18.9 Implement field detail on row click: offset, length, raw bytes, decoded value
+  - [x] 18.10 Write unit tests for record parsing, decimal display, non-matching records, and navigation
   - Covers: Requirement 12 (AC 12.1–12.9)
 
-- [ ] 19. Grid edit mode — data model and edit buffer
-  - [ ] 19.1 Define `GridEditState` struct extending GridBrowseState with edit_buffer (HashMap<(row, col), EditedValue>)
-  - [ ] 19.2 Implement cell activation: display current value in inline edit widget model
-  - [ ] 19.3 Implement field value validation against declared field_type on cell deactivation
-  - [ ] 19.4 Implement invalid value highlighting with error indicator model
-  - [ ] 19.5 Implement modified-record visual distinction tracking
-  - [ ] 19.6 Implement non-matching record read-only enforcement
-  - [ ] 19.7 Write unit tests for cell editing, validation, buffer tracking, and non-matching exclusion
+- [x] 19. Grid edit mode — data model and edit buffer
+  - [x] 19.1 Define `GridEditState` struct extending GridBrowseState with edit_buffer (HashMap<(row, col), EditedValue>)
+  - [x] 19.2 Implement cell activation: display current value in inline edit widget model
+  - [x] 19.3 Implement field value validation against declared field_type on cell deactivation
+  - [x] 19.4 Implement invalid value highlighting with error indicator model
+  - [x] 19.5 Implement modified-record visual distinction tracking
+  - [x] 19.6 Implement non-matching record read-only enforcement
+  - [x] 19.7 Write unit tests for cell editing, validation, buffer tracking, and non-matching exclusion
   - Covers: Requirement 13 (AC 13.1–13.5)
 
-- [ ] 20. Grid edit mode — save, undo, and encoding
-  - [ ] 20.1 Implement undo/redo integration: group field edits within same record as single transaction
-  - [ ] 20.2 Implement SAVE command: flush edit buffer, merge with original bytes, write via temp-file + atomic rename
-  - [ ] 20.3 Implement packed-decimal re-encoding: pack displayed decimal value back to COMP-3 format
-  - [ ] 20.4 Implement field padding: right-pad spaces (alphanumeric), left-pad zeros (numeric) when value shorter than length
-  - [ ] 20.5 Implement field truncation with warning when value exceeds defined length
-  - [ ] 20.6 Implement CANCEL/close prompt with unsaved grid edits (save, discard)
-  - [ ] 20.7 Write unit tests for save merge, COMP-3 encoding, padding, truncation, and undo grouping
+- [x] 20. Grid edit mode — save, undo, and encoding
+  - [x] 20.1 Implement undo/redo integration: group field edits within same record as single transaction
+  - [x] 20.2 Implement SAVE command: flush edit buffer, merge with original bytes, write via temp-file + atomic rename
+  - [x] 20.3 Implement packed-decimal re-encoding: pack displayed decimal value back to COMP-3 format
+  - [x] 20.4 Implement field padding: right-pad spaces (alphanumeric), left-pad zeros (numeric) when value shorter than length
+  - [x] 20.5 Implement field truncation with warning when value exceeds defined length
+  - [x] 20.6 Implement CANCEL/close prompt with unsaved grid edits (save, discard)
+  - [x] 20.7 Write unit tests for save merge, COMP-3 encoding, padding, truncation, and undo grouping
   - Covers: Requirement 13 (AC 13.6–13.11)
 
-- [ ] 21. Structure import
-  - [ ] 21.1 Implement import action accessible via command `catalog.import` and browsing panel toolbar
-  - [ ] 21.2 Implement `.fc.json` import: parse via fileforge-integration config parser, convert to StructureDefinition, write as .ffs
-  - [ ] 21.3 Implement `.fc.xlsx` import: parse via fileforge-integration Excel parser, convert to StructureDefinition, write as .ffs
-  - [ ] 21.4 Implement `.ffs` import from different location: copy to Active_Catalog_Location
-  - [ ] 21.5 Implement name collision handling: prompt operator to rename, overwrite, or cancel
-  - [ ] 21.6 Implement non-modification guarantee: original source file is never modified or moved
-  - [ ] 21.7 Implement success handling: refresh catalog, highlight newly imported definition
-  - [ ] 21.8 Implement failure handling: error message, no partial file creation
-  - [ ] 21.9 Implement "Promote to Catalog" action for files open with companion .fc.json
-  - [ ] 21.10 Write unit tests for each import format, collision handling, error paths, and promote action
+- [x] 21. Structure import
+  - [x] 21.1 Implement import action accessible via command `catalog.import` and browsing panel toolbar
+  - [x] 21.2 Implement `.fc.json` import: parse via fileforge-integration config parser, convert to StructureDefinition, write as .ffs
+  - [x] 21.3 Implement `.fc.xlsx` import: parse via fileforge-integration Excel parser, convert to StructureDefinition, write as .ffs
+  - [x] 21.4 Implement `.ffs` import from different location: copy to Active_Catalog_Location
+  - [x] 21.5 Implement name collision handling: prompt operator to rename, overwrite, or cancel
+  - [x] 21.6 Implement non-modification guarantee: original source file is never modified or moved
+  - [x] 21.7 Implement success handling: refresh catalog, highlight newly imported definition
+  - [x] 21.8 Implement failure handling: error message, no partial file creation
+  - [x] 21.9 Implement "Promote to Catalog" action for files open with companion .fc.json
+  - [x] 21.10 Write unit tests for each import format, collision handling, error paths, and promote action
   - Covers: Requirement 7 (AC 7.1–7.10)
 
-- [ ] 22. Structure export
-  - [ ] 22.1 Implement export action via command `catalog.export`, browsing panel context menu, and editor toolbar
-  - [ ] 22.2 Implement format choice model: .ffs (TOML native), .fc.json (legacy JSON), .fc.xlsx (Excel)
-  - [ ] 22.3 Implement .fc.json export via fileforge-integration config serializer
-  - [ ] 22.4 Implement .fc.xlsx export via fileforge-integration Excel config writer
-  - [ ] 22.5 Implement .ffs export: write native TOML to specified destination
-  - [ ] 22.6 Implement destination path selection with default to Active_Catalog_Location
-  - [ ] 22.7 Implement success status message with output file path and format
-  - [ ] 22.8 Implement failure error message on I/O or serialization error
-  - [ ] 22.9 Write unit tests for each export format, destination handling, and error paths
+- [x] 22. Structure export
+  - [x] 22.1 Implement export action via command `catalog.export`, browsing panel context menu, and editor toolbar
+  - [x] 22.2 Implement format choice model: .ffs (TOML native), .fc.json (legacy JSON), .fc.xlsx (Excel)
+  - [x] 22.3 Implement .fc.json export via fileforge-integration config serializer
+  - [x] 22.4 Implement .fc.xlsx export via fileforge-integration Excel config writer
+  - [x] 22.5 Implement .ffs export: write native TOML to specified destination
+  - [x] 22.6 Implement destination path selection with default to Active_Catalog_Location
+  - [x] 22.7 Implement success status message with output file path and format
+  - [x] 22.8 Implement failure error message on I/O or serialization error
+  - [x] 22.9 Write unit tests for each export format, destination handling, and error paths
   - Covers: Requirement 8 (AC 8.1–8.8)
 
-- [ ] 23. Structure versioning
-  - [ ] 23.1 Implement version auto-increment on every save operation
-  - [ ] 23.2 Implement created_at timestamp assignment on first creation (ISO 8601)
-  - [ ] 23.3 Implement modified_at timestamp update on every save (ISO 8601)
-  - [ ] 23.4 Implement external modification conflict detection: compare on-disk modified_at with loaded value
-  - [ ] 23.5 Implement conflict resolution prompt: reload from disk or overwrite
-  - [ ] 23.6 Implement version/modified_at display in Catalog_Browsing_Panel list view
-  - [ ] 23.7 Implement duplicate version reset: new copy gets version 1, new created_at, cleared modified_at
-  - [ ] 23.8 Write unit tests for version increment, timestamp assignment, conflict detection, and duplicate reset
+- [x] 23. Structure versioning
+  - [x] 23.1 Implement version auto-increment on every save operation
+  - [x] 23.2 Implement created_at timestamp assignment on first creation (ISO 8601)
+  - [x] 23.3 Implement modified_at timestamp update on every save (ISO 8601)
+  - [x] 23.4 Implement external modification conflict detection: compare on-disk modified_at with loaded value
+  - [x] 23.5 Implement conflict resolution prompt: reload from disk or overwrite
+  - [x] 23.6 Implement version/modified_at display in Catalog_Browsing_Panel list view
+  - [x] 23.7 Implement duplicate version reset: new copy gets version 1, new created_at, cleared modified_at
+  - [x] 23.8 Write unit tests for version increment, timestamp assignment, conflict detection, and duplicate reset
   - Covers: Requirement 9 (AC 9.1–9.7)
 
-- [ ] 24. Catalog location management
-  - [ ] 24.1 Implement `CatalogLocationManager` accessible via command `catalog.manage_locations` and browsing panel toolbar
-  - [ ] 24.2 Implement add-location: verify path exists and is readable, reject with error if not
-  - [ ] 24.3 Implement remove-location: remove from list without deleting directory or contents
-  - [ ] 24.4 Implement rename-location: update display label
-  - [ ] 24.5 Implement set-active-location: designate any configured location as Active, trigger panel reload
-  - [ ] 24.6 Implement persistence via configuration-system user-layer file under [catalog] table
-  - [ ] 24.7 Implement startup with no config: initialise with default location, empty list, no error
-  - [ ] 24.8 Implement startup with missing path: WARN log, mark unavailable, continue with others
-  - [ ] 24.9 Write unit tests for add/remove/rename/set-active, persistence, startup scenarios
+- [x] 24. Catalog location management
+  - [x] 24.1 Implement `CatalogLocationManager` accessible via command `catalog.manage_locations` and browsing panel toolbar
+  - [x] 24.2 Implement add-location: verify path exists and is readable, reject with error if not
+  - [x] 24.3 Implement remove-location: remove from list without deleting directory or contents
+  - [x] 24.4 Implement rename-location: update display label
+  - [x] 24.5 Implement set-active-location: designate any configured location as Active, trigger panel reload
+  - [x] 24.6 Implement persistence via configuration-system user-layer file under [catalog] table
+  - [x] 24.7 Implement startup with no config: initialise with default location, empty list, no error
+  - [x] 24.8 Implement startup with missing path: WARN log, mark unavailable, continue with others
+  - [x] 24.9 Write unit tests for add/remove/rename/set-active, persistence, startup scenarios
   - Covers: Requirement 14 (AC 14.1–14.10)
 
-- [ ] 25. Configuration keys
-  - [ ] 25.1 Define configuration schema: catalog.locations (array), catalog.active_location (string), catalog.auto_associate (bool, default true), catalog.default_field_type (string, default "alphanumeric")
-  - [ ] 25.2 Implement active_location fallback: if path does not exist, emit warning and use default user-level location
-  - [ ] 25.3 Implement auto_associate disable: skip auto-association on file open when false
-  - [ ] 25.4 Implement hot-reload integration: changes to [catalog] keys take effect within 2 seconds
-  - [ ] 25.5 Implement layer precedence: Defaults → System → User → Profile → Project → Workspace
-  - [ ] 25.6 Write unit tests for config loading, fallback, hot-reload, and layer override
+- [x] 25. Configuration keys
+  - [x] 25.1 Define configuration schema: catalog.locations (array), catalog.active_location (string), catalog.auto_associate (bool, default true), catalog.default_field_type (string, default "alphanumeric")
+  - [x] 25.2 Implement active_location fallback: if path does not exist, emit warning and use default user-level location
+  - [x] 25.3 Implement auto_associate disable: skip auto-association on file open when false
+  - [x] 25.4 Implement hot-reload integration: changes to [catalog] keys take effect within 2 seconds
+  - [x] 25.5 Implement layer precedence: Defaults → System → User → Profile → Project → Workspace
+  - [x] 25.6 Write unit tests for config loading, fallback, hot-reload, and layer override
   - Covers: Requirement 15 (AC 15.1–15.5), Requirement 1 (AC 1.2, 1.7)
 
-- [ ] 26. Command registration
-  - [ ] 26.1 Register command `catalog.create` routed to CRUD create operation
-  - [ ] 26.2 Register command `catalog.read` routed to CRUD read operation
-  - [ ] 26.3 Register command `catalog.update` routed to CRUD update operation
-  - [ ] 26.4 Register command `catalog.delete` routed to CRUD delete operation
-  - [ ] 26.5 Register command `catalog.list` routed to CRUD list operation
-  - [ ] 26.6 Register command `catalog.duplicate` routed to CRUD duplicate operation
-  - [ ] 26.7 Register command `catalog.browse` routed to browsing panel open
-  - [ ] 26.8 Register command `catalog.edit_structure` routed to structure editor open
-  - [ ] 26.9 Register command `catalog.import` routed to import action
-  - [ ] 26.10 Register command `catalog.export` routed to export action
-  - [ ] 26.11 Register command `catalog.apply_structure` routed to manual association
-  - [ ] 26.12 Register command `catalog.manage_locations` routed to location manager
-  - [ ] 26.13 Write unit tests for command registration and dispatch to correct handlers
+- [x] 26. Command registration
+  - [x] 26.1 Register command `catalog.create` routed to CRUD create operation
+  - [x] 26.2 Register command `catalog.read` routed to CRUD read operation
+  - [x] 26.3 Register command `catalog.update` routed to CRUD update operation
+  - [x] 26.4 Register command `catalog.delete` routed to CRUD delete operation
+  - [x] 26.5 Register command `catalog.list` routed to CRUD list operation
+  - [x] 26.6 Register command `catalog.duplicate` routed to CRUD duplicate operation
+  - [x] 26.7 Register command `catalog.browse` routed to browsing panel open
+  - [x] 26.8 Register command `catalog.edit_structure` routed to structure editor open
+  - [x] 26.9 Register command `catalog.import` routed to import action
+  - [x] 26.10 Register command `catalog.export` routed to export action
+  - [x] 26.11 Register command `catalog.apply_structure` routed to manual association
+  - [x] 26.12 Register command `catalog.manage_locations` routed to location manager
+  - [x] 26.13 Write unit tests for command registration and dispatch to correct handlers
   - Covers: Requirement 3 (AC 3.8), Requirement 4 (AC 4.9), Requirement 5 (AC 5.12), Requirement 7 (AC 7.1), Requirement 8 (AC 8.1), Requirement 11 (AC 11.1), Requirement 14 (AC 14.1)
 
-- [ ] 27. COBOL copybook parser (structure import from copybook)
-  - [ ] 27.1 Implement basic COBOL copybook level-number and PIC clause parsing for field extraction
-  - [ ] 27.2 Implement PIC X(n) → alphanumeric field mapping with correct length
-  - [ ] 27.3 Implement PIC 9(n) → numeric field mapping with implied decimals from V position
-  - [ ] 27.4 Implement COMP-3 (PACKED-DECIMAL) USAGE clause → packed-decimal field type
-  - [ ] 27.5 Implement BINARY/COMP USAGE clause → binary field type
-  - [ ] 27.6 Implement REDEFINES handling: create separate Record_Structures for redefined groups
-  - [ ] 27.7 Implement offset calculation from level hierarchy and field lengths
-  - [ ] 27.8 Implement conversion to StructureDefinition with appropriate metadata
-  - [ ] 27.9 Register copybook import as an additional format in the import file picker (.cpy, .cbl extensions)
-  - [ ] 27.10 Write unit tests for PIC clause parsing, COMP-3 detection, REDEFINES, and offset calculation
+- [x] 27. COBOL copybook parser (structure import from copybook)
+  - [x] 27.1 Implement basic COBOL copybook level-number and PIC clause parsing for field extraction
+  - [x] 27.2 Implement PIC X(n) → alphanumeric field mapping with correct length
+  - [x] 27.3 Implement PIC 9(n) → numeric field mapping with implied decimals from V position
+  - [x] 27.4 Implement COMP-3 (PACKED-DECIMAL) USAGE clause → packed-decimal field type
+  - [x] 27.5 Implement BINARY/COMP USAGE clause → binary field type
+  - [x] 27.6 Implement REDEFINES handling: create separate Record_Structures for redefined groups
+  - [x] 27.7 Implement offset calculation from level hierarchy and field lengths
+  - [x] 27.8 Implement conversion to StructureDefinition with appropriate metadata
+  - [x] 27.9 Register copybook import as an additional format in the import file picker (.cpy, .cbl extensions)
+  - [x] 27.10 Write unit tests for PIC clause parsing, COMP-3 detection, REDEFINES, and offset calculation
   - Covers: Requirement 7 (extends import capability for mainframe-origin structures)
 
-- [ ] 28. Error types
-  - [ ] 28.1 Define `CatalogError` enum with variants: NotFound, DuplicateName, ValidationFailed, IoError, ParseError, SchemaError, PermissionDenied, ConfigError, ImportError, ExportError, ConflictDetected
-  - [ ] 28.2 Implement `Display` and `thiserror::Error` derives with descriptive context messages
-  - [ ] 28.3 Implement `From` conversions for std::io::Error, toml::de::Error, and upstream crate errors
-  - [ ] 28.4 Write unit tests for error display output and conversion paths
+- [x] 28. Error types
+  - [x] 28.1 Define `CatalogError` enum with variants: NotFound, DuplicateName, ValidationFailed, IoError, ParseError, SchemaError, PermissionDenied, ConfigError, ImportError, ExportError, ConflictDetected
+  - [x] 28.2 Implement `Display` and `thiserror::Error` derives with descriptive context messages
+  - [x] 28.3 Implement `From` conversions for std::io::Error, toml::de::Error, and upstream crate errors
+  - [x] 28.4 Write unit tests for error display output and conversion paths
   - Covers: All requirements (error paths)
 
-- [ ] 29. Property-based tests
-  - [ ] 29.1 Write PBT: FFS serialization/deserialization round-trip property
-  - [ ] 29.2 Write PBT: Field validation invariant property
-  - [ ] 29.3 Write PBT: Packed-decimal encode/decode round-trip property
-  - [ ] 29.4 Write PBT: Auto-compute offsets contiguity property
-  - [ ] 29.5 Write PBT: Catalog name uniqueness enforcement property
-  - [ ] 29.6 Write PBT: Version monotonic increment property
-  - [ ] 29.7 Write PBT: File pattern glob matching correctness property
-  - [ ] 29.8 Write PBT: Grid field extraction alignment property
-  - [ ] 29.9 Write PBT: Field padding/truncation length preservation property
-  - [ ] 29.10 Write PBT: COBOL PIC clause offset calculation property
+- [x] 29. Property-based tests
+  - [x] 29.1 Write PBT: FFS serialization/deserialization round-trip property
+  - [x] 29.2 Write PBT: Field validation invariant property
+  - [x] 29.3 Write PBT: Packed-decimal encode/decode round-trip property
+  - [x] 29.4 Write PBT: Auto-compute offsets contiguity property
+  - [x] 29.5 Write PBT: Catalog name uniqueness enforcement property
+  - [x] 29.6 Write PBT: Version monotonic increment property
+  - [x] 29.7 Write PBT: File pattern glob matching correctness property
+  - [x] 29.8 Write PBT: Grid field extraction alignment property
+  - [x] 29.9 Write PBT: Field padding/truncation length preservation property
+  - [x] 29.10 Write PBT: COBOL PIC clause offset calculation property
   - Covers: All requirements (property-based validation)
 
-- [ ] 30. Integration tests
-  - [ ] 30.1 Write integration test: full catalog lifecycle (create → read → update → list → duplicate → delete)
-  - [ ] 30.2 Write integration test: import .fc.json → browse → apply to file → grid browse
-  - [ ] 30.3 Write integration test: structure editor round-trip (open → edit fields → save → reload → verify)
-  - [ ] 30.4 Write integration test: auto-association on file open with single match
-  - [ ] 30.5 Write integration test: multi-location catalog with conflicting patterns
-  - [ ] 30.6 Write integration test: grid edit mode → save → verify file bytes
-  - [ ] 30.7 Write integration test: export to .fc.json → re-import → verify equivalence
-  - [ ] 30.8 Write integration test: configuration hot-reload of catalog.active_location
-  - [ ] 30.9 Write integration test: COBOL copybook import → verify fields and offsets
+- [x] 30. Integration tests
+  - [x] 30.1 Write integration test: full catalog lifecycle (create → read → update → list → duplicate → delete)
+  - [x] 30.2 Write integration test: import .fc.json → browse → apply to file → grid browse
+  - [x] 30.3 Write integration test: structure editor round-trip (open → edit fields → save → reload → verify)
+  - [x] 30.4 Write integration test: auto-association on file open with single match
+  - [x] 30.5 Write integration test: multi-location catalog with conflicting patterns
+  - [x] 30.6 Write integration test: grid edit mode → save → verify file bytes
+  - [x] 30.7 Write integration test: export to .fc.json → re-import → verify equivalence
+  - [x] 30.8 Write integration test: configuration hot-reload of catalog.active_location
+  - [x] 30.9 Write integration test: COBOL copybook import → verify fields and offsets
   - Covers: Cross-requirement integration validation
 
 ---

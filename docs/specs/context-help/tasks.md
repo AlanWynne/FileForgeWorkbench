@@ -1,4 +1,4 @@
-# Implementation Plan: Context-Sensitive Help System (`ff-help`)
+﻿# Implementation Plan: Context-Sensitive Help System (`ff-help`)
 
 ## Overview
 
@@ -10,201 +10,201 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
 
 ## Tasks
 
-- [ ] 1. Crate scaffolding and core types
-  - [ ] 1.1 Create `crates/ff-help/Cargo.toml` with dependencies (ff-command, ff-layout, ff-plugin, ff-config, ff-keys, ff-logging, thiserror, serde, pulldown-cmark, proptest dev-dep)
-  - [ ] 1.2 Create `crates/ff-help/src/lib.rs` with module declarations and public API re-exports
-  - [ ] 1.3 Create module files: `topic.rs`, `topic_key.rs`, `registry.rs`, `content_loader.rs`, `content_parser.rs`, `context_detector.rs`, `help_panel.rs`, `navigation.rs`, `search.rs`, `plugin_help.rs`, `dynamic_content.rs`, `config.rs`, `commands.rs`, `error.rs`
-  - [ ] 1.4 Add `ff-help` to workspace `Cargo.toml` members list
-  - [ ] 1.5 Define `HelpError` enum with variants: TopicNotFound, ContentFileNotFound, ContentParseError, ContentDirectoryMissing, RegistryLockPoisoned, InvalidTopicKey, SearchQueryTooShort, NavigationStackEmpty, PluginTopicConflict, ConfigInvalid, HotReloadFailed
-  - [ ] 1.6 Implement `Display` and `thiserror::Error` derives with descriptive messages for all error variants
+- [x] 1. Crate scaffolding and core types
+  - [x] 1.1 Create `crates/ff-help/Cargo.toml` with dependencies (ff-command, ff-layout, ff-plugin, ff-config, ff-keys, ff-logging, thiserror, serde, pulldown-cmark, proptest dev-dep)
+  - [x] 1.2 Create `crates/ff-help/src/lib.rs` with module declarations and public API re-exports
+  - [x] 1.3 Create module files: `topic.rs`, `topic_key.rs`, `registry.rs`, `content_loader.rs`, `content_parser.rs`, `context_detector.rs`, `help_panel.rs`, `navigation.rs`, `search.rs`, `plugin_help.rs`, `dynamic_content.rs`, `config.rs`, `commands.rs`, `error.rs`
+  - [x] 1.4 Add `ff-help` to workspace `Cargo.toml` members list
+  - [x] 1.5 Define `HelpError` enum with variants: TopicNotFound, ContentFileNotFound, ContentParseError, ContentDirectoryMissing, RegistryLockPoisoned, InvalidTopicKey, SearchQueryTooShort, NavigationStackEmpty, PluginTopicConflict, ConfigInvalid, HotReloadFailed
+  - [x] 1.6 Implement `Display` and `thiserror::Error` derives with descriptive messages for all error variants
   - Covers: Structural foundation for all requirements
 
-- [ ] 2. Help topic model and Topic Key
-  - [ ] 2.1 Define `TopicKey` newtype wrapping String with constructor, `Display`, `FromStr`, `Eq`, `Hash`, `Clone`, `Serialize`, `Deserialize`
-  - [ ] 2.2 Implement `TopicKey` parsing with prefix validation — accept `"cmd:<name>"`, `"line:<name>"`, `"mode:<name>"`, `"feature:<name>"`, `"config:<key>"`, `"api:<name>"`, `"index"`, `"getting_started"`, `"line:index"`
-  - [ ] 2.3 Implement `TopicKey::category() -> TopicCategory` — extract the prefix as an enum (Command, LineCommand, Mode, Feature, Config, Api, Index, GettingStarted)
-  - [ ] 2.4 Define `TopicCategory` enum with variants matching all valid key prefixes
-  - [ ] 2.5 Define `HelpTopic` struct with fields: key (TopicKey), title (String), body (String), syntax (Option<String>), aliases (Vec<String>), see_also (Vec<TopicKey>), source (TopicSource)
-  - [ ] 2.6 Define `TopicSource` enum with variants: FileBased { file_path: PathBuf }, CommandRegistry { command_id: String }, Plugin { plugin_id: String }
-  - [ ] 2.7 Implement `HelpTopic::cross_references() -> &[TopicKey]` — extract cross-reference links from body content
-  - [ ] 2.8 Write unit tests for TopicKey parsing (valid prefixes, invalid format), category extraction, HelpTopic construction
+- [x] 2. Help topic model and Topic Key
+  - [x] 2.1 Define `TopicKey` newtype wrapping String with constructor, `Display`, `FromStr`, `Eq`, `Hash`, `Clone`, `Serialize`, `Deserialize`
+  - [x] 2.2 Implement `TopicKey` parsing with prefix validation — accept `"cmd:<name>"`, `"line:<name>"`, `"mode:<name>"`, `"feature:<name>"`, `"config:<key>"`, `"api:<name>"`, `"index"`, `"getting_started"`, `"line:index"`
+  - [x] 2.3 Implement `TopicKey::category() -> TopicCategory` — extract the prefix as an enum (Command, LineCommand, Mode, Feature, Config, Api, Index, GettingStarted)
+  - [x] 2.4 Define `TopicCategory` enum with variants matching all valid key prefixes
+  - [x] 2.5 Define `HelpTopic` struct with fields: key (TopicKey), title (String), body (String), syntax (Option<String>), aliases (Vec<String>), see_also (Vec<TopicKey>), source (TopicSource)
+  - [x] 2.6 Define `TopicSource` enum with variants: FileBased { file_path: PathBuf }, CommandRegistry { command_id: String }, Plugin { plugin_id: String }
+  - [x] 2.7 Implement `HelpTopic::cross_references() -> &[TopicKey]` — extract cross-reference links from body content
+  - [x] 2.8 Write unit tests for TopicKey parsing (valid prefixes, invalid format), category extraction, HelpTopic construction
   - Covers: Requirement 5 (AC 5.2), Requirement 6 (AC 6.1), Requirement 7 (AC 7.1)
 
-- [ ] 3. Help content loading and parsing
-  - [ ] 3.1 Implement `ContentLoader` struct with fields: search_paths (Vec<PathBuf>), loaded_files (HashMap<PathBuf, Vec<TopicKey>>)
-  - [ ] 3.2 Implement `ContentLoader::resolve_help_directory() -> Option<PathBuf>` — search in order: (a) directory containing workbench binary, (b) User_Data_Dir, (c) custom path from `help_directory` config key
-  - [ ] 3.3 Implement `ContentLoader::discover_files(dir: &Path) -> Vec<PathBuf>` — find all `.help.md` files recursively in the help directory
-  - [ ] 3.4 Implement `ContentParser` struct for parsing `.help.md` file format
-  - [ ] 3.5 Implement topic delimiter parsing — detect `<!-- TOPIC: topic_key -->` followed by `<!-- TITLE: Human Title -->` separating multiple topics within a single file
-  - [ ] 3.6 Implement YAML front-matter parsing as alternative topic delimiter — extract `topic_key` and `title` fields from front-matter blocks
-  - [ ] 3.7 Implement Markdown body parsing — extract section headings, bullet lists, inline code, fenced code blocks, bold text, and cross-reference links `[text](topic_key)`
-  - [ ] 3.8 Implement `ContentLoader::load_all() -> Result<Vec<HelpTopic>, HelpError>` — load and parse all discovered files, index by TopicKey
-  - [ ] 3.9 Implement missing directory handling — when help directory not found or contains no `.help.md` files, produce a built-in minimal help page explaining expected file locations
-  - [ ] 3.10 Implement hot-reload detection — subscribe to VFS file-watcher events for the help directory, reload affected topics on file modification without restart
-  - [ ] 3.11 Write unit tests for: directory resolution order, file discovery, delimiter parsing (HTML comment and YAML), Markdown element extraction, missing directory graceful handling, multi-topic file parsing
+- [x] 3. Help content loading and parsing
+  - [x] 3.1 Implement `ContentLoader` struct with fields: search_paths (Vec<PathBuf>), loaded_files (HashMap<PathBuf, Vec<TopicKey>>)
+  - [x] 3.2 Implement `ContentLoader::resolve_help_directory() -> Option<PathBuf>` — search in order: (a) directory containing workbench binary, (b) User_Data_Dir, (c) custom path from `help_directory` config key
+  - [x] 3.3 Implement `ContentLoader::discover_files(dir: &Path) -> Vec<PathBuf>` — find all `.help.md` files recursively in the help directory
+  - [x] 3.4 Implement `ContentParser` struct for parsing `.help.md` file format
+  - [x] 3.5 Implement topic delimiter parsing — detect `<!-- TOPIC: topic_key -->` followed by `<!-- TITLE: Human Title -->` separating multiple topics within a single file
+  - [x] 3.6 Implement YAML front-matter parsing as alternative topic delimiter — extract `topic_key` and `title` fields from front-matter blocks
+  - [x] 3.7 Implement Markdown body parsing — extract section headings, bullet lists, inline code, fenced code blocks, bold text, and cross-reference links `[text](topic_key)`
+  - [x] 3.8 Implement `ContentLoader::load_all() -> Result<Vec<HelpTopic>, HelpError>` — load and parse all discovered files, index by TopicKey
+  - [x] 3.9 Implement missing directory handling — when help directory not found or contains no `.help.md` files, produce a built-in minimal help page explaining expected file locations
+  - [x] 3.10 Implement hot-reload detection — subscribe to VFS file-watcher events for the help directory, reload affected topics on file modification without restart
+  - [x] 3.11 Write unit tests for: directory resolution order, file discovery, delimiter parsing (HTML comment and YAML), Markdown element extraction, missing directory graceful handling, multi-topic file parsing
   - Covers: Requirement 5 (AC 5.1–5.7)
 
-- [ ] 4. Context resolution engine
-  - [ ] 4.1 Define `ContextDetector` struct with methods to inspect current editor state and resolve the most relevant TopicKey
-  - [ ] 4.2 Define `EditorContext` struct capturing current state: focused_panel (PanelId), command_line_text (String), command_line_has_focus (bool), prefix_area_text (Option<String>), prefix_area_has_focus (bool), active_mode (EditorMode), active_line_command (Option<String>)
-  - [ ] 4.3 Implement `ContextDetector::resolve(ctx: &EditorContext) -> TopicKey` — apply resolution priority rules to determine the best topic
-  - [ ] 4.4 Implement command input resolution — when command field has focus and contains a recognisable command name (first whitespace-delimited token), resolve to `"cmd:<COMMAND_NAME>"`
-  - [ ] 4.5 Implement empty command field resolution — when command field has focus and is empty or whitespace-only, resolve to `"index"`
-  - [ ] 4.6 Implement prefix area resolution — when prefix area cell has focus and contains a recognisable line command, resolve to `"line:<COMMAND>"`
-  - [ ] 4.7 Implement mode-based resolution — when no specific context is available, resolve to `"mode:<active_mode>"` for special modes (hex, preview, grid_edit, grid_browse)
-  - [ ] 4.8 Implement fallback resolution — when no specific context can be determined, resolve to `"index"` (Help_Index)
-  - [ ] 4.9 Implement resolution priority order: (1) focused command field with command name, (2) focused prefix area with line command, (3) active special mode, (4) Help_Index fallback
-  - [ ] 4.10 Write unit tests for: command field with command, empty command field, prefix area with line command, mode-only context, no-context fallback, resolution priority when multiple contexts exist
+- [x] 4. Context resolution engine
+  - [x] 4.1 Define `ContextDetector` struct with methods to inspect current editor state and resolve the most relevant TopicKey
+  - [x] 4.2 Define `EditorContext` struct capturing current state: focused_panel (PanelId), command_line_text (String), command_line_has_focus (bool), prefix_area_text (Option<String>), prefix_area_has_focus (bool), active_mode (EditorMode), active_line_command (Option<String>)
+  - [x] 4.3 Implement `ContextDetector::resolve(ctx: &EditorContext) -> TopicKey` — apply resolution priority rules to determine the best topic
+  - [x] 4.4 Implement command input resolution — when command field has focus and contains a recognisable command name (first whitespace-delimited token), resolve to `"cmd:<COMMAND_NAME>"`
+  - [x] 4.5 Implement empty command field resolution — when command field has focus and is empty or whitespace-only, resolve to `"index"`
+  - [x] 4.6 Implement prefix area resolution — when prefix area cell has focus and contains a recognisable line command, resolve to `"line:<COMMAND>"`
+  - [x] 4.7 Implement mode-based resolution — when no specific context is available, resolve to `"mode:<active_mode>"` for special modes (hex, preview, grid_edit, grid_browse)
+  - [x] 4.8 Implement fallback resolution — when no specific context can be determined, resolve to `"index"` (Help_Index)
+  - [x] 4.9 Implement resolution priority order: (1) focused command field with command name, (2) focused prefix area with line command, (3) active special mode, (4) Help_Index fallback
+  - [x] 4.10 Write unit tests for: command field with command, empty command field, prefix area with line command, mode-only context, no-context fallback, resolution priority when multiple contexts exist
   - Covers: Requirement 1 (AC 1.1–1.5, 1.7, 1.9)
 
-- [ ] 5. Help Panel model
-  - [ ] 5.1 Define `HelpPanelModel` struct with fields: current_topic (Option<HelpTopic>), is_open (bool), breadcrumb (Vec<BreadcrumbEntry>), scroll_offset (usize), toc_entries (Vec<TocEntry>), toc_visible (bool)
-  - [ ] 5.2 Define `BreadcrumbEntry` struct with fields: label (String), topic_key (TopicKey)
-  - [ ] 5.3 Define `TocEntry` struct with fields: heading (String), level (u8), anchor (String)
-  - [ ] 5.4 Implement `HelpPanelModel::open(topic: HelpTopic)` — set current topic, compute breadcrumb path, extract TOC, set is_open to true
-  - [ ] 5.5 Implement `HelpPanelModel::close()` — clear state, set is_open to false
-  - [ ] 5.6 Implement breadcrumb computation — derive path from topic category hierarchy (e.g., `Help > Commands > CHANGE`)
-  - [ ] 5.7 Implement TOC extraction — parse headings from topic body Markdown to build section outline
-  - [ ] 5.8 Implement `HelpPanelModel::scroll_up()` / `scroll_down()` — adjust scroll offset within content bounds
-  - [ ] 5.9 Implement toggle behaviour — when F1 resolves to the same topic currently displayed, close the panel
-  - [ ] 5.10 Implement narrow-width detection — when panel width below 200px, set a flag for the UI to display resize suggestion
-  - [ ] 5.11 Implement DockablePanel trait — provide panel_id, title, default_zone (Right), preferred_width_ratio (from config, default 0.35)
-  - [ ] 5.12 Write unit tests for: open/close state transitions, breadcrumb derivation, TOC extraction from headings, toggle behaviour, scroll bounds clamping, narrow-width detection
+- [x] 5. Help Panel model
+  - [x] 5.1 Define `HelpPanelModel` struct with fields: current_topic (Option<HelpTopic>), is_open (bool), breadcrumb (Vec<BreadcrumbEntry>), scroll_offset (usize), toc_entries (Vec<TocEntry>), toc_visible (bool)
+  - [x] 5.2 Define `BreadcrumbEntry` struct with fields: label (String), topic_key (TopicKey)
+  - [x] 5.3 Define `TocEntry` struct with fields: heading (String), level (u8), anchor (String)
+  - [x] 5.4 Implement `HelpPanelModel::open(topic: HelpTopic)` — set current topic, compute breadcrumb path, extract TOC, set is_open to true
+  - [x] 5.5 Implement `HelpPanelModel::close()` — clear state, set is_open to false
+  - [x] 5.6 Implement breadcrumb computation — derive path from topic category hierarchy (e.g., `Help > Commands > CHANGE`)
+  - [x] 5.7 Implement TOC extraction — parse headings from topic body Markdown to build section outline
+  - [x] 5.8 Implement `HelpPanelModel::scroll_up()` / `scroll_down()` — adjust scroll offset within content bounds
+  - [x] 5.9 Implement toggle behaviour — when F1 resolves to the same topic currently displayed, close the panel
+  - [x] 5.10 Implement narrow-width detection — when panel width below 200px, set a flag for the UI to display resize suggestion
+  - [x] 5.11 Implement DockablePanel trait — provide panel_id, title, default_zone (Right), preferred_width_ratio (from config, default 0.35)
+  - [x] 5.12 Write unit tests for: open/close state transitions, breadcrumb derivation, TOC extraction from headings, toggle behaviour, scroll bounds clamping, narrow-width detection
   - Covers: Requirement 2 (AC 2.1–2.10)
 
-- [ ] 6. Navigation — back, forward, and index
-  - [ ] 6.1 Define `NavigationStack` struct with fields: history (Vec<TopicKey>), pointer (usize)
-  - [ ] 6.2 Implement `NavigationStack::push(key: TopicKey)` — add topic to stack, truncate forward history if navigating from a non-head position
-  - [ ] 6.3 Implement `NavigationStack::back() -> Option<TopicKey>` — move pointer backward, return previous topic; return None if at beginning
-  - [ ] 6.4 Implement `NavigationStack::forward() -> Option<TopicKey>` — move pointer forward, return next topic; return None if at head
-  - [ ] 6.5 Implement `NavigationStack::can_go_back() -> bool` and `can_go_forward() -> bool` — for UI button enable/disable state
-  - [ ] 6.6 Implement `NavigationStack::current() -> Option<&TopicKey>` — return the topic at the current pointer position
-  - [ ] 6.7 Implement `NavigationStack::clear()` — reset stack when Help Panel is closed and reopened (fresh session per Req 3.6)
-  - [ ] 6.8 Implement `NavigationStack::go_to_index()` — navigate to Help_Index topic regardless of current position, push onto stack
-  - [ ] 6.9 Implement cross-reference link handling — when user activates a `[text](topic_key)` link, push linked topic onto navigation stack
-  - [ ] 6.10 Write unit tests for: push/back/forward sequences, truncation on branch, clear on reopen, go_to_index from mid-stack, can_go_back/forward boundary conditions
+- [x] 6. Navigation — back, forward, and index
+  - [x] 6.1 Define `NavigationStack` struct with fields: history (Vec<TopicKey>), pointer (usize)
+  - [x] 6.2 Implement `NavigationStack::push(key: TopicKey)` — add topic to stack, truncate forward history if navigating from a non-head position
+  - [x] 6.3 Implement `NavigationStack::back() -> Option<TopicKey>` — move pointer backward, return previous topic; return None if at beginning
+  - [x] 6.4 Implement `NavigationStack::forward() -> Option<TopicKey>` — move pointer forward, return next topic; return None if at head
+  - [x] 6.5 Implement `NavigationStack::can_go_back() -> bool` and `can_go_forward() -> bool` — for UI button enable/disable state
+  - [x] 6.6 Implement `NavigationStack::current() -> Option<&TopicKey>` — return the topic at the current pointer position
+  - [x] 6.7 Implement `NavigationStack::clear()` — reset stack when Help Panel is closed and reopened (fresh session per Req 3.6)
+  - [x] 6.8 Implement `NavigationStack::go_to_index()` — navigate to Help_Index topic regardless of current position, push onto stack
+  - [x] 6.9 Implement cross-reference link handling — when user activates a `[text](topic_key)` link, push linked topic onto navigation stack
+  - [x] 6.10 Write unit tests for: push/back/forward sequences, truncation on branch, clear on reopen, go_to_index from mid-stack, can_go_back/forward boundary conditions
   - Covers: Requirement 3 (AC 3.1–3.6)
 
-- [ ] 7. Search and filter
-  - [ ] 7.1 Define `HelpSearch` struct with fields: index (SearchIndex), min_query_length (usize, default 2)
-  - [ ] 7.2 Define `SearchIndex` struct — inverted index mapping keywords to TopicKeys for efficient lookup
-  - [ ] 7.3 Implement `SearchIndex::build(topics: &[HelpTopic])` — build keyword index from topic titles, body text, and TopicKey aliases
-  - [ ] 7.4 Implement `HelpSearch::query(text: &str) -> Vec<SearchResult>` — case-insensitive substring matching across titles, body, and aliases; minimum 2-character query
-  - [ ] 7.5 Define `SearchResult` struct with fields: topic_key (TopicKey), title (String), excerpt (String), relevance_score (u32)
-  - [ ] 7.6 Implement relevance ranking — exact title match (score 100), keyword in heading (score 50), keyword in body (score 10); sort results by descending score
-  - [ ] 7.7 Implement excerpt generation — extract the sentence or line containing the first keyword match for display in results list
-  - [ ] 7.8 Implement no-results handling — when query produces zero results, return empty Vec (UI displays "No help topics found" message)
-  - [ ] 7.9 Implement incremental index update — when topics are added/removed (hot-reload, plugin changes), update the SearchIndex without full rebuild
-  - [ ] 7.10 Write unit tests for: query below minimum length rejected, exact title match ranked first, case-insensitive matching, no-results for unmatched query, excerpt extraction, relevance ordering, incremental update after topic add/remove
+- [x] 7. Search and filter
+  - [x] 7.1 Define `HelpSearch` struct with fields: index (SearchIndex), min_query_length (usize, default 2)
+  - [x] 7.2 Define `SearchIndex` struct — inverted index mapping keywords to TopicKeys for efficient lookup
+  - [x] 7.3 Implement `SearchIndex::build(topics: &[HelpTopic])` — build keyword index from topic titles, body text, and TopicKey aliases
+  - [x] 7.4 Implement `HelpSearch::query(text: &str) -> Vec<SearchResult>` — case-insensitive substring matching across titles, body, and aliases; minimum 2-character query
+  - [x] 7.5 Define `SearchResult` struct with fields: topic_key (TopicKey), title (String), excerpt (String), relevance_score (u32)
+  - [x] 7.6 Implement relevance ranking — exact title match (score 100), keyword in heading (score 50), keyword in body (score 10); sort results by descending score
+  - [x] 7.7 Implement excerpt generation — extract the sentence or line containing the first keyword match for display in results list
+  - [x] 7.8 Implement no-results handling — when query produces zero results, return empty Vec (UI displays "No help topics found" message)
+  - [x] 7.9 Implement incremental index update — when topics are added/removed (hot-reload, plugin changes), update the SearchIndex without full rebuild
+  - [x] 7.10 Write unit tests for: query below minimum length rejected, exact title match ranked first, case-insensitive matching, no-results for unmatched query, excerpt extraction, relevance ordering, incremental update after topic add/remove
   - Covers: Requirement 4 (AC 4.1–4.5)
 
-- [ ] 8. Help Topic Registry
-  - [ ] 8.1 Define `HelpTopicRegistry` struct with fields: topics (HashMap<TopicKey, HelpTopic>), lock (RwLock for thread-safety)
-  - [ ] 8.2 Implement `HelpTopicRegistry::new()` — create empty registry
-  - [ ] 8.3 Implement `HelpTopicRegistry::register(topic: HelpTopic)` — insert topic by key; if key exists, apply priority rules (runtime > file-based)
-  - [ ] 8.4 Implement `HelpTopicRegistry::unregister(key: &TopicKey)` — remove topic by key
-  - [ ] 8.5 Implement `HelpTopicRegistry::get(key: &TopicKey) -> Option<HelpTopic>` — O(1) lookup by TopicKey
-  - [ ] 8.6 Implement `HelpTopicRegistry::contains(key: &TopicKey) -> bool` — existence check
-  - [ ] 8.7 Implement priority resolution — runtime-registered help (CommandRegistry, plugins) preferred over file-based content for same TopicKey
-  - [ ] 8.8 Implement `HelpTopicRegistry::register_from_command_metadata(cmd_id: &str, help_text: &str, help_syntax: &str)` — create and register topic from CommandMetadata fields
-  - [ ] 8.9 Implement fallback on empty help_text — when command registered with empty help_text, fall back to file-based content for `"cmd:<command_id>"`
-  - [ ] 8.10 Implement `HelpTopicRegistry::all_topics() -> Vec<&HelpTopic>` — iterate all registered topics for search index building
-  - [ ] 8.11 Implement `HelpTopicRegistry::topics_by_category(cat: TopicCategory) -> Vec<&HelpTopic>` — filtered iteration for Help Index category display
-  - [ ] 8.12 Implement thread-safety — wrap internal HashMap with `RwLock<HashMap<TopicKey, HelpTopic>>` for concurrent read/write access
-  - [ ] 8.13 Write unit tests for: register/unregister, O(1) lookup, priority override (runtime > file), fallback on empty help_text, category filtering, thread-safe concurrent access
+- [x] 8. Help Topic Registry
+  - [x] 8.1 Define `HelpTopicRegistry` struct with fields: topics (HashMap<TopicKey, HelpTopic>), lock (RwLock for thread-safety)
+  - [x] 8.2 Implement `HelpTopicRegistry::new()` — create empty registry
+  - [x] 8.3 Implement `HelpTopicRegistry::register(topic: HelpTopic)` — insert topic by key; if key exists, apply priority rules (runtime > file-based)
+  - [x] 8.4 Implement `HelpTopicRegistry::unregister(key: &TopicKey)` — remove topic by key
+  - [x] 8.5 Implement `HelpTopicRegistry::get(key: &TopicKey) -> Option<HelpTopic>` — O(1) lookup by TopicKey
+  - [x] 8.6 Implement `HelpTopicRegistry::contains(key: &TopicKey) -> bool` — existence check
+  - [x] 8.7 Implement priority resolution — runtime-registered help (CommandRegistry, plugins) preferred over file-based content for same TopicKey
+  - [x] 8.8 Implement `HelpTopicRegistry::register_from_command_metadata(cmd_id: &str, help_text: &str, help_syntax: &str)` — create and register topic from CommandMetadata fields
+  - [x] 8.9 Implement fallback on empty help_text — when command registered with empty help_text, fall back to file-based content for `"cmd:<command_id>"`
+  - [x] 8.10 Implement `HelpTopicRegistry::all_topics() -> Vec<&HelpTopic>` — iterate all registered topics for search index building
+  - [x] 8.11 Implement `HelpTopicRegistry::topics_by_category(cat: TopicCategory) -> Vec<&HelpTopic>` — filtered iteration for Help Index category display
+  - [x] 8.12 Implement thread-safety — wrap internal HashMap with `RwLock<HashMap<TopicKey, HelpTopic>>` for concurrent read/write access
+  - [x] 8.13 Write unit tests for: register/unregister, O(1) lookup, priority override (runtime > file), fallback on empty help_text, category filtering, thread-safe concurrent access
   - Covers: Requirement 6 (AC 6.1–6.7)
 
-- [ ] 9. Plugin-contributed help registration
-  - [ ] 9.1 Define `PluginHelpProvider` trait with methods: `register_topics(&self, registry: &mut HelpTopicRegistry)`, `plugin_id(&self) -> &str`
-  - [ ] 9.2 Implement plugin lifecycle integration — register plugin-contributed topics during plugin `initialize` phase
-  - [ ] 9.3 Implement plugin unload cleanup — remove all topics contributed by a specific plugin_id during plugin `shutdown` phase
-  - [ ] 9.4 Implement `HelpTopicRegistry::register_plugin_topic(plugin_id: &str, topic: HelpTopic)` — register with TopicSource::Plugin tracking
-  - [ ] 9.5 Implement `HelpTopicRegistry::unregister_plugin_topics(plugin_id: &str)` — bulk remove all topics from a specific plugin
-  - [ ] 9.6 Implement conflict resolution — when plugin topic conflicts with existing file-based topic, plugin wins (runtime priority)
-  - [ ] 9.7 Write unit tests for: plugin topic registration, unload removes all plugin topics, conflict resolution with file-based topics, multiple plugins contributing non-overlapping topics
+- [x] 9. Plugin-contributed help registration
+  - [x] 9.1 Define `PluginHelpProvider` trait with methods: `register_topics(&self, registry: &mut HelpTopicRegistry)`, `plugin_id(&self) -> &str`
+  - [x] 9.2 Implement plugin lifecycle integration — register plugin-contributed topics during plugin `initialize` phase
+  - [x] 9.3 Implement plugin unload cleanup — remove all topics contributed by a specific plugin_id during plugin `shutdown` phase
+  - [x] 9.4 Implement `HelpTopicRegistry::register_plugin_topic(plugin_id: &str, topic: HelpTopic)` — register with TopicSource::Plugin tracking
+  - [x] 9.5 Implement `HelpTopicRegistry::unregister_plugin_topics(plugin_id: &str)` — bulk remove all topics from a specific plugin
+  - [x] 9.6 Implement conflict resolution — when plugin topic conflicts with existing file-based topic, plugin wins (runtime priority)
+  - [x] 9.7 Write unit tests for: plugin topic registration, unload removes all plugin topics, conflict resolution with file-based topics, multiple plugins contributing non-overlapping topics
   - Covers: Requirement 6 (AC 6.1, 6.4, 6.6)
 
-- [ ] 10. Dynamic content generation
-  - [ ] 10.1 Define `DynamicContentGenerator` trait with method `generate(registry: &HelpTopicRegistry) -> HelpTopic`
-  - [ ] 10.2 Implement `FunctionKeyHelpGenerator` — generate the `"feature:function_keys"` topic dynamically from active Shortcut_Registry and Key_Map
-  - [ ] 10.3 Implement function key table generation — produce Markdown table with columns: Key, Command, Label for all assigned keys F1–F24
-  - [ ] 10.4 Implement profile-aware generation — when Profile_Key_Map is active, show profile key map and note which profile is active
-  - [ ] 10.5 Implement empty key map handling — when no keys assigned, display configuration guidance message
-  - [ ] 10.6 Implement `HelpIndexGenerator` — generate the `"index"` topic dynamically from all registered topics, organised by category
-  - [ ] 10.7 Implement Help_Index category sections — Getting Started, Primary Commands (alphabetical), Line Commands (compact table), Modes, Features, Configuration, Function Keys, Macro API
-  - [ ] 10.8 Implement Help_Index footer — display workbench application name and version at bottom
-  - [ ] 10.9 Write unit tests for: function key table generation with various key maps, profile-active annotation, empty key map message, index category organisation, alphabetical command listing
+- [x] 10. Dynamic content generation
+  - [x] 10.1 Define `DynamicContentGenerator` trait with method `generate(registry: &HelpTopicRegistry) -> HelpTopic`
+  - [x] 10.2 Implement `FunctionKeyHelpGenerator` — generate the `"feature:function_keys"` topic dynamically from active Shortcut_Registry and Key_Map
+  - [x] 10.3 Implement function key table generation — produce Markdown table with columns: Key, Command, Label for all assigned keys F1–F24
+  - [x] 10.4 Implement profile-aware generation — when Profile_Key_Map is active, show profile key map and note which profile is active
+  - [x] 10.5 Implement empty key map handling — when no keys assigned, display configuration guidance message
+  - [x] 10.6 Implement `HelpIndexGenerator` — generate the `"index"` topic dynamically from all registered topics, organised by category
+  - [x] 10.7 Implement Help_Index category sections — Getting Started, Primary Commands (alphabetical), Line Commands (compact table), Modes, Features, Configuration, Function Keys, Macro API
+  - [x] 10.8 Implement Help_Index footer — display workbench application name and version at bottom
+  - [x] 10.9 Write unit tests for: function key table generation with various key maps, profile-active annotation, empty key map message, index category organisation, alphabetical command listing
   - Covers: Requirement 12 (AC 12.1–12.4), Requirement 15 (AC 15.1–15.4)
 
-- [ ] 11. Configuration
-  - [ ] 11.1 Define `HelpConfig` struct with fields: directory (Option<PathBuf>), panel_width_ratio (f32, default 0.35), panel_position (DockPosition, default Right), search_highlight (bool, default true)
-  - [ ] 11.2 Implement `Default` for `HelpConfig` — panel_width_ratio=0.35, panel_position=Right, search_highlight=true, directory=None
-  - [ ] 11.3 Define `DockPosition` enum with variants: Right, Left, Bottom
-  - [ ] 11.4 Implement configuration key registration for `[help]` TOML section: `directory`, `panel_width_ratio`, `panel_position`, `search_highlight`
-  - [ ] 11.5 Implement validation for `panel_width_ratio` — reject values outside 0.2–0.5 range, emit WARN log, apply default 0.35
-  - [ ] 11.6 Implement validation for `panel_position` — reject unrecognised values, emit WARN log, apply default "right"
-  - [ ] 11.7 Implement hot-reload listener — subscribe to configuration-system change events for `[help]` section keys, apply new values without restart
-  - [ ] 11.8 Implement hot-reload effect propagation — notify HelpPanelModel of width/position changes, notify ContentLoader of directory changes
-  - [ ] 11.9 Write unit tests for: default values, valid config parsing, panel_width_ratio validation (out-of-range), panel_position validation (invalid string), hot-reload updates applied
+- [x] 11. Configuration
+  - [x] 11.1 Define `HelpConfig` struct with fields: directory (Option<PathBuf>), panel_width_ratio (f32, default 0.35), panel_position (DockPosition, default Right), search_highlight (bool, default true)
+  - [x] 11.2 Implement `Default` for `HelpConfig` — panel_width_ratio=0.35, panel_position=Right, search_highlight=true, directory=None
+  - [x] 11.3 Define `DockPosition` enum with variants: Right, Left, Bottom
+  - [x] 11.4 Implement configuration key registration for `[help]` TOML section: `directory`, `panel_width_ratio`, `panel_position`, `search_highlight`
+  - [x] 11.5 Implement validation for `panel_width_ratio` — reject values outside 0.2–0.5 range, emit WARN log, apply default 0.35
+  - [x] 11.6 Implement validation for `panel_position` — reject unrecognised values, emit WARN log, apply default "right"
+  - [x] 11.7 Implement hot-reload listener — subscribe to configuration-system change events for `[help]` section keys, apply new values without restart
+  - [x] 11.8 Implement hot-reload effect propagation — notify HelpPanelModel of width/position changes, notify ContentLoader of directory changes
+  - [x] 11.9 Write unit tests for: default values, valid config parsing, panel_width_ratio validation (out-of-range), panel_position validation (invalid string), hot-reload updates applied
   - Covers: Requirement 16 (AC 16.1–16.3)
 
-- [ ] 12. Command registration — HELP command and F1 activation
-  - [ ] 12.1 Register HELP as a primary command in the command framework with command_id "HELP", aliases: none
-  - [ ] 12.2 Implement HELP command handler — parse arguments, resolve topic, open Help Panel
-  - [ ] 12.3 Implement `HELP` (no arguments) — open Help_Panel displaying Help_Index
-  - [ ] 12.4 Implement `HELP <command_name>` — resolve to `"cmd:<COMMAND_NAME>"` and display that topic
-  - [ ] 12.5 Implement `HELP LINECOMMANDS` — display line command summary topic `"line:index"`
-  - [ ] 12.6 Implement `HELP MACRO` / `HELP API` — display macro API reference topic `"feature:macros"`
-  - [ ] 12.7 Implement `HELP KEYS` — display dynamically generated function keys topic `"feature:function_keys"`
-  - [ ] 12.8 Implement `HELP CONFIG` / `HELP CONFIGURATION` — display configuration overview topic `"feature:configuration"`
-  - [ ] 12.9 Implement `HELP OFF` — close the Help Panel if open
-  - [ ] 12.10 Implement unrecognised topic handling — display Help_Index with message "No help available for: <topic>"
-  - [ ] 12.11 Implement F1 key binding registration — register F1 as reserved shortcut (non-overridable) in Shortcut_Registry
-  - [ ] 12.12 Implement F1 handler — invoke ContextDetector, resolve topic, open/toggle Help Panel
-  - [ ] 12.13 Implement toggle behaviour — if Help Panel open and F1 resolves to same topic, close panel; if different topic, navigate to new topic
-  - [ ] 12.14 Implement history exclusion — HELP command and F1 presses not added to command history, not recorded as undoable transactions
-  - [ ] 12.15 Implement mode validity — HELP command valid in Browse, Edit, View, Hex, Preview, and all FileForge special modes
-  - [ ] 12.16 Write unit tests for: HELP no-args opens index, HELP CHANGE opens cmd:CHANGE, HELP LINECOMMANDS opens line:index, HELP OFF closes panel, unrecognised topic shows index with message, F1 toggle behaviour, history exclusion, reserved shortcut non-overridable
+- [x] 12. Command registration — HELP command and F1 activation
+  - [x] 12.1 Register HELP as a primary command in the command framework with command_id "HELP", aliases: none
+  - [x] 12.2 Implement HELP command handler — parse arguments, resolve topic, open Help Panel
+  - [x] 12.3 Implement `HELP` (no arguments) — open Help_Panel displaying Help_Index
+  - [x] 12.4 Implement `HELP <command_name>` — resolve to `"cmd:<COMMAND_NAME>"` and display that topic
+  - [x] 12.5 Implement `HELP LINECOMMANDS` — display line command summary topic `"line:index"`
+  - [x] 12.6 Implement `HELP MACRO` / `HELP API` — display macro API reference topic `"feature:macros"`
+  - [x] 12.7 Implement `HELP KEYS` — display dynamically generated function keys topic `"feature:function_keys"`
+  - [x] 12.8 Implement `HELP CONFIG` / `HELP CONFIGURATION` — display configuration overview topic `"feature:configuration"`
+  - [x] 12.9 Implement `HELP OFF` — close the Help Panel if open
+  - [x] 12.10 Implement unrecognised topic handling — display Help_Index with message "No help available for: <topic>"
+  - [x] 12.11 Implement F1 key binding registration — register F1 as reserved shortcut (non-overridable) in Shortcut_Registry
+  - [x] 12.12 Implement F1 handler — invoke ContextDetector, resolve topic, open/toggle Help Panel
+  - [x] 12.13 Implement toggle behaviour — if Help Panel open and F1 resolves to same topic, close panel; if different topic, navigate to new topic
+  - [x] 12.14 Implement history exclusion — HELP command and F1 presses not added to command history, not recorded as undoable transactions
+  - [x] 12.15 Implement mode validity — HELP command valid in Browse, Edit, View, Hex, Preview, and all FileForge special modes
+  - [x] 12.16 Write unit tests for: HELP no-args opens index, HELP CHANGE opens cmd:CHANGE, HELP LINECOMMANDS opens line:index, HELP OFF closes panel, unrecognised topic shows index with message, F1 toggle behaviour, history exclusion, reserved shortcut non-overridable
   - Covers: Requirement 1 (AC 1.1, 1.6, 1.8, 1.10), Requirement 13 (AC 13.1–13.10)
 
-- [ ] 13. Help Menu integration
-  - [ ] 13.1 Define `HelpMenuModel` struct providing menu item definitions for the Help menu bar entry
-  - [ ] 13.2 Implement menu items: Help Index, Command Reference, Line Command Reference, Key Bindings, separator, About FileForgeWorkbench
-  - [ ] 13.3 Implement "Help Index" action — open Help Panel with Help_Index topic
-  - [ ] 13.4 Implement "Command Reference" action — open Help Panel displaying primary commands category
-  - [ ] 13.5 Implement "Line Command Reference" action — open Help Panel displaying line command summary
-  - [ ] 13.6 Implement "Key Bindings" action — open Help Panel with function key/shortcut reference
-  - [ ] 13.7 Implement "About FileForgeWorkbench" action — produce AboutInfo struct with application name, version, build date, Rust compiler version, license
-  - [ ] 13.8 Define `AboutInfo` struct with fields: app_name, version, build_date, rust_version, license
-  - [ ] 13.9 Write unit tests for: menu item list completeness, each action dispatches correct topic, AboutInfo population
+- [x] 13. Help Menu integration
+  - [x] 13.1 Define `HelpMenuModel` struct providing menu item definitions for the Help menu bar entry
+  - [x] 13.2 Implement menu items: Help Index, Command Reference, Line Command Reference, Key Bindings, separator, About FileForgeWorkbench
+  - [x] 13.3 Implement "Help Index" action — open Help Panel with Help_Index topic
+  - [x] 13.4 Implement "Command Reference" action — open Help Panel displaying primary commands category
+  - [x] 13.5 Implement "Line Command Reference" action — open Help Panel displaying line command summary
+  - [x] 13.6 Implement "Key Bindings" action — open Help Panel with function key/shortcut reference
+  - [x] 13.7 Implement "About FileForgeWorkbench" action — produce AboutInfo struct with application name, version, build date, Rust compiler version, license
+  - [x] 13.8 Define `AboutInfo` struct with fields: app_name, version, build_date, rust_version, license
+  - [x] 13.9 Write unit tests for: menu item list completeness, each action dispatches correct topic, AboutInfo population
   - Covers: Requirement 14 (AC 14.1–14.6)
 
-- [ ] 14. Property-based tests
-  - [ ] 14.1 Write PBT: Context resolution determinism property
-  - [ ] 14.2 Write PBT: Topic Registry priority resolution invariant
-  - [ ] 14.3 Write PBT: Navigation stack back/forward consistency property
-  - [ ] 14.4 Write PBT: Search relevance ranking monotonicity property
-  - [ ] 14.5 Write PBT: Content parser round-trip fidelity property
-  - [ ] 14.6 Write PBT: TopicKey parsing totality property
-  - [ ] 14.7 Write PBT: Help Panel toggle idempotency property
-  - [ ] 14.8 Write PBT: Plugin registration/unregistration symmetry property
-  - [ ] 14.9 Write PBT: Configuration validation boundary property
-  - [ ] 14.10 Write PBT: Search index incremental update equivalence property
+- [x] 14. Property-based tests
+  - [x] 14.1 Write PBT: Context resolution determinism property
+  - [x] 14.2 Write PBT: Topic Registry priority resolution invariant
+  - [x] 14.3 Write PBT: Navigation stack back/forward consistency property
+  - [x] 14.4 Write PBT: Search relevance ranking monotonicity property
+  - [x] 14.5 Write PBT: Content parser round-trip fidelity property
+  - [x] 14.6 Write PBT: TopicKey parsing totality property
+  - [x] 14.7 Write PBT: Help Panel toggle idempotency property
+  - [x] 14.8 Write PBT: Plugin registration/unregistration symmetry property
+  - [x] 14.9 Write PBT: Configuration validation boundary property
+  - [x] 14.10 Write PBT: Search index incremental update equivalence property
   - Covers: All requirements (property-based validation)
 
-- [ ] 15. Integration tests
-  - [ ] 15.1 Write integration test: F1 with command in command field resolves and displays correct topic end-to-end
-  - [ ] 15.2 Write integration test: F1 with empty command field opens Help Index
-  - [ ] 15.3 Write integration test: F1 with line command in prefix area displays line command help
-  - [ ] 15.4 Write integration test: HELP CHANGE command opens Help Panel with cmd:CHANGE topic
-  - [ ] 15.5 Write integration test: HELP OFF closes an open Help Panel
-  - [ ] 15.6 Write integration test: navigation back/forward across multiple topic visits
-  - [ ] 15.7 Write integration test: search query returns ranked results and navigation to selected result
-  - [ ] 15.8 Write integration test: plugin registers topics during initialize, topics available via F1, topics removed on plugin shutdown
-  - [ ] 15.9 Write integration test: hot-reload of .help.md file updates topic content without restart
-  - [ ] 15.10 Write integration test: configuration hot-reload changes panel position and width ratio
-  - [ ] 15.11 Write integration test: command registered with help_text creates topic accessible via HELP command
-  - [ ] 15.12 Write integration test: Help Panel toggle — F1 same topic closes, F1 different topic navigates
+- [x] 15. Integration tests
+  - [x] 15.1 Write integration test: F1 with command in command field resolves and displays correct topic end-to-end
+  - [x] 15.2 Write integration test: F1 with empty command field opens Help Index
+  - [x] 15.3 Write integration test: F1 with line command in prefix area displays line command help
+  - [x] 15.4 Write integration test: HELP CHANGE command opens Help Panel with cmd:CHANGE topic
+  - [x] 15.5 Write integration test: HELP OFF closes an open Help Panel
+  - [x] 15.6 Write integration test: navigation back/forward across multiple topic visits
+  - [x] 15.7 Write integration test: search query returns ranked results and navigation to selected result
+  - [x] 15.8 Write integration test: plugin registers topics during initialize, topics available via F1, topics removed on plugin shutdown
+  - [x] 15.9 Write integration test: hot-reload of .help.md file updates topic content without restart
+  - [x] 15.10 Write integration test: configuration hot-reload changes panel position and width ratio
+  - [x] 15.11 Write integration test: command registered with help_text creates topic accessible via HELP command
+  - [x] 15.12 Write integration test: Help Panel toggle — F1 same topic closes, F1 different topic navigates
   - Covers: Cross-requirement interaction validation
 
 ---

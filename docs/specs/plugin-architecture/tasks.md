@@ -1,4 +1,4 @@
-# Implementation Plan: Plugin Architecture (`ff-plugin`)
+﻿# Implementation Plan: Plugin Architecture (`ff-plugin`)
 
 ## Overview
 
@@ -10,219 +10,219 @@ This is a **Wave 2 (Platform Architecture)** sub-project, depending only on `ff-
 
 ## Tasks
 
-- [ ] 1. Crate scaffolding and module structure
-  - [ ] 1.1 Create `crates/ff-plugin/Cargo.toml` with dependencies (semver, toml, thiserror, proptest dev-dep)
-  - [ ] 1.2 Create `crates/ff-plugin/src/lib.rs` with module declarations and public API re-exports
-  - [ ] 1.3 Create module files: `traits.rs`, `context.rs`, `metadata.rs`, `capability.rs`, `registry.rs`, `capability_registry.rs`, `loader.rs`, `dependency.rs`, `lifecycle.rs`, `version.rs`, `security.rs`, `error.rs`, `event.rs`
-  - [ ] 1.4 Add `ff-plugin` to workspace `Cargo.toml` members list
-  - [ ] 1.5 Add `ff-logging` as a dependency in `Cargo.toml`
+- [x] 1. Crate scaffolding and module structure
+  - [x] 1.1 Create `crates/ff-plugin/Cargo.toml` with dependencies (semver, toml, thiserror, proptest dev-dep)
+  - [x] 1.2 Create `crates/ff-plugin/src/lib.rs` with module declarations and public API re-exports
+  - [x] 1.3 Create module files: `traits.rs`, `context.rs`, `metadata.rs`, `capability.rs`, `registry.rs`, `capability_registry.rs`, `loader.rs`, `dependency.rs`, `lifecycle.rs`, `version.rs`, `security.rs`, `error.rs`, `event.rs`
+  - [x] 1.4 Add `ff-plugin` to workspace `Cargo.toml` members list
+  - [x] 1.5 Add `ff-logging` as a dependency in `Cargo.toml`
   - Covers: Structural foundation for all requirements
 
-- [ ] 2. Error types and version types
-  - [ ] 2.1 Define `PluginError` enum with all variants: InitializationFailed, ActivationFailed, DeactivationFailed, ShutdownFailed, DependencyNotSatisfied, IncompatibleApiVersion, PluginNotFound, InvalidStateTransition, CircularDependency, ConfigAccessDenied, VfsError, Panicked, CapabilityConflict, NetworkAccessDenied
-  - [ ] 2.2 Implement `Display` via `thiserror` with `[plugin:{name}] operation: description` format
-  - [ ] 2.3 Define `Version` struct (major, minor, patch) with `PartialOrd`, `Ord`, `Display`, `FromStr`
-  - [ ] 2.4 Define `VersionReq` struct with `minimum` and `same_major` fields and `matches(&self, version: &Version) -> bool` method
-  - [ ] 2.5 Define `PLUGIN_API_VERSION` constant as `Version { major: 1, minor: 0, patch: 0 }`
-  - [ ] 2.6 Write unit tests for error formatting, version comparison, and version requirement matching
+- [x] 2. Error types and version types
+  - [x] 2.1 Define `PluginError` enum with all variants: InitializationFailed, ActivationFailed, DeactivationFailed, ShutdownFailed, DependencyNotSatisfied, IncompatibleApiVersion, PluginNotFound, InvalidStateTransition, CircularDependency, ConfigAccessDenied, VfsError, Panicked, CapabilityConflict, NetworkAccessDenied
+  - [x] 2.2 Implement `Display` via `thiserror` with `[plugin:{name}] operation: description` format
+  - [x] 2.3 Define `Version` struct (major, minor, patch) with `PartialOrd`, `Ord`, `Display`, `FromStr`
+  - [x] 2.4 Define `VersionReq` struct with `minimum` and `same_major` fields and `matches(&self, version: &Version) -> bool` method
+  - [x] 2.5 Define `PLUGIN_API_VERSION` constant as `Version { major: 1, minor: 0, patch: 0 }`
+  - [x] 2.6 Write unit tests for error formatting, version comparison, and version requirement matching
   - Covers: Requirement 1 (AC 4, 5), Requirement 6 (AC 1)
 
-- [ ] 3. Plugin metadata and dependency declarations
-  - [ ] 3.1 Define `PluginMetadata` struct with name, version, author, description, dependencies, required_api_version fields
-  - [ ] 3.2 Define `PluginDependency` struct with name and version_req fields
-  - [ ] 3.3 Implement manifest parsing from TOML (`plugin.toml` format) into `PluginMetadata`
-  - [ ] 3.4 Write unit tests for metadata construction and TOML manifest parsing
+- [x] 3. Plugin metadata and dependency declarations
+  - [x] 3.1 Define `PluginMetadata` struct with name, version, author, description, dependencies, required_api_version fields
+  - [x] 3.2 Define `PluginDependency` struct with name and version_req fields
+  - [x] 3.3 Implement manifest parsing from TOML (`plugin.toml` format) into `PluginMetadata`
+  - [x] 3.4 Write unit tests for metadata construction and TOML manifest parsing
   - Covers: Requirement 1 (AC 2), Requirement 6 (AC 2)
 
-- [ ] 4. Capability types and descriptors
-  - [ ] 4.1 Define `Capability` enum with variants: Commands, Viewers, Providers, LanguageSupport, ThemeContribution
-  - [ ] 4.2 Define capability metadata structs: `CommandsCapability`, `ViewersCapability`, `ProvidersCapability`, `LanguageSupportCapability`, `ThemeCapability` — each with a `version` field
-  - [ ] 4.3 Define `CapabilityType` enum for type-based queries
-  - [ ] 4.4 Define `CapabilityDescriptor` struct with capability, owner_plugin, and registration_order fields
-  - [ ] 4.5 Define `CapabilityFilter` struct with optional type, mime_type, category, language_id, and owner fields
-  - [ ] 4.6 Implement `Capability::cap_type() -> CapabilityType` helper method
-  - [ ] 4.7 Write unit tests for capability construction and type classification
+- [x] 4. Capability types and descriptors
+  - [x] 4.1 Define `Capability` enum with variants: Commands, Viewers, Providers, LanguageSupport, ThemeContribution
+  - [x] 4.2 Define capability metadata structs: `CommandsCapability`, `ViewersCapability`, `ProvidersCapability`, `LanguageSupportCapability`, `ThemeCapability` — each with a `version` field
+  - [x] 4.3 Define `CapabilityType` enum for type-based queries
+  - [x] 4.4 Define `CapabilityDescriptor` struct with capability, owner_plugin, and registration_order fields
+  - [x] 4.5 Define `CapabilityFilter` struct with optional type, mime_type, category, language_id, and owner fields
+  - [x] 4.6 Implement `Capability::cap_type() -> CapabilityType` helper method
+  - [x] 4.7 Write unit tests for capability construction and type classification
   - Covers: Requirement 4 (AC 1), Requirement 6 (AC 6)
 
-- [ ] 5. FileForgePlugin trait definition
-  - [ ] 5.1 Define `FileForgePlugin` trait with lifecycle methods: `initialize`, `activate`, `deactivate`, `shutdown`
-  - [ ] 5.2 Add `metadata(&self) -> &PluginMetadata` and `capabilities(&self) -> &[Capability]` accessors
-  - [ ] 5.3 Add default method `supports_hot_reload(&self) -> bool` returning false
-  - [ ] 5.4 Ensure trait is object-safe (`Send + Sync` supertrait bounds, no generics)
-  - [ ] 5.5 Verify `Box<dyn FileForgePlugin>` compiles and can be stored in collections
-  - [ ] 5.6 Write unit tests demonstrating object-safety with a mock plugin implementation
+- [x] 5. FileForgePlugin trait definition
+  - [x] 5.1 Define `FileForgePlugin` trait with lifecycle methods: `initialize`, `activate`, `deactivate`, `shutdown`
+  - [x] 5.2 Add `metadata(&self) -> &PluginMetadata` and `capabilities(&self) -> &[Capability]` accessors
+  - [x] 5.3 Add default method `supports_hot_reload(&self) -> bool` returning false
+  - [x] 5.4 Ensure trait is object-safe (`Send + Sync` supertrait bounds, no generics)
+  - [x] 5.5 Verify `Box<dyn FileForgePlugin>` compiles and can be stored in collections
+  - [x] 5.6 Write unit tests demonstrating object-safety with a mock plugin implementation
   - Covers: Requirement 1 (AC 1, 2, 3, 4, 6), Requirement 3 (AC 6)
 
-- [ ] 6. Service traits for PluginContext
-  - [ ] 6.1 Define `PluginLogHandle` trait (re-export from ff-logging or define locally with delegation)
-  - [ ] 6.2 Define `CommandRegistration` trait with `register` and `unregister` methods
-  - [ ] 6.3 Define `PluginConfigAccess` trait with scoped `get` and `set` methods
-  - [ ] 6.4 Define `PluginVfsAccess` trait with `read`, `write`, `exists`, `list_directory` methods
-  - [ ] 6.5 Define `PluginEventBus` trait with `subscribe`, `unsubscribe`, `emit` methods
-  - [ ] 6.6 Define `CapabilityRegistrar` trait with `register` and `unregister` methods
-  - [ ] 6.7 Ensure all service traits have `Send + Sync` bounds
-  - [ ] 6.8 Write unit tests with mock implementations verifying trait definitions compile
+- [x] 6. Service traits for PluginContext
+  - [x] 6.1 Define `PluginLogHandle` trait (re-export from ff-logging or define locally with delegation)
+  - [x] 6.2 Define `CommandRegistration` trait with `register` and `unregister` methods
+  - [x] 6.3 Define `PluginConfigAccess` trait with scoped `get` and `set` methods
+  - [x] 6.4 Define `PluginVfsAccess` trait with `read`, `write`, `exists`, `list_directory` methods
+  - [x] 6.5 Define `PluginEventBus` trait with `subscribe`, `unsubscribe`, `emit` methods
+  - [x] 6.6 Define `CapabilityRegistrar` trait with `register` and `unregister` methods
+  - [x] 6.7 Ensure all service traits have `Send + Sync` bounds
+  - [x] 6.8 Write unit tests with mock implementations verifying trait definitions compile
   - Covers: Requirement 2 (AC 2, 3), Requirement 7 (AC 2)
 
-- [ ] 7. PluginContext implementation
-  - [ ] 7.1 Define `PluginContext` struct holding plugin_name, service trait object references (`Arc<dyn Trait>`), and api_version
-  - [ ] 7.2 Implement `PluginContext::new()` constructor accepting `PlatformServices` and plugin name
-  - [ ] 7.3 Implement logging delegation: `log()` returns handle that prefixes records with `[plugin:{name}]`
-  - [ ] 7.4 Implement command registration delegation: `register_command()` delegates to `CommandRegistration` trait
-  - [ ] 7.5 Implement scoped configuration access: `config_get()` and `config_set()` enforce namespace scoping to `[plugins.{name}]`
-  - [ ] 7.6 Implement VFS access delegation: `vfs()` returns reference to `PluginVfsAccess`
-  - [ ] 7.7 Implement event methods: `subscribe_event()`, `unsubscribe_event()`, `emit_event()`
-  - [ ] 7.8 Implement capability registration: `register_capability()` delegates to `CapabilityRegistrar`
-  - [ ] 7.9 Implement `api_version()` returning the host `PLUGIN_API_VERSION`
-  - [ ] 7.10 Verify `PluginContext` is `Send + Sync` (compile-time assertion)
-  - [ ] 7.11 Write unit tests for namespace scoping, service delegation, and thread-safety
+- [x] 7. PluginContext implementation
+  - [x] 7.1 Define `PluginContext` struct holding plugin_name, service trait object references (`Arc<dyn Trait>`), and api_version
+  - [x] 7.2 Implement `PluginContext::new()` constructor accepting `PlatformServices` and plugin name
+  - [x] 7.3 Implement logging delegation: `log()` returns handle that prefixes records with `[plugin:{name}]`
+  - [x] 7.4 Implement command registration delegation: `register_command()` delegates to `CommandRegistration` trait
+  - [x] 7.5 Implement scoped configuration access: `config_get()` and `config_set()` enforce namespace scoping to `[plugins.{name}]`
+  - [x] 7.6 Implement VFS access delegation: `vfs()` returns reference to `PluginVfsAccess`
+  - [x] 7.7 Implement event methods: `subscribe_event()`, `unsubscribe_event()`, `emit_event()`
+  - [x] 7.8 Implement capability registration: `register_capability()` delegates to `CapabilityRegistrar`
+  - [x] 7.9 Implement `api_version()` returning the host `PLUGIN_API_VERSION`
+  - [x] 7.10 Verify `PluginContext` is `Send + Sync` (compile-time assertion)
+  - [x] 7.11 Write unit tests for namespace scoping, service delegation, and thread-safety
   - Covers: Requirement 2 (AC 1, 2, 3, 4, 5, 6, 7), Requirement 6 (AC 7), Requirement 7 (AC 4, 5)
 
-- [ ] 8. Plugin lifecycle state machine
-  - [ ] 8.1 Define `PluginState` enum: Discovered, Loaded, Initialized, Active, Deactivating, Shutdown
-  - [ ] 8.2 Implement state transition validation function that enforces valid forward-only transitions
-  - [ ] 8.3 Implement hot-reload transition exception: Active → Deactivating → Shutdown → Discovered cycle
-  - [ ] 8.4 Return `PluginError::InvalidStateTransition` on invalid transitions
-  - [ ] 8.5 Write unit tests for all valid transitions and rejection of invalid ones
+- [x] 8. Plugin lifecycle state machine
+  - [x] 8.1 Define `PluginState` enum: Discovered, Loaded, Initialized, Active, Deactivating, Shutdown
+  - [x] 8.2 Implement state transition validation function that enforces valid forward-only transitions
+  - [x] 8.3 Implement hot-reload transition exception: Active → Deactivating → Shutdown → Discovered cycle
+  - [x] 8.4 Return `PluginError::InvalidStateTransition` on invalid transitions
+  - [x] 8.5 Write unit tests for all valid transitions and rejection of invalid ones
   - Covers: Requirement 5 (AC 1)
 
-- [ ] 9. Plugin_Registry core structure
-  - [ ] 9.1 Define `PluginEntry` struct holding instance, state, metadata, registered_capabilities, and context
-  - [ ] 9.2 Define `PluginRegistry` struct with `RwLock<HashMap<String, PluginEntry>>`, plugin_directory path, and platform services
-  - [ ] 9.3 Implement `PluginRegistry::new()` constructor
-  - [ ] 9.4 Implement `plugin_state(&self, name: &str) -> Option<PluginState>` query method
-  - [ ] 9.5 Implement `plugin_metadata(&self, name: &str) -> Option<&PluginMetadata>` query method
-  - [ ] 9.6 Implement `list_plugins(&self) -> Vec<(&str, PluginState)>` listing method
-  - [ ] 9.7 Write unit tests for registry construction and state queries
+- [x] 9. Plugin_Registry core structure
+  - [x] 9.1 Define `PluginEntry` struct holding instance, state, metadata, registered_capabilities, and context
+  - [x] 9.2 Define `PluginRegistry` struct with `RwLock<HashMap<String, PluginEntry>>`, plugin_directory path, and platform services
+  - [x] 9.3 Implement `PluginRegistry::new()` constructor
+  - [x] 9.4 Implement `plugin_state(&self, name: &str) -> Option<PluginState>` query method
+  - [x] 9.5 Implement `plugin_metadata(&self, name: &str) -> Option<&PluginMetadata>` query method
+  - [x] 9.6 Implement `list_plugins(&self) -> Vec<(&str, PluginState)>` listing method
+  - [x] 9.7 Write unit tests for registry construction and state queries
   - Covers: Requirement 5 (AC 7), Requirement 3 (AC 1)
 
-- [ ] 10. Plugin discovery and manifest loading
-  - [ ] 10.1 Implement `discover_plugins()` — scan plugin_directory for subdirectories containing `plugin.toml`
-  - [ ] 10.2 Parse each `plugin.toml` into `PluginMetadata` and create `PluginEntry` in Discovered state
-  - [ ] 10.3 Log INFO record for each discovered plugin with name and version
-  - [ ] 10.4 Handle missing or malformed manifests gracefully — log WARN and skip
-  - [ ] 10.5 Write unit tests using tempdir with mock plugin directories
+- [x] 10. Plugin discovery and manifest loading
+  - [x] 10.1 Implement `discover_plugins()` — scan plugin_directory for subdirectories containing `plugin.toml`
+  - [x] 10.2 Parse each `plugin.toml` into `PluginMetadata` and create `PluginEntry` in Discovered state
+  - [x] 10.3 Log INFO record for each discovered plugin with name and version
+  - [x] 10.4 Handle missing or malformed manifests gracefully — log WARN and skip
+  - [x] 10.5 Write unit tests using tempdir with mock plugin directories
   - Covers: Requirement 3 (AC 1)
 
-- [ ] 11. Dependency graph and topological sort
-  - [ ] 11.1 Implement `DependencyGraph` struct with adjacency list representation
-  - [ ] 11.2 Implement `build_graph()` from a set of `PluginMetadata` entries and their declared dependencies
-  - [ ] 11.3 Implement cycle detection using Kahn's algorithm or DFS-based approach
-  - [ ] 11.4 Implement topological sort returning load order (Vec of plugin names)
-  - [ ] 11.5 When cycle detected, return `PluginError::CircularDependency` listing all plugins in the cycle
-  - [ ] 11.6 Log ERROR-level record identifying circular dependencies
-  - [ ] 11.7 When dependency not found or version-incompatible, skip dependent plugin and log ERROR
-  - [ ] 11.8 Write unit tests for DAG construction, topological ordering, cycle detection, and missing dependency handling
+- [x] 11. Dependency graph and topological sort
+  - [x] 11.1 Implement `DependencyGraph` struct with adjacency list representation
+  - [x] 11.2 Implement `build_graph()` from a set of `PluginMetadata` entries and their declared dependencies
+  - [x] 11.3 Implement cycle detection using Kahn's algorithm or DFS-based approach
+  - [x] 11.4 Implement topological sort returning load order (Vec of plugin names)
+  - [x] 11.5 When cycle detected, return `PluginError::CircularDependency` listing all plugins in the cycle
+  - [x] 11.6 Log ERROR-level record identifying circular dependencies
+  - [x] 11.7 When dependency not found or version-incompatible, skip dependent plugin and log ERROR
+  - [x] 11.8 Write unit tests for DAG construction, topological ordering, cycle detection, and missing dependency handling
   - Covers: Requirement 3 (AC 3, 4, 7)
 
-- [ ] 12. Version compatibility checking
-  - [ ] 12.1 Implement `check_api_compatibility(required: &Version, available: &Version) -> Result<(), PluginError>`
-  - [ ] 12.2 Reject plugin if `required.major != available.major` — log ERROR with version incompatibility
-  - [ ] 12.3 Reject plugin if `required.minor > available.minor` (same major) — log WARN indicating newer API needed
-  - [ ] 12.4 Accept plugin if `required.major == available.major && required.minor <= available.minor`
-  - [ ] 12.5 Write unit tests for all version comparison scenarios
+- [x] 12. Version compatibility checking
+  - [x] 12.1 Implement `check_api_compatibility(required: &Version, available: &Version) -> Result<(), PluginError>`
+  - [x] 12.2 Reject plugin if `required.major != available.major` — log ERROR with version incompatibility
+  - [x] 12.3 Reject plugin if `required.minor > available.minor` (same major) — log WARN indicating newer API needed
+  - [x] 12.4 Accept plugin if `required.major == available.major && required.minor <= available.minor`
+  - [x] 12.5 Write unit tests for all version comparison scenarios
   - Covers: Requirement 6 (AC 3, 4, 5)
 
-- [ ] 13. Plugin loading sequence
-  - [ ] 13.1 Implement `load_all()` — discover → build dependency graph → topological sort → load each in order
-  - [ ] 13.2 For each plugin in load order: validate API version → initialize → activate
-  - [ ] 13.3 Transition states correctly: Discovered → Loaded → Initialized → Active
-  - [ ] 13.4 If any step fails, transition plugin to Shutdown, log error, continue with remaining plugins
-  - [ ] 13.5 Return `Vec<PluginLoadResult>` summarizing success/failure for each plugin
-  - [ ] 13.6 Implement `load_plugin(name)` for loading a single plugin (dependencies must already be active)
-  - [ ] 13.7 Write unit tests for successful load sequences and partial failure scenarios
+- [x] 13. Plugin loading sequence
+  - [x] 13.1 Implement `load_all()` — discover → build dependency graph → topological sort → load each in order
+  - [x] 13.2 For each plugin in load order: validate API version → initialize → activate
+  - [x] 13.3 Transition states correctly: Discovered → Loaded → Initialized → Active
+  - [x] 13.4 If any step fails, transition plugin to Shutdown, log error, continue with remaining plugins
+  - [x] 13.5 Return `Vec<PluginLoadResult>` summarizing success/failure for each plugin
+  - [x] 13.6 Implement `load_plugin(name)` for loading a single plugin (dependencies must already be active)
+  - [x] 13.7 Write unit tests for successful load sequences and partial failure scenarios
   - Covers: Requirement 3 (AC 2, 3, 7)
 
-- [ ] 14. Capability_Registry implementation
-  - [ ] 14.1 Define `CapabilityRegistry` struct with `RwLock<Vec<CapabilityDescriptor>>` and registration counter
-  - [ ] 14.2 Implement `register()` — add capability with owner identity and increment registration_order
-  - [ ] 14.3 Implement duplicate detection: if same type+identifier already exists, emit WARN log and use first-registered as default
-  - [ ] 14.4 Implement `unregister_all(owner)` — remove all capabilities for a given plugin
-  - [ ] 14.5 Implement `query_by_type(cap_type)` — return all descriptors matching the capability type
-  - [ ] 14.6 Implement `query_by_attribute(filter)` — filter by mime_type, category, language_id, or owner
-  - [ ] 14.7 Implement `has_capability(cap_type, id)` — check existence
-  - [ ] 14.8 Emit `CapabilityChanged` platform event on register and unregister
-  - [ ] 14.9 Ensure capabilities become queryable immediately on registration and removed immediately on unregistration
-  - [ ] 14.10 Write unit tests for registration, querying, duplicate handling, and event emission
+- [x] 14. Capability_Registry implementation
+  - [x] 14.1 Define `CapabilityRegistry` struct with `RwLock<Vec<CapabilityDescriptor>>` and registration counter
+  - [x] 14.2 Implement `register()` — add capability with owner identity and increment registration_order
+  - [x] 14.3 Implement duplicate detection: if same type+identifier already exists, emit WARN log and use first-registered as default
+  - [x] 14.4 Implement `unregister_all(owner)` — remove all capabilities for a given plugin
+  - [x] 14.5 Implement `query_by_type(cap_type)` — return all descriptors matching the capability type
+  - [x] 14.6 Implement `query_by_attribute(filter)` — filter by mime_type, category, language_id, or owner
+  - [x] 14.7 Implement `has_capability(cap_type, id)` — check existence
+  - [x] 14.8 Emit `CapabilityChanged` platform event on register and unregister
+  - [x] 14.9 Ensure capabilities become queryable immediately on registration and removed immediately on unregistration
+  - [x] 14.10 Write unit tests for registration, querying, duplicate handling, and event emission
   - Covers: Requirement 4 (AC 1, 2, 3, 5, 6), Requirement 3 (AC 5)
 
-- [ ] 15. Lifecycle management — panic catching and error handling
-  - [ ] 15.1 Wrap all lifecycle method calls in `std::panic::catch_unwind`
-  - [ ] 15.2 On panic: transition plugin to Shutdown, log ERROR with plugin name and panic message
-  - [ ] 15.3 On error return: log WARN with plugin name, lifecycle phase, and error description; transition to Shutdown
-  - [ ] 15.4 Ensure panics do NOT propagate to the host application under any circumstances
-  - [ ] 15.5 Write unit tests with deliberately panicking mock plugins verifying isolation
+- [x] 15. Lifecycle management — panic catching and error handling
+  - [x] 15.1 Wrap all lifecycle method calls in `std::panic::catch_unwind`
+  - [x] 15.2 On panic: transition plugin to Shutdown, log ERROR with plugin name and panic message
+  - [x] 15.3 On error return: log WARN with plugin name, lifecycle phase, and error description; transition to Shutdown
+  - [x] 15.4 Ensure panics do NOT propagate to the host application under any circumstances
+  - [x] 15.5 Write unit tests with deliberately panicking mock plugins verifying isolation
   - Covers: Requirement 5 (AC 3, 4)
 
-- [ ] 16. Lifecycle management — deactivation and resource cleanup
-  - [ ] 16.1 Implement `unload_plugin(name)` — deactivate dependents first (reverse order), then deactivate target
-  - [ ] 16.2 On deactivation: remove plugin's capabilities from Capability_Registry
-  - [ ] 16.3 On deactivation: cancel plugin's event subscriptions
-  - [ ] 16.4 After shutdown: release all references the platform holds to the plugin (set instance to None)
-  - [ ] 16.5 Guarantee: after Shutdown state, no capabilities, subscriptions, or references remain
-  - [ ] 16.6 Write unit tests verifying complete resource cleanup after deactivation
+- [x] 16. Lifecycle management — deactivation and resource cleanup
+  - [x] 16.1 Implement `unload_plugin(name)` — deactivate dependents first (reverse order), then deactivate target
+  - [x] 16.2 On deactivation: remove plugin's capabilities from Capability_Registry
+  - [x] 16.3 On deactivation: cancel plugin's event subscriptions
+  - [x] 16.4 After shutdown: release all references the platform holds to the plugin (set instance to None)
+  - [x] 16.5 Guarantee: after Shutdown state, no capabilities, subscriptions, or references remain
+  - [x] 16.6 Write unit tests verifying complete resource cleanup after deactivation
   - Covers: Requirement 5 (AC 2, 6)
 
-- [ ] 17. Lifecycle management — application shutdown
-  - [ ] 17.1 Implement `shutdown_all(timeout: Duration)` — compute reverse dependency order
-  - [ ] 17.2 Call `deactivate()` then `shutdown()` on each active plugin in reverse dependency order
-  - [ ] 17.3 Wrap each call in `catch_unwind` for panic isolation
-  - [ ] 17.4 Track elapsed time — if total exceeds timeout (default 5 seconds), forcibly drop remaining instances
-  - [ ] 17.5 Log summary of shutdown results (successful, timed-out, panicked)
-  - [ ] 17.6 Write unit tests for orderly shutdown, timeout enforcement, and panic during shutdown
+- [x] 17. Lifecycle management — application shutdown
+  - [x] 17.1 Implement `shutdown_all(timeout: Duration)` — compute reverse dependency order
+  - [x] 17.2 Call `deactivate()` then `shutdown()` on each active plugin in reverse dependency order
+  - [x] 17.3 Wrap each call in `catch_unwind` for panic isolation
+  - [x] 17.4 Track elapsed time — if total exceeds timeout (default 5 seconds), forcibly drop remaining instances
+  - [x] 17.5 Log summary of shutdown results (successful, timed-out, panicked)
+  - [x] 17.6 Write unit tests for orderly shutdown, timeout enforcement, and panic during shutdown
   - Covers: Requirement 5 (AC 5)
 
-- [ ] 18. Hot-reload support
-  - [ ] 18.1 Implement `hot_reload(name)` — check `supports_hot_reload()` on the plugin
-  - [ ] 18.2 Cycle: Active → Deactivating → Shutdown → Discovered → Loaded → Initialized → Active
-  - [ ] 18.3 Remove old capabilities, load new instance from disk, re-initialize, re-activate
-  - [ ] 18.4 If plugin does not support hot-reload, return error
-  - [ ] 18.5 Write unit tests for hot-reload happy path and unsupported rejection
+- [x] 18. Hot-reload support
+  - [x] 18.1 Implement `hot_reload(name)` — check `supports_hot_reload()` on the plugin
+  - [x] 18.2 Cycle: Active → Deactivating → Shutdown → Discovered → Loaded → Initialized → Active
+  - [x] 18.3 Remove old capabilities, load new instance from disk, re-initialize, re-activate
+  - [x] 18.4 If plugin does not support hot-reload, return error
+  - [x] 18.5 Write unit tests for hot-reload happy path and unsupported rejection
   - Covers: Requirement 3 (AC 6), Requirement 5 (AC 1)
 
-- [ ] 19. Security and sandboxing enforcement
-  - [ ] 19.1 Implement configuration namespace enforcement in `PluginContext` — reject access outside `[plugins.{name}]`
-  - [ ] 19.2 Return `PluginError::ConfigAccessDenied` on namespace violation and log WARN
-  - [ ] 19.3 Implement network access control — check manifest for `NetworkAccess` capability declaration
-  - [ ] 19.4 Return `PluginError::NetworkAccessDenied` if plugin lacks NetworkAccess capability
-  - [ ] 19.5 Ensure VFS-only file access — `PluginContext` exposes only VFS methods, no `std::fs` primitives
-  - [ ] 19.6 Ensure capability registrations are stamped with the calling plugin's identity (cannot be forged)
-  - [ ] 19.7 Log WARN on any sandboxing violation with plugin name and violation description
-  - [ ] 19.8 Write unit tests for namespace violations, network access denial, and capability ownership stamps
+- [x] 19. Security and sandboxing enforcement
+  - [x] 19.1 Implement configuration namespace enforcement in `PluginContext` — reject access outside `[plugins.{name}]`
+  - [x] 19.2 Return `PluginError::ConfigAccessDenied` on namespace violation and log WARN
+  - [x] 19.3 Implement network access control — check manifest for `NetworkAccess` capability declaration
+  - [x] 19.4 Return `PluginError::NetworkAccessDenied` if plugin lacks NetworkAccess capability
+  - [x] 19.5 Ensure VFS-only file access — `PluginContext` exposes only VFS methods, no `std::fs` primitives
+  - [x] 19.6 Ensure capability registrations are stamped with the calling plugin's identity (cannot be forged)
+  - [x] 19.7 Log WARN on any sandboxing violation with plugin name and violation description
+  - [x] 19.8 Write unit tests for namespace violations, network access denial, and capability ownership stamps
   - Covers: Requirement 7 (AC 1, 2, 3, 4, 5, 6, 7)
 
-- [ ] 20. Type-safe capability querying
-  - [ ] 20.1 Implement generic query method `query::<T: CapabilityProvider>() -> Vec<&dyn T>` on Capability_Registry
-  - [ ] 20.2 Define `CapabilityProvider` trait for compile-time type verification of capability usage
-  - [ ] 20.3 Write unit tests demonstrating type-safe queries with mock capability providers
+- [x] 20. Type-safe capability querying
+  - [x] 20.1 Implement generic query method `query::<T: CapabilityProvider>() -> Vec<&dyn T>` on Capability_Registry
+  - [x] 20.2 Define `CapabilityProvider` trait for compile-time type verification of capability usage
+  - [x] 20.3 Write unit tests demonstrating type-safe queries with mock capability providers
   - Covers: Requirement 4 (AC 4)
 
-- [ ] 21. Platform event integration
-  - [ ] 21.1 Define `PlatformEvent` struct for plugin lifecycle events (plugin loaded, unloaded, capability changed)
-  - [ ] 21.2 Define `SubscriptionId` type and `EventHandler` type alias
-  - [ ] 21.3 Emit events when capabilities are added or removed (including plugin identity and capability type)
-  - [ ] 21.4 Write unit tests verifying event emission on capability change
+- [x] 21. Platform event integration
+  - [x] 21.1 Define `PlatformEvent` struct for plugin lifecycle events (plugin loaded, unloaded, capability changed)
+  - [x] 21.2 Define `SubscriptionId` type and `EventHandler` type alias
+  - [x] 21.3 Emit events when capabilities are added or removed (including plugin identity and capability type)
+  - [x] 21.4 Write unit tests verifying event emission on capability change
   - Covers: Requirement 4 (AC 6)
 
-- [ ] 22. Integration tests
-  - [ ] 22.1 Write end-to-end test: discover → load → activate → query capabilities → deactivate → shutdown
-  - [ ] 22.2 Write integration test with multiple plugins demonstrating dependency ordering
-  - [ ] 22.3 Write integration test demonstrating plugin failure isolation (one plugin panics, others continue)
-  - [ ] 22.4 Write integration test for configuration scoping across multiple plugins
-  - [ ] 22.5 Write integration test for capability registration and query lifecycle
+- [x] 22. Integration tests
+  - [x] 22.1 Write end-to-end test: discover → load → activate → query capabilities → deactivate → shutdown
+  - [x] 22.2 Write integration test with multiple plugins demonstrating dependency ordering
+  - [x] 22.3 Write integration test demonstrating plugin failure isolation (one plugin panics, others continue)
+  - [x] 22.4 Write integration test for configuration scoping across multiple plugins
+  - [x] 22.5 Write integration test for capability registration and query lifecycle
   - Covers: All requirements (integration verification)
 
-- [ ] 23. Property-based tests
-  - [ ] 23.1 Write PBT: lifecycle state machine validity property
-  - [ ] 23.2 Write PBT: dependency graph acyclicity after validation property
-  - [ ] 23.3 Write PBT: topological load order correctness property
-  - [ ] 23.4 Write PBT: version compatibility decision correctness property
-  - [ ] 23.5 Write PBT: capability registry consistency property
-  - [ ] 23.6 Write PBT: configuration scoping enforcement property
-  - [ ] 23.7 Write PBT: panic isolation property
-  - [ ] 23.8 Write PBT: capability ownership identity property
-  - [ ] 23.9 Write PBT: shutdown reverse dependency order property
-  - [ ] 23.10 Write PBT: duplicate capability resolution property
+- [x] 23. Property-based tests
+  - [x] 23.1 Write PBT: lifecycle state machine validity property
+  - [x] 23.2 Write PBT: dependency graph acyclicity after validation property
+  - [x] 23.3 Write PBT: topological load order correctness property
+  - [x] 23.4 Write PBT: version compatibility decision correctness property
+  - [x] 23.5 Write PBT: capability registry consistency property
+  - [x] 23.6 Write PBT: configuration scoping enforcement property
+  - [x] 23.7 Write PBT: panic isolation property
+  - [x] 23.8 Write PBT: capability ownership identity property
+  - [x] 23.9 Write PBT: shutdown reverse dependency order property
+  - [x] 23.10 Write PBT: duplicate capability resolution property
   - Covers: All correctness properties from design.md §10
 
 ---

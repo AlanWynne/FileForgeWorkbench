@@ -1,4 +1,4 @@
-# Implementation Plan: Local Filesystem Connector (`ff-connector-local-fs`)
+﻿# Implementation Plan: Local Filesystem Connector (`ff-connector-local-fs`)
 
 ## Overview
 
@@ -10,179 +10,179 @@ All tasks reference requirements from `.kiro/specs/connector-local-fs/requiremen
 
 ## Tasks
 
-- [ ] 1. Project scaffolding and crate setup
-  - [ ] 1.1 Create `crates/ff-connector-local-fs/Cargo.toml` with dependencies (tokio, notify, memmap2, thiserror, async-trait, ff-vfs, ff-logging) and dev-dependencies (proptest, tempfile, pretty_assertions)
-  - [ ] 1.2 Create `crates/ff-connector-local-fs/src/lib.rs` with crate-level docs, module declarations, and public API re-exports
-  - [ ] 1.3 Create module stub files: `provider.rs`, `path_resolver.rs`, `watcher.rs`, `streaming.rs`, `mmap.rs`, `metadata.rs`, `error.rs`, and `platform/mod.rs` with `windows.rs`, `unix.rs`, `macos.rs`
-  - [ ] 1.4 Add `ff-connector-local-fs` to workspace `Cargo.toml` members list
-  - [ ] 1.5 Verify `cargo check -p ff-connector-local-fs` compiles cleanly
+- [x] 1. Project scaffolding and crate setup
+  - [x] 1.1 Create `crates/ff-connector-local-fs/Cargo.toml` with dependencies (tokio, notify, memmap2, thiserror, async-trait, ff-vfs, ff-logging) and dev-dependencies (proptest, tempfile, pretty_assertions)
+  - [x] 1.2 Create `crates/ff-connector-local-fs/src/lib.rs` with crate-level docs, module declarations, and public API re-exports
+  - [x] 1.3 Create module stub files: `provider.rs`, `path_resolver.rs`, `watcher.rs`, `streaming.rs`, `mmap.rs`, `metadata.rs`, `error.rs`, and `platform/mod.rs` with `windows.rs`, `unix.rs`, `macos.rs`
+  - [x] 1.4 Add `ff-connector-local-fs` to workspace `Cargo.toml` members list
+  - [x] 1.5 Verify `cargo check -p ff-connector-local-fs` compiles cleanly
 
-- [ ] 2. Error handling and error mapping module
-  - [ ] 2.1 Implement `ConnectorError` enum in `error.rs` with `HomeDirNotFound`, `WorkingDirFailed`, and `WatcherInitFailed` variants using `thiserror`
-  - [ ] 2.2 Implement `map_io_error` function that maps `std::io::Error` to `VfsError` variants per the mapping table (PermissionDenied, NotFound, StorageFull, InvalidPath, ResourceBusy, DirectoryNotEmpty, IoError)
+- [x] 2. Error handling and error mapping module
+  - [x] 2.1 Implement `ConnectorError` enum in `error.rs` with `HomeDirNotFound`, `WorkingDirFailed`, and `WatcherInitFailed` variants using `thiserror`
+  - [x] 2.2 Implement `map_io_error` function that maps `std::io::Error` to `VfsError` variants per the mapping table (PermissionDenied, NotFound, StorageFull, InvalidPath, ResourceBusy, DirectoryNotEmpty, IoError)
     - Validates: Requirement 7 AC 1–8
-  - [ ] 2.3 Implement error message formatting conforming to `[connector-local-fs] operation: description` format with 200-char max
+  - [x] 2.3 Implement error message formatting conforming to `[connector-local-fs] operation: description` format with 200-char max
     - Validates: Requirement 7 AC 9
-  - [ ] 2.4 Integrate WARN-level logging for all mapped errors via `ff-logging` before returning
+  - [x] 2.4 Integrate WARN-level logging for all mapped errors via `ff-logging` before returning
     - Validates: Requirement 7 AC 10
-  - [ ] 2.5 Write unit tests for error mapping covering all OS error kinds
+  - [x] 2.5 Write unit tests for error mapping covering all OS error kinds
 
-- [ ] 3. Path resolver — core path resolution logic
-  - [ ] 3.1 Implement `PathResolver::new()` caching home directory and current working directory
+- [x] 3. Path resolver — core path resolution logic
+  - [x] 3.1 Implement `PathResolver::new()` caching home directory and current working directory
     - Validates: Requirement 4 AC 1, AC 2
-  - [ ] 3.2 Implement `expand_tilde` method replacing `~/` or `~\` with user home directory
+  - [x] 3.2 Implement `expand_tilde` method replacing `~/` or `~\` with user home directory
     - Validates: Requirement 4 AC 2
-  - [ ] 3.3 Implement `expand_env_vars` supporting `$VAR`, `${VAR}` (Unix) and `%VAR%` (Windows) expansion with VfsError on undefined variables
+  - [x] 3.3 Implement `expand_env_vars` supporting `$VAR`, `${VAR}` (Unix) and `%VAR%` (Windows) expansion with VfsError on undefined variables
     - Validates: Requirement 4 AC 3, AC 4, AC 5
-  - [ ] 3.4 Implement `resolve` method combining relative path resolution, tilde expansion, env-var expansion, and `.`/`..` segment elimination
+  - [x] 3.4 Implement `resolve` method combining relative path resolution, tilde expansion, env-var expansion, and `.`/`..` segment elimination
     - Validates: Requirement 4 AC 1, AC 6
-  - [ ] 3.5 Implement `canonicalize` async method that resolves symlinks and produces true absolute path
+  - [x] 3.5 Implement `canonicalize` async method that resolves symlinks and produces true absolute path
     - Validates: Requirement 4 AC 7, AC 8
-  - [ ] 3.6 Implement `normalise_separators` for platform-native separator conversion
+  - [x] 3.6 Implement `normalise_separators` for platform-native separator conversion
     - Validates: Requirement 2 AC 3
-  - [ ] 3.7 Implement `paths_equal` with case-insensitive comparison on Windows and case-sensitive on Unix
+  - [x] 3.7 Implement `paths_equal` with case-insensitive comparison on Windows and case-sensitive on Unix
     - Validates: Requirement 2 AC 4, AC 5
-  - [ ] 3.8 Implement `native_to_uri` and `uri_to_native` for bidirectional URI ↔ native path conversion
+  - [x] 3.8 Implement `native_to_uri` and `uri_to_native` for bidirectional URI ↔ native path conversion
     - Validates: Requirement 2 AC 8, AC 9, AC 10, Requirement 4 AC 9
-  - [ ] 3.9 Write unit tests for path resolution covering relative, tilde, env-var, and dotdot segments
+  - [x] 3.9 Write unit tests for path resolution covering relative, tilde, env-var, and dotdot segments
 
-- [ ] 4. Platform-specific path handling
-  - [ ] 4.1 Implement `platform/windows.rs`: drive letter parsing, UNC path support, long path prefix (`\\?\`), case-insensitive comparison, hidden file detection via attributes
+- [x] 4. Platform-specific path handling
+  - [x] 4.1 Implement `platform/windows.rs`: drive letter parsing, UNC path support, long path prefix (`\\?\`), case-insensitive comparison, hidden file detection via attributes
     - Validates: Requirement 2 AC 1, AC 4, AC 7
-  - [ ] 4.2 Implement `platform/unix.rs`: Unix permissions mapping, symlink resolution, dot-prefix hidden file detection
+  - [x] 4.2 Implement `platform/unix.rs`: Unix permissions mapping, symlink resolution, dot-prefix hidden file detection
     - Validates: Requirement 2 AC 2, AC 5, AC 6
-  - [ ] 4.3 Implement `platform/macos.rs`: FSEvents specifics, case-insensitive-but-preserving comparison, UF_HIDDEN flag detection
-  - [ ] 4.4 Implement `platform/mod.rs` with conditional compilation re-exports (`#[cfg(target_os = ...)]`)
-  - [ ] 4.5 Write platform-conditional unit tests for Windows long paths, UNC paths, and Unix symlinks
+  - [x] 4.3 Implement `platform/macos.rs`: FSEvents specifics, case-insensitive-but-preserving comparison, UF_HIDDEN flag detection
+  - [x] 4.4 Implement `platform/mod.rs` with conditional compilation re-exports (`#[cfg(target_os = ...)]`)
+  - [x] 4.5 Write platform-conditional unit tests for Windows long paths, UNC paths, and Unix symlinks
 
-- [ ] 5. Property-based tests for path resolution
-  - [ ] 5.1 Write property test: URI ↔ Native Path Round-Trip Fidelity (Property 1)
+- [x] 5. Property-based tests for path resolution
+  - [x] 5.1 Write property test: URI ↔ Native Path Round-Trip Fidelity (Property 1)
     - **Validates: Requirements 2.8, 2.9, 2.10, 4.9**
     - Strategy: generate valid native paths with platform-appropriate characters
     - Assertion: `uri_to_native(native_to_uri(P)) == normalise(P)`
-  - [ ] 5.2 Write property test: Path Resolution Determinism (Property 2)
+  - [x] 5.2 Write property test: Path Resolution Determinism (Property 2)
     - **Validates: Requirements 4.1, 4.2, 4.3, 4.4, 4.5, 4.6**
     - Strategy: generate path strings containing ~, $VAR, relative segments, `..` components
     - Assertion: `resolve(path) == resolve(path)` and result is absolute
-  - [ ] 5.3 Write property test: Path Normalisation Idempotence (Property 5)
+  - [x] 5.3 Write property test: Path Normalisation Idempotence (Property 5)
     - **Validates: Requirements 2.3, 4.6**
     - Strategy: generate paths with mixed separators, redundant separators, `.` and `..`
     - Assertion: `normalise(normalise(P)) == normalise(P)`
-  - [ ] 5.4 Write property test: Environment Variable Expansion Safety (Property 10)
+  - [x] 5.4 Write property test: Environment Variable Expansion Safety (Property 10)
     - **Validates: Requirements 4.3, 4.4, 4.5**
     - Strategy: generate path strings with variable references and partial env maps
     - Assertion: all vars defined → no unexpanded syntax; undefined var → `Err(InvalidPath)`
-  - [ ] 5.5 Write property test: Platform Path Comparison Consistency (Property 8)
+  - [x] 5.5 Write property test: Platform Path Comparison Consistency (Property 8)
     - **Validates: Requirements 2.4, 2.5**
     - Strategy: generate pairs of path strings differing only in case
     - Assertion: Windows → equal; Unix → not equal when case differs
 
-- [ ] 6. File metadata module
-  - [ ] 6.1 Implement `FileMetadata` struct with size, timestamps, resource type, permissions, is_hidden, and symlink_target fields
+- [x] 6. File metadata module
+  - [x] 6.1 Implement `FileMetadata` struct with size, timestamps, resource type, permissions, is_hidden, and symlink_target fields
     - Validates: Requirement 5 AC 1, AC 2, AC 3, AC 4, AC 9, AC 10
-  - [ ] 6.2 Implement `ResourceType` enum (RegularFile, Directory, Symlink, Other) with `#[non_exhaustive]`
+  - [x] 6.2 Implement `ResourceType` enum (RegularFile, Directory, Symlink, Other) with `#[non_exhaustive]`
     - Validates: Requirement 5 AC 2
-  - [ ] 6.3 Implement `FilePermissions` enum with Unix and Windows variants
+  - [x] 6.3 Implement `FilePermissions` enum with Unix and Windows variants
     - Validates: Requirement 5 AC 3
-  - [ ] 6.4 Implement `stat` helper that reads OS metadata via `tokio::fs::metadata` / `tokio::fs::symlink_metadata` and maps to `FileMetadata`
+  - [x] 6.4 Implement `stat` helper that reads OS metadata via `tokio::fs::metadata` / `tokio::fs::symlink_metadata` and maps to `FileMetadata`
     - Validates: Requirement 5 AC 5, AC 6, AC 7, AC 8
-  - [ ] 6.5 Write unit tests for metadata mapping including hidden file detection, symlink handling, and missing timestamp fields
+  - [x] 6.5 Write unit tests for metadata mapping including hidden file detection, symlink handling, and missing timestamp fields
 
-- [ ] 7. Streaming I/O — reader and writer
-  - [ ] 7.1 Implement `StreamingReader` struct with `tokio::io::AsyncRead` trait implementation and configurable chunk size
+- [x] 7. Streaming I/O — reader and writer
+  - [x] 7.1 Implement `StreamingReader` struct with `tokio::io::AsyncRead` trait implementation and configurable chunk size
     - Validates: Requirement 6 AC 1, AC 2
-  - [ ] 7.2 Implement progress callback support on `StreamingReader` (bytes_read / total_size reporting)
+  - [x] 7.2 Implement progress callback support on `StreamingReader` (bytes_read / total_size reporting)
     - Validates: Requirement 6 AC 8
-  - [ ] 7.3 Implement `StreamingWriter` with atomic write strategy (temp file + rename) and fallback to direct write
+  - [x] 7.3 Implement `StreamingWriter` with atomic write strategy (temp file + rename) and fallback to direct write
     - Validates: Requirement 1 AC 4, Requirement 6 AC 5
-  - [ ] 7.4 Implement `MemoryMappedFile` struct using `memmap2` with fallback to streaming on mmap failure
+  - [x] 7.4 Implement `MemoryMappedFile` struct using `memmap2` with fallback to streaming on mmap failure
     - Validates: Requirement 6 AC 3, AC 4, AC 7
-  - [ ] 7.5 Ensure no artificial file size limits (Requirement 6 AC 6) — only OS/filesystem limits apply
+  - [x] 7.5 Ensure no artificial file size limits (Requirement 6 AC 6) — only OS/filesystem limits apply
     - Validates: Requirement 6 AC 6
-  - [ ] 7.6 Write unit tests for streaming reader/writer using `tempfile::TempDir`
+  - [x] 7.6 Write unit tests for streaming reader/writer using `tempfile::TempDir`
 
-- [ ] 8. Property-based tests for streaming and errors
-  - [ ] 8.1 Write property test: Streaming Reader Completeness (Property 6)
+- [x] 8. Property-based tests for streaming and errors
+  - [x] 8.1 Write property test: Streaming Reader Completeness (Property 6)
     - **Validates: Requirements 6.1, 6.2, 1.3**
     - Strategy: generate file content of sizes 0..10MB and chunk sizes 1KB–1MB
     - Assertion: `concat(all_chunks) == original_content` and `sum(chunk_sizes) == file_size`
-  - [ ] 8.2 Write property test: Atomic Write Consistency (Property 7)
+  - [x] 8.2 Write property test: Atomic Write Consistency (Property 7)
     - **Validates: Requirements 1.4**
     - Strategy: generate file content and simulate completion/failure scenarios
     - Assertion: successful → `read(path) == written_data`; failed → original preserved
-  - [ ] 8.3 Write property test: Error Mapping Completeness (Property 3)
+  - [x] 8.3 Write property test: Error Mapping Completeness (Property 3)
     - **Validates: Requirements 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8**
     - Strategy: generate all `ErrorKind` variants with arbitrary OS codes, URIs, operations
     - Assertion: never panics, error message contains operation name, length ≤ 200 chars
 
-- [ ] 9. File watcher implementation
-  - [ ] 9.1 Implement `FileWatcher::new()` with configurable debounce window and background Tokio task for event coalescing
+- [x] 9. File watcher implementation
+  - [x] 9.1 Implement `FileWatcher::new()` with configurable debounce window and background Tokio task for event coalescing
     - Validates: Requirement 3 AC 5, AC 6
-  - [ ] 9.2 Implement `FileWatcher::watch()` using the `notify` crate for OS-native file watching, returning `WatchHandle`
+  - [x] 9.2 Implement `FileWatcher::watch()` using the `notify` crate for OS-native file watching, returning `WatchHandle`
     - Validates: Requirement 3 AC 1, AC 8
-  - [ ] 9.3 Implement recursive directory watch option
+  - [x] 9.3 Implement recursive directory watch option
     - Validates: Requirement 3 AC 4
-  - [ ] 9.4 Implement `WatchEvent` and `WatchEventKind` types (Created, Modified, Deleted, Renamed) with Resource_URI and timestamp
+  - [x] 9.4 Implement `WatchEvent` and `WatchEventKind` types (Created, Modified, Deleted, Renamed) with Resource_URI and timestamp
     - Validates: Requirement 3 AC 2, AC 3, AC 11
-  - [ ] 9.5 Implement debounce logic: coalesce events on same path within debounce window, preserve events on different paths
+  - [x] 9.5 Implement debounce logic: coalesce events on same path within debounce window, preserve events on different paths
     - Validates: Requirement 3 AC 5
-  - [ ] 9.6 Implement debounce configuration validation (50–5000ms range), clamping out-of-range values with WARN log
+  - [x] 9.6 Implement debounce configuration validation (50–5000ms range), clamping out-of-range values with WARN log
     - Validates: Requirement 3 AC 6, AC 7
-  - [ ] 9.7 Implement `WatchHandle::cancel()` and `FileWatcher::unwatch()` for resource cleanup
+  - [x] 9.7 Implement `WatchHandle::cancel()` and `FileWatcher::unwatch()` for resource cleanup
     - Validates: Requirement 3 AC 9
-  - [ ] 9.8 Implement auto-removal of watch on path deletion with final deletion event and INFO log
+  - [x] 9.8 Implement auto-removal of watch on path deletion with final deletion event and INFO log
     - Validates: Requirement 3 AC 10
-  - [ ] 9.9 Implement error handling for OS watch errors (too many watches, permission denied)
+  - [x] 9.9 Implement error handling for OS watch errors (too many watches, permission denied)
     - Validates: Requirement 3 AC 12
-  - [ ] 9.10 Write integration tests for file watching using `tempfile::TempDir` with create/modify/delete scenarios
+  - [x] 9.10 Write integration tests for file watching using `tempfile::TempDir` with create/modify/delete scenarios
 
-- [ ] 10. Property-based test for watch debounce
-  - [ ] 10.1 Write property test: Watch Event Debounce Coalescing (Property 4)
+- [x] 10. Property-based test for watch debounce
+  - [x] 10.1 Write property test: Watch Event Debounce Coalescing (Property 4)
     - **Validates: Requirements 3.5**
     - Strategy: generate sequences of (path, timestamp) events with repeating paths within debounce window
     - Assertion: at most one event per path per debounce period; distinct paths preserved independently
 
-- [ ] 11. LocalFsProvider — VfsProvider trait implementation
-  - [ ] 11.1 Implement `LocalFsProvider::new()` and `LocalFsProvider::with_config()` constructors
+- [x] 11. LocalFsProvider — VfsProvider trait implementation
+  - [x] 11.1 Implement `LocalFsProvider::new()` and `LocalFsProvider::with_config()` constructors
     - Validates: Requirement 1 AC 1
-  - [ ] 11.2 Implement `LocalFsProvider::register()` to register with Provider_Registry under scheme `"local"`
+  - [x] 11.2 Implement `LocalFsProvider::register()` to register with Provider_Registry under scheme `"local"`
     - Validates: Requirement 1 AC 2
-  - [ ] 11.3 Implement `VfsProvider::scheme()` returning `"local"` and `VfsProvider::capabilities()` returning full capability set
-  - [ ] 11.4 Implement `VfsProvider::read()` and `VfsProvider::read_stream()` using PathResolver and StreamingReader
+  - [x] 11.3 Implement `VfsProvider::scheme()` returning `"local"` and `VfsProvider::capabilities()` returning full capability set
+  - [x] 11.4 Implement `VfsProvider::read()` and `VfsProvider::read_stream()` using PathResolver and StreamingReader
     - Validates: Requirement 1 AC 3
-  - [ ] 11.5 Implement `VfsProvider::write()` using StreamingWriter with atomic rename strategy
+  - [x] 11.5 Implement `VfsProvider::write()` using StreamingWriter with atomic rename strategy
     - Validates: Requirement 1 AC 4
-  - [ ] 11.6 Implement `VfsProvider::create()` for files and directories (with parent directory creation)
+  - [x] 11.6 Implement `VfsProvider::create()` for files and directories (with parent directory creation)
     - Validates: Requirement 1 AC 5, AC 6
-  - [ ] 11.7 Implement `VfsProvider::delete()` with empty-directory guard and recursive option
+  - [x] 11.7 Implement `VfsProvider::delete()` with empty-directory guard and recursive option
     - Validates: Requirement 1 AC 7
-  - [ ] 11.8 Implement `VfsProvider::rename()` using OS-native rename
+  - [x] 11.8 Implement `VfsProvider::rename()` using OS-native rename
     - Validates: Requirement 1 AC 8
-  - [ ] 11.9 Implement `VfsProvider::list()` returning async stream of directory entries
+  - [x] 11.9 Implement `VfsProvider::list()` returning async stream of directory entries
     - Validates: Requirement 1 AC 9
-  - [ ] 11.10 Implement `VfsProvider::stat()` and `VfsProvider::exists()` using metadata module
+  - [x] 11.10 Implement `VfsProvider::stat()` and `VfsProvider::exists()` using metadata module
     - Validates: Requirement 5 AC 1–10
-  - [ ] 11.11 Implement `VfsProvider::watch()` delegating to FileWatcher
+  - [x] 11.11 Implement `VfsProvider::watch()` delegating to FileWatcher
     - Validates: Requirement 3 AC 1–12
-  - [ ] 11.12 Implement `VfsProvider::search()` with async streaming results
-  - [ ] 11.13 Ensure all I/O is fully async via Tokio — no blocking calls on executor thread
+  - [x] 11.12 Implement `VfsProvider::search()` with async streaming results
+  - [x] 11.13 Ensure all I/O is fully async via Tokio — no blocking calls on executor thread
     - Validates: Requirement 1 AC 10
-  - [ ] 11.14 Write VfsProvider trait contract integration tests (open, read, write, create, delete, rename, list, stat, exists round-trip)
+  - [x] 11.14 Write VfsProvider trait contract integration tests (open, read, write, create, delete, rename, list, stat, exists round-trip)
 
-- [ ] 12. Property-based test for metadata timestamps
-  - [ ] 12.1 Write property test: FileMetadata Timestamp Validity (Property 9)
+- [x] 12. Property-based test for metadata timestamps
+  - [x] 12.1 Write property test: FileMetadata Timestamp Validity (Property 9)
     - **Validates: Requirements 5.1, 5.9, 5.10**
     - Strategy: create files with various operations, then stat them
     - Assertion: `created <= modified` (when both available); all timestamps ≤ `SystemTime::now()`
 
-- [ ] 13. End-to-end integration tests
-  - [ ] 13.1 Write integration test: full VFS round-trip — register provider, write file via URI, read back, verify content matches
-  - [ ] 13.2 Write integration test: directory operations — create directory tree, list contents, delete recursively
-  - [ ] 13.3 Write integration test: file watching round-trip — register watch, create/modify/delete file, verify events received in order
-  - [ ] 13.4 Write integration test: path resolution with tilde and env vars in real filesystem context
-  - [ ] 13.5 Write integration test: large file streaming — write 10MB file in chunks, read back in different chunk size, verify byte-equality
-  - [ ] 13.6 Write integration test: error scenarios — permission denied, not found, directory not empty
-  - [ ] 13.7 Verify `cargo test -p ff-connector-local-fs` passes cleanly with no warnings
+- [x] 13. End-to-end integration tests
+  - [x] 13.1 Write integration test: full VFS round-trip — register provider, write file via URI, read back, verify content matches
+  - [x] 13.2 Write integration test: directory operations — create directory tree, list contents, delete recursively
+  - [x] 13.3 Write integration test: file watching round-trip — register watch, create/modify/delete file, verify events received in order
+  - [x] 13.4 Write integration test: path resolution with tilde and env vars in real filesystem context
+  - [x] 13.5 Write integration test: large file streaming — write 10MB file in chunks, read back in different chunk size, verify byte-equality
+  - [x] 13.6 Write integration test: error scenarios — permission denied, not found, directory not empty
+  - [x] 13.7 Verify `cargo test -p ff-connector-local-fs` passes cleanly with no warnings
 
 ---
 

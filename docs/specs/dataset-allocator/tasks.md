@@ -1,4 +1,4 @@
-# Implementation Plan: Dataset Allocator (`ff-dataset-allocator`)
+﻿# Implementation Plan: Dataset Allocator (`ff-dataset-allocator`)
 
 ## Overview
 
@@ -12,355 +12,355 @@ This task plan implements the `ff-dataset-allocator` crate — the JCL Dataset A
 
 ## Tasks
 
-- [ ] 1. Project scaffold, error types, and configuration model
-  - [ ] 1.1 Create `crates/ff-dataset-allocator/Cargo.toml` with dependencies (thiserror, tracing, serde, toml) and dev-dependencies (proptest, pretty_assertions, tempfile)
-  - [ ] 1.2 Create `crates/ff-dataset-allocator/src/lib.rs` with crate-level doc comment and public module declarations
-  - [ ] 1.3 Implement `src/error.rs` — define `JclResolverError` enum with variants: SyntaxError, UnresolvedDsn, UnresolvedSymbolic, DispConflict, ReferbackNotFound, GdgNotFound, ConcatenationError, InvalidDsnSyntax, CatalogQueryFailed, InternalError; each variant carries line number, ddname, DSN, and reason context
+- [x] 1. Project scaffold, error types, and configuration model
+  - [x] 1.1 Create `crates/ff-dataset-allocator/Cargo.toml` with dependencies (thiserror, tracing, serde, toml) and dev-dependencies (proptest, pretty_assertions, tempfile)
+  - [x] 1.2 Create `crates/ff-dataset-allocator/src/lib.rs` with crate-level doc comment and public module declarations
+  - [x] 1.3 Implement `src/error.rs` — define `JclResolverError` enum with variants: SyntaxError, UnresolvedDsn, UnresolvedSymbolic, DispConflict, ReferbackNotFound, GdgNotFound, ConcatenationError, InvalidDsnSyntax, CatalogQueryFailed, InternalError; each variant carries line number, ddname, DSN, and reason context
     - Validates: Requirement 15 AC 1, AC 6
-  - [ ] 1.4 Implement `src/config.rs` — define `ResolverConfig` struct with fields: `resolve_mode` (DryRun/Live enum), `default_hlq`, `catalog_search_order`, `lint_level` (Error/Warning/Info enum), `max_referback_depth`, `auto_resolve`; implement `Default` trait with documented defaults
+  - [x] 1.4 Implement `src/config.rs` — define `ResolverConfig` struct with fields: `resolve_mode` (DryRun/Live enum), `default_hlq`, `catalog_search_order`, `lint_level` (Error/Warning/Info enum), `max_referback_depth`, `auto_resolve`; implement `Default` trait with documented defaults
     - Validates: Requirement 14 AC 1, AC 5
-  - [ ] 1.5 Implement `src/diagnostic.rs` — define `LintDiagnostic` struct with fields: severity (Error/Warning/Info), line_number, col_start, col_end, code (String, e.g. "JCL001"), message; implement Display and ordering by line number
+  - [x] 1.5 Implement `src/diagnostic.rs` — define `LintDiagnostic` struct with fields: severity (Error/Warning/Info), line_number, col_start, col_end, code (String, e.g. "JCL001"), message; implement Display and ordering by line number
     - Validates: Requirement 10 AC 1, AC 9
-  - [ ] 1.6 Write unit tests for `JclResolverError` Display output: all variants carry context (line, ddname, reason), unique diagnostic codes map correctly
+  - [x] 1.6 Write unit tests for `JclResolverError` Display output: all variants carry context (line, ddname, reason), unique diagnostic codes map correctly
     - Validates: Requirement 15 AC 1, AC 6
-  - [ ] 1.7 Write unit tests for `ResolverConfig` default values and TOML deserialization from `[jcl]` table
+  - [x] 1.7 Write unit tests for `ResolverConfig` default values and TOML deserialization from `[jcl]` table
     - Validates: Requirement 14 AC 1, AC 2
 
-- [ ] 2. DSN model and DD statement operand models
-  - [ ] 2.1 Implement `src/dsn.rs` — define `DatasetName` struct (validated 1–44 char name, qualifier validation: 1–8 chars, alpha/national start), `PdsMemberRef` struct, `GdgRelativeRef` struct (base + offset), `TempDsnRef` struct (&&-prefixed names), `ReferbackRef` struct (stepname.ddname / stepname.procstepname.ddname)
+- [x] 2. DSN model and DD statement operand models
+  - [x] 2.1 Implement `src/dsn.rs` — define `DatasetName` struct (validated 1–44 char name, qualifier validation: 1–8 chars, alpha/national start), `PdsMemberRef` struct, `GdgRelativeRef` struct (base + offset), `TempDsnRef` struct (&&-prefixed names), `ReferbackRef` struct (stepname.ddname / stepname.procstepname.ddname)
     - Validates: Requirement 1 AC 2, AC 3; Requirement 10 AC 7
-  - [ ] 2.2 Implement `DatasetName::parse()` — validate DSN syntax rules (max 44 chars, qualifiers 1–8 chars starting alpha/national, no empty qualifiers); return `LintDiagnostic` on invalid syntax
+  - [x] 2.2 Implement `DatasetName::parse()` — validate DSN syntax rules (max 44 chars, qualifiers 1–8 chars starting alpha/national, no empty qualifiers); return `LintDiagnostic` on invalid syntax
     - Validates: Requirement 10 AC 7
-  - [ ] 2.3 Implement `src/operands.rs` — define `DispStatus` enum (New, Old, Shr, Mod), `DispAction` enum (Keep, Delete, Catlg, Uncatlg, Pass), `Disposition` struct (status, normal_disp, abnormal_disp)
+  - [x] 2.3 Implement `src/operands.rs` — define `DispStatus` enum (New, Old, Shr, Mod), `DispAction` enum (Keep, Delete, Catlg, Uncatlg, Pass), `Disposition` struct (status, normal_disp, abnormal_disp)
     - Validates: Requirement 1 AC 4; Requirement 4 AC 7
-  - [ ] 2.4 Implement DCB model in `src/operands.rs` — define `Dcb` struct with optional fields: recfm (String), lrecl (u32), blksize (u32), dsorg (String)
+  - [x] 2.4 Implement DCB model in `src/operands.rs` — define `Dcb` struct with optional fields: recfm (String), lrecl (u32), blksize (u32), dsorg (String)
     - Validates: Requirement 1 AC 5
-  - [ ] 2.5 Implement SPACE model in `src/operands.rs` — define `SpaceUnit` enum (Trk, Cyl, Blksize(u32)), `SpaceAllocation` struct (unit, primary, secondary, directory)
+  - [x] 2.5 Implement SPACE model in `src/operands.rs` — define `SpaceUnit` enum (Trk, Cyl, Blksize(u32)), `SpaceAllocation` struct (unit, primary, secondary, directory)
     - Validates: Requirement 1 AC 6
-  - [ ] 2.6 Implement `src/dd_statement.rs` — define `DdStatement` struct aggregating: ddname, dsn (enum: Explicit/Referback/Temporary/None), disp, dcb, space, sysout_class, is_dummy, is_inline, concatenation_index; implement builder-style construction
+  - [x] 2.6 Implement `src/dd_statement.rs` — define `DdStatement` struct aggregating: ddname, dsn (enum: Explicit/Referback/Temporary/None), disp, dcb, space, sysout_class, is_dummy, is_inline, concatenation_index; implement builder-style construction
     - Validates: Requirement 1 AC 1–10
-  - [ ] 2.7 Write unit tests for DSN validation: valid names, too-long names, invalid qualifier start, empty qualifiers, PDS member extraction, GDG relative syntax
+  - [x] 2.7 Write unit tests for DSN validation: valid names, too-long names, invalid qualifier start, empty qualifiers, PDS member extraction, GDG relative syntax
     - Validates: Requirement 1 AC 2, AC 3; Requirement 8 AC 1; Requirement 10 AC 7
-  - [ ] 2.8 Write property test: DSN validation (Property 1) — generate random strings (1–50 chars), verify parse accepts only valid DSN syntax per z/OS rules (≤44 chars, qualifiers ≤8 chars, alpha/national start, no consecutive dots)
+  - [x] 2.8 Write property test: DSN validation (Property 1) — generate random strings (1–50 chars), verify parse accepts only valid DSN syntax per z/OS rules (≤44 chars, qualifiers ≤8 chars, alpha/national start, no consecutive dots)
     - Validates: Requirement 10 AC 7, AC 8
 
-- [ ] 3. DD statement parser
-  - [ ] 3.1 Implement `src/parser.rs` — define `JclParser` struct with methods: `parse_dd_statement(line: &str, line_number: usize) -> Result<DdStatement, LintDiagnostic>` and `parse_job(text: &str) -> ParseResult`
-  - [ ] 3.2 Implement ddname extraction (columns 3–10), operand field tokenisation (comma-separated, respecting parenthesised groups and quoted strings)
+- [x] 3. DD statement parser
+  - [x] 3.1 Implement `src/parser.rs` — define `JclParser` struct with methods: `parse_dd_statement(line: &str, line_number: usize) -> Result<DdStatement, LintDiagnostic>` and `parse_job(text: &str) -> ParseResult`
+  - [x] 3.2 Implement ddname extraction (columns 3–10), operand field tokenisation (comma-separated, respecting parenthesised groups and quoted strings)
     - Validates: Requirement 1 AC 1
-  - [ ] 3.3 Implement DSN operand parsing — unquoted and quoted names, PDS member references `DSN=name(member)`, GDG relative `DSN=name(+n)`
+  - [x] 3.3 Implement DSN operand parsing — unquoted and quoted names, PDS member references `DSN=name(member)`, GDG relative `DSN=name(+n)`
     - Validates: Requirement 1 AC 2, AC 3; Requirement 8 AC 1
-  - [ ] 3.4 Implement DISP operand parsing — up to 3 positional sub-parameters within parentheses
+  - [x] 3.4 Implement DISP operand parsing — up to 3 positional sub-parameters within parentheses
     - Validates: Requirement 1 AC 4
-  - [ ] 3.5 Implement DCB operand parsing — key=value pairs within parenthesised list
+  - [x] 3.5 Implement DCB operand parsing — key=value pairs within parenthesised list
     - Validates: Requirement 1 AC 5
-  - [ ] 3.6 Implement SPACE operand parsing — nested positional format `SPACE=(unit,(primary,secondary,directory))`
+  - [x] 3.6 Implement SPACE operand parsing — nested positional format `SPACE=(unit,(primary,secondary,directory))`
     - Validates: Requirement 1 AC 6
-  - [ ] 3.7 Implement JCL continuation line handling — detect non-blank column 72, join with next `// ` prefixed line
+  - [x] 3.7 Implement JCL continuation line handling — detect non-blank column 72, join with next `// ` prefixed line
     - Validates: Requirement 1 AC 7
-  - [ ] 3.8 Implement SYSOUT, DD *, DD DATA, and DUMMY keyword recognition
+  - [x] 3.8 Implement SYSOUT, DD *, DD DATA, and DUMMY keyword recognition
     - Validates: Requirement 1 AC 8, AC 9, AC 10
-  - [ ] 3.9 Implement syntax error detection — unbalanced parentheses, invalid operand format; emit LintDiagnostic at ERROR severity
+  - [x] 3.9 Implement syntax error detection — unbalanced parentheses, invalid operand format; emit LintDiagnostic at ERROR severity
     - Validates: Requirement 1 AC 11
-  - [ ] 3.10 Implement concatenation detection — blank ddname columns following a DD statement
+  - [x] 3.10 Implement concatenation detection — blank ddname columns following a DD statement
     - Validates: Requirement 5 AC 1
-  - [ ] 3.11 Write unit tests for DD statement parsing: basic DD, DSN extraction (quoted/unquoted), member refs, DISP parsing, DCB parsing, SPACE parsing, continuation lines, SYSOUT, DD *, DUMMY, syntax errors
+  - [x] 3.11 Write unit tests for DD statement parsing: basic DD, DSN extraction (quoted/unquoted), member refs, DISP parsing, DCB parsing, SPACE parsing, continuation lines, SYSOUT, DD *, DUMMY, syntax errors
     - Validates: Requirement 1 AC 1–11
-  - [ ] 3.12 Write property test: parser round-trip (Property 2) — generate valid DD statement strings from model, parse them, assert extracted operands match generated inputs
+  - [x] 3.12 Write property test: parser round-trip (Property 2) — generate valid DD statement strings from model, parse them, assert extracted operands match generated inputs
     - Validates: Requirement 1 AC 1–6
 
-- [ ] 4. Job structure parsing
-  - [ ] 4.1 Implement `src/job_model.rs` — define `JclJob` struct (job_name, steps: Vec<JclStep>), `JclStep` struct (step_name, program/proc, dd_statements: Vec<DdStatement>, overrides), `ProcDefinition` struct
+- [x] 4. Job structure parsing
+  - [x] 4.1 Implement `src/job_model.rs` — define `JclJob` struct (job_name, steps: Vec<JclStep>), `JclStep` struct (step_name, program/proc, dd_statements: Vec<DdStatement>, overrides), `ProcDefinition` struct
     - Validates: Requirement 12 AC 3
-  - [ ] 4.2 Implement JOB statement parsing — extract job name for `&SYSJOBNAME`; handle missing JOB (default `"NOJOB"`)
+  - [x] 4.2 Implement JOB statement parsing — extract job name for `&SYSJOBNAME`; handle missing JOB (default `"NOJOB"`)
     - Validates: Requirement 12 AC 1, AC 8
-  - [ ] 4.3 Implement EXEC statement parsing — extract step name, PGM= or proc name, symbolic overrides
+  - [x] 4.3 Implement EXEC statement parsing — extract step name, PGM= or proc name, symbolic overrides
     - Validates: Requirement 12 AC 2
-  - [ ] 4.4 Implement PROC/PEND parsing and in-stream procedure expansion with DD override merging (`//step.procstep DD ...`)
+  - [x] 4.4 Implement PROC/PEND parsing and in-stream procedure expansion with DD override merging (`//step.procstep DD ...`)
     - Validates: Requirement 12 AC 4, AC 5
-  - [ ] 4.5 Implement IF/THEN/ELSE/ENDIF construct recognition (include all conditional paths in model)
+  - [x] 4.5 Implement IF/THEN/ELSE/ENDIF construct recognition (include all conditional paths in model)
     - Validates: Requirement 12 AC 6
-  - [ ] 4.6 Implement step ordering and cumulative state tracking (resolved DSNs, temp table, pass table, GDG state)
+  - [x] 4.6 Implement step ordering and cumulative state tracking (resolved DSNs, temp table, pass table, GDG state)
     - Validates: Requirement 12 AC 7
-  - [ ] 4.7 Write unit tests for job structure parsing: multi-step job, proc expansion, DD overrides, IF/THEN/ELSE, no-JOB fragment
+  - [x] 4.7 Write unit tests for job structure parsing: multi-step job, proc expansion, DD overrides, IF/THEN/ELSE, no-JOB fragment
     - Validates: Requirement 12 AC 1–8
-  - [ ] 4.8 Write property test: job structure hierarchy (Property 3) — generate random multi-step jobs, assert step count matches EXEC count and DD assignment is correct
+  - [x] 4.8 Write property test: job structure hierarchy (Property 3) — generate random multi-step jobs, assert step count matches EXEC count and DD assignment is correct
     - Validates: Requirement 12 AC 3, AC 7
 
-- [ ] 5. Symbolic substitution engine and symbol table management
-  - [ ] 5.1 Implement `src/symbol_table.rs` — define `SymbolTable` struct with HashMap<String, String> storage; implement `define()`, `get()`, `contains()`, `merge()`, `scope_push()`, `scope_pop()` for nested proc scopes
+- [x] 5. Symbolic substitution engine and symbol table management
+  - [x] 5.1 Implement `src/symbol_table.rs` — define `SymbolTable` struct with HashMap<String, String> storage; implement `define()`, `get()`, `contains()`, `merge()`, `scope_push()`, `scope_pop()` for nested proc scopes
     - Validates: Requirement 3 AC 1, AC 3
-  - [ ] 5.2 Implement system symbol population — `&SYSDATE`, `&SYSDATE4`, `&SYSTIME`, `&SYSJOBNAME`, `&SYSSTEP`, `&SYSUID`; values derived from environment/config at resolution time
+  - [x] 5.2 Implement system symbol population — `&SYSDATE`, `&SYSDATE4`, `&SYSTIME`, `&SYSJOBNAME`, `&SYSSTEP`, `&SYSUID`; values derived from environment/config at resolution time
     - Validates: Requirement 3 AC 2
-  - [ ] 5.3 Implement SET statement parsing (`// SET symbol=value`) and PROC parameter default extraction to populate symbol table
+  - [x] 5.3 Implement SET statement parsing (`// SET symbol=value`) and PROC parameter default extraction to populate symbol table
     - Validates: Requirement 3 AC 3
-  - [ ] 5.4 Implement EXEC override merging — `//step EXEC proc,symbol=value` overrides take precedence over PROC defaults
+  - [x] 5.4 Implement EXEC override merging — `//step EXEC proc,symbol=value` overrides take precedence over PROC defaults
     - Validates: Requirement 3 AC 4
-  - [ ] 5.5 Implement `src/substitution.rs` — define `substitute(text: &str, symbols: &SymbolTable) -> SubstitutionResult`; single left-to-right pass replacing `&symbol` and `&symbol.` references
+  - [x] 5.5 Implement `src/substitution.rs` — define `substitute(text: &str, symbols: &SymbolTable) -> SubstitutionResult`; single left-to-right pass replacing `&symbol` and `&symbol.` references
     - Validates: Requirement 3 AC 1, AC 9
-  - [ ] 5.6 Implement dot-terminator convention — `&SYM.REST` → value of SYM + literal REST (dot consumed)
+  - [x] 5.6 Implement dot-terminator convention — `&SYM.REST` → value of SYM + literal REST (dot consumed)
     - Validates: Requirement 3 AC 6
-  - [ ] 5.7 Implement double-ampersand handling — `&&` as literal ampersand (non-temp context) or temp DSN prefix; skip substitution for `&&`-prefixed temp names
+  - [x] 5.7 Implement double-ampersand handling — `&&` as literal ampersand (non-temp context) or temp DSN prefix; skip substitution for `&&`-prefixed temp names
     - Validates: Requirement 3 AC 7
-  - [ ] 5.8 Implement substring notation — `&symbol(start,length)` extracts portion of symbol value
+  - [x] 5.8 Implement substring notation — `&symbol(start,length)` extracts portion of symbol value
     - Validates: Requirement 3 AC 8
-  - [ ] 5.9 Implement unresolved symbolic detection — any `&symbol` remaining after substitution produces ERROR diagnostic
+  - [x] 5.9 Implement unresolved symbolic detection — any `&symbol` remaining after substitution produces ERROR diagnostic
     - Validates: Requirement 3 AC 5
-  - [ ] 5.10 Implement persistent symbol loading from `[jcl.symbols]` configuration table
+  - [x] 5.10 Implement persistent symbol loading from `[jcl.symbols]` configuration table
     - Validates: Requirement 3 AC 10; Requirement 14 AC 2
-  - [ ] 5.11 Write unit tests for symbolic substitution: basic replacement, dot terminator, double-ampersand, substring, unresolved detection, SET parsing, EXEC overrides, system symbols
+  - [x] 5.11 Write unit tests for symbolic substitution: basic replacement, dot terminator, double-ampersand, substring, unresolved detection, SET parsing, EXEC overrides, system symbols
     - Validates: Requirement 3 AC 1–10
-  - [ ] 5.12 Write property test: substitution idempotence (Property 4) — generate text with known symbols, substitute once, assert no `&known_symbol` remains; substitute again, assert output unchanged
+  - [x] 5.12 Write property test: substitution idempotence (Property 4) — generate text with known symbols, substitute once, assert no `&known_symbol` remains; substitute again, assert output unchanged
     - Validates: Requirement 3 AC 1, AC 9
-  - [ ] 5.13 Write property test: dot terminator correctness (Property 5) — generate `&SYM.suffix` patterns, assert output equals value(SYM) + suffix with dot consumed
+  - [x] 5.13 Write property test: dot terminator correctness (Property 5) — generate `&SYM.suffix` patterns, assert output equals value(SYM) + suffix with dot consumed
     - Validates: Requirement 3 AC 6
 
-- [ ] 6. Catalog resolution bridge
-  - [ ] 6.1 Implement `src/catalog_bridge.rs` — define `CatalogResolver` trait with methods: `resolve_dsn(dsn: &DatasetName) -> Result<ResolutionResult>`, `dataset_exists(dsn: &DatasetName) -> bool`, `member_exists(pds: &DatasetName, member: &str) -> bool`, `allocate_dataset(dsn: &DatasetName, attrs: &DatasetAttributes) -> Result<()>`
+- [x] 6. Catalog resolution bridge
+  - [x] 6.1 Implement `src/catalog_bridge.rs` — define `CatalogResolver` trait with methods: `resolve_dsn(dsn: &DatasetName) -> Result<ResolutionResult>`, `dataset_exists(dsn: &DatasetName) -> bool`, `member_exists(pds: &DatasetName, member: &str) -> bool`, `allocate_dataset(dsn: &DatasetName, attrs: &DatasetAttributes) -> Result<()>`
     - Validates: Requirement 2 AC 8
-  - [ ] 6.2 Implement `CatalogBridgeImpl` struct wrapping `ff-dataset-catalog` API — delegate `resolve_dsn` to catalog's resolution API, honouring VFS abstraction
+  - [x] 6.2 Implement `CatalogBridgeImpl` struct wrapping `ff-dataset-catalog` API — delegate `resolve_dsn` to catalog's resolution API, honouring VFS abstraction
     - Validates: Requirement 2 AC 1, AC 2, AC 8
-  - [ ] 6.3 Implement catalog search order logic — if `jcl.catalog_search_order` configured, use that order; otherwise use ff-dataset-catalog default mount-order priority; emit WARN on multi-catalog ambiguity
+  - [x] 6.3 Implement catalog search order logic — if `jcl.catalog_search_order` configured, use that order; otherwise use ff-dataset-catalog default mount-order priority; emit WARN on multi-catalog ambiguity
     - Validates: Requirement 2 AC 3; Requirement 14 AC 7
-  - [ ] 6.4 Implement DSN not-found handling — produce ERROR diagnostic "Dataset not found: {dsn}" when DISP=OLD/SHR and no catalog match
+  - [x] 6.4 Implement DSN not-found handling — produce ERROR diagnostic "Dataset not found: {dsn}" when DISP=OLD/SHR and no catalog match
     - Validates: Requirement 2 AC 4
-  - [ ] 6.5 Implement PDS member verification — check base PDS exists AND member exists in PDS directory; produce WARNING if member missing
+  - [x] 6.5 Implement PDS member verification — check base PDS exists AND member exists in PDS directory; produce WARNING if member missing
     - Validates: Requirement 2 AC 5, AC 6
-  - [ ] 6.6 Implement wildcard/pattern rejection — DSN with `*` produces ERROR diagnostic
+  - [x] 6.6 Implement wildcard/pattern rejection — DSN with `*` produces ERROR diagnostic
     - Validates: Requirement 2 AC 7
-  - [ ] 6.7 Implement default HLQ prefixing — prepend `jcl.default_hlq` to unqualified DSNs (fewer than 2 qualifiers) before lookup
+  - [x] 6.7 Implement default HLQ prefixing — prepend `jcl.default_hlq` to unqualified DSNs (fewer than 2 qualifiers) before lookup
     - Validates: Requirement 14 AC 6
-  - [ ] 6.8 Implement catalog query error handling — on SQLite/IO error, produce ERROR diagnostic and continue with remaining catalogs
+  - [x] 6.8 Implement catalog query error handling — on SQLite/IO error, produce ERROR diagnostic and continue with remaining catalogs
     - Validates: Requirement 15 AC 3
-  - [ ] 6.9 Write unit tests with mock catalog: successful resolution, not-found, multi-catalog ambiguity, PDS member check, wildcard rejection, default HLQ prepend, catalog error handling
+  - [x] 6.9 Write unit tests with mock catalog: successful resolution, not-found, multi-catalog ambiguity, PDS member check, wildcard rejection, default HLQ prepend, catalog error handling
     - Validates: Requirement 2 AC 1–8; Requirement 14 AC 6, AC 7
-  - [ ] 6.10 Write property test: catalog resolution consistency (Property 6) — generate DSNs present in mock catalog, assert resolve always returns same physical path for same DSN
+  - [x] 6.10 Write property test: catalog resolution consistency (Property 6) — generate DSNs present in mock catalog, assert resolve always returns same physical path for same DSN
     - Validates: Requirement 2 AC 1, AC 2
 
-- [ ] 7. DISP interpretation and allocation simulator
-  - [ ] 7.1 Implement `src/allocation.rs` — define `AllocationSimulator` struct with reference to `CatalogResolver` trait and `ResolverConfig`
-  - [ ] 7.2 Implement DISP=NEW handling — invoke catalog allocation API with DCB/SPACE attributes; produce ERROR if DSN already exists
+- [x] 7. DISP interpretation and allocation simulator
+  - [x] 7.1 Implement `src/allocation.rs` — define `AllocationSimulator` struct with reference to `CatalogResolver` trait and `ResolverConfig`
+  - [x] 7.2 Implement DISP=NEW handling — invoke catalog allocation API with DCB/SPACE attributes; produce ERROR if DSN already exists
     - Validates: Requirement 4 AC 1, AC 3
-  - [ ] 7.3 Implement DCB attribute extraction and default fallback chain: DD-level DCB → `[catalog.defaults]` config → hardcoded RECFM=FB, LRECL=80, BLKSIZE=27920
+  - [x] 7.3 Implement DCB attribute extraction and default fallback chain: DD-level DCB → `[catalog.defaults]` config → hardcoded RECFM=FB, LRECL=80, BLKSIZE=27920
     - Validates: Requirement 4 AC 2
-  - [ ] 7.4 Implement DISP=OLD/SHR handling — verify DSN existence via catalog bridge; produce ERROR if not found
+  - [x] 7.4 Implement DISP=OLD/SHR handling — verify DSN existence via catalog bridge; produce ERROR if not found
     - Validates: Requirement 4 AC 4, AC 5
-  - [ ] 7.5 Implement DISP=MOD handling — verify existence for append; if not found AND SPACE provided, treat as NEW
+  - [x] 7.5 Implement DISP=MOD handling — verify existence for append; if not found AND SPACE provided, treat as NEW
     - Validates: Requirement 4 AC 6
-  - [ ] 7.6 Implement default DISP logic — no DISP operand defaults to `DISP=(NEW,DELETE)`
+  - [x] 7.6 Implement default DISP logic — no DISP operand defaults to `DISP=(NEW,DELETE)`
     - Validates: Requirement 4 AC 7
-  - [ ] 7.7 Implement PASS disposition — record passed dataset in job-scoped pass table for referback by subsequent steps
+  - [x] 7.7 Implement PASS disposition — record passed dataset in job-scoped pass table for referback by subsequent steps
     - Validates: Requirement 4 AC 8
-  - [ ] 7.8 Implement dry-run mode — report allocations without creating catalog entries
+  - [x] 7.8 Implement dry-run mode — report allocations without creating catalog entries
     - Validates: Requirement 4 AC 9
-  - [ ] 7.9 Implement live mode — perform actual catalog allocations for DISP=NEW
+  - [x] 7.9 Implement live mode — perform actual catalog allocations for DISP=NEW
     - Validates: Requirement 4 AC 10
-  - [ ] 7.10 Write unit tests for allocation simulation: NEW creates, NEW duplicate error, OLD not-found, SHR not-found, MOD with/without SPACE, default DISP, PASS recording, dry-run vs live mode, DCB fallback chain
+  - [x] 7.10 Write unit tests for allocation simulation: NEW creates, NEW duplicate error, OLD not-found, SHR not-found, MOD with/without SPACE, default DISP, PASS recording, dry-run vs live mode, DCB fallback chain
     - Validates: Requirement 4 AC 1–10
-  - [ ] 7.11 Write property test: DISP default application (Property 7) — generate DD statements without explicit DISP, assert resolved disposition is always (NEW, DELETE)
+  - [x] 7.11 Write property test: DISP default application (Property 7) — generate DD statements without explicit DISP, assert resolved disposition is always (NEW, DELETE)
     - Validates: Requirement 4 AC 7
 
-- [ ] 8. Concatenation handler
-  - [ ] 8.1 Implement `src/concatenation.rs` — define `ConcatenationGroup` struct (ddname, components: Vec<DdStatement>, resolved: Vec<ResolutionResult>)
-  - [ ] 8.2 Implement concatenation group assembly — collect consecutive blank-ddname DDs following a named DD into a group
+- [x] 8. Concatenation handler
+  - [x] 8.1 Implement `src/concatenation.rs` — define `ConcatenationGroup` struct (ddname, components: Vec<DdStatement>, resolved: Vec<ResolutionResult>)
+  - [x] 8.2 Implement concatenation group assembly — collect consecutive blank-ddname DDs following a named DD into a group
     - Validates: Requirement 5 AC 1
-  - [ ] 8.3 Implement independent resolution of each concatenation component with 1-based index tracking
+  - [x] 8.3 Implement independent resolution of each concatenation component with 1-based index tracking
     - Validates: Requirement 5 AC 2, AC 3
-  - [ ] 8.4 Implement component failure handling — produce ERROR diagnostic identifying ddname and failing concatenation index
+  - [x] 8.4 Implement component failure handling — produce ERROR diagnostic identifying ddname and failing concatenation index
     - Validates: Requirement 5 AC 4
-  - [ ] 8.5 Implement attribute compatibility validation — check RECFM match and LRECL compatibility; produce WARNING on mismatch
+  - [x] 8.5 Implement attribute compatibility validation — check RECFM match and LRECL compatibility; produce WARNING on mismatch
     - Validates: Requirement 5 AC 5
-  - [ ] 8.6 Implement 255-dataset concatenation limit enforcement — produce ERROR if exceeded
+  - [x] 8.6 Implement 255-dataset concatenation limit enforcement — produce ERROR if exceeded
     - Validates: Requirement 5 AC 6
-  - [ ] 8.7 Write unit tests for concatenation: group assembly, independent resolution, component failure, attribute mismatch warning, 255 limit
+  - [x] 8.7 Write unit tests for concatenation: group assembly, independent resolution, component failure, attribute mismatch warning, 255 limit
     - Validates: Requirement 5 AC 1–6
-  - [ ] 8.8 Write property test: concatenation ordering preservation (Property 8) — generate N-component concatenations (1–255), resolve all, assert order indices match declaration order
+  - [x] 8.8 Write property test: concatenation ordering preservation (Property 8) — generate N-component concatenations (1–255), resolve all, assert order indices match declaration order
     - Validates: Requirement 5 AC 3
 
-- [ ] 9. Temporary dataset registry
-  - [ ] 9.1 Implement `src/temp_registry.rs` — define `TempDatasetRegistry` struct with HashMap<String, TempEntry> (TempEntry: creating_step, attributes, deleted flag)
-  - [ ] 9.2 Implement temp dataset creation registration — `DISP=(NEW,...), DSN=&&name` inserts into registry with step name and attributes
+- [x] 9. Temporary dataset registry
+  - [x] 9.1 Implement `src/temp_registry.rs` — define `TempDatasetRegistry` struct with HashMap<String, TempEntry> (TempEntry: creating_step, attributes, deleted flag)
+  - [x] 9.2 Implement temp dataset creation registration — `DISP=(NEW,...), DSN=&&name` inserts into registry with step name and attributes
     - Validates: Requirement 6 AC 2
-  - [ ] 9.3 Implement temp dataset reference lookup — `DISP=(OLD/SHR,...), DSN=&&name` resolves from registry, returns ResolutionResult with temp indicator
+  - [x] 9.3 Implement temp dataset reference lookup — `DISP=(OLD/SHR,...), DSN=&&name` resolves from registry, returns ResolutionResult with temp indicator
     - Validates: Requirement 6 AC 3
-  - [ ] 9.4 Implement temp not-created error — reference to temp not in registry produces ERROR diagnostic
+  - [x] 9.4 Implement temp not-created error — reference to temp not in registry produces ERROR diagnostic
     - Validates: Requirement 6 AC 4
-  - [ ] 9.5 Implement catalog isolation — temp datasets never resolved against mounted catalogs
+  - [x] 9.5 Implement catalog isolation — temp datasets never resolved against mounted catalogs
     - Validates: Requirement 6 AC 5
-  - [ ] 9.6 Implement system-generated temp name assignment — DD with no DSN and DISP=(NEW,PASS) gets `&&SYSnnnnn` name
+  - [x] 9.6 Implement system-generated temp name assignment — DD with no DSN and DISP=(NEW,PASS) gets `&&SYSnnnnn` name
     - Validates: Requirement 6 AC 6
-  - [ ] 9.7 Implement temp lifecycle tracking — DISP=(,DELETE) marks temp as deleted; subsequent references produce ERROR
+  - [x] 9.7 Implement temp lifecycle tracking — DISP=(,DELETE) marks temp as deleted; subsequent references produce ERROR
     - Validates: Requirement 6 AC 7
-  - [ ] 9.8 Write unit tests for temp registry: create, reference, not-created error, catalog isolation, system name generation, delete lifecycle
+  - [x] 9.8 Write unit tests for temp registry: create, reference, not-created error, catalog isolation, system name generation, delete lifecycle
     - Validates: Requirement 6 AC 1–7
-  - [ ] 9.9 Write property test: temp dataset isolation (Property 9) — generate temp names (&&prefix), assert they never trigger catalog resolution calls
+  - [x] 9.9 Write property test: temp dataset isolation (Property 9) — generate temp names (&&prefix), assert they never trigger catalog resolution calls
     - Validates: Requirement 6 AC 5
 
-- [ ] 10. Referback resolver
-  - [ ] 10.1 Implement `src/referback.rs` — define `ReferbackResolver` struct with access to job model step results
-  - [ ] 10.2 Implement `*.stepname.ddname` resolution — locate DD in specified prior step, use its resolved DSN
+- [x] 10. Referback resolver
+  - [x] 10.1 Implement `src/referback.rs` — define `ReferbackResolver` struct with access to job model step results
+  - [x] 10.2 Implement `*.stepname.ddname` resolution — locate DD in specified prior step, use its resolved DSN
     - Validates: Requirement 7 AC 1, AC 2
-  - [ ] 10.3 Implement `*.stepname.procstepname.ddname` resolution — locate DD in procedure step within specified step
+  - [x] 10.3 Implement `*.stepname.procstepname.ddname` resolution — locate DD in procedure step within specified step
     - Validates: Requirement 7 AC 3
-  - [ ] 10.4 Implement step-not-found error — produce ERROR diagnostic when referback target step does not exist
+  - [x] 10.4 Implement step-not-found error — produce ERROR diagnostic when referback target step does not exist
     - Validates: Requirement 7 AC 4
-  - [ ] 10.5 Implement dd-not-found error — produce ERROR diagnostic when referback target ddname does not exist in target step
+  - [x] 10.5 Implement dd-not-found error — produce ERROR diagnostic when referback target ddname does not exist in target step
     - Validates: Requirement 7 AC 5
-  - [ ] 10.6 Implement recursive referback chain following — follow chains up to configurable depth (default 10); produce ERROR on depth exceeded
+  - [x] 10.6 Implement recursive referback chain following — follow chains up to configurable depth (default 10); produce ERROR on depth exceeded
     - Validates: Requirement 7 AC 6
-  - [ ] 10.7 Implement referback ordering constraint — referback resolution occurs after symbolic substitution, before catalog lookup
+  - [x] 10.7 Implement referback ordering constraint — referback resolution occurs after symbolic substitution, before catalog lookup
     - Validates: Requirement 7 AC 7
-  - [ ] 10.8 Write unit tests for referback: simple referback, proc-step referback, step not found, dd not found, recursive chain, depth limit exceeded, ordering after substitution
+  - [x] 10.8 Write unit tests for referback: simple referback, proc-step referback, step not found, dd not found, recursive chain, depth limit exceeded, ordering after substitution
     - Validates: Requirement 7 AC 1–7
-  - [ ] 10.9 Write property test: referback chain depth (Property 10) — generate referback chains of length 1–15, assert chains ≤10 resolve successfully and chains >10 produce depth error
+  - [x] 10.9 Write property test: referback chain depth (Property 10) — generate referback chains of length 1–15, assert chains ≤10 resolve successfully and chains >10 produce depth error
     - Validates: Requirement 7 AC 6
 
-- [ ] 11. GDG relative generation resolver
-  - [ ] 11.1 Implement `src/gdg_resolver.rs` — define `GdgResolver` struct with access to `CatalogResolver` trait and job-scoped GDG state
-  - [ ] 11.2 Implement generation(0) resolution — query catalog for most recent active generation, return physical path
+- [x] 11. GDG relative generation resolver
+  - [x] 11.1 Implement `src/gdg_resolver.rs` — define `GdgResolver` struct with access to `CatalogResolver` trait and job-scoped GDG state
+  - [x] 11.2 Implement generation(0) resolution — query catalog for most recent active generation, return physical path
     - Validates: Requirement 8 AC 2
-  - [ ] 11.3 Implement generation(-n) resolution — query catalog for nth-most-recent; produce ERROR if fewer than n generations exist
+  - [x] 11.3 Implement generation(-n) resolution — query catalog for nth-most-recent; produce ERROR if fewer than n generations exist
     - Validates: Requirement 8 AC 3
-  - [ ] 11.4 Implement generation(+1) with DISP=NEW — compute next generation number from catalog state, include projected name in result
+  - [x] 11.4 Implement generation(+1) with DISP=NEW — compute next generation number from catalog state, include projected name in result
     - Validates: Requirement 8 AC 4
-  - [ ] 11.5 Implement generation(+n) warning for n > 1 — produce WARNING diagnostic about atypical multi-forward reference
+  - [x] 11.5 Implement generation(+n) warning for n > 1 — produce WARNING diagnostic about atypical multi-forward reference
     - Validates: Requirement 8 AC 5
-  - [ ] 11.6 Implement GDG base not-found error — produce ERROR when base name is not registered as GDG in any catalog
+  - [x] 11.6 Implement GDG base not-found error — produce ERROR when base name is not registered as GDG in any catalog
     - Validates: Requirement 8 AC 6
-  - [ ] 11.7 Implement intra-job GDG state tracking — step 1 creates (+1), step 2 sees it as current (0)
+  - [x] 11.7 Implement intra-job GDG state tracking — step 1 creates (+1), step 2 sees it as current (0)
     - Validates: Requirement 8 AC 7
-  - [ ] 11.8 Implement GDG roll-off detection — emit INFO diagnostic when new generation would exceed GDG limit
+  - [x] 11.8 Implement GDG roll-off detection — emit INFO diagnostic when new generation would exceed GDG limit
     - Validates: Requirement 8 AC 8
-  - [ ] 11.9 Write unit tests for GDG resolution: generation(0), generation(-1), generation(+1) create, +n>1 warning, base not found, intra-job state, roll-off
+  - [x] 11.9 Write unit tests for GDG resolution: generation(0), generation(-1), generation(+1) create, +n>1 warning, base not found, intra-job state, roll-off
     - Validates: Requirement 8 AC 1–8
-  - [ ] 11.10 Write property test: GDG intra-job state consistency (Property 11) — generate multi-step jobs with sequential GDG creates and references, assert (0) always resolves to most recently created in prior steps
+  - [x] 11.10 Write property test: GDG intra-job state consistency (Property 11) — generate multi-step jobs with sequential GDG creates and references, assert (0) always resolves to most recently created in prior steps
     - Validates: Requirement 8 AC 7
 
-- [ ] 12. Resolution processing pipeline
-  - [ ] 12.1 Implement `src/pipeline.rs` — define `ResolutionPipeline` struct orchestrating the four-stage pipeline: Parse → Substitute → Resolve → Validate
+- [x] 12. Resolution processing pipeline
+  - [x] 12.1 Implement `src/pipeline.rs` — define `ResolutionPipeline` struct orchestrating the four-stage pipeline: Parse → Substitute → Resolve → Validate
     - Validates: Requirement 13 AC 1
-  - [ ] 12.2 Implement `ResolutionResult` model — define struct with fields: dd_name, step_name, dsn_original, dsn_substituted, physical_path, catalog_name, dataset_type, status (Resolved/Error/Warning/Skipped), diagnostics, concatenation_index
-  - [ ] 12.3 Implement `ResolveOutput` aggregate — define struct holding: job_model (parse output), substituted_operands, resolution_results (Vec<ResolutionResult>), diagnostics (Vec<LintDiagnostic>), timing per stage
+  - [x] 12.2 Implement `ResolutionResult` model — define struct with fields: dd_name, step_name, dsn_original, dsn_substituted, physical_path, catalog_name, dataset_type, status (Resolved/Error/Warning/Skipped), diagnostics, concatenation_index
+  - [x] 12.3 Implement `ResolveOutput` aggregate — define struct holding: job_model (parse output), substituted_operands, resolution_results (Vec<ResolutionResult>), diagnostics (Vec<LintDiagnostic>), timing per stage
     - Validates: Requirement 13 AC 2
-  - [ ] 12.4 Implement error isolation — errors in one DD do not prevent resolution of other DDs; collect all results
+  - [x] 12.4 Implement error isolation — errors in one DD do not prevent resolution of other DDs; collect all results
     - Validates: Requirement 13 AC 3
-  - [ ] 12.5 Implement diagnostic aggregation — merge diagnostics from all stages, sort by line number
+  - [x] 12.5 Implement diagnostic aggregation — merge diagnostics from all stages, sort by line number
     - Validates: Requirement 13 AC 4
-  - [ ] 12.6 Implement pipeline stage timing — emit DEBUG log records with millisecond timing for each stage
+  - [x] 12.6 Implement pipeline stage timing — emit DEBUG log records with millisecond timing for each stage
     - Validates: Requirement 13 AC 5
-  - [ ] 12.7 Implement incremental resolution — detect single-DD changes, re-resolve only affected DD and dependents (referback targets)
+  - [x] 12.7 Implement incremental resolution — detect single-DD changes, re-resolve only affected DD and dependents (referback targets)
     - Validates: Requirement 13 AC 6
-  - [ ] 12.8 Implement `resolve_document(text: &str, config: &ResolverConfig) -> ResolveOutput` public API
+  - [x] 12.8 Implement `resolve_document(text: &str, config: &ResolverConfig) -> ResolveOutput` public API
     - Validates: Requirement 16 AC 4
-  - [ ] 12.9 Write unit tests for pipeline: full pipeline pass, intermediate results inspection, error isolation, diagnostic ordering, timing presence, incremental resolution
+  - [x] 12.9 Write unit tests for pipeline: full pipeline pass, intermediate results inspection, error isolation, diagnostic ordering, timing presence, incremental resolution
     - Validates: Requirement 13 AC 1–6
-  - [ ] 12.10 Write property test: error isolation (Property 12) — generate jobs with N DDs where some have invalid DSNs, assert resolution count always equals total DD count (no DDs dropped)
+  - [x] 12.10 Write property test: error isolation (Property 12) — generate jobs with N DDs where some have invalid DSNs, assert resolution count always equals total DD count (no DDs dropped)
     - Validates: Requirement 13 AC 3
 
-- [ ] 13. JCL validation and lint diagnostic emitter
-  - [ ] 13.1 Implement `src/lint.rs` — define `LintEmitter` struct that collects diagnostics from all pipeline stages and applies severity filtering per `jcl.lint_level` config
+- [x] 13. JCL validation and lint diagnostic emitter
+  - [x] 13.1 Implement `src/lint.rs` — define `LintEmitter` struct that collects diagnostics from all pipeline stages and applies severity filtering per `jcl.lint_level` config
     - Validates: Requirement 10 AC 10
-  - [ ] 13.2 Implement unresolved DSN detection — any DD with DSN that cannot resolve produces ERROR
+  - [x] 13.2 Implement unresolved DSN detection — any DD with DSN that cannot resolve produces ERROR
     - Validates: Requirement 10 AC 2
-  - [ ] 13.3 Implement unresolved symbolic detection — any remaining `&symbol` after substitution produces ERROR
+  - [x] 13.3 Implement unresolved symbolic detection — any remaining `&symbol` after substitution produces ERROR
     - Validates: Requirement 10 AC 3
-  - [ ] 13.4 Implement missing well-known DD detection — step references SYSIN/SYSPRINT/SYSUT1/SYSUT2/SYSLIB without defining them produces WARNING
+  - [x] 13.4 Implement missing well-known DD detection — step references SYSIN/SYSPRINT/SYSUT1/SYSUT2/SYSLIB without defining them produces WARNING
     - Validates: Requirement 10 AC 4
-  - [ ] 13.5 Implement duplicate ddname detection within a step (excluding concatenation) — produce ERROR
+  - [x] 13.5 Implement duplicate ddname detection within a step (excluding concatenation) — produce ERROR
     - Validates: Requirement 10 AC 5
-  - [ ] 13.6 Implement DISP conflict detection — NEW with existing DSN or OLD with non-existent DSN produce ERROR
+  - [x] 13.6 Implement DISP conflict detection — NEW with existing DSN or OLD with non-existent DSN produce ERROR
     - Validates: Requirement 10 AC 6
-  - [ ] 13.7 Implement invalid DSN syntax detection — >44 chars, >8 char qualifier, digit-start qualifier, empty qualifier (consecutive dots) produce ERROR
+  - [x] 13.7 Implement invalid DSN syntax detection — >44 chars, >8 char qualifier, digit-start qualifier, empty qualifier (consecutive dots) produce ERROR
     - Validates: Requirement 10 AC 7
-  - [ ] 13.8 Implement invalid symbolic name detection — non-alphanumeric/national chars produce ERROR
+  - [x] 13.8 Implement invalid symbolic name detection — non-alphanumeric/national chars produce ERROR
     - Validates: Requirement 10 AC 8
-  - [ ] 13.9 Implement diagnostic code assignment — map each class to unique code (JCL001–JCL008)
+  - [x] 13.9 Implement diagnostic code assignment — map each class to unique code (JCL001–JCL008)
     - Validates: Requirement 10 AC 9; Requirement 15 AC 6
-  - [ ] 13.10 Write unit tests for lint: unresolved DSN, unresolved symbolic, missing DDs, duplicate ddname, DISP conflicts, invalid DSN, invalid symbolic, severity filter, diagnostic codes
+  - [x] 13.10 Write unit tests for lint: unresolved DSN, unresolved symbolic, missing DDs, duplicate ddname, DISP conflicts, invalid DSN, invalid symbolic, severity filter, diagnostic codes
     - Validates: Requirement 10 AC 1–10
-  - [ ] 13.11 Write property test: diagnostic completeness (Property 13) — generate JCL with known N errors injected, assert diagnostic count ≥ N (all injected errors detected)
+  - [x] 13.11 Write property test: diagnostic completeness (Property 13) — generate JCL with known N errors injected, assert diagnostic count ≥ N (all injected errors detected)
     - Validates: Requirement 10 AC 2, AC 3, AC 6, AC 7
 
-- [ ] 14. RESOLVE command handler
-  - [ ] 14.1 Implement `src/command.rs` — define `ResolveCommandHandler` struct implementing command-framework `CommandHandler` trait
-  - [ ] 14.2 Implement command registration — register `dataset.resolve` with ID, display name "Resolve Dataset Allocation", category "dataset", and default keyboard shortcut during crate initialization
+- [x] 14. RESOLVE command handler
+  - [x] 14.1 Implement `src/command.rs` — define `ResolveCommandHandler` struct implementing command-framework `CommandHandler` trait
+  - [x] 14.2 Implement command registration — register `dataset.resolve` with ID, display name "Resolve Dataset Allocation", category "dataset", and default keyboard shortcut during crate initialization
     - Validates: Requirement 9 AC 1
-  - [ ] 14.3 Implement full-document resolution mode — resolve all DD statements in active document when invoked with no parameters
+  - [x] 14.3 Implement full-document resolution mode — resolve all DD statements in active document when invoked with no parameters
     - Validates: Requirement 9 AC 2
-  - [ ] 14.4 Implement cursor-position resolution mode — resolve only the DD at/nearest cursor position
+  - [x] 14.4 Implement cursor-position resolution mode — resolve only the DD at/nearest cursor position
     - Validates: Requirement 9 AC 3
-  - [ ] 14.5 Implement DSN parameter mode — resolve a specified DSN string against catalogs without JCL context
+  - [x] 14.5 Implement DSN parameter mode — resolve a specified DSN string against catalogs without JCL context
     - Validates: Requirement 9 AC 4
-  - [ ] 14.6 Implement mode parameter override — accept `"dry-run"` or `"live"` parameter overriding config setting
+  - [x] 14.6 Implement mode parameter override — accept `"dry-run"` or `"live"` parameter overriding config setting
     - Validates: Requirement 9 AC 5
-  - [ ] 14.7 Implement Command_Result return — include success count, warning count, error count, list of ResolutionResults
+  - [x] 14.7 Implement Command_Result return — include success count, warning count, error count, list of ResolutionResults
     - Validates: Requirement 9 AC 6
-  - [ ] 14.8 Implement language_id guard — if active document is not `"jcl"`, return error "Active document is not a JCL file"
+  - [x] 14.8 Implement language_id guard — if active document is not `"jcl"`, return error "Active document is not a JCL file"
     - Validates: Requirement 9 AC 8
-  - [ ] 14.9 Write unit tests for RESOLVE command: full-doc mode, cursor mode, DSN param mode, mode override, language guard, result structure
+  - [x] 14.9 Write unit tests for RESOLVE command: full-doc mode, cursor mode, DSN param mode, mode override, language guard, result structure
     - Validates: Requirement 9 AC 1–8
-  - [ ] 14.10 Write property test: command result counts consistency (Property 14) — generate jobs with known good/bad DDs, assert success+warning+error counts equal total DD count
+  - [x] 14.10 Write property test: command result counts consistency (Property 14) — generate jobs with known good/bad DDs, assert success+warning+error counts equal total DD count
     - Validates: Requirement 9 AC 6
 
-- [ ] 15. Resolution output panel model
-  - [ ] 15.1 Implement `src/panel.rs` — define `ResolutionPanelModel` struct with panel_id `"jcl.resolution"`, rows: Vec<PanelRow>, summary (total, resolved, warnings, errors)
+- [x] 15. Resolution output panel model
+  - [x] 15.1 Implement `src/panel.rs` — define `ResolutionPanelModel` struct with panel_id `"jcl.resolution"`, rows: Vec<PanelRow>, summary (total, resolved, warnings, errors)
     - Validates: Requirement 11 AC 1, AC 5
-  - [ ] 15.2 Implement `PanelRow` struct — step_name, dd_name, dsn_substituted, status (Resolved/Error/Warning/Skipped), physical_path_or_message, catalog_name, original_dsn (for tooltip), concatenation_children
+  - [x] 15.2 Implement `PanelRow` struct — step_name, dd_name, dsn_substituted, status (Resolved/Error/Warning/Skipped), physical_path_or_message, catalog_name, original_dsn (for tooltip), concatenation_children
     - Validates: Requirement 11 AC 2, AC 3, AC 4, AC 9
-  - [ ] 15.3 Implement `from_resolve_output(output: &ResolveOutput) -> ResolutionPanelModel` conversion — map ResolutionResults to PanelRows, compute summary counts
-  - [ ] 15.4 Implement sorting support — by step name, DD name, or status column
+  - [x] 15.3 Implement `from_resolve_output(output: &ResolveOutput) -> ResolutionPanelModel` conversion — map ResolutionResults to PanelRows, compute summary counts
+  - [x] 15.4 Implement sorting support — by step name, DD name, or status column
     - Validates: Requirement 11 AC 7
-  - [ ] 15.5 Implement status filter — show only errors, only warnings, or all
+  - [x] 15.5 Implement status filter — show only errors, only warnings, or all
     - Validates: Requirement 11 AC 7
-  - [ ] 15.6 Implement concatenation group display — parent row expandable with child rows for each component
+  - [x] 15.6 Implement concatenation group display — parent row expandable with child rows for each component
     - Validates: Requirement 11 AC 10
-  - [ ] 15.7 Implement navigate-to-source — row double-click produces line number for editor navigation
+  - [x] 15.7 Implement navigate-to-source — row double-click produces line number for editor navigation
     - Validates: Requirement 11 AC 6
-  - [ ] 15.8 Implement persistence — panel content retained until next RESOLVE or explicit clear
+  - [x] 15.8 Implement persistence — panel content retained until next RESOLVE or explicit clear
     - Validates: Requirement 11 AC 8
-  - [ ] 15.9 Write unit tests for panel model: conversion from ResolveOutput, summary counts, sorting, filtering, concatenation grouping, navigation data, persistence behaviour
+  - [x] 15.9 Write unit tests for panel model: conversion from ResolveOutput, summary counts, sorting, filtering, concatenation grouping, navigation data, persistence behaviour
     - Validates: Requirement 11 AC 1–10
 
-- [ ] 16. Language service integration and configuration hot-reload
-  - [ ] 16.1 Implement language_id check — query `ff-language-service` to confirm document is `"jcl"` before resolution
+- [x] 16. Language service integration and configuration hot-reload
+  - [x] 16.1 Implement language_id check — query `ff-language-service` to confirm document is `"jcl"` before resolution
     - Validates: Requirement 16 AC 1
-  - [ ] 16.2 Implement keyword set consumption — use JCL language definition keyword sets for statement type validation (JOB, EXEC, DD, PROC, PEND, SET, IF, ELSE, ENDIF) instead of maintaining separate lists
+  - [x] 16.2 Implement keyword set consumption — use JCL language definition keyword sets for statement type validation (JOB, EXEC, DD, PROC, PEND, SET, IF, ELSE, ENDIF) instead of maintaining separate lists
     - Validates: Requirement 16 AC 2
-  - [ ] 16.3 Implement auto-resolve on save — when `jcl.auto_resolve = true`, perform lightweight parse+substitute pass on document save (no catalog queries)
+  - [x] 16.3 Implement auto-resolve on save — when `jcl.auto_resolve = true`, perform lightweight parse+substitute pass on document save (no catalog queries)
     - Validates: Requirement 16 AC 3
-  - [ ] 16.4 Implement hover information provider — return resolution status, physical path, and dataset attributes for DSN tokens
+  - [x] 16.4 Implement hover information provider — return resolution status, physical path, and dataset attributes for DSN tokens
     - Validates: Requirement 16 AC 5
-  - [ ] 16.5 Implement configuration hot-reload subscription — subscribe to config change events; update ResolverConfig on `[jcl]` table changes without restart
+  - [x] 16.5 Implement configuration hot-reload subscription — subscribe to config change events; update ResolverConfig on `[jcl]` table changes without restart
     - Validates: Requirement 14 AC 4
-  - [ ] 16.6 Implement configuration schema registration — register all `[jcl]` keys with types, defaults, and descriptions during initialization
+  - [x] 16.6 Implement configuration schema registration — register all `[jcl]` keys with types, defaults, and descriptions during initialization
     - Validates: Requirement 14 AC 5
-  - [ ] 16.7 Write unit tests for language integration: language_id check, keyword consumption, auto-resolve trigger, hover data, config reload, schema registration
+  - [x] 16.7 Write unit tests for language integration: language_id check, keyword consumption, auto-resolve trigger, hover data, config reload, schema registration
     - Validates: Requirement 16 AC 1–5; Requirement 14 AC 4, AC 5
 
-- [ ] 17. Error handling, logging, and thread safety
-  - [ ] 17.1 Implement structured logging — ERROR for resolution failures, WARN for ambiguous resolutions, INFO for summary, DEBUG for pipeline stage details with timing
+- [x] 17. Error handling, logging, and thread safety
+  - [x] 17.1 Implement structured logging — ERROR for resolution failures, WARN for ambiguous resolutions, INFO for summary, DEBUG for pipeline stage details with timing
     - Validates: Requirement 15 AC 2
-  - [ ] 17.2 Implement graceful internal error handling — log ERROR with full context, return error result without panicking
+  - [x] 17.2 Implement graceful internal error handling — log ERROR with full context, return error result without panicking
     - Validates: Requirement 15 AC 4
-  - [ ] 17.3 Implement `resolve_result.diagnostics()` method — return all LintDiagnostics ordered by line number
+  - [x] 17.3 Implement `resolve_result.diagnostics()` method — return all LintDiagnostics ordered by line number
     - Validates: Requirement 15 AC 5
-  - [ ] 17.4 Implement Send + Sync bounds on public API types — ensure resolver is safe to invoke from any thread
+  - [x] 17.4 Implement Send + Sync bounds on public API types — ensure resolver is safe to invoke from any thread
     - Validates: Cross-cutting: Thread Safety
-  - [ ] 17.5 Write unit tests for error handling: catalog query failure recovery, internal error graceful return, diagnostic ordering, Send+Sync compilation check
+  - [x] 17.5 Write unit tests for error handling: catalog query failure recovery, internal error graceful return, diagnostic ordering, Send+Sync compilation check
     - Validates: Requirement 15 AC 1–6; Cross-cutting: Thread Safety
-  - [ ] 17.6 Write property test: diagnostic ordering (Property 15) — generate diagnostics with random line numbers, assert `diagnostics()` output is always sorted by line_number ascending
+  - [x] 17.6 Write property test: diagnostic ordering (Property 15) — generate diagnostics with random line numbers, assert `diagnostics()` output is always sorted by line_number ascending
     - Validates: Requirement 15 AC 5
 
-- [ ] 18. Integration tests and performance validation
-  - [ ] 18.1 Write integration test: full pipeline end-to-end — multi-step JCL job with symbolics, referbacks, GDG refs, concatenation, and temp datasets; verify all ResolutionResults correct
+- [x] 18. Integration tests and performance validation
+  - [x] 18.1 Write integration test: full pipeline end-to-end — multi-step JCL job with symbolics, referbacks, GDG refs, concatenation, and temp datasets; verify all ResolutionResults correct
     - Validates: Requirement 13 AC 1; Cross-cutting: Testability
-  - [ ] 18.2 Write integration test: RESOLVE command invocation — register command, invoke on sample JCL, assert panel model populated correctly
+  - [x] 18.2 Write integration test: RESOLVE command invocation — register command, invoke on sample JCL, assert panel model populated correctly
     - Validates: Requirement 9 AC 1–6
-  - [ ] 18.3 Write integration test: mock catalog testability — verify resolver works with trait-based mock catalog (no real SQLite)
+  - [x] 18.3 Write integration test: mock catalog testability — verify resolver works with trait-based mock catalog (no real SQLite)
     - Validates: Cross-cutting: Testability
-  - [ ] 18.4 Write integration test: parser-only testability — verify parser works independently without catalog or VFS infrastructure
+  - [x] 18.4 Write integration test: parser-only testability — verify parser works independently without catalog or VFS infrastructure
     - Validates: Cross-cutting: Testability
-  - [ ] 18.5 Write performance benchmark — resolve 500-DD JCL file against 10,000-dataset mock catalog; assert completes within 5 seconds
+  - [x] 18.5 Write performance benchmark — resolve 500-DD JCL file against 10,000-dataset mock catalog; assert completes within 5 seconds
     - Validates: Requirement 9 AC 7; Cross-cutting: Performance
 
 ---

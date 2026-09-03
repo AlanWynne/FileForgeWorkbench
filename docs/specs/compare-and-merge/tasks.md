@@ -1,4 +1,4 @@
-# Implementation Plan: Compare and Merge (`ff-compare-merge`)
+﻿# Implementation Plan: Compare and Merge (`ff-compare-merge`)
 
 ## Overview
 
@@ -10,233 +10,233 @@ This is a **Wave 14 (File Explorer)** sub-project. It depends on `ff-vfs` (Wave 
 
 ## Tasks
 
-- [ ] 1. Crate scaffolding and module structure
-  - [ ] 1.1 Create `crates/ff-compare-merge/Cargo.toml` with dependencies (ff-vfs, ff-document-model, ff-command-framework, ff-workflow, ff-layout-docking, ff-theme, ff-undo-redo, ff-edit-ops, thiserror, serde, proptest dev-dep)
-  - [ ] 1.2 Create `crates/ff-compare-merge/src/lib.rs` with module declarations and public API re-exports
-  - [ ] 1.3 Create module files: `diff_engine.rs`, `myers.rs`, `patience.rs`, `diff_types.rs`, `inline_change.rs`, `session.rs`, `merge.rs`, `three_way.rs`, `navigation.rs`, `view_side_by_side.rs`, `view_inline.rs`, `highlight.rs`, `statistics.rs`, `output_panel.rs`, `compare_command.rs`, `compare_saved.rs`, `compare_clipboard.rs`, `compare_selections.rs`, `export.rs`, `binary.rs`, `options.rs`, `error.rs`
-  - [ ] 1.4 Add `ff-compare-merge` to workspace `Cargo.toml` members list
+- [x] 1. Crate scaffolding and module structure
+  - [x] 1.1 Create `crates/ff-compare-merge/Cargo.toml` with dependencies (ff-vfs, ff-document-model, ff-command-framework, ff-workflow, ff-layout-docking, ff-theme, ff-undo-redo, ff-edit-ops, thiserror, serde, proptest dev-dep)
+  - [x] 1.2 Create `crates/ff-compare-merge/src/lib.rs` with module declarations and public API re-exports
+  - [x] 1.3 Create module files: `diff_engine.rs`, `myers.rs`, `patience.rs`, `diff_types.rs`, `inline_change.rs`, `session.rs`, `merge.rs`, `three_way.rs`, `navigation.rs`, `view_side_by_side.rs`, `view_inline.rs`, `highlight.rs`, `statistics.rs`, `output_panel.rs`, `compare_command.rs`, `compare_saved.rs`, `compare_clipboard.rs`, `compare_selections.rs`, `export.rs`, `binary.rs`, `options.rs`, `error.rs`
+  - [x] 1.4 Add `ff-compare-merge` to workspace `Cargo.toml` members list
   - Covers: Structural foundation for all requirements
 
-- [ ] 2. Core diff types and options
-  - [ ] 2.1 Define `DiffHunk` enum with variants: `Equal { left_start, right_start, count }`, `Added { right_start, count }`, `Removed { left_start, count }`, `Changed { left_start, left_count, right_start, right_count }`
-  - [ ] 2.2 Define `InlineChange` struct with character ranges for fine-grained highlighting within changed line pairs
-  - [ ] 2.3 Define `DiffResult` struct containing ordered `Vec<DiffHunk>` and associated `DiffStatistics`
-  - [ ] 2.4 Define `DiffStatistics` struct: `lines_added`, `lines_removed`, `lines_changed`, `lines_unchanged`, `hunks_count`
-  - [ ] 2.5 Define `DiffOptions` struct: `ignore_whitespace` (enum: None/LeadingTrailing/All), `ignore_case` (bool), `diff_algorithm` (enum: Myers/Patience)
-  - [ ] 2.6 Define `CompareError` enum with thiserror: VfsError, BinaryResource, NoActiveDocument, EmptyClipboard, NoMarkedSelection, SessionNotActive
-  - [ ] 2.7 Write unit tests for type construction, default values, and Display/Debug impls
+- [x] 2. Core diff types and options
+  - [x] 2.1 Define `DiffHunk` enum with variants: `Equal { left_start, right_start, count }`, `Added { right_start, count }`, `Removed { left_start, count }`, `Changed { left_start, left_count, right_start, right_count }`
+  - [x] 2.2 Define `InlineChange` struct with character ranges for fine-grained highlighting within changed line pairs
+  - [x] 2.3 Define `DiffResult` struct containing ordered `Vec<DiffHunk>` and associated `DiffStatistics`
+  - [x] 2.4 Define `DiffStatistics` struct: `lines_added`, `lines_removed`, `lines_changed`, `lines_unchanged`, `hunks_count`
+  - [x] 2.5 Define `DiffOptions` struct: `ignore_whitespace` (enum: None/LeadingTrailing/All), `ignore_case` (bool), `diff_algorithm` (enum: Myers/Patience)
+  - [x] 2.6 Define `CompareError` enum with thiserror: VfsError, BinaryResource, NoActiveDocument, EmptyClipboard, NoMarkedSelection, SessionNotActive
+  - [x] 2.7 Write unit tests for type construction, default values, and Display/Debug impls
   - Covers: Requirement 2 (AC 2.3, 2.6, 2.7), Requirement 11 (AC 11.1, 11.2, 11.3), Requirement 12 (AC 12.1)
 
-- [ ] 3. Myers diff algorithm implementation
-  - [ ] 3.1 Implement Myers greedy LCS-based shortest edit script operating on `&[&str]` line sequences
-  - [ ] 3.2 Implement line normalisation for `ignore_whitespace` option (leading/trailing and all modes)
-  - [ ] 3.3 Implement Unicode case-folded equality for `ignore_case` option
-  - [ ] 3.4 Implement `DiffResult` construction from the edit script with correct hunk classification
-  - [ ] 3.5 Implement optimisation for identical inputs (single Equal hunk) and empty input handling (single Added/Removed hunk)
-  - [ ] 3.6 Write unit tests: identical inputs, empty vs non-empty, single line diff, multi-hunk diff, whitespace/case options
+- [x] 3. Myers diff algorithm implementation
+  - [x] 3.1 Implement Myers greedy LCS-based shortest edit script operating on `&[&str]` line sequences
+  - [x] 3.2 Implement line normalisation for `ignore_whitespace` option (leading/trailing and all modes)
+  - [x] 3.3 Implement Unicode case-folded equality for `ignore_case` option
+  - [x] 3.4 Implement `DiffResult` construction from the edit script with correct hunk classification
+  - [x] 3.5 Implement optimisation for identical inputs (single Equal hunk) and empty input handling (single Added/Removed hunk)
+  - [x] 3.6 Write unit tests: identical inputs, empty vs non-empty, single line diff, multi-hunk diff, whitespace/case options
   - Covers: Requirement 2 (AC 2.1, 2.2, 2.4, 2.5, 2.6, 2.7, 2.9, 2.10)
 
-- [ ] 4. Patience diff algorithm implementation
-  - [ ] 4.1 Implement patience diff unique-line anchoring strategy operating on `&[&str]` line sequences
-  - [ ] 4.2 Implement fallback to Myers for regions between anchors
-  - [ ] 4.3 Implement algorithm selection via `DiffOptions::diff_algorithm` field
-  - [ ] 4.4 Write unit tests: structured code diffs showing improved readability vs Myers, algorithm selection dispatch
+- [x] 4. Patience diff algorithm implementation
+  - [x] 4.1 Implement patience diff unique-line anchoring strategy operating on `&[&str]` line sequences
+  - [x] 4.2 Implement fallback to Myers for regions between anchors
+  - [x] 4.3 Implement algorithm selection via `DiffOptions::diff_algorithm` field
+  - [x] 4.4 Write unit tests: structured code diffs showing improved readability vs Myers, algorithm selection dispatch
   - Covers: Requirement 2 (AC 2.1a, 2.2, 2.9)
 
-- [ ] 5. Inline change detection
-  - [ ] 5.1 Implement character-level diff within changed line pairs to produce `InlineChange` markers
-  - [ ] 5.2 Implement word-boundary-aware splitting for semantic inline change grouping
-  - [ ] 5.3 Attach `InlineChange` markers to `Changed` hunks in the `DiffResult`
-  - [ ] 5.4 Write unit tests: single char change, word substitution, multiple inline changes per line pair
+- [x] 5. Inline change detection
+  - [x] 5.1 Implement character-level diff within changed line pairs to produce `InlineChange` markers
+  - [x] 5.2 Implement word-boundary-aware splitting for semantic inline change grouping
+  - [x] 5.3 Attach `InlineChange` markers to `Changed` hunks in the `DiffResult`
+  - [x] 5.4 Write unit tests: single char change, word substitution, multiple inline changes per line pair
   - Covers: Requirement 2 (AC 2.8)
 
-- [ ] 6. Diff statistics computation
-  - [ ] 6.1 Implement `DiffStatistics` calculation from a `DiffResult` (lines added, removed, changed, unchanged, hunks count)
-  - [ ] 6.2 Implement percentage calculation (unchanged/total, added/total, removed/total, changed/total)
-  - [ ] 6.3 Implement formatted summary string output (e.g., "+42 −17 ~8 unchanged: 1,203")
-  - [ ] 6.4 Write unit tests: empty diff stats, all-equal stats, mixed hunk stats, percentage math
+- [x] 6. Diff statistics computation
+  - [x] 6.1 Implement `DiffStatistics` calculation from a `DiffResult` (lines added, removed, changed, unchanged, hunks count)
+  - [x] 6.2 Implement percentage calculation (unchanged/total, added/total, removed/total, changed/total)
+  - [x] 6.3 Implement formatted summary string output (e.g., "+42 −17 ~8 unchanged: 1,203")
+  - [x] 6.4 Write unit tests: empty diff stats, all-equal stats, mixed hunk stats, percentage math
   - Covers: Requirement 12 (AC 12.1, 12.2, 12.3, 12.4)
 
-- [ ] 7. Compare session management
-  - [ ] 7.1 Define `CompareSession` struct holding: left/right Resource_URIs, loaded content, `DiffResult`, current navigation index, merge state, comparison options, view mode
-  - [ ] 7.2 Implement session creation from two resource URIs with VFS content loading
-  - [ ] 7.3 Implement session re-computation when options change (without re-loading resources)
-  - [ ] 7.4 Implement session refresh when external file changes are detected (re-load from VFS)
-  - [ ] 7.5 Implement current-diff-index tracking and update on navigation/scroll
-  - [ ] 7.6 Write unit tests: session creation, option change re-diff, index tracking
+- [x] 7. Compare session management
+  - [x] 7.1 Define `CompareSession` struct holding: left/right Resource_URIs, loaded content, `DiffResult`, current navigation index, merge state, comparison options, view mode
+  - [x] 7.2 Implement session creation from two resource URIs with VFS content loading
+  - [x] 7.3 Implement session re-computation when options change (without re-loading resources)
+  - [x] 7.4 Implement session refresh when external file changes are detected (re-load from VFS)
+  - [x] 7.5 Implement current-diff-index tracking and update on navigation/scroll
+  - [x] 7.6 Write unit tests: session creation, option change re-diff, index tracking
   - Covers: Requirement 1 (AC 1.6, 1.7), Requirement 6 (AC 6.7), Requirement 9 (AC 9.7), Requirement 11 (AC 11.4)
 
-- [ ] 8. COMPARE primary command registration
-  - [ ] 8.1 Register `compare.execute` command with the command framework (display name "Compare Files", category "compare", keyboard shortcut)
-  - [ ] 8.2 Implement two-path invocation: resolve both paths as Resource_URIs, verify existence via VFS `exists()`, create session
-  - [ ] 8.3 Implement single-path invocation: compare specified resource against active editor document
-  - [ ] 8.4 Implement no-argument invocation with active document: prompt file picker for second resource
-  - [ ] 8.5 Implement no-argument invocation without active document: return error "No active document. Specify two paths to compare."
-  - [ ] 8.6 Implement cross-provider comparison support (resources from different VFS providers)
-  - [ ] 8.7 Implement optional command parameters: `ignore_whitespace`, `ignore_case`, `view_mode`
-  - [ ] 8.8 Write unit tests: all invocation modes, error cases, parameter handling
+- [x] 8. COMPARE primary command registration
+  - [x] 8.1 Register `compare.execute` command with the command framework (display name "Compare Files", category "compare", keyboard shortcut)
+  - [x] 8.2 Implement two-path invocation: resolve both paths as Resource_URIs, verify existence via VFS `exists()`, create session
+  - [x] 8.3 Implement single-path invocation: compare specified resource against active editor document
+  - [x] 8.4 Implement no-argument invocation with active document: prompt file picker for second resource
+  - [x] 8.5 Implement no-argument invocation without active document: return error "No active document. Specify two paths to compare."
+  - [x] 8.6 Implement cross-provider comparison support (resources from different VFS providers)
+  - [x] 8.7 Implement optional command parameters: `ignore_whitespace`, `ignore_case`, `view_mode`
+  - [x] 8.8 Write unit tests: all invocation modes, error cases, parameter handling
   - Covers: Requirement 1 (AC 1.1–1.10)
 
-- [ ] 9. VFS-aware resource loading and binary detection
-  - [ ] 9.1 Implement resource URI resolution from bare paths via default provider
-  - [ ] 9.2 Implement content loading via VFS `read()` / `read_stream()` — no direct filesystem access
-  - [ ] 9.3 Implement binary detection heuristic: null bytes in first 8 KB or provider metadata
-  - [ ] 9.4 Implement encoding normalisation to UTF-8 via encoding-and-characters subsystem
-  - [ ] 9.5 Implement error handling for VfsError::NotFound, VfsError::PermissionDenied
-  - [ ] 9.6 Implement mixed binary/text resource warning and fallback to binary mode
-  - [ ] 9.7 Write unit tests: URI resolution, binary detection, encoding normalisation, error propagation
+- [x] 9. VFS-aware resource loading and binary detection
+  - [x] 9.1 Implement resource URI resolution from bare paths via default provider
+  - [x] 9.2 Implement content loading via VFS `read()` / `read_stream()` — no direct filesystem access
+  - [x] 9.3 Implement binary detection heuristic: null bytes in first 8 KB or provider metadata
+  - [x] 9.4 Implement encoding normalisation to UTF-8 via encoding-and-characters subsystem
+  - [x] 9.5 Implement error handling for VfsError::NotFound, VfsError::PermissionDenied
+  - [x] 9.6 Implement mixed binary/text resource warning and fallback to binary mode
+  - [x] 9.7 Write unit tests: URI resolution, binary detection, encoding normalisation, error propagation
   - Covers: Requirement 9 (AC 9.1–9.6), Requirement 10 (AC 10.1, 10.5)
 
-- [ ] 10. Binary comparison mode
-  - [ ] 10.1 Implement byte-level comparison with streaming chunk processing (matching VFS `read_stream()`)
-  - [ ] 10.2 Implement result reporting: Identical or Different with first divergence offset, sizes, percentage similarity
-  - [ ] 10.3 Implement large file support without loading both files entirely into memory
-  - [ ] 10.4 Write unit tests: identical binary, different binary with offset, large file streaming, mixed text/binary
+- [x] 10. Binary comparison mode
+  - [x] 10.1 Implement byte-level comparison with streaming chunk processing (matching VFS `read_stream()`)
+  - [x] 10.2 Implement result reporting: Identical or Different with first divergence offset, sizes, percentage similarity
+  - [x] 10.3 Implement large file support without loading both files entirely into memory
+  - [x] 10.4 Write unit tests: identical binary, different binary with offset, large file streaming, mixed text/binary
   - Covers: Requirement 10 (AC 10.1–10.6)
 
-- [ ] 11. Side-by-side diff view
-  - [ ] 11.1 Implement split panel rendering in center dock area (left resource / right resource)
-  - [ ] 11.2 Implement line alignment with blank placeholder lines for added/removed regions
-  - [ ] 11.3 Implement diff highlighting using theme colour tokens: `diff.added_background`, `diff.removed_background`, `diff.changed_background`, `diff.inline_change_background`
-  - [ ] 11.4 Implement synchronised vertical scrolling between panes
-  - [ ] 11.5 Implement original line number display in both panes
-  - [ ] 11.6 Implement summary header with Resource_URIs and DiffStatistics
-  - [ ] 11.7 Implement resizable splitter (default 50/50, minimum 100px pane width)
-  - [ ] 11.8 Implement integration with layout-and-docking as Tab_Group split
-  - [ ] 11.9 Write unit tests: alignment calculation, line number mapping, splitter constraints
+- [x] 11. Side-by-side diff view
+  - [x] 11.1 Implement split panel rendering in center dock area (left resource / right resource)
+  - [x] 11.2 Implement line alignment with blank placeholder lines for added/removed regions
+  - [x] 11.3 Implement diff highlighting using theme colour tokens: `diff.added_background`, `diff.removed_background`, `diff.changed_background`, `diff.inline_change_background`
+  - [x] 11.4 Implement synchronised vertical scrolling between panes
+  - [x] 11.5 Implement original line number display in both panes
+  - [x] 11.6 Implement summary header with Resource_URIs and DiffStatistics
+  - [x] 11.7 Implement resizable splitter (default 50/50, minimum 100px pane width)
+  - [x] 11.8 Implement integration with layout-and-docking as Tab_Group split
+  - [x] 11.9 Write unit tests: alignment calculation, line number mapping, splitter constraints
   - Covers: Requirement 3 (AC 3.1–3.11)
 
-- [ ] 12. Inline (unified) diff view
-  - [ ] 12.1 Implement single-panel unified rendering in center dock area
-  - [ ] 12.2 Implement interleaved display: Equal lines once, Removed lines with gutter marker, Added lines with gutter marker, Changed pairs (removed then added)
-  - [ ] 12.3 Implement dual line-number columns (left and right) with blanks for non-corresponding lines
-  - [ ] 12.4 Implement diff highlighting using theme colour tokens with gutter indicators
-  - [ ] 12.5 Implement summary header with both Resource_URIs and DiffStatistics
-  - [ ] 12.6 Implement view mode toggle command `compare.toggle_view_mode` without re-running diff
-  - [ ] 12.7 Write unit tests: line interleaving logic, dual line-number generation, toggle state preservation
+- [x] 12. Inline (unified) diff view
+  - [x] 12.1 Implement single-panel unified rendering in center dock area
+  - [x] 12.2 Implement interleaved display: Equal lines once, Removed lines with gutter marker, Added lines with gutter marker, Changed pairs (removed then added)
+  - [x] 12.3 Implement dual line-number columns (left and right) with blanks for non-corresponding lines
+  - [x] 12.4 Implement diff highlighting using theme colour tokens with gutter indicators
+  - [x] 12.5 Implement summary header with both Resource_URIs and DiffStatistics
+  - [x] 12.6 Implement view mode toggle command `compare.toggle_view_mode` without re-running diff
+  - [x] 12.7 Write unit tests: line interleaving logic, dual line-number generation, toggle state preservation
   - Covers: Requirement 4 (AC 4.1–4.8)
 
-- [ ] 13. Diff highlighting and theme integration
-  - [ ] 13.1 Define diff-specific colour tokens in the theme system: `diff.added_background`, `diff.added_foreground`, `diff.removed_background`, `diff.removed_foreground`, `diff.changed_background`, `diff.changed_foreground`, `diff.inline_change_background`, `diff.gutter_added`, `diff.gutter_removed`, `diff.gutter_changed`, `diff.conflict_background`
-  - [ ] 13.2 Implement alpha transparency blending for diff backgrounds (preserve syntax highlighting)
-  - [ ] 13.3 Implement theme hot-reload: re-render diff view on theme change without re-running comparison
-  - [ ] 13.4 Implement high-contrast mode with text decorations (underlines, borders) alongside colour
-  - [ ] 13.5 Implement gutter markers using `diff.gutter_*` tokens distinct from standard line numbers
-  - [ ] 13.6 Write unit tests: token resolution, alpha blending math, theme change event handling
+- [x] 13. Diff highlighting and theme integration
+  - [x] 13.1 Define diff-specific colour tokens in the theme system: `diff.added_background`, `diff.added_foreground`, `diff.removed_background`, `diff.removed_foreground`, `diff.changed_background`, `diff.changed_foreground`, `diff.inline_change_background`, `diff.gutter_added`, `diff.gutter_removed`, `diff.gutter_changed`, `diff.conflict_background`
+  - [x] 13.2 Implement alpha transparency blending for diff backgrounds (preserve syntax highlighting)
+  - [x] 13.3 Implement theme hot-reload: re-render diff view on theme change without re-running comparison
+  - [x] 13.4 Implement high-contrast mode with text decorations (underlines, borders) alongside colour
+  - [x] 13.5 Implement gutter markers using `diff.gutter_*` tokens distinct from standard line numbers
+  - [x] 13.6 Write unit tests: token resolution, alpha blending math, theme change event handling
   - Covers: Requirement 5 (AC 5.1–5.6)
 
-- [ ] 14. Diff navigation
-  - [ ] 14.1 Register `compare.next_diff` command: advance to next hunk, wrap to first if at end
-  - [ ] 14.2 Register `compare.prev_diff` command: move to previous hunk, wrap to last if at beginning
-  - [ ] 14.3 Implement viewport scrolling to centre the target hunk on navigation
-  - [ ] 14.4 Implement wrap notification via status bar ("navigation wrapped to beginning/end")
-  - [ ] 14.5 Implement current-diff-index maintenance and visual indicator on focused hunk
-  - [ ] 14.6 Implement status bar display "Diff N of M" for current position
-  - [ ] 14.7 Write unit tests: sequential navigation, wrap-around, index tracking, empty diff navigation
+- [x] 14. Diff navigation
+  - [x] 14.1 Register `compare.next_diff` command: advance to next hunk, wrap to first if at end
+  - [x] 14.2 Register `compare.prev_diff` command: move to previous hunk, wrap to last if at beginning
+  - [x] 14.3 Implement viewport scrolling to centre the target hunk on navigation
+  - [x] 14.4 Implement wrap notification via status bar ("navigation wrapped to beginning/end")
+  - [x] 14.5 Implement current-diff-index maintenance and visual indicator on focused hunk
+  - [x] 14.6 Implement status bar display "Diff N of M" for current position
+  - [x] 14.7 Write unit tests: sequential navigation, wrap-around, index tracking, empty diff navigation
   - Covers: Requirement 6 (AC 6.1–6.9)
 
-- [ ] 15. Two-way merge operations
-  - [ ] 15.1 Register merge commands: `compare.accept_left`, `compare.accept_right`, `compare.accept_both`
-  - [ ] 15.2 Implement accept_left: replace hunk content in merge result with left version
-  - [ ] 15.3 Implement accept_right: replace hunk content in merge result with right version
-  - [ ] 15.4 Implement accept_both: insert left then right content sequentially at hunk position
-  - [ ] 15.5 Implement edit transaction creation for undo-redo integration (each merge accept individually undoable)
-  - [ ] 15.6 Implement hunk resolution tracking: unresolved, resolved-left, resolved-right, resolved-both, resolved-custom
-  - [ ] 15.7 Implement visual marking of resolved hunks (dimmed highlight, check gutter indicator)
-  - [ ] 15.8 Register `compare.accept_all_left` and `compare.accept_all_right` bulk resolution commands
-  - [ ] 15.9 Implement merge completion detection and status bar notification with save prompt
-  - [ ] 15.10 Implement merge result as new Document (editable, saveable via VFS, discardable — originals unmodified)
-  - [ ] 15.11 Write unit tests: individual accepts, bulk accept, undo integration, completion detection, result document state
+- [x] 15. Two-way merge operations
+  - [x] 15.1 Register merge commands: `compare.accept_left`, `compare.accept_right`, `compare.accept_both`
+  - [x] 15.2 Implement accept_left: replace hunk content in merge result with left version
+  - [x] 15.3 Implement accept_right: replace hunk content in merge result with right version
+  - [x] 15.4 Implement accept_both: insert left then right content sequentially at hunk position
+  - [x] 15.5 Implement edit transaction creation for undo-redo integration (each merge accept individually undoable)
+  - [x] 15.6 Implement hunk resolution tracking: unresolved, resolved-left, resolved-right, resolved-both, resolved-custom
+  - [x] 15.7 Implement visual marking of resolved hunks (dimmed highlight, check gutter indicator)
+  - [x] 15.8 Register `compare.accept_all_left` and `compare.accept_all_right` bulk resolution commands
+  - [x] 15.9 Implement merge completion detection and status bar notification with save prompt
+  - [x] 15.10 Implement merge result as new Document (editable, saveable via VFS, discardable — originals unmodified)
+  - [x] 15.11 Write unit tests: individual accepts, bulk accept, undo integration, completion detection, result document state
   - Covers: Requirement 7 (AC 7.1–7.10)
 
-- [ ] 16. Three-way merge
-  - [ ] 16.1 Register `compare.three_way_merge` command accepting base, left, right Resource_URIs
-  - [ ] 16.2 Implement dual diff computation: base-to-left and base-to-right
-  - [ ] 16.3 Implement region classification: unchanged, left-only-change, right-only-change, conflict
-  - [ ] 16.4 Implement automatic resolution of non-conflict regions (unchanged, left-only, right-only)
-  - [ ] 16.5 Implement conflict highlighting with `diff.conflict_background` theme token
-  - [ ] 16.6 Implement conflict view showing all three versions (base, left, right) with labels
-  - [ ] 16.7 Implement conflict resolution actions: accept left, accept right, accept both, manual edit
-  - [ ] 16.8 Implement workflow integration via workflow-engine: load-resources → compute-diffs → auto-resolve → present-conflicts → await-resolution → save-result
-  - [ ] 16.9 Implement cancellation support at any workflow step with partial-result save/discard prompt
-  - [ ] 16.10 Write unit tests: region classification, auto-resolution, conflict detection, workflow step transitions, cancellation
+- [x] 16. Three-way merge
+  - [x] 16.1 Register `compare.three_way_merge` command accepting base, left, right Resource_URIs
+  - [x] 16.2 Implement dual diff computation: base-to-left and base-to-right
+  - [x] 16.3 Implement region classification: unchanged, left-only-change, right-only-change, conflict
+  - [x] 16.4 Implement automatic resolution of non-conflict regions (unchanged, left-only, right-only)
+  - [x] 16.5 Implement conflict highlighting with `diff.conflict_background` theme token
+  - [x] 16.6 Implement conflict view showing all three versions (base, left, right) with labels
+  - [x] 16.7 Implement conflict resolution actions: accept left, accept right, accept both, manual edit
+  - [x] 16.8 Implement workflow integration via workflow-engine: load-resources → compute-diffs → auto-resolve → present-conflicts → await-resolution → save-result
+  - [x] 16.9 Implement cancellation support at any workflow step with partial-result save/discard prompt
+  - [x] 16.10 Write unit tests: region classification, auto-resolution, conflict detection, workflow step transitions, cancellation
   - Covers: Requirement 8 (AC 8.1–8.10)
 
-- [ ] 17. Comparison options and persistence
-  - [ ] 17.1 Implement `ignore_whitespace` three-mode support: none, leading_trailing, all
-  - [ ] 17.2 Implement `ignore_case` with Unicode case-folded equality (shared rules with find-and-replace)
-  - [ ] 17.3 Register toggle commands: `compare.toggle_ignore_whitespace`, `compare.toggle_ignore_case`
-  - [ ] 17.4 Implement live re-diff on option change for active CompareSession (no re-invoke needed)
-  - [ ] 17.5 Implement option display in diff view header/toolbar
-  - [ ] 17.6 Implement option persistence as user preferences via configuration-system
-  - [ ] 17.7 Write unit tests: option toggle state, re-diff triggering, preference load/save round-trip
+- [x] 17. Comparison options and persistence
+  - [x] 17.1 Implement `ignore_whitespace` three-mode support: none, leading_trailing, all
+  - [x] 17.2 Implement `ignore_case` with Unicode case-folded equality (shared rules with find-and-replace)
+  - [x] 17.3 Register toggle commands: `compare.toggle_ignore_whitespace`, `compare.toggle_ignore_case`
+  - [x] 17.4 Implement live re-diff on option change for active CompareSession (no re-invoke needed)
+  - [x] 17.5 Implement option display in diff view header/toolbar
+  - [x] 17.6 Implement option persistence as user preferences via configuration-system
+  - [x] 17.7 Write unit tests: option toggle state, re-diff triggering, preference load/save round-trip
   - Covers: Requirement 11 (AC 11.1–11.6)
 
-- [ ] 18. Compare Output Panel
-  - [ ] 18.1 Register dockable panel (panel_id: `compare_output`, default dock zone: Bottom) implementing `DockablePanel` trait
-  - [ ] 18.2 Implement comparison operation log with timestamps, Resource_URIs, options, and statistics summary
-  - [ ] 18.3 Implement binary comparison result display (identical/different, sizes, divergence offset)
-  - [ ] 18.4 Implement error display (resource not found, permission denied, load errors)
-  - [ ] 18.5 Implement selectable entries: re-open previous comparison on activation
-  - [ ] 18.6 Register `compare.clear_output` command for history clearing
-  - [ ] 18.7 Implement panel toggle via standard layout show/hide mechanism
-  - [ ] 18.8 Write unit tests: log entry creation, entry selection, clear operation
+- [x] 18. Compare Output Panel
+  - [x] 18.1 Register dockable panel (panel_id: `compare_output`, default dock zone: Bottom) implementing `DockablePanel` trait
+  - [x] 18.2 Implement comparison operation log with timestamps, Resource_URIs, options, and statistics summary
+  - [x] 18.3 Implement binary comparison result display (identical/different, sizes, divergence offset)
+  - [x] 18.4 Implement error display (resource not found, permission denied, load errors)
+  - [x] 18.5 Implement selectable entries: re-open previous comparison on activation
+  - [x] 18.6 Register `compare.clear_output` command for history clearing
+  - [x] 18.7 Implement panel toggle via standard layout show/hide mechanism
+  - [x] 18.8 Write unit tests: log entry creation, entry selection, clear operation
   - Covers: Requirement 13 (AC 13.1–13.7)
 
-- [ ] 19. Compare with saved version
-  - [ ] 19.1 Register `compare.with_saved` command
-  - [ ] 19.2 Implement fresh content load from VFS for persisted version of active document
-  - [ ] 19.3 Implement error for unsaved new document: "Document has not been saved. No saved version to compare against."
-  - [ ] 19.4 Implement no-changes shortcut: status bar notification "No unsaved changes — document matches saved version." (skip diff view)
-  - [ ] 19.5 Implement pane labelling: left = "Saved: {name}", right = "Unsaved Changes: {name}"
-  - [ ] 19.6 Implement read-only mode for both panes (no merge operations available)
-  - [ ] 19.7 Write unit tests: command routing, error cases, label generation, read-only enforcement
+- [x] 19. Compare with saved version
+  - [x] 19.1 Register `compare.with_saved` command
+  - [x] 19.2 Implement fresh content load from VFS for persisted version of active document
+  - [x] 19.3 Implement error for unsaved new document: "Document has not been saved. No saved version to compare against."
+  - [x] 19.4 Implement no-changes shortcut: status bar notification "No unsaved changes — document matches saved version." (skip diff view)
+  - [x] 19.5 Implement pane labelling: left = "Saved: {name}", right = "Unsaved Changes: {name}"
+  - [x] 19.6 Implement read-only mode for both panes (no merge operations available)
+  - [x] 19.7 Write unit tests: command routing, error cases, label generation, read-only enforcement
   - Covers: Requirement 14 (AC 14.1–14.6)
 
-- [ ] 20. Compare with clipboard
-  - [ ] 20.1 Register `compare.with_clipboard` command
-  - [ ] 20.2 Implement clipboard text reading as right-side input, active document as left-side input
-  - [ ] 20.3 Implement error for empty/non-text clipboard: "Clipboard does not contain text content."
-  - [ ] 20.4 Implement error for no active document: "No active document. Open a file before comparing with clipboard."
-  - [ ] 20.5 Implement pane labelling: left = "{resource_name}", right = "Clipboard Content"
-  - [ ] 20.6 Implement selection-aware mode: compare only selected text when selection is active, label left as "Selection in {resource_name}"
-  - [ ] 20.7 Implement clipboard content as temporary unnamed resource (no URI, no external-change monitoring)
-  - [ ] 20.8 Write unit tests: command routing, error cases, selection mode, label generation
+- [x] 20. Compare with clipboard
+  - [x] 20.1 Register `compare.with_clipboard` command
+  - [x] 20.2 Implement clipboard text reading as right-side input, active document as left-side input
+  - [x] 20.3 Implement error for empty/non-text clipboard: "Clipboard does not contain text content."
+  - [x] 20.4 Implement error for no active document: "No active document. Open a file before comparing with clipboard."
+  - [x] 20.5 Implement pane labelling: left = "{resource_name}", right = "Clipboard Content"
+  - [x] 20.6 Implement selection-aware mode: compare only selected text when selection is active, label left as "Selection in {resource_name}"
+  - [x] 20.7 Implement clipboard content as temporary unnamed resource (no URI, no external-change monitoring)
+  - [x] 20.8 Write unit tests: command routing, error cases, selection mode, label generation
   - Covers: Requirement 15 (AC 15.1–15.7)
 
-- [ ] 21. Compare selections
-  - [ ] 21.1 Register `compare.mark_selection_for_compare` command to store Selection A with source label
-  - [ ] 21.2 Register `compare.selections` command to compare Selection A against current selection
-  - [ ] 21.3 Register `compare.clear_marked_selection` command
-  - [ ] 21.4 Implement status bar indication when a selection is marked for comparison
-  - [ ] 21.5 Implement error for missing Selection A: "No selection marked for comparison. Use 'Mark Selection for Compare' first."
-  - [ ] 21.6 Implement error for empty current selection: "No text selected. Select text to compare against the marked selection."
-  - [ ] 21.7 Implement pane labelling: left = "Selection A: {source_label}", right = "Selection B: {source_label}" (with document name + line range)
-  - [ ] 21.8 Implement Selection A persistence across document switches (cleared only on explicit clear or new mark)
-  - [ ] 21.9 Write unit tests: mark/compare workflow, error cases, persistence across switches, label formatting
+- [x] 21. Compare selections
+  - [x] 21.1 Register `compare.mark_selection_for_compare` command to store Selection A with source label
+  - [x] 21.2 Register `compare.selections` command to compare Selection A against current selection
+  - [x] 21.3 Register `compare.clear_marked_selection` command
+  - [x] 21.4 Implement status bar indication when a selection is marked for comparison
+  - [x] 21.5 Implement error for missing Selection A: "No selection marked for comparison. Use 'Mark Selection for Compare' first."
+  - [x] 21.6 Implement error for empty current selection: "No text selected. Select text to compare against the marked selection."
+  - [x] 21.7 Implement pane labelling: left = "Selection A: {source_label}", right = "Selection B: {source_label}" (with document name + line range)
+  - [x] 21.8 Implement Selection A persistence across document switches (cleared only on explicit clear or new mark)
+  - [x] 21.9 Write unit tests: mark/compare workflow, error cases, persistence across switches, label formatting
   - Covers: Requirement 16 (AC 16.1–16.8)
 
-- [ ] 22. Diff export (unified diff format)
-  - [ ] 22.1 Register `compare.export_diff` command (only available when CompareSession is active)
-  - [ ] 22.2 Implement unified diff header generation: `--- {left_path}` / `+++ {right_path}` with optional timestamps
-  - [ ] 22.3 Implement hunk formatting: `@@ -L,S +L,S @@` range header with context/removed/added line prefixes
-  - [ ] 22.4 Implement configurable context lines (default 3, range 0–999)
-  - [ ] 22.5 Implement "No newline at end of file" indicator (`\ No newline at end of file`)
-  - [ ] 22.6 Implement output destinations: copy to clipboard, save to file (VFS picker), open as new document
-  - [ ] 22.7 Implement options comment header when ignore_whitespace or ignore_case are active
-  - [ ] 22.8 Implement command disabled state when no active session
-  - [ ] 22.9 Write unit tests: header formatting, hunk output, context lines, no-newline handling, options header
+- [x] 22. Diff export (unified diff format)
+  - [x] 22.1 Register `compare.export_diff` command (only available when CompareSession is active)
+  - [x] 22.2 Implement unified diff header generation: `--- {left_path}` / `+++ {right_path}` with optional timestamps
+  - [x] 22.3 Implement hunk formatting: `@@ -L,S +L,S @@` range header with context/removed/added line prefixes
+  - [x] 22.4 Implement configurable context lines (default 3, range 0–999)
+  - [x] 22.5 Implement "No newline at end of file" indicator (`\ No newline at end of file`)
+  - [x] 22.6 Implement output destinations: copy to clipboard, save to file (VFS picker), open as new document
+  - [x] 22.7 Implement options comment header when ignore_whitespace or ignore_case are active
+  - [x] 22.8 Implement command disabled state when no active session
+  - [x] 22.9 Write unit tests: header formatting, hunk output, context lines, no-newline handling, options header
   - Covers: Requirement 17 (AC 17.1–17.8)
 
-- [ ] 23. Property-based tests
-  - [ ] 23.1 Write PBT: Myers diff optimality property
-  - [ ] 23.2 Write PBT: diff determinism property
-  - [ ] 23.3 Write PBT: diff statistics consistency property
-  - [ ] 23.4 Write PBT: ignore-whitespace equivalence property
-  - [ ] 23.5 Write PBT: three-way merge region classification completeness property
-  - [ ] 23.6 Write PBT: unified diff export round-trip property
-  - [ ] 23.7 Write PBT: navigation wrap-around invariant property
-  - [ ] 23.8 Write PBT: merge resolution completeness property
+- [x] 23. Property-based tests
+  - [x] 23.1 Write PBT: Myers diff optimality property
+  - [x] 23.2 Write PBT: diff determinism property
+  - [x] 23.3 Write PBT: diff statistics consistency property
+  - [x] 23.4 Write PBT: ignore-whitespace equivalence property
+  - [x] 23.5 Write PBT: three-way merge region classification completeness property
+  - [x] 23.6 Write PBT: unified diff export round-trip property
+  - [x] 23.7 Write PBT: navigation wrap-around invariant property
+  - [x] 23.8 Write PBT: merge resolution completeness property
   - Covers: All requirements via invariant verification
 
 ---
