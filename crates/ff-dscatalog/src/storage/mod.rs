@@ -7,8 +7,13 @@
 //! Validates: Requirement 19.1, 19.2, 19.3, 19.4
 
 mod native;
+mod sqlite_record;
 
 pub use native::NativeFileProvider;
+pub use sqlite_record::{
+    KeyCollation, KeyDefinition, KeyType, KsdsKeyDefinition, KsdsRecord, PrimaryKeyDefinition,
+    SqliteRecordProvider,
+};
 
 use std::path::PathBuf;
 
@@ -91,11 +96,7 @@ pub trait StorageProvider: Send + Sync {
     ) -> Result<(), CatalogError>;
 
     /// Delete a physical object.
-    fn delete(
-        &self,
-        workspace_root: &std::path::Path,
-        locator: &str,
-    ) -> Result<(), CatalogError>;
+    fn delete(&self, workspace_root: &std::path::Path, locator: &str) -> Result<(), CatalogError>;
 
     /// List child locators for a container object (e.g. PDS members).
     fn list(

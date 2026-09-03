@@ -566,6 +566,11 @@ workspace/
 
 21.7 THE design SHALL permit a KSDS to use a dedicated SQLite database or another provider when isolation, scale, backup, or contention requirements justify it.
 
+> **Implementation scope (Phase BS.4):** This phase implements the dedicated
+> SQLite record-provider base and the primary KSDS operations in criteria
+> 21.1-21.4 and 21.6. Alternate indexes (21.5) and provider substitution
+> policy (21.7) remain documented extension points for later phases.
+
 ---
 
 ### Requirement 22: VSAM RRDS Support

@@ -174,6 +174,27 @@ Result<Vec<u8>, VfsError> → returned to consumer
 
 ---
 
+### Phase BS.4: SQLite Record Provider and KSDS
+
+The KSDS implementation is isolated from the catalogue database. Each KSDS
+dataset receives a dedicated SQLite database under the repository's
+`indexed/` directory, named from its catalogue `physical_locator` UUID.
+`rusqlite` with the `bundled` feature supplies the SQLite engine, so a separate
+SQLite installation is not required.
+
+The provider stores record payloads in a keyed table and keeps key definition
+metadata in the catalogue layer. All value data uses parameterized SQL
+statements. Database initialization enables WAL mode and creates the schema
+idempotently. Primary-key uniqueness is enforced by the SQLite schema and
+transaction boundaries, while ordered reads and range retrieval use indexed
+key comparisons.
+
+Phase BS.4 does not implement alternate indexes or the broader transaction,
+backup, and governance layers. Those remain subsequent tasks in
+`dataset-catalog/tasks.md`.
+
+---
+
 ## Components and Interfaces
 
 ```

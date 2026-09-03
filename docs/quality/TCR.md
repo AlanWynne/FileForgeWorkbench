@@ -1127,13 +1127,13 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-dscatalog` | 🔴 | — | Req 20.5: dots in DSN NOT translated directly to directory separators in UUID layout |
 | `ff-dscatalog` | 🔴 | — | Req 20.6: dataset rename updates catalogue only; physical object not moved |
 | `ff-dscatalog` | 🔴 | — | Req 20.7: path-safety guards reject traversal, reserved names, illegal chars, length violations |
-| `ff-dscatalog` | 🔴 | — | Req 21.1: KSDS provider uses dedicated SQLite database per dataset |
-| `ff-dscatalog` | 🔴 | — | Req 21.2: KSDS defines primary key offset, length, collation, uniqueness in catalogue |
-| `ff-dscatalog` | 🔴 | — | Req 21.3: KSDS supports keyed read, ordered sequential read, insert, update, delete, range retrieval |
-| `ff-dscatalog` | 🔴 | — | Req 21.4: KSDS primary-key uniqueness enforced transactionally |
+| `ff-dscatalog` | 🟢 | `storage::sqlite_record::tests::creates_indexed_database_with_wal_and_schema` | Req 21.1: KSDS provider uses dedicated SQLite database per dataset |
+| `ff-dscatalog` | 🟡 | `storage::sqlite_record::tests::metadata_survives_reopen_and_mismatches_are_rejected` | Req 21.2: key metadata persists with the indexed database; catalogue-layer wiring remains |
+| `ff-dscatalog` | 🟢 | `storage::sqlite_record::tests::supports_keyed_crud_and_ordered_ranges` | Req 21.3: KSDS supports keyed read, ordered read, CRUD, and range retrieval |
+| `ff-dscatalog` | 🟢 | `storage::sqlite_record::tests::primary_key_uniqueness_is_transactional` | Req 21.4: KSDS primary-key uniqueness enforced transactionally |
 | `ff-dscatalog` | 🔴 | — | Req 21.5: KSDS alternate indexes represented as SQLite indexes or mapping tables |
-| `ff-dscatalog` | 🔴 | — | Req 21.6: KSDS record data stored independently of catalogue rows |
-| `ff-dscatalog` | 🔴 | — | Req 21.7: KSDS can use dedicated SQLite database or alternative provider |
+| `ff-dscatalog` | 🟢 | `storage::sqlite_record::tests::supports_keyed_crud_and_ordered_ranges` | Req 21.6: KSDS record data stored independently of catalogue rows |
+| `ff-dscatalog` | 🟢 | `storage::sqlite_record::SqliteRecordProvider` | Req 21.7: KSDS can use dedicated SQLite database or alternative provider |
 | `ff-dscatalog` | 🔴 | — | Req 22.1: RRDS provider uses SQLite-backed store keyed by relative record number |
 | `ff-dscatalog` | 🔴 | — | Req 22.2: RRDS distinguishes unallocated slot from allocated blank record |
 | `ff-dscatalog` | 🔴 | — | Req 22.3: RRDS supports direct retrieval, replacement, deletion, sequential iteration |
