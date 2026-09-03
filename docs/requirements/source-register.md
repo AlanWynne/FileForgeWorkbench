@@ -18,8 +18,8 @@ documents or bodies of work from which requirements were derived.
 These documents are currently retained in their existing locations until their
 links and provenance are checked:
 
-- [`../FileForgeWorkbench_Mainframe_Dataset_Architecture.md`](../FileForgeWorkbench_Mainframe_Dataset_Architecture.md)
-- [`../FileForgeWorkbench_Virtual_File_and_Dataset_Storage_Requirements.md`](../FileForgeWorkbench_Virtual_File_and_Dataset_Storage_Requirements.md)
+- [`../source-documents/dataset-catalog/FileForgeWorkbench_Mainframe_Dataset_Architecture.md`](../source-documents/dataset-catalog/FileForgeWorkbench_Mainframe_Dataset_Architecture.md)
+- [`../source-documents/dataset-catalog/FileForgeWorkbench_Virtual_File_and_Dataset_Storage_Requirements.md`](../source-documents/dataset-catalog/FileForgeWorkbench_Virtual_File_and_Dataset_Storage_Requirements.md)
 - [`../specs/workbench-requirements-merge/dataset-catalog-brief.md`](../specs/workbench-requirements-merge/dataset-catalog-brief.md)
 - [`../specs/workbench-requirements-merge/architecture-brief.md`](../specs/workbench-requirements-merge/architecture-brief.md)
 

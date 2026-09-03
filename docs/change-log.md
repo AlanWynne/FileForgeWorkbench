@@ -166,18 +166,18 @@ Modifications to existing behaviour that already works.
 ### CR-NR-015 — Requirements Review and Modernisation
 - **Date/Phase**: Phase BQ
 - **Prompt**: "You are acting as a Senior Product Architect, Requirements Engineer, UX Architect, and Software Platform Designer... Perform a comprehensive review of the supplied requirements..."
-- **Description**: Comprehensive review of all 65 sub-project specifications. Deliverables: inventory, terminology map, domain classification, gap analysis, rewritten requirements catalogue, traceability matrix, consolidation report, and executive assessment. Work is broken into 10 tasks tracked under `docs/specs/requirements-review/`.
+- **Description**: Comprehensive review of all 65 sub-project specifications. Deliverables: inventory, terminology map, domain classification, gap analysis, rewritten requirements catalogue, traceability matrix, consolidation report, and executive assessment. Work is broken into 10 tasks tracked under `docs/reviews/requirements-review/`.
 - **Status**: IN PROGRESS — Task 1 (Inventory) complete
-- **Linked spec**: `docs/specs/requirements-review/inventory.md` (Task 1 complete)
+- **Linked spec**: `docs/reviews/requirements-review/inventory.md` (Task 1 complete)
 
 ### CR-NR-015 status update — Tasks 1-4 complete
 - Tasks 1 (Inventory), 2 (Terminology), 3 (Domain Classification), 4 (Gap Analysis) are DONE.
-- Output files: `docs/specs/requirements-review/inventory.md`, `terminology-map.md`, `domain-classification.md`, `gap-analysis.md`
+- Output files: `docs/reviews/requirements-review/inventory.md`, `terminology-map.md`, `domain-classification.md`, `gap-analysis.md`
 - Tasks 5-10 pending.
 
 ### CR-NR-015 status update — Tasks 9-10 complete — Phase BQ DONE
 - Tasks 9 (Consolidation Report) and 10 (Executive Assessment) are DONE.
-- Output files: `docs/specs/requirements-review/consolidation-report.md`, `executive-assessment.md`
+- Output files: `docs/reviews/requirements-review/consolidation-report.md`, `executive-assessment.md`
 - **Status**: DONE — All 10 tasks complete. 497 tests passing. 8 artefacts delivered.
 
 ### CR-NR-016 - Mainframe Dataset Architecture and Virtual File/Dataset Storage Requirements

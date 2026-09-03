@@ -404,8 +404,8 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 ## Requirements Added by CR-NR-016 — Mainframe Dataset Architecture
 
-> **Source documents:** `docs/FileForgeWorkbench_Mainframe_Dataset_Architecture.md` and
-> `docs/FileForgeWorkbench_Virtual_File_and_Dataset_Storage_Requirements.md`
+> **Source documents:** `docs/source-documents/dataset-catalog/FileForgeWorkbench_Mainframe_Dataset_Architecture.md` and
+> `docs/source-documents/dataset-catalog/FileForgeWorkbench_Virtual_File_and_Dataset_Storage_Requirements.md`
 
 ---
 

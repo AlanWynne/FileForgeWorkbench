@@ -474,16 +474,16 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 
 ### Phase BQ — Requirements Review and Modernisation (CR-NR-015)
 
-- [x] BQ.T1 Task 1 — Inventory & Baseline Audit (`docs/specs/requirements-review/inventory.md`)
-- [x] BQ.T2 Task 2 — Terminology Standardisation (`docs/specs/requirements-review/terminology-map.md`)
-- [x] BQ.T3 Task 3 — Architectural Domain Classification (`docs/specs/requirements-review/domain-classification.md`)
-- [x] BQ.T4 Task 4 — Gap Analysis (`docs/specs/requirements-review/gap-analysis.md`)
+- [x] BQ.T1 Task 1 — Inventory & Baseline Audit (`docs/reviews/requirements-review/inventory.md`)
+- [x] BQ.T2 Task 2 — Terminology Standardisation (`docs/reviews/requirements-review/terminology-map.md`)
+- [x] BQ.T3 Task 3 — Architectural Domain Classification (`docs/reviews/requirements-review/domain-classification.md`)
+- [x] BQ.T4 Task 4 — Gap Analysis (`docs/reviews/requirements-review/gap-analysis.md`)
 - [x] BQ.T5 Task 5 — Rewrite: Core Platform & UX Layer Specs (10 specs)
 - [x] BQ.T6 Task 6 — Rewrite: Explorer & Content Layer Specs (15 specs)
 - [x] BQ.T7 Task 7 — Rewrite: Task Layer, Integration Layer & Domain Specs (14 specs)
-- [x] BQ.T8 Task 8 — Traceability Matrix (`docs/specs/requirements-review/traceability-matrix.md`)
-- [x] BQ.T9 Task 9 — Consolidation Report (`docs/specs/requirements-review/consolidation-report.md`)
-- [x] BQ.T10 Task 10 — Executive Assessment & Strategic Recommendations (`docs/specs/requirements-review/executive-assessment.md`)
+- [x] BQ.T8 Task 8 — Traceability Matrix (`docs/reviews/requirements-review/traceability-matrix.md`)
+- [x] BQ.T9 Task 9 — Consolidation Report (`docs/reviews/requirements-review/consolidation-report.md`)
+- [x] BQ.T10 Task 10 — Executive Assessment & Strategic Recommendations (`docs/reviews/requirements-review/executive-assessment.md`)
 
 ### Phase BT — Pre-BS Requirements Consistency Fixes (MUST complete before Phase BS code)
 
@@ -510,8 +510,8 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 
 > Implements the hybrid storage architecture, record codecs, StorageProvider layer, VSAM/ISAM support,
 > staged transactions, integrity/backup/restore, audit trail, and security hardening defined in
-> `docs/FileForgeWorkbench_Mainframe_Dataset_Architecture.md` and
-> `docs/FileForgeWorkbench_Virtual_File_and_Dataset_Storage_Requirements.md`.
+> `docs/source-documents/dataset-catalog/FileForgeWorkbench_Mainframe_Dataset_Architecture.md` and
+> `docs/source-documents/dataset-catalog/FileForgeWorkbench_Virtual_File_and_Dataset_Storage_Requirements.md`.
 
 #### Wave 1 — Foundations (no dependencies on later waves)
 

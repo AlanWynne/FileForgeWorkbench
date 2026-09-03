@@ -280,7 +280,7 @@ sprint.**
 
 ## 9. Artefact Index
 
-All Phase BQ deliverables are in `docs/specs/requirements-review/`:
+All Phase BQ deliverables are in `docs/reviews/requirements-review/`:
 
 | File | Task | Status |
 |------|------|--------|
