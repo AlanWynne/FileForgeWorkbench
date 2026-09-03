@@ -193,6 +193,15 @@ Phase BS.4 does not implement alternate indexes or the broader transaction,
 backup, and governance layers. Those remain subsequent tasks in
 `dataset-catalog/tasks.md`.
 
+### Phase BS.5: SQLite Record Provider and RRDS
+
+RRDS datasets use a dedicated SQLite database under `relative/`, named from
+the catalogue physical-locator UUID. The `RRDS_RECORDS` table stores the
+relative record number, payload, and an allocation flag. Missing rows represent
+unallocated slots; rows with an empty payload represent allocated blank
+records. Writes use an upsert inside a transaction, deletes remove the row,
+and sequential reads order allocated rows by relative record number.
+
 ---
 
 ## Components and Interfaces

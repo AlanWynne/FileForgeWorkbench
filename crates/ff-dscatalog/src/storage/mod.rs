@@ -7,9 +7,11 @@
 //! Validates: Requirement 19.1, 19.2, 19.3, 19.4
 
 mod native;
+mod rrds;
 mod sqlite_record;
 
 pub use native::NativeFileProvider;
+pub use rrds::{RrdsRecord, RrdsSlot, SqliteRrdsProvider};
 pub use sqlite_record::{
     KeyCollation, KeyDefinition, KeyType, KsdsKeyDefinition, KsdsRecord, PrimaryKeyDefinition,
     SqliteRecordProvider,

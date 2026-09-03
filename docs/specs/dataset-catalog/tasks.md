@@ -478,12 +478,12 @@ This task plan implements the `ff-dscatalog` crate � the mainframe dataset fil
   - [x] 19.5 Write unit and property tests for KSDS operations; verify uniqueness invariant and ordered traversal
     - Validates: Requirement 21.3, 21.4
 
-- [ ] 20. SQLite record provider � VSAM RRDS
-  - [ ] 20.1 Implement RRDS table schema � `RECNO INTEGER PRIMARY KEY, RECORD_DATA BLOB, ALLOCATED BOOLEAN`; distinguish unallocated slot from allocated blank record
+- [x] 20. SQLite record provider � VSAM RRDS
+  - [x] 20.1 Implement RRDS table schema � `RECNO INTEGER PRIMARY KEY, RECORD_DATA BLOB, ALLOCATED BOOLEAN`; distinguish unallocated slot from allocated blank record
     - Validates: Requirement 22.1, 22.2
-  - [ ] 20.2 Implement RRDS operations � direct retrieval, replacement, deletion, sequential iteration by relative record number
+  - [x] 20.2 Implement RRDS operations � direct retrieval, replacement, deletion, sequential iteration by relative record number
     - Validates: Requirement 22.3
-  - [ ] 20.3 Write unit tests for RRDS; verify unallocated vs allocated blank distinction
+  - [x] 20.3 Write unit tests for RRDS; verify unallocated vs allocated blank distinction
     - Validates: Requirement 22.2
 
 - [ ] 21. Native file provider � VSAM ESDS

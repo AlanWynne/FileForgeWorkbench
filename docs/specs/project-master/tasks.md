@@ -522,7 +522,7 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 #### Wave 2 — VSAM and ISAM Providers (depends on Wave 1)
 
 - [ ] BS.4 `SqliteRecordProvider` base + VSAM KSDS — keyed read/write, uniqueness, alternate-index extension point (Tasks 19.1–19.5; 19.4 alternate indexes remains; no system SQLite install required because `rusqlite` uses `bundled`)
-- [ ] BS.5 VSAM RRDS — relative-record store, unallocated vs blank distinction (Tasks 20.1–20.3)
+- [x] BS.5 VSAM RRDS — relative-record store, unallocated vs blank distinction (Tasks 20.1–20.3)
 - [ ] BS.6 VSAM ESDS — append-oriented native file, stable record address, sidecar index (Tasks 21.1–21.4)
 - [ ] BS.7 ISAM — SQLite-backed, shared indexed-record interface with KSDS (Tasks 22.1–22.3)
 

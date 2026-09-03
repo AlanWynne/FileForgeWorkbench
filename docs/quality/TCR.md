@@ -1134,9 +1134,9 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-dscatalog` | 🔴 | — | Req 21.5: KSDS alternate indexes represented as SQLite indexes or mapping tables |
 | `ff-dscatalog` | 🟢 | `storage::sqlite_record::tests::supports_keyed_crud_and_ordered_ranges` | Req 21.6: KSDS record data stored independently of catalogue rows |
 | `ff-dscatalog` | 🟢 | `storage::sqlite_record::SqliteRecordProvider` | Req 21.7: KSDS can use dedicated SQLite database or alternative provider |
-| `ff-dscatalog` | 🔴 | — | Req 22.1: RRDS provider uses SQLite-backed store keyed by relative record number |
-| `ff-dscatalog` | 🔴 | — | Req 22.2: RRDS distinguishes unallocated slot from allocated blank record |
-| `ff-dscatalog` | 🔴 | — | Req 22.3: RRDS supports direct retrieval, replacement, deletion, sequential iteration |
+| `ff-dscatalog` | 🟢 | `storage::rrds::tests::reopens_existing_database` | Req 22.1: RRDS provider uses SQLite-backed store keyed by relative record number |
+| `ff-dscatalog` | 🟢 | `storage::rrds::tests::distinguishes_unallocated_and_allocated_blank` | Req 22.2: RRDS distinguishes unallocated slot from allocated blank record |
+| `ff-dscatalog` | 🟢 | `storage::rrds::tests::writes_replaces_deletes_and_reads_in_order` | Req 22.3: RRDS supports direct retrieval, replacement, deletion, sequential iteration |
 | `ff-dscatalog` | 🔴 | — | Req 23.1: ESDS provider stores records in insertion order in append-oriented native file |
 | `ff-dscatalog` | 🔴 | — | Req 23.2: ESDS issues stable record address for each appended record |
 | `ff-dscatalog` | 🔴 | — | Req 23.3: ESDS sidecar index rebuildable from data file |
