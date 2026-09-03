@@ -16,7 +16,7 @@ sub-project specification to:
 - The implementing crate(s)
 - The quality flag from the baseline audit (Task 1)
 - The rewrite status from Tasks 5–7
-- The current test coverage status from `docs/TCR.md`
+- The current test coverage status from `docs/quality/TCR.md`
 - Any outstanding actions
 
 It is the primary navigation aid for contributors who need to locate the
@@ -34,7 +34,7 @@ spec, the code, and the tests for any given capability.
 | Crate(s) | project-master/tasks.md | Rust crate(s) that implement the spec |
 | Quality Flag | Task 1 inventory | Baseline quality at start of review |
 | Rewrite Status | Tasks 5–7 rewrite-delta | Current state after rewrite phase |
-| TCR Status | docs/TCR.md | Automated test coverage summary |
+| TCR Status | docs/quality/TCR.md | Automated test coverage summary |
 | Actions | — | Outstanding work items |
 
 ### Quality Flag Key
@@ -245,7 +245,7 @@ updated criterion text.
 ### 12.3 NEW-TEST-NEEDED
 
 The following new criteria were added during the rewrite phase and have no
-existing test coverage. Each requires a 🔴 row in `docs/TCR.md`.
+existing test coverage. Each requires a 🔴 row in `docs/quality/TCR.md`.
 
 | Spec | New Content | Priority |
 |------|-------------|----------|

@@ -139,7 +139,7 @@ Open a GitHub Issue using the **Bug Report** template. Please include:
 - Actual behaviour
 - Operating system and Rust version (`rustc --version`)
 
-Bugs are tracked in [`docs/bugs.md`](docs/bugs.md).
+Bugs are tracked in [`docs/status/bugs.md`](docs/status/bugs.md).
 
 ---
 
@@ -150,7 +150,7 @@ go through the requirements gate documented in
 [`.amazonq/rules/new-requirements-gate.md`](.amazonq/rules/new-requirements-gate.md)
 before any code is written.
 
-Feature requests are tracked in [`docs/change-log.md`](docs/change-log.md).
+Feature requests are tracked in [`docs/status/change-log.md`](docs/status/change-log.md).
 
 ---
 

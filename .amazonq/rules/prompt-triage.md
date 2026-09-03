@@ -21,7 +21,7 @@ Do this silently — do not narrate the classification to the user unless they a
 
 ## Logging Rules
 
-### BUG → append to `docs/bugs.md`
+### BUG → append to `docs/status/bugs.md`
 
 Append a new row to the Bug Table using the next available `B###` ID:
 
@@ -35,12 +35,12 @@ Severity guide:
 - `Medium` — partial breakage or awkward workaround
 - `Low` — cosmetic or minor inconvenience
 
-Also append a row to the `docs/bugs.md` Changelog section:
+Also append a row to the `docs/status/bugs.md` Changelog section:
 ```
 | <Phase or date> | B### added — <short description> |
 ```
 
-### NEW REQUIREMENT → append to `docs/change-log.md`
+### NEW REQUIREMENT → append to `docs/status/change-log.md`
 
 Append a new entry under the `## New Requirements` section:
 
@@ -55,7 +55,7 @@ Append a new entry under the `## New Requirements` section:
 
 Then follow the full gate in `.amazonq/rules/new-requirements-gate.md`.
 
-### CHANGE REQUEST → append to `docs/change-log.md`
+### CHANGE REQUEST → append to `docs/status/change-log.md`
 
 Append a new entry under the `## Change Requests` section:
 
@@ -90,9 +90,9 @@ and log it before proceeding.
 ## Determining the Next ID
 
 Before appending:
-- For bugs: read `docs/bugs.md`, find the highest `B###` number, increment by 1.
-- For new requirements: read `docs/change-log.md`, find the highest `CR-NR-###`, increment by 1.
-- For change requests: read `docs/change-log.md`, find the highest `CR-CH-###`, increment by 1.
+- For bugs: read `docs/status/bugs.md`, find the highest `B###` number, increment by 1.
+- For new requirements: read `docs/status/change-log.md`, find the highest `CR-NR-###`, increment by 1.
+- For change requests: read `docs/status/change-log.md`, find the highest `CR-CH-###`, increment by 1.
 
 ---
 

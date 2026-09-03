@@ -14,13 +14,13 @@ No implementation code and no test code may be written until all three steps are
    - If the change adjusts or extends an existing requirement, edit that criterion in place and note the change.
    - If the change introduces new behaviour with no existing criterion, add a new numbered criterion.
    - Requirements documents are the source of truth — code must never get ahead of them.
-2. Update `docs/TCR.md` — add a 🔴 NOT COVERED row for each new criterion
+2. Update `docs/quality/TCR.md` — add a 🔴 NOT COVERED row for each new criterion
 3. Write the failing test — must carry `// Validates: Requirement X.Y` and fail before implementation
 
 **Full gate sequence:**
 ```
 1. requirements.md updated   ← ALWAYS FIRST, no exceptions
-2. docs/TCR.md updated
+2. docs/quality/TCR.md updated
 3. Test written and FAILING
 4. Implementation written
 5. Test passing

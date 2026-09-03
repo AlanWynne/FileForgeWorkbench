@@ -47,7 +47,7 @@
 3. Fill in `Severity`, `Component` (crate name or `ff-desktop`), and a clear one-line `Description`.
 4. Link to the relevant `requirements.md` criterion in `Linked Req`.
 5. Reference the manual test plan row in `Manual Test` if applicable.
-6. If the bug reveals a **missing or incorrect acceptance criterion**, update `docs/specs/<sub-project>/requirements.md` and add a 🔴 row to `docs/TCR.md` before fixing the code (per the new-requirements gate).
+6. If the bug reveals a **missing or incorrect acceptance criterion**, update `docs/specs/<sub-project>/requirements.md` and add a 🔴 row to `docs/quality/TCR.md` before fixing the code (per the new-requirements gate).
 
 ---
 
@@ -55,7 +55,7 @@
 
 | Date | Change |
 |------|--------|
-| Phase W | Initial register created — B001–B010 from known gaps documented in `docs/manual-test-plan.md` and `docs/TCR.md` |
+| Phase W | Initial register created — B001–B010 from known gaps documented in `docs/quality/manual-test-plan.md` and `docs/quality/TCR.md` |
 | Phase AS | B005 added — Key Assignments dialog Tab-steal focus bug (FIXED) |
 | Phase AS | B006 added — Key Assignments dialog Ctrl+C keystroke freeze bug (FIXED) |
 | Phase AS | B007 added — option 2 "command not yet implemented" error — stale binary, VERIFIED fixed by rebuild |

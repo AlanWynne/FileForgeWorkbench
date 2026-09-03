@@ -5,6 +5,8 @@ target/
 *.pdb
 *.d
 *.rlib
+vendor/egui-file-dialog/.cargo-ok
+vendor/egui-file-dialog/.cargo_vcs_info.json
 
 # ── OS artefacts ─────────────────────────────────────────────────────────────
 .DS_Store

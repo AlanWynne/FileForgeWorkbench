@@ -11,7 +11,7 @@ the following gate sequence MUST be completed in full before touching any source
 3. DESIGN     write or update docs/specs/<sub-project>/design.md
 4. TASKS      write or update docs/specs/<sub-project>/tasks.md
 5. MASTER     add the new tasks to docs/specs/project-master/tasks.md
-6. TCR        add a 🔴 NOT COVERED row to docs/TCR.md for each new criterion
+6. TCR add a 🔴 NOT COVERED row to docs/quality/TCR.md for each new criterion
 7. CONFIRM    show the user the completed documentation and ask for approval
 8. CODE       only now write failing tests, then implementation
 ```
@@ -63,7 +63,7 @@ the following gate sequence MUST be completed in full before touching any source
 - Use `[ ]` for all new entries.
 - Update the Summary counts table at the bottom.
 
-### Step 6 — docs/TCR.md
+### Step 6 — docs/quality/TCR.md
 
 - Add one `🔴 NOT COVERED` row per new acceptance criterion.
 - Format: `| \`ff-desktop\` | 🔴 | — | Req X.Y: <one-line description> |`

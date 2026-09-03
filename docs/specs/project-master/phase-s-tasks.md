@@ -8,7 +8,7 @@ All tasks follow the mandatory TDD workflow: failing test → implementation →
 - [ ] S.0 Fix `ff-dsalloc` property test compile failure
   - [ ] S.0.1 Replace `'A'..='Z'` and `'0'..='9'` char range literals in `valid_dsn_strategy()` with `prop::char::ranges(vec!['A'..='Z'].into())` equivalents so `cargo test --workspace` exits 0
   - [ ] S.0.2 Fix moved-value borrow of `expected` at line 157 — change `prop_assert_eq!(result.text, expected, ...)` to `prop_assert_eq!(result.text, expected.clone(), ...)`
-  - [ ] S.0.3 Confirm `cargo test -p ff-dsalloc` passes and `docs/TCR.md` row for `ff-dsalloc` updated to ✅
+  - [ ] S.0.3 Confirm `cargo test -p ff-dsalloc` passes and `docs/quality/TCR.md` row for `ff-dsalloc` updated to ✅
 
 - [ ] S.1 Native file-open dialog (`File > Open…`)
   - [ ] S.1.1 Add `rfd` crate to `ff-desktop` dependencies (`rfd = { version = "0.15", features = ["async-std"] }`)

@@ -19,6 +19,6 @@ When adding a source, preserve its original filename and record it in
 If the source is copied from elsewhere, include its origin and capture date
 in the register.
 
-Existing source-like documents remain in their current locations during this
-initial organization phase. They can be moved here later after links and
-provenance have been checked.
+Dataset and mainframe source documents are now organized under
+[`dataset-catalog/`](dataset-catalog/). Additional source material can be
+migrated here after its links and provenance have been checked.

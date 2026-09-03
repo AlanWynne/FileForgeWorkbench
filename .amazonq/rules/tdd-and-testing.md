@@ -22,7 +22,7 @@ You may not write a single line of implementation code before steps 2 and 3 are 
 A task is only done when:
 - Every acceptance criterion has at least one test
 - All tests pass (`cargo test` exits 0)
-- `docs/TCR.md` is updated
+- `docs/quality/TCR.md` is updated
 
 ## Test Organisation
 
@@ -67,7 +67,7 @@ fn scroll_down_clamps_at_last_line() {
 
 ## Test Coverage Report (TCR)
 
-The TCR lives at `docs/TCR.md` and is the authoritative record of test status.
+The TCR lives at `docs/quality/TCR.md` and is the authoritative record of test status.
 
 | Status | Symbol | Meaning |
 |--------|--------|---------|

@@ -476,5 +476,5 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
     - Validates: Requirement 15.4, 15.5, 15.6
   - [x] 29.5 Run `cargo test --workspace` — confirm all tests green
   - [x] 29.6 Run `cargo clippy -p ff-desktop -- -D warnings` — confirm clean
-  - [x] 29.7 Update `docs/TCR.md` — mark all Req 15 rows ✅ or 🔲
+  - [x] 29.7 Update `docs/quality/TCR.md` — mark all Req 15 rows ✅ or 🔲
   - [x] 29.8 Update `docs/specs/project-master/tasks.md` — mark Phase AH complete

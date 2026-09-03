@@ -173,7 +173,7 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
   - [x] 10.4 Write unit tests for FilesPanel tab round-trip through session
     - Validates: Requirement 11.3
   - [x] 10.5 Run `cargo test --workspace` — all tests pass
-  - [x] 10.6 Update `docs/TCR.md`
+  - [x] 10.6 Update `docs/quality/TCR.md`
   - [x] 10.7 Update `docs/specs/project-master/tasks.md`
 
 - [x] 15. Catalog Properties — Repository Path Display (Req 15)
@@ -214,7 +214,7 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
     - Validates: Requirement 14.6
   - [x] 14.9 Run `cargo test -p ff-desktop` — 449 tests pass
   - [x] 14.10 Run `cargo clippy -p ff-desktop -- -D warnings` — clean
-  - [x] 14.11 Update `docs/TCR.md` and `docs/specs/project-master/tasks.md`
+  - [x] 14.11 Update `docs/quality/TCR.md` and `docs/specs/project-master/tasks.md`
 
   - [x] 13.1 Add `catalogs_path()` helper to `SessionManager` returning `{session_dir}/catalogs.toml`
     - Validates: Requirement 2.1
@@ -230,7 +230,7 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
     - Validates: Requirement 2.1, 2.2
   - [x] 13.7 Run `cargo test -p ff-desktop` — 382 tests pass
   - [x] 13.8 Run `cargo clippy -p ff-desktop -- -D warnings` — clean
-  - [x] 13.9 Update `docs/TCR.md` and `docs/specs/project-master/tasks.md`
+  - [x] 13.9 Update `docs/quality/TCR.md` and `docs/specs/project-master/tasks.md`
   - [x] 12.1 Add `AllocatedDataset` struct to `files_panel.rs` with fields: `name`, `dsorg`, `recfm`, `lrecl`, `blksize`, `description`
     - Validates: Requirement 13.1
   - [x] 12.2 Add `datasets: HashMap<String, Vec<AllocatedDataset>>` field to `FilesPanelState`; add `pending_alloc_catalog: Option<String>` to track which catalog opened the dialog
@@ -255,7 +255,7 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
     - Validates: Requirement 13.1–13.5
   - [x] 12.12 Run `cargo test -p ff-desktop` — 449 tests pass
   - [x] 12.13 Run `cargo clippy -p ff-desktop -- -D warnings` — clean
-  - [x] 12.14 Update `docs/TCR.md` and `docs/specs/project-master/tasks.md`
+  - [x] 12.14 Update `docs/quality/TCR.md` and `docs/specs/project-master/tasks.md`
 
 - [ ] 17. Dataset file creation on first open (Req 16.3, 16.6)
   - [ ] 17.1 Write failing test `opening_missing_dataset_creates_file_and_parent_dirs` — calls the open handler with a resolved path whose parent exists but the file does not; asserts the file is created on disk
@@ -270,4 +270,4 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
     - Validates: Requirement 16.3, 16.6
   - [ ] 17.6 Run `cargo test -p ff-desktop` — confirm green
   - [ ] 17.7 Run `cargo clippy -p ff-desktop -- -D warnings` — clean
-  - [ ] 17.8 Update `docs/TCR.md` Req 16.3 and 16.6 rows to ✅ PASS
+  - [ ] 17.8 Update `docs/quality/TCR.md` Req 16.3 and 16.6 rows to ✅ PASS

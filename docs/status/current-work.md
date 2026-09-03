@@ -19,7 +19,7 @@ summary short and link to the detailed task list.
 |------|--------|---------------|-------------------|
 | Workspace and project master | ACTIVE | Keep implementation status and dependencies current | [project-master tasks](../specs/project-master/tasks.md) |
 | Feature specifications | NEXT | Select the next incomplete feature task | [feature specs](../specs/) |
-| Requirements quality | NEXT | Resolve review findings and maintain traceability | [requirements review](../specs/requirements-review/) |
+| Requirements quality | NEXT | Resolve review findings and maintain traceability | [requirements review](../reviews/requirements-review/) |
 | Deferred connectors | DEFERRED | Network, FTP/SFTP, mainframe, and cloud connectors | [connector specs](../specs/) |
 
 ## Before starting work
@@ -38,3 +38,8 @@ project-master dashboard.
 
 **Blockers:** None recorded here. Feature-specific blockers belong in the
 relevant `tasks.md` file.
+
+## Project records
+
+- [Bug register](bugs.md)
+- [Change log](change-log.md)

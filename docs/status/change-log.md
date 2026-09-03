@@ -25,7 +25,7 @@ New capabilities that did not previously exist.
 ### CR-NR-001 â€” Prompt triage and change tracking
 - **Date/Phase**: Phase AS
 - **Prompt**: "Can we create a steering rule that every prompt is evaluated as a bug or a new requirement"
-- **Description**: Add a steering rule that classifies every user prompt as a bug, new requirement, change request, question, task, or refactor. Bugs are logged to `docs/bugs.md`; new requirements and change requests are logged to `docs/change-log.md`.
+- **Description**: Add a steering rule that classifies every user prompt as a bug, new requirement, change request, question, task, or refactor. Bugs are logged to `docs/status/bugs.md`; new requirements and change requests are logged to `docs/status/change-log.md`.
 - **Status**: DONE
 - **Linked spec**: `.amazonq/rules/prompt-triage.md` (new rule file)
 

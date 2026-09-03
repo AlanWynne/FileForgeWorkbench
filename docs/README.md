@@ -13,6 +13,7 @@ and work tracking.
 | [reviews](reviews/) | Audits, gap analysis, and requirements review reports |
 | [decisions](decisions/) | Architecture decision records |
 | [status](status/) | Current project status, active work, and blockers |
+| [quality](quality/) | Test coverage, manual test plans, and validation records |
 | [working-notes](working-notes/) | Temporary notes that may later become formal documentation |
 | [`../tools/`](../tools/) | Reusable project development and maintenance tools |
 
