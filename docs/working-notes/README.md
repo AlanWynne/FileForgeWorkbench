@@ -7,3 +7,7 @@ entry when they become authoritative.
 The former root-level `FileForgeWorkbench-ScratchNotes.md` is retained as
 [`scratch-notes.md`](scratch-notes.md). It contains mixed historical notes and
 commands and should be reviewed and split before becoming authoritative.
+
+Historical one-off repair scripts are kept under [`scripts/`](scripts/) so
+they remain available for reference without being mistaken for supported
+project tooling.

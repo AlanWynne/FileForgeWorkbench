@@ -13,6 +13,13 @@ part of the product runtime.
 | `rust/` | Small Rust-based maintenance tools, if needed |
 | `fixtures/` | Small input files required by a tool or validation |
 
+Current reusable utilities:
+
+- [`powershell/ffwb_make.ps1`](powershell/ffwb_make.ps1) - common build and
+  test commands.
+- [`powershell/push-to-github.ps1`](powershell/push-to-github.ps1) - explicitly
+  confirmed commit, tag, and push workflow.
+
 Each reusable tool should include:
 
 - A descriptive filename.

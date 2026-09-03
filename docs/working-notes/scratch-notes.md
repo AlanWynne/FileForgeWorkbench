@@ -17,8 +17,8 @@
     C:\tools\scripts\Copy-Markdown.ps1 -Source "C:\workspace\VSC\FileForgeWorkbench" -Destination "C:\Users\A142367\OneDrive - Standard Bank\01_Active_Projects\FileForgeWorkBench" 
 		
 	Push project to Github. 	
-	.\push-to-github.ps1 -Message "Phase AY: ..." -Tag "phase-ay"
-	.\push-to-github.ps1 -Message "Phase AN (partial): ..." -Tag "phase-an-part1"
+	.\tools\powershell\push-to-github.ps1 -Message "Phase AY: ..." -Tag "phase-ay"
+	.\tools\powershell\push-to-github.ps1 -Message "Phase AN (partial): ..." -Tag "phase-an-part1"
 
 ### New Requirements
 
