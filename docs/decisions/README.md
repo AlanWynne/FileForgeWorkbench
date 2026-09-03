@@ -3,5 +3,6 @@
 Record decisions that affect multiple features or establish a durable
 architectural constraint here.
 
-Existing decision records are under [`../adr/`](../adr/). New records may be
-created here or added to `adr/` until one location is selected consistently.
+The canonical decision-record location is [`../adr/`](../adr/). This folder
+provides the category entry point; add new ADRs under `docs/adr/` rather than
+creating duplicate records here.

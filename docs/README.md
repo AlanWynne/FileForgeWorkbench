@@ -34,3 +34,7 @@ and work tracking.
 - [Source register](requirements/source-register.md)
 - [Project master status](specs/project-master/tasks.md)
 - [Project readiness summary](specs/project-master/readiness-summary.md)
+- [Bug register](status/bugs.md)
+- [Change log](status/change-log.md)
+- [Test coverage report](quality/TCR.md)
+- [Manual test plan](quality/manual-test-plan.md)

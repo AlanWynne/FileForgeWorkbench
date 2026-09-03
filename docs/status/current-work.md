@@ -18,6 +18,7 @@ summary short and link to the detailed task list.
 | Area | Status | Current focus | Detailed tracking |
 |------|--------|---------------|-------------------|
 | Workspace and project master | ACTIVE | Keep implementation status and dependencies current | [project-master tasks](../specs/project-master/tasks.md) |
+| Dataset storage | NEXT | Implement SQLite-backed VSAM KSDS record provider | [dataset-catalog tasks](../specs/dataset-catalog/tasks.md) |
 | Feature specifications | NEXT | Select the next incomplete feature task | [feature specs](../specs/) |
 | Requirements quality | NEXT | Resolve review findings and maintain traceability | [requirements review](../reviews/requirements-review/) |
 | Deferred connectors | DEFERRED | Network, FTP/SFTP, mainframe, and cloud connectors | [connector specs](../specs/) |
@@ -33,8 +34,8 @@ summary short and link to the detailed task list.
 
 ## Active work item
 
-**Current focus:** Select and record the next implementation task from the
-project-master dashboard.
+**Current focus:** Phase BS.4 - implement the SQLite record-provider base and
+VSAM KSDS operations, beginning with dataset-catalog Tasks 19.1-19.5.
 
 **Blockers:** None recorded here. Feature-specific blockers belong in the
 relevant `tasks.md` file.
