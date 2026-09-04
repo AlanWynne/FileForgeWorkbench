@@ -1319,24 +1319,24 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-command-semantics` | 🔴 | -- | Req 9.1: ALLOCATE command routes to dataset allocator with TSO keyword operands |
-| `ff-command-semantics` | 🔴 | -- | Req 9.2: FREE command routes to dataset allocator |
-| `ff-command-semantics` | 🔴 | -- | Req 9.3: DELETE command routes to VFS/catalog layer |
-| `ff-command-semantics` | 🔴 | -- | Req 9.4: RENAME oldname newname routes to VFS/catalog layer |
-| `ff-command-semantics` | 🔴 | -- | Req 9.5: LISTCAT [pattern] routes to catalog registry |
-| `ff-command-semantics` | 🔴 | -- | Req 9.6: LISTDS dsname [MEMBERS] routes to VFS layer |
-| `ff-command-semantics` | 🔴 | -- | Req 9.7: LISTALC routes to dataset allocator |
-| `ff-command-semantics` | 🔴 | -- | Req 9.8: SUBMIT dsname routes to FFW-JES subsystem |
-| `ff-command-semantics` | 🔴 | -- | Req 9.9: STATUS [jobname] routes to FFW-JES job status panel |
-| `ff-command-semantics` | 🔴 | -- | Req 9.10: EDIT dsname routes to file-operations pipeline |
-| `ff-command-semantics` | 🔴 | -- | Req 9.11: TSO-style positional and keyword operand parsing |
-| `ff-command-semantics` | 🔴 | -- | Req 9.12: SET PREFIX and automatic dataset name qualification |
-| `ff-command-semantics` | 🔴 | -- | Req 9.13: command continuation via trailing backslash |
-| `ff-command-semantics` | 🔴 | -- | Req 9.14: ds:// URI scheme bypasses session prefix, routes to VFS |
-| `ff-command-semantics` | 🔴 | -- | Req 9.15: namespace conflict resolution built-in > plugin > macro |
-| `ff-command-semantics` | 🔴 | -- | Req 9.16: capability model -- commands declare and verify required capabilities |
-| `ff-command-semantics` | 🔴 | -- | Req 9.17: secret operand redaction from history, logs, and status messages |
-| `ff-command-semantics` | 🔴 | -- | Req 9.18: structured audit events on every command execution |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 9.1: ALLOCATE command routes to dataset allocator with TSO keyword operands |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 9.2: FREE command routes to dataset allocator |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 9.3: DELETE command routes to VFS/catalog layer |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 9.4: RENAME oldname newname routes to VFS/catalog layer |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 9.5: LISTCAT [pattern] routes to catalog registry |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 9.6: LISTDS dsname [MEMBERS] routes to VFS layer |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 9.7: LISTALC routes to dataset allocator |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 9.8: SUBMIT dsname routes to FFW-JES subsystem |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 9.9: STATUS [jobname] routes to FFW-JES job status panel |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 9.10: EDIT dsname routes to file-operations pipeline |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 9.11: TSO-style positional and keyword operand parsing |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 9.12: SET PREFIX and automatic dataset name qualification |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 9.13: command continuation via trailing backslash |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 9.14: ds:// URI scheme bypasses session prefix, routes to VFS |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 9.15: namespace conflict resolution built-in > plugin > macro |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 9.16: capability model -- commands declare and verify required capabilities |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 9.17: secret operand redaction from history, logs, and status messages |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 9.18: structured audit events on every command execution |
 
 
 

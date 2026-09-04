@@ -802,7 +802,8 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 - [x] BZ.impl menu-and-statusbar: SCROLL field, fastpath, split screen, list panel LOCATE (Tasks 24-30 in menu-and-statusbar/tasks.md)
 
 - [x] CA.1 startup-and-session EARS integration (Req 20: LOGOFF, TIME, STATUS, session timestamps)- [ ] CA.impl startup-and-session: session timestamps, LOGOFF, TIME, STATUS routing (Tasks 28-33 in startup-and-session/tasks.md)
-- [ ] CB.impl command-semantics P1: ALLOCATE through STATUS + FTSO operand parsing (Tasks 19-24 in command-semantics/tasks.md)
+
+- [x] CB.1 command-semantics EARS integration (Req 9: TSO commands, operand parsing, capabilities, audit)- [ ] CB.impl command-semantics P1: ALLOCATE through STATUS + FTSO operand parsing (Tasks 19-24 in command-semantics/tasks.md)
 - [ ] CC.impl FFW-JES P1 core: SDSF panel framework, NP column, action chars, main panel (Tasks 20-25 in FFW-JES/tasks.md)
 - [ ] CD.impl FFW-JES P1 extended: ST panel, FILTER/FIND/LOCATE, SET P1 commands (Tasks 26-29 in FFW-JES/tasks.md)
 

@@ -358,48 +358,48 @@ This is a **Wave 5 (Command Engine)** sub-project. It depends on `ff-command` (c
 
 ## Phase CB -- EARS Integration (Requirement 9)
 
-- [ ] 19. TSO dataset management commands (ALLOCATE, FREE, DELETE, RENAME, LISTCAT, LISTDS, LISTALC)
-  - [ ] 19.1 Register `ALLOCATE` command routing to dataset allocator with TSO keyword operand parsing
-  - [ ] 19.2 Register `FREE` command routing to dataset allocator
-  - [ ] 19.3 Register `DELETE` command routing to VFS/catalog layer
-  - [ ] 19.4 Register `RENAME oldname newname` command routing to VFS/catalog layer
-  - [ ] 19.5 Register `LISTCAT [pattern]` command routing to catalog registry
-  - [ ] 19.6 Register `LISTDS dsname [MEMBERS]` command routing to VFS layer
-  - [ ] 19.7 Register `LISTALC` command routing to dataset allocator
-  - [ ] 19.8 Write unit tests for each command registration, argument parsing, and routing dispatch
+- [x] 19. TSO dataset management commands (ALLOCATE, FREE, DELETE, RENAME, LISTCAT, LISTDS, LISTALC)
+  - [x] 19.1 Register `ALLOCATE` command routing to dataset allocator with TSO keyword operand parsing
+  - [x] 19.2 Register `FREE` command routing to dataset allocator
+  - [x] 19.3 Register `DELETE` command routing to VFS/catalog layer
+  - [x] 19.4 Register `RENAME oldname newname` command routing to VFS/catalog layer
+  - [x] 19.5 Register `LISTCAT [pattern]` command routing to catalog registry
+  - [x] 19.6 Register `LISTDS dsname [MEMBERS]` command routing to VFS layer
+  - [x] 19.7 Register `LISTALC` command routing to dataset allocator
+  - [x] 19.8 Write unit tests for each command registration, argument parsing, and routing dispatch
   - Covers: Requirement 9.1-9.7
 
-- [ ] 20. TSO job commands (SUBMIT, STATUS) and EDIT routing extension
-  - [ ] 20.1 Register `SUBMIT dsname` command routing to FFW-JES subsystem
-  - [ ] 20.2 Register `STATUS [jobname]` command routing to FFW-JES job status panel
-  - [ ] 20.3 Extend `EDIT` command handler to accept dataset name argument and route to file-operations pipeline
-  - [ ] 20.4 Write unit tests for SUBMIT routing, STATUS with/without jobname, and EDIT with dataset argument
+- [x] 20. TSO job commands (SUBMIT, STATUS) and EDIT routing extension
+  - [x] 20.1 Register `SUBMIT dsname` command routing to FFW-JES subsystem
+  - [x] 20.2 Register `STATUS [jobname]` command routing to FFW-JES job status panel
+  - [x] 20.3 Extend `EDIT` command handler to accept dataset name argument and route to file-operations pipeline
+  - [x] 20.4 Write unit tests for SUBMIT routing, STATUS with/without jobname, and EDIT with dataset argument
   - Covers: Requirement 9.8, 9.9, 9.10
 
-- [ ] 21. TSO-style operand parsing and session prefix
-  - [ ] 21.1 Implement TSO-style operand parser: positional (space-separated) and keyword (`KEYWORD(value)` or `KEYWORD value`) forms
-  - [ ] 21.2 Implement `SET PREFIX dsn-prefix` command and session-level prefix state
-  - [ ] 21.3 Implement automatic prefix qualification for unqualified dataset names in commands
-  - [ ] 21.4 Write unit tests for positional operands, keyword operands, prefix qualification, and unqualified name expansion
+- [x] 21. TSO-style operand parsing and session prefix
+  - [x] 21.1 Implement TSO-style operand parser: positional (space-separated) and keyword (`KEYWORD(value)` or `KEYWORD value`) forms
+  - [x] 21.2 Implement `SET PREFIX dsn-prefix` command and session-level prefix state
+  - [x] 21.3 Implement automatic prefix qualification for unqualified dataset names in commands
+  - [x] 21.4 Write unit tests for positional operands, keyword operands, prefix qualification, and unqualified name expansion
   - Covers: Requirement 9.11, 9.12
 
-- [ ] 22. Command continuation, ds:// URI, and namespace conflict resolution
-  - [ ] 22.1 Implement trailing backslash continuation: accumulate lines until no trailing backslash, then submit as single command
-  - [ ] 22.2 Implement `ds://` URI scheme recognition: bypass session prefix, route directly to VFS catalog layer
-  - [ ] 22.3 Implement namespace conflict resolution: built-in > plugin > macro priority; qualified name access via `plugin:commandname`
-  - [ ] 22.4 Write unit tests for continuation accumulation, ds:// passthrough, and conflict resolution priority
+- [x] 22. Command continuation, ds:// URI, and namespace conflict resolution
+  - [x] 22.1 Implement trailing backslash continuation: accumulate lines until no trailing backslash, then submit as single command
+  - [x] 22.2 Implement `ds://` URI scheme recognition: bypass session prefix, route directly to VFS catalog layer
+  - [x] 22.3 Implement namespace conflict resolution: built-in > plugin > macro priority; qualified name access via `plugin:commandname`
+  - [x] 22.4 Write unit tests for continuation accumulation, ds:// passthrough, and conflict resolution priority
   - Covers: Requirement 9.13, 9.14, 9.15
 
-- [ ] 23. Capability model, secret operands, and audit events
-  - [ ] 23.1 Implement capability declaration on command registration: each command declares required capabilities
-  - [ ] 23.2 Implement capability verification on invocation: check required capabilities against session context
-  - [ ] 23.3 Implement secret operand declaration and redaction from history, logs, and status messages
-  - [ ] 23.4 Implement structured audit event emission on every command execution (name, args-redacted, timestamp, user, outcome)
-  - [ ] 23.5 Write unit tests for capability check pass/fail, secret redaction in history and logs, and audit event structure
+- [x] 23. Capability model, secret operands, and audit events
+  - [x] 23.1 Implement capability declaration on command registration: each command declares required capabilities
+  - [x] 23.2 Implement capability verification on invocation: check required capabilities against session context
+  - [x] 23.3 Implement secret operand declaration and redaction from history, logs, and status messages
+  - [x] 23.4 Implement structured audit event emission on every command execution (name, args-redacted, timestamp, user, outcome)
+  - [x] 23.5 Write unit tests for capability check pass/fail, secret redaction in history and logs, and audit event structure
   - Covers: Requirement 9.16, 9.17, 9.18
 
-- [ ] 24. TCR update for Requirement 9
-  - [ ] 24.1 Update docs/quality/TCR.md -- mark all Req 9.1-9.18 rows as covered once tests pass
+- [x] 24. TCR update for Requirement 9
+  - [x] 24.1 Update docs/quality/TCR.md -- mark all Req 9.1-9.18 rows as covered once tests pass
   - Covers: Requirement 9 (all criteria)
 
 ## Phase CI -- EARS Integration (Requirement 10)

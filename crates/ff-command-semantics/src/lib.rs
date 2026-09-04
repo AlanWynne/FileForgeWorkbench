@@ -30,6 +30,7 @@ pub mod parser;
 pub mod scope;
 pub mod session;
 pub mod status;
+pub mod tso;
 
 // ─── Public API Re-exports ──────────────────────────────────────────────────
 
@@ -42,3 +43,8 @@ pub use parser::{CommandToken, ParsedCommand, PrimaryCommandParser, QuoteStyle};
 pub use scope::{ColumnBounds, ResolvedScope, ScopeFilter, ScopeLines, ScopeResolver, ScopeSource};
 pub use session::{PendingLineCommand, SessionState};
 pub use status::{StatusKind, StatusMessage};
+pub use tso::{
+    check_capabilities, is_ds_uri, redact_secrets, route_tso_command, strip_ds_uri, AuditEvent,
+    AuditOutcome, CapabilitySet, CommandContinuation, CommandEntry, CommandPriority, SessionPrefix,
+    TsoOperand, TsoOperandParser, TsoRoute,
+};
