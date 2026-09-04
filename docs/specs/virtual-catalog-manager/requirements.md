@@ -473,27 +473,36 @@ my work is not lost and I can see what I have created.
 
 **Source:** [DSC] dataset CRUD; [WB] session persistence.
 
+> **Revised by CR-CH-006 (Phase BU):** The previous in-memory HashMap / session-TOML store
+> is replaced by the SQLite catalog database owned by `ff-dscatalog`. All allocation and
+> listing operations now go through the `CatalogRegistry` API. The `AllocatedDataset` struct
+> and `datasets` HashMap are removed from `FilesPanelState`.
+
 #### Acceptance Criteria
 
-13.1 THE `FilesPanelState` SHALL maintain a `datasets` map keyed by catalog name, storing a
-     `Vec<AllocatedDataset>` for each catalog. Each `AllocatedDataset` SHALL carry: `name`
-     (DSN string), `dsorg` (PS/PO/PDSE/GDG), `recfm`, `lrecl`, `blksize`, and `description`.
+13.1 WHEN the Dataset_Allocation_Dialog confirms with `AllocOutcome::Confirmed`, THE shell SHALL
+     invoke `CatalogRegistry::allocate(catalog_name, alloc_params)`, which writes the new
+     dataset entry to the SQLite `catalog.db` of the target Mainframe catalog via
+     `ff-dscatalog`. No in-memory HashMap or session-TOML entry SHALL be created for the
+     dataset.
 
-13.2 WHEN the Dataset_Allocation_Dialog confirms with `AllocOutcome::Confirmed`, THE shell SHALL
-     extract the validated `AllocParams` from the form and insert a new `AllocatedDataset` entry
-     into the `datasets` map under the catalog name that was right-clicked to open the dialog.
-
-13.3 WHEN a catalog node is selected in the left tree, THE right content area SHALL populate
-     `ContentAreaState::entries` from the `datasets` map for that catalog, converting each
-     `AllocatedDataset` to a `ContentEntry` (name, dsorg as type, empty size, empty modified,
+13.2 WHEN a Mainframe catalog node is selected in the Files Panel left tree, THE right content
+     area SHALL populate `ContentAreaState::entries` by calling
+     `CatalogRegistry::list_datasets(catalog_name)`, which queries the SQLite catalog and
+     returns `DatasetRecord` rows. Each row SHALL be converted to a `ContentEntry` (name from
+     DSN, type from DSORG, size and modified from catalog metadata,
      `is_container = false` for PS; `is_container = true` for PO/PDSE/GDG).
 
-13.4 THE `datasets` map SHALL be persisted to the session TOML under
-     `[catalog_datasets.<catalog_name>]` and restored on next launch so that allocated datasets
-     survive application restarts.
+13.3 WHEN a Mainframe catalog node is selected in the File Explorer Panel sidebar, THE content
+     pane SHALL populate its dataset list by calling the same
+     `CatalogRegistry::list_datasets(catalog_name)` API.
 
-13.5 WHEN a catalog is deleted from the registry, ALL datasets stored under that catalog name
-     SHALL also be removed from the `datasets` map.
+13.4 Dataset persistence across application restarts SHALL be provided automatically by the
+     SQLite catalog database; no additional session-TOML serialisation of dataset entries
+     is required or permitted.
+
+13.5 WHEN a catalog is deleted from the registry, THE SQLite `catalog.db` for that catalog
+     SHALL be closed and unmounted; no separate cleanup of a datasets map is required.
 
 ---
 
@@ -565,43 +574,48 @@ so that I know where the catalog's data is stored on disk.
 
 ---
 
-### Requirement 16: VFS Dataset Path Resolution from Catalog Repository
+### Requirement 16: VFS Dataset Path Resolution via SQLite Catalog
 
 **User Story:** As a mainframe developer, I want to open a Mainframe dataset in the editor and
-have FFWB locate the actual file on disk by combining the catalog's repository path with the
-dataset name, so that I can read and edit the dataset's content.
+have FFWB locate the actual file on disk by querying the SQLite catalog for the dataset's
+physical locator, so that I can read and edit the dataset's content regardless of how the
+physical file is named on disk.
 
-**Source:** CR-NR-012; [WB] VFS-backed throughout; [DSC] dataset storage.
+**Source:** CR-NR-012 (original); CR-CH-006 (revised); [WB] VFS-backed throughout;
+[DSC] dataset-catalog Requirement 20 (UUID layout).
+
+> **Revised by CR-CH-006 (Phase BU):** The previous `resolve_dataset_path()` pure function
+> that derived a path from the DSN using dot-to-directory-separator mapping is replaced by
+> a catalog lookup. The SQLite catalog is the sole authority for physical location.
 
 #### Acceptance Criteria
 
-16.1 WHEN a Mainframe dataset is opened, THE system SHALL resolve its physical file path by
-     delegating to the StorageProvider via the catalogue locator stored for that dataset.
-     The catalogue is the sole authority mapping logical DSN to physical location (see
-     dataset-catalog Requirement 20.3). The physical path SHALL NOT be derived by replacing
-     dots in the DSN with directory separators -- that rule applied only to the legacy
-     DSN-derived layout (dataset-catalog Requirement 4, now superseded for new allocations).
-     For datasets allocated under the UUID layout, the resolved path will be of the form
-     `{workspace}/datasets/objects/<uuid>.dat`. [WB]
+16.1 WHEN a Mainframe dataset is opened (double-click in Files Panel or File Explorer, or
+     `EDIT <DSN>` command), THE system SHALL resolve its physical file path by calling
+     `CatalogRegistry::resolve(dsn)`, which queries the SQLite `catalog.db` and returns
+     the `physical_locator` (UUID-based path) stored for that dataset. The physical path
+     SHALL NOT be derived by replacing dots in the DSN with directory separators.
 
-16.2 WHEN the resolved physical path exists on disk, THE system SHALL open it in a new editor
-     tab using the existing `file.open` VFS path. [WB]
+16.2 WHEN `CatalogRegistry::resolve(dsn)` returns a locator and the resolved path exists
+     on disk, THE system SHALL open it in a new editor tab via the `file.open` command.
 
-16.3 WHEN the resolved physical path does not exist on disk, THE system SHALL create the
-     file and any missing parent directories using the staged create protocol defined in
-     dataset-catalog Requirement 25.1 (stage, reserve, publish, activate). For legacy
-     DSN-derived repositories only, direct file creation at the DSN-derived path is
-     permitted as a compatibility measure. This matches ISPF behaviour where allocating
-     a dataset reserves it and opening it for the first time creates the physical file. [WB]
+16.3 WHEN `CatalogRegistry::resolve(dsn)` returns a locator but the resolved path does not
+     exist on disk, THE system SHALL create the file and any missing parent directories
+     using `create_dataset_file(path)`, then open it. This matches ISPF behaviour where
+     allocating a dataset reserves the catalog entry and opening it for the first time
+     creates the physical file.
 
-16.6 WHEN creating the physical file or its parent directories fails (e.g. permission
-     denied), THE system SHALL display an error message:
-     `'<DSN>': cannot create dataset file at <resolved_path>: <os_error>`. [WB]
+16.4 WHEN `CatalogRegistry::resolve(dsn)` returns `VfsError::NotFound` (DSN not in any
+     mounted catalog), THE system SHALL display the message:
+     `'<DSN>': dataset not found in any mounted catalog`.
 
-16.4 WHEN a catalog has no repository path configured (empty string), THE system SHALL display
-     the message: `'<DSN>': catalog has no repository path configured`. [WB]
+16.5 WHEN creating the physical file fails (e.g. permission denied), THE system SHALL
+     display the message:
+     `'<DSN>': cannot create dataset file at <resolved_path>: <os_error>`.
 
-16.5 THE path resolution logic SHALL be a pure function `resolve_dataset_path(repository_path, dsn) -> Option<PathBuf>`, testable without VFS or egui. [WB]
+16.6 THE catalog lookup and path resolution logic SHALL be encapsulated in a
+     `resolve_and_open_dataset(registry, dsn)` function that is independently testable
+     without egui, using a mock or in-memory `CatalogRegistry`.
 
 
 > **Note:** Requirement 11 was added during Phase AA after Requirements 12–16. The numbering is preserved for test annotation compatibility.

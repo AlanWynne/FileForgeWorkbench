@@ -315,3 +315,24 @@ This specification is derived from FileForgeEditor core-command-semantics Requir
 - **`document-model`**: Line commands operate on DocumentLines within the document model — deletions remove lines, insertions add lines, shifts modify line content. The document model provides the mutation primitives. [FFE-CMD-22]
 - **`navigation-commands`**: The BOUNDS/BNDS command (defined in navigation-commands) establishes the active column bounds that bounds-aware shift commands (), )), (, (( depend on. [FFE-CMD-32]
 - **`configuration-system`**: The default ShiftWidth and `invalid_line_command_policy` configuration keys are managed by the configuration system. [FFE-CMD-30, FFE-CMD-31]
+
+### Requirement 15: Additional ISPF Line Commands (O, W, F, L, ], S)
+
+**User Story:** As a developer using ISPF-style editing, I want the full set of ISPF line commands including overlay, clipboard copy, first/last excluded, label assignment, single-column shift right, and show-excluded so that the workbench matches the ISPF line command repertoire.
+
+**Source:** EARS integration Phase BX (coverage-classification.md B03)
+
+#### Acceptance Criteria
+
+1. WHEN `O` is entered in the prefix area of a line and a pending copy source (C or CC) exists, THE system SHALL overlay the target line(s) with the source content, replacing characters only where the source is non-blank. [LC-O]
+2. WHEN `On` is entered (where n is a positive integer) and a pending copy source exists, THE system SHALL overlay n consecutive lines starting at the prefixed line with the source content. [LC-O]
+3. WHEN `W` is entered in the prefix area of a line, THE system SHALL copy that line's content to the system clipboard. [LC-W]
+4. WHEN `WW` markers are entered on two different lines, THE system SHALL copy all lines from the first WW to the second WW inclusive to the system clipboard. [LC-W]
+5. WHEN `F` is entered in the prefix area of an excluded-block placeholder, THE system SHALL show (un-exclude) only the first line of that excluded block. [LC-F]
+6. WHEN `L` is entered in the prefix area of an excluded-block placeholder, THE system SHALL show (un-exclude) only the last line of that excluded block. [LC-L]
+7. WHEN `]` is entered in the prefix area of a line, THE system SHALL shift that line's content right by exactly one column (equivalent to `>1`). [LC-bracket-right]
+8. WHEN `]]` markers are entered on two different lines, THE system SHALL shift all lines in the block right by exactly one column. [LC-bracket-right]
+9. WHEN `S` is entered in the prefix area of an excluded-block placeholder, THE system SHALL show (un-exclude) that single excluded line or the first line of the excluded block, equivalent to the SHOW primary command scoped to that line. [LC-S]
+10. WHEN an overlay operation (O or On) completes successfully, THE system SHALL record it as a single undoable Transaction. [LC-O]
+11. WHEN a clipboard copy operation (W or WW) completes, THE system SHALL NOT record it as an undoable Transaction -- clipboard state is external to the document. [LC-W]
+12. WHEN `F`, `L`, or `S` completes, THE system SHALL NOT record it as an undoable Transaction -- excluded state is SessionState only and bypasses the undo stack. [LC-F, LC-L, LC-S]

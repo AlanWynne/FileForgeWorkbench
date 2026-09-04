@@ -1131,19 +1131,19 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-dscatalog` | 🟡 | `storage::sqlite_record::tests::metadata_survives_reopen_and_mismatches_are_rejected` | Req 21.2: key metadata persists with the indexed database; catalogue-layer wiring remains |
 | `ff-dscatalog` | 🟢 | `storage::sqlite_record::tests::supports_keyed_crud_and_ordered_ranges` | Req 21.3: KSDS supports keyed read, ordered read, CRUD, and range retrieval |
 | `ff-dscatalog` | 🟢 | `storage::sqlite_record::tests::primary_key_uniqueness_is_transactional` | Req 21.4: KSDS primary-key uniqueness enforced transactionally |
-| `ff-dscatalog` | 🔴 | — | Req 21.5: KSDS alternate indexes represented as SQLite indexes or mapping tables |
+| `ff-dscatalog` | ✅ | `storage::sqlite_record::tests::alternate_index_*` | Req 21.5: KSDS alternate indexes represented as SQLite indexes or mapping tables |
 | `ff-dscatalog` | 🟢 | `storage::sqlite_record::tests::supports_keyed_crud_and_ordered_ranges` | Req 21.6: KSDS record data stored independently of catalogue rows |
 | `ff-dscatalog` | 🟢 | `storage::sqlite_record::SqliteRecordProvider` | Req 21.7: KSDS can use dedicated SQLite database or alternative provider |
 | `ff-dscatalog` | 🟢 | `storage::rrds::tests::reopens_existing_database` | Req 22.1: RRDS provider uses SQLite-backed store keyed by relative record number |
 | `ff-dscatalog` | 🟢 | `storage::rrds::tests::distinguishes_unallocated_and_allocated_blank` | Req 22.2: RRDS distinguishes unallocated slot from allocated blank record |
 | `ff-dscatalog` | 🟢 | `storage::rrds::tests::writes_replaces_deletes_and_reads_in_order` | Req 22.3: RRDS supports direct retrieval, replacement, deletion, sequential iteration |
-| `ff-dscatalog` | 🔴 | — | Req 23.1: ESDS provider stores records in insertion order in append-oriented native file |
-| `ff-dscatalog` | 🔴 | — | Req 23.2: ESDS issues stable record address for each appended record |
-| `ff-dscatalog` | 🔴 | — | Req 23.3: ESDS sidecar index rebuildable from data file |
-| `ff-dscatalog` | 🔴 | — | Req 23.4: ESDS update/deletion semantics explicitly documented |
-| `ff-dscatalog` | 🔴 | — | Req 24.1: ISAM uses common indexed-record interface shared with KSDS |
-| `ff-dscatalog` | 🔴 | — | Req 24.2: ISAM default provider uses SQLite indexes for primary and secondary access |
-| `ff-dscatalog` | 🔴 | — | Req 24.3: ISAM implementation encapsulated behind StorageProvider interface |
+| `ff-dscatalog` | 🟢 | `storage::esds::tests::appends_records_in_insertion_order` | Req 23.1: ESDS provider stores records in insertion order in append-oriented native file |
+| `ff-dscatalog` | 🟢 | `storage::esds::tests::addresses_remain_stable_across_updates_and_reopen` | Req 23.2: ESDS issues stable record address for each appended record |
+| `ff-dscatalog` | 🟢 | `storage::esds::tests::rebuilds_sidecar_index_from_data_file` | Req 23.3: ESDS sidecar index rebuildable from data file |
+| `ff-dscatalog` | 🟢 | `storage::esds::NativeEsdsProvider` and design.md | Req 23.4: ESDS update/deletion semantics explicitly documented |
+| `ff-dscatalog` | ✅ | `storage::isam::tests::isam_primary_key_insert_and_read`, `isam_sequential_read_returns_records_in_key_order` | Req 24.1: ISAM uses common indexed-record interface shared with KSDS |
+| `ff-dscatalog` | ✅ | `storage::isam::tests::isam_secondary_index_lookup_returns_matching_primary_keys`, `isam_multiple_secondary_indexes_coexist` | Req 24.2: ISAM default provider uses SQLite indexes for primary and secondary access |
+| `ff-dscatalog` | ✅ | `storage::isam::tests::isam_provider_implements_storage_provider_trait`, `isam_storage_provider_allocate_and_stat` | Req 24.3: ISAM implementation encapsulated behind StorageProvider interface |
 | `ff-dscatalog` | 🔴 | — | Req 25.1: staged create protocol — stage, reserve, publish, activate |
 | `ff-dscatalog` | 🔴 | — | Req 25.2: staged delete protocol — mark pending, tombstone, finalise |
 | `ff-dscatalog` | 🔴 | — | Req 25.3: interrupted operations discoverable through OperationJournal |
@@ -1200,3 +1200,296 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-vfs` | 🔴 | — | Req 12.3 (VFS): workspace.restore supports original or remapped root |
 | `ff-vfs` | 🔴 | — | Req 12.4 (VFS): workspace.reconcile reports discrepancies without auto-applying |
 | `ff-vfs` | 🔴 | — | Req 12.5 (VFS): workspace.diagnose reports orphaned objects and dangling entries |
+
+### Phase BU -- SQLite Catalog Integration for Options 1 and 2 (CR-CH-006)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | — | Req 13.1: AllocOutcome::Confirmed invokes CatalogRegistry::allocate(), writes to SQLite catalog.db |
+| `ff-desktop` | 🔴 | — | Req 13.2: Files Panel content area populated via CatalogRegistry::list_datasets() from SQLite |
+| `ff-desktop` | 🔴 | — | Req 13.3: File Explorer Panel Mainframe content populated via CatalogRegistry::list_datasets() |
+| `ff-desktop` | 🔴 | — | Req 13.4: dataset persistence provided by SQLite catalog.db; no session-TOML dataset entries |
+| `ff-desktop` | 🔴 | — | Req 13.5: catalog delete closes and unmounts SQLite catalog; no separate HashMap cleanup |
+| `ff-desktop` | 🔴 | — | Req 16.1: dataset open calls CatalogRegistry::resolve(dsn) to get UUID-based physical_locator |
+| `ff-desktop` | 🔴 | — | Req 16.2: resolved path exists on disk -- file opened in editor tab |
+| `ff-desktop` | 🔴 | — | Req 16.3: resolved path missing -- create_dataset_file() creates file then opens it |
+| `ff-desktop` | 🔴 | — | Req 16.4: DSN not in any catalog -- status bar shows "dataset not found in any mounted catalog" |
+| `ff-desktop` | 🔴 | — | Req 16.5: file creation fails -- status bar shows cannot-create error with os_error |
+| `ff-desktop` | 🔴 | — | Req 16.6: resolve_and_open_dataset() is independently testable without egui |
+
+### Phase BV -- Catalog Location Discriminant (Requirement 31)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-dscatalog` | 🔴 | -- | Req 31.1: `CatalogLocation` enum defined with `Local` and `Remote` variants |
+| `ff-dscatalog` | 🔴 | -- | Req 31.2: `CatalogMount.location: CatalogLocation` replaces `path: PathBuf` |
+| `ff-dscatalog` | 🔴 | -- | Req 31.3: `Local` variant behaves identically to previous `path: PathBuf` for all local operations |
+| `ff-dscatalog` | 🔴 | -- | Req 31.4: `Remote` variant returns `CatalogError::UnsupportedOperation` on mount |
+| `ff-dscatalog` | 🔴 | -- | Req 31.5: TOML schema extended with `location` and `uri` fields; round-trips correctly |
+| `ff-dscatalog` | 🔴 | -- | Req 31.6: absent `location` field in TOML defaults to `Local` for backward compatibility |
+| `ff-dscatalog` | 🔴 | -- | Req 31.7: `CatalogLocation` is `#[non_exhaustive]` |
+| `ff-dscatalog` | 🔴 | -- | Req 31.8: `CatalogMount.local_path()` returns `Some(path)` for Local, `None` for Remote |
+| `ff-dscatalog` | 🔴 | -- | Req 31.9: all existing mount/unmount/resolve/config tests pass unchanged |
+
+### Phase BW -- edit-operations EARS Integration (Requirements 16-17)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | Req 16.1: CAPS ON converts typed characters to uppercase before insert |
+| `ff-desktop` | 🔴 | -- | Req 16.2: CAPS with no argument toggles CAPS mode state |
+| `ff-desktop` | 🔴 | -- | Req 16.3: CAPS mode active -- status bar displays CAPS indicator |
+| `ff-desktop` | 🔴 | -- | Req 16.4: NULLS ON treats trailing nulls as trailing spaces; NULLS OFF shows visible placeholders |
+| `ff-desktop` | 🔴 | -- | Req 16.5: PROFILE command displays current edit profile settings |
+| `ff-desktop` | 🔴 | -- | Req 16.6: PROFILE with keyword argument updates named profile setting |
+| `ff-desktop` | 🔴 | -- | Req 16.7: STATS ON displays member statistics; STATS OFF hides them |
+| `ff-desktop` | 🔴 | -- | Req 16.8: LOCK ON prevents profile changes; LOCK OFF re-enables them |
+| `ff-desktop` | 🔴 | -- | Req 16.9: edit profile settings persist across file close/reopen via configuration system |
+| `ff-desktop` | 🔴 | -- | Req 16.10: AUTONUM ON/OFF treated as alias for NUMBER ON/OFF |
+| `ff-desktop` | 🔴 | -- | Req 16.11: NUM command treated as alias for NUMBER command |
+| `ff-desktop` | 🔴 | -- | Req 16.12: HILITE command delegates to syntax-highlighting subsystem |
+| `ff-desktop` | 🔴 | -- | Req 17.1: SUBMIT submits current buffer as batch job via ff-jes; job ID shown in status bar |
+| `ff-desktop` | 🔴 | -- | Req 17.2: CREATE <dsn> creates new dataset from selected (or all) lines |
+| `ff-desktop` | 🔴 | -- | Req 17.3: REPLACE <dsn> replaces dataset content with selected (or all) lines |
+| `ff-desktop` | 🔴 | -- | Req 17.4: EDIT <dsn> from editor opens named dataset in new editor tab |
+| `ff-desktop` | 🔴 | -- | Req 17.5: BROWSE <dsn> opens dataset in read-only browse tab |
+| `ff-desktop` | 🔴 | -- | Req 17.6: VIEW <dsn> opens dataset in view tab |
+| `ff-desktop` | 🔴 | -- | Req 17.7: COMPARE <dsn> opens compare view against named dataset |
+| `ff-desktop` | 🔴 | -- | Req 17.8: missing/invalid dsn argument returns error; no tab opened |
+
+### Phase BX -- line-commands EARS Integration (Requirement 15)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-line-commands` | 🔴 | -- | Req 15.1: O overlays target line(s) with source content, non-blank chars only |
+| `ff-line-commands` | 🔴 | -- | Req 15.2: On overlays n consecutive lines with source content |
+| `ff-line-commands` | 🔴 | -- | Req 15.3: W copies single line content to system clipboard |
+| `ff-line-commands` | 🔴 | -- | Req 15.4: WW copies block of lines to system clipboard |
+| `ff-line-commands` | 🔴 | -- | Req 15.5: F shows (un-excludes) only the first line of an excluded block |
+| `ff-line-commands` | 🔴 | -- | Req 15.6: L shows (un-excludes) only the last line of an excluded block |
+| `ff-line-commands` | 🔴 | -- | Req 15.7: ] shifts single line right by exactly one column |
+| `ff-line-commands` | 🔴 | -- | Req 15.8: ]] shifts block of lines right by exactly one column |
+| `ff-line-commands` | 🔴 | -- | Req 15.9: S shows (un-excludes) first line of excluded block at that position |
+| `ff-line-commands` | 🔴 | -- | Req 15.10: overlay operation (O/On) produces a single undoable Transaction |
+| `ff-line-commands` | 🔴 | -- | Req 15.11: clipboard copy (W/WW) produces no Transaction |
+| `ff-line-commands` | 🔴 | -- | Req 15.12: F, L, S produce no Transaction (session state only) |
+
+
+### Phase BY -- sequence-numbers EARS Integration (Alias Extensions)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-sequence-numbers` | 🔴 | -- | Req 6.7a: AUTONUM ON/OFF treated as alias for NUMBER ON/OFF |
+| `ff-sequence-numbers` | 🔴 | -- | Req 8 alias: NUM accepted as alias for NUMBER command with all sub-commands |
+
+
+### Phase BZ -- menu-and-statusbar EARS Integration (Requirement 19)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | Req 19.1: SCROLL ===> field rendered adjacent to Command ===> field |
+| `ff-desktop` | 🔴 | -- | Req 19.2: SCROLL field value update on Enter sets active scroll amount |
+| `ff-desktop` | 🔴 | -- | Req 19.3: SCROLL field value retained across command submissions and panel switches |
+| `ff-desktop` | 🔴 | -- | Req 19.4: fastpath notation (e.g., 3.1) navigates directly to nested option |
+| `ff-desktop` | 🔴 | -- | Req 19.5: data entry panel conforms to ISPF layout (title, command, ===> fields, key bar) |
+| `ff-desktop` | 🔴 | -- | Req 19.6: list panel conforms to ISPF layout (title, command, filter lines, NP column, rows) |
+| `ff-desktop` | 🔴 | -- | Req 19.7: LOCATE on list panel scrolls to nearest alphabetic match |
+| `ff-desktop` | 🔴 | -- | Req 19.8: LOCATE accepts partial names on list panel |
+| `ff-desktop` | 🔴 | -- | Req 19.9: LOCATE scrolls panel so matching item is visible |
+| `ff-desktop` | 🔴 | -- | Req 19.10: scroll amounts HALF/CSR/MAX/DATA supported in all panel scroll commands |
+| `ff-desktop` | 🔴 | -- | Req 19.11: PF2 splits screen at cursor line into two independent halves |
+| `ff-desktop` | 🔴 | -- | Req 19.12: PF9 swaps focus between split-screen halves |
+| `ff-desktop` | 🔴 | -- | Req 19.13: each split-screen half operates independently |
+| `ff-desktop` | 🔴 | -- | Req 19.14: END (PF3) while split unsplits the screen |
+
+
+### Phase CA -- startup-and-session EARS Integration (Requirement 20)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | Req 20.1: session start timestamp displayed in status bar as Started: HH:MM |
+| `ff-desktop` | 🔴 | -- | Req 20.2: session end timestamp and duration shown in status area on exit |
+| `ff-desktop` | 🔴 | -- | Req 20.3: LOGOFF command initiates exit sequence identical to EXIT/=X |
+| `ff-desktop` | 🔴 | -- | Req 20.4: TIME command displays current date/time/day-of-year in response area |
+| `ff-desktop` | 🔴 | -- | Req 20.5: STATUS command routes to FFW-JES job status panel |
+| `ff-desktop` | 🔴 | -- | Req 20.6: STATUS jobname routes to FFW-JES panel filtered by jobname |
+
+
+### Phase CB -- command-semantics EARS Integration (Requirement 9)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-command-semantics` | 🔴 | -- | Req 9.1: ALLOCATE command routes to dataset allocator with TSO keyword operands |
+| `ff-command-semantics` | 🔴 | -- | Req 9.2: FREE command routes to dataset allocator |
+| `ff-command-semantics` | 🔴 | -- | Req 9.3: DELETE command routes to VFS/catalog layer |
+| `ff-command-semantics` | 🔴 | -- | Req 9.4: RENAME oldname newname routes to VFS/catalog layer |
+| `ff-command-semantics` | 🔴 | -- | Req 9.5: LISTCAT [pattern] routes to catalog registry |
+| `ff-command-semantics` | 🔴 | -- | Req 9.6: LISTDS dsname [MEMBERS] routes to VFS layer |
+| `ff-command-semantics` | 🔴 | -- | Req 9.7: LISTALC routes to dataset allocator |
+| `ff-command-semantics` | 🔴 | -- | Req 9.8: SUBMIT dsname routes to FFW-JES subsystem |
+| `ff-command-semantics` | 🔴 | -- | Req 9.9: STATUS [jobname] routes to FFW-JES job status panel |
+| `ff-command-semantics` | 🔴 | -- | Req 9.10: EDIT dsname routes to file-operations pipeline |
+| `ff-command-semantics` | 🔴 | -- | Req 9.11: TSO-style positional and keyword operand parsing |
+| `ff-command-semantics` | 🔴 | -- | Req 9.12: SET PREFIX and automatic dataset name qualification |
+| `ff-command-semantics` | 🔴 | -- | Req 9.13: command continuation via trailing backslash |
+| `ff-command-semantics` | 🔴 | -- | Req 9.14: ds:// URI scheme bypasses session prefix, routes to VFS |
+| `ff-command-semantics` | 🔴 | -- | Req 9.15: namespace conflict resolution built-in > plugin > macro |
+| `ff-command-semantics` | 🔴 | -- | Req 9.16: capability model -- commands declare and verify required capabilities |
+| `ff-command-semantics` | 🔴 | -- | Req 9.17: secret operand redaction from history, logs, and status messages |
+| `ff-command-semantics` | 🔴 | -- | Req 9.18: structured audit events on every command execution |
+
+
+
+### Phase CC -- FFW-JES P1 core EARS Integration (Requirement 16)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-jes` | 🔴 | -- | Req 16.1: action bar with pull-down menus (File, View, Help) |
+| `ff-jes` | 🔴 | -- | Req 16.2: title line with panel name and visible row range |
+| `ff-jes` | 🔴 | -- | Req 16.3: SCROLL ===> field retains last-used scroll amount |
+| `ff-jes` | 🔴 | -- | Req 16.4: filter information lines PREFIX=/DEST=/OWNER= below title |
+| `ff-jes` | 🔴 | -- | Req 16.5: NP column fixed leftmost, non-scrolling |
+| `ff-jes` | 🔴 | -- | Req 16.6: JOBNAME column fixed during horizontal scroll |
+| `ff-jes` | 🔴 | -- | Req 16.7: action character in NP column dispatches action on Enter |
+| `ff-jes` | 🔴 | -- | Req 16.8: action characters S/?/C/H/A/P/D/E/J/W supported |
+| `ff-jes` | 🔴 | -- | Req 16.9: = repeats previous action character on that row |
+| `ff-jes` | 🔴 | -- | Req 16.10: // block action applies to all rows in block |
+| `ff-jes` | 🔴 | -- | Req 16.11: command-line action syntax "2 C" in command field |
+| `ff-jes` | 🔴 | -- | Req 16.12: SET ROWNUM ON displays row numbers in NP area |
+| `ff-jes` | 🔴 | -- | Req 16.13: main panel lists all SDSF commands with name/desc/group |
+| `ff-jes` | 🔴 | -- | Req 16.14: command groups (Jobs/Output/JES/Log/Memory/Other) expandable |
+| `ff-jes` | 🔴 | -- | Req 16.15: S action on main panel row navigates to selected panel |
+| `ff-jes` | 🔴 | -- | Req 16.16: SET MAIN GROUP displays grouped main panel |
+| `ff-jes` | 🔴 | -- | Req 16.17: MENU command returns to main panel from any sub-panel |
+| `ff-jes` | 🔴 | -- | Req 16.18: PREFIX filter -- filter by job name prefix; PREFIX * clears |
+| `ff-jes` | 🔴 | -- | Req 16.19: OWNER filter -- filter by job owner; OWNER * clears |
+| `ff-jes` | 🔴 | -- | Req 16.20: DEST filter -- filter by output destination; DEST * clears |
+| `ff-jes` | 🔴 | -- | Req 16.21: title line message area shows last command feedback |
+| `ff-jes` | 🔴 | -- | Req 16.22: COMMAND INPUT ===> field for SDSF commands |
+| `ff-jes` | 🔴 | -- | Req 16.23: NP column supports full action char set; invalid state rejected with message |
+| `ff-jes` | 🔴 | -- | Req 16.24: columns JOBNAME/JOBID/OWNER/STATUS/CLASS/PRTY/QUEUE/START/END/RC/STEPNAME/PROCSTEP; hideable/reorderable |
+| `ff-jes` | 🔴 | -- | Req 16.25: PREFIX/OWNER/DEST filter fields as editable in-place rows above table |
+| `ff-jes` | 🔴 | -- | Req 16.26: SORT colname [A|D] sorts job table; SORT with no args restores submission-time order |
+
+
+### Phase CD -- FFW-JES P1 extended EARS Integration (Requirement 17)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-jes` | 🔴 | -- | Req 17.1: ST panel shows all jobs with STATUS column |
+| `ff-jes` | 🔴 | -- | Req 17.2: FILTER command -- advanced filter expression; FILTER clears |
+| `ff-jes` | 🔴 | -- | Req 17.3: FIND command -- search panel data; FIND NEXT/PREV |
+| `ff-jes` | 🔴 | -- | Req 17.4: LOCATE command -- scroll to first JOBNAME match, nearest alpha on no match |
+| `ff-jes` | 🔴 | -- | Req 17.5: UP/DOWN/LEFT/RIGHT scroll commands with n/HALF/PAGE/MAX amounts |
+| `ff-jes` | 🔴 | -- | Req 17.6: SET ACTION displays valid action characters with descriptions |
+| `ff-jes` | 🔴 | -- | Req 17.7: SET MAIN [panel-name] sets default MENU panel |
+| `ff-jes` | 🔴 | -- | Req 17.8: SET ROWNUM ON/OFF toggles row numbers in NP area |
+| `ff-jes` | 🔴 | -- | Req 17.9: WHO displays session info (user, start time, filters, SET settings, provider) |
+| `ff-jes` | 🔴 | -- | Req 17.10: QUERY AUTH displays authorised commands and action characters |
+| `ff-jes` | 🔴 | -- | Req 17.11: SET settings (ACTION/MAIN/ROWNUM) persist across restarts |
+| `ff-jes` | 🔴 | -- | Req 17.12: FILTER supports =, !=, >, <, >=, <= operators and wildcard * |
+| `ff-jes` | 🔴 | -- | Req 17.13: FILTER supports AND and OR logical operators |
+| `ff-jes` | 🔴 | -- | Req 17.14: ST panel accessible via ST command and S action on main panel |
+| `ff-jes` | 🔴 | -- | Req 17.15: FIND case-insensitive by default; FIND C for case-sensitive |
+| `ff-jes` | 🔴 | -- | Req 17.16: LOCATE/FIND no-match shows "string NOT FOUND" in message area |
+| `ff-jes` | 🔴 | -- | Req 17.17: scroll commands update SCROLL ===> field to last-used amount |
+
+
+### Phase CE -- undo-redo-transactions P2 EARS Integration (Requirement 19)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-undo-redo` | 🔴 | -- | Req 19.1: SETUNDO ON/OFF/n command -- enable/disable/configure undo levels, immediate effect |
+| `ff-undo-redo` | 🔴 | -- | Req 19.2: RECOVERY ON/OFF/n command -- enable/disable/configure recovery interval, immediate effect |
+
+
+### Phase CF -- syntax-highlighting P2 EARS Integration (Requirement 16)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-syntax-highlighting` | 🔴 | -- | Req 16.1: HILITE ON/OFF -- enable/disable syntax highlighting per document, state persists |
+| `ff-syntax-highlighting` | 🔴 | -- | Req 16.2: HILITE LOGIC -- highlight boolean and comparison operators with HILITE_LOGIC style |
+| `ff-syntax-highlighting` | 🔴 | -- | Req 16.3: HILITE PAREN -- highlight enclosing delimiter pair at cursor; HILITE_PAREN_ERROR for mismatches |
+| `ff-syntax-highlighting` | 🔴 | -- | Req 16.4: HILITE FIND -- persist find-match highlights; HILITE FIND OFF clears |
+| `ff-syntax-highlighting` | 🔴 | -- | Req 16.5: HILITE combined operands -- ON LOGIC PAREN enables multiple modes; modes toggle independently |
+
+
+### Phase CG -- lua-macro-engine P2 EARS Integration (Requirement 11)
+
+| Crate | Status | Test | Criterion |
+|-------|--------|------|-----------|
+| `ff-macro` | 🔴 | -- | Req 11.1: ISREDIT host command environment dispatches edit macro service calls |
+| `ff-macro` | 🔴 | -- | Req 11.2: ISPEXEC host command environment routes dialog service calls |
+| `ff-macro` | 🔴 | -- | Req 11.3: IMACRO executes named macro at edit session open |
+| `ff-macro` | 🔴 | -- | Req 11.4: IMACRO edit profile setting stores/retrieves initial macro name |
+| `ff-macro` | 🔴 | -- | Req 11.5: LINENUM function resolves label/relative reference to absolute line number |
+| `ff-macro` | 🔴 | -- | Req 11.6: CURSOR function gets and sets cursor position |
+| `ff-macro` | 🔴 | -- | Req 11.7: EXEC command locates and executes named exec from SYSEXEC/SYSPROC |
+| `ff-macro` | 🔴 | -- | Req 11.8: Implicit exec invocation for unrecognized command names |
+| `ff-macro` | 🔴 | -- | Req 11.9: % prefix bypasses primary command table for exec lookup |
+| `ff-macro` | 🔴 | -- | Req 11.10: EXEC <member> <args> passes argument string to exec |
+| `ff-macro` | 🔴 | -- | Req 11.11: TSO host command environment routes to ff-command dispatcher |
+| `ff-macro` | 🔴 | -- | Req 11.12: ADDRESS <environment-name> switches default host command environment |
+| `ff-macro` | 🔴 | -- | Req 11.13: ISPEXEC ADDRESS environment routes to ISPF dialog service layer |
+| `ff-macro` | 🔴 | -- | Req 11.14: ISREDIT ADDRESS environment routes to ISREDIT handler |
+| `ff-macro` | 🔴 | -- | Req 11.15: RC special variable set to host command return code |
+| `ff-macro` | 🔴 | -- | Req 11.16: LISTDSI built-in returns dataset information from ff-dscatalog |
+| `ff-macro` | 🔴 | -- | Req 11.17: MSG built-in displays message in status bar or message area |
+| `ff-macro` | 🔴 | -- | Req 11.18: MVSVAR built-in returns system variable values mapped to workbench equivalents |
+| `ff-macro` | 🔴 | -- | Req 11.19: OUTTRAP built-in captures TSO command output into stem variable |
+| `ff-macro` | 🔴 | -- | Req 11.20: PROMPT built-in controls terminal input availability |
+| `ff-macro` | 🔴 | -- | Req 11.21: SYSDSN built-in returns OK or error string for named dataset |
+| `ff-macro` | 🔴 | -- | Req 11.22: SYSVAR built-in returns ISPF system variable values |
+| `ff-macro` | 🔴 | -- | Req 11.23: USERID built-in returns current user login name |
+| `ff-macro` | 🔴 | -- | Req 11.24: EXECIO DISKR reads records from ddname dataset into stem variable |
+| `ff-macro` | 🔴 | -- | Req 11.25: EXECIO DISKW writes records from stem variable to ddname dataset |
+| `ff-macro` | 🔴 | -- | Req 11.26: EXECIO FINIS variants read/write all remaining records and close file |
+| `ff-macro` | 🔴 | -- | Req 11.27: EXECIO SKIP advances read position without returning data |
+| `ff-macro` | 🔴 | -- | Req 11.28: EXECIO return codes RC=0/2/non-zero per TSO conventions |
+| `ff-macro` | 🔴 | -- | Req 11.29: FFCMD command files execute .ffcmd files line-by-line as batch primary commands |
+| `ff-macro` | 🔴 | -- | Req 11.30: FFCMD execution wrapped in single Macro_Transaction for atomic undo |
+
+### Phase CH -- FFW-JES P2 EARS Integration (Requirement 18)
+
+| Crate | Status | Test | Criterion |
+|-------|--------|------|-----------|
+| `ff-jes` | 🔴 | -- | Req 18.1: Overtypeable fields visually distinct from read-only fields |
+| `ff-jes` | 🔴 | -- | Req 18.2: Direct overtype applies change and refreshes panel on Enter |
+| `ff-jes` | 🔴 | -- | Req 18.3: Command-line overtype syntax updates named field for cursor/NP row |
+| `ff-jes` | 🔴 | -- | Req 18.4: Overtype Extension pop-up for values exceeding column width |
+| `ff-jes` | 🔴 | -- | Req 18.5: Context-sensitive HELP / PF1 displays panel help |
+| `ff-jes` | 🔴 | -- | Req 18.6: ACTH lists valid action characters with descriptions |
+| `ff-jes` | 🔴 | -- | Req 18.7: COLH lists column names with type, width, and description |
+| `ff-jes` | 🔴 | -- | Req 18.8: CMDH lists valid primary commands with syntax and description |
+| `ff-jes` | 🔴 | -- | Req 18.9: SEARCH <text> in help panel scrolls to first match |
+| `ff-jes` | 🔴 | -- | Req 18.10: LOG command opens System Log panel in reverse-chronological order |
+| `ff-jes` | 🔴 | -- | Req 18.11: ULOG command opens User Log panel for current user |
+| `ff-jes` | 🔴 | -- | Req 18.12: NEXT/PREV scroll forward/backward through log segments |
+| `ff-jes` | 🔴 | -- | Req 18.13: SNAPSHOT captures current log content to dataset or file |
+| `ff-jes` | 🔴 | -- | Req 18.14: SYS panel displays active address spaces with status and resources |
+| `ff-jes` | 🔴 | -- | Req 18.15: DASH panel displays system health metrics summary |
+| `ff-jes` | 🔴 | -- | Req 18.16: INIT panel displays initiator pool status |
+| `ff-jes` | 🔴 | -- | Req 18.17: JC panel displays job class definitions and scheduling parameters |
+| `ff-jes` | 🔴 | -- | Req 18.18: SP panel displays spool volume utilisation and track allocation |
+| `ff-jes` | 🔴 | -- | Req 18.19: Browse settings: line width, record format display, FIND in output |
+| `ff-jes` | 🔴 | -- | Req 18.20: PRINT action routes job output to configured print destination |
+| `ff-jes` | 🔴 | -- | Req 18.21: COLS command displays column ruler in browse panel |
+| `ff-jes` | 🔴 | -- | Req 18.22: SET BCOLOR sets panel background colour, persisted |
+| `ff-jes` | 🔴 | -- | Req 18.23: SET CONFIRM ON/OFF controls confirmation prompt for destructive actions |
+| `ff-jes` | 🔴 | -- | Req 18.24: SET CURSOR sets default cursor landing position on panel open |
+| `ff-jes` | 🔴 | -- | Req 18.25: SET DATE sets date display format (MDY/DMY/YMD/JUL) |
+| `ff-jes` | 🔴 | -- | Req 18.26: SET DELAY sets automatic refresh interval; 0 disables auto-refresh |
+| `ff-jes` | 🔴 | -- | Req 18.27: SET HEX ON/OFF toggles hexadecimal display of field values |
+| `ff-jes` | 🔴 | -- | Req 18.28: SET SCHARS defines special characters for field delimiters |
+| `ff-jes` | 🔴 | -- | Req 18.29: SET SCREEN sets logical screen dimensions for panel layout |
+| `ff-jes` | 🔴 | -- | Req 18.30: All SET P2 settings persisted across sessions |
+
+
+### Phase CI -- command-semantics P2 EARS Integration (Requirement 10)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-command-semantics` | 🔴 | -- | Req 10.1: OUTPUT jobname routes to FFW-JES for job output display/retrieval |
+| `ff-command-semantics` | 🔴 | -- | Req 10.2: CANCEL jobname [PURGE] routes to FFW-JES; PURGE requests output purge |
+| `ff-command-semantics` | 🔴 | -- | Req 10.3: SEND 'message' [USER/LOGON/BROADCAST] routes to messaging subsystem |
+| `ff-command-semantics` | 🔴 | -- | Req 10.4: PROFILE [operands] routes to session profile subsystem |
+| `ff-command-semantics` | 🔴 | -- | Req 10.5: PRINTDS DATASET(dsname) routes to file-operations pipeline |

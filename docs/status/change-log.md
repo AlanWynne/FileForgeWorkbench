@@ -180,9 +180,132 @@ Modifications to existing behaviour that already works.
 - Output files: `docs/reviews/requirements-review/consolidation-report.md`, `executive-assessment.md`
 - **Status**: DONE — All 10 tasks complete. 497 tests passing. 8 artefacts delivered.
 
+### CR-NR-017 -- Catalog Location Discriminant (local vs remote catalog transport)
+- **Date/Phase**: Phase BV
+- **Prompt**: "Proceed with the requirements gate" (following architectural analysis of CatalogMount having no location/transport discriminant)
+- **Description**: Add a `CatalogLocation` enum to `CatalogMount` in `ff-dscatalog` so that each mounted catalog declares whether its database and repository are on the local filesystem (`Local { path }`) or accessed via a registered VFS connector (`Remote { scheme, uri }`). Only `Local` is implemented today; `Remote` parses and stores but returns `UnsupportedOperation` until a connector implements it. The TOML `[[catalog.mounted_catalogs]]` schema gains a `location` discriminant field. This keeps the remote-catalog door open without building speculative network code.
+- **Status**: IN PROGRESS
+- **Linked spec**: `docs/specs/dataset-catalog/requirements.md` (new Requirement 31)
+
 ### CR-NR-016 - Mainframe Dataset Architecture and Virtual File/Dataset Storage Requirements
 - **Date/Phase**: Phase BS (next)
 - **Prompt**: "i have two new markdown files for this project defining how the mainframe dataset and posix catalogs should work and how mainframe files will be emulated..."
 - **Description**: Two new architecture documents define: (1) record-oriented storage for PS/PDS/PDSE/GDG/VSAM/ISAM with no CRLF/LF record boundaries; (2) hybrid storage — SQLite as catalogue, native files for sequential/library content; (3) StorageProvider abstraction layer separate from VfsProvider; (4) record codecs (F, FB, V, VB, U, binary) as independent components; (5) UUID-based physical object layout; (6) staged transaction protocol for cross-resource consistency; (7) VSAM KSDS/RRDS/ESDS and ISAM support; (8) integrity manifests, workspace backup/restore; (9) security path-traversal guards and audit trail; (10) POSIX files remain native with no SQLite BLOB storage.
 - **Status**: IN PROGRESS
 - **Linked spec**: `docs/specs/dataset-catalog/requirements.md` (new Requirements 16-30), `docs/specs/virtual-file-system/requirements.md` (new Requirements 9-12)
+
+### CR-NR-018 -- MiniX/FTSO Command Environment rationalisation and EARS integration
+- **Date/Phase**: Phase BW (pre-gate)
+- **Prompt**: "also bring into this new phase of requirements building the discussion from the document FileForgeWorkbench_MiniX_FTSO_Command_Environment_Design.md We need to decide how to integrate this into the new requirements provided"
+- **Description**: The MiniX/FTSO Command Environment Design document proposes an ISPF Option 6-style command shell (FTSO) and a portable mainframe service layer (MiniX). Before any requirements.md files are updated, this proposal must be rationalised against: (1) the TSO/SDSF EARS source files which are the authoritative behavioural ground truth; (2) the existing `command-framework`, `shell-command`, `FFW-JES`, `lua-macro-engine`, and `dataset-catalog` specs which already cover significant overlap. Phase EI-0 of the EARS integration workflow governs this rationalisation. No new sub-projects are created and no requirements.md files are modified until EI-0 is complete and approved.
+- **Status**: PENDING GATE
+- **Linked spec**: `docs/specs/ears-integration/workflow.md` Phase EI-0
+
+### CR-CH-006 -- SQLite catalog integration for Options 1 and 2
+- **Date/Phase**: Phase BU
+- **Prompt**: "the latest requirements that were incorporated into the project were about the file
+  catalog being hosted in SQLite... when creating catalogs, and adding datasets to them, they need
+  to be updated to the SQLite catalog. Also when we go to views 1 and 2, we need to read the
+  SQLite catalog to get the files"
+- **Description**: Options 1 (Files Panel) and 2 (File Explorer) currently maintain an in-memory
+  HashMap of AllocatedDataset entries persisted to session TOML. This must be replaced: dataset
+  allocation SHALL invoke ff-dscatalog via the dataset.allocate command and write to the SQLite
+  catalog.db; dataset listing in both panels SHALL query the SQLite catalog via the CatalogRegistry
+  API; path resolution SHALL use the UUID-based physical_locator from the catalog, not a
+  DSN-derived path. The in-memory datasets map and its TOML persistence are removed.
+- **Affects**: `ff-desktop` `files_panel.rs`, `file_explorer_panel.rs`, `shell/render.rs`,
+  `shell/update.rs`, `dataset_alloc_dialog.rs`, `session_manager.rs`;
+  `docs/specs/virtual-catalog-manager/requirements.md` Req 13, 16;
+  `docs/specs/virtual-catalog-manager/design.md` sections 7, 10
+- **Status**: IN PROGRESS
+
+### CR-NR-019 -- Phase BW: edit-operations EARS integration (CAPS, NULLS, PROFILE, SUBMIT, CREATE, REPLACE, BROWSE, VIEW, nested EDIT, COMPARE, LOCK, STATS)
+- **Date/Phase**: Phase BW
+- **Prompt**: "proceed to EI-5"
+- **Description**: Add 11 new EARS-derived criteria to edit-operations/requirements.md covering: CAPS mode (uppercase input), NULLS mode (null character handling), PROFILE command (edit profile display/change), STATS mode (member statistics), LOCK setting (profile lock), SUBMIT primary command (submit buffer as job), CREATE primary command (create dataset from lines), REPLACE primary command (replace dataset content), nested EDIT command (open another dataset from editor), BROWSE command (open dataset for browse), VIEW command (open dataset for view), COMPARE command (compare with another dataset). Also extends 4 existing PARTIAL criteria: edit profile persistence, AUTONUM alias, NUM alias, HILITE setting.
+- **Status**: DONE -- gate complete, Requirements 16-17 added, Tasks 28-39 added, TCR rows added, Phase BW added to project-master
+- **Linked spec**: `docs/specs/edit-operations/requirements.md` (new Requirements 16-17)
+
+### CR-NR-020 -- Phase BX: line-commands EARS integration (O, W, F, L, ], S)
+- **Date/Phase**: Phase BX
+- **Prompt**: "next?"
+- **Description**: Add 6 new EARS-derived criteria to line-commands/requirements.md covering: Overlay (O/On -- overlay target lines with source content), clipboard copy (W/WW -- copy lines to system clipboard), first-of-excluded (F -- show first line of excluded block), last-of-excluded (L -- show last line of excluded block), single-column shift right (] and ]] -- equivalent to >1), and show-excluded (S -- show first line of excluded block at cursor). Also extends 1 existing PARTIAL criterion: LC-S (show/unexclude excluded line). Adds Requirement 15 with 12 criteria.
+- **Status**: DONE -- gate complete, Requirement 15 added, Tasks 22-28 added, TCR rows added, Phase BX added to project-master
+- **Linked spec**: `docs/specs/line-commands/requirements.md` (new Requirement 15)
+
+### CR-NR-021 -- Phase BY: sequence-numbers EARS integration (AUTONUM and NUM aliases)
+- **Date/Phase**: Phase BY
+- **Prompt**: "proceed with EI-5"
+- **Description**: Extends 2 existing criteria in sequence-numbers/requirements.md: AUTONUM ON/OFF added as alias for NUMBER ON/OFF (extends Req 6.7), and NUM added as alias for the NUMBER command accepting all sub-commands (extends Req 8). No new requirements section -- both are in-place extensions to existing criteria. Adds Tasks 20-22 to sequence-numbers/tasks.md.
+- **Status**: DONE -- gate complete, Req 6.7a and Req 8 alias criterion added, Tasks 20-22 added, TCR rows added, Phase BY added to project-master
+- **Linked spec**: `docs/specs/sequence-numbers/requirements.md` (extensions to Req 6.7 and Req 8)
+
+### CR-NR-022 -- Phase BZ: menu-and-statusbar EARS integration (SCROLL field, fastpath, split screen, LOCATE)
+- **Date/Phase**: Phase BZ
+- **Prompt**: "proceed with EI-5"
+- **Description**: Adds 10 new EARS-derived criteria and extends 4 existing partial criteria in menu-and-statusbar/requirements.md as Requirement 19: SCROLL ===> field adjacent to Command ===> (ISPF-1.6, TSO-4.3), fastpath dotted notation (ISPF-2.3), data entry panel layout (ISPF-1.2), list panel layout (ISPF-1.3), list panel LOCATE nearest/partial (ISPF-4.1/4.2/4.3), extended scroll amounts HALF/CSR/MAX/DATA (TSO-4.2), and split screen PF2/PF9/PF3 (ISPF-3.1/3.2/3.3/3.4). Adds Tasks 24-30.
+- **Status**: DONE -- gate complete, Requirement 19 added, Tasks 24-30 added, TCR rows added, Phase BZ added to project-master
+- **Linked spec**: `docs/specs/menu-and-statusbar/requirements.md` (new Requirement 19)
+
+### CR-NR-023 -- Phase CA: startup-and-session EARS integration (LOGOFF, TIME, STATUS, session timestamps)
+- **Date/Phase**: Phase CA
+- **Prompt**: "proceed with EI-5"
+- **Description**: Adds 5 new EARS-derived criteria and extends 1 existing partial criterion in startup-and-session/requirements.md as Requirement 20: session start timestamp in status bar (TSO-1.2), session end timestamp and logoff message (TSO-1.3), LOGOFF command as exit alias (TSO-1.4), TIME command displaying current date/time/day-of-year (TSO-2.4), STATUS command routing to FFW-JES panel with optional jobname filter (TSO-2.5). Adds Tasks 28-33.
+- **Status**: DONE -- gate complete, Requirement 20 added, Tasks 28-33 added, TCR rows added, Phase CA added to project-master
+- **Linked spec**: `docs/specs/startup-and-session/requirements.md` (new Requirement 20)
+
+### CR-NR-024 -- Phase CB: command-semantics EARS integration (TSO commands, FTSO operand parsing)
+- **Date/Phase**: Phase CB
+- **Prompt**: "proceed with EI-5"
+- **Description**: Adds 17 new EARS-derived criteria and extends 1 existing partial criterion in command-semantics/requirements.md as Requirement 9: TSO dataset commands (ALLOCATE, FREE, DELETE, RENAME, LISTCAT, LISTDS, LISTALC), TSO job commands (SUBMIT, STATUS), EDIT routing extension (TSO-EDIT-1), FTSO operand parsing (positional + keyword), session prefix (SET PREFIX), command continuation (trailing backslash), ds:// URI scheme, namespace conflict resolution, capability model, secret operand handling, and structured audit events. Adds Tasks 19-24.
+- **Status**: DONE -- gate complete, Requirement 9 added, Tasks 19-24 added, TCR rows added, Phase CB added to project-master
+- **Linked spec**: `docs/specs/command-semantics/requirements.md` (new Requirement 9)
+
+### CR-NR-025 -- Phase CC: FFW-JES P1 core EARS integration (SDSF panel framework)
+- **Date/Phase**: Phase CC
+- **Prompt**: "next?"
+- **Description**: Adds 20 new EARS-derived criteria and extends 6 existing partial criteria in FFW-JES/requirements.md as Requirement 16: SDSF panel framework core covering action bar (SDSF-1.1), title line with row range (SDSF-1.2), SCROLL field (SDSF-1.5), filter information lines (SDSF-1.6), NP column (SDSF-1.7), fixed first column (SDSF-1.8), action character system S/?/C/H/A/P/D/E/J/W (SDSF-2.1/2.2), = repeat (SDSF-2.3), // block action (SDSF-2.4), command-line action syntax (SDSF-2.5), SET ROWNUM (SDSF-2.6), main panel (SDSF-4.1 through 4.6), PREFIX/OWNER/DEST filter commands (SDSF-FILTER-1/2/3), message area (SDSF-1.3), COMMAND INPUT field (SDSF-1.4), full column set (SDSF-JQ-6), filter input rows (SDSF-JQ-7), SORT command (SDSF-FILTER-5). Adds Tasks 20-25.
+- **Status**: DONE -- gate complete, Requirement 16 added, Tasks 20-25 added, TCR rows added, Phase CC added to project-master
+- **Linked spec**: `docs/specs/FFW-JES/requirements.md` (new Requirement 16)
+
+### CR-NR-026 -- Phase CD: FFW-JES P1 extended EARS integration (ST panel, FILTER/FIND/LOCATE, SET commands)
+- **Date/Phase**: Phase CD
+- **Prompt**: "proceed with cd"
+- **Description**: Adds 14 new EARS-derived criteria and extends 3 existing partial criteria in FFW-JES/requirements.md as Requirement 17: ST panel showing all jobs (SDSF-JQ-4), FILTER command with field comparisons/AND/OR/wildcard (SDSF-FILTER-4), FIND command with NEXT/PREV/case options (SDSF-FILTER-6), LOCATE command with nearest-alpha fallback (SDSF-FILTER-7), SDSF scroll commands UP/DOWN/LEFT/RIGHT with n/HALF/PAGE/MAX (SDSF-SCROLL-1-5), SET ACTION (SET-1), SET MAIN (SET-8), SET ROWNUM (SET-9), WHO command (SET-12), QUERY AUTH command (SET-13), and SET settings persistence (PERSIST-1). Adds Tasks 26-29.
+- **Status**: DONE -- gate complete, Requirement 17 added, Tasks 26-29 added, TCR rows added, Phase CD added to project-master
+- **Linked spec**: `docs/specs/FFW-JES/requirements.md` (new Requirement 17)
+
+### CR-NR-027 -- Phase CE: undo-redo-transactions P2 EARS integration (SETUNDO, RECOVERY commands)
+- **Date/Phase**: Phase CE
+- **Prompt**: "proceed with ce"
+- **Description**: Adds 1 new EARS-derived criterion and extends 1 existing partial criterion in undo-redo-transactions/requirements.md as Requirement 19: SETUNDO primary command with ON/OFF/n operands for configuring undo levels at runtime (RU-SETUNDO), and RECOVERY primary command with ON/OFF/n operands for configuring crash recovery interval at runtime (RU-RECOVERY-command, extends Requirement 8.2). Adds Tasks 19-20.
+- **Status**: DONE -- gate complete, Requirement 19 added, Tasks 19-20 added, TCR rows added, Phase CE added to project-master
+- **Linked spec**: `docs/specs/undo-redo-transactions/requirements.md` (new Requirement 19)
+
+### CR-NR-028 -- Phase CF: syntax-highlighting P2 EARS integration (HILITE command)
+- **Date/Phase**: Phase CF
+- **Prompt**: "proceed with cf"
+- **Description**: Adds 3 new EARS-derived criteria and extends 2 existing partial criteria in syntax-highlighting/requirements.md as Requirement 16: HILITE ON/OFF command toggling syntax highlighting per document (SH-HILITE-toggle / PC-HILITE unified), HILITE LOGIC mode highlighting boolean and comparison operators (SH-HILITE-LOGIC), HILITE PAREN mode highlighting enclosing delimiter pairs with error style for mismatches (SH-HILITE-PAREN), HILITE FIND persisting find-match highlights (SH-HILITE-FIND), and combined operand support. Adds Tasks 21-22.
+- **Status**: DONE -- gate complete, Requirement 16 added, Tasks 21-22 added, TCR rows added, Phase CF added to project-master
+- **Linked spec**: `docs/specs/syntax-highlighting/requirements.md` (new Requirement 16)
+
+### CR-NR-029 -- Phase CG: lua-macro-engine P2 EARS integration (ISREDIT, ISPEXEC, IMACRO, REXX bridge, FFCMD)
+- **Date/Phase**: Phase CG
+- **Prompt**: "proceed with cg"
+- **Description**: Adds 30 new EARS-derived criteria to lua-macro-engine/requirements.md as Requirement 11: ISREDIT host command environment (AC 11.1), ISPEXEC host command environment (AC 11.2), IMACRO initial macro execution and edit profile setting (AC 11.3-11.4), LINENUM function (AC 11.5), CURSOR get/set extension (AC 11.6), REXX exec invocation via EXEC command/implicit/% prefix/argument passing (AC 11.7-11.10), TSO host environment and ADDRESS switching with ISPEXEC/ISREDIT environments and RC variable (AC 11.11-11.15), REXX built-in functions LISTDSI/MSG/MVSVAR/OUTTRAP/PROMPT/SYSDSN/SYSVAR/USERID (AC 11.16-11.23), EXECIO DISKR/DISKW/FINIS/SKIP with return codes (AC 11.24-11.28), and FFCMD command files with transaction wrapping (AC 11.29-11.30). Adds Tasks 21-24.
+- **Status**: DONE -- gate complete, Requirement 11 added, Tasks 21-24 added, TCR rows added, Phase CG added to project-master
+- **Linked spec**: `docs/specs/lua-macro-engine/requirements.md` (new Requirement 11)
+
+### CR-NR-030 -- Phase CH: FFW-JES P2 EARS integration (overtype, help, log/system panels, browse/print, SET P2)
+- **Date/Phase**: Phase CH
+- **Prompt**: "proceed with ch"
+- **Description**: Adds 30 new EARS-derived criteria to FFW-JES/requirements.md as Requirement 18: overtype fields with visual distinction, direct overtype, command-line syntax, and extension pop-up (AC 18.1-18.4); context-sensitive help system HELP/ACTH/COLH/CMDH/SEARCH (AC 18.5-18.9); log panels LOG/ULOG with NEXT/PREV/SNAPSHOT (AC 18.10-18.13); system panels SYS/DASH/INIT/JC/SP (AC 18.14-18.18); browse settings, PRINT action, COLS command (AC 18.19-18.21); SET P2 commands BCOLOR/CONFIRM/CURSOR/DATE/DELAY/HEX/SCHARS/SCREEN with persistence (AC 18.22-18.30). Adds Tasks 30-34.
+- **Status**: DONE -- gate complete, Requirement 18 added, Tasks 30-34 added, TCR rows added, Phase CH added to project-master
+- **Linked spec**: `docs/specs/FFW-JES/requirements.md` (new Requirement 18)
+
+### CR-NR-031 -- Phase CI: command-semantics P2 EARS integration (OUTPUT, CANCEL, SEND, PROFILE, PRINTDS)
+- **Date/Phase**: Phase CI
+- **Prompt**: "Proceed with phase CI"
+- **Description**: Adds 5 new EARS-derived criteria to command-semantics/requirements.md as Requirement 10: OUTPUT command routing to FFW-JES for job output display (TSO-CMD-10), CANCEL command with optional PURGE operand routing to FFW-JES (TSO-CMD-11), SEND command with USER/LOGON/BROADCAST routing to messaging subsystem (TSO-CMD-12), PROFILE command routing to session profile subsystem with MSGID/INTERCOM/NOINTERCOM/PREFIX/SIZE/WTPMSG operands (TSO-CMD-13), and PRINTDS command routing to file-operations pipeline (TSO-CMD-14). Adds Tasks 25-27. Completes EI-5.16 (final EARS integration batch).
+- **Status**: DONE -- gate complete, Requirement 10 added, Tasks 25-27 added, TCR rows added, Phase CI added to project-master
+- **Linked spec**: `docs/specs/command-semantics/requirements.md` (new Requirement 10)

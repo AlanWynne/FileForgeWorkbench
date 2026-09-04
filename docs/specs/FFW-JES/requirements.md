@@ -422,3 +422,222 @@ Job log files and SYSOUT output SHALL be accessible via VFS Resource_URIs (e.g.,
 |-----|--------|
 | JES | FFW-JES EARS Requirements document |
 | FFW-ARCH | FileForgeWorkbench architecture specs (command-framework, plugin-architecture, layout-and-docking, workflow-engine, VFS) |
+
+---
+
+### Requirement 16: SDSF Panel Framework Core (P1)
+
+**User Story:** As a workbench user, I want the Job Monitor to present an SDSF-style panel
+framework with action bar, title line, SCROLL field, filter information lines, NP column,
+fixed first column, main panel command list, and PREFIX/OWNER/DEST filter commands, so that
+the interface matches the mainframe SDSF experience.
+
+**Source:** SDSF-1.1 through SDSF-1.8, SDSF-2.2 through SDSF-2.6, SDSF-4.1 through SDSF-4.6,
+SDSF-FILTER-1 through SDSF-FILTER-3, SDSF-1.3 (PAR), SDSF-1.4 (PAR), SDSF-2.1 (PAR),
+SDSF-JQ-6 (PAR), SDSF-JQ-7 (PAR), SDSF-FILTER-5 (PAR). [JES, FFW-ARCH]
+
+#### Acceptance Criteria
+
+1. THE JobMonitorPanel SHALL display an action bar at the top with pull-down menus
+   (File, View, Help at minimum) consistent with SDSF panel layout.
+
+2. THE JobMonitorPanel SHALL display a title line showing the panel name and the
+   line range of currently visible rows (e.g., "INPUT QUEUE -- Row 1 to 25 of 47").
+
+3. THE JobMonitorPanel SHALL display a SCROLL ===> field adjacent to the command
+   input field, retaining the last-used scroll amount across panel interactions.
+
+4. THE JobMonitorPanel SHALL display filter information lines below the title line
+   showing active filter values in the form PREFIX=value, DEST=value, OWNER=value;
+   lines are omitted when the corresponding filter is not set.
+
+5. THE JobMonitorPanel SHALL provide an NP (non-print) column as the leftmost
+   fixed column for entering action characters; the NP column SHALL NOT scroll
+   horizontally with the data columns.
+
+6. THE first data column (JOBNAME) SHALL remain fixed and visible during horizontal
+   scrolling of the remaining columns.
+
+7. WHEN the user types an action character in the NP column and presses Enter,
+   THE system SHALL execute the corresponding action on that job row.
+
+8. THE system SHALL support the following action characters in the NP column:
+   S (select/view), ? (display valid actions), C (cancel), H (hold), A (release),
+   P (purge), D (delete output), E (edit JCL), J (view JCL), W (who has job).
+
+9. THE system SHALL support = as a repeat action character -- entering = in the NP
+   column repeats the previous action character on that row.
+
+10. THE system SHALL support // block action syntax -- entering // in the NP column
+    of the first and last rows of a block applies the action to all rows in the block.
+
+11. THE system SHALL support command-line action syntax -- entering "2 C" in the
+    command field cancels the job in row 2 without using the NP column.
+
+12. WHEN the user issues SET ROWNUM ON, THE system SHALL display row numbers in the
+    NP area instead of the action character input field.
+
+13. THE JobMonitorPanel SHALL provide a main panel (accessible via the MENU command)
+    listing all available SDSF panel commands with name, description, and group.
+
+14. THE main panel SHALL organise commands into groups: Jobs, Output, JES, Log,
+    Memory, and Other; groups SHALL be expandable and collapsible.
+
+15. WHEN the user enters S in the NP column of a main panel row, THE system SHALL
+    navigate to the selected panel command.
+
+16. WHEN the user issues SET MAIN GROUP, THE system SHALL display the main panel
+    in grouped format with expandable/collapsible command groups.
+
+17. THE MENU command SHALL return the user to the main panel from any sub-panel.
+
+18. THE system SHALL support the PREFIX filter command -- PREFIX value filters the
+    job list to show only jobs whose names begin with the specified prefix;
+    PREFIX * or PREFIX (empty) clears the filter.
+
+19. THE system SHALL support the OWNER filter command -- OWNER value filters the
+    job list to show only jobs owned by the specified user; OWNER * clears the filter.
+
+20. THE system SHALL support the DEST filter command -- DEST value filters the job
+    list to show only jobs with the specified output destination; DEST * clears the filter.
+
+21. THE JobMonitorPanel title line SHALL include a message area displaying the most
+    recent informational or error message from the last command execution.
+
+22. THE JobMonitorPanel SHALL provide a COMMAND INPUT ===> field for entering SDSF
+    commands (PREFIX, OWNER, DEST, SORT, FIND, LOCATE, SET, MENU, WHO, QUERY AUTH).
+
+23. THE NP column SHALL support the full set of SDSF action characters: S, ?, C, H,
+    A, P, D, E, J, W; unsupported actions for a given job state SHALL be rejected
+    with a message in the title line message area.
+
+24. THE job table SHALL define the following columns: JOBNAME, JOBID, OWNER, STATUS,
+    CLASS, PRTY (priority), QUEUE, START, END, RC (return code), STEPNAME, PROCSTEP;
+    columns SHALL be individually hideable and reorderable.
+
+25. THE PREFIX, OWNER, and DEST filter fields SHALL be displayable as dedicated
+    filter input rows above the job table, pre-populated with the current filter
+    values, and editable in-place.
+
+26. THE system SHALL support the SORT command -- SORT colname [A|D] sorts the job
+    table by the specified column in ascending (default) or descending order;
+    SORT with no arguments restores submission-time order.
+
+---
+
+### Requirement 17: SDSF Panel Framework Extended (P1)
+
+**User Story:** As a workbench user, I want the Job Monitor to provide a dedicated ST (status)
+panel showing all jobs, advanced FILTER/FIND/LOCATE commands, SDSF-style scroll behaviour,
+SET ACTION/MAIN/ROWNUM/WHO/QUERY AUTH commands, and persistent SET settings, so that the
+full P1 SDSF command set is available.
+
+**Source:** SDSF-JQ-4 (PAR), SDSF-FILTER-4, SDSF-FILTER-6, SDSF-FILTER-7, SDSF-SCROLL-1-5 (PAR),
+SET-1, SET-8, SET-9, SET-12, SET-13, PERSIST-1 (PAR). [JES, FFW-ARCH]
+
+#### Acceptance Criteria
+
+1. THE JobMonitorPanel SHALL provide a dedicated ST (Status) sub-panel displaying all jobs
+   regardless of queue state, with STATUS column showing QUEUED/HELD/ACTIVE/COMPLETED/FAILED/CANCELLED.
+
+2. THE system SHALL support the FILTER command -- FILTER expression applies an advanced
+   filter to the job table using field comparisons (e.g., FILTER JOBNAME=PAY* AND STATUS=ACTIVE);
+   FILTER with no arguments clears the active filter.
+
+3. THE system SHALL support the FIND command -- FIND string searches within the currently
+   visible panel data and highlights the first matching row; FIND NEXT advances to the
+   next match; FIND PREV moves to the previous match.
+
+4. THE system SHALL support the LOCATE command -- LOCATE jobname scrolls the job table
+   to the first row whose JOBNAME begins with the specified string; if no match exists
+   the panel scrolls to the nearest alphabetic position.
+
+5. THE JobMonitorPanel SHALL support SDSF-style scroll commands: UP [n|HALF|PAGE|MAX],
+   DOWN [n|HALF|PAGE|MAX], LEFT [n|HALF|PAGE|MAX], RIGHT [n|HALF|PAGE|MAX]; the scroll
+   amount defaults to the value in the SCROLL ===> field.
+
+6. WHEN the user issues SET ACTION, THE system SHALL display a pop-up or inline list of
+   all valid action characters for the current panel with their descriptions.
+
+7. WHEN the user issues SET MAIN [panel-name], THE system SHALL set the specified panel
+   as the default panel opened by the MENU command; if no panel-name is given the current
+   panel becomes the default.
+
+8. WHEN the user issues SET ROWNUM ON, THE system SHALL display row sequence numbers in
+   the NP column area; WHEN the user issues SET ROWNUM OFF, THE system SHALL restore the
+   NP action character input field.
+
+9. WHEN the user issues WHO, THE system SHALL display a session information summary
+   showing: current user identity, session start time, active filters (PREFIX/OWNER/DEST),
+   current SET settings (ROWNUM, MAIN), and provider name.
+
+10. WHEN the user issues QUERY AUTH, THE system SHALL display the list of JES commands
+    and action characters the current user is authorised to execute, based on the
+    capability model defined in command-semantics Requirement 9.16.
+
+11. THE system SHALL persist all SET command settings (SET ACTION display preference,
+    SET MAIN default panel, SET ROWNUM state) across application restarts using the
+    workbench session persistence mechanism.
+
+12. THE FILTER command SHALL support the following comparison operators in filter
+    expressions: = (equals), != (not equals), > (greater than), < (less than),
+    >= (greater than or equal), <= (less than or equal), and wildcard * in string values.
+
+13. THE FILTER command SHALL support AND and OR logical operators to combine multiple
+    field comparisons in a single filter expression.
+
+14. THE ST panel SHALL be accessible via the command ST entered in the COMMAND INPUT
+    ===> field, and via the S action on the main panel row for the ST command.
+
+15. THE FIND command SHALL be case-insensitive by default; FIND C string performs a
+    case-sensitive search.
+
+16. WHEN a LOCATE or FIND command finds no match, THE system SHALL display a message
+    in the title line message area: "string NOT FOUND" and leave the scroll position
+    unchanged.
+
+17. THE scroll commands (UP/DOWN/LEFT/RIGHT) SHALL update the SCROLL ===> field to
+    reflect the most recently used scroll amount, consistent with Requirement 16.3.
+
+---
+
+---
+
+### Requirement 18: SDSF P2 -- Overtype Fields, Help System, Log and System Panels, Browse and Print, SET P2 Commands
+
+**User Story:** As a user, I want to modify job attributes directly in the SDSF panel by overtyping field values, access context-sensitive help for actions and columns, view system and user logs, browse and print job output, and configure display settings via SET commands, so that the SDSF emulation provides the full P2 operational experience.
+
+**Source:** TSO-EARS SDSF panel framework (SDSF-3.x overtype, SDSF-5.x help), SDSF log panels (SDSF-LOG-1 through SDSF-LOG-4), SDSF system panels (SDSF-SYS-1 through SDSF-SYS-5), SDSF browse/print (SDSF-BROWSE-2 through SDSF-BROWSE-4), SET P2 commands (SET-2 through SET-11). [JES, WB]
+
+#### Acceptance Criteria
+
+1. THE SDSF panel SHALL visually distinguish overtypeable fields from read-only fields using a distinct colour or underline style defined by the active theme.
+2. WHEN a user types a new value directly over an overtypeable field in the panel and presses Enter, THE panel SHALL apply the change to the underlying job or resource attribute and refresh the display.
+3. THE panel SHALL support command-line overtype syntax: `<field-name> <value>` entered in the COMMAND INPUT field SHALL update the named field for the row identified by the cursor or NP column position.
+4. WHEN an overtypeable field value exceeds the column width, THE panel SHALL display an Overtype Extension pop-up allowing the user to enter the full value in a larger input area.
+5. THE SDSF panel SHALL provide context-sensitive help accessible via the HELP command or PF1: WHEN issued from a panel, THE help system SHALL display a help panel describing the current panel's purpose, available commands, and column definitions.
+6. THE `ACTH` command SHALL display a help panel listing all valid action characters for the current panel with a one-line description of each action.
+7. THE `COLH` command SHALL display a help panel listing all column names visible in the current panel with their data type, width, and description.
+8. THE `CMDH` command SHALL display a help panel listing all primary commands valid in the current panel with syntax and description.
+9. THE `SEARCH <text>` command within a help panel SHALL search the help content for the given text and scroll to the first match.
+10. THE `LOG` command SHALL open the System Log panel displaying the JES system log output in reverse-chronological order (most recent entry first).
+11. THE `ULOG` command SHALL open the User Log panel displaying messages directed to the current user's log.
+12. WHEN the System Log or User Log panel is open, THE `NEXT` command SHALL scroll forward to the next log segment and `PREV` SHALL scroll backward to the previous segment.
+13. THE `SNAPSHOT` command in a log panel SHALL capture the current log content to a dataset or file for offline review.
+14. THE `SYS` command SHALL open the System Information panel displaying active address spaces, their status, and resource consumption.
+15. THE `DASH` command SHALL open the System Dashboard panel displaying a summary of system health metrics (CPU, memory, I/O rates).
+16. THE `INIT` command SHALL open the Initiator panel displaying the JES initiator pool status (class assignments, active/idle state).
+17. THE `JC` command SHALL open the Job Class panel displaying job class definitions and their scheduling parameters.
+18. THE `SP` command SHALL open the Spool panel displaying spool volume utilisation and track allocation.
+19. WHEN browsing job output, THE panel SHALL support browse settings: line width, record format display, and FIND within the output stream.
+20. THE `PRINT` action character applied to a job output dataset SHALL route the output to the configured print destination (local file or printer queue).
+21. WHEN browsing job output, THE `COLS` command SHALL display a column ruler line showing the current horizontal scroll position and column numbers.
+22. THE `SET BCOLOR <color>` command SHALL set the background colour of the SDSF panel display area, persisted across sessions.
+23. THE `SET CONFIRM ON/OFF` command SHALL control whether destructive actions (cancel, purge) require a confirmation prompt before execution.
+24. THE `SET CURSOR <field>` command SHALL set the default cursor landing position when a panel is opened.
+25. THE `SET DATE <format>` command SHALL set the date display format (MDY, DMY, YMD, JUL) used in date columns across all SDSF panels.
+26. THE `SET DELAY <seconds>` command SHALL set the automatic refresh interval for SDSF panels; `SET DELAY 0` disables automatic refresh.
+27. THE `SET HEX ON/OFF` command SHALL toggle hexadecimal display of field values in the current panel.
+28. THE `SET SCHARS <chars>` command SHALL define the set of special characters recognised as field delimiters in overtype and filter expressions.
+29. THE `SET SCREEN <rows> <cols>` command SHALL set the logical screen dimensions used for panel layout calculations.
+30. ALL SET P2 command settings (BCOLOR, CONFIRM, CURSOR, DATE, DELAY, HEX, SCHARS, SCREEN) SHALL be persisted across sessions using the same mechanism as SET P1 settings defined in Requirement 17.17.

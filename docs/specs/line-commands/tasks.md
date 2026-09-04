@@ -389,3 +389,65 @@ This is a **Wave 5 (Command Engine)** sub-project that depends on Wave 4 (`ff-do
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
 - The BOUNDS/BNDS state is read from session state set by `ff-navigation-commands` — this crate reads but never modifies bounds
 - The `ff-exclude-show-filter` crate is downstream and handles SHOW/INCLUDE/RESET restoration — this crate only sets `excluded = true`
+
+---
+
+## Phase BX -- EARS Integration (Requirement 15)
+
+- [ ] 22. Overlay line command (O, On)
+  - [ ] 22.1 Add `Overlay` and `OverlayCount` variants to `LineCommandKind`
+  - [ ] 22.2 Extend `LineCommandParser::parse()` to recognise `O` and `On` patterns
+  - [ ] 22.3 Classify `Overlay`/`OverlayCount` as `Target` category (requires pending C/CC source)
+  - [ ] 22.4 Implement `ExecutionEngine::execute_overlay()` -- merge source content over target line(s), non-blank source chars replace target chars
+  - [ ] 22.5 Wrap overlay in a single undoable Transaction
+  - [ ] 22.6 Write unit tests for single overlay, counted overlay, and non-blank-only replacement
+  - Covers: Requirement 15.1, 15.2, 15.10
+
+- [ ] 23. Clipboard copy line command (W, WW)
+  - [ ] 23.1 Add `ClipboardCopy` and `ClipboardCopyBlock` variants to `LineCommandKind`
+  - [ ] 23.2 Extend parser to recognise `W` and `WW` patterns
+  - [ ] 23.3 Classify as `Immediate` (W) and `Block` (WW) categories
+  - [ ] 23.4 Implement `ExecutionEngine::execute_clipboard_copy()` -- write line(s) to ff-clipboard
+  - [ ] 23.5 Verify no Transaction is produced (clipboard is external state)
+  - [ ] 23.6 Write unit tests for single and block clipboard copy, and no-transaction verification
+  - Covers: Requirement 15.3, 15.4, 15.11
+
+- [ ] 24. First-of-excluded line command (F)
+  - [ ] 24.1 Add `ShowFirst` variant to `LineCommandKind`
+  - [ ] 24.2 Extend parser to recognise `F` on an excluded-block placeholder line
+  - [ ] 24.3 Classify as `Immediate` category
+  - [ ] 24.4 Implement execution: clear `excluded` flag on the first line of the excluded block only
+  - [ ] 24.5 Verify no Transaction is produced (session state only)
+  - [ ] 24.6 Write unit tests for F on single-line and multi-line excluded blocks
+  - Covers: Requirement 15.5, 15.12
+
+- [ ] 25. Last-of-excluded line command (L)
+  - [ ] 25.1 Add `ShowLast` variant to `LineCommandKind`
+  - [ ] 25.2 Extend parser to recognise `L` on an excluded-block placeholder line
+  - [ ] 25.3 Classify as `Immediate` category
+  - [ ] 25.4 Implement execution: clear `excluded` flag on the last line of the excluded block only
+  - [ ] 25.5 Verify no Transaction is produced (session state only)
+  - [ ] 25.6 Write unit tests for L on single-line and multi-line excluded blocks
+  - Covers: Requirement 15.6, 15.12
+
+- [ ] 26. Single-column shift right (])
+  - [ ] 26.1 Add `ShiftRightOne` and `ShiftRightOneBlock` variants to `LineCommandKind`
+  - [ ] 26.2 Extend parser to recognise `]` and `]]` patterns
+  - [ ] 26.3 Classify as `Immediate` (]) and `Block` (]]) categories
+  - [ ] 26.4 Implement execution by delegating to `execute_shift_right()` with count=1
+  - [ ] 26.5 Wrap in a single undoable Transaction
+  - [ ] 26.6 Write unit tests verifying ] is equivalent to >1 for single line and block
+  - Covers: Requirement 15.7, 15.8
+
+- [ ] 27. Show-excluded line command (S)
+  - [ ] 27.1 Add `ShowLine` variant to `LineCommandKind`
+  - [ ] 27.2 Extend parser to recognise `S` on an excluded-block placeholder line
+  - [ ] 27.3 Classify as `Immediate` category
+  - [ ] 27.4 Implement execution: clear `excluded` flag on the first line of the excluded block (same as F for single-line blocks; for multi-line blocks shows first line only)
+  - [ ] 27.5 Verify no Transaction is produced (session state only)
+  - [ ] 27.6 Write unit tests for S on single-line and multi-line excluded blocks
+  - Covers: Requirement 15.9, 15.12
+
+- [ ] 28. TCR update for Requirement 15
+  - [ ] 28.1 Update docs/quality/TCR.md -- mark all Req 15.1-15.12 rows as covered once tests pass
+  - Covers: Requirement 15 (all criteria)

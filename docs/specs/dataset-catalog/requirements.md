@@ -605,6 +605,10 @@ workspace/
 
 23.4 Update and deletion semantics SHALL be explicitly documented; if they differ from append-only behaviour the documentation SHALL describe the exact behaviour.
 
+> **Implementation scope (Phase BS.6):** The initial provider uses framed native
+> files with byte-offset addresses, append-based replacements, tombstone
+> deletions, and an atomically maintained sidecar index.
+
 ---
 
 ### Requirement 24: ISAM Support
@@ -750,3 +754,63 @@ workspace/
 30.7 Text-oriented PDS/PDSE members and selected sequential datasets SHALL be capable of being represented as ordinary files suitable for external version-control tooling (Git compatibility).
 
 30.8 THE system SHALL NOT silently alter bytes, encoding, record boundaries, keys, or generation identity — any conversion SHALL require an explicit codec and encoding policy.
+
+---
+
+## Requirements Added by CR-NR-017 -- Catalog Location Discriminant
+
+---
+
+### Requirement 31: Catalog Location Discriminant
+
+**User Story:** As a workbench user, I want each mounted catalog to declare whether its database
+and repository are local or remote, so that the workbench can support remote catalogs in the
+future without requiring a breaking change to the catalog configuration schema or the CatalogMount
+API.
+
+**Source:** Architectural analysis -- CatalogMount.path: PathBuf hardcodes local-only assumption;
+remote connector seam identified in design review (CR-NR-017).
+
+#### Acceptance Criteria
+
+31.1 THE system SHALL define a `CatalogLocation` enum with at minimum two variants:
+- `Local { path: PathBuf }` -- catalog database and repository are on the local filesystem.
+- `Remote { scheme: String, uri: String }` -- catalog is accessed via a registered VFS connector
+  (future; not implemented in Phase BV).
+
+31.2 THE `CatalogMount` struct SHALL replace its `path: PathBuf` field with
+`location: CatalogLocation`.
+
+31.3 WHEN `CatalogLocation::Local` is used, THE system SHALL behave identically to the previous
+`path: PathBuf` behaviour -- no functional change for local catalogs.
+
+31.4 WHEN `CatalogLocation::Remote` is used and no connector implementing the specified scheme is
+registered, THE system SHALL return `CatalogError::UnsupportedOperation` with a message
+identifying the scheme.
+
+31.5 THE TOML `[[catalog.mounted_catalogs]]` schema SHALL be extended with a `location` field
+(string: `"local"` or `"remote"`) and a `uri` field (string, required when
+`location = "remote"`). Example:
+
+```toml
+[[catalog.mounted_catalogs]]
+name = "DEV"
+location = "local"
+path = "/home/user/.ffworkbench/catalogs/dev"
+priority = 1
+auto_mount = true
+```
+
+31.6 WHEN a `[[catalog.mounted_catalogs]]` entry omits the `location` field, THE system SHALL
+default to `location = "local"` for backward compatibility with existing configuration files.
+
+31.7 THE `CatalogLocation` enum SHALL be `#[non_exhaustive]` so that additional transport
+variants (e.g. `Mainframe`, `Cloud`) can be added in future phases without breaking existing
+match arms.
+
+31.8 THE `CatalogMount` struct SHALL expose a helper method `local_path() -> Option<&Path>` that
+returns the path when the location is `Local` and `None` otherwise, so that existing callers
+that only handle local catalogs can be updated minimally.
+
+31.9 ALL existing tests for catalog mount, unmount, resolve, and configuration round-trip SHALL
+continue to pass after this change with no observable behaviour difference for local catalogs.

@@ -32,6 +32,9 @@ git/
 # ── Large test data files (exceed GitHub 100 MB limit) ──────────────────────
 TestData/Large_File-157653-records.txt
 
+# ── Script execution logs (ephemeral, see .amazonq/rules/script-output.md) ──
+tools/logs/
+
 # ── Temporary / scratch files ────────────────────────────────────────────────
 *.log
 *.tmp
@@ -47,6 +50,9 @@ ffwb_cmp.ps1
 docs/fix_*.pdb
 docs/bugs_Sample.md
 FileForegeWorkbench-Primay-Screen.md
+
+# ── IBM manual source documents (copyright IBM -- not for redistribution) ────
+docs/source-documents/IBM-Manuals/
 
 # ── Kiro AI internal config files ────────────────────────────────────────────
 **/.config.kiro

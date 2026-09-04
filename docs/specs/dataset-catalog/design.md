@@ -202,6 +202,14 @@ unallocated slots; rows with an empty payload represent allocated blank
 records. Writes use an upsert inside a transaction, deletes remove the row,
 and sequential reads order allocated rows by relative record number.
 
+### Phase BS.6: Native ESDS
+
+ESDS datasets use an append-oriented native file under `datasets/objects/` and
+return the byte offset of each appended record as its stable address. Records
+are stored in length-delimited frames. Updates append replacement frames while
+deletions append tombstones, preserving existing addresses. A sidecar index is
+rebuilt from the data file on open and written atomically after changes.
+
 ---
 
 ## Components and Interfaces
@@ -551,22 +559,66 @@ pub struct Catalog {
 }
 ```
 
+### CatalogLocation
+
+```rust
+/// Describes where a catalog's database and repository physically reside.
+///
+/// The Remote variant is a forward-compatibility stub only -- see the
+/// "Remote Catalog Access Model" section for the intended future design.
+///
+/// Addresses: Requirement 31 AC 1, 31.7
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum CatalogLocation {
+    /// Catalog database and repository are on the local filesystem.
+    /// Accepts any path the OS can open, including UNC paths (\\server\share\...)
+    /// and OS-mounted network shares (/mnt/team/catalogs/dev).
+    Local { path: PathBuf },
+    /// Reserved for a future remote access protocol -- not yet implemented.
+    /// Returns CatalogError::UnsupportedOperation until a connector implements the scheme.
+    Remote { scheme: String, uri: String },
+}
+
+impl CatalogLocation {
+    /// Returns the local path if this is a Local location, None otherwise.
+    ///
+    /// Addresses: Requirement 31.8
+    pub fn local_path(&self) -> Option<&Path> {
+        match self {
+            CatalogLocation::Local { path } => Some(path.as_path()),
+            _ => None,
+        }
+    }
+}
+```
+
 ### CatalogMount
 
 ```rust
 /// Configuration entry for a mounted catalog.
 ///
-/// Addresses: Requirement 5 AC 6, Requirement 14 AC 2
+/// Addresses: Requirement 5 AC 6, Requirement 14 AC 2, Requirement 31 AC 2
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CatalogMount {
     /// Catalog name
     pub name: String,
-    /// Repository root path
-    pub path: PathBuf,
+    /// Where the catalog database and repository reside.
+    /// Replaces the previous `path: PathBuf` field.
+    pub location: CatalogLocation,
     /// Priority order (higher = checked first for resolution)
     pub priority: u32,
     /// Whether to auto-mount on startup
     pub auto_mount: bool,
+}
+
+impl CatalogMount {
+    /// Convenience accessor -- returns the local path when location is Local.
+    ///
+    /// Addresses: Requirement 31.8
+    pub fn local_path(&self) -> Option<&Path> {
+        self.location.local_path()
+    }
 }
 ```
 
@@ -1627,7 +1679,54 @@ All 15 properties defined in Section 11, implemented with `proptest` crate, mini
 - **Unit and integration**: Standard `#[test]` with `#[tokio::test]` for async operations
 - **Property-based**: `proptest` crate with custom strategies for DSN generation
 - **Fixtures**: Pre-built catalog databases for schema validation tests
-- **Isolation**: Every test creates a fresh `TempDir` repository — no shared state between tests
+- **Isolation**: Every test creates a fresh `TempDir` repository -- no shared state between tests
+
+---
+
+## Remote Catalog Access Model
+
+### Chosen Approach: OS-Mounted Filesystem (Option C)
+
+FileForge Workbench is a desktop application. SQLite is a local-process file format --
+`rusqlite` opens a file path, not a network URI. The chosen remote access model for the
+current and near-term phases is therefore Option C: the OS mounts the remote share as a
+local path, and the workbench treats it as `CatalogLocation::Local`.
+
+This means a user on a second desktop can access a shared team catalog in two ways:
+
+1. Direct mount -- point `catalog.mount` at the UNC path or mount point
+   (e.g. `\\server\share\catalogs\dev` on Windows, `/mnt/team/catalogs/dev` on Linux).
+   The full catalog -- all datasets -- is immediately visible. No per-dataset import needed.
+
+2. Import -- use `catalog.export` on the source machine to produce a ZIP, transfer it
+   (via the share or any other means), then `catalog.import` on the destination.
+   This gives the second user a fully independent local copy.
+
+### Constraints and Safe-Use Rules
+
+SQLite WAL mode over SMB or NFS has known corruption risks when multiple processes open
+the same `catalog.db` file for writing simultaneously. The following rules apply:
+
+- One writer, multiple readers -- only one workbench instance should have write access
+  to a shared catalog at any time. Other users should mount it read-only at the OS level,
+  or use `catalog.import` to take a local copy.
+- If a share is not mounted when the workbench starts, `auto_mount = true` will fail.
+  Users must ensure the OS mount exists before launching, or set `auto_mount = false`
+  for network-backed catalogs.
+- The workbench cannot distinguish a local path from a network path -- it applies no
+  special locking or warning for UNC/mount-point paths. This is a known limitation.
+
+### The Remote Variant -- Forward Compatibility Only
+
+The `CatalogLocation::Remote { scheme, uri }` variant is a stub introduced by CR-NR-017
+to keep the `CatalogMount` API open for a future remote protocol without a breaking change.
+It returns `CatalogError::UnsupportedOperation` for all operations in Phase BV.
+
+If a future phase introduces a proper remote catalog protocol (e.g. a catalog sync agent,
+a catalog server, or a z/OS connector), the `Remote` variant's `scheme` and `uri` fields
+identify the transport and endpoint. The SQLite database would still be accessed locally
+in that model -- the remote protocol would be responsible for replication or proxying,
+not for serving raw SQLite file I/O over the network.
 
 ---
 

@@ -44,6 +44,7 @@ pub mod properties;
 pub mod repository;
 pub mod schema;
 pub mod storage;
+pub mod transactions;
 pub mod vfs_provider;
 
 // Re-exports for public API

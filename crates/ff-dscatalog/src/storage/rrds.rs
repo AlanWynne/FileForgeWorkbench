@@ -54,8 +54,8 @@ impl SqliteRrdsProvider {
             source,
         })?;
         let database_path = directory.join(format!("{dataset_id}.sqlite"));
-        let connection = Connection::open(&database_path)
-            .map_err(|source| sqlite_error("open_rrds", source))?;
+        let connection =
+            Connection::open(&database_path).map_err(|source| sqlite_error("open_rrds", source))?;
         connection
             .pragma_update(None, "journal_mode", "WAL")
             .map_err(|source| sqlite_error("open_rrds", source))?;
@@ -171,19 +171,23 @@ impl SqliteRrdsProvider {
     }
 
     fn connection(&self, operation: &str) -> Result<MutexGuard<'_, Connection>, CatalogError> {
-        self.connection.lock().map_err(|_| CatalogError::RepositoryCorrupt {
-            path: self.database_path.display().to_string(),
-            reason: "RRDS connection mutex is poisoned".into(),
-            operation: operation.into(),
-        })
+        self.connection
+            .lock()
+            .map_err(|_| CatalogError::RepositoryCorrupt {
+                path: self.database_path.display().to_string(),
+                reason: "RRDS connection mutex is poisoned".into(),
+                operation: operation.into(),
+            })
     }
 }
 
 impl StorageProvider for SqliteRrdsProvider {
     fn capabilities(&self) -> &[ProviderCapability] {
-        static CAPABILITIES: &[ProviderCapability] =
-            &[ProviderCapability::RecordRead, ProviderCapability::RecordWrite,
-              ProviderCapability::RelativeAccess];
+        static CAPABILITIES: &[ProviderCapability] = &[
+            ProviderCapability::RecordRead,
+            ProviderCapability::RecordWrite,
+            ProviderCapability::RelativeAccess,
+        ];
         CAPABILITIES
     }
 
@@ -217,12 +221,24 @@ impl StorageProvider for SqliteRrdsProvider {
     fn stat(&self, workspace_root: &Path, locator: &str) -> Result<ObjectStat, CatalogError> {
         let path = self.open(workspace_root, locator)?;
         let size = fs::metadata(&path)
-            .map_err(|source| CatalogError::IoError { operation: "stat_rrds".into(), source })?
+            .map_err(|source| CatalogError::IoError {
+                operation: "stat_rrds".into(),
+                source,
+            })?
             .len();
-        Ok(ObjectStat { size, is_container: false, locator: locator.into() })
+        Ok(ObjectStat {
+            size,
+            is_container: false,
+            locator: locator.into(),
+        })
     }
 
-    fn rename(&self, _workspace_root: &Path, _locator: &str, _new_locator: &str) -> Result<(), CatalogError> {
+    fn rename(
+        &self,
+        _workspace_root: &Path,
+        _locator: &str,
+        _new_locator: &str,
+    ) -> Result<(), CatalogError> {
         Ok(())
     }
 
@@ -238,7 +254,11 @@ impl StorageProvider for SqliteRrdsProvider {
         Ok(Vec::new())
     }
 
-    fn reconcile(&self, _workspace_root: &Path, _known_locators: &[String]) -> Result<Vec<String>, CatalogError> {
+    fn reconcile(
+        &self,
+        _workspace_root: &Path,
+        _known_locators: &[String],
+    ) -> Result<Vec<String>, CatalogError> {
         Ok(Vec::new())
     }
 }
@@ -293,12 +313,18 @@ mod tests {
         provider.write(8, b"eight").unwrap();
         provider.write(2, b"two").unwrap();
         provider.write(8, b"updated").unwrap();
-        assert_eq!(provider.read(8).unwrap(), RrdsSlot::Allocated(b"updated".to_vec()));
+        assert_eq!(
+            provider.read(8).unwrap(),
+            RrdsSlot::Allocated(b"updated".to_vec())
+        );
         assert!(provider.delete_record(2).unwrap());
         assert!(!provider.delete_record(2).unwrap());
         assert_eq!(
             provider.sequential_read().unwrap(),
-            vec![RrdsRecord { record_number: 8, data: b"updated".to_vec() }]
+            vec![RrdsRecord {
+                record_number: 8,
+                data: b"updated".to_vec()
+            }]
         );
     }
 
@@ -316,6 +342,9 @@ mod tests {
         provider.write(1, b"value").unwrap();
         drop(provider);
         let reopened = SqliteRrdsProvider::open_existing(directory.path(), id).unwrap();
-        assert_eq!(reopened.read(1).unwrap(), RrdsSlot::Allocated(b"value".to_vec()));
+        assert_eq!(
+            reopened.read(1).unwrap(),
+            RrdsSlot::Allocated(b"value".to_vec())
+        );
     }
 }

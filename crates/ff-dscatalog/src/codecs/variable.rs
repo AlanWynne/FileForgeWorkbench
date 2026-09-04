@@ -36,12 +36,7 @@ impl VariableCodec {
 
     fn make_rdw(total_len: usize) -> [u8; RDW_LEN] {
         let len = total_len as u16;
-        [
-            (len >> 8) as u8,
-            (len & 0xFF) as u8,
-            0x00,
-            0x00,
-        ]
+        [(len >> 8) as u8, (len & 0xFF) as u8, 0x00, 0x00]
     }
 }
 
@@ -92,9 +87,7 @@ impl RecordCodec for VariableCodec {
                     record_index,
                     byte_offset: offset,
                     dataset: self.dataset.clone(),
-                    reason: format!(
-                        "RDW total length {rdw_total} is less than minimum {RDW_MIN}"
-                    ),
+                    reason: format!("RDW total length {rdw_total} is less than minimum {RDW_MIN}"),
                 });
             }
 
@@ -172,7 +165,11 @@ mod tests {
         let err = codec.decode(&[0x00, 0x07, 0x00]).unwrap_err();
         assert!(matches!(
             err,
-            CodecError::MalformedRdw { record_index: 0, byte_offset: 0, .. }
+            CodecError::MalformedRdw {
+                record_index: 0,
+                byte_offset: 0,
+                ..
+            }
         ));
     }
 
@@ -200,11 +197,7 @@ mod tests {
     fn encode_decode_round_trip_multiple_records() {
         // Validates: Requirement 17.6
         let codec = VariableCodec::new("TEST.DS");
-        let original = vec![
-            vec![1u8, 2, 3],
-            vec![],
-            vec![4u8, 5, 6, 7, 8],
-        ];
+        let original = vec![vec![1u8, 2, 3], vec![], vec![4u8, 5, 6, 7, 8]];
         let bytes = codec.encode(&original).unwrap();
         let decoded = codec.decode(&bytes).unwrap();
         assert_eq!(decoded, original);

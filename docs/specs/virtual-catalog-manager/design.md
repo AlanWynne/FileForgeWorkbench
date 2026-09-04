@@ -176,48 +176,50 @@ panel (when implemented) will surface them under a `Catalogs` section without ad
 
 ## 7. Allocated Dataset Store (Requirement 13)
 
-### 7.1 In-Memory Structure
+> **Revised by CR-CH-006 (Phase BU).** The in-memory HashMap and session-TOML store are
+> replaced by the SQLite catalog database in `ff-dscatalog`. The `AllocatedDataset` struct
+> and `datasets` field are removed from `FilesPanelState`.
 
-A new `AllocatedDataset` struct is added to `files_panel.rs`:
+### 7.1 Allocation Confirm Flow
+
+When `AllocOutcome::Confirmed` fires in `shell.rs`, the shell calls
+`CatalogRegistry::allocate(catalog_name, alloc_params)`. This delegates to
+`ff-dscatalog`'s `Catalog::allocate()`, which writes the dataset entry to the SQLite
+`catalog.db` and creates the physical object via `NativeFileProvider`. No in-memory
+state is updated beyond refreshing the content area.
+
+### 7.2 Content Area Population
+
+When a Mainframe catalog node is selected, `render_content_area` calls
+`CatalogRegistry::list_datasets(catalog_name)`, which executes a `SELECT` against the
+SQLite `datasets` table and returns `Vec<DatasetRecord>`. Each record is converted to a
+`ContentEntry` (DSN as name, DSORG as type, size/modified from catalog metadata).
+
+The same `list_datasets` call is used by `render_mainframe_content()` in
+`file_explorer_panel.rs` for Option 2.
+
+### 7.3 Session Persistence
+
+Dataset persistence is provided by the SQLite `catalog.db`. No TOML serialisation of
+dataset entries is needed. The `[catalog_datasets]` section is removed from
+`session.toml` and from `SessionManager`.
+
+### 7.4 CatalogRegistry API additions
+
+Two new methods are added to `CatalogRegistry` in `catalog_registry.rs`:
 
 ```rust
-pub struct AllocatedDataset {
-    pub name: String,        // DSN string
-    pub dsorg: String,       // "PS", "PO", "PDSE", "GDG"
-    pub recfm: String,       // "FB", "F", "VB", "V", "U"
-    pub lrecl: u32,
-    pub blksize: u32,
-    pub description: String,
-}
+// Allocate a dataset in the named catalog via ff-dscatalog.
+pub fn allocate(&self, catalog_name: &str, params: AllocParams)
+    -> Result<(), CatalogError>;
+
+// List all datasets in the named catalog from SQLite.
+pub fn list_datasets(&self, catalog_name: &str)
+    -> Result<Vec<DatasetRecord>, CatalogError>;
 ```
 
-`FilesPanelState` gains a `datasets: HashMap<String, Vec<AllocatedDataset>>` field keyed by
-catalog name.
-
-### 7.2 Allocation Confirm Flow
-
-When `AllocOutcome::Confirmed` fires in `shell.rs`, the shell reads the validated `AllocParams`
-from the form and calls a new helper `files_panel_state.add_dataset(catalog_name, params)`.
-The `catalog_name` is the name that was right-clicked to open the dialog — already stored in
-`FilesPanelState::pending_alloc_catalog`.
-
-### 7.3 Content Area Population
-
-When a catalog node is clicked in the left tree, `render_content_area` now calls a new helper
-`load_entries_from_datasets(catalog_name)` that converts `AllocatedDataset` entries to
-`ContentEntry` values and writes them into `ContentAreaState::entries`.
-
-### 7.4 Session Persistence
-
-Datasets are serialised to `session.toml` as a TOML array-of-tables under each catalog name.
-The `CatalogRegistry::save_to_toml()` / `load_from_toml()` pattern is extended to include
-a `[catalog_datasets]` section. On load, datasets are restored into `FilesPanelState::datasets`.
-
-### 7.5 No Contradictions
-
-- `ff-dscatalog` is not involved — this is a lightweight UI-layer store for the desktop shell.
-- The `AllocDatasetForm` already validates all parameters; no new validation logic is needed.
-- `ContentAreaState::entries` is already a `Vec<ContentEntry>` — only the population path changes.
+Both methods look up the catalog by name in the registry, obtain the `ff-dscatalog`
+`Catalog` handle, and delegate to its existing API.
 
 ## 8. Default Home Catalog (Requirement 14)
 
@@ -298,50 +300,50 @@ cannot be changed without re-creating the catalog.
 
 ## 10. VFS Dataset Path Resolution (Requirement 16)
 
+> **Revised by CR-CH-006 (Phase BU).** The `resolve_dataset_path()` DSN-to-path function
+> is replaced by a SQLite catalog lookup. The catalog is the sole authority for physical
+> location.
+
 ### 10.1 Resolution Rule
 
-Given:
-- `repository_path`: the catalog's `path` field (e.g. `C:/catalogs/payroll`)
-- `dsn`: the dataset name (e.g. `PAYROLL.EMPLOYEE`)
+Given a DSN, the physical path is obtained by calling
+`CatalogRegistry::resolve(dsn) -> Result<ResolvedDataset, CatalogError>`.
+`ResolvedDataset` carries the `physical_locator` (UUID-based path of the form
+`{workspace}/datasets/objects/<uuid>.dat`) returned from the SQLite `datasets` table.
 
-Resolved path = `{repository_path}/{dsn_as_path}` where `dsn_as_path` replaces `.` with
-the platform path separator (`/` on all platforms via `std::path::Path`).
+The old dot-to-directory-separator mapping is removed entirely.
 
-Example: `C:/catalogs/payroll` + `PAYROLL.EMPLOYEE` → `C:/catalogs/payroll/PAYROLL/EMPLOYEE`
-
-### 10.2 Pure Function
+### 10.2 Helper Function
 
 ```rust
-pub fn resolve_dataset_path(repository_path: &str, dsn: &str) -> Option<std::path::PathBuf> {
-    if repository_path.is_empty() || dsn.is_empty() {
-        return None;
-    }
-    let rel: std::path::PathBuf = dsn.split('.').collect();
-    Some(std::path::Path::new(repository_path).join(rel))
-}
+/// Resolve a DSN via the SQLite catalog and open or create the physical file.
+/// Returns the resolved PathBuf on success, or an error string for display.
+pub fn resolve_and_open_dataset(
+    registry: &CatalogRegistry,
+    dsn: &str,
+) -> Result<std::path::PathBuf, String>;
 ```
 
-This is a pure function in `files_panel.rs` with no VFS or egui dependency.
+This function is in `files_panel.rs`, has no egui dependency, and is independently
+testable with a mock registry.
 
 ### 10.3 Open Flow
 
-In `render.rs`, the `FilesPanelAction::OpenFile(dsn)` handler for Mainframe catalogs is
-extended:
+In `render.rs`, the `FilesPanelAction::OpenFile(dsn)` handler for Mainframe catalogs:
 
-1. Look up the catalog by `selected_catalog` name in the registry.
-2. Call `resolve_dataset_path(&catalog.path, &dsn)`.
-3. If `None` (empty repository path) → show `"catalog has no repository path configured"`.
-4. If `Some(path)` and `path.exists()` → dispatch `file.open` with the resolved path string.
-5. If `Some(path)` and `!path.exists()` → show `"dataset file not found at {path}"`.
+1. Call `resolve_and_open_dataset(&registry, &dsn)`.
+2. On `Ok(path)` and `path.exists()` -- dispatch `file.open`.
+3. On `Ok(path)` and `!path.exists()` -- call `create_dataset_file(&path)`, then dispatch
+   `file.open`; on creation failure show the `cannot create` error message.
+4. On `Err(msg)` -- show `msg` in the status bar.
 
-The same logic applies to the File Explorer Panel double-click path in
-`render_dataset_children()` — instead of setting `state.last_error` unconditionally, it
-now attempts resolution and opens the file if found.
+The same flow applies to the File Explorer Panel double-click handler in
+`render_dataset_children()`.
 
-### 10.4 No New Crate Dependencies
+### 10.4 Crate Dependencies
 
-`std::path::Path` and `std::path::PathBuf` are already used throughout `ff-desktop`.
-No new crate dependencies are required.
+`ff-dscatalog` is already a dependency of `ff-desktop`. No new crate dependencies are
+required.
 
 
 

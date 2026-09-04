@@ -258,6 +258,9 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
   - [x] 12.14 Update `docs/quality/TCR.md` and `docs/specs/project-master/tasks.md`
 
 - [ ] 17. Dataset file creation on first open (Req 16.3, 16.6)
+  > **SUPERSEDED BY BU.7** -- do not implement as written. The resolve_and_open_dataset()
+  > function in Phase BU covers this requirement via SQLite catalog lookup. Task 17
+  > implements the legacy DSN-path approach which is superseded by the UUID-based approach.
   - [ ] 17.1 Write failing test `opening_missing_dataset_creates_file_and_parent_dirs` — calls the open handler with a resolved path whose parent exists but the file does not; asserts the file is created on disk
     - Validates: Requirement 16.3
   - [ ] 17.2 Write failing test `opening_missing_dataset_creates_parent_dirs` — resolved path whose parent directory does not exist; asserts both parent and file are created
@@ -271,3 +274,156 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
   - [ ] 17.6 Run `cargo test -p ff-desktop` — confirm green
   - [ ] 17.7 Run `cargo clippy -p ff-desktop -- -D warnings` — clean
   - [ ] 17.8 Update `docs/quality/TCR.md` Req 16.3 and 16.6 rows to ✅ PASS
+
+---
+
+## Phase BU -- SQLite Catalog Integration for Options 1 and 2 (CR-CH-006)
+
+> Replaces the in-memory AllocatedDataset HashMap / session-TOML store with the SQLite
+> catalog database owned by ff-dscatalog. Covers both the Files Panel (Option 1) and the
+> File Explorer Panel (Option 2).
+>
+> Sequence: design docs (done above) -> tests (tasks 18-20) -> implementation (tasks 21-25).
+
+---
+
+### Design and specification (complete -- see requirements.md Req 13, 16 and design.md sections 7, 10)
+
+- [x] BU.D1 Update virtual-catalog-manager/requirements.md Req 13 -- replace HashMap/TOML
+        store with SQLite CatalogRegistry API (CR-CH-006)
+- [x] BU.D2 Update virtual-catalog-manager/requirements.md Req 16 -- replace
+        resolve_dataset_path() DSN-path function with CatalogRegistry::resolve() lookup
+- [x] BU.D3 Update virtual-catalog-manager/design.md section 7 -- document new allocation
+        and listing flow via CatalogRegistry
+- [x] BU.D4 Update virtual-catalog-manager/design.md section 10 -- document
+        resolve_and_open_dataset() replacing resolve_dataset_path()
+
+---
+
+### Tests (write FAILING tests before any implementation)
+
+- [ ] 18. CatalogRegistry API extension tests
+  - [ ] 18.1 Write failing test `catalog_registry_allocate_writes_to_sqlite` -- create a
+          temporary ff-dscatalog repository, mount it in a CatalogRegistry, call
+          `registry.allocate("TEST", alloc_params)`, then call `registry.list_datasets("TEST")`
+          and assert the returned Vec contains one entry matching the allocated DSN.
+          - Validates: Requirement 13.1
+  - [ ] 18.2 Write failing test `catalog_registry_list_datasets_returns_empty_for_new_catalog`
+          -- mount a freshly initialised catalog, call `list_datasets`, assert empty Vec.
+          - Validates: Requirement 13.2
+  - [ ] 18.3 Write failing test `catalog_registry_list_datasets_returns_all_allocated` --
+          allocate three datasets (PS, PO, GDG), call `list_datasets`, assert all three DSNs
+          present with correct DSORG values.
+          - Validates: Requirement 13.2, 13.3
+  - [ ] 18.4 Write failing test `catalog_registry_allocate_unknown_catalog_returns_error` --
+          call `allocate` with a catalog name not in the registry, assert Err.
+          - Validates: Requirement 13.1
+  - [ ] 18.5 Run `cargo test -p ff-desktop` -- confirm new tests FAIL (red).
+
+- [ ] 19. resolve_and_open_dataset tests
+  - [ ] 19.1 Write failing test `resolve_and_open_dataset_returns_path_for_known_dsn` --
+          build a mock CatalogRegistry with one allocated PS dataset, call
+          `resolve_and_open_dataset(&registry, "PAYROLL.INPUT")`, assert Ok(path) where
+          path ends with the expected UUID filename.
+          - Validates: Requirement 16.1
+  - [ ] 19.2 Write failing test `resolve_and_open_dataset_returns_err_for_unknown_dsn` --
+          call with a DSN not in any catalog, assert Err containing "not found in any
+          mounted catalog".
+          - Validates: Requirement 16.4
+  - [ ] 19.3 Write failing test `resolve_and_open_dataset_creates_file_when_missing` --
+          resolve a known DSN whose physical file does not yet exist on disk; assert the
+          file is created and Ok(path) returned.
+          - Validates: Requirement 16.3
+  - [ ] 19.4 Run `cargo test -p ff-desktop` -- confirm new tests FAIL (red).
+
+- [ ] 20. Content area population tests
+  - [ ] 20.1 Write failing test `files_panel_content_area_populated_from_sqlite` --
+          build a FilesPanelState with a CatalogRegistry backed by a real temp SQLite
+          catalog containing two datasets; call `load_entries_from_catalog("MYCAT")`;
+          assert ContentAreaState::entries has two entries with correct names and
+          is_container flags.
+          - Validates: Requirement 13.2
+  - [ ] 20.2 Write failing test `file_explorer_mainframe_content_populated_from_sqlite` --
+          same setup; call the File Explorer render_mainframe_content equivalent; assert
+          the dataset list matches the SQLite contents.
+          - Validates: Requirement 13.3
+  - [ ] 20.3 Write failing test `alloc_confirm_no_longer_writes_to_datasets_hashmap` --
+          confirm that after AllocOutcome::Confirmed is processed, FilesPanelState has no
+          `datasets` field (compile-time check) and the dataset appears only via
+          list_datasets().
+          - Validates: Requirement 13.1, 13.4
+  - [ ] 20.4 Run `cargo test -p ff-desktop` -- confirm new tests FAIL (red).
+
+---
+
+### Implementation
+
+- [ ] 21. Add CatalogRegistry::allocate() and list_datasets() methods
+  - [ ] 21.1 In `catalog_registry.rs`: add `allocate(catalog_name: &str, params: AllocParams)
+          -> Result<(), CatalogError>` -- look up catalog handle, delegate to
+          `Catalog::allocate(params)` from ff-dscatalog.
+          - Validates: Requirement 13.1
+  - [ ] 21.2 In `catalog_registry.rs`: add `list_datasets(catalog_name: &str)
+          -> Result<Vec<DatasetRecord>, CatalogError>` -- look up catalog handle, execute
+          `SELECT * FROM datasets` via ff-dscatalog query API, return rows.
+          - Validates: Requirement 13.2, 13.3
+  - [ ] 21.3 Run `cargo test -p ff-desktop` -- confirm tasks 18.1-18.4 now PASS (green).
+  - [ ] 21.4 Run `cargo clippy -p ff-desktop -- -D warnings` -- clean.
+
+- [ ] 22. Replace AllocOutcome::Confirmed handler
+  - [ ] 22.1 In `shell/render.rs` (or `update.rs`) `AllocOutcome::Confirmed` handler:
+          replace `files_panel.add_dataset(catalog_name, params)` with
+          `registry.allocate(catalog_name, params)`; propagate error to status bar on Err.
+          - Validates: Requirement 13.1
+  - [ ] 22.2 Run `cargo test -p ff-desktop` -- green.
+
+- [ ] 23. Replace content area population in Files Panel (Option 1)
+  - [ ] 23.1 In `files_panel.rs`: replace `load_entries_from_datasets(catalog_name)` with
+          `load_entries_from_catalog(catalog_name)` that calls
+          `registry.list_datasets(catalog_name)` and converts `DatasetRecord` rows to
+          `ContentEntry` values.
+          - Validates: Requirement 13.2
+  - [ ] 23.2 Run `cargo test -p ff-desktop` -- tasks 20.1 and 20.3 now PASS.
+
+- [ ] 24. Replace dataset listing in File Explorer Panel (Option 2)
+  - [ ] 24.1 In `file_explorer_panel.rs` `render_mainframe_content()`: replace the call
+          that reads from `files_panel.datasets` with a call to
+          `registry.list_datasets(catalog_name)`; convert `DatasetRecord` rows to the
+          existing display structs.
+          - Validates: Requirement 13.3
+  - [ ] 24.2 Run `cargo test -p ff-desktop` -- task 20.2 now PASS.
+
+- [ ] 25. Replace resolve_dataset_path() with resolve_and_open_dataset()
+  - [ ] 25.1 In `files_panel.rs`: add `resolve_and_open_dataset(registry, dsn)` function
+          that calls `registry.resolve(dsn)`, returns Ok(PathBuf) on success or Err(String)
+          with the appropriate message on failure. Remove the old `resolve_dataset_path()`
+          function.
+          - Validates: Requirement 16.1, 16.4, 16.6
+  - [ ] 25.2 In `shell/render.rs` `FilesPanelAction::OpenFile` Mainframe handler: replace
+          the `resolve_dataset_path()` call with `resolve_and_open_dataset()`; wire the
+          Ok/Err branches per design section 10.3.
+          - Validates: Requirement 16.2, 16.3, 16.5
+  - [ ] 25.3 In `file_explorer_panel.rs` `render_dataset_children()` double-click handler:
+          apply the same `resolve_and_open_dataset()` call.
+          - Validates: Requirement 16.2, 16.3, 16.5
+  - [ ] 25.4 Run `cargo test -p ff-desktop` -- tasks 19.1-19.3 now PASS.
+  - [ ] 25.5 Run `cargo clippy -p ff-desktop -- -D warnings` -- clean.
+
+- [ ] 26. Remove AllocatedDataset struct and datasets HashMap
+  - [ ] 26.1 Delete `AllocatedDataset` struct, `add_dataset()`, `load_entries_from_datasets()`,
+          `remove_catalog_datasets()`, and the `datasets: HashMap` field from
+          `FilesPanelState`. Remove `pending_alloc_catalog` if it was only used to feed
+          the HashMap.
+          - Validates: Requirement 13.4 (no TOML store)
+  - [ ] 26.2 Remove `[catalog_datasets]` serialisation/deserialisation from
+          `session_manager.rs` `save_datasets()` / `load_datasets()` and their call sites.
+          - Validates: Requirement 13.4
+  - [ ] 26.3 Run `cargo test --workspace` -- all tests pass, 0 failures.
+  - [ ] 26.4 Run `cargo clippy -- -D warnings` -- clean.
+  - [ ] 26.5 Run `cargo fmt` -- format.
+
+- [ ] 27. Update TCR.md and project-master/tasks.md
+  - [ ] 27.1 Update `docs/quality/TCR.md` -- mark old Req 13.1-13.5 rows superseded;
+          add new BU rows for Req 13.1-13.5 and Req 16.1-16.6 with status reflecting
+          test results.
+  - [ ] 27.2 Update `docs/specs/project-master/tasks.md` -- add Phase BU entry.

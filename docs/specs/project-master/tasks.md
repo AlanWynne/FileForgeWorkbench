@@ -521,10 +521,10 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 
 #### Wave 2 — VSAM and ISAM Providers (depends on Wave 1)
 
-- [ ] BS.4 `SqliteRecordProvider` base + VSAM KSDS — keyed read/write, uniqueness, alternate-index extension point (Tasks 19.1–19.5; 19.4 alternate indexes remains; no system SQLite install required because `rusqlite` uses `bundled`)
+- [x] BS.4 `SqliteRecordProvider` base + VSAM KSDS — keyed read/write, uniqueness, alternate-index extension point (Tasks 19.1–19.5; 19.4 alternate indexes remains; no system SQLite install required because `rusqlite` uses `bundled`)
 - [x] BS.5 VSAM RRDS — relative-record store, unallocated vs blank distinction (Tasks 20.1–20.3)
-- [ ] BS.6 VSAM ESDS — append-oriented native file, stable record address, sidecar index (Tasks 21.1–21.4)
-- [ ] BS.7 ISAM — SQLite-backed, shared indexed-record interface with KSDS (Tasks 22.1–22.3)
+- [x] BS.6 VSAM ESDS — append-oriented native file, stable record address, sidecar index (Tasks 21.1–21.4)
+- [x] BS.7 ISAM -- SQLite-backed, shared indexed-record interface with KSDS (Tasks 22.1--22.3)
 
 #### Wave 3 — Transactions, Integrity, and Governance (depends on Wave 2)
 
@@ -550,3 +550,278 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 | `[x]` Complete -- Phase BT | 5 doc-fix deliverables (BT.1--BT.5) |
 | `[ ]` Pending -- Phase BS | 15 deliverables (BS.1--BS.15) |
 | Active work | Phase BS -- Mainframe Dataset Architecture (CR-NR-016) |
+
+### Phase BU -- SQLite Catalog Integration for Options 1 and 2 (CR-CH-006)
+
+> Aligns the Files Panel (Option 1) and File Explorer Panel (Option 2) with the SQLite
+> catalog architecture introduced in Phase BS. Replaces the in-memory AllocatedDataset
+> HashMap and session-TOML persistence with direct reads/writes to the ff-dscatalog
+> SQLite database. Replaces the DSN-derived path resolver with a catalog lookup.
+>
+> Sequence enforced: design docs -> failing tests -> implementation -> cleanup.
+
+- [x] BU.1 Design docs updated -- VCM requirements.md Req 13 and 16 revised; design.md
+        sections 7 and 10 revised (Tasks BU.D1-BU.D4 -- DONE)
+- [ ] BU.2 Failing tests written -- CatalogRegistry API, resolve_and_open_dataset,
+        content area population (Tasks 18-20)
+- [ ] BU.3 CatalogRegistry::allocate() and list_datasets() implemented and tests green
+        (Task 21)
+- [ ] BU.4 AllocOutcome::Confirmed handler wired to SQLite (Task 22)
+- [ ] BU.5 Files Panel content area reads from SQLite (Task 23)
+- [ ] BU.6 File Explorer Panel Mainframe content reads from SQLite (Task 24)
+- [ ] BU.7 resolve_and_open_dataset() replaces resolve_dataset_path() (Task 25)
+- [ ] BU.8 AllocatedDataset struct, datasets HashMap, and TOML persistence removed (Task 26)
+- [ ] BU.9 TCR.md and project-master updated; cargo test --workspace green (Task 27)
+
+### Phase CH -- FFW-JES P2 EARS Integration (CR-NR-030)
+
+- [ ] CH.1 Overtype fields: visual distinction, direct overtype, command-line syntax, extension pop-up (Tasks 30.1-30.4)
+- [ ] CH.2 Help system: HELP/PF1, ACTH, COLH, CMDH, SEARCH (Tasks 31.1-31.5)
+- [ ] CH.3 Log panels: LOG, ULOG, NEXT/PREV, SNAPSHOT (Tasks 32.1-32.4)
+- [ ] CH.4 System panels: SYS, DASH, INIT, JC, SP (Tasks 32.5-32.9)
+- [ ] CH.5 Browse settings, PRINT action, COLS command (Tasks 33.1-33.3)
+- [ ] CH.6 SET P2 commands: BCOLOR, CONFIRM, CURSOR, DATE, DELAY, HEX, SCHARS, SCREEN + persistence (Tasks 34.1-34.9)
+
+### Phase CI -- command-semantics P2 EARS Integration (CR-NR-031)
+
+- [ ] CI.1 OUTPUT and CANCEL commands -- routing to FFW-JES, PURGE operand (Tasks 25.1-25.3)
+- [ ] CI.2 SEND, PROFILE, PRINTDS commands -- messaging, session profile, file-ops routing (Tasks 26.1-26.4)
+- [ ] CI.3 TCR update for Requirement 10 (Task 27.1)
+
+### Phase CG -- lua-macro-engine P2 EARS Integration (CR-NR-029)
+
+- [ ] CG.1 ISREDIT/ISPEXEC host command environments and IMACRO initial macro (Tasks 21.1-21.4)
+- [ ] CG.2 LINENUM function and CURSOR get/set extension (Tasks 21.5-21.6)
+- [ ] CG.3 REXX exec invocation: EXEC command, implicit invocation, % prefix, argument passing (Tasks 22.1-22.4)
+- [ ] CG.4 TSO host environment, ADDRESS switching, ISPEXEC/ISREDIT environments, RC variable (Tasks 22.5-22.8)
+- [ ] CG.5 REXX built-in functions: LISTDSI, MSG, MVSVAR, OUTTRAP, PROMPT, SYSDSN, SYSVAR, USERID (Tasks 23.1-23.8)
+- [ ] CG.6 EXECIO DISKR/DISKW/FINIS/SKIP and FFCMD command files (Tasks 24.1-24.7)
+
+### Phase CF -- syntax-highlighting P2 EARS Integration (CR-NR-028)
+
+> Adds EARS-derived criteria to syntax-highlighting: HILITE ON/OFF command (toggle
+> syntax highlighting per document), HILITE LOGIC (boolean/comparison operator highlighting),
+> HILITE PAREN (delimiter-pair matching at cursor with error style), HILITE FIND (persistent
+> find-match highlights), and combined operand support.
+> Requirement 16 in syntax-highlighting/requirements.md.
+
+- [ ] CF.1 HILITE ON/OFF command and HILITE LOGIC mode (Tasks 21.1-21.5)
+- [ ] CF.2 HILITE PAREN, HILITE FIND, and combined operands (Tasks 22.1-22.5)
+
+---
+
+### Phase CE -- undo-redo-transactions P2 EARS Integration (CR-NR-027)
+
+> Adds EARS-derived criteria to undo-redo-transactions: SETUNDO primary command
+> (ON/OFF/n operands, immediate effect) and RECOVERY primary command (ON/OFF/n operands).
+> Requirement 19 in undo-redo-transactions/requirements.md.
+
+- [ ] CE.1 SETUNDO command -- ON/OFF/n operands, immediate effect on max_levels (Tasks 19.1-19.5)
+- [ ] CE.2 RECOVERY command -- ON/OFF/n operands, immediate effect on recovery interval (Tasks 20.1-20.5)
+
+---
+
+### Phase CD -- FFW-JES P1 extended EARS Integration (CR-NR-026)
+
+> Adds EARS-derived criteria to FFW-JES: ST panel (all-jobs status view), FILTER command
+> (advanced filter expressions with AND/OR/wildcard), FIND command (panel search with
+> NEXT/PREV), LOCATE command (scroll to matching row), SDSF scroll commands (UP/DOWN/LEFT/RIGHT
+> with n/HALF/PAGE/MAX), SET ACTION/MAIN/ROWNUM commands, WHO command, QUERY AUTH command,
+> and PERSIST-1 (SET settings persistence).
+> Requirement 17 in FFW-JES/requirements.md.
+
+- [ ] CD.1 ST panel and advanced FILTER/FIND/LOCATE commands (Tasks 26.1-26.5)
+- [ ] CD.2 SDSF scroll commands UP/DOWN/LEFT/RIGHT with SCROLL field sync (Tasks 27.1-27.3)
+- [ ] CD.3 SET ACTION/MAIN/ROWNUM commands, WHO, QUERY AUTH (Tasks 28.1-28.6)
+- [ ] CD.4 SET settings persistence and integration tests (Tasks 29.1-29.5)
+
+---
+
+### Phase CC -- FFW-JES P1 core EARS Integration (CR-NR-025)
+
+> Adds EARS-derived criteria to FFW-JES: SDSF panel framework (action bar, title line,
+> SCROLL field, filter lines, NP column, fixed column), action character system (S/?/C/H/A/P/D/E/J/W,
+> = repeat, // block, command-line syntax, SET ROWNUM), main panel (MENU, groups, SET MAIN GROUP),
+> PREFIX/OWNER/DEST filter commands, full column set, SORT command.
+> Requirement 16 in FFW-JES/requirements.md.
+
+- [ ] CC.1 SDSF panel chrome -- action bar, title line, SCROLL field, filter lines, message area, COMMAND INPUT field (Tasks 20.1-20.7)
+- [ ] CC.2 NP column and action character system -- S/?/C/H/A/P/D/E/J/W, = repeat, // block, command-line syntax, SET ROWNUM (Tasks 21.1-21.8)
+- [ ] CC.3 Main panel (MENU command), command groups, S action, SET MAIN GROUP (Tasks 22.1-22.5)
+- [ ] CC.4 PREFIX/OWNER/DEST filter commands (Tasks 23.1-23.4)
+- [ ] CC.5 Full column set (JOBNAME through PROCSTEP), column hide/reorder, SORT command (Tasks 24.1-24.4)
+- [ ] CC.6 Integration tests for SDSF panel framework (Tasks 25.1-25.4)
+
+---
+
+### Phase CB -- command-semantics EARS Integration (CR-NR-024)
+
+> Adds EARS-derived criteria to command-semantics: TSO dataset commands (ALLOCATE through
+> STATUS), EDIT routing extension, FTSO operand parsing, session prefix, continuation,
+> ds:// URI, namespace conflict, capability model, secret operands, audit events.
+> Requirement 9 in command-semantics/requirements.md.
+
+- [ ] CB.1 TSO dataset management commands ALLOCATE/FREE/DELETE/RENAME/LISTCAT/LISTDS/LISTALC (Tasks 19.1-19.8)
+- [ ] CB.2 TSO job commands SUBMIT/STATUS and EDIT routing extension (Tasks 20.1-20.4)
+- [ ] CB.3 TSO-style operand parsing and session prefix (Tasks 21.1-21.4)
+- [ ] CB.4 Command continuation, ds:// URI, namespace conflict resolution (Tasks 22.1-22.4)
+- [ ] CB.5 Capability model, secret operands, audit events (Tasks 23.1-23.5)
+- [ ] CB.6 TCR update for Requirement 9 (Task 24.1)
+
+---
+
+Phase CA -- startup-and-session EARS Integration (CR-NR-023)
+
+> Adds EARS-derived criteria to startup-and-session: session start timestamp (TSO-1.2),
+> session end timestamp and logoff message (TSO-1.3), LOGOFF command (TSO-1.4),
+> TIME command (TSO-2.4), STATUS routing to FFW-JES (TSO-2.5).
+> Requirement 20 in startup-and-session/requirements.md.
+
+- [ ] CA.1 Session start timestamp in status bar (Tasks 28.1-28.3)
+- [ ] CA.2 Session end timestamp and logoff message (Tasks 29.1-29.3)
+- [ ] CA.3 LOGOFF command alias for exit sequence (Tasks 30.1-30.2)
+- [ ] CA.4 TIME command -- date/time display (Tasks 31.1-31.2)
+- [ ] CA.5 STATUS command routing to FFW-JES (Tasks 32.1-32.3)
+- [ ] CA.6 TCR update for Requirement 20 (Task 33.1)
+
+---
+
+Phase BZ -- menu-and-statusbar EARS Integration (CR-NR-022)
+
+> Adds EARS-derived criteria to menu-and-statusbar: SCROLL ===> field, fastpath notation,
+> data entry/list panel layout, list panel LOCATE, extended scroll amounts, split screen.
+> Requirement 19 in menu-and-statusbar/requirements.md.
+
+- [ ] BZ.1 SCROLL ===> field adjacent to Command ===> (Tasks 24.1-24.5)
+- [ ] BZ.2 Fastpath dotted notation navigation (Tasks 25.1-25.3)
+- [ ] BZ.3 Data entry and list panel layout conformance (Tasks 26.1-26.4)
+- [ ] BZ.4 List panel LOCATE command (Tasks 27.1-27.3)
+- [ ] BZ.5 Extended scroll amounts HALF/CSR/MAX/DATA (Tasks 28.1-28.3)
+- [ ] BZ.6 Split screen PF2/PF9/PF3 (Tasks 29.1-29.6)
+- [ ] BZ.7 TCR update for Requirement 19 (Task 30.1)
+
+---
+
+Phase BY -- sequence-numbers EARS Integration (CR-NR-021)
+
+> Extends sequence-numbers: AUTONUM ON/OFF as alias for NUMBER ON/OFF (Req 6.7a),
+> NUM as alias for NUMBER command (Req 8 alias criterion).
+
+- [ ] BY.1 AUTONUM alias -- parser extension, unit tests (Task 20.1-20.2)
+- [ ] BY.2 NUM alias -- command framework alias registration, unit tests (Task 21.1-21.3)
+- [ ] BY.3 TCR update for alias criteria (Task 22.1)
+
+---
+
+Phase BX -- line-commands EARS Integration (CR-NR-020)
+
+> Adds EARS-derived criteria to line-commands: Overlay (O/On), clipboard copy (W/WW),
+> first-of-excluded (F), last-of-excluded (L), single-column shift right (]), show-excluded (S).
+> Requirement 15 in line-commands/requirements.md.
+
+- [ ] BX.1 Overlay line command (O, On) -- LineCommandKind variants, parser, execution (Tasks 22.1-22.6)
+- [ ] BX.2 Clipboard copy line command (W, WW) -- variants, parser, ff-clipboard integration (Tasks 23.1-23.6)
+- [ ] BX.3 First-of-excluded (F) -- ShowFirst variant, parser, execution (Tasks 24.1-24.6)
+- [ ] BX.4 Last-of-excluded (L) -- ShowLast variant, parser, execution (Tasks 25.1-25.6)
+- [ ] BX.5 Single-column shift right (]) -- ShiftRightOne variant, parser, delegate to shift_right(1) (Tasks 26.1-26.6)
+- [ ] BX.6 Show-excluded (S) -- ShowLine variant, parser, execution (Tasks 27.1-27.6)
+- [ ] BX.7 TCR update for Requirement 15 (Task 28.1)
+
+---
+
+Phase BW -- edit-operations EARS Integration (CR-NR-019)
+
+> Adds EARS-derived criteria to edit-operations: CAPS mode, NULLS mode, PROFILE command,
+> STATS mode, LOCK setting, edit profile persistence, AUTONUM/NUM aliases, HILITE delegation,
+> SUBMIT/CREATE/REPLACE/EDIT/BROWSE/VIEW/COMPARE primary commands.
+> Requirements 16-17 in edit-operations/requirements.md.
+
+- [ ] BW.1 CAPS mode -- CapsMode flag, insert_char integration, CAPS command (Tasks 28.1-28.6)
+- [ ] BW.2 NULLS mode -- NullsMode flag, display/edit integration, NULLS command (Tasks 29.1-29.5)
+- [ ] BW.3 PROFILE command -- EditProfile struct, display and update handlers (Tasks 30.1-30.6)
+- [ ] BW.4 STATS mode -- StatsMode flag, prefix area rendering (Tasks 31.1-31.5)
+- [ ] BW.5 LOCK setting -- ProfileLock flag, profile mutation guard (Tasks 32.1-32.5)
+- [ ] BW.6 Edit profile persistence -- TOML round-trip via ff-session (Tasks 33.1-33.4)
+- [ ] BW.7 AUTONUM and NUM aliases -- command framework aliases (Tasks 34.1-34.4)
+- [ ] BW.8 HILITE delegation -- HILITE command handler to ff-syntax (Tasks 35.1-35.5)
+- [ ] BW.9 SUBMIT command -- JES subsystem dispatch (Tasks 36.1-36.5)
+- [ ] BW.10 CREATE and REPLACE commands (Tasks 37.1-37.6)
+- [ ] BW.11 Nested EDIT, BROWSE, VIEW, COMPARE commands (Tasks 38.1-38.8)
+- [ ] BW.12 TCR.md and project-master updated; cargo test --workspace green (Task 39)
+
+### Phase BV -- Catalog Location Discriminant (CR-NR-017)
+
+> Adds `CatalogLocation` enum to `CatalogMount` so each catalog declares local vs remote
+> transport. Only `Local` is implemented; `Remote` returns `UnsupportedOperation`. Zero
+> behaviour change for existing local catalogs.
+
+- [ ] BV.1 `CatalogLocation` enum + `CatalogMount` refactor in `ff-dscatalog`
+        (Tasks 32.1-32.8 in dataset-catalog/tasks.md)
+
+---
+
+## Phase EI-6 -- Reorganised Pending Work (all EARS gates complete)
+
+> EI-5 is 100% complete (all 16 batches done, phases BW-CI gated).
+> The sections below list all pending implementation work in correct
+> dependency order. EARS phases BW-CI have requirements and tasks but
+> no implementation yet.
+
+### Stream 1 -- Dataset Architecture (BS Wave 3-4 -> ff-vfs -> BU)
+
+Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS.14 -> BS.15 -> ff-vfs tasks -> BU.2-BU.9
+
+- [ ] BV.1 `CatalogLocation` enum + `CatalogMount` refactor in `ff-dscatalog` (Tasks 32.1-32.8)
+- [ ] BS.8 Staged transaction protocol -- `OperationJournal`, staged create/delete, startup recovery (Tasks 23.1-23.6)
+- [ ] BS.9 Integrity, backup, restore -- checksums, `workspace.backup/restore/diagnose/reconcile` (Tasks 24.1-24.6)
+- [ ] BS.10 Catalogue audit trail + schema migrations (Tasks 25.1-25.3)
+- [ ] BS.11 Security hardening -- parameterised SQL audit, log scrubbing, path-traversal PBT (Tasks 26.1-26.3)
+- [ ] BS.12 Master/user catalogue hierarchy, logical rename, scoped uniqueness (Tasks 27.1-27.4)
+- [ ] BS.13 Record-oriented editor integration -- wire codecs into open/save path (Tasks 28.1-28.4)
+- [ ] BS.14 Non-functional validation -- cross-platform, performance, Git-compat, data-fidelity (Tasks 29.1-29.4)
+- [ ] BS.15 Update `dataset-catalog/design.md` for CR-NR-016 (Task 30.1)
+- [ ] ff-vfs.13 StorageProvider trait in ff-vfs (Tasks 13.1-13.5 in virtual-file-system/tasks.md)
+- [ ] ff-vfs.14 POSIX files as native objects (Tasks 14.1-14.6)
+- [ ] ff-vfs.15 VFS staged transaction protocol (Tasks 15.1-15.5)
+- [ ] ff-vfs.16 workspace.backup/restore/reconcile/diagnose (Tasks 16.1-16.5)
+- [x] BU.1 Design docs updated (DONE)
+- [ ] BU.2 Failing tests -- CatalogRegistry API, resolve_and_open_dataset, content area (Tasks 18-20)
+- [ ] BU.3 CatalogRegistry::allocate() and list_datasets() implemented and tests green (Task 21)
+- [ ] BU.4 AllocOutcome::Confirmed handler wired to SQLite (Task 22)
+- [ ] BU.5 Files Panel content area reads from SQLite (Task 23)
+- [ ] BU.6 File Explorer Panel Mainframe content reads from SQLite (Task 24)
+- [ ] BU.7 resolve_and_open_dataset() replaces resolve_dataset_path() (Task 25)
+- [ ] BU.8 AllocatedDataset struct, datasets HashMap, and TOML persistence removed (Task 26)
+- [ ] BU.9 TCR.md and project-master updated; cargo test --workspace green (Task 27)
+
+### Stream 2 -- EARS P1 Implementation (independent of Stream 1)
+
+- [ ] BW.impl edit-operations: CAPS/NULLS/PROFILE/SUBMIT/CREATE/REPLACE/BROWSE/VIEW/nested EDIT/COMPARE/LOCK/STATS (Tasks 28-39 in edit-operations/tasks.md)
+- [ ] BX.impl line-commands: O/W/F/L/]/S line commands (Tasks 22-28 in line-commands/tasks.md)
+- [ ] BY.impl sequence-numbers: AUTONUM and NUM alias extensions (Tasks 20-22 in sequence-numbers/tasks.md)
+- [ ] BZ.impl menu-and-statusbar: SCROLL field, fastpath, split screen, list panel LOCATE (Tasks 24-30 in menu-and-statusbar/tasks.md)
+- [ ] CA.impl startup-and-session: session timestamps, LOGOFF, TIME, STATUS routing (Tasks 28-33 in startup-and-session/tasks.md)
+- [ ] CB.impl command-semantics P1: ALLOCATE through STATUS + FTSO operand parsing (Tasks 19-24 in command-semantics/tasks.md)
+- [ ] CC.impl FFW-JES P1 core: SDSF panel framework, NP column, action chars, main panel (Tasks 20-25 in FFW-JES/tasks.md)
+- [ ] CD.impl FFW-JES P1 extended: ST panel, FILTER/FIND/LOCATE, SET P1 commands (Tasks 26-29 in FFW-JES/tasks.md)
+
+### Stream 3 -- EARS P2 Implementation (follows Stream 2)
+
+- [ ] CE.impl undo-redo-transactions: SETUNDO command, RECOVERY ON/OFF (Tasks 19-20 in undo-redo-transactions/tasks.md)
+- [ ] CF.impl syntax-highlighting: HILITE ON/OFF/LOGIC/PAREN/FIND (Tasks 21-22 in syntax-highlighting/tasks.md)
+- [ ] CG.impl lua-macro-engine: ISREDIT/ISPEXEC/IMACRO, REXX bridge, FFCMD (Tasks 21-24 in lua-macro-engine/tasks.md)
+- [ ] CH.impl FFW-JES P2: overtype, help, log/system panels, browse/print, SET P2 (Tasks 30-34 in FFW-JES/tasks.md)
+- [ ] CI.impl command-semantics P2: OUTPUT/CANCEL/SEND/PROFILE/PRINTDS (Tasks 25-27 in command-semantics/tasks.md)
+
+---
+
+## Summary (updated after EI-6 -- all EARS gates complete)
+
+| Status | Count |
+|--------|-------|
+| `[x]` Complete with real tests | 61 library crates + ff-desktop binary |
+| `[x]` EARS gates complete | Phases BW-CI (13 phases, 136 new criteria gated) |
+| `[ ]` Pending -- Stream 1 (dataset architecture) | BV.1, BS.8-BS.15, ff-vfs.13-16, BU.2-BU.9 (22 deliverables) |
+| `[ ]` Pending -- Stream 2 (EARS P1 implementation) | BW-CD (8 phases) |
+| `[ ]` Pending -- Stream 3 (EARS P2 implementation) | CE-CI (5 phases) |
+| Active work | BV.1 (no deps) or BS.8 (next in Stream 1) or BW (next in Stream 2) |

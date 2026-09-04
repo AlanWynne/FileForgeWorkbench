@@ -231,3 +231,44 @@ The `ff-macro` crate depends on `ff-command` (command dispatch and scripting bri
 | `connector-local-fs` | File watching for auto-reload and directory scanning uses the local filesystem connector's watcher. |
 
 ---
+
+---
+
+### Requirement 11: ISPF Edit Macro API and REXX Execution Bridge
+
+**User Story:** As a macro author, I want to invoke ISPF edit macro services (ISREDIT, ISPEXEC, IMACRO) and execute REXX execs with full host command environments, TSO built-in functions, and EXECIO I/O, so that existing ISPF macros and REXX execs can run inside FileForge Workbench with minimal modification.
+
+**Source:** ISPF-EARS macros (ISREDIT, ISPEXEC, IMACRO, LINENUM, CURSOR), TSO-EARS REXX (REXX-1 through REXX-4), FFCMD scripting. [FFE-MVP-7, SCI-STE-LUA, WB]
+
+#### Acceptance Criteria
+
+1. THE LuaMacroEngine SHALL provide an `ISREDIT` host command environment that accepts ISPF Edit macro service calls as strings (e.g., `ISREDIT "CURSOR = 5 10"`) and dispatches them to the corresponding editor API operations.
+2. THE LuaMacroEngine SHALL provide an `ISPEXEC` host command environment that accepts ISPF dialog service calls as strings and routes them to the appropriate workbench service (panel display, variable pool, message display).
+3. WHEN the `IMACRO <name>` edit profile setting is active, THE engine SHALL automatically execute the named macro at the start of every edit session before the user gains control of the buffer.
+4. THE edit profile SHALL support an `IMACRO` setting that stores the name of the initial macro to run on edit session open; WHEN set to blank, no initial macro is executed.
+5. THE engine SHALL expose a `LINENUM` function that accepts a label or relative line reference and returns the absolute 1-based line number of the referenced line in the active buffer.
+6. THE engine SHALL extend the existing `editor.cursor_line()` and `editor.cursor_col()` API with a `CURSOR` function that both gets and sets the cursor position: `CURSOR()` returns `(line, col)` and `CURSOR(line, col)` moves the cursor to the specified 1-based position.
+7. WHEN the `EXEC <member>` command is issued, THE engine SHALL locate the named exec in the configured SYSEXEC or SYSPROC library paths and execute it as a REXX-compatible script.
+8. WHEN a member name is entered on the command line without a recognized primary command prefix, THE engine SHALL attempt implicit exec invocation by searching SYSEXEC/SYSPROC for a member with that name before returning a command-not-found error.
+9. WHEN a command is prefixed with `%`, THE engine SHALL bypass the primary command table and search SYSEXEC/SYSPROC directly, reducing search time for known exec names.
+10. WHEN the `EXEC <member> <args>` form is used, THE engine SHALL pass the argument string to the exec as its invocation argument list, accessible via the exec's ARG instruction or equivalent.
+11. THE engine SHALL support a `TSO` host command environment that routes unrecognized commands to the workbench TSO command dispatcher (ff-command), returning the command's return code in the `RC` special variable.
+12. THE engine SHALL support `ADDRESS <environment-name>` syntax to switch the default host command environment for subsequent commands within the same exec invocation.
+13. THE engine SHALL support an `ISPEXEC` environment name within ADDRESS that routes service calls to the ISPF dialog service layer.
+14. THE engine SHALL support an `ISREDIT` environment name within ADDRESS that routes edit macro calls to the ISREDIT host command environment defined in criterion 11.1.
+15. WHEN a host command completes, THE engine SHALL set the `RC` special variable to the integer return code of that command, accessible to the calling exec.
+16. THE engine SHALL expose a `LISTDSI` built-in function that returns dataset information (DSORG, RECFM, LRECL, BLKSIZE, DSNAME, VOLSER, MEMBER count) for a named dataset, querying the ff-dscatalog registry.
+17. THE engine SHALL expose a `MSG` built-in function that displays a message in the workbench status bar or message area, accepting a message ID or literal string.
+18. THE engine SHALL expose a `MVSVAR` built-in function that returns system variable values (SYSNAME, SYSPLEX, SYSCLONE, SYSOPSYS) mapped to workbench equivalents (application name, workspace name, host OS).
+19. THE engine SHALL expose an `OUTTRAP` built-in function that captures TSO command output into a Lua/REXX stem variable rather than displaying it, enabling programmatic processing of command output.
+20. THE engine SHALL expose a `PROMPT` built-in function that controls whether the exec may prompt the user for input; WHEN set to OFF, any attempt to read from the terminal returns an empty string.
+21. THE engine SHALL expose a `SYSDSN` built-in function that returns `OK` if the named dataset exists and is accessible in the catalog, or an error string (`DATASET NOT FOUND`, `MEMBER NOT FOUND`, etc.) otherwise.
+22. THE engine SHALL expose a `SYSVAR` built-in function that returns ISPF system variable values (SYSUID, SYSDATE, SYSTIME, SYSPREF, SYSENV) mapped to workbench equivalents.
+23. THE engine SHALL expose a `USERID` built-in function that returns the current user's login name as a string.
+24. THE engine SHALL support `EXECIO DISKR <ddname> <count> STEM <stem>` syntax that reads up to `<count>` records from the dataset allocated to `<ddname>` into a stem variable array.
+25. THE engine SHALL support `EXECIO DISKW <ddname> <count> STEM <stem>` syntax that writes `<count>` records from a stem variable array to the dataset allocated to `<ddname>`.
+26. THE engine SHALL support `EXECIO * DISKR <ddname> FINIS` and `EXECIO * DISKW <ddname> FINIS` variants that read/write all remaining records and close the file.
+27. THE engine SHALL support `EXECIO SKIP <ddname> <count>` that advances the read position by `<count>` records without returning data.
+28. WHEN an EXECIO operation completes, THE engine SHALL set `RC` to 0 on success, 2 when end-of-file is reached before `<count>` records are read, and non-zero on I/O error, consistent with TSO EXECIO return code conventions.
+29. THE engine SHALL support FFCMD command files: plain-text files with a `.ffcmd` extension containing one workbench primary command per line, executed sequentially as a batch script via the `RUN` command or the `FFCMD <path>` primary command.
+30. WHEN an FFCMD file is executed, THE engine SHALL wrap the entire file execution in a single Macro_Transaction so that all document modifications are atomically undoable, consistent with Requirement 5.4.

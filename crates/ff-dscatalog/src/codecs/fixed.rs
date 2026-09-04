@@ -64,7 +64,7 @@ impl RecordCodec for FixedCodec {
         if self.lrecl == 0 {
             return Ok(vec![]);
         }
-        if bytes.len() % self.lrecl != 0 {
+        if !bytes.len().is_multiple_of(self.lrecl) {
             return Err(CodecError::NotMultipleOfLrecl {
                 byte_count: bytes.len(),
                 lrecl: self.lrecl,
@@ -112,7 +112,13 @@ mod tests {
         let codec = FixedCodec::new(3, "TEST.DS");
         let records = vec![vec![1u8, 2, 3, 4]];
         let err = codec.encode(&records).unwrap_err();
-        assert!(matches!(err, CodecError::RecordTooLong { record_index: 0, .. }));
+        assert!(matches!(
+            err,
+            CodecError::RecordTooLong {
+                record_index: 0,
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -132,7 +138,11 @@ mod tests {
         let err = codec.decode(&bytes).unwrap_err();
         assert!(matches!(
             err,
-            CodecError::NotMultipleOfLrecl { byte_count: 4, lrecl: 3, .. }
+            CodecError::NotMultipleOfLrecl {
+                byte_count: 4,
+                lrecl: 3,
+                ..
+            }
         ));
     }
 
@@ -148,10 +158,7 @@ mod tests {
     fn encode_decode_round_trip() {
         // Validates: Requirement 17.6
         let codec = FixedCodec::new(10, "TEST.DS");
-        let original = vec![
-            b"HELLO     ".to_vec(),
-            b"WORLD     ".to_vec(),
-        ];
+        let original = vec![b"HELLO     ".to_vec(), b"WORLD     ".to_vec()];
         let bytes = codec.encode(&original).unwrap();
         let decoded = codec.decode(&bytes).unwrap();
         assert_eq!(decoded, original);

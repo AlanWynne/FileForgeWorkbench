@@ -488,3 +488,18 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 
 12. THE `[FILES]` tab kind SHALL be persisted in the session and restored on next launch as a `FileExplorerPanel` tab kind. [WB]
 
+
+### Requirement 20: TSO Session Lifecycle Commands (LOGOFF, TIME, STATUS routing)
+
+**User Story:** As a TSO-familiar operator, I want session lifecycle commands including session timestamps in the status bar, a LOGOFF command to terminate the session, a TIME command to display current date and time, and STATUS routing to the job status panel, so that the workbench matches the TSO session experience.
+
+**Source:** EARS integration Phase CA (coverage-classification.md B08)
+
+#### Acceptance Criteria
+
+1. WHEN the workbench session starts, THE status bar SHALL display the session start timestamp in the format `Started: HH:MM` (or `Started: HH:MM:SS` if configured). [TSO-1.2]
+2. WHEN the workbench session ends (exit sequence initiated), THE system SHALL record the session end timestamp and display a logoff message in the format `Logoff at HH:MM -- session duration: Xm Ys` in the status area before closing. [TSO-1.3]
+3. WHEN the user types `LOGOFF` in any `Command ===>` field and presses Enter, THE system SHALL initiate the application exit sequence, identical to `EXIT` or `=X`. [TSO-1.4]
+4. WHEN the user types `TIME` in any `Command ===>` field and presses Enter, THE system SHALL display the current date and time in the status bar or command response area in the format `Date: YYYY-MM-DD  Time: HH:MM:SS  Day: DDD`. [TSO-2.4]
+5. WHEN the user types `STATUS` in any `Command ===>` field and presses Enter, THE system SHALL route to the FFW-JES job status panel (equivalent to `=JES` or the SDSF ST panel). [TSO-2.5]
+6. WHEN the user types `STATUS jobname` with an optional job name argument, THE system SHALL route to the FFW-JES panel filtered to show only jobs matching `jobname`. [TSO-2.5]

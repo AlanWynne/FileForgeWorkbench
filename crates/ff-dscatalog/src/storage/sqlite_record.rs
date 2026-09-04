@@ -19,6 +19,7 @@ use super::{ObjectId, ObjectStat, ProviderCapability, StorageProvider};
 const INDEXED_DIR: &str = "indexed";
 const RECORD_TABLE: &str = "KSDS_RECORDS";
 const METADATA_TABLE: &str = "KSDS_METADATA";
+const ALT_INDEX_REGISTRY: &str = "KSDS_ALT_INDEXES";
 
 /// The key representation supported by the initial KSDS provider.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -98,6 +99,28 @@ impl KsdsKeyDefinition {
 pub struct KsdsRecord {
     pub key: String,
     pub data: Vec<u8>,
+}
+
+/// Definition of an alternate index on a KSDS dataset.
+///
+/// An alternate index maps a secondary key field (offset + length within the
+/// record payload) to the primary key, enabling lookups by fields other than
+/// the primary key.  Alternate indexes are stored as additional tables and
+/// SQLite indexes within the same per-dataset SQLite database.
+///
+/// Validates: Requirement 21.5
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AlternateIndex {
+    /// Logical name for this alternate index (e.g. `"BY_SURNAME"`).
+    pub name: String,
+    /// Byte offset of the secondary key field within the record payload.
+    pub offset: u32,
+    /// Byte length of the secondary key field.
+    pub length: u32,
+    /// Whether the alternate key must be unique across all records.
+    pub unique: bool,
+    /// Collation rule applied to the alternate key.
+    pub collation: KeyCollation,
 }
 
 /// A dedicated SQLite database containing records for one KSDS dataset.
@@ -316,6 +339,164 @@ impl SqliteRecordProvider {
         }
     }
 
+    // === Alternate index operations =====================================
+
+    /// Register an alternate index on this KSDS.
+    ///
+    /// Creates a mapping table `AIX_<NAME>` (columns `ALT_KEY`, `PRIMARY_KEY`)
+    /// and a SQLite index on `ALT_KEY`.  The registry table records the index
+    /// definition so it can be reconstructed on reopen.
+    ///
+    /// Validates: Requirement 21.5
+    pub fn add_alternate_index(&self, definition: &AlternateIndex) -> Result<(), CatalogError> {
+        validate_alternate_index(definition)?;
+        let table = aix_table_name(&definition.name);
+        let mut connection = self.connection("add_alternate_index")?;
+        let transaction = connection
+            .transaction()
+            .map_err(|source| sqlite_error("add_alternate_index", source))?;
+        transaction
+            .execute_batch(&format!(
+                "CREATE TABLE IF NOT EXISTS {table} (
+                     ALT_KEY  TEXT COLLATE {collation} NOT NULL,
+                     PRIMARY_KEY TEXT NOT NULL,
+                     CONSTRAINT {table}_pk UNIQUE (ALT_KEY, PRIMARY_KEY)
+                 );
+                 CREATE INDEX IF NOT EXISTS {table}_idx ON {table} (ALT_KEY);",
+                collation = definition.collation.sqlite_name(),
+            ))
+            .map_err(|source| sqlite_error("add_alternate_index", source))?;
+        transaction
+            .execute(
+                &format!(
+                    "INSERT OR IGNORE INTO {ALT_INDEX_REGISTRY} \
+                     (INDEX_NAME, KEY_OFFSET, KEY_LENGTH, UNIQUE_KEYS, COLLATION) \
+                     VALUES (?1, ?2, ?3, ?4, ?5)"
+                ),
+                params![
+                    definition.name,
+                    definition.offset,
+                    definition.length,
+                    definition.unique as i32,
+                    definition.collation.sqlite_name(),
+                ],
+            )
+            .map_err(|source| sqlite_error("add_alternate_index", source))?;
+        transaction
+            .commit()
+            .map_err(|source| sqlite_error("add_alternate_index", source))
+    }
+
+    /// Populate an alternate index from the current record set.
+    ///
+    /// Extracts the secondary key from each record and inserts a mapping row
+    /// into the alternate index table.  Call this after `add_alternate_index`
+    /// to back-fill an index on an existing dataset.
+    ///
+    /// Validates: Requirement 21.5
+    pub fn rebuild_alternate_index(&self, name: &str) -> Result<(), CatalogError> {
+        let definition = self
+            .list_alternate_indexes()?
+            .into_iter()
+            .find(|aix| aix.name == name)
+            .ok_or_else(|| CatalogError::InvalidAllocationParams {
+                reason: format!("alternate index '{name}' not found"),
+                operation: "rebuild_alternate_index".to_string(),
+            })?;
+        let records = self.sequential_read()?;
+        let table = aix_table_name(name);
+        let mut connection = self.connection("rebuild_alternate_index")?;
+        let transaction = connection
+            .transaction()
+            .map_err(|source| sqlite_error("rebuild_alternate_index", source))?;
+        transaction
+            .execute(&format!("DELETE FROM {table}"), [])
+            .map_err(|source| sqlite_error("rebuild_alternate_index", source))?;
+        for record in &records {
+            let alt_key = extract_key_field(&record.data, definition.offset, definition.length)?;
+            transaction
+                .execute(
+                    &format!(
+                        "INSERT OR IGNORE INTO {table} (ALT_KEY, PRIMARY_KEY) VALUES (?1, ?2)"
+                    ),
+                    params![alt_key, record.key],
+                )
+                .map_err(|source| sqlite_error("rebuild_alternate_index", source))?;
+        }
+        transaction
+            .commit()
+            .map_err(|source| sqlite_error("rebuild_alternate_index", source))
+    }
+
+    /// Look up primary keys via an alternate index.
+    ///
+    /// Returns all primary keys whose alternate key field equals `alt_key`.
+    /// For unique alternate indexes this returns at most one entry.
+    ///
+    /// Validates: Requirement 21.5
+    pub fn lookup_by_alternate_key(
+        &self,
+        index_name: &str,
+        alt_key: &str,
+    ) -> Result<Vec<String>, CatalogError> {
+        let table = aix_table_name(index_name);
+        let connection = self.connection("lookup_by_alternate_key")?;
+        let mut statement = connection
+            .prepare(&format!(
+                "SELECT PRIMARY_KEY FROM {table} WHERE ALT_KEY = ?1 ORDER BY PRIMARY_KEY"
+            ))
+            .map_err(|source| sqlite_error("lookup_by_alternate_key", source))?;
+        let rows = statement
+            .query_map(params![alt_key], |row| row.get(0))
+            .map_err(|source| sqlite_error("lookup_by_alternate_key", source))?;
+        rows.map(|row| row.map_err(|source| sqlite_error("lookup_by_alternate_key", source)))
+            .collect()
+    }
+
+    /// List all alternate indexes registered on this KSDS.
+    ///
+    /// Validates: Requirement 21.5
+    pub fn list_alternate_indexes(&self) -> Result<Vec<AlternateIndex>, CatalogError> {
+        let connection = self.connection("list_alternate_indexes")?;
+        let mut statement = connection
+            .prepare(&format!(
+                "SELECT INDEX_NAME, KEY_OFFSET, KEY_LENGTH, UNIQUE_KEYS, COLLATION \
+                     FROM {ALT_INDEX_REGISTRY} ORDER BY INDEX_NAME"
+            ))
+            .map_err(|source| sqlite_error("list_alternate_indexes", source))?;
+        let rows = statement
+            .query_map([], |row| {
+                let collation_str: String = row.get(4)?;
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, u32>(1)?,
+                    row.get::<_, u32>(2)?,
+                    row.get::<_, i32>(3)?,
+                    collation_str,
+                ))
+            })
+            .map_err(|source| sqlite_error("list_alternate_indexes", source))?;
+        rows.map(|row| {
+            let (name, offset, length, unique_flag, collation_str) =
+                row.map_err(|source| sqlite_error("list_alternate_indexes", source))?;
+            let collation = if collation_str == "NOCASE" {
+                KeyCollation::NoCase
+            } else {
+                KeyCollation::Binary
+            };
+            Ok(AlternateIndex {
+                name,
+                offset,
+                length,
+                unique: unique_flag != 0,
+                collation,
+            })
+        })
+        .collect()
+    }
+
+    // === Record count helpers =============================================
+
     /// Number of records currently stored.
     pub fn len(&self) -> Result<usize, CatalogError> {
         let connection = self.connection("count")?;
@@ -331,15 +512,7 @@ impl SqliteRecordProvider {
     }
 
     fn key_from_record(&self, data: &[u8]) -> Result<String, CatalogError> {
-        let start = self.key_definition.offset as usize;
-        let end = start
-            .checked_add(self.key_definition.length as usize)
-            .ok_or_else(|| invalid_key("key field overflows record bounds"))?;
-        let field = data
-            .get(start..end)
-            .ok_or_else(|| invalid_key("record is shorter than the configured key field"))?;
-        String::from_utf8(field.to_vec())
-            .map_err(|_| invalid_key("configured text key field is not valid UTF-8"))
+        extract_key_field(data, self.key_definition.offset, self.key_definition.length)
     }
 
     fn connection(
@@ -378,6 +551,18 @@ impl SqliteRecordProvider {
     }
 }
 
+fn extract_key_field(data: &[u8], offset: u32, length: u32) -> Result<String, CatalogError> {
+    let start = offset as usize;
+    let end = start
+        .checked_add(length as usize)
+        .ok_or_else(|| invalid_key("key field overflows record bounds"))?;
+    let field = data
+        .get(start..end)
+        .ok_or_else(|| invalid_key("record is shorter than the configured key field"))?;
+    String::from_utf8(field.to_vec())
+        .map_err(|_| invalid_key("configured text key field is not valid UTF-8"))
+}
+
 fn validate_key_definition(definition: &KsdsKeyDefinition) -> Result<(), CatalogError> {
     if definition.length == 0 {
         return Err(invalid_key("key length must be greater than zero"));
@@ -386,6 +571,37 @@ fn validate_key_definition(definition: &KsdsKeyDefinition) -> Result<(), Catalog
         return Err(invalid_key("only text primary keys are supported"));
     }
     Ok(())
+}
+
+fn validate_alternate_index(definition: &AlternateIndex) -> Result<(), CatalogError> {
+    if definition.name.is_empty() || definition.name.len() > 30 {
+        return Err(CatalogError::InvalidAllocationParams {
+            reason: "alternate index name must be 1-30 characters".to_string(),
+            operation: "add_alternate_index".to_string(),
+        });
+    }
+    if !definition
+        .name
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '_')
+    {
+        return Err(CatalogError::InvalidAllocationParams {
+            reason: "alternate index name must contain only ASCII alphanumeric characters or underscores".to_string(),
+            operation: "add_alternate_index".to_string(),
+        });
+    }
+    if definition.length == 0 {
+        return Err(CatalogError::InvalidAllocationParams {
+            reason: "alternate index key length must be greater than zero".to_string(),
+            operation: "add_alternate_index".to_string(),
+        });
+    }
+    Ok(())
+}
+
+/// Derive the SQLite table name for an alternate index.
+fn aix_table_name(name: &str) -> String {
+    format!("AIX_{}", name.to_ascii_uppercase())
 }
 
 fn initialise_database(
@@ -404,6 +620,13 @@ fn initialise_database(
              CREATE TABLE IF NOT EXISTS {RECORD_TABLE} (
                  VSAM_KEY TEXT PRIMARY KEY COLLATE {} NOT NULL,
                  RECORD_DATA BLOB NOT NULL
+             );
+             CREATE TABLE IF NOT EXISTS {ALT_INDEX_REGISTRY} (
+                 INDEX_NAME  TEXT PRIMARY KEY NOT NULL,
+                 KEY_OFFSET  INTEGER NOT NULL,
+                 KEY_LENGTH  INTEGER NOT NULL,
+                 UNIQUE_KEYS INTEGER NOT NULL DEFAULT 0,
+                 COLLATION   TEXT NOT NULL DEFAULT 'BINARY'
              );",
             definition.collation.sqlite_name()
         ))
@@ -725,5 +948,97 @@ mod tests {
         let key = provider.insert_record(b"XXKEYpayload").unwrap();
         assert_eq!(key, "KEY");
         assert!(provider.read("KEY").unwrap().is_some());
+    }
+
+    // === Alternate index tests (Validates: Requirement 21.5) =============
+
+    #[test]
+    fn alternate_index_is_registered_and_listed() {
+        // Validates: Requirement 21.5
+        let (_dir, provider) = provider();
+        let aix = AlternateIndex {
+            name: "BY_DEPT".to_string(),
+            offset: 4,
+            length: 3,
+            unique: false,
+            collation: KeyCollation::Binary,
+        };
+        provider.add_alternate_index(&aix).unwrap();
+        let indexes = provider.list_alternate_indexes().unwrap();
+        assert_eq!(indexes.len(), 1);
+        assert_eq!(indexes[0].name, "BY_DEPT");
+        assert_eq!(indexes[0].offset, 4);
+        assert_eq!(indexes[0].length, 3);
+        assert!(!indexes[0].unique);
+    }
+
+    #[test]
+    fn alternate_index_lookup_returns_matching_primary_keys() {
+        // Validates: Requirement 21.5
+        let (_dir, provider) = provider();
+        // Record layout: [primary_key(1)] [padding(3)] [dept(3)] [rest]
+        // primary key is at offset 0, length 1 (from provider() fixture)
+        provider.insert("A", b"AXXX001rest").unwrap();
+        provider.insert("B", b"BXXX001rest").unwrap();
+        provider.insert("C", b"CXXX002rest").unwrap();
+        let aix = AlternateIndex {
+            name: "BY_DEPT".to_string(),
+            offset: 4,
+            length: 3,
+            unique: false,
+            collation: KeyCollation::Binary,
+        };
+        provider.add_alternate_index(&aix).unwrap();
+        provider.rebuild_alternate_index("BY_DEPT").unwrap();
+        let mut keys = provider.lookup_by_alternate_key("BY_DEPT", "001").unwrap();
+        keys.sort();
+        assert_eq!(keys, ["A", "B"]);
+        let keys_002 = provider.lookup_by_alternate_key("BY_DEPT", "002").unwrap();
+        assert_eq!(keys_002, ["C"]);
+    }
+
+    #[test]
+    fn alternate_index_rejects_invalid_name() {
+        // Validates: Requirement 21.5
+        let (_dir, provider) = provider();
+        let bad = AlternateIndex {
+            name: "".to_string(),
+            offset: 0,
+            length: 1,
+            unique: false,
+            collation: KeyCollation::Binary,
+        };
+        assert!(matches!(
+            provider.add_alternate_index(&bad),
+            Err(CatalogError::InvalidAllocationParams { .. })
+        ));
+    }
+
+    #[test]
+    fn alternate_index_survives_reopen() {
+        // Validates: Requirement 21.5
+        let directory = tempfile::tempdir().unwrap();
+        let id = Uuid::new_v4();
+        let definition = KsdsKeyDefinition::new(0, 1);
+        {
+            let provider =
+                SqliteRecordProvider::open(directory.path(), id, definition.clone()).unwrap();
+            provider
+                .add_alternate_index(&AlternateIndex {
+                    name: "BY_CODE".to_string(),
+                    offset: 1,
+                    length: 2,
+                    unique: true,
+                    collation: KeyCollation::NoCase,
+                })
+                .unwrap();
+        }
+        let reopened =
+            SqliteRecordProvider::open_existing(directory.path(), id, definition).unwrap();
+        let indexes = reopened.list_alternate_indexes().unwrap();
+        assert_eq!(indexes.len(), 1);
+        assert_eq!(indexes[0].name, "BY_CODE");
+        assert!(indexes[0].unique);
+        assert_eq!(indexes[0].collation, KeyCollation::NoCase);
     }
 }

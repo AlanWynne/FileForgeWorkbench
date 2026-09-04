@@ -95,3 +95,37 @@ Completed work:
 - END handler returns `FileExplorerPanel` tab to POM view
 - 8 new tests added; all 376 ff-desktop tests pass
 - `cargo clippy -- -D warnings` clean; `cargo fmt` applied
+
+## Phase CA -- EARS Integration (Requirement 20)
+
+- [ ] 28. Session start timestamp in status bar
+  - [ ] 28.1 Record session start time in `WorkbenchShell` on startup
+  - [ ] 28.2 Add `Started: HH:MM` segment to status bar, populated from session start time
+  - [ ] 28.3 Write unit tests for timestamp formatting and status bar segment presence
+  - Covers: Requirement 20.1
+
+- [ ] 29. Session end timestamp and logoff message
+  - [ ] 29.1 On exit sequence initiation, compute session duration and format logoff message
+  - [ ] 29.2 Display `Logoff at HH:MM -- session duration: Xm Ys` in status area before window closes
+  - [ ] 29.3 Write unit tests for duration calculation and message formatting
+  - Covers: Requirement 20.2
+
+- [ ] 30. LOGOFF command
+  - [ ] 30.1 Register `LOGOFF` as a command alias for the exit sequence in `handle_command()`
+  - [ ] 30.2 Write unit test verifying `LOGOFF` triggers the same exit path as `EXIT` and `=X`
+  - Covers: Requirement 20.3
+
+- [ ] 31. TIME command
+  - [ ] 31.1 Implement `TIME` command handler: format current date/time as `Date: YYYY-MM-DD  Time: HH:MM:SS  Day: DDD` and display in status/response area
+  - [ ] 31.2 Write unit tests for TIME output format and day-of-year calculation
+  - Covers: Requirement 20.4
+
+- [ ] 32. STATUS command routing to FFW-JES
+  - [ ] 32.1 Implement `STATUS` command handler: route to FFW-JES job status panel (transform current tab or open new tab)
+  - [ ] 32.2 Implement `STATUS jobname` variant: route to FFW-JES panel with jobname filter pre-populated
+  - [ ] 32.3 Write unit tests for STATUS routing and STATUS with jobname argument
+  - Covers: Requirement 20.5, 20.6
+
+- [ ] 33. TCR update for Requirement 20
+  - [ ] 33.1 Update docs/quality/TCR.md -- mark all Req 20.1-20.6 rows as covered once tests pass
+  - Covers: Requirement 20 (all criteria)

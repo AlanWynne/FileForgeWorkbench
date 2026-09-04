@@ -34,11 +34,19 @@ summary short and link to the detailed task list.
 
 ## Active work item
 
-**Current focus:** Phase BS.4 - implement the SQLite record-provider base and
-VSAM KSDS operations, beginning with dataset-catalog Tasks 19.1-19.5.
+**Current focus:** EI-6 complete. EARS integration workflow fully done (EI-0 through EI-6).
+All 13 EARS phases (BW-CI) are gated with requirements and tasks. No implementation yet.
 
-**Blockers:** None recorded here. Feature-specific blockers belong in the
-relevant `tasks.md` file.
+Three parallel streams are now ready to proceed:
+- Stream 1 (dataset architecture): BV.1 -> BS.8 -> ... -> BU.9
+- Stream 2 (EARS P1 implementation): BW -> BX -> BY -> BZ -> CA -> CB -> CC -> CD
+- Stream 3 (EARS P2 implementation): CE -> CF -> CG -> CH -> CI
+
+Recommended next: BV.1 (small, no deps) or BS.8 (resumes dataset architecture stream).
+
+**Completed:** EI-6 -- project-master reorganised, deferred-requirements.md created,
+ff-vfs task gap filled (Tasks 13-16 added to virtual-file-system/tasks.md),
+VCM Task 17 marked SUPERSEDED BY BU.7.
 
 ## Project records
 

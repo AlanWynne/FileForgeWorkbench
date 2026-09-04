@@ -39,6 +39,7 @@ The following specs are available under `docs/specs/`:
 - dataset-ownership-model
 - display-line-mapping
 - document-model
+- ears-integration (workflow.md, and outputs: minix-ftso-reconciliation.md, source-of-truth-map.md, gap-analysis.md, coverage-classification.md, incomplete-work-audit.md, integration-plan.md)
 - edit-operations
 - encoding-and-characters
 - exclude-show-filter

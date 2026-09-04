@@ -87,7 +87,7 @@ impl RecordCodec for TextCodec {
         if self.lrecl == 0 || bytes.is_empty() {
             return Ok(vec![]);
         }
-        if bytes.len() % self.lrecl != 0 {
+        if !bytes.len().is_multiple_of(self.lrecl) {
             return Err(CodecError::NotMultipleOfLrecl {
                 byte_count: bytes.len(),
                 lrecl: self.lrecl,

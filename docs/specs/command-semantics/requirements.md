@@ -267,3 +267,48 @@ The command semantics engine is responsible for:
 7.7. THE HELP command SHALL NOT be recorded in command history, as it is informational and not a repeatable action. [FFE-CMD-40]
 
 7.8. THE HELP command SHALL be registered in the command-framework with Command_ID `"help.show"` and SHALL be invocable both from the command line (via `HELP` text) and through the command dispatch system. [FFE-CMD-40], [WB]
+
+### Requirement 9: TSO Commands and FTSO Operand Parsing
+
+**User Story:** As a TSO-familiar operator, I want the command engine to support TSO dataset management commands (ALLOCATE, FREE, DELETE, RENAME, LISTCAT, LISTDS, LISTALC, SUBMIT, STATUS), FTSO-style operand parsing, dataset prefix management, and advanced command features (continuation, ds:// URIs, namespace conflict resolution, capability model, secret operands, audit events), so that the workbench provides a complete TSO command environment.
+
+**Source:** EARS integration Phase CB (coverage-classification.md B10)
+
+#### Acceptance Criteria
+
+1. THE command engine SHALL support the `ALLOCATE` command, routing to the dataset allocator subsystem with TSO-style keyword operands (DATASET, SPACE, TRACKS, CYLINDERS, RECFM, LRECL, BLKSIZE, DSORG, UNIT, VOLUME). [TSO-CMD-1]
+2. THE command engine SHALL support the `FREE` command, routing to the dataset allocator to release a dataset allocation by name. [TSO-CMD-2]
+3. THE command engine SHALL support the `DELETE` command, routing to the VFS/catalog layer to delete a dataset or member by name. [TSO-CMD-3]
+4. THE command engine SHALL support the `RENAME` command with syntax `RENAME oldname newname`, routing to the VFS/catalog layer. [TSO-CMD-4]
+5. THE command engine SHALL support the `LISTCAT` command, routing to the catalog registry to list catalog entries matching an optional filter pattern. [TSO-CMD-5]
+6. THE command engine SHALL support the `LISTDS` command with syntax `LISTDS dsname [MEMBERS]`, routing to the VFS layer to list dataset attributes and optionally its members. [TSO-CMD-6]
+7. THE command engine SHALL support the `LISTALC` command, routing to the dataset allocator to list currently allocated datasets. [TSO-CMD-7]
+8. THE command engine SHALL support the `SUBMIT` command with syntax `SUBMIT dsname`, routing to the FFW-JES subsystem to submit the named dataset as a batch job. [TSO-CMD-8]
+9. THE command engine SHALL support the `STATUS` command with optional jobname argument, routing to the FFW-JES job status panel. [TSO-CMD-9]
+10. WHEN the `EDIT` command is issued from the command line with a dataset name argument, THE command engine SHALL route to the file-operations pipeline to open the named dataset in an editor tab, extending the existing EDIT routing criterion. [TSO-EDIT-1]
+11. THE command engine SHALL support TSO-style positional and keyword operand parsing: positional operands are space-separated values in defined order; keyword operands are in the form `KEYWORD(value)` or `KEYWORD value`. [FTSO-operand-parse]
+12. THE command engine SHALL support a session-level dataset prefix (`SET PREFIX dsn-prefix`): WHEN a prefix is set, unqualified dataset names in commands are automatically qualified by prepending the prefix. [FTSO-prefix]
+13. THE command engine SHALL support command continuation using a trailing backslash (`\`): WHEN a command line ends with `\`, THE engine SHALL treat the next submitted line as a continuation of the current command. [FTSO-continuation]
+14. THE command engine SHALL support the `ds://` URI scheme for dataset references: WHEN a command argument begins with `ds://`, THE engine SHALL resolve it through the VFS catalog layer without applying the session prefix. [FTSO-ds-uri]
+15. WHEN two registered commands have the same name (namespace conflict), THE command engine SHALL resolve the conflict using a defined priority order: built-in commands > plugin commands > macro commands; the lower-priority command SHALL be accessible via a qualified name (`plugin:commandname`). [FTSO-ns-conflict]
+16. THE command engine SHALL support a capability model: EACH registered command SHALL declare the capabilities it requires (e.g., `dataset.write`, `jes.submit`); WHEN a command is invoked, THE engine SHALL verify the required capabilities are available in the current session context. [FTSO-capability]
+17. THE command engine SHALL support secret operand handling: WHEN a command operand is declared as secret (e.g., a password field), THE engine SHALL redact that operand from command history, log records, and status messages. [FTSO-secret]
+18. THE command engine SHALL emit structured audit events for every command execution: event SHALL include command name, arguments (with secrets redacted), timestamp, user context, and outcome (success/failure). [FTSO-audit]
+
+### Requirement 10: TSO P2 Commands (OUTPUT, CANCEL, SEND, PROFILE, PRINTDS)
+
+**User Story:** As a TSO-familiar operator, I want the command engine to support the P2 TSO output and communication commands (OUTPUT, CANCEL, SEND, PROFILE, PRINTDS), so that the workbench provides a complete TSO command environment for job output management and user communication.
+
+**Source:** EARS integration Phase CI (coverage-classification.md B16, TSO-CMD-10 through TSO-CMD-14)
+
+#### Acceptance Criteria
+
+10.1. THE command engine SHALL support the `OUTPUT` command with syntax `OUTPUT jobname [options]`, routing to the FFW-JES subsystem to display or retrieve job output for the named job. [TSO-CMD-10]
+
+10.2. THE command engine SHALL support the `CANCEL` command with syntax `CANCEL jobname [PURGE]`, routing to the FFW-JES subsystem to cancel a batch job; WHEN the PURGE operand is specified, THE engine SHALL also request purge of the job's output. [TSO-CMD-11]
+
+10.3. THE command engine SHALL support the `SEND` command with syntax `SEND 'message' [USER(userid) | LOGON | BROADCAST]`, routing to the messaging subsystem to send a message to a user, all logged-on users, or the system broadcast queue. [TSO-CMD-12]
+
+10.4. THE command engine SHALL support the `PROFILE` command with syntax `PROFILE [operands]`, routing to the session profile subsystem to display or update TSO session profile settings (MSGID, INTERCOM, NOINTERCOM, PREFIX, SIZE, WTPMSG). [TSO-CMD-13]
+
+10.5. THE command engine SHALL support the `PRINTDS` command with syntax `PRINTDS DATASET(dsname) [options]`, routing to the file-operations pipeline to print the contents of a dataset to the system printer or a specified output destination. [TSO-CMD-14]

@@ -243,6 +243,8 @@ It is consumed by:
 
 7. THE system SHALL support `NUMBER ON` to enable auto-numbering mode. WHILE auto-numbering mode is active, WHEN the operator inserts a new line via any insert operation (line command `I`/`In`, clipboard paste, or file insert), THE system SHALL automatically assign the next sequence number in the active column range. [FFE-SEQNUM]
 
+7a. THE system SHALL treat `AUTONUM ON` as an alias for `NUMBER ON` and `AUTONUM OFF` as an alias for `NUMBER OFF`. Both forms SHALL produce identical behaviour and be interchangeable. [EARS SN-AUTONUM]
+
 8. THE system SHALL support `NUMBER OFF` to disable auto-numbering mode. Auto-numbering SHALL be off by default. [FFE-SEQNUM]
 
 9. WHEN `NUMBER COLS`, `NUMBER STD`, or `NUMBER ON` is issued, THE system SHALL display a confirmation prompt before modifying the edit buffer: `NUMBER will overwrite column range nn-mm on all lines. Confirm? (YES/NO)`. The operation SHALL proceed only if the operator responds YES. [FFE-SEQNUM]
@@ -276,7 +278,9 @@ It is consumed by:
 
 ---
 
-### Requirement 8: NUMBER SHOW Display Mode
+### Requirement 8: NUMBER SHOW Display Mode -- NUM Alias
+
+**Alias criterion (EARS SN-NUM-alias):** THE system SHALL treat `NUM` as an alias for the `NUMBER` command. WHEN `NUM` is entered with any sub-command or argument that `NUMBER` accepts (e.g., `NUM ON`, `NUM OFF`, `NUM SHOW`, `NUM COLS start end`, `NUM STD`), THE system SHALL execute the equivalent `NUMBER` form. [EARS SN-NUM-alias]
 
 **User Story:** As an operator who wants to inspect the original sequence numbers of a legacy file without them being stored in the edit buffer, I want a NUMBER SHOW mode that overlays sequence numbers in the viewport display.
 

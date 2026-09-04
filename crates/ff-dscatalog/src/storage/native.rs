@@ -50,9 +50,7 @@ impl NativeFileProvider {
         // Guard: reject traversal outside workspace root
         // We check the non-canonicalized form first (file may not exist yet)
         let normalized = normalize_path(&candidate);
-        if !normalized.starts_with(&canonical_root)
-            && !normalized.starts_with(workspace_root)
-        {
+        if !normalized.starts_with(&canonical_root) && !normalized.starts_with(workspace_root) {
             return Err(CatalogError::RepositoryCorrupt {
                 path: locator.to_string(),
                 reason: "path traversal outside workspace root rejected".to_string(),
@@ -137,11 +135,7 @@ impl StorageProvider for NativeFileProvider {
         Ok((id, locator))
     }
 
-    fn open(
-        &self,
-        workspace_root: &Path,
-        locator: &str,
-    ) -> Result<PathBuf, CatalogError> {
+    fn open(&self, workspace_root: &Path, locator: &str) -> Result<PathBuf, CatalogError> {
         let path = Self::resolve_path(workspace_root, locator)?;
         if !path.exists() {
             return Err(CatalogError::DatasetNotFound {
@@ -152,11 +146,7 @@ impl StorageProvider for NativeFileProvider {
         Ok(path)
     }
 
-    fn stat(
-        &self,
-        workspace_root: &Path,
-        locator: &str,
-    ) -> Result<ObjectStat, CatalogError> {
+    fn stat(&self, workspace_root: &Path, locator: &str) -> Result<ObjectStat, CatalogError> {
         let path = Self::resolve_path(workspace_root, locator)?;
         let meta = std::fs::metadata(&path).map_err(|e| CatalogError::IoError {
             operation: "stat".to_string(),
@@ -180,11 +170,7 @@ impl StorageProvider for NativeFileProvider {
         Ok(())
     }
 
-    fn delete(
-        &self,
-        workspace_root: &Path,
-        locator: &str,
-    ) -> Result<(), CatalogError> {
+    fn delete(&self, workspace_root: &Path, locator: &str) -> Result<(), CatalogError> {
         let path = Self::resolve_path(workspace_root, locator)?;
         if path.is_dir() {
             std::fs::remove_dir_all(&path).map_err(|e| CatalogError::IoError {
@@ -200,11 +186,7 @@ impl StorageProvider for NativeFileProvider {
         Ok(())
     }
 
-    fn list(
-        &self,
-        workspace_root: &Path,
-        locator: &str,
-    ) -> Result<Vec<String>, CatalogError> {
+    fn list(&self, workspace_root: &Path, locator: &str) -> Result<Vec<String>, CatalogError> {
         let path = Self::resolve_path(workspace_root, locator)?;
         if !path.is_dir() {
             return Ok(vec![]);
@@ -236,14 +218,10 @@ impl StorageProvider for NativeFileProvider {
         for locator in known_locators {
             match Self::resolve_path(workspace_root, locator) {
                 Ok(path) if !path.exists() => {
-                    discrepancies.push(format!(
-                        "missing physical object for locator '{locator}'"
-                    ));
+                    discrepancies.push(format!("missing physical object for locator '{locator}'"));
                 }
                 Err(e) => {
-                    discrepancies.push(format!(
-                        "invalid locator '{locator}': {e}"
-                    ));
+                    discrepancies.push(format!("invalid locator '{locator}': {e}"));
                 }
                 Ok(_) => {}
             }
@@ -273,11 +251,28 @@ fn is_reserved_name(name: &str) -> bool {
     let base = name.split('.').next().unwrap_or(name).to_uppercase();
     matches!(
         base.as_str(),
-        "CON" | "PRN" | "AUX" | "NUL"
-            | "COM1" | "COM2" | "COM3" | "COM4" | "COM5"
-            | "COM6" | "COM7" | "COM8" | "COM9"
-            | "LPT1" | "LPT2" | "LPT3" | "LPT4" | "LPT5"
-            | "LPT6" | "LPT7" | "LPT8" | "LPT9"
+        "CON"
+            | "PRN"
+            | "AUX"
+            | "NUL"
+            | "COM1"
+            | "COM2"
+            | "COM3"
+            | "COM4"
+            | "COM5"
+            | "COM6"
+            | "COM7"
+            | "COM8"
+            | "COM9"
+            | "LPT1"
+            | "LPT2"
+            | "LPT3"
+            | "LPT4"
+            | "LPT5"
+            | "LPT6"
+            | "LPT7"
+            | "LPT8"
+            | "LPT9"
     )
 }
 
@@ -338,7 +333,9 @@ mod tests {
         let provider = NativeFileProvider;
         let (_, locator) = provider.allocate(dir.path(), false).unwrap();
         let path_before = dir.path().join(&locator);
-        provider.rename(dir.path(), &locator, "new_locator").unwrap();
+        provider
+            .rename(dir.path(), &locator, "new_locator")
+            .unwrap();
         // File still at original path
         assert!(path_before.exists());
     }
@@ -392,9 +389,7 @@ mod tests {
         // Validates: Requirement 20.7, 28.1, 28.2
         let dir = tmp();
         let provider = NativeFileProvider;
-        let err = provider
-            .open(dir.path(), "../../etc/passwd")
-            .unwrap_err();
+        let err = provider.open(dir.path(), "../../etc/passwd").unwrap_err();
         assert!(matches!(err, CatalogError::RepositoryCorrupt { .. }));
     }
 

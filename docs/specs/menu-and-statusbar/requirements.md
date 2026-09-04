@@ -448,3 +448,26 @@ or view content side-by-side independently.
 7. THE shell SHALL support up to 16 simultaneous Floating_Windows containing detached
      tabs. IF the user attempts to detach a tab beyond this limit, THE shell SHALL display
      a status message and SHALL NOT detach the tab.
+
+### Requirement 19: ISPF Navigation Enhancements (SCROLL Field, Fastpath, Split Screen, List Panel LOCATE)
+
+**User Story:** As an ISPF-familiar user, I want the full ISPF navigation model including a SCROLL ===> field, fastpath notation, split-screen capability, list panel LOCATE, and FTSO panel chrome, so that the workbench matches the ISPF navigation experience.
+
+**Source:** EARS integration Phase BZ (coverage-classification.md B07)
+
+#### Acceptance Criteria
+
+1. THE Primary_Command_Field area SHALL include a `SCROLL ===>` field adjacent to (and to the right of) the `Command ===>` field, displaying the current scroll amount (PAGE, HALF, CSR, MAX, DATA, or a numeric value). [ISPF-1.6]
+2. WHEN the user modifies the SCROLL ===> field value and presses Enter, THE system SHALL update the active scroll amount for the current panel. [ISPF-1.6]
+3. THE SCROLL ===> field SHALL retain its value across command submissions and panel switches within the same session. [TSO-4.3]
+4. THE system SHALL support fastpath notation in the Command ===> field: WHEN the user enters a dotted option path (e.g., `3.1`), THE system SHALL navigate directly to the nested option without visiting intermediate menus. [ISPF-2.3]
+5. WHEN a data entry panel is displayed (dialog with ===> input fields), THE panel SHALL conform to the ISPF data entry panel layout: title line, command field, labelled input fields with ===> prompts, and a function key bar. [ISPF-1.2]
+6. WHEN a list panel is displayed (scrollable table of items with an NP column), THE panel SHALL conform to the ISPF list panel layout: title line, command field, filter information lines, NP column, and scrollable data rows. [ISPF-1.3]
+7. WHEN `LOCATE name` is issued on a list panel, THE system SHALL scroll the list to the nearest alphabetic match for `name`. [ISPF-4.2]
+8. WHEN `LOCATE name` is issued on a list panel and `name` is a partial string, THE system SHALL scroll to the first entry whose name begins with that partial string. [ISPF-4.3]
+9. WHEN `LOCATE name` is issued on any list panel, THE system SHALL scroll the panel so the matching item is visible, consistent with the existing LOCATE behaviour defined in navigation-commands. [ISPF-4.1]
+10. THE system SHALL support scroll amounts HALF, CSR, MAX, and DATA in addition to PAGE and numeric values, for all scroll commands (UP, DOWN, LEFT, RIGHT) in all panels. [TSO-4.2]
+11. WHEN PF2 is pressed while editing, THE system SHALL split the screen at the cursor line, displaying two independent editor halves. [ISPF-3.1]
+12. WHEN the screen is split, PF9 SHALL swap keyboard focus between the two split-screen halves. [ISPF-3.2]
+13. WHEN the screen is split, EACH half SHALL operate independently with its own command field, scroll position, and cursor state. [ISPF-3.3]
+14. WHEN END (PF3) is pressed while the screen is split, THE system SHALL unsplit the screen, restoring the single-panel view. [ISPF-3.4]

@@ -495,3 +495,59 @@ This spec covers:
 - **Keyboard shortcuts** listed (Ctrl+D, Ctrl+Shift+K, Ctrl+T, etc.) are defaults registered with the command framework's shortcut registry; users may remap them via `configuration-system`.
 - **Platform-specific rendering**, C++ ABI details, and Scintilla's message-passing API (`WM_*`, `SCI_*` messages) are excluded — all concepts are adapted to Rust traits and method calls.
 - **GUI independence**: The `edit-operations` crate has zero GUI dependencies. It operates on abstract types from `document-model` and produces transaction records for `undo-redo-transactions`. Visual feedback (caret rendering, selection highlighting, modified markers) is the responsibility of the GUI layer via `caret-and-selection`.
+
+---
+
+### Requirement 16: ISPF Edit Profile Commands [EARS: Edit-CAPS-mode, Edit-NULLS-mode, Edit-PROFILE-command, Edit-STATS-mode, Edit-LOCK-setting, Edit-profile-persist]
+
+**User Story:** As an ISPF user, I want to view and change edit profile settings (CAPS, NULLS, PROFILE, STATS, LOCK) from within the editor, so that the editing environment matches my preferences and persists across sessions.
+
+#### Acceptance Criteria
+
+1. WHEN the user issues the CAPS ON primary command, THE editor SHALL convert all subsequently typed characters to uppercase before inserting them into the document. WHEN CAPS OFF is issued, THE editor SHALL revert to case-preserving input. [EARS: Edit-CAPS-mode]
+
+2. WHEN the user issues the CAPS command with no argument, THE editor SHALL toggle the current CAPS mode state. [EARS: Edit-CAPS-mode]
+
+3. WHEN CAPS mode is active, THE status bar SHALL display a CAPS indicator. [EARS: Edit-CAPS-mode]
+
+4. WHEN the user issues the NULLS ON primary command, THE editor SHALL treat trailing null characters (0x00) on a line as equivalent to trailing spaces for display and editing purposes. WHEN NULLS OFF is issued, THE editor SHALL display null characters as visible placeholders. [EARS: Edit-NULLS-mode]
+
+5. WHEN the user issues the PROFILE primary command, THE editor SHALL display the current edit profile settings (CAPS, NULLS, RECOVERY, AUTONUM, NUM, HILITE, STATS, LOCK, IMACRO) in a status overlay or panel. [EARS: Edit-PROFILE-command]
+
+6. WHEN the user issues PROFILE with keyword arguments (e.g. PROFILE CAPS ON), THE editor SHALL update the named profile setting and confirm the change. [EARS: Edit-PROFILE-command]
+
+7. WHEN the user issues STATS ON, THE editor SHALL display member statistics (creation date, modification date, modification count, user ID) in the prefix area or a dedicated column. WHEN STATS OFF is issued, THE statistics display SHALL be hidden. [EARS: Edit-STATS-mode]
+
+8. WHEN the user issues LOCK ON, THE editor SHALL prevent further changes to the edit profile settings for the current session. WHEN LOCK OFF is issued, THE profile SHALL become editable again. [EARS: Edit-LOCK-setting]
+
+9. WHEN the user closes and reopens a file, THE edit profile settings (CAPS, NULLS, AUTONUM, NUM, HILITE, STATS) SHALL be restored to the values they had when the file was last closed, persisted via the configuration system. [EARS: Edit-profile-persist]
+
+10. WHEN the user issues AUTONUM ON, THE editor SHALL treat this as equivalent to NUMBER ON, enabling automatic line numbering. WHEN AUTONUM OFF is issued, THE editor SHALL treat this as equivalent to NUMBER OFF. [EARS: Edit-AUTONUM-mode -- extends sequence-numbers Req 6.7]
+
+11. WHEN the user issues the NUM command, THE editor SHALL treat it as an alias for the NUMBER command, accepting the same arguments (ON, OFF, SHOW, STD, COBOL, etc.). [EARS: Edit-NUM-mode -- extends sequence-numbers Req 8]
+
+12. WHEN the user issues HILITE followed by a mode keyword (ON, OFF, LOGIC, FIND, PAREN), THE editor SHALL delegate to the syntax-highlighting subsystem to apply the requested highlighting mode. [EARS: Edit-HILITE-setting -- extends syntax-highlighting]
+
+---
+
+### Requirement 17: Editor-Context Dataset Commands [EARS: PC-SUBMIT, PC-CREATE, PC-REPLACE, PC-EDIT-nested, PC-BROWSE, PC-VIEW, PC-COMPARE]
+
+**User Story:** As an ISPF user, I want to issue dataset-level commands (SUBMIT, CREATE, REPLACE, EDIT, BROWSE, VIEW, COMPARE) from within the editor, so that I can manage and navigate datasets without leaving the editing context.
+
+#### Acceptance Criteria
+
+1. WHEN the user issues the SUBMIT primary command from within the editor, THE editor SHALL submit the current document buffer as a batch job via the JES subsystem (ff-jes) and display the assigned job ID in the status bar. [EARS: PC-SUBMIT]
+
+2. WHEN the user issues the CREATE primary command with a dataset name argument, THE editor SHALL create a new dataset containing the lines currently selected (or all lines if no selection is active) and confirm the creation in the status bar. [EARS: PC-CREATE]
+
+3. WHEN the user issues the REPLACE primary command with a dataset name argument, THE editor SHALL replace the content of the named dataset with the lines currently selected (or all lines if no selection is active) and confirm in the status bar. [EARS: PC-REPLACE]
+
+4. WHEN the user issues the EDIT primary command with a dataset name argument from within an active editor session, THE editor SHALL open the named dataset in a new editor tab, leaving the current session open. [EARS: PC-EDIT-nested]
+
+5. WHEN the user issues the BROWSE primary command with a dataset name argument, THE editor SHALL open the named dataset in a read-only browse tab. [EARS: PC-BROWSE]
+
+6. WHEN the user issues the VIEW primary command with a dataset name argument, THE editor SHALL open the named dataset in a view tab (read-only with limited edit profile). [EARS: PC-VIEW]
+
+7. WHEN the user issues the COMPARE primary command with a dataset name argument, THE editor SHALL open a compare view showing the differences between the current document and the named dataset. [EARS: PC-COMPARE]
+
+8. WHEN any of the above commands (SUBMIT, CREATE, REPLACE, EDIT, BROWSE, VIEW, COMPARE) is issued with a missing or invalid dataset name argument, THE editor SHALL display a descriptive error message in the status bar and SHALL NOT modify the document or open any new tab. [EARS: PC-SUBMIT through PC-COMPARE]

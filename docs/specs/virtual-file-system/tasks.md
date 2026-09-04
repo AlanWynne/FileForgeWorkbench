@@ -174,3 +174,41 @@ This task plan implements the `ff-vfs` crate — the Virtual File System abstrac
   ]
 }
 ```
+
+## Tasks Added by CR-NR-016 -- StorageProvider and VFS Extensions (Req 9-12)
+
+These tasks depend on BS.15 (dataset-catalog design.md update) being complete.
+They are sequenced after the BS Wave 3-4 implementation stream.
+
+- [ ] 13. StorageProvider trait in ff-vfs (Req 9)
+  - [ ] 13.1 Define `StorageProvider` trait in `src/storage_provider.rs` -- `allocate`, `open`, `stat`, `rename`, `delete`, `list`, `reconcile`; declare `StorageCapability` enum
+  - [ ] 13.2 Implement capability advertisement: each provider declares which operations it supports
+  - [ ] 13.3 Implement `UnsupportedOperation` default returns for optional methods
+  - [ ] 13.4 Register `StorageProvider` with `ProviderRegistry` alongside `VfsProvider`
+  - [ ] 13.5 Write unit tests for trait object construction, capability advertisement, and unsupported-operation defaults
+  - Covers: Requirement 9.1-9.5
+
+- [ ] 14. POSIX files as native objects (Req 10)
+  - [ ] 14.1 Implement `PosixNativeProvider` -- maps POSIX catalog entries to native filesystem paths; no SQLite BLOB storage
+  - [ ] 14.2 Implement read/write delegation to native OS file I/O
+  - [ ] 14.3 Implement directory listing via `std::fs::read_dir`
+  - [ ] 14.4 Implement stat returning native file metadata (size, timestamps, permissions)
+  - [ ] 14.5 Implement path-safety guard -- reject traversal outside catalog root
+  - [ ] 14.6 Write unit tests for all POSIX provider operations using `tempfile::TempDir`
+  - Covers: Requirement 10.1-10.6
+
+- [ ] 15. VFS staged transaction protocol (Req 11)
+  - [ ] 15.1 Define `VfsTransaction` struct -- wraps a sequence of VFS operations with commit/rollback semantics
+  - [ ] 15.2 Implement two-phase commit: stage all operations, then publish atomically
+  - [ ] 15.3 Implement rollback: undo staged operations in reverse order on failure
+  - [ ] 15.4 Implement transaction journal: persist in-progress state for startup recovery
+  - [ ] 15.5 Write unit and integration tests for commit, rollback, and interrupted-transaction recovery
+  - Covers: Requirement 11.1-11.5
+
+- [ ] 16. workspace.backup / restore / reconcile / diagnose (Req 12)
+  - [ ] 16.1 Implement `workspace.backup` VFS command -- capture all provider state, write manifest with checksums
+  - [ ] 16.2 Implement `workspace.restore` VFS command -- validate manifest, restore to original or remapped root
+  - [ ] 16.3 Implement `workspace.diagnose` VFS command -- report orphaned objects and dangling entries
+  - [ ] 16.4 Implement `workspace.reconcile` VFS command -- compare VFS state with provider state, report proposed corrections
+  - [ ] 16.5 Write unit and integration tests for backup/restore round-trip, diagnose output, reconcile report
+  - Covers: Requirement 12.1-12.5

@@ -528,3 +528,26 @@ The transaction system is the bridge between the command framework (which produc
 5. THE crate SHALL depend only on: `ff-logging` (diagnostics), `ff-configuration` (settings access), standard library, and serialisation crates (for recovery file I/O). It SHALL NOT depend on `ff-document-model` directly — instead it SHALL accept Edit_Operations via a trait interface, allowing the document model to implement the trait. [WB]
 
 ---
+
+### Requirement 19: SETUNDO and RECOVERY Commands (P2)
+
+**User Story:** As an editor user, I want SETUNDO and RECOVERY primary commands so that I can
+configure undo settings and control crash recovery from the command line, consistent with the
+ISPF editing model.
+
+**Source:** RU-SETUNDO (NEW), RU-RECOVERY-command (PAR -- extends Requirement 8.2). [ISPF-EARS]
+
+#### Acceptance Criteria
+
+1. THE command framework SHALL register SETUNDO as a primary command accepting the following
+   operands: SETUNDO ON (enable undo, restoring max_levels to configured value), SETUNDO OFF
+   (disable undo for the current session, equivalent to max_levels=0), SETUNDO n (set max undo
+   levels to n for the current session, range 0-10000); changes take effect immediately without
+   requiring a restart.
+
+2. THE command framework SHALL register RECOVERY as a primary command accepting the following
+   operands: RECOVERY ON (enable crash recovery file writing, restoring the configured interval),
+   RECOVERY OFF (disable crash recovery file writing for the current session), RECOVERY n (set
+   recovery interval to n seconds for the current session); changes take effect immediately.
+
+---

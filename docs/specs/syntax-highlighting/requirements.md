@@ -329,3 +329,42 @@ The design adapts Scintilla's C++ lexer architecture to idiomatic Rust: trait-ba
 4. THE syntax-highlighting engine's style data and the text-decorations engine's indicator data SHALL be independently queryable for the same character range — they do not interfere with each other's storage.
 5. WHEN the syntax-highlighting engine re-highlights a region, IT SHALL NOT modify or invalidate indicator decorations applied to that region — indicator lifecycle is managed independently by the text-decorations subsystem.
 6. THE engine SHALL provide a `fold_level_range(start_line, end_line) → impl Iterator<Item = (LineNumber, u16, FoldFlags)>` method for efficient bulk fold-level queries by the display-line-mapping during fold-region calculation.
+
+### Requirement 16: HILITE Command (P2)
+
+**User Story:** As an editor user, I want a HILITE primary command to toggle syntax highlighting
+on and off and to enable special highlighting modes (LOGIC, PAREN, FIND), so that I can control
+visual emphasis from the command line consistent with the ISPF HILITE command.
+
+**Source:** SH-HILITE-toggle (NEW), SH-HILITE-LOGIC (NEW), SH-HILITE-PAREN (NEW),
+SH-HILITE-FIND (PAR -- extends find-and-replace highlight-all), PC-HILITE (PAR -- unified
+with SH-HILITE-toggle). [ISPF-EARS]
+
+#### Acceptance Criteria
+
+1. THE command framework SHALL register HILITE as a primary command; HILITE ON enables syntax
+   highlighting for the active document (restoring the language-detected lexer); HILITE OFF
+   disables syntax highlighting for the active document (all text reverts to default style 0)
+   without unloading the lexer; the ON/OFF state persists for the document session.
+
+2. WHEN the user issues HILITE LOGIC, THE engine SHALL enable logic-operator highlighting mode
+   for the active document -- boolean operators (AND, OR, NOT, &&, ||, !) and comparison
+   operators (==, !=, <, >, <=, >=) are highlighted with a distinct style slot index
+   (HILITE_LOGIC style) in addition to normal syntax highlighting.
+
+3. WHEN the user issues HILITE PAREN, THE engine SHALL enable parenthesis-matching highlight
+   mode for the active document -- the parenthesis, bracket, or brace pair enclosing the
+   current cursor position is highlighted with a distinct style slot index (HILITE_PAREN style);
+   the highlight updates as the cursor moves; mismatched delimiters are highlighted with a
+   distinct error style (HILITE_PAREN_ERROR).
+
+4. WHEN the user issues HILITE FIND, THE engine SHALL highlight all occurrences of the most
+   recent FIND string in the active document using the existing find-match highlight style
+   (extending the find-and-replace highlight-all behaviour to be togglable via HILITE FIND);
+   HILITE FIND OFF clears the persistent find highlights.
+
+5. THE HILITE command SHALL accept combined operands: HILITE ON LOGIC PAREN enables syntax
+   highlighting with both LOGIC and PAREN modes active simultaneously; HILITE OFF clears all
+   modes; individual modes may be toggled independently without affecting other active modes.
+
+---
