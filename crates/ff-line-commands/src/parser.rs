@@ -41,6 +41,8 @@ impl LineCommandParser {
             "<<" => return Ok(LineCommandKind::ShiftLeftBlock),
             "))" => return Ok(LineCommandKind::BoundsShiftRightBlock),
             "((" => return Ok(LineCommandKind::BoundsShiftLeftBlock),
+            "WW" => return Ok(LineCommandKind::ClipboardCopyBlock),
+            "]]" => return Ok(LineCommandKind::ShiftRightOneBlock),
             _ => {}
         }
 
@@ -60,6 +62,12 @@ impl LineCommandParser {
             "<" => return Ok(LineCommandKind::ShiftLeft),
             ")" => return Ok(LineCommandKind::BoundsShiftRight),
             "(" => return Ok(LineCommandKind::BoundsShiftLeft),
+            "W" => return Ok(LineCommandKind::ClipboardCopy),
+            "F" => return Ok(LineCommandKind::ShowFirst),
+            "L" => return Ok(LineCommandKind::ShowLast),
+            "S" => return Ok(LineCommandKind::ShowLine),
+            "]" => return Ok(LineCommandKind::ShiftRightOne),
+            "O" => return Ok(LineCommandKind::Overlay),
             _ => {}
         }
 
@@ -108,6 +116,13 @@ impl LineCommandParser {
                     if let Ok(n) = rest.parse::<u32>() {
                         if n > 0 {
                             return Ok(LineCommandKind::ShiftLeftCount(n));
+                        }
+                    }
+                }
+                b'O' => {
+                    if let Ok(n) = rest.parse::<u32>() {
+                        if n > 0 {
+                            return Ok(LineCommandKind::OverlayCount(n));
                         }
                     }
                 }
@@ -403,5 +418,88 @@ mod tests {
     fn parse_with_trailing_whitespace() {
         let cmd = LineCommandParser::parse("D  ", 0).unwrap();
         assert_eq!(cmd.kind, LineCommandKind::Delete);
+    }
+
+    // --- BX: Overlay ---
+
+    #[test]
+    fn parse_o_overlay() {
+        // Validates: Requirement 15.1
+        let cmd = LineCommandParser::parse("O", 0).unwrap();
+        assert_eq!(cmd.kind, LineCommandKind::Overlay);
+    }
+
+    #[test]
+    fn parse_o3_overlay_count() {
+        // Validates: Requirement 15.2
+        let cmd = LineCommandParser::parse("O3", 0).unwrap();
+        assert_eq!(cmd.kind, LineCommandKind::OverlayCount(3));
+    }
+
+    #[test]
+    fn parse_o_lowercase() {
+        let cmd = LineCommandParser::parse("o", 0).unwrap();
+        assert_eq!(cmd.kind, LineCommandKind::Overlay);
+    }
+
+    // --- BX: Clipboard Copy ---
+
+    #[test]
+    fn parse_w_clipboard_copy() {
+        // Validates: Requirement 15.3
+        let cmd = LineCommandParser::parse("W", 0).unwrap();
+        assert_eq!(cmd.kind, LineCommandKind::ClipboardCopy);
+    }
+
+    #[test]
+    fn parse_ww_clipboard_copy_block() {
+        // Validates: Requirement 15.4
+        let cmd = LineCommandParser::parse("WW", 0).unwrap();
+        assert_eq!(cmd.kind, LineCommandKind::ClipboardCopyBlock);
+    }
+
+    #[test]
+    fn parse_w_lowercase() {
+        let cmd = LineCommandParser::parse("w", 0).unwrap();
+        assert_eq!(cmd.kind, LineCommandKind::ClipboardCopy);
+    }
+
+    // --- BX: Show Excluded ---
+
+    #[test]
+    fn parse_f_show_first() {
+        // Validates: Requirement 15.5
+        let cmd = LineCommandParser::parse("F", 0).unwrap();
+        assert_eq!(cmd.kind, LineCommandKind::ShowFirst);
+    }
+
+    #[test]
+    fn parse_l_show_last() {
+        // Validates: Requirement 15.6
+        let cmd = LineCommandParser::parse("L", 0).unwrap();
+        assert_eq!(cmd.kind, LineCommandKind::ShowLast);
+    }
+
+    #[test]
+    fn parse_s_show_line() {
+        // Validates: Requirement 15.9
+        let cmd = LineCommandParser::parse("S", 0).unwrap();
+        assert_eq!(cmd.kind, LineCommandKind::ShowLine);
+    }
+
+    // --- BX: Single-Column Shift Right ---
+
+    #[test]
+    fn parse_bracket_shift_right_one() {
+        // Validates: Requirement 15.7
+        let cmd = LineCommandParser::parse("]", 0).unwrap();
+        assert_eq!(cmd.kind, LineCommandKind::ShiftRightOne);
+    }
+
+    #[test]
+    fn parse_double_bracket_shift_right_one_block() {
+        // Validates: Requirement 15.8
+        let cmd = LineCommandParser::parse("]]", 0).unwrap();
+        assert_eq!(cmd.kind, LineCommandKind::ShiftRightOneBlock);
     }
 }

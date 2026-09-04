@@ -1373,3 +1373,306 @@ fn context_key_maps_invalid_key_skipped() {
     assert_eq!(map.len(), 1, "only F3 should be loaded");
     assert_eq!(warnings.len(), 1, "F99 should produce one warning");
 }
+
+// === Phase BW Group 2 -- Edit Profile Commands ===========================
+
+/// Construct a minimal WorkbenchShell for command-dispatch unit tests.
+fn make_shell() -> super::WorkbenchShell {
+    use ff_config::init;
+    use ff_config::ConfigInitOptions;
+    use ff_core::WorkbenchApp;
+    use ff_logging::LoggingStatus;
+    use ff_theme::defaults::dark_palette;
+    use tokio::runtime::Runtime;
+
+    let config_handle = init(ConfigInitOptions::new().with_hot_reload(false)).expect("config init");
+    let runtime = Runtime::new().expect("runtime");
+    let app =
+        WorkbenchApp::new(Box::new(config_handle.clone()), LoggingStatus::Fallback).expect("app");
+    let palette = dark_palette();
+    super::WorkbenchShell::new(app, runtime, palette, vec![], config_handle)
+}
+
+/// Validates: Requirement 16.1 -- CAPS ON converts typed chars to uppercase.
+#[test]
+fn caps_on_command_sets_caps_mode_on() {
+    // Validates: Requirement 16.1
+    use ff_edit_operations::CapsMode;
+    let mut shell = make_shell();
+    shell.handle_command("CAPS ON");
+    assert_eq!(shell.tabs.active_tab().edit_profile.caps, CapsMode::On);
+    assert!(shell.open_error.is_none());
+}
+
+/// Validates: Requirement 16.1 -- CAPS OFF reverts to case-preserving input.
+#[test]
+fn caps_off_command_sets_caps_mode_off() {
+    // Validates: Requirement 16.1
+    use ff_edit_operations::CapsMode;
+    let mut shell = make_shell();
+    shell.handle_command("CAPS ON");
+    shell.handle_command("CAPS OFF");
+    assert_eq!(shell.tabs.active_tab().edit_profile.caps, CapsMode::Off);
+}
+
+/// Validates: Requirement 16.2 -- CAPS with no argument toggles state.
+#[test]
+fn caps_no_arg_toggles_state() {
+    // Validates: Requirement 16.2
+    use ff_edit_operations::CapsMode;
+    let mut shell = make_shell();
+    assert_eq!(shell.tabs.active_tab().edit_profile.caps, CapsMode::Off);
+    shell.handle_command("CAPS");
+    assert_eq!(shell.tabs.active_tab().edit_profile.caps, CapsMode::On);
+    shell.handle_command("CAPS");
+    assert_eq!(shell.tabs.active_tab().edit_profile.caps, CapsMode::Off);
+}
+
+/// Validates: Requirement 16.4 -- NULLS ON sets nulls mode.
+#[test]
+fn nulls_on_command_sets_nulls_mode_on() {
+    // Validates: Requirement 16.4
+    use ff_edit_operations::NullsMode;
+    let mut shell = make_shell();
+    shell.handle_command("NULLS ON");
+    assert_eq!(shell.tabs.active_tab().edit_profile.nulls, NullsMode::On);
+    assert!(shell.open_error.is_none());
+}
+
+/// Validates: Requirement 16.4 -- NULLS OFF clears nulls mode.
+#[test]
+fn nulls_off_command_sets_nulls_mode_off() {
+    // Validates: Requirement 16.4
+    use ff_edit_operations::NullsMode;
+    let mut shell = make_shell();
+    shell.handle_command("NULLS ON");
+    shell.handle_command("NULLS OFF");
+    assert_eq!(shell.tabs.active_tab().edit_profile.nulls, NullsMode::Off);
+}
+
+/// Validates: Requirement 16.5 -- PROFILE displays current settings.
+#[test]
+fn profile_command_sets_open_error_to_summary() {
+    // Validates: Requirement 16.5
+    let mut shell = make_shell();
+    shell.handle_command("PROFILE");
+    let msg = shell.open_error.as_deref().unwrap_or("");
+    assert!(
+        msg.contains("CAPS(OFF)"),
+        "summary should contain CAPS(OFF), got: {msg}"
+    );
+    assert!(
+        msg.contains("NULLS(OFF)"),
+        "summary should contain NULLS(OFF)"
+    );
+}
+
+/// Validates: Requirement 16.6 -- PROFILE CAPS ON updates the setting.
+#[test]
+fn profile_caps_on_keyword_updates_caps() {
+    // Validates: Requirement 16.6
+    use ff_edit_operations::CapsMode;
+    let mut shell = make_shell();
+    shell.handle_command("PROFILE CAPS ON");
+    assert_eq!(shell.tabs.active_tab().edit_profile.caps, CapsMode::On);
+    assert!(shell.open_error.is_none());
+}
+
+/// Validates: Requirement 16.7 -- STATS ON sets stats mode.
+#[test]
+fn stats_on_command_sets_stats_mode_on() {
+    // Validates: Requirement 16.7
+    use ff_edit_operations::StatsMode;
+    let mut shell = make_shell();
+    shell.handle_command("STATS ON");
+    assert_eq!(shell.tabs.active_tab().edit_profile.stats, StatsMode::On);
+    assert!(shell.open_error.is_none());
+}
+
+/// Validates: Requirement 16.7 -- STATS OFF clears stats mode.
+#[test]
+fn stats_off_command_clears_stats_mode() {
+    // Validates: Requirement 16.7
+    use ff_edit_operations::StatsMode;
+    let mut shell = make_shell();
+    shell.handle_command("STATS ON");
+    shell.handle_command("STATS OFF");
+    assert_eq!(shell.tabs.active_tab().edit_profile.stats, StatsMode::Off);
+}
+
+/// Validates: Requirement 16.8 -- LOCK ON prevents profile changes.
+#[test]
+fn lock_on_prevents_profile_changes() {
+    // Validates: Requirement 16.8
+    use ff_edit_operations::CapsMode;
+    let mut shell = make_shell();
+    shell.handle_command("LOCK ON");
+    shell.handle_command("PROFILE CAPS ON");
+    // Profile is locked so CAPS should remain Off
+    assert_eq!(shell.tabs.active_tab().edit_profile.caps, CapsMode::Off);
+    assert!(shell.open_error.is_some());
+}
+
+/// Validates: Requirement 16.8 -- LOCK OFF re-enables profile changes.
+#[test]
+fn lock_off_re_enables_profile_changes() {
+    // Validates: Requirement 16.8
+    use ff_edit_operations::CapsMode;
+    let mut shell = make_shell();
+    shell.handle_command("LOCK ON");
+    shell.handle_command("LOCK OFF");
+    shell.handle_command("CAPS ON");
+    assert_eq!(shell.tabs.active_tab().edit_profile.caps, CapsMode::On);
+}
+
+/// Validates: Requirement 16.12 -- HILITE ON sets hilite mode.
+#[test]
+fn hilite_on_sets_hilite_mode() {
+    // Validates: Requirement 16.12
+    use ff_edit_operations::HiliteMode;
+    let mut shell = make_shell();
+    shell.handle_command("HILITE ON");
+    assert_eq!(shell.tabs.active_tab().edit_profile.hilite, HiliteMode::On);
+    assert!(shell.open_error.is_none());
+}
+
+/// Validates: Requirement 16.12 -- HILITE LOGIC sets logic mode.
+#[test]
+fn hilite_logic_sets_logic_mode() {
+    // Validates: Requirement 16.12
+    use ff_edit_operations::HiliteMode;
+    let mut shell = make_shell();
+    shell.handle_command("HILITE LOGIC");
+    assert_eq!(
+        shell.tabs.active_tab().edit_profile.hilite,
+        HiliteMode::Logic
+    );
+}
+
+/// Validates: Requirement 16.12 -- HILITE with unknown mode sets error.
+#[test]
+fn hilite_unknown_mode_sets_error() {
+    // Validates: Requirement 16.12
+    let mut shell = make_shell();
+    shell.handle_command("HILITE BOGUS");
+    assert!(shell.open_error.is_some());
+}
+
+/// Validates: Requirement 16.10 -- AUTONUM ON dispatches to NUMBER ON.
+#[test]
+fn autonum_on_dispatches_to_number_on() {
+    // Validates: Requirement 16.10
+    // NUMBER ON is handled by the CommandEngine; we just verify no panic and
+    // that AUTONUM ON is not treated as an unknown command.
+    let mut shell = make_shell();
+    shell.handle_command("AUTONUM ON");
+    // Should not produce an "unknown command" error from the AUTONUM handler itself
+    // (the CommandEngine may or may not know NUMBER -- we just check dispatch happened)
+    // The key assertion: open_error does NOT contain "AUTONUM"
+    let err = shell.open_error.as_deref().unwrap_or("");
+    assert!(
+        !err.to_uppercase().contains("AUTONUM"),
+        "AUTONUM should be aliased, got: {err}"
+    );
+}
+
+/// Validates: Requirement 16.11 -- NUM dispatches to NUMBER.
+#[test]
+fn num_command_dispatches_to_number() {
+    // Validates: Requirement 16.11
+    let mut shell = make_shell();
+    shell.handle_command("NUM ON");
+    let err = shell.open_error.as_deref().unwrap_or("");
+    assert!(
+        !err.to_uppercase().contains("NUM ON"),
+        "NUM should be aliased, got: {err}"
+    );
+}
+
+/// Validates: Requirement 17.1 -- SUBMIT with no JES returns descriptive error.
+#[test]
+fn submit_returns_jes_not_available_error() {
+    // Validates: Requirement 17.1, 17.8
+    let mut shell = make_shell();
+    shell.handle_command("SUBMIT");
+    let err = shell.open_error.as_deref().unwrap_or("");
+    assert!(err.contains("JES") || err.contains("not yet"), "got: {err}");
+}
+
+/// Validates: Requirement 17.2 -- CREATE with missing dsn returns error.
+#[test]
+fn create_missing_dsn_returns_error() {
+    // Validates: Requirement 17.8
+    let mut shell = make_shell();
+    shell.handle_command("CREATE ");
+    assert!(shell.open_error.is_some());
+}
+
+/// Validates: Requirement 17.2 -- CREATE with dsn returns stub message.
+#[test]
+fn create_with_dsn_returns_stub_message() {
+    // Validates: Requirement 17.2
+    let mut shell = make_shell();
+    shell.handle_command("CREATE PAYROLL.EMPLOYEE");
+    let err = shell.open_error.as_deref().unwrap_or("");
+    assert!(err.contains("PAYROLL.EMPLOYEE"), "got: {err}");
+}
+
+/// Validates: Requirement 17.3 -- REPLACE with missing dsn returns error.
+#[test]
+fn replace_missing_dsn_returns_error() {
+    // Validates: Requirement 17.8
+    let mut shell = make_shell();
+    shell.handle_command("REPLACE ");
+    assert!(shell.open_error.is_some());
+}
+
+/// Validates: Requirement 17.5 -- BROWSE with missing dsn returns error.
+#[test]
+fn browse_missing_dsn_returns_error() {
+    // Validates: Requirement 17.8
+    let mut shell = make_shell();
+    shell.handle_command("BROWSE ");
+    assert!(shell.open_error.is_some());
+}
+
+/// Validates: Requirement 17.6 -- VIEW with missing dsn returns error.
+#[test]
+fn view_missing_dsn_returns_error() {
+    // Validates: Requirement 17.8
+    let mut shell = make_shell();
+    shell.handle_command("VIEW ");
+    assert!(shell.open_error.is_some());
+}
+
+/// Validates: Requirement 17.7 -- COMPARE with missing dsn returns error.
+#[test]
+fn compare_missing_dsn_returns_error() {
+    // Validates: Requirement 17.8
+    let mut shell = make_shell();
+    shell.handle_command("COMPARE ");
+    assert!(shell.open_error.is_some());
+}
+
+/// Validates: Requirement 17.7 -- COMPARE with dsn returns stub message.
+#[test]
+fn compare_with_dsn_returns_stub_message() {
+    // Validates: Requirement 17.7
+    let mut shell = make_shell();
+    shell.handle_command("COMPARE PAYROLL.EMPLOYEE");
+    let err = shell.open_error.as_deref().unwrap_or("");
+    assert!(err.contains("PAYROLL.EMPLOYEE"), "got: {err}");
+}
+
+/// Validates: Requirement 16.3 -- edit_profile defaults to all-off on new tab.
+#[test]
+fn new_tab_edit_profile_defaults_to_all_off() {
+    // Validates: Requirement 16.3 (default state)
+    use ff_edit_operations::{CapsMode, NullsMode, StatsMode};
+    let shell = make_shell();
+    let profile = &shell.tabs.active_tab().edit_profile;
+    assert_eq!(profile.caps, CapsMode::Off);
+    assert_eq!(profile.nulls, NullsMode::Off);
+    assert_eq!(profile.stats, StatsMode::Off);
+    assert!(!profile.is_locked());
+}

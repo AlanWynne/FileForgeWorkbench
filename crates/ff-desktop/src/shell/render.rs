@@ -192,6 +192,11 @@ impl WorkbenchShell {
                     ui.colored_label(to_egui_color(self.palette.editor.accent), "●");
                     ui.separator();
                 }
+                // Req 16.3: CAPS mode indicator
+                if tab.edit_profile.caps.is_on() {
+                    ui.colored_label(to_egui_color(self.palette.editor.accent), "CAPS");
+                    ui.separator();
+                }
 
                 if let Some(err) = &self.open_error {
                     ui.colored_label(egui::Color32::RED, err);

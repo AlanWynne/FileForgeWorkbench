@@ -81,6 +81,7 @@ pub use commands::handlers::{all_command_ids, command_ids, is_session_state, is_
 pub use compatibility::CommandCompatibilityMatrix;
 pub use config::LineCommandConfig;
 pub use error::LineCommandError;
+pub use execution::clipboard_copy::collect_clipboard_text;
 pub use execution::ExecutionEngine;
 pub use parser::LineCommandParser;
 pub use pending::{PendingCommand, PendingCommandStore, PendingReason};

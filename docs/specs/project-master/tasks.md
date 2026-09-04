@@ -719,13 +719,13 @@ Phase BX -- line-commands EARS Integration (CR-NR-020)
 > first-of-excluded (F), last-of-excluded (L), single-column shift right (]), show-excluded (S).
 > Requirement 15 in line-commands/requirements.md.
 
-- [ ] BX.1 Overlay line command (O, On) -- LineCommandKind variants, parser, execution (Tasks 22.1-22.6)
-- [ ] BX.2 Clipboard copy line command (W, WW) -- variants, parser, ff-clipboard integration (Tasks 23.1-23.6)
-- [ ] BX.3 First-of-excluded (F) -- ShowFirst variant, parser, execution (Tasks 24.1-24.6)
-- [ ] BX.4 Last-of-excluded (L) -- ShowLast variant, parser, execution (Tasks 25.1-25.6)
-- [ ] BX.5 Single-column shift right (]) -- ShiftRightOne variant, parser, delegate to shift_right(1) (Tasks 26.1-26.6)
-- [ ] BX.6 Show-excluded (S) -- ShowLine variant, parser, execution (Tasks 27.1-27.6)
-- [ ] BX.7 TCR update for Requirement 15 (Task 28.1)
+- [x] BX.1 Overlay line command (O, On) -- LineCommandKind variants, parser, execution (Tasks 22.1-22.6)
+- [x] BX.2 Clipboard copy line command (W, WW) -- variants, parser, ff-clipboard integration (Tasks 23.1-23.6)
+- [x] BX.3 First-of-excluded (F) -- ShowFirst variant, parser, execution (Tasks 24.1-24.6)
+- [x] BX.4 Last-of-excluded (L) -- ShowLast variant, parser, execution (Tasks 25.1-25.6)
+- [x] BX.5 Single-column shift right (]) -- ShiftRightOne variant, parser, delegate to shift_right(1) (Tasks 26.1-26.6)
+- [x] BX.6 Show-excluded (S) -- ShowLine variant, parser, execution (Tasks 27.1-27.6)
+- [x] BX.7 TCR update for Requirement 15 (Task 28.1)
 
 ---
 
@@ -736,18 +736,18 @@ Phase BW -- edit-operations EARS Integration (CR-NR-019)
 > SUBMIT/CREATE/REPLACE/EDIT/BROWSE/VIEW/COMPARE primary commands.
 > Requirements 16-17 in edit-operations/requirements.md.
 
-- [ ] BW.1 CAPS mode -- CapsMode flag, insert_char integration, CAPS command (Tasks 28.1-28.6)
-- [ ] BW.2 NULLS mode -- NullsMode flag, display/edit integration, NULLS command (Tasks 29.1-29.5)
-- [ ] BW.3 PROFILE command -- EditProfile struct, display and update handlers (Tasks 30.1-30.6)
-- [ ] BW.4 STATS mode -- StatsMode flag, prefix area rendering (Tasks 31.1-31.5)
-- [ ] BW.5 LOCK setting -- ProfileLock flag, profile mutation guard (Tasks 32.1-32.5)
-- [ ] BW.6 Edit profile persistence -- TOML round-trip via ff-session (Tasks 33.1-33.4)
-- [ ] BW.7 AUTONUM and NUM aliases -- command framework aliases (Tasks 34.1-34.4)
-- [ ] BW.8 HILITE delegation -- HILITE command handler to ff-syntax (Tasks 35.1-35.5)
-- [ ] BW.9 SUBMIT command -- JES subsystem dispatch (Tasks 36.1-36.5)
-- [ ] BW.10 CREATE and REPLACE commands (Tasks 37.1-37.6)
-- [ ] BW.11 Nested EDIT, BROWSE, VIEW, COMPARE commands (Tasks 38.1-38.8)
-- [ ] BW.12 TCR.md and project-master updated; cargo test --workspace green (Task 39)
+- [x] BW.1 CAPS mode -- CapsMode flag, insert_char integration, CAPS command (Tasks 28.1-28.6)
+- [x] BW.2 NULLS mode -- NullsMode flag, display/edit integration, NULLS command (Tasks 29.1-29.5)
+- [x] BW.3 PROFILE command -- EditProfile struct, display and update handlers (Tasks 30.1-30.6)
+- [x] BW.4 STATS mode -- StatsMode flag, prefix area rendering (Tasks 31.1-31.5)
+- [x] BW.5 LOCK setting -- ProfileLock flag, profile mutation guard (Tasks 32.1-32.5)
+- [x] BW.6 Edit profile persistence -- TOML round-trip via ff-session (Tasks 33.1-33.4)
+- [x] BW.7 AUTONUM and NUM aliases -- command framework aliases (Tasks 34.1-34.4)
+- [x] BW.8 HILITE delegation -- HILITE command handler to ff-syntax (Tasks 35.1-35.5)
+- [x] BW.9 SUBMIT command -- JES subsystem dispatch (Tasks 36.1-36.5)
+- [x] BW.10 CREATE and REPLACE commands (Tasks 37.1-37.6)
+- [x] BW.11 Nested EDIT, BROWSE, VIEW, COMPARE commands (Tasks 38.1-38.8)
+- [x] BW.12 TCR.md and project-master updated; cargo test --workspace green (Task 39)
 
 ### Phase BV -- Catalog Location Discriminant (CR-NR-017)
 
@@ -796,8 +796,8 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 
 ### Stream 2 -- EARS P1 Implementation (independent of Stream 1)
 
-- [ ] BW.impl edit-operations: CAPS/NULLS/PROFILE/SUBMIT/CREATE/REPLACE/BROWSE/VIEW/nested EDIT/COMPARE/LOCK/STATS (Tasks 28-39 in edit-operations/tasks.md)
-- [ ] BX.impl line-commands: O/W/F/L/]/S line commands (Tasks 22-28 in line-commands/tasks.md)
+- [x] BW.impl edit-operations: CAPS/NULLS/PROFILE/SUBMIT/CREATE/REPLACE/BROWSE/VIEW/nested EDIT/COMPARE/LOCK/STATS (Tasks 28-39 in edit-operations/tasks.md)
+- [x] BX.impl line-commands: O/W/F/L/]/S line commands (Tasks 22-28 in line-commands/tasks.md)
 - [ ] BY.impl sequence-numbers: AUTONUM and NUM alias extensions (Tasks 20-22 in sequence-numbers/tasks.md)
 - [ ] BZ.impl menu-and-statusbar: SCROLL field, fastpath, split screen, list panel LOCATE (Tasks 24-30 in menu-and-statusbar/tasks.md)
 - [ ] CA.impl startup-and-session: session timestamps, LOGOFF, TIME, STATUS routing (Tasks 28-33 in startup-and-session/tasks.md)

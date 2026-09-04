@@ -10,6 +10,8 @@ description = "Text editing behaviour layer for FileForgeWorkbench — modes, in
 ff-logging = { path = "../ff-logging" }
 thiserror = { workspace = true }
 unicode-segmentation = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+toml = { workspace = true }
 
 [dev-dependencies]
 proptest = { workspace = true }

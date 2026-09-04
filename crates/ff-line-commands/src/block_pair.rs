@@ -85,6 +85,8 @@ impl BlockPairValidator {
             BlockCommandKind::BoundsLeft => LineCommandKind::BoundsShiftLeftBlock,
             BlockCommandKind::Copy => LineCommandKind::CopyBlock,
             BlockCommandKind::Move => LineCommandKind::MoveBlock,
+            BlockCommandKind::ClipboardCopy => LineCommandKind::ClipboardCopyBlock,
+            BlockCommandKind::ShiftRightOne => LineCommandKind::ShiftRightOneBlock,
         }
     }
 }

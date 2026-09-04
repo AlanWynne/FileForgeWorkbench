@@ -73,6 +73,12 @@ pub mod multi_caret;
 /// Transaction recording — EditorTransaction, LineSnapshot, modified line tracking.
 pub mod transaction;
 
+/// Edit profile -- CAPS, NULLS, STATS, LOCK, HILITE settings.
+pub mod profile;
+
+/// Edit profile persistence -- TOML serialisation/deserialisation.
+pub mod profile_persistence;
+
 // ─── Public API Re-exports ──────────────────────────────────────────────────
 
 pub use error::EditError;
@@ -94,6 +100,12 @@ pub use clipboard::ClipboardContent;
 pub use multi_caret::{MultiCaretCoordinator, SingleEditResult};
 
 pub use transaction::{EditorTransaction, LineSnapshot, ModifiedLineTracker, UndoGroup};
+
+pub use profile::{
+    CapsMode, EditProfile, HiliteMode, NullsMode, ProfileError, ProfileLock, StatsMode,
+};
+
+pub use profile_persistence::{deserialize_profile, serialize_profile, ProfilePersistError};
 
 // ─── Thread Safety Assertions ───────────────────────────────────────────────
 // All core types must be Send + Sync for use across threads.
@@ -124,4 +136,7 @@ fn _assert_send_sync() {
     assert_sync::<UndoGroup>();
     assert_send::<EditError>();
     assert_sync::<EditError>();
+
+    assert_send::<EditProfile>();
+    assert_sync::<EditProfile>();
 }

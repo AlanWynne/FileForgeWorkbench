@@ -99,6 +99,32 @@ pub enum LineCommandKind {
     BoundsShiftLeft,
     /// Block bounds-aware shift left marker (((). Requires matching pair.
     BoundsShiftLeftBlock,
+
+    // --- Overlay (Req 15.1, 15.2) ---
+    /// Overlay target line with pending copy source (non-blank chars only).
+    Overlay,
+    /// Overlay n consecutive lines with pending copy source.
+    OverlayCount(u32),
+
+    // --- Clipboard Copy (Req 15.3, 15.4) ---
+    /// Copy single line content to system clipboard.
+    ClipboardCopy,
+    /// Block clipboard copy marker (WW). Requires matching pair.
+    ClipboardCopyBlock,
+
+    // --- Show Excluded (Req 15.5, 15.6, 15.9) ---
+    /// Show (un-exclude) only the first line of an excluded block.
+    ShowFirst,
+    /// Show (un-exclude) only the last line of an excluded block.
+    ShowLast,
+    /// Show (un-exclude) the first line of an excluded block at this position.
+    ShowLine,
+
+    // --- Single-Column Shift Right (Req 15.7, 15.8) ---
+    /// Shift right by exactly one column (equivalent to >1).
+    ShiftRightOne,
+    /// Block single-column shift right marker (]]). Requires matching pair.
+    ShiftRightOneBlock,
 }
 
 /// Classification of line commands for resolution and compatibility logic.
@@ -128,6 +154,8 @@ pub enum BlockCommandKind {
     BoundsLeft,
     Copy,
     Move,
+    ClipboardCopy,
+    ShiftRightOne,
 }
 
 impl std::fmt::Display for BlockCommandKind {
@@ -144,6 +172,8 @@ impl std::fmt::Display for BlockCommandKind {
             Self::BoundsLeft => "((",
             Self::Copy => "CC",
             Self::Move => "MM",
+            Self::ClipboardCopy => "WW",
+            Self::ShiftRightOne => "]]",
         };
         write!(f, "{}", s)
     }
@@ -226,6 +256,21 @@ pub enum ExecutableCommand {
     BoundsShiftRight { start_line: u64, end_line: u64 },
     /// Bounds-aware shift left.
     BoundsShiftLeft { start_line: u64, end_line: u64 },
+    /// Overlay target line(s) with pending copy source (non-blank chars only).
+    Overlay {
+        source_start: u64,
+        source_end: u64,
+        target_start: u64,
+        count: u32,
+    },
+    /// Copy line(s) content to system clipboard.
+    ClipboardCopy { start_line: u64, end_line: u64 },
+    /// Show (un-exclude) only the first line of an excluded block.
+    ShowFirst { block_start: u64, block_end: u64 },
+    /// Show (un-exclude) only the last line of an excluded block.
+    ShowLast { block_start: u64, block_end: u64 },
+    /// Show (un-exclude) the first line of an excluded block at this position.
+    ShowLine { block_start: u64, block_end: u64 },
 }
 
 /// Classify a `LineCommandKind` into its category.
@@ -247,7 +292,12 @@ pub fn classify(kind: &LineCommandKind) -> LineCommandCategory {
         | LineCommandKind::ShiftLeft
         | LineCommandKind::ShiftLeftCount(_)
         | LineCommandKind::BoundsShiftRight
-        | LineCommandKind::BoundsShiftLeft => LineCommandCategory::Immediate,
+        | LineCommandKind::BoundsShiftLeft
+        | LineCommandKind::ClipboardCopy
+        | LineCommandKind::ShowFirst
+        | LineCommandKind::ShowLast
+        | LineCommandKind::ShowLine
+        | LineCommandKind::ShiftRightOne => LineCommandCategory::Immediate,
 
         // Block markers — require exactly one matching pair
         LineCommandKind::DeleteBlock
@@ -260,13 +310,18 @@ pub fn classify(kind: &LineCommandKind) -> LineCommandCategory {
         | LineCommandKind::BoundsShiftRightBlock
         | LineCommandKind::BoundsShiftLeftBlock
         | LineCommandKind::CopyBlock
-        | LineCommandKind::MoveBlock => LineCommandCategory::Block,
+        | LineCommandKind::MoveBlock
+        | LineCommandKind::ClipboardCopyBlock
+        | LineCommandKind::ShiftRightOneBlock => LineCommandCategory::Block,
 
         // Source markers — need target to resolve
         LineCommandKind::Copy | LineCommandKind::Move => LineCommandCategory::Source,
 
         // Target markers — resolve pending source markers
-        LineCommandKind::After | LineCommandKind::Before => LineCommandCategory::Target,
+        LineCommandKind::After
+        | LineCommandKind::Before
+        | LineCommandKind::Overlay
+        | LineCommandKind::OverlayCount(_) => LineCommandCategory::Target,
     }
 }
 
@@ -290,6 +345,8 @@ pub fn to_block_kind(kind: &LineCommandKind) -> Option<BlockCommandKind> {
         LineCommandKind::BoundsShiftLeftBlock => Some(BlockCommandKind::BoundsLeft),
         LineCommandKind::CopyBlock => Some(BlockCommandKind::Copy),
         LineCommandKind::MoveBlock => Some(BlockCommandKind::Move),
+        LineCommandKind::ClipboardCopyBlock => Some(BlockCommandKind::ClipboardCopy),
+        LineCommandKind::ShiftRightOneBlock => Some(BlockCommandKind::ShiftRightOne),
         _ => None,
     }
 }
@@ -543,5 +600,88 @@ mod tests {
         assert!(!is_block_marker(&LineCommandKind::Delete));
         assert!(!is_block_marker(&LineCommandKind::Copy));
         assert!(!is_block_marker(&LineCommandKind::After));
+    }
+
+    // --- BX new variant classification ---
+
+    #[test]
+    fn classify_overlay_is_target() {
+        // Validates: Requirement 15.1 (O requires pending C/CC source)
+        assert_eq!(
+            classify(&LineCommandKind::Overlay),
+            LineCommandCategory::Target
+        );
+    }
+
+    #[test]
+    fn classify_overlay_count_is_target() {
+        // Validates: Requirement 15.2
+        assert_eq!(
+            classify(&LineCommandKind::OverlayCount(3)),
+            LineCommandCategory::Target
+        );
+    }
+
+    #[test]
+    fn classify_clipboard_copy_is_immediate() {
+        // Validates: Requirement 15.3
+        assert_eq!(
+            classify(&LineCommandKind::ClipboardCopy),
+            LineCommandCategory::Immediate
+        );
+    }
+
+    #[test]
+    fn classify_clipboard_copy_block_is_block() {
+        // Validates: Requirement 15.4
+        assert_eq!(
+            classify(&LineCommandKind::ClipboardCopyBlock),
+            LineCommandCategory::Block
+        );
+    }
+
+    #[test]
+    fn classify_show_first_is_immediate() {
+        // Validates: Requirement 15.5
+        assert_eq!(
+            classify(&LineCommandKind::ShowFirst),
+            LineCommandCategory::Immediate
+        );
+    }
+
+    #[test]
+    fn classify_show_last_is_immediate() {
+        // Validates: Requirement 15.6
+        assert_eq!(
+            classify(&LineCommandKind::ShowLast),
+            LineCommandCategory::Immediate
+        );
+    }
+
+    #[test]
+    fn classify_show_line_is_immediate() {
+        // Validates: Requirement 15.9
+        assert_eq!(
+            classify(&LineCommandKind::ShowLine),
+            LineCommandCategory::Immediate
+        );
+    }
+
+    #[test]
+    fn classify_shift_right_one_is_immediate() {
+        // Validates: Requirement 15.7
+        assert_eq!(
+            classify(&LineCommandKind::ShiftRightOne),
+            LineCommandCategory::Immediate
+        );
+    }
+
+    #[test]
+    fn classify_shift_right_one_block_is_block() {
+        // Validates: Requirement 15.8
+        assert_eq!(
+            classify(&LineCommandKind::ShiftRightOneBlock),
+            LineCommandCategory::Block
+        );
     }
 }

@@ -3,14 +3,17 @@
 //! Each submodule handles one line command family.
 
 pub mod bounds_shift;
+pub mod clipboard_copy;
 pub mod copy;
 pub mod delete;
 pub mod exclude;
 pub mod insert;
 pub mod move_cmd;
+pub mod overlay;
 pub mod repeat;
 pub mod shift_left;
 pub mod shift_right;
+pub mod show_excluded;
 pub mod tag;
 
 use ff_display_line_mapping::DisplayLineMapping;
@@ -32,6 +35,8 @@ impl ExecutionEngine {
     ///
     /// Returns `Ok(Some(transaction))` for undoable operations.
     /// Returns `Ok(None)` for session-state operations (exclude, tag/untag).
+    /// For `ClipboardCopy`, returns `Ok(None)` and the caller reads the text
+    /// via `clipboard_copy::collect_clipboard_text()` separately.
     /// Returns `Err` on failure (document unchanged).
     pub fn execute(
         command: &ExecutableCommand,
@@ -121,6 +126,52 @@ impl ExecutionEngine {
                 let txn =
                     bounds_shift::execute_bounds_shift_left(document, *start_line, *end_line, b)?;
                 Ok(Some(txn))
+            }
+            ExecutableCommand::Overlay {
+                source_start,
+                source_end,
+                target_start,
+                count,
+            } => {
+                let txn = overlay::execute_overlay(
+                    document,
+                    *source_start,
+                    *source_end,
+                    *target_start,
+                    *count,
+                )?;
+                Ok(Some(txn))
+            }
+            ExecutableCommand::ClipboardCopy {
+                start_line,
+                end_line,
+            } => {
+                // Text collection is done via clipboard_copy::collect_clipboard_text().
+                // The caller is responsible for writing to the OS clipboard.
+                // Validate range here so errors surface at execution time.
+                clipboard_copy::collect_clipboard_text(document, *start_line, *end_line)?;
+                Ok(None)
+            }
+            ExecutableCommand::ShowFirst {
+                block_start,
+                block_end,
+            } => {
+                show_excluded::execute_show_first(display_mapping, *block_start, *block_end)?;
+                Ok(None)
+            }
+            ExecutableCommand::ShowLast {
+                block_start,
+                block_end,
+            } => {
+                show_excluded::execute_show_last(display_mapping, *block_start, *block_end)?;
+                Ok(None)
+            }
+            ExecutableCommand::ShowLine {
+                block_start,
+                block_end,
+            } => {
+                show_excluded::execute_show_line(display_mapping, *block_start, *block_end)?;
+                Ok(None)
             }
         }
     }

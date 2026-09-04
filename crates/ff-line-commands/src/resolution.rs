@@ -102,6 +102,8 @@ impl ResolutionEngine {
             BlockCommandKind::ShiftLeft,
             BlockCommandKind::BoundsRight,
             BlockCommandKind::BoundsLeft,
+            BlockCommandKind::ClipboardCopy,
+            BlockCommandKind::ShiftRightOne,
         ];
 
         for block_kind in &block_kinds {
@@ -216,6 +218,27 @@ impl ResolutionEngine {
                 start_line: line,
                 end_line: line,
             }),
+            LineCommandKind::ClipboardCopy => Some(ExecutableCommand::ClipboardCopy {
+                start_line: line,
+                end_line: line,
+            }),
+            LineCommandKind::ShowFirst => Some(ExecutableCommand::ShowFirst {
+                block_start: line,
+                block_end: line,
+            }),
+            LineCommandKind::ShowLast => Some(ExecutableCommand::ShowLast {
+                block_start: line,
+                block_end: line,
+            }),
+            LineCommandKind::ShowLine => Some(ExecutableCommand::ShowLine {
+                block_start: line,
+                block_end: line,
+            }),
+            LineCommandKind::ShiftRightOne => Some(ExecutableCommand::ShiftRight {
+                start_line: line,
+                end_line: line,
+                columns: 1,
+            }),
             _ => None,
         }
     }
@@ -265,6 +288,17 @@ impl ResolutionEngine {
             }),
             // Copy/Move blocks are handled via source+target resolution
             BlockCommandKind::Copy | BlockCommandKind::Move => None,
+            // ClipboardCopy block (WW) -- collect text, no document mutation
+            BlockCommandKind::ClipboardCopy => Some(ExecutableCommand::ClipboardCopy {
+                start_line: pair.start_line,
+                end_line: pair.end_line,
+            }),
+            // ShiftRightOne block (]]) -- shift all lines by 1 column
+            BlockCommandKind::ShiftRightOne => Some(ExecutableCommand::ShiftRight {
+                start_line: pair.start_line,
+                end_line: pair.end_line,
+                columns: 1,
+            }),
         }
     }
 
@@ -379,6 +413,8 @@ impl ResolutionEngine {
             BlockCommandKind::BoundsLeft => LineCommandKind::BoundsShiftLeftBlock,
             BlockCommandKind::Copy => LineCommandKind::CopyBlock,
             BlockCommandKind::Move => LineCommandKind::MoveBlock,
+            BlockCommandKind::ClipboardCopy => LineCommandKind::ClipboardCopyBlock,
+            BlockCommandKind::ShiftRightOne => LineCommandKind::ShiftRightOneBlock,
         }
     }
 }

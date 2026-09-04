@@ -5,6 +5,7 @@
 
 use ff_command::{CommandParams, CommandResult};
 use ff_command_semantics::StatusKind;
+use ff_edit_operations::ProfileError;
 use ff_help::{ContextDetector, EditorContext, EditorMode, HelpTopicRegistry};
 use ff_keys::RetrieveResult;
 
@@ -452,6 +453,204 @@ impl WorkbenchShell {
                     Some("CHANGE requires two arguments: CHANGE 'old' 'new'".to_string());
             }
             self.cmd_history.add(cmd);
+            return;
+        }
+
+        // ── CAPS — Validates: Requirement 16.1, 16.2 ────────────────────────
+        if upper == "CAPS ON" {
+            self.tabs.active_tab_mut().edit_profile.caps = ff_edit_operations::CapsMode::On;
+            self.open_error = None;
+            return;
+        }
+        if upper == "CAPS OFF" {
+            self.tabs.active_tab_mut().edit_profile.caps = ff_edit_operations::CapsMode::Off;
+            self.open_error = None;
+            return;
+        }
+        if upper == "CAPS" {
+            let tab = self.tabs.active_tab_mut();
+            tab.edit_profile.caps = tab.edit_profile.caps.toggle();
+            self.open_error = None;
+            return;
+        }
+
+        // ── NULLS — Validates: Requirement 16.4 ──────────────────────────────
+        if upper == "NULLS ON" {
+            self.tabs.active_tab_mut().edit_profile.nulls = ff_edit_operations::NullsMode::On;
+            self.open_error = None;
+            return;
+        }
+        if upper == "NULLS OFF" {
+            self.tabs.active_tab_mut().edit_profile.nulls = ff_edit_operations::NullsMode::Off;
+            self.open_error = None;
+            return;
+        }
+
+        // ── STATS — Validates: Requirement 16.7 ──────────────────────────────
+        if upper == "STATS ON" {
+            self.tabs.active_tab_mut().edit_profile.stats = ff_edit_operations::StatsMode::On;
+            self.open_error = None;
+            return;
+        }
+        if upper == "STATS OFF" {
+            self.tabs.active_tab_mut().edit_profile.stats = ff_edit_operations::StatsMode::Off;
+            self.open_error = None;
+            return;
+        }
+
+        // ── LOCK — Validates: Requirement 16.8 ───────────────────────────────
+        if upper == "LOCK ON" {
+            self.tabs.active_tab_mut().edit_profile.lock = ff_edit_operations::ProfileLock::On;
+            self.open_error = None;
+            return;
+        }
+        if upper == "LOCK OFF" {
+            self.tabs.active_tab_mut().edit_profile.lock = ff_edit_operations::ProfileLock::Off;
+            self.open_error = None;
+            return;
+        }
+
+        // ── PROFILE — Validates: Requirement 16.5, 16.6 ──────────────────────
+        if upper == "PROFILE" {
+            let summary = self.tabs.active_tab().edit_profile.display_summary();
+            self.open_error = Some(summary);
+            return;
+        }
+        if upper.starts_with("PROFILE ") {
+            let rest = cmd.trim()[8..].trim();
+            let mut parts = rest.splitn(2, ' ');
+            let key = parts.next().unwrap_or("");
+            let val = parts.next().unwrap_or("").trim();
+            let result = self
+                .tabs
+                .active_tab_mut()
+                .edit_profile
+                .apply_keyword(key, val);
+            match result {
+                Ok(()) => self.open_error = None,
+                Err(ProfileError::Locked) => {
+                    self.open_error =
+                        Some("Profile is locked -- use LOCK OFF to unlock".to_string());
+                }
+                Err(e) => self.open_error = Some(e.to_string()),
+            }
+            return;
+        }
+
+        // ── HILITE — Validates: Requirement 16.12 ────────────────────────────
+        if upper == "HILITE" || upper.starts_with("HILITE ") {
+            let keyword = cmd.trim().get(6..).unwrap_or("").trim();
+            let mode = if keyword.is_empty() {
+                Some(ff_edit_operations::HiliteMode::On)
+            } else {
+                ff_edit_operations::HiliteMode::from_keyword(keyword)
+            };
+            match mode {
+                Some(m) => {
+                    self.tabs.active_tab_mut().edit_profile.hilite = m;
+                    self.open_error = None;
+                }
+                None => {
+                    self.open_error = Some(format!("HILITE: unknown mode '{keyword}'"));
+                }
+            }
+            return;
+        }
+
+        // ── AUTONUM / NUM aliases — Validates: Requirement 16.10, 16.11 ──────
+        if upper == "AUTONUM ON" || upper == "AUTONUM OFF" {
+            let rest = &cmd.trim()[7..];
+            let redirected = format!("NUMBER{rest}");
+            self.handle_command(&redirected);
+            return;
+        }
+        if upper == "NUM" || upper.starts_with("NUM ") {
+            let rest = cmd.trim().get(3..).unwrap_or("").trim();
+            let redirected = if rest.is_empty() {
+                "NUMBER".to_string()
+            } else {
+                format!("NUMBER {rest}")
+            };
+            self.handle_command(&redirected);
+            return;
+        }
+
+        // ── SUBMIT — Validates: Requirement 17.1 ─────────────────────────────
+        if upper == "SUBMIT" {
+            // Stub: JES subsystem dispatch deferred to Phase CC/CD.
+            self.open_error = Some("SUBMIT: JES subsystem not yet available".to_string());
+            return;
+        }
+
+        // ── CREATE — Validates: Requirement 17.2 ─────────────────────────────
+        if upper.starts_with("CREATE ") {
+            let dsn = cmd.trim()[7..].trim();
+            if dsn.is_empty() {
+                self.open_error = Some("CREATE requires a dataset name argument".to_string());
+            } else {
+                // Stub: dataset creation deferred to Phase BU/CB.
+                self.open_error = Some(format!("CREATE {dsn}: dataset creation not yet available"));
+            }
+            return;
+        }
+
+        // ── REPLACE — Validates: Requirement 17.3 ────────────────────────────
+        if upper.starts_with("REPLACE ") {
+            let dsn = cmd.trim()[8..].trim();
+            if dsn.is_empty() {
+                self.open_error = Some("REPLACE requires a dataset name argument".to_string());
+            } else {
+                self.open_error = Some(format!("REPLACE {dsn}: dataset replace not yet available"));
+            }
+            return;
+        }
+
+        // ── BROWSE — Validates: Requirement 17.5 ─────────────────────────────
+        if upper.starts_with("BROWSE ") {
+            let dsn = cmd.trim()[7..].trim();
+            if dsn.is_empty() {
+                self.open_error = Some("BROWSE requires a dataset name argument".to_string());
+            } else {
+                // Open as read-only editor tab (full browse mode deferred).
+                let mut p = CommandParams::new();
+                p.insert("path", dsn);
+                let result = self.dispatch.execute_command("file.open", p);
+                if let CommandResult::Err(e) = result {
+                    self.open_error = Some(e.to_string());
+                } else {
+                    self.open_error = None;
+                }
+            }
+            return;
+        }
+
+        // ── VIEW — Validates: Requirement 17.6 ───────────────────────────────
+        if upper.starts_with("VIEW ") {
+            let dsn = cmd.trim()[5..].trim();
+            if dsn.is_empty() {
+                self.open_error = Some("VIEW requires a dataset name argument".to_string());
+            } else {
+                let mut p = CommandParams::new();
+                p.insert("path", dsn);
+                let result = self.dispatch.execute_command("file.open", p);
+                if let CommandResult::Err(e) = result {
+                    self.open_error = Some(e.to_string());
+                } else {
+                    self.open_error = None;
+                }
+            }
+            return;
+        }
+
+        // ── COMPARE — Validates: Requirement 17.7 ────────────────────────────
+        if upper.starts_with("COMPARE ") {
+            let dsn = cmd.trim()[8..].trim();
+            if dsn.is_empty() {
+                self.open_error = Some("COMPARE requires a dataset name argument".to_string());
+            } else {
+                // Stub: compare view deferred to Phase BX/ff-compare.
+                self.open_error = Some(format!("COMPARE {dsn}: compare view not yet available"));
+            }
             return;
         }
 

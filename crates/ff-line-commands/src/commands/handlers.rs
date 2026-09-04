@@ -29,7 +29,19 @@ pub mod command_ids {
     pub const BOUNDS_SHIFT_RIGHT: &str = "linecmd.bounds_shift_right";
     /// Bounds-aware shift left.
     pub const BOUNDS_SHIFT_LEFT: &str = "linecmd.bounds_shift_left";
-    /// Resolution cycle — main entry point invoked by primary command execution.
+    /// Overlay line command (O, On).
+    pub const OVERLAY: &str = "linecmd.overlay";
+    /// Clipboard copy line command (W, WW).
+    pub const CLIPBOARD_COPY: &str = "linecmd.clipboard_copy";
+    /// Show first of excluded block (F).
+    pub const SHOW_FIRST: &str = "linecmd.show_first";
+    /// Show last of excluded block (L).
+    pub const SHOW_LAST: &str = "linecmd.show_last";
+    /// Show line of excluded block (S).
+    pub const SHOW_LINE: &str = "linecmd.show_line";
+    /// Single-column shift right (]).
+    pub const SHIFT_RIGHT_ONE: &str = "linecmd.shift_right_one";
+    /// Resolution cycle -- main entry point invoked by primary command execution.
     pub const RESOLVE_CYCLE: &str = "linecmd.resolve_cycle";
     /// Reset all pending commands.
     pub const RESET: &str = "linecmd.reset";
@@ -50,6 +62,12 @@ pub fn all_command_ids() -> &'static [&'static str] {
         command_ids::SHIFT_LEFT,
         command_ids::BOUNDS_SHIFT_RIGHT,
         command_ids::BOUNDS_SHIFT_LEFT,
+        command_ids::OVERLAY,
+        command_ids::CLIPBOARD_COPY,
+        command_ids::SHOW_FIRST,
+        command_ids::SHOW_LAST,
+        command_ids::SHOW_LINE,
+        command_ids::SHIFT_RIGHT_ONE,
         command_ids::RESOLVE_CYCLE,
         command_ids::RESET,
     ]
@@ -68,6 +86,8 @@ pub fn is_undoable(command_id: &str) -> bool {
             | command_ids::SHIFT_LEFT
             | command_ids::BOUNDS_SHIFT_RIGHT
             | command_ids::BOUNDS_SHIFT_LEFT
+            | command_ids::OVERLAY
+            | command_ids::SHIFT_RIGHT_ONE
     )
 }
 
@@ -75,7 +95,13 @@ pub fn is_undoable(command_id: &str) -> bool {
 pub fn is_session_state(command_id: &str) -> bool {
     matches!(
         command_id,
-        command_ids::EXCLUDE | command_ids::TAG | command_ids::UNTAG
+        command_ids::EXCLUDE
+            | command_ids::TAG
+            | command_ids::UNTAG
+            | command_ids::CLIPBOARD_COPY
+            | command_ids::SHOW_FIRST
+            | command_ids::SHOW_LAST
+            | command_ids::SHOW_LINE
     )
 }
 
@@ -85,7 +111,7 @@ mod tests {
 
     #[test]
     fn all_command_ids_contains_expected_count() {
-        assert_eq!(all_command_ids().len(), 14);
+        assert_eq!(all_command_ids().len(), 20);
     }
 
     #[test]

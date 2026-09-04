@@ -1453,6 +1453,7 @@ dependencies = [
  "ff-display-line-mapping",
  "ff-document-model",
  "ff-dscatalog",
+ "ff-edit-operations",
  "ff-exclude-show-filter",
  "ff-find-and-replace",
  "ff-gcc-toolchain",
@@ -1547,7 +1548,9 @@ dependencies = [
  "ff-logging",
  "pretty_assertions",
  "proptest",
+ "serde",
  "thiserror 2.0.19",
+ "toml 0.8.23",
  "unicode-segmentation",
 ]
 

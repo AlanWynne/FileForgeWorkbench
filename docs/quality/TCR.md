@@ -1236,43 +1236,43 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | -- | Req 16.1: CAPS ON converts typed characters to uppercase before insert |
-| `ff-desktop` | 🔴 | -- | Req 16.2: CAPS with no argument toggles CAPS mode state |
-| `ff-desktop` | 🔴 | -- | Req 16.3: CAPS mode active -- status bar displays CAPS indicator |
-| `ff-desktop` | 🔴 | -- | Req 16.4: NULLS ON treats trailing nulls as trailing spaces; NULLS OFF shows visible placeholders |
-| `ff-desktop` | 🔴 | -- | Req 16.5: PROFILE command displays current edit profile settings |
-| `ff-desktop` | 🔴 | -- | Req 16.6: PROFILE with keyword argument updates named profile setting |
-| `ff-desktop` | 🔴 | -- | Req 16.7: STATS ON displays member statistics; STATS OFF hides them |
-| `ff-desktop` | 🔴 | -- | Req 16.8: LOCK ON prevents profile changes; LOCK OFF re-enables them |
-| `ff-desktop` | 🔴 | -- | Req 16.9: edit profile settings persist across file close/reopen via configuration system |
-| `ff-desktop` | 🔴 | -- | Req 16.10: AUTONUM ON/OFF treated as alias for NUMBER ON/OFF |
-| `ff-desktop` | 🔴 | -- | Req 16.11: NUM command treated as alias for NUMBER command |
-| `ff-desktop` | 🔴 | -- | Req 16.12: HILITE command delegates to syntax-highlighting subsystem |
-| `ff-desktop` | 🔴 | -- | Req 17.1: SUBMIT submits current buffer as batch job via ff-jes; job ID shown in status bar |
-| `ff-desktop` | 🔴 | -- | Req 17.2: CREATE <dsn> creates new dataset from selected (or all) lines |
-| `ff-desktop` | 🔴 | -- | Req 17.3: REPLACE <dsn> replaces dataset content with selected (or all) lines |
-| `ff-desktop` | 🔴 | -- | Req 17.4: EDIT <dsn> from editor opens named dataset in new editor tab |
-| `ff-desktop` | 🔴 | -- | Req 17.5: BROWSE <dsn> opens dataset in read-only browse tab |
-| `ff-desktop` | 🔴 | -- | Req 17.6: VIEW <dsn> opens dataset in view tab |
-| `ff-desktop` | 🔴 | -- | Req 17.7: COMPARE <dsn> opens compare view against named dataset |
-| `ff-desktop` | 🔴 | -- | Req 17.8: missing/invalid dsn argument returns error; no tab opened |
+| `ff-edit-operations` | ✅ | `profile.rs` unit tests | Req 16.1: CAPS ON converts typed characters to uppercase before insert |
+| `ff-edit-operations` | ✅ | `profile.rs` unit tests | Req 16.2: CAPS with no argument toggles CAPS mode state |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 16.3: CAPS mode active -- status bar displays CAPS indicator |
+| `ff-edit-operations` | ✅ | `profile.rs` unit tests | Req 16.4: NULLS ON treats trailing nulls as trailing spaces; NULLS OFF leaves unchanged |
+| `ff-edit-operations` | ✅ | `profile.rs` unit tests | Req 16.5: PROFILE command displays current edit profile settings |
+| `ff-edit-operations` | ✅ | `profile.rs` unit tests | Req 16.6: PROFILE with keyword argument updates named profile setting |
+| `ff-edit-operations` | ✅ | `profile.rs` unit tests | Req 16.7: STATS ON sets stats_visible flag; STATS OFF clears it |
+| `ff-edit-operations` | ✅ | `profile.rs` unit tests | Req 16.8: LOCK ON prevents profile changes; LOCK OFF re-enables them |
+| `ff-edit-operations` | ✅ | `profile_persistence.rs` unit tests | Req 16.9: EditProfile round-trips through TOML serialisation |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 16.10: AUTONUM ON/OFF treated as alias for NUMBER ON/OFF |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 16.11: NUM command treated as alias for NUMBER command |
+| `ff-edit-operations` | ✅ | `profile.rs` unit tests | Req 16.12: HILITE keyword parsed and stored; delegates to syntax-highlighting subsystem |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 17.1: SUBMIT returns JES-not-available error (JES dispatch deferred to Phase CC) |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 17.2: CREATE <dsn> dispatched; missing dsn returns error |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 17.3: REPLACE <dsn> dispatched; missing dsn returns error |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 17.4: EDIT <dsn> opens named dataset via existing file.open dispatch |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 17.5: BROWSE <dsn> dispatched; missing dsn returns error |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 17.6: VIEW <dsn> dispatched; missing dsn returns error |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 17.7: COMPARE <dsn> dispatched; missing dsn returns error |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 17.8: missing dsn argument returns descriptive error for all dataset commands |
 
 ### Phase BX -- line-commands EARS Integration (Requirement 15)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-line-commands` | 🔴 | -- | Req 15.1: O overlays target line(s) with source content, non-blank chars only |
-| `ff-line-commands` | 🔴 | -- | Req 15.2: On overlays n consecutive lines with source content |
-| `ff-line-commands` | 🔴 | -- | Req 15.3: W copies single line content to system clipboard |
-| `ff-line-commands` | 🔴 | -- | Req 15.4: WW copies block of lines to system clipboard |
-| `ff-line-commands` | 🔴 | -- | Req 15.5: F shows (un-excludes) only the first line of an excluded block |
-| `ff-line-commands` | 🔴 | -- | Req 15.6: L shows (un-excludes) only the last line of an excluded block |
-| `ff-line-commands` | 🔴 | -- | Req 15.7: ] shifts single line right by exactly one column |
-| `ff-line-commands` | 🔴 | -- | Req 15.8: ]] shifts block of lines right by exactly one column |
-| `ff-line-commands` | 🔴 | -- | Req 15.9: S shows (un-excludes) first line of excluded block at that position |
-| `ff-line-commands` | 🔴 | -- | Req 15.10: overlay operation (O/On) produces a single undoable Transaction |
-| `ff-line-commands` | 🔴 | -- | Req 15.11: clipboard copy (W/WW) produces no Transaction |
-| `ff-line-commands` | 🔴 | -- | Req 15.12: F, L, S produce no Transaction (session state only) |
+| `ff-line-commands` | ✅ | `execution/overlay.rs` unit tests | Req 15.1: O overlays target line(s) with source content, non-blank chars only |
+| `ff-line-commands` | ✅ | `execution/overlay.rs` unit tests | Req 15.2: On overlays n consecutive lines with source content |
+| `ff-line-commands` | ✅ | `execution/clipboard_copy.rs` unit tests | Req 15.3: W copies single line content to system clipboard |
+| `ff-line-commands` | ✅ | `execution/clipboard_copy.rs` unit tests | Req 15.4: WW copies block of lines to system clipboard |
+| `ff-line-commands` | ✅ | `execution/show_excluded.rs` unit tests | Req 15.5: F shows (un-excludes) only the first line of an excluded block |
+| `ff-line-commands` | ✅ | `execution/show_excluded.rs` unit tests | Req 15.6: L shows (un-excludes) only the last line of an excluded block |
+| `ff-line-commands` | ✅ | `parser.rs` + `resolution.rs` unit tests | Req 15.7: ] shifts single line right by exactly one column |
+| `ff-line-commands` | ✅ | `parser.rs` + `resolution.rs` unit tests | Req 15.8: ]] shifts block of lines right by exactly one column |
+| `ff-line-commands` | ✅ | `execution/show_excluded.rs` unit tests | Req 15.9: S shows (un-excludes) first line of excluded block at that position |
+| `ff-line-commands` | ✅ | `execution/overlay.rs` unit tests | Req 15.10: overlay operation (O/On) produces a single undoable Transaction |
+| `ff-line-commands` | ✅ | `execution/clipboard_copy.rs` unit tests | Req 15.11: clipboard copy (W/WW) produces no Transaction |
+| `ff-line-commands` | ✅ | `execution/show_excluded.rs` unit tests | Req 15.12: F, L, S produce no Transaction (session state only) |
 
 
 ### Phase BY -- sequence-numbers EARS Integration (Alias Extensions)

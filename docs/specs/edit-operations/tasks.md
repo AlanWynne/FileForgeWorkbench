@@ -427,111 +427,111 @@ This is a **Wave 4 (Core Editor)** sub-project. It depends on `ff-document-model
 
 ## Phase BW Tasks -- EARS Integration (Requirements 16-17)
 
-- [ ] 28. CAPS mode
-  - [ ] 28.1 Write failing test: CAPS ON converts typed characters to uppercase before insert
+- [x] 28. CAPS mode
+  - [x] 28.1 Write failing test: CAPS ON converts typed characters to uppercase before insert
     - // Validates: Requirement 16.1
-  - [ ] 28.2 Write failing test: CAPS OFF reverts to case-preserving input
+  - [x] 28.2 Write failing test: CAPS OFF reverts to case-preserving input
     - // Validates: Requirement 16.1
-  - [ ] 28.3 Write failing test: CAPS with no argument toggles state
+  - [x] 28.3 Write failing test: CAPS with no argument toggles state
     - // Validates: Requirement 16.2
-  - [ ] 28.4 Implement `CapsMode` flag on editor state; apply in insert_char path
-  - [ ] 28.5 Register CAPS command with command framework
-  - [ ] 28.6 cargo test green; cargo clippy clean
+  - [x] 28.4 Implement `CapsMode` flag on editor state; apply in insert_char path
+  - [x] 28.5 Register CAPS command with command framework
+  - [x] 28.6 cargo test green; cargo clippy clean
 
-- [ ] 29. NULLS mode
-  - [ ] 29.1 Write failing test: NULLS ON treats trailing nulls as trailing spaces
+- [x] 29. NULLS mode
+  - [x] 29.1 Write failing test: NULLS ON treats trailing nulls as trailing spaces
     - // Validates: Requirement 16.4
-  - [ ] 29.2 Write failing test: NULLS OFF displays null characters as visible placeholders
+  - [x] 29.2 Write failing test: NULLS OFF displays null characters as visible placeholders
     - // Validates: Requirement 16.4
-  - [ ] 29.3 Implement `NullsMode` flag; apply in display and edit paths
-  - [ ] 29.4 Register NULLS command with command framework
-  - [ ] 29.5 cargo test green; cargo clippy clean
+  - [x] 29.3 Implement `NullsMode` flag; apply in display and edit paths
+  - [x] 29.4 Register NULLS command with command framework
+  - [x] 29.5 cargo test green; cargo clippy clean
 
-- [ ] 30. PROFILE command
-  - [ ] 30.1 Write failing test: PROFILE command returns current profile settings as a structured value
+- [x] 30. PROFILE command
+  - [x] 30.1 Write failing test: PROFILE command returns current profile settings as a structured value
     - // Validates: Requirement 16.5
-  - [ ] 30.2 Write failing test: PROFILE CAPS ON updates CAPS setting
+  - [x] 30.2 Write failing test: PROFILE CAPS ON updates CAPS setting
     - // Validates: Requirement 16.6
-  - [ ] 30.3 Implement `EditProfile` struct holding all profile settings
-  - [ ] 30.4 Implement PROFILE command handler (display and update paths)
-  - [ ] 30.5 Register PROFILE command with command framework
-  - [ ] 30.6 cargo test green; cargo clippy clean
+  - [x] 30.3 Implement `EditProfile` struct holding all profile settings
+  - [x] 30.4 Implement PROFILE command handler (display and update paths)
+  - [x] 30.5 Register PROFILE command with command framework
+  - [x] 30.6 cargo test green; cargo clippy clean
 
-- [ ] 31. STATS mode
-  - [ ] 31.1 Write failing test: STATS ON sets stats_visible flag on editor state
+- [x] 31. STATS mode
+  - [x] 31.1 Write failing test: STATS ON sets stats_visible flag on editor state
     - // Validates: Requirement 16.7
-  - [ ] 31.2 Write failing test: STATS OFF clears stats_visible flag
+  - [x] 31.2 Write failing test: STATS OFF clears stats_visible flag
     - // Validates: Requirement 16.7
-  - [ ] 31.3 Implement `StatsMode` flag; wire into prefix area rendering
-  - [ ] 31.4 Register STATS command with command framework
-  - [ ] 31.5 cargo test green; cargo clippy clean
+  - [x] 31.3 Implement `StatsMode` flag; wire into prefix area rendering
+  - [x] 31.4 Register STATS command with command framework
+  - [x] 31.5 cargo test green; cargo clippy clean
 
-- [ ] 32. LOCK setting
-  - [ ] 32.1 Write failing test: LOCK ON prevents profile setting changes
+- [x] 32. LOCK setting
+  - [x] 32.1 Write failing test: LOCK ON prevents profile setting changes
     - // Validates: Requirement 16.8
-  - [ ] 32.2 Write failing test: LOCK OFF re-enables profile changes
+  - [x] 32.2 Write failing test: LOCK OFF re-enables profile changes
     - // Validates: Requirement 16.8
-  - [ ] 32.3 Implement `ProfileLock` flag; guard all profile-mutating commands
-  - [ ] 32.4 Register LOCK command with command framework
-  - [ ] 32.5 cargo test green; cargo clippy clean
+  - [x] 32.3 Implement `ProfileLock` flag; guard all profile-mutating commands
+  - [x] 32.4 Register LOCK command with command framework
+  - [x] 32.5 cargo test green; cargo clippy clean
 
-- [ ] 33. Edit profile persistence
-  - [ ] 33.1 Write failing test: EditProfile round-trips through session TOML
+- [x] 33. Edit profile persistence
+  - [x] 33.1 Write failing test: EditProfile round-trips through session TOML
     - // Validates: Requirement 16.9
-  - [ ] 33.2 Implement EditProfile serialisation/deserialisation via ff-session
-  - [ ] 33.3 Wire profile save on file close; profile restore on file open
-  - [ ] 33.4 cargo test green; cargo clippy clean
+  - [x] 33.2 Implement EditProfile serialisation/deserialisation via ff-session
+  - [x] 33.3 Wire profile save on file close; profile restore on file open
+  - [x] 33.4 cargo test green; cargo clippy clean
 
-- [ ] 34. AUTONUM and NUM aliases
-  - [ ] 34.1 Write failing test: AUTONUM ON dispatches to NUMBER ON handler
+- [x] 34. AUTONUM and NUM aliases
+  - [x] 34.1 Write failing test: AUTONUM ON dispatches to NUMBER ON handler
     - // Validates: Requirement 16.10
-  - [ ] 34.2 Write failing test: NUM SHOW dispatches to NUMBER SHOW handler
+  - [x] 34.2 Write failing test: NUM SHOW dispatches to NUMBER SHOW handler
     - // Validates: Requirement 16.11
-  - [ ] 34.3 Register AUTONUM and NUM as aliases in command framework
-  - [ ] 34.4 cargo test green; cargo clippy clean
+  - [x] 34.3 Register AUTONUM and NUM as aliases in command framework
+  - [x] 34.4 cargo test green; cargo clippy clean
 
-- [ ] 35. HILITE delegation
-  - [ ] 35.1 Write failing test: HILITE ON dispatches to syntax-highlighting subsystem
+- [x] 35. HILITE delegation
+  - [x] 35.1 Write failing test: HILITE ON dispatches to syntax-highlighting subsystem
     - // Validates: Requirement 16.12
-  - [ ] 35.2 Write failing test: HILITE LOGIC dispatches with LOGIC mode argument
+  - [x] 35.2 Write failing test: HILITE LOGIC dispatches with LOGIC mode argument
     - // Validates: Requirement 16.12
-  - [ ] 35.3 Implement HILITE command handler delegating to ff-syntax
-  - [ ] 35.4 Register HILITE command with command framework
-  - [ ] 35.5 cargo test green; cargo clippy clean
+  - [x] 35.3 Implement HILITE command handler delegating to ff-syntax
+  - [x] 35.4 Register HILITE command with command framework
+  - [x] 35.5 cargo test green; cargo clippy clean
 
-- [ ] 36. SUBMIT primary command
-  - [ ] 36.1 Write failing test: SUBMIT dispatches to JES subsystem with current buffer content
+- [x] 36. SUBMIT primary command
+  - [x] 36.1 Write failing test: SUBMIT dispatches to JES subsystem with current buffer content
     - // Validates: Requirement 17.1
-  - [ ] 36.2 Write failing test: SUBMIT with no JES available returns descriptive error
+  - [x] 36.2 Write failing test: SUBMIT with no JES available returns descriptive error
     - // Validates: Requirement 17.8
-  - [ ] 36.3 Implement SUBMIT command handler; wire to ff-jes job submission API
-  - [ ] 36.4 Register SUBMIT command with command framework
-  - [ ] 36.5 cargo test green; cargo clippy clean
+  - [x] 36.3 Implement SUBMIT command handler; wire to ff-jes job submission API
+  - [x] 36.4 Register SUBMIT command with command framework
+  - [x] 36.5 cargo test green; cargo clippy clean
 
-- [ ] 37. CREATE and REPLACE primary commands
-  - [ ] 37.1 Write failing test: CREATE with dataset name creates dataset from selected lines
+- [x] 37. CREATE and REPLACE primary commands
+  - [x] 37.1 Write failing test: CREATE with dataset name creates dataset from selected lines
     - // Validates: Requirement 17.2
-  - [ ] 37.2 Write failing test: REPLACE with dataset name replaces dataset content
+  - [x] 37.2 Write failing test: REPLACE with dataset name replaces dataset content
     - // Validates: Requirement 17.3
-  - [ ] 37.3 Write failing test: CREATE/REPLACE with missing argument returns error
+  - [x] 37.3 Write failing test: CREATE/REPLACE with missing argument returns error
     - // Validates: Requirement 17.8
-  - [ ] 37.4 Implement CREATE and REPLACE command handlers
-  - [ ] 37.5 Register CREATE and REPLACE commands with command framework
-  - [ ] 37.6 cargo test green; cargo clippy clean
+  - [x] 37.4 Implement CREATE and REPLACE command handlers
+  - [x] 37.5 Register CREATE and REPLACE commands with command framework
+  - [x] 37.6 cargo test green; cargo clippy clean
 
-- [ ] 38. Nested EDIT, BROWSE, VIEW, COMPARE commands
-  - [ ] 38.1 Write failing test: EDIT <dsn> from editor opens named dataset in new tab
+- [x] 38. Nested EDIT, BROWSE, VIEW, COMPARE commands
+  - [x] 38.1 Write failing test: EDIT <dsn> from editor opens named dataset in new tab
     - // Validates: Requirement 17.4
-  - [ ] 38.2 Write failing test: BROWSE <dsn> opens dataset in read-only tab
+  - [x] 38.2 Write failing test: BROWSE <dsn> opens dataset in read-only tab
     - // Validates: Requirement 17.5
-  - [ ] 38.3 Write failing test: VIEW <dsn> opens dataset in view tab
+  - [x] 38.3 Write failing test: VIEW <dsn> opens dataset in view tab
     - // Validates: Requirement 17.6
-  - [ ] 38.4 Write failing test: COMPARE <dsn> opens compare view
+  - [x] 38.4 Write failing test: COMPARE <dsn> opens compare view
     - // Validates: Requirement 17.7
-  - [ ] 38.5 Write failing test: all four commands with invalid dsn return error, no tab opened
+  - [x] 38.5 Write failing test: all four commands with invalid dsn return error, no tab opened
     - // Validates: Requirement 17.8
-  - [ ] 38.6 Implement command handlers; wire to tab manager and compare subsystem
-  - [ ] 38.7 Register all four commands with command framework
-  - [ ] 38.8 cargo test green; cargo clippy clean
+  - [x] 38.6 Implement command handlers; wire to tab manager and compare subsystem
+  - [x] 38.7 Register all four commands with command framework
+  - [x] 38.8 cargo test green; cargo clippy clean
 
-- [ ] 39. TCR.md and project-master updated; cargo test --workspace green
+- [x] 39. TCR.md and project-master updated; cargo test --workspace green

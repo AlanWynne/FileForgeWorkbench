@@ -21,6 +21,7 @@ ff-connector-local-fs  = { path = "../ff-connector-local-fs" }
 ff-vfs                 = { path = "../ff-vfs" }
 ff-command             = { path = "../ff-command" }
 ff-command-semantics   = { path = "../ff-command-semantics" }
+ff-edit-operations     = { path = "../ff-edit-operations" }
 ff-find-and-replace    = { path = "../ff-find-and-replace" }
 ff-navigation-commands  = { path = "../ff-navigation-commands" }
 ff-exclude-show-filter  = { path = "../ff-exclude-show-filter" }

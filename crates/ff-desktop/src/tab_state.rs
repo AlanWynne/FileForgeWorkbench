@@ -4,6 +4,7 @@
 //! `CursorModel` so that switching tabs preserves scroll position and cursor.
 
 use ff_document_model::{DocumentHandle, LineEndMode};
+use ff_edit_operations::EditProfile;
 use ff_viewport_scrolling::{CursorModel, ViewportModel};
 use std::collections::HashMap;
 
@@ -76,6 +77,10 @@ pub struct TabState {
     /// Validates: Requirement 18.4
     #[allow(dead_code)]
     pub is_floating: bool,
+    /// ISPF edit profile for this tab (CAPS, NULLS, STATS, LOCK, HILITE).
+    ///
+    /// Validates: Requirement 16.1-16.12
+    pub edit_profile: EditProfile,
 }
 
 impl TabState {
@@ -97,6 +102,7 @@ impl TabState {
             undo_stack: Vec::new(),
             prefix_inputs: HashMap::new(),
             is_floating: false,
+            edit_profile: EditProfile::new(),
         }
     }
 
@@ -128,6 +134,7 @@ impl TabState {
             undo_stack: Vec::new(),
             prefix_inputs: HashMap::new(),
             is_floating: false,
+            edit_profile: EditProfile::new(),
         }
     }
 
@@ -149,6 +156,7 @@ impl TabState {
             undo_stack: Vec::new(),
             prefix_inputs: HashMap::new(),
             is_floating: false,
+            edit_profile: EditProfile::new(),
         }
     }
 
@@ -170,6 +178,7 @@ impl TabState {
             undo_stack: Vec::new(),
             prefix_inputs: HashMap::new(),
             is_floating: false,
+            edit_profile: EditProfile::new(),
         }
     }
 
@@ -193,6 +202,7 @@ impl TabState {
             undo_stack: Vec::new(),
             prefix_inputs: HashMap::new(),
             is_floating: false,
+            edit_profile: EditProfile::new(),
         }
     }
 
@@ -216,6 +226,7 @@ impl TabState {
             undo_stack: Vec::new(),
             prefix_inputs: HashMap::new(),
             is_floating: false,
+            edit_profile: EditProfile::new(),
         }
     }
 
