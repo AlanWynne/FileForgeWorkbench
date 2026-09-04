@@ -410,80 +410,80 @@ This task plan implements the `ff-jes` crate — the FileForge Workbench Job Ent
 }
 ```
 
-- [ ] 20. SDSF panel framework core -- action bar, title line, SCROLL field, filter lines
-  - [ ] 20.1 Implement action bar with pull-down menus (File, View, Help) in JobMonitorPanel
+- [x] 20. SDSF panel framework core -- action bar, title line, SCROLL field, filter lines
+  - [x] 20.1 Implement action bar with pull-down menus (File, View, Help) in JobMonitorPanel
     - Validates: Requirement 16.1
-  - [ ] 20.2 Implement title line with panel name and visible row range display
+  - [x] 20.2 Implement title line with panel name and visible row range display
     - Validates: Requirement 16.2
-  - [ ] 20.3 Implement SCROLL ===> field adjacent to command input, retaining last-used amount
+  - [x] 20.3 Implement SCROLL ===> field adjacent to command input, retaining last-used amount
     - Validates: Requirement 16.3
-  - [ ] 20.4 Implement filter information lines (PREFIX=/DEST=/OWNER=) below title line
+  - [x] 20.4 Implement filter information lines (PREFIX=/DEST=/OWNER=) below title line
     - Validates: Requirement 16.4, 16.25
-  - [ ] 20.5 Implement title line message area for command feedback
+  - [x] 20.5 Implement title line message area for command feedback
     - Validates: Requirement 16.21
-  - [ ] 20.6 Implement COMMAND INPUT ===> field for SDSF commands
+  - [x] 20.6 Implement COMMAND INPUT ===> field for SDSF commands
     - Validates: Requirement 16.22
-  - [ ] 20.7 Write unit tests for panel chrome: title line content, filter line display, SCROLL field retention, message area update
+  - [x] 20.7 Write unit tests for panel chrome: title line content, filter line display, SCROLL field retention, message area update
     - Validates: Requirement 16.1-16.4, 16.21-16.22
 
-- [ ] 21. NP column and action character system
-  - [ ] 21.1 Implement NP column as fixed leftmost column (non-scrolling) with action character input
+- [x] 21. NP column and action character system
+  - [x] 21.1 Implement NP column as fixed leftmost column (non-scrolling) with action character input
     - Validates: Requirement 16.5
-  - [ ] 21.2 Implement fixed JOBNAME column during horizontal scroll
+  - [x] 21.2 Implement fixed JOBNAME column during horizontal scroll
     - Validates: Requirement 16.6
-  - [ ] 21.3 Implement action character dispatch: S, ?, C, H, A, P, D, E, J, W
+  - [x] 21.3 Implement action character dispatch: S, ?, C, H, A, P, D, E, J, W
     - Validates: Requirement 16.7, 16.8, 16.23
-  - [ ] 21.4 Implement = repeat action character
+  - [x] 21.4 Implement = repeat action character
     - Validates: Requirement 16.9
-  - [ ] 21.5 Implement // block action syntax (first and last row of block)
+  - [x] 21.5 Implement // block action syntax (first and last row of block)
     - Validates: Requirement 16.10
-  - [ ] 21.6 Implement command-line action syntax ("2 C" in command field)
+  - [x] 21.6 Implement command-line action syntax ("2 C" in command field)
     - Validates: Requirement 16.11
-  - [ ] 21.7 Implement SET ROWNUM ON/OFF -- row numbers in NP area
+  - [x] 21.7 Implement SET ROWNUM ON/OFF -- row numbers in NP area
     - Validates: Requirement 16.12
-  - [ ] 21.8 Write unit tests for NP column: action dispatch, repeat =, block //, command-line syntax, invalid action rejection, SET ROWNUM toggle
+  - [x] 21.8 Write unit tests for NP column: action dispatch, repeat =, block //, command-line syntax, invalid action rejection, SET ROWNUM toggle
     - Validates: Requirement 16.5-16.12, 16.23
 
-- [ ] 22. Main panel (MENU command) and command groups
-  - [ ] 22.1 Implement MENU command navigating to main panel listing all SDSF panel commands
+- [x] 22. Main panel (MENU command) and command groups
+  - [x] 22.1 Implement MENU command navigating to main panel listing all SDSF panel commands
     - Validates: Requirement 16.13, 16.17
-  - [ ] 22.2 Implement command groups (Jobs, Output, JES, Log, Memory, Other) with expand/collapse
+  - [x] 22.2 Implement command groups (Jobs, Output, JES, Log, Memory, Other) with expand/collapse
     - Validates: Requirement 16.14
-  - [ ] 22.3 Implement S action on main panel row to navigate to selected panel
+  - [x] 22.3 Implement S action on main panel row to navigate to selected panel
     - Validates: Requirement 16.15
-  - [ ] 22.4 Implement SET MAIN GROUP command for grouped main panel display
+  - [x] 22.4 Implement SET MAIN GROUP command for grouped main panel display
     - Validates: Requirement 16.16
-  - [ ] 22.5 Write unit tests for main panel: group rendering, S action navigation, SET MAIN GROUP toggle, MENU command from sub-panel
+  - [x] 22.5 Write unit tests for main panel: group rendering, S action navigation, SET MAIN GROUP toggle, MENU command from sub-panel
     - Validates: Requirement 16.13-16.17
 
-- [ ] 23. PREFIX, OWNER, DEST filter commands
-  - [ ] 23.1 Implement PREFIX filter command -- filter job list by job name prefix; PREFIX * clears
+- [x] 23. PREFIX, OWNER, DEST filter commands
+  - [x] 23.1 Implement PREFIX filter command -- filter job list by job name prefix; PREFIX * clears
     - Validates: Requirement 16.18
-  - [ ] 23.2 Implement OWNER filter command -- filter by job owner; OWNER * clears
+  - [x] 23.2 Implement OWNER filter command -- filter by job owner; OWNER * clears
     - Validates: Requirement 16.19
-  - [ ] 23.3 Implement DEST filter command -- filter by output destination; DEST * clears
+  - [x] 23.3 Implement DEST filter command -- filter by output destination; DEST * clears
     - Validates: Requirement 16.20
-  - [ ] 23.4 Write unit tests for filter commands: PREFIX match, OWNER match, DEST match, wildcard clear, combined filters, filter persistence across tab switch
+  - [x] 23.4 Write unit tests for filter commands: PREFIX match, OWNER match, DEST match, wildcard clear, combined filters, filter persistence across tab switch
     - Validates: Requirement 16.18-16.20, 16.25
 
-- [ ] 24. Job table column definitions and SORT command
-  - [ ] 24.1 Implement full column set: JOBNAME, JOBID, OWNER, STATUS, CLASS, PRTY, QUEUE, START, END, RC, STEPNAME, PROCSTEP
+- [x] 24. Job table column definitions and SORT command
+  - [x] 24.1 Implement full column set: JOBNAME, JOBID, OWNER, STATUS, CLASS, PRTY, QUEUE, START, END, RC, STEPNAME, PROCSTEP
     - Validates: Requirement 16.24
-  - [ ] 24.2 Implement column hide/show and reorder support
+  - [x] 24.2 Implement column hide/show and reorder support
     - Validates: Requirement 16.24
-  - [ ] 24.3 Implement SORT command -- SORT colname [A|D]; SORT with no args restores submission-time order
+  - [x] 24.3 Implement SORT command -- SORT colname [A|D]; SORT with no args restores submission-time order
     - Validates: Requirement 16.26
-  - [ ] 24.4 Write unit tests for column definitions: all columns present, hide/show toggle, SORT ascending/descending, SORT reset
+  - [x] 24.4 Write unit tests for column definitions: all columns present, hide/show toggle, SORT ascending/descending, SORT reset
     - Validates: Requirement 16.24, 16.26
 
-- [ ] 25. Integration tests for SDSF panel framework
-  - [ ] 25.1 Write integration test: full NP column action cycle -- enter action char, verify dispatch, verify message area feedback
+- [x] 25. Integration tests for SDSF panel framework
+  - [x] 25.1 Write integration test: full NP column action cycle -- enter action char, verify dispatch, verify message area feedback
     - Validates: Requirement 16.7-16.8
-  - [ ] 25.2 Write integration test: PREFIX + OWNER + DEST combined filter -- verify only matching jobs shown
+  - [x] 25.2 Write integration test: PREFIX + OWNER + DEST combined filter -- verify only matching jobs shown
     - Validates: Requirement 16.18-16.20
-  - [ ] 25.3 Write integration test: SORT + filter interaction -- sort filtered result, verify order preserved after filter change
+  - [x] 25.3 Write integration test: SORT + filter interaction -- sort filtered result, verify order preserved after filter change
     - Validates: Requirement 16.26
-  - [ ] 25.4 Write integration test: MENU navigation -- MENU from input queue, S to select panel, verify navigation
+  - [x] 25.4 Write integration test: MENU navigation -- MENU from input queue, S to select panel, verify navigation
     - Validates: Requirement 16.13-16.15
 
 - [ ] 26. ST panel and advanced filter/find/locate commands

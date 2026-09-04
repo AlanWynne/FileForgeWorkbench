@@ -645,12 +645,12 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 > PREFIX/OWNER/DEST filter commands, full column set, SORT command.
 > Requirement 16 in FFW-JES/requirements.md.
 
-- [ ] CC.1 SDSF panel chrome -- action bar, title line, SCROLL field, filter lines, message area, COMMAND INPUT field (Tasks 20.1-20.7)
-- [ ] CC.2 NP column and action character system -- S/?/C/H/A/P/D/E/J/W, = repeat, // block, command-line syntax, SET ROWNUM (Tasks 21.1-21.8)
-- [ ] CC.3 Main panel (MENU command), command groups, S action, SET MAIN GROUP (Tasks 22.1-22.5)
-- [ ] CC.4 PREFIX/OWNER/DEST filter commands (Tasks 23.1-23.4)
-- [ ] CC.5 Full column set (JOBNAME through PROCSTEP), column hide/reorder, SORT command (Tasks 24.1-24.4)
-- [ ] CC.6 Integration tests for SDSF panel framework (Tasks 25.1-25.4)
+- [x] CC.1 SDSF panel chrome -- action bar, title line, SCROLL field, filter lines, message area, COMMAND INPUT field (Tasks 20.1-20.7)
+- [x] CC.2 NP column and action character system -- S/?/C/H/A/P/D/E/J/W, = repeat, // block, command-line syntax, SET ROWNUM (Tasks 21.1-21.8)
+- [x] CC.3 Main panel (MENU command), command groups, S action, SET MAIN GROUP (Tasks 22.1-22.5)
+- [x] CC.4 PREFIX/OWNER/DEST filter commands (Tasks 23.1-23.4)
+- [x] CC.5 Full column set (JOBNAME through PROCSTEP), column hide/reorder, SORT command (Tasks 24.1-24.4)
+- [x] CC.6 Integration tests for SDSF panel framework (Tasks 25.1-25.4)
 
 ---
 

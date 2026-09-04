@@ -20,6 +20,9 @@ pub mod provider;
 pub mod queue;
 pub mod retention;
 pub mod scheduler;
+pub mod sdsf_action;
+pub mod sdsf_filter;
+pub mod sdsf_panel;
 
 // ─── Public API Re-exports ──────────────────────────────────────────────────
 
@@ -36,3 +39,10 @@ pub use provider::{DesktopJesProvider, JobAction, JobProvider, ProviderHealth, P
 pub use queue::JobQueue;
 pub use retention::{RetentionEngine, RetentionPolicy};
 pub use scheduler::{Scheduler, SchedulingStrategy};
+pub use sdsf_action::{
+    parse_set_rownum, ActionChar, CommandLineAction, NpColumnState, NpDispatch, NpEntry,
+};
+pub use sdsf_filter::{ColumnLayout, QueueTab, SdsfColumn, SdsfFilter, SdsfSort, SortDirection};
+pub use sdsf_panel::{
+    main_panel_commands, ActivePanel, CommandGroup, MainPanelCommand, ScrollAmount, SdsfPanelState,
+};

@@ -1344,32 +1344,32 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-jes` | 🔴 | -- | Req 16.1: action bar with pull-down menus (File, View, Help) |
-| `ff-jes` | 🔴 | -- | Req 16.2: title line with panel name and visible row range |
-| `ff-jes` | 🔴 | -- | Req 16.3: SCROLL ===> field retains last-used scroll amount |
-| `ff-jes` | 🔴 | -- | Req 16.4: filter information lines PREFIX=/DEST=/OWNER= below title |
-| `ff-jes` | 🔴 | -- | Req 16.5: NP column fixed leftmost, non-scrolling |
-| `ff-jes` | 🔴 | -- | Req 16.6: JOBNAME column fixed during horizontal scroll |
-| `ff-jes` | 🔴 | -- | Req 16.7: action character in NP column dispatches action on Enter |
-| `ff-jes` | 🔴 | -- | Req 16.8: action characters S/?/C/H/A/P/D/E/J/W supported |
-| `ff-jes` | 🔴 | -- | Req 16.9: = repeats previous action character on that row |
-| `ff-jes` | 🔴 | -- | Req 16.10: // block action applies to all rows in block |
-| `ff-jes` | 🔴 | -- | Req 16.11: command-line action syntax "2 C" in command field |
-| `ff-jes` | 🔴 | -- | Req 16.12: SET ROWNUM ON displays row numbers in NP area |
-| `ff-jes` | 🔴 | -- | Req 16.13: main panel lists all SDSF commands with name/desc/group |
-| `ff-jes` | 🔴 | -- | Req 16.14: command groups (Jobs/Output/JES/Log/Memory/Other) expandable |
-| `ff-jes` | 🔴 | -- | Req 16.15: S action on main panel row navigates to selected panel |
-| `ff-jes` | 🔴 | -- | Req 16.16: SET MAIN GROUP displays grouped main panel |
-| `ff-jes` | 🔴 | -- | Req 16.17: MENU command returns to main panel from any sub-panel |
-| `ff-jes` | 🔴 | -- | Req 16.18: PREFIX filter -- filter by job name prefix; PREFIX * clears |
-| `ff-jes` | 🔴 | -- | Req 16.19: OWNER filter -- filter by job owner; OWNER * clears |
-| `ff-jes` | 🔴 | -- | Req 16.20: DEST filter -- filter by output destination; DEST * clears |
-| `ff-jes` | 🔴 | -- | Req 16.21: title line message area shows last command feedback |
-| `ff-jes` | 🔴 | -- | Req 16.22: COMMAND INPUT ===> field for SDSF commands |
-| `ff-jes` | 🔴 | -- | Req 16.23: NP column supports full action char set; invalid state rejected with message |
-| `ff-jes` | 🔴 | -- | Req 16.24: columns JOBNAME/JOBID/OWNER/STATUS/CLASS/PRTY/QUEUE/START/END/RC/STEPNAME/PROCSTEP; hideable/reorderable |
-| `ff-jes` | 🔴 | -- | Req 16.25: PREFIX/OWNER/DEST filter fields as editable in-place rows above table |
-| `ff-jes` | 🔴 | -- | Req 16.26: SORT colname [A|D] sorts job table; SORT with no args restores submission-time order |
+| `ff-jes` | ✅ | sdsf_panel.rs unit tests | Req 16.1: action bar with pull-down menus (File, View, Help) |
+| `ff-jes` | ✅ | sdsf_panel.rs unit tests | Req 16.2: title line with panel name and visible row range |
+| `ff-jes` | ✅ | sdsf_panel.rs unit tests | Req 16.3: SCROLL ===> field retains last-used scroll amount |
+| `ff-jes` | ✅ | sdsf_filter.rs unit tests | Req 16.4: filter information lines PREFIX=/DEST=/OWNER= below title |
+| `ff-jes` | ✅ | sdsf_action.rs unit tests | Req 16.5: NP column fixed leftmost, non-scrolling |
+| `ff-jes` | ✅ | sdsf_filter.rs unit tests | Req 16.6: JOBNAME column fixed during horizontal scroll |
+| `ff-jes` | ✅ | sdsf_action.rs unit tests | Req 16.7: action character in NP column dispatches action on Enter |
+| `ff-jes` | ✅ | sdsf_action.rs unit tests | Req 16.8: action characters S/?/C/H/A/P/D/E/J/W supported |
+| `ff-jes` | ✅ | sdsf_action.rs unit tests | Req 16.9: = repeats previous action character on that row |
+| `ff-jes` | ✅ | sdsf_action.rs unit tests | Req 16.10: // block action applies to all rows in block |
+| `ff-jes` | ✅ | sdsf_action.rs unit tests | Req 16.11: command-line action syntax "2 C" in command field |
+| `ff-jes` | ✅ | sdsf_action.rs unit tests | Req 16.12: SET ROWNUM ON displays row numbers in NP area |
+| `ff-jes` | ✅ | sdsf_panel.rs unit tests | Req 16.13: main panel lists all SDSF commands with name/desc/group |
+| `ff-jes` | ✅ | sdsf_panel.rs unit tests | Req 16.14: command groups (Jobs/Output/JES/Log/Memory/Other) expandable |
+| `ff-jes` | ✅ | sdsf_panel.rs unit tests | Req 16.15: S action on main panel row navigates to selected panel |
+| `ff-jes` | ✅ | sdsf_panel.rs unit tests | Req 16.16: SET MAIN GROUP displays grouped main panel |
+| `ff-jes` | ✅ | sdsf_panel.rs unit tests | Req 16.17: MENU command returns to main panel from any sub-panel |
+| `ff-jes` | ✅ | sdsf_filter.rs unit tests | Req 16.18: PREFIX filter -- filter by job name prefix; PREFIX * clears |
+| `ff-jes` | ✅ | sdsf_filter.rs unit tests | Req 16.19: OWNER filter -- filter by job owner; OWNER * clears |
+| `ff-jes` | ✅ | sdsf_filter.rs unit tests | Req 16.20: DEST filter -- filter by output destination; DEST * clears |
+| `ff-jes` | ✅ | sdsf_panel.rs unit tests | Req 16.21: title line message area shows last command feedback |
+| `ff-jes` | ✅ | sdsf_panel.rs unit tests | Req 16.22: COMMAND INPUT ===> field for SDSF commands |
+| `ff-jes` | ✅ | sdsf_action.rs unit tests | Req 16.23: NP column supports full action char set; invalid state rejected with message |
+| `ff-jes` | ✅ | sdsf_filter.rs unit tests | Req 16.24: columns JOBNAME/JOBID/OWNER/STATUS/CLASS/PRTY/QUEUE/START/END/RC/STEPNAME/PROCSTEP; hideable/reorderable |
+| `ff-jes` | ✅ | sdsf_filter.rs unit tests | Req 16.25: PREFIX/OWNER/DEST filter fields as editable in-place rows above table |
+| `ff-jes` | ✅ | sdsf_filter.rs unit tests | Req 16.26: SORT colname [A|D] sorts job table; SORT with no args restores submission-time order |
 
 
 ### Phase CD -- FFW-JES P1 extended EARS Integration (Requirement 17)
