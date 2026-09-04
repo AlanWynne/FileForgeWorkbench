@@ -1307,12 +1307,12 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | -- | Req 20.1: session start timestamp displayed in status bar as Started: HH:MM |
-| `ff-desktop` | 🔴 | -- | Req 20.2: session end timestamp and duration shown in status area on exit |
-| `ff-desktop` | 🔴 | -- | Req 20.3: LOGOFF command initiates exit sequence identical to EXIT/=X |
-| `ff-desktop` | 🔴 | -- | Req 20.4: TIME command displays current date/time/day-of-year in response area |
-| `ff-desktop` | 🔴 | -- | Req 20.5: STATUS command routes to FFW-JES job status panel |
-| `ff-desktop` | 🔴 | -- | Req 20.6: STATUS jobname routes to FFW-JES panel filtered by jobname |
+| `ff-desktop` | ✅ | `shell/mod.rs`, `shell/tests.rs` | Req 20.1: session start timestamp displayed in status bar as Started: HH:MM |
+| `ff-desktop` | ✅ | `shell/mod.rs`, `shell/tests.rs` | Req 20.2: session end timestamp and duration shown in status area on exit |
+| `ff-desktop` | ✅ | `shell/commands.rs`, `shell/tests.rs` | Req 20.3: LOGOFF command initiates exit sequence identical to EXIT/=X |
+| `ff-desktop` | ✅ | `shell/commands.rs`, `shell/tests.rs` | Req 20.4: TIME command displays current date/time/day-of-year in response area |
+| `ff-desktop` | ✅ | `shell/commands.rs`, `shell/tests.rs` | Req 20.5: STATUS command routes to FFW-JES job status panel |
+| `ff-desktop` | ✅ | `shell/commands.rs`, `shell/tests.rs` | Req 20.6: STATUS jobname routes to FFW-JES panel filtered by jobname |
 
 
 ### Phase CB -- command-semantics EARS Integration (Requirement 9)

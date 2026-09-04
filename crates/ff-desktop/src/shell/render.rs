@@ -195,6 +195,10 @@ impl WorkbenchShell {
                 ui.label(phase_label);
                 ui.separator();
 
+                // Validates: Requirement 20.1 -- session start timestamp
+                ui.label(self.format_session_start());
+                ui.separator();
+
                 let tab = self.tabs.active_tab();
                 let line = tab.cursor.cursor_line();
                 let col = tab.cursor.cursor_column();

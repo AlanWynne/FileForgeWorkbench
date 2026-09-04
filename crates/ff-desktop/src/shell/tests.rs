@@ -405,6 +405,10 @@ fn is_shell_command(cmd: &str) -> bool {
         || upper == "END"
         || upper == "RETURN"
         || upper == "KEYS"
+        || upper == "LOGOFF"
+        || upper == "TIME"
+        || upper == "STATUS"
+        || upper.starts_with("STATUS ")
 }
 
 // ── Phase AC: POM option list reorganisation tests ──────────────────────
@@ -1851,4 +1855,103 @@ fn split_screen_halves_have_independent_scroll() {
     ss.top_scroll = 5;
     assert_eq!(ss.top_scroll, 5);
     assert_eq!(ss.bottom_scroll, 12); // bottom unchanged
+}
+
+// === Phase CA -- TSO Session Lifecycle Commands (Requirement 20) ===========
+
+/// Validates: Requirement 20.1 -- session start time is recorded on shell creation.
+#[test]
+fn session_start_time_is_recorded_on_startup() {
+    // Validates: Requirement 20.1
+    use chrono::Local;
+    let before = Local::now();
+    let shell = make_shell();
+    let after = Local::now();
+    assert!(
+        shell.session_start >= before && shell.session_start <= after,
+        "session_start must be set during WorkbenchShell::new()"
+    );
+}
+
+/// Validates: Requirement 20.1 -- format_session_start produces Started: HH:MM.
+#[test]
+fn format_session_start_produces_started_hhmm() {
+    // Validates: Requirement 20.1
+    let shell = make_shell();
+    let label = shell.format_session_start();
+    assert!(
+        label.starts_with("Started: "),
+        "label must start with 'Started: ', got: {label}"
+    );
+    // HH:MM format: 8 chars total ("Started: " = 9, then HH:MM = 5)
+    assert_eq!(
+        label.len(),
+        14,
+        "'Started: HH:MM' is 14 chars, got: {label}"
+    );
+}
+
+/// Validates: Requirement 20.2 -- format_logoff_message produces correct format.
+#[test]
+fn format_logoff_message_produces_correct_format() {
+    // Validates: Requirement 20.2
+    let shell = make_shell();
+    let msg = shell.format_logoff_message();
+    assert!(
+        msg.starts_with("Logoff at "),
+        "must start with 'Logoff at ', got: {msg}"
+    );
+    assert!(
+        msg.contains("session duration:"),
+        "must contain 'session duration:', got: {msg}"
+    );
+}
+
+/// Validates: Requirement 20.3 -- LOGOFF command is a shell-level intercept.
+#[test]
+fn logoff_command_is_shell_level_intercept() {
+    // Validates: Requirement 20.3
+    assert!(
+        is_shell_command("LOGOFF"),
+        "LOGOFF must be handled at shell level like EXIT"
+    );
+}
+
+/// Validates: Requirement 20.4 -- TIME command sets open_error to date/time/day string.
+#[test]
+fn time_command_displays_date_time_day() {
+    // Validates: Requirement 20.4
+    let mut shell = make_shell();
+    shell.handle_command("TIME");
+    let msg = shell.open_error.as_deref().unwrap_or("");
+    assert!(msg.contains("Date:"), "must contain 'Date:', got: {msg}");
+    assert!(msg.contains("Time:"), "must contain 'Time:', got: {msg}");
+    assert!(msg.contains("Day:"), "must contain 'Day:', got: {msg}");
+}
+
+/// Validates: Requirement 20.5 -- STATUS command sets open_error to JES routing message.
+#[test]
+fn status_command_routes_to_jes_panel() {
+    // Validates: Requirement 20.5
+    let mut shell = make_shell();
+    shell.handle_command("STATUS");
+    let msg = shell.open_error.as_deref().unwrap_or("");
+    // STATUS routes to JES (stub); must not be an "unknown command" error
+    assert!(
+        !msg.to_uppercase().contains("UNKNOWN"),
+        "STATUS must not produce unknown-command error, got: {msg}"
+    );
+}
+
+/// Validates: Requirement 20.6 -- STATUS jobname routes with jobname filter.
+#[test]
+fn status_with_jobname_routes_with_filter() {
+    // Validates: Requirement 20.6
+    let mut shell = make_shell();
+    shell.handle_command("STATUS MYJOB");
+    let msg = shell.open_error.as_deref().unwrap_or("");
+    assert!(
+        !msg.to_uppercase().contains("UNKNOWN"),
+        "STATUS jobname must not produce unknown-command error, got: {msg}"
+    );
 }

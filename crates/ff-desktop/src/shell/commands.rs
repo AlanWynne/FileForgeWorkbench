@@ -18,7 +18,13 @@ impl WorkbenchShell {
         let upper = cmd.trim().to_uppercase();
 
         // ── Shell-level intercepts ───────────────────────────────────────
-        if upper == "EXIT" || upper == "QUIT" || upper == "=X" || upper == "X" {
+        if upper == "EXIT" || upper == "QUIT" || upper == "=X" || upper == "X" || upper == "LOGOFF"
+        {
+            // Validates: Requirement 20.3 -- LOGOFF is an alias for EXIT
+            if upper == "LOGOFF" {
+                let msg = self.format_logoff_message();
+                self.open_error = Some(msg);
+            }
             let result = self
                 .dispatch
                 .execute_command("file.exit", CommandParams::new());
@@ -644,6 +650,39 @@ impl WorkbenchShell {
         if upper == "SUBMIT" {
             // Stub: JES subsystem dispatch deferred to Phase CC/CD.
             self.open_error = Some("SUBMIT: JES subsystem not yet available".to_string());
+            return;
+        }
+
+        // ── TIME — Validates: Requirement 20.4 ───────────────────────────────
+        if upper == "TIME" {
+            let now = chrono::Local::now();
+            let msg = format!(
+                "Date: {}  Time: {}  Day: {}",
+                now.format("%Y-%m-%d"),
+                now.format("%H:%M:%S"),
+                now.format("%j")
+            );
+            self.open_error = Some(msg);
+            return;
+        }
+
+        // ── STATUS — Validates: Requirement 20.5, 20.6 ───────────────────────
+        if upper == "STATUS" || upper.starts_with("STATUS ") {
+            let jobname = if upper.starts_with("STATUS ") {
+                let j = cmd.trim()[7..].trim();
+                if j.is_empty() {
+                    None
+                } else {
+                    Some(j.to_string())
+                }
+            } else {
+                None
+            };
+            let msg = match jobname {
+                Some(ref j) => format!("STATUS: routing to JES panel (filter: {})", j),
+                None => "STATUS: routing to JES job status panel".to_string(),
+            };
+            self.open_error = Some(msg);
             return;
         }
 

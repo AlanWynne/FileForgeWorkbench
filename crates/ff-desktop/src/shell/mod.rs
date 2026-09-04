@@ -372,6 +372,10 @@ pub struct WorkbenchShell {
     ///
     /// Validates: Requirement 16.1, 16.2
     command_field_focus_requested: bool,
+    /// Session start timestamp -- recorded when the shell is created.
+    ///
+    /// Validates: Requirement 20.1, 20.2
+    pub(crate) session_start: chrono::DateTime<chrono::Local>,
     /// All currently floating (detached) tabs.
     ///
     /// Validates: Requirement 18.1, 18.2
@@ -503,12 +507,39 @@ impl WorkbenchShell {
             floating_tabs: Vec::new(),
             detach_pending: None,
             redock_pending: Arc::new(Mutex::new(Vec::new())),
+            session_start: chrono::Local::now(),
         }
     }
 
     // ── Theme ────────────────────────────────────────────────────────────
 
     // render methods are in render.rs
+
+    // ── Session lifecycle helpers — Validates: Requirement 20.1, 20.2 ────
+
+    /// Format the session start time as `Started: HH:MM`.
+    ///
+    /// Validates: Requirement 20.1
+    pub(crate) fn format_session_start(&self) -> String {
+        format!("Started: {}", self.session_start.format("%H:%M"))
+    }
+
+    /// Format the logoff message as `Logoff at HH:MM -- session duration: Xm Ys`.
+    ///
+    /// Validates: Requirement 20.2
+    pub(crate) fn format_logoff_message(&self) -> String {
+        let now = chrono::Local::now();
+        let duration = now.signed_duration_since(self.session_start);
+        let total_secs = duration.num_seconds().max(0) as u64;
+        let mins = total_secs / 60;
+        let secs = total_secs % 60;
+        format!(
+            "Logoff at {} -- session duration: {}m {}s",
+            now.format("%H:%M"),
+            mins,
+            secs
+        )
+    }
 }
 
 /// - POM tab → app name + version
