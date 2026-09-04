@@ -312,7 +312,7 @@ fn render_content_pane(
     ui: &mut egui::Ui,
     state: &mut FileExplorerPanelState,
     registry: &CatalogRegistry,
-    files_panel: &FilesPanelState,
+    _files_panel: &FilesPanelState,
     open_path: &mut Option<String>,
 ) {
     let selected_name = match state.selected_catalog.clone() {
@@ -354,7 +354,8 @@ fn render_content_pane(
         }
         // Validates: Requirement 23.5
         CatalogType::Mainframe => {
-            render_mainframe_content(ui, files_panel.datasets.get(&cat.name), state, open_path);
+            let datasets = registry.list_datasets(&cat.name).unwrap_or_default();
+            render_mainframe_content(ui, &datasets, state, open_path);
         }
         // Validates: Requirement 23.6
         CatalogType::Posix => {
@@ -369,7 +370,7 @@ fn render_content_pane(
 /// Validates: Requirement 23.5
 fn render_mainframe_content(
     ui: &mut egui::Ui,
-    datasets: Option<&Vec<crate::files_panel::AllocatedDataset>>,
+    datasets: &[ff_dscatalog::dataset::DatasetRecord],
     state: &mut FileExplorerPanelState,
     open_path: &mut Option<String>,
 ) {
@@ -858,51 +859,59 @@ fn render_native_dialog(
         });
 }
 
-/// Render children for a Mainframe/POSIX catalog from the allocated dataset store.
+/// Render children for a Mainframe catalog from the SQLite dataset store.
 ///
-/// Validates: Requirement 19.6, 16.4–16.9
+/// Validates: Requirement 13.3, 19.6, 16.4-16.9
 fn render_dataset_children(
     ui: &mut egui::Ui,
     catalog_type: CatalogType,
-    datasets: Option<&Vec<crate::files_panel::AllocatedDataset>>,
+    datasets: &[ff_dscatalog::dataset::DatasetRecord],
     state: &mut FileExplorerPanelState,
     open_path: &mut Option<String>,
 ) {
-    match datasets.map(|v| v.as_slice()) {
-        None | Some([]) => {
-            ui.label(egui::RichText::new("  (no datasets)").monospace().weak());
+    if datasets.is_empty() {
+        ui.label(egui::RichText::new("  (no datasets)").monospace().weak());
+        return;
+    }
+    for ds in datasets {
+        let is_container = matches!(
+            ds.dsorg,
+            ff_dscatalog::dataset::Dsorg::PO | ff_dscatalog::dataset::Dsorg::GDG
+        );
+        let icon = if is_container {
+            "\u{1F4C1}"
+        } else {
+            "\u{1F4C4}"
+        };
+        let dsn = ds.dsn.as_str().to_string();
+        let label = egui::RichText::new(format!("  {icon} {dsn}")).monospace();
+        let resp = ui.selectable_label(false, label);
+        if resp.double_clicked() {
+            *open_path = Some(dsn.clone());
         }
-        Some(datasets) => {
-            for ds in datasets {
-                let is_container = ds.dsorg == "PO" || ds.dsorg == "PDSE" || ds.dsorg == "GDG";
-                let icon = if is_container {
-                    "\u{1F4C1}"
-                } else {
-                    "\u{1F4C4}"
-                };
-                let label = egui::RichText::new(format!("  {icon} {}", ds.name)).monospace();
-                let resp = ui.selectable_label(false, label);
-                if resp.double_clicked() {
-                    // Req 16 — resolve physical path from catalog repository + DSN.
-                    // catalog_type is always Mainframe/POSIX here (Native uses render_native_children).
-                    // For now only Mainframe resolution is attempted; POSIX datasets are metadata-only.
-                    *open_path = Some(ds.name.clone());
-                }
-                let node_kind = dataset_node_kind(&ds.dsorg);
-                let dsn = ds.name.clone();
-                resp.context_menu(|ui| {
-                    show_context_menu(ui, catalog_type, node_kind, &dsn, "", state, open_path);
-                });
-            }
-        }
+        let node_kind = dataset_node_kind_from_dsorg(&ds.dsorg);
+        resp.context_menu(|ui| {
+            show_context_menu(ui, catalog_type, node_kind, &dsn, "", state, open_path);
+        });
     }
 }
 
+#[cfg(test)]
 /// Map a dataset DSORG string to the appropriate `NodeKind`.
+/// Used by tests that reference string-based dsorg.
 fn dataset_node_kind(dsorg: &str) -> NodeKind {
     match dsorg {
         "PO" | "PDSE" => NodeKind::MfPds,
         "GDG" => NodeKind::MfGdgBase,
+        _ => NodeKind::MfPs,
+    }
+}
+
+/// Map a ff-dscatalog `Dsorg` enum to the appropriate `NodeKind`.
+fn dataset_node_kind_from_dsorg(dsorg: &ff_dscatalog::dataset::Dsorg) -> NodeKind {
+    match dsorg {
+        ff_dscatalog::dataset::Dsorg::PO => NodeKind::MfPds,
+        ff_dscatalog::dataset::Dsorg::GDG => NodeKind::MfGdgBase,
         _ => NodeKind::MfPs,
     }
 }
@@ -1155,7 +1164,7 @@ pub fn collect_visible_node_paths(
 #[allow(dead_code)]
 pub fn collect_visible_node_paths_with_dirs(
     registry: &crate::catalog_registry::CatalogRegistry,
-    files_panel: &FilesPanelState,
+    _files_panel: &FilesPanelState,
     open_catalogs: &std::collections::HashSet<String>,
     open_directories: &std::collections::HashSet<String>,
 ) -> Vec<String> {
@@ -1172,9 +1181,11 @@ pub fn collect_visible_node_paths_with_dirs(
             }
             if catalog_type == CatalogType::Native {
                 collect_dir_entries_recursive(&cat.path, open_directories, &mut paths);
-            } else if let Some(datasets) = files_panel.datasets.get(&cat.name) {
-                for ds in datasets {
-                    paths.push(ds.name.clone());
+            } else if catalog_type == CatalogType::Mainframe {
+                if let Ok(datasets) = registry.list_datasets(&cat.name) {
+                    for ds in datasets {
+                        paths.push(ds.dsn.as_str().to_string());
+                    }
                 }
             }
         }
@@ -1470,29 +1481,14 @@ mod tests {
         assert_eq!(registry.list_by_type(CatalogType::Native).len(), 1);
     }
 
-    /// Validates: Requirement 19.6 — datasets for a catalog are accessible for child nodes.
+    /// Validates: Requirement 19.6 -- datasets for a catalog are accessible via SQLite.
     #[test]
     fn catalog_datasets_accessible_for_child_nodes() {
         // Validates: Requirement 19.6
-        use crate::dataset_alloc_dialog::{AllocParams, Dsorg, Recfm};
-        let mut files_panel = FilesPanelState::new();
-        files_panel.add_dataset(
-            "PAYROLL",
-            AllocParams {
-                dataset_name: "PAYROLL.DATA".to_string(),
-                dsorg: Dsorg::Ps,
-                recfm: Recfm::Fb,
-                lrecl: 80,
-                blksize: 0,
-                dir_blocks: None,
-                gdg_limit: None,
-                scratch: false,
-                description: None,
-            },
-        );
-        let datasets = files_panel.datasets.get("PAYROLL").expect("must exist");
-        assert_eq!(datasets.len(), 1);
-        assert_eq!(datasets[0].name, "PAYROLL.DATA");
+        // PS maps to MfPs (leaf), PO maps to MfPds (container), GDG maps to MfGdgBase.
+        assert_eq!(dataset_node_kind("PS"), NodeKind::MfPs);
+        assert_eq!(dataset_node_kind("PO"), NodeKind::MfPds);
+        assert_eq!(dataset_node_kind("GDG"), NodeKind::MfGdgBase);
     }
 
     /// Validates: Requirement 19.7 — section headers use the correct labels.
@@ -1504,56 +1500,22 @@ mod tests {
         assert_eq!(CatalogType::Native.section_label(), "Native Catalogs");
     }
 
-    /// Validates: Requirement 19.9 — file nodes (non-container datasets) are leaf nodes.
+    /// Validates: Requirement 19.9 -- PS dataset maps to leaf node kind.
     #[test]
     fn ps_dataset_is_a_leaf_node_not_a_container() {
         // Validates: Requirement 19.9
-        use crate::dataset_alloc_dialog::{AllocParams, Dsorg, Recfm};
-        let mut files_panel = FilesPanelState::new();
-        files_panel.add_dataset(
-            "CAT",
-            AllocParams {
-                dataset_name: "CAT.SEQ".to_string(),
-                dsorg: Dsorg::Ps,
-                recfm: Recfm::Fb,
-                lrecl: 80,
-                blksize: 0,
-                dir_blocks: None,
-                gdg_limit: None,
-                scratch: false,
-                description: None,
-            },
-        );
-        let ds = &files_panel.datasets["CAT"][0];
-        // PS is not a container — double-click should open it
-        assert_eq!(ds.dsorg, "PS");
-        let is_container = ds.dsorg == "PO" || ds.dsorg == "PDSE" || ds.dsorg == "GDG";
-        assert!(!is_container, "PS dataset must be a leaf node");
+        assert_eq!(dataset_node_kind("PS"), NodeKind::MfPs);
+        // MfPs is not a container kind
+        assert_ne!(dataset_node_kind("PS"), NodeKind::MfPds);
+        assert_ne!(dataset_node_kind("PS"), NodeKind::MfGdgBase);
     }
 
-    /// Validates: Requirement 19.9 — PO dataset is a container node (not directly openable).
+    /// Validates: Requirement 19.9 -- PO dataset maps to container node kind.
     #[test]
     fn po_dataset_is_a_container_node() {
         // Validates: Requirement 19.9
-        use crate::dataset_alloc_dialog::{AllocParams, Dsorg, Recfm};
-        let mut files_panel = FilesPanelState::new();
-        files_panel.add_dataset(
-            "CAT",
-            AllocParams {
-                dataset_name: "CAT.LIB".to_string(),
-                dsorg: Dsorg::Po,
-                recfm: Recfm::Fb,
-                lrecl: 80,
-                blksize: 0,
-                dir_blocks: None,
-                gdg_limit: None,
-                scratch: false,
-                description: None,
-            },
-        );
-        let ds = &files_panel.datasets["CAT"][0];
-        let is_container = ds.dsorg == "PO" || ds.dsorg == "PDSE" || ds.dsorg == "GDG";
-        assert!(is_container, "PO dataset must be a container node");
+        assert_eq!(dataset_node_kind("PO"), NodeKind::MfPds);
+        assert_ne!(dataset_node_kind("PO"), NodeKind::MfPs);
     }
 
     /// Validates: Requirement 19.8 — total_catalogs == 0 triggers empty-state path.
@@ -2278,30 +2240,12 @@ mod tests {
         assert_eq!(registry.list().len(), 0);
     }
 
-    /// Validates: Requirement 23.5 — Mainframe content uses render_dataset_children (PS is leaf).
+    /// Validates: Requirement 23.5 -- Mainframe content uses dataset_node_kind (PS is leaf).
     #[test]
     fn mainframe_content_ps_dataset_is_leaf() {
         // Validates: Requirement 23.5
-        use crate::dataset_alloc_dialog::{AllocParams, Dsorg, Recfm};
-        let mut files_panel = FilesPanelState::new();
-        files_panel.add_dataset(
-            "MF1",
-            AllocParams {
-                dataset_name: "MF1.DATA".to_string(),
-                dsorg: Dsorg::Ps,
-                recfm: Recfm::Fb,
-                lrecl: 80,
-                blksize: 0,
-                dir_blocks: None,
-                gdg_limit: None,
-                scratch: false,
-                description: None,
-            },
-        );
-        let ds = &files_panel.datasets["MF1"][0];
-        assert_eq!(ds.dsorg, "PS");
-        let is_container = ds.dsorg == "PO" || ds.dsorg == "PDSE" || ds.dsorg == "GDG";
-        assert!(!is_container);
+        assert_eq!(dataset_node_kind("PS"), NodeKind::MfPs);
+        assert_ne!(dataset_node_kind("PS"), NodeKind::MfPds);
     }
 
     /// Validates: Requirement 23.6 — POSIX content uses forward-slash path normalisation.

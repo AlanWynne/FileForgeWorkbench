@@ -108,6 +108,7 @@ impl Catalog {
             gdg_scratch: Some(scratch),
             subtype: None,
             description: None,
+            scope: crate::hierarchy::CatalogScope::User,
         };
         self.allocate(params)?;
 

@@ -2,6 +2,9 @@
 //!
 //! A `Catalog` represents one mounted catalog with its SQLite database
 //! and repository. Provides dataset CRUD, PDS member ops, and GDG management.
+//!
+//! `CatalogLocation` and `CatalogMount` provide the transport discriminant
+//! introduced by CR-NR-017 (Requirement 31).
 
 use std::path::{Path, PathBuf};
 
@@ -11,8 +14,81 @@ use crate::dataset::{AllocParams, DatasetRecord, Dsorg, PartitionedSubtype, Recf
 use crate::dsn::Dsn;
 use crate::encoding::dsn_to_storage_path;
 use crate::error::CatalogError;
+use crate::hierarchy::CatalogScope;
 use crate::repository::Repository;
 use crate::schema;
+
+// === CatalogLocation ========================================================
+
+/// Discriminant describing where a catalog's database and repository reside.
+///
+/// `#[non_exhaustive]` allows future transport variants (Mainframe, Cloud)
+/// without breaking existing match arms.
+///
+/// # Variants
+///
+/// - `Local` -- catalog is on the local filesystem (current implementation).
+/// - `Remote` -- catalog is accessed via a registered VFS connector (future;
+///   returns `UnsupportedOperation` until a connector is registered).
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum CatalogLocation {
+    /// Catalog database and repository are on the local filesystem.
+    Local {
+        /// Absolute path to the repository root directory.
+        path: PathBuf,
+    },
+    /// Catalog is accessed via a registered VFS connector (not yet implemented).
+    Remote {
+        /// The VFS scheme identifying the connector (e.g. `"mainframe"`).
+        scheme: String,
+        /// The full URI for the remote catalog.
+        uri: String,
+    },
+}
+
+impl CatalogLocation {
+    /// Return the local path when the location is `Local`, or `None` otherwise.
+    ///
+    /// Existing callers that only handle local catalogs can use this to avoid
+    /// matching on the full enum.
+    pub fn local_path(&self) -> Option<&Path> {
+        match self {
+            CatalogLocation::Local { path } => Some(path.as_path()),
+            _ => None,
+        }
+    }
+}
+
+// === CatalogMount ===========================================================
+
+/// A descriptor for mounting a catalog, carrying its location and priority.
+///
+/// Replaces the bare `&Path` previously passed to `CatalogRegistry::mount()`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CatalogMount {
+    /// Where the catalog resides.
+    pub location: CatalogLocation,
+    /// Priority for resolution ordering (higher = checked first).
+    pub priority: u32,
+}
+
+impl CatalogMount {
+    /// Convenience constructor for a local catalog mount.
+    pub fn local(path: impl Into<PathBuf>, priority: u32) -> Self {
+        Self {
+            location: CatalogLocation::Local { path: path.into() },
+            priority,
+        }
+    }
+
+    /// Return the local path when the location is `Local`, or `None` otherwise.
+    pub fn local_path(&self) -> Option<&Path> {
+        self.location.local_path()
+    }
+}
+
+// === Catalog ================================================================
 
 /// A mounted catalog instance.
 ///
@@ -136,8 +212,8 @@ impl Catalog {
         // Insert catalog entry
         self.conn
             .execute(
-                "INSERT INTO datasets (dsn, dsorg, storage_path, recfm, lrecl, blksize, subtype, created, modified) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                "INSERT INTO datasets (dsn, dsorg, storage_path, recfm, lrecl, blksize, subtype, scope, created, modified) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
                 rusqlite::params![
                     params.dsn.as_str(),
                     params.dsorg.to_string(),
@@ -146,6 +222,7 @@ impl Catalog {
                     params.lrecl,
                     params.blksize,
                     params.subtype.map(|s| s.to_string()),
+                    params.scope.as_str(),
                     &now,
                     &now,
                 ],
@@ -166,6 +243,7 @@ impl Catalog {
             lrecl: params.lrecl,
             blksize: params.blksize,
             subtype: params.subtype,
+            scope: params.scope,
             created: Some(now.clone()),
             modified: Some(now),
             accessed: None,
@@ -320,7 +398,7 @@ impl Catalog {
     /// Look up a dataset by DSN in this catalog.
     pub fn lookup(&self, dsn: &Dsn) -> Result<DatasetRecord, CatalogError> {
         let row = self.conn.query_row(
-            "SELECT id, dsn, dsorg, storage_path, recfm, lrecl, blksize, subtype, created, modified, accessed \
+            "SELECT id, dsn, dsorg, storage_path, recfm, lrecl, blksize, subtype, scope, created, modified, accessed \
              FROM datasets WHERE dsn = ?1",
             rusqlite::params![dsn.as_str()],
             |row| {
@@ -333,9 +411,10 @@ impl Catalog {
                     row.get::<_, Option<u32>>(5)?,
                     row.get::<_, Option<u32>>(6)?,
                     row.get::<_, Option<String>>(7)?,
-                    row.get::<_, Option<String>>(8)?,
+                    row.get::<_, String>(8)?,
                     row.get::<_, Option<String>>(9)?,
                     row.get::<_, Option<String>>(10)?,
+                    row.get::<_, Option<String>>(11)?,
                 ))
             },
         );
@@ -350,6 +429,7 @@ impl Catalog {
                 lrecl,
                 blksize,
                 subtype_str,
+                scope_str,
                 created,
                 modified,
                 accessed,
@@ -369,6 +449,9 @@ impl Catalog {
                         })?;
                 let recfm = recfm_str.and_then(|s| s.parse::<Recfm>().ok());
                 let subtype = subtype_str.and_then(|s| s.parse::<PartitionedSubtype>().ok());
+                let scope = scope_str
+                    .parse::<CatalogScope>()
+                    .unwrap_or(CatalogScope::User);
 
                 Ok(DatasetRecord {
                     id,
@@ -379,6 +462,7 @@ impl Catalog {
                     lrecl,
                     blksize,
                     subtype,
+                    scope,
                     created,
                     modified,
                     accessed,
@@ -415,7 +499,7 @@ impl Catalog {
     pub fn list_datasets(&self) -> Result<Vec<DatasetRecord>, CatalogError> {
         let mut stmt = self.conn
             .prepare(
-                "SELECT id, dsn, dsorg, storage_path, recfm, lrecl, blksize, subtype, created, modified, accessed \
+                "SELECT id, dsn, dsorg, storage_path, recfm, lrecl, blksize, subtype, scope, created, modified, accessed \
                  FROM datasets ORDER BY dsn"
             )
             .map_err(|e| CatalogError::SqliteError {
@@ -434,9 +518,10 @@ impl Catalog {
                     row.get::<_, Option<u32>>(5)?,
                     row.get::<_, Option<u32>>(6)?,
                     row.get::<_, Option<String>>(7)?,
-                    row.get::<_, Option<String>>(8)?,
+                    row.get::<_, String>(8)?,
                     row.get::<_, Option<String>>(9)?,
                     row.get::<_, Option<String>>(10)?,
+                    row.get::<_, Option<String>>(11)?,
                 ))
             })
             .map_err(|e| CatalogError::SqliteError {
@@ -455,6 +540,7 @@ impl Catalog {
                 lrecl,
                 blksize,
                 subtype_str,
+                scope_str,
                 created,
                 modified,
                 accessed,
@@ -466,6 +552,9 @@ impl Catalog {
                 if let Ok(dsorg) = dsorg_str.parse::<Dsorg>() {
                     let recfm = recfm_str.and_then(|s| s.parse::<Recfm>().ok());
                     let subtype = subtype_str.and_then(|s| s.parse::<PartitionedSubtype>().ok());
+                    let scope = scope_str
+                        .parse::<CatalogScope>()
+                        .unwrap_or(CatalogScope::User);
                     results.push(DatasetRecord {
                         id,
                         dsn,
@@ -475,6 +564,7 @@ impl Catalog {
                         lrecl,
                         blksize,
                         subtype,
+                        scope,
                         created,
                         modified,
                         accessed,
@@ -531,6 +621,22 @@ mod tests {
         (tmp, catalog)
     }
 
+    fn make_ps_params(dsn: &str) -> AllocParams {
+        AllocParams {
+            dsn: Dsn::parse(dsn).unwrap(),
+            dsorg: Dsorg::PS,
+            recfm: None,
+            lrecl: None,
+            blksize: None,
+            dir_blocks: None,
+            gdg_limit: None,
+            gdg_scratch: None,
+            subtype: None,
+            description: None,
+            scope: crate::hierarchy::CatalogScope::User,
+        }
+    }
+
     #[test]
     fn mount_succeeds_on_valid_repo() {
         // Validates: Requirement 5 AC 1, AC 5
@@ -561,6 +667,7 @@ mod tests {
             gdg_scratch: None,
             subtype: None,
             description: None,
+            scope: crate::hierarchy::CatalogScope::User,
         };
         let record = catalog.allocate(params).unwrap();
         assert_eq!(record.dsorg, Dsorg::PS);
@@ -584,6 +691,7 @@ mod tests {
             gdg_scratch: None,
             subtype: Some(PartitionedSubtype::PDS),
             description: None,
+            scope: crate::hierarchy::CatalogScope::User,
         };
         let record = catalog.allocate(params).unwrap();
         assert_eq!(record.dsorg, Dsorg::PO);
@@ -596,18 +704,7 @@ mod tests {
     fn allocate_duplicate_dsn_fails() {
         // Validates: Requirement 7 AC 3
         let (_tmp, catalog) = setup_catalog();
-        let params = AllocParams {
-            dsn: Dsn::parse("TEST.DUP").unwrap(),
-            dsorg: Dsorg::PS,
-            recfm: None,
-            lrecl: None,
-            blksize: None,
-            dir_blocks: None,
-            gdg_limit: None,
-            gdg_scratch: None,
-            subtype: None,
-            description: None,
-        };
+        let params = make_ps_params("TEST.DUP");
         catalog.allocate(params.clone()).unwrap();
         let result = catalog.allocate(params);
         assert!(matches!(result, Err(CatalogError::DuplicateDataset { .. })));
@@ -618,19 +715,7 @@ mod tests {
         // Validates: Requirement 7 AC 4
         let (_tmp, catalog) = setup_catalog();
         let dsn = Dsn::parse("DEL.ME").unwrap();
-        let params = AllocParams {
-            dsn: dsn.clone(),
-            dsorg: Dsorg::PS,
-            recfm: None,
-            lrecl: None,
-            blksize: None,
-            dir_blocks: None,
-            gdg_limit: None,
-            gdg_scratch: None,
-            subtype: None,
-            description: None,
-        };
-        let record = catalog.allocate(params).unwrap();
+        let record = catalog.allocate(make_ps_params("DEL.ME")).unwrap();
         let phys = catalog.repository().root().join(&record.storage_path);
         assert!(phys.exists());
 
@@ -645,19 +730,7 @@ mod tests {
         let (_tmp, catalog) = setup_catalog();
         let old = Dsn::parse("OLD.NAME").unwrap();
         let new = Dsn::parse("NEW.NAME").unwrap();
-        let params = AllocParams {
-            dsn: old.clone(),
-            dsorg: Dsorg::PS,
-            recfm: None,
-            lrecl: None,
-            blksize: None,
-            dir_blocks: None,
-            gdg_limit: None,
-            gdg_scratch: None,
-            subtype: None,
-            description: None,
-        };
-        catalog.allocate(params).unwrap();
+        catalog.allocate(make_ps_params("OLD.NAME")).unwrap();
         catalog.rename(&old, &new).unwrap();
 
         assert!(catalog.lookup(&old).is_err());
@@ -672,5 +745,34 @@ mod tests {
         let dsn = Dsn::parse("NONEXIST.DSN").unwrap();
         let result = catalog.lookup(&dsn);
         assert!(matches!(result, Err(CatalogError::DatasetNotFound { .. })));
+    }
+
+    // === BV.1 CatalogLocation / CatalogMount tests (Requirement 31) =========
+
+    #[test]
+    fn catalog_location_local_path_returns_path() {
+        // Validates: Requirement 31.8
+        let p = PathBuf::from("/some/path");
+        let loc = CatalogLocation::Local { path: p.clone() };
+        assert_eq!(loc.local_path(), Some(p.as_path()));
+    }
+
+    #[test]
+    fn catalog_location_remote_local_path_returns_none() {
+        // Validates: Requirement 31.8
+        let loc = CatalogLocation::Remote {
+            scheme: "mainframe".to_string(),
+            uri: "mf://host/catalog".to_string(),
+        };
+        assert_eq!(loc.local_path(), None);
+    }
+
+    #[test]
+    fn catalog_mount_local_path_delegates_to_location() {
+        // Validates: Requirement 31.3, 31.8
+        let p = PathBuf::from("/catalogs/dev");
+        let mount = CatalogMount::local(p.clone(), 1);
+        assert_eq!(mount.local_path(), Some(p.as_path()));
+        assert_eq!(mount.priority, 1);
     }
 }

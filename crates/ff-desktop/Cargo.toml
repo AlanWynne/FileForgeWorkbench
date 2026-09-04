@@ -29,6 +29,7 @@ ff-keys                 = { path = "../ff-keys" }
 ff-help                 = { path = "../ff-help" }
 ff-session             = { path = "../ff-session" }
 ff-zoom                = { path = "../ff-zoom" }
+ff-dscatalog           = { path = "../ff-dscatalog" }
 ff-toolchain-api       = { path = "../ff-toolchain-api" }
 ff-gcc-toolchain       = { path = "../ff-gcc-toolchain" }
 ff-rust-toolchain      = { path = "../ff-rust-toolchain" }

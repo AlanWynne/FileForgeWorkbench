@@ -1452,6 +1452,7 @@ dependencies = [
  "ff-core",
  "ff-display-line-mapping",
  "ff-document-model",
+ "ff-dscatalog",
  "ff-exclude-show-filter",
  "ff-find-and-replace",
  "ff-gcc-toolchain",

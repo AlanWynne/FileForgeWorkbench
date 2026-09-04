@@ -8,6 +8,7 @@ use std::str::FromStr;
 
 use crate::dsn::Dsn;
 use crate::error::CatalogError;
+use crate::hierarchy::CatalogScope;
 
 /// Dataset organization type.
 ///
@@ -136,15 +137,15 @@ pub struct AllocParams {
     pub dsn: Dsn,
     /// Organization type.
     pub dsorg: Dsorg,
-    /// Record format (optional — defaults applied per dataset type).
+    /// Record format (optional -- defaults applied per dataset type).
     pub recfm: Option<Recfm>,
-    /// Logical record length (optional — defaults applied).
+    /// Logical record length (optional -- defaults applied).
     pub lrecl: Option<u32>,
-    /// Block size (optional — defaults applied).
+    /// Block size (optional -- defaults applied).
     pub blksize: Option<u32>,
     /// Directory blocks (PDS only).
     pub dir_blocks: Option<u32>,
-    /// GDG limit (GDG only, 1–255).
+    /// GDG limit (GDG only, 1-255).
     pub gdg_limit: Option<u8>,
     /// GDG scratch policy (GDG only).
     pub gdg_scratch: Option<bool>,
@@ -152,6 +153,8 @@ pub struct AllocParams {
     pub subtype: Option<PartitionedSubtype>,
     /// Description.
     pub description: Option<String>,
+    /// Catalogue scope (defaults to User).
+    pub scope: CatalogScope,
 }
 
 impl AllocParams {
@@ -247,6 +250,8 @@ pub struct DatasetRecord {
     pub blksize: Option<u32>,
     /// PDS/PDSE subtype (only for PO datasets).
     pub subtype: Option<PartitionedSubtype>,
+    /// Catalogue scope.
+    pub scope: CatalogScope,
     /// Creation timestamp (ISO 8601).
     pub created: Option<String>,
     /// Last modification timestamp (ISO 8601).
@@ -295,6 +300,7 @@ mod tests {
             gdg_scratch: None,
             subtype: None,
             description: None,
+            scope: CatalogScope::User,
         };
         assert!(params.validate().is_err());
 
@@ -309,6 +315,7 @@ mod tests {
             gdg_scratch: None,
             subtype: None,
             description: None,
+            scope: CatalogScope::User,
         };
         assert!(params.validate().is_err());
     }
@@ -327,6 +334,7 @@ mod tests {
             gdg_scratch: None,
             subtype: None,
             description: None,
+            scope: CatalogScope::User,
         };
         assert!(params.validate().is_err());
     }
@@ -345,6 +353,7 @@ mod tests {
             gdg_scratch: None,
             subtype: None,
             description: None,
+            scope: CatalogScope::User,
         };
         assert!(params.validate().is_err());
     }
@@ -363,6 +372,7 @@ mod tests {
             gdg_scratch: None,
             subtype: None,
             description: None,
+            scope: CatalogScope::User,
         };
         assert!(params.validate().is_ok());
     }
@@ -381,6 +391,7 @@ mod tests {
             gdg_scratch: None,
             subtype: None,
             description: None,
+            scope: CatalogScope::User,
         };
         let with_defaults = params.with_defaults();
         assert_eq!(with_defaults.recfm, Some(Recfm::FB));
@@ -402,6 +413,7 @@ mod tests {
             gdg_scratch: None,
             subtype: None,
             description: None,
+            scope: CatalogScope::User,
         };
         let with_defaults = params.with_defaults();
         assert_eq!(with_defaults.recfm, Some(Recfm::V));

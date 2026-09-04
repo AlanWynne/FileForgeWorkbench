@@ -1774,3 +1774,260 @@ tempfile = "3"
 pretty_assertions = "1"
 tokio = { version = "1", features = ["full", "test-util"] }
 ```
+
+---
+
+## CR-NR-016: Mainframe Dataset Architecture (Phase BS)
+
+This section documents the architectural additions introduced by CR-NR-016.
+All decisions here supersede or extend the earlier sections where noted.
+
+### UUID-Based Physical Object Layout
+
+**Decision:** Physical dataset objects are identified by stable UUIDs, not by
+DSN-derived paths. The catalogue is the sole authority mapping logical names
+to physical locators.
+
+**Rationale:** DSN-derived paths require a physical file move on every logical
+rename, create path-safety issues with national characters and OS reserved
+names, and couple the physical layout to the logical naming model. UUID-based
+layout eliminates all three problems.
+
+**Layout (Requirement 20.2):**
+
+```
+workspace/
+  catalog.db                    -- SQLite catalogue (WAL mode)
+  datasets/
+    objects/
+      <uuid>.dat                -- PS or GDG generation content
+      <uuid>/                   -- PDS/PDSE library directory
+        <member-uuid>.dat       -- individual member files
+    staging/                    -- in-progress allocations (staged create)
+  indexed/
+    <uuid>.sqlite               -- per-KSDS/RRDS/ISAM SQLite database
+  recovery/                     -- tombstoned objects pending finalisation
+```
+
+**Key invariants (Requirement 20):**
+
+- UUID assigned at allocation time; stored in catalogue `physical_locator` column.
+- Logical DSN never appears in any physical path component.
+- Rename updates the catalogue entry only -- no filesystem move (Req 20.6).
+- All resolved paths validated against the workspace root before any I/O
+  (path traversal guard, reserved-name guard -- Req 20.7, 28.1, 28.2).
+
+### StorageProvider Abstraction Layer
+
+**Decision:** Physical access is separated from catalogue resolution via a
+`StorageProvider` trait. The catalogue layer calls provider methods using
+opaque locator strings; it never constructs raw filesystem paths itself.
+
+**Trait (Requirement 19.1, 19.2):**
+
+```rust
+pub trait StorageProvider {
+    fn capabilities(&self) -> &[ProviderCapability];
+    fn allocate(&self, workspace_root: &Path, is_container: bool)
+        -> Result<(ObjectId, String), CatalogError>;
+    fn open(&self, workspace_root: &Path, locator: &str)
+        -> Result<PathBuf, CatalogError>;
+    fn stat(&self, workspace_root: &Path, locator: &str)
+        -> Result<ObjectStat, CatalogError>;
+    fn rename(&self, workspace_root: &Path, locator: &str, new_locator: &str)
+        -> Result<(), CatalogError>;
+    fn delete(&self, workspace_root: &Path, locator: &str)
+        -> Result<(), CatalogError>;
+    fn list(&self, workspace_root: &Path, locator: &str)
+        -> Result<Vec<String>, CatalogError>;
+    fn reconcile(&self, workspace_root: &Path, known_locators: &[String])
+        -> Result<Vec<String>, CatalogError>;
+}
+```
+
+**Providers implemented (Phase BS):**
+
+| Provider | Datasets | Location |
+|----------|----------|----------|
+| `NativeFileProvider` | PS, PDS/PDSE, GDG | `datasets/objects/<uuid>.dat` or `<uuid>/` |
+| `SqliteRecordProvider` | VSAM KSDS, RRDS, ISAM | `indexed/<uuid>.sqlite` |
+| `NativeEsdsProvider` | VSAM ESDS | `datasets/objects/<uuid>.dat` (append-framed) |
+
+Provider-specific locators are opaque strings outside the provider and
+catalogue services. UI code never constructs or parses raw provider paths
+(Requirement 19.4).
+
+### Record Codec Separation
+
+**Decision:** Record encoding/decoding is implemented as an independent module
+(`src/codecs/`) with no dependency on SQLite, the filesystem, or egui.
+
+**Rationale:** Codecs must be independently testable (Requirement 17.6) and
+must never be applied silently (Requirement 17.7). Separating them from the
+storage layer enforces this contract structurally.
+
+**Codecs (Requirement 17):**
+
+| Codec | RECFM | Encoding |
+|-------|-------|----------|
+| `FixedCodec(lrecl)` | F, FB | Records packed as N x LRECL bytes; record n at offset n x LRECL |
+| `VariableCodec` | V, VB | Each record preceded by 4-byte RDW (total length including RDW) |
+| `BinaryCodec` | U | Pass-through; bytes preserved exactly |
+| `TextCodec` | -- | Host text lines to/from fixed-length records; import/export only |
+
+**VFS provider wiring (Requirement 16, 28):**
+
+`CatalogVfsProvider::read()` calls `decode_to_lines()` after reading raw bytes.
+`CatalogVfsProvider::write()` calls `encode_from_lines()` before writing.
+Both helpers are synchronous and called before any `await` point to avoid
+`Box<dyn RecordCodec>` Send issues. RECFM dispatch:
+
+- F/FB -> `FixedCodec(lrecl)`, trailing 0x40 padding trimmed on decode
+- V/VB -> `VariableCodec`
+- U/None -> inline binary pass-through (concatenate/single-record)
+
+`TextCodec` is never applied silently during normal dataset I/O.
+
+### VSAM and ISAM Provider Map
+
+**KSDS (Requirement 21):** Dedicated SQLite database per dataset under
+`indexed/<uuid>.sqlite`. Table `VSAM_RECORDS` keyed by `VSAM_KEY TEXT PRIMARY KEY`.
+WAL mode. Parameterised statements only. Alternate indexes as additional
+SQLite indexes or mapping tables within the same database.
+
+**RRDS (Requirement 22):** Dedicated SQLite database. Table `RRDS_RECORDS`
+with `RECNO INTEGER PRIMARY KEY, RECORD_DATA BLOB, ALLOCATED BOOLEAN`.
+Missing rows = unallocated slot; row with empty BLOB = allocated blank record.
+
+**ESDS (Requirement 23):** Append-oriented native file. Records stored in
+length-delimited frames. Byte offset of each appended record is its stable
+address. Updates append replacement frames; deletions append tombstones.
+Sidecar index rebuilt from data file on open; written atomically after changes.
+
+**ISAM (Requirement 24):** Shares `SqliteRecordProvider` infrastructure with
+KSDS. Primary and secondary access paths implemented as SQLite indexes.
+Encapsulated behind `StorageProvider` interface; no ISAM-specific types leak
+to callers.
+
+### Staged Transaction Protocol
+
+**Decision:** Operations that span both SQLite and the filesystem use a staged
+protocol to ensure recoverability after interruption (Requirement 25).
+
+**Staged create (Requirement 25.1):**
+
+```
+1. Stage physical content to datasets/staging/<uuid>.dat
+2. Reserve catalogue entry (status = staging)
+3. Publish: move staging object to datasets/objects/<uuid>.dat
+4. Activate: update catalogue entry status to active
+```
+
+**Staged delete (Requirement 25.2):**
+
+```
+1. Mark catalogue entry pending-deletion
+2. Move/tombstone physical content to recovery/
+3. Finalise: remove catalogue entry
+```
+
+**Recovery (Requirement 25.4):** On startup, `OperationJournal` scans for
+entries in transitional states (staging, reserved, pending-delete, tombstoned)
+and offers deterministic complete-or-rollback for each.
+
+**Concurrency (Requirement 25.5):** SQLite transactions provide atomicity
+within the catalogue. Version tokens on catalogue rows provide optimistic
+locking for concurrent modification detection.
+
+### Catalogue Audit Trail
+
+**Schema addition (Requirement 27.4, 28.6):**
+
+```sql
+CREATE TABLE audit_log (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    action    TEXT    NOT NULL,
+    object_dsn TEXT,
+    outcome   TEXT    NOT NULL,
+    timestamp TEXT    NOT NULL,
+    principal TEXT
+);
+```
+
+Every create, rename, move, delete, restore, import, export, and allocate
+operation inserts a row. The `principal` column records the initiating process
+or user where available.
+
+**Schema migrations (Requirement 27.5):** Schema changes are versioned and
+applied through forward migration scripts on mount when the stored version is
+behind the current version. No schema change is applied without a corresponding
+migration. The `catalog_metadata` table stores `schema_version`.
+
+### Integrity, Backup, and Restore
+
+**Checksums (Requirement 26.1):** Optional SHA-256 (or CRC-32) of physical
+object content stored in the catalogue. Verified on open when enabled.
+
+**Backup (Requirement 26.2, 26.3):** `workspace.backup` captures the catalogue
+database, all `indexed/*.sqlite` files, all `datasets/objects/` content, and
+the operation journal as one unit. The backup manifest records schema version,
+provider configuration, object inventory, and integrity information.
+
+**Restore (Requirement 26.4):** `workspace.restore` supports restoration to
+the original workspace root or remapping to a different root without changing
+logical dataset names.
+
+**Diagnostics (Requirement 26.5):** `workspace.diagnose` reports orphaned
+physical objects (present on disk, absent from catalogue) and dangling
+catalogue entries (in catalogue, missing on disk).
+
+**Reconciliation (Requirement 27.1-27.3):** `workspace.reconcile` compares
+catalogue state with provider state and reports proposed corrective actions
+without automatically applying them.
+
+### Catalogue Hierarchy
+
+**Scoped resolution (Requirement 29):** `CatalogScope` enum (`Master`, `User`)
+carried on catalogue entries. Resolution checks scope before priority order.
+Uniqueness is validated per scope and collation rule. Logical rename updates
+the catalogue entry only; physical relocation is a separate operation.
+
+### Security Hardening
+
+**Path safety (Requirement 28.1, 28.2, 20.7):** All resolved physical paths
+are validated against the workspace root before any filesystem access.
+`NativeFileProvider::resolve_path()` normalises the path (resolving `..`
+components without requiring the path to exist) and rejects traversal outside
+the root. Windows reserved device names (CON, NUL, COM1-9, LPT1-9, etc.) are
+rejected.
+
+**Log scrubbing (Requirement 28.4):** `security::scrub_payload()` and
+`security::scrub_str()` ensure no dataset payload bytes or credentials appear
+in log output. All write-path log calls use scrubbed representations.
+
+**Parameterised SQL (Requirement 28.5):** All SQLite connections use
+parameterised statements. Schema identifiers are controlled constants, never
+interpolated from user input.
+
+### Non-Functional Validation
+
+**Cross-platform (Requirement 30.1):** UUID-based layout uses `std::path::Path`
+abstractions throughout. Physical paths never embed DSN qualifiers, so no
+platform-specific separator translation is needed. Validated by
+`cross_platform_uuid_layout_produces_identical_logical_results`.
+
+**Payload-free listing (Requirement 30.2):** `CatalogVfsProvider::list()`
+returns `VfsEntry` metadata structs without reading dataset payload bytes.
+Validated by `catalogue_listing_does_not_load_payload_bytes`.
+
+**Git compatibility (Requirement 30.7):** PDS/PDSE members are stored as
+individual native files within a native directory. External tools (git, diff,
+grep) can read them directly without workbench involvement. Validated by
+`pds_members_are_plain_files_readable_without_workbench`.
+
+**Data fidelity (Requirement 30.8):** The system does not silently alter bytes,
+encoding, record boundaries, keys, or generation identity. Any conversion
+requires an explicit codec and encoding policy. Validated by
+`data_fidelity_binary_content_survives_round_trip` (all non-newline byte
+values survive RECFM=U round-trip byte-for-byte; newline is the explicit
+record-boundary separator for RECFM=U at the VFS layer).

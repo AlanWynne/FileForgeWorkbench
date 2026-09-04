@@ -83,6 +83,7 @@ impl CatalogRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::catalog::CatalogMount;
     use crate::dataset::{AllocParams, Recfm};
     use crate::repository::Repository;
     use tempfile::TempDir;
@@ -94,7 +95,7 @@ mod tests {
         repo.initialize("LISTTEST").unwrap();
 
         let mut registry = CatalogRegistry::new();
-        registry.mount(&path, 1).unwrap();
+        registry.mount(CatalogMount::local(&path, 1)).unwrap();
 
         // Create some datasets
         let catalog = registry.get_catalog("LISTTEST").unwrap();
@@ -121,6 +122,7 @@ mod tests {
                     gdg_scratch: None,
                     subtype: None,
                     description: None,
+                    scope: crate::hierarchy::CatalogScope::User,
                 })
                 .unwrap();
         }

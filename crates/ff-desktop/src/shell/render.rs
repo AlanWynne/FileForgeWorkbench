@@ -296,43 +296,29 @@ impl WorkbenchShell {
             self.file_explorer_panel_width =
                 self.file_explorer_panel.sidebar_width.clamp(120.0, 600.0);
             if let Some(dsn) = open_path.inner {
-                // Req 16 — for Mainframe/POSIX datasets, resolve physical path from
-                // catalog repository + DSN before dispatching file.open.
-                // Find which catalog owns this DSN by searching the datasets map.
-                let catalog_info = self
+                // Req 16 — for Mainframe datasets, resolve physical path via SQLite.
+                // Search all Mainframe catalogs for the DSN.
+                let mainframe_catalog = self
                     .files_panel
-                    .datasets
-                    .iter()
-                    .find(|(_, datasets)| datasets.iter().any(|d| d.name == dsn))
-                    .and_then(|(cat_name, _)| self.files_panel.registry.get_by_name(cat_name))
-                    .map(|c| (c.catalog_type, c.path.clone()));
-                match catalog_info {
-                    Some((crate::catalog_registry::CatalogType::Mainframe, repo_path)) => {
-                        match crate::files_panel::FilesPanelState::resolve_dataset_path(
-                            &repo_path, &dsn,
-                        ) {
-                            None => {
-                                self.open_error = Some(format!(
-                                    "'{}': catalog has no repository path configured.",
-                                    dsn
-                                ));
-                            }
-                            Some(path) => {
-                                if !path.exists() {
-                                    if let Err(e) =
-                                        crate::files_panel::FilesPanelState::create_dataset_file(
-                                            &path,
-                                        )
-                                    {
-                                        self.open_error = Some(format!(
-                                            "'{}': cannot create dataset file at {}: {e}",
-                                            dsn,
-                                            path.display()
-                                        ));
-                                        return;
-                                    }
-                                }
-                                let path_str = path.to_string_lossy().into_owned();
+                    .registry
+                    .list_by_type(crate::catalog_registry::CatalogType::Mainframe)
+                    .into_iter()
+                    .find(|c| {
+                        if let Ok(parsed) = ff_dscatalog::dsn::Dsn::parse(&dsn) {
+                            self.files_panel
+                                .registry
+                                .resolve_dsn(&c.name, &parsed)
+                                .is_ok()
+                        } else {
+                            false
+                        }
+                    })
+                    .map(|c| c.name.clone());
+                match mainframe_catalog {
+                    Some(catalog_name) => {
+                        match open_mainframe_dsn(&self.files_panel.registry, &catalog_name, &dsn) {
+                            Err(e) => self.open_error = Some(e),
+                            Ok(path_str) => {
                                 let mut p = ff_command::CommandParams::new();
                                 p.insert("path", path_str.as_str());
                                 let _ = self.dispatch.execute_command("file.open", p);
@@ -340,14 +326,6 @@ impl WorkbenchShell {
                         }
                     }
                     None => {
-                        // DSN not found in datasets map — show diagnostic
-                        self.open_error = Some(format!(
-                            "'{}': dataset not found in catalog registry (datasets map has {} entries)",
-                            dsn,
-                            self.files_panel.datasets.values().map(|v| v.len()).sum::<usize>()
-                        ));
-                    }
-                    _ => {
                         // Native path or unknown — dispatch directly
                         let mut p = ff_command::CommandParams::new();
                         p.insert("path", dsn.as_str());
@@ -530,14 +508,6 @@ impl WorkbenchShell {
                             }
                             files_panel::FilesPanelAction::OpenFile(dsn) => {
                                 // Req 16 — resolve physical path from catalog repository + DSN
-                                let catalog_path = self
-                                    .files_panel
-                                    .content
-                                    .selected_catalog
-                                    .as_deref()
-                                    .and_then(|n| self.files_panel.registry.get_by_name(n))
-                                    .map(|c| c.path.clone())
-                                    .unwrap_or_default();
                                 let is_mainframe = self
                                     .files_panel
                                     .content
@@ -550,32 +520,22 @@ impl WorkbenchShell {
                                     })
                                     .unwrap_or(false);
                                 if is_mainframe {
-                                    match crate::files_panel::FilesPanelState::resolve_dataset_path(
-                                        &catalog_path,
+                                    let catalog_name = self
+                                        .files_panel
+                                        .content
+                                        .selected_catalog
+                                        .clone()
+                                        .unwrap_or_default();
+                                    match open_mainframe_dsn(
+                                        &self.files_panel.registry,
+                                        &catalog_name,
                                         &dsn,
                                     ) {
-                                        None => {
-                                            self.open_error = Some(format!(
-                                                "'{}': catalog has no repository path configured.",
-                                                dsn
-                                            ));
-                                        }
-                                        Some(path) => {
-                                            if !path.exists() {
-                                                if let Err(e) = crate::files_panel::FilesPanelState::create_dataset_file(&path) {
-                                                    self.open_error = Some(format!(
-                                                        "'{}': cannot create dataset file at {}: {e}",
-                                                        dsn,
-                                                        path.display()
-                                                    ));
-                                                    return;
-                                                }
-                                            }
-                                            let path_str = path.to_string_lossy().into_owned();
+                                        Err(e) => self.open_error = Some(e),
+                                        Ok(path_str) => {
                                             let mut p = ff_command::CommandParams::new();
                                             p.insert("path", path_str.as_str());
-                                            let _ =
-                                                self.dispatch.execute_command("file.open", p);
+                                            let _ = self.dispatch.execute_command("file.open", p);
                                         }
                                     }
                                 } else {
@@ -617,4 +577,35 @@ impl WorkbenchShell {
             });
         } // end !is_file_explorer
     }
+}
+
+// === Helpers ================================================================
+
+/// Resolve a Mainframe DSN to a physical path via the ff-desktop CatalogRegistry,
+/// creating the file on disk if it does not yet exist.
+///
+/// Returns the path as a `String` on success, or a human-readable error.
+///
+/// Validates: Requirement 16.1, 16.3, 16.4
+fn open_mainframe_dsn(
+    registry: &crate::catalog_registry::CatalogRegistry,
+    catalog_name: &str,
+    dsn: &str,
+) -> Result<String, String> {
+    let parsed = ff_dscatalog::dsn::Dsn::parse(dsn)
+        .map_err(|_| format!("'{}': invalid dataset name", dsn))?;
+    let path = registry
+        .resolve_dsn(catalog_name, &parsed)
+        .map_err(|_| format!("'{}': dataset not found in catalog '{}'", dsn, catalog_name))?;
+    if !path.exists() {
+        crate::files_panel::FilesPanelState::create_dataset_file(&path).map_err(|e| {
+            format!(
+                "'{}': cannot create dataset file at {}: {}",
+                dsn,
+                path.display(),
+                e
+            )
+        })?;
+    }
+    Ok(path.to_string_lossy().into_owned())
 }

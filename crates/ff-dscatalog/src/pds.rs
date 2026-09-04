@@ -253,6 +253,7 @@ mod tests {
             gdg_scratch: None,
             subtype: None,
             description: None,
+            scope: crate::hierarchy::CatalogScope::User,
         };
         catalog.allocate(params).unwrap();
     }
@@ -292,6 +293,7 @@ mod tests {
                 gdg_scratch: None,
                 subtype: None,
                 description: None,
+                scope: crate::hierarchy::CatalogScope::User,
             })
             .unwrap();
 

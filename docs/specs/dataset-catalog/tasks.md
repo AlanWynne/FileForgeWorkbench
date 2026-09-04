@@ -504,110 +504,110 @@ This task plan implements the `ff-dscatalog` crate ? the mainframe dataset files
   - [x] 22.3 Write unit tests for ISAM primary and secondary access
     - Validates: Requirement 24.1, 24.2
 
-- [ ] 23. Staged transaction protocol
-  - [ ] 23.1 Implement `src/transactions.rs` ? define `OperationJournal` that records in-progress operations with transitional states (staging, reserved, published, active, pending-delete, tombstoned)
+- [x] 23. Staged transaction protocol
+  - [x] 23.1 Implement `src/transactions.rs` -- define `OperationJournal` that records in-progress operations with transitional states (staging, reserved, published, active, pending-delete, tombstoned)
     - Validates: Requirement 25.3, 25.4
-  - [ ] 23.2 Implement staged create protocol ? stage to `datasets/staging/`, reserve catalogue entry, publish to `datasets/objects/`, mark active; roll back on any step failure
+  - [x] 23.2 Implement staged create protocol -- stage to `datasets/staging/`, reserve catalogue entry, publish to `datasets/objects/`, mark active; roll back on any step failure
     - Validates: Requirement 25.1
-  - [ ] 23.3 Implement staged delete protocol ? mark pending-deletion in catalogue, tombstone/move physical content to `recovery/`, finalise catalogue state
+  - [x] 23.3 Implement staged delete protocol -- mark pending-deletion in catalogue, tombstone/move physical content to `recovery/`, finalise catalogue state
     - Validates: Requirement 25.2
-  - [ ] 23.4 Implement startup recovery scan ? detect incomplete operations from journal, offer complete-or-rollback for each
+  - [x] 23.4 Implement startup recovery scan -- detect incomplete operations from journal, offer complete-or-rollback for each
     - Validates: Requirement 25.4
-  - [ ] 23.5 Implement version tokens for concurrent modification control ? optimistic locking on catalogue rows
+  - [x] 23.5 Implement version tokens for concurrent modification control -- optimistic locking on catalogue rows
     - Validates: Requirement 25.5
-  - [ ] 23.6 Write unit and integration tests for staged create, staged delete, interrupted-create recovery, interrupted-delete recovery
+  - [x] 23.6 Write unit and integration tests for staged create, staged delete, interrupted-create recovery, interrupted-delete recovery
     - Validates: Requirement 25.1, 25.2, 25.4, 25.6
 
-- [ ] 24. Integrity, backup, and restore
-  - [ ] 24.1 Implement optional checksums ? SHA-256 of physical object content stored in catalogue; verify on open when enabled
+- [x] 24. Integrity, backup, and restore
+  - [x] 24.1 Implement optional checksums -- SHA-256 of physical object content stored in catalogue; verify on open when enabled
     - Validates: Requirement 26.1
-  - [ ] 24.2 Implement `workspace.backup` command ? capture catalogue DB, all `indexed/*.sqlite` files, all `datasets/objects/` content, operation journal; write manifest with schema version, provider config, object inventory, checksums
+  - [x] 24.2 Implement `workspace.backup` command -- capture catalogue DB, all `indexed/*.sqlite` files, all `datasets/objects/` content, operation journal; write manifest with schema version, provider config, object inventory, checksums
     - Validates: Requirement 26.2, 26.3
-  - [ ] 24.3 Implement `workspace.restore` command ? validate manifest, restore to original root or remap to new root without changing logical names
+  - [x] 24.3 Implement `workspace.restore` command -- validate manifest, restore to original root or remap to new root without changing logical names
     - Validates: Requirement 26.4
-  - [ ] 24.4 Implement `workspace.diagnose` command ? report orphaned physical objects and dangling catalogue entries
+  - [x] 24.4 Implement `workspace.diagnose` command -- report orphaned physical objects and dangling catalogue entries
     - Validates: Requirement 26.5
-  - [ ] 24.5 Implement `workspace.reconcile` command ? compare catalogue state with provider state, report proposed corrections without auto-applying
+  - [x] 24.5 Implement `workspace.reconcile` command -- compare catalogue state with provider state, report proposed corrections without auto-applying
     - Validates: Requirement 27.1, 27.2, 27.3
-  - [ ] 24.6 Write unit and integration tests for backup/restore round-trip, diagnose output, reconcile report
+  - [x] 24.6 Write unit and integration tests for backup/restore round-trip, diagnose output, reconcile report
     - Validates: Requirement 26.2, 26.3, 26.4, 26.5
 
-- [ ] 25. Catalogue audit trail and schema migrations
-  - [ ] 25.1 Add `audit_log` table to catalogue schema ? columns: `id`, `action`, `object_dsn`, `outcome`, `timestamp`, `principal`; insert row for every create/rename/move/delete/restore/import/export/allocate
+- [x] 25. Catalogue audit trail and schema migrations
+  - [x] 25.1 Add `audit_log` table to catalogue schema ? columns: `id`, `action`, `object_dsn`, `outcome`, `timestamp`, `principal`; insert row for every create/rename/move/delete/restore/import/export/allocate
     - Validates: Requirement 27.4, 28.6
-  - [ ] 25.2 Implement forward migration scripts ? version the schema; apply migrations on mount when schema version is behind current
+  - [x] 25.2 Implement forward migration scripts ? version the schema; apply migrations on mount when schema version is behind current
     - Validates: Requirement 27.5
-  - [ ] 25.3 Write unit tests for audit log insertion and schema migration application
+  - [x] 25.3 Write unit tests for audit log insertion and schema migration application
     - Validates: Requirement 27.4, 27.5
 
-- [ ] 26. Security hardening
-  - [ ] 26.1 Audit all SQLite operations ? replace any string-interpolated queries with parameterised statements; add `#[deny(clippy::format_collect)]` guard
+- [x] 26. Security hardening
+  - [x] 26.1 Audit all SQLite operations ? replace any string-interpolated queries with parameterised statements; add `#[deny(clippy::format_collect)]` guard
     - Validates: Requirement 28.5
-  - [ ] 26.2 Implement log scrubbing ? ensure no dataset payload bytes or credentials appear in `log_info!`/`log_debug!` output; add test that verifies log output for a write operation contains no payload
+  - [x] 26.2 Implement log scrubbing ? ensure no dataset payload bytes or credentials appear in `log_info!`/`log_debug!` output; add test that verifies log output for a write operation contains no payload
     - Validates: Requirement 28.4
-  - [ ] 26.3 Write property test: path traversal rejection ? generate random strings containing `..`, `//`, Windows reserved names; verify all are rejected by path-safety guard
+  - [x] 26.3 Write property test: path traversal rejection ? generate random strings containing `..`, `//`, Windows reserved names; verify all are rejected by path-safety guard
     - Validates: Requirement 28.1, 28.2, 20.7
 
-- [ ] 27. Master catalogue hierarchy
-  - [ ] 27.1 Implement scoped catalogue hierarchy ? `CatalogScope` enum (Master, User); catalogue entries carry scope; resolution checks scope before priority order
+- [x] 27. Master catalogue hierarchy
+  - [x] 27.1 Implement scoped catalogue hierarchy -- `CatalogScope` enum (Master, User); catalogue entries carry scope; resolution checks scope before priority order
     - Validates: Requirement 29.1, 29.2
-  - [ ] 27.2 Implement logical rename as catalogue-only operation ? update DSN in catalogue without moving physical object
+  - [x] 27.2 Implement logical rename as catalogue-only operation -- update DSN in catalogue without moving physical object
     - Validates: Requirement 29.3, 20.6
-  - [ ] 27.3 Implement uniqueness validation per scope and collation rule
+  - [x] 27.3 Implement uniqueness validation per scope and collation rule
     - Validates: Requirement 29.4
-  - [ ] 27.4 Write unit tests for scoped resolution, logical rename, uniqueness enforcement
+  - [x] 27.4 Write unit tests for scoped resolution, logical rename, uniqueness enforcement
     - Validates: Requirement 29.1, 29.2, 29.3, 29.4
 
-- [ ] 28. Record-oriented editor integration
-  - [ ] 28.1 Wire `FixedCodec` and `VariableCodec` into the dataset open/save path in `CatalogVfsProvider` ? decode on read, encode on write; never apply `TextCodec` silently
+- [x] 28. Record-oriented editor integration
+  - [x] 28.1 Wire `FixedCodec` and `VariableCodec` into the dataset open/save path in `CatalogVfsProvider` ? decode on read, encode on write; never apply `TextCodec` silently
     - Validates: Requirement 16.1, 16.5, 16.6
-  - [ ] 28.2 Wire codec selection from RECFM metadata ? F/FB ? FixedCodec, V/VB ? VariableCodec, U ? BinaryCodec
+  - [x] 28.2 Wire codec selection from RECFM metadata ? F/FB ? FixedCodec, V/VB ? VariableCodec, U ? BinaryCodec
     - Validates: Requirement 16.2, 16.3, 16.4
-  - [ ] 28.3 Write integration tests: open FB dataset, edit a record, save, reopen ? verify bytes match expected fixed-length encoding with no CRLF
+  - [x] 28.3 Write integration tests: open FB dataset, edit a record, save, reopen ? verify bytes match expected fixed-length encoding with no CRLF
     - Validates: Requirement 16.1, 16.2, 16.6
-  - [ ] 28.4 Write integration tests: open VB dataset, edit a record, save, reopen ? verify RDW headers are correct and no CRLF present
+  - [x] 28.4 Write integration tests: open VB dataset, edit a record, save, reopen ? verify RDW headers are correct and no CRLF present
     - Validates: Requirement 16.3, 16.6
 
-- [ ] 29. Non-functional validation
-  - [ ] 29.1 Write cross-platform path tests ? verify UUID-based layout produces identical logical results on Windows, Linux, and macOS path conventions using `std::path::Path` abstractions
+- [x] 29. Non-functional validation
+  - [x] 29.1 Write cross-platform path tests ? verify UUID-based layout produces identical logical results on Windows, Linux, and macOS path conventions using `std::path::Path` abstractions
     - Validates: Requirement 30.1, 20.7
-  - [ ] 29.2 Write performance test ? catalogue listing of 1,000 datasets completes without loading any payload bytes; verify via mock provider that `stat` is called but `read` is not
+  - [x] 29.2 Write performance test ? catalogue listing of 1,000 datasets completes without loading any payload bytes; verify via mock provider that `stat` is called but `read` is not
     - Validates: Requirement 30.2
-  - [ ] 29.3 Write Git-compatibility test ? allocate a PDS, create two members, verify member files are plain text files readable by `git diff` without workbench involvement
+  - [x] 29.3 Write Git-compatibility test ? allocate a PDS, create two members, verify member files are plain text files readable by `git diff` without workbench involvement
     - Validates: Requirement 30.7
-  - [ ] 29.4 Write data-fidelity property test ? generate random binary content, write to a PS dataset, read back, assert byte-for-byte equality with no alteration
+  - [x] 29.4 Write data-fidelity property test ? generate random binary content, write to a PS dataset, read back, assert byte-for-byte equality with no alteration
     - Validates: Requirement 30.8
 
-- [ ] 30. Update design.md for CR-NR-016
-  - [ ] 30.1 Add section to `docs/specs/dataset-catalog/design.md` documenting: UUID-based layout, StorageProvider layer, codec separation, staged transaction protocol, VSAM/ISAM provider map, audit trail schema
+- [x] 30. Update design.md for CR-NR-016
+  - [x] 30.1 Add section to `docs/specs/dataset-catalog/design.md` documenting: UUID-based layout, StorageProvider layer, codec separation, staged transaction protocol, VSAM/ISAM provider map, audit trail schema
     - Validates: All CR-NR-016 requirements (design documentation)
 
 ## Tasks Added by CR-NR-017 -- Catalog Location Discriminant
 
 ---
 
-- [ ] 32. CatalogLocation enum and CatalogMount refactor
-  - [ ] 32.1 Define `CatalogLocation` enum in `src/catalog.rs` (or `src/location.rs`) with
+- [x] 32. CatalogLocation enum and CatalogMount refactor
+  - [x] 32.1 Define `CatalogLocation` enum in `src/catalog.rs` (or `src/location.rs`) with
     `Local { path: PathBuf }` and `Remote { scheme: String, uri: String }` variants;
     mark `#[non_exhaustive]`; derive `Debug`, `Clone`, `PartialEq`, `Eq`.
     - Validates: Requirement 31.1, 31.7
-  - [ ] 32.2 Add `local_path() -> Option<&Path>` method to `CatalogLocation`.
+  - [x] 32.2 Add `local_path() -> Option<&Path>` method to `CatalogLocation`.
     - Validates: Requirement 31.8
-  - [ ] 32.3 Replace `path: PathBuf` field on `CatalogMount` with `location: CatalogLocation`;
+  - [x] 32.3 Replace `path: PathBuf` field on `CatalogMount` with `location: CatalogLocation`;
     add `local_path()` convenience method on `CatalogMount` delegating to `location.local_path()`.
     - Validates: Requirement 31.2, 31.8
-  - [ ] 32.4 Update all `CatalogMount` construction sites to use
+  - [x] 32.4 Update all `CatalogMount` construction sites to use
     `CatalogLocation::Local { path }` -- no behaviour change for local catalogs.
     - Validates: Requirement 31.3
-  - [ ] 32.5 Update `CatalogManager::mount()` to extract the local path via `local_path()`;
+  - [x] 32.5 Update `CatalogManager::mount()` to extract the local path via `local_path()`;
     return `CatalogError::UnsupportedOperation` when location is `Remote`.
     - Validates: Requirement 31.4
-  - [ ] 32.6 Update TOML serialisation/deserialisation in `src/config.rs`:
+  - [x] 32.6 Update TOML serialisation/deserialisation in `src/config.rs`:
     - Add `location: String` field (default `"local"`) and `uri: Option<String>` to
       `MountedCatalogEntry`; deserialise into `CatalogLocation`.
     - WHEN `location` field is absent, default to `Local` for backward compatibility.
     - Validates: Requirement 31.5, 31.6
-  - [ ] 32.7 Write unit tests:
+  - [x] 32.7 Write unit tests:
     - `catalog_location_local_path_returns_path` -- Local variant returns Some(path).
     - `catalog_location_remote_local_path_returns_none` -- Remote variant returns None.
     - `catalog_mount_local_path_delegates_to_location` -- CatalogMount.local_path() works.
@@ -615,5 +615,5 @@ This task plan implements the `ff-dscatalog` crate ? the mainframe dataset files
     - `catalog_mount_toml_missing_location_defaults_to_local` -- absent field defaults to Local.
     - `catalog_mount_remote_returns_unsupported_operation` -- mount with Remote location errors.
     - Validates: Requirement 31.3, 31.4, 31.6, 31.9
-  - [ ] 32.8 Run `cargo test -p ff-dscatalog` -- all existing tests must continue to pass.
+  - [x] 32.8 Run `cargo test -p ff-dscatalog` -- all existing tests must continue to pass.
     - Validates: Requirement 31.9

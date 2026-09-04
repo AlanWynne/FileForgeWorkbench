@@ -22,15 +22,26 @@ pub mod watch;
 
 pub mod registry;
 
+pub mod storage_provider;
+
+pub mod posix_provider;
+
+pub mod transaction;
+
+pub mod workspace;
+
 pub mod vfs;
 
 pub mod subsystem;
 
 pub use error::VfsError;
+pub use posix_provider::PosixNativeProvider;
 pub use provider::{VfsFile, VfsProvider};
 pub use registry::ProviderRegistry;
 pub use search::{fallback_search, SearchOptions, SearchQuery, VfsSearchResult};
+pub use storage_provider::{StorageCapability, StorageLocator, StorageProvider, StorageStat};
 pub use subsystem::VfsSubsystem;
+pub use transaction::{StagedOp, TransactionJournal, TransactionState, VfsTransaction};
 pub use types::{
     CreateOptions, DeleteOptions, OpenOptions, VfsCapabilities, VfsEntry, VfsEntryType,
     VfsMetadata, WatchOptions, WriteMode,
@@ -38,3 +49,7 @@ pub use types::{
 pub use uri::ResourceUri;
 pub use vfs::Vfs;
 pub use watch::{WatchEvent, WatchHandle};
+pub use workspace::{
+    checksum, workspace_backup, workspace_diagnose, workspace_reconcile, workspace_restore,
+    BackupManifest, ManifestEntry, WorkspaceFinding,
+};

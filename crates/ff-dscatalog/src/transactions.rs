@@ -79,8 +79,13 @@ impl ObjectState {
     }
 
     /// Whether this state represents an incomplete (recoverable) operation.
+    ///
+    /// `Tombstoned` IS transitional: the physical content has been moved to
+    /// `recovery/` but the catalogue entry has not yet been finalised.
+    /// Only `Active` is a fully stable terminal state in the journal.
+    /// (Finalised deletes are removed from the journal entirely.)
     pub fn is_transitional(self) -> bool {
-        !matches!(self, Self::Active | Self::Tombstoned)
+        !matches!(self, Self::Active)
     }
 }
 
@@ -215,21 +220,36 @@ impl OperationJournal {
     ///
     /// Validates: Requirement 25.1, 25.5
     pub fn reserve(&self, dsn: &str, expected_version: u64) -> Result<(), CatalogError> {
-        self.transition(dsn, ObjectState::Staging, ObjectState::Reserved, expected_version)
+        self.transition(
+            dsn,
+            ObjectState::Staging,
+            ObjectState::Reserved,
+            expected_version,
+        )
     }
 
     /// Advance a create from Reserved to Published.
     ///
     /// Validates: Requirement 25.1, 25.5
     pub fn publish(&self, dsn: &str, expected_version: u64) -> Result<(), CatalogError> {
-        self.transition(dsn, ObjectState::Reserved, ObjectState::Published, expected_version)
+        self.transition(
+            dsn,
+            ObjectState::Reserved,
+            ObjectState::Published,
+            expected_version,
+        )
     }
 
     /// Advance a create from Published to Active.
     ///
     /// Validates: Requirement 25.1, 25.5, 25.6
     pub fn activate(&self, dsn: &str, expected_version: u64) -> Result<(), CatalogError> {
-        self.transition(dsn, ObjectState::Published, ObjectState::Active, expected_version)
+        self.transition(
+            dsn,
+            ObjectState::Published,
+            ObjectState::Active,
+            expected_version,
+        )
     }
 
     // === Delete protocol (Req 25.2) =======================================
@@ -238,7 +258,12 @@ impl OperationJournal {
     ///
     /// Validates: Requirement 25.2, 25.6
     pub fn begin_delete(&self, dsn: &str, expected_version: u64) -> Result<(), CatalogError> {
-        self.transition(dsn, ObjectState::Active, ObjectState::PendingDelete, expected_version)
+        self.transition(
+            dsn,
+            ObjectState::Active,
+            ObjectState::PendingDelete,
+            expected_version,
+        )
     }
 
     /// Advance a delete from PendingDelete to Tombstoned.
@@ -293,9 +318,7 @@ impl OperationJournal {
     pub fn get(&self, dsn: &str) -> Result<Option<JournalEntry>, CatalogError> {
         self.connection
             .query_row(
-                &format!(
-                    "SELECT DSN, LOCATOR, STATE, VERSION FROM {JOURNAL_TABLE} WHERE DSN = ?1"
-                ),
+                &format!("SELECT DSN, LOCATOR, STATE, VERSION FROM {JOURNAL_TABLE} WHERE DSN = ?1"),
                 params![dsn],
                 row_to_entry,
             )
@@ -304,7 +327,6 @@ impl OperationJournal {
                 operation: "get_journal_entry".to_string(),
                 source,
             })?
-            .map(|r| r)
             .transpose()
     }
 
@@ -316,18 +338,18 @@ impl OperationJournal {
             .connection
             .prepare(&format!(
                 "SELECT DSN, LOCATOR, STATE, VERSION FROM {JOURNAL_TABLE}
-                 WHERE STATE NOT IN ('Active', 'Tombstoned')"
+                 WHERE STATE != 'Active'"
             ))
             .map_err(|source| CatalogError::SqliteError {
                 operation: "incomplete_operations".to_string(),
                 source,
             })?;
-        let rows = stmt
-            .query_map([], row_to_entry)
-            .map_err(|source| CatalogError::SqliteError {
-                operation: "incomplete_operations".to_string(),
-                source,
-            })?;
+        let rows =
+            stmt.query_map([], row_to_entry)
+                .map_err(|source| CatalogError::SqliteError {
+                    operation: "incomplete_operations".to_string(),
+                    source,
+                })?;
         rows.map(|r| {
             r.map_err(|source| CatalogError::SqliteError {
                 operation: "incomplete_operations".to_string(),
@@ -375,10 +397,7 @@ impl OperationJournal {
                 ObjectState::PendingDelete => {
                     // Delete was interrupted before tombstone.
                     // Roll back: restore from recovery directory.
-                    let recovery = self
-                        .workspace_root
-                        .join(RECOVERY_DIR)
-                        .join(&entry.locator);
+                    let recovery = self.workspace_root.join(RECOVERY_DIR).join(&entry.locator);
                     let objects = self
                         .workspace_root
                         .join("datasets")
@@ -462,9 +481,7 @@ impl OperationJournal {
     }
 }
 
-fn row_to_entry(
-    row: &rusqlite::Row<'_>,
-) -> rusqlite::Result<Result<JournalEntry, CatalogError>> {
+fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<Result<JournalEntry, CatalogError>> {
     let dsn: String = row.get(0)?;
     let locator: String = row.get(1)?;
     let state_str: String = row.get(2)?;
@@ -530,7 +547,10 @@ mod tests {
         // Validates: Requirement 25.1
         let (_dir, j) = journal();
         j.begin_create("PAY.NEW", "loc/new").unwrap();
-        assert_eq!(j.get("PAY.NEW").unwrap().unwrap().state, ObjectState::Staging);
+        assert_eq!(
+            j.get("PAY.NEW").unwrap().unwrap().state,
+            ObjectState::Staging
+        );
 
         j.reserve("PAY.NEW", 0).unwrap();
         let e = j.get("PAY.NEW").unwrap().unwrap();

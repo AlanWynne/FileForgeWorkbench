@@ -6,9 +6,16 @@ use eframe::egui;
 
 use crate::catalog_manager_dialog::{self, DeleteChoice, DialogOutcome};
 use crate::catalog_registry::{CatalogRegistry, CatalogType, VirtualCatalog};
-use crate::dataset_alloc_dialog::{self, validate_for_catalog, AllocOutcome};
+use crate::dataset_alloc_dialog::{self, validate_for_catalog, AllocOutcome, Dsorg, Recfm};
 use crate::files_panel;
 use crate::session_manager::SessionManager;
+use ff_dscatalog::{
+    dataset::{
+        AllocParams as DsAllocParams, Dsorg as DsDsorg, PartitionedSubtype, Recfm as DsRecfm,
+    },
+    dsn::Dsn,
+    hierarchy::CatalogScope,
+};
 
 use super::helpers::*;
 use super::FocusStop;
@@ -80,6 +87,57 @@ fn auto_open_node(
     }
 }
 
+/// Convert the UI-layer `AllocParams` to the ff-dscatalog `AllocParams`.
+///
+/// Returns `Err` if the dataset name is not a valid DSN.
+fn ui_params_to_ds_params(
+    params: crate::dataset_alloc_dialog::AllocParams,
+    form: &crate::dataset_alloc_dialog::AllocDatasetForm,
+) -> Result<DsAllocParams, String> {
+    let dsn = Dsn::parse(&params.dataset_name)
+        .map_err(|_| format!("'{}': invalid dataset name", params.dataset_name))?;
+    let dsorg = match params.dsorg {
+        Dsorg::Ps => DsDsorg::PS,
+        Dsorg::Po | Dsorg::Pdse => DsDsorg::PO,
+        Dsorg::Gdg => DsDsorg::GDG,
+    };
+    let subtype = match params.dsorg {
+        Dsorg::Pdse => Some(PartitionedSubtype::PDSE),
+        Dsorg::Po => Some(PartitionedSubtype::PDS),
+        _ => None,
+    };
+    let recfm = match params.recfm {
+        Recfm::Fb => Some(DsRecfm::FB),
+        Recfm::F => Some(DsRecfm::F),
+        Recfm::Vb => Some(DsRecfm::VB),
+        Recfm::V => Some(DsRecfm::V),
+        Recfm::U => Some(DsRecfm::U),
+    };
+    let gdg_limit = params.gdg_limit.map(|n| n as u8);
+    let gdg_scratch = if params.dsorg == Dsorg::Gdg {
+        Some(form.scratch)
+    } else {
+        None
+    };
+    Ok(DsAllocParams {
+        dsn,
+        dsorg,
+        recfm,
+        lrecl: Some(params.lrecl),
+        blksize: if params.blksize == 0 {
+            None
+        } else {
+            Some(params.blksize)
+        },
+        dir_blocks: params.dir_blocks,
+        gdg_limit,
+        gdg_scratch,
+        subtype,
+        description: params.description,
+        scope: CatalogScope::User,
+    })
+}
+
 impl eframe::App for WorkbenchShell {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // One-shot startup
@@ -116,8 +174,6 @@ impl eframe::App for WorkbenchShell {
                 }
                 // Validates: Requirement 2.1, 2.2 (virtual-catalog-manager) — restore catalog registry.
                 self.files_panel.registry = session.load_catalog_registry();
-                // Validates: Requirement 13.1, 13.2 — restore allocated datasets (fix B022).
-                self.files_panel.datasets = session.load_datasets();
                 // Validates: Requirement 14.1–14.5 — create default Home catalog when none exist.
                 let home_path = dirs::home_dir()
                     .or_else(|| std::env::current_dir().ok())
@@ -634,9 +690,6 @@ impl eframe::App for WorkbenchShell {
                     ) {
                         self.open_error = Some(e);
                     } else {
-                        // Req 13.5 — remove datasets for the deleted catalog
-                        self.files_panel
-                            .remove_catalog_datasets(&confirm_clone.name);
                         // Persist immediately so a force-close does not lose the deletion (B020).
                         if let Some(session) = &self.session {
                             session.save_catalog_registry(&self.files_panel.registry);
@@ -648,22 +701,26 @@ impl eframe::App for WorkbenchShell {
             files_panel::FilesDialogState::AllocateDataset(ref mut form) => {
                 let outcome = dataset_alloc_dialog::render(ctx, form);
                 if outcome == AllocOutcome::Confirmed {
-                    // Req 13.2 — persist the allocated dataset into the UI-layer store
-                    // Req 13.2, 5.9 — validate with duplicate check then persist
-                    let existing: Vec<String> = self
-                        .files_panel
-                        .pending_alloc_catalog
-                        .as_deref()
-                        .and_then(|cat| self.files_panel.datasets.get(cat))
-                        .map(|ds| ds.iter().map(|d| d.name.clone()).collect())
-                        .unwrap_or_default();
-                    match validate_for_catalog(form, &existing) {
+                    // Req 13.1 — validate form (duplicate check deferred to SQLite uniqueness)
+                    match validate_for_catalog(form, &[]) {
                         Ok(params) => {
                             if let Some(cat) = self.files_panel.pending_alloc_catalog.take() {
-                                self.files_panel.add_dataset(&cat, params);
-                                // Persist immediately so datasets survive a force-close (B022).
-                                if let Some(session) = &self.session {
-                                    session.save_datasets(&self.files_panel.datasets);
+                                // Convert UI AllocParams -> ff-dscatalog AllocParams
+                                let ds_params = ui_params_to_ds_params(params, form);
+                                match ds_params {
+                                    Ok(p) => {
+                                        if let Err(e) = self.files_panel.registry.allocate(&cat, p)
+                                        {
+                                            form.error = Some(format!("Allocation failed: {e}"));
+                                            self.files_panel.pending_alloc_catalog = Some(cat);
+                                            return;
+                                        }
+                                    }
+                                    Err(e) => {
+                                        form.error = Some(e);
+                                        self.files_panel.pending_alloc_catalog = Some(cat);
+                                        return;
+                                    }
                                 }
                             }
                         }
@@ -691,7 +748,6 @@ impl eframe::App for WorkbenchShell {
                 self.file_explorer_panel.sidebar_width,
             );
             session.save_catalog_registry(&self.files_panel.registry);
-            session.save_datasets(&self.files_panel.datasets);
         }
         self.runtime.block_on(self.app.shutdown());
     }

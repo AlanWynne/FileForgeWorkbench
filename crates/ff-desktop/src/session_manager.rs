@@ -156,81 +156,6 @@ impl SessionManager {
         }
     }
 
-    /// Persist the allocated datasets map to `datasets.toml` next to `session.toml`.
-    ///
-    /// Format: `[[datasets]]` array with `catalog`, `name`, `dsorg`, `recfm`,
-    /// `lrecl`, `blksize`, `description` fields.
-    /// Best-effort — write errors are silently ignored.
-    /// Validates: Requirement 13.1, 13.2 (virtual-catalog-manager) — fix B022
-    pub fn save_datasets(
-        &self,
-        datasets: &std::collections::HashMap<String, Vec<crate::files_panel::AllocatedDataset>>,
-    ) {
-        use std::fmt::Write as _;
-        let mut out = String::new();
-        for (catalog, entries) in datasets {
-            for ds in entries {
-                let _ = writeln!(out, "[[datasets]]");
-                let _ = writeln!(out, "catalog = {:?}", catalog);
-                let _ = writeln!(out, "name = {:?}", ds.name);
-                let _ = writeln!(out, "dsorg = {:?}", ds.dsorg);
-                let _ = writeln!(out, "recfm = {:?}", ds.recfm);
-                let _ = writeln!(out, "lrecl = {}", ds.lrecl);
-                let _ = writeln!(out, "blksize = {}", ds.blksize);
-                let _ = writeln!(out, "description = {:?}", ds.description);
-                let _ = writeln!(out);
-            }
-        }
-        let _ = std::fs::write(self.datasets_path(), out);
-    }
-
-    /// Load the allocated datasets map from `datasets.toml`.
-    ///
-    /// Returns an empty map if the file is absent or unreadable.
-    /// Validates: Requirement 13.1, 13.2 (virtual-catalog-manager) — fix B022
-    pub fn load_datasets(
-        &self,
-    ) -> std::collections::HashMap<String, Vec<crate::files_panel::AllocatedDataset>> {
-        use crate::files_panel::AllocatedDataset;
-        use serde::Deserialize;
-
-        #[derive(Deserialize)]
-        struct Row {
-            catalog: String,
-            name: String,
-            dsorg: String,
-            recfm: String,
-            lrecl: u32,
-            blksize: u32,
-            #[serde(default)]
-            description: String,
-        }
-        #[derive(Deserialize, Default)]
-        struct Root {
-            #[serde(default)]
-            datasets: Vec<Row>,
-        }
-
-        let contents = match std::fs::read_to_string(self.datasets_path()) {
-            Ok(s) => s,
-            Err(_) => return std::collections::HashMap::new(),
-        };
-        let root: Root = toml::from_str(&contents).unwrap_or_default();
-        let mut map: std::collections::HashMap<String, Vec<AllocatedDataset>> =
-            std::collections::HashMap::new();
-        for row in root.datasets {
-            map.entry(row.catalog).or_default().push(AllocatedDataset {
-                name: row.name,
-                dsorg: row.dsorg,
-                recfm: row.recfm,
-                lrecl: row.lrecl,
-                blksize: row.blksize,
-                description: row.description,
-            });
-        }
-        map
-    }
-
     /// Path to `catalogs.toml` — sibling of `session.toml`.
     fn catalogs_path(&self) -> std::path::PathBuf {
         let session_path = self.session_file.path();
@@ -238,15 +163,6 @@ impl SessionManager {
             .parent()
             .unwrap_or_else(|| std::path::Path::new("."))
             .join("catalogs.toml")
-    }
-
-    /// Path to `datasets.toml` — sibling of `session.toml`.
-    fn datasets_path(&self) -> std::path::PathBuf {
-        let session_path = self.session_file.path();
-        session_path
-            .parent()
-            .unwrap_or_else(|| std::path::Path::new("."))
-            .join("datasets.toml")
     }
 
     /// Extract the ordered list of file URIs from a `SessionState`.

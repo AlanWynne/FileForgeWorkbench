@@ -7,13 +7,11 @@
 
 #![allow(dead_code)]
 
-use std::collections::HashMap;
-
 use eframe::egui;
 
 use crate::catalog_manager_dialog::{DeleteCatalogConfirm, EditCatalogForm, NewCatalogForm};
 use crate::catalog_registry::{CatalogRegistry, CatalogType, VirtualCatalog};
-use crate::dataset_alloc_dialog::{AllocDatasetForm, AllocParams, Dsorg};
+use crate::dataset_alloc_dialog::AllocDatasetForm;
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -245,25 +243,6 @@ impl ContentAreaState {
     }
 }
 
-/// A dataset allocated within a catalog, stored in the UI-layer dataset map.
-///
-/// Validates: Requirement 13.1
-#[derive(Debug, Clone)]
-pub struct AllocatedDataset {
-    /// Dataset name (DSN string).
-    pub name: String,
-    /// Dataset organisation label: "PS", "PO", "PDSE", "GDG".
-    pub dsorg: String,
-    /// Record format label: "FB", "F", "VB", "V", "U".
-    pub recfm: String,
-    /// Logical record length.
-    pub lrecl: u32,
-    /// Block size.
-    pub blksize: u32,
-    /// Optional description.
-    pub description: String,
-}
-
 /// Persistent state for the Files Panel tab.
 pub struct FilesPanelState {
     /// Catalog registry — source of truth for all virtual catalogs.
@@ -280,10 +259,6 @@ pub struct FilesPanelState {
     ///
     /// Validates: Requirement 10.1–10.6
     pub content: ContentAreaState,
-    /// Allocated datasets keyed by catalog name.
-    ///
-    /// Validates: Requirement 13.1
-    pub datasets: HashMap<String, Vec<AllocatedDataset>>,
     /// Catalog name that opened the current Allocate Dataset dialog.
     ///
     /// Validates: Requirement 13.2
@@ -310,75 +285,10 @@ impl FilesPanelState {
             command: String::new(),
             dialog: FilesDialogState::None,
             content: ContentAreaState::default(),
-            datasets: HashMap::new(),
             pending_alloc_catalog: None,
             tree_focus_requested: false,
             focused_catalog: None,
         }
-    }
-
-    /// Insert an allocated dataset under the given catalog name.
-    ///
-    /// Validates: Requirement 13.2
-    pub fn add_dataset(&mut self, catalog_name: &str, params: AllocParams) {
-        let dsorg = match params.dsorg {
-            Dsorg::Ps => "PS",
-            Dsorg::Po => "PO",
-            Dsorg::Pdse => "PDSE",
-            Dsorg::Gdg => "GDG",
-        };
-        let recfm = match params.recfm {
-            crate::dataset_alloc_dialog::Recfm::Fb => "FB",
-            crate::dataset_alloc_dialog::Recfm::F => "F",
-            crate::dataset_alloc_dialog::Recfm::Vb => "VB",
-            crate::dataset_alloc_dialog::Recfm::V => "V",
-            crate::dataset_alloc_dialog::Recfm::U => "U",
-        };
-        let entry = AllocatedDataset {
-            name: params.dataset_name,
-            dsorg: dsorg.to_string(),
-            recfm: recfm.to_string(),
-            lrecl: params.lrecl,
-            blksize: params.blksize,
-            description: params.description.unwrap_or_default(),
-        };
-        self.datasets
-            .entry(catalog_name.to_string())
-            .or_default()
-            .push(entry);
-    }
-
-    /// Populate `content.entries` from the datasets stored for `catalog_name`.
-    ///
-    /// Validates: Requirement 13.3
-    pub fn load_entries_from_datasets(&mut self, catalog_name: &str) {
-        let entries = self
-            .datasets
-            .get(catalog_name)
-            .map(|datasets| {
-                datasets
-                    .iter()
-                    .map(|d| {
-                        let is_container = d.dsorg == "PO" || d.dsorg == "PDSE" || d.dsorg == "GDG";
-                        ContentEntry {
-                            name: d.name.clone(),
-                            entry_type: d.dsorg.clone(),
-                            size: String::new(),
-                            modified: String::new(),
-                            is_container,
-                        }
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-        self.content.entries = entries;
-    }
-
-    /// Remove all datasets stored under `catalog_name`.
-    ///
-    /// Validates: Requirement 13.5
-    pub fn remove_catalog_datasets(&mut self, catalog_name: &str) {
-        self.datasets.remove(catalog_name);
     }
 
     /// Create a Mainframe dataset file on disk, including any missing parent directories.
@@ -397,14 +307,6 @@ impl FilesPanelState {
 
     /// Resolve a dataset's physical file path from the catalog's repository path and the DSN.
     ///
-    /// Maps `PAYROLL.EMPLOYEE` in repo `C:/catalogs/payroll` to
-    /// `C:/catalogs/payroll/PAYROLL/EMPLOYEE` by splitting the DSN on `.` and
-    /// joining as path components.
-    ///
-    /// The repository path is normalised to the OS path separator before joining
-    /// so that mixed-separator paths (e.g. `mainframe/Payroll` on Windows) do
-    /// not produce invalid paths.
-    ///
     /// Returns `None` when either argument is empty.
     ///
     /// Validates: Requirement 16.1, 16.4, 16.5
@@ -412,12 +314,91 @@ impl FilesPanelState {
         if repository_path.is_empty() || dsn.is_empty() {
             return None;
         }
-        // Normalise separators: replace `/` with the OS separator on Windows so
-        // that a catalog path stored with forward slashes (e.g. "mainframe/Payroll")
-        // does not produce a mixed-separator path when joined with DSN components.
         let normalised = repository_path.replace('/', std::path::MAIN_SEPARATOR_STR);
         let rel: std::path::PathBuf = dsn.split('.').collect();
         Some(std::path::Path::new(&normalised).join(rel))
+    }
+
+    /// Resolve a DSN via the SQLite catalog and open or create the physical file.
+    ///
+    /// Searches all mounted Mainframe catalogs in the registry for the DSN.
+    /// On success returns the physical `PathBuf` (creating the file if absent).
+    /// On failure returns a human-readable error string.
+    ///
+    /// Validates: Requirement 16.1, 16.3, 16.4, 16.6
+    pub fn resolve_and_open_dataset(
+        registry: &ff_dscatalog::catalog_registry::CatalogRegistry,
+        dsn: &str,
+    ) -> Result<std::path::PathBuf, String> {
+        let parsed = ff_dscatalog::dsn::Dsn::parse(dsn)
+            .map_err(|_| format!("'{}': invalid dataset name", dsn))?;
+        match registry.resolve(&parsed) {
+            Ok(result) => {
+                let path = result.physical_path;
+                if !path.exists() {
+                    Self::create_dataset_file(&path).map_err(|e| {
+                        format!("'{}': cannot create dataset file at {:?}: {}", dsn, path, e)
+                    })?;
+                }
+                Ok(path)
+            }
+            Err(_) => Err(format!(
+                "'{}': dataset not found in any mounted catalog",
+                dsn
+            )),
+        }
+    }
+
+    /// Populate `content.entries` from the SQLite catalog for `catalog_name`.
+    ///
+    /// Replaces `load_entries_from_datasets` for Mainframe catalogs.
+    /// Non-Mainframe catalogs are unaffected.
+    ///
+    /// Validates: Requirement 13.2
+    pub fn load_entries_from_catalog(
+        &mut self,
+        catalog_name: &str,
+        registry: &ff_dscatalog::catalog_registry::CatalogRegistry,
+    ) {
+        // Try the passed-in ff-dscatalog registry first (used in tests and
+        // in the wired-up shell path once BU.4 is complete).
+        let records = if let Some(catalog) = registry.get_catalog(catalog_name) {
+            catalog.list_datasets().unwrap_or_default()
+        } else {
+            // Fall back: look up the repository path from self.registry and
+            // open the catalog directly.
+            let repo_path = match self
+                .registry
+                .list_by_type(crate::catalog_registry::CatalogType::Mainframe)
+                .iter()
+                .find(|c| c.name == catalog_name)
+                .map(|c| c.path.clone())
+            {
+                Some(p) => p,
+                None => return,
+            };
+            match ff_dscatalog::catalog::Catalog::mount(std::path::Path::new(&repo_path), 1) {
+                Ok(c) => c.list_datasets().unwrap_or_default(),
+                Err(_) => return,
+            }
+        };
+
+        self.content.entries = records
+            .into_iter()
+            .map(|d| {
+                let is_container = matches!(
+                    d.dsorg,
+                    ff_dscatalog::dataset::Dsorg::PO | ff_dscatalog::dataset::Dsorg::GDG
+                );
+                crate::files_panel::ContentEntry {
+                    name: d.dsn.as_str().to_string(),
+                    entry_type: d.dsorg.to_string(),
+                    size: String::new(),
+                    modified: d.modified.unwrap_or_default(),
+                    is_container,
+                }
+            })
+            .collect();
     }
 
     /// Returns the platform label appended to the Native section header.
@@ -730,9 +711,38 @@ fn render_content_area(ui: &mut egui::Ui, state: &mut FilesPanelState) -> Option
         return None;
     }
 
-    // Req 13.3 — populate entries from the dataset store for the selected catalog
+    // Req 13.2 — populate entries from SQLite for Mainframe catalogs;
+    // fall back to load_entries_from_datasets for non-Mainframe catalogs.
     if let Some(cat) = state.content.selected_catalog.clone() {
-        state.load_entries_from_datasets(&cat);
+        let is_mainframe = state
+            .registry
+            .get_by_name(&cat)
+            .map(|c| c.catalog_type == CatalogType::Mainframe)
+            .unwrap_or(false);
+        if is_mainframe {
+            let entries = state
+                .registry
+                .list_datasets(&cat)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|d| {
+                    let is_container = matches!(
+                        d.dsorg,
+                        ff_dscatalog::dataset::Dsorg::PO | ff_dscatalog::dataset::Dsorg::GDG
+                    );
+                    ContentEntry {
+                        name: d.dsn.as_str().to_string(),
+                        entry_type: d.dsorg.to_string(),
+                        size: String::new(),
+                        modified: d.modified.unwrap_or_default(),
+                        is_container,
+                    }
+                })
+                .collect();
+            state.content.entries = entries;
+        } else {
+            state.content.entries.clear();
+        }
     }
 
     // ── Breadcrumb bar — Req 10.5 ─────────────────────────────────────────
@@ -1831,77 +1841,6 @@ mod tests {
         }
     }
 
-    /// Validates: Requirement 13.1 — FilesPanelState has a datasets map.
-    #[test]
-    fn files_panel_state_has_datasets_map() {
-        // Validates: Requirement 13.1
-        let state = FilesPanelState::new();
-        assert!(state.datasets.is_empty());
-    }
-
-    /// Validates: Requirement 13.2 — add_dataset inserts AllocatedDataset under the catalog name.
-    #[test]
-    fn add_dataset_inserts_into_map_under_catalog_name() {
-        // Validates: Requirement 13.2
-        let mut state = FilesPanelState::new();
-        let params = make_alloc_params("DEV.TEST.PSFB80", crate::dataset_alloc_dialog::Dsorg::Ps);
-        state.add_dataset("development", params);
-        let datasets = state
-            .datasets
-            .get("development")
-            .expect("catalog entry must exist");
-        assert_eq!(datasets.len(), 1);
-        assert_eq!(datasets[0].name, "DEV.TEST.PSFB80");
-        assert_eq!(datasets[0].dsorg, "PS");
-    }
-
-    /// Validates: Requirement 13.3 — load_entries_from_datasets populates content area entries.
-    #[test]
-    fn load_entries_populates_content_area_from_datasets() {
-        // Validates: Requirement 13.3
-        let mut state = FilesPanelState::new();
-        state.add_dataset(
-            "development",
-            make_alloc_params("DEV.SEQ", crate::dataset_alloc_dialog::Dsorg::Ps),
-        );
-        state.add_dataset(
-            "development",
-            make_alloc_params("DEV.LIB", crate::dataset_alloc_dialog::Dsorg::Po),
-        );
-        state.load_entries_from_datasets("development");
-        assert_eq!(state.content.entries.len(), 2);
-        let seq = state
-            .content
-            .entries
-            .iter()
-            .find(|e| e.name == "DEV.SEQ")
-            .expect("SEQ must be present");
-        assert_eq!(seq.entry_type, "PS");
-        assert!(!seq.is_container);
-        let lib = state
-            .content
-            .entries
-            .iter()
-            .find(|e| e.name == "DEV.LIB")
-            .expect("LIB must be present");
-        assert_eq!(lib.entry_type, "PO");
-        assert!(lib.is_container);
-    }
-
-    /// Validates: Requirement 13.5 — removing a catalog also removes its datasets.
-    #[test]
-    fn delete_catalog_removes_its_datasets() {
-        // Validates: Requirement 13.5
-        let mut state = FilesPanelState::new();
-        state.add_dataset(
-            "development",
-            make_alloc_params("DEV.TEST", crate::dataset_alloc_dialog::Dsorg::Ps),
-        );
-        assert!(state.datasets.contains_key("development"));
-        state.remove_catalog_datasets("development");
-        assert!(!state.datasets.contains_key("development"));
-    }
-
     // ── Phase BJ: Dataset path resolution (Req 16) ───────────────────────
 
     /// Validates: Requirement 16.1, 16.5 — DSN qualifiers become path components.
@@ -1962,7 +1901,7 @@ mod tests {
         assert!(target.is_file(), "must be a regular file");
     }
 
-    /// Validates: Requirement 16.3 — create_dataset_file creates missing parent directories.
+    /// Validates: Requirement 16.3 -- create_dataset_file creates missing parent directories.
     #[test]
     fn opening_missing_dataset_creates_parent_dirs() {
         // Validates: Requirement 16.3
@@ -1973,5 +1912,227 @@ mod tests {
         FilesPanelState::create_dataset_file(&target).expect("create must succeed");
         assert!(target.exists());
         assert!(target.parent().unwrap().is_dir());
+    }
+
+    // === BU.2 failing tests (Tasks 19.1-19.3) ================================
+    // These tests call resolve_and_open_dataset() which does not yet exist.
+    // They MUST fail (red) before implementation.
+
+    /// Validates: Requirement 16.1 -- resolve_and_open_dataset returns path for known DSN.
+    #[test]
+    fn resolve_and_open_dataset_returns_path_for_known_dsn() {
+        // Validates: Requirement 16.1
+        use ff_dscatalog::{
+            catalog::CatalogMount,
+            dataset::{AllocParams as DsAllocParams, Dsorg as DsDsorg},
+            hierarchy::CatalogScope,
+            repository::Repository,
+        };
+        use tempfile::TempDir;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let repo_path = tmp.path().join("PAYROLL");
+        Repository::new(&repo_path)
+            .initialize("PAYROLL")
+            .expect("init");
+
+        let mut ds_reg = ff_dscatalog::catalog_registry::CatalogRegistry::new();
+        ds_reg
+            .mount(CatalogMount::local(&repo_path, 1))
+            .expect("mount");
+        ds_reg
+            .get_catalog("PAYROLL")
+            .unwrap()
+            .allocate(DsAllocParams {
+                dsn: ff_dscatalog::dsn::Dsn::parse("PAYROLL.INPUT").unwrap(),
+                dsorg: DsDsorg::PS,
+                recfm: None,
+                lrecl: None,
+                blksize: None,
+                dir_blocks: None,
+                gdg_limit: None,
+                gdg_scratch: None,
+                subtype: None,
+                description: None,
+                scope: CatalogScope::User,
+            })
+            .expect("allocate");
+
+        let result = FilesPanelState::resolve_and_open_dataset(&ds_reg, "PAYROLL.INPUT");
+        assert!(result.is_ok(), "expected Ok path, got: {:?}", result);
+    }
+
+    /// Validates: Requirement 16.4 -- resolve_and_open_dataset returns Err for unknown DSN.
+    #[test]
+    fn resolve_and_open_dataset_returns_err_for_unknown_dsn() {
+        // Validates: Requirement 16.4
+        let ds_reg = ff_dscatalog::catalog_registry::CatalogRegistry::new();
+        let result = FilesPanelState::resolve_and_open_dataset(&ds_reg, "NOSUCH.DATASET");
+        assert!(result.is_err(), "expected Err for unknown DSN");
+        let msg = result.unwrap_err();
+        assert!(
+            msg.contains("not found") || msg.contains("NOSUCH"),
+            "error message should mention not found or DSN: {msg}"
+        );
+    }
+
+    /// Validates: Requirement 16.3 -- resolve_and_open_dataset creates file when missing on disk.
+    #[test]
+    fn resolve_and_open_dataset_creates_file_when_missing() {
+        // Validates: Requirement 16.3
+        use ff_dscatalog::{
+            catalog::CatalogMount,
+            dataset::{AllocParams as DsAllocParams, Dsorg as DsDsorg},
+            hierarchy::CatalogScope,
+            repository::Repository,
+        };
+        use tempfile::TempDir;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let repo_path = tmp.path().join("NEWCAT");
+        Repository::new(&repo_path)
+            .initialize("NEWCAT")
+            .expect("init");
+
+        let mut ds_reg = ff_dscatalog::catalog_registry::CatalogRegistry::new();
+        ds_reg
+            .mount(CatalogMount::local(&repo_path, 1))
+            .expect("mount");
+        let record = ds_reg
+            .get_catalog("NEWCAT")
+            .unwrap()
+            .allocate(DsAllocParams {
+                dsn: ff_dscatalog::dsn::Dsn::parse("NEW.DATA").unwrap(),
+                dsorg: DsDsorg::PS,
+                recfm: None,
+                lrecl: None,
+                blksize: None,
+                dir_blocks: None,
+                gdg_limit: None,
+                gdg_scratch: None,
+                subtype: None,
+                description: None,
+                scope: CatalogScope::User,
+            })
+            .expect("allocate");
+        // Delete the physical file to simulate missing-on-disk
+        let phys = repo_path.join(&record.storage_path);
+        if phys.exists() {
+            std::fs::remove_file(&phys).unwrap();
+        }
+
+        let result = FilesPanelState::resolve_and_open_dataset(&ds_reg, "NEW.DATA");
+        assert!(
+            result.is_ok(),
+            "expected Ok after file creation: {:?}",
+            result
+        );
+        let path = result.unwrap();
+        assert!(path.exists(), "file must have been created at {path:?}");
+    }
+
+    // === BU.2 failing tests (Tasks 20.1-20.3) ================================
+    // These tests call load_entries_from_catalog() which does not yet exist.
+    // They MUST fail (red) before implementation.
+
+    /// Validates: Requirement 13.2 -- Files Panel content area populated from SQLite.
+    #[test]
+    fn files_panel_content_area_populated_from_sqlite() {
+        // Validates: Requirement 13.2
+        use ff_dscatalog::{
+            catalog::CatalogMount,
+            dataset::{AllocParams as DsAllocParams, Dsorg as DsDsorg},
+            hierarchy::CatalogScope,
+            repository::Repository,
+        };
+        use tempfile::TempDir;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let repo_path = tmp.path().join("MYCAT");
+        Repository::new(&repo_path)
+            .initialize("MYCAT")
+            .expect("init");
+
+        let mut ds_reg = ff_dscatalog::catalog_registry::CatalogRegistry::new();
+        ds_reg
+            .mount(CatalogMount::local(&repo_path, 1))
+            .expect("mount");
+        for (dsn, dsorg) in &[("MYCAT.SEQ", DsDsorg::PS), ("MYCAT.LIB", DsDsorg::PO)] {
+            ds_reg
+                .get_catalog("MYCAT")
+                .unwrap()
+                .allocate(DsAllocParams {
+                    dsn: ff_dscatalog::dsn::Dsn::parse(dsn).unwrap(),
+                    dsorg: *dsorg,
+                    recfm: None,
+                    lrecl: None,
+                    blksize: None,
+                    dir_blocks: None,
+                    gdg_limit: None,
+                    gdg_scratch: None,
+                    subtype: None,
+                    description: None,
+                    scope: CatalogScope::User,
+                })
+                .expect("allocate");
+        }
+
+        let mut state = FilesPanelState::new();
+        state.load_entries_from_catalog("MYCAT", &ds_reg);
+        assert_eq!(state.content.entries.len(), 2);
+        let names: Vec<&str> = state
+            .content
+            .entries
+            .iter()
+            .map(|e| e.name.as_str())
+            .collect();
+        assert!(names.contains(&"MYCAT.SEQ"));
+        assert!(names.contains(&"MYCAT.LIB"));
+    }
+
+    /// Validates: Requirement 13.4 -- alloc confirm uses registry, not datasets HashMap.
+    #[test]
+    fn alloc_confirm_uses_registry_not_hashmap() {
+        // Validates: Requirement 13.1, 13.4
+        use ff_dscatalog::{
+            catalog::CatalogMount,
+            dataset::{AllocParams as DsAllocParams, Dsorg as DsDsorg},
+            hierarchy::CatalogScope,
+            repository::Repository,
+        };
+        use tempfile::TempDir;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let repo_path = tmp.path().join("ALLOC");
+        Repository::new(&repo_path)
+            .initialize("ALLOC")
+            .expect("init");
+
+        let mut ds_reg = ff_dscatalog::catalog_registry::CatalogRegistry::new();
+        ds_reg
+            .mount(CatalogMount::local(&repo_path, 1))
+            .expect("mount");
+        ds_reg
+            .get_catalog("ALLOC")
+            .unwrap()
+            .allocate(DsAllocParams {
+                dsn: ff_dscatalog::dsn::Dsn::parse("ALLOC.DATA").unwrap(),
+                dsorg: DsDsorg::PS,
+                recfm: None,
+                lrecl: None,
+                blksize: None,
+                dir_blocks: None,
+                gdg_limit: None,
+                gdg_scratch: None,
+                subtype: None,
+                description: None,
+                scope: CatalogScope::User,
+            })
+            .expect("allocate");
+
+        let mut state = FilesPanelState::new();
+        state.load_entries_from_catalog("ALLOC", &ds_reg);
+        assert_eq!(state.content.entries.len(), 1);
+        // datasets HashMap no longer exists -- SQLite is the sole store
     }
 }

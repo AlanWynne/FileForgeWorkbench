@@ -11,19 +11,22 @@ use std::sync::{Arc, RwLock};
 
 use crate::error::VfsError;
 use crate::provider::VfsProvider;
+use crate::storage_provider::StorageProvider;
 
-/// Thread-safe registry of [`VfsProvider`] instances, indexed by scheme.
+/// Thread-safe registry of [`VfsProvider`] and [`StorageProvider`] instances.
 ///
 /// Supports runtime registration, deregistration, and discovery.
 /// Uses `std::sync::RwLock` (not `tokio::sync::RwLock`) because:
-/// 1. Registry operations are synchronous — no async work inside critical sections.
+/// 1. Registry operations are synchronous -- no async work inside critical sections.
 /// 2. Critical sections are very short (just `HashMap` operations).
 /// 3. We never hold the lock across an `await` point.
 ///
-/// Addresses: Requirement 3, criteria 1–10
+/// Addresses: Requirement 3, criteria 1-10; Requirement 9 AC 1 (StorageProvider registration)
 pub struct ProviderRegistry {
-    /// Provider storage keyed by scheme identifier.
+    /// VfsProvider storage keyed by scheme identifier.
     providers: Arc<RwLock<HashMap<String, Arc<dyn VfsProvider>>>>,
+    /// StorageProvider storage keyed by scheme identifier.
+    storage_providers: Arc<RwLock<HashMap<String, Arc<dyn StorageProvider>>>>,
     /// The default provider scheme (typically "local").
     default_scheme: Arc<RwLock<String>>,
 }
@@ -41,6 +44,7 @@ impl ProviderRegistry {
     pub fn new() -> Self {
         Self {
             providers: Arc::new(RwLock::new(HashMap::new())),
+            storage_providers: Arc::new(RwLock::new(HashMap::new())),
             default_scheme: Arc::new(RwLock::new("local".to_string())),
         }
     }
@@ -153,6 +157,74 @@ impl ProviderRegistry {
     pub fn has_default_provider(&self) -> bool {
         let scheme = self.default_scheme();
         self.get(&scheme).is_some()
+    }
+
+    /// Registers a `StorageProvider` under the given scheme identifier.
+    ///
+    /// Returns `VfsError::DuplicateScheme` if a storage provider with the same
+    /// scheme is already registered.
+    ///
+    /// Addresses: Requirement 9 AC 1
+    pub fn register_storage(
+        &self,
+        scheme: impl Into<String>,
+        provider: Arc<dyn StorageProvider>,
+    ) -> Result<(), VfsError> {
+        let scheme = scheme.into();
+        let mut map = self
+            .storage_providers
+            .write()
+            .expect("storage_providers lock poisoned");
+        if map.contains_key(&scheme) {
+            return Err(VfsError::DuplicateScheme {
+                scheme: scheme.clone(),
+            });
+        }
+        map.insert(scheme, provider);
+        Ok(())
+    }
+
+    /// Removes the `StorageProvider` registered under `scheme`.
+    ///
+    /// Returns `VfsError::ProviderUnavailable` if no storage provider is registered
+    /// for the given scheme.
+    ///
+    /// Addresses: Requirement 9 AC 1
+    pub fn deregister_storage(&self, scheme: &str) -> Result<Arc<dyn StorageProvider>, VfsError> {
+        let mut map = self
+            .storage_providers
+            .write()
+            .expect("storage_providers lock poisoned");
+        map.remove(scheme)
+            .ok_or_else(|| VfsError::ProviderUnavailable {
+                scheme: scheme.to_string(),
+            })
+    }
+
+    /// Looks up a `StorageProvider` by scheme.
+    ///
+    /// Returns `None` if no storage provider is registered for the given scheme.
+    ///
+    /// Addresses: Requirement 9 AC 1
+    pub fn get_storage(&self, scheme: &str) -> Option<Arc<dyn StorageProvider>> {
+        let map = self
+            .storage_providers
+            .read()
+            .expect("storage_providers lock poisoned");
+        map.get(scheme).cloned()
+    }
+
+    /// Returns a sorted list of all registered storage provider scheme names.
+    ///
+    /// Addresses: Requirement 9 AC 1
+    pub fn list_storage_schemes(&self) -> Vec<String> {
+        let map = self
+            .storage_providers
+            .read()
+            .expect("storage_providers lock poisoned");
+        let mut schemes: Vec<String> = map.keys().cloned().collect();
+        schemes.sort();
+        schemes
     }
 }
 

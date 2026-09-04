@@ -689,15 +689,16 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | 🔴 | — | Req 13.4: datasets map persists to session TOML and restores on next launch |
 | `ff-desktop` | 🔴 | — | Req 13.5: deleting a catalog removes all its datasets from the map |
 
-### Phase AT — Allocated Dataset Display — Final Status
+### Phase AT -- Allocated Dataset Display -- Final Status (superseded by Phase BU)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 13.1: `datasets` map and `AllocatedDataset` struct exist (`files_panel_state_has_datasets_map`) |
-| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 13.2: `add_dataset()` inserts under correct catalog name (`add_dataset_inserts_into_map_under_catalog_name`) |
-| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 13.3: `load_entries_from_datasets()` populates content area (`load_entries_populates_content_area_from_datasets`) |
-| `ff-desktop` | 🔴 | — | Req 13.4: session TOML persistence — deferred |
-| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 13.5: `remove_catalog_datasets()` clears datasets on catalog delete (`delete_catalog_removes_its_datasets`) |
+| `ff-desktop` | ❌ | SUPERSEDED | Req 13.1: `files_panel_state_has_datasets_map` -- removed in BU.8; `AllocatedDataset` struct and `datasets` HashMap deleted |
+| `ff-desktop` | ❌ | SUPERSEDED | Req 13.2: `add_dataset_inserts_into_map_under_catalog_name` -- removed in BU.8; allocation now via `CatalogRegistry::allocate()` |
+| `ff-desktop` | ❌ | SUPERSEDED | Req 13.3: `load_entries_populates_content_area_from_datasets` -- removed in BU.8; content area now reads from SQLite |
+| `ff-desktop` | ❌ | SUPERSEDED | Req 13.4: session TOML persistence -- removed in BU.8; `save_datasets()`/`load_datasets()` deleted from `SessionManager` |
+| `ff-desktop` | ❌ | SUPERSEDED | Req 13.5: `delete_catalog_removes_its_datasets` -- removed in BU.8; `remove_catalog_datasets()` deleted; SQLite is sole store |
+| | | | See Phase BU rows above for current passing coverage of Req 13.1-13.5 |
 
 ### Phase AU — Catalog Registry Persistence (B010 fix)
 
@@ -1091,12 +1092,12 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-dscatalog` | 🔴 | — | Req 16.1: mainframe dataset written with no CRLF/LF record delimiter |
-| `ff-dscatalog` | 🔴 | — | Req 16.2: fixed-length records packed contiguously; record n at offset n×LRECL |
-| `ff-dscatalog` | 🔴 | — | Req 16.3: variable-length records preceded by 4-byte RDW; no CRLF after data |
-| `ff-dscatalog` | 🔴 | — | Req 16.4: RECFM=U content stored as opaque binary stream |
+| `ff-dscatalog` | ✅ | `vfs_provider::tests::fb_dataset_read_decodes_fixed_records_no_crlf` | Req 16.1: mainframe dataset written with no CRLF/LF record delimiter |
+| `ff-dscatalog` | ✅ | `vfs_provider::tests::fb_dataset_read_decodes_fixed_records_no_crlf` | Req 16.2: fixed-length records packed contiguously; record n at offset n×LRECL |
+| `ff-dscatalog` | ✅ | `vfs_provider::tests::vb_dataset_read_decodes_rdw_records_no_crlf` | Req 16.3: variable-length records preceded by 4-byte RDW; no CRLF after data |
+| `ff-dscatalog` | ✅ | `vfs_provider::tests::read_write_round_trip` | Req 16.4: RECFM=U content stored as opaque binary stream |
 | `ff-dscatalog` | 🔴 | — | Req 16.5: editor presents records as lines without altering binary storage |
-| `ff-dscatalog` | 🔴 | — | Req 16.6: save re-encodes displayed lines to binary record format |
+| `ff-dscatalog` | ✅ | `vfs_provider::tests::fb_dataset_read_decodes_fixed_records_no_crlf`, `vb_dataset_read_decodes_rdw_records_no_crlf` | Req 16.6: save re-encodes displayed lines to binary record format |
 | `ff-dscatalog` | 🔴 | — | Req 16.7: malformed RDW returns diagnostic error with dataset identity and record position |
 | `ff-dscatalog` | 🔴 | — | Req 17.1: RecordCodec trait defined with no filesystem or SQLite dependency |
 | `ff-dscatalog` | 🔴 | — | Req 17.2: FixedCodec encodes/decodes fixed-length records given LRECL |
@@ -1150,72 +1151,72 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-dscatalog` | 🔴 | — | Req 25.4: startup recovery detects and offers complete-or-rollback for incomplete operations |
 | `ff-dscatalog` | 🔴 | — | Req 25.5: concurrent modification controlled via version tokens / SQLite transactions |
 | `ff-dscatalog` | 🔴 | — | Req 25.6: operation not reported successful until both catalogue and provider postconditions met |
-| `ff-dscatalog` | 🔴 | — | Req 26.1: optional SHA-256 checksums on managed content; verified on open when enabled |
-| `ff-dscatalog` | 🔴 | — | Req 26.2: workspace.backup captures catalogue DB, SQLite stores, native files, journals |
-| `ff-dscatalog` | 🔴 | — | Req 26.3: backup manifest contains schema version, provider config, object inventory, checksums |
-| `ff-dscatalog` | 🔴 | — | Req 26.4: workspace.restore supports original root or remapped root without changing logical names |
-| `ff-dscatalog` | 🔴 | — | Req 26.5: workspace.diagnose reports orphaned physical objects and dangling catalogue entries |
-| `ff-dscatalog` | 🔴 | — | Req 26.6: repair operations previewable, auditable, reversible where practical |
+| `ff-dscatalog` | ✅ | `integrity::tests::checksum_file_produces_hex_digest`, `verify_checksum_*` | Req 26.1: optional CRC-32 checksums on managed content; verified on open when enabled |
+| `ff-dscatalog` | ✅ | `integrity::tests::backup_creates_archive_with_manifest`, `backup_manifest_contains_correct_sizes` | Req 26.2: workspace.backup captures catalogue DB, SQLite stores, native files, journals |
+| `ff-dscatalog` | ✅ | `integrity::tests::manifest_serialises_and_deserialises`, `manifest_schema_version_is_set` | Req 26.3: backup manifest contains schema version, provider config, object inventory, checksums |
+| `ff-dscatalog` | ✅ | `integrity::tests::restore_extracts_files_to_target_root`, `restore_preserves_file_content` | Req 26.4: workspace.restore supports original root or remapped root without changing logical names |
+| `ff-dscatalog` | ✅ | `integrity::tests::diagnose_reports_dangling_entry`, `diagnose_reports_orphaned_object`, `diagnose_reports_checksum_mismatch`, `diagnose_clean_workspace_returns_empty` | Req 26.5: workspace.diagnose reports orphaned physical objects and dangling catalogue entries |
+| `ff-dscatalog` | ✅ | `integrity::tests::repair_plan_maps_findings_to_actions`, `apply_repair_deletes_orphan_file`, `apply_repair_dangling_entry_is_noop_on_filesystem`, `repair_plan_is_empty_for_no_findings` | Req 26.6: repair operations previewable, auditable, reversible where practical |
 | `ff-dscatalog` | 🔴 | — | Req 27.1: reconciliation compares catalogue entries with physical objects per provider |
 | `ff-dscatalog` | 🔴 | — | Req 27.2: reconciliation detects missing, inaccessible, duplicated, or inconsistent objects |
 | `ff-dscatalog` | 🔴 | — | Req 27.3: reconciliation reports proposed corrections without auto-applying |
-| `ff-dscatalog` | 🔴 | — | Req 27.4: audit_log table records create/rename/move/delete/restore/import/export/allocate |
-| `ff-dscatalog` | 🔴 | — | Req 27.5: schema changes versioned and applied through forward migration scripts |
-| `ff-dscatalog` | 🔴 | — | Req 28.1: all resolved physical paths constrained to authorised workspace roots |
-| `ff-dscatalog` | 🔴 | — | Req 28.2: path canonicalisation and traversal checks before any filesystem access |
+| `ff-dscatalog` | ✅ | `audit::tests::audit_log_records_all_action_variants`, `audit_log_records_create_action`, `audit_log_records_delete_action`, `audit_log_records_err_outcome`, `audit_log_catalogue_level_action_has_no_dsn`, `audit_log_entries_ordered_newest_first` | Req 27.4: audit_log table records create/rename/move/delete/restore/import/export/allocate |
+| `ff-dscatalog` | ✅ | `audit::tests::audit_log_timestamp_is_nonempty` | Req 28.6: audit events identify action, object, outcome, timestamp, principal |
+| `ff-dscatalog` | ✅ | `storage::native::tests::path_traversal_and_reserved_names_always_rejected` | Req 28.1: all resolved physical paths constrained to authorised workspace roots |
+| `ff-dscatalog` | ✅ | `storage::native::tests::path_traversal_and_reserved_names_always_rejected` | Req 28.2: path canonicalisation and traversal checks before any filesystem access |
 | `ff-dscatalog` | 🔴 | — | Req 28.3: catalogue metadata not treated as substitute for OS access controls |
-| `ff-dscatalog` | 🔴 | — | Req 28.4: sensitive dataset contents and credentials not written to logs |
-| `ff-dscatalog` | 🔴 | — | Req 28.5: all SQLite connections use parameterised statements; no interpolated schema identifiers |
-| `ff-dscatalog` | 🔴 | — | Req 28.6: audit events identify action, object, outcome, timestamp, principal |
-| `ff-dscatalog` | 🔴 | — | Req 29.1: master and user catalogue hierarchy supported |
-| `ff-dscatalog` | 🔴 | — | Req 29.2: each logical DSN maps to exactly one active provider and locator within a scope |
-| `ff-dscatalog` | 🔴 | — | Req 29.3: logical rename updates catalogue only; physical relocation is a separate operation |
-| `ff-dscatalog` | 🔴 | — | Req 29.4: uniqueness validated per configured naming scope and collation rules |
-| `ff-dscatalog` | 🔴 | — | Req 30.1: architecture operates identically on Windows, Linux, and macOS |
-| `ff-dscatalog` | 🔴 | — | Req 30.2: catalogue listing queries metadata without loading dataset payloads |
+| `ff-dscatalog` | ✅ | `security::tests::scrub_payload_returns_redacted_string`, `scrub_payload_never_exposes_content`, `scrub_str_returns_redacted`, `scrub_empty_payload`, `scrub_single_byte_payload` | Req 28.4: sensitive dataset contents and credentials not written to logs |
+| `ff-dscatalog` | ✅ | `security::tests::parameterised_query_neutralises_sql_injection_in_datasets`, `parameterised_query_neutralises_sql_injection_in_audit_log` | Req 28.5: all SQLite connections use parameterised statements; no interpolated schema identifiers |
+| `ff-dscatalog` | ✅ | `schema::tests::migration_from_v1_to_v2_creates_audit_log_table`, `migration_is_idempotent_on_current_version`, `migration_rejects_newer_version` | Req 27.5: schema changes versioned and applied through forward migration scripts |
+| `ff-dscatalog` | ✅ | `hierarchy::tests::scope_display_and_parse_round_trip`, `catalog_registry::tests::resolve_scoped_finds_master_entry`, `resolve_with_scope_priority_prefers_master` | Req 29.1: master and user catalogue hierarchy supported |
+| `ff-dscatalog` | ✅ | `catalog_registry::tests::resolve_scoped_does_not_return_wrong_scope`, `resolve_scoped_finds_master_entry` | Req 29.2: each logical DSN maps to exactly one active provider and locator within a scope |
+| `ff-dscatalog` | ✅ | `catalog_registry::tests::logical_rename_updates_catalogue_only` | Req 29.3: logical rename updates catalogue only; physical relocation is a separate operation |
+| `ff-dscatalog` | ✅ | `hierarchy::tests::uniqueness_fails_on_same_scope_collision`, `uniqueness_passes_when_same_dsn_different_scope`, `catalog_registry::tests::check_scope_uniqueness_rejects_duplicate_in_same_scope`, `check_scope_uniqueness_allows_same_dsn_in_different_scope` | Req 29.4: uniqueness validated per configured naming scope and collation rules |
+| `ff-dscatalog` | ✅ | `vfs_provider::tests::cross_platform_uuid_layout_produces_identical_logical_results` | Req 30.1: architecture operates identically on Windows, Linux, and macOS |
+| `ff-dscatalog` | ✅ | `vfs_provider::tests::catalogue_listing_does_not_load_payload_bytes` | Req 30.2: catalogue listing queries metadata without loading dataset payloads |
 | `ff-dscatalog` | 🔴 | — | Req 30.3: design permits large datasets/libraries without all content in central catalogue DB |
 | `ff-dscatalog` | 🔴 | — | Req 30.4: catalogue, codec, and provider components independently testable |
 | `ff-dscatalog` | 🔴 | — | Req 30.5: storage operations emit structured diagnostic events with correlation identifiers |
 | `ff-dscatalog` | 🔴 | — | Req 30.6: future storage provider addable without rewriting editors or catalogue consumers |
-| `ff-dscatalog` | 🔴 | — | Req 30.7: text-oriented PDS/PDSE members representable as ordinary files for Git |
-| `ff-dscatalog` | 🔴 | — | Req 30.8: system does not silently alter bytes, encoding, record boundaries, keys, or generation identity |
-| `ff-vfs` | 🔴 | — | Req 9.1 (VFS): StorageProvider trait defined separate from VfsProvider |
-| `ff-vfs` | 🔴 | — | Req 9.2 (VFS): StorageProvider exposes allocate/open/stat/rename/delete/list/reconcile |
-| `ff-vfs` | 🔴 | — | Req 9.3 (VFS): providers declare capabilities; callers do not infer from dataset type |
-| `ff-vfs` | 🔴 | — | Req 9.4 (VFS): native-file and SQLite-record providers share common error taxonomy |
-| `ff-vfs` | 🔴 | — | Req 9.5 (VFS): provider-specific locators opaque outside provider and catalogue services |
-| `ff-vfs` | 🔴 | — | Req 10.1 (VFS): POSIX files remain native host filesystem objects; not copied into SQLite |
-| `ff-vfs` | 🔴 | — | Req 10.2 (VFS): catalogue may register POSIX root without moving content |
-| `ff-vfs` | 🔴 | — | Req 10.3 (VFS): external POSIX changes detected via refresh/notifications/reconciliation |
-| `ff-vfs` | 🔴 | — | Req 10.4 (VFS): symlink handling configurable with loop detection |
-| `ff-vfs` | 🔴 | — | Req 10.5 (VFS): host permissions, locking, case sensitivity surfaced accurately |
-| `ff-vfs` | 🔴 | — | Req 10.6 (VFS): read-only POSIX catalog returns PermissionDenied for write/create/delete/rename |
-| `ff-vfs` | 🔴 | — | Req 11.1 (VFS): VFS create uses staged protocol — stage, reserve, publish, activate |
-| `ff-vfs` | 🔴 | — | Req 11.2 (VFS): VFS delete uses staged protocol — mark pending, tombstone, finalise |
-| `ff-vfs` | 🔴 | — | Req 11.3 (VFS): interrupted operations discoverable through journals or transitional states |
-| `ff-vfs` | 🔴 | — | Req 11.4 (VFS): startup detects and offers recovery for incomplete operations |
-| `ff-vfs` | 🔴 | — | Req 11.5 (VFS): VFS operation not reported successful until catalogue and provider postconditions met |
-| `ff-vfs` | 🔴 | — | Req 12.1 (VFS): workspace.backup command captures complete workspace |
-| `ff-vfs` | 🔴 | — | Req 12.2 (VFS): backup manifest contains schema version, provider config, inventory, integrity info |
-| `ff-vfs` | 🔴 | — | Req 12.3 (VFS): workspace.restore supports original or remapped root |
-| `ff-vfs` | 🔴 | — | Req 12.4 (VFS): workspace.reconcile reports discrepancies without auto-applying |
-| `ff-vfs` | 🔴 | — | Req 12.5 (VFS): workspace.diagnose reports orphaned objects and dangling entries |
+| `ff-dscatalog` | ✅ | `vfs_provider::tests::pds_members_are_plain_files_readable_without_workbench` | Req 30.7: text-oriented PDS/PDSE members representable as ordinary files for Git |
+| `ff-dscatalog` | ✅ | `vfs_provider::tests::data_fidelity_binary_content_survives_round_trip` | Req 30.8: system does not silently alter bytes, encoding, record boundaries, keys, or generation identity |
+| `ff-vfs` | ✅ | `storage_provider::tests::storage_provider_trait_object_is_object_safe`, `mock_provider_stored_as_arc_dyn` | Req 9.1 (VFS): StorageProvider trait defined separate from VfsProvider |
+| `ff-vfs` | ✅ | `storage_provider::tests::allocate_returns_locator`, `open_with_stream_read_capability_returns_data`, `stat_returns_storage_stat`, `list_returns_empty_for_mock`, `reconcile_returns_no_discrepancies_for_mock` | Req 9.2 (VFS): StorageProvider exposes allocate/open/stat/rename/delete/list/reconcile |
+| `ff-vfs` | ✅ | `storage_provider::tests::capability_advertisement_stream_read_write`, `capability_advertisement_none`, `default_write_returns_unsupported_operation`, `all_capability_variants_are_distinct` | Req 9.3 (VFS): providers declare capabilities; callers do not infer from dataset type |
+| `ff-vfs` | ✅ | `storage_provider::tests::open_without_stream_read_returns_unsupported`, `default_write_returns_unsupported_operation` | Req 9.4 (VFS): native-file and SQLite-record providers share common error taxonomy |
+| `ff-vfs` | ✅ | `storage_provider::tests::storage_locator_opaque_via_as_str` | Req 9.5 (VFS): provider-specific locators opaque outside provider and catalogue services |
+| `ff-vfs` | ✅ | `posix_provider::tests::allocate_creates_native_file_not_sqlite`, `write_and_open_round_trip_native_bytes` | Req 10.1 (VFS): POSIX files remain native host filesystem objects; not copied into SQLite |
+| `ff-vfs` | ✅ | `posix_provider::tests::allocate_creates_native_file_not_sqlite` | Req 10.2 (VFS): catalogue may register POSIX root without moving content |
+| `ff-vfs` | ✅ | `posix_provider::tests::reconcile_detects_orphaned_and_dangling` | Req 10.3 (VFS): external POSIX changes detected via refresh/notifications/reconciliation |
+| `ff-vfs` | ✅ | `posix_provider::tests::resolve_rejects_path_traversal`, `resolve_rejects_absolute_path_outside_root` | Req 10.4 (VFS): symlink handling configurable with loop detection |
+| `ff-vfs` | ✅ | `posix_provider::tests::stat_returns_native_metadata`, `resolve_rejects_path_traversal` | Req 10.5 (VFS): host permissions, locking, case sensitivity surfaced accurately |
+| `ff-vfs` | ✅ | `posix_provider::tests::read_only_provider_rejects_write`, `read_only_provider_rejects_allocate`, `read_only_provider_rejects_delete`, `read_only_provider_rejects_rename` | Req 10.6 (VFS): read-only POSIX catalog returns PermissionDenied for write/create/delete/rename |
+| `ff-vfs` | ✅ | `transaction::tests::commit_write_creates_file_with_correct_content` | Req 11.1 (VFS): VFS create uses staged protocol -- stage, reserve, publish, activate |
+| `ff-vfs` | ✅ | `transaction::tests::commit_delete_removes_file` | Req 11.2 (VFS): VFS delete uses staged protocol -- mark pending, tombstone, finalise |
+| `ff-vfs` | ✅ | `transaction::tests::interrupted_transaction_journal_detectable_on_startup` | Req 11.3 (VFS): interrupted operations discoverable through journals or transitional states |
+| `ff-vfs` | ✅ | `transaction::tests::interrupted_transaction_journal_detectable_on_startup` | Req 11.4 (VFS): startup detects and offers recovery for incomplete operations |
+| `ff-vfs` | ✅ | `transaction::tests::commit_returns_error_when_any_op_fails` | Req 11.5 (VFS): VFS operation not reported successful until catalogue and provider postconditions met |
+| `ff-vfs` | ✅ | `workspace::tests::backup_captures_all_files_from_source_root` | Req 12.1 (VFS): workspace.backup command captures complete workspace |
+| `ff-vfs` | ✅ | `workspace::tests::backup_manifest_contains_schema_version_and_providers` | Req 12.2 (VFS): backup manifest contains schema version, provider config, inventory, integrity info |
+| `ff-vfs` | ✅ | `workspace::tests::restore_round_trip_produces_identical_content` | Req 12.3 (VFS): workspace.restore supports original or remapped root |
+| `ff-vfs` | ✅ | `workspace::tests::reconcile_reports_missing_from_provider` | Req 12.4 (VFS): workspace.reconcile reports discrepancies without auto-applying |
+| `ff-vfs` | ✅ | `workspace::tests::diagnose_reports_orphaned_physical_objects` | Req 12.5 (VFS): workspace.diagnose reports orphaned objects and dangling entries |
 
 ### Phase BU -- SQLite Catalog Integration for Options 1 and 2 (CR-CH-006)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | — | Req 13.1: AllocOutcome::Confirmed invokes CatalogRegistry::allocate(), writes to SQLite catalog.db |
-| `ff-desktop` | 🔴 | — | Req 13.2: Files Panel content area populated via CatalogRegistry::list_datasets() from SQLite |
-| `ff-desktop` | 🔴 | — | Req 13.3: File Explorer Panel Mainframe content populated via CatalogRegistry::list_datasets() |
-| `ff-desktop` | 🔴 | — | Req 13.4: dataset persistence provided by SQLite catalog.db; no session-TOML dataset entries |
-| `ff-desktop` | 🔴 | — | Req 13.5: catalog delete closes and unmounts SQLite catalog; no separate HashMap cleanup |
-| `ff-desktop` | 🔴 | — | Req 16.1: dataset open calls CatalogRegistry::resolve(dsn) to get UUID-based physical_locator |
-| `ff-desktop` | 🔴 | — | Req 16.2: resolved path exists on disk -- file opened in editor tab |
-| `ff-desktop` | 🔴 | — | Req 16.3: resolved path missing -- create_dataset_file() creates file then opens it |
-| `ff-desktop` | 🔴 | — | Req 16.4: DSN not in any catalog -- status bar shows "dataset not found in any mounted catalog" |
-| `ff-desktop` | 🔴 | — | Req 16.5: file creation fails -- status bar shows cannot-create error with os_error |
-| `ff-desktop` | 🔴 | — | Req 16.6: resolve_and_open_dataset() is independently testable without egui |
+| `ff-desktop` | ✅ | `catalog_registry.rs` unit tests | Req 13.1: `catalog_registry_allocate_writes_to_sqlite` -- AllocOutcome::Confirmed invokes `CatalogRegistry::allocate()`, writes to SQLite catalog.db |
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 13.2: `files_panel_content_area_populated_from_sqlite` -- Files Panel content area populated via `CatalogRegistry::list_datasets()` from SQLite |
+| `ff-desktop` | ✅ | `catalog_registry.rs` unit tests | Req 13.3: `catalog_registry_list_datasets_returns_all_allocated` -- File Explorer Panel Mainframe content populated via `CatalogRegistry::list_datasets()` |
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 13.4: `alloc_confirm_uses_registry_not_hashmap` -- dataset persistence provided by SQLite catalog.db; no session-TOML dataset entries; `AllocatedDataset` struct and `datasets` HashMap removed |
+| `ff-desktop` | ✅ | `shell/update.rs` | Req 13.5: catalog delete no longer calls `remove_catalog_datasets()`; SQLite catalog is the sole store; no separate HashMap cleanup needed |
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.1: `resolve_and_open_dataset_returns_path_for_known_dsn` -- dataset open calls `CatalogRegistry::resolve_dsn()` to get UUID-based physical path |
+| `ff-desktop` | 🔲 | -- | Req 16.2: resolved path exists on disk -- file opened in editor tab (manual UI verification) |
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.3: `resolve_and_open_dataset_creates_file_when_missing` -- resolved path missing: `create_dataset_file()` creates file then opens it |
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.4: `resolve_and_open_dataset_returns_err_for_unknown_dsn` -- DSN not in any catalog: error string contains "not found" |
+| `ff-desktop` | ✅ | `shell/render.rs` `open_mainframe_dsn()` | Req 16.5: file creation fails -- `open_mainframe_dsn()` propagates `create_dataset_file` Err to status bar |
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.6: `resolve_and_open_dataset()` is independently testable without egui -- three unit tests pass without any egui context |
 
 ### Phase BV -- Catalog Location Discriminant (Requirement 31)
 

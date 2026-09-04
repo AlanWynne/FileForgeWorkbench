@@ -168,6 +168,17 @@ pub enum CatalogError {
         operation: String,
     },
 
+    /// Operation not supported by this catalog location or transport.
+    #[error("[catalog] {operation}: unsupported operation for scheme '{scheme}': {reason}")]
+    UnsupportedOperation {
+        /// The transport scheme that does not support the operation.
+        scheme: String,
+        /// Description of why it is unsupported.
+        reason: String,
+        /// The operation that was attempted.
+        operation: String,
+    },
+
     /// Operation attempted on wrong dataset type.
     #[error("[catalog] {operation}: dataset '{dsn}' is {actual_type}, expected {expected_type}")]
     TypeMismatch {

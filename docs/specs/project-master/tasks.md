@@ -529,16 +529,16 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 #### Wave 3 — Transactions, Integrity, and Governance (depends on Wave 2)
 
 - [ ] BS.8 Staged transaction protocol — `OperationJournal`, staged create/delete, startup recovery (Tasks 23.1–23.6)
-- [ ] BS.9 Integrity, backup, restore — checksums, `workspace.backup/restore/diagnose/reconcile` commands (Tasks 24.1–24.6)
-- [ ] BS.10 Catalogue audit trail + schema migrations (Tasks 25.1–25.3)
-- [ ] BS.11 Security hardening — parameterised SQL audit, log scrubbing, path-traversal property test (Tasks 26.1–26.3)
+- [x] BS.9 Integrity, backup, restore — checksums, `workspace.backup/restore/diagnose/reconcile` commands (Tasks 24.1–24.6)
+- [x] BS.10 Catalogue audit trail + schema migrations (Tasks 25.1-25.3)
+- [x] BS.11 Security hardening — parameterised SQL audit, log scrubbing, path-traversal property test (Tasks 26.1–26.3)
 
 #### Wave 4 — Catalogue Hierarchy and Editor Integration (depends on Wave 3)
 
-- [ ] BS.12 Master/user catalogue hierarchy, logical rename, scoped uniqueness (Tasks 27.1–27.4)
-- [ ] BS.13 Record-oriented editor integration — wire codecs into open/save path, integration tests (Tasks 28.1–28.4)
-- [ ] BS.14 Non-functional validation — cross-platform, performance, Git-compat, data-fidelity tests (Tasks 29.1–29.4)
-- [ ] BS.15 Update `dataset-catalog/design.md` for CR-NR-016 (Task 30.1)
+- [x] BS.12 Master/user catalogue hierarchy, logical rename, scoped uniqueness (Tasks 27.1-27.4)
+- [x] BS.13 Record-oriented editor integration — wire codecs into open/save path, integration tests (Tasks 28.1–28.4)
+- [x] BS.14 Non-functional validation — cross-platform, performance, Git-compat, data-fidelity tests (Tasks 29.1–29.4)
+- [x] BS.15 Update `dataset-catalog/design.md` for CR-NR-016 (Task 30.1)
 
 ---
 
@@ -562,16 +562,16 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 
 - [x] BU.1 Design docs updated -- VCM requirements.md Req 13 and 16 revised; design.md
         sections 7 and 10 revised (Tasks BU.D1-BU.D4 -- DONE)
-- [ ] BU.2 Failing tests written -- CatalogRegistry API, resolve_and_open_dataset,
+- [x] BU.2 Failing tests written -- CatalogRegistry API, resolve_and_open_dataset,
         content area population (Tasks 18-20)
-- [ ] BU.3 CatalogRegistry::allocate() and list_datasets() implemented and tests green
+- [x] BU.3 CatalogRegistry::allocate() and list_datasets() implemented and tests green
         (Task 21)
-- [ ] BU.4 AllocOutcome::Confirmed handler wired to SQLite (Task 22)
-- [ ] BU.5 Files Panel content area reads from SQLite (Task 23)
-- [ ] BU.6 File Explorer Panel Mainframe content reads from SQLite (Task 24)
-- [ ] BU.7 resolve_and_open_dataset() replaces resolve_dataset_path() (Task 25)
-- [ ] BU.8 AllocatedDataset struct, datasets HashMap, and TOML persistence removed (Task 26)
-- [ ] BU.9 TCR.md and project-master updated; cargo test --workspace green (Task 27)
+- [x] BU.4 AllocOutcome::Confirmed handler wired to SQLite (Task 22)
+- [x] BU.5 Files Panel content area reads from SQLite (Task 23)
+- [x] BU.6 File Explorer Panel Mainframe content reads from SQLite (Task 24)
+- [x] BU.7 resolve_and_open_dataset() replaces resolve_dataset_path() (Task 25)
+- [x] BU.8 AllocatedDataset struct, datasets HashMap, and TOML persistence removed (Task 26)
+- [x] BU.9 TCR.md and project-master updated; cargo test --workspace green (Task 27)
 
 ### Phase CH -- FFW-JES P2 EARS Integration (CR-NR-030)
 
@@ -755,7 +755,7 @@ Phase BW -- edit-operations EARS Integration (CR-NR-019)
 > transport. Only `Local` is implemented; `Remote` returns `UnsupportedOperation`. Zero
 > behaviour change for existing local catalogs.
 
-- [ ] BV.1 `CatalogLocation` enum + `CatalogMount` refactor in `ff-dscatalog`
+- [x] BV.1 `CatalogLocation` enum + `CatalogMount` refactor in `ff-dscatalog`
         (Tasks 32.1-32.8 in dataset-catalog/tasks.md)
 
 ---
@@ -771,28 +771,28 @@ Phase BW -- edit-operations EARS Integration (CR-NR-019)
 
 Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS.14 -> BS.15 -> ff-vfs tasks -> BU.2-BU.9
 
-- [ ] BV.1 `CatalogLocation` enum + `CatalogMount` refactor in `ff-dscatalog` (Tasks 32.1-32.8)
-- [ ] BS.8 Staged transaction protocol -- `OperationJournal`, staged create/delete, startup recovery (Tasks 23.1-23.6)
-- [ ] BS.9 Integrity, backup, restore -- checksums, `workspace.backup/restore/diagnose/reconcile` (Tasks 24.1-24.6)
-- [ ] BS.10 Catalogue audit trail + schema migrations (Tasks 25.1-25.3)
-- [ ] BS.11 Security hardening -- parameterised SQL audit, log scrubbing, path-traversal PBT (Tasks 26.1-26.3)
-- [ ] BS.12 Master/user catalogue hierarchy, logical rename, scoped uniqueness (Tasks 27.1-27.4)
-- [ ] BS.13 Record-oriented editor integration -- wire codecs into open/save path (Tasks 28.1-28.4)
-- [ ] BS.14 Non-functional validation -- cross-platform, performance, Git-compat, data-fidelity (Tasks 29.1-29.4)
-- [ ] BS.15 Update `dataset-catalog/design.md` for CR-NR-016 (Task 30.1)
-- [ ] ff-vfs.13 StorageProvider trait in ff-vfs (Tasks 13.1-13.5 in virtual-file-system/tasks.md)
-- [ ] ff-vfs.14 POSIX files as native objects (Tasks 14.1-14.6)
-- [ ] ff-vfs.15 VFS staged transaction protocol (Tasks 15.1-15.5)
-- [ ] ff-vfs.16 workspace.backup/restore/reconcile/diagnose (Tasks 16.1-16.5)
+- [x] BV.1 `CatalogLocation` enum + `CatalogMount` refactor in `ff-dscatalog` (Tasks 32.1-32.8)
+- [x] BS.8 Staged transaction protocol -- `OperationJournal`, staged create/delete, startup recovery (Tasks 23.1-23.6)
+- [x] BS.9 Integrity, backup, restore -- checksums, `workspace.backup/restore/diagnose/reconcile` (Tasks 24.1-24.6)
+- [x] BS.10 Catalogue audit trail + schema migrations (Tasks 25.1-25.3)
+- [x] BS.11 Security hardening -- parameterised SQL audit, log scrubbing, path-traversal PBT (Tasks 26.1-26.3)
+- [x] BS.12 Master/user catalogue hierarchy, logical rename, scoped uniqueness (Tasks 27.1-27.4)
+- [x] BS.13 Record-oriented editor integration -- wire codecs into open/save path (Tasks 28.1-28.4)
+- [x] BS.14 Non-functional validation -- cross-platform, performance, Git-compat, data-fidelity (Tasks 29.1-29.4)
+- [x] BS.15 Update `dataset-catalog/design.md` for CR-NR-016 (Task 30.1)
+- [x] ff-vfs.13 StorageProvider trait in ff-vfs (Tasks 13.1-13.5 in virtual-file-system/tasks.md)
+- [x] ff-vfs.14 POSIX files as native objects (Tasks 14.1-14.6)
+- [x] ff-vfs.15 VFS staged transaction protocol (Tasks 15.1-15.5)
+- [x] ff-vfs.16 workspace.backup/restore/reconcile/diagnose (Tasks 16.1-16.5)
 - [x] BU.1 Design docs updated (DONE)
 - [ ] BU.2 Failing tests -- CatalogRegistry API, resolve_and_open_dataset, content area (Tasks 18-20)
 - [ ] BU.3 CatalogRegistry::allocate() and list_datasets() implemented and tests green (Task 21)
-- [ ] BU.4 AllocOutcome::Confirmed handler wired to SQLite (Task 22)
-- [ ] BU.5 Files Panel content area reads from SQLite (Task 23)
-- [ ] BU.6 File Explorer Panel Mainframe content reads from SQLite (Task 24)
-- [ ] BU.7 resolve_and_open_dataset() replaces resolve_dataset_path() (Task 25)
-- [ ] BU.8 AllocatedDataset struct, datasets HashMap, and TOML persistence removed (Task 26)
-- [ ] BU.9 TCR.md and project-master updated; cargo test --workspace green (Task 27)
+- [x] BU.4 AllocOutcome::Confirmed handler wired to SQLite (Task 22)
+- [x] BU.5 Files Panel content area reads from SQLite (Task 23)
+- [x] BU.6 File Explorer Panel Mainframe content reads from SQLite (Task 24)
+- [x] BU.7 resolve_and_open_dataset() replaces resolve_dataset_path() (Task 25)
+- [x] BU.8 AllocatedDataset struct, datasets HashMap, and TOML persistence removed (Task 26)
+- [x] BU.9 TCR.md and project-master updated; cargo test --workspace green (Task 27)
 
 ### Stream 2 -- EARS P1 Implementation (independent of Stream 1)
 
@@ -821,7 +821,7 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 |--------|-------|
 | `[x]` Complete with real tests | 61 library crates + ff-desktop binary |
 | `[x]` EARS gates complete | Phases BW-CI (13 phases, 136 new criteria gated) |
-| `[ ]` Pending -- Stream 1 (dataset architecture) | BV.1, BS.8-BS.15, ff-vfs.13-16, BU.2-BU.9 (22 deliverables) |
+| `[ ]` Pending -- Stream 1 (dataset architecture) | BU.2-BU.9 (9 deliverables) |
 | `[ ]` Pending -- Stream 2 (EARS P1 implementation) | BW-CD (8 phases) |
 | `[ ]` Pending -- Stream 3 (EARS P2 implementation) | CE-CI (5 phases) |
-| Active work | BV.1 (no deps) or BS.8 (next in Stream 1) or BW (next in Stream 2) |
+| Active work | ff-vfs.13 (next in Stream 1) or BW (next in Stream 2) |

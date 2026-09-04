@@ -25,12 +25,22 @@ pub struct CatalogConfig {
 pub struct MountedCatalogEntry {
     /// Catalog name.
     pub name: String,
-    /// Repository root path.
+    /// Repository root path (used when location = "local").
     pub path: PathBuf,
     /// Priority order (higher = checked first).
     pub priority: u32,
     /// Whether to auto-mount on startup.
     pub auto_mount: bool,
+    /// Transport discriminant: "local" or "remote". Defaults to "local" when absent.
+    #[serde(default = "default_location")]
+    pub location: String,
+    /// URI for remote catalogs (required when location = "remote").
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uri: Option<String>,
+}
+
+fn default_location() -> String {
+    "local".to_string()
 }
 
 /// Default allocation parameters per dataset type.
@@ -73,6 +83,8 @@ mod tests {
                 path: PathBuf::from("/home/user/catalogs/dev"),
                 priority: 1,
                 auto_mount: true,
+                location: "local".to_string(),
+                uri: None,
             }],
             defaults: None,
         };

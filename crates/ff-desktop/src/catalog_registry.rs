@@ -10,6 +10,12 @@
 
 use serde::{Deserialize, Serialize};
 
+use ff_dscatalog::{
+    catalog::Catalog,
+    dataset::{AllocParams as DsAllocParams, DatasetRecord},
+    error::CatalogError,
+};
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 /// The classification of a virtual catalog.
@@ -190,6 +196,53 @@ impl CatalogRegistry {
     /// Validates: Requirement 2.5
     pub fn exists(&self, name: &str) -> bool {
         self.catalogs.iter().any(|c| c.name == name)
+    }
+
+    // === BU.3 SQLite delegation methods =====================================
+
+    /// Open the ff-dscatalog `Catalog` for the named Mainframe catalog.
+    ///
+    /// Returns `Err` when the catalog is not registered or its path cannot be
+    /// opened as a valid repository.
+    fn open_dscatalog(&self, catalog_name: &str) -> Result<Catalog, CatalogError> {
+        let entry = self
+            .catalogs
+            .iter()
+            .find(|c| c.name == catalog_name && c.catalog_type == CatalogType::Mainframe)
+            .ok_or_else(|| CatalogError::CatalogNotMounted {
+                name: catalog_name.to_string(),
+                operation: "open_dscatalog".to_string(),
+            })?;
+        Catalog::mount(std::path::Path::new(&entry.path), 1)
+    }
+
+    /// Allocate a dataset in the named Mainframe catalog via ff-dscatalog.
+    ///
+    /// Validates: Requirement 13.1
+    pub fn allocate(&self, catalog_name: &str, params: DsAllocParams) -> Result<(), CatalogError> {
+        let catalog = self.open_dscatalog(catalog_name)?;
+        catalog.allocate(params)?;
+        Ok(())
+    }
+
+    /// List all datasets in the named Mainframe catalog from SQLite.
+    ///
+    /// Validates: Requirement 13.2, 13.3
+    pub fn list_datasets(&self, catalog_name: &str) -> Result<Vec<DatasetRecord>, CatalogError> {
+        let catalog = self.open_dscatalog(catalog_name)?;
+        catalog.list_datasets()
+    }
+
+    /// Resolve a DSN to its physical path via the named Mainframe catalog.
+    ///
+    /// Validates: Requirement 16.1
+    pub fn resolve_dsn(
+        &self,
+        catalog_name: &str,
+        dsn: &ff_dscatalog::dsn::Dsn,
+    ) -> Result<std::path::PathBuf, CatalogError> {
+        let catalog = self.open_dscatalog(catalog_name)?;
+        catalog.physical_path(dsn)
     }
 
     /// Deserialise the registry from a TOML string (the `[[virtual_catalogs]]` array).
@@ -428,5 +481,165 @@ mod tests {
         // Validates: Requirement 2.2
         let reg = CatalogRegistry::load_from_toml("[[[[not valid toml");
         assert!(reg.list().is_empty());
+    }
+
+    // === BU.2 failing tests (Tasks 18.1-18.4) ================================
+    // These tests call allocate() and list_datasets() which do not yet exist
+    // on CatalogRegistry. They MUST fail (red) before implementation.
+
+    /// Validates: Requirement 13.1 -- allocate writes to SQLite and list_datasets returns it.
+    #[test]
+    fn catalog_registry_allocate_writes_to_sqlite() {
+        // Validates: Requirement 13.1
+        use ff_dscatalog::{
+            catalog::CatalogMount,
+            dataset::{AllocParams as DsAllocParams, Dsorg as DsDsorg},
+            hierarchy::CatalogScope,
+            repository::Repository,
+        };
+        use tempfile::TempDir;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let repo_path = tmp.path().join("TEST");
+        Repository::new(&repo_path)
+            .initialize("TEST")
+            .expect("init");
+
+        let mut reg = CatalogRegistry::new();
+        let cat = mainframe_catalog("TEST");
+        let mut cat_with_path = cat.clone();
+        cat_with_path.path = repo_path.to_string_lossy().into_owned();
+        reg.register(cat_with_path).unwrap();
+
+        let params = DsAllocParams {
+            dsn: ff_dscatalog::dsn::Dsn::parse("TEST.INPUT").unwrap(),
+            dsorg: DsDsorg::PS,
+            recfm: None,
+            lrecl: None,
+            blksize: None,
+            dir_blocks: None,
+            gdg_limit: None,
+            gdg_scratch: None,
+            subtype: None,
+            description: None,
+            scope: CatalogScope::User,
+        };
+
+        reg.allocate("TEST", params)
+            .expect("allocate should succeed");
+        let datasets = reg
+            .list_datasets("TEST")
+            .expect("list_datasets should succeed");
+        assert_eq!(datasets.len(), 1);
+        assert_eq!(datasets[0].dsn.as_str(), "TEST.INPUT");
+    }
+
+    /// Validates: Requirement 13.2 -- list_datasets returns empty Vec for a new catalog.
+    #[test]
+    fn catalog_registry_list_datasets_returns_empty_for_new_catalog() {
+        // Validates: Requirement 13.2
+        use ff_dscatalog::repository::Repository;
+        use tempfile::TempDir;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let repo_path = tmp.path().join("EMPTY");
+        Repository::new(&repo_path)
+            .initialize("EMPTY")
+            .expect("init");
+
+        let mut reg = CatalogRegistry::new();
+        let mut cat = mainframe_catalog("EMPTY");
+        cat.path = repo_path.to_string_lossy().into_owned();
+        reg.register(cat).unwrap();
+
+        let datasets = reg
+            .list_datasets("EMPTY")
+            .expect("list_datasets should succeed");
+        assert!(datasets.is_empty());
+    }
+
+    /// Validates: Requirement 13.2, 13.3 -- list_datasets returns all allocated datasets.
+    #[test]
+    fn catalog_registry_list_datasets_returns_all_allocated() {
+        // Validates: Requirement 13.2, 13.3
+        use ff_dscatalog::{
+            dataset::{AllocParams as DsAllocParams, Dsorg as DsDsorg},
+            hierarchy::CatalogScope,
+            repository::Repository,
+        };
+        use tempfile::TempDir;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let repo_path = tmp.path().join("MULTI");
+        Repository::new(&repo_path)
+            .initialize("MULTI")
+            .expect("init");
+
+        let mut reg = CatalogRegistry::new();
+        let mut cat = mainframe_catalog("MULTI");
+        cat.path = repo_path.to_string_lossy().into_owned();
+        reg.register(cat).unwrap();
+
+        for (dsn, dsorg) in &[
+            ("PAYROLL.INPUT", DsDsorg::PS),
+            ("SYS1.MACLIB", DsDsorg::PO),
+            ("BACKUP.GDG", DsDsorg::GDG),
+        ] {
+            let params = DsAllocParams {
+                dsn: ff_dscatalog::dsn::Dsn::parse(dsn).unwrap(),
+                dsorg: *dsorg,
+                recfm: None,
+                lrecl: None,
+                blksize: None,
+                dir_blocks: None,
+                gdg_limit: if *dsorg == DsDsorg::GDG {
+                    Some(5)
+                } else {
+                    None
+                },
+                gdg_scratch: None,
+                subtype: None,
+                description: None,
+                scope: CatalogScope::User,
+            };
+            reg.allocate("MULTI", params).expect("allocate");
+        }
+
+        let datasets = reg.list_datasets("MULTI").expect("list_datasets");
+        assert_eq!(datasets.len(), 3);
+        let dsns: Vec<&str> = datasets.iter().map(|d| d.dsn.as_str()).collect();
+        assert!(dsns.contains(&"PAYROLL.INPUT"));
+        assert!(dsns.contains(&"SYS1.MACLIB"));
+        assert!(dsns.contains(&"BACKUP.GDG"));
+    }
+
+    /// Validates: Requirement 13.1 -- allocate with unknown catalog name returns Err.
+    #[test]
+    fn catalog_registry_allocate_unknown_catalog_returns_error() {
+        // Validates: Requirement 13.1
+        use ff_dscatalog::{
+            dataset::{AllocParams as DsAllocParams, Dsorg as DsDsorg},
+            hierarchy::CatalogScope,
+        };
+
+        let mut reg = CatalogRegistry::new();
+        let params = DsAllocParams {
+            dsn: ff_dscatalog::dsn::Dsn::parse("TEST.DS").unwrap(),
+            dsorg: DsDsorg::PS,
+            recfm: None,
+            lrecl: None,
+            blksize: None,
+            dir_blocks: None,
+            gdg_limit: None,
+            gdg_scratch: None,
+            subtype: None,
+            description: None,
+            scope: CatalogScope::User,
+        };
+        let result = reg.allocate("NOSUCH", params);
+        assert!(
+            result.is_err(),
+            "allocate on unknown catalog must return Err"
+        );
     }
 }

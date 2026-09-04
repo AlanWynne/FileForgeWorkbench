@@ -7,7 +7,7 @@ authors = ["FileForge Contributors"]
 
 [dependencies]
 ff-core = { path = "../ff-core" }
-tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros", "time", "io-util"] }
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros", "time", "io-util", "fs"] }
 tokio-util = "0.7"
 tokio-stream = "0.1"
 async-trait = "0.1"
