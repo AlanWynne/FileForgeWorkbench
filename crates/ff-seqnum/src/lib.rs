@@ -88,8 +88,8 @@ pub mod commands;
 
 pub use auto_strip::{auto_strip_on_open, AutoStripResult};
 pub use commands::{
-    register_commands, validate_mode, NUM_ALIAS_COMMAND_ID, NUMBER_COMMAND_ID,
-    NUMBER_SHOW_COMMAND_ID, UNNUM_COMMAND_ID,
+    register_commands, validate_mode, NUMBER_COMMAND_ID, NUMBER_SHOW_COMMAND_ID,
+    NUM_ALIAS_COMMAND_ID, UNNUM_COMMAND_ID,
 };
 pub use config::{LanguageOverride, SeqNumConfig};
 pub use detector::{FullDetectionResult, SequenceDetector};

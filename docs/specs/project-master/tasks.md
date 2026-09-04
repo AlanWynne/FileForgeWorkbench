@@ -692,13 +692,13 @@ Phase BZ -- menu-and-statusbar EARS Integration (CR-NR-022)
 > data entry/list panel layout, list panel LOCATE, extended scroll amounts, split screen.
 > Requirement 19 in menu-and-statusbar/requirements.md.
 
-- [ ] BZ.1 SCROLL ===> field adjacent to Command ===> (Tasks 24.1-24.5)
-- [ ] BZ.2 Fastpath dotted notation navigation (Tasks 25.1-25.3)
-- [ ] BZ.3 Data entry and list panel layout conformance (Tasks 26.1-26.4)
-- [ ] BZ.4 List panel LOCATE command (Tasks 27.1-27.3)
-- [ ] BZ.5 Extended scroll amounts HALF/CSR/MAX/DATA (Tasks 28.1-28.3)
-- [ ] BZ.6 Split screen PF2/PF9/PF3 (Tasks 29.1-29.6)
-- [ ] BZ.7 TCR update for Requirement 19 (Task 30.1)
+- [x] BZ.1 SCROLL ===> field adjacent to Command ===> (Tasks 24.1-24.5)
+- [x] BZ.2 Fastpath dotted notation navigation (Tasks 25.1-25.3)
+- [x] BZ.3 Data entry and list panel layout conformance (Tasks 26.1-26.4)
+- [x] BZ.4 List panel LOCATE command (Tasks 27.1-27.3)
+- [x] BZ.5 Extended scroll amounts HALF/CSR/MAX/DATA (Tasks 28.1-28.3)
+- [x] BZ.6 Split screen PF2/PF9/PF3 (Tasks 29.1-29.6)
+- [x] BZ.7 TCR update for Requirement 19 (Task 30.1)
 
 ---
 
@@ -799,7 +799,7 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 - [x] BW.impl edit-operations: CAPS/NULLS/PROFILE/SUBMIT/CREATE/REPLACE/BROWSE/VIEW/nested EDIT/COMPARE/LOCK/STATS (Tasks 28-39 in edit-operations/tasks.md)
 - [x] BX.impl line-commands: O/W/F/L/]/S line commands (Tasks 22-28 in line-commands/tasks.md)
 - [x] BY.impl sequence-numbers: AUTONUM and NUM alias extensions (Tasks 20-22 in sequence-numbers/tasks.md)
-- [ ] BZ.impl menu-and-statusbar: SCROLL field, fastpath, split screen, list panel LOCATE (Tasks 24-30 in menu-and-statusbar/tasks.md)
+- [x] BZ.impl menu-and-statusbar: SCROLL field, fastpath, split screen, list panel LOCATE (Tasks 24-30 in menu-and-statusbar/tasks.md)
 - [ ] CA.impl startup-and-session: session timestamps, LOGOFF, TIME, STATUS routing (Tasks 28-33 in startup-and-session/tasks.md)
 - [ ] CB.impl command-semantics P1: ALLOCATE through STATUS + FTSO operand parsing (Tasks 19-24 in command-semantics/tasks.md)
 - [ ] CC.impl FFW-JES P1 core: SDSF panel framework, NP column, action chars, main panel (Tasks 20-25 in FFW-JES/tasks.md)

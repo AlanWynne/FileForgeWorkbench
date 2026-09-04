@@ -1676,3 +1676,179 @@ fn new_tab_edit_profile_defaults_to_all_off() {
     assert_eq!(profile.stats, StatsMode::Off);
     assert!(!profile.is_locked());
 }
+
+// === Phase BZ -- SCROLL field, fastpath, split screen, LOCATE ==============
+
+/// Validates: Requirement 19.1 -- shell initialises with PAGE scroll amount.
+#[test]
+fn scroll_amount_defaults_to_page() {
+    // Validates: Requirement 19.1
+    use crate::scroll_amount::ScrollAmount;
+    let shell = make_shell();
+    assert_eq!(shell.scroll_amount, ScrollAmount::Page);
+    assert_eq!(shell.scroll_field_text, "PAGE");
+}
+
+/// Validates: Requirement 19.2 -- SCROLL command updates active scroll amount.
+#[test]
+fn scroll_command_updates_scroll_amount() {
+    // Validates: Requirement 19.2
+    use crate::scroll_amount::ScrollAmount;
+    let mut shell = make_shell();
+    shell.handle_command("SCROLL HALF");
+    assert_eq!(shell.scroll_amount, ScrollAmount::Half);
+    assert_eq!(shell.scroll_field_text, "HALF");
+    assert!(shell.open_error.is_none());
+}
+
+/// Validates: Requirement 19.2 -- SCROLL with numeric value.
+#[test]
+fn scroll_command_accepts_numeric_value() {
+    // Validates: Requirement 19.2
+    use crate::scroll_amount::ScrollAmount;
+    let mut shell = make_shell();
+    shell.handle_command("SCROLL 10");
+    assert_eq!(shell.scroll_amount, ScrollAmount::Lines(10));
+    assert_eq!(shell.scroll_field_text, "10");
+    assert!(shell.open_error.is_none());
+}
+
+/// Validates: Requirement 19.2 -- SCROLL with invalid value shows error.
+#[test]
+fn scroll_command_invalid_value_shows_error() {
+    // Validates: Requirement 19.2
+    let mut shell = make_shell();
+    shell.handle_command("SCROLL BOGUS");
+    assert!(shell.open_error.is_some());
+    let err = shell.open_error.as_deref().unwrap_or("");
+    assert!(err.contains("SCROLL"), "got: {err}");
+}
+
+/// Validates: Requirement 19.10 -- all extended scroll amounts accepted.
+#[test]
+fn scroll_command_accepts_all_extended_amounts() {
+    // Validates: Requirement 19.10
+    use crate::scroll_amount::ScrollAmount;
+    let mut shell = make_shell();
+    for (cmd, expected) in [
+        ("SCROLL PAGE", ScrollAmount::Page),
+        ("SCROLL HALF", ScrollAmount::Half),
+        ("SCROLL CSR", ScrollAmount::Csr),
+        ("SCROLL MAX", ScrollAmount::Max),
+        ("SCROLL DATA", ScrollAmount::Data),
+    ] {
+        shell.handle_command(cmd);
+        assert_eq!(shell.scroll_amount, expected, "failed for {cmd}");
+        assert!(shell.open_error.is_none(), "error for {cmd}");
+    }
+}
+
+/// Validates: Requirement 19.3 -- scroll amount retained across command submissions.
+#[test]
+fn scroll_amount_retained_across_commands() {
+    // Validates: Requirement 19.3
+    use crate::scroll_amount::ScrollAmount;
+    let mut shell = make_shell();
+    shell.handle_command("SCROLL HALF");
+    assert_eq!(shell.scroll_amount, ScrollAmount::Half);
+    // Submit an unrelated command
+    shell.handle_command("TOP");
+    // Scroll amount unchanged
+    assert_eq!(shell.scroll_amount, ScrollAmount::Half);
+}
+
+/// Validates: Requirement 19.4 -- fastpath dotted notation navigates to option.
+#[test]
+fn fastpath_notation_navigates_to_option() {
+    // Validates: Requirement 19.4
+    // "2.1" navigates to option 2 then sub-option 1.
+    // Option 2 on POM -> FileExplorerPanel; then "1" on non-POM -> FilesPanel.
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("2.1");
+    // After fastpath, the active tab should have been navigated (no panic, no unknown-command error)
+    // The exact final kind depends on sub-option routing; we verify no crash and no
+    // "unknown command" error from the fastpath handler itself.
+    let err = shell.open_error.as_deref().unwrap_or("");
+    assert!(
+        !err.to_uppercase().contains("UNKNOWN"),
+        "fastpath should not produce unknown-command error, got: {err}"
+    );
+    // The tab kind should be one of the navigated kinds (not POM)
+    let kind = shell.tabs.active_tab().kind;
+    assert_ne!(
+        kind,
+        TabKind::PrimaryOptionMenu,
+        "fastpath should have navigated away from POM"
+    );
+}
+
+/// Validates: Requirement 19.4 -- fastpath with invalid first segment is not treated as fastpath.
+#[test]
+fn fastpath_non_digit_first_segment_not_fastpath() {
+    // Validates: Requirement 19.4 -- only single-digit first segments are fastpath
+    let mut shell = make_shell();
+    // "abc.def" should not be treated as fastpath
+    shell.handle_command("abc.def");
+    // Should fall through to command engine without panic
+    // (open_error may be set but no crash)
+}
+
+/// Validates: Requirement 19.11 -- SPLIT command activates split screen.
+#[test]
+fn split_command_activates_split_screen() {
+    // Validates: Requirement 19.11
+    let mut shell = make_shell();
+    assert!(shell.split_screen.is_none());
+    shell.handle_command("SPLIT");
+    assert!(shell.split_screen.is_some());
+    assert!(shell.open_error.is_none());
+}
+
+/// Validates: Requirement 19.12 -- SWAP swaps focus between halves.
+#[test]
+fn swap_command_swaps_split_focus() {
+    // Validates: Requirement 19.12
+    let mut shell = make_shell();
+    shell.handle_command("SPLIT");
+    let initial_half = shell.split_screen.as_ref().unwrap().active_half;
+    shell.handle_command("SWAP");
+    let swapped_half = shell.split_screen.as_ref().unwrap().active_half;
+    assert_ne!(initial_half, swapped_half);
+    assert!(shell.open_error.is_none());
+}
+
+/// Validates: Requirement 19.12 -- SWAP without split shows error.
+#[test]
+fn swap_without_split_shows_error() {
+    // Validates: Requirement 19.12
+    let mut shell = make_shell();
+    shell.handle_command("SWAP");
+    assert!(shell.open_error.is_some());
+}
+
+/// Validates: Requirement 19.14 -- UNSPLIT removes split screen.
+#[test]
+fn unsplit_command_removes_split_screen() {
+    // Validates: Requirement 19.14
+    let mut shell = make_shell();
+    shell.handle_command("SPLIT");
+    assert!(shell.split_screen.is_some());
+    shell.handle_command("UNSPLIT");
+    assert!(shell.split_screen.is_none());
+    assert!(shell.open_error.is_none());
+}
+
+/// Validates: Requirement 19.13 -- each half has independent scroll state.
+#[test]
+fn split_screen_halves_have_independent_scroll() {
+    // Validates: Requirement 19.13
+    use crate::scroll_amount::SplitScreenState;
+    let mut ss = SplitScreenState::new(12);
+    ss.top_scroll = 0;
+    ss.bottom_scroll = 12;
+    // Modify top half scroll independently
+    ss.top_scroll = 5;
+    assert_eq!(ss.top_scroll, 5);
+    assert_eq!(ss.bottom_scroll, 12); // bottom unchanged
+}

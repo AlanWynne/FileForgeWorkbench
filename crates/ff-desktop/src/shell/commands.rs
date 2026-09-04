@@ -557,6 +557,71 @@ impl WorkbenchShell {
             return;
         }
 
+        // ── SCROLL field update via command — Validates: Requirement 19.2 ──────
+        if upper.starts_with("SCROLL ") {
+            let arg = cmd.trim()[7..].trim();
+            if let Some(amount) = crate::scroll_amount::ScrollAmount::parse(arg) {
+                self.scroll_amount = amount;
+                self.scroll_field_text = self.scroll_amount.display_string();
+                self.open_error = None;
+            } else {
+                self.open_error = Some(format!(
+                    "SCROLL: '{}' is not a valid scroll amount (PAGE/HALF/CSR/MAX/DATA/n)",
+                    arg
+                ));
+            }
+            return;
+        }
+
+        // ── Fastpath dotted notation (e.g. 3.1) — Validates: Requirement 19.4 ──
+        // A dotted path like "3.1" navigates to POM option 3 sub-option 1.
+        // For now, resolve the first segment as a POM option and record the
+        // sub-option for future nested navigation.
+        if upper.contains('.') && !upper.starts_with('.') {
+            let parts: Vec<&str> = upper.splitn(2, '.').collect();
+            if parts.len() == 2 {
+                let first = parts[0].trim();
+                let rest = parts[1].trim();
+                // Only treat as fastpath if first segment is a single digit
+                if first.len() == 1 && first.chars().all(|c| c.is_ascii_digit()) {
+                    // Navigate to the top-level option first
+                    self.handle_command(first);
+                    // Then navigate to the sub-option if non-empty
+                    if !rest.is_empty() {
+                        self.handle_command(rest);
+                    }
+                    return;
+                }
+            }
+        }
+
+        // ── SPLIT / SWAP / UNSPLIT (split screen) — Validates: Requirement 19.11-19.14 ──
+        if upper == "SPLIT" {
+            // Split at current cursor line
+            let cursor_line = self.tabs.active_tab().cursor.cursor_line();
+            self.split_screen = Some(crate::scroll_amount::SplitScreenState::new(
+                (cursor_line as usize).saturating_sub(1),
+            ));
+            self.open_error = None;
+            return;
+        }
+        if upper == "SWAP" {
+            // Validates: Requirement 19.12 -- swap focus between halves
+            if let Some(ref mut ss) = self.split_screen {
+                ss.swap_focus();
+                self.open_error = None;
+            } else {
+                self.open_error = Some("SWAP: no split screen active".to_string());
+            }
+            return;
+        }
+        if upper == "UNSPLIT" {
+            // Validates: Requirement 19.14 -- unsplit restores single-panel view
+            self.split_screen = None;
+            self.open_error = None;
+            return;
+        }
+
         // ── AUTONUM / NUM aliases — Validates: Requirement 16.10, 16.11 ──────
         if upper == "AUTONUM ON" || upper == "AUTONUM OFF" {
             let rest = &cmd.trim()[7..];

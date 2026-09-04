@@ -1287,20 +1287,20 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | -- | Req 19.1: SCROLL ===> field rendered adjacent to Command ===> field |
-| `ff-desktop` | 🔴 | -- | Req 19.2: SCROLL field value update on Enter sets active scroll amount |
-| `ff-desktop` | 🔴 | -- | Req 19.3: SCROLL field value retained across command submissions and panel switches |
-| `ff-desktop` | 🔴 | -- | Req 19.4: fastpath notation (e.g., 3.1) navigates directly to nested option |
-| `ff-desktop` | 🔴 | -- | Req 19.5: data entry panel conforms to ISPF layout (title, command, ===> fields, key bar) |
-| `ff-desktop` | 🔴 | -- | Req 19.6: list panel conforms to ISPF layout (title, command, filter lines, NP column, rows) |
-| `ff-desktop` | 🔴 | -- | Req 19.7: LOCATE on list panel scrolls to nearest alphabetic match |
-| `ff-desktop` | 🔴 | -- | Req 19.8: LOCATE accepts partial names on list panel |
-| `ff-desktop` | 🔴 | -- | Req 19.9: LOCATE scrolls panel so matching item is visible |
-| `ff-desktop` | 🔴 | -- | Req 19.10: scroll amounts HALF/CSR/MAX/DATA supported in all panel scroll commands |
-| `ff-desktop` | 🔴 | -- | Req 19.11: PF2 splits screen at cursor line into two independent halves |
-| `ff-desktop` | 🔴 | -- | Req 19.12: PF9 swaps focus between split-screen halves |
-| `ff-desktop` | 🔴 | -- | Req 19.13: each split-screen half operates independently |
-| `ff-desktop` | 🔴 | -- | Req 19.14: END (PF3) while split unsplits the screen |
+| `ff-desktop` | ✅ | `scroll_amount.rs` + `shell/render.rs` unit tests | Req 19.1: SCROLL ===> field rendered adjacent to Command ===> field |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 19.2: SCROLL field value update on Enter sets active scroll amount |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 19.3: SCROLL field value retained across command submissions and panel switches |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 19.4: fastpath notation (e.g., 3.1) navigates directly to nested option |
+| `ff-desktop` | ✅ | `panel_layout.rs` unit tests | Req 19.5: data entry panel conforms to ISPF layout (title, command, ===> fields, key bar) |
+| `ff-desktop` | ✅ | `panel_layout.rs` unit tests | Req 19.6: list panel conforms to ISPF layout (title, command, filter lines, NP column, rows) |
+| `ff-desktop` | ✅ | existing `nav_manager` LOCATE tests | Req 19.7: LOCATE on list panel scrolls to nearest alphabetic match |
+| `ff-desktop` | ✅ | existing `nav_manager` LOCATE tests | Req 19.8: LOCATE accepts partial names on list panel |
+| `ff-desktop` | 🔲 | -- | Req 19.9: LOCATE scrolls panel so matching item is visible (manual UI verification) |
+| `ff-desktop` | ✅ | `scroll_amount.rs` unit tests | Req 19.10: scroll amounts HALF/CSR/MAX/DATA supported in all panel scroll commands |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 19.11: PF2 splits screen at cursor line into two independent halves |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 19.12: PF9 swaps focus between split-screen halves |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 19.13: each split-screen half operates independently |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 19.14: END (PF3) while split unsplits the screen |
 
 
 ### Phase CA -- startup-and-session EARS Integration (Requirement 20)

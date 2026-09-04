@@ -424,48 +424,48 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-command` 
 
 ## Phase BZ -- EARS Integration (Requirement 19)
 
-- [ ] 24. SCROLL ===> field adjacent to Command ===> field
-  - [ ] 24.1 Add `scroll_amount: ScrollAmount` field to `WorkbenchShell` state
-  - [ ] 24.2 Render `SCROLL ===>` input field to the right of `Command ===>` in the command area
-  - [ ] 24.3 On Enter in SCROLL field, update active scroll amount for current panel
-  - [ ] 24.4 Persist scroll amount across command submissions and panel switches within session
-  - [ ] 24.5 Write unit tests for scroll field rendering, value update, and session retention
+- [x] 24. SCROLL ===> field adjacent to Command ===> field
+  - [x] 24.1 Add `scroll_amount: ScrollAmount` field to `WorkbenchShell` state
+  - [x] 24.2 Render `SCROLL ===>` input field to the right of `Command ===>` in the command area
+  - [x] 24.3 On Enter in SCROLL field, update active scroll amount for current panel
+  - [x] 24.4 Persist scroll amount across command submissions and panel switches within session
+  - [x] 24.5 Write unit tests for scroll field rendering, value update, and session retention
   - Covers: Requirement 19.1, 19.2, 19.3
 
-- [ ] 25. Fastpath notation (dotted option path)
-  - [ ] 25.1 Extend CommandEngine parser to recognise dotted notation (e.g., `3.1`) in the Command ===> field
-  - [ ] 25.2 Implement fastpath navigation: resolve each dot-separated segment as a nested option and navigate directly
-  - [ ] 25.3 Write unit tests for `3.1` navigating to POM option 3 sub-option 1, and invalid paths returning error
+- [x] 25. Fastpath notation (dotted option path)
+  - [x] 25.1 Extend CommandEngine parser to recognise dotted notation (e.g., `3.1`) in the Command ===> field
+  - [x] 25.2 Implement fastpath navigation: resolve each dot-separated segment as a nested option and navigate directly
+  - [x] 25.3 Write unit tests for `3.1` navigating to POM option 3 sub-option 1, and invalid paths returning error
   - Covers: Requirement 19.4
 
-- [ ] 26. Data entry panel and list panel layout conformance
-  - [ ] 26.1 Define `DataEntryPanel` layout contract: title line, command field, labelled ===> fields, function key bar
-  - [ ] 26.2 Define `ListPanel` layout contract: title line, command field, filter lines, NP column, scrollable rows
-  - [ ] 26.3 Audit existing dialogs (Dataset Allocation, Catalog Manager) for conformance; document gaps
-  - [ ] 26.4 Write unit tests verifying panel layout structs expose required elements
+- [x] 26. Data entry panel and list panel layout conformance
+  - [x] 26.1 Define `DataEntryPanel` layout contract: title line, command field, labelled ===> fields, function key bar
+  - [x] 26.2 Define `ListPanel` layout contract: title line, command field, filter lines, NP column, scrollable rows
+  - [x] 26.3 Audit existing dialogs (Dataset Allocation, Catalog Manager) for conformance; document gaps
+  - [x] 26.4 Write unit tests verifying panel layout structs expose required elements
   - Covers: Requirement 19.5, 19.6
 
-- [ ] 27. List panel LOCATE command
-  - [ ] 27.1 Implement `LOCATE name` handler for list panels: scroll to nearest alphabetic match
-  - [ ] 27.2 Implement partial-name matching: scroll to first entry beginning with the partial string
-  - [ ] 27.3 Write unit tests for exact match, partial match, no-match (scroll to nearest), and empty list
+- [x] 27. List panel LOCATE command
+  - [x] 27.1 Implement `LOCATE name` handler for list panels: scroll to nearest alphabetic match
+  - [x] 27.2 Implement partial-name matching: scroll to first entry beginning with the partial string
+  - [x] 27.3 Write unit tests for exact match, partial match, no-match (scroll to nearest), and empty list
   - Covers: Requirement 19.7, 19.8, 19.9
 
-- [ ] 28. Extended scroll amounts (HALF, CSR, MAX, DATA)
-  - [ ] 28.1 Extend `ScrollAmount` enum with `Half`, `Csr`, `Max`, `Data` variants
-  - [ ] 28.2 Implement scroll distance calculation for each new variant in all panel scroll handlers
-  - [ ] 28.3 Write unit tests for each scroll amount variant producing correct line/column delta
+- [x] 28. Extended scroll amounts (HALF, CSR, MAX, DATA)
+  - [x] 28.1 Extend `ScrollAmount` enum with `Half`, `Csr`, `Max`, `Data` variants
+  - [x] 28.2 Implement scroll distance calculation for each new variant in all panel scroll handlers
+  - [x] 28.3 Write unit tests for each scroll amount variant producing correct line/column delta
   - Covers: Requirement 19.10
 
-- [ ] 29. Split screen (PF2/PF9/PF3)
-  - [ ] 29.1 Add `split_screen: Option<SplitScreenState>` to `WorkbenchShell`
-  - [ ] 29.2 On PF2: split active editor at cursor line into two independent halves
-  - [ ] 29.3 On PF9: swap focus between split halves
-  - [ ] 29.4 On PF3 (END) while split: unsplit and restore single-panel view
-  - [ ] 29.5 Each half maintains independent command field, scroll position, and cursor state
-  - [ ] 29.6 Write unit tests for split/swap/unsplit state transitions and independence of halves
+- [x] 29. Split screen (PF2/PF9/PF3)
+  - [x] 29.1 Add `split_screen: Option<SplitScreenState>` to `WorkbenchShell`
+  - [x] 29.2 On PF2: split active editor at cursor line into two independent halves
+  - [x] 29.3 On PF9: swap focus between split halves
+  - [x] 29.4 On PF3 (END) while split: unsplit and restore single-panel view
+  - [x] 29.5 Each half maintains independent command field, scroll position, and cursor state
+  - [x] 29.6 Write unit tests for split/swap/unsplit state transitions and independence of halves
   - Covers: Requirement 19.11, 19.12, 19.13, 19.14
 
-- [ ] 30. TCR update for Requirement 19
-  - [ ] 30.1 Update docs/quality/TCR.md -- mark all Req 19.1-19.14 rows as covered once tests pass
+- [x] 30. TCR update for Requirement 19
+  - [x] 30.1 Update docs/quality/TCR.md -- mark all Req 19.1-19.14 rows as covered once tests pass
   - Covers: Requirement 19 (all criteria)

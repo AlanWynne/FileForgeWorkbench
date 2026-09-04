@@ -1,4 +1,4 @@
-﻿//! # WorkbenchShell — egui/eframe Rendering Shell
+//! # WorkbenchShell — egui/eframe Rendering Shell
 //!
 //! Sole point of contact between egui/eframe and the platform-core layer.
 //! Implements `eframe::App` and owns the `TabManager` (all open tabs),
@@ -26,6 +26,7 @@ use crate::files_panel::FilesPanelState;
 use crate::find_manager::FindManager;
 use crate::nav_manager::NavManager;
 use crate::primary_option_menu;
+pub(crate) use crate::scroll_amount::{ScrollAmount, SplitScreenState};
 use crate::session_manager::SessionManager;
 use crate::settings_panel::SettingsPanelState;
 use crate::tab_manager::TabManager;
@@ -338,6 +339,18 @@ pub struct WorkbenchShell {
     ///
     /// Validates: Requirement 13.1
     show_about: bool,
+    /// Active scroll amount for the SCROLL ===> field.
+    ///
+    /// Validates: Requirement 19.1, 19.2, 19.3
+    pub(crate) scroll_amount: ScrollAmount,
+    /// Split screen state -- Some when split screen is active.
+    ///
+    /// Validates: Requirement 19.11, 19.12, 19.13, 19.14
+    pub(crate) split_screen: Option<SplitScreenState>,
+    /// Text buffer for the SCROLL ===> field input.
+    ///
+    /// Validates: Requirement 19.1
+    pub(crate) scroll_field_text: String,
     /// True when any modal dialog is open — suppresses the shell Tab-cycle and
     /// command-field focus steal so keystrokes reach the dialog's own widgets.
     modal_open: bool,
@@ -479,6 +492,9 @@ impl WorkbenchShell {
             is_dragging: false,
             pending_ppp: None,
             show_about: false,
+            scroll_amount: ScrollAmount::default(),
+            split_screen: None,
+            scroll_field_text: "PAGE".to_string(),
             modal_open: false,
             key_config_dialog: crate::key_config_dialog::KeyConfigDialog::new(),
             settings_panel: SettingsPanelState::new(),

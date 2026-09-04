@@ -133,7 +133,7 @@ mod tests {
             .iter()
             .find(|(id, _, _, _)| id == NUM_ALIAS_COMMAND_ID)
             .unwrap();
-        assert!(num.2);  // valid_in_edit
+        assert!(num.2); // valid_in_edit
         assert!(!num.3); // NOT valid_in_browse (same as NUMBER)
     }
 
