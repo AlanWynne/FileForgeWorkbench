@@ -1279,8 +1279,8 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-sequence-numbers` | 🔴 | -- | Req 6.7a: AUTONUM ON/OFF treated as alias for NUMBER ON/OFF |
-| `ff-sequence-numbers` | 🔴 | -- | Req 8 alias: NUM accepted as alias for NUMBER command with all sub-commands |
+| `ff-sequence-numbers` | ✅ | `number_cmd.rs` unit tests | Req 6.7a: AUTONUM ON/OFF treated as alias for NUMBER ON/OFF |
+| `ff-sequence-numbers` | ✅ | `number_cmd.rs` + `commands.rs` unit tests | Req 8 alias: NUM accepted as alias for NUMBER command with all sub-commands |
 
 
 ### Phase BZ -- menu-and-statusbar EARS Integration (Requirement 19)

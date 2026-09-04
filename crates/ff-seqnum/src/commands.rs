@@ -10,6 +10,9 @@ pub const UNNUM_COMMAND_ID: &str = "sequence.unnum";
 /// Command ID for the NUMBER command.
 pub const NUMBER_COMMAND_ID: &str = "sequence.number";
 
+/// Command alias for NUMBER -- NUM is accepted as an alias per Requirement 8 (EARS SN-NUM-alias).
+pub const NUM_ALIAS_COMMAND_ID: &str = "sequence.number.alias.num";
+
 /// Command ID for the NUMBER SHOW command.
 pub const NUMBER_SHOW_COMMAND_ID: &str = "sequence.number_show";
 
@@ -31,6 +34,14 @@ pub fn register_commands(registry: &mut dyn CommandRegistry) {
         "Write sequential numbers into defined column positions",
         true,  // valid_in_edit
         false, // NOT valid_in_browse
+    );
+
+    // NUM is an alias for NUMBER -- Validates: Requirement 8 alias (EARS SN-NUM-alias)
+    registry.register_command(
+        NUM_ALIAS_COMMAND_ID,
+        "Alias for NUMBER: write sequential numbers into defined column positions",
+        true,  // valid_in_edit
+        false, // NOT valid_in_browse (same as NUMBER)
     );
 
     registry.register_command(
@@ -60,8 +71,8 @@ pub fn validate_mode(
         return Some(format!("{cmd_name}: not applicable in Grid Edit Mode"));
     }
 
-    // NUMBER is Edit-mode only
-    if command_id == NUMBER_COMMAND_ID && !is_edit_mode {
+    // NUMBER and NUM alias are Edit-mode only
+    if (command_id == NUMBER_COMMAND_ID || command_id == NUM_ALIAS_COMMAND_ID) && !is_edit_mode {
         return Some("NUMBER: not valid in Browse mode".to_string());
     }
 
@@ -107,7 +118,37 @@ mod tests {
         let mut registry = MockRegistry::new();
         register_commands(&mut registry);
 
-        assert_eq!(registry.commands.len(), 3);
+        // 4 commands: UNNUM, NUMBER, NUM alias, NUMBER SHOW
+        assert_eq!(registry.commands.len(), 4);
+    }
+
+    #[test]
+    fn num_alias_registered_for_edit_only() {
+        // Validates: Requirement 8 alias (EARS SN-NUM-alias)
+        let mut registry = MockRegistry::new();
+        register_commands(&mut registry);
+
+        let num = registry
+            .commands
+            .iter()
+            .find(|(id, _, _, _)| id == NUM_ALIAS_COMMAND_ID)
+            .unwrap();
+        assert!(num.2);  // valid_in_edit
+        assert!(!num.3); // NOT valid_in_browse (same as NUMBER)
+    }
+
+    #[test]
+    fn num_alias_rejected_in_browse_mode() {
+        // Validates: Requirement 8 alias (EARS SN-NUM-alias)
+        let result = validate_mode(NUM_ALIAS_COMMAND_ID, false, false);
+        assert!(result.is_some());
+        assert!(result.unwrap().contains("Browse mode"));
+    }
+
+    #[test]
+    fn num_alias_valid_in_edit_mode() {
+        // Validates: Requirement 8 alias (EARS SN-NUM-alias)
+        assert!(validate_mode(NUM_ALIAS_COMMAND_ID, true, false).is_none());
     }
 
     #[test]

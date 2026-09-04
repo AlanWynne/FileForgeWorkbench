@@ -707,9 +707,9 @@ Phase BY -- sequence-numbers EARS Integration (CR-NR-021)
 > Extends sequence-numbers: AUTONUM ON/OFF as alias for NUMBER ON/OFF (Req 6.7a),
 > NUM as alias for NUMBER command (Req 8 alias criterion).
 
-- [ ] BY.1 AUTONUM alias -- parser extension, unit tests (Task 20.1-20.2)
-- [ ] BY.2 NUM alias -- command framework alias registration, unit tests (Task 21.1-21.3)
-- [ ] BY.3 TCR update for alias criteria (Task 22.1)
+- [x] BY.1 AUTONUM alias -- parser extension, unit tests (Task 20.1-20.2)
+- [x] BY.2 NUM alias -- command framework alias registration, unit tests (Task 21.1-21.3)
+- [x] BY.3 TCR update for alias criteria (Task 22.1)
 
 ---
 
@@ -798,7 +798,7 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 
 - [x] BW.impl edit-operations: CAPS/NULLS/PROFILE/SUBMIT/CREATE/REPLACE/BROWSE/VIEW/nested EDIT/COMPARE/LOCK/STATS (Tasks 28-39 in edit-operations/tasks.md)
 - [x] BX.impl line-commands: O/W/F/L/]/S line commands (Tasks 22-28 in line-commands/tasks.md)
-- [ ] BY.impl sequence-numbers: AUTONUM and NUM alias extensions (Tasks 20-22 in sequence-numbers/tasks.md)
+- [x] BY.impl sequence-numbers: AUTONUM and NUM alias extensions (Tasks 20-22 in sequence-numbers/tasks.md)
 - [ ] BZ.impl menu-and-statusbar: SCROLL field, fastpath, split screen, list panel LOCATE (Tasks 24-30 in menu-and-statusbar/tasks.md)
 - [ ] CA.impl startup-and-session: session timestamps, LOGOFF, TIME, STATUS routing (Tasks 28-33 in startup-and-session/tasks.md)
 - [ ] CB.impl command-semantics P1: ALLOCATE through STATUS + FTSO operand parsing (Tasks 19-24 in command-semantics/tasks.md)

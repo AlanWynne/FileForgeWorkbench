@@ -88,7 +88,8 @@ pub mod commands;
 
 pub use auto_strip::{auto_strip_on_open, AutoStripResult};
 pub use commands::{
-    register_commands, validate_mode, NUMBER_COMMAND_ID, NUMBER_SHOW_COMMAND_ID, UNNUM_COMMAND_ID,
+    register_commands, validate_mode, NUM_ALIAS_COMMAND_ID, NUMBER_COMMAND_ID,
+    NUMBER_SHOW_COMMAND_ID, UNNUM_COMMAND_ID,
 };
 pub use config::{LanguageOverride, SeqNumConfig};
 pub use detector::{FullDetectionResult, SequenceDetector};
@@ -100,7 +101,8 @@ pub use number::{
     apply_numbering, auto_number_line, generate_sequence, validate_number_params, NumberResult,
 };
 pub use number_cmd::{
-    execute_number, get_confirmation_prompt, parse_number_args, NumberCommandResult, NumberVariant,
+    execute_number, get_confirmation_prompt, parse_autonum_args, parse_by_command_name,
+    parse_number_args, NumberCommandResult, NumberVariant,
 };
 pub use number_show::{get_overlay_content, toggle_show_mode, OverlayEntry};
 pub use profile_config::{resolve_config, ResolvedSequenceConfig};

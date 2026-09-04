@@ -56,6 +56,9 @@ pub enum NumberCommandResult {
 }
 
 /// Parse NUMBER command arguments.
+///
+/// Also accepts `AUTONUM ON` and `AUTONUM OFF` as aliases for `NUMBER ON` and
+/// `NUMBER OFF` per Requirement 6.7a (EARS SN-AUTONUM).
 pub fn parse_number_args(args: &[&str]) -> Result<NumberVariant, SeqNumError> {
     if args.is_empty() {
         return Ok(NumberVariant::Usage);
@@ -69,9 +72,43 @@ pub fn parse_number_args(args: &[&str]) -> Result<NumberVariant, SeqNumError> {
         "SHOW" => Ok(NumberVariant::Show),
         _ => Err(SeqNumError::InvalidColumnRange {
             value: args.join(" "),
-            reason: "unrecognized NUMBER argument — expected COLS, STD, ON, OFF, or SHOW"
+            reason: "unrecognized NUMBER argument -- expected COLS, STD, ON, OFF, or SHOW"
                 .to_string(),
         }),
+    }
+}
+
+/// Parse AUTONUM command arguments.
+///
+/// AUTONUM is an alias for NUMBER that only accepts ON and OFF operands.
+/// Validates: Requirement 6.7a (EARS SN-AUTONUM)
+pub fn parse_autonum_args(args: &[&str]) -> Result<NumberVariant, SeqNumError> {
+    if args.is_empty() {
+        return Err(SeqNumError::InvalidColumnRange {
+            value: String::new(),
+            reason: "AUTONUM requires ON or OFF operand".to_string(),
+        });
+    }
+    match args[0].to_uppercase().as_str() {
+        "ON" => Ok(NumberVariant::On),
+        "OFF" => Ok(NumberVariant::Off),
+        _ => Err(SeqNumError::InvalidColumnRange {
+            value: args.join(" "),
+            reason: "AUTONUM only accepts ON or OFF".to_string(),
+        }),
+    }
+}
+
+/// Parse a command that may be NUMBER, NUM (alias), or AUTONUM (alias).
+///
+/// - `NUMBER` and `NUM` accept all sub-commands (COLS, STD, ON, OFF, SHOW).
+/// - `AUTONUM` accepts only ON and OFF.
+///
+/// Validates: Requirement 6.7a (EARS SN-AUTONUM), Requirement 8 alias (EARS SN-NUM-alias)
+pub fn parse_by_command_name(command: &str, args: &[&str]) -> Result<NumberVariant, SeqNumError> {
+    match command.to_uppercase().as_str() {
+        "AUTONUM" => parse_autonum_args(args),
+        _ => parse_number_args(args),
     }
 }
 
@@ -389,6 +426,121 @@ mod tests {
     fn parse_no_args_returns_usage() {
         // Validates: Requirement 6.2
         assert_eq!(parse_number_args(&[]).unwrap(), NumberVariant::Usage);
+    }
+
+    #[test]
+    fn autonum_on_produces_number_on() {
+        // Validates: Requirement 6.7a (EARS SN-AUTONUM)
+        assert_eq!(parse_autonum_args(&["ON"]).unwrap(), NumberVariant::On);
+    }
+
+    #[test]
+    fn autonum_off_produces_number_off() {
+        // Validates: Requirement 6.7a (EARS SN-AUTONUM)
+        assert_eq!(parse_autonum_args(&["OFF"]).unwrap(), NumberVariant::Off);
+    }
+
+    #[test]
+    fn autonum_case_insensitive() {
+        // Validates: Requirement 6.7a (EARS SN-AUTONUM)
+        assert_eq!(parse_autonum_args(&["on"]).unwrap(), NumberVariant::On);
+        assert_eq!(parse_autonum_args(&["off"]).unwrap(), NumberVariant::Off);
+    }
+
+    #[test]
+    fn autonum_no_args_returns_error() {
+        // Validates: Requirement 6.7a -- AUTONUM without operand is an error
+        assert!(parse_autonum_args(&[]).is_err());
+    }
+
+    #[test]
+    fn autonum_invalid_operand_returns_error() {
+        // Validates: Requirement 6.7a -- AUTONUM only accepts ON/OFF
+        assert!(parse_autonum_args(&["SHOW"]).is_err());
+        assert!(parse_autonum_args(&["COLS"]).is_err());
+    }
+
+    #[test]
+    fn parse_by_command_name_autonum_on() {
+        // Validates: Requirement 6.7a (EARS SN-AUTONUM)
+        assert_eq!(
+            parse_by_command_name("AUTONUM", &["ON"]).unwrap(),
+            NumberVariant::On
+        );
+    }
+
+    #[test]
+    fn parse_by_command_name_autonum_off() {
+        // Validates: Requirement 6.7a (EARS SN-AUTONUM)
+        assert_eq!(
+            parse_by_command_name("AUTONUM", &["OFF"]).unwrap(),
+            NumberVariant::Off
+        );
+    }
+
+    #[test]
+    fn parse_by_command_name_num_on() {
+        // Validates: Requirement 8 alias (EARS SN-NUM-alias)
+        assert_eq!(
+            parse_by_command_name("NUM", &["ON"]).unwrap(),
+            NumberVariant::On
+        );
+    }
+
+    #[test]
+    fn parse_by_command_name_num_off() {
+        // Validates: Requirement 8 alias (EARS SN-NUM-alias)
+        assert_eq!(
+            parse_by_command_name("NUM", &["OFF"]).unwrap(),
+            NumberVariant::Off
+        );
+    }
+
+    #[test]
+    fn parse_by_command_name_num_show() {
+        // Validates: Requirement 8 alias (EARS SN-NUM-alias)
+        assert_eq!(
+            parse_by_command_name("NUM", &["SHOW"]).unwrap(),
+            NumberVariant::Show
+        );
+    }
+
+    #[test]
+    fn parse_by_command_name_num_cols() {
+        // Validates: Requirement 8 alias (EARS SN-NUM-alias)
+        let variant = parse_by_command_name("NUM", &["COLS", "73", "80"]).unwrap();
+        match variant {
+            NumberVariant::Cols { range, .. } => {
+                assert_eq!(range.start(), 73);
+                assert_eq!(range.end(), 80);
+            }
+            _ => panic!("Expected Cols"),
+        }
+    }
+
+    #[test]
+    fn parse_by_command_name_num_std() {
+        // Validates: Requirement 8 alias (EARS SN-NUM-alias)
+        let variant = parse_by_command_name("NUM", &["STD", "10", "10"]).unwrap();
+        match variant {
+            NumberVariant::Std {
+                start_value,
+                increment,
+            } => {
+                assert_eq!(start_value, 10);
+                assert_eq!(increment, 10);
+            }
+            _ => panic!("Expected Std"),
+        }
+    }
+
+    #[test]
+    fn parse_by_command_name_number_delegates_to_parse_number_args() {
+        // Validates: Requirement 8 alias -- NUMBER still works via parse_by_command_name
+        assert_eq!(
+            parse_by_command_name("NUMBER", &[]).unwrap(),
+            NumberVariant::Usage
+        );
     }
 
     #[test]

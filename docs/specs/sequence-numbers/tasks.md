@@ -249,17 +249,17 @@ The crate bridges `ff-language-service` (column definitions), `ff-document-model
 
 ## Phase BY -- EARS Integration (Alias Extensions)
 
-- [ ] 20. AUTONUM alias for NUMBER ON/OFF
-  - [ ] 20.1 Extend `NumberCommand` argument parser to recognise `AUTONUM ON` and `AUTONUM OFF` as aliases for `NUMBER ON` and `NUMBER OFF`
-  - [ ] 20.2 Write unit tests verifying `AUTONUM ON` produces identical state change to `NUMBER ON`, and `AUTONUM OFF` to `NUMBER OFF`
+- [x] 20. AUTONUM alias for NUMBER ON/OFF
+  - [x] 20.1 Extend `NumberCommand` argument parser to recognise `AUTONUM ON` and `AUTONUM OFF` as aliases for `NUMBER ON` and `NUMBER OFF`
+  - [x] 20.2 Write unit tests verifying `AUTONUM ON` produces identical state change to `NUMBER ON`, and `AUTONUM OFF` to `NUMBER OFF`
   - Covers: Requirement 6.7a (EARS SN-AUTONUM)
 
-- [ ] 21. NUM alias for NUMBER command
-  - [ ] 21.1 Register `NUM` as a command alias for `NUMBER` in the command framework (Command_ID: `sequence.number`, alias: `NUM`)
-  - [ ] 21.2 Verify all NUMBER sub-commands (ON, OFF, SHOW, COLS, STD) are reachable via `NUM`
-  - [ ] 21.3 Write unit tests verifying `NUM ON`, `NUM OFF`, `NUM SHOW`, `NUM COLS`, `NUM STD` each dispatch to the same handler as the equivalent `NUMBER` form
+- [x] 21. NUM alias for NUMBER command
+  - [x] 21.1 Register `NUM` as a command alias for `NUMBER` in the command framework (Command_ID: `sequence.number`, alias: `NUM`)
+  - [x] 21.2 Verify all NUMBER sub-commands (ON, OFF, SHOW, COLS, STD) are reachable via `NUM`
+  - [x] 21.3 Write unit tests verifying `NUM ON`, `NUM OFF`, `NUM SHOW`, `NUM COLS`, `NUM STD` each dispatch to the same handler as the equivalent `NUMBER` form
   - Covers: Requirement 8 alias criterion (EARS SN-NUM-alias)
 
-- [ ] 22. TCR update for BY alias criteria
-  - [ ] 22.1 Update docs/quality/TCR.md -- mark AUTONUM and NUM alias rows as covered once tests pass
+- [x] 22. TCR update for BY alias criteria
+  - [x] 22.1 Update docs/quality/TCR.md -- mark AUTONUM and NUM alias rows as covered once tests pass
   - Covers: Req 6.7a and Req 8 alias criterion
