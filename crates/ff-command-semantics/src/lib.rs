@@ -44,7 +44,8 @@ pub use scope::{ColumnBounds, ResolvedScope, ScopeFilter, ScopeLines, ScopeResol
 pub use session::{PendingLineCommand, SessionState};
 pub use status::{StatusKind, StatusMessage};
 pub use tso::{
-    check_capabilities, is_ds_uri, redact_secrets, route_tso_command, strip_ds_uri, AuditEvent,
-    AuditOutcome, CapabilitySet, CommandContinuation, CommandEntry, CommandPriority, SessionPrefix,
-    TsoOperand, TsoOperandParser, TsoRoute,
+    check_capabilities, is_ds_uri, parse_cancel_purge, parse_send_target, redact_secrets,
+    route_tso_command, strip_ds_uri, AuditEvent, AuditOutcome, CancelPurge, CapabilitySet,
+    CommandContinuation, CommandEntry, CommandPriority, SendTarget, SessionPrefix, TsoOperand,
+    TsoOperandParser, TsoRoute,
 };

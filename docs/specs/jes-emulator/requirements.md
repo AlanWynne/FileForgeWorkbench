@@ -2,7 +2,7 @@
 
 ## Introduction
 
-> **Naming Note:** This sub-project folder is named `FFW-JES` for historical reasons. The canonical kebab-case name is `jes-emulator`. The folder name is preserved to avoid breaking existing references.
+> **Naming Note:** This sub-project folder was named `FFW-JES` for historical reasons and was renamed to `jes-emulator` in Phase BR to match the kebab-case convention. The crate name `ff-jes` is unchanged.
 
 This feature specifies **FFW-JES** (FileForge Workbench Job Entry Subsystem) — a cross-platform emulator of IBM JES2/JES3 batch processing concepts (JES2 and JES3 are IBM z/OS job entry subsystems; this crate emulates their concepts on the desktop — it has no dependency on actual IBM software) delivered as a workbench plugin (`ff-jes` crate). FFW-JES emulates mainframe batch processing on Windows, Linux, and macOS: job submission, queue management, initiator-based execution, SDSF-style monitoring, dataset allocation via the catalog, and retained job output.
 

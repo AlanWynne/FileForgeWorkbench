@@ -343,7 +343,7 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
           assert ContentAreaState::entries has two entries with correct names and
           is_container flags.
           - Validates: Requirement 13.2
-  - [ ] 20.2 Write failing test `file_explorer_mainframe_content_populated_from_sqlite` --
+  - [x] 20.2 Write failing test `file_explorer_mainframe_content_populated_from_sqlite` --
           same setup; call the File Explorer render_mainframe_content equivalent; assert
           the dataset list matches the SQLite contents.
           - Validates: Requirement 13.3
@@ -393,7 +393,7 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
           - Validates: Requirement 13.3
   - [x] 24.2 Run `cargo test -p ff-desktop` -- task 20.2 now PASS.
 
-- [ ] 25. Replace resolve_dataset_path() with resolve_and_open_dataset()
+- [x] 25. Replace resolve_dataset_path() with resolve_and_open_dataset()
   - [x] 25.1 In `files_panel.rs`: add `resolve_and_open_dataset(registry, dsn)` function
           that calls `registry.resolve(dsn)`, returns Ok(PathBuf) on success or Err(String)
           with the appropriate message on failure. Remove the old `resolve_dataset_path()`

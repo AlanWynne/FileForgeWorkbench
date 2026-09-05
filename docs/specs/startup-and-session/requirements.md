@@ -298,7 +298,12 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 
 #### Acceptance Criteria
 
-1. WHEN the workbench application starts for the first time (no saved session), THE desktop shell SHALL open with a single tab displaying the Primary Option Menu. WHEN a saved session exists, THE desktop shell SHALL restore the session to the exact state it was in when last closed — including all open tabs, their types, and their content. [ISPF-POM]
+1. WHEN the workbench application starts for the first time (no saved session), THE desktop shell SHALL open with a single tab displaying the Primary Option Menu. [ISPF-POM]
+
+1a. WHEN a saved session exists AND the session contains at least one tab of kind PrimaryOptionMenu, THE desktop shell SHALL restore the session to the exact state it was in when last closed -- including all open tabs, their types, and their content. [ISPF-POM]
+
+1b. WHEN a saved session exists AND the session contains NO tab of kind PrimaryOptionMenu, THE desktop shell SHALL restore all saved tabs AND prepend a new PrimaryOptionMenu tab at index 0, so that the POM is always present and reachable on startup. [ISPF-POM]
+   *(Added CR-CH-007: resolves B001 -- the POM is the ISPF home screen and must always be present, even when the user closed all POM tabs before the previous exit.)*
 
 2. THE Primary Option Menu tab SHALL display a centred title line in the format `FileForge Workbench — Primary Option Menu` followed by the application version, a numbered list of menu options, and a live calendar panel. [ISPF-POM]
 

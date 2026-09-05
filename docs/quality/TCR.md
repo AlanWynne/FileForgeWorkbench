@@ -175,7 +175,9 @@ None — all crates compile and pass.
 | `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 4.2: Backspace at col 1 on first line is a no-op |
 | `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 13.3: current cursor line is visually highlighted |
 | `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 13.4: caret (vertical bar) rendered at cursor column |
-| `ff-desktop` | ✅ | `primary_option_menu.rs` unit tests, `shell.rs` unit tests | Req 14.1: POM opens as floating window on startup (was: shown when no file tabs open — revised) |
+| `ff-desktop` | ✅ | `primary_option_menu.rs` unit tests, `shell.rs` unit tests | Req 14.1: POM opens as floating window on startup (was: shown when no file tabs open -- revised) |
+| `ff-desktop` | ✅ | `shell/update.rs` startup_tests | Req 14.1a: session with POM tab -- `session_with_pom_tab_restores_exactly` -- ensure_pom_tab_present is a no-op when POM already present |
+| `ff-desktop` | ✅ | `shell/update.rs` startup_tests | Req 14.1b: session without POM tab -- `session_without_pom_tab_prepends_pom` -- POM prepended at index 0 when no POM tab in restored session |
 | `ff-desktop` | ✅ | `primary_option_menu.rs` unit tests, `shell.rs` unit tests | Req 14.2: title line with app name and version |
 | `ff-desktop` | ✅ | `primary_option_menu.rs` unit tests | Req 14.3: numbered option list with built-in entries |
 | `ff-desktop` | ✅ | `primary_option_menu.rs` unit tests | Req 14.4: live calendar panel with current month/day |
@@ -1145,12 +1147,12 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-dscatalog` | ✅ | `storage::isam::tests::isam_primary_key_insert_and_read`, `isam_sequential_read_returns_records_in_key_order` | Req 24.1: ISAM uses common indexed-record interface shared with KSDS |
 | `ff-dscatalog` | ✅ | `storage::isam::tests::isam_secondary_index_lookup_returns_matching_primary_keys`, `isam_multiple_secondary_indexes_coexist` | Req 24.2: ISAM default provider uses SQLite indexes for primary and secondary access |
 | `ff-dscatalog` | ✅ | `storage::isam::tests::isam_provider_implements_storage_provider_trait`, `isam_storage_provider_allocate_and_stat` | Req 24.3: ISAM implementation encapsulated behind StorageProvider interface |
-| `ff-dscatalog` | 🔴 | — | Req 25.1: staged create protocol — stage, reserve, publish, activate |
-| `ff-dscatalog` | 🔴 | — | Req 25.2: staged delete protocol — mark pending, tombstone, finalise |
-| `ff-dscatalog` | 🔴 | — | Req 25.3: interrupted operations discoverable through OperationJournal |
-| `ff-dscatalog` | 🔴 | — | Req 25.4: startup recovery detects and offers complete-or-rollback for incomplete operations |
-| `ff-dscatalog` | 🔴 | — | Req 25.5: concurrent modification controlled via version tokens / SQLite transactions |
-| `ff-dscatalog` | 🔴 | — | Req 25.6: operation not reported successful until both catalogue and provider postconditions met |
+| `ff-dscatalog` | ✅ | `transactions::tests::full_create_protocol_advances_through_all_states`, `rollback_create_removes_journal_entry` | Req 25.1: staged create protocol -- stage, reserve, publish, activate |
+| `ff-dscatalog` | ✅ | `transactions::tests::full_delete_protocol_advances_through_all_states` | Req 25.2: staged delete protocol -- mark pending, tombstone, finalise |
+| `ff-dscatalog` | ✅ | `transactions::tests::begin_create_writes_staging_entry`, `incomplete_operations_returns_only_transitional_entries`, `journal_entries_survive_reopen` | Req 25.3: interrupted operations discoverable through OperationJournal |
+| `ff-dscatalog` | ✅ | `transactions::tests::recovery_plan_for_staging_entry_is_rollback_create`, `recovery_plan_for_published_entry_is_complete_create`, `recovery_plan_for_pending_delete_is_rollback_delete`, `recovery_plan_for_tombstoned_entry_is_complete_delete`, `active_entries_produce_no_recovery_actions` | Req 25.4: startup recovery detects and offers complete-or-rollback for incomplete operations |
+| `ff-dscatalog` | ✅ | `transactions::tests::stale_version_is_rejected`, `wrong_state_transition_is_rejected` | Req 25.5: concurrent modification controlled via version tokens / SQLite transactions |
+| `ff-dscatalog` | ✅ | `transactions::tests::activate_fails_if_not_in_published_state` | Req 25.6: operation not reported successful until both catalogue and provider postconditions met |
 | `ff-dscatalog` | ✅ | `integrity::tests::checksum_file_produces_hex_digest`, `verify_checksum_*` | Req 26.1: optional CRC-32 checksums on managed content; verified on open when enabled |
 | `ff-dscatalog` | ✅ | `integrity::tests::backup_creates_archive_with_manifest`, `backup_manifest_contains_correct_sizes` | Req 26.2: workspace.backup captures catalogue DB, SQLite stores, native files, journals |
 | `ff-dscatalog` | ✅ | `integrity::tests::manifest_serialises_and_deserialises`, `manifest_schema_version_is_set` | Req 26.3: backup manifest contains schema version, provider config, object inventory, checksums |
@@ -1376,124 +1378,124 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-jes` | 🔴 | -- | Req 17.1: ST panel shows all jobs with STATUS column |
-| `ff-jes` | 🔴 | -- | Req 17.2: FILTER command -- advanced filter expression; FILTER clears |
-| `ff-jes` | 🔴 | -- | Req 17.3: FIND command -- search panel data; FIND NEXT/PREV |
-| `ff-jes` | 🔴 | -- | Req 17.4: LOCATE command -- scroll to first JOBNAME match, nearest alpha on no match |
-| `ff-jes` | 🔴 | -- | Req 17.5: UP/DOWN/LEFT/RIGHT scroll commands with n/HALF/PAGE/MAX amounts |
-| `ff-jes` | 🔴 | -- | Req 17.6: SET ACTION displays valid action characters with descriptions |
-| `ff-jes` | 🔴 | -- | Req 17.7: SET MAIN [panel-name] sets default MENU panel |
-| `ff-jes` | 🔴 | -- | Req 17.8: SET ROWNUM ON/OFF toggles row numbers in NP area |
-| `ff-jes` | 🔴 | -- | Req 17.9: WHO displays session info (user, start time, filters, SET settings, provider) |
-| `ff-jes` | 🔴 | -- | Req 17.10: QUERY AUTH displays authorised commands and action characters |
-| `ff-jes` | 🔴 | -- | Req 17.11: SET settings (ACTION/MAIN/ROWNUM) persist across restarts |
-| `ff-jes` | 🔴 | -- | Req 17.12: FILTER supports =, !=, >, <, >=, <= operators and wildcard * |
-| `ff-jes` | 🔴 | -- | Req 17.13: FILTER supports AND and OR logical operators |
-| `ff-jes` | 🔴 | -- | Req 17.14: ST panel accessible via ST command and S action on main panel |
-| `ff-jes` | 🔴 | -- | Req 17.15: FIND case-insensitive by default; FIND C for case-sensitive |
-| `ff-jes` | 🔴 | -- | Req 17.16: LOCATE/FIND no-match shows "string NOT FOUND" in message area |
-| `ff-jes` | 🔴 | -- | Req 17.17: scroll commands update SCROLL ===> field to last-used amount |
+| `ff-jes` | ✅ | `sdsf_filter_expr.rs` unit tests | Req 17.1: ST panel shows all jobs with STATUS column -- `filter_status_active`, `sdsf_panel::main_panel_has_st_command` |
+| `ff-jes` | ✅ | `sdsf_filter_expr.rs` unit tests | Req 17.2: FILTER command -- advanced filter expression; FILTER clears -- `filter_eq_jobname`, `active_filter_set_and_clear`, `filter_empty_returns_none` |
+| `ff-jes` | ✅ | `sdsf_commands.rs` unit tests | Req 17.3: FIND command -- search panel data; FIND NEXT/PREV -- `find_first_returns_correct_index`, `find_next_advances_past_current`, `find_prev_moves_backward` |
+| `ff-jes` | ✅ | `sdsf_commands.rs` unit tests | Req 17.4: LOCATE command -- scroll to first JOBNAME match, nearest alpha on no match -- `locate_exact_prefix_match`, `locate_nearest_alphabetic`, `locate_empty_list` |
+| `ff-jes` | ✅ | `sdsf_commands.rs` unit tests | Req 17.5: UP/DOWN/LEFT/RIGHT scroll commands with n/HALF/PAGE/MAX amounts -- `scroll_down_page`, `scroll_up_half`, `scroll_down_clamps_at_max`, `scroll_up_clamps_at_zero` |
+| `ff-jes` | ✅ | `sdsf_commands.rs` unit tests | Req 17.6: SET ACTION displays valid action characters with descriptions -- `set_action_toggles` |
+| `ff-jes` | ✅ | `sdsf_commands.rs` unit tests | Req 17.7: SET MAIN [panel-name] sets default MENU panel -- `set_main_updates_panel` |
+| `ff-jes` | ✅ | `sdsf_commands.rs` unit tests | Req 17.8: SET ROWNUM ON/OFF toggles row numbers in NP area -- `set_rownum_toggles` |
+| `ff-jes` | ✅ | `sdsf_commands.rs` unit tests | Req 17.9: WHO displays session info (user, start time, filters, SET settings, provider) -- `who_format_contains_required_fields`, `who_omits_unset_filters` |
+| `ff-jes` | ✅ | `sdsf_commands.rs` unit tests | Req 17.10: QUERY AUTH displays authorised commands and action characters -- `query_auth_contains_commands_and_actions`, `query_auth_list_non_empty` |
+| `ff-jes` | ✅ | `sdsf_commands.rs` unit tests | Req 17.11: SET settings (ACTION/MAIN/ROWNUM) persist across restarts -- `settings_serialise_round_trip`, `settings_default_round_trip` |
+| `ff-jes` | ✅ | `sdsf_filter_expr.rs` unit tests | Req 17.12: FILTER supports =, !=, >, <, >=, <= operators and wildcard * -- `filter_ne_operator`, `filter_wildcard_prefix`, `filter_ge_operator` |
+| `ff-jes` | ✅ | `sdsf_filter_expr.rs` unit tests | Req 17.13: FILTER supports AND and OR logical operators -- `filter_and_operator`, `filter_or_operator` |
+| `ff-jes` | ✅ | `sdsf_panel.rs` unit tests | Req 17.14: ST panel accessible via ST command and S action on main panel -- `main_panel_has_st_command`, `navigate_to_sub_panel` |
+| `ff-jes` | ✅ | `sdsf_commands.rs` unit tests | Req 17.15: FIND case-insensitive by default; FIND C for case-sensitive -- `find_case_sensitive`, `find_first_returns_correct_index` |
+| `ff-jes` | ✅ | `sdsf_commands.rs` unit tests | Req 17.16: LOCATE/FIND no-match shows "string NOT FOUND" in message area -- `find_no_match_sets_is_no_match`, `locate_nearest_alphabetic` |
+| `ff-jes` | ✅ | `sdsf_commands.rs` unit tests | Req 17.17: scroll commands update SCROLL ===> field to last-used amount -- `scroll_uses_default_amount_when_omitted`, `scroll_updates_scroll_field` |
 
 
 ### Phase CE -- undo-redo-transactions P2 EARS Integration (Requirement 19)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-undo-redo` | 🔴 | -- | Req 19.1: SETUNDO ON/OFF/n command -- enable/disable/configure undo levels, immediate effect |
-| `ff-undo-redo` | 🔴 | -- | Req 19.2: RECOVERY ON/OFF/n command -- enable/disable/configure recovery interval, immediate effect |
+| `ff-undo-redo` | ✅ | `setundo.rs` unit tests | Req 19.1: SETUNDO ON/OFF/n command -- `apply_setundo_on_enables`, `apply_setundo_off_disables`, `apply_setundo_levels_sets_max`, `setundo_levels_zero_clears_stack`, `setundo_levels_shrink_evicts_oldest` |
+| `ff-undo-redo` | ✅ | `setundo.rs` unit tests | Req 19.2: RECOVERY ON/OFF/n command -- `apply_recovery_on_enables`, `apply_recovery_off_disables`, `apply_recovery_interval_sets_value`, `recovery_interval_zero_disables`, `recovery_interval_persists_across_edits` |
 
 
 ### Phase CF -- syntax-highlighting P2 EARS Integration (Requirement 16)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-syntax-highlighting` | 🔴 | -- | Req 16.1: HILITE ON/OFF -- enable/disable syntax highlighting per document, state persists |
-| `ff-syntax-highlighting` | 🔴 | -- | Req 16.2: HILITE LOGIC -- highlight boolean and comparison operators with HILITE_LOGIC style |
-| `ff-syntax-highlighting` | 🔴 | -- | Req 16.3: HILITE PAREN -- highlight enclosing delimiter pair at cursor; HILITE_PAREN_ERROR for mismatches |
-| `ff-syntax-highlighting` | 🔴 | -- | Req 16.4: HILITE FIND -- persist find-match highlights; HILITE FIND OFF clears |
-| `ff-syntax-highlighting` | 🔴 | -- | Req 16.5: HILITE combined operands -- ON LOGIC PAREN enables multiple modes; modes toggle independently |
+| `ff-syntax-highlighting` | ✅ | `hilite.rs` unit tests | Req 16.1: HILITE ON/OFF -- `hilite_state_on_enables_highlighting`, `hilite_state_off_disables_highlighting_and_clears_modes`, `hilite_operand_parse_on/off` |
+| `ff-syntax-highlighting` | ✅ | `hilite.rs` unit tests | Req 16.2: HILITE LOGIC -- `hilite_state_logic_toggles_independently`, `logic_scanner_detects_*`, `logic_scanner_word_operators_whole_word_only` |
+| `ff-syntax-highlighting` | ✅ | `hilite.rs` unit tests | Req 16.3: HILITE PAREN -- `paren_matcher_finds_enclosing_*`, `paren_matcher_returns_mismatched_for_unclosed_opener`, `paren_matcher_finds_innermost_pair` |
+| `ff-syntax-highlighting` | ✅ | `hilite.rs` unit tests | Req 16.4: HILITE FIND -- `hilite_state_find_off_clears_find_string`, `hilite_state_set_find_string_only_when_find_active`, `hilite_operand_parse_find/find_off` |
+| `ff-syntax-highlighting` | ✅ | `hilite.rs` unit tests | Req 16.5: HILITE combined operands -- `hilite_state_on_logic_paren_enables_both_modes`, `hilite_state_modes_toggle_independently_after_on`, `hilite_operand_parse_on_logic_paren` |
 
 
 ### Phase CG -- lua-macro-engine P2 EARS Integration (Requirement 11)
 
 | Crate | Status | Test | Criterion |
 |-------|--------|------|-----------|
-| `ff-macro` | 🔴 | -- | Req 11.1: ISREDIT host command environment dispatches edit macro service calls |
-| `ff-macro` | 🔴 | -- | Req 11.2: ISPEXEC host command environment routes dialog service calls |
-| `ff-macro` | 🔴 | -- | Req 11.3: IMACRO executes named macro at edit session open |
-| `ff-macro` | 🔴 | -- | Req 11.4: IMACRO edit profile setting stores/retrieves initial macro name |
-| `ff-macro` | 🔴 | -- | Req 11.5: LINENUM function resolves label/relative reference to absolute line number |
-| `ff-macro` | 🔴 | -- | Req 11.6: CURSOR function gets and sets cursor position |
-| `ff-macro` | 🔴 | -- | Req 11.7: EXEC command locates and executes named exec from SYSEXEC/SYSPROC |
-| `ff-macro` | 🔴 | -- | Req 11.8: Implicit exec invocation for unrecognized command names |
-| `ff-macro` | 🔴 | -- | Req 11.9: % prefix bypasses primary command table for exec lookup |
-| `ff-macro` | 🔴 | -- | Req 11.10: EXEC <member> <args> passes argument string to exec |
-| `ff-macro` | 🔴 | -- | Req 11.11: TSO host command environment routes to ff-command dispatcher |
-| `ff-macro` | 🔴 | -- | Req 11.12: ADDRESS <environment-name> switches default host command environment |
-| `ff-macro` | 🔴 | -- | Req 11.13: ISPEXEC ADDRESS environment routes to ISPF dialog service layer |
-| `ff-macro` | 🔴 | -- | Req 11.14: ISREDIT ADDRESS environment routes to ISREDIT handler |
-| `ff-macro` | 🔴 | -- | Req 11.15: RC special variable set to host command return code |
-| `ff-macro` | 🔴 | -- | Req 11.16: LISTDSI built-in returns dataset information from ff-dscatalog |
-| `ff-macro` | 🔴 | -- | Req 11.17: MSG built-in displays message in status bar or message area |
-| `ff-macro` | 🔴 | -- | Req 11.18: MVSVAR built-in returns system variable values mapped to workbench equivalents |
-| `ff-macro` | 🔴 | -- | Req 11.19: OUTTRAP built-in captures TSO command output into stem variable |
-| `ff-macro` | 🔴 | -- | Req 11.20: PROMPT built-in controls terminal input availability |
-| `ff-macro` | 🔴 | -- | Req 11.21: SYSDSN built-in returns OK or error string for named dataset |
-| `ff-macro` | 🔴 | -- | Req 11.22: SYSVAR built-in returns ISPF system variable values |
-| `ff-macro` | 🔴 | -- | Req 11.23: USERID built-in returns current user login name |
-| `ff-macro` | 🔴 | -- | Req 11.24: EXECIO DISKR reads records from ddname dataset into stem variable |
-| `ff-macro` | 🔴 | -- | Req 11.25: EXECIO DISKW writes records from stem variable to ddname dataset |
-| `ff-macro` | 🔴 | -- | Req 11.26: EXECIO FINIS variants read/write all remaining records and close file |
-| `ff-macro` | 🔴 | -- | Req 11.27: EXECIO SKIP advances read position without returning data |
-| `ff-macro` | 🔴 | -- | Req 11.28: EXECIO return codes RC=0/2/non-zero per TSO conventions |
-| `ff-macro` | 🔴 | -- | Req 11.29: FFCMD command files execute .ffcmd files line-by-line as batch primary commands |
-| `ff-macro` | 🔴 | -- | Req 11.30: FFCMD execution wrapped in single Macro_Transaction for atomic undo |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.1: ISREDIT host command environment dispatches edit macro service calls |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.2: ISPEXEC host command environment routes dialog service calls |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.3: IMACRO executes named macro at edit session open |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.4: IMACRO edit profile setting stores/retrieves initial macro name |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.5: LINENUM function resolves label/relative reference to absolute line number |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.6: CURSOR function gets and sets cursor position |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.7: EXEC command locates and executes named exec from SYSEXEC/SYSPROC |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.8: Implicit exec invocation for unrecognized command names |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.9: % prefix bypasses primary command table for exec lookup |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.10: EXEC <member> <args> passes argument string to exec |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.11: TSO host command environment routes to ff-command dispatcher |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.12: ADDRESS <environment-name> switches default host command environment |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.13: ISPEXEC ADDRESS environment routes to ISPF dialog service layer |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.14: ISREDIT ADDRESS environment routes to ISREDIT handler |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.15: RC special variable set to host command return code |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.16: LISTDSI built-in returns dataset information from ff-dscatalog |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.17: MSG built-in displays message in status bar or message area |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.18: MVSVAR built-in returns system variable values mapped to workbench equivalents |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.19: OUTTRAP built-in captures TSO command output into stem variable |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.20: PROMPT built-in controls terminal input availability |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.21: SYSDSN built-in returns OK or error string for named dataset |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.22: SYSVAR built-in returns ISPF system variable values |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.23: USERID built-in returns current user login name |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.24: EXECIO DISKR reads records from ddname dataset into stem variable |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.25: EXECIO DISKW writes records from stem variable to ddname dataset |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.26: EXECIO FINIS variants read/write all remaining records and close file |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.27: EXECIO SKIP advances read position without returning data |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.28: EXECIO return codes RC=0/2/non-zero per TSO conventions |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.29: FFCMD command files execute .ffcmd files line-by-line as batch primary commands |
+| `ff-macro` | ✅ | `ff-lua` unit tests | Req 11.30: FFCMD execution wrapped in single Macro_Transaction for atomic undo |
 
 ### Phase CH -- FFW-JES P2 EARS Integration (Requirement 18)
 
 | Crate | Status | Test | Criterion |
 |-------|--------|------|-----------|
-| `ff-jes` | 🔴 | -- | Req 18.1: Overtypeable fields visually distinct from read-only fields |
-| `ff-jes` | 🔴 | -- | Req 18.2: Direct overtype applies change and refreshes panel on Enter |
-| `ff-jes` | 🔴 | -- | Req 18.3: Command-line overtype syntax updates named field for cursor/NP row |
-| `ff-jes` | 🔴 | -- | Req 18.4: Overtype Extension pop-up for values exceeding column width |
-| `ff-jes` | 🔴 | -- | Req 18.5: Context-sensitive HELP / PF1 displays panel help |
-| `ff-jes` | 🔴 | -- | Req 18.6: ACTH lists valid action characters with descriptions |
-| `ff-jes` | 🔴 | -- | Req 18.7: COLH lists column names with type, width, and description |
-| `ff-jes` | 🔴 | -- | Req 18.8: CMDH lists valid primary commands with syntax and description |
-| `ff-jes` | 🔴 | -- | Req 18.9: SEARCH <text> in help panel scrolls to first match |
-| `ff-jes` | 🔴 | -- | Req 18.10: LOG command opens System Log panel in reverse-chronological order |
-| `ff-jes` | 🔴 | -- | Req 18.11: ULOG command opens User Log panel for current user |
-| `ff-jes` | 🔴 | -- | Req 18.12: NEXT/PREV scroll forward/backward through log segments |
-| `ff-jes` | 🔴 | -- | Req 18.13: SNAPSHOT captures current log content to dataset or file |
-| `ff-jes` | 🔴 | -- | Req 18.14: SYS panel displays active address spaces with status and resources |
-| `ff-jes` | 🔴 | -- | Req 18.15: DASH panel displays system health metrics summary |
-| `ff-jes` | 🔴 | -- | Req 18.16: INIT panel displays initiator pool status |
-| `ff-jes` | 🔴 | -- | Req 18.17: JC panel displays job class definitions and scheduling parameters |
-| `ff-jes` | 🔴 | -- | Req 18.18: SP panel displays spool volume utilisation and track allocation |
-| `ff-jes` | 🔴 | -- | Req 18.19: Browse settings: line width, record format display, FIND in output |
-| `ff-jes` | 🔴 | -- | Req 18.20: PRINT action routes job output to configured print destination |
-| `ff-jes` | 🔴 | -- | Req 18.21: COLS command displays column ruler in browse panel |
-| `ff-jes` | 🔴 | -- | Req 18.22: SET BCOLOR sets panel background colour, persisted |
-| `ff-jes` | 🔴 | -- | Req 18.23: SET CONFIRM ON/OFF controls confirmation prompt for destructive actions |
-| `ff-jes` | 🔴 | -- | Req 18.24: SET CURSOR sets default cursor landing position on panel open |
-| `ff-jes` | 🔴 | -- | Req 18.25: SET DATE sets date display format (MDY/DMY/YMD/JUL) |
-| `ff-jes` | 🔴 | -- | Req 18.26: SET DELAY sets automatic refresh interval; 0 disables auto-refresh |
-| `ff-jes` | 🔴 | -- | Req 18.27: SET HEX ON/OFF toggles hexadecimal display of field values |
-| `ff-jes` | 🔴 | -- | Req 18.28: SET SCHARS defines special characters for field delimiters |
-| `ff-jes` | 🔴 | -- | Req 18.29: SET SCREEN sets logical screen dimensions for panel layout |
-| `ff-jes` | 🔴 | -- | Req 18.30: All SET P2 settings persisted across sessions |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.1: Overtypeable fields visually distinct from read-only fields |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.2: Direct overtype applies change and refreshes panel on Enter |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.3: Command-line overtype syntax updates named field for cursor/NP row |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.4: Overtype Extension pop-up for values exceeding column width |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.5: Context-sensitive HELP / PF1 displays panel help |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.6: ACTH lists valid action characters with descriptions |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.7: COLH lists column names with type, width, and description |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.8: CMDH lists valid primary commands with syntax and description |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.9: SEARCH <text> in help panel scrolls to first match |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.10: LOG command opens System Log panel in reverse-chronological order |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.11: ULOG command opens User Log panel for current user |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.12: NEXT/PREV scroll forward/backward through log segments |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.13: SNAPSHOT captures current log content to dataset or file |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.14: SYS panel displays active address spaces with status and resources |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.15: DASH panel displays system health metrics summary |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.16: INIT panel displays initiator pool status |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.17: JC panel displays job class definitions and scheduling parameters |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.18: SP panel displays spool volume utilisation and track allocation |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.19: Browse settings: line width, record format display, FIND in output |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.20: PRINT action routes job output to configured print destination |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.21: COLS command displays column ruler in browse panel |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.22: SET BCOLOR sets panel background colour, persisted |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.23: SET CONFIRM ON/OFF controls confirmation prompt for destructive actions |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.24: SET CURSOR sets default cursor landing position on panel open |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.25: SET DATE sets date display format (MDY/DMY/YMD/JUL) |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.26: SET DELAY sets automatic refresh interval; 0 disables auto-refresh |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.27: SET HEX ON/OFF toggles hexadecimal display of field values |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.28: SET SCHARS defines special characters for field delimiters |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.29: SET SCREEN sets logical screen dimensions for panel layout |
+| `ff-jes` | ✅ | `ff-jes` unit tests | Req 18.30: All SET P2 settings persisted across sessions |
 
 
 ### Phase CI -- command-semantics P2 EARS Integration (Requirement 10)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-command-semantics` | 🔴 | -- | Req 10.1: OUTPUT jobname routes to FFW-JES for job output display/retrieval |
-| `ff-command-semantics` | 🔴 | -- | Req 10.2: CANCEL jobname [PURGE] routes to FFW-JES; PURGE requests output purge |
-| `ff-command-semantics` | 🔴 | -- | Req 10.3: SEND 'message' [USER/LOGON/BROADCAST] routes to messaging subsystem |
-| `ff-command-semantics` | 🔴 | -- | Req 10.4: PROFILE [operands] routes to session profile subsystem |
-| `ff-command-semantics` | 🔴 | -- | Req 10.5: PRINTDS DATASET(dsname) routes to file-operations pipeline |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 10.1: OUTPUT jobname routes to FFW-JES for job output display/retrieval |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 10.2: CANCEL jobname [PURGE] routes to FFW-JES; PURGE requests output purge |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 10.3: SEND 'message' [USER/LOGON/BROADCAST] routes to messaging subsystem |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 10.4: PROFILE [operands] routes to session profile subsystem |
+| `ff-command-semantics` | ✅ | `tso.rs` unit tests | Req 10.5: PRINTDS DATASET(dsname) routes to file-operations pipeline |
 
 ### Phase CJ -- Bootstrap Scripts (CR-NR-032)
 
@@ -1526,3 +1528,230 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `bootstrap` | 🔴 | -- | Req 5.4: all scripts pass --no-modify-path to rustup-init |
 | `bootstrap` | 🔴 | -- | Req 5.5: all scripts install the stable toolchain targeting the host triple |
 | `bootstrap` | 🔴 | -- | Req 5.6: no script installs a non-stable toolchain unless explicitly requested |
+
+### Phase CK -- FFTest Automated Dialog Testing Framework (CR-NR-033)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-fftest` | 🔴 | -- | Req 1.1: THE FileForgeWorkbench platform SHALL provide an integrated automated dialog testing framework named FFTest |
+| `ff-fftest` | 🔴 | -- | Req 1.2: THE FFTest framework SHALL support execution without user interaction |
+| `ff-fftest` | 🔴 | -- | Req 1.3: THE FFTest framework SHALL be cross-platform on Windows, Linux, and macOS |
+| `ff-fftest` | 🔴 | -- | Req 1.4: THE FFTest framework SHALL be designed such that not less than 90% of business logic testing can be performed without the GUI loaded |
+| `ff-fftest` | 🔴 | -- | Req 1.5: THE FFTest framework SHALL maintain a version-controlled repository of test scripts, baselines, test data, and execution reports |
+| `ff-desktop` | ✅ | `ff-fftest::automation` unit tests, `ff-desktop::automation` unit tests | Req 2.1: EACH user interface component in ff-desktop SHALL expose a stable automation identifier string |
+| `ff-desktop` | ✅ | `ff-fftest::automation` unit tests, `ff-desktop::automation` unit tests | Req 2.2: Automation IDs SHALL follow dot-separated hierarchical naming convention |
+| `ff-desktop` | ✅ | `ff-desktop::automation` unit tests | Req 2.3: THE framework SHALL NEVER rely solely on screen coordinates to identify controls |
+| `ff-desktop` | ✅ | `ff-desktop::automation` unit tests | Req 2.4: menus, toolbars, buttons, text boxes, tables, tree controls, dialog windows, tabs, ISPF panels, dataset browsers, and plugin dialogs SHALL be automatable |
+| `ff-desktop` | ✅ | `ff-fftest::automation` unit tests, `ff-desktop::automation` unit tests | Req 2.5: WHEN a UI control is rendered, THE automation subsystem SHALL query its state by Automation ID without a display device |
+| `ff-fftest` | ✅ | `ff-fftest::parser` unit tests | Req 3.1: THE FFTest scripting language SHALL provide navigation, interaction, assertion, and control flow command categories |
+| `ff-fftest` | ✅ | `ff-fftest::parser` unit tests | Req 3.2: OPEN FILE, WAIT WINDOW, CLICK MENU, CLICK BUTTON, SELECT MENUITEM, TYPE TEXT, PRESS KEY, ASSERT WINDOW EXISTS, ASSERT TEXT EXISTS, ASSERT STATUSBAR CONTAINS, ASSERT FILE OPEN, ASSERT CONTROL VALUE, CHECKPOINT, CLOSE WINDOW commands SHALL be supported |
+| `ff-fftest` | ✅ | `ff-fftest::parser` unit tests | Req 3.3: THE FFTest script parser SHALL be case-insensitive for command keywords |
+| `ff-fftest` | ✅ | `ff-fftest::parser` unit tests | Req 3.4: THE FFTest script parser SHALL treat lines beginning with # as comments |
+| `ff-fftest` | ✅ | `ff-fftest::runner` unit tests | Req 3.5: WHEN a script command references an Automation ID that does not exist, THE runner SHALL record a diagnostic failure with file name, line number, and unresolved ID |
+| `ff-fftest` | ✅ | `ff-fftest::parser` unit tests | Req 3.6: THE FFTest scripting language SHALL support parameterised scripts via ${VARIABLE_NAME} substitution |
+| `ff-fftest` | ✅ | `ff-fftest::runner` unit tests | Req 4.1: WHEN a dialog script is executed, THE FFTest runner SHALL validate all assertions contained within the script |
+| `ff-fftest` | ✅ | `ff-fftest::runner` unit tests | Req 4.2: THE FFTest runner SHALL process script commands sequentially in file order |
+| `ff-fftest` | ✅ | `ff-fftest::assertions` + `ff-fftest::runner` unit tests | Req 4.3: WHEN an assertion fails, THE runner SHALL record script file, line number, assertion text, expected value, and actual value |
+| `ff-fftest` | ✅ | `ff-fftest::runner` unit tests | Req 4.4: WHEN a test execution completes, THE runner SHALL generate a pass/fail summary with total assertions, passed count, failed count, and duration |
+| `ff-fftest` | 🔴 | -- | Req 4.5: WHILE executing automated tests, THE runner SHALL continue processing UI events and background tasks |
+| `ff-fftest` | 🔴 | -- | Req 4.6: WHILE executing end-to-end workflow tests, THE runner SHALL validate expected outcomes at each workflow checkpoint |
+| `ff-fftest` | 🔴 | -- | Req 5.1: WHEN a user starts test recording, THE framework SHALL capture all supported user interactions |
+| `ff-fftest` | 🔴 | -- | Req 5.2: WHEN test recording ends, THE framework SHALL generate an executable FFTest script |
+| `ff-fftest` | 🔴 | -- | Req 5.3: Recorded scripts SHALL be executable without modification |
+| `ff-fftest` | 🔴 | -- | Req 5.4: THE recording subsystem SHALL emit Automation IDs in generated scripts, not screen coordinates |
+| `ff-fftest` | ✅ | `ff-desktop::fftest_cli` unit tests | Req 6.1: WHILE executing headless tests, THE framework SHALL support operation without an attached display device |
+| `ff-fftest` | ✅ | `ff-desktop::fftest_cli` unit tests | Req 6.2: THE FFTest runner SHALL be invocable via ffwb --run-tests and ffwb --run-script <path> |
+| `ff-fftest` | ✅ | `ff-desktop::fftest_cli` unit tests | Req 6.3: WHEN CI/CD integration is configured, THE framework SHALL return process exit codes: 0=pass, non-zero=failure |
+| `ff-fftest` | 🔴 | -- | Req 6.4: THE headless runner SHALL support GitHub Actions, GitLab CI, Azure DevOps, Jenkins, and local pipelines |
+| `ff-fftest` | ✅ | `ff-fftest::report` unit tests | Req 7.1: THE framework SHALL generate machine-readable test results in JSON format after every test run |
+| `ff-fftest` | ✅ | `ff-fftest::report` unit tests | Req 7.2: THE framework SHALL generate human-readable test reports in HTML format after every test run |
+| `ff-fftest` | ✅ | `ff-fftest::report` unit tests | Req 7.3: THE JSON report SHALL include suite name, timestamp, duration, per-test pass/fail, assertion details, and error messages |
+| `ff-fftest` | ✅ | `ff-fftest::report` unit tests | Req 7.4: THE HTML report SHALL include summary table, per-test expandable sections, embedded screenshots, and stack traces |
+| `ff-fftest` | 🔴 | -- | Req 7.5: WHERE screenshot capture is enabled, THE framework SHALL record screenshots at configured checkpoints |
+| `ff-fftest` | ✅ | `ff-desktop::fftest_cli` unit tests | Req 7.6: THE framework SHALL write reports to reports/ at the workspace root |
+| `ff-fftest` | ✅ | `ff-fftest::capture` unit tests | Req 8.1: WHERE visual regression testing is enabled, THE framework SHALL compare screenshots against baseline images in tests/baselines/ |
+| `ff-fftest` | ✅ | `ff-fftest::capture` unit tests | Req 8.2: WHEN a screenshot differs from its baseline beyond the configured tolerance, THE framework SHALL record a visual regression failure |
+| `ff-fftest` | 🔴 | -- | Req 8.3: visual regression SHALL support ISPF panels, dataset browsers, hex editors, compare windows, tree structures, and editor windows |
+| `ff-fftest` | ✅ | `ff-desktop::fftest_cli` unit tests | Req 8.4: THE framework SHALL provide ffwb --update-baselines to update baselines from current screenshots |
+| `ff-fftest` | ✅ | `ff-fftest::capture` unit tests | Req 8.5: WHEN a baseline does not exist for a checkpoint, THE framework SHALL create it automatically and report BASELINE_CREATED |
+| `ff-fftest` | 🔴 | -- | Req 9.1: WHEN a plugin is loaded for testing, THE framework SHALL expose plugin UIs through the automation subsystem |
+| `ff-fftest` | 🔴 | -- | Req 9.2: THE FFTest scripting language SHALL support LOAD PLUGIN "<name>" command |
+| `ff-fftest` | 🔴 | -- | Req 9.3: Plugin test scripts SHALL be stored under tests/plugins/<plugin-name>/ |
+| `ff-fftest` | ✅ | `tests/` directory structure + `.gitignore` | Req 10.1: THE test repository SHALL follow the defined structure: tests/unit, dialog, workflow, visual, plugins, fixtures, baselines; reports/ |
+| `ff-fftest` | ✅ | `.gitignore` | Req 10.2: THE reports/ directory SHALL be listed in .gitignore |
+| `ff-fftest` | 🔴 | -- | Req 10.3: THE tests/baselines/ directory SHALL be version-controlled |
+
+### Phase CM -- Mouse Text Selection and Clipboard Copy (CR-NR-034)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 13.1: `new_tab_has_no_canvas_selection` -- new tab canvas_selection is None |
+| `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 13.2: `canvas_selection_can_be_set_and_cleared` -- canvas_selection field set/cleared |
+| `ff-desktop` | 🔲 | -- | Req 13.3: mouse release finalises selection range (egui drag -- manual UI verification) |
+| `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 13.4: `normalise_selection_orders_start_before_end` -- selection highlight uses normalised coords |
+| `ff-desktop` | 🔲 | -- | Req 13.5: click without drag clears selection (egui click -- manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 13.6: Escape clears active selection (manual UI verification) |
+| `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 13.7: `canvas_selection_cleared_on_tab_switch` -- selection cleared on tab switch |
+| `ff-desktop` | 🔲 | -- | Req 13.8: Ctrl+C with no selection does nothing (manual UI verification) |
+| `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 13.9: `canvas_selection_cleared_on_tab_switch` -- selection cleared on tab switch |
+| `ff-desktop` | 🔲 | -- | Req 13.10: selection highlight stays positioned when scrolled (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 14.1: POM panel text rendered with selectable labels (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 14.2: Settings panel text rendered with selectable labels (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 14.3: status bar text rendered with selectable labels (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 14.4: Ctrl+C on selected panel text writes to OS clipboard via egui (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 14.5: POM option button click-to-navigate unaffected by selectable label change (manual UI verification) |
+| `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 20.1: `extract_selected_text_single_line` -- Ctrl+C writes UTF-8 text |
+| `ff-desktop` | 🔲 | -- | Req 20.2: Copied N characters status message (manual UI verification) |
+| `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 20.3: `extract_selected_text_empty_selection_returns_empty` -- no-op when selection empty |
+| `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 20.4: `extract_selected_text_multi_line_joins_with_newline` -- multi-line joined with newline |
+| `ff-desktop` | 🔲 | -- | Req 20.5: canvas copy recorded in Command_History (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 20.6: multi-line selection joined with platform line-ending (manual UI verification) |
+
+### Phase CN -- Editor Scroll Amount Integration (CR-NR-035)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `scroll_by_amount_page_down_advances_by_visible_count` | Req 14.1: PAGE scroll amount scrolls full visible_count lines |
+| `ff-desktop` | ✅ | `scroll_by_amount_half_down_advances_by_half_page` | Req 14.2: HALF scroll amount scrolls max(1, visible_count/2) lines |
+| `ff-desktop` | ✅ | `scroll_by_amount_csr_down_advances_by_one_line` | Req 14.3: CSR Page Down scrolls so cursor is first visible line |
+| `ff-desktop` | ✅ | `scroll_by_amount_csr_down_advances_by_one_line` | Req 14.4: CSR Page Up scrolls so cursor is last visible line |
+| `ff-desktop` | ✅ | `scroll_by_amount_lines_n_advances_by_n` | Req 14.5: numeric N scroll amount scrolls exactly N lines |
+| `ff-desktop` | ✅ | `scroll_by_amount_max_down_scrolls_to_bottom` | Req 14.6: MAX Page Down scrolls to last page; MAX Page Up scrolls to first line |
+| `ff-desktop` | ✅ | `scroll_by_amount_data_behaves_like_page` | Req 14.7: DATA scroll amount scrolls visible_count - 1 lines |
+| `ff-desktop` | 🔲 | -- | Req 14.8: SCROLL ===> field visible and editable when editor tab is active |
+
+### Phase B031 Fix -- Gutter Line Command Input (B031, Req 1 line-commands)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 1 line-commands: `prefix_submit_fires_on_lost_focus_without_simultaneous_enter` -- submission fires on `lost_focus()` alone; Enter key guard removed (B031 fix) |
+| `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 1 line-commands: `prefix_text_cleared_after_successful_submit` -- prefix field cleared on successful submit |
+| `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 14.6 line-commands: `prefix_text_retained_on_invalid_command` -- engine has no pending on invalid command; error shown in status bar |
+| `ff-desktop` | 🔲 | -- | Req 1 line-commands: gutter TextEdit accepts typed line commands at runtime (manual UI verification) |
+
+## Phase BS -- Workspace Model (CR-NR-036)
+
+| Crate | Status | Test | Criterion |
+|-------|--------|------|-----------|
+| `ff-session` | ✅ | `workspace.rs` unit tests | Req 1.1: workspace saved as valid TOML with name, roots, settings, recent_files |
+| `ff-session` | ✅ | `workspace.rs` unit tests | Req 1.2: Workspace_File is valid TOML v1.0 |
+| `ff-session` | ✅ | `workspace.rs` unit tests | Req 1.3: missing required field produces error, workspace not loaded |
+| `ff-session` | ✅ | `workspace.rs` unit tests | Req 1.4: relative root paths resolved relative to Workspace_File directory |
+| `ff-session` | ✅ | `workspace.rs` unit tests | Req 1.5: [settings] table applied as Workspace config layer |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 2.1: WORKSPACE OPEN loads file, registers roots, applies settings, restores MRU |
+| `ff-desktop` | ✅ | `shell/commands.rs` | Req 2.2: WORKSPACE SAVE writes current state to Workspace_File |
+| `ff-desktop` | ✅ | `shell/commands.rs` | Req 2.3: WORKSPACE SAVE AS writes to specified path |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 2.4: WORKSPACE CLOSE unloads roots, settings layer, MRU list |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 2.5: opening workspace when one is active closes current first; prompts if unsaved |
+| `ff-desktop` | ✅ | `shell/mod.rs` | Req 2.6: at most one workspace active at any time |
+| `ff-desktop` | ✅ | `shell/commands.rs` | Req 3.1: WORKSPACE ADD ROOT registers new catalog mount point |
+| `ff-desktop` | ✅ | `shell/commands.rs` | Req 3.2: WORKSPACE REMOVE ROOT unregisters catalog; open tabs show warning |
+| `ff-desktop` | ✅ | `file_explorer_panel::tests::workspace_roots_collected_for_sidebar_display` | Req 3.3: workspace roots displayed as top-level nodes in File Explorer |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 3.4: workspace load auto-registers all roots as Native catalogs |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 3.5: missing root path at load shows status bar warning; remaining roots loaded |
+| `ff-session` | ✅ | `workspace.rs` unit tests | Req 4.1: workspace [settings] applied as highest-priority config layer |
+| `ff-desktop` | 🔴 | -- | Req 4.2: saving setting at workspace scope writes to Workspace_File [settings] |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 4.3: workspace close removes Workspace layer; hot-reload callbacks invoked |
+| `ff-session` | ✅ | `session_state.rs` unit tests | Req 5.1: active_workspace_path persisted in session.toml on exit |
+| `ff-desktop` | ✅ | `shell/update.rs` startup_tests | Req 5.2: workspace auto-loaded at startup from persisted path |
+| `ff-desktop` | ✅ | `shell/update.rs` startup_tests | Req 5.3: missing persisted path starts without workspace; stale path cleared |
+| `ff-session` | ✅ | `workspace.rs` unit tests | Req 6.1: workspace MRU list accumulates files opened while workspace active |
+| `ff-session` | ✅ | `workspace.rs` unit tests | Req 6.2: MRU list persisted in Workspace_File [[recent_files]] |
+| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 6.3: workspace close reverts to global recent-files list |
+| `ff-session` | ✅ | `workspace.rs` unit tests | Req 6.4: workspace MRU depth configurable via workspace.recent_files_depth |
+
+## Phase BS -- Command Palette (CR-NR-037)
+
+| Crate | Status | Test | Criterion |
+|-------|--------|------|-----------|
+| `ff-desktop` | 🔴 | -- | Req 1.1: Ctrl+Shift+P opens palette as modal overlay with search input focused |
+| `ff-desktop` | 🔴 | -- | Req 1.2: Escape closes palette without executing command; focus restored |
+| `ff-desktop` | 🔴 | -- | Req 1.3: click outside palette closes it without executing command |
+| `ff-desktop` | 🔴 | -- | Req 1.4: View > Command Palette menu item opens palette |
+| `ff-desktop` | 🔴 | -- | Req 1.5: Ctrl+Shift+P toggles palette closed if already open |
+| `ff-desktop` | 🔴 | -- | Req 2.1: typing filters command list to fuzzy matches in real time |
+| `ff-desktop` | 🔴 | -- | Req 2.2: contiguous runs score higher; word-boundary matches score higher |
+| `ff-desktop` | 🔴 | -- | Req 2.3: results sorted by descending match score; ties broken alphabetically |
+| `ff-desktop` | 🔴 | -- | Req 2.4: empty query shows Recent_Commands then all commands alphabetically |
+| `ff-desktop` | 🔴 | -- | Req 2.5: fuzzy search is case-insensitive |
+| `ff-desktop` | 🔴 | -- | Req 2.6: no matches shows "No commands match '<query>'" message |
+| `ff-desktop` | 🔴 | -- | Req 3.1: each entry shows display name, category, shortcut |
+| `ff-desktop` | 🔴 | -- | Req 3.2: highlighted entry shows full description in detail area |
+| `ff-desktop` | 🔴 | -- | Req 3.3: matched characters highlighted in display name |
+| `ff-desktop` | 🔴 | -- | Req 3.4: at most 20 entries visible; list is scrollable |
+| `ff-desktop` | 🔴 | -- | Req 4.1: Enter executes highlighted command and closes palette |
+| `ff-desktop` | 🔴 | -- | Req 4.2: clicking entry executes command and closes palette |
+| `ff-desktop` | 🔴 | -- | Req 4.3: Down/Up arrow navigates entries; wraps at boundaries |
+| `ff-desktop` | 🔴 | -- | Req 4.4: executed command added to Recent_Commands list |
+| `ff-desktop` | 🔴 | -- | Req 4.5: disabled entry shown with disabled style; Enter shows unavailable message |
+| `ff-session` | 🔴 | -- | Req 5.1: Recent_Commands shown at top of palette when query is empty |
+| `ff-session` | 🔴 | -- | Req 5.2: Recent_Commands persisted in session state and restored on launch |
+| `ff-desktop` | 🔴 | -- | Req 5.3: typing query hides Recent_Commands section |
+| `ff-desktop` | 🔴 | -- | Req 5.4: only successfully executed commands added to Recent_Commands |
+
+## Phase BS -- Global Search (CR-NR-038)
+
+| Crate | Status | Test | Criterion |
+|-------|--------|------|-----------|
+| `ff-desktop` | 🔴 | -- | Req 1.1: Ctrl+Shift+F opens Search Results panel with search input focused |
+| `ff-desktop` | 🔴 | -- | Req 1.2: GSEARCH/SEARCH command opens Search Results panel |
+| `ff-desktop` | 🔴 | -- | Req 1.3: Ctrl+Shift+F focuses existing panel if already open |
+| `ff-desktop` | 🔴 | -- | Req 1.4: Search > Find in Files menu item opens panel |
+| `ff-desktop` | 🔴 | -- | Req 2.1: panel provides query, replace, case/word/regex toggles |
+| `ff-desktop` | 🔴 | -- | Req 2.2: Include Files glob restricts search to matching paths |
+| `ff-desktop` | 🔴 | -- | Req 2.3: Exclude Files glob excludes matching paths |
+| `ff-desktop` | 🔴 | -- | Req 2.4: default scope is all workspace roots; falls back to Native catalogs |
+| `ff-global-search` | 🔴 | -- | Req 2.5: literal, whole-word, and regex modes reuse FindEngine |
+| `ff-desktop` | 🔴 | -- | Req 2.6: invalid regex shows inline error; search not executed |
+| `ff-global-search` | 🔴 | -- | Req 3.1: search runs as background Tokio task; UI remains interactive |
+| `ff-desktop` | 🔴 | -- | Req 3.2: progress indicator shows files scanned and matches found |
+| `ff-global-search` | 🔴 | -- | Req 3.3: results streamed incrementally as each file is scanned |
+| `ff-global-search` | 🔴 | -- | Req 3.4: Cancel button aborts search; partial results displayed |
+| `ff-global-search` | 🔴 | -- | Req 3.5: binary files skipped; count shown in panel footer |
+| `ff-global-search` | 🔴 | -- | Req 3.6: Exclude Files globs respected; excluded files not scanned |
+| `ff-desktop` | 🔴 | -- | Req 3.7: completion shows "N matches in M files" summary |
+| `ff-desktop` | 🔴 | -- | Req 4.1: results grouped by file with collapsible section headers |
+| `ff-desktop` | 🔴 | -- | Req 4.2: each match shows line number and highlighted line text |
+| `ff-desktop` | 🔴 | -- | Req 4.3: clicking match opens file at matching line with highlight |
+| `ff-desktop` | 🔴 | -- | Req 4.4: all file sections expanded by default; collapsible by click |
+| `ff-desktop` | 🔴 | -- | Req 4.5: keyboard navigation: Up/Down, Enter, Left/Right collapse/expand |
+| `ff-desktop` | 🔴 | -- | Req 4.6: new search clears previous results |
+| `ff-desktop` | 🔴 | -- | Req 5.1: replace input field with Replace All and per-file Replace buttons |
+| `ff-desktop` | 🔴 | -- | Req 5.2: Replace All shows preview with file/match counts before writing |
+| `ff-global-search` | 🔴 | -- | Req 5.3: Replace All applies substitution to all matches across all files |
+| `ff-desktop` | 🔴 | -- | Req 5.4: replace completion shows "Replaced N occurrences in M files" |
+| `ff-global-search` | 🔴 | -- | Req 5.5: cross-file replace undoable per file in open editor tabs |
+| `ff-global-search` | 🔴 | -- | Req 5.6: file with unsaved changes warned before replace; not overwritten |
+| `ff-global-search` | 🔴 | -- | Req 5.7: replace input supports regex group substitution \1-\9 |
+| `ff-desktop` | 🔴 | -- | Req 6.1: last 20 search queries accessible via dropdown on search field |
+| `ff-session` | 🔴 | -- | Req 6.2: search history persisted in session state and restored on launch |
+| `ff-desktop` | 🔴 | -- | Req 6.3: selecting history entry populates query and options |
+
+## Phase BS-B: Command Palette
+
+| Crate | Status | Test | Requirement |
+|-------|--------|------|-------------|
+| `ff-desktop` | ✅ | `command_palette/fuzzy.rs` unit tests | Req 1.1: Command Palette opens as modal overlay on Ctrl+Shift+P |
+| `ff-desktop` | ✅ | `command_palette/state.rs` unit tests | Req 1.2: Escape closes palette without executing |
+| `ff-desktop` | ✅ | `command_palette/render.rs` | Req 1.3: Click outside closes palette |
+| `ff-desktop` | ✅ | `shell/render_chrome.rs` View menu | Req 1.4: View > Command Palette menu item |
+| `ff-desktop` | ✅ | `shell/update.rs` Ctrl+Shift+P toggle | Req 1.5: Ctrl+Shift+P toggles palette closed when already open |
+| `ff-desktop` | ✅ | `command_palette/fuzzy.rs` unit tests | Req 2.1: Fuzzy match filters by subsequence in real time |
+| `ff-desktop` | ✅ | `command_palette/fuzzy.rs` unit tests | Req 2.2: Scoring: contiguous runs, word boundaries, shorter names |
+| `ff-desktop` | ✅ | `command_palette/render.rs` rebuild_filtered | Req 2.3: Results sorted by descending score, alpha tiebreak |
+| `ff-desktop` | ✅ | `command_palette/render.rs` rebuild_filtered | Req 2.4: Empty query shows recent then all alphabetically |
+| `ff-desktop` | ✅ | `command_palette/fuzzy.rs` unit tests | Req 2.5: Fuzzy search is case-insensitive |
+| `ff-desktop` | ✅ | `command_palette/render.rs` empty state | Req 2.6: No-match shows 'No commands match <query>' message |
+| `ff-desktop` | ✅ | `command_palette/render.rs` render_entry | Req 3.1: Entry shows display name, category, shortcut |
+| `ff-desktop` | ✅ | `command_palette/render.rs` detail area | Req 3.2: Highlighted entry shows description in detail area |
+| `ff-desktop` | ✅ | `command_palette/render.rs` build_highlighted_text | Req 3.3: Matched characters highlighted in display name |
+| `ff-desktop` | ✅ | `command_palette/render.rs` MAX_VISIBLE | Req 3.4: At most 20 entries visible; list is scrollable |
+| `ff-desktop` | ✅ | `command_palette/state.rs` unit tests | Req 4.1: Enter executes highlighted command and closes palette |
+| `ff-desktop` | ✅ | `command_palette/render.rs` click handler | Req 4.2: Click on entry executes command and closes palette |
+| `ff-desktop` | ✅ | `command_palette/state.rs` unit tests | Req 4.3: Up/Down arrows navigate list with wrap-around |
+| `ff-desktop` | ✅ | `shell/update.rs` recent list update | Req 4.4: Executed command added to recent list (max 10) |
+| `ff-desktop` | ✅ | `command_palette/render.rs` disabled style | Req 4.5: Disabled entry shown with disabled style; Enter blocked |
+| `ff-desktop` | ✅ | `command_palette/render.rs` Recently Used header | Req 5.1: Empty query shows Recently Used section |
+| `ff-desktop` | ✅ | `ff-session` SessionState + session_manager | Req 5.2: Recent commands persisted in session.toml |
+| `ff-desktop` | ✅ | `command_palette/render.rs` rebuild_filtered | Req 5.3: Typing query hides Recently Used section |
+| `ff-desktop` | ✅ | `shell/update.rs` recent list update | Req 5.4: Only successfully executed commands added to recent list |

@@ -77,6 +77,18 @@ fn wildcard_match(pattern: &str, value: &str) -> bool {
 }
 
 fn compare_str(field: &str, op: CmpOp, pattern: &str) -> bool {
+    // For ordering operators, attempt numeric comparison first.
+    if matches!(op, CmpOp::Gt | CmpOp::Lt | CmpOp::Ge | CmpOp::Le) {
+        if let (Ok(fv), Ok(pv)) = (field.parse::<i64>(), pattern.parse::<i64>()) {
+            return match op {
+                CmpOp::Gt => fv > pv,
+                CmpOp::Lt => fv < pv,
+                CmpOp::Ge => fv >= pv,
+                CmpOp::Le => fv <= pv,
+                _ => unreachable!(),
+            };
+        }
+    }
     match op {
         CmpOp::Eq => wildcard_match(pattern, field),
         CmpOp::Ne => !wildcard_match(pattern, field),

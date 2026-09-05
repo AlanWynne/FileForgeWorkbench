@@ -435,47 +435,47 @@ This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-com
 | Req 10: Debugging | AC 10.5 | Task 16 |
 | Req 10: Debugging | AC 10.6 | Task 16 |
 
-- [ ] 21. ISPF host command environments (ISREDIT and ISPEXEC)
-  - [ ] 21.1 Implement ISREDIT host command environment: parse ISPF Edit macro service call strings and dispatch to editor API operations
-  - [ ] 21.2 Implement ISPEXEC host command environment: route ISPF dialog service calls to workbench panel display, variable pool, and message services
-  - [ ] 21.3 Implement IMACRO initial macro execution: run named macro at edit session open before user gains control
-  - [ ] 21.4 Implement IMACRO edit profile setting: store/retrieve initial macro name; blank = no initial macro
-  - [ ] 21.5 Implement LINENUM function: resolve label or relative line reference to absolute 1-based line number
-  - [ ] 21.6 Extend cursor API with CURSOR get/set function: CURSOR() returns (line, col); CURSOR(line, col) moves cursor
-  - [ ] 21.7 Write unit tests for ISREDIT dispatch, ISPEXEC routing, IMACRO execution, LINENUM resolution, CURSOR get/set
+- [x] 21. ISPF host command environments (ISREDIT and ISPEXEC)
+  - [x] 21.1 Implement ISREDIT host command environment: parse ISPF Edit macro service call strings and dispatch to editor API operations
+  - [x] 21.2 Implement ISPEXEC host command environment: route ISPF dialog service calls to workbench panel display, variable pool, and message services
+  - [x] 21.3 Implement IMACRO initial macro execution: run named macro at edit session open before user gains control
+  - [x] 21.4 Implement IMACRO edit profile setting: store/retrieve initial macro name; blank = no initial macro
+  - [x] 21.5 Implement LINENUM function: resolve label or relative line reference to absolute 1-based line number
+  - [x] 21.6 Extend cursor API with CURSOR get/set function: CURSOR() returns (line, col); CURSOR(line, col) moves cursor
+  - [x] 21.7 Write unit tests for ISREDIT dispatch, ISPEXEC routing, IMACRO execution, LINENUM resolution, CURSOR get/set
   - Covers: Requirement 11 (AC 11.1, 11.2, 11.3, 11.4, 11.5, 11.6)
 
-- [ ] 22. REXX execution bridge -- exec invocation and host environments
-  - [ ] 22.1 Implement EXEC command: locate named exec in SYSEXEC/SYSPROC library paths and execute
-  - [ ] 22.2 Implement implicit exec invocation: attempt SYSEXEC/SYSPROC lookup for unrecognized command names
-  - [ ] 22.3 Implement % prefix: bypass primary command table and search SYSEXEC/SYSPROC directly
-  - [ ] 22.4 Implement argument passing: pass EXEC <member> <args> argument string to exec invocation
-  - [ ] 22.5 Implement TSO host command environment: route unrecognized commands to ff-command dispatcher, set RC
-  - [ ] 22.6 Implement ADDRESS <environment-name>: switch default host command environment for exec invocation
-  - [ ] 22.7 Implement ISPEXEC and ISREDIT as ADDRESS environment names routing to their respective handlers
-  - [ ] 22.8 Implement RC special variable: set to integer return code after each host command completes
-  - [ ] 22.9 Write unit tests for exec location, implicit invocation, % prefix, argument passing, ADDRESS switching, RC variable
+- [x] 22. REXX execution bridge -- exec invocation and host environments
+  - [x] 22.1 Implement EXEC command: locate named exec in SYSEXEC/SYSPROC library paths and execute
+  - [x] 22.2 Implement implicit exec invocation: attempt SYSEXEC/SYSPROC lookup for unrecognized command names
+  - [x] 22.3 Implement % prefix: bypass primary command table and search SYSEXEC/SYSPROC directly
+  - [x] 22.4 Implement argument passing: pass EXEC <member> <args> argument string to exec invocation
+  - [x] 22.5 Implement TSO host command environment: route unrecognized commands to ff-command dispatcher, set RC
+  - [x] 22.6 Implement ADDRESS <environment-name>: switch default host command environment for exec invocation
+  - [x] 22.7 Implement ISPEXEC and ISREDIT as ADDRESS environment names routing to their respective handlers
+  - [x] 22.8 Implement RC special variable: set to integer return code after each host command completes
+  - [x] 22.9 Write unit tests for exec location, implicit invocation, % prefix, argument passing, ADDRESS switching, RC variable
   - Covers: Requirement 11 (AC 11.7, 11.8, 11.9, 11.10, 11.11, 11.12, 11.13, 11.14, 11.15)
 
-- [ ] 23. REXX built-in functions (LISTDSI, MSG, MVSVAR, OUTTRAP, PROMPT, SYSDSN, SYSVAR, USERID)
-  - [ ] 23.1 Implement LISTDSI: return dataset information from ff-dscatalog (DSORG, RECFM, LRECL, BLKSIZE, DSNAME, VOLSER, member count)
-  - [ ] 23.2 Implement MSG: display message in workbench status bar or message area
-  - [ ] 23.3 Implement MVSVAR: return system variable values mapped to workbench equivalents (SYSNAME, SYSPLEX, SYSCLONE, SYSOPSYS)
-  - [ ] 23.4 Implement OUTTRAP: capture TSO command output into stem variable instead of displaying
-  - [ ] 23.5 Implement PROMPT: control terminal input availability; OFF returns empty string for any read
-  - [ ] 23.6 Implement SYSDSN: return OK or error string (DATASET NOT FOUND, MEMBER NOT FOUND, etc.) for named dataset
-  - [ ] 23.7 Implement SYSVAR: return ISPF system variable values mapped to workbench equivalents (SYSUID, SYSDATE, SYSTIME, SYSPREF, SYSENV)
-  - [ ] 23.8 Implement USERID: return current user's login name as string
-  - [ ] 23.9 Write unit tests for each built-in function with valid inputs, catalog miss cases, and system variable mappings
+- [x] 23. REXX built-in functions (LISTDSI, MSG, MVSVAR, OUTTRAP, PROMPT, SYSDSN, SYSVAR, USERID)
+  - [x] 23.1 Implement LISTDSI: return dataset information from ff-dscatalog (DSORG, RECFM, LRECL, BLKSIZE, DSNAME, VOLSER, member count)
+  - [x] 23.2 Implement MSG: display message in workbench status bar or message area
+  - [x] 23.3 Implement MVSVAR: return system variable values mapped to workbench equivalents (SYSNAME, SYSPLEX, SYSCLONE, SYSOPSYS)
+  - [x] 23.4 Implement OUTTRAP: capture TSO command output into stem variable instead of displaying
+  - [x] 23.5 Implement PROMPT: control terminal input availability; OFF returns empty string for any read
+  - [x] 23.6 Implement SYSDSN: return OK or error string (DATASET NOT FOUND, MEMBER NOT FOUND, etc.) for named dataset
+  - [x] 23.7 Implement SYSVAR: return ISPF system variable values mapped to workbench equivalents (SYSUID, SYSDATE, SYSTIME, SYSPREF, SYSENV)
+  - [x] 23.8 Implement USERID: return current user's login name as string
+  - [x] 23.9 Write unit tests for each built-in function with valid inputs, catalog miss cases, and system variable mappings
   - Covers: Requirement 11 (AC 11.16, 11.17, 11.18, 11.19, 11.20, 11.21, 11.22, 11.23)
 
-- [ ] 24. EXECIO I/O operations and FFCMD command files
-  - [ ] 24.1 Implement EXECIO DISKR: read up to <count> records from ddname-allocated dataset into stem variable array
-  - [ ] 24.2 Implement EXECIO DISKW: write <count> records from stem variable array to ddname-allocated dataset
-  - [ ] 24.3 Implement EXECIO FINIS variants: read/write all remaining records and close file
-  - [ ] 24.4 Implement EXECIO SKIP: advance read position by <count> records without returning data
-  - [ ] 24.5 Implement EXECIO return codes: RC=0 success, RC=2 EOF before count, non-zero on I/O error
-  - [ ] 24.6 Implement FFCMD command files: execute .ffcmd files line-by-line as batch primary commands via RUN or FFCMD <path>
-  - [ ] 24.7 Implement FFCMD transaction wrapping: wrap entire .ffcmd file execution in a single Macro_Transaction
-  - [ ] 24.8 Write unit tests for DISKR/DISKW/FINIS/SKIP operations, return code conventions, FFCMD sequential execution, and transaction atomicity
+- [x] 24. EXECIO I/O operations and FFCMD command files
+  - [x] 24.1 Implement EXECIO DISKR: read up to <count> records from ddname-allocated dataset into stem variable array
+  - [x] 24.2 Implement EXECIO DISKW: write <count> records from stem variable array to ddname-allocated dataset
+  - [x] 24.3 Implement EXECIO FINIS variants: read/write all remaining records and close file
+  - [x] 24.4 Implement EXECIO SKIP: advance read position by <count> records without returning data
+  - [x] 24.5 Implement EXECIO return codes: RC=0 success, RC=2 EOF before count, non-zero on I/O error
+  - [x] 24.6 Implement FFCMD command files: execute .ffcmd files line-by-line as batch primary commands via RUN or FFCMD <path>
+  - [x] 24.7 Implement FFCMD transaction wrapping: wrap entire .ffcmd file execution in a single Macro_Transaction
+  - [x] 24.8 Write unit tests for DISKR/DISKW/FINIS/SKIP operations, return code conventions, FFCMD sequential execution, and transaction atomicity
   - Covers: Requirement 11 (AC 11.24, 11.25, 11.26, 11.27, 11.28, 11.29, 11.30)

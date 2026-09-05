@@ -20,6 +20,8 @@ use ff_theme::ThemePalette;
 use ff_zoom::{ZoomConfig, ZoomState};
 use tokio::runtime::Runtime;
 
+use crate::automation::ShellAutomationRegistry;
+use crate::command_palette::CommandPaletteState;
 use crate::exclude_manager::ExcludeManager;
 use crate::file_explorer_panel::FileExplorerPanelState;
 use crate::files_panel::FilesPanelState;
@@ -31,6 +33,7 @@ use crate::session_manager::SessionManager;
 use crate::settings_panel::SettingsPanelState;
 use crate::tab_manager::TabManager;
 use crate::toolchain_panel::ToolchainPanelState;
+use ff_session::{load_workspace, save_workspace, WorkspaceState};
 
 // ── Built-in command handlers ────────────────────────────────────────────────
 
@@ -221,12 +224,14 @@ pub(crate) const MENU_BAR_TOP_LEVEL_LABELS: &[&str] = &[
     "Settings",
     "File Catalogs",
     "Files",
+    "View",
     "Utilities",
     "Compilers",
     "Lua",
     "Terminals",
     "Databases",
     "Plugins",
+    "Search",
     "Edit",
     "Help",
 ];
@@ -268,6 +273,10 @@ pub struct WorkbenchShell {
     open_error: Option<String>,
     /// Command dispatch — routes file.open / file.exit through the registry.
     dispatch: CommandDispatch,
+    /// Shared command registry — used by the Command Palette to enumerate commands.
+    ///
+    /// Validates: command-palette Requirement 2.1
+    cmd_registry: Arc<CommandRegistry>,
     /// ISPF command semantics engine — parses and executes primary commands.
     cmd_engine: CommandEngine,
     /// Command history for RETRIEVE cycling.
@@ -296,8 +305,20 @@ pub struct WorkbenchShell {
     ///
     /// Validates: Requirement 19.3
     show_history_list: Option<Vec<String>>,
-    /// Session persistence — None when User Data Dir is unavailable.
+    /// Session persistence -- None when User Data Dir is unavailable.
     session: Option<SessionManager>,
+    /// Active workspace -- None when no workspace is loaded.
+    ///
+    /// Validates: workspace-model Requirement 2.6
+    pub(crate) active_workspace: Option<WorkspaceState>,
+    /// Pending workspace path deferred while the unsaved-changes dialog is open.
+    ///
+    /// Validates: workspace-model Requirement 2.5
+    pub(crate) pending_workspace_open: Option<std::path::PathBuf>,
+    /// Whether the unsaved-workspace-changes dialog is currently open.
+    ///
+    /// Validates: workspace-model Requirement 2.5
+    pub(crate) show_unsaved_workspace_dialog: bool,
     /// Configuration handle — used to read catalog default paths.
     config_handle: ConfigHandle,
     /// Files Panel (Virtual Catalog Manager) state.
@@ -339,6 +360,18 @@ pub struct WorkbenchShell {
     ///
     /// Validates: Requirement 13.1
     show_about: bool,
+    /// Command Palette state -- open/closed, query, filtered list, selection.
+    ///
+    /// Validates: command-palette Requirement 1.1, 4.3
+    pub(crate) palette_state: CommandPaletteState,
+    /// Recently-used command IDs executed via the palette (most recent first, max 10).
+    ///
+    /// Validates: command-palette Requirement 5.1, 5.2
+    pub(crate) recent_palette_commands: Vec<String>,
+    /// Global Search Results panel state.
+    ///
+    /// Validates: global-search Requirement 1.1
+    pub(crate) search_results_panel: crate::search_results_panel::SearchResultsPanelState,
     /// Active scroll amount for the SCROLL ===> field.
     ///
     /// Validates: Requirement 19.1, 19.2, 19.3
@@ -376,6 +409,10 @@ pub struct WorkbenchShell {
     ///
     /// Validates: Requirement 20.1, 20.2
     pub(crate) session_start: chrono::DateTime<chrono::Local>,
+    /// Automation registry -- exposes control state to the FFTest runner.
+    ///
+    /// Validates: Requirement 2.1, 2.5 (automated-dialog-testing)
+    pub(crate) automation: ShellAutomationRegistry,
     /// All currently floating (detached) tabs.
     ///
     /// Validates: Requirement 18.1, 18.2
@@ -446,6 +483,7 @@ impl WorkbenchShell {
             )
             .expect("file.exit registration");
 
+        let cmd_registry = registry.clone();
         let dispatch = CommandDispatch::new(registry, history);
 
         let session = SessionManager::try_init();
@@ -469,6 +507,7 @@ impl WorkbenchShell {
             should_close,
             open_error: None,
             dispatch,
+            cmd_registry,
             cmd_engine: CommandEngine::new(),
             cmd_history: CommandHistory::new(500),
             retrieve_state: RetrieveState::new(),
@@ -481,6 +520,9 @@ impl WorkbenchShell {
             tab_history: Vec::new(),
             show_history_list: None,
             session,
+            active_workspace: None,
+            pending_workspace_open: None,
+            show_unsaved_workspace_dialog: false,
             config_handle,
             files_panel: FilesPanelState::new(),
             file_explorer_panel: FileExplorerPanelState::new(),
@@ -496,6 +538,9 @@ impl WorkbenchShell {
             is_dragging: false,
             pending_ppp: None,
             show_about: false,
+            palette_state: CommandPaletteState::default(),
+            recent_palette_commands: Vec::new(),
+            search_results_panel: crate::search_results_panel::SearchResultsPanelState::new(),
             scroll_amount: ScrollAmount::default(),
             split_screen: None,
             scroll_field_text: "PAGE".to_string(),
@@ -504,6 +549,7 @@ impl WorkbenchShell {
             settings_panel: SettingsPanelState::new(),
             focus_stop: FocusStop::CommandField,
             command_field_focus_requested: true,
+            automation: ShellAutomationRegistry::new(),
             floating_tabs: Vec::new(),
             detach_pending: None,
             redock_pending: Arc::new(Mutex::new(Vec::new())),
@@ -540,6 +586,130 @@ impl WorkbenchShell {
             secs
         )
     }
+
+    // ── Workspace lifecycle helpers -- Validates: workspace-model Req 2, 3, 4, 6 ──
+
+    /// Load a workspace from `path`, register its roots as Native catalogs,
+    /// inject its settings layer, and restore its MRU list.
+    ///
+    /// If a modified workspace is already active, defers the open and shows the
+    /// unsaved-changes dialog instead.
+    ///
+    /// Validates: workspace-model Requirement 2.1, 2.5, 3.4, 4.1, 6.1
+    pub(crate) fn open_workspace(&mut self, path: &std::path::Path) {
+        // Validates: Requirement 2.5 -- prompt before discarding unsaved changes.
+        if let Some(ws) = &self.active_workspace {
+            if ws.is_modified {
+                self.pending_workspace_open = Some(path.to_path_buf());
+                self.show_unsaved_workspace_dialog = true;
+                return;
+            }
+        }
+        self.open_workspace_force(path);
+    }
+
+    /// Open a workspace unconditionally, closing any existing one first.
+    ///
+    /// Validates: workspace-model Requirement 2.1, 3.4, 4.1, 6.1
+    pub(crate) fn open_workspace_force(&mut self, path: &std::path::Path) {
+        match load_workspace(path) {
+            Err(e) => {
+                self.open_error = Some(format!("Cannot open workspace: {e}"));
+            }
+            Ok(ws) => {
+                // Close any existing workspace first.
+                if self.active_workspace.is_some() {
+                    self.close_workspace();
+                }
+                // Register each root as a Native catalog.
+                let mut root_warning: Option<String> = None;
+                for root in &ws.roots {
+                    if !root.exists() {
+                        root_warning = Some(format!(
+                            "Workspace warning: root '{}' not found on disk",
+                            root.display()
+                        ));
+                        continue;
+                    }
+                    let cat = crate::catalog_registry::VirtualCatalog {
+                        name: root
+                            .file_name()
+                            .map(|n| n.to_string_lossy().into_owned())
+                            .unwrap_or_else(|| root.to_string_lossy().into_owned()),
+                        catalog_type: crate::catalog_registry::CatalogType::Native,
+                        path: root.to_string_lossy().into_owned(),
+                        description: Some("Workspace root".to_string()),
+                        auto_mount: true,
+                        default_hlq: None,
+                        mount_point: None,
+                        read_only: false,
+                    };
+                    let _ = self.files_panel.registry.register(cat);
+                }
+                // Inject workspace settings into config as highest-priority layer.
+                for (key, val) in &ws.settings {
+                    let _ = self
+                        .config_handle
+                        .set_user_value(key, ff_config::ConfigValue::String(val.clone()));
+                }
+                self.active_workspace = Some(ws);
+                // Preserve root warning; only clear error when everything succeeded.
+                self.open_error = root_warning;
+            }
+        }
+    }
+
+    /// Save the active workspace to its current file path, or to `path` if provided.
+    ///
+    /// Validates: workspace-model Requirement 2.2, 2.3
+    pub(crate) fn save_workspace_to(&mut self, path: Option<&std::path::Path>) {
+        let Some(ws) = self.active_workspace.as_mut() else {
+            self.open_error = Some("No active workspace to save".to_string());
+            return;
+        };
+        let target = match path {
+            Some(p) => p.to_path_buf(),
+            None => match &ws.file_path {
+                Some(p) => p.clone(),
+                None => {
+                    self.open_error = Some(
+                        "No workspace file path set -- use WORKSPACE SAVE AS <path>".to_string(),
+                    );
+                    return;
+                }
+            },
+        };
+        if let Some(p) = path {
+            ws.file_path = Some(p.to_path_buf());
+        }
+        ws.is_modified = false;
+        match save_workspace(ws, &target) {
+            Ok(()) => self.open_error = None,
+            Err(e) => self.open_error = Some(format!("Cannot save workspace: {e}")),
+        }
+    }
+
+    /// Unload the active workspace: unregister its roots and remove its settings layer.
+    ///
+    /// Validates: workspace-model Requirement 2.4, 3.4, 4.3
+    pub(crate) fn close_workspace(&mut self) {
+        let Some(ws) = self.active_workspace.take() else {
+            return;
+        };
+        // Unregister workspace roots from the catalog registry.
+        for root in &ws.roots {
+            let name = root
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_else(|| root.to_string_lossy().into_owned());
+            let _ = self.files_panel.registry.remove(&name);
+        }
+        // Remove workspace settings overrides (reset to user-layer values).
+        for key in ws.settings.keys() {
+            let _ = self.config_handle.remove_user_value(key);
+        }
+        self.open_error = None;
+    }
 }
 
 /// - POM tab → app name + version
@@ -560,9 +730,10 @@ pub(crate) fn title_line_text(tab: &crate::tab_state::TabState) -> String {
             .map(|p| p.to_string())
             .unwrap_or_else(|| "[Untitled]".to_string()),
         TabKind::Untitled => "[Untitled]".to_string(),
-        TabKind::FilesPanel | TabKind::SettingsPanel | TabKind::FileExplorerPanel => {
-            tab.title.clone()
-        }
+        TabKind::FilesPanel
+        | TabKind::SettingsPanel
+        | TabKind::FileExplorerPanel
+        | TabKind::SearchResults => tab.title.clone(),
     }
 }
 

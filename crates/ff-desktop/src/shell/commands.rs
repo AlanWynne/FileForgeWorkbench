@@ -195,6 +195,13 @@ impl WorkbenchShell {
             return;
         }
 
+        if upper == "GSEARCH" || upper == "SEARCH" {
+            // Validates: global-search Requirement 1.2
+            self.open_or_focus_search_panel();
+            self.open_error = None;
+            return;
+        }
+
         if upper == "1" || upper == "=1" || upper == "FILE CATALOGS" {
             // Validates: Requirement 1.1, 14.6 — option 1 opens the Files Panel
             if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
@@ -758,6 +765,83 @@ impl WorkbenchShell {
             return;
         }
 
+        // ── WORKSPACE commands -- Validates: workspace-model Requirement 2.1-2.4 ──
+        if upper.starts_with("WORKSPACE ") || upper == "WORKSPACE" {
+            let rest = cmd.trim().get(9..).unwrap_or("").trim();
+            let rest_upper = rest.to_uppercase();
+            if rest_upper.starts_with("OPEN ") {
+                let path = rest.get(5..).unwrap_or("").trim();
+                if path.is_empty() {
+                    self.open_error = Some("WORKSPACE OPEN requires a path".to_string());
+                } else {
+                    self.open_workspace(std::path::Path::new(path));
+                }
+            } else if rest_upper == "SAVE" {
+                self.save_workspace_to(None);
+            } else if rest_upper.starts_with("SAVE AS ") {
+                let path = rest.get(8..).unwrap_or("").trim();
+                if path.is_empty() {
+                    self.open_error = Some("WORKSPACE SAVE AS requires a path".to_string());
+                } else {
+                    self.save_workspace_to(Some(std::path::Path::new(path)));
+                }
+            } else if rest_upper == "CLOSE" {
+                self.close_workspace();
+            } else if rest_upper.starts_with("ADD ROOT ") {
+                let path = rest.get(9..).unwrap_or("").trim();
+                if path.is_empty() {
+                    self.open_error = Some("WORKSPACE ADD ROOT requires a path".to_string());
+                } else if let Some(ws) = self.active_workspace.as_mut() {
+                    let p = std::path::PathBuf::from(path);
+                    if !ws.roots.contains(&p) {
+                        ws.roots.push(p.clone());
+                        ws.is_modified = true;
+                    }
+                    let cat = crate::catalog_registry::VirtualCatalog {
+                        name: p
+                            .file_name()
+                            .map(|n| n.to_string_lossy().into_owned())
+                            .unwrap_or_else(|| p.to_string_lossy().into_owned()),
+                        catalog_type: crate::catalog_registry::CatalogType::Native,
+                        path: p.to_string_lossy().into_owned(),
+                        description: Some("Workspace root".to_string()),
+                        auto_mount: true,
+                        default_hlq: None,
+                        mount_point: None,
+                        read_only: false,
+                    };
+                    let _ = self.files_panel.registry.register(cat);
+                    self.open_error = None;
+                } else {
+                    self.open_error =
+                        Some("No active workspace -- use WORKSPACE OPEN first".to_string());
+                }
+            } else if rest_upper.starts_with("REMOVE ROOT ") {
+                let path = rest.get(12..).unwrap_or("").trim();
+                if path.is_empty() {
+                    self.open_error = Some("WORKSPACE REMOVE ROOT requires a path".to_string());
+                } else if let Some(ws) = self.active_workspace.as_mut() {
+                    let p = std::path::PathBuf::from(path);
+                    ws.roots.retain(|r| r != &p);
+                    ws.is_modified = true;
+                    let name = p
+                        .file_name()
+                        .map(|n| n.to_string_lossy().into_owned())
+                        .unwrap_or_else(|| p.to_string_lossy().into_owned());
+                    let _ = self.files_panel.registry.remove(&name);
+                    self.open_error = None;
+                } else {
+                    self.open_error = Some("No active workspace".to_string());
+                }
+            } else {
+                self.open_error = Some(
+                    "WORKSPACE: unknown subcommand. Use OPEN/SAVE/SAVE AS/CLOSE/ADD ROOT/REMOVE ROOT"
+                        .to_string(),
+                );
+            }
+            return;
+        }
+
         // ── Route through CommandEngine ──────────────────────────────────
         self.retrieve_state.reset();
         let status = self.cmd_engine.execute_command_line(cmd);
@@ -773,6 +857,19 @@ impl WorkbenchShell {
         if !cmd.trim().is_empty() {
             self.cmd_history.add(cmd);
         }
+    }
+    /// Open the Search Results panel, or focus it if already open.
+    ///
+    /// Validates: global-search Requirement 1.1, 1.3
+    pub(super) fn open_or_focus_search_panel(&mut self) {
+        use crate::tab_state::TabKind;
+        for i in 0..self.tabs.len() {
+            if self.tabs.tabs()[i].kind == TabKind::SearchResults {
+                self.tabs.set_active(i);
+                return;
+            }
+        }
+        self.tabs.open_search_results_tab(&self.runtime);
     }
 }
 use super::WorkbenchShell;

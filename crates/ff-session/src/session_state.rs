@@ -62,9 +62,33 @@ pub struct SessionState {
 
     /// Width of the File Explorer Panel sidebar in logical pixels.
     ///
-    /// Addresses: Requirement 23.9 (file-tree-panel) — sidebar width persisted.
+    /// Addresses: Requirement 23.9 (file-tree-panel) -- sidebar width persisted.
     #[serde(default = "default_sidebar_width")]
     pub file_explorer_sidebar_width: f32,
+
+    /// Path to the `.ffwb-workspace` file that was active at last exit.
+    ///
+    /// `None` means no workspace was active. Restored at startup before tabs.
+    ///
+    /// Addresses: workspace-model Requirement 5.1, 5.2
+    #[serde(default)]
+    pub active_workspace_path: Option<String>,
+
+    /// Recently-used command IDs executed via the Command Palette (most recent first).
+    ///
+    /// Capped at 10 entries. Persisted across sessions.
+    ///
+    /// Addresses: command-palette Requirement 5.2
+    #[serde(default)]
+    pub recent_palette_commands: Vec<String>,
+
+    /// Search query history for the Global Search panel (most recent first).
+    ///
+    /// Capped at 20 entries. Persisted across sessions.
+    ///
+    /// Addresses: global-search Requirement 6.1, 6.2
+    #[serde(default)]
+    pub search_history: Vec<String>,
 }
 
 fn default_true() -> bool {
@@ -90,6 +114,9 @@ impl Default for SessionState {
             global_zoom_offset: 0,
             key_bar_visible: true,
             file_explorer_sidebar_width: 200.0,
+            active_workspace_path: None,
+            recent_palette_commands: Vec::new(),
+            search_history: Vec::new(),
         }
     }
 }
@@ -140,6 +167,10 @@ pub enum PersistedTabKind {
     ///
     /// Validates: Requirement 19.12
     FileExplorerPanel,
+    /// The Global Search Results panel tab.
+    ///
+    /// Validates: global-search Requirement 1.1
+    SearchResults,
     /// An untitled buffer with no backing file.
     Untitled,
 }
@@ -395,6 +426,25 @@ mod tests {
         assert!(!geom.is_maximised);
         assert!(!geom.is_fullscreen);
         assert_eq!(geom.display_id, None);
+    }
+
+    #[test]
+    fn active_workspace_path_round_trips_through_session() {
+        // Validates: workspace-model Requirement 5.1, 5.2
+        let state = SessionState {
+            active_workspace_path: Some("/projects/myapp.ffwb-workspace".to_string()),
+            ..Default::default()
+        };
+        let serialized = toml::to_string_pretty(&state).unwrap();
+        let loaded: SessionState = toml::from_str(&serialized).unwrap();
+        assert_eq!(loaded.active_workspace_path, state.active_workspace_path);
+    }
+
+    #[test]
+    fn active_workspace_path_defaults_to_none() {
+        // Validates: workspace-model Requirement 5.4
+        let state = SessionState::default();
+        assert!(state.active_workspace_path.is_none());
     }
 
     #[test]

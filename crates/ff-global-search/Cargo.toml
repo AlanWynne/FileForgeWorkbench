@@ -1,0 +1,19 @@
+[package]
+name = "ff-global-search"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Global cross-file search and replace engine for FileForgeWorkbench"
+
+[dependencies]
+ff-find-and-replace = { path = "../ff-find-and-replace" }
+ff-file-ops         = { path = "../ff-file-ops" }
+thiserror           = { workspace = true }
+tokio               = { workspace = true }
+ignore              = "0.4"
+regex               = "1"
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio    = { workspace = true, features = ["rt", "macros"] }

@@ -1,4 +1,4 @@
-﻿//! # Shell Chrome Rendering
+//! # Shell Chrome Rendering
 //!
 //! Theme application, menu bar, and tab bar rendering for WorkbenchShell.
 
@@ -89,7 +89,7 @@ impl WorkbenchShell {
         // Validates: Requirement 14.7 — every label in the registry must have a menu_button below.
         debug_assert_eq!(
             super::MENU_BAR_TOP_LEVEL_LABELS.len(),
-            11,
+            13,
             "render_menu_bar must contain one menu_button per super::MENU_BAR_TOP_LEVEL_LABELS entry"
         );
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
@@ -169,11 +169,55 @@ impl WorkbenchShell {
                         ui.close_menu();
                     }
                     ui.separator();
+                    ui.separator();
+                    // -- Workspace items -- Validates: workspace-model Requirement 2.1-2.4
+                    if ui.button("Open Workspace...").clicked() {
+                        self.open_error = Some("Use: WORKSPACE OPEN <path>".to_string());
+                        ui.close_menu();
+                    }
+                    let ws_name = self.active_workspace.as_ref().map(|ws| ws.name.clone());
+                    ui.add_enabled_ui(ws_name.is_some(), |ui| {
+                        let label = ws_name
+                            .as_deref()
+                            .map(|n| format!("Save Workspace ({})", n))
+                            .unwrap_or_else(|| "Save Workspace".to_string());
+                        if ui.button(label).clicked() {
+                            self.save_workspace_to(None);
+                            ui.close_menu();
+                        }
+                    });
+                    ui.add_enabled_ui(self.active_workspace.is_some(), |ui| {
+                        if ui.button("Save Workspace As...").clicked() {
+                            self.open_error = Some("Use: WORKSPACE SAVE AS <path>".to_string());
+                            ui.close_menu();
+                        }
+                    });
+                    ui.add_enabled_ui(self.active_workspace.is_some(), |ui| {
+                        if ui.button("Close Workspace").clicked() {
+                            self.close_workspace();
+                            ui.close_menu();
+                        }
+                    });
+                    ui.separator();
                     if ui.button("Exit").clicked() {
                         ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                     }
                 });
+                // ── View -- Validates: command-palette Requirement 1.4 ────
+                ui.menu_button("View", |ui| {
+                    if ui.button("Command Palette  Ctrl+Shift+P").clicked() {
+                        self.palette_state.open();
+                        ui.close_menu();
+                    }
+                });
                 // ── Utilities ───────────────────────────────────────────
+                // —— Search ———————————————————————
+                ui.menu_button("Search", |ui| {
+                    if ui.button("Find in Files  Ctrl+Shift+F").clicked() {
+                        self.open_or_focus_search_panel();
+                        ui.close_menu();
+                    }
+                });
                 ui.menu_button("Utilities", |ui| {
                     if ui.button("Compare Files…").clicked() {
                         ui.close_menu();

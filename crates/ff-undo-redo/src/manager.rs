@@ -423,6 +423,33 @@ impl DocumentUndoManager {
         self.config.max_levels
     }
 
+    /// Set a new max_levels value, taking immediate effect.
+    ///
+    /// If the new limit is smaller than the current stack depth, the oldest
+    /// transactions are evicted. Setting to 0 disables undo.
+    ///
+    /// Validates: Requirement 19.1
+    pub fn set_max_levels(&mut self, new_max: u32) {
+        self.config.max_levels = new_max;
+        self.undo_stack.set_max_levels(new_max);
+    }
+
+    /// Get the current recovery interval in seconds.
+    ///
+    /// Validates: Requirement 19.2
+    pub fn recovery_interval(&self) -> u32 {
+        self.config.recovery_interval_seconds
+    }
+
+    /// Set a new recovery interval in seconds, taking immediate effect.
+    ///
+    /// Setting to 0 disables recovery file writing.
+    ///
+    /// Validates: Requirement 19.2
+    pub fn set_recovery_interval(&mut self, seconds: u32) {
+        self.config.recovery_interval_seconds = seconds;
+    }
+
     /// Check if undo is disabled.
     pub fn is_undo_disabled(&self) -> bool {
         self.config.is_undo_disabled()

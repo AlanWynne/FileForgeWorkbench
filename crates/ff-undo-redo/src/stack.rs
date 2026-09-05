@@ -86,6 +86,20 @@ impl UndoStack {
     pub fn iter(&self) -> impl Iterator<Item = &Transaction> {
         self.stack.iter()
     }
+
+    /// Sets a new maximum depth, taking immediate effect.
+    ///
+    /// If the new limit is smaller than the current stack depth, the oldest
+    /// transactions are evicted until the stack fits within the new limit.
+    pub fn set_max_levels(&mut self, new_max: u32) {
+        self.max_levels = new_max as usize;
+        while self.max_levels > 0 && self.stack.len() > self.max_levels {
+            self.stack.pop_front();
+        }
+        if self.max_levels == 0 {
+            self.stack.clear();
+        }
+    }
 }
 
 /// Redo stack — unbounded LIFO storage for undone transactions.

@@ -158,6 +158,27 @@ It is consumed by the GUI shell layer (`ff-desktop`) for actual rendering.
   - [x] 16.6 Write integration test: modified line markers with save-clear cycle
   - Covers: End-to-end validation across Requirements 1–12
 
+- [x] 17. Mouse selection in editor canvas (Requirement 13)
+  - [x] 17.1 Add `canvas_selection: Option<(usize, usize, usize, usize)>` (anchor_line, anchor_col, end_line, end_col) to `TabState` in `tab_state.rs`
+  - [x] 17.2 Add `selection_drag_active: bool` to `TabState` for drag-in-progress tracking
+  - [x] 17.3 Implement `screen_to_doc_pos(x: f32, y: f32, top_line: usize, line_height: f32, char_width: f32) -> (usize, usize)` pure function in `editor_panel.rs`
+  - [x] 17.4 Wire `drag_started()` / `drag_delta()` / `drag_released()` on the canvas `Response` in `editor_panel.rs` to update `canvas_selection`
+  - [x] 17.5 Render selection highlight rects behind text for each visible line intersecting the selection range
+  - [x] 17.6 Wire Escape key to clear `canvas_selection` in the editor panel key-event loop
+  - [x] 17.7 Wire Ctrl+C in the editor panel: when `canvas_selection` is Some, extract text from document model and write to OS clipboard via `ff-clipboard`
+  - [x] 17.8 Display "Copied N characters" in status bar after successful copy
+  - [x] 17.9 Clear `canvas_selection` on tab switch in `tab_manager.rs`
+  - [x] 17.10 Write unit tests: `screen_to_doc_pos` coordinate conversion, selection range extraction, multi-line join
+  - Covers: Requirement 13 (AC 13.1-13.10)
+
+- [x] 18. Selectable text in read-only panels (Requirement 14)
+  - [x] 18.1 Replace `ui.label()` calls in `primary_option_menu.rs` with selectable label equivalents for calendar text
+  - [x] 18.2 Replace `ui.label()` calls in `settings_panel.rs` for key names, values, and descriptions
+  - [x] 18.3 Replace `ui.label()` calls in the status bar render path for phase, session start, line/col, encoding, line count, and version fields
+  - [x] 18.4 Verify that POM option button click-to-navigate still works after label change (POM options remain egui::Button -- no change needed)
+  - [x] 18.5 Write unit tests confirming selectable label state is set on POM and Settings panel text items
+  - Covers: Requirement 14 (AC 14.1-14.5)
+
 ---
 
 ## Property-Based Test Definitions

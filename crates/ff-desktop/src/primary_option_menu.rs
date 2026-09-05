@@ -381,11 +381,13 @@ pub fn render(
                 }
 
                 // Day-of-week header
-                ui.label(
+                // Validates: Requirement 14.1 -- selectable calendar text
+                ui.add(egui::SelectableLabel::new(
+                    false,
                     egui::RichText::new("Su Mo Tu We Th Fr Sa")
                         .monospace()
                         .color(calendar_fg),
-                );
+                ));
 
                 // Calendar grid — build week rows, flush at col 7.
                 let first_wd = first_weekday_of_month(year, month);
@@ -424,16 +426,19 @@ pub fn render(
                 }
 
                 ui.add_space(4.0);
-                ui.label(
+                // Validates: Requirement 14.1 -- selectable time/date text
+                ui.add(egui::SelectableLabel::new(
+                    false,
                     egui::RichText::new(format!("Time . . . . : {:02}:{:02}", hour, min))
                         .monospace()
                         .color(calendar_fg),
-                );
-                ui.label(
+                ));
+                ui.add(egui::SelectableLabel::new(
+                    false,
                     egui::RichText::new(format!("Day of year. :   {}", doy))
                         .monospace()
                         .color(calendar_fg),
-                );
+                ));
             });
         });
     });
@@ -458,6 +463,7 @@ fn render_calendar_row(
 
     if !has_today {
         // Fast path: single monospace label for the whole row.
+        // Validates: Requirement 14.1 -- selectable calendar day text
         let mut line = String::new();
         for (d, _) in cells {
             if *d == 0 {
@@ -466,11 +472,12 @@ fn render_calendar_row(
                 line.push_str(&format!("{:>2} ", d));
             }
         }
-        ui.label(
+        ui.add(egui::SelectableLabel::new(
+            false,
             egui::RichText::new(line.trim_end().to_string())
                 .monospace()
                 .color(calendar_fg),
-        );
+        ));
     } else {
         // Slow path: cell-by-cell so today gets a filled background rect.
         ui.horizontal(|ui| {
@@ -492,11 +499,13 @@ fn render_calendar_row(
                     // Trailing space separator
                     ui.label(egui::RichText::new(" ").monospace().color(calendar_fg));
                 } else {
-                    ui.label(
+                    // Validates: Requirement 14.1 -- selectable calendar day text
+                    ui.add(egui::SelectableLabel::new(
+                        false,
                         egui::RichText::new(format!("{:>2} ", d))
                             .monospace()
                             .color(calendar_fg),
-                    );
+                    ));
                 }
             }
         });

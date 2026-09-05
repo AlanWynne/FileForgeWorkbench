@@ -96,6 +96,24 @@ pub enum SessionError {
         reason: String,
     },
 
+    /// A workspace file could not be parsed or validated.
+    #[error("[session] workspace file corrupt: {path} -- {reason}")]
+    WorkspaceFileCorrupt {
+        /// Path to the corrupt workspace file.
+        path: std::path::PathBuf,
+        /// Description of the parse or validation failure.
+        reason: String,
+    },
+
+    /// Writing a workspace file to disk failed.
+    #[error("[session] workspace file write failed: {path} -- {reason}")]
+    WorkspaceFileWriteFailed {
+        /// Path where the write was attempted.
+        path: std::path::PathBuf,
+        /// Description of the I/O failure.
+        reason: String,
+    },
+
     /// The exit sequence was aborted by the user selecting Cancel.
     #[error("[session] exit aborted: user cancelled")]
     ExitAborted,

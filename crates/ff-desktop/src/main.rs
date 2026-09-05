@@ -8,13 +8,16 @@
 //! launches the egui/eframe rendering window.
 
 mod about_dialog;
+mod automation;
 mod catalog_manager_dialog;
 mod catalog_registry;
+mod command_palette;
 mod context_menu;
 mod copy_move_dialog;
 mod dataset_alloc_dialog;
 mod editor_panel;
 mod exclude_manager;
+mod fftest_cli;
 mod file_explorer_panel;
 mod files_panel;
 mod find_manager;
@@ -24,6 +27,7 @@ mod panel_layout;
 mod posix_provider;
 mod primary_option_menu;
 mod scroll_amount;
+mod search_results_panel;
 mod session_manager;
 mod settings_panel;
 mod shell;
@@ -71,7 +75,15 @@ fn main() -> anyhow::Result<()> {
 
     // ── 6. CLI file arguments (Requirement 6.1–6.5) ───────────────────────
     let cwd = std::env::current_dir().unwrap_or_default();
-    let cli_files = resolve_cli_paths(std::env::args().skip(1), &cwd);
+    let all_args: Vec<String> = std::env::args().skip(1).collect();
+
+    // ── 6a. Headless FFTest mode (Req 6.1, 6.2, 6.3) ─────────────────────
+    if let Some(mode) = fftest_cli::detect_cli_mode(&all_args) {
+        let exit_code = fftest_cli::run_headless(&mode, &cwd);
+        std::process::exit(exit_code);
+    }
+
+    let cli_files = resolve_cli_paths(all_args.into_iter(), &cwd);
 
     // ── 7. eframe window ─────────────────────────────────────────────────
     let native_options = eframe::NativeOptions {

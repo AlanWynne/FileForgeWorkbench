@@ -15,6 +15,7 @@ Each sub-project folder contains up to three files:
 The following specs are available under `docs/specs/`:
 
 - asa-report-preview
+- automated-dialog-testing
 - bootstrap-scripts
 - auto-indentation
 - background-io
@@ -23,6 +24,7 @@ The following specs are available under `docs/specs/`:
 - command-completion
 - command-framework
 - command-semantics
+- command-palette
 - compare-and-merge
 - compiler-toolchain-integration
 - configuration-system
@@ -45,7 +47,8 @@ The following specs are available under `docs/specs/`:
 - encoding-and-characters
 - exclude-show-filter
 - external-modification
-- FFW-JES
+- global-search
+- jes-emulator (folder was FFW-JES -- renamed Phase BR to match kebab-case convention)
 - file-operations
 - file-tree-panel
 - fileforge-integration
@@ -83,6 +86,7 @@ The following specs are available under `docs/specs/`:
 - virtual-file-system
 - whitespace-and-guides
 - workflow-engine
+- workspace-model
 
 ## Rules for Amazon Q
 

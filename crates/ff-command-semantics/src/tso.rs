@@ -326,28 +326,91 @@ impl AuditEvent {
     }
 }
 
-// === TSO Command Router (Req 9.1-9.10) =======================================
+// === TSO Command Router (Req 9.1-9.10, 10.1-10.5) ==========================
+
+/// Target for SEND command routing.
+///
+/// Validates: Requirement 10.3
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SendTarget {
+    /// Send to a specific user: `USER(userid)`.
+    User(String),
+    /// Send to all logged-on users.
+    Logon,
+    /// Send to the system broadcast queue.
+    Broadcast,
+    /// No target specified (default).
+    Default,
+}
+
+/// Parse the SEND target from the args string.
+///
+/// Validates: Requirement 10.3
+pub fn parse_send_target(args: &str) -> SendTarget {
+    let upper = args.to_uppercase();
+    if upper.contains("BROADCAST") {
+        return SendTarget::Broadcast;
+    }
+    if upper.contains("LOGON") {
+        return SendTarget::Logon;
+    }
+    // USER(userid) form
+    if let Some(start) = upper.find("USER(") {
+        let after = start + 5;
+        if let Some(end) = upper[after..].find(')') {
+            let userid = args[after..after + end].to_string();
+            return SendTarget::User(userid);
+        }
+    }
+    SendTarget::Default
+}
+
+/// Whether CANCEL should also purge job output.
+///
+/// Validates: Requirement 10.2
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CancelPurge {
+    /// Cancel only; retain output.
+    Cancel,
+    /// Cancel and purge all output.
+    CancelAndPurge,
+}
+
+/// Parse whether PURGE operand is present in CANCEL args.
+///
+/// Validates: Requirement 10.2
+pub fn parse_cancel_purge(args: &str) -> CancelPurge {
+    if args.to_uppercase().contains("PURGE") {
+        CancelPurge::CancelAndPurge
+    } else {
+        CancelPurge::Cancel
+    }
+}
 
 /// The routing target for a TSO command.
 ///
-/// Validates: Requirement 9.1-9.10
+/// Validates: Requirement 9.1-9.10, 10.1-10.5
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TsoRoute {
     /// Route to dataset allocator (ALLOCATE, FREE, LISTALC).
     DatasetAllocator { command: String, args: String },
     /// Route to VFS/catalog layer (DELETE, RENAME, LISTCAT, LISTDS).
     VfsCatalog { command: String, args: String },
-    /// Route to FFW-JES subsystem (SUBMIT, STATUS).
+    /// Route to FFW-JES subsystem (SUBMIT, STATUS, OUTPUT, CANCEL).
     FfwJes { command: String, args: String },
-    /// Route to file-operations pipeline (EDIT with dataset).
+    /// Route to file-operations pipeline (EDIT, PRINTDS).
     FileOperations { command: String, args: String },
+    /// Route to messaging subsystem (SEND).
+    Messaging { command: String, args: String },
+    /// Route to session profile subsystem (PROFILE).
+    SessionProfile { command: String, args: String },
     /// Unknown command -- not a TSO command.
     Unknown(String),
 }
 
 /// Routes a TSO command to the appropriate subsystem.
 ///
-/// Validates: Requirement 9.1-9.10
+/// Validates: Requirement 9.1-9.10, 10.1-10.5
 pub fn route_tso_command(name: &str, args: &str) -> TsoRoute {
     let upper = name.trim().to_uppercase();
     let args = args.trim().to_string();
@@ -360,11 +423,19 @@ pub fn route_tso_command(name: &str, args: &str) -> TsoRoute {
             command: upper,
             args,
         },
-        "SUBMIT" | "STATUS" => TsoRoute::FfwJes {
+        "SUBMIT" | "STATUS" | "OUTPUT" | "CANCEL" => TsoRoute::FfwJes {
             command: upper,
             args,
         },
-        "EDIT" => TsoRoute::FileOperations {
+        "EDIT" | "PRINTDS" => TsoRoute::FileOperations {
+            command: upper,
+            args,
+        },
+        "SEND" => TsoRoute::Messaging {
+            command: upper,
+            args,
+        },
+        "PROFILE" => TsoRoute::SessionProfile {
             command: upper,
             args,
         },
@@ -739,7 +810,172 @@ mod tests {
         assert_eq!(redacted, cmd);
     }
 
-    // --- Req 9.18: audit events ---
+    // --- Req 10.1: OUTPUT routing ---
+
+    #[test]
+    fn output_routes_to_ffwjes() {
+        // Validates: Requirement 10.1
+        let route = route_tso_command("OUTPUT", "MYJOB");
+        assert!(matches!(route, TsoRoute::FfwJes { .. }));
+        if let TsoRoute::FfwJes { command, args } = route {
+            assert_eq!(command, "OUTPUT");
+            assert_eq!(args, "MYJOB");
+        }
+    }
+
+    #[test]
+    fn output_with_options_routes_to_ffwjes() {
+        // Validates: Requirement 10.1
+        let route = route_tso_command("OUTPUT", "MYJOB PRINT");
+        assert!(matches!(route, TsoRoute::FfwJes { .. }));
+    }
+
+    // --- Req 10.2: CANCEL routing and PURGE operand ---
+
+    #[test]
+    fn cancel_routes_to_ffwjes() {
+        // Validates: Requirement 10.2
+        let route = route_tso_command("CANCEL", "MYJOB");
+        assert!(matches!(route, TsoRoute::FfwJes { .. }));
+        if let TsoRoute::FfwJes { command, args } = route {
+            assert_eq!(command, "CANCEL");
+            assert_eq!(args, "MYJOB");
+        }
+    }
+
+    #[test]
+    fn cancel_without_purge_is_cancel_only() {
+        // Validates: Requirement 10.2
+        assert_eq!(parse_cancel_purge("MYJOB"), CancelPurge::Cancel);
+    }
+
+    #[test]
+    fn cancel_with_purge_operand_is_cancel_and_purge() {
+        // Validates: Requirement 10.2
+        assert_eq!(
+            parse_cancel_purge("MYJOB PURGE"),
+            CancelPurge::CancelAndPurge
+        );
+    }
+
+    #[test]
+    fn cancel_purge_case_insensitive() {
+        // Validates: Requirement 10.2
+        assert_eq!(
+            parse_cancel_purge("MYJOB purge"),
+            CancelPurge::CancelAndPurge
+        );
+    }
+
+    // --- Req 10.3: SEND routing and target variants ---
+
+    #[test]
+    fn send_routes_to_messaging() {
+        // Validates: Requirement 10.3
+        let route = route_tso_command("SEND", "'hello' USER(ALICE)");
+        assert!(matches!(route, TsoRoute::Messaging { .. }));
+        if let TsoRoute::Messaging { command, .. } = route {
+            assert_eq!(command, "SEND");
+        }
+    }
+
+    #[test]
+    fn send_target_user_parsed() {
+        // Validates: Requirement 10.3
+        let target = parse_send_target("'hello' USER(ALICE)");
+        assert_eq!(target, SendTarget::User("ALICE".to_string()));
+    }
+
+    #[test]
+    fn send_target_logon_parsed() {
+        // Validates: Requirement 10.3
+        let target = parse_send_target("'hello' LOGON");
+        assert_eq!(target, SendTarget::Logon);
+    }
+
+    #[test]
+    fn send_target_broadcast_parsed() {
+        // Validates: Requirement 10.3
+        let target = parse_send_target("'hello' BROADCAST");
+        assert_eq!(target, SendTarget::Broadcast);
+    }
+
+    #[test]
+    fn send_target_default_when_no_target() {
+        // Validates: Requirement 10.3
+        let target = parse_send_target("'hello'");
+        assert_eq!(target, SendTarget::Default);
+    }
+
+    // --- Req 10.4: PROFILE routing ---
+
+    #[test]
+    fn profile_routes_to_session_profile() {
+        // Validates: Requirement 10.4
+        let route = route_tso_command("PROFILE", "");
+        assert!(matches!(route, TsoRoute::SessionProfile { .. }));
+        if let TsoRoute::SessionProfile { command, .. } = route {
+            assert_eq!(command, "PROFILE");
+        }
+    }
+
+    #[test]
+    fn profile_with_msgid_operand_routes_to_session_profile() {
+        // Validates: Requirement 10.4
+        let route = route_tso_command("PROFILE", "MSGID");
+        assert!(matches!(route, TsoRoute::SessionProfile { .. }));
+        if let TsoRoute::SessionProfile { args, .. } = route {
+            assert_eq!(args, "MSGID");
+        }
+    }
+
+    #[test]
+    fn profile_with_intercom_operand_routes_correctly() {
+        // Validates: Requirement 10.4
+        let route = route_tso_command("PROFILE", "INTERCOM");
+        assert!(matches!(route, TsoRoute::SessionProfile { .. }));
+    }
+
+    #[test]
+    fn profile_with_nointercom_operand_routes_correctly() {
+        // Validates: Requirement 10.4
+        let route = route_tso_command("PROFILE", "NOINTERCOM");
+        assert!(matches!(route, TsoRoute::SessionProfile { .. }));
+    }
+
+    #[test]
+    fn profile_with_prefix_operand_routes_correctly() {
+        // Validates: Requirement 10.4
+        let route = route_tso_command("PROFILE", "PREFIX(MYUSER)");
+        assert!(matches!(route, TsoRoute::SessionProfile { .. }));
+    }
+
+    // --- Req 10.5: PRINTDS routing ---
+
+    #[test]
+    fn printds_routes_to_file_operations() {
+        // Validates: Requirement 10.5
+        let route = route_tso_command("PRINTDS", "DATASET(MY.DATA)");
+        assert!(matches!(route, TsoRoute::FileOperations { .. }));
+        if let TsoRoute::FileOperations { command, args } = route {
+            assert_eq!(command, "PRINTDS");
+            assert_eq!(args, "DATASET(MY.DATA)");
+        }
+    }
+
+    #[test]
+    fn printds_with_options_routes_to_file_operations() {
+        // Validates: Requirement 10.5
+        let route = route_tso_command("PRINTDS", "DATASET(MY.DATA) SYSOUT(A)");
+        assert!(matches!(route, TsoRoute::FileOperations { .. }));
+    }
+
+    #[test]
+    fn printds_case_insensitive_command_name() {
+        // Validates: Requirement 10.5
+        let route = route_tso_command("printds", "DATASET(MY.DATA)");
+        assert!(matches!(route, TsoRoute::FileOperations { .. }));
+    }
 
     #[test]
     fn audit_event_contains_required_fields() {

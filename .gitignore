@@ -32,6 +32,9 @@ git/
 # ── Large test data files (exceed GitHub 100 MB limit) ──────────────────────
 TestData/Large_File-157653-records.txt
 
+# ── FFTest generated reports (Req 10.2 automated-dialog-testing) ────────────
+reports/
+
 # ── Script execution logs (ephemeral, see .amazonq/rules/script-output.md) ──
 tools/logs/
 bootstrap/logs/*.log

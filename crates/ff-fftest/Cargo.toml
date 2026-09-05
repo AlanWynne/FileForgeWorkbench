@@ -1,0 +1,17 @@
+[package]
+name = "ff-fftest"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "FFTest automated dialog testing framework -- Automation ID types and registry trait"
+
+[dependencies]
+ff-core     = { path = "../ff-core" }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+thiserror   = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+tempfile          = { workspace = true }

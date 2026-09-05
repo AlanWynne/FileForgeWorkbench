@@ -1955,3 +1955,355 @@ fn status_with_jobname_routes_with_filter() {
         "STATUS jobname must not produce unknown-command error, got: {msg}"
     );
 }
+
+// === Phase BS-A: Workspace lifecycle, root, settings, MRU tests ===========
+
+/// Validates: workspace-model Requirement 2.1 -- WORKSPACE OPEN with missing path sets error.
+#[test]
+fn workspace_open_missing_path_sets_error() {
+    // Validates: workspace-model Requirement 2.1
+    let mut shell = make_shell();
+    shell.handle_command("WORKSPACE OPEN");
+    assert!(
+        shell.open_error.is_some(),
+        "WORKSPACE OPEN with no path must set an error"
+    );
+}
+
+/// Validates: workspace-model Requirement 2.1 -- open_workspace_force loads workspace and
+/// registers roots as Native catalogs.
+#[test]
+fn open_workspace_force_registers_roots_as_native_catalogs() {
+    // Validates: workspace-model Requirement 2.1, 3.4
+    use ff_session::{save_workspace, WorkspaceState};
+    use tempfile::TempDir;
+
+    let tmp = TempDir::new().expect("tempdir");
+    let ws_path = tmp.path().join("test.ffwb-workspace");
+    // Use a named subdirectory so file_name() is a valid catalog name.
+    let root = tmp.path().join("myproject");
+    std::fs::create_dir_all(&root).expect("create root dir");
+
+    let mut state = WorkspaceState::new("TestWS");
+    state.roots.push(root.clone());
+    save_workspace(&state, &ws_path).expect("save");
+
+    let mut shell = make_shell();
+    shell.open_workspace_force(&ws_path);
+
+    assert!(shell.active_workspace.is_some(), "workspace must be active");
+    assert_eq!(shell.active_workspace.as_ref().unwrap().name, "TestWS");
+    // Root must be registered as a catalog.
+    let root_name = "myproject";
+    let catalog_names: Vec<String> = shell
+        .files_panel
+        .registry
+        .list()
+        .iter()
+        .map(|c| c.name.clone())
+        .collect();
+    assert!(
+        shell.files_panel.registry.get_by_name(root_name).is_some(),
+        "root '{}' must be registered as a catalog; found: {:?}",
+        root_name,
+        catalog_names
+    );
+    assert!(shell.open_error.is_none());
+}
+
+/// Validates: workspace-model Requirement 2.4 -- close_workspace unregisters roots.
+#[test]
+fn close_workspace_unregisters_roots() {
+    // Validates: workspace-model Requirement 2.4, 3.4
+    use ff_session::{save_workspace, WorkspaceState};
+    use tempfile::TempDir;
+
+    let tmp = TempDir::new().expect("tempdir");
+    let ws_path = tmp.path().join("test.ffwb-workspace");
+    let root = tmp.path().join("myproject");
+    std::fs::create_dir_all(&root).expect("create root dir");
+    let root_name = "myproject";
+
+    let mut state = WorkspaceState::new("CloseWS");
+    state.roots.push(root);
+    save_workspace(&state, &ws_path).expect("save");
+
+    let mut shell = make_shell();
+    shell.open_workspace_force(&ws_path);
+    assert!(shell.files_panel.registry.get_by_name(root_name).is_some());
+
+    shell.close_workspace();
+    assert!(
+        shell.active_workspace.is_none(),
+        "workspace must be cleared"
+    );
+    assert!(
+        shell.files_panel.registry.get_by_name(root_name).is_none(),
+        "root catalog must be removed on close"
+    );
+}
+
+/// Validates: workspace-model Requirement 2.5 -- opening a second workspace when the first
+/// has unsaved changes defers the open and sets show_unsaved_workspace_dialog.
+#[test]
+fn open_workspace_with_modified_active_defers_and_shows_dialog() {
+    // Validates: workspace-model Requirement 2.5
+    use ff_session::{save_workspace, WorkspaceState};
+    use tempfile::TempDir;
+
+    let tmp = TempDir::new().expect("tempdir");
+    let ws1_path = tmp.path().join("ws1.ffwb-workspace");
+    let ws2_path = tmp.path().join("ws2.ffwb-workspace");
+
+    save_workspace(&WorkspaceState::new("WS1"), &ws1_path).expect("save ws1");
+    save_workspace(&WorkspaceState::new("WS2"), &ws2_path).expect("save ws2");
+
+    let mut shell = make_shell();
+    shell.open_workspace_force(&ws1_path);
+    // Mark the active workspace as modified.
+    shell.active_workspace.as_mut().unwrap().is_modified = true;
+
+    // Now try to open a second workspace.
+    shell.open_workspace(&ws2_path);
+
+    assert!(
+        shell.show_unsaved_workspace_dialog,
+        "unsaved-changes dialog must be shown"
+    );
+    assert_eq!(
+        shell.pending_workspace_open.as_deref(),
+        Some(ws2_path.as_path()),
+        "pending path must be ws2"
+    );
+    // WS1 must still be active (not replaced yet).
+    assert_eq!(shell.active_workspace.as_ref().unwrap().name, "WS1");
+}
+
+/// Validates: workspace-model Requirement 2.5 -- discard path in unsaved-changes guard
+/// clears the dialog and opens the pending workspace.
+#[test]
+fn unsaved_workspace_discard_opens_pending_workspace() {
+    // Validates: workspace-model Requirement 2.5
+    use ff_session::{save_workspace, WorkspaceState};
+    use tempfile::TempDir;
+
+    let tmp = TempDir::new().expect("tempdir");
+    let ws1_path = tmp.path().join("ws1.ffwb-workspace");
+    let ws2_path = tmp.path().join("ws2.ffwb-workspace");
+
+    save_workspace(&WorkspaceState::new("WS1"), &ws1_path).expect("save ws1");
+    save_workspace(&WorkspaceState::new("WS2"), &ws2_path).expect("save ws2");
+
+    let mut shell = make_shell();
+    shell.open_workspace_force(&ws1_path);
+    shell.active_workspace.as_mut().unwrap().is_modified = true;
+    shell.open_workspace(&ws2_path);
+
+    // Simulate Discard: clear modified flag and open pending.
+    shell.show_unsaved_workspace_dialog = false;
+    if let Some(ws) = shell.active_workspace.as_mut() {
+        ws.is_modified = false;
+    }
+    if let Some(path) = shell.pending_workspace_open.take() {
+        shell.open_workspace_force(&path);
+    }
+
+    assert!(!shell.show_unsaved_workspace_dialog);
+    assert!(shell.pending_workspace_open.is_none());
+    assert_eq!(shell.active_workspace.as_ref().unwrap().name, "WS2");
+}
+
+/// Validates: workspace-model Requirement 3.5 -- missing root at load time sets open_error
+/// but workspace is still loaded.
+#[test]
+fn open_workspace_missing_root_sets_warning_but_loads() {
+    // Validates: workspace-model Requirement 3.5
+    use ff_session::{save_workspace, WorkspaceState};
+    use tempfile::TempDir;
+
+    let tmp = TempDir::new().expect("tempdir");
+    let ws_path = tmp.path().join("missing-root.ffwb-workspace");
+
+    let mut state = WorkspaceState::new("MissingRoot");
+    // Add a root that does not exist on disk.
+    state
+        .roots
+        .push(std::path::PathBuf::from("C:/does/not/exist/ever"));
+    save_workspace(&state, &ws_path).expect("save");
+
+    let mut shell = make_shell();
+    shell.open_workspace_force(&ws_path);
+
+    // Workspace must still be loaded.
+    assert!(
+        shell.active_workspace.is_some(),
+        "workspace must load even when a root is missing"
+    );
+    // A warning must be set.
+    assert!(
+        shell.open_error.is_some(),
+        "open_error must contain a warning about the missing root"
+    );
+    let msg = shell.open_error.as_deref().unwrap_or("");
+    assert!(
+        msg.to_lowercase().contains("warning") || msg.to_lowercase().contains("not found"),
+        "warning message expected, got: {msg}"
+    );
+}
+
+/// Validates: workspace-model Requirement 4.1 -- workspace settings are injected into config.
+#[test]
+fn open_workspace_injects_settings_into_config() {
+    // Validates: workspace-model Requirement 4.1
+    use ff_session::{save_workspace, WorkspaceState};
+    use tempfile::TempDir;
+
+    let tmp = TempDir::new().expect("tempdir");
+    let ws_path = tmp.path().join("settings.ffwb-workspace");
+
+    let mut state = WorkspaceState::new("SettingsWS");
+    // Use a key with no schema entry to avoid validation-path unreachable panic.
+    state
+        .settings
+        .insert("workspace.custom_key".to_string(), "hello".to_string());
+    save_workspace(&state, &ws_path).expect("save");
+
+    let mut shell = make_shell();
+    shell.open_workspace_force(&ws_path);
+
+    // The setting must be readable from the config handle.
+    let val = shell.config_handle.get_string("workspace.custom_key");
+    assert_eq!(
+        val.ok().as_deref(),
+        Some("hello"),
+        "workspace setting must be injected into config"
+    );
+}
+
+/// Validates: workspace-model Requirement 4.3 -- closing workspace removes settings layer.
+#[test]
+fn close_workspace_removes_settings_from_config() {
+    // Validates: workspace-model Requirement 4.3
+    use ff_session::{save_workspace, WorkspaceState};
+    use tempfile::TempDir;
+
+    let tmp = TempDir::new().expect("tempdir");
+    let ws_path = tmp.path().join("settings-close.ffwb-workspace");
+
+    let mut state = WorkspaceState::new("SettingsCloseWS");
+    state
+        .settings
+        .insert("workspace.custom_key".to_string(), "hello".to_string());
+    save_workspace(&state, &ws_path).expect("save");
+
+    let mut shell = make_shell();
+    shell.open_workspace_force(&ws_path);
+    assert_eq!(
+        shell
+            .config_handle
+            .get_string("workspace.custom_key")
+            .ok()
+            .as_deref(),
+        Some("hello")
+    );
+
+    shell.close_workspace();
+    // After close the workspace override must be gone.
+    let val_after = shell.config_handle.get_string("workspace.custom_key");
+    assert!(
+        val_after.is_err(),
+        "workspace setting must be removed from config after close"
+    );
+}
+
+/// Validates: workspace-model Requirement 6.1 -- record_recent_file adds to workspace MRU.
+#[test]
+fn workspace_mru_accumulates_opened_files() {
+    // Validates: workspace-model Requirement 6.1
+    use ff_session::{save_workspace, WorkspaceState};
+    use tempfile::TempDir;
+
+    let tmp = TempDir::new().expect("tempdir");
+    let ws_path = tmp.path().join("mru.ffwb-workspace");
+    save_workspace(&WorkspaceState::new("MruWS"), &ws_path).expect("save");
+
+    let mut shell = make_shell();
+    shell.open_workspace_force(&ws_path);
+
+    let file_a = std::path::PathBuf::from("C:/projects/a.rs");
+    let file_b = std::path::PathBuf::from("C:/projects/b.rs");
+    shell
+        .active_workspace
+        .as_mut()
+        .unwrap()
+        .record_recent_file(file_a.clone());
+    shell
+        .active_workspace
+        .as_mut()
+        .unwrap()
+        .record_recent_file(file_b.clone());
+
+    let mru = &shell.active_workspace.as_ref().unwrap().recent_files;
+    assert_eq!(mru.len(), 2);
+    assert_eq!(mru[0].path, file_b, "most recent must be first");
+    assert_eq!(mru[1].path, file_a);
+}
+
+/// Validates: workspace-model Requirement 6.2 -- MRU list persists through save/load round-trip.
+#[test]
+fn workspace_mru_persists_through_save_load() {
+    // Validates: workspace-model Requirement 6.2
+    use ff_session::{load_workspace, save_workspace, WorkspaceRecentFile, WorkspaceState};
+    use tempfile::TempDir;
+
+    let tmp = TempDir::new().expect("tempdir");
+    let ws_path = tmp.path().join("mru-persist.ffwb-workspace");
+
+    let mut state = WorkspaceState::new("MruPersist");
+    state.recent_files.push(WorkspaceRecentFile {
+        path: std::path::PathBuf::from("C:/projects/main.rs"),
+        opened_at: "2026-01-01T00:00:00+00:00".to_string(),
+    });
+    save_workspace(&state, &ws_path).expect("save");
+
+    let loaded = load_workspace(&ws_path).expect("load");
+    assert_eq!(loaded.recent_files.len(), 1);
+    assert_eq!(
+        loaded.recent_files[0].path,
+        std::path::PathBuf::from("C:/projects/main.rs")
+    );
+}
+
+/// Validates: workspace-model Requirement 6.3 -- closing workspace clears workspace MRU
+/// (active_workspace becomes None).
+#[test]
+fn close_workspace_clears_mru() {
+    // Validates: workspace-model Requirement 6.3
+    use ff_session::{save_workspace, WorkspaceState};
+    use tempfile::TempDir;
+
+    let tmp = TempDir::new().expect("tempdir");
+    let ws_path = tmp.path().join("mru-close.ffwb-workspace");
+    save_workspace(&WorkspaceState::new("MruClose"), &ws_path).expect("save");
+
+    let mut shell = make_shell();
+    shell.open_workspace_force(&ws_path);
+    shell
+        .active_workspace
+        .as_mut()
+        .unwrap()
+        .record_recent_file(std::path::PathBuf::from("C:/x.rs"));
+    assert!(!shell
+        .active_workspace
+        .as_ref()
+        .unwrap()
+        .recent_files
+        .is_empty());
+
+    shell.close_workspace();
+    // After close, active_workspace is None -- MRU is gone.
+    assert!(
+        shell.active_workspace.is_none(),
+        "active_workspace must be None after close"
+    );
+}

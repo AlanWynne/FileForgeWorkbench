@@ -96,6 +96,23 @@ Completed work:
 - 8 new tests added; all 376 ff-desktop tests pass
 - `cargo clippy -- -D warnings` clean; `cargo fmt` applied
 
+## Phase CL -- POM Guaranteed on Startup (CR-CH-007, Req 14.1a, 14.1b)
+
+- [x] 34. Ensure POM tab is always present on startup
+  - [x] 34.1 Write failing test `session_with_pom_tab_restores_exactly`
+    - Validates: Requirement 14.1a
+  - [x] 34.2 Write failing test `session_without_pom_tab_prepends_pom`
+    - Validates: Requirement 14.1b
+  - [x] 34.3 Write failing test `empty_session_opens_single_pom_tab`
+    - Validates: Requirement 14.1
+  - [x] 34.4 In `shell/update.rs` startup block: after session restore, check whether any tab has kind `PrimaryOptionMenu`; if none found, call `tabs.insert_pom_tab()` at index 0
+    - Validates: Requirement 14.1b
+  - [x] 34.5 Run `cargo test -p ff-desktop` -- all three new tests pass (green)
+  - [x] 34.6 Run `cargo clippy -p ff-desktop -- -D warnings` -- clean
+  - [x] 34.7 Update `docs/quality/TCR.md` -- mark Req 14.1a and 14.1b rows as PASS
+  - [x] 34.8 Update `docs/specs/project-master/tasks.md` -- Phase CL entry marked complete
+  - [x] 34.9 Update `docs/status/bugs.md` -- B001 status to FIXED
+
 ## Phase CA -- EARS Integration (Requirement 20)
 
 - [x] 28. Session start timestamp in status bar

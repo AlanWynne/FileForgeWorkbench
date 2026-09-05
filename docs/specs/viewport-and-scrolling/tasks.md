@@ -140,10 +140,19 @@ This plan implements the viewport and scrolling subsystem for FileForgeWorkbench
   - [x] 14.6 Write property test: scrollbar mapping is monotonically non-decreasing across entire fraction range
 
 - [x] 15. Integration tests and documentation
-  - [x] 15.1 Write integration test: full scroll scenario (open document → page down → cursor move → scroll to bottom → restore)
+  - [x] 15.1 Write integration test: full scroll scenario (open document -> page down -> cursor move -> scroll to bottom -> restore)
   - [x] 15.2 Write integration test: viewport with display line mapping (wrapping + folding + scrollbar)
   - [x] 15.3 Add crate-level documentation in `src/lib.rs` with usage examples
   - [x] 15.4 Add `README.md` for the crate with architecture overview
+
+- [ ] 16. Editor scroll amount integration (Requirement 14, CR-NR-035)
+  - [x] 16.1 Read `scroll_amount.rs` in `ff-desktop` to confirm `ScrollAmount` variants (PAGE, HALF, CSR, MAX, DATA, Lines(u64))
+  - [x] 16.2 Pass `scroll_amount: ScrollAmount` as a parameter into `editor_panel::render()` from the shell
+  - [x] 16.3 Replace the hard-coded `scroll_page_down` / `scroll_page_up` calls in the editor panel Page Up/Down key handler with a `scroll_by_amount(tab, scroll_amount)` helper
+  - [x] 16.4 Implement `scroll_by_amount` helper: PAGE -> `scroll_page_down/up`; HALF -> scroll by `max(1, visible_count/2)`; CSR -> scroll so cursor is first/last visible line; MAX -> `scroll_to_bottom/top`; DATA -> scroll by `visible_count - 1`; Lines(n) -> scroll by exactly n lines
+  - [ ] 16.5 Verify SCROLL ===> field is rendered when an editor tab (FileEditor or Untitled) is active (already true from Phase BZ -- confirm and document)
+  - [ ] 16.6 Write unit tests: `scroll_amount_page_scrolls_full_visible_count`, `scroll_amount_half_scrolls_half_visible_count`, `scroll_amount_csr_scrolls_to_cursor`, `scroll_amount_numeric_scrolls_exact_lines`, `scroll_amount_max_scrolls_to_bottom`
+  - Covers: Requirement 14 (AC 14.1-14.8)
 
 ---
 

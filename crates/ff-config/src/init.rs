@@ -684,11 +684,14 @@ mod tests {
     // ========================================================================
 
     // Validates: Requirement 1.1, 1.2 — init with no config files succeeds with schema defaults
+    // Uses ReloadManager directly to avoid loading the real user config file from disk,
+    // which may override schema defaults on the developer's machine (B029).
     #[test]
     fn init_with_no_config_files_succeeds_with_schema_defaults() {
-        // Use default options with hot-reload disabled (avoids watcher in tests)
-        let options = ConfigInitOptions::new().with_hot_reload(false);
-        let handle = init(options).unwrap();
+        let mut schema = SchemaRegistry::new();
+        register_core_schema(&mut schema);
+        let manager = ReloadManager::new(Vec::new(), schema);
+        let handle = ConfigHandle::new(manager);
 
         // Schema defaults should be available
         assert_eq!(handle.get_int("editor.tab_size").unwrap(), 4);
@@ -716,6 +719,8 @@ mod tests {
     // ========================================================================
 
     // Validates: Requirement 2.1 — init loads project config from project_root
+    // Uses ReloadManager directly to avoid loading the real user config file from disk,
+    // which may override schema defaults on the developer's machine (B029).
     #[test]
     fn init_loads_project_config_when_project_root_provided() {
         let dir = TempDir::new().unwrap();
@@ -728,15 +733,15 @@ mod tests {
         )
         .unwrap();
 
-        let options = ConfigInitOptions::new()
-            .with_project_root(project_root)
-            .with_hot_reload(false);
-
-        let handle = init(options).unwrap();
+        let mut schema = SchemaRegistry::new();
+        register_core_schema(&mut schema);
+        let mut manager = ReloadManager::new(Vec::new(), schema);
+        manager.open_project(&project_root);
+        let handle = ConfigHandle::new(manager);
 
         // Project config should override schema default
         assert_eq!(handle.get_int("editor.tab_size").unwrap(), 2);
-        // Other schema defaults still apply
+        // Other schema defaults still apply (not overridden by real user config)
         assert_eq!(handle.get_string("logging.level").unwrap(), "info");
     }
 
@@ -892,10 +897,14 @@ mod tests {
     }
 
     // Validates: Requirement 1 — shutdown is safe when no watcher is active
+    // Uses ReloadManager directly to avoid loading the real user config file from disk,
+    // which may override schema defaults on the developer's machine (B029).
     #[test]
     fn shutdown_without_watcher_is_safe() {
-        let options = ConfigInitOptions::new().with_hot_reload(false);
-        let handle = init(options).unwrap();
+        let mut schema = SchemaRegistry::new();
+        register_core_schema(&mut schema);
+        let manager = ReloadManager::new(Vec::new(), schema);
+        let handle = ConfigHandle::new(manager);
 
         // Should not panic even without a watcher
         shutdown(&handle);

@@ -502,7 +502,7 @@ mod tests {
         // Validates: Requirement 17.5
         let cmd = ScrollCommand::parse("UP HALF", &ScrollAmount::Page).unwrap();
         let new_row = cmd.apply_vertical(50, 25, 100);
-        assert_eq!(new_row, 37); // 50 - 25/2 = 37 (integer)
+        assert_eq!(new_row, 38); // 50 - 25/2 = 50 - 12 = 38 (integer division)
     }
 
     #[test]

@@ -246,26 +246,26 @@ The crate bridges `ff-command` (which produces undo records) and `ff-document-mo
 }
 ```
 
-- [ ] 19. SETUNDO command
-  - [ ] 19.1 Register SETUNDO primary command with ON/OFF/n operand parsing
+- [x] 19. SETUNDO command
+  - [x] 19.1 Register SETUNDO primary command with ON/OFF/n operand parsing
     - Validates: Requirement 19.1
-  - [ ] 19.2 Implement SETUNDO ON -- re-enable undo, restore configured max_levels
+  - [x] 19.2 Implement SETUNDO ON -- re-enable undo, restore configured max_levels
     - Validates: Requirement 19.1
-  - [ ] 19.3 Implement SETUNDO OFF -- disable undo for current session (max_levels=0)
+  - [x] 19.3 Implement SETUNDO OFF -- disable undo for current session (max_levels=0)
     - Validates: Requirement 19.1
-  - [ ] 19.4 Implement SETUNDO n -- set max_levels to n (0-10000), immediate effect
+  - [x] 19.4 Implement SETUNDO n -- set max_levels to n (0-10000), immediate effect
     - Validates: Requirement 19.1
-  - [ ] 19.5 Write unit tests for SETUNDO: ON/OFF/n operand parsing, immediate effect on stack behaviour, range validation
+  - [x] 19.5 Write unit tests for SETUNDO: ON/OFF/n operand parsing, immediate effect on stack behaviour, range validation
     - Validates: Requirement 19.1
 
-- [ ] 20. RECOVERY command
-  - [ ] 20.1 Register RECOVERY primary command with ON/OFF/n operand parsing
+- [x] 20. RECOVERY command
+  - [x] 20.1 Register RECOVERY primary command with ON/OFF/n operand parsing
     - Validates: Requirement 19.2
-  - [ ] 20.2 Implement RECOVERY ON -- re-enable recovery file writing, restore configured interval
+  - [x] 20.2 Implement RECOVERY ON -- re-enable recovery file writing, restore configured interval
     - Validates: Requirement 19.2
-  - [ ] 20.3 Implement RECOVERY OFF -- disable recovery file writing for current session
+  - [x] 20.3 Implement RECOVERY OFF -- disable recovery file writing for current session
     - Validates: Requirement 19.2
-  - [ ] 20.4 Implement RECOVERY n -- set recovery interval to n seconds, immediate effect
+  - [x] 20.4 Implement RECOVERY n -- set recovery interval to n seconds, immediate effect
     - Validates: Requirement 19.2
-  - [ ] 20.5 Write unit tests for RECOVERY: ON/OFF/n operand parsing, immediate effect on recovery writer, interval=0 disables
+  - [x] 20.5 Write unit tests for RECOVERY: ON/OFF/n operand parsing, immediate effect on recovery writer, interval=0 disables
     - Validates: Requirement 19.2

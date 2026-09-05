@@ -34,6 +34,8 @@ ff-dscatalog           = { path = "../ff-dscatalog" }
 ff-toolchain-api       = { path = "../ff-toolchain-api" }
 ff-gcc-toolchain       = { path = "../ff-gcc-toolchain" }
 ff-rust-toolchain      = { path = "../ff-rust-toolchain" }
+ff-fftest             = { path = "../ff-fftest" }
+ff-global-search      = { path = "../ff-global-search" }
 anyhow     = { workspace = true }
 arboard    = "3"
 tokio      = { workspace = true }

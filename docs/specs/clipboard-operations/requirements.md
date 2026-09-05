@@ -460,3 +460,23 @@ These are unified into a single clipboard subsystem that provides:
 19.3 THE Clipboard_Engine SHALL read an optional `clipboard.access_timeout_ms` configuration key (positive integer, default `500`); WHEN a clipboard read or write exceeds this timeout, THE operation SHALL fail with a timeout error message rather than blocking indefinitely. [WB]
 
 19.4 WHEN configuration keys contain invalid values, THE Clipboard_Engine SHALL log a warning and fall back to the documented defaults. [WB]
+
+---
+
+### Requirement 20: Editor Canvas Copy to OS Clipboard [CR-NR-034]
+
+**User Story:** As an editor user, I want to press Ctrl+C after selecting text in the editor canvas with the mouse, so that the selected text is placed on the OS clipboard and I can paste it into any other application.
+
+#### Acceptance Criteria
+
+20.1 WHEN the user has an active mouse selection in the editor canvas (as defined by caret-and-selection Requirement 13) and presses Ctrl+C, THE Clipboard_Engine SHALL write the selected text to the OS clipboard as plain UTF-8 text.
+
+20.2 WHEN the copy succeeds, THE editor SHALL display a brief confirmation message in the status bar (e.g., "Copied N characters").
+
+20.3 WHEN the user has no active selection in the editor canvas and presses Ctrl+C, THE Clipboard_Engine SHALL NOT write anything to the OS clipboard and SHALL NOT display a message.
+
+20.4 THE canvas copy operation SHALL NOT modify the document content or the current selection.
+
+20.5 THE canvas copy operation SHALL be recorded in the Command_History for RETRIEVE access.
+
+20.6 WHEN the selection spans multiple lines, THE Clipboard_Engine SHALL join the lines with the platform line-ending (CRLF on Windows, LF on Linux/macOS) before writing to the clipboard.

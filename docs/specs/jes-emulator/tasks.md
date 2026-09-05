@@ -486,98 +486,98 @@ This task plan implements the `ff-jes` crate — the FileForge Workbench Job Ent
   - [x] 25.4 Write integration test: MENU navigation -- MENU from input queue, S to select panel, verify navigation
     - Validates: Requirement 16.13-16.15
 
-- [ ] 26. ST panel and advanced filter/find/locate commands
-  - [ ] 26.1 Implement ST (Status) sub-panel showing all jobs with STATUS column
+- [x] 26. ST panel and advanced filter/find/locate commands
+  - [x] 26.1 Implement ST (Status) sub-panel showing all jobs with STATUS column
     - Validates: Requirement 17.1, 17.14
-  - [ ] 26.2 Implement FILTER command -- advanced filter expression with field comparisons, AND/OR, wildcard
+  - [x] 26.2 Implement FILTER command -- advanced filter expression with field comparisons, AND/OR, wildcard
     - Validates: Requirement 17.2, 17.12, 17.13
-  - [ ] 26.3 Implement FIND command -- search within panel data, FIND NEXT/PREV, case-insensitive default, FIND C for case-sensitive
+  - [x] 26.3 Implement FIND command -- search within panel data, FIND NEXT/PREV, case-insensitive default, FIND C for case-sensitive
     - Validates: Requirement 17.3, 17.15, 17.16
-  - [ ] 26.4 Implement LOCATE command -- scroll to first JOBNAME match, nearest alphabetic on no match
+  - [x] 26.4 Implement LOCATE command -- scroll to first JOBNAME match, nearest alphabetic on no match
     - Validates: Requirement 17.4, 17.16
-  - [ ] 26.5 Write unit tests for ST panel, FILTER expression parsing (operators, AND/OR, wildcard), FIND (next/prev/case), LOCATE (match/no-match)
+  - [x] 26.5 Write unit tests for ST panel, FILTER expression parsing (operators, AND/OR, wildcard), FIND (next/prev/case), LOCATE (match/no-match)
     - Validates: Requirement 17.1-17.4, 17.12-17.16
 
-- [ ] 27. SDSF scroll commands
-  - [ ] 27.1 Implement UP/DOWN/LEFT/RIGHT scroll commands with n/HALF/PAGE/MAX amounts
+- [x] 27. SDSF scroll commands
+  - [x] 27.1 Implement UP/DOWN/LEFT/RIGHT scroll commands with n/HALF/PAGE/MAX amounts
     - Validates: Requirement 17.5
-  - [ ] 27.2 Implement scroll amount defaulting from SCROLL ===> field; update SCROLL field after scroll
+  - [x] 27.2 Implement scroll amount defaulting from SCROLL ===> field; update SCROLL field after scroll
     - Validates: Requirement 17.5, 17.17
-  - [ ] 27.3 Write unit tests for scroll commands: each direction, each amount keyword, SCROLL field sync
+  - [x] 27.3 Write unit tests for scroll commands: each direction, each amount keyword, SCROLL field sync
     - Validates: Requirement 17.5, 17.17
 
-- [ ] 28. SET ACTION/MAIN/ROWNUM commands, WHO, QUERY AUTH
-  - [ ] 28.1 Implement SET ACTION -- display valid action characters with descriptions
+- [x] 28. SET ACTION/MAIN/ROWNUM commands, WHO, QUERY AUTH
+  - [x] 28.1 Implement SET ACTION -- display valid action characters with descriptions
     - Validates: Requirement 17.6
-  - [ ] 28.2 Implement SET MAIN [panel-name] -- set default MENU panel
+  - [x] 28.2 Implement SET MAIN [panel-name] -- set default MENU panel
     - Validates: Requirement 17.7
-  - [ ] 28.3 Implement SET ROWNUM ON/OFF -- toggle row numbers in NP area (extends Requirement 16.12)
+  - [x] 28.3 Implement SET ROWNUM ON/OFF -- toggle row numbers in NP area (extends Requirement 16.12)
     - Validates: Requirement 17.8
-  - [ ] 28.4 Implement WHO command -- session information summary
+  - [x] 28.4 Implement WHO command -- session information summary
     - Validates: Requirement 17.9
-  - [ ] 28.5 Implement QUERY AUTH command -- display authorised commands and action characters
+  - [x] 28.5 Implement QUERY AUTH command -- display authorised commands and action characters
     - Validates: Requirement 17.10
-  - [ ] 28.6 Write unit tests for SET ACTION display, SET MAIN default, SET ROWNUM toggle, WHO output fields, QUERY AUTH list
+  - [x] 28.6 Write unit tests for SET ACTION display, SET MAIN default, SET ROWNUM toggle, WHO output fields, QUERY AUTH list
     - Validates: Requirement 17.6-17.10
 
-- [ ] 29. SET settings persistence and integration tests
-  - [ ] 29.1 Implement persistence of SET ACTION preference, SET MAIN default, SET ROWNUM state via session mechanism
+- [x] 29. SET settings persistence and integration tests
+  - [x] 29.1 Implement persistence of SET ACTION preference, SET MAIN default, SET ROWNUM state via session mechanism
     - Validates: Requirement 17.11
-  - [ ] 29.2 Write unit tests for SET settings round-trip through session persistence
+  - [x] 29.2 Write unit tests for SET settings round-trip through session persistence
     - Validates: Requirement 17.11
-  - [ ] 29.3 Write integration test: FILTER + FIND interaction -- apply FILTER, then FIND within filtered result, verify scope
+  - [x] 29.3 Write integration test: FILTER + FIND interaction -- apply FILTER, then FIND within filtered result, verify scope
     - Validates: Requirement 17.2, 17.3
-  - [ ] 29.4 Write integration test: SET MAIN + MENU -- set default panel, restart session, verify MENU opens correct panel
+  - [x] 29.4 Write integration test: SET MAIN + MENU -- set default panel, restart session, verify MENU opens correct panel
     - Validates: Requirement 17.7, 17.11
-  - [ ] 29.5 Write integration test: scroll commands -- UP/DOWN/LEFT/RIGHT with all amount keywords, verify SCROLL field updates
+  - [x] 29.5 Write integration test: scroll commands -- UP/DOWN/LEFT/RIGHT with all amount keywords, verify SCROLL field updates
     - Validates: Requirement 17.5, 17.17
 
-- [ ] 30. Overtype fields
-  - [ ] 30.1 Implement visual distinction for overtypeable fields (theme colour or underline style)
-  - [ ] 30.2 Implement direct overtype: user types new value over field, Enter applies change and refreshes panel
-  - [ ] 30.3 Implement command-line overtype syntax: `<field-name> <value>` updates named field for cursor/NP row
-  - [ ] 30.4 Implement Overtype Extension pop-up for values exceeding column width
-  - [ ] 30.5 Write unit tests for overtype visual flag, direct overtype apply, command-line overtype, extension pop-up trigger
+- [x] 30. Overtype fields
+  - [x] 30.1 Implement visual distinction for overtypeable fields (theme colour or underline style)
+  - [x] 30.2 Implement direct overtype: user types new value over field, Enter applies change and refreshes panel
+  - [x] 30.3 Implement command-line overtype syntax: `<field-name> <value>` updates named field for cursor/NP row
+  - [x] 30.4 Implement Overtype Extension pop-up for values exceeding column width
+  - [x] 30.5 Write unit tests for overtype visual flag, direct overtype apply, command-line overtype, extension pop-up trigger
   - Covers: Requirement 18 (AC 18.1, 18.2, 18.3, 18.4)
 
-- [ ] 31. Help system (HELP, ACTH, COLH, CMDH, SEARCH)
-  - [ ] 31.1 Implement context-sensitive HELP command / PF1: display panel help with purpose, commands, and column definitions
-  - [ ] 31.2 Implement ACTH command: list valid action characters with descriptions for current panel
-  - [ ] 31.3 Implement COLH command: list column names with data type, width, and description
-  - [ ] 31.4 Implement CMDH command: list valid primary commands with syntax and description
-  - [ ] 31.5 Implement SEARCH <text> within help panel: scroll to first match
-  - [ ] 31.6 Write unit tests for HELP panel content, ACTH/COLH/CMDH lists, SEARCH match and no-match
+- [x] 31. Help system (HELP, ACTH, COLH, CMDH, SEARCH)
+  - [x] 31.1 Implement context-sensitive HELP command / PF1: display panel help with purpose, commands, and column definitions
+  - [x] 31.2 Implement ACTH command: list valid action characters with descriptions for current panel
+  - [x] 31.3 Implement COLH command: list column names with data type, width, and description
+  - [x] 31.4 Implement CMDH command: list valid primary commands with syntax and description
+  - [x] 31.5 Implement SEARCH <text> within help panel: scroll to first match
+  - [x] 31.6 Write unit tests for HELP panel content, ACTH/COLH/CMDH lists, SEARCH match and no-match
   - Covers: Requirement 18 (AC 18.5, 18.6, 18.7, 18.8, 18.9)
 
-- [ ] 32. Log panels (LOG, ULOG, NEXT, PREV, SNAPSHOT) and system panels (SYS, DASH, INIT, JC, SP)
-  - [ ] 32.1 Implement LOG command: open System Log panel in reverse-chronological order
-  - [ ] 32.2 Implement ULOG command: open User Log panel for current user
-  - [ ] 32.3 Implement NEXT/PREV commands in log panels: scroll forward/backward through log segments
-  - [ ] 32.4 Implement SNAPSHOT command: capture current log content to dataset or file
-  - [ ] 32.5 Implement SYS panel: active address spaces with status and resource consumption
-  - [ ] 32.6 Implement DASH panel: system health metrics summary (CPU, memory, I/O rates)
-  - [ ] 32.7 Implement INIT panel: initiator pool status (class assignments, active/idle state)
-  - [ ] 32.8 Implement JC panel: job class definitions and scheduling parameters
-  - [ ] 32.9 Implement SP panel: spool volume utilisation and track allocation
-  - [ ] 32.10 Write unit tests for LOG/ULOG open, NEXT/PREV navigation, SNAPSHOT output, and each system panel data model
+- [x] 32. Log panels (LOG, ULOG, NEXT, PREV, SNAPSHOT) and system panels (SYS, DASH, INIT, JC, SP)
+  - [x] 32.1 Implement LOG command: open System Log panel in reverse-chronological order
+  - [x] 32.2 Implement ULOG command: open User Log panel for current user
+  - [x] 32.3 Implement NEXT/PREV commands in log panels: scroll forward/backward through log segments
+  - [x] 32.4 Implement SNAPSHOT command: capture current log content to dataset or file
+  - [x] 32.5 Implement SYS panel: active address spaces with status and resource consumption
+  - [x] 32.6 Implement DASH panel: system health metrics summary (CPU, memory, I/O rates)
+  - [x] 32.7 Implement INIT panel: initiator pool status (class assignments, active/idle state)
+  - [x] 32.8 Implement JC panel: job class definitions and scheduling parameters
+  - [x] 32.9 Implement SP panel: spool volume utilisation and track allocation
+  - [x] 32.10 Write unit tests for LOG/ULOG open, NEXT/PREV navigation, SNAPSHOT output, and each system panel data model
   - Covers: Requirement 18 (AC 18.10, 18.11, 18.12, 18.13, 18.14, 18.15, 18.16, 18.17, 18.18)
 
-- [ ] 33. Browse and print (browse settings, PRINT action, COLS command)
-  - [ ] 33.1 Implement browse settings: line width, record format display, FIND within output stream
-  - [ ] 33.2 Implement PRINT action character: route job output dataset to configured print destination
-  - [ ] 33.3 Implement COLS command in browse: display column ruler showing horizontal scroll position and column numbers
-  - [ ] 33.4 Write unit tests for browse settings persistence, PRINT routing, COLS ruler display
+- [x] 33. Browse and print (browse settings, PRINT action, COLS command)
+  - [x] 33.1 Implement browse settings: line width, record format display, FIND within output stream
+  - [x] 33.2 Implement PRINT action character: route job output dataset to configured print destination
+  - [x] 33.3 Implement COLS command in browse: display column ruler showing horizontal scroll position and column numbers
+  - [x] 33.4 Write unit tests for browse settings persistence, PRINT routing, COLS ruler display
   - Covers: Requirement 18 (AC 18.19, 18.20, 18.21)
 
-- [ ] 34. SET P2 commands and persistence
-  - [ ] 34.1 Implement SET BCOLOR <color>: set panel background colour, persist across sessions
-  - [ ] 34.2 Implement SET CONFIRM ON/OFF: control confirmation prompt for destructive actions
-  - [ ] 34.3 Implement SET CURSOR <field>: set default cursor landing position on panel open
-  - [ ] 34.4 Implement SET DATE <format>: set date display format (MDY, DMY, YMD, JUL) for date columns
-  - [ ] 34.5 Implement SET DELAY <seconds>: set automatic refresh interval; 0 disables auto-refresh
-  - [ ] 34.6 Implement SET HEX ON/OFF: toggle hexadecimal display of field values
-  - [ ] 34.7 Implement SET SCHARS <chars>: define special characters for field delimiters
-  - [ ] 34.8 Implement SET SCREEN <rows> <cols>: set logical screen dimensions for panel layout
-  - [ ] 34.9 Implement SET P2 persistence: persist all SET P2 settings via session mechanism (extends Task 29.1)
-  - [ ] 34.10 Write unit tests for each SET P2 command, default values, and round-trip persistence
+- [x] 34. SET P2 commands and persistence
+  - [x] 34.1 Implement SET BCOLOR <color>: set panel background colour, persist across sessions
+  - [x] 34.2 Implement SET CONFIRM ON/OFF: control confirmation prompt for destructive actions
+  - [x] 34.3 Implement SET CURSOR <field>: set default cursor landing position on panel open
+  - [x] 34.4 Implement SET DATE <format>: set date display format (MDY, DMY, YMD, JUL) for date columns
+  - [x] 34.5 Implement SET DELAY <seconds>: set automatic refresh interval; 0 disables auto-refresh
+  - [x] 34.6 Implement SET HEX ON/OFF: toggle hexadecimal display of field values
+  - [x] 34.7 Implement SET SCHARS <chars>: define special characters for field delimiters
+  - [x] 34.8 Implement SET SCREEN <rows> <cols>: set logical screen dimensions for panel layout
+  - [x] 34.9 Implement SET P2 persistence: persist all SET P2 settings via session mechanism (extends Task 29.1)
+  - [x] 34.10 Write unit tests for each SET P2 command, default values, and round-trip persistence
   - Covers: Requirement 18 (AC 18.22, 18.23, 18.24, 18.25, 18.26, 18.27, 18.28, 18.29, 18.30)

@@ -17,10 +17,10 @@ summary short and link to the detailed task list.
 
 | Area | Status | Current focus | Detailed tracking |
 |------|--------|---------------|-------------------|
-| Workspace and project master | ACTIVE | Keep implementation status and dependencies current | [project-master tasks](../specs/project-master/tasks.md) |
-| Dataset storage | NEXT | Implement SQLite-backed VSAM KSDS record provider | [dataset-catalog tasks](../specs/dataset-catalog/tasks.md) |
-| Feature specifications | NEXT | Select the next incomplete feature task | [feature specs](../specs/) |
-| Requirements quality | NEXT | Resolve review findings and maintain traceability | [requirements review](../reviews/requirements-review/) |
+| Phase BR -- Requirements Maintenance | DONE | CA-01/CA-02 annotations, FFW-JES rename, B009/CR-NR-035 housekeeping | [project-master tasks](../specs/project-master/tasks.md) |
+| Phase BS-A -- Workspace Model | DONE | WorkspaceState, session persistence, lifecycle commands, root management | [workspace-model tasks](../specs/workspace-model/tasks.md) |
+| Phase BS-B -- Command Palette | DONE | Fuzzy engine, palette state, rendering, Ctrl+Shift+P activation | [command-palette tasks](../specs/command-palette/tasks.md) |
+| Phase BS-C -- Global Search | DONE | ff-global-search crate, Search Results panel, Ctrl+Shift+F, GSEARCH command | [global-search tasks](../specs/global-search/tasks.md) |
 | Deferred connectors | DEFERRED | Network, FTP/SFTP, mainframe, and cloud connectors | [connector specs](../specs/) |
 
 ## Before starting work
@@ -34,19 +34,23 @@ summary short and link to the detailed task list.
 
 ## Active work item
 
-**Current focus:** EI-6 complete. EARS integration workflow fully done (EI-0 through EI-6).
-All 13 EARS phases (BW-CI) are gated with requirements and tasks. No implementation yet.
+**Current focus:** No active work item. Phase BS (Productivity Core) is complete.
 
-Three parallel streams are now ready to proceed:
-- Stream 1 (dataset architecture): BV.1 -> BS.8 -> ... -> BU.9
-- Stream 2 (EARS P1 implementation): BW -> BX -> BY -> BZ -> CA -> CB -> CC -> CD
-- Stream 3 (EARS P2 implementation): CE -> CF -> CG -> CH -> CI
+### Phase BS -- Productivity Core -- COMPLETE
 
-Recommended next: BV.1 (small, no deps) or BS.8 (resumes dataset architecture stream).
+| Sub-project | Spec | Tasks | Status |
+|-------------|------|-------|--------|
+| Workspace Model | [workspace-model](../specs/workspace-model/requirements.md) | BS-A.1 to BS-A.6 | DONE |
+| Command Palette | [command-palette](../specs/command-palette/requirements.md) | BS-B.1 to BS-B.4 | DONE |
+| Global Search | [global-search](../specs/global-search/requirements.md) | BS-C.1 to BS-C.5 | DONE |
 
-**Completed:** EI-6 -- project-master reorganised, deferred-requirements.md created,
-ff-vfs task gap filled (Tasks 13-16 added to virtual-file-system/tasks.md),
-VCM Task 17 marked SUPERSEDED BY BU.7.
+**Test count at completion:** 655 passing (644 ff-desktop + 11 ff-global-search), 0 failures.
+
+### Suggested next steps
+
+- Review open bugs in [bugs.md](bugs.md) for a bug-fix sprint.
+- Review [change-log.md](change-log.md) for any pending change requests.
+- Plan the next feature phase based on the [executive assessment](../reviews/requirements-review/executive-assessment.md).
 
 ## Project records
 

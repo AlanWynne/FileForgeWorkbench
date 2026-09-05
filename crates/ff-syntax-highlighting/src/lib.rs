@@ -21,6 +21,7 @@
 pub mod engine;
 pub mod error;
 pub mod fold;
+pub mod hilite;
 pub mod keywords;
 pub mod lexer;
 pub mod state;
@@ -33,6 +34,10 @@ pub use engine::idle_styling::{IdleStylingConfig, IdleStylingResult};
 pub use error::SyntaxHighlightError;
 pub use fold::context::FoldContext;
 pub use fold::store::FoldData;
+pub use hilite::{
+    HiliteLogicScanner, HiliteModes, HiliteOperand, HiliteParenMatcher, HiliteState,
+    ParenMatchResult,
+};
 pub use keywords::word_list::WordList;
 pub use lexer::registry::LexerRegistry;
 pub use lexer::traits::Lexer;

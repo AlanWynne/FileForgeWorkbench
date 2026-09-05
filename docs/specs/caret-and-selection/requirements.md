@@ -353,6 +353,54 @@ This spec covers:
 
 ---
 
+---
+
+### Requirement 13: Mouse Text Selection in the Editor Canvas [CR-NR-034]
+
+**User Story:** As an editor user, I want to click and drag the mouse to select text in the editor canvas, so that I can copy any visible text to the OS clipboard and paste it into other applications.
+
+#### Acceptance Criteria
+
+13.1 WHEN the user presses the primary mouse button inside the editor text area, THE editor SHALL record the click position as the selection anchor, converting the screen coordinate to a (line, column) document position.
+
+13.2 WHEN the user holds the primary mouse button and moves the pointer, THE editor SHALL continuously update the selection end position to the current pointer coordinate, extending the selection in real time.
+
+13.3 WHEN the user releases the primary mouse button after a drag, THE editor SHALL finalise the selection range from anchor to release position.
+
+13.4 WHEN a selection is active, THE editor SHALL render a highlight rectangle behind the selected text on each affected line using the `SelectionBack` element colour.
+
+13.5 WHEN the user clicks without dragging (pointer does not move more than 2 pixels), THE editor SHALL clear any active selection and position the caret at the click position.
+
+13.6 WHEN the user presses Escape while a selection is active, THE editor SHALL clear the selection.
+
+13.7 WHEN the user presses Ctrl+C with an active selection in the editor canvas, THE editor SHALL copy the selected text to the OS clipboard and display a brief status message confirming the copy.
+
+13.8 WHEN the user presses Ctrl+C with no active selection, THE editor SHALL NOT copy anything (no line-copy-mode in the canvas -- that is handled by the clipboard-operations COPY command).
+
+13.9 THE selection state SHALL be per-tab -- switching tabs clears the selection in the previous tab.
+
+13.10 WHEN the document is scrolled while a selection is active, THE selection highlight SHALL remain correctly positioned relative to the document lines (not the screen).
+
+---
+
+### Requirement 14: Selectable Text in Read-Only Panels [CR-NR-034]
+
+**User Story:** As a user, I want to be able to select and copy text from read-only panels (POM option descriptions, Settings panel values, status bar messages), so that I can paste panel content into other tools.
+
+#### Acceptance Criteria
+
+14.1 WHEN text is rendered in the Primary Option Menu panel (option labels, descriptions, calendar text), THE text SHALL be rendered using egui selectable labels so the user can click-drag to select and Ctrl+C to copy.
+
+14.2 WHEN text is rendered in the Settings panel (key names, values, descriptions), THE text SHALL be rendered using egui selectable labels.
+
+14.3 WHEN text is rendered in the status bar (file path, line/column, encoding, messages), THE text SHALL be rendered using egui selectable labels.
+
+14.4 WHEN the user selects text in a read-only panel and presses Ctrl+C, THE OS clipboard SHALL receive the selected text via egui's built-in clipboard integration.
+
+14.5 THE selectable label behaviour SHALL NOT interfere with existing click-to-navigate interactions (POM option buttons, Settings edit fields).
+
+---
+
 ## Cross-References
 
 - **`edit-operations`** — Defines the logical selection model (SelectionPosition, SelectionRange, Selection container, multi-caret, modified line flags) consumed by this spec for rendering
@@ -361,3 +409,4 @@ This spec covers:
 - **`configuration-system`** — Defines configuration loading, hot-reload, and per-project override mechanics used by caret/selection settings
 - **`whitespace-and-guides`** — Defines whitespace visibility rendering (excluded from virtual space areas per Requirement 7.6)
 - **`display-line-mapping`** — Provides the wrapped sub-line information needed for the `sub_line` caret-line highlight (Requirement 4.10)
+- **`clipboard-operations`** -- Defines the clipboard write contract consumed by Requirement 13.7

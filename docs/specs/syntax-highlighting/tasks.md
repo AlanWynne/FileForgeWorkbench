@@ -379,26 +379,26 @@ It is consumed by:
 | Req 15: Integration with Display-Line-Mapping | AC 15.1–15.6 | Tasks 10, 17 |
 | Cross-cutting: Error Handling | All | Task 18 |
 
-- [ ] 21. HILITE ON/OFF command and HILITE LOGIC mode
-  - [ ] 21.1 Register HILITE primary command with ON/OFF operand parsing
+- [x] 21. HILITE ON/OFF command and HILITE LOGIC mode
+  - [x] 21.1 Register HILITE primary command with ON/OFF operand parsing
     - Validates: Requirement 16.1
-  - [ ] 21.2 Implement HILITE ON -- re-enable syntax highlighting for active document
+  - [x] 21.2 Implement HILITE ON -- re-enable syntax highlighting for active document
     - Validates: Requirement 16.1
-  - [ ] 21.3 Implement HILITE OFF -- disable syntax highlighting, revert all text to default style 0
+  - [x] 21.3 Implement HILITE OFF -- disable syntax highlighting, revert all text to default style 0
     - Validates: Requirement 16.1
-  - [ ] 21.4 Implement HILITE LOGIC mode -- highlight boolean and comparison operators with HILITE_LOGIC style slot
+  - [x] 21.4 Implement HILITE LOGIC mode -- highlight boolean and comparison operators with HILITE_LOGIC style slot
     - Validates: Requirement 16.2
-  - [ ] 21.5 Write unit tests for HILITE ON/OFF toggle, HILITE LOGIC operator detection, style slot assignment
+  - [x] 21.5 Write unit tests for HILITE ON/OFF toggle, HILITE LOGIC operator detection, style slot assignment
     - Validates: Requirement 16.1, 16.2
 
-- [ ] 22. HILITE PAREN, HILITE FIND, and combined operands
-  - [ ] 22.1 Implement HILITE PAREN mode -- highlight enclosing delimiter pair at cursor; update on cursor move
+- [x] 22. HILITE PAREN, HILITE FIND, and combined operands
+  - [x] 22.1 Implement HILITE PAREN mode -- highlight enclosing delimiter pair at cursor; update on cursor move
     - Validates: Requirement 16.3
-  - [ ] 22.2 Implement HILITE_PAREN_ERROR style for mismatched delimiters
+  - [x] 22.2 Implement HILITE_PAREN_ERROR style for mismatched delimiters
     - Validates: Requirement 16.3
-  - [ ] 22.3 Implement HILITE FIND -- persist find-match highlights for most recent FIND string; HILITE FIND OFF clears
+  - [x] 22.3 Implement HILITE FIND -- persist find-match highlights for most recent FIND string; HILITE FIND OFF clears
     - Validates: Requirement 16.4
-  - [ ] 22.4 Implement combined operands: HILITE ON LOGIC PAREN enables multiple modes simultaneously; modes toggle independently
+  - [x] 22.4 Implement combined operands: HILITE ON LOGIC PAREN enables multiple modes simultaneously; modes toggle independently
     - Validates: Requirement 16.5
-  - [ ] 22.5 Write unit tests for HILITE PAREN (match/mismatch), HILITE FIND (set/clear), combined operand parsing
+  - [x] 22.5 Write unit tests for HILITE PAREN (match/mismatch), HILITE FIND (set/clear), combined operand parsing
     - Validates: Requirement 16.3, 16.4, 16.5

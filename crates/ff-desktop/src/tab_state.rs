@@ -30,6 +30,10 @@ pub enum TabKind {
     ///
     /// Validates: Requirement 19.11, 19.12
     FileExplorerPanel,
+    /// Global Search Results panel.
+    ///
+    /// Validates: global-search Requirement 1.1
+    SearchResults,
 }
 
 /// A single undoable edit stored as the inverse operation to apply.
@@ -81,6 +85,13 @@ pub struct TabState {
     ///
     /// Validates: Requirement 16.1-16.12
     pub edit_profile: EditProfile,
+    /// Active mouse text selection on the editor canvas.
+    ///
+    /// Stored as (anchor_line, anchor_col, end_line, end_col) in 1-based coordinates.
+    /// `None` means no selection is active.
+    ///
+    /// Validates: Requirement 13.1-13.10 (caret-and-selection)
+    pub canvas_selection: Option<(u64, u64, u64, u64)>,
 }
 
 impl TabState {
@@ -103,6 +114,7 @@ impl TabState {
             prefix_inputs: HashMap::new(),
             is_floating: false,
             edit_profile: EditProfile::new(),
+            canvas_selection: None,
         }
     }
 
@@ -135,6 +147,7 @@ impl TabState {
             prefix_inputs: HashMap::new(),
             is_floating: false,
             edit_profile: EditProfile::new(),
+            canvas_selection: None,
         }
     }
 
@@ -157,6 +170,7 @@ impl TabState {
             prefix_inputs: HashMap::new(),
             is_floating: false,
             edit_profile: EditProfile::new(),
+            canvas_selection: None,
         }
     }
 
@@ -179,6 +193,7 @@ impl TabState {
             prefix_inputs: HashMap::new(),
             is_floating: false,
             edit_profile: EditProfile::new(),
+            canvas_selection: None,
         }
     }
 
@@ -203,6 +218,7 @@ impl TabState {
             prefix_inputs: HashMap::new(),
             is_floating: false,
             edit_profile: EditProfile::new(),
+            canvas_selection: None,
         }
     }
 
@@ -227,6 +243,32 @@ impl TabState {
             prefix_inputs: HashMap::new(),
             is_floating: false,
             edit_profile: EditProfile::new(),
+            canvas_selection: None,
+        }
+    }
+
+    /// Create a Search Results panel tab.
+    ///
+    /// Validates: global-search Requirement 1.1
+    pub fn search_results_panel(id: TabId, document: DocumentHandle) -> Self {
+        let mut viewport = ViewportModel::with_line_count(1);
+        viewport.set_line_height(16);
+        Self {
+            id,
+            kind: TabKind::SearchResults,
+            title: "[SEARCH]".to_string(),
+            path: None,
+            document,
+            viewport,
+            cursor: CursorModel::new(),
+            is_modified: false,
+            line_count: 1,
+            line_end_mode: LineEndMode::Default,
+            undo_stack: Vec::new(),
+            prefix_inputs: HashMap::new(),
+            is_floating: false,
+            edit_profile: EditProfile::new(),
+            canvas_selection: None,
         }
     }
 

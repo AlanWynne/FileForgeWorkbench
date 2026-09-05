@@ -284,8 +284,34 @@ The viewport model is **owned by the editor session**, NOT by the GUI. This ensu
 #### Acceptance Criteria
 
 1. WHEN the document has more lines than there are physical pixels in the scrollbar track, THE viewport model SHALL map scrollbar positions using 64-bit arithmetic to avoid precision loss. [FFE-SCROLL]
-2. THE scrollbar-to-top-line mapping SHALL be monotonically increasing: moving the scrollbar thumb by even one pixel SHALL always produce a distinct (or unchanged) `top_line` — never a decrease. [FFE-SCROLL]
+2. THE scrollbar-to-top-line mapping SHALL be monotonically increasing: moving the scrollbar thumb by even one pixel SHALL always produce a distinct (or unchanged) `top_line` -- never a decrease. [FFE-SCROLL]
 3. WHEN the user holds Shift while dragging the scrollbar (or the platform equivalent), THE viewport model SHALL enter a "precision drag" mode that scales the drag sensitivity (e.g., 1 pixel of mouse movement = 1 line of scroll), enabling fine-grained positioning in large files. [FFE-SCROLL]
-4. THE scrollbar computation SHALL not use floating-point for the final `top_line` determination when the document exceeds 1 million lines — integer arithmetic with proper rounding SHALL be used to prevent cumulative precision errors. [FFE-SCROLL]
+4. THE scrollbar computation SHALL not use floating-point for the final `top_line` determination when the document exceeds 1 million lines -- integer arithmetic with proper rounding SHALL be used to prevent cumulative precision errors. [FFE-SCROLL]
 5. THE viewport model SHALL support a tooltip-style feedback mechanism during scrollbar drag, providing the current `top_line` value to the GUI shell for display (e.g., "Line 1,234,567 of 5,000,000"). [FFE-SCROLL]
+
+---
+
+### Requirement 14: Editor Scroll Amount Integration [CR-NR-035]
+
+**User Story:** As an ISPF-familiar user, I want the Page Up/Down keys in the editor to respect the active SCROLL ===> field value (CSR, PAGE, HALF, or a number), so that paging behaviour in the editor matches the ISPF convention I am used to.
+
+**Source:** ISPF editor scroll model; CR-NR-035 user requirement.
+
+#### Acceptance Criteria
+
+14.1 WHEN the active scroll amount is PAGE and the user presses Page Down or Page Up in the editor, THE editor SHALL scroll by `visible_count` lines (one full page), clamped to document bounds.
+
+14.2 WHEN the active scroll amount is HALF and the user presses Page Down or Page Up in the editor, THE editor SHALL scroll by `max(1, visible_count / 2)` lines, clamped to document bounds.
+
+14.3 WHEN the active scroll amount is CSR and the user presses Page Down in the editor, THE editor SHALL scroll so that the cursor line becomes the first visible line of the new page (cursor-relative scroll).
+
+14.4 WHEN the active scroll amount is CSR and the user presses Page Up in the editor, THE editor SHALL scroll so that the cursor line becomes the last visible line of the new page.
+
+14.5 WHEN the active scroll amount is a positive integer N and the user presses Page Down or Page Up in the editor, THE editor SHALL scroll by exactly N lines, clamped to document bounds.
+
+14.6 WHEN the active scroll amount is MAX and the user presses Page Down, THE editor SHALL scroll to the last page of the document. WHEN Page Up is pressed, THE editor SHALL scroll to the first line.
+
+14.7 WHEN the active scroll amount is DATA and the user presses Page Down or Page Up, THE editor SHALL scroll by `visible_count - 1` lines (one page minus one overlap line), clamped to document bounds.
+
+14.8 THE SCROLL ===> field SHALL be visible and editable when an editor tab (FileEditor or Untitled) is the active tab, not only when a panel view is active.
 

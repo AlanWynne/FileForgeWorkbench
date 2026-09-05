@@ -53,6 +53,7 @@ impl SessionManager {
     /// Validates: Requirement 3.1 (view-zoom) — global zoom offset persisted.
     /// Validates: Requirement 12.4 (function-keys-and-history) — key_bar_visible persisted.
     /// Validates: Requirement 23.9 (file-tree-panel) — sidebar_width persisted.
+    #[allow(dead_code)]
     pub fn save(
         &self,
         tabs: &TabManager,
@@ -103,7 +104,10 @@ impl SessionManager {
                     is_pinned: false,
                     zoom_offset: 0,
                 }),
-                TabKind::PrimaryOptionMenu | TabKind::Untitled | TabKind::SettingsPanel => None,
+                TabKind::PrimaryOptionMenu
+                | TabKind::Untitled
+                | TabKind::SettingsPanel
+                | TabKind::SearchResults => None,
             })
             .collect();
 
@@ -115,7 +119,8 @@ impl SessionManager {
                 TabKind::PrimaryOptionMenu
                 | TabKind::Untitled
                 | TabKind::SettingsPanel
-                | TabKind::FileExplorerPanel => None,
+                | TabKind::FileExplorerPanel
+                | TabKind::SearchResults => None,
             }
         };
         // Note: FileExplorerPanel active_tab_id is None (no URI to track)
@@ -130,6 +135,97 @@ impl SessionManager {
         };
 
         // Best-effort — ignore write errors (graceful degradation)
+        let _ = self.session_file.save(&state);
+    }
+
+    /// Like `save`, but also persists the active workspace path.
+    ///
+    /// Validates: workspace-model Requirement 5.1
+    #[allow(clippy::too_many_arguments)]
+    pub fn save_with_workspace(
+        &self,
+        tabs: &TabManager,
+        zoom_offset: i32,
+        key_bar_visible: bool,
+        file_explorer_sidebar_width: f32,
+        active_workspace_path: Option<String>,
+        recent_palette_commands: Vec<String>,
+        search_history: Vec<String>,
+    ) {
+        let session_tabs: Vec<SessionTabState> = tabs
+            .tabs()
+            .iter()
+            .filter_map(|t| match t.kind {
+                TabKind::FileEditor => t.path.as_ref().map(|path| SessionTabState {
+                    tab_id: format!("{}", t.id.0),
+                    tab_kind: PersistedTabKind::FileEditor,
+                    uri: Some(path.clone()),
+                    viewport_top_line: t.viewport.top_line() as usize,
+                    viewport_horizontal_offset: 0,
+                    caret_line: t.cursor.cursor_line() as usize,
+                    caret_column: t.cursor.cursor_column() as usize,
+                    selections: Vec::new(),
+                    language_override: None,
+                    is_pinned: false,
+                    zoom_offset: 0,
+                }),
+                TabKind::FilesPanel => Some(SessionTabState {
+                    tab_id: format!("{}", t.id.0),
+                    tab_kind: PersistedTabKind::FilesPanel,
+                    uri: None,
+                    viewport_top_line: 1,
+                    viewport_horizontal_offset: 0,
+                    caret_line: 1,
+                    caret_column: 1,
+                    selections: Vec::new(),
+                    language_override: None,
+                    is_pinned: false,
+                    zoom_offset: 0,
+                }),
+                TabKind::FileExplorerPanel => Some(SessionTabState {
+                    tab_id: format!("{}", t.id.0),
+                    tab_kind: PersistedTabKind::FileExplorerPanel,
+                    uri: None,
+                    viewport_top_line: 1,
+                    viewport_horizontal_offset: 0,
+                    caret_line: 1,
+                    caret_column: 1,
+                    selections: Vec::new(),
+                    language_override: None,
+                    is_pinned: false,
+                    zoom_offset: 0,
+                }),
+                TabKind::PrimaryOptionMenu
+                | TabKind::Untitled
+                | TabKind::SettingsPanel
+                | TabKind::SearchResults => None,
+            })
+            .collect();
+
+        let active_tab_id = {
+            let active = tabs.active_tab();
+            match active.kind {
+                TabKind::FileEditor => active.path.as_ref().map(|_| format!("{}", active.id.0)),
+                TabKind::FilesPanel => Some(format!("{}", active.id.0)),
+                TabKind::PrimaryOptionMenu
+                | TabKind::Untitled
+                | TabKind::SettingsPanel
+                | TabKind::FileExplorerPanel
+                | TabKind::SearchResults => None,
+            }
+        };
+
+        let state = SessionState {
+            tabs: session_tabs,
+            active_tab_id,
+            global_zoom_offset: zoom_offset,
+            key_bar_visible,
+            file_explorer_sidebar_width,
+            active_workspace_path,
+            recent_palette_commands,
+            search_history,
+            ..SessionState::empty()
+        };
         let _ = self.session_file.save(&state);
     }
 

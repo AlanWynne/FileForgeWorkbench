@@ -73,6 +73,9 @@ pub mod degraded_mode;
 /// Session configuration key definitions.
 pub mod config_keys;
 
+/// Workspace model -- WorkspaceState, load/save for `.ffwb-workspace` files.
+pub mod workspace;
+
 /// Error types for the ff-session crate.
 pub mod error;
 
@@ -96,3 +99,4 @@ pub use startup::{
 };
 pub use user_data_dir::UserDataDir;
 pub use window_geometry::{clamp_to_display, is_visible_on, restore_geometry, DisplayBounds};
+pub use workspace::{load_workspace, save_workspace, WorkspaceRecentFile, WorkspaceState};

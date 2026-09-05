@@ -226,7 +226,7 @@
         version, creator credit (Alan R Wynne), AI assistant credit (Amazon Q Developer / AWS),
         copyright, and description (Tasks 18.1–18.6 in menu-and-statusbar/tasks.md)
 
-### Phase AE — Legacy Theme Colour Semantics (Req 13 theme-and-appearance)
+### Phase AE-2 — Legacy Theme Colour Semantics (Req 13 theme-and-appearance)
 
 - [x] AE.1 Add `primary_menu_bg` to `UiColours`; update `ColourToken`; update Legacy palette defaults
 - [x] AE.2 Wire `PomColours` from shell into `primary_option_menu::render()` for Legacy theme
@@ -264,20 +264,6 @@
 - [x] AA.10 Session persistence for FilesPanel tab and catalog registry (Task 10.1–10.7)
 
 ---
-
-## Summary (as of full workspace audit)
-
-| Status | Count |
-|--------|-------|
-| `[x]` Complete with real tests | 61 library crates + ff-desktop binary |
-| `[ ]` Scaffolded only | 0 |
-| Active work | Phase U — wire ISPF engine into ff-desktop; Phase W — compiler toolchain integration |
-
-**All 61 library crates compile and pass `cargo test --workspace` with 0 failures.**
-
-The remaining work is Phase X: converting the Primary Option Menu from a central-panel branch to a detachable floating `egui::Window` (B001 fix, Req 14 revised).
-
-
 
 ### Phase AJ — Tab-Order Focus Cycle (Req 16 menu-and-statusbar)
 
@@ -399,21 +385,6 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 - [x] BD.5 Wire Escape to clear multi-selection (Task 22.7)
 - [x] BD.6 Unit tests for `build_text_tree` (Task 22.8)
 
-### Phase BD — File Explorer tree: drag-select and copy as text tree (Req 19 file-tree-panel)
-
-| Crate | Status | Test files | Notes |
-|-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | — | Req 19.1: drag-select highlights all visible nodes between start and current cursor position |
-| `ff-desktop` | 🔴 | — | Req 19.2: Shift+click extends selection from Anchor_Node to clicked node |
-| `ff-desktop` | 🔴 | — | Req 19.3: Ctrl+click toggles individual node membership without affecting others |
-| `ff-desktop` | 🔴 | — | Req 19.4: selected nodes rendered with `ui.selection_background` tint |
-| `ff-desktop` | 🔴 | — | Req 19.5: Ctrl+C with non-empty selection writes Text_Tree to OS clipboard |
-| `ff-desktop` | 🔴 | — | Req 19.6: `build_text_tree` produces correct indented ASCII output with `[DIR]` prefix and tree connectors |
-| `ff-desktop` | 🔴 | — | Req 19.7: "Copy as Text Tree" context menu item present above "Copy" group |
-| `ff-desktop` | 🔴 | — | Req 19.8: Escape clears multi-selection, reverts to single-node mode |
-| `ff-desktop` | 🔴 | — | Req 19.9: selection extends to nodes scrolled into view during drag |
-| `ff-desktop` | 🔴 | — | Req 19.10: Mainframe nodes use DSN in Text_Tree output |
-
 ### Phase BJ — Catalog Repository Path Display + VFS Dataset Path Resolution (CR-NR-012)
 
 - [x] BJ.1 Show repository path as read-only field in Edit Catalog dialog for all catalog types (Task 15.1–15.3 in virtual-catalog-manager/tasks.md)
@@ -528,7 +499,7 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 
 #### Wave 3 — Transactions, Integrity, and Governance (depends on Wave 2)
 
-- [ ] BS.8 Staged transaction protocol — `OperationJournal`, staged create/delete, startup recovery (Tasks 23.1–23.6)
+- [x] BS.8 Staged transaction protocol — `OperationJournal`, staged create/delete, startup recovery (Tasks 23.1–23.6)
 - [x] BS.9 Integrity, backup, restore — checksums, `workspace.backup/restore/diagnose/reconcile` commands (Tasks 24.1–24.6)
 - [x] BS.10 Catalogue audit trail + schema migrations (Tasks 25.1-25.3)
 - [x] BS.11 Security hardening — parameterised SQL audit, log scrubbing, path-traversal property test (Tasks 26.1–26.3)
@@ -575,27 +546,27 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 
 ### Phase CH -- FFW-JES P2 EARS Integration (CR-NR-030)
 
-- [ ] CH.1 Overtype fields: visual distinction, direct overtype, command-line syntax, extension pop-up (Tasks 30.1-30.4)
-- [ ] CH.2 Help system: HELP/PF1, ACTH, COLH, CMDH, SEARCH (Tasks 31.1-31.5)
-- [ ] CH.3 Log panels: LOG, ULOG, NEXT/PREV, SNAPSHOT (Tasks 32.1-32.4)
-- [ ] CH.4 System panels: SYS, DASH, INIT, JC, SP (Tasks 32.5-32.9)
-- [ ] CH.5 Browse settings, PRINT action, COLS command (Tasks 33.1-33.3)
-- [ ] CH.6 SET P2 commands: BCOLOR, CONFIRM, CURSOR, DATE, DELAY, HEX, SCHARS, SCREEN + persistence (Tasks 34.1-34.9)
+- [x] CH.1 Overtype fields: visual distinction, direct overtype, command-line syntax, extension pop-up (Tasks 30.1-30.4)
+- [x] CH.2 Help system: HELP/PF1, ACTH, COLH, CMDH, SEARCH (Tasks 31.1-31.5)
+- [x] CH.3 Log panels: LOG, ULOG, NEXT/PREV, SNAPSHOT (Tasks 32.1-32.4)
+- [x] CH.4 System panels: SYS, DASH, INIT, JC, SP (Tasks 32.5-32.9)
+- [x] CH.5 Browse settings, PRINT action, COLS command (Tasks 33.1-33.3)
+- [x] CH.6 SET P2 commands: BCOLOR, CONFIRM, CURSOR, DATE, DELAY, HEX, SCHARS, SCREEN + persistence (Tasks 34.1-34.9)
 
 ### Phase CI -- command-semantics P2 EARS Integration (CR-NR-031)
 
-- [ ] CI.1 OUTPUT and CANCEL commands -- routing to FFW-JES, PURGE operand (Tasks 25.1-25.3)
-- [ ] CI.2 SEND, PROFILE, PRINTDS commands -- messaging, session profile, file-ops routing (Tasks 26.1-26.4)
-- [ ] CI.3 TCR update for Requirement 10 (Task 27.1)
+- [x] CI.1 OUTPUT and CANCEL commands -- routing to FFW-JES, PURGE operand (Tasks 25.1-25.3)
+- [x] CI.2 SEND, PROFILE, PRINTDS commands -- messaging, session profile, file-ops routing (Tasks 26.1-26.4)
+- [x] CI.3 TCR update for Requirement 10 (Task 27.1)
 
 ### Phase CG -- lua-macro-engine P2 EARS Integration (CR-NR-029)
 
-- [ ] CG.1 ISREDIT/ISPEXEC host command environments and IMACRO initial macro (Tasks 21.1-21.4)
-- [ ] CG.2 LINENUM function and CURSOR get/set extension (Tasks 21.5-21.6)
-- [ ] CG.3 REXX exec invocation: EXEC command, implicit invocation, % prefix, argument passing (Tasks 22.1-22.4)
-- [ ] CG.4 TSO host environment, ADDRESS switching, ISPEXEC/ISREDIT environments, RC variable (Tasks 22.5-22.8)
-- [ ] CG.5 REXX built-in functions: LISTDSI, MSG, MVSVAR, OUTTRAP, PROMPT, SYSDSN, SYSVAR, USERID (Tasks 23.1-23.8)
-- [ ] CG.6 EXECIO DISKR/DISKW/FINIS/SKIP and FFCMD command files (Tasks 24.1-24.7)
+- [x] CG.1 ISREDIT/ISPEXEC host command environments and IMACRO initial macro (Tasks 21.1-21.4)
+- [x] CG.2 LINENUM function and CURSOR get/set extension (Tasks 21.5-21.6)
+- [x] CG.3 REXX exec invocation: EXEC command, implicit invocation, % prefix, argument passing (Tasks 22.1-22.4)
+- [x] CG.4 TSO host environment, ADDRESS switching, ISPEXEC/ISREDIT environments, RC variable (Tasks 22.5-22.8)
+- [x] CG.5 REXX built-in functions: LISTDSI, MSG, MVSVAR, OUTTRAP, PROMPT, SYSDSN, SYSVAR, USERID (Tasks 23.1-23.8)
+- [x] CG.6 EXECIO DISKR/DISKW/FINIS/SKIP and FFCMD command files (Tasks 24.1-24.7)
 
 ### Phase CF -- syntax-highlighting P2 EARS Integration (CR-NR-028)
 
@@ -605,8 +576,8 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 > find-match highlights), and combined operand support.
 > Requirement 16 in syntax-highlighting/requirements.md.
 
-- [ ] CF.1 HILITE ON/OFF command and HILITE LOGIC mode (Tasks 21.1-21.5)
-- [ ] CF.2 HILITE PAREN, HILITE FIND, and combined operands (Tasks 22.1-22.5)
+- [x] CF.1 HILITE ON/OFF command and HILITE LOGIC mode (Tasks 21.1-21.5)
+- [x] CF.2 HILITE PAREN, HILITE FIND, and combined operands (Tasks 22.1-22.5)
 
 ---
 
@@ -616,8 +587,8 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 > (ON/OFF/n operands, immediate effect) and RECOVERY primary command (ON/OFF/n operands).
 > Requirement 19 in undo-redo-transactions/requirements.md.
 
-- [ ] CE.1 SETUNDO command -- ON/OFF/n operands, immediate effect on max_levels (Tasks 19.1-19.5)
-- [ ] CE.2 RECOVERY command -- ON/OFF/n operands, immediate effect on recovery interval (Tasks 20.1-20.5)
+- [x] CE.1 SETUNDO command -- ON/OFF/n operands, immediate effect on max_levels (Tasks 19.1-19.5)
+- [x] CE.2 RECOVERY command -- ON/OFF/n operands, immediate effect on recovery interval (Tasks 20.1-20.5)
 
 ---
 
@@ -628,12 +599,12 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 > NEXT/PREV), LOCATE command (scroll to matching row), SDSF scroll commands (UP/DOWN/LEFT/RIGHT
 > with n/HALF/PAGE/MAX), SET ACTION/MAIN/ROWNUM commands, WHO command, QUERY AUTH command,
 > and PERSIST-1 (SET settings persistence).
-> Requirement 17 in FFW-JES/requirements.md.
+> Requirement 17 in jes-emulator/requirements.md.
 
-- [ ] CD.1 ST panel and advanced FILTER/FIND/LOCATE commands (Tasks 26.1-26.5)
-- [ ] CD.2 SDSF scroll commands UP/DOWN/LEFT/RIGHT with SCROLL field sync (Tasks 27.1-27.3)
-- [ ] CD.3 SET ACTION/MAIN/ROWNUM commands, WHO, QUERY AUTH (Tasks 28.1-28.6)
-- [ ] CD.4 SET settings persistence and integration tests (Tasks 29.1-29.5)
+- [x] CD.1 ST panel and advanced FILTER/FIND/LOCATE commands (Tasks 26.1-26.5)
+- [x] CD.2 SDSF scroll commands UP/DOWN/LEFT/RIGHT with SCROLL field sync (Tasks 27.1-27.3)
+- [x] CD.3 SET ACTION/MAIN/ROWNUM commands, WHO, QUERY AUTH (Tasks 28.1-28.6)
+- [x] CD.4 SET settings persistence and integration tests (Tasks 29.1-29.5)
 
 ---
 
@@ -643,7 +614,7 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 > SCROLL field, filter lines, NP column, fixed column), action character system (S/?/C/H/A/P/D/E/J/W,
 > = repeat, // block, command-line syntax, SET ROWNUM), main panel (MENU, groups, SET MAIN GROUP),
 > PREFIX/OWNER/DEST filter commands, full column set, SORT command.
-> Requirement 16 in FFW-JES/requirements.md.
+> Requirement 16 in jes-emulator/requirements.md.
 
 - [x] CC.1 SDSF panel chrome -- action bar, title line, SCROLL field, filter lines, message area, COMMAND INPUT field (Tasks 20.1-20.7)
 - [x] CC.2 NP column and action character system -- S/?/C/H/A/P/D/E/J/W, = repeat, // block, command-line syntax, SET ROWNUM (Tasks 21.1-21.8)
@@ -661,12 +632,12 @@ The remaining work is Phase X: converting the Primary Option Menu from a central
 > ds:// URI, namespace conflict, capability model, secret operands, audit events.
 > Requirement 9 in command-semantics/requirements.md.
 
-- [ ] CB.1 TSO dataset management commands ALLOCATE/FREE/DELETE/RENAME/LISTCAT/LISTDS/LISTALC (Tasks 19.1-19.8)
-- [ ] CB.2 TSO job commands SUBMIT/STATUS and EDIT routing extension (Tasks 20.1-20.4)
-- [ ] CB.3 TSO-style operand parsing and session prefix (Tasks 21.1-21.4)
-- [ ] CB.4 Command continuation, ds:// URI, namespace conflict resolution (Tasks 22.1-22.4)
-- [ ] CB.5 Capability model, secret operands, audit events (Tasks 23.1-23.5)
-- [ ] CB.6 TCR update for Requirement 9 (Task 24.1)
+- [x] CB.1 TSO dataset management commands ALLOCATE/FREE/DELETE/RENAME/LISTCAT/LISTDS/LISTALC (Tasks 19.1-19.8)
+- [x] CB.2 TSO job commands SUBMIT/STATUS and EDIT routing extension (Tasks 20.1-20.4)
+- [x] CB.3 TSO-style operand parsing and session prefix (Tasks 21.1-21.4)
+- [x] CB.4 Command continuation, ds:// URI, namespace conflict resolution (Tasks 22.1-22.4)
+- [x] CB.5 Capability model, secret operands, audit events (Tasks 23.1-23.5)
+- [x] CB.6 TCR update for Requirement 9 (Task 24.1)
 
 ---
 
@@ -677,12 +648,12 @@ Phase CA -- startup-and-session EARS Integration (CR-NR-023)
 > TIME command (TSO-2.4), STATUS routing to FFW-JES (TSO-2.5).
 > Requirement 20 in startup-and-session/requirements.md.
 
-- [ ] CA.1 Session start timestamp in status bar (Tasks 28.1-28.3)
-- [ ] CA.2 Session end timestamp and logoff message (Tasks 29.1-29.3)
-- [ ] CA.3 LOGOFF command alias for exit sequence (Tasks 30.1-30.2)
-- [ ] CA.4 TIME command -- date/time display (Tasks 31.1-31.2)
-- [ ] CA.5 STATUS command routing to FFW-JES (Tasks 32.1-32.3)
-- [ ] CA.6 TCR update for Requirement 20 (Task 33.1)
+- [x] CA.1 Session start timestamp in status bar (Tasks 28.1-28.3)
+- [x] CA.2 Session end timestamp and logoff message (Tasks 29.1-29.3)
+- [x] CA.3 LOGOFF command alias for exit sequence (Tasks 30.1-30.2)
+- [x] CA.4 TIME command -- date/time display (Tasks 31.1-31.2)
+- [x] CA.5 STATUS command routing to FFW-JES (Tasks 32.1-32.3)
+- [x] CA.6 TCR update for Requirement 20 (Task 33.1)
 
 ---
 
@@ -758,9 +729,22 @@ Phase BW -- edit-operations EARS Integration (CR-NR-019)
 - [x] BV.1 `CatalogLocation` enum + `CatalogMount` refactor in `ff-dscatalog`
         (Tasks 32.1-32.8 in dataset-catalog/tasks.md)
 
+### Phase BR -- Requirements Maintenance (CA-01, CA-02, housekeeping)
+
+> Low-effort documentation fixes that clear the path for Phase BS.
+> No source code changes -- all changes are in docs/ and .amazonq/rules/.
+
+- [x] BR.1 CA-01: Fix compiler-toolchain-integration/tasks.md requirement annotations
+        (Req 15.x/16.x/17.x/18.x -> Req 1.x/2.x/3.x/4.x to match actual requirements.md)
+- [x] BR.2 CA-02: Add Requirement 5 (Generic ToolchainPlugin Extension Point, FR-0971)
+        to compiler-toolchain-integration/requirements.md and tasks.md (Tasks 5.1-5.3)
+- [x] BR.3 Rename docs/specs/FFW-JES/ to docs/specs/jes-emulator/ (kebab-case convention);
+        update .amazonq/rules/specs.md sub-project list; update naming note in requirements.md
+- [x] BR.4 B009 marked SUPERSEDED in bugs.md (resolved by Phase BU SQLite integration)
+- [x] BR.5 CR-NR-035 status updated to DONE in change-log.md (Phase CN completed it)
+
 ---
 
-## Phase EI-6 -- Reorganised Pending Work (all EARS gates complete)
 
 > EI-5 is 100% complete (all 16 batches done, phases BW-CI gated).
 > The sections below list all pending implementation work in correct
@@ -785,8 +769,8 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 - [x] ff-vfs.15 VFS staged transaction protocol (Tasks 15.1-15.5)
 - [x] ff-vfs.16 workspace.backup/restore/reconcile/diagnose (Tasks 16.1-16.5)
 - [x] BU.1 Design docs updated (DONE)
-- [ ] BU.2 Failing tests -- CatalogRegistry API, resolve_and_open_dataset, content area (Tasks 18-20)
-- [ ] BU.3 CatalogRegistry::allocate() and list_datasets() implemented and tests green (Task 21)
+- [x] BU.2 Failing tests -- CatalogRegistry API, resolve_and_open_dataset, content area (Tasks 18-20)
+- [x] BU.3 CatalogRegistry::allocate() and list_datasets() implemented and tests green (Task 21)
 - [x] BU.4 AllocOutcome::Confirmed handler wired to SQLite (Task 22)
 - [x] BU.5 Files Panel content area reads from SQLite (Task 23)
 - [x] BU.6 File Explorer Panel Mainframe content reads from SQLite (Task 24)
@@ -801,19 +785,18 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 - [x] BY.impl sequence-numbers: AUTONUM and NUM alias extensions (Tasks 20-22 in sequence-numbers/tasks.md)
 - [x] BZ.impl menu-and-statusbar: SCROLL field, fastpath, split screen, list panel LOCATE (Tasks 24-30 in menu-and-statusbar/tasks.md)
 
-- [x] CA.1 startup-and-session EARS integration (Req 20: LOGOFF, TIME, STATUS, session timestamps)- [ ] CA.impl startup-and-session: session timestamps, LOGOFF, TIME, STATUS routing (Tasks 28-33 in startup-and-session/tasks.md)
-
-- [x] CB.1 command-semantics EARS integration (Req 9: TSO commands, operand parsing, capabilities, audit)- [ ] CB.impl command-semantics P1: ALLOCATE through STATUS + FTSO operand parsing (Tasks 19-24 in command-semantics/tasks.md)
-- [ ] CC.impl FFW-JES P1 core: SDSF panel framework, NP column, action chars, main panel (Tasks 20-25 in FFW-JES/tasks.md)
-- [ ] CD.impl FFW-JES P1 extended: ST panel, FILTER/FIND/LOCATE, SET P1 commands (Tasks 26-29 in FFW-JES/tasks.md)
+- [x] CA.impl startup-and-session: session timestamps, LOGOFF, TIME, STATUS routing (Tasks 28-33 in startup-and-session/tasks.md)
+- [x] CB.impl command-semantics P1: ALLOCATE through STATUS + FTSO operand parsing (Tasks 19-24 in command-semantics/tasks.md)
+- [x] CC.impl FFW-JES P1 core: SDSF panel framework, NP column, action chars, main panel (Tasks 20-25 in jes-emulator/tasks.md)
+- [x] CD.impl FFW-JES P1 extended: ST panel, FILTER/FIND/LOCATE, SET P1 commands (Tasks 26-29 in jes-emulator/tasks.md)
 
 ### Stream 3 -- EARS P2 Implementation (follows Stream 2)
 
-- [ ] CE.impl undo-redo-transactions: SETUNDO command, RECOVERY ON/OFF (Tasks 19-20 in undo-redo-transactions/tasks.md)
-- [ ] CF.impl syntax-highlighting: HILITE ON/OFF/LOGIC/PAREN/FIND (Tasks 21-22 in syntax-highlighting/tasks.md)
-- [ ] CG.impl lua-macro-engine: ISREDIT/ISPEXEC/IMACRO, REXX bridge, FFCMD (Tasks 21-24 in lua-macro-engine/tasks.md)
-- [ ] CH.impl FFW-JES P2: overtype, help, log/system panels, browse/print, SET P2 (Tasks 30-34 in FFW-JES/tasks.md)
-- [ ] CI.impl command-semantics P2: OUTPUT/CANCEL/SEND/PROFILE/PRINTDS (Tasks 25-27 in command-semantics/tasks.md)
+- [x] CE.impl undo-redo-transactions: SETUNDO command, RECOVERY ON/OFF (Tasks 19-20 in undo-redo-transactions/tasks.md)
+- [x] CF.impl syntax-highlighting: HILITE ON/OFF/LOGIC/PAREN/FIND (Tasks 21-22 in syntax-highlighting/tasks.md)
+- [x] CG.impl lua-macro-engine: ISREDIT/ISPEXEC/IMACRO, REXX bridge, FFCMD (Tasks 21-24 in lua-macro-engine/tasks.md)
+- [x] CH.impl FFW-JES P2: overtype, help, log/system panels, browse/print, SET P2 (Tasks 30-34 in jes-emulator/tasks.md)
+- [x] CI.impl command-semantics P2: OUTPUT/CANCEL/SEND/PROFILE/PRINTDS (Tasks 25-27 in command-semantics/tasks.md)
 
 ### Phase CJ -- Bootstrap Scripts (CR-NR-032)
 
@@ -828,16 +811,99 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 - [x] CJ.5 Write `bootstrap/README.md` (Task 6)
 - [x] CJ.6 Update root `README.md` Building section to reference `bootstrap/` (Task 7)
 
+### Phase CL -- POM Guaranteed on Startup (CR-CH-007, Req 14.1a, 14.1b)
+
+- [x] CL.1 Amend startup block in `shell/update.rs`: after session restore, if no POM tab exists prepend one at index 0; 3 unit tests; B001 FIXED (Tasks 34.1-34.9 in startup-and-session/tasks.md)
+
+### Phase CM -- Mouse Text Selection and Clipboard Copy (CR-NR-034)
+
+> Adds mouse-driven text selection to the editor canvas and Ctrl+C copy to the OS clipboard.
+> Also makes read-only panels (POM, Settings, status bar) use egui selectable labels.
+> Requirements 13-14 in caret-and-selection/requirements.md; Requirement 20 in clipboard-operations/requirements.md.
+
+- [x] CM.1 Editor canvas mouse selection -- drag tracking, highlight rendering, Ctrl+C copy, Escape clear (Tasks 17.1-17.10 in caret-and-selection/tasks.md)
+- [x] CM.2 Read-only panel selectable labels -- POM calendar, Settings key/desc/badge, status bar fields (Tasks 18.1-18.5 in caret-and-selection/tasks.md)
+
+### Phase CN -- Editor Scroll Amount Integration (CR-NR-035)
+
+> Wires the existing SCROLL ===> field value (PAGE/HALF/CSR/MAX/DATA/N) into the editor
+> panel Page Up/Down handler so paging behaviour matches the ISPF convention.
+> Requirement 14 in viewport-and-scrolling/requirements.md.
+
+- [x] CN.1 Pass scroll_amount into editor_panel::render(); implement scroll_by_amount helper; wire all ScrollAmount variants; 5 unit tests (Task 16.1-16.6 in viewport-and-scrolling/tasks.md)
+
+### Phase CK -- FFTest Automated Dialog Testing Framework (CR-NR-033)
+
+> Introduces the native FFTest Automated Dialog Testing Framework. Covers
+> Automation ID infrastructure, FFTest script parser and runner, headless
+> execution, HTML/JSON reporting, and visual regression. Requirement 1-10
+> in automated-dialog-testing/requirements.md.
+
+- [x] CK.1 Requirements gate -- requirements.md, design.md, tasks.md, TCR rows (Phase CK-1)
+- [x] CK.2 Automation ID infrastructure -- ff-fftest crate scaffold, AutomationRegistry trait,
+        Automation ID constants, ff-desktop registration (Phase CK-2, Tasks 8-15)
+- [x] CK.3 FFTest parser, runner, assertion engine (Phase CK-3, Tasks 16-24)
+- [x] CK.4 Headless runner, reporting, visual regression, plugin testing (Phase CK-4, Tasks 25-38)
+
 ---
 
-## Summary (updated after EI-6 -- all EARS gates complete)
+## Summary (updated after Phase BS -- current state)
 
 | Status | Count |
 |--------|-------|
 | `[x]` Complete with real tests | 61 library crates + ff-desktop binary |
-| `[x]` EARS gates complete | Phases BW-CI (13 phases, 136 new criteria gated) |
-| `[ ]` Pending -- Stream 1 (dataset architecture) | BU.2-BU.9 (9 deliverables) |
-| `[ ]` Pending -- Stream 2 (EARS P1 implementation) | BW-CD (8 phases) |
-| `[ ]` Pending -- Stream 3 (EARS P2 implementation) | CE-CI (5 phases) |
-| `[ ]` Pending -- Phase CJ (bootstrap scripts) | 6 deliverables (CJ.1--CJ.6) |
-| Active work | ff-vfs.13 (next in Stream 1) or BW (next in Stream 2) |
+| `[x]` Stream 1 complete | BV, BS.1-BS.15, ff-vfs.13-16, BU.1-BU.9 |
+| `[x]` Stream 2 complete | BW, BX, BY, BZ, CA, CB, CC, CD (all EARS P1) |
+| `[x]` Stream 3 partial | CE, CF, CG, CH, CI done -- Stream 3 COMPLETE |
+| `[ ]` Stream 3 pending | none -- all EARS P2 phases complete |
+| `[x]` Phase CJ complete | Bootstrap scripts (CJ.1-CJ.6) |
+| `[x]` Phase CK complete | FFTest framework (CK.1-CK.4) |
+| Active work | All EARS P2 streams complete; Phase BS (Productivity Core) complete |
+
+### Phase BS -- Productivity Core (CR-NR-036, CR-NR-037, CR-NR-038)
+
+> Implements the three highest-impact productivity features identified in the Phase BQ
+> executive assessment: Workspace Model (foundational), Command Palette, and Global Search.
+> All three sub-project specs are gated and approved. Implementation follows TDD.
+
+#### BS-A: Workspace Model (workspace-model sub-project)
+
+- [x] BS-A.1 WorkspaceState data model and serialisation -- ff-session workspace.rs (Tasks 1.1-1.4)
+- [x] BS-A.2 Session persistence for active workspace path (Tasks 2.1-2.4)
+- [x] BS-A.3 Workspace lifecycle commands: OPEN/SAVE/SAVE AS/CLOSE in ff-desktop (Tasks 3.1-3.5)
+- [x] BS-A.4 Workspace root management: catalog registration, ADD/REMOVE ROOT commands (Tasks 4.1-4.6)
+- [x] BS-A.5 Workspace-scoped settings: inject/remove Workspace config layer (Tasks 5.1-5.3)
+- [x] BS-A.6 Workspace-scoped recent files MRU list (Tasks 6.1-6.4)
+
+#### BS-B: Command Palette (command-palette sub-project)
+
+- [x] BS-B.1 Fuzzy match engine -- fuzzy_match() and fuzzy_score() pure functions (Tasks 1.1-1.2)
+- [x] BS-B.2 Palette state and data model; recent commands in SessionState (Tasks 2.1-2.4)
+- [x] BS-B.3 Palette rendering -- centered egui::Window, entry list, detail area (Tasks 3.1-3.6)
+- [x] BS-B.4 Activation (Ctrl+Shift+P), keyboard nav, command execution (Tasks 4.1-4.8)
+
+#### BS-C: Global Search (global-search sub-project)
+
+- [x] BS-C.1 ff-global-search crate scaffold -- types and SearchEvent (Tasks 1.1-1.5)
+- [x] BS-C.2 Search engine: file enumeration, per-file FindEngine delegation, cancellation (Tasks 2.1-2.5)
+- [x] BS-C.3 Replace engine: cross-file replace via ff-file-ops (Tasks 3.1-3.3)
+- [x] BS-C.4 Search Results panel -- TabKind, state, rendering, keyboard nav (Tasks 4.1-4.7)
+- [x] BS-C.5 Replace UI, activation (Ctrl+Shift+F), search history (Tasks 5.1-5.7)
+
+---
+
+## Summary (updated after Phase BS Productivity Core -- current state)
+
+| Status | Count |
+|--------|-------|
+| `[x]` Complete with real tests | 62 library crates (incl. ff-global-search) + ff-desktop binary |
+| `[x]` Stream 1 complete | BV, BS.1-BS.15, ff-vfs.13-16, BU.1-BU.9 |
+| `[x]` Stream 2 complete | BW, BX, BY, BZ, CA, CB, CC, CD (all EARS P1) |
+| `[x]` Stream 3 complete | CE, CF, CG, CH, CI (all EARS P2) |
+| `[x]` Phase CJ complete | Bootstrap scripts (CJ.1-CJ.6) |
+| `[x]` Phase CK complete | FFTest framework (CK.1-CK.4) |
+| `[x]` Phase BS-A complete | Workspace Model (BS-A.1-BS-A.6) |
+| `[x]` Phase BS-B complete | Command Palette (BS-B.1-BS-B.4) |
+| `[x]` Phase BS-C complete | Global Search (BS-C.1-BS-C.5) |
+| Test count | 655 passing (644 ff-desktop + 11 ff-global-search), 0 failures |
+| Active work | Phase BS Productivity Core complete -- review open bugs or plan next phase |

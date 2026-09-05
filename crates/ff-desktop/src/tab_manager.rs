@@ -165,6 +165,19 @@ impl TabManager {
         let _ = runtime;
     }
 
+    /// Open a new Search Results panel tab.
+    ///
+    /// Validates: global-search Requirement 1.1
+    pub fn open_search_results_tab(&mut self, runtime: &Runtime) {
+        let document = ff_document_model::new_document();
+        let id = TabId(self.next_id);
+        self.next_id += 1;
+        let tab = crate::tab_state::TabState::search_results_panel(id, document);
+        self.tabs.push(tab);
+        self.active = self.tabs.len() - 1;
+        let _ = runtime;
+    }
+
     /// Transform the active tab in-place from `PrimaryOptionMenu` to a new kind.
     ///
     /// No-op if the active tab is not a `PrimaryOptionMenu` tab.

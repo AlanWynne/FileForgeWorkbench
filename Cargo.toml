@@ -67,6 +67,8 @@ members = [
     "crates/ff-toolchain-api",
     "crates/ff-gcc-toolchain",
     "crates/ff-rust-toolchain",
+    "crates/ff-fftest",
+    "crates/ff-global-search",
 ]
 
 [workspace.package]

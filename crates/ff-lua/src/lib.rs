@@ -33,9 +33,13 @@ pub mod buffer_state;
 pub mod config;
 pub mod engine;
 pub mod error;
+pub mod execio;
 pub mod hooks;
+pub mod ispf;
+pub mod rexx;
 pub mod scanner;
 pub mod security;
+pub mod tso_builtins;
 
 // ─── Public API Re-exports ──────────────────────────────────────────────────
 
@@ -43,7 +47,22 @@ pub use buffer_state::{BufferId, BufferStateManager};
 pub use config::EngineConfig;
 pub use engine::LuaMacroEngine;
 pub use error::{LuaEngineError, LuaResult};
+pub use execio::{
+    DdnameFile, ExecioCount, ExecioEngine, ExecioOperation, ExecioRc, FfcmdLine, FfcmdResult,
+    FfcmdRunner,
+};
 pub use hooks::event::HookEvent;
 pub use hooks::registry::{HookDispatchResult, HookHandler, HookRegistry};
+pub use ispf::{
+    CursorApi, CursorPosition, ImacroState, IspexecEnv, IspexecResult, IsreditCall, IsreditEnv,
+    IsreditResult, LineNumResolver,
+};
+pub use rexx::{
+    ExecInvokeResult, ExecLibrary, ExecMember, HostEnvironment, InvocationKind, RcVariable,
+    RexxBridge,
+};
 pub use scanner::{DirectoryPriority, MacroScript};
 pub use security::{SecurityDecision, SecurityGate, SecurityMode, SecurityPermission, StdlibSet};
+pub use tso_builtins::{
+    DatasetInfo, ListdsiResult, OuttrapState, PromptState, SysdsnResult, SystemVars, TsoBuiltins,
+};

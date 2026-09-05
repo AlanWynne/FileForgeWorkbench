@@ -216,6 +216,36 @@ so that I can fix issues without switching to a terminal.
 
 ---
 
+### Requirement 5: Generic Toolchain Plugin Extension Point
+
+**User Story:** As a platform architect, I want the toolchain integration to define a
+generic `ToolchainPlugin` trait that any future toolchain (LLVM/Clang, GnuCOBOL, OpenJDK,
+Python, Go) can implement, so that new toolchains can be added as plugin crates without
+modifying the core workbench or the existing GCC/Rust plugin crates.
+
+**Gap reference:** FR-0971 identified in `docs/reviews/requirements-review/gap-analysis.md`
+section 6.4 (Generic toolchain plugin trait -- PARTIAL, High priority).
+
+#### Acceptance Criteria
+
+1. THE `ff-toolchain-api` crate SHALL define a `ToolchainPlugin` trait as the sole
+   extension point for toolchain integrations; the trait SHALL declare at minimum:
+   `name() -> &str`, `state() -> ToolchainState`, `detect()`, `install()`, and `build()`.
+
+2. THE `ToolchainPlugin` trait SHALL be documented as the general extension point for
+   all future toolchains (LLVM/Clang, GnuCOBOL, OpenJDK, Python, Go); the trait
+   contract SHALL NOT contain any GCC-specific or Rust-specific assumptions.
+
+3. WHEN a new toolchain plugin crate implements `ToolchainPlugin` and registers itself
+   with the plugin registry, THE Toolchain_Panel SHALL display its status row and
+   install/build controls without any changes to the core workbench or existing plugin crates.
+
+4. THE `ff-toolchain-api` crate SHALL be the only compile-time dependency that a new
+   toolchain plugin crate requires from the workbench platform; it SHALL NOT need to
+   depend on `ff-gcc-toolchain` or `ff-rust-toolchain`.
+
+---
+
 ## Non-Functional Requirements
 
 ### Performance

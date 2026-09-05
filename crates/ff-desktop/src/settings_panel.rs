@@ -132,27 +132,34 @@ fn render_entry(
 
     ui.horizontal(|ui| {
         // Key + description
+        // Validates: Requirement 14.2 -- selectable key name and description
         ui.vertical(|ui| {
-            ui.monospace(key.as_str());
-            ui.label(
+            ui.add(egui::SelectableLabel::new(
+                false,
+                egui::RichText::new(key.as_str()).monospace(),
+            ));
+            ui.add(egui::SelectableLabel::new(
+                false,
                 egui::RichText::new(entry.description.as_str())
                     .small()
                     .weak(),
-            );
+            ));
         });
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             // Provenance badge — Req 15.3
-            ui.label(
+            // Validates: Requirement 14.2 -- selectable provenance badge
+            ui.add(egui::SelectableLabel::new(
+                false,
                 egui::RichText::new(provenance_label)
                     .small()
                     .color(egui::Color32::from_rgb(120, 180, 120)),
-            );
+            ));
 
             // Reset to Default button — Req 15.6 (only when not at Default layer)
             let is_at_default = provenance_label == "Default";
             ui.add_enabled_ui(!is_at_default, |ui| {
-                if ui.small_button("↺ Reset").clicked() {
+                if ui.small_button("\u{21ba} Reset").clicked() {
                     let _ = config.remove_user_value(key);
                     state.pending.remove(key);
                     state.errors.remove(key);

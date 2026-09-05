@@ -24,7 +24,12 @@ pub mod sdsf_action;
 pub mod sdsf_commands;
 pub mod sdsf_filter;
 pub mod sdsf_filter_expr;
+pub mod sdsf_help;
+pub mod sdsf_log_panels;
+pub mod sdsf_overtype;
 pub mod sdsf_panel;
+pub mod sdsf_set_p2;
+pub mod sdsf_system_panels;
 
 // ─── Public API Re-exports ──────────────────────────────────────────────────
 
@@ -50,6 +55,19 @@ pub use sdsf_commands::{
 };
 pub use sdsf_filter::{ColumnLayout, QueueTab, SdsfColumn, SdsfFilter, SdsfSort, SortDirection};
 pub use sdsf_filter_expr::{ActiveFilter, CmpOp, FilterExpr, FilterPredicate};
+pub use sdsf_help::{ActionCharHelp, ColumnHelp, CommandHelp, HelpKind, HelpPanel, HelpRegistry};
+pub use sdsf_log_panels::{
+    LogPanelKind, LogPanelState, LogSegment, SdsfLogEntry, SnapshotDestination, SnapshotResult,
+};
+pub use sdsf_overtype::{
+    CommandLineOvertype, FieldKind, OvertypeField, OvertypeResult, OvertypeRow,
+};
 pub use sdsf_panel::{
     main_panel_commands, ActivePanel, CommandGroup, MainPanelCommand, ScrollAmount, SdsfPanelState,
+};
+pub use sdsf_set_p2::{DateFormat, SetP2Command, SetP2Result, SetP2Settings};
+pub use sdsf_system_panels::{
+    print_output, AddressSpace, BrowseSettings, ColsRuler, DashMetrics, InitPanelState,
+    InitiatorEntry, JcPanelState, JobClassEntry, PrintDestination, PrintResult, RecordFormat,
+    SpPanelState, SpoolVolume, SysPanelState,
 };

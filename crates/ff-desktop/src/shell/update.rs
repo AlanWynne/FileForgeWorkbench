@@ -6,6 +6,8 @@ use eframe::egui;
 
 use crate::catalog_manager_dialog::{self, DeleteChoice, DialogOutcome};
 use crate::catalog_registry::{CatalogRegistry, CatalogType, VirtualCatalog};
+use crate::command_palette::render::{render_command_palette, PaletteOutcome};
+use crate::command_palette::state::PaletteEntry;
 use crate::dataset_alloc_dialog::{self, validate_for_catalog, AllocOutcome, Dsorg, Recfm};
 use crate::files_panel;
 use crate::session_manager::SessionManager;
@@ -22,6 +24,7 @@ use super::FocusStop;
 use super::WorkbenchShell;
 use crate::primary_option_menu;
 use crate::tab_state::TabKind;
+use ff_fftest::AutomationRegistry as _;
 use ff_keys::FunctionKey;
 use ff_keys::{KeyModifier, ModifiedKey};
 use std::path::PathBuf;
@@ -55,6 +58,25 @@ pub(super) fn ensure_default_home_catalog(
     // which is acceptable (the user has a catalog named Home of a different type).
     let _ = registry.register(catalog);
     true
+}
+
+/// Ensure a `PrimaryOptionMenu` tab is present at index 0.
+///
+/// If no tab of kind `PrimaryOptionMenu` exists, inserts one at index 0.
+/// Called after session restore so the POM is always reachable on startup.
+///
+/// Validates: Requirement 14.1b
+pub(super) fn ensure_pom_tab_present(
+    tabs: &mut crate::tab_manager::TabManager,
+    runtime: &tokio::runtime::Runtime,
+) {
+    let has_pom = tabs
+        .tabs()
+        .iter()
+        .any(|t| t.kind == crate::tab_state::TabKind::PrimaryOptionMenu);
+    if !has_pom {
+        tabs.insert_pom_tab(runtime);
+    }
 }
 
 /// Auto-open a catalog or directory node when Tab lands on it.
@@ -156,25 +178,32 @@ impl eframe::App for WorkbenchShell {
                     }
                 }
             } else if let Some(session) = &self.session {
-                // No CLI args — restore previous session tabs (Req 5 AC 1, 2).
+                // No CLI args -- restore previous session tabs (Req 5 AC 1, 2).
                 let state = session.load();
                 let restored_any = !SessionManager::tab_uris(&state).is_empty();
-                // Validates: Requirement 6.2 (view-zoom) — restore global zoom offset.
+                // Extract workspace path before any mutable borrows.
+                let ws_path_to_restore = state.active_workspace_path.clone();
+                // Validates: Requirement 6.2 (view-zoom) -- restore global zoom offset.
                 if state.global_zoom_offset != 0 {
                     self.zoom = ff_zoom::ZoomState::from_persisted(
                         state.global_zoom_offset,
                         &ff_zoom::ZoomConfig::default(),
                     );
                 }
-                // Validates: Requirement 12.4 (function-keys-and-history) — restore PFSHOW state.
+                // Validates: Requirement 12.4 (function-keys-and-history) -- restore PFSHOW state.
                 self.key_bar_visible = state.key_bar_visible;
-                // Validates: Requirement 23.9 (file-tree-panel) — restore sidebar width.
+                // Validates: Requirement 23.9 (file-tree-panel) -- restore sidebar width.
                 if state.file_explorer_sidebar_width >= 120.0 {
                     self.file_explorer_panel.sidebar_width = state.file_explorer_sidebar_width;
                 }
-                // Validates: Requirement 2.1, 2.2 (virtual-catalog-manager) — restore catalog registry.
+                // Validates: command-palette Requirement 5.2 -- restore recent palette commands.
+                self.recent_palette_commands = state.recent_palette_commands.clone();
+                // Validates: global-search Requirement 6.2 -- restore search history.
+                self.search_results_panel
+                    .restore_history(state.search_history.clone());
+                // Validates: Requirement 2.1, 2.2 (virtual-catalog-manager) -- restore catalog registry.
                 self.files_panel.registry = session.load_catalog_registry();
-                // Validates: Requirement 14.1–14.5 — create default Home catalog when none exist.
+                // Validates: Requirement 14.1-14.5 -- create default Home catalog when none exist.
                 let home_path = dirs::home_dir()
                     .or_else(|| std::env::current_dir().ok())
                     .unwrap_or_else(|| PathBuf::from("."));
@@ -188,13 +217,25 @@ impl eframe::App for WorkbenchShell {
                         }
                     }
                 }
-                // Validates: Requirement 14.1 — if no files restored, open POM tab
+                // Validates: Requirement 14.1 / 14.1b -- ensure POM tab is always present.
                 if !restored_any {
-                    // Close the welcome placeholder before inserting POM so POM is
-                    // the sole tab at index 0 on a clean first launch.
-                    // Validates: Requirement 14.1 — POM is always in first position.
                     self.tabs.close_welcome_tab();
                     self.tabs.insert_pom_tab(&self.runtime);
+                } else {
+                    ensure_pom_tab_present(&mut self.tabs, &self.runtime);
+                }
+                // Validates: workspace-model Requirement 5.2, 5.3 -- restore active workspace.
+                // Done after session borrow ends to allow &mut self in open_workspace.
+                if let Some(ws_path_str) = ws_path_to_restore {
+                    let ws_path = std::path::PathBuf::from(&ws_path_str);
+                    if ws_path.exists() {
+                        self.open_workspace(&ws_path);
+                    } else {
+                        self.open_error = Some(format!(
+                            "Workspace '{}' not found -- starting without workspace",
+                            ws_path.display()
+                        ));
+                    }
                 }
             } else {
                 // No session manager — first launch: open POM tab
@@ -236,6 +277,20 @@ impl eframe::App for WorkbenchShell {
             } else {
                 self.open_error = None;
             }
+        }
+
+        // Ctrl+Shift+P -- toggle Command Palette -- Validates: command-palette Req 1.1, 1.5
+        if ctx.input(|i| i.key_pressed(egui::Key::P) && i.modifiers.ctrl && i.modifiers.shift) {
+            if self.palette_state.open {
+                self.palette_state.close();
+            } else {
+                self.palette_state.open();
+            }
+        }
+
+        // Ctrl+Shift+F -- open Global Search panel -- Validates: global-search Req 1.1, 1.3
+        if ctx.input(|i| i.key_pressed(egui::Key::F) && i.modifiers.ctrl && i.modifiers.shift) {
+            self.open_or_focus_search_panel();
         }
 
         // Process deferred tab-bar context menu actions (set previous frame).
@@ -369,7 +424,9 @@ impl eframe::App for WorkbenchShell {
         // Suppressed when a modal dialog is open so Tab navigates inside the dialog.
         self.modal_open = self.key_config_dialog.open
             || self.show_about
+            || self.palette_state.open
             || self.show_history_list.is_some()
+            || self.show_unsaved_workspace_dialog
             || !matches!(self.files_panel.dialog, files_panel::FilesDialogState::None);
         {
             let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
@@ -522,6 +579,8 @@ impl eframe::App for WorkbenchShell {
             }
         }
         self.render_menu_bar(ctx);
+        // Validates: Requirement 2.5 -- clear stale automation entries at frame start.
+        self.automation.begin_frame();
         self.render_tab_bar(ctx);
         self.render_title_line(ctx);
         self.render_command_field(ctx);
@@ -603,6 +662,25 @@ impl eframe::App for WorkbenchShell {
         }
 
         // ── Catalog Manager Dialog — Req 3.1–3.8 ──────────────────────────────
+        // Command Palette overlay -- Validates: command-palette Requirement 1.1-1.5, 4.1-4.5
+        if self.palette_state.open {
+            let all_entries = build_palette_entries(&self.cmd_registry);
+            let recent = self.recent_palette_commands.clone();
+            let palette_outcome =
+                render_command_palette(ctx, &mut self.palette_state, &all_entries, &recent);
+            match palette_outcome {
+                PaletteOutcome::Execute(cmd_id) => {
+                    // Add to recent list (most recent first, capped at 10).
+                    // Validates: command-palette Requirement 4.4, 5.4
+                    self.recent_palette_commands.retain(|c| c != &cmd_id);
+                    self.recent_palette_commands.insert(0, cmd_id.clone());
+                    self.recent_palette_commands.truncate(10);
+                    self.handle_command(&cmd_id);
+                }
+                PaletteOutcome::Dismissed | PaletteOutcome::None => {}
+            }
+        }
+
         // About dialog - Req 13.1, 13.8
         if self.show_about {
             crate::about_dialog::render(ctx, &mut self.show_about);
@@ -654,6 +732,53 @@ impl eframe::App for WorkbenchShell {
             } else if !keep_open || ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
                 self.command_text.clear();
                 self.show_history_list = None;
+            }
+        }
+
+        // Unsaved workspace changes dialog -- Validates: workspace-model Requirement 2.5
+        if self.show_unsaved_workspace_dialog {
+            let mut save_clicked = false;
+            let mut discard_clicked = false;
+            let mut cancel_clicked = false;
+            let ws_name = self
+                .active_workspace
+                .as_ref()
+                .map(|ws| ws.name.clone())
+                .unwrap_or_default();
+            egui::Window::new("Unsaved Workspace Changes")
+                .collapsible(false)
+                .resizable(false)
+                .show(ctx, |ui| {
+                    ui.label(format!("Workspace '{}' has unsaved changes.", ws_name));
+                    ui.horizontal(|ui| {
+                        if ui.button("Save").clicked() {
+                            save_clicked = true;
+                        }
+                        if ui.button("Discard").clicked() {
+                            discard_clicked = true;
+                        }
+                        if ui.button("Cancel").clicked() {
+                            cancel_clicked = true;
+                        }
+                    });
+                });
+            if save_clicked {
+                self.save_workspace_to(None);
+                self.show_unsaved_workspace_dialog = false;
+                if let Some(path) = self.pending_workspace_open.take() {
+                    self.open_workspace_force(&path);
+                }
+            } else if discard_clicked {
+                self.show_unsaved_workspace_dialog = false;
+                if let Some(path) = self.pending_workspace_open.take() {
+                    if let Some(ws) = self.active_workspace.as_mut() {
+                        ws.is_modified = false;
+                    }
+                    self.open_workspace_force(&path);
+                }
+            } else if cancel_clicked {
+                self.show_unsaved_workspace_dialog = false;
+                self.pending_workspace_open = None;
             }
         }
 
@@ -741,11 +866,20 @@ impl eframe::App for WorkbenchShell {
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         if let Some(session) = &self.session {
-            session.save(
+            // Validates: workspace-model Requirement 5.1 -- persist active workspace path.
+            let ws_path = self
+                .active_workspace
+                .as_ref()
+                .and_then(|ws| ws.file_path.as_ref())
+                .map(|p| p.to_string_lossy().into_owned());
+            session.save_with_workspace(
                 &self.tabs,
                 self.zoom.offset().value(),
                 self.key_bar_visible,
                 self.file_explorer_panel.sidebar_width,
+                ws_path,
+                self.recent_palette_commands.clone(),
+                self.search_results_panel.history.clone(),
             );
             session.save_catalog_registry(&self.files_panel.registry);
         }
@@ -753,11 +887,35 @@ impl eframe::App for WorkbenchShell {
     }
 }
 
+/// Build the full list of palette entries from the command registry.
+///
+/// Validates: command-palette Requirement 2.1
+fn build_palette_entries(registry: &ff_command::CommandRegistry) -> Vec<PaletteEntry> {
+    registry
+        .list_all()
+        .into_iter()
+        .filter_map(|id| {
+            registry.metadata(&id).map(|meta| PaletteEntry {
+                command_id: id.as_str().to_string(),
+                display_name: meta.display_name.clone(),
+                category: meta.category.clone(),
+                description: meta.description.clone(),
+                shortcut: None,
+                enabled: true,
+                score: 0,
+            })
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod startup_tests {
-    use super::ensure_default_home_catalog;
+    use super::{ensure_default_home_catalog, ensure_pom_tab_present};
     use crate::catalog_registry::{CatalogRegistry, CatalogType, VirtualCatalog};
+    use crate::tab_manager::TabManager;
+    use crate::tab_state::TabKind;
     use std::path::PathBuf;
+    use tokio::runtime::Runtime;
 
     fn home() -> PathBuf {
         PathBuf::from("C:/Users/testuser")
@@ -808,8 +966,64 @@ mod startup_tests {
         );
     }
 
-    /// Validates: Requirement 14.3 — returned true signals caller to persist registry.
-    /// Validates: Requirement 14.5 — fallback path is used when home_path is provided.
+    // === Phase CL: POM guaranteed on startup (Req 14.1, 14.1a, 14.1b) ===
+
+    /// Validates: Requirement 14.1 -- empty session opens a single POM tab.
+    #[test]
+    fn empty_session_opens_single_pom_tab() {
+        // Validates: Requirement 14.1
+        let runtime = Runtime::new().expect("runtime");
+        let mut tabs = TabManager::new(&runtime, "");
+        tabs.close_welcome_tab();
+        tabs.insert_pom_tab(&runtime);
+        assert_eq!(tabs.len(), 1);
+        assert_eq!(tabs.tabs()[0].kind, TabKind::PrimaryOptionMenu);
+    }
+
+    /// Validates: Requirement 14.1a -- session with POM tab: ensure_pom_tab_present is a no-op.
+    #[test]
+    fn session_with_pom_tab_restores_exactly() {
+        // Validates: Requirement 14.1a
+        let runtime = Runtime::new().expect("runtime");
+        let mut tabs = TabManager::new(&runtime, "");
+        tabs.close_welcome_tab();
+        tabs.insert_pom_tab(&runtime);
+        tabs.new_untitled_tab(&runtime);
+        let count_before = tabs.len();
+        ensure_pom_tab_present(&mut tabs, &runtime);
+        assert_eq!(
+            tabs.len(),
+            count_before,
+            "must not add a second POM when one already exists"
+        );
+        assert_eq!(tabs.tabs()[0].kind, TabKind::PrimaryOptionMenu);
+    }
+
+    /// Validates: Requirement 14.1b -- session without POM tab gets POM prepended at index 0.
+    #[test]
+    fn session_without_pom_tab_prepends_pom() {
+        // Validates: Requirement 14.1b
+        let runtime = Runtime::new().expect("runtime");
+        let mut tabs = TabManager::new(&runtime, "");
+        tabs.close_welcome_tab();
+        tabs.new_untitled_tab(&runtime);
+        tabs.new_untitled_tab(&runtime);
+        let count_before = tabs.len();
+        ensure_pom_tab_present(&mut tabs, &runtime);
+        assert_eq!(
+            tabs.len(),
+            count_before + 1,
+            "must prepend a POM tab when none exists"
+        );
+        assert_eq!(
+            tabs.tabs()[0].kind,
+            TabKind::PrimaryOptionMenu,
+            "POM must be at index 0"
+        );
+    }
+
+    /// Validates: Requirement 14.3 -- returned true signals caller to persist registry.
+    /// Validates: Requirement 14.5 -- fallback path is used when home_path is provided.
     #[test]
     fn home_catalog_uses_provided_path() {
         // Validates: Requirement 14.3, 14.5

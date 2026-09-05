@@ -1095,6 +1095,23 @@ Colour values are defined by theme element colours (not config keys) — see `ff
 
 ---
 
+## Mouse Selection Design (Requirements 13-14)
+
+### Mouse Selection in the Editor Canvas
+
+The editor canvas renders text via `ui.painter()` calls -- egui's built-in selection machinery does not apply. A custom selection layer is required in `ff-desktop`'s editor panel render loop:
+
+- **State**: `canvas_selection: Option<(DocPos, DocPos)>` on `TabState` -- anchor and end as (line, col) pairs.
+- **Input handling**: `egui::Response::drag_started()`, `drag_delta()`, `drag_released()` on the canvas `Rect`. Screen coordinates are converted to (line, col) using the viewport's `top_line`, `line_height`, and `char_width`.
+- **Rendering**: For each visible line that intersects the selection range, a filled `Rect` is drawn behind the text using `SelectionBack` colour from the active theme.
+- **Ctrl+C**: Detected in the editor panel's key-event loop. When `canvas_selection` is `Some`, the selected text is extracted from the document model and written to the OS clipboard via `ff-clipboard`.
+
+### Read-Only Panel Selectability (Requirement 14)
+
+For POM, Settings, and status bar panels, the change is minimal: replace `ui.label(text)` calls with `ui.label(egui::RichText::new(text)).selectable(true)` (or use `egui::SelectableLabel`). egui handles selection and Ctrl+C automatically for these widgets. No custom code is needed beyond the widget swap.
+
+---
+
 ## Design Decisions and Rationale
 
 ### Decision 1: Query-Based API (No Retained Render State)

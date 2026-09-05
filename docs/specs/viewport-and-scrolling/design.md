@@ -919,10 +919,16 @@ pub enum ViewportError {
 - **Dependency direction**: ff-edit-operations may consume viewport state for cursor-relative operations
 - **Integration**: The editor session coordinates between edit-operations (which moves cursor) and viewport-scrolling (which scrolls to follow). The session calls `CaretPolicyEngine::compute_vertical_scroll()` after each cursor move
 
-### With `ff-startup-and-session` (Wave 8 — downstream consumer)
+### With `ff-startup-and-session` (Wave 8 -- downstream consumer)
 
 - **Dependency direction**: ff-startup-and-session consumes `ViewportSnapshot` for persistence
 - **Integration**: On file close, the session serialises `ViewportSnapshot`. On file reopen, it calls `restore()` with the saved snapshot
+
+### With `ff-desktop` shell scroll amount (CR-NR-035)
+
+- **Dependency direction**: `ff-desktop` `editor_panel.rs` reads `WorkbenchShell.scroll_amount` when handling Page Up/Down key events
+- **Integration**: The shell already owns a `ScrollAmount` value (PAGE/HALF/CSR/MAX/DATA/N) persisted in the `SCROLL ===>` field. The editor panel's Page Up/Down handler must read this value and compute the scroll delta accordingly before calling the viewport scroll methods. No new crate dependency is introduced -- this is a wiring change in `ff-desktop` only.
+- **Design decision**: The `ScrollAmount` enum and its `lines_for_page` helper already exist in `ff-desktop/src/scroll_amount.rs` from Phase BZ. The editor panel receives the scroll amount as a parameter from the shell render call, or reads it from the shared shell state. No architectural change to `ff-viewport-scrolling` is required -- the crate already exposes `scroll_to_line`, `scroll_page_down`, `scroll_page_up`, and `scroll_line_down`/`up` which are sufficient to implement all scroll amount variants.
 
 ### Dependency Direction Summary
 

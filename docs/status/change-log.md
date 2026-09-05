@@ -33,7 +33,7 @@ New capabilities that did not previously exist.
 - **Date/Phase**: Phase AS
 - **Prompt**: "opetion 2 needs to be a file Exploere. it should have nodes for each open catalog, and list the files that belong in the catalog in a tree view. Option 2 can be invoked by typing =files and pressing enter, Typeing =2 and pressing enter"
 - **Description**: POM option 2 becomes a File Explorer panel showing all open catalogs as tree nodes with their files listed beneath. Commands `=2` and `=FILES` close the current context and switch to the Files context in-place; `FILES` (no `=`) opens a new tab in the Files context.
-- **Status**: PENDING GATE
+- **Status**: DONE -- superseded and implemented by Phase AS (File Explorer Panel)
 - **Linked spec**: `docs/specs/startup-and-session/requirements.md` Requirement 19
 
 ### CR-NR-004 â€” Default Native catalog pointing to user home directory on first launch
@@ -108,7 +108,7 @@ Modifications to existing behaviour that already works.
 - **Prompt**: "opetion 2 needs to be a file Exploere..."
 - **Description**: POM option 2 label updated from "View Edit Create and Delete of files" to "File Explorer â€” Browse catalogs and files in a tree view".
 - **Affects**: `ff-desktop` `primary_option_menu.rs`, `startup-and-session/requirements.md`
-- **Status**: PENDING GATE
+- **Status**: DONE -- implemented by Phase AS/AC (POM option 2 relabelled)
 
 ### CR-CH-003 â€” Help fallback message uses human-readable context label
 - **Date/Phase**: Phase AV
@@ -146,7 +146,7 @@ Modifications to existing behaviour that already works.
 - **Date/Phase**: Phase BB
 - **Prompt**: "The files list displays in no particular order, we should sort the file by filename order. We should also see more than just the file name but some of the file attributes, like file size, Timestamp created, timestamp Modified, Timestamp accessed. Also perhaps some of the other attributes like the permission attributes in a user friendly way?"
 - **Description**: Native catalog file and directory nodes in the File Explorer shall be sorted alphabetically (directories first, then files, both case-insensitive). Each file node shall display file size, created timestamp, modified timestamp, accessed timestamp, and permission attributes (read/write/execute, hidden, system) in a user-friendly format alongside the file name.
-- **Status**: PENDING GATE
+- **Status**: DONE -- implemented by Phase BB (sorted listing with file attributes)
 - **Linked spec**: `docs/specs/file-tree-panel/requirements.md` (new Requirement 18)
 
 ### CR-NR-013 â€” Native File Browser: egui-file-dialog Integration
@@ -167,8 +167,8 @@ Modifications to existing behaviour that already works.
 - **Date/Phase**: Phase BQ
 - **Prompt**: "You are acting as a Senior Product Architect, Requirements Engineer, UX Architect, and Software Platform Designer... Perform a comprehensive review of the supplied requirements..."
 - **Description**: Comprehensive review of all 65 sub-project specifications. Deliverables: inventory, terminology map, domain classification, gap analysis, rewritten requirements catalogue, traceability matrix, consolidation report, and executive assessment. Work is broken into 10 tasks tracked under `docs/reviews/requirements-review/`.
-- **Status**: IN PROGRESS — Task 1 (Inventory) complete
-- **Linked spec**: `docs/reviews/requirements-review/inventory.md` (Task 1 complete)
+- **Status**: DONE -- Phase BQ complete, all 10 tasks done, 8 artefacts delivered
+- **Linked spec**: `docs/reviews/requirements-review/` (all 10 output files complete)
 
 ### CR-NR-015 status update — Tasks 1-4 complete
 - Tasks 1 (Inventory), 2 (Terminology), 3 (Domain Classification), 4 (Gap Analysis) are DONE.
@@ -184,14 +184,14 @@ Modifications to existing behaviour that already works.
 - **Date/Phase**: Phase BV
 - **Prompt**: "Proceed with the requirements gate" (following architectural analysis of CatalogMount having no location/transport discriminant)
 - **Description**: Add a `CatalogLocation` enum to `CatalogMount` in `ff-dscatalog` so that each mounted catalog declares whether its database and repository are on the local filesystem (`Local { path }`) or accessed via a registered VFS connector (`Remote { scheme, uri }`). Only `Local` is implemented today; `Remote` parses and stores but returns `UnsupportedOperation` until a connector implements it. The TOML `[[catalog.mounted_catalogs]]` schema gains a `location` discriminant field. This keeps the remote-catalog door open without building speculative network code.
-- **Status**: IN PROGRESS
+- **Status**: DONE -- Phase BV complete, CatalogLocation enum added to ff-dscatalog
 - **Linked spec**: `docs/specs/dataset-catalog/requirements.md` (new Requirement 31)
 
 ### CR-NR-016 - Mainframe Dataset Architecture and Virtual File/Dataset Storage Requirements
 - **Date/Phase**: Phase BS (next)
 - **Prompt**: "i have two new markdown files for this project defining how the mainframe dataset and posix catalogs should work and how mainframe files will be emulated..."
 - **Description**: Two new architecture documents define: (1) record-oriented storage for PS/PDS/PDSE/GDG/VSAM/ISAM with no CRLF/LF record boundaries; (2) hybrid storage — SQLite as catalogue, native files for sequential/library content; (3) StorageProvider abstraction layer separate from VfsProvider; (4) record codecs (F, FB, V, VB, U, binary) as independent components; (5) UUID-based physical object layout; (6) staged transaction protocol for cross-resource consistency; (7) VSAM KSDS/RRDS/ESDS and ISAM support; (8) integrity manifests, workspace backup/restore; (9) security path-traversal guards and audit trail; (10) POSIX files remain native with no SQLite BLOB storage.
-- **Status**: IN PROGRESS
+- **Status**: DONE -- Phase BS complete (BS.1-BS.15), all 15 deliverables implemented and tested
 - **Linked spec**: `docs/specs/dataset-catalog/requirements.md` (new Requirements 16-30), `docs/specs/virtual-file-system/requirements.md` (new Requirements 9-12)
 
 ### CR-NR-018 -- MiniX/FTSO Command Environment rationalisation and EARS integration
@@ -217,7 +217,7 @@ Modifications to existing behaviour that already works.
   `shell/update.rs`, `dataset_alloc_dialog.rs`, `session_manager.rs`;
   `docs/specs/virtual-catalog-manager/requirements.md` Req 13, 16;
   `docs/specs/virtual-catalog-manager/design.md` sections 7, 10
-- **Status**: IN PROGRESS
+- **Status**: DONE -- Phase BU complete (BU.1-BU.9), SQLite integration live
 
 ### CR-NR-019 -- Phase BW: edit-operations EARS integration (CAPS, NULLS, PROFILE, SUBMIT, CREATE, REPLACE, BROWSE, VIEW, nested EDIT, COMPARE, LOCK, STATS)
 - **Date/Phase**: Phase BW
@@ -307,8 +307,22 @@ Modifications to existing behaviour that already works.
 - **Date/Phase**: Phase CJ
 - **Prompt**: "I want to make it easy for somebody who wants to download and build the FileForgeWorkbench project to do so. I want to provide them with a set of scripts to run either in Windows, Linux or Macintosh"
 - **Description**: Add a `bootstrap/` folder at the repository root containing three platform-specific scripts (Windows PowerShell, Linux bash, macOS bash) that download and install the Rust stable toolchain into a user-level location (`C:\tools\rust` on Windows, `~/.tools/rust` on Unix) without requiring admin rights, then verify the build. A README guides the user from `git clone` to `cargo build`.
-- **Status**: IN PROGRESS
+- **Status**: DONE -- Phase CJ complete, bootstrap/ scripts for Windows/Linux/macOS
 - **Linked spec**: `docs/specs/bootstrap-scripts/requirements.md` (new sub-project)
+
+### CR-NR-033 -- FFTest Automated Dialog Testing Framework
+- **Date/Phase**: Phase CK (pre-gate)
+- **Prompt**: "i have created a new requirement for this project the requirement is discussed in: FileForgeWorkbench-Automated-Dialog-Testing-Framework.md Examine this file with a view to incorporate it into the FileForgeWorkbench developement."
+- **Description**: Introduce a native FFTest Automated Dialog Testing Framework covering 25 EARS requirements (FFTEST-001 to FFTEST-025). The framework provides: (1) a human-readable FFTest scripting language for dialog automation; (2) stable automation identifiers on every UI control; (3) recording and playback of user interactions; (4) headless execution for CI/CD pipelines; (5) HTML and JSON test reports; (6) visual regression screenshot comparison; (7) plugin dialog testing support; (8) command-layer testing without loading the GUI; (9) cross-platform execution on Windows, Linux, and macOS. The requirement also mandates that not less than 90% of business logic testing can be performed without the GUI loaded. This is a new sub-project `automated-dialog-testing` and a new crate `ff-fftest`. The work is broken into 4 phases: Phase CK-1 (requirements and design gate), Phase CK-2 (automation ID infrastructure), Phase CK-3 (FFTest script engine), Phase CK-4 (headless runner and reporting).
+- **Status**: DONE -- Phase CK complete (CK.1-CK.4), ff-fftest crate wired, 429 tests passing
+- **Linked spec**: `docs/specs/automated-dialog-testing/requirements.md` (new sub-project)
+
+### CR-CH-007 -- POM guaranteed on startup even when session has no POM tab
+- **Date/Phase**: Phase CL
+- **Prompt**: "Regarding bug B0001, i think there might be a conflict in the requirements somewhere... if it was shut down without a POM, it should always open with a pom and all other windows that where open"
+- **Description**: Amend Requirement 14.1 in startup-and-session/requirements.md to add a third case: when a saved session exists but contains no POM tab, the workbench SHALL restore all saved tabs AND prepend a new POM tab at index 0. The existing two cases (first launch = single POM tab; session with POM = restore exactly) are unchanged. This resolves B001 without discarding the user's other open tabs.
+- **Affects**: `ff-desktop` `shell/update.rs` (startup block); `startup-and-session/requirements.md` Req 14.1; `startup-and-session/tasks.md`; `docs/quality/TCR.md`
+- **Status**: DONE -- Phase CL complete, 589 tests passing, B001 FIXED
 
 ### CR-NR-031 -- Phase CI: command-semantics P2 EARS integration (OUTPUT, CANCEL, SEND, PROFILE, PRINTDS)
 - **Date/Phase**: Phase CI
@@ -316,3 +330,54 @@ Modifications to existing behaviour that already works.
 - **Description**: Adds 5 new EARS-derived criteria to command-semantics/requirements.md as Requirement 10: OUTPUT command routing to FFW-JES for job output display (TSO-CMD-10), CANCEL command with optional PURGE operand routing to FFW-JES (TSO-CMD-11), SEND command with USER/LOGON/BROADCAST routing to messaging subsystem (TSO-CMD-12), PROFILE command routing to session profile subsystem with MSGID/INTERCOM/NOINTERCOM/PREFIX/SIZE/WTPMSG operands (TSO-CMD-13), and PRINTDS command routing to file-operations pipeline (TSO-CMD-14). Adds Tasks 25-27. Completes EI-5.16 (final EARS integration batch).
 - **Status**: DONE -- gate complete, Requirement 10 added, Tasks 25-27 added, TCR rows added, Phase CI added to project-master
 - **Linked spec**: `docs/specs/command-semantics/requirements.md` (new Requirement 10)
+
+### CR-NR-034 -- Mouse Text Selection and Clipboard Copy in Editor Canvas and Read-Only Panels
+- **Date/Phase**: Phase CM (pre-gate)
+- **Prompt**: "In ispf i can at any time select any text in a the window and copy the text to paste into other tools like word or notepad... if it is i would like the same functionality availble in FFWB.. Currently it is not possible in FFWB"
+- **Description**: Add mouse-driven text selection (click-drag) and Ctrl+C copy to the OS clipboard in the FFWB editor canvas. The editor currently renders text via custom painter calls with no egui selection machinery, so a custom selection layer must be added: track mouse-down/drag to (line, col) coordinates, render a highlight rect behind selected text, and on Ctrl+C extract the selected text and write it to the OS clipboard via ff-clipboard. As a secondary deliverable, read-only panels (POM, Settings, status bar) shall use egui selectable labels so their text can be selected and copied with zero custom code.
+- **Status**: DONE -- Phase CM complete (CM.1 editor drag-select + Ctrl+C, CM.2 selectable labels in POM/Settings/status bar)
+- **Linked spec**: `docs/specs/caret-and-selection/requirements.md` (new Requirement 13), `docs/specs/clipboard-operations/requirements.md` (new Requirement 20)
+
+### CR-NR-035 -- Editor SCROLL field wired to editor Page Up/Down behaviour
+- **Date/Phase**: Phase CN (pre-gate)
+- **Prompt**: "The editor window in ispf looks something like: [diagram showing SCROLL ===> CSR right-aligned on the command line]. Scroll can be set to CSR or PAGE or a numeric value. This controls how paging in the editor works. FFWB does not have this? We need to add this"
+- **Description**: The SCROLL ===> field already exists in the shell command area (Phase BZ, Req 19.1-19.3) and persists a ScrollAmount value. However the editor panel Page Up/Down keys currently always scroll by a fixed visible_count (one full page). The editor must read the active ScrollAmount and apply it: PAGE = full visible_count, HALF = visible_count/2, CSR = scroll to cursor line, a numeric value N = scroll exactly N lines. The SCROLL field must also be visible and editable when an editor tab is active.
+- **Status**: DONE -- Phase CN complete (CN.1), scroll_by_amount helper wired, all ScrollAmount variants handled, 5 unit tests, all workspace tests pass
+- **Linked spec**: `docs/specs/viewport-and-scrolling/requirements.md` (new criterion), `docs/specs/menu-and-statusbar/requirements.md` Req 19.1-19.3 (field display already covered)
+
+### CR-CH-008 -- Phase BR Requirements Maintenance
+- **Date/Phase**: Phase BR
+- **Prompt**: "Proceed with BR"
+- **Description**: Requirements maintenance sprint completing the five actions recommended by the Phase BQ executive assessment: (1) CA-01 -- fix compiler-toolchain-integration/tasks.md requirement annotations from old Req 15.x/16.x/17.x/18.x numbering to correct Req 1.x/2.x/3.x/4.x; (2) CA-02 -- add Requirement 5 (Generic ToolchainPlugin Extension Point, FR-0971) to compiler-toolchain-integration/requirements.md and tasks.md; (3) rename docs/specs/FFW-JES/ to docs/specs/jes-emulator/ and update all references; (4) mark B009 SUPERSEDED in bugs.md; (5) update CR-NR-035 to DONE in change-log.md.
+- **Affects**: `docs/specs/compiler-toolchain-integration/tasks.md`, `docs/specs/compiler-toolchain-integration/requirements.md`, `docs/specs/jes-emulator/` (renamed from FFW-JES), `.amazonq/rules/specs.md`, `docs/status/bugs.md`, `docs/status/change-log.md`, `docs/specs/project-master/tasks.md`
+- **Status**: DONE
+
+### CR-NR-036 -- Workspace Model
+- **Date/Phase**: Phase BS
+- **Prompt**: "proceed with phase BS"
+- **Description**: Introduce a Workspace Model: a named, persistable grouping of root directories
+  with workspace-scoped settings, a per-workspace MRU list, and a `.ffwb-workspace` TOML file
+  format. Implements WORKSPACE OPEN/SAVE/SAVE AS/CLOSE commands, root management, configuration
+  layer injection, and session persistence. Foundational prerequisite for Command Palette and
+  Global Search scoping.
+- **Status**: PENDING GATE -- gate complete, awaiting implementation approval
+- **Linked spec**: `docs/specs/workspace-model/requirements.md` (new sub-project, Req 1-6)
+
+### CR-NR-037 -- Command Palette
+- **Date/Phase**: Phase BS
+- **Prompt**: "proceed with phase BS"
+- **Description**: Add a Command Palette (Ctrl+Shift+P) -- a modal fuzzy-search overlay over all
+  registered commands. Displays command name, category, description, and bound shortcut. Executes
+  commands via the existing Command_Dispatch. Persists recent commands in session state.
+- **Status**: PENDING GATE -- gate complete, awaiting implementation approval
+- **Linked spec**: `docs/specs/command-palette/requirements.md` (new sub-project, Req 1-5)
+
+### CR-NR-038 -- Global Search (Cross-File Search and Replace)
+- **Date/Phase**: Phase BS
+- **Prompt**: "proceed with phase BS"
+- **Description**: Add Global Search (Ctrl+Shift+F): cross-file search and replace across all
+  workspace roots or mounted Native catalogs. New `ff-global-search` crate reuses FindEngine for
+  per-file matching. Results streamed to a Search Results panel (TabKind::SearchResults). Cross-file
+  replace with preview and per-file undo support.
+- **Status**: PENDING GATE -- gate complete, awaiting implementation approval
+- **Linked spec**: `docs/specs/global-search/requirements.md` (new sub-project, Req 1-6)

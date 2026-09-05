@@ -74,6 +74,11 @@ impl WorkbenchShell {
                 // single-line TextEdit (egui 0.29 surrenders focus on Enter).
                 // Also check has_focus() as a fallback for frames where focus is retained.
                 let field_has_focus = response.has_focus() || response.lost_focus();
+                // Validates: Requirement 2.5 -- register command field state for automation.
+                self.automation.register_str(
+                    crate::automation::ids::COMMAND_FIELD,
+                    crate::automation::ControlState::with_value(&self.command_text),
+                );
                 if field_has_focus
                     && ctx.input(|i| i.key_pressed(egui::Key::Enter))
                     && !self.command_text.is_empty()
@@ -183,7 +188,7 @@ impl WorkbenchShell {
 
     // ── Status bar ───────────────────────────────────────────────────────
 
-    pub(super) fn render_status_bar(&self, ctx: &egui::Context) {
+    pub(super) fn render_status_bar(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 let phase_label = match self.app.phase() {
@@ -192,23 +197,30 @@ impl WorkbenchShell {
                     LifecyclePhase::ShuttingDown => "SHUTTING DOWN",
                     LifecyclePhase::Terminated => "TERMINATED",
                 };
-                ui.label(phase_label);
+                // Validates: Requirement 14.3 -- selectable status bar text
+                ui.add(egui::SelectableLabel::new(false, phase_label));
                 ui.separator();
 
                 // Validates: Requirement 20.1 -- session start timestamp
-                ui.label(self.format_session_start());
+                ui.add(egui::SelectableLabel::new(
+                    false,
+                    self.format_session_start(),
+                ));
                 ui.separator();
 
                 let tab = self.tabs.active_tab();
                 let line = tab.cursor.cursor_line();
                 let col = tab.cursor.cursor_column();
                 // Requirement 7.1: format "Ln {line}, Col {col}" (1-based)
-                ui.label(format!("Ln {line}, Col {col}"));
+                ui.add(egui::SelectableLabel::new(
+                    false,
+                    format!("Ln {line}, Col {col}"),
+                ));
                 ui.separator();
                 // Requirement 7.3: real encoding from document
-                ui.label(tab.encoding_label());
+                ui.add(egui::SelectableLabel::new(false, tab.encoding_label()));
                 ui.separator();
-                // Requirement 7.1 (view-zoom) — zoom indicator when non-zero
+                // Requirement 7.1 (view-zoom) -- zoom indicator when non-zero
                 {
                     use ff_zoom::ZoomIndicatorState;
                     if let ZoomIndicatorState::Visible { text, .. } =
@@ -219,11 +231,14 @@ impl WorkbenchShell {
                     }
                 }
                 // Requirement 7.4: real line count
-                ui.label(format!("{} lines", tab.line_count));
+                ui.add(egui::SelectableLabel::new(
+                    false,
+                    format!("{} lines", tab.line_count),
+                ));
                 ui.separator();
                 // Requirement 6.5: modified indicator
                 if tab.is_modified {
-                    ui.colored_label(to_egui_color(self.palette.editor.accent), "●");
+                    ui.colored_label(to_egui_color(self.palette.editor.accent), "\u{25cf}");
                     ui.separator();
                 }
                 // Req 16.3: CAPS mode indicator
@@ -235,10 +250,24 @@ impl WorkbenchShell {
                 if let Some(err) = &self.open_error {
                     ui.colored_label(egui::Color32::RED, err);
                     ui.separator();
+                    // Validates: Requirement 2.5 -- register error message for automation.
+                    self.automation.register_str(
+                        crate::automation::ids::STATUSBAR_MESSAGE,
+                        crate::automation::ControlState::with_value(err.as_str()),
+                    );
+                } else {
+                    self.automation.register_str(
+                        crate::automation::ids::STATUSBAR_MESSAGE,
+                        crate::automation::ControlState::with_value(""),
+                    );
                 }
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label("FileForge Workbench v0.1.0");
+                    // Validates: Requirement 14.3 -- selectable version label
+                    ui.add(egui::SelectableLabel::new(
+                        false,
+                        "FileForge Workbench v0.1.0",
+                    ));
                 });
             });
         });
@@ -329,6 +358,19 @@ impl WorkbenchShell {
                     &mut self.file_explorer_panel,
                     &self.files_panel.registry,
                     &self.files_panel,
+                    self.active_workspace
+                        .as_ref()
+                        .map(|ws| {
+                            let root_names: Vec<String> = ws
+                                .roots
+                                .iter()
+                                .filter_map(|r| r.file_name())
+                                .map(|n| n.to_string_lossy().into_owned())
+                                .collect();
+                            (ws.name.as_str(), root_names)
+                        })
+                        .as_ref()
+                        .map(|(name, names)| (*name, names.as_slice())),
                 )
             });
             // Persist sidebar width from the state (updated inside render())
@@ -589,6 +631,7 @@ impl WorkbenchShell {
                     }
                     TabKind::FileEditor | TabKind::Untitled => {
                         let tab_id = self.tabs.active_tab().id;
+                        let scroll_amount = self.scroll_amount.clone();
                         let tab = self.tabs.active_tab_mut();
                         if let Some(err) = editor_panel::render(
                             ui,
@@ -597,6 +640,7 @@ impl WorkbenchShell {
                             &mut self.cmd_engine,
                             &mut self.exclude_manager,
                             tab_id,
+                            &scroll_amount,
                         ) {
                             self.open_error = Some(err);
                         }
@@ -609,6 +653,68 @@ impl WorkbenchShell {
                             &self.config_handle,
                         );
                     }
+                    TabKind::SearchResults => {
+                        // Validates: global-search Requirement 1.1, 4.1
+                        let roots = collect_search_roots(
+                            &self.files_panel.registry,
+                            self.active_workspace.as_ref(),
+                        );
+                        let outcome = crate::search_results_panel::render(
+                            ui,
+                            &mut self.search_results_panel,
+                            &roots,
+                            &self.runtime,
+                        );
+                        match outcome {
+                            crate::search_results_panel::SearchPanelOutcome::OpenMatch {
+                                path,
+                                line,
+                            } => {
+                                if let Err(e) = self.tabs.open_file(&path, &self.runtime) {
+                                    self.open_error = Some(e);
+                                } else {
+                                    // Scroll to the matching line.
+                                    let idx = self.tabs.active_index();
+                                    if let Some(tab) = self.tabs.tabs_mut().get_mut(idx) {
+                                        tab.viewport.scroll_to_line(
+                                            line.saturating_sub(1).max(1),
+                                            &tab.cursor.clone(),
+                                        );
+                                    }
+                                }
+                            }
+                            crate::search_results_panel::SearchPanelOutcome::ReplaceAll => {
+                                let unsaved: Vec<String> = self
+                                    .tabs
+                                    .tabs()
+                                    .iter()
+                                    .filter(|t| t.is_modified)
+                                    .filter_map(|t| t.path.clone())
+                                    .collect();
+                                let req = self.search_results_panel.build_request(roots).ok();
+                                if let Some(r) = req {
+                                    let results = self.search_results_panel.results.clone();
+                                    match ff_global_search::GlobalReplaceEngine::replace_all(
+                                        &results,
+                                        &r,
+                                        &self.search_results_panel.replace_text.clone(),
+                                        &unsaved,
+                                    ) {
+                                        Ok((summary, _conflicts)) => {
+                                            self.open_error = Some(format!(
+                                                "Replaced {} occurrence(s) in {} file(s)",
+                                                summary.replacements, summary.files_modified
+                                            ));
+                                        }
+                                        Err(e) => {
+                                            self.open_error = Some(format!("Replace failed: {e}"));
+                                        }
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
                     TabKind::FileExplorerPanel => {
                         // Rendered above in the is_file_explorer block — unreachable here
                     }
@@ -619,6 +725,29 @@ impl WorkbenchShell {
 }
 
 // === Helpers ================================================================
+
+/// Collect search root paths from the active workspace or mounted Native catalogs.
+///
+/// Validates: global-search Requirement 2.4
+fn collect_search_roots(
+    registry: &crate::catalog_registry::CatalogRegistry,
+    workspace: Option<&ff_session::WorkspaceState>,
+) -> Vec<String> {
+    if let Some(ws) = workspace {
+        if !ws.roots.is_empty() {
+            return ws
+                .roots
+                .iter()
+                .map(|p| p.to_string_lossy().into_owned())
+                .collect();
+        }
+    }
+    registry
+        .list_by_type(crate::catalog_registry::CatalogType::Native)
+        .iter()
+        .map(|c| c.path.clone())
+        .collect()
+}
 
 /// Resolve a Mainframe DSN to a physical path via the ff-desktop CatalogRegistry,
 /// creating the file on disk if it does not yet exist.

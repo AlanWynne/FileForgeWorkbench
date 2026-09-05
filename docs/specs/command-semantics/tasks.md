@@ -404,19 +404,19 @@ This is a **Wave 5 (Command Engine)** sub-project. It depends on `ff-command` (c
 
 ## Phase CI -- EARS Integration (Requirement 10)
 
-- [ ] 25. TSO P2 output and job management commands (OUTPUT, CANCEL)
-  - [ ] 25.1 Register `OUTPUT jobname [options]` command routing to FFW-JES subsystem for job output display/retrieval
-  - [ ] 25.2 Register `CANCEL jobname [PURGE]` command routing to FFW-JES subsystem; handle PURGE operand
-  - [ ] 25.3 Write unit tests for OUTPUT routing, CANCEL with/without PURGE, and argument parsing
+- [x] 25. TSO P2 output and job management commands (OUTPUT, CANCEL)
+  - [x] 25.1 Register `OUTPUT jobname [options]` command routing to FFW-JES subsystem for job output display/retrieval
+  - [x] 25.2 Register `CANCEL jobname [PURGE]` command routing to FFW-JES subsystem; handle PURGE operand
+  - [x] 25.3 Write unit tests for OUTPUT routing, CANCEL with/without PURGE, and argument parsing
   - Covers: Requirement 10.1, 10.2
 
-- [ ] 26. TSO P2 communication and profile commands (SEND, PROFILE, PRINTDS)
-  - [ ] 26.1 Register `SEND 'message' [USER(userid)|LOGON|BROADCAST]` command routing to messaging subsystem
-  - [ ] 26.2 Register `PROFILE [operands]` command routing to session profile subsystem; support MSGID/INTERCOM/NOINTERCOM/PREFIX/SIZE/WTPMSG operands
-  - [ ] 26.3 Register `PRINTDS DATASET(dsname) [options]` command routing to file-operations pipeline
-  - [ ] 26.4 Write unit tests for SEND routing variants, PROFILE operand parsing, and PRINTDS dataset argument
+- [x] 26. TSO P2 communication and profile commands (SEND, PROFILE, PRINTDS)
+  - [x] 26.1 Register `SEND 'message' [USER(userid)|LOGON|BROADCAST]` command routing to messaging subsystem
+  - [x] 26.2 Register `PROFILE [operands]` command routing to session profile subsystem; support MSGID/INTERCOM/NOINTERCOM/PREFIX/SIZE/WTPMSG operands
+  - [x] 26.3 Register `PRINTDS DATASET(dsname) [options]` command routing to file-operations pipeline
+  - [x] 26.4 Write unit tests for SEND routing variants, PROFILE operand parsing, and PRINTDS dataset argument
   - Covers: Requirement 10.3, 10.4, 10.5
 
-- [ ] 27. TCR update for Requirement 10
-  - [ ] 27.1 Update docs/quality/TCR.md -- mark all Req 10.1-10.5 rows as covered once tests pass
+- [x] 27. TCR update for Requirement 10
+  - [x] 27.1 Update docs/quality/TCR.md -- mark all Req 10.1-10.5 rows as covered once tests pass
   - Covers: Requirement 10 (all criteria)
