@@ -92,7 +92,27 @@ The full architectural rationale — GUI-independence principle, command-driven 
 
 ## Building
 
-**Prerequisites:** Rust stable toolchain (`rustup` recommended — https://rustup.rs). No other runtime dependencies are required.
+**Prerequisites:** Rust stable toolchain. If you do not have Rust installed,
+use the bootstrap scripts in `bootstrap/` -- they install everything without
+admin rights:
+
+```powershell
+# Windows
+powershell -ExecutionPolicy Bypass -File bootstrap\bootstrap-windows.ps1
+```
+
+```bash
+# Linux
+bash bootstrap/bootstrap-linux.sh
+
+# macOS
+bash bootstrap/bootstrap-macos.sh
+```
+
+See [`bootstrap/README.md`](bootstrap/README.md) for full details, install
+paths, and options.
+
+Once Rust is installed:
 
 ```bash
 cargo build                        # debug build

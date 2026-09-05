@@ -15,6 +15,7 @@ Each sub-project folder contains up to three files:
 The following specs are available under `docs/specs/`:
 
 - asa-report-preview
+- bootstrap-scripts
 - auto-indentation
 - background-io
 - caret-and-selection

@@ -1494,3 +1494,35 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-command-semantics` | 🔴 | -- | Req 10.3: SEND 'message' [USER/LOGON/BROADCAST] routes to messaging subsystem |
 | `ff-command-semantics` | 🔴 | -- | Req 10.4: PROFILE [operands] routes to session profile subsystem |
 | `ff-command-semantics` | 🔴 | -- | Req 10.5: PRINTDS DATASET(dsname) routes to file-operations pipeline |
+
+### Phase CJ -- Bootstrap Scripts (CR-NR-032)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `bootstrap` | 🔴 | -- | Req 1.1: Windows script installs Rust stable into C:\tools\rust without admin rights |
+| `bootstrap` | 🔴 | -- | Req 1.2: Windows script skips install if rustc.exe already present |
+| `bootstrap` | 🔴 | -- | Req 1.3: Windows script verifies with rustc --version and cargo --version |
+| `bootstrap` | 🔴 | -- | Req 1.4: Windows script adds cargo\bin to user PATH via HKCU registry |
+| `bootstrap` | 🔴 | -- | Req 1.5: Windows script accepts -Root parameter |
+| `bootstrap` | 🔴 | -- | Req 1.6: Windows script prints Next Steps summary |
+| `bootstrap` | 🔴 | -- | Req 1.7: Windows script runs on PowerShell 5.1 without additional modules |
+| `bootstrap` | 🔴 | -- | Req 2.1: Linux script installs Rust stable into ~/.tools/rust without sudo |
+| `bootstrap` | 🔴 | -- | Req 2.2: Linux script skips install if rustc already present |
+| `bootstrap` | 🔴 | -- | Req 2.3: Linux script verifies with rustc --version and cargo --version |
+| `bootstrap` | 🔴 | -- | Req 2.4: Linux script appends PATH export to ~/.profile and ~/.bashrc |
+| `bootstrap` | 🔴 | -- | Req 2.5: Linux script prints Next Steps summary |
+| `bootstrap` | 🔴 | -- | Req 2.6: Linux script falls back to wget when curl is absent |
+| `bootstrap` | 🔴 | -- | Req 3.1: macOS script installs Rust stable into ~/.tools/rust without sudo |
+| `bootstrap` | 🔴 | -- | Req 3.2: macOS script skips install if rustc already present |
+| `bootstrap` | 🔴 | -- | Req 3.3: macOS script verifies with rustc --version and cargo --version |
+| `bootstrap` | 🔴 | -- | Req 3.4: macOS script appends PATH export to ~/.zshrc and ~/.bash_profile |
+| `bootstrap` | 🔴 | -- | Req 3.5: macOS script prints Next Steps summary |
+| `bootstrap` | 🔴 | -- | Req 3.6: macOS script warns if Xcode Command Line Tools absent but does not abort |
+| `bootstrap` | 🔴 | -- | Req 4.1: bootstrap/README.md describes each script, prerequisites, install paths, and run command |
+| `bootstrap` | 🔴 | -- | Req 4.2: README describes next steps: cargo build, cargo test, launch ffwb |
+| `bootstrap` | 🔴 | -- | Req 5.1: no script requires admin or root privileges |
+| `bootstrap` | 🔴 | -- | Req 5.2: all scripts are idempotent |
+| `bootstrap` | 🔴 | -- | Req 5.3: all scripts write a timestamped log to bootstrap/logs/ |
+| `bootstrap` | 🔴 | -- | Req 5.4: all scripts pass --no-modify-path to rustup-init |
+| `bootstrap` | 🔴 | -- | Req 5.5: all scripts install the stable toolchain targeting the host triple |
+| `bootstrap` | 🔴 | -- | Req 5.6: no script installs a non-stable toolchain unless explicitly requested |

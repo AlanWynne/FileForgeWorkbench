@@ -815,6 +815,19 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 - [ ] CH.impl FFW-JES P2: overtype, help, log/system panels, browse/print, SET P2 (Tasks 30-34 in FFW-JES/tasks.md)
 - [ ] CI.impl command-semantics P2: OUTPUT/CANCEL/SEND/PROFILE/PRINTDS (Tasks 25-27 in command-semantics/tasks.md)
 
+### Phase CJ -- Bootstrap Scripts (CR-NR-032)
+
+> Provides platform-specific scripts in `bootstrap/` that install the Rust
+> stable toolchain without admin rights and guide a new contributor from
+> `git clone` to a passing `cargo build` on Windows, Linux, and macOS.
+
+- [x] CJ.1 Create `bootstrap/` directory, `logs/.gitkeep`, `.gitignore` entry (Task 1-2)
+- [x] CJ.2 Write `bootstrap/bootstrap-windows.ps1` (Task 3)
+- [x] CJ.3 Write `bootstrap/bootstrap-linux.sh` (Task 4)
+- [x] CJ.4 Write `bootstrap/bootstrap-macos.sh` (Task 5)
+- [x] CJ.5 Write `bootstrap/README.md` (Task 6)
+- [x] CJ.6 Update root `README.md` Building section to reference `bootstrap/` (Task 7)
+
 ---
 
 ## Summary (updated after EI-6 -- all EARS gates complete)
@@ -826,4 +839,5 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 | `[ ]` Pending -- Stream 1 (dataset architecture) | BU.2-BU.9 (9 deliverables) |
 | `[ ]` Pending -- Stream 2 (EARS P1 implementation) | BW-CD (8 phases) |
 | `[ ]` Pending -- Stream 3 (EARS P2 implementation) | CE-CI (5 phases) |
+| `[ ]` Pending -- Phase CJ (bootstrap scripts) | 6 deliverables (CJ.1--CJ.6) |
 | Active work | ff-vfs.13 (next in Stream 1) or BW (next in Stream 2) |

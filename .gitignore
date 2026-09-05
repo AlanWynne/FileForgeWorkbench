@@ -34,6 +34,7 @@ TestData/Large_File-157653-records.txt
 
 # ── Script execution logs (ephemeral, see .amazonq/rules/script-output.md) ──
 tools/logs/
+bootstrap/logs/*.log
 
 # ── Temporary / scratch files ────────────────────────────────────────────────
 *.log

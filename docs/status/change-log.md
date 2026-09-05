@@ -303,6 +303,13 @@ Modifications to existing behaviour that already works.
 - **Status**: DONE -- gate complete, Requirement 18 added, Tasks 30-34 added, TCR rows added, Phase CH added to project-master
 - **Linked spec**: `docs/specs/FFW-JES/requirements.md` (new Requirement 18)
 
+### CR-NR-032 -- Bootstrap Scripts for new contributors
+- **Date/Phase**: Phase CJ
+- **Prompt**: "I want to make it easy for somebody who wants to download and build the FileForgeWorkbench project to do so. I want to provide them with a set of scripts to run either in Windows, Linux or Macintosh"
+- **Description**: Add a `bootstrap/` folder at the repository root containing three platform-specific scripts (Windows PowerShell, Linux bash, macOS bash) that download and install the Rust stable toolchain into a user-level location (`C:\tools\rust` on Windows, `~/.tools/rust` on Unix) without requiring admin rights, then verify the build. A README guides the user from `git clone` to `cargo build`.
+- **Status**: IN PROGRESS
+- **Linked spec**: `docs/specs/bootstrap-scripts/requirements.md` (new sub-project)
+
 ### CR-NR-031 -- Phase CI: command-semantics P2 EARS integration (OUTPUT, CANCEL, SEND, PROFILE, PRINTDS)
 - **Date/Phase**: Phase CI
 - **Prompt**: "Proceed with phase CI"
