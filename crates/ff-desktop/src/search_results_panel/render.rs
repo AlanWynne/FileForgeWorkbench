@@ -65,9 +65,7 @@ pub fn render(
         }
 
         // Cancel button while running.
-        if matches!(state.phase, SearchPhase::Running { .. })
-            && ui.button("Cancel").clicked()
-        {
+        if matches!(state.phase, SearchPhase::Running { .. }) && ui.button("Cancel").clicked() {
             if let SearchPhase::Running { ref cancel, .. } = state.phase {
                 cancel.cancel();
             }
