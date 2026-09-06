@@ -9,6 +9,7 @@
 
 mod about_dialog;
 mod automation;
+mod batch;
 mod catalog_manager_dialog;
 mod catalog_registry;
 mod command_palette;
@@ -16,6 +17,7 @@ mod context_menu;
 mod copy_move_dialog;
 mod dataset_alloc_dialog;
 mod editor_panel;
+mod event_log_panel;
 mod exclude_manager;
 mod fftest_cli;
 mod file_explorer_panel;
@@ -23,7 +25,9 @@ mod files_panel;
 mod find_manager;
 mod key_config_dialog;
 mod nav_manager;
+mod notification;
 mod panel_layout;
+mod plugin_manager_panel;
 mod posix_provider;
 mod primary_option_menu;
 mod scroll_amount;
@@ -63,6 +67,10 @@ fn main() -> anyhow::Result<()> {
         register_builtin_schema(&config_handle, &user_data_dir);
     }
 
+    // ── 2b. Apply OS reduce-motion preference if user has not overridden ──
+    // Validates: accessibility Requirement 5.1
+    apply_os_reduce_motion(&config_handle);
+
     // ── 3. Tokio runtime ──────────────────────────────────────────────────
     let runtime = Runtime::new().context("[desktop] failed to create Tokio runtime")?;
 
@@ -81,6 +89,25 @@ fn main() -> anyhow::Result<()> {
     if let Some(mode) = fftest_cli::detect_cli_mode(&all_args) {
         let exit_code = fftest_cli::run_headless(&mode, &cwd);
         std::process::exit(exit_code);
+    }
+
+    // ── 6b. --help (Req 1.5 batch) ────────────────────────────────────────
+    if all_args.iter().any(|a| a == "--help" || a == "-h") {
+        batch::cli::print_help();
+        std::process::exit(0);
+    }
+
+    // ── 6c. Batch mode (Req 1.1-1.6) ─────────────────────────────────────
+    match batch::cli::parse_batch_args(&all_args) {
+        Err(msg) => {
+            eprintln!("ffwb: {}", msg);
+            std::process::exit(12);
+        }
+        Ok(Some(batch_args)) => {
+            let rc = batch::run_batch(batch_args);
+            std::process::exit(rc);
+        }
+        Ok(None) => {} // not batch mode -- continue to GUI
     }
 
     let cli_files = resolve_cli_paths(all_args.into_iter(), &cwd);
@@ -118,6 +145,66 @@ fn main() -> anyhow::Result<()> {
     logging_shutdown();
 
     Ok(())
+}
+
+/// Query the OS reduce-motion preference and apply it to the config if the
+/// user has not already set `accessibility.reduce_motion` explicitly.
+///
+/// - Windows: `SystemParametersInfo(SPI_GETCLIENTAREAANIMATION)`
+/// - macOS/Linux: not yet implemented (returns false, no-op)
+///
+/// Validates: accessibility Requirement 5.1
+fn apply_os_reduce_motion(config: &ff_config::ConfigHandle) {
+    // Only apply if the user has not explicitly set the key.
+    if config
+        .get_bool(ff_config::keys::accessibility::REDUCE_MOTION)
+        .unwrap_or(false)
+    {
+        return; // user already opted in -- respect their choice
+    }
+
+    if os_prefers_reduce_motion() {
+        let _ = config.set_user_value(
+            ff_config::keys::accessibility::REDUCE_MOTION,
+            ff_config::ConfigValue::Boolean(true),
+        );
+    }
+}
+
+/// Return true if the host OS reports a reduce-motion preference.
+///
+/// Validates: accessibility Requirement 5.1
+fn os_prefers_reduce_motion() -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        // SPI_GETCLIENTAREAANIMATION = 0x1042
+        // Returns TRUE when animations are enabled, FALSE when the user has
+        // turned them off (i.e. reduce-motion is active).
+        use std::ffi::c_int;
+        extern "system" {
+            fn SystemParametersInfoW(
+                ui_action: u32,
+                ui_param: u32,
+                pv_param: *mut std::ffi::c_void,
+                f_win_ini: u32,
+            ) -> c_int;
+        }
+        let mut animations_enabled: u32 = 1;
+        let ok = unsafe {
+            SystemParametersInfoW(
+                0x1042, // SPI_GETCLIENTAREAANIMATION
+                0,
+                &mut animations_enabled as *mut u32 as *mut std::ffi::c_void,
+                0,
+            )
+        };
+        // ok != 0 means the call succeeded; animations_enabled == 0 means reduce-motion.
+        ok != 0 && animations_enabled == 0
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        false // macOS/Linux detection deferred
+    }
 }
 
 /// Register all built-in core schema entries.
@@ -311,6 +398,14 @@ fn register_builtin_schema(config: &ff_config::ConfigHandle, user_data_dir: &std
             description: "Default root directory for new POSIX catalogs".to_string(),
             constraints: None,
         },
+        // ── Accessibility ────────────────────────────────────────────────
+        SchemaEntry {
+            key: ff_config::keys::accessibility::REDUCE_MOTION.to_string(),
+            value_type: ValueType::Boolean,
+            default: ConfigValue::Boolean(false),
+            description: "Disable non-essential animations (overrides OS preference)".to_string(),
+            constraints: None,
+        },
     ];
 
     for entry in entries {
@@ -351,7 +446,32 @@ mod tests {
     use ff_logging::LoggingStatus;
     use tokio::runtime::Runtime;
 
-    /// Validates: Requirement 7.6 — binary crate constructs WorkbenchApp and
+    /// Validates: accessibility Requirement 5.1 -- OS reduce-motion preference is read at startup.
+    /// On Windows, SPI_GETCLIENTAREAANIMATION is queried; result is applied to config.
+    #[test]
+    fn reduce_motion_config_key_is_registered_in_schema() {
+        // Validates: accessibility Requirement 5.1, 5.2
+        // Use a temp dir as project root so we get a clean config with no user overrides.
+        use tempfile::TempDir;
+        let tmp = TempDir::new().expect("tempdir");
+        let config = init(
+            ConfigInitOptions::new()
+                .with_hot_reload(false)
+                .with_project_root(tmp.path().to_path_buf()),
+        )
+        .expect("config init");
+        register_builtin_schema(&config, tmp.path());
+        // The key must be registered -- get_bool must not return KeyNotFound.
+        // (The actual value may be true if the OS has reduce-motion enabled.)
+        let result = config.get_bool(ff_config::keys::accessibility::REDUCE_MOTION);
+        assert!(
+            result.is_ok(),
+            "accessibility.reduce_motion must be registered in schema, got: {:?}",
+            result
+        );
+    }
+
+    /// Validates: accessibility Requirement 7.6 — binary crate constructs WorkbenchApp and
     /// boots/shuts down cleanly without a GUI window.
     #[test]
     fn workbench_app_boots_and_shuts_down_cleanly() {

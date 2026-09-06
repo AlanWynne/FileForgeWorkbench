@@ -78,9 +78,13 @@ pub mod event;
 /// Configuration key constants (theme.* namespace).
 pub mod keys;
 
+/// WCAG contrast checking for theme palettes.
+pub mod contrast;
+
 // ─── Public API Re-exports ──────────────────────────────────────────────────
 
 pub use colour::ColourRGBA;
+pub use contrast::{check_theme_contrast, ContrastWarning};
 pub use design_tokens::{
     AnimationDef, AnimationLevel, AnimationScale, BorderRadiusScale, DesignTokens, RadiusLevel,
     ShadowDef, ShadowLevel, ShadowScale, SpacingLevel, SpacingScale,

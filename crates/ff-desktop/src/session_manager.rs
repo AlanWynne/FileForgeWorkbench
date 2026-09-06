@@ -107,7 +107,9 @@ impl SessionManager {
                 TabKind::PrimaryOptionMenu
                 | TabKind::Untitled
                 | TabKind::SettingsPanel
-                | TabKind::SearchResults => None,
+                | TabKind::SearchResults
+                | TabKind::PluginManager
+                | TabKind::EventLog => None,
             })
             .collect();
 
@@ -120,7 +122,9 @@ impl SessionManager {
                 | TabKind::Untitled
                 | TabKind::SettingsPanel
                 | TabKind::FileExplorerPanel
-                | TabKind::SearchResults => None,
+                | TabKind::SearchResults
+                | TabKind::PluginManager
+                | TabKind::EventLog => None,
             }
         };
         // Note: FileExplorerPanel active_tab_id is None (no URI to track)
@@ -198,7 +202,9 @@ impl SessionManager {
                 TabKind::PrimaryOptionMenu
                 | TabKind::Untitled
                 | TabKind::SettingsPanel
-                | TabKind::SearchResults => None,
+                | TabKind::SearchResults
+                | TabKind::PluginManager
+                | TabKind::EventLog => None,
             })
             .collect();
 
@@ -211,7 +217,9 @@ impl SessionManager {
                 | TabKind::Untitled
                 | TabKind::SettingsPanel
                 | TabKind::FileExplorerPanel
-                | TabKind::SearchResults => None,
+                | TabKind::SearchResults
+                | TabKind::PluginManager
+                | TabKind::EventLog => None,
             }
         };
 
@@ -555,5 +563,37 @@ mod tests {
             (loaded.file_explorer_sidebar_width - 350.0).abs() < f32::EPSILON,
             "sidebar_width must survive round-trip"
         );
+    }
+
+    // Validates: global-search Requirement 6.2 -- search history persisted in session
+    #[test]
+    fn search_history_round_trips_through_session() {
+        let tmp = TempDir::new().expect("tempdir");
+        let mgr = SessionManager::with_path(make_session_file(&tmp));
+
+        let history = vec![
+            "fn main".to_string(),
+            "TODO".to_string(),
+            "use std".to_string(),
+        ];
+        let state = ff_session::SessionState {
+            search_history: history.clone(),
+            ..ff_session::SessionState::empty()
+        };
+        mgr.session_file.save(&state).expect("save");
+        let loaded = mgr.load();
+        assert_eq!(loaded.search_history, history);
+    }
+
+    // Validates: global-search Requirement 6.2 -- empty history survives round-trip
+    #[test]
+    fn empty_search_history_round_trips_through_session() {
+        let tmp = TempDir::new().expect("tempdir");
+        let mgr = SessionManager::with_path(make_session_file(&tmp));
+
+        let state = ff_session::SessionState::empty();
+        mgr.session_file.save(&state).expect("save");
+        let loaded = mgr.load();
+        assert!(loaded.search_history.is_empty());
     }
 }

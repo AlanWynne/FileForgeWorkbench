@@ -16,6 +16,7 @@ The following specs are available under `docs/specs/`:
 
 - asa-report-preview
 - automated-dialog-testing
+- batch-execution
 - bootstrap-scripts
 - auto-indentation
 - background-io
@@ -85,8 +86,13 @@ The following specs are available under `docs/specs/`:
 - virtual-catalog-manager
 - virtual-file-system
 - whitespace-and-guides
+- workbench-requirements-merge (architecture docs and validation reports -- no deliverable crate)
 - workflow-engine
 - workspace-model
+- accessibility
+- plugin-manager-ui
+- notification-system
+- jcl-resolver (stub -- no requirements yet)
 
 ## Rules for Amazon Q
 

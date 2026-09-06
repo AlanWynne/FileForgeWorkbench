@@ -34,6 +34,14 @@ pub enum TabKind {
     ///
     /// Validates: global-search Requirement 1.1
     SearchResults,
+    /// Plugin Manager panel -- POM option 8.
+    ///
+    /// Validates: plugin-manager-ui Requirement 1.1
+    PluginManager,
+    /// Event Log panel -- notification history.
+    ///
+    /// Validates: notification-system Requirement 2.1
+    EventLog,
 }
 
 /// A single undoable edit stored as the inverse operation to apply.
@@ -257,6 +265,56 @@ impl TabState {
             id,
             kind: TabKind::SearchResults,
             title: "[SEARCH]".to_string(),
+            path: None,
+            document,
+            viewport,
+            cursor: CursorModel::new(),
+            is_modified: false,
+            line_count: 1,
+            line_end_mode: LineEndMode::Default,
+            undo_stack: Vec::new(),
+            prefix_inputs: HashMap::new(),
+            is_floating: false,
+            edit_profile: EditProfile::new(),
+            canvas_selection: None,
+        }
+    }
+
+    /// Create a Plugin Manager panel tab.
+    ///
+    /// Validates: plugin-manager-ui Requirement 1.1
+    pub fn plugin_manager(id: TabId, document: DocumentHandle) -> Self {
+        let mut viewport = ViewportModel::with_line_count(1);
+        viewport.set_line_height(16);
+        Self {
+            id,
+            kind: TabKind::PluginManager,
+            title: "[PLUGINS]".to_string(),
+            path: None,
+            document,
+            viewport,
+            cursor: CursorModel::new(),
+            is_modified: false,
+            line_count: 1,
+            line_end_mode: LineEndMode::Default,
+            undo_stack: Vec::new(),
+            prefix_inputs: HashMap::new(),
+            is_floating: false,
+            edit_profile: EditProfile::new(),
+            canvas_selection: None,
+        }
+    }
+
+    /// Create an Event Log panel tab.
+    ///
+    /// Validates: notification-system Requirement 2.1
+    pub fn event_log(id: TabId, document: DocumentHandle) -> Self {
+        let mut viewport = ViewportModel::with_line_count(1);
+        viewport.set_line_height(16);
+        Self {
+            id,
+            kind: TabKind::EventLog,
+            title: "[LOG]".to_string(),
             path: None,
             document,
             viewport,

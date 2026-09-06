@@ -362,6 +362,10 @@ impl WorkbenchShell {
                         if resp.clicked() {
                             activate_idx = Some(i);
                         }
+                        // Validates: accessibility Requirement 3.1, 3.4, 3.5 -- focus ring on focused tab header.
+                        if self.focus_stop == (FocusStop::TabHeader { index: i }) {
+                            super::render::render_focus_indicator(ui, resp.rect, &self.palette);
+                        }
 
                         // Validates: Requirement 3.8 multi-tab-editor — close button on tab header (B002/B015)
                         let close_resp = ui.add(

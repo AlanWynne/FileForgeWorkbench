@@ -202,6 +202,17 @@ impl WorkbenchShell {
             return;
         }
 
+        if upper == "LOG" {
+            // Validates: notification-system Requirement 2.1
+            self.tabs.open_event_log_tab(&self.runtime);
+            self.notification_queue
+                .lock()
+                .expect("queue")
+                .mark_all_read();
+            self.open_error = None;
+            return;
+        }
+
         if upper == "1" || upper == "=1" || upper == "FILE CATALOGS" {
             // Validates: Requirement 1.1, 14.6 — option 1 opens the Files Panel
             if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
@@ -247,11 +258,13 @@ impl WorkbenchShell {
             return;
         }
 
-        if upper == "8" || upper == "PLUGINS" {
-            // Req 14.6 — option 8 opens the Plugins panel (stub)
+        if upper == "8" || upper == "=8" || upper == "PLUGINS" {
+            // Validates: plugin-manager-ui Requirement 1.1 -- option 8 opens Plugin Manager
             if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
                 self.tabs
-                    .transform_active_pom_tab(TabKind::Untitled, "Plugins");
+                    .transform_active_pom_tab(TabKind::PluginManager, "[PLUGINS]");
+            } else {
+                self.tabs.open_plugin_manager_tab(&self.runtime);
             }
             self.open_error = None;
             return;

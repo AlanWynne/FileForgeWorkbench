@@ -22,11 +22,14 @@ use tokio::runtime::Runtime;
 
 use crate::automation::ShellAutomationRegistry;
 use crate::command_palette::CommandPaletteState;
+use crate::event_log_panel::EventLogPanelState;
 use crate::exclude_manager::ExcludeManager;
 use crate::file_explorer_panel::FileExplorerPanelState;
 use crate::files_panel::FilesPanelState;
 use crate::find_manager::FindManager;
 use crate::nav_manager::NavManager;
+use crate::notification::{Notification, NotificationQueue, NotificationSender};
+use crate::plugin_manager_panel::PluginManagerPanelState;
 use crate::primary_option_menu;
 pub(crate) use crate::scroll_amount::{ScrollAmount, SplitScreenState};
 use crate::session_manager::SessionManager;
@@ -395,6 +398,27 @@ pub struct WorkbenchShell {
     ///
     /// Validates: Requirement 15.1, 15.2
     settings_panel: SettingsPanelState,
+    /// Plugin Manager panel state.
+    ///
+    /// Validates: plugin-manager-ui Requirement 1.1
+    plugin_manager_panel: PluginManagerPanelState,
+    /// Event Log panel state.
+    ///
+    /// Validates: notification-system Requirement 2.2
+    event_log_panel: EventLogPanelState,
+    /// Notification channel receiver -- drained each frame.
+    ///
+    /// Validates: notification-system Requirement 1.1
+    notification_rx: std::sync::mpsc::Receiver<Notification>,
+    /// Notification channel sender -- cloned for background tasks.
+    ///
+    /// Validates: notification-system Requirement 3.1
+    #[allow(dead_code)]
+    notification_tx: std::sync::mpsc::SyncSender<Notification>,
+    /// Shared notification queue -- drained each frame from the channel.
+    ///
+    /// Validates: notification-system Requirement 1.1
+    pub(crate) notification_queue: std::sync::Arc<std::sync::Mutex<NotificationQueue>>,
     /// Current keyboard focus stop in the shell tab-order cycle.
     ///
     /// Validates: Requirement 16.1–16.7
@@ -488,6 +512,11 @@ impl WorkbenchShell {
 
         let session = SessionManager::try_init();
 
+        // Notification channel -- Validates: notification-system Requirement 3.1, 3.3
+        let (notification_tx, notification_rx) = std::sync::mpsc::sync_channel::<Notification>(64);
+        let notification_queue =
+            std::sync::Arc::new(std::sync::Mutex::new(NotificationQueue::new()));
+
         // Build the default global key map using the built-in defaults.
         let global_map = KeyMap::default_global();
         let key_label_bar = KeyLabelBarModel::from_key_map(&global_map);
@@ -547,6 +576,11 @@ impl WorkbenchShell {
             modal_open: false,
             key_config_dialog: crate::key_config_dialog::KeyConfigDialog::new(),
             settings_panel: SettingsPanelState::new(),
+            plugin_manager_panel: PluginManagerPanelState::new(),
+            event_log_panel: EventLogPanelState::new(),
+            notification_rx,
+            notification_tx,
+            notification_queue,
             focus_stop: FocusStop::CommandField,
             command_field_focus_requested: true,
             automation: ShellAutomationRegistry::new(),
@@ -560,6 +594,14 @@ impl WorkbenchShell {
     // ── Theme ────────────────────────────────────────────────────────────
 
     // render methods are in render.rs
+
+    /// Return a cloned `NotificationSender` for use by background tasks.
+    ///
+    /// Validates: notification-system Requirement 3.1
+    #[allow(dead_code)]
+    pub fn notification_sender(&self) -> NotificationSender {
+        NotificationSender::new(self.notification_tx.clone())
+    }
 
     // ── Session lifecycle helpers — Validates: Requirement 20.1, 20.2 ────
 
@@ -733,7 +775,9 @@ pub(crate) fn title_line_text(tab: &crate::tab_state::TabState) -> String {
         TabKind::FilesPanel
         | TabKind::SettingsPanel
         | TabKind::FileExplorerPanel
-        | TabKind::SearchResults => tab.title.clone(),
+        | TabKind::SearchResults
+        | TabKind::PluginManager
+        | TabKind::EventLog => tab.title.clone(),
     }
 }
 

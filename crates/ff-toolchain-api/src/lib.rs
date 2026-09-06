@@ -127,7 +127,12 @@ pub enum InstallProgress {
 
 // ── ToolchainPlugin ───────────────────────────────────────────────────────────
 
-/// Trait implemented by every compiler toolchain plugin.
+/// General extension point for all compiler toolchain integrations.
+///
+/// Implements Requirement 5.2: this trait contains no GCC-specific or
+/// Rust-specific assumptions. Any future toolchain (LLVM/Clang, GnuCOBOL,
+/// OpenJDK, Python, Go) can be added as a new plugin crate that depends only
+/// on `ff-toolchain-api` and implements this trait.
 ///
 /// # Errors
 /// `detect()` and `build()` are infallible at the trait level; errors are
@@ -159,6 +164,94 @@ pub trait ToolchainPlugin: Send + Sync {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── MockToolchain test double (Req 5.3, 5.4) ─────────────────────────────
+    //
+    // Implements ToolchainPlugin with no dependency on ff-gcc-toolchain or
+    // ff-rust-toolchain, proving the trait contract is generic.
+
+    struct MockToolchain {
+        name: String,
+        state: ToolchainState,
+        build_exit_code: i32,
+    }
+
+    impl MockToolchain {
+        fn new(name: &str) -> Self {
+            Self {
+                name: name.into(),
+                state: ToolchainState::NotDetected,
+                build_exit_code: 0,
+            }
+        }
+    }
+
+    impl ToolchainPlugin for MockToolchain {
+        fn name(&self) -> &str {
+            &self.name
+        }
+
+        fn state(&self) -> ToolchainState {
+            self.state.clone()
+        }
+
+        fn detect(&mut self) {
+            self.state = ToolchainState::Ready {
+                version: "mock-1.0".into(),
+            };
+        }
+
+        fn install(&mut self, sender: mpsc::Sender<InstallProgress>) {
+            self.state = ToolchainState::Installing;
+            let _ = sender.send(InstallProgress::Completed);
+            self.state = ToolchainState::Ready {
+                version: "mock-1.0".into(),
+            };
+        }
+
+        fn build(&self, _profile: &BuildProfile, sender: mpsc::Sender<BuildEvent>) {
+            let _ = sender.send(BuildEvent::OutputLine("mock build output".into()));
+            let _ = sender.send(BuildEvent::Finished(self.build_exit_code));
+        }
+    }
+
+    #[test]
+    fn mock_toolchain_implements_trait_without_plugin_crate_dependency() {
+        // Validates: Requirement 5.3 -- MockToolchain compiles using only ff-toolchain-api types
+        let mut tc = MockToolchain::new("MockLang");
+        assert_eq!(tc.name(), "MockLang");
+        assert_eq!(tc.state(), ToolchainState::NotDetected);
+        tc.detect();
+        assert!(matches!(tc.state(), ToolchainState::Ready { .. }));
+    }
+
+    #[test]
+    fn mock_toolchain_install_transitions_to_ready() {
+        // Validates: Requirement 5.3 -- install() drives state through Installing -> Ready
+        let mut tc = MockToolchain::new("MockLang");
+        let (tx, rx) = mpsc::channel();
+        tc.install(tx);
+        assert!(matches!(tc.state(), ToolchainState::Ready { .. }));
+        assert!(matches!(rx.recv().unwrap(), InstallProgress::Completed));
+    }
+
+    #[test]
+    fn mock_toolchain_build_emits_output_and_finished() {
+        // Validates: Requirement 5.3 -- build() streams BuildEvent without GCC/Rust deps
+        let tc = MockToolchain::new("MockLang");
+        let (tx, rx) = mpsc::channel();
+        let profile = BuildProfile::new("debug", ["-g"]);
+        tc.build(&profile, tx);
+        assert!(matches!(rx.recv().unwrap(), BuildEvent::OutputLine(_)));
+        assert!(matches!(rx.recv().unwrap(), BuildEvent::Finished(0)));
+    }
+
+    #[test]
+    fn mock_toolchain_as_trait_object_is_object_safe() {
+        // Validates: Requirement 5.1 -- ToolchainPlugin is object-safe (dyn dispatch works)
+        let tc: Box<dyn ToolchainPlugin> = Box::new(MockToolchain::new("MockLang"));
+        assert_eq!(tc.name(), "MockLang");
+    }
 
     // ── ToolchainState tests ──────────────────────────────────────────────────
 

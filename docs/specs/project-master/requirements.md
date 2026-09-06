@@ -155,7 +155,7 @@ FileForgeWorkbench is a **Rust Workbench Platform** that evolves FileForgeEditor
 
 | # | Spec ID | Name | Description |
 |---|---------|------|-------------|
-| 62 | `FFW-JES` | Job Entry Subsystem | Cross-platform JES/SDSF-style emulator: job submission, queue management, initiator pool, scheduling, SDSF-style Job Monitor, job logs, SYSOUT, retention/purge, provider abstraction for future remote JES |
+| 62 | `jes-emulator` | Job Entry Subsystem | Cross-platform JES/SDSF-style emulator: job submission, queue management, initiator pool, scheduling, SDSF-style Job Monitor, job logs, SYSOUT, retention/purge, provider abstraction for future remote JES |
 
 ### File Explorer (depends on VFS + dataset-catalog)
 
@@ -192,7 +192,73 @@ FileForgeWorkbench is a **Rust Workbench Platform** that evolves FileForgeEditor
 |---|---------|------|-------------|
 | 61 | `logging-subsystem` | Logging Subsystem | Structured logging, rotation, diagnostics, thread safety |
 
-**Total: 62 sub-projects across 17 categories**
+**Total: 74 sub-projects across 20 categories** (62 original + 12 added in Phases W, AA, BS, CJ, CK + 4 deferred connector stubs)
+
+### Compiler Toolchain Integration (Phase W)
+
+| # | Spec ID | Name | Description |
+|---|---------|------|-------------|
+| 63 | `compiler-toolchain-integration` | Compiler Toolchain Integration | GCC and Rust toolchain detection, install, build invocation, diagnostic parsing, Toolchain Panel UI; generic `ToolchainPlugin` trait for future toolchains (LLVM, GnuCOBOL, OpenJDK) |
+
+### Virtual Catalog Manager (Phase AA -- implemented inline in ff-desktop)
+
+| # | Spec ID | Name | Description |
+|---|---------|------|-------------|
+| 64 | `virtual-catalog-manager` | Virtual Catalog Manager | ISPF-style catalog management UI: create/edit/delete Mainframe/POSIX/Native/Cloud catalogs, dataset allocation dialog, Files Panel (POM option 1), catalog registry persistence, default Home catalog |
+
+### Dataset Ownership Model (Phase M governance)
+
+| # | Spec ID | Name | Description |
+|---|---------|------|-------------|
+| 65 | `dataset-ownership-model` | Dataset Ownership Model | Governance tests and ownership rules for the dataset catalog; cross-crate consistency validation |
+
+### IDCAMS Emulator (Phase M)
+
+| # | Spec ID | Name | Description |
+|---|---------|------|-------------|
+| 66 | `idcams-emulator` | IDCAMS Emulator | Emulation of IBM IDCAMS utility: DEFINE CLUSTER/ALIAS/PATH, DELETE, LISTCAT, REPRO, VERIFY commands against the local dataset catalog |
+
+### Workspace Model (Phase BS-A)
+
+| # | Spec ID | Name | Description |
+|---|---------|------|-------------|
+| 67 | `workspace-model` | Workspace Model | Named persistable workspace grouping root directories with workspace-scoped settings, per-workspace MRU list, `.ffwb-workspace` TOML format, WORKSPACE OPEN/SAVE/CLOSE commands |
+
+### Command Palette (Phase BS-B)
+
+| # | Spec ID | Name | Description |
+|---|---------|------|-------------|
+| 68 | `command-palette` | Command Palette | Ctrl+Shift+P modal fuzzy-search overlay over all registered commands; displays name, category, description, shortcut; executes via Command_Dispatch; persists recent commands in session |
+
+### Global Search (Phase BS-C / BT)
+
+| # | Spec ID | Name | Description |
+|---|---------|------|-------------|
+| 69 | `global-search` | Global Search | Cross-file search and replace: `ff-global-search` crate, Search Results panel, Ctrl+Shift+F activation, GSEARCH command, replace pipeline with preview, search history (last 20 queries) |
+
+### Bootstrap Scripts (Phase CJ)
+
+| # | Spec ID | Name | Description |
+|---|---------|------|-------------|
+| 70 | `bootstrap-scripts` | Bootstrap Scripts | Platform-specific scripts (Windows PowerShell, Linux bash, macOS bash) that install the Rust stable toolchain without admin rights and guide a new contributor from `git clone` to `cargo build` |
+
+### Automated Dialog Testing (Phase CK)
+
+| # | Spec ID | Name | Description |
+|---|---------|------|-------------|
+| 71 | `automated-dialog-testing` | Automated Dialog Testing | FFTest framework: automation ID infrastructure, FFTest script parser and runner, headless execution, HTML/JSON reporting, visual regression; `ff-fftest` crate |
+
+### EARS Integration (Phase EI -- documentation only)
+
+| # | Spec ID | Name | Description |
+|---|---------|------|-------------|
+| 72 | `ears-integration` | EARS Integration | Planning and workflow documents for the EARS requirements integration project (Phases BW-CI); no deliverable crate -- docs only |
+
+### JCL Resolver (stub -- pending requirements)
+
+| # | Spec ID | Name | Description |
+|---|---------|------|-------------|
+| 73 | `jcl-resolver` | JCL Resolver | PENDING -- stub placeholder for future JCL resolution and submission pipeline; no requirements written yet |
 
 ---
 

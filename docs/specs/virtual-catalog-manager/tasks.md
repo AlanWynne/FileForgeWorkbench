@@ -257,23 +257,23 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
   - [x] 12.13 Run `cargo clippy -p ff-desktop -- -D warnings` — clean
   - [x] 12.14 Update `docs/quality/TCR.md` and `docs/specs/project-master/tasks.md`
 
-- [ ] 17. Dataset file creation on first open (Req 16.3, 16.6)
+- [x] 17. Dataset file creation on first open (Req 16.3, 16.6)
   > **SUPERSEDED BY BU.7** -- do not implement as written. The resolve_and_open_dataset()
   > function in Phase BU covers this requirement via SQLite catalog lookup. Task 17
   > implements the legacy DSN-path approach which is superseded by the UUID-based approach.
-  - [ ] 17.1 Write failing test `opening_missing_dataset_creates_file_and_parent_dirs` — calls the open handler with a resolved path whose parent exists but the file does not; asserts the file is created on disk
+  - [x] 17.1 Write failing test `opening_missing_dataset_creates_file_and_parent_dirs` — calls the open handler with a resolved path whose parent exists but the file does not; asserts the file is created on disk
     - Validates: Requirement 16.3
-  - [ ] 17.2 Write failing test `opening_missing_dataset_creates_parent_dirs` — resolved path whose parent directory does not exist; asserts both parent and file are created
+  - [x] 17.2 Write failing test `opening_missing_dataset_creates_parent_dirs` — resolved path whose parent directory does not exist; asserts both parent and file are created
     - Validates: Requirement 16.3
-  - [ ] 17.3 Add `create_dataset_file(path: &Path) -> Result<(), std::io::Error>` pure helper in `files_panel.rs` that calls `fs::create_dir_all(parent)` then `fs::File::create(path)`
+  - [x] 17.3 Add `create_dataset_file(path: &Path) -> Result<(), std::io::Error>` pure helper in `files_panel.rs` that calls `fs::create_dir_all(parent)` then `fs::File::create(path)`
     - Validates: Requirement 16.3
-  - [ ] 17.4 In `render.rs` `FilesPanelAction::OpenFile` Mainframe handler: replace the "file not found" error branch with a call to `create_dataset_file`; on success dispatch `file.open`; on failure show the creation error message
+  - [x] 17.4 In `render.rs` `FilesPanelAction::OpenFile` Mainframe handler: replace the "file not found" error branch with a call to `create_dataset_file`; on success dispatch `file.open`; on failure show the creation error message
     - Validates: Requirement 16.3, 16.6
-  - [ ] 17.5 In `file_explorer_panel.rs` `render_dataset_children()` double-click handler: apply the same creation logic
+  - [x] 17.5 In `file_explorer_panel.rs` `render_dataset_children()` double-click handler: apply the same creation logic
     - Validates: Requirement 16.3, 16.6
-  - [ ] 17.6 Run `cargo test -p ff-desktop` — confirm green
-  - [ ] 17.7 Run `cargo clippy -p ff-desktop -- -D warnings` — clean
-  - [ ] 17.8 Update `docs/quality/TCR.md` Req 16.3 and 16.6 rows to ✅ PASS
+  - [x] 17.6 Run `cargo test -p ff-desktop` — confirm green
+  - [x] 17.7 Run `cargo clippy -p ff-desktop -- -D warnings` — clean
+  - [x] 17.8 Update `docs/quality/TCR.md` Req 16.3 and 16.6 rows to ✅ PASS
 
 ---
 

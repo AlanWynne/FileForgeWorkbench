@@ -171,6 +171,14 @@ pub enum PersistedTabKind {
     ///
     /// Validates: global-search Requirement 1.1
     SearchResults,
+    /// The Plugin Manager panel tab (POM option 8).
+    ///
+    /// Validates: plugin-manager-ui Requirement 1.1
+    PluginManager,
+    /// The Event Log panel tab.
+    ///
+    /// Validates: notification-system Requirement 2.1
+    EventLog,
     /// An untitled buffer with no backing file.
     Untitled,
 }

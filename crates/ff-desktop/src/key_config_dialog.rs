@@ -226,8 +226,8 @@ impl KeyConfigDialog {
 
     /// Discard staged changes and close.
     ///
-    /// Validates: Requirement 20.5
-    fn cancel(&mut self) {
+    /// Validates: Requirement 20.5, accessibility Requirement 2.3
+    pub fn cancel(&mut self) {
         self.staged_default = self.original_default.clone();
         self.staged_contexts = self.original_contexts.clone();
         self.open = false;
@@ -426,6 +426,10 @@ pub fn render(
         dialog.reset_active_tab();
     }
     if cancel_clicked {
+        dialog.cancel();
+    }
+    // Validates: accessibility Requirement 2.1, 2.3 -- Escape closes the dialog.
+    if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
         dialog.cancel();
     }
     if save_clicked {

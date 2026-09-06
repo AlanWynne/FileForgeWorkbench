@@ -245,6 +245,7 @@ mod tests {
             file_explorer_sidebar_width: 200.0,
             active_workspace_path: None,
             recent_palette_commands: Vec::new(),
+            search_history: Vec::new(),
         };
 
         sf.save(&state).unwrap();

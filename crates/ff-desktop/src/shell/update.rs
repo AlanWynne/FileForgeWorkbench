@@ -259,6 +259,14 @@ impl eframe::App for WorkbenchShell {
         }
 
         // Process any pending file open (set by file.open handler or menu)
+        // Drain notification channel into queue -- Validates: notification-system Requirement 1.1
+        {
+            let mut queue = self.notification_queue.lock().expect("notification queue");
+            while let Ok(n) = self.notification_rx.try_recv() {
+                queue.push(n);
+            }
+        }
+
         let path = self.pending_open.lock().expect("pending lock").take();
         if let Some(p) = path {
             if !p.is_empty() {

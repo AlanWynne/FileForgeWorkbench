@@ -1276,3 +1276,98 @@ user-layer file and triggers a hot-reload cycle, restoring the schema default.
 - `get_with_provenance()` already exists — used to show the provenance badge.
 - `TabKind` extension follows the same pattern as `FilesPanel` and `SettingsPanel`.
 - Session persistence follows the same pattern as `FilesPanel`.
+
+---
+
+## 12. Phase CQ -- Enterprise Features
+
+### 12.1 Audit Logging
+
+A new `audit.rs` module holds `AuditEntry`, `AuditFilter`, and `AuditLog`. The `AuditLog` is
+an in-memory ring buffer (max 10,000 entries) backed by a rolling file at
+`<user-config-dir>/audit.log`. Every call to `set_user_value`, `import_settings`, profile
+switch, project load/unload, and hot-reload that changes an effective value appends an entry.
+
+`ConfigSystem` gains an `audit: AuditLog` field. The write path in `store.rs` calls
+`audit.record(entry)` after updating the effective store. File writes are fire-and-forget on
+a background thread to avoid blocking the write lock.
+
+New public types:
+
+```rust
+pub struct AuditEntry {
+    pub timestamp: std::time::SystemTime,
+    pub key: String,
+    pub old_value: Option<ConfigValue>,
+    pub new_value: Option<ConfigValue>,
+    pub layer: ConfigLayer,
+    pub actor: String,
+}
+
+pub struct AuditFilter {
+    pub key_prefix: Option<String>,
+    pub layer: Option<ConfigLayer>,
+    pub since: Option<std::time::SystemTime>,
+    pub until: Option<std::time::SystemTime>,
+    pub actor: Option<String>,
+}
+```
+
+New `ConfigHandle` methods: `query_audit_log(filter)`, `clear_audit_log()`.
+
+### 12.2 Settings Export and Import
+
+A new `export_import.rs` module implements the export/import pipeline. No new crate
+dependencies are required -- the existing `toml` crate handles serialisation.
+
+New public types:
+
+```rust
+pub enum ExportScope { AllLayers, UserLayer, ProjectLayer }
+pub enum ImportTarget { UserLayer, ProjectLayer }
+pub struct ImportSummary {
+    pub imported_count: usize,
+    pub skipped_count: usize,
+    pub skipped_keys: Vec<String>,
+}
+```
+
+Export writes a TOML file with a `[_export_meta]` header then the key-value pairs for the
+requested scope. Import reads the file, strips `_export_meta`, validates each key against the
+schema, writes valid keys to the target layer file, and triggers a hot-reload cycle.
+
+New `ConfigHandle` methods: `export_settings(scope, path)`, `import_settings(path, target)`.
+
+### 12.3 Locked Configuration Keys
+
+Locking is implemented entirely in the merge engine (`merger.rs`). During merge, after
+computing the winning layer for each key, the merger checks whether the key appears in the
+locked set (read from `[_locked].locked_keys` in the system-layer file). If locked, the
+system-layer value is forced as the effective value regardless of higher-priority layers.
+
+`ConfigSystem` gains a `locked_keys: HashSet<String>` field populated during system-layer
+load and hot-reload. `set_user_value` checks `locked_keys` before writing and returns
+`ConfigError::KeyLocked` if the key is present.
+
+New `ConfigError` variant:
+
+```rust
+#[error("[config] lock: key '{key}' is locked by system policy and cannot be modified")]
+KeyLocked { key: String },
+```
+
+New `ConfigHandle` method: `is_locked(key: &str) -> bool`.
+
+The Settings panel in `ff-desktop` calls `is_locked()` per key and disables the widget +
+Reset button when true, showing a "LOCKED" provenance badge.
+
+### 12.4 No Contradictions with Existing Design
+
+- Audit logging is additive -- no existing API changes, only new methods and a new field on
+  `ConfigSystem`.
+- Export/import uses the existing layer write path (`set_user_value` in bulk) so all existing
+  validation, hot-reload, and callback machinery applies automatically.
+- Locked keys are enforced in the merge engine, which is the single authoritative place for
+  effective value computation. No other component needs to know about locking.
+- The `KeyLocked` error variant is `#[non_exhaustive]`-safe -- it is a new variant on the
+  existing `ConfigError` enum.

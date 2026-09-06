@@ -47,6 +47,8 @@ pub(super) fn context_name_for_kind(kind: TabKind) -> Option<&'static str> {
         TabKind::FilesPanel => Some("files"),
         TabKind::FileExplorerPanel => Some("files"),
         TabKind::SearchResults => Some("search"),
+        TabKind::PluginManager => Some("plugins"),
+        TabKind::EventLog => Some("log"),
     }
 }
 

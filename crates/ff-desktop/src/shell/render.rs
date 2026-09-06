@@ -653,6 +653,22 @@ impl WorkbenchShell {
                             &self.config_handle,
                         );
                     }
+                    TabKind::PluginManager => {
+                        // Validates: plugin-manager-ui Requirement 1.1-1.6
+                        crate::plugin_manager_panel::render(ui, &mut self.plugin_manager_panel);
+                    }
+                    TabKind::EventLog => {
+                        // Validates: notification-system Requirement 2.1-2.6
+                        crate::event_log_panel::render(
+                            ui,
+                            &mut self.event_log_panel,
+                            &self.notification_queue,
+                        );
+                        if self.event_log_panel.clear_requested {
+                            self.event_log_panel.clear_requested = false;
+                            self.notification_queue.lock().expect("queue").clear();
+                        }
+                    }
                     TabKind::SearchResults => {
                         // Validates: global-search Requirement 1.1, 4.1
                         let roots = collect_search_roots(
@@ -725,6 +741,21 @@ impl WorkbenchShell {
 }
 
 // === Helpers ================================================================
+
+/// Draw a 2 px focus ring around `rect` using the theme's `focus_ring` colour.
+///
+/// Call this once per frame for the currently focused `FocusStop` element.
+/// Validates: accessibility Requirement 3.1, 3.3, 3.4
+pub(crate) fn render_focus_indicator(
+    ui: &egui::Ui,
+    rect: egui::Rect,
+    palette: &ff_theme::ThemePalette,
+) {
+    use ff_theme::ColourToken;
+    let colour = to_egui_color(palette.colour(ColourToken::UiFocusRing));
+    ui.painter()
+        .rect_stroke(rect.expand(2.0), 2.0, egui::Stroke::new(2.0_f32, colour));
+}
 
 /// Collect search root paths from the active workspace or mounted Native catalogs.
 ///

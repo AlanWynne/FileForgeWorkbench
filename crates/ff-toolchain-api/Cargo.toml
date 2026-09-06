@@ -8,3 +8,8 @@ description = "Shared ToolchainPlugin trait and types for FileForge compiler too
 
 [dependencies]
 thiserror.workspace = true
+
+# CI constraint (Req 5.4): ff-toolchain-api MUST NOT have a dev-dependency on
+# ff-gcc-toolchain or ff-rust-toolchain. Any new toolchain plugin crate must be
+# able to depend solely on this crate. Enforce by inspection: if either plugin
+# crate name appears in [dev-dependencies] below, the build is non-conformant.

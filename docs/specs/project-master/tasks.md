@@ -177,6 +177,7 @@
 - [x] W.2 Create `ff-gcc-toolchain` plugin crate — GCC detection, platform install (winget/apt/brew), build invocation, diagnostic parser (Tasks 2.1–2.12)
 - [x] W.3 Create `ff-rust-toolchain` plugin crate — rustup/rustc/cargo detection, rustup-init install, cargo build/check/test, JSON diagnostic parser (Tasks 3.1–3.11)
 - [x] W.4 Toolchain_Panel UI in `ff-desktop` — status rows, install buttons, progress, build output, clickable diagnostics, Compilers menu wiring (Tasks 4.1–4.7)
+- [x] W.5 Validate generic ToolchainPlugin trait contract -- MockToolchain test double in `ff-toolchain-api`, confirm no GCC/Rust-specific assumptions in trait, confirm no dev-dep on plugin crates (Tasks 5.1-5.3 in compiler-toolchain-integration/tasks.md)
 
 ### Phase X — POM Floating Window (superseded by Phase Z)
 
@@ -513,14 +514,62 @@
 
 ---
 
-## Summary (updated after Phase BT complete)
+### Phase CQ -- Enterprise Features (CR-NR-042)
+
+> Adds audit logging, settings export/import, and locked config keys to `ff-config`.
+> Extends configuration-system/requirements.md with Requirements 16-18.
+
+- [ ] CQ.1 Requirements gate -- configuration-system/requirements.md Req 16-18, design.md Section 12, tasks.md Tasks 30-32, TCR rows
+- [ ] CQ.2 Audit logging -- AuditEntry, AuditLog ring buffer, file persistence, query API (Task 30)
+- [ ] CQ.3 Settings export/import -- ExportScope, ImportTarget, ImportSummary, export/import pipeline (Task 31)
+- [ ] CQ.4 Locked config keys -- KeyLocked error, locked_keys enforcement in merger, is_locked API, Settings panel lock indicator (Task 32)
+- [ ] CQ.5 TCR update + cargo test --workspace green (Task 32.11-32.12)
+
+---
+
+## Summary (updated after Phase BT complete -- Phase CO pending)
 
 | Status | Count |
 |--------|-------|
-| `[x]` Complete with real tests | 61 library crates + ff-desktop binary |
-| `[x]` Complete -- Phase BT | 5 doc-fix deliverables (BT.1--BT.5) |
-| `[ ]` Pending -- Phase BS | 15 deliverables (BS.1--BS.15) |
-| Active work | Phase BS -- Mainframe Dataset Architecture (CR-NR-016) |
+| `[x]` Complete with real tests | 62 library crates + ff-desktop binary |
+| `[x]` Complete -- Phase BT | Cross-File Replace + Search History (BT.1-BT.6) |
+| `[x]` Phase CO complete | Accessibility, Plugin Manager UI, Notification System (CO.1-CO.7) |
+| `[x]` Phase CP complete | Batch Command Execution (CP.1-CP.11) |
+| `[x]` Phase W.5 complete | Generic ToolchainPlugin trait -- MockToolchain, audit, CI constraint |
+| Test count | 731 passing, 0 failures |
+| Active work | Phase CQ -- Enterprise Features (requirements gate pending) |
+
+### Phase CO -- Accessibility, Plugin Manager UI, and Notification System (CR-NR-040)
+
+> Implements the three highest-priority remaining gaps from the Phase BQ executive assessment.
+> New sub-projects: `accessibility`, `plugin-manager-ui`, `notification-system`.
+> Gate in progress -- requirements.md, design.md, tasks.md to be written before any code.
+
+- [x] CO.1 Requirements gate -- accessibility/requirements.md, design.md, tasks.md, TCR rows
+- [x] CO.2 Requirements gate -- plugin-manager-ui/requirements.md, design.md, tasks.md, TCR rows
+- [x] CO.3 Requirements gate -- notification-system/requirements.md, design.md, tasks.md, TCR rows
+- [x] CO.4 Accessibility implementation -- WCAG AA contrast, focus ring token+rendering, keyboard audit (Escape handlers), OS reduce-motion detection, TCR updated
+- [x] CO.5 Plugin Manager UI -- PluginManager TabKind, routing (8/=8/PLUGINS), panel with filter+sort+detail, session persistence, 11 tests
+- [x] CO.6 Notification System -- NotificationLevel/Queue/Sender, EventLog TabKind+panel, LOG command, channel drain in update(), 18 tests
+- [x] CO.7 Integration tests + TCR rows updated to PASS
+
+### Phase CP -- Batch Command Execution (CR-NR-041)
+
+> Adds a headless batch execution mode to ffwb analogous to z/OS IKJEFT01 batch.
+> New sub-project: `batch-execution`.
+> Gate complete -- requirements.md, design.md, tasks.md written.
+
+- [x] CP.1 Requirements gate -- batch-execution/requirements.md, design.md, tasks.md, TCR rows
+- [x] CP.2 BatchInputSource -- file/stdin reader, comment/blank skip, continuation (Tasks 2.1-2.3)
+- [x] CP.3 BatchOutputSink -- stdout/file/append routing, echo prefix (Tasks 3.1-3.2)
+- [x] CP.4 Return code model -- StepReturnCode, BatchReturnCode, AbortPolicy (Tasks 4.1-4.2)
+- [x] CP.5 BatchSession -- headless session context, config + catalog load (Tasks 5.1-5.4)
+- [x] CP.6 BatchRunner orchestration -- command loop, abort policy, summary (Tasks 6.1-6.4)
+- [x] CP.7 CLI entry point wiring -- --batch flag, branch in main.rs (Tasks 7.1-7.4)
+- [x] CP.8 Dry-run mode (Tasks 8.1-8.4)
+- [x] CP.9 FFCMD compatibility confirmation (Tasks 9.1-9.2)
+- [x] CP.10 Logging integration (Tasks 10.1, 10.3-10.5)
+- [x] CP.11 TCR update + cargo test --workspace green (Task 11.1-11.4)
 
 ### Phase BU -- SQLite Catalog Integration for Options 1 and 2 (CR-CH-006)
 
@@ -847,18 +896,9 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 
 ---
 
-## Summary (updated after Phase BS -- current state)
+## Summary (superseded -- see final summary below)
 
-| Status | Count |
-|--------|-------|
-| `[x]` Complete with real tests | 61 library crates + ff-desktop binary |
-| `[x]` Stream 1 complete | BV, BS.1-BS.15, ff-vfs.13-16, BU.1-BU.9 |
-| `[x]` Stream 2 complete | BW, BX, BY, BZ, CA, CB, CC, CD (all EARS P1) |
-| `[x]` Stream 3 partial | CE, CF, CG, CH, CI done -- Stream 3 COMPLETE |
-| `[ ]` Stream 3 pending | none -- all EARS P2 phases complete |
-| `[x]` Phase CJ complete | Bootstrap scripts (CJ.1-CJ.6) |
-| `[x]` Phase CK complete | FFTest framework (CK.1-CK.4) |
-| Active work | All EARS P2 streams complete; Phase BS (Productivity Core) complete |
+> This table was current after Phase BS. See the final summary at the bottom of this file for the up-to-date state.
 
 ### Phase BS -- Productivity Core (CR-NR-036, CR-NR-037, CR-NR-038)
 
@@ -892,7 +932,27 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 
 ---
 
-## Summary (updated after Phase BS Productivity Core -- current state)
+### Phase BT -- Cross-File Search and Replace (global-search Req 5, Req 6)
+
+> Implements the replace pipeline and search history in ff-global-search and the
+> Search Results panel in ff-desktop. All requirements already exist in
+> global-search/requirements.md (Req 5.1-5.7, Req 6.1-6.3).
+
+- [x] BT.1 GlobalReplaceEngine::replace_all() -- read file, apply FindEngine::replace_all(),
+        write via ff-file-ops; unsaved-changes conflict detection (Req 5.3, 5.6)
+- [x] BT.2 Replace input field, Replace All button, per-file Replace buttons in Search
+        Results panel (Req 5.1)
+- [x] BT.3 Replace_Preview confirmation dialog -- file/match counts before writing (Req 5.2)
+- [x] BT.4 Wire Replace All: spawn replace task via ff-bgio, show summary on completion;
+        regex group substitution support (Req 5.4, 5.5, 5.7)
+- [x] BT.5 Search history dropdown -- last 20 queries, persisted in session state,
+        restored on launch, options round-trip (Req 6.1, 6.2, 6.3)
+- [x] BT.6 Integration tests: replace modifies files, history persists, unsaved-changes
+        guard fires; TCR rows updated to PASS (Req 5.3, 5.6, 6.2)
+
+---
+
+## Summary (current -- updated after full sub-project audit)
 
 | Status | Count |
 |--------|-------|
@@ -905,5 +965,9 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 | `[x]` Phase BS-A complete | Workspace Model (BS-A.1-BS-A.6) |
 | `[x]` Phase BS-B complete | Command Palette (BS-B.1-BS-B.4) |
 | `[x]` Phase BS-C complete | Global Search (BS-C.1-BS-C.5) |
-| Test count | 655 passing (644 ff-desktop + 11 ff-global-search), 0 failures |
-| Active work | Phase BS Productivity Core complete -- review open bugs or plan next phase |
+| `[x]` Phase BT complete | Cross-File Replace + Search History (BT.1-BT.6) |
+| `[~]` compiler-toolchain-integration | Tasks 5.1-5.3 complete -- MockToolchain test double written, trait audited, CI constraint documented (Req 5.1-5.4) |
+| `[ ]` Phase CO pending | Accessibility, Plugin Manager UI, Notification System (CO.1-CO.7) |
+| Sub-project audit | 67 of 69 sub-projects with tasks.md are ALL DONE; 2 have pending items |
+| Test count | 657 passing, 0 failures (cargo test --workspace) |
+| Active work | Phase CO gate -- requirements docs to be written before any code |

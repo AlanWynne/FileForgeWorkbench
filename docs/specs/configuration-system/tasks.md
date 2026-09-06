@@ -478,3 +478,61 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
   - [x] 29.6 Run `cargo clippy -p ff-desktop -- -D warnings` — confirm clean
   - [x] 29.7 Update `docs/quality/TCR.md` — mark all Req 15 rows ✅ or 🔲
   - [x] 29.8 Update `docs/specs/project-master/tasks.md` — mark Phase AH complete
+
+---
+
+## Phase CQ Tasks
+
+- [ ] 30. Audit Logging (Requirement 16)
+  - [ ] 30.1 Define `AuditEntry` struct (timestamp, key, old_value, new_value, layer, actor)
+    - Validates: Requirement 16.5
+  - [ ] 30.2 Define `AuditFilter` struct (key_prefix, layer, since, until, actor -- all Option)
+    - Validates: Requirement 16.3
+  - [ ] 30.3 Implement `AuditLog` ring buffer (max 10,000 entries) with `record()` and `query(filter)` methods
+    - Validates: Requirement 16.2, 16.3
+  - [ ] 30.4 Wire `AuditLog` into `ConfigSystem`; call `audit.record()` in `set_user_value`, hot-reload diff, profile switch, project load/unload
+    - Validates: Requirement 16.1
+  - [ ] 30.5 Implement file persistence: append entries to `<user-config-dir>/audit.log` on background thread; handle write failures with WARN log
+    - Validates: Requirement 16.2, 16.4
+  - [ ] 30.6 Add `query_audit_log(filter)` and `clear_audit_log()` to `ConfigHandle`
+    - Validates: Requirement 16.3, 16.6
+  - [ ] 30.7 Write unit tests: `audit_entry_recorded_on_set_user_value`, `audit_filter_by_key_prefix`, `audit_filter_by_layer`, `audit_filter_by_time_range`, `audit_write_failure_does_not_block_config_change`, `clear_audit_log_empties_buffer`
+    - Validates: Requirement 16.1, 16.3, 16.4, 16.6
+  - [ ] 30.8 Run `cargo test -p ff-config` -- confirm green
+
+- [ ] 31. Settings Export and Import (Requirement 17)
+  - [ ] 31.1 Define `ExportScope` enum (AllLayers, UserLayer, ProjectLayer) and `ImportTarget` enum (UserLayer, ProjectLayer)
+    - Validates: Requirement 17.2, 17.5
+  - [ ] 31.2 Define `ImportSummary` struct (imported_count, skipped_count, skipped_keys)
+    - Validates: Requirement 17.7
+  - [ ] 31.3 Implement `export_settings(scope, path)` -- collect values for scope, write TOML with `[_export_meta]` header
+    - Validates: Requirement 17.1, 17.3
+  - [ ] 31.4 Implement `import_settings(path, target)` -- read file, validate each key against schema, write valid keys to target layer, collect skipped keys in ImportSummary
+    - Validates: Requirement 17.4, 17.6, 17.7, 17.8
+  - [ ] 31.5 Wire post-import hot-reload cycle so callbacks are notified of changed keys
+    - Validates: Requirement 17.9
+  - [ ] 31.6 Write unit tests: `export_user_layer_produces_valid_toml`, `export_includes_meta_header`, `import_valid_file_updates_layer`, `import_invalid_values_skipped_in_summary`, `import_bad_toml_returns_parse_error`, `import_triggers_reload_callbacks`
+    - Validates: Requirement 17.1, 17.3, 17.4, 17.6, 17.8, 17.9
+  - [ ] 31.7 Run `cargo test -p ff-config` -- confirm green
+
+- [ ] 32. Locked Configuration Keys (Requirement 18)
+  - [ ] 32.1 Add `KeyLocked { key: String }` variant to `ConfigError` with message `"[config] lock: key '{key}' is locked by system policy and cannot be modified"`
+    - Validates: Requirement 18.7
+  - [ ] 32.2 Parse `[_locked].locked_keys` from system-layer TOML into `HashSet<String>` on `ConfigSystem`
+    - Validates: Requirement 18.1
+  - [ ] 32.3 Enforce locked keys in merger: after computing winning layer, override with system-layer value for locked keys; emit DEBUG log when a higher-priority layer value is suppressed
+    - Validates: Requirement 18.2, 18.4
+  - [ ] 32.4 Guard `set_user_value()`: return `ConfigError::KeyLocked` if key is in locked set
+    - Validates: Requirement 18.3
+  - [ ] 32.5 Add `is_locked(key: &str) -> bool` to `ConfigHandle`
+    - Validates: Requirement 18.5
+  - [ ] 32.6 Update Settings panel in `ff-desktop`: call `is_locked()` per key; disable widget and Reset button; show "LOCKED" badge when true
+    - Validates: Requirement 18.6
+  - [ ] 32.7 Wire hot-reload of system layer to recompute locked set and re-merge affected keys
+    - Validates: Requirement 18.8
+  - [ ] 32.8 Write unit tests: `locked_key_uses_system_value_despite_user_override`, `set_user_value_locked_key_returns_error`, `is_locked_returns_true_for_locked_key`, `is_locked_returns_false_for_unlocked_key`, `hot_reload_locked_keys_list_recomputes_effective_values`, `higher_layer_value_silently_ignored_for_locked_key`
+    - Validates: Requirement 18.1, 18.2, 18.3, 18.4, 18.5, 18.8
+  - [ ] 32.9 Run `cargo test --workspace` -- confirm green
+  - [ ] 32.10 Run `cargo clippy -- -D warnings` -- confirm clean
+  - [ ] 32.11 Update `docs/quality/TCR.md` -- add rows for Req 16, 17, 18
+  - [ ] 32.12 Update `docs/specs/project-master/tasks.md` -- add Phase CQ section

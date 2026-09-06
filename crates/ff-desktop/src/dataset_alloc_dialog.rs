@@ -407,10 +407,15 @@ pub fn render(ctx: &egui::Context, form: &mut AllocDatasetForm) -> AllocOutcome 
             });
         });
 
+    // Validates: accessibility Requirement 2.1, 2.3 -- Escape closes the dialog.
+    if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
+        outcome = AllocOutcome::Cancelled;
+    }
+
     outcome
 }
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
+// == Tests ====================================================================
 
 #[cfg(test)]
 mod tests {

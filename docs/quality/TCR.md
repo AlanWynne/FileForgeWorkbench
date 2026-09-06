@@ -258,6 +258,10 @@ None — all crates compile and pass.
 | `ff-rust-toolchain` | 🔲 | — | Req 18.5: Non-zero exit → Cargo failed with error/warning counts |
 | `ff-desktop` | ✅ | `toolchain_panel.rs` unit tests | Req 18.6: Clicking Diagnostic in panel navigates editor to file/line/col |
 | `ff-rust-toolchain` | ✅ | lib unit tests | Req 18.7: --message-format=json passed to all cargo invocations |
+| `ff-toolchain-api` | ✅ | lib unit tests | Req 5.1: ToolchainPlugin trait is object-safe; dyn dispatch works (`mock_toolchain_as_trait_object_is_object_safe`) |
+| `ff-toolchain-api` | ✅ | lib unit tests | Req 5.2: ToolchainPlugin trait doc comment cites Req 5.2; no GCC/Rust-specific assumptions in trait definition |
+| `ff-toolchain-api` | ✅ | lib unit tests | Req 5.3: MockToolchain implements ToolchainPlugin using only ff-toolchain-api types; no ff-gcc-toolchain or ff-rust-toolchain dependency (`mock_toolchain_implements_trait_without_plugin_crate_dependency`, `mock_toolchain_install_transitions_to_ready`, `mock_toolchain_build_emits_output_and_finished`) |
+| `ff-toolchain-api` | ✅ | `Cargo.toml` CI comment | Req 5.4: ff-toolchain-api Cargo.toml has no dev-dependency on ff-gcc-toolchain or ff-rust-toolchain; CI constraint documented |
 
 ---
 
@@ -1724,7 +1728,7 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-global-search` | 🔴 | -- | Req 5.6: file with unsaved changes warned before replace; not overwritten |
 | `ff-global-search` | 🔴 | -- | Req 5.7: replace input supports regex group substitution \1-\9 |
 | `ff-desktop` | 🔴 | -- | Req 6.1: last 20 search queries accessible via dropdown on search field |
-| `ff-session` | 🔴 | -- | Req 6.2: search history persisted in session state and restored on launch |
+| `ff-session` | ✅ | `session_manager.rs` unit tests | Req 6.2: search history persisted in session state and restored on launch |
 | `ff-desktop` | 🔴 | -- | Req 6.3: selecting history entry populates query and options |
 
 ## Phase BS-B: Command Palette
@@ -1755,3 +1759,166 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `ff-session` SessionState + session_manager | Req 5.2: Recent commands persisted in session.toml |
 | `ff-desktop` | ✅ | `command_palette/render.rs` rebuild_filtered | Req 5.3: Typing query hides Recently Used section |
 | `ff-desktop` | ✅ | `shell/update.rs` recent list update | Req 5.4: Only successfully executed commands added to recent list |
+### Phase CP -- Batch Command Execution (CR-NR-041)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `batch::cli` unit tests, `main.rs` | Req 1.1: ffwb --batch <file> executes in headless batch mode; no GUI window opened |
+| `ff-desktop` | ✅ | `batch::cli` unit tests | Req 1.2: ffwb --batch - reads commands from stdin |
+| `ff-desktop` | ✅ | `batch::cli` unit tests | Req 1.3: --batch combined with file path arguments rejected with error |
+| `ff-desktop` | ✅ | `batch::cli` unit tests, `main.rs` | Req 1.4: without --batch, workbench starts in normal interactive GUI mode |
+| `ff-desktop` | ✅ | `batch::cli` unit tests | Req 1.5: --batch documented in ffwb --help (`print_help_does_not_panic`) |
+| `ff-desktop` | ✅ | `batch::mod::run_batch()` | Req 1.6: missing/unreadable batch file exits with return code 12 |
+| `ff-desktop` | ✅ | `batch::input` unit tests | Req 2.1: Batch_Input_Source accepts UTF-8 with or without BOM; BOM stripped |
+| `ff-desktop` | ✅ | `batch::input` unit tests | Req 2.2: each non-blank non-comment line submitted as one Batch_Command in order |
+| `ff-desktop` | ✅ | `batch::input` unit tests | Req 2.3: lines beginning with * treated as comments and skipped |
+| `ff-desktop` | ✅ | `batch::input` unit tests | Req 2.4: lines beginning with /* treated as comments and skipped |
+| `ff-desktop` | ✅ | `batch::input` unit tests | Req 2.5: blank/whitespace-only lines skipped |
+| `ff-desktop` | ✅ | `batch::input` unit tests | Req 2.6: line ending with - continues onto next line |
+| `ff-desktop` | ✅ | `batch::input` unit tests | Req 2.7: lines exceeding 32767 chars truncated with warning |
+| `ff-desktop` | 🔴 | -- | Req 3.1: Batch_Commands dispatched through ff-command-semantics pipeline unchanged |
+| `ff-desktop` | 🔴 | -- | Req 3.2: Batch_Session provides same catalog registry and config as interactive session |
+| `ff-desktop` | 🔴 | -- | Req 3.3: command output written to Batch_Output_Sink |
+| `ff-desktop` | 🔴 | -- | Req 3.4: document modifications applied to real filesystem |
+| `ff-desktop` | ✅ | `batch::runner` unit tests | Req 3.5: GUI-requiring commands fail with Step_Return_Code 8 and diagnostic message (`interactive_command_returns_step_rc_8_with_diagnostic`) |
+| `ff-desktop` | ✅ | `batch::runner` unit tests | Req 3.6: commands executed sequentially |
+| `ff-desktop` | ✅ | `batch::mod::run_batch()` | Req 4.1: default output to stdout |
+| `ff-desktop` | ✅ | `batch::cli` unit tests, `batch::mod::run_batch()` | Req 4.2: --batch-output <file> writes output to specified file |
+| `ff-desktop` | ✅ | `batch::cli` unit tests, `batch::mod::run_batch()` | Req 4.3: --batch-output-append <file> appends output to specified file |
+| `ff-desktop` | ✅ | `batch::runner` unit tests | Req 4.4: --batch-echo prefixes each command output with ===> <command text> |
+| `ff-desktop` | 🔴 | -- | Req 4.5: without --batch-echo, command text not written to output |
+| `ff-desktop` | 🔴 | -- | Req 4.6: BatchRunner diagnostic output written to stderr |
+| `ff-desktop` | ✅ | `batch::mod::run_batch()` | Req 4.7: unwritable output file exits with return code 12 before executing commands |
+| `ff-desktop` | ✅ | `batch::return_code` unit tests | Req 5.1: all commands succeed -> exit code 0 |
+| `ff-desktop` | ✅ | `batch::return_code` unit tests | Req 5.2: Batch_Return_Code is maximum Step_Return_Code across all commands |
+| `ff-desktop` | ✅ | `batch::return_code` unit tests | Req 5.3: Step_Return_Code values 0/4/8/12/16 used per z/OS convention |
+| `ff-desktop` | 🔴 | -- | Req 5.4: BatchRunner init failure exits with code 12 |
+| `ff-desktop` | ✅ | `batch::mod::run_batch()` | Req 5.5: final summary line "FFWB BATCH RETURN CODE: N" written to stderr |
+| `ff-desktop` | ✅ | `batch::return_code` unit tests | Req 6.1: default mode continues after command failure (best-effort) |
+| `ff-desktop` | ✅ | `batch::cli` unit tests, `batch::return_code` unit tests | Req 6.2: --batch-abort-on-error <threshold> stops on Step_Return_Code >= threshold |
+| `ff-desktop` | ✅ | `batch::runner` unit tests | Req 6.3: abort writes message identifying aborting command and return code (wired in runner.run()) |
+| `ff-desktop` | ✅ | `batch::runner` unit tests | Req 6.4: Batch_Return_Code reflects aborting command's Step_Return_Code (brc.update(step) before break) |
+| `ff-desktop` | ✅ | `batch::runner` unit tests | Req 6.5: CONTROL ERRORS CANCEL / NOCANCEL inline commands override abort policy |
+| `ff-desktop` | 🔴 | -- | Req 7.1: Batch_Session loads same config layers as interactive session |
+| `ff-desktop` | 🔴 | -- | Req 7.2: Batch_Session loads catalog registry from same catalogs.toml |
+| `ff-desktop` | ✅ | `batch::cli` unit tests | Req 7.3: --batch-profile <name> loads named config profile |
+| `ff-desktop` | 🔴 | -- | Req 7.4: Batch_Session does NOT restore GUI session state |
+| `ff-desktop` | 🔴 | -- | Req 7.5: batch run does NOT overwrite interactive session state file |
+| `ff-desktop` | ✅ | `batch::cli` unit tests | Req 7.6: --batch-no-catalog starts with empty catalog registry |
+| `ff-desktop` | ✅ | `batch::runner` unit tests | Req 8.1: --batch-dry-run parses/validates commands without modifying filesystem |
+| `ff-desktop` | ✅ | `batch::runner` unit tests | Req 8.2: dry-run writes [DRY-RUN] <command> -> OK|ERROR: reason for each command |
+| `ff-desktop` | ✅ | `batch::runner` unit tests | Req 8.3: dry-run return code 0 if all valid, 8 if any syntax error or missing resource |
+| `ff-desktop` | ✅ | `batch::runner` unit tests | Req 8.4: read-only commands execute normally in dry-run mode |
+| `ff-desktop` | ✅ | `batch::input` unit tests | Req 9.1: Batch_Input_Source format identical to .ffcmd format (`ffcmd_format_parsed_identically_to_batch_format`) |
+| `ff-desktop` | ✅ | `batch::input` unit tests | Req 9.2: .ffcmd file usable as --batch input without modification |
+| `ff-desktop` | ✅ | `batch::input` unit tests | Req 9.3: .ffcmd extension recognised; other extensions also accepted |
+| `ff-desktop` | ✅ | `batch::input` unit tests | Req 9.4: .ffcmd via --batch does NOT invoke Lua engine (`batch_input_source_has_no_lua_dependency`) |
+| `ff-desktop` | ✅ | `batch::runner` unit tests | Req 10.1: structured log written: start, each command+RC+duration, final RC (`runner_completes_without_panic_logging_enabled`) |
+| `ff-desktop` | 🔴 | -- | Req 10.2: --batch-log <file> redirects structured log to specified file (deferred Task 10.2) |
+| `ff-desktop` | ✅ | `batch::runner` unit tests | Req 10.3: log includes wall-clock duration of each command |
+| `ff-desktop` | ✅ | `batch::runner` unit tests | Req 10.4: Step_Return_Code >= 8 logged at ERROR level with full error detail |
+| `ff-desktop` | ✅ | `batch::runner` unit tests | Req 10.5: log format matches ff-logging structured format |
+
+## Phase CO -- Accessibility
+
+| Crate | Status | Test | Criterion |
+|-------|--------|------|-----------|
+| `ff-theme` | ✅ | `contrast.rs` unit tests | Req 1.1: contrast_ratio() implements WCAG relative luminance formula |
+| `ff-theme` | ✅ | `contrast.rs` unit tests | Req 1.2: contrast_ratio black-on-white returns 21:1 |
+| `ff-theme` | ✅ | `contrast.rs` unit tests | Req 1.3: all three built-in themes pass 4.5:1 for primary text pairs |
+| `ff-theme` | ✅ | `contrast.rs` unit tests | Req 1.4: check_theme_contrast() emits ContrastWarning for failing pairs |
+| `ff-theme` | ✅ | `contrast.rs` unit tests | Req 1.5: light palette WCAG failures fixed (line_number_fg, inactive_text) |
+| `ff-theme` | ✅ | `shell::tests::focus_ring_token_exists_in_all_themes` | Req 3.1: focus_ring token exists in all four built-in themes |
+| `ff-theme` | ✅ | `palette.rs` unit tests | Req 3.2: UiFocusRing token maps to ui.focus_ring field |
+| `ff-desktop` | ✅ | `shell::tests::focus_ring_token_exists_in_all_themes` | Req 3.2: focus_ring colour differs from panel background in all themes |
+| `ff-desktop` | ✅ | `shell::tests::focus_indicator_helper_is_callable` | Req 3.3: render_focus_indicator helper exists and is callable |
+| `ff-desktop` | 🔲 | -- | Req 3.4: focus ring drawn for focused TabHeader stop (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 3.5: focus ring consistent across all panels (manual UI verification) |
+| `ff-desktop` | ✅ | `shell::tests::key_config_dialog_escape_closes_dialog` | Req 2.1, 2.3: KeyConfigDialog closes on Escape |
+| `ff-desktop` | ✅ | `shell::tests::dataset_alloc_dialog_has_cancel_path` | Req 2.1, 2.3: DatasetAllocDialog has Cancel path reachable by keyboard |
+| `ff-desktop` | ✅ | `shell::tests::modal_open_flag_suppresses_shell_tab_cycle` | Req 2.3: modal_open flag traps focus within dialog |
+| `ff-config` | ✅ | `keys.rs` unit tests | Req 5.2: accessibility.reduce_motion config key registered with unique path |
+| `ff-desktop` | ✅ | `main::tests::reduce_motion_config_key_is_registered_in_schema` | Req 5.2: accessibility.reduce_motion registered in built-in schema |
+| `ff-desktop` | ✅ | `shell::tests::reduce_motion_scroll_is_immediate_jump` | Req 5.3: reduce_motion config key readable; scroll is immediate jump |
+| `ff-desktop` | 🔲 | -- | Req 2.4: context menus respond to arrow keys and Enter (manual UI verification) |
+| `ff-desktop` | 🔴 | -- | Req 4.1: egui AccessKit feature enabled; interactive elements carry accessible labels |
+| `ff-desktop` | 🔴 | -- | Req 4.3: status bar message exposed as live region |
+| `ff-desktop` | 🔴 | -- | Req 5.1: macOS/Linux OS reduce-motion detection (deferred) |
+
+## Phase CO -- Plugin Manager UI
+
+| Crate | Status | Test | Criterion |
+|-------|--------|------|-----------|
+| `ff-desktop` | ✅ | `shell::tests::plugin_manager_tab_kind_exists` | Req 1.1: PluginManager TabKind variant exists |
+| `ff-desktop` | ✅ | `shell::tests::option_8_routes_to_plugin_manager` | Req 1.1: option 8 routes to PluginManager tab |
+| `ff-desktop` | ✅ | `shell::tests::plugins_command_routes_to_plugin_manager` | Req 1.1: PLUGINS command routes to PluginManager |
+| `ff-desktop` | ✅ | `shell::tests::equals_8_command_routes_to_plugin_manager` | Req 1.1: =8 command routes to PluginManager |
+| `ff-desktop` | ✅ | `shell::tests::title_line_plugin_manager_shows_plugins` | Req 1.1: title line shows [PLUGINS] |
+| `ff-desktop` | ✅ | `plugin_manager_panel::tests::plugin_list_sorted_alphabetically` | Req 1.5: plugin list sorted alphabetically |
+| `ff-desktop` | ✅ | `plugin_manager_panel::tests::filter_narrows_plugin_list` | Req 1.6: filter narrows plugin list |
+| `ff-desktop` | ✅ | `plugin_manager_panel::tests::empty_filter_returns_all_plugins` | Req 1.6: empty filter returns all plugins |
+| `ff-desktop` | ✅ | `shell::tests::plugin_manager_tab_round_trips_through_session` | Req 4.1: PluginManager tab kind in PersistedTabKind |
+| `ff-desktop` | 🔲 | -- | Req 2.1-2.6: Enable/Disable buttons (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 3.1-3.3: Plugin detail view (manual UI verification) |
+
+## Phase CO -- Notification System
+
+| Crate | Status | Test | Criterion |
+|-------|--------|------|-----------|
+| `ff-desktop` | ✅ | `notification::tests::queue_caps_at_1000_entries` | Req 2.7: queue caps at 1000 entries |
+| `ff-desktop` | ✅ | `notification::tests::push_warning_increments_unread` | Req 2.7, 4.2: Warning increments unread count |
+| `ff-desktop` | ✅ | `notification::tests::mark_all_read_clears_unread` | Req 2.4, 4.3: mark_all_read clears unread |
+| `ff-desktop` | ✅ | `notification::tests::clear_empties_queue_and_unread` | Req 2.6: clear empties queue |
+| `ff-desktop` | ✅ | `notification::tests::filter_by_level_returns_matching` | Req 2.4: filter_by_level returns matching entries |
+| `ff-desktop` | ✅ | `notification::tests::sender_is_clone` | Req 3.2: NotificationSender is Clone |
+| `ff-desktop` | ✅ | `notification::tests::full_channel_drops_without_panic` | Req 3.3: full channel drops silently |
+| `ff-desktop` | ✅ | `shell::tests::notification_sender_is_clone_and_send` | Req 3.1, 3.2: sender is Clone + Send |
+| `ff-desktop` | ✅ | `shell::tests::notification_queue_caps_at_1000_entries` | Req 2.7: queue caps at 1000 |
+| `ff-desktop` | ✅ | `shell::tests::push_warning_increments_unread` | Req 2.7: Warning increments unread |
+| `ff-desktop` | ✅ | `shell::tests::mark_all_read_clears_unread` | Req 2.4: mark_all_read clears unread |
+| `ff-desktop` | ✅ | `shell::tests::event_log_tab_kind_exists` | Req 2.1: EventLog TabKind variant exists |
+| `ff-desktop` | ✅ | `shell::tests::log_command_routes_to_event_log` | Req 2.1: LOG command opens EventLog tab |
+| `ff-desktop` | ✅ | `shell::tests::clear_log_empties_queue` | Req 2.6: clear empties queue |
+| `ff-desktop` | ✅ | `shell::tests::filter_by_level_returns_matching` | Req 2.4: filter_by_level works |
+| `ff-desktop` | ✅ | `shell::tests::title_line_event_log_shows_log` | Req 2.1: title line shows [LOG] |
+| `ff-desktop` | ✅ | `shell::tests::notifications_drained_from_channel_each_frame` | Req 1.1: channel drained each frame |
+| `ff-desktop` | ✅ | `shell::tests::bell_badge_shows_unread_count` | Req 4.2: unread count tracked |
+| `ff-desktop` | 🔴 | -- | Req 1.2-1.6: Toast overlay rendering (not yet implemented) |
+| `ff-desktop` | 🔴 | -- | Req 4.1: Bell icon in status bar (not yet implemented) |
+
+## Final Summary (after Phase CO)
+
+| Status | Count |
+|--------|-------|
+| PASS | 716 tests (ff-desktop + all library crates) |
+| FAIL | 0 |
+| MANUAL | Req 2.1-2.6 plugin enable/disable, Req 3.1-3.3 plugin detail, Req 1.2-1.6 toast overlay, Req 4.1 bell icon |
+| NOT COVERED | Req 4.1 bell icon in status bar, Req 1.2-1.6 toast overlay, Req 4.1-4.3 AccessKit screen reader |
+
+### Phase CQ -- Enterprise Features (configuration-system Requirements 16-18)
+
+| Crate | Status | Test | Requirement |
+|-------|--------|------|-------------|
+| `ff-config` | 🔴 | -- | Req 16.1: WHEN any config key effective value changes, THE system SHALL append AuditEntry with timestamp, key, old/new value, layer, actor |
+| `ff-config` | 🔴 | -- | Req 16.2: audit log persisted to rolling file at <user-config-dir>/audit.log; max 10,000 entries |
+| `ff-config` | 🔴 | -- | Req 16.3: query_audit_log(filter) API supports filtering by key prefix, layer, time range, actor |
+| `ff-config` | 🔴 | -- | Req 16.4: audit log write failure emits WARN and does not prevent config change |
+| `ff-config` | 🔴 | -- | Req 16.5: AuditEntry public type with timestamp, key, old_value, new_value, layer, actor fields |
+| `ff-config` | 🔴 | -- | Req 16.6: clear_audit_log() truncates in-memory and on-disk audit log |
+| `ff-config` | 🔴 | -- | Req 17.1: export_settings(scope, path) writes TOML file for specified ExportScope |
+| `ff-config` | 🔴 | -- | Req 17.2: ExportScope enum with AllLayers, UserLayer, ProjectLayer variants |
+| `ff-config` | 🔴 | -- | Req 17.3: exported TOML includes [_export_meta] header with timestamp, version, scope |
+| `ff-config` | 🔴 | -- | Req 17.4: import_settings(path, target) merges exported values into target layer |
+| `ff-config` | 🔴 | -- | Req 17.5: ImportTarget enum with UserLayer, ProjectLayer variants |
+| `ff-config` | 🔴 | -- | Req 17.6: invalid values skipped and reported in ImportSummary; import does not fail entirely |
+| `ff-config` | 🔴 | -- | Req 17.7: ImportSummary struct with imported_count, skipped_count, skipped_keys fields |
+| `ff-config` | 🔴 | -- | Req 17.8: unreadable or invalid TOML import file returns ConfigError; no changes made |
+| `ff-config` | 🔴 | -- | Req 17.9: successful import triggers hot-reload cycle; callbacks notified of changed keys |
+| `ff-config` | 🔴 | -- | Req 18.1: system-layer [_locked].locked_keys list parsed into locked key set |
+| `ff-config` | 🔴 | -- | Req 18.2: locked key uses system-layer value regardless of higher-priority layer definitions |
+| `ff-config` | 🔴 | -- | Req 18.3: set_user_value() on locked key returns ConfigError::KeyLocked |
+| `ff-config` | 🔴 | -- | Req 18.4: higher-priority layer value for locked key silently ignored; DEBUG log emitted |
+| `ff-config` | 🔴 | -- | Req 18.5: is_locked(key) -> bool method on ConfigHandle |
+| `ff-desktop` | 🔴 | -- | Req 18.6: Settings panel shows LOCKED badge and disables widget + Reset button for locked keys |
+| `ff-config` | 🔴 | -- | Req 18.7: ConfigError::KeyLocked variant with message "[config] lock: key '{key}' is locked by system policy and cannot be modified" |
+| `ff-config` | 🔴 | -- | Req 18.8: hot-reload of system layer recomputes locked set; callbacks invoked for affected keys |

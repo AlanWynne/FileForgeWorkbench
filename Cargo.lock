@@ -1482,6 +1482,7 @@ dependencies = [
  "ff-keys",
  "ff-logging",
  "ff-navigation-commands",
+ "ff-plugin",
  "ff-rust-toolchain",
  "ff-session",
  "ff-theme",

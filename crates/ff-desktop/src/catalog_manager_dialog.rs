@@ -303,6 +303,11 @@ pub fn render(
             });
         });
 
+    // Validates: accessibility Requirement 2.1, 2.3 -- Escape closes the New Catalog dialog.
+    if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
+        outcome = DialogOutcome::Cancelled;
+    }
+
     outcome
 }
 
@@ -504,6 +509,11 @@ pub fn render_edit(
                 }
             });
         });
+
+    // Validates: accessibility Requirement 2.1, 2.3 -- Escape closes the Edit Catalog dialog.
+    if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
+        outcome = DialogOutcome::Cancelled;
+    }
 
     outcome
 }

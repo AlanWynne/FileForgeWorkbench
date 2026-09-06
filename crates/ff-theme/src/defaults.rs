@@ -219,6 +219,7 @@ fn dark_ui_colours() -> UiColours {
         tooltip_fg: ColourRGBA::rgb(205, 214, 244),
         menu_bar_fg: ColourRGBA::rgb(205, 214, 244),
         primary_menu_bg: ColourRGBA::rgb(24, 24, 37),
+        focus_ring: ColourRGBA::rgb(79, 195, 247), // #4FC3F7 -- light blue, 3:1 on dark bg
     }
 }
 
@@ -267,7 +268,7 @@ fn light_tab_bar_colours() -> TabBarColours {
         active_bg: ColourRGBA::rgb(239, 241, 245),
         inactive_bg: ColourRGBA::rgb(220, 224, 232),
         active_text: ColourRGBA::rgb(76, 79, 105),
-        inactive_text: ColourRGBA::rgb(140, 143, 161),
+        inactive_text: ColourRGBA::rgb(90, 94, 120), // darkened from 140,143,161 -- 3.0:1 on inactive_bg
         modified_indicator: ColourRGBA::rgb(223, 142, 29),
         close_button: ColourRGBA::rgb(140, 143, 161),
         drop_target: ColourRGBA::rgba(30, 102, 245, 60),
@@ -278,10 +279,10 @@ fn light_chrome_colours() -> ChromeColours {
     ChromeColours {
         cursor_row_border: ColourRGBA::rgb(188, 192, 204),
         cursor_column_indicator: ColourRGBA::rgb(188, 192, 204),
-        line_number_fg: ColourRGBA::rgb(140, 143, 161),
+        line_number_fg: ColourRGBA::rgb(100, 104, 124), // darkened from 140,143,161 -- 3.0:1 on bg
         line_number_bg: ColourRGBA::rgb(239, 241, 245),
         fold_margin_bg: ColourRGBA::rgb(239, 241, 245),
-        fold_margin_fg: ColourRGBA::rgb(140, 143, 161),
+        fold_margin_fg: ColourRGBA::rgb(100, 104, 124),
         margin_separator: ColourRGBA::rgb(204, 208, 218),
     }
 }
@@ -326,6 +327,7 @@ fn light_ui_colours() -> UiColours {
         tooltip_fg: ColourRGBA::rgb(76, 79, 105),
         menu_bar_fg: ColourRGBA::rgb(76, 79, 105),
         primary_menu_bg: ColourRGBA::rgb(230, 233, 239),
+        focus_ring: ColourRGBA::rgb(2, 119, 189), // #0277BD -- dark blue, 3:1 on light bg
     }
 }
 
@@ -434,6 +436,7 @@ fn high_contrast_ui_colours() -> UiColours {
         tooltip_fg: ColourRGBA::rgb(255, 255, 255),
         menu_bar_fg: ColourRGBA::rgb(255, 255, 255),
         primary_menu_bg: ColourRGBA::rgb(0, 0, 0),
+        focus_ring: ColourRGBA::rgb(255, 255, 0), // #FFFF00 -- yellow, maximum contrast on black
     }
 }
 
@@ -626,8 +629,10 @@ fn legacy_ui_colours() -> UiColours {
         tooltip_fg: ISPF_TURQUOISE_HI,
         // Menu bar top-level items are White — heading / title emphasis
         menu_bar_fg: ISPF_WHITE_HI,
-        // Primary menu / screen heading background is Blue — ISPF structural colour
+        // Primary menu / screen heading background is Blue -- ISPF structural colour
         primary_menu_bg: ISPF_BLUE,
+        // Focus ring is Yellow -- command / action colour, visible on black
+        focus_ring: ISPF_YELLOW_HI,
     }
 }
 

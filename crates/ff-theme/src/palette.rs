@@ -182,6 +182,8 @@ pub struct UiColours {
     pub menu_bar_fg: ColourRGBA,
     /// Primary menu / screen heading background (blue in Legacy, panel_bg in other themes).
     pub primary_menu_bg: ColourRGBA,
+    /// Focus ring colour for keyboard-focused interactive elements.
+    pub focus_ring: ColourRGBA,
 }
 
 /// The complete resolved palette for the active theme and mode.
@@ -294,6 +296,7 @@ impl ThemePalette {
             ColourToken::UiTooltipForeground => self.ui.tooltip_fg,
             ColourToken::UiMenuBarForeground => self.ui.menu_bar_fg,
             ColourToken::UiPrimaryMenuBackground => self.ui.primary_menu_bg,
+            ColourToken::UiFocusRing => self.ui.focus_ring,
         }
     }
 }

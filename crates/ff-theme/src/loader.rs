@@ -235,6 +235,7 @@ fn parse_ui_colours(table: &toml::Table, default: &UiColours) -> UiColours {
         tooltip_fg: get("tooltip_foreground", default.tooltip_fg),
         menu_bar_fg: get("menu_bar_foreground", default.menu_bar_fg),
         primary_menu_bg: get("primary_menu_background", default.primary_menu_bg),
+        focus_ring: get("focus_ring", default.focus_ring),
     }
 }
 

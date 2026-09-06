@@ -169,6 +169,8 @@ pub enum ColourToken {
     UiMenuBarForeground,
     /// Primary menu / screen heading background colour (blue in Legacy).
     UiPrimaryMenuBackground,
+    /// Focus ring colour for keyboard-focused interactive elements.
+    UiFocusRing,
 }
 
 impl ColourToken {
@@ -239,6 +241,7 @@ impl ColourToken {
             Self::UiTooltipForeground => "ui.tooltip_foreground",
             Self::UiMenuBarForeground => "ui.menu_bar_foreground",
             Self::UiPrimaryMenuBackground => "ui.primary_menu_background",
+            Self::UiFocusRing => "ui.focus_ring",
         }
     }
 }

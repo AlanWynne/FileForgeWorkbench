@@ -18,9 +18,14 @@ summary short and link to the detailed task list.
 | Area | Status | Current focus | Detailed tracking |
 |------|--------|---------------|-------------------|
 | Phase BR -- Requirements Maintenance | DONE | CA-01/CA-02 annotations, FFW-JES rename, B009/CR-NR-035 housekeeping | [project-master tasks](../specs/project-master/tasks.md) |
+| Phase BT -- Cross-File Search and Replace | DONE | GlobalReplaceEngine, Replace UI, search history | [global-search tasks](../specs/global-search/tasks.md) |
 | Phase BS-A -- Workspace Model | DONE | WorkspaceState, session persistence, lifecycle commands, root management | [workspace-model tasks](../specs/workspace-model/tasks.md) |
 | Phase BS-B -- Command Palette | DONE | Fuzzy engine, palette state, rendering, Ctrl+Shift+P activation | [command-palette tasks](../specs/command-palette/tasks.md) |
 | Phase BS-C -- Global Search | DONE | ff-global-search crate, Search Results panel, Ctrl+Shift+F, GSEARCH command | [global-search tasks](../specs/global-search/tasks.md) |
+| Phase CO -- Accessibility, Plugin Manager UI, Notification System | DONE | All 7 deliverables complete | [project-master tasks](../specs/project-master/tasks.md) |
+| Phase CP -- Batch Command Execution | DONE | All 11 deliverables complete | [project-master tasks](../specs/project-master/tasks.md) |
+| Phase W.5 -- Generic ToolchainPlugin Trait Validation | DONE | MockToolchain test double, trait audit, CI constraint | [compiler-toolchain-integration tasks](../specs/compiler-toolchain-integration/tasks.md) |
+| Phase CQ -- Enterprise Features | NEXT | audit-logging, settings export/import, locked config keys | [project-master tasks](../specs/project-master/tasks.md) |
 | Deferred connectors | DEFERRED | Network, FTP/SFTP, mainframe, and cloud connectors | [connector specs](../specs/) |
 
 ## Before starting work
@@ -34,7 +39,31 @@ summary short and link to the detailed task list.
 
 ## Active work item
 
-**Current focus:** No active work item. Phase BS (Productivity Core) is complete.
+**Current focus:** Phase CQ -- Enterprise Features (audit logging, settings export/import, locked config keys). Requirements gate pending.
+
+### Phase CQ -- Enterprise Features (next)
+
+| Deliverable | Spec | Status |
+|-------------|------|--------|
+| Requirements gate | configuration-system | [ ] CQ.1 |
+| Audit logging implementation | Structured audit trail | [ ] CQ.2 |
+| Settings export/import | Save/load user config as portable TOML | [ ] CQ.3 |
+| Locked config keys | Admin-enforced settings | [ ] CQ.4 |
+| Integration tests + TCR | All new criteria | [ ] CQ.5 |
+
+### Phase CO -- Accessibility, Plugin Manager UI, and Notification System -- COMPLETE
+
+| Deliverable | Spec | Status |
+|-------------|------|--------|
+| Requirements gate (3 new sub-projects) | accessibility, plugin-manager-ui, notification-system | [x] CO.1-CO.3 |
+| Accessibility implementation | WCAG AA, keyboard-only, focus indicators | [x] CO.4 |
+| Plugin Manager UI | POM option 8 panel | [x] CO.5 |
+| Notification System | Toast + event log | [x] CO.6 |
+| Integration tests + TCR | All new criteria | [x] CO.7 |
+
+### Phase CP -- Batch Command Execution -- COMPLETE
+
+**Test count at completion:** 731 passing, 0 failures.
 
 ### Phase BS -- Productivity Core -- COMPLETE
 
@@ -44,7 +73,7 @@ summary short and link to the detailed task list.
 | Command Palette | [command-palette](../specs/command-palette/requirements.md) | BS-B.1 to BS-B.4 | DONE |
 | Global Search | [global-search](../specs/global-search/requirements.md) | BS-C.1 to BS-C.5 | DONE |
 
-**Test count at completion:** 655 passing (644 ff-desktop + 11 ff-global-search), 0 failures.
+**Test count at completion (Phase BS):** 655 passing, 0 failures.
 
 ### Suggested next steps
 

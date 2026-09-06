@@ -249,3 +249,102 @@ workbench behaviour quickly and safely from within the application.
 11. WHEN the user clicks `Settings` in the POM option list (option 0 button), THE shell
       SHALL navigate to the Settings panel using the same routing as typing `0` in the command
       field.
+
+---
+
+### Requirement 16: Configuration Audit Logging
+
+**User Story:** As an enterprise administrator, I want every configuration change to be recorded
+with a timestamp, the key changed, the old and new values, the actor, and the layer, so that I
+can audit who changed what and when for compliance and troubleshooting purposes.
+
+**Source:** Phase CQ enterprise features roadmap.
+
+#### Acceptance Criteria
+
+1. WHEN any configuration key's effective value changes (via set_user_value, profile switch,
+   project load/unload, or hot-reload), THE Configuration_System SHALL append an AuditEntry to
+   the audit log containing: ISO-8601 timestamp, key path, old effective value, new effective
+   value, the ConfigLayer that caused the change, and an actor string (defaults to "user").
+2. THE Configuration_System SHALL persist the audit log to a rolling file at
+   `<user-config-dir>/audit.log` using a line-delimited TOML or JSON format, with a maximum
+   of 10,000 entries before the oldest entries are discarded (ring-buffer semantics).
+3. THE Configuration_System SHALL expose a `query_audit_log(filter: AuditFilter) -> Vec<AuditEntry>`
+   API on ConfigHandle, supporting filtering by key prefix, layer, time range, and actor.
+4. WHEN the audit log file cannot be written (permission error, disk full), THE Configuration_System
+   SHALL emit a WARN-level log record and continue operating -- audit log write failures SHALL NOT
+   prevent configuration changes from taking effect.
+5. THE AuditEntry SHALL be a public type with fields: timestamp (SystemTime), key (String),
+   old_value (Option<ConfigValue>), new_value (Option<ConfigValue>), layer (ConfigLayer),
+   actor (String).
+6. THE Configuration_System SHALL provide a `clear_audit_log()` method on ConfigHandle that
+   truncates the in-memory and on-disk audit log.
+
+---
+
+### Requirement 17: Settings Export and Import
+
+**User Story:** As a workbench user, I want to export my current configuration to a portable
+TOML file and import a previously exported file to restore settings, so that I can back up my
+preferences, share them with colleagues, or migrate to a new machine.
+
+**Source:** Phase CQ enterprise features roadmap.
+
+#### Acceptance Criteria
+
+1. THE Configuration_System SHALL provide an `export_settings(scope: ExportScope, path: &Path)
+   -> Result<(), ConfigError>` method on ConfigHandle that writes a TOML file containing all
+   effective values for the specified scope.
+2. THE ExportScope SHALL be an enum with variants: `AllLayers` (all effective values),
+   `UserLayer` (only user-layer overrides), `ProjectLayer` (only project-layer overrides).
+3. THE exported TOML file SHALL include a `[_export_meta]` header table containing: export
+   timestamp, FFWB version string, and the ExportScope used.
+4. THE Configuration_System SHALL provide an `import_settings(path: &Path, target_layer:
+   ImportTarget) -> Result<ImportSummary, ConfigError>` method on ConfigHandle that reads an
+   exported TOML file and merges its values into the specified target layer.
+5. THE ImportTarget SHALL be an enum with variants: `UserLayer`, `ProjectLayer`.
+6. WHEN importing, THE Configuration_System SHALL validate each imported value against the
+   schema; invalid values SHALL be skipped and reported in the ImportSummary rather than
+   causing the entire import to fail.
+7. THE ImportSummary SHALL be a public struct with fields: imported_count (usize),
+   skipped_count (usize), skipped_keys (Vec<String>).
+8. WHEN the import file cannot be read or contains invalid TOML, THE Configuration_System
+   SHALL return ConfigError::Io or ConfigError::ParseError respectively and make no changes.
+9. AFTER a successful import, THE Configuration_System SHALL trigger a hot-reload cycle so
+   that all registered callbacks are notified of changed keys.
+
+---
+
+### Requirement 18: Locked Configuration Keys
+
+**User Story:** As an enterprise administrator, I want to mark specific configuration keys as
+locked in the system layer so that users, profiles, and projects cannot override them, ensuring
+consistent policy enforcement across all workbench instances.
+
+**Source:** Phase CQ enterprise features roadmap.
+
+#### Acceptance Criteria
+
+1. THE system-layer configuration file SHALL support a `[_locked]` table containing a list of
+   key paths that are locked: `locked_keys = ["editor.tab_size", "logging.level"]`.
+2. WHEN a key is listed in `[_locked].locked_keys`, THE Configuration_System SHALL treat the
+   system-layer value for that key as the effective value regardless of any higher-priority
+   layer definitions -- locked keys are immune to override by User, Profile, Project, and
+   Workspace layers.
+3. WHEN `set_user_value()` is called for a locked key, THE Configuration_System SHALL return
+   `ConfigError::KeyLocked { key }` and make no change.
+4. WHEN a configuration file is loaded and contains a value for a locked key at a layer above
+   System, THE Configuration_System SHALL silently ignore that value (the system-layer value
+   wins) and emit a DEBUG-level log record identifying the key and the layer that attempted
+   to override it.
+5. THE Configuration_System SHALL expose an `is_locked(key: &str) -> bool` method on
+   ConfigHandle so that the Settings panel and other consumers can check lock status before
+   attempting writes.
+6. THE Settings panel SHALL display a lock indicator (padlock icon or "LOCKED" badge) beside
+   any key that is locked, and SHALL disable the value widget and Reset to Default button for
+   locked keys.
+7. THE ConfigError enum SHALL gain a `KeyLocked { key: String }` variant with message:
+   `"[config] lock: key '{key}' is locked by system policy and cannot be modified"`.
+8. WHEN the system-layer configuration file is hot-reloaded and the locked_keys list changes,
+   THE Configuration_System SHALL recompute effective values for all newly locked or unlocked
+   keys and invoke reload callbacks for any keys whose effective value changed as a result.

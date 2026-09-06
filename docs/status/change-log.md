@@ -198,8 +198,8 @@ Modifications to existing behaviour that already works.
 - **Date/Phase**: Phase BW (pre-gate)
 - **Prompt**: "also bring into this new phase of requirements building the discussion from the document FileForgeWorkbench_MiniX_FTSO_Command_Environment_Design.md We need to decide how to integrate this into the new requirements provided"
 - **Description**: The MiniX/FTSO Command Environment Design document proposes an ISPF Option 6-style command shell (FTSO) and a portable mainframe service layer (MiniX). Before any requirements.md files are updated, this proposal must be rationalised against: (1) the TSO/SDSF EARS source files which are the authoritative behavioural ground truth; (2) the existing `command-framework`, `shell-command`, `FFW-JES`, `lua-macro-engine`, and `dataset-catalog` specs which already cover significant overlap. Phase EI-0 of the EARS integration workflow governs this rationalisation. No new sub-projects are created and no requirements.md files are modified until EI-0 is complete and approved.
-- **Status**: PENDING GATE
-- **Linked spec**: `docs/specs/ears-integration/workflow.md` Phase EI-0
+- **Status**: DONE -- EI-0 through EI-6 all complete; all 16 EI-5 batches executed as Phases BW-CI; FTSO resolved as extension to shell-command (no new sub-project); MiniX confirmed as internal architecture label only
+- **Linked spec**: `docs/specs/ears-integration/workflow.md` (all phases [x])
 
 ### CR-CH-006 -- SQLite catalog integration for Options 1 and 2
 - **Date/Phase**: Phase BU
@@ -360,7 +360,7 @@ Modifications to existing behaviour that already works.
   format. Implements WORKSPACE OPEN/SAVE/SAVE AS/CLOSE commands, root management, configuration
   layer injection, and session persistence. Foundational prerequisite for Command Palette and
   Global Search scoping.
-- **Status**: PENDING GATE -- gate complete, awaiting implementation approval
+- **Status**: DONE -- Phase BS-A complete
 - **Linked spec**: `docs/specs/workspace-model/requirements.md` (new sub-project, Req 1-6)
 
 ### CR-NR-037 -- Command Palette
@@ -369,7 +369,7 @@ Modifications to existing behaviour that already works.
 - **Description**: Add a Command Palette (Ctrl+Shift+P) -- a modal fuzzy-search overlay over all
   registered commands. Displays command name, category, description, and bound shortcut. Executes
   commands via the existing Command_Dispatch. Persists recent commands in session state.
-- **Status**: PENDING GATE -- gate complete, awaiting implementation approval
+- **Status**: DONE -- Phase BS-B complete
 - **Linked spec**: `docs/specs/command-palette/requirements.md` (new sub-project, Req 1-5)
 
 ### CR-NR-038 -- Global Search (Cross-File Search and Replace)
@@ -379,5 +379,46 @@ Modifications to existing behaviour that already works.
   workspace roots or mounted Native catalogs. New `ff-global-search` crate reuses FindEngine for
   per-file matching. Results streamed to a Search Results panel (TabKind::SearchResults). Cross-file
   replace with preview and per-file undo support.
-- **Status**: PENDING GATE -- gate complete, awaiting implementation approval
+- **Status**: DONE -- Phase BS-C complete
 - **Linked spec**: `docs/specs/global-search/requirements.md` (new sub-project, Req 1-6)
+
+### CR-NR-039 -- Phase BT: Cross-File Search and Replace
+- **Date/Phase**: Phase BT
+- **Prompt**: "proceed with Phase BT"
+- **Description**: Implement the cross-file replace pipeline (GlobalReplaceEngine::replace_all(),
+  Replace_Preview confirmation, Replace All with ff-bgio dispatch, per-file undo, unsaved-changes
+  guard, regex group substitution) and search history (last 20 queries persisted in session state,
+  dropdown on search field, options round-trip). All requirements already exist in
+  global-search/requirements.md Req 5.1-5.7 and Req 6.1-6.3.
+- **Status**: DONE -- Phase BT complete, 657 tests passing (646 ff-desktop + 11 ff-global-search), 0 failures
+- **Linked spec**: `docs/specs/global-search/requirements.md` (Req 5, Req 6)
+
+### CR-NR-041 -- Batch Command Execution (IKJEFT01 analogue)
+- **Date/Phase**: Phase CP (pre-gate)
+- **Prompt**: "Create a formal Requirement to provide this functionality?" (following discussion of IKJEFT01 batch execution -- feeding a file of TSO commands to FFWB for non-interactive execution)
+- **Description**: Add a headless batch execution mode to FFWB analogous to z/OS IKJEFT01 batch. The user supplies a file (or stdin) containing FFWB/FTSO primary commands; FFWB executes them sequentially without opening a GUI window, writes output to stdout or a nominated file, and exits with a meaningful return code. This enables scripted automation, CI/CD pipelines, and JCL-style job submission from outside the workbench. The feature spans ff-desktop (CLI entry point), ff-command-semantics (command pipeline), ff-shell (output capture), and ff-workflow (sequencing). A new sub-project `batch-execution` is created.
+- **Status**: IN PROGRESS
+- **Linked spec**: `docs/specs/batch-execution/requirements.md` (new sub-project)
+
+### CR-NR-040 -- Phase CO: Accessibility, Plugin Manager UI, and Notification System
+- **Date/Phase**: Phase CO
+- **Prompt**: "proceed with Phase BU"
+- **Description**: Implements the three highest-priority remaining gaps from the Phase BQ executive
+  assessment roadmap (originally labelled "Phase BU" in that document; letter CO is the next
+  available). Deliverables: (1) `accessibility` sub-project -- cross-cutting WCAG AA compliance,
+  keyboard-only operation, screen reader support, and focus indicators across all panels;
+  (2) `plugin-manager-ui` sub-project -- Plugin Manager panel (POM option 8) for listing,
+  enabling, disabling, and configuring installed plugins; (3) `notification-system` sub-project --
+  non-modal notification toasts and a structured event log replacing ad-hoc status bar messages
+  for multi-step operations.
+- **Status**: IN PROGRESS
+- **Linked spec**: `docs/specs/accessibility/requirements.md` (new sub-project),
+  `docs/specs/plugin-manager-ui/requirements.md` (new sub-project),
+  `docs/specs/notification-system/requirements.md` (new sub-project)
+
+### CR-NR-042 -- Phase CQ: Enterprise Features (audit logging, settings export/import, locked config keys)
+- **Date/Phase**: Phase CQ
+- **Prompt**: "Proceed with CQ"
+- **Description**: Adds three enterprise-grade capabilities to the configuration system: (1) structured audit logging -- every configuration change is recorded with timestamp, key, old value, new value, actor, and layer, queryable via an AuditLog API and persisted to a rolling log file; (2) settings export/import -- the user can export the current effective configuration (or a specific layer) to a portable TOML file and import a previously exported file to restore settings; (3) locked config keys -- an administrator can mark specific keys as locked in the system layer, preventing user/profile/project layers from overriding them, with a clear error when a locked key is written. New sub-project: none (extends configuration-system). New requirements: Req 16 (audit logging), Req 17 (settings export/import), Req 18 (locked config keys) in configuration-system/requirements.md.
+- **Status**: IN PROGRESS
+- **Linked spec**: `docs/specs/configuration-system/requirements.md` (new Requirements 16-18)

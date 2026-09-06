@@ -59,6 +59,13 @@ pub mod catalogs {
     pub const DEFAULT_POSIX_ROOT: &str = "catalogs.default_posix_root";
 }
 
+/// Accessibility configuration keys.
+pub mod accessibility {
+    /// When true, disables non-essential animations (smooth scroll, transitions).
+    /// Defaults to false; set to true to honour OS reduce-motion preference.
+    pub const REDUCE_MOTION: &str = "accessibility.reduce_motion";
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -127,6 +134,12 @@ mod tests {
     }
 
     #[test]
+    fn accessibility_keys_are_valid_dot_separated_paths() {
+        // Validates: Requirement 5.2 (accessibility) -- reduce_motion config key
+        assert_valid_key(accessibility::REDUCE_MOTION, "accessibility");
+    }
+
+    #[test]
     fn all_keys_have_unique_values() {
         // Validates: Requirement 7.2
         let all_keys = [
@@ -146,6 +159,7 @@ mod tests {
             theme::ACTIVE,
             theme::FONT_SIZE,
             vfs::DEFAULT_PROVIDER,
+            accessibility::REDUCE_MOTION,
         ];
 
         let unique: std::collections::HashSet<&str> = all_keys.iter().copied().collect();

@@ -92,13 +92,13 @@
 
 ## Task 5. Validate generic ToolchainPlugin trait contract (Req 5)
 
-- [ ] 5.1 Audit `ff-toolchain-api` trait definition -- confirm no GCC/Rust-specific
+- [x] 5.1 Audit `ff-toolchain-api` trait definition -- confirm no GCC/Rust-specific
   assumptions exist in `ToolchainPlugin`; add doc comment citing Req 5.2
   - Satisfies: Req 5.1, 5.2
-- [ ] 5.2 Write a `MockToolchain` test double in `ff-toolchain-api` tests that implements
+- [x] 5.2 Write a `MockToolchain` test double in `ff-toolchain-api` tests that implements
   `ToolchainPlugin` with no dependency on `ff-gcc-toolchain` or `ff-rust-toolchain`;
   confirm it compiles and registers correctly
   - Satisfies: Req 5.3, 5.4
-- [ ] 5.3 Confirm `ff-toolchain-api` Cargo.toml has no dev-dependency on either plugin crate;
+- [x] 5.3 Confirm `ff-toolchain-api` Cargo.toml has no dev-dependency on either plugin crate;
   add a CI comment noting this constraint
   - Satisfies: Req 5.4

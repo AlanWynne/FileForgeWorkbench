@@ -178,6 +178,45 @@ impl TabManager {
         let _ = runtime;
     }
 
+    /// Open the Plugin Manager panel tab (POM option 8).
+    ///
+    /// If a PluginManager tab already exists, activates it instead of inserting a duplicate.
+    /// Validates: plugin-manager-ui Requirement 1.1
+    pub fn open_plugin_manager_tab(&mut self, runtime: &Runtime) {
+        if let Some(idx) = self
+            .tabs
+            .iter()
+            .position(|t| t.kind == TabKind::PluginManager)
+        {
+            self.active = idx;
+            return;
+        }
+        let document = ff_document_model::new_document();
+        let id = TabId(self.next_id);
+        self.next_id += 1;
+        let tab = crate::tab_state::TabState::plugin_manager(id, document);
+        self.tabs.push(tab);
+        self.active = self.tabs.len() - 1;
+        let _ = runtime;
+    }
+
+    /// Open the Event Log panel tab.
+    ///
+    /// If an EventLog tab already exists, activates it instead of inserting a duplicate.
+    /// Validates: notification-system Requirement 2.1
+    pub fn open_event_log_tab(&mut self, runtime: &Runtime) {
+        if let Some(idx) = self.tabs.iter().position(|t| t.kind == TabKind::EventLog) {
+            self.active = idx;
+            return;
+        }
+        let document = ff_document_model::new_document();
+        let id = TabId(self.next_id);
+        self.next_id += 1;
+        let tab = crate::tab_state::TabState::event_log(id, document);
+        self.tabs.push(tab);
+        self.active = self.tabs.len() - 1;
+        let _ = runtime;
+    }
     /// Transform the active tab in-place from `PrimaryOptionMenu` to a new kind.
     ///
     /// No-op if the active tab is not a `PrimaryOptionMenu` tab.
