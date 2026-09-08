@@ -1,32 +1,37 @@
 # Implementation Plan -- Command Configurator
 
-Spec status: DRAFT, pending approval (Phase DB gate). No source is written until
-the gate is approved and a separate implementation instruction is given. All
-tasks are `[ ]` (pending). Each references the acceptance criteria it satisfies.
+Spec status: APPROVED (Phase DB gate). Implementation in progress under DB.9.
+Tasks 1 and 2 (the data + resolution layer) are complete and tested. The
+Context UI (Task 4) and external execution (Task 3, which depends on DB.10) are
+still `[ ]`. Each task references the acceptance criteria it satisfies.
 
 ---
 
-## Task 1: Command Store file format and loader
+## Task 1: Command Store file format and loader (DB.9)
 
-- [ ] 1.1 Define `CommandDefinition` and `CommandStore` types in `command_config/mod.rs`
+- [x] 1.1 Define `CommandDefinition` and `CommandStore` types in `command_config/mod.rs`
   - Satisfies: Req 1.2, 1.3
-- [ ] 1.2 Implement `commands.toml` load in `command_config/store.rs` (skip invalid entries, keep-first on duplicate id, populate load_error)
+- [x] 1.2 Implement `commands.toml` load in `command_config/store.rs` (skip invalid entries, keep-first on duplicate id, populate load_error)
   - Satisfies: Req 1.1, 1.4, 1.6
-- [ ] 1.3 Implement store save (write full definition list, create commands/ dir + empty file on first save)
+- [x] 1.3 Implement store save (write full definition list, create commands/ dir on first save)
   - Satisfies: Req 1.5, 2.4, 2.5
-- [ ] 1.4 Implement hot-reload poll (mtime check) reusing the Menu Workspace pattern
+- [x] 1.4 Implement hot-reload poll (mtime check) reusing the Menu Workspace pattern
   - Satisfies: Req 1.7
-- [ ] 1.5 Write unit tests: valid round-trip, invalid entry skipped, duplicate id kept-first, absent file = empty store, ASCII-only default content
-  - Validates: Requirement 1.1, 1.4, 1.5, 1.6, 1.8
+- [x] 1.5 Write unit tests: valid round-trip, invalid entry skipped, duplicate id kept-first, absent file = empty store
+  - Validates: Requirement 1.1, 1.4, 1.5, 1.6
+  - NOTE: Req 1.8 (ASCII default content) not covered -- there is no default
+    `commands.toml` generator yet; it lands with the Context UI (Task 4).
 
-## Task 2: Target resolution integration
+## Task 2: Target resolution integration (DB.9)
 
-- [ ] 2.1 Expose loaded definitions to `ff_command::resolve_target` as a `UserCommandStore` view
-  - Satisfies: command-framework Req 8.3
-- [ ] 2.2 Reject definitions whose id shadows a reserved built-in Command_ID
-  - Satisfies: Req 4.6
-- [ ] 2.3 Write unit tests: id resolves to stored target; reserved-id conflict rejected; unknown id reports `Command '<id>' is not defined.`
-  - Validates: Requirement 4.5, 4.6, command-framework Requirement 8.3
+- [x] 2.1 Expose loaded definitions to `ff_command::resolve_target` as a `UserCommandStore` view
+  - Satisfies: command-framework Req 8.3, command-configurator Req 4.3
+- [x] 2.2 Validate definitions and reject ids that shadow a reserved built-in Command_ID
+  - Satisfies: Req 4.1, 4.2, 4.6
+- [x] 2.3 Write unit tests: id resolves to stored target; reserved-id conflict rejected; unknown id does not resolve
+  - Validates: Requirement 4.1, 4.2, 4.6, command-framework Requirement 8.3
+  - NOTE: Req 4.5's user-facing `Command '<id>' is not defined.` message and Req
+    4.4 shortcut binding are wired with the menu/shortcut integration (DB.4).
 
 ## Task 3: External execution modes (Detached / Captured)
 

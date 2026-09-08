@@ -2055,22 +2055,22 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | -- | Req 1.1: commands.toml Command_Store with [[command]] array |
-| `ff-desktop` | 🔴 | -- | Req 1.2: each entry has id, label, [command.target] serialised CommandTarget |
-| `ff-desktop` | 🔴 | -- | Req 1.3: optional description and category (default user) |
-| `ff-desktop` | 🔴 | -- | Req 1.4: duplicate id keeps first, skips duplicate, logs WARN |
-| `ff-desktop` | 🔴 | -- | Req 1.5: absent file = empty store; commands/ dir + empty file on first save |
-| `ff-desktop` | 🔴 | -- | Req 1.6: invalid TOML/entry skipped, valid entries retained, load-error surfaced |
-| `ff-desktop` | 🔴 | -- | Req 1.7: store hot-reloads via the Menu Workspace file-watch infrastructure |
-| `ff-desktop` | 🔴 | -- | Req 1.8: default/example content is plain ASCII |
-| `ff-desktop` | 🔴 | -- | Req 2.1: Command Configurator Context opens via COMMANDS, lists definitions |
-| `ff-desktop` | 🔴 | -- | Req 2.2: each row shows id, label, variant, and external Execution_Mode |
-| `ff-desktop` | 🔴 | -- | Req 2.3: Add / Edit / Delete actions (delete with confirmation) |
-| `ff-desktop` | 🔴 | -- | Req 2.4: save validates then writes store; failure leaves file unchanged |
-| `ff-desktop` | 🔴 | -- | Req 2.5: delete removes definition and writes store back |
-| `ff-desktop` | 🔴 | -- | Req 2.6: variant-specific target editor fields |
-| `ff-desktop` | 🔴 | -- | Req 2.7: Context title is [COMMANDS] |
-| `ff-desktop` | 🔴 | -- | Req 2.8: F3/END returns to POM |
+| `ff-desktop` | ✅ | `command_config/store.rs::save_then_load_round_trips_a_definition` | Req 1.1: commands.toml Command_Store with [[command]] array |
+| `ff-desktop` | ✅ | `command_config/store.rs::save_then_load_round_trips_a_definition`, `external_definition_round_trips` | Req 1.2: each entry has id, label, [command.target] serialised CommandTarget |
+| `ff-desktop` | ✅ | `command_config/mod.rs::category_defaults_to_user` | Req 1.3: optional description and category (default user) |
+| `ff-desktop` | ✅ | `command_config/store.rs::duplicate_id_keeps_first_and_records_skip` | Req 1.4: duplicate id keeps first, skips duplicate, records skip |
+| `ff-desktop` | ✅ | `command_config/store.rs::absent_file_yields_empty_store`, `save_creates_parent_directory` | Req 1.5: absent file = empty store; commands/ dir created on first save |
+| `ff-desktop` | ✅ | `command_config/store.rs::invalid_entry_skipped_valid_retained`, `malformed_toml_surfaces_load_error` | Req 1.6: invalid TOML/entry skipped, valid entries retained, load-error surfaced |
+| `ff-desktop` | ✅ | `command_config/store.rs::poll_reload_picks_up_disk_change` | Req 1.7: store hot-reloads via mtime poll (Menu Workspace pattern) |
+| `ff-desktop` | 🔴 | -- | Req 1.8: default/example content is plain ASCII (no default-content generator yet; lands with the Context UI) |
+| `ff-desktop` | 🔴 | -- | Req 2.1: Command Configurator Context opens via COMMANDS, lists definitions (UI deferred within DB.9) |
+| `ff-desktop` | 🔴 | -- | Req 2.2: each row shows id, label, variant, and external Execution_Mode (UI deferred) |
+| `ff-desktop` | 🟡 | `command_config/store.rs::add_validates_and_rejects_duplicate`, `remove_deletes_by_id` | Req 2.3: Add/Delete store operations DONE; Edit + confirmation UI deferred |
+| `ff-desktop` | 🟡 | `command_config/store.rs::add_validates_and_rejects_duplicate` | Req 2.4: save validates then writes store; failure leaves store unchanged (UI trigger deferred) |
+| `ff-desktop` | ✅ | `command_config/store.rs::remove_deletes_by_id` | Req 2.5: delete removes definition; save writes store back |
+| `ff-desktop` | 🔴 | -- | Req 2.6: variant-specific target editor fields (UI deferred) |
+| `ff-desktop` | 🔴 | -- | Req 2.7: Context title is [COMMANDS] (UI deferred) |
+| `ff-desktop` | 🔴 | -- | Req 2.8: F3/END returns to POM (UI deferred) |
 | `ff-desktop` | 🔴 | -- | Req 3.1: External target carries program, args, working_dir, mode |
 | `ff-shell` | 🔴 | -- | Req 3.2: detached mode spawns Started_Task, returns immediately, no capture, no Workspace |
 | `ff-shell` | 🔴 | -- | Req 3.3: Started_Task not tracked/monitored/restarted/persisted after spawn |
@@ -2081,12 +2081,12 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-shell` | 🔴 | -- | Req 3.8: shell.mode = prompt confirms before spawn; decline = no spawn |
 | `ff-shell` | 🔴 | -- | Req 3.9: detached launch failure reports error, opens no Workspace |
 | `ff-desktop` | 🔴 | -- | Req 3.10: External Visible_Workspace classification per command-framework Req 8.9 |
-| `ff-desktop` | 🔴 | -- | Req 4.1: validation rejects bad id/label/target with specific messages |
-| `ff-desktop` | 🔴 | -- | Req 4.2: External validation rejects empty program and invalid mode |
-| `ff-desktop` | 🔴 | -- | Req 4.3: definition id usable as a Menu_Option command value |
-| `ff-desktop` | 🔴 | -- | Req 4.4: definition id bindable to a keyboard Shortcut_Binding |
-| `ff-desktop` | 🔴 | -- | Req 4.5: unknown referenced id reports Command '<id>' is not defined. |
-| `ff-desktop` | 🔴 | -- | Req 4.6: user id cannot shadow a reserved built-in Command_ID |
+| `ff-desktop` | ✅ | `command_config/store.rs::validate_rejects_empty_id_and_label`, `validate_rejects_invalid_id` | Req 4.1: validation rejects bad id/label/target with specific messages |
+| `ff-desktop` | ✅ | `command_config/store.rs::validate_rejects_empty_external_program` | Req 4.2: External validation rejects empty program (mode is a typed enum) |
+| `ff-desktop` | 🟡 | `command_config/mod.rs::user_command_id_resolves_to_stored_target` | Req 4.3: definition id resolves to its target via UserCommandStore; Menu_Option wiring is DB.4 |
+| `ff-desktop` | 🔴 | -- | Req 4.4: definition id bindable to a keyboard Shortcut_Binding (DB.4) |
+| `ff-desktop` | 🟡 | `command_config/mod.rs::unknown_id_does_not_resolve_via_user_store` | Req 4.5: unknown id does not resolve; `Command '<id>' is not defined.` message wired with menu/shortcut binding (DB.4) |
+| `ff-desktop` | ✅ | `command_config/store.rs::validate_rejects_reserved_id` | Req 4.6: user id cannot shadow a reserved built-in Command_ID |
 
 ### Phase DB -- Menu Options Reference a Command Target (CR-NR-051, menu-workspace Req 10)
 

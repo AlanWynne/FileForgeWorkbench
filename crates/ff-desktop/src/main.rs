@@ -12,6 +12,7 @@ mod automation;
 mod batch;
 mod catalog_manager_dialog;
 mod catalog_registry;
+mod command_config;
 mod command_palette;
 mod context_menu;
 mod copy_move_dialog;
