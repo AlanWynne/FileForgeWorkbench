@@ -10,7 +10,6 @@ use crate::command_palette::render::{render_command_palette, PaletteOutcome};
 use crate::command_palette::state::PaletteEntry;
 use crate::dataset_alloc_dialog::{self, validate_for_catalog, AllocOutcome, Dsorg, Recfm};
 use crate::files_panel;
-use crate::session_manager::SessionManager;
 use ff_dscatalog::{
     dataset::{
         AllocParams as DsAllocParams, Dsorg as DsDsorg, PartitionedSubtype, Recfm as DsRecfm,
@@ -180,7 +179,16 @@ impl eframe::App for WorkbenchShell {
             } else if let Some(session) = &self.session {
                 // No CLI args -- restore previous session tabs (Req 5 AC 1, 2).
                 let state = session.load();
-                let restored_any = !SessionManager::tab_uris(&state).is_empty();
+                // Validates: Requirement 21.1, 21.5 -- collect a Workspace_Descriptor
+                // for every persisted tab (owned, so the session borrow can end
+                // before we reconstruct with &mut self). Legacy sessions map via
+                // effective_descriptor (Requirement 21.10).
+                let restore_descriptors: Vec<ff_session::WorkspaceDescriptor> = state
+                    .tabs
+                    .iter()
+                    .filter_map(|t| t.effective_descriptor())
+                    .collect();
+                let restored_any = !restore_descriptors.is_empty();
                 // Extract workspace path before any mutable borrows.
                 let ws_path_to_restore = state.active_workspace_path.clone();
                 // Validates: Requirement 6.2 (view-zoom) -- restore global zoom offset.
@@ -210,14 +218,13 @@ impl eframe::App for WorkbenchShell {
                 if ensure_default_home_catalog(&mut self.files_panel.registry, home_path) {
                     session.save_catalog_registry(&self.files_panel.registry);
                 }
-                for session_tab in &state.tabs {
-                    if let Some(uri) = &session_tab.uri {
-                        if let Err(e) = self.tabs.open_file(uri, &self.runtime) {
-                            self.open_error = Some(format!("Could not restore: {e}"));
-                        }
-                    }
+                // The `session` immutable borrow ends here; reconstruction below
+                // needs `&mut self` (open_settings_view etc.), so it runs after.
+                if restored_any {
+                    self.tabs.close_welcome_tab();
                 }
-                // Validates: Requirement 14.1 / 14.1b -- ensure POM tab is always present.
+                self.restore_workspace_descriptors(&restore_descriptors);
+                // Validates: Requirement 14.1 / 14.1b / 21.8 -- POM always present.
                 if !restored_any {
                     self.tabs.close_welcome_tab();
                     self.tabs.insert_pom_tab(&self.runtime);
@@ -918,6 +925,7 @@ impl eframe::App for WorkbenchShell {
                 ws_path,
                 self.recent_palette_commands.clone(),
                 self.search_results_panel.history.clone(),
+                self.settings_panel.namespace_filter.as_deref(),
             );
             session.save_catalog_registry(&self.files_panel.registry);
         }

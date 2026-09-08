@@ -1170,3 +1170,142 @@ When the GUI shell detects a first chord that is a prefix of a multi-key sequenc
 6. Escape key always cancels pending state immediately
 
 The 2-second timeout value is defined as a constant in `ff-command::shortcut::sequence::SEQUENCE_TIMEOUT_MS = 2000`.
+---
+
+## Section: Unified Command Target (Requirement 8, CR-NR-051)
+
+This section adds the Command_Target abstraction. It is a design delta to the
+dispatch model (Requirement 2) and the shortcut/menu binding surfaces; it
+introduces one new public type and one resolver function. No existing command
+handler is removed.
+
+### Data model
+
+```rust
+/// What a command does. Exactly one variant.
+/// Validates: command-framework Requirement 8.1
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum CommandTarget {
+    /// Open the Menu_Workspace backed by menus/<name>.toml.
+    Menu { name: String },
+    /// Open a built-in Context with optional typed params.
+    CustomWorkspace {
+        workspace_kind: WorkspaceKind,
+        #[serde(default)]
+        params: TargetParams,
+    },
+    /// Invoke a registered internal command.
+    Function {
+        command_id: String,
+        #[serde(default)]
+        params: TargetParams,
+    },
+    /// Run a Lua/REXX macro by name or path.
+    Macro { source: MacroSource },
+    /// Run an external process.
+    External {
+        program: String,
+        #[serde(default)]
+        args: Vec<String>,
+        #[serde(default)]
+        working_dir: Option<String>,
+        mode: ExternalMode,   // Detached | Captured
+    },
+}
+
+/// Small typed parameter bag (string/int/bool values) used by
+/// CustomWorkspace and Function targets. Reuses the CommandParams value model.
+pub type TargetParams = std::collections::BTreeMap<String, ParamValue>;
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MacroSource { Name(String), Path(String) }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ExternalMode { Detached, Captured }
+```
+
+`WorkspaceKind` is the persisted, data-file-friendly enumeration of built-in
+Contexts (Editor, Files, FileExplorer, Settings, Search, PluginManager,
+EventLog, MacroLibrary, ...). It is the session-layer counterpart of the
+runtime `TabKind` and is defined once and shared by command-framework and
+startup-and-session (Requirement 21). This removes the duplicated closed
+`PersistedTabKind` enum that exists today.
+
+### Target resolution (Requirement 8.3, 8.4)
+
+```rust
+/// Convert a bare command string into a CommandTarget.
+/// Validates: command-framework Requirement 8.3, 8.4, 8.8
+pub fn resolve_target(
+    input: &str,
+    registry: &CommandRegistry,
+    user_commands: &UserCommandStore,   // command-configurator Req 1
+) -> Result<CommandTarget, TargetResolveError>
+```
+
+Resolution order (first match wins), chosen to preserve today's behaviour:
+
+1. User-defined command definition whose id equals the trimmed input
+   -> that definition's stored CommandTarget.
+2. Built-in workspace verb / fastpath (e.g. `FILES`, `=2`, `SETTINGS editor`)
+   -> `CustomWorkspace { .. }`.
+3. Registered Command_ID -> `Function { command_id, .. }`.
+4. Macro / shell / other pipeline verbs -> handled by the existing command
+   pipeline unchanged (returned as the appropriate variant or delegated).
+5. No match -> `Err(TargetResolveError::Unresolved(input))`.
+
+Because every existing string still flows through this resolver to an
+equivalent variant, Requirement 8.4 (no behaviour change) holds. The resolver
+is a pure function and is unit-testable in isolation.
+
+### Dispatch routing (Requirement 8.2)
+
+`execute_target(target: &CommandTarget) -> CommandResult` routes by variant:
+
+- `Function` -> existing `execute_command(id, params)` (Requirement 2).
+- `Macro` -> `execute_command("macro.run_named" | "macro.run_file", ..)`.
+- `Menu` / `CustomWorkspace` -> shell opens the corresponding Workspace.
+- `External` -> command-configurator / shell-command External execution path
+  (Detached spawn-and-forget, or Captured async run into the Output_Panel).
+
+`execute_command(id, params)` remains the single entry point for the
+`Function` variant, so Requirement 2 criterion 7 (all state changes route
+through dispatch) is preserved.
+
+### Visible-workspace classification (Requirement 8.9)
+
+```rust
+/// Validates: command-framework Requirement 8.9
+pub fn produces_visible_workspace(target: &CommandTarget) -> bool {
+    matches!(
+        target,
+        CommandTarget::Menu { .. }
+        | CommandTarget::CustomWorkspace { .. }
+        | CommandTarget::External { mode: ExternalMode::Captured, .. }
+    )
+}
+```
+
+Session persistence (startup-and-session Requirement 21) uses this predicate to
+decide which Workspaces to persist. Detached External targets (Started Tasks)
+and pure Function/Macro targets return `false` and are never persisted.
+
+### TOML serialisation (Requirement 8.7)
+
+`CommandTarget` uses serde with an internal `kind` tag so a target reads
+naturally in a data file, e.g.:
+
+```toml
+[command.target]
+kind = "external"
+program = "pwsh"
+args = ["-File", "scripts/build.ps1"]
+working_dir = "${workspace_root}"
+mode = "captured"
+```
+
+This same representation is used by the Workspace_Descriptor persistence in
+startup-and-session Requirement 21 (for Menu and CustomWorkspace targets only).

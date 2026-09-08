@@ -25,6 +25,7 @@ The following specs exist under `docs/specs/`:
 - caret-and-selection
 - clipboard-operations
 - command-completion
+- command-configurator
 - command-framework
 - command-semantics
 - command-palette

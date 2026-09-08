@@ -250,6 +250,11 @@ current flat-list implementation happens in Phase CW-impl. See
 9. THE `[SETTINGS]` Workspace SHALL persist in the session and be restored on next launch as a
      `SettingsPanel` tab kind. After Phase CW-impl, a Settings_Namespace_View tab SHALL persist
      with its namespace filter and be restored as a `SettingsPanel` tab kind with that filter.
+     *(Phase DB, CR-CH-012: session persistence no longer uses a closed "tab kind" enumeration.
+     The Settings Context persists as a `CustomWorkspace { workspace_kind = settings,
+     params = { namespace } }` Workspace_Descriptor and is restored with that namespace filter
+     applied -- see startup-and-session Requirement 21.3. "tab kind" in this criterion should be
+     read as the Workspace_Kind `settings`.)*
 
 10. WHEN the user presses `F3` or types `END` in a Settings_Namespace_View command field,
       THE shell SHALL return the Workspace to the Settings_Menu. WHEN the user presses `F3` or

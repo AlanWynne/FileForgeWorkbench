@@ -5,12 +5,129 @@
 //!
 //! Addresses: Requirement 18.10 — session save/restore wired into ff-desktop.
 
-use ff_session::session_state::{PersistedTabKind, TabState as SessionTabState};
+use ff_session::session_state::{
+    DescriptorParams, DescriptorValue, PersistedTabKind, TabState as SessionTabState,
+    WorkspaceDescriptor, WorkspaceKind,
+};
 use ff_session::{SessionFile, SessionState, UserDataDir};
 
 use crate::catalog_registry::CatalogRegistry;
 use crate::tab_manager::TabManager;
-use crate::tab_state::TabKind;
+use crate::tab_state::{TabKind, TabState as RuntimeTab};
+
+/// Build the Workspace_Descriptor for a runtime tab, or `None` when the tab is
+/// not a persistable visible Workspace.
+///
+/// `settings_namespace` is the shell-wide Settings namespace filter, applied
+/// only to a `SettingsPanel` tab so a namespace-filtered Settings Context
+/// restores with its filter (Requirement 21.3). It is `None` for the unfiltered
+/// Settings view and for every other tab kind.
+///
+/// Validates: startup-and-session Requirement 21.1, 21.2, 21.3, 21.6.
+fn descriptor_for_tab(
+    t: &RuntimeTab,
+    settings_namespace: Option<&str>,
+) -> Option<WorkspaceDescriptor> {
+    let custom = |kind: WorkspaceKind, params: DescriptorParams| {
+        Some(WorkspaceDescriptor::CustomWorkspace {
+            workspace_kind: kind,
+            params,
+        })
+    };
+    match t.kind {
+        TabKind::FileEditor => {
+            // Only a file-backed editor is restorable; an unsaved buffer is not.
+            let path = t.path.as_ref()?;
+            let mut params = DescriptorParams::new();
+            params.insert("uri".to_string(), DescriptorValue::from(path.clone()));
+            params.insert(
+                "viewport_top_line".to_string(),
+                DescriptorValue::from(t.viewport.top_line() as i64),
+            );
+            params.insert(
+                "caret_line".to_string(),
+                DescriptorValue::from(t.cursor.cursor_line() as i64),
+            );
+            params.insert(
+                "caret_column".to_string(),
+                DescriptorValue::from(t.cursor.cursor_column() as i64),
+            );
+            custom(WorkspaceKind::Editor, params)
+        }
+        TabKind::FilesPanel => custom(WorkspaceKind::Files, DescriptorParams::new()),
+        TabKind::FileExplorerPanel => custom(WorkspaceKind::FileExplorer, DescriptorParams::new()),
+        TabKind::SettingsPanel => {
+            let mut params = DescriptorParams::new();
+            if let Some(ns) = settings_namespace {
+                params.insert("namespace".to_string(), DescriptorValue::from(ns));
+            }
+            custom(WorkspaceKind::Settings, params)
+        }
+        TabKind::SearchResults => custom(WorkspaceKind::Search, DescriptorParams::new()),
+        TabKind::PluginManager => custom(WorkspaceKind::PluginManager, DescriptorParams::new()),
+        TabKind::EventLog => custom(WorkspaceKind::EventLog, DescriptorParams::new()),
+        TabKind::MacroLibrary => custom(WorkspaceKind::MacroLibrary, DescriptorParams::new()),
+        TabKind::PrimaryOptionMenu => {
+            custom(WorkspaceKind::PrimaryOptionMenu, DescriptorParams::new())
+        }
+        TabKind::MenuWorkspace => {
+            // A data-driven menu persists as a Menu descriptor keyed by name.
+            let name = t
+                .menu_workspace
+                .as_ref()
+                .and_then(|mw| mw.menu.as_ref())
+                .map(|m| m.title.to_lowercase())
+                .unwrap_or_else(|| "pom".to_string());
+            Some(WorkspaceDescriptor::Menu { name })
+        }
+        // Untitled buffers are not persisted (never were).
+        TabKind::Untitled => None,
+    }
+}
+
+/// Build the full persisted `SessionTabState` for a runtime tab, including its
+/// Workspace_Descriptor. Returns `None` when the tab is not persistable.
+///
+/// Validates: startup-and-session Requirement 21.1, 21.2, 21.3.
+fn session_tab_for(t: &RuntimeTab, settings_namespace: Option<&str>) -> Option<SessionTabState> {
+    let descriptor = descriptor_for_tab(t, settings_namespace)?;
+    // Legacy fields are kept populated so an older build can still read the
+    // file (Requirement 21.10 in reverse) and so `uri`/viewport remain
+    // available without unpacking the descriptor.
+    let (tab_kind, uri, top, caret_l, caret_c) = match t.kind {
+        TabKind::FileEditor => (
+            PersistedTabKind::FileEditor,
+            t.path.clone(),
+            t.viewport.top_line() as usize,
+            t.cursor.cursor_line() as usize,
+            t.cursor.cursor_column() as usize,
+        ),
+        TabKind::FilesPanel => (PersistedTabKind::FilesPanel, None, 1, 1, 1),
+        TabKind::FileExplorerPanel => (PersistedTabKind::FileExplorerPanel, None, 1, 1, 1),
+        TabKind::SearchResults => (PersistedTabKind::SearchResults, None, 1, 1, 1),
+        TabKind::PluginManager => (PersistedTabKind::PluginManager, None, 1, 1, 1),
+        TabKind::EventLog => (PersistedTabKind::EventLog, None, 1, 1, 1),
+        TabKind::PrimaryOptionMenu => (PersistedTabKind::PrimaryOptionMenu, None, 1, 1, 1),
+        // Kinds with no legacy PersistedTabKind variant fall back to the default;
+        // the descriptor is the source of truth for these on restore.
+        _ => (PersistedTabKind::default(), None, 1, 1, 1),
+    };
+    Some(SessionTabState {
+        tab_id: format!("{}", t.id.0),
+        descriptor: Some(descriptor),
+        tab_kind,
+        uri,
+        viewport_top_line: top,
+        viewport_horizontal_offset: 0,
+        caret_line: caret_l,
+        caret_column: caret_c,
+        selections: Vec::new(),
+        language_override: None,
+        is_pinned: false,
+        zoom_offset: 0,
+        workspace_name: t.workspace_name.clone(),
+    })
+}
 
 /// Manages session persistence for the desktop shell.
 pub struct SessionManager {
@@ -60,62 +177,12 @@ impl SessionManager {
         zoom_offset: i32,
         key_bar_visible: bool,
         file_explorer_sidebar_width: f32,
+        settings_namespace: Option<&str>,
     ) {
         let session_tabs: Vec<SessionTabState> = tabs
             .tabs()
             .iter()
-            .filter_map(|t| match t.kind {
-                TabKind::FileEditor => t.path.as_ref().map(|path| SessionTabState {
-                    tab_id: format!("{}", t.id.0),
-                    tab_kind: PersistedTabKind::FileEditor,
-                    uri: Some(path.clone()),
-                    viewport_top_line: t.viewport.top_line() as usize,
-                    viewport_horizontal_offset: 0,
-                    caret_line: t.cursor.cursor_line() as usize,
-                    caret_column: t.cursor.cursor_column() as usize,
-                    selections: Vec::new(),
-                    language_override: None,
-                    is_pinned: false,
-                    zoom_offset: 0,
-                    workspace_name: t.workspace_name.clone(),
-                }),
-                TabKind::FilesPanel => Some(SessionTabState {
-                    tab_id: format!("{}", t.id.0),
-                    tab_kind: PersistedTabKind::FilesPanel,
-                    uri: None,
-                    viewport_top_line: 1,
-                    viewport_horizontal_offset: 0,
-                    caret_line: 1,
-                    caret_column: 1,
-                    selections: Vec::new(),
-                    language_override: None,
-                    is_pinned: false,
-                    zoom_offset: 0,
-                    workspace_name: t.workspace_name.clone(),
-                }),
-                TabKind::FileExplorerPanel => Some(SessionTabState {
-                    tab_id: format!("{}", t.id.0),
-                    tab_kind: PersistedTabKind::FileExplorerPanel,
-                    uri: None,
-                    viewport_top_line: 1,
-                    viewport_horizontal_offset: 0,
-                    caret_line: 1,
-                    caret_column: 1,
-                    selections: Vec::new(),
-                    language_override: None,
-                    is_pinned: false,
-                    zoom_offset: 0,
-                    workspace_name: t.workspace_name.clone(),
-                }),
-                TabKind::PrimaryOptionMenu
-                | TabKind::Untitled
-                | TabKind::SettingsPanel
-                | TabKind::SearchResults
-                | TabKind::PluginManager
-                | TabKind::EventLog
-                | TabKind::MacroLibrary
-                | TabKind::MenuWorkspace => None,
-            })
+            .filter_map(|t| session_tab_for(t, settings_namespace))
             .collect();
 
         let active_tab_id = {
@@ -162,62 +229,12 @@ impl SessionManager {
         active_workspace_path: Option<String>,
         recent_palette_commands: Vec<String>,
         search_history: Vec<String>,
+        settings_namespace: Option<&str>,
     ) {
         let session_tabs: Vec<SessionTabState> = tabs
             .tabs()
             .iter()
-            .filter_map(|t| match t.kind {
-                TabKind::FileEditor => t.path.as_ref().map(|path| SessionTabState {
-                    tab_id: format!("{}", t.id.0),
-                    tab_kind: PersistedTabKind::FileEditor,
-                    uri: Some(path.clone()),
-                    viewport_top_line: t.viewport.top_line() as usize,
-                    viewport_horizontal_offset: 0,
-                    caret_line: t.cursor.cursor_line() as usize,
-                    caret_column: t.cursor.cursor_column() as usize,
-                    selections: Vec::new(),
-                    language_override: None,
-                    is_pinned: false,
-                    zoom_offset: 0,
-                    workspace_name: t.workspace_name.clone(),
-                }),
-                TabKind::FilesPanel => Some(SessionTabState {
-                    tab_id: format!("{}", t.id.0),
-                    tab_kind: PersistedTabKind::FilesPanel,
-                    uri: None,
-                    viewport_top_line: 1,
-                    viewport_horizontal_offset: 0,
-                    caret_line: 1,
-                    caret_column: 1,
-                    selections: Vec::new(),
-                    language_override: None,
-                    is_pinned: false,
-                    zoom_offset: 0,
-                    workspace_name: t.workspace_name.clone(),
-                }),
-                TabKind::FileExplorerPanel => Some(SessionTabState {
-                    tab_id: format!("{}", t.id.0),
-                    tab_kind: PersistedTabKind::FileExplorerPanel,
-                    uri: None,
-                    viewport_top_line: 1,
-                    viewport_horizontal_offset: 0,
-                    caret_line: 1,
-                    caret_column: 1,
-                    selections: Vec::new(),
-                    language_override: None,
-                    is_pinned: false,
-                    zoom_offset: 0,
-                    workspace_name: t.workspace_name.clone(),
-                }),
-                TabKind::PrimaryOptionMenu
-                | TabKind::Untitled
-                | TabKind::SettingsPanel
-                | TabKind::SearchResults
-                | TabKind::PluginManager
-                | TabKind::EventLog
-                | TabKind::MacroLibrary
-                | TabKind::MenuWorkspace => None,
-            })
+            .filter_map(|t| session_tab_for(t, settings_namespace))
             .collect();
 
         let active_tab_id = {
@@ -286,6 +303,11 @@ impl SessionManager {
     /// Extract the ordered list of file URIs from a `SessionState`.
     ///
     /// Returns only tabs that have a URI (skips untitled placeholders).
+    ///
+    /// Test-only since Phase DB (CR-CH-012): the restore path now iterates
+    /// Workspace_Descriptors (Requirement 21.5) rather than URIs, so this
+    /// accessor is retained only to validate the persisted URI ordering.
+    #[cfg(test)]
     pub fn tab_uris(state: &SessionState) -> Vec<String> {
         state.tabs.iter().filter_map(|t| t.uri.clone()).collect()
     }
@@ -328,7 +350,7 @@ mod tests {
         let runtime = Runtime::new().expect("runtime");
         let tabs = TabManager::new(&runtime, "welcome\n");
 
-        mgr.save(&tabs, 0, true, 200.0);
+        mgr.save(&tabs, 0, true, 200.0, None);
 
         let loaded = mgr.load();
         assert!(

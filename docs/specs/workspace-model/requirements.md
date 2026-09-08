@@ -166,6 +166,14 @@ when I last closed it and restore it automatically on next launch.
 
 **Source:** startup-and-session Req 4
 
+*(Note, Phase DB / CR-CH-012: "Workspace" in this requirement means a project
+Workspace_File -- roots, settings, and MRU. The persistence of individual open
+tabs (each a tab-level Workspace showing a Context) is defined by the
+Workspace_Descriptor model in startup-and-session Requirement 21. The two are
+complementary: the active project Workspace_File path is restored first
+(criterion 5.2), then the tab-level Workspace_Descriptors are re-opened. No
+change to this requirement's criteria.)*
+
 #### Acceptance Criteria
 
 1. WHEN the workbench exits normally with an Active_Workspace, THE session manager SHALL

@@ -15,14 +15,25 @@
 
 ### Task 1: Scaffold MenuWorkspaceState and TabKind variant
 
-- [x] 1.1 Add `TabKind::MenuWorkspace(MenuWorkspaceState)` to `tab_state.rs`
+- [x] 1.1 Add data-free `TabKind::MenuWorkspace` to `tab_state.rs` with the
+  `MenuWorkspaceState` held in a separate `menu_workspace: Option<..>` field on
+  `TabState` (TabKind is `Copy`; it does not carry the state inline)
   - Satisfies: Req 1 (data model), Req 2.1 (rendering contract)
-- [x] 1.2 Add `PersistedTabKind::MenuWorkspace { file_path: String }` to
-  `session_manager.rs`
+  - CORRECTION (Phase DB): the earlier wording
+    `TabKind::MenuWorkspace(MenuWorkspaceState)` was inaccurate -- the
+    implemented variant is data-free. Design section 11 corrected to match.
+- [ ] 1.2 Persist a Menu_Workspace across sessions
   - Satisfies: Req 4.6 (session persistence)
-- [x] 1.3 Write unit tests: `menu_workspace_tab_kind_exists`,
-  `menu_workspace_persisted_tab_kind_round_trips`
-  - Validates: Requirement 1.7, Requirement 4 (session persistence)
+  - CORRECTION (Phase DB, CR-CH-012): the previously-checked plan to add
+    `PersistedTabKind::MenuWorkspace { file_path }` was NEVER implemented (the
+    enum has no such variant) and is superseded. A Menu_Workspace now persists
+    as a `MenuWorkspace { name }` Workspace_Descriptor (startup-and-session
+    Requirement 21.4), delivered in Phase DB (DB.11). Reopened as `[ ]`.
+- [ ] 1.3 Write unit tests for Menu_Workspace persistence round-trip
+  - Validates: Requirement 4.6, startup-and-session Requirement 21.4
+  - CORRECTION (Phase DB): a `menu_workspace_persisted_tab_kind_round_trips`
+    test for the never-added variant is not applicable; the descriptor
+    round-trip test is written in Phase DB (DB.11). Reopened as `[ ]`.
 
 ### Task 2: TOML Loader
 
@@ -196,11 +207,16 @@
 - [x] 14.4 Update F3/END handler: return to Settings_Menu when in namespace view,
   return to POM when in Settings_Menu
   - Satisfies: Req 10.4, Req 12.2 (criterion 15.10)
-- [ ] 14.5 Persist `namespace_filter` in session and restore on launch
+- [x] 14.5 Persist `namespace_filter` in session and restore on launch
   - Satisfies: Req 10.6
-  - BLOCKED: requires a new `PersistedTabKind::SettingsNamespaceView` variant
-    in the `ff-session` crate (a persisted-format change). Deferred pending a
-    format decision; the namespace view works fully in-session without it.
+  - RESOLVED BY Phase DB (CR-CH-012, DB.11): the namespace filter persists as a
+    `CustomWorkspace { workspace_kind = settings, params = { namespace } }`
+    descriptor (startup-and-session Requirement 21.3), not a bespoke
+    `PersistedTabKind` variant. Delivered by the descriptor-based persistence
+    work: save threads `settings_panel.namespace_filter` into the descriptor;
+    `restore_workspace_descriptors` re-opens Settings with the filter applied.
+    Tests: `restore_settings_descriptor_applies_namespace_filter`,
+    `settings_namespace_descriptor_round_trips`.
 - [x] 14.6 Write unit tests: `settings_namespace_filter_applied_on_open`,
   `settings_namespace_tab_title_includes_namespace`,
   `settings_end_from_namespace_view_returns_to_menu`

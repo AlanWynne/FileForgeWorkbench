@@ -183,6 +183,155 @@ pub enum PersistedTabKind {
     Untitled,
 }
 
+/// The data-file enumeration of built-in Contexts a Workspace can display.
+///
+/// This is the session-layer counterpart of the runtime `TabKind`. It replaces
+/// the closed `PersistedTabKind` enum as the primary persistence model; the
+/// legacy `PersistedTabKind` is retained only to load older `session.toml`
+/// files (see `WorkspaceDescriptor::from_legacy`).
+///
+/// Serialises in `snake_case` so it reads naturally in a data file.
+///
+/// Validates: startup-and-session Requirement 21 (Workspace_Kind).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum WorkspaceKind {
+    /// A file editor Context backed by a URI.
+    Editor,
+    /// The Virtual Catalog Manager (Files Panel) Context.
+    Files,
+    /// The File Explorer tree Context.
+    FileExplorer,
+    /// The Settings Context (optionally namespace-filtered).
+    Settings,
+    /// The Global Search Results Context.
+    Search,
+    /// The Plugin Manager Context.
+    PluginManager,
+    /// The Event Log Context.
+    EventLog,
+    /// The Lua Macro Library Context.
+    MacroLibrary,
+    /// The Command Configurator Context (command-configurator sub-project).
+    CommandConfigurator,
+    /// The Home Context / Primary Option Menu.
+    ///
+    /// Present so a POM opened as a Custom Workspace round-trips; note the POM
+    /// is normally guaranteed by the always-present rule rather than persisted.
+    PrimaryOptionMenu,
+    /// An untitled buffer with no backing file.
+    Untitled,
+}
+
+/// A single value inside a `WorkspaceDescriptor` parameter map.
+///
+/// A serde-friendly, deterministically-ordered value model so a descriptor
+/// round-trips through TOML. Kept independent of `ff-command` so the persisted
+/// session format is owned entirely by the session layer.
+///
+/// Validates: startup-and-session Requirement 21.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum DescriptorValue {
+    /// A boolean value.
+    Boolean(bool),
+    /// A 64-bit signed integer value.
+    Integer(i64),
+    /// A string value.
+    String(String),
+}
+
+impl From<bool> for DescriptorValue {
+    fn from(v: bool) -> Self {
+        Self::Boolean(v)
+    }
+}
+
+impl From<i64> for DescriptorValue {
+    fn from(v: i64) -> Self {
+        Self::Integer(v)
+    }
+}
+
+impl From<&str> for DescriptorValue {
+    fn from(v: &str) -> Self {
+        Self::String(v.to_string())
+    }
+}
+
+impl From<String> for DescriptorValue {
+    fn from(v: String) -> Self {
+        Self::String(v)
+    }
+}
+
+/// An ordered, serialisable parameter bag carried by a `CustomWorkspace`
+/// descriptor (e.g. a Settings namespace filter, an editor URI). `BTreeMap`
+/// gives deterministic ordering for stable TOML output and reproducible tests.
+pub type DescriptorParams = std::collections::BTreeMap<String, DescriptorValue>;
+
+/// The persisted description of one visible Workspace.
+///
+/// Exactly one of `Menu { name }` or `CustomWorkspace { workspace_kind,
+/// params }`, mirroring the corresponding Command_Target variants
+/// (command-framework Requirement 8). Non-visible actions (Started Tasks,
+/// functions, macros) are never persisted, so no variant represents them.
+///
+/// Validates: startup-and-session Requirement 21.1.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum WorkspaceDescriptor {
+    /// Open the Menu Workspace backed by `menus/<name>.toml`.
+    Menu {
+        /// The menu name (without extension); `pom` is the Home Context.
+        name: String,
+    },
+    /// Open a built-in Context, optionally parameterised.
+    CustomWorkspace {
+        /// Which built-in Context to open.
+        workspace_kind: WorkspaceKind,
+        /// Optional typed parameters (e.g. `namespace`, `uri`).
+        #[serde(default)]
+        params: DescriptorParams,
+    },
+}
+
+impl WorkspaceDescriptor {
+    /// Derive a descriptor from the legacy `PersistedTabKind` + `uri` fields of
+    /// a `TabState` that was written before descriptors existed.
+    ///
+    /// Returns `None` for legacy kinds that were never actually restored and
+    /// carry no useful descriptor (e.g. `Untitled` with no uri), so the restore
+    /// loop can skip them exactly as before.
+    ///
+    /// Validates: startup-and-session Requirement 21.10 (backward compatibility).
+    pub fn from_legacy(kind: &PersistedTabKind, uri: Option<&str>) -> Option<Self> {
+        let ws = |k: WorkspaceKind| Self::CustomWorkspace {
+            workspace_kind: k,
+            params: DescriptorParams::new(),
+        };
+        match kind {
+            PersistedTabKind::FileEditor => {
+                let mut params = DescriptorParams::new();
+                params.insert("uri".to_string(), DescriptorValue::from(uri?));
+                Some(Self::CustomWorkspace {
+                    workspace_kind: WorkspaceKind::Editor,
+                    params,
+                })
+            }
+            PersistedTabKind::FilesPanel => Some(ws(WorkspaceKind::Files)),
+            PersistedTabKind::FileExplorerPanel => Some(ws(WorkspaceKind::FileExplorer)),
+            PersistedTabKind::SearchResults => Some(ws(WorkspaceKind::Search)),
+            PersistedTabKind::PluginManager => Some(ws(WorkspaceKind::PluginManager)),
+            PersistedTabKind::EventLog => Some(ws(WorkspaceKind::EventLog)),
+            PersistedTabKind::PrimaryOptionMenu => Some(ws(WorkspaceKind::PrimaryOptionMenu)),
+            // Untitled tabs were never restored (no uri), so no descriptor.
+            PersistedTabKind::Untitled => None,
+        }
+    }
+}
+
 /// Per-tab state persisted as part of the session.
 ///
 /// This is the session-layer view of a tab — not the full runtime Tab object.
@@ -193,7 +342,22 @@ pub struct TabState {
     /// Unique tab identifier (stable across session save/restore).
     pub tab_id: String,
 
+    /// The Workspace_Descriptor for this tab -- the primary persistence model
+    /// (startup-and-session Requirement 21). `None` for tabs loaded from a
+    /// legacy `session.toml` written before descriptors existed; use
+    /// [`TabState::effective_descriptor`] to obtain a descriptor for either
+    /// case.
+    ///
+    /// Validates: startup-and-session Requirement 21.1, 21.10.
+    #[serde(default)]
+    pub descriptor: Option<WorkspaceDescriptor>,
+
     /// The kind of this tab — determines how it is reconstructed on restore.
+    ///
+    /// Legacy field retained for backward-compatible loading of older sessions
+    /// (Requirement 21.10). New saves populate `descriptor`; this field is kept
+    /// as a fallback and for the legacy mapping in
+    /// [`WorkspaceDescriptor::from_legacy`].
     ///
     /// Addresses: Requirement 11.3
     #[serde(default)]
@@ -243,6 +407,7 @@ impl Default for TabState {
     fn default() -> Self {
         Self {
             tab_id: String::new(),
+            descriptor: None,
             tab_kind: PersistedTabKind::FileEditor,
             uri: None,
             viewport_top_line: 1,
@@ -255,6 +420,24 @@ impl Default for TabState {
             zoom_offset: 0,
             workspace_name: None,
         }
+    }
+}
+
+impl TabState {
+    /// Return the effective Workspace_Descriptor for this tab.
+    ///
+    /// Prefers the explicit `descriptor` (new format). When it is absent
+    /// (a legacy `session.toml` written before descriptors existed), derive one
+    /// from the legacy `tab_kind` + `uri` fields. Returns `None` only when the
+    /// legacy tab carried no restorable descriptor (e.g. an untitled buffer),
+    /// so the restore loop skips it exactly as the old URI-only loop did.
+    ///
+    /// Validates: startup-and-session Requirement 21.1, 21.5, 21.10.
+    pub fn effective_descriptor(&self) -> Option<WorkspaceDescriptor> {
+        if let Some(d) = &self.descriptor {
+            return Some(d.clone());
+        }
+        WorkspaceDescriptor::from_legacy(&self.tab_kind, self.uri.as_deref())
     }
 }
 
@@ -469,5 +652,194 @@ mod tests {
     fn schema_version_constant_matches_default() {
         assert_eq!(CURRENT_SCHEMA_VERSION, 1);
         assert_eq!(SessionState::default().schema_version, 1);
+    }
+
+    // === Workspace_Descriptor persistence (Requirement 21) =================
+
+    #[test]
+    fn menu_descriptor_round_trips_through_toml() {
+        // Validates: Requirement 21.1, 21.4
+        let state = SessionState {
+            tabs: vec![TabState {
+                tab_id: "1".to_string(),
+                descriptor: Some(WorkspaceDescriptor::Menu {
+                    name: "notes".to_string(),
+                }),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let toml = toml::to_string_pretty(&state).unwrap();
+        let loaded: SessionState = toml::from_str(&toml).unwrap();
+        assert_eq!(
+            loaded.tabs[0].descriptor,
+            Some(WorkspaceDescriptor::Menu {
+                name: "notes".to_string()
+            })
+        );
+    }
+
+    #[test]
+    fn settings_namespace_descriptor_round_trips() {
+        // Validates: Requirement 21.3 -- Settings namespace filter persists
+        let mut params = DescriptorParams::new();
+        params.insert("namespace".to_string(), DescriptorValue::from("editor"));
+        let state = SessionState {
+            tabs: vec![TabState {
+                tab_id: "3".to_string(),
+                descriptor: Some(WorkspaceDescriptor::CustomWorkspace {
+                    workspace_kind: WorkspaceKind::Settings,
+                    params,
+                }),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let toml = toml::to_string_pretty(&state).unwrap();
+        let loaded: SessionState = toml::from_str(&toml).unwrap();
+        match &loaded.tabs[0].descriptor {
+            Some(WorkspaceDescriptor::CustomWorkspace {
+                workspace_kind,
+                params,
+            }) => {
+                assert_eq!(*workspace_kind, WorkspaceKind::Settings);
+                assert_eq!(
+                    params.get("namespace"),
+                    Some(&DescriptorValue::String("editor".to_string()))
+                );
+            }
+            other => panic!("expected settings CustomWorkspace, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn editor_descriptor_round_trips_with_uri_param() {
+        // Validates: Requirement 21.2
+        let mut params = DescriptorParams::new();
+        params.insert("uri".to_string(), DescriptorValue::from("/a/b.txt"));
+        let desc = WorkspaceDescriptor::CustomWorkspace {
+            workspace_kind: WorkspaceKind::Editor,
+            params,
+        };
+        let state = SessionState {
+            tabs: vec![TabState {
+                tab_id: "1".to_string(),
+                descriptor: Some(desc.clone()),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let toml = toml::to_string_pretty(&state).unwrap();
+        let loaded: SessionState = toml::from_str(&toml).unwrap();
+        assert_eq!(loaded.tabs[0].descriptor, Some(desc));
+    }
+
+    #[test]
+    fn effective_descriptor_prefers_explicit_descriptor() {
+        // Validates: Requirement 21.1
+        let tab = TabState {
+            descriptor: Some(WorkspaceDescriptor::Menu {
+                name: "pom".to_string(),
+            }),
+            // Legacy field says something else; explicit descriptor must win.
+            tab_kind: PersistedTabKind::FilesPanel,
+            ..Default::default()
+        };
+        assert_eq!(
+            tab.effective_descriptor(),
+            Some(WorkspaceDescriptor::Menu {
+                name: "pom".to_string()
+            })
+        );
+    }
+
+    #[test]
+    fn legacy_file_editor_maps_to_editor_descriptor_with_uri() {
+        // Validates: Requirement 21.10 -- old FileEditor tab still restorable
+        let tab = TabState {
+            descriptor: None,
+            tab_kind: PersistedTabKind::FileEditor,
+            uri: Some("/legacy/file.rs".to_string()),
+            ..Default::default()
+        };
+        match tab.effective_descriptor() {
+            Some(WorkspaceDescriptor::CustomWorkspace {
+                workspace_kind,
+                params,
+            }) => {
+                assert_eq!(workspace_kind, WorkspaceKind::Editor);
+                assert_eq!(
+                    params.get("uri"),
+                    Some(&DescriptorValue::String("/legacy/file.rs".to_string()))
+                );
+            }
+            other => panic!("expected Editor CustomWorkspace, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn legacy_files_and_file_explorer_map_to_descriptors() {
+        // Validates: Requirement 21.10 -- FilesPanel/FileExplorerPanel restorable
+        let files = TabState {
+            tab_kind: PersistedTabKind::FilesPanel,
+            ..Default::default()
+        };
+        let explorer = TabState {
+            tab_kind: PersistedTabKind::FileExplorerPanel,
+            ..Default::default()
+        };
+        assert_eq!(
+            files.effective_descriptor(),
+            Some(WorkspaceDescriptor::CustomWorkspace {
+                workspace_kind: WorkspaceKind::Files,
+                params: DescriptorParams::new(),
+            })
+        );
+        assert_eq!(
+            explorer.effective_descriptor(),
+            Some(WorkspaceDescriptor::CustomWorkspace {
+                workspace_kind: WorkspaceKind::FileExplorer,
+                params: DescriptorParams::new(),
+            })
+        );
+    }
+
+    #[test]
+    fn legacy_untitled_has_no_descriptor() {
+        // Validates: Requirement 21.10 -- untitled tabs were never restored
+        let tab = TabState {
+            descriptor: None,
+            tab_kind: PersistedTabKind::Untitled,
+            uri: None,
+            ..Default::default()
+        };
+        assert_eq!(tab.effective_descriptor(), None);
+    }
+
+    #[test]
+    fn legacy_session_toml_without_descriptor_field_still_loads() {
+        // Validates: Requirement 21.10 -- a session.toml written before the
+        // descriptor field existed deserialises, with descriptor defaulting to
+        // None and the legacy tab_kind preserved.
+        let legacy = r#"
+schema_version = 1
+
+[[tabs]]
+tab_id = "1"
+tab_kind = "file_editor"
+uri = "/x/y.txt"
+viewport_top_line = 1
+viewport_horizontal_offset = 0
+caret_line = 1
+caret_column = 1
+selections = []
+is_pinned = false
+"#;
+        let loaded: SessionState = toml::from_str(legacy).unwrap();
+        assert_eq!(loaded.tabs.len(), 1);
+        assert!(loaded.tabs[0].descriptor.is_none());
+        assert_eq!(loaded.tabs[0].tab_kind, PersistedTabKind::FileEditor);
+        // And it still yields a restorable descriptor.
+        assert!(loaded.tabs[0].effective_descriptor().is_some());
     }
 }

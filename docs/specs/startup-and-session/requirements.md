@@ -301,6 +301,11 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 1. WHEN the workbench application starts for the first time (no saved session), THE desktop shell SHALL open with a single Workspace displaying the Home Context (POM). [ISPF-POM]
 
 1a. WHEN a saved session exists AND the session contains at least one tab of kind PrimaryOptionMenu, THE desktop shell SHALL restore the session to the exact state it was in when last closed -- including all open tabs, their types, and their content. [ISPF-POM]
+   *(Phase DB, CR-CH-012: "all open tabs, their types, and their content" is
+   delivered by the Workspace_Descriptor model in Requirement 21. Each visible
+   Workspace is persisted by descriptor (Menu or CustomWorkspace) and re-opened
+   on restore. Started Tasks (Detached external runs) and captured-run output
+   tabs are explicitly excluded -- see Requirement 21.)*
 
 1b. WHEN a saved session exists AND the session contains NO tab of kind PrimaryOptionMenu, THE desktop shell SHALL restore all saved tabs AND prepend a new PrimaryOptionMenu tab at index 0, so that the POM is always present and reachable on startup. [ISPF-POM]
    *(Added CR-CH-007: resolves B001 -- the POM is the ISPF home screen and must always be present, even when the user closed all POM tabs before the previous exit.)*
@@ -506,6 +511,11 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 11. THE File_Explorer_Context tab title in the tab bar SHALL be displayed as `[FILES]` to distinguish it from file editor tabs and the POM tab. [ISPF-POM]
 
 12. THE `[FILES]` tab kind SHALL be persisted in the session and restored on next launch as a `FileExplorerPanel` tab kind. [WB]
+   *(Phase DB, CR-CH-012: this restore is delivered by the descriptor-based
+   persistence model in Requirement 21 -- the File Explorer Context persists as a
+   `CustomWorkspace` descriptor with `workspace_kind = file_explorer` and is
+   re-opened on launch. Requirement 21 replaces the previous URI-only restore
+   that saved this tab but never re-opened it.)*
 
 
 ### Requirement 20: TSO Session Lifecycle Commands (LOGOFF, TIME, STATUS routing)
@@ -522,3 +532,33 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 4. WHEN the user types `TIME` in any `Command ===>` field and presses Enter, THE system SHALL display the current date and time in the status bar or command response area in the format `Date: YYYY-MM-DD  Time: HH:MM:SS  Day: DDD`. [TSO-2.4]
 5. WHEN the user types `STATUS` in any `Command ===>` field and presses Enter, THE system SHALL route to the FFW-JES job status panel (equivalent to `=JES` or the SDSF ST panel). [TSO-2.5]
 6. WHEN the user types `STATUS jobname` with an optional job name argument, THE system SHALL route to the FFW-JES panel filtered to show only jobs matching `jobname`. [TSO-2.5]
+
+---
+
+### Requirement 21: Descriptor-Based Persistence of Visible Workspaces
+
+**User Story:** As an operator, I want every visible Workspace -- not just file
+editors -- to be restored exactly as I left it, while fire-and-forget Started
+Tasks are never restarted, so that reopening the workbench returns me to my
+working layout without re-running background jobs.
+
+**Source:** [CR-CH-012], supersedes the point fix [CR-CH-011]; realises
+Requirement 14.1a and Requirement 19.12. [ISPF-POM, WB]
+
+#### Glossary additions
+
+- **Workspace_Descriptor**: The persisted description of one visible Workspace. Exactly one of: `MenuWorkspace { name }` or `CustomWorkspace { workspace_kind, params }`, mirroring the corresponding Command_Target variants (command-framework Requirement 8).
+- **Workspace_Kind**: The data-file enumeration of built-in Contexts (Editor, Files, FileExplorer, Settings, Search, PluginManager, EventLog, MacroLibrary, CommandConfigurator, ...), shared with command-framework. It replaces the closed `PersistedTabKind` enum.
+
+#### Acceptance Criteria
+
+1. THE Session_State SHALL persist each visible Workspace as a Workspace_Descriptor in tab order, replacing the previous closed `PersistedTabKind` enumeration. A Workspace_Descriptor is either `MenuWorkspace { name }` or `CustomWorkspace { workspace_kind, params }`.
+2. WHEN a Workspace is a file Editor Context, THE Session_State SHALL persist it as `CustomWorkspace { workspace_kind = editor, params = { uri, viewport_top_line, caret_line, caret_column } }`, preserving the per-tab restore data already defined in Requirement 4 and Requirement 5.
+3. WHEN a Workspace is a Settings Context opened with a namespace filter, THE Session_State SHALL persist it as `CustomWorkspace { workspace_kind = settings, params = { namespace } }`, and on restore SHALL re-open the Settings Context with that namespace filter applied. (This realises menu-workspace cw-requirements.md Requirement 10.6 and folds in the superseded CR-CH-011.)
+4. WHEN a Workspace is a Menu_Workspace, THE Session_State SHALL persist it as `MenuWorkspace { name }` and on restore SHALL re-open the menu backed by `menus/<name>.toml`; IF that file is absent on restore, THE workbench SHALL open the Workspace in the menu load-error state (menu-workspace Requirement 1.5) rather than dropping it.
+5. WHEN the workbench restores a session, THE desktop shell SHALL re-open every persisted Workspace_Descriptor in tab order, reconstructing each Context from its descriptor -- not only file-URI-backed tabs.
+6. A Command_Target that does not produce a Visible_Workspace (command-framework Requirement 8.9) -- specifically a Started_Task (Detached external run), a pure Function, or a Macro -- SHALL NOT be persisted and SHALL NOT be restarted on the next launch.
+7. A Captured_Run Output_Panel result (command-configurator Requirement 3.4) SHALL NOT be persisted as a Workspace; only the definition that produced it persists (in the Command_Store), never the transient run output.
+8. THE POM-always-present guarantee (Requirement 14.1 / 14.1b) SHALL continue to hold under the descriptor model: after restoring all descriptors, IF no Home Context (POM) Workspace is present, THE shell SHALL prepend one at index 0.
+9. WHEN a persisted Workspace_Descriptor references an unknown `workspace_kind` or a `params` shape it cannot interpret (e.g. a session written by a newer build), THE workbench SHALL skip that single descriptor, log a WARN-level record, and continue restoring the remaining Workspaces (graceful degradation, consistent with Requirement 11).
+10. THE Workspace_Descriptor persistence format SHALL be backward compatible with existing `session.toml` files: a session written in the previous `PersistedTabKind` format SHALL still load, mapping its known kinds (FileEditor, FilesPanel, FileExplorerPanel) to the equivalent CustomWorkspace descriptors, so that upgrading does not discard a saved session.

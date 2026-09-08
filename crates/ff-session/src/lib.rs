@@ -91,8 +91,9 @@ pub use recent_files::RecentFilesList;
 pub use session_file::SessionFile;
 pub use session_restore::{determine_restore_mode, FileOpenTargets, RestoreMode};
 pub use session_state::{
-    LayoutSnapshot, RecentFileEntry, SelectionRange, SessionState, TabState, WindowGeometryState,
-    CURRENT_SCHEMA_VERSION,
+    DescriptorParams, DescriptorValue, LayoutSnapshot, PersistedTabKind, RecentFileEntry,
+    SelectionRange, SessionState, TabState, WindowGeometryState, WorkspaceDescriptor,
+    WorkspaceKind, CURRENT_SCHEMA_VERSION,
 };
 pub use startup::{
     execute_startup_sequence, PhaseOutcome, PhaseResult, StartupPhase, StartupResult,

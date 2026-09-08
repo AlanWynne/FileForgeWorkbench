@@ -114,12 +114,13 @@ The `ff-command` crate is a Wave 2 (Platform Architecture) dependency. It depend
 #### Acceptance Criteria
 
 1. THE Shortcut_Registry SHALL maintain a mapping from keyboard chords to Command_IDs, where a chord is defined as a combination of zero or more modifier keys (Ctrl, Alt, Shift, Super/Win) plus a primary key.
+   *(Phase DB, CR-NR-051: a chord's binding target is a Command_Target (Requirement 8). A bare Command_ID is the `Function` variant of a Command_Target, so this criterion is the Command_ID special case of the general rule in Requirement 8.5; a chord MAY equally bind to a Menu, CustomWorkspace, Macro, or External target.)*
 2. THE Shortcut_Registry SHALL support multi-key sequences (e.g., Ctrl+K followed by Ctrl+C), where the first chord enters a pending state and the framework waits for the second chord to complete the binding or times out after 2 seconds (reverting to no pending state).
 3. THE following shortcuts SHALL be reserved globally and SHALL NOT be overridden by user configuration, plugins, or any sub-project registration: F1 (Help), Ctrl+Plus/Ctrl+Minus/Ctrl+0 (Zoom), Ctrl+Z/Ctrl+Y/Ctrl+Shift+Z (Undo/Redo), Ctrl+C/Ctrl+X/Ctrl+V/Ctrl+A (Clipboard), Ctrl+S (Save), Ctrl+F (Find), Ctrl+H (Change), Ctrl+G (Go to line), Ctrl+Tab/Ctrl+Shift+Tab (Tab switch), Ctrl+W (Close tab), Ctrl+N (New tab), Ctrl+Shift+D (Dock/undock), Ctrl+Shift+T (Undock/redock tab).
 4. WHEN a shortcut binding is registered that conflicts with an existing binding (same chord sequence already mapped to a different Command_ID), THE Shortcut_Registry SHALL reject the registration and return an error indicating the conflict, identifying both the new and existing Command_IDs.
 5. WHEN a shortcut binding is registered that conflicts with a reserved shortcut, THE Shortcut_Registry SHALL reject the registration and return an error indicating that the shortcut is reserved and cannot be overridden.
 6. THE Shortcut_Registry SHALL support user-configurable shortcut overrides for all non-reserved commands, loaded from the workbench configuration system (TOML-based key map file).
-7. WHEN a keyboard chord is received that matches a registered shortcut, THE Shortcut_Registry SHALL resolve it to the bound Command_ID and invoke `execute_command` through the Command_Dispatch.
+7. WHEN a keyboard chord is received that matches a registered shortcut, THE Shortcut_Registry SHALL resolve it to the bound Command_Target and execute it (for a `Function` target this is `execute_command` through the Command_Dispatch; other variants route via `execute_target`, Requirement 8.2). A binding stored as a bare Command_ID is treated as a `Function` target.
 8. FUNCTION keys F2–F24 SHALL be user-configurable via the key map system, and plugins SHALL be able to register shortcut bindings for their commands through the Shortcut_Registry (subject to conflict detection and reserved shortcut rules).
 
 ---
@@ -158,3 +159,33 @@ The `ff-command` crate is a Wave 2 (Platform Architecture) dependency. It depend
 7. THE Command_History SHALL be safe to read and write from any thread without requiring the caller to acquire an external lock (thread-safe access).
 8. THE Command_History SHALL provide a query interface: retrieve the last N entries, retrieve entries matching a Command_ID prefix, and retrieve entries within a time range.
 
+---
+
+### Requirement 8: Unified Command Target
+
+**User Story:** As a user and as a plugin author, I want a single way to describe "what a command does" -- open a menu, open a built-in workspace, run an internal function, run a macro, or run an external program -- so that menu options and keyboard bindings can point at any of these targets through one consistent mechanism.
+
+**Source:** [CR-NR-051], [WB]
+
+#### Glossary additions
+
+- **Command_Target**: A typed description of the action a command performs. Exactly one of five variants: Menu_Target, Custom_Workspace_Target, Function_Target, Macro_Target, or External_Target.
+- **Target_Resolution**: The process of converting a bare command string (as typed in a `Command ===>` field or written in a Menu_File `command` value) into a Command_Target.
+- **Visible_Workspace**: A Command_Target whose execution results in an open, user-visible Workspace (Menu_Target, Custom_Workspace_Target, and External_Target in Captured mode). Distinguished from Started_Tasks and pure side-effect functions, which produce no persisted Workspace.
+
+#### Acceptance Criteria
+
+1. THE command framework SHALL define a Command_Target type with exactly five variants:
+   - `Menu_Target` -- carries a Menu_Name; opens the Menu_Workspace backed by `menus/<name>.toml`.
+   - `Custom_Workspace_Target` -- carries a Workspace_Kind and an optional typed parameter map (Params); opens the corresponding built-in Context (e.g. Editor, Files, Settings, Search).
+   - `Function_Target` -- carries a Command_ID and optional Command_Params; invokes a registered internal command via `execute_command` (Requirement 2).
+   - `Macro_Target` -- carries either a macro Name or an absolute/workspace-relative Path; runs it through the existing `macro.run_named` / `macro.run_file` dispatch (lua-macro-engine Requirement 5).
+   - `External_Target` -- carries a Program, an argument list, an optional Working_Directory, and an Execution_Mode (Detached or Captured); runs an external process (defined in command-configurator Requirement 3 and shell-command Requirement 19).
+2. WHEN a Command_Target is executed, THE Command_Dispatch SHALL route it to the handling path for its variant and SHALL return a Command_Result consistent with Requirement 2.
+3. WHEN a bare command string is submitted (typed in a `Command ===>` field or read from a Menu_File `command` value), THE framework SHALL perform Target_Resolution: a string that matches a registered Command_ID resolves to a Function_Target; a string that matches a built-in workspace verb or fastpath resolves to a Custom_Workspace_Target; a string that matches a user-defined command definition (command-configurator Requirement 1) resolves to that definition's Command_Target; otherwise the existing command pipeline handles it unchanged.
+4. THE introduction of Command_Target SHALL NOT change the behaviour of any existing command string: every command string that resolves today SHALL resolve to an equivalent Command_Target and produce the same observable result (backward compatibility).
+5. A keyboard Shortcut_Binding (Requirement 5) SHALL be bindable to any Command_Target, not only to a Command_ID, so that a function key or chord may open a menu, open a custom workspace, run a macro, or run an external program.
+6. A Menu_Option (menu-workspace Requirement 1) SHALL resolve its `command` value to a Command_Target via Target_Resolution, so that a single option may target any of the five variants.
+7. THE Command_Target type SHALL be serialisable to and deserialisable from TOML, so that user-defined command definitions (command-configurator) and persisted Workspace descriptors (startup-and-session Requirement 21) can store targets in data files.
+8. WHEN Target_Resolution fails to resolve a string to any variant, THE framework SHALL return an error result naming the unresolved string, without panicking or mutating application state (consistent with Requirement 2 criterion 2).
+9. THE Command_Target SHALL classify each variant as producing a Visible_Workspace or not: Menu_Target, Custom_Workspace_Target, and External_Target in Captured mode are Visible_Workspaces; Function_Target, Macro_Target, and External_Target in Detached mode are not. This classification SHALL be queryable without executing the target (for use by session persistence, Requirement 21 of startup-and-session).

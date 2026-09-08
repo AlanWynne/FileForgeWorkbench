@@ -229,32 +229,48 @@ explicitly migrate them.
 
 ## 10. Session Persistence
 
-`PersistedTabKind` gains a new variant:
+> SUPERSEDED by startup-and-session Requirement 21 (Phase DB, CR-CH-012).
+> The original plan below (adding a `PersistedTabKind::MenuWorkspace { file_path }`
+> variant) is NOT the approach taken. That variant was never implemented, and
+> the closed `PersistedTabKind` enum is replaced by the Workspace_Descriptor
+> model. A Menu_Workspace now persists as a `MenuWorkspace { name }`
+> Workspace_Descriptor (the menu name, not a raw file path) and is re-opened on
+> restore via the `MENU <name>` command (Requirement 11). If the backing
+> `menus/<name>.toml` is absent on restore, the Workspace opens in the
+> load-error state (Requirement 1.5). Retained below for historical context.
 
-```rust
-MenuWorkspace { file_path: String },
-```
-
-On session restore, the shell creates a `MenuWorkspaceState` from the persisted
-`file_path` and loads the menu file. If the file is absent, the tab is restored
-with the load-error state (Requirement 1.5).
+~~`PersistedTabKind` gains a new variant `MenuWorkspace { file_path: String }`;
+on restore the shell creates a `MenuWorkspaceState` from the persisted
+`file_path`.~~ (Superseded -- see the note above.)
 
 ---
 
 ## 11. Tab Kind and Routing
 
-New `TabKind` variant:
+The runtime tab kind is a **data-free** variant:
 
 ```rust
-TabKind::MenuWorkspace(MenuWorkspaceState),
+TabKind::MenuWorkspace,   // Copy; carries no payload
 ```
 
-New shell commands (to be implemented in Phase CX or later):
+The actual `MenuWorkspaceState` is held in a separate `menu_workspace:
+Option<MenuWorkspaceState>` field on `TabState`, populated only when
+`kind == TabKind::MenuWorkspace`. (This corrects the earlier draft that showed a
+data-carrying `TabKind::MenuWorkspace(MenuWorkspaceState)`, which does not match
+the implemented enum: `TabKind` is `Copy` and cannot carry non-`Copy` state.)
 
-- `MENU <name>` -- opens a Menu_Workspace backed by `menus/<name>.toml`.
-- `MENU` (no argument) -- opens the POM menu (`menus/pom.toml`).
+The `MENU` / `MENU <name>` shell command (Command_ID `"menu.open"`) opens a
+Menu_Workspace and is defined by menu-workspace Requirement 11:
 
-These commands are NOT implemented in Phase CU (spec only).
+- `MENU` (no argument) -- returns to the Home Context (POM), backed by
+  `menus/pom.toml`.
+- `MENU <name>` -- opens the Menu_Workspace backed by `menus/<name>.toml`
+  (`MENU POM`, `MENU SETTINGS` are the named built-in forms).
+
+A `Menu_Target { name }` (command-framework Requirement 8) is executed by
+invoking `MENU <name>`. Wiring this command and opening a `TabKind::MenuWorkspace`
+tab at runtime is a Phase DB implementation step (DB.8/DB.11); it was spec-only
+in Phase CU.
 
 ---
 
@@ -356,3 +372,61 @@ configuration.
 Phase CU is a specification-only phase. No source files are modified. The design
 above describes the target architecture that will be implemented when a separate
 implementation instruction is given.
+
+---
+
+## 13. Command Target Integration (Requirement 10, CR-NR-051)
+
+This is a design delta to Section 7 (Command Dispatch). Option selection no
+longer hands a bare string straight to `handle_command`; it first resolves the
+string to a `CommandTarget` (command-framework Requirement 8) and then executes
+that target. This makes the "option leads to a sub-menu vs a custom workspace vs
+an external program" distinction explicit in the resolved target instead of
+being an implicit consequence of the command string.
+
+### Option -> target resolution
+
+`commands::execute_option` becomes:
+
+1. If the `MenuOption` carries an inline `[options.target]` table, use it
+   directly (Requirement 10.6).
+2. Otherwise call `ff_command::resolve_target(option.command, registry,
+   user_commands)` (Requirement 10.1). A bare string still resolves to the same
+   equivalent target it produces today (Requirement 10.2), and a string equal to
+   a user-defined command id resolves to that definition's target
+   (Requirement 10.3).
+3. Execute via `execute_target`. A `Menu_Target` opens the referenced menu
+   (Requirement 10.4); a `CustomWorkspace`/`Function`/`Macro`/`External` target
+   routes as defined in command-framework.
+4. On resolution failure, show `Option '<key>' could not be resolved: <reason>`
+   (Requirement 10.5).
+
+### Data model addition
+
+`MenuOption` gains an optional inline target:
+
+```rust
+pub struct MenuOption {
+    pub key: String,
+    pub command: String,                 // still required (Requirement 1.2)
+    pub description: String,
+    pub enabled: bool,
+    pub group: Option<String>,
+    /// Optional inline Command_Target; when present it wins over `command`.
+    /// Validates: menu-workspace Requirement 10.6
+    pub target: Option<ff_command::CommandTarget>,
+}
+```
+
+`command` remains required for backward compatibility and forward readability;
+`target` is the escape hatch for authors who want to embed a full target (e.g.
+an external program) directly in a menu file without first defining it in the
+Command_Store.
+
+### Relationship to Section 11 (MENU commands)
+
+The still-unimplemented `MENU <name>` command (Section 11) resolves to a
+`Menu_Target { name }` under this model. Wiring the Menu Workspace pattern to run
+at runtime (opening a `TabKind::MenuWorkspace` from `menus/<name>.toml`) is the
+prerequisite for `Menu_Target` execution and is tracked in the Phase DB task
+list; it is a separate implementation step from this spec delta.

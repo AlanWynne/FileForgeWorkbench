@@ -2037,6 +2037,96 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | disabled_options_count_toward_limits | Req 9.8: disabled options count toward both limits (counted before enabled filtering) |
 | `ff-desktop` | ✅ | reload_over_hard_limit_transitions_to_error, reload_back_under_limit_recovers | Req 9.9: limits re-evaluated on hot-reload; over-hard transitions to error, back-under recovers |
 
+### Phase DB -- Unified Command Target (CR-NR-051, command-framework Req 8)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-command` | ✅ | `command_target_tests.rs::command_target_has_five_constructible_variants` | Req 8.1: CommandTarget type with 5 variants (Menu/CustomWorkspace/Function/Macro/External) |
+| `ff-command` | ✅ | `command_target_tests.rs::execute_function_target_dispatches_via_callback`, `execute_non_function_targets_are_deferred_to_shell` | Req 8.2: execute_target routes each variant and returns a CommandResult |
+| `ff-command` | ✅ | `command_target_tests.rs::user_command_definition_resolves_first`, `builtin_workspace_verb_resolves_to_custom_workspace`, `bare_registered_command_resolves_to_function_target` | Req 8.3: resolve_target converts a bare string to the correct variant |
+| `ff-command` | ✅ | `command_target_tests.rs::bare_registered_command_resolves_to_function_target`, `resolution_trims_surrounding_whitespace` | Req 8.4: no behaviour change -- every existing string resolves to an equivalent target |
+| `ff-command` | 🔴 | -- | Req 8.5: a Shortcut_Binding may target any CommandTarget (type provided by DB.8; ShortcutRegistry wiring is DB.4) |
+| `ff-command` | 🔴 | -- | Req 8.6: a Menu_Option resolves its command value to a CommandTarget (resolver provided by DB.8; menu wiring is DB.4) |
+| `ff-command` | ✅ | `command_target_tests.rs::menu_target_toml_round_trips`, `external_target_toml_round_trips_with_all_fields`, `custom_workspace_target_with_params_round_trips`, `external_target_parses_from_authored_toml`, `function_target_defaults_params_when_omitted` | Req 8.7: CommandTarget serialises to/from TOML |
+| `ff-command` | ✅ | `command_target_tests.rs::unresolved_string_returns_error_naming_input`, `execute_function_target_with_invalid_id_fails` | Req 8.8: unresolved string returns an error naming it, no panic/mutation |
+| `ff-command` | ✅ | `command_target_tests.rs::menu_and_custom_workspace_and_captured_external_are_visible`, `function_macro_and_detached_external_are_not_visible` | Req 8.9: produces_visible_workspace classification queryable without executing |
+
+### Phase DB -- Command Configurator (CR-NR-052, new sub-project)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | Req 1.1: commands.toml Command_Store with [[command]] array |
+| `ff-desktop` | 🔴 | -- | Req 1.2: each entry has id, label, [command.target] serialised CommandTarget |
+| `ff-desktop` | 🔴 | -- | Req 1.3: optional description and category (default user) |
+| `ff-desktop` | 🔴 | -- | Req 1.4: duplicate id keeps first, skips duplicate, logs WARN |
+| `ff-desktop` | 🔴 | -- | Req 1.5: absent file = empty store; commands/ dir + empty file on first save |
+| `ff-desktop` | 🔴 | -- | Req 1.6: invalid TOML/entry skipped, valid entries retained, load-error surfaced |
+| `ff-desktop` | 🔴 | -- | Req 1.7: store hot-reloads via the Menu Workspace file-watch infrastructure |
+| `ff-desktop` | 🔴 | -- | Req 1.8: default/example content is plain ASCII |
+| `ff-desktop` | 🔴 | -- | Req 2.1: Command Configurator Context opens via COMMANDS, lists definitions |
+| `ff-desktop` | 🔴 | -- | Req 2.2: each row shows id, label, variant, and external Execution_Mode |
+| `ff-desktop` | 🔴 | -- | Req 2.3: Add / Edit / Delete actions (delete with confirmation) |
+| `ff-desktop` | 🔴 | -- | Req 2.4: save validates then writes store; failure leaves file unchanged |
+| `ff-desktop` | 🔴 | -- | Req 2.5: delete removes definition and writes store back |
+| `ff-desktop` | 🔴 | -- | Req 2.6: variant-specific target editor fields |
+| `ff-desktop` | 🔴 | -- | Req 2.7: Context title is [COMMANDS] |
+| `ff-desktop` | 🔴 | -- | Req 2.8: F3/END returns to POM |
+| `ff-desktop` | 🔴 | -- | Req 3.1: External target carries program, args, working_dir, mode |
+| `ff-shell` | 🔴 | -- | Req 3.2: detached mode spawns Started_Task, returns immediately, no capture, no Workspace |
+| `ff-shell` | 🔴 | -- | Req 3.3: Started_Task not tracked/monitored/restarted/persisted after spawn |
+| `ff-shell` | 🔴 | -- | Req 3.4: captured mode runs async, shows stdout/stderr/exit in Output_Panel |
+| `ff-shell` | 🔴 | -- | Req 3.5: explicit working_dir else shell.working_directory rules |
+| `ff-desktop` | 🔴 | -- | Req 3.6: ${workspace_root} / ${file_dir} placeholder expansion |
+| `ff-shell` | 🔴 | -- | Req 3.7: shell.mode = disabled refuses both modes |
+| `ff-shell` | 🔴 | -- | Req 3.8: shell.mode = prompt confirms before spawn; decline = no spawn |
+| `ff-shell` | 🔴 | -- | Req 3.9: detached launch failure reports error, opens no Workspace |
+| `ff-desktop` | 🔴 | -- | Req 3.10: External Visible_Workspace classification per command-framework Req 8.9 |
+| `ff-desktop` | 🔴 | -- | Req 4.1: validation rejects bad id/label/target with specific messages |
+| `ff-desktop` | 🔴 | -- | Req 4.2: External validation rejects empty program and invalid mode |
+| `ff-desktop` | 🔴 | -- | Req 4.3: definition id usable as a Menu_Option command value |
+| `ff-desktop` | 🔴 | -- | Req 4.4: definition id bindable to a keyboard Shortcut_Binding |
+| `ff-desktop` | 🔴 | -- | Req 4.5: unknown referenced id reports Command '<id>' is not defined. |
+| `ff-desktop` | 🔴 | -- | Req 4.6: user id cannot shadow a reserved built-in Command_ID |
+
+### Phase DB -- Menu Options Reference a Command Target (CR-NR-051, menu-workspace Req 10)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | Req 10.1: option selection resolves command to a CommandTarget and executes it |
+| `ff-desktop` | 🔴 | -- | Req 10.2: existing Menu_File format still valid; same observable result |
+| `ff-desktop` | 🔴 | -- | Req 10.3: command value equal to a user-defined id resolves to its target |
+| `ff-desktop` | 🔴 | -- | Req 10.4: Menu_Target opens the referenced Menu_Workspace (explicit sub-menu) |
+| `ff-desktop` | 🔴 | -- | Req 10.5: unresolvable option shows resolve error, leaves Workspace unchanged |
+| `ff-desktop` | 🔴 | -- | Req 10.6: inline [options.target] table supported; wins over command with DEBUG log |
+
+### Phase DB -- External Program Execution (CR-NR-052, shell-command Req 19)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-shell` | 🔴 | -- | Req 19.1: external entry point takes explicit program/args/working_dir/mode |
+| `ff-shell` | 🔴 | -- | Req 19.2: captured mode async into Output_Panel reusing Req 4/15 display |
+| `ff-shell` | 🔴 | -- | Req 19.3: detached mode fire-and-forget, no capture, no Output_Panel, returns immediately |
+| `ff-shell` | 🔴 | -- | Req 19.4: detached process not tracked/restarted/persisted; handle optional |
+| `ff-shell` | 🔴 | -- | Req 19.5: shell.mode gate applies to both modes |
+| `ff-shell` | 🔴 | -- | Req 19.6: explicit working_dir else shell.working_directory rules |
+| `ff-shell` | 🔴 | -- | Req 19.7: captured timeout per Req 18; not applied to detached |
+| `ff-shell` | 🔴 | -- | Req 19.8: launch failure reported (Output_Panel captured / status detached); not success |
+
+### Phase DB -- Descriptor-Based Persistence (CR-CH-012, startup-and-session Req 21)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-session` | ✅ | `session_state.rs::menu_descriptor_round_trips_through_toml`, `editor_descriptor_round_trips_with_uri_param` | Req 21.1: Session_State persists visible Workspaces as Workspace_Descriptors in tab order |
+| `ff-session` | ✅ | `session_state.rs::editor_descriptor_round_trips_with_uri_param` | Req 21.2: Editor Context persists as CustomWorkspace{editor, uri+viewport+caret} |
+| `ff-desktop` | ✅ | `shell/tests.rs::restore_settings_descriptor_applies_namespace_filter`, `restore_settings_descriptor_without_namespace_is_unfiltered`; `session_state.rs::settings_namespace_descriptor_round_trips` | Req 21.3: Settings namespace persists/restores as CustomWorkspace{settings, {namespace}} (folds in CR-CH-011 / Task 14.5) |
+| `ff-session` | 🟡 | `session_state.rs::menu_descriptor_round_trips_through_toml` | Req 21.4: Menu_Workspace persists as MenuWorkspace{name} (round-trip DONE); restore re-open needs the MENU command wiring (DB.4) |
+| `ff-desktop` | ✅ | `shell/tests.rs::restore_files_descriptor_opens_files_panel`, `restore_file_explorer_descriptor_opens_explorer_panel`, `restore_multiple_descriptors_opens_each_workspace`, `restore_editor_descriptor_opens_file` | Req 21.5: restore re-opens every descriptor in tab order, not only URI tabs |
+| `ff-desktop` | ✅ | `session_manager.rs::descriptor_for_tab` (Untitled -> None; no descriptor for non-visible kinds) | Req 21.6: Started_Task / Function / Macro not persisted, not restarted |
+| `ff-desktop` | 🟡 | -- | Req 21.7: Captured_Run Output_Panel result not persisted as a Workspace (holds by construction -- captured runs are not tabs; asserted with DB.10) |
+| `ff-desktop` | ✅ | `shell/update.rs` restore path (`ensure_pom_tab_present` after descriptor restore) | Req 21.8: POM-always-present guarantee still holds after descriptor restore |
+| `ff-desktop` | ✅ | `shell/tests.rs::restore_skips_menu_descriptor_but_continues` | Req 21.9: unknown workspace_kind/params skipped with WARN, rest restored |
+| `ff-session` | ✅ | `session_state.rs::legacy_session_toml_without_descriptor_field_still_loads`, `legacy_file_editor_maps_to_editor_descriptor_with_uri`, `legacy_files_and_file_explorer_map_to_descriptors`, `legacy_untitled_has_no_descriptor` | Req 21.10: backward compatible with existing PersistedTabKind session.toml files |
+
 ### Phase CX -- Named Workspaces + KEYS Name + SPLIT Alias (CR-NR-046, CR-CH-010)
 
 | Crate | Status | Test files | Notes |

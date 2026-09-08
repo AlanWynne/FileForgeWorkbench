@@ -1087,6 +1087,31 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 
 ---
 
+### Phase DB -- Unified Command Target, Command Configurator, Descriptor Persistence (CR-NR-051, CR-NR-052, CR-CH-012) -- SPEC ONLY, depends on CU
+
+> Introduces one `CommandTarget` abstraction (menu / custom-workspace / function
+> / macro / external) that menu options and keybindings both point at; a
+> Command Configurator Custom Workspace storing user-defined commands in
+> `commands/commands.toml`; external execution in Detached (fire-and-forget
+> Started Task) and Captured (async, output shown in the Output_Panel) modes
+> gated by `shell.mode`; and descriptor-based session persistence that restores
+> every visible Workspace and excludes Started Tasks -- structurally fixing the
+> non-file-tab restore gap and folding in the superseded CR-CH-011 (Task 14.5).
+
+- [ ] DB.1 Add Requirement 8 (Unified Command Target) to `docs/specs/command-framework/requirements.md`
+- [ ] DB.2 Add the Unified Command Target design section to `docs/specs/command-framework/design.md`
+- [ ] DB.3 Create `docs/specs/command-configurator/` (requirements.md, design.md, tasks.md); register in `specs.md`
+- [ ] DB.4 Add Requirement 10 (options reference a Command_Target) + design section 13 to `docs/specs/menu-workspace/`
+- [ ] DB.5 Add Requirement 19 (External Program Execution: Detached/Captured) to `docs/specs/shell-command/requirements.md`
+- [ ] DB.6 Add Requirement 21 (Descriptor-Based Persistence) to `docs/specs/startup-and-session/requirements.md`; annotate 14.1a / 19.12; note workspace-model Req 5
+- [ ] DB.7 Add CR-NR-051 / CR-NR-052 / CR-CH-012 NOT COVERED rows to `docs/quality/TCR.md`
+- [x] DB.8 Implement `CommandTarget` type + `resolve_target` + `execute_target` in `ff-command` (5 variants, TargetResolver/TargetExecutor seams, TOML round-trip, visible-workspace classification; 16 tests; Req 8.1-8.4, 8.7-8.9. Req 8.5/8.6 wiring deferred to DB.4)
+- [ ] DB.9 (impl) Implement Command_Store loader/save/hot-reload and the Command Configurator Context
+- [ ] DB.10 (impl) Implement External Detached spawn + Captured async into Output_Panel in `ff-shell`
+- [x] DB.11 Implement Workspace_Descriptor persistence + backward-compatible load; wire descriptor restore loop; resolve Task 14.5. (ff-session: WorkspaceKind/WorkspaceDescriptor/DescriptorParams + TabState.descriptor + effective_descriptor legacy mapping, 8 tests. ff-desktop: descriptor_for_tab/session_tab_for save helpers, restore_workspace_descriptors, settings_namespace threaded into save, 7 restore tests. Req 21.1-21.3, 21.5, 21.6, 21.8, 21.9, 21.10 PASS; 21.4 menu-restore and 21.7 captured-output assertion land with DB.4/DB.10.)
+
+---
+
 ## Summary
 
 | Status | Count |
@@ -1109,6 +1134,7 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 | `[x]` Phase CX complete | Named Workspaces + KEYS name + SPLIT alias -- spec + implementation (CX.1-CX.7) |
 | `[x]` Phase CZ complete | FFTest Script Suite + Context Inspection (CZ.1-CZ.9) |
 | `[x]` Phase DA complete | Configurable Menu Option Limits -- spec + impl (DA.1-DA.7, Tasks 16-20) |
+| `[ ]` Phase DB spec | Unified Command Target + Command Configurator + Descriptor Persistence -- spec draft (DB.1-DB.7). Impl: DB.8 DONE (CommandTarget), DB.11 DONE (descriptor persistence, unblocks Task 14.5); DB.9/DB.10/wiring pending |
 | Sub-project audit | 67 of 69 sub-projects with tasks.md are ALL DONE; 2 have pending items |
 | Test count | 759 passing (ff-desktop), 0 failures (cargo test --workspace after Phase CX) |
 | Active work | Phase CZ -- FFTest Script Suite + Context Inspection (next step) |

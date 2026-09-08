@@ -1049,5 +1049,83 @@ impl WorkbenchShell {
             self.tabs.active_tab_mut().title = title;
         }
     }
+
+    /// Reconstruct open Workspaces from persisted Workspace_Descriptors on
+    /// session restore. Re-opens every visible Workspace in tab order, not only
+    /// file-backed tabs. Unknown descriptors are skipped so one bad entry does
+    /// not abort the whole restore (graceful degradation).
+    ///
+    /// Validates: startup-and-session Requirement 21.2, 21.3, 21.4, 21.5, 21.9.
+    pub(super) fn restore_workspace_descriptors(
+        &mut self,
+        descriptors: &[ff_session::WorkspaceDescriptor],
+    ) {
+        use ff_session::session_state::{DescriptorValue, WorkspaceDescriptor, WorkspaceKind};
+
+        for descriptor in descriptors {
+            match descriptor {
+                WorkspaceDescriptor::Menu { name: _name } => {
+                    // Menu Workspaces open via the MENU command (menu-workspace
+                    // Requirement 11), wired in DB.4. Until then, a persisted
+                    // menu (other than the POM, which is guaranteed separately)
+                    // is skipped rather than dropped incorrectly.
+                    // Req 21.4 restore lands with the MENU command wiring (DB.4).
+                }
+                WorkspaceDescriptor::CustomWorkspace {
+                    workspace_kind,
+                    params,
+                } => match workspace_kind {
+                    WorkspaceKind::Editor => {
+                        if let Some(DescriptorValue::String(uri)) = params.get("uri") {
+                            if let Err(e) = self.tabs.open_file(uri, &self.runtime) {
+                                self.open_error = Some(format!("Could not restore: {e}"));
+                            }
+                        }
+                    }
+                    WorkspaceKind::Files => {
+                        self.tabs.open_files_panel_tab(&self.runtime);
+                    }
+                    WorkspaceKind::FileExplorer => {
+                        self.tabs.open_file_explorer_panel_tab(&self.runtime);
+                    }
+                    WorkspaceKind::Settings => {
+                        let namespace = match params.get("namespace") {
+                            Some(DescriptorValue::String(ns)) => Some(ns.clone()),
+                            _ => None,
+                        };
+                        self.tabs.open_settings_panel_tab(&self.runtime);
+                        self.settings_panel.filter = match &namespace {
+                            Some(ns) => format!("{ns}."),
+                            None => String::new(),
+                        };
+                        let title = match &namespace {
+                            Some(ns) => format!("[SETTINGS:{ns}]"),
+                            None => "[SETTINGS]".to_string(),
+                        };
+                        self.tabs.active_tab_mut().title = title;
+                        self.settings_panel.namespace_filter = namespace;
+                    }
+                    WorkspaceKind::Search => {
+                        self.tabs.open_search_results_tab(&self.runtime);
+                    }
+                    WorkspaceKind::PluginManager => {
+                        self.tabs.open_plugin_manager_tab(&self.runtime);
+                    }
+                    WorkspaceKind::EventLog => {
+                        self.tabs.open_event_log_tab(&self.runtime);
+                    }
+                    WorkspaceKind::MacroLibrary => {
+                        self.tabs.open_macro_library_tab(&self.runtime);
+                    }
+                    WorkspaceKind::PrimaryOptionMenu => {
+                        // POM presence is guaranteed by ensure_pom_tab_present;
+                        // no explicit open needed here.
+                    }
+                    // Untitled and any future kind: skip (Req 21.9).
+                    _ => {}
+                },
+            }
+        }
+    }
 }
 use super::WorkbenchShell;

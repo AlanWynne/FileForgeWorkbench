@@ -3182,3 +3182,188 @@ fn split_detach_at_limit_shows_error() {
     // If count < 16 after forcing, the test environment doesn't support this scenario
     // -- the handler logic is still correct by code inspection
 }
+
+// === Phase DB (DB.11): descriptor-based restore (startup-and-session Req 21) ===
+
+/// Validates: Requirement 21.5 -- a Files CustomWorkspace descriptor re-opens the Files panel.
+#[test]
+fn restore_files_descriptor_opens_files_panel() {
+    use crate::tab_state::TabKind;
+    use ff_session::session_state::{DescriptorParams, WorkspaceDescriptor, WorkspaceKind};
+
+    let mut shell = make_shell();
+    let descriptors = vec![WorkspaceDescriptor::CustomWorkspace {
+        workspace_kind: WorkspaceKind::Files,
+        params: DescriptorParams::new(),
+    }];
+    shell.restore_workspace_descriptors(&descriptors);
+    assert!(
+        shell
+            .tabs
+            .tabs()
+            .iter()
+            .any(|t| t.kind == TabKind::FilesPanel),
+        "a Files descriptor must reconstruct a FilesPanel tab"
+    );
+}
+
+/// Validates: Requirement 21.5 -- a FileExplorer descriptor re-opens the File Explorer panel.
+#[test]
+fn restore_file_explorer_descriptor_opens_explorer_panel() {
+    use crate::tab_state::TabKind;
+    use ff_session::session_state::{DescriptorParams, WorkspaceDescriptor, WorkspaceKind};
+
+    let mut shell = make_shell();
+    let descriptors = vec![WorkspaceDescriptor::CustomWorkspace {
+        workspace_kind: WorkspaceKind::FileExplorer,
+        params: DescriptorParams::new(),
+    }];
+    shell.restore_workspace_descriptors(&descriptors);
+    assert!(
+        shell
+            .tabs
+            .tabs()
+            .iter()
+            .any(|t| t.kind == TabKind::FileExplorerPanel),
+        "a FileExplorer descriptor must reconstruct a FileExplorerPanel tab"
+    );
+}
+
+/// Validates: Requirement 21.3 -- a Settings descriptor with a namespace param
+/// restores the Settings Context with that namespace filter applied.
+#[test]
+fn restore_settings_descriptor_applies_namespace_filter() {
+    use crate::tab_state::TabKind;
+    use ff_session::session_state::{
+        DescriptorParams, DescriptorValue, WorkspaceDescriptor, WorkspaceKind,
+    };
+
+    let mut shell = make_shell();
+    let mut params = DescriptorParams::new();
+    params.insert("namespace".to_string(), DescriptorValue::from("editor"));
+    let descriptors = vec![WorkspaceDescriptor::CustomWorkspace {
+        workspace_kind: WorkspaceKind::Settings,
+        params,
+    }];
+    shell.restore_workspace_descriptors(&descriptors);
+
+    assert!(
+        shell
+            .tabs
+            .tabs()
+            .iter()
+            .any(|t| t.kind == TabKind::SettingsPanel),
+        "a Settings descriptor must reconstruct a SettingsPanel tab"
+    );
+    assert_eq!(
+        shell.settings_panel.namespace_filter.as_deref(),
+        Some("editor"),
+        "the namespace filter must be restored from the descriptor param"
+    );
+    assert_eq!(shell.settings_panel.filter, "editor.");
+}
+
+/// Validates: Requirement 21.3 -- a Settings descriptor with no namespace restores
+/// the unfiltered Settings view.
+#[test]
+fn restore_settings_descriptor_without_namespace_is_unfiltered() {
+    use ff_session::session_state::{DescriptorParams, WorkspaceDescriptor, WorkspaceKind};
+
+    let mut shell = make_shell();
+    let descriptors = vec![WorkspaceDescriptor::CustomWorkspace {
+        workspace_kind: WorkspaceKind::Settings,
+        params: DescriptorParams::new(),
+    }];
+    shell.restore_workspace_descriptors(&descriptors);
+    assert!(shell.settings_panel.namespace_filter.is_none());
+    assert_eq!(shell.settings_panel.filter, "");
+}
+
+/// Validates: Requirement 21.5 -- multiple descriptors restore multiple Workspaces.
+#[test]
+fn restore_multiple_descriptors_opens_each_workspace() {
+    use crate::tab_state::TabKind;
+    use ff_session::session_state::{DescriptorParams, WorkspaceDescriptor, WorkspaceKind};
+
+    let mut shell = make_shell();
+    let descriptors = vec![
+        WorkspaceDescriptor::CustomWorkspace {
+            workspace_kind: WorkspaceKind::Files,
+            params: DescriptorParams::new(),
+        },
+        WorkspaceDescriptor::CustomWorkspace {
+            workspace_kind: WorkspaceKind::PluginManager,
+            params: DescriptorParams::new(),
+        },
+        WorkspaceDescriptor::CustomWorkspace {
+            workspace_kind: WorkspaceKind::EventLog,
+            params: DescriptorParams::new(),
+        },
+    ];
+    shell.restore_workspace_descriptors(&descriptors);
+    let kinds: Vec<TabKind> = shell.tabs.tabs().iter().map(|t| t.kind).collect();
+    assert!(kinds.contains(&TabKind::FilesPanel));
+    assert!(kinds.contains(&TabKind::PluginManager));
+    assert!(kinds.contains(&TabKind::EventLog));
+}
+
+/// Validates: Requirement 21.9 -- an unknown / not-yet-wired descriptor is
+/// skipped without panicking, and subsequent descriptors still restore.
+#[test]
+fn restore_skips_menu_descriptor_but_continues() {
+    use crate::tab_state::TabKind;
+    use ff_session::session_state::{DescriptorParams, WorkspaceDescriptor, WorkspaceKind};
+
+    let mut shell = make_shell();
+    let descriptors = vec![
+        // Menu descriptor: not yet wired (needs the MENU command, DB.4) -- must be skipped.
+        WorkspaceDescriptor::Menu {
+            name: "custom".to_string(),
+        },
+        // A following descriptor must still restore.
+        WorkspaceDescriptor::CustomWorkspace {
+            workspace_kind: WorkspaceKind::Files,
+            params: DescriptorParams::new(),
+        },
+    ];
+    shell.restore_workspace_descriptors(&descriptors);
+    assert!(
+        shell
+            .tabs
+            .tabs()
+            .iter()
+            .any(|t| t.kind == TabKind::FilesPanel),
+        "restore must continue past a skipped Menu descriptor"
+    );
+}
+
+/// Validates: Requirement 21.2 -- an Editor descriptor with a uri param re-opens the file.
+#[test]
+fn restore_editor_descriptor_opens_file() {
+    use crate::tab_state::TabKind;
+    use ff_session::session_state::{
+        DescriptorParams, DescriptorValue, WorkspaceDescriptor, WorkspaceKind,
+    };
+    use std::io::Write;
+
+    let mut tmp = tempfile::NamedTempFile::new().expect("tempfile");
+    writeln!(tmp, "hello from restore").expect("write");
+    let path = tmp.path().to_string_lossy().to_string();
+
+    let mut shell = make_shell();
+    let mut params = DescriptorParams::new();
+    params.insert("uri".to_string(), DescriptorValue::from(path.clone()));
+    let descriptors = vec![WorkspaceDescriptor::CustomWorkspace {
+        workspace_kind: WorkspaceKind::Editor,
+        params,
+    }];
+    shell.restore_workspace_descriptors(&descriptors);
+    assert!(
+        shell
+            .tabs
+            .tabs()
+            .iter()
+            .any(|t| t.kind == TabKind::FileEditor && t.path.as_deref() == Some(path.as_str())),
+        "an Editor descriptor with a uri must reopen that file"
+    );
+}

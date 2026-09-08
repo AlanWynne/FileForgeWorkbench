@@ -259,6 +259,18 @@ The `ff-macro` crate depends on `ff-command` (command dispatch and scripting bri
 
 **Source:** ISPF-EARS macros (ISREDIT, ISPEXEC, IMACRO, LINENUM, CURSOR), TSO-EARS REXX (REXX-1 through REXX-4), FFCMD scripting. [FFE-MVP-7, SCI-STE-LUA, WB]
 
+*(Planned future work -- Regina REXX: the criteria below specify a
+REXX-compatible execution bridge implemented on top of the Lua engine. A later
+phase SHOULD evaluate embedding or integrating an actual REXX interpreter --
+Regina REXX (open source, ANSI/TRL-2) is the candidate -- so that unmodified
+REXX execs run under a real REXX language processor rather than a compatibility
+shim. This is a deliberate future item, tracked as a planning note; it does not
+change the criteria in this requirement and is out of scope for Phase DB. Also
+note: `docs/specs/ears-integration/coverage-classification.md` still marks the
+REXX-1.x..REXX-4.x items as "no criterion"; that classification is stale --
+this Requirement 11 now covers them -- and should be reconciled when the Regina
+REXX work is scheduled.)*
+
 #### Acceptance Criteria
 
 1. THE LuaMacroEngine SHALL provide an `ISREDIT` host command environment that accepts ISPF Edit macro service calls as strings (e.g., `ISREDIT "CURSOR = 5 10"`) and dispatches them to the corresponding editor API operations.

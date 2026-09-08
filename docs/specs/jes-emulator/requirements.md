@@ -477,8 +477,15 @@ SDSF-JQ-6 (PAR), SDSF-JQ-7 (PAR), SDSF-FILTER-5 (PAR). [JES, FFW-ARCH]
 12. WHEN the user issues SET ROWNUM ON, THE system SHALL display row numbers in the
     NP area instead of the action character input field.
 
-13. THE JobMonitorPanel SHALL provide a main panel (accessible via the MENU command)
-    listing all available SDSF panel commands with name, description, and group.
+13. THE JobMonitorPanel SHALL provide a main panel (accessible via the SDSF panel-navigation
+    command described in criterion 16.17) listing all available SDSF panel commands with name,
+    description, and group.
+    *(Phase DB reconciliation, CR-NR-051: the global `MENU` command is uniform across all
+    Contexts and returns to the Home Context / opens a named menu (menu-workspace Requirement
+    11). To avoid overriding that global verb, the JES within-panel "return to SDSF main panel"
+    action is provided by the Context-local command `SDSF` (alias `=MENU` for SDSF muscle
+    memory), NOT by a Context-specific redefinition of `MENU`. Where this requirement and 16.17
+    say "MENU command", read the JES panel-navigation command.)*
 
 14. THE main panel SHALL organise commands into groups: Jobs, Output, JES, Log,
     Memory, and Other; groups SHALL be expandable and collapsible.
@@ -489,7 +496,14 @@ SDSF-JQ-6 (PAR), SDSF-JQ-7 (PAR), SDSF-FILTER-5 (PAR). [JES, FFW-ARCH]
 16. WHEN the user issues SET MAIN GROUP, THE system SHALL display the main panel
     in grouped format with expandable/collapsible command groups.
 
-17. THE MENU command SHALL return the user to the main panel from any sub-panel.
+17. THE JES panel-navigation command (Context-local `SDSF`, alias `=MENU`) SHALL return the
+    user to the SDSF main panel from any sub-panel. The global `MENU` command
+    (menu-workspace Requirement 11) retains its uniform meaning even inside the JES Context:
+    `MENU` returns to the Home Context (POM), `MENU <name>` opens the named menu.
+    *(Phase DB reconciliation, CR-NR-051. If the existing implementation bound this behaviour
+    to the bare word `MENU`, that binding is rescoped to the JES-local command during the
+    Phase DB / DB.8 wiring; this is a Context-local command-name change, not a behavioural
+    change to SDSF panel navigation.)*
 
 18. THE system SHALL support the PREFIX filter command -- PREFIX value filters the
     job list to show only jobs whose names begin with the specified prefix;

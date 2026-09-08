@@ -358,6 +358,25 @@ The `ff-shell` crate is a Wave 9 (Desktop Integration) component. It depends on 
 
 ---
 
+### Requirement 19: External Program Execution (Detached and Captured)
+
+**User Story:** As a workbench user, I want to run an external program with an explicit program name and argument list (not only a shell command string), either as a fire-and-forget task or as a captured run whose output I can read, so that user-defined commands (command-configurator) and other subsystems can launch tools without composing a shell line.
+
+**Source:** [CR-NR-052], adaptation of FFE Requirement 4/7 execution model. [WB]
+
+#### Acceptance Criteria
+
+1. THE Shell_Engine SHALL provide an external execution entry point that accepts an explicit `program` (string), an `args` list (array of strings), an optional `working_dir`, and an Execution_Mode of `detached` or `captured`, without requiring the caller to build a single shell command string.
+2. WHEN external execution is requested with mode `captured`, THE Shell_Engine SHALL run the process asynchronously (never blocking the GUI render thread) and SHALL display combined stdout/stderr and the exit code in the Output_Panel, reusing the same panel, headers, scrollback, and exit-code display defined in Requirement 4 and Requirement 15.
+3. WHEN external execution is requested with mode `detached`, THE Shell_Engine SHALL spawn the process fire-and-forget: it SHALL NOT capture output, SHALL NOT open or reuse the Output_Panel, and SHALL return control immediately without waiting for the process to exit.
+4. A detached process SHALL NOT be tracked, monitored, restarted, or persisted by the workbench; its lifecycle after spawn is owned by the operating system. THE Shell_Engine MAY return an opaque handle to the caller, but the workbench SHALL NOT depend on it for correctness.
+5. THE external execution entry point SHALL be gated by `shell.mode` (Requirement 2) identically to `shell.execute`: `disabled` refuses execution with the standard message, `prompt` confirms before spawning, `enabled` runs without prompting -- for BOTH modes.
+6. WHEN `working_dir` is provided, THE Shell_Engine SHALL set the child process's working directory to that path; WHEN it is absent, THE Shell_Engine SHALL apply the `shell.working_directory` resolution rules (Requirement 11).
+7. WHEN a captured external command exceeds `shell.timeout_seconds`, THE Shell_Engine SHALL apply the same timeout and termination behaviour as Requirement 18; the timeout SHALL NOT apply to detached processes.
+8. WHEN an external program fails to launch (not found on PATH or at the given path, or permission denied), THE Shell_Engine SHALL report an error identifying the program; for captured mode the error appears in the Output_Panel, for detached mode it appears in the status area, and in neither case is a partial or empty Output_Panel result treated as success.
+
+---
+
 ## Cross-References
 
 | Dependency | Relationship |

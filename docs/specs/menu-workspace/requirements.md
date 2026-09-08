@@ -303,3 +303,75 @@ limit, both configurable.
    workbench is running SHALL transition to the load-error state per criterion
    9.4, and a file edited back to within limits SHALL recover on the next
    reload.
+
+---
+
+### Requirement 10: Menu Options Reference a Command Target
+
+**User Story:** As a menu author, I want a menu option to be able to open
+another menu, open a built-in workspace, run an internal function, run a macro,
+or run an external program, so that a menu can drive any FFWB action through one
+consistent mechanism.
+
+**Source:** [CR-NR-051], [WB]
+
+#### Acceptance Criteria
+
+1. WHEN a Menu_Option is selected, THE shell SHALL resolve the option's
+   `command` value to a Command_Target via Target_Resolution (command-framework
+   Requirement 8.3) and execute that target.
+2. THE existing Menu_File format (Requirement 1) SHALL remain valid unchanged: a
+   `command` value that is a bare command string SHALL resolve to an equivalent
+   Command_Target and produce the same observable result as before
+   (command-framework Requirement 8.4).
+3. A Menu_Option `command` value that equals the `id` of a user-defined
+   Command_Definition (command-configurator Requirement 1) SHALL resolve to that
+   definition's stored Command_Target.
+4. WHEN a Menu_Option resolves to a Menu_Target, selecting it SHALL open the
+   referenced Menu_Workspace, so that one menu leading to another menu is
+   expressed by an option whose target is a Menu_Target (this makes the
+   sub-menu-versus-custom-workspace distinction explicit in the resolved target
+   rather than implicit in the command string).
+5. WHEN a Menu_Option's `command` value cannot be resolved to any Command_Target,
+   THE shell SHALL display the message `Option '<key>' could not be resolved: <reason>`
+   in the status area and leave the Workspace unchanged (consistent with
+   Requirement 3.6 for unknown keys).
+6. THE Menu_File format MAY, as an alternative to a bare `command` string,
+   specify an inline `[options.target]` table that is a serialised Command_Target
+   (command-framework Requirement 8.7); WHEN both `command` and
+   `[options.target]` are present, THE loader SHALL use `[options.target]` and
+   log a DEBUG-level record noting that `command` was ignored for that option.
+
+---
+
+### Requirement 11: The MENU Command
+
+**User Story:** As an operator, I want a single `MENU` command that returns me to
+the Home Context or opens any named menu, so that all menus -- built-in or
+user-created -- are reachable through one consistent verb.
+
+**Source:** [CR-NR-051], [ISPF-POM], [WB]
+
+#### Acceptance Criteria
+
+1. WHEN the user types `MENU` with no argument in any `Command ===>` field and
+   presses Enter, THE shell SHALL open (or return to) the Home Context (POM),
+   which is the Menu_Workspace backed by `menus/pom.toml`.
+2. WHEN the user types `MENU <name>` in any `Command ===>` field, THE shell SHALL
+   open the Menu_Workspace backed by `menus/<name>.toml`; the name `POM` SHALL
+   resolve to `menus/pom.toml` and `SETTINGS` SHALL resolve to
+   `menus/settings.toml`, so `MENU POM` and `MENU SETTINGS` are the named forms
+   of those built-in menus.
+3. THE `MENU` command SHALL have identical semantics in every Context: it is a
+   global command, not reinterpreted per Context. A Context that needs a
+   "return to my own main panel" action SHALL use a Context-specific command
+   name rather than overriding `MENU`.
+4. WHEN `MENU <name>` references a `menus/<name>.toml` that does not exist, THE
+   shell SHALL open the Menu_Workspace in the load-error state (Requirement 1.5)
+   showing `Menu file not found: <path>`, rather than silently doing nothing.
+5. A `Menu_Target { name }` (command-framework Requirement 8.1) SHALL be executed
+   by invoking the `MENU <name>` command, so that the Command Configurator and
+   any keyboard binding that targets a menu reuse this single command path.
+6. THE `MENU` command SHALL be registered with the command framework
+   (Command_ID `"menu.open"`) so it is dispatchable from the command line, menu
+   options, keyboard bindings, and macros.
