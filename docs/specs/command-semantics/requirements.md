@@ -2,25 +2,25 @@
 
 ## Introduction
 
-This feature specifies the **Command Semantics Engine** for FileForgeWorkbench (`ff-command-semantics` crate). The command semantics engine is the ISPF-inspired **primary command execution pipeline** — it accepts raw command text from the command line, parses it into structured tokens, resolves the scope of the operation, validates preconditions, builds an execution plan, executes the plan transactionally, and reports results via short status messages.
+This feature specifies the **Command Semantics Engine** for FileForgeWorkbench (`ff-command-semantics` crate). The command semantics engine is the ISPF-inspired **primary command execution pipeline** -- it accepts raw command text from the command line, parses it into structured tokens, resolves the scope of the operation, validates preconditions, builds an execution plan, executes the plan transactionally, and reports results via short status messages.
 
-This crate is **GUI-independent** — it has no rendering or framework dependency. It operates on the abstract document model and integrates with the `command-framework` crate for registry, dispatch, and undo/redo wrapping. All commands registered by this crate are discoverable through the global `CommandRegistry` and invocable through the standard `Command_Dispatch` interface.
+This crate is **GUI-independent** -- it has no rendering or framework dependency. It operates on the abstract document model and integrates with the `command-framework` crate for registry, dispatch, and undo/redo wrapping. All commands registered by this crate are discoverable through the global `CommandRegistry` and invocable through the standard `Command_Dispatch` interface.
 
 The command semantics engine is responsible for:
 
-1. **Primary command parsing** — tokenising the command line into a command name and typed arguments
-2. **Line command parsing** — interpreting prefix-area strings into structured line command descriptors
-3. **Scope resolution** — determining which lines/region a command targets using a defined priority order
-4. **Execution pipeline** — the orchestrated sequence from collection through execution to status emission
-5. **Error handling** — translating failures into concise, informative status messages
-6. **Configuration** — runtime-configurable behaviours for find scope, bounds, case sensitivity, and invalid command policy
-7. **HELP command** — context-sensitive online help for commands, line commands, and macro API
+1. **Primary command parsing** -- tokenising the command line into a command name and typed arguments
+2. **Line command parsing** -- interpreting prefix-area strings into structured line command descriptors
+3. **Scope resolution** -- determining which lines/region a command targets using a defined priority order
+4. **Execution pipeline** -- the orchestrated sequence from collection through execution to status emission
+5. **Error handling** -- translating failures into concise, informative status messages
+6. **Configuration** -- runtime-configurable behaviours for find scope, bounds, case sensitivity, and invalid command policy
+7. **HELP command** -- context-sensitive online help for commands, line commands, and macro API
 
 ### Design Principles
 
 1. **GUI-independent.** This crate has no GUI dependency; it provides pure command parsing, resolution, and execution logic. [WB]
 2. **All commands route through the command-framework.** Every command defined here registers via the `CommandRegistry` and executes through `Command_Dispatch`. [WB]
-3. **Transactional execution.** Every mutating command is wrapped in an undo transaction. If execution fails mid-way, the transaction is rolled back — no partial state. [FFE-CMD-1]
+3. **Transactional execution.** Every mutating command is wrapped in an undo transaction. If execution fails mid-way, the transaction is rolled back -- no partial state. [FFE-CMD-1]
 4. **Composable with line commands.** Primary commands interact with pending line commands; the execution pipeline handles sequencing and clearing. [FFE-CMD-1]
 5. **Concise error reporting.** All errors produce short (≤200 character) human-readable status messages that identify the failing command. [FFE-CMD-38]
 6. **Extensible via registration.** New commands can be registered at runtime (e.g., by plugins or macros) through the command-framework's `register()` API. [FFE-CMD-1]
@@ -34,17 +34,17 @@ The command semantics engine is responsible for:
 - **[FFE-CMD-38]** = FileForgeEditor `core-command-semantics` Requirement 38: Error Handling
 - **[FFE-CMD-39]** = FileForgeEditor `core-command-semantics` Requirement 39: Configuration Options
 - **[FFE-CMD-40]** = FileForgeEditor `core-command-semantics` Requirement 40: HELP Command
-- **[WB]** = Workbench Architecture Brief — GUI-independent, command-driven architecture, undo integration
+- **[WB]** = Workbench Architecture Brief -- GUI-independent, command-driven architecture, undo integration
 
 ### Cross-References
 
-- **`command-framework`** — Provides `CommandRegistry` for registration/dispatch, `Command_Dispatch` for execution routing, and undo/redo integration. All commands defined in this crate register via that framework.
-- **`undo-redo-transactions`** — Every mutating command execution is wrapped in a transaction. Failure triggers rollback.
-- **`find-and-replace`** — FIND/CHANGE/RFIND/RCHANGE command implementations (separate spec); this crate provides the parsing and scope resolution they depend on.
-- **`line-commands`** — Line command definitions, block pairing, and pending-state management (separate spec); this crate provides the line command parser.
-- **`exclude-show-filter`** — EXCLUDE/SHOW/RESET implementations (separate spec); this crate provides scope resolution with VISIBLE/EXCLUDED/ALL modifiers.
-- **`navigation-commands`** — LOCATE, SORT, COLS, BOUNDS implementations (separate spec); this crate provides parsing and scope resolution they depend on.
-- **`configuration-system`** — Provides the configuration keys for runtime-configurable behaviours (find scope, bounds, case sensitivity, etc.).
+- **`command-framework`** -- Provides `CommandRegistry` for registration/dispatch, `Command_Dispatch` for execution routing, and undo/redo integration. All commands defined in this crate register via that framework.
+- **`undo-redo-transactions`** -- Every mutating command execution is wrapped in a transaction. Failure triggers rollback.
+- **`find-and-replace`** -- FIND/CHANGE/RFIND/RCHANGE command implementations (separate spec); this crate provides the parsing and scope resolution they depend on.
+- **`line-commands`** -- Line command definitions, block pairing, and pending-state management (separate spec); this crate provides the line command parser.
+- **`exclude-show-filter`** -- EXCLUDE/SHOW/RESET implementations (separate spec); this crate provides scope resolution with VISIBLE/EXCLUDED/ALL modifiers.
+- **`navigation-commands`** -- LOCATE, SORT, COLS, BOUNDS implementations (separate spec); this crate provides parsing and scope resolution they depend on.
+- **`configuration-system`** -- Provides the configuration keys for runtime-configurable behaviours (find scope, bounds, case sensitivity, etc.).
 
 ---
 
@@ -188,7 +188,7 @@ The command semantics engine is responsible for:
 
 5.1. WHEN a syntax error is detected during parsing (unclosed quote, invalid hex literal, malformed token), THE Command_Engine SHALL produce a Status_Message beginning with "Syntax error" that identifies the problematic text and is at most 200 characters long. [FFE-CMD-38]
 
-5.2. WHEN a structural error is detected (block command mismatch — e.g., CC without a matching CC, overlapping blocks), THE Command_Engine SHALL produce a Status_Message beginning with "Structure error" that identifies the conflicting commands and is at most 200 characters long. [FFE-CMD-38]
+5.2. WHEN a structural error is detected (block command mismatch -- e.g., CC without a matching CC, overlapping blocks), THE Command_Engine SHALL produce a Status_Message beginning with "Structure error" that identifies the conflicting commands and is at most 200 characters long. [FFE-CMD-38]
 
 5.3. WHEN a runtime error occurs during command execution (I/O failure, invalid line range, incompatible scope), THE Command_Engine SHALL produce a Status_Message beginning with "Error" that identifies the command name and describes the failure, at most 200 characters long. [FFE-CMD-38]
 
@@ -211,12 +211,12 @@ The command semantics engine is responsible for:
 #### Acceptance Criteria
 
 6.1. THE Command_Engine SHALL support the following configuration keys via the `configuration-system`, each with a defined default value:
-- `commands.find_default_scope` (string: `"visible"` | `"all"` | `"excluded"`) — default scope for FIND/CHANGE when no explicit scope is specified. Default: `"visible"`. [FFE-CMD-39]
-- `commands.bounds_affect_find` (boolean) — whether column bounds restrict FIND/CHANGE search area. Default: `true`. [FFE-CMD-39]
-- `commands.case_sensitive_find` (boolean) — whether FIND/CHANGE defaults to case-sensitive matching. Default: `false`. [FFE-CMD-39]
-- `commands.default_shift_width` (integer, 1–72) — number of columns for > and < shift line commands when no count is specified. Default: `2`. [FFE-CMD-39]
-- `commands.reset_clears_tags` (boolean) — whether the RESET command clears line tags in addition to exclusion state. Default: `false`. [FFE-CMD-39]
-- `commands.invalid_line_command_policy` (string: `"reject"` | `"ignore"`) — how unrecognised line commands are handled. Default: `"reject"`. [FFE-CMD-39]
+- `commands.find_default_scope` (string: `"visible"` | `"all"` | `"excluded"`) -- default scope for FIND/CHANGE when no explicit scope is specified. Default: `"visible"`. [FFE-CMD-39]
+- `commands.bounds_affect_find` (boolean) -- whether column bounds restrict FIND/CHANGE search area. Default: `true`. [FFE-CMD-39]
+- `commands.case_sensitive_find` (boolean) -- whether FIND/CHANGE defaults to case-sensitive matching. Default: `false`. [FFE-CMD-39]
+- `commands.default_shift_width` (integer, 1–72) -- number of columns for > and < shift line commands when no count is specified. Default: `2`. [FFE-CMD-39]
+- `commands.reset_clears_tags` (boolean) -- whether the RESET command clears line tags in addition to exclusion state. Default: `false`. [FFE-CMD-39]
+- `commands.invalid_line_command_policy` (string: `"reject"` | `"ignore"`) -- how unrecognised line commands are handled. Default: `"reject"`. [FFE-CMD-39]
 
 6.2. WHEN a configuration key contains an invalid value (out of range, wrong type, or unknown enum variant), THE Command_Engine SHALL fall back to the defined default value for that key and SHALL write a WARN-level log record indicating the invalid value and the default being used. [FFE-CMD-39]
 
@@ -234,7 +234,7 @@ The command semantics engine is responsible for:
 
 **User Story:** As a user, I want pressing Enter in the Command ===> field to submit the typed command, so that the command is executed immediately without requiring a mouse click.
 
-**Source:** ISPF command field behaviour — Enter submits the command line.
+**Source:** ISPF command field behaviour -- Enter submits the command line.
 
 #### Acceptance Criteria
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-navigation-commands` crate — the navigation command subsystem for FileForgeWorkbench. The crate provides ISPF-style LOCATE, SORT, COLS, and BOUNDS commands, viewport navigation (UP/DOWN/LEFT/RIGHT/TOP/BOTTOM), paragraph navigation, word and word-part navigation, vertical caret movement with column affinity, and document start/end navigation. It also registers delegation-only commands (SAVE, CANCEL, END, LOAD, RELOAD, DELETE, COPY, MOVE, MACRO/EXEC/RUN, UNDO, REDO) that are dispatched to their owning crates.
+This plan covers the complete implementation of the `ff-navigation-commands` crate -- the navigation command subsystem for FileForgeWorkbench. The crate provides ISPF-style LOCATE, SORT, COLS, and BOUNDS commands, viewport navigation (UP/DOWN/LEFT/RIGHT/TOP/BOTTOM), paragraph navigation, word and word-part navigation, vertical caret movement with column affinity, and document start/end navigation. It also registers delegation-only commands (SAVE, CANCEL, END, LOAD, RELOAD, DELETE, COPY, MOVE, MACRO/EXEC/RUN, UNDO, REDO) that are dispatched to their owning crates.
 
 This is a **Wave 5 (Command Engine)** sub-project that depends on `ff-viewport-scrolling` (Wave 4) for viewport state delegation, `ff-document-model` (Wave 4) for line content and character classification, `ff-command` (Wave 2) for command registration, and `ff-undo-redo` (Wave 4) for SORT transaction wrapping.
 
@@ -342,10 +342,10 @@ This is a **Wave 5 (Command Engine)** sub-project that depends on `ff-viewport-s
 - The `ff-document-model` (Wave 4) provides line count, line content, and character classification tables
 - SORT is the only undoable command in this crate; all other commands modify viewport/session state only
 - Delegation commands (Requirements 11–17) register metadata but dispatch execution to owning crates
-- COLS_Line and BNDS_Line are pure display artifacts — they are never part of the document model and are not persisted
+- COLS_Line and BNDS_Line are pure display artifacts -- they are never part of the document model and are not persisted
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
 - The design.md for this crate was generated concurrently; if unavailable, the task structure is derived solely from requirements.md
-- Column affinity integrates with the CursorModel from `ff-viewport-scrolling` — this crate extends the cursor movement logic
+- Column affinity integrates with the CursorModel from `ff-viewport-scrolling` -- this crate extends the cursor movement logic
 - Word and word-part navigation reuse the CharClassify system from `ff-document-model`; this crate adds the navigation algorithms on top
 
 ---

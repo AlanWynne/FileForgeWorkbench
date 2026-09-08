@@ -2,15 +2,15 @@
 
 ## Introduction
 
-This feature specifies the **Idle Processing** subsystem for FileForgeWorkbench (`ff-idle-processing` crate). The idle-processing scheduler is a **GUI-independent background work coordinator** that grants time slices to registered work sources when no user input is active. It enables computationally intensive operations — syntax re-highlighting beyond the viewport, word-wrap height calculation, fold-level computation, and search index building — to proceed incrementally without blocking user interactions.
+This feature specifies the **Idle Processing** subsystem for FileForgeWorkbench (`ff-idle-processing` crate). The idle-processing scheduler is a **GUI-independent background work coordinator** that grants time slices to registered work sources when no user input is active. It enables computationally intensive operations -- syntax re-highlighting beyond the viewport, word-wrap height calculation, fold-level computation, and search index building -- to proceed incrementally without blocking user interactions.
 
 The scheduler operates on a cooperative time-slicing model: registered work sources receive bounded time budgets during idle periods and must yield control within their allotted slice. Any user input (keystroke, mouse event, scroll) immediately cancels the current idle work and returns control to the event loop for responsive handling.
 
 This design adapts Scintilla's idle-work mechanism (`IdleWork`, `SetIdle`, `QueueIdleWork`, `IdleStyle`) from its monolithic editor architecture into a generalised, trait-based idle scheduler suitable for the FileForgeWorkbench multi-crate platform. Where Scintilla hard-codes idle tasks (wrap and style), this subsystem provides a registration API for arbitrary work sources with priority ordering.
 
 **Source references:**
-- **[SCI-IDLE]** = Scintilla `Editor::IdleWork`, `SetIdle`, `QueueIdleWork`, `StartIdleStyling`, `IdleStyle` — idle-time wrap and styling coordination via platform timer/idle callbacks
-- **[WB]** = Workbench Platform Architecture Brief — GUI-independent core, cooperative background processing, responsive UI guarantee
+- **[SCI-IDLE]** = Scintilla `Editor::IdleWork`, `SetIdle`, `QueueIdleWork`, `StartIdleStyling`, `IdleStyle` -- idle-time wrap and styling coordination via platform timer/idle callbacks
+- **[WB]** = Workbench Platform Architecture Brief -- GUI-independent core, cooperative background processing, responsive UI guarantee
 
 ## Cross-References
 
@@ -72,9 +72,9 @@ This design adapts Scintilla's idle-work mechanism (`IdleWork`, `SetIdle`, `Queu
 1. THE Time_Budget per idle slice SHALL be configurable via the configuration-system, with a default value of 10 milliseconds.
 2. THE Idle_Scheduler SHALL measure elapsed time during each Time_Slice and signal the active work source to yield when the Time_Budget is approaching (providing a time-remaining query).
 3. WHEN a work source exceeds the Time_Budget by more than 2 milliseconds, THE Idle_Scheduler SHALL log a WARN-level message identifying the offending work source and the actual elapsed time.
-4. THE Idle_Scheduler SHALL NOT forcibly terminate a work source that exceeds the Time_Budget — enforcement is cooperative. The work source is responsible for checking the time-remaining signal and yielding.
+4. THE Idle_Scheduler SHALL NOT forcibly terminate a work source that exceeds the Time_Budget -- enforcement is cooperative. The work source is responsible for checking the time-remaining signal and yielding.
 5. WHEN the Time_Budget is set to 0 milliseconds, THE Idle_Scheduler SHALL be effectively disabled (no idle work is dispatched), allowing users to disable background processing entirely.
-6. THE Time_Budget SHALL apply to the total scheduler overhead plus the work source execution time combined — the scheduler's own bookkeeping (priority selection, progress tracking) SHALL consume less than 1 millisecond of the budget.
+6. THE Time_Budget SHALL apply to the total scheduler overhead plus the work source execution time combined -- the scheduler's own bookkeeping (priority selection, progress tracking) SHALL consume less than 1 millisecond of the budget.
 
 ---
 
@@ -87,10 +87,10 @@ This design adapts Scintilla's idle-work mechanism (`IdleWork`, `SetIdle`, `Queu
 #### Acceptance Criteria
 
 1. THE `ff-idle-processing` crate SHALL define an `IdleWorkSource` trait with the following required methods:
-   - `perform_work(context: &mut IdleWorkContext) → WorkStatus` — executes a bounded unit of work within the time budget, returning whether more work remains.
-   - `priority() → WorkPriority` — returns the priority level of this work source.
-   - `name() → &str` — returns a human-readable identifier for diagnostics and logging.
-   - `progress() → WorkProgress` — returns the current progress state for tracking.
+   - `perform_work(context: &mut IdleWorkContext) → WorkStatus` -- executes a bounded unit of work within the time budget, returning whether more work remains.
+   - `priority() → WorkPriority` -- returns the priority level of this work source.
+   - `name() → &str` -- returns a human-readable identifier for diagnostics and logging.
+   - `progress() → WorkProgress` -- returns the current progress state for tracking.
 2. THE `IdleWorkSource` trait SHALL define an optional method `invalidate()` that resets the work source's progress to the beginning, called when the scheduler detects that previous work is stale.
 3. THE Idle_Scheduler SHALL provide a `register(source: Box<dyn IdleWorkSource>)` method that adds a work source to the active set, immediately enabling it to receive time slices during the next idle period.
 4. THE Idle_Scheduler SHALL provide an `unregister(name: &str) → Option<Box<dyn IdleWorkSource>>` method that removes a work source by name, returning ownership to the caller.
@@ -134,7 +134,7 @@ This design adapts Scintilla's idle-work mechanism (`IdleWork`, `SetIdle`, `Queu
 3. WHEN a work source detects cancellation via `is_cancelled()`, IT SHALL save its current progress position and return `WorkStatus::Interrupted` from `perform_work`, enabling resumption from the same position on the next idle period.
 4. AFTER a cancellation event, THE Idle_Scheduler SHALL NOT dispatch any further Time_Slices until the Idle_Detection_Threshold has elapsed again with no new input, re-entering idle state.
 5. THE latency between a user input event arriving and the cancellation signal being visible to the work source SHALL be less than 1 millisecond (the signal must be an atomic flag or equivalent low-latency mechanism, not a message queue).
-6. WHEN a work source is interrupted by cancellation, THE Idle_Scheduler SHALL NOT penalise it or change its priority — it resumes normally on the next idle period.
+6. WHEN a work source is interrupted by cancellation, THE Idle_Scheduler SHALL NOT penalise it or change its priority -- it resumes normally on the next idle period.
 
 ---
 
@@ -168,12 +168,12 @@ This design adapts Scintilla's idle-work mechanism (`IdleWork`, `SetIdle`, `Queu
 3. WHEN a dormant work source is invalidated (e.g., due to a document edit), THE Idle_Scheduler SHALL reactivate it, return it to the dispatch set, and resume requesting idle callbacks.
 4. THE Idle_Scheduler SHALL provide a `invalidate_source(name: &str)` method that externally invalidates a specific work source, resetting its progress and reactivating it.
 5. THE Idle_Scheduler SHALL provide a `invalidate_all()` method that invalidates all registered work sources simultaneously (used after operations that affect the entire document, such as encoding change or full reload).
-6. WHEN a work source is unregistered via `unregister()`, IT SHALL be fully removed from both the active and dormant sets — it will not receive further time slices or invalidation signals.
+6. WHEN a work source is unregistered via `unregister()`, IT SHALL be fully removed from both the active and dormant sets -- it will not receive further time slices or invalidation signals.
 7. WHEN the last active work source completes and the scheduler enters no-op state, IT SHALL emit a `SchedulerIdle` notification enabling consumers to know that all background processing is finished.
 
 ---
 
-### Requirement 8: Registered Work Sources — Built-In Categories
+### Requirement 8: Registered Work Sources -- Built-In Categories
 
 **User Story:** As the workbench integrator, I need well-defined idle work sources for core background tasks (syntax highlighting, wrap calculation, fold computation, search indexing), so that these subsystems leverage idle processing without each implementing their own idle detection.
 
@@ -200,9 +200,9 @@ This design adapts Scintilla's idle-work mechanism (`IdleWork`, `SetIdle`, `Queu
 #### Acceptance Criteria
 
 1. THE Idle_Scheduler SHALL define an `IdleNotifier` trait that the GUI shell implements to provide event-loop integration:
-   - `request_idle_callback()` — requests the event loop to invoke the scheduler's `on_idle()` method when the application becomes idle.
-   - `cancel_idle_callback()` — cancels a previously requested idle callback.
-2. THE Idle_Scheduler SHALL NOT directly depend on any GUI framework (no egui, no winit, no GTK references) — it receives idle notifications through the `IdleNotifier` trait abstraction.
+   - `request_idle_callback()` -- requests the event loop to invoke the scheduler's `on_idle()` method when the application becomes idle.
+   - `cancel_idle_callback()` -- cancels a previously requested idle callback.
+2. THE Idle_Scheduler SHALL NOT directly depend on any GUI framework (no egui, no winit, no GTK references) -- it receives idle notifications through the `IdleNotifier` trait abstraction.
 3. THE GUI shell SHALL implement `IdleNotifier` using the platform's idle mechanism: `egui::Context::request_repaint_after(Duration)` for egui, `WM_TIMER` with low priority for Win32, `g_idle_add` for GTK.
 4. WHEN the Idle_Scheduler has active work sources and is not currently in a cancellation cooldown, IT SHALL call `request_idle_callback()` on the `IdleNotifier` to ensure it will be invoked.
 5. WHEN the Idle_Scheduler enters no-op state (all work complete), IT SHALL call `cancel_idle_callback()` to prevent unnecessary event loop overhead.
@@ -237,11 +237,11 @@ This design adapts Scintilla's idle-work mechanism (`IdleWork`, `SetIdle`, `Queu
 
 #### Acceptance Criteria
 
-1. WHEN no work sources are registered, THE Idle_Scheduler SHALL NOT request idle callbacks from the event loop — zero CPU overhead in the quiescent state.
-2. WHEN all registered work sources are dormant (complete), THE Idle_Scheduler SHALL NOT request idle callbacks — equivalent to no sources registered from a resource perspective.
+1. WHEN no work sources are registered, THE Idle_Scheduler SHALL NOT request idle callbacks from the event loop -- zero CPU overhead in the quiescent state.
+2. WHEN all registered work sources are dormant (complete), THE Idle_Scheduler SHALL NOT request idle callbacks -- equivalent to no sources registered from a resource perspective.
 3. WHEN the Idle_Scheduler is in no-op state and a new work source is registered (or an existing source is invalidated), IT SHALL immediately request an idle callback to begin processing after the Idle_Detection_Threshold.
-4. IN no-op state, THE Idle_Scheduler's memory footprint SHALL be limited to the registration table and per-source progress records — no timer handles, no pending callbacks, no allocated work buffers.
-5. THE transition from active state to no-op state SHALL occur within one idle callback cycle after the last source reports completion — no unnecessary trailing callbacks.
+4. IN no-op state, THE Idle_Scheduler's memory footprint SHALL be limited to the registration table and per-source progress records -- no timer handles, no pending callbacks, no allocated work buffers.
+5. THE transition from active state to no-op state SHALL occur within one idle callback cycle after the last source reports completion -- no unnecessary trailing callbacks.
 
 ---
 
@@ -258,4 +258,4 @@ This design adapts Scintilla's idle-work mechanism (`IdleWork`, `SetIdle`, `Queu
 3. THE Idle_Scheduler SHALL receive user input state through an `input_activity()` method called by the GUI shell on each input event, rather than directly listening to platform input APIs.
 4. THE crate SHALL be fully testable without a running GUI: unit tests SHALL exercise scheduling logic, priority dispatch, time budget enforcement, and cancellation using a mock clock and synthetic input signals.
 5. THE Idle_Scheduler SHALL expose its public API through a struct with well-defined methods (not through message passing or GUI event dispatch), enabling direct programmatic control from any consumer.
-6. THE `IdleWorkSource` trait SHALL not reference any GUI types in its signature — it operates on abstract document positions, line numbers, and byte offsets only.
+6. THE `IdleWorkSource` trait SHALL not reference any GUI types in its signature -- it operates on abstract document positions, line numbers, and byte offsets only.

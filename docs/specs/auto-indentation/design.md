@@ -17,24 +17,24 @@ The `ff-auto-indent` crate implements **language-aware automatic indentation** f
 ### Position in Architecture
 
 ```
-Wave 7 — Language and Highlighting
+Wave 7 -- Language and Highlighting
 
 ┌──────────────────────────────────────────────────────────────┐
 │  Downstream Consumers:                                        │
-│    ff-edit-operations (Wave 4) — newline insertion hook        │
-│    ff-command (Wave 2) — indent/unindent command dispatch      │
+│    ff-edit-operations (Wave 4) -- newline insertion hook        │
+│    ff-command (Wave 2) -- indent/unindent command dispatch      │
 ├──────────────────────────────────────────────────────────────┤
 │          THIS CRATE: ff-auto-indent ← Wave 7                  │
 │   Auto-indent modes, pattern matching, comment continuation   │
 ├──────────────────────────────────────────────────────────────┤
 │  Upstream:                                                    │
-│    ff-logging (Wave 0) — structured diagnostics               │
-│    ff-config (Wave 2) — indent settings, hot-reload           │
-│    ff-command (Wave 2) — command registration                  │
-│    ff-language-service (Wave 7) — indent patterns, comments   │
-│    ff-document-model (Wave 4) — line content access           │
-│    ff-edit-operations (Wave 4) — EditorTransaction recording  │
-│    ff-undo-redo-transactions (Wave 4) — undo grouping         │
+│    ff-logging (Wave 0) -- structured diagnostics               │
+│    ff-config (Wave 2) -- indent settings, hot-reload           │
+│    ff-command (Wave 2) -- command registration                  │
+│    ff-language-service (Wave 7) -- indent patterns, comments   │
+│    ff-document-model (Wave 4) -- line content access           │
+│    ff-edit-operations (Wave 4) -- EditorTransaction recording  │
+│    ff-undo-redo-transactions (Wave 4) -- undo grouping         │
 ├──────────────────────────────────────────────────────────────┤
 │              Foundation Layer: ff-logging                      │
 └──────────────────────────────────────────────────────────────┘
@@ -42,8 +42,8 @@ Wave 7 — Language and Highlighting
 
 ### Design Constraints (Cross-Cutting)
 
-- **FFW-ARCH-001**: No direct `std::fs` calls — language indent patterns are obtained through `ff-language-service`, which manages TOML file access
-- **GUI Independence**: Zero GUI dependencies — the auto-indent logic operates on abstract document/line content; the GUI shell triggers indent computation via `edit-operations`
+- **FFW-ARCH-001**: No direct `std::fs` calls -- language indent patterns are obtained through `ff-language-service`, which manages TOML file access
+- **GUI Independence**: Zero GUI dependencies -- the auto-indent logic operates on abstract document/line content; the GUI shell triggers indent computation via `edit-operations`
 - **Command-Driven**: `edit.indent` and `edit.unindent` are registered as commands with the `ff-command` framework
 - **Configuration Namespace**: All indent settings reside under `editor.*` namespace (`editor.auto_indent`, `editor.indent_size`, `editor.tab_size`, `editor.use_tabs`)
 - **Multi-Crate Workspace**: Crate at `crates/ff-auto-indent`
@@ -170,7 +170,7 @@ crates/ff-auto-indent/
 
 | Module | Description |
 |--------|-------------|
-| `lib.rs` | Crate root — re-exports the public API surface (`AutoIndentService`, `AutoIndentMode`, `IndentConfig`, `IndentDecision`). Contains crate-level documentation. |
+| `lib.rs` | Crate root -- re-exports the public API surface (`AutoIndentService`, `AutoIndentMode`, `IndentConfig`, `IndentDecision`). Contains crate-level documentation. |
 | `mode.rs` | Defines the `AutoIndentMode` enum and the logic for resolving the effective mode from global config, language override, and EditorConfig. |
 | `config.rs` | Defines `IndentConfig` struct (indent_size, tab_size, use_tabs) and provides a `ConfigAccessor` that reads from `ff-config` with per-language overrides and hot-reload subscription. |
 | `maintain.rs` | Implements the maintain-indent algorithm: extracts leading whitespace from the reference line (respecting caret position) and generates the indent string for the new line. |
@@ -736,7 +736,7 @@ pub struct CommentTableRaw {
 #[non_exhaustive]
 pub enum AutoIndentError {
     /// Invalid auto-indent mode string in configuration.
-    #[error("[auto-indent] config: invalid mode '{value}' — expected 'none', 'maintain', or 'smart'")]
+    #[error("[auto-indent] config: invalid mode '{value}' -- expected 'none', 'maintain', or 'smart'")]
     InvalidMode { value: String },
 
     /// A regex pattern in the language definition failed to compile.
@@ -773,7 +773,7 @@ pub enum AutoIndentError {
 
 ## Integration Points
 
-### With `ff-language-service` (Wave 7 — upstream)
+### With `ff-language-service` (Wave 7 -- upstream)
 
 - **Consumed API**: `LanguageService::get_definition()`, `LanguageDefinitionRef` accessors for indent/comment tables, `LanguageService::get_property()`
 - **Data flow**: When a document's language is detected (or changed), the auto-indent service queries the language definition for its `[indent]` and `[comment]` table contents. These are compiled into `IndentPatterns` and `CommentConfig` and cached.
@@ -784,7 +784,7 @@ pub enum AutoIndentError {
   - Syntax state query to determine if caret is in comment/string (Req 3.4, 6.7)
   - Language change notification triggers pattern cache reload (Req 9.5)
 
-### With `ff-edit-operations` (Wave 4 — integration)
+### With `ff-edit-operations` (Wave 4 -- integration)
 
 - **Consumed API**: `EditorTransaction`, newline insertion hook callback
 - **Provided API**: `compute_newline_indent()` is called by the newline command handler
@@ -795,7 +795,7 @@ pub enum AutoIndentError {
   - `IndentLineEdit` results are applied via `EditorTransaction` insert/delete operations (Req 7.4, 8.5)
   - Modified line markers set on affected lines (Req 7.6, 8.6)
 
-### With `ff-document-model` (Wave 4 — upstream)
+### With `ff-document-model` (Wave 4 -- upstream)
 
 - **Consumed API**: Line content access (`get_line_content(line_number)`), line count, `LineMetadata`
 - **Data flow**: The auto-indent engine reads line content for pattern matching. It reads the reference line to determine existing indentation, and may read adjacent lines for statement continuation tracking.
@@ -804,7 +804,7 @@ pub enum AutoIndentError {
   - Read reference line for pattern matching (increase/decrease) (Req 3.1, 4.1)
   - Read line content for indent/unindent command to determine current whitespace (Req 7.5, 8.7)
 
-### With `ff-config` (Wave 2 — upstream)
+### With `ff-config` (Wave 2 -- upstream)
 
 - **Consumed API**: `ConfigProvider` typed access (`get_string`, `get_int`, `get_bool`), hot-reload callback registration
 - **Data flow**: The auto-indent service reads `editor.auto_indent`, `editor.indent_size`, `editor.tab_size`, `editor.use_tabs` at startup and subscribes to hot-reload notifications. When configuration changes, the service updates its cached `IndentConfig` and `AutoIndentMode`.
@@ -816,7 +816,7 @@ pub enum AutoIndentError {
   - Hot-reload callback updates mode and config without restart (Req 1.4)
   - All settings under `editor.*` namespace (cross-cutting)
 
-### With `ff-command` (Wave 2 — integration)
+### With `ff-command` (Wave 2 -- integration)
 
 - **Consumed API**: `CommandRegistry::register()` for registering indent/unindent commands
 - **Data flow**: At initialization, the auto-indent service registers `edit.indent` and `edit.unindent` commands. When invoked, the command handler reads the current selection state, determines affected lines, calls `indent_lines()` or `unindent_lines()`, and applies the edits.
@@ -827,7 +827,7 @@ pub enum AutoIndentError {
   - Single-line Tab delegates to normal tab insertion when no multi-line selection (Req 7.2)
   - Single-line Shift+Tab unindents the current line (Req 8.3)
 
-### With `ff-undo-redo-transactions` (Wave 4 — consumer)
+### With `ff-undo-redo-transactions` (Wave 4 -- consumer)
 
 - **Consumed API**: `UndoGroup`, `EditorTransaction` grouping
 - **Data flow**: All auto-indent modifications are wrapped in the same `EditorTransaction` as their triggering operation. For newline insertion, the auto-indent is part of the newline transaction. For indent/unindent commands, all affected lines are in one transaction.
@@ -840,7 +840,7 @@ pub enum AutoIndentError {
   - Unindent command over N lines = single UndoGroup (Req 8.5)
   - Multi-caret indentation = single UndoGroup across all carets (Req 10.5)
 
-### With `ff-logging` (Wave 0 — upstream)
+### With `ff-logging` (Wave 0 -- upstream)
 
 - **Consumed API**: `log::debug!`, `log::warn!` structured logging macros
 - **Data flow**: The auto-indent service logs decisions and errors for diagnostic purposes.
@@ -895,7 +895,7 @@ These properties are suitable for property-based testing using the `proptest` cr
 
 ### Property 4: Unindent Never Produces Negative Indentation
 
-**Statement**: Unindenting any line never results in negative indentation — the minimum is column 0 (empty leading whitespace).
+**Statement**: Unindenting any line never results in negative indentation -- the minimum is column 0 (empty leading whitespace).
 
 **Validates: Requirements 8.2**
 
@@ -921,7 +921,7 @@ These properties are suitable for property-based testing using the `proptest` cr
 
 ### Property 6: Increase + Decrease Cancel on Same Line
 
-**Statement**: When the reference line matches both the increase pattern and the decrease pattern, the net effect is zero — the new line has the same indent level as the reference line.
+**Statement**: When the reference line matches both the increase pattern and the decrease pattern, the net effect is zero -- the new line has the same indent level as the reference line.
 
 **Validates: Requirements 3.5**
 

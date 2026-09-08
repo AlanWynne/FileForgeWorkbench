@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-structure-catalog` crate — the persistent, operator-managed library of named Record_Structure definitions for FileForgeWorkbench. The structure catalog provides a central repository of reusable structure definitions that can be applied to any flat-file data file, replacing per-file companion configs.
+This plan covers the complete implementation of the `ff-structure-catalog` crate -- the persistent, operator-managed library of named Record_Structure definitions for FileForgeWorkbench. The structure catalog provides a central repository of reusable structure definitions that can be applied to any flat-file data file, replacing per-file companion configs.
 
 This is a **Wave 12 (FileForge Domain)** sub-project. It depends on `ff-logging` (diagnostics), `ff-command` (command registration), `ff-config` (catalog path settings), `ff-vfs` (file access), `ff-layout` (dockable panels), `ff-fileforge` (record parsing, field extraction, COMP-3 handling), and `ff-plugin` (extensible field types).
 
@@ -46,7 +46,7 @@ This is a **Wave 12 (FileForge Domain)** sub-project. It depends on `ff-logging`
   - [x] 4.5 Write unit tests for handler registration, lookup, decode/encode round-trips for each built-in type
   - Covers: Requirement 6 (AC 6.9)
 
-- [x] 5. FFS file format — TOML serialization
+- [x] 5. FFS file format -- TOML serialization
   - [x] 5.1 Implement `FfsSerializer` struct with `serialize(def: &StructureDefinition) -> Result<String, FfsError>` producing valid TOML v1.0
   - [x] 5.2 Implement `[metadata]` table serialization with all required and optional keys
   - [x] 5.3 Implement `[associations]` table serialization with file_patterns array
@@ -54,7 +54,7 @@ This is a **Wave 12 (FileForge Domain)** sub-project. It depends on `ff-logging`
   - [x] 5.5 Write unit tests verifying output is valid TOML and contains all expected keys/values
   - Covers: Requirement 2 (AC 2.1, 2.7, 2.8, 2.9)
 
-- [x] 6. FFS file format — TOML deserialization and validation
+- [x] 6. FFS file format -- TOML deserialization and validation
   - [x] 6.1 Implement `FfsParser` struct with `parse(toml_str: &str) -> Result<StructureDefinition, FfsError>` parsing TOML v1.0
   - [x] 6.2 Implement TOML syntax error handling: reject with WARN log including file path and parse error details
   - [x] 6.3 Implement schema validation: check required keys (metadata.name, metadata.version, record_structures), valid field_type values, non-negative offset/length
@@ -64,7 +64,7 @@ This is a **Wave 12 (FileForge Domain)** sub-project. It depends on `ff-logging`
   - [x] 6.7 Write unit tests for valid parsing, TOML syntax errors, schema validation failures, missing keys, invalid field_type values, negative offset/length
   - Covers: Requirement 2 (AC 2.1–2.9), Requirement 2 (AC 2.3, 2.4, 2.5, 2.6)
 
-- [x] 7. Catalog persistent store — directory management
+- [x] 7. Catalog persistent store -- directory management
   - [x] 7.1 Implement `CatalogStore` struct wrapping a VFS-backed catalog directory path
   - [x] 7.2 Implement directory creation on first use if Active_Catalog_Location does not exist, with INFO log
   - [x] 7.3 Implement platform-specific default path resolution (~/.config/ffworkbench/catalogs/ on Linux, %APPDATA%\FFWorkbench\catalogs\ on Windows, ~/Library/Application Support/FFWorkbench/catalogs/ on macOS)
@@ -74,7 +74,7 @@ This is a **Wave 12 (FileForge Domain)** sub-project. It depends on `ff-logging`
   - [x] 7.7 Write unit tests for directory creation, default path, inaccessible handling, and multi-location scanning
   - Covers: Requirement 1 (AC 1.1, 1.3, 1.4, 1.5, 1.6, 1.8)
 
-- [x] 8. Catalog persistence — load and index
+- [x] 8. Catalog persistence -- load and index
   - [x] 8.1 Implement `CatalogIndex` struct: in-memory HashMap<String, StructureDefinition> keyed by name
   - [x] 8.2 Implement `load_catalog(location: &Path) -> CatalogIndex` scanning .ffs files, parsing each, skipping invalid with WARN log
   - [x] 8.3 Implement alphabetical sorting for list operations
@@ -83,7 +83,7 @@ This is a **Wave 12 (FileForge Domain)** sub-project. It depends on `ff-logging`
   - [x] 8.6 Write unit tests for index loading, invalid file skipping, alphabetical ordering, and watcher-triggered reload
   - Covers: Requirement 1 (AC 1.1, 1.2), Requirement 3 (AC 3.10), Requirement 4 (AC 4.10)
 
-- [x] 9. Catalog CRUD operations — create and read
+- [x] 9. Catalog CRUD operations -- create and read
   - [x] 9.1 Implement `create(def: StructureDefinition) -> Result<(), CatalogError>` with validation, write to Active_Catalog_Location
   - [x] 9.2 Implement name uniqueness enforcement on create: reject with error if name already exists
   - [x] 9.3 Implement `read(name: &str) -> Result<StructureDefinition, CatalogError>` returning parsed definition or error
@@ -92,7 +92,7 @@ This is a **Wave 12 (FileForge Domain)** sub-project. It depends on `ff-logging`
   - [x] 9.6 Write unit tests for create (success, duplicate rejection), read (found, not-found), list (sorted, empty)
   - Covers: Requirement 3 (AC 3.1, 3.2, 3.6, 3.9)
 
-- [x] 10. Catalog CRUD operations — update, delete, duplicate
+- [x] 10. Catalog CRUD operations -- update, delete, duplicate
   - [x] 10.1 Implement `update(def: StructureDefinition) -> Result<(), CatalogError>` with version increment, validation, and write
   - [x] 10.2 Implement `delete(name: &str, confirmed: bool) -> Result<(), CatalogError>` with confirmation requirement
   - [x] 10.3 Implement unconfirmed delete rejection with descriptive error
@@ -101,7 +101,7 @@ This is a **Wave 12 (FileForge Domain)** sub-project. It depends on `ff-logging`
   - [x] 10.6 Write unit tests for update (version increment, validation failure), delete (confirmed, unconfirmed), duplicate (success, collision)
   - Covers: Requirement 3 (AC 3.3, 3.4, 3.5, 3.7), Requirement 9 (AC 9.2, 9.7)
 
-- [x] 11. Catalog browsing panel — data model and state
+- [x] 11. Catalog browsing panel -- data model and state
   - [x] 11.1 Define `BrowsingPanelState` struct: filtered list, search text, sort mode, selected index, preview content
   - [x] 11.2 Define `SortMode` enum: ByName, ByModifiedDate, ByFieldCount
   - [x] 11.3 Implement real-time substring filtering (case-insensitive) against name, field names, and file patterns
@@ -111,7 +111,7 @@ This is a **Wave 12 (FileForge Domain)** sub-project. It depends on `ff-logging`
   - [x] 11.7 Write unit tests for filtering, sorting, preview generation, and refresh behavior
   - Covers: Requirement 4 (AC 4.1–4.5, 4.8, 4.10)
 
-- [x] 12. Catalog browsing panel — actions and toolbar
+- [x] 12. Catalog browsing panel -- actions and toolbar
   - [x] 12.1 Implement context menu actions model: OpenInEditor, ApplyToCurrentFile, Duplicate, Export, Delete
   - [x] 12.2 Implement toolbar actions model: NewStructure, Import, Refresh, LocationSelector
   - [x] 12.3 Implement Catalog_Location selector: switch active location and trigger reload
@@ -120,7 +120,7 @@ This is a **Wave 12 (FileForge Domain)** sub-project. It depends on `ff-logging`
   - [x] 12.6 Write unit tests for action dispatch, location switching, and panel registration
   - Covers: Requirement 4 (AC 4.6, 4.7, 4.8, 4.9)
 
-- [x] 13. Structure editor — field grid model
+- [x] 13. Structure editor -- field grid model
   - [x] 13.1 Define `EditorState` struct: active definition, dirty flag, selected record_structure tab, field list, validation errors
   - [x] 13.2 Implement add-field action: insert at position with defaults (empty name, next offset, length 1, alphanumeric)
   - [x] 13.3 Implement remove-field action: delete selected row, retain original offsets
@@ -131,7 +131,7 @@ This is a **Wave 12 (FileForge Domain)** sub-project. It depends on `ff-logging`
   - [x] 13.8 Write unit tests for add/remove/reorder/auto-compute, validation, and type-specific behavior
   - Covers: Requirement 5 (AC 5.1–5.9)
 
-- [x] 14. Structure editor — multi-structure tabs and dirty tracking
+- [x] 14. Structure editor -- multi-structure tabs and dirty tracking
   - [x] 14.1 Implement multi-tab model: one tab per Record_Structure, add/rename/delete tabs
   - [x] 14.2 Implement unsaved-changes indicator: compare in-memory vs on-disk state
   - [x] 14.3 Implement save action: serialize to FFS, write via VFS, increment version, update modified_at
@@ -141,10 +141,10 @@ This is a **Wave 12 (FileForge Domain)** sub-project. It depends on `ff-logging`
   - [x] 14.7 Write unit tests for tab management, dirty tracking, save/discard, and version increment
   - Covers: Requirement 5 (AC 5.10, 5.11, 5.12), Requirement 9 (AC 9.2, 9.4, 9.5)
 
-- [x] 15. Auto-association — file pattern matching
+- [x] 15. Auto-association -- file pattern matching
   - [x] 15.1 Implement `FileAssociationMap` struct: HashMap<glob_pattern, structure_name> built from all definitions
   - [x] 15.2 Implement map building at startup and on catalog reload by scanning all file_patterns
-  - [x] 15.3 Implement conflict detection: same pattern in multiple definitions — WARN log, use first alphabetically
+  - [x] 15.3 Implement conflict detection: same pattern in multiple definitions -- WARN log, use first alphabetically
   - [x] 15.4 Implement `match_file(filename: &str) -> AssociationResult` returning None, Single(name), or Multiple(names)
   - [x] 15.5 Implement auto-apply on file open: Single match → apply and activate FileForge_Mode with status message
   - [x] 15.6 Implement multi-match handling: present structure selector to operator
@@ -153,7 +153,7 @@ This is a **Wave 12 (FileForge Domain)** sub-project. It depends on `ff-logging`
   - [x] 15.9 Write unit tests for glob matching, conflict detection, single/multi/no-match scenarios, and config disable
   - Covers: Requirement 10 (AC 10.1–10.9)
 
-- [x] 16. Auto-association — pattern management in editor
+- [x] 16. Auto-association -- pattern management in editor
   - [x] 16.1 Implement editable file_patterns section in Structure_Editor model
   - [x] 16.2 Implement add/edit/remove pattern actions with glob syntax validation
   - [x] 16.3 Write unit tests for pattern CRUD and validation
@@ -170,7 +170,7 @@ This is a **Wave 12 (FileForge Domain)** sub-project. It depends on `ff-logging`
   - [x] 17.8 Write unit tests for both modes, apply logic, override messaging, and error cases
   - Covers: Requirement 11 (AC 11.1–11.7)
 
-- [x] 18. Grid browse mode — data model
+- [x] 18. Grid browse mode -- data model
   - [x] 18.1 Define `GridBrowseState` struct: records (Vec<GridRow>), column_defs (from active Record_Structure), scroll position
   - [x] 18.2 Define `GridRow` enum: Matched { fields: Vec<CellValue> } | Unmatched { raw_text: String }
   - [x] 18.3 Implement record parsing using active Record_Structure: extract field bytes, decode via FieldTypeHandler
@@ -183,7 +183,7 @@ This is a **Wave 12 (FileForge Domain)** sub-project. It depends on `ff-logging`
   - [x] 18.10 Write unit tests for record parsing, decimal display, non-matching records, and navigation
   - Covers: Requirement 12 (AC 12.1–12.9)
 
-- [x] 19. Grid edit mode — data model and edit buffer
+- [x] 19. Grid edit mode -- data model and edit buffer
   - [x] 19.1 Define `GridEditState` struct extending GridBrowseState with edit_buffer (HashMap<(row, col), EditedValue>)
   - [x] 19.2 Implement cell activation: display current value in inline edit widget model
   - [x] 19.3 Implement field value validation against declared field_type on cell deactivation
@@ -193,7 +193,7 @@ This is a **Wave 12 (FileForge Domain)** sub-project. It depends on `ff-logging`
   - [x] 19.7 Write unit tests for cell editing, validation, buffer tracking, and non-matching exclusion
   - Covers: Requirement 13 (AC 13.1–13.5)
 
-- [x] 20. Grid edit mode — save, undo, and encoding
+- [x] 20. Grid edit mode -- save, undo, and encoding
   - [x] 20.1 Implement undo/redo integration: group field edits within same record as single transaction
   - [x] 20.2 Implement SAVE command: flush edit buffer, merge with original bytes, write via temp-file + atomic rename
   - [x] 20.3 Implement packed-decimal re-encoding: pack displayed decimal value back to COMP-3 format
@@ -416,7 +416,7 @@ This is a **Wave 12 (FileForge Domain)** sub-project. It depends on `ff-logging`
 
 **Validates: Requirement 13.9, 13.10**
 
-- **Statement:** For any field value written via the grid edit mode, the resulting byte representation has exactly the declared field length — shorter values are padded, longer values are truncated.
+- **Statement:** For any field value written via the grid edit mode, the resulting byte representation has exactly the declared field length -- shorter values are padded, longer values are truncated.
 - **Strategy:** Generate:
   - Field length: 1–100
   - Input values: strings of length 0–200

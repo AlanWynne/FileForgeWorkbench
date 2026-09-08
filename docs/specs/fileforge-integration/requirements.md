@@ -2,11 +2,11 @@
 
 ## Introduction
 
-This feature specifies the **FileForge Integration** subsystem for FileForgeWorkbench — the `ff-fileforge` crate. This crate integrates the FileForge flat-file processing engine into the workbench platform, enabling structured viewing, editing, and conversion of fixed-width flat files produced by mainframe and enterprise batch systems (COBOL, ABAP, JCL, etc.).
+This feature specifies the **FileForge Integration** subsystem for FileForgeWorkbench -- the `ff-fileforge` crate. This crate integrates the FileForge flat-file processing engine into the workbench platform, enabling structured viewing, editing, and conversion of fixed-width flat files produced by mainframe and enterprise batch systems (COBOL, ABAP, JCL, etc.).
 
 When a flat file is opened alongside a companion structure file (`.ffs`), the workbench activates **FileForge_Mode**: records are identified, classified, and displayed as structured tabular data. The user can browse large files with O(1) seek performance, edit individual fields in Grid_Edit_Mode, run conversions to modern formats, and work natively with EBCDIC-encoded content, packed decimal (COMP-3) fields, variable-length binary (VB) records, and ASA carriage control report files.
 
-The `ff-fileforge` crate is **GUI-independent** — it implements the data model, record parsing, field extraction, encoding conversion, and file I/O logic. A separate GUI layer renders the grid and panels. All file access flows through the Virtual File System abstraction (FFW-ARCH-001).
+The `ff-fileforge` crate is **GUI-independent** -- it implements the data model, record parsing, field extraction, encoding conversion, and file I/O logic. A separate GUI layer renders the grid and panels. All file access flows through the Virtual File System abstraction (FFW-ARCH-001).
 
 **Source references:**
 - **[FFE-FF]** = FileForgeEditor `fileforge-integration` specification (Requirements 1–25)
@@ -14,13 +14,13 @@ The `ff-fileforge` crate is **GUI-independent** — it implements the data model
 
 ## Cross-References
 
-- **`document-model`** — The document model provides the underlying text buffer. FileForge_Mode overlays structured record interpretation on top of the raw buffer content. [FFE-FF, WB]
-- **`encoding-and-characters`** — EBCDIC code page decoding and Unicode conversion for mainframe binary files. The `ff-encoding` crate provides the codec infrastructure; this crate drives the EBCDIC-specific workflows. [FFE-FF]
-- **`record-selection-criteria`** — Field-level filter criteria for controlling which records are displayed in the grid. Criteria evaluation operates on the structured records produced by this crate. [FFE-FF]
-- **`structure-catalog`** — Persistent library of named structure definitions (`.ffs` files) and file-to-structure association. Catalog management and grid editing are defined there; this crate provides the engine. [FFE-FF]
-- **`asa-report-preview`** — Visual rendering of ASA carriage control as formatted report output. Depends on ASA detection defined in this crate. [FFE-FF]
-- **`virtual-file-system`** — All file access (source data files, structure files, output files) flows through the VFS abstraction layer. [WB]
-- **`command-framework`** — FileForge commands (CONVERT, VALIDATE, FILEFORGE) are registered in the command registry. [WB]
+- **`document-model`** -- The document model provides the underlying text buffer. FileForge_Mode overlays structured record interpretation on top of the raw buffer content. [FFE-FF, WB]
+- **`encoding-and-characters`** -- EBCDIC code page decoding and Unicode conversion for mainframe binary files. The `ff-encoding` crate provides the codec infrastructure; this crate drives the EBCDIC-specific workflows. [FFE-FF]
+- **`record-selection-criteria`** -- Field-level filter criteria for controlling which records are displayed in the grid. Criteria evaluation operates on the structured records produced by this crate. [FFE-FF]
+- **`structure-catalog`** -- Persistent library of named structure definitions (`.ffs` files) and file-to-structure association. Catalog management and grid editing are defined there; this crate provides the engine. [FFE-FF]
+- **`asa-report-preview`** -- Visual rendering of ASA carriage control as formatted report output. Depends on ASA detection defined in this crate. [FFE-FF]
+- **`virtual-file-system`** -- All file access (source data files, structure files, output files) flows through the VFS abstraction layer. [WB]
+- **`command-framework`** -- FileForge commands (CONVERT, VALIDATE, FILEFORGE) are registered in the command registry. [WB]
 
 ---
 
@@ -37,11 +37,11 @@ The `ff-fileforge` crate is **GUI-independent** — it implements the data model
 - **Grid_Edit_Mode**: The workbench state in which a structured file is displayed as an editable column-per-field grid with one row per record. Field values can be modified and saved back to the original format. [FFE-FF]
 - **Byte_Offset_Index**: An in-memory array of file byte positions (one per record) enabling O(1) seek to any record by index. [FFE-FF]
 - **Window**: A contiguous subset of records loaded on demand for display, avoiding full-file memory load. [FFE-FF]
-- **LRECL**: Logical Record Length — the fixed byte width of every record in a fixed-width file. Enables O(1) seek without an index scan. [FFE-FF]
-- **RECFM**: Record Format — describes the physical structure of records. Values: `F`, `FB`, `V`, `FB_BINARY`, `VB`, `FBA`, `VBA`, `U`. [FFE-FF]
-- **RDW**: Record Descriptor Word — 4-byte prefix on VB binary records. Bytes 0–1 are big-endian record length (including RDW); bytes 2–3 are reserved zeros. [FFE-FF]
+- **LRECL**: Logical Record Length -- the fixed byte width of every record in a fixed-width file. Enables O(1) seek without an index scan. [FFE-FF]
+- **RECFM**: Record Format -- describes the physical structure of records. Values: `F`, `FB`, `V`, `FB_BINARY`, `VB`, `FBA`, `VBA`, `U`. [FFE-FF]
+- **RDW**: Record Descriptor Word -- 4-byte prefix on VB binary records. Bytes 0–1 are big-endian record length (including RDW); bytes 2–3 are reserved zeros. [FFE-FF]
 - **COMP3_Field**: A field stored as IBM packed decimal (COMP-3). Each byte holds two BCD nibbles; the low nibble of the final byte is the sign (C=positive, D=negative, F=unsigned). [FFE-FF]
-- **EBCDIC**: Extended Binary Coded Decimal Interchange Code — the character encoding used by IBM mainframe systems. Supported code pages: 037, 285, 500, 1047. [FFE-FF]
+- **EBCDIC**: Extended Binary Coded Decimal Interchange Code -- the character encoding used by IBM mainframe systems. Supported code pages: 037, 285, 500, 1047. [FFE-FF]
 - **Code_Page**: A specific EBCDIC variant mapping byte values to characters. [FFE-FF]
 - **ASA_Control**: The character in column 1 of FBA/VBA records that defines printer carriage control actions. [FFE-FF]
 - **Field_Validation_Error**: A condition where a field value does not conform to its declared data type or constraints. [FFE-FF]
@@ -62,7 +62,7 @@ The `ff-fileforge` crate is **GUI-independent** — it implements the data model
 1. A Record_Structure SHALL consist of an ordered list of Field_Definitions, where each Field_Definition specifies: `field_name` (non-empty UTF-8 string), `offset` (non-negative byte offset from record start), `length` (positive byte length), `data_type` (one of: `str`, `int`, `float`, `bool`, `comp3`), `decimals` (non-negative integer, default 0), and optional `identifiers` and `filters` lists.
 2. WHEN two or more Field_Definitions within the same Record_Structure have overlapping byte ranges (offset to offset+length-1), THE system SHALL report a structure validation warning but SHALL NOT prevent the structure from loading.
 3. THE Structure_File schema SHALL support multiple named Record_Structures per file, enabling multi-type flat files where different record categories have different field layouts.
-4. THE Structure_File schema SHALL support an optional top-level `lrecl` integer key specifying the logical record length in bytes, and an optional `recfm` string key specifying the record format (valid values: `F`, `FB`, `V`, `FB_BINARY`, `VB`, `FBA`, `VBA`, `U` — case-insensitive on load, normalised to uppercase on save).
+4. THE Structure_File schema SHALL support an optional top-level `lrecl` integer key specifying the logical record length in bytes, and an optional `recfm` string key specifying the record format (valid values: `F`, `FB`, `V`, `FB_BINARY`, `VB`, `FBA`, `VBA`, `U` -- case-insensitive on load, normalised to uppercase on save).
 5. THE Structure_File schema SHALL support an optional `encoding` key specifying the character encoding of the source file. Valid values include Unicode encodings (`utf-8`, `utf-16le`, `utf-16be`) and EBCDIC code page identifiers (`ebcdic-037`, `ebcdic-285`, `ebcdic-500`, `ebcdic-1047`).
 6. THE Structure_File schema SHALL support an optional `version` key for schema migration. Files without a `version` key SHALL be treated as version `"1.0"`.
 7. THE system SHALL accept legacy misspelled key `field_delimeter` as equivalent to `field_delimiter` for backward compatibility with existing config files.
@@ -166,7 +166,7 @@ The `ff-fileforge` crate is **GUI-independent** — it implements the data model
 2. THE VB binary reader SHALL process each record as follows: read 4 bytes as the RDW; extract record length `L` from bytes 0–1 as big-endian unsigned 16-bit integer (includes the 4-byte RDW itself); verify bytes 2–3 are `0x0000`; read `L - 4` bytes as record content; advance by `L` bytes total.
 3. WHEN the VB reader encounters an RDW where `L < 4` or `L` would read past end-of-file, THE system SHALL stop reading, report a structural error, and display the number of records successfully read.
 4. THE VB binary reader SHALL build a Byte_Offset_Index during file open, recording the byte offset of each record's content start (after the RDW) for O(1) random access.
-5. WHEN displaying VB records, THE system SHALL show record content only — the RDW bytes SHALL NOT appear as part of the displayed record.
+5. WHEN displaying VB records, THE system SHALL show record content only -- the RDW bytes SHALL NOT appear as part of the displayed record.
 6. WHEN saving modified VB records in Grid_Edit_Mode, THE system SHALL re-write each record with its RDW prefix, updating the `L` value if the record length has changed due to editing.
 7. WHEN `recfm: "VB"` is configured, the `lrecl` field SHALL be ignored (VB records have variable lengths). A validation warning SHALL be emitted if both `recfm: "VB"` and `lrecl` are present.
 8. WHEN LRECL auto-detection is triggered on a file with `recfm: "VB"`, THE system SHALL skip detection and use the VB binary reader directly.

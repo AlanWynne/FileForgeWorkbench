@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-clipboard` crate — the clipboard subsystem for FileForgeWorkbench. It unifies system clipboard access, standard keyboard shortcuts (Ctrl+C/X/V), context menu integration, COPY primary command modes (clipboard-paste, file-insert, shell-capture routing), rectangular clipboard handling, multi-caret clipboard distribution, line-copy mode, clipboard history ring, and undoable clipboard transactions.
+This plan covers the complete implementation of the `ff-clipboard` crate -- the clipboard subsystem for FileForgeWorkbench. It unifies system clipboard access, standard keyboard shortcuts (Ctrl+C/X/V), context menu integration, COPY primary command modes (clipboard-paste, file-insert, shell-capture routing), rectangular clipboard handling, multi-caret clipboard distribution, line-copy mode, clipboard history ring, and undoable clipboard transactions.
 
 This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-edit-operations` for selection model and edit semantics, `ff-document-model` for buffer access, `ff-command` for command registration, `ff-undo-redo` for transaction recording, `ff-vfs` for file-insert mode, and `ff-config` for clipboard configuration keys.
 
@@ -27,14 +27,14 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-edit-o
   - [x] 2.7 Write unit tests for entry construction, mode defaults, segment storage
   - Covers: Requirement 1 (AC 1.1, 1.4, 1.5, 1.7)
 
-- [x] 3. Clipboard engine — read/write abstraction
+- [x] 3. Clipboard engine -- read/write abstraction
   - [x] 3.1 Define `ClipboardEngine` struct holding `Box<dyn ClipboardProvider>`, internal `ClipboardMetadata` cache, and `access_timeout_ms` config
   - [x] 3.2 Implement `write(entry: &ClipboardEntry) -> Result<(), ClipboardError>` that writes text to provider and caches metadata internally
   - [x] 3.3 Implement `read() -> Result<ClipboardEntry, ClipboardError>` that reads text from provider and attaches cached metadata (or defaults to Stream mode for external content)
   - [x] 3.4 Implement external-vs-internal detection: compare provider text against last-written text to determine if clipboard was modified externally
   - [x] 3.5 Implement timeout wrapper: fail with `ClipboardError::Timeout` if provider read/write exceeds `access_timeout_ms`
   - [x] 3.6 Implement `is_available() -> bool` delegating to provider
-  - [x] 3.7 Ensure no panic paths — all failures return descriptive `ClipboardError`
+  - [x] 3.7 Ensure no panic paths -- all failures return descriptive `ClipboardError`
   - [x] 3.8 Write unit tests for read/write cycle, external detection, timeout, unavailability
   - Covers: Requirement 1 (AC 1.2, 1.3, 1.5, 1.6, 1.7)
 
@@ -66,7 +66,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-edit-o
   - [x] 6.8 Write unit tests for stream cut, rectangular cut, multi-caret cut, line-cut, caret placement, failure safety
   - Covers: Requirement 3 (AC 3.1–3.6), Requirement 14 (AC 14.4)
 
-- [x] 7. Paste operation — stream and line modes (Ctrl+V)
+- [x] 7. Paste operation -- stream and line modes (Ctrl+V)
   - [x] 7.1 Implement `paste_stream(doc, caret_position, text) -> Result<UndoRecord, ClipboardError>` inserting text inline at caret, replacing active selection if present
   - [x] 7.2 Implement `paste_line(doc, caret_line, text) -> Result<UndoRecord, ClipboardError>` inserting clipboard content as new lines above caret line without splitting current line
   - [x] 7.3 Implement line-ending splitting logic: split clipboard text on LF, CRLF, or CR into Logical_Lines
@@ -78,7 +78,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-edit-o
   - [x] 7.9 Write unit tests for stream paste, line paste, line splitting, trailing terminator, whitespace preservation, caret placement
   - Covers: Requirement 4 (AC 4.1, 4.2, 4.6–4.9), Requirement 16 (AC 16.1–16.5), Requirement 18 (AC 18.1, 18.2)
 
-- [x] 8. Paste operation — rectangular mode
+- [x] 8. Paste operation -- rectangular mode
   - [x] 8.1 Implement `paste_rectangular(doc, caret_position, segments) -> Result<UndoRecord, ClipboardError>` inserting each segment on successive lines at caret column
   - [x] 8.2 Implement rightward-push logic: existing text on each line shifts right by segment width
   - [x] 8.3 Implement short-line padding: pad with spaces up to caret column when caret is beyond line end
@@ -88,7 +88,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-edit-o
   - [x] 8.7 Write unit tests for column paste, rightward push, short-line padding, new-line creation, rectangular replace
   - Covers: Requirement 4 (AC 4.3), Requirement 12 (AC 12.1–12.6)
 
-- [x] 9. Paste operation — multi-caret distribution
+- [x] 9. Paste operation -- multi-caret distribution
   - [x] 9.1 Implement `paste_multi_caret_matched(doc, carets, segments) -> Result<UndoRecord, ClipboardError>` distributing segment[i] to caret[i] when counts match
   - [x] 9.2 Implement `paste_multi_caret_broadcast(doc, carets, full_text) -> Result<UndoRecord, ClipboardError>` pasting full content at each caret when counts mismatch
   - [x] 9.3 Implement reverse-document-order processing to prevent earlier insertions from invalidating later caret positions
@@ -97,7 +97,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-edit-o
   - [x] 9.6 Write unit tests for matched distribution, broadcast, reverse-order correctness, atomic undo
   - Covers: Requirement 4 (AC 4.4, 4.5), Requirement 13 (AC 13.1–13.5)
 
-- [x] 10. COPY command — disambiguation and routing
+- [x] 10. COPY command -- disambiguation and routing
   - [x] 10.1 Define `CopyCommandMode` enum with variants: `InDocument`, `ClipboardPaste`, `FileInsert { path: String }`, `ShellCapture`
   - [x] 10.2 Implement `resolve_copy_mode(args, pending_sources, target) -> Result<CopyCommandMode, ClipboardError>` disambiguation logic
   - [x] 10.3 Implement rule: pending C/CC + A/B → InDocument (route to line-commands)
@@ -110,7 +110,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-edit-o
   - [x] 10.10 Write unit tests for all disambiguation paths and error conditions
   - Covers: Requirement 8 (AC 8.1–8.8)
 
-- [x] 11. COPY command — clipboard-paste mode
+- [x] 11. COPY command -- clipboard-paste mode
   - [x] 11.1 Implement `execute_clipboard_paste(engine, doc, target_line, target_type) -> Result<UndoRecord, ClipboardError>` reading clipboard and inserting at target
   - [x] 11.2 Implement A-target insertion: insert clipboard lines immediately after target line
   - [x] 11.3 Implement B-target insertion: insert clipboard lines immediately before target line
@@ -122,7 +122,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-edit-o
   - [x] 11.9 Write unit tests for A-insert, B-insert, line splitting, empty clipboard, target clearing, undo
   - Covers: Requirement 7 (AC 7.1–7.8)
 
-- [x] 12. COPY command — file-insert mode
+- [x] 12. COPY command -- file-insert mode
   - [x] 12.1 Implement `execute_file_insert(vfs, doc, path, target_line, target_type) -> Result<UndoRecord, ClipboardError>` reading file via VFS and inserting at target
   - [x] 12.2 Implement path resolution: relative paths resolved relative to current document's directory; absolute paths used as-is
   - [x] 12.3 Implement quoted-path parsing: strip surrounding double quotes from paths containing spaces
@@ -145,7 +145,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-edit-o
   - [x] 13.6 Write unit tests for file-not-found, permission error, binary detection, non-modification guarantee, target retention
   - Covers: Requirement 10 (AC 10.1–10.4)
 
-- [x] 14. COPY command — shell-capture mode routing
+- [x] 14. COPY command -- shell-capture mode routing
   - [x] 14.1 Define `ShellCaptureResult` struct with `stdout_lines: Vec<String>`, `line_count: usize`
   - [x] 14.2 Implement `execute_shell_capture_insert(doc, capture_result, target_line, target_type) -> Result<UndoRecord, ClipboardError>` inserting captured output at target
   - [x] 14.3 Implement A-target insertion: insert captured lines immediately after target line
@@ -237,7 +237,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-edit-o
   - [x] 22.6 Write unit tests for each error condition's user-facing message and non-modification guarantee
   - Covers: Requirement 6 (AC 6.1–6.5)
 
-- [x] 23. Property-based tests — clipboard engine invariants
+- [x] 23. Property-based tests -- clipboard engine invariants
   - [x] 23.1 Write property test: any text written to ClipboardEngine and immediately read back produces identical text content for arbitrary UTF-8 strings
     - **Validates: Requirements 1.2, 1.3**
   - [x] 23.2 Write property test: clipboard mode is preserved through write/read cycle for any ClipboardMode variant and arbitrary entry content
@@ -247,8 +247,8 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-edit-o
   - [x] 23.4 Write property test: ClipboardEngine never panics for any sequence of read/write/availability-check calls with any provider state
     - **Validates: Requirement 1.6**
 
-- [x] 24. Property-based tests — line splitting and paste invariants
-  - [x] 24.1 Write property test: splitting text on line endings and rejoining with a single separator produces equivalent logical content — no content is lost or added for arbitrary multi-line text
+- [x] 24. Property-based tests -- line splitting and paste invariants
+  - [x] 24.1 Write property test: splitting text on line endings and rejoining with a single separator produces equivalent logical content -- no content is lost or added for arbitrary multi-line text
     - **Validates: Requirements 16.1, 16.4**
   - [x] 24.2 Write property test: text ending with a trailing line ending produces exactly N lines (not N+1) where N is the number of line-ending separators for arbitrary text with trailing terminators
     - **Validates: Requirement 16.3**
@@ -257,7 +257,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-edit-o
   - [x] 24.4 Write property test: line-mode paste inserts exactly the number of logical lines derived from clipboard content (no extra, no fewer) for any multi-line text
     - **Validates: Requirements 4.2, 14.2, 14.3**
 
-- [x] 25. Property-based tests — multi-caret and rectangular invariants
+- [x] 25. Property-based tests -- multi-caret and rectangular invariants
   - [x] 25.1 Write property test: multi-caret copy with N carets produces exactly N segments in ClipboardEntry for any N >= 1 and arbitrary selection content
     - **Validates: Requirement 13.1**
   - [x] 25.2 Write property test: multi-caret paste with matching segment count distributes exactly one segment per caret and total inserted text equals total segment text
@@ -267,7 +267,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-edit-o
   - [x] 25.4 Write property test: multi-caret paste in reverse document order produces identical result to a naive forward-order simulation (correctness of reverse processing)
     - **Validates: Requirement 13.5**
 
-- [x] 26. Property-based tests — COPY command disambiguation invariants
+- [x] 26. Property-based tests -- COPY command disambiguation invariants
   - [x] 26.1 Write property test: resolve_copy_mode with pending C/CC and any target always returns InDocument regardless of arguments
     - **Validates: Requirements 8.1, 8.3**
   - [x] 26.2 Write property test: resolve_copy_mode with no pending C/CC, no args, and valid A/B target always returns ClipboardPaste
@@ -277,7 +277,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-edit-o
   - [x] 26.4 Write property test: resolve_copy_mode never returns Ok for the combination pending C/CC + path argument (always error)
     - **Validates: Requirement 8.7**
 
-- [x] 27. Property-based tests — clipboard history ring invariants
+- [x] 27. Property-based tests -- clipboard history ring invariants
   - [x] 27.1 Write property test: history ring never exceeds configured max capacity after any number of push operations
     - **Validates: Internal invariant (history ring bounded size)**
   - [x] 27.2 Write property test: `current()` always returns the most recently pushed entry when ring is non-empty
@@ -285,7 +285,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-edit-o
   - [x] 27.3 Write property test: cycling through entire ring and back returns to original current entry (ring wraps correctly)
     - **Validates: Internal invariant (ring cycle correctness)**
 
-- [x] 28. Integration tests — end-to-end clipboard workflows
+- [x] 28. Integration tests -- end-to-end clipboard workflows
   - [x] 28.1 Write integration test: copy stream text → paste at different position → verify document state
   - [x] 28.2 Write integration test: cut selection → paste elsewhere → undo both → verify original document restored
   - [x] 28.3 Write integration test: line-copy (no selection) → paste → verify new line inserted above caret line
@@ -296,7 +296,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-edit-o
   - [x] 28.8 Write integration test: COPY command clipboard-paste mode (B target) → verify lines inserted before target
   - [x] 28.9 Write integration test: COPY command file-insert mode with relative path → verify file content inserted
   - [x] 28.10 Write integration test: COPY command file-insert mode with non-existent file → verify error and no modification
-  - [x] 28.11 Write integration test: COPY command disambiguation — pending C/CC + A target → routes to line-commands (InDocument)
+  - [x] 28.11 Write integration test: COPY command disambiguation -- pending C/CC + A target → routes to line-commands (InDocument)
   - [x] 28.12 Write integration test: clipboard unavailable during paste → verify error message and no document change
   - [x] 28.13 Write integration test: shell-capture insert at A target → verify captured lines inserted correctly
   - [x] 28.14 Write integration test: config `line_copy_when_no_selection = false` → Ctrl+C with no selection does nothing
@@ -307,7 +307,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-edit-o
 
 ## Notes
 
-- The `ff-clipboard` crate has zero GUI dependencies — it operates on abstract document model types and produces UndoRecords for `ff-undo-redo`.
+- The `ff-clipboard` crate has zero GUI dependencies -- it operates on abstract document model types and produces UndoRecords for `ff-undo-redo`.
 - The `ClipboardProvider` trait enables platform-specific implementations (Win32, X11/Wayland, macOS) to be injected at application startup while keeping the crate testable with `InMemoryClipboardProvider`.
 - Shell-capture mode (Task 14) defines only the document-insertion contract; actual shell execution mechanics are owned by the `shell-command` sub-project.
 - File-insert mode (Tasks 12–13) reads files through the VFS abstraction layer; the `ff-vfs` crate provides the `VfsProvider` trait.
@@ -390,12 +390,12 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-edit-o
     "28": ["5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "17", "18", "19", "20", "21", "22"]
   },
   "externalDependencies": {
-    "ff-document-model": "Provides Document, TextBuffer, LineIndex — all clipboard operations read/write through this API",
-    "ff-edit-operations": "Provides SelectionContainer, SelectionRange, RectangularSelection — clipboard operations consume selection state",
-    "ff-command": "Command registry, dispatch, metadata, Shortcut_Registry — clipboard commands are registered here",
-    "ff-undo-redo": "TransactionStack, UndoRecord — all paste/cut operations produce undo records",
-    "ff-vfs": "VfsProvider trait — file-insert mode reads files through this abstraction",
-    "ff-config": "Configuration key-value store — clipboard config keys are read from here",
+    "ff-document-model": "Provides Document, TextBuffer, LineIndex -- all clipboard operations read/write through this API",
+    "ff-edit-operations": "Provides SelectionContainer, SelectionRange, RectangularSelection -- clipboard operations consume selection state",
+    "ff-command": "Command registry, dispatch, metadata, Shortcut_Registry -- clipboard commands are registered here",
+    "ff-undo-redo": "TransactionStack, UndoRecord -- all paste/cut operations produce undo records",
+    "ff-vfs": "VfsProvider trait -- file-insert mode reads files through this abstraction",
+    "ff-config": "Configuration key-value store -- clipboard config keys are read from here",
     "ff-logging": "Structured logging for error reporting, warnings, and diagnostics"
   },
   "waves": [

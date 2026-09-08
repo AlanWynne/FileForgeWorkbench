@@ -20,16 +20,16 @@ The `ff-wrap` crate is the **per-editor-instance line wrap management layer** fo
 ### Position in Architecture
 
 ```
-Wave 9 — Desktop Integration
+Wave 9 -- Desktop Integration
 
 ┌─────────────────────────────────────────────────────────────┐
 │                    Application Binary                         │
-│                (ffwb / GUI shell — ff-desktop)                │
+│                (ffwb / GUI shell -- ff-desktop)                │
 ├─────────────────────────────────────────────────────────────┤
 │  multi-tab-editor │ menu-and-statusbar │ startup-session     │
 │  (consumers of wrap state)                                   │
 ├─────────────────────────────────────────────────────────────┤
-│               ff-wrap (THIS CRATE) — Wave 9                  │
+│               ff-wrap (THIS CRATE) -- Wave 9                  │
 ├─────────────────────────────────────────────────────────────┤
 │  ff-display-line-mapping (Wave 4) │ ff-viewport-scrolling (4)│
 │  ff-config (Wave 2) │ ff-command (Wave 2)                    │
@@ -39,7 +39,7 @@ Wave 9 — Desktop Integration
 
 ### Design Constraints (Cross-Cutting)
 
-- **GUI Independence (Req 2)**: Zero GUI framework dependencies — wrap logic is testable without egui/winit/wgpu
+- **GUI Independence (Req 2)**: Zero GUI framework dependencies -- wrap logic is testable without egui/winit/wgpu
 - **Command-Driven (Req 4)**: Wrap operations are registered commands (`view.wrap`, `view.nowrap`)
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-wrap`
 - **Error Message Standards (Req 8)**: All errors follow `[wrap] operation: description` format
@@ -190,16 +190,16 @@ crates/ff-wrap/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[non_exhaustive]
 pub enum WrapMode {
-    /// No wrapping — each document line occupies exactly one display row.
+    /// No wrapping -- each document line occupies exactly one display row.
     /// Long lines extend beyond the viewport edge (horizontal scroll required).
     None,
 
-    /// Word-boundary wrapping — lines break at word boundaries (whitespace,
+    /// Word-boundary wrapping -- lines break at word boundaries (whitespace,
     /// punctuation adjacent to alphanumeric). Falls back to character-level
     /// for words exceeding the boundary width.
     Word,
 
-    /// Character-boundary wrapping — lines break at the exact character
+    /// Character-boundary wrapping -- lines break at the exact character
     /// position that fills the boundary width.
     Character,
 }
@@ -222,7 +222,7 @@ impl Default for WrapMode {
 ```
 
 ```rust
-/// The wrap boundary — determines at what column position wrapping occurs.
+/// The wrap boundary -- determines at what column position wrapping occurs.
 ///
 /// Addresses: Requirement 4 (Wrap Boundary)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
@@ -598,7 +598,7 @@ pub enum WrapOperation {
 
 ## Public API Surface
 
-### WrapEngine — Core Operations
+### WrapEngine -- Core Operations
 
 ```rust
 /// The wrap engine applies wrap operations to a WrapState, coordinating
@@ -707,7 +707,7 @@ impl WrapEngine {
 }
 ```
 
-### WrapCommandRegistrar — Command Integration
+### WrapCommandRegistrar -- Command Integration
 
 ```rust
 /// Registers wrap commands with the command framework.
@@ -719,7 +719,7 @@ impl WrapCommandRegistrar {
     /// Register the WRAP primary command in the command registry.
     ///
     /// Commands registered:
-    /// - `view.wrap` — WRAP primary command (ON/OFF/TOGGLE/WORD/CHAR/COL n)
+    /// - `view.wrap` -- WRAP primary command (ON/OFF/TOGGLE/WORD/CHAR/COL n)
     ///
     /// Command metadata:
     /// - Name: "WRAP"
@@ -733,7 +733,7 @@ impl WrapCommandRegistrar {
 }
 ```
 
-### WrapCommandHandler — Command Dispatch
+### WrapCommandHandler -- Command Dispatch
 
 ```rust
 /// Handles the `view.wrap` primary command dispatch.
@@ -741,13 +741,13 @@ impl WrapCommandRegistrar {
 /// Parses command arguments and routes to the appropriate WrapEngine method.
 ///
 /// Supported forms:
-/// - `WRAP` — toggle (no arguments)
-/// - `WRAP ON` — enable wrap (Word mode)
-/// - `WRAP OFF` — disable wrap
-/// - `WRAP TOGGLE` — explicit toggle
-/// - `WRAP WORD` — set Word mode
-/// - `WRAP CHAR` — set Character mode
-/// - `WRAP COL n` — set fixed column (n=0 reverts to viewport)
+/// - `WRAP` -- toggle (no arguments)
+/// - `WRAP ON` -- enable wrap (Word mode)
+/// - `WRAP OFF` -- disable wrap
+/// - `WRAP TOGGLE` -- explicit toggle
+/// - `WRAP WORD` -- set Word mode
+/// - `WRAP CHAR` -- set Character mode
+/// - `WRAP COL n` -- set fixed column (n=0 reverts to viewport)
 ///
 /// Addresses: Requirement 3
 pub struct WrapCommandHandler;
@@ -765,7 +765,7 @@ impl WrapCommandHandler {
 }
 ```
 
-### WrapIndicator — Status Bar Data
+### WrapIndicator -- Status Bar Data
 
 ```rust
 /// Provides formatted wrap data for the status bar.
@@ -793,7 +793,7 @@ impl WrapIndicator {
 }
 ```
 
-### WrapPersistence — Session Integration
+### WrapPersistence -- Session Integration
 
 ```rust
 impl WrapSnapshot {
@@ -823,15 +823,15 @@ impl WrapSnapshot {
 #[non_exhaustive]
 pub enum WrapError {
     /// Invalid sub-command provided to WRAP command.
-    #[error("[wrap] command: invalid sub-command '{arg}' — valid: ON, OFF, TOGGLE, WORD, CHAR, COL <n>")]
+    #[error("[wrap] command: invalid sub-command '{arg}' -- valid: ON, OFF, TOGGLE, WORD, CHAR, COL <n>")]
     InvalidSubCommand { arg: String },
 
     /// Invalid column value for WRAP COL command.
-    #[error("[wrap] command: invalid column '{value}' — must be 0–10000")]
+    #[error("[wrap] command: invalid column '{value}' -- must be 0–10000")]
     InvalidColumn { value: String },
 
     /// Configuration key has invalid value.
-    #[error("[wrap] config: key '{key}' has invalid value '{value}' — using default '{default}'")]
+    #[error("[wrap] config: key '{key}' has invalid value '{value}' -- using default '{default}'")]
     InvalidConfig {
         key: String,
         value: String,
@@ -839,11 +839,11 @@ pub enum WrapError {
     },
 
     /// Wrap column out of valid range in configuration.
-    #[error("[wrap] config: wrap_column {value} is out of range (0–10000) — using default (viewport)")]
+    #[error("[wrap] config: wrap_column {value} is out of range (0–10000) -- using default (viewport)")]
     ColumnOutOfRange { value: i64 },
 
     /// Indent amount out of valid range.
-    #[error("[wrap] config: indent_amount {value} is out of range (0–40) — clamped to {clamped}")]
+    #[error("[wrap] config: indent_amount {value} is out of range (0–40) -- clamped to {clamped}")]
     IndentAmountOutOfRange { value: i64, clamped: u8 },
 
     /// No active editor instance to apply wrap operation to.
@@ -851,7 +851,7 @@ pub enum WrapError {
     NoActiveEditor,
 
     /// Session restore encountered an unrecognised wrap mode.
-    #[error("[wrap] restore: unrecognised mode '{mode}' — falling back to None")]
+    #[error("[wrap] restore: unrecognised mode '{mode}' -- falling back to None")]
     UnrecognisedPersistedMode { mode: String },
 }
 ```
@@ -860,14 +860,14 @@ pub enum WrapError {
 
 ## Integration Points
 
-### With `ff-document-model` (Document Model — Wave 4, upstream)
+### With `ff-document-model` (Document Model -- Wave 4, upstream)
 
 - **Dependency direction**: ff-wrap depends on ff-document-model (for line content queries)
 - **API consumed**: `DocumentModel::line_width(doc_line)` to determine how many characters a line contains for height calculation; `DocumentModel::line_count()` for bulk height updates
 - **Coordination**: When a line is edited while wrap is active, the editor session triggers `WrapEngine::compute_line_height()` for the modified line and updates display-line-mapping if the height changed (Requirement 6 AC 3)
 - **Change notifications**: ff-wrap listens for document content changes (via the editor session coordinator) to re-evaluate affected line heights
 
-### With `ff-display-line-mapping` (Display Line Mapping — Wave 4, upstream)
+### With `ff-display-line-mapping` (Display Line Mapping -- Wave 4, upstream)
 
 - **Dependency direction**: ff-wrap depends on ff-display-line-mapping
 - **API consumed**: `DisplayLineMapping::set_height(doc_line, height)` to update per-line display heights when wrap mode changes or boundaries shift
@@ -876,7 +876,7 @@ pub enum WrapError {
 - **Incremental updates**: When viewport resizes or a line is edited, only affected lines are recomputed (Requirement 6 AC 3, AC 4)
 - **Provisional heights**: Until idle-processing computes accurate heights for off-screen lines, display-line-mapping assumes height 1 (Requirement 6 AC 6)
 
-### With `ff-viewport-scrolling` (Viewport & Scrolling — Wave 4, peer)
+### With `ff-viewport-scrolling` (Viewport & Scrolling -- Wave 4, peer)
 
 - **Dependency direction**: ff-viewport-scrolling is a peer; the owning editor session coordinates between them
 - **Integration**: When wrap mode changes, the editor session:
@@ -887,25 +887,25 @@ pub enum WrapError {
   5. Resets `horizontal_offset` to 0 when wrap activates with Viewport boundary (Requirement 7 AC 1)
 - **Resize handling**: When viewport width changes, the session calls `WrapEngine::compute_line_height()` for all visible lines and updates display-line-mapping, which propagates to the vertical scrollbar (Requirement 4 AC 2)
 
-### With `ff-config` (Configuration System — Wave 2, upstream)
+### With `ff-config` (Configuration System -- Wave 2, upstream)
 
 - **Dependency direction**: ff-wrap depends on ff-config
 - **API consumed**: Typed access for `[view.wrap]` namespace: `get_string("view.wrap.default_mode")`, `get_int("view.wrap.wrap_column")`, `get_string("view.wrap.indent_mode")`, `get_int("view.wrap.indent_amount")`, `get_string("view.wrap.visual_flags")`
-- **Hot-reload**: ff-wrap registers a reload callback for the `view.wrap` namespace. When config changes, it rebuilds `WrapConfig` and emits warnings for invalid values. New defaults apply only to newly opened documents — already-open documents retain their current settings (Requirement 12 AC 3)
+- **Hot-reload**: ff-wrap registers a reload callback for the `view.wrap` namespace. When config changes, it rebuilds `WrapConfig` and emits warnings for invalid values. New defaults apply only to newly opened documents -- already-open documents retain their current settings (Requirement 12 AC 3)
 - **Schema registration**: At startup, ff-wrap registers schema entries for all `view.wrap.*` keys with types, defaults, and valid ranges
 - **Layered overrides**: Configuration supports workspace → user → project override chain (Requirement 12 AC 4)
 
-### With `ff-command` (Command Framework — Wave 2, upstream)
+### With `ff-command` (Command Framework -- Wave 2, upstream)
 
 - **Dependency direction**: ff-wrap depends on ff-command
 - **API consumed**: `CommandRegistry::register()` for command registration; `CommandId` for identity
 - **Commands registered**:
-  - `view.wrap` — metadata: "WRAP", category: "View", valid in all modes
+  - `view.wrap` -- metadata: "WRAP", category: "View", valid in all modes
 - **Undo integration**: WRAP commands are NOT recorded on the undo stack (Requirement 3 AC 12). They do not produce `UndoRecord` values
 - **History**: WRAP commands are NOT added to command history (Requirement 3 AC 13)
 - **Error handling**: Invalid sub-commands produce an error message listing valid options (Requirement 3 AC 14)
 
-### With `ff-whitespace-guides` (Whitespace & Guides — Wave 6, upstream)
+### With `ff-whitespace-guides` (Whitespace & Guides -- Wave 6, upstream)
 
 - **Dependency direction**: ff-wrap depends on ff-whitespace-guides (for visual flag rendering infrastructure)
 - **Integration**: Wrap visual flag indicators are rendered using the whitespace-and-guides rendering pipeline. ff-wrap provides the flag type and position data; the rendering system draws the appropriate glyphs using the configured foreground colour (Requirement 10 AC 7)
@@ -940,7 +940,7 @@ pub enum WrapError {
 - **API consumed**: `WrapEngine::compute_line_height()` called per-line during idle cycles; results are pushed to display-line-mapping via `set_height()`
 - **Priority**: Off-screen lines are lower priority than user-facing work
 
-### With `ff-logging` (Foundation — Wave 0, upstream)
+### With `ff-logging` (Foundation -- Wave 0, upstream)
 
 - **Dependency direction**: ff-wrap depends on ff-logging
 - **API consumed**: `log_info!`, `log_warn!`, `log_debug!` macros
@@ -999,17 +999,17 @@ visual_flags = "none"
 
 | Setting | Absent | Invalid Type | Out of Range | Semantic Error |
 |---------|--------|--------------|--------------|----------------|
-| `default_mode` | Default to "none" | Default to "none" + WARN | — (enum, no range) | Unrecognised value → "none" + WARN |
-| `wrap_column` | Default to 0 | Default to 0 + WARN | Negative or >10000 → 0 + WARN | — |
-| `indent_mode` | Default to "fixed" | Default to "fixed" + WARN | — (enum, no range) | Unrecognised value → "fixed" + WARN |
-| `indent_amount` | Default to 0 | Default to 0 + WARN | <0 → clamp 0 + WARN; >40 → clamp 40 + WARN | — |
-| `visual_flags` | Default to "none" | Default to "none" + WARN | — (enum, no range) | Unrecognised value → "none" + WARN |
+| `default_mode` | Default to "none" | Default to "none" + WARN | -- (enum, no range) | Unrecognised value → "none" + WARN |
+| `wrap_column` | Default to 0 | Default to 0 + WARN | Negative or >10000 → 0 + WARN | -- |
+| `indent_mode` | Default to "fixed" | Default to "fixed" + WARN | -- (enum, no range) | Unrecognised value → "fixed" + WARN |
+| `indent_amount` | Default to 0 | Default to 0 + WARN | <0 → clamp 0 + WARN; >40 → clamp 40 + WARN | -- |
+| `visual_flags` | Default to "none" | Default to "none" + WARN | -- (enum, no range) | Unrecognised value → "none" + WARN |
 
 ---
 
 ## Correctness Properties
 
-The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal — it must hold for all valid inputs.
+The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal -- it must hold for all valid inputs.
 
 ### Property 1: Wrap Mode Idempotency
 
@@ -1153,11 +1153,11 @@ The following properties are suitable for property-based testing with the `propt
 
 Unit tests are organised per module and cover specific behaviour:
 
-- **config_tests.rs**: Validate WrapConfig parsing from raw TOML values — correct defaults, clamping, warning generation for invalid values
-- **engine_tests.rs**: WrapEngine operations — mode transitions (on/off/toggle/word/char), height computation for known inputs, scrollbar visibility logic, continuation indent calculations
-- **boundary_tests.rs**: WrapBoundary resolution — viewport mode returns viewport width, column mode returns fixed value, edge cases (column wider than viewport, column = viewport width)
-- **commands_tests.rs**: WrapCommandHandler argument parsing — valid sub-commands, invalid sub-commands, COL parsing with valid/invalid integers
-- **indicator_tests.rs**: WrapIndicator formatting — "Wrap: Word", "Wrap: Char", None for mode None, cycle logic
+- **config_tests.rs**: Validate WrapConfig parsing from raw TOML values -- correct defaults, clamping, warning generation for invalid values
+- **engine_tests.rs**: WrapEngine operations -- mode transitions (on/off/toggle/word/char), height computation for known inputs, scrollbar visibility logic, continuation indent calculations
+- **boundary_tests.rs**: WrapBoundary resolution -- viewport mode returns viewport width, column mode returns fixed value, edge cases (column wider than viewport, column = viewport width)
+- **commands_tests.rs**: WrapCommandHandler argument parsing -- valid sub-commands, invalid sub-commands, COL parsing with valid/invalid integers
+- **indicator_tests.rs**: WrapIndicator formatting -- "Wrap: Word", "Wrap: Char", None for mode None, cycle logic
 - **persistence_tests.rs**: WrapSnapshot serialisation/deserialisation roundtrips, fallback behaviour for unrecognised values
 
 ### Property-Based Tests

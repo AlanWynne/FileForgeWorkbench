@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-file-ops` crate — the user-facing file operation commands for FileForgeWorkbench. The crate provides New, Open, Save, Save As, Revert, and Recent Files commands, plus the underlying persistence mechanisms (atomic rename-on-write, backup copies, read-only detection). All file I/O routes through the VFS abstraction layer (`ff-vfs`), and all commands are dispatched through the command framework (`ff-command`).
+This plan covers the complete implementation of the `ff-file-ops` crate -- the user-facing file operation commands for FileForgeWorkbench. The crate provides New, Open, Save, Save As, Revert, and Recent Files commands, plus the underlying persistence mechanisms (atomic rename-on-write, backup copies, read-only detection). All file I/O routes through the VFS abstraction layer (`ff-vfs`), and all commands are dispatched through the command framework (`ff-command`).
 
 This is a **Wave 8 (File I/O and Session)** sub-project. It depends on `ff-vfs` (VFS abstraction), `ff-command` (command registration and dispatch), `ff-document` (document model), `ff-undo` (undo/redo transactions), `ff-config` (configuration system), and `ff-logging` (diagnostics).
 
@@ -19,7 +19,7 @@ This is a **Wave 8 (File I/O and Session)** sub-project. It depends on `ff-vfs` 
   - [x] 1.6 Implement `Display` and `thiserror::Error` derives with descriptive messages for all error variants
   - Covers: Structural foundation for all requirements
 
-- [x] 2. Core types — ResourceUri integration and options structs
+- [x] 2. Core types -- ResourceUri integration and options structs
   - [x] 2.1 Define `FileOpenOptions` struct with fields: uri (ResourceUri), encoding (Option), read_only_override (Option<bool>), activate_tab (bool)
   - [x] 2.2 Define `FileSaveOptions` struct with fields: uri (ResourceUri), strategy (SaveStrategy), create_backup (bool), async_threshold_bytes (u64), check_modified_time (bool)
   - [x] 2.3 Define `SaveStrategy` enum with variants: AtomicRename, DeleteFirst, Direct
@@ -31,142 +31,142 @@ This is a **Wave 8 (File I/O and Session)** sub-project. It depends on `ff-vfs` 
 
 - [x] 3. Atomic write implementation
   - [x] 3.1 Implement `AtomicWriter` struct encapsulating the write-to-temp + rename strategy
-  - [x] 3.2 Implement `AtomicWriter::write(uri, content, vfs) -> Result<SaveResult>` — create temp file in same directory, write content, flush, fsync, atomic rename
+  - [x] 3.2 Implement `AtomicWriter::write(uri, content, vfs) -> Result<SaveResult>` -- create temp file in same directory, write content, flush, fsync, atomic rename
   - [x] 3.3 Implement temp file naming: target filename with `.tmp` suffix appended (e.g., `file.txt.tmp`)
   - [x] 3.4 Implement flush and fsync via VFS provider API before rename
   - [x] 3.5 Implement atomic rename via VFS `rename` operation
-  - [x] 3.6 Implement fallback for providers without rename support — direct overwrite with flush+fsync and WARN log
-  - [x] 3.7 Implement `delete_first` strategy — delete target then write new content
-  - [x] 3.8 Implement `direct` strategy — write content directly to target without temp file
-  - [x] 3.9 Implement temp file cleanup — remove temp files left by interrupted writes (on startup or on error)
+  - [x] 3.6 Implement fallback for providers without rename support -- direct overwrite with flush+fsync and WARN log
+  - [x] 3.7 Implement `delete_first` strategy -- delete target then write new content
+  - [x] 3.8 Implement `direct` strategy -- write content directly to target without temp file
+  - [x] 3.9 Implement temp file cleanup -- remove temp files left by interrupted writes (on startup or on error)
   - [x] 3.10 Write unit tests for each strategy (atomic rename, delete_first, direct, fallback) using mock VFS
   - Covers: Requirement 7 (AC 7.1, 7.2, 7.6, 7.7, 7.8, 7.9)
 
 - [x] 4. Backup copy mechanism
   - [x] 4.1 Define `BackupConfig` struct with fields: enabled (bool), location (BackupLocation), suffix (String)
   - [x] 4.2 Define `BackupLocation` enum with variants: Alongside, Directory(PathBuf)
-  - [x] 4.3 Implement `BackupManager::create_backup(uri, vfs, config) -> Result<()>` — copy original resource before overwrite
-  - [x] 4.4 Implement "alongside" backup — same directory with configured suffix (default `.bak`)
-  - [x] 4.5 Implement "directory" backup — preserve relative structure within dedicated backup directory
-  - [x] 4.6 Implement graceful failure — log WARN on backup failure but do not abort the save operation
+  - [x] 4.3 Implement `BackupManager::create_backup(uri, vfs, config) -> Result<()>` -- copy original resource before overwrite
+  - [x] 4.4 Implement "alongside" backup -- same directory with configured suffix (default `.bak`)
+  - [x] 4.5 Implement "directory" backup -- preserve relative structure within dedicated backup directory
+  - [x] 4.6 Implement graceful failure -- log WARN on backup failure but do not abort the save operation
   - [x] 4.7 Write unit tests for both backup locations, suffix configuration, and failure tolerance
   - Covers: Requirement 7 (AC 7.3, 7.4, 7.5)
 
 - [x] 5. Open command implementation
   - [x] 5.1 Implement `OpenCommand` handler struct implementing `CommandHandler` trait
-  - [x] 5.2 Implement URI argument extraction — open directly when URI provided via params
-  - [x] 5.3 Implement File_Picker integration — open dialog in open mode when no URI argument
-  - [x] 5.4 Implement VFS read — load resource content via `read_stream` API
-  - [x] 5.5 Implement document creation — construct new Document from loaded content with encoding detection
-  - [x] 5.6 Implement tab integration — create new tab for opened document
-  - [x] 5.7 Implement duplicate detection — activate existing tab if resource already open
-  - [x] 5.8 Implement multi-select support — open multiple URIs in single invocation, one tab per resource
-  - [x] 5.9 Implement read-only detection on open — query VFS metadata and config for write permission
-  - [x] 5.10 Implement modification time recording on open — store VFS stat mtime for later external-modification detection
-  - [x] 5.11 Implement error handling — display notification on VFS read failure, do not create tab
+  - [x] 5.2 Implement URI argument extraction -- open directly when URI provided via params
+  - [x] 5.3 Implement File_Picker integration -- open dialog in open mode when no URI argument
+  - [x] 5.4 Implement VFS read -- load resource content via `read_stream` API
+  - [x] 5.5 Implement document creation -- construct new Document from loaded content with encoding detection
+  - [x] 5.6 Implement tab integration -- create new tab for opened document
+  - [x] 5.7 Implement duplicate detection -- activate existing tab if resource already open
+  - [x] 5.8 Implement multi-select support -- open multiple URIs in single invocation, one tab per resource
+  - [x] 5.9 Implement read-only detection on open -- query VFS metadata and config for write permission
+  - [x] 5.10 Implement modification time recording on open -- store VFS stat mtime for later external-modification detection
+  - [x] 5.11 Implement error handling -- display notification on VFS read failure, do not create tab
   - [x] 5.12 Write unit tests for URI-based open, picker-based open, duplicate detection, multi-open, read-only detection, and error paths
   - Covers: Requirement 4 (AC 4.1–4.10)
 
 - [x] 6. Save command implementation
   - [x] 6.1 Implement `SaveCommand` handler struct implementing `CommandHandler` trait
-  - [x] 6.2 Implement save-to-existing-URI path — write via VFS using configured SaveStrategy
-  - [x] 6.3 Implement untitled-document delegation — invoke `file.save_as` when document has no URI
-  - [x] 6.4 Implement save-point marking — update undo/redo transaction save-point and clear dirty flag on success
-  - [x] 6.5 Implement modification time update — record new mtime from VFS stat after successful write
-  - [x] 6.6 Implement sync save path — for documents at or below Async_Save_Threshold, block until complete
-  - [x] 6.7 Implement async save path — for documents above threshold, spawn background task with progress indication
-  - [x] 6.8 Implement concurrent-save guard — reject second save if one is already in progress, notify user
-  - [x] 6.9 Implement external-modification check — when enabled, compare mtime before write and prompt user
+  - [x] 6.2 Implement save-to-existing-URI path -- write via VFS using configured SaveStrategy
+  - [x] 6.3 Implement untitled-document delegation -- invoke `file.save_as` when document has no URI
+  - [x] 6.4 Implement save-point marking -- update undo/redo transaction save-point and clear dirty flag on success
+  - [x] 6.5 Implement modification time update -- record new mtime from VFS stat after successful write
+  - [x] 6.6 Implement sync save path -- for documents at or below Async_Save_Threshold, block until complete
+  - [x] 6.7 Implement async save path -- for documents above threshold, spawn background task with progress indication
+  - [x] 6.8 Implement concurrent-save guard -- reject second save if one is already in progress, notify user
+  - [x] 6.9 Implement external-modification check -- when enabled, compare mtime before write and prompt user
   - [x] 6.10 Implement `file.saved` event emission on success via command framework event bus
-  - [x] 6.11 Implement error handling — preserve dirty state and modifications on failure, emit error notification
+  - [x] 6.11 Implement error handling -- preserve dirty state and modifications on failure, emit error notification
   - [x] 6.12 Write unit tests for all save paths (existing URI, untitled delegation, sync, async, concurrent guard, mtime check, error)
   - Covers: Requirement 1 (AC 1.1–1.10)
 
 - [x] 7. Save As command implementation
   - [x] 7.1 Implement `SaveAsCommand` handler struct implementing `CommandHandler` trait
-  - [x] 7.2 Implement File_Picker integration — open dialog in save mode, pre-populated with current directory
-  - [x] 7.3 Implement URI argument path — write directly to provided URI without picker
-  - [x] 7.4 Implement overwrite confirmation — prompt when target URI refers to existing resource
-  - [x] 7.5 Implement document URI reassignment — update associated URI to new target on success
+  - [x] 7.2 Implement File_Picker integration -- open dialog in save mode, pre-populated with current directory
+  - [x] 7.3 Implement URI argument path -- write directly to provided URI without picker
+  - [x] 7.4 Implement overwrite confirmation -- prompt when target URI refers to existing resource
+  - [x] 7.5 Implement document URI reassignment -- update associated URI to new target on success
   - [x] 7.6 Implement save-point marking and dirty flag clearing on success
   - [x] 7.7 Implement tab title and window title update to reflect new resource name
-  - [x] 7.8 Implement Recent Files update — add new URI to list on success
-  - [x] 7.9 Implement cancellation handling — no-op when user cancels picker or overwrite dialog
-  - [x] 7.10 Implement error handling — preserve original URI and dirty state on failure
-  - [x] 7.11 Implement availability regardless of dirty state — allow saving clean document to new location
+  - [x] 7.8 Implement Recent Files update -- add new URI to list on success
+  - [x] 7.9 Implement cancellation handling -- no-op when user cancels picker or overwrite dialog
+  - [x] 7.10 Implement error handling -- preserve original URI and dirty state on failure
+  - [x] 7.11 Implement availability regardless of dirty state -- allow saving clean document to new location
   - [x] 7.12 Write unit tests for picker path, URI argument path, overwrite confirmation, URI reassignment, cancellation, and error handling
   - Covers: Requirement 2 (AC 2.1–2.10)
 
 - [x] 8. New command implementation
   - [x] 8.1 Implement `NewCommand` handler struct implementing `CommandHandler` trait
-  - [x] 8.2 Implement new document creation — empty Document with no URI, empty undo stack, default encoding
-  - [x] 8.3 Implement new tab creation — open new tab with empty document
-  - [x] 8.4 Implement sequential untitled naming — assign "Untitled-1", "Untitled-2", etc.
-  - [x] 8.5 Implement status bar update — show "(Untitled)", dirty indicator off, cursor at line 1 col 1
-  - [x] 8.6 Implement unsaved-changes guard — invoke Unsaved_Changes_Dialog when active document is dirty
-  - [x] 8.7 Implement "Save" dialog response — save then proceed with new document creation
-  - [x] 8.8 Implement "Discard" dialog response — discard modifications and create new document
-  - [x] 8.9 Implement "Cancel" dialog response — abort new operation, return to current document
-  - [x] 8.10 Implement save-failure abort — if save fails during dialog flow, abandon New operation
+  - [x] 8.2 Implement new document creation -- empty Document with no URI, empty undo stack, default encoding
+  - [x] 8.3 Implement new tab creation -- open new tab with empty document
+  - [x] 8.4 Implement sequential untitled naming -- assign "Untitled-1", "Untitled-2", etc.
+  - [x] 8.5 Implement status bar update -- show "(Untitled)", dirty indicator off, cursor at line 1 col 1
+  - [x] 8.6 Implement unsaved-changes guard -- invoke Unsaved_Changes_Dialog when active document is dirty
+  - [x] 8.7 Implement "Save" dialog response -- save then proceed with new document creation
+  - [x] 8.8 Implement "Discard" dialog response -- discard modifications and create new document
+  - [x] 8.9 Implement "Cancel" dialog response -- abort new operation, return to current document
+  - [x] 8.10 Implement save-failure abort -- if save fails during dialog flow, abandon New operation
   - [x] 8.11 Write unit tests for clean-document new, dirty-document dialog flows (Save/Discard/Cancel), sequential naming
   - Covers: Requirement 3 (AC 3.1–3.8)
 
 - [x] 9. Revert command implementation
   - [x] 9.1 Implement `RevertCommand` handler struct implementing `CommandHandler` trait
-  - [x] 9.2 Implement confirmation dialog — warn user that all changes will be lost (when document is dirty)
-  - [x] 9.3 Implement no-confirmation path — reload immediately when document has no unsaved changes
-  - [x] 9.4 Implement VFS reload — re-read resource content and replace document buffer entirely
-  - [x] 9.5 Implement post-reload state reset — clear dirty flag, reset undo/redo stacks, reset viewport to line 1
+  - [x] 9.2 Implement confirmation dialog -- warn user that all changes will be lost (when document is dirty)
+  - [x] 9.3 Implement no-confirmation path -- reload immediately when document has no unsaved changes
+  - [x] 9.4 Implement VFS reload -- re-read resource content and replace document buffer entirely
+  - [x] 9.5 Implement post-reload state reset -- clear dirty flag, reset undo/redo stacks, reset viewport to line 1
   - [x] 9.6 Implement modification time update after reload
-  - [x] 9.7 Implement status message display — "Reverted to saved"
-  - [x] 9.8 Implement disabled state for untitled documents — command not executable when no URI
+  - [x] 9.7 Implement status message display -- "Reverted to saved"
+  - [x] 9.8 Implement disabled state for untitled documents -- command not executable when no URI
   - [x] 9.9 Implement async reload for large files with progress indication
-  - [x] 9.10 Implement error handling — display error notification on VFS read failure, preserve current state
-  - [x] 9.11 Implement cancellation handling — no-op when user cancels confirmation dialog
+  - [x] 9.10 Implement error handling -- display error notification on VFS read failure, preserve current state
+  - [x] 9.11 Implement cancellation handling -- no-op when user cancels confirmation dialog
   - [x] 9.12 Write unit tests for dirty-revert, clean-revert, untitled-disabled, async reload, error, and cancellation paths
   - Covers: Requirement 5 (AC 5.1–5.9)
 
 - [x] 10. Recent Files list management
   - [x] 10.1 Define `RecentFilesList` struct with bounded, ordered storage of ResourceUri entries
-  - [x] 10.2 Implement `add(uri)` — add to top, deduplicate existing same-URI entry, evict oldest when over max
-  - [x] 10.3 Implement `remove(uri)` — remove specific entry (for inaccessible resources)
-  - [x] 10.4 Implement `list() -> Vec<ResourceUri>` — return ordered list (most recent first)
+  - [x] 10.2 Implement `add(uri)` -- add to top, deduplicate existing same-URI entry, evict oldest when over max
+  - [x] 10.3 Implement `remove(uri)` -- remove specific entry (for inaccessible resources)
+  - [x] 10.4 Implement `list() -> Vec<ResourceUri>` -- return ordered list (most recent first)
   - [x] 10.5 Implement configurable max count from `file.recent_files.max_count` (default 10)
-  - [x] 10.6 Implement persistence — serialize list to user-level config store asynchronously on modification
-  - [x] 10.7 Implement startup loading — deserialize list from persisted config on workbench start
-  - [x] 10.8 Implement graceful degradation — initialize empty on missing or invalid persisted data, no error
-  - [x] 10.9 Implement `OpenRecentCommand` handler — open selected URI via `file.open` semantics
-  - [x] 10.10 Implement inaccessible-resource handling — error notification and list removal when resource no longer exists
-  - [x] 10.11 Implement full ResourceUri storage — no bare paths, preserve provider-specific URIs
+  - [x] 10.6 Implement persistence -- serialize list to user-level config store asynchronously on modification
+  - [x] 10.7 Implement startup loading -- deserialize list from persisted config on workbench start
+  - [x] 10.8 Implement graceful degradation -- initialize empty on missing or invalid persisted data, no error
+  - [x] 10.9 Implement `OpenRecentCommand` handler -- open selected URI via `file.open` semantics
+  - [x] 10.10 Implement inaccessible-resource handling -- error notification and list removal when resource no longer exists
+  - [x] 10.11 Implement full ResourceUri storage -- no bare paths, preserve provider-specific URIs
   - [x] 10.12 Write unit tests for add/deduplicate, eviction, persistence round-trip, startup loading, graceful degradation, and inaccessible removal
   - Covers: Requirement 6 (AC 6.1–6.10)
 
 - [x] 11. Read-only detection and enforcement
-  - [x] 11.1 Implement VFS-based read-only detection — query provider capabilities and resource metadata on open
-  - [x] 11.2 Implement configuration-based read-only — check `read.only` property per file-pattern matching
-  - [x] 11.3 Implement provider-level read-only — mark all documents from write-incapable providers as read-only
-  - [x] 11.4 Implement mutation prevention — silently reject all buffer mutations (insert, delete, paste, undo) with status notification
-  - [x] 11.5 Implement visual indicators — status bar lock icon/`[RO]` suffix on tab
-  - [x] 11.6 Implement `file.toggle_read_only` command — manual override of detected state
-  - [x] 11.7 Implement save-time warning — warn when user saves a toggled-writable document to a VFS-reported read-only resource
+  - [x] 11.1 Implement VFS-based read-only detection -- query provider capabilities and resource metadata on open
+  - [x] 11.2 Implement configuration-based read-only -- check `read.only` property per file-pattern matching
+  - [x] 11.3 Implement provider-level read-only -- mark all documents from write-incapable providers as read-only
+  - [x] 11.4 Implement mutation prevention -- silently reject all buffer mutations (insert, delete, paste, undo) with status notification
+  - [x] 11.5 Implement visual indicators -- status bar lock icon/`[RO]` suffix on tab
+  - [x] 11.6 Implement `file.toggle_read_only` command -- manual override of detected state
+  - [x] 11.7 Implement save-time warning -- warn when user saves a toggled-writable document to a VFS-reported read-only resource
   - [x] 11.8 Write unit tests for VFS detection, config detection, provider-level detection, mutation blocking, toggle override, and save-time warning
   - Covers: Requirement 8 (AC 8.1–8.7)
 
 - [x] 12. Unsaved-changes guard
   - [x] 12.1 Define `UnsavedChangesGuard` trait and default implementation for reusable dialog logic
-  - [x] 12.2 Implement three-option dialog: Save, Discard, Cancel — with document name displayed prominently
-  - [x] 12.3 Implement "Save" path — invoke save, proceed on success, abort on failure
-  - [x] 12.4 Implement "Discard" path — proceed immediately without saving
-  - [x] 12.5 Implement "Cancel" path — abort the calling operation entirely
-  - [x] 12.6 Implement batch mode — "Save All / Discard All / Cancel" for Exit and Close All operations
-  - [x] 12.7 Implement `file.unsaved_prompt` configuration toggle — when false, skip dialog and proceed
+  - [x] 12.2 Implement three-option dialog: Save, Discard, Cancel -- with document name displayed prominently
+  - [x] 12.3 Implement "Save" path -- invoke save, proceed on success, abort on failure
+  - [x] 12.4 Implement "Discard" path -- proceed immediately without saving
+  - [x] 12.5 Implement "Cancel" path -- abort the calling operation entirely
+  - [x] 12.6 Implement batch mode -- "Save All / Discard All / Cancel" for Exit and Close All operations
+  - [x] 12.7 Implement `file.unsaved_prompt` configuration toggle -- when false, skip dialog and proceed
   - [x] 12.8 Implement integration with New, Open, Revert, Close, and Exit operations
   - [x] 12.9 Write unit tests for each dialog response path, batch mode, and configuration bypass
   - Covers: Requirement 9 (AC 9.1–9.8)
 
 - [x] 13. Command registration and menu integration
   - [x] 13.1 Register all file commands with IDs: `file.new`, `file.open`, `file.open_recent`, `file.save`, `file.save_as`, `file.revert`, `file.close`, `file.exit`
-  - [x] 13.2 Implement command metadata — display name, description, category "file", default shortcuts, enabled predicates
+  - [x] 13.2 Implement command metadata -- display name, description, category "file", default shortcuts, enabled predicates
   - [x] 13.3 Implement default keyboard shortcuts: New=Ctrl+N, Open=Ctrl+O, Save=Ctrl+S, SaveAs=Ctrl+Shift+S, Close=Ctrl+W, Exit=Alt+F4
   - [x] 13.4 Implement enabled-state predicates: `file.revert` disabled for untitled; `file.save` disabled when clean+has-URI
   - [x] 13.5 Implement menu layout contribution: New, Open, Recent Files (submenu), separator, Save, Save As, separator, Revert, separator, Close, Exit
@@ -319,16 +319,16 @@ This is a **Wave 8 (File I/O and Session)** sub-project. It depends on `ff-vfs` 
 ## Notes
 
 - This is a Wave 8 (File I/O and Session) crate depending on `ff-vfs` (Wave 3), `ff-command` (Wave 2), `ff-document` (Wave 4), `ff-undo` (Wave 4), `ff-config` (Wave 2), and `ff-logging` (Wave 0)
-- All file I/O operations go through the VFS abstraction — no direct `std::fs` or `tokio::fs` calls allowed (FFW-ARCH-001)
+- All file I/O operations go through the VFS abstraction -- no direct `std::fs` or `tokio::fs` calls allowed (FFW-ARCH-001)
 - The `background-io` crate (sibling Wave 8) handles async I/O infrastructure; `ff-file-ops` uses its async threshold and background task spawning APIs
 - The `encoding-and-characters` crate (sibling Wave 8) provides encoding detection; `ff-file-ops` delegates encoding concerns to it during open/save
 - The `multi-tab-editor` crate (sibling Wave 8) manages tab lifecycle; `ff-file-ops` integrates via tab creation/activation APIs
-- File_Picker is abstracted as a trait to maintain GUI independence — concrete implementations live in the GUI shell crate
-- The Unsaved_Changes_Dialog is similarly abstracted — `ff-file-ops` defines the dialog contract, GUI shell provides the presentation
+- File_Picker is abstracted as a trait to maintain GUI independence -- concrete implementations live in the GUI shell crate
+- The Unsaved_Changes_Dialog is similarly abstracted -- `ff-file-ops` defines the dialog contract, GUI shell provides the presentation
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
 - Mock VFS implementations are used extensively in unit and integration tests to simulate various provider capabilities and failure modes
-- The `file.close` and `file.exit` commands are registered by this crate but their full implementation involves coordination with the tab manager and application lifecycle — only the unsaved-changes guard portion lives here
-- External-modification detection (`save.check_modified_time`) uses mtime comparison against the recorded value from the last open/save — no file watching is performed by this crate (that's `connector-local-fs` responsibility)
+- The `file.close` and `file.exit` commands are registered by this crate but their full implementation involves coordination with the tab manager and application lifecycle -- only the unsaved-changes guard portion lives here
+- External-modification detection (`save.check_modified_time`) uses mtime comparison against the recorded value from the last open/save -- no file watching is performed by this crate (that's `connector-local-fs` responsibility)
 
 ---
 

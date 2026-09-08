@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `ff-shell` crate provides **operating-system shell integration** for the FileForgeWorkbench platform. It enables users to execute external commands, capture output into documents, pipe document content as stdin, open interactive terminal sessions in dockable panels, and manage process lifecycle — all without leaving the workbench.
+The `ff-shell` crate provides **operating-system shell integration** for the FileForgeWorkbench platform. It enables users to execute external commands, capture output into documents, pipe document content as stdin, open interactive terminal sessions in dockable panels, and manage process lifecycle -- all without leaving the workbench.
 
 ### Purpose
 
@@ -18,13 +18,13 @@ The `ff-shell` crate provides **operating-system shell integration** for the Fil
 ### Position in Architecture
 
 ```
-Wave 9 — Desktop Integration
+Wave 9 -- Desktop Integration
 
 ┌─────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)               │
 │         Renders Terminal_Panel and Output_Panel           │
 ├─────────────────────────────────────────────────────────┤
-│  ff-shell (THIS CRATE) — Wave 9                          │
+│  ff-shell (THIS CRATE) -- Wave 9                          │
 │  Shell engine, process management, terminal emulation    │
 ├─────────────────────────────────────────────────────────┤
 │  ff-command │ ff-config │ ff-layout │ ff-workflow         │
@@ -132,7 +132,7 @@ graph TD
 
 | Component | Responsibility |
 |-----------|---------------|
-| **ShellEngine** | Central coordinator — command handler, mode dispatch, security gate |
+| **ShellEngine** | Central coordinator -- command handler, mode dispatch, security gate |
 | **ShellConfigProvider** | Reads/caches all `shell.*` config keys, handles hot-reload callbacks |
 | **PlatformDetector** | Resolves default shell per platform (cmd.exe / $SHELL / bash / sh) |
 | **CommandExecutor** | Spawns async child processes, streams output, manages timeout |
@@ -388,7 +388,7 @@ pub struct OutputCapture {
 pub struct TerminalEmulator {
     /// The visible cell grid (rows × columns).
     grid: TerminalGrid,
-    /// Current cursor position (row, column) — 0-indexed.
+    /// Current cursor position (row, column) -- 0-indexed.
     cursor: CursorState,
     /// Parser state for multi-byte escape sequences.
     parser_state: ParserState,
@@ -451,7 +451,7 @@ pub struct CellAttributes {
 ### TerminalColor
 
 ```rust
-/// Color model for terminal cells — supports ANSI 16, 256-color, and RGB.
+/// Color model for terminal cells -- supports ANSI 16, 256-color, and RGB.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TerminalColor {
     /// Default foreground/background from theme.
@@ -875,7 +875,7 @@ pub enum ShellError {
     #[error("[shell] validate: {reason}")]
     InvalidCommandForm { reason: String },
 
-    /// Document capture failed — non-zero exit code.
+    /// Document capture failed -- non-zero exit code.
     #[error("[shell] capture: command exited with code {code}")]
     CaptureExitError { code: i32, stderr: Vec<String> },
 
@@ -900,7 +900,7 @@ pub enum ShellError {
     WorkingDirError { path: String },
 
     /// Macro invocation refused by shell.mode or macro security.
-    #[error("[shell] macro: shell access denied — {reason}")]
+    #[error("[shell] macro: shell access denied -- {reason}")]
     MacroAccessDenied { reason: String },
 }
 ```
@@ -996,7 +996,7 @@ The shell subsystem uses `ff-workflow` primitives for:
 - **CancellationToken**: Propagated to async tasks; checked between output reads. When cancelled, triggers the SIGTERM → wait → SIGKILL escalation sequence (Requirement 13.4).
 - **ProgressReporter**: Emits indeterminate progress events to the status bar while a command runs (Requirement 13.2).
 
-Interactive terminal sessions do NOT use workflow progress/cancellation — they run indefinitely.
+Interactive terminal sessions do NOT use workflow progress/cancellation -- they run indefinitely.
 
 ### 7.6 Clipboard Operations
 
@@ -1121,7 +1121,7 @@ The `PtyHandle` trait abstracts platform differences. Two implementations:
 - `WindowsConPty`: Uses the Windows ConPTY API for interactive terminals
 - `UnixPty`: Uses POSIX `openpty` / `forkpty` for interactive terminals
 
-Non-interactive commands (execution mode, capture mode) do NOT use PTY — they use `tokio::process::Command` with piped stdin/stdout/stderr.
+Non-interactive commands (execution mode, capture mode) do NOT use PTY -- they use `tokio::process::Command` with piped stdin/stdout/stderr.
 
 ---
 
@@ -1140,7 +1140,7 @@ fn check_security_gate(&self, from_macro: bool) -> Result<(), ShellError> {
             if from_macro {
                 // Macros cannot trigger interactive prompts
                 Err(ShellError::MacroAccessDenied {
-                    reason: "shell.mode is 'prompt' — macros cannot show UI prompts".into(),
+                    reason: "shell.mode is 'prompt' -- macros cannot show UI prompts".into(),
                 })
             } else {
                 // UI layer will show confirmation dialog

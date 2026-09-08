@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-core` crate — the GUI-independent central orchestration layer for FileForgeWorkbench. The platform-core owns all application state, manages the lifecycle of every subsystem, defines the event bus for decoupled communication, enforces strict layer separation, and provides panic handling and recovery.
+This plan covers the complete implementation of the `ff-core` crate -- the GUI-independent central orchestration layer for FileForgeWorkbench. The platform-core owns all application state, manages the lifecycle of every subsystem, defines the event bus for decoupled communication, enforces strict layer separation, and provides panic handling and recovery.
 
 This is a **Wave 2 (Platform Architecture)** sub-project with an upstream dependency on `ff-logging` (Wave 0).
 
@@ -33,23 +33,23 @@ This is a **Wave 2 (Platform Architecture)** sub-project with an upstream depend
   - [x] 3.4 Write unit tests verifying interface compiles independently of any GUI crate
   - Covers: Requirement 1 (AC 1.2), Requirement 3 (AC 3.2)
 
-- [x] 4. Service Registry — core implementation
+- [x] 4. Service Registry -- core implementation
   - [x] 4.1 Implement `ServiceRegistry` struct with type-safe storage using `TypeId`-keyed map
   - [x] 4.2 Implement `register_service::<T>()` method for service registration during startup
   - [x] 4.3 Implement `get_service::<T>()` returning `Option<&T>` without requiring caller downcasting
-  - [x] 4.4 Implement duplicate registration detection — return error and write WARN-level log
+  - [x] 4.4 Implement duplicate registration detection -- return error and write WARN-level log
   - [x] 4.5 Write unit tests for registration, retrieval, duplicate rejection, and absence case
   - Covers: Requirement 2 (AC 2.1, 2.2, 2.6, 2.7)
 
-- [x] 5. Service Registry — ordering and thread safety
-  - [x] 5.1 Implement initialization order tracking — services registered earlier are available to later registrants
+- [x] 5. Service Registry -- ordering and thread safety
+  - [x] 5.1 Implement initialization order tracking -- services registered earlier are available to later registrants
   - [x] 5.2 Enforce deterministic startup sequence: logging → configuration → VFS → commands → plugins
   - [x] 5.3 Implement frozen/read-only state transition after all services are registered
   - [x] 5.4 Implement thread-safe read access using `Arc` and interior mutability (no external lock required by caller)
   - [x] 5.5 Write unit tests for ordering guarantees, freeze behavior, and concurrent read access
   - Covers: Requirement 2 (AC 2.3, 2.4, 2.5, 2.8)
 
-- [x] 6. Event Bus — core dispatch mechanism
+- [x] 6. Event Bus -- core dispatch mechanism
   - [x] 6.1 Implement `EventBus` struct with internal async-capable bounded channel (capacity: 10,000 events)
   - [x] 6.2 Implement bidirectional event flow: input events (GUI→Core) and state-change events (Core→GUI)
   - [x] 6.3 Implement non-blocking event dispatch from any thread (including Tokio worker threads)
@@ -57,15 +57,15 @@ This is a **Wave 2 (Platform Architecture)** sub-project with an upstream depend
   - [x] 6.5 Write unit tests for dispatch, bidirectional flow, and thread safety
   - Covers: Requirement 3 (AC 3.1, 3.3, 3.8)
 
-- [x] 7. Event Bus — subscription and delivery
+- [x] 7. Event Bus -- subscription and delivery
   - [x] 7.1 Implement event subscription: subsystems and GUI shell register interest in specific event types
-  - [x] 7.2 Implement filtered delivery — subscribers receive only events matching their registered interest
+  - [x] 7.2 Implement filtered delivery -- subscribers receive only events matching their registered interest
   - [x] 7.3 Implement delivery guarantee: events delivered to all subscribers within the same tick/frame cycle
   - [x] 7.4 Implement GUI-absent handling: GUI-targeted events silently discarded when no GUI subscriber present
   - [x] 7.5 Write unit tests for subscription, filtered delivery, tick-bound delivery, and GUI absence
   - Covers: Requirement 3 (AC 3.4, 3.5, 3.6)
 
-- [x] 8. Event Bus — overflow and backpressure
+- [x] 8. Event Bus -- overflow and backpressure
   - [x] 8.1 Implement buffer capacity enforcement at 10,000 pending events
   - [x] 8.2 Implement oldest-event-drop policy when buffer is full
   - [x] 8.3 Implement WARN-level log record on overflow with count of dropped events
@@ -97,7 +97,7 @@ This is a **Wave 2 (Platform Architecture)** sub-project with an upstream depend
   - [x] 11.2 Implement background thread panic capture: log ERROR with panic details and thread name, continue main thread operation
   - [x] 11.3 Implement main thread panic response: persist unsaved state (if available), log panic details, initiate orderly shutdown
   - [x] 11.4 Implement unrecoverable panic detection: terminate with non-zero exit code rather than continue in undefined state
-  - [x] 11.5 Ensure panic hook never panics itself — silently abandon logging on failure
+  - [x] 11.5 Ensure panic hook never panics itself -- silently abandon logging on failure
   - [x] 11.6 Write unit tests for background thread panic recovery, main thread panic behavior, and hook robustness
   - Covers: Requirement 7 (AC 7.1, 7.2, 7.3, 7.4, 7.5)
 
@@ -159,7 +159,7 @@ This is a **Wave 2 (Platform Architecture)** sub-project with an upstream depend
 
 **Validates: Requirement 3.4, 3.5**
 
-- **Statement:** For any set of subscribers each with a filter and any sequence of dispatched events, every subscriber SHALL receive exactly the events matching its registered filter — no missed deliveries and no spurious deliveries.
+- **Statement:** For any set of subscribers each with a filter and any sequence of dispatched events, every subscriber SHALL receive exactly the events matching its registered filter -- no missed deliveries and no spurious deliveries.
 - **Strategy:** Generate:
   - Number of subscribers: [1, 10]
   - Filter per subscriber: random subset of event categories {Command, Notification, StateChange, Progress}
@@ -237,10 +237,10 @@ This is a **Wave 2 (Platform Architecture)** sub-project with an upstream depend
 - Plugin-related hot-restart (Task 12) defines the interface and protocol; concrete plugin types come from `ff-plugin` (a separate Wave 2 crate)
 - The Event Bus implementation should use `tokio::sync::broadcast` or `tokio::sync::mpsc` for async-capable channels
 - Thread model (Task 13) must support both configurations: GUI shell on main thread with Core on dedicated thread, and non-GUI mode where Core owns the main thread
-- Layer rule enforcement (Task 14) is primarily about documentation and Cargo.toml configuration — it does not require runtime code, but integration tests can verify compilation independence
+- Layer rule enforcement (Task 14) is primarily about documentation and Cargo.toml configuration -- it does not require runtime code, but integration tests can verify compilation independence
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
 - OS signal handling (Task 10.6) uses `tokio::signal` for cross-platform support
-- The `WorkbenchReady` event (Task 9.6) is the contract between platform-core and the GUI shell — the shell must not render the main interface until it receives this event
+- The `WorkbenchReady` event (Task 9.6) is the contract between platform-core and the GUI shell -- the shell must not render the main interface until it receives this event
 
 ---
 

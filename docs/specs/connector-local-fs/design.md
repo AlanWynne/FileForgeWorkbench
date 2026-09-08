@@ -20,9 +20,9 @@ The `ff-connector-local-fs` crate is the **primary VFS provider** for the FileFo
 │  Consumers: document-model, file-operations, background-io   │
 │  (access local files via vfs://local/... URIs)               │
 ├──────────────────────────────────────────────────────────────┤
-│  ff-vfs — VFS facade, ProviderRegistry, routing              │
+│  ff-vfs -- VFS facade, ProviderRegistry, routing              │
 ├──────────────────────────────────────────────────────────────┤
-│  ff-connector-local-fs (THIS CRATE) — VfsProvider impl       │
+│  ff-connector-local-fs (THIS CRATE) -- VfsProvider impl       │
 │  Depends on: ff-vfs (trait), ff-logging                      │
 ├──────────────────────────────────────────────────────────────┤
 │  OS filesystem (Tokio async I/O, notify crate for watching)  │
@@ -354,12 +354,12 @@ pub struct AtomicWriter {
 
 ## 5. Public API Surface
 
-### LocalFsProvider — Construction and Registration
+### LocalFsProvider -- Construction and Registration
 
 ```rust
 impl LocalFsProvider {
     /// Construct a new LocalFsProvider with the given configuration.
-    /// Does not register with VFS — registration is handled by the
+    /// Does not register with VFS -- registration is handled by the
     /// VFS subsystem initialization sequence.
     ///
     /// Addresses: Requirement 1, criterion 1
@@ -446,7 +446,7 @@ impl VfsProvider for LocalFsProvider {
 }
 ```
 
-### PathResolver — Public API
+### PathResolver -- Public API
 
 ```rust
 impl PathResolver {
@@ -493,7 +493,7 @@ impl PathResolver {
 }
 ```
 
-### FileWatcher — Public API
+### FileWatcher -- Public API
 
 ```rust
 impl FileWatcher {
@@ -525,7 +525,7 @@ impl FileWatcher {
 }
 ```
 
-### StreamingManager — Public API
+### StreamingManager -- Public API
 
 ```rust
 impl StreamingManager {
@@ -559,7 +559,7 @@ impl StreamingManager {
 }
 ```
 
-### NativePath — Conversion API
+### NativePath -- Conversion API
 
 ```rust
 impl NativePath {
@@ -589,7 +589,7 @@ impl NativePath {
 
 ```rust
 /// Internal error type for OS error → VfsError mapping.
-/// This module does NOT define a new public error enum — all public errors
+/// This module does NOT define a new public error enum -- all public errors
 /// are returned as ff_vfs::VfsError. The ErrorMapper converts std::io::Error
 /// to the appropriate VfsError variant.
 ///
@@ -669,14 +669,14 @@ InvalidPath {
 
 ## 7. Integration Points
 
-### With `ff-vfs` (upstream — trait provider)
+### With `ff-vfs` (upstream -- trait provider)
 
 - **Dependency direction**: ff-connector-local-fs depends on ff-vfs
 - **API consumed**: `VfsProvider` trait, `VfsFile` trait, `VfsCapabilities`, `VfsMetadata`, `VfsEntry`, `EntryType`, `WatchHandle`, `WatchEvent`, `WatchOptions`, `OpenOptions`, `WriteMode`, `CreateOptions`, `DeleteOptions`, `SearchQuery`, `SearchOptions`, `VfsSearchResult`, `VfsError`, `ResourceUri`
 - **Registration**: During VFS subsystem initialization, `ff-core` constructs `LocalFsProvider` and registers it with the `ProviderRegistry` under scheme `"local"`
 - **Capabilities declared**: All capabilities are true (full local filesystem support)
 
-### With `ff-logging` (upstream — structured logging)
+### With `ff-logging` (upstream -- structured logging)
 
 - **Dependency direction**: ff-connector-local-fs depends on ff-logging
 - **API consumed**: `log_info!`, `log_warn!`, `log_error!`, `log_debug!`
@@ -686,20 +686,20 @@ InvalidPath {
   - ERROR: Logged before returning VfsError to caller (Requirement 7.10)
   - DEBUG: Path resolution steps, file operation details
 
-### With `ff-core` (upstream — lifecycle orchestration)
+### With `ff-core` (upstream -- lifecycle orchestration)
 
 - **Dependency direction**: ff-connector-local-fs does NOT depend on ff-core directly
 - **Integration**: ff-core's VFS subsystem initialization code constructs and registers the provider
 - **Lifecycle**: Provider construction happens during `VfsSubsystem::initialize()`; shutdown cancels all watches via `FileWatcher::shutdown()`
 
-### With `ff-config` (upstream — configuration)
+### With `ff-config` (upstream -- configuration)
 
 - **Dependency direction**: ff-connector-local-fs reads config via the `ConfigProvider` trait (passed during construction)
 - **Namespace**: `[vfs.local]`
 - **Keys consumed**:
-  - `vfs.local.debounce_ms` — file watcher debounce window (Requirement 3.6)
-  - `vfs.local.chunk_size` — streaming read chunk size
-  - `vfs.local.enable_mmap` — memory-mapped I/O toggle
+  - `vfs.local.debounce_ms` -- file watcher debounce window (Requirement 3.6)
+  - `vfs.local.chunk_size` -- streaming read chunk size
+  - `vfs.local.enable_mmap` -- memory-mapped I/O toggle
 
 ### With `notify` crate (external dependency)
 

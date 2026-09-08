@@ -114,40 +114,40 @@
 
 ### Task 9: DEFAULT_POM_TOML constant
 
-- [ ] 9.1 Add `DEFAULT_POM_TOML` const string to `menu_workspace/defaults.rs` with all 12
+- [x] 9.1 Add `DEFAULT_POM_TOML` const string to `menu_workspace/defaults.rs` with all 12
   options, groups, and TOML structure matching cv-requirements.md Req 7.1
   - Satisfies: Req 7.1, 7.4, 7.5
-- [ ] 9.2 Update `ensure_default_menu_files()` to write `pom.toml` when absent
+- [x] 9.2 Update `ensure_default_menu_files()` to write `pom.toml` when absent
   - Satisfies: Req 7.2, 7.3
-- [ ] 9.3 Write unit tests: `default_pom_toml_is_valid_toml`,
+- [x] 9.3 Write unit tests: `default_pom_toml_is_valid_toml`,
   `default_pom_toml_has_12_options`, `default_pom_toml_ascii_only`
   - Validates: Requirement 7.1, 7.4, 7.5
 
 ### Task 10: POM command routing for options 9, S, B
 
-- [ ] 10.1 Extend `shell/commands.rs` POM option handler to route key `9` to JES panel
+- [x] 10.1 Extend `shell/commands.rs` POM option handler to route key `9` to JES panel
   - Satisfies: Req 6.2
-- [ ] 10.2 Extend handler to route key `S` (case-insensitive) to Global Search panel
+- [x] 10.2 Extend handler to route key `S` (case-insensitive) to Global Search panel
   - Satisfies: Req 6.3
-- [ ] 10.3 Extend handler to route key `B` (case-insensitive) to Batch status message
+- [x] 10.3 Extend handler to route key `B` (case-insensitive) to Batch status message
   - Satisfies: Req 6.4
-- [ ] 10.4 Write unit tests: `pom_key_9_routes_to_jes`, `pom_key_s_routes_to_search`,
+- [x] 10.4 Write unit tests: `pom_key_9_routes_to_jes`, `pom_key_s_routes_to_search`,
   `pom_key_b_shows_batch_message`, `pom_keys_0_to_8_unchanged`
   - Validates: Requirement 6.2, 6.3, 6.4, 6.5
 
 ### Task 11: BUILT_IN_OPTIONS update
 
-- [ ] 11.1 Add options 9, S, B to `BUILT_IN_OPTIONS` in `primary_option_menu.rs`
+- [x] 11.1 Add options 9, S, B to `BUILT_IN_OPTIONS` in `primary_option_menu.rs`
   - Satisfies: Req 6.1
-- [ ] 11.2 Update `built_in_options_contains_all_required_entries` test to assert 12 entries
+- [x] 11.2 Update `built_in_options_contains_all_required_entries` test to assert 12 entries
   - Satisfies: Req 6.1
-- [ ] 11.3 Update `pom_navigate_action_returned_for_each_option` test for new keys
+- [x] 11.3 Update `pom_navigate_action_returned_for_each_option` test for new keys
   - Satisfies: Req 6.1
 
 ### Task 12: TCR and Documentation Update (Phase CV-impl)
 
-- [ ] 12.1 Update `docs/quality/TCR.md` -- set all CR-NR-048 rows to correct status
-- [ ] 12.2 Update `docs/specs/project-master/tasks.md` -- mark Phase CV-impl tasks complete
+- [x] 12.1 Update `docs/quality/TCR.md` -- set all CR-NR-048 rows to correct status
+- [x] 12.2 Update `docs/specs/project-master/tasks.md` -- mark Phase CV-impl tasks complete
 
 ---
 
@@ -207,3 +207,70 @@
 
 - [ ] 15.1 Update `docs/quality/TCR.md` -- set all CR-NR-047 rows to correct status
 - [ ] 15.2 Update `docs/specs/project-master/tasks.md` -- mark Phase CW-impl tasks complete
+
+---
+
+## Phase DA -- Configurable Menu Option Limits Spec (complete)
+
+- [x] DA.1 Add Requirement 9 (Configurable Menu Option Limits) to `docs/specs/menu-workspace/requirements.md`
+- [x] DA.2 Add design section 12A to `docs/specs/menu-workspace/design.md`
+- [x] DA.3 Add Phase DA-impl tasks to this file
+- [x] DA.4 Add Phase DA to `docs/specs/project-master/tasks.md`
+- [x] DA.5 Add CR-NR-050 NOT COVERED rows to `docs/quality/TCR.md`
+
+---
+
+## Phase DA-impl -- Configurable Menu Option Limits Implementation (pending explicit instruction)
+
+### Task 16: Configuration keys for option limits
+
+- [x] 16.1 Register `menu.soft_option_limit` (u32, default 64) and
+  `menu.hard_option_limit` (u32, default 256) in the `ff-config` schema
+  - Satisfies: Req 9.1, 9.6
+  - Note: keys added to `ff-config/keys.rs` `menu` module; registered in
+    `register_builtin_schema` (ff-desktop `main.rs`) as Integer with min 0.
+- [x] 16.2 Write unit tests: `menu_limit_keys_have_correct_defaults`
+  (in `main.rs`), `menu_keys_are_valid_dot_separated_paths` (in `keys.rs`)
+  - Validates: Requirement 9.1, 9.6
+
+### Task 17: Loader limit evaluation
+
+- [x] 17.1 Add `OptionLimits` and `LoadedMenu` types and
+  `load_menu_file_with_limits(path, limits)` in `menu_workspace/loader.rs`;
+  `load_menu_file(path)` stays pure, and `option_limits_from_config` reads the
+  keys for the migration-phase construction path
+  - Satisfies: Req 9.2, 9.3, 9.4, 9.5, 9.8
+- [x] 17.2 Write unit tests: `count_at_or_below_soft_limit_no_advisory`,
+  `count_above_soft_below_hard_sets_advisory`,
+  `count_above_hard_returns_load_error`,
+  `hard_below_soft_clamps_effective_soft_to_hard`,
+  `disabled_options_count_toward_limits`,
+  `option_limits_from_config_falls_back_to_defaults`
+  - Validates: Requirement 9.2, 9.3, 9.4, 9.5, 9.7, 9.8
+
+### Task 18: State and render advisory
+
+- [x] 18.1 Add `advisory: Option<String>` and `limits: OptionLimits` to
+  `MenuWorkspaceState`; set advisory in the shared `apply_load_result` path
+  - Satisfies: Req 9.3
+- [x] 18.2 Render the advisory line above the option list in
+  `menu_workspace/render.rs`
+  - Satisfies: Req 9.3
+- [x] 18.3 Write unit tests: `advisory_line_rendered_when_soft_exceeded`,
+  `no_advisory_line_when_within_soft_limit`
+  - Validates: Requirement 9.3
+
+### Task 19: Hot-reload re-evaluation
+
+- [x] 19.1 `poll_reload()` calls the shared `apply_load_result` (which uses
+  `load_menu_file_with_limits`) and sets `menu`/`load_error`/`advisory` on each
+  reload; `load_with_limits` seeds the limits at construction
+  - Satisfies: Req 9.9
+- [x] 19.2 Write unit tests: `reload_over_hard_limit_transitions_to_error`,
+  `reload_back_under_limit_recovers`, `reload_into_advisory_range_sets_advisory`
+  - Validates: Requirement 9.9
+
+### Task 20: TCR and Documentation Update (Phase DA-impl)
+
+- [x] 20.1 Update `docs/quality/TCR.md` -- set all CR-NR-050 rows to PASS
+- [x] 20.2 Update `docs/specs/project-master/tasks.md` -- mark Phase DA-impl tasks complete

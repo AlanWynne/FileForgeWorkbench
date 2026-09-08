@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan implements the connector extensibility framework for FileForgeWorkbench — the plugin trait, registration protocol, capability advertisement, lifecycle state machine, authentication framework, and error types that all future VFS connectors must use. No concrete connector implementations are included (those are deferred); this crate defines the contracts and infrastructure.
+This plan implements the connector extensibility framework for FileForgeWorkbench -- the plugin trait, registration protocol, capability advertisement, lifecycle state machine, authentication framework, and error types that all future VFS connectors must use. No concrete connector implementations are included (those are deferred); this crate defines the contracts and infrastructure.
 
 **Crate location:** `crates/ff-connector-extensibility`
 **Dependencies:** `ff-vfs` (VfsProvider), `ff-plugin` (FileForgePlugin), `ff-core` (EventBus), `ff-logging`
@@ -19,14 +19,14 @@ This plan implements the connector extensibility framework for FileForgeWorkbenc
 - [x] 2. ApiVersion type and compatibility checking
   - [x] 2.1 Create `src/api_version.rs` with `ApiVersion` struct (major, minor, patch), `CONNECTOR_API_VERSION` constant, and `is_compatible_with` method
   - [x] 2.2 Implement `Display`, `Debug`, `Clone`, `Copy`, `PartialEq`, `Eq`, `PartialOrd`, `Ord`, `Hash` for `ApiVersion`
-  - [x] 2.3 Write unit tests for `is_compatible_with` — same major + minor ≤ current = compatible; different major or minor > current = incompatible
+  - [x] 2.3 Write unit tests for `is_compatible_with` -- same major + minor ≤ current = compatible; different major or minor > current = incompatible
     - Validates: Requirement 1 AC 4, Requirement 2 AC 2c
 
 - [x] 3. ConnectorCapability enum and validation
   - [x] 3.1 Create `src/capability.rs` with `ConnectorCapability` enum (`Read`, `Write`, `Watch`, `Search`, `Rename`, `Delete`, `CreateDirectory`, `Metadata`, `List`, `Copy`) marked `#[non_exhaustive]`
   - [x] 3.2 Define `REQUIRED_CAPABILITIES` constant (`Read`, `List`, `Metadata`)
   - [x] 3.3 Implement `validate_capabilities(capabilities: &[ConnectorCapability]) -> Result<(), ConnectorError>` function
-  - [x] 3.4 Write unit tests for `validate_capabilities` — passes when all required present, fails when any missing
+  - [x] 3.4 Write unit tests for `validate_capabilities` -- passes when all required present, fails when any missing
     - Validates: Requirement 3 AC 1, AC 2
 
 - [x] 4. ConnectorError enum and error mapping
@@ -71,7 +71,7 @@ This plan implements the connector extensibility framework for FileForgeWorkbenc
   - [x] 9.2 Add async methods: `connect`, `disconnect`, `authenticate`
   - [x] 9.3 Add query methods: `descriptor`, `connector_capabilities`, `api_version`, `state`, `retry_policy`
   - [x] 9.4 Add `map_error` method and `custom_operation` with default UnsupportedOperation impl
-  - [x] 9.5 Verify object-safety — write a compile-time test that `Box<dyn ConnectorPlugin>` compiles
+  - [x] 9.5 Verify object-safety -- write a compile-time test that `Box<dyn ConnectorPlugin>` compiles
   - [x] 9.6 Add comprehensive doc comments documenting FTP/SFTP, z/OS, and cloud mapping guidance
     - Validates: Requirement 1 AC 1, AC 3–6, Requirement 6 AC 1–6
 
@@ -87,9 +87,9 @@ This plan implements the connector extensibility framework for FileForgeWorkbenc
 
 - [x] 12. ConnectorRegistry implementation
   - [x] 12.1 Create `src/registry.rs` with `ConnectorRegistry` struct (connectors map, vfs_registry, event_bus, reconnection_managers)
-  - [x] 12.2 Implement `register()` — validate scheme uniqueness, required capabilities, API version compatibility; register with VFS ProviderRegistry; emit event
-  - [x] 12.3 Implement `deregister()` — disconnect if connected, remove from VFS registry, emit event
-  - [x] 12.4 Implement `hot_swap()` — deactivate old connector, register new version, preserve URI resolution
+  - [x] 12.2 Implement `register()` -- validate scheme uniqueness, required capabilities, API version compatibility; register with VFS ProviderRegistry; emit event
+  - [x] 12.3 Implement `deregister()` -- disconnect if connected, remove from VFS registry, emit event
+  - [x] 12.4 Implement `hot_swap()` -- deactivate old connector, register new version, preserve URI resolution
   - [x] 12.5 Implement `get_connector()`, `supports()`, `capabilities_for()`, `refresh_capabilities()`
   - [x] 12.6 Implement `connect()`, `disconnect()`, `shutdown_all()` lifecycle operations
   - [x] 12.7 Implement `list_connectors()` returning all schemes with their states
@@ -104,34 +104,34 @@ This plan implements the connector extensibility framework for FileForgeWorkbenc
     - Validates: Requirement 1 AC 1–6, Requirement 2 AC 1–7
 
 - [x] 14. Property-based tests
-  - [x] 14.1 Write property test: Registration Uniqueness — no duplicate schemes in registry after arbitrary register/deregister sequences
+  - [x] 14.1 Write property test: Registration Uniqueness -- no duplicate schemes in registry after arbitrary register/deregister sequences
     - Validates: Requirement 2 AC 2a
     - **Property 1 from design.md**
-  - [x] 14.2 Write property test: Required Capabilities Enforcement — registration succeeds iff Read ∈ C ∧ List ∈ C ∧ Metadata ∈ C
+  - [x] 14.2 Write property test: Required Capabilities Enforcement -- registration succeeds iff Read ∈ C ∧ List ∈ C ∧ Metadata ∈ C
     - Validates: Requirement 3 AC 2
     - **Property 2 from design.md**
-  - [x] 14.3 Write property test: API Version Compatibility — compatible iff same major and minor ≤ current
+  - [x] 14.3 Write property test: API Version Compatibility -- compatible iff same major and minor ≤ current
     - Validates: Requirement 1 AC 4, Requirement 2 AC 2c
     - **Property 3 from design.md**
-  - [x] 14.4 Write property test: State Machine Validity — only valid transitions succeed, invalid transitions rejected
+  - [x] 14.4 Write property test: State Machine Validity -- only valid transitions succeed, invalid transitions rejected
     - Validates: Requirement 4 AC 1, AC 2
     - **Property 4 from design.md**
-  - [x] 14.5 Write property test: Exponential Backoff Monotonicity — backoff values non-decreasing until cap reached
+  - [x] 14.5 Write property test: Exponential Backoff Monotonicity -- backoff values non-decreasing until cap reached
     - Validates: Requirement 4 AC 4, AC 5
     - **Property 5 from design.md**
-  - [x] 14.6 Write property test: Capability Query Consistency — supports() matches set membership, capabilities_for() returns exact set
+  - [x] 14.6 Write property test: Capability Query Consistency -- supports() matches set membership, capabilities_for() returns exact set
     - Validates: Requirement 3 AC 3, AC 5
     - **Property 6 from design.md**
-  - [x] 14.7 Write property test: Error Retryability Classification — is_retryable() and should_reconnect() match specification for all variants
+  - [x] 14.7 Write property test: Error Retryability Classification -- is_retryable() and should_reconnect() match specification for all variants
     - Validates: Requirement 7 AC 2
     - **Property 7 from design.md**
-  - [x] 14.8 Write property test: Credential Scoping Isolation — credentials retrievable only with exact key, no cross-scope leakage
+  - [x] 14.8 Write property test: Credential Scoping Isolation -- credentials retrievable only with exact key, no cross-scope leakage
     - Validates: Requirement 5 AC 7
     - **Property 8 from design.md**
-  - [x] 14.9 Write property test: Disconnected Connector Operation Rejection — all VFS ops return NotConnected when connector in Disconnected/Error state
+  - [x] 14.9 Write property test: Disconnected Connector Operation Rejection -- all VFS ops return NotConnected when connector in Disconnected/Error state
     - Validates: Requirement 4 AC 7
     - **Property 9 from design.md**
-  - [x] 14.10 Write property test: ConnectorError Display Format Compliance — Display matches regex pattern and length ≤ 200 chars
+  - [x] 14.10 Write property test: ConnectorError Display Format Compliance -- Display matches regex pattern and length ≤ 200 chars
     - Validates: Requirement 7 AC 6, cross-cutting Req 8
     - **Property 10 from design.md**
 

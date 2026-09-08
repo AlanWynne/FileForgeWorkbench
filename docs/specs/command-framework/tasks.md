@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-command` crate — the central dispatch mechanism for all user-facing operations in FileForgeWorkbench. The command framework provides a global command registry, single dispatch entry point, rich command metadata, automatic undo/redo integration, keyboard shortcut management, a scripting bridge for Lua macros, and a command history log.
+This plan covers the complete implementation of the `ff-command` crate -- the central dispatch mechanism for all user-facing operations in FileForgeWorkbench. The command framework provides a global command registry, single dispatch entry point, rich command metadata, automatic undo/redo integration, keyboard shortcut management, a scripting bridge for Lua macros, and a command history log.
 
 This is a **Wave 2 (Platform Architecture)** sub-project. It depends on `ff-logging` for diagnostics and is consumed by virtually every higher-level crate.
 
@@ -63,7 +63,7 @@ This is a **Wave 2 (Platform Architecture)** sub-project. It depends on `ff-logg
   - [x] 7.4 Write unit tests for handler trait mock implementation and registration construction
   - Covers: Requirement 1 (AC 1.3), Requirement 4 (AC 4.1)
 
-- [x] 8. CommandRegistry — core registration and lookup
+- [x] 8. CommandRegistry -- core registration and lookup
   - [x] 8.1 Implement `CommandRegistry` struct with thread-safe internal storage (`RwLock<HashMap<CommandId, CommandRegistration>>`)
   - [x] 8.2 Implement `register(id: CommandId, registration: CommandRegistration) -> Result<(), RegistryError>` rejecting duplicates
   - [x] 8.3 Implement `lookup(id: &str) -> Option<&CommandRegistration>` returning None for missing IDs without panicking
@@ -71,24 +71,24 @@ This is a **Wave 2 (Platform Architecture)** sub-project. It depends on `ff-logg
   - [x] 8.5 Write unit tests for register, lookup, duplicate rejection, deregister, and missing-ID handling
   - Covers: Requirement 1 (AC 1.1, 1.2, 1.4, 1.5, 1.7)
 
-- [x] 9. CommandRegistry — discovery and querying
+- [x] 9. CommandRegistry -- discovery and querying
   - [x] 9.1 Implement `list_all() -> Vec<CommandId>` returning all registered command IDs
   - [x] 9.2 Implement `list_by_category(prefix: &str) -> Vec<CommandId>` filtering by ID prefix (e.g., `"file."`)
   - [x] 9.3 Implement `get_metadata(id: &str) -> Option<&CommandMetadata>` for metadata-only queries
   - [x] 9.4 Write unit tests for listing, category filtering, and metadata retrieval
   - Covers: Requirement 1 (AC 1.6), Requirement 3 (AC 3.6)
 
-- [x] 10. CommandDispatch — synchronous execution
+- [x] 10. CommandDispatch -- synchronous execution
   - [x] 10.1 Implement `CommandDispatch` struct holding reference to `CommandRegistry` and undo stack
   - [x] 10.2 Implement `execute_command(id: &str, params: CommandParams) -> CommandResult` as the single entry point
-  - [x] 10.3 Implement lookup validation — return error for unregistered command IDs
-  - [x] 10.4 Implement enabled predicate check — return error if command is disabled in current context
+  - [x] 10.3 Implement lookup validation -- return error for unregistered command IDs
+  - [x] 10.4 Implement enabled predicate check -- return error if command is disabled in current context
   - [x] 10.5 Implement `ExecutionContext` construction with current active document, selection, cursor, and panel
-  - [x] 10.6 Implement error propagation — on handler error, log WARN via ff-logging and return `CommandResult::Err`
+  - [x] 10.6 Implement error propagation -- on handler error, log WARN via ff-logging and return `CommandResult::Err`
   - [x] 10.7 Write unit tests for successful execution, missing command, disabled command, and error logging
   - Covers: Requirement 2 (AC 2.1, 2.2, 2.3, 2.5, 2.6, 2.7), Requirement 3 (AC 3.7)
 
-- [x] 11. CommandDispatch — asynchronous execution
+- [x] 11. CommandDispatch -- asynchronous execution
   - [x] 11.1 Implement `execute_command_async(id: &str, params: CommandParams) -> impl Future<Output = CommandResult>`
   - [x] 11.2 Ensure async path uses same validation, context construction, and error handling as sync path
   - [x] 11.3 Write unit tests for async execution with tokio test runtime
@@ -98,66 +98,66 @@ This is a **Wave 2 (Platform Architecture)** sub-project. It depends on `ff-logg
   - [x] 12.1 Implement `UndoStack` struct with per-context undo and redo stacks
   - [x] 12.2 Implement automatic push of `UndoRecord` to undo stack when undoable command succeeds
   - [x] 12.3 Implement no-op undo behavior for non-undoable commands (no stack modification)
-  - [x] 12.4 Implement atomic execution — on handler error, no UndoRecord is pushed and state remains unchanged
+  - [x] 12.4 Implement atomic execution -- on handler error, no UndoRecord is pushed and state remains unchanged
   - [x] 12.5 Implement `edit.undo` built-in command: pop from undo stack, apply reversal, push to redo stack
   - [x] 12.6 Implement `edit.redo` built-in command: pop from redo stack, re-apply, push to undo stack
   - [x] 12.7 Implement redo stack clearing when a new undoable command is executed after undo operations
   - [x] 12.8 Write unit tests for undo/redo lifecycle, stack management, atomicity, and redo invalidation
   - Covers: Requirement 4 (AC 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7)
 
-- [x] 13. ShortcutRegistry — core binding management
+- [x] 13. ShortcutRegistry -- core binding management
   - [x] 13.1 Define `KeyChord` struct representing modifier keys (Ctrl, Alt, Shift, Super) plus a primary key
   - [x] 13.2 Define `ShortcutBinding` enum: single chord or multi-key sequence (two chords)
   - [x] 13.3 Implement `ShortcutRegistry` struct with thread-safe storage mapping `ShortcutBinding → CommandId`
   - [x] 13.4 Implement `register_binding(binding: ShortcutBinding, command_id: CommandId) -> Result<(), ShortcutError>` with conflict detection
-  - [x] 13.5 Implement conflict rejection — return error identifying both conflicting command IDs
+  - [x] 13.5 Implement conflict rejection -- return error identifying both conflicting command IDs
   - [x] 13.6 Implement `resolve(chord: &KeyChord) -> ShortcutResolution` returning either a CommandId or pending state for multi-key sequences
   - [x] 13.7 Write unit tests for binding registration, conflict detection, and chord resolution
   - Covers: Requirement 5 (AC 5.1, 5.4)
 
-- [x] 14. ShortcutRegistry — reserved shortcuts
+- [x] 14. ShortcutRegistry -- reserved shortcuts
   - [x] 14.1 Define the reserved shortcut set as a constant: F1, Ctrl+Plus/Minus/0, Ctrl+Z/Y/Shift+Z, Ctrl+C/X/V/A, Ctrl+S, Ctrl+F, Ctrl+H, Ctrl+G, Ctrl+Tab/Shift+Tab, Ctrl+W, Ctrl+N, Ctrl+Shift+D, Ctrl+Shift+T
-  - [x] 14.2 Implement reserved shortcut validation — reject any registration that conflicts with a reserved shortcut
+  - [x] 14.2 Implement reserved shortcut validation -- reject any registration that conflicts with a reserved shortcut
   - [x] 14.3 Implement `is_reserved(binding: &ShortcutBinding) -> bool` query method
   - [x] 14.4 Write unit tests for reserved shortcut rejection and query
   - Covers: Requirement 5 (AC 5.3, 5.5)
 
-- [x] 15. ShortcutRegistry — multi-key sequences and timeout
+- [x] 15. ShortcutRegistry -- multi-key sequences and timeout
   - ⚠️ NOTE: Sequence resolution works but the stateful pending-state tracker with 2-second timeout is deferred to GUI integration (requires event loop)
   - [x] 15.1 Implement pending state tracking for multi-key sequence first chord
-  - [x] 15.2 Implement 2-second timeout for pending state — revert to no-pending-state on timeout
-  - [x] 15.3 Implement second chord completion — resolve full sequence to bound command
+  - [x] 15.2 Implement 2-second timeout for pending state -- revert to no-pending-state on timeout
+  - [x] 15.3 Implement second chord completion -- resolve full sequence to bound command
   - [x] 15.4 Write unit tests for multi-key sequence entry, completion, and timeout behavior
   - Covers: Requirement 5 (AC 5.2)
 
-- [x] 16. ShortcutRegistry — user customization and dispatch integration
-  - ⚠️ BLOCKED: `load_user_overrides()` is a stub — requires ff-config hot-reload integration (Wave 2.2 complete, but wiring deferred to final integration pass)
+- [x] 16. ShortcutRegistry -- user customization and dispatch integration
+  - ⚠️ BLOCKED: `load_user_overrides()` is a stub -- requires ff-config hot-reload integration (Wave 2.2 complete, but wiring deferred to final integration pass)
   - [x] 16.1 Implement TOML-based keymap loading from workbench configuration (`[keybindings]` section)
-  - [x] 16.2 Implement user override application — non-reserved bindings can be remapped
+  - [x] 16.2 Implement user override application -- non-reserved bindings can be remapped
   - [x] 16.3 Implement F2–F24 function key configurability via keymap system
   - [x] 16.4 Implement plugin shortcut registration through the ShortcutRegistry (subject to conflict rules)
-  - [x] 16.5 Implement dispatch integration — on chord match, invoke `execute_command` through CommandDispatch
+  - [x] 16.5 Implement dispatch integration -- on chord match, invoke `execute_command` through CommandDispatch
   - [x] 16.6 Write unit tests for keymap loading, user overrides, plugin registration, and dispatch integration
   - Covers: Requirement 5 (AC 5.6, 5.7, 5.8)
 
-- [x] 17. ScriptingBridge — command invocation from Lua
+- [x] 17. ScriptingBridge -- command invocation from Lua
   - ⚠️ NOTE: Core execute() works. Batch execution is implicit. Deferred: full Lua table integration (awaits ff-lua crate, Wave 10)
   - [x] 17.1 Define `ScriptingBridge` struct providing the interface for the Lua macro engine
   - [x] 17.2 Implement `execute(command_id: &str, params: LuaTable) -> LuaResult` converting Lua tables to CommandParams
   - [x] 17.3 Implement CommandResult-to-Lua conversion: success → Lua values, error → Lua error with description
-  - [x] 17.4 Implement batch execution support — multiple sequential command invocations with independent undo records
+  - [x] 17.4 Implement batch execution support -- multiple sequential command invocations with independent undo records
   - [x] 17.5 Implement error propagation as catchable Lua errors
   - [x] 17.6 Write unit tests for param conversion, result conversion, batch execution, and error propagation
   - Covers: Requirement 6 (AC 6.1, 6.2, 6.3, 6.4, 6.5)
 
-- [x] 18. ScriptingBridge — command discovery
-  - ⚠️ NOTE: `list_commands()` is a stub returning empty Vec — needs registry access wiring
+- [x] 18. ScriptingBridge -- command discovery
+  - ⚠️ NOTE: `list_commands()` is a stub returning empty Vec -- needs registry access wiring
   - [x] 18.1 Implement `commands()` query function returning a Lua table of all registered CommandIds with metadata
   - [x] 18.2 Include display_name, category, and description in the discovery response
   - [x] 18.3 Write unit tests for discovery output structure and completeness
   - Covers: Requirement 6 (AC 6.6)
 
-- [x] 19. CommandHistory — recording and querying
+- [x] 19. CommandHistory -- recording and querying
   - [x] 19.1 Define `CommandHistory` struct with bounded ring buffer and thread-safe access
   - [x] 19.2 Implement recording: store CommandId, UTC timestamp (millisecond precision), and CommandParams for each successful execution
   - [x] 19.3 Implement configurable max depth from workbench config (`commands.history_depth`, default 500)
@@ -168,10 +168,10 @@ This is a **Wave 2 (Platform Architecture)** sub-project. It depends on `ff-logg
   - [x] 19.8 Write unit tests for recording, eviction, clamping, and all query methods
   - Covers: Requirement 7 (AC 7.1, 7.2, 7.3, 7.4, 7.7, 7.8)
 
-- [x] 20. CommandHistory — persistence
+- [x] 20. CommandHistory -- persistence
   - [x] 20.1 Implement serialization of history entries to a file in the workbench data directory on shutdown
   - [x] 20.2 Implement deserialization and loading of persisted history on startup
-  - [x] 20.3 Implement graceful handling of corrupted/missing/permission-error persistence files — start empty with WARN log
+  - [x] 20.3 Implement graceful handling of corrupted/missing/permission-error persistence files -- start empty with WARN log
   - [x] 20.4 Write unit tests for serialize/deserialize round-trip, missing file handling, and corrupted file recovery
   - Covers: Requirement 7 (AC 7.5, 7.6)
 
@@ -189,9 +189,9 @@ This is a **Wave 2 (Platform Architecture)** sub-project. It depends on `ff-logg
   - Covers: All requirements (error paths)
 
 - [x] 23. Thread safety validation
-  - [x] 23.1 Write multi-threaded test — concurrent command registration from multiple threads
-  - [x] 23.2 Write multi-threaded test — concurrent command dispatch from multiple threads
-  - [x] 23.3 Write multi-threaded test — concurrent history reads and writes
+  - [x] 23.1 Write multi-threaded test -- concurrent command registration from multiple threads
+  - [x] 23.2 Write multi-threaded test -- concurrent command dispatch from multiple threads
+  - [x] 23.3 Write multi-threaded test -- concurrent history reads and writes
   - [x] 23.4 Verify `CommandRegistry`, `CommandDispatch`, `ShortcutRegistry`, and `CommandHistory` implement `Send + Sync`
   - Covers: Requirement 1 (AC 1.4), Requirement 7 (AC 7.7)
 
@@ -317,9 +317,9 @@ This is a **Wave 2 (Platform Architecture)** sub-project. It depends on `ff-logg
 - The `lua-macro-engine` crate (Wave 10) will consume the `ScriptingBridge` interface; `ff-command` defines the bridge API without depending on `mlua` directly
 - The `configuration-system` crate does not exist yet; `CommandHistory` and `ShortcutRegistry` accept config values directly and will be wired to TOML config in a later wave
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
-- Thread-safety relies on `std::sync::RwLock` and `std::sync::Arc` — no external concurrency dependencies
+- Thread-safety relies on `std::sync::RwLock` and `std::sync::Arc` -- no external concurrency dependencies
 - The reserved shortcut list is derived from cross-cutting Requirement 10 in the project-master spec and is hardcoded as a compile-time constant
-- Plugin shortcut registration (Task 16.4) uses the same `register_binding` path as core commands — plugins receive no special treatment beyond being subject to the same conflict rules
+- Plugin shortcut registration (Task 16.4) uses the same `register_binding` path as core commands -- plugins receive no special treatment beyond being subject to the same conflict rules
 - `ExecutionContext` will be enriched as upstream crates (document-model, viewport) become available; initial implementation uses placeholder types
 
 ---

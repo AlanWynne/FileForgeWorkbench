@@ -1,6 +1,6 @@
 # Design Document: FTP/FTPS/SFTP Connector (`ff-connector-ftp-sftp`)
 
-> ⚠️ **STATUS: DEFERRED — Not in initial release.**
+> ⚠️ **STATUS: DEFERRED -- Not in initial release.**
 >
 > This is a placeholder design documenting future integration points only.
 > No implementation tasks will be created for this connector until it moves
@@ -26,7 +26,7 @@ error mapping.
 | FTPS     | TLS (implicit or explicit STARTTLS) | Username/password, client certificate |
 | SFTP     | SSH | Password, RSA/Ed25519/ECDSA key, SSH agent |
 
-All three protocols will present a unified VFS interface — consumers interact
+All three protocols will present a unified VFS interface -- consumers interact
 through standard `VfsProvider` operations without protocol awareness.
 
 ### Position in Architecture
@@ -37,14 +37,14 @@ through standard `VfsProvider` operations without protocol awareness.
 ├─────────────────────────────────────────────────────────────┤
 │  ff-file-tree-panel / ff-file-operations (consumers)         │
 ├─────────────────────────────────────────────────────────────┤
-│  ff-vfs — routes vfs://ftp/… and vfs://sftp/… to provider    │
+│  ff-vfs -- routes vfs://ftp/… and vfs://sftp/… to provider    │
 ├─────────────────────────────────────────────────────────────┤
-│  ff-connector-ftp-sftp (THIS CRATE — DEFERRED)               │
+│  ff-connector-ftp-sftp (THIS CRATE -- DEFERRED)               │
 │  Implements: ConnectorPlugin trait                            │
 ├─────────────────────────────────────────────────────────────┤
-│  ff-connector-extensibility — ConnectorPlugin, Registry      │
-│  ff-vfs — VfsProvider trait                                   │
-│  ff-plugin — FileForgePlugin lifecycle                        │
+│  ff-connector-extensibility -- ConnectorPlugin, Registry      │
+│  ff-vfs -- VfsProvider trait                                   │
+│  ff-plugin -- FileForgePlugin lifecycle                        │
 ├─────────────────────────────────────────────────────────────┤
 │  ff-logging (Wave 0)                                         │
 └─────────────────────────────────────────────────────────────┘
@@ -201,9 +201,9 @@ pub enum SftpAuthMethod {
 
 /// Known-hosts verification policy.
 pub enum KnownHostsPolicy {
-    /// Strict — reject unknown or changed host keys
+    /// Strict -- reject unknown or changed host keys
     Strict,
-    /// Trust On First Use — accept new keys, reject changed keys
+    /// Trust On First Use -- accept new keys, reject changed keys
     Tofu,
     /// Accept all keys (insecure, for testing only)
     AcceptAll,
@@ -337,8 +337,8 @@ polling-based watch using stat() comparisons at configurable intervals.
 
 ## 10. References
 
-- `ff-connector-extensibility` design — defines `ConnectorPlugin`, `ConnectorRegistry`, all trait contracts
-- `ff-vfs` design — defines `VfsProvider`, `ProviderRegistry`, `ResourceUri`
-- `ff-plugin` design — defines `FileForgePlugin`, `PluginContext`
-- Project-master requirements — FFW-ARCH-001 (VFS Principle), Req 3 (Plugin Architecture)
-- Connector-extensibility requirements — Requirement 6 (Future Connector Hooks)
+- `ff-connector-extensibility` design -- defines `ConnectorPlugin`, `ConnectorRegistry`, all trait contracts
+- `ff-vfs` design -- defines `VfsProvider`, `ProviderRegistry`, `ResourceUri`
+- `ff-plugin` design -- defines `FileForgePlugin`, `PluginContext`
+- Project-master requirements -- FFW-ARCH-001 (VFS Principle), Req 3 (Plugin Architecture)
+- Connector-extensibility requirements -- Requirement 6 (Future Connector Hooks)

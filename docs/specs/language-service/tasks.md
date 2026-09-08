@@ -2,16 +2,16 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-language-service` crate — the foundational layer responsible for language detection, language definition management, multi-line lexer state persistence, and content-based language identification. The language service loads language definitions from TOML files, matches files to languages via extension or content inspection, manages per-line lexer state for multi-line constructs, and exposes a plugin-extensible registration model for adding new language definitions at runtime.
+This plan covers the complete implementation of the `ff-language-service` crate -- the foundational layer responsible for language detection, language definition management, multi-line lexer state persistence, and content-based language identification. The language service loads language definitions from TOML files, matches files to languages via extension or content inspection, manages per-line lexer state for multi-line constructs, and exposes a plugin-extensible registration model for adding new language definitions at runtime.
 
 This is a **Wave 7 (Language and Highlighting)** sub-project. It depends on:
-- `ff-logging` (Wave 1) — diagnostics and structured log records
-- `ff-configuration-system` (Wave 2) — languages/ directory configuration, layered settings, hot-reload notifications
+- `ff-logging` (Wave 1) -- diagnostics and structured log records
+- `ff-configuration-system` (Wave 2) -- languages/ directory configuration, layered settings, hot-reload notifications
 
 It is consumed by:
-- `ff-syntax-highlighting` (Wave 7 peer) — token production using language definitions and per-line state
-- `ff-auto-indentation` (Wave 7 peer) — language-aware indent rules
-- `ff-plugin` (Wave 5) — runtime language registration via PluginContext
+- `ff-syntax-highlighting` (Wave 7 peer) -- token production using language definitions and per-line state
+- `ff-auto-indentation` (Wave 7 peer) -- language-aware indent rules
+- `ff-plugin` (Wave 5) -- runtime language registration via PluginContext
 
 ---
 
@@ -159,12 +159,12 @@ It is consumed by:
   - Covers: Requirements 2–5, 8, 9 (see Property-Based Test Definitions below)
 
 - [x] 15. Integration tests
-  - [x] 15.1 Write integration test: full startup lifecycle — load TOML definitions from test directory → build registry → detect language for sample files
-  - [x] 15.2 Write integration test: multi-directory override — built-in definition overridden by user config directory for same language_id
-  - [x] 15.3 Write integration test: content-based detection pipeline — extensionless file with shebang correctly identified
-  - [x] 15.4 Write integration test: lexer state management — edit cycle with insert/delete lines and incremental re-highlighting termination
+  - [x] 15.1 Write integration test: full startup lifecycle -- load TOML definitions from test directory → build registry → detect language for sample files
+  - [x] 15.2 Write integration test: multi-directory override -- built-in definition overridden by user config directory for same language_id
+  - [x] 15.3 Write integration test: content-based detection pipeline -- extensionless file with shebang correctly identified
+  - [x] 15.4 Write integration test: lexer state management -- edit cycle with insert/delete lines and incremental re-highlighting termination
   - [x] 15.5 Write integration test: plugin registration and deregistration lifecycle with fallback to plain text
-  - [x] 15.6 Write integration test: property hot-reload — change language profile file and verify updated property values
+  - [x] 15.6 Write integration test: property hot-reload -- change language profile file and verify updated property values
   - Covers: End-to-end validation across Requirements 1–10
 
 ---
@@ -268,12 +268,12 @@ It is consumed by:
 
 ## Notes
 
-- This is a Wave 7 (Language and Highlighting) crate that is **GUI-independent** — no rendering framework dependency.
-- The language service owns language definitions and detection logic but does NOT perform tokenization — that responsibility belongs to `ff-syntax-highlighting`.
+- This is a Wave 7 (Language and Highlighting) crate that is **GUI-independent** -- no rendering framework dependency.
+- The language service owns language definitions and detection logic but does NOT perform tokenization -- that responsibility belongs to `ff-syntax-highlighting`.
 - Thread safety is a strict requirement: all public query methods use `&self` with interior immutability (e.g., `RwLock<HashMap<...>>`) so multiple subsystems can query concurrently.
 - TOML is the definition format for language files. The `toml` crate handles deserialization; `serde` derives handle struct mapping.
 - The `LexerStateVector` uses `Vec<i32>` for compact per-line state storage. The `INVALID_STATE` sentinel (e.g., `i32::MIN`) marks lines needing re-highlighting.
-- Plugin-registered languages have full feature parity with file-loaded definitions — same schema, same keyword sets, same detection rules.
+- Plugin-registered languages have full feature parity with file-loaded definitions -- same schema, same keyword sets, same detection rules.
 - Content-based detection is bounded to 8192 bytes to avoid scanning large binary files.
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property.
 - Hot-reload of language properties leverages the configuration-system file watcher. When a language profile changes, affected documents are flagged for re-highlighting.

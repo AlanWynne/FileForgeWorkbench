@@ -19,7 +19,7 @@ The `ff-tabs` crate implements the **multi-tab editor subsystem** for FileForgeW
 ### Position in Architecture
 
 ```
-Wave 8 — File I/O and Session
+Wave 8 -- File I/O and Session
 
 ┌─────────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                   │
@@ -64,7 +64,7 @@ Wave 8 — File I/O and Session
 
 ```mermaid
 graph TD
-    subgraph Shell [GUI Shell — ff-desktop]
+    subgraph Shell [GUI Shell -- ff-desktop]
         TABBAR[Tab Bar Renderer<br/>renders Tab_Headers]
         CTXMENU[Context Menu Renderer<br/>displays menu model]
         MRUW[MRU Popup Renderer<br/>transient tab list]
@@ -359,7 +359,7 @@ pub enum LineEnding {
 
 ```rust
 /// Serialisable per-tab state for session persistence.
-/// This is the session-layer snapshot — lighter than the runtime Tab.
+/// This is the session-layer snapshot -- lighter than the runtime Tab.
 ///
 /// Addresses: Requirement 2 AC 8, Requirement 14
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -513,7 +513,7 @@ impl TabCollection {
 
 ```rust
 /// Identifies a spatial container managed by the Layout_Engine.
-/// The multi-tab subsystem does not own Tab_Groups — it populates them.
+/// The multi-tab subsystem does not own Tab_Groups -- it populates them.
 ///
 /// Addresses: Glossary, Requirement 1 AC 1
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -751,7 +751,7 @@ pub enum CloseResult {
     Closed,
     /// Close was cancelled by user (unsaved changes dialog).
     Cancelled,
-    /// Tab cannot be closed (pinned — use unpin or close_pinned).
+    /// Tab cannot be closed (pinned -- use unpin or close_pinned).
     PinnedRefused,
 }
 
@@ -1057,25 +1057,25 @@ pub fn register_tab_commands(
 ) -> Result<(), TabsError>;
 
 /// Registered commands:
-/// - tabs.close          — Close the active tab (Ctrl+W)
-/// - tabs.close_all      — Close all non-pinned tabs
-/// - tabs.close_others   — Close all except active tab
-/// - tabs.close_to_left  — Close all to the left of active
-/// - tabs.close_to_right — Close all to the right of active
-/// - tabs.close_pinned   — Force-close a pinned tab
-/// - tabs.next           — Next tab in sequential order
-/// - tabs.previous       — Previous tab in sequential order
-/// - tabs.next_mru       — Next tab in MRU order (Ctrl+Tab)
-/// - tabs.previous_mru   — Previous tab in MRU order (Ctrl+Shift+Tab)
-/// - tabs.pin            — Pin the active tab
-/// - tabs.unpin          — Unpin the active tab
-/// - tabs.move_left      — Move active tab one position left
-/// - tabs.move_right     — Move active tab one position right
-/// - tabs.goto_1..9      — Go to tab at position 1–9 (Ctrl+1..9)
-/// - tabs.split_right    — Split active tab right
-/// - tabs.split_down     — Split active tab down
-/// - tabs.reopen_closed  — Reopen last closed tab (Ctrl+Shift+T)
-/// - tabs.duplicate      — Duplicate the active tab
+/// - tabs.close          -- Close the active tab (Ctrl+W)
+/// - tabs.close_all      -- Close all non-pinned tabs
+/// - tabs.close_others   -- Close all except active tab
+/// - tabs.close_to_left  -- Close all to the left of active
+/// - tabs.close_to_right -- Close all to the right of active
+/// - tabs.close_pinned   -- Force-close a pinned tab
+/// - tabs.next           -- Next tab in sequential order
+/// - tabs.previous       -- Previous tab in sequential order
+/// - tabs.next_mru       -- Next tab in MRU order (Ctrl+Tab)
+/// - tabs.previous_mru   -- Previous tab in MRU order (Ctrl+Shift+Tab)
+/// - tabs.pin            -- Pin the active tab
+/// - tabs.unpin          -- Unpin the active tab
+/// - tabs.move_left      -- Move active tab one position left
+/// - tabs.move_right     -- Move active tab one position right
+/// - tabs.goto_1..9      -- Go to tab at position 1–9 (Ctrl+1..9)
+/// - tabs.split_right    -- Split active tab right
+/// - tabs.split_down     -- Split active tab down
+/// - tabs.reopen_closed  -- Reopen last closed tab (Ctrl+Shift+T)
+/// - tabs.duplicate      -- Duplicate the active tab
 ```
 
 ### Drag and Drop
@@ -1196,32 +1196,32 @@ pub trait FileOpener: Send + Sync {
 #[non_exhaustive]
 pub enum TabsError {
     /// Attempted to operate on a tab that does not exist.
-    #[error("[tabs] lookup: tab not found — id: {tab_id}")]
+    #[error("[tabs] lookup: tab not found -- id: {tab_id}")]
     TabNotFound {
         tab_id: String,
     },
 
     /// Attempted to operate on a Tab_Group that does not exist.
-    #[error("[tabs] lookup: tab group not found — id: {group_id}")]
+    #[error("[tabs] lookup: tab group not found -- id: {group_id}")]
     TabGroupNotFound {
         group_id: String,
     },
 
     /// Maximum tab count reached and no evictable tab available.
-    #[error("[tabs] open: maximum tab count ({max}) reached — all non-pinned tabs have unsaved changes")]
+    #[error("[tabs] open: maximum tab count ({max}) reached -- all non-pinned tabs have unsaved changes")]
     MaxTabCountReached {
         max: usize,
     },
 
     /// Resource could not be opened during tab creation.
-    #[error("[tabs] open: failed to open resource — uri: {uri}, reason: {reason}")]
+    #[error("[tabs] open: failed to open resource -- uri: {uri}, reason: {reason}")]
     ResourceOpenFailed {
         uri: String,
         reason: String,
     },
 
     /// Tab move operation invalid (already at boundary).
-    #[error("[tabs] move: cannot move tab {direction} — already at {position} boundary")]
+    #[error("[tabs] move: cannot move tab {direction} -- already at {position} boundary")]
     MoveAtBoundary {
         direction: String,
         position: String,
@@ -1234,19 +1234,19 @@ pub enum TabsError {
     },
 
     /// Split operation failed (layout engine error).
-    #[error("[tabs] split: failed to create split — {reason}")]
+    #[error("[tabs] split: failed to create split -- {reason}")]
     SplitFailed {
         reason: String,
     },
 
     /// Session serialization failed.
-    #[error("[tabs] serialize: failed to serialize tab state — {reason}")]
+    #[error("[tabs] serialize: failed to serialize tab state -- {reason}")]
     SerializationFailed {
         reason: String,
     },
 
     /// Session deserialization failed.
-    #[error("[tabs] deserialize: failed to restore tab state — {reason}")]
+    #[error("[tabs] deserialize: failed to restore tab state -- {reason}")]
     DeserializationFailed {
         reason: String,
     },
@@ -1259,13 +1259,13 @@ pub enum TabsError {
     },
 
     /// Clipboard operation failed.
-    #[error("[tabs] clipboard: failed to copy to clipboard — {reason}")]
+    #[error("[tabs] clipboard: failed to copy to clipboard -- {reason}")]
     ClipboardFailed {
         reason: String,
     },
 
     /// Command registration failed.
-    #[error("[tabs] commands: failed to register command '{command_id}' — {reason}")]
+    #[error("[tabs] commands: failed to register command '{command_id}' -- {reason}")]
     CommandRegistrationFailed {
         command_id: String,
         reason: String,
@@ -1278,7 +1278,7 @@ pub enum TabsError {
     },
 
     /// Generic I/O error with tab context.
-    #[error("[tabs] {operation}: I/O error — {source}")]
+    #[error("[tabs] {operation}: I/O error -- {source}")]
     Io {
         operation: String,
         #[source]
@@ -1348,24 +1348,24 @@ pub enum TabsError {
 | Command ID | Default Shortcut | Category | Enabled Predicate |
 |-----------|-----------------|----------|-------------------|
 | `tabs.close` | Ctrl+W | Tabs | Active tab exists |
-| `tabs.close_all` | — | Tabs | Collection not empty |
-| `tabs.close_others` | — | Tabs | More than one tab |
-| `tabs.close_to_left` | — | Tabs | Unpinned tabs exist to left |
-| `tabs.close_to_right` | — | Tabs | Tabs exist to right |
-| `tabs.close_pinned` | — | Tabs | Target tab is pinned |
+| `tabs.close_all` | -- | Tabs | Collection not empty |
+| `tabs.close_others` | -- | Tabs | More than one tab |
+| `tabs.close_to_left` | -- | Tabs | Unpinned tabs exist to left |
+| `tabs.close_to_right` | -- | Tabs | Tabs exist to right |
+| `tabs.close_pinned` | -- | Tabs | Target tab is pinned |
 | `tabs.next` | Ctrl+PageDown | Tabs | More than one tab |
 | `tabs.previous` | Ctrl+PageUp | Tabs | More than one tab |
 | `tabs.next_mru` | Ctrl+Tab | Tabs | More than one tab |
 | `tabs.previous_mru` | Ctrl+Shift+Tab | Tabs | MRU navigation active |
-| `tabs.pin` | — | Tabs | Active tab is unpinned |
-| `tabs.unpin` | — | Tabs | Active tab is pinned |
+| `tabs.pin` | -- | Tabs | Active tab is unpinned |
+| `tabs.unpin` | -- | Tabs | Active tab is pinned |
 | `tabs.move_left` | Ctrl+Shift+PageUp | Tabs | Tab not at left boundary |
 | `tabs.move_right` | Ctrl+Shift+PageDown | Tabs | Tab not at right boundary |
 | `tabs.goto_1`..`tabs.goto_9` | Ctrl+1..Ctrl+9 | Tabs | Always enabled |
-| `tabs.split_right` | — | Tabs | Active tab exists |
-| `tabs.split_down` | — | Tabs | Active tab exists |
+| `tabs.split_right` | -- | Tabs | Active tab exists |
+| `tabs.split_down` | -- | Tabs | Active tab exists |
 | `tabs.reopen_closed` | Ctrl+Shift+T | Tabs | Closed stack not empty |
-| `tabs.duplicate` | — | Tabs | Active tab exists |
+| `tabs.duplicate` | -- | Tabs | Active tab exists |
 
 ### Integration with `ff-config` (configuration-system)
 
@@ -1382,7 +1382,7 @@ pub enum TabsError {
 | `tabs.max_tab_count` | `u32` | `100` | 1–500 | Maximum tabs per Tab_Group |
 | `tabs.navigation_mode` | `String` | `"mru"` | `mru`, `sequential` | Ctrl+Tab behaviour |
 | `tabs.title_format` | `String` | `"auto_disambiguate"` | `filename_only`, `filename_with_directory`, `auto_disambiguate` | Tab title display |
-| `tabs.close_button_on_inactive` | `bool` | `true` | — | Show close button on inactive tabs |
+| `tabs.close_button_on_inactive` | `bool` | `true` | -- | Show close button on inactive tabs |
 | `tabs.modified_indicator` | `String` | `"dot"` | `dot`, `asterisk` | Modified indicator style |
 | `tabs.pinned_tab_position` | `String` | `"left"` | `left` | Pinned tab positioning (reserved for future) |
 | `tabs.reopen_stack_size` | `u32` | `20` | 1–100 | Max entries in closed-tab reopen stack |
@@ -1422,7 +1422,7 @@ These properties are suitable for property-based testing with the `proptest` cra
 
 ### Property 3: Tab Collection Size Never Exceeds Maximum
 
-**Statement**: For any sequence of open operations, the Tab_Collection size never exceeds the configured Maximum_Tab_Count. When the limit is reached, eviction occurs or the open is refused — the count never exceeds the maximum.
+**Statement**: For any sequence of open operations, the Tab_Collection size never exceeds the configured Maximum_Tab_Count. When the limit is reached, eviction occurs or the open is refused -- the count never exceeds the maximum.
 
 **Validates: Requirements 1.6**
 
@@ -1485,7 +1485,7 @@ These properties are suitable for property-based testing with the `proptest` cra
 //   - random active_tab_id (one of the tab IDs or None)
 //   - random MRU order (permutation of tab IDs)
 // action: restore_state(data) then serialize_state()
-// assertion: output == input (modulo resource open success — skip failed URIs)
+// assertion: output == input (modulo resource open success -- skip failed URIs)
 ```
 
 ### Property 8: Closed Tab Stack Is Bounded

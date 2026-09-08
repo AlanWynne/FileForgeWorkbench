@@ -4,19 +4,19 @@
 
 The `ff-edit-operations` crate implements all text editing behaviour for the FileForgeWorkbench editor. It sits between the low-level document buffer (`ff-document-model`) and the user-facing command dispatch (`ff-command`), providing:
 
-- **Edit mode management** — Insert, Overstrike, and Browse mode state machine
-- **Character insertion and deletion** — single character, word, line, and range operations
-- **Selection model** — stream, rectangular, and multi-caret selection with position adjustment
-- **Multi-caret coordination** — simultaneous editing at multiple positions with reverse-order processing
-- **Edit boundaries (BOUNDS)** — ISPF-heritage column-range protection
-- **Line manipulation** — transpose, duplicate, case change
-- **Transaction recording** — defining undo boundaries and grouping multi-caret operations
-- **Clipboard integration** — edit-side cut/copy/paste semantics for all selection types
+- **Edit mode management** -- Insert, Overstrike, and Browse mode state machine
+- **Character insertion and deletion** -- single character, word, line, and range operations
+- **Selection model** -- stream, rectangular, and multi-caret selection with position adjustment
+- **Multi-caret coordination** -- simultaneous editing at multiple positions with reverse-order processing
+- **Edit boundaries (BOUNDS)** -- ISPF-heritage column-range protection
+- **Line manipulation** -- transpose, duplicate, case change
+- **Transaction recording** -- defining undo boundaries and grouping multi-caret operations
+- **Clipboard integration** -- edit-side cut/copy/paste semantics for all selection types
 
 ### Position in Architecture
 
 ```
-Wave 4 — Core Editor
+Wave 4 -- Core Editor
 
 ┌──────────────────────────────────────────────────────────┐
 │                 ff-command (Wave 2)                        │
@@ -36,7 +36,7 @@ Wave 4 — Core Editor
 
 ### Design Constraints (Cross-Cutting)
 
-- **GUI Independence (Req 2)**: Zero GUI dependencies — operates on abstract document/selection types only
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- operates on abstract document/selection types only
 - **Command-Driven (Req 4)**: All edit operations are registered commands dispatched via `ff-command`
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-edit-operations`
 - **Error Message Standards (Req 8)**: All errors follow `[edit] operation: description` format
@@ -109,7 +109,7 @@ end
 | **Command Layer** | Edit command handlers registered with `ff-command`; translate `CommandParams` → engine calls |
 | **Mode Layer** | `EditModeManager` gates operations by current mode (Insert/Overstrike/Browse) |
 | **Bounds Layer** | `BoundsEnforcer` validates column positions before allowing edits |
-| **Engine Layer** | `InsertionEngine`, `DeletionEngine`, `LineManipulator` — core edit logic |
+| **Engine Layer** | `InsertionEngine`, `DeletionEngine`, `LineManipulator` -- core edit logic |
 | **Selection Layer** | `SelectionContainer` manages caret/anchor positions, adjustment on modification |
 | **Coordination Layer** | `MultiCaretCoordinator` dispatches edits across multiple carets in reverse order |
 | **Transaction Layer** | `TransactionRecorder` wraps edits into `EditorTransaction` / `UndoGroup` for undo system |
@@ -127,12 +127,12 @@ crates/ff-edit-operations/
 │   ├── position.rs             # SelectionPosition (real + virtual space)
 │   ├── range.rs                # SelectionRange (anchor, caret)
 │   ├── selection.rs            # SelectionContainer (Add, Drop, Trim, MovePositions)
-│   ├── insertion.rs            # InsertionEngine — character, tab, newline, virtual space
-│   ├── deletion.rs             # DeletionEngine — char, word, line, range granularities
-│   ├── multi_caret.rs          # MultiCaretCoordinator — reverse-order dispatch
-│   ├── bounds.rs               # BoundsEnforcer — ISPF column-range protection
-│   ├── line_ops.rs             # LineManipulator — transpose, duplicate, case change
-│   ├── clipboard.rs            # ClipboardSemantics — cut/copy/paste edit-side logic
+│   ├── insertion.rs            # InsertionEngine -- character, tab, newline, virtual space
+│   ├── deletion.rs             # DeletionEngine -- char, word, line, range granularities
+│   ├── multi_caret.rs          # MultiCaretCoordinator -- reverse-order dispatch
+│   ├── bounds.rs               # BoundsEnforcer -- ISPF column-range protection
+│   ├── line_ops.rs             # LineManipulator -- transpose, duplicate, case change
+│   ├── clipboard.rs            # ClipboardSemantics -- cut/copy/paste edit-side logic
 │   ├── transaction.rs          # TransactionRecorder, EditorTransaction, UndoGroup bridge
 │   ├── commands/
 │   │   ├── mod.rs              # Re-exports for all command handlers
@@ -146,7 +146,7 @@ crates/ff-edit-operations/
 │   │   ├── bounds.rs           # edit.bounds command handler
 │   │   └── caret.rs            # edit.add_caret_above, edit.add_caret_below, edit.clear_carets
 │   ├── error.rs                # EditError enum
-│   └── markers.rs              # ModifiedLineTracker — per-line modification state
+│   └── markers.rs              # ModifiedLineTracker -- per-line modification state
 └── tests/
     ├── mode_tests.rs           # Edit mode property tests
     ├── insertion_tests.rs      # Insertion property tests
@@ -760,7 +760,7 @@ pub enum EditError {
 
     /// Invalid BOUNDS values supplied.
     /// Addresses: Requirement 13, criterion 13.12
-    #[error("[edit] bounds: invalid range ({left}, {right}) — left must be >= 1 and right > left")]
+    #[error("[edit] bounds: invalid range ({left}, {right}) -- left must be >= 1 and right > left")]
     InvalidBounds { left: u64, right: u64 },
 
     /// Cannot drop the last remaining selection range.
@@ -769,7 +769,7 @@ pub enum EditError {
     LastCaretRemoval,
 
     /// The document buffer reported an error during mutation.
-    #[error("[edit] {operation}: document error — {description}")]
+    #[error("[edit] {operation}: document error -- {description}")]
     DocumentError {
         operation: String,
         description: String,
@@ -783,7 +783,7 @@ pub enum EditError {
     /// Line transpose at document start (no-op, not an error to user).
     /// This is used internally to signal no action taken.
     /// Addresses: Requirement 5, criterion 5.8
-    #[error("[edit] line_transpose: already at first line — no action taken")]
+    #[error("[edit] line_transpose: already at first line -- no action taken")]
     NoOpAtBoundary { operation: String },
 }
 ```
@@ -793,29 +793,29 @@ pub enum EditError {
 
 ## Integration Points
 
-### With `ff-document-model` (upstream — Wave 4)
+### With `ff-document-model` (upstream -- Wave 4)
 
 - `ff-edit-operations` uses the `Document` / `DocumentHandle` API for all buffer mutations:
-  - `insert(position, text)` — character and text insertion
-  - `delete(position, length)` — character and range deletion
-  - `char_at(position)` / `character_at(position)` — character inspection for overstrike
-  - `line_start(line)` / `line_end(line)` — line boundary resolution
-  - `line_count()` — validation of line numbers
-  - `next_position(position, direction)` — grapheme-aware cursor movement
-  - `split_view()` — read access for copy operations
+  - `insert(position, text)` -- character and text insertion
+  - `delete(position, length)` -- character and range deletion
+  - `char_at(position)` / `character_at(position)` -- character inspection for overstrike
+  - `line_start(line)` / `line_end(line)` -- line boundary resolution
+  - `line_count()` -- validation of line numbers
+  - `next_position(position, direction)` -- grapheme-aware cursor movement
+  - `split_view()` -- read access for copy operations
 - The document model provides the `DocumentHandle` (`Arc<RwLock<Document>>`) shared between edit-operations and other consumers
 - Line index lookups (`line_from_position`, `line_start`, `line_end`) are used for line split/join operations
 - Character navigation (`char_length_at`, `move_position_outside_char`) ensures edits respect grapheme cluster boundaries
 
-### With `ff-undo-redo-transactions` (peer — Wave 4)
+### With `ff-undo-redo-transactions` (peer -- Wave 4)
 
 - `ff-edit-operations` defines `EditorTransaction` as the unit of undo work
 - The `TransactionStack` trait (defined by `ff-undo-redo-transactions`) is used to push/pop transactions
 - `UndoGroup` wrapping is used for multi-caret operations (all sub-edits become one undo step)
 - Save-point marking integrates with the save command to track modified state
-- `ff-edit-operations` does NOT own the `TransactionStack` — it receives a reference through the command context
+- `ff-edit-operations` does NOT own the `TransactionStack` -- it receives a reference through the command context
 
-### With `ff-command` (upstream — Wave 2)
+### With `ff-command` (upstream -- Wave 2)
 
 - All edit operations are registered as named commands in the `CommandRegistry`:
   - `edit.insert_char`, `edit.delete_back`, `edit.delete_forward`
@@ -845,13 +845,13 @@ pub enum EditError {
 - The edit crate produces `ClipboardContent` structs; the clipboard crate serializes to/from system clipboard
 - Rectangular metadata tagging enables round-trip rectangular paste
 
-### With `caret-and-selection` (downstream — Wave 6)
+### With `caret-and-selection` (downstream -- Wave 6)
 
 - The GUI rendering layer reads `SelectionContainer` state to draw selection highlights
 - Modified line markers from `ModifiedLineTracker` are rendered by the caret-and-selection system
 - This crate is the authoritative source of selection state; the rendering crate is read-only
 
-### With `navigation-commands` (downstream — Wave 5)
+### With `navigation-commands` (downstream -- Wave 5)
 
 - Navigation commands (arrow keys, Home, End, word movement) update `SelectionContainer` positions
 - When Shift is held, navigation extends selection rather than collapsing it (Req 6.4–6.8)
@@ -1129,13 +1129,13 @@ All commands registered by `ff-edit-operations` during crate initialization:
 | `edit.line_duplicate` | Line Duplicate | Yes | Ctrl+Shift+D | Duplicate current line below |
 | `edit.uppercase` | Uppercase | Yes | Ctrl+Shift+U | Convert selection to uppercase |
 | `edit.lowercase` | Lowercase | Yes | Ctrl+U | Convert selection to lowercase |
-| `edit.toggle_case` | Toggle Case | Yes | — | Toggle case of selection |
+| `edit.toggle_case` | Toggle Case | Yes | -- | Toggle case of selection |
 | `edit.select_all` | Select All | No | Ctrl+A | Select all document content |
 | `edit.select_next_occurrence` | Select Next Occurrence | No | Ctrl+D | Add caret at next occurrence |
 | `edit.add_caret_above` | Add Caret Above | No | Ctrl+Alt+Up | Add caret one line above |
 | `edit.add_caret_below` | Add Caret Below | No | Ctrl+Alt+Down | Add caret one line below |
 | `edit.clear_extra_carets` | Clear Extra Carets | No | Escape | Reduce to single caret |
-| `edit.bounds` | Set Bounds | No | — | Set/clear edit boundaries |
+| `edit.bounds` | Set Bounds | No | -- | Set/clear edit boundaries |
 | `edit.cut` | Cut | Yes | Ctrl+X | Cut selection to clipboard |
 | `edit.copy` | Copy | No | Ctrl+C | Copy selection to clipboard |
 | `edit.paste` | Paste | Yes | Ctrl+V | Paste from clipboard |
@@ -1163,7 +1163,7 @@ All commands registered by `ff-edit-operations` during crate initialization:
 
 - Insert ↔ Overstrike: toggled by Insert key press
 - Browse is entered/exited programmatically (e.g., by read-only file, ISPF VIEW command)
-- The Insert key toggle does NOT cycle through Browse — Browse is a distinct state
+- The Insert key toggle does NOT cycle through Browse -- Browse is a distinct state
 
 ---
 
@@ -1173,7 +1173,7 @@ When multiple carets exist and an edit operation is dispatched:
 
 1. Acquire document write lock
 2. Begin UndoGroup on TransactionStack
-3. Sort carets by document position (descending — last to first)
+3. Sort carets by document position (descending -- last to first)
 4. For each caret (reverse document order):
    a. Check if position is in a protected range → skip if protected (Req 8.15)
    b. If caret is in virtual space → realise virtual space (pad with spaces) (Req 8.16)

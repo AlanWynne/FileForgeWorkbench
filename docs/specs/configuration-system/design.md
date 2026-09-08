@@ -18,17 +18,17 @@ The `ff-config` crate is the **central settings management layer** for the FileF
 ### Position in Architecture
 
 ```
-Wave 2 — Platform Architecture (depends on Wave 0 ff-logging)
+Wave 2 -- Platform Architecture (depends on Wave 0 ff-logging)
 
 ┌─────────────────────────────────────────────────────────┐
 │                    Application Binary                     │
-│                (ffwb / GUI shell — ff-desktop)            │
+│                (ffwb / GUI shell -- ff-desktop)            │
 ├─────────────────────────────────────────────────────────┤
 │  workflow-engine │ layout-and-docking │ document-model    │
 │  edit-operations │ theme │ vfs │ all feature crates      │
 ├─────────────────────────────────────────────────────────┤
 │  platform-core │ command-framework │ plugin-architecture │
-│              ff-config (THIS CRATE) — Wave 2              │
+│              ff-config (THIS CRATE) -- Wave 2              │
 ├─────────────────────────────────────────────────────────┤
 │                     ff-logging (Wave 0)                   │
 └─────────────────────────────────────────────────────────┘
@@ -36,8 +36,8 @@ Wave 2 — Platform Architecture (depends on Wave 0 ff-logging)
 
 ### Design Constraints (Cross-Cutting)
 
-- **FFW-ARCH-001 (Req 1)**: Configuration files are NOT accessed via VFS — config uses direct filesystem access since it initializes before VFS
-- **GUI Independence (Req 2)**: Zero GUI dependencies — no egui, no windowing crate imports
+- **FFW-ARCH-001 (Req 1)**: Configuration files are NOT accessed via VFS -- config uses direct filesystem access since it initializes before VFS
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- no egui, no windowing crate imports
 - **Plugin Architecture (Req 3)**: Provides scoped `PluginConfigHandle` for plugin namespace isolation
 - **Configuration Namespace (FFW Req 5)**: All keys unique, layered model, hot-reload, namespace prefixes, language profiles in separate files
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-config`
@@ -751,7 +751,7 @@ pub enum ConfigError {
 
     /// Type mismatch between requested type and stored value
     /// Addresses: Requirement 7, criterion 5
-    #[error("[config] get: type mismatch for key '{key}' — expected {expected}, found {actual}")]
+    #[error("[config] get: type mismatch for key '{key}' -- expected {expected}, found {actual}")]
     TypeMismatch {
         key: String,
         expected: ValueType,
@@ -778,7 +778,7 @@ pub enum ConfigError {
 
     /// Plugin name contains invalid characters
     /// Addresses: Requirement 8, criterion 1
-    #[error("[config] namespace: invalid plugin name '{name}' — must be lowercase ASCII, hyphens, and digits only")]
+    #[error("[config] namespace: invalid plugin name '{name}' -- must be lowercase ASCII, hyphens, and digits only")]
     InvalidPluginName {
         name: String,
     },
@@ -835,14 +835,14 @@ pub enum ConfigError {
 
 ## 7. Integration Points
 
-### With `ff-logging` (Foundation Layer — upstream)
+### With `ff-logging` (Foundation Layer -- upstream)
 
 - **Dependency direction**: ff-config depends on ff-logging
 - **API consumed**: `log_warn!`, `log_debug!`, `log_info!` macros
 - **Usage**: Emit WARN on parse errors (Req 1.6), type mismatches (Req 7.5), validation failures (Req 7.6, 9.4), profile not found (Req 4.6), EditorConfig errors (Req 6.6). Emit DEBUG on unknown keys (Req 9.6)
 - **Bootstrap**: ff-config initializes **after** ff-logging is already active. No circular dependency.
 
-### With `ff-core` (Core Layer — peer, downstream consumer)
+### With `ff-core` (Core Layer -- peer, downstream consumer)
 
 - **Dependency direction**: ff-core depends on ff-config via the `ConfigProvider` trait
 - **API exposed**: `ConfigHandle` implements `ff_core::ConfigProvider`
@@ -850,7 +850,7 @@ pub enum ConfigError {
 - **Hot-reload integration**: When ff-config detects file changes, it invokes registered callbacks. ff-core subscribes to config changes and dispatches `ConfigReloaded` through its Event Bus
 - **Shutdown**: ff-core calls `ff_config::shutdown()` during its ordered teardown
 
-### With `ff-plugin` (Core Layer — peer, downstream consumer)
+### With `ff-plugin` (Core Layer -- peer, downstream consumer)
 
 - **Dependency direction**: ff-plugin depends on ff-config for `PluginConfigHandle`
 - **API exposed**: `create_plugin_config_handle(config, plugin_name)` creates a scoped handle
@@ -858,7 +858,7 @@ pub enum ConfigError {
 - **Plugin defaults**: During plugin initialization, ff-plugin calls `register_schema_batch()` with the plugin's declared default configuration values (Req 8.4)
 - **Plugin unload**: During plugin shutdown, ff-plugin calls `deregister_schema(prefix)` to remove the plugin's schema entries (Req 8.6)
 
-### With `ff-command` (Core Layer — peer, downstream consumer)
+### With `ff-command` (Core Layer -- peer, downstream consumer)
 
 - **Dependency direction**: ff-command depends on ff-config for reading keybinding settings
 - **API consumed**: `ConfigHandle::get_table("commands.keybindings")`
@@ -895,13 +895,13 @@ ff-logging ← ff-config ← ff-core
 ```
 
 `ff-config` depends on NO other workspace crates except `ff-logging`. External dependencies:
-- `toml` — TOML parsing
-- `notify` — Cross-platform file watching (inotify, ReadDirectoryChangesW, FSEvents)
-- `dirs` — Platform-appropriate default directories
-- `regex` — Pattern validation for string constraints
-- `thiserror` — Error type derivation
-- `serde` / `serde_derive` — Serialization for ConfigProvider trait
-- `proptest` — Property-based testing (dev-dependency only)
+- `toml` -- TOML parsing
+- `notify` -- Cross-platform file watching (inotify, ReadDirectoryChangesW, FSEvents)
+- `dirs` -- Platform-appropriate default directories
+- `regex` -- Pattern validation for string constraints
+- `thiserror` -- Error type derivation
+- `serde` / `serde_derive` -- Serialization for ConfigProvider trait
+- `proptest` -- Property-based testing (dev-dependency only)
 
 ---
 
@@ -1006,7 +1006,7 @@ The write lock is held only for the brief moment of swapping layer data and reco
 
 ### Read Access Pattern
 
-All typed getters (`get_string`, `get_int`, etc.) acquire a read lock on the effective store. Multiple threads can read concurrently. The read lock is released before returning — callers receive owned values (cloned), never references into the store.
+All typed getters (`get_string`, `get_int`, etc.) acquire a read lock on the effective store. Multiple threads can read concurrently. The read lock is released before returning -- callers receive owned values (cloned), never references into the store.
 
 ### Plugin Write Access
 
@@ -1038,7 +1038,7 @@ These properties are suitable for property-based testing with `proptest`. They v
 
 ### Property 2: Recursive Table Merge
 
-**Statement**: For any two TOML tables at different layers defining overlapping keys within a nested table, the merge produces a table containing all keys from both layers, with higher-priority values winning on conflict — recursively for nested tables.
+**Statement**: For any two TOML tables at different layers defining overlapping keys within a nested table, the merge produces a table containing all keys from both layers, with higher-priority values winning on conflict -- recursively for nested tables.
 
 **Validates**: Requirement 2, criterion 7
 
@@ -1050,7 +1050,7 @@ These properties are suitable for property-based testing with `proptest`. They v
 
 ### Property 3: Schema Validation Fallback
 
-**Statement**: For any schema entry with a default value, and any stored value that violates the schema constraints (wrong type, out of range, not in enum set, fails regex), the typed getter returns the schema default — never the invalid value.
+**Statement**: For any schema entry with a default value, and any stored value that violates the schema constraints (wrong type, out of range, not in enum set, fails regex), the typed getter returns the schema default -- never the invalid value.
 
 **Validates**: Requirement 7, criteria 5/6; Requirement 9, criterion 4
 
@@ -1223,7 +1223,7 @@ EditorConfig properties only apply to the seven properties listed above. All oth
 ### 11.1 Overview
 
 The Settings panel is a new `TabKind::SettingsPanel` rendered in `ff-desktop` as a new module
-`settings_panel.rs`. It reads the live `ff-config` schema registry to auto-generate its UI —
+`settings_panel.rs`. It reads the live `ff-config` schema registry to auto-generate its UI --
 no hard-coded field list is needed.
 
 ### 11.2 Architecture
@@ -1246,7 +1246,7 @@ POM option 0 / "0" / "SETTINGS" / "=0"
 
 ### 11.3 New Modules in `ff-desktop/src/`
 
-- `settings_panel.rs` — egui render function and `SettingsPanelState`
+- `settings_panel.rs` -- egui render function and `SettingsPanelState`
 
 ### 11.4 New `TabKind` Variant
 
@@ -1257,7 +1257,7 @@ POM option 0 / "0" / "SETTINGS" / "=0"
 
 When the user confirms a changed value:
 1. Validate against schema constraints (client-side, no file I/O).
-2. Call `config_handle.set_user_value(key, value)` — a new method on `ConfigHandle` that
+2. Call `config_handle.set_user_value(key, value)` -- a new method on `ConfigHandle` that
    writes the key to the user-layer TOML file and triggers a hot-reload cycle.
 3. The hot-reload cycle recomputes effective values and invokes registered callbacks.
 4. The Settings panel re-reads effective values on the next frame.
@@ -1267,13 +1267,13 @@ config file atomically (write to temp file, rename).
 
 ### 11.6 Reset Path
 
-`Reset to Default` calls `config_handle.remove_user_value(key)` — removes the key from the
+`Reset to Default` calls `config_handle.remove_user_value(key)` -- removes the key from the
 user-layer file and triggers a hot-reload cycle, restoring the schema default.
 
 ### 11.7 No Contradictions
 
-- `ff-config` schema registry already exposes `list_schema_entries()` — no new query API needed.
-- `get_with_provenance()` already exists — used to show the provenance badge.
+- `ff-config` schema registry already exposes `list_schema_entries()` -- no new query API needed.
+- `get_with_provenance()` already exists -- used to show the provenance badge.
 - `TabKind` extension follows the same pattern as `FilesPanel` and `SettingsPanel`.
 - Session persistence follows the same pattern as `FilesPanel`.
 

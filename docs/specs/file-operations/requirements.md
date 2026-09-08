@@ -2,26 +2,26 @@
 
 ## Introduction
 
-This feature specifies the **file operations** for FileForgeWorkbench (`ff-file-ops` crate). File operations encompass all user-facing commands for creating, opening, saving, closing, and reverting documents: New, Open, Save, Save As, Revert, and Recent Files — plus the underlying persistence mechanisms (atomic rename-on-write, backup copies, read-only detection).
+This feature specifies the **file operations** for FileForgeWorkbench (`ff-file-ops` crate). File operations encompass all user-facing commands for creating, opening, saving, closing, and reverting documents: New, Open, Save, Save As, Revert, and Recent Files -- plus the underlying persistence mechanisms (atomic rename-on-write, backup copies, read-only detection).
 
 **All file operations route through the VFS abstraction layer** (FFW-ARCH-001). No code in this crate ever calls `std::fs` or `tokio::fs` directly. File reads and writes are mediated by `ResourceUri` addressing and the VFS provider registry, ensuring that the same operations work identically whether the resource is on local disk, in the dataset catalog, or on a future remote connector.
 
-**All user-facing operations are dispatched through the command framework** (cross-cutting Requirement 4). Menu items, keyboard shortcuts, the command line, macros, and plugins all invoke the same command handlers — ensuring consistent dirty-flag tracking, undo integration, and event notification.
+**All user-facing operations are dispatched through the command framework** (cross-cutting Requirement 4). Menu items, keyboard shortcuts, the command line, macros, and plugins all invoke the same command handlers -- ensuring consistent dirty-flag tracking, undo integration, and event notification.
 
 This specification merges requirements from two primary sources and adapts them to the workbench VFS-first architecture:
 
-- **FileForgeEditor `file-menu-operations`** (5 requirements): Save As, New File, Recent Files, Revert to Saved, File Menu Layout — all with unsaved-changes confirmation dialogs, atomic write, and command engine integration.
+- **FileForgeEditor `file-menu-operations`** (5 requirements): Save As, New File, Recent Files, Revert to Saved, File Menu Layout -- all with unsaved-changes confirmation dialogs, atomic write, and command engine integration.
 - **SciTE I/O patterns** (`SciTEIO.cxx`): Async save via background worker thread, save-point tracking, read-only detection via properties, external-modification time checks before save, large-file background loading threshold, save-on-deactivate, `save.deletes.first` strategy, progress indication during background I/O.
 
 ### Design Principles
 
-1. **VFS-first** — Every file operation uses `ResourceUri` and the VFS provider API. Bare paths are converted to `vfs://local/...` URIs transparently. [WB, FFW-ARCH-001]
-2. **Atomic persistence** — Saves use write-to-temp + atomic rename to prevent data corruption on crash or power loss. [FFE-FILEMENU-1]
-3. **Async I/O** — Large saves and all VFS writes are async to avoid blocking the GUI thread. Small saves may complete synchronously below a configurable threshold. [SCI-STE-IO]
-4. **Command-driven** — All operations are registered commands (`file.new`, `file.open`, `file.save`, `file.save_as`, `file.revert`, `file.open_recent`). [WB]
-5. **Unsaved-changes guard** — Operations that discard modifications (New, Open, Revert, Close) always prompt save/discard/cancel when the document is dirty. [FFE-FILEMENU-2, FFE-FILEMENU-4]
-6. **Read-only awareness** — The system detects read-only resources and prevents mutation attempts before they reach the VFS. [SCI-STE-IO]
-7. **Backup copies** — Optionally, the original file is backed up before overwrite, providing a safety net beyond atomic rename. [SCI-STE-IO]
+1. **VFS-first** -- Every file operation uses `ResourceUri` and the VFS provider API. Bare paths are converted to `vfs://local/...` URIs transparently. [WB, FFW-ARCH-001]
+2. **Atomic persistence** -- Saves use write-to-temp + atomic rename to prevent data corruption on crash or power loss. [FFE-FILEMENU-1]
+3. **Async I/O** -- Large saves and all VFS writes are async to avoid blocking the GUI thread. Small saves may complete synchronously below a configurable threshold. [SCI-STE-IO]
+4. **Command-driven** -- All operations are registered commands (`file.new`, `file.open`, `file.save`, `file.save_as`, `file.revert`, `file.open_recent`). [WB]
+5. **Unsaved-changes guard** -- Operations that discard modifications (New, Open, Revert, Close) always prompt save/discard/cancel when the document is dirty. [FFE-FILEMENU-2, FFE-FILEMENU-4]
+6. **Read-only awareness** -- The system detects read-only resources and prevents mutation attempts before they reach the VFS. [SCI-STE-IO]
+7. **Backup copies** -- Optionally, the original file is backed up before overwrite, providing a safety net beyond atomic rename. [SCI-STE-IO]
 
 ### Source References
 
@@ -31,12 +31,12 @@ This specification merges requirements from two primary sources and adapts them 
 
 ### Cross-References
 
-- **`virtual-file-system`** — All reads and writes go through the VFS API (`ff-vfs`). Resource addresses use `ResourceUri`.
-- **`document-model`** — File operations create, load, and reload `Document` instances. Save extracts content from the document.
-- **`undo-redo-transactions`** — Revert clears the undo/redo stacks. Save marks the save-point in the transaction history.
-- **`multi-tab-editor`** — Open creates a new tab; unsaved-changes dialogs interact with tab close. Recent Files opens into a tab.
-- **`configuration-system`** — Provides settings for atomic save strategy, backup copies, recent file count, async threshold, read-only policy.
-- **`command-framework`** — All file operations are registered commands with metadata, shortcuts, and undo integration.
+- **`virtual-file-system`** -- All reads and writes go through the VFS API (`ff-vfs`). Resource addresses use `ResourceUri`.
+- **`document-model`** -- File operations create, load, and reload `Document` instances. Save extracts content from the document.
+- **`undo-redo-transactions`** -- Revert clears the undo/redo stacks. Save marks the save-point in the transaction history.
+- **`multi-tab-editor`** -- Open creates a new tab; unsaved-changes dialogs interact with tab close. Recent Files opens into a tab.
+- **`configuration-system`** -- Provides settings for atomic save strategy, backup copies, recent file count, async threshold, read-only policy.
+- **`command-framework`** -- All file operations are registered commands with metadata, shortcuts, and undo integration.
 
 ---
 
@@ -45,12 +45,12 @@ This specification merges requirements from two primary sources and adapts them 
 | Term | Definition | Source |
 |------|-----------|--------|
 | **File_Operation** | Any user-facing action that creates, opens, saves, reverts, or closes a document resource through the VFS. | [FFE-FILEMENU], [WB] |
-| **Atomic_Write** | The strategy of writing document content to a temporary file in the same directory, then performing an atomic rename over the target — preventing partial writes from corrupting the original. | [FFE-FILEMENU], [SCI-STE-IO] |
+| **Atomic_Write** | The strategy of writing document content to a temporary file in the same directory, then performing an atomic rename over the target -- preventing partial writes from corrupting the original. | [FFE-FILEMENU], [SCI-STE-IO] |
 | **Backup_Copy** | An optional copy of the original file made before overwrite, stored either alongside the original (with a configurable suffix) or in a dedicated backup directory. | [SCI-STE-IO] |
 | **Recent_Files_List** | An ordered, bounded collection of the most recently opened or saved resource URIs, persisted between sessions. | [FFE-FILEMENU] |
 | **Unsaved_Changes_Dialog** | A modal confirmation dialog (Save / Discard / Cancel) presented when an operation would discard in-memory modifications. | [FFE-FILEMENU] |
 | **Save_Point** | A marker in the undo history indicating the position where the document was last saved. The dirty flag is derived from distance to the save point. | [SCI-STE-IO] |
-| **Read_Only_Resource** | A resource that cannot be written to — either because the VFS provider reports it as non-writable, or because the user/configuration has marked it read-only. | [SCI-STE-IO] |
+| **Read_Only_Resource** | A resource that cannot be written to -- either because the VFS provider reports it as non-writable, or because the user/configuration has marked it read-only. | [SCI-STE-IO] |
 | **Async_Save_Threshold** | A configurable file size (in bytes) above which save operations execute asynchronously on a background task rather than blocking the GUI thread. | [SCI-STE-IO] |
 | **Resource_URI** | The unified `vfs://provider/path` address for any resource, as defined by the `virtual-file-system` spec. | [WB] |
 | **File_Picker** | The native or custom dialog for selecting resource paths (open or save mode), integrated with VFS providers for browsing. | [FFE-FILEMENU] |
@@ -97,7 +97,7 @@ This specification merges requirements from two primary sources and adapts them 
 7. WHEN the `file.save_as` command is executed with a Resource_URI argument (e.g., from a macro or command line), THE system SHALL write directly to that URI without opening the File_Picker.
 8. IF the target URI refers to an existing resource, THEN THE system SHALL present an overwrite confirmation dialog before proceeding with the write. IF the user declines, THE system SHALL cancel the Save As operation.
 9. WHEN Save As completes successfully, THE system SHALL add the new URI to the Recent_Files_List.
-10. THE `file.save_as` command SHALL be available regardless of whether the document is dirty — it permits saving a clean document to a new location.
+10. THE `file.save_as` command SHALL be available regardless of whether the document is dirty -- it permits saving a clean document to a new location.
 
 ---
 
@@ -173,7 +173,7 @@ This specification merges requirements from two primary sources and adapts them 
 2. THE Recent_Files_List SHALL store a maximum number of entries as configured by `file.recent_files.max_count` (default: 10, configurable via configuration-system).
 3. WHEN a file is successfully opened or saved (including Save As), THE system SHALL add that resource's canonical Resource_URI to the top of the Recent_Files_List, removing any duplicate entry with the same URI.
 4. WHEN the Recent_Files_List exceeds the configured maximum, THE system SHALL remove the oldest (least recent) entry.
-5. WHEN the user selects a URI from the Recent Files list (via menu, command palette, or `file.open_recent` command with index argument), THE system SHALL open that resource as if the user had executed `file.open` with that URI — including the Unsaved_Changes_Dialog if the active document is dirty.
+5. WHEN the user selects a URI from the Recent Files list (via menu, command palette, or `file.open_recent` command with index argument), THE system SHALL open that resource as if the user had executed `file.open` with that URI -- including the Unsaved_Changes_Dialog if the active document is dirty.
 6. IF a resource selected from the Recent Files list no longer exists or cannot be read via the VFS, THEN THE system SHALL display an error notification indicating the resource is inaccessible and remove that entry from the Recent_Files_List.
 7. WHEN the Recent_Files_List is modified (entry added or removed), THE system SHALL persist the updated list to the user-level configuration store asynchronously.
 8. WHEN the workbench starts, THE system SHALL load the Recent_Files_List from the persisted configuration.
@@ -194,11 +194,11 @@ This specification merges requirements from two primary sources and adapts them 
 2. IF the VFS provider does not support atomic rename (e.g., some remote providers), THEN THE system SHALL fall back to direct overwrite with explicit flush and fsync, and log a WARN-level diagnostic indicating reduced crash safety.
 3. WHEN `file.backup.enabled` is `true` in configuration, THE system SHALL create a Backup_Copy of the existing target resource before the atomic rename overwrites it.
 4. THE Backup_Copy SHALL be stored according to the `file.backup.location` setting: `"alongside"` (same directory, with suffix from `file.backup.suffix`, default `.bak`) or `"directory"` (in the path specified by `file.backup.directory`, preserving relative structure).
-5. IF creating the Backup_Copy fails, THE system SHALL log a WARN-level diagnostic but SHALL NOT abort the save operation — the save itself proceeds regardless.
+5. IF creating the Backup_Copy fails, THE system SHALL log a WARN-level diagnostic but SHALL NOT abort the save operation -- the save itself proceeds regardless.
 6. WHEN `file.save_strategy` is set to `"delete_first"` in configuration, THE system SHALL delete the target resource before writing the new content (SciTE `save.deletes.first` equivalent), instead of using atomic rename.
-7. WHEN `file.save_strategy` is set to `"direct"`, THE system SHALL write content directly to the target resource without using a temporary file or atomic rename — suitable for providers that do not support rename semantics.
+7. WHEN `file.save_strategy` is set to `"direct"`, THE system SHALL write content directly to the target resource without using a temporary file or atomic rename -- suitable for providers that do not support rename semantics.
 8. THE system SHALL clean up temporary files left behind by interrupted Atomic_Write operations: on startup, any `.tmp` files matching the pattern used by the save strategy in known directories SHALL be logged as WARN and optionally removed.
-9. ALL write operations (temporary file creation, flush, rename) SHALL go through the VFS provider API — the `ff-file-ops` crate SHALL NOT call platform filesystem APIs directly.
+9. ALL write operations (temporary file creation, flush, rename) SHALL go through the VFS provider API -- the `ff-file-ops` crate SHALL NOT call platform filesystem APIs directly.
 
 ---
 
@@ -211,10 +211,10 @@ This specification merges requirements from two primary sources and adapts them 
 #### Acceptance Criteria
 
 1. WHEN a resource is opened, THE system SHALL query the VFS provider's capabilities and the resource metadata to determine write permission. IF the resource is non-writable, THE system SHALL mark the Document as read-only.
-2. WHEN a Document is marked read-only, THE system SHALL prevent all mutation operations (insertion, deletion, paste, line commands, undo) from modifying the buffer — attempts SHALL be silently rejected with a status bar notification "Read-only".
+2. WHEN a Document is marked read-only, THE system SHALL prevent all mutation operations (insertion, deletion, paste, line commands, undo) from modifying the buffer -- attempts SHALL be silently rejected with a status bar notification "Read-only".
 3. WHEN a Document is read-only, THE status bar and tab SHALL display a visual read-only indicator (e.g., a lock icon or "[RO]" suffix).
 4. THE system SHALL support a `read.only` configuration property (per file-pattern matching) that forces specific resources to be treated as read-only regardless of VFS permissions.
-5. THE system SHALL provide a `file.toggle_read_only` command that allows the user to manually toggle read-only status on the current document — overriding the VFS-detected or configuration-detected state.
+5. THE system SHALL provide a `file.toggle_read_only` command that allows the user to manually toggle read-only status on the current document -- overriding the VFS-detected or configuration-detected state.
 6. WHEN a user toggles a VFS-reported read-only resource to writable mode, THE system SHALL allow editing but SHALL warn at save time if the VFS provider still reports the resource as non-writable, and the save may fail.
 7. IF the VFS provider's capability set does not include `write` for the active provider, THEN all documents opened from that provider SHALL be marked read-only automatically.
 

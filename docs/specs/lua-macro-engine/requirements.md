@@ -5,10 +5,10 @@
 This feature specifies the Lua macro engine for FileForgeWorkbench (`ff-macro` crate). The macro engine is the **scripting and automation layer** that enables users and plugins to extend editor behaviour through Lua scripts. It provides a Lua 5.4 runtime (via the `mlua` crate), a rich editor API surface, a comprehensive event hook system, per-buffer state isolation, automatic script reloading during development, macro directory scanning, security modes, and debugging support.
 
 The macro engine merges and extends two sources:
-1. **FileForgeEditor mvp Requirement 7** — the existing `LuaMacroEngine` with its `editor.*` global API, MACRO command, and file-lifecycle event hooks.
-2. **SciTE LuaExtension** — per-keystroke hooks (OnChar, OnKey), per-buffer Lua state tables, automatic reload of modified scripts, multiple extension scripts, editor properties access, and pane-object-style API design.
+1. **FileForgeEditor mvp Requirement 7** -- the existing `LuaMacroEngine` with its `editor.*` global API, MACRO command, and file-lifecycle event hooks.
+2. **SciTE LuaExtension** -- per-keystroke hooks (OnChar, OnKey), per-buffer Lua state tables, automatic reload of modified scripts, multiple extension scripts, editor properties access, and pane-object-style API design.
 
-The `ff-macro` crate depends on `ff-command` (command dispatch and scripting bridge), `ff-document` (document model for buffer access), `ff-undo` (undo/redo transactions), `ff-config` (configuration reading), `ff-logging` (diagnostics), and `ff-plugin` (plugin lifecycle — the macro engine itself registers as a plugin providing the `MacroCapability`).
+The `ff-macro` crate depends on `ff-command` (command dispatch and scripting bridge), `ff-document` (document model for buffer access), `ff-undo` (undo/redo transactions), `ff-config` (configuration reading), `ff-logging` (diagnostics), and `ff-plugin` (plugin lifecycle -- the macro engine itself registers as a plugin providing the `MacroCapability`).
 
 **Source references:**
 - **FFE-MVP-7** = FileForgeEditor mvp-implementation Requirement 7 (Lua Macro API)
@@ -87,7 +87,7 @@ The `ff-macro` crate depends on `ff-command` (command dispatch and scripting bri
 4. THE `OnBeforeSave` hook SHALL be a Cancellable_Hook: IF any registered handler returns `false`, THEN THE save operation SHALL be cancelled and the engine SHALL display a message in the status bar indicating the macro that cancelled the save.
 5. THE `OnCommand` hook SHALL be a Cancellable_Hook: IF any registered handler returns `false`, THEN the command SHALL NOT be executed, allowing macros to intercept and override built-in commands.
 6. THE `OnChar(character)` hook SHALL fire after a character is inserted into the buffer, providing the inserted character as a single-character Lua string; the hook is NOT cancellable (the character is already inserted).
-7. THE `OnKey(key_code, shift, ctrl, alt)` hook SHALL fire before a keypress is processed; it SHALL be a Cancellable_Hook — if a handler returns `false`, the default key action is suppressed.
+7. THE `OnKey(key_code, shift, ctrl, alt)` hook SHALL fire before a keypress is processed; it SHALL be a Cancellable_Hook -- if a handler returns `false`, the default key action is suppressed.
 8. THE `OnOpen(file_path)` hook SHALL fire after a file has been fully loaded into a buffer and is ready for editing.
 9. THE `OnClose(file_path)` hook SHALL fire before a buffer is discarded, allowing scripts to perform cleanup.
 10. THE `OnSwitchBuffer(file_path)` hook SHALL fire when the user switches between open tabs/buffers, providing the path of the newly active buffer.
@@ -141,7 +141,7 @@ The `ff-macro` crate depends on `ff-command` (command dispatch and scripting bri
 
 1. IF a Lua macro raises a runtime error during execution, THEN THE LuaMacroEngine SHALL catch the error, roll back the current Macro_Transaction (undoing all document changes made by the macro so far), and propagate the error message to the status bar.
 2. THE error message displayed SHALL include: the macro name or expression that failed, the Lua error message, and the Lua stack traceback (when debug mode is enabled via configuration).
-3. WHEN a macro error occurs, THE LuaMacroEngine SHALL NOT crash, panic, or leave the Lua_Runtime in an unrecoverable state — subsequent macro invocations SHALL continue to function correctly.
+3. WHEN a macro error occurs, THE LuaMacroEngine SHALL NOT crash, panic, or leave the Lua_Runtime in an unrecoverable state -- subsequent macro invocations SHALL continue to function correctly.
 4. IF a Cancellable_Hook handler raises a runtime error, THEN the hook SHALL be treated as if it returned `true` (do not cancel), the error SHALL be reported, and subsequent handlers SHALL still be invoked.
 5. THE LuaMacroEngine SHALL fire the `OnError(error_message)` hook after any macro error, providing the full error string to any registered error-handling scripts.
 6. WHEN debug mode is enabled (configuration key `macro.debug_traceback = true`), THE error output SHALL include the full Lua call stack with source file paths and line numbers.
@@ -177,10 +177,10 @@ The `ff-macro` crate depends on `ff-command` (command dispatch and scripting bri
 
 1. WHEN `macro.auto_reload` is enabled in configuration (default: `true`), THE LuaMacroEngine SHALL monitor all loaded macro script files for modifications using the platform file watcher (via `ff-vfs` connector-local-fs watcher or OS-native watcher).
 2. WHEN a loaded macro script is modified on disk, THE engine SHALL re-execute the script within 2 seconds of detecting the change, re-registering any event hooks the script defines.
-3. WHEN a script is auto-reloaded, THE engine SHALL first unregister all event hooks previously registered by that specific script, then re-run the script to register fresh hooks — preventing duplicate handler registrations.
+3. WHEN a script is auto-reloaded, THE engine SHALL first unregister all event hooks previously registered by that specific script, then re-run the script to register fresh hooks -- preventing duplicate handler registrations.
 4. IF a script fails to load during auto-reload (syntax error or runtime error), THE engine SHALL retain the previously loaded version's hooks, display the error in the status bar, and log a WARN-level diagnostic.
 5. WHEN `macro.auto_reload` is disabled, THE engine SHALL NOT monitor script files and SHALL only reload scripts when explicitly requested via the `MACRO` command or application restart.
-6. THE auto-reload mechanism SHALL NOT interfere with per-buffer state — the `buffer` tables SHALL be preserved across script reloads.
+6. THE auto-reload mechanism SHALL NOT interfere with per-buffer state -- the `buffer` tables SHALL be preserved across script reloads.
 
 ---
 
@@ -196,7 +196,7 @@ The `ff-macro` crate depends on `ff-command` (command dispatch and scripting bri
 2. THE default Macro_Directories SHALL include: the user-level macro directory (`~/.config/ffworkbench/macros/`), and if a workspace is open, a workspace-level `macros/` subdirectory relative to the workspace root.
 3. WHEN scanning a Macro_Directory, THE engine SHALL discover all `.lua` files recursively (up to 3 levels of subdirectory depth) and register them as available macros keyed by filename without extension (e.g., `macros/format_cobol.lua` → macro name `"format_cobol"`).
 4. IF two macro scripts in different directories share the same base name, THE engine SHALL prefer the script from the higher-priority directory (workspace > user), and log a DEBUG-level message noting the shadowing.
-5. THE engine SHALL support a designated startup script (`macro.startup_script` configuration key) that is executed once at engine initialization, before any buffer is loaded — useful for defining global utility functions.
+5. THE engine SHALL support a designated startup script (`macro.startup_script` configuration key) that is executed once at engine initialization, before any buffer is loaded -- useful for defining global utility functions.
 6. THE engine SHALL support a per-extension auto-load pattern (`macro.auto_load_for.<extension>` configuration key pointing to a script name) that automatically executes a script when a file with a matching extension is opened.
 7. WHEN a new `.lua` file appears in a monitored Macro_Directory while the application is running, THE engine SHALL detect it within 5 seconds and make it available for `MACRO <name>` invocation (hot-discovery).
 
@@ -204,7 +204,7 @@ The `ff-macro` crate depends on `ff-command` (command dispatch and scripting bri
 
 ### Requirement 10: Script Debugging Support
 
-**User Story:** As a macro developer, I want diagnostic tools — verbose tracebacks, a console for evaluating expressions, and execution timing — so that I can efficiently debug and profile my scripts.
+**User Story:** As a macro developer, I want diagnostic tools -- verbose tracebacks, a console for evaluating expressions, and execution timing -- so that I can efficiently debug and profile my scripts.
 
 **Source:** SCI-STE-LUA (ext.lua.debug.traceback, trace function), WB (developer tooling). [SCI-STE-LUA, WB]
 
@@ -214,7 +214,7 @@ The `ff-macro` crate depends on `ff-command` (command dispatch and scripting bri
 2. THE LuaMacroEngine SHALL expose a Lua global function `trace(message)` that outputs the message to the workbench diagnostic log at INFO level, prefixed with the calling script name and line number.
 3. THE LuaMacroEngine SHALL expose a Lua global function `print(...)` that outputs its arguments (concatenated with tabs) to the output panel or diagnostic log, providing a convenient debugging print facility.
 4. WHEN a macro is executed via the `MACRO`, `EXEC`, or `RUN` commands, THE engine SHALL measure and report the execution duration in a DEBUG-level log record (e.g., "Macro 'format_cobol' completed in 12ms").
-5. THE `EXEC` command's inline evaluation mode SHALL display the return value of the expression in the status bar, formatted using Lua's `tostring()` — useful as a quick REPL for testing expressions.
+5. THE `EXEC` command's inline evaluation mode SHALL display the return value of the expression in the status bar, formatted using Lua's `tostring()` -- useful as a quick REPL for testing expressions.
 6. WHEN a macro exceeds the configured instruction count limit, THE error message SHALL report how many instructions were executed before termination, aiding the developer in identifying the runaway code path.
 
 ---

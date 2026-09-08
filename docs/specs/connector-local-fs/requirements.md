@@ -2,11 +2,11 @@
 
 ## Introduction
 
-This feature specifies the local filesystem VFS provider for FileForgeWorkbench — the `ff-connector-local-fs` crate. This connector is the **primary VFS provider** for the initial release, implementing the `VfsProvider` trait defined by the `virtual-file-system` crate for native OS filesystem operations.
+This feature specifies the local filesystem VFS provider for FileForgeWorkbench -- the `ff-connector-local-fs` crate. This connector is the **primary VFS provider** for the initial release, implementing the `VfsProvider` trait defined by the `virtual-file-system` crate for native OS filesystem operations.
 
 The local filesystem connector provides full read/write/create/delete/rename support for files and directories on the host operating system. It handles cross-platform path differences (Windows, Linux, macOS), OS-native file watching for real-time change detection, path resolution (relative paths, tilde expansion, environment variable expansion), and large file support via streaming I/O.
 
-All filesystem I/O operations are performed asynchronously through Tokio to honour the workbench Async I/O Principle (Architecture Brief §9) — the GUI render thread is never blocked by file operations. The connector registers with the VFS provider registry under the `local` scheme, making local resources addressable as `vfs://local/path/to/resource`.
+All filesystem I/O operations are performed asynchronously through Tokio to honour the workbench Async I/O Principle (Architecture Brief §9) -- the GUI render thread is never blocked by file operations. The connector registers with the VFS provider registry under the `local` scheme, making local resources addressable as `vfs://local/path/to/resource`.
 
 **Source references:**
 - **WB** = Workbench Platform Architecture Brief (VFS principle FFW-ARCH-001, async I/O §9)
@@ -110,10 +110,10 @@ All filesystem I/O operations are performed asynchronously through Tokio to hono
 3. WHEN the Path_Resolver receives a path containing Unix-style environment variables (`$VARNAME` or `${VARNAME}`), THE resolver SHALL expand each variable to its current value from the process environment.
 4. WHEN the Path_Resolver receives a path containing Windows-style environment variables (`%VARNAME%`), THE resolver SHALL expand each variable to its current value from the process environment.
 5. IF an environment variable referenced in a path is not defined, THEN THE Path_Resolver SHALL return a VFS_Error of type InvalidPath indicating the undefined variable name.
-6. WHEN the Path_Resolver receives a path containing `.` or `..` segments, THE resolver SHALL resolve these segments logically (without filesystem access) to produce an equivalent absolute path, except when symlinks are involved — in that case, the resolver SHALL perform filesystem-aware canonical resolution.
+6. WHEN the Path_Resolver receives a path containing `.` or `..` segments, THE resolver SHALL resolve these segments logically (without filesystem access) to produce an equivalent absolute path, except when symlinks are involved -- in that case, the resolver SHALL perform filesystem-aware canonical resolution.
 7. THE Path_Resolver SHALL provide a `canonicalize` method that resolves all symbolic links, eliminates all `.` and `..` segments, and returns the true absolute path as reported by the operating system.
 8. IF the target of a `canonicalize` call does not exist, THEN THE Path_Resolver SHALL return a VFS_Error of type NotFound.
-9. THE Path_Resolver SHALL provide bidirectional conversion between Resource_URI (`vfs://local/...`) and Native_Path, with round-trip fidelity — converting to URI and back SHALL produce a path equivalent to the original.
+9. THE Path_Resolver SHALL provide bidirectional conversion between Resource_URI (`vfs://local/...`) and Native_Path, with round-trip fidelity -- converting to URI and back SHALL produce a path equivalent to the original.
 10. THE Path_Resolver SHALL handle paths containing Unicode characters, spaces, and special characters correctly on all supported platforms.
 
 ---

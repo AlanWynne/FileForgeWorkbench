@@ -1,4 +1,4 @@
-# DBeaver Data Viewer — Requirements Research [DBV-DATA]
+# DBeaver Data Viewer -- Requirements Research [DBV-DATA]
 
 > **Source:** DBeaver Community Edition documentation and wiki (public domain).
 > Content was rephrased for compliance with licensing restrictions.

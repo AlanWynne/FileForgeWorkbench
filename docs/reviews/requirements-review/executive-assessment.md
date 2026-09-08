@@ -1,4 +1,4 @@
-# Requirements Review — Task 10: Executive Assessment & Strategic Recommendations
+# Requirements Review -- Task 10: Executive Assessment & Strategic Recommendations
 
 **Phase:** Requirements Review (Phase BQ)
 **Status:** COMPLETE
@@ -50,7 +50,7 @@ connector groups.
 | Compliant | 57 | 86% | ↑ from 65% at review start |
 | Needs Improvement | 4 | 6% | ↓ from 17% |
 | Deferred Stub | 4 | 6% | New category (deferred connectors formalised) |
-| No Spec / Placeholder | 2 | 3% | Unchanged — housekeeping deferred |
+| No Spec / Placeholder | 2 | 3% | Unchanged -- housekeeping deferred |
 | Not a Feature Spec | 1 | 2% | Unchanged |
 
 **Assessment: Good.** The corpus is in a healthy state. The 14-point
@@ -77,10 +77,10 @@ feature areas stabilise.
 **Assessment: Strong.** 80% of specs have full automated test coverage.
 The six gap entries are all explainable:
 
-- Integration Layer (4): deferred connectors — intentional, no code exists
-- Explorer Layer (1): `file-tree-panel` Req 19 drag-select — egui pointer
+- Integration Layer (4): deferred connectors -- intentional, no code exists
+- Explorer Layer (1): `file-tree-panel` Req 19 drag-select -- egui pointer
   event limitation; manual verification is the appropriate test method
-- Task Layer (1): `compiler-toolchain-integration` NFR criteria — new
+- Task Layer (1): `compiler-toolchain-integration` NFR criteria -- new
   criteria added during rewrite; tests to be written in Phase BR
 
 The one pending annotation update (`compiler-toolchain-integration`
@@ -94,7 +94,7 @@ has an immediate action (CA-02). The remaining six are documentation
 clarifications deferred to Phase BR.
 
 **Assessment: Manageable.** None of the overlaps represent conflicting
-implementations — they are specification boundary ambiguities that will
+implementations -- they are specification boundary ambiguities that will
 be resolved by cross-reference edits, not code changes.
 
 ---
@@ -107,13 +107,13 @@ The most strategically significant gaps are:
 
 | Gap | Impact | Recommended Phase |
 |-----|--------|-------------------|
-| Command Palette (Ctrl+Shift+P) | Discoverability — users cannot find commands without knowing ISPF syntax | Phase BS |
-| Cross-File Search | Core productivity — no way to search across multiple files | Phase BT |
-| Workspace Model | Architectural foundation — without it, multi-root and workspace settings cannot be built | Phase BS |
-| Accessibility (WCAG AA, screen reader) | Compliance and inclusivity — no cross-cutting accessibility spec exists | Phase BU |
-| Plugin Manager UI | Extensibility — plugins exist but cannot be managed from the UI | Phase BU |
-| Audit Logging | Enterprise requirement — no structured audit trail | Phase BV |
-| Generic Toolchain Plugin Trait | Extensibility — toolchain spec is GCC/Rust-specific; blocks LLVM/GnuCOBOL | Phase BR (CA-02) |
+| Command Palette (Ctrl+Shift+P) | Discoverability -- users cannot find commands without knowing ISPF syntax | Phase BS |
+| Cross-File Search | Core productivity -- no way to search across multiple files | Phase BT |
+| Workspace Model | Architectural foundation -- without it, multi-root and workspace settings cannot be built | Phase BS |
+| Accessibility (WCAG AA, screen reader) | Compliance and inclusivity -- no cross-cutting accessibility spec exists | Phase BU |
+| Plugin Manager UI | Extensibility -- plugins exist but cannot be managed from the UI | Phase BU |
+| Audit Logging | Enterprise requirement -- no structured audit trail | Phase BV |
+| Generic Toolchain Plugin Trait | Extensibility -- toolchain spec is GCC/Rust-specific; blocks LLVM/GnuCOBOL | Phase BR (CA-02) |
 
 ### 4.2 Medium-Priority Gaps (22 items)
 
@@ -121,13 +121,13 @@ The most impactful medium-priority gaps are:
 
 | Gap | Impact |
 |-----|--------|
-| Favourites / Bookmarks | Explorer usability — users cannot pin frequently used files |
-| Macro Library Management | Automation — Lua scripts exist but have no management UI |
-| OS Dark/Light Mode Follow | UX polish — theme does not respond to system preference |
+| Favourites / Bookmarks | Explorer usability -- users cannot pin frequently used files |
+| Macro Library Management | Automation -- Lua scripts exist but have no management UI |
+| OS Dark/Light Mode Follow | UX polish -- theme does not respond to system preference |
 | Bulk Rename with Pattern | Power user productivity |
 | Role-Based Permissions | Enterprise edition scope |
 
-### 4.3 Deferred Gaps (9 items — by design)
+### 4.3 Deferred Gaps (9 items -- by design)
 
 The following gaps are intentionally out of scope for the initial release
 and are already documented as deferred in the architecture brief:
@@ -144,7 +144,7 @@ future phases without a requirements gate.
 
 ## 5. Strategic Recommendations
 
-### Recommendation 1 — Resolve CA-01 and CA-02 in Phase BR (Immediate)
+### Recommendation 1 -- Resolve CA-01 and CA-02 in Phase BR (Immediate)
 
 **CA-01** (update test annotations for renumbered compiler toolchain
 requirements) and **CA-02** (add `FR-0971: Generic Toolchain Plugin Trait`
@@ -154,10 +154,10 @@ implementation work begins.
 
 Rationale: CA-01 prevents misleading traceability in the test suite.
 CA-02 is a prerequisite for any future toolchain plugin (LLVM, GnuCOBOL,
-OpenJDK) — without it, each new toolchain will require a spec amendment
+OpenJDK) -- without it, each new toolchain will require a spec amendment
 rather than simply implementing a defined trait.
 
-### Recommendation 2 — Create Workspace Model Spec Before Phase BS
+### Recommendation 2 -- Create Workspace Model Spec Before Phase BS
 
 The `workspace-model` sub-project (FR-0160–FR-0179) is a foundational
 architectural gap. The configuration system already has a "workspace
@@ -169,12 +169,12 @@ for search) and Cross-File Search (which needs a workspace root) cannot
 be fully specified. Creating the stub spec in Phase BR unblocks both
 Phase BS features.
 
-### Recommendation 3 — Prioritise Command Palette and Cross-File Search for Phase BS
+### Recommendation 3 -- Prioritise Command Palette and Cross-File Search for Phase BS
 
 These two features have the highest user-visible impact of all the
 High-priority gaps:
 
-- The Command Palette removes the ISPF learning curve for new users —
+- The Command Palette removes the ISPF learning curve for new users --
   any command becomes discoverable via fuzzy search rather than requiring
   knowledge of the ISPF command syntax.
 - Cross-File Search is a baseline expectation for any modern code editor.
@@ -184,7 +184,7 @@ High-priority gaps:
 Both features are self-contained (no dependency on deferred connectors)
 and can be specified and implemented within a single phase.
 
-### Recommendation 4 — Create Accessibility Spec in Phase BU
+### Recommendation 4 -- Create Accessibility Spec in Phase BU
 
 The absence of a cross-cutting accessibility specification is a
 compliance risk. `file-tree-panel` Req 14 has tree-specific ARIA
@@ -199,10 +199,10 @@ The `accessibility` stub spec (CA-04) should be created in Phase BU
 with a full set of EARS criteria. Implementation can be phased across
 subsequent releases.
 
-### Recommendation 5 — Address the Four "Needs Improvement" Specs Incrementally
+### Recommendation 5 -- Address the Four "Needs Improvement" Specs Incrementally
 
 The four remaining Needs Improvement specs do not require a dedicated
-phase — they should be updated as part of the normal feature work in
+phase -- they should be updated as part of the normal feature work in
 their respective areas:
 
 | Spec | Recommended Trigger |
@@ -212,7 +212,7 @@ their respective areas:
 | `virtual-catalog-manager` | Next change request touching catalog management |
 | `compiler-toolchain-integration` | Phase BR (CA-01, CA-02 actions) |
 
-### Recommendation 6 — Rename `FFW-JES` Folder in Phase BR
+### Recommendation 6 -- Rename `FFW-JES` Folder in Phase BR
 
 The `FFW-JES` folder name violates the `kebab-case` convention. Renaming
 it to `jes-emulator` is a documentation-only change (the crate `ff-jes`
@@ -246,7 +246,7 @@ Two bugs remain open at the close of Phase BQ:
 
 | ID | Severity | Description | Recommended Action |
 |----|----------|-------------|-------------------|
-| B001 | High | POM not visible on launch — opens into editor | Resolve in Phase BR as first implementation task |
+| B001 | High | POM not visible on launch -- opens into editor | Resolve in Phase BR as first implementation task |
 | B004 | High | Editor missing primary/line command areas | Resolve in Phase BR after B001 |
 
 Both bugs are in `ff-desktop` and affect the core ISPF-style user
@@ -284,11 +284,11 @@ All Phase BQ deliverables are in `docs/reviews/requirements-review/`:
 
 | File | Task | Status |
 |------|------|--------|
-| `inventory.md` | Task 1 — Baseline Audit | ✅ Complete |
-| `terminology-map.md` | Task 2 — Terminology Standardisation | ✅ Complete |
-| `domain-classification.md` | Task 3 — Domain Classification | ✅ Complete |
-| `gap-analysis.md` | Task 4 — Gap Analysis | ✅ Complete |
-| `rewrite-delta.md` | Tasks 5–7 — Rewrite Delta Log | ✅ Complete |
-| `traceability-matrix.md` | Task 8 — Traceability Matrix | ✅ Complete |
-| `consolidation-report.md` | Task 9 — Consolidation Report | ✅ Complete |
-| `executive-assessment.md` | Task 10 — Executive Assessment | ✅ Complete |
+| `inventory.md` | Task 1 -- Baseline Audit | ✅ Complete |
+| `terminology-map.md` | Task 2 -- Terminology Standardisation | ✅ Complete |
+| `domain-classification.md` | Task 3 -- Domain Classification | ✅ Complete |
+| `gap-analysis.md` | Task 4 -- Gap Analysis | ✅ Complete |
+| `rewrite-delta.md` | Tasks 5–7 -- Rewrite Delta Log | ✅ Complete |
+| `traceability-matrix.md` | Task 8 -- Traceability Matrix | ✅ Complete |
+| `consolidation-report.md` | Task 9 -- Consolidation Report | ✅ Complete |
+| `executive-assessment.md` | Task 10 -- Executive Assessment | ✅ Complete |

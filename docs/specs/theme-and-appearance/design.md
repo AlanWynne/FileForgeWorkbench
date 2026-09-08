@@ -20,21 +20,21 @@ The `ff-theme` crate is the **central visual identity layer** for the FileForgeW
 ### Position in Architecture
 
 ```
-Wave 6 — UI and Rendering (depends on Wave 5 Command Engine)
+Wave 6 -- UI and Rendering (depends on Wave 5 Command Engine)
 
 ┌─────────────────────────────────────────────────────────┐
 │                    Application Binary                     │
-│                (ffwb / GUI shell — ff-desktop)            │
+│                (ffwb / GUI shell -- ff-desktop)            │
 ├─────────────────────────────────────────────────────────┤
 │  syntax-highlighting │ caret-and-selection │ file-tree    │
 │  text-decorations │ whitespace-and-guides │ menu/status   │
 │  layout-and-docking (panel colours)                       │
 ├─────────────────────────────────────────────────────────┤
-│              ff-theme (THIS CRATE) — Wave 6               │
+│              ff-theme (THIS CRATE) -- Wave 6               │
 ├─────────────────────────────────────────────────────────┤
-│              ff-config — Wave 2                            │
+│              ff-config -- Wave 2                            │
 ├─────────────────────────────────────────────────────────┤
-│              ff-logging — Wave 0                           │
+│              ff-logging -- Wave 0                           │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -648,7 +648,7 @@ pub struct ThemeExtension {
 
 #[derive(Debug, Clone)]
 pub struct ExtensionToken {
-    /// Token name (e.g., "result_grid_header") — relative to plugin namespace.
+    /// Token name (e.g., "result_grid_header") -- relative to plugin namespace.
     pub name: String,
     /// Default colour for Dark mode.
     pub dark_default: ColourRGBA,
@@ -969,7 +969,7 @@ pub enum ThemeError {
 
     /// Invalid colour format in theme file.
     /// Addresses: Requirement 1, criterion 5
-    #[error("[theme] validate: invalid colour '{value}' for token '{token}' in '{path}' — expected #RRGGBB or #RRGGBBAA")]
+    #[error("[theme] validate: invalid colour '{value}' for token '{token}' in '{path}' -- expected #RRGGBB or #RRGGBBAA")]
     InvalidColourFormat {
         path: PathBuf,
         token: String,
@@ -1037,25 +1037,25 @@ pub enum ThemeError {
 
 ## 7. Integration Points
 
-### With `ff-config` (Configuration System — upstream)
+### With `ff-config` (Configuration System -- upstream)
 
 - **Dependency direction**: ff-theme depends on ff-config
 - **API consumed**:
-  - `ConfigHandle::get_string(keys::THEME_ACTIVE)` — reads the active theme name
-  - `ConfigHandle::get_string("theme.mode")` — reads the active visual mode
-  - `ConfigHandle::on_reload(["theme.active", "theme.mode"], callback)` — registers hot-reload callback
+  - `ConfigHandle::get_string(keys::THEME_ACTIVE)` -- reads the active theme name
+  - `ConfigHandle::get_string("theme.mode")` -- reads the active visual mode
+  - `ConfigHandle::on_reload(["theme.active", "theme.mode"], callback)` -- registers hot-reload callback
 - **Theme file location**: Theme TOML files reside in the themes directory under the user config path (e.g., `%APPDATA%\FFWorkbench\themes\dark.toml` on Windows)
-- **Layered overrides**: Theme colour values participate in the standard layered model — a project-layer `config.toml` can override individual tokens (e.g., `[theme.editor]\nbackground = "#1a1a2e"`)
+- **Layered overrides**: Theme colour values participate in the standard layered model -- a project-layer `config.toml` can override individual tokens (e.g., `[theme.editor]\nbackground = "#1a1a2e"`)
 - **Schema registration**: ff-theme registers schema entries for `theme.active`, `theme.mode`, `theme.font_size`, and all design-token keys at startup
 - **Namespace**: Theme configuration lives under the reserved `theme` namespace (see ff-config Appendix B)
 
-### With `ff-logging` (Logging — upstream)
+### With `ff-logging` (Logging -- upstream)
 
 - **Dependency direction**: ff-theme depends on ff-logging
 - **API consumed**: `log_warn!`, `log_debug!` macros
 - **Usage**: Emit WARN on missing theme files (Req 1.3), parse errors (Req 1.4), invalid values (Req 1.5), font size clamping (Req 4.6), base theme not found (Req 12.6). Emit DEBUG on font stack fallbacks (Req 4.9).
 
-### With `ff-desktop` (GUI Shell — downstream consumer)
+### With `ff-desktop` (GUI Shell -- downstream consumer)
 
 - **Dependency direction**: ff-desktop depends on ff-theme
 - **API consumed**: `ThemeHandle::palette()`, `ThemeHandle::monospace_font()`, `ThemeHandle::proportional_font()`, `ThemeHandle::effective_monospace_size()`
@@ -1080,7 +1080,7 @@ pub enum ThemeError {
 - **API consumed**: `ThemeHandle::colour(ColourToken::DecorationsSearchHighlight)`, indicator group colours
 - **Usage**: Decoration rendering obtains highlight, underline, and marker colours from the palette.
 
-### With `plugin-architecture` (peer — bidirectional)
+### With `plugin-architecture` (peer -- bidirectional)
 
 - **Dependency direction**: plugins access ff-theme through `PluginContext`
 - **API consumed by plugins**: `ThemeHandle::register_extension()`, `ThemeHandle::extension_colour()`
@@ -1102,10 +1102,10 @@ ff-logging ← ff-config ← ff-theme ← ff-desktop
 ```
 
 `ff-theme` depends on NO other workspace crates except `ff-config` and `ff-logging`. External dependencies:
-- `toml` — TOML parsing and serialisation (theme files)
-- `arc-swap` — Lock-free atomic Arc swapping for palette updates
-- `thiserror` — Error type derivation
-- `proptest` — Property-based testing (dev-dependency only)
+- `toml` -- TOML parsing and serialisation (theme files)
+- `arc-swap` -- Lock-free atomic Arc swapping for palette updates
+- `thiserror` -- Error type derivation
+- `proptest` -- Property-based testing (dev-dependency only)
 
 ---
 
@@ -1132,10 +1132,10 @@ The following configuration keys are registered by ff-theme with the configurati
 | Component | Mechanism | Rationale |
 |-----------|-----------|-----------|
 | ThemeHandle | `Arc<ArcSwap<ThemePalette>>` | Lock-free reads, atomic palette swap on reload |
-| Palette reads | `ArcSwap::load()` — returns `Arc` snapshot | Zero-contention concurrent reads from any thread |
-| Hot-reload writes | `ArcSwap::store()` — atomic pointer swap | Single-writer (config reload thread) atomically replaces palette |
+| Palette reads | `ArcSwap::load()` -- returns `Arc` snapshot | Zero-contention concurrent reads from any thread |
+| Hot-reload writes | `ArcSwap::store()` -- atomic pointer swap | Single-writer (config reload thread) atomically replaces palette |
 | Extension registry | `Arc<RwLock<ExtensionRegistry>>` | Extensions rarely change; reads dominate |
-| Element overrides | Part of palette — atomic swap applies | Per-document overrides build new palette, then swap |
+| Element overrides | Part of palette -- atomic swap applies | Per-document overrides build new palette, then swap |
 | Event bus | `broadcast` channel or `Arc<RwLock<Vec<Sender>>>` | Decoupled notification, non-blocking |
 
 ### Palette Swap Model
@@ -1159,7 +1159,7 @@ The following configuration keys are registered by ff-theme with the configurati
                            └──────────────────────┘
 ```
 
-All readers calling `palette()` see either the old or new palette — never a mix. This satisfies Requirement 7, criterion 6 (atomic swap, no frame with mixed values).
+All readers calling `palette()` see either the old or new palette -- never a mix. This satisfies Requirement 7, criterion 6 (atomic swap, no frame with mixed values).
 
 ---
 
@@ -1315,7 +1315,7 @@ These properties are suitable for property-based testing with `proptest`. They v
 
 ### Property 5: Partial Definition Fallback
 
-**Statement**: For any theme file that omits one or more tokens, the loaded palette provides a valid (non-zero, non-null) colour for every defined `ColourToken` — filled from the built-in default for the active mode.
+**Statement**: For any theme file that omits one or more tokens, the loaded palette provides a valid (non-zero, non-null) colour for every defined `ColourToken` -- filled from the built-in default for the active mode.
 
 **Validates**: Requirement 1, criterion 6
 
@@ -1388,7 +1388,7 @@ These properties are suitable for property-based testing with `proptest`. They v
 
 ### Property 11: Theme Inheritance Chain Termination
 
-**Statement**: For any theme inheritance chain (theme A → base B → base C → ...), the chain always terminates — either at a theme with no `base` field, or at the built-in default. Circular inheritance is detected and reported as an error.
+**Statement**: For any theme inheritance chain (theme A → base B → base C → ...), the chain always terminates -- either at a theme with no `base` field, or at the built-in default. Circular inheritance is detected and reported as an error.
 
 **Validates**: Requirement 12, criterion 5
 
@@ -1460,10 +1460,10 @@ impl ThemeHandle {
 
 ### 12.4 No Contradictions
 
-- The TOML theme file format (Section 10) already supports all colour groups and the `base` inheritance key — no format changes needed.
-- The `serialise_theme` function already exists in the design (Section 5, Serialisation) — `export_theme` is a thin wrapper that sets the `name` field.
+- The TOML theme file format (Section 10) already supports all colour groups and the `base` inheritance key -- no format changes needed.
+- The `serialise_theme` function already exists in the design (Section 5, Serialisation) -- `export_theme` is a thin wrapper that sets the `name` field.
 - Hot-reload of the themes directory is handled by registering a directory watch (in addition to the individual file watches already registered).
-- The `theme.active` config key already exists (Section 8) — changing it triggers the existing hot-reload path.
+- The `theme.active` config key already exists (Section 8) -- changing it triggers the existing hot-reload path.
 
 ---
 

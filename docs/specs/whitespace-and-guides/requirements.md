@@ -6,18 +6,18 @@ This feature specifies the whitespace-and-guides subsystem for FileForgeWorkbenc
 
 The subsystem covers four related concerns:
 
-1. **Whitespace visibility** — rendering dots for spaces and arrows/strikeouts for tabs, with configurable visibility modes.
-2. **Indent guides** — vertical guide lines at each indentation level, with active-block highlighting.
-3. **Edge column indicator** — vertical line(s) or background shading at configurable column positions (e.g., column 80) to signal line-length boundaries.
-4. **Wrap markers** — small visual indicators drawn at the start or end of wrapped sub-lines to distinguish soft wraps from hard line breaks.
+1. **Whitespace visibility** -- rendering dots for spaces and arrows/strikeouts for tabs, with configurable visibility modes.
+2. **Indent guides** -- vertical guide lines at each indentation level, with active-block highlighting.
+3. **Edge column indicator** -- vertical line(s) or background shading at configurable column positions (e.g., column 80) to signal line-length boundaries.
+4. **Wrap markers** -- small visual indicators drawn at the start or end of wrapped sub-lines to distinguish soft wraps from hard line breaks.
 
 All settings are stored in the `configuration-system` and themed via `theme-and-appearance`. The model is GUI-independent: this crate defines the settings, modes, and per-line metadata; rendering is delegated to the GUI shell. Toggle commands are registered with the `command-framework`.
 
 **Source references:**
-- **[SCI-VS-9]** = Scintilla `ViewStyle` — `viewWhitespace`, `tabDrawMode`, `whitespaceSize`, WhiteSpace element colour/alpha
-- **[SCI-VS-10]** = Scintilla `ViewStyle` / `WrapAppearance` — `WrapVisualFlag`, `WrapVisualLocation`, `WrapIndentMode`, `visualStartIndent`
-- **[SCI-EV-GUIDE]** = Scintilla `EditView` — `DrawIndentGuide`, `DrawIndentGuidesOverEmpty`, `pixmapIndentGuide`, `pixmapIndentGuideHighlight`, `IndentView` enum, `STYLE_INDENTGUIDE`, `SetHighlightGuide`
-- **[SCI-VS-EDGE]** = Scintilla `ViewStyle` — `edgeState` (`EdgeVisualStyle`), `theEdge`, `theMultiEdge`, `EdgeProperties`, `SetEdgeColumn`, `MultiEdgeAddLine`
+- **[SCI-VS-9]** = Scintilla `ViewStyle` -- `viewWhitespace`, `tabDrawMode`, `whitespaceSize`, WhiteSpace element colour/alpha
+- **[SCI-VS-10]** = Scintilla `ViewStyle` / `WrapAppearance` -- `WrapVisualFlag`, `WrapVisualLocation`, `WrapIndentMode`, `visualStartIndent`
+- **[SCI-EV-GUIDE]** = Scintilla `EditView` -- `DrawIndentGuide`, `DrawIndentGuidesOverEmpty`, `pixmapIndentGuide`, `pixmapIndentGuideHighlight`, `IndentView` enum, `STYLE_INDENTGUIDE`, `SetHighlightGuide`
+- **[SCI-VS-EDGE]** = Scintilla `ViewStyle` -- `edgeState` (`EdgeVisualStyle`), `theEdge`, `theMultiEdge`, `EdgeProperties`, `SetEdgeColumn`, `MultiEdgeAddLine`
 - **[WB]** = Workbench Architecture Brief (GUI-independent core, configuration as data, command-driven architecture)
 
 ## Cross-References
@@ -34,7 +34,7 @@ All settings are stored in the `configuration-system` and themed via `theme-and-
 ## Glossary
 
 - **Whitespace_Visibility**: A mode controlling whether invisible whitespace characters (spaces and tabs) are rendered with visible glyphs. Modes: Invisible, VisibleAlways, VisibleAfterIndent, VisibleOnlyInIndent. [SCI-VS-9]
-- **Whitespace_Glyph**: The visual marker drawn for a whitespace character — a centred dot for a space, an arrow or strikeout for a tab. [SCI-VS-9]
+- **Whitespace_Glyph**: The visual marker drawn for a whitespace character -- a centred dot for a space, an arrow or strikeout for a tab. [SCI-VS-9]
 - **Whitespace_Size**: A configurable integer (in pixels or logical units) controlling the size of the dot/arrow glyph rendered for visible whitespace. [SCI-VS-9]
 - **Tab_Draw_Mode**: The style used to render visible tab characters. Modes: LongArrow (arrow spanning the full tab width) or Strikeout (horizontal line through the tab span). [SCI-VS-9]
 - **Indent_Guide**: A thin vertical line drawn at each tab-stop column within the indentation area of a line, indicating structural nesting depth. [SCI-EV-GUIDE]
@@ -70,7 +70,7 @@ All settings are stored in the `configuration-system` and themed via `theme-and-
 
 ### Requirement 2: Whitespace Glyph Appearance
 
-**User Story:** As a user, I want control over how whitespace characters are drawn — their colour, size, and tab style — so that visible whitespace is informative without being distracting.
+**User Story:** As a user, I want control over how whitespace characters are drawn -- their colour, size, and tab style -- so that visible whitespace is informative without being distracting.
 
 **Source:** [SCI-VS-9] `whitespaceSize`, `tabDrawMode`, WhiteSpace element colour with alpha.
 

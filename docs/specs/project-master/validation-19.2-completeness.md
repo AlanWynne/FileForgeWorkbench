@@ -1,4 +1,4 @@
-# Validation Report 19.2 — Sub-Project Completeness Check
+# Validation Report 19.2 -- Sub-Project Completeness Check
 
 **Generated:** 2025-01-XX (automated validation)
 **Scope:** Verify every non-deferred sub-project has both `design.md` and `tasks.md`; deferred sub-projects have `design.md` only.
@@ -93,7 +93,7 @@
 
 ## Result
 
-**✅ PASS** — All 62 sub-project spec folders are complete:
+**✅ PASS** -- All 62 sub-project spec folders are complete:
 - All 58 non-deferred sub-projects have both `design.md` and `tasks.md`
 - All 4 deferred sub-projects have `design.md` only (as expected)
 - No missing files detected

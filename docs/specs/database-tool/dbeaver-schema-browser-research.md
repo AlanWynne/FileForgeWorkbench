@@ -1,7 +1,7 @@
-# DBeaver Schema Browser — Requirements Research
+# DBeaver Schema Browser -- Requirements Research
 
 > **Source:** DBeaver Community/Pro public documentation and wiki analysis
-> **Task:** 16.4 — Extract DBeaver schema browser requirements
+> **Task:** 16.4 -- Extract DBeaver schema browser requirements
 > **Tag:** [DBV-SCHEMA]
 > **Format:** EARS (Easy Approach to Requirements Syntax)
 
@@ -43,7 +43,7 @@ DBeaver's Database Navigator is the primary interface for exploring database str
 
 ## 2. Table Inspection
 
-DBeaver provides comprehensive table inspection via the Database Object Editor with multiple tabs: Properties (name, schema, row count, data size, creation date), Columns (name, type, nullable, default, comment), Indexes (name, type, columns, uniqueness), Constraints (PK, FK, Unique, Check — with referenced table/columns), Triggers (name, event, timing), and Statistics (row count, data length, index length, average row length).
+DBeaver provides comprehensive table inspection via the Database Object Editor with multiple tabs: Properties (name, schema, row count, data size, creation date), Columns (name, type, nullable, default, comment), Indexes (name, type, columns, uniqueness), Constraints (PK, FK, Unique, Check -- with referenced table/columns), Triggers (name, event, timing), and Statistics (row count, data length, index length, average row length).
 
 ### Requirements
 
@@ -256,14 +256,14 @@ DBeaver provides two search mechanisms: Metadata Search (Ctrl+H) for finding obj
 
 ## References
 
-- [DBeaver Database Navigator documentation](https://dbeaver.com/docs/cloudbeaver/Database-Navigator/) — hierarchical tree, object browsing
-- [DBeaver Database Object Editor](https://dbeaver.com/docs/dbeaver/Database-Object-Editor/) — tabbed metadata inspector
-- [DBeaver SQL Generation](https://dbeaver.com/docs/dbeaver/SQL-Generation/) — DDL generation from navigator and data editor
-- [DBeaver Filter Database Objects](https://dbeaver.com/docs/dbeaver/Filter-Database-Objects/) — tree filtering
-- [DBeaver Metadata Search](https://dbeaver.com/2023/10/16/how-you-can-search-in-dbeaver-metadata-search/) — global object search
-- [DBeaver Incorporating Triggers](https://dbeaver.com/docs/dbeaver/Incorporating-Triggers/) — trigger management
-- [DBeaver Properties Editor](https://dbeaver.com/docs/dbeaver/Properties-Editor/) — object properties display
-- [DBeaver Simple and Advanced View](https://github.com/dbeaver/dbeaver/wiki/Simple-and-Advanced-View) — navigator view modes
-- [DBeaver Foreign Keys](https://github.com/dbeaver/dbeaver/wiki/Utilizing-Foreign-Keys) — constraint relationships
+- [DBeaver Database Navigator documentation](https://dbeaver.com/docs/cloudbeaver/Database-Navigator/) -- hierarchical tree, object browsing
+- [DBeaver Database Object Editor](https://dbeaver.com/docs/dbeaver/Database-Object-Editor/) -- tabbed metadata inspector
+- [DBeaver SQL Generation](https://dbeaver.com/docs/dbeaver/SQL-Generation/) -- DDL generation from navigator and data editor
+- [DBeaver Filter Database Objects](https://dbeaver.com/docs/dbeaver/Filter-Database-Objects/) -- tree filtering
+- [DBeaver Metadata Search](https://dbeaver.com/2023/10/16/how-you-can-search-in-dbeaver-metadata-search/) -- global object search
+- [DBeaver Incorporating Triggers](https://dbeaver.com/docs/dbeaver/Incorporating-Triggers/) -- trigger management
+- [DBeaver Properties Editor](https://dbeaver.com/docs/dbeaver/Properties-Editor/) -- object properties display
+- [DBeaver Simple and Advanced View](https://github.com/dbeaver/dbeaver/wiki/Simple-and-Advanced-View) -- navigator view modes
+- [DBeaver Foreign Keys](https://github.com/dbeaver/dbeaver/wiki/Utilizing-Foreign-Keys) -- constraint relationships
 
 Content was rephrased for compliance with licensing restrictions.

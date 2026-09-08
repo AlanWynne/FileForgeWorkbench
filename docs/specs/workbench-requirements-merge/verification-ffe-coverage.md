@@ -124,15 +124,15 @@
 | 5.6 | CHANGE ALL → replace all occurrences | `find-and-replace` | Req 5 AC 2 (replace every occurrence) | ✅ COVERED |
 | 5.7 | CHANGE NEXT → replace next occurrence | `find-and-replace` | Req 5 AC 3 (replace next after cursor) | ✅ COVERED |
 | 5.8 | BOUNDS with two column numbers → restrict FIND/CHANGE | `navigation-commands` | Req 5 AC 1, 5.7, 5.8 (BOUNDS set + restrict CHANGE/FIND) | ✅ COVERED |
-| 5.9 | C/CC line command → copy lines to A/B target | `line-commands` | (Copy Markers — FFE-CMD-25, After/Before — FFE-CMD-27) | ✅ COVERED |
-| 5.10 | M/MM line command → move lines to A/B target | `line-commands` | (Move Markers — FFE-CMD-26) | ✅ COVERED |
-| 5.11 | R line command → duplicate line N times | `line-commands` | (Repeat — FFE-CMD-24) | ✅ COVERED |
-| 5.12 | I line command → insert blank lines | `line-commands` | (Insert — FFE-CMD-23) | ✅ COVERED |
+| 5.9 | C/CC line command → copy lines to A/B target | `line-commands` | (Copy Markers -- FFE-CMD-25, After/Before -- FFE-CMD-27) | ✅ COVERED |
+| 5.10 | M/MM line command → move lines to A/B target | `line-commands` | (Move Markers -- FFE-CMD-26) | ✅ COVERED |
+| 5.11 | R line command → duplicate line N times | `line-commands` | (Repeat -- FFE-CMD-24) | ✅ COVERED |
+| 5.12 | I line command → insert blank lines | `line-commands` | (Insert -- FFE-CMD-23) | ✅ COVERED |
 
 **Result: 11/12 COVERED** (1 gap)
 
-**Gap Analysis — FFE 5.4 (FIND wrap-around):**
-The FFE requirement states: "WHEN a FIND reaches the last line without a match, THE Editor SHALL wrap to the beginning of the file and continue searching." The workbench `find-and-replace` spec explicitly states the opposite for RFIND: "wraps past the document boundary without finding a match — report NOT FOUND without wrapping around to the other end." The workbench spec uses FIRST/LAST/NEXT/PREV direction modifiers but does not explicitly define automatic wrap-around semantics for the default `FIND 'text'` command. This is a deliberate design change (ISPF-style explicit FIRST direction vs. auto-wrap), but it should be noted as an intentional behavioural difference from FFE.
+**Gap Analysis -- FFE 5.4 (FIND wrap-around):**
+The FFE requirement states: "WHEN a FIND reaches the last line without a match, THE Editor SHALL wrap to the beginning of the file and continue searching." The workbench `find-and-replace` spec explicitly states the opposite for RFIND: "wraps past the document boundary without finding a match -- report NOT FOUND without wrapping around to the other end." The workbench spec uses FIRST/LAST/NEXT/PREV direction modifiers but does not explicitly define automatic wrap-around semantics for the default `FIND 'text'` command. This is a deliberate design change (ISPF-style explicit FIRST direction vs. auto-wrap), but it should be noted as an intentional behavioural difference from FFE.
 
 ---
 
@@ -214,17 +214,17 @@ The FFE requirement states: "WHEN a FIND reaches the last line without a match, 
 | **FFE Criterion** | 5.4: "WHEN a FIND reaches the last line without a match, THE Editor SHALL wrap to the beginning of the file and continue searching." |
 | **Expected Location** | `find-and-replace` requirements |
 | **Finding** | The workbench spec uses explicit direction modifiers (NEXT/PREV/FIRST/LAST) and does NOT implement automatic wrap-around. RFIND explicitly states "NOT FOUND without wrapping around." |
-| **Impact** | LOW — This appears to be an intentional design decision. The workbench provides `FIND 'text' FIRST` to search from the beginning, which is functionally equivalent to wrap-around in a single command invocation. The ISPF model uses explicit direction rather than implicit wrap. |
+| **Impact** | LOW -- This appears to be an intentional design decision. The workbench provides `FIND 'text' FIRST` to search from the beginning, which is functionally equivalent to wrap-around in a single command invocation. The ISPF model uses explicit direction rather than implicit wrap. |
 | **Recommendation** | Either (a) document this as an intentional deviation from FFE in the find-and-replace spec, or (b) add a configurable `find.wrap_around` option that, when enabled, causes FIND NEXT to wrap to the beginning when reaching the end. |
 
-### Gap 2: Selection Cleared by Typing (FFE 8.18) — PARTIAL
+### Gap 2: Selection Cleared by Typing (FFE 8.18) -- PARTIAL
 
 | Field | Value |
 |-------|-------|
 | **FFE Criterion** | 8.18: "WHEN the user starts typing or presses any navigation key, THE active selection SHALL be cleared." |
 | **Expected Location** | `edit-operations` requirements |
-| **Finding** | The workbench spec handles this through two separate mechanisms: (1) Req 6 AC 10 — typing with selection replaces selected text (implicitly clears selection); (2) Req 6 AC 11 — navigation arrow without Shift collapses selection. The explicit statement "selection SHALL be cleared" on "any navigation key" is not a single criterion but is covered by the combined behaviour. |
-| **Impact** | VERY LOW — The behaviour is functionally covered across multiple criteria. No functional gap exists. |
+| **Finding** | The workbench spec handles this through two separate mechanisms: (1) Req 6 AC 10 -- typing with selection replaces selected text (implicitly clears selection); (2) Req 6 AC 11 -- navigation arrow without Shift collapses selection. The explicit statement "selection SHALL be cleared" on "any navigation key" is not a single criterion but is covered by the combined behaviour. |
+| **Impact** | VERY LOW -- The behaviour is functionally covered across multiple criteria. No functional gap exists. |
 | **Recommendation** | No action needed; this is adequately covered by the combined selection model semantics. |
 
 ---

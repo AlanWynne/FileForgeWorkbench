@@ -2,9 +2,9 @@
 
 ## Introduction
 
-This feature specifies the **Document Model** for FileForgeWorkbench — the `ff-document-model` crate. The document model is the foundational text storage layer that underpins the entire editing experience. It provides gap-buffer-based text storage, efficient line indexing, large-file streaming support, buffer lifecycle management, and encoding-aware character navigation.
+This feature specifies the **Document Model** for FileForgeWorkbench -- the `ff-document-model` crate. The document model is the foundational text storage layer that underpins the entire editing experience. It provides gap-buffer-based text storage, efficient line indexing, large-file streaming support, buffer lifecycle management, and encoding-aware character navigation.
 
-The document model is **GUI-independent** — it has no rendering or framework dependency. It operates behind the Virtual File System abstraction (FFW-ARCH-001) for all file access, integrates with the command framework for mutation operations, and supports multi-view sharing through reference-counted ownership.
+The document model is **GUI-independent** -- it has no rendering or framework dependency. It operates behind the Virtual File System abstraction (FFW-ARCH-001) for all file access, integrates with the command framework for mutation operations, and supports multi-view sharing through reference-counted ownership.
 
 This specification merges requirements from two primary sources:
 
@@ -40,7 +40,7 @@ The design adapts Scintilla's C++ patterns to idiomatic Rust: traits replace vir
 - **DocumentWatcher**: A trait that consumers implement to receive notifications about document modifications, save-point changes, and lifecycle events. [SCI-DOC-8]
 - **TopLine**: The 1-based line number identifying the first line currently visible in a viewport. [FFE-MVP-2]
 - **SplitView**: A two-segment view over the gap buffer that provides read access to the entire text content without compacting the gap. [SCI-DOC-1]
-- **VFS**: Virtual File System — the abstraction layer through which all file access flows (FFW-ARCH-001). [WB]
+- **VFS**: Virtual File System -- the abstraction layer through which all file access flows (FFW-ARCH-001). [WB]
 
 ---
 
@@ -77,13 +77,13 @@ The design adapts Scintilla's C++ patterns to idiomatic Rust: traits replace vir
 
 1. WHEN `insert(position, text)` is called on a non-read-only document, THE TextBuffer SHALL insert the text at the specified byte position, update the LineIndex for any line-end characters in the inserted text, and notify the undo system (if undo collection is enabled). [SCI-DOC-2]
 2. WHEN `delete(position, length)` is called on a non-read-only document, THE TextBuffer SHALL remove `length` bytes starting at `position`, update the LineIndex by removing line records for any line-end characters in the deleted range, and notify the undo system. [SCI-DOC-2]
-3. WHILE inserting text, THE TextBuffer SHALL detect line-end characters (CR, LF, CRLF, and — when Unicode line-end mode is active — LS U+2028, PS U+2029, NEL U+0085) and insert corresponding line records into the LineIndex. [SCI-DOC-2, SCI-DOC-7]
+3. WHILE inserting text, THE TextBuffer SHALL detect line-end characters (CR, LF, CRLF, and -- when Unicode line-end mode is active -- LS U+2028, PS U+2029, NEL U+0085) and insert corresponding line records into the LineIndex. [SCI-DOC-2, SCI-DOC-7]
 4. WHILE deleting text, THE TextBuffer SHALL remove line records for any line-end characters contained within the deleted range and fix up adjacent CR+LF pairs that may be split or joined by the deletion. [SCI-DOC-2]
 5. WHEN an insertion splits a CRLF pair (inserting between the CR and LF), THE TextBuffer SHALL create a new line boundary after the LF, treating the CR and LF as separate line endings. [SCI-DOC-2]
 6. WHEN a deletion causes a CR to become adjacent to a LF (merging previously separate characters), THE TextBuffer SHALL merge them into a single CRLF line ending by removing the extra line record. [SCI-DOC-2]
 7. IF the document is in read-only mode, THEN `insert()` and `delete()` SHALL return an error without modifying content. [SCI-DOC-2]
 8. THE TextBuffer SHALL expose a `set_read_only(bool)` method and an `is_read_only()` query to control and inspect the read-only state. [SCI-DOC-2]
-9. ALL mutation operations SHALL be routable through the workbench command framework — the document model crate SHALL provide the operation primitives but SHALL NOT bypass the command dispatch path when invoked from higher layers. [WB]
+9. ALL mutation operations SHALL be routable through the workbench command framework -- the document model crate SHALL provide the operation primitives but SHALL NOT bypass the command dispatch path when invoked from higher layers. [WB]
 
 ---
 
@@ -101,8 +101,8 @@ The design adapts Scintilla's C++ patterns to idiomatic Rust: traits replace vir
 4. IF `line_start(line)` is called with a line number beyond the last line, THEN THE LineIndex SHALL return the BytePosition equal to the document length (one past the last byte). [SCI-DOC-3]
 5. WHEN `line_end(line)` is called with a valid LineNumber, THE LineIndex SHALL return the BytePosition of the last content byte on that line (before the line-end sequence), accounting for CR, LF, CRLF, and Unicode line endings when active. [SCI-DOC-3]
 6. WHEN `line_from_position(position)` is called with a valid BytePosition, THE LineIndex SHALL return the LineNumber containing that byte position via O(log n) search. [SCI-DOC-3]
-7. THE LineIndex SHALL support correct 1-based line numbers for display purposes — the API SHALL use 0-based LineNumber internally but provide a conversion method to 1-based display numbers. [FFE-MVP-1]
-8. WHEN the document is loaded incrementally (streaming), THE LineIndex SHALL be usable for already-indexed lines without waiting for the full index to complete — partial results are valid. [FFE-MVP-1]
+7. THE LineIndex SHALL support correct 1-based line numbers for display purposes -- the API SHALL use 0-based LineNumber internally but provide a conversion method to 1-based display numbers. [FFE-MVP-1]
+8. WHEN the document is loaded incrementally (streaming), THE LineIndex SHALL be usable for already-indexed lines without waiting for the full index to complete -- partial results are valid. [FFE-MVP-1]
 9. THE LineIndex SHALL support an optional character-count index (UTF-16 and UTF-32 character counts per line) for translation between byte offsets and character offsets, allocatable on demand. [SCI-DOC-3]
 10. WHEN a character-count index is allocated, THE LineIndex SHALL calculate character widths for all existing lines and maintain them incrementally during subsequent insertions and deletions. [SCI-DOC-3]
 11. WHEN a character-count index reference count drops to zero after release, THE LineIndex SHALL deallocate the index storage to reclaim memory. [SCI-DOC-3]
@@ -118,14 +118,14 @@ The design adapts Scintilla's C++ patterns to idiomatic Rust: traits replace vir
 #### Acceptance Criteria
 
 1. WHEN a file is opened, THE Document SHALL initiate an async streaming read from the VFS, loading content in configurable chunk sizes (default 64 KB). [FFE-MVP-1, WB]
-2. WHILE a file is loading, THE Document SHALL make already-loaded content available for reading — consumers SHALL NOT be blocked waiting for the full file to load. [FFE-MVP-1]
+2. WHILE a file is loading, THE Document SHALL make already-loaded content available for reading -- consumers SHALL NOT be blocked waiting for the full file to load. [FFE-MVP-1]
 3. WHEN a streaming load is in progress, THE SparseLineIndex SHALL be built incrementally in a background task, recording one checkpoint per configurable number of lines (default 1000 lines). [FFE-MVP-1]
 4. THE Document SHALL expose a `loading_progress()` method that returns the current loading state: not-started, in-progress (with bytes-loaded and estimated-total), complete, or failed. [FFE-MVP-1]
 5. WHEN the streaming load completes successfully, THE Document SHALL finalize the LineIndex from the sparse checkpoints into a complete index, and notify all watchers that loading is complete. [FFE-MVP-1]
 6. IF the VFS reports an error during streaming load (file not found, permission denied, I/O error), THEN THE Document SHALL transition to a failed state, preserve any partially loaded content, and notify watchers with the error details. [FFE-MVP-1]
 7. WHEN no file path is provided (empty session), THE Document SHALL initialize with an empty buffer and a single-line LineIndex. [FFE-MVP-1]
-8. ALL file I/O operations SHALL flow through the VFS abstraction (the `ff-vfs` crate) — the document model SHALL NOT use `std::fs`, `tokio::fs`, or any platform-specific I/O directly. [WB]
-9. THE streaming reader SHALL be cancellable — if the document is closed or replaced before loading completes, the background task SHALL terminate without resource leaks. [WB]
+8. ALL file I/O operations SHALL flow through the VFS abstraction (the `ff-vfs` crate) -- the document model SHALL NOT use `std::fs`, `tokio::fs`, or any platform-specific I/O directly. [WB]
+9. THE streaming reader SHALL be cancellable -- if the document is closed or replaced before loading completes, the background task SHALL terminate without resource leaks. [WB]
 
 ---
 
@@ -156,12 +156,12 @@ The design adapts Scintilla's C++ patterns to idiomatic Rust: traits replace vir
 
 1. THE Document SHALL be wrapped in a `DocumentHandle` type (defined as `Arc<RwLock<Document>>`) enabling shared ownership across multiple views and threads. [SCI-DOC-8]
 2. WHEN a DocumentHandle is cloned, THE reference count SHALL increment, allowing multiple consumers to hold the same document simultaneously. [SCI-DOC-8]
-3. WHEN the last DocumentHandle is dropped, THE Document SHALL be deallocated — no explicit `release()` or `destroy()` call is required (Rust's `Drop` semantics handle this). [SCI-DOC-8]
+3. WHEN the last DocumentHandle is dropped, THE Document SHALL be deallocated -- no explicit `release()` or `destroy()` call is required (Rust's `Drop` semantics handle this). [SCI-DOC-8]
 4. BEFORE a Document is dropped, THE system SHALL notify all registered DocumentWatcher instances via a `notify_deleted()` callback, giving them an opportunity to clean up references. [SCI-DOC-8]
 5. THE Document SHALL expose an `add_watcher(watcher)` method that registers a trait object implementing DocumentWatcher, returning a WatcherHandle for later removal. [SCI-DOC-8]
 6. THE Document SHALL expose a `remove_watcher(handle)` method that unregisters a previously registered watcher. [SCI-DOC-8]
-7. THE Document SHALL be `Send + Sync` — it SHALL be safe to share DocumentHandle across threads and access it from any thread (with the RwLock providing interior mutability synchronization). [WB]
-8. THE Document SHALL support a read-only mode where no mutations are accepted — multiple views can read concurrently via RwLock read guards. [SCI-DOC-8]
+7. THE Document SHALL be `Send + Sync` -- it SHALL be safe to share DocumentHandle across threads and access it from any thread (with the RwLock providing interior mutability synchronization). [WB]
+8. THE Document SHALL support a read-only mode where no mutations are accepted -- multiple views can read concurrently via RwLock read guards. [SCI-DOC-8]
 
 ---
 
@@ -178,7 +178,7 @@ The design adapts Scintilla's C++ patterns to idiomatic Rust: traits replace vir
 3. WHEN text is deleted, THE Document SHALL notify all registered watchers with the deletion position, the number of bytes deleted, and the number of lines removed. [SCI-DOC-8]
 4. WHEN a modification is attempted on a read-only document, THE Document SHALL notify all watchers via `notify_modify_attempt()` so that the application can prompt the user or unlock the file. [SCI-DOC-8]
 5. WHEN the document reaches or leaves its save point (the state matching the on-disk content), THE Document SHALL notify all watchers via `notify_save_point(at_save_point)`. [SCI-DOC-8]
-6. THE watcher notification system SHALL be non-blocking — watchers that perform expensive work in response to notifications SHALL be responsible for deferring that work off the notification path. [WB]
+6. THE watcher notification system SHALL be non-blocking -- watchers that perform expensive work in response to notifications SHALL be responsible for deferring that work off the notification path. [WB]
 7. IF a watcher is added that is already registered (same trait object), THEN `add_watcher()` SHALL return an error without duplicating the registration. [SCI-DOC-8]
 
 ---
@@ -197,8 +197,8 @@ The design adapts Scintilla's C++ patterns to idiomatic Rust: traits replace vir
 4. WHEN `character_at(position)` is called, THE Document SHALL return a CharacterExtracted containing the Unicode code point (as `char`) and the byte width of the character at that position. [SCI-DOC-11]
 5. WHEN `character_before(position)` is called, THE Document SHALL return a CharacterExtracted for the character immediately before the given position by scanning backwards through the UTF-8 encoding. [SCI-DOC-11]
 6. WHEN `relative_position(start, character_offset)` is called, THE Document SHALL advance `character_offset` characters from `start`, returning `None` if the result would be out of bounds. [SCI-DOC-11]
-7. THE Document SHALL treat CR+LF pairs as a single atomic unit for navigation — `next_position` SHALL never land between a CR and its following LF. [SCI-DOC-11]
-8. THE Document SHALL validate UTF-8 sequences during navigation — invalid byte sequences SHALL be treated as individual bytes (one byte = one character) rather than causing errors or panics. [SCI-DOC-11]
+7. THE Document SHALL treat CR+LF pairs as a single atomic unit for navigation -- `next_position` SHALL never land between a CR and its following LF. [SCI-DOC-11]
+8. THE Document SHALL validate UTF-8 sequences during navigation -- invalid byte sequences SHALL be treated as individual bytes (one byte = one character) rather than causing errors or panics. [SCI-DOC-11]
 
 ---
 
@@ -216,8 +216,8 @@ The design adapts Scintilla's C++ patterns to idiomatic Rust: traits replace vir
 4. WHEN `scroll_line_down(count)` is called, THE Document SHALL advance `top_line` by `count` lines, clamped to prevent scrolling past the last displayable page. [FFE-MVP-2]
 5. WHEN `scroll_line_up(count)` is called, THE Document SHALL retreat `top_line` by `count` lines, clamped to line 1. [FFE-MVP-2]
 6. WHEN `set_top_line(line)` is called with a specific line number, THE Document SHALL set `top_line` to that value, clamped to the valid range [1, max_top_line]. [FFE-MVP-2]
-7. THE Document SHALL expose a `max_top_line(visible_count)` method that returns the maximum valid `top_line` given a viewport of `visible_count` lines — computed as `max(1, line_count - visible_count + 1)`. [FFE-MVP-2]
-8. ALL scroll operations SHALL be deterministic and idempotent at boundaries — calling `scroll_page_up` when already at line 1 SHALL have no effect on `top_line`. [FFE-MVP-2]
+7. THE Document SHALL expose a `max_top_line(visible_count)` method that returns the maximum valid `top_line` given a viewport of `visible_count` lines -- computed as `max(1, line_count - visible_count + 1)`. [FFE-MVP-2]
+8. ALL scroll operations SHALL be deterministic and idempotent at boundaries -- calling `scroll_page_up` when already at line 1 SHALL have no effect on `top_line`. [FFE-MVP-2]
 
 ---
 
@@ -241,7 +241,7 @@ The design adapts Scintilla's C++ patterns to idiomatic Rust: traits replace vir
 ## Cross-References
 
 - **`virtual-file-system`**: The document-model uses VFS for all file access (streaming reads, saves). [WB]
-- **`undo-redo-transactions`**: The document-model integrates with the undo system — insert/delete operations record undo actions. The undo-redo-transactions spec is authoritative for transaction semantics. [SCI-DOC-2]
+- **`undo-redo-transactions`**: The document-model integrates with the undo system -- insert/delete operations record undo actions. The undo-redo-transactions spec is authoritative for transaction semantics. [SCI-DOC-2]
 - **`edit-operations`**: Higher-level edit operations (character typing, selection replacement, multi-caret edits) use the document-model's insert/delete primitives. [WB]
 - **`display-line-mapping`**: The display-line-mapping crate consumes the LineIndex to map document lines to display lines (accounting for folding, wrapping, exclusion). [SCI-DOC-3]
 - **`encoding-and-characters`**: Detailed encoding detection, BOM handling, and encoding conversion are specified in encoding-and-characters. The document-model provides UTF-8 character navigation; encoding-and-characters handles the broader encoding surface. [SCI-DOC-11]

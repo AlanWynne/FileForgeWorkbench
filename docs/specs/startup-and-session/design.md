@@ -12,12 +12,12 @@ The `ff-session` crate orchestrates the **application startup sequence**, **sess
 - Process command-line arguments with proper precedence over session restore
 - Execute a safe Exit_Sequence: unsaved-change prompts, session save, plugin shutdown
 - Detect abnormal termination and offer crash recovery from Recovery_Files
-- Guarantee graceful degradation — no single corrupt or missing file prevents startup
+- Guarantee graceful degradation -- no single corrupt or missing file prevents startup
 
 ### Position in Architecture
 
 ```
-Wave 8 — File I/O and Session
+Wave 8 -- File I/O and Session
 
 ┌─────────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                   │
@@ -91,7 +91,7 @@ graph TD
         CORE[ff-core<br/>EventBus, Platform]
     end
 
-    subgraph Shell [GUI Shell — ff-desktop]
+    subgraph Shell [GUI Shell -- ff-desktop]
         RENDER[First Frame Render]
         STATUS[Status Bar Notifications]
         DIALOG[Recovery Dialog]
@@ -424,7 +424,7 @@ pub struct DisplayBounds {
 
 ```rust
 /// Per-tab state persisted as part of the session.
-/// This is the session-layer view of a tab — not the full runtime Tab object.
+/// This is the session-layer view of a tab -- not the full runtime Tab object.
 ///
 /// Addresses: Requirement 4 AC 1, Requirement 5
 #[derive(Debug, Clone, PartialEq)]
@@ -652,7 +652,7 @@ pub enum FileOpenTargets {
     StartupFile(String),
     /// Restore tabs from session state.
     SessionRestore(Vec<TabState>),
-    /// No files to open — show empty/welcome state.
+    /// No files to open -- show empty/welcome state.
     Empty,
 }
 
@@ -959,25 +959,25 @@ impl DegradedModeTracker {
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum SessionError {
-    /// CLI argument parsing failed (fatal — prevents startup).
+    /// CLI argument parsing failed (fatal -- prevents startup).
     #[error("[session] cli: {0}")]
     CliParseFailed(String),
 
     /// User_Data_Dir could not be created or is not writable.
-    #[error("[session] user-data-dir: {reason} — path: {path}")]
+    #[error("[session] user-data-dir: {reason} -- path: {path}")]
     UserDataDirError {
         path: String,
         reason: String,
     },
 
     /// Session file could not be read (corrupt, permission, I/O error).
-    #[error("[session] load: failed to read session file — {reason}")]
+    #[error("[session] load: failed to read session file -- {reason}")]
     SessionFileReadError {
         reason: String,
     },
 
     /// Session file could not be written (permission, disk full, I/O error).
-    #[error("[session] save: failed to write session file — {reason}")]
+    #[error("[session] save: failed to write session file -- {reason}")]
     SessionFileWriteError {
         reason: String,
     },
@@ -990,20 +990,20 @@ pub enum SessionError {
     },
 
     /// Session file TOML is syntactically invalid.
-    #[error("[session] parse: invalid TOML in session file — {reason}")]
+    #[error("[session] parse: invalid TOML in session file -- {reason}")]
     SessionParseError {
         reason: String,
     },
 
     /// Recovery file is corrupt or cannot be applied.
-    #[error("[session] recovery: corrupt recovery file for {uri} — {reason}")]
+    #[error("[session] recovery: corrupt recovery file for {uri} -- {reason}")]
     RecoveryFileCorrupt {
         uri: String,
         reason: String,
     },
 
     /// Recovery directory scan failed (permission or I/O error).
-    #[error("[session] recovery: failed to scan recovery directory — {reason}")]
+    #[error("[session] recovery: failed to scan recovery directory -- {reason}")]
     RecoveryScanError {
         reason: String,
     },
@@ -1016,20 +1016,20 @@ pub enum SessionError {
     },
 
     /// Window geometry restoration failed (display info unavailable).
-    #[error("[session] geometry: failed to restore window geometry — {reason}")]
+    #[error("[session] geometry: failed to restore window geometry -- {reason}")]
     GeometryRestoreError {
         reason: String,
     },
 
     /// Configuration key access error.
-    #[error("[session] config: error accessing '{key}' — {reason}")]
+    #[error("[session] config: error accessing '{key}' -- {reason}")]
     ConfigAccessError {
         key: String,
         reason: String,
     },
 
     /// Generic I/O error with session context.
-    #[error("[session] {operation}: I/O error — {source}")]
+    #[error("[session] {operation}: I/O error -- {source}")]
     Io {
         operation: String,
         #[source]
@@ -1065,13 +1065,13 @@ pub enum SessionError {
 
 | Key | Type | Default | Range | Purpose |
 |-----|------|---------|-------|---------|
-| `session.user_data_dir` | `String` | platform default | — | Custom User_Data_Dir path |
+| `session.user_data_dir` | `String` | platform default | -- | Custom User_Data_Dir path |
 | `session.max_recent_files` | `u32` | `50` | 1–500 | Recent files list capacity |
-| `session.restore_on_startup` | `bool` | `true` | — | Enable/disable session restore |
-| `session.restore_tabs_on_startup` | `bool` | `true` | — | Restore tabs (vs. layout only) |
-| `session.startup_file` | `String` | `""` | — | Auto-open file on every launch |
-| `session.save_window_geometry` | `bool` | `true` | — | Persist/restore window geometry |
-| `session.crash_recovery_enabled` | `bool` | `true` | — | Enable crash recovery scanning |
+| `session.restore_on_startup` | `bool` | `true` | -- | Enable/disable session restore |
+| `session.restore_tabs_on_startup` | `bool` | `true` | -- | Restore tabs (vs. layout only) |
+| `session.startup_file` | `String` | `""` | -- | Auto-open file on every launch |
+| `session.save_window_geometry` | `bool` | `true` | -- | Persist/restore window geometry |
+| `session.crash_recovery_enabled` | `bool` | `true` | -- | Enable crash recovery scanning |
 | `session.auto_save_interval_seconds` | `u32` | `300` | 30–3600 | Periodic session save interval |
 
 ### Integration with `ff-plugin` (plugin-architecture)
@@ -1147,7 +1147,7 @@ These properties are suitable for property-based testing with the `proptest` cra
 // assertion: phases 9, 10 start only after phase 8 completes
 ```
 
-### Property 2: Graceful Degradation — No Phase Failure Prevents Startup
+### Property 2: Graceful Degradation -- No Phase Failure Prevents Startup
 
 **Statement**: For any combination of phase outcomes where Phase 1 succeeds (valid CLI args), the startup sequence always reaches Phase 8 (first frame rendered). A failure in any phase 2–7 results in `PhaseOutcome::Degraded` for that phase but does not abort subsequent phases.
 
@@ -1218,7 +1218,7 @@ These properties are suitable for property-based testing with the `proptest` cra
 
 ### Property 7: Corrupt Session File Never Prevents Startup
 
-**Statement**: For any byte sequence (including valid TOML, invalid TOML, empty, binary garbage) written as the session file, loading the session file either returns a valid `SessionState` or returns an empty `SessionState` — it never panics or propagates an unrecoverable error.
+**Statement**: For any byte sequence (including valid TOML, invalid TOML, empty, binary garbage) written as the session file, loading the session file either returns a valid `SessionState` or returns an empty `SessionState` -- it never panics or propagates an unrecoverable error.
 
 **Validates**: Requirement 4 AC 7, AC 8; Requirement 11 AC 1
 
@@ -1284,15 +1284,15 @@ No lower-precedence source is ever selected when a higher-precedence source is a
 
 ### Overview
 
-The workbench operates as a **container of detachable tabbed windows**. Each tab is an independent work context — a Primary Option Menu, a file editor, a utility panel, etc. On first launch the container holds a single POM tab. On subsequent launches it restores the exact session state from last close.
+The workbench operates as a **container of detachable tabbed windows**. Each tab is an independent work context -- a Primary Option Menu, a file editor, a utility panel, etc. On first launch the container holds a single POM tab. On subsequent launches it restores the exact session state from last close.
 
-A Primary Option Menu tab is a special tab type that renders the ISPF-style home screen. When the user enters a command in its `Command ===>` field that changes context (e.g., option `1` to open a file), the tab's content transforms to the new context in-place — it does not open a new tab unless the user explicitly requests one.
+A Primary Option Menu tab is a special tab type that renders the ISPF-style home screen. When the user enters a command in its `Command ===>` field that changes context (e.g., option `1` to open a file), the tab's content transforms to the new context in-place -- it does not open a new tab unless the user explicitly requests one.
 
 ### Design Decisions
 
 - **Tab types**: The `Tab` struct gains a `TabKind` enum: `PrimaryOptionMenu` | `FileEditor` | `Untitled`. The central panel dispatch switches on `active_tab().kind`.
 - **Menu bar alignment (Phase AD)**: The menu bar top-level entries mirror the 9-option POM: `Settings`, `File Catalogs`, `Files`, `Utilities`, `Compilers`, `Lua`, `Terminals`, `Databases`, `Plugins`, `Help`. The `Plugins` menu was added in Phase AD. `File Catalogs` was added to mirror POM option 1.
-- **Session restore**: On startup, if a saved session exists, restore it exactly. If no session, open one `PrimaryOptionMenu` tab. The `show_pom` field is removed — POM presence is determined by session state.
+- **Session restore**: On startup, if a saved session exists, restore it exactly. If no session, open one `PrimaryOptionMenu` tab. The `show_pom` field is removed -- POM presence is determined by session state.
 - **Tab bar context menu (empty space)**: Right-clicking the tab bar background (not a tab header) shows `New` (new POM tab) and `New File` (new untitled editor tab).
 - **Tab header context menu**: Right-clicking any tab header shows the full 27-item context menu (Req 14.15). File-specific items are disabled on POM tabs.
 - **Command routing**: `START` → new POM tab. `CLOSE` → close current tab. `EXIT`/`=X`/Ctrl+X → application exit. Option numbers (`1`–6) → transform current POM tab to the selected feature.
@@ -1349,14 +1349,14 @@ WorkbenchShell::update()
 
 #### Overview
 
-POM option 2 opens a **File Explorer Panel** — a tree-view panel that shows all open/mounted catalogs as top-level nodes with their files listed beneath them. This is distinct from the Files Panel (option 1, `FilesPanel` / `[FILES]`) which is the catalog management UI.
+POM option 2 opens a **File Explorer Panel** -- a tree-view panel that shows all open/mounted catalogs as top-level nodes with their files listed beneath them. This is distinct from the Files Panel (option 1, `FilesPanel` / `[FILES]`) which is the catalog management UI.
 
-The File Explorer Panel reuses the catalog tree data from the `CatalogRegistry` (already implemented in `catalog_registry.rs`) and renders it as a simple expandable tree. It does not duplicate the full `file-tree-panel` crate implementation — it is a lightweight shell-level panel that reads from the existing catalog registry.
+The File Explorer Panel reuses the catalog tree data from the `CatalogRegistry` (already implemented in `catalog_registry.rs`) and renders it as a simple expandable tree. It does not duplicate the full `file-tree-panel` crate implementation -- it is a lightweight shell-level panel that reads from the existing catalog registry.
 
 #### Design Decisions
 
 - **New `TabKind` variant**: `FileExplorerPanel` is added to the `TabKind` enum alongside `PrimaryOptionMenu`, `FileEditor`, `Untitled`, `FilesPanel`, `SettingsPanel`.
-- **Tab title**: `[FILES]` — same as `FilesPanel`. The tab bar title distinguishes the two by kind, not by title string. *(Note: if both are open simultaneously, both show `[FILES]` — this is acceptable ISPF behaviour.)*
+- **Tab title**: `[FILES]` -- same as `FilesPanel`. The tab bar title distinguishes the two by kind, not by title string. *(Note: if both are open simultaneously, both show `[FILES]` -- this is acceptable ISPF behaviour.)*
 - **`=2` / `=FILES` routing**: These are **context-switch** commands. They transform the current tab in-place to `FileExplorerPanel` (same as how option numbers transform a POM tab). The `=` prefix signals "close current context and switch".
 - **`FILES` routing** (no `=` prefix): Opens a **new** tab with `FileExplorerPanel` kind. The current tab is unchanged.
 - **Tree content**: The panel renders a tree with one top-level node per catalog in the `CatalogRegistry`, grouped under section headers (Mainframe, POSIX, Native). Each catalog node is expandable to show its files/datasets via the VFS.
@@ -1428,7 +1428,7 @@ The `primary_option_menu::render()` function currently renders each option row a
 - The "Enter X to close application" line is rendered as a similar button.
 - The function signature changes from `fn render(ui: &mut egui::Ui)` to `fn render(ui: &mut egui::Ui) -> Option<PomAction>`.
 - `PomAction` is a new `pub enum` with variants `Navigate(u8)` (for options 0–8) and `Exit`.
-- The call site in `shell.rs` `render_central_panel()` matches on the returned `Option<PomAction>` and calls `self.handle_command("0")` … `self.handle_command("8")` or triggers exit accordingly — reusing the existing command routing without duplication.
+- The call site in `shell.rs` `render_central_panel()` matches on the returned `Option<PomAction>` and calls `self.handle_command("0")` … `self.handle_command("8")` or triggers exit accordingly -- reusing the existing command routing without duplication.
 
 No new crate dependencies are required.
 
@@ -1534,8 +1534,8 @@ data = { ... }  # Opaque layout structure from ff-layout serialisation
 
 | Command ID | Description | Shortcut |
 |------------|-------------|----------|
-| `session.save` | Manually save the current session state | — |
-| `session.restore` | Manually restore from session file | — |
-| `session.clear` | Clear session state (reset to empty) | — |
-| `session.recent_clear` | Clear the recent files list | — |
+| `session.save` | Manually save the current session state | -- |
+| `session.restore` | Manually restore from session file | -- |
+| `session.clear` | Clear session state (reset to empty) | -- |
+| `session.recent_clear` | Clear the recent files list | -- |
 | `app.exit` | Initiate the exit sequence | Alt+F4 |

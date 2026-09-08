@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-plugin` crate — the plugin extensibility framework for FileForgeWorkbench. It defines how optional features are packaged, discovered, loaded, and managed through well-defined lifecycle states. Every optional feature (viewers, language services, connectors, macro engines, the database tool) is implemented as a plugin that interacts with the core exclusively through traits and a context object defined here.
+This plan covers the complete implementation of the `ff-plugin` crate -- the plugin extensibility framework for FileForgeWorkbench. It defines how optional features are packaged, discovered, loaded, and managed through well-defined lifecycle states. Every optional feature (viewers, language services, connectors, macro engines, the database tool) is implemented as a plugin that interacts with the core exclusively through traits and a context object defined here.
 
 This is a **Wave 2 (Platform Architecture)** sub-project, depending only on `ff-logging` (Wave 0).
 
@@ -36,7 +36,7 @@ This is a **Wave 2 (Platform Architecture)** sub-project, depending only on `ff-
 
 - [x] 4. Capability types and descriptors
   - [x] 4.1 Define `Capability` enum with variants: Commands, Viewers, Providers, LanguageSupport, ThemeContribution
-  - [x] 4.2 Define capability metadata structs: `CommandsCapability`, `ViewersCapability`, `ProvidersCapability`, `LanguageSupportCapability`, `ThemeCapability` — each with a `version` field
+  - [x] 4.2 Define capability metadata structs: `CommandsCapability`, `ViewersCapability`, `ProvidersCapability`, `LanguageSupportCapability`, `ThemeCapability` -- each with a `version` field
   - [x] 4.3 Define `CapabilityType` enum for type-based queries
   - [x] 4.4 Define `CapabilityDescriptor` struct with capability, owner_plugin, and registration_order fields
   - [x] 4.5 Define `CapabilityFilter` struct with optional type, mime_type, category, language_id, and owner fields
@@ -97,10 +97,10 @@ This is a **Wave 2 (Platform Architecture)** sub-project, depending only on `ff-
   - Covers: Requirement 5 (AC 7), Requirement 3 (AC 1)
 
 - [x] 10. Plugin discovery and manifest loading
-  - [x] 10.1 Implement `discover_plugins()` — scan plugin_directory for subdirectories containing `plugin.toml`
+  - [x] 10.1 Implement `discover_plugins()` -- scan plugin_directory for subdirectories containing `plugin.toml`
   - [x] 10.2 Parse each `plugin.toml` into `PluginMetadata` and create `PluginEntry` in Discovered state
   - [x] 10.3 Log INFO record for each discovered plugin with name and version
-  - [x] 10.4 Handle missing or malformed manifests gracefully — log WARN and skip
+  - [x] 10.4 Handle missing or malformed manifests gracefully -- log WARN and skip
   - [x] 10.5 Write unit tests using tempdir with mock plugin directories
   - Covers: Requirement 3 (AC 1)
 
@@ -117,14 +117,14 @@ This is a **Wave 2 (Platform Architecture)** sub-project, depending only on `ff-
 
 - [x] 12. Version compatibility checking
   - [x] 12.1 Implement `check_api_compatibility(required: &Version, available: &Version) -> Result<(), PluginError>`
-  - [x] 12.2 Reject plugin if `required.major != available.major` — log ERROR with version incompatibility
-  - [x] 12.3 Reject plugin if `required.minor > available.minor` (same major) — log WARN indicating newer API needed
+  - [x] 12.2 Reject plugin if `required.major != available.major` -- log ERROR with version incompatibility
+  - [x] 12.3 Reject plugin if `required.minor > available.minor` (same major) -- log WARN indicating newer API needed
   - [x] 12.4 Accept plugin if `required.major == available.major && required.minor <= available.minor`
   - [x] 12.5 Write unit tests for all version comparison scenarios
   - Covers: Requirement 6 (AC 3, 4, 5)
 
 - [x] 13. Plugin loading sequence
-  - [x] 13.1 Implement `load_all()` — discover → build dependency graph → topological sort → load each in order
+  - [x] 13.1 Implement `load_all()` -- discover → build dependency graph → topological sort → load each in order
   - [x] 13.2 For each plugin in load order: validate API version → initialize → activate
   - [x] 13.3 Transition states correctly: Discovered → Loaded → Initialized → Active
   - [x] 13.4 If any step fails, transition plugin to Shutdown, log error, continue with remaining plugins
@@ -135,18 +135,18 @@ This is a **Wave 2 (Platform Architecture)** sub-project, depending only on `ff-
 
 - [x] 14. Capability_Registry implementation
   - [x] 14.1 Define `CapabilityRegistry` struct with `RwLock<Vec<CapabilityDescriptor>>` and registration counter
-  - [x] 14.2 Implement `register()` — add capability with owner identity and increment registration_order
+  - [x] 14.2 Implement `register()` -- add capability with owner identity and increment registration_order
   - [x] 14.3 Implement duplicate detection: if same type+identifier already exists, emit WARN log and use first-registered as default
-  - [x] 14.4 Implement `unregister_all(owner)` — remove all capabilities for a given plugin
-  - [x] 14.5 Implement `query_by_type(cap_type)` — return all descriptors matching the capability type
-  - [x] 14.6 Implement `query_by_attribute(filter)` — filter by mime_type, category, language_id, or owner
-  - [x] 14.7 Implement `has_capability(cap_type, id)` — check existence
+  - [x] 14.4 Implement `unregister_all(owner)` -- remove all capabilities for a given plugin
+  - [x] 14.5 Implement `query_by_type(cap_type)` -- return all descriptors matching the capability type
+  - [x] 14.6 Implement `query_by_attribute(filter)` -- filter by mime_type, category, language_id, or owner
+  - [x] 14.7 Implement `has_capability(cap_type, id)` -- check existence
   - [x] 14.8 Emit `CapabilityChanged` platform event on register and unregister
   - [x] 14.9 Ensure capabilities become queryable immediately on registration and removed immediately on unregistration
   - [x] 14.10 Write unit tests for registration, querying, duplicate handling, and event emission
   - Covers: Requirement 4 (AC 1, 2, 3, 5, 6), Requirement 3 (AC 5)
 
-- [x] 15. Lifecycle management — panic catching and error handling
+- [x] 15. Lifecycle management -- panic catching and error handling
   - [x] 15.1 Wrap all lifecycle method calls in `std::panic::catch_unwind`
   - [x] 15.2 On panic: transition plugin to Shutdown, log ERROR with plugin name and panic message
   - [x] 15.3 On error return: log WARN with plugin name, lifecycle phase, and error description; transition to Shutdown
@@ -154,8 +154,8 @@ This is a **Wave 2 (Platform Architecture)** sub-project, depending only on `ff-
   - [x] 15.5 Write unit tests with deliberately panicking mock plugins verifying isolation
   - Covers: Requirement 5 (AC 3, 4)
 
-- [x] 16. Lifecycle management — deactivation and resource cleanup
-  - [x] 16.1 Implement `unload_plugin(name)` — deactivate dependents first (reverse order), then deactivate target
+- [x] 16. Lifecycle management -- deactivation and resource cleanup
+  - [x] 16.1 Implement `unload_plugin(name)` -- deactivate dependents first (reverse order), then deactivate target
   - [x] 16.2 On deactivation: remove plugin's capabilities from Capability_Registry
   - [x] 16.3 On deactivation: cancel plugin's event subscriptions
   - [x] 16.4 After shutdown: release all references the platform holds to the plugin (set instance to None)
@@ -163,17 +163,17 @@ This is a **Wave 2 (Platform Architecture)** sub-project, depending only on `ff-
   - [x] 16.6 Write unit tests verifying complete resource cleanup after deactivation
   - Covers: Requirement 5 (AC 2, 6)
 
-- [x] 17. Lifecycle management — application shutdown
-  - [x] 17.1 Implement `shutdown_all(timeout: Duration)` — compute reverse dependency order
+- [x] 17. Lifecycle management -- application shutdown
+  - [x] 17.1 Implement `shutdown_all(timeout: Duration)` -- compute reverse dependency order
   - [x] 17.2 Call `deactivate()` then `shutdown()` on each active plugin in reverse dependency order
   - [x] 17.3 Wrap each call in `catch_unwind` for panic isolation
-  - [x] 17.4 Track elapsed time — if total exceeds timeout (default 5 seconds), forcibly drop remaining instances
+  - [x] 17.4 Track elapsed time -- if total exceeds timeout (default 5 seconds), forcibly drop remaining instances
   - [x] 17.5 Log summary of shutdown results (successful, timed-out, panicked)
   - [x] 17.6 Write unit tests for orderly shutdown, timeout enforcement, and panic during shutdown
   - Covers: Requirement 5 (AC 5)
 
 - [x] 18. Hot-reload support
-  - [x] 18.1 Implement `hot_reload(name)` — check `supports_hot_reload()` on the plugin
+  - [x] 18.1 Implement `hot_reload(name)` -- check `supports_hot_reload()` on the plugin
   - [x] 18.2 Cycle: Active → Deactivating → Shutdown → Discovered → Loaded → Initialized → Active
   - [x] 18.3 Remove old capabilities, load new instance from disk, re-initialize, re-activate
   - [x] 18.4 If plugin does not support hot-reload, return error
@@ -181,11 +181,11 @@ This is a **Wave 2 (Platform Architecture)** sub-project, depending only on `ff-
   - Covers: Requirement 3 (AC 6), Requirement 5 (AC 1)
 
 - [x] 19. Security and sandboxing enforcement
-  - [x] 19.1 Implement configuration namespace enforcement in `PluginContext` — reject access outside `[plugins.{name}]`
+  - [x] 19.1 Implement configuration namespace enforcement in `PluginContext` -- reject access outside `[plugins.{name}]`
   - [x] 19.2 Return `PluginError::ConfigAccessDenied` on namespace violation and log WARN
-  - [x] 19.3 Implement network access control — check manifest for `NetworkAccess` capability declaration
+  - [x] 19.3 Implement network access control -- check manifest for `NetworkAccess` capability declaration
   - [x] 19.4 Return `PluginError::NetworkAccessDenied` if plugin lacks NetworkAccess capability
-  - [x] 19.5 Ensure VFS-only file access — `PluginContext` exposes only VFS methods, no `std::fs` primitives
+  - [x] 19.5 Ensure VFS-only file access -- `PluginContext` exposes only VFS methods, no `std::fs` primitives
   - [x] 19.6 Ensure capability registrations are stamped with the calling plugin's identity (cannot be forged)
   - [x] 19.7 Log WARN on any sandboxing violation with plugin name and violation description
   - [x] 19.8 Write unit tests for namespace violations, network access denial, and capability ownership stamps
@@ -244,7 +244,7 @@ This is a **Wave 2 (Platform Architecture)** sub-project, depending only on `ff-
 
 **Validates: Requirement 3.3, 3.4**
 
-- **Statement:** For any set of plugins with arbitrary dependency declarations, after the registry's validation phase, the resolved dependency graph (excluding rejected plugins) is always a DAG — it contains no cycles.
+- **Statement:** For any set of plugins with arbitrary dependency declarations, after the registry's validation phase, the resolved dependency graph (excluding rejected plugins) is always a DAG -- it contains no cycles.
 - **Strategy:** Generate:
   - Number of plugins: [2, 30]
   - Dependency edges: random subset of possible edges, including intentional cycles with probability 0.3
@@ -275,7 +275,7 @@ This is a **Wave 2 (Platform Architecture)** sub-project, depending only on `ff-
 
 **Validates: Requirement 4.2, 4.3**
 
-- **Statement:** After any sequence of register/unregister operations, querying by type returns exactly the set of capabilities that have been registered and not yet unregistered — no phantom entries, no missing entries.
+- **Statement:** After any sequence of register/unregister operations, querying by type returns exactly the set of capabilities that have been registered and not yet unregistered -- no phantom entries, no missing entries.
 - **Strategy:** Generate:
   - Sequences of [10, 100] operations: mix of `register(owner, capability)` and `unregister_all(owner)`
   - Plugin names: [3, 10] unique names
@@ -361,11 +361,11 @@ This is a **Wave 2 (Platform Architecture)** sub-project, depending only on `ff-
 
 - This is a Wave 2 (Platform Architecture) crate depending only on `ff-logging` (Wave 0)
 - All service traits (CommandRegistration, PluginConfigAccess, PluginVfsAccess, PluginEventBus) are defined in `ff-plugin` but IMPLEMENTED by downstream crates (command-framework, configuration-system, virtual-file-system)
-- `ff-plugin` does NOT depend on platform-core; the dependency is inverted — platform-core depends on ff-plugin
+- `ff-plugin` does NOT depend on platform-core; the dependency is inverted -- platform-core depends on ff-plugin
 - The `PluginLogHandle` trait is defined in or re-exported from `ff-logging` to avoid circular dependencies
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
 - Thread-safety is enforced via `Send + Sync` bounds on all public types and service traits
-- Hot-reload (Task 18) is an optional capability — plugins opt in via `supports_hot_reload()` method
+- Hot-reload (Task 18) is an optional capability -- plugins opt in via `supports_hot_reload()` method
 - The type-safe capability query (Task 20) uses Rust generics with trait bounds for compile-time verification
 - Plugin manifest files use TOML format (`plugin.toml`) as specified in design.md §8
 

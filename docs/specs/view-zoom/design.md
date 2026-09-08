@@ -21,16 +21,16 @@ The `ff-zoom` crate is the **per-editor-instance zoom management layer** for the
 ### Position in Architecture
 
 ```
-Wave 9 — Desktop Integration
+Wave 9 -- Desktop Integration
 
 ┌─────────────────────────────────────────────────────────┐
 │                    Application Binary                     │
-│                (ffwb / GUI shell — ff-desktop)            │
+│                (ffwb / GUI shell -- ff-desktop)            │
 ├─────────────────────────────────────────────────────────┤
 │  multi-tab-editor │ menu-and-statusbar │ startup-session │
 │  (consumers of zoom state)                               │
 ├─────────────────────────────────────────────────────────┤
-│               ff-zoom (THIS CRATE) — Wave 9              │
+│               ff-zoom (THIS CRATE) -- Wave 9              │
 ├─────────────────────────────────────────────────────────┤
 │  ff-theme (Wave 6) │ ff-config (Wave 2) │ ff-command (2) │
 │  ff-viewport-scrolling (Wave 4) │ ff-logging (Wave 0)    │
@@ -39,7 +39,7 @@ Wave 9 — Desktop Integration
 
 ### Design Constraints (Cross-Cutting)
 
-- **GUI Independence (Req 2)**: Zero GUI framework dependencies — zoom logic is testable without egui/winit/wgpu
+- **GUI Independence (Req 2)**: Zero GUI framework dependencies -- zoom logic is testable without egui/winit/wgpu
 - **Command-Driven (Req 4)**: Zoom operations are registered commands (`view.zoom_in`, `view.zoom_out`, `view.zoom_reset`, `view.zoom`)
 - **Reserved Shortcuts (Req 10)**: Ctrl+=, Ctrl+-, Ctrl+0 are reserved and non-reassignable
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-zoom`
@@ -413,7 +413,7 @@ pub enum ZoomOperation {
     Reset,
     /// Set offset to an absolute value (clamped to range).
     SetAbsolute(i32),
-    /// Query current state (no mutation — returns info).
+    /// Query current state (no mutation -- returns info).
     Query,
 }
 ```
@@ -422,7 +422,7 @@ pub enum ZoomOperation {
 
 ## Public API Surface
 
-### ZoomEngine — Core Operations
+### ZoomEngine -- Core Operations
 
 ```rust
 /// The zoom engine applies zoom operations to a ZoomState, enforcing
@@ -518,7 +518,7 @@ impl ZoomEngine {
 }
 ```
 
-### ZoomCommandRegistrar — Command Integration
+### ZoomCommandRegistrar -- Command Integration
 
 ```rust
 /// Registers zoom commands and reserved shortcuts with the command framework.
@@ -528,10 +528,10 @@ impl ZoomCommandRegistrar {
     /// Register all zoom commands in the command registry.
     ///
     /// Commands registered:
-    /// - `view.zoom_in` — increase zoom by one step
-    /// - `view.zoom_out` — decrease zoom by one step
-    /// - `view.zoom_reset` — reset zoom to zero
-    /// - `view.zoom` — ZOOM primary command (set/query)
+    /// - `view.zoom_in` -- increase zoom by one step
+    /// - `view.zoom_out` -- decrease zoom by one step
+    /// - `view.zoom_reset` -- reset zoom to zero
+    /// - `view.zoom` -- ZOOM primary command (set/query)
     ///
     /// Addresses: Requirement 8 AC 1
     pub fn register_commands(registry: &mut CommandRegistry);
@@ -550,7 +550,7 @@ impl ZoomCommandRegistrar {
 }
 ```
 
-### ZoomIndicator — Status Bar Data
+### ZoomIndicator -- Status Bar Data
 
 ```rust
 /// Provides formatted zoom data for the status bar.
@@ -599,7 +599,7 @@ pub enum ZoomBoundary {
 }
 ```
 
-### ZoomPersistence — Session Integration
+### ZoomPersistence -- Session Integration
 
 ```rust
 impl ZoomSnapshot {
@@ -623,11 +623,11 @@ impl ZoomSnapshot {
 /// Parses command arguments and routes to the appropriate ZoomEngine method.
 ///
 /// Supported forms:
-/// - `ZOOM` — query current offset (display in status message)
-/// - `ZOOM n` — set absolute offset to n
-/// - `ZOOM IN` — increase by one step
-/// - `ZOOM OUT` — decrease by one step
-/// - `ZOOM RESET` — set to zero
+/// - `ZOOM` -- query current offset (display in status message)
+/// - `ZOOM n` -- set absolute offset to n
+/// - `ZOOM IN` -- increase by one step
+/// - `ZOOM OUT` -- decrease by one step
+/// - `ZOOM RESET` -- set to zero
 ///
 /// Addresses: Requirement 8
 pub struct ZoomCommandHandler;
@@ -661,11 +661,11 @@ pub enum ZoomError {
     AtMinimum { min_offset: i32 },
 
     /// Invalid argument to ZOOM command.
-    #[error("[zoom] command: invalid argument '{arg}' — expected integer, IN, OUT, or RESET")]
+    #[error("[zoom] command: invalid argument '{arg}' -- expected integer, IN, OUT, or RESET")]
     InvalidCommandArg { arg: String },
 
     /// Configuration key has invalid value.
-    #[error("[zoom] config: key '{key}' has invalid value '{value}' — using default {default}")]
+    #[error("[zoom] config: key '{key}' has invalid value '{value}' -- using default {default}")]
     InvalidConfig {
         key: String,
         value: String,
@@ -673,7 +673,7 @@ pub enum ZoomError {
     },
 
     /// Configuration range is invalid (min >= max).
-    #[error("[zoom] config: min_offset ({min}) must be less than max_offset ({max}) — using defaults (-10, +60)")]
+    #[error("[zoom] config: min_offset ({min}) must be less than max_offset ({max}) -- using defaults (-10, +60)")]
     InvalidRange { min: i32, max: i32 },
 
     /// No active editor instance to apply zoom to.
@@ -686,34 +686,34 @@ pub enum ZoomError {
 
 ## Integration Points
 
-### With `ff-config` (Configuration System — Wave 2, upstream)
+### With `ff-config` (Configuration System -- Wave 2, upstream)
 
 - **Dependency direction**: ff-zoom depends on ff-config
 - **API consumed**: Typed access for `[view.zoom]` namespace: `get_int("view.zoom.default_offset")`, `get_int("view.zoom.step")`, `get_int("view.zoom.min_offset")`, `get_int("view.zoom.max_offset")`
 - **Hot-reload**: ff-zoom registers a reload callback for the `view.zoom` namespace. When config changes, it rebuilds `ZoomConfig`, emits warnings for invalid values, and clamps any active editor instances whose offsets fall outside the new range
 - **Schema registration**: At startup, ff-zoom registers schema entries for all `view.zoom.*` keys with types, defaults, and valid ranges
 
-### With `ff-command` (Command Framework — Wave 2, upstream)
+### With `ff-command` (Command Framework -- Wave 2, upstream)
 
 - **Dependency direction**: ff-zoom depends on ff-command
 - **API consumed**: `CommandRegistry::register()` for command registration; `ShortcutRegistry::register_reserved()` for non-reassignable shortcut bindings; `CommandId` for command identity
 - **Commands registered**:
-  - `view.zoom_in` — metadata: "Zoom In", category: "View"
-  - `view.zoom_out` — metadata: "Zoom Out", category: "View"
-  - `view.zoom_reset` — metadata: "Reset Zoom", category: "View"
-  - `view.zoom` — metadata: "ZOOM", category: "View", primary command
+  - `view.zoom_in` -- metadata: "Zoom In", category: "View"
+  - `view.zoom_out` -- metadata: "Zoom Out", category: "View"
+  - `view.zoom_reset` -- metadata: "Reset Zoom", category: "View"
+  - `view.zoom` -- metadata: "ZOOM", category: "View", primary command
 - **Undo integration**: Zoom commands are NOT recorded on the undo stack (Requirement 8 AC 9). They do not produce `UndoRecord` values
 - **History**: Zoom commands are NOT added to command history (Requirement 8 AC 8)
-- **Reserved shortcuts**: Ctrl+= (`view.zoom_in`), Ctrl+- (`view.zoom_out`), Ctrl+0 (`view.zoom_reset`) — registered via `register_reserved()` which prevents user override
+- **Reserved shortcuts**: Ctrl+= (`view.zoom_in`), Ctrl+- (`view.zoom_out`), Ctrl+0 (`view.zoom_reset`) -- registered via `register_reserved()` which prevents user override
 
-### With `ff-theme` (Theme & Appearance — Wave 6, upstream)
+### With `ff-theme` (Theme & Appearance -- Wave 6, upstream)
 
 - **Dependency direction**: ff-zoom depends on ff-theme
 - **API consumed**: `ThemeHandle::monospace_font().base_size_pt` for the base font size used in effective size computation; `ThemeHandle::set_zoom_level(offset)` to push the current zoom offset into the theme system for rendering
 - **Coordination**: When zoom offset changes, ff-zoom calls `ThemeHandle::set_zoom_level()` with the new offset. The theme system then serves the correct `effective_monospace_size()` to the rendering layer
 - **DPI independence**: The zoom offset is a point-size offset. The theme/rendering layer handles DPI-to-pixel conversion independently (Requirement 9)
 
-### With `ff-viewport-scrolling` (Viewport & Scrolling — Wave 4, downstream consumer)
+### With `ff-viewport-scrolling` (Viewport & Scrolling -- Wave 4, downstream consumer)
 
 - **Dependency direction**: ff-viewport-scrolling is a peer; the owning editor session coordinates between them
 - **Integration**: When zoom offset changes, the editor session notifies the viewport model because `visible_count` changes (larger font → fewer visible lines). The session recalculates line height and calls `ViewportModel::set_visible_count()` and `ViewportModel::set_line_height()`
@@ -739,7 +739,7 @@ pub enum ZoomError {
 - **API consumed**: `ZoomSnapshot::from_state()` to capture zoom state on exit; `ZoomSnapshot::restore()` to reinstate zoom on session restore
 - **Storage**: Per-document zoom offsets are stored alongside cursor/scroll state in the session store, keyed by document resource URI (Requirement 6 AC 4)
 
-### With `ff-logging` (Foundation — Wave 0, upstream)
+### With `ff-logging` (Foundation -- Wave 0, upstream)
 
 - **Dependency direction**: ff-zoom depends on ff-logging
 - **API consumed**: `log_info!`, `log_warn!`, `log_debug!` macros
@@ -790,17 +790,17 @@ max_offset = 60
 
 | Setting | Absent | Invalid Type | Out of Range | Semantic Error |
 |---------|--------|--------------|--------------|----------------|
-| `default_offset` | Default to 0 | Default to 0 + WARN | Clamp to [min, max] + WARN | — |
-| `step` | Default to 1 | Default to 1 + WARN | Clamp to [1, 10] + WARN | — |
-| `min_offset` | Default to -10 | Default to -10 + WARN | Clamp to [-20, 0] + WARN | — |
-| `max_offset` | Default to +60 | Default to +60 + WARN | Clamp to [0, 100] + WARN | — |
-| `min_offset` ≥ `max_offset` | — | — | — | Both default to (-10, +60) + WARN |
+| `default_offset` | Default to 0 | Default to 0 + WARN | Clamp to [min, max] + WARN | -- |
+| `step` | Default to 1 | Default to 1 + WARN | Clamp to [1, 10] + WARN | -- |
+| `min_offset` | Default to -10 | Default to -10 + WARN | Clamp to [-20, 0] + WARN | -- |
+| `max_offset` | Default to +60 | Default to +60 + WARN | Clamp to [0, 100] + WARN | -- |
+| `min_offset` ≥ `max_offset` | -- | -- | -- | Both default to (-10, +60) + WARN |
 
 ---
 
 ## Correctness Properties
 
-The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal — it must hold for all valid inputs.
+The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal -- it must hold for all valid inputs.
 
 ### Property 1: Offset Clamping Invariant
 
@@ -941,10 +941,10 @@ The following properties are suitable for property-based testing with the `propt
 ### Unit Tests
 
 - **config_tests.rs**: Validates `ZoomConfig::from_raw()` with valid, invalid, out-of-range, and missing values. Verifies warning generation and default fallback behaviour.
-- **engine_tests.rs**: Exercises all `ZoomEngine` methods — `zoom_in`, `zoom_out`, `zoom_reset`, `zoom_set`, boundary clamping, effective size computation.
+- **engine_tests.rs**: Exercises all `ZoomEngine` methods -- `zoom_in`, `zoom_out`, `zoom_reset`, `zoom_set`, boundary clamping, effective size computation.
 - **indicator_tests.rs**: Verifies `ZoomIndicator::format_indicator()` returns `None` for zero offset, correct `"Zoom: +N"` / `"Zoom: -N"` strings for non-zero offsets, and correct boundary messages.
 - **persistence_tests.rs**: Round-trip serialisation/deserialisation of `ZoomSnapshot`; restore with clamping when config range changed.
-- **commands_tests.rs**: Parsing of `ZOOM` command arguments — valid integers, `IN`, `OUT`, `RESET`, empty (query), and invalid inputs.
+- **commands_tests.rs**: Parsing of `ZOOM` command arguments -- valid integers, `IN`, `OUT`, `RESET`, empty (query), and invalid inputs.
 
 ### Property-Based Tests (proptest)
 
@@ -959,8 +959,8 @@ The following properties are suitable for property-based testing with the `propt
 
 ### What Is NOT Tested (GUI/Manual)
 
-- Actual keyboard input routing (Ctrl+=, Ctrl+-, Ctrl+0) — requires running GUI shell
-- Mouse wheel scroll capture and Ctrl modifier detection — requires windowing system
-- Status bar visual rendering and click interaction — requires egui frame
-- DPI-aware physical pixel rendering — requires multi-monitor hardware
+- Actual keyboard input routing (Ctrl+=, Ctrl+-, Ctrl+0) -- requires running GUI shell
+- Mouse wheel scroll capture and Ctrl modifier detection -- requires windowing system
+- Status bar visual rendering and click interaction -- requires egui frame
+- DPI-aware physical pixel rendering -- requires multi-monitor hardware
 - These are marked as 🔲 MANUAL in the TCR

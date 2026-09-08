@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-hex` crate — the hexadecimal viewing and editing subsystem for FileForgeWorkbench. The hex display mode provides a three-pane layout (offset column, hex pane, ASCII pane) with full overwrite editing, synchronised cursor movement, byte pattern search integration, hex dump export, goto-offset navigation, and undo/redo participation.
+This plan covers the complete implementation of the `ff-hex` crate -- the hexadecimal viewing and editing subsystem for FileForgeWorkbench. The hex display mode provides a three-pane layout (offset column, hex pane, ASCII pane) with full overwrite editing, synchronised cursor movement, byte pattern search integration, hex dump export, goto-offset navigation, and undo/redo participation.
 
 This is a **Wave 11 (Display Modes)** sub-project that depends on:
 - `ff-document-model` (Wave 4) for byte buffer access via BytePosition addressing
@@ -12,7 +12,7 @@ This is a **Wave 11 (Display Modes)** sub-project that depends on:
 - `ff-find-replace` (Wave 5) for `FIND X'...'` hex search integration
 - `ff-config` (Wave 2) for persistent hex mode settings
 
-The crate is **GUI-independent** — it manages the hex display model, cursor synchronisation, and editing logic. Rendering is delegated to the UI layer.
+The crate is **GUI-independent** -- it manages the hex display model, cursor synchronisation, and editing logic. Rendering is delegated to the UI layer.
 
 ---
 
@@ -102,8 +102,8 @@ The crate is **GUI-independent** — it manages the hex display model, cursor sy
 - [x] 8. Modified byte indicators
   - [x] 8.1 Implement `ModifiedByteTracker` maintaining a HashSet<ByteOffset> of bytes differing from last-saved state
   - [x] 8.2 Implement `mark_modified(offset, original_value)` when byte is edited
-  - [x] 8.3 Implement `clear_all()` on document save — all indicators removed
-  - [x] 8.4 Implement `unmark_if_restored(offset, current_value, saved_value)` on undo — remove indicator if value matches saved state
+  - [x] 8.3 Implement `clear_all()` on document save -- all indicators removed
+  - [x] 8.4 Implement `unmark_if_restored(offset, current_value, saved_value)` on undo -- remove indicator if value matches saved state
   - [x] 8.5 Implement multi-modify-undo cycle correctness: byte modified, undone, re-modified tracks correctly
   - [x] 8.6 Implement theme token query for modified byte highlight (`hex.modified_byte`)
   - [x] 8.7 Write unit tests for mark, clear, unmark, and multi-cycle tracking
@@ -223,7 +223,7 @@ The crate is **GUI-independent** — it manages the hex display model, cursor sy
   - [x] 20.3 Write integration test: goto offset with viewport scroll and cursor positioning
   - [x] 20.4 Write integration test: hex dump export for full document, byte range, and selection
   - [x] 20.5 Write integration test: session state save and restore across file close/reopen
-  - [x] 20.6 Write integration test: command compatibility — FIND, CHANGE, SORT operate correctly while hex mode active
+  - [x] 20.6 Write integration test: command compatibility -- FIND, CHANGE, SORT operate correctly while hex mode active
   - [x] 20.7 Write integration test: binary file auto-detection and hex mode activation prompt
   - Covers: End-to-end validation across Requirements 1–16
 
@@ -334,13 +334,13 @@ The crate is **GUI-independent** — it manages the hex display model, cursor sy
 ## Notes
 
 - This is a Wave 11 (Display Modes) crate depending on multiple upstream crates from Waves 2–5
-- The crate is GUI-independent — all rendering is delegated to the UI layer; this crate provides model/state/logic only
-- Hex edits share the same undo stack as text edits — no separate undo system
+- The crate is GUI-independent -- all rendering is delegated to the UI layer; this crate provides model/state/logic only
+- Hex edits share the same undo stack as text edits -- no separate undo system
 - The `FIND X'...'` integration is a coordination layer; the actual search engine lives in `ff-find-replace`
 - FileForge integration (Task 18) is optional and only activated when FileForge_Mode is concurrently active
-- Binary detection delegates to `ff-encoding` — this crate consumes the detection result
+- Binary detection delegates to `ff-encoding` -- this crate consumes the detection result
 - Session state persistence uses the session history system from `ff-startup-session`
-- Hex mode state changes (on/off) are NOT undoable — they are display-only state transitions
+- Hex mode state changes (on/off) are NOT undoable -- they are display-only state transitions
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
 - The `ByteOffset(u64)` type supports documents up to 2^64 bytes, matching the document model's u64 addressing
 - Offset column formatting auto-expands beyond 8 hex digits for files larger than 4 GB (0xFFFFFFFF)

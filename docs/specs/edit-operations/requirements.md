@@ -2,22 +2,22 @@
 
 ## Introduction
 
-The `edit-operations` sub-project defines all text editing behaviour within the FileForgeWorkbench editor. It merges the FileForgeEditor MVP editing model (insert/overstrike modes, character insertion/deletion, transaction recording, modified line markers) with Scintilla's comprehensive editing commands, selection model, and multi-caret coordination concepts — all adapted to Rust idioms and the workbench's GUI-independent, command-driven architecture.
+The `edit-operations` sub-project defines all text editing behaviour within the FileForgeWorkbench editor. It merges the FileForgeEditor MVP editing model (insert/overstrike modes, character insertion/deletion, transaction recording, modified line markers) with Scintilla's comprehensive editing commands, selection model, and multi-caret coordination concepts -- all adapted to Rust idioms and the workbench's GUI-independent, command-driven architecture.
 
 This spec covers:
 - How characters enter and leave the document buffer (insert, overstrike, delete at multiple granularities)
 - How selections are created, extended, and manipulated (stream, rectangular, multi-caret)
 - How multiple carets operate simultaneously with coordinated edits
-- How edit boundaries (BOUNDS) constrain the editable area — an ISPF/PDF heritage concept
+- How edit boundaries (BOUNDS) constrain the editable area -- an ISPF/PDF heritage concept
 - Line manipulation commands (transpose, duplicate, case change)
 - Tab/indent handling
 - Selection position adjustment when the document is modified externally
 - Integration points with undo-redo, clipboard, and command framework
 
 **Scope boundaries:**
-- Undo/redo transaction mechanics (TransactionStack, coalescing, save points) are defined in `undo-redo-transactions` — this spec defines what constitutes a transaction unit
-- Clipboard system-level access is defined in `clipboard-operations` — this spec defines the edit-side cut/copy/paste semantics
-- Caret visual appearance (blink, width, colour) is defined in `caret-and-selection` — this spec defines the logical caret/selection model
+- Undo/redo transaction mechanics (TransactionStack, coalescing, save points) are defined in `undo-redo-transactions` -- this spec defines what constitutes a transaction unit
+- Clipboard system-level access is defined in `clipboard-operations` -- this spec defines the edit-side cut/copy/paste semantics
+- Caret visual appearance (blink, width, colour) is defined in `caret-and-selection` -- this spec defines the logical caret/selection model
 - Navigation (word movement, paragraph movement, LOCATE, caret motion keys) is defined in `navigation-commands`
 - The document buffer and line storage are defined in `document-model`
 - Modified line marker *rendering* is defined in `caret-and-selection`; this spec defines when the marker is set
@@ -39,7 +39,7 @@ This spec covers:
 - **SelectionPosition**: A document position that includes both a real position (byte offset or line+column) and a virtual space offset for positions beyond line ends. Adjusts automatically on document modification. [SCI-SEL-4.1]
 - **SelectionRange**: An ordered pair (anchor, caret) defining a contiguous selected region. May include virtual space at either end. [SCI-SEL-4.1]
 - **Selection Container**: The top-level structure holding all active SelectionRanges, with operations: Add, Drop, Trim, MovePositions, and a designated main range. [SCI-SEL-4.1]
-- **Stream Selection**: A selection that flows across line boundaries — from a position on one line through all intermediate lines to a position on another line. [SCI-SEL-4.1]
+- **Stream Selection**: A selection that flows across line boundaries -- from a position on one line through all intermediate lines to a position on another line. [SCI-SEL-4.1]
 - **Rectangular Selection**: A column-oriented selection defined by a rectangle of (top-line, left-column) to (bottom-line, right-column), producing one selection segment per line. [SCI-SEL-4.1]
 - **Multi-Caret**: Multiple independent carets active simultaneously, each with its own SelectionRange, receiving the same typed input. [SCI-EDIT-2.3]
 - **Insert Mode**: The default editing mode where typed characters are inserted at the caret, pushing existing text rightward. [FFE-MVP-3]
@@ -57,7 +57,7 @@ This spec covers:
 
 ## Requirements
 
-### Requirement 1: Insert Mode — Character Insertion [FFE-MVP-3, SCI-EDIT-2.2]
+### Requirement 1: Insert Mode -- Character Insertion [FFE-MVP-3, SCI-EDIT-2.2]
 
 **User Story:** As an editor user, I want to type characters that are inserted at the caret position, so that I can compose and extend text content naturally.
 
@@ -83,11 +83,11 @@ This spec covers:
 
 ### Requirement 2: NewLine Handling [FFE-MVP-3, SCI-EDIT-2.2]
 
-**User Story:** As an editor user, I want pressing Enter to behave correctly based on the current editing mode — splitting lines in Insert Mode and moving to the next line in Overstrike Mode — so that line manipulation matches my expectation based on the editing paradigm.
+**User Story:** As an editor user, I want pressing Enter to behave correctly based on the current editing mode -- splitting lines in Insert Mode and moving to the next line in Overstrike Mode -- so that line manipulation matches my expectation based on the editing paradigm.
 
 #### Acceptance Criteria
 
-1. WHEN the user presses Enter (or Return) in Insert Mode, THE editor SHALL split the current line at the caret position — text before the caret remains on the current line; text from the caret onward becomes a new line inserted immediately below. [FFE-MVP-3, SCI-EDIT-2.2]
+1. WHEN the user presses Enter (or Return) in Insert Mode, THE editor SHALL split the current line at the caret position -- text before the caret remains on the current line; text from the caret onward becomes a new line inserted immediately below. [FFE-MVP-3, SCI-EDIT-2.2]
 
 2. WHEN a line is split by Enter in Insert Mode, THE caret SHALL move to column 1 of the newly created line. [FFE-MVP-3]
 
@@ -207,7 +207,7 @@ This spec covers:
 
 10. WHEN a selection is active and the user types a printable character, THE editor SHALL delete the selected text and insert the typed character at the former selection start (selection replacement). [FFE-MVP-8, SCI-EDIT-2.2]
 
-11. WHEN the user presses an arrow key without Shift, THE active selection SHALL be collapsed — the caret moves to the appropriate end of the former selection and the anchor is reset to match the caret. [FFE-MVP-8]
+11. WHEN the user presses an arrow key without Shift, THE active selection SHALL be collapsed -- the caret moves to the appropriate end of the former selection and the anchor is reset to match the caret. [FFE-MVP-8]
 
 12. WHEN the user clicks (without Shift or Ctrl) at a position in the document, THE editor SHALL place the caret at that position and clear any existing selection (anchor = caret). [FFE-MVP-8]
 
@@ -225,7 +225,7 @@ This spec covers:
 
 ### Requirement 7: Selection Position Adjustment [SCI-SEL-4.1]
 
-**User Story:** As a workbench developer, I want selection positions to automatically adjust when the document is modified (by any source — typing, undo, external reload), so that selections remain semantically correct after edits.
+**User Story:** As a workbench developer, I want selection positions to automatically adjust when the document is modified (by any source -- typing, undo, external reload), so that selections remain semantically correct after edits.
 
 #### Acceptance Criteria
 
@@ -261,7 +261,7 @@ This spec covers:
 
 5. WHEN multiple carets are active and the user presses Backspace or Delete, THE editor SHALL perform the delete operation at every caret simultaneously, processing in reverse document order. [SCI-EDIT-2.3]
 
-6. WHEN multiple carets are active, THE Selection container SHALL designate one as the "main" range — this determines viewport auto-scroll position and status bar display. [SCI-SEL-4.1]
+6. WHEN multiple carets are active, THE Selection container SHALL designate one as the "main" range -- this determines viewport auto-scroll position and status bar display. [SCI-SEL-4.1]
 
 7. WHEN multiple carets are active and the user performs a navigation operation (arrow keys, Home, End), THE editor SHALL move all carets in the same direction simultaneously. [SCI-EDIT-2.3]
 
@@ -273,9 +273,9 @@ This spec covers:
 
 11. WHEN the user invokes "Add Caret Below" (Ctrl+Alt+Down), THE editor SHALL add a new caret one line below the main caret at the same column. [SCI-EDIT-2.3]
 
-12. WHEN multiple carets exist, EACH caret MAY have its own independent selection range — Shift+Arrow extends selection at all carets independently. [SCI-EDIT-2.3]
+12. WHEN multiple carets exist, EACH caret MAY have its own independent selection range -- Shift+Arrow extends selection at all carets independently. [SCI-EDIT-2.3]
 
-13. WHEN multiple carets exist, all edit operations within a single user action SHALL be recorded as a single UndoGroup — one Undo command reverses the operation at all caret positions. [SCI-EDIT-2.3]
+13. WHEN multiple carets exist, all edit operations within a single user action SHALL be recorded as a single UndoGroup -- one Undo command reverses the operation at all caret positions. [SCI-EDIT-2.3]
 
 14. WHEN the user invokes "Select Next Occurrence" (Ctrl+D), THE editor SHALL find the next occurrence of the currently selected text (or word at caret) and add a new caret+selection at that occurrence. [SCI-EDIT-2.3]
 
@@ -293,7 +293,7 @@ This spec covers:
 
 1. WHEN the user holds Alt and drags the mouse, THE editor SHALL create a rectangular (column) selection defined by the drag start position (top-left corner) and current mouse position (bottom-right corner). [SCI-SEL-4.1]
 
-2. WHEN a rectangular selection is active, THE editor SHALL display the selection as a column highlight — one selection segment per line between the top and bottom rows, each spanning the same left-to-right column range. [SCI-SEL-4.1]
+2. WHEN a rectangular selection is active, THE editor SHALL display the selection as a column highlight -- one selection segment per line between the top and bottom rows, each spanning the same left-to-right column range. [SCI-SEL-4.1]
 
 3. WHEN the user holds Alt+Shift and presses an arrow key, THE editor SHALL extend the rectangular selection in the corresponding direction. [SCI-SEL-4.1]
 
@@ -397,11 +397,11 @@ This spec covers:
 
 1. WHEN the BOUNDS primary command is issued with two column numbers (left, right), THE editor SHALL set the left boundary and right boundary for the current editing session. [FFE-MVP-3]
 
-2. WHEN BOUNDS is active and the user types in Insert Mode, THE editor SHALL only allow character insertion within the bounded column range — characters typed at positions outside the bounds SHALL be ignored. [FFE-MVP-3]
+2. WHEN BOUNDS is active and the user types in Insert Mode, THE editor SHALL only allow character insertion within the bounded column range -- characters typed at positions outside the bounds SHALL be ignored. [FFE-MVP-3]
 
 3. WHEN BOUNDS is active and the user types in Overstrike Mode, THE editor SHALL only allow character replacement within the bounded column range. [FFE-MVP-3]
 
-4. WHEN BOUNDS is active and a line-split (Enter in Insert Mode) would affect columns outside the bounded range, THE editor SHALL restrict the split to operate only on content within the bounds — content outside the bounds remains on the original line unchanged. [FFE-MVP-3]
+4. WHEN BOUNDS is active and a line-split (Enter in Insert Mode) would affect columns outside the bounded range, THE editor SHALL restrict the split to operate only on content within the bounds -- content outside the bounds remains on the original line unchanged. [FFE-MVP-3]
 
 5. WHEN BOUNDS is active, delete operations (Backspace, Delete, Ctrl+Backspace, Ctrl+Delete) SHALL only remove characters within the bounded range. Attempting to delete outside the bounds SHALL have no effect. [FFE-MVP-3]
 
@@ -411,9 +411,9 @@ This spec covers:
 
 8. WHEN BOUNDS is active, THE status bar SHALL display the current BOUNDS column range. [FFE-MVP-3]
 
-9. WHEN a selection extends beyond the bounded columns, edit operations on that selection SHALL only affect the portion within the bounds — text outside the bounds SHALL remain unchanged. [FFE-MVP-3]
+9. WHEN a selection extends beyond the bounded columns, edit operations on that selection SHALL only affect the portion within the bounds -- text outside the bounds SHALL remain unchanged. [FFE-MVP-3]
 
-10. WHEN BOUNDS is active and a paste operation is performed, THE pasted content SHALL be clipped to fit within the bounded column range — excess characters beyond the right boundary SHALL be truncated. [FFE-MVP-3]
+10. WHEN BOUNDS is active and a paste operation is performed, THE pasted content SHALL be clipped to fit within the bounded column range -- excess characters beyond the right boundary SHALL be truncated. [FFE-MVP-3]
 
 11. THE BOUNDS setting SHALL be per-document (each open document/tab maintains its own BOUNDS state). [FFE-MVP-3]
 
@@ -443,7 +443,7 @@ This spec covers:
 
 8. THE Selection container SHALL provide a `count()` method returning the number of active selections. [SCI-SEL-4.1]
 
-9. THE Selection container SHALL be GUI-independent — it SHALL NOT reference any rendering or platform types. [WB]
+9. THE Selection container SHALL be GUI-independent -- it SHALL NOT reference any rendering or platform types. [WB]
 
 ---
 
@@ -455,13 +455,13 @@ This spec covers:
 
 1. EACH edit operation (insert character, delete, line transpose, line duplicate, case change, toggle mode, select all, cut, copy, paste) SHALL be registered as a named command in the command framework's CommandRegistry. [WB]
 
-2. THE edit-operations crate SHALL NOT directly handle keyboard input — it SHALL expose command handlers that the command framework invokes after key-to-command resolution. [WB]
+2. THE edit-operations crate SHALL NOT directly handle keyboard input -- it SHALL expose command handlers that the command framework invokes after key-to-command resolution. [WB]
 
 3. EACH edit command SHALL declare its metadata (name, display label, default key binding, category) for discoverability by menus, keymaps, and the command palette. [WB]
 
 4. EACH edit command that modifies the document SHALL return a result indicating success or failure (e.g., BOUNDS rejection, read-only document), enabling the command framework to report status. [WB]
 
-5. THE edit-operations crate SHALL have no GUI dependency — it SHALL operate solely on the logical document model, selection container, and transaction stack. [WB]
+5. THE edit-operations crate SHALL have no GUI dependency -- it SHALL operate solely on the logical document model, selection container, and transaction stack. [WB]
 
 6. EACH edit command SHALL be invokable from the Lua macro engine via the scripting bridge (integration point with `lua-macro-engine`). [WB]
 
@@ -472,7 +472,7 @@ This spec covers:
 | Dependency | Relationship |
 |---|---|
 | `document-model` | Provides the gap buffer, line index, and content access API that edit operations modify. All edits go through the document model's mutation API. |
-| `undo-redo-transactions` | Records all edit operations as EditorTransactions on the TransactionStack. Defines coalescing, save points, and UndoGroup semantics — this spec defines transaction boundaries. |
+| `undo-redo-transactions` | Records all edit operations as EditorTransactions on the TransactionStack. Defines coalescing, save points, and UndoGroup semantics -- this spec defines transaction boundaries. |
 | `command-framework` | All edit operations are registered commands dispatched via CommandRegistry. Key bindings resolved by command framework before reaching edit handlers. |
 | `caret-and-selection` | Defines visual rendering of carets, selection highlights, and modified line markers. This spec defines the logical selection/caret model. |
 | `clipboard-operations` | Defines system clipboard access and the COPY command clipboard-paste mode. This spec defines edit-side cut/copy/paste logic. |
@@ -487,13 +487,13 @@ This spec covers:
 ## Notes
 
 - **Priority:** FileForgeEditor requirements take precedence on all conflicts with Scintilla concepts. Where Scintilla defines a different behaviour (e.g., Enter in overtype mode), FFE's ISPF-heritage behaviour is authoritative.
-- **BOUNDS** is an ISPF heritage feature not found in Scintilla — it provides column-range protection for fixed-format file editing common in mainframe environments.
+- **BOUNDS** is an ISPF heritage feature not found in Scintilla -- it provides column-range protection for fixed-format file editing common in mainframe environments.
 - **Virtual space** support (caret positioned beyond line end) is included to support rectangular selection on short lines and multi-caret column editing, per Scintilla's `virtualSpaceOptions`.
 - **Multi-caret reverse-order processing** is essential to avoid position drift: when inserting at multiple positions, processing from last-to-first ensures earlier positions are not invalidated by later insertions within the same operation.
 - **Protected range skipping** allows multi-caret operations to gracefully handle read-only regions (e.g., sequence number columns protected by BOUNDS or explicit read-only markers) without aborting the entire operation.
-- **Enter key behaviour** differs between Insert Mode (line split) and Overstrike Mode (move to next line) — this is intentional ISPF/mainframe terminal behaviour preserved from FFE.
+- **Enter key behaviour** differs between Insert Mode (line split) and Overstrike Mode (move to next line) -- this is intentional ISPF/mainframe terminal behaviour preserved from FFE.
 - **Keyboard shortcuts** listed (Ctrl+D, Ctrl+Shift+K, Ctrl+T, etc.) are defaults registered with the command framework's shortcut registry; users may remap them via `configuration-system`.
-- **Platform-specific rendering**, C++ ABI details, and Scintilla's message-passing API (`WM_*`, `SCI_*` messages) are excluded — all concepts are adapted to Rust traits and method calls.
+- **Platform-specific rendering**, C++ ABI details, and Scintilla's message-passing API (`WM_*`, `SCI_*` messages) are excluded -- all concepts are adapted to Rust traits and method calls.
 - **GUI independence**: The `edit-operations` crate has zero GUI dependencies. It operates on abstract types from `document-model` and produces transaction records for `undo-redo-transactions`. Visual feedback (caret rendering, selection highlighting, modified markers) is the responsibility of the GUI layer via `caret-and-selection`.
 
 ---

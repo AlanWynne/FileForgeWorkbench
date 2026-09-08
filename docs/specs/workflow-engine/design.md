@@ -17,7 +17,7 @@ The `ff-workflow` crate is the **state-machine-based execution engine** for mult
 ### Position in Architecture
 
 ```
-Wave 2 — Platform Architecture (depends on Wave 0 ff-logging)
+Wave 2 -- Platform Architecture (depends on Wave 0 ff-logging)
 
 ┌─────────────────────────────────────────────────────────┐
 │                    Application Binary (ffwb)              │
@@ -29,13 +29,13 @@ Wave 2 — Platform Architecture (depends on Wave 0 ff-logging)
 │               ff-workflow (this crate)                    │
 │        Workflow definitions, runner, registry             │
 ├─────────────────────────────────────────────────────────┤
-│               ff-logging (Wave 0 — diagnostics)          │
+│               ff-logging (Wave 0 -- diagnostics)          │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ### Design Constraints (Cross-Cutting)
 
-- **GUI Independence (Req 2)**: Zero GUI dependencies — progress events flow via Event Bus
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- progress events flow via Event Bus
 - **Plugin Architecture (Req 3)**: Plugins register custom workflows via `PluginContext`
 - **Command-Driven (Req 4)**: Workflows are invocable through the command framework
 - **Async I/O (Req 6)**: All step execution is Tokio-based; never blocks the GUI thread
@@ -94,14 +94,14 @@ graph TD
 
 | Layer | Role |
 |-------|------|
-| **Definition Layer** | `WorkflowDefinition`, `StepDefinition`, builder API — declarative graph structure |
-| **Registry Layer** | `WorkflowRegistry` — thread-safe lookup, category queries, plugin ownership |
-| **Execution Layer** | `WorkflowRunner` — drives state machine, invokes steps, manages transitions |
-| **Context Layer** | `WorkflowContext` — typed key-value store shared across steps |
-| **Progress Layer** | `ProgressReporter` — throttled event emission, aggregation |
-| **Cancellation Layer** | `CancellationToken` — cooperative signal propagation to async operations |
+| **Definition Layer** | `WorkflowDefinition`, `StepDefinition`, builder API -- declarative graph structure |
+| **Registry Layer** | `WorkflowRegistry` -- thread-safe lookup, category queries, plugin ownership |
+| **Execution Layer** | `WorkflowRunner` -- drives state machine, invokes steps, manages transitions |
+| **Context Layer** | `WorkflowContext` -- typed key-value store shared across steps |
+| **Progress Layer** | `ProgressReporter` -- throttled event emission, aggregation |
+| **Cancellation Layer** | `CancellationToken` -- cooperative signal propagation to async operations |
 | **Error Layer** | `ErrorPolicy` engine, retry logic, compensating actions |
-| **Persistence Layer** | `CheckpointManager` — serialization, storage, resumption |
+| **Persistence Layer** | `CheckpointManager` -- serialization, storage, resumption |
 
 ---
 
@@ -230,7 +230,7 @@ pub enum StepKind {
     Sequential,
     /// A group of steps that execute concurrently with a join barrier
     Parallel { member_steps: Vec<String> },
-    /// A conditional branch point — not executed, only routes transitions
+    /// A conditional branch point -- not executed, only routes transitions
     Conditional,
 }
 ```
@@ -508,9 +508,9 @@ pub struct ProgressEvent {
 /// Addresses: Requirement 4, criteria 1/3
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProgressMode {
-    /// Known total — percentage and item counts are meaningful
+    /// Known total -- percentage and item counts are meaningful
     Determinate,
-    /// Unknown total — only status message is meaningful
+    /// Unknown total -- only status message is meaningful
     Indeterminate,
 }
 ```
@@ -1155,7 +1155,7 @@ pub struct WorkflowErrorReport {
 
 ## 7. Integration Points
 
-### With `ff-logging` (upstream — Wave 0)
+### With `ff-logging` (upstream -- Wave 0)
 
 - `ff-workflow` depends on `ff-logging` for diagnostic output
 - Uses `log_info!` for workflow start/complete/resume events
@@ -1163,7 +1163,7 @@ pub struct WorkflowErrorReport {
 - Uses `log_error!` for step failures, compensation failures, and checkpoint deserialization errors
 - All log records prefixed with workflow name and execution ID for traceability
 
-### With `ff-core` (platform-core — same wave, orchestrator)
+### With `ff-core` (platform-core -- same wave, orchestrator)
 
 - `ff-core` creates the `WorkflowRegistry` and `WorkflowRunner` during startup
 - `ff-core` registers them in the `ServiceRegistry` for other subsystems to access
@@ -1172,14 +1172,14 @@ pub struct WorkflowErrorReport {
 - `ff-core` triggers `CheckpointManager::save_checkpoint()` during graceful shutdown for running persistent workflows
 - Dependency direction: `ff-core` depends on `ff-workflow`; `ff-workflow` does NOT depend on `ff-core`
 
-### With `ff-command` (command-framework — same wave, invocation path)
+### With `ff-command` (command-framework -- same wave, invocation path)
 
 - The command framework invokes workflows by name through the registry
 - A generic `workflow.run` async command handler looks up the workflow in the registry, validates parameters against the declared schema, and calls `WorkflowRunner::start()`
 - Addresses: Requirement 6, criterion 5
 - Dependency direction: `ff-command` depends on `ff-workflow` for the `WorkflowRegistry` lookup
 
-### With `ff-plugin` (plugin-architecture — same wave, extensibility)
+### With `ff-plugin` (plugin-architecture -- same wave, extensibility)
 
 - Plugins register custom `WorkflowDefinition` instances via `PluginContext`
 - The `PluginContext` provides a `WorkflowRegistration` service trait for plugins to call
@@ -1187,7 +1187,7 @@ pub struct WorkflowErrorReport {
 - Addresses: Requirement 6, criterion 3
 - Dependency direction: `ff-plugin` defines the `WorkflowRegistration` trait; `ff-workflow` implements it
 
-### With `ff-config` (configuration-system — same wave, storage directory)
+### With `ff-config` (configuration-system -- same wave, storage directory)
 
 - `ff-config` provides the `workflow.storage_directory` configuration value
 - `ff-config` provides `workflow.checkpoint_retention_days` (default 7)
@@ -1355,7 +1355,7 @@ User clicks Cancel
 
 These properties are suitable for property-based testing with `proptest`. They validate invariants that must hold across all valid inputs.
 
-### Property 1: Definition Validation — Reachability
+### Property 1: Definition Validation -- Reachability
 
 **Statement**: For any `WorkflowDefinition` constructed via the builder, if `build()` returns `Ok`, then every step in the definition is reachable from the initial state via the declared transitions.
 
@@ -1366,7 +1366,7 @@ These properties are suitable for property-based testing with `proptest`. They v
 // assertion: build().is_ok() → all steps reachable from initial_step via BFS/DFS
 ```
 
-### Property 2: Definition Validation — Terminal State Existence
+### Property 2: Definition Validation -- Terminal State Existence
 
 **Statement**: For any `WorkflowDefinition` that passes validation, there exists at least one terminal state, and every non-terminal state has at least one outgoing transition.
 

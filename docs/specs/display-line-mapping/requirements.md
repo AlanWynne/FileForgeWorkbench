@@ -13,7 +13,7 @@ The subsystem adapts concepts from Scintilla's `ContractionState` and `Partition
 The display-line-mapping crate is a Wave 4 (Core Editor) component. It is consumed by `viewport-and-scrolling` (for rendering and scroll calculations), `exclude-show-filter` (for line hiding commands), the code-folding UI (gutter indicators), and `idle-processing` (for background wrap recalculation). It depends on `document-model` for line count and line content, and integrates with the `command-framework` for fold/unfold commands.
 
 **Source references:**
-- **[SCI-CS-12.1]** = Scintilla `ContractionState` / `IContractionState` interface — visible/hidden line tracking, fold level storage, display-line mapping, one-to-one optimization, lazy allocation, 64-bit line indexing
+- **[SCI-CS-12.1]** = Scintilla `ContractionState` / `IContractionState` interface -- visible/hidden line tracking, fold level storage, display-line mapping, one-to-one optimization, lazy allocation, 64-bit line indexing
 - **[SCI-CS-12.3]** = Scintilla expansion/collapse algorithm and line numbering effects
 - **[FFE-EXCL]** = FileForgeEditor exclude-show concepts (EXCLUDE/SHOW/RESET commands, ISPF-style line exclusion)
 - **[WB]** = Workbench Architecture Brief (GUI-independent core, command-driven architecture, large file support)
@@ -162,7 +162,7 @@ The display-line-mapping crate is a Wave 4 (Core Editor) component. It is consum
 3. WHEN lines are inserted, THE Contraction_State SHALL update the partitioning data structure in O(count × log n) time, where n is the total number of document lines after insertion.
 4. WHEN lines are deleted, THE Contraction_State SHALL update the partitioning data structure in O(count × log n) time, where n is the total number of document lines before deletion.
 5. WHEN a Document_Line's wrap height changes (due to content change or viewport resize), THE consuming code SHALL call `set_height(doc_line, new_height)` which SHALL update only that line's entry in O(log n) time without affecting other entries.
-6. WHEN a fold is toggled (collapsed or expanded), THE visibility changes SHALL be applied to the affected range via `set_visible`, which SHALL update the Display_Line_Count incrementally in O(range_size × log n) time — not by scanning the entire document.
+6. WHEN a fold is toggled (collapsed or expanded), THE visibility changes SHALL be applied to the affected range via `set_visible`, which SHALL update the Display_Line_Count incrementally in O(range_size × log n) time -- not by scanning the entire document.
 7. AFTER any incremental update (insert, delete, set_visible, set_height), THE invariant `lines_displayed() == sum of get_height(d) for all visible d` SHALL hold.
 
 ---
@@ -192,7 +192,7 @@ The display-line-mapping crate is a Wave 4 (Core Editor) component. It is consum
 
 **User Story:** As a developer working with very large files (millions of lines), I need the display-line-mapping to support 64-bit line indexing so that documents exceeding 2 billion lines can be mapped without overflow or truncation.
 
-**Source:** [SCI-CS-12.1] `ContractionStateCreate(bool largeDocument)` — 32-bit vs 64-bit line indexing template parameter; [WB] large file support.
+**Source:** [SCI-CS-12.1] `ContractionStateCreate(bool largeDocument)` -- 32-bit vs 64-bit line indexing template parameter; [WB] large file support.
 
 #### Acceptance Criteria
 
@@ -216,7 +216,7 @@ The display-line-mapping crate is a Wave 4 (Core Editor) component. It is consum
 1. WHEN a Contraction_State is first created, IT SHALL start in One_To_One_Mode with no heap-allocated per-line data structures; only the document line count SHALL be stored.
 2. WHEN the first non-trivial operation occurs (any of: `set_visible(_, _, false)`, `set_expanded(_, false)`, `set_height(_, h)` where `h != 1`), THE Contraction_State SHALL lazily allocate the full per-line tracking data structures (visibility, expanded state, heights, fold display texts, and the partitioning structure) initialized to the default visible/expanded/height-1 state for all existing lines.
 3. THE `show_all()` method SHALL deallocate all per-line tracking data structures and return the Contraction_State to One_To_One_Mode, recovering the memory used by visibility/fold/height tracking.
-4. IN One_To_One_Mode, THE memory footprint of the Contraction_State SHALL be O(1) — independent of the number of document lines.
+4. IN One_To_One_Mode, THE memory footprint of the Contraction_State SHALL be O(1) -- independent of the number of document lines.
 5. IN One_To_One_Mode, THE methods `display_from_doc`, `doc_from_display`, `get_visible`, `get_expanded`, and `get_height` SHALL return their trivial values (identity mapping, `true`, `true`, `1` respectively) without any branching on per-line data.
 6. WHEN `insert_lines` or `delete_lines` is called in One_To_One_Mode, THE Contraction_State SHALL simply update the line count without allocating per-line structures.
 7. THE transition from One_To_One_Mode to full tracking mode SHALL complete in O(n) time where n is the current line count (one-time cost to initialize per-line arrays).
@@ -232,11 +232,11 @@ The display-line-mapping crate is a Wave 4 (Core Editor) component. It is consum
 #### Acceptance Criteria
 
 1. THE Contraction_State SHALL maintain line visibility and fold expanded/collapsed state as independent attributes: a line may be hidden due to ISPF exclusion, due to being inside a collapsed fold, or both simultaneously.
-2. THE `set_visible` method SHALL be usable by BOTH the exclude-show-filter (for ISPF exclusion) AND the fold engine (for collapsing fold bodies); the mapping layer SHALL NOT distinguish the reason a line is hidden — it only tracks the boolean visibility.
+2. THE `set_visible` method SHALL be usable by BOTH the exclude-show-filter (for ISPF exclusion) AND the fold engine (for collapsing fold bodies); the mapping layer SHALL NOT distinguish the reason a line is hidden -- it only tracks the boolean visibility.
 3. THE `set_expanded` / `get_expanded` state SHALL be orthogonal to visibility: a fold header may be marked as collapsed (`expanded = false`) even if the fold body lines are currently visible (e.g., the user manually showed them via SHOW command). The consuming fold engine uses both attributes together to determine correct behavior.
 4. WHEN the EXCLUDE command hides lines that are inside a collapsed fold (already hidden), THE visibility SHALL remain hidden and `set_visible` SHALL return `false` (no change).
 5. WHEN the SHOW command makes lines visible that are inside a collapsed fold, THE fold engine SHALL re-evaluate whether those lines should remain hidden based on the fold's expanded state, potentially overriding the SHOW for lines within a contracted fold.
 6. THE `show_all()` method SHALL reset BOTH exclusion-based hiding AND fold-based hiding, making all lines visible and marking all folds as expanded, providing a clean "reset everything" operation.
-7. THE display-line-mapping layer SHALL NOT store fold levels, fold nesting depth, or fold region extents — those are the responsibility of the syntax-highlighting / language-service layer. The mapping layer only stores per-line visibility and per-line expanded/collapsed flags.
+7. THE display-line-mapping layer SHALL NOT store fold levels, fold nesting depth, or fold region extents -- those are the responsibility of the syntax-highlighting / language-service layer. The mapping layer only stores per-line visibility and per-line expanded/collapsed flags.
 8. ISPF EXCLUDE/SHOW operations SHALL be flat (not hierarchical): excluding a range simply hides those lines, with no concept of nested exclusion levels. This contrasts with code folding, which IS hierarchical.
 

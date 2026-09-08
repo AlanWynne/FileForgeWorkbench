@@ -1,4 +1,4 @@
-# Requirements Document — Compiler Toolchain Integration
+# Requirements Document -- Compiler Toolchain Integration
 
 ## Introduction
 
@@ -32,7 +32,7 @@ startup.
 
 | Term | Definition |
 |------|-----------|
-| **GCC** | GNU Compiler Collection — the full suite: `gcc`, `g++`, `gfortran`, `gccgo`, `gdc`, `gcj` (where available), `as`, `ld`, `ar`, `make`. |
+| **GCC** | GNU Compiler Collection -- the full suite: `gcc`, `g++`, `gfortran`, `gccgo`, `gdc`, `gcj` (where available), `as`, `ld`, `ar`, `make`. |
 | **Rust Toolchain** | The Rust compiler (`rustc`), package manager (`cargo`), and toolchain manager (`rustup`). |
 | **Toolchain_State** | The detected state of a toolchain: `NotDetected`, `Detected(version)`, `Installing`, `InstallFailed(reason)`, `Ready`. |
 | **Diagnostic** | A compiler-emitted error or warning with file path, line, column, severity, and message text. |
@@ -58,10 +58,10 @@ C, C++, and other GCC-supported languages without leaving the editor.
 
 2. WHEN all required GCC components (`gcc`, `g++`, `as`, `ld`, `ar`) are detected at the same
      version, THE Toolchain_State SHALL transition to `Ready` and the Compiler_Context SHALL
-     display the detected GCC version string (e.g., `GCC 13.2.0 — Ready`).
+     display the detected GCC version string (e.g., `GCC 13.2.0 -- Ready`).
 
 3. WHEN one or more required GCC components are not found on PATH, THE Toolchain_State SHALL
-     be `NotDetected` and the Compiler_Context SHALL display a clear message: `GCC not found —
+     be `NotDetected` and the Compiler_Context SHALL display a clear message: `GCC not found --
      [Install GCC]` with an actionable install button.
 
 4. WHEN the user activates the `[Install GCC]` action, THE workbench SHALL display a
@@ -76,7 +76,7 @@ C, C++, and other GCC-supported languages without leaving the editor.
 
 6. WHEN the GCC installation completes successfully, THE workbench SHALL re-probe the PATH,
      transition Toolchain_State to `Ready`, and display a success notification: `GCC installed
-     successfully — version <X.Y.Z>`.
+     successfully -- version <X.Y.Z>`.
 
 7. WHEN the GCC installation fails for any reason (network error, permission denied, package
      manager error), THE workbench SHALL transition Toolchain_State to `InstallFailed(reason)`,
@@ -119,7 +119,7 @@ I can fix issues without switching to a terminal.
 4. WHEN the compiler exits with code 0, THE workbench SHALL display `Build succeeded` in the
      Compiler_Context status line and clear all previous Diagnostic annotations from the editor.
 
-5. WHEN the compiler exits with a non-zero code, THE workbench SHALL display `Build failed —
+5. WHEN the compiler exits with a non-zero code, THE workbench SHALL display `Build failed --
      N error(s), M warning(s)` in the Compiler_Context status line and retain all Diagnostic
      annotations.
 
@@ -147,10 +147,10 @@ I can build and check Rust projects without leaving the editor.
 
 2. WHEN `rustc` and `cargo` are detected, THE Toolchain_State SHALL transition to `Ready` and
      the Compiler_Context SHALL display the detected Rust version string (e.g.,
-     `Rust 1.78.0 (stable) — Ready`) and the active toolchain channel (stable/beta/nightly).
+     `Rust 1.78.0 (stable) -- Ready`) and the active toolchain channel (stable/beta/nightly).
 
 3. WHEN `rustc` or `cargo` are not found on PATH, THE Toolchain_State SHALL be `NotDetected`
-     and the Compiler_Context SHALL display: `Rust not found — [Install via rustup]` with an
+     and the Compiler_Context SHALL display: `Rust not found -- [Install via rustup]` with an
      actionable install button.
 
 4. WHEN the user activates the `[Install via rustup]` action, THE workbench SHALL display a
@@ -166,7 +166,7 @@ I can build and check Rust projects without leaving the editor.
 
 6. WHEN the Rust installation completes successfully, THE workbench SHALL re-probe the PATH
      (including the newly added `~/.cargo/bin`), transition Toolchain_State to `Ready`, and
-     display: `Rust installed successfully — rustc <version>`.
+     display: `Rust installed successfully -- rustc <version>`.
 
 7. WHEN the Rust installation fails for any reason, THE workbench SHALL transition
      Toolchain_State to `InstallFailed(reason)`, display the failure reason, and offer
@@ -205,7 +205,7 @@ so that I can fix issues without switching to a terminal.
 4. WHEN `cargo` exits with code 0, THE workbench SHALL display `Cargo succeeded` in the
      Compiler_Context status line and clear all previous Diagnostic annotations.
 
-5. WHEN `cargo` exits with a non-zero code, THE workbench SHALL display `Cargo failed —
+5. WHEN `cargo` exits with a non-zero code, THE workbench SHALL display `Cargo failed --
      N error(s), M warning(s)` and retain all Diagnostic annotations.
 
 6. WHEN the user clicks on a Diagnostic entry in the Compiler_Context output list, THE workbench
@@ -251,7 +251,7 @@ section 6.4 (Generic toolchain plugin trait -- PARTIAL, High priority).
 ### Performance
 
 - Toolchain detection (PATH probe) SHALL complete within 2 seconds on a modern desktop system.
-- Compiler invocation and diagnostic parsing SHALL not block the UI thread — all operations run via `ff-bgio`.
+- Compiler invocation and diagnostic parsing SHALL not block the UI thread -- all operations run via `ff-bgio`.
 
 ### Reliability
 

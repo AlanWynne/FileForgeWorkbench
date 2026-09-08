@@ -6,19 +6,19 @@ This feature specifies the **Large File Performance** subsystem for FileForgeWor
 
 The subsystem provides four core capabilities:
 
-1. **Long-line handling** — Lines exceeding 10,000 characters receive chunked measurement and partial rendering (only the visible portion within the viewport is measured and painted).
-2. **Measurement caching** — Font metrics (character widths per style) and position layouts (x-positions of characters within a line) are cached to avoid redundant platform text-measurement calls.
-3. **Chunked rendering** — Only lines within the visible viewport plus a configurable overscan buffer are rendered; lines outside this window are never measured or laid out.
-4. **Viewport-aware lazy computation** — Expensive layout computations (measurement, wrap calculation, position mapping) are performed only for lines that are currently visible or about to become visible during scroll.
+1. **Long-line handling** -- Lines exceeding 10,000 characters receive chunked measurement and partial rendering (only the visible portion within the viewport is measured and painted).
+2. **Measurement caching** -- Font metrics (character widths per style) and position layouts (x-positions of characters within a line) are cached to avoid redundant platform text-measurement calls.
+3. **Chunked rendering** -- Only lines within the visible viewport plus a configurable overscan buffer are rendered; lines outside this window are never measured or laid out.
+4. **Viewport-aware lazy computation** -- Expensive layout computations (measurement, wrap calculation, position mapping) are performed only for lines that are currently visible or about to become visible during scroll.
 
 The design adapts Scintilla's `PositionCache`, `LineLayoutCache`, and `LineLayout` concepts into Rust. In Scintilla, the `PositionCache` is a hash-table of character-width measurements keyed by (style, text-content), and `LineLayoutCache` stores per-line layout results at configurable cache levels (None, Caret, Page, Document). This specification transposes those C++ patterns into a trait-based, cache-invalidation-aware Rust design that integrates with the workbench's document-model, viewport-and-scrolling, display-line-mapping, and idle-processing subsystems.
 
 The crate is a Wave 15 (Background Processing and Performance) component. It depends on document-model for line content, viewport-and-scrolling for visible range, display-line-mapping for display-line heights, theme-and-appearance for font metrics sources, and background-io for async large-file streaming integration. It is consumed by the GUI rendering shell and idle-processing for background pre-computation.
 
 **Source references:**
-- **[SCI-PCACHE]** = Scintilla `PositionCache.h` / `PositionCache.cxx` — `IPositionCache`, `PositionCacheEntry`, `LineLayout`, `LineLayoutCache`, `BreakFinder`, hash-based measurement caching with clock eviction, two-way associative probing, mutex-guarded concurrent access
-- **[SCI-EDIT-VIEW]** = Scintilla `EditView` — viewport rendering, `EnsureStyledTo`, visible-line-only painting, line subdivision for long lines (`BreakFinder::lengthStartSubdivision = 300`)
-- **[WB]** = Workbench Platform Architecture Brief — GUI-independent core, responsive UI (60fps target), large-file support, memory-efficient operation
+- **[SCI-PCACHE]** = Scintilla `PositionCache.h` / `PositionCache.cxx` -- `IPositionCache`, `PositionCacheEntry`, `LineLayout`, `LineLayoutCache`, `BreakFinder`, hash-based measurement caching with clock eviction, two-way associative probing, mutex-guarded concurrent access
+- **[SCI-EDIT-VIEW]** = Scintilla `EditView` -- viewport rendering, `EnsureStyledTo`, visible-line-only painting, line subdivision for long lines (`BreakFinder::lengthStartSubdivision = 300`)
+- **[WB]** = Workbench Platform Architecture Brief -- GUI-independent core, responsive UI (60fps target), large-file support, memory-efficient operation
 
 ## Cross-References
 
@@ -26,7 +26,7 @@ The crate is a Wave 15 (Background Processing and Performance) component. It dep
 |---|---|---|
 | `document-model` | **Dependency** | Provides line content, line count, byte positions, and edit notifications (insert/delete) that trigger cache invalidation. |
 | `viewport-and-scrolling` | **Dependency** | Provides the visible line range (`top_line`, `visible_count`) and horizontal scroll offset that determine which lines and character ranges require measurement. |
-| `display-line-mapping` | **Dependency** | Provides document-line to display-line mapping, wrap heights, and visibility state — determines which document lines contribute to display and require layout. |
+| `display-line-mapping` | **Dependency** | Provides document-line to display-line mapping, wrap heights, and visibility state -- determines which document lines contribute to display and require layout. |
 | `background-io` | **Integration** | Provides async large-file streaming; large-file-performance coordinates with background-io's progressive loading to avoid measuring lines that have not yet been loaded. |
 | `idle-processing` | **Integration** | Registers as a work source for background pre-computation of line layouts and measurement caches for lines near the viewport (lookahead caching). |
 | `syntax-highlighting` | **Dependency** | Style slot assignments determine which font/style combination applies to each character range, affecting measurement cache keys. |
@@ -72,7 +72,7 @@ The crate is a Wave 15 (Background Processing and Performance) component. It dep
 4. WHEN the horizontal scroll position changes on a long line, THE system SHALL extend or shift the measured chunk to cover the new visible region, reusing previously measured positions where the chunks overlap. [SCI-PCACHE]
 5. THE Long_Line_Threshold SHALL be configurable via the configuration-system (`performance.long_line_threshold`), with a minimum of 1,000 and maximum of 100,000 characters; values outside this range SHALL be clamped. [WB]
 6. WHEN rendering a long line, THE system SHALL subdivide the visible chunk into Render_Chunks of at most 300 characters (configurable) for text drawing, ensuring that a single draw call does not exceed manageable segment length. [SCI-PCACHE]
-7. THE system SHALL compute the total line width of a long line lazily — the full width is only calculated when explicitly needed (e.g., for horizontal scrollbar range) and SHALL be estimated from the average character width when not fully measured. [WB]
+7. THE system SHALL compute the total line width of a long line lazily -- the full width is only calculated when explicitly needed (e.g., for horizontal scrollbar range) and SHALL be estimated from the average character width when not fully measured. [WB]
 8. IF the user scrolls horizontally beyond the currently measured chunk on a long line, THE system SHALL perform just-in-time measurement of the newly visible region within the current frame's budget, deferring extended pre-computation to idle time. [WB]
 9. THE horizontal overscan margin for long-line chunked measurement SHALL be configurable via `performance.long_line_overscan_chars`, with a default of 500 characters and a range of [100, 5000]. [WB]
 
@@ -107,10 +107,10 @@ The crate is a Wave 15 (Background Processing and Performance) component. It dep
 #### Acceptance Criteria
 
 1. THE system SHALL maintain a LineLayoutCache that stores computed LineLayout entries for recently accessed document lines, avoiding full re-measurement when scrolling back to previously displayed content. [SCI-PCACHE]
-2. THE LineLayoutCache SHALL support configurable cache levels: `Viewport` (cache only visible lines — default for files > 1M lines), `Page` (visible + overscan — default for files < 1M lines), and `Document` (all lines — only for files < 10,000 lines). [SCI-PCACHE, WB]
+2. THE LineLayoutCache SHALL support configurable cache levels: `Viewport` (cache only visible lines -- default for files > 1M lines), `Page` (visible + overscan -- default for files < 1M lines), and `Document` (all lines -- only for files < 10,000 lines). [SCI-PCACHE, WB]
 3. THE cache level SHALL be automatically selected based on document size, with manual override available via `performance.line_layout_cache_level`. [SCI-PCACHE]
 4. EACH LineLayout entry SHALL store: the document line number, character content, style assignments, measured x-position array, sub-line break points (for wrapped lines), wrap indent, validity level, and whether the line contains the caret. [SCI-PCACHE]
-5. THE LineLayoutCache SHALL support validity levels per entry: `Invalid` (must remeasure), `CheckTextAndStyle` (text may have changed — verify before reuse), `Positions` (positions valid but sub-line breaks need recalculation), `Lines` (fully valid). [SCI-PCACHE]
+5. THE LineLayoutCache SHALL support validity levels per entry: `Invalid` (must remeasure), `CheckTextAndStyle` (text may have changed -- verify before reuse), `Positions` (positions valid but sub-line breaks need recalculation), `Lines` (fully valid). [SCI-PCACHE]
 6. WHEN a document edit occurs, THE LineLayoutCache SHALL invalidate entries for the edited line and any lines whose style state may have changed (lines between the edit and the next style-stable point). [SCI-PCACHE]
 7. THE LineLayoutCache SHALL evict entries using LRU ordering when the cache reaches capacity, prioritising retention of the caret line and visible viewport lines. [SCI-PCACHE]
 8. THE LineLayoutCache capacity for `Page` level SHALL be `visible_count + 2 * overscan_buffer_lines` entries; for `Viewport` level SHALL be `visible_count` entries. [SCI-PCACHE]
@@ -129,7 +129,7 @@ The crate is a Wave 15 (Background Processing and Performance) component. It dep
 1. THE rendering system SHALL compute layout and paint ONLY for document lines that map to display lines within the visible viewport (from `top_line` to `top_line + visible_count - 1`). [SCI-EDIT-VIEW, WB]
 2. THE system SHALL maintain an Overscan_Buffer of lines above and below the viewport (default 5 lines, configurable via `performance.overscan_lines` in range [0, 50]) that are pre-measured but not painted, ready for immediate display on scroll. [WB]
 3. WHEN the user scrolls, THE system SHALL render newly visible lines from the overscan cache if available, and SHALL measure new overscan lines in the background via idle-processing. [WB]
-4. THE system SHALL NOT iterate over all document lines during a paint cycle — only the visible range (plus overscan) SHALL be accessed, ensuring O(visible_count) rendering complexity regardless of total line count. [WB]
+4. THE system SHALL NOT iterate over all document lines during a paint cycle -- only the visible range (plus overscan) SHALL be accessed, ensuring O(visible_count) rendering complexity regardless of total line count. [WB]
 5. WHEN a full repaint is triggered (window resize, theme change), THE system SHALL repaint only the visible viewport, invalidating and recomputing overscan in the background. [WB]
 6. THE rendering frame budget SHALL be configurable via `performance.frame_budget_ms` (default 12ms, range [4, 32]), and the system SHALL defer measurement of overscan lines to the next frame or idle time if the budget is exceeded. [WB]
 7. THE system SHALL track which document lines are "significant" (caret line, top line, lines on screen) and prioritise their layout computation and cache retention. [SCI-PCACHE]
@@ -148,8 +148,8 @@ The crate is a Wave 15 (Background Processing and Performance) component. It dep
 1. THE system SHALL NOT measure or compute layout for ANY line outside the visible viewport + overscan buffer until that line is explicitly requested (scrolled into view, searched, or navigated to). [WB]
 2. THE system SHALL implement an `EnsureLayoutTo(display_line)` method that guarantees all lines up to the specified display line have valid layout data, computing missing layouts on demand. [SCI-EDIT-VIEW]
 3. WHEN a GOTO-line or FIND command navigates to a line outside the current viewport, THE system SHALL compute layout for the target line and its surrounding overscan buffer, transitioning the viewport without computing intermediate lines. [WB]
-4. DURING progressive file loading (via background-io streaming), THE system SHALL only measure lines that are currently within the viewport — lines loaded but not yet visible SHALL remain unmeasured until scrolled into view. [WB]
-5. THE system SHALL track the "measured frontier" — the furthest line for which a valid layout exists — and SHALL NOT attempt to measure beyond lines that have been delivered by background-io. [WB]
+4. DURING progressive file loading (via background-io streaming), THE system SHALL only measure lines that are currently within the viewport -- lines loaded but not yet visible SHALL remain unmeasured until scrolled into view. [WB]
+5. THE system SHALL track the "measured frontier" -- the furthest line for which a valid layout exists -- and SHALL NOT attempt to measure beyond lines that have been delivered by background-io. [WB]
 6. WHEN idle-processing grants a time slice to the layout pre-computation work source, THE system SHALL measure lines in the overscan buffer ahead of the scroll direction (predictive pre-fetch), prioritising the direction of recent scroll momentum. [WB]
 7. THE system SHALL maintain a count of unmeasured lines and expose it to the status bar for large-file progress indication (e.g., "Layout: 45,000 / 1,200,000 lines measured"). [WB]
 
@@ -167,7 +167,7 @@ The crate is a Wave 15 (Background Processing and Performance) component. It dep
 2. THE status bar SHALL display the total line count once the document model has completed line-index construction, showing a placeholder ("counting…") during progressive loading. [WB]
 3. DURING background file loading (via background-io streaming), THE status bar SHALL display a progress indicator showing percentage loaded and estimated time remaining. [WB]
 4. DURING background layout computation (via idle-processing), THE status bar SHALL display a secondary progress indicator showing the fraction of lines with computed layouts (e.g., "Layout: 60%"). [WB]
-5. THE large-file indicator SHALL be suppressed for files below the large-file threshold — normal-sized files SHALL not show size or progress indicators. [WB]
+5. THE large-file indicator SHALL be suppressed for files below the large-file threshold -- normal-sized files SHALL not show size or progress indicators. [WB]
 6. WHEN a long-running operation completes (file fully loaded, layout fully computed), THE status bar indicator SHALL transition from progress display to a static summary and then fade or remove after 5 seconds. [WB]
 7. IF layout computation is paused because the user is actively editing (idle-processing yields to input), THE progress indicator SHALL show "paused" state rather than appearing frozen. [WB]
 
@@ -204,7 +204,7 @@ The crate is a Wave 15 (Background Processing and Performance) component. It dep
 3. DURING scrolling, IF a line's layout is NOT cached (cache miss on fast scroll), THE system SHALL render the line with a simplified measurement (monospace approximation or last-known average character width) and schedule accurate measurement for the next idle period, then repaint when accurate data is available. [WB]
 4. THE system SHALL detect scroll velocity and adjust the overscan pre-computation strategy: slow scrolling (< 5 lines/frame) pre-computes exact layouts; fast scrolling (> 20 lines/frame) uses simplified layouts until scrolling stops. [WB]
 5. WHEN the user stops scrolling (no scroll event for 100ms), THE system SHALL trigger a refinement pass that replaces any simplified layouts with accurately measured layouts for all visible lines, triggering a repaint only if visual differences are detected. [WB]
-6. THE system SHALL NOT block the scroll event handler for measurement — all measurement that cannot complete within 2ms per line SHALL be deferred, and the line SHALL be rendered with approximate metrics until accurate measurement completes. [WB]
+6. THE system SHALL NOT block the scroll event handler for measurement -- all measurement that cannot complete within 2ms per line SHALL be deferred, and the line SHALL be rendered with approximate metrics until accurate measurement completes. [WB]
 7. HORIZONTAL scrolling through long lines SHALL maintain the same 60fps target by using the chunked measurement approach (Requirement 1) and pre-computing horizontal overscan during idle time. [WB]
 8. THE system SHALL pre-compute layouts for the overscan buffer in the scroll direction during idle time, ensuring that normal-speed scrolling (< 3 lines per scroll event) always hits warm cache. [WB]
 
@@ -222,10 +222,10 @@ The crate is a Wave 15 (Background Processing and Performance) component. It dep
 2. WHEN a document edit occurs that changes line count (newline insertion or deletion), THE system SHALL invalidate all LineLayout entries for lines at or after the edit position (line numbers shift). [SCI-PCACHE]
 3. WHEN the font family, font size, or font weight changes for ANY style slot (via theme change or configuration update), THE system SHALL clear the ENTIRE PositionCache and invalidate ALL LineLayout entries to `Invalid`. [SCI-PCACHE]
 4. WHEN the zoom level changes (via view-zoom), THE system SHALL clear the ENTIRE PositionCache and invalidate ALL LineLayout entries, since all character measurements are zoom-dependent. [SCI-PCACHE]
-5. WHEN the viewport width changes (window resize, panel dock/undock), THE system SHALL invalidate sub-line break data for all cached LineLayout entries (setting validity to `Positions` — positions are valid but wrap breaks need recalculation), WITHOUT clearing the PositionCache. [SCI-PCACHE]
+5. WHEN the viewport width changes (window resize, panel dock/undock), THE system SHALL invalidate sub-line break data for all cached LineLayout entries (setting validity to `Positions` -- positions are valid but wrap breaks need recalculation), WITHOUT clearing the PositionCache. [SCI-PCACHE]
 6. WHEN a style change occurs on a line (syntax re-highlighting produces different style assignments), THE system SHALL invalidate that line's LineLayout entry to `CheckTextAndStyle`, triggering re-measurement only if the style actually changed between the cached and current state. [SCI-PCACHE]
 7. THE system SHALL batch invalidation events during rapid editing: multiple edits within a single frame SHALL produce a single coalesced invalidation covering the affected range, rather than individual invalidations per keystroke. [WB]
-8. WHEN the display-line-mapping reports a visibility change (line excluded/shown or fold toggled), THE system SHALL NOT invalidate cached measurements for the affected lines — the cached data remains valid for when the line becomes visible again. [SCI-PCACHE]
+8. WHEN the display-line-mapping reports a visibility change (line excluded/shown or fold toggled), THE system SHALL NOT invalidate cached measurements for the affected lines -- the cached data remains valid for when the line becomes visible again. [SCI-PCACHE]
 9. THE system SHALL expose an `invalidation_count` metric (number of invalidation events per second) for performance profiling, accessible via the logging subsystem at DEBUG level. [WB]
 
 ---
@@ -242,7 +242,7 @@ ALL cache data structures SHALL be safe for concurrent read access from multiple
 
 ### NFR-3: Deterministic Behaviour
 
-Cache hits and misses SHALL NOT affect the visual output — the rendered text SHALL be identical whether measurements come from cache or from fresh platform measurement calls. Caching is a performance optimisation only, never a correctness factor.
+Cache hits and misses SHALL NOT affect the visual output -- the rendered text SHALL be identical whether measurements come from cache or from fresh platform measurement calls. Caching is a performance optimisation only, never a correctness factor.
 
 ### NFR-4: Platform Independence
 

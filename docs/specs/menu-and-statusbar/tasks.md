@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-menu` crate — the menu bar, context menus, status bar, and primary command field for FileForgeWorkbench. The menu system provides hierarchical command invocation through standard menus, right-click context menus, and a configurable multi-segment status bar displaying real-time editor and workbench state. All menu actions route through `ff-command` dispatch — no menu item directly mutates application state.
+This plan covers the complete implementation of the `ff-menu` crate -- the menu bar, context menus, status bar, and primary command field for FileForgeWorkbench. The menu system provides hierarchical command invocation through standard menus, right-click context menus, and a configurable multi-segment status bar displaying real-time editor and workbench state. All menu actions route through `ff-command` dispatch -- no menu item directly mutates application state.
 
 This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-command` (command framework), `ff-core` (platform core), `ff-layout` (layout and docking), `ff-plugin` (plugin architecture), and `ff-config` (configuration system).
 
@@ -29,10 +29,10 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-command` 
 
 - [x] 3. Menu-command binding and predicate evaluation
   - [x] 3.1 Implement `MenuCommandBinding` struct linking a MenuItem to a Command_ID in the command registry
-  - [x] 3.2 Implement shortcut text resolution — query ShortcutRegistry for bound command's shortcut and format as display text
-  - [x] 3.3 Implement enabled-state evaluation — query command's EnabledPredicate against current ExecutionContext
-  - [x] 3.4 Implement visibility evaluation — query command's VisibilityPredicate against current ExecutionContext
-  - [x] 3.5 Implement menu item activation — call `execute_command(command_id, params)` on the command dispatcher when item is clicked
+  - [x] 3.2 Implement shortcut text resolution -- query ShortcutRegistry for bound command's shortcut and format as display text
+  - [x] 3.3 Implement enabled-state evaluation -- query command's EnabledPredicate against current ExecutionContext
+  - [x] 3.4 Implement visibility evaluation -- query command's VisibilityPredicate against current ExecutionContext
+  - [x] 3.5 Implement menu item activation -- call `execute_command(command_id, params)` on the command dispatcher when item is clicked
   - [x] 3.6 Write unit tests for binding resolution, disabled rendering, hidden items, and dispatch invocation
   - Covers: Requirement 2 (AC 2.1-2.4, 2.10)
 
@@ -48,7 +48,7 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-command` 
 
 - [x] 5. Menu bar rendering (egui)
   - [x] 5.1 Implement `MenuBarWidget` struct with `render(&self, ui: &mut egui::Ui)` method
-  - [x] 5.2 Implement top-level menu heading rendering — each heading opens dropdown on click
+  - [x] 5.2 Implement top-level menu heading rendering -- each heading opens dropdown on click
   - [x] 5.3 Implement dropdown submenu rendering with items, separators, and nested submenus
   - [x] 5.4 Implement disabled-item greyed-out rendering style
   - [x] 5.5 Implement hidden-item filtering (skip items whose visibility predicate returns false)
@@ -59,7 +59,7 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-command` 
 
 - [x] 6. Recent files management
   - [x] 6.1 Define `RecentFilesManager` struct with bounded list storage and configuration reference
-  - [x] 6.2 Implement `add_or_promote(path: &Path)` — adds path to top, removes duplicate, trims to max
+  - [x] 6.2 Implement `add_or_promote(path: &Path)` -- adds path to top, removes duplicate, trims to max
   - [x] 6.3 Implement configurable max entries from `menu.recent_files_max` (default 10, max 50)
   - [x] 6.4 Implement list query method returning ordered entries for submenu rendering
   - [x] 6.5 Implement stale-path detection: render non-existent paths with visual indication
@@ -93,7 +93,7 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-command` 
   - [x] 8.9 Write unit tests for layout ordering, ID validation, and placeholder behavior
   - Covers: Requirement 5 (AC 5.1-5.7)
 
-- [x] 9. Status bar core segments — mode and state
+- [x] 9. Status bar core segments -- mode and state
   - [x] 9.1 Implement editor mode segment displaying "Browse", "Edit", or "View"
   - [x] 9.2 Implement mode segment reactive update on Editor_Mode change
   - [x] 9.3 Implement insert/overstrike segment displaying "INS" or "OVR"
@@ -103,7 +103,7 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-command` 
   - [x] 9.7 Write unit tests for mode display values, state transitions, and modified indicator lifecycle
   - Covers: Requirement 6 (AC 6.1-6.6)
 
-- [x] 10. Status bar core segments — position and file info
+- [x] 10. Status bar core segments -- position and file info
   - [x] 10.1 Implement line/column segment displaying "Ln {line}, Col {col}" (1-based)
   - [x] 10.2 Implement line/column reactive update on cursor movement (within one frame)
   - [x] 10.3 Implement file encoding segment displaying detected encoding string
@@ -267,13 +267,13 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-command` 
 ## Notes
 
 - This is a Wave 6 (UI and Rendering) crate depending on Wave 2 platform crates (ff-command, ff-core, ff-plugin, ff-config) and Wave 2 layout (ff-layout)
-- The `ff-command` crate provides CommandId, CommandRegistry, CommandDispatch, and ShortcutRegistry — ff-menu consumes these without modification
-- The `ff-plugin` crate provides the PluginContext and capability discovery — ff-menu uses this for menu and status bar extensibility
+- The `ff-command` crate provides CommandId, CommandRegistry, CommandDispatch, and ShortcutRegistry -- ff-menu consumes these without modification
+- The `ff-plugin` crate provides the PluginContext and capability discovery -- ff-menu uses this for menu and status bar extensibility
 - The `ff-config` crate provides configuration access for `menu.recent_files_max` and `statusbar.segments`
-- Menu rendering uses `egui::menu` and `egui::popup` — this crate has a direct dependency on egui (it is a UI crate)
+- Menu rendering uses `egui::menu` and `egui::popup` -- this crate has a direct dependency on egui (it is a UI crate)
 - The Primary Command Field submits text to the `ff-command-semantics` CommandEngine for parsing; if that crate is not yet available, a basic pass-through to `execute_command` is acceptable as an interim implementation
 - Status bar segments subscribe to editor state changes; the event/subscription mechanism will be defined by ff-core's messaging interface
-- Plugin-contributed menus and status segments follow the same lifecycle as the plugin itself — registration on activate, removal on deactivate/shutdown
+- Plugin-contributed menus and status segments follow the same lifecycle as the plugin itself -- registration on activate, removal on deactivate/shutdown
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
 - Access keys (underlined characters) for keyboard navigation depend on egui's text rendering capabilities; if egui does not natively support underlined access keys, a custom rendering approach within the menu widget will be needed
 - The "Tools" top-level menu is an initially empty placeholder populated exclusively by plugin contributions
@@ -371,7 +371,7 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-command` 
     - Validates: Requirement 16.11, 16.22
   - [x] 20.4 In `update()`, pass `self.tabs.len()` as `tab_count` to `next()` and `prev()`; when `focus_stop == TabHeader { index }` request egui focus on the tab button's `Id`
     - Validates: Requirement 16.20
-  - [x] 20.5 In `render_command_field()` (or at the top of `update()`), call `ctx.memory_mut(|m| m.request_focus(cmd_id))` every frame when `focus_stop == CommandField` — not only on startup
+  - [x] 20.5 In `render_command_field()` (or at the top of `update()`), call `ctx.memory_mut(|m| m.request_focus(cmd_id))` every frame when `focus_stop == CommandField` -- not only on startup
     - Validates: Requirement 16.1, 16.2
   - [x] 20.6 Write unit tests:
           `focus_cycle_tab_forward_from_last_menu_goes_to_first_tab_header`,
@@ -382,7 +382,7 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-command` 
           `focus_cycle_non_pom_includes_tab_headers`
     - Validates: Requirement 16.10, 16.20, 16.21, 16.22
 
-- [x] 21. Title Line — Tab Window Chrome (Requirement 17)
+- [x] 21. Title Line -- Tab Window Chrome (Requirement 17)
   - [x] 21.1 Add `render_title_line(ctx: &egui::Context)` method to `WorkbenchShell`; render a `TopBottomPanel` between the tab bar and command field displaying context-dependent text
     - Validates: Requirement 17.1, 17.2
   - [x] 21.2 Derive Title_Line text from active tab kind and path: POM → app name + version; FileEditor with path → full path; FileEditor untitled → `[Untitled]`; FilesPanel → `[FILES]`; SettingsPanel → `[SETTINGS]`; Untitled → `[Untitled]`
@@ -392,13 +392,13 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-command` 
   - [x] 21.4 Write unit tests: `title_line_pom_tab_shows_app_name_and_version`, `title_line_file_editor_shows_path`, `title_line_untitled_shows_placeholder`, `title_line_settings_panel_shows_settings`, `title_line_files_panel_shows_files`
     - Validates: Requirement 17.3, 17.4, 17.5, 17.6
 
-- [x] 22. Detachable Tabs — stub wiring (Requirement 18, partial)
+- [x] 22. Detachable Tabs -- stub wiring (Requirement 18, partial)
   - [x] 22.1 Document "Move to Other View" context menu item as deferred (Phase AL); ensure stub does not panic and shows a status message "Detachable windows: coming in Phase AL"
     - Validates: Requirement 18.1 (stub acknowledgement)
   - [x] 22.2 Add `title_line_text(tab: &TabState) -> String` helper function used by both `render_title_line` and (future) floating window title bar
     - Validates: Requirement 18.5 (preparation)
 
-## Phase AM — Detachable Tab Windows (Requirement 18)
+## Phase AM -- Detachable Tab Windows (Requirement 18)
 
 - [x] 23. Implement detachable tab windows via egui child viewports
   - [x] 23.1 Add `is_floating: bool` field to `Tab` struct in `tab_manager.rs`; default `false`
@@ -413,7 +413,7 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-command` 
     - Validates: Requirement 18.1, 18.4
   - [x] 23.6 In `render_tab_bar()`, skip tabs where `is_floating == true`
     - Validates: Requirement 18.4
-  - [x] 23.7 Each frame, call `ctx.show_viewport_deferred()` for each `FloatingTab`; render Title_Line + Command_Field + tab content inside the callback; set OS title bar to `title_line_text(tab) + " — FileForge Workbench"`
+  - [x] 23.7 Each frame, call `ctx.show_viewport_deferred()` for each `FloatingTab`; render Title_Line + Command_Field + tab content inside the callback; set OS title bar to `title_line_text(tab) + " -- FileForge Workbench"`
     - Validates: Requirement 18.1, 18.2, 18.5
   - [x] 23.8 Inside deferred viewport callback, detect close event and push `origin_index` into `redock_pending`
     - Validates: Requirement 18.3

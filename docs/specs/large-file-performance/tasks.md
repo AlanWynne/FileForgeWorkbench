@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-large-file-performance` crate — the rendering optimisation infrastructure for FileForgeWorkbench that ensures responsive behaviour (60fps scrolling, sub-frame layout computation) when working with documents containing very long lines (>10,000 characters), exceeding one million lines, or combining both characteristics.
+This plan covers the complete implementation of the `ff-large-file-performance` crate -- the rendering optimisation infrastructure for FileForgeWorkbench that ensures responsive behaviour (60fps scrolling, sub-frame layout computation) when working with documents containing very long lines (>10,000 characters), exceeding one million lines, or combining both characteristics.
 
 The crate provides four core capabilities: long-line chunked measurement, font metrics measurement caching (PositionCache), line layout caching (LineLayoutCache), and viewport-aware lazy computation. The design adapts Scintilla's `PositionCache`, `LineLayoutCache`, and `LineLayout` concepts into a trait-based, cache-invalidation-aware Rust design.
 
@@ -22,7 +22,7 @@ This is a **Wave 15 (Background Processing and Performance)** sub-project that d
 - [x] 2. Core types and configuration
   - [x] 2.1 Define `LineNumber(u64)` re-export or alias from document-model, `DisplayLine(u64)`, `BytePosition(u64)`, `CharOffset(u64)` newtypes
   - [x] 2.2 Define `StyleSlotIndex(u16)` newtype for style slot keying
-  - [x] 2.3 Define `FontMetricsKey` struct with fields: font_family, font_size, font_weight, font_style, zoom_level — implement Hash, Eq
+  - [x] 2.3 Define `FontMetricsKey` struct with fields: font_family, font_size, font_weight, font_style, zoom_level -- implement Hash, Eq
   - [x] 2.4 Define `CacheLevel` enum: `Viewport`, `Page`, `Document` with auto-selection logic
   - [x] 2.5 Define `CacheValidity` enum: `Invalid`, `CheckTextAndStyle`, `Positions`, `Lines`
   - [x] 2.6 Define `LargeFilePerformanceConfig` struct with all configurable parameters: long_line_threshold, position_cache_size, overscan_lines, frame_budget_ms, layout_cache_memory_mb, long_line_overscan_chars, render_chunk_size, line_layout_cache_level
@@ -231,7 +231,7 @@ This is a **Wave 15 (Background Processing and Performance)** sub-project that d
 
 **Validates: Requirement 9.1, 9.2, 9.7**
 
-- **Statement:** After any batch of document edits (insertions/deletions that may change line count), no LineLayout entry in the cache SHALL have stale content — every entry either has validity == Invalid or its stored text matches the current document line content.
+- **Statement:** After any batch of document edits (insertions/deletions that may change line count), no LineLayout entry in the cache SHALL have stale content -- every entry either has validity == Invalid or its stored text matches the current document line content.
 - **Strategy:** Generate:
   - Initial document: [100, 5000] lines of random content
   - Edit batch: 1–20 random edits (insert chars, delete chars, insert newlines, delete newlines)
@@ -274,10 +274,10 @@ This is a **Wave 15 (Background Processing and Performance)** sub-project that d
 ## Notes
 
 - This is a Wave 15 (Background Processing and Performance) crate depending on `ff-document-model` (Wave 4), `ff-viewport-and-scrolling` (Wave 4), `ff-display-line-mapping` (Wave 4), `ff-syntax-highlighting` (Wave 7), `ff-theme-and-appearance` (Wave 6), `ff-background-io` (Wave 8), `ff-idle-processing` (Wave 15), `ff-view-zoom` (Wave 9), and `ff-configuration-system` (Wave 2)
-- The `MeasurementSurface` trait provides platform independence — all cache logic operates on abstract x-position arrays without knowledge of the rendering backend (egui, Win32, etc.)
+- The `MeasurementSurface` trait provides platform independence -- all cache logic operates on abstract x-position arrays without knowledge of the rendering backend (egui, Win32, etc.)
 - The PositionCache uses Scintilla's two-way associative probing with clock eviction for O(1) amortised lookup and minimal memory fragmentation
 - The LineLayoutCache auto-selects caching scope based on document size to balance memory usage and cache-hit rates
-- Long-line chunked measurement is the key enabler for responsive editing of minified JavaScript, log files, and data dumps — only the visible horizontal slice is ever measured
+- Long-line chunked measurement is the key enabler for responsive editing of minified JavaScript, log files, and data dumps -- only the visible horizontal slice is ever measured
 - The scroll performance layer implements a graceful degradation strategy: fast scrolling uses approximate layouts (instant), accurate layouts are computed in the background, and refinement repaints only occur when visual differences exist
 - Cache invalidation uses batch coalescing to avoid per-keystroke invalidation storms during rapid editing
 - Memory budgeting (default 64 MB for LineLayoutCache) ensures the performance layer does not consume unbounded memory on very large files
@@ -300,7 +300,7 @@ This is a **Wave 15 (Background Processing and Performance)** sub-project that d
 | Req 7: Memory-Efficient Document Model Integration | AC 7.1–7.7 | Tasks 13, 6, 7 |
 | Req 8: Scroll Performance (60fps Target) | AC 8.1–8.8 | Tasks 11, 7, 8 |
 | Req 9: Cache Invalidation | AC 9.1–9.9 | Task 10 |
-| NFR-1: Memory Efficiency | — | Tasks 6, 13 |
-| NFR-2: Thread Safety | — | Tasks 4, 6 |
-| NFR-3: Deterministic Behaviour | — | Tasks 15, 16 |
-| NFR-4: Platform Independence | — | Task 14 |
+| NFR-1: Memory Efficiency | -- | Tasks 6, 13 |
+| NFR-2: Thread Safety | -- | Tasks 4, 6 |
+| NFR-3: Deterministic Behaviour | -- | Tasks 15, 16 |
+| NFR-4: Platform Independence | -- | Task 14 |

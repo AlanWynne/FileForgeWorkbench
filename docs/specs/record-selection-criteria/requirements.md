@@ -6,18 +6,18 @@ This feature specifies the **Record Selection Criteria** system for FileForgeWor
 
 The feature covers seven tightly related capabilities:
 
-1. **Criteria_Set definition** — field-based filter expressions with comparison operators, logical connectors, and grouping
-2. **Comparison operators** — EQ, NE, GT, GE, LT, LE, CONTAINS, STARTS_WITH, ENDS_WITH, MATCHES_REGEX, plus wildcard support
-3. **Logical combination** — AND/OR groups with parenthesised sub-expressions and standard precedence
-4. **CRITERIA primary command** — CRITERIA SET/CLEAR/SHOW dispatched through the command framework
-5. **Criteria applied to Grid_Edit_Mode display** — filter rows in real time without modifying the file
-6. **Criteria applied to FIND/CHANGE scope** — restrict find-and-replace operations to criteria-matching records
-7. **Criteria persistence** — named criteria sets saved to a Criteria_Catalog with structure association
+1. **Criteria_Set definition** -- field-based filter expressions with comparison operators, logical connectors, and grouping
+2. **Comparison operators** -- EQ, NE, GT, GE, LT, LE, CONTAINS, STARTS_WITH, ENDS_WITH, MATCHES_REGEX, plus wildcard support
+3. **Logical combination** -- AND/OR groups with parenthesised sub-expressions and standard precedence
+4. **CRITERIA primary command** -- CRITERIA SET/CLEAR/SHOW dispatched through the command framework
+5. **Criteria applied to Grid_Edit_Mode display** -- filter rows in real time without modifying the file
+6. **Criteria applied to FIND/CHANGE scope** -- restrict find-and-replace operations to criteria-matching records
+7. **Criteria persistence** -- named criteria sets saved to a Criteria_Catalog with structure association
 
 Additionally, the system provides:
-- **Criteria UI panel** — an interactive builder for constructing filter expressions visually
-- **Field-type-aware comparison** — numeric, string, and packed-decimal fields compared using appropriate semantics
-- **Wildcard support** — glob-style wildcards (`*`, `?`) in string comparison values
+- **Criteria UI panel** -- an interactive builder for constructing filter expressions visually
+- **Field-type-aware comparison** -- numeric, string, and packed-decimal fields compared using appropriate semantics
+- **Wildcard support** -- glob-style wildcards (`*`, `?`) in string comparison values
 
 This spec extends the `structure-catalog` and `fileforge-integration` specs. The `file_forge` crate continues to own all record parsing and field extraction. Criteria evaluation is performed in the display layer, not written to the source file. The criteria engine integrates with the `find-and-replace` engine to scope FIND/CHANGE operations.
 
@@ -27,12 +27,12 @@ This spec extends the `structure-catalog` and `fileforge-integration` specs. The
 
 ## Cross-References
 
-- **`fileforge-integration`** — Provides FileForge_Mode, Structure_Definition, Record_Structure, field extraction, EBCDIC/COMP-3 decoding
-- **`structure-catalog`** — Provides the Structure_Catalog, Grid_Edit_Mode, Grid_Browse_Mode, Record_Filter, Record_Type_Filter, Matching_Record, Non_Matching_Record
-- **`find-and-replace`** — Criteria scope integration; FIND/CHANGE can be restricted to criteria-matching records
-- **`command-framework`** — CRITERIA command registration, dispatch, metadata, undo integration
-- **`configuration-system`** — Criteria_Catalog path configuration, hot-reload of criteria store settings
-- **`layout-and-docking`** — Criteria panel can be docked as a side panel or floated
+- **`fileforge-integration`** -- Provides FileForge_Mode, Structure_Definition, Record_Structure, field extraction, EBCDIC/COMP-3 decoding
+- **`structure-catalog`** -- Provides the Structure_Catalog, Grid_Edit_Mode, Grid_Browse_Mode, Record_Filter, Record_Type_Filter, Matching_Record, Non_Matching_Record
+- **`find-and-replace`** -- Criteria scope integration; FIND/CHANGE can be restricted to criteria-matching records
+- **`command-framework`** -- CRITERIA command registration, dispatch, metadata, undo integration
+- **`configuration-system`** -- Criteria_Catalog path configuration, hot-reload of criteria store settings
+- **`layout-and-docking`** -- Criteria panel can be docked as a side panel or floated
 
 ---
 
@@ -95,7 +95,7 @@ This spec extends the `structure-catalog` and `fileforge-integration` specs. The
 5. WHEN the operator is `CONTAINS`, THE Criteria_Evaluator SHALL return true if the field value contains the criterion value as a substring. [FFE-CRITERIA]
 6. WHEN the operator is `STARTS_WITH`, THE Criteria_Evaluator SHALL return true if the field value begins with the criterion value. [FFE-CRITERIA]
 7. WHEN the operator is `ENDS_WITH`, THE Criteria_Evaluator SHALL return true if the field value ends with the criterion value. [FFE-CRITERIA]
-8. WHEN the operator is `MATCHES_REGEX`, THE Criteria_Evaluator SHALL interpret the criterion value as a regular expression pattern and return true if the field value matches the pattern (partial match — the pattern need not match the entire field value). [WB]
+8. WHEN the operator is `MATCHES_REGEX`, THE Criteria_Evaluator SHALL interpret the criterion value as a regular expression pattern and return true if the field value matches the pattern (partial match -- the pattern need not match the entire field value). [WB]
 9. IF a `MATCHES_REGEX` criterion value is not a valid regex pattern, THE Criteria_Evaluator SHALL treat the criterion as not matching and display a validation error in the Criteria_Panel identifying the invalid pattern. [WB]
 10. WHEN the Case_Sensitive_Flag is `false` (the default), THE Criteria_Evaluator SHALL perform all string comparisons (`EQ`, `NE`, `CONTAINS`, `STARTS_WITH`, `ENDS_WITH`, `MATCHES_REGEX`) case-insensitively. [FFE-CRITERIA]
 11. WHEN the Case_Sensitive_Flag is `true`, THE Criteria_Evaluator SHALL perform all string comparisons case-sensitively. [FFE-CRITERIA]
@@ -115,7 +115,7 @@ This spec extends the `structure-catalog` and `fileforge-integration` specs. The
 2. WHEN a field's `data_type` is `packed` (COMP-3 packed-decimal), THE Criteria_Evaluator SHALL decode the packed bytes to a numeric value using the `file_forge` crate's packed-decimal decoder, then perform Numeric_Comparison against the criterion value. [WB]
 3. WHEN a field's `data_type` is `str` or `bool`, THE Criteria_Evaluator SHALL perform string comparison (lexicographic ordering for GT/GE/LT/LE, equality for EQ/NE). [FFE-CRITERIA]
 4. WHEN a field's `data_type` indicates EBCDIC encoding, THE Criteria_Evaluator SHALL convert the field value from EBCDIC to the display character set before performing string comparison operations. [WB]
-5. WHEN a field value is entirely numeric (digits, optional sign, optional decimal point) but the field's declared `data_type` is `str`, THE Criteria_Evaluator SHALL still perform string comparison — the declared type takes precedence over inferred content. [WB]
+5. WHEN a field value is entirely numeric (digits, optional sign, optional decimal point) but the field's declared `data_type` is `str`, THE Criteria_Evaluator SHALL still perform string comparison -- the declared type takes precedence over inferred content. [WB]
 6. THE Criteria_Panel SHALL display the detected comparison mode (Numeric, String, Packed-Decimal) next to the operator dropdown when a field is selected, providing user feedback on how the comparison will be evaluated. [WB]
 
 ---
@@ -182,16 +182,16 @@ This spec extends the `structure-catalog` and `fileforge-integration` specs. The
 #### Acceptance Criteria
 
 1. WHEN a Criteria_Set is applied, THE system SHALL evaluate each record against the Criteria_Set using the Criteria_Evaluator and display only records that satisfy the expression. [FFE-CRITERIA]
-2. WHEN a Criteria_Set is applied, records that do not satisfy the criteria SHALL be excluded from the grid display entirely — they SHALL NOT be shown as greyed-out rows or placeholder rows. [FFE-CRITERIA]
+2. WHEN a Criteria_Set is applied, records that do not satisfy the criteria SHALL be excluded from the grid display entirely -- they SHALL NOT be shown as greyed-out rows or placeholder rows. [FFE-CRITERIA]
 3. WHEN a Criteria_Set is applied and the Record_Type_Scope is set to a specific Record_Structure name, THE Criteria_Evaluator SHALL apply criteria only to records of that type; records of other types SHALL be displayed normally without being subject to the criteria filter. [FFE-CRITERIA]
 4. WHEN a Criteria_Set is applied and the Record_Type_Scope is `ALL TYPES`, THE Criteria_Evaluator SHALL apply criteria to all records regardless of their Record_Structure type. [FFE-CRITERIA]
-5. WHEN criteria are active and the user issues a SAVE command, THE system SHALL save all records (including filtered-out records) to their original byte positions — the filter affects only display, not file content. [FFE-CRITERIA]
+5. WHEN criteria are active and the user issues a SAVE command, THE system SHALL save all records (including filtered-out records) to their original byte positions -- the filter affects only display, not file content. [FFE-CRITERIA]
 6. WHEN the user scrolls, navigates, or resizes the grid while criteria are active, THE system SHALL maintain the filter without requiring re-application. [FFE-CRITERIA]
 7. WHEN the active Structure_Definition is changed while criteria are active, THE system SHALL clear the Active_Criteria_Set because the field names referenced by the criteria may no longer be valid. [FFE-CRITERIA]
 8. WHEN a Criteria_Set references a field name that does not exist in the current Record_Structure, THE system SHALL display a warning identifying the unknown field name and treat criteria rows referencing that field as disabled. [FFE-CRITERIA]
 9. WHEN a Criteria_Set and a Record_Filter are both active, THE system SHALL display only records that satisfy BOTH the Criteria_Set expression AND the Record_Filter condition. [FFE-CRITERIA]
 10. WHEN a Criteria_Set and a Record_Type_Filter are both active, THE system SHALL display only records that satisfy BOTH the Criteria_Set expression AND the Record_Type_Filter condition. [FFE-CRITERIA]
-11. WHEN all three filters are simultaneously active (Criteria_Set, Record_Filter, Record_Type_Filter), THE system SHALL apply all three conjunctively — only records satisfying all three SHALL be displayed. [FFE-CRITERIA]
+11. WHEN all three filters are simultaneously active (Criteria_Set, Record_Filter, Record_Type_Filter), THE system SHALL apply all three conjunctively -- only records satisfying all three SHALL be displayed. [FFE-CRITERIA]
 12. WHEN criteria are active, THE system SHALL display the count of visible records and the total record count in the status bar (e.g., `Showing 142 of 10,000 records`). [FFE-CRITERIA]
 
 ---
@@ -207,10 +207,10 @@ This spec extends the `structure-catalog` and `fileforge-integration` specs. The
 1. WHEN `FIND 'text' CRITERIA` is issued and an Active_Criteria_Set is in effect, THE find engine SHALL restrict the search to lines belonging to records that satisfy the Active_Criteria_Set filter. [WB]
 2. WHEN `CHANGE 'old' 'new' CRITERIA` is issued and an Active_Criteria_Set is in effect, THE find engine SHALL restrict replacements to lines belonging to records that satisfy the Active_Criteria_Set filter. [WB]
 3. WHEN `FIND 'text' CRITERIA` is issued and no Active_Criteria_Set is in effect, THE find engine SHALL search all eligible lines (the CRITERIA modifier has no effect when no criteria are active). [WB]
-4. THE `CRITERIA` scope modifier SHALL combine with other FIND/CHANGE modifiers (TAGGED, EXCLUDED, VISIBLE, column bounds) conjunctively — a line must satisfy all active scope constraints to be searched or changed. [WB]
+4. THE `CRITERIA` scope modifier SHALL combine with other FIND/CHANGE modifiers (TAGGED, EXCLUDED, VISIBLE, column bounds) conjunctively -- a line must satisfy all active scope constraints to be searched or changed. [WB]
 5. WHEN the find panel's scope dropdown includes a "Criteria-matching records" option, selecting it SHALL apply the CRITERIA scope modifier to all searches and changes executed from the panel. [WB]
 6. THE Criteria_Scope SHALL be evaluated at the record level: if any part of a record's display lines satisfies the criteria, all lines belonging to that record are eligible for FIND/CHANGE within the criteria scope. [WB]
-7. WHEN criteria are active but the user does NOT specify the CRITERIA modifier, FIND/CHANGE SHALL operate on all visible lines regardless of criteria — the criteria filter does not implicitly restrict FIND/CHANGE unless explicitly requested. [WB]
+7. WHEN criteria are active but the user does NOT specify the CRITERIA modifier, FIND/CHANGE SHALL operate on all visible lines regardless of criteria -- the criteria filter does not implicitly restrict FIND/CHANGE unless explicitly requested. [WB]
 
 ---
 
@@ -227,7 +227,7 @@ This spec extends the `structure-catalog` and `fileforge-integration` specs. The
 3. THE default Active_Criteria_Location SHALL be `~/.config/ffworkbench/criteria/` (or the platform equivalent), created automatically on first use if it does not exist. [FFE-CRITERIA]
 4. EACH saved Criteria_Set SHALL be stored as a single `.criteria.json` file in the Active_Criteria_Location. [FFE-CRITERIA]
 5. THE `.criteria.json` file SHALL be a JSON object containing: `name` (string), `structure_association` (string or null), `record_type_scope` (string or null), `case_sensitive` (boolean), `criteria` (array of criterion objects). [FFE-CRITERIA]
-6. EACH criterion object SHALL contain: `enabled` (boolean), `field` (string), `operator` (string — one of the Criteria_Operator values), `value` (string), `value2` (string or null), `connector` (string `AND`/`OR` or null), `group_open` (boolean), `group_close` (boolean). [FFE-CRITERIA]
+6. EACH criterion object SHALL contain: `enabled` (boolean), `field` (string), `operator` (string -- one of the Criteria_Operator values), `value` (string), `value2` (string or null), `connector` (string `AND`/`OR` or null), `group_open` (boolean), `group_close` (boolean). [FFE-CRITERIA]
 7. WHEN a `.criteria.json` file is missing required keys or contains an unrecognised operator string, THE system SHALL display an error describing the parse failure and not load the corrupted set. [FFE-CRITERIA]
 8. WHEN the Criteria_Store file is absent at startup, THE system SHALL initialise with the default criteria location and an empty catalog, without error. [FFE-CRITERIA]
 9. WHEN the Criteria_Store file is corrupt or unparseable, THE system SHALL initialise with defaults, emit a warning, and not overwrite the corrupt file until the operator makes a change. [FFE-CRITERIA]
@@ -255,7 +255,7 @@ This spec extends the `structure-catalog` and `fileforge-integration` specs. The
 10. WHEN the user clicks `Cancel`, THE system SHALL close the Criteria_Panel and leave the current filter state unchanged. [FFE-CRITERIA]
 11. THE Criteria_Panel SHALL expose the Case_Sensitive_Flag as a checkbox labelled "Case sensitive" at the top of the panel. [FFE-CRITERIA]
 12. THE Criteria_Panel SHALL be non-modal, allowing the user to interact with the editor grid while the panel is open. [FFE-CRITERIA]
-13. THE Criteria_Panel SHALL be dockable within the workbench layout system — it can be docked to any panel zone or floated as a standalone window. [WB]
+13. THE Criteria_Panel SHALL be dockable within the workbench layout system -- it can be docked to any panel zone or floated as a standalone window. [WB]
 14. THE Criteria_Panel SHALL validate the criteria expression in real time, highlighting errors (unmatched groups, invalid regex patterns, type mismatches) with inline indicators before the user clicks Apply. [WB]
 
 ---
@@ -326,7 +326,7 @@ This spec extends the `structure-catalog` and `fileforge-integration` specs. The
 
 #### Acceptance Criteria
 
-1. THE configuration system SHALL accept a `[criteria]` table in any configuration layer (system, user, profile, project, workspace) with the following keys: `store_path` (string — custom path for the Criteria_Store file), `default_location` (string — default Active_Criteria_Location path), `auto_suggest` (boolean — enable/disable structure-association auto-suggestion, default `true`), `max_criteria_rows` (integer — maximum rows per Criteria_Set, default `50`). [WB]
+1. THE configuration system SHALL accept a `[criteria]` table in any configuration layer (system, user, profile, project, workspace) with the following keys: `store_path` (string -- custom path for the Criteria_Store file), `default_location` (string -- default Active_Criteria_Location path), `auto_suggest` (boolean -- enable/disable structure-association auto-suggestion, default `true`), `max_criteria_rows` (integer -- maximum rows per Criteria_Set, default `50`). [WB]
 2. WHEN `criteria.store_path` is configured, THE system SHALL use that path for the Criteria_Store instead of the default user-level location. [WB]
 3. WHEN `criteria.default_location` is configured, THE system SHALL use that path as the initial Active_Criteria_Location for new installations. [WB]
 4. WHEN `criteria.auto_suggest` is `false`, THE system SHALL skip structure-association auto-suggestion prompts entirely. [WB]

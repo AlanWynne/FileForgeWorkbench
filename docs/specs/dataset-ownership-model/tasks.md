@@ -2,7 +2,7 @@
 
 ## Overview
 
-This task plan implements the architectural governance infrastructure for the Dataset Ownership Model. It does NOT produce a standalone crate — instead, it produces:
+This task plan implements the architectural governance infrastructure for the Dataset Ownership Model. It does NOT produce a standalone crate -- instead, it produces:
 
 1. An architectural compliance test suite (`tests/architecture_compliance.rs`)
 2. Trait interface definitions in owning crates (CatalogService, VsamService, AllocatorService)
@@ -19,21 +19,21 @@ This task plan implements the architectural governance infrastructure for the Da
 ## Tasks
 
 - [x] 1. Architectural compliance test infrastructure
-  - [x] 1.1 Create `tests/architecture_compliance.rs` at workspace root — integration test file for dependency direction verification
-  - [x] 1.2 Implement `parse_cargo_toml(path)` helper — read and parse a Cargo.toml file, extract `[dependencies]` and `[dev-dependencies]` sections
-  - [x] 1.3 Implement `workspace_members()` helper — enumerate all workspace member crate paths from root Cargo.toml
-  - [x] 1.4 Implement `DependencyRule` struct and `PROHIBITED_DEPENDENCIES` constant — static list of all prohibited dependency relationships from Requirement 7
-  - [x] 1.5 Write test `vfs_has_no_domain_dependencies` — verify ff-vfs Cargo.toml has no dependency on ff-idcams, ff-dataset-catalog, ff-dataset-allocator, or ff-vsam-services
+  - [x] 1.1 Create `tests/architecture_compliance.rs` at workspace root -- integration test file for dependency direction verification
+  - [x] 1.2 Implement `parse_cargo_toml(path)` helper -- read and parse a Cargo.toml file, extract `[dependencies]` and `[dev-dependencies]` sections
+  - [x] 1.3 Implement `workspace_members()` helper -- enumerate all workspace member crate paths from root Cargo.toml
+  - [x] 1.4 Implement `DependencyRule` struct and `PROHIBITED_DEPENDENCIES` constant -- static list of all prohibited dependency relationships from Requirement 7
+  - [x] 1.5 Write test `vfs_has_no_domain_dependencies` -- verify ff-vfs Cargo.toml has no dependency on ff-idcams, ff-dataset-catalog, ff-dataset-allocator, or ff-vsam-services
     - Validates: Requirement 2 AC 3; Requirement 7 AC 3
-  - [x] 1.6 Write test `dataset_catalog_has_no_upstream_dependencies` — verify ff-dataset-catalog Cargo.toml has no dependency on ff-idcams or ff-dataset-allocator
+  - [x] 1.6 Write test `dataset_catalog_has_no_upstream_dependencies` -- verify ff-dataset-catalog Cargo.toml has no dependency on ff-idcams or ff-dataset-allocator
     - Validates: Requirement 3 AC 3; Requirement 7 AC 3
-  - [x] 1.7 Write test `vsam_services_has_no_upstream_dependencies` — verify ff-vsam-services Cargo.toml has no dependency on ff-idcams or ff-dataset-allocator
+  - [x] 1.7 Write test `vsam_services_has_no_upstream_dependencies` -- verify ff-vsam-services Cargo.toml has no dependency on ff-idcams or ff-dataset-allocator
     - Validates: Requirement 5 AC 3; Requirement 7 AC 3
-  - [x] 1.8 Write test `dataset_allocator_has_no_idcams_dependency` — verify ff-dataset-allocator Cargo.toml has no dependency on ff-idcams
+  - [x] 1.8 Write test `dataset_allocator_has_no_idcams_dependency` -- verify ff-dataset-allocator Cargo.toml has no dependency on ff-idcams
     - Validates: Requirement 7 AC 5
-  - [x] 1.9 Write test `idcams_has_no_storage_engine_dependencies` — verify ff-idcams has no transitive dependency on rusqlite, rocksdb, or lmdb (use `cargo tree` output or Cargo.lock parsing)
+  - [x] 1.9 Write test `idcams_has_no_storage_engine_dependencies` -- verify ff-idcams has no transitive dependency on rusqlite, rocksdb, or lmdb (use `cargo tree` output or Cargo.lock parsing)
     - Validates: Requirement 6 AC 3; Requirement 7 AC 3
-  - [x] 1.10 Implement violation reporting — clear error messages identifying the violating crate, the prohibited dependency, and the governance rule reference
+  - [x] 1.10 Implement violation reporting -- clear error messages identifying the violating crate, the prohibited dependency, and the governance rule reference
     - Validates: Requirement 18 AC 1, AC 2, AC 5
 
 - [x] 2. CatalogService trait interface definition
@@ -57,7 +57,7 @@ This task plan implements the architectural governance infrastructure for the Da
     - Validates: Requirement 16 AC 2–5
   - [x] 3.3 Ensure `VsamService` trait is object-safe (all methods use `&self`, no associated types in return position that prevent object safety)
     - Validates: Requirement 16 AC 6
-  - [x] 3.4 Implement a no-op stub `StubVsamService` that returns `VsamError::NotImplemented` for all methods — enables dependent crates to compile before full VSAM implementation
+  - [x] 3.4 Implement a no-op stub `StubVsamService` that returns `VsamError::NotImplemented` for all methods -- enables dependent crates to compile before full VSAM implementation
     - Validates: Requirement 16 AC 7
   - [x] 3.5 Export `VsamService` and `StubVsamService` from `ff-vsam-services` crate root
     - Validates: Requirement 16 AC 1, AC 7
@@ -76,17 +76,17 @@ This task plan implements the architectural governance infrastructure for the Da
   - [x] 4.5 Write compilation test: verify `Box<dyn AllocatorService>` compiles (object safety)
     - Validates: Requirement 17 AC 7
 
-- [x] 5. Mock compilation tests — trait-based coupling verification
+- [x] 5. Mock compilation tests -- trait-based coupling verification
   - [x] 5.1 Write test in `ff-governance-tests/tests/mock_compilation.rs`: construct a mock `CatalogService` implementation, exercise all trait methods, verify compilation succeeds
     - Validates: Requirement 4 AC 7; Requirement 18 AC 4
   - [x] 5.2 Write test in `ff-governance-tests/tests/mock_compilation.rs`: construct mock implementations of `CatalogService` and `VsamService`, simulate DEFINE/DELETE workflows, verify compilation succeeds
     - Validates: Requirement 6 AC 9; Requirement 18 AC 4
-  - [x] 5.3 Write test `dataset_allocator_source_has_no_rusqlite_imports` — scan ff-dsalloc source files for `use rusqlite`
+  - [x] 5.3 Write test `dataset_allocator_source_has_no_rusqlite_imports` -- scan ff-dsalloc source files for `use rusqlite`
     - Validates: Requirement 12 AC 3
-  - [x] 5.4 Write test `idcams_source_has_no_storage_imports` — scan ff-idcams source files for storage engine imports
+  - [x] 5.4 Write test `idcams_source_has_no_storage_imports` -- scan ff-idcams source files for storage engine imports
     - Validates: Requirement 6 AC 3; Requirement 21 AC 1
 
-- [x] 6. Subsystem specification alignment — dataset-catalog
+- [x] 6. Subsystem specification alignment -- dataset-catalog
   - [x] 6.1 Add clarification note to `dataset-catalog/requirements.md` Requirement 7 stating that JCL-driven allocation workflows (DD parsing, DISP interpretation, symbolic substitution) are owned by ff-dataset-allocator; this requirement defines only the low-level catalog CRUD API
     - Validates: Requirement 19 AC 2a
   - [x] 6.2 Add clarification note to `dataset-catalog/requirements.md` Requirement 13 stating that `catalog.listcat` and `catalog.listds` are workbench-native commands distinct from the IDCAMS `LISTCAT` command (which is owned by ff-idcams)
@@ -94,20 +94,20 @@ This task plan implements the architectural governance infrastructure for the Da
   - [x] 6.3 Add cross-reference to dataset-ownership-model governance document at the top of `dataset-catalog/requirements.md`
     - Validates: Requirement 19 AC 5
 
-- [x] 7. Subsystem specification alignment — dataset-allocator
-  - [x] 7.1 Verify that `dataset-allocator/requirements.md` Requirement 2 AC 8 explicitly names the `CatalogService` trait interface — confirmed present
+- [x] 7. Subsystem specification alignment -- dataset-allocator
+  - [x] 7.1 Verify that `dataset-allocator/requirements.md` Requirement 2 AC 8 explicitly names the `CatalogService` trait interface -- confirmed present
     - Validates: Requirement 19 AC 3a
-  - [x] 7.2 `dataset-allocator/requirements.md` Requirement 14 AC 3 already clarifies that allocation defaults flow through `CatalogService::get_allocation_defaults()` — confirmed present
+  - [x] 7.2 `dataset-allocator/requirements.md` Requirement 14 AC 3 already clarifies that allocation defaults flow through `CatalogService::get_allocation_defaults()` -- confirmed present
     - Validates: Requirement 19 AC 3c
-  - [x] 7.3 Cross-reference to dataset-ownership-model governance document is at the top of `dataset-allocator/requirements.md` — confirmed present
+  - [x] 7.3 Cross-reference to dataset-ownership-model governance document is at the top of `dataset-allocator/requirements.md` -- confirmed present
     - Validates: Requirement 19 AC 5
 
-- [x] 8. Subsystem specification alignment — idcams-emulator
-  - [x] 8.1 Verify that `idcams-emulator/requirements.md` Requirements 2–14 use delegation language (invoke `CatalogService`, `VsamService`) — confirmed present with full delegation model table
+- [x] 8. Subsystem specification alignment -- idcams-emulator
+  - [x] 8.1 Verify that `idcams-emulator/requirements.md` Requirements 2–14 use delegation language (invoke `CatalogService`, `VsamService`) -- confirmed present with full delegation model table
     - Validates: Requirement 19 AC 1a, AC 1b, AC 1c
-  - [x] 8.2 Verify that `idcams-emulator/requirements.md` Requirement 21 (Ownership Boundary Enforcement) is present and complete — confirmed present
+  - [x] 8.2 Verify that `idcams-emulator/requirements.md` Requirement 21 (Ownership Boundary Enforcement) is present and complete -- confirmed present
     - Validates: Requirement 19 AC 1
-  - [x] 8.3 Cross-reference to dataset-ownership-model governance document is in the Introduction of `idcams-emulator/requirements.md` — confirmed present
+  - [x] 8.3 Cross-reference to dataset-ownership-model governance document is in the Introduction of `idcams-emulator/requirements.md` -- confirmed present
     - Validates: Requirement 19 AC 5
 
 - [x] 9. Dataset lifecycle ownership documentation
@@ -248,8 +248,8 @@ This task plan implements the architectural governance infrastructure for the Da
 
 ## Notes
 
-- Tasks in Wave 0 (compliance tests) can proceed immediately — they only need to parse Cargo.toml files, which exist for all current crates
-- Tasks in Wave 1 (trait definitions) require the owning crates to exist as stubs — `ff-dataset-catalog` and `ff-dataset-allocator` already exist; `ff-vsam-services` may need to be created as a stub crate first
+- Tasks in Wave 0 (compliance tests) can proceed immediately -- they only need to parse Cargo.toml files, which exist for all current crates
+- Tasks in Wave 1 (trait definitions) require the owning crates to exist as stubs -- `ff-dataset-catalog` and `ff-dataset-allocator` already exist; `ff-vsam-services` may need to be created as a stub crate first
 - Wave 2 and 3 are independent and can proceed in parallel once Wave 1 is complete
-- Specification alignment (Wave 3) is documentation-only work — no code changes to existing implementations
-- The architectural fitness function (Wave 0) should be run in CI from the start, even before all crates exist — tests for non-existent crates can be `#[ignore]`-ed with a note
+- Specification alignment (Wave 3) is documentation-only work -- no code changes to existing implementations
+- The architectural fitness function (Wave 0) should be run in CI from the start, even before all crates exist -- tests for non-existent crates can be `#[ignore]`-ed with a note

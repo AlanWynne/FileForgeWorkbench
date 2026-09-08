@@ -38,7 +38,7 @@ The `ff-viewport-scrolling` crate is the **GUI-independent viewport management l
 
 ### Design Constraints (Cross-Cutting)
 
-- **GUI Independence (Req 2)**: Zero GUI framework dependencies — viewport logic is testable without egui/winit/wgpu
+- **GUI Independence (Req 2)**: Zero GUI framework dependencies -- viewport logic is testable without egui/winit/wgpu
 - **Command-Driven (Req 4)**: All scroll operations are registered as commands via `ff-command`
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-viewport-scrolling`
 - **Error Message Standards (Req 8)**: Errors follow `[viewport] operation: description` format
@@ -512,7 +512,7 @@ pub trait ViewportObserver: Send + Sync {
 
 ## Public API Surface
 
-### ViewportModel — Construction and Geometry
+### ViewportModel -- Construction and Geometry
 
 ```rust
 impl ViewportModel {
@@ -548,7 +548,7 @@ impl ViewportModel {
 }
 ```
 
-### ViewportModel — Accessors
+### ViewportModel -- Accessors
 
 ```rust
 impl ViewportModel {
@@ -585,7 +585,7 @@ impl ViewportModel {
 }
 ```
 
-### ViewportModel — Vertical Scrolling
+### ViewportModel -- Vertical Scrolling
 
 ```rust
 impl ViewportModel {
@@ -625,7 +625,7 @@ impl ViewportModel {
 }
 ```
 
-### ViewportModel — Horizontal Scrolling
+### ViewportModel -- Horizontal Scrolling
 
 ```rust
 impl ViewportModel {
@@ -643,7 +643,7 @@ impl ViewportModel {
 }
 ```
 
-### ViewportModel — Scrollbar Interaction
+### ViewportModel -- Scrollbar Interaction
 
 ```rust
 impl ViewportModel {
@@ -677,7 +677,7 @@ impl ViewportModel {
 }
 ```
 
-### CursorModel — Position and Movement
+### CursorModel -- Position and Movement
 
 ```rust
 impl CursorModel {
@@ -735,7 +735,7 @@ impl CursorModel {
 }
 ```
 
-### CaretPolicyEngine — Viewport Adjustment
+### CaretPolicyEngine -- Viewport Adjustment
 
 ```rust
 impl CaretPolicyEngine {
@@ -799,7 +799,7 @@ pub enum ScrollCommand {
 }
 ```
 
-### ViewportModel — Snapshot and Restore
+### ViewportModel -- Snapshot and Restore
 
 ```rust
 impl ViewportModel {
@@ -815,7 +815,7 @@ impl ViewportModel {
 }
 ```
 
-### ViewportModel — Event Emission
+### ViewportModel -- Event Emission
 
 ```rust
 impl ViewportModel {
@@ -852,7 +852,7 @@ pub enum ViewportError {
     InvalidScrollTarget,
 
     /// Display line mapper returned inconsistent data.
-    #[error("[viewport] {operation}: display mapper inconsistency — {detail}")]
+    #[error("[viewport] {operation}: display mapper inconsistency -- {detail}")]
     MapperInconsistency {
         operation: String,
         detail: String,
@@ -867,7 +867,7 @@ pub enum ViewportError {
     },
 
     /// Configuration value is invalid.
-    #[error("[viewport] config: key '{key}' has invalid value '{value}' — using default {default}")]
+    #[error("[viewport] config: key '{key}' has invalid value '{value}' -- using default {default}")]
     InvalidConfig {
         key: String,
         value: String,
@@ -880,41 +880,41 @@ pub enum ViewportError {
 
 ## Integration Points
 
-### With `ff-document-model` (Wave 4 — peer/upstream)
+### With `ff-document-model` (Wave 4 -- peer/upstream)
 
 - **Dependency direction**: ff-viewport-scrolling depends on ff-document-model
 - **API consumed**: `Document::line_count()` for `total_display_lines` when no display mapper is active; `Document::line_end()` for line-length queries (horizontal extent calculation)
 - **Integration**: The viewport model queries line count to compute `max_top_line`. When the document changes (inserts/deletions), the owning editor session updates `total_display_lines`
 - **Note**: The `ff-document-model` viewport manager (`Document::scroll_page_down`, etc.) is the MVP-level viewport. This crate (`ff-viewport-scrolling`) provides the full-featured replacement with caret policies, smooth scrolling, and scrollbar models. The owning session delegates to this crate instead of the document model's simple viewport methods
 
-### With `ff-display-line-mapping` (Wave 4 — peer)
+### With `ff-display-line-mapping` (Wave 4 -- peer)
 
 - **Dependency direction**: ff-viewport-scrolling depends on the `DisplayLineMapper` trait (defined in ff-display-line-mapping or re-exported here)
 - **API consumed**: `DisplayLineMapper::total_display_lines()`, `doc_to_display()`, `display_to_doc()`, `is_visible()`
 - **Integration**: When wrapping or folding is active, the viewport operates on display lines rather than document lines. The mapper translates scroll positions between coordinate systems
 - **Fallback**: When no mapper is provided, identity mapping is assumed (1 doc line = 1 display line)
 
-### With `ff-command` (Wave 2 — upstream)
+### With `ff-command` (Wave 2 -- upstream)
 
 - **Dependency direction**: ff-viewport-scrolling depends on ff-command
 - **API consumed**: `CommandRegistry::register()` for scroll command registration; `CommandId` for command identity
 - **Integration**: Scroll commands (`ScrollLineUp`, `ScrollPageDown`, etc.) are registered at session startup. The command framework dispatches them; this crate handles execution
 - **Undo integration**: Scroll commands are NOT recorded on the undo stack (Requirement 10 AC 6)
 
-### With `ff-configuration-system` (Wave 2 — upstream)
+### With `ff-configuration-system` (Wave 2 -- upstream)
 
 - **Dependency direction**: ff-viewport-scrolling depends on ff-configuration-system
 - **API consumed**: Typed config access for `[viewport]` namespace settings
 - **Integration**: Caret policies, scroll mode, lines-per-wheel-tick, and smooth scroll settings are loaded from config and hot-reloadable
 
-### With `ff-logging` (Foundation — upstream)
+### With `ff-logging` (Foundation -- upstream)
 
 - **Dependency direction**: ff-viewport-scrolling depends on ff-logging
 - **API consumed**: `log_info!`, `log_warn!`, `log_debug!` macros
 - **Usage**: Scroll mode changes logged at INFO; config warnings at WARN; caret policy decisions at DEBUG
 - **Log prefix**: `[viewport]`
 
-### With `ff-edit-operations` (Wave 4 — downstream consumer)
+### With `ff-edit-operations` (Wave 4 -- downstream consumer)
 
 - **Dependency direction**: ff-edit-operations may consume viewport state for cursor-relative operations
 - **Integration**: The editor session coordinates between edit-operations (which moves cursor) and viewport-scrolling (which scrolls to follow). The session calls `CaretPolicyEngine::compute_vertical_scroll()` after each cursor move
@@ -999,7 +999,7 @@ affinity_mode = "columns"
 
 ## Correctness Properties
 
-The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal — it must hold for all valid inputs.
+The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal -- it must hold for all valid inputs.
 
 ### Property 1: Scroll Clamping Invariant
 
@@ -1099,7 +1099,7 @@ The following properties are suitable for property-based testing with the `propt
 
 **Validates: Requirements 7.4**
 
-### Property 8: Caret Policy — Cursor Always Visible After Scroll
+### Property 8: Caret Policy -- Cursor Always Visible After Scroll
 
 **Statement:** After the caret policy engine computes a new `top_line`, the cursor line is within the visible range `[top_line, top_line + visible_count - 1]` (accounting for slop if strict is false).
 

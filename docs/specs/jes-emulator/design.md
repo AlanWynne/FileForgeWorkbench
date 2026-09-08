@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `ff-jes` crate is the **mainframe JES/SDSF-style batch processing emulator** for FileForgeWorkbench. It provides a complete job lifecycle — submission, queue management, priority-based scheduling, initiator-pool execution, real-time monitoring, log viewing, dataset allocation integration, retained output management, and purge — all delivered as a workbench plugin.
+The `ff-jes` crate is the **mainframe JES/SDSF-style batch processing emulator** for FileForgeWorkbench. It provides a complete job lifecycle -- submission, queue management, priority-based scheduling, initiator-pool execution, real-time monitoring, log viewing, dataset allocation integration, retained output management, and purge -- all delivered as a workbench plugin.
 
 ### Purpose
 
@@ -19,7 +19,7 @@ The `ff-jes` crate is the **mainframe JES/SDSF-style batch processing emulator**
 ### Position in Architecture
 
 ```
-Wave 13.5 — Job Entry Subsystem (depends on Wave 2 Platform + Wave 13 Dataset)
+Wave 13.5 -- Job Entry Subsystem (depends on Wave 2 Platform + Wave 13 Dataset)
 
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Application Binary (ffwb)                      │
@@ -27,7 +27,7 @@ Wave 13.5 — Job Entry Subsystem (depends on Wave 2 Platform + Wave 13 Dataset)
 ├─────────────────────────────────────────────────────────────────┤
 │  JobMonitorPanel │ JobLogViewerPanel (DockablePanel impls)        │
 ├─────────────────────────────────────────────────────────────────┤
-│               ff-jes (THIS CRATE) — Wave 13.5                    │
+│               ff-jes (THIS CRATE) -- Wave 13.5                    │
 │  Plugin, Scheduler, Initiators, Queue, Monitor, Provider         │
 ├─────────────────────────────────────────────────────────────────┤
 │  ff-plugin │ ff-command │ ff-layout │ ff-workflow │ ff-vfs       │
@@ -39,7 +39,7 @@ Wave 13.5 — Job Entry Subsystem (depends on Wave 2 Platform + Wave 13 Dataset)
 
 ### Design Constraints (Cross-Cutting)
 
-- **FFW-ARCH-001 (Req 1)**: All file I/O (job logs, SYSOUT, spool) flows through VFS — no direct `std::fs` in consuming code
+- **FFW-ARCH-001 (Req 1)**: All file I/O (job logs, SYSOUT, spool) flows through VFS -- no direct `std::fs` in consuming code
 - **GUI Independence (Req 2)**: Core JES logic (scheduler, queue, initiators) has zero GUI dependencies; panels use `egui` only via `DockablePanel::render`
 - **Plugin Architecture (Req 3)**: Implements `FileForgePlugin` trait; registers panels, commands, and APIs via `PluginContext`
 - **Command-Driven (Req 4)**: All JES operations registered as commands under `jes.*` namespace via `ff-command`
@@ -60,7 +60,7 @@ Wave 13.5 — Job Entry Subsystem (depends on Wave 2 Platform + Wave 13 Dataset)
 | `ff-workflow` | Job execution modelled as state-machine workflows |
 | `ff-vfs` | Job logs and SYSOUT accessible via VFS Resource_URIs |
 | `ff-dataset-allocator` | DSN resolution, DISP handling, GDG generation resolution for DD statements |
-| `ff-dataset-catalog` | Indirect — catalog queries flow through `ff-dataset-allocator` |
+| `ff-dataset-catalog` | Indirect -- catalog queries flow through `ff-dataset-allocator` |
 | `ff-config` | Reads `[plugins.ffw-jes]` configuration namespace |
 | `ff-logging` | Structured log records for all JES operations |
 
@@ -81,7 +81,7 @@ Wave 13.5 — Job Entry Subsystem (depends on Wave 2 Platform + Wave 13 Dataset)
 ```mermaid
 graph TD
     subgraph Shell [Shell Layer]
-        DESKTOP[ff-desktop — egui GUI shell]
+        DESKTOP[ff-desktop -- egui GUI shell]
     end
 
     subgraph Panels [DockablePanel Implementations]
@@ -106,14 +106,14 @@ graph TD
     end
 
     subgraph Upstream [Upstream Crates]
-        PLUG[ff-plugin — FileForgePlugin trait]
-        COMMAND[ff-command — CommandRegistry]
-        LAYOUT[ff-layout — DockablePanel trait]
-        WORKFLOW[ff-workflow — WorkflowRunner]
-        VFS[ff-vfs — VfsProvider]
-        ALLOC[ff-dataset-allocator — DD resolution]
-        CONFIG[ff-config — configuration]
-        LOG[ff-logging — diagnostics]
+        PLUG[ff-plugin -- FileForgePlugin trait]
+        COMMAND[ff-command -- CommandRegistry]
+        LAYOUT[ff-layout -- DockablePanel trait]
+        WORKFLOW[ff-workflow -- WorkflowRunner]
+        VFS[ff-vfs -- VfsProvider]
+        ALLOC[ff-dataset-allocator -- DD resolution]
+        CONFIG[ff-config -- configuration]
+        LOG[ff-logging -- diagnostics]
     end
 
     DESKTOP -->|renders| MONITOR
@@ -314,7 +314,7 @@ impl Display for JobId {
 pub enum JobStatus {
     /// Job is in the input queue awaiting dispatch.
     Queued,
-    /// Job is held — not eligible for scheduling.
+    /// Job is held -- not eligible for scheduling.
     Held,
     /// Job is currently executing on an initiator.
     Active,
@@ -424,7 +424,7 @@ pub enum InitiatorStatus {
     Starting,
     /// Initiator is executing a job.
     Active,
-    /// Initiator is draining — finishing current job but accepting no new work.
+    /// Initiator is draining -- finishing current job but accepting no new work.
     Draining,
     /// Initiator is shutting down.
     Stopping,
@@ -788,7 +788,7 @@ pub struct FfjclDd {
 /// Condition code check for step execution (like COND= on EXEC).
 #[derive(Debug, Clone)]
 pub struct StepCondition {
-    /// Conditions: (code, operator) pairs — if ANY is true, step is bypassed.
+    /// Conditions: (code, operator) pairs -- if ANY is true, step is bypassed.
     pub conditions: Vec<(i32, CondOperator)>,
 }
 
@@ -1172,7 +1172,7 @@ impl DatasetApi {
 }
 ```
 
-### JesPlugin — FileForgePlugin Implementation
+### JesPlugin -- FileForgePlugin Implementation
 
 ```rust
 /// Top-level plugin implementation that bootstraps the entire JES subsystem.
@@ -1233,16 +1233,16 @@ pub fn register_jes_commands(registry: &CommandRegistry) -> Result<(), JesError>
 /// | Command ID              | Display Name         | Category        | Default Shortcut |
 /// |-------------------------|---------------------|-----------------|------------------|
 /// | `jes.job.submit`        | Submit Job          | jes.job         | Ctrl+Shift+S     |
-/// | `jes.job.hold`          | Hold Job            | jes.job         | —                |
-/// | `jes.job.release`       | Release Job         | jes.job         | —                |
-/// | `jes.job.cancel`        | Cancel Job          | jes.job         | —                |
-/// | `jes.job.purge`         | Purge Job           | jes.job         | —                |
-/// | `jes.job.view_log`      | View Job Log        | jes.job         | —                |
+/// | `jes.job.hold`          | Hold Job            | jes.job         | --                |
+/// | `jes.job.release`       | Release Job         | jes.job         | --                |
+/// | `jes.job.cancel`        | Cancel Job          | jes.job         | --                |
+/// | `jes.job.purge`         | Purge Job           | jes.job         | --                |
+/// | `jes.job.view_log`      | View Job Log        | jes.job         | --                |
 /// | `jes.monitor.refresh`   | Refresh Monitor     | jes.monitor     | F5               |
-/// | `jes.initiator.start`   | Start Initiator     | jes.initiator   | —                |
-/// | `jes.initiator.stop`    | Stop Initiator      | jes.initiator   | —                |
-/// | `jes.initiator.drain`   | Drain Initiator     | jes.initiator   | —                |
-/// | `jes.catalog.browse`    | Browse Catalog      | jes.catalog     | —                |
+/// | `jes.initiator.start`   | Start Initiator     | jes.initiator   | --                |
+/// | `jes.initiator.stop`    | Stop Initiator      | jes.initiator   | --                |
+/// | `jes.initiator.drain`   | Drain Initiator     | jes.initiator   | --                |
+/// | `jes.catalog.browse`    | Browse Catalog      | jes.catalog     | --                |
 ///
 /// Each command has an enabled predicate:
 /// - `jes.job.hold`: enabled when selected job is QUEUED
@@ -1618,7 +1618,7 @@ For any queue state, persisting and restoring produces an equivalent queue: same
 
 **Validates: Requirement 9.5**
 
-Applying any filter to the job queue does not alter stored job state — filters are pure read-only projections.
+Applying any filter to the job queue does not alter stored job state -- filters are pure read-only projections.
 
 ```
 ∀ queue Q, ∀ filter F:

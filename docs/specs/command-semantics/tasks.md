@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-command-semantics` crate — the ISPF-inspired primary command execution pipeline for FileForgeWorkbench. The command semantics engine accepts raw command-line text, parses it into structured tokens, resolves target scope, validates preconditions, builds execution plans, executes transactionally via the undo system, and reports results as concise status messages.
+This plan covers the complete implementation of the `ff-command-semantics` crate -- the ISPF-inspired primary command execution pipeline for FileForgeWorkbench. The command semantics engine accepts raw command-line text, parses it into structured tokens, resolves target scope, validates preconditions, builds execution plans, executes transactionally via the undo system, and reports results as concise status messages.
 
 This is a **Wave 5 (Command Engine)** sub-project. It depends on `ff-command` (command-framework), `ff-document-model`, `ff-undo-redo`, `ff-logging`, and `ff-configuration`. It is consumed by `find-and-replace`, `line-commands`, `exclude-show-filter`, and `navigation-commands`.
 
@@ -17,7 +17,7 @@ This is a **Wave 5 (Command Engine)** sub-project. It depends on `ff-command` (c
   - [x] 1.4 Add `ff-command-semantics` to workspace `Cargo.toml` members list
   - Covers: Structural foundation for all requirements
 
-- [x] 2. Primary Command Parser — tokenizer core
+- [x] 2. Primary Command Parser -- tokenizer core
   - [x] 2.1 Define `CommandToken` enum with variants: BareWord(String), QuotedString(String), HexLiteral(Vec<u8>)
   - [x] 2.2 Define `ParsedCommand` struct with fields: command_name (String), arguments (Vec<CommandToken>)
   - [x] 2.3 Implement whitespace-delimited tokenization splitting command line into first token (command name) and remaining argument tokens
@@ -26,7 +26,7 @@ This is a **Wave 5 (Command Engine)** sub-project. It depends on `ff-command` (c
   - [x] 2.6 Write unit tests for basic tokenization: single command, command with bare args, empty input, whitespace-only input
   - Covers: Requirement 3 (AC 3.1, 3.4, 3.5)
 
-- [x] 3. Primary Command Parser — quoted strings and hex literals
+- [x] 3. Primary Command Parser -- quoted strings and hex literals
   - [x] 3.1 Implement single-quote delimited string parsing with content preserved as single token (quotes stripped)
   - [x] 3.2 Implement double-quote delimited string parsing with content preserved as single token (quotes stripped)
   - [x] 3.3 Implement escaped quote handling: doubled quote within a quoted string represents a single literal quote character
@@ -36,7 +36,7 @@ This is a **Wave 5 (Command Engine)** sub-project. It depends on `ff-command` (c
   - [x] 3.7 Write unit tests for quoted strings, escaped quotes, hex literals, unclosed quotes, and invalid hex
   - Covers: Requirement 3 (AC 3.2, 3.3, 3.7, 3.8)
 
-- [x] 4. Primary Command Parser — round-trip property and edge cases
+- [x] 4. Primary Command Parser -- round-trip property and edge cases
   - [x] 4.1 Implement `CommandToken::reconstruct()` method that produces text which re-parses to the same token
   - [x] 4.2 Implement `ParsedCommand::reconstruct()` that joins command name and reconstructed argument tokens
   - [x] 4.3 Write unit tests validating the round-trip property for various command lines
@@ -54,7 +54,7 @@ This is a **Wave 5 (Command Engine)** sub-project. It depends on `ff-command` (c
   - [x] 5.8 Write unit tests: all defined kinds, counts, unknown kinds, empty input, count overflow, case insensitivity
   - Covers: Requirement 4 (AC 4.1–4.7)
 
-- [x] 6. Scope Resolution — priority algorithm
+- [x] 6. Scope Resolution -- priority algorithm
   - [x] 6.1 Define `Scope` struct representing a resolved set of target lines and optional column bounds
   - [x] 6.2 Define `ScopeSource` enum with variants: ExplicitRange, BlockSource, SingleLineCommand, Tagged, Visibility, CursorLine, EntireDocument
   - [x] 6.3 Define `VisibilityModifier` enum: Visible, Excluded, All
@@ -63,7 +63,7 @@ This is a **Wave 5 (Command Engine)** sub-project. It depends on `ff-command` (c
   - [x] 6.6 Write unit tests for each priority level resolving independently
   - Covers: Requirement 2 (AC 2.1)
 
-- [x] 7. Scope Resolution — modifiers and bounds
+- [x] 7. Scope Resolution -- modifiers and bounds
   - [x] 7.1 Implement ALL modifier: include all lines regardless of visibility state
   - [x] 7.2 Implement VISIBLE modifier: include only visible (non-excluded) lines
   - [x] 7.3 Implement EXCLUDED modifier: include only excluded (hidden) lines
@@ -84,7 +84,7 @@ This is a **Wave 5 (Command Engine)** sub-project. It depends on `ff-command` (c
   - [x] 8.6 Write unit tests for session state lifecycle: add, consume, retain, clear
   - Covers: Requirement 1 (AC 1.2, 1.5, 1.6)
 
-- [x] 9. Command Engine — execution pipeline core
+- [x] 9. Command Engine -- execution pipeline core
   - [x] 9.1 Define `CommandEngine` struct holding references to `CommandRegistry`, `SessionState`, undo transaction manager, and configuration
   - [x] 9.2 Implement the 10-step pipeline: collect → parse → normalize → scope → validate → plan → execute → update state → clear consumed → emit status
   - [x] 9.3 Implement empty command line with pending line commands: execute pending line commands
@@ -93,7 +93,7 @@ This is a **Wave 5 (Command Engine)** sub-project. It depends on `ff-command` (c
   - [x] 9.6 Write unit tests for pipeline steps: successful execution, empty with pending, empty without pending, unrecognised
   - Covers: Requirement 1 (AC 1.1–1.4)
 
-- [x] 10. Command Engine — transactional execution and undo integration
+- [x] 10. Command Engine -- transactional execution and undo integration
   - [x] 10.1 Implement undo transaction wrapping: start transaction before execution, commit on success, rollback on failure
   - [x] 10.2 Implement rollback guarantee: on mid-execution failure, no partial state persists
   - [x] 10.3 Implement line command retention on failure: pending commands preserved in SessionState
@@ -101,14 +101,14 @@ This is a **Wave 5 (Command Engine)** sub-project. It depends on `ff-command` (c
   - [x] 10.5 Write unit tests for transaction commit, rollback, line command lifecycle during success and failure
   - Covers: Requirement 1 (AC 1.5, 1.6, 1.7)
 
-- [x] 11. Command Engine — runtime registration and dispatch integration
+- [x] 11. Command Engine -- runtime registration and dispatch integration
   - [x] 11.1 Implement command registration via `command-framework` `register()` API
   - [x] 11.2 Implement all commands accessible through `Command_Dispatch` interface for keyboard, menu, macro, and plugin invocation
   - [x] 11.3 Implement runtime extensibility: new commands registrable without recompilation
   - [x] 11.4 Write unit tests for registration, dispatch invocation, and runtime extension scenarios
   - Covers: Requirement 1 (AC 1.8, 1.9)
 
-- [x] 12. Error Handling — status message system
+- [x] 12. Error Handling -- status message system
   - [x] 12.1 Define `StatusMessage` struct with fields: text (String), severity (Severity enum), command_name (Option<String>)
   - [x] 12.2 Define `Severity` enum: Info, SyntaxError, StructureError, RuntimeError
   - [x] 12.3 Implement 200-character length enforcement with trailing ellipsis truncation
@@ -184,7 +184,7 @@ This is a **Wave 5 (Command Engine)** sub-project. It depends on `ff-command` (c
 
 **Validates: Requirement 3.6**
 
-- **Statement:** For any valid command line input (containing a command name and zero or more arguments — bare words, quoted strings, hex literals), parsing the input and then reconstructing text from the parsed tokens SHALL produce output that, when re-parsed, yields the same token sequence.
+- **Statement:** For any valid command line input (containing a command name and zero or more arguments -- bare words, quoted strings, hex literals), parsing the input and then reconstructing text from the parsed tokens SHALL produce output that, when re-parsed, yields the same token sequence.
 - **Strategy:** Generate:
   - Command names: uppercase strings of 1–20 alphabetic characters
   - Arguments: mix of bare words (alphanumeric, no spaces), quoted strings (arbitrary content including spaces, doubled-quotes for escapes), hex literals (even-length hex digit strings wrapped in X'...')
@@ -286,7 +286,7 @@ This is a **Wave 5 (Command Engine)** sub-project. It depends on `ff-command` (c
 
 - This is a Wave 5 (Command Engine) crate depending on `ff-command` (Wave 2), `ff-document-model` (Wave 4), `ff-undo-redo` (Wave 4), `ff-logging` (Wave 0), and `ff-configuration` (Wave 2)
 - The `find-and-replace`, `line-commands`, `exclude-show-filter`, and `navigation-commands` crates (all Wave 5) consume the parsing and scope resolution APIs defined here
-- The primary command parser is the tokenization layer only — actual command implementations (FIND, CHANGE, LOCATE, etc.) live in their respective crates
+- The primary command parser is the tokenization layer only -- actual command implementations (FIND, CHANGE, LOCATE, etc.) live in their respective crates
 - The line command parser defines the parse logic; line command execution, block pairing, and pending-state management are in the `line-commands` crate
 - Scope resolution integrates with `ff-document-model` for line visibility state queries and with `exclude-show-filter` for visibility modifiers
 - The HELP command is registered with Command_ID `"help.show"` and is accessible from both the command line and the command dispatch system

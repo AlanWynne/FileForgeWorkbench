@@ -1,4 +1,4 @@
-# DBeaver Metadata and Admin Requirements Research — Task 16.7
+# DBeaver Metadata and Admin Requirements Research -- Task 16.7
 
 > **Scope:** User/role management, session monitoring, lock inspection, storage/tablespace info, database statistics, server configuration viewing
 >
@@ -127,8 +127,8 @@
 
 | # | Requirement | Tag |
 |---|-------------|-----|
-| 3.2.1 | THE system SHALL display the "Hold Statement" — the SQL text of the session currently holding the lock (the blocker). | [DBV-ADMIN] |
-| 3.2.2 | THE system SHALL display the "Wait Statement" — the SQL text of the session waiting to acquire the lock (the blocked session). | [DBV-ADMIN] |
+| 3.2.1 | THE system SHALL display the "Hold Statement" -- the SQL text of the session currently holding the lock (the blocker). | [DBV-ADMIN] |
+| 3.2.2 | THE system SHALL display the "Wait Statement" -- the SQL text of the session waiting to acquire the lock (the blocked session). | [DBV-ADMIN] |
 | 3.2.3 | THE system SHALL identify and highlight blocking chains where session A blocks session B, which in turn blocks session C, presenting the chain hierarchy. | [DBV-ADMIN] |
 
 ### 3.3 Lock Wait Graph
@@ -274,7 +274,7 @@
 | # | Requirement | Tag |
 |---|-------------|-----|
 | 6.3.1 | THE system SHALL display general server information: database version, server uptime, host operating system, character set configuration, maximum connections, and server process/thread count. | [DBV-ADMIN] |
-| 6.3.2 | THE system SHALL display server memory configuration: shared buffers, sort buffers, work memory, InnoDB buffer pool size (MySQL), shared_buffers/work_mem (PostgreSQL), SGA/PGA (Oracle) — adapted per database platform. | [DBV-ADMIN] |
+| 6.3.2 | THE system SHALL display server memory configuration: shared buffers, sort buffers, work memory, InnoDB buffer pool size (MySQL), shared_buffers/work_mem (PostgreSQL), SGA/PGA (Oracle) -- adapted per database platform. | [DBV-ADMIN] |
 | 6.3.3 | THE system SHALL display replication status information where applicable: master/slave status, replication lag, binary log position, connected replicas. | [DBV-ADMIN] |
 
 ### 6.4 Database-Specific Admin Nodes
@@ -291,12 +291,12 @@
 
 Content was rephrased for compliance with licensing restrictions.
 
-- DBeaver Documentation — Session Manager: [Session Manager Guide](https://dbeaver.com/docs/dbeaver/Session-Manager-Guide/)
-- DBeaver Documentation — Lock Manager: [Lock Manager](https://dbeaver.com/docs/dbeaver/Lock-Manager/)
-- DBeaver Documentation — Dashboards: [Dashboards](https://dbeaver.com/docs/dbeaver/Dashboards/)
-- DBeaver Documentation — Query Manager: [Query Manager](https://dbeaver.com/docs/dbeaver/Query-Manager/)
-- DBeaver Documentation — Transaction Log: [Transaction Log](https://dbeaver.com/docs/dbeaver/Transaction-Log/)
-- DBeaver Documentation — Change Password: [Change current user password](https://dbeaver.com/docs/dbeaver/Change-current-user-password/)
-- DBeaver Documentation — Database Navigator: [Database Navigator](https://dbeaver.com/docs/dbeaver/Database-Navigator/)
-- DBeaver Documentation — Properties Editor: [Properties Editor](https://dbeaver.com/docs/dbeaver/Properties-Editor/)
+- DBeaver Documentation -- Session Manager: [Session Manager Guide](https://dbeaver.com/docs/dbeaver/Session-Manager-Guide/)
+- DBeaver Documentation -- Lock Manager: [Lock Manager](https://dbeaver.com/docs/dbeaver/Lock-Manager/)
+- DBeaver Documentation -- Dashboards: [Dashboards](https://dbeaver.com/docs/dbeaver/Dashboards/)
+- DBeaver Documentation -- Query Manager: [Query Manager](https://dbeaver.com/docs/dbeaver/Query-Manager/)
+- DBeaver Documentation -- Transaction Log: [Transaction Log](https://dbeaver.com/docs/dbeaver/Transaction-Log/)
+- DBeaver Documentation -- Change Password: [Change current user password](https://dbeaver.com/docs/dbeaver/Change-current-user-password/)
+- DBeaver Documentation -- Database Navigator: [Database Navigator](https://dbeaver.com/docs/dbeaver/Database-Navigator/)
+- DBeaver Documentation -- Properties Editor: [Properties Editor](https://dbeaver.com/docs/dbeaver/Properties-Editor/)
 - DBeaver GitHub Wiki: [Session Manager Guide](https://github.com/dbeaver/dbeaver/wiki/Session-Manager-Guide), [Lock Manager](https://github.com/dbeaver/dbeaver/wiki/Lock-Manager), [Dashboards](https://github.com/dbeaver/dbeaver/wiki/Dashboards), [Query Manager](https://github.com/dbeaver/dbeaver/wiki/Query-Manager)

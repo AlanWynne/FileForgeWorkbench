@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-The `ff-layout` crate is the **GUI-independent layout engine** for the FileForgeWorkbench platform. It owns the spatial arrangement of all panels, tab groups, floating windows, and dock zones — expressing the entire workspace layout as a data model that the GUI shell renders but does not own.
+The `ff-layout` crate is the **GUI-independent layout engine** for the FileForgeWorkbench platform. It owns the spatial arrangement of all panels, tab groups, floating windows, and dock zones -- expressing the entire workspace layout as a data model that the GUI shell renders but does not own.
 
 ### Purpose
 
@@ -17,7 +17,7 @@ The `ff-layout` crate is the **GUI-independent layout engine** for the FileForge
 ### Position in Architecture
 
 ```
-Wave 2 — Platform Architecture
+Wave 2 -- Platform Architecture
 
 ┌─────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)               │
@@ -90,12 +90,12 @@ graph TD
 
 | Component | Responsibility |
 |-----------|---------------|
-| **LayoutEngine** | Central coordinator — owns the layout tree, orchestrates all transitions |
+| **LayoutEngine** | Central coordinator -- owns the layout tree, orchestrates all transitions |
 | **PanelRegistry** | Tracks registered panel types and their default zone assignments |
 | **LayoutState** | Serializable snapshot of the complete layout for persistence |
 | **TabGroupManager** | Manages center-area splits, tab ordering, group lifecycle |
 | **FloatingWindowManager** | Tracks floating OS windows, position/size, monitor assignment |
-| **PersonaManager** | Named presets — load, save, activate, track modifications |
+| **PersonaManager** | Named presets -- load, save, activate, track modifications |
 | **DragDropCoordinator** | Hit testing, drop indicators, gesture detection |
 | **SplitterManager** | Proportional resizing, minimum constraints, double-click reset |
 | **Serializer** | TOML read/write, schema versioning, graceful degradation |
@@ -113,7 +113,7 @@ crates/ff-layout/
 │   ├── panel/
 │   │   ├── mod.rs              # Panel re-exports
 │   │   ├── traits.rs           # DockablePanel trait, DockState enum
-│   │   ├── registry.rs         # PanelRegistry — registration, lookup, validation
+│   │   ├── registry.rs         # PanelRegistry -- registration, lookup, validation
 │   │   └── display_state.rs    # PanelDisplayState enum (minimized, normal, maximized)
 │   ├── dock/
 │   │   ├── mod.rs              # Dock zone re-exports
@@ -123,26 +123,26 @@ crates/ff-layout/
 │   │   ├── mod.rs              # Tab group re-exports
 │   │   ├── group.rs            # TabGroup struct, tab ordering
 │   │   ├── split.rs            # SplitDirection, split/merge operations
-│   │   └── manager.rs          # TabGroupManager — split tree coordination
+│   │   └── manager.rs          # TabGroupManager -- split tree coordination
 │   ├── floating/
 │   │   ├── mod.rs              # Floating window re-exports
 │   │   ├── window.rs           # FloatingWindow struct, lifecycle
-│   │   ├── manager.rs          # FloatingWindowManager — creation, limit enforcement
+│   │   ├── manager.rs          # FloatingWindowManager -- creation, limit enforcement
 │   │   └── monitor.rs          # Monitor detection, DPI, repositioning logic
 │   ├── persona/
 │   │   ├── mod.rs              # Persona re-exports
 │   │   ├── definition.rs       # Persona struct, built-in definitions
-│   │   ├── manager.rs          # PersonaManager — load, save, activate, track
+│   │   ├── manager.rs          # PersonaManager -- load, save, activate, track
 │   │   └── storage.rs          # TOML file I/O for persona files
 │   ├── drag/
 │   │   ├── mod.rs              # Drag-and-drop re-exports
-│   │   ├── coordinator.rs      # DragDropCoordinator — gesture state machine
+│   │   ├── coordinator.rs      # DragDropCoordinator -- gesture state machine
 │   │   ├── indicator.rs        # DropIndicator rendering model
 │   │   └── hit_test.rs         # Zone/group hit testing, insertion index calc
 │   ├── resize/
 │   │   ├── mod.rs              # Resize re-exports
 │   │   ├── splitter.rs         # Splitter struct, position tracking
-│   │   └── manager.rs          # SplitterManager — constraint enforcement
+│   │   └── manager.rs          # SplitterManager -- constraint enforcement
 │   ├── state/
 │   │   ├── mod.rs              # State re-exports
 │   │   ├── layout_state.rs     # LayoutState struct, in-memory representation
@@ -549,7 +549,7 @@ pub enum SplitterOrientation {
 
 ## 5. Public API Surface
 
-### LayoutEngine — Construction and Lifecycle
+### LayoutEngine -- Construction and Lifecycle
 
 ```rust
 impl LayoutEngine {
@@ -654,7 +654,7 @@ impl LayoutEngine {
         size: Size,
     ) -> Result<(), LayoutError>;
 
-    /// Handle OS window close button — redock rather than destroy.
+    /// Handle OS window close button -- redock rather than destroy.
     /// Addresses: Requirement 3 criteria 8/11/12
     pub fn on_floating_window_close(
         &mut self,
@@ -674,7 +674,7 @@ impl LayoutEngine {
 pub enum CloseAction {
     /// Panel was redocked successfully
     Redocked,
-    /// Unsaved changes — show save confirmation dialog
+    /// Unsaved changes -- show save confirmation dialog
     NeedsSaveConfirmation { tab_id: String },
 }
 ```
@@ -781,11 +781,11 @@ impl LayoutEngine {
     /// Addresses: Requirement 7 criterion 11
     pub fn begin_drag(&mut self, item: DragItem, origin: Position);
 
-    /// Update the drag position — triggers hit testing and indicator display.
+    /// Update the drag position -- triggers hit testing and indicator display.
     /// Addresses: Requirement 7 criteria 1/5/6/13
     pub fn update_drag(&mut self, cursor: Position);
 
-    /// End a drag operation — executes the drop or cancels.
+    /// End a drag operation -- executes the drop or cancels.
     /// Addresses: Requirement 7 criteria 2/3/7/8/9/10/12
     pub fn end_drag(&mut self, cursor: Position) -> Result<DragResult, LayoutError>;
 
@@ -841,14 +841,14 @@ impl LayoutEngine {
         new_proportion: f32,
     ) -> Result<(), LayoutError>;
 
-    /// End splitter drag — finalizes the position.
+    /// End splitter drag -- finalizes the position.
     pub fn end_splitter_drag(&mut self, splitter_id: SplitterId);
 
     /// Reset a splitter to its default position (double-click).
     /// Addresses: Requirement 8 criterion 8
     pub fn reset_splitter(&mut self, splitter_id: SplitterId) -> Result<(), LayoutError>;
 
-    /// Handle primary window resize — proportional redistribution.
+    /// Handle primary window resize -- proportional redistribution.
     /// Addresses: Requirement 8 criteria 5/6
     pub fn on_window_resize(&mut self, new_size: Size);
 }
@@ -888,7 +888,7 @@ impl PanelRegistry {
 
 ```rust
 impl LayoutEngine {
-    /// Handle monitor disconnection — relocate affected windows.
+    /// Handle monitor disconnection -- relocate affected windows.
     /// Addresses: Requirement 4 criterion 6
     pub fn on_monitor_disconnected(&mut self, monitor_id: &str);
 
@@ -947,7 +947,7 @@ pub enum LayoutError {
     InvalidDockZone { panel_id: String, zone: String },
 
     /// Invalid panel_id format (must be 1–64 ASCII alphanumeric/underscore)
-    #[error("[layout] register: invalid panel_id format '{panel_id}' — {reason}")]
+    #[error("[layout] register: invalid panel_id format '{panel_id}' -- {reason}")]
     InvalidPanelId { panel_id: String, reason: String },
 
     /// Maximum floating windows reached
@@ -968,7 +968,7 @@ pub enum LayoutError {
     #[error("[layout] tabs: group {group_id:?} not found")]
     TabGroupNotFound { group_id: TabGroupId },
 
-    /// Cannot split — would create empty editor area
+    /// Cannot split -- would create empty editor area
     /// Addresses: Requirement 9 criterion 4
     #[error("[layout] split: cannot undock the only tab in the only group")]
     CannotEmptyEditor,
@@ -984,7 +984,7 @@ pub enum LayoutError {
 
     /// Serialization/deserialization failure
     /// Addresses: Requirement 6 criteria 3/10
-    #[error("[layout] serialization: {operation} failed — {reason}")]
+    #[error("[layout] serialization: {operation} failed -- {reason}")]
     SerializationFailed { operation: String, reason: String },
 
     /// I/O error during file operations
@@ -1009,7 +1009,7 @@ pub enum LayoutError {
 
 ## 7. Integration Points
 
-### With `ff-logging` (Foundation Layer — upstream)
+### With `ff-logging` (Foundation Layer -- upstream)
 
 - **Dependency direction**: ff-layout depends on ff-logging
 - **API consumed**: `log_info!`, `log_warn!`, `log_error!` macros
@@ -1021,7 +1021,7 @@ pub enum LayoutError {
   - WARN when session save fails at exit (Requirement 6 criterion 10)
   - ERROR on invalid dock zone registration (Requirement 1 criterion 3)
 
-### With `ff-core` (Platform Core — same wave, consumer)
+### With `ff-core` (Platform Core -- same wave, consumer)
 
 - **Dependency direction**: ff-core initializes ff-layout as a registered subsystem
 - **Integration**:
@@ -1030,28 +1030,28 @@ pub enum LayoutError {
   - ff-core provides `LayoutState` from config at startup for restoration
   - ff-layout dispatches `WorkbenchEvent::LayoutChanged` through the Event Bus when layout mutates
 - **Event Bus events emitted**:
-  - `LayoutChanged` — any structural layout change (dock, undock, split, persona switch)
-  - `PanelStateChanged { panel_id, new_state }` — individual panel state transitions
+  - `LayoutChanged` -- any structural layout change (dock, undock, split, persona switch)
+  - `PanelStateChanged { panel_id, new_state }` -- individual panel state transitions
 
-### With `ff-command` (Command Framework — same wave, peer)
+### With `ff-command` (Command Framework -- same wave, peer)
 
 - **Dependency direction**: ff-layout registers layout commands with ff-command
 - **Commands registered**:
-  - `layout.undock` — undock focused panel (Ctrl+Shift+D)
-  - `layout.redock` — redock focused floating panel
-  - `layout.toggle_panel` — toggle a named panel
-  - `layout.split_horizontal` — split active tab group horizontally
-  - `layout.split_vertical` — split active tab group vertically
-  - `layout.undock_tab` — undock active tab (Ctrl+Shift+T)
-  - `layout.redock_tab` — redock floating tab
-  - `layout.persona.activate` — activate a persona by name
-  - `layout.persona.save` — save current layout as persona
-  - `layout.reset` — reset to default layout
-  - `layout.export` — export layout to file
-  - `layout.import` — import layout from file
+  - `layout.undock` -- undock focused panel (Ctrl+Shift+D)
+  - `layout.redock` -- redock focused floating panel
+  - `layout.toggle_panel` -- toggle a named panel
+  - `layout.split_horizontal` -- split active tab group horizontally
+  - `layout.split_vertical` -- split active tab group vertically
+  - `layout.undock_tab` -- undock active tab (Ctrl+Shift+T)
+  - `layout.redock_tab` -- redock floating tab
+  - `layout.persona.activate` -- activate a persona by name
+  - `layout.persona.save` -- save current layout as persona
+  - `layout.reset` -- reset to default layout
+  - `layout.export` -- export layout to file
+  - `layout.import` -- import layout from file
 - **Shortcut registrations**: All shortcuts registered with `ShortcutRegistry` (Requirement 9 criterion 6)
 
-### With `ff-plugin` (Plugin Architecture — same wave, peer)
+### With `ff-plugin` (Plugin Architecture -- same wave, peer)
 
 - **Dependency direction**: ff-plugin uses ff-layout's `PanelRegistry` to register panels
 - **Integration**:
@@ -1059,7 +1059,7 @@ pub enum LayoutError {
   - During plugin unload, ff-plugin calls `PanelRegistry::deregister()` and `LayoutEngine::hide_panel()` to clean up (Requirement 1 criterion 14)
   - `PanelRegistry` is accessible via `PluginContext`
 
-### With `ff-config` (Configuration System — same wave, peer)
+### With `ff-config` (Configuration System -- same wave, peer)
 
 - **Dependency direction**: ff-layout reads layout config from ff-config at startup
 - **Configuration consumed**:
@@ -1067,7 +1067,7 @@ pub enum LayoutError {
   - Persona directory path (`layouts/`)
   - Default persona to activate on first launch
 
-### With `ff-desktop` (Shell Layer — downstream)
+### With `ff-desktop` (Shell Layer -- downstream)
 
 - **Dependency direction**: ff-desktop depends on ff-layout; ff-layout NEVER depends on ff-desktop
 - **Shell responsibilities**:

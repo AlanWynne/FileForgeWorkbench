@@ -2,41 +2,41 @@
 
 ## Introduction
 
-This feature specifies the **multi-tab editor** for FileForgeWorkbench (`ff-tabs` crate). The multi-tab editor is the user-facing subsystem that manages open documents as a collection of tabs — each with independent editing state — and provides the UI and keyboard controls for navigating, reordering, pinning, splitting, and managing those tabs.
+This feature specifies the **multi-tab editor** for FileForgeWorkbench (`ff-tabs` crate). The multi-tab editor is the user-facing subsystem that manages open documents as a collection of tabs -- each with independent editing state -- and provides the UI and keyboard controls for navigating, reordering, pinning, splitting, and managing those tabs.
 
 The multi-tab editor sits between the Layout_Engine's Tab_Group concept (which provides the structural container) and the Document model (which owns text content). It is responsible for the Tab_Collection data model, per-tab state isolation, MRU (Most Recently Used) ordering for rapid switching, tab overflow handling, context menus, drag-and-drop reordering, pinned tabs, duplicate detection, split editor views, tab title disambiguation, and keyboard navigation.
 
-**All tab operations are dispatched through the command framework** (cross-cutting Requirement 4). Menu items, keyboard shortcuts, context menu actions, and macros all invoke the same registered commands — ensuring consistent undo integration, macro recordability, and a single audit trail.
+**All tab operations are dispatched through the command framework** (cross-cutting Requirement 4). Menu items, keyboard shortcuts, context menu actions, and macros all invoke the same registered commands -- ensuring consistent undo integration, macro recordability, and a single audit trail.
 
 This specification merges requirements from three primary sources:
 
-- **FileForgeEditor `multi-tab-editor`** (10 requirements): Tab collection, per-tab state, tab bar display, close operations, context menu, keyboard navigation, drag-and-drop, command engine integration, file menu integration, application exit — all incorporated with workbench adaptations.
+- **FileForgeEditor `multi-tab-editor`** (10 requirements): Tab collection, per-tab state, tab bar display, close operations, context menu, keyboard navigation, drag-and-drop, command engine integration, file menu integration, application exit -- all incorporated with workbench adaptations.
 - **SciTE Buffer Management** (`SciTEBuffers.cxx`): MRU stack navigation (`IDM_PREVFILESTACK`/`IDM_NEXTFILESTACK`), configurable buffer count (`buffers.size`), tab move left/right, buffer dirty state tracking, fold state per-buffer.
 - **Workbench Architecture Brief**: Tab_Group integration, split editor views, command-driven operations, VFS-aware resource addressing, session persistence contract.
 
 ### Design Principles
 
-1. **Command-driven** — All tab operations are registered commands (`tabs.close`, `tabs.next`, `tabs.pin`, etc.) invocable from any source. [WB]
-2. **Tab_Group integration** — Tabs live inside Tab_Groups managed by the Layout_Engine. The multi-tab subsystem owns per-tab state; the layout engine owns spatial arrangement. [WB]
-3. **VFS-aware identity** — Tab identity is based on `ResourceUri` (not raw filesystem paths), enabling duplicate detection across VFS providers. [WB, FFW-ARCH-001]
-4. **Session-serialisable** — The full Tab_Collection state (open URIs, tab order, per-tab viewport, MRU stack, pinned flags) is serialisable for session persistence. [FFE-MULTITAB, WB]
-5. **GUI-independent model** — The tab data model lives in `ff-tabs` (platform-core layer); the GUI shell renders tab headers using the model but does not own it. [WB]
-6. **No data loss** — Close operations on modified documents always prompt save/discard/cancel before discarding content. [FFE-MULTITAB]
+1. **Command-driven** -- All tab operations are registered commands (`tabs.close`, `tabs.next`, `tabs.pin`, etc.) invocable from any source. [WB]
+2. **Tab_Group integration** -- Tabs live inside Tab_Groups managed by the Layout_Engine. The multi-tab subsystem owns per-tab state; the layout engine owns spatial arrangement. [WB]
+3. **VFS-aware identity** -- Tab identity is based on `ResourceUri` (not raw filesystem paths), enabling duplicate detection across VFS providers. [WB, FFW-ARCH-001]
+4. **Session-serialisable** -- The full Tab_Collection state (open URIs, tab order, per-tab viewport, MRU stack, pinned flags) is serialisable for session persistence. [FFE-MULTITAB, WB]
+5. **GUI-independent model** -- The tab data model lives in `ff-tabs` (platform-core layer); the GUI shell renders tab headers using the model but does not own it. [WB]
+6. **No data loss** -- Close operations on modified documents always prompt save/discard/cancel before discarding content. [FFE-MULTITAB]
 
 ### Source References
 
-- **[FFE-MULTITAB]** = FileForgeEditor `multi-tab-editor` specification (10 requirements — priority source)
+- **[FFE-MULTITAB]** = FileForgeEditor `multi-tab-editor` specification (10 requirements -- priority source)
 - **[SCI-STE-TABS]** = SciTE `SciTEBuffers.cxx` (MRU stack, buffer count, tab move, per-buffer state)
 - **[WB]** = Workbench Platform Architecture Brief (command-driven, GUI independence, layout integration, session persistence)
 
 ### Cross-References
 
-- **`file-operations`** — Open/Save/Revert commands create and modify tabs; unsaved-changes dialogs interact with tab close flows.
-- **`document-model`** — Each tab references a `DocumentHandle` (`Arc<RwLock<Document>>`); split views share the same handle.
-- **`layout-and-docking`** — Tab_Groups are spatial containers owned by the Layout_Engine; the multi-tab subsystem populates them with tab content.
-- **`command-framework`** — All tab operations are registered commands with metadata, shortcuts, and enabled predicates.
-- **`configuration-system`** — Provides settings for maximum tab count, MRU mode, tab title format, overflow behaviour, pinned tab position policy.
-- **`startup-and-session`** — Session restore recreates the Tab_Collection from persisted state; session save captures it.
+- **`file-operations`** -- Open/Save/Revert commands create and modify tabs; unsaved-changes dialogs interact with tab close flows.
+- **`document-model`** -- Each tab references a `DocumentHandle` (`Arc<RwLock<Document>>`); split views share the same handle.
+- **`layout-and-docking`** -- Tab_Groups are spatial containers owned by the Layout_Engine; the multi-tab subsystem populates them with tab content.
+- **`command-framework`** -- All tab operations are registered commands with metadata, shortcuts, and enabled predicates.
+- **`configuration-system`** -- Provides settings for maximum tab count, MRU mode, tab title format, overflow behaviour, pinned tab position policy.
+- **`startup-and-session`** -- Session restore recreates the Tab_Collection from persisted state; session save captures it.
 
 ---
 
@@ -70,7 +70,7 @@ This specification merges requirements from three primary sources:
 
 **User Story:** As a user, I want to open multiple documents simultaneously in separate tabs within a Tab_Group, so that I can work across related files without closing and reopening them.
 
-**Source:** FFE Reqs 1 — adapted for workbench VFS and Tab_Group integration. [FFE-MULTITAB, WB]
+**Source:** FFE Reqs 1 -- adapted for workbench VFS and Tab_Group integration. [FFE-MULTITAB, WB]
 
 #### Acceptance Criteria
 
@@ -151,7 +151,7 @@ This specification merges requirements from three primary sources:
 
 **User Story:** As a user, I want to close tabs individually or in groups with appropriate save prompts, so that I can manage my workspace without accidentally losing work.
 
-**Source:** FFE Reqs 4, 10 — adapted with pinned tab protection. [FFE-MULTITAB, WB]
+**Source:** FFE Reqs 4, 10 -- adapted with pinned tab protection. [FFE-MULTITAB, WB]
 
 #### Acceptance Criteria
 
@@ -176,7 +176,7 @@ This specification merges requirements from three primary sources:
 
 **User Story:** As a user, I want a right-click context menu on tabs with comprehensive tab management operations, so that I can efficiently manage my open files and work contexts without navigating top-level menus.
 
-**Source:** [ISPF-POM] + FFE Req 5 — expanded with ISPF-style operations. [FFE-MULTITAB, WB, ISPF-POM]
+**Source:** [ISPF-POM] + FFE Req 5 -- expanded with ISPF-style operations. [FFE-MULTITAB, WB, ISPF-POM]
 
 #### Acceptance Criteria
 
@@ -215,7 +215,7 @@ This specification merges requirements from three primary sources:
    - Save As
    - Reload
 
-   6.2c The Tab_Context_Menu for a Home Context (POM) tab SHALL contain ONLY the universal items from 6.2a. No file-specific items SHALL appear — not even in a disabled state.
+   6.2c The Tab_Context_Menu for a Home Context (POM) tab SHALL contain ONLY the universal items from 6.2a. No file-specific items SHALL appear -- not even in a disabled state.
 3. WHEN "Close" is selected, THE system SHALL execute `tabs.close` on the right-clicked Tab, following Requirement 5 unsaved-changes rules.
 4. WHEN "Close All BUT This" is selected, THE system SHALL close all tabs except the right-clicked tab, following Requirement 5 confirmation rules for each modified tab.
 5. WHEN "Close All to the Left" is selected, THE system SHALL close all non-pinned Tabs positioned to the left of the right-clicked Tab, following Requirement 5 confirmation rules for each modified Tab.
@@ -237,7 +237,7 @@ This specification merges requirements from three primary sources:
 21. WHEN "Save" is selected on a modified file tab, THE system SHALL save the file to disk.
 22. WHEN "Save As" is selected on a file tab, THE system SHALL prompt the user for a new file path and save the content there, updating the tab title.
 23. WHEN "Reload" is selected on a file tab, THE system SHALL reload the file content from disk. IF the tab has unsaved modifications, THE system SHALL prompt the user to confirm discarding changes before reloading.
-24. File-specific Tab_Context_Menu items (those listed in 6.2b) SHALL be OMITTED ENTIRELY from the menu when the right-clicked tab is not a file editor tab — they SHALL NOT appear in a disabled or greyed-out state.
+24. File-specific Tab_Context_Menu items (those listed in 6.2b) SHALL be OMITTED ENTIRELY from the menu when the right-clicked tab is not a file editor tab -- they SHALL NOT appear in a disabled or greyed-out state.
 25. WHILE there are no Tabs to the left of the right-clicked Tab, THE "Close All to the Left" menu item SHALL appear disabled.
 26. WHILE there are no Tabs to the right of the right-clicked Tab, THE "Close All to the Right" menu item SHALL appear disabled.
 27. WHILE only one Tab exists in the Tab_Group, THE "Close All BUT This" menu item SHALL appear disabled.
@@ -247,7 +247,7 @@ This specification merges requirements from three primary sources:
 
 ### Requirement 7: MRU Tab Ordering
 
-**User Story:** As a user, I want Ctrl+Tab to cycle through tabs in most-recently-used order, so that I can quickly switch back to the file I was editing previously — similar to Alt+Tab window switching in operating systems.
+**User Story:** As a user, I want Ctrl+Tab to cycle through tabs in most-recently-used order, so that I can quickly switch back to the file I was editing previously -- similar to Alt+Tab window switching in operating systems.
 
 **Source:** SciTE `IDM_PREVFILESTACK`/`IDM_NEXTFILESTACK` + workbench configuration. [SCI-STE-TABS, WB]
 
@@ -259,7 +259,7 @@ This specification merges requirements from three primary sources:
 4. WHEN Ctrl+Shift+Tab is pressed during an MRU navigation session, THE system SHALL cycle backwards (towards more recently used tabs) in the MRU_Stack.
 5. WHEN the Ctrl key is released after an MRU navigation session, THE system SHALL commit the currently displayed tab as the new MRU top and end the navigation session.
 6. WHILE an MRU navigation session is active, THE system SHALL display a transient popup showing the MRU-ordered tab list with the current selection highlighted, allowing the user to see which tab they will land on.
-7. THE MRU navigation mode SHALL be configurable: `mru` (default — cycle in MRU order) or `sequential` (cycle in Tab_Bar insertion order). WHEN sequential mode is configured, Ctrl+Tab SHALL move to the next tab to the right (wrapping) and Ctrl+Shift+Tab to the left (wrapping).
+7. THE MRU navigation mode SHALL be configurable: `mru` (default -- cycle in MRU order) or `sequential` (cycle in Tab_Bar insertion order). WHEN sequential mode is configured, Ctrl+Tab SHALL move to the next tab to the right (wrapping) and Ctrl+Shift+Tab to the left (wrapping).
 8. WHEN a Tab is closed, THE system SHALL remove it from the MRU_Stack. The ordering of remaining tabs in the stack SHALL be preserved.
 9. THE MRU_Stack SHALL be serialised as part of the session state so that MRU order is preserved across workbench restarts.
 
@@ -309,7 +309,7 @@ This specification merges requirements from three primary sources:
 
 **User Story:** As a user, I want to pin important tabs so they stay open and are protected from bulk-close operations, so that I don't accidentally close files I'm actively working on.
 
-**Source:** NEW — workbench concept adapted from VS Code and modern editors. [WB]
+**Source:** NEW -- workbench concept adapted from VS Code and modern editors. [WB]
 
 #### Acceptance Criteria
 
@@ -328,12 +328,12 @@ This specification merges requirements from three primary sources:
 
 **User Story:** As a user, I want the editor to detect when I try to open a file that's already open in another tab, so that I don't create duplicate tabs and accidentally edit the same file in two places with diverging state.
 
-**Source:** FFE Req 1.6 — adapted for VFS ResourceUri-based identity. [FFE-MULTITAB, WB]
+**Source:** FFE Req 1.6 -- adapted for VFS ResourceUri-based identity. [FFE-MULTITAB, WB]
 
 #### Acceptance Criteria
 
 1. IF the resource being opened is already open in an existing Tab within any Tab_Group (determined by comparing canonicalized ResourceUris), THEN THE system SHALL activate the existing Tab (switch to its Tab_Group and set it as Active_Tab) instead of creating a duplicate.
-2. THE duplicate detection SHALL operate across all Tab_Groups in the workbench — a resource open in Tab_Group A will be detected when the same resource is opened in Tab_Group B.
+2. THE duplicate detection SHALL operate across all Tab_Groups in the workbench -- a resource open in Tab_Group A will be detected when the same resource is opened in Tab_Group B.
 3. THE duplicate detection SHALL normalize ResourceUris before comparison: for local filesystem URIs, the system SHALL resolve symlinks, normalize case on case-insensitive filesystems, and resolve relative segments.
 4. WHEN a duplicate is detected and the existing Tab is in a different Tab_Group than the one requesting the open, THE system SHALL focus the Tab_Group containing the existing Tab and activate that Tab.
 5. IF the user explicitly requests opening the same resource in a split view (via "Split Right", "Split Down", or a command parameter), THEN THE system SHALL create a new Tab sharing the same DocumentHandle rather than rejecting the open as a duplicate. This is governed by Requirement 12 (Split Editor).
@@ -344,7 +344,7 @@ This specification merges requirements from three primary sources:
 
 **User Story:** As a user, I want to open the same document in multiple Tab_Groups simultaneously, so that I can view and edit different sections of a large file side-by-side without scrolling back and forth.
 
-**Source:** NEW — workbench concept for multi-view editing. Layout_Engine provides Tab_Group splits; this requirement defines the tab-level semantics. [WB]
+**Source:** NEW -- workbench concept for multi-view editing. Layout_Engine provides Tab_Group splits; this requirement defines the tab-level semantics. [WB]
 
 #### Acceptance Criteria
 
@@ -362,7 +362,7 @@ This specification merges requirements from three primary sources:
 
 **User Story:** As a user, I want all tab operations to be accessible as named commands in the command framework, so that they can be invoked from keyboard shortcuts, menus, macros, and plugins uniformly.
 
-**Source:** FFE Reqs 8, 9 — adapted for workbench command framework. [FFE-MULTITAB, WB]
+**Source:** FFE Reqs 8, 9 -- adapted for workbench command framework. [FFE-MULTITAB, WB]
 
 #### Acceptance Criteria
 
@@ -420,5 +420,5 @@ requirement (Phase AL).
      reflect the newly active tab's context.
 
 15.4 THE per-tab state (Requirement 2) SHALL include the Title_Line text as a derived,
-     read-only field — it is computed from the tab's ResourceUri and kind, not stored
+     read-only field -- it is computed from the tab's ResourceUri and kind, not stored
      independently.

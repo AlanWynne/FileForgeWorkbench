@@ -6,7 +6,7 @@ The `ff-viewers` crate is the **extensible file viewing framework** for the File
 
 ### Purpose
 
-- Define the `FileViewer` trait — the contract all viewer implementations fulfill
+- Define the `FileViewer` trait -- the contract all viewer implementations fulfill
 - Maintain a thread-safe `ViewerRegistry` mapping Viewer_Keys to viewer implementations
 - Register the `PREVIEW` command (and sub-commands) in the Command_Registry
 - Provide built-in viewers: `asa-report`, `hex`, `image`, `csv-table`
@@ -19,7 +19,7 @@ The `ff-viewers` crate is the **extensible file viewing framework** for the File
 ### Position in Architecture
 
 ```
-Wave 12 — FileForge Domain
+Wave 12 -- FileForge Domain
 
 ┌─────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)               │
@@ -29,7 +29,7 @@ Wave 12 — FileForge Domain
 │  Viewer framework, registry, panel, built-in viewers     │
 ├─────────────────────────────────────────────────────────┤
 │  ff-layout │ ff-command │ ff-plugin │ ff-vfs │ ff-config  │
-│              (Platform Architecture — Wave 2/3)           │
+│              (Platform Architecture -- Wave 2/3)           │
 ├─────────────────────────────────────────────────────────┤
 │                     ff-logging (Wave 0)                   │
 └─────────────────────────────────────────────────────────┘
@@ -37,11 +37,11 @@ Wave 12 — FileForge Domain
 
 ### Design Constraints (Cross-Cutting)
 
-- **View-Only Rendering**: Viewers NEVER modify document content — enforced at the API level via immutable byte slices
+- **View-Only Rendering**: Viewers NEVER modify document content -- enforced at the API level via immutable byte slices
 - **Plugin Architecture (Req 5)**: Plugins register viewers via `PluginContext::register_viewer()` at runtime
 - **Command-Driven (Req 3)**: All viewer operations are invoked through the `PREVIEW` command
 - **DockablePanel Integration (Req 7)**: Viewer output renders in a panel that participates in the dock system
-- **VFS Access Only (Req 9)**: Content is read through `ff-vfs` — viewers never access the filesystem directly
+- **VFS Access Only (Req 9)**: Content is read through `ff-vfs` -- viewers never access the filesystem directly
 - **Multi-Crate Workspace**: Crate at `crates/ff-viewers`
 - **Error Message Standards**: Errors follow `[viewers] operation: description` format
 
@@ -96,7 +96,7 @@ graph TD
 | **ViewerPanel** | `DockablePanel` implementation; hosts active viewer's rendered output; manages visibility and dock state |
 | **ContentSelector** | Determines which viewer (if any) should handle a given resource via extension, MIME, sniffing, or language profile |
 | **RefreshController** | Debounces document changes and VFS watch events; calls `on_content_changed` on the active viewer |
-| **PreviewCommand** | Command handler for `viewer.preview` — dispatches on/off/list/toggle/<viewer-key> actions |
+| **PreviewCommand** | Command handler for `viewer.preview` -- dispatches on/off/list/toggle/<viewer-key> actions |
 | **Built-in Viewers** | Four `FileViewer` implementations compiled into the crate: asa-report, hex, image, csv-table |
 
 ---
@@ -109,21 +109,21 @@ crates/ff-viewers/
 ├── src/
 │   ├── lib.rs                  # Public API re-exports, crate docs
 │   ├── traits.rs               # FileViewer trait definition
-│   ├── registry.rs             # ViewerRegistry — registration, lookup, listing
-│   ├── panel.rs                # ViewerPanel — DockablePanel impl, render dispatch
-│   ├── selector.rs             # ContentSelector — auto-detection, matching logic
-│   ├── refresh.rs              # RefreshController — debounce timer, change notification
-│   ├── command.rs              # PreviewCommand — PREVIEW command handler registration
-│   ├── key.rs                  # ViewerKey newtype — validation and parsing
-│   ├── content_match.rs        # ContentMatch struct — extensions, MIME, sniffing results
-│   ├── config.rs               # ViewerConfig — TOML [viewers] section parsing
+│   ├── registry.rs             # ViewerRegistry -- registration, lookup, listing
+│   ├── panel.rs                # ViewerPanel -- DockablePanel impl, render dispatch
+│   ├── selector.rs             # ContentSelector -- auto-detection, matching logic
+│   ├── refresh.rs              # RefreshController -- debounce timer, change notification
+│   ├── command.rs              # PreviewCommand -- PREVIEW command handler registration
+│   ├── key.rs                  # ViewerKey newtype -- validation and parsing
+│   ├── content_match.rs        # ContentMatch struct -- extensions, MIME, sniffing results
+│   ├── config.rs               # ViewerConfig -- TOML [viewers] section parsing
 │   ├── error.rs                # ViewerError enum
 │   ├── builtin/
 │   │   ├── mod.rs              # Built-in viewer re-exports
-│   │   ├── asa_report.rs       # AsaReportViewer — ASA carriage control rendering
-│   │   ├── hex.rs              # HexViewer — hex dump rendering
-│   │   ├── image.rs            # ImageViewer — image preview rendering
-│   │   └── csv_table.rs        # CsvTableViewer — CSV/TSV table grid rendering
+│   │   ├── asa_report.rs       # AsaReportViewer -- ASA carriage control rendering
+│   │   ├── hex.rs              # HexViewer -- hex dump rendering
+│   │   ├── image.rs            # ImageViewer -- image preview rendering
+│   │   └── csv_table.rs        # CsvTableViewer -- CSV/TSV table grid rendering
 │   └── integration.rs          # Startup wiring: registry population, command registration
 └── tests/
     ├── registry_tests.rs       # Registry property tests
@@ -195,7 +195,7 @@ pub trait FileViewer: Send + Sync {
     fn can_render(&self, uri: &ResourceUri, content_sample: &[u8]) -> bool;
 
     /// Renders the content into the provided egui UI region.
-    /// Content is received as an immutable byte slice — no mutation is possible.
+    /// Content is received as an immutable byte slice -- no mutation is possible.
     /// Addresses: Requirement 2, criterion 1 (render); Requirement 8, criterion 1
     fn render(&self, content: &[u8], ui: &mut egui::Ui);
 
@@ -273,7 +273,7 @@ pub struct ViewerPanel {
 ### ContentMatch
 
 ```rust
-/// Describes how a viewer matches a given resource — used by ContentSelector
+/// Describes how a viewer matches a given resource -- used by ContentSelector
 /// to rank and select the best viewer for auto-detection.
 ///
 /// Addresses: Requirement 6, criteria 1/2/3/4
@@ -305,13 +305,13 @@ pub enum MatchMethod {
 /// Confidence level for content matching, used to rank multiple matching viewers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MatchConfidence {
-    /// Low confidence — content sniff heuristic
+    /// Low confidence -- content sniff heuristic
     Low,
-    /// Medium confidence — extension or MIME match
+    /// Medium confidence -- extension or MIME match
     Medium,
-    /// High confidence — language profile explicit declaration
+    /// High confidence -- language profile explicit declaration
     High,
-    /// Highest — user explicitly requested this viewer
+    /// Highest -- user explicitly requested this viewer
     Explicit,
 }
 ```
@@ -405,7 +405,7 @@ pub enum PreviewCommandAction {
 
 ## 5. Public API Surface
 
-### ViewerRegistry — Construction and Lifecycle
+### ViewerRegistry -- Construction and Lifecycle
 
 ```rust
 impl ViewerRegistry {
@@ -464,7 +464,7 @@ pub struct ViewerInfo {
 }
 ```
 
-### ContentSelector — Auto-Detection
+### ContentSelector -- Auto-Detection
 
 ```rust
 impl ContentSelector {
@@ -495,7 +495,7 @@ impl ContentSelector {
 }
 ```
 
-### ViewerPanel — DockablePanel Implementation
+### ViewerPanel -- DockablePanel Implementation
 
 ```rust
 impl DockablePanel for ViewerPanel {
@@ -559,7 +559,7 @@ impl ViewerPanel {
 }
 ```
 
-### PreviewCommand — Command Handler
+### PreviewCommand -- Command Handler
 
 ```rust
 impl PreviewCommand {
@@ -586,7 +586,7 @@ impl PreviewCommand {
 }
 ```
 
-### RefreshController — Debounced Notifications
+### RefreshController -- Debounced Notifications
 
 ```rust
 impl RefreshController {
@@ -626,7 +626,7 @@ impl RefreshController {
 #[non_exhaustive]
 pub enum ViewerError {
     /// Invalid ViewerKey format
-    #[error("[viewers] key: invalid format '{key}' — {reason}")]
+    #[error("[viewers] key: invalid format '{key}' -- {reason}")]
     InvalidViewerKey { key: String, reason: String },
 
     /// Attempted to register a duplicate viewer key
@@ -646,7 +646,7 @@ pub enum ViewerError {
 
     /// Viewer's on_content_changed failed or panicked
     /// Addresses: Requirement 9, criterion 5
-    #[error("[viewers] refresh: viewer '{key}' failed to process content update — {reason}")]
+    #[error("[viewers] refresh: viewer '{key}' failed to process content update -- {reason}")]
     RefreshFailed { key: String, reason: String },
 
     /// Viewer read-only constraint violated (command mutation attempted)
@@ -656,16 +656,16 @@ pub enum ViewerError {
 
     /// Plugin registration error (wraps PluginError)
     /// Addresses: Requirement 5, criterion 1
-    #[error("[viewers] plugin: registration failed — {reason}")]
+    #[error("[viewers] plugin: registration failed -- {reason}")]
     PluginRegistrationFailed { reason: String },
 
     /// Content read failed via VFS
-    #[error("[viewers] content: failed to read resource '{uri}' — {reason}")]
+    #[error("[viewers] content: failed to read resource '{uri}' -- {reason}")]
     ContentReadFailed { uri: String, reason: String },
 
     /// Configuration error (invalid value in [viewers] section)
     /// Addresses: Requirement 10, criterion 2
-    #[error("[viewers] config: invalid value for key '{key}' — {reason}")]
+    #[error("[viewers] config: invalid value for key '{key}' -- {reason}")]
     ConfigInvalid { key: String, reason: String },
 
     /// Command framework integration error
@@ -678,18 +678,18 @@ pub enum ViewerError {
 
 ## 7. Integration Points
 
-### With `ff-plugin` (Plugin Architecture — upstream)
+### With `ff-plugin` (Plugin Architecture -- upstream)
 
 - **Dependency direction**: ff-viewers depends on ff-plugin for `PluginContext` extension
 - **API surface**:
-  - `PluginContext::register_viewer(viewer: Box<dyn FileViewer>) -> Result<(), PluginError>` — called by plugins during `initialize`
-  - `PluginContext::deregister_viewer(viewer_key: &str) -> Result<(), PluginError>` — called during plugin reconfiguration
+  - `PluginContext::register_viewer(viewer: Box<dyn FileViewer>) -> Result<(), PluginError>` -- called by plugins during `initialize`
+  - `PluginContext::deregister_viewer(viewer_key: &str) -> Result<(), PluginError>` -- called during plugin reconfiguration
 - **Lifecycle integration**:
   - During plugin `initialize`: viewer is registered in ViewerRegistry with `ViewerSource::Plugin`
   - During plugin `shutdown`: all viewers contributed by that plugin are deregistered; active ViewerPanels using those viewers are closed
   - Addresses: Requirement 5, all criteria
 
-### With `ff-layout` (Layout and Docking — upstream)
+### With `ff-layout` (Layout and Docking -- upstream)
 
 - **Dependency direction**: ff-viewers depends on ff-layout for `DockablePanel` trait and `PanelRegistry`
 - **API consumed**:
@@ -703,11 +703,11 @@ pub enum ViewerError {
   - Panel dock state is included in persona serialization (Requirement 7, criterion 7)
   - Addresses: Requirement 7, all criteria
 
-### With `ff-command` (Command Framework — upstream)
+### With `ff-command` (Command Framework -- upstream)
 
 - **Dependency direction**: ff-viewers depends on ff-command for command registration
 - **Commands registered**:
-  - `viewer.preview` — The main PREVIEW command (Requirement 3, criterion 1)
+  - `viewer.preview` -- The main PREVIEW command (Requirement 3, criterion 1)
 - **Shortcut registrations**: F4 as default shortcut for `viewer.preview` toggle
 - **Integration**:
   - PREVIEW command handler receives `ExecutionContext` for accessing the active resource
@@ -715,7 +715,7 @@ pub enum ViewerError {
   - PREVIEW does NOT produce Undo_Records (Requirement 3, criterion 9)
   - Addresses: Requirement 3, all criteria
 
-### With `ff-vfs` (Virtual File System — upstream)
+### With `ff-vfs` (Virtual File System -- upstream)
 
 - **Dependency direction**: ff-viewers depends on ff-vfs for content access
 - **API consumed**:
@@ -728,7 +728,7 @@ pub enum ViewerError {
   - `can_render()` receives the ResourceUri for URI-based heuristics
   - Addresses: Requirement 9, criterion 4
 
-### With `ff-config` (Configuration System — upstream)
+### With `ff-config` (Configuration System -- upstream)
 
 - **Dependency direction**: ff-viewers depends on ff-config for settings
 - **Configuration consumed**: The `[viewers]` TOML section (see Section 8)
@@ -739,7 +739,7 @@ pub enum ViewerError {
   - Invalid config values emit WARN and fall back to defaults (Requirement 10, criterion 2)
   - Addresses: Requirement 10, all criteria
 
-### With `ff-desktop` (Shell Layer — downstream)
+### With `ff-desktop` (Shell Layer -- downstream)
 
 - **Dependency direction**: ff-desktop depends on ff-viewers; ff-viewers NEVER depends on ff-desktop
 - **Shell responsibilities**:
@@ -747,7 +747,7 @@ pub enum ViewerError {
   - Display the active ViewerKey in the status bar (Requirement 3, criterion 7)
   - Display auto-detection notifications (Requirement 6, criterion 3)
   - Display stale-content indicator when refresh fails (Requirement 9, criterion 5)
-  - Forward keyboard/mouse events to ViewerPanel (read-only — no edit affordances)
+  - Forward keyboard/mouse events to ViewerPanel (read-only -- no edit affordances)
   - Permit clipboard copy from viewer display (Requirement 8, criterion 2)
 
 ### Dependency Direction Summary
@@ -822,7 +822,7 @@ The viewer framework operates across two thread contexts: the main/GUI thread fo
 
 | Component | Thread Context | Mechanism |
 |-----------|---------------|-----------|
-| **ViewerRegistry** | Any thread | `Arc<RwLock<HashMap>>` — reads are concurrent; writes (register/deregister) acquire exclusive lock |
+| **ViewerRegistry** | Any thread | `Arc<RwLock<HashMap>>` -- reads are concurrent; writes (register/deregister) acquire exclusive lock |
 | **ViewerPanel** | Main thread | Single-threaded; `render()` called from the GUI event loop |
 | **RefreshController** | Main thread + background | Timer runs on Tokio; `on_content_changed` dispatched to background task |
 | **ContentSelector** | Main thread | Invoked synchronously during resource open or PREVIEW |
@@ -836,14 +836,14 @@ The viewer framework operates across two thread contexts: the main/GUI thread fo
   2. Calls `on_content_changed()` on the active viewer
   3. Sends the result (success or error) back to the main thread via a channel
 - If `on_content_changed` takes longer than 100ms, a WARN is logged (Requirement 8, criterion 5)
-- The main thread never blocks on the refresh — it renders the last known good state
+- The main thread never blocks on the refresh -- it renders the last known good state
 - Addresses: Requirement 9, criterion 6
 
 ### Panic Safety
 
 - `on_content_changed` is wrapped in `std::panic::catch_unwind` when called on the background task
 - If it panics, the ViewerPanel displays a stale-content indicator and logs WARN
-- The viewer is NOT deregistered — the user can still attempt manual refresh
+- The viewer is NOT deregistered -- the user can still attempt manual refresh
 - Addresses: Requirement 9, criterion 5
 
 ---
@@ -901,7 +901,7 @@ These properties are suitable for property-based testing with `proptest`. They v
 
 ### Property 5: PREVIEW Toggle Idempotence
 
-**Statement**: For any resource with an available viewer, calling PREVIEW (toggle) twice in sequence returns the viewer to its original state — if inactive, it activates then deactivates; if active, it deactivates then activates. The panel's `is_active()` state is restored.
+**Statement**: For any resource with an available viewer, calling PREVIEW (toggle) twice in sequence returns the viewer to its original state -- if inactive, it activates then deactivates; if active, it deactivates then activates. The panel's `is_active()` state is restored.
 
 **Validates**: Requirement 3, criterion 2
 
@@ -910,9 +910,9 @@ These properties are suitable for property-based testing with `proptest`. They v
 // assertion: toggle(toggle(state)).is_active() == state.is_active()
 ```
 
-### Property 6: Read-Only Enforcement — Render Receives Immutable Content
+### Property 6: Read-Only Enforcement -- Render Receives Immutable Content
 
-**Statement**: The `render` method's content parameter type is `&[u8]` — an immutable borrow. For any FileViewer implementation, calling `render()` cannot modify the content buffer. The content byte-vector before and after render is identical.
+**Statement**: The `render` method's content parameter type is `&[u8]` -- an immutable borrow. For any FileViewer implementation, calling `render()` cannot modify the content buffer. The content byte-vector before and after render is identical.
 
 **Validates**: Requirement 8, criterion 1
 
@@ -960,7 +960,7 @@ These properties are suitable for property-based testing with `proptest`. They v
 
 ### Property 10: Viewer List Completeness
 
-**Statement**: The list returned by `ViewerRegistry::list_all()` contains exactly one entry for every registered viewer — no more, no less. The count of entries equals the number of successful registrations minus the number of successful deregistrations.
+**Statement**: The list returned by `ViewerRegistry::list_all()` contains exactly one entry for every registered viewer -- no more, no less. The count of entries equals the number of successful registrations minus the number of successful deregistrations.
 
 **Validates**: Requirement 1, criterion 7; Requirement 3, criterion 6
 

@@ -2,9 +2,9 @@
 
 ## Introduction
 
-This feature specifies the **Find and Replace Engine** for FileForgeWorkbench — the `ff-find-and-replace` crate. The find engine provides ISPF-style FIND/RFIND/CHANGE/RCHANGE commands with literal, regular expression, and hexadecimal search modes, combined with Scintilla-derived search capabilities including Unicode case folding, whole-word matching, and regex group capture with substitution.
+This feature specifies the **Find and Replace Engine** for FileForgeWorkbench -- the `ff-find-and-replace` crate. The find engine provides ISPF-style FIND/RFIND/CHANGE/RCHANGE commands with literal, regular expression, and hexadecimal search modes, combined with Scintilla-derived search capabilities including Unicode case folding, whole-word matching, and regex group capture with substitution.
 
-The engine is **GUI-independent** — it contains no rendering or UI framework dependencies. The search panel, highlight rendering, and keyboard shortcuts are concerns of separate UI and text-decoration specs. This crate provides the search algorithm, match state, replacement logic, and command integration.
+The engine is **GUI-independent** -- it contains no rendering or UI framework dependencies. The search panel, highlight rendering, and keyboard shortcuts are concerns of separate UI and text-decoration specs. This crate provides the search algorithm, match state, replacement logic, and command integration.
 
 This specification merges requirements from three primary sources:
 
@@ -26,13 +26,13 @@ This specification merges requirements from three primary sources:
 
 ## Cross-References
 
-- **`command-semantics`** — The find/replace commands are dispatched through the command framework; this spec defines the engine behaviour, not the dispatch routing
-- **`document-model`** — Search operates over the document's text buffer via character indexing and line queries
-- **`undo-redo-transactions`** — CHANGE operations are wrapped in undo transactions
-- **`text-decorations`** — Match highlighting and incremental search feedback use the decoration/indicator system
-- **`encoding-and-characters`** — Unicode case folding and multi-byte character boundary handling depend on encoding awareness
-- **`exclude-show-filter`** — FIND respects line visibility state; EXCLUDE uses FIND's search engine internally
-- **`display-line-mapping`** — Search results reference document lines which map through the display-line system
+- **`command-semantics`** -- The find/replace commands are dispatched through the command framework; this spec defines the engine behaviour, not the dispatch routing
+- **`document-model`** -- Search operates over the document's text buffer via character indexing and line queries
+- **`undo-redo-transactions`** -- CHANGE operations are wrapped in undo transactions
+- **`text-decorations`** -- Match highlighting and incremental search feedback use the decoration/indicator system
+- **`encoding-and-characters`** -- Unicode case folding and multi-byte character boundary handling depend on encoding awareness
+- **`exclude-show-filter`** -- FIND respects line visibility state; EXCLUDE uses FIND's search engine internally
+- **`display-line-mapping`** -- Search results reference document lines which map through the display-line system
 
 ---
 
@@ -58,7 +58,7 @@ This specification merges requirements from three primary sources:
 
 ## Requirements
 
-### Requirement 1: FIND Command — Literal Search
+### Requirement 1: FIND Command -- Literal Search
 
 **User Story:** As a developer, I want to search document content using literal text with fine-grained direction and scope modifiers, so that I can quickly locate any text in large files regardless of visibility state or column boundaries.
 
@@ -79,7 +79,7 @@ This specification merges requirements from three primary sources:
 
 ---
 
-### Requirement 2: FIND Command — Scope and Column Modifiers
+### Requirement 2: FIND Command -- Scope and Column Modifiers
 
 **User Story:** As a developer, I want FIND to respect line visibility flags, tag state, and column boundaries, so that I can search precisely within excluded lines, tagged lines, or bounded column ranges.
 
@@ -94,11 +94,11 @@ This specification merges requirements from three primary sources:
 5. WHEN active Bounds are set and the `bounds_affect_find` configuration value is true, THE FindEngine SHALL restrict the search to characters within the active column Bounds on each line. [FFE-CMD-3]
 6. WHEN active Bounds are NOT set or `bounds_affect_find` is false, THE FindEngine SHALL search the full content of each eligible line. [FFE-CMD-3]
 7. THE FindEngine SHALL accept an optional explicit ColumnRange that overrides Bounds for a single search operation. [FFE-CMD-3]
-8. WHEN multiple scope modifiers are combined (e.g., TAGGED + Bounds), THE FindEngine SHALL apply all constraints conjunctively — a line must satisfy all active filters to be searched. [FFE-CMD-3]
+8. WHEN multiple scope modifiers are combined (e.g., TAGGED + Bounds), THE FindEngine SHALL apply all constraints conjunctively -- a line must satisfy all active filters to be searched. [FFE-CMD-3]
 
 ---
 
-### Requirement 3: FIND Command — Hex Byte Search
+### Requirement 3: FIND Command -- Hex Byte Search
 
 **User Story:** As a developer working with binary data or mainframe files, I want to search for raw byte sequences specified as hexadecimal, so that I can locate non-printable characters and binary patterns.
 
@@ -112,11 +112,11 @@ This specification merges requirements from three primary sources:
 4. THE hex byte search SHALL apply the same direction modifiers (NEXT, PREV, FIRST, LAST, ALL) as literal search. [FFE-CMD-3]
 5. THE hex byte search SHALL apply the same scope modifiers (TAGGED, EXCLUDED, VISIBLE, NONTAGGED) as literal search. [FFE-CMD-3]
 6. THE hex byte search SHALL be case-insensitive with respect to the hex digits themselves (X'4A' and X'4a' are equivalent). [FFE-CMD-3]
-7. THE hex byte search SHALL NOT apply Unicode case folding — it operates on raw bytes regardless of encoding. [FFE-CMD-3]
+7. THE hex byte search SHALL NOT apply Unicode case folding -- it operates on raw bytes regardless of encoding. [FFE-CMD-3]
 
 ---
 
-### Requirement 4: FIND Command — Regular Expression Search
+### Requirement 4: FIND Command -- Regular Expression Search
 
 **User Story:** As a developer, I want to search using regular expression patterns with full group capture, so that I can locate complex textual patterns and use captured groups in subsequent replacement operations.
 
@@ -140,7 +140,7 @@ This specification merges requirements from three primary sources:
 
 ---
 
-### Requirement 5: RFIND Command — Repeat Previous Find
+### Requirement 5: RFIND Command -- Repeat Previous Find
 
 **User Story:** As a developer, I want to repeat the previous FIND with a single command, so that I can quickly scan through multiple occurrences without retyping the search text or modifiers.
 
@@ -157,7 +157,7 @@ This specification merges requirements from three primary sources:
 
 ---
 
-### Requirement 6: CHANGE Command — Literal Replacement
+### Requirement 6: CHANGE Command -- Literal Replacement
 
 **User Story:** As a developer, I want to replace text in the document with precise scope, direction, and column-range control, so that I can safely transform content without affecting unintended lines or columns.
 
@@ -176,7 +176,7 @@ This specification merges requirements from three primary sources:
 
 ---
 
-### Requirement 7: CHANGE Command — Scope and Column Modifiers
+### Requirement 7: CHANGE Command -- Scope and Column Modifiers
 
 **User Story:** As a developer, I want CHANGE to respect tag state, visibility flags, and column boundaries, so that bulk replacements apply only to the intended subset of lines and columns.
 
@@ -195,7 +195,7 @@ This specification merges requirements from three primary sources:
 
 ---
 
-### Requirement 8: CHANGE Command — Regular Expression Replacement
+### Requirement 8: CHANGE Command -- Regular Expression Replacement
 
 **User Story:** As a developer, I want regex-based replacements with group substitution, so that I can restructure text using captured patterns without manual editing.
 
@@ -214,7 +214,7 @@ This specification merges requirements from three primary sources:
 
 ---
 
-### Requirement 9: RCHANGE Command — Repeat Previous Change
+### Requirement 9: RCHANGE Command -- Repeat Previous Change
 
 **User Story:** As a developer, I want to repeat the previous CHANGE with a single command, so that I can apply the same substitution to the next occurrence without retyping the search and replacement text.
 
@@ -262,11 +262,11 @@ This specification merges requirements from three primary sources:
 2. WHEN the WORDSTART modifier is specified, THE FindEngine SHALL verify that a character-class transition exists at the start of the match but not require one at the end. [SCI-DOC-17]
 3. THE FindEngine SHALL use the document's character classification table (from `encoding-and-characters`) to determine word-character membership for boundary detection. [SCI-RES]
 4. WHEN whole-word matching is combined with case-insensitive mode, THE FindEngine SHALL apply case folding first and then verify word boundaries on the original document positions. [SCI-DOC-17]
-5. THE word boundary check SHALL handle multi-byte UTF-8 characters correctly — the character before/after the match SHALL be classified by its full code point, not individual bytes. [SCI-RES]
+5. THE word boundary check SHALL handle multi-byte UTF-8 characters correctly -- the character before/after the match SHALL be classified by its full code point, not individual bytes. [SCI-RES]
 
 ---
 
-### Requirement 12: Regex Engine — NFA Compilation and Execution
+### Requirement 12: Regex Engine -- NFA Compilation and Execution
 
 **User Story:** As the find engine, I want a compiled NFA-based regex that supports the full POSIX-like syntax with extensions, so that regex searches execute efficiently across large documents without backtracking explosion.
 
@@ -303,7 +303,7 @@ This specification merges requirements from three primary sources:
 3. THE FindState SHALL store a separate history of the last N replacement texts. [WB]
 4. WHEN `RESET` is issued with no arguments, THE FindState SHALL clear any active find highlight and temporary search filters but SHALL retain the stored search history and last-search parameters for RFIND/RCHANGE. [FFE-CMD-9]
 5. WHEN `RESET ALL` is issued, THE FindState SHALL clear the last-search parameters (RFIND/RCHANGE will report "No previous FIND/CHANGE") but SHALL retain the search history list. [FFE-CMD-9]
-6. THE FindState SHALL be per-document — each open document maintains its own last-search and last-change state. [WB]
+6. THE FindState SHALL be per-document -- each open document maintains its own last-search and last-change state. [WB]
 7. THE FindState SHALL be serialisable for session persistence across application restarts (via the startup-and-session system). [WB]
 
 ---
@@ -321,7 +321,7 @@ This specification merges requirements from three primary sources:
 3. IF no match is found during incremental search, THE find panel SHALL indicate "no match" visually (e.g., red background on the search field) without displaying a status message. [WB]
 4. WHEN incremental search finds a match, THE viewport SHALL scroll to reveal the match and the match SHALL be highlighted using the text-decorations indicator system. [WB]
 5. WHEN the user deletes characters from the search field during incremental search, THE FindEngine SHALL re-execute the search from the original start position (not from the current match position) to ensure consistent behaviour. [WB]
-6. THE FindEngine SHALL debounce incremental search requests — if keystrokes arrive faster than the search can complete, only the latest state SHALL be searched. [WB]
+6. THE FindEngine SHALL debounce incremental search requests -- if keystrokes arrive faster than the search can complete, only the latest state SHALL be searched. [WB]
 7. WHEN the search field is empty, THE FindEngine SHALL clear all incremental search highlights and restore the viewport to its pre-search position. [WB]
 8. THE incremental search SHALL respect the current case-sensitivity and mode settings (literal/regex) configured in the find panel. [WB]
 
@@ -374,8 +374,8 @@ This specification merges requirements from three primary sources:
 1. THE find-and-replace crate SHALL register the following commands with the command framework: `find`, `rfind`, `change`, `rchange`, `find_next`, `find_prev`, `find_all`, `replace_all`. [WB]
 2. EACH registered command SHALL include metadata (display name, description, default keybinding suggestion, category "Search") for menu and keybinding systems. [WB]
 3. ALL CHANGE operations (including RCHANGE) SHALL be wrapped in an undo transaction before mutating the document. [FFE-CMD-5, FFE-CMD-6]
-4. WHEN a CHANGE ALL operation makes multiple replacements, THE entire batch SHALL be grouped as a single undo transaction — one UNDO reverses all replacements from that command. [FFE-CMD-5]
-5. FIND operations SHALL NOT create undo transactions — they are read-only viewport/cursor movements. [FFE-CMD-3]
+4. WHEN a CHANGE ALL operation makes multiple replacements, THE entire batch SHALL be grouped as a single undo transaction -- one UNDO reverses all replacements from that command. [FFE-CMD-5]
+5. FIND operations SHALL NOT create undo transactions -- they are read-only viewport/cursor movements. [FFE-CMD-3]
 6. THE find/replace commands SHALL be invocable from Lua macros via the scripting bridge with the same argument semantics as command-line input. [WB]
 7. THE FindEngine SHALL emit events (find_started, match_found, find_completed, replace_completed) that plugins and the UI can subscribe to for status updates and progress reporting. [WB]
 
@@ -411,7 +411,7 @@ This specification merges requirements from three primary sources:
 3. THE literal search (case-sensitive) SHALL use an optimised byte-scanning algorithm (e.g., memchr + memcmp or Boyer-Moore variant) achieving sub-linear average-case performance. [SCI-DOC-17]
 4. THE regex search SHALL avoid catastrophic backtracking by implementing NFA-based matching (not backtracking-only) and enforcing a configurable match-attempt limit per position (default 10,000 steps). [SCI-RES, WB]
 5. IF the match-attempt limit is exceeded at a position, THE FindEngine SHALL skip that position and continue to the next candidate, logging a warning but not aborting the entire search. [WB]
-6. THE FindEngine SHALL avoid allocating per-line during FIND ALL — match results SHALL be accumulated in a pre-allocated or amortised collection. [WB]
+6. THE FindEngine SHALL avoid allocating per-line during FIND ALL -- match results SHALL be accumulated in a pre-allocated or amortised collection. [WB]
 7. WHEN searching within column bounds, THE FindEngine SHALL extract the bounded slice once per line rather than re-checking column bounds for each character position. [WB]
 
 ---
@@ -429,8 +429,8 @@ This specification merges requirements from three primary sources:
 3. WHEN the document is empty (zero lines), THE FindEngine SHALL immediately return "not found" without error for any search operation. [WB]
 4. WHEN the document is read-only and a CHANGE command is issued, THE FindEngine SHALL return an error "Document is read-only" and SHALL NOT attempt the search or modification. [WB]
 5. WHEN a regex replacement template contains an invalid escape sequence, THE FindEngine SHALL return an error describing the invalid escape rather than producing corrupt output. [SCI-RES]
-6. WHEN CHANGE ALL produces zero replacements (search term found nowhere), THE FindEngine SHALL report "'old' NOT FOUND" — the same message as single-match CHANGE with no match. [FFE-CMD-5]
-7. THE FindEngine SHALL handle documents containing null bytes (0x00) without truncating the search — null is treated as a regular byte value. [WB]
+6. WHEN CHANGE ALL produces zero replacements (search term found nowhere), THE FindEngine SHALL report "'old' NOT FOUND" -- the same message as single-match CHANGE with no match. [FFE-CMD-5]
+7. THE FindEngine SHALL handle documents containing null bytes (0x00) without truncating the search -- null is treated as a regular byte value. [WB]
 8. WHEN a search term contains characters that are incomplete UTF-8 sequences, THE FindEngine SHALL search for the raw bytes as-is in literal mode (the encoding layer handles validation separately). [WB]
 
 ---

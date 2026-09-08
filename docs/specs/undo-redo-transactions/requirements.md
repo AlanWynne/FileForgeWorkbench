@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This spec defines the **undo/redo transaction system** for FileForgeWorkbench (`ff-undo` crate). It provides the complete infrastructure for recording, coalescing, undoing, and redoing document modifications — from single-character typing through bulk operations affecting millions of records.
+This spec defines the **undo/redo transaction system** for FileForgeWorkbench (`ff-undo` crate). It provides the complete infrastructure for recording, coalescing, undoing, and redoing document modifications -- from single-character typing through bulk operations affecting millions of records.
 
 The transaction system is the bridge between the command framework (which produces undo records) and the document model (which receives the reversed/re-applied edit operations). It owns the undo and redo stacks, enforces transaction boundaries, implements coalescing of rapid edits, tracks the save point for dirty-flag semantics, supports bulk transaction optimisations for large-scale operations, manages tentative actions for IME composition, and persists undo state for crash recovery.
 
@@ -11,10 +11,10 @@ The transaction system is the bridge between the command framework (which produc
 1. **The source file on disk is never modified during editing.** All edits accumulate in the document model's edit buffer. The undo system records how to reverse them. [FFE-UNDO-1]
 2. **Every mutating operation is wrapped in a named transaction.** This makes undo, redo, macro replay, and audit logging all possible from the same foundation. [FFE-UNDO-2]
 3. **Undo reverses transactions one at a time. Redo re-applies them.** [FFE-UNDO-3, FFE-UNDO-4]
-4. **Coalescing groups rapid keystrokes into a single undoable unit** — users expect Ctrl+Z to undo a "word", not a character. [SCI-UNDO-4.2]
-5. **The save point tracks distance from last save** — the dirty flag is not a simple boolean but a position in the undo history. [SCI-UNDO-4.2, FFE-UNDO-5]
-6. **Selection state is part of the undo record** — undo restores not just content but cursor/selection context. [SCI-EDIT-2.4]
-7. **GUI-independent** — this crate has no GUI dependency; it provides pure data-structure and logic services. [WB]
+4. **Coalescing groups rapid keystrokes into a single undoable unit** -- users expect Ctrl+Z to undo a "word", not a character. [SCI-UNDO-4.2]
+5. **The save point tracks distance from last save** -- the dirty flag is not a simple boolean but a position in the undo history. [SCI-UNDO-4.2, FFE-UNDO-5]
+6. **Selection state is part of the undo record** -- undo restores not just content but cursor/selection context. [SCI-EDIT-2.4]
+7. **GUI-independent** -- this crate has no GUI dependency; it provides pure data-structure and logic services. [WB]
 
 ### Source References
 
@@ -26,12 +26,12 @@ The transaction system is the bridge between the command framework (which produc
 
 ### Cross-References
 
-- **`command-framework`** — Commands produce Undo_Records; this crate owns the stacks they are pushed onto. [CF]
-- **`document-model`** — Edit operations are applied to / reversed from the document model's gap buffer.
-- **`edit-operations`** — Defines the edit operation types (insert, delete, replace) that transactions contain.
-- **`configuration-system`** — Provides `editor.undo.max_levels`, `editor.undo.coalesce_timeout_ms`, `editor.undo.selection_history`, and `editor.recovery.interval_seconds` settings.
-- **`file-operations`** — Triggers save-point marking and recovery file cleanup on SAVE.
-- **`logging-subsystem`** — Diagnostics for transaction recording, undo/redo execution, and recovery operations.
+- **`command-framework`** -- Commands produce Undo_Records; this crate owns the stacks they are pushed onto. [CF]
+- **`document-model`** -- Edit operations are applied to / reversed from the document model's gap buffer.
+- **`edit-operations`** -- Defines the edit operation types (insert, delete, replace) that transactions contain.
+- **`configuration-system`** -- Provides `editor.undo.max_levels`, `editor.undo.coalesce_timeout_ms`, `editor.undo.selection_history`, and `editor.recovery.interval_seconds` settings.
+- **`file-operations`** -- Triggers save-point marking and recovery file cleanup on SAVE.
+- **`logging-subsystem`** -- Diagnostics for transaction recording, undo/redo execution, and recovery operations.
 
 ---
 
@@ -40,7 +40,7 @@ The transaction system is the bridge between the command framework (which produc
 | Term | Definition | Source |
 |------|-----------|--------|
 | **Transaction** | A named, atomic unit of work in the undo history. Contains one or more Edit_Operations. Either all operations are applied/reversed or none are. | [FFE-UNDO-2], [SCI-UNDO-4.2] |
-| **Edit_Operation** | A single atomic change to the document — insert text at position, delete text at range, replace text at range. Carries position, length, and text data. | [FFE-UNDO-2], [SCI-UNDO-4.2] |
+| **Edit_Operation** | A single atomic change to the document -- insert text at position, delete text at range, replace text at range. Carries position, length, and text data. | [FFE-UNDO-2], [SCI-UNDO-4.2] |
 | **Undo_Stack** | The bounded, ordered collection of committed Transactions for the current document, most recent at the top. Undo pops from this stack. | [FFE-UNDO-3], [SCI-UNDO-4.2] |
 | **Redo_Stack** | The collection of Transactions that were undone and can be re-applied. Cleared when a new edit is committed. | [FFE-UNDO-4], [SCI-UNDO-4.2] |
 | **Transaction_Boundary** | The point at which one transaction ends and the next begins. Determined by coalescing rules or explicit grouping. | [FFE-UNDO-2], [SCI-UNDO-4.2] |
@@ -48,7 +48,7 @@ The transaction system is the bridge between the command framework (which produc
 | **Bulk_Transaction** | A single undo group wrapping a multi-edit operation (e.g., indent entire block, CHANGE ALL). | [FFE-UNDO-10] |
 | **Save_Point** | A marker in the undo history indicating the position where the document was last saved. The dirty flag is derived from the current position's distance from the save point. | [SCI-UNDO-4.2], [FFE-UNDO-5] |
 | **Detach_Point** | A marker indicating the last action that was before an inaccessible (lost) save point. Once detached, the saved state can never be reached again via undo/redo. | [SCI-UNDO-4.2] |
-| **Dirty_Flag** | A derived boolean indicating the document has unsaved changes — true when the current undo position differs from the save point. | [FFE-UNDO-5], [SCI-UNDO-4.2] |
+| **Dirty_Flag** | A derived boolean indicating the document has unsaved changes -- true when the current undo position differs from the save point. | [FFE-UNDO-5], [SCI-UNDO-4.2] |
 | **Recovery_File** | A periodic snapshot of undo state written to disk for crash recovery. | [FFE-UNDO-6] |
 | **Selection_State** | The cursor position, selection range(s), and virtual space at the time a transaction was committed. Stored in the transaction for restoration on undo. | [SCI-EDIT-2.4] |
 | **Non-Undoable_Operation** | A state change that bypasses the undo stack entirely (view changes, display mode changes, visibility toggling). | [FFE-UNDO-8] |
@@ -80,7 +80,7 @@ The transaction system is the bridge between the command framework (which produc
 
 4. WHEN the Undo_Stack exceeds `max_levels`, THE system SHALL discard the oldest Transaction from the bottom of the stack to make room for the new Transaction. [FFE-UNDO-7]
 
-5. WHEN `max_levels` is set to 0, THE system SHALL disable undo entirely — no Transactions are pushed to the Undo_Stack, and UNDO/REDO commands SHALL display a status message indicating undo is disabled. [FFE-UNDO-7]
+5. WHEN `max_levels` is set to 0, THE system SHALL disable undo entirely -- no Transactions are pushed to the Undo_Stack, and UNDO/REDO commands SHALL display a status message indicating undo is disabled. [FFE-UNDO-7]
 
 6. IF `max_levels` contains a negative value, THEN THE system SHALL apply the default of 100 and emit a configuration warning via the logging subsystem. [FFE-UNDO-7]
 
@@ -98,7 +98,7 @@ The transaction system is the bridge between the command framework (which produc
 
 1. THE undo-redo system SHALL maintain a Redo_Stack per document session, storing Transactions that were undone and can be re-applied. [FFE-UNDO-4]
 
-2. WHEN a new Transaction is committed (pushed to the Undo_Stack) while the Redo_Stack is non-empty, THE system SHALL clear the Redo_Stack entirely — the undone transactions are permanently discarded (standard branching semantics). [FFE-UNDO-4]
+2. WHEN a new Transaction is committed (pushed to the Undo_Stack) while the Redo_Stack is non-empty, THE system SHALL clear the Redo_Stack entirely -- the undone transactions are permanently discarded (standard branching semantics). [FFE-UNDO-4]
 
 3. WHEN an undo operation completes, THE system SHALL push the reversed Transaction onto the Redo_Stack. [FFE-UNDO-3]
 
@@ -106,7 +106,7 @@ The transaction system is the bridge between the command framework (which produc
 
 5. WHEN REDO is requested and the Redo_Stack is empty, THE system SHALL display a status message indicating there is nothing to redo and SHALL NOT modify the document. [FFE-UNDO-4]
 
-6. THE Redo_Stack SHALL NOT have a separate depth limit — its maximum size is bounded by the Undo_Stack depth (you cannot redo more than you undid). [SCI-UNDO-4.2]
+6. THE Redo_Stack SHALL NOT have a separate depth limit -- its maximum size is bounded by the Undo_Stack depth (you cannot redo more than you undid). [SCI-UNDO-4.2]
 
 ---
 
@@ -125,7 +125,7 @@ The transaction system is the bridge between the command framework (which produc
    - A file insert operation
    - A shell document capture
    - All field edits to a single record in Grid_Edit_Mode during one editing pass
-   - A single character insert, delete, or replace in standard text edit mode (subject to coalescing — see Requirement 6)
+   - A single character insert, delete, or replace in standard text edit mode (subject to coalescing -- see Requirement 6)
 
 2. THE system SHALL support explicit transaction grouping via `begin_transaction()` / `end_transaction()` API calls, allowing command handlers and macro engines to wrap multiple edit operations as a single undoable unit. [SCI-UNDO-4.2]
 
@@ -153,7 +153,7 @@ The transaction system is the bridge between the command framework (which produc
 
 2. WHEN UNDO is executed and the Undo_Stack is empty, THE system SHALL display a status message indicating there is nothing to undo and SHALL NOT modify the document. [FFE-UNDO-3]
 
-3. WHEN UNDO reverses a multi-operation Transaction (e.g., CHANGE ALL that modified 500 lines), THE system SHALL reverse ALL operations in that Transaction in a single undo step — the user SHALL NOT need to press UNDO 500 times. [FFE-UNDO-3]
+3. WHEN UNDO reverses a multi-operation Transaction (e.g., CHANGE ALL that modified 500 lines), THE system SHALL reverse ALL operations in that Transaction in a single undo step -- the user SHALL NOT need to press UNDO 500 times. [FFE-UNDO-3]
 
 4. WHEN REDO is executed, THE system SHALL pop the most recent Transaction from the Redo_Stack, re-apply all its Edit_Operations in original order, update the document model, push the Transaction back onto the Undo_Stack, and update the dirty flag. [FFE-UNDO-4]
 
@@ -165,7 +165,7 @@ The transaction system is the bridge between the command framework (which produc
 
 8. WHEN UNDO or REDO is issued in Browse mode or View mode (read-only), THE system SHALL display a status message indicating the command is not available and SHALL NOT modify any state. [FFE-UNDO-9]
 
-9. WHEN REDO re-applies a Transaction, the result SHALL be byte-identical to the original application — no data loss, no content reordering. [FFE-UNDO-4]
+9. WHEN REDO re-applies a Transaction, the result SHALL be byte-identical to the original application -- no data loss, no content reordering. [FFE-UNDO-4]
 
 ---
 
@@ -177,13 +177,13 @@ The transaction system is the bridge between the command framework (which produc
 
 #### Acceptance Criteria
 
-1. THE system SHALL maintain a Save_Point — a marker indicating the position in the undo history where the document was last saved (or opened, initially). [FFE-UNDO-5], [SCI-UNDO-4.2]
+1. THE system SHALL maintain a Save_Point -- a marker indicating the position in the undo history where the document was last saved (or opened, initially). [FFE-UNDO-5], [SCI-UNDO-4.2]
 
 2. WHEN a file is saved successfully, THE system SHALL set the Save_Point to the current undo position and clear the detach point. The Dirty_Flag SHALL become false. [SCI-UNDO-4.2]
 
 3. THE Dirty_Flag SHALL be true whenever the current undo position differs from the Save_Point. This includes: after committing a new transaction, after undoing past the save point, or after redoing past the save point. [FFE-UNDO-5], [SCI-UNDO-4.2]
 
-4. WHEN a series of undo operations returns the document to the exact Save_Point position, THE Dirty_Flag SHALL become false — the document matches its on-disk state. [SCI-UNDO-4.2]
+4. WHEN a series of undo operations returns the document to the exact Save_Point position, THE Dirty_Flag SHALL become false -- the document matches its on-disk state. [SCI-UNDO-4.2]
 
 5. WHEN a new Transaction is committed that truncates the redo history, and the Save_Point was located in the discarded redo portion, THE system SHALL set a Detach_Point at the current action position. The Save_Point becomes unreachable. The Dirty_Flag SHALL remain true regardless of future undo operations (the saved state can no longer be reached). [SCI-UNDO-4.2]
 
@@ -225,7 +225,7 @@ The transaction system is the bridge between the command framework (which produc
 
 5. WHEN two actions are being considered for coalescing, THE system SHALL NOT coalesce if either action has `may_coalesce=false` (indicating an explicit boundary was set by `end_transaction()` or a save-point). [SCI-UNDO-4.2]
 
-6. WHEN inside an explicit `begin_transaction()` / `end_transaction()` group, ALL actions within the group SHALL coalesce regardless of the above character-level rules — the explicit grouping overrides character-level boundary detection. [SCI-UNDO-4.2]
+6. WHEN inside an explicit `begin_transaction()` / `end_transaction()` group, ALL actions within the group SHALL coalesce regardless of the above character-level rules -- the explicit grouping overrides character-level boundary detection. [SCI-UNDO-4.2]
 
 7. WHEN coalescing is active and a new character is typed, THE system SHALL NOT push a new Transaction to the Undo_Stack; instead it SHALL extend the current (in-progress) Transaction with the additional Edit_Operation. [SCI-UNDO-4.2]
 
@@ -246,23 +246,23 @@ The transaction system is the bridge between the command framework (which produc
    - **Index_Transaction**: stores the rule plus a materialised list of Logical_Record_IDs. O(n) memory. Used when scope depends on transient state.
 
 3. THE following scope types SHALL use Rule_Transaction (re-scan on undo): [FFE-UNDO-10]
-   - `ALL` — applies to every record; scope is fully deterministic from command arguments
-   - Explicit line range (e.g., `CHANGE ... IN 100 500`) — range is deterministic
-   - `CC` block scope — block boundaries are deterministic from the command context
+   - `ALL` -- applies to every record; scope is fully deterministic from command arguments
+   - Explicit line range (e.g., `CHANGE ... IN 100 500`) -- range is deterministic
+   - `CC` block scope -- block boundaries are deterministic from the command context
 
 4. THE following scope types SHALL use Index_Transaction (materialise record IDs): [FFE-UNDO-10]
-   - `VISIBLE` / `NX` (non-excluded) — depends on transient visibility state
-   - `X` (excluded only) — depends on transient visibility state
-   - `TAGGED` — depends on transient tag state
+   - `VISIBLE` / `NX` (non-excluded) -- depends on transient visibility state
+   - `X` (excluded only) -- depends on transient visibility state
+   - `TAGGED` -- depends on transient tag state
    - Any scope combined with an active Record_Filter, Record_Type_Filter, or Criteria_Set
 
-5. WHEN an Index_Transaction is built, THE system SHALL record the Logical_Record_ID of each affected record — not line numbers or byte offsets — so that undo remains correct after intervening insertions or deletions. [FFE-UNDO-10], [FFE-UNDO-11]
+5. WHEN an Index_Transaction is built, THE system SHALL record the Logical_Record_ID of each affected record -- not line numbers or byte offsets -- so that undo remains correct after intervening insertions or deletions. [FFE-UNDO-10], [FFE-UNDO-11]
 
 6. WHEN UNDO reverses a Rule_Transaction, THE system SHALL re-scan the document, apply the inverse rule, and update the document. Undo cost: one document pass. [FFE-UNDO-10]
 
 7. WHEN UNDO reverses an Index_Transaction, THE system SHALL look up the current position of each Logical_Record_ID and apply the inverse operation at each position. Undo cost: O(n affected records). [FFE-UNDO-10]
 
-8. THE Rule_Transaction memory cost SHALL be O(1) — constant regardless of how many records are affected. The Index_Transaction memory cost SHALL be O(n) where n is the number of affected records. [FFE-UNDO-10]
+8. THE Rule_Transaction memory cost SHALL be O(1) -- constant regardless of how many records are affected. The Index_Transaction memory cost SHALL be O(n) where n is the number of affected records. [FFE-UNDO-10]
 
 9. WHEN a bulk operation is in progress and takes more than 1 second, THE system SHALL execute asynchronously with a progress indicator in the status bar. The UI SHALL remain responsive. [FFE-UNDO-10], [WB]
 
@@ -308,21 +308,21 @@ The transaction system is the bridge between the command framework (which produc
 
 2. THE system SHALL store two Selection_States per Transaction: the **before-state** (selection at the start of the transaction) and the **after-state** (selection at the end of the transaction, which is the state to restore on redo). [SCI-EDIT-2.4]
 
-3. WHEN UNDO reverses a Transaction, THE system SHALL restore the **before-state** Selection_State — the cursor/selection returns to where it was before the operation was performed. [SCI-EDIT-2.4]
+3. WHEN UNDO reverses a Transaction, THE system SHALL restore the **before-state** Selection_State -- the cursor/selection returns to where it was before the operation was performed. [SCI-EDIT-2.4]
 
-4. WHEN REDO re-applies a Transaction, THE system SHALL restore the **after-state** Selection_State — the cursor/selection returns to where it was after the operation was originally performed. [SCI-EDIT-2.4]
+4. WHEN REDO re-applies a Transaction, THE system SHALL restore the **after-state** Selection_State -- the cursor/selection returns to where it was after the operation was originally performed. [SCI-EDIT-2.4]
 
 5. WHEN the restored Selection_State references a position that is off-screen, THE system SHALL scroll the viewport to make the restored cursor position visible (centered or near-center). [SCI-EDIT-2.4]
 
 6. THE Selection_State SHALL include multi-caret/multi-selection state: if the user had multiple carets when the transaction was committed, undo/redo SHALL restore all caret positions. [SCI-EDIT-2.4]
 
 7. THE selection history feature SHALL be configurable via `editor.undo.selection_history` in the configuration system with the following options: [SCI-EDIT-2.4]
-   - `"enabled"` (default) — selection state is recorded with each transaction and restored on undo/redo
-   - `"disabled"` — selection state is NOT recorded; undo/redo does not restore cursor/selection position
+   - `"enabled"` (default) -- selection state is recorded with each transaction and restored on undo/redo
+   - `"disabled"` -- selection state is NOT recorded; undo/redo does not restore cursor/selection position
 
-8. WHEN selection history is disabled, UNDO and REDO SHALL still function correctly for document content — only the selection/cursor restoration is skipped. The cursor SHALL remain at its current position after undo/redo. [SCI-EDIT-2.4]
+8. WHEN selection history is disabled, UNDO and REDO SHALL still function correctly for document content -- only the selection/cursor restoration is skipped. The cursor SHALL remain at its current position after undo/redo. [SCI-EDIT-2.4]
 
-9. THE selection history stacks SHALL be sparse — only transactions where the selection actually changed relative to the previous state need to store a full Selection_State snapshot. Transactions with no selection change MAY reference the previous state. [SCI-EDIT-2.4]
+9. THE selection history stacks SHALL be sparse -- only transactions where the selection actually changed relative to the previous state need to store a full Selection_State snapshot. Transactions with no selection change MAY reference the previous state. [SCI-EDIT-2.4]
 
 ---
 
@@ -366,7 +366,7 @@ The transaction system is the bridge between the command framework (which produc
 
 1. EACH open document SHALL have its own independent Undo_Stack, Redo_Stack, Save_Point, Detach_Point, coalescing state, and tentative action state. Undo operations in one document SHALL NOT affect any other document's undo history. [FFE-UNDO-1], [SCI-UNDO-4.2]
 
-2. WHEN a document tab is activated, THE system SHALL restore the undo/redo state for that document — UNDO and REDO SHALL operate on the active document's stacks. [FFE-UNDO-1]
+2. WHEN a document tab is activated, THE system SHALL restore the undo/redo state for that document -- UNDO and REDO SHALL operate on the active document's stacks. [FFE-UNDO-1]
 
 3. WHEN a document is closed (after save or discard), THE system SHALL release the undo/redo stacks and all associated memory for that document (including scrap text, selection history, and logical record ID mappings). [FFE-UNDO-1]
 
@@ -388,13 +388,13 @@ The transaction system is the bridge between the command framework (which produc
 
 2. WHEN `tentative_start()` is called, THE system SHALL record a tentative point at the current action position. All subsequent Edit_Operations are tentative until `tentative_commit()` or rollback. [SCI-UNDO-4.2]
 
-3. WHEN `tentative_commit()` is called, THE system SHALL clear the tentative point and truncate the undo history to the current position — the tentative actions become permanent and the redo history beyond them is discarded. [SCI-UNDO-4.2]
+3. WHEN `tentative_commit()` is called, THE system SHALL clear the tentative point and truncate the undo history to the current position -- the tentative actions become permanent and the redo history beyond them is discarded. [SCI-UNDO-4.2]
 
 4. WHEN IME composition is cancelled (rollback), THE system SHALL undo all tentative steps (from current action back to the tentative point), restoring the document to its pre-composition state. The tentative actions SHALL NOT remain in the undo history. [SCI-UNDO-4.2]
 
 5. THE system SHALL provide `tentative_active() -> bool` to query whether tentative mode is in progress, and `tentative_steps() -> Option<usize>` to return the number of actions since the tentative point (or None if not active). [SCI-UNDO-4.2]
 
-6. WHEN the tentative point is active, coalescing boundary detection SHALL treat the tentative point as a coalescing barrier — new actions SHALL NOT coalesce with pre-tentative actions. [SCI-UNDO-4.2]
+6. WHEN the tentative point is active, coalescing boundary detection SHALL treat the tentative point as a coalescing barrier -- new actions SHALL NOT coalesce with pre-tentative actions. [SCI-UNDO-4.2]
 
 ---
 
@@ -410,13 +410,13 @@ The transaction system is the bridge between the command framework (which produc
 
 2. A Container_Action SHALL implement a Rust trait (`UndoableState`) with methods: `undo(&self)` to reverse the state change, `redo(&self)` to re-apply it, and `description(&self) -> &str` for diagnostic display. [WB]
 
-3. Container_Actions SHALL participate in coalescing — they MAY forward the coalesce state of adjacent document actions. A coalescible container action does not break a typing sequence. [SCI-UNDO-4.2]
+3. Container_Actions SHALL participate in coalescing -- they MAY forward the coalesce state of adjacent document actions. A coalescible container action does not break a typing sequence. [SCI-UNDO-4.2]
 
 4. WHEN UNDO reverses a transaction containing Container_Actions, THE system SHALL invoke `undo()` on each Container_Action in reverse order, interleaved with the document edit reversals at the correct position in the sequence. [SCI-UNDO-4.2]
 
 5. WHEN REDO re-applies a transaction containing Container_Actions, THE system SHALL invoke `redo()` on each Container_Action in original order. [SCI-UNDO-4.2]
 
-6. Container_Actions SHALL NOT affect the Dirty_Flag or Modified_Line_Markers — only document edit operations (insert/remove) affect dirty state. [SCI-UNDO-4.2]
+6. Container_Actions SHALL NOT affect the Dirty_Flag or Modified_Line_Markers -- only document edit operations (insert/remove) affect dirty state. [SCI-UNDO-4.2]
 
 ---
 
@@ -428,7 +428,7 @@ The transaction system is the bridge between the command framework (which produc
 
 #### Acceptance Criteria
 
-1. WHEN a file is opened, THE system SHALL assign a Logical_Record_ID to each record. IDs are assigned sequentially from 1 and are stable for the lifetime of the session — they do not change when other records are inserted, deleted, or reordered. [FFE-UNDO-11]
+1. WHEN a file is opened, THE system SHALL assign a Logical_Record_ID to each record. IDs are assigned sequentially from 1 and are stable for the lifetime of the session -- they do not change when other records are inserted, deleted, or reordered. [FFE-UNDO-11]
 
 2. WHEN a new record is inserted (e.g., via `I` line command, clipboard paste, or file insert), THE system SHALL assign it the next available Logical_Record_ID. Existing IDs are never renumbered. [FFE-UNDO-11]
 
@@ -438,7 +438,7 @@ The transaction system is the bridge between the command framework (which produc
 
 5. ALL Index_Transactions (Requirement 7, criterion 7.4) SHALL store Logical_Record_IDs, not line numbers or byte offsets. This ensures undo correctness after intervening insertions or deletions. [FFE-UNDO-11]
 
-6. THE Logical_Record_ID mapping SHALL be held in memory only — it is session state, not persisted to disk. On file reopen, IDs are reassigned from scratch. [FFE-UNDO-11]
+6. THE Logical_Record_ID mapping SHALL be held in memory only -- it is session state, not persisted to disk. On file reopen, IDs are reassigned from scratch. [FFE-UNDO-11]
 
 7. WHEN the Edit_Buffer is written to the Recovery_File (Requirement 8), THE system SHALL include the current Logical_Record_ID mapping in the recovery data so that any pending Index_Transactions stored in the recovery file remain valid after restoration. [FFE-UNDO-11]
 
@@ -523,9 +523,9 @@ The transaction system is the bridge between the command framework (which produc
 
 3. THE crate SHALL communicate state changes to the GUI layer via a notification trait (observer pattern) rather than direct UI calls. Notifications SHALL include: dirty-flag changed, undo-available changed, redo-available changed, transaction committed, transaction undone, transaction redone. [WB]
 
-4. THE crate SHALL be usable in a headless/test context without any GUI infrastructure — all functionality SHALL be exercisable through unit tests operating on the public API alone. [WB]
+4. THE crate SHALL be usable in a headless/test context without any GUI infrastructure -- all functionality SHALL be exercisable through unit tests operating on the public API alone. [WB]
 
-5. THE crate SHALL depend only on: `ff-logging` (diagnostics), `ff-configuration` (settings access), standard library, and serialisation crates (for recovery file I/O). It SHALL NOT depend on `ff-document-model` directly — instead it SHALL accept Edit_Operations via a trait interface, allowing the document model to implement the trait. [WB]
+5. THE crate SHALL depend only on: `ff-logging` (diagnostics), `ff-configuration` (settings access), standard library, and serialisation crates (for recovery file I/O). It SHALL NOT depend on `ff-document-model` directly -- instead it SHALL accept Edit_Operations via a trait interface, allowing the document model to implement the trait. [WB]
 
 ---
 

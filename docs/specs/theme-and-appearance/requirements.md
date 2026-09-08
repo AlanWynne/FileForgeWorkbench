@@ -9,9 +9,9 @@ The theme system replaces all hardcoded colour values with semantic token lookup
 The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `configuration-system` for TOML-based configuration loading, layered overrides, and hot-reload. It is consumed by all rendering subsystems: `menu-and-statusbar`, `text-decorations`, `whitespace-and-guides`, `caret-and-selection`, `syntax-highlighting`, `file-tree-panel`, `layout-and-docking`, and the GUI shell.
 
 **Source references:**
-- **[FFE-THEME-1]** through **[FFE-THEME-7]** = FileForgeEditor `theme-and-appearance` specification (7 requirements — theme file, palette, fonts, loading, colour replacement, serialisation, extensibility)
-- **[SCI-STYLE]** = Scintilla `ViewStyle` / `Style` / `ElementMap` — 256 style slots with font/fore/back/bold/italic/underline/case, element-based colour system (selection, caret, whitespace, fold, etc.), zoom level, alpha/transparency support
-- **[WB]** = Workbench Architecture Brief — dark/light/high-contrast modes, design system (spacing, radii, shadows, animations), plugin-provided theme extensions, hot-reload, multiple font stacks
+- **[FFE-THEME-1]** through **[FFE-THEME-7]** = FileForgeEditor `theme-and-appearance` specification (7 requirements -- theme file, palette, fonts, loading, colour replacement, serialisation, extensibility)
+- **[SCI-STYLE]** = Scintilla `ViewStyle` / `Style` / `ElementMap` -- 256 style slots with font/fore/back/bold/italic/underline/case, element-based colour system (selection, caret, whitespace, fold, etc.), zoom level, alpha/transparency support
+- **[WB]** = Workbench Architecture Brief -- dark/light/high-contrast modes, design system (spacing, radii, shadows, animations), plugin-provided theme extensions, hot-reload, multiple font stacks
 
 ## Cross-References
 
@@ -35,7 +35,7 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 - **Colour_Token**: A named reference to a specific colour within the Theme_Palette (e.g., `editor.background`, `syntax.keyword`, `chrome.line_number_foreground`). Tokens are the sole interface for rendering code to obtain colours. [FFE-THEME-2]
 - **Design_Token**: A named reference to a non-colour visual property: spacing value, border radius, shadow definition, or animation timing. Part of the design system. [WB]
 - **Font_Stack**: An ordered list of font family names with fallback semantics. The theme defines separate stacks for monospace (editor) and proportional (UI) contexts. [FFE-THEME-3, WB]
-- **Visual_Mode**: One of three appearance modes — Dark, Light, or High-Contrast — that determines which set of palette values is active. [WB]
+- **Visual_Mode**: One of three appearance modes -- Dark, Light, or High-Contrast -- that determines which set of palette values is active. [WB]
 - **Style_Slot**: An indexed slot (0–255) defining a combination of font, foreground colour, background colour, and text attributes (bold, italic, underline, case) for a specific syntax or UI element. Adapted from Scintilla's 256-style system. [SCI-STYLE]
 - **Element_Colour**: A named colour associated with a UI element (selection background, caret, whitespace, fold margin, etc.) that can optionally support alpha transparency. Adapted from Scintilla's element-based colour system. [SCI-STYLE]
 - **Zoom_Level**: An integer offset applied to all font sizes, increasing or decreasing the effective rendered size without modifying the base theme configuration. [SCI-STYLE]
@@ -217,7 +217,7 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 
 **User Story:** As a rendering subsystem, I need to query colours for specific UI elements (selection, caret, whitespace, fold markers) with optional transparency support, so that I can render overlapping visual elements with correct blending.
 
-**Source:** [SCI-STYLE] Element-based colour system — selection, caret, whitespace, fold, etc.; alpha/transparency support.
+**Source:** [SCI-STYLE] Element-based colour system -- selection, caret, whitespace, fold, etc.; alpha/transparency support.
 
 #### Acceptance Criteria
 

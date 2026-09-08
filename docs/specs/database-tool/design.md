@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `ff-database-tool` crate is a **workbench plugin** that delivers a full-featured integrated Database IDE within FileForgeWorkbench. It provides connection management, SQL editing with dialect-aware syntax highlighting, query execution, result grid display, schema browser navigation, ER diagram visualisation, data transfer workflows, and database administration panels — all delivered as dockable panels registered through the plugin architecture.
+The `ff-database-tool` crate is a **workbench plugin** that delivers a full-featured integrated Database IDE within FileForgeWorkbench. It provides connection management, SQL editing with dialect-aware syntax highlighting, query execution, result grid display, schema browser navigation, ER diagram visualisation, data transfer workflows, and database administration panels -- all delivered as dockable panels registered through the plugin architecture.
 
 ### Purpose
 
@@ -15,17 +15,17 @@ The `ff-database-tool` crate is a **workbench plugin** that delivers a full-feat
 ### Position in Architecture
 
 ```
-Wave 6 — Application Tools (depends on Wave 2–4 platform crates)
+Wave 6 -- Application Tools (depends on Wave 2–4 platform crates)
 
 ┌─────────────────────────────────────────────────────────────┐
 │                    Application Binary (ff-desktop)            │
 ├─────────────────────────────────────────────────────────────┤
 │     ff-database-tool  │  other tool plugins                  │
-│              (Wave 6 — Application Tools)                     │
+│              (Wave 6 -- Application Tools)                     │
 ├─────────────────────────────────────────────────────────────┤
 │  ff-workflow │ ff-layout │ ff-command │ ff-plugin │ ff-vfs    │
 │  ff-connector-extensibility │ ff-configuration               │
-│              (Wave 2–4 — Platform Architecture)               │
+│              (Wave 2–4 -- Platform Architecture)               │
 ├─────────────────────────────────────────────────────────────┤
 │                     ff-logging (Wave 0)                       │
 └─────────────────────────────────────────────────────────────┘
@@ -33,7 +33,7 @@ Wave 6 — Application Tools (depends on Wave 2–4 platform crates)
 
 ### Design Constraints
 
-- **FFW-ARCH-001**: All file access goes through VFS — no direct `std::fs` or `tokio::fs`
+- **FFW-ARCH-001**: All file access goes through VFS -- no direct `std::fs` or `tokio::fs`
 - **Plugin Principle**: Implements `FileForgePlugin` trait; no special core coupling
 - **Command-Driven**: All user operations are registered commands under `db.*` namespace
 - **Async I/O**: All database operations are async on Tokio; never block the egui render thread
@@ -178,7 +178,7 @@ crates/ff-database-tool/
 ### 3.1 Driver Types
 
 ```rust
-/// A database driver definition — static metadata about how to connect.
+/// A database driver definition -- static metadata about how to connect.
 #[derive(Debug, Clone)]
 pub struct DriverDefinition {
     pub name: String,                    // Unique driver ID: "postgres", "mysql", etc.

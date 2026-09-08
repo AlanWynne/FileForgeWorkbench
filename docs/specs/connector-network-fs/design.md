@@ -1,6 +1,6 @@
 # Design Document: Network Filesystem Connector (`ff-connector-network-fs`)
 
-> ⚠️ **STATUS: DEFERRED — Not in initial release.**
+> ⚠️ **STATUS: DEFERRED -- Not in initial release.**
 >
 > This is a placeholder design documenting future integration points only.
 > No implementation tasks will be created until this connector moves to active development.
@@ -13,7 +13,7 @@
 
 The `ff-connector-network-fs` crate will provide VFS access to network filesystems:
 Windows UNC paths (`\\server\share`), SMB/CIFS shares, and NFS mounts. It integrates
-with the workbench through the established connector extensibility framework — no
+with the workbench through the established connector extensibility framework -- no
 changes to VFS core or platform infrastructure will be required.
 
 ### What This Connector Will Do
@@ -44,7 +44,7 @@ The connector will register the following URI schemes with the `ConnectorRegistr
 | `unc` | `unc://server/share/path/file.txt` | Windows UNC path shorthand |
 
 Mapped drive paths (e.g., `Z:\docs\file.txt`) will be resolved to their underlying
-`smb://` or `unc://` URI transparently — the VFS will not expose a separate scheme
+`smb://` or `unc://` URI transparently -- the VFS will not expose a separate scheme
 for mapped drives.
 
 ---
@@ -71,8 +71,8 @@ impl ConnectorPlugin for NetworkFsConnector {
 ```
 
 The connector also implements:
-- **`VfsProvider`** (from `ff-vfs`) — for `read`, `write`, `list`, `stat`, `watch`, `delete`, `rename`, `create_dir`
-- **`FileForgePlugin`** (from `ff-plugin`) — for plugin lifecycle (`initialize`, `activate`, `deactivate`, `shutdown`)
+- **`VfsProvider`** (from `ff-vfs`) -- for `read`, `write`, `list`, `stat`, `watch`, `delete`, `rename`, `create_dir`
+- **`FileForgePlugin`** (from `ff-plugin`) -- for plugin lifecycle (`initialize`, `activate`, `deactivate`, `shutdown`)
 
 ### Registration Flow
 
@@ -133,7 +133,7 @@ crates/ff-connector-network-fs/
 
 ```rust
 /// The primary connector type. May be instantiated once per protocol (SMB vs NFS)
-/// or as a single multi-protocol connector — TBD during active development.
+/// or as a single multi-protocol connector -- TBD during active development.
 pub struct NetworkFsConnector {
     descriptor: ConnectorDescriptor,
     state: ConnectorState,
@@ -200,12 +200,12 @@ When registered, the connector will advertise these capabilities:
    both `smb://` and `nfs://`, or should there be separate `SmbConnector` and `NfsConnector`
    types each registering their own scheme?
 
-2. **SMB library choice** — pure Rust (`pavao`, `smb-rs`) vs. FFI to system `libsmbclient`?
+2. **SMB library choice** -- pure Rust (`pavao`, `smb-rs`) vs. FFI to system `libsmbclient`?
 
-3. **NFS library choice** — pure Rust NFS client vs. relying on OS-level mount and local-fs access?
+3. **NFS library choice** -- pure Rust NFS client vs. relying on OS-level mount and local-fs access?
 
-4. **Credential scoping** — one credential per server, or per share? How does this interact
+4. **Credential scoping** -- one credential per server, or per share? How does this interact
    with the `CredentialStore` key naming convention?
 
-5. **Windows integration depth** — should the connector hook into Windows Credential Manager
+5. **Windows integration depth** -- should the connector hook into Windows Credential Manager
    for SSO/Kerberos ticket reuse, or require explicit credential entry?

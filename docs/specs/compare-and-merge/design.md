@@ -19,7 +19,7 @@ The `ff-compare-merge` crate is the **comparison and merge engine** for the File
 ### Position in Architecture
 
 ```
-Wave 14 — File Explorer (depends on Wave 8: File I/O and Session, Wave 12: FileForge Domain)
+Wave 14 -- File Explorer (depends on Wave 8: File I/O and Session, Wave 12: FileForge Domain)
 
 ┌─────────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                   │
@@ -37,7 +37,7 @@ Wave 14 — File Explorer (depends on Wave 8: File I/O and Session, Wave 12: Fil
 
 ### Design Constraints (Cross-Cutting)
 
-- **FFW-ARCH-001 (Req 1)**: ALL resource access goes through VFS — no `std::fs` in this crate
+- **FFW-ARCH-001 (Req 1)**: ALL resource access goes through VFS -- no `std::fs` in this crate
 - **GUI Independence (Req 2)**: The diff engine, merge logic, and session management are GUI-independent; view rendering is delegated to the shell layer
 - **Plugin Architecture (Req 3)**: Compare commands are discoverable and invokable by plugins
 - **Command-Driven (Req 4)**: ALL compare/merge operations are routed through the command framework
@@ -112,16 +112,16 @@ graph TD
 
 | Component | Responsibility |
 |-----------|---------------|
-| **Compare Commands** | Command handlers for all compare/merge operations — registered with `ff-command` |
+| **Compare Commands** | Command handlers for all compare/merge operations -- registered with `ff-command` |
 | **CompareSession** | Stateful context holding resources, diff result, navigation position, merge state |
-| **DiffEngine** | Pure-function diff computation — Myers and Patience algorithms on `&[&str]` |
+| **DiffEngine** | Pure-function diff computation -- Myers and Patience algorithms on `&[&str]` |
 | **MergeResolver** | Applies merge decisions (accept left/right/both) to produce a merge result |
 | **ThreeWayMerge** | Three-way conflict detection and auto-resolution logic |
 | **BinaryComparator** | Streaming byte-level comparison for non-text resources |
 | **DiffNavigator** | Tracks current hunk index, wrapping, focus management |
 | **DiffExporter** | Generates unified diff format output from DiffResult |
-| **CompareOptions** | Configuration state — whitespace, case, algorithm, context lines |
-| **CompareOutput** | Output panel model — log of comparison operations and results |
+| **CompareOptions** | Configuration state -- whitespace, case, algorithm, context lines |
+| **CompareOutput** | Output panel model -- log of comparison operations and results |
 
 ### Request Flow: COMPARE Command
 
@@ -356,10 +356,10 @@ pub enum WhitespaceMode {
 /// Addresses: Requirement 2 AC 1, AC 1a
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DiffAlgorithm {
-    /// Myers' greedy LCS-based algorithm — produces minimal edit script.
+    /// Myers' greedy LCS-based algorithm -- produces minimal edit script.
     /// O(ND) time where N is total input length and D is edit distance.
     Myers,
-    /// Patience diff — anchors on unique matching lines for improved readability.
+    /// Patience diff -- anchors on unique matching lines for improved readability.
     /// Better for structured code with many repeated lines.
     Patience,
 }
@@ -410,7 +410,7 @@ pub struct MergeConflict {
 /// Addresses: Requirement 7 AC 8
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConflictResolution {
-    /// Not yet resolved — requires user action
+    /// Not yet resolved -- requires user action
     Unresolved,
     /// Resolved by accepting the left version
     ResolvedLeft,
@@ -562,13 +562,13 @@ pub enum BinaryCompareResult {
 /// Addresses: Requirement 8 AC 3
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ThreeWayRegion {
-    /// Same in all three versions — included in result automatically
+    /// Same in all three versions -- included in result automatically
     Unchanged { lines: Vec<String> },
-    /// Only left differs from base — auto-resolved to left
+    /// Only left differs from base -- auto-resolved to left
     LeftOnlyChange { lines: Vec<String> },
-    /// Only right differs from base — auto-resolved to right
+    /// Only right differs from base -- auto-resolved to right
     RightOnlyChange { lines: Vec<String> },
-    /// Both left and right differ from base — conflict requiring resolution
+    /// Both left and right differ from base -- conflict requiring resolution
     Conflict(MergeConflict),
 }
 ```
@@ -623,7 +623,7 @@ pub enum CompareOutputResult {
 ### DiffEngine
 
 ```rust
-/// The core comparison engine. Stateless — all configuration is passed per call.
+/// The core comparison engine. Stateless -- all configuration is passed per call.
 /// Independent of the document model; operates on line slices.
 ///
 /// Addresses: Requirement 2
@@ -818,38 +818,38 @@ pub fn register_commands(registry: &CommandRegistry) {
     // Addresses: Requirement 1
 
     // Navigation
-    // ID: "compare.next_diff" — Addresses: Requirement 6 AC 1
-    // ID: "compare.prev_diff" — Addresses: Requirement 6 AC 2
+    // ID: "compare.next_diff" -- Addresses: Requirement 6 AC 1
+    // ID: "compare.prev_diff" -- Addresses: Requirement 6 AC 2
 
     // Merge operations
-    // ID: "compare.accept_left" — Addresses: Requirement 7 AC 1
-    // ID: "compare.accept_right" — Addresses: Requirement 7 AC 1
-    // ID: "compare.accept_both" — Addresses: Requirement 7 AC 1
-    // ID: "compare.accept_all_left" — Addresses: Requirement 7 AC 7
-    // ID: "compare.accept_all_right" — Addresses: Requirement 7 AC 7
+    // ID: "compare.accept_left" -- Addresses: Requirement 7 AC 1
+    // ID: "compare.accept_right" -- Addresses: Requirement 7 AC 1
+    // ID: "compare.accept_both" -- Addresses: Requirement 7 AC 1
+    // ID: "compare.accept_all_left" -- Addresses: Requirement 7 AC 7
+    // ID: "compare.accept_all_right" -- Addresses: Requirement 7 AC 7
 
     // Three-way merge
-    // ID: "compare.three_way_merge" — Addresses: Requirement 8 AC 2
+    // ID: "compare.three_way_merge" -- Addresses: Requirement 8 AC 2
 
     // View mode toggle
-    // ID: "compare.toggle_view_mode" — Addresses: Requirement 4 AC 8
+    // ID: "compare.toggle_view_mode" -- Addresses: Requirement 4 AC 8
 
     // Option toggles
-    // ID: "compare.toggle_ignore_whitespace" — Addresses: Requirement 11 AC 5
-    // ID: "compare.toggle_ignore_case" — Addresses: Requirement 11 AC 5
+    // ID: "compare.toggle_ignore_whitespace" -- Addresses: Requirement 11 AC 5
+    // ID: "compare.toggle_ignore_case" -- Addresses: Requirement 11 AC 5
 
     // Convenience comparisons
-    // ID: "compare.with_saved" — Addresses: Requirement 14 AC 1
-    // ID: "compare.with_clipboard" — Addresses: Requirement 15 AC 1
-    // ID: "compare.mark_selection_for_compare" — Addresses: Requirement 16 AC 3
-    // ID: "compare.selections" — Addresses: Requirement 16 AC 1
-    // ID: "compare.clear_marked_selection" — Addresses: Requirement 16 AC 8
+    // ID: "compare.with_saved" -- Addresses: Requirement 14 AC 1
+    // ID: "compare.with_clipboard" -- Addresses: Requirement 15 AC 1
+    // ID: "compare.mark_selection_for_compare" -- Addresses: Requirement 16 AC 3
+    // ID: "compare.selections" -- Addresses: Requirement 16 AC 1
+    // ID: "compare.clear_marked_selection" -- Addresses: Requirement 16 AC 8
 
     // Export
-    // ID: "compare.export_diff" — Addresses: Requirement 17 AC 1
+    // ID: "compare.export_diff" -- Addresses: Requirement 17 AC 1
 
     // Output panel
-    // ID: "compare.clear_output" — Addresses: Requirement 13 AC 6
+    // ID: "compare.clear_output" -- Addresses: Requirement 13 AC 6
 }
 ```
 
@@ -927,7 +927,7 @@ pub enum CompareError {
     EmptySelection,
 
     /// Document has not been saved (compare-with-saved)
-    #[error("[compare] with_saved: document has not been saved — no saved version to compare against")]
+    #[error("[compare] with_saved: document has not been saved -- no saved version to compare against")]
     DocumentNotSaved,
 
     /// Encoding error during content normalisation
@@ -939,7 +939,7 @@ pub enum CompareError {
     },
 
     /// Binary/text mismatch warning
-    #[error("[compare] {operation}: mixed comparison — one resource is binary, the other is text")]
+    #[error("[compare] {operation}: mixed comparison -- one resource is binary, the other is text")]
     MixedBinaryText {
         operation: String,
     },
@@ -951,7 +951,7 @@ pub enum CompareError {
 
 ## 7. Integration Points
 
-### With `ff-vfs` (Wave 3 — upstream dependency)
+### With `ff-vfs` (Wave 3 -- upstream dependency)
 
 - **Dependency direction**: ff-compare-merge depends on ff-vfs
 - **API consumed**: `Vfs::read()`, `Vfs::read_stream()`, `Vfs::exists()`, `ResourceUri::parse()`, `ResourceUri::from_bare_path()`
@@ -959,7 +959,7 @@ pub enum CompareError {
 - **Watch integration**: `Vfs::watch()` monitors both compared resources for external changes during active sessions (Requirement 9 AC 7)
 - **Error mapping**: `VfsError` variants are wrapped in `CompareError::Vfs`
 
-### With `ff-document-model` (Wave 4 — upstream dependency)
+### With `ff-document-model` (Wave 4 -- upstream dependency)
 
 - **Dependency direction**: ff-compare-merge depends on ff-document-model
 - **API consumed**: `Document` (for reading current content), `DocumentHandle` (for merge result document), line content extraction
@@ -969,7 +969,7 @@ pub enum CompareError {
   - Line content is extracted from the document model's line abstraction for diff input
 - **Integration pattern**: Merge accept operations produce edit data compatible with the document model's insert/delete primitives
 
-### With `ff-command` (Wave 2 — upstream dependency)
+### With `ff-command` (Wave 2 -- upstream dependency)
 
 - **Dependency direction**: ff-compare-merge depends on ff-command
 - **API consumed**: `CommandRegistry::register()`, `CommandId`, `CommandParams`, `CommandResult`, `CommandHandler` trait
@@ -977,7 +977,7 @@ pub enum CompareError {
 - **Command metadata**: Each command provides display name, category ("compare"), description, and default keyboard shortcuts
 - **Undo integration**: Merge accept operations produce `UndoRecord` entries pushed via the command framework's undo bridge
 
-### With `ff-layout` (Wave 2 — upstream dependency)
+### With `ff-layout` (Wave 2 -- upstream dependency)
 
 - **Dependency direction**: ff-compare-merge depends on ff-layout
 - **API consumed**: `DockablePanel` trait, `PanelRegistry::register()`, `TabGroupManager` (for split views), `DockZone::Bottom`
@@ -986,14 +986,14 @@ pub enum CompareError {
   - Compare Output Panel registers as a `DockablePanel` in the Bottom dock zone (panel_id: `compare_output`)
   - Inline diff view uses a single tab in the center area
 
-### With `ff-config` (Wave 2 — upstream dependency)
+### With `ff-config` (Wave 2 -- upstream dependency)
 
 - **Dependency direction**: ff-compare-merge depends on ff-config
 - **API consumed**: Configuration read/write for user preferences
 - **Usage**: CompareOptions defaults (whitespace mode, ignore case, algorithm, view mode) are persisted as user preferences. Configuration changes trigger live update of active sessions (Requirement 11 AC 4, AC 6).
 - **Config keys**: `compare.default_whitespace_mode`, `compare.default_ignore_case`, `compare.default_algorithm`, `compare.default_view_mode`, `compare.default_context_lines`
 
-### With `ff-workflow` (Wave 2 — upstream dependency)
+### With `ff-workflow` (Wave 2 -- upstream dependency)
 
 - **Dependency direction**: ff-compare-merge depends on ff-workflow
 - **API consumed**: `WorkflowDefinition`, `WorkflowRegistry::register()`, `WorkflowRunner`, `WorkflowContext`
@@ -1001,13 +1001,13 @@ pub enum CompareError {
 - **Cancellation**: Workflow supports cancellation at any step; partial results can be saved or discarded (Requirement 8 AC 10)
 - **Progress**: Step completion reported via workflow progress events
 
-### With `ff-encoding` (Wave 8 — upstream dependency)
+### With `ff-encoding` (Wave 8 -- upstream dependency)
 
 - **Dependency direction**: ff-compare-merge depends on ff-encoding
 - **API consumed**: Encoding detection, UTF-8 normalisation
 - **Usage**: Resources with different encodings are normalised to UTF-8 before feeding content to the DiffEngine (Requirement 9 AC 6). Uses the same encoding detection and conversion logic as file-operations.
 
-### With `ff-clipboard` (Wave 9 — upstream dependency)
+### With `ff-clipboard` (Wave 9 -- upstream dependency)
 
 - **Dependency direction**: ff-compare-merge depends on ff-clipboard
 - **API consumed**: `Clipboard::get_text()`, `Clipboard::set_text()`
@@ -1015,13 +1015,13 @@ pub enum CompareError {
   - Compare-with-clipboard reads text from system clipboard (Requirement 15)
   - Diff export "copy to clipboard" destination writes unified diff to clipboard (Requirement 17 AC 5)
 
-### With `ff-theme` (Wave 6 — peer, consumed via rendering layer)
+### With `ff-theme` (Wave 6 -- peer, consumed via rendering layer)
 
 - **Dependency direction**: ff-desktop (GUI shell) uses ff-theme tokens; ff-compare-merge defines the required token names
 - **Tokens required**: `diff.added_background`, `diff.added_foreground`, `diff.removed_background`, `diff.removed_foreground`, `diff.changed_background`, `diff.changed_foreground`, `diff.inline_change_background`, `diff.gutter_added`, `diff.gutter_removed`, `diff.gutter_changed`, `diff.conflict_background` (Requirement 5)
 - **Integration pattern**: ff-compare-merge's `DiffViewModel` produces rendering data referencing theme token keys; the GUI shell resolves tokens to concrete colours at render time
 
-### With `ff-edit-operations` / `ff-undo-redo` (Wave 4 — upstream dependency)
+### With `ff-edit-operations` / `ff-undo-redo` (Wave 4 -- upstream dependency)
 
 - **Dependency direction**: ff-compare-merge depends on ff-edit-operations (transitively through ff-document-model)
 - **Usage**: Merge accept operations are expressed as edit transactions on the merge result Document, integrating with the undo/redo system for individual undoability (Requirement 7 AC 5)
@@ -1034,7 +1034,7 @@ pub enum CompareError {
 ```rust
 /// Data model consumed by the GUI shell to render diff views.
 /// Produced by CompareSession; consumed by ff-desktop rendering code.
-/// GUI-independent — contains only data, no rendering logic.
+/// GUI-independent -- contains only data, no rendering logic.
 ///
 /// Addresses: Requirements 3, 4, 5, 6
 pub struct DiffViewModel {
@@ -1124,9 +1124,9 @@ pub struct UnifiedLine {
 
 ## 9. Correctness Properties (Property-Based Testing)
 
-The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal — it must hold for all valid inputs.
+The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal -- it must hold for all valid inputs.
 
-### Property 1: Diff Completeness — All Lines Covered
+### Property 1: Diff Completeness -- All Lines Covered
 
 **Statement:** For any two inputs, the hunks in the DiffResult collectively cover every line of both inputs exactly once. The sum of all left-side line counts equals the left input length, and the sum of all right-side line counts equals the right input length.
 
@@ -1182,7 +1182,7 @@ The following properties are suitable for property-based testing with the `propt
 **Validates:** Requirement 2 AC 5
 
 
-### Property 5: Ignore Whitespace — Whitespace-Only Differences Reported Equal
+### Property 5: Ignore Whitespace -- Whitespace-Only Differences Reported Equal
 
 **Statement:** When `ignore_whitespace` is enabled (any mode), lines that differ only in the specified whitespace category are reported as Equal (not Changed or Added/Removed).
 
@@ -1197,7 +1197,7 @@ The following properties are suitable for property-based testing with the `propt
 
 **Validates:** Requirement 2 AC 6, Requirement 11 AC 1
 
-### Property 6: Ignore Case — Case-Only Differences Reported Equal
+### Property 6: Ignore Case -- Case-Only Differences Reported Equal
 
 **Statement:** When `ignore_case` is enabled, lines that differ only in Unicode case are reported as Equal.
 
@@ -1242,7 +1242,7 @@ The following properties are suitable for property-based testing with the `propt
 
 **Validates:** Requirement 6 AC 4, AC 6
 
-### Property 9: Merge Completeness — All Hunks Resolved Produces Valid Result
+### Property 9: Merge Completeness -- All Hunks Resolved Produces Valid Result
 
 **Statement:** When every hunk in a CompareSession is resolved (any resolution type), `MergeResolver::build_result()` succeeds and produces a non-error result. The result line count equals the sum of resolved hunk contributions.
 
@@ -1254,7 +1254,7 @@ The following properties are suitable for property-based testing with the `propt
 **Validates:** Requirement 7 AC 9
 
 
-### Property 10: Three-Way Merge — Non-Conflicting Regions Auto-Resolved
+### Property 10: Three-Way Merge -- Non-Conflicting Regions Auto-Resolved
 
 **Statement:** In a three-way merge, regions where only one side differs from base are always auto-resolved to that side's content. Only regions where both sides differ from base (and differ from each other) produce conflicts.
 
@@ -1269,9 +1269,9 @@ The following properties are suitable for property-based testing with the `propt
 
 **Validates:** Requirement 8 AC 4, AC 5, AC 6
 
-### Property 11: Three-Way Merge — Identical Modifications Are Not Conflicts
+### Property 11: Three-Way Merge -- Identical Modifications Are Not Conflicts
 
-**Statement:** When both left and right make the same change to a region (both differ from base identically), the region is NOT a conflict — it is auto-resolved to the common change.
+**Statement:** When both left and right make the same change to a region (both differ from base identically), the region is NOT a conflict -- it is auto-resolved to the common change.
 
 ```
 ∀ base, modification where left_change == right_change != base:
@@ -1304,7 +1304,7 @@ The following properties are suitable for property-based testing with the `propt
 
 **Validates:** Requirement 17 AC 3
 
-### Property 14: Hunk Ordering — Monotonically Increasing Positions
+### Property 14: Hunk Ordering -- Monotonically Increasing Positions
 
 **Statement:** Hunks in a DiffResult are always ordered by position. For consecutive hunks, left_start and right_start values are monotonically non-decreasing.
 
@@ -1318,7 +1318,7 @@ The following properties are suitable for property-based testing with the `propt
 
 **Validates:** Requirement 2 AC 3
 
-### Property 15: Algorithm Equivalence — Myers and Patience Produce Same Statistics
+### Property 15: Algorithm Equivalence -- Myers and Patience Produce Same Statistics
 
 **Statement:** For any input pair, Myers and Patience algorithms produce the same DiffStatistics (same counts of added, removed, changed, unchanged lines) even if the hunk boundaries differ.
 
@@ -1364,15 +1364,15 @@ All 16 correctness properties above are implemented as `proptest!` tests in `tes
 
 ### Unit Tests
 
-- `tests/diff_engine_tests.rs` — Known input/output pairs for each algorithm
-- `tests/myers_tests.rs` — Edge cases: empty inputs, single-line, all-same, all-different
-- `tests/patience_tests.rs` — Structured code examples where Patience produces better hunks
-- `tests/merge_tests.rs` — Accept left/right/both for various hunk types
-- `tests/three_way_tests.rs` — Conflict detection, auto-resolution, identical changes
-- `tests/binary_tests.rs` — Identical files, different files, mixed binary/text detection
-- `tests/export_tests.rs` — Unified diff format compliance, context lines, no-newline-at-end
-- `tests/navigator_tests.rs` — Wrapping, boundary conditions, zero hunks
-- `tests/session_tests.rs` — Session lifecycle, option changes triggering recomputation
+- `tests/diff_engine_tests.rs` -- Known input/output pairs for each algorithm
+- `tests/myers_tests.rs` -- Edge cases: empty inputs, single-line, all-same, all-different
+- `tests/patience_tests.rs` -- Structured code examples where Patience produces better hunks
+- `tests/merge_tests.rs` -- Accept left/right/both for various hunk types
+- `tests/three_way_tests.rs` -- Conflict detection, auto-resolution, identical changes
+- `tests/binary_tests.rs` -- Identical files, different files, mixed binary/text detection
+- `tests/export_tests.rs` -- Unified diff format compliance, context lines, no-newline-at-end
+- `tests/navigator_tests.rs` -- Wrapping, boundary conditions, zero hunks
+- `tests/session_tests.rs` -- Session lifecycle, option changes triggering recomputation
 
 ### Integration Tests
 
@@ -1388,7 +1388,7 @@ All 16 correctness properties above are implemented as `proptest!` tests in `tes
 
 - **Diff Engine**: Myers algorithm is O(ND) where N = total lines and D = edit distance. For typical file comparisons (D << N), this is effectively linear. 100,000-line comparison must complete within 2 seconds (Requirement 2 AC 10).
 - **Memory**: Both inputs stored as `Vec<String>` line vectors. For very large files, consider streaming line-by-line (future optimisation, not required for initial implementation).
-- **Binary Comparison**: Uses streaming 64 KB chunks via VFS `read_stream()` — never loads both files entirely into memory (Requirement 10 AC 6).
+- **Binary Comparison**: Uses streaming 64 KB chunks via VFS `read_stream()` -- never loads both files entirely into memory (Requirement 10 AC 6).
 - **Inline Change Detection**: Applied per Changed hunk. For hunks with many changed lines, inline diff is O(M×N) per line pair (M, N = character counts). Acceptable for typical line lengths (<500 chars).
 - **Three-Way Merge**: Two diff computations (base→left, base→right) followed by region merging. Total cost is approximately 2× a two-way diff.
 
@@ -1396,8 +1396,8 @@ All 16 correctness properties above are implemented as `proptest!` tests in `tes
 
 ## 12. Future Considerations
 
-- **Semantic Diff**: Language-aware structural comparison (AST-based) — deferred to future wave
-- **Directory Comparison**: Recursive comparison of two directory trees — could be added as a higher-level command
-- **Collaborative Merge**: Real-time multi-user merge sessions — requires network layer (deferred)
-- **Custom Merge Strategies**: Plugin-contributed merge algorithms — extensible via the plugin system
-- **Syntax-Highlighted Diff**: Combining syntax highlighting with diff highlighting — requires coordination with ff-syntax-highlighting at the GUI layer
+- **Semantic Diff**: Language-aware structural comparison (AST-based) -- deferred to future wave
+- **Directory Comparison**: Recursive comparison of two directory trees -- could be added as a higher-level command
+- **Collaborative Merge**: Real-time multi-user merge sessions -- requires network layer (deferred)
+- **Custom Merge Strategies**: Plugin-contributed merge algorithms -- extensible via the plugin system
+- **Syntax-Highlighted Diff**: Combining syntax highlighting with diff highlighting -- requires coordination with ff-syntax-highlighting at the GUI layer

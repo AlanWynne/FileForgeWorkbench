@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-find-and-replace` crate — the search and replacement engine for FileForgeWorkbench. The crate provides ISPF-style FIND/RFIND/CHANGE/RCHANGE commands with literal, regex, and hex byte search modes, Unicode case folding, whole-word matching, incremental search, highlight-all-matches, and command framework integration.
+This plan covers the complete implementation of the `ff-find-and-replace` crate -- the search and replacement engine for FileForgeWorkbench. The crate provides ISPF-style FIND/RFIND/CHANGE/RCHANGE commands with literal, regex, and hex byte search modes, Unicode case folding, whole-word matching, incremental search, highlight-all-matches, and command framework integration.
 
 This is a **Wave 5 (Command Engine)** sub-project that depends on Wave 4 (`ff-document-model`) for buffer access via the `CharacterIndexer` trait, `ff-command` for command registration, and `ff-undo-redo` for transaction wrapping of CHANGE operations.
 
@@ -42,7 +42,7 @@ This is a **Wave 5 (Command Engine)** sub-project that depends on Wave 4 (`ff-do
   - [x] 4.1 Implement `CaseFolder` struct with Unicode Full Case Folding (status C + F mappings from CaseFolding.txt)
   - [x] 4.2 Implement `fold(&self, text: &[u8]) -> Vec<u8>` producing case-folded UTF-8 output
   - [x] 4.3 Implement one-to-many case mappings (e.g., ß → ss) correctly expanding output length
-  - [x] 4.4 Implement multi-byte UTF-8 handling — never split code points across fold boundaries
+  - [x] 4.4 Implement multi-byte UTF-8 handling -- never split code points across fold boundaries
   - [x] 4.5 Implement stateless, `Send + Sync` design for concurrent use
   - [x] 4.6 Implement configurable locale hint for Turkish dotted-I rules with locale-independent default
   - [x] 4.7 Implement `fold_char(&self, ch: char) -> SmallVec<[char; 3]>` for per-character folding in regex engine
@@ -57,7 +57,7 @@ This is a **Wave 5 (Command Engine)** sub-project that depends on Wave 4 (`ff-do
   - [x] 5.5 Implement FIRST direction (search from document start)
   - [x] 5.6 Implement LAST direction (search backward from document end)
   - [x] 5.7 Implement ALL mode counting total matches across scope
-  - [x] 5.8 Implement column-bounded search — extract bounded slice once per line
+  - [x] 5.8 Implement column-bounded search -- extract bounded slice once per line
   - [x] 5.9 Write unit tests for all directions, case sensitivity modes, and column bounds
   - Covers: Requirement 1 (AC 1.1–1.10), Requirement 19 (AC 19.3, 19.7)
 
@@ -66,7 +66,7 @@ This is a **Wave 5 (Command Engine)** sub-project that depends on Wave 4 (`ff-do
   - [x] 6.2 Implement validation: reject odd-length hex strings with "Invalid hex pattern: odd number of digits"
   - [x] 6.3 Implement validation: reject non-hex characters with "Invalid hex pattern: non-hex character"
   - [x] 6.4 Implement hex byte search using the same direction/scope modifiers as literal search
-  - [x] 6.5 Ensure hex search does NOT apply Unicode case folding — operates on raw bytes
+  - [x] 6.5 Ensure hex search does NOT apply Unicode case folding -- operates on raw bytes
   - [x] 6.6 Write unit tests for valid hex parsing, invalid hex errors, and hex search with all directions
   - Covers: Requirement 3 (AC 3.1–3.7)
 
@@ -76,7 +76,7 @@ This is a **Wave 5 (Command Engine)** sub-project that depends on Wave 4 (`ff-do
   - [x] 7.3 Implement EXCLUDED filter checking line `excluded` flag
   - [x] 7.4 Implement VISIBLE filter checking line `visible` flag
   - [x] 7.5 Implement NONTAGGED filter checking line `tagged == false`
-  - [x] 7.6 Implement conjunctive composition — multiple scope modifiers combine with AND logic
+  - [x] 7.6 Implement conjunctive composition -- multiple scope modifiers combine with AND logic
   - [x] 7.7 Implement Bounds integration: when `bounds_affect_find` is true, restrict search to active Bounds columns
   - [x] 7.8 Implement explicit ColumnRange override that takes precedence over Bounds for single operation
   - [x] 7.9 Write unit tests for each filter, combinations, and Bounds/ColumnRange intersection
@@ -86,12 +86,12 @@ This is a **Wave 5 (Command Engine)** sub-project that depends on Wave 4 (`ff-do
   - [x] 8.1 Implement word-boundary detection using character classification table (word vs non-word transitions)
   - [x] 8.2 Implement WORD modifier: verify transitions at both start and end of match
   - [x] 8.3 Implement WORDSTART modifier: verify transition at start only
-  - [x] 8.4 Implement multi-byte UTF-8 character classification — classify by full code point, not individual bytes
+  - [x] 8.4 Implement multi-byte UTF-8 character classification -- classify by full code point, not individual bytes
   - [x] 8.5 Implement correct interaction with case folding: fold first, verify boundaries on original positions
   - [x] 8.6 Write unit tests for word boundaries with ASCII, multi-byte characters, and combined case+word mode
   - Covers: Requirement 11 (AC 11.1–11.5)
 
-- [x] 9. RegexEngine — NFA compilation
+- [x] 9. RegexEngine -- NFA compilation
   - [x] 9.1 Implement regex pattern parser supporting: `.`, `^`, `$`, `*`, `+`, `?`, lazy variants `*?`, `+?`, `??`
   - [x] 9.2 Implement character class parsing: `[set]`, `[^set]`, ranges `[a-z]`, dash/bracket at boundaries
   - [x] 9.3 Implement escape sequences: `\d`, `\D`, `\s`, `\S`, `\w`, `\W`, `\b`, `\<`, `\>`
@@ -104,7 +104,7 @@ This is a **Wave 5 (Command Engine)** sub-project that depends on Wave 4 (`ff-do
   - [x] 9.10 Write unit tests for each metacharacter, error case, and compiled NFA structure
   - Covers: Requirement 4 (AC 4.1–4.11), Requirement 12 (AC 12.1–12.9)
 
-- [x] 10. RegexEngine — NFA execution
+- [x] 10. RegexEngine -- NFA execution
   - [x] 10.1 Implement NFA execution against CharacterIndexer within a byte range [start, end)
   - [x] 10.2 Implement fast-path: when NFA starts with literal character, use memchr to locate first candidate
   - [x] 10.3 Implement greedy matching: consume maximum then backtrack
@@ -124,14 +124,14 @@ This is a **Wave 5 (Command Engine)** sub-project that depends on Wave 4 (`ff-do
   - [x] 11.5 Write unit tests for group expansion, unmatched groups, mixed `\N`/`$N` syntax, and error cases
   - Covers: Requirement 8 (AC 8.1–8.8)
 
-- [x] 12. FindEngine core — unified search dispatch
+- [x] 12. FindEngine core -- unified search dispatch
   - [x] 12.1 Implement `FindEngine` struct holding CaseFolder, last compiled regex, and configuration
   - [x] 12.2 Implement `find(&self, request: &FindRequest, indexer: &dyn CharacterIndexer, filter: &dyn LineFilter) -> Result<FindResult, FindError>` dispatching to literal/regex/hex by mode
   - [x] 12.3 Implement `find_all(&self, request: &FindRequest, indexer: &dyn CharacterIndexer, filter: &dyn LineFilter) -> Result<Vec<FindResult>, FindError>` for ALL mode
   - [x] 12.4 Implement empty-search-term handling: reuse previous term or error if none exists
   - [x] 12.5 Implement empty-document short-circuit returning "not found" immediately
-  - [x] 12.6 Implement null-byte tolerance — treat 0x00 as regular byte value
-  - [x] 12.7 Implement incomplete UTF-8 in literal search term — search raw bytes as-is
+  - [x] 12.6 Implement null-byte tolerance -- treat 0x00 as regular byte value
+  - [x] 12.7 Implement incomplete UTF-8 in literal search term -- search raw bytes as-is
   - [x] 12.8 Write unit tests for dispatch, empty term, empty document, and null byte handling
   - Covers: Requirement 1 (AC 1.6–1.10), Requirement 20 (AC 20.1–20.3, 20.7–20.8)
 
@@ -153,7 +153,7 @@ This is a **Wave 5 (Command Engine)** sub-project that depends on Wave 4 (`ff-do
   - [x] 14.4 Implement RFIND logic: repeat last FIND advancing in same direction; FIRST→NEXT, LAST→PREV conversion
   - [x] 14.5 Implement RCHANGE logic: repeat last CHANGE on next occurrence; FIRST→NEXT, LAST→PREV conversion
   - [x] 14.6 Implement "No previous FIND to repeat" and "No previous CHANGE to repeat" errors
-  - [x] 14.7 Implement RFIND wrap detection — report "NOT FOUND" without wrapping around document
+  - [x] 14.7 Implement RFIND wrap detection -- report "NOT FOUND" without wrapping around document
   - [x] 14.8 Implement RESET clearing highlight/incremental state while retaining RFIND/RCHANGE parameters
   - [x] 14.9 Implement RESET ALL clearing last-search parameters but retaining history list
   - [x] 14.10 Implement per-document FindState isolation
@@ -199,7 +199,7 @@ This is a **Wave 5 (Command Engine)** sub-project that depends on Wave 4 (`ff-do
   - [x] 18.4 Implement FIND as read-only (no undo records created)
   - [x] 18.5 Implement RCHANGE as its own separate undo transaction per invocation
   - [x] 18.6 Implement event emission: find_started, match_found, find_completed, replace_completed
-  - [x] 18.7 Implement Lua scripting bridge compatibility — same argument semantics as command-line input
+  - [x] 18.7 Implement Lua scripting bridge compatibility -- same argument semantics as command-line input
   - [x] 18.8 Write unit tests for command registration, undo grouping, and event emission
   - Covers: Requirement 17 (AC 17.1–17.7)
 
@@ -300,13 +300,13 @@ This is a **Wave 5 (Command Engine)** sub-project that depends on Wave 4 (`ff-do
 
 **Validates: Requirements 2.1–2.4, 2.8**
 
-- **Statement:** When multiple scope modifiers are active, the set of lines searched SHALL be exactly the intersection of all individual filter sets — no line is searched that fails any single filter, and no eligible line is skipped.
+- **Statement:** When multiple scope modifiers are active, the set of lines searched SHALL be exactly the intersection of all individual filter sets -- no line is searched that fails any single filter, and no eligible line is skipped.
 - **Strategy:** Generate:
   - Line count: [1, 1000]
   - Per-line flags: random (tagged: bool, excluded: bool, visible: bool)
   - Active filters: random subset of {Tagged, Excluded, Visible, NonTagged}
   - Search term: present on some random subset of lines
-- **Invariant:** `searched_lines == lines.filter(|l| all_filters_pass(l))` — match results only appear on lines passing all active filters
+- **Invariant:** `searched_lines == lines.filter(|l| all_filters_pass(l))` -- match results only appear on lines passing all active filters
 
 ### Property 7: Hex Byte Search Equivalence
 
@@ -347,7 +347,7 @@ This is a **Wave 5 (Command Engine)** sub-project that depends on Wave 4 (`ff-do
 
 - This is a Wave 5 (Command Engine) crate depending on `ff-document-model` (Wave 4) for buffer access via `CharacterIndexer`
 - The undo/redo integration wraps CHANGE operations in transactions provided by `ff-undo-redo-transactions`
-- The UI rendering of matches (highlighting, find panel) is handled by `ff-text-decorations` (Wave 6) — this crate only emits match positions
+- The UI rendering of matches (highlighting, find panel) is handled by `ff-text-decorations` (Wave 6) -- this crate only emits match positions
 - The `CharacterIndexer` trait is defined in this crate and implemented by `ff-document-model` to decouple search from buffer internals
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
 - The regex engine is custom NFA-based (not using the `regex` crate directly) to support ISPF/Scintilla-compatible syntax including `\<`, `\>`, and backreferences
@@ -360,18 +360,18 @@ This is a **Wave 5 (Command Engine)** sub-project that depends on Wave 4 (`ff-do
 
 | Requirement | Criteria | Covered by Task(s) |
 |-------------|----------|---------------------|
-| Req 1: FIND — Literal Search | AC 1.1–1.10 | Tasks 5, 12, 2 |
-| Req 2: FIND — Scope and Column Modifiers | AC 2.1–2.8 | Tasks 7, 12 |
-| Req 3: FIND — Hex Byte Search | AC 3.1–3.7 | Task 6 |
-| Req 4: FIND — Regular Expression Search | AC 4.1–4.13 | Tasks 9, 10 |
-| Req 5: RFIND — Repeat Previous Find | AC 5.1–5.6 | Task 14 |
-| Req 6: CHANGE — Literal Replacement | AC 6.1–6.8 | Task 13 |
-| Req 7: CHANGE — Scope and Column Modifiers | AC 7.1–7.8 | Tasks 7, 13, 18 |
-| Req 8: CHANGE — Regex Replacement | AC 8.1–8.8 | Tasks 11, 13 |
-| Req 9: RCHANGE — Repeat Previous Change | AC 9.1–9.6 | Tasks 14, 18 |
+| Req 1: FIND -- Literal Search | AC 1.1–1.10 | Tasks 5, 12, 2 |
+| Req 2: FIND -- Scope and Column Modifiers | AC 2.1–2.8 | Tasks 7, 12 |
+| Req 3: FIND -- Hex Byte Search | AC 3.1–3.7 | Task 6 |
+| Req 4: FIND -- Regular Expression Search | AC 4.1–4.13 | Tasks 9, 10 |
+| Req 5: RFIND -- Repeat Previous Find | AC 5.1–5.6 | Task 14 |
+| Req 6: CHANGE -- Literal Replacement | AC 6.1–6.8 | Task 13 |
+| Req 7: CHANGE -- Scope and Column Modifiers | AC 7.1–7.8 | Tasks 7, 13, 18 |
+| Req 8: CHANGE -- Regex Replacement | AC 8.1–8.8 | Tasks 11, 13 |
+| Req 9: RCHANGE -- Repeat Previous Change | AC 9.1–9.6 | Tasks 14, 18 |
 | Req 10: Unicode Case Folding | AC 10.1–10.8 | Task 4 |
 | Req 11: Whole Word and Word Start Matching | AC 11.1–11.5 | Task 8 |
-| Req 12: Regex Engine — NFA Compilation/Execution | AC 12.1–12.13 | Tasks 9, 10 |
+| Req 12: Regex Engine -- NFA Compilation/Execution | AC 12.1–12.13 | Tasks 9, 10 |
 | Req 13: Find State and Session Persistence | AC 13.1–13.7 | Task 14 |
 | Req 14: Incremental Search | AC 14.1–14.8 | Task 15 |
 | Req 15: Highlight All Matches Mode | AC 15.1–15.8 | Task 16 |

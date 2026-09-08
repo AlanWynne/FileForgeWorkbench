@@ -2,9 +2,9 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-keys` crate — configurable function key bindings (F1–F24), the Key Label Bar display model, the RETRIEVE command, and the bounded deduplicated Command History ring with cross-session TOML persistence. The crate owns the Key_Map resolution logic (global vs. profile full-replacement model), function key dispatch through the command framework, the Retrieve_Pointer cycling mechanism, and the History_Store persistence layer.
+This plan covers the complete implementation of the `ff-keys` crate -- configurable function key bindings (F1–F24), the Key Label Bar display model, the RETRIEVE command, and the bounded deduplicated Command History ring with cross-session TOML persistence. The crate owns the Key_Map resolution logic (global vs. profile full-replacement model), function key dispatch through the command framework, the Retrieve_Pointer cycling mechanism, and the History_Store persistence layer.
 
-This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-command` (command framework), `ff-config` (configuration system), `ff-session` (startup-and-session — User_Data_Dir, startup/exit sequence hooks), and `ff-logging` (logging subsystem).
+This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-command` (command framework), `ff-config` (configuration system), `ff-session` (startup-and-session -- User_Data_Dir, startup/exit sequence hooks), and `ff-logging` (logging subsystem).
 
 ---
 
@@ -21,127 +21,127 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
 
 - [x] 2. Key map data model
   - [x] 2.1 Define `FunctionKey` enum with variants F1–F24, implementing `Display`, `FromStr`, `Serialize`, `Deserialize`
-  - [x] 2.2 Implement `FunctionKey::from_str` parsing — accept "F1"–"F24" case-insensitively, reject all other input
+  - [x] 2.2 Implement `FunctionKey::from_str` parsing -- accept "F1"–"F24" case-insensitively, reject all other input
   - [x] 2.3 Define `KeyBinding` struct with fields: command (String), label (Option<String>)
   - [x] 2.4 Define `KeyMap` struct wrapping `HashMap<FunctionKey, KeyBinding>` with constructor, lookup, and iteration methods
-  - [x] 2.5 Implement `KeyMap::from_toml_table` — parse a TOML section into a KeyMap, rejecting invalid key identifiers with warnings
+  - [x] 2.5 Implement `KeyMap::from_toml_table` -- parse a TOML section into a KeyMap, rejecting invalid key identifiers with warnings
   - [x] 2.6 Implement `KeyMap::get(key: FunctionKey) -> Option<&KeyBinding>` for single-key lookup
   - [x] 2.7 Implement `KeyMap::is_empty()` and `KeyMap::len()` convenience methods
   - [x] 2.8 Write unit tests for FunctionKey parsing (valid/invalid), KeyMap construction, TOML parsing with valid/invalid entries
   - Covers: Requirement 1 (AC 1.3, 1.5), Requirement 11 (AC 11.1, 11.2)
 
-- [x] 3. Key map resolver — global and profile resolution
+- [x] 3. Key map resolver -- global and profile resolution
   - [x] 3.1 Define `KeyMapResolver` struct with fields: global_key_map (KeyMap), active_profile_key_map (Option<KeyMap>), active_language_profile (Option<String>)
-  - [x] 3.2 Implement `KeyMapResolver::load_global_key_map` — read `[global_key_map]` from effective configuration at startup, apply empty map if absent
-  - [x] 3.3 Implement `KeyMapResolver::load_profile_key_map(profile: &str)` — read `[key_map]` section from language profile TOML file, return None if section absent
-  - [x] 3.4 Implement `KeyMapResolver::active_key_map() -> &KeyMap` — return Profile_Key_Map if active, otherwise Global_Key_Map
-  - [x] 3.5 Implement full-replacement semantics — when Profile_Key_Map is active, Global_Key_Map is entirely inactive; keys not in Profile_Key_Map are unassigned
-  - [x] 3.6 Implement `KeyMapResolver::on_profile_changed(profile: Option<&str>)` — recompute active key map when active language profile changes
-  - [x] 3.7 Implement hot-reload listener — subscribe to configuration-system change notifications for `[global_key_map]` and language profile `[key_map]` sections
-  - [x] 3.8 Implement fallback on profile removal — when `[key_map]` section is removed from profile TOML, revert to Global_Key_Map without restart
+  - [x] 3.2 Implement `KeyMapResolver::load_global_key_map` -- read `[global_key_map]` from effective configuration at startup, apply empty map if absent
+  - [x] 3.3 Implement `KeyMapResolver::load_profile_key_map(profile: &str)` -- read `[key_map]` section from language profile TOML file, return None if section absent
+  - [x] 3.4 Implement `KeyMapResolver::active_key_map() -> &KeyMap` -- return Profile_Key_Map if active, otherwise Global_Key_Map
+  - [x] 3.5 Implement full-replacement semantics -- when Profile_Key_Map is active, Global_Key_Map is entirely inactive; keys not in Profile_Key_Map are unassigned
+  - [x] 3.6 Implement `KeyMapResolver::on_profile_changed(profile: Option<&str>)` -- recompute active key map when active language profile changes
+  - [x] 3.7 Implement hot-reload listener -- subscribe to configuration-system change notifications for `[global_key_map]` and language profile `[key_map]` sections
+  - [x] 3.8 Implement fallback on profile removal -- when `[key_map]` section is removed from profile TOML, revert to Global_Key_Map without restart
   - [x] 3.9 Write unit tests for: global-only resolution, profile override, full-replacement (no inheritance), profile removal fallback, empty global map, profile switch
   - Covers: Requirement 1 (AC 1.1, 1.2, 1.4), Requirement 2 (AC 2.1–2.6)
 
 - [x] 4. Function key binding and execution
   - [x] 4.1 Implement `FunctionKeyDispatcher` struct owning a reference to KeyMapResolver and command framework dispatch trait
-  - [x] 4.2 Implement `FunctionKeyDispatcher::on_key_press(key: FunctionKey)` — look up binding in active key map, dispatch command string through command framework if assigned
-  - [x] 4.3 Implement no-op behaviour when pressed key has no assignment — produce no action, no error
-  - [x] 4.4 Implement full command syntax support — pass complete command string (with arguments and modifiers) to command framework dispatcher
-  - [x] 4.5 Implement macro invocation support — detect and pass `MACRO <name>` syntax through command framework
-  - [x] 4.6 Implement history integration — after successful dispatch, add command to Command_History unless it is an Excluded_Command
-  - [x] 4.7 Implement Excluded_Command bypass — do NOT add UNDO, REDO, RETRIEVE to history when dispatched via function key
+  - [x] 4.2 Implement `FunctionKeyDispatcher::on_key_press(key: FunctionKey)` -- look up binding in active key map, dispatch command string through command framework if assigned
+  - [x] 4.3 Implement no-op behaviour when pressed key has no assignment -- produce no action, no error
+  - [x] 4.4 Implement full command syntax support -- pass complete command string (with arguments and modifiers) to command framework dispatcher
+  - [x] 4.5 Implement macro invocation support -- detect and pass `MACRO <name>` syntax through command framework
+  - [x] 4.6 Implement history integration -- after successful dispatch, add command to Command_History unless it is an Excluded_Command
+  - [x] 4.7 Implement Excluded_Command bypass -- do NOT add UNDO, REDO, RETRIEVE to history when dispatched via function key
   - [x] 4.8 Write unit tests for: assigned key dispatch, unassigned key no-op, full syntax passthrough, macro syntax, history addition, excluded command bypass
   - Covers: Requirement 3 (AC 3.1–3.6)
 
 - [x] 5. Key Label Bar model
   - [x] 5.1 Define `KeyLabelEntry` struct with fields: key (FunctionKey), label (String), is_assigned (bool)
   - [x] 5.2 Define `KeyLabelBarModel` struct providing the display data for the Key Label Bar UI
-  - [x] 5.3 Implement `KeyLabelBarModel::from_key_map(map: &KeyMap) -> Self` — derive labels from active key map
-  - [x] 5.4 Implement label derivation logic — use explicit label if configured, else use first token of command string
-  - [x] 5.5 Implement blank slot handling — unassigned keys produce blank/omitted entries
-  - [x] 5.6 Implement `KeyLabelBarModel::update(&mut self, map: &KeyMap)` — refresh label data when active key map changes (profile switch, hot-reload, tab change)
-  - [x] 5.7 Implement change notification — emit a signal/callback when label bar data changes so UI can re-render in same frame
+  - [x] 5.3 Implement `KeyLabelBarModel::from_key_map(map: &KeyMap) -> Self` -- derive labels from active key map
+  - [x] 5.4 Implement label derivation logic -- use explicit label if configured, else use first token of command string
+  - [x] 5.5 Implement blank slot handling -- unassigned keys produce blank/omitted entries
+  - [x] 5.6 Implement `KeyLabelBarModel::update(&mut self, map: &KeyMap)` -- refresh label data when active key map changes (profile switch, hot-reload, tab change)
+  - [x] 5.7 Implement change notification -- emit a signal/callback when label bar data changes so UI can re-render in same frame
   - [x] 5.8 Write unit tests for: label derivation from command first-token, explicit label override, blank slots for unassigned keys, update on key map change
   - Covers: Requirement 4 (AC 4.1–4.6)
 
 - [x] 6. Command History ring
   - [x] 6.1 Define `CommandHistory` struct with fields: entries (VecDeque<String>), max_entries (usize), excluded_commands (HashSet<String>)
   - [x] 6.2 Implement `CommandHistory::new(max_entries: usize, excluded_commands: HashSet<String>)` constructor
-  - [x] 6.3 Implement `CommandHistory::add(command: &str)` — insert at front with deduplication and capacity enforcement
-  - [x] 6.4 Implement deduplication — case-insensitive on command name (first token), case-preserving on arguments; promote existing duplicate to front
-  - [x] 6.5 Implement capacity enforcement — evict oldest entry (tail) when adding would exceed max_entries
-  - [x] 6.6 Implement exclusion check — reject commands in the Excluded_Command set regardless of invocation source
-  - [x] 6.7 Implement `CommandHistory::get(index: usize) -> Option<&str>` — index 0 = most recent
+  - [x] 6.3 Implement `CommandHistory::add(command: &str)` -- insert at front with deduplication and capacity enforcement
+  - [x] 6.4 Implement deduplication -- case-insensitive on command name (first token), case-preserving on arguments; promote existing duplicate to front
+  - [x] 6.5 Implement capacity enforcement -- evict oldest entry (tail) when adding would exceed max_entries
+  - [x] 6.6 Implement exclusion check -- reject commands in the Excluded_Command set regardless of invocation source
+  - [x] 6.7 Implement `CommandHistory::get(index: usize) -> Option<&str>` -- index 0 = most recent
   - [x] 6.8 Implement `CommandHistory::len()` and `CommandHistory::is_empty()` convenience methods
-  - [x] 6.9 Implement `CommandHistory::entries() -> impl Iterator<Item = &str>` — iterate most-recent-first
-  - [x] 6.10 Implement `CommandHistory::trim_to(new_max: usize)` — trim oldest entries when max_entries is reduced via hot-reload
+  - [x] 6.9 Implement `CommandHistory::entries() -> impl Iterator<Item = &str>` -- iterate most-recent-first
+  - [x] 6.10 Implement `CommandHistory::trim_to(new_max: usize)` -- trim oldest entries when max_entries is reduced via hot-reload
   - [x] 6.11 Implement default Excluded_Command set: RETRIEVE, UNDO, REDO
-  - [x] 6.12 Implement configurable exclusion — merge user-configured `history_excluded_commands` with defaults
+  - [x] 6.12 Implement configurable exclusion -- merge user-configured `history_excluded_commands` with defaults
   - [x] 6.13 Write unit tests for: add/dedup, capacity eviction, exclusion, case-insensitive dedup, case-preserving args, trim, ordering
   - Covers: Requirement 7 (AC 7.1–7.3), Requirement 8 (AC 8.1–8.4), Requirement 9 (AC 9.1–9.4)
 
 - [x] 7. RETRIEVE command and Retrieve Pointer
   - [x] 7.1 Define `RetrieveState` struct with fields: pointer (Option<usize>), cycle_active (bool)
-  - [x] 7.2 Implement `RetrieveState::new()` — initialise with pointer at initial (no retrieval) position
-  - [x] 7.3 Implement `RetrieveState::retrieve(history: &CommandHistory) -> RetrieveResult` — advance pointer backward, return entry at pointer position
-  - [x] 7.4 Implement initial retrieval — when pointer is at initial position, set to index 0 (most recent) and return that entry
-  - [x] 7.5 Implement successive retrieval — advance pointer one step older on each call without intervening non-RETRIEVE command
-  - [x] 7.6 Implement end-of-history detection — when pointer reaches oldest entry, return status message and do not modify command field
-  - [x] 7.7 Implement empty history detection — when history is empty, return status message and do not modify command field
-  - [x] 7.8 Implement `RetrieveState::reset()` — reset pointer to initial position when any non-RETRIEVE command is submitted
-  - [x] 7.9 Implement `RetrieveState::set_position(index: usize)` — set pointer to specific entry (for History_Dropdown selection)
+  - [x] 7.2 Implement `RetrieveState::new()` -- initialise with pointer at initial (no retrieval) position
+  - [x] 7.3 Implement `RetrieveState::retrieve(history: &CommandHistory) -> RetrieveResult` -- advance pointer backward, return entry at pointer position
+  - [x] 7.4 Implement initial retrieval -- when pointer is at initial position, set to index 0 (most recent) and return that entry
+  - [x] 7.5 Implement successive retrieval -- advance pointer one step older on each call without intervening non-RETRIEVE command
+  - [x] 7.6 Implement end-of-history detection -- when pointer reaches oldest entry, return status message and do not modify command field
+  - [x] 7.7 Implement empty history detection -- when history is empty, return status message and do not modify command field
+  - [x] 7.8 Implement `RetrieveState::reset()` -- reset pointer to initial position when any non-RETRIEVE command is submitted
+  - [x] 7.9 Implement `RetrieveState::set_position(index: usize)` -- set pointer to specific entry (for History_Dropdown selection)
   - [x] 7.10 Define `RetrieveResult` enum with variants: Entry(String), EndOfHistory, EmptyHistory
   - [x] 7.11 Write unit tests for: initial retrieve, successive retrieves, end-of-history, empty history, reset on non-RETRIEVE, set_position from dropdown
   - Covers: Requirement 5 (AC 5.1–5.7), Requirement 10 (AC 10.4)
 
-- [x] 8. TOML persistence — History Store
+- [x] 8. TOML persistence -- History Store
   - [x] 8.1 Define `HistoryStore` struct encapsulating file path and I/O operations for Command_History persistence
-  - [x] 8.2 Implement `HistoryStore::load(path: &Path) -> Result<Vec<String>, KeysError>` — read and parse History_Store TOML file
-  - [x] 8.3 Implement TOML format — `[[entries]]` array-of-tables or `entries = [...]` array-of-strings in most-recent-first order
-  - [x] 8.4 Implement graceful load on missing file — return empty Vec without error
-  - [x] 8.5 Implement graceful load on corrupt/unparseable file — log WARN with file path and parse error, return empty Vec
-  - [x] 8.6 Implement `HistoryStore::save(path: &Path, entries: &[String]) -> Result<(), KeysError>` — serialize entries to TOML and write atomically (temp + rename)
-  - [x] 8.7 Implement configurable file path — resolve `history_file` config key relative to User_Data_Dir, apply default path when not configured
-  - [x] 8.8 Implement startup loading — integrate with startup-and-session startup sequence to load history during initialisation
-  - [x] 8.9 Implement exit-time save — integrate with startup-and-session exit sequence to persist history on normal shutdown
+  - [x] 8.2 Implement `HistoryStore::load(path: &Path) -> Result<Vec<String>, KeysError>` -- read and parse History_Store TOML file
+  - [x] 8.3 Implement TOML format -- `[[entries]]` array-of-tables or `entries = [...]` array-of-strings in most-recent-first order
+  - [x] 8.4 Implement graceful load on missing file -- return empty Vec without error
+  - [x] 8.5 Implement graceful load on corrupt/unparseable file -- log WARN with file path and parse error, return empty Vec
+  - [x] 8.6 Implement `HistoryStore::save(path: &Path, entries: &[String]) -> Result<(), KeysError>` -- serialize entries to TOML and write atomically (temp + rename)
+  - [x] 8.7 Implement configurable file path -- resolve `history_file` config key relative to User_Data_Dir, apply default path when not configured
+  - [x] 8.8 Implement startup loading -- integrate with startup-and-session startup sequence to load history during initialisation
+  - [x] 8.9 Implement exit-time save -- integrate with startup-and-session exit sequence to persist history on normal shutdown
   - [x] 8.10 Write unit tests for: TOML round-trip, missing file graceful load, corrupt file warning and empty result, atomic save, path resolution
   - Covers: Requirement 6 (AC 6.1–6.7), Requirement 11 (AC 11.4)
 
 - [x] 9. Profile support and configuration schema
   - [x] 9.1 Define `KeysConfig` struct with all configuration fields: max_history_entries (usize), history_file (Option<String>), history_excluded_commands (Vec<String>)
-  - [x] 9.2 Implement `Default` for `KeysConfig` — max_history_entries=200, history_file=None (use default in User_Data_Dir), excluded_commands=empty (defaults always applied)
+  - [x] 9.2 Implement `Default` for `KeysConfig` -- max_history_entries=200, history_file=None (use default in User_Data_Dir), excluded_commands=empty (defaults always applied)
   - [x] 9.3 Implement configuration key registration for `max_history_entries`, `history_file`, `history_excluded_commands` under the appropriate TOML namespace
-  - [x] 9.4 Implement validation for `max_history_entries` — reject zero or negative values, apply default of 200 with WARN log
-  - [x] 9.5 Implement `[global_key_map]` schema validation — each key is F1–F24, each value is string or table with `command` (required) and `label` (optional)
-  - [x] 9.6 Implement `[key_map]` schema in language profile files — same schema as `[global_key_map]`
-  - [x] 9.7 Implement invalid value-type handling — emit descriptive warning identifying field name and expected type, apply default
-  - [x] 9.8 Implement hot-reload for all configuration keys — `[global_key_map]` changes take effect immediately; `max_history_entries` changes trim on next addition
+  - [x] 9.4 Implement validation for `max_history_entries` -- reject zero or negative values, apply default of 200 with WARN log
+  - [x] 9.5 Implement `[global_key_map]` schema validation -- each key is F1–F24, each value is string or table with `command` (required) and `label` (optional)
+  - [x] 9.6 Implement `[key_map]` schema in language profile files -- same schema as `[global_key_map]`
+  - [x] 9.7 Implement invalid value-type handling -- emit descriptive warning identifying field name and expected type, apply default
+  - [x] 9.8 Implement hot-reload for all configuration keys -- `[global_key_map]` changes take effect immediately; `max_history_entries` changes trim on next addition
   - [x] 9.9 Write unit tests for: default values, validation (zero/negative max), schema parsing (string shorthand vs table), invalid type warning, hot-reload trim
   - Covers: Requirement 9 (AC 9.1–9.4), Requirement 11 (AC 11.1–11.7)
 
 - [x] 10. Conflict detection and key map validation
-  - [x] 10.1 Implement duplicate key detection within a single key map — if same FunctionKey appears twice in TOML, last-wins with WARN log
-  - [x] 10.2 Implement command existence validation — optionally verify assigned command_id is registered in command framework, emit WARN if not found (non-blocking)
-  - [x] 10.3 Implement label length validation — warn if explicit label exceeds display width threshold (configurable, default 8 chars)
-  - [x] 10.4 Implement profile key map diagnostic — log INFO when profile key map activates listing unassigned keys count
+  - [x] 10.1 Implement duplicate key detection within a single key map -- if same FunctionKey appears twice in TOML, last-wins with WARN log
+  - [x] 10.2 Implement command existence validation -- optionally verify assigned command_id is registered in command framework, emit WARN if not found (non-blocking)
+  - [x] 10.3 Implement label length validation -- warn if explicit label exceeds display width threshold (configurable, default 8 chars)
+  - [x] 10.4 Implement profile key map diagnostic -- log INFO when profile key map activates listing unassigned keys count
   - [x] 10.5 Write unit tests for: duplicate key warning, unregistered command warning, label length warning, profile activation diagnostics
   - Covers: Requirement 1 (AC 1.5), Requirement 2 (AC 2.5), Requirement 11 (AC 11.6)
 
-- [x] 11. Command registration — RETRIEVE command
+- [x] 11. Command registration -- RETRIEVE command
   - [x] 11.1 Implement RETRIEVE as a registered command in the command framework with command_id "RETRIEVE"
-  - [x] 11.2 Implement RETRIEVE command handler — invoke RetrieveState::retrieve, populate Primary_Command_Field with result
-  - [x] 11.3 Implement RETRIEVE exclusion from history — ensure RETRIEVE is in the Excluded_Command set
-  - [x] 11.4 Implement status message output — emit appropriate status messages for EndOfHistory and EmptyHistory results
-  - [x] 11.5 Implement non-RETRIEVE command hook — subscribe to command execution events to call RetrieveState::reset on any non-RETRIEVE command submission
+  - [x] 11.2 Implement RETRIEVE command handler -- invoke RetrieveState::retrieve, populate Primary_Command_Field with result
+  - [x] 11.3 Implement RETRIEVE exclusion from history -- ensure RETRIEVE is in the Excluded_Command set
+  - [x] 11.4 Implement status message output -- emit appropriate status messages for EndOfHistory and EmptyHistory results
+  - [x] 11.5 Implement non-RETRIEVE command hook -- subscribe to command execution events to call RetrieveState::reset on any non-RETRIEVE command submission
   - [x] 11.6 Write unit tests for: RETRIEVE registration, handler invocation, exclusion from history, status messages, pointer reset on other commands
   - Covers: Requirement 5 (AC 5.1–5.7), Requirement 8 (AC 8.1–8.2)
 
 - [x] 12. History Dropdown model
   - [x] 12.1 Define `HistoryDropdownModel` struct providing display data for the History_Dropdown UI control
-  - [x] 12.2 Implement `HistoryDropdownModel::entries() -> &[String]` — expose Command_History in most-recent-first order
-  - [x] 12.3 Implement `HistoryDropdownModel::select(index: usize)` — populate command field with selected entry and update Retrieve_Pointer position
-  - [x] 12.4 Implement `HistoryDropdownModel::is_empty() -> bool` — for empty state indicator logic
-  - [x] 12.5 Implement highlight navigation model — track highlighted index for up/down arrow keyboard navigation
+  - [x] 12.2 Implement `HistoryDropdownModel::entries() -> &[String]` -- expose Command_History in most-recent-first order
+  - [x] 12.3 Implement `HistoryDropdownModel::select(index: usize)` -- populate command field with selected entry and update Retrieve_Pointer position
+  - [x] 12.4 Implement `HistoryDropdownModel::is_empty() -> bool` -- for empty state indicator logic
+  - [x] 12.5 Implement highlight navigation model -- track highlighted index for up/down arrow keyboard navigation
   - [x] 12.6 Write unit tests for: entries ordering, select populates field and sets pointer, empty state, highlight navigation
   - Covers: Requirement 10 (AC 10.1–10.6)
 
@@ -307,17 +307,17 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
 ## Notes
 
 - This is a Wave 9 (Desktop Integration) crate depending on `ff-command` (Wave 2), `ff-config` (Wave 2), `ff-session` (Wave 8), and `ff-logging` (Wave 0)
-- The full-replacement key map model is a deliberate ISPF-faithful design choice — profile maps do NOT inherit from the global map; unmentioned keys become unassigned
-- Key_Map_Resolver logic is GUI-independent (FFW-ARCH-001) — it provides data models consumed by the GUI shell but has no framework dependency
+- The full-replacement key map model is a deliberate ISPF-faithful design choice -- profile maps do NOT inherit from the global map; unmentioned keys become unassigned
+- Key_Map_Resolver logic is GUI-independent (FFW-ARCH-001) -- it provides data models consumed by the GUI shell but has no framework dependency
 - Key_Label_Bar is a data model only in this crate; the rendering lives in the GUI shell (`menu-and-statusbar` UI layer)
 - History_Store uses TOML format consistent with the configuration-system's choice; the file lives in User_Data_Dir alongside `session.toml`
 - The `configuration-system` crate handles TOML parsing for key maps within configuration files; `ff-keys` only parses the History_Store file directly
-- RETRIEVE is registered in the command framework like any other primary command — its dispatch follows the same pipeline
-- The History_Dropdown is a UI model only — the actual dropdown widget rendering belongs to the `menu-and-statusbar` GUI shell
+- RETRIEVE is registered in the command framework like any other primary command -- its dispatch follows the same pipeline
+- The History_Dropdown is a UI model only -- the actual dropdown widget rendering belongs to the `menu-and-statusbar` GUI shell
 - Deduplication uses a split comparison: `command_name.to_ascii_uppercase()` for the first token, exact byte comparison for remainder
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
-- The `history_excluded_commands` config key is additive — user entries are merged with the hardcoded defaults (RETRIEVE, UNDO, REDO), never replacing them
-- Hot-reload of `max_history_entries` trims existing entries on next add, not immediately on config change — this avoids surprising data loss during configuration experimentation
+- The `history_excluded_commands` config key is additive -- user entries are merged with the hardcoded defaults (RETRIEVE, UNDO, REDO), never replacing them
+- Hot-reload of `max_history_entries` trims existing entries on next add, not immediately on config change -- this avoids surprising data loss during configuration experimentation
 - Atomic file writes (temp + rename) for History_Store prevent data corruption on crash during save
 
 ---
@@ -390,7 +390,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
 
 ---
 
-## Phase AM — Per-Context Key Maps, PFSHOW, 24-Key Bar, Hotspots, END/RETURN, LIST+RETRIEVE
+## Phase AM -- Per-Context Key Maps, PFSHOW, 24-Key Bar, Hotspots, END/RETURN, LIST+RETRIEVE
 
 ### New Requirements (Req 12–19)
 
@@ -410,7 +410,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
 
 - [x] 17. Per-context key map
   - [x] 17.1 Add `context_key_maps: HashMap<String, KeyMap>` to `KeyMapResolver`
-  - [x] 17.2 Implement `KeyMapResolver::set_context(context_name: &str)` — activates the Context_Key_Map for the named context or falls back to Global_Key_Map
+  - [x] 17.2 Implement `KeyMapResolver::set_context(context_name: &str)` -- activates the Context_Key_Map for the named context or falls back to Global_Key_Map
   - [x] 17.3 Define context name constants: `"pom"`, `"editor"`, `"settings"`, `"files"`, `"hex"`, `"toolchain"`
   - [x] 17.4 Wire context activation into `ff-desktop` tab-switch logic: on active tab change, call `set_context` with the tab's context name
   - [x] 17.5 Parse `[context_key_maps.<name>]` sections from workbench configuration into `KeyMapResolver`
@@ -456,7 +456,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
 
 ---
 
-## Phase AN — Key Configuration Dialog (Req 20)
+## Phase AN -- Key Configuration Dialog (Req 20)
 
 - [x] 23. Add `KeyModifier` enum and `ModifiedKey` struct to `ff-keys`
   - [x] 23.1 Define `KeyModifier` enum with variants `None`, `Shift`, `Ctrl`, `Alt` in `function_key.rs`
@@ -473,7 +473,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
   - [x] 24.3 Update `KeyMap::get()` to accept `ModifiedKey`; add `get_plain(key: FunctionKey)` convenience method
   - [x] 24.4 Update `KeyMap::from_toml_table()` to parse all four modifier prefixes and the `description` field
   - [x] 24.5 Update `KeyMap::default_global()` to use `ModifiedKey::plain(...)` keys (no behaviour change)
-  - [x] 24.6 Update `KeyLabelBarModel` to use `get_plain()` (label bar shows only plain bindings — no change to label bar behaviour)
+  - [x] 24.6 Update `KeyLabelBarModel` to use `get_plain()` (label bar shows only plain bindings -- no change to label bar behaviour)
   - [x] 24.7 Update all existing tests that construct `KeyMap` entries to use `ModifiedKey::plain(...)` or the updated API
   - [x] 24.8 Write new unit tests: modifier bindings stored and retrieved independently, description field round-trips through TOML, plain binding unaffected by modifier binding on same key
   - Covers: Requirement 20.3, 20.9, 20.11, 20.12
@@ -494,7 +494,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
 - [x] 27. Create `key_config_dialog.rs` in `ff-desktop`
   - [x] 27.1 Define `KeyConfigDialog` struct with fields: `open`, `active_scope`, `staged_global`, `staged_contexts`, `original_global`, `original_contexts`
   - [x] 27.2 Define `ScopeTab` enum: `Default` and `Context(String)`
-  - [x] 27.3 Implement `KeyConfigDialog::new(resolver: &KeyMapResolver)` — clones current global and all context maps as staged and original copies
+  - [x] 27.3 Implement `KeyConfigDialog::new(resolver: &KeyMapResolver)` -- clones current global and all context maps as staged and original copies
   - [x] 27.4 Implement `render()` method: scope selector tabs (Default + one per context name), scrollable grid per tab
   - [x] 27.5 Implement grid: 10-column `egui::Grid` with rows F1–F24; each row shows Key (read-only), Command, Label (read-only derived), Description, Shift Cmd, Shift Desc, Ctrl Cmd, Ctrl Desc, Alt Cmd, Alt Desc
   - [x] 27.6 Implement Save: serialise staged maps to TOML and write via `config_handle.set_user_value`; close dialog
@@ -518,7 +518,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
 
 - [x] 30. Property-based tests for `ModifiedKey` and extended `KeyMap`
   - [x] 30.1 PBT: All 96 `ModifiedKey` TOML name strings parse back to the original `ModifiedKey` (round-trip)
-  - [x] 30.2 PBT: Modifier bindings never interfere with plain bindings — for any `KeyMap`, `get_plain(F)` always returns the `None`-modifier entry regardless of what Shift/Ctrl/Alt entries exist for the same key
+  - [x] 30.2 PBT: Modifier bindings never interfere with plain bindings -- for any `KeyMap`, `get_plain(F)` always returns the `None`-modifier entry regardless of what Shift/Ctrl/Alt entries exist for the same key
   - [x] 30.3 PBT: `KeyMap::from_toml_table` with mixed modifier entries produces exactly the expected set of `ModifiedKey` entries with no cross-contamination
   - Covers: Requirement 20.9, 20.11, 20.12
 

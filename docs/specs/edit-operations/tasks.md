@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-edit-operations` crate — the text editing behaviour layer for FileForgeWorkbench. It implements insert/overstrike modes, character insertion/deletion at multiple granularities, the selection model (stream, rectangular, multi-caret), edit boundaries (BOUNDS), line manipulation commands, clipboard integration (edit-side semantics), transaction recording, and command framework integration.
+This plan covers the complete implementation of the `ff-edit-operations` crate -- the text editing behaviour layer for FileForgeWorkbench. It implements insert/overstrike modes, character insertion/deletion at multiple granularities, the selection model (stream, rectangular, multi-caret), edit boundaries (BOUNDS), line manipulation commands, clipboard integration (edit-side semantics), transaction recording, and command framework integration.
 
 This is a **Wave 4 (Core Editor)** sub-project. It depends on `ff-document-model` for buffer access, `ff-command` for command registration, and `ff-undo-redo` for transaction recording.
 
@@ -36,7 +36,7 @@ This is a **Wave 4 (Core Editor)** sub-project. It depends on `ff-document-model
   - [x] 3.7 Write unit tests for collapsed detection, ordering, containment, overlap, and merge
   - Covers: Requirement 6 (AC 6.1), Requirement 14 (AC 14.3)
 
-- [x] 4. Selection container — core operations
+- [x] 4. Selection container -- core operations
   - [x] 4.1 Define `SelectionContainer` struct holding `Vec<SelectionRange>` and `main_index: usize`
   - [x] 4.2 Implement `new()` initialising with a single collapsed range at document start
   - [x] 4.3 Implement `add(range: SelectionRange)` that inserts in sorted order by document position
@@ -48,7 +48,7 @@ This is a **Wave 4 (Core Editor)** sub-project. It depends on `ff-document-model
   - [x] 4.9 Write unit tests for add, drop, trim, main range, and count
   - Covers: Requirement 14 (AC 14.1–14.9)
 
-- [x] 5. Selection container — position adjustment (MovePositions)
+- [x] 5. Selection container -- position adjustment (MovePositions)
   - [x] 5.1 Define `DocumentModification` struct with `offset: u64`, `inserted_length: u64`, `deleted_length: u64`
   - [x] 5.2 Implement `move_positions(modification: &DocumentModification)` on SelectionContainer adjusting all positions in all ranges
   - [x] 5.3 Implement position-shift logic: positions before offset unchanged, positions within deleted range collapse to offset, positions after shift by (inserted - deleted)
@@ -65,7 +65,7 @@ This is a **Wave 4 (Core Editor)** sub-project. It depends on `ff-document-model
   - [x] 6.6 Write unit tests for default mode, toggle, and predicate methods
   - Covers: Requirement 1 (AC 1.4), Requirement 3 (AC 3.3, 3.4, 3.8)
 
-- [x] 7. Insert mode — character insertion
+- [x] 7. Insert mode -- character insertion
   - [x] 7.1 Implement `insert_char(doc, position, ch, mode_manager) -> EditResult` that inserts a character at the caret in Insert Mode
   - [x] 7.2 Handle grapheme cluster detection: use `unicode-segmentation` to treat multi-code-point sequences as single units
   - [x] 7.3 Handle virtual space realisation: pad with spaces when caret is beyond line end
@@ -76,7 +76,7 @@ This is a **Wave 4 (Core Editor)** sub-project. It depends on `ff-document-model
   - [x] 7.8 Write unit tests for basic insertion, grapheme clusters, virtual space, tab handling
   - Covers: Requirement 1 (AC 1.1–1.8)
 
-- [x] 8. Overstrike mode — character replacement
+- [x] 8. Overstrike mode -- character replacement
   - [x] 8.1 Implement `overstrike_char(doc, position, ch) -> EditResult` that replaces the character at caret position
   - [x] 8.2 Handle end-of-line case: append character when caret is at or beyond line end
   - [x] 8.3 Handle active selection case: delete selection and insert character (same as Insert Mode with selection)
@@ -94,7 +94,7 @@ This is a **Wave 4 (Core Editor)** sub-project. It depends on `ff-document-model
   - [x] 9.7 Write unit tests for insert-mode split, overstrike-mode move, selection-then-split, line ending styles
   - Covers: Requirement 2 (AC 2.1–2.6)
 
-- [x] 10. Delete operations — character granularity
+- [x] 10. Delete operations -- character granularity
   - [x] 10.1 Implement `delete_back(doc, position) -> EditResult` (Backspace: delete grapheme before caret)
   - [x] 10.2 Implement line-join on Backspace at column 1: join current line to end of previous
   - [x] 10.3 Implement `delete_forward(doc, position) -> EditResult` (Delete: delete grapheme at caret)
@@ -105,7 +105,7 @@ This is a **Wave 4 (Core Editor)** sub-project. It depends on `ff-document-model
   - [x] 10.8 Write unit tests for each delete scenario including line joins and virtual space
   - Covers: Requirement 4 (AC 4.1–4.4, 4.10–4.12)
 
-- [x] 11. Delete operations — word and line granularity
+- [x] 11. Delete operations -- word and line granularity
   - [x] 11.1 Implement `delete_word_left(doc, position) -> EditResult` (Ctrl+Backspace)
   - [x] 11.2 Implement `delete_word_right(doc, position) -> EditResult` (Ctrl+Delete)
   - [x] 11.3 Implement `delete_line(doc, line_number) -> EditResult` (Ctrl+Shift+K)
@@ -126,7 +126,7 @@ This is a **Wave 4 (Core Editor)** sub-project. It depends on `ff-document-model
   - [x] 12.9 Write unit tests for transpose, duplicate, case operations, no-selection fallback, first-line no-op
   - Covers: Requirement 5 (AC 5.1–5.8)
 
-- [x] 13. Selection model — keyboard-driven selection
+- [x] 13. Selection model -- keyboard-driven selection
   - [x] 13.1 Implement `extend_selection(container, direction, shift_held)` for Shift+Arrow extending
   - [x] 13.2 Implement Shift+Home (extend to line start) and Shift+End (extend to line end)
   - [x] 13.3 Implement Shift+Ctrl+Left/Right (extend by word)
@@ -137,7 +137,7 @@ This is a **Wave 4 (Core Editor)** sub-project. It depends on `ff-document-model
   - [x] 13.8 Write unit tests for each extension direction, collapse behaviour, and replacement
   - Covers: Requirement 6 (AC 6.4–6.11, 6.17)
 
-- [x] 14. Selection model — mouse-driven selection
+- [x] 14. Selection model -- mouse-driven selection
   - [x] 14.1 Implement `click_set_caret(position)` placing caret and clearing selection
   - [x] 14.2 Implement `shift_click_extend(position)` extending selection from anchor to clicked position
   - [x] 14.3 Implement `drag_select(start, current)` creating stream selection from drag
@@ -146,7 +146,7 @@ This is a **Wave 4 (Core Editor)** sub-project. It depends on `ff-document-model
   - [x] 14.6 Write unit tests for click, shift-click, drag, double-click, triple-click
   - Covers: Requirement 6 (AC 6.12–6.16)
 
-- [x] 15. Multi-caret editing — caret management
+- [x] 15. Multi-caret editing -- caret management
   - [x] 15.1 Implement `add_caret(container, position)` via Ctrl+Click adding new caret
   - [x] 15.2 Implement `remove_caret(container, position)` via Ctrl+Click on existing caret (Drop, min 1 remains)
   - [x] 15.3 Implement `add_caret_above(container, main_range)` (Ctrl+Alt+Up)
@@ -156,7 +156,7 @@ This is a **Wave 4 (Core Editor)** sub-project. It depends on `ff-document-model
   - [x] 15.7 Write unit tests for add, remove, above/below, escape, and select-next-occurrence
   - Covers: Requirement 8 (AC 8.1–8.3, 8.6, 8.9–8.11, 8.14)
 
-- [x] 16. Multi-caret editing — coordinated operations
+- [x] 16. Multi-caret editing -- coordinated operations
   - [x] 16.1 Implement reverse-document-order processing for multi-caret insert/delete
   - [x] 16.2 Implement multi-caret character insertion (same char at all carets)
   - [x] 16.3 Implement multi-caret deletion (Backspace/Delete at all carets)
@@ -235,7 +235,7 @@ This is a **Wave 4 (Core Editor)** sub-project. It depends on `ff-document-model
   - [x] 22.5 Register selection commands (SelectAll, context menu Cut/Copy/Paste)
   - [x] 22.6 Register BOUNDS command handler parsing left/right column arguments
   - [x] 22.7 Ensure all handlers return success/failure result for status bar reporting
-  - [x] 22.8 Ensure no GUI dependency in handlers — operate on logical document model only
+  - [x] 22.8 Ensure no GUI dependency in handlers -- operate on logical document model only
   - [x] 22.9 Write integration tests verifying command dispatch triggers correct edit operations
   - Covers: Requirement 15 (AC 15.1–15.6)
 
@@ -246,7 +246,7 @@ This is a **Wave 4 (Core Editor)** sub-project. It depends on `ff-document-model
   - [x] 23.4 Write unit tests for error formatting and conversion
   - Covers: Cross-cutting Requirement 8 (Error Message Standards)
 
-- [x] 24. Property-based tests — selection model invariants
+- [x] 24. Property-based tests -- selection model invariants
   - [x] 24.1 Write property test: SelectionContainer always maintains ranges in sorted document order after any Add/Drop/Trim sequence
     - **Validates: Requirement 14.1, 14.3**
   - [x] 24.2 Write property test: MovePositions never produces negative positions (all positions remain >= 0) for arbitrary DocumentModification inputs
@@ -256,7 +256,7 @@ This is a **Wave 4 (Core Editor)** sub-project. It depends on `ff-document-model
   - [x] 24.4 Write property test: SelectionContainer always has count() >= 1 after any sequence of Add/Drop operations
     - **Validates: Requirement 14.2, 14.8**
 
-- [x] 25. Property-based tests — insert/delete invariants
+- [x] 25. Property-based tests -- insert/delete invariants
   - [x] 25.1 Write property test: insert_char followed by delete_back at same position is identity (document unchanged) for any valid position and printable character
     - **Validates: Requirement 1.1, 4.1**
   - [x] 25.2 Write property test: in Insert Mode, inserting N characters advances the caret exactly N grapheme positions forward
@@ -266,34 +266,34 @@ This is a **Wave 4 (Core Editor)** sub-project. It depends on `ff-document-model
   - [x] 25.4 Write property test: every edit operation produces a non-empty EditorTransaction with valid before/after snapshots
     - **Validates: Requirement 11.1–11.3**
 
-- [x] 26. Property-based tests — multi-caret and bounds invariants
+- [x] 26. Property-based tests -- multi-caret and bounds invariants
   - [x] 26.1 Write property test: multi-caret insert in reverse order produces the same result regardless of the number of carets (no position drift)
     - **Validates: Requirement 8.4, 8.5**
   - [x] 26.2 Write property test: after multi-caret operation, Trim merges any coincident carets, and count never exceeds the pre-operation count
     - **Validates: Requirement 8.8, 8.13**
-  - [x] 26.3 Write property test: BOUNDS enforcement — any character insertion with BOUNDS active never modifies columns outside [left, right] range for any line content and caret position
+  - [x] 26.3 Write property test: BOUNDS enforcement -- any character insertion with BOUNDS active never modifies columns outside [left, right] range for any line content and caret position
     - **Validates: Requirement 13.2, 13.3, 13.5**
   - [x] 26.4 Write property test: rectangular selection to_selection_ranges() produces exactly (bottom_line - top_line + 1) ranges, each spanning [left_column, right_column]
     - **Validates: Requirement 9.1, 9.2**
 
-- [x] 27. Property-based tests — transaction and undo invariants
+- [x] 27. Property-based tests -- transaction and undo invariants
   - [x] 27.1 Write property test: undo followed by redo restores document to post-edit state for any single edit operation
     - **Validates: Requirement 11.4, 11.5**
   - [x] 27.2 Write property test: modified line markers are set for every line whose content differs from saved state, and cleared for every line matching saved state, after any sequence of edits and undos
     - **Validates: Requirement 11.6, 11.7, 11.8**
-  - [x] 27.3 Write property test: UndoGroup atomicity — undoing a multi-caret operation reverses ALL sub-operations in a single undo step
+  - [x] 27.3 Write property test: UndoGroup atomicity -- undoing a multi-caret operation reverses ALL sub-operations in a single undo step
     - **Validates: Requirement 11.9, 8.13**
 
 ---
 
 ## Notes
 
-- The `ff-edit-operations` crate has zero GUI dependencies — it operates on abstract types from `ff-document-model` and produces transaction records for `ff-undo-redo`.
-- Tasks 20–21 (TransactionStack, save) coordinate closely with `ff-undo-redo` — the boundary is that this crate defines what constitutes a transaction unit, while `ff-undo-redo` owns coalescing and recovery mechanics.
+- The `ff-edit-operations` crate has zero GUI dependencies -- it operates on abstract types from `ff-document-model` and produces transaction records for `ff-undo-redo`.
+- Tasks 20–21 (TransactionStack, save) coordinate closely with `ff-undo-redo` -- the boundary is that this crate defines what constitutes a transaction unit, while `ff-undo-redo` owns coalescing and recovery mechanics.
 - Property-based tests (Tasks 24–27) use the `proptest` crate and are configured for a minimum of 256 iterations to catch edge cases in position arithmetic and multi-caret coordination.
-- BOUNDS (Task 19) is an ISPF heritage feature unique to FileForgeWorkbench — no equivalent in Scintilla or mainstream editors.
+- BOUNDS (Task 19) is an ISPF heritage feature unique to FileForgeWorkbench -- no equivalent in Scintilla or mainstream editors.
 - Multi-caret reverse-order processing (Task 16) is critical for correctness: forward-order processing causes position drift as earlier insertions shift later positions.
-- The `unicode-segmentation` crate is used for grapheme cluster boundaries — essential for correct cursor movement and deletion with multi-code-point characters (emoji, combining marks).
+- The `unicode-segmentation` crate is used for grapheme cluster boundaries -- essential for correct cursor movement and deletion with multi-code-point characters (emoji, combining marks).
 
 ---
 
@@ -365,9 +365,9 @@ This is a **Wave 4 (Core Editor)** sub-project. It depends on `ff-document-model
     "27": ["20", "16"]
   },
   "externalDependencies": {
-    "ff-document-model": "Provides GapBuffer, TextBuffer, Document, LineIndex — all edit operations mutate through this API",
-    "ff-command": "Command registry, dispatch, metadata — all edit operations are registered commands",
-    "ff-undo-redo": "TransactionStack, UndoGroup — transaction recording mechanics (Tasks 20-21 coordinate with this crate)",
+    "ff-document-model": "Provides GapBuffer, TextBuffer, Document, LineIndex -- all edit operations mutate through this API",
+    "ff-command": "Command registry, dispatch, metadata -- all edit operations are registered commands",
+    "ff-undo-redo": "TransactionStack, UndoGroup -- transaction recording mechanics (Tasks 20-21 coordinate with this crate)",
     "ff-logging": "Structured logging for error reporting and diagnostics"
   },
   "waves": [

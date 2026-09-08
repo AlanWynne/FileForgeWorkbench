@@ -4,7 +4,7 @@
 
 ## Introduction
 
-This feature specifies the Dataset Catalog subsystem for FileForgeWorkbench (`ff-dscatalog` crate). The Dataset Catalog provides **mainframe dataset filesystem emulation on the local desktop** — enabling developers to work with mainframe-style dataset naming, organization, and management without access to a z/OS system.
+This feature specifies the Dataset Catalog subsystem for FileForgeWorkbench (`ff-dscatalog` crate). The Dataset Catalog provides **mainframe dataset filesystem emulation on the local desktop** -- enabling developers to work with mainframe-style dataset naming, organization, and management without access to a z/OS system.
 
 The subsystem implements a SQLite-backed catalog database that maps mainframe dataset names (HLQ.qualifier format) to physical files stored in a structured repository layout on the local filesystem. It supports sequential datasets (PS), partitioned datasets (PDS/PDSE), and Generation Data Groups (GDG). The catalog integrates with the VFS layer as a dedicated provider (scheme `catalog`), making datasets addressable as `vfs://catalog/HLQ.QUALIFIER.NAME` throughout the workbench.
 
@@ -43,20 +43,20 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 - **Catalog**: A SQLite database that maps Dataset_Names to physical file locations within a Repository. A workbench session can have multiple catalogs mounted simultaneously. [DSC]
 - **Catalog_Database**: The SQLite file (`catalog.db`) at the root of a Repository, containing the metadata for all datasets in that catalog. [DSC]
 - **Repository**: A directory structure on the local filesystem that physically stores dataset content, organized into `storage/`, `pds/`, `gdg/`, and `temp/` subdirectories. [DSC]
-- **Sequential_Dataset (PS)**: A dataset type representing a single flat file — equivalent to a regular file. Stored as one physical file in the repository's `storage/` directory. [DSC]
-- **Partitioned_Dataset (PDS)**: A dataset type representing a library of members — equivalent to a directory of files. Each member is an independently addressable unit. Stored as a directory in the repository's `pds/` directory. [DSC]
+- **Sequential_Dataset (PS)**: A dataset type representing a single flat file -- equivalent to a regular file. Stored as one physical file in the repository's `storage/` directory. [DSC]
+- **Partitioned_Dataset (PDS)**: A dataset type representing a library of members -- equivalent to a directory of files. Each member is an independently addressable unit. Stored as a directory in the repository's `pds/` directory. [DSC]
 - **Partitioned_Dataset_Extended (PDSE)**: A modern variant of PDS with enhanced capabilities (no directory block limit, member-level locking, dynamic space release). Functionally treated identically to PDS in the local emulation. [DSC]
 - **PDS_Member**: An individually named unit within a PDS or PDSE. Member names are 1–8 characters following the same naming rules as a single qualifier. [DSC]
-- **Generation_Data_Group (GDG)**: A collection of chronologically versioned datasets (generations) sharing a base name. Managed with a rolling limit — oldest generations are automatically deleted when the limit is exceeded. [DSC]
+- **Generation_Data_Group (GDG)**: A collection of chronologically versioned datasets (generations) sharing a base name. Managed with a rolling limit -- oldest generations are automatically deleted when the limit is exceeded. [DSC]
 - **GDG_Generation**: A single versioned instance within a GDG, identified by a generation number in the format `GnnnnVnn` (e.g., `G0001V00`). [DSC]
 - **GDG_Limit**: The maximum number of active generations maintained in a GDG. When a new generation is created and the limit is reached, the oldest generation is rolled off (deleted or uncataloged). [DSC]
 - **Dataset_Allocation**: The act of creating a new dataset with specified attributes (type, LRECL, RECFM, BLKSIZE, space, directory blocks). Analogous to the z/OS ALLOCATE command or JCL DD with DISP=NEW. [DSC]
 - **LRECL (Logical_Record_Length)**: The length of each logical record in a dataset, in bytes. For variable-length records, this is the maximum record length. [DSC]
 - **RECFM (Record_Format)**: The format of records in a dataset: F (fixed), V (variable), FB (fixed blocked), VB (variable blocked), U (undefined). [DSC]
 - **BLKSIZE (Block_Size)**: The physical block size in bytes for dataset I/O. In local emulation, this is metadata only (no actual blocking). [DSC]
-- **DSORG (Dataset_Organization)**: The organization of the dataset: PS (sequential), PO (partitioned — PDS/PDSE), GDG (generation data group). [DSC]
-- **Mount**: The act of making a Catalog available for use in the current session — its datasets become visible in the file tree and resolvable by DSN. [DSC]
-- **Unmount**: The act of hiding a Catalog from the current session without deleting it — its datasets become invisible and unresolvable. [DSC]
+- **DSORG (Dataset_Organization)**: The organization of the dataset: PS (sequential), PO (partitioned -- PDS/PDSE), GDG (generation data group). [DSC]
+- **Mount**: The act of making a Catalog available for use in the current session -- its datasets become visible in the file tree and resolvable by DSN. [DSC]
+- **Unmount**: The act of hiding a Catalog from the current session without deleting it -- its datasets become invisible and unresolvable. [DSC]
 - **Catalog_Export**: Packaging a catalog's database and repository into a portable archive (ZIP) for sharing or backup. [DSC]
 - **Catalog_Import**: Restoring a catalog from a previously exported archive into a new repository location. [DSC]
 - **Dataset_Resolution**: Looking up a Dataset_Name in mounted catalogs and returning the physical path to the underlying file content. [DSC]
@@ -69,18 +69,18 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 **User Story:** As a workbench user, I want dataset metadata stored in a reliable, queryable database so that dataset lookups are fast, consistent, and survive application restarts.
 
-**Source:** [DSC] §6 — Catalog Database Design. [DSC, WB]
+**Source:** [DSC] §6 -- Catalog Database Design. [DSC, WB]
 
 #### Acceptance Criteria
 
 1. THE Catalog_Database SHALL be implemented as a SQLite database file named `catalog.db` located at the root of each Repository directory.
-2. THE Catalog_Database SHALL store a `datasets` table containing at minimum the following columns: `id` (INTEGER PRIMARY KEY), `dsn` (TEXT UNIQUE NOT NULL), `dsorg` (TEXT NOT NULL — one of PS, PO, GDG), `storage_path` (TEXT NOT NULL — relative path from repository root to physical content), `recfm` (TEXT — record format), `lrecl` (INTEGER — logical record length), `blksize` (INTEGER — block size), `created` (TEXT — ISO 8601 timestamp), `modified` (TEXT — ISO 8601 timestamp), `accessed` (TEXT — ISO 8601 timestamp).
-3. THE Catalog_Database SHALL store a `gdg_bases` table for GDG definitions containing: `id` (INTEGER PRIMARY KEY), `dsn` (TEXT UNIQUE NOT NULL — the GDG base name), `limit` (INTEGER NOT NULL — maximum active generations), `scratch` (BOOLEAN NOT NULL DEFAULT TRUE — whether rolled-off generations are physically deleted), `created` (TEXT — ISO 8601 timestamp).
-4. THE Catalog_Database SHALL store a `gdg_generations` table containing: `id` (INTEGER PRIMARY KEY), `base_id` (INTEGER FOREIGN KEY referencing gdg_bases), `generation_number` (INTEGER NOT NULL), `version` (INTEGER NOT NULL DEFAULT 0), `dataset_id` (INTEGER FOREIGN KEY referencing datasets), `status` (TEXT — active, rolled_off, deferred).
-5. THE Catalog_Database SHALL enforce a UNIQUE constraint on `dsn` within the `datasets` table — no two datasets in the same catalog SHALL have identical names.
+2. THE Catalog_Database SHALL store a `datasets` table containing at minimum the following columns: `id` (INTEGER PRIMARY KEY), `dsn` (TEXT UNIQUE NOT NULL), `dsorg` (TEXT NOT NULL -- one of PS, PO, GDG), `storage_path` (TEXT NOT NULL -- relative path from repository root to physical content), `recfm` (TEXT -- record format), `lrecl` (INTEGER -- logical record length), `blksize` (INTEGER -- block size), `created` (TEXT -- ISO 8601 timestamp), `modified` (TEXT -- ISO 8601 timestamp), `accessed` (TEXT -- ISO 8601 timestamp).
+3. THE Catalog_Database SHALL store a `gdg_bases` table for GDG definitions containing: `id` (INTEGER PRIMARY KEY), `dsn` (TEXT UNIQUE NOT NULL -- the GDG base name), `limit` (INTEGER NOT NULL -- maximum active generations), `scratch` (BOOLEAN NOT NULL DEFAULT TRUE -- whether rolled-off generations are physically deleted), `created` (TEXT -- ISO 8601 timestamp).
+4. THE Catalog_Database SHALL store a `gdg_generations` table containing: `id` (INTEGER PRIMARY KEY), `base_id` (INTEGER FOREIGN KEY referencing gdg_bases), `generation_number` (INTEGER NOT NULL), `version` (INTEGER NOT NULL DEFAULT 0), `dataset_id` (INTEGER FOREIGN KEY referencing datasets), `status` (TEXT -- active, rolled_off, deferred).
+5. THE Catalog_Database SHALL enforce a UNIQUE constraint on `dsn` within the `datasets` table -- no two datasets in the same catalog SHALL have identical names.
 6. THE Catalog_Database SHALL use WAL (Write-Ahead Logging) journal mode for concurrent read access during write operations.
 7. WHEN the catalog database file does not exist at the repository root, THE system SHALL create it with the correct schema upon first mount or catalog creation.
-8. THE Catalog_Database SHALL store a `catalog_metadata` table containing: `key` (TEXT PRIMARY KEY), `value` (TEXT) — for catalog-level properties (catalog name, version, creation date, description).
+8. THE Catalog_Database SHALL store a `catalog_metadata` table containing: `key` (TEXT PRIMARY KEY), `value` (TEXT) -- for catalog-level properties (catalog name, version, creation date, description).
 9. ALL database operations SHALL use parameterized queries to prevent SQL injection from user-supplied dataset names or paths.
 
 ---
@@ -89,7 +89,7 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 **User Story:** As a mainframe developer, I want dataset names to follow standard mainframe naming rules (HLQ.qualifier format) so that my local development environment faithfully represents the naming constraints I encounter on z/OS.
 
-**Source:** [DSC] §5 — Mainframe-style dataset naming. [DSC]
+**Source:** [DSC] §5 -- Mainframe-style dataset naming. [DSC]
 
 #### Acceptance Criteria
 
@@ -97,11 +97,11 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 2. EACH qualifier SHALL be 1–8 characters in length, starting with an alphabetic character (A–Z) or a national character (`@`, `#`, `$`), followed by zero or more alphanumeric characters (A–Z, 0–9) or national characters.
 3. THE first qualifier in a Dataset_Name SHALL be the High_Level_Qualifier (HLQ), representing the dataset owner or project grouping.
 4. WHEN a dataset name is submitted that does not conform to the naming rules (invalid characters, qualifier too long, total length exceeded, empty qualifier between dots), THE system SHALL return an error describing the specific validation failure and the position of the offending character or qualifier.
-5. THE system SHALL perform case-insensitive comparison of Dataset_Names — `PAYROLL.INPUT` and `payroll.input` SHALL resolve to the same dataset. Internally, all Dataset_Names SHALL be stored in uppercase.
+5. THE system SHALL perform case-insensitive comparison of Dataset_Names -- `PAYROLL.INPUT` and `payroll.input` SHALL resolve to the same dataset. Internally, all Dataset_Names SHALL be stored in uppercase.
 6. THE system SHALL support an alias resolution mechanism: a default HLQ may be configured per user profile, and when a bare qualifier is provided without a leading HLQ, THE system SHALL prepend the configured default HLQ.
 7. THE system SHALL reject Dataset_Names that begin or end with a dot, or contain consecutive dots (`..`).
 8. THE system SHALL validate PDS member names using the same rules as a single qualifier: 1–8 characters, starting with alphabetic or national character, followed by alphanumeric or national characters.
-9. THE system SHALL support referencing a PDS member using the syntax `DSN(MEMBER)` — parenthesized member name appended to the dataset name — and parse this into separate DSN and member components.
+9. THE system SHALL support referencing a PDS member using the syntax `DSN(MEMBER)` -- parenthesized member name appended to the dataset name -- and parse this into separate DSN and member components.
 
 ---
 
@@ -109,11 +109,11 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 **User Story:** As a mainframe developer, I want to create and work with different dataset organizations (sequential, PDS, PDSE, GDG) so that the local emulation matches the data structures I use on z/OS.
 
-**Source:** [DSC] §4 — Dataset organization types. [DSC]
+**Source:** [DSC] §4 -- Dataset organization types. [DSC]
 
 #### Acceptance Criteria
 
-1. THE system SHALL support creating datasets with the following organization types: `PS` (sequential — single flat file), `PO` (partitioned — PDS or PDSE, a library of members), and `GDG` (generation data group — versioned dataset collection).
+1. THE system SHALL support creating datasets with the following organization types: `PS` (sequential -- single flat file), `PO` (partitioned -- PDS or PDSE, a library of members), and `GDG` (generation data group -- versioned dataset collection).
 2. WHEN a dataset with `DSORG=PS` is created, THE system SHALL create a single physical file in the repository's `storage/` directory and record its relative path in the catalog database.
 3. WHEN a dataset with `DSORG=PO` is created, THE system SHALL create a directory in the repository's `pds/` directory to contain member files; each PDS member SHALL be stored as an individual file within that directory.
 4. WHEN a dataset with `DSORG=GDG` is created, THE system SHALL create a GDG base entry in the `gdg_bases` table specifying the generation limit and scratch policy; no physical storage is allocated until individual generations are created.
@@ -134,7 +134,7 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 **User Story:** As a workbench user, I want dataset content stored in a well-defined directory structure on my local filesystem, so that I can understand where files are physically stored, back them up with standard tools, and verify content outside the workbench if needed.
 
-**Source:** [DSC] §6 — Repository directory structure. [DSC, WB]
+**Source:** [DSC] §6 -- Repository directory structure. [DSC, WB]
 
 #### Acceptance Criteria
 
@@ -154,12 +154,12 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 **User Story:** As a workbench user, I want to mount and unmount catalogs during my session, so that I can work with multiple project catalogs selectively and keep my file tree focused on relevant datasets.
 
-**Source:** [DSC] §7 — Catalog lifecycle management. [DSC, WB]
+**Source:** [DSC] §7 -- Catalog lifecycle management. [DSC, WB]
 
 #### Acceptance Criteria
 
 1. THE system SHALL support mounting a catalog by specifying the path to its repository root directory; upon mounting, the catalog's datasets become visible in the file tree and resolvable by DSN through the VFS provider.
-2. THE system SHALL support multiple simultaneously mounted catalogs — datasets from all mounted catalogs are visible and resolvable concurrently.
+2. THE system SHALL support multiple simultaneously mounted catalogs -- datasets from all mounted catalogs are visible and resolvable concurrently.
 3. WHEN multiple mounted catalogs contain datasets with the same DSN, THE system SHALL resolve using catalog priority order (most recently mounted has highest priority); the resolution result SHALL include which catalog provided the dataset.
 4. THE system SHALL support unmounting a catalog, which removes its datasets from visibility and resolution without deleting the catalog or its data; any open files from the unmounted catalog SHALL remain open but further resolves to that catalog SHALL fail until remounted.
 5. WHEN a catalog is mounted, THE system SHALL validate the repository structure and catalog database schema; IF validation fails (missing directories, corrupt database, schema mismatch), THE system SHALL return an error describing the problem and not mount the catalog.
@@ -173,7 +173,7 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 **User Story:** As a workbench user, I want to create new catalogs, remove existing ones, and export/import catalogs as portable archives, so that I can share dataset collections with team members, back up my work, and set up new environments quickly.
 
-**Source:** [DSC] §7 — Catalog creation, removal, and portability. [DSC, WB]
+**Source:** [DSC] §7 -- Catalog creation, removal, and portability. [DSC, WB]
 
 #### Acceptance Criteria
 
@@ -194,9 +194,9 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 **User Story:** As a mainframe developer, I want to create, delete, rename, and allocate datasets with mainframe-style parameters (RECFM, LRECL, BLKSIZE, space), so that I can manage my local dataset collection using familiar concepts.
 
-**Source:** [DSC] §8 — Dataset CRUD operations. [DSC, WB]
+**Source:** [DSC] §8 -- Dataset CRUD operations. [DSC, WB]
 
-> **Ownership Clarification (ADR-001):** This requirement defines the **low-level catalog CRUD API** — the primitives that create/delete/rename catalog entries and their associated physical storage. JCL-driven allocation workflows (parsing DD statements, interpreting DISP semantics, applying defaults, symbolic substitution) are owned by `ff-dsalloc` (Dataset Allocator). The allocator invokes these catalog primitives to execute allocation; it does not duplicate them.
+> **Ownership Clarification (ADR-001):** This requirement defines the **low-level catalog CRUD API** -- the primitives that create/delete/rename catalog entries and their associated physical storage. JCL-driven allocation workflows (parsing DD statements, interpreting DISP semantics, applying defaults, symbolic substitution) are owned by `ff-dsalloc` (Dataset Allocator). The allocator invokes these catalog primitives to execute allocation; it does not duplicate them.
 
 #### Acceptance Criteria
 
@@ -218,7 +218,7 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 **User Story:** As a mainframe developer, I want to list, open, create, delete, and rename members within a PDS, so that I can manage partitioned dataset libraries as I would on a mainframe system.
 
-**Source:** [DSC] §9 — PDS member management. [DSC, WB]
+**Source:** [DSC] §9 -- PDS member management. [DSC, WB]
 
 #### Acceptance Criteria
 
@@ -239,7 +239,7 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 **User Story:** As a mainframe developer, I want to create GDG bases with rolling generation limits and create/access generations using relative references (+1, 0, -1), so that I can emulate the versioned dataset workflow used in mainframe batch processing.
 
-**Source:** [DSC] §10 — GDG management. [DSC]
+**Source:** [DSC] §10 -- GDG management. [DSC]
 
 #### Acceptance Criteria
 
@@ -260,7 +260,7 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 **User Story:** As a workbench developer, I want the dataset catalog to integrate with the VFS as a registered provider, so that datasets are accessible using standard `vfs://catalog/DSN` URIs and all VFS operations (open, read, write, list, stat, exists) work transparently on catalog-managed datasets.
 
-**Source:** [DSC] §3 — VFS integration; [WB] Architecture Brief FFW-ARCH-001. [DSC, WB]
+**Source:** [DSC] §3 -- VFS integration; [WB] Architecture Brief FFW-ARCH-001. [DSC, WB]
 
 #### Acceptance Criteria
 
@@ -270,9 +270,9 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 4. THE catalog provider SHALL implement `stat(path)` by returning a `VfsMetadata` struct populated with dataset attributes: size, last modified time, resource type (file for PS/GDG generation, directory for PDS), and provider-specific metadata containing RECFM, LRECL, BLKSIZE, DSORG as key-value pairs.
 5. THE catalog provider SHALL implement `open(path, options)` by resolving the DSN to a physical path and delegating to the local filesystem for actual I/O, returning an async reader/writer.
 6. THE catalog provider SHALL implement `read(path)` and `write(path, data)` for sequential datasets and PDS members by resolving the physical path and performing the I/O.
-7. THE catalog provider SHALL implement `create(path, options)` as dataset allocation — creating a new dataset entry in the catalog and physical storage in the repository.
-8. THE catalog provider SHALL implement `delete(path)` as dataset deletion — removing the catalog entry and physical storage.
-9. THE catalog provider SHALL implement `rename(old_path, new_path)` as dataset rename — updating the catalog entry and physical storage path.
+7. THE catalog provider SHALL implement `create(path, options)` as dataset allocation -- creating a new dataset entry in the catalog and physical storage in the repository.
+8. THE catalog provider SHALL implement `delete(path)` as dataset deletion -- removing the catalog entry and physical storage.
+9. THE catalog provider SHALL implement `rename(old_path, new_path)` as dataset rename -- updating the catalog entry and physical storage path.
 10. THE catalog provider SHALL implement `exists(path)` by checking whether the DSN exists in any mounted catalog, returning `true`/`false` without error for non-existent datasets.
 11. THE catalog provider SHALL advertise the following VFS capabilities: `Read`, `Write`, `List`, `Metadata`, `Create`, `Delete`, `Rename`. It SHALL NOT advertise `Watch` or `Search` in the initial release.
 12. THE catalog provider SHALL map its internal errors to `VfsError` variants: DSN not found → `NotFound`, duplicate DSN → `AlreadyExists`, invalid DSN format → `InvalidUri`, PDS member not found → `NotFound`, catalog not mounted → `ProviderUnavailable`.
@@ -283,7 +283,7 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 **User Story:** As a workbench user, I want to view dataset attributes (RECFM, LRECL, BLKSIZE, DSORG, dates, physical path) in a dedicated properties panel, so that I can inspect dataset characteristics without executing commands.
 
-**Source:** [DSC] §11 — Dataset properties display. [DSC, WB]
+**Source:** [DSC] §11 -- Dataset properties display. [DSC, WB]
 
 #### Acceptance Criteria
 
@@ -294,7 +294,7 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 5. THE Properties_Panel SHALL display the following attributes for a GDG generation: generation name (BASE.GnnnnVnn), generation number, RECFM, LRECL, BLKSIZE, creation date, file size, physical path, and parent GDG base DSN.
 6. THE Properties_Panel SHALL display the following attributes for a PDS member: member name, parent PDS DSN, file size, last modified date, and physical file path.
 7. WHEN a property value is not applicable to the dataset type (e.g., member count for a PS dataset), THE field SHALL be omitted from the display rather than shown as empty or N/A.
-8. THE Properties_Panel SHALL update dynamically when the selected node changes in the file tree — no explicit refresh action required from the user.
+8. THE Properties_Panel SHALL update dynamically when the selected node changes in the file tree -- no explicit refresh action required from the user.
 9. THE system SHALL expose a command `dataset.properties` (params: DSN) that retrieves dataset properties programmatically, returning a structured result containing all applicable attributes.
 
 ---
@@ -303,7 +303,7 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 **User Story:** As a workbench user, I want right-click context menus on catalog tree nodes that offer operations appropriate to the node type (catalog, dataset, PDS, member, GDG), so that I can perform common actions without memorizing commands.
 
-**Source:** [DSC] §12 — Context menu actions. [DSC, WB]
+**Source:** [DSC] §12 -- Context menu actions. [DSC, WB]
 
 #### Acceptance Criteria
 
@@ -314,7 +314,7 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 5. WHEN the user right-clicks on a GDG base node, THE system SHALL display a context menu containing: "New Generation…", "List Generations", "Properties", "Delete GDG", "Copy DSN", and "Modify Limit…".
 6. WHEN the user right-clicks on a GDG generation node, THE system SHALL display a context menu containing: "Open", "Delete", "Properties", and "Copy DSN".
 7. WHEN the user right-clicks on the "Catalogs" root node (no catalog selected), THE system SHALL display a context menu containing: "Mount Catalog…", "Create New Catalog…", and "Import Catalog…".
-8. ALL context menu actions SHALL be dispatched as commands through the command framework — each menu item invokes the corresponding registered command with appropriate parameters derived from the clicked node.
+8. ALL context menu actions SHALL be dispatched as commands through the command framework -- each menu item invokes the corresponding registered command with appropriate parameters derived from the clicked node.
 9. CONTEXT menu items SHALL be dynamically enabled/disabled based on the current state: "Unmount" is disabled for catalogs that are not mounted; "Delete" is disabled if the catalog is read-only.
 
 ---
@@ -323,17 +323,17 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 **User Story:** As a mainframe developer, I want LISTCAT and LISTDS equivalent commands that display catalog contents and dataset details in a familiar format, so that I can query my local catalog using the same mental model as on z/OS.
 
-**Source:** [DSC] §13 — Command-line catalog query. [DSC, WB]
+**Source:** [DSC] §13 -- Command-line catalog query. [DSC, WB]
 
 > **Ownership Clarification (ADR-001):** The `catalog.listcat` and `catalog.listds` commands defined here are **workbench-native** developer tools with tabular output. They are distinct from the IDCAMS `LISTCAT` command (registered as `idcams.listcat`) which provides mainframe-faithful IDCAMS-formatted output. The IDCAMS LISTCAT command is owned by `ff-idcams` and obtains its data by invoking ff-dataset-catalog's query APIs. Both commands read from the same catalog API and produce consistent results.
 
 #### Acceptance Criteria
 
 1. THE system SHALL register a `LISTCAT` command that lists datasets in mounted catalogs matching a specified filter pattern (DSN prefix, wildcard with `*` and `%` characters).
-2. THE `LISTCAT` command SHALL accept the following parameters: `filter` (DSN pattern with wildcards — `*` matches any string, `%` matches a single qualifier), `type` (optional — PS, PO, GDG to filter by DSORG), and `catalog` (optional — limit search to a specific mounted catalog).
+2. THE `LISTCAT` command SHALL accept the following parameters: `filter` (DSN pattern with wildcards -- `*` matches any string, `%` matches a single qualifier), `type` (optional -- PS, PO, GDG to filter by DSORG), and `catalog` (optional -- limit search to a specific mounted catalog).
 3. THE `LISTCAT` command SHALL display results in a tabular format showing: DSN, DSORG, RECFM, LRECL, creation date, and containing catalog name.
 4. THE system SHALL register a `LISTDS` command that displays detailed information about a specific dataset, equivalent to the z/OS LISTDS command.
-5. THE `LISTDS` command SHALL accept parameters: `dsn` (required — the dataset name to query), `members` (optional boolean — if true and the dataset is a PDS, include the member list), `history` (optional boolean — include creation, last-access, and modification dates).
+5. THE `LISTDS` command SHALL accept parameters: `dsn` (required -- the dataset name to query), `members` (optional boolean -- if true and the dataset is a PDS, include the member list), `history` (optional boolean -- include creation, last-access, and modification dates).
 6. THE `LISTDS` command output SHALL include: DSN, DSORG, RECFM, LRECL, BLKSIZE, creation date, last modified date, physical size, physical path, catalog name, and (for PDS) member count.
 7. WHEN `LISTDS` is called with `members=true` on a PDS, THE output SHALL include a member list showing each member's name, size, and last modified date.
 8. WHEN `LISTDS` is called with a DSN that does not exist in any mounted catalog, THE system SHALL return an error: "DATASET NOT FOUND: {dsn}".
@@ -346,12 +346,12 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 **User Story:** As a workbench user, I want catalog settings (mounted catalogs, default HLQ, repository paths) persisted in the workbench configuration system, so that my catalog environment is automatically restored on each application startup.
 
-**Source:** [DSC] §14 — Configuration persistence. [DSC, WB]
+**Source:** [DSC] §14 -- Configuration persistence. [DSC, WB]
 
 #### Acceptance Criteria
 
 1. THE dataset catalog subsystem SHALL store its configuration under the `[catalog]` TOML table in the workbench configuration, using the `ff-config` namespace scoping mechanism.
-2. THE `[catalog]` configuration table SHALL include the following keys: `default_hlq` (string — prepended to bare qualifiers), `mounted_catalogs` (array of tables — each containing `name`, `path`, `priority`, `auto_mount`), and `repository_root` (string — default root directory for new catalogs).
+2. THE `[catalog]` configuration table SHALL include the following keys: `default_hlq` (string -- prepended to bare qualifiers), `mounted_catalogs` (array of tables -- each containing `name`, `path`, `priority`, `auto_mount`), and `repository_root` (string -- default root directory for new catalogs).
 3. WHEN the application starts, THE system SHALL read the `mounted_catalogs` configuration and automatically mount all catalogs where `auto_mount=true`, in priority order.
 4. WHEN a catalog is mounted or unmounted during a session, THE system SHALL update the `mounted_catalogs` configuration entry to reflect the current state, ensuring persistence across restarts.
 5. THE system SHALL support hot-reload of catalog configuration: when the configuration file changes externally, THE system SHALL detect changes to `[catalog]` settings via the configuration system's reload callback and apply them (mounting/unmounting catalogs as needed).
@@ -364,7 +364,7 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 **User Story:** As a mainframe developer, I want sensible default allocation parameters based on dataset type, so that I can create datasets quickly without specifying every attribute when the defaults are appropriate.
 
-**Source:** [DSC] §8 — Allocation convenience. [DSC]
+**Source:** [DSC] §8 -- Allocation convenience. [DSC]
 
 #### Acceptance Criteria
 
@@ -372,7 +372,7 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 2. WHEN a partitioned dataset (PDS/PDSE) is allocated without explicit RECFM, LRECL, or BLKSIZE, THE system SHALL apply defaults: RECFM=FB, LRECL=80, BLKSIZE=27920.
 3. WHEN a GDG generation is allocated without explicit RECFM, LRECL, or BLKSIZE, THE system SHALL inherit the last generation's attributes if one exists; if no previous generation exists, apply sequential defaults.
 4. THE system SHALL support an "Allocate Like" operation that copies all attributes (DSORG, RECFM, LRECL, BLKSIZE) from an existing dataset to serve as defaults for a new dataset, requiring only the new DSN to be specified.
-5. THE system SHALL allow all default values to be overridden by explicit parameters at allocation time — explicit values always take precedence over defaults.
+5. THE system SHALL allow all default values to be overridden by explicit parameters at allocation time -- explicit values always take precedence over defaults.
 6. THE system SHALL provide configurable allocation defaults in the `[catalog.defaults]` configuration table, allowing users to customise the default RECFM, LRECL, and BLKSIZE for each DSORG type.
 
 ---
@@ -402,14 +402,14 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 ---
 
-## Requirements Added by CR-NR-016 — Mainframe Dataset Architecture
+## Requirements Added by CR-NR-016 -- Mainframe Dataset Architecture
 
 > **Source documents:** `docs/source-documents/dataset-catalog/FileForgeWorkbench_Mainframe_Dataset_Architecture.md` and
 > `docs/source-documents/dataset-catalog/FileForgeWorkbench_Virtual_File_and_Dataset_Storage_Requirements.md`
 
 ---
 
-### Requirement 16: Record-Oriented Storage — No Text-Line Boundaries
+### Requirement 16: Record-Oriented Storage -- No Text-Line Boundaries
 
 **User Story:** As a mainframe developer, I want datasets stored as record-oriented binary objects so that mainframe record semantics are preserved exactly and no CRLF or LF byte is ever silently inserted as a record delimiter.
 
@@ -417,7 +417,7 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 #### Acceptance Criteria
 
-16.1 WHEN a mainframe dataset is written, THE system SHALL NOT use CRLF, LF, or any host text-line terminator as a record boundary — record boundaries SHALL be derived solely from RECFM, LRECL, RDW, or VSAM key structure.
+16.1 WHEN a mainframe dataset is written, THE system SHALL NOT use CRLF, LF, or any host text-line terminator as a record boundary -- record boundaries SHALL be derived solely from RECFM, LRECL, RDW, or VSAM key structure.
 
 16.2 WHEN a fixed-length (F or FB) dataset is stored, THE system SHALL pack records contiguously as `N × LRECL` bytes with no inter-record delimiters; record `n` SHALL be located at byte offset `n × LRECL`.
 
@@ -449,7 +449,7 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 17.4 THE system SHALL provide a `BinaryCodec` that passes bytes through unchanged for RECFM=U datasets.
 
-17.5 THE system SHALL provide a `TextCodec` that maps host text lines to/from fixed-length records using a configurable encoding profile, used only for explicit import/export operations — never applied silently during normal dataset I/O.
+17.5 THE system SHALL provide a `TextCodec` that maps host text lines to/from fixed-length records using a configurable encoding profile, used only for explicit import/export operations -- never applied silently during normal dataset I/O.
 
 17.6 WHEN encoding or decoding, EACH codec SHALL be independently testable using in-memory byte buffers without any filesystem or database dependency.
 
@@ -457,7 +457,7 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 ---
 
-### Requirement 18: Hybrid Storage Architecture — SQLite Catalogue + Native Files
+### Requirement 18: Hybrid Storage Architecture -- SQLite Catalogue + Native Files
 
 **User Story:** As a platform architect, I want the catalogue to use SQLite for metadata and native files for sequential/library content so that datasets are accessible to external tools, Git, and backup utilities without requiring workbench-specific extraction.
 
@@ -479,7 +479,7 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 18.7 THE system SHALL store POSIX files as native host filesystem objects; the catalogue MAY register a POSIX root as a provider locator but SHALL NOT copy POSIX file contents into SQLite.
 
-18.8 THE system SHALL NOT store PS, PDS, GDG, or POSIX content as BLOBs in the central catalogue database — this design is explicitly prohibited.
+18.8 THE system SHALL NOT store PS, PDS, GDG, or POSIX content as BLOBs in the central catalogue database -- this design is explicitly prohibited.
 
 ---
 
@@ -503,7 +503,7 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 
 19.6 THE system SHALL provide a `SqliteRecordProvider` implementing `StorageProvider` for VSAM KSDS, RRDS, and ISAM content requiring keyed or relative access.
 
-19.7 WHEN a future storage provider is added, THE system SHALL not require changes to dataset editors, catalogue consumers, or the VFS layer — only a new `StorageProvider` implementation and registration are needed.
+19.7 WHEN a future storage provider is added, THE system SHALL not require changes to dataset editors, catalogue consumers, or the VFS layer -- only a new `StorageProvider` implementation and registration are needed.
 
 ---
 
@@ -538,7 +538,7 @@ workspace/
 
 20.5 THE system SHALL NOT rely on dots in a dataset name being translated directly into directory separators for the UUID-based layout.
 
-20.6 WHEN a dataset is renamed, THE physical object SHALL NOT be moved or renamed — only the catalogue entry SHALL be updated.
+20.6 WHEN a dataset is renamed, THE physical object SHALL NOT be moved or renamed -- only the catalogue entry SHALL be updated.
 
 20.7 THE system SHALL protect against path traversal, reserved device names, illegal characters, case-folding collisions, and maximum path-length constraints when constructing physical paths.
 
@@ -583,7 +583,7 @@ workspace/
 
 22.1 THE system SHALL implement an RRDS provider using a SQLite-backed record store keyed by relative record number.
 
-22.2 THE provider SHALL distinguish an unallocated relative record slot from an allocated record containing zero or blank content — these two states SHALL be distinguishable by the caller.
+22.2 THE provider SHALL distinguish an unallocated relative record slot from an allocated record containing zero or blank content -- these two states SHALL be distinguishable by the caller.
 
 22.3 THE provider SHALL support: direct retrieval by relative record number, replacement, deletion, and sequential iteration.
 
@@ -635,13 +635,13 @@ workspace/
 
 #### Acceptance Criteria
 
-25.1 WHEN a dataset is created, THE system SHALL: (a) stage the physical content in the `datasets/staging/` area, (b) create or reserve the catalogue entry, (c) publish the physical object to its final location, (d) mark the catalogue entry active — in that order.
+25.1 WHEN a dataset is created, THE system SHALL: (a) stage the physical content in the `datasets/staging/` area, (b) create or reserve the catalogue entry, (c) publish the physical object to its final location, (d) mark the catalogue entry active -- in that order.
 
-25.2 WHEN a dataset is deleted, THE system SHALL: (a) mark the catalogue entry pending-deletion, (b) move or tombstone the physical content where practical, (c) finalise catalogue state — in that order.
+25.2 WHEN a dataset is deleted, THE system SHALL: (a) mark the catalogue entry pending-deletion, (b) move or tombstone the physical content where practical, (c) finalise catalogue state -- in that order.
 
 25.3 Interrupted operations SHALL be discoverable through operation journals or transitional catalogue states on the next startup.
 
-25.4 WHEN the system starts, THE system SHALL detect incomplete operations and offer deterministic recovery — either completing or rolling back each incomplete operation.
+25.4 WHEN the system starts, THE system SHALL detect incomplete operations and offer deterministic recovery -- either completing or rolling back each incomplete operation.
 
 25.5 Concurrent modification SHALL be controlled using SQLite transactions, version tokens, provider-specific locking, or a documented combination.
 
@@ -659,7 +659,7 @@ workspace/
 
 26.1 THE system SHALL support optional checksums on managed content to detect unexpected physical modification or corruption.
 
-26.2 A workspace backup SHALL capture: the catalogue database, all SQLite record stores, all native dataset files, all library directories, and operation journals — as one recoverable unit.
+26.2 A workspace backup SHALL capture: the catalogue database, all SQLite record stores, all native dataset files, all library directories, and operation journals -- as one recoverable unit.
 
 26.3 A backup SHALL include a manifest containing: schema version, provider configuration, object inventory, and integrity information.
 
@@ -683,7 +683,7 @@ workspace/
 
 27.2 THE reconciliation operation SHALL detect: entries whose physical objects are missing, inaccessible, duplicated, or inconsistent.
 
-27.3 THE reconciliation operation SHALL report proposed corrective actions without automatically changing data — the user SHALL approve each correction.
+27.3 THE reconciliation operation SHALL report proposed corrective actions without automatically changing data -- the user SHALL approve each correction.
 
 27.4 THE catalogue SHALL record create, rename, move, delete, restore, import, export, and allocation changes in an audit trail.
 
@@ -691,7 +691,7 @@ workspace/
 
 ---
 
-### Requirement 28: Security — Path Safety and Audit
+### Requirement 28: Security -- Path Safety and Audit
 
 **User Story:** As a security-conscious operator, I want all physical paths constrained to authorised workspace roots and all sensitive data excluded from logs so that the workbench cannot be used to traverse or leak filesystem content.
 
@@ -713,7 +713,7 @@ workspace/
 
 ---
 
-### Requirement 29: Catalogue Hierarchy — Master and User Catalogues
+### Requirement 29: Catalogue Hierarchy -- Master and User Catalogues
 
 **User Story:** As a mainframe developer, I want master and user catalogue concepts so that the catalogue hierarchy mirrors z/OS conventions and multi-project environments can be organised cleanly.
 
@@ -725,13 +725,13 @@ workspace/
 
 29.2 THE catalogue SHALL map each managed logical dataset name to exactly one active storage provider and provider-specific locator within a catalogue scope.
 
-29.3 THE catalogue SHALL support logical rename and physical relocation as separate operations — renaming a dataset SHALL NOT require moving its physical content.
+29.3 THE catalogue SHALL support logical rename and physical relocation as separate operations -- renaming a dataset SHALL NOT require moving its physical content.
 
 29.4 THE catalogue SHALL validate uniqueness according to the configured naming scope and collation rules.
 
 ---
 
-### Requirement 30: Non-Functional — Portability, Git Compatibility, and Data Fidelity
+### Requirement 30: Non-Functional -- Portability, Git Compatibility, and Data Fidelity
 
 **User Story:** As a developer, I want the storage architecture to work identically on Windows, Linux, and macOS, to be compatible with Git for text-oriented members, and to never silently alter bytes or record boundaries.
 
@@ -753,7 +753,7 @@ workspace/
 
 30.7 Text-oriented PDS/PDSE members and selected sequential datasets SHALL be capable of being represented as ordinary files suitable for external version-control tooling (Git compatibility).
 
-30.8 THE system SHALL NOT silently alter bytes, encoding, record boundaries, keys, or generation identity — any conversion SHALL require an explicit codec and encoding policy.
+30.8 THE system SHALL NOT silently alter bytes, encoding, record boundaries, keys, or generation identity -- any conversion SHALL require an explicit codec and encoding policy.
 
 ---
 

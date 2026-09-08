@@ -2,18 +2,18 @@
 
 ## Introduction
 
-This feature specifies the Viewport and Scrolling subsystem for FileForgeWorkbench — the `ff-viewport-and-scrolling` crate. The viewport model is the **GUI-independent component** that manages the visible window into a document, vertical and horizontal scroll state, caret visibility policies, and scroll behaviour.
+This feature specifies the Viewport and Scrolling subsystem for FileForgeWorkbench -- the `ff-viewport-and-scrolling` crate. The viewport model is the **GUI-independent component** that manages the visible window into a document, vertical and horizontal scroll state, caret visibility policies, and scroll behaviour.
 
 The viewport-and-scrolling crate is responsible for:
-- **Viewport state** — tracking which portion of the document is currently visible (`top_line`, `visible_count`, `horizontal_offset`)
-- **Vertical scrollbar mapping** — a full-range scrollbar that maps the entire document line range [1, line_count] onto the scrollbar track, with proportional thumb size reflecting viewport-to-document ratio
-- **Horizontal scrollbar mapping** — tracking horizontal scroll offset relative to the longest visible line (or longest line in the document)
-- **Scroll commands** — handling Page Up, Page Down, Line Up, Line Down, and scroll-to-position operations with proper clamping
-- **Caret visibility policies** — configurable rules governing how the viewport scrolls to keep the caret visible (slop, strict, jumps, even modes)
-- **Scroll policies** — configurable rules for vertical and horizontal viewport movement in response to programmatic or user-driven scroll requests
-- **Smooth scrolling** — support for both line-level scrolling (traditional) and pixel-level scrolling (smooth) for viewport transitions
-- **Cursor-viewport coordination** — ensuring cursor movement commands scroll the viewport when the cursor would otherwise leave the visible area
-- **Display-line awareness** — integration with display-line-mapping for correct scrolling when lines are wrapped, folded, or excluded
+- **Viewport state** -- tracking which portion of the document is currently visible (`top_line`, `visible_count`, `horizontal_offset`)
+- **Vertical scrollbar mapping** -- a full-range scrollbar that maps the entire document line range [1, line_count] onto the scrollbar track, with proportional thumb size reflecting viewport-to-document ratio
+- **Horizontal scrollbar mapping** -- tracking horizontal scroll offset relative to the longest visible line (or longest line in the document)
+- **Scroll commands** -- handling Page Up, Page Down, Line Up, Line Down, and scroll-to-position operations with proper clamping
+- **Caret visibility policies** -- configurable rules governing how the viewport scrolls to keep the caret visible (slop, strict, jumps, even modes)
+- **Scroll policies** -- configurable rules for vertical and horizontal viewport movement in response to programmatic or user-driven scroll requests
+- **Smooth scrolling** -- support for both line-level scrolling (traditional) and pixel-level scrolling (smooth) for viewport transitions
+- **Cursor-viewport coordination** -- ensuring cursor movement commands scroll the viewport when the cursor would otherwise leave the visible area
+- **Display-line awareness** -- integration with display-line-mapping for correct scrolling when lines are wrapped, folded, or excluded
 
 The viewport model is **owned by the editor session**, NOT by the GUI. This ensures testability and enables headless operation. GUI renderers query the viewport model to determine what to paint.
 
@@ -115,7 +115,7 @@ The viewport model is **owned by the editor session**, NOT by the GUI. This ensu
 
 ---
 
-### Requirement 4: Vertical Scrollbar — Full File Range
+### Requirement 4: Vertical Scrollbar -- Full File Range
 
 **User Story:** As a user working with a large file, I want the vertical scrollbar to represent the entire document range and have a proportional thumb, so that I can quickly jump to any position in the file by dragging the scrollbar.
 
@@ -145,10 +145,10 @@ The viewport model is **owned by the editor session**, NOT by the GUI. This ensu
 
 1. THE viewport model SHALL support a `CaretPolicy` configuration with four boolean flags: `slop`, `strict`, `jumps`, `even`, and an integer `slop_lines` value (vertical) or `slop_pixels` value (horizontal). [SCI-EDIT-2.2]
 2. WHEN `slop` is true, THE viewport model SHALL define a visibility zone of `slop_lines` lines from the top and bottom edges of the viewport. IF the caret enters this zone, THE viewport SHALL scroll to push the caret back toward the interior. [SCI-EDIT-2.2]
-3. WHEN `strict` is true, THE viewport model SHALL enforce the slop zone strictly — the viewport SHALL always scroll to ensure the caret is outside the slop zone, even if the caret is already visible. [SCI-EDIT-2.2]
+3. WHEN `strict` is true, THE viewport model SHALL enforce the slop zone strictly -- the viewport SHALL always scroll to ensure the caret is outside the slop zone, even if the caret is already visible. [SCI-EDIT-2.2]
 4. WHEN `jumps` is true AND the viewport needs to scroll, THE viewport model SHALL scroll by a larger amount (3× the slop value) to reduce the frequency of subsequent scrolling. [SCI-EDIT-2.2]
 5. WHEN `even` is true, THE viewport model SHALL apply the same slop zone symmetrically to both top and bottom (vertical) or left and right (horizontal). [SCI-EDIT-2.2]
-6. WHEN no caret policy flags are set (default minimal policy), THE viewport model SHALL perform the minimal scroll needed to bring the caret into the visible area — one line for vertical, minimal offset for horizontal. [SCI-EDIT-2.2]
+6. WHEN no caret policy flags are set (default minimal policy), THE viewport model SHALL perform the minimal scroll needed to bring the caret into the visible area -- one line for vertical, minimal offset for horizontal. [SCI-EDIT-2.2]
 7. THE caret policy SHALL be configurable separately for vertical and horizontal axes, allowing different behaviours for each direction. [SCI-EDIT-2.2]
 8. WHEN the caret moves and `MovePositionTo` (or its Rust equivalent) is invoked, THE viewport model SHALL apply the current caret policy to compute the new `top_line` and `horizontal_offset`. [SCI-EDIT-2.2]
 9. THE caret policy configuration SHALL be persisted as part of the workbench configuration (references `configuration-system`). [WB]
@@ -159,7 +159,7 @@ The viewport model is **owned by the editor session**, NOT by the GUI. This ensu
 
 **User Story:** As a user moving the cursor vertically through lines of varying length, I want the cursor to return to my preferred column when passing through shorter lines, so that vertical navigation feels natural and predictable.
 
-**Source:** [SCI-EDIT-2.2] criteria 12 — `lastXChosen` column affinity.
+**Source:** [SCI-EDIT-2.2] criteria 12 -- `lastXChosen` column affinity.
 
 #### Acceptance Criteria
 
@@ -194,7 +194,7 @@ The viewport model is **owned by the editor session**, NOT by the GUI. This ensu
 
 **User Story:** As a user scrolling with the mouse wheel, I want the viewport to scroll smoothly by a configurable number of lines per wheel tick, so that mouse-wheel navigation feels responsive and natural.
 
-**Source:** [FFE-SCROLL] design — mouse wheel events replacing ScrollArea; [SCI-EDIT-2.2] smooth scroll concepts.
+**Source:** [FFE-SCROLL] design -- mouse wheel events replacing ScrollArea; [SCI-EDIT-2.2] smooth scroll concepts.
 
 #### Acceptance Criteria
 
@@ -219,7 +219,7 @@ The viewport model is **owned by the editor session**, NOT by the GUI. This ensu
 2. WHEN `scroll_mode` is `Line`, THE viewport model SHALL round all vertical scroll positions to whole line boundaries (integer `top_line` values). [FFE-MVP-2]
 3. WHEN `scroll_mode` is `Smooth`, THE viewport model SHALL maintain an additional `pixel_offset` field representing the sub-line vertical scroll position in pixels (range `[0, line_height)`). [SCI-EDIT-2.2]
 4. WHEN smooth scrolling is active AND a scroll command targets a specific line, THE viewport model SHALL compute the target pixel position and expose it for the GUI shell to animate toward. [WB]
-5. THE smooth scrolling logic SHALL remain GUI-independent — the viewport model computes target positions and velocities; the GUI shell performs the actual animation interpolation. [WB]
+5. THE smooth scrolling logic SHALL remain GUI-independent -- the viewport model computes target positions and velocities; the GUI shell performs the actual animation interpolation. [WB]
 6. WHEN smooth scrolling is active, THE scrollbar position SHALL reflect the pixel-accurate scroll position (not just the line-level approximation). [SCI-EDIT-2.2]
 7. THE `scroll_mode` SHALL be configurable through the configuration system and hot-reloadable without restarting the editor. [WB]
 
@@ -238,7 +238,7 @@ The viewport model is **owned by the editor session**, NOT by the GUI. This ensu
 3. THE scroll commands SHALL be bindable to configurable keyboard shortcuts via the command framework's key-mapping system. [WB]
 4. THE scroll commands SHALL be invocable from Lua macros via `editor.command("ScrollPageDown")` or equivalent scripting API. [WB]
 5. THE viewport model SHALL emit a `ViewportChanged` event (or equivalent notification) after any scroll state mutation, allowing UI renderers, status bars, and other observers to react. [WB]
-6. SCROLL commands SHALL NOT be recorded on the undo stack — scroll position changes are navigation, not document modifications. [WB]
+6. SCROLL commands SHALL NOT be recorded on the undo stack -- scroll position changes are navigation, not document modifications. [WB]
 
 ---
 

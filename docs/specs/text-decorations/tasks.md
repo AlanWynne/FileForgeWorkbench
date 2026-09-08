@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-text-decorations` crate — the visual overlay subsystem for FileForgeWorkbench. The crate manages transient, overlapping decorations applied on top of (or beneath) rendered text to communicate semantic information such as search matches, diagnostic errors, change history, bookmarks, and custom plugin indicators.
+This plan covers the complete implementation of the `ff-text-decorations` crate -- the visual overlay subsystem for FileForgeWorkbench. The crate manages transient, overlapping decorations applied on top of (or beneath) rendered text to communicate semantic information such as search matches, diagnostic errors, change history, bookmarks, and custom plugin indicators.
 
 This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-document-model` (Wave 4) for buffer positions and edit events, `ff-theme` (Wave 6 peer) for colour/style configuration, `ff-command` (Wave 2) for bookmark command registration, and `ff-configuration-system` (Wave 2) for hot-reload integration.
 
@@ -183,33 +183,33 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-document-
   - Covers: Requirement 14 AC 1–7
 
 - [x] 19. Property-based tests
-  - [x] 19.1 Write PBT: RLE invariant — total length preservation after fill/insert/delete operations
-  - [x] 19.2 Write PBT: fill_range idempotency — second fill with same value returns false
-  - [x] 19.3 Write PBT: insert-delete round trip — insert_space then delete_range restores original state
-  - [x] 19.4 Write PBT: value consistency after edit — positions before/in/after insertion have correct values
-  - [x] 19.5 Write PBT: lazy creation and removal — decoration created on first non-zero write, removed when all zero
-  - [x] 19.6 Write PBT: marker line tracking — markers shift correctly on line insert/delete
-  - [x] 19.7 Write PBT: all_on_for consistency — bitmask matches individual value_at queries
-  - [x] 19.8 Write PBT: bookmark next/previous wrapping — correct navigation with wrapping
-  - [x] 19.9 Write PBT: run merge optimality — no adjacent runs with same value after any operation
-  - [x] 19.10 Write PBT: theme reload preserves decoration data — only visual properties change, not stored values
+  - [x] 19.1 Write PBT: RLE invariant -- total length preservation after fill/insert/delete operations
+  - [x] 19.2 Write PBT: fill_range idempotency -- second fill with same value returns false
+  - [x] 19.3 Write PBT: insert-delete round trip -- insert_space then delete_range restores original state
+  - [x] 19.4 Write PBT: value consistency after edit -- positions before/in/after insertion have correct values
+  - [x] 19.5 Write PBT: lazy creation and removal -- decoration created on first non-zero write, removed when all zero
+  - [x] 19.6 Write PBT: marker line tracking -- markers shift correctly on line insert/delete
+  - [x] 19.7 Write PBT: all_on_for consistency -- bitmask matches individual value_at queries
+  - [x] 19.8 Write PBT: bookmark next/previous wrapping -- correct navigation with wrapping
+  - [x] 19.9 Write PBT: run merge optimality -- no adjacent runs with same value after any operation
+  - [x] 19.10 Write PBT: theme reload preserves decoration data -- only visual properties change, not stored values
   - Covers: Correctness Properties 1–10 (see Property-Based Test Definitions below)
 
 - [x] 20. Integration tests
-  - [x] 20.1 Write integration test: multi-producer scenario — search highlights + diagnostic underlines coexist on same document
-  - [x] 20.2 Write integration test: edit synchronization — insert/delete text with active decorations from multiple indicators
-  - [x] 20.3 Write integration test: undo/redo cycle — decorations track positions through undo and redo operations
-  - [x] 20.4 Write integration test: theme hot-reload — change theme, verify visual properties update, verify decoration data unchanged
-  - [x] 20.5 Write integration test: bookmark lifecycle — toggle, navigate, insert lines, verify bookmark movement, clear all
-  - [x] 20.6 Write integration test: change history lifecycle — edit, save, undo, verify marker transitions
-  - [x] 20.7 Write integration test: indicator allocation — allocate multiple plugin indicators, exhaust container range, verify error
+  - [x] 20.1 Write integration test: multi-producer scenario -- search highlights + diagnostic underlines coexist on same document
+  - [x] 20.2 Write integration test: edit synchronization -- insert/delete text with active decorations from multiple indicators
+  - [x] 20.3 Write integration test: undo/redo cycle -- decorations track positions through undo and redo operations
+  - [x] 20.4 Write integration test: theme hot-reload -- change theme, verify visual properties update, verify decoration data unchanged
+  - [x] 20.5 Write integration test: bookmark lifecycle -- toggle, navigate, insert lines, verify bookmark movement, clear all
+  - [x] 20.6 Write integration test: change history lifecycle -- edit, save, undo, verify marker transitions
+  - [x] 20.7 Write integration test: indicator allocation -- allocate multiple plugin indicators, exhaust container range, verify error
   - Covers: End-to-end validation across Requirements 1–15
 
 ---
 
 ## Property-Based Test Definitions
 
-### Property 1: RLE Invariant — Total Length Preservation
+### Property 1: RLE Invariant -- Total Length Preservation
 
 **Validates: Requirements 3.10, 4.8**
 
@@ -314,7 +314,7 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-document-
 
 **Validates: Requirements 2.10, 15.3**
 
-- **Statement:** Reloading theme colours does not modify any stored indicator values or marker assignments — only visual rendering properties change.
+- **Statement:** Reloading theme colours does not modify any stored indicator values or marker assignments -- only visual rendering properties change.
 - **Strategy:** Generate:
   - doc_length: u64 in [1, 1_000]
   - random fills across multiple indicators
@@ -349,7 +349,7 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-document-
 - Actual rendering of decorations is performed by the shell layer (ff-desktop/egui) using the `DecorationRenderer` trait
 - The 23 indicator styles are adapted from Scintilla's architecture to egui rendering primitives
 - Run-length encoding ensures memory efficiency: a 1MB document with 10 error underlines uses O(20) runs, not O(1M)
-- Marker positions track document lines — when lines are inserted/deleted, markers move with their content
+- Marker positions track document lines -- when lines are inserted/deleted, markers move with their content
 - The `ThemeDecorationProvider` trait decouples this crate from the concrete theme implementation
 - Property-based tests use the `proptest` crate with a minimum of 256 cases per property
 - Bookmark commands are registered via `ff-command` for keyboard/menu access but the toggle/navigate logic lives in this crate

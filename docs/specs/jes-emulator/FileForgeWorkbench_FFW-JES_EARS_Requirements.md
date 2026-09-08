@@ -40,7 +40,7 @@ A cross-platform JES/SDSF-style emulator for Windows, Linux, and macOS.
 
 # 1. Job Entry Subsystem Requirements
 
-## FFW-JES-001 — Job Submission
+## FFW-JES-001 -- Job Submission
 
 **WHEN** a user submits a job  
 **THEN** the system shall create a new job record in the Input Queue.
@@ -57,7 +57,7 @@ A cross-platform JES/SDSF-style emulator for Windows, Linux, and macOS.
 
 ---
 
-## FFW-JES-002 — Job Queue Visibility
+## FFW-JES-002 -- Job Queue Visibility
 
 **WHILE** jobs exist in the queue  
 **THE SYSTEM SHALL** display all queued jobs in the Job Monitor.
@@ -78,7 +78,7 @@ A cross-platform JES/SDSF-style emulator for Windows, Linux, and macOS.
 
 ---
 
-## FFW-JES-003 — Initiator Pool
+## FFW-JES-003 -- Initiator Pool
 
 **WHERE** one or more initiators are configured  
 **THE SYSTEM SHALL** maintain a pool of worker threads or worker processes.
@@ -102,7 +102,7 @@ A cross-platform JES/SDSF-style emulator for Windows, Linux, and macOS.
 
 ---
 
-## FFW-JES-004 — Queue Scheduling
+## FFW-JES-004 -- Queue Scheduling
 
 **WHEN** an initiator becomes available  
 **AND** a queued job is eligible to execute  
@@ -121,7 +121,7 @@ A cross-platform JES/SDSF-style emulator for Windows, Linux, and macOS.
 
 ---
 
-## FFW-JES-005 — Active Job Monitoring
+## FFW-JES-005 -- Active Job Monitoring
 
 **WHILE** a job is executing  
 **THE SYSTEM SHALL** display the job in `ACTIVE` status.
@@ -150,7 +150,7 @@ Additional criteria:
 
 ---
 
-## FFW-JES-006 — Job Completion
+## FFW-JES-006 -- Job Completion
 
 **WHEN** a job completes successfully  
 **THEN** the system shall move the job to `COMPLETED` status.
@@ -168,7 +168,7 @@ Additional criteria:
 
 ---
 
-## FFW-JES-007 — Job Failure
+## FFW-JES-007 -- Job Failure
 
 **WHEN** a job terminates abnormally  
 **THEN** the system shall place the job in `FAILED` status.
@@ -186,7 +186,7 @@ Additional criteria:
 
 ---
 
-## FFW-JES-008 — Job Cancellation
+## FFW-JES-008 -- Job Cancellation
 
 **WHEN** a user cancels a queued or active job  
 **THEN** the system shall cancel or terminate the job safely.
@@ -204,7 +204,7 @@ Additional criteria:
 
 ---
 
-## FFW-JES-009 — Job Logs
+## FFW-JES-009 -- Job Logs
 
 **WHEN** a user requests job output  
 **THEN** the system shall display the complete execution log.
@@ -231,7 +231,7 @@ Additional criteria:
 
 ---
 
-## FFW-JES-010 — Retained Output
+## FFW-JES-010 -- Retained Output
 
 **AFTER** a job completes  
 **THE SYSTEM SHALL** retain job output according to configured retention rules.
@@ -249,7 +249,7 @@ Additional criteria:
 
 # 2. Dataset Catalog Requirements
 
-## FFW-CAT-001 — Dataset Catalog
+## FFW-CAT-001 -- Dataset Catalog
 
 **WHERE** datasets are used  
 **THE SYSTEM SHALL** maintain a dataset catalog.
@@ -272,7 +272,7 @@ The catalog stores metadata including:
 
 ---
 
-## FFW-CAT-002 — Dataset Resolution
+## FFW-CAT-002 -- Dataset Resolution
 
 **WHEN** a job references `DSN=my.dataset`  
 **THEN** the system shall resolve the DSN through the local dataset catalog.
@@ -306,7 +306,7 @@ C:\Catalog\CORP\PAYROLL\MASTER.dat
 
 ---
 
-## FFW-CAT-003 — Dataset Creation
+## FFW-CAT-003 -- Dataset Creation
 
 **WHEN** a new dataset is allocated  
 **THEN** a catalog entry shall be created.
@@ -323,7 +323,7 @@ C:\Catalog\CORP\PAYROLL\MASTER.dat
 
 ---
 
-## FFW-CAT-004 — Dataset Browser
+## FFW-CAT-004 -- Dataset Browser
 
 **WHEN** a user opens Dataset Explorer  
 **THEN** the catalog hierarchy shall be displayed.
@@ -350,7 +350,7 @@ CORP
 
 ---
 
-## FFW-CAT-005 — Generation Dataset Support
+## FFW-CAT-005 -- Generation Dataset Support
 
 **WHEN** a dataset is defined as a generation dataset  
 **THEN** generation management shall be supported.
@@ -377,7 +377,7 @@ Additional criteria:
 
 # 3. SDSF-Style Emulator Requirements
 
-## FFW-SDSF-001 — Job Monitor View
+## FFW-SDSF-001 -- Job Monitor View
 
 **WHEN** the Job Monitor opens  
 **THEN** all job queues shall be displayed.
@@ -403,7 +403,7 @@ Additional criteria:
 
 ---
 
-## FFW-SDSF-002 — Job Filtering
+## FFW-SDSF-002 -- Job Filtering
 
 **WHEN** filters are applied  
 **THEN** only matching jobs shall be displayed.
@@ -430,7 +430,7 @@ Additional criteria:
 
 ---
 
-## FFW-SDSF-003 — View SYSOUT
+## FFW-SDSF-003 -- View SYSOUT
 
 **WHEN** a user selects a completed, failed, or cancelled job  
 **THEN** SYSOUT-style output shall be displayed.
@@ -447,7 +447,7 @@ Additional criteria:
 
 ---
 
-## FFW-SDSF-004 — Real-Time Refresh
+## FFW-SDSF-004 -- Real-Time Refresh
 
 **WHILE** the monitor is open  
 **THE SYSTEM SHALL** refresh job status automatically.
@@ -465,7 +465,7 @@ Additional criteria:
 
 # 4. Plugin and Integration Requirements
 
-## FFW-PLG-001 — FileForge Workbench Integration
+## FFW-PLG-001 -- FileForge Workbench Integration
 
 **WHEN** FileForge Workbench loads  
 **THEN** the Job Entry Subsystem shall load as a plugin.
@@ -480,7 +480,7 @@ Additional criteria:
 
 ---
 
-## FFW-PLG-002 — Dataset API
+## FFW-PLG-002 -- Dataset API
 
 **THE SYSTEM SHALL** expose Dataset Catalog APIs.
 
@@ -498,7 +498,7 @@ Other FileForge Workbench components and plugins can:
 
 ---
 
-## FFW-PLG-003 — Job API
+## FFW-PLG-003 -- Job API
 
 **THE SYSTEM SHALL** expose job management APIs.
 
@@ -519,7 +519,7 @@ Other FileForge Workbench components and plugins can:
 
 # 5. Future Phase: Mainframe and Remote Connectivity
 
-## FFW-JES-FUT-001 — Provider Abstraction
+## FFW-JES-FUT-001 -- Provider Abstraction
 
 **WHERE** jobs may originate from different execution environments  
 **THE SYSTEM SHALL** define a provider abstraction for job queues and job logs.
@@ -545,7 +545,7 @@ Job Provider Interface
 
 ---
 
-## FFW-JES-FUT-002 — Unified Job Monitor
+## FFW-JES-FUT-002 -- Unified Job Monitor
 
 **WHEN** multiple job providers are configured  
 **THEN** the system shall display jobs from each provider in a unified SDSF-style monitor.

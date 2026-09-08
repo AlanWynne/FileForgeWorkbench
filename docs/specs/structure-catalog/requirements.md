@@ -2,30 +2,30 @@
 
 ## Introduction
 
-This feature specifies the **Structure Catalog** for FileForgeWorkbench (`ff-structure-catalog` crate) — a persistent, operator-managed library of named Record_Structure definitions. The catalog provides a central repository of reusable structure definitions that can be applied to any flat-file data file at any time, replacing the need to maintain per-file companion configs.
+This feature specifies the **Structure Catalog** for FileForgeWorkbench (`ff-structure-catalog` crate) -- a persistent, operator-managed library of named Record_Structure definitions. The catalog provides a central repository of reusable structure definitions that can be applied to any flat-file data file at any time, replacing the need to maintain per-file companion configs.
 
 The structure catalog covers six tightly related capabilities:
 
-1. **Catalog persistent store** — a configurable directory of `.ffs` (FileForge Structure) files in TOML format, persisting named Record_Structure definitions.
-2. **Catalog CRUD operations** — create, read, update, and delete structure definitions programmatically and through the UI.
-3. **Catalog browsing panel** — a dockable, searchable panel for browsing and selecting structures from the catalog.
-4. **Structure editor** — a visual editor for adding, removing, reordering fields and setting types/lengths within a structure definition.
-5. **Auto-association** — automatic mapping of file extensions and glob patterns to structure definitions for seamless FileForge_Mode activation.
-6. **Structure import/export and versioning** — importing legacy `.fc.json`/`.fc.xlsx` formats, exporting to multiple formats, and tracking structure definition versions.
+1. **Catalog persistent store** -- a configurable directory of `.ffs` (FileForge Structure) files in TOML format, persisting named Record_Structure definitions.
+2. **Catalog CRUD operations** -- create, read, update, and delete structure definitions programmatically and through the UI.
+3. **Catalog browsing panel** -- a dockable, searchable panel for browsing and selecting structures from the catalog.
+4. **Structure editor** -- a visual editor for adding, removing, reordering fields and setting types/lengths within a structure definition.
+5. **Auto-association** -- automatic mapping of file extensions and glob patterns to structure definitions for seamless FileForge_Mode activation.
+6. **Structure import/export and versioning** -- importing legacy `.fc.json`/`.fc.xlsx` formats, exporting to multiple formats, and tracking structure definition versions.
 
 This spec extends `fileforge-integration` (which owns record parsing, field extraction, and file writing logic) and integrates with `configuration-system` (for catalog path settings), `layout-and-docking` (for panel hosting), `command-framework` (for catalog commands), and `virtual-file-system` (for file access).
 
 **Source references:**
-- **FFE-STRUCT** = FileForgeEditor `structure-catalog` spec (15 requirements — catalog management, grid browse/edit, file associations)
+- **FFE-STRUCT** = FileForgeEditor `structure-catalog` spec (15 requirements -- catalog management, grid browse/edit, file associations)
 - **FFE** = FileForgeEditor `fileforge-integration` spec (field types, record structures, decimal handling)
 - **WB** = Workbench Architecture Brief (command-driven, plugin-capable, VFS-aware, dockable panels)
 
 **Cross-references:**
-- `fileforge-integration` — record parsing, field extraction, COMP-3 handling, EBCDIC support
-- `configuration-system` — catalog path settings, hot-reload of catalog configuration
-- `layout-and-docking` — catalog browsing panel as a dockable panel
-- `command-framework` — catalog commands (`CATALOG`, `APPLY STRUCTURE`, etc.)
-- `virtual-file-system` — file access for structure files and data files
+- `fileforge-integration` -- record parsing, field extraction, COMP-3 handling, EBCDIC support
+- `configuration-system` -- catalog path settings, hot-reload of catalog configuration
+- `layout-and-docking` -- catalog browsing panel as a dockable panel
+- `command-framework` -- catalog commands (`CATALOG`, `APPLY STRUCTURE`, etc.)
+- `virtual-file-system` -- file access for structure files and data files
 
 ---
 
@@ -38,7 +38,7 @@ This spec extends `fileforge-integration` (which owns record parsing, field extr
 - **Record_Structure**: A named definition describing the field layout for one category of record in a flat file (e.g., "Header", "Detail", "Trailer"). Contains an ordered list of Field_Definitions. [FFE]
 - **Field_Definition**: A single field within a Record_Structure, specifying name, offset, length, data type, and optional attributes (decimals, identifiers, filters). [FFE]
 - **Field_Type**: The data type of a field. Supported types: `alphanumeric` (character data, default), `numeric` (unsigned integer), `packed-decimal` (IBM COMP-3 packed BCD), `binary` (raw binary bytes), `hex` (hexadecimal display). [FFE, WB]
-- **FFS_File**: A `.ffs` (FileForge Structure) file — the TOML-based file format for persisting Structure_Definitions in the catalog. Replaces the legacy `.fc.json` format for catalog use. [WB]
+- **FFS_File**: A `.ffs` (FileForge Structure) file -- the TOML-based file format for persisting Structure_Definitions in the catalog. Replaces the legacy `.fc.json` format for catalog use. [WB]
 - **File_Pattern_Mask**: A glob pattern (e.g., `*.dat`, `CUST_*.dat`, `INV??????.txt`) or file extension that identifies data files associated with a Structure_Definition. [FFE-STRUCT]
 - **Auto_Association**: The automatic mapping of a newly opened file to a Structure_Definition based on its filename matching a File_Pattern_Mask in the catalog. [FFE-STRUCT]
 - **Catalog_Browsing_Panel**: A dockable panel in the workbench layout that displays a searchable, filterable list of all Structure_Definitions in the Active_Catalog_Location. [FFE-STRUCT, WB]
@@ -71,7 +71,7 @@ This spec extends `fileforge-integration` (which owns record parsing, field extr
 
 ---
 
-### Requirement 2: Structure File Format (.ffs — TOML-Based)
+### Requirement 2: Structure File Format (.ffs -- TOML-Based)
 
 **User Story:** As a data engineer, I want structure definitions stored in a human-readable, version-control-friendly TOML format, so that I can review changes in diffs, edit definitions in any text editor, and share them across teams via source control.
 
@@ -190,7 +190,7 @@ This spec extends `fileforge-integration` (which owns record parsing, field extr
 4. WHEN a `.fc.xlsx` file is selected for import, THE system SHALL parse it using the `fileforge-integration` Excel config parser, convert the structure to the `.ffs` TOML format, and write the converted file to the Active_Catalog_Location.
 5. WHEN an `.ffs` file is selected for import from a different location, THE system SHALL copy it to the Active_Catalog_Location.
 6. WHEN importing and a Structure_Definition with the same name already exists in the Active_Catalog_Location, THE system SHALL prompt the operator to: rename the import, overwrite the existing definition, or cancel the operation.
-7. THE import operation SHALL NOT modify or move the original source file — it SHALL create a new file in the Active_Catalog_Location.
+7. THE import operation SHALL NOT modify or move the original source file -- it SHALL create a new file in the Active_Catalog_Location.
 8. WHEN import succeeds, THE Catalog_Browsing_Panel SHALL refresh and highlight the newly imported Structure_Definition.
 9. WHEN import fails (parse error, validation failure, I/O error), THE system SHALL display an error message describing the failure and SHALL NOT create a partial file in the catalog.
 10. THE system SHALL provide a "Promote to Catalog" action when a file is open in FileForge_Mode with a companion `.fc.json`, allowing one-click import of the file-local config into the catalog.
@@ -304,7 +304,7 @@ This spec extends `fileforge-integration` (which owns record parsing, field extr
 1. WHEN FileForge_Mode is active and the editor is in Edit mode, THE system SHALL display records in Grid_Edit_Mode: the same grid layout as Browse mode, but with individually editable field cells for matching records.
 2. WHEN the operator activates a cell for editing, THE system SHALL display the field's current value in an inline edit widget within the cell.
 3. WHEN the operator changes a field value and moves to another cell, THE system SHALL validate the new value against the field's declared `field_type`. IF the value is invalid (e.g., non-numeric in a `numeric` field), THE system SHALL highlight the cell with an error indicator and display the validation error in the status area.
-4. WHEN the operator edits a cell, THE system SHALL store the change in the in-memory edit buffer only — the source file on disk SHALL NOT be modified until an explicit save. Modified records SHALL be visually distinguished from unmodified records.
+4. WHEN the operator edits a cell, THE system SHALL store the change in the in-memory edit buffer only -- the source file on disk SHALL NOT be modified until an explicit save. Modified records SHALL be visually distinguished from unmodified records.
 5. Non-matching records SHALL NOT be editable in Grid_Edit_Mode; they SHALL remain displayed as raw text rows and SHALL be visually distinct.
 6. THE system SHALL integrate with the `undo-redo-transactions` framework: all edits to fields within the same record during a single editing pass SHALL be grouped as one undoable transaction.
 7. WHEN the operator issues the `SAVE` command, THE system SHALL flush the edit buffer: write merged content (original file bytes with buffered field patches applied) via a temporary file followed by an atomic rename. Unmodified records and fields SHALL preserve their exact original byte content.

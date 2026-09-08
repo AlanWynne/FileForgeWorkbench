@@ -32,8 +32,8 @@ The `ff-vfs` crate is the **Virtual File System abstraction layer** for the File
 
 ### Design Constraints (Cross-Cutting)
 
-- **FFW-ARCH-001 (Req 1)**: ALL content access goes through VFS — no `std::fs` in consuming crates
-- **GUI Independence (Req 2)**: ff-vfs has zero GUI dependencies — no egui, winit, wgpu
+- **FFW-ARCH-001 (Req 1)**: ALL content access goes through VFS -- no `std::fs` in consuming crates
+- **GUI Independence (Req 2)**: ff-vfs has zero GUI dependencies -- no egui, winit, wgpu
 - **Plugin Architecture (Req 3)**: VFS providers can be contributed by plugins via `connector-extensibility`
 - **Async I/O (Req 6)**: All I/O methods are async, compatible with Tokio runtime managed by `ff-core`
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-vfs`
@@ -386,7 +386,7 @@ across the async call boundary. The correct pattern is:
 4. Call the async provider method on the cloned Arc
 
 This ensures that provider registration/deregistration is never blocked by long-running I/O operations.
-The `Vfs` facade struct implements this pattern internally — consumers of the public API do not need
+The `Vfs` facade struct implements this pattern internally -- consumers of the public API do not need
 to manage this.
 
 ### VfsFile Trait
@@ -428,7 +428,7 @@ pub struct VfsEntry {
     pub name: String,
     /// Type of the entry
     pub entry_type: VfsEntryType,
-    /// Size in bytes (if applicable — None for directories on some providers)
+    /// Size in bytes (if applicable -- None for directories on some providers)
     pub size: Option<u64>,
     /// Last modified time (if available)
     pub modified: Option<SystemTime>,
@@ -642,7 +642,7 @@ pub struct DeleteOptions {
 
 ## 5. Public API Surface
 
-### Vfs — Top-Level Facade
+### Vfs -- Top-Level Facade
 
 ```rust
 /// The top-level VFS facade. Consumers interact with this type
@@ -864,14 +864,14 @@ pub enum VfsError {
 
 ## 7. Integration Points
 
-### With `ff-logging` (Foundation Layer — upstream)
+### With `ff-logging` (Foundation Layer -- upstream)
 
 - **Dependency direction**: ff-vfs depends on ff-logging
 - **API consumed**: `log_info!`, `log_warn!`, `log_error!` macros
 - **Usage**: Provider registration/deregistration logged at INFO; duplicate scheme errors logged at WARN; I/O failures logged at ERROR
 - **Log prefix**: `[vfs]` for VFS-level operations, `[vfs:{scheme}]` for provider-delegated operations
 
-### With `ff-core` (Core Layer — peer)
+### With `ff-core` (Core Layer -- peer)
 
 - **Dependency direction**: ff-core manages ff-vfs lifecycle via the `Subsystem` trait
 - **Initialization order**: VFS is the third subsystem initialized (StartupOrder::Vfs = 2), after logging and configuration
@@ -879,29 +879,29 @@ pub enum VfsError {
 - **Runtime**: VFS operations execute on the Tokio runtime managed by ff-core
 - **Integration pattern**: ff-core registers the `Vfs` instance in its `ServiceRegistry`; all consumers retrieve it from there
 
-### With `ff-plugin` (Core Layer — peer)
+### With `ff-plugin` (Core Layer -- peer)
 
 - **Dependency direction**: ff-vfs defines the `VfsProvider` trait; ff-plugin defines `PluginVfsAccess`
-- **Integration**: ff-vfs provides the implementation backing `PluginVfsAccess` — a thin wrapper that delegates to the `Vfs` instance
+- **Integration**: ff-vfs provides the implementation backing `PluginVfsAccess` -- a thin wrapper that delegates to the `Vfs` instance
 - **Plugin-contributed providers**: Plugins that provide VFS providers (connector plugins) implement `VfsProvider` and register via `PluginContext::register_capability(Capability::Providers(...))`; the plugin activation hook then registers the provider with `ProviderRegistry`
 - **Security**: Plugins access VFS through `PluginVfsAccess`, not directly through the `Vfs` struct (enforced by API design, not runtime checks)
 
-### With `ff-config` (Core Layer — peer)
+### With `ff-config` (Core Layer -- peer)
 
 - **Dependency direction**: ff-vfs depends on ff-config for VFS-specific configuration
 - **Configuration namespace**: `[vfs]` in the workbench TOML file
 - **Configuration keys**:
-  - `vfs.default_scheme` — default provider for bare paths (default: "local")
-  - `vfs.watch_debounce_ms` — global default debounce for watch subscriptions (default: 100)
-  - `vfs.search_max_file_size` — default max file size for content search (default: 10MB)
+  - `vfs.default_scheme` -- default provider for bare paths (default: "local")
+  - `vfs.watch_debounce_ms` -- global default debounce for watch subscriptions (default: 100)
+  - `vfs.search_max_file_size` -- default max file size for content search (default: 10MB)
 
-### With `ff-connector-local-fs` (Wave 3 — downstream provider)
+### With `ff-connector-local-fs` (Wave 3 -- downstream provider)
 
 - **Dependency direction**: ff-connector-local-fs depends on ff-vfs (implements `VfsProvider`)
 - **Integration**: The local FS connector registers with scheme "local" during startup
-- **Bundled**: The local FS connector is always available (not a plugin — it's a core crate)
+- **Bundled**: The local FS connector is always available (not a plugin -- it's a core crate)
 
-### With `ff-connector-extensibility` (Wave 3 — peer)
+### With `ff-connector-extensibility` (Wave 3 -- peer)
 
 - **Dependency direction**: ff-connector-extensibility depends on ff-vfs
 - **Integration**: Defines the plugin trait for connector plugins that extends `VfsProvider` with additional lifecycle hooks for remote connection management
@@ -967,7 +967,7 @@ max_watch_subscriptions = 1000
 
 ## 9. Correctness Properties (Property-Based Testing)
 
-The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal — it must hold for all valid inputs.
+The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal -- it must hold for all valid inputs.
 
 ### Property 1: URI Round-Trip (Parse ↔ Display)
 
@@ -1017,7 +1017,7 @@ The following properties are suitable for property-based testing with the `propt
 
 **Validates:** Requirement 3 AC 3
 
-### Property 5: Capability Gate — Unsupported Operations
+### Property 5: Capability Gate -- Unsupported Operations
 
 **Statement:** If a provider declares it does NOT have a capability C, invoking the operation corresponding to C always returns `UnsupportedOperation` without modifying state.
 
@@ -1043,7 +1043,7 @@ The following properties are suitable for property-based testing with the `propt
 
 ### Property 7: Bare Path Default Provider Delegation
 
-**Statement:** A bare path (no `vfs://` prefix) is always equivalent to `vfs://local/{path}` — it is routed to the default provider.
+**Statement:** A bare path (no `vfs://` prefix) is always equivalent to `vfs://local/{path}` -- it is routed to the default provider.
 
 ```
 ∀ bare_path:
@@ -1080,7 +1080,7 @@ The following properties are suitable for property-based testing with the `propt
 
 ```
 ∀ concurrent operations (register, get, deregister, list_schemes):
-    operations are linearizable — each operation appears to execute atomically
+    operations are linearizable -- each operation appears to execute atomically
     at some point between its invocation and response
 ```
 
@@ -1107,7 +1107,7 @@ The following properties are suitable for property-based testing with the `propt
 - Bare path delegation (Property 7)
 - Debounce collapse (Property 8)
 - Cross-provider rename rejection (Property 9)
-- Thread safety (Property 10 — concurrent test with multiple threads)
+- Thread safety (Property 10 -- concurrent test with multiple threads)
 
 ### Integration Tests
 - End-to-end file read/write with in-memory provider

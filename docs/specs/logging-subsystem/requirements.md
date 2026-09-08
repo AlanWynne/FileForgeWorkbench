@@ -2,9 +2,9 @@
 
 ## Introduction
 
-This feature specifies the structured file-based logging subsystem for FileForgeWorkbench (`ff-logging` crate). The logging subsystem is a **foundational dependency** — every other crate in the workspace (platform-core, command-framework, plugin-architecture, workflow-engine, document-model, and all plugins) depends on `ff-logging` for diagnostic output. Because the workbench application is built as a GUI-independent platform with a replaceable rendering shell (see Architecture Brief §3 Principle 1), no console or terminal is guaranteed at runtime. All application log output (informational messages, warnings, errors, and debug traces) must be written to a persistent log file.
+This feature specifies the structured file-based logging subsystem for FileForgeWorkbench (`ff-logging` crate). The logging subsystem is a **foundational dependency** -- every other crate in the workspace (platform-core, command-framework, plugin-architecture, workflow-engine, document-model, and all plugins) depends on `ff-logging` for diagnostic output. Because the workbench application is built as a GUI-independent platform with a replaceable rendering shell (see Architecture Brief §3 Principle 1), no console or terminal is guaranteed at runtime. All application log output (informational messages, warnings, errors, and debug traces) must be written to a persistent log file.
 
-The logging subsystem supports configurable log levels, structured timestamps, automatic log rotation, and graceful degradation. It integrates with the workbench `platform-core` layer and is accessible to all plugins via the `plugin-architecture` trait without tight coupling — plugins obtain a logging handle through `PluginContext` at initialization time.
+The logging subsystem supports configurable log levels, structured timestamps, automatic log rotation, and graceful degradation. It integrates with the workbench `platform-core` layer and is accessible to all plugins via the `plugin-architecture` trait without tight coupling -- plugins obtain a logging handle through `PluginContext` at initialization time.
 
 The application's process model is also formally specified: the workbench runs as a standalone GUI process without spawning or requiring a terminal window, while remaining fully functional when launched from a command-line shell.
 
@@ -31,7 +31,7 @@ The application's process model is also formally specified: the workbench runs a
 
 **User Story:** As a developer, I want the logging subsystem to initialize early in the application startup sequence, so that all subsequent operations (including error paths) have a functioning log sink available.
 
-**Source:** FFE Req 1 — adapted for workbench platform-core startup sequence. [FFE, WB]
+**Source:** FFE Req 1 -- adapted for workbench platform-core startup sequence. [FFE, WB]
 
 #### Acceptance Criteria
 
@@ -48,7 +48,7 @@ The application's process model is also formally specified: the workbench runs a
 
 **User Story:** As a developer, I want log records to follow a consistent structured format with timestamps and severity levels, so that I can efficiently search, filter, and correlate log entries during debugging.
 
-**Source:** FFE Req 2 — unchanged format specification. [FFE]
+**Source:** FFE Req 2 -- unchanged format specification. [FFE]
 
 #### Acceptance Criteria
 
@@ -64,7 +64,7 @@ The application's process model is also formally specified: the workbench runs a
 
 **User Story:** As a user, I want to configure the minimum log level, so that I can control the verbosity of log output without recompiling the application.
 
-**Source:** FFE Req 3 — adapted to reference Workbench_Config (configuration-system). [FFE, WB]
+**Source:** FFE Req 3 -- adapted to reference Workbench_Config (configuration-system). [FFE, WB]
 
 #### Acceptance Criteria
 
@@ -80,7 +80,7 @@ The application's process model is also formally specified: the workbench runs a
 
 **User Story:** As a user, I want to configure where log files are stored, so that I can place them on an appropriate disk or partition for my environment.
 
-**Source:** FFE Req 4 — adapted path defaults and naming for workbench. [FFE, WB]
+**Source:** FFE Req 4 -- adapted path defaults and naming for workbench. [FFE, WB]
 
 #### Acceptance Criteria
 
@@ -96,7 +96,7 @@ The application's process model is also formally specified: the workbench runs a
 
 **User Story:** As a user, I want log files to rotate automatically when they grow large, so that disk space consumption remains bounded without manual intervention.
 
-**Source:** FFE Req 5 — adapted config key paths to workbench configuration-system. [FFE, WB]
+**Source:** FFE Req 5 -- adapted config key paths to workbench configuration-system. [FFE, WB]
 
 #### Acceptance Criteria
 
@@ -117,7 +117,7 @@ The application's process model is also formally specified: the workbench runs a
 
 **User Story:** As a developer, I want log records to be flushed to disk reliably, so that diagnostic information is not lost during crashes or unexpected termination.
 
-**Source:** FFE Req 6 — unchanged core semantics. [FFE]
+**Source:** FFE Req 6 -- unchanged core semantics. [FFE]
 
 #### Acceptance Criteria
 
@@ -133,7 +133,7 @@ The application's process model is also formally specified: the workbench runs a
 
 **User Story:** As a user, I want FileForgeWorkbench to run as a standalone GUI window without a console window appearing, so that the application behaves like a native desktop application when launched from the Start Menu, desktop shortcut, or file association.
 
-**Source:** FFE Req 7 — adapted for workbench GUI-independent platform-core architecture. The workbench separates the GUI shell from the core; logging operates at the core level regardless of which GUI shell is active. [FFE, WB]
+**Source:** FFE Req 7 -- adapted for workbench GUI-independent platform-core architecture. The workbench separates the GUI shell from the core; logging operates at the core level regardless of which GUI shell is active. [FFE, WB]
 
 #### Acceptance Criteria
 
@@ -151,7 +151,7 @@ The application's process model is also formally specified: the workbench runs a
 
 **User Story:** As a developer, I want the logging subsystem to be safe for use from multiple threads without impacting UI responsiveness, so that background tasks (Tokio workers, file I/O, plugin operations) and the render loop can log freely.
 
-**Source:** FFE Req 8 — adapted for workbench async model (Tokio-based background workers per Architecture Brief §9). [FFE, WB]
+**Source:** FFE Req 8 -- adapted for workbench async model (Tokio-based background workers per Architecture Brief §9). [FFE, WB]
 
 #### Acceptance Criteria
 
@@ -168,7 +168,7 @@ The application's process model is also formally specified: the workbench runs a
 
 **User Story:** As a developer, I want all platform-core subsystems (commands, file engine, macros, editor sessions, workflows) to use the logging subsystem for diagnostic output, so that there is a single consistent log stream for the entire workbench.
 
-**Source:** FFE Req 9 — adapted for workbench multi-crate architecture and command-framework. [FFE, WB]
+**Source:** FFE Req 9 -- adapted for workbench multi-crate architecture and command-framework. [FFE, WB]
 
 #### Acceptance Criteria
 
@@ -184,7 +184,7 @@ The application's process model is also formally specified: the workbench runs a
 
 **User Story:** As a plugin developer, I want to use the workbench logging subsystem from my plugin without tight coupling to logging implementation details, so that all plugin diagnostic output is unified in the same log stream as the platform-core.
 
-**Source:** NEW — derived from workbench plugin-architecture principle (Architecture Brief §10). [WB]
+**Source:** NEW -- derived from workbench plugin-architecture principle (Architecture Brief §10). [WB]
 
 #### Acceptance Criteria
 

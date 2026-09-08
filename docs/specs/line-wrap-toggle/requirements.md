@@ -4,20 +4,20 @@
 
 This feature specifies the **line wrap toggle** subsystem for FileForgeWorkbench (`ff-line-wrap-toggle` crate). Line wrapping controls whether long document lines are rendered as a single display row (requiring horizontal scrolling) or broken across multiple visual rows to fit within a specified width. The feature provides three wrap modes, a WRAP primary command with multiple sub-commands, configurable wrap boundaries (viewport width or fixed column), and wrap indent options for continuation lines.
 
-Line wrapping is a **per-document display property** — it does not modify document content, does not insert line breaks, and is not an undoable operation. Each editor instance maintains its own wrap mode independently. When wrap is active, a single document line may occupy multiple display lines (sub-lines), directly affecting the display-line-mapping layer that tracks document-to-display line relationships.
+Line wrapping is a **per-document display property** -- it does not modify document content, does not insert line breaks, and is not an undoable operation. Each editor instance maintains its own wrap mode independently. When wrap is active, a single document line may occupy multiple display lines (sub-lines), directly affecting the display-line-mapping layer that tracks document-to-display line relationships.
 
 The feature merges concepts from three sources:
 
-1. **FileForgeEditor** (`line-wrap-toggle`) — per-tab boolean wrap state, WRAP command (ON/OFF/toggle), View menu toggle, horizontal scrollbar interaction, configuration default.
-2. **Scintilla** — multi-mode wrapping (None/Word/Character/Whitespace), wrap indent modes (Fixed/Same/Indent/DeepIndent), wrap visual flags (start/end markers), wrap-at-viewport-width semantics, display line mapping integration.
-3. **Workbench Architecture Brief** — command-driven operations, per-editor-instance state, configuration-as-data, session persistence.
+1. **FileForgeEditor** (`line-wrap-toggle`) -- per-tab boolean wrap state, WRAP command (ON/OFF/toggle), View menu toggle, horizontal scrollbar interaction, configuration default.
+2. **Scintilla** -- multi-mode wrapping (None/Word/Character/Whitespace), wrap indent modes (Fixed/Same/Indent/DeepIndent), wrap visual flags (start/end markers), wrap-at-viewport-width semantics, display line mapping integration.
+3. **Workbench Architecture Brief** -- command-driven operations, per-editor-instance state, configuration-as-data, session persistence.
 
 The Scintilla `SC_WRAP_WHITESPACE` mode is excluded from initial scope (it wraps only at whitespace boundaries, similar to Word mode but stricter). It may be added in a future phase if user demand warrants it.
 
 **Source references:**
-- **[FFE-WRAP]** = FileForgeEditor `line-wrap-toggle` specification (7 requirements — per-tab state, WRAP command, View menu toggle, rendering ON/OFF, scrollbar interaction, configuration)
-- **[SCI-VS-10]** = Scintilla `WrapAppearance` struct — `Wrap` enum (None/Word/Char/Whitespace), `WrapVisualFlag`, `WrapVisualLocation`, `WrapIndentMode` (Fixed/Same/Indent/DeepIndent), `visualStartIndent`
-- **[WB]** = Workbench Architecture Brief — command-driven architecture, per-editor-instance state, configuration-as-data, session persistence
+- **[FFE-WRAP]** = FileForgeEditor `line-wrap-toggle` specification (7 requirements -- per-tab state, WRAP command, View menu toggle, rendering ON/OFF, scrollbar interaction, configuration)
+- **[SCI-VS-10]** = Scintilla `WrapAppearance` struct -- `Wrap` enum (None/Word/Char/Whitespace), `WrapVisualFlag`, `WrapVisualLocation`, `WrapIndentMode` (Fixed/Same/Indent/DeepIndent), `visualStartIndent`
+- **[WB]** = Workbench Architecture Brief -- command-driven architecture, per-editor-instance state, configuration-as-data, session persistence
 
 ## Cross-References
 
@@ -31,7 +31,7 @@ The Scintilla `SC_WRAP_WHITESPACE` mode is excluded from initial scope (it wraps
 | `menu-and-statusbar` | **Consumer** | Status bar displays wrap mode indicator. View menu exposes wrap mode submenu. |
 | `multi-tab-editor` | **Integration** | Each tab maintains its own wrap mode as per-editor-instance state. Tab switching updates UI indicators. |
 | `startup-and-session` | **Integration** | Per-document wrap mode is persisted in session state for restore on reopen. |
-| `idle-processing` | **Consumer** | Background wrap height recalculation for large files — wrap layout is computed incrementally in idle time rather than blocking the UI thread. |
+| `idle-processing` | **Consumer** | Background wrap height recalculation for large files -- wrap layout is computed incrementally in idle time rather than blocking the UI thread. |
 
 ## Glossary
 
@@ -41,7 +41,7 @@ The Scintilla `SC_WRAP_WHITESPACE` mode is excluded from initial scope (it wraps
 - **Wrap_At_Column**: An alternative wrap boundary mode where lines wrap at a fixed column number regardless of viewport width. Useful for enforcing line-length conventions. [SCI-VS-10]
 - **Wrap_Indent_Mode**: An enumeration controlling the indentation of continuation lines (sub-lines). Values: `Fixed` (indent by a fixed amount), `Same` (align with start of first sub-line), `Indent` (same + one indent level), `DeepIndent` (same + two indent levels). [SCI-VS-10]
 - **Wrap_Visual_Flag**: Visual indicators rendered at continuation line boundaries to show where a logical line has been wrapped. Can appear at end of the sub-line, start of the next sub-line, or in the margin. [SCI-VS-10]
-- **Continuation_Line**: A display sub-line that is not the first sub-line of a document line — it exists because the document line was too long to fit in one display row. [SCI-VS-10]
+- **Continuation_Line**: A display sub-line that is not the first sub-line of a document line -- it exists because the document line was too long to fit in one display row. [SCI-VS-10]
 - **Sub_Line**: A specific display line within a wrapped document line, identified by a zero-based offset from the first display line of that document line. [SCI-VS-10]
 - **Display_Line_Height**: The number of display lines (sub-lines) a single document line occupies. Height 1 means unwrapped; height ≥ 2 means the line wraps onto additional rows. [SCI-VS-10]
 - **Editor_Instance**: A single editor pane associated with one open document/tab. Each instance has its own independent Wrap_Mode. [WB]
@@ -62,7 +62,7 @@ The Scintilla `SC_WRAP_WHITESPACE` mode is excluded from initial scope (it wraps
 #### Acceptance Criteria
 
 1. THE system SHALL define a `WrapMode` enum with exactly three variants: `None`, `Word`, and `Character`.
-2. WHEN Wrap_Mode is `None`, THE Editor_Instance SHALL render each document line as exactly one display row regardless of line length — no visual line breaking is applied.
+2. WHEN Wrap_Mode is `None`, THE Editor_Instance SHALL render each document line as exactly one display row regardless of line length -- no visual line breaking is applied.
 3. WHEN Wrap_Mode is `Word`, THE Editor_Instance SHALL break long lines at word boundaries (whitespace, punctuation adjacent to alphanumeric characters) so that whole words are preserved on each sub-line where possible.
 4. WHEN Wrap_Mode is `Word` and a single word exceeds the Wrap_Boundary width, THE Editor_Instance SHALL break the word at the Wrap_Boundary position (falling back to character-level breaking for that segment).
 5. WHEN Wrap_Mode is `Character`, THE Editor_Instance SHALL break long lines at the exact character position that fills the Wrap_Boundary width, without regard to word boundaries.
@@ -105,13 +105,13 @@ The Scintilla `SC_WRAP_WHITESPACE` mode is excluded from initial scope (it wraps
 9. WHEN `WRAP ON` is executed while wrap is already active (Word or Character), THE system SHALL return a confirmation message indicating the current mode and take no other action.
 10. WHEN `WRAP OFF` is executed while wrap is already None, THE system SHALL return a confirmation message "Wrap is already off" and take no other action.
 11. THE WRAP command SHALL be valid in Browse mode, Edit mode, View mode, and all special modes.
-12. THE WRAP command SHALL NOT be recorded as an undoable transaction — wrap is a display-only state change.
+12. THE WRAP command SHALL NOT be recorded as an undoable transaction -- wrap is a display-only state change.
 13. THE WRAP command SHALL NOT be added to command history (display-only operation with no semantic significance to editing).
 14. WHEN an invalid sub-command is provided (e.g., `WRAP BANANA`), THE system SHALL display an error message listing valid sub-commands: ON, OFF, TOGGLE, WORD, CHAR.
 
 ---
 
-### Requirement 4: Wrap Boundary — Viewport Width vs Fixed Column
+### Requirement 4: Wrap Boundary -- Viewport Width vs Fixed Column
 
 **User Story:** As a user, I want to choose whether lines wrap at the current viewport edge or at a fixed column number, so that I can enforce line-length conventions independent of window size.
 
@@ -122,7 +122,7 @@ The Scintilla `SC_WRAP_WHITESPACE` mode is excluded from initial scope (it wraps
 1. THE system SHALL support two wrap boundary modes: `Viewport` (dynamic, wraps at current text area width) and `Column(n)` (static, wraps at column n regardless of viewport width).
 2. WHEN wrap boundary is `Viewport`, THE Editor_Instance SHALL recompute wrap positions whenever the text area width changes (window resize, panel dock/undock, margin width change). Wrapped line heights SHALL update to reflect the new width.
 3. WHEN wrap boundary is `Column(n)`, THE Editor_Instance SHALL wrap lines at column n regardless of viewport width. IF the viewport is wider than column n, excess space to the right of column n SHALL remain empty.
-4. WHEN wrap boundary is `Column(n)` and the viewport is narrower than column n, THE Editor_Instance SHALL still wrap at column n — content beyond the viewport edge is accessible via horizontal scrolling even when wrap is active.
+4. WHEN wrap boundary is `Column(n)` and the viewport is narrower than column n, THE Editor_Instance SHALL still wrap at column n -- content beyond the viewport edge is accessible via horizontal scrolling even when wrap is active.
 5. THE configuration-system SHALL accept a `wrap_column` key (integer, 0 means Viewport mode, positive integer means Column mode). Default: 0 (Viewport).
 6. THE WRAP command SHALL support `WRAP COL n` to set a fixed wrap column, and `WRAP COL 0` to revert to viewport-width wrapping.
 7. WHEN `wrap_column` is negative or exceeds 10000, THE system SHALL treat it as invalid, apply the default (Viewport mode), and emit a configuration warning.
@@ -138,14 +138,14 @@ The Scintilla `SC_WRAP_WHITESPACE` mode is excluded from initial scope (it wraps
 #### Acceptance Criteria
 
 1. THE system SHALL support four wrap indent modes: `Fixed`, `Same`, `Indent`, and `DeepIndent`.
-2. WHEN Wrap_Indent_Mode is `Fixed`, continuation lines SHALL be indented by a fixed number of characters from the left margin, defined by the `wrap_indent_amount` configuration value (default: 0 — flush left).
+2. WHEN Wrap_Indent_Mode is `Fixed`, continuation lines SHALL be indented by a fixed number of characters from the left margin, defined by the `wrap_indent_amount` configuration value (default: 0 -- flush left).
 3. WHEN Wrap_Indent_Mode is `Same`, continuation lines SHALL be indented to the same column as the first non-whitespace character of the first sub-line (matching the source line's indentation level).
 4. WHEN Wrap_Indent_Mode is `Indent`, continuation lines SHALL be indented to the same position as `Same` mode plus one additional indent level (one tab stop or `indent_width` spaces).
 5. WHEN Wrap_Indent_Mode is `DeepIndent`, continuation lines SHALL be indented to the same position as `Same` mode plus two additional indent levels.
 6. THE configuration-system SHALL accept a `wrap_indent_mode` key with valid values: `"fixed"`, `"same"`, `"indent"`, `"deep_indent"`. Default: `"fixed"`.
 7. THE configuration-system SHALL accept a `wrap_indent_amount` key (integer, 0–40) specifying the fixed indent in characters when using `Fixed` mode. Default: 0.
 8. WHEN `wrap_indent_amount` is outside the valid range (0–40), THE system SHALL clamp it and emit a configuration warning.
-9. THE wrap indent SHALL reduce the effective width available for text on continuation lines — the wrap position for subsequent sub-lines accounts for the indent offset.
+9. THE wrap indent SHALL reduce the effective width available for text on continuation lines -- the wrap position for subsequent sub-lines accounts for the indent offset.
 
 ---
 
@@ -161,7 +161,7 @@ The Scintilla `SC_WRAP_WHITESPACE` mode is excluded from initial scope (it wraps
 2. WHEN Wrap_Mode changes from `Word` or `Character` to `None`, THE system SHALL set the display height of every visible document line to 1 via `set_height(doc_line, 1)`.
 3. WHEN a document line is edited while wrap is active, THE system SHALL recompute the display height of that line and update the display-line-mapping if the height changed.
 4. WHEN the Wrap_Boundary changes (viewport resize or column change) while wrap is active, THE system SHALL recompute display heights for all visible lines and update the display-line-mapping.
-5. FOR large documents, wrap height recalculation SHALL be performed incrementally via the idle-processing system — only visible and near-viewport lines are computed immediately; remaining lines are computed in background idle cycles.
+5. FOR large documents, wrap height recalculation SHALL be performed incrementally via the idle-processing system -- only visible and near-viewport lines are computed immediately; remaining lines are computed in background idle cycles.
 6. UNTIL a line's wrap height has been computed by the idle-processing system, THE display-line-mapping SHALL assume a provisional height of 1 for that line.
 7. THE total Display_Line_Count (sum of all visible line heights) SHALL be used by viewport-and-scrolling to determine the vertical scrollbar range when wrap is active.
 8. THE display-line-mapping `doc_from_display` and `display_from_doc` methods SHALL correctly account for wrapped line heights, enabling click-to-position and scroll-to-line operations to target the correct sub-line within a wrapped document line.
@@ -179,7 +179,7 @@ The Scintilla `SC_WRAP_WHITESPACE` mode is excluded from initial scope (it wraps
 1. WHEN Wrap_Mode changes from `None` to `Word` or `Character` (with boundary mode `Viewport`), THE Editor_Instance SHALL hide the Horizontal_Scrollbar and reset `horizontal_offset` to 0.
 2. WHEN Wrap_Mode changes from `Word` or `Character` to `None`, THE Editor_Instance SHALL display the Horizontal_Scrollbar.
 3. WHILE Wrap_Mode is `None`, THE Horizontal_Scrollbar SHALL be visible and functional, with its thumb position reflecting `horizontal_offset` relative to the longest visible line width.
-4. WHILE Wrap_Mode is `Word` or `Character` with boundary `Viewport`, THE Horizontal_Scrollbar SHALL be hidden — all content is guaranteed to fit within the viewport width.
+4. WHILE Wrap_Mode is `Word` or `Character` with boundary `Viewport`, THE Horizontal_Scrollbar SHALL be hidden -- all content is guaranteed to fit within the viewport width.
 5. WHEN Wrap_Mode is `Word` or `Character` with boundary `Column(n)` and the viewport is narrower than column n, THE Horizontal_Scrollbar SHALL remain visible to allow horizontal panning of the wrapped content.
 
 ---
@@ -194,7 +194,7 @@ The Scintilla `SC_WRAP_WHITESPACE` mode is excluded from initial scope (it wraps
 
 1. WHEN the active Editor_Instance has Wrap_Mode `Word`, THE status bar SHALL display a Wrap_Indicator showing "Wrap: Word".
 2. WHEN the active Editor_Instance has Wrap_Mode `Character`, THE status bar SHALL display a Wrap_Indicator showing "Wrap: Char".
-3. WHEN the active Editor_Instance has Wrap_Mode `None`, THE status bar SHALL NOT display a Wrap_Indicator — it is omitted to reduce clutter at the default state.
+3. WHEN the active Editor_Instance has Wrap_Mode `None`, THE status bar SHALL NOT display a Wrap_Indicator -- it is omitted to reduce clutter at the default state.
 4. THE Wrap_Indicator SHALL be positioned in the status bar after the line/column display and before any other mode indicators.
 5. WHEN the user clicks the Wrap_Indicator in the status bar, THE Editor SHALL cycle through wrap modes: None → Word → Character → None.
 6. WHEN the user switches tabs, THE Wrap_Indicator SHALL update to reflect the Wrap_Mode of the newly active Editor_Instance.
@@ -230,7 +230,7 @@ The Scintilla `SC_WRAP_WHITESPACE` mode is excluded from initial scope (it wraps
 2. WHEN wrap visual flag `End` is enabled, THE Editor_Instance SHALL render a small wrap indicator glyph (e.g., a bent arrow or pilcrow) at the right edge of each sub-line that continues onto the next display row.
 3. WHEN wrap visual flag `Start` is enabled, THE Editor_Instance SHALL render a small wrap indicator glyph at the left side of each continuation line (not the first sub-line of a document line).
 4. WHEN wrap visual flag `Margin` is enabled, THE Editor_Instance SHALL render a wrap indicator in the line-number margin adjacent to each continuation line.
-5. WHEN no wrap visual flags are enabled (`None`), THE Editor_Instance SHALL render no visual markers at wrap break points — continuation lines appear seamlessly after the first sub-line.
+5. WHEN no wrap visual flags are enabled (`None`), THE Editor_Instance SHALL render no visual markers at wrap break points -- continuation lines appear seamlessly after the first sub-line.
 6. THE configuration-system SHALL accept a `wrap_visual_flags` key with valid values: `"none"`, `"end"`, `"start"`, `"start_end"`, `"margin"`. Default: `"none"`.
 7. THE visual flag indicators SHALL be rendered using the whitespace-and-guides rendering infrastructure, using the configured foreground colour for wrap markers.
 
@@ -267,9 +267,9 @@ The Scintilla `SC_WRAP_WHITESPACE` mode is excluded from initial scope (it wraps
    - `indent_amount` (integer): Fixed indent amount in characters (used when `indent_mode` is `"fixed"`). Range: 0–40. Default: 0.
    - `visual_flags` (string): Wrap visual flags. Values: `"none"`, `"end"`, `"start"`, `"start_end"`, `"margin"`. Default: `"none"`.
 2. WHEN any configuration key contains an invalid value, THE system SHALL apply the default for that key and emit a configuration warning via the logging-subsystem.
-3. WHEN wrap configuration keys are changed via hot-reload, THE system SHALL apply the new defaults to newly opened documents only — already-open documents retain their current wrap settings.
+3. WHEN wrap configuration keys are changed via hot-reload, THE system SHALL apply the new defaults to newly opened documents only -- already-open documents retain their current wrap settings.
 4. THE `[view.wrap]` configuration SHALL support the layered override model: workspace-level overrides user-level, project-level overrides workspace-level.
-5. IF `default_mode` is set to `"word"` or `"character"`, new documents SHALL open with wrap already active — the user does not need to manually enable it.
+5. IF `default_mode` is set to `"word"` or `"character"`, new documents SHALL open with wrap already active -- the user does not need to manually enable it.
 
 ---
 

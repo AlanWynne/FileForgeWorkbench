@@ -163,22 +163,22 @@ Modifications to existing behaviour that already works.
 - **Status**: DONE -- Phase BM complete, 497 tests passing (sidebar_width persistence added)
 - **Linked spec**: `docs/specs/file-tree-panel/requirements.md` (new Requirement 23)
 
-### CR-NR-015 — Requirements Review and Modernisation
+### CR-NR-015 -- Requirements Review and Modernisation
 - **Date/Phase**: Phase BQ
 - **Prompt**: "You are acting as a Senior Product Architect, Requirements Engineer, UX Architect, and Software Platform Designer... Perform a comprehensive review of the supplied requirements..."
 - **Description**: Comprehensive review of all 65 sub-project specifications. Deliverables: inventory, terminology map, domain classification, gap analysis, rewritten requirements catalogue, traceability matrix, consolidation report, and executive assessment. Work is broken into 10 tasks tracked under `docs/reviews/requirements-review/`.
 - **Status**: DONE -- Phase BQ complete, all 10 tasks done, 8 artefacts delivered
 - **Linked spec**: `docs/reviews/requirements-review/` (all 10 output files complete)
 
-### CR-NR-015 status update — Tasks 1-4 complete
+### CR-NR-015 status update -- Tasks 1-4 complete
 - Tasks 1 (Inventory), 2 (Terminology), 3 (Domain Classification), 4 (Gap Analysis) are DONE.
 - Output files: `docs/reviews/requirements-review/inventory.md`, `terminology-map.md`, `domain-classification.md`, `gap-analysis.md`
 - Tasks 5-10 pending.
 
-### CR-NR-015 status update — Tasks 9-10 complete — Phase BQ DONE
+### CR-NR-015 status update -- Tasks 9-10 complete -- Phase BQ DONE
 - Tasks 9 (Consolidation Report) and 10 (Executive Assessment) are DONE.
 - Output files: `docs/reviews/requirements-review/consolidation-report.md`, `executive-assessment.md`
-- **Status**: DONE — All 10 tasks complete. 497 tests passing. 8 artefacts delivered.
+- **Status**: DONE -- All 10 tasks complete. 497 tests passing. 8 artefacts delivered.
 
 ### CR-NR-017 -- Catalog Location Discriminant (local vs remote catalog transport)
 - **Date/Phase**: Phase BV
@@ -190,7 +190,7 @@ Modifications to existing behaviour that already works.
 ### CR-NR-016 - Mainframe Dataset Architecture and Virtual File/Dataset Storage Requirements
 - **Date/Phase**: Phase BS (next)
 - **Prompt**: "i have two new markdown files for this project defining how the mainframe dataset and posix catalogs should work and how mainframe files will be emulated..."
-- **Description**: Two new architecture documents define: (1) record-oriented storage for PS/PDS/PDSE/GDG/VSAM/ISAM with no CRLF/LF record boundaries; (2) hybrid storage — SQLite as catalogue, native files for sequential/library content; (3) StorageProvider abstraction layer separate from VfsProvider; (4) record codecs (F, FB, V, VB, U, binary) as independent components; (5) UUID-based physical object layout; (6) staged transaction protocol for cross-resource consistency; (7) VSAM KSDS/RRDS/ESDS and ISAM support; (8) integrity manifests, workspace backup/restore; (9) security path-traversal guards and audit trail; (10) POSIX files remain native with no SQLite BLOB storage.
+- **Description**: Two new architecture documents define: (1) record-oriented storage for PS/PDS/PDSE/GDG/VSAM/ISAM with no CRLF/LF record boundaries; (2) hybrid storage -- SQLite as catalogue, native files for sequential/library content; (3) StorageProvider abstraction layer separate from VfsProvider; (4) record codecs (F, FB, V, VB, U, binary) as independent components; (5) UUID-based physical object layout; (6) staged transaction protocol for cross-resource consistency; (7) VSAM KSDS/RRDS/ESDS and ISAM support; (8) integrity manifests, workspace backup/restore; (9) security path-traversal guards and audit trail; (10) POSIX files remain native with no SQLite BLOB storage.
 - **Status**: DONE -- Phase BS complete (BS.1-BS.15), all 15 deliverables implemented and tested
 - **Linked spec**: `docs/specs/dataset-catalog/requirements.md` (new Requirements 16-30), `docs/specs/virtual-file-system/requirements.md` (new Requirements 9-12)
 
@@ -485,3 +485,10 @@ Modifications to existing behaviour that already works.
 - **Description**: Extend the FFTest framework with: (1) Workspace context inspection assertions (`ASSERT CONTEXT IS`, `ASSERT WORKSPACE COUNT IS`, `ASSERT OPTION EXISTS`); (2) automatic bug report generation -- on assertion failure the runner appends a structured entry to `reports/bugs-from-tests.md` in a format compatible with `docs/status/bugs.md`; (3) a full FFTest script suite covering all major functional areas (POM navigation, file ops, editor, catalog management, settings, key config, compiler, plugin manager, notification system, batch, global search, command palette). New requirements Reqs 11-13 in `automated-dialog-testing/requirements.md`.
 - **Status**: PENDING GATE
 - **Linked spec**: `docs/specs/automated-dialog-testing/requirements.md` (new Reqs 11-13)
+
+### CR-NR-050 -- Configurable Menu Option Limits (soft warning + hard maximum)
+- **Date/Phase**: Phase DA (pre-gate)
+- **Prompt**: "the menu workspace has a hard limit of 9 or 12 items? Should this not be configurable? if Configurable should we have an upper limit? an infinite list is impractical, what is Reasonable?"
+- **Description**: The Menu Workspace pattern places no explicit cap on option count today (the "9" and "12" figures are content of specific POM menu files, not pattern constraints). Add explicit, configurable option-count limits to the Menu Workspace pattern: a soft limit (default 64) that logs a WARN and shows an in-panel advisory suggesting sub-menus, and a hard limit (default 256) that is treated as a Menu_File load error. Both limits are configuration keys (`menu.soft_option_limit`, `menu.hard_option_limit`) resolved through the layered configuration system, so they can be tuned per user/project. Adds Requirement 9 to `menu-workspace/requirements.md` and cross-references `configuration-system`.
+- **Status**: DONE -- Phase DA gate complete (Req 9 added) and DA-impl complete (Tasks 16-20); config keys registered, loader/state/render/hot-reload implemented, 15 new tests passing, TCR rows PASS
+- **Linked spec**: `docs/specs/menu-workspace/requirements.md` (new Requirement 9), `docs/specs/configuration-system/requirements.md` (cross-reference note on Req 9 schema)

@@ -5,32 +5,32 @@
 The `caret-and-selection` sub-project defines the **visual presentation** of the caret (cursor), selection highlighting, caret-line highlighting, and virtual space rendering within FileForgeWorkbench. This spec covers the rendering-side concerns: how the caret is drawn, how selected text is visually distinguished, how the caret line is highlighted, and how virtual space is displayed. The logical selection model (SelectionPosition, SelectionRange, Selection container, multi-caret coordination) is defined in `edit-operations`; this spec consumes that model and specifies its visual representation.
 
 This spec covers:
-- **Caret shape and style** — Invisible, Line, Block caret modes with configurable width and colour
-- **Caret blink** — Blink period managed by the GUI shell; the model is blink-agnostic
-- **Caret colour** — Primary caret colour and additional caret colour for multi-caret display
-- **Caret line highlight** — Whole-line or sub-line background/frame highlighting for the current caret line
-- **Selection display** — Selection background/foreground colours, layer modes (base vs translucent over-text)
-- **Selection element colours** — Primary, additional, secondary, and inactive selection colour elements
-- **Selection EOL fill** — Whether selection colouring extends past line-end to the right edge
-- **Virtual space display** — Visual caret positioning beyond line-end content
-- **Rectangular selection display** — Column-highlight rendering for rectangular selections
-- **Multi-caret display** — Rendering multiple visible carets simultaneously
-- **Modified line marker rendering** — Visual rendering of the `*` marker from edit-operations logical state
-- **Theme integration** — All visual settings configurable via the theme system
+- **Caret shape and style** -- Invisible, Line, Block caret modes with configurable width and colour
+- **Caret blink** -- Blink period managed by the GUI shell; the model is blink-agnostic
+- **Caret colour** -- Primary caret colour and additional caret colour for multi-caret display
+- **Caret line highlight** -- Whole-line or sub-line background/frame highlighting for the current caret line
+- **Selection display** -- Selection background/foreground colours, layer modes (base vs translucent over-text)
+- **Selection element colours** -- Primary, additional, secondary, and inactive selection colour elements
+- **Selection EOL fill** -- Whether selection colouring extends past line-end to the right edge
+- **Virtual space display** -- Visual caret positioning beyond line-end content
+- **Rectangular selection display** -- Column-highlight rendering for rectangular selections
+- **Multi-caret display** -- Rendering multiple visible carets simultaneously
+- **Modified line marker rendering** -- Visual rendering of the `*` marker from edit-operations logical state
+- **Theme integration** -- All visual settings configurable via the theme system
 
 **Scope boundaries:**
 - The logical selection model (positions, ranges, adjustment, multi-caret coordination) is defined in `edit-operations`
 - Colour palette definitions and theme file format are defined in `theme-and-appearance`
 - Configuration loading/hot-reload mechanics are defined in `configuration-system`
 - Viewport scroll-to-caret policies are defined in `viewport-and-scrolling`
-- The caret blink timer is owned by the GUI shell — this spec defines the blink period setting but not the timer implementation
+- The caret blink timer is owned by the GUI shell -- this spec defines the blink period setting but not the timer implementation
 
 **Source references:**
-- **[FFE-MVP-2]** = FileForgeEditor mvp-implementation Requirement 2 (cursor row visual distinction — border/outline, no background fill for cursor indication)
+- **[FFE-MVP-2]** = FileForgeEditor mvp-implementation Requirement 2 (cursor row visual distinction -- border/outline, no background fill for cursor indication)
 - **[FFE-MVP-2.18]** = FileForgeEditor mvp-implementation Requirement 2 criterion 18 (cursor move gives text field keyboard focus)
 - **[FFE-MVP-8]** = FileForgeEditor mvp-implementation Requirement 8 (selection highlighting with distinct colour, not obscuring text)
-- **[SCI-VS-7]** = Scintilla ViewStyle Requirement 7 (selection appearance — visible, layer, eolFilled, element colours, translucent)
-- **[SCI-VS-8]** = Scintilla ViewStyle Requirement 8 (caret appearance — style, width, colour, caret-line highlight)
+- **[SCI-VS-7]** = Scintilla ViewStyle Requirement 7 (selection appearance -- visible, layer, eolFilled, element colours, translucent)
+- **[SCI-VS-8]** = Scintilla ViewStyle Requirement 8 (caret appearance -- style, width, colour, caret-line highlight)
 - **[SCI-SEL-4.1]** = Scintilla Selection model Requirement 4.1 (virtual space, rectangular selection, multi-caret, selection types)
 - **[WB]** = Workbench Platform Architecture Brief (GUI independence, theme-configurable, model-rendering separation)
 
@@ -39,14 +39,14 @@ This spec covers:
 ## Glossary
 
 - **Caret**: The visual cursor rendered at the logical caret position from `edit-operations`. Drawn as a line, block, or invisible shape depending on configuration. [SCI-VS-8]
-- **Caret Style**: The shape of the caret — Invisible (not drawn), Line (vertical bar), Block (solid rectangle spanning one character cell). [SCI-VS-8]
+- **Caret Style**: The shape of the caret -- Invisible (not drawn), Line (vertical bar), Block (solid rectangle spanning one character cell). [SCI-VS-8]
 - **Caret Width**: The pixel width of the Line-style caret. Default 1px. Configurable in the range [1, 20]. [SCI-VS-8]
 - **Caret Line**: The entire display line containing the primary caret. May be highlighted with a background colour or frame border. [SCI-VS-8]
 - **Caret Line Frame**: An outline/border drawn around the caret line instead of a solid fill. Specified as a pixel width. [FFE-MVP-2, SCI-VS-8]
 - **Overstrike Block Caret**: A block-shaped caret displayed when the editor is in Overstrike Mode, indicating that typed characters replace rather than insert. [SCI-VS-8]
 - **Blink Period**: The total duration (on-time + off-time) of one caret blink cycle, in milliseconds. A period of 0 means no blinking (always visible). [WB]
 - **Selection Display**: The visual highlighting applied to text that is currently selected (between anchor and caret). [FFE-MVP-8, SCI-VS-7]
-- **Layer Mode**: Controls how the selection colour is composited — Base (opaque, drawn under text) or OverText (translucent, alpha-blended over text). [SCI-VS-7]
+- **Layer Mode**: Controls how the selection colour is composited -- Base (opaque, drawn under text) or OverText (translucent, alpha-blended over text). [SCI-VS-7]
 - **EOL Fill**: Whether selection colouring extends beyond the last character of a line to the right edge of the text area. [SCI-VS-7]
 - **Element Colour**: A named colour slot that can be configured independently via the theme. Elements include SelectionText, SelectionBack, Caret, CaretAdditional, CaretLineBack, etc. [SCI-VS-7, SCI-VS-8]
 - **Translucent Selection**: A selection drawn with alpha-blended colours, allowing underlying text and decorations to remain partially visible through the selection. [SCI-VS-7]
@@ -54,10 +54,10 @@ This spec covers:
 - **Rectangular Selection**: A column-oriented selection rendered as a vertical band spanning the same left-right column range across multiple lines. [SCI-SEL-4.1]
 - **Multi-Caret Display**: Rendering multiple simultaneous carets, each with its own colour (primary vs additional). [SCI-SEL-4.1]
 - **Modified Line Marker**: A visual `*` indicator displayed in the prefix area for lines that have been modified since the last save. The logical state is managed by `edit-operations`; this spec defines the rendering. [FFE-MVP-2]
-- **Primary Caret**: The main caret (from the main SelectionRange) — uses the primary caret colour element. [SCI-VS-8]
-- **Additional Caret**: Non-main carets in a multi-caret scenario — uses the additional caret colour element. [SCI-VS-8]
-- **Inactive Selection**: A selection in a pane/view that does not currently have keyboard focus — rendered with muted colours. [SCI-VS-7]
-- **Secondary Selection**: Additional (non-primary) selection ranges in a multi-selection — rendered with secondary colours. [SCI-VS-7]
+- **Primary Caret**: The main caret (from the main SelectionRange) -- uses the primary caret colour element. [SCI-VS-8]
+- **Additional Caret**: Non-main carets in a multi-caret scenario -- uses the additional caret colour element. [SCI-VS-8]
+- **Inactive Selection**: A selection in a pane/view that does not currently have keyboard focus -- rendered with muted colours. [SCI-VS-7]
+- **Secondary Selection**: Additional (non-primary) selection ranges in a multi-selection -- rendered with secondary colours. [SCI-VS-7]
 
 ---
 
@@ -125,7 +125,7 @@ This spec covers:
 
 3. WHEN `blink_period_ms` is set to 0, THE caret SHALL remain permanently visible (no blinking). [WB]
 
-4. THE blink timer SHALL be owned and driven by the GUI shell — the caret-and-selection model SHALL expose only the period value and a `visible_phase` query method. The model SHALL NOT contain a timer implementation. [WB]
+4. THE blink timer SHALL be owned and driven by the GUI shell -- the caret-and-selection model SHALL expose only the period value and a `visible_phase` query method. The model SHALL NOT contain a timer implementation. [WB]
 
 5. WHEN the GUI shell queries the blink state, THE model SHALL report whether the caret is in the visible phase or hidden phase based on elapsed time modulo `blink_period_ms`. [WB]
 
@@ -169,7 +169,7 @@ This spec covers:
 
 ---
 
-### Requirement 5: Selection Display — Colours and Layers [FFE-MVP-8, SCI-VS-7]
+### Requirement 5: Selection Display -- Colours and Layers [FFE-MVP-8, SCI-VS-7]
 
 **User Story:** As an editor user, I want selected text to be visually highlighted with distinct colours that do not obscure the text, so that I can clearly see what is selected while still reading the content.
 
@@ -177,7 +177,7 @@ This spec covers:
 
 1. THE selection renderer SHALL display selected text using a distinct background colour that contrasts with the default text background. [FFE-MVP-8]
 
-2. THE selection renderer SHALL NOT obscure selected text — text SHALL remain legible through the selection highlighting. [FFE-MVP-8]
+2. THE selection renderer SHALL NOT obscure selected text -- text SHALL remain legible through the selection highlighting. [FFE-MVP-8]
 
 3. THE selection renderer SHALL support a `visible` flag. WHEN `visible` is false, THE selection SHALL not be rendered visually (though the logical selection remains active in `edit-operations`). [SCI-VS-7]
 
@@ -204,10 +204,10 @@ This spec covers:
 #### Acceptance Criteria
 
 1. THE selection renderer SHALL support the following element colour pairs, each with a text (foreground) and back (background) component: [SCI-VS-7]
-- `SelectionText` / `SelectionBack` — primary selection colours
-- `SelectionAdditionalText` / `SelectionAdditionalBack` — additional (non-primary) multi-selection colours
-- `SelectionSecondaryText` / `SelectionSecondaryBack` — secondary selection colours (e.g., find-all highlights)
-- `SelectionInactiveText` / `SelectionInactiveBack` — inactive pane selection colours
+- `SelectionText` / `SelectionBack` -- primary selection colours
+- `SelectionAdditionalText` / `SelectionAdditionalBack` -- additional (non-primary) multi-selection colours
+- `SelectionSecondaryText` / `SelectionSecondaryBack` -- secondary selection colours (e.g., find-all highlights)
+- `SelectionInactiveText` / `SelectionInactiveBack` -- inactive pane selection colours
 
 2. THE default `SelectionBack` colour SHALL be grey (#C0C0C0) fully opaque. [SCI-VS-7]
 
@@ -243,7 +243,7 @@ This spec covers:
 
 4. WHEN virtual space is part of a selection range, THE selection highlight SHALL extend through the virtual space region between line-end and the selection boundary. [SCI-SEL-4.1]
 
-5. THE caret SHALL visually occupy virtual space identically to how it occupies real text positions — same style, width, and colour apply. [SCI-SEL-4.1]
+5. THE caret SHALL visually occupy virtual space identically to how it occupies real text positions -- same style, width, and colour apply. [SCI-SEL-4.1]
 
 6. THE virtual space display SHALL NOT render any visible whitespace indicators in the virtual region (whitespace visibility applies only to real content). [SCI-SEL-4.1]
 
@@ -255,7 +255,7 @@ This spec covers:
 
 #### Acceptance Criteria
 
-1. WHEN a rectangular selection is active (selType is rectangle or thin in `edit-operations`), THE selection renderer SHALL display the selection as a vertical column band — one selection segment per line spanning the same left-to-right column range. [SCI-SEL-4.1]
+1. WHEN a rectangular selection is active (selType is rectangle or thin in `edit-operations`), THE selection renderer SHALL display the selection as a vertical column band -- one selection segment per line spanning the same left-to-right column range. [SCI-SEL-4.1]
 
 2. THE rectangular selection highlight SHALL use the same `SelectionBack` colour as stream selections, drawn with the same layer mode. [SCI-SEL-4.1]
 
@@ -283,7 +283,7 @@ This spec covers:
 
 5. WHEN each additional caret has its own selection range (anchor ≠ caret), THE renderer SHALL display selection highlighting for each range using `SelectionAdditionalBack` / `SelectionAdditionalText` colours. [SCI-VS-7]
 
-6. THE caret blink cycle SHALL apply identically to all visible carets — all carets blink in phase (simultaneously visible, simultaneously hidden). [WB]
+6. THE caret blink cycle SHALL apply identically to all visible carets -- all carets blink in phase (simultaneously visible, simultaneously hidden). [WB]
 
 ---
 
@@ -301,7 +301,7 @@ This spec covers:
 
 4. WHEN a SAVE operation clears all modified flags (via `edit-operations`), THE renderer SHALL immediately remove all `*` markers from the display. [FFE-MVP-2]
 
-5. THE modified line marker SHALL remain visible regardless of caret-line highlighting — the marker SHALL NOT be obscured by the caret-line background or frame. [FFE-MVP-2, WB]
+5. THE modified line marker SHALL remain visible regardless of caret-line highlighting -- the marker SHALL NOT be obscured by the caret-line background or frame. [FFE-MVP-2, WB]
 
 ---
 
@@ -333,7 +333,7 @@ This spec covers:
 
 3. WHEN a theme does not specify a particular caret/selection setting, THE renderer SHALL use the default values defined in this specification. [WB]
 
-4. THE caret-and-selection model SHALL be GUI-independent — it SHALL store configuration and expose query methods without depending on any rendering framework type. GUI shells consume the model to perform actual drawing. [WB]
+4. THE caret-and-selection model SHALL be GUI-independent -- it SHALL store configuration and expose query methods without depending on any rendering framework type. GUI shells consume the model to perform actual drawing. [WB]
 
 5. WHEN configuration values are changed programmatically (e.g., via a settings dialog or command), THE changes SHALL take effect immediately on the next render frame. [WB]
 
@@ -403,10 +403,10 @@ This spec covers:
 
 ## Cross-References
 
-- **`edit-operations`** — Defines the logical selection model (SelectionPosition, SelectionRange, Selection container, multi-caret, modified line flags) consumed by this spec for rendering
-- **`theme-and-appearance`** — Defines the colour palette, TOML theme file format, and semantic colour tokens used by element colours in this spec
-- **`viewport-and-scrolling`** — Defines scroll-to-caret policies that ensure the caret remains visible after movement
-- **`configuration-system`** — Defines configuration loading, hot-reload, and per-project override mechanics used by caret/selection settings
-- **`whitespace-and-guides`** — Defines whitespace visibility rendering (excluded from virtual space areas per Requirement 7.6)
-- **`display-line-mapping`** — Provides the wrapped sub-line information needed for the `sub_line` caret-line highlight (Requirement 4.10)
+- **`edit-operations`** -- Defines the logical selection model (SelectionPosition, SelectionRange, Selection container, multi-caret, modified line flags) consumed by this spec for rendering
+- **`theme-and-appearance`** -- Defines the colour palette, TOML theme file format, and semantic colour tokens used by element colours in this spec
+- **`viewport-and-scrolling`** -- Defines scroll-to-caret policies that ensure the caret remains visible after movement
+- **`configuration-system`** -- Defines configuration loading, hot-reload, and per-project override mechanics used by caret/selection settings
+- **`whitespace-and-guides`** -- Defines whitespace visibility rendering (excluded from virtual space areas per Requirement 7.6)
+- **`display-line-mapping`** -- Provides the wrapped sub-line information needed for the `sub_line` caret-line highlight (Requirement 4.10)
 - **`clipboard-operations`** -- Defines the clipboard write contract consumed by Requirement 13.7

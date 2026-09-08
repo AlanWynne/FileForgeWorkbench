@@ -2,7 +2,7 @@
 
 ## Overview
 
-Implement the `ff-layout` crate — the GUI-independent layout engine for FileForgeWorkbench. This crate owns spatial arrangement of all panels, tab groups, floating windows, and dock zones. The shell layer (`ff-desktop`) renders the layout model but does not own it.
+Implement the `ff-layout` crate -- the GUI-independent layout engine for FileForgeWorkbench. This crate owns spatial arrangement of all panels, tab groups, floating windows, and dock zones. The shell layer (`ff-desktop`) renders the layout model but does not own it.
 
 Coverage: 10 requirements, ~95 acceptance criteria, 10 correctness properties.
 
@@ -19,28 +19,28 @@ Coverage: 10 requirements, ~95 acceptance criteria, 10 correctness properties.
   - [x] 1.5 Verify crate compiles with `cargo check`
 
 - [x] 2. Core data models
-  - [x] 2.1 Implement `src/dock/zone.rs` — `DockZone` enum (Left, Right, Bottom, Center, Floating)
+  - [x] 2.1 Implement `src/dock/zone.rs` -- `DockZone` enum (Left, Right, Bottom, Center, Floating)
     - Validates: Req 1 criteria 1, 3, 5
-  - [x] 2.2 Implement `src/panel/traits.rs` — `DockablePanel` trait with all methods
+  - [x] 2.2 Implement `src/panel/traits.rs` -- `DockablePanel` trait with all methods
     - Validates: Req 1 criteria 4, 5, 6, 7, 8; Req 8 criteria 3, 4
-  - [x] 2.3 Implement `src/panel/display_state.rs` — `PanelDisplayState` and `DockState` enums
+  - [x] 2.3 Implement `src/panel/display_state.rs` -- `PanelDisplayState` and `DockState` enums
     - Validates: Req 1 criteria 8, 13
   - [x] 2.4 Implement shared geometry types (`Position`, `Size`, `Rect`) in `src/lib.rs` or utility module
-  - [x] 2.5 Implement `src/tabs/group.rs` — `TabGroup`, `TabGroupId`, `TabGroupTree`, `SplitDirection`
+  - [x] 2.5 Implement `src/tabs/group.rs` -- `TabGroup`, `TabGroupId`, `TabGroupTree`, `SplitDirection`
     - Validates: Req 2 criteria 1, 8
-  - [x] 2.6 Implement `src/floating/window.rs` — `FloatingWindow`, `FloatingWindowId`
+  - [x] 2.6 Implement `src/floating/window.rs` -- `FloatingWindow`, `FloatingWindowId`
     - Validates: Req 3 criterion 16; Req 4 criterion 3
-  - [x] 2.7 Implement `src/resize/splitter.rs` — `Splitter`, `SplitterId`, `SplitterOrientation`
+  - [x] 2.7 Implement `src/resize/splitter.rs` -- `Splitter`, `SplitterId`, `SplitterOrientation`
     - Validates: Req 8 criteria 1, 7, 8
-  - [x] 2.8 Implement `src/persona/definition.rs` — `Persona`, `PersonaKind`
+  - [x] 2.8 Implement `src/persona/definition.rs` -- `Persona`, `PersonaKind`
     - Validates: Req 5 criterion 1
-  - [x] 2.9 Implement `src/drag/indicator.rs` — `DropIndicator`, `DropPlacement`, `SplitSide`
+  - [x] 2.9 Implement `src/drag/indicator.rs` -- `DropIndicator`, `DropPlacement`, `SplitSide`
     - Validates: Req 7 criteria 4, 6; Req 10 criterion 6
-  - [x] 2.10 Implement `src/state/layout_state.rs` — `LayoutState`, `DockedPanelState`
+  - [x] 2.10 Implement `src/state/layout_state.rs` -- `LayoutState`, `DockedPanelState`
     - Validates: Req 6 criteria 4, 11
 
 - [x] 3. Panel Registry
-  - [x] 3.1 Implement `src/panel/registry.rs` — `PanelRegistry::new()`, `register()`, `deregister()`, `get()`, `list_all()`, `is_registered()`
+  - [x] 3.1 Implement `src/panel/registry.rs` -- `PanelRegistry::new()`, `register()`, `deregister()`, `get()`, `list_all()`, `is_registered()`
     - Validates: Req 1 criteria 2, 3, 9, 10, 14
   - [x] 3.2 Implement panel_id validation (1–64 ASCII alphanumeric/underscore)
     - Validates: Req 1 criterion 4
@@ -52,8 +52,8 @@ Coverage: 10 requirements, ~95 acceptance criteria, 10 correctness properties.
   - [x] 3.6 Write property test: Panel Registration Uniqueness (Property 1)
     - Validates: Req 1 criterion 10
 
-- [x] 4. Layout Engine — core lifecycle
-  - [x] 4.1 Implement `src/engine.rs` — `LayoutEngine::new()` with default dock zones
+- [x] 4. Layout Engine -- core lifecycle
+  - [x] 4.1 Implement `src/engine.rs` -- `LayoutEngine::new()` with default dock zones
     - Validates: Req 1 criterion 1
   - [x] 4.2 Implement `LayoutEngine::from_state()` for startup restoration
     - Validates: Req 6 criteria 2, 3, 5
@@ -62,32 +62,32 @@ Coverage: 10 requirements, ~95 acceptance criteria, 10 correctness properties.
   - [x] 4.4 Write unit tests for LayoutEngine construction and state accessors
 
 - [x] 5. Panel operations (show, hide, toggle, minimize, maximize, restore)
-  - [x] 5.1 Implement `show_panel()` — make hidden panel visible in last known zone
+  - [x] 5.1 Implement `show_panel()` -- make hidden panel visible in last known zone
     - Validates: Req 1 criterion 11
-  - [x] 5.2 Implement `hide_panel()` — remove from view, preserve position in LayoutState
+  - [x] 5.2 Implement `hide_panel()` -- remove from view, preserve position in LayoutState
     - Validates: Req 1 criterion 11
-  - [x] 5.3 Implement `toggle_panel()` — show if hidden, hide if visible
+  - [x] 5.3 Implement `toggle_panel()` -- show if hidden, hide if visible
     - Validates: Req 1 criterion 12
-  - [x] 5.4 Implement `minimize_panel()` — collapse to tab/icon in zone header
+  - [x] 5.4 Implement `minimize_panel()` -- collapse to tab/icon in zone header
     - Validates: Req 1 criterion 13
-  - [x] 5.5 Implement `maximize_panel()` — expand to fill primary window content area
+  - [x] 5.5 Implement `maximize_panel()` -- expand to fill primary window content area
     - Validates: Req 1 criterion 13
-  - [x] 5.6 Implement `restore_panel()` — return to normal display state
+  - [x] 5.6 Implement `restore_panel()` -- return to normal display state
     - Validates: Req 1 criterion 13
   - [x] 5.7 Write unit tests for panel visibility operations
   - [x] 5.8 Write property test: Panel Visibility Toggle Idempotence (Property 10)
     - Validates: Req 1 criterion 12
 
 - [x] 6. Tab Group Manager
-  - [x] 6.1 Implement `src/tabs/manager.rs` — `TabGroupManager` with split tree coordination
+  - [x] 6.1 Implement `src/tabs/manager.rs` -- `TabGroupManager` with split tree coordination
     - Validates: Req 2 criterion 1
-  - [x] 6.2 Implement `split_horizontal()` — divide active group side-by-side, move active tab
+  - [x] 6.2 Implement `split_horizontal()` -- divide active group side-by-side, move active tab
     - Validates: Req 2 criterion 2
-  - [x] 6.3 Implement `split_vertical()` — divide active group top/bottom, move active tab
+  - [x] 6.3 Implement `split_vertical()` -- divide active group top/bottom, move active tab
     - Validates: Req 2 criterion 3
-  - [x] 6.4 Implement `move_tab()` — relocate tab between groups, close empty groups
+  - [x] 6.4 Implement `move_tab()` -- relocate tab between groups, close empty groups
     - Validates: Req 2 criteria 4, 5
-  - [x] 6.5 Implement `add_tab()` — add tab to active or specified group
+  - [x] 6.5 Implement `add_tab()` -- add tab to active or specified group
     - Validates: Req 2 criterion 9
   - [x] 6.6 Implement `active_tab_group()` and `set_active_tab_group()`
   - [x] 6.7 Implement minimum tab group size enforcement (100 logical px)
@@ -101,21 +101,21 @@ Coverage: 10 requirements, ~95 acceptance criteria, 10 correctness properties.
     - Validates: Req 2 criterion 5
 
 - [x] 7. Floating Window Manager
-  - [x] 7.1 Implement `src/floating/manager.rs` — `FloatingWindowManager` creation and tracking
+  - [x] 7.1 Implement `src/floating/manager.rs` -- `FloatingWindowManager` creation and tracking
     - Validates: Req 3 criterion 1
-  - [x] 7.2 Implement `undock_panel()` — remove from dock zone, create floating window
+  - [x] 7.2 Implement `undock_panel()` -- remove from dock zone, create floating window
     - Validates: Req 3 criteria 1, 2, 4
-  - [x] 7.3 Implement `undock_panel_at()` — undock to specific position (drag-to-float)
+  - [x] 7.3 Implement `undock_panel_at()` -- undock to specific position (drag-to-float)
     - Validates: Req 3 criterion 9; Req 7 criterion 9
-  - [x] 7.4 Implement `redock_panel()` — close floating window, reattach to recent zone
+  - [x] 7.4 Implement `redock_panel()` -- close floating window, reattach to recent zone
     - Validates: Req 3 criteria 5, 6, 7
-  - [x] 7.5 Implement `undock_tab()` and `undock_tab_at()` — tab tear-off to float
+  - [x] 7.5 Implement `undock_tab()` and `undock_tab_at()` -- tab tear-off to float
     - Validates: Req 3 criterion 9; Req 9 criterion 3
-  - [x] 7.6 Implement `redock_tab()` — return tab to originating group at original index
+  - [x] 7.6 Implement `redock_tab()` -- return tab to originating group at original index
     - Validates: Req 3 criterion 11
-  - [x] 7.7 Implement `update_floating_window()` — track position/size updates
+  - [x] 7.7 Implement `update_floating_window()` -- track position/size updates
     - Validates: Req 3 criterion 4; Req 6 criterion 9
-  - [x] 7.8 Implement `on_floating_window_close()` — OS close button redock logic
+  - [x] 7.8 Implement `on_floating_window_close()` -- OS close button redock logic
     - Validates: Req 3 criteria 8, 11, 12
   - [x] 7.9 Implement floating window count limit enforcement (MAX = 16)
     - Validates: Req 3 criterion 14
@@ -132,36 +132,36 @@ Coverage: 10 requirements, ~95 acceptance criteria, 10 correctness properties.
     - Validates: Req 3 criterion 14
 
 - [x] 8. Multi-Monitor Support
-  - [x] 8.1 Implement `src/floating/monitor.rs` — `MonitorInfo` struct and detection helpers
+  - [x] 8.1 Implement `src/floating/monitor.rs` -- `MonitorInfo` struct and detection helpers
     - Validates: Req 4 criterion 1
-  - [x] 8.2 Implement `update_window_monitor()` — record monitor assignment on move
+  - [x] 8.2 Implement `update_window_monitor()` -- record monitor assignment on move
     - Validates: Req 4 criterion 2
   - [x] 8.3 Implement monitor identifier persistence in LayoutState
     - Validates: Req 4 criterion 3
   - [x] 8.4 Implement DPI scale factor tracking per floating window
     - Validates: Req 4 criteria 4, 5
-  - [x] 8.5 Implement `on_monitor_disconnected()` — relocate windows to primary monitor
+  - [x] 8.5 Implement `on_monitor_disconnected()` -- relocate windows to primary monitor
     - Validates: Req 4 criterion 6
-  - [x] 8.6 Implement `validate_window_positions()` — startup repositioning for missing monitors
+  - [x] 8.6 Implement `validate_window_positions()` -- startup repositioning for missing monitors
     - Validates: Req 4 criterion 7
   - [x] 8.7 Implement 50% visibility check for window positioning at startup
     - Validates: Req 4 criterion 8
   - [x] 8.8 Write unit tests for multi-monitor repositioning logic
 
 - [x] 9. Persona Manager
-  - [x] 9.1 Implement `src/persona/manager.rs` — `PersonaManager` with built-in persona definitions
+  - [x] 9.1 Implement `src/persona/manager.rs` -- `PersonaManager` with built-in persona definitions
     - Validates: Req 5 criterion 2
-  - [x] 9.2 Implement `activate_persona()` — transition layout to match persona config
+  - [x] 9.2 Implement `activate_persona()` -- transition layout to match persona config
     - Validates: Req 5 criteria 4, 5
   - [x] 9.3 Implement open document preservation during persona switch (excess tabs to last group)
     - Validates: Req 5 criterion 5
-  - [x] 9.4 Implement `save_persona()` — save current LayoutState as custom persona
+  - [x] 9.4 Implement `save_persona()` -- save current LayoutState as custom persona
     - Validates: Req 5 criterion 3
-  - [x] 9.5 Implement `delete_persona()` — delete custom; reject built-in deletion
+  - [x] 9.5 Implement `delete_persona()` -- delete custom; reject built-in deletion
     - Validates: Req 5 criterion 6
   - [x] 9.6 Implement `update_active_persona()` and `revert_to_persona()`
     - Validates: Req 5 criterion 10
-  - [x] 9.7 Implement `list_personas()` — return all built-in and custom
+  - [x] 9.7 Implement `list_personas()` -- return all built-in and custom
   - [x] 9.8 Implement persona modification tracking (mark as "modified" on layout change)
     - Validates: Req 5 criterion 10
   - [x] 9.9 Implement missing panel_id graceful skip during persona activation
@@ -173,9 +173,9 @@ Coverage: 10 requirements, ~95 acceptance criteria, 10 correctness properties.
     - Validates: Req 5 criterion 5
 
 - [x] 10. Layout Serialization
-  - [x] 10.1 Implement `src/state/serializer.rs` — TOML serialize/deserialize for LayoutState
+  - [x] 10.1 Implement `src/state/serializer.rs` -- TOML serialize/deserialize for LayoutState
     - Validates: Req 6 criteria 1, 4, 11
-  - [x] 10.2 Implement `save_session()` — serialize to `config/layout_state.toml`
+  - [x] 10.2 Implement `save_session()` -- serialize to `config/layout_state.toml`
     - Validates: Req 6 criterion 1
   - [x] 10.3 Implement startup restoration from persisted file
     - Validates: Req 6 criterion 2
@@ -183,11 +183,11 @@ Coverage: 10 requirements, ~95 acceptance criteria, 10 correctness properties.
     - Validates: Req 6 criterion 3
   - [x] 10.5 Implement unregistered panel_id skip during restoration (INFO log)
     - Validates: Req 6 criterion 5
-  - [x] 10.6 Implement `export_layout()` — serialize to user-specified path
+  - [x] 10.6 Implement `export_layout()` -- serialize to user-specified path
     - Validates: Req 6 criterion 6
-  - [x] 10.7 Implement `import_layout()` — apply imported state with graceful degradation
+  - [x] 10.7 Implement `import_layout()` -- apply imported state with graceful degradation
     - Validates: Req 6 criterion 7
-  - [x] 10.8 Implement `reset_to_default()` — discard state, restore built-in default
+  - [x] 10.8 Implement `reset_to_default()` -- discard state, restore built-in default
     - Validates: Req 6 criterion 8
   - [x] 10.9 Implement in-memory state update within 500ms of floating window move/resize
     - Validates: Req 6 criterion 9
@@ -200,18 +200,18 @@ Coverage: 10 requirements, ~95 acceptance criteria, 10 correctness properties.
     - Validates: Req 6 criteria 1, 2, 4
 
 - [x] 11. Drag-and-Drop Coordinator
-  - [x] 11.1 Implement `src/drag/coordinator.rs` — `DragDropCoordinator` state machine (idle, dragging, preview)
+  - [x] 11.1 Implement `src/drag/coordinator.rs` -- `DragDropCoordinator` state machine (idle, dragging, preview)
     - Validates: Req 7 criterion 11
-  - [x] 11.2 Implement `begin_drag()` — initiate drag from panel header or tab
+  - [x] 11.2 Implement `begin_drag()` -- initiate drag from panel header or tab
     - Validates: Req 7 criterion 11
-  - [x] 11.3 Implement `update_drag()` — hit testing and drop indicator placement
+  - [x] 11.3 Implement `update_drag()` -- hit testing and drop indicator placement
     - Validates: Req 7 criteria 1, 5, 6, 13
-  - [x] 11.4 Implement `end_drag()` — execute drop or cancel; return DragResult
+  - [x] 11.4 Implement `end_drag()` -- execute drop or cancel; return DragResult
     - Validates: Req 7 criteria 2, 3, 7, 8, 9, 10, 12
   - [x] 11.5 Implement `cancel_drag()` and `is_dragging()`
-  - [x] 11.6 Implement `src/drag/hit_test.rs` — zone/group hit testing and insertion index calculation
+  - [x] 11.6 Implement `src/drag/hit_test.rs` -- zone/group hit testing and insertion index calculation
     - Validates: Req 7 criteria 7, 12
-  - [x] 11.7 Implement `src/drag/indicator.rs` rendering model — semi-transparent overlay with border
+  - [x] 11.7 Implement `src/drag/indicator.rs` rendering model -- semi-transparent overlay with border
     - Validates: Req 7 criteria 4, 5, 6; Req 10 criterion 6
   - [x] 11.8 Implement tab tear-off detection (30px vertical threshold)
     - Validates: Req 7 criterion 11
@@ -228,21 +228,21 @@ Coverage: 10 requirements, ~95 acceptance criteria, 10 correctness properties.
   - [x] 11.14 Write unit tests for drag state machine and hit testing
 
 - [x] 12. Splitter / Resize Manager
-  - [x] 12.1 Implement `src/resize/manager.rs` — `SplitterManager` with constraint enforcement
+  - [x] 12.1 Implement `src/resize/manager.rs` -- `SplitterManager` with constraint enforcement
     - Validates: Req 8 criteria 1, 2
   - [x] 12.2 Implement `begin_splitter_drag()` and `end_splitter_drag()`
     - Validates: Req 8 criterion 9
-  - [x] 12.3 Implement `update_splitter()` — enforce min size constraints during drag
+  - [x] 12.3 Implement `update_splitter()` -- enforce min size constraints during drag
     - Validates: Req 8 criteria 3, 4, 9
   - [x] 12.4 Implement default minimum size enforcement (48 logical px)
     - Validates: Req 8 criterion 4
-  - [x] 12.5 Implement `on_window_resize()` — proportional redistribution of all zones
+  - [x] 12.5 Implement `on_window_resize()` -- proportional redistribution of all zones
     - Validates: Req 8 criterion 5
   - [x] 12.6 Implement priority resize logic (center area preserved, side/bottom reduced first)
     - Validates: Req 8 criterion 6
   - [x] 12.7 Implement splitter position persistence as proportional values [0.0, 1.0]
     - Validates: Req 8 criterion 7
-  - [x] 12.8 Implement `reset_splitter()` — double-click reset to default position
+  - [x] 12.8 Implement `reset_splitter()` -- double-click reset to default position
     - Validates: Req 8 criterion 8
   - [x] 12.9 Implement real-time visual feedback (resize both sides each frame)
     - Validates: Req 8 criterion 9
@@ -253,7 +253,7 @@ Coverage: 10 requirements, ~95 acceptance criteria, 10 correctness properties.
     - Validates: Req 8 criterion 5
 
 - [x] 13. Persona storage (TOML file I/O)
-  - [x] 13.1 Implement `src/persona/storage.rs` — read/write persona TOML files from `layouts/` directory
+  - [x] 13.1 Implement `src/persona/storage.rs` -- read/write persona TOML files from `layouts/` directory
     - Validates: Req 5 criterion 7
   - [x] 13.2 Implement built-in persona definitions (Editor Focus, Debug, FileForge, Database)
     - Validates: Req 5 criterion 2
@@ -261,7 +261,7 @@ Coverage: 10 requirements, ~95 acceptance criteria, 10 correctness properties.
   - [x] 13.4 Write unit tests for persona TOML serialization/deserialization
 
 - [x] 14. Command registration
-  - [x] 14.1 Implement `src/commands.rs` — register all layout commands with ff-command
+  - [x] 14.1 Implement `src/commands.rs` -- register all layout commands with ff-command
     - Validates: Req 9 criterion 6
   - [x] 14.2 Register `layout.undock` (Ctrl+Shift+D toggle dock/float)
     - Validates: Req 9 criteria 1, 2
@@ -285,7 +285,7 @@ Coverage: 10 requirements, ~95 acceptance criteria, 10 correctness properties.
     - Validates: Req 10 criterion 2
   - [x] 15.3 Implement placeholder click → redock behavior
     - Validates: Req 10 criterion 3
-  - [x] 15.4 Implement floating window title format ("{title} — FileForge", max 80 chars)
+  - [x] 15.4 Implement floating window title format ("{title} -- FileForge", max 80 chars)
     - Validates: Req 10 criterion 4
   - [x] 15.5 Implement status bar persona indicator model (name + "modified" flag)
     - Validates: Req 10 criterion 5
@@ -326,7 +326,7 @@ Coverage: 10 requirements, ~95 acceptance criteria, 10 correctness properties.
 | 5 | Floating Window Count Bound | Active floating windows never exceed 16. Attempts beyond limit return MaxFloatingWindows error. | Req 3.14 | Generate up to 20 undock operations; assert count ≤ 16 and overflow returns Err |
 | 6 | Splitter Proportion Invariant | For any splitter drag, result proportion respects both adjacent minimum sizes and stays in [0.0, 1.0]. | Req 8.3, 8.4, 8.5 | Generate splitter with mins and arbitrary target; assert clamped correctly |
 | 7 | Layout Serialization Round-Trip | For any valid LayoutState, serialize→deserialize produces equivalent state. | Req 6.1, 6.2, 6.4 | Generate arbitrary valid LayoutState; assert round-trip equality |
-| 8 | Persona Activation Preserves Open Tabs | For persona activation with N tabs and M target groups, all N tabs present after — none lost or duplicated. | Req 5.5 | Generate state with N tabs and persona with M groups; assert tab set equality |
+| 8 | Persona Activation Preserves Open Tabs | For persona activation with N tabs and M target groups, all N tabs present after -- none lost or duplicated. | Req 5.5 | Generate state with N tabs and persona with M groups; assert tab set equality |
 | 9 | Proportional Resize Maintains Ratios | On window resize, relative proportions unchanged (within ε) unless minimum constraint active. | Req 8.5 | Generate layout with proportions, resize; assert proportions preserved or min active |
 | 10 | Panel Visibility Toggle Idempotence | toggle_panel twice returns panel to original visibility state. | Req 1.12 | Generate panel with random visibility; assert double-toggle is identity |
 
@@ -447,11 +447,11 @@ Coverage: 10 requirements, ~95 acceptance criteria, 10 correctness properties.
 
 ## Notes
 
-- This crate is GUI-independent — `egui` is referenced only in the `DockablePanel::render` trait signature. The shell layer (`ff-desktop`) is responsible for actual rendering.
+- This crate is GUI-independent -- `egui` is referenced only in the `DockablePanel::render` trait signature. The shell layer (`ff-desktop`) is responsible for actual rendering.
 - All layout mutations occur on the main thread for frame-coherent feedback. Only serialization I/O runs on Tokio workers.
 - Property-based tests use `proptest` with minimum 100 iterations per property.
 - Integration with peer crates (`ff-command`, `ff-plugin`, `ff-core`, `ff-config`) is deferred to task 16 to allow independent development of the layout engine core.
-- Multi-monitor DPI handling (Req 4 criteria 4/5) requires runtime OS queries — unit tests will use mock `MonitorInfo` data.
+- Multi-monitor DPI handling (Req 4 criteria 4/5) requires runtime OS queries -- unit tests will use mock `MonitorInfo` data.
 - The `layouts/` directory for persona TOML files is relative to the workbench config root.
 
 ---

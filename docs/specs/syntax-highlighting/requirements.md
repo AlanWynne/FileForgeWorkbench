@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This feature specifies the **Syntax Highlighting** subsystem for FileForgeWorkbench — the `ff-syntax-highlighting` crate. The syntax highlighting engine is responsible for assigning visual style information (colour, bold, italic, underline, case) to character ranges based on lexical analysis of document content. It operates as a **GUI-independent highlighting engine** that produces styled spans consumed by the rendering layer through the theme system.
+This feature specifies the **Syntax Highlighting** subsystem for FileForgeWorkbench -- the `ff-syntax-highlighting` crate. The syntax highlighting engine is responsible for assigning visual style information (colour, bold, italic, underline, case) to character ranges based on lexical analysis of document content. It operates as a **GUI-independent highlighting engine** that produces styled spans consumed by the rendering layer through the theme system.
 
 The engine supports incremental re-highlighting (re-lexing only from the first modified line's state forward), per-line lexer state persistence, demand-driven styling, multiple keyword sets per language, sub-styles for fine-grained token differentiation, fold-level assignment alongside styling, and idle-time background styling.
 
@@ -39,7 +39,7 @@ The design adapts Scintilla's C++ lexer architecture to idiomatic Rust: trait-ba
 - **HighlightSpan**: A contiguous range of characters sharing the same Style_Slot_Index, representing the output of the lexer for a given text region. [FFE-MVP-6]
 - **Lexer_State**: An integer representing the lexer's parsing state at a given position. Stored per-line to enable incremental re-highlighting from any point in the document. [LEX-INFRA]
 - **Per_Line_State**: The Lexer_State value stored at the end of each document line, enabling the engine to resume lexing from any line without re-processing the entire document from the beginning. [LEX-INFRA]
-- **Incremental_Rehighlight**: The process of re-lexing text starting from the first modified line (using its stored state), continuing until the computed state matches the previously stored state for a subsequent line — at which point re-highlighting can stop because subsequent styling remains valid. [LEX-INFRA]
+- **Incremental_Rehighlight**: The process of re-lexing text starting from the first modified line (using its stored state), continuing until the computed state matches the previously stored state for a subsequent line -- at which point re-highlighting can stop because subsequent styling remains valid. [LEX-INFRA]
 - **EnsureStyledTo**: The demand-driven styling API that guarantees all text up to a given position has been styled. Called by the viewport renderer before painting to ensure visible text has valid style data. [SCI-DOC-13]
 - **Keyword_Set**: An ordered collection of keywords associated with a specific style class within a language definition. Languages may define up to 9 keyword sets (numbered 0–8), each mapped to a distinct Style_Slot_Index. [LEX-INFRA, LEX-SUPPORT]
 - **WordList**: The internal data structure storing a Keyword_Set for efficient O(1) average-case lookup during lexing. Keywords are case-sensitive or case-insensitive per set configuration. [LEX-SUPPORT]
@@ -103,7 +103,7 @@ The design adapts Scintilla's C++ lexer architecture to idiomatic Rust: trait-ba
 1. THE engine SHALL store Per_Line_State values (the Lexer_State at the end of each line) in a per-line data structure synchronized with the document-model's line count.
 2. WHEN a document edit occurs (insertion or deletion), THE engine SHALL invalidate the Styling_Position to no later than the start of the first modified line, marking all subsequent text as potentially unstyled.
 3. WHEN re-highlighting is triggered for a modified region, THE engine SHALL begin lexing from the start of the first modified line using the Per_Line_State stored for the preceding line (or the initial state for line 0).
-4. THE engine SHALL continue re-highlighting line by line until the computed Lexer_State at the end of a line matches the previously stored Per_Line_State for that line — at which point re-highlighting SHALL stop because subsequent styling remains valid.
+4. THE engine SHALL continue re-highlighting line by line until the computed Lexer_State at the end of a line matches the previously stored Per_Line_State for that line -- at which point re-highlighting SHALL stop because subsequent styling remains valid.
 5. WHEN re-highlighting stops due to state convergence, THE engine SHALL update the Styling_Position to reflect the furthest styled position.
 6. WHEN an edit changes a multi-line construct (e.g., opening a block comment without closing it), THE engine SHALL propagate re-highlighting forward until state convergence is achieved, even if this extends beyond the visible viewport.
 7. THE engine SHALL update Per_Line_State values for each re-highlighted line as part of the re-highlighting pass.
@@ -252,11 +252,11 @@ The design adapts Scintilla's C++ lexer architecture to idiomatic Rust: trait-ba
 #### Acceptance Criteria
 
 1. THE `ff-syntax-highlighting` crate SHALL have zero dependencies on any GUI framework (no egui, no platform windowing, no rendering API references).
-2. THE engine SHALL produce style data as abstract Style_Slot_Index values (u8) that are resolved to visual attributes by the `theme-and-appearance` subsystem at render time — the highlighting engine does not reference colours, fonts, or pixels directly.
+2. THE engine SHALL produce style data as abstract Style_Slot_Index values (u8) that are resolved to visual attributes by the `theme-and-appearance` subsystem at render time -- the highlighting engine does not reference colours, fonts, or pixels directly.
 3. THE engine SHALL be fully testable without a running GUI: unit tests and property tests SHALL exercise all highlighting functionality using in-memory documents and asserting on style buffer contents.
 4. THE engine SHALL expose its public API through a trait (`SyntaxHighlighter`) so that consumers (viewport renderer, minimap, export functions) depend on the trait rather than a concrete implementation.
 5. THE engine SHALL be thread-safe: the style buffer and per-line state SHALL be protected by appropriate synchronization primitives (`RwLock` or equivalent) to allow background idle-styling on a separate thread while the GUI thread reads style data for rendering.
-6. THE engine SHALL support multiple simultaneous documents, each with its own independent style buffer, per-line state, and lexer instance — no global mutable state.
+6. THE engine SHALL support multiple simultaneous documents, each with its own independent style buffer, per-line state, and lexer instance -- no global mutable state.
 
 ---
 
@@ -268,7 +268,7 @@ The design adapts Scintilla's C++ lexer architecture to idiomatic Rust: trait-ba
 
 #### Acceptance Criteria
 
-1. THE syntax-highlighting engine SHALL NOT embed or reference any colour values — all visual attribute resolution is the responsibility of the `theme-and-appearance` subsystem via its Style_Slot table.
+1. THE syntax-highlighting engine SHALL NOT embed or reference any colour values -- all visual attribute resolution is the responsibility of the `theme-and-appearance` subsystem via its Style_Slot table.
 2. WHEN the viewport renderer needs to paint a HighlightSpan, IT SHALL use the span's Style_Slot_Index to query the `theme-and-appearance` subsystem's style-slot table (Requirement 3 of theme-and-appearance) for foreground colour, background colour, bold, italic, underline, and case transformation.
 3. WHEN the active theme changes (hot-reload, mode switch, or theme switch), THE viewport renderer SHALL invalidate its style caches and repaint using the new theme's style-slot values without the highlighting engine needing to re-lex the document.
 4. THE engine SHALL provide a `style_slot_count() → u8` method reporting how many base style indices the active lexer uses, enabling the theme system to provide defaults for unthemed indices.
@@ -323,11 +323,11 @@ The design adapts Scintilla's C++ lexer architecture to idiomatic Rust: trait-ba
 
 #### Acceptance Criteria
 
-1. THE `display-line-mapping` subsystem SHALL query fold levels exclusively from the syntax-highlighting engine's `fold_level_at(line)` API to determine fold region boundaries and fold headers — the display-line-mapping SHALL NOT compute fold levels independently.
+1. THE `display-line-mapping` subsystem SHALL query fold levels exclusively from the syntax-highlighting engine's `fold_level_at(line)` API to determine fold region boundaries and fold headers -- the display-line-mapping SHALL NOT compute fold levels independently.
 2. WHEN the syntax-highlighting engine updates fold levels for a range of lines (due to edit or re-highlight), IT SHALL emit a fold-level-changed notification containing the affected line range, enabling the display-line-mapping to update fold state incrementally.
 3. THE rendering pipeline SHALL apply indicator decorations (from `text-decorations`) either above or below syntax-coloured text depending on each indicator's `under` property: indicators with `under = true` render beneath syntax colours; indicators with `under = false` render above.
-4. THE syntax-highlighting engine's style data and the text-decorations engine's indicator data SHALL be independently queryable for the same character range — they do not interfere with each other's storage.
-5. WHEN the syntax-highlighting engine re-highlights a region, IT SHALL NOT modify or invalidate indicator decorations applied to that region — indicator lifecycle is managed independently by the text-decorations subsystem.
+4. THE syntax-highlighting engine's style data and the text-decorations engine's indicator data SHALL be independently queryable for the same character range -- they do not interfere with each other's storage.
+5. WHEN the syntax-highlighting engine re-highlights a region, IT SHALL NOT modify or invalidate indicator decorations applied to that region -- indicator lifecycle is managed independently by the text-decorations subsystem.
 6. THE engine SHALL provide a `fold_level_range(start_line, end_line) → impl Iterator<Item = (LineNumber, u16, FoldFlags)>` method for efficient bulk fold-level queries by the display-line-mapping during fold-region calculation.
 
 ### Requirement 16: HILITE Command (P2)

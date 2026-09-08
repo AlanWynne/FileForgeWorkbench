@@ -1,4 +1,4 @@
-# DBeaver Core Requirements Research — Task 16.1
+# DBeaver Core Requirements Research -- Task 16.1
 
 > **Scope:** Connection management, driver registry, multi-database support, credential storage, SSH tunnelling, connection pooling
 >
@@ -160,7 +160,7 @@
 |---|-------------|-----|
 | 4.4.1 | THE system SHALL support pluggable "Secret Providers" for retrieving credentials from external secret management systems (e.g., HashiCorp Vault, AWS Secrets Manager, Azure Key Vault). | [DBV-CORE] |
 | 4.4.2 | THE system SHALL allow configuration of secret provider endpoints, authentication parameters, and key paths. | [DBV-CORE] |
-| 4.4.3 | THE system SHALL support specifying secret requirements per connection — defining which credential fields should be retrieved from which secret provider. | [DBV-CORE] |
+| 4.4.3 | THE system SHALL support specifying secret requirements per connection -- defining which credential fields should be retrieved from which secret provider. | [DBV-CORE] |
 
 ### 4.5 Automation Security
 
@@ -276,11 +276,11 @@
 
 Content was rephrased for compliance with licensing restrictions.
 
-- DBeaver Documentation — Connection Management: [Create Connection](https://dbeaver.com/docs/dbeaver/Create-Connection/), [Connection Types](https://dbeaver.com/docs/dbeaver/Connection-Types/), [Admin Manage Connections](https://dbeaver.com/docs/dbeaver/Admin-Manage-Connections/)
-- DBeaver Documentation — Driver Manager: [Driver Manager](https://dbeaver.com/docs/dbeaver/Driver-Manager/), [Admin Manage Drivers](https://dbeaver.com/docs/dbeaver/Admin-Manage-Drivers/)
-- DBeaver Documentation — SSH Configuration: [SSH Configuration](https://dbeaver.com/docs/dbeaver/SSH-Configuration/)
-- DBeaver Documentation — Security: [Master Password](https://dbeaver.com/docs/dbeaver/Managing-Master-Password/), [Integrated Security](https://dbeaver.com/docs/dbeaver/Integrated-Security/), [Secret Providers](https://dbeaver.com/docs/dbeaver/Secret-Providers/), [Automation Security](https://dbeaver.com/docs/dbeaver/Automation-Security/)
-- DBeaver Documentation — Initialization Settings: [Configure Connection Initialization Settings](https://dbeaver.com/docs/dbeaver/Configure-Connection-Initialization-Settings/)
-- DBeaver Documentation — Network: [Network Profiles](https://dbeaver.com/docs/dbeaver/Network-profiles/), [Separate Connections](https://dbeaver.com/docs/dbeaver/Separate-Connections/)
+- DBeaver Documentation -- Connection Management: [Create Connection](https://dbeaver.com/docs/dbeaver/Create-Connection/), [Connection Types](https://dbeaver.com/docs/dbeaver/Connection-Types/), [Admin Manage Connections](https://dbeaver.com/docs/dbeaver/Admin-Manage-Connections/)
+- DBeaver Documentation -- Driver Manager: [Driver Manager](https://dbeaver.com/docs/dbeaver/Driver-Manager/), [Admin Manage Drivers](https://dbeaver.com/docs/dbeaver/Admin-Manage-Drivers/)
+- DBeaver Documentation -- SSH Configuration: [SSH Configuration](https://dbeaver.com/docs/dbeaver/SSH-Configuration/)
+- DBeaver Documentation -- Security: [Master Password](https://dbeaver.com/docs/dbeaver/Managing-Master-Password/), [Integrated Security](https://dbeaver.com/docs/dbeaver/Integrated-Security/), [Secret Providers](https://dbeaver.com/docs/dbeaver/Secret-Providers/), [Automation Security](https://dbeaver.com/docs/dbeaver/Automation-Security/)
+- DBeaver Documentation -- Initialization Settings: [Configure Connection Initialization Settings](https://dbeaver.com/docs/dbeaver/Configure-Connection-Initialization-Settings/)
+- DBeaver Documentation -- Network: [Network Profiles](https://dbeaver.com/docs/dbeaver/Network-profiles/), [Separate Connections](https://dbeaver.com/docs/dbeaver/Separate-Connections/)
 - DBeaver Supported Databases: [Database List](https://dbeaver.com/databases/)
 - GitHub Wiki: [dbeaver/dbeaver](https://github.com/dbeaver/dbeaver/wiki)

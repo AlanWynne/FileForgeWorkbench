@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-asa-report-preview` crate — the ASA carriage control interpretation and print preview subsystem for FileForgeWorkbench. The crate provides visual rendering of mainframe spool files as they would have appeared on a line printer, including page breaks, line spacing, overprint merging (bold/underline), green-bar paper simulation, paginated preview panels, strip/restore editing, and export to PDF/text.
+This plan covers the complete implementation of the `ff-asa-report-preview` crate -- the ASA carriage control interpretation and print preview subsystem for FileForgeWorkbench. The crate provides visual rendering of mainframe spool files as they would have appeared on a line printer, including page breaks, line spacing, overprint merging (bold/underline), green-bar paper simulation, paginated preview panels, strip/restore editing, and export to PDF/text.
 
 This is a **Wave 12 (FileForge Domain)** sub-project that depends on:
 - `ff-document-model` (Wave 4) for edit buffer access and line content
@@ -13,7 +13,7 @@ This is a **Wave 12 (FileForge Domain)** sub-project that depends on:
 - `ff-custom-viewers` (Wave 12) for Viewer_Registry integration and PREVIEW command routing
 - `ff-fileforge` (Wave 12) for ASA detection hooks and RECFM metadata
 
-The crate is **GUI-independent** — all ASA parsing, merging, pagination, and export logic operates on the document model without GUI framework dependency. Rendering hints are provided to the UI layer.
+The crate is **GUI-independent** -- all ASA parsing, merging, pagination, and export logic operates on the document model without GUI framework dependency. Rendering hints are provided to the UI layer.
 
 ---
 
@@ -72,9 +72,9 @@ The crate is **GUI-independent** — all ASA parsing, merging, pagination, and e
     - Different printable char over base → Overwritten (last wins)
     - Space over base → leave base unchanged
   - [x] 5.5 Implement multi-overprint merge: `merge_all(base: &str, overprints: &[&str]) -> MergedLine` applying each overprint sequentially
-  - [x] 5.6 Implement edge case: overprint line longer than base — extend MergedLine to overprint length with overprint chars
-  - [x] 5.7 Implement edge case: overprint line shorter than base — leave remaining base chars unchanged
-  - [x] 5.8 Implement first-line overprint handling: `+` as first line in file renders as normal line with diagnostic prefix `[OVERPRINT — no preceding line]`
+  - [x] 5.6 Implement edge case: overprint line longer than base -- extend MergedLine to overprint length with overprint chars
+  - [x] 5.7 Implement edge case: overprint line shorter than base -- leave remaining base chars unchanged
+  - [x] 5.8 Implement first-line overprint handling: `+` as first line in file renders as normal line with diagnostic prefix `[OVERPRINT -- no preceding line]`
   - [x] 5.9 Write unit tests for all merge rules, multi-overprint, length mismatches, first-line edge case
   - Covers: Requirement 5 (AC 5.1–5.6)
 
@@ -143,7 +143,7 @@ The crate is **GUI-independent** — all ASA parsing, merging, pagination, and e
 - [x] 11. Preview navigation
   - [x] 11.1 Implement `locate_page(page: PageNumber, page_index: &PageIndex) -> Result<usize, AsaError>` that returns the document line for a given page number
   - [x] 11.2 Implement `LOCATE PAGE n` command handler that scrolls viewport to the Page_Band for page n
-  - [x] 11.3 Implement page-not-found error: display `Page n not found — report has M pages` when n exceeds total
+  - [x] 11.3 Implement page-not-found error: display `Page n not found -- report has M pages` when n exceeds total
   - [x] 11.4 Implement `LOCATE PAGE FIRST` and `LOCATE PAGE LAST` shortcut commands
   - [x] 11.5 Implement `UP PAGE` / `DOWN PAGE` navigation that moves to previous/next Page_Band
   - [x] 11.6 Implement status bar page indicator: `Preview: Page N of M` when preview mode is active
@@ -155,7 +155,7 @@ The crate is **GUI-independent** — all ASA parsing, merging, pagination, and e
   - [x] 12.1 Implement `export_text(elements: &[PreviewElement], config: &ExportConfig) -> String` that renders the preview as UTF-8 plain text
   - [x] 12.2 Implement page break representation: configurable as dashes (`--- PAGE N ---`) or form-feed (ASCII FF char)
   - [x] 12.3 Implement spacing representation: double spacing → 1 blank line, triple spacing → 2 blank lines
-  - [x] 12.4 Implement overprint merge output: plain text characters only — no bold/underline markers; merged content written as plain chars
+  - [x] 12.4 Implement overprint merge output: plain text characters only -- no bold/underline markers; merged content written as plain chars
   - [x] 12.5 Implement `PREVIEW EXPORT TEXT <path>` command handler that writes export to file and reports success with page count
   - [x] 12.6 Implement export failure handling: display error message without crashing on I/O error, permission denied, or invalid path
   - [x] 12.7 Write unit tests for text export format, page separators (both modes), spacing, merge flattening, error handling
@@ -184,7 +184,7 @@ The crate is **GUI-independent** — all ASA parsing, merging, pagination, and e
   - [x] 14.8 Implement `ASA RESTORE` command: explicitly re-inserts controls into buffer
   - [x] 14.9 Implement `PREVIEW SET PRINTER <profile>` command routing
   - [x] 14.10 Implement detection offer: non-blocking status bar prompt when ASA detected, consistent with custom-file-viewers Requirement 2
-  - [x] 14.11 Implement no-ASA warning: display `PREVIEW: no ASA carriage control detected — preview may not render correctly` when PREVIEW ON issued without detected ASA
+  - [x] 14.11 Implement no-ASA warning: display `PREVIEW: no ASA carriage control detected -- preview may not render correctly` when PREVIEW ON issued without detected ASA
   - [x] 14.12 Write unit tests for viewer registration, command dispatch, status bar states, mode availability, detection offer trigger
   - Covers: Requirement 2 (AC 2.4, 2.5), Requirement 3 (AC 3.1–3.5), Requirement 7 (AC 7.7, 7.8)
 
@@ -259,7 +259,7 @@ The crate is **GUI-independent** — all ASA parsing, merging, pagination, and e
 
 **Validates: Requirement 5.1, 5.2, 5.3**
 
-- **Statement:** For any base line and any sequence of overprint lines, the merge operation SHALL: (a) produce a MergedLine with length >= max(base_len, max overprint_len), (b) be deterministic for the same input sequence, and (c) when the same overprint is applied twice in succession, the second application SHALL not change the result (idempotence of style — double bold is still bold).
+- **Statement:** For any base line and any sequence of overprint lines, the merge operation SHALL: (a) produce a MergedLine with length >= max(base_len, max overprint_len), (b) be deterministic for the same input sequence, and (c) when the same overprint is applied twice in succession, the second application SHALL not change the result (idempotence of style -- double bold is still bold).
 - **Strategy:** Generate:
   - Base line: arbitrary printable ASCII string [0, 132] chars
   - Overprint count: [1, 5]
@@ -332,15 +332,15 @@ The crate is **GUI-independent** — all ASA parsing, merging, pagination, and e
 ## Notes
 
 - This is a Wave 12 (FileForge Domain) crate depending on multiple upstream crates from Waves 2–12
-- The crate is GUI-independent — all ASA parsing, merging, pagination, and export logic operates on the document model without egui dependency
+- The crate is GUI-independent -- all ASA parsing, merging, pagination, and export logic operates on the document model without egui dependency
 - Rendering hints (PreviewElement) are consumed by the UI layer for actual visual rendering
-- The PREVIEW command integration uses the `custom-file-viewers` framework — this crate registers itself as a viewer, not as a standalone command
-- Strip/Restore is an editing transformation; Preview is a rendering transformation — they can coexist (preview reads from AsaControlMap when stripped)
-- PDF export uses a Rust PDF generation crate (e.g., `genpdf` or `printpdf`) — the choice is deferred to implementation
+- The PREVIEW command integration uses the `custom-file-viewers` framework -- this crate registers itself as a viewer, not as a standalone command
+- Strip/Restore is an editing transformation; Preview is a rendering transformation -- they can coexist (preview reads from AsaControlMap when stripped)
+- PDF export uses a Rust PDF generation crate (e.g., `genpdf` or `printpdf`) -- the choice is deferred to implementation
 - Async detection (Requirement 2.7) and async export (Requirement 11.9) delegate to the workflow-engine for progress/cancellation
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
-- The `PageNumber(u32)` type supports reports up to ~4 billion pages — more than sufficient for any real spool file
-- Line band shading is a display enhancement only — it does not modify document content
+- The `PageNumber(u32)` type supports reports up to ~4 billion pages -- more than sufficient for any real spool file
+- Line band shading is a display enhancement only -- it does not modify document content
 - The merge engine handles arbitrary-length overprint chains; there is no artificial limit on consecutive `+` lines
 - Configuration hot-reload (Requirement 12.4) uses the configuration-system's change notification mechanism
 

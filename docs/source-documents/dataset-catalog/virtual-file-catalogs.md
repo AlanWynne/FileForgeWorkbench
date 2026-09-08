@@ -1,9 +1,9 @@
-# Virtual File Catalogs — FileForge Workbench
+# Virtual File Catalogs -- FileForge Workbench
 
 This document explains how virtual file catalogs work in FileForge Workbench. It covers the
 three catalog types, how they are stored and addressed, how to create and manage them, and
 the underlying architecture that ties them together. It also serves as the reference material
-for the context-sensitive help on **POM Option 1 — Files**.
+for the context-sensitive help on **POM Option 1 -- Files**.
 
 ---
 
@@ -11,8 +11,8 @@ for the context-sensitive help on **POM Option 1 — Files**.
 
 A **Virtual File Catalog** is a named, typed container registered with the workbench that
 groups related files or datasets under a single name. Once registered, a catalog appears in
-the Files panel tree and its contents are accessible to every workbench feature — the editor,
-search, compare, JCL resolver, and so on — through a unified addressing scheme.
+the Files panel tree and its contents are accessible to every workbench feature -- the editor,
+search, compare, JCL resolver, and so on -- through a unified addressing scheme.
 
 The key principle is **FFW-ARCH-001**: all content in FileForge Workbench is accessed through
 the Virtual File System (VFS) abstraction layer. No feature ever opens a file directly from
@@ -37,8 +37,8 @@ mainframe dataset organisations:
 
 | Organisation | Abbreviation | Description |
 |---|---|---|
-| Sequential | PS | A single flat file — equivalent to a regular file |
-| Partitioned | PO (PDS/PDSE) | A library of named members — equivalent to a directory of files |
+| Sequential | PS | A single flat file -- equivalent to a regular file |
+| Partitioned | PO (PDS/PDSE) | A library of named members -- equivalent to a directory of files |
 | Generation Data Group | GDG | A versioned collection of datasets with a rolling generation limit |
 
 Mainframe catalog contents are addressed as:
@@ -51,7 +51,7 @@ vfs://catalog/PAYROLL.MONTHLY.G0003V00
 
 The catalog is backed by a **SQLite database** (`catalog.db`) and a structured **repository
 directory** on your local filesystem. The database maps dataset names to physical file paths;
-the repository holds the actual content. This is entirely transparent — you work with dataset
+the repository holds the actual content. This is entirely transparent -- you work with dataset
 names, not file paths.
 
 **Dataset naming rules:**
@@ -59,13 +59,13 @@ names, not file paths.
 - Each qualifier starts with a letter or national character (`@`, `#`, `$`), followed by
   letters, digits, or national characters
 - Names are case-insensitive; stored internally in uppercase
-- PDS members are referenced as `DSN(MEMBER)` — e.g., `SYS1.MACLIB(OPEN)`
+- PDS members are referenced as `DSN(MEMBER)` -- e.g., `SYS1.MACLIB(OPEN)`
 
 **GDG generations** are accessed using relative references:
-- `(0)` — the current (most recently created) generation
-- `(-1)`, `(-2)` — previous generations
-- `(+1)` — allocate a new generation (write context only)
-- `G0001V00`, `G0002V00` — absolute generation references
+- `(0)` -- the current (most recently created) generation
+- `(-1)`, `(-2)` -- previous generations
+- `(+1)` -- allocate a new generation (write context only)
+- `G0001V00`, `G0002V00` -- absolute generation references
 
 ### POSIX Catalogs
 
@@ -97,7 +97,7 @@ rename operations are rejected at the provider level.
 
 A Native catalog exposes a directory on the host filesystem using the host platform's own
 path conventions. The underlying provider (`connector-local-fs`) handles Windows, Linux, and
-macOS path conventions transparently — you do not need a separate catalog type per platform.
+macOS path conventions transparently -- you do not need a separate catalog type per platform.
 
 Native catalog contents are addressed as:
 
@@ -117,9 +117,9 @@ Selecting **option 1** from the Primary Option Menu, or typing `1` or `FILES` in
 
 The panel has two areas:
 
-- **Left — Catalog tree**: All registered catalogs grouped under three collapsible section
+- **Left -- Catalog tree**: All registered catalogs grouped under three collapsible section
   headers: `Mainframe Catalogs`, `POSIX Catalogs`, and `Native Catalogs`.
-- **Right — Content area**: The immediate children of the selected tree node, shown in a
+- **Right -- Content area**: The immediate children of the selected tree node, shown in a
   list with columns for Name, Type, Size, and Modified Date.
 
 The toolbar at the top provides: `New Catalog`, `Open`, `Refresh`, `Properties`, and a
@@ -140,7 +140,7 @@ Click **New Catalog** in the toolbar, or right-click a section header and choose
 |---|---|---|
 | Catalog Name | Yes | 1–32 characters; letters, digits, hyphens, underscores |
 | Description | No | Up to 120 characters |
-| Auto-mount on startup | — | Checked by default; restores the catalog on next launch |
+| Auto-mount on startup | -- | Checked by default; restores the catalog on next launch |
 
 ### Mainframe-specific fields
 
@@ -148,7 +148,7 @@ Click **New Catalog** in the toolbar, or right-click a section header and choose
 |---|---|---|
 | Repository Path | Yes | Directory where `catalog.db` and storage subdirs will be created |
 | Default HLQ | No | Prepended to bare qualifiers when no HLQ is supplied |
-| Create repository now | — | Checked by default; initialises the repository immediately |
+| Create repository now | -- | Checked by default; initialises the repository immediately |
 
 ### POSIX-specific fields
 
@@ -156,14 +156,14 @@ Click **New Catalog** in the toolbar, or right-click a section header and choose
 |---|---|---|
 | Root Directory | Yes | The local directory that becomes the POSIX catalog root |
 | Mount Point | No | POSIX path prefix; defaults to `/` |
-| Read-Only | — | Unchecked by default |
+| Read-Only | -- | Unchecked by default |
 
 ### Native-specific fields
 
 | Field | Required | Notes |
 |---|---|---|
 | Root Path | Yes | Local directory path using host platform conventions |
-| Read-Only | — | Unchecked by default |
+| Read-Only | -- | Unchecked by default |
 
 Validation runs on confirmation. If a field is invalid (duplicate name, inaccessible path,
 illegal characters), an inline error appears next to the offending field without closing the
@@ -196,7 +196,7 @@ Dataset Allocation dialog. Fields follow ISPF conventions:
 | GDG generation | Inherited from previous generation, or PS defaults if first |
 
 Use **Allocate Like** (right-click an existing dataset) to pre-populate all fields from an
-existing dataset — you only need to supply the new dataset name.
+existing dataset -- you only need to supply the new dataset name.
 
 ---
 
@@ -262,7 +262,7 @@ read_only = false
 auto_mount = true
 ```
 
-You never need to edit this file manually — the Catalog Manager dialog maintains it.
+You never need to edit this file manually -- the Catalog Manager dialog maintains it.
 
 ---
 
@@ -275,9 +275,9 @@ The catalog name and type cannot be changed after creation.
 To delete a catalog, right-click and choose **Delete Catalog**. A confirmation dialog offers
 two options:
 
-- **Delete Catalog Only** — unmounts the catalog and removes it from the registry; backing
+- **Delete Catalog Only** -- unmounts the catalog and removes it from the registry; backing
   files are left untouched.
-- **Delete Catalog and Files** — unmounts, removes from registry, and recursively deletes
+- **Delete Catalog and Files** -- unmounts, removes from registry, and recursively deletes
   the backing repository or directory.
 
 ---
@@ -329,7 +329,7 @@ All operations flow through ff-vfs (FFW-ARCH-001):
 
 The VFS provider registry is keyed by scheme. When a catalog is mounted, its provider is
 registered; when unmounted, it is deregistered. The editor, search engine, compare tool, and
-JCL resolver all use the same `vfs://` URIs — they are unaware of which catalog type is
+JCL resolver all use the same `vfs://` URIs -- they are unaware of which catalog type is
 backing a given resource.
 
 ---
@@ -338,7 +338,7 @@ backing a given resource.
 
 Type these in any `Command ===>` field to query catalog contents:
 
-**LISTCAT** — list datasets matching a filter pattern:
+**LISTCAT** -- list datasets matching a filter pattern:
 ```
 LISTCAT PAYROLL.*
 LISTCAT PAY.% TYPE(PS)
@@ -348,7 +348,7 @@ LISTCAT *.INPUT.* CATALOG(PAYROLL)
 Wildcard rules: `*` matches zero or more characters across qualifiers; `%` matches exactly
 one qualifier.
 
-**LISTDS** — show detailed attributes for a specific dataset:
+**LISTDS** -- show detailed attributes for a specific dataset:
 ```
 LISTDS PAYROLL.INPUT.FILE
 LISTDS SYS1.MACLIB MEMBERS

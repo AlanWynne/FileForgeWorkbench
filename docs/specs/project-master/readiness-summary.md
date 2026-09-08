@@ -1,4 +1,4 @@
-# FileForgeWorkbench — Project Readiness Summary
+# FileForgeWorkbench -- Project Readiness Summary
 
 **Generated:** Final Validation Task 19.5  
 **Scope:** All sub-project specifications under `.kiro/specs/`
@@ -25,11 +25,11 @@
 
 ## 2. Sub-Project Categorization
 
-### Active (58 sub-projects — have both design.md and tasks.md)
+### Active (58 sub-projects -- have both design.md and tasks.md)
 
 All non-deferred implementation sub-projects are fully specified with requirements, design, and task documents.
 
-### Deferred (4 sub-projects — design.md only, no tasks.md)
+### Deferred (4 sub-projects -- design.md only, no tasks.md)
 
 These are out-of-scope for the initial release. Design documents serve as placeholder documentation for future integration points:
 
@@ -40,12 +40,12 @@ These are out-of-scope for the initial release. Design documents serve as placeh
 | `connector-mainframe` | Future z/OS mainframe connectivity |
 | `connector-cloud` | Future cloud storage integration |
 
-### Placeholder (2 folders — no specification documents)
+### Placeholder (2 folders -- no specification documents)
 
 | Sub-Project | Status |
 |-------------|--------|
-| `connectivity-core` | Empty folder — functionality subsumed by `connector-extensibility` |
-| `jcl-resolver` | Empty folder — requirements incorporated within FFW-JES Requirement 11 |
+| `connectivity-core` | Empty folder -- functionality subsumed by `connector-extensibility` |
+| `jcl-resolver` | Empty folder -- requirements incorporated within FFW-JES Requirement 11 |
 
 ### Meta/Orchestration (2 specs)
 
@@ -127,8 +127,8 @@ PBT tasks focus on core algorithmic logic (editing, VFS operations, command disp
 
 | # | Category | Description | Severity |
 |---|----------|-------------|----------|
-| 1 | Placeholder folder | `connectivity-core` — empty, functionality covered by `connector-extensibility` | Low (cleanup) |
-| 2 | Placeholder folder | `jcl-resolver` — empty, requirements folded into FFW-JES | Low (cleanup) |
+| 1 | Placeholder folder | `connectivity-core` -- empty, functionality covered by `connector-extensibility` | Low (cleanup) |
+| 2 | Placeholder folder | `jcl-resolver` -- empty, requirements folded into FFW-JES | Low (cleanup) |
 | 3 | Wave numbering gap | Wave 1 is unused (jump from 0 to 2) | Cosmetic |
 | 4 | Wave numbering gap | Wave 16 is unused (jump from 15 to 17) | Cosmetic |
 | 5 | PBT coverage | Waves 0, 6, 7, and 10 have zero explicit PBT tasks | Acceptable (UI/config-heavy) |
@@ -149,6 +149,6 @@ The FileForgeWorkbench specification suite is complete and consistent:
 - **290 property-based test tasks** ensure correctness validation for core logic
 - **Dependency graph** is a valid DAG with no circular dependencies or dangling references
 - **4 deferred connectors** are correctly scoped out with design-only placeholders for future work
-- **Wave ordering** is consistent — every dependency points backward to an earlier wave
+- **Wave ordering** is consistent -- every dependency points backward to an earlier wave
 
 The project is ready to begin implementation starting from **Wave 0 (Foundation / logging-subsystem)** and proceeding through the dependency chain.

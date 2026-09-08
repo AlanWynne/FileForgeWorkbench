@@ -4,12 +4,12 @@
 
 This feature specifies the command framework for FileForgeWorkbench (`ff-command` crate). The command framework is the **central dispatch mechanism** for all user-facing operations in the workbench. It provides a global command registry, a single dispatch entry point, rich command metadata, automatic undo/redo integration, a keyboard shortcut management system, a scripting bridge for Lua macros, and a command history log.
 
-The command-driven architecture (cross-cutting Requirement 4 in the project-master spec) mandates that **all state-changing user operations** are routed through this framework — whether invoked via keyboard shortcuts, menus, the command line, macros, or plugins. This ensures consistent undo/redo behaviour, shortcut discoverability, macro recordability, and a single audit trail for all user actions.
+The command-driven architecture (cross-cutting Requirement 4 in the project-master spec) mandates that **all state-changing user operations** are routed through this framework -- whether invoked via keyboard shortcuts, menus, the command line, macros, or plugins. This ensures consistent undo/redo behaviour, shortcut discoverability, macro recordability, and a single audit trail for all user actions.
 
 The `ff-command` crate is a Wave 2 (Platform Architecture) dependency. It depends on `ff-logging` for diagnostics and is consumed by virtually every higher-level crate: `ff-core` (platform-core), `ff-plugin` (plugin-architecture), `ff-workflow` (workflow-engine), all editor subsystems, and the GUI shell.
 
 **Source references:**
-- **WB** = Workbench Architecture Brief §7 — command-driven architecture principle
+- **WB** = Workbench Architecture Brief §7 -- command-driven architecture principle
 - **FFE** = FileForgeEditor `core-command-semantics` (ISPF command engine, adapted)
 - **SCI** = Scintilla KeyMap and command binding concepts (adapted)
 
@@ -20,7 +20,7 @@ The `ff-command` crate is a Wave 2 (Platform Architecture) dependency. It depend
 - **Command_Registry**: The global, thread-safe collection of all registered commands, supporting registration, lookup, and runtime discovery. [WB]
 - **Command_Dispatch**: The single entry point through which all command executions are routed, regardless of invocation source. [WB]
 - **Command_Params**: A typed key-value map of parameters passed to a command at execution time. [WB]
-- **Execution_Context**: The ambient state available to a command during execution — active document, selection, cursor position, active panel. [WB]
+- **Execution_Context**: The ambient state available to a command during execution -- active document, selection, cursor position, active panel. [WB]
 - **Command_Result**: The outcome of a command execution, containing success/failure status, optional return value, and optional undo record. [WB]
 - **Command_Metadata**: Descriptive information attached to a command: display name, description, category, default shortcut, icon reference, enabled predicate, visibility predicate. [WB, FFE]
 - **Undo_Record**: An opaque token produced by an undoable command during execution, encapsulating the information needed to reverse the command's effect. [WB]
@@ -36,7 +36,7 @@ The `ff-command` crate is a Wave 2 (Platform Architecture) dependency. It depend
 
 **User Story:** As a workbench developer, I want a global registry of all available commands, so that any subsystem can register commands at startup and any other subsystem can discover and invoke them by ID.
 
-**Source:** WB Architecture Brief §7 — command registry. [WB]
+**Source:** WB Architecture Brief §7 -- command registry. [WB]
 
 #### Acceptance Criteria
 
@@ -54,7 +54,7 @@ The `ff-command` crate is a Wave 2 (Platform Architecture) dependency. It depend
 
 **User Story:** As a workbench developer, I want a single dispatch entry point for executing commands, so that all input sources (keyboard, menu, command line, macro, plugin) use the same execution path with consistent validation, context injection, and error handling.
 
-**Source:** WB Architecture Brief §7 — single dispatch entry point. [WB]
+**Source:** WB Architecture Brief §7 -- single dispatch entry point. [WB]
 
 #### Acceptance Criteria
 
@@ -73,15 +73,15 @@ The `ff-command` crate is a Wave 2 (Platform Architecture) dependency. It depend
 
 **User Story:** As a workbench developer, I want rich metadata attached to each command, so that menus, keybinding UI, help systems, and command palettes can present commands with display names, descriptions, icons, and availability information without hardcoding knowledge of specific commands.
 
-**Source:** WB Architecture Brief §7 — command metadata for runtime inspection. [WB, FFE]
+**Source:** WB Architecture Brief §7 -- command metadata for runtime inspection. [WB, FFE]
 
 #### Acceptance Criteria
 
 1. EACH registered command SHALL have associated metadata containing: a display name (human-readable, localizable string), a description (one-sentence summary of what the command does), and a category (dot-separated namespace matching the Command_ID prefix, e.g., `"file"`, `"edit"`, `"view"`).
 2. EACH registered command SHALL optionally have a default keyboard shortcut binding specified in its metadata; IF no shortcut is specified, THEN the command has no default binding.
 3. EACH registered command SHALL optionally have an icon reference (a string identifier referencing an icon asset) for display in menus, toolbars, and command palettes.
-4. EACH registered command SHALL have an enabled predicate — a function that, given the current Execution_Context, returns a boolean indicating whether the command can currently execute. IF no predicate is provided, THEN the command SHALL be considered always enabled.
-5. EACH registered command SHALL have a visibility predicate — a function that, given the current Execution_Context, returns a boolean indicating whether the command should appear in menus and command palettes. IF no predicate is provided, THEN the command SHALL be considered always visible.
+4. EACH registered command SHALL have an enabled predicate -- a function that, given the current Execution_Context, returns a boolean indicating whether the command can currently execute. IF no predicate is provided, THEN the command SHALL be considered always enabled.
+5. EACH registered command SHALL have a visibility predicate -- a function that, given the current Execution_Context, returns a boolean indicating whether the command should appear in menus and command palettes. IF no predicate is provided, THEN the command SHALL be considered always visible.
 6. THE Command_Registry SHALL provide a method to query the metadata for any registered command by Command_ID, returning all metadata fields without executing the command.
 7. WHEN the enabled or visibility predicate for a command is evaluated, THE evaluation SHALL NOT produce side effects and SHALL complete within 1 millisecond to avoid blocking UI rendering.
 
@@ -91,7 +91,7 @@ The `ff-command` crate is a Wave 2 (Platform Architecture) dependency. It depend
 
 **User Story:** As a workbench developer, I want the command framework to automatically integrate with the undo/redo system, so that every undoable command produces an undo record as part of its execution without requiring each command to manually manage the undo stack.
 
-**Source:** WB Architecture Brief §7 — undo/redo integration. Cross-references `undo-redo-transactions` crate. [WB]
+**Source:** WB Architecture Brief §7 -- undo/redo integration. Cross-references `undo-redo-transactions` crate. [WB]
 
 #### Acceptance Criteria
 
@@ -101,7 +101,7 @@ The `ff-command` crate is a Wave 2 (Platform Architecture) dependency. It depend
 4. THE combination of command execution and undo record creation SHALL be atomic: IF the command handler returns an error, THEN no Undo_Record SHALL be pushed to the undo stack, and application state SHALL remain unchanged (no partial state).
 5. WHEN the built-in `"edit.undo"` command is executed, THE Command_Dispatch SHALL pop the most recent Undo_Record from the active undo stack and apply it to reverse the effect of the original command, moving the record to the redo stack.
 6. WHEN the built-in `"edit.redo"` command is executed, THE Command_Dispatch SHALL pop the most recent record from the redo stack and re-apply the command, moving the record back to the undo stack.
-7. WHEN an undoable command is executed after one or more undo operations, THE Command_Dispatch SHALL clear the redo stack for the active context (standard undo semantics — executing a new command invalidates the redo history).
+7. WHEN an undoable command is executed after one or more undo operations, THE Command_Dispatch SHALL clear the redo stack for the active context (standard undo semantics -- executing a new command invalidates the redo history).
 
 ---
 
@@ -128,7 +128,7 @@ The `ff-command` crate is a Wave 2 (Platform Architecture) dependency. It depend
 
 **User Story:** As a macro developer, I want to invoke any registered command from a Lua script and receive structured results, so that macros can automate workflows by composing commands without reimplementing their logic.
 
-**Source:** WB Architecture Brief §7 — scripting bridge. Cross-references `lua-macro-engine` crate. [WB, FFE]
+**Source:** WB Architecture Brief §7 -- scripting bridge. Cross-references `lua-macro-engine` crate. [WB, FFE]
 
 #### Acceptance Criteria
 
@@ -145,7 +145,7 @@ The `ff-command` crate is a Wave 2 (Platform Architecture) dependency. It depend
 
 **User Story:** As a user, I want a record of recently executed commands, so that I can recall previous actions (via RETRIEVE or a history panel), audit what was done in a session, and restore history across application restarts.
 
-**Source:** FFE `function-keys-and-command-history` — RETRIEVE command history. [FFE]
+**Source:** FFE `function-keys-and-command-history` -- RETRIEVE command history. [FFE]
 
 #### Acceptance Criteria
 

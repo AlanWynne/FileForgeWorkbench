@@ -58,7 +58,7 @@ The `ff-config` crate is a Wave 2 (Platform Architecture) component. It depends 
 
 1. THE Configuration_System SHALL support the following layers in ascending priority order: Defaults (hardcoded in crate code) → System (global platform-wide file) → User (per-user file) → Profile (active named profile overlay) → Project (`.ffworkbench/config.toml` in project root) → Workspace (workspace root config).
 2. WHEN multiple layers define the same configuration key, THE Configuration_System SHALL resolve the effective value by selecting the value from the highest-priority layer that defines the key (key-by-key merge, not file-level replacement).
-3. THE query API SHALL return the effective value for any given Settings_Key along with its Provenance — indicating which Configuration_Layer provided the value.
+3. THE query API SHALL return the effective value for any given Settings_Key along with its Provenance -- indicating which Configuration_Layer provided the value.
 4. THE layer precedence SHALL be fixed as defined in criterion 1 and SHALL NOT be user-configurable or plugin-modifiable.
 5. WHEN a configuration key is not defined in any layer, THE Configuration_System SHALL return the default value declared in the Configuration_Schema for that key.
 6. IF a configuration key has no schema-defined default and is not defined in any layer, THEN THE Configuration_System SHALL return an error indicating the key is undefined.
@@ -187,7 +187,7 @@ The `ff-config` crate is a Wave 2 (Platform Architecture) component. It depends 
 3. EACH schema entry SHALL optionally define constraint metadata: minimum value (for numeric types), maximum value (for numeric types), allowed enum values (for string or integer types), and a regex pattern (for string types).
 4. WHEN configuration is loaded (at startup or during hot-reload), THE Configuration_System SHALL validate every loaded value against its schema entry; IF a value violates its schema constraints, THEN THE Configuration_System SHALL discard the invalid value, apply the schema-defined default, and emit a WARN-level log record identifying the key, the invalid value, and the constraint that was violated.
 5. THE Configuration_Schema SHALL be queryable at runtime: subsystems and the settings UI SHALL be able to enumerate all registered keys, retrieve their types, defaults, constraints, and descriptions without loading or modifying configuration values.
-6. WHEN a configuration file contains a key that has no schema entry (unknown key), THE Configuration_System SHALL ignore the unknown key, emit a DEBUG-level log record indicating the unrecognized key, and continue loading — unknown keys SHALL NOT cause errors or warnings at WARN level.
+6. WHEN a configuration file contains a key that has no schema entry (unknown key), THE Configuration_System SHALL ignore the unknown key, emit a DEBUG-level log record indicating the unrecognized key, and continue loading -- unknown keys SHALL NOT cause errors or warnings at WARN level.
 7. THE Configuration_Schema SHALL support registration of new keys at runtime (by plugins during initialization), allowing the schema to grow dynamically as plugins are loaded.
 
 ---

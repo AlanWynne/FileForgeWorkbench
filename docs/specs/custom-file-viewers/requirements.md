@@ -13,16 +13,16 @@ The framework is architecturally significant because it connects multiple platfo
 The key principle is **view-only rendering**: a viewer is always a read-only representation of a resource. Editing is performed in the standard editor; the viewer refreshes to reflect changes.
 
 **Source references:**
-- **FFE** = FileForgeEditor `custom-file-viewers` specification (6 requirements — all incorporated and adapted)
+- **FFE** = FileForgeEditor `custom-file-viewers` specification (6 requirements -- all incorporated and adapted)
 - **WB** = Workbench Platform Architecture Brief (plugin model, layout-as-data, command-driven architecture)
 
 **Cross-references:**
-- `plugin-architecture` — `FileForgePlugin` trait, `PluginContext`, capability registration
-- `layout-and-docking` — `DockablePanel` trait, Panel_Registry, dock zones, tab groups
-- `asa-report-preview` — Built-in ASA report viewer (separate spec, registered here)
-- `hex-display` — Built-in hex viewer (separate spec, registered here)
-- `command-framework` — Command_Registry, Command_ID `"viewer.preview"`, `"viewer.preview_list"`
-- `virtual-file-system` — Resource_URI, VfsProvider, async content reads
+- `plugin-architecture` -- `FileForgePlugin` trait, `PluginContext`, capability registration
+- `layout-and-docking` -- `DockablePanel` trait, Panel_Registry, dock zones, tab groups
+- `asa-report-preview` -- Built-in ASA report viewer (separate spec, registered here)
+- `hex-display` -- Built-in hex viewer (separate spec, registered here)
+- `command-framework` -- Command_Registry, Command_ID `"viewer.preview"`, `"viewer.preview_list"`
+- `virtual-file-system` -- Resource_URI, VfsProvider, async content reads
 
 ---
 
@@ -35,8 +35,8 @@ The key principle is **view-only rendering**: a viewer is always a read-only rep
 - **Built_In_Viewer**: A FileViewer implementation compiled directly into the `ff-viewers` crate. Always available without additional plugins. [FFE]
 - **Plugin_Viewer**: A FileViewer implementation contributed by a plugin at runtime. Registered through the `PluginContext` capability advertisement mechanism. [WB]
 - **PREVIEW**: The primary command (`viewer.preview`) that activates, switches, and deactivates viewers. Registered in the Command_Registry. [FFE, WB]
-- **Viewer_Mode**: The state in which a Viewer_Panel is active and rendering content for a resource. Viewer_Mode is always read-only — the viewer displays but does not modify. [FFE]
-- **Content_Match**: The mechanism by which a viewer declares what content it can render — via file extensions, MIME types, content-sniffing predicates, or explicit user selection. [FFE, WB]
+- **Viewer_Mode**: The state in which a Viewer_Panel is active and rendering content for a resource. Viewer_Mode is always read-only -- the viewer displays but does not modify. [FFE]
+- **Content_Match**: The mechanism by which a viewer declares what content it can render -- via file extensions, MIME types, content-sniffing predicates, or explicit user selection. [FFE, WB]
 
 ---
 
@@ -55,7 +55,7 @@ The key principle is **view-only rendering**: a viewer is always a read-only rep
 3. WHEN the application starts, THE Viewer_Registry SHALL be populated with all Built_In_Viewers before any plugin initialization occurs.
 4. THE Viewer_Registry SHALL support runtime registration of Plugin_Viewers via the `PluginContext` interface defined in `plugin-architecture`, allowing plugins to register viewers during their `initialize` lifecycle phase.
 5. THE Viewer_Registry SHALL support deregistration of Plugin_Viewers during a plugin's `shutdown` lifecycle phase, cleanly removing the viewer and closing any active Viewer_Panels that were displaying through that viewer.
-6. WHEN a registration is attempted with a Viewer_Key that already exists in the Viewer_Registry, THE registry SHALL reject the registration and return an error indicating the duplicate key — without modifying the existing registration.
+6. WHEN a registration is attempted with a Viewer_Key that already exists in the Viewer_Registry, THE registry SHALL reject the registration and return an error indicating the duplicate key -- without modifying the existing registration.
 7. THE Viewer_Registry SHALL support runtime discovery: listing all registered viewers with their Viewer_Key, display name, description, and supported content types.
 8. WHEN a Viewer_Key is referenced in a command or language profile that does not exist in the Viewer_Registry, THE system SHALL log a warning identifying the unknown Viewer_Key and fall back to raw text display in the editor.
 
@@ -70,18 +70,18 @@ The key principle is **view-only rendering**: a viewer is always a read-only rep
 #### Acceptance Criteria
 
 1. THE `ff-viewers` crate SHALL define a `FileViewer` trait with the following methods:
-   - `viewer_key(&self) -> &str` — returns the unique Viewer_Key identifier.
-   - `display_name(&self) -> &str` — returns a human-readable display name (1 to 128 characters).
-   - `description(&self) -> &str` — returns a brief description of what the viewer renders.
-   - `supported_extensions(&self) -> &[&str]` — returns file extensions this viewer handles (e.g., `["lst", "rpt", "spool"]`).
-   - `supported_mime_types(&self) -> &[&str]` — returns MIME types this viewer handles (e.g., `["text/csv"]`).
-   - `can_render(&self, uri: &ResourceUri, content_sample: &[u8]) -> bool` — returns whether this viewer can render the given resource, using URI metadata and/or a content sample for sniffing.
-   - `render(&self, content: &[u8], ui: &mut egui::Ui)` — renders the content into the provided egui UI region.
-   - `on_content_changed(&mut self, new_content: &[u8])` — called when the underlying document changes, allowing the viewer to refresh its internal state.
+   - `viewer_key(&self) -> &str` -- returns the unique Viewer_Key identifier.
+   - `display_name(&self) -> &str` -- returns a human-readable display name (1 to 128 characters).
+   - `description(&self) -> &str` -- returns a brief description of what the viewer renders.
+   - `supported_extensions(&self) -> &[&str]` -- returns file extensions this viewer handles (e.g., `["lst", "rpt", "spool"]`).
+   - `supported_mime_types(&self) -> &[&str]` -- returns MIME types this viewer handles (e.g., `["text/csv"]`).
+   - `can_render(&self, uri: &ResourceUri, content_sample: &[u8]) -> bool` -- returns whether this viewer can render the given resource, using URI metadata and/or a content sample for sniffing.
+   - `render(&self, content: &[u8], ui: &mut egui::Ui)` -- renders the content into the provided egui UI region.
+   - `on_content_changed(&mut self, new_content: &[u8])` -- called when the underlying document changes, allowing the viewer to refresh its internal state.
 2. THE `FileViewer` trait SHALL be object-safe, allowing the platform to store viewers as trait objects (`Box<dyn FileViewer>`).
 3. ALL methods on `FileViewer` SHALL be non-mutating except `on_content_changed`, which receives `&mut self` to update internal render state.
-4. THE `render` method SHALL produce read-only output — it SHALL NOT provide any mechanism for the user to modify the underlying document content through the viewer.
-5. THE `FileViewer` trait SHALL NOT require implementors to manage their own panel lifecycle — the platform's Viewer_Panel wrapper handles docking, visibility, and focus.
+4. THE `render` method SHALL produce read-only output -- it SHALL NOT provide any mechanism for the user to modify the underlying document content through the viewer.
+5. THE `FileViewer` trait SHALL NOT require implementors to manage their own panel lifecycle -- the platform's Viewer_Panel wrapper handles docking, visibility, and focus.
 
 ---
 
@@ -101,7 +101,7 @@ The key principle is **view-only rendering**: a viewer is always a read-only rep
 6. WHEN `PREVIEW LIST` is issued, THE command SHALL display the Viewer_Key, display name, and description of all registered viewers in the message/output area.
 7. THE active Viewer_Key SHALL be displayed in the status bar when Viewer_Mode is active (e.g., `Viewer: asa-report`).
 8. THE `PREVIEW` command SHALL be valid regardless of whether the active resource is in browse mode or edit mode.
-9. THE `PREVIEW` state change SHALL NOT produce an Undo_Record — it is a non-undoable display state change that does not modify document content.
+9. THE `PREVIEW` state change SHALL NOT produce an Undo_Record -- it is a non-undoable display state change that does not modify document content.
 
 ---
 
@@ -148,7 +148,7 @@ The key principle is **view-only rendering**: a viewer is always a read-only rep
 
 1. WHEN a resource is opened and a registered FileViewer's `supported_extensions` list matches the resource's file extension, THE system SHALL record that viewer as the auto-detected default for the resource.
 2. WHEN a resource is opened and the active language profile defines a `default_viewer` key, THE value of `default_viewer` SHALL take precedence over extension-based auto-detection for that resource.
-3. WHEN auto-detection identifies a default viewer, THE system SHALL display a non-blocking status bar notification offering to activate that viewer (e.g., `ASA report detected — type PREVIEW or press F4 to view`). The user SHALL be able to dismiss the notification without activating the viewer.
+3. WHEN auto-detection identifies a default viewer, THE system SHALL display a non-blocking status bar notification offering to activate that viewer (e.g., `ASA report detected -- type PREVIEW or press F4 to view`). The user SHALL be able to dismiss the notification without activating the viewer.
 4. WHEN no auto-detection matches and the user issues `PREVIEW ON`, THE system SHALL invoke the `can_render` method on all registered viewers with the resource URI and a content sample, selecting the first viewer that returns `true`. IF no viewer matches, THE system SHALL display a message indicating no suitable viewer is available.
 5. THE user SHALL always be able to override auto-detection by issuing `PREVIEW <viewer-key>` to activate any registered viewer, regardless of file type.
 6. WHEN the user declines a viewer offer (dismisses the notification), THE system SHALL NOT prompt again for that resource during the same session.
@@ -159,7 +159,7 @@ The key principle is **view-only rendering**: a viewer is always a read-only rep
 
 **User Story:** As a workbench user, I want the viewer output to appear in a dockable panel that I can position, resize, split, and float like any other panel, so that it integrates seamlessly with my workspace layout.
 
-**Source:** NEW — workbench layout integration requirement. [WB]
+**Source:** NEW -- workbench layout integration requirement. [WB]
 
 #### Acceptance Criteria
 
@@ -181,11 +181,11 @@ The key principle is **view-only rendering**: a viewer is always a read-only rep
 
 #### Acceptance Criteria
 
-1. THE `render` method of the `FileViewer` trait SHALL receive content as an immutable byte slice (`&[u8]`) — no mutable reference to the document or edit buffer SHALL be accessible from within a viewer's render method.
+1. THE `render` method of the `FileViewer` trait SHALL receive content as an immutable byte slice (`&[u8]`) -- no mutable reference to the document or edit buffer SHALL be accessible from within a viewer's render method.
 2. THE Viewer_Panel SHALL NOT expose any editing affordances (no cursor insertion, no text selection for editing, no keyboard input that modifies document state). Clipboard copy of displayed text is permitted.
 3. WHEN Viewer_Mode is active, keyboard and mouse input directed at the Viewer_Panel SHALL NOT produce Undo_Records or modify the document's edit state in any way.
 4. IF a viewer implementation attempts to invoke a document-mutating command through the command framework, THE Command_Dispatch SHALL reject the execution with a `ViewerReadOnlyViolation` error.
-5. THE platform SHALL log a warning if a viewer's `on_content_changed` implementation takes longer than 100ms, indicating the viewer may need optimization — but SHALL NOT allow it to block the editor thread.
+5. THE platform SHALL log a warning if a viewer's `on_content_changed` implementation takes longer than 100ms, indicating the viewer may need optimization -- but SHALL NOT allow it to block the editor thread.
 
 ---
 
@@ -202,7 +202,7 @@ The key principle is **view-only rendering**: a viewer is always a read-only rep
 3. THE debounce interval SHALL be configurable via the `[viewers]` section of the workbench configuration (key: `refresh_debounce_ms`, type: positive integer, default: 300).
 4. WHEN the underlying resource is modified externally (detected via VFS file-watcher events from `virtual-file-system`), THE platform SHALL reload the content through the VFS and invoke `on_content_changed` on the active viewer.
 5. IF `on_content_changed` returns an error or panics, THE platform SHALL catch the failure, log a warning, and display a stale-content indicator in the Viewer_Panel rather than crashing or hiding the panel.
-6. THE viewer refresh SHALL occur on a background thread or async task — it SHALL NOT block the editor's UI thread or interrupt the user's typing.
+6. THE viewer refresh SHALL occur on a background thread or async task -- it SHALL NOT block the editor's UI thread or interrupt the user's typing.
 
 ---
 
@@ -215,10 +215,10 @@ The key principle is **view-only rendering**: a viewer is always a read-only rep
 #### Acceptance Criteria
 
 1. THE workbench configuration SHALL accept a `[viewers]` section with the following optional keys:
-   - `auto_offer`: boolean, default `true` — whether to display the auto-detection notification when a resource with a matching viewer is opened.
-   - `default_position`: string enum (`"split-right"`, `"split-bottom"`, `"tab"`, `"float"`), default `"split-right"` — where the Viewer_Panel opens relative to the editor when activated.
-   - `split_ratio`: float 0.1–0.9, default `0.5` — default split ratio (viewer fraction) when `default_position` is a split variant.
-   - `refresh_debounce_ms`: positive integer, default `300` — debounce interval for viewer refresh after document changes.
+   - `auto_offer`: boolean, default `true` -- whether to display the auto-detection notification when a resource with a matching viewer is opened.
+   - `default_position`: string enum (`"split-right"`, `"split-bottom"`, `"tab"`, `"float"`), default `"split-right"` -- where the Viewer_Panel opens relative to the editor when activated.
+   - `split_ratio`: float 0.1–0.9, default `0.5` -- default split ratio (viewer fraction) when `default_position` is a split variant.
+   - `refresh_debounce_ms`: positive integer, default `300` -- debounce interval for viewer refresh after document changes.
 2. WHEN a `[viewers]` configuration key contains an invalid value, THE system SHALL emit a configuration warning via the logging subsystem and apply the default for that key.
 3. THE `[viewers]` configuration SHALL support hot-reload: changes to the configuration file SHALL be picked up without restarting the application, applying to the next viewer activation.
 4. INDIVIDUAL viewers MAY define their own configuration sub-sections under `[viewers.<viewer-key>]` (e.g., `[viewers.asa-report]`), which the platform passes to the viewer during initialization. The `FileViewer` trait SHALL include an optional `configure(&mut self, config: &toml::Value)` method with a default no-op implementation.

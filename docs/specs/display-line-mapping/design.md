@@ -36,8 +36,8 @@ The `ff-display-line-mapping` crate maintains the **bidirectional relationship b
 
 ### Design Constraints (Cross-Cutting)
 
-- **FFW-ARCH-001 (Req 1)**: No direct filesystem access — all content queries go through `ff-document-model`
-- **GUI Independence (Req 2)**: Zero GUI dependencies — no egui, winit, wgpu
+- **FFW-ARCH-001 (Req 1)**: No direct filesystem access -- all content queries go through `ff-document-model`
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- no egui, winit, wgpu
 - **Command-Driven (Req 4)**: Fold/unfold operations integrate with the command framework
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-display-line-mapping`
 - **Error Message Standards (Req 8)**: Errors follow `[display-mapping] operation: description` format
@@ -498,7 +498,7 @@ pub trait DisplayLineMapping: Send + Sync {
 pub struct ListenerHandle(pub u64);
 ```
 
-### ContractionState — Construction
+### ContractionState -- Construction
 
 ```rust
 impl ContractionState {
@@ -566,45 +566,45 @@ pub enum DisplayMappingError {
 
 ## Integration Points
 
-### With `ff-document-model` (Wave 4 — upstream)
+### With `ff-document-model` (Wave 4 -- upstream)
 
 - **Dependency direction**: ff-display-line-mapping depends on ff-document-model
 - **API consumed**: `Document::line_count()` for initial line count; `DocumentWatcher` trait for insert/delete notifications
 - **Integration pattern**: `ContractionState` subscribes as a `DocumentWatcher` on the associated document. When `notify_insert` fires with `lines_added > 0`, it calls `self.insert_lines(line, lines_added)`. When `notify_delete` fires with `lines_removed > 0`, it calls `self.delete_lines(line, lines_removed)`.
-- **No content access**: The display-line-mapping does NOT read line content — it only tracks counts, visibility, and heights. Line content is accessed by the wrap calculator (in `ff-idle-processing`) which then calls `set_height`.
+- **No content access**: The display-line-mapping does NOT read line content -- it only tracks counts, visibility, and heights. Line content is accessed by the wrap calculator (in `ff-idle-processing`) which then calls `set_height`.
 
-### With `ff-logging` (Foundation Layer — upstream)
+### With `ff-logging` (Foundation Layer -- upstream)
 
 - **Dependency direction**: ff-display-line-mapping depends on ff-logging
 - **API consumed**: `log_info!`, `log_warn!`, `log_debug!` macros
 - **Usage**: Mode transitions (one-to-one → full, full → one-to-one) logged at INFO; out-of-range clamping logged at DEBUG
 - **Log prefix**: `[display-mapping]`
 
-### With `ff-viewport-and-scrolling` (Wave 4 — downstream)
+### With `ff-viewport-and-scrolling` (Wave 4 -- downstream)
 
 - **Dependency direction**: ff-viewport-and-scrolling depends on ff-display-line-mapping
 - **API consumed**: `display_from_doc`, `doc_from_display`, `lines_displayed` for scroll position translation, viewport bounds, and scrollbar range
 - **Integration**: The viewport uses `lines_displayed()` for the scrollbar maximum, `display_from_doc` to translate a document cursor position to a scroll offset, and `doc_from_display` to determine which document lines are visible in the viewport
 
-### With `ff-exclude-show-filter` (Wave 5 — downstream)
+### With `ff-exclude-show-filter` (Wave 5 -- downstream)
 
 - **Dependency direction**: ff-exclude-show-filter depends on ff-display-line-mapping
 - **API consumed**: `set_visible`, `get_visible`, `hidden_lines`, `show_all`
-- **Integration**: When EXCLUDE hides lines, it calls `set_visible(start, end, false)`. SHOW/RESET calls `set_visible(start, end, true)` or `show_all()`. The exclude-show-filter does NOT maintain its own visibility state — it delegates entirely to the display-line-mapping layer.
+- **Integration**: When EXCLUDE hides lines, it calls `set_visible(start, end, false)`. SHOW/RESET calls `set_visible(start, end, true)` or `show_all()`. The exclude-show-filter does NOT maintain its own visibility state -- it delegates entirely to the display-line-mapping layer.
 
-### With `ff-idle-processing` (Wave 15 — downstream)
+### With `ff-idle-processing` (Wave 15 -- downstream)
 
 - **Dependency direction**: ff-idle-processing depends on ff-display-line-mapping
 - **API consumed**: `set_height` for background wrap height recalculation
 - **Integration**: When the idle processor computes the wrap height for a line (based on content width and viewport width), it calls `set_height(line, new_height)` to update the mapping incrementally
 
-### With `ff-line-wrap-toggle` (Wave 9 — downstream)
+### With `ff-line-wrap-toggle` (Wave 9 -- downstream)
 
 - **Dependency direction**: ff-line-wrap-toggle depends on ff-display-line-mapping
 - **API consumed**: `set_height` in bulk when wrap mode is toggled
 - **Integration**: When word wrap is disabled, calls `set_height(line, 1)` for all lines. When enabled, triggers a background wrap recalculation via `ff-idle-processing`
 
-### With `ff-command-framework` (Wave 2 — peer integration)
+### With `ff-command-framework` (Wave 2 -- peer integration)
 
 - **Integration**: Fold/Unfold/Expand All/Collapse All commands are registered in the command framework. Command handlers invoke `set_expanded` and `set_visible` on the display-line-mapping.
 - **Addresses**: Requirement 7 AC 8
@@ -651,15 +651,15 @@ large_document_threshold = 2147483647
 **Chosen: Fenwick Tree (Binary Indexed Tree)**
 
 Rationale:
-1. **Memory efficient**: Uses a single flat array — no per-node pointers or child references
+1. **Memory efficient**: Uses a single flat array -- no per-node pointers or child references
 2. **Cache friendly**: Sequential array access pattern during prefix-sum traversal
 3. **Simple implementation**: ~50 lines of code for the core operations (query + update)
 4. **Proven O(log n)**: Both prefix-sum queries and point updates are exactly O(log n)
 5. **Scintilla precedent**: Scintilla's `Partitioning` uses a similar cumulative approach
 
 Trade-offs accepted:
-- No lazy propagation (range updates are O(k × log n) not O(log n)) — acceptable since bulk visibility changes affect a bounded number of lines per operation
-- Insertion/deletion requires partial rebuild — acceptable since line insertions are rare relative to lookups
+- No lazy propagation (range updates are O(k × log n) not O(log n)) -- acceptable since bulk visibility changes affect a bounded number of lines per operation
+- Insertion/deletion requires partial rebuild -- acceptable since line insertions are rare relative to lookups
 
 ### Decision 2: Visibility in Fenwick Tree vs. Separate Bitmap
 
@@ -674,13 +674,13 @@ This avoids needing a separate prefix-sum tree for visibility and keeps all look
 
 ### Decision 3: Fold State Orthogonal to Visibility
 
-The fold expanded/collapsed state is stored **independently** from line visibility. The mapping layer does not enforce fold semantics — it only stores the boolean. The consuming fold engine (or `exclude-show-filter`) is responsible for calling `set_visible` appropriately when folds are toggled. This matches Requirement 10 (Dual Hiding Mechanism Support).
+The fold expanded/collapsed state is stored **independently** from line visibility. The mapping layer does not enforce fold semantics -- it only stores the boolean. The consuming fold engine (or `exclude-show-filter`) is responsible for calling `set_visible` appropriately when folds are toggled. This matches Requirement 10 (Dual Hiding Mechanism Support).
 
 ---
 
 ## Correctness Properties
 
-The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal — it must hold for all valid inputs.
+The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal -- it must hold for all valid inputs.
 
 ### Property 1: Display Line Count Invariant
 

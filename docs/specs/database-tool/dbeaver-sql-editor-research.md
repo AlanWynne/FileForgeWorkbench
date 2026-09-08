@@ -1,4 +1,4 @@
-# DBeaver SQL Editor — Requirements Research
+# DBeaver SQL Editor -- Requirements Research
 
 > **Source:** DBeaver Community Edition (open-source), DBeaver Lite/Enterprise/Ultimate documentation, GitHub wiki, and public issue tracker.
 > **Tag:** [DBV-SQL]

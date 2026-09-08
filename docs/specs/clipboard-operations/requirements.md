@@ -4,8 +4,8 @@
 
 The `clipboard-operations` sub-project defines all clipboard interaction behaviour within the FileForgeWorkbench editor. It merges the FileForgeEditor clipboard functionality from two primary sources:
 
-1. **FFE `copy-clipboard-paste`** — The COPY primary command's clipboard-paste mode, file-insert mode, and shell-capture mode (inserting content at `A`/`B` target positions via the command engine)
-2. **FFE `mvp-implementation` Requirement 8** — Standard desktop clipboard keyboard shortcuts (Ctrl+C/X/V), context menu integration, selection-based cut/copy/paste, line-copy-when-no-selection, and undo/redo keyboard shortcuts for clipboard operations
+1. **FFE `copy-clipboard-paste`** -- The COPY primary command's clipboard-paste mode, file-insert mode, and shell-capture mode (inserting content at `A`/`B` target positions via the command engine)
+2. **FFE `mvp-implementation` Requirement 8** -- Standard desktop clipboard keyboard shortcuts (Ctrl+C/X/V), context menu integration, selection-based cut/copy/paste, line-copy-when-no-selection, and undo/redo keyboard shortcuts for clipboard operations
 
 These are unified into a single clipboard subsystem that provides:
 
@@ -19,28 +19,28 @@ These are unified into a single clipboard subsystem that provides:
 - Undoable paste operations via the transaction system
 
 **Scope boundaries:**
-- Selection creation, extension, and manipulation (stream, rectangular, multi-caret) are defined in `edit-operations` — this spec defines what happens when clipboard operations interact with those selections
-- Undo/redo transaction mechanics (TransactionStack, coalescing, save points) are defined in `undo-redo-transactions` — this spec defines what constitutes an undoable clipboard transaction
-- The COPY line command (C/CC) for in-document duplication is defined in `line-commands` — this spec defines the COPY primary command's clipboard-paste and file-insert routing
-- Shell command execution and output capture are defined in `shell-command` — this spec defines how SHELL capture mode content reaches the clipboard subsystem
-- Command registration, dispatch, and shortcut bindings are defined in `command-framework` — this spec defines clipboard command IDs and their semantics
+- Selection creation, extension, and manipulation (stream, rectangular, multi-caret) are defined in `edit-operations` -- this spec defines what happens when clipboard operations interact with those selections
+- Undo/redo transaction mechanics (TransactionStack, coalescing, save points) are defined in `undo-redo-transactions` -- this spec defines what constitutes an undoable clipboard transaction
+- The COPY line command (C/CC) for in-document duplication is defined in `line-commands` -- this spec defines the COPY primary command's clipboard-paste and file-insert routing
+- Shell command execution and output capture are defined in `shell-command` -- this spec defines how SHELL capture mode content reaches the clipboard subsystem
+- Command registration, dispatch, and shortcut bindings are defined in `command-framework` -- this spec defines clipboard command IDs and their semantics
 - File reading for file-insert mode uses the VFS abstraction from `virtual-file-system`
 
 **Source references:**
-- **[FFE-CLIP]** = FileForgeEditor `copy-clipboard-paste` spec (10 requirements — clipboard paste, file-insert, disambiguation, error handling, compatibility matrix)
-- **[FFE-MVP-8]** = FileForgeEditor `mvp-implementation` Requirement 8 (Standard Desktop Editor Interactions — Ctrl+C/X/V, context menu, selection, line-copy)
+- **[FFE-CLIP]** = FileForgeEditor `copy-clipboard-paste` spec (10 requirements -- clipboard paste, file-insert, disambiguation, error handling, compatibility matrix)
+- **[FFE-MVP-8]** = FileForgeEditor `mvp-implementation` Requirement 8 (Standard Desktop Editor Interactions -- Ctrl+C/X/V, context menu, selection, line-copy)
 - **[WB]** = Workbench Platform Architecture Brief (GUI independence, command-driven, VFS-aware file access)
 - **[SCI-SEL-4.1]** = Scintilla selection model (rectangular selection clipboard, multi-caret clipboard distribution)
 
 ### Cross-References
 
-- **`edit-operations`** — Defines selection model, multi-caret, rectangular selection; clipboard operations consume/produce selection content
-- **`command-framework`** — Clipboard commands are registered as Command_IDs; keyboard shortcuts are bound via Shortcut_Registry
-- **`shell-command`** — SHELL document-capture mode shares line-insertion mechanics with COPY clipboard-paste mode
-- **`undo-redo-transactions`** — All paste/cut operations produce Undo_Records pushed onto the TransactionStack
-- **`virtual-file-system`** — File-insert mode reads files through the VFS abstraction layer
-- **`line-commands`** — C/CC line commands define in-document copy source; A/B line commands define insertion targets
-- **`configuration-system`** — Provides clipboard-related configuration keys
+- **`edit-operations`** -- Defines selection model, multi-caret, rectangular selection; clipboard operations consume/produce selection content
+- **`command-framework`** -- Clipboard commands are registered as Command_IDs; keyboard shortcuts are bound via Shortcut_Registry
+- **`shell-command`** -- SHELL document-capture mode shares line-insertion mechanics with COPY clipboard-paste mode
+- **`undo-redo-transactions`** -- All paste/cut operations produce Undo_Records pushed onto the TransactionStack
+- **`virtual-file-system`** -- File-insert mode reads files through the VFS abstraction layer
+- **`line-commands`** -- C/CC line commands define in-document copy source; A/B line commands define insertion targets
+- **`configuration-system`** -- Provides clipboard-related configuration keys
 
 ---
 
@@ -53,7 +53,7 @@ These are unified into a single clipboard subsystem that provides:
 | **Clipboard_Content** | The text currently held in the System_Clipboard at the time a clipboard operation is executed. | [FFE-CLIP] |
 | **Clipboard_Entry** | A structured representation of clipboard content including: the text payload, the clipboard mode (stream, line, rectangular), and optional per-line segments for rectangular or multi-caret content. | [SCI-SEL-4.1] |
 | **Clipboard_Mode** | An enum indicating how clipboard content was acquired: `Stream` (normal character selection), `Line` (full-line copy with no explicit selection), `Rectangular` (column block selection). Affects paste behaviour. | [SCI-SEL-4.1] |
-| **Line_Copy_Mode** | A clipboard mode flag set when the user copies with no active selection — the entire current line is copied, and paste inserts it as a new line rather than inline at the caret. | [FFE-MVP-8] |
+| **Line_Copy_Mode** | A clipboard mode flag set when the user copies with no active selection -- the entire current line is copied, and paste inserts it as a new line rather than inline at the caret. | [FFE-MVP-8] |
 | **Rectangular_Clipboard** | Clipboard content acquired from a rectangular (column) selection. Each line segment is stored independently and pasted as a column block at the target position. | [SCI-SEL-4.1] |
 | **Multi_Caret_Clipboard** | Clipboard content acquired from a multi-caret selection. Each caret's selection is stored as an independent segment. On paste, segments are distributed one-per-caret if the caret count matches; otherwise, full content is pasted at each caret. | [SCI-SEL-4.1] |
 | **COPY** | The primary command that copies content to a target location. Has four modes: in-document (C/CC source + A/B target), clipboard-paste (no args, no source, A/B target), file-insert (path arg + A/B target), shell-capture (SHELL cmd + A/B target). | [FFE-CLIP] |
@@ -71,7 +71,7 @@ These are unified into a single clipboard subsystem that provides:
 
 ## Requirements
 
-### Requirement 1: Clipboard Engine — System Clipboard Access [FFE-CLIP, WB]
+### Requirement 1: Clipboard Engine -- System Clipboard Access [FFE-CLIP, WB]
 
 **User Story:** As an editor user, I want the editor to reliably access the system clipboard on all supported platforms, so that I can copy and paste text between the editor and other applications.
 
@@ -93,7 +93,7 @@ These are unified into a single clipboard subsystem that provides:
 
 ---
 
-### Requirement 2: Copy Operation — Keyboard Shortcut [FFE-MVP-8]
+### Requirement 2: Copy Operation -- Keyboard Shortcut [FFE-MVP-8]
 
 **User Story:** As a desktop user, I want to press Ctrl+C to copy selected text to the clipboard, so that I can use the familiar keyboard shortcut for clipboard operations.
 
@@ -113,7 +113,7 @@ These are unified into a single clipboard subsystem that provides:
 
 ---
 
-### Requirement 3: Cut Operation — Keyboard Shortcut [FFE-MVP-8]
+### Requirement 3: Cut Operation -- Keyboard Shortcut [FFE-MVP-8]
 
 **User Story:** As a desktop user, I want to press Ctrl+X to cut selected text to the clipboard, so that I can move text using the familiar cut-and-paste workflow.
 
@@ -133,7 +133,7 @@ These are unified into a single clipboard subsystem that provides:
 
 ---
 
-### Requirement 4: Paste Operation — Keyboard Shortcut [FFE-MVP-8, SCI-SEL-4.1]
+### Requirement 4: Paste Operation -- Keyboard Shortcut [FFE-MVP-8, SCI-SEL-4.1]
 
 **User Story:** As a desktop user, I want to press Ctrl+V to paste clipboard content at the cursor position, with paste behaviour adapting to how the content was originally copied (stream, line, or rectangular).
 
@@ -201,7 +201,7 @@ These are unified into a single clipboard subsystem that provides:
 
 ---
 
-### Requirement 7: COPY Command — Clipboard-Paste Mode [FFE-CLIP]
+### Requirement 7: COPY Command -- Clipboard-Paste Mode [FFE-CLIP]
 
 **User Story:** As an editor user, I want to type `COPY` in the command line with an `A` or `B` target marker and no source line commands pending, so that the clipboard content is pasted at the target location using the ISPF command paradigm.
 
@@ -225,7 +225,7 @@ These are unified into a single clipboard subsystem that provides:
 
 ---
 
-### Requirement 8: COPY Command — Disambiguation and Routing [FFE-CLIP]
+### Requirement 8: COPY Command -- Disambiguation and Routing [FFE-CLIP]
 
 **User Story:** As an editor user, I want the editor to unambiguously choose between in-document copy, clipboard-paste, file-insert, and shell-capture modes when I issue the COPY command, so that my intent is always interpreted correctly.
 
@@ -249,7 +249,7 @@ These are unified into a single clipboard subsystem that provides:
 
 ---
 
-### Requirement 9: COPY Command — File-Insert Mode [FFE-CLIP, WB]
+### Requirement 9: COPY Command -- File-Insert Mode [FFE-CLIP, WB]
 
 **User Story:** As an editor user, I want to type `COPY path/to/file` in the command line with an `A` or `B` target marker, so that the contents of the specified file are inserted at the target location without requiring me to open the file separately.
 
@@ -295,7 +295,7 @@ These are unified into a single clipboard subsystem that provides:
 
 ---
 
-### Requirement 11: COPY Command — Shell-Capture Mode [FFE-CLIP, WB]
+### Requirement 11: COPY Command -- Shell-Capture Mode [FFE-CLIP, WB]
 
 **User Story:** As an editor user, I want to use the `SHELL <command>` primary command with an `A` or `B` target marker to capture command output directly into my document, following the same insertion semantics as COPY clipboard-paste mode.
 
@@ -317,7 +317,7 @@ These are unified into a single clipboard subsystem that provides:
 
 ---
 
-### Requirement 12: Rectangular Clipboard — Copy and Paste [SCI-SEL-4.1]
+### Requirement 12: Rectangular Clipboard -- Copy and Paste [SCI-SEL-4.1]
 
 **User Story:** As an editor user working with columnar data, I want rectangular (column) selections to be copied and pasted as column blocks, so that I can manipulate tabular content without disturbing surrounding text.
 
@@ -431,7 +431,7 @@ These are unified into a single clipboard subsystem that provides:
 
 ### Requirement 18: Selection Interaction with Clipboard Operations [FFE-MVP-8]
 
-**User Story:** As an editor user, I want clipboard operations to interact correctly with the current selection state — replacing selected text on paste, clearing selection after paste or cut — so that clipboard workflows feel natural.
+**User Story:** As an editor user, I want clipboard operations to interact correctly with the current selection state -- replacing selected text on paste, clearing selection after paste or cut -- so that clipboard workflows feel natural.
 
 #### Acceptance Criteria
 

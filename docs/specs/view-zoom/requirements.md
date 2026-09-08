@@ -4,21 +4,21 @@
 
 This feature specifies the **view zoom** subsystem for FileForgeWorkbench. Zoom adjusts the effective font size of the editor content area by applying an integer point offset to the base editor font size defined in the theme. Unlike percentage-based zoom systems, this model directly modifies typographical point size, providing predictable, font-metric-aligned scaling.
 
-Zoom is a **display-only** operation — it does not modify document content, does not affect file output, and is not recorded as an undoable transaction. The zoom level is maintained **per editor instance** (per document tab), allowing the user to keep different documents at different magnifications. Zoom affects only the editor font rendering; workbench chrome (menus, status bars, panels, file tree) remains at the system/theme-defined size.
+Zoom is a **display-only** operation -- it does not modify document content, does not affect file output, and is not recorded as an undoable transaction. The zoom level is maintained **per editor instance** (per document tab), allowing the user to keep different documents at different magnifications. Zoom affects only the editor font rendering; workbench chrome (menus, status bars, panels, file tree) remains at the system/theme-defined size.
 
 The feature provides four interaction methods:
 
-1. **Keyboard shortcuts** — Ctrl+= zoom in, Ctrl+- zoom out, Ctrl+0 reset.
-2. **Mouse wheel** — Ctrl+Scroll to zoom in/out by one step.
-3. **ZOOM primary command** — `ZOOM n`, `ZOOM IN`, `ZOOM OUT`, `ZOOM RESET`.
-4. **Status bar indicator** — displays current offset when non-zero; clickable for quick access.
+1. **Keyboard shortcuts** -- Ctrl+= zoom in, Ctrl+- zoom out, Ctrl+0 reset.
+2. **Mouse wheel** -- Ctrl+Scroll to zoom in/out by one step.
+3. **ZOOM primary command** -- `ZOOM n`, `ZOOM IN`, `ZOOM OUT`, `ZOOM RESET`.
+4. **Status bar indicator** -- displays current offset when non-zero; clickable for quick access.
 
 The zoom model is adapted from Scintilla's integer-offset design [SCI-VS-ZOOM] where `SCI_SETZOOM` applies a point offset. FileForgeEditor's percentage-based zoom model [FFE-ZOOM] is reinterpreted: the integer offset approach provides finer control at typical editing sizes without floating-point rounding in font metrics.
 
 **Source references:**
-- **[FFE-ZOOM]** = FileForgeEditor `view-zoom` specification (9 requirements — zoom model, menu, shortcuts, mouse wheel, indicator, persistence, ZOOM command, configuration, DPI)
-- **[SCI-VS-ZOOM]** = Scintilla ViewStyle zoom — integer point offset model (`SCI_SETZOOM`, `SCI_GETZOOM`), range -10 to +20 default
-- **[WB]** = Workbench Architecture Brief — command-driven architecture, per-editor-instance state, configuration-as-data
+- **[FFE-ZOOM]** = FileForgeEditor `view-zoom` specification (9 requirements -- zoom model, menu, shortcuts, mouse wheel, indicator, persistence, ZOOM command, configuration, DPI)
+- **[SCI-VS-ZOOM]** = Scintilla ViewStyle zoom -- integer point offset model (`SCI_SETZOOM`, `SCI_GETZOOM`), range -10 to +20 default
+- **[WB]** = Workbench Architecture Brief -- command-driven architecture, per-editor-instance state, configuration-as-data
 
 ## Cross-References
 
@@ -56,15 +56,15 @@ The zoom model is adapted from Scintilla's integer-offset design [SCI-VS-ZOOM] w
 #### Acceptance Criteria
 
 1. EACH Editor_Instance SHALL maintain a Zoom_Offset expressed as a signed integer (i32) representing the point offset applied to the Base_Font_Size.
-2. THE Effective_Font_Size SHALL be computed as `max(1, Base_Font_Size + Zoom_Offset)` — the rendered font size is never less than 1 point regardless of the offset value.
+2. THE Effective_Font_Size SHALL be computed as `max(1, Base_Font_Size + Zoom_Offset)` -- the rendered font size is never less than 1 point regardless of the offset value.
 3. THE Zoom_Offset SHALL affect only the editor text content area: document line text, prefix area (line numbers), and the command input field. It SHALL NOT affect workbench chrome including menus, status bar text, file tree panel, tab headers, dockable panel headers, or any non-editor UI element.
 4. WHEN the Zoom_Offset is zero, THE Editor_Instance SHALL render at the theme-defined Base_Font_Size with no additional scaling applied.
 5. THE Zoom_Offset SHALL be constrained to the range [Minimum_Offset, Maximum_Offset] inclusive. Any operation that would set the offset outside this range SHALL clamp it to the nearest bound.
-6. WHEN the Zoom_Offset changes, THE Editor_Instance SHALL recalculate font metrics (glyph widths, line heights, character advance) and re-layout all visible content within the same rendering frame — there SHALL be no visible flicker or intermediate state.
+6. WHEN the Zoom_Offset changes, THE Editor_Instance SHALL recalculate font metrics (glyph widths, line heights, character advance) and re-layout all visible content within the same rendering frame -- there SHALL be no visible flicker or intermediate state.
 7. WHEN the Zoom_Offset changes, THE Editor_Instance SHALL preserve the current cursor position (line and column) and keep the cursor row visible in the viewport by adjusting `top_line` if necessary.
 8. WHEN the Zoom_Offset increases, THE number of visible lines (`visible_count`) in the viewport SHALL decrease (larger text). WHEN the Zoom_Offset decreases, `visible_count` SHALL increase (smaller text).
-9. THE Zoom_Offset SHALL NOT affect the logical content of the document — it is a display-only transformation. Zoom does not modify line text, character positions, column numbers, or any data written to disk on SAVE.
-10. EACH Editor_Instance SHALL maintain its Zoom_Offset independently — changing zoom in one tab SHALL NOT affect the zoom offset of any other tab.
+9. THE Zoom_Offset SHALL NOT affect the logical content of the document -- it is a display-only transformation. Zoom does not modify line text, character positions, column numbers, or any data written to disk on SAVE.
+10. EACH Editor_Instance SHALL maintain its Zoom_Offset independently -- changing zoom in one tab SHALL NOT affect the zoom offset of any other tab.
 
 ---
 
@@ -98,7 +98,7 @@ The zoom model is adapted from Scintilla's integer-offset design [SCI-VS-ZOOM] w
 2. WHEN the user holds the Ctrl key and scrolls the mouse wheel down (toward the user) while the cursor is over an Editor_Instance, THE Editor_Instance SHALL decrease its Zoom_Offset by one Zoom_Step, clamped at Minimum_Offset.
 3. WHEN the Ctrl key is NOT held, mouse wheel scrolling SHALL perform its normal function (vertical document scrolling) and SHALL NOT affect the Zoom_Offset.
 4. THE Ctrl+Scroll gesture SHALL apply to the Editor_Instance under the mouse cursor, regardless of which editor has keyboard focus. IF the mouse cursor is not over any Editor_Instance, the gesture SHALL be ignored.
-5. WHEN multiple scroll events arrive in rapid succession (fast scrolling), THE Editor_Instance SHALL apply each zoom step individually — there is no debouncing or acceleration for zoom scroll events.
+5. WHEN multiple scroll events arrive in rapid succession (fast scrolling), THE Editor_Instance SHALL apply each zoom step individually -- there is no debouncing or acceleration for zoom scroll events.
 
 ---
 
@@ -163,7 +163,7 @@ The zoom model is adapted from Scintilla's integer-offset design [SCI-VS-ZOOM] w
 #### Acceptance Criteria
 
 1. WHEN the active Editor_Instance has a Zoom_Offset that is not zero, THE status bar SHALL display a Zoom_Indicator showing the current offset with sign (e.g., `Zoom: +3`, `Zoom: -2`).
-2. WHEN the active Editor_Instance has a Zoom_Offset of zero, THE status bar SHALL NOT display the Zoom_Indicator — it is omitted to reduce clutter at the default state.
+2. WHEN the active Editor_Instance has a Zoom_Offset of zero, THE status bar SHALL NOT display the Zoom_Indicator -- it is omitted to reduce clutter at the default state.
 3. THE Zoom_Indicator SHALL be positioned in the status bar after the encoding display and before the line/column display.
 4. WHEN the user clicks the Zoom_Indicator in the status bar, THE Editor SHALL display a zoom popup or dropdown allowing quick selection of common offsets (e.g., -5, -2, 0, +2, +5, +10) and a "Reset to 0" action.
 5. THE Zoom_Indicator text SHALL use the format `Zoom: +N` for positive offsets and `Zoom: -N` for negative offsets, where N is the absolute integer value.
@@ -186,7 +186,7 @@ The zoom model is adapted from Scintilla's integer-offset design [SCI-VS-ZOOM] w
 6. WHEN `ZOOM` is issued with no arguments, THE Editor SHALL display the current Zoom_Offset and Effective_Font_Size in the status message area (e.g., "Zoom offset: +3 (effective size: 15pt)").
 7. THE `ZOOM` command SHALL be valid in Browse mode, Edit mode, View mode, and all special modes.
 8. THE `ZOOM` command SHALL NOT be added to command history (it is a display-only operation with no semantic significance to the editing session).
-9. THE `ZOOM` command SHALL NOT be recorded as an undoable transaction — zoom is a display-only state change.
+9. THE `ZOOM` command SHALL NOT be recorded as an undoable transaction -- zoom is a display-only state change.
 
 ---
 
@@ -198,7 +198,7 @@ The zoom model is adapted from Scintilla's integer-offset design [SCI-VS-ZOOM] w
 
 #### Acceptance Criteria
 
-1. THE Zoom_Offset SHALL be applied as a typographical point offset — the rendering engine computes physical pixels using the operating system's DPI scale for the target monitor. A +3 offset means +3 points regardless of DPI.
+1. THE Zoom_Offset SHALL be applied as a typographical point offset -- the rendering engine computes physical pixels using the operating system's DPI scale for the target monitor. A +3 offset means +3 points regardless of DPI.
 2. WHEN the editor window is moved to a different monitor with a different DPI scale, THE Editor_Instance SHALL maintain its Zoom_Offset unchanged. The physical pixel rendering adapts to the new DPI but the offset remains the same.
 3. WHEN undocked panels containing editor instances (per layout-and-docking) are on different monitors, EACH Editor_Instance SHALL use its own Zoom_Offset and render correctly for the DPI of the monitor it is displayed on.
 4. THE Effective_Font_Size in points SHALL remain constant across monitors -- only the physical pixel rendering changes based on DPI. The status bar Zoom_Indicator SHALL continue to show the same offset value.

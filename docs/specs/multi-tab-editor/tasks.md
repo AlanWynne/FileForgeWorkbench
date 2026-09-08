@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-tabs` crate — the multi-tab editor subsystem for FileForgeWorkbench. The crate manages Tab_Collections, per-tab state isolation, MRU (Most Recently Used) ordering, tab bar display and overflow handling, tab lifecycle (open/close/activate), drag-and-drop reordering, pinned tabs, split editor views, context menus, keyboard navigation, duplicate detection, command framework integration, and session serialisation/deserialisation.
+This plan covers the complete implementation of the `ff-tabs` crate -- the multi-tab editor subsystem for FileForgeWorkbench. The crate manages Tab_Collections, per-tab state isolation, MRU (Most Recently Used) ordering, tab bar display and overflow handling, tab lifecycle (open/close/activate), drag-and-drop reordering, pinned tabs, split editor views, context menus, keyboard navigation, duplicate detection, command framework integration, and session serialisation/deserialisation.
 
 This is a **Wave 8 (File I/O and Session)** sub-project. It depends on `ff-command` (command registration and dispatch), `ff-document` (document model and DocumentHandle), `ff-layout` (Tab_Group containers from Layout_Engine), `ff-vfs` (ResourceUri and VFS access), `ff-config` (configuration system), `ff-undo` (TransactionStack), and `ff-logging` (diagnostics).
 
@@ -35,192 +35,192 @@ This is a **Wave 8 (File I/O and Session)** sub-project. It depends on `ff-comma
 - [x] 3. TabCollection data structure
   - [x] 3.1 Define `TabCollection` struct with fields: tabs (Vec<Tab>), active_tab_id (Option<TabId>), mru_stack (MruStack), max_tab_count (usize), tab_group_id (TabGroupId)
   - [x] 3.2 Implement `TabCollection::new(tab_group_id, max_count)` constructor
-  - [x] 3.3 Implement `TabCollection::insert(tab, position)` — insert at end or specific index, respecting pinned ordering invariant
-  - [x] 3.4 Implement `TabCollection::remove(tab_id) -> Option<Tab>` — remove tab and update MRU stack
-  - [x] 3.5 Implement `TabCollection::activate(tab_id)` — set active tab and push to MRU top
+  - [x] 3.3 Implement `TabCollection::insert(tab, position)` -- insert at end or specific index, respecting pinned ordering invariant
+  - [x] 3.4 Implement `TabCollection::remove(tab_id) -> Option<Tab>` -- remove tab and update MRU stack
+  - [x] 3.5 Implement `TabCollection::activate(tab_id)` -- set active tab and push to MRU top
   - [x] 3.6 Implement `TabCollection::get(tab_id) -> Option<&Tab>` and `get_mut(tab_id) -> Option<&mut Tab>`
   - [x] 3.7 Implement `TabCollection::active_tab() -> Option<&Tab>` accessor
   - [x] 3.8 Implement `TabCollection::len()`, `is_empty()`, `iter()` convenience methods
   - [x] 3.9 Implement `TabCollection::find_by_uri(uri) -> Option<&Tab>` for duplicate detection across collection
   - [x] 3.10 Implement `TabCollection::tab_at_position(index) -> Option<&Tab>` for positional access (Ctrl+1..9)
-  - [x] 3.11 Implement pinned ordering invariant enforcement — pinned tabs always precede unpinned tabs in the Vec
+  - [x] 3.11 Implement pinned ordering invariant enforcement -- pinned tabs always precede unpinned tabs in the Vec
   - [x] 3.12 Write unit tests for insert, remove, activate, find_by_uri, positional access, and pinned ordering
   - Covers: Requirement 1 (AC 1.1, 1.4, 1.5, 1.6), Requirement 10 (AC 10.3)
 
-- [x] 4. Tab lifecycle — open, close, activate
-  - [x] 4.1 Implement `open_tab(resource_uri, document_handle, tab_group_id)` — create Tab, check max count, evict LRU if needed, insert, activate
-  - [x] 4.2 Implement max-tab-count enforcement — close least-recently-used non-pinned, unmodified tab to make room
-  - [x] 4.3 Implement max-tab-count error path — return `AllTabsModified` error when no evictable tab exists
-  - [x] 4.4 Implement `open_new_tab(document_handle)` — create untitled tab with empty document
-  - [x] 4.5 Implement `close_tab(tab_id)` — remove tab, handle post-close activation (MRU or sequential)
-  - [x] 4.6 Implement post-close activation logic — activate next MRU tab, or right neighbour, or left neighbour
-  - [x] 4.7 Implement last-tab-closed behaviour — create new empty tab when Tab_Group becomes empty
-  - [x] 4.8 Implement `activate_tab(tab_id)` — persist departing tab state, restore arriving tab state, update MRU
-  - [x] 4.9 Implement tab-switch state persistence — save viewport, cursor, selections, scroll offset, command line on depart
-  - [x] 4.10 Implement tab-switch state restoration — restore all per-tab state fields on arrival
-  - [x] 4.11 Implement open-error handling — return error with ResourceUri and failure reason, leave collection unchanged
+- [x] 4. Tab lifecycle -- open, close, activate
+  - [x] 4.1 Implement `open_tab(resource_uri, document_handle, tab_group_id)` -- create Tab, check max count, evict LRU if needed, insert, activate
+  - [x] 4.2 Implement max-tab-count enforcement -- close least-recently-used non-pinned, unmodified tab to make room
+  - [x] 4.3 Implement max-tab-count error path -- return `AllTabsModified` error when no evictable tab exists
+  - [x] 4.4 Implement `open_new_tab(document_handle)` -- create untitled tab with empty document
+  - [x] 4.5 Implement `close_tab(tab_id)` -- remove tab, handle post-close activation (MRU or sequential)
+  - [x] 4.6 Implement post-close activation logic -- activate next MRU tab, or right neighbour, or left neighbour
+  - [x] 4.7 Implement last-tab-closed behaviour -- create new empty tab when Tab_Group becomes empty
+  - [x] 4.8 Implement `activate_tab(tab_id)` -- persist departing tab state, restore arriving tab state, update MRU
+  - [x] 4.9 Implement tab-switch state persistence -- save viewport, cursor, selections, scroll offset, command line on depart
+  - [x] 4.10 Implement tab-switch state restoration -- restore all per-tab state fields on arrival
+  - [x] 4.11 Implement open-error handling -- return error with ResourceUri and failure reason, leave collection unchanged
   - [x] 4.12 Write unit tests for open, close, activate, max-count eviction, last-tab-closed, and error paths
   - Covers: Requirement 1 (AC 1.2, 1.3, 1.5, 1.6, 1.7, 1.8), Requirement 2 (AC 2.2, 2.3), Requirement 5 (AC 5.1, 5.6, 5.7)
 
 - [x] 5. MRU stack tracking
   - [x] 5.1 Define `MruStack` struct with internal `Vec<TabId>` maintaining activation order (most recent first)
-  - [x] 5.2 Implement `MruStack::push(tab_id)` — move to top, dedup if already present
-  - [x] 5.3 Implement `MruStack::remove(tab_id)` — remove from stack, preserve relative order of remaining
-  - [x] 5.4 Implement `MruStack::next(current)` — return next tab in MRU order (deeper into history)
-  - [x] 5.5 Implement `MruStack::prev(current)` — return previous tab in MRU order (towards more recent)
-  - [x] 5.6 Implement `MruStack::iter()` — iterate in MRU order for popup display
-  - [x] 5.7 Implement MRU navigation session state — track session active flag, current position in stack
-  - [x] 5.8 Implement `MruStack::begin_session()` — start navigation, set position to second entry
-  - [x] 5.9 Implement `MruStack::commit_session()` — end navigation, push final selection to top
+  - [x] 5.2 Implement `MruStack::push(tab_id)` -- move to top, dedup if already present
+  - [x] 5.3 Implement `MruStack::remove(tab_id)` -- remove from stack, preserve relative order of remaining
+  - [x] 5.4 Implement `MruStack::next(current)` -- return next tab in MRU order (deeper into history)
+  - [x] 5.5 Implement `MruStack::prev(current)` -- return previous tab in MRU order (towards more recent)
+  - [x] 5.6 Implement `MruStack::iter()` -- iterate in MRU order for popup display
+  - [x] 5.7 Implement MRU navigation session state -- track session active flag, current position in stack
+  - [x] 5.8 Implement `MruStack::begin_session()` -- start navigation, set position to second entry
+  - [x] 5.9 Implement `MruStack::commit_session()` -- end navigation, push final selection to top
   - [x] 5.10 Implement `Serialize`/`Deserialize` for `MruStack` for session persistence
   - [x] 5.11 Write unit tests for push, remove, next/prev cycling, session begin/commit, and serialisation round-trip
   - Covers: Requirement 7 (AC 7.1, 7.2, 7.3, 7.4, 7.5, 7.8, 7.9)
 
 - [x] 6. Tab reordering and drag-and-drop
   - [x] 6.1 Define `DragState` struct with fields: dragged_tab_id (TabId), origin_index (usize), current_hover_index (Option<usize>), source_tab_group (TabGroupId)
-  - [x] 6.2 Implement `begin_drag(tab_id, cursor_pos)` — initiate drag after 5px dead zone threshold
-  - [x] 6.3 Implement `update_drag(cursor_pos)` — compute hover insertion index, respecting pinned constraints
-  - [x] 6.4 Implement `complete_drag()` — move tab to target index within same TabCollection
-  - [x] 6.5 Implement `cancel_drag()` — reset state, return tab to original position
-  - [x] 6.6 Implement cross-group drag — detect hover over different Tab_Group's Tab_Bar
-  - [x] 6.7 Implement cross-group drop — remove from source TabCollection, insert into target TabCollection
-  - [x] 6.8 Implement split-on-drop — create new Tab_Group when dropped between existing groups (delegate to Layout_Engine)
-  - [x] 6.9 Implement pinned-tab drag constraint — restrict drop to pinned region (before all unpinned tabs)
-  - [x] 6.10 Implement `move_tab_left(tab_id)` — swap with left neighbour in TabCollection (command-driven reorder)
-  - [x] 6.11 Implement `move_tab_right(tab_id)` — swap with right neighbour in TabCollection
-  - [x] 6.12 Implement drag invariant — MRU position unchanged after reorder
+  - [x] 6.2 Implement `begin_drag(tab_id, cursor_pos)` -- initiate drag after 5px dead zone threshold
+  - [x] 6.3 Implement `update_drag(cursor_pos)` -- compute hover insertion index, respecting pinned constraints
+  - [x] 6.4 Implement `complete_drag()` -- move tab to target index within same TabCollection
+  - [x] 6.5 Implement `cancel_drag()` -- reset state, return tab to original position
+  - [x] 6.6 Implement cross-group drag -- detect hover over different Tab_Group's Tab_Bar
+  - [x] 6.7 Implement cross-group drop -- remove from source TabCollection, insert into target TabCollection
+  - [x] 6.8 Implement split-on-drop -- create new Tab_Group when dropped between existing groups (delegate to Layout_Engine)
+  - [x] 6.9 Implement pinned-tab drag constraint -- restrict drop to pinned region (before all unpinned tabs)
+  - [x] 6.10 Implement `move_tab_left(tab_id)` -- swap with left neighbour in TabCollection (command-driven reorder)
+  - [x] 6.11 Implement `move_tab_right(tab_id)` -- swap with right neighbour in TabCollection
+  - [x] 6.12 Implement drag invariant -- MRU position unchanged after reorder
   - [x] 6.13 Write unit tests for begin/update/complete/cancel drag, cross-group move, pinned constraint, move left/right, and MRU preservation
   - Covers: Requirement 9 (AC 9.1–9.10)
 
 - [x] 7. Tab groups and split views
   - [x] 7.1 Define `SplitDirection` enum with variants: Right, Down
-  - [x] 7.2 Implement `split_tab(tab_id, direction)` — request split from Layout_Engine, create new Tab sharing DocumentHandle
-  - [x] 7.3 Implement shared DocumentHandle semantics — new Tab references same `Arc<RwLock<Document>>` with independent TabState
-  - [x] 7.4 Implement edit synchronisation — when Document is modified via one view, content reflects in all views sharing the handle
-  - [x] 7.5 Implement shared save-point — when Document is saved, clear Modified_Indicator on all Tabs referencing that DocumentHandle
-  - [x] 7.6 Implement reference-counted Document lifecycle — Document released only when last referencing Tab is closed
-  - [x] 7.7 Implement split view title decoration — optional "[1]", "[2]" suffix on Tab_Headers sharing same resource
+  - [x] 7.2 Implement `split_tab(tab_id, direction)` -- request split from Layout_Engine, create new Tab sharing DocumentHandle
+  - [x] 7.3 Implement shared DocumentHandle semantics -- new Tab references same `Arc<RwLock<Document>>` with independent TabState
+  - [x] 7.4 Implement edit synchronisation -- when Document is modified via one view, content reflects in all views sharing the handle
+  - [x] 7.5 Implement shared save-point -- when Document is saved, clear Modified_Indicator on all Tabs referencing that DocumentHandle
+  - [x] 7.6 Implement reference-counted Document lifecycle -- Document released only when last referencing Tab is closed
+  - [x] 7.7 Implement split view title decoration -- optional "[1]", "[2]" suffix on Tab_Headers sharing same resource
   - [x] 7.8 Implement `find_all_tabs_for_document(document_handle) -> Vec<TabId>` across all Tab_Groups
   - [x] 7.9 Write unit tests for split creation, shared state, edit sync, save-point propagation, reference counting, and title decoration
   - Covers: Requirement 12 (AC 12.1–12.7)
 
 - [x] 8. Pinned tabs
-  - [x] 8.1 Implement `pin_tab(tab_id)` — set pinned flag, move tab to rightmost pinned position
-  - [x] 8.2 Implement `unpin_tab(tab_id)` — clear pinned flag, move tab to leftmost unpinned position
-  - [x] 8.3 Implement pinned ordering invariant — all pinned tabs precede all unpinned tabs, relative pin order by pin sequence
-  - [x] 8.4 Implement pinned tab close protection — `close_tab` on pinned tab unpins instead of closing
-  - [x] 8.5 Implement `close_pinned_tab(tab_id)` — explicit close that bypasses protection (context menu / command)
-  - [x] 8.6 Implement bulk-close immunity — `close_all` and `close_others` skip pinned tabs
-  - [x] 8.7 Implement pinned tab Modified_Indicator — display alongside pin icon when document dirty
-  - [x] 8.8 Implement pinned state serialisation — include in session data
-  - [x] 8.9 Implement duplicate-from-pinned — `tabs.duplicate` on pinned tab creates unpinned copy
+  - [x] 8.1 Implement `pin_tab(tab_id)` -- set pinned flag, move tab to rightmost pinned position
+  - [x] 8.2 Implement `unpin_tab(tab_id)` -- clear pinned flag, move tab to leftmost unpinned position
+  - [x] 8.3 Implement pinned ordering invariant -- all pinned tabs precede all unpinned tabs, relative pin order by pin sequence
+  - [x] 8.4 Implement pinned tab close protection -- `close_tab` on pinned tab unpins instead of closing
+  - [x] 8.5 Implement `close_pinned_tab(tab_id)` -- explicit close that bypasses protection (context menu / command)
+  - [x] 8.6 Implement bulk-close immunity -- `close_all` and `close_others` skip pinned tabs
+  - [x] 8.7 Implement pinned tab Modified_Indicator -- display alongside pin icon when document dirty
+  - [x] 8.8 Implement pinned state serialisation -- include in session data
+  - [x] 8.9 Implement duplicate-from-pinned -- `tabs.duplicate` on pinned tab creates unpinned copy
   - [x] 8.10 Write unit tests for pin/unpin, ordering invariant, close protection, bulk-close immunity, and serialisation
   - Covers: Requirement 10 (AC 10.1–10.8), Requirement 5 (AC 5.8, 5.14)
 
 - [x] 9. Tab close operations
-  - [x] 9.1 Implement `close_tab_with_confirmation(tab_id)` — check modified flag, return `NeedsSavePrompt` when dirty
-  - [x] 9.2 Implement `close_all(tab_group_id)` — iterate non-pinned tabs left-to-right, prompt for each modified
-  - [x] 9.3 Implement `close_others(target_tab_id)` — close all non-pinned except target, prompt for each modified
-  - [x] 9.4 Implement `close_to_left(tab_id)` — close non-pinned tabs left of target in order
-  - [x] 9.5 Implement `close_to_right(tab_id)` — close non-pinned tabs right of target in order
-  - [x] 9.6 Implement bulk-close abort semantics — when user cancels any tab, abort entire bulk operation, leave remaining unchanged
-  - [x] 9.7 Implement exit-sequence close — iterate all modified tabs across all Tab_Groups in Tab_Bar order, prompt for each
-  - [x] 9.8 Implement exit abort — cancel at any point returns to workbench with all tabs intact
-  - [x] 9.9 Implement `CloseDecision` enum: Save, Discard, Cancel — contract for unsaved-changes dialog integration
+  - [x] 9.1 Implement `close_tab_with_confirmation(tab_id)` -- check modified flag, return `NeedsSavePrompt` when dirty
+  - [x] 9.2 Implement `close_all(tab_group_id)` -- iterate non-pinned tabs left-to-right, prompt for each modified
+  - [x] 9.3 Implement `close_others(target_tab_id)` -- close all non-pinned except target, prompt for each modified
+  - [x] 9.4 Implement `close_to_left(tab_id)` -- close non-pinned tabs left of target in order
+  - [x] 9.5 Implement `close_to_right(tab_id)` -- close non-pinned tabs right of target in order
+  - [x] 9.6 Implement bulk-close abort semantics -- when user cancels any tab, abort entire bulk operation, leave remaining unchanged
+  - [x] 9.7 Implement exit-sequence close -- iterate all modified tabs across all Tab_Groups in Tab_Bar order, prompt for each
+  - [x] 9.8 Implement exit abort -- cancel at any point returns to workbench with all tabs intact
+  - [x] 9.9 Implement `CloseDecision` enum: Save, Discard, Cancel -- contract for unsaved-changes dialog integration
   - [x] 9.10 Write unit tests for single close, close_all, close_others, close_to_left/right, bulk abort, and exit sequence
   - Covers: Requirement 5 (AC 5.1–5.14)
 
 - [x] 10. Tab bar display and title formatting
   - [x] 10.1 Define `TabTitleFormat` enum with variants: FilenameOnly, FilenameWithDirectory, AutoDisambiguate
-  - [x] 10.2 Implement `compute_tab_title(tab, collection, format) -> String` — generate display title per format config
-  - [x] 10.3 Implement filename extraction — final path segment from ResourceUri
-  - [x] 10.4 Implement untitled naming — "Untitled", "Untitled-2", "Untitled-3" with sequential disambiguation
-  - [x] 10.5 Implement auto-disambiguation — append minimum parent directory segments when filenames collide
+  - [x] 10.2 Implement `compute_tab_title(tab, collection, format) -> String` -- generate display title per format config
+  - [x] 10.3 Implement filename extraction -- final path segment from ResourceUri
+  - [x] 10.4 Implement untitled naming -- "Untitled", "Untitled-2", "Untitled-3" with sequential disambiguation
+  - [x] 10.5 Implement auto-disambiguation -- append minimum parent directory segments when filenames collide
   - [x] 10.6 Implement `TabHeaderModel` struct with fields: title (String), is_active (bool), is_modified (bool), is_pinned (bool), close_button_visible (bool)
-  - [x] 10.7 Implement `build_tab_bar_model(collection) -> Vec<TabHeaderModel>` — produce render-ready header list
-  - [x] 10.8 Implement close button visibility rules — hidden on pinned (unless hovered), muted on inactive, prominent on active/hovered
+  - [x] 10.7 Implement `build_tab_bar_model(collection) -> Vec<TabHeaderModel>` -- produce render-ready header list
+  - [x] 10.8 Implement close button visibility rules -- hidden on pinned (unless hovered), muted on inactive, prominent on active/hovered
   - [x] 10.9 Write unit tests for title formatting (all modes), untitled naming, disambiguation, and header model generation
   - Covers: Requirement 3 (AC 3.1–3.12)
 
 - [x] 11. Tab overflow handling
   - [x] 11.1 Define `OverflowState` struct with fields: is_overflow (bool), visible_range (Range<usize>), scroll_offset (usize)
-  - [x] 11.2 Implement overflow detection — compare rendered tab widths against available Tab_Bar width
-  - [x] 11.3 Implement scroll left/right — shift visible_range by one tab position
-  - [x] 11.4 Implement active-tab-always-visible — auto-scroll to bring active tab into view when activated
-  - [x] 11.5 Implement overflow dropdown model — list of all tabs with title, modified indicator, active highlight
-  - [x] 11.6 Implement type-ahead filter — case-insensitive title substring filtering on dropdown content
-  - [x] 11.7 Implement dropdown activation — activate selected tab, close dropdown, scroll into view
+  - [x] 11.2 Implement overflow detection -- compare rendered tab widths against available Tab_Bar width
+  - [x] 11.3 Implement scroll left/right -- shift visible_range by one tab position
+  - [x] 11.4 Implement active-tab-always-visible -- auto-scroll to bring active tab into view when activated
+  - [x] 11.5 Implement overflow dropdown model -- list of all tabs with title, modified indicator, active highlight
+  - [x] 11.6 Implement type-ahead filter -- case-insensitive title substring filtering on dropdown content
+  - [x] 11.7 Implement dropdown activation -- activate selected tab, close dropdown, scroll into view
   - [x] 11.8 Write unit tests for overflow detection, scroll logic, auto-scroll on activate, dropdown model, and type-ahead filter
   - Covers: Requirement 4 (AC 4.1–4.7)
 
 - [x] 12. Context menu
   - [x] 12.1 Define `TabContextAction` enum with all context menu actions: Close, CloseOthers, CloseAll, CloseToLeft, CloseToRight, PinTab, UnpinTab, CopyFileName, CopyRelativePath, CopyAbsolutePath, RevealInFileTree, SplitRight, SplitDown, MoveTabLeft, MoveTabRight
-  - [x] 12.2 Implement `build_context_menu(tab_id, collection) -> Vec<ContextMenuItem>` — generate menu items with correct enabled/disabled states
+  - [x] 12.2 Implement `build_context_menu(tab_id, collection) -> Vec<ContextMenuItem>` -- generate menu items with correct enabled/disabled states
   - [x] 12.3 Implement disabled-state logic: CloseToLeft disabled when no non-pinned tabs to left, CloseToRight disabled when no tabs to right, CloseOthers disabled when only one tab, MoveLeft disabled when leftmost, MoveRight disabled when rightmost
-  - [x] 12.4 Implement path menu disabled state — CopyFileName, CopyRelativePath, CopyAbsolutePath, RevealInFileTree disabled for untitled tabs
-  - [x] 12.5 Implement PinTab/UnpinTab toggle — show appropriate item based on current pinned state
-  - [x] 12.6 Implement `execute_context_action(action, tab_id)` dispatcher — route each action to the corresponding operation
-  - [x] 12.7 Implement CopyFileName — extract and return final path segment for clipboard
-  - [x] 12.8 Implement CopyRelativePath — compute path relative to workspace root
-  - [x] 12.9 Implement CopyAbsolutePath — return full canonical path or ResourceUri string
-  - [x] 12.10 Implement RevealInFileTree — emit event for file tree panel to expand and highlight
+  - [x] 12.4 Implement path menu disabled state -- CopyFileName, CopyRelativePath, CopyAbsolutePath, RevealInFileTree disabled for untitled tabs
+  - [x] 12.5 Implement PinTab/UnpinTab toggle -- show appropriate item based on current pinned state
+  - [x] 12.6 Implement `execute_context_action(action, tab_id)` dispatcher -- route each action to the corresponding operation
+  - [x] 12.7 Implement CopyFileName -- extract and return final path segment for clipboard
+  - [x] 12.8 Implement CopyRelativePath -- compute path relative to workspace root
+  - [x] 12.9 Implement CopyAbsolutePath -- return full canonical path or ResourceUri string
+  - [x] 12.10 Implement RevealInFileTree -- emit event for file tree panel to expand and highlight
   - [x] 12.11 Write unit tests for menu construction, disabled states, toggle logic, and action dispatch
   - Covers: Requirement 6 (AC 6.1–6.21)
 
 - [x] 13. Duplicate detection
   - [x] 13.1 Implement `DuplicateDetector` struct holding reference to all Tab_Groups
-  - [x] 13.2 Implement `find_existing_tab(uri) -> Option<(TabGroupId, TabId)>` — search across all Tab_Groups
-  - [x] 13.3 Implement ResourceUri normalization — resolve symlinks, normalize case on case-insensitive FS, resolve relative segments
-  - [x] 13.4 Implement cross-Tab_Group detection — find duplicates in any group, not just active
-  - [x] 13.5 Implement focus-on-duplicate — when duplicate found in different group, focus that group and activate the tab
-  - [x] 13.6 Implement split-view exception — allow explicit split requests to bypass duplicate detection
+  - [x] 13.2 Implement `find_existing_tab(uri) -> Option<(TabGroupId, TabId)>` -- search across all Tab_Groups
+  - [x] 13.3 Implement ResourceUri normalization -- resolve symlinks, normalize case on case-insensitive FS, resolve relative segments
+  - [x] 13.4 Implement cross-Tab_Group detection -- find duplicates in any group, not just active
+  - [x] 13.5 Implement focus-on-duplicate -- when duplicate found in different group, focus that group and activate the tab
+  - [x] 13.6 Implement split-view exception -- allow explicit split requests to bypass duplicate detection
   - [x] 13.7 Write unit tests for URI normalization, cross-group detection, focus behaviour, and split exception
   - Covers: Requirement 11 (AC 11.1–11.5)
 
 - [x] 14. Keyboard navigation
-  - [x] 14.1 Implement Ctrl+Tab handler — switch to next tab per configured mode (MRU or sequential)
-  - [x] 14.2 Implement Ctrl+Shift+Tab handler — switch to previous tab per configured mode
-  - [x] 14.3 Implement MRU navigation session — show popup, commit on Ctrl release
-  - [x] 14.4 Implement MRU popup model — MRU-ordered list with current selection highlighted
-  - [x] 14.5 Implement sequential mode — Ctrl+Tab moves right (wrapping), Ctrl+Shift+Tab moves left (wrapping)
-  - [x] 14.6 Implement Ctrl+W handler — close active tab following close rules
-  - [x] 14.7 Implement Ctrl+1 through Ctrl+9 — activate tab at position N (Ctrl+9 always last tab)
-  - [x] 14.8 Implement position-shortcut no-op — do nothing when collection has fewer than N tabs
-  - [x] 14.9 Implement Ctrl+Shift+T — reopen most recently closed tab from closed-tab URI stack
-  - [x] 14.10 Implement recently-closed stack — bounded stack of up to 20 ResourceUris from closed tabs
-  - [x] 14.11 Implement configurable navigation mode — `mru` (default) or `sequential` from configuration-system
+  - [x] 14.1 Implement Ctrl+Tab handler -- switch to next tab per configured mode (MRU or sequential)
+  - [x] 14.2 Implement Ctrl+Shift+Tab handler -- switch to previous tab per configured mode
+  - [x] 14.3 Implement MRU navigation session -- show popup, commit on Ctrl release
+  - [x] 14.4 Implement MRU popup model -- MRU-ordered list with current selection highlighted
+  - [x] 14.5 Implement sequential mode -- Ctrl+Tab moves right (wrapping), Ctrl+Shift+Tab moves left (wrapping)
+  - [x] 14.6 Implement Ctrl+W handler -- close active tab following close rules
+  - [x] 14.7 Implement Ctrl+1 through Ctrl+9 -- activate tab at position N (Ctrl+9 always last tab)
+  - [x] 14.8 Implement position-shortcut no-op -- do nothing when collection has fewer than N tabs
+  - [x] 14.9 Implement Ctrl+Shift+T -- reopen most recently closed tab from closed-tab URI stack
+  - [x] 14.10 Implement recently-closed stack -- bounded stack of up to 20 ResourceUris from closed tabs
+  - [x] 14.11 Implement configurable navigation mode -- `mru` (default) or `sequential` from configuration-system
   - [x] 14.12 Write unit tests for MRU cycling, sequential cycling, positional shortcuts, reopen-closed, and mode configuration
   - Covers: Requirement 7 (AC 7.3–7.7), Requirement 8 (AC 8.1–8.8)
 
 - [x] 15. Session serialisation and deserialisation
   - [x] 15.1 Define `SerializedTabCollection` struct with versioned schema (version field, tabs list, mru order, active tab id)
   - [x] 15.2 Define `SerializedTab` struct with fields: tab_id, resource_uri, viewport, cursor, selections, pinned, language_override
-  - [x] 15.3 Implement `serialize_tab_collection(collection) -> SerializedTabCollection` — capture full state
-  - [x] 15.4 Implement `deserialize_tab_collection(data, vfs) -> Result<TabCollection>` — reconstruct from serialised data
-  - [x] 15.5 Implement resource-open-on-restore — load each resource via VFS during deserialization
-  - [x] 15.6 Implement skip-on-failure — when a resource cannot be opened, log warning and continue with remaining tabs
+  - [x] 15.3 Implement `serialize_tab_collection(collection) -> SerializedTabCollection` -- capture full state
+  - [x] 15.4 Implement `deserialize_tab_collection(data, vfs) -> Result<TabCollection>` -- reconstruct from serialised data
+  - [x] 15.5 Implement resource-open-on-restore -- load each resource via VFS during deserialization
+  - [x] 15.6 Implement skip-on-failure -- when a resource cannot be opened, log warning and continue with remaining tabs
   - [x] 15.7 Implement MRU stack restoration from serialised order
   - [x] 15.8 Implement active tab re-activation after restore
-  - [x] 15.9 Implement version migration — detect older format versions, attempt data migration
-  - [x] 15.10 Implement migration failure fallback — discard stored state, start with single empty tab, log warning
+  - [x] 15.9 Implement version migration -- detect older format versions, attempt data migration
+  - [x] 15.10 Implement migration failure fallback -- discard stored state, start with single empty tab, log warning
   - [x] 15.11 Write unit tests for serialisation round-trip, skip-on-failure, MRU restoration, version migration, and fallback
   - Covers: Requirement 14 (AC 14.1–14.6), Requirement 2 (AC 2.8)
 
 - [x] 16. Command registration and framework integration
   - [x] 16.1 Register all tab commands with IDs: `tabs.close`, `tabs.close_all`, `tabs.close_others`, `tabs.close_to_left`, `tabs.close_to_right`, `tabs.close_pinned`, `tabs.next`, `tabs.previous`, `tabs.next_mru`, `tabs.previous_mru`, `tabs.pin`, `tabs.unpin`, `tabs.move_left`, `tabs.move_right`, `tabs.goto_1` through `tabs.goto_9`, `tabs.split_right`, `tabs.split_down`, `tabs.reopen_closed`, `tabs.duplicate`
-  - [x] 16.2 Implement CommandHandler for each registered command — dispatch to appropriate TabCollection/lifecycle method
-  - [x] 16.3 Implement command metadata — display name, description, category "Tabs", default shortcuts
+  - [x] 16.2 Implement CommandHandler for each registered command -- dispatch to appropriate TabCollection/lifecycle method
+  - [x] 16.3 Implement command metadata -- display name, description, category "Tabs", default shortcuts
   - [x] 16.4 Implement default keyboard shortcuts: Ctrl+Tab=tabs.next_mru, Ctrl+Shift+Tab=tabs.previous_mru, Ctrl+W=tabs.close, Ctrl+1..9=tabs.goto_N, Ctrl+Shift+T=tabs.reopen_closed
-  - [x] 16.5 Implement enabled predicates — disable commands when they cannot meaningfully execute (e.g., close_to_left when leftmost)
-  - [x] 16.6 Implement target TabId parameter — commands operate on Active_Tab unless explicit TabId provided
-  - [x] 16.7 Implement `tabs.duplicate` — create new Tab with same DocumentHandle (open from VFS) as unpinned tab
+  - [x] 16.5 Implement enabled predicates -- disable commands when they cannot meaningfully execute (e.g., close_to_left when leftmost)
+  - [x] 16.6 Implement target TabId parameter -- commands operate on Active_Tab unless explicit TabId provided
+  - [x] 16.7 Implement `tabs.duplicate` -- create new Tab with same DocumentHandle (open from VFS) as unpinned tab
   - [x] 16.8 Write unit tests for command registration, metadata correctness, predicate evaluation, and dispatch
   - Covers: Requirement 13 (AC 13.1–13.8)
 
 - [x] 17. Startup and CLI argument handling
-  - [x] 17.1 Implement CLI file argument processing — create one Tab per argument in order, set last as Active_Tab
-  - [x] 17.2 Implement CLI argument error handling — log error, skip failed argument, continue with remaining
-  - [x] 17.3 Implement no-argument startup — create single empty Tab when no CLI args and no session to restore
+  - [x] 17.1 Implement CLI file argument processing -- create one Tab per argument in order, set last as Active_Tab
+  - [x] 17.2 Implement CLI argument error handling -- log error, skip failed argument, continue with remaining
+  - [x] 17.3 Implement no-argument startup -- create single empty Tab when no CLI args and no session to restore
   - [x] 17.4 Write unit tests for multi-argument open, error-skip behaviour, and empty startup
   - Covers: Requirement 1 (AC 1.9, 1.10)
 
@@ -305,7 +305,7 @@ This is a **Wave 8 (File I/O and Session)** sub-project. It depends on `ff-comma
 
 **Validates: Requirement 11.1, 11.2**
 
-- **Statement:** Opening a resource that already exists in any TabCollection always results in activation of the existing tab — never creates a second tab for the same ResourceUri. The total tab count does not increase.
+- **Statement:** Opening a resource that already exists in any TabCollection always results in activation of the existing tab -- never creates a second tab for the same ResourceUri. The total tab count does not increase.
 - **Strategy:** Generate:
   - URI pool: 3–15 unique URIs
   - Tab_Groups: 1–4
@@ -344,7 +344,7 @@ This is a **Wave 8 (File I/O and Session)** sub-project. It depends on `ff-comma
   - Tab count: 2–20 tabs
   - ResourceUri pool with deliberate filename collisions: same filename with 2–5 different parent paths
   - Title format: AutoDisambiguate
-- **Invariant:** `titles.len() == titles.iter().collect::<HashSet<_>>().len()` — all computed titles are unique within the collection.
+- **Invariant:** `titles.len() == titles.iter().collect::<HashSet<_>>().len()` -- all computed titles are unique within the collection.
 
 ### Property 9: Max Tab Count Bounded-Collection Invariant
 
@@ -398,17 +398,17 @@ This is a **Wave 8 (File I/O and Session)** sub-project. It depends on `ff-comma
 ## Notes
 
 - This is a Wave 8 (File I/O and Session) crate depending on `ff-command` (Wave 2), `ff-document` (Wave 4), `ff-layout` (Wave 2), `ff-vfs` (Wave 3), `ff-config` (Wave 2), `ff-undo` (Wave 4), and `ff-logging` (Wave 0)
-- All tab operations are dispatched through the command framework — no direct state mutation from UI code (FFW-ARCH cross-cutting Requirement 4)
-- Tab identity is based on `ResourceUri` (VFS addresses), not raw filesystem paths — duplicate detection normalizes URIs before comparison
-- The `DocumentHandle` type is `Arc<RwLock<Document>>` — split views share the same handle, enabling real-time edit synchronisation
+- All tab operations are dispatched through the command framework -- no direct state mutation from UI code (FFW-ARCH cross-cutting Requirement 4)
+- Tab identity is based on `ResourceUri` (VFS addresses), not raw filesystem paths -- duplicate detection normalizes URIs before comparison
+- The `DocumentHandle` type is `Arc<RwLock<Document>>` -- split views share the same handle, enabling real-time edit synchronisation
 - The Layout_Engine (`ff-layout`) owns Tab_Group spatial arrangement; `ff-tabs` owns per-tab content and state within those containers
-- The GUI shell crate renders Tab_Headers and handles mouse/keyboard events — `ff-tabs` provides the data model and logic only (GUI independence principle)
-- The unsaved-changes dialog is an abstracted contract — `ff-tabs` defines the decision enum, GUI shell provides the presentation
+- The GUI shell crate renders Tab_Headers and handles mouse/keyboard events -- `ff-tabs` provides the data model and logic only (GUI independence principle)
+- The unsaved-changes dialog is an abstracted contract -- `ff-tabs` defines the decision enum, GUI shell provides the presentation
 - The `file-operations` crate (sibling Wave 8) handles open/save I/O; `ff-tabs` integrates via tab creation/activation APIs
 - The `startup-and-session` crate (sibling Wave 8) invokes `serialize_tab_collection`/`deserialize_tab_collection` during session lifecycle
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
-- The recently-closed-tab stack is bounded to 20 entries — only ResourceUris are stored, not full document state
-- MRU navigation popup is a transient UI element — `ff-tabs` provides the model (`MruStack::iter()`), GUI shell renders the popup
+- The recently-closed-tab stack is bounded to 20 entries -- only ResourceUris are stored, not full document state
+- MRU navigation popup is a transient UI element -- `ff-tabs` provides the model (`MruStack::iter()`), GUI shell renders the popup
 - Configurable settings are sourced from the `configuration-system` (`ff-config`): `tabs.max_count`, `tabs.navigation_mode`, `tabs.title_format`, `tabs.close_button_on_inactive`, `tabs.pinned_position_policy`
 
 ---

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-wrap` crate — the line wrap toggle subsystem for FileForgeWorkbench. It provides per-editor-instance wrap mode (None/Word/Character), configurable wrap boundaries (viewport width or fixed column), wrap indent modes for continuation lines, display-line-mapping integration for sub-line height tracking, viewport recalculation on mode change, WRAP primary command with sub-commands, horizontal scrollbar interaction, status bar indicator, View menu integration, wrap visual flags, session persistence, and configuration defaults.
+This plan covers the complete implementation of the `ff-wrap` crate -- the line wrap toggle subsystem for FileForgeWorkbench. It provides per-editor-instance wrap mode (None/Word/Character), configurable wrap boundaries (viewport width or fixed column), wrap indent modes for continuation lines, display-line-mapping integration for sub-line height tracking, viewport recalculation on mode change, WRAP primary command with sub-commands, horizontal scrollbar interaction, status bar indicator, View menu integration, wrap visual flags, session persistence, and configuration defaults.
 
 This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-display-line-mapping` for document-to-display coordinate translation and height tracking, `ff-config` for wrap configuration keys, `ff-command` for WRAP command registration, `ff-viewport` for scroll recalculation, `ff-logging` for configuration warnings, and integrates with `ff-multi-tab` for per-editor-instance state, `ff-session` for persistence, `ff-statusbar` for indicator rendering, and `ff-whitespace-guides` for visual flag rendering.
 
@@ -18,14 +18,14 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-displa
   - Covers: Structural foundation for all requirements
 
 - [x] 2. WrapMode enum and WrapConfig model
-  - [x] 2.1 Define `WrapMode` enum with variants: `None`, `Word`, `Character` — derive Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize
+  - [x] 2.1 Define `WrapMode` enum with variants: `None`, `Word`, `Character` -- derive Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize
   - [x] 2.2 Implement `WrapMode::is_active(&self) -> bool` returning true for Word and Character
   - [x] 2.3 Implement `WrapMode::default_enabled() -> Self` returning `Word` (the default when user enables wrapping)
   - [x] 2.4 Implement `WrapMode::display_label(&self) -> &'static str` returning "Off", "Word", or "Char"
-  - [x] 2.5 Define `WrapBoundary` enum with variants: `Viewport`, `Column(u32)` — derive Debug, Clone, Copy, PartialEq, Eq
+  - [x] 2.5 Define `WrapBoundary` enum with variants: `Viewport`, `Column(u32)` -- derive Debug, Clone, Copy, PartialEq, Eq
   - [x] 2.6 Implement `WrapBoundary::from_column(n: i32) -> Self` returning Viewport for 0, Column(n) for valid positive, Viewport with warning for invalid
-  - [x] 2.7 Define `WrapIndentMode` enum with variants: `Fixed`, `Same`, `Indent`, `DeepIndent` — derive Debug, Clone, Copy, PartialEq, Eq
-  - [x] 2.8 Define `WrapVisualFlags` enum with variants: `None`, `End`, `Start`, `StartEnd`, `Margin` — derive Debug, Clone, Copy, PartialEq, Eq
+  - [x] 2.7 Define `WrapIndentMode` enum with variants: `Fixed`, `Same`, `Indent`, `DeepIndent` -- derive Debug, Clone, Copy, PartialEq, Eq
+  - [x] 2.8 Define `WrapVisualFlags` enum with variants: `None`, `End`, `Start`, `StartEnd`, `Margin` -- derive Debug, Clone, Copy, PartialEq, Eq
   - [x] 2.9 Write unit tests for WrapMode predicates, display labels, WrapBoundary construction and validation
   - Covers: Requirement 1 (AC 1.1–1.6), Requirement 4 (AC 4.1), Requirement 5 (AC 5.1), Requirement 10 (AC 10.1)
 
@@ -35,7 +35,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-displa
   - [x] 3.3 Implement `WrapConfig::validate(&mut self) -> Vec<ConfigWarning>` applying rules: wrap_column negative or >10000 resets to 0; indent_amount clamped to 0–40; invalid enum strings reset to defaults
   - [x] 3.4 Implement `WrapConfig::from_config_store(store: &ConfigStore) -> Self` reading `[view.wrap]` table keys and calling validate
   - [x] 3.5 Implement `WrapConfig::boundary(&self) -> WrapBoundary` returning Viewport when wrap_column is 0, Column(n) otherwise
-  - [x] 3.6 Implement hot-reload: `WrapConfig::on_config_changed(new_store: &ConfigStore) -> (Self, Vec<ConfigWarning>)` — new defaults apply to newly opened documents only
+  - [x] 3.6 Implement hot-reload: `WrapConfig::on_config_changed(new_store: &ConfigStore) -> (Self, Vec<ConfigWarning>)` -- new defaults apply to newly opened documents only
   - [x] 3.7 Write unit tests for defaults, each validation rule (column out of range, indent_amount clamping, invalid mode strings, layered overrides), hot-reload behaviour
   - Covers: Requirement 12 (AC 12.1–12.5), Requirement 4 (AC 4.5–4.7), Requirement 5 (AC 5.6–5.8)
 
@@ -58,7 +58,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-displa
   - [x] 5.4 Implement `CharWrapBreaker` that breaks at exact character position filling wrap_width without regard to word boundaries
   - [x] 5.5 Implement `compute_sub_line_count(line: &str, wrap_width: u32, mode: WrapMode, indent: &IndentInfo) -> u32` returning the display height (number of sub-lines)
   - [x] 5.6 Implement indent-aware width reduction: continuation lines subtract indent offset from available width (Req 5 AC 5.9)
-  - [x] 5.7 Define `IndentInfo` struct computed from `WrapIndentMode` and `indent_amount` — holds resolved pixel/character offset for continuation lines
+  - [x] 5.7 Define `IndentInfo` struct computed from `WrapIndentMode` and `indent_amount` -- holds resolved pixel/character offset for continuation lines
   - [x] 5.8 Implement `IndentInfo::compute(mode: WrapIndentMode, amount: u32, line_indent: u32, indent_width: u32) -> Self` resolving Fixed/Same/Indent/DeepIndent
   - [x] 5.9 Write unit tests for word breaking (normal, long word overflow), character breaking, sub-line count, indent modes (Fixed, Same, Indent, DeepIndent), edge cases (empty line, single-char line, line exactly at boundary)
   - Covers: Requirement 1 (AC 1.2–1.5), Requirement 5 (AC 5.1–5.9)
@@ -76,7 +76,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-displa
 
 - [x] 7. Viewport recalculation on mode change
   - [x] 7.1 Define `WrapViewportEvent` struct with fields: `editor_instance_id`, `old_mode: WrapMode`, `new_mode: WrapMode`, `total_display_lines: u32`, `requires_scroll_reset: bool`
-  - [x] 7.2 Implement `WrapViewportEvent::from_mode_change(id, old, new, total_display_lines) -> Self` constructor — `requires_scroll_reset` is true when transitioning between None↔active modes
+  - [x] 7.2 Implement `WrapViewportEvent::from_mode_change(id, old, new, total_display_lines) -> Self` constructor -- `requires_scroll_reset` is true when transitioning between None↔active modes
   - [x] 7.3 Implement scroll position adjustment logic: when wrap enables, translate current `top_line` from document coordinates to display coordinates via display-line-mapping
   - [x] 7.4 Implement scrollbar range update: emit new total display line count for vertical scrollbar range recalculation
   - [x] 7.5 Implement resize-triggered recalculation: when viewport width changes while wrap is active (Viewport boundary), recompute all heights and emit new total
@@ -85,7 +85,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-displa
 
 - [x] 8. Horizontal scrollbar interaction
   - [x] 8.1 Define `ScrollbarVisibility` enum with variants: `Visible`, `Hidden`
-  - [x] 8.2 Implement `scrollbar_state(state: &WrapState, viewport_width: u32) -> ScrollbarVisibility` — Hidden when wrap active with Viewport boundary; Visible when wrap None; Visible when wrap active with Column(n) and viewport < n
+  - [x] 8.2 Implement `scrollbar_state(state: &WrapState, viewport_width: u32) -> ScrollbarVisibility` -- Hidden when wrap active with Viewport boundary; Visible when wrap None; Visible when wrap active with Column(n) and viewport < n
   - [x] 8.3 Implement `on_wrap_enabled_viewport(h_offset: &mut u32)` resetting horizontal_offset to 0 when wrap activates with Viewport boundary
   - [x] 8.4 Implement `on_wrap_disabled() -> ScrollbarVisibility` returning Visible
   - [x] 8.5 Implement Column(n) narrow-viewport case: scrollbar remains visible when viewport is narrower than column n even when wrap is active
@@ -116,7 +116,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-displa
 
 - [x] 11. Status bar wrap indicator model
   - [x] 11.1 Define `WrapIndicatorState` enum with variants: `Hidden`, `Visible { text: String, mode: WrapMode }`
-  - [x] 11.2 Implement `WrapIndicatorState::from_mode(mode: WrapMode) -> Self` — Hidden when None, Visible("Wrap: Word") for Word, Visible("Wrap: Char") for Character
+  - [x] 11.2 Implement `WrapIndicatorState::from_mode(mode: WrapMode) -> Self` -- Hidden when None, Visible("Wrap: Word") for Word, Visible("Wrap: Char") for Character
   - [x] 11.3 Implement click-to-cycle behaviour model: `cycle_mode(current: WrapMode) -> WrapMode` returning None→Word→Character→None
   - [x] 11.4 Implement tab-switch update: indicator reflects newly active editor instance's wrap mode (Req 8 AC 8.6)
   - [x] 11.5 Write unit tests for indicator visibility rules, text formatting, click-cycle progression, tab-switch update
@@ -167,14 +167,14 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-displa
   - Covers: Error handling across all requirements
 
 - [x] 17. Per-editor-instance independence validation
-  - [x] 17.1 Implement integration test: two editor instances with different wrap modes — changing one does not affect the other (Req 2 AC 2.3)
+  - [x] 17.1 Implement integration test: two editor instances with different wrap modes -- changing one does not affect the other (Req 2 AC 2.3)
   - [x] 17.2 Implement integration test: tab switch updates indicator and menu to reflect new active instance's mode (Req 2 AC 2.4)
   - [x] 17.3 Implement integration test: new editor instance initialises at default_mode from config (Req 2 AC 2.2)
   - [x] 17.4 Implement integration test: missing/invalid config default_mode falls back to None (Req 2 AC 2.5)
   - [x] 17.5 Write unit tests for independence invariant using multiple WrapState instances
   - Covers: Requirement 2 (AC 2.1–2.5)
 
-- [x] 18. Property-based tests — WrapMode and WrapState invariants
+- [x] 18. Property-based tests -- WrapMode and WrapState invariants
   - [x] 18.1 Write property test: for any WrapMode value, `is_active()` returns true if and only if mode is Word or Character
     - **Validates: Requirement 1.1**
   - [x] 18.2 Write property test: for any WrapState constructed from any valid WrapConfig, mode is always one of the three valid enum variants
@@ -184,7 +184,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-displa
   - [x] 18.4 Write property test: effective_wrap_width returns viewport_width when boundary is Viewport, and returns the column value when boundary is Column(n), for any positive viewport_width and any column value
     - **Validates: Requirements 4.1, 4.2, 4.3**
 
-- [x] 19. Property-based tests — line-breaking invariants
+- [x] 19. Property-based tests -- line-breaking invariants
   - [x] 19.1 Write property test: for any non-empty string and any wrap_width >= 1, compute_breaks produces breaks such that no sub-line exceeds wrap_width characters (accounting for indent), regardless of WrapMode (Word or Character)
     - **Validates: Requirements 1.2, 1.3, 1.5**
   - [x] 19.2 Write property test: for any string and Word mode, break positions never split within a word unless the word itself exceeds wrap_width (word-overflow fallback)
@@ -196,7 +196,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-displa
   - [x] 19.5 Write property test: compute_sub_line_count returns 1 for any string shorter than or equal to wrap_width, and >1 for any string longer than wrap_width (with indent=0)
     - **Validates: Requirements 1.2, 6.1**
 
-- [x] 20. Property-based tests — display-line-mapping height invariants
+- [x] 20. Property-based tests -- display-line-mapping height invariants
   - [x] 20.1 Write property test: when WrapMode is None, compute_height returns exactly 1 for any string of any length
     - **Validates: Requirements 1.2, 6.2**
   - [x] 20.2 Write property test: when WrapMode is Word or Character, compute_height >= 1 for any input string and any valid wrap_width
@@ -206,7 +206,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-displa
   - [x] 20.4 Write property test: total display lines (sum of all heights) >= document line count, for any document with wrap active and any valid wrap_width
     - **Validates: Requirement 6.7**
 
-- [x] 21. Property-based tests — configuration validation invariants
+- [x] 21. Property-based tests -- configuration validation invariants
   - [x] 21.1 Write property test: after validate(), wrap_column is either 0 or within [1, 10000] for any input integer value
     - **Validates: Requirements 4.5, 4.7**
   - [x] 21.2 Write property test: after validate(), indent_amount is always within [0, 40] for any input integer value
@@ -216,7 +216,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-displa
   - [x] 21.4 Write property test: hot-reload with any new config values produces a valid WrapConfig where all fields are within their allowed ranges
     - **Validates: Requirement 12.3**
 
-- [x] 22. Property-based tests — session persistence invariants
+- [x] 22. Property-based tests -- session persistence invariants
   - [x] 22.1 Write property test: persist then restore round-trip preserves mode and boundary exactly when values are valid variants, for any valid WrapMode and WrapBoundary
     - **Validates: Requirements 11.1, 11.2**
   - [x] 22.2 Write property test: restoring an invalid/unrecognized mode variant always produces WrapMode::None (never panics, never produces invalid state) for any arbitrary string input
@@ -224,7 +224,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-displa
   - [x] 22.3 Write property test: restoring with no persisted entry produces a WrapState matching the config default_mode for any valid WrapConfig
     - **Validates: Requirement 11.2**
 
-- [x] 23. Property-based tests — indicator and scrollbar invariants
+- [x] 23. Property-based tests -- indicator and scrollbar invariants
   - [x] 23.1 Write property test: indicator is Hidden if and only if WrapMode is None, for any WrapMode value
     - **Validates: Requirements 8.1, 8.2, 8.3**
   - [x] 23.2 Write property test: scrollbar is Hidden if and only if wrap is active AND boundary is Viewport, for any combination of WrapMode and WrapBoundary with any viewport_width
@@ -234,7 +234,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-displa
   - [x] 23.4 Write property test: indicator text matches "Wrap: Word" or "Wrap: Char" when visible, for any non-None WrapMode
     - **Validates: Requirements 8.1, 8.2**
 
-- [x] 24. Property-based tests — WRAP command invariants
+- [x] 24. Property-based tests -- WRAP command invariants
   - [x] 24.1 Write property test: WRAP command always produces a valid WrapMode result (None, Word, or Character) and never leaves state in an invalid/intermediate state, for any valid sub-command string
     - **Validates: Requirements 3.1, 3.8**
   - [x] 24.2 Write property test: WRAP ON from any starting mode always results in an active mode (Word or Character), never None
@@ -244,7 +244,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-displa
   - [x] 24.4 Write property test: WRAP COL n with n in [1, 10000] always results in boundary Column(n), and WRAP COL 0 always results in Viewport, for any valid integer
     - **Validates: Requirements 4.6, 4.7**
 
-- [x] 25. Integration tests — end-to-end wrap workflows
+- [x] 25. Integration tests -- end-to-end wrap workflows
   - [x] 25.1 Write integration test: create editor instance → WRAP ON → verify mode is Word, scrollbar hidden, indicator shows "Wrap: Word"
   - [x] 25.2 Write integration test: WRAP ON when already Word → verify mode unchanged, confirmation message returned
   - [x] 25.3 Write integration test: WRAP OFF when already None → verify "Wrap is already off" message
@@ -274,7 +274,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-displa
 
 ## Notes
 
-- The `ff-wrap` crate has zero GUI dependencies — it operates on abstract types and emits `WrapViewportEvent` structs that the rendering layer consumes to trigger re-layout.
+- The `ff-wrap` crate has zero GUI dependencies -- it operates on abstract types and emits `WrapViewportEvent` structs that the rendering layer consumes to trigger re-layout.
 - Line wrapping is a **display-only state change**: it never modifies document content, never produces UndoRecords, and is never recorded in command history.
 - The `WrapBreaker` trait and height calculator provide the computational bridge between wrap state and the display-line-mapping layer. The display-line-mapping crate (`ff-display-line-mapping`) consumes `set_height` calls to update its contraction state.
 - Per-editor-instance independence (Requirement 2) is architecturally enforced by each `WrapState` being owned by its editor instance. The wrap crate does not maintain a global wrap registry.
@@ -283,7 +283,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-displa
 - Session persistence (Requirement 11) integrates with the session store owned by `ff-session`. The wrap crate provides `WrapSessionEntry` as the serializable payload.
 - The WRAP primary command (Task 9) supports keyword sub-commands (ON, OFF, TOGGLE, WORD, CHAR, COL n). It does not interact with the undo system.
 - Property-based tests (Tasks 18–24) use the `proptest` crate and are configured for a minimum of 256 iterations.
-- The Column(n) wrap boundary mode (Requirement 4) allows horizontal scrolling even when wrap is active — this is the one case where the horizontal scrollbar remains visible during wrapping.
+- The Column(n) wrap boundary mode (Requirement 4) allows horizontal scrolling even when wrap is active -- this is the one case where the horizontal scrollbar remains visible during wrapping.
 - Hot-reload of configuration (Requirement 12) applies new defaults only to newly opened documents; already-open documents retain their current wrap settings.
 
 ---
@@ -352,16 +352,16 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-displa
     "25": ["4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "17"]
   },
   "externalDependencies": {
-    "ff-display-line-mapping": "Provides set_height, doc_from_display, display_from_doc — wrap height updates are communicated through this layer",
-    "ff-config": "Provides ConfigStore, key-value configuration access, hot-reload notification — wrap config keys ([view.wrap]) are read from here",
-    "ff-command": "Command registry, dispatch, metadata — WRAP command is registered here",
+    "ff-display-line-mapping": "Provides set_height, doc_from_display, display_from_doc -- wrap height updates are communicated through this layer",
+    "ff-config": "Provides ConfigStore, key-value configuration access, hot-reload notification -- wrap config keys ([view.wrap]) are read from here",
+    "ff-command": "Command registry, dispatch, metadata -- WRAP command is registered here",
     "ff-viewport": "Consumes WrapViewportEvent to recalculate visible_count, scrollbar range, and adjust top_line",
     "ff-logging": "Structured logging for configuration warnings and diagnostics",
-    "ff-multi-tab": "Per-editor-instance lifecycle — each tab owns its own WrapState",
-    "ff-session": "Session persistence store — wrap state is serialised/deserialised through this system",
+    "ff-multi-tab": "Per-editor-instance lifecycle -- each tab owns its own WrapState",
+    "ff-session": "Session persistence store -- wrap state is serialised/deserialised through this system",
     "ff-statusbar": "Renders WrapIndicatorState data in the status bar UI",
     "ff-whitespace-guides": "Renders wrap visual flag glyphs (continuation markers) using computed WrapMarkerPosition data",
-    "ff-idle-processing": "Background wrap height recalculation for large files — incremental computation in idle cycles"
+    "ff-idle-processing": "Background wrap height recalculation for large files -- incremental computation in idle cycles"
   },
   "waves": [
     {

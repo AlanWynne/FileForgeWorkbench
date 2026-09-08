@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan implements the `ff-shell` crate — the operating-system shell integration layer for FileForgeWorkbench. It provides command execution, document capture, stdin piping, interactive terminal sessions (VT100 emulation over PTY), an output panel with scrollback, environment and working directory management, security mode gating, and configuration integration.
+This plan implements the `ff-shell` crate -- the operating-system shell integration layer for FileForgeWorkbench. It provides command execution, document capture, stdin piping, interactive terminal sessions (VT100 emulation over PTY), an output panel with scrollback, environment and working directory management, security mode gating, and configuration integration.
 
 The implementation is structured in 16 phases proceeding from crate scaffolding through integration tests. Each phase builds on the prior phase's public API surface.
 
@@ -110,7 +110,7 @@ The implementation is structured in 16 phases proceeding from crate scaffolding 
   - [x] 11.5 Implement ANSI escape parsing: CSI sequences (cursor movement, erase, SGR)
   - [x] 11.6 Implement SGR attribute parsing (bold, italic, underline, foreground/background colors)
   - [x] 11.7 Implement cursor positioning (CUP, CUF, CUB, CUU, CUD, home, save/restore)
-  - [x] 11.8 Implement screen clearing (ED — erase display, EL — erase line)
+  - [x] 11.8 Implement screen clearing (ED -- erase display, EL -- erase line)
   - [x] 11.9 Implement scrollback buffer management (push lines above visible area)
   - [x] 11.10 Implement `feed()` method: byte stream → parsed sequences → grid state updates
   - [x] 11.11 Implement `resize()` method: reflow content to new dimensions
@@ -181,7 +181,7 @@ The implementation is structured in 16 phases proceeding from crate scaffolding 
   - [x] 17.2 Implement command form validation (Requirements 9.1–9.6)
   - [x] 17.3 Implement mode routing: no args → terminal, args + no target → execute, args + A/B → capture
   - [x] 17.4 Implement invalid form rejection (source line commands, no args + target, multiple targets)
-  - [x] 17.5 Implement `register_commands()` in `src/commands.rs` — register `shell.execute`, `shell.terminal`, `shell.capture`, `shell.output.clear`
+  - [x] 17.5 Implement `register_commands()` in `src/commands.rs` -- register `shell.execute`, `shell.terminal`, `shell.capture`, `shell.output.clear`
   - [x] 17.6 Implement `CommandHandler` trait for each command ID with metadata
   - [x] 17.7 Implement TSO alias normalisation to canonical `"shell.execute"` command ID
   - [x] 17.8 Implement progress indicator emission via `ff-workflow::ProgressReporter`

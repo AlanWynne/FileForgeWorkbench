@@ -4,15 +4,15 @@
 
 This feature specifies the **TABS and MASK** display-helper commands for FileForgeWorkbench (`ff-tabs-and-mask` crate). These two closely related features provide visual aids and session-level state for tab stop management and insert-mask templates, following the same Display_Artifact_Line pattern established by `COLS` and `BNDS` in the `navigation-commands` spec.
 
-Both commands insert a synthetic display-only line into the viewport as a visual aid and carry session-level state that is non-undoable and is cleared (display-wise) by `RESET`. Neither the TABS line nor the MASK line is real document content — they are never saved to disk.
+Both commands insert a synthetic display-only line into the viewport as a visual aid and carry session-level state that is non-undoable and is cleared (display-wise) by `RESET`. Neither the TABS line nor the MASK line is real document content -- they are never saved to disk.
 
 **TABS** manages tab stop positions. The Tab key uses tab stops when inserting text; the TABS line makes the configured positions visible in the viewport. Tab stops can be set globally via the configuration system (`editor.default_tab_stops`), and language definitions (TOML files managed by `language-service`) can provide per-language defaults via a `default_tab_stops` key.
 
-**MASK** manages an insert mask — a template string that pre-fills newly inserted blank lines (created by the `I`/`In` line commands) with boilerplate content. This is especially useful for fixed-format languages such as COBOL, where new lines may need sequence-number placeholders at specific column positions. The mask is edited by typing directly into the MASK line in the viewport. Language definitions can provide a per-language default mask via a `default_mask` key. The mask is cleared with `MASK OFF`.
+**MASK** manages an insert mask -- a template string that pre-fills newly inserted blank lines (created by the `I`/`In` line commands) with boilerplate content. This is especially useful for fixed-format languages such as COBOL, where new lines may need sequence-number placeholders at specific column positions. The mask is edited by typing directly into the MASK line in the viewport. Language definitions can provide a per-language default mask via a `default_mask` key. The mask is cleared with `MASK OFF`.
 
 Both TABS and MASK are available as:
-- **Primary commands** — entered on the command line to display, configure, or clear the respective state.
-- **Line commands** — entered in the prefix area to insert the display line at a specific document position.
+- **Primary commands** -- entered on the command line to display, configure, or clear the respective state.
+- **Line commands** -- entered in the prefix area to insert the display line at a specific document position.
 
 The `ff-tabs-and-mask` crate is a Wave 11 (Display Mode) component. It depends on `ff-command` (command-framework) for command registration and dispatch, `ff-config` (configuration-system) for default tab stop and mask settings, `ff-language-service` (language-service) for per-language defaults, and integrates with `ff-edit-operations` (edit-operations) for Tab key behaviour and mask-filled line insertion.
 
@@ -43,7 +43,7 @@ The `ff-tabs-and-mask` crate is a Wave 11 (Display Mode) component. It depends o
 | **Tab_Stop** | A column position (1-based) at which the Tab key advances the cursor when inserting text. Tab stops are stored in Session_State as an ordered list of distinct positive integers. | [FFE-TABSMASK] |
 | **Insert_Mask** | A template string stored in Session_State that is applied to every blank line inserted by the `I` or `In` line commands. Non-space characters indicate pre-filled content at those column positions. | [FFE-TABSMASK] |
 | **MASK_Line** | A synthetic display-only line inserted into the viewport to show and allow in-place editing of the active Insert_Mask. Not a real document line; never saved to disk. | [FFE-TABSMASK] |
-| **Display_Artifact_Line** | Any synthetic viewport line that is not real document content — including COLS_Line, BNDS_Line, TABS_Line, and MASK_Line. Display artifact lines are never saved to disk, are not part of the document model, and are not included in any command scope. | [FFE-TABSMASK, WB] |
+| **Display_Artifact_Line** | Any synthetic viewport line that is not real document content -- including COLS_Line, BNDS_Line, TABS_Line, and MASK_Line. Display artifact lines are never saved to disk, are not part of the document model, and are not included in any command scope. | [FFE-TABSMASK, WB] |
 | **Session_State** | Transient in-memory editor state (excluded lines, tags, bounds, COLS markers, BNDS markers, tab stops, TABS line, insert mask, MASK line) that is not persisted to disk. Non-undoable. | [FFE-TABSMASK] |
 | **Language_Definition** | A TOML configuration file in the `languages/` directory that defines language-specific behaviour including, optionally, `default_tab_stops` and `default_mask`. Managed by `language-service`. | [FFE-TABSMASK, WB] |
 | **Primary_Command** | A command entered on the command line (Command ===> area) and dispatched through the command framework. | [FFE-TABSMASK] |
@@ -55,7 +55,7 @@ The `ff-tabs-and-mask` crate is a Wave 11 (Display Mode) component. It depends o
 
 ---
 
-### Requirement 1: TABS Primary Command — Display and Toggle [FFE-TABSMASK]
+### Requirement 1: TABS Primary Command -- Display and Toggle [FFE-TABSMASK]
 
 **User Story:** As an editor user, I want to type `TABS` on the command line to display the current tab stop positions in the viewport as a non-editable ruler line, so that I can confirm where the Tab key will advance before I start editing.
 
@@ -85,7 +85,7 @@ The `ff-tabs-and-mask` crate is a Wave 11 (Display Mode) component. It depends o
 
 ---
 
-### Requirement 2: TABS Primary Command — Configure Tab Stops [FFE-TABSMASK]
+### Requirement 2: TABS Primary Command -- Configure Tab Stops [FFE-TABSMASK]
 
 **User Story:** As an editor user, I want to specify explicit tab stop column positions on the TABS command line so that I can customise where the Tab key advances without editing a configuration file.
 
@@ -111,7 +111,7 @@ The `ff-tabs-and-mask` crate is a Wave 11 (Display Mode) component. It depends o
 
 ---
 
-### Requirement 3: TABS Line Command — Insert TABS_Line at Position [FFE-TABSMASK]
+### Requirement 3: TABS Line Command -- Insert TABS_Line at Position [FFE-TABSMASK]
 
 **User Story:** As an editor user, I want to enter `TABS` in the prefix area next to a specific line to insert a tab ruler at that exact position, so that I can visualise tab stops within a particular block of code without moving the cursor.
 
@@ -177,7 +177,7 @@ The `ff-tabs-and-mask` crate is a Wave 11 (Display Mode) component. It depends o
 
 ---
 
-### Requirement 6: MASK Primary Command — Display and Toggle [FFE-TABSMASK]
+### Requirement 6: MASK Primary Command -- Display and Toggle [FFE-TABSMASK]
 
 **User Story:** As an editor user, I want to type `MASK` on the command line to display the current insert mask in the viewport as an editable template line, so that I can see and modify the boilerplate content that will be applied to newly inserted blank lines.
 
@@ -187,7 +187,7 @@ The `ff-tabs-and-mask` crate is a Wave 11 (Display Mode) component. It depends o
 
 1. WHEN `MASK` is issued as a Primary_Command with no arguments and an Insert_Mask is currently active, THE command framework SHALL insert a MASK_Line into the viewport at the current cursor position (or at the top of the visible area if no cursor line is defined). [FFE-TABSMASK]
 
-2. WHEN `MASK` is issued as a Primary_Command with no arguments and no Insert_Mask is currently active, THE command framework SHALL display "No active mask — use MASK to set one or check the language profile" in the status area. [FFE-TABSMASK]
+2. WHEN `MASK` is issued as a Primary_Command with no arguments and no Insert_Mask is currently active, THE command framework SHALL display "No active mask -- use MASK to set one or check the language profile" in the status area. [FFE-TABSMASK]
 
 3. THE MASK_Line SHALL display the full content of the active Insert_Mask, character by character, aligned with document line columns. [FFE-TABSMASK]
 
@@ -209,7 +209,7 @@ The `ff-tabs-and-mask` crate is a Wave 11 (Display Mode) component. It depends o
 
 ---
 
-### Requirement 7: MASK OFF — Clear the Active Insert Mask [FFE-TABSMASK]
+### Requirement 7: MASK OFF -- Clear the Active Insert Mask [FFE-TABSMASK]
 
 **User Story:** As an editor user, I want to issue `MASK OFF` to clear the current insert mask so that newly inserted lines are blank rather than pre-filled with boilerplate content.
 
@@ -227,7 +227,7 @@ The `ff-tabs-and-mask` crate is a Wave 11 (Display Mode) component. It depends o
 
 ---
 
-### Requirement 8: MASK Line Command — Insert MASK_Line at Position [FFE-TABSMASK]
+### Requirement 8: MASK Line Command -- Insert MASK_Line at Position [FFE-TABSMASK]
 
 **User Story:** As an editor user, I want to enter `MASK` in the prefix area next to a specific line to insert the mask template display at that exact position, so that I can inspect or edit the mask template inline without issuing a primary command.
 
@@ -313,7 +313,7 @@ The `ff-tabs-and-mask` crate is a Wave 11 (Display Mode) component. It depends o
 
 ---
 
-### Requirement 12: RESET TABS — Clear Custom Tab Stops [FFE-TABSMASK, WB]
+### Requirement 12: RESET TABS -- Clear Custom Tab Stops [FFE-TABSMASK, WB]
 
 **User Story:** As an editor user, I want a `RESET TABS` command to restore the default tab stops (from configuration or language definition), so that I can undo custom session tab stop changes without restarting the session.
 
@@ -371,7 +371,7 @@ The `ff-tabs-and-mask` crate is a Wave 11 (Display Mode) component. It depends o
 
 4. WHEN `>n` or `<n` line commands are executed (shift by n positions), THE command framework SHALL use the Tab_Stop list to determine the target column by advancing n stops from the current first-non-space column. [WB]
 
-5. WHEN the Indent command (Tab with selection active) is invoked on selected lines, THE command framework SHALL delegate to the `auto-indentation` subsystem which uses `editor.indent_size` — NOT the TABS tab stop list. The TABS tab stop list is for single-cursor Tab navigation only. [WB]
+5. WHEN the Indent command (Tab with selection active) is invoked on selected lines, THE command framework SHALL delegate to the `auto-indentation` subsystem which uses `editor.indent_size` -- NOT the TABS tab stop list. The TABS tab stop list is for single-cursor Tab navigation only. [WB]
 
 ---
 
@@ -413,7 +413,7 @@ The `ff-tabs-and-mask` crate is a Wave 11 (Display Mode) component. It depends o
 
 ---
 
-### Requirement 17: TABS Display — Ruler Showing Active Tab Stops [FFE-TABSMASK]
+### Requirement 17: TABS Display -- Ruler Showing Active Tab Stops [FFE-TABSMASK]
 
 **User Story:** As an editor user, I want the TABS ruler line to clearly show which columns are tab stops, so that I can visually confirm alignment positions before and during editing.
 

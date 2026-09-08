@@ -16,11 +16,11 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
     - Validates: Requirement 1.1
   - [x] 1.3 Update `render_central_panel()` to dispatch `TabKind::FilesPanel` → `files_panel::render(ui, state)`
     - Validates: Requirement 1.1
-  - [x] 1.4 Update `primary_option_menu.rs` option 1 label to `Files — Virtual File Catalogs — Mainframe, POSIX, Native`
+  - [x] 1.4 Update `primary_option_menu.rs` option 1 label to `Files -- Virtual File Catalogs -- Mainframe, POSIX, Native`
     - Validates: Requirement 11.1
   - [x] 1.5 Write unit tests: `files_panel_tab_kind_exists`, `option_1_routes_to_files_panel`
     - Validates: Requirement 1.1, 11.2
-  - [x] 1.6 Run `cargo test` — confirm green
+  - [x] 1.6 Run `cargo test` -- confirm green
 
 - [x] 2. Catalog Registry
   - [x] 2.1 Create `crates/ff-desktop/src/catalog_registry.rs` with `VirtualCatalog` struct and `CatalogRegistry`
@@ -33,7 +33,7 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
     - Validates: Requirement 2.3–2.5
   - [x] 2.5 Write unit tests for all registry operations including duplicate-name rejection
     - Validates: Requirement 2.4
-  - [x] 2.6 Run `cargo test` — confirm green
+  - [x] 2.6 Run `cargo test` -- confirm green
 
 - [x] 3. POSIX VFS Provider
   - [x] 3.1 Create `crates/ff-desktop/src/posix_provider.rs` implementing `VfsProvider` for scheme `posix`
@@ -46,9 +46,9 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
     - Validates: Requirement 7.7
   - [x] 3.5 Write unit tests: path normalisation, root-jail escape prevention, read-only enforcement
     - Validates: Requirement 7.3, 7.6
-  - [x] 3.6 Run `cargo test` — confirm green
+  - [x] 3.6 Run `cargo test` -- confirm green
 
-- [x] 4. Files Panel — skeleton render
+- [x] 4. Files Panel -- skeleton render
   - [x] 4.1 Create `crates/ff-desktop/src/files_panel.rs` with `FilesPanelState` struct and `render()` fn
     - Validates: Requirement 1.2
   - [x] 4.2 Implement left-side catalog tree with three section headers (Mainframe, POSIX, Native)
@@ -61,9 +61,9 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
     - Validates: Requirement 1.7
   - [x] 4.6 Write unit tests for panel state initialisation and section header rendering logic
     - Validates: Requirement 1.2, 1.4
-  - [x] 4.7 Run `cargo test` — confirm green
+  - [x] 4.7 Run `cargo test` -- confirm green
 
-- [x] 5. Catalog Manager Dialog — Create
+- [x] 5. Catalog Manager Dialog -- Create
   - [x] 5.1 Create `crates/ff-desktop/src/catalog_manager_dialog.rs` with `NewCatalogForm` and render fn
     - Validates: Requirement 3.1–3.8
   - [x] 5.2 Implement catalog type selector (Mainframe / POSIX / Native)
@@ -82,9 +82,9 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
     - Validates: Requirement 3.7
   - [x] 5.9 Write unit tests for form validation logic (duplicate name, empty path, invalid chars)
     - Validates: Requirement 3.8
-  - [x] 5.10 Run `cargo test` — confirm green
+  - [x] 5.10 Run `cargo test` -- confirm green
 
-- [x] 6. Catalog Manager Dialog — Edit and Delete
+- [x] 6. Catalog Manager Dialog -- Edit and Delete
   - [x] 6.1 Implement `EditCatalogForm` pre-populated from existing catalog properties
     - Validates: Requirement 4.1–4.2
   - [x] 6.2 Implement `DeleteCatalogConfirm` dialog with three-option confirmation
@@ -95,7 +95,7 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
     - Validates: Requirement 4.5
   - [x] 6.5 Write unit tests for edit/delete form logic
     - Validates: Requirement 4.1–4.5
-  - [x] 6.6 Run `cargo test` — confirm green
+  - [x] 6.6 Run `cargo test` -- confirm green
 
 - [x] 7. Dataset Allocation Dialog
   - [x] 7.8 Change default BLKSIZE in `AllocDatasetForm::default()` from `"27920"` to `"0"`; update the existing `default_form_blksize_is_27920` test to assert `"0"`; update `validate()` to accept BLKSIZE=0 (skip the `blksize >= lrecl` check when blksize is 0)
@@ -112,7 +112,7 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
     - Validates: Requirement 5.3–5.4
   - [x] 7.6 Write unit tests for field validation (LRECL range, BLKSIZE >= LRECL, GDG limit range)
     - Validates: Requirement 5.3
-  - [x] 7.7 Run `cargo test` — confirm green
+  - [x] 7.7 Run `cargo test` -- confirm green
 
 - [x] 8. Mainframe context menus and POSIX file management
   - [x] 8.1 Implement Mainframe dataset context menus (PS, PDS, member, GDG) in files_panel.rs
@@ -127,7 +127,7 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
     - Validates: Requirement 9.3–9.4
   - [x] 8.6 Write unit tests for context menu item visibility logic per catalog type
     - Validates: Requirement 6.1–6.4, 8.1, 9.3
-  - [x] 8.7 Run `cargo test` — confirm green
+  - [x] 8.7 Run `cargo test` -- confirm green
 
 - [x] 9. Content area and unified explorer view
   - [x] 9.1 Implement right-side content area with Name/Type/Size/Modified columns
@@ -142,7 +142,7 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
     - Validates: Requirement 10.6
   - [x] 9.6 Write unit tests for sort logic and filter logic
     - Validates: Requirement 10.2, 10.6
-  - [x] 9.7 Run `cargo test` — confirm green
+  - [x] 9.7 Run `cargo test` -- confirm green
 
 - [x] 11. Catalog storage default paths
   - [x] 11.1 Register `catalogs.default_mainframe_root` schema key in `main.rs` `register_builtin_schema()`,
@@ -161,7 +161,7 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
   - [x] 11.5 Write unit tests: default path computed correctly for Mainframe (name appended),
           POSIX (root used directly), and that the field remains editable
     - Validates: Requirement 12.1, 12.2
-  - [x] 11.6 Run `cargo test` — confirm green
+  - [x] 11.6 Run `cargo test` -- confirm green
 
 - [x] 10. Session persistence for FilesPanel tab and catalog registry
   - [x] 10.1 Update `session_manager.rs` to persist/restore `FilesPanel` tab kind
@@ -172,39 +172,39 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
     - Validates: Requirement 2.2
   - [x] 10.4 Write unit tests for FilesPanel tab round-trip through session
     - Validates: Requirement 11.3
-  - [x] 10.5 Run `cargo test --workspace` — all tests pass
+  - [x] 10.5 Run `cargo test --workspace` -- all tests pass
   - [x] 10.6 Update `docs/quality/TCR.md`
   - [x] 10.7 Update `docs/specs/project-master/tasks.md`
 
-- [x] 15. Catalog Properties — Repository Path Display (Req 15)
+- [x] 15. Catalog Properties -- Repository Path Display (Req 15)
   - [x] 15.1 In `catalog_manager_dialog.rs` `render_edit()`: add a read-only `Repository Path:` label row displaying `form.path` as monospace weak text
     - Validates: Requirement 15.1, 15.2, 15.3
-  - [x] 15.2 Write failing test `edit_form_displays_repository_path` — verifies `EditCatalogForm` carries the path field from the source catalog
+  - [x] 15.2 Write failing test `edit_form_displays_repository_path` -- verifies `EditCatalogForm` carries the path field from the source catalog
     - Validates: Requirement 15.1
-  - [x] 15.3 Run `cargo test -p ff-desktop` — confirm green
+  - [x] 15.3 Run `cargo test -p ff-desktop` -- confirm green
 
 - [x] 16. VFS Dataset Path Resolution (Req 16)
   - [x] 16.1 Add `resolve_dataset_path(repository_path: &str, dsn: &str) -> Option<PathBuf>` pure function to `files_panel.rs`
     - Validates: Requirement 16.5
   - [x] 16.2 Write failing tests: `resolve_dataset_path_maps_dsn_to_subpath`, `resolve_dataset_path_empty_repo_returns_none`, `resolve_dataset_path_empty_dsn_returns_none`
     - Validates: Requirement 16.1, 16.4, 16.5
-  - [x] 16.3 In `render.rs` `FilesPanelAction::OpenFile` Mainframe handler: replace the "not yet implemented" message with `resolve_dataset_path` logic — open file if path exists, show "not found" message if not, show "no repository path" message if None
+  - [x] 16.3 In `render.rs` `FilesPanelAction::OpenFile` Mainframe handler: replace the "not yet implemented" message with `resolve_dataset_path` logic -- open file if path exists, show "not found" message if not, show "no repository path" message if None
     - Validates: Requirement 16.2, 16.3, 16.4
-  - [x] 16.4 In `file_explorer_panel.rs` `render_dataset_children()` double-click handler: apply same resolution logic — set `open_path` if file exists, set `state.last_error` with appropriate message otherwise
+  - [x] 16.4 In `file_explorer_panel.rs` `render_dataset_children()` double-click handler: apply same resolution logic -- set `open_path` if file exists, set `state.last_error` with appropriate message otherwise
     - Validates: Requirement 16.2, 16.3, 16.4
-  - [x] 16.5 Run `cargo test -p ff-desktop` — confirm green
-  - [x] 16.6 Run `cargo clippy -p ff-desktop -- -D warnings` — clean
+  - [x] 16.5 Run `cargo test -p ff-desktop` -- confirm green
+  - [x] 16.6 Run `cargo clippy -p ff-desktop -- -D warnings` -- clean
 
 
-  - [x] 14.1 Write failing test `no_native_catalogs_triggers_home_catalog_creation` in `session_manager.rs` or a new `startup_tests.rs` — verifies that after the startup logic runs on an empty registry, a Native catalog named `"Home"` is present
+  - [x] 14.1 Write failing test `no_native_catalogs_triggers_home_catalog_creation` in `session_manager.rs` or a new `startup_tests.rs` -- verifies that after the startup logic runs on an empty registry, a Native catalog named `"Home"` is present
     - Validates: Requirement 14.1, 14.2
-  - [x] 14.2 Write failing test `existing_native_catalog_suppresses_home_creation` — verifies that when a Native catalog already exists, no `"Home"` catalog is added
+  - [x] 14.2 Write failing test `existing_native_catalog_suppresses_home_creation` -- verifies that when a Native catalog already exists, no `"Home"` catalog is added
     - Validates: Requirement 14.4
-  - [x] 14.3 Write failing test `home_catalog_persisted_immediately` — verifies that `save_catalog_registry` is called and the catalog survives a load round-trip
+  - [x] 14.3 Write failing test `home_catalog_persisted_immediately` -- verifies that `save_catalog_registry` is called and the catalog survives a load round-trip
     - Validates: Requirement 14.3
-  - [x] 14.4 Write failing test `delete_home_native_catalog_is_rejected` — verifies that `execute_delete` returns an error when the catalog name is `"Home"` and type is `Native`
+  - [x] 14.4 Write failing test `delete_home_native_catalog_is_rejected` -- verifies that `execute_delete` returns an error when the catalog name is `"Home"` and type is `Native`
     - Validates: Requirement 14.6
-  - [x] 14.5 Write failing test `delete_renamed_home_catalog_is_permitted` — verifies that a Native catalog formerly named `"Home"` but now renamed can be deleted
+  - [x] 14.5 Write failing test `delete_renamed_home_catalog_is_permitted` -- verifies that a Native catalog formerly named `"Home"` but now renamed can be deleted
     - Validates: Requirement 14.7
   - [x] 14.6 Add `ensure_default_home_catalog()` free function in `shell/update.rs` that encapsulates the check-and-create logic; takes `&mut CatalogRegistry` and `home_path: PathBuf`
     - Validates: Requirement 14.1, 14.4, 14.5
@@ -212,8 +212,8 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
     - Validates: Requirement 14.2, 14.3
   - [x] 14.8 In `catalog_manager_dialog.rs` `execute_delete()`: guard against deleting a catalog named `"Home"` of type `Native`; return `Err("The Home catalog cannot be deleted. Rename or edit it instead.".to_string())`
     - Validates: Requirement 14.6
-  - [x] 14.9 Run `cargo test -p ff-desktop` — 449 tests pass
-  - [x] 14.10 Run `cargo clippy -p ff-desktop -- -D warnings` — clean
+  - [x] 14.9 Run `cargo test -p ff-desktop` -- 449 tests pass
+  - [x] 14.10 Run `cargo clippy -p ff-desktop -- -D warnings` -- clean
   - [x] 14.11 Update `docs/quality/TCR.md` and `docs/specs/project-master/tasks.md`
 
   - [x] 13.1 Add `catalogs_path()` helper to `SessionManager` returning `{session_dir}/catalogs.toml`
@@ -228,8 +228,8 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
     - Validates: Requirement 2.2
   - [x] 13.6 Write unit tests: `save_and_load_catalog_registry_round_trips`, `load_missing_catalog_file_returns_empty_registry`
     - Validates: Requirement 2.1, 2.2
-  - [x] 13.7 Run `cargo test -p ff-desktop` — 382 tests pass
-  - [x] 13.8 Run `cargo clippy -p ff-desktop -- -D warnings` — clean
+  - [x] 13.7 Run `cargo test -p ff-desktop` -- 382 tests pass
+  - [x] 13.8 Run `cargo clippy -p ff-desktop -- -D warnings` -- clean
   - [x] 13.9 Update `docs/quality/TCR.md` and `docs/specs/project-master/tasks.md`
   - [x] 12.1 Add `AllocatedDataset` struct to `files_panel.rs` with fields: `name`, `dsorg`, `recfm`, `lrecl`, `blksize`, `description`
     - Validates: Requirement 13.1
@@ -253,17 +253,17 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
     - Validates: Requirement 13.5
   - [x] 12.11 Write unit tests: `add_dataset_inserts_into_map`, `load_entries_populates_content_area`, `delete_catalog_removes_datasets`, `dataset_map_round_trips_through_toml`
     - Validates: Requirement 13.1–13.5
-  - [x] 12.12 Run `cargo test -p ff-desktop` — 449 tests pass
-  - [x] 12.13 Run `cargo clippy -p ff-desktop -- -D warnings` — clean
+  - [x] 12.12 Run `cargo test -p ff-desktop` -- 449 tests pass
+  - [x] 12.13 Run `cargo clippy -p ff-desktop -- -D warnings` -- clean
   - [x] 12.14 Update `docs/quality/TCR.md` and `docs/specs/project-master/tasks.md`
 
 - [x] 17. Dataset file creation on first open (Req 16.3, 16.6)
   > **SUPERSEDED BY BU.7** -- do not implement as written. The resolve_and_open_dataset()
   > function in Phase BU covers this requirement via SQLite catalog lookup. Task 17
   > implements the legacy DSN-path approach which is superseded by the UUID-based approach.
-  - [x] 17.1 Write failing test `opening_missing_dataset_creates_file_and_parent_dirs` — calls the open handler with a resolved path whose parent exists but the file does not; asserts the file is created on disk
+  - [x] 17.1 Write failing test `opening_missing_dataset_creates_file_and_parent_dirs` -- calls the open handler with a resolved path whose parent exists but the file does not; asserts the file is created on disk
     - Validates: Requirement 16.3
-  - [x] 17.2 Write failing test `opening_missing_dataset_creates_parent_dirs` — resolved path whose parent directory does not exist; asserts both parent and file are created
+  - [x] 17.2 Write failing test `opening_missing_dataset_creates_parent_dirs` -- resolved path whose parent directory does not exist; asserts both parent and file are created
     - Validates: Requirement 16.3
   - [x] 17.3 Add `create_dataset_file(path: &Path) -> Result<(), std::io::Error>` pure helper in `files_panel.rs` that calls `fs::create_dir_all(parent)` then `fs::File::create(path)`
     - Validates: Requirement 16.3
@@ -271,8 +271,8 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
     - Validates: Requirement 16.3, 16.6
   - [x] 17.5 In `file_explorer_panel.rs` `render_dataset_children()` double-click handler: apply the same creation logic
     - Validates: Requirement 16.3, 16.6
-  - [x] 17.6 Run `cargo test -p ff-desktop` — confirm green
-  - [x] 17.7 Run `cargo clippy -p ff-desktop -- -D warnings` — clean
+  - [x] 17.6 Run `cargo test -p ff-desktop` -- confirm green
+  - [x] 17.7 Run `cargo clippy -p ff-desktop -- -D warnings` -- clean
   - [x] 17.8 Update `docs/quality/TCR.md` Req 16.3 and 16.6 rows to ✅ PASS
 
 ---

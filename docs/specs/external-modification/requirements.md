@@ -2,21 +2,21 @@
 
 ## Introduction
 
-This feature specifies the external file modification detection system for FileForgeWorkbench — the `ff-external-modification` module (part of the `ff-file-operations` crate or a standalone crate depending on final architecture). This module is responsible for detecting when files that are currently open in the workbench have been modified, renamed, or deleted by external tools (other editors, build systems, version control, shell scripts, etc.), and presenting the user with appropriate options to handle the situation.
+This feature specifies the external file modification detection system for FileForgeWorkbench -- the `ff-external-modification` module (part of the `ff-file-operations` crate or a standalone crate depending on final architecture). This module is responsible for detecting when files that are currently open in the workbench have been modified, renamed, or deleted by external tools (other editors, build systems, version control, shell scripts, etc.), and presenting the user with appropriate options to handle the situation.
 
-The external modification system **leverages the VFS file-watcher** infrastructure provided by the `virtual-file-system` and `connector-local-fs` crates (FFW-ARCH-001). It does not implement its own OS-native file watching — instead it subscribes to VFS watch events and correlates them with open document state. It tracks per-document modification times (mtime), detects discrepancies between in-memory and on-disk state, and coordinates with the document-model and file-operations subsystems for reload/revert operations.
+The external modification system **leverages the VFS file-watcher** infrastructure provided by the `virtual-file-system` and `connector-local-fs` crates (FFW-ARCH-001). It does not implement its own OS-native file watching -- instead it subscribes to VFS watch events and correlates them with open document state. It tracks per-document modification times (mtime), detects discrepancies between in-memory and on-disk state, and coordinates with the document-model and file-operations subsystems for reload/revert operations.
 
 This is a NEW feature identified from the SciTE gap analysis. SciTE implements `CheckReload()` on focus-gained and tab-switch events, comparing `fileModTime` against the current `ModifiedTime()` of the file on disk. FileForgeWorkbench extends this pattern with: VFS-integrated file watching (not just focus-gained polling), batch notification coalescing, configurable reload policies, diff preview, and handling for renamed/deleted files.
 
 **Source references:**
-- **[SCI-STE-EXT]** = SciTE `CheckReload()` implementation in `SciTEIO.cxx` — mtime comparison, reload prompt, `load.on.activate`, `reload.preserves.undo`, `are.you.sure.on.reload` properties
-- **[WB]** = Workbench Platform Architecture Brief — VFS file-watcher (FFW-ARCH-001), async I/O principle, configuration system
+- **[SCI-STE-EXT]** = SciTE `CheckReload()` implementation in `SciTEIO.cxx` -- mtime comparison, reload prompt, `load.on.activate`, `reload.preserves.undo`, `are.you.sure.on.reload` properties
+- **[WB]** = Workbench Platform Architecture Brief -- VFS file-watcher (FFW-ARCH-001), async I/O principle, configuration system
 
 **Cross-references:**
-- `virtual-file-system` (Requirement 7: File Watching — WatchHandle, Watch_Event, debounce)
-- `connector-local-fs` (Requirement 3: File Watching — OS-native watcher, Debounce_Window, Watch_Event delivery)
+- `virtual-file-system` (Requirement 7: File Watching -- WatchHandle, Watch_Event, debounce)
+- `connector-local-fs` (Requirement 3: File Watching -- OS-native watcher, Debounce_Window, Watch_Event delivery)
 - `document-model` (DocumentHandle, DocumentWatcher trait, modified state tracking)
-- `file-operations` (Open, Revert, Save — reload mechanics and dirty buffer handling)
+- `file-operations` (Open, Revert, Save -- reload mechanics and dirty buffer handling)
 - `configuration-system` (TOML config, hot-reload, namespaced settings under `[editor.external_modification]`)
 
 ## Glossary
@@ -49,7 +49,7 @@ This is a NEW feature identified from the SciTE gap analysis. SciTE implements `
 3. WHEN a document is closed, THE External_Modification_Detector SHALL cancel the watch by calling `cancel()` on the associated VFS_Watch_Handle, releasing all resources.
 4. THE External_Modification_Detector SHALL process VFS Watch_Events (Created, Modified, Deleted, Renamed) delivered via the async stream attached to each VFS_Watch_Handle.
 5. WHEN the VFS provider does not support the `watch` capability (returns `VfsError::UnsupportedOperation`), THE External_Modification_Detector SHALL fall back to polling the resource's mtime at the configured polling interval (default: 5 seconds), logging an INFO-level record indicating the fallback.
-6. THE External_Modification_Detector SHALL NOT use `std::fs`, `tokio::fs`, or any other direct filesystem API for watching — all file-system interaction SHALL flow through the VFS layer (FFW-ARCH-001).
+6. THE External_Modification_Detector SHALL NOT use `std::fs`, `tokio::fs`, or any other direct filesystem API for watching -- all file-system interaction SHALL flow through the VFS layer (FFW-ARCH-001).
 
 ---
 
@@ -57,7 +57,7 @@ This is a NEW feature identified from the SciTE gap analysis. SciTE implements `
 
 **User Story:** As a workbench user, I want the system to track when each open file was last known to be in sync with disk, so that it can reliably detect external changes even if watch events are missed or delayed.
 
-**Source:** [SCI-STE-EXT] — SciTE `fileModTime` and `fileModLastAsk` fields per buffer. [SCI-STE-EXT, WB]
+**Source:** [SCI-STE-EXT] -- SciTE `fileModTime` and `fileModLastAsk` fields per buffer. [SCI-STE-EXT, WB]
 
 #### Acceptance Criteria
 
@@ -76,7 +76,7 @@ This is a NEW feature identified from the SciTE gap analysis. SciTE implements `
 
 **User Story:** As a workbench user, I want to be notified when an external tool modifies a file I have open, so that I can decide whether to reload the file or keep my in-memory version.
 
-**Source:** [SCI-STE-EXT] — SciTE's `CheckReload()` comparison logic. [SCI-STE-EXT, WB]
+**Source:** [SCI-STE-EXT] -- SciTE's `CheckReload()` comparison logic. [SCI-STE-EXT, WB]
 
 #### Acceptance Criteria
 
@@ -84,8 +84,8 @@ This is a NEW feature identified from the SciTE gap analysis. SciTE implements `
 2. WHEN the Reload_Policy is `prompt`, THE system SHALL present the user with a notification dialog offering choices based on dirty state (see Requirement 4).
 3. WHEN the Reload_Policy is `auto` AND the document buffer is NOT dirty (no unsaved local changes), THE system SHALL automatically reload the document content from the VFS without prompting the user.
 4. WHEN the Reload_Policy is `auto` AND the document buffer IS dirty, THE system SHALL fall back to prompting the user (same as `prompt` policy) to prevent silent data loss.
-5. WHEN the Reload_Policy is `ignore`, THE system SHALL NOT notify the user of external modifications — the in-memory content is kept as-is. The Mtime_Snapshot SHALL still be updated to avoid repeated detection of the same change.
-6. THE External_Modification_Detector SHALL emit at most ONE ExternalChange event per document per detected change — if the user has already been prompted about a particular mtime change and has not yet responded, no duplicate notification SHALL be emitted for that same change.
+5. WHEN the Reload_Policy is `ignore`, THE system SHALL NOT notify the user of external modifications -- the in-memory content is kept as-is. The Mtime_Snapshot SHALL still be updated to avoid repeated detection of the same change.
+6. THE External_Modification_Detector SHALL emit at most ONE ExternalChange event per document per detected change -- if the user has already been prompted about a particular mtime change and has not yet responded, no duplicate notification SHALL be emitted for that same change.
 7. AFTER the user responds to a reload prompt (or an auto-reload occurs), THE External_Modification_Detector SHALL update the Mtime_Snapshot to the current on-disk mtime regardless of whether the user chose to reload or keep.
 
 ---
@@ -94,7 +94,7 @@ This is a NEW feature identified from the SciTE gap analysis. SciTE implements `
 
 **User Story:** As a workbench user, when a file I'm editing is modified externally, I want to choose between reloading the file, keeping my version, or viewing a diff, so that I can make an informed decision without risk of data loss.
 
-**Source:** [SCI-STE-EXT] — SciTE's yes/no reload dialog, extended with diff option. [SCI-STE-EXT, WB]
+**Source:** [SCI-STE-EXT] -- SciTE's yes/no reload dialog, extended with diff option. [SCI-STE-EXT, WB]
 
 #### Acceptance Criteria
 
@@ -113,7 +113,7 @@ This is a NEW feature identified from the SciTE gap analysis. SciTE implements `
 
 **User Story:** As a workbench user working alongside build tools and version control, I want files that I haven't edited to automatically reload when changed externally, so that I always see up-to-date content without manual intervention.
 
-**Source:** [SCI-STE-EXT] — SciTE's `load.on.activate` with automatic reload for clean buffers. [SCI-STE-EXT, WB]
+**Source:** [SCI-STE-EXT] -- SciTE's `load.on.activate` with automatic reload for clean buffers. [SCI-STE-EXT, WB]
 
 #### Acceptance Criteria
 
@@ -121,7 +121,7 @@ This is a NEW feature identified from the SciTE gap analysis. SciTE implements `
 2. AFTER an auto-reload, THE system SHALL update the Mtime_Snapshot to the new mtime and preserve the document's viewport position (scroll position, cursor position) as closely as possible.
 3. AFTER an auto-reload, THE system SHALL emit a brief, non-blocking status bar message indicating the file was reloaded (e.g., "file.rs reloaded"), visible for 3 seconds.
 4. IF an auto-reload fails (VFS read error, file became inaccessible), THEN THE system SHALL display a warning notification to the user indicating the reload failed and the buffer content may be stale, and SHALL NOT mark the buffer as dirty.
-5. THE auto-reload mechanism SHALL respect the `reload.preserves.undo` configuration setting — if enabled, undo history is preserved across auto-reloads; if disabled, undo history is cleared.
+5. THE auto-reload mechanism SHALL respect the `reload.preserves.undo` configuration setting -- if enabled, undo history is preserved across auto-reloads; if disabled, undo history is cleared.
 6. WHEN a document has a pending auto-reload AND the user begins editing that document before the reload completes, THE system SHALL cancel the pending reload and retain the user's edits (user input takes priority over auto-reload).
 
 ---
@@ -130,7 +130,7 @@ This is a NEW feature identified from the SciTE gap analysis. SciTE implements `
 
 **User Story:** As a workbench user, I want to be notified when a file I have open is deleted externally, so that I can save it to a new location or acknowledge that the backing file no longer exists.
 
-**Source:** [SCI-STE-EXT] — SciTE's deletion detection when `newModTime == 0`. [SCI-STE-EXT, WB]
+**Source:** [SCI-STE-EXT] -- SciTE's deletion detection when `newModTime == 0`. [SCI-STE-EXT, WB]
 
 #### Acceptance Criteria
 
@@ -139,7 +139,7 @@ This is a NEW feature identified from the SciTE gap analysis. SciTE implements `
 3. IF the user selects **Keep Editing**, THEN THE document SHALL be marked as dirty (unsaved) and the document's backing resource URI SHALL be cleared (it is now an untitled/orphaned buffer), requiring Save As for future saves.
 4. IF the user selects **Close** AND the buffer is dirty, THEN THE system SHALL prompt with the standard "save before close?" dialog before discarding the buffer.
 5. AFTER a file deletion is detected, THE system SHALL cancel the VFS watch for that resource (as the watch target no longer exists) and update the document's state to reflect the absence of a backing file.
-6. IF a deleted file reappears (a new `Created` event for the same URI after a `Deleted` event), THE system SHALL NOT automatically associate the open buffer with the new file — the user must explicitly re-save or re-open.
+6. IF a deleted file reappears (a new `Created` event for the same URI after a `Deleted` event), THE system SHALL NOT automatically associate the open buffer with the new file -- the user must explicitly re-save or re-open.
 
 ---
 
@@ -147,7 +147,7 @@ This is a NEW feature identified from the SciTE gap analysis. SciTE implements `
 
 **User Story:** As a workbench user, I want the workbench to detect when a file I have open is renamed or moved externally, so that subsequent saves go to the correct location and my tab title reflects the new name.
 
-**Source:** [SCI-STE-EXT], [WB] — VFS Renamed watch event. [SCI-STE-EXT, WB]
+**Source:** [SCI-STE-EXT], [WB] -- VFS Renamed watch event. [SCI-STE-EXT, WB]
 
 #### Acceptance Criteria
 
@@ -164,14 +164,14 @@ This is a NEW feature identified from the SciTE gap analysis. SciTE implements `
 
 **User Story:** As a workbench user running a build or git operation that modifies many open files simultaneously, I want the modification notifications to be grouped into a single prompt rather than receiving dozens of individual dialogs, so that I can handle bulk changes efficiently.
 
-**Source:** [WB] — workbench UX principle, extends SciTE's single-file approach. [WB]
+**Source:** [WB] -- workbench UX principle, extends SciTE's single-file approach. [WB]
 
 #### Acceptance Criteria
 
 1. WHEN multiple ExternalChange events are received within the Debounce_Window (default: 500ms, configurable), THE system SHALL coalesce them into a single Batch_Notification containing all affected documents.
 2. THE Batch_Notification SHALL present a summary showing the count of modified files, renamed files, and deleted files, along with a list of affected file names.
 3. THE Batch_Notification SHALL offer the following bulk actions: **Reload All** (reload all externally modified non-dirty buffers), **Keep All** (dismiss all notifications), and **Review Individually** (present each change one at a time).
-4. IF any document in the batch is dirty (has unsaved local changes), THE Batch_Notification SHALL highlight those documents separately and exclude them from the **Reload All** action — dirty documents always require individual confirmation.
+4. IF any document in the batch is dirty (has unsaved local changes), THE Batch_Notification SHALL highlight those documents separately and exclude them from the **Reload All** action -- dirty documents always require individual confirmation.
 5. WHEN **Reload All** is selected, THE system SHALL reload only the non-dirty documents in the batch; dirty documents SHALL remain unchanged and the user SHALL be informed that N dirty files were skipped.
 6. THE Debounce_Window for batch coalescing SHALL be configurable via `editor.external_modification.batch_debounce_ms` (default: 500ms, range: 100–5000ms).
 7. IF rapid events continue arriving after the Debounce_Window expires (streaming changes), THE system SHALL process the current batch and start a new batch window for subsequent events rather than holding notifications indefinitely.
@@ -182,7 +182,7 @@ This is a NEW feature identified from the SciTE gap analysis. SciTE implements `
 
 **User Story:** As a workbench user switching back to the application after using another tool, I want a synchronous check that verifies all open files are still in sync with disk, so that external modifications are detected even if VFS watch events were missed or delayed.
 
-**Source:** [SCI-STE-EXT] — SciTE's `Activate(true)` calling `CheckReload()`. [SCI-STE-EXT, WB]
+**Source:** [SCI-STE-EXT] -- SciTE's `Activate(true)` calling `CheckReload()`. [SCI-STE-EXT, WB]
 
 #### Acceptance Criteria
 
@@ -198,19 +198,19 @@ This is a NEW feature identified from the SciTE gap analysis. SciTE implements `
 
 ### Requirement 10: Configurable Policies
 
-**User Story:** As a workbench user, I want to configure how external modifications are handled — including whether to auto-reload, whether to prompt, and whether to preserve undo history on reload — so that the behaviour matches my workflow preferences.
+**User Story:** As a workbench user, I want to configure how external modifications are handled -- including whether to auto-reload, whether to prompt, and whether to preserve undo history on reload -- so that the behaviour matches my workflow preferences.
 
-**Source:** [SCI-STE-EXT] — SciTE's `load.on.activate`, `reload.preserves.undo`, `are.you.sure.on.reload` properties. [WB]
+**Source:** [SCI-STE-EXT] -- SciTE's `load.on.activate`, `reload.preserves.undo`, `are.you.sure.on.reload` properties. [WB]
 
 #### Acceptance Criteria
 
 1. THE configuration namespace `[editor.external_modification]` SHALL contain all external modification settings, conforming to the configuration-system's TOML schema and layer model.
-2. THE setting `editor.external_modification.policy` SHALL accept values: `"prompt"` (always ask the user — default), `"auto"` (auto-reload clean buffers, prompt for dirty), `"ignore"` (never notify about external changes).
+2. THE setting `editor.external_modification.policy` SHALL accept values: `"prompt"` (always ask the user -- default), `"auto"` (auto-reload clean buffers, prompt for dirty), `"ignore"` (never notify about external changes).
 3. THE setting `editor.external_modification.reload_preserves_undo` SHALL be a boolean (default: `false`); WHEN `true`, reload operations preserve the undo history. [SCI-STE-EXT]
 4. THE setting `editor.external_modification.check_on_focus` SHALL be a boolean (default: `true`); WHEN `true`, a focus-gained mtime scan is performed. [SCI-STE-EXT]
 5. THE setting `editor.external_modification.auto_follow_rename` SHALL be a boolean (default: `false`); WHEN `true`, renames of non-dirty files are followed automatically without prompting.
 6. THE setting `editor.external_modification.batch_debounce_ms` SHALL be an integer (default: 500, range: 100–5000); specifies the debounce window for batch notification coalescing.
 7. THE setting `editor.external_modification.polling_interval_ms` SHALL be an integer (default: 5000, range: 1000–60000); specifies the fallback polling interval when VFS watch is unavailable.
-8. ALL configuration settings SHALL support hot-reload via the configuration-system's Reload_Callback mechanism — changes take effect immediately without restarting the application.
+8. ALL configuration settings SHALL support hot-reload via the configuration-system's Reload_Callback mechanism -- changes take effect immediately without restarting the application.
 9. IF a configuration value is outside its valid range, THEN THE system SHALL clamp to the nearest valid bound and emit a WARN-level log record indicating the adjustment.
 10. THE configuration settings SHALL be overridable at user, project, and workspace layers (per configuration-system layer precedence), allowing different policies for different projects.

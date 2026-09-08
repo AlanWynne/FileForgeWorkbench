@@ -27,7 +27,7 @@ All tasks reference requirements from `.kiro/specs/connector-local-fs/requiremen
     - Validates: Requirement 7 AC 10
   - [x] 2.5 Write unit tests for error mapping covering all OS error kinds
 
-- [x] 3. Path resolver — core path resolution logic
+- [x] 3. Path resolver -- core path resolution logic
   - [x] 3.1 Implement `PathResolver::new()` caching home directory and current working directory
     - Validates: Requirement 4 AC 1, AC 2
   - [x] 3.2 Implement `expand_tilde` method replacing `~/` or `~\` with user home directory
@@ -88,7 +88,7 @@ All tasks reference requirements from `.kiro/specs/connector-local-fs/requiremen
     - Validates: Requirement 5 AC 5, AC 6, AC 7, AC 8
   - [x] 6.5 Write unit tests for metadata mapping including hidden file detection, symlink handling, and missing timestamp fields
 
-- [x] 7. Streaming I/O — reader and writer
+- [x] 7. Streaming I/O -- reader and writer
   - [x] 7.1 Implement `StreamingReader` struct with `tokio::io::AsyncRead` trait implementation and configurable chunk size
     - Validates: Requirement 6 AC 1, AC 2
   - [x] 7.2 Implement progress callback support on `StreamingReader` (bytes_read / total_size reporting)
@@ -97,7 +97,7 @@ All tasks reference requirements from `.kiro/specs/connector-local-fs/requiremen
     - Validates: Requirement 1 AC 4, Requirement 6 AC 5
   - [x] 7.4 Implement `MemoryMappedFile` struct using `memmap2` with fallback to streaming on mmap failure
     - Validates: Requirement 6 AC 3, AC 4, AC 7
-  - [x] 7.5 Ensure no artificial file size limits (Requirement 6 AC 6) — only OS/filesystem limits apply
+  - [x] 7.5 Ensure no artificial file size limits (Requirement 6 AC 6) -- only OS/filesystem limits apply
     - Validates: Requirement 6 AC 6
   - [x] 7.6 Write unit tests for streaming reader/writer using `tempfile::TempDir`
 
@@ -142,7 +142,7 @@ All tasks reference requirements from `.kiro/specs/connector-local-fs/requiremen
     - Strategy: generate sequences of (path, timestamp) events with repeating paths within debounce window
     - Assertion: at most one event per path per debounce period; distinct paths preserved independently
 
-- [x] 11. LocalFsProvider — VfsProvider trait implementation
+- [x] 11. LocalFsProvider -- VfsProvider trait implementation
   - [x] 11.1 Implement `LocalFsProvider::new()` and `LocalFsProvider::with_config()` constructors
     - Validates: Requirement 1 AC 1
   - [x] 11.2 Implement `LocalFsProvider::register()` to register with Provider_Registry under scheme `"local"`
@@ -165,7 +165,7 @@ All tasks reference requirements from `.kiro/specs/connector-local-fs/requiremen
   - [x] 11.11 Implement `VfsProvider::watch()` delegating to FileWatcher
     - Validates: Requirement 3 AC 1–12
   - [x] 11.12 Implement `VfsProvider::search()` with async streaming results
-  - [x] 11.13 Ensure all I/O is fully async via Tokio — no blocking calls on executor thread
+  - [x] 11.13 Ensure all I/O is fully async via Tokio -- no blocking calls on executor thread
     - Validates: Requirement 1 AC 10
   - [x] 11.14 Write VfsProvider trait contract integration tests (open, read, write, create, delete, rename, list, stat, exists round-trip)
 
@@ -176,12 +176,12 @@ All tasks reference requirements from `.kiro/specs/connector-local-fs/requiremen
     - Assertion: `created <= modified` (when both available); all timestamps ≤ `SystemTime::now()`
 
 - [x] 13. End-to-end integration tests
-  - [x] 13.1 Write integration test: full VFS round-trip — register provider, write file via URI, read back, verify content matches
-  - [x] 13.2 Write integration test: directory operations — create directory tree, list contents, delete recursively
-  - [x] 13.3 Write integration test: file watching round-trip — register watch, create/modify/delete file, verify events received in order
+  - [x] 13.1 Write integration test: full VFS round-trip -- register provider, write file via URI, read back, verify content matches
+  - [x] 13.2 Write integration test: directory operations -- create directory tree, list contents, delete recursively
+  - [x] 13.3 Write integration test: file watching round-trip -- register watch, create/modify/delete file, verify events received in order
   - [x] 13.4 Write integration test: path resolution with tilde and env vars in real filesystem context
-  - [x] 13.5 Write integration test: large file streaming — write 10MB file in chunks, read back in different chunk size, verify byte-equality
-  - [x] 13.6 Write integration test: error scenarios — permission denied, not found, directory not empty
+  - [x] 13.5 Write integration test: large file streaming -- write 10MB file in chunks, read back in different chunk size, verify byte-equality
+  - [x] 13.6 Write integration test: error scenarios -- permission denied, not found, directory not empty
   - [x] 13.7 Verify `cargo test -p ff-connector-local-fs` passes cleanly with no warnings
 
 ---
@@ -306,7 +306,7 @@ All tasks reference requirements from `.kiro/specs/connector-local-fs/requiremen
     },
     {
       "id": "7",
-      "label": "Streaming I/O — reader and writer",
+      "label": "Streaming I/O -- reader and writer",
       "tasks": ["7.1", "7.2", "7.3", "7.4", "7.5", "7.6"],
       "dependsOn": ["2"]
     },

@@ -18,23 +18,23 @@ The `ff-clipboard` crate is the **unified clipboard subsystem** for FileForgeWor
 ### Position in Architecture
 
 ```
-Wave 9 — Desktop Integration
+Wave 9 -- Desktop Integration
 
 ┌─────────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                   │
 │     Context menu rendering, shortcut detection               │
 ├─────────────────────────────────────────────────────────────┤
-│         ff-clipboard (THIS CRATE — Wave 9)                   │
+│         ff-clipboard (THIS CRATE -- Wave 9)                   │
 │   Clipboard engine, copy/cut/paste, COPY command routing,    │
 │   rectangular paste, multi-caret distribution                │
 ├─────────────────────────────────────────────────────────────┤
-│  ff-edit-operations (Wave 4) — selection model, edit engine  │
-│  ff-document-model (Wave 4) — document buffer access         │
-│  ff-undo-redo (Wave 4) — transaction recording               │
-│  ff-command (Wave 2) — command dispatch, shortcut registry   │
-│  ff-line-commands (Wave 5) — pending C/CC/A/B state          │
-│  ff-vfs (Wave 3) — file-insert mode file reading             │
-│  ff-config (Wave 2) — clipboard configuration keys           │
+│  ff-edit-operations (Wave 4) -- selection model, edit engine  │
+│  ff-document-model (Wave 4) -- document buffer access         │
+│  ff-undo-redo (Wave 4) -- transaction recording               │
+│  ff-command (Wave 2) -- command dispatch, shortcut registry   │
+│  ff-line-commands (Wave 5) -- pending C/CC/A/B state          │
+│  ff-vfs (Wave 3) -- file-insert mode file reading             │
+│  ff-config (Wave 2) -- clipboard configuration keys           │
 ├─────────────────────────────────────────────────────────────┤
 │              Foundation Layer: ff-logging (Wave 0)            │
 └─────────────────────────────────────────────────────────────┘
@@ -142,11 +142,11 @@ end
 
 | Layer | Role |
 |-------|------|
-| **Command Layer** | Command handlers for `clipboard.copy`, `clipboard.cut`, `clipboard.paste`, `clipboard.copy-command` — translate shortcut/menu invocation into engine calls |
-| **Routing Layer** | `CopyCommandRouter` — disambiguates COPY primary command into in-document, clipboard-paste, file-insert, or shell-capture mode |
-| **Engine Layer** | `CopyHandler`, `CutHandler`, `PasteHandler` — core clipboard operation logic per mode |
-| **Clipboard Access Layer** | `ClipboardEngine` + `ClipboardProvider` trait — platform-independent read/write/timeout |
-| **Content Layer** | `ClipboardEntry`, `LineSplitter`, `ClipboardHistoryRing` — structured content representation and splitting |
+| **Command Layer** | Command handlers for `clipboard.copy`, `clipboard.cut`, `clipboard.paste`, `clipboard.copy-command` -- translate shortcut/menu invocation into engine calls |
+| **Routing Layer** | `CopyCommandRouter` -- disambiguates COPY primary command into in-document, clipboard-paste, file-insert, or shell-capture mode |
+| **Engine Layer** | `CopyHandler`, `CutHandler`, `PasteHandler` -- core clipboard operation logic per mode |
+| **Clipboard Access Layer** | `ClipboardEngine` + `ClipboardProvider` trait -- platform-independent read/write/timeout |
+| **Content Layer** | `ClipboardEntry`, `LineSplitter`, `ClipboardHistoryRing` -- structured content representation and splitting |
 | **Integration Layer** | Bridges to undo/redo, document model, selection container, pending line commands, VFS, config |
 
 ---
@@ -159,16 +159,16 @@ crates/ff-clipboard/
 ├── src/
 │   ├── lib.rs                  # Public API re-exports, crate docs
 │   ├── provider.rs             # ClipboardProvider trait definition
-│   ├── engine.rs               # ClipboardEngine — read/write/detect availability
+│   ├── engine.rs               # ClipboardEngine -- read/write/detect availability
 │   ├── entry.rs                # ClipboardEntry, ClipboardMode, per-segment storage
-│   ├── history.rs              # ClipboardHistoryRing — bounded ring buffer
-│   ├── splitter.rs             # LineSplitter — LF/CRLF/CR splitting logic
-│   ├── copy.rs                 # CopyHandler — stream/rect/multi-caret/line-copy
-│   ├── cut.rs                  # CutHandler — stream/rect/multi-caret/line-cut
-│   ├── paste.rs                # PasteHandler — mode-aware paste (stream/line/rect/multi)
-│   ├── router.rs               # CopyCommandRouter — COPY primary command disambiguation
-│   ├── file_insert.rs          # FileInsertHandler — VFS read + line insertion
-│   ├── config.rs               # ClipboardConfig — typed config access
+│   ├── history.rs              # ClipboardHistoryRing -- bounded ring buffer
+│   ├── splitter.rs             # LineSplitter -- LF/CRLF/CR splitting logic
+│   ├── copy.rs                 # CopyHandler -- stream/rect/multi-caret/line-copy
+│   ├── cut.rs                  # CutHandler -- stream/rect/multi-caret/line-cut
+│   ├── paste.rs                # PasteHandler -- mode-aware paste (stream/line/rect/multi)
+│   ├── router.rs               # CopyCommandRouter -- COPY primary command disambiguation
+│   ├── file_insert.rs          # FileInsertHandler -- VFS read + line insertion
+│   ├── config.rs               # ClipboardConfig -- typed config access
 │   ├── commands/
 │   │   ├── mod.rs              # Re-exports for all command handlers
 │   │   ├── copy_cmd.rs         # clipboard.copy command handler
@@ -228,7 +228,7 @@ impl Default for ClipboardMode {
 pub struct ClipboardEntry {
     /// The full text content written to/read from the system clipboard.
     text: String,
-    /// How the content was acquired — determines paste semantics.
+    /// How the content was acquired -- determines paste semantics.
     mode: ClipboardMode,
     /// Independent line segments for Rectangular or Multi-Caret modes.
     /// Empty for Stream/Line modes (text is used directly).
@@ -439,7 +439,7 @@ impl CopyHandler {
 ### CutHandler
 
 ```rust
-/// Implements cut operations — copies to clipboard then deletes from document.
+/// Implements cut operations -- copies to clipboard then deletes from document.
 /// Records a single UndoRecord for the combined operation.
 /// Addresses: Requirements 3, 12.1, 13.3, 14.4
 pub struct CutHandler;
@@ -640,7 +640,7 @@ pub enum ClipboardError {
     NoTextContent,
 
     /// System clipboard cannot be accessed (permissions, platform error).
-    #[error("[clipboard] access: clipboard unavailable — {reason}")]
+    #[error("[clipboard] access: clipboard unavailable -- {reason}")]
     Unavailable { reason: String },
 
     /// Clipboard access timed out.
@@ -648,23 +648,23 @@ pub enum ClipboardError {
     Timeout { timeout_ms: u32 },
 
     /// Write to system clipboard failed.
-    #[error("[clipboard] write: failed to write to clipboard — {reason}")]
+    #[error("[clipboard] write: failed to write to clipboard -- {reason}")]
     WriteFailed { reason: String },
 
     /// File not found for file-insert mode.
-    #[error("[clipboard] file-insert: file not found — {path}")]
+    #[error("[clipboard] file-insert: file not found -- {path}")]
     FileNotFound { path: String },
 
     /// File access permission error for file-insert mode.
-    #[error("[clipboard] file-insert: access denied — {path}")]
+    #[error("[clipboard] file-insert: access denied -- {path}")]
     FileAccessDenied { path: String },
 
     /// File is binary/non-text for file-insert mode.
-    #[error("[clipboard] file-insert: file is not plain text — {path}")]
+    #[error("[clipboard] file-insert: file is not plain text -- {path}")]
     FileBinary { path: String },
 
     /// File I/O error for file-insert mode.
-    #[error("[clipboard] file-insert: I/O error reading {path} — {source}")]
+    #[error("[clipboard] file-insert: I/O error reading {path} -- {source}")]
     FileIo { path: String, source: std::io::Error },
 
     /// COPY command requires an A or B target line command.
@@ -675,7 +675,7 @@ pub enum ClipboardError {
     #[error("[clipboard] COPY: source line commands cannot be combined with a file path argument")]
     ConflictingSourceAndPath,
 
-    /// COPY command is incomplete — source pending but no target.
+    /// COPY command is incomplete -- source pending but no target.
     #[error("[clipboard] COPY: pending source commands require a target (A or B)")]
     IncompleteSourceTarget,
 
@@ -697,7 +697,7 @@ pub enum ClipboardError {
 | `clipboard.copy` | Ctrl+C | `commands::copy_cmd` | Copy selection or current line to clipboard |
 | `clipboard.cut` | Ctrl+X | `commands::cut_cmd` | Cut selection or current line to clipboard |
 | `clipboard.paste` | Ctrl+V | `commands::paste_cmd` | Paste from clipboard at caret |
-| `clipboard.copy-command` | *(none — primary command)* | `commands::copy_primary` | COPY primary command dispatcher |
+| `clipboard.copy-command` | *(none -- primary command)* | `commands::copy_primary` | COPY primary command dispatcher |
 
 All commands are registered via `CommandRegistry::register()` at crate initialization. Each command:
 - Has a `CommandHandler` implementation with `execute(&self, ctx: &ExecutionContext) -> CommandResult`
@@ -710,20 +710,20 @@ Commands are logged in `CommandHistory` per Requirement 17.5.
 ### 7.2 Edit Operations (`ff-edit-operations`)
 
 The clipboard crate consumes from `ff-edit-operations`:
-- **`SelectionContainer`** — queries active selections (stream, rectangular, multi-caret)
-- **`SelectionRange`** / **`SelectionPosition`** — position types for caret and anchor
-- **`MultiCaretCoordinator`** — reverse-order processing for multi-caret paste
-- **`InsertionEngine`** — text insertion primitives used by paste operations
-- **`DeletionEngine`** — text deletion primitives used by cut operations
+- **`SelectionContainer`** -- queries active selections (stream, rectangular, multi-caret)
+- **`SelectionRange`** / **`SelectionPosition`** -- position types for caret and anchor
+- **`MultiCaretCoordinator`** -- reverse-order processing for multi-caret paste
+- **`InsertionEngine`** -- text insertion primitives used by paste operations
+- **`DeletionEngine`** -- text deletion primitives used by cut operations
 
-The clipboard crate does NOT own selection state — it queries the current selection from the `SelectionContainer` and uses edit-operations engines to perform insertions/deletions.
+The clipboard crate does NOT own selection state -- it queries the current selection from the `SelectionContainer` and uses edit-operations engines to perform insertions/deletions.
 
 ### 7.3 Document Model (`ff-document-model`)
 
 The clipboard crate interacts with:
-- **`Document`** — top-level document access for reading content and applying edits
-- **`TextBuffer`** — raw content access for extracting selected text
-- **`LineIndex`** — line number ↔ byte offset mapping for line-aware operations
+- **`Document`** -- top-level document access for reading content and applying edits
+- **`TextBuffer`** -- raw content access for extracting selected text
+- **`LineIndex`** -- line number ↔ byte offset mapping for line-aware operations
 
 All document mutations go through the edit-operations layer or through `Document::insert_lines()` / `Document::delete_range()` primitives.
 
@@ -744,7 +744,7 @@ The clipboard crate queries `PendingCommandStore` to:
 - Check for pending `A`/`B` target commands (determines insertion point)
 - Clear resolved targets after successful clipboard-paste or file-insert
 
-The in-document copy mode (C/CC + A/B) is NOT handled by this crate — the router detects this case and delegates to `ff-line-commands`.
+The in-document copy mode (C/CC + A/B) is NOT handled by this crate -- the router detects this case and delegates to `ff-line-commands`.
 
 ### 7.6 Virtual File System (`ff-vfs`)
 
@@ -814,7 +814,7 @@ The following properties are designed for verification with the `proptest` crate
 
 ### Property 5: COPY Command Disambiguation Is Total
 
-**Statement:** For all combinations of (has_pending_source: bool, has_target: bool, has_path_arg: bool), `CopyCommandRouter::resolve` returns either a valid `CopyCommandMode` or a descriptive `ClipboardError` — it never panics.
+**Statement:** For all combinations of (has_pending_source: bool, has_target: bool, has_path_arg: bool), `CopyCommandRouter::resolve` returns either a valid `CopyCommandMode` or a descriptive `ClipboardError` -- it never panics.
 
 **Validates: Requirements 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8**
 
@@ -916,15 +916,15 @@ The following properties are designed for verification with the `proptest` crate
 
 ### Unit Tests
 
-- `provider_tests.rs` — `ClipboardProvider` trait contract with a `MockClipboardProvider`
-- `entry_tests.rs` — `ClipboardEntry` construction, accessors, mode inference
-- `splitter_tests.rs` — `LineSplitter` edge cases (empty string, single char, mixed endings)
-- `copy_tests.rs` — Copy handler with all selection types
-- `cut_tests.rs` — Cut handler with undo verification
-- `paste_tests.rs` — All paste modes with selection replacement
-- `router_tests.rs` — COPY disambiguation truth table
-- `file_insert_tests.rs` — File read, split, insert with error conditions
-- `history_tests.rs` — Ring buffer capacity enforcement, FIFO eviction
+- `provider_tests.rs` -- `ClipboardProvider` trait contract with a `MockClipboardProvider`
+- `entry_tests.rs` -- `ClipboardEntry` construction, accessors, mode inference
+- `splitter_tests.rs` -- `LineSplitter` edge cases (empty string, single char, mixed endings)
+- `copy_tests.rs` -- Copy handler with all selection types
+- `cut_tests.rs` -- Cut handler with undo verification
+- `paste_tests.rs` -- All paste modes with selection replacement
+- `router_tests.rs` -- COPY disambiguation truth table
+- `file_insert_tests.rs` -- File read, split, insert with error conditions
+- `history_tests.rs` -- Ring buffer capacity enforcement, FIFO eviction
 
 ### Property-Based Tests
 
@@ -945,8 +945,8 @@ All 14 properties above implemented with `proptest` crate, minimum 256 iteration
 |----------|-----------|
 | `ClipboardProvider` is a trait, not a concrete type | Enables testing without real OS clipboard; GUI shell injects platform implementation |
 | Last-written entry stored locally in `ClipboardEngine` | Detecting internal vs external clipboard content requires comparing current system clipboard to last write |
-| Segments stored as `Vec<String>` not `Vec<&str>` | Clipboard content lifetime is independent of document — must be owned |
-| `LineSplitter` is a standalone utility | Reused by clipboard-paste, file-insert, and shell-capture — avoids duplication |
+| Segments stored as `Vec<String>` not `Vec<&str>` | Clipboard content lifetime is independent of document -- must be owned |
+| `LineSplitter` is a standalone utility | Reused by clipboard-paste, file-insert, and shell-capture -- avoids duplication |
 | `CopyCommandRouter` is pure logic (no I/O) | Testable in isolation; actual execution delegated to appropriate handler |
 | Reverse-order processing for multi-caret | Earlier insertions shift positions of later carets; processing in reverse avoids invalidation |
 | Single `UndoRecord` per operation | User mental model: one Ctrl+Z undoes the entire paste/cut regardless of complexity |

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-workflow` crate — the state-machine-based workflow execution engine for FileForgeWorkbench. The workflow engine provides declarative workflow definitions, step-by-step execution with shared context, cooperative cancellation, real-time progress reporting, error recovery policies, a central registry for workflow discovery, and optional persistence for long-running operations.
+This plan covers the complete implementation of the `ff-workflow` crate -- the state-machine-based workflow execution engine for FileForgeWorkbench. The workflow engine provides declarative workflow definitions, step-by-step execution with shared context, cooperative cancellation, real-time progress reporting, error recovery policies, a central registry for workflow discovery, and optional persistence for long-running operations.
 
 This is a **Wave 2 (Platform Architecture)** sub-project. It depends on `ff-logging` (Wave 0) and integrates with `platform-core`, `command-framework`, and `plugin-architecture` (all Wave 2 peers).
 
@@ -83,7 +83,7 @@ This is a **Wave 2 (Platform Architecture)** sub-project. It depends on `ff-logg
   - [x] 8.5 Write unit tests for rollback ordering, partial rollback, and compensation failure resilience
   - Covers: Requirement 5 (AC 5.4, 5.5, 5.6), Requirement 3 (AC 3.3)
 
-- [x] 9. Workflow runner — core execution engine
+- [x] 9. Workflow runner -- core execution engine
   - [x] 9.1 Implement `WorkflowRunner` that drives a workflow through its state machine
   - [x] 9.2 Implement sequential step execution with context passing between steps
   - [x] 9.3 Implement parallel step execution: spawn concurrent tasks with join barrier
@@ -284,10 +284,10 @@ This is a **Wave 2 (Platform Architecture)** sub-project. It depends on `ff-logg
 
 - This is a Wave 2 (Platform Architecture) crate depending on `ff-logging` (Wave 0)
 - The workflow engine uses Tokio for async step execution but the runner state machine itself is driven synchronously for predictability
-- `WorkflowContext` uses type-erased storage internally (`Box<dyn Any>`) with typed accessors — persistent workflows enforce `Serialize + Deserialize` bounds at compile time via a separate `PersistentWorkflowContext` wrapper
+- `WorkflowContext` uses type-erased storage internally (`Box<dyn Any>`) with typed accessors -- persistent workflows enforce `Serialize + Deserialize` bounds at compile time via a separate `PersistentWorkflowContext` wrapper
 - Progress events are emitted via the platform-core event bus; the event bus trait is defined in `platform-core` and injected into the runner at construction time
 - The cancellation token design follows `tokio_util::sync::CancellationToken` patterns but is owned by `ff-workflow` to avoid coupling to a specific Tokio utility version
-- Built-in workflow definitions (Task 15) are structural templates — their step implementations will be provided by downstream crates (e.g., `file-operations`, `compare-and-merge`)
+- Built-in workflow definitions (Task 15) are structural templates -- their step implementations will be provided by downstream crates (e.g., `file-operations`, `compare-and-merge`)
 - Plugin workflow registration (Task 16) depends on the `PluginContext` trait from `plugin-architecture`; the integration is via a trait object to avoid circular dependencies
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
 - The UI cancellation entry points (Task 14.3) define the interface contract; actual UI rendering is implemented by the GUI shell in a later wave

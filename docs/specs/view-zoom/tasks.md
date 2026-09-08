@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-zoom` crate — the view zoom subsystem for FileForgeWorkbench. It provides per-editor-instance integer point-offset zoom, keyboard shortcuts (Ctrl+=, Ctrl+-, Ctrl+0), Ctrl+Mouse Wheel zoom, the ZOOM primary command, configurable range limits, status bar indicator model, and session persistence.
+This plan covers the complete implementation of the `ff-zoom` crate -- the view zoom subsystem for FileForgeWorkbench. It provides per-editor-instance integer point-offset zoom, keyboard shortcuts (Ctrl+=, Ctrl+-, Ctrl+0), Ctrl+Mouse Wheel zoom, the ZOOM primary command, configurable range limits, status bar indicator model, and session persistence.
 
 This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-config` for zoom configuration keys, `ff-command` for ZOOM command registration and shortcut bindings, `ff-logging` for warning/diagnostic output, and integrates with `ff-multi-tab` for per-editor-instance state and `ff-session` for persistence.
 
@@ -99,7 +99,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-config
   - [x] 10.3 Implement rule: return None when Ctrl is not held (normal scroll passthrough)
   - [x] 10.4 Implement rule: return None when mouse cursor is not over any editor instance
   - [x] 10.5 Implement rule: apply zoom to the editor instance under cursor regardless of keyboard focus
-  - [x] 10.6 Implement per-event processing: no debouncing — each scroll step triggers one zoom step
+  - [x] 10.6 Implement per-event processing: no debouncing -- each scroll step triggers one zoom step
   - [x] 10.7 Write unit tests for Ctrl+Scroll detection, direction mapping, non-Ctrl passthrough, out-of-bounds rejection, per-event stepping
   - Covers: Requirement 3 (AC 3.1–3.5)
 
@@ -131,7 +131,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-config
   - Covers: Error handling across all requirements
 
 - [x] 14. Per-editor-instance independence validation
-  - [x] 14.1 Implement integration-level test: two editor instances with different zoom offsets — changing one does not affect the other
+  - [x] 14.1 Implement integration-level test: two editor instances with different zoom offsets -- changing one does not affect the other
   - [x] 14.2 Implement integration-level test: tab switch updates indicator to reflect new active instance's offset
   - [x] 14.3 Implement integration-level test: new editor instance initialises at default_offset from config
   - [x] 14.4 Implement integration-level test: split view creates independent zoom state from source instance
@@ -145,17 +145,17 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-config
   - [x] 15.4 Document in `ZoomState` API: "Zoom offset is applied as point-size delta; physical pixel rendering is handled by the platform rendering layer"
   - Covers: Requirement 9 (AC 9.1–9.4)
 
-- [x] 16. Property-based tests — ZoomOffset invariants
+- [x] 16. Property-based tests -- ZoomOffset invariants
   - [x] 16.1 Write property test: for any i32 value and any valid [min, max] range, `ZoomOffset::new` always produces an offset within [min, max] inclusive
     - **Validates: Requirements 1.5, 4.1**
   - [x] 16.2 Write property test: `effective_font_size` is always >= 1 for any base_size >= 1 and any ZoomOffset value (including extreme negatives)
     - **Validates: Requirement 1.2**
   - [x] 16.3 Write property test: `ZoomOffset::zero().is_zero()` is always true and `ZoomOffset::new(n, min, max).is_zero()` is true if and only if the clamped value is 0
     - **Validates: Requirement 1.4**
-  - [x] 16.4 Write property test: for any base_size and two offsets a < b, `effective_font_size(base, a) <= effective_font_size(base, b)` — effective size is monotonically non-decreasing with offset
+  - [x] 16.4 Write property test: for any base_size and two offsets a < b, `effective_font_size(base, a) <= effective_font_size(base, b)` -- effective size is monotonically non-decreasing with offset
     - **Validates: Requirements 1.2, 1.8**
 
-- [x] 17. Property-based tests — zoom operation invariants
+- [x] 17. Property-based tests -- zoom operation invariants
   - [x] 17.1 Write property test: after any sequence of zoom_in calls, offset never exceeds max_offset for any config with valid step and range
     - **Validates: Requirements 1.5, 2.1, 2.6**
   - [x] 17.2 Write property test: after any sequence of zoom_out calls, offset never goes below min_offset for any config with valid step and range
@@ -167,7 +167,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-config
   - [x] 17.5 Write property test: zoom_in followed by zoom_out (with step=1) returns to original offset when not at either limit, for any starting offset strictly within (min, max)
     - **Validates: Requirements 2.1, 2.2**
 
-- [x] 18. Property-based tests — configuration validation invariants
+- [x] 18. Property-based tests -- configuration validation invariants
   - [x] 18.1 Write property test: after validate(), step is always within [1, 10] for any input step value
     - **Validates: Requirement 4.4**
   - [x] 18.2 Write property test: after validate(), min_offset < max_offset always holds for any input combination
@@ -177,7 +177,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-config
   - [x] 18.4 Write property test: hot-reload with any new config values always results in all active offsets within the new [min, max] range
     - **Validates: Requirement 4.6**
 
-- [x] 19. Property-based tests — session persistence invariants
+- [x] 19. Property-based tests -- session persistence invariants
   - [x] 19.1 Write property test: persist then restore round-trip preserves offset exactly when offset is within current config range, for any valid offset and config
     - **Validates: Requirements 6.1, 6.2**
   - [x] 19.2 Write property test: restoring a persisted offset outside current config range clamps to nearest bound (never produces out-of-range state) for any persisted value and any valid config
@@ -185,7 +185,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-config
   - [x] 19.3 Write property test: restoring with no persisted entry uses default_offset from config for any valid config
     - **Validates: Requirement 6.2**
 
-- [x] 20. Property-based tests — indicator model invariants
+- [x] 20. Property-based tests -- indicator model invariants
   - [x] 20.1 Write property test: indicator is Hidden if and only if offset is zero, for any ZoomOffset value
     - **Validates: Requirements 7.1, 7.2**
   - [x] 20.2 Write property test: indicator text always contains the absolute offset value with correct sign prefix for any non-zero offset
@@ -193,7 +193,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-config
   - [x] 20.3 Write property test: indicator text matches regex `^Zoom: [+-]\d+$` for any non-zero offset value
     - **Validates: Requirement 7.5**
 
-- [x] 21. Integration tests — end-to-end zoom workflows
+- [x] 21. Integration tests -- end-to-end zoom workflows
   - [x] 21.1 Write integration test: create editor instance → zoom in 3 times → verify offset is +3 and effective size is base+3
   - [x] 21.2 Write integration test: zoom in to max → attempt one more zoom in → verify AtLimit result with correct message
   - [x] 21.3 Write integration test: zoom out to min → attempt one more zoom out → verify AtLimit result with correct message
@@ -215,14 +215,14 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-config
 
 ## Notes
 
-- The `ff-zoom` crate has zero GUI dependencies — it operates on abstract types and emits `ZoomChangeEvent` structs that the rendering layer consumes to trigger re-layout.
+- The `ff-zoom` crate has zero GUI dependencies -- it operates on abstract types and emits `ZoomChangeEvent` structs that the rendering layer consumes to trigger re-layout.
 - `ZoomOffset` is a display-only state change: it never modifies document content, never produces UndoRecords, and is never recorded in command history.
 - The `ZoomFontMetrics` struct provides the data bridge between zoom state and viewport/rendering. The viewport crate (`ff-viewport`) consumes the `effective_font_size` to recalculate `visible_count` and `top_line` adjustments.
 - Per-editor-instance independence (Requirement 5) is architecturally enforced by each `ZoomState` being owned by its editor instance. The zoom crate does not maintain a global zoom registry.
-- DPI handling (Requirement 9) is entirely passive from the zoom crate's perspective — the offset is expressed in typographical points, and the rendering engine handles DPI-to-pixel conversion.
+- DPI handling (Requirement 9) is entirely passive from the zoom crate's perspective -- the offset is expressed in typographical points, and the rendering engine handles DPI-to-pixel conversion.
 - Session persistence (Requirement 6) integrates with the session store owned by `ff-session`. The zoom crate provides `ZoomSessionEntry` as the serializable payload.
 - Keyboard shortcuts (Ctrl+=, Ctrl+-, Ctrl+0) are registered as **reserved** in the shortcut registry and cannot be remapped by users or plugins.
-- The status bar indicator model (Task 7) produces data for rendering but does not depend on any GUI framework — the actual rendering is handled by `ff-statusbar`.
+- The status bar indicator model (Task 7) produces data for rendering but does not depend on any GUI framework -- the actual rendering is handled by `ff-statusbar`.
 - Property-based tests (Tasks 16–20) use the `proptest` crate and are configured for a minimum of 256 iterations.
 - The ZOOM primary command (Task 11) supports signed integer arguments and keyword forms (IN, OUT, RESET). It does not interact with the undo system.
 
@@ -284,11 +284,11 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-config
     "21": ["5", "6", "7", "8", "9", "10", "11", "12", "14", "15"]
   },
   "externalDependencies": {
-    "ff-config": "Provides ConfigStore, key-value configuration access, hot-reload notification — zoom config keys are read from here",
-    "ff-command": "Command registry, dispatch, metadata, Shortcut_Registry — ZOOM command and reserved shortcuts are registered here",
+    "ff-config": "Provides ConfigStore, key-value configuration access, hot-reload notification -- zoom config keys are read from here",
+    "ff-command": "Command registry, dispatch, metadata, Shortcut_Registry -- ZOOM command and reserved shortcuts are registered here",
     "ff-logging": "Structured logging for configuration warnings and diagnostics",
-    "ff-multi-tab": "Per-editor-instance lifecycle — each tab owns its own ZoomState",
-    "ff-session": "Session persistence store — zoom offsets are serialised/deserialised through this system",
+    "ff-multi-tab": "Per-editor-instance lifecycle -- each tab owns its own ZoomState",
+    "ff-session": "Session persistence store -- zoom offsets are serialised/deserialised through this system",
     "ff-viewport": "Consumes ZoomChangeEvent to recalculate visible_count and adjust top_line",
     "ff-theme": "Provides Base_Font_Size (monospace editor font point size) from theme configuration",
     "ff-statusbar": "Renders ZoomIndicatorState data in the status bar UI"

@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-The `ff-file-ops` crate implements all **user-facing file operations** for the FileForgeWorkbench platform: New, Open, Save, Save As, Revert, and Recent Files. It also provides the underlying persistence mechanisms — atomic rename-on-write, backup copies, read-only detection, and unsaved-changes guards.
+The `ff-file-ops` crate implements all **user-facing file operations** for the FileForgeWorkbench platform: New, Open, Save, Save As, Revert, and Recent Files. It also provides the underlying persistence mechanisms -- atomic rename-on-write, backup copies, read-only detection, and unsaved-changes guards.
 
 ### Purpose
 
@@ -17,7 +17,7 @@ The `ff-file-ops` crate implements all **user-facing file operations** for the F
 ### Position in Architecture
 
 ```
-Wave 8 — File I/O and Session
+Wave 8 -- File I/O and Session
 
 ┌─────────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                   │
@@ -36,7 +36,7 @@ Wave 8 — File I/O and Session
 
 ### Design Constraints (Cross-Cutting)
 
-- **FFW-ARCH-001 (Req 1)**: ALL file I/O goes through `ff-vfs` — no `std::fs` or `tokio::fs` calls in this crate
+- **FFW-ARCH-001 (Req 1)**: ALL file I/O goes through `ff-vfs` -- no `std::fs` or `tokio::fs` calls in this crate
 - **GUI Independence (Req 2)**: Core operations are GUI-independent; dialogs (File_Picker, Unsaved_Changes_Dialog) are abstracted behind traits that the shell layer implements
 - **Command-Driven (Req 4)**: All operations are registered commands with metadata, shortcuts, and enabled-state predicates
 - **Async I/O (Req 6)**: Large saves/loads delegate to `ff-background-io`; small operations complete synchronously below configurable threshold
@@ -95,7 +95,7 @@ graph TD
         BIO[ff-background-io<br/>Async Tasks]
     end
 
-    subgraph Shell [GUI Shell — ff-desktop]
+    subgraph Shell [GUI Shell -- ff-desktop]
         PICKER[File Picker Dialog]
         DIALOG[Unsaved Changes Dialog]
         STATUS[Status Bar / Progress]
@@ -730,7 +730,7 @@ pub async fn guard_unsaved_changes_batch(
 #[non_exhaustive]
 pub enum FileOpsError {
     /// VFS operation failed (wraps VfsError with file-ops context).
-    #[error("[file-ops] {operation}: VFS error for {uri} — {source}")]
+    #[error("[file-ops] {operation}: VFS error for {uri} -- {source}")]
     Vfs {
         operation: String,
         uri: ResourceUri,
@@ -758,40 +758,40 @@ pub enum FileOpsError {
     },
 
     /// The resource was not found on the VFS.
-    #[error("[file-ops] {operation}: resource not found — {uri}")]
+    #[error("[file-ops] {operation}: resource not found -- {uri}")]
     ResourceNotFound {
         operation: String,
         uri: ResourceUri,
     },
 
     /// Atomic rename is not supported by the provider; fell back to direct write.
-    #[error("[file-ops] save: provider '{provider}' does not support atomic rename — using direct write")]
+    #[error("[file-ops] save: provider '{provider}' does not support atomic rename -- using direct write")]
     AtomicRenameUnsupported {
         provider: String,
     },
 
     /// Backup copy creation failed (non-fatal, logged as WARN).
-    #[error("[file-ops] backup: failed to create backup for {uri} — {reason}")]
+    #[error("[file-ops] backup: failed to create backup for {uri} -- {reason}")]
     BackupFailed {
         uri: ResourceUri,
         reason: String,
     },
 
     /// External modification detected; user declined to proceed.
-    #[error("[file-ops] save: external modification detected for {uri} — user declined")]
+    #[error("[file-ops] save: external modification detected for {uri} -- user declined")]
     ExternalModificationDeclined {
         uri: ResourceUri,
     },
 
     /// Configuration error (invalid setting value).
-    #[error("[file-ops] config: invalid value for '{key}' — {reason}")]
+    #[error("[file-ops] config: invalid value for '{key}' -- {reason}")]
     ConfigError {
         key: String,
         reason: String,
     },
 
     /// The recent files list could not be persisted.
-    #[error("[file-ops] recent: failed to persist recent files list — {reason}")]
+    #[error("[file-ops] recent: failed to persist recent files list -- {reason}")]
     RecentPersistFailed {
         reason: String,
     },
@@ -834,7 +834,7 @@ All operations use `ResourceUri` for addressing. Bare paths from user input are 
 | Operation | Undo API Used | Notes |
 |-----------|--------------|-------|
 | Save (success) | `UndoManager::set_save_point()` | Marks current position as "clean" |
-| Save As (success) | `UndoManager::set_save_point()` | Same — new URI but same undo history |
+| Save As (success) | `UndoManager::set_save_point()` | Same -- new URI but same undo history |
 | Revert | `UndoManager::clear()` | Completely resets undo/redo stacks |
 | New | (fresh document) | New documents start with empty undo stack |
 
@@ -901,7 +901,7 @@ These properties are suitable for property-based testing with the `proptest` cra
 
 ### Property 2: Recent Files List MRU Ordering
 
-**Statement**: After `touch(uri)`, the touched URI is always at index 0 (most recent position). No duplicates exist in the list — the same URI never appears twice.
+**Statement**: After `touch(uri)`, the touched URI is always at index 0 (most recent position). No duplicates exist in the list -- the same URI never appears twice.
 
 **Validates**: Requirement 6 AC 1, AC 3
 
@@ -995,7 +995,7 @@ These properties are suitable for property-based testing with the `proptest` cra
 
 ### Property 10: Backup Copy Preservation
 
-**Statement**: When `file.backup.enabled == true` and a backup copy is created before save, the backup content equals the original file content (the pre-save state). Backup failure does not abort the save — the save proceeds regardless.
+**Statement**: When `file.backup.enabled == true` and a backup copy is created before save, the backup content equals the original file content (the pre-save state). Backup failure does not abort the save -- the save proceeds regardless.
 
 **Validates**: Requirement 7 AC 3, AC 4, AC 5
 
@@ -1042,4 +1042,4 @@ check_modified_time = true
 
 ## Appendix C: Untitled Document Naming
 
-New documents are assigned sequential identifiers: "Untitled-1", "Untitled-2", etc. The counter is maintained per session (resets on application restart). The counter increments monotonically — closed untitled documents do not reclaim their numbers within the same session.
+New documents are assigned sequential identifiers: "Untitled-1", "Untitled-2", etc. The counter is maintained per session (resets on application restart). The counter increments monotonically -- closed untitled documents do not reclaim their numbers within the same session.

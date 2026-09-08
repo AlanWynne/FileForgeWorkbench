@@ -1,4 +1,4 @@
-# Requirements Review — Task 3: Architectural Domain Classification
+# Requirements Review -- Task 3: Architectural Domain Classification
 
 **Phase:** Requirements Review  
 **Status:** COMPLETE  
@@ -36,13 +36,13 @@ Capability → Feature hierarchy aligned to the architecture.
 
 | Sub-Project | Primary Layer | Spans | Notes |
 |-------------|--------------|-------|-------|
-| `platform-core` | Core Platform | — | Pure platform foundation |
-| `command-framework` | Core Platform | — | Command registry and dispatch |
-| `plugin-architecture` | Core Platform | — | Plugin contract and lifecycle |
-| `workflow-engine` | Core Platform | — | State machine workflows |
+| `platform-core` | Core Platform | -- | Pure platform foundation |
+| `command-framework` | Core Platform | -- | Command registry and dispatch |
+| `plugin-architecture` | Core Platform | -- | Plugin contract and lifecycle |
+| `workflow-engine` | Core Platform | -- | State machine workflows |
 | `layout-and-docking` | Core Platform | Workbench Shell | Layout model is core; rendering is shell |
-| `configuration-system` | Core Platform | — | TOML config, hot-reload, profiles |
-| `logging-subsystem` | Core Platform | — | Foundation layer |
+| `configuration-system` | Core Platform | -- | TOML config, hot-reload, profiles |
+| `logging-subsystem` | Core Platform | -- | Foundation layer |
 | `virtual-file-system` | Core Platform | Integration Layer | VFS abstraction is core; providers are integration |
 | `connector-extensibility` | Core Platform | Integration Layer | Plugin trait for connectors |
 
@@ -52,7 +52,7 @@ Capability → Feature hierarchy aligned to the architecture.
 |-------------|--------------|-------|-------|
 | `startup-and-session` | Workbench Shell | Core Platform | Session orchestration is shell; persistence model is core |
 | `multi-tab-editor` | Workbench Shell | Content Layer | Tab container is shell; per-tab state is content |
-| `menu-and-statusbar` | Workbench Shell | — | Menu bar, status bar, command field, title line |
+| `menu-and-statusbar` | Workbench Shell | -- | Menu bar, status bar, command field, title line |
 | `function-keys-and-history` | Workbench Shell | Core Platform | Key label bar is shell; key map resolver is core |
 | `shell-command` | Workbench Shell | Task Layer | Terminal launch is shell; output capture is task |
 
@@ -74,21 +74,21 @@ Capability → Feature hierarchy aligned to the architecture.
 | Sub-Project | Primary Layer | Spans | Notes |
 |-------------|--------------|-------|-------|
 | `document-model` | Content Layer | Core Platform | Document buffer is content; VFS access is core |
-| `edit-operations` | Content Layer | — | Pure content layer |
+| `edit-operations` | Content Layer | -- | Pure content layer |
 | `undo-redo-transactions` | Content Layer | Core Platform | Transaction stack is content; command integration is core |
-| `viewport-and-scrolling` | Content Layer | — | Pure content layer |
-| `display-line-mapping` | Content Layer | — | Pure content layer |
-| `caret-and-selection` | Content Layer | — | Pure content layer |
+| `viewport-and-scrolling` | Content Layer | -- | Pure content layer |
+| `display-line-mapping` | Content Layer | -- | Pure content layer |
+| `caret-and-selection` | Content Layer | -- | Pure content layer |
 | `text-decorations` | Content Layer | UX Layer | Decorations are content; colour tokens are UX |
 | `whitespace-and-guides` | Content Layer | UX Layer | Guide rendering is content; colour tokens are UX |
-| `hex-display` | Content Layer | — | Hex view mode |
-| `sequence-numbers` | Content Layer | — | Sequence number display mode |
-| `tabs-and-mask` | Content Layer | — | TABS/MASK display mode |
-| `asa-report-preview` | Content Layer | — | ASA carriage control rendering |
-| `custom-file-viewers` | Content Layer | — | Viewer registry and PREVIEW command |
+| `hex-display` | Content Layer | -- | Hex view mode |
+| `sequence-numbers` | Content Layer | -- | Sequence number display mode |
+| `tabs-and-mask` | Content Layer | -- | TABS/MASK display mode |
+| `asa-report-preview` | Content Layer | -- | ASA carriage control rendering |
+| `custom-file-viewers` | Content Layer | -- | Viewer registry and PREVIEW command |
 | `fileforge-integration` | Content Layer | Integration Layer | Flat-file processing is content; EBCDIC/COMP-3 is integration |
 | `record-selection-criteria` | Content Layer | Task Layer | Criteria dialog is content; filtering execution is task |
-| `line-wrap-toggle` | Content Layer | — | Word wrap mode |
+| `line-wrap-toggle` | Content Layer | -- | Word wrap mode |
 | `view-zoom` | Content Layer | UX Layer | Zoom level is content; persistence is UX |
 
 ### 3.5 Task Layer 🟠
@@ -113,10 +113,10 @@ Capability → Feature hierarchy aligned to the architecture.
 | Sub-Project | Primary Layer | Spans | Notes |
 |-------------|--------------|-------|-------|
 | `connector-local-fs` | Integration Layer | Core Platform | Local FS provider implements VFS trait |
-| `connector-network-fs` | Integration Layer | — | Deferred — network FS connector |
-| `connector-ftp-sftp` | Integration Layer | — | Deferred — FTP/SFTP connector |
-| `connector-mainframe` | Integration Layer | — | Deferred — z/OS connector |
-| `connector-cloud` | Integration Layer | — | Deferred — cloud storage connector |
+| `connector-network-fs` | Integration Layer | -- | Deferred -- network FS connector |
+| `connector-ftp-sftp` | Integration Layer | -- | Deferred -- FTP/SFTP connector |
+| `connector-mainframe` | Integration Layer | -- | Deferred -- z/OS connector |
+| `connector-cloud` | Integration Layer | -- | Deferred -- cloud storage connector |
 | `database-tool` | Integration Layer | Content Layer | DB connection is integration; SQL editor and result grid are content |
 | `encoding-and-characters` | Integration Layer | Content Layer | Encoding detection is integration; character classification is content |
 
@@ -139,7 +139,7 @@ Capability → Feature hierarchy aligned to the architecture.
 
 The following sub-projects span two or more layers significantly enough that
 their requirements should be explicitly partitioned during the rewrite phase.
-This does not require splitting the crate — only that the requirements document
+This does not require splitting the crate -- only that the requirements document
 clearly labels which layer each requirement belongs to.
 
 | Sub-Project | Layers | Recommended Action |
@@ -274,7 +274,7 @@ the documentation restructure (no code changes required).
 | Current Name | Recommended Name | Reason |
 |-------------|-----------------|--------|
 | `FFW-JES` | `jes-emulator` | Naming convention violation; content is a Task Layer emulator |
-| `workbench-requirements-merge` | Move to `docs/architecture/` | Not a feature spec — contains architecture briefs and verification reports |
+| `workbench-requirements-merge` | Move to `docs/architecture/` | Not a feature spec -- contains architecture briefs and verification reports |
 | `jcl-resolver` | Merge into `jes-emulator` or create `jcl-resolver` spec | Currently empty; JCL resolution is a sub-feature of the JES emulator |
 
 ---
@@ -287,12 +287,12 @@ sub-project specs are recommended to cover identified gaps:
 | Recommended Sub-Project | Layer | Rationale |
 |------------------------|-------|-----------|
 | `accessibility` | UX Layer | No cross-cutting accessibility spec exists; `file-tree-panel` Req 14 is the only accessibility content |
-| `command-palette` | UX Layer | VS Code-style Ctrl+Shift+P command palette — referenced in architecture brief but unspecified |
-| `workspace-model` | Core Platform | Multi-root workspaces, project files, workspace-scoped settings — referenced but unspecified |
-| `notification-system` | Workbench Shell | Non-modal toast/banner notifications — currently all feedback is single-line status bar |
-| `plugin-manager-ui` | Workbench Shell | Plugin Manager panel (install, enable, disable, update) — plugin contract exists but no UI spec |
-| `global-search` | Task Layer | Cross-file search across all open catalogs — `find-and-replace` covers in-file only |
-| `audit-logging` | Core Platform | Enterprise audit trail — referenced in architecture brief but unspecified |
+| `command-palette` | UX Layer | VS Code-style Ctrl+Shift+P command palette -- referenced in architecture brief but unspecified |
+| `workspace-model` | Core Platform | Multi-root workspaces, project files, workspace-scoped settings -- referenced but unspecified |
+| `notification-system` | Workbench Shell | Non-modal toast/banner notifications -- currently all feedback is single-line status bar |
+| `plugin-manager-ui` | Workbench Shell | Plugin Manager panel (install, enable, disable, update) -- plugin contract exists but no UI spec |
+| `global-search` | Task Layer | Cross-file search across all open catalogs -- `find-and-replace` covers in-file only |
+| `audit-logging` | Core Platform | Enterprise audit trail -- referenced in architecture brief but unspecified |
 
 ---
 
@@ -300,6 +300,6 @@ sub-project specs are recommended to cover identified gaps:
 
 This classification feeds directly into:
 
-- **Task 4** — Gap Analysis (uses §7 new sub-projects and the layer map to identify missing coverage)
-- **Tasks 5–7** — Requirement Rewrites (use the FR range allocations from §5 to assign IDs)
-- **Task 9** — Consolidation Report (uses the multi-layer split candidates from §4)
+- **Task 4** -- Gap Analysis (uses §7 new sub-projects and the layer map to identify missing coverage)
+- **Tasks 5–7** -- Requirement Rewrites (use the FR range allocations from §5 to assign IDs)
+- **Task 9** -- Consolidation Report (uses the multi-layer split candidates from §4)

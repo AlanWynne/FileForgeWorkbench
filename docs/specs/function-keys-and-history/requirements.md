@@ -4,33 +4,33 @@
 
 This spec defines the **Function Keys and Command History** subsystem for FileForgeWorkbench (`ff-function-keys` crate). It covers three closely related capabilities inspired by IBM ISPF/PDF workflows:
 
-1. **Configurable Function Keys** — Function keys F1–F24 can be assigned to any registered command or macro invocation. A global default key map provides consistent bindings regardless of file type. Individual language profiles may define their own key maps that fully replace the global map when that profile is active.
+1. **Configurable Function Keys** -- Function keys F1–F24 can be assigned to any registered command or macro invocation. A global default key map provides consistent bindings regardless of file type. Individual language profiles may define their own key maps that fully replace the global map when that profile is active.
 
-2. **Key Label Bar** — A visual display region showing the current function key assignments, rendered in the workbench footer area. This mirrors ISPF's bottom-of-screen key label display and serves as an always-visible command reference.
+2. **Key Label Bar** -- A visual display region showing the current function key assignments, rendered in the workbench footer area. This mirrors ISPF's bottom-of-screen key label display and serves as an always-visible command reference.
 
-3. **RETRIEVE Command and Command History** — A persistent, bounded, deduplicated history of previously entered primary commands. The RETRIEVE command cycles backward through this history one entry at a time. A dropdown UI provides random-access selection from the history list. Certain commands (UNDO, REDO, RETRIEVE) are excluded from history to prevent recall pollution.
+3. **RETRIEVE Command and Command History** -- A persistent, bounded, deduplicated history of previously entered primary commands. The RETRIEVE command cycles backward through this history one entry at a time. A dropdown UI provides random-access selection from the history list. Certain commands (UNDO, REDO, RETRIEVE) are excluded from history to prevent recall pollution.
 
-All function key assignments route through the command framework — pressing a function key dispatches its assigned command through `command-framework` exactly as if typed on the command line. History persistence leverages the startup-and-session infrastructure for graceful degradation and cross-session continuity.
+All function key assignments route through the command framework -- pressing a function key dispatches its assigned command through `command-framework` exactly as if typed on the command line. History persistence leverages the startup-and-session infrastructure for graceful degradation and cross-session continuity.
 
 ### Design Principles
 
-1. **Command-framework integration** — Function key presses and RETRIEVE are dispatched through the command framework like all other command invocations. [WB]
-2. **GUI-independent logic** — Key map resolution, history management, and RETRIEVE pointer logic reside in the platform-core layer with no GUI framework dependency. [WB]
-3. **Configuration-system integration** — All key map and history settings live in the TOML configuration hierarchy and obey the layered override model. [FFE-FKEYS, WB]
-4. **Full-replacement key map model** — When a profile key map is active, it fully replaces the global key map. Keys not defined in the profile map are unassigned, not inherited. This is a deliberate design choice matching ISPF semantics. [FFE-FKEYS]
-5. **Graceful degradation** — A missing or corrupt history file never prevents startup; the workbench initialises with an empty history. [WB, FFE-FKEYS]
+1. **Command-framework integration** -- Function key presses and RETRIEVE are dispatched through the command framework like all other command invocations. [WB]
+2. **GUI-independent logic** -- Key map resolution, history management, and RETRIEVE pointer logic reside in the platform-core layer with no GUI framework dependency. [WB]
+3. **Configuration-system integration** -- All key map and history settings live in the TOML configuration hierarchy and obey the layered override model. [FFE-FKEYS, WB]
+4. **Full-replacement key map model** -- When a profile key map is active, it fully replaces the global key map. Keys not defined in the profile map are unassigned, not inherited. This is a deliberate design choice matching ISPF semantics. [FFE-FKEYS]
+5. **Graceful degradation** -- A missing or corrupt history file never prevents startup; the workbench initialises with an empty history. [WB, FFE-FKEYS]
 
 ### Source References
 
-- **[FFE-FKEYS]** = FileForgeEditor `function-keys-and-command-history` specification (10 requirements — priority source)
+- **[FFE-FKEYS]** = FileForgeEditor `function-keys-and-command-history` specification (10 requirements -- priority source)
 - **[WB]** = Workbench Platform Architecture Brief (command-driven architecture, GUI independence, configuration-as-data)
 
 ### Cross-References
 
-- **`command-framework`** — Function key presses dispatch commands through the command registry and execution pipeline. RETRIEVE is a registered command. Key execution produces Command_History entries (via the standard history rules).
-- **`configuration-system`** — Key maps and history settings are stored in TOML configuration files and obey the layered precedence model (Defaults → System → User → Profile → Project → Workspace). Language profile key maps live in `languages/*.toml` files.
-- **`startup-and-session`** — History_Store loading occurs during the startup sequence. History persistence occurs during the exit sequence. Graceful degradation rules apply to corrupt/missing History_Store files.
-- **`menu-and-statusbar`** — The Key_Label_Bar occupies the footer region alongside (or adjacent to) the Status_Bar. The Primary_Command_Field is the target for RETRIEVE recall and history dropdown interaction.
+- **`command-framework`** -- Function key presses dispatch commands through the command registry and execution pipeline. RETRIEVE is a registered command. Key execution produces Command_History entries (via the standard history rules).
+- **`configuration-system`** -- Key maps and history settings are stored in TOML configuration files and obey the layered precedence model (Defaults → System → User → Profile → Project → Workspace). Language profile key maps live in `languages/*.toml` files.
+- **`startup-and-session`** -- History_Store loading occurs during the startup sequence. History persistence occurs during the exit sequence. Graceful degradation rules apply to corrupt/missing History_Store files.
+- **`menu-and-statusbar`** -- The Key_Label_Bar occupies the footer region alongside (or adjacent to) the Status_Bar. The Primary_Command_Field is the target for RETRIEVE recall and history dropdown interaction.
 
 ---
 
@@ -124,7 +124,7 @@ All function key assignments route through the command framework — pressing a 
 
 ---
 
-### Requirement 5: RETRIEVE Command — Single-Step Recall
+### Requirement 5: RETRIEVE Command -- Single-Step Recall
 
 **User Story:** As a command-line user, I want to type RETRIEVE to recall my previous command into the command field, so that I can quickly reuse or edit a recently typed command without retyping it.
 
@@ -239,11 +239,11 @@ All function key assignments route through the command framework — pressing a 
 
 ---
 
-### Requirement 12: PFSHOW Command — Key Label Bar Visibility Toggle
+### Requirement 12: PFSHOW Command -- Key Label Bar Visibility Toggle
 
 **User Story:** As a workbench user, I want to show or hide the Key Label Bar with a command, so that I can reclaim screen space when I know my key assignments or reveal them when I need a reminder.
 
-**Source:** New requirement — ISPF-style PFSHOW command.
+**Source:** New requirement -- ISPF-style PFSHOW command.
 
 #### Acceptance Criteria
 
@@ -257,11 +257,11 @@ All function key assignments route through the command framework — pressing a 
 
 ---
 
-### Requirement 13: Key Label Bar — Two-Row Layout for 24 Keys
+### Requirement 13: Key Label Bar -- Two-Row Layout for 24 Keys
 
 **User Story:** As a workbench user, I want the Key Label Bar to display all 24 function key assignments across two rows at the bottom of the window, so that I can see the full set of available shortcuts at a glance.
 
-**Source:** New requirement — extension of Requirement 4 to support F1–F24 in a two-row layout.
+**Source:** New requirement -- extension of Requirement 4 to support F1–F24 in a two-row layout.
 
 #### Acceptance Criteria
 
@@ -277,7 +277,7 @@ All function key assignments route through the command framework — pressing a 
 
 **User Story:** As a workbench user, I want each Workspace Context (POM, editor, Settings Context, file browser, etc.) to have its own function key assignments that load automatically when that context becomes active, so that the most relevant shortcuts are always available for the current task.
 
-**Source:** New requirement — extends Requirement 2 (Profile-Specific Key Map) to cover all Workspace Contexts, not just language profiles.
+**Source:** New requirement -- extends Requirement 2 (Profile-Specific Key Map) to cover all Workspace Contexts, not just language profiles.
 
 #### Acceptance Criteria
 
@@ -295,7 +295,7 @@ All function key assignments route through the command framework — pressing a 
 
 **User Story:** As a new workbench user, I want a sensible default set of 24 function key assignments pre-configured out of the box, so that common operations are immediately accessible without any manual configuration.
 
-**Source:** New requirement — defines the initial default key map for the workbench.
+**Source:** New requirement -- defines the initial default key map for the workbench.
 
 #### Acceptance Criteria
 
@@ -319,7 +319,7 @@ All function key assignments route through the command framework — pressing a 
 
 **User Story:** As a workbench user, I want to click on a function key label in the Key Label Bar to execute that key's assigned command, so that I can trigger function key actions with the mouse without pressing the physical key.
 
-**Source:** New requirement — mouse-clickable Key_Label_Bar slots.
+**Source:** New requirement -- mouse-clickable Key_Label_Bar slots.
 
 #### Acceptance Criteria
 
@@ -335,7 +335,7 @@ All function key assignments route through the command framework — pressing a 
 
 **User Story:** As a workbench user, I want END to close the current context and return to the previous screen, and RETURN to jump directly back to the Primary Option Menu from anywhere, so that I can navigate the workbench hierarchy efficiently.
 
-**Source:** New requirement — ISPF-style END and RETURN navigation semantics.
+**Source:** New requirement -- ISPF-style END and RETURN navigation semantics.
 
 #### Acceptance Criteria
 
@@ -349,25 +349,25 @@ All function key assignments route through the command framework — pressing a 
 
 ---
 
-### Requirement 18: Contextual Help — "Not Available Yet" Fallback
+### Requirement 18: Contextual Help -- "Not Available Yet" Fallback
 
 **User Story:** As a workbench user, I want pressing F1 (or the key assigned to HELP) to always produce a response, even when no specific help content exists for the current cursor position, so that I am never left wondering whether the key worked.
 
-**Source:** New requirement — extends context-help Requirement 1 with an explicit "not available yet" fallback dialog.
+**Source:** New requirement -- extends context-help Requirement 1 with an explicit "not available yet" fallback dialog.
 
 #### Acceptance Criteria
 
 1. WHEN F1 is pressed (or the HELP command is dispatched) and the Context_Detector resolves a specific Topic_Key but no help content exists for that key in the Help_Topic_Registry, THE workbench SHALL display a non-modal informational message reading: "Help not available yet for: <context>. Press F1 again or type HELP for the Help Index."
-2. THE "not available yet" message SHALL be displayed in the status bar or as a brief overlay notification — it SHALL NOT open the full Help_Panel.
+2. THE "not available yet" message SHALL be displayed in the status bar or as a brief overlay notification -- it SHALL NOT open the full Help_Panel.
 3. WHEN F1 is pressed and the Context_Detector cannot resolve any specific context (generic UI element), THE workbench SHALL open the Help_Panel displaying the Help_Index (existing behaviour per context-help Requirement 1.7).
 
 ---
 
-### Requirement 19: RETRIEVE with LIST — History Browser
+### Requirement 19: RETRIEVE with LIST -- History Browser
 
 **User Story:** As a workbench user, I want to type "LIST" in the command field and press the RETRIEVE key to see a deduplicated list of my previously typed commands, so that I can browse and select from my full history without cycling through it one entry at a time.
 
-**Source:** New requirement — ISPF-style history list triggered by LIST + RETRIEVE.
+**Source:** New requirement -- ISPF-style history list triggered by LIST + RETRIEVE.
 
 #### Acceptance Criteria
 
@@ -383,9 +383,9 @@ All function key assignments route through the command framework — pressing a 
 
 ### Requirement 20: Key Configuration Dialog
 
-**User Story:** As a workbench user, I want a graphical dialog where I can view and edit all function key assignments — for the default global map and for each named context — including plain, Shift, Ctrl, and Alt modifier variants, with a command string and a description for each binding, so that I can configure my key maps without editing TOML files manually.
+**User Story:** As a workbench user, I want a graphical dialog where I can view and edit all function key assignments -- for the default global map and for each named context -- including plain, Shift, Ctrl, and Alt modifier variants, with a command string and a description for each binding, so that I can configure my key maps without editing TOML files manually.
 
-**Source:** New requirement — Phase AN.
+**Source:** New requirement -- Phase AN.
 
 #### Acceptance Criteria
 
@@ -393,11 +393,11 @@ All function key assignments route through the command framework — pressing a 
 
 2. THE Key_Configuration_Dialog SHALL display a tab or selector for each configurable key map scope: one tab labelled **Default (Global)** and one tab per named context (`pom`, `editor`, `settings`, `files`, `hex`, `toolchain`).
 
-3. WITHIN each scope tab, THE dialog SHALL display a grid of 24 rows — one per function key F1–F24 — with the following columns:
+3. WITHIN each scope tab, THE dialog SHALL display a grid of 24 rows -- one per function key F1–F24 -- with the following columns:
 
 | Column | Content |
 |--------|---------|
-| Key | Key name (e.g., `F3`) — read-only |
+| Key | Key name (e.g., `F3`) -- read-only |
 | Command | Editable text field for the plain (unmodified) key command string |
 | Description | Editable text field for a human-readable description of what the command does |
 | Shift+Key Command | Editable text field for the Shift+Fn command string |

@@ -1,4 +1,4 @@
-# File Forge Workbench — Dataset Catalog Repository & Mainframe Filesystem Emulation
+# File Forge Workbench -- Dataset Catalog Repository & Mainframe Filesystem Emulation
 
 **Development Phase: Dataset Catalog Repository & Mainframe Filesystem Emulation**
 
@@ -58,10 +58,10 @@ There is currently no abstraction layer inside File Forge Workbench to bridge th
 
 ### Benefits
 
-- **Learning** — Developers can learn Mainframe concepts without requiring a z/OS system.
-- **Modernisation** — Legacy applications can be analysed and tested locally.
-- **JCL Processing** — JCL parsers can resolve dataset references.
-- **Future Integration** — Provides foundation for future TN3270, FTP, SFTP, z/OS Connect, mainframe source migration.
+- **Learning** -- Developers can learn Mainframe concepts without requiring a z/OS system.
+- **Modernisation** -- Legacy applications can be analysed and tested locally.
+- **JCL Processing** -- JCL parsers can resolve dataset references.
+- **Future Integration** -- Provides foundation for future TN3270, FTP, SFTP, z/OS Connect, mainframe source migration.
 
 ---
 

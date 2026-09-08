@@ -46,7 +46,7 @@ The `ff-hex` crate implements the **hexadecimal display and editing subsystem** 
 ### Design Constraints (Cross-Cutting)
 
 - **Command-Driven (Req 4)**: `HEX ON`, `HEX OFF`, `HEX`, `HEX DUMP`, `GOTO X'...'` registered in `ff-command`
-- **GUI Independence (Req 2)**: Zero GUI dependencies — the hex layout model is pure data; rendering is the shell's concern
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- the hex layout model is pure data; rendering is the shell's concern
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-hex`
 - **Error Message Standards (Req 8)**: All errors follow `[hex] operation: description` format
 - **Async I/O (Req 6)**: Large hex dump export supports cancellation tokens
@@ -974,7 +974,7 @@ impl HexViewportAdapter {
 
 ## Public API Surface
 
-### HexModeController — Main Entry Point
+### HexModeController -- Main Entry Point
 
 ```rust
 /// Top-level orchestrator for hex display mode.

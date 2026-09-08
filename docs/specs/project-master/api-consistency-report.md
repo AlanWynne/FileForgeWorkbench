@@ -1,6 +1,6 @@
 # API Consistency Cross-Reference Report
 
-**Task:** 19.1 — Cross-reference all design.md files for API consistency  
+**Task:** 19.1 -- Cross-reference all design.md files for API consistency  
 **Date:** Generated during Final Validation wave  
 **Status:** ✅ ALL CROSS-REFERENCES PASS
 
@@ -112,33 +112,33 @@ All downstream designs reference upstream traits, types, and method signatures u
 
 | Reference | Upstream Source | Status |
 |-----------|---------------|--------|
-| Implements `FileForgePlugin` trait | ff-plugin | ✅ OK — correct trait name, correct lifecycle methods (init/activate/deactivate/shutdown) |
-| Uses `PluginContext` to register commands, panels, capabilities | ff-plugin | ✅ OK — correct type name and API |
-| Panels implement `DockablePanel` trait | ff-layout | ✅ OK — correct trait name |
-| Panels specify `default_dock_zone` | ff-layout | ✅ OK — correct method name from DockablePanel |
-| Registers commands under `db.*` namespace via `CommandRegistration` trait | ff-command / ff-plugin | ✅ OK — `CommandRegistration` is defined in ff-plugin as a service trait |
-| Data transfer operations are `WorkflowDefinition` instances | ff-workflow | ✅ OK — correct type name |
-| Each step is a `WorkflowStep` with progress reporting | ff-workflow | ✅ OK — correct trait name |
-| Uses `CancellationToken` from workflow engine | ff-workflow | ✅ OK — correct type name |
-| Registered with `WorkflowRegistry` on plugin activation | ff-workflow | ✅ OK — correct type name and method |
-| All file I/O goes through VFS API | ff-vfs | ✅ OK — VFS principle compliance |
-| Connection follows connector lifecycle pattern | ff-connector-extensibility | ✅ OK — pattern match |
-| `UndoRecord` produced where feasible | ff-command | ✅ OK — correct trait name |
-| Declares capabilities: `[Commands, Viewers, Providers]` | ff-plugin `Capability` enum | ✅ OK — matches `Capability` variants |
+| Implements `FileForgePlugin` trait | ff-plugin | ✅ OK -- correct trait name, correct lifecycle methods (init/activate/deactivate/shutdown) |
+| Uses `PluginContext` to register commands, panels, capabilities | ff-plugin | ✅ OK -- correct type name and API |
+| Panels implement `DockablePanel` trait | ff-layout | ✅ OK -- correct trait name |
+| Panels specify `default_dock_zone` | ff-layout | ✅ OK -- correct method name from DockablePanel |
+| Registers commands under `db.*` namespace via `CommandRegistration` trait | ff-command / ff-plugin | ✅ OK -- `CommandRegistration` is defined in ff-plugin as a service trait |
+| Data transfer operations are `WorkflowDefinition` instances | ff-workflow | ✅ OK -- correct type name |
+| Each step is a `WorkflowStep` with progress reporting | ff-workflow | ✅ OK -- correct trait name |
+| Uses `CancellationToken` from workflow engine | ff-workflow | ✅ OK -- correct type name |
+| Registered with `WorkflowRegistry` on plugin activation | ff-workflow | ✅ OK -- correct type name and method |
+| All file I/O goes through VFS API | ff-vfs | ✅ OK -- VFS principle compliance |
+| Connection follows connector lifecycle pattern | ff-connector-extensibility | ✅ OK -- pattern match |
+| `UndoRecord` produced where feasible | ff-command | ✅ OK -- correct trait name |
+| Declares capabilities: `[Commands, Viewers, Providers]` | ff-plugin `Capability` enum | ✅ OK -- matches `Capability` variants |
 
 ### `FFW-JES/design.md`
 
 | Reference | Upstream Source | Status |
 |-----------|---------------|--------|
-| Implements `FileForgePlugin` trait | ff-plugin | ✅ OK — `JesPlugin: FileForgePlugin` |
+| Implements `FileForgePlugin` trait | ff-plugin | ✅ OK -- `JesPlugin: FileForgePlugin` |
 | Uses `PluginContext` for registration | ff-plugin | ✅ OK |
-| Panels implement `DockablePanel` trait | ff-layout | ✅ OK — `JobMonitorPanel` and `JobLogViewerPanel` |
-| Registers with `PanelRegistry` (via ff-layout) | ff-layout | ✅ OK — correct name `PanelRegistry` → Panel_Registry in design |
-| Registers `jes.*` commands with command registry | ff-command | ✅ OK — correct `CommandRegistry` reference |
-| Job execution via `ff-workflow` (WorkflowRunner) | ff-workflow | ✅ OK — correct type reference |
+| Panels implement `DockablePanel` trait | ff-layout | ✅ OK -- `JobMonitorPanel` and `JobLogViewerPanel` |
+| Registers with `PanelRegistry` (via ff-layout) | ff-layout | ✅ OK -- correct name `PanelRegistry` → Panel_Registry in design |
+| Registers `jes.*` commands with command registry | ff-command | ✅ OK -- correct `CommandRegistry` reference |
+| Job execution via `ff-workflow` (WorkflowRunner) | ff-workflow | ✅ OK -- correct type reference |
 | Uses `CancellationToken` | ff-workflow | ✅ OK |
-| VFS-backed spool: `ResourceUri` via ff-vfs | ff-vfs | ✅ OK — `ResourceUri` correct name |
-| Reads `[plugins.ffw-jes]` configuration namespace | ff-config | ✅ OK — scoped config pattern matches ff-plugin PluginConfigAccess |
+| VFS-backed spool: `ResourceUri` via ff-vfs | ff-vfs | ✅ OK -- `ResourceUri` correct name |
+| Reads `[plugins.ffw-jes]` configuration namespace | ff-config | ✅ OK -- scoped config pattern matches ff-plugin PluginConfigAccess |
 | References `DockZone` for panel assignment | ff-layout | ✅ OK |
 | References `DockState` for state transitions | ff-layout | ✅ OK |
 
@@ -146,10 +146,10 @@ All downstream designs reference upstream traits, types, and method signatures u
 
 | Reference | Upstream Source | Status |
 |-----------|---------------|--------|
-| Implements `ConnectorPlugin` trait | ff-connector-extensibility | ✅ OK — correct trait name, correct supertrait relationship (VfsProvider + FileForgePlugin) |
-| `ConnectorPlugin` methods match | ff-connector-extensibility | ✅ OK — `descriptor()`, `connector_capabilities()`, `api_version()`, `state()`, `connect()`, `disconnect()`, `authenticate()`, `retry_policy()`, `map_error()` all match |
+| Implements `ConnectorPlugin` trait | ff-connector-extensibility | ✅ OK -- correct trait name, correct supertrait relationship (VfsProvider + FileForgePlugin) |
+| `ConnectorPlugin` methods match | ff-connector-extensibility | ✅ OK -- `descriptor()`, `connector_capabilities()`, `api_version()`, `state()`, `connect()`, `disconnect()`, `authenticate()`, `retry_policy()`, `map_error()` all match |
 | Uses `ConnectorDescriptor` | ff-connector-extensibility | ✅ OK |
-| Uses `ConnectorCapability` enum values | ff-connector-extensibility | ✅ OK — `Read`, `Write`, `List`, `Metadata`, `Watch`, `Rename`, `Delete`, `CreateDirectory`, `Search`, `Copy` all match |
+| Uses `ConnectorCapability` enum values | ff-connector-extensibility | ✅ OK -- `Read`, `Write`, `List`, `Metadata`, `Watch`, `Rename`, `Delete`, `CreateDirectory`, `Search`, `Copy` all match |
 | Uses `ConnectorState` | ff-connector-extensibility | ✅ OK |
 | Uses `ConnectorError` | ff-connector-extensibility | ✅ OK |
 | Uses `CredentialStore` trait | ff-connector-extensibility | ✅ OK |
@@ -157,7 +157,7 @@ All downstream designs reference upstream traits, types, and method signatures u
 | Uses `CONNECTOR_API_VERSION` constant | ff-connector-extensibility | ✅ OK |
 | Implements `VfsProvider` from ff-vfs | ff-vfs | ✅ OK |
 | Uses `ResourceUri`, `ProviderRegistry`, `VfsCapabilities` | ff-vfs | ✅ OK |
-| Implements `FileForgePlugin` from ff-plugin | ff-plugin | ✅ OK — correct lifecycle methods: `initialize`, `activate`, `deactivate`, `shutdown` |
+| Implements `FileForgePlugin` from ff-plugin | ff-plugin | ✅ OK -- correct lifecycle methods: `initialize`, `activate`, `deactivate`, `shutdown` |
 | Uses `PluginContext`, `PluginMetadata` | ff-plugin | ✅ OK |
 | Registers with `ConnectorRegistry` | ff-connector-extensibility | ✅ OK |
 
@@ -165,28 +165,28 @@ All downstream designs reference upstream traits, types, and method signatures u
 
 | Reference | Upstream Source | Status |
 |-----------|---------------|--------|
-| Implements `ConnectorPlugin` trait | ff-connector-extensibility | ✅ OK — correct combined trait (VfsProvider + FileForgePlugin + connector lifecycle) |
+| Implements `ConnectorPlugin` trait | ff-connector-extensibility | ✅ OK -- correct combined trait (VfsProvider + FileForgePlugin + connector lifecycle) |
 | Uses `ConnectorDescriptor` for each scheme | ff-connector-extensibility | ✅ OK |
-| Advertises `ConnectorCapability` set | ff-connector-extensibility | ✅ OK — values match: `Read`, `Write`, `List`, `Metadata`, `Rename`, `Delete`, `CreateDirectory`, `Watch` |
-| Implements `ConnectorState` lifecycle transitions | ff-connector-extensibility | ✅ OK — states match: `Registered → Connecting → Connected → ...` |
+| Advertises `ConnectorCapability` set | ff-connector-extensibility | ✅ OK -- values match: `Read`, `Write`, `List`, `Metadata`, `Rename`, `Delete`, `CreateDirectory`, `Watch` |
+| Implements `ConnectorState` lifecycle transitions | ff-connector-extensibility | ✅ OK -- states match: `Registered → Connecting → Connected → ...` |
 | Implements `authenticate()` with `CredentialStore` | ff-connector-extensibility | ✅ OK |
-| Implements `map_error()` → `ConnectorError` taxonomy | ff-connector-extensibility | ✅ OK — error variants match: `NetworkError`, `AuthenticationFailed`, `ResourceNotFound`, `PermissionDenied`, `Timeout` |
+| Implements `map_error()` → `ConnectorError` taxonomy | ff-connector-extensibility | ✅ OK -- error variants match: `NetworkError`, `AuthenticationFailed`, `ResourceNotFound`, `PermissionDenied`, `Timeout` |
 | Declares `RetryPolicy` | ff-connector-extensibility | ✅ OK |
 | Declares `ApiVersion` | ff-connector-extensibility | ✅ OK |
-| Implements `VfsProvider` | ff-vfs | ✅ OK — operations: `read`, `write`, `list`, `stat`, `rename`, `delete`, `create_dir`, `watch` |
+| Implements `VfsProvider` | ff-vfs | ✅ OK -- operations: `read`, `write`, `list`, `stat`, `rename`, `delete`, `create_dir`, `watch` |
 | Uses `VfsMetadata` | ff-vfs | ✅ OK |
-| Implements `FileForgePlugin` | ff-plugin | ✅ OK — `initialize()`, `shutdown()` referenced correctly |
-| Uses `PluginContext`, `CapabilityRegistry` | ff-plugin | ✅ OK — `Capability::Providers` matches ff-plugin enum |
+| Implements `FileForgePlugin` | ff-plugin | ✅ OK -- `initialize()`, `shutdown()` referenced correctly |
+| Uses `PluginContext`, `CapabilityRegistry` | ff-plugin | ✅ OK -- `Capability::Providers` matches ff-plugin enum |
 | Registers with `ConnectorRegistry` | ff-connector-extensibility | ✅ OK |
 
 ### `connector-mainframe/design.md`
 
 | Reference | Upstream Source | Status |
 |-----------|---------------|--------|
-| Implements `ConnectorPlugin` trait | ff-connector-extensibility | ✅ OK — full method list matches exactly |
-| Methods: `descriptor()`, `connector_capabilities()`, `api_version()`, `state()`, `connect()`, `disconnect()`, `authenticate()`, `retry_policy()`, `map_error()`, `custom_operation()` | ff-connector-extensibility | ✅ OK — all method signatures match upstream definition |
+| Implements `ConnectorPlugin` trait | ff-connector-extensibility | ✅ OK -- full method list matches exactly |
+| Methods: `descriptor()`, `connector_capabilities()`, `api_version()`, `state()`, `connect()`, `disconnect()`, `authenticate()`, `retry_policy()`, `map_error()`, `custom_operation()` | ff-connector-extensibility | ✅ OK -- all method signatures match upstream definition |
 | Uses `ConnectorDescriptor` | ff-connector-extensibility | ✅ OK |
-| Uses `ConnectorCapability` values | ff-connector-extensibility | ✅ OK — `Read`, `Write`, `List`, `Metadata`, `Delete`, `CreateDirectory`, `Search`, `Rename` all valid |
+| Uses `ConnectorCapability` values | ff-connector-extensibility | ✅ OK -- `Read`, `Write`, `List`, `Metadata`, `Delete`, `CreateDirectory`, `Search`, `Rename` all valid |
 | Uses `ConnectorState` state machine | ff-connector-extensibility | ✅ OK |
 | Uses `ConnectorError` | ff-connector-extensibility | ✅ OK |
 | Uses `CredentialStore` | ff-connector-extensibility | ✅ OK |
@@ -194,7 +194,7 @@ All downstream designs reference upstream traits, types, and method signatures u
 | Implements `VfsProvider` | ff-vfs | ✅ OK |
 | Uses `ProviderRegistry` | ff-vfs | ✅ OK |
 | Uses `ResourceUri` | ff-vfs | ✅ OK |
-| Implements `FileForgePlugin` | ff-plugin | ✅ OK — lifecycle: `initialize()`, `shutdown()` |
+| Implements `FileForgePlugin` | ff-plugin | ✅ OK -- lifecycle: `initialize()`, `shutdown()` |
 | Advertises `Capability::Providers` with `CapabilityRegistry` | ff-plugin | ✅ OK |
 
 ### `connector-cloud/design.md`
@@ -209,19 +209,19 @@ All downstream designs reference upstream traits, types, and method signatures u
 | Uses `ConnectorState` | ff-connector-extensibility | ✅ OK |
 | Uses `ConnectorError` | ff-connector-extensibility | ✅ OK |
 | Uses `VfsEntry`, `VfsMetadata`, `VfsError` | ff-vfs | ✅ OK |
-| Registration flow: PluginContext → ConnectorRegistry → ProviderRegistry | ff-plugin + ff-connector-extensibility + ff-vfs | ✅ OK — correct delegation chain |
+| Registration flow: PluginContext → ConnectorRegistry → ProviderRegistry | ff-plugin + ff-connector-extensibility + ff-vfs | ✅ OK -- correct delegation chain |
 
 ### `file-tree-panel/design.md`
 
 | Reference | Upstream Source | Status |
 |-----------|---------------|--------|
-| Implements `DockablePanel` trait | ff-layout | ✅ OK — correct trait name, correct methods: `panel_id()`, `default_dock_zone()`, `render()`, `title()`, `on_dock_state_changed()`, `minimum_size()` |
-| Uses `DockZone::Left` | ff-layout | ✅ OK — variant exists in `DockZone` enum |
-| Uses `DockState` | ff-layout | ✅ OK — referenced for `on_dock_state_changed` |
-| Uses `Vfs`, `ResourceUri`, `VfsEntry`, `VfsMetadata` | ff-vfs | ✅ OK — all correct type names |
+| Implements `DockablePanel` trait | ff-layout | ✅ OK -- correct trait name, correct methods: `panel_id()`, `default_dock_zone()`, `render()`, `title()`, `on_dock_state_changed()`, `minimum_size()` |
+| Uses `DockZone::Left` | ff-layout | ✅ OK -- variant exists in `DockZone` enum |
+| Uses `DockState` | ff-layout | ✅ OK -- referenced for `on_dock_state_changed` |
+| Uses `Vfs`, `ResourceUri`, `VfsEntry`, `VfsMetadata` | ff-vfs | ✅ OK -- all correct type names |
 | Uses `WatchHandle`, `WatchEvent`, `VfsCapabilities` | ff-vfs | ✅ OK |
-| Registers commands with ff-command (`CommandDispatch`) | ff-command | ✅ OK — `CommandDispatch` is the dispatch struct |
-| Uses `CancellationToken` from tokio_util | N/A (external) | ✅ OK — same usage as workflow engine |
+| Registers commands with ff-command (`CommandDispatch`) | ff-command | ✅ OK -- `CommandDispatch` is the dispatch struct |
+| Uses `CancellationToken` from tokio_util | N/A (external) | ✅ OK -- same usage as workflow engine |
 
 ### `lua-macro-engine/design.md`
 
@@ -229,11 +229,11 @@ All downstream designs reference upstream traits, types, and method signatures u
 |-----------|---------------|--------|
 | Registers as plugin via `FileForgePlugin` trait | ff-plugin | ✅ OK |
 | Uses `PluginContext` | ff-plugin | ✅ OK |
-| Registers `MacroCapability` via ff-plugin | ff-plugin | ✅ OK — pattern matches `Capability` enum registration |
+| Registers `MacroCapability` via ff-plugin | ff-plugin | ✅ OK -- pattern matches `Capability` enum registration |
 | Commands (MACRO/EXEC/RUN) registered via command framework | ff-command | ✅ OK |
-| Uses `ScriptingBridge` for `editor.command()` dispatch | ff-command | ✅ OK — correct type name and method |
+| Uses `ScriptingBridge` for `editor.command()` dispatch | ff-command | ✅ OK -- correct type name and method |
 | Uses `CommandRegistration` trait for MACRO/EXEC/RUN | ff-plugin (service trait) | ✅ OK |
-| Uses `UndoManager` trait for transaction wrapping | ff-command | ✅ OK — `UndoManager` defined in ff-command |
+| Uses `UndoManager` trait for transaction wrapping | ff-command | ✅ OK -- `UndoManager` defined in ff-command |
 
 ---
 

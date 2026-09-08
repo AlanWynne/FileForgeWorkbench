@@ -1,9 +1,9 @@
 # Verification Report: Requirements Consistency Cross-Reference
 
-**Task:** 18.1 — Cross-reference all requirements for consistency  
+**Task:** 18.1 -- Cross-reference all requirements for consistency  
 **Date:** 2025-01-XX  
 **Scope:** All 61 sub-project specifications in `.kiro/specs/`  
-**Verdict:** ⚠️ **1 CONFLICT FOUND** — see §1 below
+**Verdict:** ⚠️ **1 CONFLICT FOUND** -- see §1 below
 
 ---
 
@@ -12,21 +12,21 @@
 | Check | Result |
 |-------|--------|
 | Conflicting requirements between sub-projects | ⚠️ 1 conflict (URI scheme naming) |
-| Duplicate requirements (unintentional) | ✅ PASS — no meaningful duplicates |
-| FFW-ARCH-001 (VFS abstraction) honoured | ✅ PASS — all file-related specs route through VFS |
-| Command framework integration | ✅ PASS — all user-facing operations registered as commands |
-| Plugin architecture (DockablePanel) | ✅ PASS — all panels implement DockablePanel trait |
-| Workflow engine (state machines) | ✅ PASS — multi-step operations use workflow definitions |
-| Configuration system (TOML, hot-reload) | ✅ PASS — all specs reference configuration-system |
-| Logging subsystem (structured logging) | ✅ PASS — all specs reference ff-logging for diagnostics |
+| Duplicate requirements (unintentional) | ✅ PASS -- no meaningful duplicates |
+| FFW-ARCH-001 (VFS abstraction) honoured | ✅ PASS -- all file-related specs route through VFS |
+| Command framework integration | ✅ PASS -- all user-facing operations registered as commands |
+| Plugin architecture (DockablePanel) | ✅ PASS -- all panels implement DockablePanel trait |
+| Workflow engine (state machines) | ✅ PASS -- multi-step operations use workflow definitions |
+| Configuration system (TOML, hot-reload) | ✅ PASS -- all specs reference configuration-system |
+| Logging subsystem (structured logging) | ✅ PASS -- all specs reference ff-logging for diagnostics |
 
 ---
 
 ## §1. Conflicts Found
 
-### CONFLICT-001: Local Filesystem Provider URI Scheme — `"local"` vs `"file"`
+### CONFLICT-001: Local Filesystem Provider URI Scheme -- `"local"` vs `"file"`
 
-**Severity:** HIGH — affects URI construction across the entire workbench  
+**Severity:** HIGH -- affects URI construction across the entire workbench  
 **Specs involved:**
 - `virtual-file-system` Requirement 2 (AC 10) and Requirement 3 (AC 8–9)
 - `connector-local-fs` Requirement 1 (AC 2)
@@ -65,7 +65,7 @@ However, the `connector-local-fs` specification uses `"file"`:
 
 ### Intentional Cross-References (Not Duplicates)
 
-The following requirements appear in multiple specs but are **intentional cross-references** — each spec references the authoritative source and defines its own integration point rather than redefining the same criteria:
+The following requirements appear in multiple specs but are **intentional cross-references** -- each spec references the authoritative source and defines its own integration point rather than redefining the same criteria:
 
 | Requirement Area | Authoritative Spec | Referencing Specs |
 |---|---|---|
@@ -77,17 +77,17 @@ The following requirements appear in multiple specs but are **intentional cross-
 | Structured logging | `logging-subsystem` | All specs (consistent reference to ff-logging) |
 | Configuration system access | `configuration-system` | All specs (consistent TOML namespace usage) |
 
-All cross-references are properly scoped — consuming specs state "SHALL use" the authoritative crate's API rather than redefining the API. **No unintentional duplicates found.**
+All cross-references are properly scoped -- consuming specs state "SHALL use" the authoritative crate's API rather than redefining the API. **No unintentional duplicates found.**
 
 ### Near-Duplicates Reviewed and Cleared
 
 | Area | Specs | Verdict |
 |---|---|---|
-| Undo/redo integration | `command-framework` Req 4 vs `undo-redo-transactions` | **Not duplicate** — command-framework defines the dispatch-level integration; undo-redo-transactions defines the transaction mechanics. They are complementary. |
-| File watching | `virtual-file-system` Req 7 vs `connector-local-fs` Req 3 vs `external-modification` Req 1 | **Not duplicate** — VFS defines the abstract trait, connector-local-fs implements the OS-native watcher, external-modification consumes watch events. Proper layering. |
-| Read-only detection | `file-operations` Req 8 vs `document-model` Req 2 (AC 7–8) | **Not duplicate** — file-operations owns the policy (when to mark read-only); document-model owns the enforcement (reject mutations). |
-| Save point / dirty flag | `file-operations` Req 1 (AC 2) vs `document-model` Req 10 | **Not duplicate** — file-operations triggers `set_save_point()` after save; document-model maintains the save-point marker and watcher notifications. |
-| Keyboard shortcuts | `command-framework` Req 5 (AC 3) vs `project-master` Req 10 (AC 1) | **Intentional duplication** — project-master defines the reserved shortcut set as a cross-cutting constraint; command-framework enforces it at registration time. Same list, correct redundancy for emphasis. |
+| Undo/redo integration | `command-framework` Req 4 vs `undo-redo-transactions` | **Not duplicate** -- command-framework defines the dispatch-level integration; undo-redo-transactions defines the transaction mechanics. They are complementary. |
+| File watching | `virtual-file-system` Req 7 vs `connector-local-fs` Req 3 vs `external-modification` Req 1 | **Not duplicate** -- VFS defines the abstract trait, connector-local-fs implements the OS-native watcher, external-modification consumes watch events. Proper layering. |
+| Read-only detection | `file-operations` Req 8 vs `document-model` Req 2 (AC 7–8) | **Not duplicate** -- file-operations owns the policy (when to mark read-only); document-model owns the enforcement (reject mutations). |
+| Save point / dirty flag | `file-operations` Req 1 (AC 2) vs `document-model` Req 10 | **Not duplicate** -- file-operations triggers `set_save_point()` after save; document-model maintains the save-point marker and watcher notifications. |
+| Keyboard shortcuts | `command-framework` Req 5 (AC 3) vs `project-master` Req 10 (AC 1) | **Intentional duplication** -- project-master defines the reserved shortcut set as a cross-cutting constraint; command-framework enforces it at registration time. Same list, correct redundancy for emphasis. |
 
 ---
 
@@ -102,12 +102,12 @@ All cross-references are properly scoped — consuming specs state "SHALL use" t
 | `background-io` | ✅ | Intro: *"background-io uses the VFS provider async interface and never calls `std::fs`"*; Req 1 AC 8 |
 | `external-modification` | ✅ | Req 1 AC 6: *"SHALL NOT use `std::fs`, `tokio::fs`, or any other direct filesystem API"* |
 | `file-tree-panel` | ✅ | Cross-References: *"All resource browsing, listing, stat, watch, and search operations go through the VFS API"* |
-| `database-tool` | ✅ | Req 16: explicit VFS requirement; AC 16.1: *"SHALL use the VFS API — no direct `std::fs` or `tokio::fs` calls"* |
+| `database-tool` | ✅ | Req 16: explicit VFS requirement; AC 16.1: *"SHALL use the VFS API -- no direct `std::fs` or `tokio::fs` calls"* |
 | `dataset-catalog` | ✅ | Intro: *"All dataset I/O flows through the VFS abstraction (FFW-ARCH-001)"*; implements VfsProvider under scheme `catalog` |
 | `compare-and-merge` | ✅ | *"THE compare subsystem SHALL resolve all resource paths to Resource_URIs via the VFS abstraction"* |
-| `connector-local-fs` | ✅ | Implements the `VfsProvider` trait — it IS the provider |
+| `connector-local-fs` | ✅ | Implements the `VfsProvider` trait -- it IS the provider |
 | `connector-extensibility` | ✅ | Defines the extension trait for future providers |
-| `encoding-and-characters` | ✅ | Service layer consumed by document-model at load/save boundaries — no direct I/O |
+| `encoding-and-characters` | ✅ | Service layer consumed by document-model at load/save boundaries -- no direct I/O |
 | `startup-and-session` | ✅ | CLI args resolved via VFS; session restore uses VFS URIs |
 
 **Verdict:** ✅ All file-accessing sub-projects explicitly state VFS-only access. No spec performs direct `std::fs` operations.
@@ -141,7 +141,7 @@ All cross-references are properly scoped — consuming specs state "SHALL use" t
 | SQL Editor Panel | `database-tool` Req 5 | ✅ `DockablePanel` with `default_dock_zone` Center | Center |
 | Result Grid Panel | `database-tool` Req 8 | ✅ `DockablePanel` with `default_dock_zone` Bottom | Bottom |
 | ER Diagram Panel | `database-tool` Req 11 | ✅ `DockablePanel` with `default_dock_zone` Center | Center |
-| Context Help Panel | `context-help` | ✅ References panel system | — |
+| Context Help Panel | `context-help` | ✅ References panel system | -- |
 
 **Verdict:** ✅ All panels declare DockablePanel implementation with zone assignments.
 
@@ -192,7 +192,7 @@ All reviewed specs include logging integration:
 
 Beyond the conflict in §1, note that `connector-local-fs` uses `"file"` as a scheme in its glossary's `Default_Provider` entry and its examples (`vfs://file/...`), while the VFS `Provider_Registry` AC 8 explicitly states `"local"` as the default scheme. The `virtual-file-system` glossary also defines:
 
-> - **Default_Provider**: The provider used when a bare path (no URI scheme) is provided — **defaults to the local filesystem provider**. [WB]
+> - **Default_Provider**: The provider used when a bare path (no URI scheme) is provided -- **defaults to the local filesystem provider**. [WB]
 
 This confirms the intent is for the local provider to own the default scheme. The scheme name just needs alignment.
 
@@ -202,7 +202,7 @@ The `configuration-system` Req 8 AC 7 specifies that plugins cannot register key
 
 ### Observation 3: Keyboard Shortcut Ctrl+Shift+T Dual Use
 
-The `project-master` Req 10 reserves `Ctrl+Shift+T` for "Undock/redock tab" (per layout-and-docking). This is consistent — no other spec attempts to bind this shortcut. Verified.
+The `project-master` Req 10 reserves `Ctrl+Shift+T` for "Undock/redock tab" (per layout-and-docking). This is consistent -- no other spec attempts to bind this shortcut. Verified.
 
 ### Observation 4: Database Tool Query Execution Shortcuts
 
@@ -224,8 +224,8 @@ All six cross-cutting architectural principles are properly honoured:
 - ✅ Configuration system (TOML, hot-reload)
 - ✅ Logging subsystem (structured logging)
 
-No unintentional duplicate requirements were found. All cross-references between specs are properly scoped — consuming specs delegate to authoritative specs rather than redefining acceptance criteria.
+No unintentional duplicate requirements were found. All cross-references between specs are properly scoped -- consuming specs delegate to authoritative specs rather than redefining acceptance criteria.
 
 ---
 
-*Report generated as part of Task 18.1 — Final Validation wave.*
+*Report generated as part of Task 18.1 -- Final Validation wave.*

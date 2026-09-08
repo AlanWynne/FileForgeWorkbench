@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This spec defines the **Hex Display Mode** for FileForgeWorkbench — the `ff-hex-display` crate. It provides a complete hexadecimal viewing and editing subsystem, allowing users to inspect and modify raw byte content of any file directly within the editor. The hex display mode presents a three-pane layout: an offset column, hex byte columns, and an ASCII/text pane, with synchronised cursor movement between panes.
+This spec defines the **Hex Display Mode** for FileForgeWorkbench -- the `ff-hex-display` crate. It provides a complete hexadecimal viewing and editing subsystem, allowing users to inspect and modify raw byte content of any file directly within the editor. The hex display mode presents a three-pane layout: an offset column, hex byte columns, and an ASCII/text pane, with synchronised cursor movement between panes.
 
 Hex mode is an invaluable diagnostic tool for:
 
@@ -15,7 +15,7 @@ Hex mode is an invaluable diagnostic tool for:
 
 Unlike the FFE implementation which was display-only with limited hex-line editing, this workbench spec provides a **full hex editor** with overwrite editing, goto-offset navigation, hex dump export, and tight integration with the find-and-replace engine's `FIND X'...'` capability.
 
-The crate is **GUI-independent** — it manages the hex display model, cursor synchronisation, and editing logic. Rendering is delegated to the UI layer.
+The crate is **GUI-independent** -- it manages the hex display model, cursor synchronisation, and editing logic. Rendering is delegated to the UI layer.
 
 ### Source References
 
@@ -24,15 +24,15 @@ The crate is **GUI-independent** — it manages the hex display model, cursor sy
 
 ### Cross-References
 
-- **`document-model`** — Hex mode operates over the document's raw byte buffer via BytePosition addressing
-- **`viewport-and-scrolling`** — Hex viewport scrolling is coordinated through the viewport model with a hex-specific row-count calculation
-- **`find-and-replace`** — Hex search (`FIND X'...'`) is implemented by the find engine; this spec defines the display integration when matches are found
-- **`undo-redo-transactions`** — Hex edits are recorded as standard Edit_Operations and participate in the undo/redo transaction system
-- **`command-framework`** — HEX ON/OFF/toggle and GOTO OFFSET commands are registered through the command registry
-- **`theme-and-appearance`** — Hex mode uses theme tokens for offset column, hex digits, ASCII pane, separator, modified-byte highlights, and non-printable indicators
-- **`encoding-and-characters`** — Multi-byte character display in the ASCII pane and EBCDIC mode interplay
-- **`fileforge-integration`** — Hex mode shows field boundaries and packed decimal annotations when FileForge_Mode is active
-- **`configuration-system`** — Hex mode settings (bytes-per-row, uppercase/lowercase, auto-activate for binary) are loaded from configuration
+- **`document-model`** -- Hex mode operates over the document's raw byte buffer via BytePosition addressing
+- **`viewport-and-scrolling`** -- Hex viewport scrolling is coordinated through the viewport model with a hex-specific row-count calculation
+- **`find-and-replace`** -- Hex search (`FIND X'...'`) is implemented by the find engine; this spec defines the display integration when matches are found
+- **`undo-redo-transactions`** -- Hex edits are recorded as standard Edit_Operations and participate in the undo/redo transaction system
+- **`command-framework`** -- HEX ON/OFF/toggle and GOTO OFFSET commands are registered through the command registry
+- **`theme-and-appearance`** -- Hex mode uses theme tokens for offset column, hex digits, ASCII pane, separator, modified-byte highlights, and non-printable indicators
+- **`encoding-and-characters`** -- Multi-byte character display in the ASCII pane and EBCDIC mode interplay
+- **`fileforge-integration`** -- Hex mode shows field boundaries and packed decimal annotations when FileForge_Mode is active
+- **`configuration-system`** -- Hex mode settings (bytes-per-row, uppercase/lowercase, auto-activate for binary) are loaded from configuration
 
 ---
 
@@ -67,11 +67,11 @@ The crate is **GUI-independent** — it manages the hex display model, cursor sy
 
 1. THE Command_Framework SHALL register `HEX ON` as a primary command that activates Hex_Mode for the current editor session. [FFE-HEX]
 2. THE Command_Framework SHALL register `HEX OFF` as a primary command that deactivates Hex_Mode and returns the viewport to normal text display. [FFE-HEX]
-3. THE Command_Framework SHALL register `HEX` (with no argument) as a primary command that toggles Hex_Mode — activating it if currently off, deactivating it if currently on. [FFE-HEX]
+3. THE Command_Framework SHALL register `HEX` (with no argument) as a primary command that toggles Hex_Mode -- activating it if currently off, deactivating it if currently on. [FFE-HEX]
 4. WHEN `HEX ON` is issued and Hex_Mode is already active, THE system SHALL display a status message "Hex mode is already active" and SHALL NOT change any state. [FFE-HEX]
 5. WHEN `HEX OFF` is issued and Hex_Mode is already inactive, THE system SHALL display a status message "Hex mode is already off" and SHALL NOT change any state. [FFE-HEX]
 6. THE `HEX ON`, `HEX OFF`, and `HEX` commands SHALL be valid in Browse mode, Edit mode, and View mode. [FFE-HEX]
-7. THE hex mode state change SHALL NOT be added to the Undo_Stack — it is a non-undoable display state change. [FFE-HEX]
+7. THE hex mode state change SHALL NOT be added to the Undo_Stack -- it is a non-undoable display state change. [FFE-HEX]
 8. WHEN Hex_Mode is active, THE status bar SHALL display a `HEX` indicator to clearly show the current display mode. [FFE-HEX]
 9. WHEN transitioning from text mode to Hex_Mode, THE system SHALL preserve the current cursor byte position and map it to the corresponding Hex_Row and column in the hex view. [WB]
 10. WHEN transitioning from Hex_Mode back to text mode, THE system SHALL restore the cursor to the text line and column corresponding to the current hex cursor byte offset. [WB]
@@ -132,7 +132,7 @@ The crate is **GUI-independent** — it manages the hex display model, cursor sy
 6. WHEN hex mode editing is attempted in Browse mode or View mode, THE system SHALL reject the edit and display "Cannot edit in Browse/View mode". [WB]
 7. THE system SHALL support consecutive rapid hex digit entries that are coalesced into a single undo transaction (consistent with coalescing rules defined in undo-redo-transactions). [WB]
 8. WHEN a byte is modified, THE system SHALL mark that byte as a Modified_Byte with a distinct visual highlight in both the Hex_Pane and ASCII_Pane until the document is saved. [WB]
-9. WHEN the editor is in EBCDIC mode (EBCDIC encoding active for the current file), THE system SHALL display a warning "Hex editing on EBCDIC files modifies raw bytes directly — ensure edited values are valid EBCDIC characters" when the cursor first enters the Hex_Pane. [FFE-HEX]
+9. WHEN the editor is in EBCDIC mode (EBCDIC encoding active for the current file), THE system SHALL display a warning "Hex editing on EBCDIC files modifies raw bytes directly -- ensure edited values are valid EBCDIC characters" when the cursor first enters the Hex_Pane. [FFE-HEX]
 
 ---
 
@@ -150,7 +150,7 @@ The crate is **GUI-independent** — it manages the hex display model, cursor sy
 4. THE `FIND X'...'` form SHALL support all existing FIND scope modifiers: ALL, NEXT, PREV, FIRST, LAST. [FFE-HEX]
 5. WHEN an odd number of hex digits is provided (e.g., `X'0D0'`), THE system SHALL display a syntax error "Hex pattern must contain an even number of digits" and SHALL NOT execute the search. [FFE-HEX]
 6. WHEN `FIND X'0D0A'` is issued, THE system SHALL search for the byte sequence `0x0D 0x0A` at any byte position in the document, regardless of line boundaries. [FFE-HEX]
-7. THE hex search SHALL operate on raw bytes without Unicode case folding — it matches exact byte sequences. [FFE-HEX]
+7. THE hex search SHALL operate on raw bytes without Unicode case folding -- it matches exact byte sequences. [FFE-HEX]
 8. WHEN hex search finds a match, THE viewport SHALL scroll to reveal the matching row and the cursor SHALL be positioned at the first byte of the match. [WB]
 
 ---
@@ -166,7 +166,7 @@ The crate is **GUI-independent** — it manages the hex display model, cursor sy
 1. WHEN the cursor moves in the Hex_Pane, THE ASCII_Pane SHALL highlight the corresponding byte position to show which character maps to the current hex digits. [WB]
 2. WHEN the cursor moves in the ASCII_Pane, THE Hex_Pane SHALL highlight the corresponding hex digit pair to show which hex value maps to the current character. [WB]
 3. THE user SHALL be able to switch focus between the Hex_Pane and ASCII_Pane using a configurable key (default: Tab). [FFE-HEX]
-4. WHEN switching panes, THE cursor SHALL remain on the same byte offset — only the active editing pane changes. [WB]
+4. WHEN switching panes, THE cursor SHALL remain on the same byte offset -- only the active editing pane changes. [WB]
 5. WHEN the cursor moves in either pane, THE Offset_Column SHALL visually indicate the current row (e.g., with a highlight or a marker). [WB]
 6. Arrow key navigation in the Hex_Pane SHALL move by nibbles horizontally (Left/Right move one nibble) and by one full row vertically (Up/Down move by Bytes_Per_Row bytes). [WB]
 7. Arrow key navigation in the ASCII_Pane SHALL move by bytes horizontally (Left/Right move one byte) and by one full row vertically (Up/Down move by Bytes_Per_Row bytes). [WB]
@@ -187,7 +187,7 @@ The crate is **GUI-independent** — it manages the hex display model, cursor sy
 3. WHEN Redo is invoked in hex mode, THE system SHALL re-apply the most recently undone hex edit transaction. [WB]
 4. WHEN multiple consecutive single-nibble edits form a complete byte change (high nibble + low nibble), THE system SHALL coalesce them into a single undo transaction. [WB]
 5. WHEN undo/redo changes a byte, THE Modified_Byte indicator SHALL be updated: restored bytes lose the indicator if they match the saved state; re-modified bytes gain it. [WB]
-6. THE undo/redo behaviour in hex mode SHALL be identical to undo/redo in text mode — hex edits and text edits share the same undo stack. [WB]
+6. THE undo/redo behaviour in hex mode SHALL be identical to undo/redo in text mode -- hex edits and text edits share the same undo stack. [WB]
 
 ---
 
@@ -203,7 +203,7 @@ The crate is **GUI-independent** — it manages the hex display model, cursor sy
 2. WHEN a byte has been modified since the last save, THE ASCII_Pane SHALL render that byte's character with the same modified highlight. [WB]
 3. WHEN the document is saved, ALL Modified_Byte indicators SHALL be cleared since the saved state now matches the buffer. [WB]
 4. WHEN undo restores a byte to its saved-state value, THE Modified_Byte indicator for that byte SHALL be removed. [WB]
-5. THE modified byte tracking SHALL work correctly even when bytes are modified, undone, and re-modified multiple times — the indicator reflects whether the current value differs from the last-saved value. [WB]
+5. THE modified byte tracking SHALL work correctly even when bytes are modified, undone, and re-modified multiple times -- the indicator reflects whether the current value differs from the last-saved value. [WB]
 
 ---
 
@@ -222,7 +222,7 @@ The crate is **GUI-independent** — it manages the hex display model, cursor sy
 5. WHEN the cursor moves outside the visible viewport (via editing or navigation), THE viewport SHALL scroll to keep the cursor row visible using the caret-visibility policies defined in viewport-and-scrolling. [WB]
 6. THE horizontal scrollbar SHALL be hidden in hex mode when the hex row width (offset + hex + ASCII) fits within the window width. If it does not fit, horizontal scrolling SHALL be enabled. [WB]
 7. WHEN Bytes_Per_Row changes, THE system SHALL recalculate total row count and adjust the scrollbar accordingly without changing the byte offset currently at the top of the viewport. [WB]
-8. WHEN scrolling, THE system SHALL always display complete hex rows — partial rows SHALL NOT be rendered at the top or bottom of the viewport. [WB]
+8. WHEN scrolling, THE system SHALL always display complete hex rows -- partial rows SHALL NOT be rendered at the top or bottom of the viewport. [WB]
 
 ---
 
@@ -235,9 +235,9 @@ The crate is **GUI-independent** — it manages the hex display model, cursor sy
 #### Acceptance Criteria
 
 1. WHEN a file is detected as binary (containing null bytes or non-text byte sequences as determined by the encoding detection in encoding-and-characters), THE system SHALL offer to open it in Hex_Mode automatically. [WB]
-2. THE auto-hex-for-binary behaviour SHALL be configurable via `editor.hex.auto_activate_binary` (default: true — prompt user; can be set to "always" or "never"). [WB]
+2. THE auto-hex-for-binary behaviour SHALL be configurable via `editor.hex.auto_activate_binary` (default: true -- prompt user; can be set to "always" or "never"). [WB]
 3. WHEN Hex_Mode is active on a text file, THE ASCII_Pane SHALL show the text characters faithfully, including line-ending bytes (CR as `0D`, LF as `0A`) which are normally invisible in text mode. [WB]
-4. WHEN Hex_Mode is active on a binary file, THE system SHALL NOT interpret line endings — content is displayed strictly as a byte stream organised into fixed-width rows. [WB]
+4. WHEN Hex_Mode is active on a binary file, THE system SHALL NOT interpret line endings -- content is displayed strictly as a byte stream organised into fixed-width rows. [WB]
 5. THE system SHALL handle files of any size in hex mode by loading only the visible byte range from the VFS (consistent with streaming/chunked access from document-model). [WB]
 6. WHEN hex mode is displaying a file open in text mode, byte offsets SHALL correspond to the actual byte positions in the document buffer (accounting for the gap buffer's gap). [WB]
 
@@ -252,7 +252,7 @@ The crate is **GUI-independent** — it manages the hex display model, cursor sy
 #### Acceptance Criteria
 
 1. THE Command_Framework SHALL register a `HEX DUMP` command that exports the document's content in hex dump format. [WB]
-2. THE hex dump output SHALL follow the same three-column layout as the hex view: offset, hex bytes, and ASCII representation — one row per Bytes_Per_Row bytes. [WB]
+2. THE hex dump output SHALL follow the same three-column layout as the hex view: offset, hex bytes, and ASCII representation -- one row per Bytes_Per_Row bytes. [WB]
 3. WHEN `HEX DUMP` is issued with no arguments, THE system SHALL export the entire document. [WB]
 4. WHEN `HEX DUMP` is issued with a byte range (e.g., `HEX DUMP 0x0000 0x00FF`), THE system SHALL export only the specified byte range. [WB]
 5. THE system SHALL support exporting the hex dump to a new editor tab (`HEX DUMP EDIT`), to the clipboard (`HEX DUMP CLIP`), or to a file (`HEX DUMP FILE 'path'`). [WB]

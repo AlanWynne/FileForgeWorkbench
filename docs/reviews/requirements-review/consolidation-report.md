@@ -1,4 +1,4 @@
-# Requirements Review — Task 9: Consolidation Report
+# Requirements Review -- Task 9: Consolidation Report
 
 **Phase:** Requirements Review
 **Status:** COMPLETE
@@ -12,7 +12,7 @@
 This report consolidates the findings from Tasks 1–8 into a set of concrete,
 actionable recommendations for the requirements corpus. It addresses:
 
-1. Scope overlaps between existing specs — with a recommended resolution for each
+1. Scope overlaps between existing specs -- with a recommended resolution for each
 2. Boundary clarifications for multi-layer sub-projects
 3. New sub-project stubs required to close High-priority gaps
 4. Structural housekeeping (naming violations, misplaced documents)
@@ -30,7 +30,7 @@ traceability matrix §14. Each is assessed and resolved below.
 
 ---
 
-### OV-01 — `file-tree-panel` + `virtual-catalog-manager`
+### OV-01 -- `file-tree-panel` + `virtual-catalog-manager`
 
 **Description:** Both specs specify catalog browsing, context menus, and
 content area behaviour. Requirements 15–23 of `file-tree-panel` re-specify
@@ -40,7 +40,7 @@ catalog-type-specific behaviour that is already owned by `virtual-catalog-manage
 adding catalog-specific context menus and content rendering directly into the
 tree panel spec rather than referencing the catalog manager spec.
 
-**Resolution: Boundary Clarification — Reference, Don't Duplicate**
+**Resolution: Boundary Clarification -- Reference, Don't Duplicate**
 
 | Spec | Owns | References |
 |------|------|-----------|
@@ -54,11 +54,11 @@ acceptance criteria with cross-references of the form:
 
 This eliminates duplication without changing any implemented behaviour.
 
-**Priority:** Medium — no code change; documentation edit only.
+**Priority:** Medium -- no code change; documentation edit only.
 
 ---
 
-### OV-02 — `file-tree-panel` + `connector-local-fs`
+### OV-02 -- `file-tree-panel` + `connector-local-fs`
 
 **Description:** `file-tree-panel` Req 2 specifies bookmarked roots and local
 file browsing that partially duplicates `connector-local-fs` Req 3 (directory
@@ -83,12 +83,12 @@ criteria with a single cross-reference:
 Retain only the bookmarked-root registration and persistence criteria in
 `file-tree-panel`.
 
-**Priority:** Low — the connector is fully implemented; this is a spec
+**Priority:** Low -- the connector is fully implemented; this is a spec
 alignment only.
 
 ---
 
-### OV-03 — `startup-and-session` + `virtual-catalog-manager` + `file-tree-panel`
+### OV-03 -- `startup-and-session` + `virtual-catalog-manager` + `file-tree-panel`
 
 **Description:** `startup-and-session` Req 19 specifies the File Explorer
 Panel (POM option 2), which overlaps with both `file-tree-panel` (tree
@@ -111,12 +111,12 @@ persistence criteria (Req 19.1–19.4, 19.10–19.12). Replace Req 19.5–19.9
 (tree rendering) with cross-references to `file-tree-panel` Reqs 1–5 and
 `virtual-catalog-manager` Req 23.
 
-**Priority:** Medium — clarifies ownership for future feature work on the
+**Priority:** Medium -- clarifies ownership for future feature work on the
 File Explorer Panel.
 
 ---
 
-### OV-04 — `command-framework` + `command-semantics`
+### OV-04 -- `command-framework` + `command-semantics`
 
 **Description:** Both specs cover command dispatch but do not cross-reference
 each other's scope boundaries. `command-framework` owns the generic registry
@@ -136,13 +136,13 @@ clear in the implementation but not stated in the specs.
   parser and semantic validation pipeline. The generic dispatch mechanism
   is owned by `command-framework`."
 
-No criteria need to change — this is a documentation addition only.
+No criteria need to change -- this is a documentation addition only.
 
-**Priority:** Low — no ambiguity in practice; clarification for new contributors.
+**Priority:** Low -- no ambiguity in practice; clarification for new contributors.
 
 ---
 
-### OV-05 — `dataset-catalog` + `virtual-catalog-manager`
+### OV-05 -- `dataset-catalog` + `virtual-catalog-manager`
 
 **Description:** Some `virtual-catalog-manager` acceptance criteria re-specify
 dataset naming validation rules that belong in `dataset-catalog`.
@@ -161,11 +161,11 @@ replace inline DSN validation criteria with:
 Retain only the UI-level criteria (field layout, error display, confirm/cancel
 behaviour) in `virtual-catalog-manager`.
 
-**Priority:** Medium — prevents future divergence if naming rules change.
+**Priority:** Medium -- prevents future divergence if naming rules change.
 
 ---
 
-### OV-06 — `function-keys-and-history` + `command-framework`
+### OV-06 -- `function-keys-and-history` + `command-framework`
 
 **Description:** Command history is specified in both `command-framework`
 Req 7 and `function-keys-and-history`. The authoritative location should be
@@ -186,11 +186,11 @@ already owned the history store contract.
 criteria with a cross-reference to `command-framework` Req 7. Retain only
 the UI interaction criteria (LIST overlay, selection, Escape).
 
-**Priority:** Low — both specs are Compliant; this is a precision improvement.
+**Priority:** Low -- both specs are Compliant; this is a precision improvement.
 
 ---
 
-### OV-07 — `compiler-toolchain-integration` + `plugin-architecture`
+### OV-07 -- `compiler-toolchain-integration` + `plugin-architecture`
 
 **Description:** The compiler toolchain is implemented as a plugin but
 `compiler-toolchain-integration` does not reference the `plugin-architecture`
@@ -203,7 +203,7 @@ extensible.
 **Resolution: Add Generic Trait Requirement**
 
 **Action:** Add a new requirement to `compiler-toolchain-integration`:
-> "FR-0971: Generic Toolchain Plugin Trait — THE system SHALL define a
+> "FR-0971: Generic Toolchain Plugin Trait -- THE system SHALL define a
 > `ToolchainPlugin` trait that extends `FileForgePlugin` (see
 > `plugin-architecture` Req 2) and provides the standard interface for
 > toolchain detection, installation, build invocation, and diagnostic
@@ -212,7 +212,7 @@ extensible.
 This closes the gap identified in Task 4 §6.4 and makes the spec extensible
 for future toolchains (LLVM, GnuCOBOL, OpenJDK).
 
-**Priority:** High — required before any new toolchain plugin is implemented.
+**Priority:** High -- required before any new toolchain plugin is implemented.
 
 ---
 
@@ -247,7 +247,7 @@ Each stub must be created as `docs/specs/<name>/requirements.md` with:
 - Introduction and Glossary sections
 - At minimum one DEFERRED EARS requirement per identified gap
 - Source references
-- A "Status: STUB — Not yet implemented" banner
+- A "Status: STUB -- Not yet implemented" banner
 
 | Sub-Project | Layer | FR Range | Minimum Requirements | Priority |
 |-------------|-------|----------|---------------------|----------|
@@ -331,7 +331,7 @@ by priority within each category.
 | ID | Action | Spec(s) | Type | Effort |
 |----|--------|---------|------|--------|
 | CA-12 | Resolve OV-01: replace duplicate catalog-browsing criteria in `file-tree-panel` Reqs 15–23 with cross-references to `virtual-catalog-manager` | `file-tree-panel` | Criterion edit | Medium |
-| CA-13 | Resolve OV-03: partition `startup-and-session` Req 19 — retain routing/persistence, cross-reference tree and catalog specs | `startup-and-session` | Criterion edit | Medium |
+| CA-13 | Resolve OV-03: partition `startup-and-session` Req 19 -- retain routing/persistence, cross-reference tree and catalog specs | `startup-and-session` | Criterion edit | Medium |
 | CA-14 | Add Layer Partition notes to all 7 multi-layer sub-projects | Multiple | Documentation | Low |
 | CA-15 | Create `notification-system` stub spec | New spec | Stub creation | Low |
 | CA-16 | Add NFR test coverage for `compiler-toolchain-integration`, `dataset-catalog`, `database-tool` | Multiple | New tests | Medium |
@@ -343,7 +343,7 @@ by priority within each category.
 |----|--------|---------|------|--------|
 | CA-18 | Rename `FFW-JES` folder to `jes-emulator`; update all cross-references | `FFW-JES` | Rename | Low |
 | CA-19 | Move `workbench-requirements-merge` to `docs/architecture/` | `workbench-requirements-merge` | Move | Low |
-| CA-20 | Resolve `jcl-resolver` placeholder — merge into `jes-emulator` or create stub | `jcl-resolver` | Decision | Low |
+| CA-20 | Resolve `jcl-resolver` placeholder -- merge into `jes-emulator` or create stub | `jcl-resolver` | Decision | Low |
 | CA-21 | Resolve OV-02: align `file-tree-panel` Req 2 with `connector-local-fs` Req 3 | `file-tree-panel` | Criterion edit | Low |
 | CA-22 | Resolve OV-04: add scope boundary statements to `command-framework` and `command-semantics` | Both | Documentation | Low |
 | CA-23 | Resolve OV-06: move history-store criteria from `function-keys-and-history` Req 19 to `command-framework` Req 7 | Both | Criterion move | Low |
@@ -363,7 +363,7 @@ by priority within each category.
 | OV-04 | Deferred to CA-22 | Scope boundary statements |
 | OV-05 | Deferred to CA-10 | Cross-reference to `dataset-catalog` |
 | OV-06 | Deferred to CA-23 | Ownership transfer to `command-framework` |
-| OV-07 | Immediate — CA-02/CA-11 | Add `ToolchainPlugin` trait requirement |
+| OV-07 | Immediate -- CA-02/CA-11 | Add `ToolchainPlugin` trait requirement |
 
 ### 7.2 New Sub-Projects
 
@@ -399,9 +399,9 @@ by priority within each category.
 
 This consolidation report feeds directly into:
 
-- **Task 10** — Executive Assessment: uses §7.3 corpus health metrics,
+- **Task 10** -- Executive Assessment: uses §7.3 corpus health metrics,
   §6 action backlog priorities, and §4 new sub-project list to produce
   the strategic roadmap and executive summary.
-- **Phase BR (future)** — Implementation of CA-01 through CA-11 (immediate
+- **Phase BR (future)** -- Implementation of CA-01 through CA-11 (immediate
   and high-priority actions) as the first deliverable of the next
   requirements maintenance phase.

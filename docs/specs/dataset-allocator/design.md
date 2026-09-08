@@ -4,12 +4,12 @@
 
 The `ff-dataset-allocator` crate is the **desktop equivalent of z/OS Dynamic Allocation (DYNALLOC / SVC 99)**. It parses JCL DD statements, resolves dataset names against locally mounted catalogs, performs symbolic parameter substitution, simulates dataset allocation, handles GDG relative generation references, resolves referback chains, validates JCL for common errors, and exposes a `dataset.resolve` command for interactive tracing of DSN-to-physical-path mappings.
 
-This crate bridges the gap between mainframe JCL data definition constructs (DD statements with DSN=, DISP=, DCB=, SPACE= operands) and the workbench's local dataset catalog emulation — enabling developers to write and test JCL locally without requiring a z/OS system.
+This crate bridges the gap between mainframe JCL data definition constructs (DD statements with DSN=, DISP=, DCB=, SPACE= operands) and the workbench's local dataset catalog emulation -- enabling developers to write and test JCL locally without requiring a z/OS system.
 
 ### Position in Architecture
 
 ```
-Wave 13 — Dataset Catalog and Mainframe Emulation
+Wave 13 -- Dataset Catalog and Mainframe Emulation
 
 ┌─────────────────────────────────────────────────────────────────┐
 │                 Application Binary (ffwb)                         │
@@ -29,12 +29,12 @@ Wave 13 — Dataset Catalog and Mainframe Emulation
 ### Design Constraints
 
 - **All DSN resolution goes through `ff-dataset-catalog`**: Never direct filesystem access. The catalog API is the sole resolution path, honouring the VFS abstraction (FFW-ARCH-001).
-- **Command-Driven (Req 9)**: The `dataset.resolve` command is registered with `ff-command` — all interactive resolution flows through the command framework.
+- **Command-Driven (Req 9)**: The `dataset.resolve` command is registered with `ff-command` -- all interactive resolution flows through the command framework.
 - **Multi-Crate Workspace**: Crate located at `crates/ff-dataset-allocator`.
 - **JCL Continuation Line Handling**: The parser must join continuation lines (column 72 non-blank + next line `// `) before operand extraction.
 - **Symbolic Substitution Before Catalog Lookup**: The pipeline enforces substitution as a distinct stage preceding resolution.
 - **Trait-Based Catalog Interface**: Catalog access is abstracted behind a trait for testability without mounted catalogs.
-- **Thread Safety**: Public API is `Send + Sync` — safe to invoke from any thread.
+- **Thread Safety**: Public API is `Send + Sync` -- safe to invoke from any thread.
 - **Error Handling with `thiserror`**: All errors carry sufficient context (line number, ddname, DSN, catalog name).
 
 ---
@@ -107,7 +107,7 @@ end
 
 | Layer | Role |
 |-------|------|
-| **Command Layer** | `dataset.resolve` command handler — entry point from user interaction |
+| **Command Layer** | `dataset.resolve` command handler -- entry point from user interaction |
 | **Pipeline Layer** | Orchestrates parse → substitute → resolve → validate sequence |
 | **Parser Layer** | Extracts job structure, DD statements, operands from JCL text |
 | **Substitution Layer** | Replaces `&symbol` references with values from symbol table |
@@ -191,7 +191,7 @@ pub struct DdStatement {
     pub column_range: (usize, usize),
     /// The step this DD belongs to
     pub step_name: String,
-    /// DSN reference (if present — not present for SYSOUT, DUMMY, DD *)
+    /// DSN reference (if present -- not present for SYSOUT, DUMMY, DD *)
     pub dsn: Option<DsnReference>,
     /// DISP operand (parsed sub-parameters)
     pub disp: Option<DispParameter>,
@@ -343,7 +343,7 @@ pub enum DsOrg {
     Po,
     /// Direct access
     Da,
-    /// VSAM (informational — not fully emulated)
+    /// VSAM (informational -- not fully emulated)
     Vsam,
 }
 
@@ -474,7 +474,7 @@ pub enum ResolutionOutcome {
     Skipped {
         reason: SkipReason,
     },
-    /// Resolution failed — see diagnostics.
+    /// Resolution failed -- see diagnostics.
     Failed,
 }
 
@@ -532,41 +532,41 @@ pub enum DiagnosticSeverity {
 /// Addresses: Requirement 15, criterion 6
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DiagnosticCode {
-    /// JCL001 — Syntax error in DD statement
+    /// JCL001 -- Syntax error in DD statement
     SyntaxError,
-    /// JCL002 — Unresolved DSN (not found in catalogs)
+    /// JCL002 -- Unresolved DSN (not found in catalogs)
     UnresolvedDsn,
-    /// JCL003 — Unresolved symbolic parameter
+    /// JCL003 -- Unresolved symbolic parameter
     UnresolvedSymbolic,
-    /// JCL004 — DISP conflict (NEW on existing, OLD on non-existent)
+    /// JCL004 -- DISP conflict (NEW on existing, OLD on non-existent)
     DispConflict,
-    /// JCL005 — Referback target not found
+    /// JCL005 -- Referback target not found
     ReferbackNotFound,
-    /// JCL006 — GDG base or generation not found
+    /// JCL006 -- GDG base or generation not found
     GdgNotFound,
-    /// JCL007 — Concatenation error (max exceeded, attribute mismatch)
+    /// JCL007 -- Concatenation error (max exceeded, attribute mismatch)
     ConcatenationError,
-    /// JCL008 — Invalid DSN syntax
+    /// JCL008 -- Invalid DSN syntax
     InvalidDsnSyntax,
-    /// JCL009 — Temporary dataset not created in prior step
+    /// JCL009 -- Temporary dataset not created in prior step
     TemporaryNotFound,
-    /// JCL010 — Duplicate ddname in step
+    /// JCL010 -- Duplicate ddname in step
     DuplicateDdname,
-    /// JCL011 — Missing well-known DD (SYSIN, SYSPRINT, etc.)
+    /// JCL011 -- Missing well-known DD (SYSIN, SYSPRINT, etc.)
     MissingWellKnownDd,
-    /// JCL012 — Invalid symbolic parameter name
+    /// JCL012 -- Invalid symbolic parameter name
     InvalidSymbolicName,
-    /// JCL013 — Catalog query failure
+    /// JCL013 -- Catalog query failure
     CatalogQueryFailed,
-    /// JCL014 — GDG roll-off notification
+    /// JCL014 -- GDG roll-off notification
     GdgRollOff,
-    /// JCL015 — Multiple forward GDG generations
+    /// JCL015 -- Multiple forward GDG generations
     MultipleForwardGdg,
-    /// JCL016 — Member not found in PDS
+    /// JCL016 -- Member not found in PDS
     MemberNotFound,
-    /// JCL017 — Ambiguous DSN (found in multiple catalogs)
+    /// JCL017 -- Ambiguous DSN (found in multiple catalogs)
     AmbiguousDsn,
-    /// JCL018 — Referback chain too deep
+    /// JCL018 -- Referback chain too deep
     ReferbackChainTooDeep,
 }
 
@@ -730,7 +730,7 @@ pub struct StageTiming {
 
 ```rust
 /// Parse JCL text into a structured job model.
-/// Independently testable — no catalog or VFS dependency.
+/// Independently testable -- no catalog or VFS dependency.
 /// Addresses: Requirements 1, 5, 12
 pub fn parse_jcl(text: &str, keywords: &JclKeywordSet) -> Result<JclJob, JclResolverError>;
 
@@ -807,7 +807,7 @@ pub fn simulate_allocation(
 ### Resolution Pipeline (Orchestrator)
 
 ```rust
-/// The main resolution pipeline — processes a complete JCL document.
+/// The main resolution pipeline -- processes a complete JCL document.
 /// Addresses: Requirement 13, all criteria; Requirement 16, criterion 4
 pub fn resolve_document(
     text: &str,
@@ -816,7 +816,7 @@ pub fn resolve_document(
     language: &dyn LanguageQuery,
 ) -> ResolveOutput;
 
-/// Incremental resolution — re-resolves a single DD and its dependents.
+/// Incremental resolution -- re-resolves a single DD and its dependents.
 /// Addresses: Requirement 13, criterion 6
 pub fn resolve_incremental(
     text: &str,
@@ -1101,7 +1101,7 @@ pub enum JclResolverError {
 
     /// Referback target not found.
     /// Addresses: Requirement 7, criteria 4/5
-    #[error("[jcl] referback: target not found — {description} (line {line})")]
+    #[error("[jcl] referback: target not found -- {description} (line {line})")]
     ReferbackNotFound {
         line: usize,
         description: String,
@@ -1142,7 +1142,7 @@ pub enum JclResolverError {
 
     /// Invalid DSN syntax.
     /// Addresses: Requirement 10, criterion 7
-    #[error("[jcl] validate: invalid DSN syntax: {dsn} — {reason}")]
+    #[error("[jcl] validate: invalid DSN syntax: {dsn} -- {reason}")]
     InvalidDsnSyntax {
         dsn: String,
         reason: String,
@@ -1172,7 +1172,7 @@ pub enum JclResolverError {
 
 ## Integration Points
 
-### With `ff-dataset-catalog` (upstream — Wave 13)
+### With `ff-dataset-catalog` (upstream -- Wave 13)
 
 - **Primary integration**: All DSN resolution flows through the `ff-dataset-catalog` crate's API. The allocator never accesses the filesystem directly.
 - The `CatalogProvider` trait in this crate wraps `ff-dataset-catalog`'s `resolve_dsn`, `allocate_dataset`, and `query_gdg` APIs.
@@ -1181,12 +1181,12 @@ pub enum JclResolverError {
 - Dataset allocation (DISP=NEW in live mode) invokes `ff-dataset-catalog`'s allocation API.
 - PDS member verification uses `ff-dataset-catalog`'s member directory API.
 
-### With `ff-vfs` (upstream — Wave 2)
+### With `ff-vfs` (upstream -- Wave 2)
 
 - The allocator does NOT use `ff-vfs` directly. All storage access is mediated through `ff-dataset-catalog`, which internally uses the VFS layer.
 - This ensures the allocator respects the provider-agnostic resource access principle (FFW-ARCH-001).
 
-### With `ff-command` (upstream — Wave 2)
+### With `ff-command` (upstream -- Wave 2)
 
 - The allocator registers `dataset.resolve` as a command with the `CommandRegistry` during initialization.
 - Command metadata: display name "Resolve Dataset Allocation", category "dataset", default keyboard shortcut.
@@ -1194,7 +1194,7 @@ pub enum JclResolverError {
 - Command parameters: optional `dsn` (string), optional `mode` ("dry-run" or "live").
 - Command result: `CommandResult::OkValue` containing `ResolveSummary` as serialised `ParamValue`.
 
-### With `ff-config` (upstream — Wave 2)
+### With `ff-config` (upstream -- Wave 2)
 
 - Configuration is read from the `[jcl]` TOML table at initialization and on hot-reload.
 - Keys consumed: `jcl.resolve_mode`, `jcl.default_hlq`, `jcl.catalog_search_order`, `jcl.lint_level`, `jcl.max_referback_depth`, `jcl.auto_resolve`.
@@ -1202,23 +1202,23 @@ pub enum JclResolverError {
 - Dataset attribute defaults read from `[catalog.defaults]` (owned by `ff-dataset-catalog` config).
 - The allocator registers its configuration schema with the Configuration_System during initialization.
 
-### With `ff-language-service` (upstream — Wave 8)
+### With `ff-language-service` (upstream -- Wave 8)
 
 - Queries `language_id` to confirm active document is JCL before resolution.
 - Uses JCL keyword sets for parser validation (statement types, operand names, DISP values).
 - Exposes `hover_for_dsn` for language service hover integration.
 - Supports auto-resolve triggering on document save (lightweight parse + substitute pass).
 
-### With `ff-logging` (upstream — Wave 0)
+### With `ff-logging` (upstream -- Wave 0)
 
 - Structured log records at appropriate levels: ERROR for resolution failures, WARN for ambiguous results, INFO for summary, DEBUG for pipeline stage details and timings.
 - All log records use structured fields: `line`, `ddname`, `dsn`, `catalog`, `stage`, `duration_ms`.
 
-### With Resolution Panel UI (downstream — GUI shell)
+### With Resolution Panel UI (downstream -- GUI shell)
 
 - The allocator provides `ResolveOutput` data; the GUI shell renders it in the Resolution_Panel.
 - Panel registration uses panel ID `"jcl.resolution"` with the layout-and-docking system.
-- The allocator is decoupled from the panel — it produces data; the panel consumes it.
+- The allocator is decoupled from the panel -- it produces data; the panel consumes it.
 
 ### Dependency Direction
 
@@ -1285,12 +1285,12 @@ ENV = "LOCAL"
 
 | Component | Mechanism | Rationale |
 |-----------|-----------|-----------|
-| `resolve_document` | Stateless — all state passed in or created per-call | No shared mutable state across invocations |
+| `resolve_document` | Stateless -- all state passed in or created per-call | No shared mutable state across invocations |
 | `CatalogProvider` | `Send + Sync` trait bound | Allows resolution from any thread |
 | `SymbolTable` | Owned per-invocation, not shared | Scoped to a single resolution operation |
-| `TemporaryDatasetTable` | Owned per-invocation | Job-scoped — no cross-job sharing |
-| `PassTable` | Owned per-invocation | Job-scoped — no cross-job sharing |
-| `GdgJobState` | Owned per-invocation | Job-scoped — no cross-job sharing |
+| `TemporaryDatasetTable` | Owned per-invocation | Job-scoped -- no cross-job sharing |
+| `PassTable` | Owned per-invocation | Job-scoped -- no cross-job sharing |
+| `GdgJobState` | Owned per-invocation | Job-scoped -- no cross-job sharing |
 | `ResolverConfig` | `Clone` + read-only during resolution | Cloned from config system on hot-reload |
 | Command handler | `Send + Sync` (implements `CommandHandler`) | Required by command framework |
 
@@ -1436,7 +1436,7 @@ These properties are suitable for property-based testing with `proptest`. They v
 
 ### Property 13: Catalog Search Order Determinism
 
-**Statement**: For any DSN present in multiple catalogs and any configured `catalog_search_order`, the resolver always returns the match from the highest-priority catalog (first in the order list). The result is deterministic — resolving the same DSN with the same configuration always produces the same catalog match.
+**Statement**: For any DSN present in multiple catalogs and any configured `catalog_search_order`, the resolver always returns the match from the highest-priority catalog (first in the order list). The result is deterministic -- resolving the same DSN with the same configuration always produces the same catalog match.
 
 **Validates: Requirements 2.3, 14.7**
 
@@ -1479,7 +1479,7 @@ All 14 correctness properties defined above are implemented as `proptest` tests 
 - Mock `CatalogProvider` implementation for unit/property tests (no SQLite dependency).
 - Mock `LanguageQuery` implementation returning hardcoded JCL keyword sets.
 - JCL fixture files in `tests/fixtures/` for integration tests covering real-world patterns.
-- All tests are deterministic — no dependency on system time (system symbols use injectable clock).
+- All tests are deterministic -- no dependency on system time (system symbols use injectable clock).
 
 ---
 
@@ -1505,12 +1505,12 @@ All 14 correctness properties defined above are implemented as `proptest` tests 
 | JCL005 | ERROR | Referback target not found: {desc} | Req 7.4, 7.5 |
 | JCL006 | ERROR | GDG base not defined / generation not available | Req 8.3, 8.6 |
 | JCL007 | ERROR | Concatenation error: {desc} | Req 5.4, 5.6 |
-| JCL008 | ERROR | Invalid DSN syntax: {dsn} — {reason} | Req 10.7 |
+| JCL008 | ERROR | Invalid DSN syntax: {dsn} -- {reason} | Req 10.7 |
 | JCL009 | ERROR | Temporary dataset not created: &&{name} | Req 6.4 |
 | JCL010 | ERROR | Duplicate ddname: {ddname} in step {step} | Req 10.5 |
 | JCL011 | WARNING | Missing well-known DD: {ddname} | Req 10.4 |
 | JCL012 | ERROR | Invalid symbolic name: &{name} | Req 10.8 |
-| JCL013 | ERROR | Catalog query failed: {catalog} — {detail} | Req 15.3 |
+| JCL013 | ERROR | Catalog query failed: {catalog} -- {detail} | Req 15.3 |
 | JCL014 | INFO | GDG roll-off: {base}(+1) will roll off {oldest} | Req 8.8 |
 | JCL015 | WARNING | Multiple forward GDG generations (+{n}) | Req 8.5 |
 | JCL016 | WARNING | Member not found: {member} in {pds} | Req 2.6 |
@@ -1522,7 +1522,7 @@ All 14 correctness properties defined above are implemented as `proptest` tests 
 ```
 statement      := "//" name " " keyword " " operands
                | "//" " " operands           (continuation/concatenation)
-               | "//*" comment               (comment — ignored)
+               | "//*" comment               (comment -- ignored)
 
 name           := [A-Z@#$][A-Z0-9@#$]{0,7}   (1–8 characters)
 keyword        := "JOB" | "EXEC" | "DD" | "PROC" | "PEND" | "SET"

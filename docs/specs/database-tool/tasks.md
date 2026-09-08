@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-database-tool` crate — a full-featured integrated Database IDE delivered as a workbench plugin. The database tool provides: connection management, SQL editor, query execution, result grid, schema browser, ER diagram, data transfer workflows, and database administration panels.
+This plan covers the complete implementation of the `ff-database-tool` crate -- a full-featured integrated Database IDE delivered as a workbench plugin. The database tool provides: connection management, SQL editor, query execution, result grid, schema browser, ER diagram, data transfer workflows, and database administration panels.
 
 This is a **Wave 6 (Application Tools)** sub-project, depending on: `ff-plugin`, `ff-command`, `ff-layout`, `ff-workflow`, `ff-vfs`, and `ff-connector-extensibility`.
 
@@ -10,12 +10,12 @@ This is a **Wave 6 (Application Tools)** sub-project, depending on: `ff-plugin`,
 
 ## Dependency Graph (Wave-Based)
 
-- **Wave A (Foundation):** Tasks 1–3 — Crate scaffold, error types, driver abstraction + registry. No intra-crate dependencies.
-- **Wave B (Connection Layer):** Tasks 4–5 — Connection management, connection pooling, credentials. Depends on Wave A.
-- **Wave C (SQL Engine):** Tasks 6–8 — SQL parser, SQL editor services, query execution + parameter binding. Depends on Wave B.
-- **Wave D (Data Display):** Tasks 9–10 — Result grid panel, schema browser panel. Depends on Wave C.
-- **Wave E (Advanced Features):** Tasks 11–13 — Data transfer workflows, ER diagram panel, administration panels. Depends on Wave D.
-- **Wave F (Integration & Panels):** Tasks 14–16 — Panel UI, command integration, VFS integration, layout integration, plugin lifecycle. Depends on all above.
+- **Wave A (Foundation):** Tasks 1–3 -- Crate scaffold, error types, driver abstraction + registry. No intra-crate dependencies.
+- **Wave B (Connection Layer):** Tasks 4–5 -- Connection management, connection pooling, credentials. Depends on Wave A.
+- **Wave C (SQL Engine):** Tasks 6–8 -- SQL parser, SQL editor services, query execution + parameter binding. Depends on Wave B.
+- **Wave D (Data Display):** Tasks 9–10 -- Result grid panel, schema browser panel. Depends on Wave C.
+- **Wave E (Advanced Features):** Tasks 11–13 -- Data transfer workflows, ER diagram panel, administration panels. Depends on Wave D.
+- **Wave F (Integration & Panels):** Tasks 14–16 -- Panel UI, command integration, VFS integration, layout integration, plugin lifecycle. Depends on all above.
 
 ## Task Dependency Graph
 
@@ -37,7 +37,7 @@ This is a **Wave 6 (Application Tools)** sub-project, depending on: `ff-plugin`,
 
 ## Tasks
 
-### Wave A — Foundation
+### Wave A -- Foundation
 
 - [x] 1. Crate scaffolding and module structure
   - [x] 1.1 Create `crates/ff-database-tool/Cargo.toml` with dependencies (tokio, sqlx, tokio-postgres, tiberius, rusqlite, thiserror, serde, toml, async-trait, proptest dev-dep, egui)
@@ -71,7 +71,7 @@ This is a **Wave 6 (Application Tools)** sub-project, depending on: `ff-plugin`,
   - [x] 3.10 Write property test: Driver Registry Lookup Consistency (Property 1)
   - Covers: Requirement 2 (AC 2.1–2.7), Requirement 14 (AC 14.1, 14.6, 14.7)
 
-### Wave B — Connection Layer
+### Wave B -- Connection Layer
 
 - [x] 4. Connection management
   - [x] 4.1 Define `ConnectionDescriptor` struct in `src/connection/descriptor.rs` with all fields: id, name, driver_name, host, port, database, username, credential_ref, connection_type, network_profile, ssh_config, ssl_mode, pool_config, bootstrap_queries, idle_timeout, keepalive_interval, extra_params
@@ -99,7 +99,7 @@ This is a **Wave 6 (Application Tools)** sub-project, depending on: `ff-plugin`,
   - [x] 5.8 Write property test: Connection Pool Size Invariants (Property 2)
   - Covers: Requirement 4 (AC 4.1–4.7)
 
-### Wave C — SQL Engine
+### Wave C -- SQL Engine
 
 - [x] 6. SQL statement parser
   - [x] 6.1 Implement statement boundary parser in `src/sql/parser.rs` that splits scripts on configurable delimiter
@@ -134,7 +134,7 @@ This is a **Wave 6 (Application Tools)** sub-project, depending on: `ff-plugin`,
   - [x] 8.10 Write unit tests for: executor state transitions, timeout behaviour, plan tree parsing, parameter binding
   - Covers: Requirement 6 (AC 6.1–6.12), Requirement 7 (AC 7.2–7.6), Requirement 13 (AC 13.1, 13.3, 13.5)
 
-### Wave D — Data Display
+### Wave D -- Data Display
 
 - [x] 9. Result grid data model and services
   - [x] 9.1 Define `ResultSetHandle` in `src/result/mod.rs` with: columns, batch_size, fetched_rows, exhausted flag
@@ -160,7 +160,7 @@ This is a **Wave 6 (Application Tools)** sub-project, depending on: `ff-plugin`,
   - [x] 10.8 Write unit tests for: tree construction, DDL generation per dialect, search filtering, cache invalidation
   - Covers: Requirement 9 (AC 9.1–9.20), Requirement 14 (AC 14.2, 14.3, 14.5)
 
-### Wave E — Advanced Features
+### Wave E -- Advanced Features
 
 - [x] 11. Data transfer workflows
   - [x] 11.1 Define workflow step types in `src/transfer/mod.rs` as `WorkflowDefinition` implementations for import, export, cross-DB transfer, bulk load
@@ -203,7 +203,7 @@ This is a **Wave 6 (Application Tools)** sub-project, depending on: `ff-plugin`,
   - [x] 13.9 Write unit tests for: session query parsing, blocking chain construction, metric aggregation, GRANT/REVOKE DDL generation
   - Covers: Requirement 12 (AC 12.1–12.14), Requirement 14 (AC 14.5)
 
-### Wave F — Integration and Panels
+### Wave F -- Integration and Panels
 
 - [x] 14. Panel implementations (egui DockablePanel)
   - [x] 14.1 Implement `SchemaBrowserPanel` in `src/panel/schema_browser.rs`: DockablePanel with tree rendering, context menus, drag-to-editor, quick-filter toolbar
@@ -233,7 +233,7 @@ This is a **Wave 6 (Application Tools)** sub-project, depending on: `ff-plugin`,
   - [x] 16.4 Implement `deactivate`: disconnect all connections, cancel running queries/workflows, deregister capabilities
   - [x] 16.5 Implement `shutdown`: persist unsaved connection configs, close resources, release driver handles
   - [x] 16.6 Implement plugin metadata: name `"database-tool"`, capabilities `[Commands, Viewers, Providers]`, dependencies on `ff-vfs` and `ff-workflow`
-  - [x] 16.7 Ensure all file I/O uses VFS API (open/save scripts, import/export files) — no direct fs calls
+  - [x] 16.7 Ensure all file I/O uses VFS API (open/save scripts, import/export files) -- no direct fs calls
   - [x] 16.8 Implement "Database" persona layout configuration: SchemaBrowser(Left), SqlEditor(Center), ResultGrid(Bottom), Properties(Right)
   - [x] 16.9 Write unit tests for: lifecycle state transitions, capability registration/deregistration, VFS-only file access verification
   - Covers: Requirement 1 (AC 1.1–1.8), Requirement 16 (AC 16.1–16.5), Requirement 17 (AC 17.7)
@@ -281,15 +281,15 @@ This is a **Wave 6 (Application Tools)** sub-project, depending on: `ff-plugin`,
 
 - This is a Wave 6 (Application Tools) crate depending on: `ff-plugin`, `ff-command`, `ff-layout`, `ff-workflow`, `ff-vfs`, `ff-connector-extensibility`
 - All database I/O is async via Tokio; the egui render thread never blocks on database operations
-- The `DatabaseDriver` trait abstracts over driver-specific APIs — concrete implementations for PostgreSQL, MySQL, SQLite, SQL Server ship built-in
+- The `DatabaseDriver` trait abstracts over driver-specific APIs -- concrete implementations for PostgreSQL, MySQL, SQLite, SQL Server ship built-in
 - SSH tunnel management uses an async SSH library compatible with Tokio (e.g., `russh` or `async-ssh2-tokio`)
 - Credential storage uses OS-native keyring (Windows Credential Manager, macOS Keychain, Linux Secret Service) with encrypted local file fallback
 - Connection pooling is internal to ff-database-tool (not using an external pool crate) to control validation, session isolation, and cancellation semantics
-- The SQL parser is a lightweight boundary-detector, not a full SQL parser — it identifies statement boundaries while respecting string/comment/block nesting
+- The SQL parser is a lightweight boundary-detector, not a full SQL parser -- it identifies statement boundaries while respecting string/comment/block nesting
 - Data transfer workflows use the `ff-workflow` state machine infrastructure with cancellation tokens and progress events
 - Panel rendering uses egui immediate-mode APIs; panels implement `DockablePanel` from `ff-layout`
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
 - The ER diagram auto-layout uses a force-directed or layered graph algorithm (implementation choice deferred to task 12.2)
 - Admin features adapt per-database: only relevant tools are shown for each connected database platform
-- The database tool does NOT register as a VFS provider — database access flows through the DatabaseDriver trait, not VFS
-- All file I/O (scripts, exports, imports) goes through `ff-vfs` exclusively — no direct `std::fs` or `tokio::fs` usage
+- The database tool does NOT register as a VFS provider -- database access flows through the DatabaseDriver trait, not VFS
+- All file I/O (scripts, exports, imports) goes through `ff-vfs` exclusively -- no direct `std::fs` or `tokio::fs` usage

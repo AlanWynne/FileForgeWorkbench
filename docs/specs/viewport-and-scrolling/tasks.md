@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan implements the viewport and scrolling subsystem for FileForgeWorkbench — a GUI-independent model that tracks the visible portion of a document, manages scroll state, caret visibility policies, column affinity, smooth scrolling, and scrollbar mapping. The crate integrates with `ff-document-model` for line counts, `ff-display-line-mapping` for wrapped/folded lines, and `ff-command` for scroll command dispatch.
+This plan implements the viewport and scrolling subsystem for FileForgeWorkbench -- a GUI-independent model that tracks the visible portion of a document, manages scroll state, caret visibility policies, column affinity, smooth scrolling, and scrollbar mapping. The crate integrates with `ff-document-model` for line counts, `ff-display-line-mapping` for wrapped/folded lines, and `ff-command` for scroll command dispatch.
 
 ---
 
@@ -201,7 +201,7 @@ This plan implements the viewport and scrolling subsystem for FileForgeWorkbench
 ## Notes
 
 - The `ff-viewport-and-scrolling` crate depends on `ff-document-model` for line count queries and on `ff-display-line-mapping` (via trait) for wrapped/folded line calculations
-- The viewport model is GUI-independent — it computes positions and targets; the GUI shell is responsible for rendering and animation interpolation
+- The viewport model is GUI-independent -- it computes positions and targets; the GUI shell is responsible for rendering and animation interpolation
 - Scroll commands are navigation-only and are NOT recorded on the undo stack
 - The `DisplayLineMapper` trait may be defined in this crate or imported from `ff-display-line-mapping` depending on which crate is implemented first; a local trait definition with adapter pattern is acceptable
 - Column affinity uses columns (not pixels) for the initial monospace implementation; pixel-based affinity can be added later for proportional font support

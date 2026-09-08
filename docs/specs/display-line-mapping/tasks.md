@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan implements the `ff-display-line-mapping` crate — the core editor infrastructure component that maintains the bidirectional mapping between document lines (logical lines in the buffer) and display lines (visual lines rendered in the viewport). The crate supports line exclusion, code folding, word wrap, lazy allocation, large document indexing, and O(log n) lookup performance.
+This plan implements the `ff-display-line-mapping` crate -- the core editor infrastructure component that maintains the bidirectional mapping between document lines (logical lines in the buffer) and display lines (visual lines rendered in the viewport). The crate supports line exclusion, code folding, word wrap, lazy allocation, large document indexing, and O(log n) lookup performance.
 
 **Crate path:** `crates/ff-display-line-mapping`
 
@@ -24,9 +24,9 @@ This plan implements the `ff-display-line-mapping` crate — the core editor inf
 - [x] 2. Partitioning data structure (Fenwick tree / prefix-sum)
   - [x] 2.1 Create `src/partitioning/mod.rs` re-exporting partition types
   - [x] 2.2 Create `src/partitioning/fenwick_tree.rs` implementing a Fenwick tree (Binary Indexed Tree) over `usize` values supporting O(log n) prefix-sum queries and O(log n) point updates
-  - [x] 2.3 Implement `prefix_sum(index)` — returns cumulative sum of heights for indices [0, index)
-  - [x] 2.4 Implement `find_prefix_sum(target)` — returns the largest index whose prefix sum is ≤ target (inverse lookup for doc_from_display), O(log n)
-  - [x] 2.5 Implement `point_update(index, delta)` — adds `delta` to the value at `index`, O(log n)
+  - [x] 2.3 Implement `prefix_sum(index)` -- returns cumulative sum of heights for indices [0, index)
+  - [x] 2.4 Implement `find_prefix_sum(target)` -- returns the largest index whose prefix sum is ≤ target (inverse lookup for doc_from_display), O(log n)
+  - [x] 2.5 Implement `point_update(index, delta)` -- adds `delta` to the value at `index`, O(log n)
   - [x] 2.6 Implement `insert(index, value)` and `delete(index)` for dynamic resizing (rebuild on structural change)
   - [x] 2.7 Write unit tests for Fenwick tree operations (sum, find, update, insert, delete)
 
@@ -52,7 +52,7 @@ This plan implements the `ff-display-line-mapping` crate — the core editor inf
   - [x] 5.2 Implement `get_visible(doc_line)` returning boolean visibility (Requirement 2 AC 2)
   - [x] 5.3 Implement Display_Line_Count adjustment on visibility changes (Requirement 2 AC 3, AC 4)
   - [x] 5.4 Implement `hidden_lines()` returning whether any line is hidden (Requirement 2 AC 5)
-  - [x] 5.5 Implement `show_all()` — deallocate tracking, return to one-to-one mode (Requirement 2 AC 6, Requirement 9 AC 3)
+  - [x] 5.5 Implement `show_all()` -- deallocate tracking, return to one-to-one mode (Requirement 2 AC 6, Requirement 9 AC 3)
   - [x] 5.6 Implement boundary validation for invalid ranges (Requirement 2 AC 7)
   - [x] 5.7 Write unit tests for hide/show operations and display count invariant (Requirement 2 AC 8)
 
@@ -72,8 +72,8 @@ This plan implements the `ff-display-line-mapping` crate — the core editor inf
   - [x] 7.5 Write unit tests for wrap height changes and sub-line contiguity (Requirement 4 AC 8)
 
 - [x] 8. Incremental updates (Requirement 6)
-  - [x] 8.1 Implement `insert_lines(doc_line, count)` — insert entries into visibility, expanded, heights arrays and rebuild/update Fenwick tree (Requirement 6 AC 1)
-  - [x] 8.2 Implement `delete_lines(doc_line, count)` — remove entries, adjust display count, rebuild/update Fenwick tree (Requirement 6 AC 2)
+  - [x] 8.1 Implement `insert_lines(doc_line, count)` -- insert entries into visibility, expanded, heights arrays and rebuild/update Fenwick tree (Requirement 6 AC 1)
+  - [x] 8.2 Implement `delete_lines(doc_line, count)` -- remove entries, adjust display count, rebuild/update Fenwick tree (Requirement 6 AC 2)
   - [x] 8.3 Optimize insert/delete to O(count × log n) by batched Fenwick rebuilds (Requirement 6 AC 3, AC 4)
   - [x] 8.4 Write unit tests for insert/delete maintaining the display count invariant (Requirement 6 AC 7)
 
@@ -99,21 +99,21 @@ This plan implements the `ff-display-line-mapping` crate — the core editor inf
   - [x] 11.5 Write integration test demonstrating viewport-style usage pattern (scroll → translate → render)
 
 - [x] 12. Property-based tests for mapping invariants
-  - [x] 12.1 Write property test: roundtrip invariant — for all visible lines d, `doc_from_display(display_from_doc(d)) == d` (Requirement 1 AC 10)
+  - [x] 12.1 Write property test: roundtrip invariant -- for all visible lines d, `doc_from_display(display_from_doc(d)) == d` (Requirement 1 AC 10)
     - **Validates: Requirement 1.10**
-  - [x] 12.2 Write property test: display count invariant — `lines_displayed() == sum(get_height(d) for all visible d)` (Requirement 6 AC 7)
+  - [x] 12.2 Write property test: display count invariant -- `lines_displayed() == sum(get_height(d) for all visible d)` (Requirement 6 AC 7)
     - **Validates: Requirement 6.7**
-  - [x] 12.3 Write property test: hidden lines contribute zero display lines — hiding a line decreases display count by its height (Requirement 2 AC 8)
+  - [x] 12.3 Write property test: hidden lines contribute zero display lines -- hiding a line decreases display count by its height (Requirement 2 AC 8)
     - **Validates: Requirement 2.8**
-  - [x] 12.4 Write property test: insert/delete line count consistency — after insert_lines(pos, n), lines_in_doc() increases by n; after delete_lines(pos, n), decreases by n (Requirement 6 AC 1, AC 2)
+  - [x] 12.4 Write property test: insert/delete line count consistency -- after insert_lines(pos, n), lines_in_doc() increases by n; after delete_lines(pos, n), decreases by n (Requirement 6 AC 1, AC 2)
     - **Validates: Requirements 6.1, 6.2**
   - [x] 12.5 Write property test: set_height on visible line adjusts display count by exactly (new - old) (Requirement 4 AC 5)
     - **Validates: Requirement 4.5**
-  - [x] 12.6 Write property test: one-to-one mode identity — when no lines hidden and all heights are 1, display_from_doc(n) == n and doc_from_display(n) == n (Requirement 1 AC 9)
+  - [x] 12.6 Write property test: one-to-one mode identity -- when no lines hidden and all heights are 1, display_from_doc(n) == n and doc_from_display(n) == n (Requirement 1 AC 9)
     - **Validates: Requirement 1.9**
-  - [x] 12.7 Write property test: sub-line contiguity — for a visible line with height h, display_from_doc_sub(d, 0..h-1) returns h contiguous values (Requirement 4 AC 8)
+  - [x] 12.7 Write property test: sub-line contiguity -- for a visible line with height h, display_from_doc_sub(d, 0..h-1) returns h contiguous values (Requirement 4 AC 8)
     - **Validates: Requirement 4.8**
-  - [x] 12.8 Write property test: show_all restores one-to-one mode — after arbitrary hide/fold/wrap operations, show_all() returns display_from_doc(n) == n for all n (Requirement 2 AC 6)
+  - [x] 12.8 Write property test: show_all restores one-to-one mode -- after arbitrary hide/fold/wrap operations, show_all() returns display_from_doc(n) == n for all n (Requirement 2 AC 6)
     - **Validates: Requirement 2.6**
 
 - [x] 13. Performance validation (Requirement 5)
@@ -147,9 +147,9 @@ This plan implements the `ff-display-line-mapping` crate — the core editor inf
 - The `design.md` for this crate may be generated concurrently; if API signatures differ from this plan, defer to design.md
 - Task 9 (large document support) may use Rust generics over index width or a runtime enum; the approach should align with `ff-document-model`'s `LineNumber(u64)` pattern
 - Property-based tests (task 12) use the `proptest` crate with a minimum of 100 cases per property
-- Performance benchmarks (task 13) use `criterion` and are informational — they do not block task completion but regressions should be investigated
+- Performance benchmarks (task 13) use `criterion` and are informational -- they do not block task completion but regressions should be investigated
 - The `DisplayLineMapping` trait (task 1.5 / 11.1) is the primary public interface for downstream consumers; the concrete `ContractionState` type may remain `pub(crate)` if desired
-- This crate does NOT store fold levels, fold nesting depth, or fold region extents — those belong to the syntax/language layer (Requirement 10 AC 7)
+- This crate does NOT store fold levels, fold nesting depth, or fold region extents -- those belong to the syntax/language layer (Requirement 10 AC 7)
 - ISPF exclusion is flat (non-hierarchical), while code folding is hierarchical; the mapping layer treats both as boolean visibility per line
 
 ---

@@ -1,7 +1,7 @@
-﻿# Test Coverage Report (TCR)
+# Test Coverage Report (TCR)
 
-**Last updated:** Phase S Step 4 — integration testing complete  
-**Workspace:** `cargo test --workspace` — **all crates pass**
+**Last updated:** Phase S Step 4 -- integration testing complete  
+**Workspace:** `cargo test --workspace` -- **all crates pass**
 
 ## Status Key
 
@@ -14,19 +14,19 @@
 
 ## Known Failures
 
-None — all crates compile and pass.
+None -- all crates compile and pass.
 
 ---
 
 ## Coverage by Crate
 
-### Wave 0 — Foundation
+### Wave 0 -- Foundation
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
 | `ff-logging` | ✅ | lib unit tests, doc tests | Logging init, level filtering, structured output; global flag tests serialised with `FLAG_LOCK` |
 
-### Wave 2 — Platform Architecture
+### Wave 2 -- Platform Architecture
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
@@ -37,7 +37,7 @@ None — all crates compile and pass.
 | `ff-workflow` | ✅ | lib unit tests | Workflow definition, step execution, state transitions |
 | `ff-layout` | ✅ | `integration.rs` | Panel docking, tab groups, drag-drop, persona switching |
 
-### Wave 3 — Virtual File System
+### Wave 3 -- Virtual File System
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
@@ -45,7 +45,7 @@ None — all crates compile and pass.
 | `ff-connector-local-fs` | ✅ | lib unit tests | Local filesystem read/write, path normalisation |
 | `ff-connector-ext` | ✅ | lib unit tests | Extensibility hooks, provider registration |
 
-### Wave 4 — Core Editor
+### Wave 4 -- Core Editor
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
@@ -55,7 +55,7 @@ None — all crates compile and pass.
 | `ff-viewport-scrolling` | ✅ | lib unit tests | Viewport model, cursor model, caret policy, scroll clamping |
 | `ff-display-line-mapping` | ✅ | lib unit tests | Logical-to-visual line mapping, wrap mode |
 
-### Wave 5 — Command Engine
+### Wave 5 -- Command Engine
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
@@ -65,7 +65,7 @@ None — all crates compile and pass.
 | `ff-filter` | ✅ | lib unit tests | Exclude/show filter logic, pattern matching |
 | `ff-nav` | ✅ | `integration_tests.rs` | Navigation commands, sort, selection |
 
-### Wave 6 — UI and Rendering
+### Wave 6 -- UI and Rendering
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
@@ -75,7 +75,7 @@ None — all crates compile and pass.
 | `ff-whitespace` | ✅ | lib unit tests | Whitespace guide rendering, tab/space visualisation |
 | `ff-caret-selection` | ✅ | lib unit tests | Caret rendering, selection highlight, blink state |
 
-### Wave 7 — Language and Highlighting
+### Wave 7 -- Language and Highlighting
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
@@ -83,7 +83,7 @@ None — all crates compile and pass.
 | `ff-syntax` | ✅ | lib unit tests | Syntax token classification, highlight spans |
 | `ff-auto-indent` | ✅ | lib unit tests, `property_tests.rs` | Indent level computation, pattern matching |
 
-### Wave 8 — File I/O and Session
+### Wave 8 -- File I/O and Session
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
@@ -94,7 +94,7 @@ None — all crates compile and pass.
 | `ff-session` | ✅ | lib unit tests, `integration_tests.rs`, `property_tests.rs` | Session state round-trip, TOML persistence, schema migration, geometry clamping |
 | `ff-tabs` | ✅ | lib unit tests | Tab collection, tab state serialisation, active tab tracking |
 
-### Wave 9 — Desktop Integration
+### Wave 9 -- Desktop Integration
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
@@ -105,14 +105,14 @@ None — all crates compile and pass.
 | `ff-zoom` | ✅ | lib unit tests, integration tests, property tests | Zoom level management, font size clamping, Ctrl+Scroll wired in ff-desktop, zoom persistence in session |
 | `ff-wrap` | ✅ | lib unit tests | Line wrap toggle, wrap width configuration |
 
-### Wave 10 — Extensions and Macros
+### Wave 10 -- Extensions and Macros
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
 | `ff-lua` | ✅ | lib unit tests | Lua engine init, macro execution, API bindings |
 | `ff-completion` | ✅ | lib unit tests | Command completion candidates, prefix matching |
 
-### Wave 11 — Display Modes
+### Wave 11 -- Display Modes
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
@@ -120,7 +120,7 @@ None — all crates compile and pass.
 | `ff-seqnum` | ✅ | lib unit tests | Sequence number parsing, renumbering |
 | `ff-tabmask` | ✅ | lib unit tests | Tab mask display, column alignment |
 
-### Wave 12 — FileForge Domain
+### Wave 12 -- FileForge Domain
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
@@ -130,7 +130,7 @@ None — all crates compile and pass.
 | `ff-asa` | ✅ | lib unit tests | ASA carriage control, report preview rendering |
 | `ff-viewers` | ✅ | lib unit tests | Custom file viewer registration, content dispatch |
 
-### Wave 13 — Dataset Catalog
+### Wave 13 -- Dataset Catalog
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
@@ -138,33 +138,33 @@ None — all crates compile and pass.
 | `ff-dsalloc` | ✅ | lib unit tests, `property_tests.rs` | Property tests fixed: `prop::char::ranges` replaces bare `RangeInclusive<char>` literals; moved-value borrow fixed with `.clone()` |
 | `ff-idcams` | ✅ | `integration_tests.rs` | IDCAMS command emulation, DEFINE/DELETE/LISTCAT |
 
-### Wave 13.5 — Job Entry Subsystem
+### Wave 13.5 -- Job Entry Subsystem
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
 | `ff-jes` | ✅ | lib unit tests | JES job submission, status tracking, spool output |
 
-### Wave 14 — File Explorer
+### Wave 14 -- File Explorer
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
 | `ff-tree` | ✅ | lib unit tests | File tree model, directory traversal, filter |
 | `ff-compare` | ✅ | lib unit tests | File diff algorithm, merge operations |
 
-### Wave 15 — Performance
+### Wave 15 -- Performance
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
 | `ff-idle` | ✅ | lib unit tests | Idle task scheduling, priority queue |
 | `ff-largefile` | ✅ | lib unit tests | Large file chunked loading, memory pressure |
 
-### Wave 17 — Database Tool
+### Wave 17 -- Database Tool
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
 | `ff-dbtool` | ✅ | lib unit tests | DB connection model, query execution, result set |
 
-### Binary — ff-desktop
+### Binary -- ff-desktop
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
@@ -182,19 +182,19 @@ None — all crates compile and pass.
 | `ff-desktop` | ✅ | `primary_option_menu.rs` unit tests | Req 14.3: numbered option list with built-in entries |
 | `ff-desktop` | ✅ | `primary_option_menu.rs` unit tests | Req 14.4: live calendar panel with current month/day |
 | `ff-desktop` | ✅ | `primary_option_menu.rs` unit tests | Req 14.5: calendar shows current time and day-of-year |
-| `ff-desktop` | 🔲 | — | Req 14.6: typing option number navigates to feature (manual UI verification) |
-| `ff-desktop` | 🔲 | — | Req 14.7: menu bar mirrors Primary Option Menu entries (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 14.6: typing option number navigates to feature (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 14.7: menu bar mirrors Primary Option Menu entries (manual UI verification) |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 14.1: first launch inserts POM tab at index 0 with kind PrimaryOptionMenu |
 | `ff-desktop` | ✅ | `tab_manager.rs` unit tests | Req 14.1: POM tab inserted at index 0; duplicate insert is a no-op |
 | `ff-desktop` | ✅ | `tab_manager.rs` unit tests | Req 14.8: TabKind::FileEditor set on file-backed tabs; TabKind::Untitled on new buffers |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 14.10, 14.14: START/POM commands recognised as shell-level intercepts |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 14.11: CLOSE command recognised as shell-level intercept |
 | `ff-desktop` | ✅ | `tab_manager.rs` unit tests | Req 14.13: POM tab title is [POM] |
-| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 14.15c: POM tab kind != FileEditor — file-specific menu items omitted |
-| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 14.15b: FileEditor tab kind == FileEditor — file-specific items shown |
-| `ff-desktop` | 🔲 | — | Req 14.9: tab bar empty-space right-click shows New / New File (manual UI verification) |
-| `ff-desktop` | 🔲 | — | Req 14.12: EXIT/=X/Ctrl+X exits from any command field (manual UI verification) |
-| `ff-desktop` | 🔲 | — | Req 14.15a–14.15b: full context menu renders correctly at runtime (manual UI verification) |
+| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 14.15c: POM tab kind != FileEditor -- file-specific menu items omitted |
+| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 14.15b: FileEditor tab kind == FileEditor -- file-specific items shown |
+| `ff-desktop` | 🔲 | -- | Req 14.9: tab bar empty-space right-click shows New / New File (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 14.12: EXIT/=X/Ctrl+X exits from any command field (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 14.15a–14.15b: full context menu renders correctly at runtime (manual UI verification) |
 | ``ff-desktop`` | ? | ``shell.rs`` unit tests, ``tab_manager.rs`` unit tests | Req 14.6: option number on POM tab transforms tab in-place; on non-POM tab opens new tab |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 14.38: "Exit" item in tab context menu routes through shell-level exit intercept |
 | `ff-desktop` | ✅ | `primary_option_menu.rs` unit tests | Req 14.39: POM option rows rendered as interactive buttons; click/Enter navigates to feature |
@@ -222,17 +222,17 @@ None — all crates compile and pass.
 | `ff-toolchain-api` | ✅ | lib unit tests | Req 15.1: GCC plugin probes PATH for gcc/g++/gfortran/as/ld/ar |
 | `ff-toolchain-api` | ✅ | lib unit tests | Req 15.2: ToolchainState transitions to Ready when all GCC components detected |
 | `ff-toolchain-api` | ✅ | lib unit tests | Req 15.3: ToolchainState is NotDetected when components missing; panel shows install button |
-| `ff-gcc-toolchain` | 🔲 | — | Req 15.4: Install confirmation dialog lists components, source, disk space |
-| `ff-gcc-toolchain` | 🔲 | — | Req 15.5: Install runs via ff-bgio background service; UI stays interactive |
+| `ff-gcc-toolchain` | 🔲 | -- | Req 15.4: Install confirmation dialog lists components, source, disk space |
+| `ff-gcc-toolchain` | 🔲 | -- | Req 15.5: Install runs via ff-bgio background service; UI stays interactive |
 | `ff-gcc-toolchain` | ✅ | lib unit tests | Req 15.6: Successful install re-probes PATH and transitions to Ready |
 | `ff-gcc-toolchain` | ✅ | lib unit tests | Req 15.7: Failed install transitions to InstallFailed with Retry/View Log actions |
 | `ff-gcc-toolchain` | ✅ | lib unit tests | Req 15.8: Platform-appropriate install source (winget/apt/brew) |
 | `ff-gcc-toolchain` | ✅ | lib unit tests | Req 15.9: Ready state lists all detected GCC components with versions |
-| `ff-gcc-toolchain` | 🔲 | — | Req 16.1: Compile action enabled when GCC Ready and active tab is C/C++ file |
-| `ff-gcc-toolchain` | 🔲 | — | Req 16.2: Compile runs as background process; output streamed to Toolchain_Panel |
+| `ff-gcc-toolchain` | 🔲 | -- | Req 16.1: Compile action enabled when GCC Ready and active tab is C/C++ file |
+| `ff-gcc-toolchain` | 🔲 | -- | Req 16.2: Compile runs as background process; output streamed to Toolchain_Panel |
 | `ff-gcc-toolchain` | ✅ | lib unit tests | Req 16.3: GCC diagnostic output parsed into Diagnostic records; editor annotated |
-| `ff-gcc-toolchain` | 🔲 | — | Req 16.4: Exit code 0 → Build succeeded; previous annotations cleared |
-| `ff-gcc-toolchain` | 🔲 | — | Req 16.5: Non-zero exit → Build failed with error/warning counts |
+| `ff-gcc-toolchain` | 🔲 | -- | Req 16.4: Exit code 0 → Build succeeded; previous annotations cleared |
+| `ff-gcc-toolchain` | 🔲 | -- | Req 16.5: Non-zero exit → Build failed with error/warning counts |
 | `ff-gcc-toolchain` | ✅ | lib unit tests | Req 16.6: Built-in BuildProfiles: debug, release, check-only |
 | `ff-desktop` | ✅ | `toolchain_panel.rs` unit tests | Req 15.2, 15.3: Toolchain_Panel status rows show Ready/NotDetected state with correct labels |
 | `ff-desktop` | ✅ | `toolchain_panel.rs` unit tests | Req 15.5, 17.5: Installing state renders progress indicator |
@@ -245,17 +245,17 @@ None — all crates compile and pass.
 | `ff-toolchain-api` | ✅ | lib unit tests | Req 17.1: Rust plugin probes PATH for rustc, cargo, rustup |
 | `ff-toolchain-api` | ✅ | lib unit tests | Req 17.2: ToolchainState transitions to Ready when rustc and cargo detected |
 | `ff-toolchain-api` | ✅ | lib unit tests | Req 17.3: ToolchainState is NotDetected when rustc/cargo missing; panel shows install button |
-| `ff-rust-toolchain` | 🔲 | — | Req 17.4: Install confirmation dialog states rustup-init method, channel, target dir, disk space |
-| `ff-rust-toolchain` | 🔲 | — | Req 17.5: rustup-init runs via ff-bgio; UI stays interactive during install |
+| `ff-rust-toolchain` | 🔲 | -- | Req 17.4: Install confirmation dialog states rustup-init method, channel, target dir, disk space |
+| `ff-rust-toolchain` | 🔲 | -- | Req 17.5: rustup-init runs via ff-bgio; UI stays interactive during install |
 | `ff-rust-toolchain` | ✅ | lib unit tests | Req 17.6: Successful install re-probes PATH (including ~/.cargo/bin); transitions to Ready |
 | `ff-rust-toolchain` | ✅ | lib unit tests | Req 17.7: Failed install transitions to InstallFailed with Retry/View Log actions |
 | `ff-rust-toolchain` | ✅ | lib unit tests | Req 17.8: Update Toolchain button runs rustup update in background |
 | `ff-rust-toolchain` | ✅ | lib unit tests | Req 17.9: Toolchain_Panel lists installed channels with versions; allows channel switch |
 | `ff-rust-toolchain` | ✅ | lib unit tests | Req 18.1: Cargo actions enabled when Rust Ready and active file is inside a Cargo workspace |
-| `ff-rust-toolchain` | 🔲 | — | Req 18.2: Cargo runs as background process; output streamed to Toolchain_Panel |
+| `ff-rust-toolchain` | 🔲 | -- | Req 18.2: Cargo runs as background process; output streamed to Toolchain_Panel |
 | `ff-rust-toolchain` | ✅ | lib unit tests | Req 18.3: cargo --message-format=json output parsed into Diagnostic records |
-| `ff-rust-toolchain` | 🔲 | — | Req 18.4: Exit code 0 → Cargo succeeded; previous annotations cleared |
-| `ff-rust-toolchain` | 🔲 | — | Req 18.5: Non-zero exit → Cargo failed with error/warning counts |
+| `ff-rust-toolchain` | 🔲 | -- | Req 18.4: Exit code 0 → Cargo succeeded; previous annotations cleared |
+| `ff-rust-toolchain` | 🔲 | -- | Req 18.5: Non-zero exit → Cargo failed with error/warning counts |
 | `ff-desktop` | ✅ | `toolchain_panel.rs` unit tests | Req 18.6: Clicking Diagnostic in panel navigates editor to file/line/col |
 | `ff-rust-toolchain` | ✅ | lib unit tests | Req 18.7: --message-format=json passed to all cargo invocations |
 | `ff-toolchain-api` | ✅ | lib unit tests | Req 5.1: ToolchainPlugin trait is object-safe; dyn dispatch works (`mock_toolchain_as_trait_object_is_object_safe`) |
@@ -277,7 +277,7 @@ None — all crates compile and pass.
 
 ## Outstanding Issues
 
-Req 14.1, 14.8–14.12 are 🔴 NOT COVERED — Phase Y re-revision: POM must be an attached tab (not floating window). Implementation tasks in `docs/specs/startup-and-session/tasks.md` Phase Y (tasks 19.1–19.11). Previous Phase X tests for floating-window behaviour are now superseded.
+Req 14.1, 14.8–14.12 are 🔴 NOT COVERED -- Phase Y re-revision: POM must be an attached tab (not floating window). Implementation tasks in `docs/specs/startup-and-session/tasks.md` Phase Y (tasks 19.1–19.11). Previous Phase X tests for floating-window behaviour are now superseded.
 
 ## Summary
 
@@ -295,14 +295,14 @@ Req 14.6 (option number transforms POM tab kind in-place) is ? PASS � complete
 
 Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
-| `ff-desktop` | 🔲 | — | Req 13.1: Help > About menu item opens About dialog (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 13.1: Help > About menu item opens About dialog (manual UI verification) |
 | `ff-desktop` | ✅ | `about_dialog.rs` unit tests | Req 13.2: About dialog displays application name |
-| `ff-desktop` | ✅ | `about_dialog.rs` unit tests | Req 13.3: About dialog displays version string — `about_dialog_version_is_nonempty` |
-| `ff-desktop` | ✅ | `about_dialog.rs` unit tests | Req 13.4: About dialog credits creator Alan R Wynne — `about_dialog_contains_creator_credit` |
-| `ff-desktop` | ✅ | `about_dialog.rs` unit tests | Req 13.5: About dialog credits Amazon Q Developer / AWS — `about_dialog_contains_aws_credit` |
-| `ff-desktop` | ✅ | `about_dialog.rs` unit tests | Req 13.6: About dialog displays copyright notice — `about_dialog_copyright_contains_creator_name` |
-| `ff-desktop` | ✅ | `about_dialog.rs` unit tests | Req 13.7: About dialog displays application description — `about_dialog_description_is_nonempty` |
-| `ff-desktop` | 🔲 | — | Req 13.8: Close button / Escape closes the About dialog (manual UI verification) |
+| `ff-desktop` | ✅ | `about_dialog.rs` unit tests | Req 13.3: About dialog displays version string -- `about_dialog_version_is_nonempty` |
+| `ff-desktop` | ✅ | `about_dialog.rs` unit tests | Req 13.4: About dialog credits creator Alan R Wynne -- `about_dialog_contains_creator_credit` |
+| `ff-desktop` | ✅ | `about_dialog.rs` unit tests | Req 13.5: About dialog credits Amazon Q Developer / AWS -- `about_dialog_contains_aws_credit` |
+| `ff-desktop` | ✅ | `about_dialog.rs` unit tests | Req 13.6: About dialog displays copyright notice -- `about_dialog_copyright_contains_creator_name` |
+| `ff-desktop` | ✅ | `about_dialog.rs` unit tests | Req 13.7: About dialog displays application description -- `about_dialog_description_is_nonempty` |
+| `ff-desktop` | 🔲 | -- | Req 13.8: Close button / Escape closes the About dialog (manual UI verification) |
 | `ff-config` | ✅ | `config_handle.rs` unit tests | Req 15.4: `set_user_value` writes key to user-layer file and triggers hot-reload |
 | `ff-config` | ✅ | `config_handle.rs` unit tests | Req 15.6: `remove_user_value` removes key from user-layer file and restores default |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 15.1: `0` / `SETTINGS` / `=0` commands open SettingsPanel tab |
@@ -312,16 +312,16 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `settings_panel.rs` unit tests | Req 15.5: Invalid value shows inline error and is not persisted |
 | `ff-desktop` | ✅ | `settings_panel.rs` unit tests | Req 15.6: Reset to Default button removes user-layer override |
 | `ff-desktop` | ✅ | `settings_panel.rs` unit tests | Req 15.7: Filter input hides non-matching keys (case-insensitive substring) |
-| `ff-desktop` | 🔲 | — | Req 15.8: Source file path shown as read-only footer (manual UI verification) |
-| `ff-desktop` | 🔲 | — | Req 15.9: SettingsPanel tab persists in session and restores on next launch (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 15.8: Source file path shown as read-only footer (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 15.9: SettingsPanel tab persists in session and restores on next launch (manual UI verification) |
 | `ff-desktop` | ✅ | `settings_panel.rs` unit tests | Req 15.10: F3/END in Settings panel returns tab to POM view |
-| `ff-desktop` | 🔲 | — | Req 15.11: POM option 0 button navigates to Settings panel (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 15.11: POM option 0 button navigates to Settings panel (manual UI verification) |
 | `ff-desktop` | ✅ | `catalog_manager_dialog.rs` unit tests, `main.rs` | Req 12.1: Mainframe new-catalog dialog pre-populates Repository Path from `catalogs.default_mainframe_root` + catalog name |
 | `ff-desktop` | ✅ | `catalog_manager_dialog.rs` unit tests | Req 12.2: POSIX new-catalog dialog pre-populates Root Directory from `catalogs.default_posix_root` |
 | `ff-desktop` | ✅ | `main.rs` `register_builtin_schema()` | Req 12.3: `catalogs.default_mainframe_root` built-in default is `{user_data_dir}/catalogs/mainframe` |
 | `ff-desktop` | ✅ | `main.rs` `register_builtin_schema()` | Req 12.4: `catalogs.default_posix_root` built-in default is `{user_data_dir}/catalogs/posix` |
 | `ff-desktop` | ✅ | `ff_config::keys::catalogs`, `main.rs` | Req 12.5: both keys registered in ff-config schema under `[catalogs]` namespace with descriptions |
-| `ff-desktop` | 🔲 | — | Req 12.6: user changes to either key persist to user-layer config and take effect immediately (manual UI verification via Settings panel) |
+| `ff-desktop` | 🔲 | -- | Req 12.6: user changes to either key persist to user-layer config and take effect immediately (manual UI verification via Settings panel) |
 | `ff-desktop` | ✅ | `catalog_manager_dialog.rs` unit tests | Req 12.7: pre-populated path is a suggestion only; field remains editable |
 
 ### Virtual Catalog Manager (Phase AA)
@@ -330,8 +330,8 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 |-------|--------|-----------|-------|
 | `ff-desktop` | ✅ | `shell.rs` unit tests, `tab_state.rs` | Req 3.1–3.5 (view-zoom): Ctrl+Scroll up/down zooms in/out on active tab; zoom state per tab |
 | `ff-desktop` | ✅ | `session_manager.rs` unit tests | Req 6.1–6.4 (view-zoom): zoom_offset persisted per FileEditor tab; restored with clamping on session load |
-| `ff-desktop` | 🔲 | — | Req 7.1–7.5 (view-zoom): zoom indicator shown in status bar when offset != 0 (manual UI verification) |
-| `ff-desktop` | 🔲 | — | Req 2.1–2.7 (view-zoom): Ctrl+=, Ctrl+-, Ctrl+0 keyboard shortcuts (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 7.1–7.5 (view-zoom): zoom indicator shown in status bar when offset != 0 (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 2.1–2.7 (view-zoom): Ctrl+=, Ctrl+-, Ctrl+0 keyboard shortcuts (manual UI verification) |
 | `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 1.2, 1.4, 1.5: Files panel split layout, three section headers, empty-state nodes |
 | `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 1.7: F3/END in Files panel returns to POM view |
 | `ff-desktop` | ✅ | `catalog_registry.rs` unit tests | Req 2.1–2.5: Catalog Registry CRUD and persistence |
@@ -351,7 +351,7 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `primary_option_menu.rs` unit tests | Req 14.3b: Option 8 labelled "Plugins" with description "Vendor added plugins" |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 14.7: menu bar includes `File Catalogs` and `Plugins` top-level menus mirroring all 9 POM options |
 
-### Phase AI — User-Configurable Theme Colours and Custom Themes
+### Phase AI -- User-Configurable Theme Colours and Custom Themes
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
@@ -366,7 +366,7 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-theme` | ✅ | `discovery.rs` unit tests | Req 14.9: `export_theme()` serialises active palette to TOML (`export_theme_round_trips_name`, `export_theme_produces_valid_toml`) |
 | `ff-theme` | ✅ | `loader.rs` unit tests | Req 14.10: Unresolvable `base` theme logs WARN and falls back to built-in default (`base_inheritance_fills_missing_tokens`) |
 
-### Phase AE — Legacy Theme Colour Semantics
+### Phase AE -- Legacy Theme Colour Semantics
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
@@ -389,7 +389,7 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | 🔴 NOT COVERED | 0 |
 | **Total crates** | **64** |
 
-### Phase AJ — Tab-Order Focus Cycle
+### Phase AJ -- Tab-Order Focus Cycle
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
@@ -409,15 +409,15 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 16.14: Enter/Space on focused exit line exits app |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 16.15: Enter/Space on focused `<` navigates calendar back |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 16.16: Enter/Space on focused `>` navigates calendar forward |
-| `ff-desktop` | 🔲 | — | Req 16.17: Focused menu bar item has visible focus indicator (manual UI verification) |
-| `ff-desktop` | 🔲 | — | Req 16.18: Enter/Space on focused menu bar item opens dropdown (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 16.17: Focused menu bar item has visible focus indicator (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 16.18: Enter/Space on focused menu bar item opens dropdown (manual UI verification) |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 16.19: Non-POM tab skips POM/calendar stops in cycle |
 
-### Phase AK — Tab-Header Focus Stops + Command Field Focus Fix
+### Phase AK -- Tab-Header Focus Stops + Command Field Focus Fix
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 16.1: CommandField focus requested every frame — typing reliable without click |
+| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 16.1: CommandField focus requested every frame -- typing reliable without click |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 16.2: CommandField focus requested every frame when focus_stop == CommandField |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 16.10: Tab from last menu bar item goes to first tab header (`focus_cycle_tab_forward_from_last_menu_goes_to_first_tab_header`) |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 16.20: Tab advances through tab headers left to right (`focus_cycle_tab_forward_through_all_tab_headers`) |
@@ -446,44 +446,44 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | NOT COVERED | 0 |
 | **Total crates** | **64** |
 
-### Phase AL — Tab Window Chrome (Requirement 17, 18)
+### Phase AL -- Tab Window Chrome (Requirement 17, 18)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | — | Req 17.1: Tab content area renders Tab_Header row, Title_Line, Command_Field in order |
-| `ff-desktop` | 🔴 | — | Req 17.2: Title_Line is read-only and not editable |
-| `ff-desktop` | 🔴 | — | Req 17.3: POM tab Title_Line shows "FileForge Workbench  vX.Y.Z" |
-| `ff-desktop` | 🔴 | — | Req 17.4: File editor tab Title_Line shows full absolute path |
-| `ff-desktop` | 🔴 | — | Req 17.5: Untitled file editor tab Title_Line shows "[Untitled]" |
-| `ff-desktop` | 🔴 | — | Req 17.6: Other tab kinds Title_Line shows tab title string |
-| `ff-desktop` | 🔴 | — | Req 17.7: Title_Line styled distinct from editor content area |
-| `ff-desktop` | 🔴 | — | Req 17.8: Legacy theme Title_Line uses blue background (#0000AA) and white text (#FFFFFF) |
-| `ff-desktop` | 🔴 | — | Req 17.9: Command_Field remains third element below Title_Line |
-| `ff-desktop` | 🔴 | — | Req 18.1: "Move to Other View" detaches tab into Floating_Window with full chrome (deferred Phase AL) |
-| `ff-desktop` | 🔴 | — | Req 18.2: Floating tab has functional Title_Line and Command_Field (deferred Phase AL) |
-| `ff-desktop` | 🔴 | — | Req 18.3: Closing Floating_Window redocks tab at original position (deferred Phase AL) |
-| `ff-desktop` | 🔴 | — | Req 18.4: Tab_Header removed from Primary_Window bar when detached; restored on redock (deferred Phase AL) |
-| `ff-desktop` | 🔴 | — | Req 18.5: Floating_Window OS title bar shows Title_Line content + " — FileForge Workbench" (deferred Phase AL) |
-| `ff-desktop` | 🔴 | — | Req 18.6: Drag Tab_Header 20px outside tab bar detaches to Floating_Window (deferred Phase AL) |
-| `ff-desktop` | 🔴 | — | Req 18.7: Maximum 16 simultaneous Floating_Windows enforced (deferred Phase AL) |
+| `ff-desktop` | 🔴 | -- | Req 17.1: Tab content area renders Tab_Header row, Title_Line, Command_Field in order |
+| `ff-desktop` | 🔴 | -- | Req 17.2: Title_Line is read-only and not editable |
+| `ff-desktop` | 🔴 | -- | Req 17.3: POM tab Title_Line shows "FileForge Workbench  vX.Y.Z" |
+| `ff-desktop` | 🔴 | -- | Req 17.4: File editor tab Title_Line shows full absolute path |
+| `ff-desktop` | 🔴 | -- | Req 17.5: Untitled file editor tab Title_Line shows "[Untitled]" |
+| `ff-desktop` | 🔴 | -- | Req 17.6: Other tab kinds Title_Line shows tab title string |
+| `ff-desktop` | 🔴 | -- | Req 17.7: Title_Line styled distinct from editor content area |
+| `ff-desktop` | 🔴 | -- | Req 17.8: Legacy theme Title_Line uses blue background (#0000AA) and white text (#FFFFFF) |
+| `ff-desktop` | 🔴 | -- | Req 17.9: Command_Field remains third element below Title_Line |
+| `ff-desktop` | 🔴 | -- | Req 18.1: "Move to Other View" detaches tab into Floating_Window with full chrome (deferred Phase AL) |
+| `ff-desktop` | 🔴 | -- | Req 18.2: Floating tab has functional Title_Line and Command_Field (deferred Phase AL) |
+| `ff-desktop` | 🔴 | -- | Req 18.3: Closing Floating_Window redocks tab at original position (deferred Phase AL) |
+| `ff-desktop` | 🔴 | -- | Req 18.4: Tab_Header removed from Primary_Window bar when detached; restored on redock (deferred Phase AL) |
+| `ff-desktop` | 🔴 | -- | Req 18.5: Floating_Window OS title bar shows Title_Line content + " -- FileForge Workbench" (deferred Phase AL) |
+| `ff-desktop` | 🔴 | -- | Req 18.6: Drag Tab_Header 20px outside tab bar detaches to Floating_Window (deferred Phase AL) |
+| `ff-desktop` | 🔴 | -- | Req 18.7: Maximum 16 simultaneous Floating_Windows enforced (deferred Phase AL) |
 
-### Phase AL — Tab Window Chrome (final status)
+### Phase AL -- Tab Window Chrome (final status)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 17.3: POM tab Title_Line shows "FileForge Workbench  vX.Y.Z" — `title_line_pom_tab_shows_app_name_and_version` |
-| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 17.4: File editor tab Title_Line shows full absolute path — `title_line_file_editor_shows_path` |
-| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 17.5: Untitled file editor tab Title_Line shows "[Untitled]" — `title_line_untitled_shows_placeholder` |
-| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 17.6: SettingsPanel tab Title_Line shows "[SETTINGS]" — `title_line_settings_panel_shows_settings` |
-| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 17.6: FilesPanel tab Title_Line shows "[FILES]" — `title_line_files_panel_shows_files` |
-| `ff-desktop` | 🔲 | — | Req 17.1: Three-element chrome order (Tab_Header, Title_Line, Command_Field) visible at runtime (manual UI verification) |
-| `ff-desktop` | 🔲 | — | Req 17.2: Title_Line is read-only (manual UI verification) |
-| `ff-desktop` | 🔲 | — | Req 17.7: Title_Line visually distinct from editor content area (manual UI verification) |
-| `ff-desktop` | 🔲 | — | Req 17.8: Legacy theme Title_Line uses blue background / white text (manual UI verification) |
-| `ff-desktop` | 🔲 | — | Req 17.9: Command_Field remains third element below Title_Line (manual UI verification) |
-| `ff-desktop` | 🔴 | — | Req 18.1–18.7: Detachable tab windows — deferred to future phase |
+| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 17.3: POM tab Title_Line shows "FileForge Workbench  vX.Y.Z" -- `title_line_pom_tab_shows_app_name_and_version` |
+| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 17.4: File editor tab Title_Line shows full absolute path -- `title_line_file_editor_shows_path` |
+| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 17.5: Untitled file editor tab Title_Line shows "[Untitled]" -- `title_line_untitled_shows_placeholder` |
+| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 17.6: SettingsPanel tab Title_Line shows "[SETTINGS]" -- `title_line_settings_panel_shows_settings` |
+| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 17.6: FilesPanel tab Title_Line shows "[FILES]" -- `title_line_files_panel_shows_files` |
+| `ff-desktop` | 🔲 | -- | Req 17.1: Three-element chrome order (Tab_Header, Title_Line, Command_Field) visible at runtime (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 17.2: Title_Line is read-only (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 17.7: Title_Line visually distinct from editor content area (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 17.8: Legacy theme Title_Line uses blue background / white text (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 17.9: Command_Field remains third element below Title_Line (manual UI verification) |
+| `ff-desktop` | 🔴 | -- | Req 18.1–18.7: Detachable tab windows -- deferred to future phase |
 
-| `ff-desktop` | 🔲 | `shell.rs` unit tests | Req 8.1: Command field Enter-to-submit — pressing Enter while field has focus executes the command |
+| `ff-desktop` | 🔲 | `shell.rs` unit tests | Req 8.1: Command field Enter-to-submit -- pressing Enter while field has focus executes the command |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 8.2: Command field Enter on empty field is a no-op |
 
 ## Final Summary (after Phase AL)
@@ -496,42 +496,42 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | 🔴 NOT COVERED | 7 |
 | **Total crates** | **64** |
 
-### Phase AM — Per-Context Key Maps, PFSHOW, 24-Key Bar, Hotspots, END/RETURN, LIST+RETRIEVE
+### Phase AM -- Per-Context Key Maps, PFSHOW, 24-Key Bar, Hotspots, END/RETURN, LIST+RETRIEVE
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-keys` | 🔴 | — | Req 12.1–12.7: PFSHOW ON/OFF/toggle command registered and dispatched |
+| `ff-keys` | 🔴 | -- | Req 12.1–12.7: PFSHOW ON/OFF/toggle command registered and dispatched |
 | `ff-desktop` | ✅ | filter_narrows_visible_entries | Req 12.4: key_bar_visible persisted in session state |
-| `ff-desktop` | 🔴 | — | Req 12.1–12.3: Key_Label_Bar shown/hidden by PFSHOW command |
-| `ff-keys` | 🔴 | — | Req 13.1–13.2: KeyLabelBarModel produces two rows of 12 slots each (F1–F12, F13–F24) |
-| `ff-keys` | 🔴 | — | Req 13.2: Unassigned slots present with blank label (grid preserved) |
-| `ff-desktop` | 🔴 | — | Req 13.3–13.4: Two-row Key_Label_Bar rendered in footer |
-| `ff-keys` | 🔴 | — | Req 14.1–14.5: KeyMapResolver supports context_maps with full-replacement semantics |
-| `ff-desktop` | 🔴 | — | Req 14.2, 14.4: Tab switch calls set_context; Key_Label_Bar updates same frame |
-| `ff-keys` | 🔴 | — | Req 14.7: [context_key_maps] TOML section parsed into KeyMapResolver |
-| `ff-keys` | 🔴 | — | Req 15.1–15.2: KeyMap::default_global() returns 5-key built-in default map |
-| `ff-keys` | 🔴 | — | Req 15.3: User [global_key_map] fully replaces built-in defaults |
-| `ff-desktop` | 🔴 | — | Req 16.1–16.3: Key_Label_Bar slots are clickable; click dispatches assigned command |
+| `ff-desktop` | 🔴 | -- | Req 12.1–12.3: Key_Label_Bar shown/hidden by PFSHOW command |
+| `ff-keys` | 🔴 | -- | Req 13.1–13.2: KeyLabelBarModel produces two rows of 12 slots each (F1–F12, F13–F24) |
+| `ff-keys` | 🔴 | -- | Req 13.2: Unassigned slots present with blank label (grid preserved) |
+| `ff-desktop` | 🔴 | -- | Req 13.3–13.4: Two-row Key_Label_Bar rendered in footer |
+| `ff-keys` | 🔴 | -- | Req 14.1–14.5: KeyMapResolver supports context_maps with full-replacement semantics |
+| `ff-desktop` | 🔴 | -- | Req 14.2, 14.4: Tab switch calls set_context; Key_Label_Bar updates same frame |
+| `ff-keys` | 🔴 | -- | Req 14.7: [context_key_maps] TOML section parsed into KeyMapResolver |
+| `ff-keys` | 🔴 | -- | Req 15.1–15.2: KeyMap::default_global() returns 5-key built-in default map |
+| `ff-keys` | 🔴 | -- | Req 15.3: User [global_key_map] fully replaces built-in defaults |
+| `ff-desktop` | 🔴 | -- | Req 16.1–16.3: Key_Label_Bar slots are clickable; click dispatches assigned command |
 | `ff-desktop` | ✅ | theme_follow_os_defaults_to_false | Req 16.2: Click on blank slot is no-op |
 | `ff-desktop` | 🔲 | manual | Req 16.4: Hover over assigned slot shows full command string tooltip |
-| `ff-keys` | 🔴 | — | Req 17.1–17.2: nav.end and nav.return commands registered |
-| `ff-desktop` | 🔴 | — | Req 17.1: END closes current tab, navigates to previous tab or POM |
-| `ff-desktop` | 🔴 | — | Req 17.2: END from POM exits application |
-| `ff-desktop` | 🔴 | — | Req 17.3: RETURN navigates to POM tab from any context |
-| `ff-desktop` | 🔴 | — | Req 17.4: RETURN from POM exits application |
-| `ff-keys` | 🔴 | — | Req 17.7: END and RETURN added to ExclusionFilter; not recorded in history |
-| `ff-help` | 🔴 | — | Req 18.1–18.2: Missing help topic emits "not available yet" status message |
-| `ff-help` | 🔴 | — | Req 18.3: No specific context opens Help_Index (existing behaviour preserved) |
-| `ff-keys` | 🔴 | — | Req 19.1–19.2: LIST+RETRIEVE returns ShowList variant with all history entries |
-| `ff-desktop` | 🔴 | — | Req 19.3–19.4: Modal history-list overlay; selection populates field; Escape clears |
-| `ff-keys` | 🔴 | — | Req 19.6: LIST not added to Command_History when used as RETRIEVE trigger |
+| `ff-keys` | 🔴 | -- | Req 17.1–17.2: nav.end and nav.return commands registered |
+| `ff-desktop` | 🔴 | -- | Req 17.1: END closes current tab, navigates to previous tab or POM |
+| `ff-desktop` | 🔴 | -- | Req 17.2: END from POM exits application |
+| `ff-desktop` | 🔴 | -- | Req 17.3: RETURN navigates to POM tab from any context |
+| `ff-desktop` | 🔴 | -- | Req 17.4: RETURN from POM exits application |
+| `ff-keys` | 🔴 | -- | Req 17.7: END and RETURN added to ExclusionFilter; not recorded in history |
+| `ff-help` | 🔴 | -- | Req 18.1–18.2: Missing help topic emits "not available yet" status message |
+| `ff-help` | 🔴 | -- | Req 18.3: No specific context opens Help_Index (existing behaviour preserved) |
+| `ff-keys` | 🔴 | -- | Req 19.1–19.2: LIST+RETRIEVE returns ShowList variant with all history entries |
+| `ff-desktop` | 🔴 | -- | Req 19.3–19.4: Modal history-list overlay; selection populates field; Escape clears |
+| `ff-keys` | 🔴 | -- | Req 19.6: LIST not added to Command_History when used as RETRIEVE trigger |
 
-### Phase AM — Final Status (implementation complete)
+### Phase AM -- Final Status (implementation complete)
 
 | Crate | Status | Test | Notes |
 |-------|--------|------|-------|
-| `ff-keys` | ✅ | `key_map.rs` unit tests | Req 15.1–15.2: `KeyMap::default_global()` — 5 built-in assignments, 19 unassigned |
-| `ff-keys` | ✅ | `key_label_bar.rs` unit tests | Req 13.1–13.2: `row0()`/`row1()` — two rows of 12, all 24 slots always present |
+| `ff-keys` | ✅ | `key_map.rs` unit tests | Req 15.1–15.2: `KeyMap::default_global()` -- 5 built-in assignments, 19 unassigned |
+| `ff-keys` | ✅ | `key_label_bar.rs` unit tests | Req 13.1–13.2: `row0()`/`row1()` -- two rows of 12, all 24 slots always present |
 | `ff-keys` | ✅ | `key_map_resolver.rs` unit tests | Req 14.1–14.5: context maps with full-replacement; context > profile > global priority |
 | `ff-keys` | ✅ | `retrieve.rs` unit tests | Req 19.1–19.2, 19.5: `ShowList` variant; LIST trigger case-insensitive; empty history |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 12.1–12.3: PFSHOW ON/OFF/toggle intercepts in `handle_command` |
@@ -546,9 +546,9 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 17.7: END and RETURN added to `is_shell_command` exclusion set |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 14.4: tab switch calls `set_context` + updates key label bar |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 19.3–19.4: `ShowList` triggers modal history overlay; selection populates field; Escape clears |
-| `ff-desktop` | 🔴 | — | Req 12.4: `key_bar_visible` session persistence (TOML round-trip) — deferred |
-| `ff-desktop` | 🔴 | — | Req 18.1–18.3: contextual help "not available yet" fallback — deferred (ff-help crate) |
-| `ff-desktop` | 🔴 | — | Req 14.7: `[context_key_maps]` TOML config parsing — deferred (config integration) |
+| `ff-desktop` | 🔴 | -- | Req 12.4: `key_bar_visible` session persistence (TOML round-trip) -- deferred |
+| `ff-desktop` | 🔴 | -- | Req 18.1–18.3: contextual help "not available yet" fallback -- deferred (ff-help crate) |
+| `ff-desktop` | 🔴 | -- | Req 14.7: `[context_key_maps]` TOML config parsing -- deferred (config integration) |
 
 ## Final Summary (after Phase AM)
 
@@ -560,32 +560,32 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | 🔴 NOT COVERED | 10 |
 | **Total crates** | **64** |
 
-### Phase AN — Key Configuration Dialog (Req 20)
+### Phase AN -- Key Configuration Dialog (Req 20)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-keys` | 🔴 | — | Req 20.11, 20.12: `KeyModifier` enum and `ModifiedKey` struct defined; 96 TOML key names parse and round-trip |
-| `ff-keys` | 🔴 | — | Req 20.9, 20.12: `KeyBinding.description` field; modifier bindings stored independently in `KeyMap` |
-| `ff-keys` | 🔴 | — | Req 20.12: `KeyMap` uses `ModifiedKey` as key type; `get_plain()` returns only `None`-modifier entry |
-| `ff-keys` | 🔴 | — | Req 20.11: TOML parser accepts `SF1`–`SF24`, `CF1`–`CF24`, `AF1`–`AF24` prefixes |
-| `ff-desktop` | 🔴 | — | Req 20.10: Shift/Ctrl/Alt+Fn dispatch reads `egui::Modifiers`, constructs `ModifiedKey`, dispatches if assigned |
-| `ff-desktop` | 🔴 | — | Req 20.1: `KEYS` command opens Key_Configuration_Dialog |
-| `ff-desktop` | 🔴 | — | Req 20.1: `Edit > Key Assignments…` menu item opens Key_Configuration_Dialog |
-| `ff-desktop` | 🔴 | — | Req 20.2: Dialog shows Default (Global) tab and one tab per context name |
-| `ff-desktop` | 🔴 | — | Req 20.3: Each scope tab shows 24-row grid with Key, Command, Label, Description, Shift/Ctrl/Alt Cmd+Desc columns |
-| `ff-desktop` | 🔴 | — | Req 20.4: Empty command field treated as unassigned on save |
-| `ff-desktop` | 🔴 | — | Req 20.5: Save writes changes to user-layer TOML; Cancel discards |
-| `ff-desktop` | 🔴 | — | Req 20.6: Dialog pre-populates from current effective key maps on open |
-| `ff-desktop` | 🔴 | — | Req 20.7: Label column read-only, derived from command string |
-| `ff-desktop` | 🔴 | — | Req 20.8: Save writes `[global_key_map]` or `[context_key_maps.<name>]` sections |
-| `ff-desktop` | 🔴 | — | Req 20.13: Key_Label_Bar continues to show only plain bindings after modifier extension |
-| `ff-desktop` | 🔴 | — | Req 20.15: Reset to Defaults restores Default tab to built-in defaults; clears context tabs |
+| `ff-keys` | 🔴 | -- | Req 20.11, 20.12: `KeyModifier` enum and `ModifiedKey` struct defined; 96 TOML key names parse and round-trip |
+| `ff-keys` | 🔴 | -- | Req 20.9, 20.12: `KeyBinding.description` field; modifier bindings stored independently in `KeyMap` |
+| `ff-keys` | 🔴 | -- | Req 20.12: `KeyMap` uses `ModifiedKey` as key type; `get_plain()` returns only `None`-modifier entry |
+| `ff-keys` | 🔴 | -- | Req 20.11: TOML parser accepts `SF1`–`SF24`, `CF1`–`CF24`, `AF1`–`AF24` prefixes |
+| `ff-desktop` | 🔴 | -- | Req 20.10: Shift/Ctrl/Alt+Fn dispatch reads `egui::Modifiers`, constructs `ModifiedKey`, dispatches if assigned |
+| `ff-desktop` | 🔴 | -- | Req 20.1: `KEYS` command opens Key_Configuration_Dialog |
+| `ff-desktop` | 🔴 | -- | Req 20.1: `Edit > Key Assignments…` menu item opens Key_Configuration_Dialog |
+| `ff-desktop` | 🔴 | -- | Req 20.2: Dialog shows Default (Global) tab and one tab per context name |
+| `ff-desktop` | 🔴 | -- | Req 20.3: Each scope tab shows 24-row grid with Key, Command, Label, Description, Shift/Ctrl/Alt Cmd+Desc columns |
+| `ff-desktop` | 🔴 | -- | Req 20.4: Empty command field treated as unassigned on save |
+| `ff-desktop` | 🔴 | -- | Req 20.5: Save writes changes to user-layer TOML; Cancel discards |
+| `ff-desktop` | 🔴 | -- | Req 20.6: Dialog pre-populates from current effective key maps on open |
+| `ff-desktop` | 🔴 | -- | Req 20.7: Label column read-only, derived from command string |
+| `ff-desktop` | 🔴 | -- | Req 20.8: Save writes `[global_key_map]` or `[context_key_maps.<name>]` sections |
+| `ff-desktop` | 🔴 | -- | Req 20.13: Key_Label_Bar continues to show only plain bindings after modifier extension |
+| `ff-desktop` | 🔴 | -- | Req 20.15: Reset to Defaults restores Default tab to built-in defaults; clears context tabs |
 
-### Phase AN — Key Configuration Dialog (final status)
+### Phase AN -- Key Configuration Dialog (final status)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-keys` | ✅ | `function_key.rs` unit tests | Req 20.11, 20.12: `KeyModifier` + `ModifiedKey` — 96 slots, all TOML names round-trip |
+| `ff-keys` | ✅ | `function_key.rs` unit tests | Req 20.11, 20.12: `KeyModifier` + `ModifiedKey` -- 96 slots, all TOML names round-trip |
 | `ff-keys` | ✅ | `key_map.rs` unit tests | Req 20.3, 20.9: `KeyBinding.description`; modifier bindings independent; `get_plain()` |
 | `ff-keys` | ✅ | `key_map.rs` unit tests | Req 20.11: TOML parser accepts `SF`/`CF`/`AF` prefixes |
 | `ff-keys` | ✅ | `key_map.rs` unit tests | Req 20.12: `KeyMap` uses `ModifiedKey` as key type; `get_plain()` returns `None`-modifier entry |
@@ -598,14 +598,14 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `key_config_dialog.rs` unit tests | Req 20.9: Modifier bindings stored independently (`modifier_bindings_stored_independently_in_staged_map`) |
 | `ff-desktop` | ✅ | `key_config_dialog.rs` unit tests | Req 20.15: Reset to Defaults restores built-in defaults (`reset_default_tab_restores_built_in_defaults`) |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 20.1: `KEYS` in `is_shell_command` |
-| `ff-desktop` | 🔲 | — | Req 20.1: `Edit > Key Assignments…` menu item opens dialog (manual UI verification) |
-| `ff-desktop` | 🔲 | — | Req 20.7: Label column read-only, derived from command (manual UI verification) |
-| `ff-desktop` | 🔲 | — | Req 20.8: Save writes `[global_key_map]` / `[context_key_maps]` TOML — deferred (config integration Task 27.6) |
-| `ff-desktop` | 🔲 | — | Req 20.10: Shift/Ctrl/Alt+Fn dispatch reads `egui::Modifiers` at runtime (manual UI verification) |
-| `ff-desktop` | 🔲 | — | Req 20.13: Key_Label_Bar shows only plain bindings after modifier extension (manual UI verification) |
-| `ff-desktop` | 🔴 | — | Req 20.8: Full TOML persistence for key maps — deferred to config integration |
+| `ff-desktop` | 🔲 | -- | Req 20.1: `Edit > Key Assignments…` menu item opens dialog (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 20.7: Label column read-only, derived from command (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 20.8: Save writes `[global_key_map]` / `[context_key_maps]` TOML -- deferred (config integration Task 27.6) |
+| `ff-desktop` | 🔲 | -- | Req 20.10: Shift/Ctrl/Alt+Fn dispatch reads `egui::Modifiers` at runtime (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 20.13: Key_Label_Bar shows only plain bindings after modifier extension (manual UI verification) |
+| `ff-desktop` | 🔴 | -- | Req 20.8: Full TOML persistence for key maps -- deferred to config integration |
 
-### Phase AO — Detachable Tab Windows (Requirement 18)
+### Phase AO -- Detachable Tab Windows (Requirement 18)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
@@ -613,27 +613,27 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 18.7: 16-window limit enforced (`floating_tab_limit_enforced_at_16`) |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 18.3: `origin_index` preserved on `FloatingTab` (`floating_tab_origin_index_preserved`) |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 18.3: redock clamps `origin_index` to current tab count (`redock_clamps_to_tab_count`) |
-| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 18.5: OS title bar format `<Title_Line> — FileForge Workbench` (`floating_tab_title_format`) |
-| `ff-desktop` | 🔲 | — | Req 18.1: "Move to Other View" opens floating OS window (manual UI verification) |
-| `ff-desktop` | 🔲 | — | Req 18.2: floating tab has functional Title_Line and Command_Field (manual UI verification) |
-| `ff-desktop` | 🔲 | — | Req 18.3: closing floating window redocks tab at origin position (manual UI verification) |
-| `ff-desktop` | 🔴 | — | Req 18.6: drag Tab_Header 20px outside bar detaches — deferred (egui drag-outside-bounds not exposed) |
+| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 18.5: OS title bar format `<Title_Line> -- FileForge Workbench` (`floating_tab_title_format`) |
+| `ff-desktop` | 🔲 | -- | Req 18.1: "Move to Other View" opens floating OS window (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 18.2: floating tab has functional Title_Line and Command_Field (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 18.3: closing floating window redocks tab at origin position (manual UI verification) |
+| `ff-desktop` | 🔴 | -- | Req 18.6: drag Tab_Header 20px outside bar detaches -- deferred (egui drag-outside-bounds not exposed) |
 
-### Phase AP — PFSHOW Session Persistence (Requirement 12.4)
+### Phase AP -- PFSHOW Session Persistence (Requirement 12.4)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
 | `ff-desktop` | ✅ | `session_manager.rs` unit tests | Req 12.4: `key_bar_visible` persisted to session TOML and restored on next launch (`key_bar_visible_round_trips_through_session`) |
-| `ff-session` | ✅ | `session_file.rs` unit tests, `property_tests.rs` | Req 12.4: `key_bar_visible` field in `SessionState` with `serde(default = "default_true")` — round-trips correctly |
+| `ff-session` | ✅ | `session_file.rs` unit tests, `property_tests.rs` | Req 12.4: `key_bar_visible` field in `SessionState` with `serde(default = "default_true")` -- round-trips correctly |
 
-### Phase AQ — Key Map TOML Persistence (Req 20.8)
+### Phase AQ -- Key Map TOML Persistence (Req 20.8)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | ✅ | `key_config_dialog.rs` unit tests | Req 20.8: `save_produces_correct_config_values_for_global_scope` — global_key_map table contains assigned keys, omits unassigned |
-| `ff-desktop` | ✅ | `key_config_dialog.rs` unit tests | Req 20.8: `save_produces_correct_config_key_for_context_scope` — context scope produces correct ConfigValue::Table |
-| `ff-desktop` | ✅ | `key_config_dialog.rs` unit tests | Req 20.8: `empty_context_scope_produces_empty_table` — empty context produces empty table (no spurious keys) |
-| `ff-desktop` | 🔲 | — | Req 20.8: Save button writes to actual user-layer TOML file on disk (manual UI verification — requires running binary) |
+| `ff-desktop` | ✅ | `key_config_dialog.rs` unit tests | Req 20.8: `save_produces_correct_config_values_for_global_scope` -- global_key_map table contains assigned keys, omits unassigned |
+| `ff-desktop` | ✅ | `key_config_dialog.rs` unit tests | Req 20.8: `save_produces_correct_config_key_for_context_scope` -- context scope produces correct ConfigValue::Table |
+| `ff-desktop` | ✅ | `key_config_dialog.rs` unit tests | Req 20.8: `empty_context_scope_produces_empty_table` -- empty context produces empty table (no spurious keys) |
+| `ff-desktop` | 🔲 | -- | Req 20.8: Save button writes to actual user-layer TOML file on disk (manual UI verification -- requires running binary) |
 
 ### Phase AR -- [context_key_maps] TOML Config Parsing (Req 14.7)
 
@@ -642,24 +642,24 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | OK | `shell.rs` unit tests | Req 14.7: context_key_maps_parsed_from_config_value_table -- editor + pom contexts loaded; full-replacement; unknown context falls back to global |
 | `ff-desktop` | OK | `shell.rs` unit tests | Req 14.7: context_key_maps_invalid_key_skipped -- F99 produces warning, valid F3 loaded |
 
-### Phase AS — File Explorer Panel (Requirement 19)
+### Phase AS -- File Explorer Panel (Requirement 19)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | — | Req 19.1: `=2` in any command field closes current context and switches tab to FileExplorerPanel in-place |
-| `ff-desktop` | 🔴 | — | Req 19.2: `=FILES` (case-insensitive) closes current context and switches tab to FileExplorerPanel in-place |
-| `ff-desktop` | 🔴 | — | Req 19.3: `FILES` (no `=` prefix) opens a NEW tab in FileExplorerPanel context; current tab unchanged |
-| `ff-desktop` | 🔴 | — | Req 19.4: option `2` on POM tab transforms that tab to FileExplorerPanel with title `[FILES]` |
-| `ff-desktop` | 🔴 | — | Req 19.5: FileExplorerPanel displays tree view with one top-level node per open/mounted catalog |
-| `ff-desktop` | 🔴 | — | Req 19.6: expanding a catalog node lists its files/datasets as child nodes |
-| `ff-desktop` | 🔴 | — | Req 19.7: tree groups catalogs under Mainframe Catalogs, POSIX Catalogs, Native Catalogs section headers |
-| `ff-desktop` | 🔴 | — | Req 19.8: when no catalogs are mounted, placeholder message is shown |
-| `ff-desktop` | 🔴 | — | Req 19.9: double-clicking a file/member node opens it in a new editor tab |
-| `ff-desktop` | 🔴 | — | Req 19.10: F3/END in FileExplorerPanel returns tab to POM view |
-| `ff-desktop` | 🔴 | — | Req 19.11: FileExplorerPanel tab title in tab bar is `[FILES]` |
-| `ff-desktop` | 🔴 | — | Req 19.12: `FileExplorerPanel` tab kind persists in session and restores on next launch |
+| `ff-desktop` | 🔴 | -- | Req 19.1: `=2` in any command field closes current context and switches tab to FileExplorerPanel in-place |
+| `ff-desktop` | 🔴 | -- | Req 19.2: `=FILES` (case-insensitive) closes current context and switches tab to FileExplorerPanel in-place |
+| `ff-desktop` | 🔴 | -- | Req 19.3: `FILES` (no `=` prefix) opens a NEW tab in FileExplorerPanel context; current tab unchanged |
+| `ff-desktop` | 🔴 | -- | Req 19.4: option `2` on POM tab transforms that tab to FileExplorerPanel with title `[FILES]` |
+| `ff-desktop` | 🔴 | -- | Req 19.5: FileExplorerPanel displays tree view with one top-level node per open/mounted catalog |
+| `ff-desktop` | 🔴 | -- | Req 19.6: expanding a catalog node lists its files/datasets as child nodes |
+| `ff-desktop` | 🔴 | -- | Req 19.7: tree groups catalogs under Mainframe Catalogs, POSIX Catalogs, Native Catalogs section headers |
+| `ff-desktop` | 🔴 | -- | Req 19.8: when no catalogs are mounted, placeholder message is shown |
+| `ff-desktop` | 🔴 | -- | Req 19.9: double-clicking a file/member node opens it in a new editor tab |
+| `ff-desktop` | 🔴 | -- | Req 19.10: F3/END in FileExplorerPanel returns tab to POM view |
+| `ff-desktop` | 🔴 | -- | Req 19.11: FileExplorerPanel tab title in tab bar is `[FILES]` |
+| `ff-desktop` | 🔴 | -- | Req 19.12: `FileExplorerPanel` tab kind persists in session and restores on next launch |
 
-### Phase AS — File Explorer Panel (Requirement 19) — Final Status
+### Phase AS -- File Explorer Panel (Requirement 19) -- Final Status
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
@@ -667,11 +667,11 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 19.2: `=FILES` is a shell-level intercept (`equals_files_command_is_shell_intercept`) |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 19.3: `FILES` (no `=`) routes to new tab (`files_no_prefix_command_is_shell_intercept`) |
 | `ff-desktop` | ✅ | `shell.rs`, `tab_manager.rs` unit tests | Req 19.4: option `2` on POM tab transforms in-place to `FileExplorerPanel` with title `[FILES]` (`option_2_on_pom_tab_transforms_to_file_explorer`) |
-| `ff-desktop` | 🔴 | — | Req 19.5: tree view with catalog nodes (UI — deferred Task 27.4) |
-| `ff-desktop` | 🔴 | — | Req 19.6: expanding catalog node lists files (UI — deferred Task 27.6) |
-| `ff-desktop` | 🔴 | — | Req 19.7: Mainframe/POSIX/Native section headers (UI — deferred Task 27.4) |
-| `ff-desktop` | 🔴 | — | Req 19.8: empty-state placeholder message (UI — deferred Task 27.5) |
-| `ff-desktop` | 🔴 | — | Req 19.9: double-click opens file in editor tab (UI — deferred Task 27.7) |
+| `ff-desktop` | 🔴 | -- | Req 19.5: tree view with catalog nodes (UI -- deferred Task 27.4) |
+| `ff-desktop` | 🔴 | -- | Req 19.6: expanding catalog node lists files (UI -- deferred Task 27.6) |
+| `ff-desktop` | 🔴 | -- | Req 19.7: Mainframe/POSIX/Native section headers (UI -- deferred Task 27.4) |
+| `ff-desktop` | 🔴 | -- | Req 19.8: empty-state placeholder message (UI -- deferred Task 27.5) |
+| `ff-desktop` | 🔴 | -- | Req 19.9: double-click opens file in editor tab (UI -- deferred Task 27.7) |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 19.10: END returns FileExplorerPanel tab to POM (`file_explorer_panel_end_command_returns_to_pom`) |
 | `ff-desktop` | ✅ | `shell.rs`, `tab_manager.rs` unit tests | Req 19.11: tab title is `[FILES]` (`file_explorer_panel_tab_title_is_files`) |
 | `ff-desktop` | ✅ | `tab_state.rs`, `session_manager.rs` | Req 19.12: `FileExplorerPanel` kind persists via `PersistedTabKind::FileExplorerPanel` (`file_explorer_panel_kind_is_distinct_from_files_panel`) |
@@ -685,15 +685,15 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | 🔲 MANUAL | Req 19.5–19.9 (UI tree rendering) |
 | 🔴 NOT COVERED | Req 19.5, 19.6, 19.7, 19.8, 19.9 (deferred Tasks 27.4–27.7) |
 
-### Phase AT — Allocated Dataset Display (Req 13 virtual-catalog-manager)
+### Phase AT -- Allocated Dataset Display (Req 13 virtual-catalog-manager)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | — | Req 13.1: `FilesPanelState` has `datasets` map and `AllocatedDataset` struct |
-| `ff-desktop` | 🔴 | — | Req 13.2: `AllocOutcome::Confirmed` inserts `AllocatedDataset` into map under correct catalog name |
-| `ff-desktop` | 🔴 | — | Req 13.3: selecting a catalog node populates `ContentAreaState::entries` from datasets map |
-| `ff-desktop` | 🔴 | — | Req 13.4: datasets map persists to session TOML and restores on next launch |
-| `ff-desktop` | 🔴 | — | Req 13.5: deleting a catalog removes all its datasets from the map |
+| `ff-desktop` | 🔴 | -- | Req 13.1: `FilesPanelState` has `datasets` map and `AllocatedDataset` struct |
+| `ff-desktop` | 🔴 | -- | Req 13.2: `AllocOutcome::Confirmed` inserts `AllocatedDataset` into map under correct catalog name |
+| `ff-desktop` | 🔴 | -- | Req 13.3: selecting a catalog node populates `ContentAreaState::entries` from datasets map |
+| `ff-desktop` | 🔴 | -- | Req 13.4: datasets map persists to session TOML and restores on next launch |
+| `ff-desktop` | 🔴 | -- | Req 13.5: deleting a catalog removes all its datasets from the map |
 
 ### Phase AT -- Allocated Dataset Display -- Final Status (superseded by Phase BU)
 
@@ -706,23 +706,23 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ❌ | SUPERSEDED | Req 13.5: `delete_catalog_removes_its_datasets` -- removed in BU.8; `remove_catalog_datasets()` deleted; SQLite is sole store |
 | | | | See Phase BU rows above for current passing coverage of Req 13.1-13.5 |
 
-### Phase AU — Catalog Registry Persistence (B010 fix)
+### Phase AU -- Catalog Registry Persistence (B010 fix)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
 | `ff-desktop` | ✅ | `session_manager.rs` unit tests | Req 2.1: `save_catalog_registry()` writes `catalogs.toml` on exit (`save_and_load_catalog_registry_round_trips`) |
 | `ff-desktop` | ✅ | `session_manager.rs` unit tests | Req 2.2: `load_catalog_registry()` reads `catalogs.toml` on startup; returns empty registry if absent (`load_missing_catalog_file_returns_empty_registry`) |
 
-### Phase AV — File Explorer Panel Tree View (Tasks 27.4–27.7, Req 19.5–19.9)
+### Phase AV -- File Explorer Panel Tree View (Tasks 27.4–27.7, Req 19.5–19.9)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.5: `registered_catalogs_appear_as_tree_nodes` — each catalog in registry appears as a top-level expandable node |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.6: `catalog_datasets_accessible_for_child_nodes` — datasets for a catalog are accessible as child node data |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.7: `section_header_labels_match_catalog_type_labels` — Mainframe Catalogs / POSIX Catalogs / Native Catalogs headers |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.8: `zero_catalogs_triggers_empty_state` — empty registry (0 catalogs) triggers placeholder path |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.9: `ps_dataset_is_a_leaf_node_not_a_container` / `po_dataset_is_a_container_node` — PS is leaf (double-click opens); PO is container |
-| `ff-desktop` | 🔲 | — | Req 19.5–19.9: full tree rendering with expand/collapse and double-click (manual UI verification) |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.5: `registered_catalogs_appear_as_tree_nodes` -- each catalog in registry appears as a top-level expandable node |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.6: `catalog_datasets_accessible_for_child_nodes` -- datasets for a catalog are accessible as child node data |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.7: `section_header_labels_match_catalog_type_labels` -- Mainframe Catalogs / POSIX Catalogs / Native Catalogs headers |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.8: `zero_catalogs_triggers_empty_state` -- empty registry (0 catalogs) triggers placeholder path |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.9: `ps_dataset_is_a_leaf_node_not_a_container` / `po_dataset_is_a_container_node` -- PS is leaf (double-click opens); PO is container |
+| `ff-desktop` | 🔲 | -- | Req 19.5–19.9: full tree rendering with expand/collapse and double-click (manual UI verification) |
 
 ## Final Summary (after Phase AV)
 
@@ -730,24 +730,24 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 |--------|-------|
 | ✅ PASS | 391 tests (ff-desktop) |
 | ❌ FAIL | 0 |
-| 🔲 MANUAL | Req 19.5–19.9 (UI tree rendering — manual verification) |
+| 🔲 MANUAL | Req 19.5–19.9 (UI tree rendering -- manual verification) |
 | 🔴 NOT COVERED | 0 (all Req 19.5–19.9 criteria have unit test coverage) |
 
-### Phase AW — Mainframe Dataset Allocation Fixes (B011, B012, CR-NR-003)
+### Phase AW -- Mainframe Dataset Allocation Fixes (B011, B012, CR-NR-003)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | — | Req 5.8: Mainframe dataset name uppercased on confirm (B011) |
-| `ff-desktop` | 🔴 | — | Req 5.9: duplicate DSN within same catalog rejected with inline error (B012) |
-| `ff-desktop` | 🔴 | — | Req 5.7: Dataset Name pre-populated with catalog HLQ when HLQ is configured (CR-NR-003) |
+| `ff-desktop` | 🔴 | -- | Req 5.8: Mainframe dataset name uppercased on confirm (B011) |
+| `ff-desktop` | 🔴 | -- | Req 5.9: duplicate DSN within same catalog rejected with inline error (B012) |
+| `ff-desktop` | 🔴 | -- | Req 5.7: Dataset Name pre-populated with catalog HLQ when HLQ is configured (CR-NR-003) |
 
-### Phase AW — Final Status
+### Phase AW -- Final Status
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | ✅ | `dataset_alloc_dialog.rs` unit tests | Req 5.8: `validate_uppercases_dataset_name`, `validate_uppercases_mixed_case_name` — B011 fixed |
-| `ff-desktop` | ✅ | `dataset_alloc_dialog.rs` unit tests | Req 5.9: `validate_for_catalog_rejects_duplicate_dsn`, `validate_for_catalog_duplicate_check_is_case_insensitive`, `validate_for_catalog_accepts_unique_dsn`, `validate_for_catalog_empty_existing_always_passes` — B012 fixed |
-| `ff-desktop` | ✅ | `dataset_alloc_dialog.rs` unit tests | Req 5.7: `with_hlq_prepopulates_dataset_name_with_hlq_dot`, `with_hlq_empty_string_gives_dot` — CR-NR-003 done |
+| `ff-desktop` | ✅ | `dataset_alloc_dialog.rs` unit tests | Req 5.8: `validate_uppercases_dataset_name`, `validate_uppercases_mixed_case_name` -- B011 fixed |
+| `ff-desktop` | ✅ | `dataset_alloc_dialog.rs` unit tests | Req 5.9: `validate_for_catalog_rejects_duplicate_dsn`, `validate_for_catalog_duplicate_check_is_case_insensitive`, `validate_for_catalog_accepts_unique_dsn`, `validate_for_catalog_empty_existing_always_passes` -- B012 fixed |
+| `ff-desktop` | ✅ | `dataset_alloc_dialog.rs` unit tests | Req 5.7: `with_hlq_prepopulates_dataset_name_with_hlq_dot`, `with_hlq_empty_string_gives_dot` -- CR-NR-003 done |
 
 ## Final Summary (after Phase AW)
 
@@ -758,27 +758,27 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | 🔲 MANUAL | 0 new |
 | 🔴 NOT COVERED | 0 |
 
-### Phase AX — Default Home Catalog on First Launch (Req 14 virtual-catalog-manager)
+### Phase AX -- Default Home Catalog on First Launch (Req 14 virtual-catalog-manager)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | — | Req 14.1: when no Native catalogs exist, startup creates a Native catalog named `"Home"` pointing to the user home directory |
-| `ff-desktop` | 🔴 | — | Req 14.2: the Home catalog is registered in the CatalogRegistry immediately and visible in the Files panel on the same launch |
-| `ff-desktop` | 🔴 | — | Req 14.3: the Home catalog is persisted to `catalogs.toml` before the first frame so it survives restart |
-| `ff-desktop` | 🔴 | — | Req 14.4: when one or more Native catalogs already exist, no Home catalog is created |
-| `ff-desktop` | 🔴 | — | Req 14.5: when home directory cannot be determined, falls back to process working directory and still creates the catalog |
-| `ff-desktop` | 🔴 | — | Req 14.6: attempting to delete the `"Home"` Native catalog is rejected with inline error |
-| `ff-desktop` | 🔴 | — | Req 14.7: renaming or editing the Home catalog is permitted; after rename the deletion guard no longer applies |
+| `ff-desktop` | 🔴 | -- | Req 14.1: when no Native catalogs exist, startup creates a Native catalog named `"Home"` pointing to the user home directory |
+| `ff-desktop` | 🔴 | -- | Req 14.2: the Home catalog is registered in the CatalogRegistry immediately and visible in the Files panel on the same launch |
+| `ff-desktop` | 🔴 | -- | Req 14.3: the Home catalog is persisted to `catalogs.toml` before the first frame so it survives restart |
+| `ff-desktop` | 🔴 | -- | Req 14.4: when one or more Native catalogs already exist, no Home catalog is created |
+| `ff-desktop` | 🔴 | -- | Req 14.5: when home directory cannot be determined, falls back to process working directory and still creates the catalog |
+| `ff-desktop` | 🔴 | -- | Req 14.6: attempting to delete the `"Home"` Native catalog is rejected with inline error |
+| `ff-desktop` | 🔴 | -- | Req 14.7: renaming or editing the Home catalog is permitted; after rename the deletion guard no longer applies |
 
-### Phase AX — Default Home Catalog on First Launch — Final Status
+### Phase AX -- Default Home Catalog on First Launch -- Final Status
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | ✅ | `shell/update.rs` startup_tests | Req 14.1, 14.2: `no_native_catalogs_triggers_home_catalog_creation` — empty registry gets a `"Home"` Native catalog pointing at the provided home path |
-| `ff-desktop` | ✅ | `shell/update.rs` startup_tests | Req 14.4: `existing_native_catalog_suppresses_home_creation` — existing Native catalog prevents Home creation |
-| `ff-desktop` | ✅ | `shell/update.rs` startup_tests | Req 14.3, 14.5: `home_catalog_uses_provided_path` — catalog uses the supplied path; `true` return signals caller to persist |
-| `ff-desktop` | ✅ | `catalog_manager_dialog.rs` unit tests | Req 14.6: `delete_home_native_catalog_is_rejected` — `execute_delete` returns `Err` for `"Home"` Native catalog; registry unchanged |
-| `ff-desktop` | ✅ | `catalog_manager_dialog.rs` unit tests | Req 14.7: `delete_renamed_home_catalog_is_permitted` — Native catalog renamed away from `"Home"` can be deleted normally |
+| `ff-desktop` | ✅ | `shell/update.rs` startup_tests | Req 14.1, 14.2: `no_native_catalogs_triggers_home_catalog_creation` -- empty registry gets a `"Home"` Native catalog pointing at the provided home path |
+| `ff-desktop` | ✅ | `shell/update.rs` startup_tests | Req 14.4: `existing_native_catalog_suppresses_home_creation` -- existing Native catalog prevents Home creation |
+| `ff-desktop` | ✅ | `shell/update.rs` startup_tests | Req 14.3, 14.5: `home_catalog_uses_provided_path` -- catalog uses the supplied path; `true` return signals caller to persist |
+| `ff-desktop` | ✅ | `catalog_manager_dialog.rs` unit tests | Req 14.6: `delete_home_native_catalog_is_rejected` -- `execute_delete` returns `Err` for `"Home"` Native catalog; registry unchanged |
+| `ff-desktop` | ✅ | `catalog_manager_dialog.rs` unit tests | Req 14.7: `delete_renamed_home_catalog_is_permitted` -- Native catalog renamed away from `"Home"` can be deleted normally |
 
 ## Final Summary (after Phase AX)
 
@@ -789,12 +789,12 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | 🔲 MANUAL | 0 new |
 | 🔴 NOT COVERED | 0 |
 
-### Phase AV (CR-CH-003) — Help Fallback Human-Readable Message (Req 18.1, 18.2)
+### Phase AV (CR-CH-003) -- Help Fallback Human-Readable Message (Req 18.1, 18.2)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-help` | ✅ | `context_detector.rs` unit tests | Req 18.1: `resolve_with_fallback_missing_topic_returns_err` — message contains `"Help not yet available for"`, human-readable label (e.g. `command "FIND"`), and raw topic-key (`cmd:FIND`) for diagnostics |
-| `ff-help` | ✅ | `context_detector.rs` unit tests | Req 18.2: `resolve_with_fallback_existing_topic_returns_ok` — registered topic returns `Ok(key)`; no fallback message emitted |
+| `ff-help` | ✅ | `context_detector.rs` unit tests | Req 18.1: `resolve_with_fallback_missing_topic_returns_err` -- message contains `"Help not yet available for"`, human-readable label (e.g. `command "FIND"`), and raw topic-key (`cmd:FIND`) for diagnostics |
+| `ff-help` | ✅ | `context_detector.rs` unit tests | Req 18.2: `resolve_with_fallback_existing_topic_returns_ok` -- registered topic returns `Ok(key)`; no fallback message emitted |
 
 ## Final Summary (after CR-CH-003)
 
@@ -805,13 +805,13 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | 🔲 MANUAL | 0 new |
 | 🔴 NOT COVERED | 0 |
 
-### Phase AN.5 — ModifiedKey Property-Based Tests (Task 30)
+### Phase AN.5 -- ModifiedKey Property-Based Tests (Task 30)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-keys` | ✅ | `tests/modified_key_pbt.rs` | Req 20.11, 20.12: `modified_key_toml_name_always_round_trips` — all 96 ModifiedKey TOML names parse back to original (200 cases) |
-| `ff-keys` | ✅ | `tests/modified_key_pbt.rs` | Req 20.9, 20.12: `get_plain_unaffected_by_modifier_bindings` — plain binding unchanged regardless of Shift/Ctrl/Alt entries on same key (200 cases) |
-| `ff-keys` | ✅ | `tests/modified_key_pbt.rs` | Req 20.11, 20.12: `from_toml_table_mixed_modifiers_no_cross_contamination` — mixed modifier TOML produces exactly expected entries, no cross-contamination (200 cases) |
+| `ff-keys` | ✅ | `tests/modified_key_pbt.rs` | Req 20.11, 20.12: `modified_key_toml_name_always_round_trips` -- all 96 ModifiedKey TOML names parse back to original (200 cases) |
+| `ff-keys` | ✅ | `tests/modified_key_pbt.rs` | Req 20.9, 20.12: `get_plain_unaffected_by_modifier_bindings` -- plain binding unchanged regardless of Shift/Ctrl/Alt entries on same key (200 cases) |
+| `ff-keys` | ✅ | `tests/modified_key_pbt.rs` | Req 20.11, 20.12: `from_toml_table_mixed_modifiers_no_cross_contamination` -- mixed modifier TOML produces exactly expected entries, no cross-contamination (200 cases) |
 
 ## Final Summary (after AN.5)
 
@@ -822,22 +822,22 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | 🔲 MANUAL | 0 new |
 | 🔴 NOT COVERED | 0 |
 
-### Phase AY — File Explorer: Expandable Subdirectories and Scrollable Panel (Req 15 file-tree-panel)
+### Phase AY -- File Explorer: Expandable Subdirectories and Scrollable Panel (Req 15 file-tree-panel)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | — | Req 15.1: clicking expand arrow on a directory node inside a Native catalog shows its children sorted dirs-first alphabetically |
-| `ff-desktop` | 🔴 | — | Req 15.2: child directory nodes are themselves expandable, supporting arbitrary nesting depth |
-| `ff-desktop` | 🔴 | — | Req 15.3: File Explorer Panel content area is wrapped in a vertical scroll region |
+| `ff-desktop` | 🔴 | -- | Req 15.1: clicking expand arrow on a directory node inside a Native catalog shows its children sorted dirs-first alphabetically |
+| `ff-desktop` | 🔴 | -- | Req 15.2: child directory nodes are themselves expandable, supporting arbitrary nesting depth |
+| `ff-desktop` | 🔴 | -- | Req 15.3: File Explorer Panel content area is wrapped in a vertical scroll region |
 
-### Phase AY — Final Status
+### Phase AY -- Final Status
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 15.2: `nested_directory_structure_readable_two_levels_deep` — two-level nested dirs readable via `std::fs::read_dir` |
-| `ff-desktop` | 🔲 | — | Req 15.1: directory `CollapsingHeader` nodes expand to show children (manual UI verification) |
-| `ff-desktop` | 🔲 | — | Req 15.2: child dirs are themselves expandable recursively (manual UI verification) |
-| `ff-desktop` | 🔲 | — | Req 15.3: panel content scrollable via `ScrollArea::vertical()` (manual UI verification) |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 15.2: `nested_directory_structure_readable_two_levels_deep` -- two-level nested dirs readable via `std::fs::read_dir` |
+| `ff-desktop` | 🔲 | -- | Req 15.1: directory `CollapsingHeader` nodes expand to show children (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 15.2: child dirs are themselves expandable recursively (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 15.3: panel content scrollable via `ScrollArea::vertical()` (manual UI verification) |
 
 ## Final Summary (after Phase AY)
 
@@ -845,10 +845,10 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 |--------|-------|
 | ✅ PASS | 405 tests (ff-desktop) |
 | ❌ FAIL | 0 |
-| 🔲 MANUAL | Req 15.1, 15.2, 15.3 (UI rendering — manual verification) |
+| 🔲 MANUAL | Req 15.1, 15.2, 15.3 (UI rendering -- manual verification) |
 | 🔴 NOT COVERED | 0 |
 
-### Phase AZ — File Explorer Context Menu (Requirement 16)
+### Phase AZ -- File Explorer Context Menu (Requirement 16)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
@@ -871,128 +871,128 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 16.17: ExtensionRule table is data-driven; *.jcl rule would enable Submit JCL when implemented |
 | `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 16.18: Copy File Name / Relative Path / Full Path / Dataset Name / Member Name / Dataset(Member) each write correct string to clipboard |
 
-### Phase BA — Open With Default Application (Requirement 17 file-tree-panel)
+### Phase BA -- Open With Default Application (Requirement 17 file-tree-panel)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
 | `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 17.1: Text/source files open in FFWB editor tab (no external launch) |
 | `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 17.2: External file class launches OS default app (Windows cmd start / macOS open / Linux xdg-open) |
 | `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 17.3: Unknown extension uses magic-byte scan; UTF-8 text opens in editor, binary launches OS app |
-| `ff-desktop` | 🔲 | — | Req 17.4: Launch failure falls back to FFWB editor with status-bar message |
-| `ff-desktop` | 🔲 | — | Req 17.5: Open With shows platform picker (Windows openwith / macOS open -a / Linux xdg chooser) |
+| `ff-desktop` | 🔲 | -- | Req 17.4: Launch failure falls back to FFWB editor with status-bar message |
+| `ff-desktop` | 🔲 | -- | Req 17.5: Open With shows platform picker (Windows openwith / macOS open -a / Linux xdg chooser) |
 | `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 17.6: DefaultAppLaunch is non-blocking (Command::spawn, UI thread not blocked) |
 | `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 17.7: Mainframe nodes always open in FFWB editor regardless of content |
 | `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 17.8: EXTERNAL_EXTENSIONS table covers all required categories (Office, PDF, images, audio/video, archives, executables, databases) |
-| `ff-desktop` | 🔲 | — | Req 17.9: POSIX catalog file nodes follow same FileClass classification and launch rules as Native nodes |
+| `ff-desktop` | 🔲 | -- | Req 17.9: POSIX catalog file nodes follow same FileClass classification and launch rules as Native nodes |
 
-### Phase BC — Directory-first alphabetical sort in content area (Req 10.7)
-
-| Crate | Status | Test files | Notes |
-|-------|--------|-----------|-------|
-| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 10.7: Name-sort groups containers before non-containers, each group sorted case-insensitively — `visible_entries_name_sort_groups_dirs_before_files`, `visible_entries_name_sort_dirs_are_alphabetical_within_group`, `visible_entries_type_sort_does_not_force_dir_grouping` |
+### Phase BC -- Directory-first alphabetical sort in content area (Req 10.7)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 18.1: Native catalog directory children sorted directories-first then alphabetically case-insensitive — `collect_native_entries_sorts_dirs_first_then_alpha` |
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 10.7: Name-sort groups containers before non-containers, each group sorted case-insensitively -- `visible_entries_name_sort_groups_dirs_before_files`, `visible_entries_name_sort_dirs_are_alphabetical_within_group`, `visible_entries_type_sort_does_not_force_dir_grouping` |
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 18.1: Native catalog directory children sorted directories-first then alphabetically case-insensitive -- `collect_native_entries_sorts_dirs_first_then_alpha` |
 | `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 18.2: Each file node displays human-readable size; `format_size_produces_correct_strings` |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 18.3, 18.4, 18.5: Timestamps in `YYYY-MM-DD HH:MM` format — `format_timestamp_produces_correct_format` |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 18.6: Permission attributes returned as non-empty string — `format_permissions_returns_nonempty_string` |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 18.7: Valid entries collected without error; inaccessible entries silently skipped via `metadata().ok()?` — `collect_native_entries_returns_valid_entries` |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 18.8: Opening unreadable file stores error in `last_error`; no editor tab opened — `open_file_node_stores_error_for_nonexistent_file` |
-| `ff-desktop` | 🔲 | — | Req 18.9: Attribute columns rendered in correct order and alignment (manual UI verification) |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 18.3, 18.4, 18.5: Timestamps in `YYYY-MM-DD HH:MM` format -- `format_timestamp_produces_correct_format` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 18.6: Permission attributes returned as non-empty string -- `format_permissions_returns_nonempty_string` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 18.7: Valid entries collected without error; inaccessible entries silently skipped via `metadata().ok()?` -- `collect_native_entries_returns_valid_entries` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 18.8: Opening unreadable file stores error in `last_error`; no editor tab opened -- `open_file_node_stores_error_for_nonexistent_file` |
+| `ff-desktop` | 🔲 | -- | Req 18.9: Attribute columns rendered in correct order and alignment (manual UI verification) |
 
-### Phase BD — File Explorer tree: drag-select and copy as text tree (Req 19 file-tree-panel)
-
-| Crate | Status | Test files | Notes |
-|-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | — | Req 19.1: drag-select highlights all visible nodes between start and current cursor position |
-| `ff-desktop` | 🔴 | — | Req 19.2: Shift+click extends selection from Anchor_Node to clicked node |
-| `ff-desktop` | 🔴 | — | Req 19.3: Ctrl+click toggles individual node membership without affecting others |
-| `ff-desktop` | 🔴 | — | Req 19.4: selected nodes rendered with `ui.selection_background` tint |
-| `ff-desktop` | 🔴 | — | Req 19.5: Ctrl+C with non-empty selection writes Text_Tree to OS clipboard |
-| `ff-desktop` | 🔴 | — | Req 19.6: `build_text_tree` produces correct indented ASCII output with `[DIR]` prefix and tree connectors |
-| `ff-desktop` | 🔴 | — | Req 19.7: "Copy as Text Tree" context menu item present above "Copy" group |
-| `ff-desktop` | 🔴 | — | Req 19.8: Escape clears multi-selection, reverts to single-node mode |
-| `ff-desktop` | 🔴 | — | Req 19.9: selection extends to nodes scrolled into view during drag |
-| `ff-desktop` | 🔴 | — | Req 19.10: Mainframe nodes use DSN in Text_Tree output |
-
-### Phase BE — File Explorer keyboard navigation + file copy/paste (Req 20–21 file-tree-panel)
+### Phase BD -- File Explorer tree: drag-select and copy as text tree (Req 19 file-tree-panel)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | — | Req 20.1: Tab from CommandField transfers focus to File Explorer node list; Cursor_Node set to first visible catalog node |
-| `ff-desktop` | 🔴 | — | Req 20.2: Tab advances Cursor_Node to next visible node in display order |
-| `ff-desktop` | 🔴 | — | Req 20.3: Tab on a collapsed container expands it before advancing |
-| `ff-desktop` | 🔴 | — | Req 20.4: Down/Up Arrow moves Cursor_Node without expanding containers |
-| `ff-desktop` | 🔴 | — | Req 20.5: Right Arrow expands collapsed container; Left Arrow collapses expanded container or moves to parent |
-| `ff-desktop` | 🔴 | — | Req 20.6: Shift+Arrow moves Cursor_Node and adds newly visited node to Keyboard_Selection |
-| `ff-desktop` | 🔴 | — | Req 20.7: Continued Shift+Arrow adds each newly visited node cumulatively |
-| `ff-desktop` | 🔴 | — | Req 20.8: Releasing Shift preserves Keyboard_Selection; plain Arrow moves cursor without changing selection |
-| `ff-desktop` | 🔴 | — | Req 20.9: Ctrl+Arrow moves Cursor_Node without changing Keyboard_Selection |
-| `ff-desktop` | 🔴 | — | Req 20.10: Ctrl+Space toggles Cursor_Node membership in Keyboard_Selection |
-| `ff-desktop` | 🔴 | — | Req 20.11: Ctrl+C with non-empty Keyboard_Selection copies selected nodes |
-| `ff-desktop` | 🔴 | — | Req 20.12: Escape clears Keyboard_Selection; Cursor_Node remains |
-| `ff-desktop` | 🔴 | — | Req 20.13: Cursor_Node rendered with focus ring distinct from selection fill; both shown when node is cursor and selected |
-| `ff-desktop` | 🔴 | — | Req 21.1: Ctrl+C stores selected node paths in File_Copy_Clipboard with operation type Copy |
-| `ff-desktop` | 🔴 | — | Req 21.2: Ctrl+V in file list dispatches background copy to Paste_Target directory |
-| `ff-desktop` | 🔴 | — | Req 21.3: Paste progress indicator shown in status bar; dismissed on completion; target directory refreshed |
-| `ff-desktop` | 🔴 | — | Req 21.4: Paste failure shows error in status bar; successfully copied files not rolled back |
-| `ff-desktop` | 🔴 | — | Req 21.5: Name collision shows per-file prompt with Overwrite / Skip / Rename options |
-| `ff-desktop` | 🔴 | — | Req 21.6: Ctrl+V in editor with non-empty clipboard opens Paste_Prompt modal |
-| `ff-desktop` | 🔴 | — | Req 21.7: "Insert File Names" inserts one path per line at caret |
-| `ff-desktop` | 🔴 | — | Req 21.8: "Insert File Contents" reads and inserts file text; skips unreadable files with inline error |
-| `ff-desktop` | 🔴 | — | Req 21.9: Mainframe DSN/member paths supported; member name lowercased when pasting to Native/POSIX |
-| `ff-desktop` | 🔴 | — | Req 21.10: Paste to POSIX catalog rejected with status-bar message |
-| `ff-desktop` | 🔴 | — | Req 21.11: File_Copy_Clipboard persists until replaced or cleared; source nodes show dashed border indicator |
+| `ff-desktop` | 🔴 | -- | Req 19.1: drag-select highlights all visible nodes between start and current cursor position |
+| `ff-desktop` | 🔴 | -- | Req 19.2: Shift+click extends selection from Anchor_Node to clicked node |
+| `ff-desktop` | 🔴 | -- | Req 19.3: Ctrl+click toggles individual node membership without affecting others |
+| `ff-desktop` | 🔴 | -- | Req 19.4: selected nodes rendered with `ui.selection_background` tint |
+| `ff-desktop` | 🔴 | -- | Req 19.5: Ctrl+C with non-empty selection writes Text_Tree to OS clipboard |
+| `ff-desktop` | 🔴 | -- | Req 19.6: `build_text_tree` produces correct indented ASCII output with `[DIR]` prefix and tree connectors |
+| `ff-desktop` | 🔴 | -- | Req 19.7: "Copy as Text Tree" context menu item present above "Copy" group |
+| `ff-desktop` | 🔴 | -- | Req 19.8: Escape clears multi-selection, reverts to single-node mode |
+| `ff-desktop` | 🔴 | -- | Req 19.9: selection extends to nodes scrolled into view during drag |
+| `ff-desktop` | 🔴 | -- | Req 19.10: Mainframe nodes use DSN in Text_Tree output |
 
-### Phase BE — Final Status (keyboard + paste wired into render loop)
+### Phase BE -- File Explorer keyboard navigation + file copy/paste (Req 20–21 file-tree-panel)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | Req 20.1: Tab from CommandField transfers focus to File Explorer node list; Cursor_Node set to first visible catalog node |
+| `ff-desktop` | 🔴 | -- | Req 20.2: Tab advances Cursor_Node to next visible node in display order |
+| `ff-desktop` | 🔴 | -- | Req 20.3: Tab on a collapsed container expands it before advancing |
+| `ff-desktop` | 🔴 | -- | Req 20.4: Down/Up Arrow moves Cursor_Node without expanding containers |
+| `ff-desktop` | 🔴 | -- | Req 20.5: Right Arrow expands collapsed container; Left Arrow collapses expanded container or moves to parent |
+| `ff-desktop` | 🔴 | -- | Req 20.6: Shift+Arrow moves Cursor_Node and adds newly visited node to Keyboard_Selection |
+| `ff-desktop` | 🔴 | -- | Req 20.7: Continued Shift+Arrow adds each newly visited node cumulatively |
+| `ff-desktop` | 🔴 | -- | Req 20.8: Releasing Shift preserves Keyboard_Selection; plain Arrow moves cursor without changing selection |
+| `ff-desktop` | 🔴 | -- | Req 20.9: Ctrl+Arrow moves Cursor_Node without changing Keyboard_Selection |
+| `ff-desktop` | 🔴 | -- | Req 20.10: Ctrl+Space toggles Cursor_Node membership in Keyboard_Selection |
+| `ff-desktop` | 🔴 | -- | Req 20.11: Ctrl+C with non-empty Keyboard_Selection copies selected nodes |
+| `ff-desktop` | 🔴 | -- | Req 20.12: Escape clears Keyboard_Selection; Cursor_Node remains |
+| `ff-desktop` | 🔴 | -- | Req 20.13: Cursor_Node rendered with focus ring distinct from selection fill; both shown when node is cursor and selected |
+| `ff-desktop` | 🔴 | -- | Req 21.1: Ctrl+C stores selected node paths in File_Copy_Clipboard with operation type Copy |
+| `ff-desktop` | 🔴 | -- | Req 21.2: Ctrl+V in file list dispatches background copy to Paste_Target directory |
+| `ff-desktop` | 🔴 | -- | Req 21.3: Paste progress indicator shown in status bar; dismissed on completion; target directory refreshed |
+| `ff-desktop` | 🔴 | -- | Req 21.4: Paste failure shows error in status bar; successfully copied files not rolled back |
+| `ff-desktop` | 🔴 | -- | Req 21.5: Name collision shows per-file prompt with Overwrite / Skip / Rename options |
+| `ff-desktop` | 🔴 | -- | Req 21.6: Ctrl+V in editor with non-empty clipboard opens Paste_Prompt modal |
+| `ff-desktop` | 🔴 | -- | Req 21.7: "Insert File Names" inserts one path per line at caret |
+| `ff-desktop` | 🔴 | -- | Req 21.8: "Insert File Contents" reads and inserts file text; skips unreadable files with inline error |
+| `ff-desktop` | 🔴 | -- | Req 21.9: Mainframe DSN/member paths supported; member name lowercased when pasting to Native/POSIX |
+| `ff-desktop` | 🔴 | -- | Req 21.10: Paste to POSIX catalog rejected with status-bar message |
+| `ff-desktop` | 🔴 | -- | Req 21.11: File_Copy_Clipboard persists until replaced or cleared; source nodes show dashed border indicator |
+
+### Phase BE -- Final Status (keyboard + paste wired into render loop)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
 | `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.1: `explorer_focused` field; Tab from CommandField wired in `render_central_panel` |
 | `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.2: `collect_visible_node_paths` + Tab advance wired |
-| `ff-desktop` | 🔲 | — | Req 20.3: Tab on collapsed container expands it (egui CollapsingHeader state — manual UI verification) |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.4: Arrow keys move cursor without expanding — `arrow_down_moves_cursor_without_expanding` |
-| `ff-desktop` | 🔲 | — | Req 20.5: Right/Left Arrow expand/collapse containers (egui CollapsingHeader — manual UI verification) |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.6, 20.7: Shift+Arrow extends selection — `shift_arrow_adds_to_selection` |
-| `ff-desktop` | 🔲 | — | Req 20.8: Releasing Shift preserves selection (modifier release — manual UI verification) |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.9: Ctrl+Arrow moves cursor without changing selection — `ctrl_arrow_moves_cursor_without_changing_selection` |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.10: Ctrl+Space toggles selection — `ctrl_space_toggles_cursor_node_in_selection` |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.11: Ctrl+C copies to clipboard + File_Copy_Clipboard — wired in `handle_explorer_keyboard` |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.12: Escape clears selection — `escape_clears_selection_preserves_cursor` |
-| `ff-desktop` | 🔲 | — | Req 20.13: Cursor focus ring rendering (egui visual — manual UI verification) |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 21.1: Ctrl+C stores paths in File_Copy_Clipboard — `ctrl_c_in_file_list_populates_file_copy_clipboard` |
+| `ff-desktop` | 🔲 | -- | Req 20.3: Tab on collapsed container expands it (egui CollapsingHeader state -- manual UI verification) |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.4: Arrow keys move cursor without expanding -- `arrow_down_moves_cursor_without_expanding` |
+| `ff-desktop` | 🔲 | -- | Req 20.5: Right/Left Arrow expand/collapse containers (egui CollapsingHeader -- manual UI verification) |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.6, 20.7: Shift+Arrow extends selection -- `shift_arrow_adds_to_selection` |
+| `ff-desktop` | 🔲 | -- | Req 20.8: Releasing Shift preserves selection (modifier release -- manual UI verification) |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.9: Ctrl+Arrow moves cursor without changing selection -- `ctrl_arrow_moves_cursor_without_changing_selection` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.10: Ctrl+Space toggles selection -- `ctrl_space_toggles_cursor_node_in_selection` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.11: Ctrl+C copies to clipboard + File_Copy_Clipboard -- wired in `handle_explorer_keyboard` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 20.12: Escape clears selection -- `escape_clears_selection_preserves_cursor` |
+| `ff-desktop` | 🔲 | -- | Req 20.13: Cursor focus ring rendering (egui visual -- manual UI verification) |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 21.1: Ctrl+C stores paths in File_Copy_Clipboard -- `ctrl_c_in_file_list_populates_file_copy_clipboard` |
 | `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 21.2: Ctrl+V sets paste_prompt_open; target determined by `determine_paste_target` |
-| `ff-desktop` | 🔲 | — | Req 21.3: ff-bgio background copy progress indicator (deferred — requires ff-bgio wiring) |
-| `ff-desktop` | 🔲 | — | Req 21.4: Paste failure error handling (deferred — requires ff-bgio wiring) |
-| `ff-desktop` | 🔲 | — | Req 21.5: Name collision Overwrite/Skip/Rename prompt (deferred) |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 21.6: Ctrl+V with clipboard writes paths to OS clipboard + status message — wired in `render_central_panel` |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 21.7: File paths joined one-per-line — `insert_file_names_produces_one_path_per_line` |
-| `ff-desktop` | 🔲 | — | Req 21.8: Insert File Contents (deferred) |
-| `ff-desktop` | 🔲 | — | Req 21.9: Mainframe DSN naming transform on paste (deferred) |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 21.10: POSIX catalog paste rejected — `paste_to_posix_catalog_is_rejected` |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 21.11: File_Copy_Clipboard persists until replaced — `file_copy_clipboard_persists_until_replaced` |
+| `ff-desktop` | 🔲 | -- | Req 21.3: ff-bgio background copy progress indicator (deferred -- requires ff-bgio wiring) |
+| `ff-desktop` | 🔲 | -- | Req 21.4: Paste failure error handling (deferred -- requires ff-bgio wiring) |
+| `ff-desktop` | 🔲 | -- | Req 21.5: Name collision Overwrite/Skip/Rename prompt (deferred) |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 21.6: Ctrl+V with clipboard writes paths to OS clipboard + status message -- wired in `render_central_panel` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 21.7: File paths joined one-per-line -- `insert_file_names_produces_one_path_per_line` |
+| `ff-desktop` | 🔲 | -- | Req 21.8: Insert File Contents (deferred) |
+| `ff-desktop` | 🔲 | -- | Req 21.9: Mainframe DSN naming transform on paste (deferred) |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 21.10: POSIX catalog paste rejected -- `paste_to_posix_catalog_is_rejected` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 21.11: File_Copy_Clipboard persists until replaced -- `file_copy_clipboard_persists_until_replaced` |
 
-### Phase BD — File Explorer tree: drag-select and copy as text tree (Req 19 file-tree-panel)
+### Phase BD -- File Explorer tree: drag-select and copy as text tree (Req 19 file-tree-panel)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.2: `shift_click_extends_selection_from_anchor` — Shift+click adds to selection from anchor |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.3: `ctrl_click_toggles_individual_node` — Ctrl+click toggles without affecting others |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.2: `shift_click_extends_selection_from_anchor` -- Shift+click adds to selection from anchor |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.3: `ctrl_click_toggles_individual_node` -- Ctrl+click toggles without affecting others |
 | `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.4: `selectable_label(is_selected, ...)` uses egui selection bg_fill tint |
 | `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.5: Ctrl+C calls `build_text_tree` and writes to OS clipboard |
 | `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.6: `build_text_tree_flat_selection`, `build_text_tree_hierarchical_selection`, `build_text_tree_dir_prefix`, `build_text_tree_relative_depth` |
 | `ff-desktop` | ✅ | `context_menu.rs` unit tests | Req 19.7: `CopyAsTextTree` action present in Native File and Native Dir menus above Copy group |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.8: `escape_clears_multi_selection` — Escape clears selected_nodes |
-| `ff-desktop` | 🔲 | — | Req 19.1: drag-select range highlight (egui pointer drag — manual UI verification) |
-| `ff-desktop` | 🔲 | — | Req 19.9: selection extends to nodes scrolled into view during drag (manual UI verification) |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.10: `build_text_tree_mainframe_uses_dsn` — Mainframe DSN used as-is in text tree |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.8: `escape_clears_multi_selection` -- Escape clears selected_nodes |
+| `ff-desktop` | 🔲 | -- | Req 19.1: drag-select range highlight (egui pointer drag -- manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 19.9: selection extends to nodes scrolled into view during drag (manual UI verification) |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 19.10: `build_text_tree_mainframe_uses_dsn` -- Mainframe DSN used as-is in text tree |
 
-### Phase BI — Default BLKSIZE=0 in Dataset Allocation Dialog (CR-CH-005)
+### Phase BI -- Default BLKSIZE=0 in Dataset Allocation Dialog (CR-CH-005)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | ✅ | `dataset_alloc_dialog.rs` unit tests | Req 5.2: BLKSIZE default is `0` (system-determined); `AllocDatasetForm::default()` returns `"0"` for blksize field; `validate()` accepts 0 as system-determined — `default_form_blksize_is_zero`, `validate_accepts_blksize_zero` |
+| `ff-desktop` | ✅ | `dataset_alloc_dialog.rs` unit tests | Req 5.2: BLKSIZE default is `0` (system-determined); `AllocDatasetForm::default()` returns `"0"` for blksize field; `validate()` accepts 0 as system-determined -- `default_form_blksize_is_zero`, `validate_accepts_blksize_zero` |
 
 ## Final Summary (after Phase BD)
 
@@ -1000,16 +1000,16 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 |--------|-------|
 | ✅ PASS | 474 tests (ff-desktop) |
 | ❌ FAIL | 0 |
-| 🔲 MANUAL | Req 19.1, 19.9 (drag pointer — manual verification) |
+| 🔲 MANUAL | Req 19.1, 19.9 (drag pointer -- manual verification) |
 | 🔴 NOT COVERED | 0 |
 
-### Phase BF — Tab Close Button + Files Menu Close (B002, B003, B015, B016)
+### Phase BF -- Tab Close Button + Files Menu Close (B002, B003, B015, B016)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔲 | — | B002/B015: `×` close button visible on every tab header (manual UI verification) |
-| `ff-desktop` | 🔲 | — | B003: Files > Close closes the active tab (manual UI verification) |
-| `ff-desktop` | 🔲 | — | B016: bracket rule documented — system tabs use `[]`, file tabs show filename only (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | B002/B015: `×` close button visible on every tab header (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | B003: Files > Close closes the active tab (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | B016: bracket rule documented -- system tabs use `[]`, file tabs show filename only (manual UI verification) |
 
 ## Final Summary (after Phase BF)
 
@@ -1017,23 +1017,23 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 |--------|-------|
 | ✅ PASS | 474 tests (ff-desktop) |
 | ❌ FAIL | 0 |
-| 🔲 MANUAL | B002/B003/B015/B016 (UI rendering — manual verification) |
+| 🔲 MANUAL | B002/B003/B015/B016 (UI rendering -- manual verification) |
 | 🔴 NOT COVERED | 0 |
 
-### Phase BJ — Catalog Repository Path Display + VFS Dataset Path Resolution (CR-NR-012)
+### Phase BJ -- Catalog Repository Path Display + VFS Dataset Path Resolution (CR-NR-012)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | ✅ | `catalog_manager_dialog.rs` unit tests | Req 15.1: `edit_form_displays_repository_path` — `EditCatalogForm::from_catalog` carries `path` field from source catalog |
-| `ff-desktop` | ✅ | `catalog_manager_dialog.rs` unit tests | Req 15.2: `edit_form_repository_path_present_for_all_catalog_types` — path present for Mainframe and POSIX |
-| `ff-desktop` | 🔲 | — | Req 15.3: Repository path field rendered as read-only label in Edit Catalog dialog (manual UI verification) |
-| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.1, 16.5: `resolve_dataset_path_maps_dsn_to_subpath` — `PAYROLL.EMPLOYEE` maps to `{repo}/PAYROLL/EMPLOYEE` |
-| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.4, 16.5: `resolve_dataset_path_empty_repo_returns_none` — empty repository path returns `None` |
-| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.5: `resolve_dataset_path_empty_dsn_returns_none` — empty DSN returns `None` |
-| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.1: `resolve_dataset_path_single_qualifier_dsn` — single-qualifier DSN resolves to one component under repo |
-| `ff-desktop` | 🔲 | — | Req 16.2: file opened in editor when resolved path exists on disk (manual UI verification) |
-| `ff-desktop` | 🔲 | — | Req 16.3: `'<DSN>': dataset file not found at <path>` shown when path missing (manual UI verification) |
-| `ff-desktop` | 🔲 | — | Req 16.4: `'<DSN>': catalog has no repository path configured` shown when repo empty (manual UI verification) |
+| `ff-desktop` | ✅ | `catalog_manager_dialog.rs` unit tests | Req 15.1: `edit_form_displays_repository_path` -- `EditCatalogForm::from_catalog` carries `path` field from source catalog |
+| `ff-desktop` | ✅ | `catalog_manager_dialog.rs` unit tests | Req 15.2: `edit_form_repository_path_present_for_all_catalog_types` -- path present for Mainframe and POSIX |
+| `ff-desktop` | 🔲 | -- | Req 15.3: Repository path field rendered as read-only label in Edit Catalog dialog (manual UI verification) |
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.1, 16.5: `resolve_dataset_path_maps_dsn_to_subpath` -- `PAYROLL.EMPLOYEE` maps to `{repo}/PAYROLL/EMPLOYEE` |
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.4, 16.5: `resolve_dataset_path_empty_repo_returns_none` -- empty repository path returns `None` |
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.5: `resolve_dataset_path_empty_dsn_returns_none` -- empty DSN returns `None` |
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.1: `resolve_dataset_path_single_qualifier_dsn` -- single-qualifier DSN resolves to one component under repo |
+| `ff-desktop` | 🔲 | -- | Req 16.2: file opened in editor when resolved path exists on disk (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 16.3: `'<DSN>': dataset file not found at <path>` shown when path missing (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | Req 16.4: `'<DSN>': catalog has no repository path configured` shown when repo empty (manual UI verification) |
 
 ## Final Summary (after Phase BJ)
 
@@ -1041,16 +1041,16 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 |--------|-------|
 | ✅ PASS | 481 tests (ff-desktop) |
 | ❌ FAIL | 0 |
-| 🔲 MANUAL | Req 15.3, 16.2, 16.3, 16.4 (UI rendering — manual verification) |
+| 🔲 MANUAL | Req 15.3, 16.2, 16.3, 16.4 (UI rendering -- manual verification) |
 | 🔴 NOT COVERED | 0 |
 
-### Phase BL — B024 Tab Cycle Fix (Req 20.1, 20.2)
+### Phase BL -- B024 Tab Cycle Fix (Req 20.1, 20.2)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
 | `ff-desktop` | ✅ | `shell/update.rs` | Req 20.1: Tab from CommandField enters tree, sets `explorer_focused = true`, `cursor_node` = first visible node |
 | `ff-desktop` | ✅ | `shell/update.rs` | Req 20.2: Tab advances `cursor_node`; Tab past last node exits tree and returns focus to CommandField |
-| `ff-desktop` | 🔲 | — | Req 20.13: Cursor highlight on catalog nodes and file nodes — manual UI verification |
+| `ff-desktop` | 🔲 | -- | Req 20.13: Cursor highlight on catalog nodes and file nodes -- manual UI verification |
 
 ## Final Summary (after Phase BL)
 
@@ -1061,40 +1061,40 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | 🔲 MANUAL | Req 20.13 cursor highlight (UI rendering) |
 | 🔴 NOT COVERED | 0 |
 
-### Phase BK — Native File Browser: egui-file-dialog Integration (Requirement 22)
+### Phase BK -- Native File Browser: egui-file-dialog Integration (Requirement 22)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 22.1: `NativeDialogSlot` wraps `FileDialog`; `native_dialogs` field on `FileExplorerPanelState`; lazily initialised per catalog — `native_dialogs_field_exists_on_state`, `native_dialog_slot_lazily_created_for_catalog`, `native_dialog_slot_implements_debug_and_clone`, `file_explorer_panel_state_debug_clone_with_native_dialogs` |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 22.2: `render_native_dialog()` calls `take_selected()` and routes to `open_file_node()` — `native_dialog_slot_lazily_created_for_catalog` |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 22.3: `render_dataset_children()` unchanged; Mainframe/POSIX path unaffected — `mainframe_posix_branches_use_render_dataset_children` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 22.1: `NativeDialogSlot` wraps `FileDialog`; `native_dialogs` field on `FileExplorerPanelState`; lazily initialised per catalog -- `native_dialogs_field_exists_on_state`, `native_dialog_slot_lazily_created_for_catalog`, `native_dialog_slot_implements_debug_and_clone`, `file_explorer_panel_state_debug_clone_with_native_dialogs` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 22.2: `render_native_dialog()` calls `take_selected()` and routes to `open_file_node()` -- `native_dialog_slot_lazily_created_for_catalog` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 22.3: `render_dataset_children()` unchanged; Mainframe/POSIX path unaffected -- `mainframe_posix_branches_use_render_dataset_children` |
 | `ff-desktop` | ✅ | `crates/ff-desktop/Cargo.toml` | Req 22.4: `egui-file-dialog = "0.6"` declared; vendored patch resolves egui 0.29 mismatch |
 | `ff-desktop` | ✅ | `THIRD_PARTY_CREDITS.md` | Req 22.5: `THIRD_PARTY_CREDITS.md` created at workspace root with full MIT licence text |
 | `ff-desktop` | ✅ | `cargo test` 486 passing | Req 22.6: 486 tests pass, 0 failures after BK refactoring |
 
-### Phase BM — File Explorer Panel: egui-file-dialog look-and-feel with catalog mount points (Requirement 23)
+### Phase BM -- File Explorer Panel: egui-file-dialog look-and-feel with catalog mount points (Requirement 23)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.1: Two-pane layout (SidePanel + CentralPanel) matching egui-file-dialog visual style — `all_existing_state_fields_present_after_bm_refactor` |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.2: Sidebar lists all catalogs as named Mount_Nodes; clicking selects and populates Content_Pane — `clicking_mount_node_sets_selected_catalog`, `selected_catalog_defaults_to_none` |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.3: Sidebar groups catalogs under "Mainframe", "POSIX", "Native" collapsible headers — `sidebar_groups_catalogs_by_type` |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.4: Native catalog Content_Pane renders egui-file-dialog widget — `native_catalog_uses_native_dialog_slot` |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.5: Mainframe catalog Content_Pane renders dot-qualified dataset list; PS is leaf — `mainframe_content_ps_dataset_is_leaf` |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.6: POSIX catalog Content_Pane uses forward-slash path normalisation — `posix_path_normalised_to_forward_slashes` |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.7: Empty sidebar shows placeholder when no catalogs registered — `empty_registry_produces_no_mount_nodes` |
-| `ff-desktop` | 🔲 | — | Req 23.8: Right-click context menu uses egui-file-dialog native menu for Native; Req 16 menu for Mainframe/POSIX (manual UI verification) |
-| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.9: Sidebar width persisted; default 200px; minimum 120px — `sidebar_width_defaults_to_200`, `sidebar_width_minimum_is_120` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.1: Two-pane layout (SidePanel + CentralPanel) matching egui-file-dialog visual style -- `all_existing_state_fields_present_after_bm_refactor` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.2: Sidebar lists all catalogs as named Mount_Nodes; clicking selects and populates Content_Pane -- `clicking_mount_node_sets_selected_catalog`, `selected_catalog_defaults_to_none` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.3: Sidebar groups catalogs under "Mainframe", "POSIX", "Native" collapsible headers -- `sidebar_groups_catalogs_by_type` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.4: Native catalog Content_Pane renders egui-file-dialog widget -- `native_catalog_uses_native_dialog_slot` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.5: Mainframe catalog Content_Pane renders dot-qualified dataset list; PS is leaf -- `mainframe_content_ps_dataset_is_leaf` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.6: POSIX catalog Content_Pane uses forward-slash path normalisation -- `posix_path_normalised_to_forward_slashes` |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.7: Empty sidebar shows placeholder when no catalogs registered -- `empty_registry_produces_no_mount_nodes` |
+| `ff-desktop` | 🔲 | -- | Req 23.8: Right-click context menu uses egui-file-dialog native menu for Native; Req 16 menu for Mainframe/POSIX (manual UI verification) |
+| `ff-desktop` | ✅ | `file_explorer_panel.rs` unit tests | Req 23.9: Sidebar width persisted; default 200px; minimum 120px -- `sidebar_width_defaults_to_200`, `sidebar_width_minimum_is_120` |
 | `ff-desktop` | ✅ | `cargo test` 496 passing | Req 23.10: `cargo test` passes with 0 failures after BM refactoring |
 
-### Phase BR — B028 Dataset File Creation on First Open (Req 16.3, 16.6)
+### Phase BR -- B028 Dataset File Creation on First Open (Req 16.3, 16.6)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.3: `opening_missing_dataset_creates_file_and_parent_dirs`, `opening_missing_dataset_creates_parent_dirs` — `create_dataset_file` creates file and all missing parent dirs |
+| `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.3: `opening_missing_dataset_creates_file_and_parent_dirs`, `opening_missing_dataset_creates_parent_dirs` -- `create_dataset_file` creates file and all missing parent dirs |
 | `ff-desktop` | ✅ | `files_panel.rs` unit tests | Req 16.6: `create_dataset_file` returns `Err` on I/O failure; shell shows `'<DSN>': cannot create dataset file at <path>: <os_error>` |
 
-### Phase BS — Mainframe Dataset Architecture (CR-NR-016)
+### Phase BS -- Mainframe Dataset Architecture (CR-NR-016)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
@@ -1102,38 +1102,38 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-dscatalog` | ✅ | `vfs_provider::tests::fb_dataset_read_decodes_fixed_records_no_crlf` | Req 16.2: fixed-length records packed contiguously; record n at offset n×LRECL |
 | `ff-dscatalog` | ✅ | `vfs_provider::tests::vb_dataset_read_decodes_rdw_records_no_crlf` | Req 16.3: variable-length records preceded by 4-byte RDW; no CRLF after data |
 | `ff-dscatalog` | ✅ | `vfs_provider::tests::read_write_round_trip` | Req 16.4: RECFM=U content stored as opaque binary stream |
-| `ff-dscatalog` | 🔴 | — | Req 16.5: editor presents records as lines without altering binary storage |
+| `ff-dscatalog` | 🔴 | -- | Req 16.5: editor presents records as lines without altering binary storage |
 | `ff-dscatalog` | ✅ | `vfs_provider::tests::fb_dataset_read_decodes_fixed_records_no_crlf`, `vb_dataset_read_decodes_rdw_records_no_crlf` | Req 16.6: save re-encodes displayed lines to binary record format |
-| `ff-dscatalog` | 🔴 | — | Req 16.7: malformed RDW returns diagnostic error with dataset identity and record position |
-| `ff-dscatalog` | 🔴 | — | Req 17.1: RecordCodec trait defined with no filesystem or SQLite dependency |
-| `ff-dscatalog` | 🔴 | — | Req 17.2: FixedCodec encodes/decodes fixed-length records given LRECL |
-| `ff-dscatalog` | 🔴 | — | Req 17.3: VariableCodec encodes/decodes variable-length records with 4-byte RDW |
-| `ff-dscatalog` | 🔴 | — | Req 17.4: BinaryCodec passes bytes through unchanged for RECFM=U |
-| `ff-dscatalog` | 🔴 | — | Req 17.5: TextCodec maps host text lines to/from fixed-length records; import/export only |
-| `ff-dscatalog` | 🔴 | — | Req 17.6: all codecs independently testable using in-memory byte buffers |
-| `ff-dscatalog` | 🔴 | — | Req 17.7: import/export requires explicit codec and encoding policy; not inferred silently |
-| `ff-dscatalog` | 🔴 | — | Req 18.1: PS dataset content stored as native file; no SQLite BLOB |
-| `ff-dscatalog` | 🔴 | — | Req 18.2: PDS/PDSE member content stored as individual native files; no SQLite BLOB |
-| `ff-dscatalog` | 🔴 | — | Req 18.3: GDG generation content stored as native files |
-| `ff-dscatalog` | 🔴 | — | Req 18.4: VSAM KSDS records stored in dedicated SQLite-backed keyed record store |
-| `ff-dscatalog` | 🔴 | — | Req 18.5: VSAM RRDS records stored in SQLite-backed relative-record store |
-| `ff-dscatalog` | 🔴 | — | Req 18.6: VSAM ESDS records stored in append-oriented native file; sidecar index rebuildable |
-| `ff-dscatalog` | 🔴 | — | Req 18.7: POSIX files remain native host filesystem objects; not copied into SQLite |
-| `ff-dscatalog` | 🔴 | — | Req 18.8: PS/PDS/GDG/POSIX content NOT stored as BLOBs in central catalogue database |
-| `ff-dscatalog` | 🔴 | — | Req 19.1: StorageProvider trait defined with allocate/open/stat/rename/delete/list/reconcile |
-| `ff-dscatalog` | 🔴 | — | Req 19.2: providers declare capabilities; callers do not infer from dataset type |
-| `ff-dscatalog` | 🔴 | — | Req 19.3: native-file and SQLite-record providers share common error taxonomy mapping to VfsError |
-| `ff-dscatalog` | 🔴 | — | Req 19.4: provider-specific locators opaque outside provider and catalogue services |
-| `ff-dscatalog` | 🔴 | — | Req 19.5: NativeFileProvider implements StorageProvider for PS/PDS/GDG/POSIX |
-| `ff-dscatalog` | 🔴 | — | Req 19.6: SqliteRecordProvider implements StorageProvider for VSAM KSDS/RRDS/ISAM |
-| `ff-dscatalog` | 🔴 | — | Req 19.7: new StorageProvider addable without changing editors, catalogue consumers, or VFS layer |
-| `ff-dscatalog` | 🔴 | — | Req 20.1: each managed physical object assigned stable UUID at allocation time |
-| `ff-dscatalog` | 🔴 | — | Req 20.2: repository layout uses datasets/objects/<uuid>.dat and indexed/<uuid>.sqlite |
-| `ff-dscatalog` | 🔴 | — | Req 20.3: logical dataset name NOT used as physical path |
-| `ff-dscatalog` | 🔴 | — | Req 20.4: physical mapping deterministic and persisted; dataset findable after restart |
-| `ff-dscatalog` | 🔴 | — | Req 20.5: dots in DSN NOT translated directly to directory separators in UUID layout |
-| `ff-dscatalog` | 🔴 | — | Req 20.6: dataset rename updates catalogue only; physical object not moved |
-| `ff-dscatalog` | 🔴 | — | Req 20.7: path-safety guards reject traversal, reserved names, illegal chars, length violations |
+| `ff-dscatalog` | 🔴 | -- | Req 16.7: malformed RDW returns diagnostic error with dataset identity and record position |
+| `ff-dscatalog` | 🔴 | -- | Req 17.1: RecordCodec trait defined with no filesystem or SQLite dependency |
+| `ff-dscatalog` | 🔴 | -- | Req 17.2: FixedCodec encodes/decodes fixed-length records given LRECL |
+| `ff-dscatalog` | 🔴 | -- | Req 17.3: VariableCodec encodes/decodes variable-length records with 4-byte RDW |
+| `ff-dscatalog` | 🔴 | -- | Req 17.4: BinaryCodec passes bytes through unchanged for RECFM=U |
+| `ff-dscatalog` | 🔴 | -- | Req 17.5: TextCodec maps host text lines to/from fixed-length records; import/export only |
+| `ff-dscatalog` | 🔴 | -- | Req 17.6: all codecs independently testable using in-memory byte buffers |
+| `ff-dscatalog` | 🔴 | -- | Req 17.7: import/export requires explicit codec and encoding policy; not inferred silently |
+| `ff-dscatalog` | 🔴 | -- | Req 18.1: PS dataset content stored as native file; no SQLite BLOB |
+| `ff-dscatalog` | 🔴 | -- | Req 18.2: PDS/PDSE member content stored as individual native files; no SQLite BLOB |
+| `ff-dscatalog` | 🔴 | -- | Req 18.3: GDG generation content stored as native files |
+| `ff-dscatalog` | 🔴 | -- | Req 18.4: VSAM KSDS records stored in dedicated SQLite-backed keyed record store |
+| `ff-dscatalog` | 🔴 | -- | Req 18.5: VSAM RRDS records stored in SQLite-backed relative-record store |
+| `ff-dscatalog` | 🔴 | -- | Req 18.6: VSAM ESDS records stored in append-oriented native file; sidecar index rebuildable |
+| `ff-dscatalog` | 🔴 | -- | Req 18.7: POSIX files remain native host filesystem objects; not copied into SQLite |
+| `ff-dscatalog` | 🔴 | -- | Req 18.8: PS/PDS/GDG/POSIX content NOT stored as BLOBs in central catalogue database |
+| `ff-dscatalog` | 🔴 | -- | Req 19.1: StorageProvider trait defined with allocate/open/stat/rename/delete/list/reconcile |
+| `ff-dscatalog` | 🔴 | -- | Req 19.2: providers declare capabilities; callers do not infer from dataset type |
+| `ff-dscatalog` | 🔴 | -- | Req 19.3: native-file and SQLite-record providers share common error taxonomy mapping to VfsError |
+| `ff-dscatalog` | 🔴 | -- | Req 19.4: provider-specific locators opaque outside provider and catalogue services |
+| `ff-dscatalog` | 🔴 | -- | Req 19.5: NativeFileProvider implements StorageProvider for PS/PDS/GDG/POSIX |
+| `ff-dscatalog` | 🔴 | -- | Req 19.6: SqliteRecordProvider implements StorageProvider for VSAM KSDS/RRDS/ISAM |
+| `ff-dscatalog` | 🔴 | -- | Req 19.7: new StorageProvider addable without changing editors, catalogue consumers, or VFS layer |
+| `ff-dscatalog` | 🔴 | -- | Req 20.1: each managed physical object assigned stable UUID at allocation time |
+| `ff-dscatalog` | 🔴 | -- | Req 20.2: repository layout uses datasets/objects/<uuid>.dat and indexed/<uuid>.sqlite |
+| `ff-dscatalog` | 🔴 | -- | Req 20.3: logical dataset name NOT used as physical path |
+| `ff-dscatalog` | 🔴 | -- | Req 20.4: physical mapping deterministic and persisted; dataset findable after restart |
+| `ff-dscatalog` | 🔴 | -- | Req 20.5: dots in DSN NOT translated directly to directory separators in UUID layout |
+| `ff-dscatalog` | 🔴 | -- | Req 20.6: dataset rename updates catalogue only; physical object not moved |
+| `ff-dscatalog` | 🔴 | -- | Req 20.7: path-safety guards reject traversal, reserved names, illegal chars, length violations |
 | `ff-dscatalog` | 🟢 | `storage::sqlite_record::tests::creates_indexed_database_with_wal_and_schema` | Req 21.1: KSDS provider uses dedicated SQLite database per dataset |
 | `ff-dscatalog` | 🟡 | `storage::sqlite_record::tests::metadata_survives_reopen_and_mismatches_are_rejected` | Req 21.2: key metadata persists with the indexed database; catalogue-layer wiring remains |
 | `ff-dscatalog` | 🟢 | `storage::sqlite_record::tests::supports_keyed_crud_and_ordered_ranges` | Req 21.3: KSDS supports keyed read, ordered read, CRUD, and range retrieval |
@@ -1163,14 +1163,14 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-dscatalog` | ✅ | `integrity::tests::restore_extracts_files_to_target_root`, `restore_preserves_file_content` | Req 26.4: workspace.restore supports original root or remapped root without changing logical names |
 | `ff-dscatalog` | ✅ | `integrity::tests::diagnose_reports_dangling_entry`, `diagnose_reports_orphaned_object`, `diagnose_reports_checksum_mismatch`, `diagnose_clean_workspace_returns_empty` | Req 26.5: workspace.diagnose reports orphaned physical objects and dangling catalogue entries |
 | `ff-dscatalog` | ✅ | `integrity::tests::repair_plan_maps_findings_to_actions`, `apply_repair_deletes_orphan_file`, `apply_repair_dangling_entry_is_noop_on_filesystem`, `repair_plan_is_empty_for_no_findings` | Req 26.6: repair operations previewable, auditable, reversible where practical |
-| `ff-dscatalog` | 🔴 | — | Req 27.1: reconciliation compares catalogue entries with physical objects per provider |
-| `ff-dscatalog` | 🔴 | — | Req 27.2: reconciliation detects missing, inaccessible, duplicated, or inconsistent objects |
-| `ff-dscatalog` | 🔴 | — | Req 27.3: reconciliation reports proposed corrections without auto-applying |
+| `ff-dscatalog` | 🔴 | -- | Req 27.1: reconciliation compares catalogue entries with physical objects per provider |
+| `ff-dscatalog` | 🔴 | -- | Req 27.2: reconciliation detects missing, inaccessible, duplicated, or inconsistent objects |
+| `ff-dscatalog` | 🔴 | -- | Req 27.3: reconciliation reports proposed corrections without auto-applying |
 | `ff-dscatalog` | ✅ | `audit::tests::audit_log_records_all_action_variants`, `audit_log_records_create_action`, `audit_log_records_delete_action`, `audit_log_records_err_outcome`, `audit_log_catalogue_level_action_has_no_dsn`, `audit_log_entries_ordered_newest_first` | Req 27.4: audit_log table records create/rename/move/delete/restore/import/export/allocate |
 | `ff-dscatalog` | ✅ | `audit::tests::audit_log_timestamp_is_nonempty` | Req 28.6: audit events identify action, object, outcome, timestamp, principal |
 | `ff-dscatalog` | ✅ | `storage::native::tests::path_traversal_and_reserved_names_always_rejected` | Req 28.1: all resolved physical paths constrained to authorised workspace roots |
 | `ff-dscatalog` | ✅ | `storage::native::tests::path_traversal_and_reserved_names_always_rejected` | Req 28.2: path canonicalisation and traversal checks before any filesystem access |
-| `ff-dscatalog` | 🔴 | — | Req 28.3: catalogue metadata not treated as substitute for OS access controls |
+| `ff-dscatalog` | 🔴 | -- | Req 28.3: catalogue metadata not treated as substitute for OS access controls |
 | `ff-dscatalog` | ✅ | `security::tests::scrub_payload_returns_redacted_string`, `scrub_payload_never_exposes_content`, `scrub_str_returns_redacted`, `scrub_empty_payload`, `scrub_single_byte_payload` | Req 28.4: sensitive dataset contents and credentials not written to logs |
 | `ff-dscatalog` | ✅ | `security::tests::parameterised_query_neutralises_sql_injection_in_datasets`, `parameterised_query_neutralises_sql_injection_in_audit_log` | Req 28.5: all SQLite connections use parameterised statements; no interpolated schema identifiers |
 | `ff-dscatalog` | ✅ | `schema::tests::migration_from_v1_to_v2_creates_audit_log_table`, `migration_is_idempotent_on_current_version`, `migration_rejects_newer_version` | Req 27.5: schema changes versioned and applied through forward migration scripts |
@@ -1180,10 +1180,10 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-dscatalog` | ✅ | `hierarchy::tests::uniqueness_fails_on_same_scope_collision`, `uniqueness_passes_when_same_dsn_different_scope`, `catalog_registry::tests::check_scope_uniqueness_rejects_duplicate_in_same_scope`, `check_scope_uniqueness_allows_same_dsn_in_different_scope` | Req 29.4: uniqueness validated per configured naming scope and collation rules |
 | `ff-dscatalog` | ✅ | `vfs_provider::tests::cross_platform_uuid_layout_produces_identical_logical_results` | Req 30.1: architecture operates identically on Windows, Linux, and macOS |
 | `ff-dscatalog` | ✅ | `vfs_provider::tests::catalogue_listing_does_not_load_payload_bytes` | Req 30.2: catalogue listing queries metadata without loading dataset payloads |
-| `ff-dscatalog` | 🔴 | — | Req 30.3: design permits large datasets/libraries without all content in central catalogue DB |
-| `ff-dscatalog` | 🔴 | — | Req 30.4: catalogue, codec, and provider components independently testable |
-| `ff-dscatalog` | 🔴 | — | Req 30.5: storage operations emit structured diagnostic events with correlation identifiers |
-| `ff-dscatalog` | 🔴 | — | Req 30.6: future storage provider addable without rewriting editors or catalogue consumers |
+| `ff-dscatalog` | 🔴 | -- | Req 30.3: design permits large datasets/libraries without all content in central catalogue DB |
+| `ff-dscatalog` | 🔴 | -- | Req 30.4: catalogue, codec, and provider components independently testable |
+| `ff-dscatalog` | 🔴 | -- | Req 30.5: storage operations emit structured diagnostic events with correlation identifiers |
+| `ff-dscatalog` | 🔴 | -- | Req 30.6: future storage provider addable without rewriting editors or catalogue consumers |
 | `ff-dscatalog` | ✅ | `vfs_provider::tests::pds_members_are_plain_files_readable_without_workbench` | Req 30.7: text-oriented PDS/PDSE members representable as ordinary files for Git |
 | `ff-dscatalog` | ✅ | `vfs_provider::tests::data_fidelity_binary_content_survives_round_trip` | Req 30.8: system does not silently alter bytes, encoding, record boundaries, keys, or generation identity |
 | `ff-vfs` | ✅ | `storage_provider::tests::storage_provider_trait_object_is_object_safe`, `mock_provider_stored_as_arc_dyn` | Req 9.1 (VFS): StorageProvider trait defined separate from VfsProvider |
@@ -1983,20 +1983,20 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | ?? | -- | Req 6.1: revised POM has 12 options (0-8 unchanged, 9/S/B added) |
-| `ff-desktop` | ?? | -- | Req 6.2: key 9 routes to JES job monitor panel |
-| `ff-desktop` | ?? | -- | Req 6.3: key S routes to Global Search panel |
-| `ff-desktop` | ?? | -- | Req 6.4: key B shows Batch status message |
-| `ff-desktop` | ?? | -- | Req 6.5: existing keys 0-8 behaviour unchanged |
-| `ff-desktop` | ?? | -- | Req 6.6: options grouped as Core (0-8) and Extended (9/S/B) in TOML |
-| `ff-desktop` | ?? | -- | Req 7.1: DEFAULT_POM_TOML produces MenuFile with 12 options matching Req 6.1 |
-| `ff-desktop` | ?? | -- | Req 7.2: ensure_default_menu_files writes pom.toml when absent |
-| `ff-desktop` | ?? | -- | Req 7.3: ensure_default_menu_files does not overwrite existing pom.toml |
-| `ff-desktop` | ?? | -- | Req 7.4: DEFAULT_POM_TOML is valid TOML parseable by toml crate |
-| `ff-desktop` | ?? | -- | Req 7.5: DEFAULT_POM_TOML uses only plain ASCII characters |
-| `docs` | ?? | -- | Req 8.1: startup-and-session Req 14.3 lists all 12 options |
-| `docs` | ?? | -- | Req 8.2: updated Req 14.3 retains forward-reference note to menu-workspace spec |
-| `docs` | ?? | -- | Req 8.3: updated Req 14.3 notes that options 9/S/B are new in Phase CV |
+| `ff-desktop` | PASS | `primary_option_menu.rs`, `shell/tests.rs` unit tests | Req 6.1: revised POM has 12 options (0-8 unchanged, 9/S/B added) |
+| `ff-desktop` | PASS | `shell/tests.rs::pom_key_9_routes_to_jes` | Req 6.2: key 9 routes to JES job monitor panel |
+| `ff-desktop` | PASS | `shell/tests.rs::pom_key_s_routes_to_search` | Req 6.3: key S routes to Global Search panel |
+| `ff-desktop` | PASS | `shell/tests.rs::pom_key_b_shows_batch_message` | Req 6.4: key B shows Batch status message |
+| `ff-desktop` | PASS | `shell/tests.rs::pom_keys_0_to_8_unchanged`, `pom_option_keys_are_zero_through_eight_then_extended` | Req 6.5: existing keys 0-8 behaviour unchanged |
+| `ff-desktop` | PASS | `menu_workspace/defaults.rs` unit tests | Req 6.6: options grouped as Core (0-8) and Extended (9/S/B) in TOML |
+| `ff-desktop` | PASS | `menu_workspace/defaults.rs::default_pom_toml_has_12_options` | Req 7.1: DEFAULT_POM_TOML produces MenuFile with 12 options matching Req 6.1 |
+| `ff-desktop` | PASS | `menu_workspace/defaults.rs::ensure_default_menu_files_creates_pom_toml` | Req 7.2: ensure_default_menu_files writes pom.toml when absent |
+| `ff-desktop` | PASS | `menu_workspace/defaults.rs::ensure_default_menu_files_does_not_overwrite_existing` | Req 7.3: ensure_default_menu_files does not overwrite existing pom.toml |
+| `ff-desktop` | PASS | `menu_workspace/defaults.rs::default_pom_toml_is_valid_toml` | Req 7.4: DEFAULT_POM_TOML is valid TOML parseable by toml crate |
+| `ff-desktop` | PASS | `menu_workspace/defaults.rs::default_pom_toml_ascii_only` | Req 7.5: DEFAULT_POM_TOML uses only plain ASCII characters |
+| `docs` | PASS | `startup-and-session/requirements.md` Req 14.3 | Req 8.1: startup-and-session Req 14.3 lists all 12 options |
+| `docs` | PASS | `startup-and-session/requirements.md` Req 14.3 | Req 8.2: updated Req 14.3 retains forward-reference note to menu-workspace spec |
+| `docs` | PASS | `startup-and-session/requirements.md` Req 14.3 | Req 8.3: updated Req 14.3 notes that options 9/S/B are new in Phase CV |
 
 ### Phase CW -- Settings as a Menu Workspace (CR-NR-047)
 
@@ -2022,6 +2022,20 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `docs` | ?? | -- | Req 12.1: configuration-system Req 15 describes two-level Settings navigation |
 | `docs` | ?? | -- | Req 12.2: updated Req 15 retains criteria 15.1-15.11 with Phase CW adjustments |
 | `docs` | ?? | -- | Req 12.3: updated Req 15 notes Settings_Menu backed by menus/settings.toml |
+
+### Phase DA -- Configurable Menu Option Limits (CR-NR-050)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | menu_limit_keys_have_correct_defaults | Req 9.1: menu.soft_option_limit (default 64) and menu.hard_option_limit (default 256) config keys defined |
+| `ff-desktop` | ✅ | count_at_or_below_soft_limit_no_advisory, load_with_limits_end_to_end_within_soft | Req 9.2: option count <= soft limit loads and renders with no warning |
+| `ff-desktop` | ✅ | count_above_soft_below_hard_sets_advisory, advisory_line_rendered_when_soft_exceeded | Req 9.3: count above soft, at/below hard loads, logs WARN, shows advisory line |
+| `ff-desktop` | ✅ | count_above_hard_returns_load_error | Req 9.4: count above hard limit rejected as load error, no option rows rendered |
+| `ff-desktop` | ✅ | hard_below_soft_clamps_effective_soft_to_hard | Req 9.5: hard limit below soft limit clamps effective soft to hard and logs WARN |
+| `ff-desktop` | ✅ | menu_limit_keys_have_correct_defaults, option_limits_from_config_falls_back_to_defaults | Req 9.6: absent limit key applies default value |
+| `ff-desktop` | ✅ | option_limits_from_config_falls_back_to_defaults | Req 9.7: invalid limit value falls back to default and logs WARN |
+| `ff-desktop` | ✅ | disabled_options_count_toward_limits | Req 9.8: disabled options count toward both limits (counted before enabled filtering) |
+| `ff-desktop` | ✅ | reload_over_hard_limit_transitions_to_error, reload_back_under_limit_recovers | Req 9.9: limits re-evaluated on hot-reload; over-hard transitions to error, back-under recovers |
 
 ### Phase CX -- Named Workspaces + KEYS Name + SPLIT Alias (CR-NR-046, CR-CH-010)
 

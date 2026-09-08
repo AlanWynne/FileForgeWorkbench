@@ -1,4 +1,4 @@
-# File Forge Workbench — Architecture Brief
+# File Forge Workbench -- Architecture Brief
 
 **Foundation Architecture for Phase 1 and Beyond**
 
@@ -465,7 +465,7 @@ The theme engine supplies colours and typography to the GUI layer.
 
 ## 14. Development Phases
 
-### Phase 1 — Platform Foundation
+### Phase 1 -- Platform Foundation
 
 Deliver:
 - Workspace
@@ -475,7 +475,7 @@ Deliver:
 - Theme Engine
 - Plugin API
 
-### Phase 2 — Workbench Shell
+### Phase 2 -- Workbench Shell
 
 Deliver:
 - egui frontend
@@ -483,7 +483,7 @@ Deliver:
 - Panel framework
 - Workspace management
 
-### Phase 3 — Document System
+### Phase 3 -- Document System
 
 Deliver:
 - Documents
@@ -491,7 +491,7 @@ Deliver:
 - Editors
 - Session recovery
 
-### Phase 4 — Host Connectivity
+### Phase 4 -- Host Connectivity
 
 Deliver:
 - Local file system
@@ -499,7 +499,7 @@ Deliver:
 - SFTP
 - SSH
 
-### Phase 5 — Mainframe Integration
+### Phase 5 -- Mainframe Integration
 
 Deliver:
 - z/OS FTP
@@ -507,7 +507,7 @@ Deliver:
 - z/OSMF
 - TN3270
 
-### Phase 6 — Plugin Ecosystem
+### Phase 6 -- Plugin Ecosystem
 
 Deliver:
 - Plugin SDK

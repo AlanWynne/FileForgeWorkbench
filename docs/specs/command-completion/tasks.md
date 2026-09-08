@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-completion` crate — the auto-complete subsystem for FileForgeWorkbench's primary command field and line-command prefix area. The completion engine provides context-sensitive suggestions sourced from the command registry, VFS, macro engine, and extensible providers. It supports prefix and fuzzy matching, configurable trigger behaviour, intelligent popup positioning, and full keyboard navigation.
+This plan covers the complete implementation of the `ff-completion` crate -- the auto-complete subsystem for FileForgeWorkbench's primary command field and line-command prefix area. The completion engine provides context-sensitive suggestions sourced from the command registry, VFS, macro engine, and extensible providers. It supports prefix and fuzzy matching, configurable trigger behaviour, intelligent popup positioning, and full keyboard navigation.
 
 This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-command` (command registry, metadata), `ff-vfs` (file path completion), `ff-lua-macro` (macro name completion), `ff-config` (configuration settings), and `ff-logging` (diagnostics).
 
@@ -28,8 +28,8 @@ This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-com
 - [x] 3. CompletionContext model
   - [x] 3.1 Define `CompletionField` enum: PrimaryCommand, PrefixArea
   - [x] 3.2 Define `CompletionContext` struct with fields: field (CompletionField), typed_text (String), cursor_position (usize), parsed_command_id (Option<String>), argument_index (Option<usize>)
-  - [x] 3.3 Implement `CompletionContext::is_command_position()` — true when cursor is in the first token
-  - [x] 3.4 Implement `CompletionContext::is_argument_position()` — true when cursor is after command name
+  - [x] 3.3 Implement `CompletionContext::is_command_position()` -- true when cursor is in the first token
+  - [x] 3.4 Implement `CompletionContext::is_argument_position()` -- true when cursor is after command name
   - [x] 3.5 Implement builder pattern for test construction
   - [x] 3.6 Write unit tests for context classification (command vs argument position, primary vs prefix field)
   - Covers: Requirement 1 (AC 1.1), Requirement 2 (AC 2.1), Requirement 7 (AC 7.1)
@@ -44,41 +44,41 @@ This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-com
   - [x] 4.7 Write unit tests for registration, deregistration, and context-based provider lookup
   - Covers: Requirement 10 (AC 10.1, 10.2, 10.3, 10.6)
 
-- [x] 5. Matching algorithms — prefix and fuzzy
-  - [x] 5.1 Implement `prefix_match(query: &str, candidate: &str, case_sensitive: bool) -> bool` — returns true if candidate starts with query
-  - [x] 5.2 Implement `fuzzy_match(query: &str, candidate: &str, case_sensitive: bool) -> Option<FuzzyMatchResult>` — returns matched positions and score if all query chars appear in order
+- [x] 5. Matching algorithms -- prefix and fuzzy
+  - [x] 5.1 Implement `prefix_match(query: &str, candidate: &str, case_sensitive: bool) -> bool` -- returns true if candidate starts with query
+  - [x] 5.2 Implement `fuzzy_match(query: &str, candidate: &str, case_sensitive: bool) -> Option<FuzzyMatchResult>` -- returns matched positions and score if all query chars appear in order
   - [x] 5.3 Define `FuzzyMatchResult` struct: matched_positions (Vec<usize>), score (u32), contiguity_bonus (u32)
   - [x] 5.4 Implement fuzzy scoring: higher for consecutive matches, higher for match at word start, higher for shorter candidates
-  - [x] 5.5 Implement `MatchingMode` enum: Prefix, Fuzzy — dispatches to appropriate algorithm
+  - [x] 5.5 Implement `MatchingMode` enum: Prefix, Fuzzy -- dispatches to appropriate algorithm
   - [x] 5.6 Write unit tests for prefix matching (case variations, empty strings, exact match)
   - [x] 5.7 Write unit tests for fuzzy matching (subsequence, scoring, non-match, edge cases)
   - Covers: Requirement 1 (AC 1.2), Requirement 6 (AC 6.1, 6.2, 6.4, 6.6)
 
 - [x] 6. CompletionList model and filtering
   - [x] 6.1 Define `CompletionList` struct: all_candidates (Vec<CompletionCandidate>), filtered (Vec<usize>), matching_mode (MatchingMode), case_sensitive (bool)
-  - [x] 6.2 Implement `CompletionList::filter(query: &str)` — re-filters all_candidates against query, updating filtered indices
+  - [x] 6.2 Implement `CompletionList::filter(query: &str)` -- re-filters all_candidates against query, updating filtered indices
   - [x] 6.3 Implement ranking: exact prefix matches first, then shorter names, then frequency-weighted (sort_priority field)
   - [x] 6.4 Implement fuzzy ranking: contiguity_bonus first, then start-of-word bonus, then candidate length
-  - [x] 6.5 Implement `CompletionList::is_empty()` — true if filtered list has zero items
+  - [x] 6.5 Implement `CompletionList::is_empty()` -- true if filtered list has zero items
   - [x] 6.6 Implement `CompletionList::get(index: usize) -> Option<&CompletionCandidate>` for indexed access into filtered view
   - [x] 6.7 Implement de-duplication by insertion_value when merging from multiple providers
   - [x] 6.8 Write unit tests for filtering, ranking, de-duplication, and empty-list detection
   - Covers: Requirement 1 (AC 1.4, 1.6, 1.7), Requirement 2 (AC 2.7), Requirement 6 (AC 6.4)
 
-- [x] 7. CompletionEngine — core orchestrator
+- [x] 7. CompletionEngine -- core orchestrator
   - [x] 7.1 Define `CompletionEngine` struct holding: ProviderRegistry, CompletionConfig, current active CompletionSession (Option)
   - [x] 7.2 Define `CompletionSession` struct: context (CompletionContext), list (CompletionList), anchor_position (usize), is_active (bool)
-  - [x] 7.3 Implement `trigger(context: CompletionContext) -> Result<CompletionSession, CompletionError>` — creates session, invokes providers, filters
-  - [x] 7.4 Implement provider invocation — gather candidates from all applicable providers, merge, de-duplicate, rank
-  - [x] 7.5 Implement provider error isolation — catch panics/errors per provider, log WARN, continue with remaining providers
-  - [x] 7.6 Implement `update_filter(new_text: &str)` — re-filter active session dynamically as user types
+  - [x] 7.3 Implement `trigger(context: CompletionContext) -> Result<CompletionSession, CompletionError>` -- creates session, invokes providers, filters
+  - [x] 7.4 Implement provider invocation -- gather candidates from all applicable providers, merge, de-duplicate, rank
+  - [x] 7.5 Implement provider error isolation -- catch panics/errors per provider, log WARN, continue with remaining providers
+  - [x] 7.6 Implement `update_filter(new_text: &str)` -- re-filter active session dynamically as user types
   - [x] 7.7 Implement auto-hide when filtered list becomes empty
-  - [x] 7.8 Implement `accept(index: usize) -> AcceptResult` — returns insertion text and cursor adjustment
-  - [x] 7.9 Implement `dismiss()` — close active session without accepting
+  - [x] 7.8 Implement `accept(index: usize) -> AcceptResult` -- returns insertion text and cursor adjustment
+  - [x] 7.9 Implement `dismiss()` -- close active session without accepting
   - [x] 7.10 Write unit tests for trigger, filter update, accept, dismiss, and provider error isolation
   - Covers: Requirement 1 (AC 1.5, 1.6, 1.7), Requirement 2 (AC 2.7, 2.8), Requirement 5 (AC 5.1, 5.4), Requirement 10 (AC 10.4, 10.5)
 
-- [x] 8. Built-in provider — Command Name completion
+- [x] 8. Built-in provider -- Command Name completion
   - [x] 8.1 Implement `CommandNameProvider` struct implementing `CompletionProvider`
   - [x] 8.2 Query `CommandRegistry::list_all()` for all registered commands on trigger
   - [x] 8.3 Build `CompletionCandidate` from `CommandMetadata`: label=command_name, insertion_value=canonical_name, category=metadata.category, description=metadata.display_name
@@ -87,9 +87,9 @@ This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-com
   - [x] 8.6 Write unit tests with mock CommandRegistry returning known command sets
   - Covers: Requirement 1 (AC 1.1, 1.2, 1.3, 1.4, 1.5)
 
-- [x] 9. Built-in provider — File Path completion
+- [x] 9. Built-in provider -- File Path completion
   - [x] 9.1 Implement `FilePathProvider` struct implementing `CompletionProvider`
-  - [x] 9.2 Parse typed text as path prefix — detect bare paths vs Resource_URI (`vfs://provider/path`) format
+  - [x] 9.2 Parse typed text as path prefix -- detect bare paths vs Resource_URI (`vfs://provider/path`) format
   - [x] 9.3 Implement async VFS directory listing query via VFS abstraction layer
   - [x] 9.4 Build candidates: label=filename, insertion_value=full_path, kind=FilePath|Directory, description=parent_path
   - [x] 9.5 Mark directory candidates with trailing separator to indicate further completion available
@@ -97,28 +97,28 @@ This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-com
   - [x] 9.7 Write unit tests with mock VFS provider returning known directory structures
   - Covers: Requirement 2 (AC 2.2, 2.3)
 
-- [x] 10. Built-in provider — Keyword/Modifier completion
+- [x] 10. Built-in provider -- Keyword/Modifier completion
   - [x] 10.1 Implement `KeywordProvider` struct implementing `CompletionProvider`
   - [x] 10.2 Define static keyword sets for known commands (FIND modifiers: CHARS/PREFIX/SUFFIX/WORD, scope modifiers: VISIBLE/EXCLUDED/ALL, etc.)
-  - [x] 10.3 Implement argument schema lookup — determine which keyword set applies at the current argument position
+  - [x] 10.3 Implement argument schema lookup -- determine which keyword set applies at the current argument position
   - [x] 10.4 Build candidates from the applicable keyword set
   - [x] 10.5 Write unit tests for keyword resolution at various argument positions
   - Covers: Requirement 2 (AC 2.4)
 
-- [x] 11. Built-in provider — Macro Name completion
+- [x] 11. Built-in provider -- Macro Name completion
   - [x] 11.1 Implement `MacroNameProvider` struct implementing `CompletionProvider`
   - [x] 11.2 Query Lua macro engine for all registered macro names
   - [x] 11.3 Build candidates: label=macro_name (no extension), insertion_value=macro_name, description=macro_file_path and metadata description
-  - [x] 11.4 Implement cache invalidation — refresh macro list when engine emits add/remove/reload notifications
+  - [x] 11.4 Implement cache invalidation -- refresh macro list when engine emits add/remove/reload notifications
   - [x] 11.5 Return empty list (no popup) when no macros are registered
   - [x] 11.6 Write unit tests with mock macro engine returning known macro sets and empty sets
   - Covers: Requirement 8 (AC 8.1, 8.2, 8.3, 8.4, 8.5)
 
-- [x] 12. Built-in provider — Line Command completion
+- [x] 12. Built-in provider -- Line Command completion
   - [x] 12.1 Implement `LineCommandProvider` struct implementing `CompletionProvider`
   - [x] 12.2 Define the complete line command kind set (C, CC, M, MM, D, DD, R, RR, X, XX, I, A, B, O, W, S, T, TT, U, UU, >, >>, <, <<, ), )), (, (( ) with descriptions
   - [x] 12.3 Build candidates: label=command_kind, insertion_value=kind, description=action_description
-  - [x] 12.4 Implement numeric count preservation — when accepting, preserve any numeric suffix already typed
+  - [x] 12.4 Implement numeric count preservation -- when accepting, preserve any numeric suffix already typed
   - [x] 12.5 Only activate when `completion.line_command_completion` is true
   - [x] 12.6 Write unit tests for line command filtering, acceptance with numeric suffix, and config disable
   - Covers: Requirement 7 (AC 7.1, 7.2, 7.3, 7.4, 7.5, 7.6)
@@ -130,7 +130,7 @@ This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-com
   - [x] 13.4 Implement `compute_popup_position(anchor: PopupAnchor, item_count: usize, config: &PopupConfig, viewport: ViewportBounds) -> PopupBounds`
   - [x] 13.5 Implement default placement below command field (top edge adjacent to bottom of field)
   - [x] 13.6 Implement flip-above logic when below placement extends beyond viewport bottom
-  - [x] 13.7 Implement best-fit fallback when both above and below extend beyond viewport — choose direction with more space, clip with scrolling
+  - [x] 13.7 Implement best-fit fallback when both above and below extend beyond viewport -- choose direction with more space, clip with scrolling
   - [x] 13.8 Implement width calculation: at least longest visible label width, bounded by `popup_max_width`, truncate with ellipsis
   - [x] 13.9 Implement height calculation: up to `popup_max_items` rows, scroll if more candidates
   - [x] 13.10 Implement reposition on viewport resize (recompute from anchor)
@@ -140,24 +140,24 @@ This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-com
 
 - [x] 14. Selection and navigation state
   - [x] 14.1 Define `SelectionState` struct: selected_index (usize), page_size (usize), total_items (usize), wrap_enabled (bool)
-  - [x] 14.2 Implement `move_down()` — advance index by 1, wrap from last to first if wrap_enabled, else clamp
-  - [x] 14.3 Implement `move_up()` — retreat index by 1, wrap from first to last if wrap_enabled, else clamp
-  - [x] 14.4 Implement `page_down()` — advance index by page_size items, clamp at end
-  - [x] 14.5 Implement `page_up()` — retreat index by page_size items, clamp at start
-  - [x] 14.6 Implement `selected_candidate() -> Option<&CompletionCandidate>` — retrieve the currently highlighted item
-  - [x] 14.7 Implement `reset(new_total: usize)` — reset selection to index 0 when list is re-filtered
+  - [x] 14.2 Implement `move_down()` -- advance index by 1, wrap from last to first if wrap_enabled, else clamp
+  - [x] 14.3 Implement `move_up()` -- retreat index by 1, wrap from first to last if wrap_enabled, else clamp
+  - [x] 14.4 Implement `page_down()` -- advance index by page_size items, clamp at end
+  - [x] 14.5 Implement `page_up()` -- retreat index by page_size items, clamp at start
+  - [x] 14.6 Implement `selected_candidate() -> Option<&CompletionCandidate>` -- retrieve the currently highlighted item
+  - [x] 14.7 Implement `reset(new_total: usize)` -- reset selection to index 0 when list is re-filtered
   - [x] 14.8 Write unit tests for navigation (wrap/no-wrap), page movement, boundary clamping, and reset
   - Covers: Requirement 4 (AC 4.1, 4.2, 4.8)
 
-- [x] 15. Keyboard interaction — accept, dismiss, and special chars
+- [x] 15. Keyboard interaction -- accept, dismiss, and special chars
   - [x] 15.1 Define `CompletionAction` enum: Accept, Dismiss, MoveDown, MoveUp, PageDown, PageUp, StopChar(char), FillUpChar(char), Continue
   - [x] 15.2 Implement `resolve_key_event(key: KeyEvent, config: &CompletionConfig, session: &CompletionSession) -> CompletionAction`
   - [x] 15.3 Implement Tab key → Accept currently highlighted candidate (replace prefix, dismiss popup)
   - [x] 15.4 Implement Enter key → Accept candidate AND submit command if cursor at end with no further args expected
   - [x] 15.5 Implement Escape key → Dismiss popup without modification
-  - [x] 15.6 Implement Stop_Char detection — dismiss popup on configurable characters (default: space, semicolon)
-  - [x] 15.7 Implement Fill_Up_Char detection — accept candidate then insert the fill-up char
-  - [x] 15.8 Implement `choose_single` behaviour — auto-accept lone match without showing popup
+  - [x] 15.6 Implement Stop_Char detection -- dismiss popup on configurable characters (default: space, semicolon)
+  - [x] 15.7 Implement Fill_Up_Char detection -- accept candidate then insert the fill-up char
+  - [x] 15.8 Implement `choose_single` behaviour -- auto-accept lone match without showing popup
   - [x] 15.9 Write unit tests for all key actions, stop chars, fill-up chars, and choose_single
   - Covers: Requirement 4 (AC 4.3, 4.4, 4.5, 4.6, 4.7, 4.9, 4.10)
 
@@ -173,19 +173,19 @@ This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-com
 
 - [x] 17. Insertion logic
   - [x] 17.1 Define `AcceptResult` struct: inserted_text (String), cursor_offset (usize), prefix_start (usize), prefix_end (usize)
-  - [x] 17.2 Implement prefix replacement — replace only the prefix portion used for filtering, preserve text after cursor
-  - [x] 17.3 Implement `drop_rest_of_word` mode — when enabled, remove text after cursor up to next word boundary before insertion
+  - [x] 17.2 Implement prefix replacement -- replace only the prefix portion used for filtering, preserve text after cursor
+  - [x] 17.3 Implement `drop_rest_of_word` mode -- when enabled, remove text after cursor up to next word boundary before insertion
   - [x] 17.4 Implement command name insertion: replace with canonical uppercase form, append trailing space
   - [x] 17.5 Implement file path insertion: replace typed path prefix with selected path
   - [x] 17.6 Implement line command insertion: replace prefix area content, preserve numeric count
   - [x] 17.7 Write unit tests for insertion at various cursor positions, with and without trailing text, and drop_rest_of_word
-  - Covers: Requirement 1 (AC 1.5), Requirement 4 (AC 4.10), Requirement 7 (AC 7.4), Requirement 9 (AC 9.1 — `drop_rest_of_word`)
+  - Covers: Requirement 1 (AC 1.5), Requirement 4 (AC 4.10), Requirement 7 (AC 7.4), Requirement 9 (AC 9.1 -- `drop_rest_of_word`)
 
 - [x] 18. Trigger behaviour and activation control
   - [x] 18.1 Define `TriggerMode` enum: Manual, Automatic, Both
-  - [x] 18.2 Implement manual trigger — activate only on explicit shortcut (Ctrl+Space / configurable)
-  - [x] 18.3 Implement automatic trigger — activate after `auto_trigger_chars` consecutive typed characters
-  - [x] 18.4 Implement `Both` mode — automatic threshold AND manual shortcut both active
+  - [x] 18.2 Implement manual trigger -- activate only on explicit shortcut (Ctrl+Space / configurable)
+  - [x] 18.3 Implement automatic trigger -- activate after `auto_trigger_chars` consecutive typed characters
+  - [x] 18.4 Implement `Both` mode -- automatic threshold AND manual shortcut both active
   - [x] 18.5 Implement trigger shortcut registration as Command_ID `"completion.trigger"` in Shortcut_Registry
   - [x] 18.6 Write unit tests for each trigger mode, threshold counting, and manual override
   - Covers: Requirement 9 (AC 9.2, 9.3, 9.4, 9.7)
@@ -193,10 +193,10 @@ This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-com
 - [x] 19. Configuration integration
   - [x] 19.1 Define `CompletionConfig` struct with all configurable fields from Requirement 9 (trigger_mode, auto_trigger_chars, matching_mode, case_sensitive, popup_max_items, popup_max_width, auto_hide, cancel_at_start_pos, choose_single, wrap_navigation, stop_chars, fill_up_chars, line_command_completion, drop_rest_of_word)
   - [x] 19.2 Implement `CompletionConfig::from_config_system(config: &ConfigurationSystem)` loading from `completion.*` namespace
-  - [x] 19.3 Implement validation with defaults — invalid/out-of-range values fall back to defaults with WARN log
+  - [x] 19.3 Implement validation with defaults -- invalid/out-of-range values fall back to defaults with WARN log
   - [x] 19.4 Implement range clamping: popup_max_items [3, 50], popup_max_width [100, 1000], auto_trigger_chars [1, 10]
-  - [x] 19.5 Implement matching_mode validation — accept only "prefix" or "fuzzy", fallback to "prefix"
-  - [x] 19.6 Implement hot-reload listener — re-read config on Configuration_System change notification
+  - [x] 19.5 Implement matching_mode validation -- accept only "prefix" or "fuzzy", fallback to "prefix"
+  - [x] 19.6 Implement hot-reload listener -- re-read config on Configuration_System change notification
   - [x] 19.7 Write unit tests for default loading, validation fallbacks, clamping, and hot-reload
   - Covers: Requirement 9 (AC 9.1, 9.5, 9.6), Requirement 6 (AC 6.5)
 
@@ -224,9 +224,9 @@ This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-com
 
 - [x] 23. Thread safety and async validation
   - [x] 23.1 Write test verifying `CompletionEngine`, `ProviderRegistry` implement `Send + Sync`
-  - [x] 23.2 Write async test — concurrent provider invocation does not deadlock
-  - [x] 23.3 Write test — VFS file path provider query is non-blocking (returns future, does not block caller)
-  - [x] 23.4 Write test — provider panic isolation (panicking provider does not crash engine)
+  - [x] 23.2 Write async test -- concurrent provider invocation does not deadlock
+  - [x] 23.3 Write test -- VFS file path provider query is non-blocking (returns future, does not block caller)
+  - [x] 23.4 Write test -- provider panic isolation (panicking provider does not crash engine)
   - Covers: Design Principle 4 (Non-blocking), Requirement 10 (AC 10.4, 10.5)
 
 - [x] 24. Property-based tests
@@ -383,14 +383,14 @@ This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-com
 ## Notes
 
 - This is a Wave 10 (Extensions and Macros) crate depending on `ff-command` (Wave 2), `ff-vfs` (Wave 3), `ff-config` (Wave 2), `ff-lua-macro` (Wave 10), and `ff-logging` (Wave 0)
-- The `ff-lua-macro` dependency is soft — macro name completion gracefully returns an empty list if the macro engine is unavailable or not yet integrated
+- The `ff-lua-macro` dependency is soft -- macro name completion gracefully returns an empty list if the macro engine is unavailable or not yet integrated
 - The `CompletionProvider` trait is designed for both sync and async usage; file path completion (VFS queries) is the primary async provider, while command names and keywords are synchronous
-- The popup positioning model (Task 13) is GUI-independent in its logic — it computes coordinates but does not perform rendering. The egui rendering layer will consume `PopupBounds` to draw the popup widget
+- The popup positioning model (Task 13) is GUI-independent in its logic -- it computes coordinates but does not perform rendering. The egui rendering layer will consume `PopupBounds` to draw the popup widget
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
 - Thread safety relies on `std::sync::RwLock` and `std::sync::Arc` for the ProviderRegistry and engine state
-- The `CommandNameProvider` (Task 8) queries the `CommandRegistry` from `ff-command` — during development, a mock registry can be used until upstream integration is complete
+- The `CommandNameProvider` (Task 8) queries the `CommandRegistry` from `ff-command` -- during development, a mock registry can be used until upstream integration is complete
 - The line command candidate set (Task 12) is derived from the `line-commands` crate specification; the full set is hardcoded as a constant during initial implementation and will be dynamically sourced once the line-commands crate is available
-- Configuration integration (Task 19) uses the `ff-config` crate's `completion.*` namespace — during testing, a mock configuration source provides values
+- Configuration integration (Task 19) uses the `ff-config` crate's `completion.*` namespace -- during testing, a mock configuration source provides values
 - Plugin provider registration and deregistration (Task 4) follows the same lifecycle pattern as plugin architecture: register during `initialize`, deregister on unload
 
 ---

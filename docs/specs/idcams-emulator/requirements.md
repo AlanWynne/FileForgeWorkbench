@@ -2,11 +2,11 @@
 
 ## Introduction
 
-This specification defines the **IDCAMS Emulator** (`ff-idcams`) — the command parsing and orchestration layer for IBM Access Method Services (IDCAMS) within the FileForgeWorkbench ecosystem. The emulator enables mainframe developers to use familiar IDCAMS commands (DEFINE, DELETE, ALTER, LISTCAT, PRINT, REPRO, VERIFY, EXPORT, IMPORT, BLDINDEX) in a local desktop environment without requiring z/OS.
+This specification defines the **IDCAMS Emulator** (`ff-idcams`) -- the command parsing and orchestration layer for IBM Access Method Services (IDCAMS) within the FileForgeWorkbench ecosystem. The emulator enables mainframe developers to use familiar IDCAMS commands (DEFINE, DELETE, ALTER, LISTCAT, PRINT, REPRO, VERIFY, EXPORT, IMPORT, BLDINDEX) in a local desktop environment without requiring z/OS.
 
 **Ownership Principle (ADR-001):** ff-idcams owns ONLY command parsing and orchestration. All actual catalog persistence, VSAM record operations, dataset allocation, and storage access are delegated to downstream service crates through trait interfaces. ff-idcams is a thin command interpreter, not a monolithic implementation.
 
-**Governance Reference:** `.kiro/specs/dataset-ownership-model/requirements.md` — this specification aligns with the Dataset Ownership Model governance document. Where any conflict exists, the governance document takes precedence.
+**Governance Reference:** `.kiro/specs/dataset-ownership-model/requirements.md` -- this specification aligns with the Dataset Ownership Model governance document. Where any conflict exists, the governance document takes precedence.
 
 **Delegation Model:**
 
@@ -30,20 +30,20 @@ This specification defines the **IDCAMS Emulator** (`ff-idcams`) — the command
 
 ## Glossary
 
-- **ff-idcams**: The IDCAMS Emulator crate — owns DEFINE command parsing, LISTCAT command parsing, ALTER command parsing, DELETE command parsing, REPRO command parsing, IMPORT command parsing, EXPORT command parsing, BLDINDEX command parsing, PRINT command parsing, and VERIFY command parsing. [ADR-001]
+- **ff-idcams**: The IDCAMS Emulator crate -- owns DEFINE command parsing, LISTCAT command parsing, ALTER command parsing, DELETE command parsing, REPRO command parsing, IMPORT command parsing, EXPORT command parsing, BLDINDEX command parsing, PRINT command parsing, and VERIFY command parsing. [ADR-001]
 - **IDCAMS_Parser**: The component within ff-idcams that tokenizes and parses IDCAMS control statements into structured command representations.
 - **Command_Executor**: The component within ff-idcams that takes a parsed command and orchestrates delegation to downstream services.
 - **CatalogService**: The trait interface exposed by ff-dataset-catalog through which ff-idcams performs all catalog operations. [ADR-001]
 - **VsamService**: The trait interface exposed by ff-vsam-services through which ff-idcams performs all VSAM operations. [ADR-001]
 - **AllocatorService**: The trait interface exposed by ff-dataset-allocator through which ff-idcams performs dataset resolution. [ADR-001]
-- **ff-vfs**: The Virtual File System crate — owns resource URIs, provider registration, and content access abstraction. [ADR-001]
-- **KSDS**: Key Sequenced Data Set — a VSAM dataset type where records are ordered by a primary key. Organization keyword: INDEXED.
-- **ESDS**: Entry Sequenced Data Set — a VSAM dataset type where records are stored in insertion order. Organization keyword: NONINDEXED.
-- **RRDS**: Relative Record Data Set — a VSAM dataset type where records are addressed by relative record number. Organization keyword: NUMBERED.
-- **LDS**: Linear Data Set — a VSAM dataset type providing byte-oriented linear access with no record structure. Organization keyword: LINEAR.
-- **AIX**: Alternate Index — a secondary index over a VSAM base cluster providing access by an alternate key.
+- **ff-vfs**: The Virtual File System crate -- owns resource URIs, provider registration, and content access abstraction. [ADR-001]
+- **KSDS**: Key Sequenced Data Set -- a VSAM dataset type where records are ordered by a primary key. Organization keyword: INDEXED.
+- **ESDS**: Entry Sequenced Data Set -- a VSAM dataset type where records are stored in insertion order. Organization keyword: NONINDEXED.
+- **RRDS**: Relative Record Data Set -- a VSAM dataset type where records are addressed by relative record number. Organization keyword: NUMBERED.
+- **LDS**: Linear Data Set -- a VSAM dataset type providing byte-oriented linear access with no record structure. Organization keyword: LINEAR.
+- **AIX**: Alternate Index -- a secondary index over a VSAM base cluster providing access by an alternate key.
 - **PATH**: A named access route connecting an alternate index to its base cluster for transparent access.
-- **GDG**: Generation Data Group — a collection of related non-VSAM datasets managed as a group with automatic version rollover.
+- **GDG**: Generation Data Group -- a collection of related non-VSAM datasets managed as a group with automatic version rollover.
 - **SYSIN**: The input stream from which IDCAMS reads control statements (commands).
 - **MAXCC**: The maximum condition code encountered across all commands in a single IDCAMS invocation.
 - **LASTCC**: The condition code returned by the most recently executed command.
@@ -142,7 +142,7 @@ This specification defines the **IDCAMS Emulator** (`ff-idcams`) — the command
 3. THE IDCAMS_Parser SHALL parse the PATHENTRY(aix_name) parameter as a mandatory 1-44 character name identifying the alternate index.
 4. THE IDCAMS_Parser SHALL parse the mutually exclusive parameters UPDATE (default) and NOUPDATE specifying whether accessing the base cluster through this path triggers AIX maintenance.
 5. WHEN the Command_Executor processes a parsed DEFINE PATH command, THE Command_Executor SHALL invoke `VsamService::define_path()` with the path name, AIX name, and update mode.
-6. IF DEFINE PATH specifies a PATHENTRY name that does not exist or is not an alternate index, THEN THE Command_Executor SHALL validate AIX existence during parsing and return condition code 12 with message IDC0512E indicating the AIX is not found — this check occurs before execution is attempted.
+6. IF DEFINE PATH specifies a PATHENTRY name that does not exist or is not an alternate index, THEN THE Command_Executor SHALL validate AIX existence during parsing and return condition code 12 with message IDC0512E indicating the AIX is not found -- this check occurs before execution is attempted.
 7. WHEN DEFINE PATH completes successfully, THE Command_Executor SHALL set LASTCC to 0 and emit message IDC0001I confirming the path definition.
 
 ---
@@ -158,7 +158,7 @@ This specification defines the **IDCAMS Emulator** (`ff-idcams`) — the command
 3. THE IDCAMS_Parser SHALL parse the LIMIT(n) parameter as a positive integer (1-255) specifying the maximum number of generations to retain.
 4. THE IDCAMS_Parser SHALL parse the mutually exclusive parameters SCRATCH (default) and NOSCRATCH specifying whether rolled-off generations are physically deleted or only uncataloged.
 5. THE IDCAMS_Parser SHALL parse the mutually exclusive parameters NOEMPTY (default) and EMPTY specifying whether all generations are rolled off when the limit is exceeded or only the oldest.
-6. THE IDCAMS_Parser SHALL parse the mutually exclusive parameters FIFO and LIFO (default LIFO) specifying generation deactivation order — FIFO deactivates oldest first, LIFO deactivates newest first.
+6. THE IDCAMS_Parser SHALL parse the mutually exclusive parameters FIFO and LIFO (default LIFO) specifying generation deactivation order -- FIFO deactivates oldest first, LIFO deactivates newest first.
 7. WHEN the Command_Executor processes a parsed DEFINE GDG command, THE Command_Executor SHALL invoke `CatalogService::create_gdg_base()` with the base DSN, limit, scratch policy, empty policy, and ordering.
 8. IF DEFINE GDG omits the LIMIT parameter, THEN THE Command_Executor SHALL return condition code 12 with message IDC0520E indicating LIMIT is required.
 9. IF DEFINE GDG specifies a NAME that already exists in the catalog, THEN THE Command_Executor SHALL return condition code 12 with message IDC0514E indicating a duplicate name.
@@ -187,7 +187,7 @@ This specification defines the **IDCAMS Emulator** (`ff-idcams`) — the command
 12. WHEN the Command_Executor processes a DELETE command with type NONVSAM, THE Command_Executor SHALL invoke `CatalogService::delete_dataset()` to remove the catalog entry and associated storage.
 13. IF DELETE specifies an entry name that does not exist in the catalog, THEN THE Command_Executor SHALL return condition code 8 with message IDC0550E indicating entry not found.
 14. IF DELETE specifies a type that does not match the actual catalog entry type, THEN THE Command_Executor SHALL return condition code 12 with message IDC0551E indicating type mismatch.
-15. IF VsamService::destroy_dataset() fails during DELETE CLUSTER, THEN THE Command_Executor SHALL NOT proceed with catalog deletion and SHALL return condition code 12 with the downstream error — deletion is atomic.
+15. IF VsamService::destroy_dataset() fails during DELETE CLUSTER, THEN THE Command_Executor SHALL NOT proceed with catalog deletion and SHALL return condition code 12 with the downstream error -- deletion is atomic.
 16. WHEN DELETE completes successfully for each entry, THE Command_Executor SHALL set LASTCC to 0 and emit message IDC0002I confirming deletion with the entry name.
 17. WHEN DELETE is given a list of names, THE Command_Executor SHALL process each name sequentially, setting LASTCC after each, and continuing to the next entry regardless of individual failures (MAXCC tracks the highest code).
 
@@ -220,7 +220,7 @@ This specification defines the **IDCAMS Emulator** (`ff-idcams`) — the command
 
 1. WHEN the IDCAMS_Parser parses a LISTCAT command, THE IDCAMS_Parser SHALL extract the filter criteria (ENTRIES or LEVEL), display level, and catalog specification into a ListcatCommand structure.
 2. THE IDCAMS_Parser SHALL parse the ENTRIES(name...) parameter as one or more specific dataset names (with optional generic wildcard `*`) to list.
-3. THE IDCAMS_Parser SHALL parse the LEVEL(qualifier) parameter as a high-level qualifier filter selecting all entries under that qualifier. THE LEVEL and ENTRIES parameters SHALL be mutually exclusive — IF both are specified, THE IDCAMS_Parser SHALL return a parse error indicating only one may be used.
+3. THE IDCAMS_Parser SHALL parse the LEVEL(qualifier) parameter as a high-level qualifier filter selecting all entries under that qualifier. THE LEVEL and ENTRIES parameters SHALL be mutually exclusive -- IF both are specified, THE IDCAMS_Parser SHALL return a parse error indicating only one may be used.
 4. THE IDCAMS_Parser SHALL parse the mutually exclusive display level parameters: NAME (names only), HISTORY (names + history), VOLUME (names + volume info), ALL (complete attribute display). Default is NAME.
 5. THE IDCAMS_Parser SHALL parse the CATALOG(catalog_name) parameter specifying which catalog to query.
 6. THE IDCAMS_Parser SHALL parse the entry type filter keywords: CLUSTER, ALTERNATEINDEX, PATH, GDG, NONVSAM, USERCATALOG, DATA, INDEX, or ALL (default ALL).
@@ -244,8 +244,8 @@ This specification defines the **IDCAMS Emulator** (`ff-idcams`) — the command
 1. WHEN the IDCAMS_Parser parses a PRINT command, THE IDCAMS_Parser SHALL extract the input dataset specification, format, and selection criteria into a PrintCommand structure.
 2. THE IDCAMS_Parser SHALL parse the mutually exclusive input parameters INFILE(ddname) and INDATASET(dsn) specifying the dataset to print.
 3. THE IDCAMS_Parser SHALL parse the mutually exclusive format parameters: CHARACTER (printable characters with non-printable shown as periods), HEX (hexadecimal representation), DUMP (combined character and hex display). Default is DUMP.
-4. THE IDCAMS_Parser SHALL parse key-based selection: FROMKEY(key_value) and TOKEY(key_value) specifying the range of keys to print for KSDS datasets. WHEN FROMKEY is specified (with or without TOKEY), THE dataset SHALL be validated as KSDS type — specifying FROMKEY for a non-KSDS dataset SHALL produce an error.
-5. THE IDCAMS_Parser SHALL parse address-based selection: FROMADDRESS(rba) and TOADDRESS(rba) specifying RBA range for ESDS datasets. WHEN FROMADDRESS is specified, THE dataset SHALL be validated as ESDS type — specifying FROMADDRESS for a non-ESDS dataset SHALL produce condition code 12 with an error message.
+4. THE IDCAMS_Parser SHALL parse key-based selection: FROMKEY(key_value) and TOKEY(key_value) specifying the range of keys to print for KSDS datasets. WHEN FROMKEY is specified (with or without TOKEY), THE dataset SHALL be validated as KSDS type -- specifying FROMKEY for a non-KSDS dataset SHALL produce an error.
+5. THE IDCAMS_Parser SHALL parse address-based selection: FROMADDRESS(rba) and TOADDRESS(rba) specifying RBA range for ESDS datasets. WHEN FROMADDRESS is specified, THE dataset SHALL be validated as ESDS type -- specifying FROMADDRESS for a non-ESDS dataset SHALL produce condition code 12 with an error message.
 6. THE IDCAMS_Parser SHALL parse record-number-based selection: FROMRECORD(n) and TORECORD(n) specifying relative record number range.
 7. THE IDCAMS_Parser SHALL parse the COUNT(n) parameter as a positive integer specifying the maximum number of records to print.
 8. THE IDCAMS_Parser SHALL parse the SKIP(n) parameter as a non-negative integer specifying the number of records to skip before printing.
@@ -281,7 +281,7 @@ This specification defines the **IDCAMS Emulator** (`ff-idcams`) — the command
 14. IF REPRO specifies a source dataset that does not exist, THEN THE Command_Executor SHALL return condition code 12 with message IDC0581E indicating source not found.
 15. IF REPRO specifies a target dataset that does not exist, THEN THE Command_Executor SHALL return condition code 12 with message IDC0582E indicating target not found.
 16. WHEN REPRO completes, THE Command_Executor SHALL emit a summary message indicating the number of records copied and the number of records skipped (if any).
-17. THE Command_Executor SHALL process REPRO as an atomic operation — IF a write to the target fails mid-copy, THE Command_Executor SHALL report the error with the number of records successfully copied before the failure.
+17. THE Command_Executor SHALL process REPRO as an atomic operation -- IF a write to the target fails mid-copy, THE Command_Executor SHALL report the error with the number of records successfully copied before the failure.
 
 
 ---
@@ -364,8 +364,8 @@ This specification defines the **IDCAMS Emulator** (`ff-idcams`) — the command
 #### Acceptance Criteria
 
 1. THE Command_Executor SHALL maintain two condition code registers: LASTCC (the return code of the most recently executed command) and MAXCC (the highest return code encountered across all commands in the current invocation).
-2. WHEN a command completes execution, THE Command_Executor SHALL set LASTCC to the command's return code and update MAXCC to be the maximum of the current MAXCC and LASTCC. MAXCC SHALL never decrease during an invocation — once set to a high value, it remains at that value even if all subsequent commands succeed with code 0.
-3. THE Command_Executor SHALL support these condition code values: 0 (successful completion), 4 (warning — operation completed with minor issues), 8 (error — operation failed but processing continues), 12 (severe error — the specific command failed), 16 (catastrophic error — processing should terminate).
+2. WHEN a command completes execution, THE Command_Executor SHALL set LASTCC to the command's return code and update MAXCC to be the maximum of the current MAXCC and LASTCC. MAXCC SHALL never decrease during an invocation -- once set to a high value, it remains at that value even if all subsequent commands succeed with code 0.
+3. THE Command_Executor SHALL support these condition code values: 0 (successful completion), 4 (warning -- operation completed with minor issues), 8 (error -- operation failed but processing continues), 12 (severe error -- the specific command failed), 16 (catastrophic error -- processing should terminate).
 4. WHEN the IDCAMS_Parser parses a SET MAXCC(n) command, THE Command_Executor SHALL set MAXCC to the specified value n (0-16).
 5. WHEN the IDCAMS_Parser parses a SET LASTCC(n) command, THE Command_Executor SHALL set LASTCC to the specified value n (0-16).
 6. WHEN the entire IDCAMS invocation completes (all commands processed), THE Command_Executor SHALL return MAXCC as the overall process return code.
@@ -389,7 +389,7 @@ This specification defines the **IDCAMS Emulator** (`ff-idcams`) — the command
 7. WHEN the Command_Executor evaluates an IF statement, THE Command_Executor SHALL evaluate the condition against the current LASTCC and MAXCC values, then execute either the THEN or ELSE clause.
 8. WHEN the THEN or ELSE clause contains multiple commands (DO/END block), THE Command_Executor SHALL execute them sequentially, updating LASTCC and MAXCC after each.
 9. IF an IF condition references an undefined register (neither LASTCC nor MAXCC), THEN THE IDCAMS_Parser SHALL return a parse error with message IDC0630E indicating invalid condition operand.
-10. THE Command_Executor SHALL support nested IF statements — an IF within a THEN or ELSE clause.
+10. THE Command_Executor SHALL support nested IF statements -- an IF within a THEN or ELSE clause.
 
 ---
 
@@ -418,7 +418,7 @@ This specification defines the **IDCAMS Emulator** (`ff-idcams`) — the command
 1. THE Command_Executor SHALL process multiple commands from a single input stream, where commands are separated by: (a) newlines (each command starts on a new line after the previous command ends), (b) semicolons (`;` separating commands on the same line), or (c) explicit end of the previous command's parameters.
 2. THE Command_Executor SHALL execute chained commands sequentially in input order.
 3. WHEN a command in the chain sets LASTCC to 8 or 12, THE Command_Executor SHALL continue processing subsequent commands in the chain (unless LASTCC is 16 or a modal command directs otherwise).
-4. THE Command_Executor SHALL maintain LASTCC and MAXCC across all commands in the chain — MAXCC accumulates the worst return code from any command in the chain.
+4. THE Command_Executor SHALL maintain LASTCC and MAXCC across all commands in the chain -- MAXCC accumulates the worst return code from any command in the chain.
 5. WHEN all commands in the chain have been processed, THE Command_Executor SHALL return MAXCC as the invocation return code.
 6. THE Command_Executor SHALL support at least 100 commands in a single chained invocation without degradation.
 
@@ -431,10 +431,10 @@ This specification defines the **IDCAMS Emulator** (`ff-idcams`) — the command
 #### Acceptance Criteria
 
 1. THE Command_Executor SHALL format all messages using the pattern `IDCnnnnX text` where: `nnnn` is a 4-digit message number (0000-9999), and `X` is the severity indicator (I=Informational, W=Warning, E=Error, S=Severe).
-2. THE Command_Executor SHALL emit informational messages (I) only for successful operations (condition code 0) — informational severity SHALL NOT be used for failed operations.
-3. THE Command_Executor SHALL emit warning messages (W) for operations that completed with minor issues — these correspond to condition code 4.
-4. THE Command_Executor SHALL emit error messages (E) for operations that failed — these correspond to condition code 8 or 12.
-5. THE Command_Executor SHALL emit severe messages (S) for catastrophic failures — these correspond to condition code 16.
+2. THE Command_Executor SHALL emit informational messages (I) only for successful operations (condition code 0) -- informational severity SHALL NOT be used for failed operations.
+3. THE Command_Executor SHALL emit warning messages (W) for operations that completed with minor issues -- these correspond to condition code 4.
+4. THE Command_Executor SHALL emit error messages (E) for operations that failed -- these correspond to condition code 8 or 12.
+5. THE Command_Executor SHALL emit severe messages (S) for catastrophic failures -- these correspond to condition code 16.
 6. THE Command_Executor SHALL include contextual information in error messages: the command verb, the entry name (if applicable), and a description of the failure cause.
 7. THE Command_Executor SHALL write all messages to an output stream (SYSPRINT equivalent) in the order they are generated during execution.
 8. IF a downstream service (CatalogService, VsamService) returns an error, THEN THE Command_Executor SHALL map the downstream error to an appropriate IDC message code and include the downstream error detail in the message text.
@@ -453,7 +453,7 @@ This specification defines the **IDCAMS Emulator** (`ff-idcams`) — the command
 2. THE ff-idcams crate SHALL expose a public Rust API: `fn execute_idcams(input: &str, services: &IdcamsServices) -> IdcamsResult` that accepts control statements as a string and returns structured results including output messages, LASTCC, and MAXCC.
 3. THE ff-idcams crate SHALL expose a command palette integration allowing individual IDCAMS commands to be invoked interactively from the workbench UI (e.g., `idcams.define`, `idcams.listcat`, `idcams.delete`).
 4. WHEN invoked via JCL (EXEC PGM=IDCAMS), THE Command_Executor SHALL read input from the SYSIN DD and write output to the SYSPRINT DD, using the AllocatorService to resolve these DDs.
-5. WHEN invoked via the scripting API, THE Command_Executor SHALL accept input as a string parameter and return output as a structured result (no DD resolution needed). This applies regardless of whether the system is currently in a JCL execution context — the scripting API always uses string input/output.
+5. WHEN invoked via the scripting API, THE Command_Executor SHALL accept input as a string parameter and return output as a structured result (no DD resolution needed). This applies regardless of whether the system is currently in a JCL execution context -- the scripting API always uses string input/output.
 6. THE ff-idcams crate SHALL accept its downstream service dependencies (CatalogService, VsamService, AllocatorService) through constructor injection via an `IdcamsServices` struct, enabling unit testing with mock implementations.
 7. THE ff-idcams crate SHALL implement the workbench command handler trait to receive invocations from the command framework.
 
@@ -464,15 +464,15 @@ This specification defines the **IDCAMS Emulator** (`ff-idcams`) — the command
 
 **User Story:** As a platform architect, I want ff-idcams to strictly enforce its ownership boundary (parsing and orchestration only), so that the crate remains a thin command interpreter and all actual operations are delegated to downstream services.
 
-**Governance Reference:** Dataset Ownership Model — Requirement 6 (ff-idcams Ownership Boundary). [ADR-001]
+**Governance Reference:** Dataset Ownership Model -- Requirement 6 (ff-idcams Ownership Boundary). [ADR-001]
 
 #### Acceptance Criteria
 
-1. THE ff-idcams crate SHALL NOT contain any SQLite import statements, database connection code, or direct catalog persistence logic — all catalog operations SHALL flow through the CatalogService trait.
-2. THE ff-idcams crate SHALL NOT contain any VSAM record-level logic including key comparison, index maintenance, record insertion algorithms, B-tree operations, or sequential access implementation — all VSAM operations SHALL flow through the VsamService trait.
-3. THE ff-idcams crate SHALL NOT directly access the filesystem for dataset content — all content access SHALL flow through ff-vfs or VsamService.
-4. THE ff-idcams crate SHALL NOT contain any JCL parsing logic — DD statement resolution SHALL flow through the AllocatorService trait when SYSIN DD resolution is required.
-5. THE ff-idcams crate's `Cargo.toml` SHALL NOT list `rusqlite`, `rocksdb`, `lmdb`, or any storage engine as a direct or transitive dependency — the entire dependency tree of ff-idcams SHALL be free of storage engine crates.
+1. THE ff-idcams crate SHALL NOT contain any SQLite import statements, database connection code, or direct catalog persistence logic -- all catalog operations SHALL flow through the CatalogService trait.
+2. THE ff-idcams crate SHALL NOT contain any VSAM record-level logic including key comparison, index maintenance, record insertion algorithms, B-tree operations, or sequential access implementation -- all VSAM operations SHALL flow through the VsamService trait.
+3. THE ff-idcams crate SHALL NOT directly access the filesystem for dataset content -- all content access SHALL flow through ff-vfs or VsamService.
+4. THE ff-idcams crate SHALL NOT contain any JCL parsing logic -- DD statement resolution SHALL flow through the AllocatorService trait when SYSIN DD resolution is required.
+5. THE ff-idcams crate's `Cargo.toml` SHALL NOT list `rusqlite`, `rocksdb`, `lmdb`, or any storage engine as a direct or transitive dependency -- the entire dependency tree of ff-idcams SHALL be free of storage engine crates.
 6. THE ff-idcams crate SHALL depend on ff-dataset-catalog, ff-vsam-services, and ff-dataset-allocator exclusively through trait interfaces defined in those crates (CatalogService, VsamService, AllocatorService).
 7. THE ff-idcams crate SHALL validate command parameters at the syntax level (e.g., key length > 0, DSN within 44 characters) but SHALL delegate authoritative semantic validation to the owning downstream service.
 8. THE ff-idcams crate MAY cache parsed command structures for performance but SHALL NOT cache catalog state, dataset metadata, or VSAM structural information.
@@ -483,20 +483,20 @@ This specification defines the **IDCAMS Emulator** (`ff-idcams`) — the command
 
 **User Story:** As a mainframe developer, I want every IDCAMS command to execute atomically (all-or-nothing), so that a failure in any downstream operation does not leave the system in an inconsistent state.
 
-**Governance Reference:** Dataset Ownership Model — Requirement 6, Acceptance Criterion 4. [ADR-001]
+**Governance Reference:** Dataset Ownership Model -- Requirement 6, Acceptance Criterion 4. [ADR-001]
 
 #### Acceptance Criteria
 
 1. WHEN the Command_Executor invokes multiple downstream services for a single command (e.g., DEFINE CLUSTER requires CatalogService::create_dataset + VsamService::initialize_dataset), THE Command_Executor SHALL execute them in a defined sequence and roll back completed operations if a subsequent operation fails.
-2. IF CatalogService::create_dataset() succeeds but VsamService::initialize_dataset() fails during DEFINE CLUSTER, THEN THE Command_Executor SHALL attempt to invoke CatalogService::delete_dataset() to remove the partial catalog entry before returning the error. The system obligation is satisfied by attempting the rollback — if the rollback itself fails, it is handled by criterion 5.
-3. IF VsamService::destroy_dataset() succeeds but CatalogService::delete_dataset() fails during DELETE, THEN THE Command_Executor SHALL log a warning message IDC0700W indicating potential inconsistency and return condition code 12 — the VSAM destruction cannot be rolled back but the inconsistency is reported.
+2. IF CatalogService::create_dataset() succeeds but VsamService::initialize_dataset() fails during DEFINE CLUSTER, THEN THE Command_Executor SHALL attempt to invoke CatalogService::delete_dataset() to remove the partial catalog entry before returning the error. The system obligation is satisfied by attempting the rollback -- if the rollback itself fails, it is handled by criterion 5.
+3. IF VsamService::destroy_dataset() succeeds but CatalogService::delete_dataset() fails during DELETE, THEN THE Command_Executor SHALL log a warning message IDC0700W indicating potential inconsistency and return condition code 12 -- the VSAM destruction cannot be rolled back but the inconsistency is reported.
 4. THE Command_Executor SHALL implement a compensation pattern for rollback: each step in a multi-service command SHALL record its compensating action, and on failure, compensating actions SHALL be executed in reverse order.
 5. IF a rollback (compensating action) itself fails, THEN THE Command_Executor SHALL emit message IDC0701S indicating a severe inconsistency requiring manual intervention and return condition code 16.
-6. SINGLE-SERVICE commands (e.g., ALTER which only calls CatalogService::update_dataset) are inherently atomic — the downstream service owns the transactional semantics.
+6. SINGLE-SERVICE commands (e.g., ALTER which only calls CatalogService::update_dataset) are inherently atomic -- the downstream service owns the transactional semantics.
 
 ---
 
-### Requirement 23: Non-Functional — Performance
+### Requirement 23: Non-Functional -- Performance
 
 **User Story:** As a mainframe developer working with large datasets, I want IDCAMS command parsing and execution orchestration to be efficient, so that batch operations complete within acceptable time bounds.
 
@@ -505,27 +505,27 @@ This specification defines the **IDCAMS Emulator** (`ff-idcams`) — the command
 1. THE IDCAMS_Parser SHALL parse a single control statement (up to 1024 characters including continuations) within 1 millisecond on a modern desktop processor.
 2. THE IDCAMS_Parser SHALL parse a batch of 1000 commands from a SYSIN stream within 500 milliseconds, excluding downstream execution time.
 3. THE Command_Executor overhead (time spent in ff-idcams orchestration logic, excluding downstream service call time) SHALL be less than 5 milliseconds per command.
-4. THE REPRO Command_Executor SHALL support streaming record copy without buffering the entire source dataset in memory — records SHALL be processed in a streaming fashion, one at a time or in bounded batches. IF streaming is unavailable (e.g., the downstream service does not support streaming), THE Command_Executor SHALL fall back to buffered processing with bounded batch sizes and emit a warning message.
+4. THE REPRO Command_Executor SHALL support streaming record copy without buffering the entire source dataset in memory -- records SHALL be processed in a streaming fashion, one at a time or in bounded batches. IF streaming is unavailable (e.g., the downstream service does not support streaming), THE Command_Executor SHALL fall back to buffered processing with bounded batch sizes and emit a warning message.
 5. THE LISTCAT Command_Executor SHALL support pagination or streaming output for catalogs containing more than 10,000 entries without loading all entries into memory simultaneously.
 6. THE IDCAMS_Parser SHALL allocate less than 64 KB of heap memory for parsing a single command (excluding the input text itself).
 
 ---
 
-### Requirement 24: Non-Functional — Thread Safety
+### Requirement 24: Non-Functional -- Thread Safety
 
 **User Story:** As a workbench developer, I want ff-idcams to be safe for concurrent invocation, so that multiple JCL jobs or workbench commands can use IDCAMS simultaneously.
 
 #### Acceptance Criteria
 
-1. THE ff-idcams crate SHALL be safe to invoke concurrently from multiple threads — the IDCAMS_Parser SHALL be stateless and the Command_Executor SHALL hold no global mutable state.
-2. EACH IDCAMS invocation (call to `execute_idcams`) SHALL maintain its own LASTCC and MAXCC registers, output buffer, and execution context — there SHALL be no shared mutable state between concurrent invocations.
+1. THE ff-idcams crate SHALL be safe to invoke concurrently from multiple threads -- the IDCAMS_Parser SHALL be stateless and the Command_Executor SHALL hold no global mutable state.
+2. EACH IDCAMS invocation (call to `execute_idcams`) SHALL maintain its own LASTCC and MAXCC registers, output buffer, and execution context -- there SHALL be no shared mutable state between concurrent invocations.
 3. THE ff-idcams crate's public API types SHALL implement `Send + Sync` where appropriate, enabling safe sharing across threads.
 4. THE ff-idcams crate SHALL NOT use global mutable statics (`static mut`, lazy_static with interior mutability, or equivalent) for any operational state.
-5. CONCURRENT IDCAMS invocations targeting the same dataset SHALL rely on the downstream services (CatalogService, VsamService) for serialization and conflict detection — ff-idcams SHALL NOT implement its own locking for dataset access.
+5. CONCURRENT IDCAMS invocations targeting the same dataset SHALL rely on the downstream services (CatalogService, VsamService) for serialization and conflict detection -- ff-idcams SHALL NOT implement its own locking for dataset access.
 
 ---
 
-### Requirement 25: Non-Functional — Testability
+### Requirement 25: Non-Functional -- Testability
 
 **User Story:** As a developer working on ff-idcams, I want the crate to be fully testable with mock downstream services, so that I can validate parsing and orchestration logic without requiring a real catalog, VSAM engine, or filesystem.
 
@@ -536,7 +536,7 @@ This specification defines the **IDCAMS Emulator** (`ff-idcams`) — the command
 3. THE Command_Executor SHALL be testable with mock service implementations that return configurable success or error responses, enabling validation of orchestration logic, rollback behaviour, and error handling.
 4. THE ff-idcams crate SHALL expose its parsed command types (DefineClusterCommand, DeleteCommand, etc.) as public types, enabling external crates to construct commands programmatically for testing.
 5. THE ff-idcams crate SHALL provide a test helper module or builder pattern for constructing `IdcamsServices` with mock implementations, reducing test boilerplate.
-6. EVERY acceptance criterion in this specification SHALL be testable through the public API of ff-idcams with mock downstream services — no criterion shall require a real database, filesystem, or VSAM engine to validate.
+6. EVERY acceptance criterion in this specification SHALL be testable through the public API of ff-idcams with mock downstream services -- no criterion shall require a real database, filesystem, or VSAM engine to validate.
 
 ---
 
@@ -552,5 +552,5 @@ This specification defines the **IDCAMS Emulator** (`ff-idcams`) — the command
 4. THE Pretty_Printer SHALL insert continuation characters (hyphen at end of line) when a command exceeds 72 characters per line.
 5. THE Pretty_Printer SHALL preserve parameter ordering consistent with z/OS IDCAMS conventions (NAME first, then type-specific parameters, then common parameters).
 6. THE Pretty_Printer SHALL support a compact mode (minimal whitespace, single line where possible) and a verbose mode (one parameter per line for readability).
-7. FOR ALL valid command ASTs, THE Pretty_Printer SHALL produce syntactically valid IDCAMS control statements — the output SHALL always be parseable without error.
+7. FOR ALL valid command ASTs, THE Pretty_Printer SHALL produce syntactically valid IDCAMS control statements -- the output SHALL always be parseable without error.
 

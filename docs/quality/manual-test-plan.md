@@ -1,4 +1,4 @@
-# FileForge Workbench — Manual Test Plan
+# FileForge Workbench -- Manual Test Plan
 
 **Binary:** `.\target\debug\ffwb.exe`  
 **Build command:** `cargo build`  
@@ -19,14 +19,14 @@ cargo build
 
 ---
 
-## Section 1 — Application Launch and Primary Option Menu
+## Section 1 -- Application Launch and Primary Option Menu
 
 *Validates: startup-and-session Req 1, 7; menu-and-statusbar Req 14*
 
 | # | Test | Expected result | Result |
 |---|------|----------------|--------|
-| 1.1 | Launch `ffwb.exe` with no arguments | Window opens. Primary Option Menu (POM) is displayed in the central panel — NOT the editor. | |
-| 1.2 | Verify POM title | Title line reads `FileForge Workbench — Primary Option Menu` with a version string below it. | |
+| 1.1 | Launch `ffwb.exe` with no arguments | Window opens. Primary Option Menu (POM) is displayed in the central panel -- NOT the editor. | |
+| 1.2 | Verify POM title | Title line reads `FileForge Workbench -- Primary Option Menu` with a version string below it. | |
 | 1.3 | Verify POM option list | Seven numbered options visible: `0 Settings`, `1 Files`, `2 Utilities`, `3 Compilers`, `4 Lua Scripts`, `5 Terminals`, `6 Databases`. | |
 | 1.4 | Verify live calendar | Calendar panel shows current month, year, day-of-week header, and today's date highlighted with `*`. | |
 | 1.5 | Verify time and day-of-year | Calendar panel shows current `HH:MM` time and `Day of year: NNN`. Time updates each frame (watch for ~1 min). | |
@@ -36,7 +36,7 @@ cargo build
 
 ---
 
-## Section 2 — CLI File Arguments
+## Section 2 -- CLI File Arguments
 
 *Validates: startup-and-session Req 6*
 
@@ -50,7 +50,7 @@ cargo build
 
 ---
 
-## Section 3 — Session Save and Restore
+## Section 3 -- Session Save and Restore
 
 *Validates: startup-and-session Req 4, 5*
 
@@ -63,7 +63,7 @@ cargo build
 
 ---
 
-## Section 4 — File Open
+## Section 4 -- File Open
 
 *Validates: file-operations Req 4; startup-and-session Req 14.6*
 
@@ -78,7 +78,7 @@ cargo build
 
 ---
 
-## Section 5 — Multi-Tab Editor
+## Section 5 -- Multi-Tab Editor
 
 *Validates: multi-tab-editor Req 1, 2, 3*
 
@@ -93,7 +93,7 @@ cargo build
 
 ---
 
-## Section 6 — Editor Navigation
+## Section 6 -- Editor Navigation
 
 *Validates: viewport-and-scrolling Req; navigation-commands Req*
 
@@ -112,7 +112,7 @@ cargo build
 
 ---
 
-## Section 7 — ISPF Command Field
+## Section 7 -- ISPF Command Field
 
 *Validates: command-semantics Req; startup-and-session Req 14.6*
 
@@ -134,7 +134,7 @@ cargo build
 
 ---
 
-## Section 8 — Function Keys
+## Section 8 -- Function Keys
 
 *Validates: function-keys-and-history Req 3, 4*
 
@@ -148,7 +148,7 @@ cargo build
 
 ---
 
-## Section 9 — Text Editing
+## Section 9 -- Text Editing
 
 *Validates: edit-operations Req 1, 2, 4, 12; startup-and-session Req 13*
 
@@ -166,7 +166,7 @@ cargo build
 
 ---
 
-## Section 10 — File Save
+## Section 10 -- File Save
 
 *Validates: file-operations Req 1; edit-operations Req 12*
 
@@ -179,7 +179,7 @@ cargo build
 
 ---
 
-## Section 11 — Theme Switching
+## Section 11 -- Theme Switching
 
 *Validates: theme-and-appearance Req*
 
@@ -192,7 +192,7 @@ cargo build
 
 ---
 
-## Section 12 — EXCLUDE / SHOW / RESET
+## Section 12 -- EXCLUDE / SHOW / RESET
 
 *Validates: exclude-show-filter Req*
 
@@ -205,7 +205,7 @@ cargo build
 
 ---
 
-## Section 13 — Navigation Commands (SORT / LOCATE)
+## Section 13 -- Navigation Commands (SORT / LOCATE)
 
 *Validates: navigation-commands Req*
 
@@ -218,7 +218,7 @@ cargo build
 
 ---
 
-## Section 14 — Line Commands (Prefix Area / Gutter)
+## Section 14 -- Line Commands (Prefix Area / Gutter)
 
 *Validates: line-commands Req*
 
@@ -231,15 +231,15 @@ cargo build
 
 ---
 
-## Section 15 — Compilers Menu and Toolchain Panel
+## Section 15 -- Compilers Menu and Toolchain Panel
 
 *Validates: compiler-toolchain-integration Req 14.6, 15.1–15.3, 17.1–17.3*
 
 | # | Test | Expected result | Result |
 |---|------|----------------|--------|
 | 15.1 | Click Compilers menu > Toolchain Panel | Toolchain Panel appears docked at the bottom of the window. | |
-| 15.2 | Verify GCC row | Panel shows a `GCC` status row. If GCC is not installed: shows "Not found" and an `[Install GCC]` button. If installed: shows "Ready — <version>". | |
-| 15.3 | Verify Rust row | Panel shows a `Rust` status row. If Rust is not installed: shows "Not found" and an `[Install via rustup]` button. If installed: shows "Ready — <version>". | |
+| 15.2 | Verify GCC row | Panel shows a `GCC` status row. If GCC is not installed: shows "Not found" and an `[Install GCC]` button. If installed: shows "Ready -- <version>". | |
+| 15.3 | Verify Rust row | Panel shows a `Rust` status row. If Rust is not installed: shows "Not found" and an `[Install via rustup]` button. If installed: shows "Ready -- <version>". | |
 | 15.4 | Type `3` in Command ===> field and press Enter | Toolchain Panel opens (same as menu item). | |
 | 15.5 | Click the `×` close button on the Toolchain Panel | Panel closes. Editor area expands to fill the space. | |
 | 15.6 | Reopen the panel. Verify Build Output section | "Build Output" heading is visible with a scrollable area below it. | |
@@ -248,7 +248,7 @@ cargo build
 
 ---
 
-## Section 16 — Exit Behaviour
+## Section 16 -- Exit Behaviour
 
 *Validates: startup-and-session Req 9*
 
@@ -256,12 +256,12 @@ cargo build
 |---|------|----------------|--------|
 | 16.1 | With no unsaved changes, click the window close button (×) | Application closes immediately. No prompt. | |
 | 16.2 | With no unsaved changes, type `EXIT` in command field | Application closes. | |
-| 16.3 | Edit a file (make it dirty). Close the window | Application closes. (Note: unsaved-changes prompt is a known gap — verify no crash.) | |
+| 16.3 | Edit a file (make it dirty). Close the window | Application closes. (Note: unsaved-changes prompt is a known gap -- verify no crash.) | |
 | 16.4 | After exit, relaunch | Session is restored (previously open tabs reappear). | |
 
 ---
 
-## Section 17 — Status Bar
+## Section 17 -- Status Bar
 
 *Validates: menu-and-statusbar Req; startup-and-session Req 7*
 
@@ -276,7 +276,7 @@ cargo build
 
 ---
 
-## Section 18 — Keyboard Shortcuts Summary
+## Section 18 -- Keyboard Shortcuts Summary
 
 | # | Shortcut | Expected action | Result |
 |---|----------|----------------|--------|
@@ -291,7 +291,7 @@ cargo build
 
 ---
 
-## Section 19 — Robustness / Edge Cases
+## Section 19 -- Robustness / Edge Cases
 
 | # | Test | Expected result | Result |
 |---|------|----------------|--------|
@@ -326,25 +326,25 @@ The following are documented as not yet implemented and should be marked `[S]`:
 
 | Section | Total | Pass | Fail | Skip |
 |---------|-------|------|------|------|
-| 1 — Launch & POM | 8 | | | |
-| 2 — CLI Arguments | 5 | | | |
-| 3 — Session Restore | 4 | | | |
-| 4 — File Open | 6 | | | |
-| 5 — Multi-Tab | 6 | | | |
-| 6 — Navigation | 10 | | | |
-| 7 — Command Field | 13 | | | |
-| 8 — Function Keys | 5 | | | |
-| 9 — Text Editing | 9 | | | |
-| 10 — File Save | 4 | | | |
-| 11 — Themes | 4 | | | |
-| 12 — Exclude/Show | 4 | | | |
-| 13 — Nav Commands | 4 | | | |
-| 14 — Line Commands | 4 | | | |
-| 15 — Toolchain Panel | 8 | | | |
-| 16 — Exit | 4 | | | |
-| 17 — Status Bar | 6 | | | |
-| 18 — Shortcuts | 8 | | | |
-| 19 — Robustness | 8 | | | |
+| 1 -- Launch & POM | 8 | | | |
+| 2 -- CLI Arguments | 5 | | | |
+| 3 -- Session Restore | 4 | | | |
+| 4 -- File Open | 6 | | | |
+| 5 -- Multi-Tab | 6 | | | |
+| 6 -- Navigation | 10 | | | |
+| 7 -- Command Field | 13 | | | |
+| 8 -- Function Keys | 5 | | | |
+| 9 -- Text Editing | 9 | | | |
+| 10 -- File Save | 4 | | | |
+| 11 -- Themes | 4 | | | |
+| 12 -- Exclude/Show | 4 | | | |
+| 13 -- Nav Commands | 4 | | | |
+| 14 -- Line Commands | 4 | | | |
+| 15 -- Toolchain Panel | 8 | | | |
+| 16 -- Exit | 4 | | | |
+| 17 -- Status Bar | 6 | | | |
+| 18 -- Shortcuts | 8 | | | |
+| 19 -- Robustness | 8 | | | |
 | **Total** | **120** | | | |
 
 ---

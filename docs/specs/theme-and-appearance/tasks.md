@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-theme` crate — the central visual identity layer for FileForgeWorkbench. The crate manages colours, fonts, design tokens, style slots, and visual mode switching (Dark/Light/High-Contrast) through a TOML-based theme configuration format. All rendering code obtains colour values, font selections, and spacing metrics through the theme system rather than using hardcoded values.
+This plan covers the complete implementation of the `ff-theme` crate -- the central visual identity layer for FileForgeWorkbench. The crate manages colours, fonts, design tokens, style slots, and visual mode switching (Dark/Light/High-Contrast) through a TOML-based theme configuration format. All rendering code obtains colour values, font selections, and spacing metrics through the theme system rather than using hardcoded values.
 
 This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configuration-system` (Wave 2) for TOML-based configuration loading, layered overrides, and hot-reload notifications. It is consumed by all rendering subsystems: `menu-and-statusbar`, `text-decorations`, `whitespace-and-guides`, `caret-and-selection`, `syntax-highlighting`, `file-tree-panel`, `layout-and-docking`, and the GUI shell.
 
@@ -147,7 +147,7 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configura
 - [x] 13. Hardcoded colour replacement API
   - [x] 13.1 Implement public `ThemeApi` facade exposing: `colour(token)`, `element_colour(element)`, `style_slot(index)`, `font_config()`, `design_tokens()`, `visual_mode()`
   - [x] 13.2 Implement `colour` method returning egui `Color32` directly (no conversion needed by caller)
-  - [x] 13.3 Implement compile-time token safety via `ColourToken` enum — misspelled tokens are compile errors
+  - [x] 13.3 Implement compile-time token safety via `ColourToken` enum -- misspelled tokens are compile errors
   - [x] 13.4 Implement `ThemeApi` as the single access point consumed by all rendering subsystems
   - [x] 13.5 Write unit tests verifying API surface completeness and Color32 conversion correctness
   - Covers: Requirement 8 (AC 8.1–8.8)
@@ -322,10 +322,10 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configura
 
 - This is a Wave 6 (UI and Rendering) crate depending on `ff-configuration-system` (Wave 2) for all config I/O
 - The built-in default themes (dark, light, high-contrast) are compiled into the binary for zero-dependency startup
-- All consumer subsystems obtain colours through the `ThemeApi` facade — no direct file reading
+- All consumer subsystems obtain colours through the `ThemeApi` facade -- no direct file reading
 - The 256 style-slot system is adapted from Scintilla's architecture for efficient syntax-highlighting integration
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
-- Hot-reload leverages the configuration-system file watcher — `ff-theme` does not implement its own watcher
+- Hot-reload leverages the configuration-system file watcher -- `ff-theme` does not implement its own watcher
 - The WCAG AAA contrast ratio (7:1) requirement applies only to the built-in High-Contrast palette defaults
 - Plugin extensions are namespaced under `plugins.{plugin-id}` in TOML to avoid collision with core tokens
 - The design.md for this crate may be generated concurrently; task structure is derived from requirements.md

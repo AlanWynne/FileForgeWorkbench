@@ -30,7 +30,7 @@ FileForgeWorkbench is a **Rust Workbench Platform** that evolves FileForgeEditor
 
 ### Source References
 
-- **FFE** = FileForgeEditor specifications (24 sub-projects, ~267 requirements — takes priority on conflicts)
+- **FFE** = FileForgeEditor specifications (24 sub-projects, ~267 requirements -- takes priority on conflicts)
 - **SCI** = Scintilla/Lexilla/SciTE extracted concepts (adapted to Rust/egui; architecture-incompatible items excluded)
 - **WB** = Workbench Platform Architecture Brief (overriding architectural principles)
 - **DSC** = Dataset Catalog Brief (VFS abstraction, mainframe filesystem emulation on local desktop)
@@ -40,7 +40,7 @@ FileForgeWorkbench is a **Rust Workbench Platform** that evolves FileForgeEditor
 
 ## Sub-Project Inventory
 
-### Platform Architecture (NEW — from WB)
+### Platform Architecture (NEW -- from WB)
 
 | # | Spec ID | Name | Description |
 |---|---------|------|-------------|
@@ -97,7 +97,7 @@ FileForgeWorkbench is a **Rust Workbench Platform** that evolves FileForgeEditor
 | 26 | `syntax-highlighting` | Syntax Highlighting | Highlighting engine, incremental re-highlight, keyword matching, sub-styles |
 | 27 | `auto-indentation` | Auto-Indentation | Language-aware indent, block-start/end patterns |
 
-### File I/O and Session (from FFE + SciTE — VFS-aware)
+### File I/O and Session (from FFE + SciTE -- VFS-aware)
 
 | # | Spec ID | Name | Description |
 |---|---------|------|-------------|
@@ -144,14 +144,14 @@ FileForgeWorkbench is a **Rust Workbench Platform** that evolves FileForgeEditor
 | 48 | `asa-report-preview` | ASA Report Preview | ASA carriage control rendering |
 | 49 | `custom-file-viewers` | Custom File Viewers | Viewer registry, PREVIEW command |
 
-### Dataset Catalog (from DSC — depends on VFS)
+### Dataset Catalog (from DSC -- depends on VFS)
 
 | # | Spec ID | Name | Description |
 |---|---------|------|-------------|
 | 50 | `dataset-catalog` | Dataset Catalog | Mainframe dataset catalog emulation on local desktop: SQLite catalog DB, dataset naming, PDS/PDSE/GDG types, catalog operations |
-| 51 | `dataset-allocator` | Dataset Allocator | Dataset allocation engine: DSN resolution against mounted catalogs, disposition handling (NEW/OLD/SHR/MOD), symbolic substitution — desktop equivalent of DYNALLOC/SVC 99 |
+| 51 | `dataset-allocator` | Dataset Allocator | Dataset allocation engine: DSN resolution against mounted catalogs, disposition handling (NEW/OLD/SHR/MOD), symbolic substitution -- desktop equivalent of DYNALLOC/SVC 99 |
 
-### Job Entry Subsystem (from JES — depends on VFS + dataset-catalog + plugin-architecture + workflow-engine)
+### Job Entry Subsystem (from JES -- depends on VFS + dataset-catalog + plugin-architecture + workflow-engine)
 
 | # | Spec ID | Name | Description |
 |---|---------|------|-------------|
@@ -171,7 +171,7 @@ FileForgeWorkbench is a **Rust Workbench Platform** that evolves FileForgeEditor
 | 54 | `idle-processing` | Idle Processing | Background incremental work, syntax re-highlighting, wrap calculation |
 | 55 | `large-file-performance` | Large File Performance | Long-line handling, measurement caching, chunked rendering |
 
-### Database Tool (from DBV — integrated full Database IDE)
+### Database Tool (from DBV -- integrated full Database IDE)
 
 | # | Spec ID | Name | Description |
 |---|---------|------|-------------|
@@ -181,10 +181,10 @@ FileForgeWorkbench is a **Rust Workbench Platform** that evolves FileForgeEditor
 
 | # | Spec ID | Name | Description |
 |---|---------|------|-------------|
-| 57 | `connector-network-fs` | Network FS Connector | ⚠️ DEFERRED — Network/UNC paths, SMB/CIFS, NFS |
-| 58 | `connector-ftp-sftp` | FTP/SFTP Connector | ⚠️ DEFERRED — FTP, FTPS, SFTP connectors |
-| 59 | `connector-mainframe` | Mainframe Connector | ⚠️ DEFERRED — z/OS FTP, TN3270, z/OSMF, USS SSH |
-| 60 | `connector-cloud` | Cloud Connector | ⚠️ DEFERRED — SharePoint, OneDrive, OAuth |
+| 57 | `connector-network-fs` | Network FS Connector | ⚠️ DEFERRED -- Network/UNC paths, SMB/CIFS, NFS |
+| 58 | `connector-ftp-sftp` | FTP/SFTP Connector | ⚠️ DEFERRED -- FTP, FTPS, SFTP connectors |
+| 59 | `connector-mainframe` | Mainframe Connector | ⚠️ DEFERRED -- z/OS FTP, TN3270, z/OSMF, USS SSH |
+| 60 | `connector-cloud` | Cloud Connector | ⚠️ DEFERRED -- SharePoint, OneDrive, OAuth |
 
 ### Foundation
 
@@ -361,7 +361,7 @@ Wave 15: Performance (depends on Wave 7 + Wave 8)
 ├── idle-processing
 ├── large-file-performance
 
-Wave 16: Database Tool Research (no code deps — can run any time)
+Wave 16: Database Tool Research (no code deps -- can run any time)
 ├── DBeaver research tasks (16.1–16.7 in tasks.md)
 
 Wave 17: Database Tool Synthesis (depends on Wave 2 Platform + Wave 16 Research)
@@ -401,17 +401,17 @@ Wave 18: Final Validation (depends on all prior waves)
 
 These requirements span multiple sub-projects and must be honoured throughout.
 
-### Requirement 1: FFW-ARCH-001 — Virtual File System Principle
+### Requirement 1: FFW-ARCH-001 -- Virtual File System Principle
 
 **User Story:** As a workbench developer, I want all content access to go through the VFS abstraction layer, so that providers (local FS, dataset catalog, future remote connectors) are interchangeable without modifying consuming code.
 
-**Source:** WB Architecture Brief — overriding connectivity principle. [WB, DSC]
+**Source:** WB Architecture Brief -- overriding connectivity principle. [WB, DSC]
 
 #### Acceptance Criteria
 
-1. ALL sub-projects that open, read, write, browse, or search file content SHALL access that content exclusively through the `virtual-file-system` crate's provider interface — never via direct `std::fs` calls.
+1. ALL sub-projects that open, read, write, browse, or search file content SHALL access that content exclusively through the `virtual-file-system` crate's provider interface -- never via direct `std::fs` calls.
 2. THE VFS layer SHALL define a resource URI scheme (`vfs://provider/path`) that uniquely identifies any resource regardless of its backing store.
-3. WHEN a new content provider is needed (e.g., dataset-catalog, future FTP connector), THE provider SHALL implement the `VfsProvider` trait defined by the `virtual-file-system` crate and register itself with the provider registry — no changes to consuming code required.
+3. WHEN a new content provider is needed (e.g., dataset-catalog, future FTP connector), THE provider SHALL implement the `VfsProvider` trait defined by the `virtual-file-system` crate and register itself with the provider registry -- no changes to consuming code required.
 4. THE `connector-extensibility` crate SHALL define the plugin trait that future remote connectors implement, ensuring the VFS principle extends to deferred connectivity without architectural changes.
 
 ---
@@ -442,8 +442,8 @@ These requirements span multiple sub-projects and must be honoured throughout.
 1. ALL optional features (viewers, language services, connectors, macro engines, database tool) SHALL be implementable as plugins that implement traits defined by the core.
 2. THE `plugin-architecture` crate SHALL define the `FileForgePlugin` trait with lifecycle methods: `initialize`, `activate`, `deactivate`, `shutdown`.
 3. WHEN a plugin is loaded, THE plugin system SHALL provide a `PluginContext` through which the plugin obtains services (logging, commands, configuration, VFS access) without tight coupling to implementation crates.
-4. THE plugin system SHALL support capability discovery — plugins advertise what they provide (commands, viewers, providers, language support) and the core queries capabilities at runtime.
-5. IF a plugin fails to initialize, THEN THE platform-core SHALL log the failure and continue operating with reduced functionality — never crash the application.
+4. THE plugin system SHALL support capability discovery -- plugins advertise what they provide (commands, viewers, providers, language support) and the core queries capabilities at runtime.
+5. IF a plugin fails to initialize, THEN THE platform-core SHALL log the failure and continue operating with reduced functionality -- never crash the application.
 
 ---
 
@@ -457,7 +457,7 @@ These requirements span multiple sub-projects and must be honoured throughout.
 
 1. ALL user-facing operations that modify state SHALL be registered as commands in the `command-framework` crate's command registry.
 2. THE command framework SHALL provide a single dispatch entry point (`execute_command(id, params)`) that all input sources (keyboard, menu, command line, macro, plugin) use to invoke operations.
-3. WHEN a command is executed, THE command framework SHALL integrate with the undo/redo system — every undoable command produces an undo record as part of its execution.
+3. WHEN a command is executed, THE command framework SHALL integrate with the undo/redo system -- every undoable command produces an undo record as part of its execution.
 4. NO UI code SHALL directly mutate application state. All state changes SHALL flow through commands.
 5. THE command framework SHALL support command metadata (display name, description, default shortcut, icon, category) for runtime inspection by menus, keybinding UI, and help systems.
 
@@ -471,11 +471,11 @@ These requirements span multiple sub-projects and must be honoured throughout.
 
 #### Acceptance Criteria
 
-1. ALL configuration keys across all sub-projects SHALL be unique — no two specs may define the same key name with different semantics.
+1. ALL configuration keys across all sub-projects SHALL be unique -- no two specs may define the same key name with different semantics.
 2. THE `configuration-system` crate SHALL own the configuration layer, providing typed access to settings for all platform-core subsystems and plugins.
 3. THE configuration system SHALL support a layered model: defaults → system → user → project → workspace, with later layers overriding earlier ones.
 4. WHEN a configuration file is modified on disk, THE configuration system SHALL detect the change and hot-reload affected settings without requiring application restart.
-5. WHEN any configuration key contains an invalid value, THE configuration system SHALL apply the default for that key and emit a warning via the logging subsystem — never crash or refuse to start.
+5. WHEN any configuration key contains an invalid value, THE configuration system SHALL apply the default for that key and emit a warning via the logging subsystem -- never crash or refuse to start.
 6. THE configuration system SHALL support namespace prefixes to group related settings (e.g., `[logging]`, `[editor]`, `[theme]`, `[plugins]`, `[vfs]`).
 7. LANGUAGE profile configuration SHALL live in separate TOML files (`languages/*.toml`), not in the main configuration file.
 
@@ -523,7 +523,7 @@ These requirements span multiple sub-projects and must be honoured throughout.
 
 1. ALL error messages SHALL be 200 characters or fewer.
 2. ALL command error messages SHALL identify the command name that failed.
-3. ALL error messages SHALL be displayed in the status/message area — never in modal dialogs during normal operation (startup warnings are deferred to the status area).
+3. ALL error messages SHALL be displayed in the status/message area -- never in modal dialogs during normal operation (startup warnings are deferred to the status area).
 4. ALL file operation errors SHALL include the resource URI that failed.
 5. ALL configuration warnings SHALL identify the key name and the default that was applied.
 6. THE error format SHALL be consistent across all crates: `[subsystem] operation: description`.
@@ -549,7 +549,7 @@ These requirements span multiple sub-projects and must be honoured throughout.
    - Active indicators: HEX, ASA, SEQSHOW, Viewer name, Criteria name, Record filter, Type filter
    - Active panel name (when focus is in a non-editor panel)
    - Message area (right-aligned, expanding)
-2. WHEN multiple indicators are active simultaneously, ALL indicators SHALL be visible — none may be hidden or overwritten by another.
+2. WHEN multiple indicators are active simultaneously, ALL indicators SHALL be visible -- none may be hidden or overwritten by another.
 3. THE status bar SHALL be a single row that is always visible regardless of which panels, modes, or docked views are active.
 4. PLUGINS SHALL be able to register additional status bar indicators through the plugin-architecture capability system.
 
@@ -564,19 +564,19 @@ These requirements span multiple sub-projects and must be honoured throughout.
 #### Acceptance Criteria
 
 1. THE following keyboard shortcuts are reserved globally and SHALL NOT be overridden by the key map system or plugins:
-   - F1 — Help (hard-coded, per `context-help` spec)
-   - Ctrl+Plus / Ctrl+Minus / Ctrl+0 — Zoom (per `view-zoom` spec)
-   - Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z — Undo/Redo
-   - Ctrl+C / Ctrl+X / Ctrl+V / Ctrl+A — Clipboard
-   - Ctrl+S — Save
-   - Ctrl+F — Focus command line with FIND
-   - Ctrl+H — Focus command line with CHANGE
-   - Ctrl+G — Go to line
-   - Ctrl+Tab / Ctrl+Shift+Tab — Tab switching (per `multi-tab-editor`)
-   - Ctrl+W — Close tab
-   - Ctrl+N — New tab
-   - Ctrl+Shift+D — Dock/undock panel (per `layout-and-docking`)
-   - Ctrl+Shift+T — Undock/redock tab (per `layout-and-docking`)
+   - F1 -- Help (hard-coded, per `context-help` spec)
+   - Ctrl+Plus / Ctrl+Minus / Ctrl+0 -- Zoom (per `view-zoom` spec)
+   - Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z -- Undo/Redo
+   - Ctrl+C / Ctrl+X / Ctrl+V / Ctrl+A -- Clipboard
+   - Ctrl+S -- Save
+   - Ctrl+F -- Focus command line with FIND
+   - Ctrl+H -- Focus command line with CHANGE
+   - Ctrl+G -- Go to line
+   - Ctrl+Tab / Ctrl+Shift+Tab -- Tab switching (per `multi-tab-editor`)
+   - Ctrl+W -- Close tab
+   - Ctrl+N -- New tab
+   - Ctrl+Shift+D -- Dock/undock panel (per `layout-and-docking`)
+   - Ctrl+Shift+T -- Undock/redock tab (per `layout-and-docking`)
 2. FUNCTION keys F2–F24 SHALL be user-configurable via the key map system managed by `function-keys-and-history`.
 3. WHEN a sub-project spec or plugin defines a new keyboard shortcut, IT SHALL be registered with the command framework's shortcut registry to prevent conflicts.
 4. THE command framework SHALL detect and report shortcut conflicts at registration time, rejecting duplicate bindings with a warning via the logging subsystem.
@@ -588,15 +588,15 @@ These requirements span multiple sub-projects and must be honoured throughout.
 
 The initial release of FileForgeWorkbench provides:
 
-1. **VFS abstraction layer** — the architectural foundation for all content access
-2. **Local filesystem provider** (`connector-local-fs`) — full read/write/watch support for local files
-3. **Dataset catalog emulation** (`dataset-catalog`) — mainframe filesystem behaviour on local desktop via SQLite catalog DB
+1. **VFS abstraction layer** -- the architectural foundation for all content access
+2. **Local filesystem provider** (`connector-local-fs`) -- full read/write/watch support for local files
+3. **Dataset catalog emulation** (`dataset-catalog`) -- mainframe filesystem behaviour on local desktop via SQLite catalog DB
 
 Remote connectivity is deferred to future releases:
-- Network FS (SMB/NFS) — via `connector-network-fs`
-- FTP/SFTP — via `connector-ftp-sftp`
-- Mainframe remote (z/OS FTP, TN3270, z/OSMF) — via `connector-mainframe`
-- Cloud (SharePoint, OneDrive) — via `connector-cloud`
+- Network FS (SMB/NFS) -- via `connector-network-fs`
+- FTP/SFTP -- via `connector-ftp-sftp`
+- Mainframe remote (z/OS FTP, TN3270, z/OSMF) -- via `connector-mainframe`
+- Cloud (SharePoint, OneDrive) -- via `connector-cloud`
 
 The `connector-extensibility` crate provides the trait-based hook for all future connectors, ensuring they can be added without architectural changes.
 

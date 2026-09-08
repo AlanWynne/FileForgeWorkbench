@@ -2,38 +2,38 @@
 
 ## Introduction
 
-This feature specifies the **Sequence Numbers** subsystem for FileForgeWorkbench (`ff-sequence-numbers` crate). It handles the detection, stripping, re-insertion, and display of legacy sequence numbers found in mainframe source files — particularly COBOL, JCL, FORTRAN, and PL/I — where fixed column ranges carry punched-card-era sequence data that is not part of the source logic.
+This feature specifies the **Sequence Numbers** subsystem for FileForgeWorkbench (`ff-sequence-numbers` crate). It handles the detection, stripping, re-insertion, and display of legacy sequence numbers found in mainframe source files -- particularly COBOL, JCL, FORTRAN, and PL/I -- where fixed column ranges carry punched-card-era sequence data that is not part of the source logic.
 
 The sequence-numbers subsystem provides:
 
 1. **Automatic detection** of sequence number columns based on language profile configuration and heuristic content sampling.
-2. **Automatic stripping** (Auto-Unnum) on file open — transparent removal of detected sequence numbers from the edit buffer before first display.
-3. **`UNNUM` primary command** — explicit removal of sequence numbers from any file or scoped range.
-4. **`NUMBER` primary command** — explicit insertion of sequential numbers into defined column positions.
-5. **`NUMBER SHOW` display mode** — overlay rendering of original sequence numbers without modifying the edit buffer.
-6. **Preserve/strip on save options** — configurable behaviour controlling whether sequence numbers are restored on save.
+2. **Automatic stripping** (Auto-Unnum) on file open -- transparent removal of detected sequence numbers from the edit buffer before first display.
+3. **`UNNUM` primary command** -- explicit removal of sequence numbers from any file or scoped range.
+4. **`NUMBER` primary command** -- explicit insertion of sequential numbers into defined column positions.
+5. **`NUMBER SHOW` display mode** -- overlay rendering of original sequence numbers without modifying the edit buffer.
+6. **Preserve/strip on save options** -- configurable behaviour controlling whether sequence numbers are restored on save.
 
 ### Design Principles
 
 
-1. **Stripping is the default** — when a language profile defines sequence columns and `auto_unnum` is true, detection and removal happen automatically on file open without operator intervention.
-2. **Re-insertion is explicit** — writing sequence numbers back requires the deliberate `NUMBER` command with confirmation.
-3. **GUI-independent** — all detection, stripping, and numbering logic operates on the document model without GUI framework dependency. [WB]
-4. **Command-framework integrated** — UNNUM, NUMBER, and NUMBER SHOW are registered with the command framework, discoverable, and scriptable. [WB]
-5. **BOUNDS-aware** — sequence columns are excluded from BOUNDS-constrained edit operations; stripping does not alter active BOUNDS settings.
-6. **Language-service driven** — sequence column definitions come from language profile TOML files managed by the language service.
+1. **Stripping is the default** -- when a language profile defines sequence columns and `auto_unnum` is true, detection and removal happen automatically on file open without operator intervention.
+2. **Re-insertion is explicit** -- writing sequence numbers back requires the deliberate `NUMBER` command with confirmation.
+3. **GUI-independent** -- all detection, stripping, and numbering logic operates on the document model without GUI framework dependency. [WB]
+4. **Command-framework integrated** -- UNNUM, NUMBER, and NUMBER SHOW are registered with the command framework, discoverable, and scriptable. [WB]
+5. **BOUNDS-aware** -- sequence columns are excluded from BOUNDS-constrained edit operations; stripping does not alter active BOUNDS settings.
+6. **Language-service driven** -- sequence column definitions come from language profile TOML files managed by the language service.
 
 This crate is a Wave 11 (Display Modes) component in the workbench architecture. It depends on:
-- `ff-language-service` — for language profile sequence column definitions
-- `ff-document-model` — for edit buffer access and line content manipulation
-- `ff-command` — for command registration and dispatch
-- `ff-undo` (undo-redo-transactions) — for recording undoable sequence transactions
-- `ff-config` (configuration-system) — for detection rules, save behaviour, and per-language overrides
+- `ff-language-service` -- for language profile sequence column definitions
+- `ff-document-model` -- for edit buffer access and line content manipulation
+- `ff-command` -- for command registration and dispatch
+- `ff-undo` (undo-redo-transactions) -- for recording undoable sequence transactions
+- `ff-config` (configuration-system) -- for detection rules, save behaviour, and per-language overrides
 
 It is consumed by:
-- `ff-edit-operations` — BOUNDS interaction when sequence columns are present
-- `ff-viewport` (viewport-and-scrolling) — for NUMBER SHOW overlay rendering
-- `ff-file-ops` (file-operations) — for preserve/strip on save behaviour
+- `ff-edit-operations` -- BOUNDS interaction when sequence columns are present
+- `ff-viewport` (viewport-and-scrolling) -- for NUMBER SHOW overlay rendering
+- `ff-file-ops` (file-operations) -- for preserve/strip on save behaviour
 
 ### Source References
 
@@ -42,14 +42,14 @@ It is consumed by:
 
 ### Cross-References
 
-- **`document-model`** — Provides the TextBuffer/Document that this subsystem reads and modifies for stripping/numbering operations.
-- **`edit-operations`** — Defines BOUNDS constraint semantics; sequence columns interact with the BOUNDS editable area.
-- **`navigation-commands`** — Defines the BOUNDS/BNDS command that sets active column boundaries; stripping does not alter BOUNDS state.
-- **`configuration-system`** — Provides per-language and global settings for detection thresholds, auto-unnum, and save behaviour.
-- **`command-framework`** — All commands (UNNUM, NUMBER, NUMBER SHOW) are registered, dispatched, and discoverable through this framework.
-- **`language-service`** — Manages language profile TOML definitions including `sequence_cols_front`, `sequence_cols_back`, and `auto_unnum` keys.
-- **`undo-redo-transactions`** — UNNUM and NUMBER operations are recorded as single undoable Sequence_Transactions.
-- **`file-operations`** — Save operations interact with sequence number state (preserve/strip on save).
+- **`document-model`** -- Provides the TextBuffer/Document that this subsystem reads and modifies for stripping/numbering operations.
+- **`edit-operations`** -- Defines BOUNDS constraint semantics; sequence columns interact with the BOUNDS editable area.
+- **`navigation-commands`** -- Defines the BOUNDS/BNDS command that sets active column boundaries; stripping does not alter BOUNDS state.
+- **`configuration-system`** -- Provides per-language and global settings for detection thresholds, auto-unnum, and save behaviour.
+- **`command-framework`** -- All commands (UNNUM, NUMBER, NUMBER SHOW) are registered, dispatched, and discoverable through this framework.
+- **`language-service`** -- Manages language profile TOML definitions including `sequence_cols_front`, `sequence_cols_back`, and `auto_unnum` keys.
+- **`undo-redo-transactions`** -- UNNUM and NUMBER operations are recorded as single undoable Sequence_Transactions.
+- **`file-operations`** -- Save operations interact with sequence number state (preserve/strip on save).
 
 ---
 
@@ -77,7 +77,7 @@ It is consumed by:
 
 ## Requirements
 
-### Requirement 1: Language Profile — Sequence Number Column Configuration
+### Requirement 1: Language Profile -- Sequence Number Column Configuration
 
 **User Story:** As a language configuration author, I want to define sequence number column ranges in a language TOML profile, so that the editor knows where to look for and remove sequence numbers without requiring operator input per file.
 
@@ -129,7 +129,7 @@ It is consumed by:
 
 6. THE Sequence_Detector SHALL complete its sampling and detection without blocking the UI thread. IF file access is slow, THE detector SHALL defer stripping to a background step with a progress indicator. [FFE-SEQNUM], [WB]
 
-7. THE detection algorithm SHALL be purely read-only — it SHALL NOT modify the edit buffer or the source file. [FFE-SEQNUM]
+7. THE detection algorithm SHALL be purely read-only -- it SHALL NOT modify the edit buffer or the source file. [FFE-SEQNUM]
 
 8. THE Detection_Threshold SHALL be configurable via the configuration-system (key: `editor.sequence_numbers.detection_threshold`), accepting values from 50 to 100 inclusive. IF a value outside this range is configured, THE system SHALL clamp to the nearest valid value and emit a WARN-level log record. [WB]
 
@@ -198,7 +198,7 @@ It is consumed by:
 
 1. THE command framework SHALL register `UNNUM` (Command_ID: `sequence.unnum`) as a primary command valid in Edit mode and Browse mode (display-only effect in Browse). [FFE-SEQNUM], [WB]
 
-2. WHEN `UNNUM` is issued with no arguments, THE system SHALL strip sequence numbers from all lines using the `sequence_cols_front` and `sequence_cols_back` ranges defined in the active Language_Profile. IF neither range is defined, THE system SHALL display an error: `UNNUM: no sequence columns defined for this language — use UNNUM COLS to specify a range`. [FFE-SEQNUM]
+2. WHEN `UNNUM` is issued with no arguments, THE system SHALL strip sequence numbers from all lines using the `sequence_cols_front` and `sequence_cols_back` ranges defined in the active Language_Profile. IF neither range is defined, THE system SHALL display an error: `UNNUM: no sequence columns defined for this language -- use UNNUM COLS to specify a range`. [FFE-SEQNUM]
 
 3. THE system SHALL support `UNNUM COLS start end` (e.g., `UNNUM COLS 1 6`) to strip an explicit column range from all lines, regardless of Language_Profile definitions. [FFE-SEQNUM]
 
@@ -220,7 +220,7 @@ It is consumed by:
 
 ---
 
-### Requirement 6: NUMBER Primary Command — Explicit Sequencing
+### Requirement 6: NUMBER Primary Command -- Explicit Sequencing
 
 **User Story:** As an editor user, I want a NUMBER command to write sequence numbers back into defined column positions, so that I can produce numbered output for legacy tools or systems that require sequence numbers.
 
@@ -251,7 +251,7 @@ It is consumed by:
 
 10. THE NUMBER sequencing operation SHALL be recorded as a single Sequence_Transaction in the Undo_Stack and SHALL be fully reversible via UNDO. [FFE-SEQNUM]
 
-11. WHEN NUMBER generates a sequence value wider than the target column range, THE system SHALL truncate the number to fit the column width and display a warning: `NUMBER: sequence overflow — numbers truncated to fit COLS nn-mm`. [FFE-SEQNUM]
+11. WHEN NUMBER generates a sequence value wider than the target column range, THE system SHALL truncate the number to fit the column width and display a warning: `NUMBER: sequence overflow -- numbers truncated to fit COLS nn-mm`. [FFE-SEQNUM]
 
 12. WHEN `NUMBER` is combined with a `CC...CC` block line command, THE system SHALL restrict the numbering operation to the lines within the block range. The sequence counter SHALL restart from the specified starting value for the block. [FFE-SEQNUM]
 
@@ -291,17 +291,17 @@ It is consumed by:
 
 1. THE command framework SHALL register `NUMBER SHOW` (Command_ID: `sequence.number_show`) as a primary command that activates or deactivates the Sequence_Number display overlay for the current session. [FFE-SEQNUM], [WB]
 
-2. WHEN NUMBER SHOW is active and the edit buffer has sequence numbers stripped, THE system SHALL render the original sequence number values from the stored side-table in the sequence column positions within the viewport display. These displayed values SHALL be visually distinct from the source text (using a theme-defined `sequence-number-overlay` style — typically a muted colour or reduced opacity). [FFE-SEQNUM]
+2. WHEN NUMBER SHOW is active and the edit buffer has sequence numbers stripped, THE system SHALL render the original sequence number values from the stored side-table in the sequence column positions within the viewport display. These displayed values SHALL be visually distinct from the source text (using a theme-defined `sequence-number-overlay` style -- typically a muted colour or reduced opacity). [FFE-SEQNUM]
 
-3. WHEN NUMBER SHOW is active, THE system SHALL NOT modify the edit buffer — the display is cosmetic only. IF the operator saves with NUMBER SHOW active, the saved file SHALL NOT contain sequence numbers unless they are in the edit buffer. [FFE-SEQNUM]
+3. WHEN NUMBER SHOW is active, THE system SHALL NOT modify the edit buffer -- the display is cosmetic only. IF the operator saves with NUMBER SHOW active, the saved file SHALL NOT contain sequence numbers unless they are in the edit buffer. [FFE-SEQNUM]
 
-4. WHEN NUMBER SHOW is toggled off, THE edit buffer content SHALL remain unchanged — the column positions show whatever is stored in the edit buffer. [FFE-SEQNUM]
+4. WHEN NUMBER SHOW is toggled off, THE edit buffer content SHALL remain unchanged -- the column positions show whatever is stored in the edit buffer. [FFE-SEQNUM]
 
 5. THE NUMBER SHOW state SHALL be displayed in the status bar as a `SEQSHOW` indicator when active. [FFE-SEQNUM]
 
 6. THE NUMBER SHOW state SHALL NOT be added to the Undo_Stack. It is a non-undoable display state change, consistent with other display mode commands (HEX ON/OFF). [FFE-SEQNUM]
 
-7. WHEN NUMBER SHOW is active and no sequence numbers were stripped (the edit buffer retains the original column content), THE system SHALL display the column content as-is without any visual distinction — the mode has no visual effect if stripping did not occur. [FFE-SEQNUM]
+7. WHEN NUMBER SHOW is active and no sequence numbers were stripped (the edit buffer retains the original column content), THE system SHALL display the column content as-is without any visual distinction -- the mode has no visual effect if stripping did not occur. [FFE-SEQNUM]
 
 ---
 
@@ -316,13 +316,13 @@ It is consumed by:
 
 1. WHEN UNNUM modifies the edit buffer, THE system SHALL wrap all line modifications in a single Sequence_Transaction and push it to the Undo_Stack. A single UNDO SHALL reverse the entire UNNUM operation regardless of how many lines were modified. [FFE-SEQNUM]
 
-2. WHEN NUMBER (sequencing form — COLS, STD) modifies the edit buffer, THE system SHALL wrap all line modifications in a single Sequence_Transaction and push it to the Undo_Stack. A single UNDO SHALL reverse the entire NUMBER operation. [FFE-SEQNUM]
+2. WHEN NUMBER (sequencing form -- COLS, STD) modifies the edit buffer, THE system SHALL wrap all line modifications in a single Sequence_Transaction and push it to the Undo_Stack. A single UNDO SHALL reverse the entire NUMBER operation. [FFE-SEQNUM]
 
 3. THE auto-strip performed at file open (Requirement 3) SHALL NOT be pushed to the Undo_Stack and SHALL NOT be reversible via UNDO. It is classified as a session initialisation operation. [FFE-SEQNUM]
 
 4. WHEN NUMBER ON auto-numbering inserts sequence numbers into newly inserted lines, EACH such insertion SHALL be part of the same Transaction as the line insertion operation that triggered it. The line insertion and its auto-sequence number are undone together as a single step. [FFE-SEQNUM]
 
-5. WHEN UNDO reverses a Sequence_Transaction created by UNNUM, THE system SHALL restore the exact original byte content of each stripped column — not just re-insert blank spaces. [FFE-SEQNUM]
+5. WHEN UNDO reverses a Sequence_Transaction created by UNNUM, THE system SHALL restore the exact original byte content of each stripped column -- not just re-insert blank spaces. [FFE-SEQNUM]
 
 6. WHEN UNDO reverses a Sequence_Transaction created by NUMBER, THE system SHALL restore the column content that existed in the edit buffer before the NUMBER command ran. [FFE-SEQNUM]
 
@@ -343,7 +343,7 @@ It is consumed by:
 
 3. WHEN UNNUM or NUMBER modifies column content, THE system SHALL NOT alter the active BOUNDS. BOUNDS are session state owned by the navigation-commands subsystem. [WB]
 
-4. WHEN the operator explicitly sets BOUNDS that overlap with defined sequence column ranges and auto-numbering (NUMBER ON) is active, THE system SHALL assign sequence numbers only to columns outside the active BOUNDS. IF the sequence column range is entirely within BOUNDS, THE system SHALL display a warning: `NUMBER ON: sequence columns overlap with active BOUNDS — auto-numbering disabled for overlapping range`. [WB]
+4. WHEN the operator explicitly sets BOUNDS that overlap with defined sequence column ranges and auto-numbering (NUMBER ON) is active, THE system SHALL assign sequence numbers only to columns outside the active BOUNDS. IF the sequence column range is entirely within BOUNDS, THE system SHALL display a warning: `NUMBER ON: sequence columns overlap with active BOUNDS -- auto-numbering disabled for overlapping range`. [WB]
 
 ---
 
@@ -404,7 +404,7 @@ It is consumed by:
 
 2. THE UNNUM and NUMBER primary commands SHALL display an error when issued in Grid_Edit_Mode: `UNNUM/NUMBER: not applicable in Grid Edit Mode`. [FFE-SEQNUM]
 
-3. WHEN a file is opened in Standard_Text_Mode for a language with `auto_unnum = true` and then the user switches to a different display mode that does not activate Grid_Edit_Mode (e.g., hex display), THE sequence number stripping state SHALL be preserved — the edit buffer retains its stripped state. [FFE-SEQNUM]
+3. WHEN a file is opened in Standard_Text_Mode for a language with `auto_unnum = true` and then the user switches to a different display mode that does not activate Grid_Edit_Mode (e.g., hex display), THE sequence number stripping state SHALL be preserved -- the edit buffer retains its stripped state. [FFE-SEQNUM]
 
 ---
 

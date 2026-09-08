@@ -19,23 +19,23 @@ The `ff-language-service` crate is the **language detection and definition manag
 ### Position in Architecture
 
 ```
-Wave 7 — Language and Highlighting
+Wave 7 -- Language and Highlighting
 
 ┌──────────────────────────────────────────────────────────────┐
 │  Downstream Consumers:                                        │
-│    ff-syntax-highlighting (Wave 7 peer) — tokenization        │
-│    ff-auto-indentation (Wave 7 peer) — indent patterns        │
+│    ff-syntax-highlighting (Wave 7 peer) -- tokenization        │
+│    ff-auto-indentation (Wave 7 peer) -- indent patterns        │
 ├──────────────────────────────────────────────────────────────┤
 │          THIS CRATE: ff-language-service ← Wave 7             │
 │   Language definitions, detection, per-line state, registry   │
 ├──────────────────────────────────────────────────────────────┤
 │  Upstream:                                                    │
-│    ff-logging (Wave 0) — structured diagnostics               │
-│    ff-config (Wave 2) — language settings, hot-reload         │
-│    ff-plugin (Wave 2) — LanguageSupport capability            │
-│    ff-command (Wave 2) — language override command             │
-│    ff-document-model (Wave 4) — line count, content access    │
-│    ff-edit-operations (Wave 4) — edit change notifications    │
+│    ff-logging (Wave 0) -- structured diagnostics               │
+│    ff-config (Wave 2) -- language settings, hot-reload         │
+│    ff-plugin (Wave 2) -- LanguageSupport capability            │
+│    ff-command (Wave 2) -- language override command             │
+│    ff-document-model (Wave 4) -- line count, content access    │
+│    ff-edit-operations (Wave 4) -- edit change notifications    │
 ├──────────────────────────────────────────────────────────────┤
 │              Foundation Layer: ff-logging                      │
 └──────────────────────────────────────────────────────────────┘
@@ -43,8 +43,8 @@ Wave 7 — Language and Highlighting
 
 ### Design Constraints (Cross-Cutting)
 
-- **FFW-ARCH-001 (Req 1)**: Language definition files accessed through the configuration system's directory resolution — not via direct `std::fs` in production (test code may use direct paths for constructability)
-- **GUI Independence (Req 2)**: Zero GUI dependencies — no egui, no windowing crate imports; all rendering is downstream
+- **FFW-ARCH-001 (Req 1)**: Language definition files accessed through the configuration system's directory resolution -- not via direct `std::fs` in production (test code may use direct paths for constructability)
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- no egui, no windowing crate imports; all rendering is downstream
 - **Plugin Architecture (Req 3)**: Plugins register language definitions via the `LanguageSupport` capability through `ff-plugin`'s `Capability_Registry`
 - **Command-Driven (Req 4)**: A `language.override` command allows manual language assignment per document
 - **Configuration Namespace (Req 5)**: Language settings live under `[languages]` TOML namespace; per-language properties under `languages.{language_id}.{key}`
@@ -422,7 +422,7 @@ pub enum DetectionMethod {
     FirstLinePattern,
     /// Manual override by user.
     ManualOverride,
-    /// No match — plain text fallback.
+    /// No match -- plain text fallback.
     Fallback,
 }
 ```
@@ -742,7 +742,7 @@ pub enum LanguageServiceError {
     DuplicateLanguage { language_id: String, owner: String },
 
     /// Invalid language_id format (must be lowercase ASCII, hyphens, underscores).
-    #[error("[lang-service] validate: invalid language_id '{id}' — must be lowercase ASCII alphanumeric, hyphens, or underscores")]
+    #[error("[lang-service] validate: invalid language_id '{id}' -- must be lowercase ASCII alphanumeric, hyphens, or underscores")]
     InvalidLanguageId { id: String },
 
     /// Unknown language_id referenced in an operation.
@@ -779,7 +779,7 @@ pub enum LanguageServiceError {
 
 ## 7. Integration Points
 
-### With `ff-logging` (Wave 0 — upstream)
+### With `ff-logging` (Wave 0 -- upstream)
 
 - **Consumed API**: `log::warn!`, `log::debug!`, structured logging macros
 - **Data flow**: Diagnostics emitted during definition loading (parse errors, duplicate IDs, load summary), property resolution warnings, and plugin registration events
@@ -790,7 +790,7 @@ pub enum LanguageServiceError {
   - WARN on unresolved embedded language (Req 7.6)
   - DEBUG on plugin language deregistration (Req 9.4)
 
-### With `ff-config` (Wave 2 — upstream)
+### With `ff-config` (Wave 2 -- upstream)
 
 - **Consumed API**: `ConfigProvider` trait, hot-reload callbacks, typed key access
 - **Data flow**: Configuration system provides the `languages/` directory paths, per-language property overrides via `languages.{id}.{key}` keys, and hot-reload notifications when language profiles change
@@ -800,7 +800,7 @@ pub enum LanguageServiceError {
   - Property override lookup via `languages.{language_id}.{property_key}` path (Req 8.6)
   - All settings under `[languages]` namespace (cross-cutting Req 5)
 
-### With `ff-plugin` (Wave 2 — upstream)
+### With `ff-plugin` (Wave 2 -- upstream)
 
 - **Consumed types**: `Capability`, `LanguageSupportCapability`, `PluginContext`, `CapabilityRegistrar`
 - **Data flow**: Plugins advertise `LanguageSupport` capability; the language service listens for capability registration/deregistration events and adds/removes definitions accordingly
@@ -809,7 +809,7 @@ pub enum LanguageServiceError {
   - Language service validates and adds the definition to registry (Req 9.1, 9.2)
   - On plugin unload, language service deregisters and notifies downstream (Req 9.4, 9.7)
 
-### With `ff-command` (Wave 2 — upstream)
+### With `ff-command` (Wave 2 -- upstream)
 
 - **Consumed API**: `CommandRegistry::register()` for registering the language override command
 - **Data flow**: The language service registers a `language.override` command that allows users to manually set a document's language
@@ -817,16 +817,16 @@ pub enum LanguageServiceError {
   - Command `language.override` takes a `language_id` parameter and document context (Req 2.7)
   - Command-driven approach satisfies cross-cutting Req 4
 
-### With `ff-document-model` (Wave 4 — upstream)
+### With `ff-document-model` (Wave 4 -- upstream)
 
 - **Consumed information**: Document ID, line count, file path metadata
 - **Data flow**: When a document is opened, its file path and initial line count are used to initialize detection and line state tracking
 - **Key interactions**:
   - File path → extension extraction for detection (Req 2.1)
   - Initial line count → `LineStateVector` initialization (Req 4.1)
-  - No compile-time dependency required — information passed by the orchestrating layer
+  - No compile-time dependency required -- information passed by the orchestrating layer
 
-### With `ff-edit-operations` (Wave 4 — upstream)
+### With `ff-edit-operations` (Wave 4 -- upstream)
 
 - **Consumed information**: Edit change notifications (line insert, delete, modify)
 - **Data flow**: When edits occur, the language service updates its per-line state vector to invalidate affected states
@@ -834,9 +834,9 @@ pub enum LanguageServiceError {
   - Line modified → `invalidate_line()` (Req 4.3)
   - Lines inserted → `on_lines_inserted()` (Req 4.6)
   - Lines deleted → `on_lines_deleted()` (Req 4.7)
-  - No compile-time dependency required — the orchestrating layer bridges notifications
+  - No compile-time dependency required -- the orchestrating layer bridges notifications
 
-### With `ff-syntax-highlighting` (Wave 7 — downstream consumer)
+### With `ff-syntax-highlighting` (Wave 7 -- downstream consumer)
 
 - **Provided API**: Full query API, keyword lookups, line state management, definition accessors
 - **Data flow**: The syntax-highlighting engine queries language definitions for tokenization rules, keyword sets, and comment/string metadata; it also reads/writes per-line lexer state
@@ -847,7 +847,7 @@ pub enum LanguageServiceError {
   - `in_keyword_set(lang, word, set)` → keyword classification during scanning
   - `resolve_embedded_language(id)` → switch lexer context for embedded regions
 
-### With `ff-auto-indentation` (Wave 7 — downstream consumer)
+### With `ff-auto-indentation` (Wave 7 -- downstream consumer)
 
 - **Provided API**: Language definition accessors (indent-related properties, keyword definitions)
 - **Data flow**: The auto-indentation engine queries language definitions for indent patterns, fold keywords, and language-specific indentation properties

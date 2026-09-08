@@ -36,8 +36,8 @@ The `ff-document-model` crate is the **foundational text storage layer** for the
 
 ### Design Constraints (Cross-Cutting)
 
-- **FFW-ARCH-001 (Req 1)**: ALL file access goes through `ff-vfs` — no `std::fs` or `tokio::fs` in this crate
-- **GUI Independence (Req 2)**: Zero GUI dependencies — no egui, winit, wgpu
+- **FFW-ARCH-001 (Req 1)**: ALL file access goes through `ff-vfs` -- no `std::fs` or `tokio::fs` in this crate
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- no egui, winit, wgpu
 - **Command-Driven (Req 4)**: Mutation primitives are designed for command-framework integration; higher layers route edits through commands
 - **Async I/O (Req 6)**: Streaming file loading uses async I/O via the VFS `read_stream` API
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-document-model`
@@ -673,7 +673,7 @@ pub struct WatcherHandle(u64);
 
 ## Public API Surface
 
-### Document — Construction and Lifecycle
+### Document -- Construction and Lifecycle
 
 ```rust
 impl Document {
@@ -702,7 +702,7 @@ impl Document {
 }
 ```
 
-### Document — Text Access
+### Document -- Text Access
 
 ```rust
 impl Document {
@@ -739,7 +739,7 @@ impl Document {
 }
 ```
 
-### Document — Mutation
+### Document -- Mutation
 
 ```rust
 impl Document {
@@ -768,7 +768,7 @@ impl Document {
 }
 ```
 
-### Document — Character Navigation
+### Document -- Character Navigation
 
 ```rust
 impl Document {
@@ -810,7 +810,7 @@ impl Document {
 }
 ```
 
-### Document — Viewport Management
+### Document -- Viewport Management
 
 ```rust
 impl Document {
@@ -844,7 +844,7 @@ impl Document {
 }
 ```
 
-### Document — Save Point
+### Document -- Save Point
 
 ```rust
 impl Document {
@@ -930,46 +930,46 @@ pub enum DocumentError {
 
 ## Integration Points
 
-### With `ff-vfs` (Core Layer — upstream)
+### With `ff-vfs` (Core Layer -- upstream)
 
 - **Dependency direction**: ff-document-model depends on ff-vfs
 - **API consumed**: `Vfs::read_stream(&ResourceUri)` for streaming file loading; `ResourceUri` for document identity
 - **Usage pattern**: `StreamingFileReader` calls `vfs.read_stream(uri)` to obtain a `Pin<Box<dyn AsyncRead + Send>>`, then reads chunks in a loop
-- **FFW-ARCH-001 compliance**: ALL file I/O flows through the VFS — no `std::fs` or `tokio::fs` in this crate
-- **Save operations**: Document model does NOT own save logic directly — `ff-file-operations` coordinates saves via VFS. The document model provides `contiguous_view()` or `split_view()` for content extraction during save
+- **FFW-ARCH-001 compliance**: ALL file I/O flows through the VFS -- no `std::fs` or `tokio::fs` in this crate
+- **Save operations**: Document model does NOT own save logic directly -- `ff-file-operations` coordinates saves via VFS. The document model provides `contiguous_view()` or `split_view()` for content extraction during save
 
-### With `ff-logging` (Foundation Layer — upstream)
+### With `ff-logging` (Foundation Layer -- upstream)
 
 - **Dependency direction**: ff-document-model depends on ff-logging
 - **API consumed**: `log_info!`, `log_warn!`, `log_error!`, `log_debug!` macros
 - **Usage**: Loading progress milestones logged at INFO; line-end mode changes at INFO; errors at ERROR; character navigation edge cases at DEBUG
 - **Log prefix**: `[document]`
 
-### With `ff-core` (Core Layer — peer)
+### With `ff-core` (Core Layer -- peer)
 
 - **Dependency direction**: ff-document-model uses the Tokio runtime managed by ff-core for async streaming loads
 - **Integration**: Streaming file loads are spawned as tracked Tokio tasks via `TokioRuntime::spawn_tracked`. Cancellation tokens from ff-core provide cooperative shutdown
 - **Event Bus**: Loading progress updates and document-changed signals are dispatched via the Event Bus
 
-### With `ff-edit-operations` (Wave 4 — downstream)
+### With `ff-edit-operations` (Wave 4 -- downstream)
 
 - **Dependency direction**: ff-edit-operations depends on ff-document-model
 - **API consumed**: `Document::insert()`, `Document::delete()`, `Document::char_at()`, character navigation methods
 - **Integration**: Edit operations use the low-level insert/delete primitives. The edit-operations crate adds selection handling, multi-caret coordination, and command-framework integration
 
-### With `ff-undo-redo-transactions` (Wave 4 — downstream)
+### With `ff-undo-redo-transactions` (Wave 4 -- downstream)
 
 - **Dependency direction**: ff-undo-redo-transactions depends on ff-document-model
 - **API consumed**: `InsertResult`, `DeleteResult` for building undo records; `Document::set_save_point()`, `Document::is_at_save_point()` for save-point integration
 - **Integration**: The undo system wraps document mutations in transaction records. The document model's `undo_position` counter is managed by the undo crate
 
-### With `ff-display-line-mapping` (Wave 4 — downstream)
+### With `ff-display-line-mapping` (Wave 4 -- downstream)
 
 - **Dependency direction**: ff-display-line-mapping depends on ff-document-model
 - **API consumed**: `LineIndex` lookups via `Document::line_start()`, `Document::line_end()`, `Document::line_count()`, watcher notifications for incremental updates
 - **Integration**: Display-line-mapping subscribes as a `DocumentWatcher` to receive insert/delete notifications and update its display-line mapping incrementally
 
-### With `ff-background-io` (Wave 8 — downstream)
+### With `ff-background-io` (Wave 8 -- downstream)
 
 - **Dependency direction**: ff-background-io depends on ff-document-model
 - **Integration**: background-io wraps `StreamingFileReader` with progress reporting, task scheduling, and cancellation coordination
@@ -1049,10 +1049,10 @@ The document model supports files of arbitrary size through a layered approach:
 
 ### Tier 3: Very Large Files (> 2 GB)
 
-- GapBuffer uses `u64` addressing — no 32-bit overflow
+- GapBuffer uses `u64` addressing -- no 32-bit overflow
 - Streaming reader processes chunks without holding entire file in working memory during load
 - After load completes, full content is in the GapBuffer (memory-mapped alternatives deferred to `ff-large-file-performance`)
-- For files exceeding available RAM, the `ff-large-file-performance` crate (Wave 15) will provide chunked/paged buffer strategies that override the default GapBuffer — this is a future extension point
+- For files exceeding available RAM, the `ff-large-file-performance` crate (Wave 15) will provide chunked/paged buffer strategies that override the default GapBuffer -- this is a future extension point
 
 ### Design Decision: Gap Buffer vs. Rope vs. Piece Table
 
@@ -1066,15 +1066,15 @@ Rationale:
 5. **Split view**: Two-segment view enables efficient read-only iteration without gap movement
 
 Trade-offs accepted:
-- O(n) gap movement when edit position jumps — acceptable because real edits cluster
-- Full content in memory after load — very large file paging deferred to Wave 15
-- Rope or piece table would offer O(log n) random inserts — not needed for cursor-driven editing
+- O(n) gap movement when edit position jumps -- acceptable because real edits cluster
+- Full content in memory after load -- very large file paging deferred to Wave 15
+- Rope or piece table would offer O(log n) random inserts -- not needed for cursor-driven editing
 
 ---
 
 ## Correctness Properties
 
-The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal — it must hold for all valid inputs.
+The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal -- it must hold for all valid inputs.
 
 ### Property 1: GapBuffer Insert-Delete Round-Trip
 
@@ -1101,7 +1101,7 @@ The following properties are suitable for property-based testing with the `propt
 
 **Validates: Requirements 1.9**
 
-### Property 3: Line Index Consistency — Insert
+### Property 3: Line Index Consistency -- Insert
 
 **Statement:** After inserting text containing N line endings, the line count increases by exactly N.
 
@@ -1115,7 +1115,7 @@ The following properties are suitable for property-based testing with the `propt
 
 **Validates: Requirements 2.3, 3.2**
 
-### Property 4: Line Index Consistency — Delete
+### Property 4: Line Index Consistency -- Delete
 
 **Statement:** After deleting a range containing N line endings, the line count decreases by exactly N (accounting for CRLF merge/split adjustments).
 

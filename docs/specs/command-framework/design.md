@@ -15,7 +15,7 @@ The `ff-command` crate is the **central dispatch mechanism** for all user-facing
 ### Position in Architecture
 
 ```
-Wave 2 — Platform Architecture
+Wave 2 -- Platform Architecture
 
 ┌─────────────────────────────────────────────────────────┐
 │                    Application Binary (ffwb)              │
@@ -27,14 +27,14 @@ Wave 2 — Platform Architecture
 │               ff-command (this crate)                     │
 │        Command registry, dispatch, shortcuts             │
 ├─────────────────────────────────────────────────────────┤
-│               ff-logging (Wave 0 — diagnostics)          │
+│               ff-logging (Wave 0 -- diagnostics)          │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ### Design Constraints (Cross-Cutting)
 
 - **Command-Driven Architecture (Req 4)**: ALL state-changing user operations route through `execute_command`
-- **GUI Independence (Req 2)**: Zero GUI dependencies — no egui, no windowing imports
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- no egui, no windowing imports
 - **Plugin Architecture (Req 3)**: Plugins register commands via `PluginContext`
 - **Keyboard Shortcut Registry (Req 10)**: Reserved shortcuts cannot be overridden; conflict detection at registration
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-command`
@@ -96,7 +96,7 @@ end
 
 | Layer | Role |
 |-------|------|
-| **Invocation Layer** | Shortcut registry, scripting bridge, UI bindings — translates user intent into `execute_command` calls |
+| **Invocation Layer** | Shortcut registry, scripting bridge, UI bindings -- translates user intent into `execute_command` calls |
 | **Dispatch Layer** | Validates command existence, evaluates enabled predicate, constructs `ExecutionContext`, routes to handler |
 | **Execution Layer** | Command handler executes, produces `CommandResult` with optional `UndoRecord` |
 | **Integration Layer** | Pushes undo records, logs history entries, emits diagnostics via `ff-logging` |
@@ -116,18 +116,18 @@ crates/ff-command/
 │   ├── result.rs           # CommandResult enum, UndoRecord trait object
 │   ├── metadata.rs         # CommandMetadata struct, predicates
 │   ├── handler.rs          # CommandHandler trait (sync + async variants)
-│   ├── registry.rs         # CommandRegistry — concurrent map of CommandEntry
-│   ├── dispatch.rs         # CommandDispatch — execute_command entry point
+│   ├── registry.rs         # CommandRegistry -- concurrent map of CommandEntry
+│   ├── dispatch.rs         # CommandDispatch -- execute_command entry point
 │   ├── undo_bridge.rs      # Undo/Redo integration, stack push/pop logic
 │   ├── shortcut/
 │   │   ├── mod.rs          # Re-exports for shortcut module
 │   │   ├── chord.rs        # KeyChord, modifier keys, key codes
 │   │   ├── sequence.rs     # Multi-key sequence, pending state, timeout
-│   │   ├── registry.rs     # ShortcutRegistry — chord → CommandId mapping
+│   │   ├── registry.rs     # ShortcutRegistry -- chord → CommandId mapping
 │   │   ├── reserved.rs     # Reserved shortcut definitions (Req 10.1)
 │   │   └── conflict.rs     # Conflict detection logic
-│   ├── scripting.rs        # ScriptingBridge — Lua ↔ CommandParams/Result conversion
-│   ├── history.rs          # CommandHistory — bounded, persistent log
+│   ├── scripting.rs        # ScriptingBridge -- Lua ↔ CommandParams/Result conversion
+│   ├── history.rs          # CommandHistory -- bounded, persistent log
 │   ├── error.rs            # CommandError enum
 │   └── builtin.rs          # Built-in commands: edit.undo, edit.redo
 └── tests/
@@ -213,7 +213,7 @@ impl CommandParams {
 pub struct ExecutionContext {
     /// The URI of the currently active document (if any)
     pub active_document: Option<String>,
-    /// Current cursor position (line, column) — 0-indexed
+    /// Current cursor position (line, column) -- 0-indexed
     pub cursor_position: Option<(usize, usize)>,
     /// Current selection range, if any: (start_line, start_col, end_line, end_col)
     pub selection: Option<(usize, usize, usize, usize)>,
@@ -372,7 +372,7 @@ pub struct KeyChord {
     pub key: KeyCode,
 }
 
-/// A shortcut binding — either a single chord or a multi-key sequence.
+/// A shortcut binding -- either a single chord or a multi-key sequence.
 /// Addresses: Requirement 5, criteria 1/2
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ShortcutBinding {
@@ -543,7 +543,7 @@ impl CommandDispatch {
         params: CommandParams,
     ) -> CommandResult;
 
-    /// Set the context provider — called by platform-core at startup.
+    /// Set the context provider -- called by platform-core at startup.
     /// The provider is invoked before each command execution to build
     /// the current ExecutionContext.
     pub fn set_context_provider(
@@ -699,7 +699,7 @@ impl CommandHistory {
     /// Addresses: Requirement 7, criterion 2
     pub fn new(max_depth: usize) -> Self;
 
-    /// Create from configuration — reads `commands.history_depth` setting.
+    /// Create from configuration -- reads `commands.history_depth` setting.
     /// Clamps values outside [10, 10000] and logs a WARN.
     /// Addresses: Requirement 7, criterion 3
     pub fn from_config(depth_value: Option<i64>) -> Self;
@@ -772,7 +772,7 @@ pub enum CommandError {
 
     /// Invalid command ID format.
     /// Addresses: Requirement 1, criterion 1
-    #[error("[command] register: invalid command ID '{id}' — {reason}")]
+    #[error("[command] register: invalid command ID '{id}' -- {reason}")]
     InvalidId { id: String, reason: String },
 
     /// Shortcut binding conflicts with an existing binding.
@@ -806,7 +806,7 @@ pub enum CommandError {
 
     /// History persistence I/O error.
     /// Addresses: Requirement 7, criteria 5/6
-    #[error("[command] history: {operation} failed — {source}")]
+    #[error("[command] history: {operation} failed -- {source}")]
     HistoryIo {
         operation: String,
         source: std::io::Error,
@@ -836,7 +836,7 @@ pub enum ScriptingError {
 
 ## 7. Integration Points
 
-### With `ff-logging` (upstream — Wave 0)
+### With `ff-logging` (upstream -- Wave 0)
 
 - `ff-command` uses `ff-logging` macros (`log_warn!`, `log_error!`, `log_info!`) for:
   - WARN when a command execution fails (Requirement 2, criterion 6)
@@ -845,7 +845,7 @@ pub enum ScriptingError {
   - INFO for command dispatch audit trail (debug builds)
 - `ff-logging` is the only workspace crate dependency of `ff-command`
 
-### With `ff-core` (platform-core — same wave, consumer)
+### With `ff-core` (platform-core -- same wave, consumer)
 
 - `ff-core` owns the `CommandRegistry` and `CommandDispatch` instances, creating them during startup
 - `ff-core` implements `ContextProvider` to supply `ExecutionContext` from current application state
@@ -853,20 +853,20 @@ pub enum ScriptingError {
 - `ff-core` calls `CommandHistory::load()` at startup and `CommandHistory::save()` at shutdown
 - `ff-core` connects the shortcut registry to the GUI shell's key event stream
 
-### With `ff-plugin` (plugin-architecture — same wave, consumer)
+### With `ff-plugin` (plugin-architecture -- same wave, consumer)
 
 - `ff-plugin` provides `CommandRegistry` access through `PluginContext` so plugins can register commands during their `initialize` lifecycle phase (Requirement 1, criterion 3)
 - `ff-plugin` calls `CommandRegistry::deregister()` during plugin `shutdown` to clean up plugin commands (Requirement 1, criterion 7)
 - Plugins access `ShortcutRegistry` to register keyboard bindings (Requirement 5, criterion 8)
 
-### With `undo-redo-transactions` (downstream — Wave 4)
+### With `undo-redo-transactions` (downstream -- Wave 4)
 
 - The `undo-redo-transactions` crate implements the `UndoManager` trait defined by `ff-command`
 - `ff-command` pushes `UndoRecord` trait objects to the undo manager after undoable command execution (Requirement 4, criterion 2)
 - The built-in `edit.undo` and `edit.redo` commands pop records from the undo manager (Requirement 4, criteria 5/6)
 - Redo stack is cleared when a new undoable command executes (Requirement 4, criterion 7)
 
-### With `lua-macro-engine` (downstream — Wave 10)
+### With `lua-macro-engine` (downstream -- Wave 10)
 
 - `lua-macro-engine` uses `ScriptingBridge` to expose commands to Lua scripts
 - The bridge converts Lua tables ↔ `CommandParams` and `CommandResult` ↔ Lua values (Requirement 6, criteria 2/3)
@@ -876,7 +876,7 @@ pub enum ScriptingError {
 
 - `configuration-system` provides the `commands.history_depth` setting (Requirement 7, criterion 2)
 - `configuration-system` provides the key map TOML file for user shortcut overrides (Requirement 5, criterion 6)
-- `ff-command` does NOT depend on `configuration-system` at the crate level — config values are passed in during initialization by `ff-core`
+- `ff-command` does NOT depend on `configuration-system` at the crate level -- config values are passed in during initialization by `ff-core`
 
 ### With GUI Shell (`ff-desktop`)
 
@@ -967,7 +967,7 @@ The following bindings are populated into `ShortcutRegistry` at construction and
 | ShortcutRegistry | `RwLock<HashMap<ShortcutBinding, CommandId>>` | Same access pattern as command registry |
 | CommandHistory | `Mutex<VecDeque<HistoryEntry>>` | Write-heavy (every command records), short critical sections |
 | CommandDispatch | Immutable references to registry + history (via `Arc`) | Dispatch itself is stateless; delegates to thread-safe components |
-| ExecutionContext | Constructed per-call, owned by caller | No sharing — fresh context per dispatch |
+| ExecutionContext | Constructed per-call, owned by caller | No sharing -- fresh context per dispatch |
 | UndoManager trait | Implementor guarantees thread safety (`Send + Sync` bound) | Allows undo stack to use its own locking strategy |
 
 ### Multi-Key Sequence Pending State
@@ -975,10 +975,10 @@ The following bindings are populated into `ShortcutRegistry` at construction and
 The shortcut pending state (waiting for second chord after first chord of a multi-key sequence) is managed by the GUI shell, NOT by `ff-command`. The shell:
 
 1. Receives a key chord
-2. Calls `ShortcutRegistry::resolve_chord()` — if `Some`, dispatches immediately
-3. If `None`, calls `ShortcutRegistry::is_prefix()` — if `true`, enters pending state
+2. Calls `ShortcutRegistry::resolve_chord()` -- if `Some`, dispatches immediately
+3. If `None`, calls `ShortcutRegistry::is_prefix()` -- if `true`, enters pending state
 4. In pending state, waits up to 2 seconds for the next chord (Requirement 5, criterion 2)
-5. On second chord: calls `resolve_sequence(first, second)` — dispatches if `Some`, cancels if `None`
+5. On second chord: calls `resolve_sequence(first, second)` -- dispatches if `Some`, cancels if `None`
 6. On timeout: reverts to no pending state, no command executed
 
 This design keeps `ff-command` free of timer/async runtime dependencies for the shortcut system.
@@ -986,7 +986,7 @@ This design keeps `ff-command` free of timer/async runtime dependencies for the 
 ### Async Command Execution
 
 - Async commands (`AsyncCommandHandler`) are awaited by the caller (GUI shell or scripting bridge)
-- The dispatch layer does NOT spawn tasks — it returns a future that the caller drives
+- The dispatch layer does NOT spawn tasks -- it returns a future that the caller drives
 - This avoids coupling to a specific async runtime and allows the caller to manage cancellation
 - For the scripting bridge, async commands are block-on'd within the Lua execution context
 
@@ -1147,8 +1147,8 @@ All other commands (file.save, edit.copy, etc.) are registered by `ff-core` or p
 Command IDs follow a dot-separated namespace convention:
 
 ```
-<category>.<action>          — e.g., "file.save", "edit.copy"
-<category>.<sub>.<action>    — e.g., "plugin.git.commit", "view.panel.toggle"
+<category>.<action>          -- e.g., "file.save", "edit.copy"
+<category>.<sub>.<action>    -- e.g., "plugin.git.commit", "view.panel.toggle"
 ```
 
 Rules:

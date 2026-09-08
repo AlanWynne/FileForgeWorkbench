@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `ff-completion` crate implements the **auto-complete popup system** for FileForgeWorkbench. It provides context-sensitive command name, argument, and line command completion in the primary command field and prefix area. The crate is **GUI-independent** in its core logic — candidate generation, filtering, ranking, and selection state management operate without any GUI dependency. Only the popup positioning model produces layout coordinates consumed by the shell renderer.
+The `ff-completion` crate implements the **auto-complete popup system** for FileForgeWorkbench. It provides context-sensitive command name, argument, and line command completion in the primary command field and prefix area. The crate is **GUI-independent** in its core logic -- candidate generation, filtering, ranking, and selection state management operate without any GUI dependency. Only the popup positioning model produces layout coordinates consumed by the shell renderer.
 
 ### Purpose
 
@@ -16,22 +16,22 @@ The `ff-completion` crate implements the **auto-complete popup system** for File
 ### Position in Architecture
 
 ```
-Wave 10 — Extensions and Macros
+Wave 10 -- Extensions and Macros
 
 ┌─────────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                   │
 │     Popup rendering, key event forwarding                    │
 ├─────────────────────────────────────────────────────────────┤
-│         ff-completion (THIS CRATE — Wave 10)                 │
+│         ff-completion (THIS CRATE -- Wave 10)                 │
 │   Completion engine, providers, popup model, navigation      │
 ├─────────────────────────────────────────────────────────────┤
-│  ff-command (Wave 2) — CommandRegistry, CommandMetadata       │
-│  ff-command-semantics (Wave 5) — parsed command context       │
-│  ff-line-commands (Wave 5) — line command kinds               │
-│  ff-config (Wave 2) — completion.* settings                  │
-│  ff-vfs (Wave 3) — async directory listing                   │
-│  lua-macro-engine (Wave 10) — macro name list                │
-│  ff-plugin (Wave 2) — provider registration lifecycle        │
+│  ff-command (Wave 2) -- CommandRegistry, CommandMetadata       │
+│  ff-command-semantics (Wave 5) -- parsed command context       │
+│  ff-line-commands (Wave 5) -- line command kinds               │
+│  ff-config (Wave 2) -- completion.* settings                  │
+│  ff-vfs (Wave 3) -- async directory listing                   │
+│  lua-macro-engine (Wave 10) -- macro name list                │
+│  ff-plugin (Wave 2) -- provider registration lifecycle        │
 ├─────────────────────────────────────────────────────────────┤
 │              Foundation Layer: ff-logging (Wave 0)            │
 └─────────────────────────────────────────────────────────────┘
@@ -168,22 +168,22 @@ crates/ff-completion/
 ├── Cargo.toml
 ├── src/
 │   ├── lib.rs                  # Public API re-exports, crate docs
-│   ├── engine.rs               # CompletionEngine — central orchestrator
-│   ├── context.rs              # CompletionContext — trigger state snapshot
-│   ├── candidate.rs            # CompletionCandidate — raw provider output
-│   ├── item.rs                 # CompletionItem — ranked, display-ready item
-│   ├── list.rs                 # CompletionList — filtered + sorted collection
-│   ├── popup.rs                # CompletionPopup — position model for renderer
-│   ├── selection.rs            # SelectionState — highlight, scroll, navigation
-│   ├── trigger.rs              # TriggerController — activation logic
-│   ├── config.rs               # CompletionConfig — typed config access
+│   ├── engine.rs               # CompletionEngine -- central orchestrator
+│   ├── context.rs              # CompletionContext -- trigger state snapshot
+│   ├── candidate.rs            # CompletionCandidate -- raw provider output
+│   ├── item.rs                 # CompletionItem -- ranked, display-ready item
+│   ├── list.rs                 # CompletionList -- filtered + sorted collection
+│   ├── popup.rs                # CompletionPopup -- position model for renderer
+│   ├── selection.rs            # SelectionState -- highlight, scroll, navigation
+│   ├── trigger.rs              # TriggerController -- activation logic
+│   ├── config.rs               # CompletionConfig -- typed config access
 │   ├── matching/
 │   │   ├── mod.rs              # Re-exports
 │   │   ├── prefix.rs           # Prefix matching (case-insensitive)
 │   │   ├── fuzzy.rs            # Fuzzy/subsequence matching + highlight spans
 │   │   └── scorer.rs           # Match quality scoring for ranking
-│   ├── ranking.rs              # Ranker — multi-signal relevance sorting
-│   ├── positioning.rs          # PopupPositioner — anchor, flip, clipping
+│   ├── ranking.rs              # Ranker -- multi-signal relevance sorting
+│   ├── positioning.rs          # PopupPositioner -- anchor, flip, clipping
 │   ├── provider/
 │   │   ├── mod.rs              # CompletionProvider trait, ProviderManager
 │   │   ├── command_name.rs     # CommandNameProvider (queries CommandRegistry)
@@ -220,9 +220,9 @@ pub struct CompletionContext {
     pub field_text: String,
     /// The cursor position within the field (0-indexed character offset).
     pub cursor_offset: usize,
-    /// The prefix being completed — substring from anchor to cursor.
+    /// The prefix being completed -- substring from anchor to cursor.
     pub prefix: String,
-    /// The anchor offset — start of the prefix within the field.
+    /// The anchor offset -- start of the prefix within the field.
     pub anchor_offset: usize,
     /// The parsed command name, if in argument position (None if completing command name).
     pub command_name: Option<String>,
@@ -264,7 +264,7 @@ pub struct CompletionCandidate {
     pub base_relevance: i32,
 }
 
-/// The kind/category of a completion candidate — used for icon display and grouping.
+/// The kind/category of a completion candidate -- used for icon display and grouping.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum CompletionKind {
@@ -342,7 +342,7 @@ impl CompletionList {
 
 ```rust
 /// The data model describing the popup's position, dimensions, and content
-/// for the GUI shell renderer. This struct is GUI-independent — it contains
+/// for the GUI shell renderer. This struct is GUI-independent -- it contains
 /// only coordinates and data. The shell reads it each frame to paint the overlay.
 /// Addresses: Requirement 3
 #[derive(Debug, Clone)]
@@ -371,9 +371,9 @@ pub struct CompletionPopup {
 /// Addresses: Requirement 3.1
 #[derive(Debug, Clone, Copy)]
 pub struct PopupAnchor {
-    /// X coordinate — horizontal position at the start of the prefix in the command field.
+    /// X coordinate -- horizontal position at the start of the prefix in the command field.
     pub x: f32,
-    /// Y coordinate — vertical position (bottom edge of command field for below,
+    /// Y coordinate -- vertical position (bottom edge of command field for below,
     /// top edge for above).
     pub y: f32,
 }
@@ -480,9 +480,9 @@ pub enum NavigationAction {
     PageDown,
     /// Move selection up by one page.
     PageUp,
-    /// Accept the current selection (Tab behaviour — insert and dismiss).
+    /// Accept the current selection (Tab behaviour -- insert and dismiss).
     AcceptTab,
-    /// Accept and execute (Enter behaviour — insert, dismiss, and submit if at end).
+    /// Accept and execute (Enter behaviour -- insert, dismiss, and submit if at end).
     AcceptEnter,
     /// Dismiss without accepting.
     Dismiss,
@@ -494,7 +494,7 @@ pub enum NavigationAction {
 pub enum CompletionAction {
     /// The popup state was updated (re-render needed).
     PopupUpdated,
-    /// A candidate was accepted — the shell should perform this text insertion.
+    /// A candidate was accepted -- the shell should perform this text insertion.
     Accept {
         /// Text to insert, replacing the prefix at [anchor_offset..cursor_offset].
         insert_text: String,
@@ -505,7 +505,7 @@ pub enum CompletionAction {
     },
     /// The popup was dismissed (hide it).
     Dismissed,
-    /// No change — the event was not consumed by completion.
+    /// No change -- the event was not consumed by completion.
     NotConsumed,
 }
 ```
@@ -747,7 +747,7 @@ pub enum CompletionError {
         provider_id: String,
     },
 
-    /// Internal error — should not occur in normal operation.
+    /// Internal error -- should not occur in normal operation.
     #[error("[completion] internal: {0}")]
     Internal(String),
 }

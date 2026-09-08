@@ -1,6 +1,6 @@
-# Design Document — `ff-connector-cloud`
+# Design Document -- `ff-connector-cloud`
 
-> ⚠️ **STATUS: DEFERRED — Not in initial release.**
+> ⚠️ **STATUS: DEFERRED -- Not in initial release.**
 >
 > This document captures the *planned* architecture for the cloud storage
 > connector. No implementation tasks will be generated from this design until
@@ -14,7 +14,7 @@
 ## 1. Purpose
 
 `ff-connector-cloud` will provide VFS-layer access to OAuth-protected cloud
-storage services — initially Microsoft SharePoint Online and OneDrive (personal
+storage services -- initially Microsoft SharePoint Online and OneDrive (personal
 and business) via the Microsoft Graph API. It plugs into the workbench via the
 extensibility framework shipped in the initial release.
 
@@ -67,7 +67,7 @@ delegates any path resolution under these schemes to the cloud connector's
 | `ff-plugin` | `FileForgePlugin` trait, plugin manifest types |
 | `ff-logging` | Structured logging macros and span context |
 
-No changes to these upstream crates are required to add this connector — the
+No changes to these upstream crates are required to add this connector -- the
 extensibility framework is designed to support new connectors without
 modification.
 
@@ -233,16 +233,16 @@ pub enum CloudItemType {
 
 ## 9. Non-Goals for Initial Design
 
-- Google Drive, Dropbox, AWS S3, Azure Blob — future expansion, not designed here
+- Google Drive, Dropbox, AWS S3, Azure Blob -- future expansion, not designed here
 - Real-time co-authoring via WebSocket (Graph subscriptions may be added later)
-- Offline-first mode with full local replica — only a metadata/content cache is planned
+- Offline-first mode with full local replica -- only a metadata/content cache is planned
 
 ---
 
 ## 10. Open Questions (To Be Resolved Before Implementation)
 
 1. Should the connector support multiple simultaneous authenticated accounts?
-2. What is the maximum cache size default — 500 MB? 1 GB? User-configurable?
+2. What is the maximum cache size default -- 500 MB? 1 GB? User-configurable?
 3. Should delta sync polling interval be configurable per-connection or global?
 4. How should the connector handle Azure AD Conditional Access policies that
    require device compliance or MFA step-up?

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-config` crate — the central settings management layer for FileForgeWorkbench. It provides TOML-based configuration files, a six-layer override model (Defaults → System → User → Profile → Project → Workspace), hot-reload with debounced file watching, named user profiles, per-project overrides, EditorConfig integration, a typed access API with compile-time key definitions, plugin namespace scoping, and runtime-queryable schema validation.
+This plan covers the complete implementation of the `ff-config` crate -- the central settings management layer for FileForgeWorkbench. It provides TOML-based configuration files, a six-layer override model (Defaults → System → User → Profile → Project → Workspace), hot-reload with debounced file watching, named user profiles, per-project overrides, EditorConfig integration, a typed access API with compile-time key definitions, plugin namespace scoping, and runtime-queryable schema validation.
 
 This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-logging` (Wave 0).
 
@@ -57,8 +57,8 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
   - [x] 6.1 Define `SchemaEntry` struct with key, value_type, default, description, and optional constraints
   - [x] 6.2 Define `Constraints` struct with optional min, max, allowed_values, and pattern fields
   - [x] 6.3 Implement `SchemaRegistry` with methods: `register(entry)`, `get(key)`, `list_all()`, `deregister(prefix)`
-  - [x] 6.4 Implement duplicate key detection — reject re-registration with different type via `SchemaConflict` error
-  - [x] 6.5 Implement runtime schema growth — allow registration of new keys during plugin initialization
+  - [x] 6.4 Implement duplicate key detection -- reject re-registration with different type via `SchemaConflict` error
+  - [x] 6.5 Implement runtime schema growth -- allow registration of new keys during plugin initialization
   - [x] 6.6 Write unit tests for registration, lookup, listing, deregistration, and conflict detection
   - Covers: Requirement 9 (AC 9.1, 9.2, 9.3, 9.5, 9.7)
 
@@ -72,7 +72,7 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
   - [x] 7.7 Write unit tests for each constraint type, failure handling, and unknown key behavior
   - Covers: Requirement 7 (AC 7.4, 7.5, 7.6), Requirement 9 (AC 9.4, 9.6)
 
-- [x] 8. Layer merger — recursive key-by-key merge
+- [x] 8. Layer merger -- recursive key-by-key merge
   - [x] 8.1 Implement recursive table merge: when two layers define the same TOML table, merge their keys rather than replacing
   - [x] 8.2 Implement key-by-key conflict resolution: highest-priority layer wins for scalar values
   - [x] 8.3 Implement full six-layer merge producing `EffectiveStore` with provenance for every key
@@ -191,7 +191,7 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
   - Covers: Requirement 8 (AC 8.4, 8.5, 8.6)
 
 - [x] 20. ConfigHandle and thread safety
-  - [x] 20.1 Implement `ConfigHandle` as `Arc<RwLock<ConfigSystem>>` — thread-safe, clonable, shareable
+  - [x] 20.1 Implement `ConfigHandle` as `Arc<RwLock<ConfigSystem>>` -- thread-safe, clonable, shareable
   - [x] 20.2 Implement read access pattern: typed getters acquire read lock, return owned values (cloned)
   - [x] 20.3 Implement write access pattern: reload and profile switch acquire write lock briefly for atomic swap
   - [x] 20.4 Implement callback invocation after releasing write lock (no lock held during callbacks)
@@ -215,12 +215,12 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
 
 - [x] 23. Integration tests
   - [x] 23.1 Write end-to-end test: full initialization with all layers, query effective values, verify provenance
-  - [x] 23.2 Write end-to-end test: hot-reload cycle — modify file on disk, verify callback invocation with correct changed keys
-  - [x] 23.3 Write end-to-end test: profile switch — activate profile, verify effective values change, switch back
-  - [x] 23.4 Write end-to-end test: project load/unload — open project, verify overrides, close project, verify revert
-  - [x] 23.5 Write end-to-end test: EditorConfig resolution — create .editorconfig hierarchy, verify per-file resolution
-  - [x] 23.6 Write end-to-end test: plugin scoped access — create handle, verify isolation, verify namespace violation
-  - [x] 23.7 Write end-to-end test: schema validation at load time — invalid values replaced by defaults
+  - [x] 23.2 Write end-to-end test: hot-reload cycle -- modify file on disk, verify callback invocation with correct changed keys
+  - [x] 23.3 Write end-to-end test: profile switch -- activate profile, verify effective values change, switch back
+  - [x] 23.4 Write end-to-end test: project load/unload -- open project, verify overrides, close project, verify revert
+  - [x] 23.5 Write end-to-end test: EditorConfig resolution -- create .editorconfig hierarchy, verify per-file resolution
+  - [x] 23.6 Write end-to-end test: plugin scoped access -- create handle, verify isolation, verify namespace violation
+  - [x] 23.7 Write end-to-end test: schema validation at load time -- invalid values replaced by defaults
   - Covers: All requirements (integration validation)
 
 - [x] 24. Property-based tests
@@ -254,7 +254,7 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
 
 **Validates: Requirement 2.7**
 
-- **Statement:** For any two TOML tables at different layers defining overlapping keys within a nested table, the merge produces a table containing all keys from both layers, with higher-priority values winning on conflict — recursively for nested tables.
+- **Statement:** For any two TOML tables at different layers defining overlapping keys within a nested table, the merge produces a table containing all keys from both layers, with higher-priority values winning on conflict -- recursively for nested tables.
 - **Strategy:** Generate two `ConfigTable` values with a mix of overlapping and disjoint keys, including nested tables up to 3 levels deep.
 - **Invariant:** Merged table contains union of all keys; conflicting leaf values use higher-layer value; nested tables are merged recursively (not replaced wholesale).
 
@@ -262,7 +262,7 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
 
 **Validates: Requirement 7.5, 7.6; Requirement 9.4**
 
-- **Statement:** For any schema entry with a default value, and any stored value that violates the schema constraints (wrong type, out of range, not in enum set, fails regex), the typed getter returns the schema default — never the invalid value.
+- **Statement:** For any schema entry with a default value, and any stored value that violates the schema constraints (wrong type, out of range, not in enum set, fails regex), the typed getter returns the schema default -- never the invalid value.
 - **Strategy:** Generate `SchemaEntry` with random constraints (min/max for numerics, allowed_values for enums, regex for strings); generate `ConfigValue` that deliberately violates at least one constraint.
 - **Invariant:** `get_typed(key) == schema_entry.default`; a WARN-level log is emitted with key name and violation details.
 
@@ -280,7 +280,7 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
 
 - **Statement:** For any reload event affecting N keys, either all N keys are updated to their new effective values simultaneously, or none are updated. There is no observable intermediate state where some keys reflect new values and others reflect old values from the same file.
 - **Strategy:** Generate a set of 2–20 key-value changes for a single layer file. Snapshot effective values before and after reload on a concurrent reader thread.
-- **Invariant:** The reader thread either sees all old values or all new values for the set of changed keys — never a mix.
+- **Invariant:** The reader thread either sees all old values or all new values for the set of changed keys -- never a mix.
 
 ### Property 6: Debounce Coalescing
 
@@ -364,13 +364,13 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
 ## Notes
 
 - This is a Wave 2 (Platform Architecture) crate depending only on `ff-logging` (Wave 0)
-- All other workspace crates consume `ff-config` — the public API surface must be stable before downstream work begins
+- All other workspace crates consume `ff-config` -- the public API surface must be stable before downstream work begins
 - The `notify` crate provides cross-platform file watching; debounce logic is implemented within `ff-config` (not using notify's built-in debouncer)
 - EditorConfig resolution is per-file and does not use the layered model; it is a separate resolution path that overrides layers for specific properties
-- Plugin configuration isolation is enforced at the API level — plugins receive a `PluginConfigHandle` that only permits access to their namespace
+- Plugin configuration isolation is enforced at the API level -- plugins receive a `PluginConfigHandle` that only permits access to their namespace
 - The `[_session]` table in user config is reserved for internal persistence (active profile); it is not exposed to plugins or schema queries
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
-- Thread-safety uses `std::sync::RwLock` and `Arc` — no async runtime dependency
+- Thread-safety uses `std::sync::RwLock` and `Arc` -- no async runtime dependency
 - Configuration files are read via direct filesystem access (not VFS) since ff-config initializes before VFS is available (FFW-ARCH-001)
 - Language profile files (`languages/*.toml`) are loaded as part of the User layer but stored in separate files per Requirement 1 AC 1.5
 
@@ -396,14 +396,14 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
 
 - [x] 25. `set_user_value` and `remove_user_value` on `ConfigHandle`
   - [x] 25.1 Add `set_user_value(key: &str, value: ConfigValue) -> Result<(), ConfigError>` to
-          `ConfigHandle` — writes key to user-layer TOML file atomically, triggers hot-reload
+          `ConfigHandle` -- writes key to user-layer TOML file atomically, triggers hot-reload
     - Validates: Requirement 15.4
-  - [x] 25.2 Add `remove_user_value(key: &str) -> Result<(), ConfigError>` to `ConfigHandle` —
+  - [x] 25.2 Add `remove_user_value(key: &str) -> Result<(), ConfigError>` to `ConfigHandle` --
           removes key from user-layer TOML file, triggers hot-reload
     - Validates: Requirement 15.6
   - [x] 25.3 Write unit tests: `set_user_value_persists_to_file`, `remove_user_value_restores_default`
     - Validates: Requirement 15.4, 15.6
-  - [x] 25.4 Run `cargo test -p ff-config` — confirm green
+  - [x] 25.4 Run `cargo test -p ff-config` -- confirm green
 
 - [x] 26. `TabKind::SettingsPanel` and shell routing
   - [x] 26.1 Add `SettingsPanel` variant to `TabKind` enum in `tab_state.rs`
@@ -421,7 +421,7 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
   - [x] 26.6 Write unit tests: `settings_panel_tab_kind_exists`, `command_0_routes_to_settings`,
           `command_settings_routes_to_settings`, `command_equals_0_routes_to_settings`
     - Validates: Requirement 15.1
-  - [x] 26.7 Run `cargo test -p ff-desktop` — confirm green
+  - [x] 26.7 Run `cargo test -p ff-desktop` -- confirm green
 
 - [x] 27. `SettingsPanelState` and render skeleton
   - [x] 27.1 Create `crates/ff-desktop/src/settings_panel.rs` with `SettingsPanelState` struct
@@ -432,7 +432,7 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
     - Validates: Requirement 15.2
   - [x] 27.3 Implement collapsible section headers per namespace group
     - Validates: Requirement 15.2
-  - [x] 27.4 Implement filter input — case-insensitive substring match on key path and description
+  - [x] 27.4 Implement filter input -- case-insensitive substring match on key path and description
     - Validates: Requirement 15.7
   - [x] 27.5 Implement source file path footer (read from `UserDataDir`)
     - Validates: Requirement 15.8
@@ -441,7 +441,7 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
   - [x] 27.7 Write unit tests: `namespace_grouping_correct`, `filter_hides_non_matching_keys`,
           `f3_returns_to_pom`
     - Validates: Requirement 15.2, 15.7, 15.10
-  - [x] 27.8 Run `cargo test -p ff-desktop` — confirm green
+  - [x] 27.8 Run `cargo test -p ff-desktop` -- confirm green
 
 - [x] 28. Per-key value widgets and provenance display
   - [x] 28.1 Implement Boolean widget: `egui::Checkbox` bound to effective bool value
@@ -460,7 +460,7 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
   - [x] 28.7 Write unit tests: `widget_type_selected_for_bool`, `widget_type_selected_for_enum_string`,
           `widget_type_selected_for_bounded_int`, `provenance_badge_shows_correct_layer`
     - Validates: Requirement 15.3
-  - [x] 28.8 Run `cargo test -p ff-desktop` — confirm green
+  - [x] 28.8 Run `cargo test -p ff-desktop` -- confirm green
 
 - [x] 29. Write path, validation, and Reset to Default
   - [x] 29.1 Implement on-change handler: validate new value against schema constraints;
@@ -468,16 +468,16 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
     - Validates: Requirement 15.4, 15.5
   - [x] 29.2 Implement inline validation error display adjacent to the offending field
     - Validates: Requirement 15.5
-  - [x] 29.3 Implement `Reset to Default` button — visible only when provenance != Default;
+  - [x] 29.3 Implement `Reset to Default` button -- visible only when provenance != Default;
           calls `config_handle.remove_user_value(key)`
     - Validates: Requirement 15.6
   - [x] 29.4 Write unit tests: `valid_value_calls_set_user_value`, `invalid_value_shows_error`,
           `reset_to_default_calls_remove_user_value`, `reset_button_hidden_when_at_default`
     - Validates: Requirement 15.4, 15.5, 15.6
-  - [x] 29.5 Run `cargo test --workspace` — confirm all tests green
-  - [x] 29.6 Run `cargo clippy -p ff-desktop -- -D warnings` — confirm clean
-  - [x] 29.7 Update `docs/quality/TCR.md` — mark all Req 15 rows ✅ or 🔲
-  - [x] 29.8 Update `docs/specs/project-master/tasks.md` — mark Phase AH complete
+  - [x] 29.5 Run `cargo test --workspace` -- confirm all tests green
+  - [x] 29.6 Run `cargo clippy -p ff-desktop -- -D warnings` -- confirm clean
+  - [x] 29.7 Update `docs/quality/TCR.md` -- mark all Req 15 rows ✅ or 🔲
+  - [x] 29.8 Update `docs/specs/project-master/tasks.md` -- mark Phase AH complete
 
 ---
 

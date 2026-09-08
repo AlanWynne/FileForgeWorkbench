@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This spec defines the **Virtual Catalog Manager** for FileForgeWorkbench — the unified UI subsystem
+This spec defines the **Virtual Catalog Manager** for FileForgeWorkbench -- the unified UI subsystem
 that owns POM Option 1 ("Files") and provides all dialogs and panels for creating, managing, and
 browsing virtual file catalogs of four distinct types:
 
@@ -64,7 +64,7 @@ behaviour of option 1 opening the native Windows file explorer.
 
 ## Requirements
 
-### Requirement 1: POM Option 1 — Catalog Explorer Context
+### Requirement 1: POM Option 1 -- Catalog Explorer Context
 
 **User Story:** As an ISPF-familiar operator, I want POM option 1 to open a dedicated Catalog Explorer Context
 that gives me access to all my virtual file catalogs, so that I can manage mainframe datasets,
@@ -91,10 +91,10 @@ POSIX files, and local files from a single unified interface.
     `Native Catalogs (Linux)`, `Native Catalogs (macOS)`. [WB]
 
 1.5 WHEN no catalogs of a given type exist, THE section header SHALL display a greyed child node
-    reading `No catalogs defined — click New Catalog to create one`. [WB]
+    reading `No catalogs defined -- click New Catalog to create one`. [WB]
 
 1.8 THE Catalog_Explorer_Context SHALL display three catalog type sections (not four). There is no separate
-    "Windows" and "Local" distinction — both are unified under `Native`. [WB]
+    "Windows" and "Local" distinction -- both are unified under `Native`. [WB]
 
 1.6 THE Catalog_Explorer_Context SHALL be navigable via the `Command ===>` field: typing a DSN or path and
     pressing Enter SHALL navigate the tree to that resource. [ISPF-POM]
@@ -131,7 +131,7 @@ so that I never have to re-register them after restarting the workbench.
 
 ---
 
-### Requirement 3: Catalog Manager Dialog — Create
+### Requirement 3: Catalog Manager Dialog -- Create
 
 **User Story:** As a user, I want a dialog to create new virtual catalogs of any type, so that I
 can set up my working environment without editing configuration files manually.
@@ -153,19 +153,19 @@ can set up my working environment without editing configuration files manually.
     [WB]
 
 3.4 WHEN `Mainframe` is selected, THE dialog SHALL additionally present:
-    - `Repository Path` (required — directory where `catalog.db` and storage subdirs will be created)
-    - `Default HLQ` (optional — prepended to bare qualifiers)
+    - `Repository Path` (required -- directory where `catalog.db` and storage subdirs will be created)
+    - `Default HLQ` (optional -- prepended to bare qualifiers)
     - `Create repository now` (checkbox, default: checked)
     [DSC]
 
 3.5 WHEN `POSIX` is selected, THE dialog SHALL additionally present:
-    - `Root Directory` (required — the local directory that becomes the POSIX catalog root)
-    - `Mount Point` (optional — the POSIX path prefix, default: `/`)
+    - `Root Directory` (required -- the local directory that becomes the POSIX catalog root)
+    - `Mount Point` (optional -- the POSIX path prefix, default: `/`)
     - `Read-Only` (checkbox, default: unchecked)
     [WB]
 
 3.6 WHEN `Native` is selected, THE dialog SHALL additionally present:
-    - `Root Path` (required — the local directory path to expose, using the host platform's
+    - `Root Path` (required -- the local directory path to expose, using the host platform's
       path conventions: backslash on Windows, forward-slash on Linux/macOS)
     - `Read-Only` (checkbox, default: unchecked)
     [WB]
@@ -179,7 +179,7 @@ can set up my working environment without editing configuration files manually.
 
 ---
 
-### Requirement 4: Catalog Manager Dialog — Edit and Delete
+### Requirement 4: Catalog Manager Dialog -- Edit and Delete
 
 **User Story:** As a user, I want to edit catalog properties and delete catalogs I no longer need,
 so that I can keep my catalog registry clean and up to date.
@@ -222,11 +222,11 @@ memorising command syntax.
     `Allocate Dataset`, THE shell SHALL open the Dataset_Allocation_Dialog. [DSC]
 
 5.2 THE Dataset_Allocation_Dialog SHALL present the following fields in ISPF style:
-    - `Dataset Name` (required — full DSN or partial; HLQ prepended if configured)
+    - `Dataset Name` (required -- full DSN or partial; HLQ prepended if configured)
     - `Dataset Organization` (DSORG selector: PS, PO, PDSE, GDG)
     - `Record Format` (RECFM selector: FB, F, VB, V, U)
-    - `Logical Record Length` (LRECL — integer, default 80)
-    - `Block Size` (BLKSIZE — integer, default 0 — system-determined; 0 means the host OS and Rust I/O layer determine optimal buffering; IBM recommends `BLKSIZE=0` so that z/OS — or in FFWB's case the host OS — selects the optimal block size for the underlying storage device; a non-zero value may be entered as a user override)
+    - `Logical Record Length` (LRECL -- integer, default 80)
+    - `Block Size` (BLKSIZE -- integer, default 0 -- system-determined; 0 means the host OS and Rust I/O layer determine optimal buffering; IBM recommends `BLKSIZE=0` so that z/OS -- or in FFWB's case the host OS -- selects the optimal block size for the underlying storage device; a non-zero value may be entered as a user override)
     - `Directory Blocks` (integer, shown only when DSORG = PO or PDSE, default 10)
     - `GDG Limit` (integer 1–255, shown only when DSORG = GDG)
     - `Scratch on Roll-off` (checkbox, shown only when DSORG = GDG, default: checked)
@@ -388,7 +388,7 @@ regardless of whether the host OS is the host platform (Windows, Linux, or macOS
 
 ---
 
-### Requirement 10: Catalog Explorer Context — Unified Explorer View
+### Requirement 10: Catalog Explorer Context -- Unified Explorer View
 
 **User Story:** As a user, I want the right-side content area of the Catalog Explorer Context to show the
 contents of whatever catalog node I have selected, so that I can browse files without expanding
@@ -460,7 +460,7 @@ location by default.
      subsequently opened Catalog_Manager_Dialog (no restart required). [WB]
 
 12.7 WHEN the pre-populated path does not exist on disk, THE dialog SHALL display it as a
-     suggestion only — the path is created only when the user confirms the dialog with
+     suggestion only -- the path is created only when the user confirms the dialog with
      `Create repository now` checked (Mainframe) or when the POSIX catalog is first mounted. [WB]
 
 ---
@@ -535,7 +535,7 @@ useful content immediately without any manual setup.
      application restart without being re-created. [WB]
 
 14.4 WHEN the `CatalogRegistry` already contains one or more `Native` catalogs on startup,
-     THE startup sequence SHALL NOT create the default Home catalog — the user's existing
+     THE startup sequence SHALL NOT create the default Home catalog -- the user's existing
      Native catalogs take precedence. [WB]
 
 14.5 WHEN the home directory cannot be determined at startup, THE startup sequence SHALL
@@ -553,7 +553,7 @@ useful content immediately without any manual setup.
 
 ---
 
-### Requirement 15: Catalog Properties — Repository Path Display
+### Requirement 15: Catalog Properties -- Repository Path Display
 
 **User Story:** As a user, I want to see the repository path when viewing a catalog's properties,
 so that I know where the catalog's data is stored on disk.
@@ -569,7 +569,7 @@ so that I know where the catalog's data is stored on disk.
 15.2 THE repository path field SHALL be visible for all catalog types: Mainframe, POSIX, and
      Native. [WB]
 
-15.3 THE repository path field SHALL be read-only in the Edit dialog — the path cannot be changed
+15.3 THE repository path field SHALL be read-only in the Edit dialog -- the path cannot be changed
      after catalog creation. [WB]
 
 ---
@@ -628,7 +628,7 @@ Files/Catalog manager, so that the menu accurately reflects what the option does
 #### Acceptance Criteria
 
 11.1 THE Primary Option Menu option `1` label SHALL read `Files` with description
-     `Virtual File Catalogs — Mainframe, POSIX, Native`. [ISPF-POM]
+     `Virtual File Catalogs -- Mainframe, POSIX, Native`. [ISPF-POM]
 
 11.2 WHEN the user selects option `1`, THE tab title SHALL change to `[FILES]` and the tab kind
      SHALL be `FilesPanel` (a new `TabKind` variant). [ISPF-POM]

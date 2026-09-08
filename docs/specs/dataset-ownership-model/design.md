@@ -4,10 +4,10 @@
 
 The Dataset Ownership Model is a **cross-cutting architectural governance specification** that establishes single-authority ownership boundaries, interface contracts, and dependency rules for all dataset-related subsystems in FileForgeWorkbench. Unlike implementation crates, this specification does not produce a standalone `ff-*` crate. Instead, it produces:
 
-1. **Shared trait definitions** — Interface contracts (`CatalogService`, `VsamService`, `AllocatorService`) that live in the owning crate's public API and are consumed by dependent crates via trait bounds.
-2. **Architectural fitness tests** — A `tests/architecture_compliance.rs` integration test suite that verifies dependency direction, ownership boundaries, and trait-based coupling at compile time and CI time.
-3. **CI pipeline checks** — A `cargo`-based dependency direction checker that fails the build when prohibited dependencies are introduced.
-4. **Specification alignment tracking** — A checklist tracking which subsystem specs have been updated to conform to this governance document.
+1. **Shared trait definitions** -- Interface contracts (`CatalogService`, `VsamService`, `AllocatorService`) that live in the owning crate's public API and are consumed by dependent crates via trait bounds.
+2. **Architectural fitness tests** -- A `tests/architecture_compliance.rs` integration test suite that verifies dependency direction, ownership boundaries, and trait-based coupling at compile time and CI time.
+3. **CI pipeline checks** -- A `cargo`-based dependency direction checker that fails the build when prohibited dependencies are introduced.
+4. **Specification alignment tracking** -- A checklist tracking which subsystem specs have been updated to conform to this governance document.
 
 ### Position in Architecture
 
@@ -26,7 +26,7 @@ The Dataset Ownership Model is a **cross-cutting architectural governance specif
 │         ▼                       ▼                          ▼              │
 │  ┌──────────────┐    ┌──────────────────────────────────────────────┐   │
 │  │ff-vsam-svc   │    │              ff-vfs (abstraction only)        │   │
-│  │(record-level)│    │    Universal infrastructure — all may depend   │   │
+│  │(record-level)│    │    Universal infrastructure -- all may depend   │   │
 │  └──────────────┘    └──────────────────────────────────────────────┘   │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -37,9 +37,9 @@ Reverse arrows are PROHIBITED.
 
 ### Design Constraints
 
-- **No new crate produced**: This governance document produces tests, CI scripts, and trait alignment — not a standalone binary or library.
+- **No new crate produced**: This governance document produces tests, CI scripts, and trait alignment -- not a standalone binary or library.
 - **Trait ownership stays with the owning crate**: `CatalogService` is defined in `ff-dataset-catalog`, `VsamService` in `ff-vsam-services`, `AllocatorService` in `ff-dataset-allocator`. Dependent crates import the trait from the owning crate.
-- **Compile-time enforcement**: Prohibited dependencies are enforced by `Cargo.toml` declarations — if a crate doesn't list a prohibited dependency, Rust's module system prevents use. The fitness test verifies this declaratively.
+- **Compile-time enforcement**: Prohibited dependencies are enforced by `Cargo.toml` declarations -- if a crate doesn't list a prohibited dependency, Rust's module system prevents use. The fitness test verifies this declaratively.
 - **Object-safe trait wrappers**: Each trait has both an ergonomic generic version and an object-safe `Dyn*` wrapper for dynamic dispatch and mocking.
 
 ---
@@ -63,14 +63,14 @@ ff-dataset-allocator
 
 ff-dataset-catalog
     ├── ff-vfs (implements VfsProvider trait)
-    └── ff-vsam-services (for VSAM dataset initialization — optional)
+    └── ff-vsam-services (for VSAM dataset initialization -- optional)
 
 ff-vsam-services
     ├── ff-vfs (implements VfsProvider under scheme "vsam")
     └── (no domain crate dependencies)
 
 ff-vfs
-    └── (no domain crate dependencies — pure abstraction)
+    └── (no domain crate dependencies -- pure abstraction)
 ```
 
 ### Prohibited Dependencies (Must Never Appear)
@@ -125,11 +125,11 @@ impl<T: CatalogService<Error = CatalogError> + Send + Sync> DynCatalogService fo
 
 The fitness function is an integration test that:
 
-1. **Parses `Cargo.toml` files** — Reads all workspace member `Cargo.toml` files to extract `[dependencies]` sections.
-2. **Builds a dependency matrix** — For each dataset-related crate, records what it depends on.
-3. **Checks against prohibition rules** — Verifies that no prohibited dependency exists.
-4. **Checks trait-based coupling** — Verifies that dependent crates compile with mock trait implementations (no concrete-type coupling).
-5. **Reports violations** — Produces a clear error message identifying the violating crate and the prohibited dependency.
+1. **Parses `Cargo.toml` files** -- Reads all workspace member `Cargo.toml` files to extract `[dependencies]` sections.
+2. **Builds a dependency matrix** -- For each dataset-related crate, records what it depends on.
+3. **Checks against prohibition rules** -- Verifies that no prohibited dependency exists.
+4. **Checks trait-based coupling** -- Verifies that dependent crates compile with mock trait implementations (no concrete-type coupling).
+5. **Reports violations** -- Produces a clear error message identifying the violating crate and the prohibited dependency.
 
 ```rust
 // tests/architecture_compliance.rs (in workspace root or a dedicated test crate)
@@ -210,7 +210,7 @@ A tracking matrix records which subsystem specs have been updated:
 | `ff-dataset-catalog` (dataset-catalog) | ⚠️ Needs clarification note | Req 7 needs note that JCL allocation workflows are owned by allocator |
 | `ff-dataset-allocator` (dataset-allocator) | ✅ Aligned | Req 2 AC 8 already states catalog-only API access |
 | `ff-vfs` (virtual-file-system) | ✅ No changes needed | Correctly owns only abstraction layer |
-| `ff-vsam-services` | 🔴 Not yet created | Future crate — trait interface defined in this governance doc |
+| `ff-vsam-services` | 🔴 Not yet created | Future crate -- trait interface defined in this governance doc |
 
 ---
 
@@ -301,4 +301,4 @@ When a new dataset-related crate is proposed:
 
 - The fitness function itself is tested by verifying it catches known-bad `Cargo.toml` configurations (using test fixture files)
 - Mock compilation tests prove trait-based coupling for each dependent crate
-- No property-based tests needed — governance rules are deterministic checks
+- No property-based tests needed -- governance rules are deterministic checks

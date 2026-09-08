@@ -1,4 +1,4 @@
-# Requirements Review — Task 1: Inventory & Baseline Audit
+# Requirements Review -- Task 1: Inventory & Baseline Audit
 
 **Phase:** Requirements Review  
 **Status:** COMPLETE  
@@ -52,10 +52,10 @@ domain classification, gap analysis, and requirement rewrites).
 | 7 | `virtual-file-system` | ✅ | ~10 requirements | EARS, numbered | **Compliant** | VFS provider trait, URI scheme, and capability model well-specified. |
 | 8 | `connector-local-fs` | ✅ | ~8 requirements | EARS, numbered | **Compliant** | File watching, path resolution, cross-platform handling covered. |
 | 9 | `connector-extensibility` | ✅ | ~6 requirements | EARS, numbered | **Compliant** | Plugin trait and registration lifecycle present. |
-| 10 | `connector-network-fs` | ✅ | Stub only | Free-text stub | **Major Rewrite Required** | Deferred connector — no acceptance criteria. Needs FR stubs with DEFERRED status. |
-| 11 | `connector-ftp-sftp` | ✅ | Stub only | Free-text stub | **Major Rewrite Required** | Deferred connector — no acceptance criteria. Needs FR stubs with DEFERRED status. |
-| 12 | `connector-mainframe` | ✅ | Stub only | Free-text stub | **Major Rewrite Required** | Deferred connector — no acceptance criteria. Needs FR stubs with DEFERRED status. |
-| 13 | `connector-cloud` | ✅ | Stub only | Free-text stub | **Major Rewrite Required** | Deferred connector — no acceptance criteria. Needs FR stubs with DEFERRED status. |
+| 10 | `connector-network-fs` | ✅ | Stub only | Free-text stub | **Major Rewrite Required** | Deferred connector -- no acceptance criteria. Needs FR stubs with DEFERRED status. |
+| 11 | `connector-ftp-sftp` | ✅ | Stub only | Free-text stub | **Major Rewrite Required** | Deferred connector -- no acceptance criteria. Needs FR stubs with DEFERRED status. |
+| 12 | `connector-mainframe` | ✅ | Stub only | Free-text stub | **Major Rewrite Required** | Deferred connector -- no acceptance criteria. Needs FR stubs with DEFERRED status. |
+| 13 | `connector-cloud` | ✅ | Stub only | Free-text stub | **Major Rewrite Required** | Deferred connector -- no acceptance criteria. Needs FR stubs with DEFERRED status. |
 
 ### 3.3 Core Editor
 
@@ -150,7 +150,7 @@ domain classification, gap analysis, and requirement rewrites).
 | 55 | `dataset-allocator` | ✅ | ~8 requirements | EARS, numbered | **Needs Improvement** | DSN resolution and disposition handling covered. ISPF-style fields well-specified. Missing explicit error-path criteria for all disposition combinations. Terminology uses "DYNALLOC" without glossary entry. |
 | 56 | `dataset-ownership-model` | ✅ | ~6 requirements | EARS, numbered | **Needs Improvement** | Governance model present but criteria are high-level. Missing explicit acceptance criteria for ownership transfer and conflict resolution edge cases. |
 | 57 | `idcams-emulator` | ✅ | ~10 requirements | EARS, numbered | **Compliant** | DEFINE, DELETE, LISTCAT, REPRO commands well-specified. |
-| 58 | `virtual-catalog-manager` | ✅ | 16 requirements, ~80 criteria | EARS, numbered, user stories | **Needs Improvement** | Good coverage of catalog CRUD, POSIX provider, dataset allocation. However: (1) Requirement 11 appears out of order after Requirement 16 (numbering gap). (2) Terminology uses "Windows catalog" in some places vs "Native catalog" in others — inconsistent. (3) No explicit NFRs for dialog response time or catalog load performance. (4) Requirement 16 acceptance criteria 16.1 references `files_panel.rs` — implementation detail that violates implementation neutrality. |
+| 58 | `virtual-catalog-manager` | ✅ | 16 requirements, ~80 criteria | EARS, numbered, user stories | **Needs Improvement** | Good coverage of catalog CRUD, POSIX provider, dataset allocation. However: (1) Requirement 11 appears out of order after Requirement 16 (numbering gap). (2) Terminology uses "Windows catalog" in some places vs "Native catalog" in others -- inconsistent. (3) No explicit NFRs for dialog response time or catalog load performance. (4) Requirement 16 acceptance criteria 16.1 references `files_panel.rs` -- implementation detail that violates implementation neutrality. |
 
 ### 3.13 Job Entry Subsystem
 
@@ -162,7 +162,7 @@ domain classification, gap analysis, and requirement rewrites).
 
 | # | Sub-Project | File Exists | Req Count (approx) | Format | Quality Flag | Notes |
 |---|-------------|-------------|-------------------|--------|--------------|-------|
-| 60 | `file-tree-panel` | ✅ | 23 requirements, ~150 criteria | EARS, numbered, user stories, glossary | **Needs Improvement** | The most comprehensive spec in the corpus. Requirements 1–14 are well-formed and Compliant. Requirements 15–23 were added incrementally via change requests and show inconsistencies: (1) Requirements 15, 19, 20, 21 use a different sub-heading style (bold criterion labels like **19.1 —**) vs the numbered list style used in Reqs 1–14. (2) Requirement 22 appears after Requirement 23 (out of order). (3) Glossary additions are scattered across individual requirements rather than consolidated in the main Glossary section. (4) Some criteria in Reqs 16–21 reference implementation files (`context_menu.rs`, `files_panel.rs`) — violates implementation neutrality. (5) Terminology uses "File Explorer Panel" and "File Tree Panel" interchangeably. |
+| 60 | `file-tree-panel` | ✅ | 23 requirements, ~150 criteria | EARS, numbered, user stories, glossary | **Needs Improvement** | The most comprehensive spec in the corpus. Requirements 1–14 are well-formed and Compliant. Requirements 15–23 were added incrementally via change requests and show inconsistencies: (1) Requirements 15, 19, 20, 21 use a different sub-heading style (bold criterion labels like **19.1 --**) vs the numbered list style used in Reqs 1–14. (2) Requirement 22 appears after Requirement 23 (out of order). (3) Glossary additions are scattered across individual requirements rather than consolidated in the main Glossary section. (4) Some criteria in Reqs 16–21 reference implementation files (`context_menu.rs`, `files_panel.rs`) -- violates implementation neutrality. (5) Terminology uses "File Explorer Panel" and "File Tree Panel" interchangeably. |
 | 61 | `compare-and-merge` | ✅ | ~8 requirements | EARS, numbered | **Compliant** | COMPARE command, diff view, merge covered. |
 
 ### 3.15 Performance
@@ -176,13 +176,13 @@ domain classification, gap analysis, and requirement rewrites).
 
 | # | Sub-Project | File Exists | Req Count (approx) | Format | Quality Flag | Notes |
 |---|-------------|-------------|-------------------|--------|--------------|-------|
-| 64 | `database-tool` | ✅ | ~20 requirements | EARS, numbered | **Needs Improvement** | Comprehensive DBeaver-derived coverage. However: (1) Requirements are very long and not atomic — several requirements contain 15+ criteria that should be split into child requirements. (2) Terminology uses "DBeaver" as a reference point in requirement text — should be removed from the spec (it is a source reference, not a product term). (3) Missing explicit NFRs for query execution time and result set size limits. (4) No traceability to the DBeaver research documents in the same folder. |
+| 64 | `database-tool` | ✅ | ~20 requirements | EARS, numbered | **Needs Improvement** | Comprehensive DBeaver-derived coverage. However: (1) Requirements are very long and not atomic -- several requirements contain 15+ criteria that should be split into child requirements. (2) Terminology uses "DBeaver" as a reference point in requirement text -- should be removed from the spec (it is a source reference, not a product term). (3) Missing explicit NFRs for query execution time and result set size limits. (4) No traceability to the DBeaver research documents in the same folder. |
 
 ### 3.17 Compiler Toolchain
 
 | # | Sub-Project | File Exists | Req Count (approx) | Format | Quality Flag | Notes |
 |---|-------------|-------------|-------------------|--------|--------------|-------|
-| 65 | `compiler-toolchain-integration` | ✅ | ~10 requirements | EARS, numbered | **Needs Improvement** | GCC and Rust toolchain detection and build covered. However: (1) Requirements mix toolchain-specific details (GCC flags, rustup commands) with platform-level requirements — implementation details should be moved to design.md. (2) Missing explicit NFRs for build invocation timeout and diagnostic parse performance. (3) No requirement for a generic `ToolchainPlugin` trait that future toolchains (LLVM, GnuCOBOL) can implement — the spec is GCC/Rust-specific rather than extensible. |
+| 65 | `compiler-toolchain-integration` | ✅ | ~10 requirements | EARS, numbered | **Needs Improvement** | GCC and Rust toolchain detection and build covered. However: (1) Requirements mix toolchain-specific details (GCC flags, rustup commands) with platform-level requirements -- implementation details should be moved to design.md. (2) Missing explicit NFRs for build invocation timeout and diagnostic parse performance. (3) No requirement for a generic `ToolchainPlugin` trait that future toolchains (LLVM, GnuCOBOL) can implement -- the spec is GCC/Rust-specific rather than extensible. |
 
 ### 3.18 Foundation
 
@@ -195,7 +195,7 @@ domain classification, gap analysis, and requirement rewrites).
 | # | Sub-Project | File Exists | Status | Notes |
 |---|-------------|-------------|--------|-------|
 | 67 | `jcl-resolver` | `.gitkeep` only | **No spec** | No requirements.md. JCL resolution is referenced in FFW-JES but has no standalone spec. Needs creation or merger into FFW-JES. |
-| 68 | `workbench-requirements-merge` | Architecture docs only | **No requirements.md** | Contains architecture-brief.md, gap analysis, and verification docs. Not a feature spec — should be reclassified as `docs/architecture/`. |
+| 68 | `workbench-requirements-merge` | Architecture docs only | **No requirements.md** | Contains architecture-brief.md, gap analysis, and verification docs. Not a feature spec -- should be reclassified as `docs/architecture/`. |
 
 ---
 
@@ -260,7 +260,7 @@ used by all other sub-projects:
 | Folder | Issue | Recommended Name |
 |--------|-------|-----------------|
 | `FFW-JES` | Uses uppercase and project prefix | `jes-emulator` |
-| `workbench-requirements-merge` | Not a feature spec — is an architecture document collection | Move to `docs/architecture/` |
+| `workbench-requirements-merge` | Not a feature spec -- is an architecture document collection | Move to `docs/architecture/` |
 
 ---
 
@@ -271,7 +271,7 @@ used by all other sub-projects:
 | **Implementation details in requirements** | `file-tree-panel` (Reqs 16–21), `virtual-catalog-manager` (Req 16.5), `compiler-toolchain-integration` | Remove references to specific source files (`context_menu.rs`, `files_panel.rs`). Move to design.md. |
 | **Out-of-order requirement numbering** | `virtual-catalog-manager` (Req 11 after Req 16), `file-tree-panel` (Req 22 after Req 23) | Renumber requirements sequentially during rewrite. |
 | **Scattered glossary additions** | `file-tree-panel` (glossary additions in Reqs 16, 17, 19, 20, 21) | Consolidate all glossary terms into the main Glossary section. |
-| **Inconsistent criterion numbering style** | `file-tree-panel` (Reqs 1–14 use numbered lists; Reqs 15–23 use bold labels like **19.1 —**) | Standardise to numbered list format throughout. |
+| **Inconsistent criterion numbering style** | `file-tree-panel` (Reqs 1–14 use numbered lists; Reqs 15–23 use bold labels like **19.1 --**) | Standardise to numbered list format throughout. |
 | **Missing NFRs** | `dataset-catalog`, `dataset-allocator`, `database-tool`, `compiler-toolchain-integration`, `FFW-JES` | Add NFR sections covering performance, scalability, and reliability for each spec. |
 | **Source reference inconsistency** | Some specs use `[WB]`, `[FFE]`, `[DSC]`; others use `[FFE-TREE]`, `[ISPF-POM]`, `[DSC]` | Standardise source reference tags across all specs. |
 | **"DBeaver" in requirement text** | `database-tool` | Remove product names from requirement text. Use "the database IDE tool" or "the integrated database tool". |
@@ -282,20 +282,20 @@ used by all other sub-projects:
 
 This inventory feeds directly into:
 
-- **Task 2** — Terminology Standardisation (uses the legacy term scan from §3 notes)
-- **Task 3** — Architectural Domain Classification (uses the spec list from §3)
-- **Task 4** — Gap Analysis (uses §6 Missing Specs and §5 Overlaps)
-- **Tasks 5–7** — Requirement Rewrites (prioritised by quality flag from §3)
+- **Task 2** -- Terminology Standardisation (uses the legacy term scan from §3 notes)
+- **Task 3** -- Architectural Domain Classification (uses the spec list from §3)
+- **Task 4** -- Gap Analysis (uses §6 Missing Specs and §5 Overlaps)
+- **Tasks 5–7** -- Requirement Rewrites (prioritised by quality flag from §3)
 
 Recommended rewrite priority order based on quality flags and architectural
 importance:
 
-1. Deferred connector stubs (4 specs) — quick wins, establish DEFERRED FR pattern
-2. `startup-and-session` — high-traffic spec, terminology issues affect many downstream specs
-3. `file-tree-panel` — largest spec, structural inconsistencies most visible to contributors
-4. `virtual-catalog-manager` — out-of-order numbering and implementation detail leakage
-5. `FFW-JES` — naming convention and terminology issues
-6. `database-tool` — atomicity and DBeaver reference issues
-7. `compiler-toolchain-integration` — extensibility gap
-8. `dataset-catalog`, `dataset-allocator`, `dataset-ownership-model` — missing NFRs
-9. `function-keys-and-history` — terminology and numbering pass
+1. Deferred connector stubs (4 specs) -- quick wins, establish DEFERRED FR pattern
+2. `startup-and-session` -- high-traffic spec, terminology issues affect many downstream specs
+3. `file-tree-panel` -- largest spec, structural inconsistencies most visible to contributors
+4. `virtual-catalog-manager` -- out-of-order numbering and implementation detail leakage
+5. `FFW-JES` -- naming convention and terminology issues
+6. `database-tool` -- atomicity and DBeaver reference issues
+7. `compiler-toolchain-integration` -- extensibility gap
+8. `dataset-catalog`, `dataset-allocator`, `dataset-ownership-model` -- missing NFRs
+9. `function-keys-and-history` -- terminology and numbering pass

@@ -1,6 +1,6 @@
-# FileForgeWorkbench — Final Sub-Project Inventory
+# FileForgeWorkbench -- Final Sub-Project Inventory
 
-> Generated as part of Task 18.6 — Workbench Requirements Merge
+> Generated as part of Task 18.6 -- Workbench Requirements Merge
 
 ---
 
@@ -162,23 +162,23 @@
 
 | # | Sub-Project | Description | Reqs | AC | Sources | Status |
 |---|-------------|-------------|------|-----|---------|--------|
-| 58 | `connector-network-fs` | Network/UNC paths, SMB/CIFS, NFS, mapped drives | — | — | WB | ⚠️ DEFERRED |
-| 59 | `connector-ftp-sftp` | FTP, FTPS, SFTP connectors | — | — | WB | ⚠️ DEFERRED |
-| 60 | `connector-mainframe` | z/OS FTP, TN3270, z/OSMF, USS SSH | — | — | WB, DSC | ⚠️ DEFERRED |
-| 61 | `connector-cloud` | SharePoint, OneDrive, OAuth | — | — | WB | ⚠️ DEFERRED |
+| 58 | `connector-network-fs` | Network/UNC paths, SMB/CIFS, NFS, mapped drives | -- | -- | WB | ⚠️ DEFERRED |
+| 59 | `connector-ftp-sftp` | FTP, FTPS, SFTP connectors | -- | -- | WB | ⚠️ DEFERRED |
+| 60 | `connector-mainframe` | z/OS FTP, TN3270, z/OSMF, USS SSH | -- | -- | WB, DSC | ⚠️ DEFERRED |
+| 61 | `connector-cloud` | SharePoint, OneDrive, OAuth | -- | -- | WB | ⚠️ DEFERRED |
 
 ### Meta / Orchestration
 
 | # | Sub-Project | Description | Reqs | AC | Sources |
 |---|-------------|-------------|------|-----|---------|
-| 62 | `project-master` | Master orchestration — inventory, dependency graph, cross-cutting requirements | 10 | 29 | FFE, SCI, WB, DBV, DSC |
+| 62 | `project-master` | Master orchestration -- inventory, dependency graph, cross-cutting requirements | 10 | 29 | FFE, SCI, WB, DBV, DSC |
 
 ### Additional Directories (Research / Non-standard)
 
 | # | Sub-Project | Description | Reqs | AC | Sources | Status |
 |---|-------------|-------------|------|-----|---------|--------|
-| 63 | `connectivity-core` | Connectivity core placeholder | — | — | WB | No requirements.md |
-| 64 | `FFW-JES` | JES (Job Entry Subsystem) research area | — | — | WB | No requirements.md |
+| 63 | `connectivity-core` | Connectivity core placeholder | -- | -- | WB | No requirements.md |
+| 64 | `FFW-JES` | JES (Job Entry Subsystem) research area | -- | -- | WB | No requirements.md |
 
 ---
 
@@ -230,7 +230,7 @@
 | Performance | 2 | 21 | 136 |
 | Database Tool | 1 | 17 | 196 |
 | Meta/Orchestration | 1 | 10 | 29 |
-| Deferred Connectivity | 4 | — | — |
+| Deferred Connectivity | 4 | -- | -- |
 
 ---
 
@@ -241,7 +241,7 @@
 Each edge reads as "A depends on B" (A uses B at compile/runtime):
 
 ```
-logging-subsystem          → (none — leaf dependency)
+logging-subsystem          → (none -- leaf dependency)
 platform-core              → logging-subsystem
 command-framework          → platform-core, logging-subsystem
 plugin-architecture        → platform-core, logging-subsystem
@@ -391,7 +391,7 @@ ffw-jes                    → command-framework, plugin-architecture, layout-an
 
 The suggested implementation order follows a bottom-up strategy: foundational crates first, then layers that depend on them.
 
-### Phase 1 — Foundation & Infrastructure
+### Phase 1 -- Foundation & Infrastructure
 
 | Priority | Crate | Rationale |
 |----------|-------|-----------|
@@ -403,7 +403,7 @@ The suggested implementation order follows a bottom-up strategy: foundational cr
 | 6 | `workflow-engine` | State machines for complex operations (data transfer, compare). |
 | 7 | `layout-and-docking` | Panel infrastructure for all UI content areas. |
 
-### Phase 2 — VFS & Connectors
+### Phase 2 -- VFS & Connectors
 
 | Priority | Crate | Rationale |
 |----------|-------|-----------|
@@ -411,7 +411,7 @@ The suggested implementation order follows a bottom-up strategy: foundational cr
 | 9 | `connector-local-fs` | First (and initially only) real VFS provider. |
 | 10 | `connector-extensibility` | Trait that future connectors implement; needed by dataset-catalog. |
 
-### Phase 3 — Core Editor
+### Phase 3 -- Core Editor
 
 | Priority | Crate | Rationale |
 |----------|-------|-----------|
@@ -421,7 +421,7 @@ The suggested implementation order follows a bottom-up strategy: foundational cr
 | 14 | `undo-redo-transactions` | Depends on document-model and edit-operations. |
 | 15 | `viewport-and-scrolling` | Visible region management, depends on display-line-mapping. |
 
-### Phase 4 — Commands & Navigation
+### Phase 4 -- Commands & Navigation
 
 | Priority | Crate | Rationale |
 |----------|-------|-----------|
@@ -431,7 +431,7 @@ The suggested implementation order follows a bottom-up strategy: foundational cr
 | 19 | `exclude-show-filter` | Line visibility engine. |
 | 20 | `navigation-commands` | LOCATE, SORT, BOUNDS, etc. |
 
-### Phase 5 — UI, Rendering & Language
+### Phase 5 -- UI, Rendering & Language
 
 | Priority | Crate | Rationale |
 |----------|-------|-----------|
@@ -444,7 +444,7 @@ The suggested implementation order follows a bottom-up strategy: foundational cr
 | 27 | `syntax-highlighting` | Depends on language-service + document-model. |
 | 28 | `auto-indentation` | Language-aware indent logic. |
 
-### Phase 6 — File I/O & Session
+### Phase 6 -- File I/O & Session
 
 | Priority | Crate | Rationale |
 |----------|-------|-----------|
@@ -455,7 +455,7 @@ The suggested implementation order follows a bottom-up strategy: foundational cr
 | 33 | `multi-tab-editor` | Multiple documents open simultaneously. |
 | 34 | `startup-and-session` | Application launch, session restore. |
 
-### Phase 7 — Desktop Integration
+### Phase 7 -- Desktop Integration
 
 | Priority | Crate | Rationale |
 |----------|-------|-----------|
@@ -466,7 +466,7 @@ The suggested implementation order follows a bottom-up strategy: foundational cr
 | 39 | `context-help` | F1 help system. |
 | 40 | `shell-command` | External process execution. |
 
-### Phase 8 — Extensions & Display Modes
+### Phase 8 -- Extensions & Display Modes
 
 | Priority | Crate | Rationale |
 |----------|-------|-----------|
@@ -476,7 +476,7 @@ The suggested implementation order follows a bottom-up strategy: foundational cr
 | 44 | `sequence-numbers` | Sequence number display/management. |
 | 45 | `tabs-and-mask` | TABS/MASK helper commands. |
 
-### Phase 9 — FileForge Domain
+### Phase 9 -- FileForge Domain
 
 | Priority | Crate | Rationale |
 |----------|-------|-----------|
@@ -486,7 +486,7 @@ The suggested implementation order follows a bottom-up strategy: foundational cr
 | 49 | `asa-report-preview` | ASA carriage control rendering. |
 | 50 | `custom-file-viewers` | Pluggable viewer framework. |
 
-### Phase 10 — Dataset & Explorer
+### Phase 10 -- Dataset & Explorer
 
 | Priority | Crate | Rationale |
 |----------|-------|-----------|
@@ -496,7 +496,7 @@ The suggested implementation order follows a bottom-up strategy: foundational cr
 | 54 | `file-tree-panel` | Unified explorer (depends on VFS + dataset-catalog). |
 | 55 | `compare-and-merge` | File comparison (depends on VFS + document-model). |
 
-### Phase 11 — Performance & Database
+### Phase 11 -- Performance & Database
 
 | Priority | Crate | Rationale |
 |----------|-------|-----------|
@@ -508,10 +508,10 @@ The suggested implementation order follows a bottom-up strategy: foundational cr
 
 | Priority | Crate | Rationale |
 |----------|-------|-----------|
-| — | `connector-network-fs` | Network filesystem access — after initial release. |
-| — | `connector-ftp-sftp` | FTP/SFTP — after initial release. |
-| — | `connector-mainframe` | z/OS remote — after initial release. |
-| — | `connector-cloud` | Cloud storage — after initial release. |
+| -- | `connector-network-fs` | Network filesystem access -- after initial release. |
+| -- | `connector-ftp-sftp` | FTP/SFTP -- after initial release. |
+| -- | `connector-mainframe` | z/OS remote -- after initial release. |
+| -- | `connector-cloud` | Cloud storage -- after initial release. |
 
 ---
 
@@ -526,4 +526,4 @@ The suggested implementation order follows a bottom-up strategy: foundational cr
 
 ---
 
-*Document generated for FileForgeWorkbench Requirements Merge — Task 18.6*
+*Document generated for FileForgeWorkbench Requirements Merge -- Task 18.6*

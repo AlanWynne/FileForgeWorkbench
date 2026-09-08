@@ -4,23 +4,23 @@
 
 The `ff-undo-redo` crate implements the **full transaction system** for undo and redo in FileForgeWorkbench. It owns the undo and redo stacks, manages transaction boundaries and coalescing, tracks save-point semantics for the dirty flag, supports bulk transaction optimisations, provides tentative action support for IME composition, manages selection history for cursor restoration on undo/redo, and persists undo state for crash recovery.
 
-This crate is the bridge between the command framework (`ff-command`) — which produces undo records — and the document model (`ff-document-model`) — which receives reversed/re-applied edit operations.
+This crate is the bridge between the command framework (`ff-command`) -- which produces undo records -- and the document model (`ff-document-model`) -- which receives reversed/re-applied edit operations.
 
 ### Position in Architecture
 
 ```
-Wave 4 — Core Editor
+Wave 4 -- Core Editor
 
 ┌─────────────────────────────────────────────────────────┐
 │         Application Binary (ffwb / ff-desktop)           │
 ├─────────────────────────────────────────────────────────┤
 │  ff-core │ ff-plugin │ All editor subsystems             │
 ├─────────────────────────────────────────────────────────┤
-│  ff-command (Command Framework — Wave 2)                 │
+│  ff-command (Command Framework -- Wave 2)                 │
 │    ↕ UndoManager trait                                   │
-│  ff-undo-redo (this crate — Wave 4)                      │
+│  ff-undo-redo (this crate -- Wave 4)                      │
 │    ↕ EditTarget trait                                    │
-│  ff-document-model (Document Model — Wave 4)             │
+│  ff-document-model (Document Model -- Wave 4)             │
 ├─────────────────────────────────────────────────────────┤
 │  ff-logging (Wave 0) │ ff-configuration (Wave 2)         │
 └─────────────────────────────────────────────────────────┘
@@ -30,7 +30,7 @@ Wave 4 — Core Editor
 ### Design Constraints (Cross-Cutting)
 
 - **Command-Driven Architecture (Req 4)**: Every undoable command produces a transaction record via this crate
-- **GUI Independence (Req 2)**: Zero GUI dependencies — pure data structures and logic
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- pure data structures and logic
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-undo-redo`
 - **Error Message Standards (Req 8)**: All errors follow `[undo] operation: description` format
 - **Async I/O (Req 6)**: Bulk operations > 1s run async with progress; recovery file I/O is async
@@ -106,7 +106,7 @@ end
 | **Save Point Tracker** | Maintains save/detach markers, derives dirty flag, tracks modified line markers |
 | **Selection History** | Captures before/after selection state per transaction, restores on undo/redo |
 | **Bulk Transaction** | Optimised storage for Rule_Transaction (O(1)) and Index_Transaction (O(n)) patterns |
-| **Tentative Actions** | IME composition support — uncommitted actions that can be rolled back without undo history trace |
+| **Tentative Actions** | IME composition support -- uncommitted actions that can be rolled back without undo history trace |
 | **Recovery Writer** | Periodic serialisation of undo state to disk for crash recovery |
 | **Validation** | Integrity checking of undo history against document state |
 
@@ -119,22 +119,22 @@ crates/ff-undo-redo/
 ├── Cargo.toml
 ├── src/
 │   ├── lib.rs                  # Public API re-exports, crate docs
-│   ├── manager.rs              # UndoManager — per-document orchestrator
+│   ├── manager.rs              # UndoManager -- per-document orchestrator
 │   ├── transaction.rs          # Transaction struct, TransactionBuilder
 │   ├── edit_op.rs              # EditOperation enum (Insert, Delete, Replace)
-│   ├── stack.rs                # UndoStack, RedoStack — bounded collections
-│   ├── coalesce.rs             # Coalescing engine — merge rules, timeout
+│   ├── stack.rs                # UndoStack, RedoStack -- bounded collections
+│   ├── coalesce.rs             # Coalescing engine -- merge rules, timeout
 │   ├── save_point.rs           # SavePointTracker, DetachPoint, DirtyFlag
 │   ├── selection.rs            # SelectionState, SelectionHistory
 │   ├── bulk.rs                 # BulkTransaction, RuleTransaction, IndexTransaction
-│   ├── tentative.rs            # TentativeActionManager — IME composition
-│   ├── recovery.rs             # RecoveryWriter, RecoveryReader — crash recovery
-│   ├── scrap.rs                # ScrapStack — contiguous text storage
+│   ├── tentative.rs            # TentativeActionManager -- IME composition
+│   ├── recovery.rs             # RecoveryWriter, RecoveryReader -- crash recovery
+│   ├── scrap.rs                # ScrapStack -- contiguous text storage
 │   ├── record_id.rs            # LogicalRecordId, RecordIdMap
 │   ├── container.rs            # ContainerAction, UndoableState trait
 │   ├── validate.rs             # History validation and integrity checks
-│   ├── notify.rs               # UndoNotifier trait — state-change callbacks
-│   ├── config.rs               # UndoConfig — parsed configuration values
+│   ├── notify.rs               # UndoNotifier trait -- state-change callbacks
+│   ├── config.rs               # UndoConfig -- parsed configuration values
 │   ├── error.rs                # UndoError enum
 │   └── undo_manager_trait.rs   # UndoManager trait impl (for ff-command)
 └── tests/
@@ -220,10 +220,10 @@ pub struct Transaction {
 /// Addresses: Requirement 7
 #[derive(Debug, Clone)]
 pub enum BulkTransaction {
-    /// O(1) memory — stores the transformation rule; re-scans on undo.
+    /// O(1) memory -- stores the transformation rule; re-scans on undo.
     /// Addresses: Requirement 7.3, 7.6, 7.8
     Rule(RuleTransaction),
-    /// O(n) memory — stores rule + list of affected record IDs.
+    /// O(n) memory -- stores rule + list of affected record IDs.
     /// Addresses: Requirement 7.4, 7.5, 7.7, 7.8
     Index(IndexTransaction),
 }
@@ -273,22 +273,22 @@ pub struct TransformRule {
     pub metadata: HashMap<String, String>,
 }
 
-/// Scope of a bulk operation — determines Rule vs Index strategy.
+/// Scope of a bulk operation -- determines Rule vs Index strategy.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BulkScope {
-    /// All records — deterministic, use RuleTransaction
+    /// All records -- deterministic, use RuleTransaction
     All,
-    /// Explicit line range — deterministic
+    /// Explicit line range -- deterministic
     Range { start: u64, end: u64 },
-    /// CC block — deterministic from command context
+    /// CC block -- deterministic from command context
     Block { start: u64, end: u64 },
-    /// Visible/non-excluded — transient, use IndexTransaction
+    /// Visible/non-excluded -- transient, use IndexTransaction
     Visible,
-    /// Excluded only — transient
+    /// Excluded only -- transient
     Excluded,
-    /// Tagged records — transient
+    /// Tagged records -- transient
     Tagged,
-    /// Filtered by criteria — transient
+    /// Filtered by criteria -- transient
     Filtered,
 }
 ```
@@ -410,9 +410,9 @@ pub struct CoalesceState {
 pub enum CoalesceOpType {
     /// Single character insert
     CharInsert,
-    /// Single character delete (backspace — position moves backward)
+    /// Single character delete (backspace -- position moves backward)
     CharBackspace,
-    /// Single character delete (delete key — position stays)
+    /// Single character delete (delete key -- position stays)
     CharDelete,
 }
 ```
@@ -444,7 +444,7 @@ pub struct SavePointState {
     /// The action index corresponding to the last save (or file open).
     /// None if no save point has been set.
     pub save_point: Option<usize>,
-    /// The detach point — set when the save point becomes unreachable
+    /// The detach point -- set when the save point becomes unreachable
     /// due to redo history truncation.
     pub detach_point: Option<usize>,
     /// Current action index (undo position)
@@ -459,7 +459,7 @@ pub struct SavePointState {
 ### UndoManager (per-document orchestrator)
 
 ```rust
-/// The primary public type — one instance per open document.
+/// The primary public type -- one instance per open document.
 /// Encapsulates all undo/redo state for a single document session.
 /// Addresses: Requirement 18.2
 pub struct DocumentUndoManager { /* ... */ }
@@ -586,7 +586,7 @@ impl DocumentUndoManager {
     /// Addresses: Requirement 12.2
     pub fn tentative_start(&mut self);
 
-    /// Commit tentative actions — they become permanent history.
+    /// Commit tentative actions -- they become permanent history.
     /// Addresses: Requirement 12.3
     pub fn tentative_commit(&mut self);
 
@@ -808,12 +808,12 @@ impl RecordIdMap {
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum UndoError {
-    /// Undo stack is empty — nothing to undo.
+    /// Undo stack is empty -- nothing to undo.
     /// Addresses: Requirement 4.2
     #[error("[undo] undo: nothing to undo")]
     NothingToUndo,
 
-    /// Redo stack is empty — nothing to redo.
+    /// Redo stack is empty -- nothing to redo.
     /// Addresses: Requirement 2.5
     #[error("[undo] redo: nothing to redo")]
     NothingToRedo,
@@ -839,7 +839,7 @@ pub enum UndoError {
 
     /// Recovery file I/O error.
     /// Addresses: Requirement 8
-    #[error("[undo] recovery: {operation} failed — {source}")]
+    #[error("[undo] recovery: {operation} failed -- {source}")]
     RecoveryIo {
         operation: String,
         source: std::io::Error,
@@ -881,15 +881,15 @@ pub enum UndoError {
 
 ## 7. Integration Points
 
-### With `ff-command` (upstream — Wave 2)
+### With `ff-command` (upstream -- Wave 2)
 
 - `ff-undo-redo` implements the `UndoManager` trait defined by `ff-command` (see §5 WorkbenchUndoManager)
 - The command framework pushes `UndoRecord` trait objects after undoable command execution
 - Built-in `edit.undo` / `edit.redo` commands in `ff-command` call `pop_undo()` / `pop_redo()` on the UndoManager
 - The command framework clears the redo stack when a new undoable command executes
-- `ff-undo-redo` does NOT depend on `ff-command` at crate level — it implements a trait defined there, connected at runtime by `ff-core`
+- `ff-undo-redo` does NOT depend on `ff-command` at crate level -- it implements a trait defined there, connected at runtime by `ff-core`
 
-### With `ff-document-model` (peer — Wave 4)
+### With `ff-document-model` (peer -- Wave 4)
 
 - `ff-undo-redo` does NOT depend on `ff-document-model` directly (per Requirement 18.5)
 - Instead, it accepts edit operations via a trait interface (`EditTarget`) that the document model implements
@@ -911,32 +911,32 @@ pub trait EditTarget: Send + Sync {
 }
 ```
 
-### With `ff-logging` (upstream — Wave 0)
+### With `ff-logging` (upstream -- Wave 0)
 
 - `ff-undo-redo` uses `ff-logging` for:
-  - WARN when `max_levels` config is negative (applying default) — Requirement 1.6
-  - WARN when an orphaned transaction is force-closed — Requirement 3.5
-  - WARN when history validation fails (clearing history) — Requirement 16.3
-  - WARN when recovery file load fails — Requirement 8
+  - WARN when `max_levels` config is negative (applying default) -- Requirement 1.6
+  - WARN when an orphaned transaction is force-closed -- Requirement 3.5
+  - WARN when history validation fails (clearing history) -- Requirement 16.3
+  - WARN when recovery file load fails -- Requirement 8
   - INFO for transaction commit/undo/redo in debug builds
 
-### With `ff-configuration` (upstream — Wave 2)
+### With `ff-configuration` (upstream -- Wave 2)
 
 - Configuration values are passed to `DocumentUndoManager` at construction via `UndoConfig`
-- The crate does NOT directly read configuration files — `ff-core` mediates
+- The crate does NOT directly read configuration files -- `ff-core` mediates
 - Relevant keys:
   - `editor.undo.max_levels` (Requirement 1.3)
   - `editor.undo.coalesce_timeout_ms` (Requirement 6.4)
   - `editor.undo.selection_history` (Requirement 9.7)
   - `editor.recovery.interval_seconds` (Requirement 8.2)
 
-### With `edit-operations` (peer — Wave 4)
+### With `edit-operations` (peer -- Wave 4)
 
 - The `edit-operations` crate defines what constitutes a transaction boundary (Requirement 3.1)
 - Each editing command (character insert, delete, paste, etc.) calls `begin_transaction()` / `end_transaction()` or relies on coalescing for single-char edits
 - Multi-caret operations wrap all caret edits in a single transaction group
 
-### With `file-operations` (downstream — Wave 8)
+### With `file-operations` (downstream -- Wave 8)
 
 - File save triggers `set_save_point()` and recovery file deletion (Requirements 5.2, 8.3)
 - File open checks for recovery file existence and offers restore/discard (Requirement 8.4)
@@ -1121,7 +1121,7 @@ These properties are suitable for property-based testing with `proptest`. They v
 
 ### Property 9: Bulk Transaction Memory Efficiency
 
-**Statement**: For a `RuleTransaction` affecting N records, the memory cost is O(1) — it does not grow with N. For an `IndexTransaction` affecting N records, the memory cost is O(N) (proportional to the number of affected record IDs stored).
+**Statement**: For a `RuleTransaction` affecting N records, the memory cost is O(1) -- it does not grow with N. For an `IndexTransaction` affecting N records, the memory cost is O(N) (proportional to the number of affected record IDs stored).
 
 **Validates**: Requirement 7.8
 

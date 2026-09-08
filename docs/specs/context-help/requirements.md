@@ -2,15 +2,15 @@
 
 ## Introduction
 
-This feature specifies the **context-sensitive help system** for FileForgeWorkbench (`ff-help` crate). The help system provides an integrated, non-modal, searchable help facility inspired by the ISPF Tutorial/Help model. It delivers context-aware help content through a dockable Help Panel, keyboard-triggered context detection (F1), a searchable topic library, and a navigable topic hierarchy — all without disrupting the user's editing workflow.
+This feature specifies the **context-sensitive help system** for FileForgeWorkbench (`ff-help` crate). The help system provides an integrated, non-modal, searchable help facility inspired by the ISPF Tutorial/Help model. It delivers context-aware help content through a dockable Help Panel, keyboard-triggered context detection (F1), a searchable topic library, and a navigable topic hierarchy -- all without disrupting the user's editing workflow.
 
 The help system integrates with:
-- The **command framework** (`command-framework`) — commands register help text via `CommandMetadata`, and the `HELP` primary command dispatches into this system.
-- The **layout and docking system** (`layout-and-docking`) — the Help Panel participates as a `DockablePanel` trait implementor, dockable to any zone.
-- The **plugin architecture** (`plugin-architecture`) — plugins can contribute additional help topics for their registered commands.
-- The **command semantics** (`command-semantics`) — the HELP primary command (Requirement 7 in that spec) routes through this help infrastructure.
+- The **command framework** (`command-framework`) -- commands register help text via `CommandMetadata`, and the `HELP` primary command dispatches into this system.
+- The **layout and docking system** (`layout-and-docking`) -- the Help Panel participates as a `DockablePanel` trait implementor, dockable to any zone.
+- The **plugin architecture** (`plugin-architecture`) -- plugins can contribute additional help topics for their registered commands.
+- The **command semantics** (`command-semantics`) -- the HELP primary command (Requirement 7 in that spec) routes through this help infrastructure.
 
-The `HELP` primary command defined in `command-semantics` Requirement 7 routes through this help infrastructure — typing `HELP CHANGE` on the command line and pressing F1 while typing a CHANGE command both arrive at the same help content via the Help Panel.
+The `HELP` primary command defined in `command-semantics` Requirement 7 routes through this help infrastructure -- typing `HELP CHANGE` on the command line and pressing F1 while typing a CHANGE command both arrive at the same help content via the Help Panel.
 
 ### Design Principles
 
@@ -21,14 +21,14 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 - **Help is extensible.** Commands, plugins, and macros can register help topics at runtime through the command registry and the help topic registry.
 
 **Source references:**
-- **[FFE-HELP]** = FileForgeEditor `context-help` specification (13 requirements — all incorporated and adapted)
-- **[WB]** = Workbench Architecture Brief — command-driven architecture, plugin model, docking system
+- **[FFE-HELP]** = FileForgeEditor `context-help` specification (13 requirements -- all incorporated and adapted)
+- **[WB]** = Workbench Architecture Brief -- command-driven architecture, plugin model, docking system
 
 ## Glossary
 
 - **Help_System**: The subsystem responsible for context detection, topic resolution, content loading, and Help Panel rendering. Implemented in `ff-help` crate. [FFE-HELP]
 - **Help_Panel**: A dockable panel (implementing `DockablePanel` trait from `layout-and-docking`) used to display help content. Participates in the workbench layout system. [FFE-HELP, WB]
-- **Help_Topic**: A named unit of help content — one topic per command, line command, feature, mode, or configuration key. Identified by a Topic_Key. [FFE-HELP]
+- **Help_Topic**: A named unit of help content -- one topic per command, line command, feature, mode, or configuration key. Identified by a Topic_Key. [FFE-HELP]
 - **Topic_Key**: A string identifier for a Help_Topic, used in lookups (e.g., `"cmd:CHANGE"`, `"line:CC"`, `"mode:hex"`, `"feature:undo"`, `"config:help_panel_position"`). [FFE-HELP]
 - **Help_Index**: The top-level help page listing all available topic categories with navigable links to individual topics. [FFE-HELP]
 - **Context_Detector**: The component that inspects the current editor state (focused panel, command line text, active mode, cursor position, active line command) to determine the most relevant Topic_Key. [FFE-HELP]
@@ -37,15 +37,15 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 - **Help_Search**: A keyword search facility within the Help Panel that searches across all loaded Help_Topics by title and body content. [FFE-HELP]
 - **Help_Navigation_Stack**: A back/forward navigation history within the Help Panel, allowing the user to return to previously viewed topics. [FFE-HELP]
 - **Help_Menu**: The "Help" top-level menu in the workbench menu bar, providing access to the Help Panel, About dialog, and reference pages. [FFE-HELP]
-- **Command_Input_Context**: The state of the command input field when F1 is pressed — specifically, the command name token (if any) currently typed. [FFE-HELP]
-- **Prefix_Area_Context**: The state of the prefix area when F1 is pressed — specifically, the line command text (if any) in the focused prefix cell. [FFE-HELP]
+- **Command_Input_Context**: The state of the command input field when F1 is pressed -- specifically, the command name token (if any) currently typed. [FFE-HELP]
+- **Prefix_Area_Context**: The state of the prefix area when F1 is pressed -- specifically, the line command text (if any) in the focused prefix cell. [FFE-HELP]
 - **Mode_Context**: The active editor mode (Browse, Edit, View, Hex, Preview, FileForge Grid_Browse, FileForge Grid_Edit) when F1 is pressed. [FFE-HELP]
 
 ---
 
 ## Requirements
 
-### Requirement 1: F1 Key — Context-Sensitive Help Activation
+### Requirement 1: F1 Key -- Context-Sensitive Help Activation
 
 **User Story:** As a workbench user, I want to press F1 at any time to get help relevant to what I am currently doing, so that I can learn and confirm command syntax without leaving the editor or searching documentation manually.
 
@@ -75,7 +75,7 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 
 ---
 
-### Requirement 2: Help Panel — Dockable Display
+### Requirement 2: Help Panel -- Dockable Display
 
 **User Story:** As a workbench user, I want help content displayed in a dedicated, readable, dockable panel that does not obscure my editing work, so that I can reference help while continuing to work.
 
@@ -91,7 +91,7 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 
 2.4. THE Help_Panel SHALL be dismissable by: pressing Escape, pressing F1 again (toggle per 1.6), clicking the panel close button, or issuing the `HELP OFF` primary command. [FFE-HELP]
 
-2.5. WHILE the Help_Panel is open, THE editing area SHALL remain fully functional — the Help_Panel is non-modal. The user can type commands, edit text, and navigate while help is displayed. [FFE-HELP]
+2.5. WHILE the Help_Panel is open, THE editing area SHALL remain fully functional -- the Help_Panel is non-modal. The user can type commands, edit text, and navigate while help is displayed. [FFE-HELP]
 
 2.6. THE Help_Panel SHALL display the topic title at the top, followed by the help content body rendered as formatted text with support for: section headings, bullet lists, indented code examples, bold/highlighted keywords, and cross-reference links. [FFE-HELP]
 
@@ -123,7 +123,7 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 
 3.5. THE Help_Panel SHALL display a "Help Index" link or button that always returns to the top-level Help_Index topic regardless of current position. [FFE-HELP]
 
-3.6. WHEN the Help_Panel is closed and reopened, THE Help_Navigation_Stack SHALL be cleared — each F1 press starts a fresh help session from the context-resolved topic. [FFE-HELP]
+3.6. WHEN the Help_Panel is closed and reopened, THE Help_Navigation_Stack SHALL be cleared -- each F1 press starts a fresh help session from the context-resolved topic. [FFE-HELP]
 
 ---
 
@@ -160,12 +160,12 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 5.2. EACH `.help.md` file SHALL contain one or more Help_Topics, separated by a YAML front-matter block or a topic delimiter line of the format `<!-- TOPIC: topic_key -->` followed by `<!-- TITLE: Human Title -->`. [FFE-HELP, adapted]
 
 5.3. THE help content body SHALL be standard Markdown with the following elements supported for rendering:
-  - `# Heading` / `## Sub-heading` — section headings within a topic
-  - `- item` — bullet list item
-  - `` `code` `` — inline code
-  - Fenced code blocks (` ``` `) — multi-line code examples
-  - `**bold text**` — bold/highlighted keyword
-  - `[link text](topic_key)` — cross-reference link to another Help_Topic by Topic_Key
+  - `# Heading` / `## Sub-heading` -- section headings within a topic
+  - `- item` -- bullet list item
+  - `` `code` `` -- inline code
+  - Fenced code blocks (` ``` `) -- multi-line code examples
+  - `**bold text**` -- bold/highlighted keyword
+  - `[link text](topic_key)` -- cross-reference link to another Help_Topic by Topic_Key
   - Standard paragraphs and line breaks
 [FFE-HELP, adapted]
 
@@ -203,7 +203,7 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 
 ---
 
-### Requirement 7: Help Content — Primary Commands
+### Requirement 7: Help Content -- Primary Commands
 
 **User Story:** As a workbench user, I want every primary command to have a help topic explaining its syntax, modifiers, examples, and related commands, so that I can learn the full capabilities of any command from within the editor.
 
@@ -214,11 +214,11 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 7.1. THE help content SHALL include one Help_Topic for each registered primary command, with Topic_Key `"cmd:<NAME>"` (e.g., `"cmd:FIND"`, `"cmd:CHANGE"`, `"cmd:SAVE"`). [FFE-HELP]
 
 7.2. EACH primary command help topic SHALL contain at minimum:
-  - **Syntax** — the full command syntax with all argument forms and optional modifiers
-  - **Description** — a one-paragraph explanation of what the command does
-  - **Modifiers** — a list of all supported modifiers with a brief explanation of each
-  - **Examples** — at least two concrete usage examples showing common use cases
-  - **See Also** — cross-references to related commands
+  - **Syntax** -- the full command syntax with all argument forms and optional modifiers
+  - **Description** -- a one-paragraph explanation of what the command does
+  - **Modifiers** -- a list of all supported modifiers with a brief explanation of each
+  - **Examples** -- at least two concrete usage examples showing common use cases
+  - **See Also** -- cross-references to related commands
 [FFE-HELP]
 
 7.3. THE help content SHALL include topics for all primary commands defined across all specs, including but not limited to: FIND, RFIND, CHANGE, RCHANGE, EXCLUDE, SHOW, INCLUDE, RESET, SORT, SAVE, CANCEL, END, LOAD, RELOAD, DELETE, COPY, MOVE, LOCATE, UP, DOWN, LEFT, RIGHT, TOP, BOTTOM, MACRO, EXEC, RUN, COLS, BOUNDS, BNDS, UNDO, REDO, HEX, PREVIEW, SHELL, TSO, CONVERT, SAVEAS, NEW, REVERT, RETRIEVE, NUMBER, UNNUM, CRITERIA, SELECT, TABS, MASK, HELP, ASA. [FFE-HELP]
@@ -227,7 +227,7 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 
 ---
 
-### Requirement 8: Help Content — Line Commands
+### Requirement 8: Help Content -- Line Commands
 
 **User Story:** As a workbench user, I want help topics for all line commands explaining their syntax, block forms, and interactions, so that I can learn prefix-area commands without memorising the full reference.
 
@@ -238,12 +238,12 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 8.1. THE help content SHALL include one Help_Topic for each line command family, with Topic_Key `"line:<CMD>"` (e.g., `"line:D"`, `"line:CC"`, `"line:MM"`). [FFE-HELP]
 
 8.2. EACH line command help topic SHALL contain:
-  - **Syntax** — the command letter(s), optional count suffix, and block form
-  - **Description** — what the command does
-  - **Block Form** — how the paired block markers work (e.g., `DD...DD`)
-  - **Examples** — at least one concrete usage example
-  - **Target Requirements** — whether the command needs an A/B target (for C, CC, M, MM)
-  - **See Also** — related line commands and associated primary commands
+  - **Syntax** -- the command letter(s), optional count suffix, and block form
+  - **Description** -- what the command does
+  - **Block Form** -- how the paired block markers work (e.g., `DD...DD`)
+  - **Examples** -- at least one concrete usage example
+  - **Target Requirements** -- whether the command needs an A/B target (for C, CC, M, MM)
+  - **See Also** -- related line commands and associated primary commands
 [FFE-HELP]
 
 8.3. THE help content SHALL include topics for all line commands defined in the `line-commands` spec: D, DD, I, R, RR, C, CC, M, MM, A, B, X, XX, T, TT, U, UU, >, >>, <, <<, ), )), (, ((, COLS, BNDS, TABS, MASK. [FFE-HELP]
@@ -252,7 +252,7 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 
 ---
 
-### Requirement 9: Help Content — Macro API
+### Requirement 9: Help Content -- Macro API
 
 **User Story:** As a macro developer, I want comprehensive help for the Lua macro API available through the help system, so that I can write macros using the correct function names, parameters, and return values without consulting external documentation.
 
@@ -275,11 +275,11 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 
 ---
 
-### Requirement 10: Help Content — Configuration Keys
+### Requirement 10: Help Content -- Configuration Keys
 
 **User Story:** As a workbench user, I want help topics for configuration keys available through the help system, so that I can understand what each setting does, what values are valid, and where to configure it.
 
-**Source:** [WB] (new for workbench — extends FFE-HELP Requirement 13). Cross-references: `configuration-system` (TOML config, key registry).
+**Source:** [WB] (new for workbench -- extends FFE-HELP Requirement 13). Cross-references: `configuration-system` (TOML config, key registry).
 
 #### Acceptance Criteria
 
@@ -293,7 +293,7 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 
 ---
 
-### Requirement 11: Help Content — Modes and Features
+### Requirement 11: Help Content -- Modes and Features
 
 **User Story:** As a workbench user, I want help topics for each editor mode and major feature, so that I can understand how to use Hex display, the macro system, docking, and other complex capabilities.
 
@@ -324,14 +324,14 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 12.1. THE Help_Index (Topic_Key `"index"`) SHALL be the default topic displayed when F1 is pressed with no specific context or when `HELP` is issued with no arguments. [FFE-HELP]
 
 12.2. THE Help_Index SHALL organise topics into the following categories:
-  - **Getting Started** — introduction and tutorial for new users
-  - **Primary Commands** — alphabetical listing of all primary commands with one-line descriptions
-  - **Line Commands** — compact reference table of all prefix-area commands
-  - **Modes** — list of editor modes with brief descriptions
-  - **Features** — list of major features (undo, macros, file tree, docking, VFS, plugins, etc.)
-  - **Configuration** — summary of configurable settings and where they are stored
-  - **Function Keys** — current key map display (generated dynamically from the active Key_Map)
-  - **Macro API** — entry point to the scripting API reference
+  - **Getting Started** -- introduction and tutorial for new users
+  - **Primary Commands** -- alphabetical listing of all primary commands with one-line descriptions
+  - **Line Commands** -- compact reference table of all prefix-area commands
+  - **Modes** -- list of editor modes with brief descriptions
+  - **Features** -- list of major features (undo, macros, file tree, docking, VFS, plugins, etc.)
+  - **Configuration** -- summary of configurable settings and where they are stored
+  - **Function Keys** -- current key map display (generated dynamically from the active Key_Map)
+  - **Macro API** -- entry point to the scripting API reference
 [FFE-HELP, WB]
 
 12.3. EACH category entry in the Help_Index SHALL be a clickable link that navigates to the corresponding topic. [FFE-HELP]
@@ -392,7 +392,7 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 
 ---
 
-### Requirement 15: Dynamic Help Content — Function Keys
+### Requirement 15: Dynamic Help Content -- Function Keys
 
 **User Story:** As a workbench user, I want the help system to show my current function key assignments dynamically, so that the help always reflects my actual configuration rather than showing a generic default.
 
@@ -402,7 +402,7 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 
 15.1. THE Help_System SHALL generate the function keys help topic (Topic_Key `"feature:function_keys"`) dynamically at display time from the active Shortcut_Registry and Key_Map (Global_Key_Map or Profile_Key_Map). [FFE-HELP]
 
-15.2. THE dynamically generated topic SHALL display a table with columns: Key, Command, and Label — listing all assigned function keys F1–F24 and common keyboard shortcuts. [FFE-HELP]
+15.2. THE dynamically generated topic SHALL display a table with columns: Key, Command, and Label -- listing all assigned function keys F1–F24 and common keyboard shortcuts. [FFE-HELP]
 
 15.3. WHEN a language profile is active and provides a Profile_Key_Map, THE generated topic SHALL show the profile key map and note which profile is active. [FFE-HELP]
 
@@ -419,10 +419,10 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 #### Acceptance Criteria
 
 16.1. THE workbench configuration SHALL accept a `[help]` section containing the following keys:
-  - `directory` (string) — custom path to the help content directory. WHEN absent, the default search locations SHALL be used. [FFE-HELP]
-  - `panel_width_ratio` (float, range 0.2–0.5, default 0.35) — Help_Panel width as a fraction of the window width when docked to a side zone. [FFE-HELP]
-  - `panel_position` (string, values `"right"` | `"left"` | `"bottom"`, default `"right"`) — default dock zone for the Help_Panel. [FFE-HELP, adapted]
-  - `search_highlight` (boolean, default true) — whether to highlight search matches in help content. [WB]
+  - `directory` (string) -- custom path to the help content directory. WHEN absent, the default search locations SHALL be used. [FFE-HELP]
+  - `panel_width_ratio` (float, range 0.2–0.5, default 0.35) -- Help_Panel width as a fraction of the window width when docked to a side zone. [FFE-HELP]
+  - `panel_position` (string, values `"right"` | `"left"` | `"bottom"`, default `"right"`) -- default dock zone for the Help_Panel. [FFE-HELP, adapted]
+  - `search_highlight` (boolean, default true) -- whether to highlight search matches in help content. [WB]
 
 16.2. WHEN configuration keys in the `[help]` section contain invalid values, THE Help_System SHALL emit a configuration warning via the logging subsystem and apply the default value. [FFE-HELP]
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-document-model` crate — the foundational text storage layer for FileForgeWorkbench. The document model provides gap-buffer text storage, efficient line indexing with O(log n) lookups, streaming file loading via the VFS, encoding-aware character navigation, viewport position management, document lifecycle with shared ownership, and a watcher notification system.
+This plan covers the complete implementation of the `ff-document-model` crate -- the foundational text storage layer for FileForgeWorkbench. The document model provides gap-buffer text storage, efficient line indexing with O(log n) lookups, streaming file loading via the VFS, encoding-aware character navigation, viewport position management, document lifecycle with shared ownership, and a watcher notification system.
 
 This is a **Wave 4 (Core Editor)** sub-project that depends on Wave 3 (`ff-vfs`) for all file access and will integrate with `ff-command` for mutation routing and `ff-undo-redo` for transaction recording.
 
@@ -97,9 +97,9 @@ This is a **Wave 4 (Core Editor)** sub-project that depends on Wave 3 (`ff-vfs`)
 
 - [x] 9. Streaming file loading
   - [x] 9.1 Implement `StreamingFileReader` that reads from VFS `read_stream()` in configurable chunks (default 64 KB)
-  - [x] 9.2 Implement progressive content availability — already-loaded portions readable while loading continues
+  - [x] 9.2 Implement progressive content availability -- already-loaded portions readable while loading continues
   - [x] 9.3 Implement `loading_progress()` returning `LoadingState` enum with current state
-  - [x] 9.4 Implement cancellation support — dropping the reader or explicit cancel stops the background task without leaks
+  - [x] 9.4 Implement cancellation support -- dropping the reader or explicit cancel stops the background task without leaks
   - [x] 9.5 Implement completion notification to all watchers when streaming finishes
   - [x] 9.6 Implement error-state transition with partial content preservation on VFS I/O failure
   - [x] 9.7 Implement empty-session initialization (no file path → empty buffer, single-line index)
@@ -109,7 +109,7 @@ This is a **Wave 4 (Core Editor)** sub-project that depends on Wave 3 (`ff-vfs`)
 - [x] 10. SparseLineIndex (incremental background indexing)
   - [x] 10.1 Implement `SparseLineIndex` that records one checkpoint per N lines (default 1000)
   - [x] 10.2 Implement incremental building in a background task as chunks arrive from streaming reader
-  - [x] 10.3 Implement partial usability — already-indexed lines queryable before full index is complete
+  - [x] 10.3 Implement partial usability -- already-indexed lines queryable before full index is complete
   - [x] 10.4 Implement finalization into complete LineIndex when streaming load finishes
   - [x] 10.5 Write unit tests for checkpoint accuracy, partial queries, and finalization correctness
   - Covers: Requirement 3 (AC 3.8), Requirement 4 (AC 4.3, 4.5)
@@ -158,7 +158,7 @@ This is a **Wave 4 (Core Editor)** sub-project that depends on Wave 3 (`ff-vfs`)
   - [x] 15.1 Define `DocumentModelError` enum with variants: LineOutOfRange, PositionOutOfRange, ReadOnly, LoadFailed, IoError, WatcherAlreadyRegistered
   - [x] 15.2 Implement `From<VfsError>` conversion for transparent VFS error propagation
   - [x] 15.3 Implement error message format following `[document-model] operation: description` standard
-  - [x] 15.4 Ensure all VFS calls go through `ff-vfs` — no `std::fs` or `tokio::fs` usage
+  - [x] 15.4 Ensure all VFS calls go through `ff-vfs` -- no `std::fs` or `tokio::fs` usage
   - [x] 15.5 Write unit tests for error formatting and conversion
   - Covers: Cross-cutting Requirement 8 (error standards), Requirement 4 (AC 4.8)
 
@@ -166,7 +166,7 @@ This is a **Wave 4 (Core Editor)** sub-project that depends on Wave 3 (`ff-vfs`)
   - [x] 16.1 Define `DocumentCommand` trait for mutation operations routable through the command framework
   - [x] 16.2 Implement `InsertCommand` and `DeleteCommand` structs wrapping TextBuffer primitives
   - [x] 16.3 Implement undo-record emission hook (trait method that downstream `ff-undo-redo` will consume)
-  - [x] 16.4 Document integration pattern — document-model provides primitives, command framework routes them
+  - [x] 16.4 Document integration pattern -- document-model provides primitives, command framework routes them
   - [x] 16.5 Write unit tests for command struct construction and execution
   - Covers: Requirement 2 (AC 2.9)
 
@@ -235,7 +235,7 @@ This is a **Wave 4 (Core Editor)** sub-project that depends on Wave 3 (`ff-vfs`)
 
 **Validates: Requirement 2.5, 2.6, Requirement 8.7**
 
-- **Statement:** After any sequence of edits, no line boundary SHALL exist between a CR byte and an immediately following LF byte — all adjacent CR+LF pairs SHALL be treated as a single CRLF line ending with exactly one line record.
+- **Statement:** After any sequence of edits, no line boundary SHALL exist between a CR byte and an immediately following LF byte -- all adjacent CR+LF pairs SHALL be treated as a single CRLF line ending with exactly one line record.
 - **Strategy:** Generate:
   - Initial content: byte sequences with CRLF pairs, lone CR, lone LF (0–3000 bytes)
   - Operation sequence: 10–100 random insert/delete operations, some inserting CR or LF adjacent to existing endings
@@ -276,12 +276,12 @@ This is a **Wave 4 (Core Editor)** sub-project that depends on Wave 3 (`ff-vfs`)
 ## Notes
 
 - This is a Wave 4 (Core Editor) crate depending on `ff-vfs` (Wave 3) for all file access
-- The undo/redo integration is specified in `undo-redo-transactions` — this crate defines the hook interface but does not implement transaction logic
+- The undo/redo integration is specified in `undo-redo-transactions` -- this crate defines the hook interface but does not implement transaction logic
 - The `encoding-and-characters` crate (Wave 8) handles encoding detection and conversion; this crate provides UTF-8 character navigation only
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
 - All async operations use Tokio, compatible with the runtime managed by `ff-core`
-- The `DocumentHandle` (`Arc<RwLock<Document>>`) enables multiple views to share a document — this is critical for split-view and background processing scenarios
-- The SparseLineIndex enables progressive display of large files before full indexing completes — this is the key UX differentiator for large-file support
+- The `DocumentHandle` (`Arc<RwLock<Document>>`) enables multiple views to share a document -- this is critical for split-view and background processing scenarios
+- The SparseLineIndex enables progressive display of large files before full indexing completes -- this is the key UX differentiator for large-file support
 - GapBuffer uses `u64` positions throughout to support documents exceeding 2 GB
 
 ---

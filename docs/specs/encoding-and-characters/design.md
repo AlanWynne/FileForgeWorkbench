@@ -1,4 +1,4 @@
-# Design Document — `ff-encoding` Crate
+# Design Document -- `ff-encoding` Crate
 
 ## Overview
 
@@ -18,7 +18,7 @@ The `ff-encoding` crate provides the encoding and character-handling subsystem f
 
 ### Position in Architecture
 
-**Wave 8** — The encoding crate is a foundational service layer with no GUI dependencies.
+**Wave 8** -- The encoding crate is a foundational service layer with no GUI dependencies.
 It is consumed by document-model, file-operations, find-and-replace, edit-operations, navigation-commands, and background-io. It depends only on `ff-config` for default encoding/BOM policy settings.
 
 ### Design Constraints
@@ -28,7 +28,7 @@ It is consumed by document-model, file-operations, find-and-replace, edit-operat
 - **Error Standards**: All errors use the format `[encoding] operation: description`.
 - **Streaming**: Conversion APIs must support chunk-based processing for integration with background-io.
 - **No Locale Sensitivity**: Case folding uses default Unicode mappings only (no Turkish İ/ı special-casing).
-- **Build-Time Data**: Unicode tables (case folding, category map) are compiled as static data — no runtime file loading.
+- **Build-Time Data**: Unicode tables (case folding, category map) are compiled as static data -- no runtime file loading.
 - **Stateless Detection**: Encoding detection operates on a byte slice without side effects.
 
 ---
@@ -104,7 +104,7 @@ graph TD
 | `proptest` | Property-based testing |
 | `pretty_assertions` | Readable test diffs |
 
-**No external encoding crates** — all conversion tables and detection logic are self-contained, derived from Scintilla's proven implementation and Unicode data files.
+**No external encoding crates** -- all conversion tables and detection logic are self-contained, derived from Scintilla's proven implementation and Unicode data files.
 
 ---
 
@@ -164,7 +164,7 @@ crates/ff-encoding/
 
 ## Data Models
 
-### `encoding.rs` — Core Types
+### `encoding.rs` -- Core Types
 
 ```rust
 /// A specific character encoding identified by name and code page.
@@ -188,13 +188,13 @@ pub struct Encoding {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum EncodingFamily {
-    /// ASCII, ISO-8859-x, Windows-125x, EBCDIC — 1 byte = 1 character
+    /// ASCII, ISO-8859-x, Windows-125x, EBCDIC -- 1 byte = 1 character
     SingleByte,
-    /// UTF-8 — 1–4 bytes per character, lead/trail byte logic
+    /// UTF-8 -- 1–4 bytes per character, lead/trail byte logic
     Utf8,
-    /// Shift-JIS, GBK, Big5, Korean — 1–2 bytes per character
+    /// Shift-JIS, GBK, Big5, Korean -- 1–2 bytes per character
     Dbcs,
-    /// UTF-16LE/BE — used for stream processing before conversion to UTF-8
+    /// UTF-16LE/BE -- used for stream processing before conversion to UTF-8
     Utf16,
 }
 
@@ -211,7 +211,7 @@ pub struct EncodingMetadata {
 }
 ```
 
-### `bom.rs` — BOM Types
+### `bom.rs` -- BOM Types
 
 ```rust
 /// Information about a detected BOM.
@@ -235,7 +235,7 @@ pub enum BomEncoding {
 }
 ```
 
-### `classify.rs` — Character Classification
+### `classify.rs` -- Character Classification
 
 ```rust
 /// Classification of a byte value for word-boundary detection.
@@ -256,7 +256,7 @@ pub struct CharClassify {
 }
 ```
 
-### `category_map.rs` — Unicode General Category
+### `category_map.rs` -- Unicode General Category
 
 ```rust
 /// Unicode General Category (30 categories per Unicode standard).
@@ -284,7 +284,7 @@ pub struct CharacterCategoryMap {
 }
 ```
 
-### `case_fold.rs` — Case Folding
+### `case_fold.rs` -- Case Folding
 
 ```rust
 /// Conversion mode for case operations.
@@ -314,7 +314,7 @@ pub struct CaseFolder {
 }
 ```
 
-### `grapheme.rs` — Grapheme Cluster Boundaries
+### `grapheme.rs` -- Grapheme Cluster Boundaries
 
 ```rust
 /// Mode for grapheme cluster detection.
@@ -336,7 +336,7 @@ pub struct GraphemeIterator<'a> {
 }
 ```
 
-### `dbcs.rs` — DBCS Code Pages
+### `dbcs.rs` -- DBCS Code Pages
 
 ```rust
 /// Supported DBCS code pages.
@@ -368,7 +368,7 @@ pub struct DbcsCodePageDef {
 }
 ```
 
-### `detect.rs` — Detection Types
+### `detect.rs` -- Detection Types
 
 ```rust
 /// Confidence level for encoding detection.
@@ -396,7 +396,7 @@ pub struct DetectionResult {
 }
 ```
 
-### `convert.rs` — Conversion Types
+### `convert.rs` -- Conversion Types
 
 ```rust
 /// Record of an issue encountered during encoding conversion.
@@ -438,7 +438,7 @@ pub enum UnmappableAction {
 
 ## Public API Surface
 
-### `lib.rs` — Re-exports
+### `lib.rs` -- Re-exports
 
 The crate root re-exports the primary public API:
 
@@ -482,7 +482,7 @@ pub use error::EncodingError;
 
 ### Primary Functions
 
-#### Encoding Detection (`detect.rs`) — Requirement 1
+#### Encoding Detection (`detect.rs`) -- Requirement 1
 
 ```rust
 /// Detect the encoding of a byte slice.
@@ -503,7 +503,7 @@ pub fn detect_encoding_with_fallback(
 ) -> DetectionResult;
 ```
 
-#### BOM Detection (`bom.rs`) — Requirement 2
+#### BOM Detection (`bom.rs`) -- Requirement 2
 
 ```rust
 /// Detect a BOM at the start of a byte slice.
@@ -524,7 +524,7 @@ pub fn write_bom(encoding: BomEncoding, writer: &mut dyn std::io::Write) -> Resu
 pub fn bom_bytes(encoding: BomEncoding) -> &'static [u8];
 ```
 
-#### Encoding Conversion (`convert.rs`) — Requirements 3, 4
+#### Encoding Conversion (`convert.rs`) -- Requirements 3, 4
 
 ```rust
 /// Convert bytes from a source encoding to UTF-8.
@@ -572,7 +572,7 @@ impl StreamEncoder {
 }
 ```
 
-#### UTF-8 Utilities (`utf8.rs`) — Requirement 5
+#### UTF-8 Utilities (`utf8.rs`) -- Requirement 5
 
 ```rust
 /// Validate that a byte slice is valid UTF-8 per RFC 3629.
@@ -590,7 +590,7 @@ pub fn utf8_fix_invalid(bytes: &[u8]) -> String;
 pub fn utf8_byte_length_from_lead(byte: u8) -> usize;
 ```
 
-#### Character Classification (`classify.rs`) — Requirements 6, 13
+#### Character Classification (`classify.rs`) -- Requirements 6, 13
 
 ```rust
 impl CharClassify {
@@ -625,7 +625,7 @@ impl CharClassify {
 }
 ```
 
-#### Unicode Category Map (`category_map.rs`) — Requirement 7
+#### Unicode Category Map (`category_map.rs`) -- Requirement 7
 
 ```rust
 impl CharacterCategoryMap {
@@ -655,7 +655,7 @@ impl CharacterCategoryMap {
 }
 ```
 
-#### Case Folding (`case_fold.rs`) — Requirement 10
+#### Case Folding (`case_fold.rs`) -- Requirement 10
 
 ```rust
 impl CaseFolder {
@@ -681,7 +681,7 @@ pub struct CaseFoldResult {
 }
 ```
 
-#### Grapheme Boundaries (`grapheme.rs`) — Requirement 9
+#### Grapheme Boundaries (`grapheme.rs`) -- Requirement 9
 
 ```rust
 /// Is the byte offset a grapheme cluster boundary in the given text?
@@ -705,7 +705,7 @@ impl<'a> Iterator for GraphemeIterator<'a> {
 }
 ```
 
-#### DBCS Functions (`dbcs.rs`) — Requirement 8
+#### DBCS Functions (`dbcs.rs`) -- Requirement 8
 
 ```rust
 /// Is the given code page a supported DBCS code page?
@@ -724,7 +724,7 @@ pub fn is_dbcs_valid_single_byte(code_page: DbcsCodePage, byte: u8) -> bool;
 pub fn safe_segment(data: &[u8], code_page: DbcsCodePage) -> &[u8];
 ```
 
-#### Word-Part Navigation (`word_part.rs`) — Requirement 12
+#### Word-Part Navigation (`word_part.rs`) -- Requirement 12
 
 ```rust
 /// Is this code point a word-part separator?
@@ -882,7 +882,7 @@ For any BOM encoding, prepending the correct BOM bytes to arbitrary content must
 
 **Validates: Requirements 10.1, 10.4, 10.6**
 
-Case folding is idempotent — folding an already-folded string produces the same result.
+Case folding is idempotent -- folding an already-folded string produces the same result.
 
 ```
 ∀ text: String
@@ -896,7 +896,7 @@ Case folding is idempotent — folding an already-folded string produces the sam
 
 **Validates: Requirements 5.1, 5.4, 5.5**
 
-`utf8_validate` agrees with `std::str::from_utf8` — our validator accepts exactly the same byte sequences as the standard library.
+`utf8_validate` agrees with `std::str::from_utf8` -- our validator accepts exactly the same byte sequences as the standard library.
 
 ```
 ∀ bytes: Vec<u8>
@@ -953,7 +953,7 @@ Successive calls to `next_grapheme_boundary` always advance position, and succes
 
 **Validates: Requirements 8.2, 8.3**
 
-For any supported DBCS code page, the set of lead byte ranges and ASCII bytes (0x00–0x7F) are disjoint — no byte can simultaneously be a lead byte and an ASCII character.
+For any supported DBCS code page, the set of lead byte ranges and ASCII bytes (0x00–0x7F) are disjoint -- no byte can simultaneously be a lead byte and an ASCII character.
 
 ```
 ∀ cp: DbcsCodePage, byte: u8 WHERE byte <= 0x7F
@@ -980,7 +980,7 @@ For any supported DBCS code page, the set of lead byte ranges and ASCII bytes (0
 
 **Validates: Requirements 11.1, 11.2**
 
-The encoding family classification is consistent with the code page — DBCS code pages always map to `EncodingFamily::Dbcs`, UTF-8 maps to `Utf8`, etc.
+The encoding family classification is consistent with the code page -- DBCS code pages always map to `EncodingFamily::Dbcs`, UTF-8 maps to `Utf8`, etc.
 
 ```
 ∀ cp: u32 WHERE is_dbcs_code_page(cp)
@@ -1016,9 +1016,9 @@ The encoding family classification is consistent with the code page — DBCS cod
 
 ## Performance Considerations
 
-- **CharClassify**: O(1) byte lookup via 256-entry array — critical for word-boundary hot paths.
+- **CharClassify**: O(1) byte lookup via 256-entry array -- critical for word-boundary hot paths.
 - **CharacterCategoryMap**: O(1) for BMP (dense array), O(log n) for supplementary planes (binary search over ~200 ranges).
-- **Case Folding**: Static lookup tables — no heap allocation for single-character folds.
+- **Case Folding**: Static lookup tables -- no heap allocation for single-character folds.
 - **Grapheme Detection**: Linear scan with constant-size state machine per UAX #29.
 - **Streaming Conversion**: Chunk-based processing avoids holding entire files in memory; suitable for files up to 4 GB.
-- **Detection**: Examines only first N bytes (configurable, default 8192) — O(N) regardless of file size.
+- **Detection**: Examines only first N bytes (configurable, default 8192) -- O(N) regardless of file size.

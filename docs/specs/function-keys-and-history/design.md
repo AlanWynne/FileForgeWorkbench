@@ -16,7 +16,7 @@ The `ff-keys` crate manages **configurable function key maps**, the **Key Label 
 ### Position in Architecture
 
 ```
-Wave 9 — Desktop Integration (depends on Wave 8)
+Wave 9 -- Desktop Integration (depends on Wave 8)
 
 ┌──────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                │
@@ -95,7 +95,7 @@ graph TD
         CORE[ff-core<br/>EventBus, Platform]
     end
 
-    subgraph Shell [GUI Shell — ff-desktop]
+    subgraph Shell [GUI Shell -- ff-desktop]
         LABEL_RENDER[Key Label Bar Render]
         DROPDOWN_RENDER[History Dropdown Render]
         CMD_FIELD[Primary Command Field]
@@ -752,7 +752,7 @@ impl KeysConfig {
 /// Register function-keys-and-history commands with the command framework.
 ///
 /// Commands registered:
-/// - `keys.retrieve` — RETRIEVE command (Requirement 5)
+/// - `keys.retrieve` -- RETRIEVE command (Requirement 5)
 ///
 /// Addresses: Cross-cutting Requirement 4
 pub fn register_keys_commands(
@@ -840,7 +840,7 @@ pub struct KeysSubsystem {
 #[non_exhaustive]
 pub enum KeysError {
     /// A function key identifier could not be parsed.
-    #[error("[keys] parse: invalid function key identifier '{key}' — expected F1–F24")]
+    #[error("[keys] parse: invalid function key identifier '{key}' -- expected F1–F24")]
     InvalidFunctionKey {
         key: String,
     },
@@ -856,32 +856,32 @@ pub enum KeysError {
     ReservedKeyAssignment,
 
     /// Command dispatch failed for a function key press.
-    #[error("[keys] dispatch: command execution failed for {key} — {reason}")]
+    #[error("[keys] dispatch: command execution failed for {key} -- {reason}")]
     DispatchFailed {
         key: String,
         reason: String,
     },
 
     /// History file could not be read (I/O error).
-    #[error("[keys] history-load: failed to read history file — {reason}")]
+    #[error("[keys] history-load: failed to read history file -- {reason}")]
     HistoryLoadError {
         reason: String,
     },
 
     /// History file could not be written (I/O error, disk full).
-    #[error("[keys] history-save: failed to write history file — {reason}")]
+    #[error("[keys] history-save: failed to write history file -- {reason}")]
     HistorySaveError {
         reason: String,
     },
 
     /// History file TOML is syntactically invalid or has wrong schema.
-    #[error("[keys] history-parse: invalid TOML in history file — {reason}")]
+    #[error("[keys] history-parse: invalid TOML in history file -- {reason}")]
     HistoryParseError {
         reason: String,
     },
 
     /// Configuration value is invalid type or out of range.
-    #[error("[keys] config: invalid value for '{key}' — expected {expected}, using default {default}")]
+    #[error("[keys] config: invalid value for '{key}' -- expected {expected}, using default {default}")]
     ConfigValueError {
         key: String,
         expected: String,
@@ -889,14 +889,14 @@ pub enum KeysError {
     },
 
     /// Command registration failed.
-    #[error("[keys] register: failed to register command '{command_id}' — {reason}")]
+    #[error("[keys] register: failed to register command '{command_id}' -- {reason}")]
     CommandRegistrationFailed {
         command_id: String,
         reason: String,
     },
 
     /// Generic I/O error with operation context.
-    #[error("[keys] {operation}: I/O error — {source}")]
+    #[error("[keys] {operation}: I/O error -- {source}")]
     Io {
         operation: String,
         #[source]
@@ -944,8 +944,8 @@ pub enum KeysError {
 | Key | Type | Default | Range | Purpose |
 |-----|------|---------|-------|---------|
 | `keys.max_history_entries` | `u32` | `200` | 1–10000 | Maximum command history entries |
-| `keys.history_file` | `String` | `"command_history.toml"` | — | History file path (relative to User_Data_Dir) |
-| `keys.history_excluded_commands` | `[String]` | `[]` | — | Additional commands excluded from history |
+| `keys.history_file` | `String` | `"command_history.toml"` | -- | History file path (relative to User_Data_Dir) |
+| `keys.history_excluded_commands` | `[String]` | `[]` | -- | Additional commands excluded from history |
 
 **Global Key Map Configuration (top-level section):**
 
@@ -1006,7 +1006,7 @@ These properties are suitable for property-based testing with the `proptest` cra
 
 ### Property 1: Profile Key Map Fully Replaces Global Key Map
 
-**Statement**: When a Profile_Key_Map is active, lookups for any FunctionKey that is NOT defined in the Profile_Key_Map return None — they never fall through to the Global_Key_Map. The Global_Key_Map is entirely inactive during profile override.
+**Statement**: When a Profile_Key_Map is active, lookups for any FunctionKey that is NOT defined in the Profile_Key_Map return None -- they never fall through to the Global_Key_Map. The Global_Key_Map is entirely inactive during profile override.
 
 **Validates**: Requirement 2 AC 2, AC 5
 
@@ -1182,7 +1182,7 @@ F12 = "RETRIEVE"
 ## Appendix B: History File Schema (command_history.toml)
 
 ```toml
-# Command history file — managed by ff-keys
+# Command history file -- managed by ff-keys
 # Do not edit manually while the workbench is running.
 
 schema_version = 1
@@ -1234,8 +1234,8 @@ F10 = { command = "MACRO cobol_check", label = "CHECK" }
 
 | Key | Owner | Cannot Be Reassigned |
 |-----|-------|---------------------|
-| F1 | `context-help` | Yes — hardcoded per cross-cutting Requirement 10.1 |
-| F2–F24 | `ff-keys` (this crate) | No — fully user-configurable |
+| F1 | `context-help` | Yes -- hardcoded per cross-cutting Requirement 10.1 |
+| F2–F24 | `ff-keys` (this crate) | No -- fully user-configurable |
 
 ## Appendix G: Thread Safety Model
 
@@ -1285,8 +1285,8 @@ Each slot in the two-row Key_Label_Bar is rendered as an `egui::Button` with the
 
 Two new commands are registered in `ff-keys` (or a new `ff-nav-commands` module within `ff-desktop`):
 
-- `nav.end` — pops the tab navigation stack; if stack is empty or current tab is POM, exits.
-- `nav.return` — activates the POM tab; if already on POM, exits.
+- `nav.end` -- pops the tab navigation stack; if stack is empty or current tab is POM, exits.
+- `nav.return` -- activates the POM tab; if already on POM, exits.
 
 The `ff-desktop` shell maintains a `tab_history: Vec<TabId>` stack. On each tab activation, the previous tab ID is pushed. `END` pops the stack and activates the popped tab. Both commands are added to `ExclusionFilter::DEFAULTS`.
 
@@ -1342,7 +1342,7 @@ pub enum KeyModifier {
 pub struct KeyBinding {
     pub command: String,
     pub label: Option<String>,
-    pub description: Option<String>,   // NEW — human-readable description
+    pub description: Option<String>,   // NEW -- human-readable description
 }
 ```
 
@@ -1357,7 +1357,7 @@ Plain string format (no description) remains valid and unchanged.
 
 ### 7.3 Key Configuration Dialog Architecture
 
-The dialog lives in `ff-desktop` as `key_config_dialog.rs`. It is a non-modal `egui::Window` (or a full-panel tab — implementation choice). It owns a local mutable copy of all key maps (global + all context maps) loaded at open time. Changes are staged locally until **Save** is clicked.
+The dialog lives in `ff-desktop` as `key_config_dialog.rs`. It is a non-modal `egui::Window` (or a full-panel tab -- implementation choice). It owns a local mutable copy of all key maps (global + all context maps) loaded at open time. Changes are staged locally until **Save** is clicked.
 
 ```
 KeyConfigDialog {
@@ -1395,7 +1395,7 @@ The shell's `update()` loop already handles `egui::Key::F1`–`egui::Key::F12` (
 
 ### 7.6 Key_Label_Bar Unchanged
 
-The Key_Label_Bar continues to display only `ModifiedKey { modifier: None }` bindings (plain F1–F24). Modifier bindings are silent — they fire on key press but have no label bar representation.
+The Key_Label_Bar continues to display only `ModifiedKey { modifier: None }` bindings (plain F1–F24). Modifier bindings are silent -- they fire on key press but have no label bar representation.
 
 ### 7.7 TOML Persistence
 
@@ -1404,7 +1404,7 @@ The dialog writes changes to the user-layer config file via `ConfigHandle::set_u
 ### 7.8 No New Crate Required
 
 All changes are confined to:
-- `crates/ff-keys/src/function_key.rs` — add `KeyModifier`, `ModifiedKey`
-- `crates/ff-keys/src/key_map.rs` — update `KeyMap` to use `ModifiedKey`, add `description` to `KeyBinding`, update TOML parser
-- `crates/ff-desktop/src/key_config_dialog.rs` — new file, dialog UI
-- `crates/ff-desktop/src/shell.rs` — wire `KEYS` command, modifier dispatch, dialog open/close
+- `crates/ff-keys/src/function_key.rs` -- add `KeyModifier`, `ModifiedKey`
+- `crates/ff-keys/src/key_map.rs` -- update `KeyMap` to use `ModifiedKey`, add `description` to `KeyBinding`, update TOML parser
+- `crates/ff-desktop/src/key_config_dialog.rs` -- new file, dialog UI
+- `crates/ff-desktop/src/shell.rs` -- wire `KEYS` command, modifier dispatch, dialog open/close

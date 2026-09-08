@@ -2,9 +2,9 @@
 
 ## Introduction
 
-This feature specifies the Database Tool for FileForgeWorkbench — a full-featured integrated Database IDE delivered as a **workbench plugin** (`ff-database-tool` crate). The database tool provides an integrated database IDE within the FileForgeWorkbench ecosystem, drawing on established database tool patterns, providing: a connection management panel, SQL editor panel, result grid panel, schema browser panel, data transfer workflows, ER diagram panel, and database administration views.
+This feature specifies the Database Tool for FileForgeWorkbench -- a full-featured integrated Database IDE delivered as a **workbench plugin** (`ff-database-tool` crate). The database tool provides an integrated database IDE within the FileForgeWorkbench ecosystem, drawing on established database tool patterns, providing: a connection management panel, SQL editor panel, result grid panel, schema browser panel, data transfer workflows, ER diagram panel, and database administration views.
 
-The database tool is **not** a standalone application — it integrates with the workbench platform through:
+The database tool is **not** a standalone application -- it integrates with the workbench platform through:
 - **Plugin Architecture** (`ff-plugin`): registers as a `FileForgePlugin`, contributes panels, commands, and capabilities via `PluginContext`
 - **Command Framework** (`ff-command`): all user-facing database operations are registered commands with metadata, shortcuts, undo support
 - **Layout and Docking** (`ff-layout`): all database panels implement `DockablePanel` and participate in the workbench layout system
@@ -16,7 +16,7 @@ The database tool is **not** a standalone application — it integrates with the
 - Async I/O via Tokio for all database operations (non-blocking UI)
 - Rust database drivers: `sqlx` (PostgreSQL, MySQL, SQLite), `tokio-postgres`, `tiberius` (SQL Server), `rusqlite` (embedded SQLite), with a driver-agnostic trait abstraction
 - egui immediate-mode rendering for all panels (grid, tree, diagram canvas, editor)
-- No JDBC — a Rust-native driver registry replaces the JDBC driver model
+- No JDBC -- a Rust-native driver registry replaces the JDBC driver model
 
 **Source references:**
 - **DBV** = DBeaver research files (tasks 16.1–16.7)
@@ -134,7 +134,7 @@ The database tool is **not** a standalone application — it integrates with the
 
 3.17. THE ConnectionManager SHALL support connection import from CSV/TOML files and export of connection configurations (without credentials) for sharing.
 
-3.18. THE ConnectionManager SHALL support network profiles — reusable bundles of SSH, SSL, and proxy settings applicable to multiple connections.
+3.18. THE ConnectionManager SHALL support network profiles -- reusable bundles of SSH, SSL, and proxy settings applicable to multiple connections.
 
 ---
 
@@ -274,7 +274,7 @@ The database tool is **not** a standalone application — it integrates with the
 
 8.2. WHEN multiple queries produce result sets, THE ResultGridPanel SHALL display each in a separate tab, allowing navigation between them.
 
-8.3. THE ResultGridPanel SHALL fetch rows from the database in configurable batch sizes (default: 200 rows) and support incremental scrolling — automatically fetching the next batch when the user scrolls past the last fetched row.
+8.3. THE ResultGridPanel SHALL fetch rows from the database in configurable batch sizes (default: 200 rows) and support incremental scrolling -- automatically fetching the next batch when the user scrolls past the last fetched row.
 
 8.4. THE ResultGridPanel SHALL support client-side column sorting (ascending/descending toggle on header click) and multi-column sort with priority indicators.
 
@@ -364,7 +364,7 @@ The database tool is **not** a standalone application — it integrates with the
 
 10.1. ALL data transfer operations (import, export, cross-database transfer, bulk load) SHALL be implemented as Workflow_Definitions registered with the Workflow_Registry, using the workflow-engine's state machine, progress, and cancellation infrastructure.
 
-10.2. THE import workflow SHALL guide the user through sequential steps: source file selection, format settings (delimiter, encoding, header), column mapping, preview, and execution — each step modelled as a Workflow_Step.
+10.2. THE import workflow SHALL guide the user through sequential steps: source file selection, format settings (delimiter, encoding, header), column mapping, preview, and execution -- each step modelled as a Workflow_Step.
 
 10.3. THE system SHALL support importing data from CSV, JSON, and XML files into existing database tables, with configurable format options per source type.
 
@@ -420,7 +420,7 @@ The database tool is **not** a standalone application — it integrates with the
 
 11.4. THE system SHALL render each foreign key relationship as a connecting line between entities, with solid lines for mandatory (NOT NULL FK) and dashed lines for optional (nullable FK) relationships.
 
-11.5. THE system SHALL display cardinality indicators at each end of relationship lines, supporting three notation styles: IDEF1X (default), Crow's Foot, and Bachman — switchable via context menu or preferences.
+11.5. THE system SHALL display cardinality indicators at each end of relationship lines, supporting three notation styles: IDEF1X (default), Crow's Foot, and Bachman -- switchable via context menu or preferences.
 
 11.6. THE system SHALL provide an "Auto-arrange layout" action (command `db.diagram.auto_arrange`) that repositions entities to minimize connection crossings and group related entities together.
 
@@ -482,9 +482,9 @@ The database tool is **not** a standalone application — it integrates with the
 
 12.11. THE system SHALL provide GRANT and REVOKE interfaces for managing system privileges, object privileges, and role membership.
 
-12.12. THE system SHALL provide a server configuration viewer displaying all runtime parameters with: name, current value, description, dynamic/static flag, and scope — with inline editing for dynamic parameters.
+12.12. THE system SHALL provide a server configuration viewer displaying all runtime parameters with: name, current value, description, dynamic/static flag, and scope -- with inline editing for dynamic parameters.
 
-12.13. THE system SHALL provide a Query Manager log recording all SQL executed in the session with: SQL text, execution time, duration, rows affected, connection, and error status — with filtering by date, type, and content.
+12.13. THE system SHALL provide a Query Manager log recording all SQL executed in the session with: SQL text, execution time, duration, rows affected, connection, and error status -- with filtering by date, type, and content.
 
 12.14. THE system SHALL adapt administrative features to each connected database platform, showing only relevant tools (e.g., tablespaces for Oracle/PostgreSQL, InnoDB metrics for MySQL).
 
@@ -530,7 +530,7 @@ The database tool is **not** a standalone application — it integrates with the
 
 14.4. THE system SHALL support database-specific authentication methods: username/password (all), peer/trust (PostgreSQL local), Windows SSPI (SQL Server), and certificate-based authentication where drivers support it.
 
-14.5. THE system SHALL support database-specific administrative features: per-database session monitoring commands, lock inspection queries, storage model queries, and performance metrics — detected and adapted at connection time.
+14.5. THE system SHALL support database-specific administrative features: per-database session monitoring commands, lock inspection queries, storage model queries, and performance metrics -- detected and adapted at connection time.
 
 14.6. THE system SHALL provide an extensibility point (via the plugin architecture) for adding support for additional databases in the future through custom driver plugins that implement the DatabaseDriver trait.
 
@@ -552,7 +552,7 @@ The database tool is **not** a standalone application — it integrates with the
 
 15.3. EACH database command SHALL have an enabled predicate that evaluates to `true` only when the command is contextually applicable (e.g., `db.sql.execute_statement` is enabled only when a SQL editor panel is active and a connection is established).
 
-15.4. DATABASE commands that modify data (INSERT, UPDATE, DELETE, DDL execution) SHALL be undoable where feasible — producing Undo_Records that allow rollback of the last change via the standard `edit.undo` command within the data editor.
+15.4. DATABASE commands that modify data (INSERT, UPDATE, DELETE, DDL execution) SHALL be undoable where feasible -- producing Undo_Records that allow rollback of the last change via the standard `edit.undo` command within the data editor.
 
 15.5. ALL database commands SHALL be invocable from the Lua scripting bridge, enabling macro automation of database workflows (e.g., `workbench.execute("db.sql.execute_statement", {sql = "SELECT 1"})`).
 
@@ -568,7 +568,7 @@ The database tool is **not** a standalone application — it integrates with the
 
 #### Acceptance Criteria
 
-16.1. ALL file operations in the database tool (open script, save script, export data, import file) SHALL use the VFS API (`ff-vfs`) — no direct `std::fs` or `tokio::fs` calls.
+16.1. ALL file operations in the database tool (open script, save script, export data, import file) SHALL use the VFS API (`ff-vfs`) -- no direct `std::fs` or `tokio::fs` calls.
 
 16.2. SQL script files SHALL be addressable via VFS Resource_URIs (e.g., `vfs://local/path/to/script.sql`), enabling them to appear in the workbench file tree and recent files list.
 
@@ -582,7 +582,7 @@ The database tool is **not** a standalone application — it integrates with the
 
 ### Requirement 17: Layout Integration
 
-**User Story:** As a workbench user, I want database panels to participate fully in the workbench layout system — dockable, floatable, saveable in personas — so that I can arrange my database workspace alongside other workbench tools.
+**User Story:** As a workbench user, I want database panels to participate fully in the workbench layout system -- dockable, floatable, saveable in personas -- so that I can arrange my database workspace alongside other workbench tools.
 
 **Source:** FFW-ARCH layout-and-docking Reqs 1–3 (Panel System, Tab Groups, Detached Workspaces). [FFW-ARCH]
 
@@ -644,7 +644,7 @@ Credential handling SHALL follow the principle of least exposure: passwords neve
 
 ### Performance
 
-- Query execution SHALL be fully async — the UI thread SHALL NOT block during any database operation.
+- Query execution SHALL be fully async -- the UI thread SHALL NOT block during any database operation.
 - Schema tree expansion (lazy loading) SHALL complete within 3 seconds for schemas with up to 1,000 objects on a local database.
 - Result grid SHALL render up to 200 rows without perceptible lag on a modern desktop.
 

@@ -19,23 +19,23 @@ The `ff-caret-selection` crate is the **visual presentation layer** for carets, 
 ### Position in Architecture
 
 ```
-Wave 6 — UI and Rendering
+Wave 6 -- UI and Rendering
 
 ┌──────────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                    │
-│   Viewport Renderer — draws carets, selections, highlights    │
+│   Viewport Renderer -- draws carets, selections, highlights    │
 ├──────────────────────────────────────────────────────────────┤
 │          THIS CRATE: ff-caret-selection ← Wave 6              │
 │   Caret config, selection config, rendering queries           │
 ├──────────────────────────────────────────────────────────────┤
 │  Upstream:                                                    │
-│    ff-edit-operations (Wave 4) — SelectionContainer,          │
+│    ff-edit-operations (Wave 4) -- SelectionContainer,          │
 │      SelectionPosition, SelectionRange, ModifiedLineTracker,  │
 │      EditMode, SelectionKind                                  │
-│    ff-theme (Wave 6, peer) — element colours, hot-reload      │
-│    ff-viewport-scrolling (Wave 4) — viewport geometry         │
-│    ff-configuration-system (Wave 2) — config loading          │
-│    ff-display-line-mapping (Wave 4) — sub-line info           │
+│    ff-theme (Wave 6, peer) -- element colours, hot-reload      │
+│    ff-viewport-scrolling (Wave 4) -- viewport geometry         │
+│    ff-configuration-system (Wave 2) -- config loading          │
+│    ff-display-line-mapping (Wave 4) -- sub-line info           │
 ├──────────────────────────────────────────────────────────────┤
 │              Foundation Layer: ff-logging                      │
 └──────────────────────────────────────────────────────────────┘
@@ -43,7 +43,7 @@ Wave 6 — UI and Rendering
 
 ### Design Constraints (Cross-Cutting)
 
-- **GUI Independence (Req 2)**: Zero GUI dependencies — stores configuration and exposes query methods; actual drawing is performed by the shell layer
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- stores configuration and exposes query methods; actual drawing is performed by the shell layer
 - **Command-Driven (Req 4)**: Caret style/blink/highlight settings configurable via commands registered in `ff-command`
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-caret-selection`
 - **Error Message Standards (Req 8)**: All errors follow `[caret] operation: description` format
@@ -438,7 +438,7 @@ impl CaretLineHighlightConfig {
 
 ```rust
 /// Manages caret blink state computation.
-/// The model is timer-agnostic — the GUI shell drives the clock.
+/// The model is timer-agnostic -- the GUI shell drives the clock.
 /// Addresses: Requirement 3
 pub struct BlinkModel {
     /// Blink period in milliseconds (0 = always visible).
@@ -471,7 +471,7 @@ impl BlinkModel {
 
 ```rust
 /// A screen-space rectangle for rendering.
-/// GUI-independent — uses logical pixels.
+/// GUI-independent -- uses logical pixels.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ScreenRect {
     pub x: f32,
@@ -815,11 +815,11 @@ pub enum CaretSelectionError {
     ElementNotInTheme { element: String },
 
     /// Configuration key has invalid value.
-    #[error("[caret] config: key '{key}' has invalid value '{value}' — using default {default}")]
+    #[error("[caret] config: key '{key}' has invalid value '{value}' -- using default {default}")]
     InvalidConfig { key: String, value: String, default: String },
 
     /// Font metrics have zero or negative values.
-    #[error("[caret] render: invalid font metrics — char_width={char_width}, line_height={line_height}")]
+    #[error("[caret] render: invalid font metrics -- char_width={char_width}, line_height={line_height}")]
     InvalidFontMetrics { char_width: f32, line_height: f32 },
 }
 ```
@@ -828,7 +828,7 @@ pub enum CaretSelectionError {
 
 ## Integration Points
 
-### With `ff-edit-operations` (Wave 4 — upstream)
+### With `ff-edit-operations` (Wave 4 -- upstream)
 
 - **Consumed types**: `SelectionContainer`, `SelectionRange`, `SelectionPosition`, `EditMode`, `SelectionKind`, `ModifiedLineTracker`
 - **Data flow**: The caret-selection crate reads the logical selection state to determine what carets and selections to render. It does NOT modify selection state.
@@ -840,7 +840,7 @@ pub enum CaretSelectionError {
   - `EditMode` → determine if overstrike block caret applies
   - `ModifiedLineTracker::is_modified(line)` → determine which lines show `*` marker
 
-### With `ff-theme` (Wave 6 — peer)
+### With `ff-theme` (Wave 6 -- peer)
 
 - **Consumed types**: `ThemeHandle`, `ColourRGBA`, `Element`, `ThemeEvent`
 - **Data flow**: Theme provides all colour values for caret, selection, caret-line, and modified marker rendering. Theme hot-reload events trigger visual setting updates.
@@ -855,17 +855,17 @@ pub enum CaretSelectionError {
   - `ThemeEvent::ElementOverridden` → targeted element update
   - `ThemeHandle::colour(ColourToken::EditorModifiedIndicator)` → modified marker colour
 
-### With `ff-viewport-scrolling` (Wave 4 — upstream)
+### With `ff-viewport-scrolling` (Wave 4 -- upstream)
 
 - **Consumed data**: `top_line`, `visible_count`, `viewport_width`, `line_height` (from `ViewportModel`)
 - **Data flow**: Viewport geometry determines which carets/selections are visible and where they are positioned on screen.
-- **Dependency direction**: `ff-caret-selection` reads viewport state (no dependency on the crate itself — values passed as parameters to render queries)
+- **Dependency direction**: `ff-caret-selection` reads viewport state (no dependency on the crate itself -- values passed as parameters to render queries)
 - **Key interactions**:
   - `ViewportModel::top_line()` → viewport_top_line parameter for clipping
   - `ViewportModel::visible_count()` → viewport_lines parameter for clipping
   - Scroll-to-caret policies in viewport-scrolling ensure the caret is always visible after movement (cross-reference; not a compile-time dependency)
 
-### With `ff-configuration-system` (Wave 2 — upstream)
+### With `ff-configuration-system` (Wave 2 -- upstream)
 
 - **Consumed API**: Config hot-reload callbacks, typed key access
 - **Data flow**: Configuration provides initial values and hot-reload notifications for all settings under `[caret]` and `[selection]` namespaces.
@@ -881,15 +881,15 @@ pub enum CaretSelectionError {
   - `selection.layer` → LayerMode (default: "base")
   - `selection.eol_filled` → bool (default: false)
 
-### With `ff-display-line-mapping` (Wave 4 — upstream)
+### With `ff-display-line-mapping` (Wave 4 -- upstream)
 
 - **Consumed information**: Wrapped sub-line indices for `sub_line` caret-line highlight
 - **Data flow**: When `sub_line` is true and word-wrap is active, the display-line-mapping provides the sub-line index for the caret position so the highlight covers only the wrapped sub-line.
 - **Key interactions**:
   - Sub-line index is passed as a parameter to `CaretLineRenderQuery::compute_caret_line()`
-  - No compile-time crate dependency — sub-line info is passed by the shell layer
+  - No compile-time crate dependency -- sub-line info is passed by the shell layer
 
-### With `ff-desktop` (Shell Layer — downstream consumer)
+### With `ff-desktop` (Shell Layer -- downstream consumer)
 
 - **Provided API**: All render query methods
 - **Data flow**: The shell layer calls render query APIs each frame, passing font metrics and viewport geometry, and receives render info structures to draw with egui.
@@ -1025,7 +1025,7 @@ These properties are suitable for property-based testing using the `proptest` cr
 
 ### Property 11: All Carets Blink In Phase
 
-**Statement**: At any given timestamp, either all carets are visible or all are hidden — never a mix.
+**Statement**: At any given timestamp, either all carets are visible or all are hidden -- never a mix.
 
 **Validates**: Requirement 9.6
 
@@ -1067,7 +1067,7 @@ All configuration keys live under reserved namespaces to avoid conflicts (Cross-
 | `selection.layer` | string | `"base"` | Selection layer: "base", "over_text" |
 | `selection.eol_filled` | bool | `false` | Extend selection past line-end |
 
-Colour values are defined by theme element colours (not config keys) — see `ff-theme` Element enum.
+Colour values are defined by theme element colours (not config keys) -- see `ff-theme` Element enum.
 
 ---
 

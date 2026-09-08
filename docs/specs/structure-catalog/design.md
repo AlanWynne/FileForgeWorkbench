@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `ff-structure-catalog` crate provides a **persistent, operator-managed library of named Record Structure definitions** for the FileForgeWorkbench platform. It is the single source of truth for structure definitions that describe the field layout of flat-file data records — enabling grid-based browse/edit, automatic file-to-structure association, and COBOL copybook import.
+The `ff-structure-catalog` crate provides a **persistent, operator-managed library of named Record Structure definitions** for the FileForgeWorkbench platform. It is the single source of truth for structure definitions that describe the field layout of flat-file data records -- enabling grid-based browse/edit, automatic file-to-structure association, and COBOL copybook import.
 
 ### Purpose
 
@@ -17,7 +17,7 @@ The `ff-structure-catalog` crate provides a **persistent, operator-managed libra
 ### Position in Architecture
 
 ```
-Wave 12 — FileForge Domain
+Wave 12 -- FileForge Domain
 
 ┌─────────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                   │
@@ -36,7 +36,7 @@ Wave 12 — FileForge Domain
 ### Design Constraints (Cross-Cutting)
 
 - **Command-Driven Architecture (Req 4)**: All catalog operations are registered commands (`catalog.*`)
-- **GUI Independence (Req 2)**: Zero GUI dependencies — data models and logic are GUI-agnostic; panel rendering is the shell's responsibility
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- data models and logic are GUI-agnostic; panel rendering is the shell's responsibility
 - **Plugin Architecture (Req 3)**: Field type handlers are extensible via traits
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-structure-catalog`
 - **Error Message Standards (Req 8)**: All errors follow `[structure-catalog] operation: description` format
@@ -70,7 +70,7 @@ Wave 12 — FileForge Domain
 
 ```mermaid
 graph TD
-    subgraph Shell [GUI Shell — ff-desktop]
+    subgraph Shell [GUI Shell -- ff-desktop]
         BROWSE_PANEL[Catalog Browsing Panel<br/>dockable, searchable]
         STRUCT_EDITOR[Structure Editor<br/>field grid, tabs]
         GRID_BROWSE[Grid Browse Mode<br/>read-only field grid]
@@ -118,7 +118,7 @@ end
 | Component | Layer | Responsibility |
 |-----------|-------|----------------|
 | **StructureCatalog** | Core | In-memory index of all loaded definitions; CRUD orchestration |
-| **CatalogEntry** | Model | Single parsed `.ffs` file — metadata + record structures + associations |
+| **CatalogEntry** | Model | Single parsed `.ffs` file -- metadata + record structures + associations |
 | **FieldDefinition** | Model | Individual field within a record structure |
 | **FfsParser** | I/O | TOML serialization/deserialization of `.ffs` format |
 | **CopybookParser** | Import | COBOL copybook source → FieldDefinition list conversion |
@@ -136,24 +136,24 @@ crates/ff-structure-catalog/
 ├── Cargo.toml
 ├── src/
 │   ├── lib.rs                    # Crate root: public re-exports
-│   ├── catalog.rs                # StructureCatalog — index + CRUD orchestration
-│   ├── entry.rs                  # CatalogEntry — structure definition model
+│   ├── catalog.rs                # StructureCatalog -- index + CRUD orchestration
+│   ├── entry.rs                  # CatalogEntry -- structure definition model
 │   ├── field.rs                  # FieldDefinition, FieldType enum
-│   ├── record_structure.rs       # RecordStructure — ordered field list
-│   ├── metadata.rs               # StructureMetadata — version, timestamps, encoding
-│   ├── association.rs            # AssociationMap — glob matching engine
+│   ├── record_structure.rs       # RecordStructure -- ordered field list
+│   ├── metadata.rs               # StructureMetadata -- version, timestamps, encoding
+│   ├── association.rs            # AssociationMap -- glob matching engine
 │   ├── parser/
 │   │   ├── mod.rs                # Parser module re-exports
-│   │   ├── ffs.rs                # FfsParser — TOML read/write for .ffs format
-│   │   ├── copybook.rs           # CopybookParser — COBOL copybook import
+│   │   ├── ffs.rs                # FfsParser -- TOML read/write for .ffs format
+│   │   ├── copybook.rs           # CopybookParser -- COBOL copybook import
 │   │   └── validation.rs         # Schema validation for parsed definitions
 │   ├── import_export/
 │   │   ├── mod.rs                # Import/export module re-exports
 │   │   ├── import.rs             # Import from .fc.json, .fc.xlsx, .ffs
 │   │   └── export.rs             # Export to .fc.json, .fc.xlsx, .ffs
-│   ├── versioning.rs             # VersionManager — increment, conflict detection
-│   ├── commands.rs               # CatalogCommands — command-framework registrations
-│   ├── config.rs                 # CatalogConfig — reads [catalog] keys from ff-config
+│   ├── versioning.rs             # VersionManager -- increment, conflict detection
+│   ├── commands.rs               # CatalogCommands -- command-framework registrations
+│   ├── config.rs                 # CatalogConfig -- reads [catalog] keys from ff-config
 │   └── error.rs                  # StructureCatalogError enum
 └── tests/
     ├── catalog_crud_test.rs      # Integration tests for CRUD operations
@@ -883,12 +883,12 @@ pub fn register_commands(registry: &mut dyn CommandRegistry, catalog: Arc<Mutex<
 
 ```rust
 /// VFS operations used by the catalog:
-/// - vfs.read_to_string(uri)     — load .ffs file content
-/// - vfs.write_string(uri, content) — save .ffs file
-/// - vfs.delete(uri)             — remove .ffs file on delete
-/// - vfs.list(uri)               — enumerate .ffs files in a catalog location
-/// - vfs.stat(uri)               — check file existence and timestamps
-/// - vfs.watch(uri, callback)    — watch for external modifications
+/// - vfs.read_to_string(uri)     -- load .ffs file content
+/// - vfs.write_string(uri, content) -- save .ffs file
+/// - vfs.delete(uri)             -- remove .ffs file on delete
+/// - vfs.list(uri)               -- enumerate .ffs files in a catalog location
+/// - vfs.stat(uri)               -- check file existence and timestamps
+/// - vfs.watch(uri, callback)    -- watch for external modifications
 ```
 
 ### 7.5 Integration with `ff-undo-redo` (Undo/Redo Transactions)
@@ -897,7 +897,7 @@ pub fn register_commands(registry: &mut dyn CommandRegistry, catalog: Arc<Mutex<
 |-----------|-----------|---------|
 | Outbound | `TransactionManager` | Group grid edits into undoable transactions |
 
-Grid Edit Mode integrates with `ff-undo-redo` to ensure all field edits within a single record editing pass are grouped as one undoable transaction. The structure catalog itself does not directly own undo state — that responsibility belongs to the document model and edit operations layer.
+Grid Edit Mode integrates with `ff-undo-redo` to ensure all field edits within a single record editing pass are grouped as one undoable transaction. The structure catalog itself does not directly own undo state -- that responsibility belongs to the document model and edit operations layer.
 
 ### 7.6 Integration with `ff-layout-and-docking`
 
@@ -918,7 +918,7 @@ The Catalog Browsing Panel and Structure Editor are registered as dockable panel
 
 [metadata]
 name = "CUSTOMER_MASTER"
-description = "Customer master file layout — header and detail records"
+description = "Customer master file layout -- header and detail records"
 version = 3
 created_at = "2024-01-15T10:30:00Z"
 modified_at = "2024-03-22T14:15:00Z"
@@ -1172,7 +1172,7 @@ These properties are suitable for property-based testing with `proptest`.
 
 ### Test Dependencies
 
-- `tempfile` — temporary directories for catalog location tests
-- `proptest` — property-based test framework
-- `pretty_assertions` — diff-friendly assertion output
-- `chrono` — timestamp generation and comparison in version tests
+- `tempfile` -- temporary directories for catalog location tests
+- `proptest` -- property-based test framework
+- `pretty_assertions` -- diff-friendly assertion output
+- `chrono` -- timestamp generation and comparison in version tests

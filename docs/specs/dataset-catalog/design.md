@@ -18,7 +18,7 @@ The `ff-dataset-catalog` crate provides **mainframe dataset filesystem emulation
 ### Position in Architecture
 
 ```
-Wave 13 — Dataset Catalog (depends on Wave 3 VFS + Wave 2 Platform)
+Wave 13 -- Dataset Catalog (depends on Wave 3 VFS + Wave 2 Platform)
 
 ┌─────────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                   │
@@ -26,11 +26,11 @@ Wave 13 — Dataset Catalog (depends on Wave 3 VFS + Wave 2 Platform)
 │  Consuming crates: ff-file-tree-panel, FFW-JES,              │
 │                    ff-dataset-allocator                       │
 ├─────────────────────────────────────────────────────────────┤
-│  ff-dataset-catalog (THIS CRATE) — Wave 13                   │
+│  ff-dataset-catalog (THIS CRATE) -- Wave 13                   │
 │  Implements VfsProvider under scheme "catalog"               │
 ├─────────────────────────────────────────────────────────────┤
 │  ff-vfs │ ff-connector-extensibility │ ff-command │ ff-config│
-│              (Wave 2–3 — Platform + VFS)                      │
+│              (Wave 2–3 -- Platform + VFS)                      │
 ├─────────────────────────────────────────────────────────────┤
 │                     ff-logging (Wave 0)                       │
 └─────────────────────────────────────────────────────────────┘
@@ -38,8 +38,8 @@ Wave 13 — Dataset Catalog (depends on Wave 3 VFS + Wave 2 Platform)
 
 ### Design Constraints (Cross-Cutting)
 
-- **FFW-ARCH-001 (Req 1)**: All dataset I/O flows through VFS — no direct `std::fs` in consuming crates
-- **GUI Independence (Req 2)**: Zero GUI dependencies — no egui, winit, wgpu
+- **FFW-ARCH-001 (Req 1)**: All dataset I/O flows through VFS -- no direct `std::fs` in consuming crates
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- no egui, winit, wgpu
 - **Command-Driven (Req 4)**: All catalog/dataset operations registered as commands via `ff-command`
 - **Async I/O (Req 6)**: All I/O methods are async, compatible with Tokio runtime
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-dataset-catalog`
@@ -93,10 +93,10 @@ graph TD
     end
 
     subgraph Upstream [Upstream Crates]
-        VFS[ff-vfs — VfsProvider trait]
+        VFS[ff-vfs -- VfsProvider trait]
         CONN[ff-connector-extensibility]
-        COMMAND[ff-command — CommandRegistry]
-        CONFIG[ff-config — configuration]
+        COMMAND[ff-command -- CommandRegistry]
+        CONFIG[ff-config -- configuration]
         LOG[ff-logging]
     end
 
@@ -336,11 +336,11 @@ impl FromStr for MemberName { /* delegates to parse() */ }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum DatasetOrganization {
-    /// Sequential — single flat file
+    /// Sequential -- single flat file
     PS,
-    /// Partitioned — library of members (PDS or PDSE)
+    /// Partitioned -- library of members (PDS or PDSE)
     PO,
-    /// Generation Data Group — versioned dataset collection
+    /// Generation Data Group -- versioned dataset collection
     GDG,
 }
 
@@ -695,11 +695,11 @@ pub struct AllocationRequest {
     pub dsn: DatasetName,
     /// Organization type
     pub dsorg: DatasetOrganization,
-    /// Record format (optional — defaults applied per Req 15)
+    /// Record format (optional -- defaults applied per Req 15)
     pub recfm: Option<RecordFormat>,
-    /// Logical record length (optional — defaults applied per Req 15)
+    /// Logical record length (optional -- defaults applied per Req 15)
     pub lrecl: Option<u32>,
-    /// Block size (optional — defaults applied per Req 15)
+    /// Block size (optional -- defaults applied per Req 15)
     pub blksize: Option<u32>,
     /// Directory blocks (PDS only)
     pub dir_blocks: Option<u32>,
@@ -735,7 +735,7 @@ pub struct ResolveResult {
 
 ## Public API Surface
 
-### CatalogVfsProvider — VFS Provider Implementation
+### CatalogVfsProvider -- VFS Provider Implementation
 
 ```rust
 /// VFS provider implementation for the dataset catalog.
@@ -807,7 +807,7 @@ impl VfsProvider for CatalogVfsProvider {
 }
 ```
 
-### CatalogManager — Catalog Lifecycle
+### CatalogManager -- Catalog Lifecycle
 
 ```rust
 /// Manages multiple mounted catalogs, resolution priority, and lifecycle.
@@ -1169,7 +1169,7 @@ impl From<CatalogError> for VfsError {
 
 ## Integration Points
 
-### With `ff-vfs` (Virtual File System — upstream)
+### With `ff-vfs` (Virtual File System -- upstream)
 
 - **Dependency direction**: ff-dataset-catalog implements `VfsProvider` from ff-vfs
 - **API consumed**: `VfsProvider` trait, `VfsCapabilities`, `VfsFile` trait, `VfsEntry`, `VfsMetadata`, `VfsError`, `OpenOptions`, `CreateOptions`, `DeleteOptions`
@@ -1178,40 +1178,40 @@ impl From<CatalogError> for VfsError {
 - **URI format**: `vfs://catalog/DSN` where DSN is the dataset name (e.g., `vfs://catalog/PAYROLL.INPUT.FILE`)
 - **Metadata mapping**: Dataset attributes (RECFM, LRECL, BLKSIZE, DSORG) placed in `VfsMetadata.extra` as key-value pairs
 
-### With `ff-connector-extensibility` (Connector Framework — upstream)
+### With `ff-connector-extensibility` (Connector Framework -- upstream)
 
 - **Dependency direction**: ff-dataset-catalog conforms to connector patterns
 - **API consumed**: `ConnectorCapability` enum for capability advertisement
 - **Integration pattern**: The catalog provider advertises capabilities through the connector framework, making it discoverable by UI components that query available connectors
-- **Note**: Unlike network connectors, the catalog provider has no connection state machine — it is always "connected" once mounted
+- **Note**: Unlike network connectors, the catalog provider has no connection state machine -- it is always "connected" once mounted
 
-### With `ff-command` (Command Framework — upstream)
+### With `ff-command` (Command Framework -- upstream)
 
 - **Dependency direction**: ff-dataset-catalog registers commands with ff-command
 - **API consumed**: `CommandRegistry::register()`, `CommandMetadata`, `CommandHandler` trait
 - **Commands registered**:
-  - `catalog.mount` — Mount a catalog from repository path
-  - `catalog.unmount` — Unmount a catalog by name
-  - `catalog.create` — Create a new empty catalog
-  - `catalog.remove` — Remove a catalog (with optional deletion)
-  - `catalog.export` — Export catalog to ZIP archive
-  - `catalog.import` — Import catalog from ZIP archive
-  - `catalog.listcat` — List datasets matching filter pattern
-  - `catalog.listds` — Display detailed dataset information
-  - `dataset.allocate` — Allocate (create) a new dataset
-  - `dataset.delete` — Delete a dataset
-  - `dataset.rename` — Rename a dataset
-  - `dataset.properties` — Retrieve dataset properties
-  - `member.create` — Create a new PDS member
-  - `member.delete` — Delete a PDS member
-  - `member.rename` — Rename a PDS member
-  - `gdg.create_base` — Create a GDG base
-  - `gdg.create_generation` — Create a new GDG generation
-  - `gdg.delete_base` — Delete a GDG base and all generations
-  - `gdg.list_generations` — List GDG generations
+  - `catalog.mount` -- Mount a catalog from repository path
+  - `catalog.unmount` -- Unmount a catalog by name
+  - `catalog.create` -- Create a new empty catalog
+  - `catalog.remove` -- Remove a catalog (with optional deletion)
+  - `catalog.export` -- Export catalog to ZIP archive
+  - `catalog.import` -- Import catalog from ZIP archive
+  - `catalog.listcat` -- List datasets matching filter pattern
+  - `catalog.listds` -- Display detailed dataset information
+  - `dataset.allocate` -- Allocate (create) a new dataset
+  - `dataset.delete` -- Delete a dataset
+  - `dataset.rename` -- Rename a dataset
+  - `dataset.properties` -- Retrieve dataset properties
+  - `member.create` -- Create a new PDS member
+  - `member.delete` -- Delete a PDS member
+  - `member.rename` -- Rename a PDS member
+  - `gdg.create_base` -- Create a GDG base
+  - `gdg.create_generation` -- Create a new GDG generation
+  - `gdg.delete_base` -- Delete a GDG base and all generations
+  - `gdg.list_generations` -- List GDG generations
 - **Command metadata**: All commands registered under category `"catalog"` with appropriate descriptions
 
-### With `ff-config` (Configuration System — upstream)
+### With `ff-config` (Configuration System -- upstream)
 
 - **Dependency direction**: ff-dataset-catalog reads/writes configuration via ff-config
 - **API consumed**: `ConfigHandle` for reading/writing `[catalog]` namespace
@@ -1244,7 +1244,7 @@ impl From<CatalogError> for VfsError {
 - **Hot-reload**: Subscribes to config change notifications for the `[catalog]` namespace; auto-mounts/unmounts catalogs as configuration changes
 - **Persistence**: Updates `mounted_catalogs` array when catalogs are mounted/unmounted during a session
 
-### With `ff-logging` (Logging — upstream)
+### With `ff-logging` (Logging -- upstream)
 
 - **Dependency direction**: ff-dataset-catalog depends on ff-logging
 - **API consumed**: `log_info!`, `log_warn!`, `log_error!`, `log_debug!` macros
@@ -1340,7 +1340,7 @@ CREATE INDEX idx_gdg_gen_base ON gdg_generations (base_id, generation_number DES
 - `created`, `modified`, `accessed` timestamps in ISO 8601 format (e.g., `2024-01-15T10:30:00Z`)
 - GDG base DSN must also exist as a row in `datasets` with `dsorg='GDG'`
 - GDG generation `dataset_id` references the actual PS/PO dataset entry for that generation
-- All queries use parameterized statements (Requirement 1 AC 9 — SQL injection prevention)
+- All queries use parameterized statements (Requirement 1 AC 9 -- SQL injection prevention)
 
 ### Connection Management
 
@@ -1422,12 +1422,12 @@ The catalog provider exposes context menu definitions consumed by `ff-file-tree-
 | Node Type | Menu Items | Command ID |
 |-----------|-----------|------------|
 | Catalogs root | Mount Catalog…, Create New Catalog…, Import Catalog… | `catalog.mount`, `catalog.create`, `catalog.import` |
-| Catalog node | Unmount, New Dataset…, Properties, Export…, Refresh | `catalog.unmount`, `dataset.allocate`, `dataset.properties`, `catalog.export`, — |
-| PS dataset | Open, Rename…, Delete, Properties, Copy DSN, Allocate Like… | (VFS open), `dataset.rename`, `dataset.delete`, `dataset.properties`, —, `dataset.allocate` |
-| PDS/PDSE | Expand, New Member…, Rename…, Delete, Properties, Copy DSN, Allocate Like… | (VFS list), `member.create`, `dataset.rename`, `dataset.delete`, `dataset.properties`, —, `dataset.allocate` |
-| PDS member | Open, Rename…, Delete, Copy Member Name, Properties | (VFS open), `member.rename`, `member.delete`, —, `dataset.properties` |
-| GDG base | New Generation…, List Generations, Properties, Delete GDG, Copy DSN, Modify Limit… | `gdg.create_generation`, `gdg.list_generations`, `dataset.properties`, `gdg.delete_base`, —, — |
-| GDG generation | Open, Delete, Properties, Copy DSN | (VFS open), `dataset.delete`, `dataset.properties`, — |
+| Catalog node | Unmount, New Dataset…, Properties, Export…, Refresh | `catalog.unmount`, `dataset.allocate`, `dataset.properties`, `catalog.export`, -- |
+| PS dataset | Open, Rename…, Delete, Properties, Copy DSN, Allocate Like… | (VFS open), `dataset.rename`, `dataset.delete`, `dataset.properties`, --, `dataset.allocate` |
+| PDS/PDSE | Expand, New Member…, Rename…, Delete, Properties, Copy DSN, Allocate Like… | (VFS list), `member.create`, `dataset.rename`, `dataset.delete`, `dataset.properties`, --, `dataset.allocate` |
+| PDS member | Open, Rename…, Delete, Copy Member Name, Properties | (VFS open), `member.rename`, `member.delete`, --, `dataset.properties` |
+| GDG base | New Generation…, List Generations, Properties, Delete GDG, Copy DSN, Modify Limit… | `gdg.create_generation`, `gdg.list_generations`, `dataset.properties`, `gdg.delete_base`, --, -- |
+| GDG generation | Open, Delete, Properties, Copy DSN | (VFS open), `dataset.delete`, `dataset.properties`, -- |
 
 ---
 
@@ -1450,7 +1450,7 @@ The following properties are suitable for property-based testing with the `propt
 
 ### Property 2: DSN Case Insensitivity (Requirement 2)
 
-**Statement:** For any valid DSN string, parsing is case-insensitive — lowercase and uppercase inputs produce identical DatasetName values.
+**Statement:** For any valid DSN string, parsing is case-insensitive -- lowercase and uppercase inputs produce identical DatasetName values.
 
 ```
 ∀ input ∈ valid_dsn_strings:

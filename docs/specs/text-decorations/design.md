@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `ff-text-decorations` crate is the **visual overlay subsystem** for FileForgeWorkbench. It manages transient, overlapping decorations applied on top of (or beneath) rendered text to communicate semantic information — search matches, diagnostic errors, change history, bookmarks, and custom plugin indicators.
+The `ff-text-decorations` crate is the **visual overlay subsystem** for FileForgeWorkbench. It manages transient, overlapping decorations applied on top of (or beneath) rendered text to communicate semantic information -- search matches, diagnostic errors, change history, bookmarks, and custom plugin indicators.
 
 ### Purpose
 
@@ -18,23 +18,23 @@ The `ff-text-decorations` crate is the **visual overlay subsystem** for FileForg
 ### Position in Architecture
 
 ```
-Wave 6 — UI and Rendering
+Wave 6 -- UI and Rendering
 
 ┌──────────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                    │
-│   Viewport Renderer — draws decorations using painter API     │
+│   Viewport Renderer -- draws decorations using painter API     │
 ├──────────────────────────────────────────────────────────────┤
 │          THIS CRATE: ff-text-decorations ← Wave 6             │
 │   Indicator storage, line markers, hover state, queries       │
 ├──────────────────────────────────────────────────────────────┤
 │  Upstream:                                                    │
-│    ff-document-model (Wave 4) — buffer positions, edit events │
-│    ff-edit-operations (Wave 4) — edit notifications           │
-│    ff-undo-redo-transactions (Wave 4) — undo sync             │
-│    ff-find-and-replace (Wave 5) — match highlighting producer │
-│    ff-theme (Wave 6, peer) — colour/style configuration       │
-│    ff-configuration-system (Wave 2) — hot-reload              │
-│    ff-command (Wave 2) — bookmark command registration         │
+│    ff-document-model (Wave 4) -- buffer positions, edit events │
+│    ff-edit-operations (Wave 4) -- edit notifications           │
+│    ff-undo-redo-transactions (Wave 4) -- undo sync             │
+│    ff-find-and-replace (Wave 5) -- match highlighting producer │
+│    ff-theme (Wave 6, peer) -- colour/style configuration       │
+│    ff-configuration-system (Wave 2) -- hot-reload              │
+│    ff-command (Wave 2) -- bookmark command registration         │
 ├──────────────────────────────────────────────────────────────┤
 │              Foundation Layer: ff-logging                      │
 └──────────────────────────────────────────────────────────────┘
@@ -43,8 +43,8 @@ Wave 6 — UI and Rendering
 
 ### Design Constraints (Cross-Cutting)
 
-- **FFW-ARCH-001 (Req 1)**: No direct filesystem access — decoration data is purely in-memory, indexed by document buffer positions
-- **GUI Independence (Req 2)**: Zero GUI dependencies — stores decoration data and exposes query APIs; actual rendering is performed by the shell layer
+- **FFW-ARCH-001 (Req 1)**: No direct filesystem access -- decoration data is purely in-memory, indexed by document buffer positions
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- stores decoration data and exposes query APIs; actual rendering is performed by the shell layer
 - **Command-Driven (Req 4)**: Bookmark operations (toggle, next, previous, clear) registered as commands in `ff-command`
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-text-decorations`
 - **Error Message Standards (Req 8)**: All errors follow `[decorations] operation: description` format
@@ -1167,7 +1167,7 @@ Within each indicator layer, indicators are drawn in indicator-number order (low
 
 These properties are suitable for property-based testing with `proptest`.
 
-### Property 1: RLE Invariant — Total Length Preservation
+### Property 1: RLE Invariant -- Total Length Preservation
 
 **Statement:** For any sequence of `fill_range`, `insert_space`, and `delete_range` operations on a `RunStyles<T>`, the sum of all run lengths always equals the tracked document length.
 
@@ -1182,7 +1182,7 @@ These properties are suitable for property-based testing with `proptest`.
 
 ### Property 2: Fill Range Idempotency
 
-**Statement:** Filling the same range with the same value twice produces the same state as filling once (second fill returns `false` — no change).
+**Statement:** Filling the same range with the same value twice produces the same state as filling once (second fill returns `false` -- no change).
 
 **Validates:** Requirement 3 AC 8
 
@@ -1293,7 +1293,7 @@ These properties are suitable for property-based testing with `proptest`.
 
 ### Property 10: Theme Reload Preserves Decoration Data
 
-**Statement:** Reloading theme colours does not modify any stored indicator values or marker assignments — only visual rendering properties change.
+**Statement:** Reloading theme colours does not modify any stored indicator values or marker assignments -- only visual rendering properties change.
 
 **Validates:** Requirement 2 AC 10, Requirement 15 AC 3
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `ff-seqnum` crate implements the **sequence number detection, stripping, numbering, and display** subsystem for FileForgeWorkbench. It handles the legacy punched-card-era sequence numbers found in mainframe source files (COBOL, JCL, FORTRAN, PL/I) where fixed column ranges carry sequence data that is not part of the source logic. The crate is **GUI-independent** — all detection, stripping, numbering, and state management operate on the document model without GUI framework dependency.
+The `ff-seqnum` crate implements the **sequence number detection, stripping, numbering, and display** subsystem for FileForgeWorkbench. It handles the legacy punched-card-era sequence numbers found in mainframe source files (COBOL, JCL, FORTRAN, PL/I) where fixed column ranges carry sequence data that is not part of the source logic. The crate is **GUI-independent** -- all detection, stripping, numbering, and state management operate on the document model without GUI framework dependency.
 
 ### Purpose
 
@@ -18,22 +18,22 @@ The `ff-seqnum` crate implements the **sequence number detection, stripping, num
 ### Position in Architecture
 
 ```
-Wave 11 — Display Modes
+Wave 11 -- Display Modes
 
 ┌─────────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                   │
 │   Status bar indicators, column shading, overlay render      │
 ├─────────────────────────────────────────────────────────────┤
-│         ff-seqnum (THIS CRATE — Wave 11)                     │
+│         ff-seqnum (THIS CRATE -- Wave 11)                     │
 │   Detection, stripping, numbering, NUMBER SHOW state         │
 ├─────────────────────────────────────────────────────────────┤
-│  ff-document-model (Wave 4) — edit buffer read/write         │
-│  ff-language-service (Wave 7) — language profile columns     │
-│  ff-command (Wave 2) — command registration + dispatch       │
-│  ff-undo (Wave 4) — Sequence_Transaction recording           │
-│  ff-config (Wave 2) — detection/save/display settings        │
-│  ff-file-ops (Wave 8) — save pipeline integration            │
-│  ff-line-commands (Wave 5) — CC block range for scoping      │
+│  ff-document-model (Wave 4) -- edit buffer read/write         │
+│  ff-language-service (Wave 7) -- language profile columns     │
+│  ff-command (Wave 2) -- command registration + dispatch       │
+│  ff-undo (Wave 4) -- Sequence_Transaction recording           │
+│  ff-config (Wave 2) -- detection/save/display settings        │
+│  ff-file-ops (Wave 8) -- save pipeline integration            │
+│  ff-line-commands (Wave 5) -- CC block range for scoping      │
 ├─────────────────────────────────────────────────────────────┤
 │              Foundation Layer: ff-logging (Wave 0)            │
 └─────────────────────────────────────────────────────────────┘
@@ -52,11 +52,11 @@ Wave 11 — Display Modes
 
 | Crate | Purpose |
 |-------|---------|
-| `ff-document-model` | Edit buffer access — reading line content for detection, mutating lines for strip/number operations |
-| `ff-language-service` | Language profile registry — provides `sequence_cols_front`, `sequence_cols_back`, `auto_unnum` per language |
+| `ff-document-model` | Edit buffer access -- reading line content for detection, mutating lines for strip/number operations |
+| `ff-language-service` | Language profile registry -- provides `sequence_cols_front`, `sequence_cols_back`, `auto_unnum` per language |
 | `ff-command` | Command registration for UNNUM, NUMBER, NUMBER SHOW; dispatch integration |
 | `ff-undo` | Transaction API for recording Sequence_Transactions (UNNUM and NUMBER are undoable) |
-| `ff-config` | Configuration namespace `editor.sequence_numbers.*` — thresholds, formats, save behaviour |
+| `ff-config` | Configuration namespace `editor.sequence_numbers.*` -- thresholds, formats, save behaviour |
 | `ff-line-commands` | CC block range resolution for scoped UNNUM/NUMBER operations |
 | `ff-logging` | WARN-level diagnostics for invalid column ranges, config clamping, overflow warnings |
 
@@ -64,9 +64,9 @@ Wave 11 — Display Modes
 
 | Consumer | Integration |
 |----------|-------------|
-| `ff-file-ops` | Save pipeline hook — restore/strip sequence numbers based on `restore_on_save` setting |
-| `ff-viewport` | NUMBER SHOW overlay rendering — reads side-table data for display |
-| `ff-edit-operations` | BOUNDS interaction — queries active sequence column state for constraint semantics |
+| `ff-file-ops` | Save pipeline hook -- restore/strip sequence numbers based on `restore_on_save` setting |
+| `ff-viewport` | NUMBER SHOW overlay rendering -- reads side-table data for display |
+| `ff-edit-operations` | BOUNDS interaction -- queries active sequence column state for constraint semantics |
 | `ff-desktop` (GUI shell) | Status bar indicators (`SEQNUM`, `SEQNUM?`, `SEQSHOW`), column shading |
 
 ---
@@ -162,7 +162,7 @@ end
    c. SeqNumStateManager records stripped state for this document
    d. Status message emitted: "SEQUENCE NUMBERS REMOVED: COLS x-y[, x-y]"
 8. IF auto_unnum=false AND detected:
-   a. Status message emitted: "SEQUENCE NUMBERS DETECTED — not removed"
+   a. Status message emitted: "SEQUENCE NUMBERS DETECTED -- not removed"
    b. SeqNumStateManager records detected-but-not-stripped state
 9. Shell reads SeqNumStateManager for status bar indicator (SEQNUM / SEQNUM?)
 ```
@@ -176,15 +176,15 @@ crates/ff-seqnum/
 ├── Cargo.toml
 ├── src/
 │   ├── lib.rs                  # Public API re-exports, crate docs
-│   ├── detector.rs             # SequenceDetector — heuristic sampling logic
-│   ├── stripper.rs             # SequenceStripper — column clearing + side-table
-│   ├── numberer.rs             # SequenceNumberer — number generation + insertion
-│   ├── state.rs                # SeqNumStateManager — per-document state tracking
-│   ├── overlay.rs              # SeqNumOverlay — NUMBER SHOW data model
-│   ├── columns.rs              # SeqNumColumns — column range parsing + validation
-│   ├── format.rs               # SeqNumFormat — numeric/alpha format logic
-│   ├── config.rs               # SeqNumConfig — typed config access
-│   ├── save_hook.rs            # SaveHook — restore/strip on save logic
+│   ├── detector.rs             # SequenceDetector -- heuristic sampling logic
+│   ├── stripper.rs             # SequenceStripper -- column clearing + side-table
+│   ├── numberer.rs             # SequenceNumberer -- number generation + insertion
+│   ├── state.rs                # SeqNumStateManager -- per-document state tracking
+│   ├── overlay.rs              # SeqNumOverlay -- NUMBER SHOW data model
+│   ├── columns.rs              # SeqNumColumns -- column range parsing + validation
+│   ├── format.rs               # SeqNumFormat -- numeric/alpha format logic
+│   ├── config.rs               # SeqNumConfig -- typed config access
+│   ├── save_hook.rs            # SaveHook -- restore/strip on save logic
 │   ├── commands/
 │   │   ├── mod.rs              # Re-exports for command handlers
 │   │   ├── unnum.rs            # UNNUM command handler (sequence.unnum)
@@ -354,7 +354,7 @@ pub struct SequenceNumberState {
 /// Addresses: Requirements 4.1, 4.2, 4.4
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SeqNumStatusIndicator {
-    /// No sequence columns detected or defined — no indicator shown.
+    /// No sequence columns detected or defined -- no indicator shown.
     None,
     /// Sequence numbers detected and stripped. Shows "SEQNUM x-y[,x-y]".
     Stripped {
@@ -444,7 +444,7 @@ pub struct SeqNumConfig {
     /// Detection threshold percentage (50–100, default 80).
     /// Minimum percentage of sampled lines that must match numeric pattern.
     pub detection_threshold: u8,
-    /// Sample size — maximum non-blank lines to sample (5–100, default 20).
+    /// Sample size -- maximum non-blank lines to sample (5–100, default 20).
     pub sample_size: u8,
     /// Whether to highlight sequence columns with background shading.
     pub highlight_columns: bool,
@@ -492,7 +492,7 @@ impl SeqNumConfig {
 
 ```rust
 /// Samples file content to detect sequence number presence.
-/// Read-only operation — never modifies the edit buffer.
+/// Read-only operation -- never modifies the edit buffer.
 /// Addresses: Requirements 2.1–2.9
 pub struct SequenceDetector { /* ... */ }
 
@@ -552,7 +552,7 @@ impl SequenceStripper {
     ) -> StripResult;
 
     /// Strip an explicit column range (UNNUM COLS start end).
-    /// Does not use language profile — uses the caller-specified range.
+    /// Does not use language profile -- uses the caller-specified range.
     /// Addresses: Requirement 5.3
     pub fn strip_explicit(
         &self,
@@ -723,7 +723,7 @@ impl SaveHook {
     pub fn new() -> Self;
 
     /// Called by the save pipeline before writing to disk.
-    /// Returns the content to save — either the edit buffer as-is (default)
+    /// Returns the content to save -- either the edit buffer as-is (default)
     /// or with sequence numbers restored from the side-table.
     /// Addresses: Requirements 11.1, 11.2, 11.5, 11.6
     pub fn prepare_save_content(
@@ -761,7 +761,7 @@ pub struct LineRestoration {
 ### Command Handlers
 
 ```rust
-/// UNNUM command handler — registered as Command_ID "sequence.unnum".
+/// UNNUM command handler -- registered as Command_ID "sequence.unnum".
 /// Addresses: Requirements 5.1–5.11
 pub struct UnnumCommand { /* ... */ }
 
@@ -770,11 +770,11 @@ impl UnnumCommand {
     /// Dispatches to the appropriate strip variant based on arguments.
     ///
     /// Supported forms:
-    /// - `UNNUM` — strip using language profile columns
-    /// - `UNNUM COLS start end` — strip explicit column range
-    /// - `UNNUM FRONT` — strip front columns only
-    /// - `UNNUM BACK` — strip back columns only
-    /// - `UNNUM ALL` — strip both front and back
+    /// - `UNNUM` -- strip using language profile columns
+    /// - `UNNUM COLS start end` -- strip explicit column range
+    /// - `UNNUM FRONT` -- strip front columns only
+    /// - `UNNUM BACK` -- strip back columns only
+    /// - `UNNUM ALL` -- strip both front and back
     ///
     /// When combined with CC block: restricts to block range.
     /// Records a Sequence_Transaction for undo.
@@ -785,7 +785,7 @@ impl UnnumCommand {
     ) -> Result<CommandOutput, SeqNumError>;
 }
 
-/// NUMBER command handler — registered as Command_ID "sequence.number".
+/// NUMBER command handler -- registered as Command_ID "sequence.number".
 /// Addresses: Requirements 6.1–6.12, 7.1–7.4
 pub struct NumberCommand { /* ... */ }
 
@@ -794,11 +794,11 @@ impl NumberCommand {
     /// Dispatches to the appropriate variant based on arguments.
     ///
     /// Supported forms:
-    /// - `NUMBER` — display usage summary
-    /// - `NUMBER COLS start end [FORMAT format]` — explicit column numbering
-    /// - `NUMBER STD [start_val increment]` — language profile column numbering
-    /// - `NUMBER ON` — enable auto-numbering
-    /// - `NUMBER OFF` — disable auto-numbering
+    /// - `NUMBER` -- display usage summary
+    /// - `NUMBER COLS start end [FORMAT format]` -- explicit column numbering
+    /// - `NUMBER STD [start_val increment]` -- language profile column numbering
+    /// - `NUMBER ON` -- enable auto-numbering
+    /// - `NUMBER OFF` -- disable auto-numbering
     ///
     /// Sequencing forms (COLS, STD) require confirmation before modifying.
     /// Records a Sequence_Transaction for undo.
@@ -809,7 +809,7 @@ impl NumberCommand {
     ) -> Result<CommandOutput, SeqNumError>;
 }
 
-/// NUMBER SHOW command handler — registered as Command_ID "sequence.number_show".
+/// NUMBER SHOW command handler -- registered as Command_ID "sequence.number_show".
 /// Addresses: Requirements 8.1–8.7
 pub struct NumberShowCommand { /* ... */ }
 
@@ -835,7 +835,7 @@ impl NumberShowCommand {
 #[non_exhaustive]
 pub enum SeqNumError {
     /// No sequence columns defined for the active language.
-    #[error("[seqnum] unnum: no sequence columns defined for this language — use UNNUM COLS to specify a range")]
+    #[error("[seqnum] unnum: no sequence columns defined for this language -- use UNNUM COLS to specify a range")]
     NoColumnsDefinedForUnnum,
 
     /// No sequence columns defined for NUMBER STD.
@@ -851,7 +851,7 @@ pub enum SeqNumError {
     BackColumnsNotDefined { operation: String },
 
     /// Invalid column range specification.
-    #[error("[seqnum] columns: invalid range '{value}' — start must be <= end, both > 0")]
+    #[error("[seqnum] columns: invalid range '{value}' -- start must be <= end, both > 0")]
     InvalidColumnRange { value: String },
 
     /// Invalid start value or increment for NUMBER command.
@@ -862,8 +862,8 @@ pub enum SeqNumError {
     #[error("[seqnum] number: prefix too long for column range")]
     PrefixTooLong,
 
-    /// Sequence number overflow — value exceeds column width capacity.
-    #[error("[seqnum] number: sequence overflow — numbers truncated to fit COLS {start}-{end}")]
+    /// Sequence number overflow -- value exceeds column width capacity.
+    #[error("[seqnum] number: sequence overflow -- numbers truncated to fit COLS {start}-{end}")]
     SequenceOverflow { start: u16, end: u16 },
 
     /// Command not applicable in Grid Edit Mode.
@@ -871,7 +871,7 @@ pub enum SeqNumError {
     NotApplicableInGridMode { command: String },
 
     /// Auto-numbering conflict with active BOUNDS.
-    #[error("[seqnum] number_on: sequence columns overlap with active BOUNDS — auto-numbering disabled for overlapping range")]
+    #[error("[seqnum] number_on: sequence columns overlap with active BOUNDS -- auto-numbering disabled for overlapping range")]
     BoundsOverlap,
 
     /// Configuration value out of valid range (value was clamped).
@@ -889,7 +889,7 @@ pub enum SeqNumError {
     DocumentAccess(String),
 
     /// Undo system error.
-    #[error("[seqnum] undo: failed to record transaction — {0}")]
+    #[error("[seqnum] undo: failed to record transaction -- {0}")]
     UndoRecordFailed(String),
 }
 ```
@@ -949,7 +949,7 @@ pub enum SeqNumError {
 | Integration | Detail |
 |-------------|--------|
 | **Save pipeline hook** | `SaveHook::prepare_save_content()` is called before writing; returns either pass-through or restoration instructions |
-| **Default behaviour** | Save writes edit buffer as-is (stripped columns contain spaces — no sequence numbers in output) |
+| **Default behaviour** | Save writes edit buffer as-is (stripped columns contain spaces -- no sequence numbers in output) |
 | **Restore mode** | When `restore_on_save=true`, injects side-table content into save output without modifying the edit buffer |
 | **New-line numbering on save** | If lines were inserted since open and `restore_on_save=true`, generates new numbers for those lines |
 
@@ -1036,7 +1036,7 @@ These properties define invariants suitable for property-based testing with `pro
 
 ### Property 11: NUMBER SHOW Does Not Modify Buffer
 
-**Statement:** For any document with NUMBER SHOW active, the edit buffer content is identical before and after toggling NUMBER SHOW on. Toggling off also leaves the buffer unchanged. Save while NUMBER SHOW is active writes the edit buffer — not the overlay values.
+**Statement:** For any document with NUMBER SHOW active, the edit buffer content is identical before and after toggling NUMBER SHOW on. Toggling off also leaves the buffer unchanged. Save while NUMBER SHOW is active writes the edit buffer -- not the overlay values.
 
 **Validates: Requirements 8.3, 8.4**
 

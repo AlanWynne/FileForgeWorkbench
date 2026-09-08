@@ -6,13 +6,13 @@ This feature specifies the **Command Completion** subsystem for FileForgeWorkben
 
 The command completion subsystem is responsible for:
 
-1. **Primary command name completion** — prefix-matching against all registered commands in the `command-framework` Command_Registry
-2. **Argument completion** — context-sensitive completion for command arguments: file paths (via VFS), command modifiers/keywords, macro names, and configurable keyword lists
-3. **Line command completion** — prefix-area auto-complete for ISPF line command abbreviations
-4. **Popup positioning** — intelligent placement of the completion popup above or below the command field based on available screen space
-5. **Navigation and selection** — keyboard-driven list navigation with Arrow keys, Tab, and Enter for selection; Escape for dismiss
-6. **Fuzzy matching** — optional fuzzy/subsequence matching mode as an alternative to strict prefix matching
-7. **Trigger control** — configurable activation: manual (Ctrl+Space) and/or automatic after N characters typed
+1. **Primary command name completion** -- prefix-matching against all registered commands in the `command-framework` Command_Registry
+2. **Argument completion** -- context-sensitive completion for command arguments: file paths (via VFS), command modifiers/keywords, macro names, and configurable keyword lists
+3. **Line command completion** -- prefix-area auto-complete for ISPF line command abbreviations
+4. **Popup positioning** -- intelligent placement of the completion popup above or below the command field based on available screen space
+5. **Navigation and selection** -- keyboard-driven list navigation with Arrow keys, Tab, and Enter for selection; Escape for dismiss
+6. **Fuzzy matching** -- optional fuzzy/subsequence matching mode as an alternative to strict prefix matching
+7. **Trigger control** -- configurable activation: manual (Ctrl+Space) and/or automatic after N characters typed
 
 The crate is **GUI-independent** in its core logic (candidate generation, filtering, ranking, and selection management). The popup rendering and positioning coordinate with the GUI shell (egui) but the completion engine can be tested without a running UI.
 
@@ -27,19 +27,19 @@ The crate is **GUI-independent** in its core logic (candidate generation, filter
 
 ### Source References
 
-- **[SCI-AC]** = Scintilla AutoComplete concepts — list box positioning, stop chars, fill-up chars, case-insensitive matching, sort order, auto-hide behaviour
-- **[WB]** = Workbench Architecture Brief — command-driven architecture, GUI-independence, VFS principle, plugin extensibility
-- **[FFE-CMD-1]** = FileForgeEditor core-command-semantics — command execution pipeline (primary command field context)
-- **[FFE-CMD-37]** = FileForgeEditor core-command-semantics — line command parser (prefix-area context)
+- **[SCI-AC]** = Scintilla AutoComplete concepts -- list box positioning, stop chars, fill-up chars, case-insensitive matching, sort order, auto-hide behaviour
+- **[WB]** = Workbench Architecture Brief -- command-driven architecture, GUI-independence, VFS principle, plugin extensibility
+- **[FFE-CMD-1]** = FileForgeEditor core-command-semantics -- command execution pipeline (primary command field context)
+- **[FFE-CMD-37]** = FileForgeEditor core-command-semantics -- line command parser (prefix-area context)
 
 ### Cross-References
 
-- **`command-framework`** — Provides the Command_Registry from which command name completions are sourced; provides Command_Metadata (display name, category, description) for tooltip enrichment in the popup.
-- **`command-semantics`** — Defines the primary command field, command parsing, and scope modifiers that completion must understand for argument context.
-- **`virtual-file-system`** — Supplies file path completions via async directory listing through VFS provider-agnostic API.
-- **`lua-macro-engine`** — Provides the list of registered macro names for macro name completion.
-- **`configuration-system`** — Stores completion behaviour settings (trigger mode, threshold, fuzzy mode, max items, popup dimensions) under the `completion.*` namespace.
-- **`line-commands`** — Defines the set of valid line commands (kinds, block forms) used as the candidate list for prefix-area completion.
+- **`command-framework`** -- Provides the Command_Registry from which command name completions are sourced; provides Command_Metadata (display name, category, description) for tooltip enrichment in the popup.
+- **`command-semantics`** -- Defines the primary command field, command parsing, and scope modifiers that completion must understand for argument context.
+- **`virtual-file-system`** -- Supplies file path completions via async directory listing through VFS provider-agnostic API.
+- **`lua-macro-engine`** -- Provides the list of registered macro names for macro name completion.
+- **`configuration-system`** -- Stores completion behaviour settings (trigger mode, threshold, fuzzy mode, max items, popup dimensions) under the `completion.*` namespace.
+- **`line-commands`** -- Defines the set of valid line commands (kinds, block forms) used as the candidate list for prefix-area completion.
 
 ---
 
@@ -53,7 +53,7 @@ The crate is **GUI-independent** in its core logic (candidate generation, filter
 | **Completion_Provider** | A trait that supplies completion candidates for a given context. Built-in providers cover command names, file paths, keywords, line commands, and macro names. Plugins may register custom providers. | [WB] |
 | **Completion_Context** | The state at the moment completion is triggered: the field being edited (primary command or prefix area), the text typed so far, the cursor position, and the parsed command name (if arguments are being completed). | [SCI-AC] |
 | **Prefix_Match** | A matching mode where candidates must start with the typed prefix (case-insensitive by default). | [SCI-AC] |
-| **Fuzzy_Match** | A matching mode where candidates are matched by subsequence — all typed characters must appear in order within the candidate, but not necessarily consecutively. | [SCI-AC] |
+| **Fuzzy_Match** | A matching mode where candidates are matched by subsequence -- all typed characters must appear in order within the candidate, but not necessarily consecutively. | [SCI-AC] |
 | **Trigger_Mode** | The configured activation mode: `manual` (Ctrl+Space only), `automatic` (after N characters), or `both` (automatic triggers and manual override). | [SCI-AC] |
 | **Trigger_Threshold** | The number of characters the user must type before automatic completion triggers. Configurable via `completion.auto_trigger_chars`. | [SCI-AC] |
 | **Stop_Char** | A character that, when typed, causes the completion popup to dismiss automatically. | [SCI-AC] |
@@ -83,7 +83,7 @@ The crate is **GUI-independent** in its core logic (candidate generation, filter
 
 1.5. WHEN a command name candidate is accepted (selected and confirmed), THE Completion_Engine SHALL replace the typed prefix in the command field with the canonical command name (uppercase form as registered in Command_Registry) and position the cursor after the inserted name with a trailing space.
 
-1.6. THE Completion_Engine SHALL update the candidate list dynamically as the user continues typing — each additional character SHALL re-filter the list without requiring a new trigger action.
+1.6. THE Completion_Engine SHALL update the candidate list dynamically as the user continues typing -- each additional character SHALL re-filter the list without requiring a new trigger action.
 
 1.7. IF no registered command names match the typed prefix, THEN THE Completion_Popup SHALL auto-hide (dismiss itself) rather than displaying an empty list.
 
@@ -123,7 +123,7 @@ The crate is **GUI-independent** in its core logic (candidate generation, filter
 
 #### Acceptance Criteria
 
-3.1. THE Completion_Popup SHALL be anchored horizontally at the Popup_Anchor — the x-coordinate corresponding to the start of the prefix being completed within the command field.
+3.1. THE Completion_Popup SHALL be anchored horizontally at the Popup_Anchor -- the x-coordinate corresponding to the start of the prefix being completed within the command field.
 
 3.2. THE Completion_Popup SHALL be positioned vertically below the command field by default, with the top edge of the popup adjacent to the bottom edge of the command field.
 
@@ -153,7 +153,7 @@ The crate is **GUI-independent** in its core logic (candidate generation, filter
 
 4.2. WHEN the Completion_Popup is visible, THE Up Arrow key SHALL move the selection highlight to the previous candidate in the list (wrapping from first to last if `completion.wrap_navigation` is true, stopping at the first item otherwise).
 
-4.3. WHEN the Completion_Popup is visible, THE Tab key SHALL accept the currently highlighted candidate — inserting its value into the command field, replacing the typed prefix, and dismissing the popup.
+4.3. WHEN the Completion_Popup is visible, THE Tab key SHALL accept the currently highlighted candidate -- inserting its value into the command field, replacing the typed prefix, and dismissing the popup.
 
 4.4. WHEN the Completion_Popup is visible, THE Enter key SHALL accept the currently highlighted candidate (same behaviour as Tab) AND submit the command for execution if the cursor is at the end of the command field and no further arguments are expected.
 
@@ -167,7 +167,7 @@ The crate is **GUI-independent** in its core logic (candidate generation, filter
 
 4.9. WHEN only a single candidate matches the typed prefix AND `completion.choose_single` is true (configurable, default false), THE Completion_Engine SHALL auto-accept that candidate without showing the popup.
 
-4.10. WHEN a candidate is accepted, THE insertion SHALL replace only the prefix portion that was used to filter — any text after the cursor in the command field SHALL be preserved.
+4.10. WHEN a candidate is accepted, THE insertion SHALL replace only the prefix portion that was used to filter -- any text after the cursor in the command field SHALL be preserved.
 
 ---
 
@@ -259,27 +259,27 @@ The crate is **GUI-independent** in its core logic (candidate generation, filter
 
 ### Requirement 9: Configurable Trigger Behaviour
 
-**User Story:** As an editor user, I want to control when completion activates — either manually on demand or automatically as I type — so that I can balance discoverability against minimal disruption to my typing flow.
+**User Story:** As an editor user, I want to control when completion activates -- either manually on demand or automatically as I type -- so that I can balance discoverability against minimal disruption to my typing flow.
 
 **Source:** [SCI-AC]
 
 #### Acceptance Criteria
 
 9.1. THE Configuration_System SHALL support the following completion-related keys under the `completion.*` namespace:
-- `completion.trigger_mode` (string: `"manual"` | `"automatic"` | `"both"`) — activation mode. Default: `"both"`.
-- `completion.auto_trigger_chars` (integer, 1–10) — character count threshold for automatic triggering. Default: `2`.
-- `completion.matching_mode` (string: `"prefix"` | `"fuzzy"`) — matching algorithm. Default: `"prefix"`.
-- `completion.case_sensitive` (boolean) — whether matching is case-sensitive. Default: `false`.
-- `completion.popup_max_items` (integer, 3–50) — maximum visible candidates in popup. Default: `10`.
-- `completion.popup_max_width` (integer, 100–1000 logical pixels) — maximum popup width. Default: `400`.
-- `completion.auto_hide` (boolean) — dismiss when no matches. Default: `true`.
-- `completion.cancel_at_start_pos` (boolean) — dismiss when cursor retreats past anchor. Default: `true`.
-- `completion.choose_single` (boolean) — auto-accept lone match. Default: `false`.
-- `completion.wrap_navigation` (boolean) — wrap arrow navigation. Default: `true`.
-- `completion.stop_chars` (string) — characters that dismiss the popup. Default: `" ;"`.
-- `completion.fill_up_chars` (string) — characters that accept selection. Default: `""` (none).
-- `completion.line_command_completion` (boolean) — enable prefix-area completion. Default: `true`.
-- `completion.drop_rest_of_word` (boolean) — whether accepting a candidate removes text after the cursor up to the next word boundary. Default: `false`.
+- `completion.trigger_mode` (string: `"manual"` | `"automatic"` | `"both"`) -- activation mode. Default: `"both"`.
+- `completion.auto_trigger_chars` (integer, 1–10) -- character count threshold for automatic triggering. Default: `2`.
+- `completion.matching_mode` (string: `"prefix"` | `"fuzzy"`) -- matching algorithm. Default: `"prefix"`.
+- `completion.case_sensitive` (boolean) -- whether matching is case-sensitive. Default: `false`.
+- `completion.popup_max_items` (integer, 3–50) -- maximum visible candidates in popup. Default: `10`.
+- `completion.popup_max_width` (integer, 100–1000 logical pixels) -- maximum popup width. Default: `400`.
+- `completion.auto_hide` (boolean) -- dismiss when no matches. Default: `true`.
+- `completion.cancel_at_start_pos` (boolean) -- dismiss when cursor retreats past anchor. Default: `true`.
+- `completion.choose_single` (boolean) -- auto-accept lone match. Default: `false`.
+- `completion.wrap_navigation` (boolean) -- wrap arrow navigation. Default: `true`.
+- `completion.stop_chars` (string) -- characters that dismiss the popup. Default: `" ;"`.
+- `completion.fill_up_chars` (string) -- characters that accept selection. Default: `""` (none).
+- `completion.line_command_completion` (boolean) -- enable prefix-area completion. Default: `true`.
+- `completion.drop_rest_of_word` (boolean) -- whether accepting a candidate removes text after the cursor up to the next word boundary. Default: `false`.
 
 9.2. WHEN `completion.trigger_mode` is `"manual"`, THE Completion_Engine SHALL only activate when the user explicitly presses the trigger shortcut (Ctrl+Space by default, configurable via the Shortcut_Registry).
 
@@ -311,7 +311,7 @@ The crate is **GUI-independent** in its core logic (candidate generation, filter
 
 10.4. THE Completion_Engine SHALL invoke all applicable providers for a given context in parallel (where possible) and merge their results into a single de-duplicated, ranked candidate list.
 
-10.5. IF a CompletionProvider fails (panics or returns an error), THE Completion_Engine SHALL catch the failure, log a WARN-level record identifying the provider, and continue with candidates from other providers — a single provider failure SHALL NOT prevent completion from functioning.
+10.5. IF a CompletionProvider fails (panics or returns an error), THE Completion_Engine SHALL catch the failure, log a WARN-level record identifying the provider, and continue with candidates from other providers -- a single provider failure SHALL NOT prevent completion from functioning.
 
 10.6. BUILT-IN providers (command names, file paths, keywords, line commands, macro names) SHALL be implemented using the same `CompletionProvider` trait as plugin providers, ensuring a uniform internal architecture.
 

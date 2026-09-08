@@ -1,6 +1,6 @@
 # Verification Report: Gap Analysis HIGH/MEDIUM Items Coverage
 
-**Task:** 18.3 — Verify gap analysis HIGH/MEDIUM items are all addressed  
+**Task:** 18.3 -- Verify gap analysis HIGH/MEDIUM items are all addressed  
 **Date:** 2025-01-XX  
 **Source Document:** `FileForgeEditor/.kiro/specs/project-master/scintilla-gap-analysis.md`  
 **Scope:** All HIGH and MEDIUM priority recommendations from the Scintilla/SciTE gap analysis
@@ -32,7 +32,7 @@
 
 - **Gap:** FFE didn't specify how word boundaries are determined for FIND WORD, double-click selection, or word movement.
 - **Status:** ✅ ADDRESSED
-- **Covered by:** `encoding-and-characters` sub-project spec — Requirement 6 (CharClassify), Requirement 7 (Unicode Character Category), Requirement 12 (Word-Part Navigation), Requirement 13 (Configurable Word-Character Sets)
+- **Covered by:** `encoding-and-characters` sub-project spec -- Requirement 6 (CharClassify), Requirement 7 (Unicode Character Category), Requirement 12 (Word-Part Navigation), Requirement 13 (Configurable Word-Character Sets)
 - **Notes:** Comprehensive coverage including 256-entry lookup table, Unicode General Category classification, camelCase/snake_case word-part boundaries, and per-document configurable word characters.
 
 ### 3. Idle Processing Framework (Domain 12)
@@ -54,9 +54,9 @@
 - **Gap:** FFE's per-line highlighting cannot handle block comments, multi-line strings, or heredocs.
 - **Status:** ✅ ADDRESSED
 - **Covered by:**
-  - `language-service` Requirement 4 (Multi-Line Lexer State Persistence) — per-line state vector, state propagation, incremental termination
-  - `language-service` Requirement 5 (Comment and String Syntax) — block comments, string delimiters, heredoc patterns
-  - `syntax-highlighting` Requirement 2 (Incremental Re-Highlighting) — state carry-forward, re-highlighting stops on convergence
+  - `language-service` Requirement 4 (Multi-Line Lexer State Persistence) -- per-line state vector, state propagation, incremental termination
+  - `language-service` Requirement 5 (Comment and String Syntax) -- block comments, string delimiters, heredoc patterns
+  - `syntax-highlighting` Requirement 2 (Incremental Re-Highlighting) -- state carry-forward, re-highlighting stops on convergence
   - `syntax-highlighting` Requirement 6 (Comment Detection and Multi-Line State)
 - **Notes:** Extensive coverage across both language-service and syntax-highlighting specs.
 
@@ -90,9 +90,9 @@
 - **Gap:** Files should preserve their existing line-ending convention.
 - **Status:** ✅ ADDRESSED
 - **Covered by:**
-  - `document-model` Requirement 5 (Line End Type Support) — configurable LineEndMode (Default: CR/LF/CRLF; Unicode: +LS/PS/NEL)
-  - `background-io` criterion 7 — passes through line-ending type metadata from VFS
-  - `configuration-system` Requirement 6 (EditorConfig) — `end_of_line` EditorConfig property applied per file
+  - `document-model` Requirement 5 (Line End Type Support) -- configurable LineEndMode (Default: CR/LF/CRLF; Unicode: +LS/PS/NEL)
+  - `background-io` criterion 7 -- passes through line-ending type metadata from VFS
+  - `configuration-system` Requirement 6 (EditorConfig) -- `end_of_line` EditorConfig property applied per file
 - **Notes:** Line-ending type is detected on load via VFS metadata and preserved. EditorConfig `end_of_line` provides per-project override.
 
 ### 10. Auto-Indentation (Domain 14)
@@ -106,21 +106,21 @@
 
 - **Gap:** No spec for showing/hiding space/tab characters.
 - **Status:** ✅ ADDRESSED
-- **Covered by:** `whitespace-and-guides` sub-project spec — Requirement 1 (Whitespace Visibility)
+- **Covered by:** `whitespace-and-guides` sub-project spec -- Requirement 1 (Whitespace Visibility)
 - **Notes:** Dedicated sub-project created (task 6.4). Supports four modes: Invisible, VisibleAlways, VisibleAfterIndent, VisibleOnlyInIndent. Plus Tab_Draw_Mode (LongArrow, Strikeout).
 
 ### 12. Edge Column Indicator (Domain 5)
 
 - **Gap:** No visual column-width guide (e.g., 80-column line).
 - **Status:** ✅ ADDRESSED
-- **Covered by:** `whitespace-and-guides` sub-project spec — Requirement 4 (Edge Column Indicator)
+- **Covered by:** `whitespace-and-guides` sub-project spec -- Requirement 4 (Edge Column Indicator)
 - **Notes:** Supports Edge_Mode (None, Line, Background, MultiLine), multi-edge with per-column colour, configurable via `editor.edge_column`.
 
 ### 13. Caret Appearance Configuration (Domain 8)
 
 - **Gap:** No spec for caret style (line/block), width, blink rate, caret-line highlighting.
 - **Status:** ✅ ADDRESSED
-- **Covered by:** `caret-and-selection` sub-project spec — Requirement 1 (Caret Shape and Style), Requirement 2 (Caret Colour), Requirement 3 (Caret Blink), Requirement 4 (Caret Line Highlight)
+- **Covered by:** `caret-and-selection` sub-project spec -- Requirement 1 (Caret Shape and Style), Requirement 2 (Caret Colour), Requirement 3 (Caret Blink), Requirement 4 (Caret Line Highlight)
 - **Notes:** Dedicated sub-project created (task 6.5). Full caret configuration: styles (Invisible/Line/Block), width [1-20]px, blink period, caret-line background/frame, overstrike block.
 
 ### 14. Command-Line Auto-Complete (Domain 7)
@@ -142,9 +142,9 @@
 - **Gap:** Macros could not respond to individual keystrokes or maintain per-document state.
 - **Status:** ✅ ADDRESSED
 - **Covered by:** `lua-macro-engine` sub-project spec:
-  - Requirement 3 (Event Hook System) — `OnChar`, `OnKey`, `OnCommand`, `OnSwitchBuffer`, cancellable hooks
-  - Requirement 4 (Per-Buffer State Isolation) — `buffer` global table swapped on tab switch
-  - Requirement 8 (Auto-Reload of Modified Scripts) — file watcher, re-registration, error fallback
+  - Requirement 3 (Event Hook System) -- `OnChar`, `OnKey`, `OnCommand`, `OnSwitchBuffer`, cancellable hooks
+  - Requirement 4 (Per-Buffer State Isolation) -- `buffer` global table swapped on tab switch
+  - Requirement 8 (Auto-Reload of Modified Scripts) -- file watcher, re-registration, error fallback
 - **Notes:** All SciTE LuaExtension capabilities adapted to Rust/mlua.
 
 ---

@@ -1,6 +1,6 @@
-# Requirements Document — DEFERRED
+# Requirements Document -- DEFERRED
 
-> ⚠️ **STATUS: DEFERRED — Not in initial release.**
+> ⚠️ **STATUS: DEFERRED -- Not in initial release.**
 >
 > This specification documents the *future* Mainframe connectivity connector for
 > FileForgeWorkbench. It is NOT scheduled for the initial release. The
@@ -18,16 +18,16 @@ trait from `ff-connector-extensibility`, which combines `VfsProvider` (from
 
 ### What This Connector Will Provide
 
-- **z/OS FTP** — dataset transfer via the mainframe FTP server, supporting MVS
+- **z/OS FTP** -- dataset transfer via the mainframe FTP server, supporting MVS
   dataset naming conventions, JES spool retrieval, SITE commands for dataset
   allocation, and automatic EBCDIC↔UTF-8 translation.
-- **TN3270 terminal emulation** — 3270 screen interaction for ISPF/TSO sessions,
+- **TN3270 terminal emulation** -- 3270 screen interaction for ISPF/TSO sessions,
   including screen scraping, field extraction, cursor navigation, and automated
   ISPF panel navigation.
-- **z/OSMF REST API** — modern REST interface for z/OS resource management
+- **z/OSMF REST API** -- modern REST interface for z/OS resource management
   including dataset operations, job submission/monitoring, USS file access, and
   system variable queries.
-- **USS SSH** — Unix System Services shell access on z/OS for file operations
+- **USS SSH** -- Unix System Services shell access on z/OS for file operations
   in the UNIX filesystem, command execution, and pipe-based data transfer.
 
 ### Architectural Integration Point
@@ -45,7 +45,7 @@ The connector advertises its URI schemes (`zos-ftp://`, `tn3270://`,
 ### Relationship to Dataset Catalog
 
 The `dataset-catalog` sub-project (included in the initial release) provides
-**local emulation** of mainframe dataset structures on the desktop — SQLite-based
+**local emulation** of mainframe dataset structures on the desktop -- SQLite-based
 catalog, MVS naming, PDS member navigation, and repository layout. This connector
 extends that model by providing **real mainframe connectivity** to an actual z/OS
 system. Both share dataset naming conventions and metadata structures, enabling
@@ -56,7 +56,7 @@ seamless transition from local emulation to remote access.
 The `connector-extensibility` crate ships in the initial release and defines all
 the traits, error types, and registry infrastructure that this connector will
 consume. No code changes to VFS core or the workbench platform will be required
-to add this connector — it plugs in via the existing extensibility framework.
+to add this connector -- it plugs in via the existing extensibility framework.
 
 ---
 
@@ -65,7 +65,7 @@ to add this connector — it plugs in via the existing extensibility framework.
 The following outline documents the eventual scope. Full EARS-format acceptance
 criteria will be written when this connector moves to active development.
 
-### Requirement 1: z/OS FTP — Dataset Transfer
+### Requirement 1: z/OS FTP -- Dataset Transfer
 
 - Connect to z/OS FTP server using credentials from `CredentialStore`
 - Support MVS dataset naming: `'HLQ.QUALIFIER.NAME'` (quoted) for PDS, sequential
@@ -141,9 +141,9 @@ criteria will be written when this connector moves to active development.
 
 ## References
 
-- **WB**: Workbench Architecture Brief — VFS extensibility, FFW-ARCH-001
+- **WB**: Workbench Architecture Brief -- VFS extensibility, FFW-ARCH-001
 - **FFW**: FileForgeWorkbench cross-cutting requirements (VFS Principle, Plugin Architecture)
-- **DSC**: Dataset Catalog Brief — local mainframe emulation (initial release)
+- **DSC**: Dataset Catalog Brief -- local mainframe emulation (initial release)
 - Connector-extensibility requirements (Requirement 6: Future Connector Hooks)
 - IBM z/OSMF REST API documentation
 - IBM FTP for z/OS documentation (JES, MVS dataset access)
@@ -151,10 +151,10 @@ criteria will be written when this connector moves to active development.
 
 ---
 
-## Formal Acceptance Criteria (DEFERRED — Future Release)
+## Formal Acceptance Criteria (DEFERRED -- Future Release)
 
 > The following criteria are written in EARS format for traceability. All criteria
-> carry status **DEFERRED** — they are not scheduled for the initial release.
+> carry status **DEFERRED** -- they are not scheduled for the initial release.
 > Full implementation details will be added to `design.md` when this connector
 > moves to active development.
 

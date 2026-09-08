@@ -1,6 +1,6 @@
 # Validation Report: Cross-Cutting Architectural Requirements Coverage
 
-**Task:** 19.3 — Verify all cross-cutting architectural requirements (FFW-ARCH-001 through Requirement 10) are addressed in relevant designs
+**Task:** 19.3 -- Verify all cross-cutting architectural requirements (FFW-ARCH-001 through Requirement 10) are addressed in relevant designs
 
 **Date:** Validated against current design documents in `.kiro/specs/`
 
@@ -12,7 +12,7 @@
 
 | # | Requirement | Status | Coverage |
 |---|-------------|--------|----------|
-| 1 | FFW-ARCH-001 — VFS Principle | ✅ Addressed | All 8 relevant designs explicitly reference it |
+| 1 | FFW-ARCH-001 -- VFS Principle | ✅ Addressed | All 8 relevant designs explicitly reference it |
 | 2 | GUI Independence | ✅ Addressed | All examined designs explicitly reference it |
 | 3 | Plugin Architecture Principle | ✅ Addressed | All relevant designs explicitly reference it |
 | 4 | Command-Driven Architecture | ✅ Addressed | All relevant designs explicitly reference it |
@@ -29,7 +29,7 @@
 
 ## Detailed Findings
 
-### Requirement 1: FFW-ARCH-001 — Virtual File System Principle
+### Requirement 1: FFW-ARCH-001 -- Virtual File System Principle
 
 > All content access through VFS abstraction; no direct `std::fs` calls.
 
@@ -37,16 +37,16 @@
 |--------|--------|----------|
 | `virtual-file-system` | ✅ Addressed | Design is the VFS itself. Overview states: "ALL content access throughout the workbench flows through this single abstraction layer. No consuming crate ever calls `std::fs` or `tokio::fs` directly." |
 | `connector-local-fs` | ✅ Addressed | Constraints section: "**FFW-ARCH-001**: All local filesystem access goes through this provider; no consuming crate calls `std::fs` directly" |
-| `document-model` | ✅ Addressed | Constraints section: "**FFW-ARCH-001 (Req 1)**: ALL file access goes through `ff-vfs` — no `std::fs` or `tokio::fs` in this crate" |
-| `file-operations` | ✅ Addressed | Constraints section: "**FFW-ARCH-001 (Req 1)**: ALL file I/O goes through `ff-vfs` — no `std::fs` or `tokio::fs` calls in this crate" |
-| `background-io` | ✅ Addressed | Constraints section: "**FFW-ARCH-001**: ALL file I/O flows through the VFS abstraction — no `std::fs`, `tokio::fs`, or platform-specific I/O" |
-| `external-modification` | ✅ Addressed | Constraints section: "**FFW-ARCH-001 (Req 1)**: ALL filesystem interaction flows through `ff-vfs` — no `std::fs` or `tokio::fs` calls for watching or stat" |
-| `database-tool` | ✅ Addressed | Constraints section: "**FFW-ARCH-001**: All file access goes through VFS — no direct `std::fs` or `tokio::fs`" |
-| `file-tree-panel` | ✅ Addressed | Constraints section: "**FFW-ARCH-001 (Req 1)**: All directory listing, stat, and watch go through VFS — no `std::fs`" |
-| `FFW-JES` | ✅ Addressed | Constraints section: "**FFW-ARCH-001 (Req 1)**: All file I/O (job logs, SYSOUT, spool) flows through VFS — no direct `std::fs` in consuming code" |
-| `lua-macro-engine` | ✅ Addressed | Constraints section: "**FFW-ARCH-001 (Req 1)**: File watching and script loading use the VFS/connector-local-fs watcher — no direct `std::fs` for content access" |
+| `document-model` | ✅ Addressed | Constraints section: "**FFW-ARCH-001 (Req 1)**: ALL file access goes through `ff-vfs` -- no `std::fs` or `tokio::fs` in this crate" |
+| `file-operations` | ✅ Addressed | Constraints section: "**FFW-ARCH-001 (Req 1)**: ALL file I/O goes through `ff-vfs` -- no `std::fs` or `tokio::fs` calls in this crate" |
+| `background-io` | ✅ Addressed | Constraints section: "**FFW-ARCH-001**: ALL file I/O flows through the VFS abstraction -- no `std::fs`, `tokio::fs`, or platform-specific I/O" |
+| `external-modification` | ✅ Addressed | Constraints section: "**FFW-ARCH-001 (Req 1)**: ALL filesystem interaction flows through `ff-vfs` -- no `std::fs` or `tokio::fs` calls for watching or stat" |
+| `database-tool` | ✅ Addressed | Constraints section: "**FFW-ARCH-001**: All file access goes through VFS -- no direct `std::fs` or `tokio::fs`" |
+| `file-tree-panel` | ✅ Addressed | Constraints section: "**FFW-ARCH-001 (Req 1)**: All directory listing, stat, and watch go through VFS -- no `std::fs`" |
+| `FFW-JES` | ✅ Addressed | Constraints section: "**FFW-ARCH-001 (Req 1)**: All file I/O (job logs, SYSOUT, spool) flows through VFS -- no direct `std::fs` in consuming code" |
+| `lua-macro-engine` | ✅ Addressed | Constraints section: "**FFW-ARCH-001 (Req 1)**: File watching and script loading use the VFS/connector-local-fs watcher -- no direct `std::fs` for content access" |
 
-**Note:** `configuration-system` explicitly states it does NOT use VFS (config reads happen before VFS initializes), which is a documented architectural decision, not a violation: "Configuration files are NOT accessed via VFS — config uses direct filesystem access since it initializes before VFS."
+**Note:** `configuration-system` explicitly states it does NOT use VFS (config reads happen before VFS initializes), which is a documented architectural decision, not a violation: "Configuration files are NOT accessed via VFS -- config uses direct filesystem access since it initializes before VFS."
 
 ---
 
@@ -56,11 +56,11 @@
 
 | Design | Status | Evidence |
 |--------|--------|----------|
-| `platform-core` | ✅ Addressed | Design section: "Zero GUI dependencies — no egui, winit, wgpu in Cargo.toml." Architecture diagram shows strict layering: "ff-desktop depends on ff-core; ff-core NEVER depends on ff-desktop." |
-| `command-framework` | ✅ Addressed | Constraints: "**GUI Independence (Req 2)**: Zero GUI dependencies — no egui, no windowing imports" |
-| `plugin-architecture` | ✅ Addressed | Constraints: "**GUI Independence (Req 2)**: The plugin system is GUI-independent — no egui, no windowing crate imports" |
-| `configuration-system` | ✅ Addressed | Constraints: "**GUI Independence (Req 2)**: Zero GUI dependencies — no egui, no windowing crate imports" |
-| `virtual-file-system` | ✅ Addressed | Constraints: "**GUI Independence (Req 2)**: ff-vfs has zero GUI dependencies — no egui, winit, wgpu" |
+| `platform-core` | ✅ Addressed | Design section: "Zero GUI dependencies -- no egui, winit, wgpu in Cargo.toml." Architecture diagram shows strict layering: "ff-desktop depends on ff-core; ff-core NEVER depends on ff-desktop." |
+| `command-framework` | ✅ Addressed | Constraints: "**GUI Independence (Req 2)**: Zero GUI dependencies -- no egui, no windowing imports" |
+| `plugin-architecture` | ✅ Addressed | Constraints: "**GUI Independence (Req 2)**: The plugin system is GUI-independent -- no egui, no windowing crate imports" |
+| `configuration-system` | ✅ Addressed | Constraints: "**GUI Independence (Req 2)**: Zero GUI dependencies -- no egui, no windowing crate imports" |
+| `virtual-file-system` | ✅ Addressed | Constraints: "**GUI Independence (Req 2)**: ff-vfs has zero GUI dependencies -- no egui, winit, wgpu" |
 
 ---
 
@@ -89,7 +89,7 @@
 | `database-tool` | ✅ Addressed | Constraints: "**Command-Driven**: All user operations are registered commands under `db.*` namespace" |
 | `FFW-JES` | ✅ Addressed | Constraints: "**Command-Driven (Req 4)**: All JES operations registered as commands under `jes.*` namespace via `ff-command`" |
 | `file-tree-panel` | ✅ Addressed | Constraints: "**Command-Driven (Req 4)**: All tree operations (open, rename, delete, new file/folder) dispatched as commands" |
-| `menu-and-statusbar` | ✅ Addressed | Constraints: "**Command-Driven Architecture (Req 4)**: Every menu item dispatches via `execute_command` — no direct state mutation" |
+| `menu-and-statusbar` | ✅ Addressed | Constraints: "**Command-Driven Architecture (Req 4)**: Every menu item dispatches via `execute_command` -- no direct state mutation" |
 
 ---
 
@@ -186,4 +186,4 @@ This requirement has only one primary implementing design (`menu-and-statusbar`)
 
 3. **No violations detected**: All examined designs correctly reference their applicable cross-cutting requirements and describe how they comply.
 
-4. **Comprehensive coverage**: The designs don't just mention the requirements — they describe concrete compliance mechanisms (error format prefixes, async method signatures, crate paths, no-GUI declarations, etc.).
+4. **Comprehensive coverage**: The designs don't just mention the requirements -- they describe concrete compliance mechanisms (error format prefixes, async method signatures, crate paths, no-GUI declarations, etc.).

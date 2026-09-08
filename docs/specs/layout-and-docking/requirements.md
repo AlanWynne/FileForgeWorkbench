@@ -2,14 +2,14 @@
 
 ## Introduction
 
-This feature specifies the layout and docking system for FileForgeWorkbench (`ff-layout` crate). The layout system provides dockable panels, tab groups with split views, floating OS-level windows, multi-monitor support, named layout personas (presets), drag-and-drop rearrangement, and full layout serialization. It is part of the Workbench Core — the GUI shell renders the layout model but does not own it, adhering to the GUI-independence principle (Architecture Brief §3 Principle 1).
+This feature specifies the layout and docking system for FileForgeWorkbench (`ff-layout` crate). The layout system provides dockable panels, tab groups with split views, floating OS-level windows, multi-monitor support, named layout personas (presets), drag-and-drop rearrangement, and full layout serialization. It is part of the Workbench Core -- the GUI shell renders the layout model but does not own it, adhering to the GUI-independence principle (Architecture Brief §3 Principle 1).
 
 The layout system merges the general-purpose docking architecture from FileForgeEditor (panels can be attached/detached from dock zones, multi-monitor placement, persistence) with enhanced workbench concepts: tab groups with horizontal/vertical splits, named personas for rapid workspace switching, and a richer serialization model that supports layout export/import and graceful degradation when plugins are not loaded.
 
-Panels are contributed by the plugin system — the layout engine itself is panel-agnostic. Any component that implements the `DockablePanel` trait can participate in dock/undock operations, appear in tab groups, float as an independent OS window, and be included in persona configurations.
+Panels are contributed by the plugin system -- the layout engine itself is panel-agnostic. Any component that implements the `DockablePanel` trait can participate in dock/undock operations, appear in tab groups, float as an independent OS window, and be included in persona configurations.
 
 **Source references:**
-- **FFE** = FileForgeEditor `dockable-panels` specification (12 requirements — all incorporated)
+- **FFE** = FileForgeEditor `dockable-panels` specification (12 requirements -- all incorporated)
 - **WB** = Workbench Architecture Brief §12 Layout Architecture (layout-as-data, personas, GUI independence)
 
 ## Glossary
@@ -33,7 +33,7 @@ Panels are contributed by the plugin system — the layout engine itself is pane
 
 **User Story:** As a user, I want a system of dockable panels (file tree, help, output, properties, schema browser, etc.) that can be shown, hidden, and positioned in designated areas of the workbench window, so that I can organize my workspace according to my current task.
 
-**Source:** FFE Reqs 1, 2, 10 — merged with WB §12 layout-as-data principle. [FFE, WB]
+**Source:** FFE Reqs 1, 2, 10 -- merged with WB §12 layout-as-data principle. [FFE, WB]
 
 #### Acceptance Criteria
 
@@ -45,7 +45,7 @@ Panels are contributed by the plugin system — the layout engine itself is pane
 6. THE Dockable_Panel trait SHALL define a `render(&mut self, ui: &mut egui::Ui)` method for drawing panel content that produces valid output regardless of whether the panel is docked, in a tab group, or displayed in a Detached Workspace.
 7. THE Dockable_Panel trait SHALL define a `title(&self) -> &str` method returning the display title (1 to 128 characters).
 8. THE Dockable_Panel trait SHALL define an `on_dock_state_changed(&mut self, state: DockState)` method that the Layout_Engine calls when the panel transitions between docked, floating, minimized, or hidden states.
-9. WHEN a new type implements the Dockable_Panel trait and registers with the Panel_Registry, THE Layout_Engine SHALL dock, undock, show, hide, minimize, and maximize that panel using only the trait interface — without code changes to the Layout_Engine.
+9. WHEN a new type implements the Dockable_Panel trait and registers with the Panel_Registry, THE Layout_Engine SHALL dock, undock, show, hide, minimize, and maximize that panel using only the trait interface -- without code changes to the Layout_Engine.
 10. IF a panel is registered with a `panel_id` that already exists in the Panel_Registry, THEN THE Panel_Registry SHALL reject the registration and return an error indicating a duplicate identifier.
 11. WHEN the user triggers a show command for a hidden panel, THE Layout_Engine SHALL make the panel visible in its last known dock zone. WHEN the user triggers a hide command, THE Layout_Engine SHALL remove the panel from view while preserving its position in the Layout_State.
 12. WHEN the user triggers a toggle command for a panel, THE Layout_Engine SHALL show the panel if it is currently hidden, or hide the panel if it is currently visible.
@@ -58,7 +58,7 @@ Panels are contributed by the plugin system — the layout engine itself is pane
 
 **User Story:** As a user, I want the editor area to support multiple tab groups with split views, so that I can view and edit multiple files side-by-side without undocking windows.
 
-**Source:** NEW — from WB Architecture Brief enhanced layout concepts. [WB]
+**Source:** NEW -- from WB Architecture Brief enhanced layout concepts. [WB]
 
 #### Acceptance Criteria
 
@@ -78,7 +78,7 @@ Panels are contributed by the plugin system — the layout engine itself is pane
 
 **User Story:** As a user, I want to undock panels or tabs into separate OS-level windows, so that I can arrange my workspace across multiple monitors or view content side-by-side independently.
 
-**Source:** FFE Reqs 2, 3, 4, 5 — adapted for workbench multi-panel floating containers. [FFE, WB]
+**Source:** FFE Reqs 2, 3, 4, 5 -- adapted for workbench multi-panel floating containers. [FFE, WB]
 
 #### Acceptance Criteria
 
@@ -105,7 +105,7 @@ Panels are contributed by the plugin system — the layout engine itself is pane
 
 **User Story:** As a user, I want Detached Workspaces to work correctly across multiple monitors with different DPI settings, so that I can spread my workspace across my entire display setup.
 
-**Source:** FFE Req 9 — enhanced with per-monitor DPI handling. [FFE, WB]
+**Source:** FFE Req 9 -- enhanced with per-monitor DPI handling. [FFE, WB]
 
 #### Acceptance Criteria
 
@@ -124,7 +124,7 @@ Panels are contributed by the plugin system — the layout engine itself is pane
 
 **User Story:** As a user, I want named layout configurations (personas) that I can switch between instantly, so that I can adapt my workspace to different tasks (editing, debugging, data analysis, database work) without manually rearranging panels each time.
 
-**Source:** NEW — from WB Architecture Brief §12 layout files concept. [WB]
+**Source:** NEW -- from WB Architecture Brief §12 layout files concept. [WB]
 
 #### Acceptance Criteria
 
@@ -145,7 +145,7 @@ Panels are contributed by the plugin system — the layout engine itself is pane
 
 **User Story:** As a user, I want the workbench to remember my layout between sessions and allow me to export/import layouts, so that my workspace arrangement is never lost and can be shared with colleagues.
 
-**Source:** FFE Req 8 — enhanced with export/import, graceful degradation, and reset-to-default. [FFE, WB]
+**Source:** FFE Req 8 -- enhanced with export/import, graceful degradation, and reset-to-default. [FFE, WB]
 
 #### Acceptance Criteria
 
@@ -167,7 +167,7 @@ Panels are contributed by the plugin system — the layout engine itself is pane
 
 **User Story:** As a user, I want to rearrange panels and tabs by dragging them to dock zones, tab groups, or outside the window to float, so that I can intuitively organize my workspace.
 
-**Source:** FFE Reqs 6, 7 — enhanced with tab group drop targets. [FFE, WB]
+**Source:** FFE Reqs 6, 7 -- enhanced with tab group drop targets. [FFE, WB]
 
 #### Acceptance Criteria
 
@@ -191,7 +191,7 @@ Panels are contributed by the plugin system — the layout engine itself is pane
 
 **User Story:** As a user, I want to resize panels and tab groups by dragging their borders, so that I can allocate screen space according to my current needs.
 
-**Source:** NEW — enhanced layout management for workbench. [WB]
+**Source:** NEW -- enhanced layout management for workbench. [WB]
 
 #### Acceptance Criteria
 
@@ -211,7 +211,7 @@ Panels are contributed by the plugin system — the layout engine itself is pane
 
 **User Story:** As a user, I want keyboard shortcuts for common layout operations (dock/undock, split, persona switch), so that I can manage my workspace efficiently without the mouse.
 
-**Source:** FFE Req 11 — adapted for workbench command-framework integration. [FFE, WB]
+**Source:** FFE Req 11 -- adapted for workbench command-framework integration. [FFE, WB]
 
 #### Acceptance Criteria
 
@@ -230,14 +230,14 @@ Panels are contributed by the plugin system — the layout engine itself is pane
 
 **User Story:** As a user, I want clear visual indicators showing panel states, drop targets, and active persona, so that I can understand and control my workspace layout at all times.
 
-**Source:** FFE Req 12 — adapted for workbench personas and tab groups. [FFE, WB]
+**Source:** FFE Req 12 -- adapted for workbench personas and tab groups. [FFE, WB]
 
 #### Acceptance Criteria
 
 1. WHILE a panel is floating, THE Primary_Window SHALL display a placeholder indicator in the panel's former dock zone showing the panel name and a clickable "redock" button.
 2. WHEN the user hovers over the placeholder indicator for at least 300 milliseconds, THE Primary_Window SHALL display a tooltip showing "Click to redock [panel name]" and the associated keyboard shortcut.
 3. WHEN the user clicks the placeholder indicator's redock button, THE Layout_Engine SHALL redock the associated panel following the same behavior defined in Requirement 3 criterion 5.
-4. THE Detached_Workspace title bar SHALL display the panel title followed by " — FileForge", truncated to a maximum of 80 characters if necessary.
+4. THE Detached_Workspace title bar SHALL display the panel title followed by " -- FileForge", truncated to a maximum of 80 characters if necessary.
 5. THE status bar or a designated UI region SHALL display the name of the currently active persona, with a "modified" indicator when the user has changed the layout from the persona's saved state.
 6. WHEN the user drags a panel or tab and enters a valid drop zone, THE Layout_Engine SHALL display a Drop_Indicator showing exactly where the item will be placed upon release (left/right/top/bottom split, or tab insertion point).
 7. WHILE a panel is minimized, THE dock zone header SHALL display an icon or label for the panel that the user can click to restore it to normal state.
@@ -255,7 +255,7 @@ tab is in the main window or detached independently.
 
 #### Acceptance Criteria
 
-1. WHEN a tab is displayed in a Detached Workspace (Detached_Workspace), THE Detached Workspace SHALL render the full Tab_Window_Chrome: Tab_Header row, Title_Line, and Primary_Command_Field — in that order at the top of the window, above the tab's content area.
+1. WHEN a tab is displayed in a Detached Workspace (Detached_Workspace), THE Detached Workspace SHALL render the full Tab_Window_Chrome: Tab_Header row, Title_Line, and Primary_Command_Field -- in that order at the top of the window, above the tab's content area.
 
 2. THE Title_Line in a Detached Workspace SHALL display the same context-dependent text as it would when the tab is docked (per menu-and-statusbar Requirement 17.3–17.6).
 
@@ -263,4 +263,4 @@ tab is in the main window or detached independently.
 
 4. WHEN the Legacy theme is active, THE Title_Line in a Detached Workspace SHALL use the same blue background / white text styling as the docked Title_Line (menu-and-statusbar Requirement 17.8).
 
-5. THE Detached Workspace title bar (OS chrome) SHALL display the Title_Line content followed by " — FileForge Workbench" (menu-and-statusbar Requirement 18.5).
+5. THE Detached Workspace title bar (OS chrome) SHALL display the Title_Line content followed by " -- FileForge Workbench" (menu-and-statusbar Requirement 18.5).

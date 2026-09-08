@@ -4,16 +4,16 @@
 
 The `ff-command-semantics` crate is the **ISPF-inspired command execution pipeline** for FileForgeWorkbench. It accepts raw command-line text, parses it into structured tokens, resolves scope, validates preconditions, executes transactionally, and reports results via short status messages.
 
-This crate is **GUI-independent** — it performs pure command parsing, scope resolution, and execution orchestration. It integrates with:
+This crate is **GUI-independent** -- it performs pure command parsing, scope resolution, and execution orchestration. It integrates with:
 
-- `ff-command` — for registry, dispatch, and undo/redo wrapping
-- `ff-document-model` — for document access, line queries, and mutations
-- `ff-edit-operations` — for edit primitives invoked by commands
+- `ff-command` -- for registry, dispatch, and undo/redo wrapping
+- `ff-document-model` -- for document access, line queries, and mutations
+- `ff-edit-operations` -- for edit primitives invoked by commands
 
 ### Position in Architecture
 
 ```
-Wave 5 — Command Engine
+Wave 5 -- Command Engine
 
 ┌──────────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                    │
@@ -131,26 +131,26 @@ crates/ff-command-semantics/
 ├── Cargo.toml
 ├── src/
 │   ├── lib.rs                      # Public API re-exports, crate docs
-│   ├── engine.rs                   # CommandEngine — top-level pipeline orchestrator
+│   ├── engine.rs                   # CommandEngine -- top-level pipeline orchestrator
 │   ├── parser/
 │   │   ├── mod.rs                  # Parser module re-exports
-│   │   ├── primary.rs              # PrimaryCommandParser — tokenisation
+│   │   ├── primary.rs              # PrimaryCommandParser -- tokenisation
 │   │   ├── tokens.rs              # CommandToken, TokenKind, QuoteStyle enums
 │   │   ├── hex_literal.rs          # Hex literal (X'...') parsing
 │   │   ├── normalizer.rs           # Case-folding, abbreviation resolution
-│   │   └── line_command.rs         # LineCommandParser — prefix-area parsing
+│   │   └── line_command.rs         # LineCommandParser -- prefix-area parsing
 │   ├── scope/
 │   │   ├── mod.rs                  # Scope module re-exports
-│   │   ├── resolver.rs            # ScopeResolver — priority-ordered algorithm
+│   │   ├── resolver.rs            # ScopeResolver -- priority-ordered algorithm
 │   │   ├── types.rs               # ResolvedScope, ScopeSource, VisibilityModifier
 │   │   └── bounds.rs              # ColumnBounds integration
-│   ├── session.rs                  # SessionState — pending cmds, tags, last cmd
+│   ├── session.rs                  # SessionState -- pending cmds, tags, last cmd
 │   ├── plan.rs                     # ExecutionPlan construction and validation
-│   ├── config.rs                   # CommandConfig — runtime configuration reader
+│   ├── config.rs                   # CommandConfig -- runtime configuration reader
 │   ├── status.rs                   # StatusMessage, StatusKind, formatting
 │   ├── help/
 │   │   ├── mod.rs                  # Help module re-exports
-│   │   ├── engine.rs              # HelpEngine — topic resolution, rendering
+│   │   ├── engine.rs              # HelpEngine -- topic resolution, rendering
 │   │   ├── topics.rs             # HelpTopic enum, built-in topic registry
 │   │   └── formatter.rs           # Help text formatting (plain text output)
 │   ├── registration.rs            # Command registration with ff-command
@@ -789,7 +789,7 @@ pub enum CommandSemanticsError {
     #[error("[command-semantics] line-command: count {count} exceeds maximum 99999")]
     LineCommandCountOverflow { count: u64 },
 
-    /// Configuration value invalid (informational — default applied).
+    /// Configuration value invalid (informational -- default applied).
     /// Addresses: Requirement 6, criterion 2
     #[error("[command-semantics] config: invalid value for '{key}', using default")]
     ConfigInvalid { key: String },
@@ -832,7 +832,7 @@ pub enum ScopeError {
 
 ## Integration Points
 
-### With `ff-command` (upstream — Wave 2)
+### With `ff-command` (upstream -- Wave 2)
 
 - `ff-command-semantics` registers all its commands with `CommandRegistry` during initialization via `registration.rs`
 - All registered commands are discoverable via the standard `CommandRegistry::list_all()` / `list_by_category()` API
@@ -840,32 +840,32 @@ pub enum ScopeError {
 - The HELP command is registered with Command_ID `"help.show"` (Requirement 7.8)
 - Undo/redo wrapping uses the `UndoManager` trait provided through `CommandDispatch`
 
-### With `ff-document-model` (upstream — Wave 4)
+### With `ff-document-model` (upstream -- Wave 4)
 
 - `ScopeResolver` queries document `line_count()` to validate line ranges
 - `ScopeResolver` queries document `line_start()` and `line_end()` for column bounds
 - The execution pipeline reads document content for scope-dependent validation
 - `SessionState` cursor position corresponds to document `LineNumber` values
 
-### With `ff-edit-operations` (upstream — Wave 4)
+### With `ff-edit-operations` (upstream -- Wave 4)
 
 - The execution pipeline delegates actual edit operations (insert, delete, shift) to `ff-edit-operations` engines
 - Column bounds from scope resolution map to the `BoundsEnforcer` in edit-operations
 - Line manipulation commands (shift >, <) use edit-operations primitives
 
-### With `ff-undo-redo-transactions` (upstream — Wave 4)
+### With `ff-undo-redo-transactions` (upstream -- Wave 4)
 
 - Every mutating command execution is wrapped in a transaction (Requirement 1.7)
-- On failure, the transaction is rolled back — no partial state persists
+- On failure, the transaction is rolled back -- no partial state persists
 - Non-mutating commands (HELP, informational queries) are NOT wrapped
 
-### With `ff-configuration` (upstream — Wave 2)
+### With `ff-configuration` (upstream -- Wave 2)
 
 - Configuration keys `commands.*` are read at startup and on hot-reload
 - `CommandConfig::from_config_values()` translates raw config into typed struct
 - Invalid values trigger WARN log and fallback to defaults (Requirement 6.2)
 
-### With `ff-logging` (upstream — Wave 0)
+### With `ff-logging` (upstream -- Wave 0)
 
 - WARN-level logs for: invalid configuration values, config clamping, parse recovery
 - ERROR-level logs for: unrecoverable execution failures
@@ -1057,7 +1057,7 @@ These properties are suitable for property-based testing with `proptest`. They v
 
 ### Property 9: Failed Execution Retains Pending Line Commands
 
-**Statement**: For any command execution that fails (handler returns error), all pending line commands in SessionState remain unchanged — none are cleared.
+**Statement**: For any command execution that fails (handler returns error), all pending line commands in SessionState remain unchanged -- none are cleared.
 
 **Validates: Requirements 1.6**
 
@@ -1107,25 +1107,25 @@ These properties are suitable for property-based testing with `proptest`. They v
 
 Unit tests are co-located with source modules using `#[cfg(test)] mod tests { ... }`:
 
-- `parser/primary.rs` — tokenisation of bare words, quoted strings, hex literals, edge cases
-- `parser/line_command.rs` — kind extraction, count parsing, boundary cases
-- `parser/normalizer.rs` — case folding, abbreviation resolution
-- `scope/resolver.rs` — priority ordering, filter application, bounds integration
-- `session.rs` — pending command management, tag state, cursor tracking
-- `status.rs` — message truncation, prefix formatting
-- `config.rs` — clamping, default fallback, invalid value handling
-- `help/engine.rs` — topic resolution, close-match suggestions
+- `parser/primary.rs` -- tokenisation of bare words, quoted strings, hex literals, edge cases
+- `parser/line_command.rs` -- kind extraction, count parsing, boundary cases
+- `parser/normalizer.rs` -- case folding, abbreviation resolution
+- `scope/resolver.rs` -- priority ordering, filter application, bounds integration
+- `session.rs` -- pending command management, tag state, cursor tracking
+- `status.rs` -- message truncation, prefix formatting
+- `config.rs` -- clamping, default fallback, invalid value handling
+- `help/engine.rs` -- topic resolution, close-match suggestions
 
 ### Property-Based Tests
 
 Property tests use `proptest` and live in the `tests/` directory:
 
-- `parser_tests.rs` — Properties 1, 2, 3, 12 (round-trip, unclosed quotes, case insensitivity, hex fidelity)
-- `line_command_tests.rs` — Properties 4, 5 (kind-count separation, overflow rejection)
-- `scope_tests.rs` — Property 6 (priority ordering)
-- `status_tests.rs` — Property 7 (message length invariant)
-- `engine_tests.rs` — Properties 8, 9, 10 (empty input, failure retention, success clearing)
-- `config_tests.rs` — Property 11 (clamping invariant)
+- `parser_tests.rs` -- Properties 1, 2, 3, 12 (round-trip, unclosed quotes, case insensitivity, hex fidelity)
+- `line_command_tests.rs` -- Properties 4, 5 (kind-count separation, overflow rejection)
+- `scope_tests.rs` -- Property 6 (priority ordering)
+- `status_tests.rs` -- Property 7 (message length invariant)
+- `engine_tests.rs` -- Properties 8, 9, 10 (empty input, failure retention, success clearing)
+- `config_tests.rs` -- Property 11 (clamping invariant)
 
 ### Integration Tests
 
@@ -1185,7 +1185,7 @@ Commands registered by `ff-command-semantics` with the global `CommandRegistry`:
    - `RES` → `RESET`, `SUB` → `SUBMIT`
 3. Abbreviation resolution is only applied to the **first token** (command name); argument tokens are never expanded
 4. If no abbreviation match is found, the uppercase name is used as-is for registry lookup
-5. Abbreviation definitions are extensible — new abbreviations can be registered alongside new commands
+5. Abbreviation definitions are extensible -- new abbreviations can be registered alongside new commands
 
 ---
 
@@ -1201,4 +1201,4 @@ Commands registered by `ff-command-semantics` with the global `CommandRegistry`:
 | 6 | Cursor line | No other source → cursor line |
 | 7 (lowest) | Entire document | Commands that default to whole-doc scope |
 
-When multiple sources are present, the highest-priority source wins. Lower-priority sources are silently ignored (no error for conflict — Requirement 2.9).
+When multiple sources are present, the highest-priority source wins. Lower-priority sources are silently ignored (no error for conflict -- Requirement 2.9).

@@ -219,18 +219,18 @@ When resolution results in a new allocation:
 
 When introducing new dataset-related subsystems, follow this process:
 
-1. **ADR Amendment** — Produce an ADR amendment defining:
+1. **ADR Amendment** -- Produce an ADR amendment defining:
    - What the new subsystem owns
    - What it does NOT own
    - Permitted and prohibited dependencies
    - Its authority rule
 
-2. **Trait Interface** — Define the new subsystem's public API as a trait in the owning crate
+2. **Trait Interface** -- Define the new subsystem's public API as a trait in the owning crate
 
-3. **Fitness Function Update** — Extend the architectural compliance tests in `ff-governance-tests` with prohibition rules for the new crate
+3. **Fitness Function Update** -- Extend the architectural compliance tests in `ff-governance-tests` with prohibition rules for the new crate
 
-4. **DAG Preservation** — Verify the dependency graph remains acyclic (no cycles)
+4. **DAG Preservation** -- Verify the dependency graph remains acyclic (no cycles)
 
-5. **API Extension** — If existing traits need new methods, add them to the owning crate's trait through a PR to that subsystem
+5. **API Extension** -- If existing traits need new methods, add them to the owning crate's trait through a PR to that subsystem
 
 **Template:** See `docs/adr/template-dataset-subsystem.md` for the ADR amendment template.

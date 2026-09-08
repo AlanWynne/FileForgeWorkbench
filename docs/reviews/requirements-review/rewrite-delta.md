@@ -1,6 +1,6 @@
-# Requirements Review — Rewrite Delta Register
+# Requirements Review -- Rewrite Delta Register
 
-**Phase:** Requirements Review — Tasks 5–7
+**Phase:** Requirements Review -- Tasks 5–7
 **Purpose:** Tracks every change made to each `requirements.md` during the rewrite
 phase so that existing test annotations (`// Validates: Req X.Y`) can be updated
 and new coverage gaps are visible in TCR.md.
@@ -21,8 +21,8 @@ and new coverage gaps are visible in TCR.md.
 | Code | Action Required |
 |------|----------------|
 | `UPDATE-ANNOTATION` | Find `// Validates: <Old ID>` in test files and change to `// Validates: <New ID>` |
-| `VERIFY-STILL-VALID` | Criterion text changed — confirm the existing test still exercises the new wording |
-| `NEW-TEST-NEEDED` | New criterion with no existing test — add 🔴 row to TCR.md |
+| `VERIFY-STILL-VALID` | Criterion text changed -- confirm the existing test still exercises the new wording |
+| `NEW-TEST-NEEDED` | New criterion with no existing test -- add 🔴 row to TCR.md |
 | `NO-ACTION` | Renumber only, criterion text unchanged, test still valid |
 
 ---
@@ -37,11 +37,11 @@ and new coverage gaps are visible in TCR.md.
 
 ---
 
-## Task 5 — Core Platform & UX Layer Specs (10 specs)
+## Task 5 -- Core Platform & UX Layer Specs (10 specs)
 
 ### 1. `platform-core` ⏳
 
-No changes required — spec is Compliant. No terminology violations. No structural
+No changes required -- spec is Compliant. No terminology violations. No structural
 issues. No test annotation updates needed.
 
 **Delta:** None.
@@ -50,7 +50,7 @@ issues. No test annotation updates needed.
 
 ### 2. `command-framework` ⏳
 
-No changes required — spec is Compliant. No terminology violations. No structural
+No changes required -- spec is Compliant. No terminology violations. No structural
 issues. No test annotation updates needed.
 
 **Delta:** None.
@@ -59,7 +59,7 @@ issues. No test annotation updates needed.
 
 ### 3. `plugin-architecture` ⏳
 
-No changes required — spec is Compliant. No terminology violations. No structural
+No changes required -- spec is Compliant. No terminology violations. No structural
 issues. No test annotation updates needed.
 
 **Delta:** None.
@@ -68,7 +68,7 @@ issues. No test annotation updates needed.
 
 ### 4. `workflow-engine` ⏳
 
-No changes required — spec is Compliant. No terminology violations. No structural
+No changes required -- spec is Compliant. No terminology violations. No structural
 issues. No test annotation updates needed.
 
 **Delta:** None.
@@ -80,7 +80,7 @@ issues. No test annotation updates needed.
 Minor terminology pass required: "floating window" → "Detached View" in
 user-facing criterion text. Requirement 11 uses non-standard criterion numbering
 (11.1–11.5 with dot prefix instead of numbered list). No test annotation updates
-needed (Req 11 criteria have no existing automated tests — all are 🔴 or 🔲).
+needed (Req 11 criteria have no existing automated tests -- all are 🔴 or 🔲).
 
 **Delta:**
 
@@ -112,7 +112,7 @@ for the numbering style change. One annotation update needed for the PF3 → F3 
 
 No structural issues. Requirements 12, 13, 14 are out of sequence (12 appears after
 14 in the file). Renumbering to sequential order. All existing test annotations
-reference Req 13.x and Req 14.x — these numbers are preserved; only Req 12 moves
+reference Req 13.x and Req 14.x -- these numbers are preserved; only Req 12 moves
 to end of file (no tests reference Req 12 by number in TCR).
 
 **Delta:**
@@ -127,11 +127,11 @@ to end of file (no tests reference Req 12 by number in TCR).
 
 ### 8. `menu-and-statusbar` ⏳
 
-Requirement 13 (About dialog) appears between Req 11 and Req 16 — out of sequence.
+Requirement 13 (About dialog) appears between Req 11 and Req 16 -- out of sequence.
 Requirement 16 uses non-standard criterion numbering (16.1–16.22 with dot prefix,
 mixed with plain numbered list). Requirement 17 and 18 use dot-prefix style.
 Terminology: "Command ===> field" → "Command Field" in user stories.
-All existing test annotations use Req 13.x, Req 16.x, Req 17.x, Req 18.x — numbers
+All existing test annotations use Req 13.x, Req 16.x, Req 17.x, Req 18.x -- numbers
 preserved, only style normalised.
 
 **Delta:**
@@ -151,7 +151,7 @@ preserved, only style normalised.
 Terminology pass: "PF Key" → "Function Key", "Key Bar" → "Key Label Bar",
 "window context" → "Workspace Context", "screen" → "View".
 Requirements 12–20 use non-standard criterion numbering (dot-prefix style).
-All existing test annotations use Req 12.x through Req 20.x — numbers preserved.
+All existing test annotations use Req 12.x through Req 20.x -- numbers preserved.
 
 **Delta:**
 
@@ -175,19 +175,19 @@ All existing test annotations use Req 12.x through Req 20.x — numbers preserve
 ### 10. `context-help` ⏳
 
 No structural issues. No terminology violations. Criterion numbering uses dot-prefix
-style (1.1, 1.2, etc.) consistently throughout — this is the established style for
+style (1.1, 1.2, etc.) consistently throughout -- this is the established style for
 this spec and is acceptable. No changes required.
 
 **Delta:** None.
 
 ---
 
-## Task 6 — Explorer & Content Layer Specs (15 specs)
+## Task 6 -- Explorer & Content Layer Specs (15 specs)
 
 ### 1. `startup-and-session` 🔄
 
 Criteria in Req 13, Req 14 (14.1–14.42), and Req 19 used dot-prefix style.
-Normalised to numbered list. Criterion numbers preserved — all existing test
+Normalised to numbered list. Criterion numbers preserved -- all existing test
 annotations remain valid. Terminology: "PF3" → "F3" in Req 19.10.
 
 **Delta:**
@@ -204,7 +204,7 @@ annotations remain valid. Terminology: "PF3" → "F3" in Req 19.10.
 
 ### 2. `file-tree-panel` 🔄
 
-Bold-label criteria style in Reqs 15–23 (`**16.1 — Title**`) normalised to
+Bold-label criteria style in Reqs 15–23 (`**16.1 -- Title**`) normalised to
 numbered sub-headings (`**1. Title**`). Criterion numbers preserved within each
 requirement. Implementation file references removed from criteria text.
 Glossary consolidation note added. Req 22/23 ordering note added.
@@ -236,7 +236,7 @@ file reference removed from Req 16.5. Req 11 ordering note added.
 |--------|--------|-------------|-------------|
 | "Windows catalog" (multiple criteria) | "Native catalog" | Reworded (terminology) | VERIFY-STILL-VALID |
 | Req 16.5 (impl ref removed) | Req 16.5 | Reworded (impl neutrality) | VERIFY-STILL-VALID |
-| Req 11 ordering note | — | Documentation note added | NO-ACTION |
+| Req 11 ordering note | -- | Documentation note added | NO-ACTION |
 
 ---
 
@@ -301,13 +301,13 @@ No existing criteria changed. No test annotation updates needed.
 
 | Old ID | New ID | Change Type | Test Impact |
 |--------|--------|-------------|-------------|
-| — | NFR section (new) | New | NEW-TEST-NEEDED (NFR tests) |
+| -- | NFR section (new) | New | NEW-TEST-NEEDED (NFR tests) |
 
 ---
 
 ### 9. `dataset-allocator` ⏳
 
-No changes required — spec is Compliant. Exemplary quality. No test annotation
+No changes required -- spec is Compliant. Exemplary quality. No test annotation
 updates needed.
 
 **Delta:** None.
@@ -317,7 +317,7 @@ updates needed.
 ### 10. `dataset-ownership-model` ⏳
 
 Spec is Needs Improvement (high-level criteria, missing edge-case criteria) but
-changes are deferred — the governance document is authoritative and its criteria
+changes are deferred -- the governance document is authoritative and its criteria
 are intentionally high-level. No changes made in Task 6.
 
 **Delta:** None (deferred to Task 7 if reclassified).
@@ -363,7 +363,7 @@ Source Reference Key table). NFR section added. No existing criteria changed.
 | Old ID | New ID | Change Type | Test Impact |
 |--------|--------|-------------|-------------|
 | "DBeaver" in intro text | "integrated database IDE" | Reworded (impl neutrality) | NO-ACTION |
-| — | NFR section (new) | New | NEW-TEST-NEEDED (NFR tests) |
+| -- | NFR section (new) | New | NEW-TEST-NEEDED (NFR tests) |
 
 ---
 
@@ -381,13 +381,13 @@ NFR section added.
 | Req 16 | Req 2 | Renumbered | UPDATE-ANNOTATION (tests referencing Req 16.x) |
 | Req 17 | Req 3 | Renumbered | UPDATE-ANNOTATION (tests referencing Req 17.x) |
 | Req 18 | Req 4 | Renumbered | UPDATE-ANNOTATION (tests referencing Req 18.x) |
-| — | NFR section (new) | New | NEW-TEST-NEEDED (NFR tests) |
+| -- | NFR section (new) | New | NEW-TEST-NEEDED (NFR tests) |
 
 ---
 
 ### 14. `multi-tab-editor` ⏳
 
-No changes required — spec is Compliant. No test annotation updates needed.
+No changes required -- spec is Compliant. No test annotation updates needed.
 
 **Delta:** None.
 
@@ -395,17 +395,17 @@ No changes required — spec is Compliant. No test annotation updates needed.
 
 ### 15. `compare-and-merge` ⏳
 
-No changes required — spec is Compliant. No test annotation updates needed.
+No changes required -- spec is Compliant. No test annotation updates needed.
 
 **Delta:** None.
 
 ---
 
-## Task 7 — Task Layer, Integration Layer & Domain Specs (14 specs)
+## Task 7 -- Task Layer, Integration Layer & Domain Specs (14 specs)
 
 ### 1. `virtual-file-system` ⏳
 
-No changes required — spec is Compliant. Clean numbered criteria, no terminology
+No changes required -- spec is Compliant. Clean numbered criteria, no terminology
 violations, no implementation file references, no structural issues.
 
 **Delta:** None.
@@ -414,7 +414,7 @@ violations, no implementation file references, no structural issues.
 
 ### 2. `connector-local-fs` ⏳
 
-No changes required — spec is Compliant. Clean numbered criteria, good structure,
+No changes required -- spec is Compliant. Clean numbered criteria, good structure,
 no terminology violations.
 
 **Delta:** None.
@@ -423,7 +423,7 @@ no terminology violations.
 
 ### 3. `connector-extensibility` ⏳
 
-No changes required — spec is Compliant. Clean numbered criteria, good structure,
+No changes required -- spec is Compliant. Clean numbered criteria, good structure,
 no terminology violations.
 
 **Delta:** None.
@@ -432,7 +432,7 @@ no terminology violations.
 
 ### 4. `document-model` ⏳
 
-No changes required — spec is Compliant. Clean numbered criteria, good
+No changes required -- spec is Compliant. Clean numbered criteria, good
 cross-references, no terminology violations.
 
 **Delta:** None.
@@ -443,7 +443,7 @@ cross-references, no terminology violations.
 
 All criteria used dot-prefix style (`1.1 WHEN...`, `1.2 WHEN...`) throughout all
 15 requirements. Normalised to numbered list (`1. WHEN...`, `2. WHEN...`).
-Criterion numbers preserved within each requirement — all existing test
+Criterion numbers preserved within each requirement -- all existing test
 annotations remain valid.
 
 **Delta:**
@@ -471,7 +471,7 @@ annotations remain valid.
 ### 6. `undo-redo-transactions` 🔄
 
 All criteria used dot-prefix style throughout all 18 requirements. Normalised to
-numbered list. Criterion numbers preserved — all existing test annotations remain
+numbered list. Criterion numbers preserved -- all existing test annotations remain
 valid.
 
 **Delta:**
@@ -501,7 +501,7 @@ valid.
 
 ### 7. `viewport-and-scrolling` ⏳
 
-No changes required — spec is Compliant. Clean numbered criteria, no terminology
+No changes required -- spec is Compliant. Clean numbered criteria, no terminology
 violations.
 
 **Delta:** None.
@@ -510,7 +510,7 @@ violations.
 
 ### 8. `display-line-mapping` ⏳
 
-No changes required — spec is Compliant. Clean numbered criteria, no terminology
+No changes required -- spec is Compliant. Clean numbered criteria, no terminology
 violations.
 
 **Delta:** None.
@@ -520,7 +520,7 @@ violations.
 ### 9. `caret-and-selection` 🔄
 
 All criteria used dot-prefix style throughout all 12 requirements. Normalised to
-numbered list. Criterion numbers preserved — all existing test annotations remain
+numbered list. Criterion numbers preserved -- all existing test annotations remain
 valid.
 
 **Delta:**
@@ -544,7 +544,7 @@ valid.
 
 ### 10. `hex-display` ⏳
 
-No changes required — spec is Compliant. Clean numbered criteria, no terminology
+No changes required -- spec is Compliant. Clean numbered criteria, no terminology
 violations.
 
 **Delta:** None.
@@ -554,7 +554,7 @@ violations.
 ### 11. `sequence-numbers` 🔄
 
 All criteria used dot-prefix style throughout all 14 requirements. Normalised to
-numbered list. Criterion numbers preserved — all existing test annotations remain
+numbered list. Criterion numbers preserved -- all existing test annotations remain
 valid.
 
 **Delta:**
@@ -581,7 +581,7 @@ valid.
 ### 12. `tabs-and-mask` 🔄
 
 All criteria used dot-prefix style throughout all 18 requirements. Normalised to
-numbered list. Criterion numbers preserved — all existing test annotations remain
+numbered list. Criterion numbers preserved -- all existing test annotations remain
 valid.
 
 **Delta:**
@@ -612,7 +612,7 @@ valid.
 ### 13. `asa-report-preview` 🔄
 
 All criteria used dot-prefix style throughout all 12 requirements. Normalised to
-numbered list. Criterion numbers preserved — all existing test annotations remain
+numbered list. Criterion numbers preserved -- all existing test annotations remain
 valid.
 
 **Delta:**
@@ -636,7 +636,7 @@ valid.
 
 ### 14. `custom-file-viewers` ⏳
 
-No changes required — spec is Compliant. Clean numbered criteria, no terminology
+No changes required -- spec is Compliant. Clean numbered criteria, no terminology
 violations.
 
 **Delta:** None.

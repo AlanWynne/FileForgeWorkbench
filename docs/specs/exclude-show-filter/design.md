@@ -38,8 +38,8 @@ The `ff-exclude-show-filter` crate is the **line visibility management engine** 
 
 ### Design Constraints (Cross-Cutting)
 
-- **FFW-ARCH-001 (Req 1)**: No direct filesystem access — document content accessed via `ff-document-model`
-- **GUI Independence (Req 2)**: Zero GUI dependencies — no egui, winit, wgpu; placeholder rendering is a downstream concern
+- **FFW-ARCH-001 (Req 1)**: No direct filesystem access -- document content accessed via `ff-document-model`
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- no egui, winit, wgpu; placeholder rendering is a downstream concern
 - **Command-Driven (Req 4)**: EXCLUDE/SHOW/RESET registered as commands in `ff-command`; explicitly non-undoable (session state only)
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-exclude-show-filter`
 - **Error Message Standards (Req 8)**: All errors follow `[exclude-show] operation: description` format
@@ -203,21 +203,21 @@ pub use ff_display_line_mapping::DocLine;
 /// Addresses: Requirement 2
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExcludeArgs {
-    /// EXCLUDE 'text' — literal text match on visible lines.
+    /// EXCLUDE 'text' -- literal text match on visible lines.
     Text {
         pattern: String,
         scope: ExcludeScope,
     },
-    /// EXCLUDE REGEX 'pattern' — regex match on visible lines.
+    /// EXCLUDE REGEX 'pattern' -- regex match on visible lines.
     Regex {
         pattern: String,
         scope: ExcludeScope,
     },
-    /// EXCLUDE ALL — exclude every line in the document.
+    /// EXCLUDE ALL -- exclude every line in the document.
     All,
-    /// EXCLUDE TAGGED — exclude lines with tag flag set.
+    /// EXCLUDE TAGGED -- exclude lines with tag flag set.
     Tagged,
-    /// EXCLUDE n m — exclude a specific line range (1-based inclusive).
+    /// EXCLUDE n m -- exclude a specific line range (1-based inclusive).
     Range {
         start_line: u64,
         end_line: u64,
@@ -241,15 +241,15 @@ pub enum ExcludeScope {
 /// Addresses: Requirement 3
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShowArgs {
-    /// SHOW ALL — make all lines visible.
+    /// SHOW ALL -- make all lines visible.
     All,
-    /// SHOW EXCLUDED — make all excluded lines visible (same as ALL effectively).
+    /// SHOW EXCLUDED -- make all excluded lines visible (same as ALL effectively).
     Excluded,
-    /// SHOW NONEXCLUDED — no-op, confirms current state.
+    /// SHOW NONEXCLUDED -- no-op, confirms current state.
     NonExcluded,
-    /// SHOW 'text' — show excluded lines matching literal text.
+    /// SHOW 'text' -- show excluded lines matching literal text.
     Text { pattern: String },
-    /// SHOW REGEX 'pattern' — show excluded lines matching regex.
+    /// SHOW REGEX 'pattern' -- show excluded lines matching regex.
     Regex { pattern: String },
 }
 
@@ -258,11 +258,11 @@ pub enum ShowArgs {
 /// Addresses: Requirement 4
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResetVariant {
-    /// RESET (no args) — clear exclusion state + delegate to other subsystems.
+    /// RESET (no args) -- clear exclusion state + delegate to other subsystems.
     Default,
-    /// RESET EXCLUDED — clear only exclusion state.
+    /// RESET EXCLUDED -- clear only exclusion state.
     Excluded,
-    /// RESET ALL — clear exclusion as part of full session reset.
+    /// RESET ALL -- clear exclusion as part of full session reset.
     All,
 }
 ```
@@ -380,11 +380,11 @@ pub trait ExclusionListener: Send + Sync {
 /// Addresses: Requirement 5
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LineCommandExclude {
-    /// X — exclude a single line.
+    /// X -- exclude a single line.
     Single { line: DocLine },
-    /// Xn — exclude n consecutive lines starting at line.
+    /// Xn -- exclude n consecutive lines starting at line.
     Count { line: DocLine, count: u32 },
-    /// XX...XX — exclude a block of lines (inclusive range).
+    /// XX...XX -- exclude a block of lines (inclusive range).
     Block { start: DocLine, end: DocLine },
 }
 ```
@@ -393,7 +393,7 @@ pub enum LineCommandExclude {
 
 ## Public API Surface
 
-### ExclusionEngine — Construction and Configuration
+### ExclusionEngine -- Construction and Configuration
 
 ```rust
 /// The top-level exclusion engine orchestrating all visibility operations.
@@ -426,7 +426,7 @@ impl ExclusionEngine {
 }
 ```
 
-### ExclusionEngine — Query Methods
+### ExclusionEngine -- Query Methods
 
 ```rust
 impl ExclusionEngine {
@@ -465,7 +465,7 @@ impl ExclusionEngine {
 }
 ```
 
-### ExclusionEngine — Scope Iterators
+### ExclusionEngine -- Scope Iterators
 
 ```rust
 impl ExclusionEngine {
@@ -483,7 +483,7 @@ impl ExclusionEngine {
 }
 ```
 
-### ExclusionEngine — EXCLUDE Operations
+### ExclusionEngine -- EXCLUDE Operations
 
 ```rust
 impl ExclusionEngine {
@@ -511,7 +511,7 @@ impl ExclusionEngine {
 }
 ```
 
-### ExclusionEngine — SHOW Operations
+### ExclusionEngine -- SHOW Operations
 
 ```rust
 impl ExclusionEngine {
@@ -535,7 +535,7 @@ impl ExclusionEngine {
 }
 ```
 
-### ExclusionEngine — RESET Operations
+### ExclusionEngine -- RESET Operations
 
 ```rust
 impl ExclusionEngine {
@@ -550,7 +550,7 @@ impl ExclusionEngine {
 }
 ```
 
-### ExclusionEngine — Line Command Processing
+### ExclusionEngine -- Line Command Processing
 
 ```rust
 impl ExclusionEngine {
@@ -656,35 +656,35 @@ pub enum ExcludeShowError {
 
 ## Integration Points
 
-### With `ff-display-line-mapping` (upstream — Wave 4)
+### With `ff-display-line-mapping` (upstream -- Wave 4)
 
 - **Dependency direction**: ff-exclude-show-filter depends on ff-display-line-mapping
 - **API consumed**: `set_visible(start, end, visible)`, `get_visible(doc_line)`, `hidden_lines()`, `show_all()`, `lines_in_doc()`
 - **Integration pattern**: The ExclusionEngine does NOT maintain its own per-line visibility state. It delegates entirely to the `DisplayLineMapping` trait. When EXCLUDE hides lines, it calls `set_visible(start, end, false)`. When SHOW reveals lines, it calls `set_visible(start, end, true)`. RESET calls `show_all()`.
 - **Notification**: The display-line-mapping emits `DisplayLineCountChange` when visibility changes; this crate additionally emits `ExclusionChanged` with higher-level semantics (block count, lines changed).
 
-### With `ff-document-model` (upstream — Wave 4)
+### With `ff-document-model` (upstream -- Wave 4)
 
 - **Dependency direction**: ff-exclude-show-filter depends on ff-document-model
 - **API consumed**: `Document::line_content(line)` for text matching, `Document::line_count()` for bounds validation
 - **Integration pattern**: Text-matching EXCLUDE and SHOW operations read line content to determine which lines match the search pattern. No document mutations are performed by this crate.
 
-### With `ff-find-and-replace` (peer — Wave 5)
+### With `ff-find-and-replace` (peer -- Wave 5)
 
 - **Dependency direction**: Bidirectional peer integration
   - ff-exclude-show-filter calls `FindEngine::find_for_filter()` for text-matching delegation
   - ff-find-and-replace calls `ExclusionScopeProvider` for EXCLUDED/VISIBLE scope filtering
-- **API consumed from find-and-replace**: `find_for_filter(request, indexer, scope_filter, bounds)` — executes a search without updating FindState
+- **API consumed from find-and-replace**: `find_for_filter(request, indexer, scope_filter, bounds)` -- executes a search without updating FindState
 - **API provided to find-and-replace**: `ScopeFilterProvider` implementation (`is_visible`, `is_excluded`, `is_tagged`)
 - **Design note**: To avoid circular crate dependencies, the `ScopeFilterProvider` trait is defined in `ff-find-and-replace` and implemented by this crate. The `find_for_filter` call is injected via a trait or function pointer rather than a direct crate dependency.
 
-### With `ff-command-semantics` (peer — Wave 5)
+### With `ff-command-semantics` (peer -- Wave 5)
 
 - **Dependency direction**: ff-exclude-show-filter depends on ff-command-semantics
 - **API consumed**: `ScopeResolver` for resolving scope modifiers (VISIBLE, EXCLUDED, ALL, TAGGED), `SessionState` for tag queries, `StatusMessage` for formatted output
 - **Integration pattern**: When EXCLUDE receives scope modifiers, it uses the `ScopeFilter` enum from command-semantics to determine which lines to operate on. Tag state is queried from `SessionState` for `EXCLUDE TAGGED`.
 
-### With `ff-command` (upstream — Wave 2)
+### With `ff-command` (upstream -- Wave 2)
 
 - **Dependency direction**: ff-exclude-show-filter depends on ff-command
 - **API consumed**: `CommandRegistry::register()` for command registration
@@ -694,21 +694,21 @@ pub enum ExcludeShowError {
 |-----------|-------------|---------|----------|----------|
 | `filter.exclude` | Exclude | `X` | No | filter |
 | `filter.show` | Show | `INCLUDE` | No | filter |
-| `filter.reset` | Reset | — | No | filter |
+| `filter.reset` | Reset | -- | No | filter |
 
-### With `ff-line-commands` (peer — Wave 5)
+### With `ff-line-commands` (peer -- Wave 5)
 
 - **Dependency direction**: ff-line-commands calls into ff-exclude-show-filter
-- **API provided**: `execute_line_command(LineCommandExclude)` — processes X/Xn/XX commands
+- **API provided**: `execute_line_command(LineCommandExclude)` -- processes X/Xn/XX commands
 - **Integration pattern**: The line-command subsystem parses and resolves X/Xn/XX pairs, then delegates the actual exclusion operation to this crate's `ExclusionEngine`.
 
-### With `ff-viewport-and-scrolling` (downstream — Wave 4)
+### With `ff-viewport-and-scrolling` (downstream -- Wave 4)
 
 - **Dependency direction**: ff-viewport-and-scrolling depends on ff-exclude-show-filter
 - **API consumed**: `exclusion_blocks()`, `block_at_doc_line()`, `ExclusionBlock::placeholder_text()`
 - **Integration pattern**: The viewport renderer queries exclusion blocks to determine where to render placeholder lines and what text they contain.
 
-### With `ff-logging` (upstream — Wave 0)
+### With `ff-logging` (upstream -- Wave 0)
 
 - **Dependency direction**: ff-exclude-show-filter depends on ff-logging
 - **Usage**: INFO-level logs for bulk operations (EXCLUDE ALL, RESET), DEBUG for per-operation details
@@ -781,7 +781,7 @@ EXCLUDE/SHOW/RESET operations acquire the display-mapping write lock once and pe
 
 ## Design Decisions
 
-### Decision 1: No Separate Visibility State — Delegate to display-line-mapping
+### Decision 1: No Separate Visibility State -- Delegate to display-line-mapping
 
 **Chosen: Delegate all per-line visibility storage to `ff-display-line-mapping`**
 
@@ -794,7 +794,7 @@ Rationale:
 
 Trade-offs accepted:
 - Querying exclusion state requires going through the display-mapping layer (minor indirection)
-- Cannot distinguish "excluded by EXCLUDE command" from "hidden by code fold" without additional metadata — acceptable because ISPF exclusion is flat and orthogonal to folding
+- Cannot distinguish "excluded by EXCLUDE command" from "hidden by code fold" without additional metadata -- acceptable because ISPF exclusion is flat and orthogonal to folding
 
 ### Decision 2: Text Matching via find-for-filter Delegation
 
@@ -803,7 +803,7 @@ Trade-offs accepted:
 Rationale:
 1. The find engine already implements literal search with case folding and regex matching
 2. Reusing the find engine avoids duplicating search logic in this crate
-3. `find_for_filter` specifically does NOT update FindState — ideal for exclusion use
+3. `find_for_filter` specifically does NOT update FindState -- ideal for exclusion use
 4. Consistent matching semantics between FIND and EXCLUDE commands
 
 Trade-offs accepted:
@@ -832,7 +832,7 @@ Trade-offs accepted:
 
 Rationale:
 1. ISPF semantics treat exclusion as a view filter, not a content modification
-2. Exclusion state is transient — lost on session close, not saved to disk
+2. Exclusion state is transient -- lost on session close, not saved to disk
 3. Including exclusion in undo history would pollute the undo stack with non-content changes
 4. RESET provides the "undo" path for exclusion operations
 5. Command metadata explicitly marks these as `undoable: false`
@@ -841,7 +841,7 @@ Rationale:
 
 ## Correctness Properties
 
-The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal — it must hold for all valid inputs.
+The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal -- it must hold for all valid inputs.
 
 ### Property 1: Exclude-Show Roundtrip
 
@@ -886,7 +886,7 @@ The following properties are suitable for property-based testing with the `propt
 
 ### Property 4: Block Contiguity Invariant
 
-**Statement:** Every `ExclusionBlock` returned by `exclusion_blocks()` represents a maximally contiguous range — the line before `start` (if it exists) is visible, and the line after `end` (if it exists) is visible.
+**Statement:** Every `ExclusionBlock` returned by `exclusion_blocks()` represents a maximally contiguous range -- the line before `start` (if it exists) is visible, and the line after `end` (if it exists) is visible.
 
 ```
 ∀ ExclusionEngine E, ∀ block in E.exclusion_blocks():
@@ -1014,14 +1014,14 @@ The following properties are suitable for property-based testing with the `propt
 
 Unit tests are co-located with source modules using `#[cfg(test)] mod tests { ... }`:
 
-- `commands/exclude.rs` — EXCLUDE text/regex/ALL/TAGGED/range operations
-- `commands/show.rs` — SHOW ALL/EXCLUDED/NONEXCLUDED/text/regex operations
-- `commands/reset.rs` — RESET Default/Excluded/All operations
-- `line_commands.rs` — X/Xn/XX processing, boundary cases
-- `blocks.rs` — Block enumeration, merge/split, placeholder text generation
-- `iterators.rs` — Visible/excluded iterator correctness, empty document edge case
-- `matcher.rs` — Text matching delegation, case sensitivity, regex errors
-- `scope_provider.rs` — ScopeFilterProvider implementation verification
+- `commands/exclude.rs` -- EXCLUDE text/regex/ALL/TAGGED/range operations
+- `commands/show.rs` -- SHOW ALL/EXCLUDED/NONEXCLUDED/text/regex operations
+- `commands/reset.rs` -- RESET Default/Excluded/All operations
+- `line_commands.rs` -- X/Xn/XX processing, boundary cases
+- `blocks.rs` -- Block enumeration, merge/split, placeholder text generation
+- `iterators.rs` -- Visible/excluded iterator correctness, empty document edge case
+- `matcher.rs` -- Text matching delegation, case sensitivity, regex errors
+- `scope_provider.rs` -- ScopeFilterProvider implementation verification
 
 ### Property-Based Tests (proptest)
 
@@ -1080,7 +1080,7 @@ Commands registered by `ff-exclude-show-filter` with the global `CommandRegistry
 |-----------|-------------|---------|----------|----------|-------|
 | `filter.exclude` | Exclude | `X` | No | filter | Edit, Browse, View |
 | `filter.show` | Show | `INCLUDE` | No | filter | Edit, Browse, View |
-| `filter.reset` | Reset | — | No | filter | Edit, Browse, View |
+| `filter.reset` | Reset | -- | No | filter | Edit, Browse, View |
 
 Line commands registered with the line-command parser:
 

@@ -21,16 +21,16 @@ The `ff-record-criteria` crate is the **field-level record filtering engine** fo
 ### Position in Architecture
 
 ```
-Wave 12 — FileForge Domain
+Wave 12 -- FileForge Domain
 
 ┌─────────────────────────────────────────────────────────────┐
 │                     Application Binary                        │
-│              (ffwb / GUI shell — ff-desktop)                  │
+│              (ffwb / GUI shell -- ff-desktop)                  │
 ├─────────────────────────────────────────────────────────────┤
 │  Criteria_Panel │ Criteria_Catalog_Dialog │ Status Bar        │
-│  (shell-side rendering — NOT in this crate)                  │
+│  (shell-side rendering -- NOT in this crate)                  │
 ├─────────────────────────────────────────────────────────────┤
-│        ff-record-criteria (THIS CRATE) — Wave 12             │
+│        ff-record-criteria (THIS CRATE) -- Wave 12             │
 ├─────────────────────────────────────────────────────────────┤
 │  ff-fileforge (Wave 12) │ ff-structure-catalog (Wave 12)     │
 │  ff-document-model (Wave 4) │ ff-command (Wave 2)            │
@@ -41,7 +41,7 @@ Wave 12 — FileForge Domain
 
 ### Design Constraints (Cross-Cutting)
 
-- **GUI Independence**: Zero GUI framework dependencies — criteria model, evaluation, and persistence are data-only; dialog rendering is shell-side
+- **GUI Independence**: Zero GUI framework dependencies -- criteria model, evaluation, and persistence are data-only; dialog rendering is shell-side
 - **Command-Driven**: CRITERIA command (with SET/CLEAR/SHOW/SAVE subcommands) registered in command framework
 - **Multi-Crate Workspace**: Crate at `crates/ff-record-criteria`
 - **Error Message Standards**: All errors follow `[record-criteria] operation: description` format
@@ -202,34 +202,34 @@ crates/ff-record-criteria/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[non_exhaustive]
 pub enum CriteriaOperator {
-    /// Equals — exact match (or wildcard match if value contains `*` or `?`).
+    /// Equals -- exact match (or wildcard match if value contains `*` or `?`).
     #[serde(rename = "EQ")]
     Eq,
-    /// Not equals — inverse of Eq.
+    /// Not equals -- inverse of Eq.
     #[serde(rename = "NE")]
     Ne,
-    /// Greater than — ordered comparison.
+    /// Greater than -- ordered comparison.
     #[serde(rename = "GT")]
     Gt,
-    /// Greater than or equal — ordered comparison.
+    /// Greater than or equal -- ordered comparison.
     #[serde(rename = "GE")]
     Ge,
-    /// Less than — ordered comparison.
+    /// Less than -- ordered comparison.
     #[serde(rename = "LT")]
     Lt,
-    /// Less than or equal — ordered comparison.
+    /// Less than or equal -- ordered comparison.
     #[serde(rename = "LE")]
     Le,
-    /// Contains — substring match.
+    /// Contains -- substring match.
     #[serde(rename = "CONTAINS")]
     Contains,
-    /// Starts with — prefix match.
+    /// Starts with -- prefix match.
     #[serde(rename = "STARTS_WITH")]
     StartsWith,
-    /// Ends with — suffix match.
+    /// Ends with -- suffix match.
     #[serde(rename = "ENDS_WITH")]
     EndsWith,
-    /// Matches regex — regular expression pattern match.
+    /// Matches regex -- regular expression pattern match.
     #[serde(rename = "MATCHES_REGEX")]
     MatchesRegex,
 }
@@ -243,10 +243,10 @@ pub enum CriteriaOperator {
 /// Addresses: Requirement 5
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum CriteriaConnector {
-    /// Logical AND — both sides must be true. Binds tighter than OR.
+    /// Logical AND -- both sides must be true. Binds tighter than OR.
     #[serde(rename = "AND")]
     And,
-    /// Logical OR — either side must be true.
+    /// Logical OR -- either side must be true.
     #[serde(rename = "OR")]
     Or,
 }
@@ -483,7 +483,7 @@ pub enum ValidationIssue {
 
 ## Public API Surface
 
-### CriteriaEvaluator — Core Evaluation
+### CriteriaEvaluator -- Core Evaluation
 
 ```rust
 /// The criteria evaluator applies a CriteriaSet to a record's field values,
@@ -532,7 +532,7 @@ impl CriteriaEvaluator {
 }
 ```
 
-### ComparisonEngine — Type-Aware Comparison
+### ComparisonEngine -- Type-Aware Comparison
 
 ```rust
 /// Performs field-type-aware comparisons between field values and criterion values.
@@ -563,7 +563,7 @@ impl ComparisonEngine {
 }
 ```
 
-### WildcardMatcher — Glob Pattern Matching
+### WildcardMatcher -- Glob Pattern Matching
 
 ```rust
 /// Glob-style wildcard pattern matching for string criteria values.
@@ -590,7 +590,7 @@ impl WildcardMatcher {
 }
 ```
 
-### LogicalCombiner — AND/OR Grouping
+### LogicalCombiner -- AND/OR Grouping
 
 ```rust
 /// Combines per-row boolean results using AND/OR connectors and
@@ -621,7 +621,7 @@ pub struct LogicalRow {
 }
 ```
 
-### CriteriaPersistence — Catalog Operations
+### CriteriaPersistence -- Catalog Operations
 
 ```rust
 /// Handles loading and saving CriteriaSets to `.criteria.json` files.
@@ -684,7 +684,7 @@ pub struct CriteriaSetMetadata {
 }
 ```
 
-### CriteriaLocationManager — Location Management
+### CriteriaLocationManager -- Location Management
 
 ```rust
 /// Manages Criteria_Locations and the Active_Criteria_Location.
@@ -726,7 +726,7 @@ impl CriteriaLocationManager {
 }
 ```
 
-### CriteriaCommandRegistrar — Command Integration
+### CriteriaCommandRegistrar -- Command Integration
 
 ```rust
 /// Registers criteria commands with the command framework.
@@ -738,11 +738,11 @@ impl CriteriaCommandRegistrar {
     /// Register the CRITERIA command and its subcommands.
     ///
     /// Commands registered:
-    /// - `criteria` (alias: `select`) — primary command
-    ///   - `criteria.set` / `criteria.load` — load named criteria
-    ///   - `criteria.clear` — remove active criteria
-    ///   - `criteria.show` / `criteria.status` — display current state
-    ///   - `criteria.save` — save current criteria to catalog
+    /// - `criteria` (alias: `select`) -- primary command
+    ///   - `criteria.set` / `criteria.load` -- load named criteria
+    ///   - `criteria.clear` -- remove active criteria
+    ///   - `criteria.show` / `criteria.status` -- display current state
+    ///   - `criteria.save` -- save current criteria to catalog
     ///
     /// Addresses: Requirement 6 AC 1, 8
     pub fn register_commands(registry: &mut CommandRegistry);
@@ -771,7 +771,7 @@ impl CriteriaCommand {
 }
 ```
 
-### CriteriaScope — FIND/CHANGE Integration
+### CriteriaScope -- FIND/CHANGE Integration
 
 ```rust
 /// Provides a SearchScope implementation that restricts FIND/CHANGE
@@ -814,7 +814,7 @@ pub trait LineToRecordMap {
 }
 ```
 
-### CriteriaValidator — Expression Validation
+### CriteriaValidator -- Expression Validation
 
 ```rust
 /// Validates a CriteriaSet for correctness before evaluation.
@@ -844,7 +844,7 @@ impl CriteriaValidator {
 }
 ```
 
-### StructureAssociation — Auto-Suggestion
+### StructureAssociation -- Auto-Suggestion
 
 ```rust
 /// Provides auto-suggestion logic for applying saved criteria
@@ -932,7 +932,7 @@ pub enum CriteriaError {
     NumericParseFailed { field: String, value: String },
 
     /// Group open/close structure is invalid.
-    #[error("[record-criteria] validate: unmatched group at row {row} — {detail}")]
+    #[error("[record-criteria] validate: unmatched group at row {row} -- {detail}")]
     UnmatchedGroup { row: usize, detail: String },
 
     /// A named CriteriaSet was not found in the catalog.
@@ -940,27 +940,27 @@ pub enum CriteriaError {
     CriteriaNotFound { name: String, location: String },
 
     /// The .criteria.json file could not be parsed.
-    #[error("[record-criteria] load: failed to parse '{path}' — {detail}")]
+    #[error("[record-criteria] load: failed to parse '{path}' -- {detail}")]
     ParseFailed { path: String, detail: String },
 
     /// I/O error accessing the criteria catalog.
-    #[error("[record-criteria] io: {operation} failed for '{path}' — {source}")]
+    #[error("[record-criteria] io: {operation} failed for '{path}' -- {source}")]
     Io { operation: String, path: String, source: String },
 
     /// The Criteria_Store configuration file is corrupt.
-    #[error("[record-criteria] store: criteria store at '{path}' is corrupt — {detail}")]
+    #[error("[record-criteria] store: criteria store at '{path}' is corrupt -- {detail}")]
     StoreCorrupt { path: String, detail: String },
 
     /// Invalid CRITERIA command argument.
-    #[error("[record-criteria] command: invalid argument '{arg}' — expected SET, CLEAR, SHOW, or SAVE")]
+    #[error("[record-criteria] command: invalid argument '{arg}' -- expected SET, CLEAR, SHOW, or SAVE")]
     InvalidCommandArg { arg: String },
 
     /// FileForge_Mode is not active (criteria require structured records).
-    #[error("[record-criteria] command: FileForge_Mode is not active — criteria require a structure definition")]
+    #[error("[record-criteria] command: FileForge_Mode is not active -- criteria require a structure definition")]
     FileForgeNotActive,
 
     /// Configuration key has invalid value.
-    #[error("[record-criteria] config: key '{key}' has invalid value '{value}' — using default")]
+    #[error("[record-criteria] config: key '{key}' has invalid value '{value}' -- using default")]
     InvalidConfig { key: String, value: String },
 
     /// Maximum criteria rows exceeded.
@@ -968,7 +968,7 @@ pub enum CriteriaError {
     MaxRowsExceeded { count: usize, max: usize },
 
     /// Name collision when saving.
-    #[error("[record-criteria] save: a criteria set named '{name}' already exists — use overwrite")]
+    #[error("[record-criteria] save: a criteria set named '{name}' already exists -- use overwrite")]
     NameCollision { name: String },
 }
 ```
@@ -977,50 +977,50 @@ pub enum CriteriaError {
 
 ## Integration Points
 
-### With `ff-fileforge` (FileForge Integration — Wave 12, upstream)
+### With `ff-fileforge` (FileForge Integration -- Wave 12, upstream)
 
 - **Dependency direction**: ff-record-criteria depends on ff-fileforge
 - **API consumed**: `RecordStructure` for field names and types; `FieldDefinition` for data_type, offset, length; `FieldValue` extraction from record bytes; packed-decimal decoding via `decode_comp3()`; EBCDIC-to-display conversion via `decode_ebcdic()`
 - **Coordination**: When the evaluator encounters a `comp3` field type, it delegates decoding to ff-fileforge's packed-decimal decoder. For EBCDIC fields, it calls the EBCDIC-to-UTF8 converter before performing string comparison
 - **Record access**: ff-fileforge provides extracted field values as a `HashMap<String, String>` per record, ready for criteria evaluation
 
-### With `ff-structure-catalog` (Structure Catalog — Wave 12, upstream)
+### With `ff-structure-catalog` (Structure Catalog -- Wave 12, upstream)
 
 - **Dependency direction**: ff-record-criteria depends on ff-structure-catalog
 - **API consumed**: `StructureDefinition` metadata for structure_association matching; field list from the active Record_Structure for populating field dropdowns; `Active_Catalog_Location` awareness for structure name lookups
 - **Coordination**: When the active Structure_Definition changes, the criteria module is notified so it can clear incompatible criteria (Requirement 7 AC 7). Auto-suggestion queries the catalog for the structure name
 
-### With `ff-document-model` (Document Model — Wave 4, upstream)
+### With `ff-document-model` (Document Model -- Wave 4, upstream)
 
 - **Dependency direction**: ff-record-criteria depends on ff-document-model
 - **API consumed**: Record byte access for evaluation when field values are not pre-extracted; line-to-record mapping for criteria scope integration with FIND/CHANGE
 - **Coordination**: The evaluator operates on already-extracted field values in normal flow. The document model provides the `LineToRecordMap` trait implementation used by CriteriaScope
 
-### With `ff-command` (Command Framework — Wave 2, upstream)
+### With `ff-command` (Command Framework -- Wave 2, upstream)
 
 - **Dependency direction**: ff-record-criteria depends on ff-command
 - **API consumed**: `CommandRegistry::register()` for command registration; `CommandId` for identity; `CommandMetadata` for display name, description, category
 - **Commands registered**:
-  - `criteria` (alias: `select`) — metadata: "Criteria", category: "criteria"
+  - `criteria` (alias: `select`) -- metadata: "Criteria", category: "criteria"
   - Subcommands: SET, CLEAR, SHOW, SAVE
 - **Undo integration**: CRITERIA SET and CRITERIA CLEAR are recorded on the undo stack (they change display state). CRITERIA SHOW and CRITERIA SAVE are NOT recorded
 - **History**: CRITERIA commands ARE added to command history
 
-### With `ff-config` (Configuration System — Wave 2, upstream)
+### With `ff-config` (Configuration System -- Wave 2, upstream)
 
 - **Dependency direction**: ff-record-criteria depends on ff-config
 - **API consumed**: Typed access for `[criteria]` namespace: `get_string("criteria.store_path")`, `get_string("criteria.default_location")`, `get_bool("criteria.auto_suggest")`, `get_int("criteria.max_criteria_rows")`
 - **Hot-reload**: ff-record-criteria registers a reload callback for the `criteria` namespace. When config changes, it rebuilds `CriteriaConfig` and applies new settings (Requirement 14 AC 6)
 - **Schema registration**: At startup, registers schema entries for all `criteria.*` keys with types, defaults, and descriptions
 
-### With `ff-find-replace` (Find and Replace — Wave 5, downstream consumer)
+### With `ff-find-replace` (Find and Replace -- Wave 5, downstream consumer)
 
 - **Dependency direction**: ff-find-replace depends on ff-record-criteria (for CriteriaScope)
 - **API consumed**: `CriteriaScope::contains_line()` to check whether a line is within criteria scope during FIND/CHANGE operations
 - **Integration**: When the user specifies the `CRITERIA` modifier on FIND/CHANGE commands, the find engine obtains a `CriteriaScope` from the active filter state and uses it to filter candidate lines (Requirement 8 AC 1, 2, 4)
 - **Scope combination**: CriteriaScope combines conjunctively with other scope modifiers (TAGGED, EXCLUDED, VISIBLE, column bounds)
 
-### With `ff-logging` (Foundation — Wave 0, upstream)
+### With `ff-logging` (Foundation -- Wave 0, upstream)
 
 - **Dependency direction**: ff-record-criteria depends on ff-logging
 - **API consumed**: `log_info!`, `log_warn!`, `log_debug!` macros
@@ -1073,16 +1073,16 @@ max_criteria_rows = 50
 
 | Setting | Absent | Invalid Type | Out of Range | Semantic Error |
 |---------|--------|--------------|--------------|----------------|
-| `store_path` | Use default user-level path | Use default + WARN | — | Path doesn't exist: use default + WARN |
-| `default_location` | Use platform default | Use default + WARN | — | Path doesn't exist: create it + INFO |
-| `auto_suggest` | Default to `true` | Default to `true` + WARN | — | — |
-| `max_criteria_rows` | Default to 50 | Default to 50 + WARN | Clamp to [1, 200] + WARN | — |
+| `store_path` | Use default user-level path | Use default + WARN | -- | Path doesn't exist: use default + WARN |
+| `default_location` | Use platform default | Use default + WARN | -- | Path doesn't exist: create it + INFO |
+| `auto_suggest` | Default to `true` | Default to `true` + WARN | -- | -- |
+| `max_criteria_rows` | Default to 50 | Default to 50 + WARN | Clamp to [1, 200] + WARN | -- |
 
 ---
 
 ## Correctness Properties
 
-The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal — it must hold for all valid inputs.
+The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal -- it must hold for all valid inputs.
 
 ### Property 1: Empty/All-Disabled Criteria Passthrough
 
@@ -1109,7 +1109,7 @@ The following properties are suitable for property-based testing with the `propt
 
 **Validates: Requirements 1.5**
 
-### Property 3: Operator Correctness — EQ Symmetry with NE
+### Property 3: Operator Correctness -- EQ Symmetry with NE
 
 **Statement:** For any field value and criterion value, `EQ` returns the logical negation of `NE` (and vice versa), regardless of comparison mode.
 
@@ -1247,7 +1247,7 @@ The following properties are suitable for property-based testing with the `propt
 - **wildcard_tests.rs**: Pattern matching with `*`, `?`, escape sequences, case sensitivity. No-wildcard passthrough to exact equality.
 - **persistence_tests.rs**: JSON round-trip serialisation/deserialisation. Load/save/list/delete/duplicate operations with temp directories.
 - **validator_tests.rs**: Unknown field detection, unmatched groups, invalid regex, type mismatches, max rows.
-- **commands_tests.rs**: Parsing of CRITERIA command arguments — SET, CLEAR, SHOW, SAVE, no-args, invalid inputs.
+- **commands_tests.rs**: Parsing of CRITERIA command arguments -- SET, CLEAR, SHOW, SAVE, no-args, invalid inputs.
 
 ### Property-Based Tests (proptest)
 
@@ -1263,8 +1263,8 @@ The following properties are suitable for property-based testing with the `propt
 
 ### What Is NOT Tested (GUI/Manual)
 
-- Criteria_Panel rendering, field dropdowns, row manipulation buttons — requires running GUI shell
-- Criteria_Catalog_Dialog layout, confirmation prompts — requires running GUI shell
-- Status bar visual indicator rendering and click interaction — requires egui frame
-- Docking/floating panel behaviour — requires layout-and-docking integration
+- Criteria_Panel rendering, field dropdowns, row manipulation buttons -- requires running GUI shell
+- Criteria_Catalog_Dialog layout, confirmation prompts -- requires running GUI shell
+- Status bar visual indicator rendering and click interaction -- requires egui frame
+- Docking/floating panel behaviour -- requires layout-and-docking integration
 - These are marked as 🔲 MANUAL in the TCR

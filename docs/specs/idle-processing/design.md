@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `ff-idle-processing` crate is the **cooperative background work scheduler** for FileForgeWorkbench. It detects idle periods (no user input), grants bounded time slices to registered work sources in priority order, and ensures instant cancellation on any user activity. The scheduler is GUI-independent — it receives idle notifications through a trait abstraction and never references any windowing or rendering framework.
+The `ff-idle-processing` crate is the **cooperative background work scheduler** for FileForgeWorkbench. It detects idle periods (no user input), grants bounded time slices to registered work sources in priority order, and ensures instant cancellation on any user activity. The scheduler is GUI-independent -- it receives idle notifications through a trait abstraction and never references any windowing or rendering framework.
 
 ### Purpose
 
@@ -18,7 +18,7 @@ The `ff-idle-processing` crate is the **cooperative background work scheduler** 
 ### Position in Architecture
 
 ```
-Wave 15 — Background Processing
+Wave 15 -- Background Processing
 
 ┌──────────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                    │
@@ -27,18 +27,18 @@ Wave 15 — Background Processing
 │   Invokes on_idle() from idle callback                        │
 ├──────────────────────────────────────────────────────────────┤
 │  Work Source Providers:                                        │
-│    ff-syntax-highlighting (Wave 7) — idle background styling  │
-│    ff-line-wrap-toggle (Wave 9) — wrap height calculation     │
-│    ff-find-and-replace (Wave 8) — search index building       │
+│    ff-syntax-highlighting (Wave 7) -- idle background styling  │
+│    ff-line-wrap-toggle (Wave 9) -- wrap height calculation     │
+│    ff-find-and-replace (Wave 8) -- search index building       │
 ├──────────────────────────────────────────────────────────────┤
 │         THIS CRATE: ff-idle-processing ← Wave 15              │
 │   IdleScheduler, IdleWorkSource trait, priority dispatch,     │
 │   time budget enforcement, cancellation, progress tracking    │
 ├──────────────────────────────────────────────────────────────┤
 │  Upstream Dependencies:                                       │
-│    ff-display-line-mapping (Wave 4) — set_height consumer     │
-│    ff-configuration-system (Wave 2) — idle parameters         │
-│    ff-logging (Wave 0) — structured diagnostics               │
+│    ff-display-line-mapping (Wave 4) -- set_height consumer     │
+│    ff-configuration-system (Wave 2) -- idle parameters         │
+│    ff-logging (Wave 0) -- structured diagnostics               │
 ├──────────────────────────────────────────────────────────────┤
 │              Foundation Layer: ff-logging                      │
 └──────────────────────────────────────────────────────────────┘
@@ -46,7 +46,7 @@ Wave 15 — Background Processing
 
 ### Design Constraints (Cross-Cutting)
 
-- **GUI Independence (Req 12)**: Zero GUI dependencies — receives idle state through `IdleNotifier` trait, time through `std::time::Instant`
+- **GUI Independence (Req 12)**: Zero GUI dependencies -- receives idle state through `IdleNotifier` trait, time through `std::time::Instant`
 - **Cooperative Time-Slicing**: Work sources yield voluntarily; scheduler does not forcibly terminate
 - **Input-First Responsiveness**: Any user event cancels idle work within 1ms via atomic flag
 - **Multi-Crate Workspace**: Crate at `crates/ff-idle-processing`
@@ -206,7 +206,7 @@ crates/ff-idle-processing/
 pub struct WorkPriority(pub u32);
 
 impl WorkPriority {
-    /// Syntax re-highlighting beyond viewport — highest built-in priority.
+    /// Syntax re-highlighting beyond viewport -- highest built-in priority.
     /// Addresses: Requirement 4 AC 2
     pub const SYNTAX_HIGHLIGHT: Self = Self(10);
 
@@ -676,7 +676,7 @@ pub enum IdleProcessingError {
     WorkSourceNotFound { name: String },
 
     /// Invalid configuration value.
-    #[error("[idle-processing] config: {field} value {value} is invalid — {reason}")]
+    #[error("[idle-processing] config: {field} value {value} is invalid -- {reason}")]
     InvalidConfig {
         field: String,
         value: String,
@@ -693,40 +693,40 @@ pub enum IdleProcessingError {
 
 ## Integration Points
 
-### With `ff-syntax-highlighting` (Wave 7 — work source provider)
+### With `ff-syntax-highlighting` (Wave 7 -- work source provider)
 
 - **Dependency direction**: ff-syntax-highlighting depends on ff-idle-processing (implements `IdleWorkSource`)
 - **Integration pattern**: The `IdleStylingTask` in ff-syntax-highlighting implements `IdleWorkSource`. When a document is opened and the lexer is bound, the highlighting engine registers this task with the idle scheduler at `WorkPriority::SYNTAX_HIGHLIGHT` (10). The task calls `HighlightEngine::idle_style_increment()` during each time slice, styling up to `lines_per_slice` lines beyond the viewport's styled position.
 - **Invalidation**: On document edit, the syntax highlighting engine calls `scheduler.invalidate_source("syntax-highlight")` to reset the idle styling position to the edit point.
 - **Addresses**: Requirement 8 AC 1, AC 5, AC 6, AC 7
 
-### With `ff-display-line-mapping` (Wave 4 — downstream consumer)
+### With `ff-display-line-mapping` (Wave 4 -- downstream consumer)
 
 - **Dependency direction**: ff-idle-processing does NOT directly depend on ff-display-line-mapping. The wrap calculation work source (provided by ff-line-wrap-toggle) holds a reference to the `DisplayLineMapping` trait and calls `set_height()` as results become available.
 - **Integration pattern**: The wrap work source computes display heights during idle time and writes results via `set_height(doc_line, height)`, updating the mapping incrementally.
 - **Addresses**: Requirement 8 AC 2
 
-### With `ff-line-wrap-toggle` (Wave 9 — work source provider)
+### With `ff-line-wrap-toggle` (Wave 9 -- work source provider)
 
 - **Dependency direction**: ff-line-wrap-toggle depends on ff-idle-processing (implements `IdleWorkSource`)
 - **Integration pattern**: When wrap mode is toggled on, ff-line-wrap-toggle registers a `WrapCalculationTask` at `WorkPriority::WRAP_CALCULATION` (20). This task incrementally measures line display heights using content width and viewport width. When wrap mode is toggled off, it unregisters the task.
 - **Invalidation**: On document edit or viewport width change, the wrap task is invalidated to re-measure from the affected line.
 - **Addresses**: Requirement 8 AC 2, AC 5, AC 6, AC 7
 
-### With `ff-find-and-replace` (Wave 8 — work source provider)
+### With `ff-find-and-replace` (Wave 8 -- work source provider)
 
 - **Dependency direction**: ff-find-and-replace depends on ff-idle-processing (implements `IdleWorkSource`)
 - **Integration pattern**: When highlight-all-matches mode is activated, ff-find-and-replace registers a `SearchIndexTask` at `WorkPriority::SEARCH_INDEX` (40). This task pre-computes match positions for the entire document during idle time. When the search term changes, the source is invalidated for full rebuild.
 - **Addresses**: Requirement 8 AC 4, AC 7
 
-### With `ff-configuration-system` (Wave 2 — dependency)
+### With `ff-configuration-system` (Wave 2 -- dependency)
 
 - **Dependency direction**: ff-idle-processing depends on ff-configuration-system
 - **API consumed**: Reads `[idle-processing]` TOML namespace for configurable parameters
 - **Hot-reload**: On configuration change notification, the scheduler calls `update_config()` with the new values. Changes take effect on the next idle cycle.
 - **Addresses**: Requirement 1 AC 2, Requirement 2 AC 1
 
-### With `ff-logging` (Foundation — dependency)
+### With `ff-logging` (Foundation -- dependency)
 
 - **Dependency direction**: ff-idle-processing depends on ff-logging
 - **API consumed**: `log_info!`, `log_warn!`, `log_debug!` macros
@@ -737,7 +737,7 @@ pub enum IdleProcessingError {
 - **Log prefix**: `[idle-processing]`
 - **Addresses**: Requirement 2 AC 3
 
-### With `ff-platform-core` (Wave 1 — architectural peer)
+### With `ff-platform-core` (Wave 1 -- architectural peer)
 
 - **Dependency direction**: ff-idle-processing integrates with platform-core's event loop abstraction
 - **Integration**: The `IdleNotifier` trait bridges the scheduler to whatever event loop the platform uses. The scheduler itself has no event loop dependency.
@@ -799,14 +799,14 @@ starvation_cycle_limit = 10
 **Chosen: Cooperative (voluntary yield)**
 
 Rationale:
-1. **Single-threaded simplicity**: Work sources run on the main thread within idle callbacks — no need for thread synchronization on mutable document state
+1. **Single-threaded simplicity**: Work sources run on the main thread within idle callbacks -- no need for thread synchronization on mutable document state
 2. **Scintilla precedent**: Scintilla's idle styling uses cooperative yielding; proven model for editor idle work
 3. **No unsafe required**: Preemptive interruption would require unsafe mechanisms (thread cancellation, signal handling)
 4. **Predictable state**: Work sources always reach a consistent save point before yielding, simplifying resumption logic
 
 Trade-offs accepted:
-- A misbehaving work source can hold the slice longer than budgeted — mitigated by WARN logging (Requirement 2 AC 3) and the expectation that all built-in sources are well-behaved
-- No forced fairness — mitigated by starvation prevention (Requirement 4 AC 6)
+- A misbehaving work source can hold the slice longer than budgeted -- mitigated by WARN logging (Requirement 2 AC 3) and the expectation that all built-in sources are well-behaved
+- No forced fairness -- mitigated by starvation prevention (Requirement 4 AC 6)
 
 ### Decision 2: AtomicBool for Cancellation Signal
 
@@ -814,23 +814,23 @@ Trade-offs accepted:
 
 Rationale:
 1. **Sub-millisecond latency** (Requirement 5 AC 5): Atomic loads are nanosecond-level, far below the 1ms requirement
-2. **No allocation**: Zero-cost signal mechanism — a single boolean in the scheduler struct
+2. **No allocation**: Zero-cost signal mechanism -- a single boolean in the scheduler struct
 3. **Cross-function visibility**: The flag is set by `input_activity()` and polled by work sources via `IdleWorkContext::is_cancelled()` without needing to pass mutable references
 4. **No mutex contention**: Unlike a channel or mutex, atomic reads never block
 
 Trade-offs:
-- Only communicates a single boolean (cancel/no-cancel) — sufficient for this use case since we only need "stop now" semantics
+- Only communicates a single boolean (cancel/no-cancel) -- sufficient for this use case since we only need "stop now" semantics
 
 ### Decision 3: Priority Dispatch with Starvation Prevention
 
 **Chosen: Strict priority with periodic lower-priority grants**
 
 Rationale:
-1. **User-visible work first**: Syntax highlighting near the viewport is more impactful than background search indexing — strict priority reflects user perception
+1. **User-visible work first**: Syntax highlighting near the viewport is more impactful than background search indexing -- strict priority reflects user perception
 2. **Starvation prevention**: Every N cycles (configurable, default 10), the dispatcher bypasses the highest-priority source and services the next-in-line, ensuring all sources eventually make progress
 3. **Round-robin within same priority**: If multiple sources share a priority level, they alternate on successive idle callbacks for fairness
 
-Alternative considered: weighted fair queuing — rejected as over-complex for the typical 2–4 work sources in a single editor session.
+Alternative considered: weighted fair queuing -- rejected as over-complex for the typical 2–4 work sources in a single editor session.
 
 ### Decision 4: Single-Threaded Scheduler (No Background Thread)
 
@@ -839,11 +839,11 @@ Alternative considered: weighted fair queuing — rejected as over-complex for t
 Rationale:
 1. **Simplest correctness model**: No data races on document content; work sources can safely read document state without locks
 2. **Matches Scintilla model**: Scintilla performs all idle work on the UI thread via platform idle callbacks
-3. **Sufficient for workloads**: At 10ms per slice, background work progresses at ~100 slices/second during idle — fast enough for styling and wrap calculation
-4. **No thread join/cleanup complexity**: The scheduler lifecycle is tied to the application — no orphan thread concerns
+3. **Sufficient for workloads**: At 10ms per slice, background work progresses at ~100 slices/second during idle -- fast enough for styling and wrap calculation
+4. **No thread join/cleanup complexity**: The scheduler lifecycle is tied to the application -- no orphan thread concerns
 
 Trade-offs:
-- Cannot utilize multiple CPU cores for idle work — acceptable since the work is I/O-free and CPU-bound in small increments
+- Cannot utilize multiple CPU cores for idle work -- acceptable since the work is I/O-free and CPU-bound in small increments
 - If a platform has genuine background thread support, a future `ThreadedIdleNotifier` could dispatch `on_idle()` on a worker thread (the trait abstraction supports this)
 
 ### Decision 5: Object-Safe IdleWorkSource Trait
@@ -852,7 +852,7 @@ Trade-offs:
 
 Rationale:
 1. **Heterogeneous collection**: The scheduler must hold work sources of different concrete types (styling, wrap, search) in a single Vec
-2. **Dynamic registration**: Work sources are registered at runtime — trait objects are the natural Rust pattern
+2. **Dynamic registration**: Work sources are registered at runtime -- trait objects are the natural Rust pattern
 3. **Plugin support**: Third-party plugins can implement `IdleWorkSource` without the scheduler knowing their concrete types
 
 Constraints this imposes:
@@ -864,7 +864,7 @@ Constraints this imposes:
 
 ## Correctness Properties
 
-The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal — it must hold for all valid inputs.
+The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal -- it must hold for all valid inputs.
 
 ### Property 1: Priority Ordering Invariant
 

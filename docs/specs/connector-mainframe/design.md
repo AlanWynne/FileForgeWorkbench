@@ -1,6 +1,6 @@
-# Design Document: Mainframe Connector (`ff-connector-mainframe`) — DEFERRED
+# Design Document: Mainframe Connector (`ff-connector-mainframe`) -- DEFERRED
 
-> ⚠️ **STATUS: DEFERRED — Not in initial release.**
+> ⚠️ **STATUS: DEFERRED -- Not in initial release.**
 >
 > This is a placeholder design documenting future integration points for the
 > mainframe connectivity connector. No implementation tasks will be created.
@@ -28,18 +28,18 @@ Each protocol registers as a separate VFS provider scheme through the
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│          ff-desktop (egui shell) — Dataset Explorer UI           │
+│          ff-desktop (egui shell) -- Dataset Explorer UI           │
 ├─────────────────────────────────────────────────────────────────┤
-│  ff-dataset-catalog — local emulation (initial release)          │
-│  ff-connector-mainframe — real z/OS access (THIS CRATE, DEFERRED)│
+│  ff-dataset-catalog -- local emulation (initial release)          │
+│  ff-connector-mainframe -- real z/OS access (THIS CRATE, DEFERRED)│
 ├─────────────────────────────────────────────────────────────────┤
-│  ff-connector-extensibility — ConnectorPlugin trait + registry   │
+│  ff-connector-extensibility -- ConnectorPlugin trait + registry   │
 ├─────────────────────────────────────────────────────────────────┤
-│  ff-vfs — VfsProvider trait, ProviderRegistry, ResourceUri       │
+│  ff-vfs -- VfsProvider trait, ProviderRegistry, ResourceUri       │
 ├─────────────────────────────────────────────────────────────────┤
-│  ff-plugin — FileForgePlugin lifecycle                           │
+│  ff-plugin -- FileForgePlugin lifecycle                           │
 ├─────────────────────────────────────────────────────────────────┤
-│  ff-logging — structured tracing                                 │
+│  ff-logging -- structured tracing                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -146,7 +146,7 @@ crates/ff-connector-mainframe/
 ├── Cargo.toml
 ├── src/
 │   ├── lib.rs                  # Crate root, re-exports, plugin registration
-│   ├── connection.rs           # MainframeConnection — shared connection config
+│   ├── connection.rs           # MainframeConnection -- shared connection config
 │   ├── credential.rs           # RACF credential handling, PassTicket, SSH key mgmt
 │   ├── codepage.rs             # EBCDIC↔UTF-8 translation, codepage tables
 │   ├── ftp/
@@ -275,14 +275,14 @@ pub struct ScreenField {
 
 The connector bridges remote z/OS systems with the local `ff-dataset-catalog`:
 
-1. **Catalog Sync** — Remote `LISTCAT` output populates local `DatasetEntry` rows,
+1. **Catalog Sync** -- Remote `LISTCAT` output populates local `DatasetEntry` rows,
    enabling offline browsing of dataset inventories.
-2. **Transparent Open** — When a user opens a dataset URI (`zos-ftp://...`), the
+2. **Transparent Open** -- When a user opens a dataset URI (`zos-ftp://...`), the
    connector fetches content from z/OS and presents it through the VFS layer;
    the dataset catalog provides naming validation and metadata context.
-3. **GDG Resolution** — Generation Data Group relative references (e.g., `(+1)`, `(0)`,
+3. **GDG Resolution** -- Generation Data Group relative references (e.g., `(+1)`, `(0)`,
    `(-1)`) are resolved against the catalog's GDG base entry, with remote verification.
-4. **Allocation** — Dataset allocation parameters from the catalog's allocation templates
+4. **Allocation** -- Dataset allocation parameters from the catalog's allocation templates
    map to FTP `SITE` commands or z/OSMF REST calls for remote dataset creation.
 
 ---

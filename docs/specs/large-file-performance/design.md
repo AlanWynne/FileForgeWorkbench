@@ -8,9 +8,9 @@ The `ff-large-file-performance` crate is the **GUI-independent rendering optimis
 
 - Measure and cache character x-positions per font/style combination (PositionCache)
 - Cache complete per-line layout results for instant re-rendering (LineLayoutCache)
-- Perform chunked measurement of long lines — only the visible portion is measured
+- Perform chunked measurement of long lines -- only the visible portion is measured
 - Render only lines within the viewport plus configurable overscan buffer
-- Implement viewport-aware lazy computation — no upfront measurement of all lines
+- Implement viewport-aware lazy computation -- no upfront measurement of all lines
 - Provide large-file status indicators for user awareness
 - Coordinate with background-io progressive loading and idle-processing pre-computation
 
@@ -41,11 +41,11 @@ The `ff-large-file-performance` crate is the **GUI-independent rendering optimis
 
 ### Design Constraints (Cross-Cutting)
 
-- **GUI Independence (Req 2)**: Zero GUI dependencies — operates on abstract `Surface` trait for measurement
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- operates on abstract `Surface` trait for measurement
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-large-file-performance`
 - **Error Message Standards (Req 8)**: Errors follow `[large-file-perf] operation: description` format
 - **Thread Safety (NFR-2)**: All cache structures safe for concurrent read access; writes serialised via fine-grained locking
-- **Determinism (NFR-3)**: Cache hits/misses never affect visual output — rendering is identical regardless of cache state
+- **Determinism (NFR-3)**: Cache hits/misses never affect visual output -- rendering is identical regardless of cache state
 - **Platform Independence (NFR-4)**: Delegates actual text measurement to abstract `Surface` trait
 
 ### Upstream Dependencies
@@ -424,13 +424,13 @@ impl LineLayout {
 /// Addresses: Requirement 3 AC 5
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ValidLevel {
-    /// Completely stale — must remeasure from scratch
+    /// Completely stale -- must remeasure from scratch
     Invalid = 0,
-    /// Text or style may have changed — verify before reuse
+    /// Text or style may have changed -- verify before reuse
     CheckTextAndStyle = 1,
     /// Positions valid but sub-line breaks need recalculation (e.g., after resize)
     Positions = 2,
-    /// Fully valid — positions and sub-line breaks are current
+    /// Fully valid -- positions and sub-line breaks are current
     Lines = 3,
 }
 ```
@@ -460,7 +460,7 @@ pub struct LineLayoutCache {
     lock: RwLock<()>,
 }
 
-/// Cache scoping level — determines how many lines are cached.
+/// Cache scoping level -- determines how many lines are cached.
 /// Addresses: Requirement 3 AC 2
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CacheLevel {
@@ -1239,14 +1239,14 @@ pub enum LargeFilePerfError {
         total_display_lines: u64,
     },
 
-    /// Frame budget exceeded during measurement — layout deferred.
+    /// Frame budget exceeded during measurement -- layout deferred.
     #[error("[large-file-perf] measurement: frame budget exceeded after {measured_lines} lines (budget: {budget_ms}ms)")]
     FrameBudgetExceeded {
         measured_lines: u64,
         budget_ms: u32,
     },
 
-    /// Memory budget exceeded — eviction required before new layouts can be stored.
+    /// Memory budget exceeded -- eviction required before new layouts can be stored.
     #[error("[large-file-perf] cache: memory budget exceeded ({used_mb}MB / {budget_mb}MB)")]
     MemoryBudgetExceeded {
         used_mb: u64,
@@ -1272,7 +1272,7 @@ pub enum LargeFilePerfError {
 
 ## Integration Points
 
-### With `ff-document-model` (Wave 4 — upstream dependency)
+### With `ff-document-model` (Wave 4 -- upstream dependency)
 
 - **Dependency direction**: ff-large-file-performance depends on ff-document-model
 - **API consumed**: `Document::line_count()`, `Document::line_start()`, `Document::line_end()`, `Document::get_range()` for line content access
@@ -1281,60 +1281,60 @@ pub enum LargeFilePerfError {
 - **64-bit line numbers**: All line references use `u64` (matching `LineNumber(u64)` from document-model) for files exceeding 2^31 lines
 - **Progressive loading**: Coordinates with `LoadingProgress` to avoid measuring lines not yet delivered by `StreamingFileReader`
 
-### With `ff-background-io` (Wave 8 — integration)
+### With `ff-background-io` (Wave 8 -- integration)
 
 - **Dependency direction**: ff-large-file-performance queries ff-background-io progress
 - **API consumed**: `IoTaskHandle::progress()` for `ProgressState` (bytes_transferred, total_bytes, percentage)
 - **Large-file coordination**: StatusIndicator reads loading progress for status bar display; LazyLayoutManager uses loaded-line frontier to avoid measuring beyond available content
 - **Memory pressure**: Registers memory-pressure callback to pause layout pre-computation when background-io is consuming significant memory during large-file streaming
 
-### With `ff-viewport-scrolling` (Wave 4 — upstream dependency)
+### With `ff-viewport-scrolling` (Wave 4 -- upstream dependency)
 
 - **Dependency direction**: ff-large-file-performance depends on ff-viewport-scrolling
 - **API consumed**: `ViewportModel::top_line()`, `ViewportModel::visible_count()`, `ViewportModel::horizontal_offset()` for determining visible range
 - **Viewport events**: Subscribes to `ViewportChanged` events to trigger overscan pre-computation and horizontal chunk adjustment
 - **Scroll velocity**: Uses scroll event frequency to detect fast scrolling and switch to simplified measurement mode
 
-### With `ff-display-line-mapping` (Wave 4 — upstream dependency)
+### With `ff-display-line-mapping` (Wave 4 -- upstream dependency)
 
 - **Dependency direction**: ff-large-file-performance depends on ff-display-line-mapping
 - **API consumed**: `DisplayLineMapper` trait for display↔document line conversion
 - **Visibility state**: Queries whether a document line is visible (not folded/excluded) to skip measurement for hidden lines
 - **Wrap integration**: Sub-line breaks computed in LineLayout are fed back to display-line-mapping for accurate display line counts
 
-### With `ff-idle-processing` (Wave 15 — integration)
+### With `ff-idle-processing` (Wave 15 -- integration)
 
 - **Dependency direction**: ff-large-file-performance implements `IdleWorkSource` trait from ff-idle-processing
 - **Registration**: `LayoutWorkSource` is registered with the idle scheduler for background pre-computation of overscan layouts
 - **Priority**: Layout pre-computation has lower priority than syntax highlighting but higher than search indexing
 - **Cooperative yielding**: `LayoutWorkSource::perform_work()` checks time budget via `IdleWorkContext` and yields before exceeding the time slice
 
-### With `ff-config` (Wave 2 — upstream dependency)
+### With `ff-config` (Wave 2 -- upstream dependency)
 
 - **Dependency direction**: ff-large-file-performance depends on ff-config
 - **API consumed**: Typed access API for reading `[performance.*]` namespace keys
 - **Configuration keys**: `performance.long_line_threshold`, `performance.long_line_overscan_chars`, `performance.render_chunk_size`, `performance.position_cache_size`, `performance.line_layout_cache_level`, `performance.overscan_lines`, `performance.frame_budget_ms`, `performance.layout_cache_memory_mb`
 - **Hot-reload**: Subscribes to configuration change callbacks; updates PerfConfig and resizes caches without restart
 
-### With `ff-logging` (Wave 0 — upstream dependency)
+### With `ff-logging` (Wave 0 -- upstream dependency)
 
 - **Dependency direction**: ff-large-file-performance depends on ff-logging
 - **Usage**: DEBUG-level logging for invalidation_count metric, WARN-level for frame budget overruns, INFO-level for cache resize events
 - **Error standards**: All log messages prefixed with `[large-file-perf]`
 
-### With `ff-syntax-highlighting` (Wave 7 — upstream dependency)
+### With `ff-syntax-highlighting` (Wave 7 -- upstream dependency)
 
 - **Dependency direction**: ff-large-file-performance depends on ff-syntax-highlighting
-- **API consumed**: Style slot assignments per character range for a line — determines which PositionCache entries to look up/store
+- **API consumed**: Style slot assignments per character range for a line -- determines which PositionCache entries to look up/store
 - **Invalidation trigger**: Style re-highlighting on a line triggers `InvalidationEvent::StyleChanged` for that line's LineLayout entry
 
-### With `ff-theme-and-appearance` (Wave 6 — upstream dependency)
+### With `ff-theme-and-appearance` (Wave 6 -- upstream dependency)
 
 - **Dependency direction**: ff-large-file-performance depends on ff-theme-and-appearance
-- **API consumed**: Font metrics (family, size, weight, style) per style slot — used to construct Font_Metrics_Key
+- **API consumed**: Font metrics (family, size, weight, style) per style slot -- used to construct Font_Metrics_Key
 - **Invalidation trigger**: Any change to font metrics triggers full PositionCache clear and LineLayoutCache invalidation to `Invalid`
 
-### With `ff-view-zoom` (Wave 9 — integration)
+### With `ff-view-zoom` (Wave 9 -- integration)
 
 - **Dependency direction**: ff-large-file-performance subscribes to ff-view-zoom notifications
 - **Invalidation trigger**: Zoom level change invalidates all measurements (character widths scale with zoom), triggering full PositionCache clear and LineLayoutCache invalidation
@@ -1361,7 +1361,7 @@ The following properties are designed for verification using the `proptest` crat
 
 ### Property 2: PositionCache Two-Way Eviction Correctness
 
-**Statement**: When the cache is full and a new entry is inserted, exactly one of the two probe candidates is evicted — specifically the one with the lower clock value. The surviving entry remains retrievable.
+**Statement**: When the cache is full and a new entry is inserted, exactly one of the two probe candidates is evicted -- specifically the one with the lower clock value. The surviving entry remains retrievable.
 
 **Validates: Requirements 2.2**
 
@@ -1436,7 +1436,7 @@ The following properties are designed for verification using the `proptest` crat
 
 ### Property 8: Render Chunk Partition Completeness
 
-**Statement**: Subdividing a character range into render chunks produces a complete partition — the union of all chunks equals the original range with no gaps and no overlaps.
+**Statement**: Subdividing a character range into render chunks produces a complete partition -- the union of all chunks equals the original range with no gaps and no overlaps.
 
 **Validates: Requirements 1.6**
 
@@ -1462,7 +1462,7 @@ The following properties are designed for verification using the `proptest` crat
 
 ### Property 10: Invalidation Idempotence
 
-**Statement**: Applying the same invalidation event multiple times has the same effect as applying it once — cache state after N applications equals cache state after 1 application.
+**Statement**: Applying the same invalidation event multiple times has the same effect as applying it once -- cache state after N applications equals cache state after 1 application.
 
 **Validates: Requirements 9.7**
 
@@ -1498,7 +1498,7 @@ The following properties are designed for verification using the `proptest` crat
 
 ### Property 13: Cache Hit/Miss Visual Equivalence
 
-**Statement**: The visual output (x-positions returned) for a given line is identical whether the data came from cache or from fresh measurement — caching never alters rendered positions.
+**Statement**: The visual output (x-positions returned) for a given line is identical whether the data came from cache or from fresh measurement -- caching never alters rendered positions.
 
 **Validates: Requirements 2.6, 3.5**
 
@@ -1541,9 +1541,9 @@ The following properties are designed for verification using the `proptest` crat
 
 The critical path for rendering is: `request_layout → cache lookup → return`. This path must complete in O(1) for cached lines:
 
-1. **LineLayoutCache lookup**: HashMap get by u64 key — O(1) amortized
-2. **PositionCache lookup**: Two hash probes with string comparison — O(text_length) but text fragments are short (keyword-length)
-3. **No allocation on cache hit**: Cached data is returned by reference (`Arc<LineLayout>`) — zero allocation on hot path
+1. **LineLayoutCache lookup**: HashMap get by u64 key -- O(1) amortized
+2. **PositionCache lookup**: Two hash probes with string comparison -- O(text_length) but text fragments are short (keyword-length)
+3. **No allocation on cache hit**: Cached data is returned by reference (`Arc<LineLayout>`) -- zero allocation on hot path
 
 ### Memory Layout
 
@@ -1554,8 +1554,8 @@ The critical path for rendering is: `request_layout → cache lookup → return`
 ### Concurrency Strategy
 
 - **PositionCache**: Protected by `Mutex` (short critical sections: hash probe + memcpy). Lock held for ~microseconds.
-- **LineLayoutCache**: Protected by `RwLock` — multiple concurrent readers (render thread, status queries), exclusive writes (invalidation, insertion). Lock-free reads via `Arc<LineLayout>` after initial lookup.
-- **InvalidationCoordinator**: Only accessed from the main thread (event dispatch) — no lock contention.
+- **LineLayoutCache**: Protected by `RwLock` -- multiple concurrent readers (render thread, status queries), exclusive writes (invalidation, insertion). Lock-free reads via `Arc<LineLayout>` after initial lookup.
+- **InvalidationCoordinator**: Only accessed from the main thread (event dispatch) -- no lock contention.
 - **LayoutWorkSource**: Acquires write locks on caches during idle time only (no UI-thread contention because idle means no rendering is active).
 
 ### Fallback Strategy for Cache Misses During Fast Scroll
@@ -1613,76 +1613,76 @@ proptest! {
 
 | Requirement | Criteria | Primary Component | Property Test |
 |-------------|----------|-------------------|---------------|
-| Req 1 AC 1 | Long-line detection | LazyLayoutManager | — |
+| Req 1 AC 1 | Long-line detection | LazyLayoutManager | -- |
 | Req 1 AC 2 | Chunked measurement range | LazyLayoutManager, ChunkRenderer | Property 6 |
-| Req 1 AC 3 | Partial LineLayout storage | LineLayout | — |
+| Req 1 AC 3 | Partial LineLayout storage | LineLayout | -- |
 | Req 1 AC 4 | Chunk extend/shift on scroll | LayoutPerformanceManager | Property 7 |
 | Req 1 AC 5 | Threshold configuration | PerfConfig | Property 14 |
 | Req 1 AC 6 | Render chunk subdivision | ChunkRenderer | Property 8 |
-| Req 1 AC 7 | Lazy total width estimation | LineWidthCache | — |
-| Req 1 AC 8 | JIT measurement within budget | LazyLayoutManager | — |
+| Req 1 AC 7 | Lazy total width estimation | LineWidthCache | -- |
+| Req 1 AC 8 | JIT measurement within budget | LazyLayoutManager | -- |
 | Req 1 AC 9 | Overscan config | PerfConfig | Property 14 |
 | Req 2 AC 1 | PositionCache keying | PositionCache | Property 1 |
 | Req 2 AC 2 | Two-way probing + eviction | PositionCache | Property 2 |
 | Req 2 AC 3 | Size configuration | PerfConfig | Property 14 |
-| Req 2 AC 4 | Entry structure | PositionCacheEntry | — |
-| Req 2 AC 5 | Thread safety | PositionCache (Mutex) | — |
+| Req 2 AC 4 | Entry structure | PositionCacheEntry | -- |
+| Req 2 AC 5 | Thread safety | PositionCache (Mutex) | -- |
 | Req 2 AC 6 | Cache hit behaviour | PositionCache | Property 1 |
 | Req 2 AC 7 | Clock wrap | PositionCache | Property 3 |
-| Req 2 AC 8 | Clear method | PositionCache | — |
-| Req 2 AC 9 | Font metrics key | InvalidationCoordinator | — |
-| Req 3 AC 1 | LineLayoutCache existence | LineLayoutCache | — |
-| Req 3 AC 2 | Cache levels | LineLayoutCache, CacheLevel | — |
-| Req 3 AC 3 | Auto-level selection | LayoutPerformanceManager | — |
-| Req 3 AC 4 | LineLayout structure | LineLayout | — |
+| Req 2 AC 8 | Clear method | PositionCache | -- |
+| Req 2 AC 9 | Font metrics key | InvalidationCoordinator | -- |
+| Req 3 AC 1 | LineLayoutCache existence | LineLayoutCache | -- |
+| Req 3 AC 2 | Cache levels | LineLayoutCache, CacheLevel | -- |
+| Req 3 AC 3 | Auto-level selection | LayoutPerformanceManager | -- |
+| Req 3 AC 4 | LineLayout structure | LineLayout | -- |
 | Req 3 AC 5 | Validity levels | ValidLevel | Property 5 |
-| Req 3 AC 6 | Edit invalidation | InvalidationCoordinator | — |
+| Req 3 AC 6 | Edit invalidation | InvalidationCoordinator | -- |
 | Req 3 AC 7 | LRU eviction | LineLayoutCache | Property 4 |
-| Req 3 AC 8 | Capacity calculation | LineLayoutCache | — |
-| Req 3 AC 9 | Reuse validation | LineLayout | — |
+| Req 3 AC 8 | Capacity calculation | LineLayoutCache | -- |
+| Req 3 AC 9 | Reuse validation | LineLayout | -- |
 | Req 4 AC 1 | Viewport-only rendering | LayoutPerformanceManager | Property 9 |
 | Req 4 AC 2 | Overscan buffer | LazyLayoutManager | Property 14 |
-| Req 4 AC 3 | Scroll from overscan cache | LayoutWorkSource | — |
+| Req 4 AC 3 | Scroll from overscan cache | LayoutWorkSource | -- |
 | Req 4 AC 4 | O(visible_count) complexity | LayoutPerformanceManager | Property 9 |
-| Req 4 AC 5 | Full repaint scope | LayoutPerformanceManager | — |
-| Req 4 AC 6 | Frame budget enforcement | LazyLayoutManager | — |
-| Req 4 AC 7 | Significant line tracking | LineLayoutCache | — |
-| Req 4 AC 8 | Viewport-change notification | LayoutPerformanceManager | — |
+| Req 4 AC 5 | Full repaint scope | LayoutPerformanceManager | -- |
+| Req 4 AC 6 | Frame budget enforcement | LazyLayoutManager | -- |
+| Req 4 AC 7 | Significant line tracking | LineLayoutCache | -- |
+| Req 4 AC 8 | Viewport-change notification | LayoutPerformanceManager | -- |
 | Req 5 AC 1 | No measurement outside range | LazyLayoutManager | Property 12 |
-| Req 5 AC 2 | EnsureLayoutTo method | LazyLayoutManager | — |
-| Req 5 AC 3 | GOTO/FIND navigation | LayoutPerformanceManager | — |
+| Req 5 AC 2 | EnsureLayoutTo method | LazyLayoutManager | -- |
+| Req 5 AC 3 | GOTO/FIND navigation | LayoutPerformanceManager | -- |
 | Req 5 AC 4 | Progressive loading coordination | LazyLayoutManager | Property 12 |
 | Req 5 AC 5 | Measured frontier tracking | LazyLayoutManager | Property 12 |
-| Req 5 AC 6 | Predictive pre-fetch | LayoutWorkSource, ScrollPredictor | — |
-| Req 5 AC 7 | Unmeasured count exposure | LazyLayoutManager, StatusIndicator | — |
-| Req 6 AC 1 | File size indicator | StatusIndicator | — |
-| Req 6 AC 2 | Line count display | StatusIndicator | — |
-| Req 6 AC 3 | Loading progress | StatusIndicator | — |
-| Req 6 AC 4 | Layout progress | StatusIndicator | — |
-| Req 6 AC 5 | Threshold suppression | StatusIndicator | — |
-| Req 6 AC 6 | Completion fade | StatusIndicator | — |
-| Req 6 AC 7 | Paused state | StatusIndicator | — |
-| Req 7 AC 1 | Line access via document-model | LineContentProvider | — |
-| Req 7 AC 2 | Borrowed references | LineContentProvider | — |
-| Req 7 AC 3 | Progressive loading coordination | LazyLayoutManager | — |
+| Req 5 AC 6 | Predictive pre-fetch | LayoutWorkSource, ScrollPredictor | -- |
+| Req 5 AC 7 | Unmeasured count exposure | LazyLayoutManager, StatusIndicator | -- |
+| Req 6 AC 1 | File size indicator | StatusIndicator | -- |
+| Req 6 AC 2 | Line count display | StatusIndicator | -- |
+| Req 6 AC 3 | Loading progress | StatusIndicator | -- |
+| Req 6 AC 4 | Layout progress | StatusIndicator | -- |
+| Req 6 AC 5 | Threshold suppression | StatusIndicator | -- |
+| Req 6 AC 6 | Completion fade | StatusIndicator | -- |
+| Req 6 AC 7 | Paused state | StatusIndicator | -- |
+| Req 7 AC 1 | Line access via document-model | LineContentProvider | -- |
+| Req 7 AC 2 | Borrowed references | LineContentProvider | -- |
+| Req 7 AC 3 | Progressive loading coordination | LazyLayoutManager | -- |
 | Req 7 AC 4 | Memory budget | LineLayoutCache | Property 11 |
 | Req 7 AC 5 | Budget eviction to 90% | LineLayoutCache | Property 11 |
-| Req 7 AC 6 | Sub-range access for long lines | LineContentProvider | — |
-| Req 7 AC 7 | 64-bit line indexing | All types (u64) | — |
-| Req 8 AC 1 | 60fps scrolling | LayoutPerformanceManager | — |
-| Req 8 AC 2 | O(1) per-line cached rendering | LineLayoutCache | — |
-| Req 8 AC 3 | Simplified measurement fallback | LazyLayoutManager | — |
+| Req 7 AC 6 | Sub-range access for long lines | LineContentProvider | -- |
+| Req 7 AC 7 | 64-bit line indexing | All types (u64) | -- |
+| Req 8 AC 1 | 60fps scrolling | LayoutPerformanceManager | -- |
+| Req 8 AC 2 | O(1) per-line cached rendering | LineLayoutCache | -- |
+| Req 8 AC 3 | Simplified measurement fallback | LazyLayoutManager | -- |
 | Req 8 AC 4 | Velocity-based strategy | ScrollPredictor | Property 15 |
 | Req 8 AC 5 | Refinement on scroll stop | LayoutPerformanceManager | Property 15 |
-| Req 8 AC 6 | Non-blocking scroll handler | LazyLayoutManager | — |
-| Req 8 AC 7 | Horizontal 60fps | ChunkRenderer + PositionCache | — |
-| Req 8 AC 8 | Overscan pre-computation | LayoutWorkSource | — |
-| Req 9 AC 1 | Single-line invalidation | InvalidationCoordinator | — |
-| Req 9 AC 2 | Line-count change invalidation | InvalidationCoordinator | — |
-| Req 9 AC 3 | Font change full clear | InvalidationCoordinator | — |
-| Req 9 AC 4 | Zoom change full clear | InvalidationCoordinator | — |
-| Req 9 AC 5 | Resize downgrade | InvalidationCoordinator | — |
-| Req 9 AC 6 | Style change per-line | InvalidationCoordinator | — |
+| Req 8 AC 6 | Non-blocking scroll handler | LazyLayoutManager | -- |
+| Req 8 AC 7 | Horizontal 60fps | ChunkRenderer + PositionCache | -- |
+| Req 8 AC 8 | Overscan pre-computation | LayoutWorkSource | -- |
+| Req 9 AC 1 | Single-line invalidation | InvalidationCoordinator | -- |
+| Req 9 AC 2 | Line-count change invalidation | InvalidationCoordinator | -- |
+| Req 9 AC 3 | Font change full clear | InvalidationCoordinator | -- |
+| Req 9 AC 4 | Zoom change full clear | InvalidationCoordinator | -- |
+| Req 9 AC 5 | Resize downgrade | InvalidationCoordinator | -- |
+| Req 9 AC 6 | Style change per-line | InvalidationCoordinator | -- |
 | Req 9 AC 7 | Batch coalescing | InvalidationCoordinator | Property 10 |
-| Req 9 AC 8 | Visibility change no-invalidate | InvalidationCoordinator | — |
-| Req 9 AC 9 | Invalidation count metric | InvalidationCoordinator | — |
+| Req 9 AC 8 | Visibility change no-invalidate | InvalidationCoordinator | -- |
+| Req 9 AC 9 | Invalidation count metric | InvalidationCoordinator | -- |

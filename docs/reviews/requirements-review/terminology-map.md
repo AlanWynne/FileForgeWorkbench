@@ -1,4 +1,4 @@
-# Requirements Review — Task 2: Terminology Standardisation
+# Requirements Review -- Task 2: Terminology Standardisation
 
 **Phase:** Requirements Review  
 **Status:** COMPLETE  
@@ -56,19 +56,19 @@ All requirement rewrites in Tasks 5–7 must apply this map consistently.
 | File tree | Navigation Pane | When referring to the left-side tree panel | `file-tree-panel`, `startup-and-session` |
 | File Explorer Panel | Explorer Panel | Shorter canonical form | `file-tree-panel`, `startup-and-session` |
 | Files Panel | Catalog Explorer | The POM option 1 panel manages catalogs, not just files | `virtual-catalog-manager`, `startup-and-session` |
-| Dataset | Dataset | Retain as-is — this is a domain term, not a legacy UI term | all mainframe specs |
-| Catalog | Catalog | Retain as-is — domain term | all catalog specs |
+| Dataset | Dataset | Retain as-is -- this is a domain term, not a legacy UI term | all mainframe specs |
+| Catalog | Catalog | Retain as-is -- domain term | all catalog specs |
 | DBeaver | (remove) | Product name must not appear in requirement text; use "the integrated database tool" | `database-tool` |
 | JES2 / JES3 | JES Emulator | Clarify these are emulation targets, not runtime dependencies | `FFW-JES` |
 | DYNALLOC / SVC 99 | Dataset Allocator | Replace IBM internal API names with the FFWB component name | `dataset-allocator` |
-| Mainframe | Mainframe | Retain — this is a product domain term, not a legacy UI term | all mainframe specs |
+| Mainframe | Mainframe | Retain -- this is a product domain term, not a legacy UI term | all mainframe specs |
 | ISPF | ISPF | Retain as a heritage/compatibility reference; do not remove | all ISPF-heritage specs |
-| Plugin | Plugin | Retain — already the preferred term in the architecture | all specs |
-| Crate | Crate | Retain — Rust-specific technical term, acceptable in technical specs | all specs |
-| VFS | VFS | Retain — established architectural acronym; spell out on first use per spec | all specs |
-| TOML | TOML | Retain — established file format name | all specs |
-| egui | egui | Retain — specific GUI framework name | shell specs |
-| Workbench | Workbench | Retain — this is the product name | all specs |
+| Plugin | Plugin | Retain -- already the preferred term in the architecture | all specs |
+| Crate | Crate | Retain -- Rust-specific technical term, acceptable in technical specs | all specs |
+| VFS | VFS | Retain -- established architectural acronym; spell out on first use per spec | all specs |
+| TOML | TOML | Retain -- established file format name | all specs |
+| egui | egui | Retain -- specific GUI framework name | shell specs |
+| Workbench | Workbench | Retain -- this is the product name | all specs |
 
 ### 2.3 Terminology Decision Rules
 
@@ -85,7 +85,7 @@ The following rules govern how terms are applied during rewrites:
    acronym may be used throughout. Example: "Virtual File System (VFS)".
 
 4. **ISPF heritage terms** (ISPF, POM, ISPF-style, ISPF-authentic) are retained
-   as compatibility references — they communicate intentional design heritage and
+   as compatibility references -- they communicate intentional design heritage and
    must not be removed.
 
 5. **Rust technical terms** (crate, trait, struct, enum, `cargo`, `Cargo.toml`)
@@ -101,18 +101,18 @@ terminology pass during Tasks 5–7. Specs not listed here are clean.
 
 | Spec | Legacy Terms Found | Priority |
 |------|--------------------|----------|
-| `startup-and-session` | "Screen" (×3), "Window context" (×5), "PF3/F3" used inconsistently with "Function Key", "Tab" (ambiguous — keyboard vs workspace), "Primary Option Menu" used without alias note | High |
+| `startup-and-session` | "Screen" (×3), "Window context" (×5), "PF3/F3" used inconsistently with "Function Key", "Tab" (ambiguous -- keyboard vs workspace), "Primary Option Menu" used without alias note | High |
 | `function-keys-and-history` | "PF Key" (×2 in intro), "Key Bar" (×1), "window context" (×4), "screen" (×1) | High |
-| `virtual-catalog-manager` | "Windows catalog" (×2 — should be "Native catalog"), "Files Panel" (×8 — should be "Catalog Explorer"), implementation file references (`files_panel.rs`, `context_menu.rs`) | High |
+| `virtual-catalog-manager` | "Windows catalog" (×2 -- should be "Native catalog"), "Files Panel" (×8 -- should be "Catalog Explorer"), implementation file references (`files_panel.rs`, `context_menu.rs`) | High |
 | `file-tree-panel` | "File Explorer Panel" and "File Tree Panel" used interchangeably (×12), "File Browser" (×1), implementation file references (`context_menu.rs`) | High |
 | `database-tool` | "DBeaver" in requirement text (×6), "feature" used where "capability" is preferred (×4) | Medium |
 | `FFW-JES` | "JES2/JES3" without emulation qualifier (×3), "process" where "task" is preferred (×2) | Medium |
 | `dataset-allocator` | "DYNALLOC/SVC 99" without FFWB equivalent (×2), "feature" (×3) | Medium |
 | `compiler-toolchain-integration` | "feature" (×5), "module" (×2), implementation details in requirement text | Medium |
 | `dataset-ownership-model` | "feature" (×3), "module" (×1) | Low |
-| `menu-and-statusbar` | "screen" (×1), "window" (×2 — ambiguous) | Low |
-| `layout-and-docking` | "floating window" (×4 — should be "Detached View") | Low |
-| `multi-tab-editor` | "tab" (×15 — acceptable but should note "Workspace Tab" in glossary) | Low |
+| `menu-and-statusbar` | "screen" (×1), "window" (×2 -- ambiguous) | Low |
+| `layout-and-docking` | "floating window" (×4 -- should be "Detached View") | Low |
+| `multi-tab-editor` | "tab" (×15 -- acceptable but should note "Workspace Tab" in glossary) | Low |
 | `context-help` | "screen" (×1), "feature" (×2) | Low |
 | `configuration-system` | "User Preference" (×1), "feature" (×2) | Low |
 | `plugin-architecture` | "module" (×2), "feature" (×3) | Low |
@@ -138,7 +138,7 @@ Capability
 |-------|-----------|---------|
 | **Capability** | A major product-level grouping that maps to one of the six architectural layers. Owned by the product architecture. | "Explorer Layer", "Content Editor", "Task Layer" |
 | **Feature** | A discrete, user-visible capability within a Capability. Maps to one sub-project spec. | "File Explorer", "Dataset Catalog", "Hex Display" |
-| **Requirement** | A single, atomic, testable statement of what the system must do. Numbered FR-XXXX (functional) or NFR-XXXX (non-functional). | FR-0142: File Explorer — Keyboard Navigation |
+| **Requirement** | A single, atomic, testable statement of what the system must do. Numbered FR-XXXX (functional) or NFR-XXXX (non-functional). | FR-0142: File Explorer -- Keyboard Navigation |
 | **Acceptance Criterion** | A single, independently verifiable condition in EARS format. Numbered within its parent requirement. | 1. WHEN the user presses Tab... THE system SHALL... |
 
 ### 4.2 Requirement ID Scheme
@@ -163,7 +163,7 @@ The number space is allocated by architectural layer to avoid collisions:
 | Integration Layer | FR-1000 – FR-1199 | NFR-0500 – NFR-0599 |
 | UX Layer | FR-1200 – FR-1399 | NFR-0600 – NFR-0699 |
 
-### 4.3 Requirement Template — Functional
+### 4.3 Requirement Template -- Functional
 
 ```markdown
 #### FR-XXXX: Requirement Name
@@ -171,7 +171,7 @@ The number space is allocated by architectural layer to avoid collisions:
 **Capability:** [Capability name]  
 **Feature:** [Feature name]  
 **Statement:** The system shall [observable behaviour].  
-**Rationale:** [Why this capability exists — one sentence.]  
+**Rationale:** [Why this capability exists -- one sentence.]  
 
 **Acceptance Criteria:**
 
@@ -184,7 +184,7 @@ The number space is allocated by architectural layer to avoid collisions:
 **Original ID:** [e.g. Req 8.3 file-tree-panel] ← traceability back to source
 ```
 
-### 4.4 Requirement Template — Non-Functional
+### 4.4 Requirement Template -- Non-Functional
 
 ```markdown
 #### NFR-XXXX: Requirement Name
@@ -192,8 +192,8 @@ The number space is allocated by architectural layer to avoid collisions:
 **Capability:** [Capability name]  
 **Feature:** [Feature name]  
 **Statement:** The system shall [quality attribute statement].  
-**Measurement:** [Objective, measurable criterion — number, percentage, time.]  
-**Verification Method:** [How compliance is demonstrated — test, benchmark, inspection.]  
+**Measurement:** [Objective, measurable criterion -- number, percentage, time.]  
+**Verification Method:** [How compliance is demonstrated -- test, benchmark, inspection.]  
 **Architectural Domain:** [Layer name]  
 **Original ID:** [traceability]
 ```

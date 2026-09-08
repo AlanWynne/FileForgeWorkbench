@@ -2,23 +2,23 @@
 
 ## Introduction
 
-This feature specifies the shell command subsystem for FileForgeWorkbench (`ff-shell` crate). It provides the `SHELL` primary command (with `TSO` as an alias for ISPF compatibility) that enables users to execute operating system commands, capture output into documents, pipe document content as stdin, and open interactive terminal sessions — all without leaving the workbench.
+This feature specifies the shell command subsystem for FileForgeWorkbench (`ff-shell` crate). It provides the `SHELL` primary command (with `TSO` as an alias for ISPF compatibility) that enables users to execute operating system commands, capture output into documents, pipe document content as stdin, and open interactive terminal sessions -- all without leaving the workbench.
 
 The shell command subsystem merges the FileForgeEditor `shell-command` spec (10 requirements, all incorporated) with workbench platform enhancements:
 
-- **Panel-based terminal** — interactive terminal sessions are hosted in the docking system as a proper `DockablePanel`, not a modal overlay
-- **Command framework integration** — all shell operations are dispatched through `ff-command` and recorded in command history
-- **Async execution** — long-running commands use the workbench async I/O principle (cross-cutting Requirement 6) with progress reporting via `ff-workflow`
-- **Configuration system integration** — shell settings are managed through the `ff-config` layered configuration (cross-cutting Requirement 5)
-- **Document piping** — document content (full or selection) can be piped as stdin to external commands
-- **Environment inheritance** — child processes inherit the workbench's environment with configurable augmentation
-- **Working directory** — configurable working directory (project root or active file directory)
+- **Panel-based terminal** -- interactive terminal sessions are hosted in the docking system as a proper `DockablePanel`, not a modal overlay
+- **Command framework integration** -- all shell operations are dispatched through `ff-command` and recorded in command history
+- **Async execution** -- long-running commands use the workbench async I/O principle (cross-cutting Requirement 6) with progress reporting via `ff-workflow`
+- **Configuration system integration** -- shell settings are managed through the `ff-config` layered configuration (cross-cutting Requirement 5)
+- **Document piping** -- document content (full or selection) can be piped as stdin to external commands
+- **Environment inheritance** -- child processes inherit the workbench's environment with configurable augmentation
+- **Working directory** -- configurable working directory (project root or active file directory)
 
 The `ff-shell` crate is a Wave 9 (Desktop Integration) component. It depends on `ff-command` (command framework), `ff-config` (configuration system), `ff-layout` (layout and docking for terminal panel), and `ff-workflow` (async progress/cancellation). It integrates with `clipboard-operations` for output-to-clipboard workflows.
 
 **Source references:**
-- **FFE** = FileForgeEditor `shell-command` specification (10 requirements — all incorporated and adapted)
-- **SCI** = SciTE job/subsystem execution model (output panel, build commands — adapted)
+- **FFE** = FileForgeEditor `shell-command` specification (10 requirements -- all incorporated and adapted)
+- **SCI** = SciTE job/subsystem execution model (output panel, build commands -- adapted)
 - **WB** = Workbench Architecture Brief §7 command-driven, §9 async I/O, §12 layout
 
 ---
@@ -54,7 +54,7 @@ The `ff-shell` crate is a Wave 9 (Desktop Integration) component. It depends on 
 
 **User Story:** As a workbench user, I want to type `SHELL` or `TSO` in the command line to access OS shell functionality, so that I can use either the modern cross-platform name or the familiar ISPF alias.
 
-**Source:** FFE Requirement 1 — command recognition. [FFE-SHELL]
+**Source:** FFE Requirement 1 -- command recognition. [FFE-SHELL]
 
 #### Acceptance Criteria
 
@@ -70,7 +70,7 @@ The `ff-shell` crate is a Wave 9 (Desktop Integration) component. It depends on 
 
 **User Story:** As a system administrator, I want to control whether the SHELL command is available via a dedicated configuration setting, so that I can disable shell access in regulated environments independently of the macro security policy.
 
-**Source:** FFE Requirement 2 — security control. [FFE-SHELL]
+**Source:** FFE Requirement 2 -- security control. [FFE-SHELL]
 
 #### Acceptance Criteria
 
@@ -88,7 +88,7 @@ The `ff-shell` crate is a Wave 9 (Desktop Integration) component. It depends on 
 
 **User Story:** As a workbench user, I want the workbench to automatically use the correct shell for my operating system, so that SHELL commands work without requiring any configuration.
 
-**Source:** FFE Requirement 3 — platform detection. [FFE-SHELL]
+**Source:** FFE Requirement 3 -- platform detection. [FFE-SHELL]
 
 #### Acceptance Criteria
 
@@ -105,7 +105,7 @@ The `ff-shell` crate is a Wave 9 (Desktop Integration) component. It depends on 
 
 **User Story:** As a workbench user, I want to type `SHELL <command>` to run an OS command and see its output, so that I can run build scripts, check git status, or inspect files without leaving the workbench.
 
-**Source:** FFE Requirement 4 — command execution. [FFE-SHELL, SCI-STE-JOBS]
+**Source:** FFE Requirement 4 -- command execution. [FFE-SHELL, SCI-STE-JOBS]
 
 #### Acceptance Criteria
 
@@ -123,7 +123,7 @@ The `ff-shell` crate is a Wave 9 (Desktop Integration) component. It depends on 
 
 **User Story:** As a workbench user, I want to type `SHELL <command>` with an `A` or `B` target marker so that the command's standard output is inserted directly into my document, so that I can capture command output as editable content.
 
-**Source:** FFE Requirement 5 — document capture. [FFE-SHELL]
+**Source:** FFE Requirement 5 -- document capture. [FFE-SHELL]
 
 #### Acceptance Criteria
 
@@ -144,11 +144,11 @@ The `ff-shell` crate is a Wave 9 (Desktop Integration) component. It depends on 
 
 **User Story:** As a workbench user, I want the document capture insertion to be undoable, so that I can reverse an accidental or incorrect capture.
 
-**Source:** FFE Requirement 6 — undo integration. [FFE-SHELL, WB]
+**Source:** FFE Requirement 6 -- undo integration. [FFE-SHELL, WB]
 
 #### Acceptance Criteria
 
-1. WHEN a document capture operation via `SHELL` + `A`/`B` is executed successfully, THE Shell_Engine SHALL record the operation as a single undoable transaction via the `ff-command` undo/redo integration — the command's `Command_Result` SHALL include an `Undo_Record`.
+1. WHEN a document capture operation via `SHELL` + `A`/`B` is executed successfully, THE Shell_Engine SHALL record the operation as a single undoable transaction via the `ff-command` undo/redo integration -- the command's `Command_Result` SHALL include an `Undo_Record`.
 2. WHEN the undo command is issued and the most recent recorded operation is a document capture, THE Command_Engine SHALL remove all lines that were inserted by the capture and restore the document to its pre-capture state.
 3. THE undo record SHALL include metadata identifying the shell command that produced the captured output, for display in the undo history.
 
@@ -158,12 +158,12 @@ The `ff-shell` crate is a Wave 9 (Desktop Integration) component. It depends on 
 
 **User Story:** As a workbench user, I want to type `SHELL` with no arguments to open an interactive terminal session, so that I can run multiple commands, inspect output interactively, and then return to the editor.
 
-**Source:** FFE Requirement 7 — interactive terminal. [FFE-SHELL, WB]
+**Source:** FFE Requirement 7 -- interactive terminal. [FFE-SHELL, WB]
 
 #### Acceptance Criteria
 
 1. WHEN the `SHELL` primary command is entered with no arguments and no `A` or `B` target line command is present, THE Shell_Engine SHALL launch an interactive terminal session using the Default_Shell (or Shell_Override if supplied).
-2. THE Shell_Engine SHALL present the interactive terminal as a Terminal_Panel — a `DockablePanel` registered with the `ff-layout` system. The Terminal_Panel's default dock zone SHALL be `Bottom`.
+2. THE Shell_Engine SHALL present the interactive terminal as a Terminal_Panel -- a `DockablePanel` registered with the `ff-layout` system. The Terminal_Panel's default dock zone SHALL be `Bottom`.
 3. WHEN the interactive terminal session ends (the shell process exits or the user closes the Terminal_Panel), THE Shell_Engine SHALL return focus to the previously active editor panel.
 4. WHEN the interactive terminal is active and has focus, THE Shell_Engine SHALL pass all keyboard input to the terminal process and SHALL NOT route it to the workbench command engine.
 5. WHEN running on Windows, THE Shell_Engine SHALL use the platform's pseudo-console (ConPTY) API or equivalent to host the interactive terminal.
@@ -177,7 +177,7 @@ The `ff-shell` crate is a Wave 9 (Desktop Integration) component. It depends on 
 
 **User Story:** As a workbench user, I want clear error messages when a shell command fails to launch or produces an error, so that I understand what went wrong and can correct my input.
 
-**Source:** FFE Requirement 8 — error handling. [FFE-SHELL]
+**Source:** FFE Requirement 8 -- error handling. [FFE-SHELL]
 
 #### Acceptance Criteria
 
@@ -193,7 +193,7 @@ The `ff-shell` crate is a Wave 9 (Desktop Integration) component. It depends on 
 
 **User Story:** As a workbench developer, I want the command compatibility matrix to formally document all SHELL command forms, so that the behaviour is unambiguously specified for implementers.
 
-**Source:** FFE Requirement 9 — compatibility matrix. [FFE-SHELL]
+**Source:** FFE Requirement 9 -- compatibility matrix. [FFE-SHELL]
 
 #### Acceptance Criteria
 
@@ -210,7 +210,7 @@ The `ff-shell` crate is a Wave 9 (Desktop Integration) component. It depends on 
 
 **User Story:** As a workbench administrator, I want shell-related settings to be managed through the standard configuration system, so that I can control and customise shell behaviour using the same layered TOML configuration used by all other workbench subsystems.
 
-**Source:** FFE Requirement 10 — configuration. Adapted to `ff-config` namespaced model. [FFE-SHELL, WB]
+**Source:** FFE Requirement 10 -- configuration. Adapted to `ff-config` namespaced model. [FFE-SHELL, WB]
 
 #### Acceptance Criteria
 
@@ -277,7 +277,7 @@ The `ff-shell` crate is a Wave 9 (Desktop Integration) component. It depends on 
 
 **User Story:** As a workbench user, I want to pipe document content (or my current selection) as stdin to a shell command, so that I can use external tools like `sort`, `wc`, or custom scripts to process my text.
 
-**Source:** Workbench enhancement — not present in FFE. [WB]
+**Source:** Workbench enhancement -- not present in FFE. [WB]
 
 #### Acceptance Criteria
 
@@ -380,7 +380,7 @@ The `ff-shell` crate is a Wave 9 (Desktop Integration) component. It depends on 
 - The FFE concept of displaying output in the "status/message area" is enhanced to use the dockable Output_Panel for multi-line output, with single-line summaries still shown in the status bar.
 - The Terminal_Panel replaces the FFE concept of a "popup overlay" with a proper dockable panel that supports multiple tabs.
 - SciTE's output pane concept (job output capture, clickable error lines) is adapted as the Output_Panel with file:line navigation.
-- All shell operations respect the workbench async I/O principle — the GUI thread is never blocked.
+- All shell operations respect the workbench async I/O principle -- the GUI thread is never blocked.
 - The `shell.env` table supports per-project overrides via the `ff-config` layering (project config can add PATH entries for project-specific tools).
 - Interactive terminal emulation (Requirement 7.8) targets ANSI/VT100 as a baseline; full xterm-256color support is a future enhancement.
-- The stdin piping feature (Requirement 14) is new to the workbench — it was not present in the FFE shell-command spec.
+- The stdin piping feature (Requirement 14) is new to the workbench -- it was not present in the FFE shell-command spec.

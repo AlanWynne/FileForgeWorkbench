@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-The `ff-logging` crate is the **foundational logging subsystem** for the FileForgeWorkbench workspace. It provides structured, file-based diagnostic output for every crate in the workspace — platform-core, command-framework, plugin-architecture, workflow-engine, document-model, and all plugins.
+The `ff-logging` crate is the **foundational logging subsystem** for the FileForgeWorkbench workspace. It provides structured, file-based diagnostic output for every crate in the workspace -- platform-core, command-framework, plugin-architecture, workflow-engine, document-model, and all plugins.
 
 ### Purpose
 
@@ -14,7 +14,7 @@ The `ff-logging` crate is the **foundational logging subsystem** for the FileFor
 ### Position in Architecture
 
 ```
-Wave 0 — Foundation (no upstream dependencies)
+Wave 0 -- Foundation (no upstream dependencies)
 
 ┌─────────────────────────────────────────────────────────┐
 │                    Application Binary                     │
@@ -31,7 +31,7 @@ Wave 0 — Foundation (no upstream dependencies)
 ### Design Constraints (Cross-Cutting)
 
 - **FFW-ARCH-001**: Does not access content through VFS (logging writes its own diagnostic files independently)
-- **GUI Independence (Req 2)**: Zero GUI dependencies — no egui, no windowing crate imports
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- no egui, no windowing crate imports
 - **Plugin Architecture (Req 3)**: Exposes a `PluginLogHandle` trait object for plugins via `PluginContext`
 - **Async I/O (Req 6)**: Log calls never block the GUI thread; uses async channel to decouple production from I/O
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-logging`
@@ -87,7 +87,7 @@ graph TD
 
 | Layer | Role |
 |-------|------|
-| **Caller Interface** | Log macros + `PluginLogHandle` trait — zero-cost level guard, format-on-pass |
+| **Caller Interface** | Log macros + `PluginLogHandle` trait -- zero-cost level guard, format-on-pass |
 | **Channel Layer** | Bounded MPSC channel (10,000 slots) decoupling producers from I/O |
 | **Writer Thread** | Single dedicated OS thread consuming channel, writing to buffered file sink |
 | **Rotation Layer** | Size-based rotation, file naming, retention cleanup |
@@ -182,7 +182,7 @@ pub struct LogConfig {
 
 ```rust
 /// The runtime state of the logging subsystem.
-/// NOT public — accessed via module-level functions and the global static.
+/// NOT public -- accessed via module-level functions and the global static.
 pub(crate) struct LogSubsystem {
     /// Current minimum level (atomic for lock-free reads)
     level: AtomicU8,
@@ -236,7 +236,7 @@ pub(crate) struct FormattedRecord {
 /// On failure, falls back to no-op mode (Requirement 1, criteria 3/4/5/6).
 ///
 /// # Errors
-/// Never returns an error — degrades gracefully to no-op sink.
+/// Never returns an error -- degrades gracefully to no-op sink.
 pub fn init(config: LogConfig) -> LoggingStatus;
 
 /// Initialize with default configuration (for use when config-system is unavailable).
@@ -256,7 +256,7 @@ pub fn install_panic_hook();
 
 ```rust
 /// Write a log record. Level check is performed atomically before formatting.
-/// (Requirement 3, criterion 5 — no allocation if filtered)
+/// (Requirement 3, criterion 5 -- no allocation if filtered)
 pub fn log(level: LogLevel, module_path: &str, message: &str);
 
 /// Write a log record with lazy message formatting.
@@ -431,7 +431,7 @@ pub enum LoggingError {
 
 - All crates add `ff-logging` as a dependency and use the `log_*!` macros
 - Module paths are automatically captured via `module_path!()` Rust intrinsic
-- No crate needs to manage logger state — it's global and initialized by platform-core
+- No crate needs to manage logger state -- it's global and initialized by platform-core
 
 ### Dependency Direction
 
@@ -444,11 +444,11 @@ ff-logging ← platform-core ← plugin-architecture
 ```
 
 `ff-logging` depends on NO other workspace crates. External dependencies:
-- `chrono` — timestamp formatting
-- `crossbeam-channel` — bounded MPSC channel
-- `thiserror` — error derive
-- `toml` — config parsing (optional feature, for `from_toml`)
-- `dirs` — platform-appropriate default directories
+- `chrono` -- timestamp formatting
+- `crossbeam-channel` -- bounded MPSC channel
+- `thiserror` -- error derive
+- `toml` -- config parsing (optional feature, for `from_toml`)
+- `dirs` -- platform-appropriate default directories
 
 ---
 
@@ -499,7 +499,7 @@ max_retained_files = 5
 | Record submission | `crossbeam_channel::Sender::try_send()` | Lock-free bounded MPSC; returns immediately |
 | Dropped counter | `AtomicU64` fetch_add / load | Lock-free read from any thread (Req 8.5) |
 | Fallback flag | `AtomicBool` load | Lock-free status query |
-| File I/O | Single writer thread owns `BufWriter<File>` | No contention — only one thread writes |
+| File I/O | Single writer thread owns `BufWriter<File>` | No contention -- only one thread writes |
 | Rotation | Writer thread performs rotation inline | Sequential with writes, no lock needed |
 
 ### Async Channel Design
@@ -521,7 +521,7 @@ max_retained_files = 5
 - The logging subsystem must initialize before the Tokio runtime
 - It must remain operational during runtime shutdown
 - File I/O on a dedicated thread avoids Tokio executor starvation
-- Simpler lifetime — thread lives for the entire process
+- Simpler lifetime -- thread lives for the entire process
 
 ### Buffer Management
 
@@ -529,7 +529,7 @@ max_retained_files = 5
 - **Flush strategy**:
   - Immediate flush after any WARN or ERROR record (Requirement 6, criterion 1)
   - Periodic flush every 1 second for DEBUG/INFO records (Requirement 6, criterion 2)
-  - The writer thread uses `crossbeam_channel::recv_timeout(Duration::from_secs(1))` — on timeout, it flushes the buffer
+  - The writer thread uses `crossbeam_channel::recv_timeout(Duration::from_secs(1))` -- on timeout, it flushes the buffer
 - **Overflow handling**: When `try_send()` returns `Full`, the caller drops the record and increments `AtomicU64` dropped counter. When a slot becomes free, the writer emits a single WARN about total drops (Requirement 8, criterion 4)
 
 ### Shutdown Sequence

@@ -2,39 +2,39 @@
 
 ## Introduction
 
-This feature specifies the **Line Commands** subsystem for FileForgeWorkbench — the set of prefix-area commands that operate on individual lines or blocks of lines in the ISPF/PDF editing model. Line commands are entered in the prefix area adjacent to document lines and provide rapid, keystroke-efficient operations for deletion, insertion, duplication, copying, moving, exclusion, tagging, and shifting.
+This feature specifies the **Line Commands** subsystem for FileForgeWorkbench -- the set of prefix-area commands that operate on individual lines or blocks of lines in the ISPF/PDF editing model. Line commands are entered in the prefix area adjacent to document lines and provide rapid, keystroke-efficient operations for deletion, insertion, duplication, copying, moving, exclusion, tagging, and shifting.
 
-The line commands subsystem is **GUI-independent** — it defines the command parsing, validation, pairing, pending-state management, and execution semantics without any rendering dependency. The prefix-area visual representation is the responsibility of the UI layer; this spec covers the underlying command engine behaviour.
+The line commands subsystem is **GUI-independent** -- it defines the command parsing, validation, pairing, pending-state management, and execution semantics without any rendering dependency. The prefix-area visual representation is the responsibility of the UI layer; this spec covers the underlying command engine behaviour.
 
 This specification is derived from FileForgeEditor core-command-semantics Requirements 22–35, adapted to the workbench architecture:
 
-- **Delete commands** (D, Dn, DD) — remove lines, undoable
-- **Insert commands** (I, In) — add blank lines, undoable
-- **Repeat commands** (R, Rn, RR) — duplicate lines, undoable
-- **Copy markers** (C, CC) — mark source for copy, pending until target supplied
-- **Move markers** (M, MM) — mark source for move, pending until target supplied
-- **After/Before targets** (A, B) — mark insertion point, resolve pending source
-- **Exclude commands** (X, Xn, XX) — hide lines from viewport, NOT undoable (session state)
-- **Tag/Untag commands** (T, TT, U, UU) — mark/unmark lines for scoped operations, NOT undoable
-- **Shift Right** (>, >n, >>) — indent content, undoable
-- **Shift Left** (<, <n, <<) — de-indent content, undoable
-- **Bounds-Aware Shift** (), )), (, (( — shift within column bounds, undoable
-- **Block command pairing** — validation, normalization, pending retention
-- **Compatibility validation** — interaction with primary commands
-- **Pending command state management** — storage, display, clearing
+- **Delete commands** (D, Dn, DD) -- remove lines, undoable
+- **Insert commands** (I, In) -- add blank lines, undoable
+- **Repeat commands** (R, Rn, RR) -- duplicate lines, undoable
+- **Copy markers** (C, CC) -- mark source for copy, pending until target supplied
+- **Move markers** (M, MM) -- mark source for move, pending until target supplied
+- **After/Before targets** (A, B) -- mark insertion point, resolve pending source
+- **Exclude commands** (X, Xn, XX) -- hide lines from viewport, NOT undoable (session state)
+- **Tag/Untag commands** (T, TT, U, UU) -- mark/unmark lines for scoped operations, NOT undoable
+- **Shift Right** (>, >n, >>) -- indent content, undoable
+- **Shift Left** (<, <n, <<) -- de-indent content, undoable
+- **Bounds-Aware Shift** (), )), (, (( -- shift within column bounds, undoable
+- **Block command pairing** -- validation, normalization, pending retention
+- **Compatibility validation** -- interaction with primary commands
+- **Pending command state management** -- storage, display, clearing
 
 **Source references:**
-- **[FFE-CMD-22]** = FFE core-command-semantics Requirement 22: Line Commands — Delete
-- **[FFE-CMD-23]** = FFE core-command-semantics Requirement 23: Line Commands — Insert
-- **[FFE-CMD-24]** = FFE core-command-semantics Requirement 24: Line Commands — Repeat
-- **[FFE-CMD-25]** = FFE core-command-semantics Requirement 25: Line Commands — Copy Markers
-- **[FFE-CMD-26]** = FFE core-command-semantics Requirement 26: Line Commands — Move Markers
-- **[FFE-CMD-27]** = FFE core-command-semantics Requirement 27: Line Commands — After/Before Targets
-- **[FFE-CMD-28]** = FFE core-command-semantics Requirement 28: Line Commands — Exclude
-- **[FFE-CMD-29]** = FFE core-command-semantics Requirement 29: Line Commands — Tag/Untag
-- **[FFE-CMD-30]** = FFE core-command-semantics Requirement 30: Line Commands — Shift Right
-- **[FFE-CMD-31]** = FFE core-command-semantics Requirement 31: Line Commands — Shift Left
-- **[FFE-CMD-32]** = FFE core-command-semantics Requirement 32: Line Commands — Bounds-Aware Shift
+- **[FFE-CMD-22]** = FFE core-command-semantics Requirement 22: Line Commands -- Delete
+- **[FFE-CMD-23]** = FFE core-command-semantics Requirement 23: Line Commands -- Insert
+- **[FFE-CMD-24]** = FFE core-command-semantics Requirement 24: Line Commands -- Repeat
+- **[FFE-CMD-25]** = FFE core-command-semantics Requirement 25: Line Commands -- Copy Markers
+- **[FFE-CMD-26]** = FFE core-command-semantics Requirement 26: Line Commands -- Move Markers
+- **[FFE-CMD-27]** = FFE core-command-semantics Requirement 27: Line Commands -- After/Before Targets
+- **[FFE-CMD-28]** = FFE core-command-semantics Requirement 28: Line Commands -- Exclude
+- **[FFE-CMD-29]** = FFE core-command-semantics Requirement 29: Line Commands -- Tag/Untag
+- **[FFE-CMD-30]** = FFE core-command-semantics Requirement 30: Line Commands -- Shift Right
+- **[FFE-CMD-31]** = FFE core-command-semantics Requirement 31: Line Commands -- Shift Left
+- **[FFE-CMD-32]** = FFE core-command-semantics Requirement 32: Line Commands -- Bounds-Aware Shift
 - **[FFE-CMD-33]** = FFE core-command-semantics Requirement 33: Block Command Pairing
 - **[FFE-CMD-34]** = FFE core-command-semantics Requirement 34: Command Compatibility Validation
 - **[FFE-CMD-35]** = FFE core-command-semantics Requirement 35: Pending Command State Management
@@ -172,7 +172,7 @@ This specification is derived from FileForgeEditor core-command-semantics Requir
 2. WHEN `Xn` is entered (where n is a positive integer), THE system SHALL set the `excluded` flag on n consecutive lines starting at the prefixed line. [FFE-CMD-28]
 3. WHEN two `XX` markers are entered on different lines, THE system SHALL set the `excluded` flag on all lines from the first XX to the second XX inclusive. [FFE-CMD-28]
 4. IF only one `XX` marker exists with no matching pair, THEN THE system SHALL retain the XX marker as a PendingCommand and display "XX requires a matching pair". [FFE-CMD-28]
-5. WHEN an exclude line command completes, THE system SHALL NOT record it as an undoable Transaction — excluded state is SessionState only and bypasses the undo stack. [FFE-CMD-28]
+5. WHEN an exclude line command completes, THE system SHALL NOT record it as an undoable Transaction -- excluded state is SessionState only and bypasses the undo stack. [FFE-CMD-28]
 6. WHEN `X` or `Xn` is entered with no primary command pending, THE system SHALL execute the exclusion immediately on the next command cycle (immediate command). [FFE-CMD-28, WB]
 
 ---
@@ -191,7 +191,7 @@ This specification is derived from FileForgeEditor core-command-semantics Requir
 4. WHEN two `UU` markers are entered on different lines, THE system SHALL clear the `tagged` flag on all lines from the first UU to the second UU inclusive. [FFE-CMD-29]
 5. IF only one `TT` marker exists with no matching pair, THEN THE system SHALL retain the TT marker as a PendingCommand and display "TT requires a matching pair". [FFE-CMD-29]
 6. IF only one `UU` marker exists with no matching pair, THEN THE system SHALL retain the UU marker as a PendingCommand and display "UU requires a matching pair". [FFE-CMD-29]
-7. WHEN a tag or untag operation completes, THE system SHALL NOT record it as an undoable Transaction — tag state is SessionState only and bypasses the undo stack. [FFE-CMD-29]
+7. WHEN a tag or untag operation completes, THE system SHALL NOT record it as an undoable Transaction -- tag state is SessionState only and bypasses the undo stack. [FFE-CMD-29]
 8. WHEN `T` or `U` is entered with no primary command pending, THE system SHALL execute the tag/untag immediately on the next command cycle (immediate command). [FFE-CMD-29, WB]
 
 ---
@@ -299,11 +299,11 @@ This specification is derived from FileForgeEditor core-command-semantics Requir
 1. THE system SHALL store all unresolved PendingCommands in DocumentSession and expose them via a `pending_prefix_commands()` accessor. [FFE-CMD-35]
 2. WHEN a PendingCommand is successfully resolved and executed, THE system SHALL remove it from the pending commands list. [FFE-CMD-35]
 3. WHEN a command execution cycle fails validation, THE system SHALL retain the PendingCommands that were involved, enabling the user to correct and re-submit. [FFE-CMD-35]
-4. THE system SHALL provide visual indication of every line that has a PendingCommand — the prefix area SHALL display the pending command text for that line. [FFE-CMD-35]
+4. THE system SHALL provide visual indication of every line that has a PendingCommand -- the prefix area SHALL display the pending command text for that line. [FFE-CMD-35]
 5. WHEN `RESET COMMANDS` or `RESET ALL` is issued, THE system SHALL clear all PendingCommands regardless of their state or type. [FFE-CMD-35]
 6. WHEN an invalid line command string is entered in the prefix area, THE system SHALL retain the invalid text in the prefix area so the user can correct it, and SHALL display an error describing the unrecognised command. [FFE-CMD-35]
 7. THE pending command store SHALL support querying by command type (e.g., all pending source markers, all pending target markers) to enable resolution logic and compatibility checking. [FFE-CMD-35, WB]
-8. ALL line command operations SHALL be dispatched through the workbench command framework — line commands SHALL NOT bypass the command dispatch path. [WB]
+8. ALL line command operations SHALL be dispatched through the workbench command framework -- line commands SHALL NOT bypass the command dispatch path. [WB]
 
 ---
 
@@ -312,7 +312,7 @@ This specification is derived from FileForgeEditor core-command-semantics Requir
 - **`command-semantics`**: The line commands subsystem integrates with the primary command execution pipeline. Line commands are collected during the "collect line commands" step of the command execution cycle defined in command-semantics. Line command parsing (the line command parser) is shared infrastructure between both specs. [FFE-CMD-34]
 - **`undo-redo-transactions`**: Undoable line commands (D, DD, I, R, RR, C/CC+A/B, M/MM+A/B, >, >>, <, <<, ), )), (, (() wrap their mutations in a single undo Transaction. The transaction system is authoritative for coalescing, recovery, and redo semantics. [FFE-CMD-22]
 - **`exclude-show-filter`**: The X/Xn/XX line commands set the `excluded` flag that controls line visibility in the viewport. The exclude-show-filter spec is authoritative for SHOW/INCLUDE restoration, placeholder rendering, and RESET EXCLUDED behaviour. [FFE-CMD-28]
-- **`document-model`**: Line commands operate on DocumentLines within the document model — deletions remove lines, insertions add lines, shifts modify line content. The document model provides the mutation primitives. [FFE-CMD-22]
+- **`document-model`**: Line commands operate on DocumentLines within the document model -- deletions remove lines, insertions add lines, shifts modify line content. The document model provides the mutation primitives. [FFE-CMD-22]
 - **`navigation-commands`**: The BOUNDS/BNDS command (defined in navigation-commands) establishes the active column bounds that bounds-aware shift commands (), )), (, (( depend on. [FFE-CMD-32]
 - **`configuration-system`**: The default ShiftWidth and `invalid_line_command_policy` configuration keys are managed by the configuration system. [FFE-CMD-30, FFE-CMD-31]
 

@@ -2,16 +2,16 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-auto-indent` crate — the language-aware automatic indentation engine for FileForgeWorkbench. The crate computes indentation adjustments triggered by newline insertion, provides explicit indent/unindent commands, handles block comment auto-continuation, and supports smart indent patterns defined per-language in TOML files.
+This plan covers the complete implementation of the `ff-auto-indent` crate -- the language-aware automatic indentation engine for FileForgeWorkbench. The crate computes indentation adjustments triggered by newline insertion, provides explicit indent/unindent commands, handles block comment auto-continuation, and supports smart indent patterns defined per-language in TOML files.
 
 This is a **Wave 7 (Language and Highlighting)** sub-project. It depends on:
-- `ff-logging` (Wave 0) — structured diagnostics and DEBUG-level indent decision logging
-- `ff-command` (Wave 2) — command registration for `edit.indent` and `edit.unindent`
-- `ff-config` (Wave 2) — indent settings, hot-reload callbacks, EditorConfig precedence
-- `ff-document-model` (Wave 4) — line content access and line count
-- `ff-edit-operations` (Wave 4) — EditorTransaction, newline trigger hook, line modification
-- `ff-undo-redo` (Wave 4) — transaction grouping for single-step undo
-- `ff-language-service` (Wave 7, peer) — language definitions, indent patterns, comment markers, syntax state
+- `ff-logging` (Wave 0) -- structured diagnostics and DEBUG-level indent decision logging
+- `ff-command` (Wave 2) -- command registration for `edit.indent` and `edit.unindent`
+- `ff-config` (Wave 2) -- indent settings, hot-reload callbacks, EditorConfig precedence
+- `ff-document-model` (Wave 4) -- line content access and line count
+- `ff-edit-operations` (Wave 4) -- EditorTransaction, newline trigger hook, line modification
+- `ff-undo-redo` (Wave 4) -- transaction grouping for single-step undo
+- `ff-language-service` (Wave 7, peer) -- language definitions, indent patterns, comment markers, syntax state
 
 ---
 
@@ -164,22 +164,22 @@ This is a **Wave 7 (Language and Highlighting)** sub-project. It depends on:
   - [x] 13.10 Write PBT: indent string consistency with style (Property 10)
   - [x] 13.11 Write PBT: brace expansion middle line is one level deeper (Property 11)
   - [x] 13.12 Write PBT: indent/unindent roundtrip is identity (Property 12)
-  - [x] 13.13 Write PBT: invalid regex safety — try_compile returns None, matcher never matches (Property 13)
+  - [x] 13.13 Write PBT: invalid regex safety -- try_compile returns None, matcher never matches (Property 13)
   - [x] 13.14 Write PBT: caret-within-indent preserves partial whitespace (Property 14)
   - Covers: Requirements 1–10 (see Property-Based Test Definitions below)
 
 - [x] 14. Integration tests
-  - [x] 14.1 Write integration test: full newline indent cycle — configure engine with C-like patterns, insert newline after `{`, verify indent increased by one level
-  - [x] 14.2 Write integration test: decrease on closing brace — type `}` on indented blank line, verify indent decreased by one level
-  - [x] 14.3 Write integration test: enter-between-braces — press Enter between `{}`, verify three-line expansion with correct relative indentation
-  - [x] 14.4 Write integration test: block comment continuation — press Enter inside `/* ... */`, verify `* ` marker inserted and aligned
-  - [x] 14.5 Write integration test: line comment continuation — press Enter after `// comment`, verify `// ` prefix on new line
-  - [x] 14.6 Write integration test: double-Enter comment break-out — press Enter twice on empty continuation line, verify marker removed
-  - [x] 14.7 Write integration test: indent/unindent multi-line selection — select 5 lines, Tab indents all, Shift+Tab unindents all, verify roundtrip
-  - [x] 14.8 Write integration test: language change — switch from C to Python patterns, verify next indent uses new language rules
-  - [x] 14.9 Write integration test: hot-reload — change indent_size from 4 to 2 via config, verify subsequent indents use new size
-  - [x] 14.10 Write integration test: multi-caret indent — two carets on different lines, Enter pressed, each gets independent correct indent
-  - [x] 14.11 Write integration test: None mode — configure None mode, press Enter, verify new line at column 0 with no whitespace
+  - [x] 14.1 Write integration test: full newline indent cycle -- configure engine with C-like patterns, insert newline after `{`, verify indent increased by one level
+  - [x] 14.2 Write integration test: decrease on closing brace -- type `}` on indented blank line, verify indent decreased by one level
+  - [x] 14.3 Write integration test: enter-between-braces -- press Enter between `{}`, verify three-line expansion with correct relative indentation
+  - [x] 14.4 Write integration test: block comment continuation -- press Enter inside `/* ... */`, verify `* ` marker inserted and aligned
+  - [x] 14.5 Write integration test: line comment continuation -- press Enter after `// comment`, verify `// ` prefix on new line
+  - [x] 14.6 Write integration test: double-Enter comment break-out -- press Enter twice on empty continuation line, verify marker removed
+  - [x] 14.7 Write integration test: indent/unindent multi-line selection -- select 5 lines, Tab indents all, Shift+Tab unindents all, verify roundtrip
+  - [x] 14.8 Write integration test: language change -- switch from C to Python patterns, verify next indent uses new language rules
+  - [x] 14.9 Write integration test: hot-reload -- change indent_size from 4 to 2 via config, verify subsequent indents use new size
+  - [x] 14.10 Write integration test: multi-caret indent -- two carets on different lines, Enter pressed, each gets independent correct indent
+  - [x] 14.11 Write integration test: None mode -- configure None mode, press Enter, verify new line at column 0 with no whitespace
   - Covers: End-to-end validation across Requirements 1–10
 
 ---
@@ -236,7 +236,7 @@ This is a **Wave 7 (Language and Highlighting)** sub-project. It depends on:
 
 **Validates: Requirement 3.5**
 
-- **Statement:** When the reference line matches both the indent-increase and indent-decrease patterns, the net effect is zero — the new line has the same indent level as the reference line.
+- **Statement:** When the reference line matches both the indent-increase and indent-decrease patterns, the net effect is zero -- the new line has the same indent level as the reference line.
 - **Strategy:** Generate:
   - `base_indent`: random whitespace (0–5 levels)
   - `content`: line matching both increase and decrease (e.g., `} else {`)
@@ -259,7 +259,7 @@ This is a **Wave 7 (Language and Highlighting)** sub-project. It depends on:
 
 **Validates: Requirement 8.2**
 
-- **Statement:** For any line, the unindent command never produces negative indentation — the minimum result is zero leading whitespace (empty string).
+- **Statement:** For any line, the unindent command never produces negative indentation -- the minimum result is zero leading whitespace (empty string).
 - **Strategy:** Generate:
   - `lines`: random strings with varying leading whitespace (0–40 columns, including lines with < indent_size whitespace)
   - `indent_size`: u8 in [2, 8]
@@ -435,19 +435,19 @@ This is a **Wave 7 (Language and Highlighting)** sub-project. It depends on:
 | Req 2: Maintain Indent | AC 2.4 | Task 10 (10.7) |
 | Req 2: Maintain Indent | AC 2.5 | Task 3 (3.4) |
 | Req 2: Maintain Indent | AC 2.6 | Task 3 (3.5–3.6) |
-| Req 3: Smart Indent — Increase | AC 3.1 | Task 5 (5.1–5.2) |
-| Req 3: Smart Indent — Increase | AC 3.2 | Task 4 (4.4), Task 11 (11.1) |
-| Req 3: Smart Indent — Increase | AC 3.3 | Task 5 (5.4) |
-| Req 3: Smart Indent — Increase | AC 3.4 | Task 4 (4.7) |
-| Req 3: Smart Indent — Increase | AC 3.5 | Task 5 (5.3) |
-| Req 3: Smart Indent — Increase | AC 3.6 | Task 5 (5.5–5.6) |
-| Req 4: Smart Indent — Decrease | AC 4.1 | Task 6 (6.1–6.2) |
-| Req 4: Smart Indent — Decrease | AC 4.2 | Task 4 (4.4), Task 11 (11.1) |
-| Req 4: Smart Indent — Decrease | AC 4.3 | Task 6 (6.6) |
-| Req 4: Smart Indent — Decrease | AC 4.4 | Task 10 (10.7) |
-| Req 4: Smart Indent — Decrease | AC 4.5 | Task 6 (6.2) |
-| Req 4: Smart Indent — Decrease | AC 4.6 | Task 1 (1.11), Task 6 (6.4) |
-| Req 4: Smart Indent — Decrease | AC 4.7 | Task 6 (6.3) |
+| Req 3: Smart Indent -- Increase | AC 3.1 | Task 5 (5.1–5.2) |
+| Req 3: Smart Indent -- Increase | AC 3.2 | Task 4 (4.4), Task 11 (11.1) |
+| Req 3: Smart Indent -- Increase | AC 3.3 | Task 5 (5.4) |
+| Req 3: Smart Indent -- Increase | AC 3.4 | Task 4 (4.7) |
+| Req 3: Smart Indent -- Increase | AC 3.5 | Task 5 (5.3) |
+| Req 3: Smart Indent -- Increase | AC 3.6 | Task 5 (5.5–5.6) |
+| Req 4: Smart Indent -- Decrease | AC 4.1 | Task 6 (6.1–6.2) |
+| Req 4: Smart Indent -- Decrease | AC 4.2 | Task 4 (4.4), Task 11 (11.1) |
+| Req 4: Smart Indent -- Decrease | AC 4.3 | Task 6 (6.6) |
+| Req 4: Smart Indent -- Decrease | AC 4.4 | Task 10 (10.7) |
+| Req 4: Smart Indent -- Decrease | AC 4.5 | Task 6 (6.2) |
+| Req 4: Smart Indent -- Decrease | AC 4.6 | Task 1 (1.11), Task 6 (6.4) |
+| Req 4: Smart Indent -- Decrease | AC 4.7 | Task 6 (6.3) |
 | Req 5: Block Expansion | AC 5.1 | Task 7 (7.1–7.2) |
 | Req 5: Block Expansion | AC 5.2 | Task 11 (11.1) |
 | Req 5: Block Expansion | AC 5.3 | Task 10 (10.7) |
@@ -491,7 +491,7 @@ This is a **Wave 7 (Language and Highlighting)** sub-project. It depends on:
 
 ## Notes
 
-- This is a Wave 7 (Language and Highlighting) crate that is **GUI-independent** — no rendering framework dependency.
+- This is a Wave 7 (Language and Highlighting) crate that is **GUI-independent** -- no rendering framework dependency.
 - The auto-indent engine operates purely on line content and metadata. The GUI shell triggers auto-indent through `edit-operations`; the subsystem returns the indentation to apply.
 - All indent modifications are wrapped in EditorTransactions for single-step undo. The transaction grouping is coordinated with `ff-edit-operations` and `ff-undo-redo`.
 - The `proptest` crate is used for property-based testing with a minimum of 100 iterations per property.

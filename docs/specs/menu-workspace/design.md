@@ -258,6 +258,99 @@ These commands are NOT implemented in Phase CU (spec only).
 
 ---
 
+## 12A. Configurable Option Limits (Phase DA, Requirement 9)
+
+Phase DA adds two configuration-driven bounds on Menu_File option count. This is
+a design delta to the loader (Section 4) and render (Section 6); no new module,
+data flow, or Workspace kind is introduced.
+
+### 12A.1 Configuration keys
+
+Two keys are registered in the `ff-config` schema (`configuration-system`
+Requirement 9) under the `menu` namespace:
+
+```
+menu.soft_option_limit  (u32, default 64)
+menu.hard_option_limit  (u32, default 256)
+```
+
+They resolve through the standard layered model, so a project or profile layer
+may override the defaults. The loader reads them via the typed access API
+(`configuration-system` Requirement 7); a missing or invalid value falls back to
+the default (Requirement 9.6, 9.7).
+
+### 12A.2 Loader change
+
+`load_menu_file` gains awareness of the two limits. The signature is extended to
+accept the resolved limits so the function stays pure and unit-testable:
+
+```rust
+pub struct OptionLimits {
+    pub soft: u32,
+    pub hard: u32,
+}
+
+pub fn load_menu_file_with_limits(
+    path: &Path,
+    limits: OptionLimits,
+) -> Result<LoadedMenu, String>
+```
+
+where `LoadedMenu` carries the parsed `MenuFile` plus an optional advisory:
+
+```rust
+pub struct LoadedMenu {
+    pub menu: MenuFile,
+    pub advisory: Option<String>,   // Some(..) when soft limit exceeded
+}
+```
+
+Evaluation order inside the loader, after TOML parse and field validation:
+
+1. Normalise `hard` and `soft`: `effective_soft = min(soft, hard)` (Req 9.5).
+2. Let `n = menu.options.len()` counted before `enabled` filtering (Req 9.8).
+3. If `n > hard`: return `Err("too many options: <n> exceeds hard limit <hard>")`
+   (Req 9.4).
+4. If `n > effective_soft`: set `advisory = Some(...)` and log WARN (Req 9.3).
+5. Otherwise `advisory = None` (Req 9.2).
+
+The existing `load_menu_file(path)` is retained as a thin wrapper that reads the
+limits from config and calls `load_menu_file_with_limits`, so existing call
+sites and tests that do not care about limits are unaffected.
+
+### 12A.3 State change
+
+`MenuWorkspaceState` gains one field:
+
+```rust
+pub advisory: Option<String>,   // soft-limit advisory, shown above the option list
+```
+
+`poll_reload` (Section 5) is updated to call `load_menu_file_with_limits` and to
+set both `menu`/`load_error` and `advisory` on each reload (Req 9.9). A file
+edited past the hard limit transitions to `load_error`; a file edited back under
+the limit clears `load_error` on the next poll.
+
+### 12A.4 Render change
+
+`render.rs` renders `state.advisory`, when present, as a single non-blocking
+advisory line styled like a warning notice, positioned immediately above the
+option list and below the Menu_Title. It does not block interaction with the
+options. The hard-limit case reuses the existing load-error rendering path
+(Requirement 1.6) and shows no option rows.
+
+### 12A.5 Why 64 / 256
+
+- 64 (soft): roughly 5x the current 12-option POM; comfortably scrollable and
+  still practical to address by key. Beyond it, sub-menus are the better tool.
+- 256 (hard): generous headroom for generated or plugin-injected menus while
+  protecting the per-frame reload path from a pathologically large file.
+
+Both are defaults, not constants -- any deployment may raise or lower them via
+configuration.
+
+---
+
 ## 12. No Design Changes Required for Phase CU
 
 Phase CU is a specification-only phase. No source files are modified. The design

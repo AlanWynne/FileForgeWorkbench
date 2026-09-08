@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-record-criteria` crate — the field-level record filtering engine for FileForgeWorkbench. The crate provides the data model, evaluation logic, persistence, and command integration for selection criteria that control which records are displayed in Grid_Edit_Mode and Grid_Browse_Mode when FileForge_Mode is active.
+This plan covers the complete implementation of the `ff-record-criteria` crate -- the field-level record filtering engine for FileForgeWorkbench. The crate provides the data model, evaluation logic, persistence, and command integration for selection criteria that control which records are displayed in Grid_Edit_Mode and Grid_Browse_Mode when FileForge_Mode is active.
 
 This is a **Wave 12 (FileForge Domain)** sub-project that depends on `ff-fileforge` (Wave 12) for field extraction and packed-decimal decoding, `ff-structure-catalog` (Wave 12) for structure definitions, `ff-command` (Wave 2) for command registration, `ff-config` (Wave 2) for configuration, `ff-document-model` (Wave 4) for record byte access, and `ff-find-replace` (Wave 5) for criteria scope integration.
 
@@ -196,12 +196,12 @@ This is a **Wave 12 (FileForge Domain)** sub-project that depends on `ff-filefor
   - Covers: Requirements 1–5, 8, 13 (see Property-Based Test Definitions below)
 
 - [x] 18. Integration tests
-  - [x] 18.1 Write integration test: full criteria lifecycle — define → validate → evaluate → filter state update → indicator formatting
-  - [x] 18.2 Write integration test: persistence cycle — save → list → load → duplicate → delete
-  - [x] 18.3 Write integration test: command dispatch — register commands, invoke CRITERIA SET/CLEAR/SHOW/SAVE, verify filter state mutations
-  - [x] 18.4 Write integration test: FIND/CHANGE scope — create CriteriaScope from evaluator results, verify line containment against record mapping
-  - [x] 18.5 Write integration test: config hot-reload — simulate config change mid-session, verify settings applied without restart
-  - [x] 18.6 Write integration test: structure association — activate structure, find matching criteria, auto-suggest flow
+  - [x] 18.1 Write integration test: full criteria lifecycle -- define → validate → evaluate → filter state update → indicator formatting
+  - [x] 18.2 Write integration test: persistence cycle -- save → list → load → duplicate → delete
+  - [x] 18.3 Write integration test: command dispatch -- register commands, invoke CRITERIA SET/CLEAR/SHOW/SAVE, verify filter state mutations
+  - [x] 18.4 Write integration test: FIND/CHANGE scope -- create CriteriaScope from evaluator results, verify line containment against record mapping
+  - [x] 18.5 Write integration test: config hot-reload -- simulate config change mid-session, verify settings applied without restart
+  - [x] 18.6 Write integration test: structure association -- activate structure, find matching criteria, auto-suggest flow
   - Covers: End-to-end validation across Requirements 1–14
 
 ---
@@ -230,7 +230,7 @@ This is a **Wave 12 (FileForge Domain)** sub-project that depends on `ff-filefor
   - Records: field value maps covering the referenced fields
 - **Invariant:** `evaluate(cs_with_disabled_row, record).matches == evaluate(cs_with_row_removed, record).matches`
 
-### Property 3: Operator Correctness — EQ Symmetry with NE
+### Property 3: Operator Correctness -- EQ Symmetry with NE
 
 **Validates: Requirements 2.2, 2.3**
 
@@ -356,12 +356,12 @@ This is a **Wave 12 (FileForge Domain)** sub-project that depends on `ff-filefor
 ## Notes
 
 - This is a Wave 12 (FileForge Domain) crate with multiple upstream dependencies across earlier waves
-- The Criteria_Panel and Criteria_Catalog_Dialog UI rendering is shell-side (ff-desktop) — this crate provides only the data model, evaluation, and persistence logic
-- The `ff-find-replace` crate is a downstream consumer of `CriteriaScope` — the interface is defined in this crate but consumed there
-- Status bar indicator rendering is read by `menu-and-statusbar` from `FilterState` — this crate exposes the formatted strings
+- The Criteria_Panel and Criteria_Catalog_Dialog UI rendering is shell-side (ff-desktop) -- this crate provides only the data model, evaluation, and persistence logic
+- The `ff-find-replace` crate is a downstream consumer of `CriteriaScope` -- the interface is defined in this crate but consumed there
+- Status bar indicator rendering is read by `menu-and-statusbar` from `FilterState` -- this crate exposes the formatted strings
 - Property-based tests use the `proptest` crate with a minimum of 256 iterations per property
 - All file I/O in persistence tests uses `tempfile::TempDir` for isolation
-- EBCDIC and packed-decimal decoding delegate to `ff-fileforge` — this crate does not implement encoding logic
+- EBCDIC and packed-decimal decoding delegate to `ff-fileforge` -- this crate does not implement encoding logic
 - Configuration hot-reload leverages `ff-config`'s callback mechanism registered at crate initialisation
 
 ---

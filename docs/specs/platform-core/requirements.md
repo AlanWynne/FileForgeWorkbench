@@ -2,9 +2,9 @@
 
 ## Introduction
 
-This feature specifies the GUI-independent workbench core for FileForgeWorkbench — the `ff-core` crate. The platform-core is the **central orchestration layer** of the entire workbench platform. It owns all application state, manages the lifecycle of every subsystem, and defines the strict boundary between business logic and the replaceable GUI rendering shell.
+This feature specifies the GUI-independent workbench core for FileForgeWorkbench -- the `ff-core` crate. The platform-core is the **central orchestration layer** of the entire workbench platform. It owns all application state, manages the lifecycle of every subsystem, and defines the strict boundary between business logic and the replaceable GUI rendering shell.
 
-The platform-core operates with **zero GUI framework dependencies** (no egui, winit, wgpu, or any rendering library). All business logic — commands, file operations, document management, undo/redo, workflows, plugins — executes within this GUI-independent layer and communicates with the GUI shell through a defined event/messaging interface. This architecture ensures that the rendering shell can be replaced without rewriting or recompiling any business logic.
+The platform-core operates with **zero GUI framework dependencies** (no egui, winit, wgpu, or any rendering library). All business logic -- commands, file operations, document management, undo/redo, workflows, plugins -- executes within this GUI-independent layer and communicates with the GUI shell through a defined event/messaging interface. This architecture ensures that the rendering shell can be replaced without rewriting or recompiling any business logic.
 
 The platform-core also defines the **crate structure and layer rules** for the entire workspace: which crates belong to which layer, the dependency direction between layers, and the strict prohibition on reverse dependencies.
 
@@ -14,16 +14,16 @@ The platform-core also defines the **crate structure and layer rules** for the e
 
 ## Glossary
 
-- **Platform_Core**: The `ff-core` crate — the GUI-independent central orchestration layer that owns all application state and manages all subsystem lifecycles. [WB]
+- **Platform_Core**: The `ff-core` crate -- the GUI-independent central orchestration layer that owns all application state and manages all subsystem lifecycles. [WB]
 - **WorkbenchApp**: The primary struct/trait within `ff-core` that owns all platform state and provides the entry point for subsystem initialization, event dispatch, and lifecycle management. [WB]
 - **Service_Registry**: The component within Platform_Core that holds references to all registered subsystems (services), providing type-safe access and startup ordering guarantees. [WB]
 - **Event_Bus**: The internal event/message system that connects Platform_Core to the GUI shell and between subsystems, enabling bidirectional communication without tight coupling. [WB]
 - **GUI_Shell**: The replaceable rendering layer (e.g., `ff-desktop` using egui) that depends on Platform_Core but is never depended upon by it. Responsible only for rendering state and forwarding user input as events. [WB]
-- **Foundation_Layer**: The lowest crate layer containing `ff-logging` — no dependencies on other `ff-*` crates. [WB]
-- **Core_Layer**: The layer containing `ff-core`, `ff-config`, `ff-command`, `ff-plugin`, `ff-workflow`, `ff-vfs` — depends only on Foundation_Layer. [WB]
-- **Editor_Layer**: The layer containing `ff-document`, `ff-edit`, `ff-undo`, `ff-viewport`, `ff-display-lines` — depends on Core_Layer and Foundation_Layer. [WB]
-- **Feature_Layer**: The layer containing `ff-find`, `ff-line-commands`, `ff-exclude`, `ff-nav`, and other feature crates — depends on Editor_Layer and below. [WB]
-- **Shell_Layer**: The topmost layer containing `ff-desktop` (egui GUI shell) — depends on all lower layers; nothing depends on it. [WB]
+- **Foundation_Layer**: The lowest crate layer containing `ff-logging` -- no dependencies on other `ff-*` crates. [WB]
+- **Core_Layer**: The layer containing `ff-core`, `ff-config`, `ff-command`, `ff-plugin`, `ff-workflow`, `ff-vfs` -- depends only on Foundation_Layer. [WB]
+- **Editor_Layer**: The layer containing `ff-document`, `ff-edit`, `ff-undo`, `ff-viewport`, `ff-display-lines` -- depends on Core_Layer and Foundation_Layer. [WB]
+- **Feature_Layer**: The layer containing `ff-find`, `ff-line-commands`, `ff-exclude`, `ff-nav`, and other feature crates -- depends on Editor_Layer and below. [WB]
+- **Shell_Layer**: The topmost layer containing `ff-desktop` (egui GUI shell) -- depends on all lower layers; nothing depends on it. [WB]
 - **Subsystem**: Any registered component within Platform_Core that provides a distinct service (e.g., logging, configuration, VFS, commands, plugins). [WB]
 - **Startup_Sequence**: The ordered sequence in which subsystems are initialized: logging → configuration → VFS → commands → plugins → GUI shell. [WB]
 - **Shutdown_Sequence**: The reverse-ordered sequence in which subsystems are terminated with a grace period for cleanup. [WB]
@@ -109,7 +109,7 @@ The platform-core also defines the **crate structure and layer rules** for the e
 
 ---
 
-### Requirement 5: Application Lifecycle — Startup
+### Requirement 5: Application Lifecycle -- Startup
 
 **User Story:** As a workbench developer, I want a well-defined startup sequence that initializes subsystems in dependency order, so that each subsystem can rely on its dependencies being available when it initializes.
 
@@ -119,14 +119,14 @@ The platform-core also defines the **crate structure and layer rules** for the e
 
 1. THE WorkbenchApp SHALL initialize subsystems in the following deterministic order: logging → configuration → VFS → commands → plugins → GUI shell (when present).
 2. WHEN each subsystem initializes successfully, THE WorkbenchApp SHALL write an INFO-level log record containing the subsystem name and initialization duration in milliseconds.
-3. IF a non-critical subsystem (plugins, GUI shell) fails to initialize, THEN THE WorkbenchApp SHALL log an ERROR-level record describing the failure and continue operating with reduced functionality — the application SHALL NOT terminate.
+3. IF a non-critical subsystem (plugins, GUI shell) fails to initialize, THEN THE WorkbenchApp SHALL log an ERROR-level record describing the failure and continue operating with reduced functionality -- the application SHALL NOT terminate.
 4. IF a critical subsystem (logging, configuration, VFS, commands) fails to initialize, THEN THE WorkbenchApp SHALL log an ERROR-level record (if logging is available), attempt an orderly shutdown of any already-initialized subsystems, and terminate the application with a non-zero exit code.
 5. THE WorkbenchApp SHALL complete the full startup sequence (all subsystems initialized) within 5 seconds on a system meeting minimum hardware requirements; if startup takes longer, THE WorkbenchApp SHALL provide progress feedback to the GUI shell (if connected) via the Event_Bus.
 6. WHEN the startup sequence completes successfully, THE WorkbenchApp SHALL dispatch a `WorkbenchReady` event via the Event_Bus, signalling to the GUI shell that it may begin rendering the main interface.
 
 ---
 
-### Requirement 6: Application Lifecycle — Shutdown
+### Requirement 6: Application Lifecycle -- Shutdown
 
 **User Story:** As a workbench developer, I want a well-defined shutdown sequence that tears down subsystems in reverse order with a grace period, so that all subsystems can persist state and release resources cleanly.
 
@@ -138,7 +138,7 @@ The platform-core also defines the **crate structure and layer rules** for the e
 2. EACH subsystem SHALL be given a grace period of up to 3 seconds to complete its shutdown operations (flushing buffers, persisting state, releasing resources) before THE WorkbenchApp proceeds to the next subsystem.
 3. IF a subsystem's shutdown exceeds the 3-second grace period, THEN THE WorkbenchApp SHALL log a WARN-level record, forcibly terminate that subsystem's operations, and proceed to shut down the next subsystem.
 4. WHEN all subsystems have been shut down, THE WorkbenchApp SHALL write a final INFO-level log record ("Application shutdown complete"), flush the logging subsystem, and exit the process with exit code 0.
-5. IF a panic occurs during shutdown, THEN THE WorkbenchApp SHALL catch the panic (where possible), log an ERROR-level record with the panic message, and continue shutting down remaining subsystems — a panic in one subsystem SHALL NOT prevent shutdown of others.
+5. IF a panic occurs during shutdown, THEN THE WorkbenchApp SHALL catch the panic (where possible), log an ERROR-level record with the panic message, and continue shutting down remaining subsystems -- a panic in one subsystem SHALL NOT prevent shutdown of others.
 6. THE WorkbenchApp SHALL support graceful shutdown triggered by OS signals: SIGTERM/SIGINT on Unix, WM_CLOSE/CTRL_CLOSE_EVENT on Windows.
 
 ---
@@ -170,7 +170,7 @@ The platform-core also defines the **crate structure and layer rules** for the e
 1. THE WorkbenchApp SHALL support hot-restart of individual plugins: deactivating a plugin, unloading it, loading the updated version, and re-activating it, without shutting down Platform_Core or other subsystems.
 2. WHEN a plugin is hot-restarted, THE WorkbenchApp SHALL first call the plugin's `deactivate` method, then `shutdown`, then load the new plugin binary/module, then call `initialize` and `activate` on the new instance.
 3. DURING a plugin hot-restart, THE WorkbenchApp SHALL maintain all non-plugin state (documents, undo history, configuration, VFS mounts) unchanged.
-4. IF the new plugin version fails to initialize during hot-restart, THEN THE WorkbenchApp SHALL log an ERROR-level record, discard the failed load, and leave the plugin in an unloaded state — the application SHALL continue operating without that plugin.
+4. IF the new plugin version fails to initialize during hot-restart, THEN THE WorkbenchApp SHALL log an ERROR-level record, discard the failed load, and leave the plugin in an unloaded state -- the application SHALL continue operating without that plugin.
 5. THE WorkbenchApp SHALL dispatch a `PluginReloaded { plugin_name }` event via the Event_Bus after a successful hot-restart, allowing other subsystems and the GUI shell to update any plugin-dependent UI.
 
 ---
@@ -188,9 +188,9 @@ The platform-core also defines the **crate structure and layer rules** for the e
    - **Core thread**: If the GUI shell is present and owns the main thread, Platform_Core MAY run its event loop on a dedicated core thread; the architecture SHALL support both same-thread and separate-thread configurations.
    - **Tokio runtime**: A multi-threaded Tokio runtime for async I/O workers (file operations, network, background tasks).
 2. THE WorkbenchApp SHALL initialize the Tokio runtime during startup (after logging, before VFS initialization) and shut it down during the shutdown sequence (after VFS, before configuration shutdown).
-3. ALL communication between threads SHALL use channels (mpsc, broadcast, oneshot as appropriate) or atomic operations — shared mutable state protected by locks SHALL be minimized and documented where used.
+3. ALL communication between threads SHALL use channels (mpsc, broadcast, oneshot as appropriate) or atomic operations -- shared mutable state protected by locks SHALL be minimized and documented where used.
 4. THE GUI shell thread SHALL NOT perform blocking I/O operations (file reads, network requests, database queries); all such operations SHALL be dispatched to the Tokio runtime via the Event_Bus or direct channel communication.
-5. WHEN a Tokio worker completes an async operation, THE worker SHALL communicate the result back to the requesting thread via the Event_Bus or a response channel — never by directly mutating GUI state.
+5. WHEN a Tokio worker completes an async operation, THE worker SHALL communicate the result back to the requesting thread via the Event_Bus or a response channel -- never by directly mutating GUI state.
 6. THE WorkbenchApp SHALL ensure that all spawned threads and Tokio tasks are tracked and joined/cancelled during the shutdown sequence, preventing resource leaks or orphaned background work.
 7. IF the Tokio runtime encounters a fatal error (e.g., all worker threads panicked), THEN THE WorkbenchApp SHALL log an ERROR-level record and initiate an orderly shutdown, as async I/O capability is considered critical.
 

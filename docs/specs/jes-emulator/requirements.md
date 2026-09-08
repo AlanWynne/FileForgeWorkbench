@@ -4,7 +4,7 @@
 
 > **Naming Note:** This sub-project folder was named `FFW-JES` for historical reasons and was renamed to `jes-emulator` in Phase BR to match the kebab-case convention. The crate name `ff-jes` is unchanged.
 
-This feature specifies **FFW-JES** (FileForge Workbench Job Entry Subsystem) — a cross-platform emulator of IBM JES2/JES3 batch processing concepts (JES2 and JES3 are IBM z/OS job entry subsystems; this crate emulates their concepts on the desktop — it has no dependency on actual IBM software) delivered as a workbench plugin (`ff-jes` crate). FFW-JES emulates mainframe batch processing on Windows, Linux, and macOS: job submission, queue management, initiator-based execution, SDSF-style monitoring, dataset allocation via the catalog, and retained job output.
+This feature specifies **FFW-JES** (FileForge Workbench Job Entry Subsystem) -- a cross-platform emulator of IBM JES2/JES3 batch processing concepts (JES2 and JES3 are IBM z/OS job entry subsystems; this crate emulates their concepts on the desktop -- it has no dependency on actual IBM software) delivered as a workbench plugin (`ff-jes` crate). FFW-JES emulates mainframe batch processing on Windows, Linux, and macOS: job submission, queue management, initiator-based execution, SDSF-style monitoring, dataset allocation via the catalog, and retained job output.
 
 The subsystem integrates with the workbench platform through:
 - **Plugin Architecture** (`ff-plugin`): registers as a `FileForgePlugin`, contributes panels, commands, and APIs
@@ -33,8 +33,8 @@ The subsystem integrates with the workbench platform through:
 - **Job_Status**: Enum of lifecycle states: QUEUED, HELD, ACTIVE, COMPLETED, FAILED, CANCELLED. [JES]
 - **Scheduler**: The component that selects eligible queued jobs and dispatches them to available initiators. [JES]
 - **Retention_Policy**: Configurable rules governing how long completed job output is retained before purge. [JES]
-- **FFJCL**: FileForge Job Control Language — the desktop job definition format. [JES]
-- **GDG**: Generation Data Group — a dataset with multiple generations referenced by relative offset. [JES]
+- **FFJCL**: FileForge Job Control Language -- the desktop job definition format. [JES]
+- **GDG**: Generation Data Group -- a dataset with multiple generations referenced by relative offset. [JES]
 
 ---
 
@@ -86,7 +86,7 @@ The subsystem integrates with the workbench platform through:
 
 5. THE submitted job SHALL appear immediately in the Job Monitor Input Queue panel.
 
-6. THE queued job state SHALL survive an application restart — job queue persistence uses a local database or file store.
+6. THE queued job state SHALL survive an application restart -- job queue persistence uses a local database or file store.
 
 7. IF the job definition fails validation (syntax errors, missing required fields, unresolvable DSN references), THEN THE system SHALL reject the submission with a meaningful validation message and SHALL NOT create a queue entry.
 
@@ -118,7 +118,7 @@ The subsystem integrates with the workbench platform through:
 
 8. THE Job Monitor SHALL display all queued jobs in the Input Queue panel, sortable by: Job Name, Job ID, Owner/User, Submit Time, Priority, Status.
 
-9. THE queue display SHALL update automatically when jobs change status — no manual refresh required for state transitions.
+9. THE queue display SHALL update automatically when jobs change status -- no manual refresh required for state transitions.
 
 10. THE user SHALL be able to distinguish between QUEUED, HELD, ACTIVE, COMPLETED, FAILED, and CANCELLED jobs by visual indicators (icons, colours, or labels).
 
@@ -140,7 +140,7 @@ The subsystem integrates with the workbench platform through:
 
 4. THE system SHALL support starting an individual initiator (command `jes.initiator.start`).
 
-5. THE system SHALL support stopping an individual initiator (command `jes.initiator.stop`) — an active job on that initiator completes before the initiator stops.
+5. THE system SHALL support stopping an individual initiator (command `jes.initiator.stop`) -- an active job on that initiator completes before the initiator stops.
 
 6. THE system SHALL support pausing an initiator from accepting new work (command `jes.initiator.drain`) without terminating the currently active job.
 
@@ -214,7 +214,7 @@ The subsystem integrates with the workbench platform through:
 
 5. THE JobLogViewerPanel SHALL support viewing logs for active jobs (streaming live output), completed jobs, failed jobs, and cancelled jobs.
 
-6. THE system SHALL handle large job logs without freezing the UI — logs are loaded incrementally or virtualized for rendering.
+6. THE system SHALL handle large job logs without freezing the UI -- logs are loaded incrementally or virtualized for rendering.
 
 7. THE Job_Log SHALL be stored in a stable format that survives application restarts and is independent from the physical output datasets.
 
@@ -232,7 +232,7 @@ The subsystem integrates with the workbench platform through:
 
 2. THE system SHALL support manual purge of individual jobs (command `jes.job.purge`) or batch purge by filter criteria.
 
-3. THE system SHALL support automatic purge — background task removes jobs exceeding the retention policy on a configurable schedule.
+3. THE system SHALL support automatic purge -- background task removes jobs exceeding the retention policy on a configurable schedule.
 
 4. WHEN purging a job, THE system SHALL remove retained logs and SYSOUT output according to policy.
 
@@ -276,7 +276,7 @@ The subsystem integrates with the workbench platform through:
 
 **User Story:** As an operator, I want to hold a queued job to prevent execution and release it when ready.
 
-**Source:** FFW-JES-004 (Scheduling — held jobs). [JES]
+**Source:** FFW-JES-004 (Scheduling -- held jobs). [JES]
 
 #### Acceptance Criteria
 
@@ -286,7 +286,7 @@ The subsystem integrates with the workbench platform through:
 
 3. THE Held Jobs panel in the Job Monitor SHALL display all jobs in HELD status.
 
-10.4. A job that is already ACTIVE SHALL NOT be held — the hold command SHALL return an error indicating the job is already executing.
+10.4. A job that is already ACTIVE SHALL NOT be held -- the hold command SHALL return an error indicating the job is already executing.
 
 ---
 
@@ -308,7 +308,7 @@ The subsystem integrates with the workbench platform through:
 
 5. THE system SHALL support Generation Data Group references (`DSN=MY.FILE.GDG(+1)`, `(0)`, `(-1)`) by delegating to the `ff-dataset-allocator` GDG relative generation resolution (which queries `ff-dataset-catalog` for generation state).
 
-6. THE JES subsystem SHALL leverage the existing file-tree-panel "Catalogs" node (provided by `ff-dataset-catalog`'s VFS provider) for dataset browsing — it SHALL NOT create a separate DatasetExplorerPanel. The JES Job Monitor's dataset references link to the file-tree-panel's catalog view.
+6. THE JES subsystem SHALL leverage the existing file-tree-panel "Catalogs" node (provided by `ff-dataset-catalog`'s VFS provider) for dataset browsing -- it SHALL NOT create a separate DatasetExplorerPanel. The JES Job Monitor's dataset references link to the file-tree-panel's catalog view.
 
 11.7. Dataset resolution SHALL work consistently on Windows, Linux, and macOS using the dataset-catalog's platform-independent path mapping.
 
@@ -328,7 +328,7 @@ The subsystem integrates with the workbench platform through:
 
 3. ALL Job API operations SHALL be invocable from the Lua scripting bridge (e.g., `workbench.execute("jes.job.submit", {jcl = "..."})`).
 
-4. THE Job API SHALL support event subscription — callers can register callbacks for job state transitions (QUEUED→ACTIVE, ACTIVE→COMPLETED, etc.).
+4. THE Job API SHALL support event subscription -- callers can register callbacks for job state transitions (QUEUED→ACTIVE, ACTIVE→COMPLETED, etc.).
 
 5. THE Dataset API SHALL delegate to the `ff-dataset-allocator` crate for allocation operations (DISP=NEW/OLD/SHR/MOD) and `ff-dataset-catalog` for catalog metadata queries.
 
@@ -362,13 +362,13 @@ The subsystem integrates with the workbench platform through:
 
 1. THE system SHALL define a `JobProvider` trait that abstracts job queue operations (submit, hold, release, cancel, query, retrieve logs) behind a provider-agnostic interface.
 
-2. THE initial release SHALL ship with a single provider: `DesktopJesProvider` — the local queue and initiator pool implementation.
+2. THE initial release SHALL ship with a single provider: `DesktopJesProvider` -- the local queue and initiator pool implementation.
 
 3. THE Job Monitor SHALL be designed to display jobs from multiple providers simultaneously when additional providers are registered in future releases.
 
 14.4. EACH job displayed in the monitor SHALL indicate its source provider, and filtering by provider SHALL be supported.
 
-14.5. Job actions in the monitor SHALL be limited to actions supported by the relevant provider — unsupported actions SHALL be greyed out.
+14.5. Job actions in the monitor SHALL be limited to actions supported by the relevant provider -- unsupported actions SHALL be greyed out.
 
 14.6. Provider connection errors SHALL be visible in the Job Monitor without crashing the application or affecting other providers.
 
@@ -384,7 +384,7 @@ The subsystem integrates with the workbench platform through:
 
 #### Acceptance Criteria
 
-1. ALL job execution SHALL be async — initiators run jobs on Tokio tasks or `spawn_blocking` threads without blocking the egui render loop.
+1. ALL job execution SHALL be async -- initiators run jobs on Tokio tasks or `spawn_blocking` threads without blocking the egui render loop.
 
 2. THE Scheduler dispatch loop SHALL run as an async background task, polling for eligible jobs and available initiators.
 

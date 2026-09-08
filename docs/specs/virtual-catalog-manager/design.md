@@ -7,7 +7,7 @@ The Virtual Catalog Manager owns POM option 1 (`[FILES]` tab). It is a new UI su
 POSIX, and Native. All resource access flows through the VFS abstraction layer.
 
 The `Native` type replaces the previous "Windows" and "Local" distinction. `connector-local-fs`
-already handles Windows, Linux, and macOS path conventions transparently — no platform-specific
+already handles Windows, Linux, and macOS path conventions transparently -- no platform-specific
 catalog type is needed.
 
 ## 2. Architecture
@@ -27,11 +27,11 @@ For the initial implementation, the catalog registry and POSIX provider live in 
 as new modules. Future extraction to a dedicated crate is deferred.
 
 New modules in `ff-desktop/src/`:
-- `files_panel.rs` — egui render function for the Files panel
-- `catalog_registry.rs` — in-memory + persisted catalog registry
-- `catalog_manager_dialog.rs` — New/Edit/Delete catalog dialogs
-- `dataset_alloc_dialog.rs` — Mainframe dataset allocation dialog
-- `posix_provider.rs` — POSIX VFS provider implementation
+- `files_panel.rs` -- egui render function for the Files panel
+- `catalog_registry.rs` -- in-memory + persisted catalog registry
+- `catalog_manager_dialog.rs` -- New/Edit/Delete catalog dialogs
+- `dataset_alloc_dialog.rs` -- Mainframe dataset allocation dialog
+- `posix_provider.rs` -- POSIX VFS provider implementation
 
 ### 2.3 POSIX VFS Provider
 The POSIX provider wraps the existing `connector-local-fs` provider, adding:
@@ -162,7 +162,7 @@ When `catalog_manager_dialog.rs` opens for a new catalog:
 - **POSIX**: read `catalogs.default_posix_root` from config, place it directly in the
   `Root Directory` field.
 
-The pre-populated value is editable — it is a suggestion, not a constraint.
+The pre-populated value is editable -- it is a suggestion, not a constraint.
 
 ### 5.4 Hot-Reload
 
@@ -244,7 +244,7 @@ if self.files_panel.registry.list_by_type(CatalogType::Native).is_empty() {
         mount_point: None,
         read_only: false,
     };
-    // register() only fails on duplicate name or invalid name — neither applies here
+    // register() only fails on duplicate name or invalid name -- neither applies here
     let _ = self.files_panel.registry.register(catalog);
     // Persist immediately so the catalog survives restart
     if let Some(session) = &self.session {
@@ -273,15 +273,15 @@ needed. Once the user renames the catalog the guard no longer fires.
 
 ### 8.5 No Contradictions
 
-- The check is purely additive — it only fires when `list_by_type(Native).is_empty()`.
+- The check is purely additive -- it only fires when `list_by_type(Native).is_empty()`.
 - Existing catalogs are never modified.
 - The `register()` call is idempotent in the sense that it only runs when no Native
   catalog exists, so the `"Home"` name cannot collide with an existing Native catalog.
-  (A Mainframe or POSIX catalog named `"Home"` would cause `DuplicateName` — the `let _ =`
+  (A Mainframe or POSIX catalog named `"Home"` would cause `DuplicateName` -- the `let _ =`
   silently ignores this edge case, which is acceptable.)
 - The immediate `save_catalog_registry()` call reuses the existing persistence path.
 
-## 9. Catalog Properties — Repository Path Display (Requirement 15)
+## 9. Catalog Properties -- Repository Path Display (Requirement 15)
 
 The `EditCatalogForm` already holds all `VirtualCatalog` fields. The only change needed is to
 render the `path` field as a read-only labelled row in `render_edit()` in
@@ -347,11 +347,11 @@ required.
 
 
 
-- `ff-dscatalog` is unchanged — the dialog calls its existing command API
-- `connector-local-fs` is unchanged — Native catalogs reuse it directly
+- `ff-dscatalog` is unchanged -- the dialog calls its existing command API
+- `connector-local-fs` is unchanged -- Native catalogs reuse it directly
 - The VFS provider registry gains one new provider (`posix`)
 - `TabKind` gains one new variant (`FilesPanel`)
 - `shell.rs` handle_command routes `"1"` and `"FILES"` to set `TabKind::FilesPanel`
-- `ff-config` schema gains two new keys under `[catalogs]` — no reserved namespace conflict
+- `ff-config` schema gains two new keys under `[catalogs]` -- no reserved namespace conflict
 - `ff-core` `user_data_dir` is already resolved at startup; the default values are computed
   once and passed as strings to `register_schema`, keeping `ff-config` free of any `ff-core` dependency

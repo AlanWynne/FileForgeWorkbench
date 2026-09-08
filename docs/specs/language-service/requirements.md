@@ -2,9 +2,9 @@
 
 ## Introduction
 
-This feature specifies the **Language Service** for FileForgeWorkbench — the `ff-language-service` crate. The language service is the foundational layer responsible for language detection, language definition management, multi-line lexer state persistence, and content-based language identification. It provides the structural metadata and detection logic that the syntax-highlighting engine consumes to tokenize and colour source code.
+This feature specifies the **Language Service** for FileForgeWorkbench -- the `ff-language-service` crate. The language service is the foundational layer responsible for language detection, language definition management, multi-line lexer state persistence, and content-based language identification. It provides the structural metadata and detection logic that the syntax-highlighting engine consumes to tokenize and colour source code.
 
-The language service is **GUI-independent** — it has no rendering dependency. It loads language definitions from TOML files, matches files to languages via extension or content inspection, manages per-line lexer state for multi-line constructs (strings, comments, heredocs), and exposes a plugin-extensible registration model for adding new language definitions at runtime.
+The language service is **GUI-independent** -- it has no rendering dependency. It loads language definitions from TOML files, matches files to languages via extension or content inspection, manages per-line lexer state for multi-line constructs (strings, comments, heredocs), and exposes a plugin-extensible registration model for adding new language definitions at runtime.
 
 This specification merges requirements from three primary sources:
 
@@ -192,7 +192,7 @@ The `ff-language-service` crate is a Wave 7 (Language and Highlighting) componen
 
 1. THE LanguageService SHALL provide a registration API that accepts a LanguageDefinition struct and adds it to the active registry, making it immediately available for language detection and highlighting. [WB]
 2. WHEN a plugin registers a LanguageDefinition via PluginContext, THE LanguageService SHALL validate the definition against the schema (required fields present, keyword sets well-formed) before accepting it. [WB]
-3. IF a plugin attempts to register a LanguageDefinition with a `language_id` that already exists, THE LanguageService SHALL reject the registration and return an error — plugins cannot override built-in or previously registered definitions. [WB]
+3. IF a plugin attempts to register a LanguageDefinition with a `language_id` that already exists, THE LanguageService SHALL reject the registration and return an error -- plugins cannot override built-in or previously registered definitions. [WB]
 4. WHEN a plugin that registered a language is unloaded (shutdown lifecycle phase), THE LanguageService SHALL remove that plugin's language definitions from the registry and emit a DEBUG-level log record indicating which languages were deregistered. [WB]
 5. THE registration API SHALL accept the same schema as TOML-loaded definitions (keyword sets, comment syntax, extension mappings, properties, embedded languages), ensuring feature parity between file-loaded and plugin-registered definitions. [WB]
 6. PLUGINS SHALL register language definitions by advertising the `LanguageSupport` capability through the plugin-architecture's Capability_Registry. [WB]
@@ -213,5 +213,5 @@ The `ff-language-service` crate is a Wave 7 (Language and Highlighting) componen
 3. THE LanguageService SHALL provide a `detect_language(file_path, first_line, first_bytes) -> LanguageId` method that performs the full detection pipeline (extension → content-based) and returns the resolved language identifier. [FFE-MVP-6, LEX]
 4. THE LanguageService SHALL provide a `extensions_for(language_id) -> &[String]` method that returns the list of file extensions associated with a language. [WB]
 5. THE LanguageService SHALL provide a `language_for_extension(extension) -> Option<LanguageId>` method that performs extension-only lookup without content-based fallback. [FFE-MVP-6]
-6. ALL query methods on the LanguageService SHALL be callable from any thread without requiring mutable access — the public query API SHALL use interior immutability (`&self`) backed by appropriate synchronization. [WB]
-7. THE LanguageService SHALL be constructable and testable without any GUI framework, filesystem, or running application — accepting a list of LanguageDefinition structs or a directory path for unit testing. [WB]
+6. ALL query methods on the LanguageService SHALL be callable from any thread without requiring mutable access -- the public query API SHALL use interior immutability (`&self`) backed by appropriate synchronization. [WB]
+7. THE LanguageService SHALL be constructable and testable without any GUI framework, filesystem, or running application -- accepting a list of LanguageDefinition structs or a directory path for unit testing. [WB]

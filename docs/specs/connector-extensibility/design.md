@@ -22,11 +22,11 @@ The `ff-connector-extensibility` crate defines the **plugin trait and registrati
 ├─────────────────────────────────────────────────────────────┤
 │  Consuming crates query ConnectorRegistry for capabilities   │
 ├─────────────────────────────────────────────────────────────┤
-│  ff-connector-extensibility (THIS CRATE) — Wave 3            │
+│  ff-connector-extensibility (THIS CRATE) -- Wave 3            │
 │  Depends on: ff-vfs (VfsProvider), ff-plugin (FileForgePlugin)│
 ├─────────────────────────────────────────────────────────────┤
 │  ff-vfs │ ff-plugin │ ff-core │ ff-command │ ff-logging      │
-│              (Wave 2–3 — Platform + VFS)                      │
+│              (Wave 2–3 -- Platform + VFS)                      │
 ├─────────────────────────────────────────────────────────────┤
 │                     ff-logging (Wave 0)                       │
 └─────────────────────────────────────────────────────────────┘
@@ -34,7 +34,7 @@ The `ff-connector-extensibility` crate defines the **plugin trait and registrati
 
 ### Design Constraints (Cross-Cutting)
 
-- **FFW-ARCH-001 (Req 1)**: Connectors integrate through the VFS — no bypass
+- **FFW-ARCH-001 (Req 1)**: Connectors integrate through the VFS -- no bypass
 - **GUI Independence (Req 2)**: Zero GUI dependencies
 - **Plugin Architecture (Req 3)**: Connectors are plugins with `FileForgePlugin` lifecycle
 - **Async I/O (Req 6)**: Connection lifecycle methods are async
@@ -50,7 +50,7 @@ The `ff-connector-extensibility` crate defines the **plugin trait and registrati
 
 ```mermaid
 graph TD
-    subgraph FutureConnectors [Future Connector Implementations — DEFERRED]
+    subgraph FutureConnectors [Future Connector Implementations -- DEFERRED]
         FTP[connector-ftp-sftp]
         ZOS[connector-mainframe]
         CLOUD[connector-cloud]
@@ -68,9 +68,9 @@ graph TD
     end
 
     subgraph Upstream [Upstream Crates]
-        VFS[ff-vfs — VfsProvider trait]
-        PLG[ff-plugin — FileForgePlugin trait]
-        CORE[ff-core — EventBus, ServiceRegistry]
+        VFS[ff-vfs -- VfsProvider trait]
+        PLG[ff-plugin -- FileForgePlugin trait]
+        CORE[ff-core -- EventBus, ServiceRegistry]
         LOG[ff-logging]
     end
 
@@ -170,7 +170,7 @@ crates/ff-connector-extensibility/
 /// Extends VfsProvider (file operations) and FileForgePlugin (plugin lifecycle)
 /// with connector-specific lifecycle, authentication, and capability methods.
 ///
-/// Object-safe — the ConnectorRegistry stores connectors as `Box<dyn ConnectorPlugin>`.
+/// Object-safe -- the ConnectorRegistry stores connectors as `Box<dyn ConnectorPlugin>`.
 ///
 /// Addresses: Requirement 1, all acceptance criteria
 #[async_trait::async_trait]
@@ -348,9 +348,9 @@ pub enum ConnectorState {
     Connected,
     /// Graceful disconnect in progress
     Disconnecting,
-    /// Disconnected (idle — can reconnect)
+    /// Disconnected (idle -- can reconnect)
     Disconnected,
-    /// Error state — connection failed; stores the error message for state queries
+    /// Error state -- connection failed; stores the error message for state queries
     Error { message: String },
 }
 ```
@@ -811,7 +811,7 @@ impl ConnectorError {
 
 ## 7. Integration Points
 
-### With `ff-vfs` (upstream — Wave 3, defines VfsProvider)
+### With `ff-vfs` (upstream -- Wave 3, defines VfsProvider)
 
 - **Dependency direction**: ff-connector-extensibility depends on ff-vfs
 - **API consumed**: `VfsProvider` trait, `VfsCapabilities`, `VfsError`, `ResourceUri`, `ProviderRegistry`
@@ -828,7 +828,7 @@ impl ConnectorError {
   - `Copy` → (VFS copy uses read_stream + write)
   - `Metadata` → (always true when Read + List present)
 
-### With `ff-plugin` (upstream — Wave 2, defines FileForgePlugin)
+### With `ff-plugin` (upstream -- Wave 2, defines FileForgePlugin)
 
 - **Dependency direction**: ff-connector-extensibility depends on ff-plugin
 - **API consumed**: `FileForgePlugin` trait, `PluginMetadata`, `PluginContext`, `Capability`, `PluginError`
@@ -836,20 +836,20 @@ impl ConnectorError {
 - **Registration flow**: During `FileForgePlugin::initialize()`, the connector obtains `PluginContext` and uses it to register itself with the `ConnectorRegistry`
 - **Capability advertisement**: Connectors return a `Capability::Providers` from `FileForgePlugin::plugin_capabilities()` and additionally register with `ConnectorRegistry`
 
-### With `ff-core` (upstream — Wave 2, EventBus + ServiceRegistry)
+### With `ff-core` (upstream -- Wave 2, EventBus + ServiceRegistry)
 
 - **Dependency direction**: ff-connector-extensibility depends on ff-core for `EventBus`
 - **API consumed**: `EventBus::dispatch()`, `WorkbenchEvent`, `ServiceRegistry` lookup
 - **Integration**: `ConnectorRegistry` emits events via the EventBus on registration, deregistration, and state changes
 - **Lifecycle**: Platform shutdown triggers `ConnectorRegistry::shutdown_all()` which disconnects all connectors gracefully
 
-### With `ff-logging` (upstream — Wave 0)
+### With `ff-logging` (upstream -- Wave 0)
 
 - **Dependency direction**: ff-connector-extensibility depends on ff-logging
 - **API consumed**: `log_info!`, `log_warn!`, `log_error!`, `log_debug!`
 - **Usage**: Registration validation logged at INFO/ERROR; state transitions at INFO; reconnection attempts at WARN; operation routing at DEBUG
 
-### With future connector crates (downstream — DEFERRED)
+### With future connector crates (downstream -- DEFERRED)
 
 - **Dependency direction**: `ff-connector-ftp-sftp`, `ff-connector-mainframe`, `ff-connector-cloud`, `ff-connector-network-fs` will depend on this crate
 - **API consumed**: They implement `ConnectorPlugin` trait

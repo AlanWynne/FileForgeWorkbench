@@ -4,14 +4,14 @@
 
 This feature specifies the **Compare and Merge** subsystem for FileForgeWorkbench (`ff-compare` crate). The compare-and-merge system provides a COMPARE primary command, LCS-based line differencing, side-by-side and inline diff views, diff navigation, merge operations (accept left/right/both), three-way merge support, and VFS-aware resource comparison across any registered provider.
 
-The compare-and-merge subsystem is fully **VFS-aware** (FFW-ARCH-001): any two resources addressable by URI — local files, dataset catalog members, or future remote resources — can be compared without the user needing to know or care about the underlying provider. The diff engine operates on the document model's line abstraction and supports configurable comparison options (ignore whitespace, ignore case) and binary detection.
+The compare-and-merge subsystem is fully **VFS-aware** (FFW-ARCH-001): any two resources addressable by URI -- local files, dataset catalog members, or future remote resources -- can be compared without the user needing to know or care about the underlying provider. The diff engine operates on the document model's line abstraction and supports configurable comparison options (ignore whitespace, ignore case) and binary detection.
 
 The subsystem integrates with the workbench's **command framework** for invocation, the **layout-and-docking** system for split-panel diff rendering, the **theme-and-appearance** system for diff highlighting colours, and the **workflow engine** for three-way merge as a structured workflow. Merge operations that modify documents flow through the **edit-operations** subsystem to preserve undo/redo integration.
 
 The subsystem also supports convenience comparison workflows: compare the active document with its last-saved version (detect unsaved changes visually), compare the active document with clipboard content, and compare two text selections within the editor. A diff export facility produces standard unified diff format for interoperability with external tools and version control systems.
 
 **Source references:**
-- **[FFE-COMPARE]** = FileForgeEditor compare-and-merge feature (planned — COMPARE command, basic diff, merge)
+- **[FFE-COMPARE]** = FileForgeEditor compare-and-merge feature (planned -- COMPARE command, basic diff, merge)
 - **[WB]** = Workbench Platform Architecture Brief (VFS-aware operations, workflow integration, command-driven architecture)
 - **[SCI]** = Scintilla diff concepts (change markers, indicator rendering adapted to Rust/egui)
 
@@ -19,9 +19,9 @@ The subsystem also supports convenience comparison workflows: compare the active
 
 - **COMPARE_Command**: The primary command (`compare.execute`) that initiates a comparison between two resources. Invoked via command line (`COMPARE path1 path2`), context menu, or keyboard shortcut. [FFE-COMPARE, WB]
 - **Diff_Engine**: The core comparison engine that computes the set of differences between two text sequences using an LCS-based algorithm. Operates on lines of text, independent of rendering. [FFE-COMPARE]
-- **LCS**: Longest Common Subsequence — the foundational algorithm used to determine the optimal alignment between two sequences of lines, minimising the reported differences. [FFE-COMPARE]
+- **LCS**: Longest Common Subsequence -- the foundational algorithm used to determine the optimal alignment between two sequences of lines, minimising the reported differences. [FFE-COMPARE]
 - **Diff_Result**: The structured output of the diff engine: a sequence of diff hunks describing insertions, deletions, and changes between two inputs. [FFE-COMPARE]
-- **Diff_Hunk**: A contiguous region of difference — describes a range of lines in the left input and a corresponding range in the right input that differ. Types: Added, Removed, Changed. [FFE-COMPARE]
+- **Diff_Hunk**: A contiguous region of difference -- describes a range of lines in the left input and a corresponding range in the right input that differ. Types: Added, Removed, Changed. [FFE-COMPARE]
 - **Inline_Change**: A character-level or word-level difference within a changed line pair, enabling fine-grained highlighting of exactly what changed within a line. [FFE-COMPARE]
 - **Side_By_Side_View**: A split-panel rendering mode showing the left resource in one panel and the right resource in another panel, with aligned lines and diff highlighting. [FFE-COMPARE]
 - **Inline_View**: A unified diff rendering mode showing both resources merged into a single panel with added/removed/changed lines interleaved and colour-coded. [FFE-COMPARE]
@@ -62,12 +62,12 @@ The subsystem also supports convenience comparison workflows: compare the active
 6. WHEN both resource URIs are resolved, THE command SHALL verify that both resources exist via the VFS `exists()` method; IF either resource does not exist, THEN THE command SHALL return a `VfsError::NotFound` error identifying the missing resource URI.
 7. THE `compare.execute` command SHALL accept optional parameters: `ignore_whitespace` (bool, default false), `ignore_case` (bool, default false), and `view_mode` (enum: `side_by_side` | `inline`, default `side_by_side`).
 8. THE `compare.execute` command metadata SHALL include: display name "Compare Files", category "compare", description "Compare two files or resources side by side", and a default keyboard shortcut (configurable).
-9. ALL COMPARE command invocations SHALL be routed through the command framework dispatch — no UI code SHALL directly invoke the diff engine without going through `compare.execute`.
+9. ALL COMPARE command invocations SHALL be routed through the command framework dispatch -- no UI code SHALL directly invoke the diff engine without going through `compare.execute`.
 10. THE COMPARE command SHALL support Resource_URIs from different VFS providers in a single comparison (e.g., comparing `vfs://local/file.txt` with `vfs://catalog/HLQ.DATA.MEMBER`).
 
 ---
 
-### Requirement 2: Diff Algorithm — Myers / Patience Line Comparison
+### Requirement 2: Diff Algorithm -- Myers / Patience Line Comparison
 
 **User Story:** As a workbench developer, I want a well-defined diff algorithm that produces minimal, optimal difference sets between two text inputs, so that comparison results are accurate, readable, and deterministic.
 
@@ -77,7 +77,7 @@ The subsystem also supports convenience comparison workflows: compare the active
 
 1. THE Diff_Engine SHALL implement a Myers diff algorithm (greedy LCS-based shortest edit script) as the default differencing strategy, producing an optimal edit script minimising the total number of changed lines.
 1a. THE Diff_Engine SHALL additionally support a patience diff algorithm variant (using unique-line anchoring for improved hunk readability on structured code), selectable via a `diff_algorithm` option (enum: `myers` | `patience`, default `myers`).
-2. THE Diff_Engine SHALL operate on sequences of lines (as `&[&str]` or equivalent) — it SHALL be independent of the document model's internal buffer representation and SHALL NOT require a Document handle.
+2. THE Diff_Engine SHALL operate on sequences of lines (as `&[&str]` or equivalent) -- it SHALL be independent of the document model's internal buffer representation and SHALL NOT require a Document handle.
 3. THE Diff_Engine SHALL produce a `Diff_Result` containing an ordered sequence of `Diff_Hunk` entries, where each hunk is one of: `Equal { left_start, right_start, count }`, `Added { right_start, count }`, `Removed { left_start, count }`, or `Changed { left_start, left_count, right_start, right_count }`.
 4. WHEN two identical inputs are compared, THE Diff_Engine SHALL return a Diff_Result containing a single `Equal` hunk spanning all lines, with no difference hunks.
 5. WHEN one input is empty and the other is non-empty, THE Diff_Engine SHALL return a Diff_Result containing a single `Added` or `Removed` hunk spanning all lines of the non-empty input.
@@ -85,7 +85,7 @@ The subsystem also supports convenience comparison workflows: compare the active
 7. THE Diff_Engine SHALL support an `ignore_case` option: WHEN enabled, line comparison SHALL use Unicode case-folded equality, and lines differing only in case SHALL be reported as `Equal`.
 8. THE Diff_Engine SHALL perform inline change detection for `Changed` hunks: within each pair of changed lines, the engine SHALL identify the specific character ranges that differ, producing `Inline_Change` markers for fine-grained highlighting.
 9. THE Diff_Engine output SHALL be deterministic: given the same two inputs and the same options, the engine SHALL always produce the same Diff_Result.
-10. THE Diff_Engine SHALL handle large inputs efficiently — comparison of two 100,000-line files SHALL complete within 2 seconds on a modern desktop CPU (single-threaded).
+10. THE Diff_Engine SHALL handle large inputs efficiently -- comparison of two 100,000-line files SHALL complete within 2 seconds on a modern desktop CPU (single-threaded).
 
 ---
 
@@ -175,7 +175,7 @@ The subsystem also supports convenience comparison workflows: compare the active
 
 #### Acceptance Criteria
 
-1. THE compare subsystem SHALL register the following merge commands: `compare.accept_left` (accept the left version for the current hunk), `compare.accept_right` (accept the right version for the current hunk), `compare.accept_both` (concatenate both versions — left then right — for the current hunk).
+1. THE compare subsystem SHALL register the following merge commands: `compare.accept_left` (accept the left version for the current hunk), `compare.accept_right` (accept the right version for the current hunk), `compare.accept_both` (concatenate both versions -- left then right -- for the current hunk).
 2. WHEN `compare.accept_left` is invoked on a `Changed` or `Added` hunk, THE compare subsystem SHALL replace the hunk's content in the merge result with the left version's content for that region.
 3. WHEN `compare.accept_right` is invoked on a `Changed` or `Removed` hunk, THE compare subsystem SHALL replace the hunk's content in the merge result with the right version's content for that region.
 4. WHEN `compare.accept_both` is invoked on a `Changed` hunk, THE compare subsystem SHALL insert both versions sequentially (left content followed by right content) into the merge result at that position.
@@ -184,7 +184,7 @@ The subsystem also supports convenience comparison workflows: compare the active
 7. THE compare subsystem SHALL register a command `compare.accept_all_left` that resolves all remaining unresolved hunks by accepting the left version, and `compare.accept_all_right` that resolves all remaining hunks with the right version.
 8. THE Compare_Session SHALL track resolution status per hunk: unresolved, resolved-left, resolved-right, resolved-both, or resolved-custom.
 9. WHEN all hunks in a Compare_Session are resolved, THE compare subsystem SHALL display a notification in the status bar indicating the merge is complete and prompt the user to save the merged result.
-10. THE merge result document SHALL be a new Document (via the document-model) that the user can edit, save (through VFS), or discard — the original compared resources SHALL NOT be modified unless the user explicitly saves back to one of them.
+10. THE merge result document SHALL be a new Document (via the document-model) that the user can edit, save (through VFS), or discard -- the original compared resources SHALL NOT be modified unless the user explicitly saves back to one of them.
 
 ---
 
@@ -205,7 +205,7 @@ The subsystem also supports convenience comparison workflows: compare the active
 7. REGIONS classified as conflict SHALL be marked as unresolved in the merge result and highlighted with the theme colour token `diff.conflict_background`, requiring manual resolution by the user.
 8. FOR conflict regions, THE merge view SHALL display all three versions (base, left, right) with clear labels, enabling the user to accept left, accept right, accept both, or manually edit the conflict region.
 9. THE three-way merge SHALL be modelled as a workflow (via the workflow-engine): steps include load-resources, compute-diffs, auto-resolve-non-conflicts, present-conflicts, await-user-resolution, and save-result.
-10. THE three-way merge workflow SHALL support cancellation at any step — if cancelled during conflict resolution, THE compare subsystem SHALL offer to save the partially resolved result or discard it.
+10. THE three-way merge workflow SHALL support cancellation at any step -- if cancelled during conflict resolution, THE compare subsystem SHALL offer to save the partially resolved result or discard it.
 
 ---
 
@@ -217,9 +217,9 @@ The subsystem also supports convenience comparison workflows: compare the active
 
 #### Acceptance Criteria
 
-1. THE compare subsystem SHALL resolve all resource paths to Resource_URIs via the VFS abstraction before initiating comparison — bare paths SHALL be resolved via the default provider (local filesystem).
+1. THE compare subsystem SHALL resolve all resource paths to Resource_URIs via the VFS abstraction before initiating comparison -- bare paths SHALL be resolved via the default provider (local filesystem).
 2. THE compare subsystem SHALL support comparing resources from different VFS providers in a single comparison session (e.g., `vfs://local/file.txt` vs. `vfs://catalog/HLQ.DATA(MEMBER)`).
-3. THE compare subsystem SHALL load resource content by calling the VFS `read()` or `read_stream()` method on each resource, using the provider resolved from the Resource_URI — no direct filesystem access is permitted.
+3. THE compare subsystem SHALL load resource content by calling the VFS `read()` or `read_stream()` method on each resource, using the provider resolved from the Resource_URI -- no direct filesystem access is permitted.
 4. IF a resource cannot be loaded (VfsError::NotFound, VfsError::PermissionDenied, or other error), THEN THE compare subsystem SHALL display the error in the Compare_Output_Panel and SHALL NOT attempt to display a partial diff.
 5. THE compare subsystem SHALL query VFS capabilities for each resource: IF a provider declares the resource is binary (no text content-type) or if automatic binary detection identifies the resource as binary, THEN THE compare subsystem SHALL switch to binary comparison mode (Requirement 10).
 6. THE compare subsystem SHALL support comparing resources of different encodings by normalising both to UTF-8 (via the encoding-and-characters subsystem) before feeding content to the Diff_Engine.
@@ -244,7 +244,7 @@ The subsystem also supports convenience comparison workflows: compare the active
 
 ---
 
-### Requirement 11: Comparison Options — Ignore Whitespace and Ignore Case
+### Requirement 11: Comparison Options -- Ignore Whitespace and Ignore Case
 
 **User Story:** As a user, I want options to ignore whitespace differences or case differences during comparison, so that I can focus on meaningful content changes and filter out formatting noise.
 
@@ -253,7 +253,7 @@ The subsystem also supports convenience comparison workflows: compare the active
 #### Acceptance Criteria
 
 1. THE compare subsystem SHALL accept an `ignore_whitespace` option that applies to the diff computation: WHEN enabled, lines differing only in leading whitespace, trailing whitespace, or internal whitespace runs SHALL be treated as equal.
-2. THE `ignore_whitespace` option SHALL support three modes: `none` (default — all whitespace significant), `leading_trailing` (ignore only leading and trailing whitespace), and `all` (ignore all whitespace differences including internal).
+2. THE `ignore_whitespace` option SHALL support three modes: `none` (default -- all whitespace significant), `leading_trailing` (ignore only leading and trailing whitespace), and `all` (ignore all whitespace differences including internal).
 3. THE compare subsystem SHALL accept an `ignore_case` option that applies to the diff computation: WHEN enabled, line comparison SHALL use Unicode case-folded equality (using the same case-folding rules as the find-and-replace subsystem).
 4. WHEN comparison options are changed for an active Compare_Session, THE compare subsystem SHALL re-run the diff computation with the new options and update the diff view without requiring the user to re-invoke the COMPARE command.
 5. THE current comparison options SHALL be displayed in the diff view header/toolbar and SHALL be togglable via commands: `compare.toggle_ignore_whitespace` and `compare.toggle_ignore_case`.
@@ -305,9 +305,9 @@ The subsystem also supports convenience comparison workflows: compare the active
 1. THE compare subsystem SHALL register a command `compare.with_saved` that compares the active editor document's current in-memory content against the persisted version of the same resource (loaded fresh from VFS).
 2. WHEN `compare.with_saved` is invoked, THE compare subsystem SHALL load the last-saved content from the resource's VFS provider (using the document's Resource_URI) and compare it against the document model's current line content.
 3. IF the active document has no associated Resource_URI (unsaved new document), THEN THE command SHALL return an error result with the message "Document has not been saved. No saved version to compare against."
-4. IF the active document has no unsaved modifications (is_modified == false), THE command SHALL notify the user via the status bar with the message "No unsaved changes — document matches saved version." and SHALL NOT open a diff view.
+4. IF the active document has no unsaved modifications (is_modified == false), THE command SHALL notify the user via the status bar with the message "No unsaved changes -- document matches saved version." and SHALL NOT open a diff view.
 5. THE compare-with-saved diff view SHALL label the left pane as "Saved: {resource_name}" and the right pane as "Unsaved Changes: {resource_name}", clearly identifying which version is which.
-6. THE compare-with-saved view SHALL be read-only in both panes — merge operations SHALL NOT be available since the purpose is review, not merge.
+6. THE compare-with-saved view SHALL be read-only in both panes -- merge operations SHALL NOT be available since the purpose is review, not merge.
 
 ---
 
@@ -324,7 +324,7 @@ The subsystem also supports convenience comparison workflows: compare the active
 3. IF the clipboard does not contain text content (empty or non-text data), THEN THE command SHALL return an error result with the message "Clipboard does not contain text content."
 4. IF no active editor document exists, THEN THE command SHALL return an error result with the message "No active document. Open a file before comparing with clipboard."
 5. THE compare-with-clipboard diff view SHALL label the left pane as "{resource_name}" (the active document) and the right pane as "Clipboard Content".
-6. THE clipboard content SHALL be treated as a temporary, unnamed resource — it SHALL NOT have a Resource_URI and SHALL NOT be monitored for external changes.
+6. THE clipboard content SHALL be treated as a temporary, unnamed resource -- it SHALL NOT have a Resource_URI and SHALL NOT be monitored for external changes.
 7. WHEN the user has a text selection active in the editor, THE `compare.with_clipboard` command SHALL compare only the selected text against clipboard content (not the entire document), labelling the left pane as "Selection in {resource_name}".
 
 ---
@@ -362,7 +362,7 @@ The subsystem also supports convenience comparison workflows: compare the active
 4. THE diff export SHALL include 3 lines of context (unchanged lines) around each hunk by default, configurable via a `context_lines` parameter (range 0–999).
 5. WHEN `compare.export_diff` is invoked, THE command SHALL offer the following output destinations: (a) copy to clipboard, (b) save to a file (via VFS-aware file picker), or (c) open as a new unnamed document in the editor.
 6. THE unified diff export SHALL correctly handle the "No newline at end of file" indicator (`\ No newline at end of file`) when either resource does not end with a newline character.
-7. THE exported diff SHALL reflect the current comparison options (ignore_whitespace, ignore_case) — if options are active, the diff export SHALL note this in a comment header (e.g., `# Options: ignore_whitespace=leading_trailing`).
+7. THE exported diff SHALL reflect the current comparison options (ignore_whitespace, ignore_case) -- if options are active, the diff export SHALL note this in a comment header (e.g., `# Options: ignore_whitespace=leading_trailing`).
 8. THE `compare.export_diff` command SHALL only be available when a Compare_Session is active; IF no session is active, THE command SHALL be disabled (greyed out in menus, returns error if invoked programmatically).
 
 ---

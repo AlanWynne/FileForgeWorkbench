@@ -2,20 +2,20 @@
 
 ## Introduction
 
-This feature specifies the Workflow Engine for FileForgeWorkbench (`ff-workflow` crate). The workflow engine provides a state-machine-based execution framework for multi-step operations that require sequencing, progress reporting, cancellation, error recovery, and optional persistence. Complex operations in the workbench — such as data transfer, file import/export, compare-merge, and bulk rename — are modelled as workflows rather than monolithic functions, enabling consistent user experience (progress indication, cancel button, error recovery dialogs) across all long-running operations.
+This feature specifies the Workflow Engine for FileForgeWorkbench (`ff-workflow` crate). The workflow engine provides a state-machine-based execution framework for multi-step operations that require sequencing, progress reporting, cancellation, error recovery, and optional persistence. Complex operations in the workbench -- such as data transfer, file import/export, compare-merge, and bulk rename -- are modelled as workflows rather than monolithic functions, enabling consistent user experience (progress indication, cancel button, error recovery dialogs) across all long-running operations.
 
-The workflow engine is a **platform-core subsystem** — it operates within the GUI-independent layer and communicates with the GUI shell through the event bus. It depends on `ff-logging` for diagnostic output, integrates with the `command-framework` for workflow invocation, and is accessible to plugins via the `plugin-architecture` trait. All workflow I/O operations use the async I/O principle (Tokio-based) per Architecture Brief §9.
+The workflow engine is a **platform-core subsystem** -- it operates within the GUI-independent layer and communicates with the GUI shell through the event bus. It depends on `ff-logging` for diagnostic output, integrates with the `command-framework` for workflow invocation, and is accessible to plugins via the `plugin-architecture` trait. All workflow I/O operations use the async I/O principle (Tokio-based) per Architecture Brief §9.
 
 **Source references:**
 - **WB** = Workbench Architecture Brief §11 (workflow state machines, progress, cancellation)
-- **FFE** = FileForgeEditor (background-io, compare-merge — operations now modelled as workflows)
+- **FFE** = FileForgeEditor (background-io, compare-merge -- operations now modelled as workflows)
 
 ## Glossary
 
 - **Workflow**: A multi-step operation modelled as a state machine with a defined set of states, transitions, and execution logic. A workflow accepts input parameters, executes steps in sequence (or parallel/conditional), reports progress, and produces a result or error. [WB]
-- **Workflow_Definition**: A declarative description of a workflow's structure — its states, transitions, step implementations, error policy, and cancellation behaviour. Definitions are data-driven, not hardcoded control flow. [WB]
+- **Workflow_Definition**: A declarative description of a workflow's structure -- its states, transitions, step implementations, error policy, and cancellation behaviour. Definitions are data-driven, not hardcoded control flow. [WB]
 - **Workflow_Step**: A single unit of work within a workflow. A step may be synchronous or async, reports its own progress, and produces an output that feeds into the workflow context. [WB]
-- **Workflow_State**: The current position of a workflow within its state machine — which step is active, which steps are completed, and what the next transition will be. [WB]
+- **Workflow_State**: The current position of a workflow within its state machine -- which step is active, which steps are completed, and what the next transition will be. [WB]
 - **Workflow_Context**: A typed key-value store that carries state between steps within a single workflow execution. Steps read inputs from and write outputs to the context. [WB]
 - **Workflow_Runner**: The execution engine that drives a workflow through its states, invoking steps, handling errors, propagating cancellation, and emitting progress events. [WB]
 - **Cancellation_Token**: A cooperative signal that indicates a workflow should stop execution gracefully. Propagated to all async operations within the workflow. [WB]
@@ -32,14 +32,14 @@ The workflow engine is a **platform-core subsystem** — it operates within the 
 
 **User Story:** As a workbench developer, I want to define workflows declaratively as state machines with typed steps and transitions, so that complex operations are composable, testable, and maintainable without hardcoded control flow.
 
-**Source:** WB Architecture Brief §11 — workflow state machines, declarative definition. [WB]
+**Source:** WB Architecture Brief §11 -- workflow state machines, declarative definition. [WB]
 
 #### Acceptance Criteria
 
 1. THE Workflow_Definition SHALL describe a workflow as a directed graph of states and transitions, where each state corresponds to a named Workflow_Step and transitions define the conditions under which execution advances to the next state.
 2. THE Workflow_Definition SHALL support three step-sequencing modes: sequential (steps execute one after another), parallel (multiple steps execute concurrently with a join barrier), and conditional (transitions chosen based on a predicate evaluated against the Workflow_Context).
 3. WHEN a Workflow_Definition is constructed, THE workflow engine SHALL validate that the definition has exactly one initial state, at least one terminal state (success or failure), and no unreachable states; IF validation fails, THEN THE workflow engine SHALL return an error describing the structural problem.
-4. THE Workflow_Definition SHALL be data-driven: definitions are constructed from structured data (Rust builder API or deserialized from a configuration format) — not expressed as hardcoded `match` or `if/else` chains in application code.
+4. THE Workflow_Definition SHALL be data-driven: definitions are constructed from structured data (Rust builder API or deserialized from a configuration format) -- not expressed as hardcoded `match` or `if/else` chains in application code.
 5. EACH Workflow_Step within a definition SHALL declare its expected input types (read from Workflow_Context) and output types (written to Workflow_Context), enabling the workflow engine to verify type compatibility between connected steps at definition time.
 6. THE Workflow_Definition SHALL support parameterization: each workflow declares a set of named input parameters with types and optional default values that must be supplied when the workflow is started.
 7. THE workflow engine SHALL provide built-in workflow definitions for common workbench operations including: data transfer, file import/export, compare-merge, and bulk rename; additional workflows SHALL be registerable by plugins.
@@ -50,7 +50,7 @@ The workflow engine is a **platform-core subsystem** — it operates within the 
 
 **User Story:** As a workbench developer, I want the workflow runner to execute workflow steps in the defined sequence with shared context, so that each step can build upon the outputs of previous steps and the overall operation proceeds predictably.
 
-**Source:** WB Architecture Brief §11 — step sequencing, context passing, async execution. [WB]
+**Source:** WB Architecture Brief §11 -- step sequencing, context passing, async execution. [WB]
 
 #### Acceptance Criteria
 
@@ -69,7 +69,7 @@ The workflow engine is a **platform-core subsystem** — it operates within the 
 
 **User Story:** As a user, I want to cancel any long-running workflow operation gracefully, so that I can regain control of the application without data corruption or resource leaks.
 
-**Source:** WB Architecture Brief §11 — cooperative cancellation, graceful shutdown. [WB]
+**Source:** WB Architecture Brief §11 -- cooperative cancellation, graceful shutdown. [WB]
 
 #### Acceptance Criteria
 
@@ -87,11 +87,11 @@ The workflow engine is a **platform-core subsystem** — it operates within the 
 
 **User Story:** As a user, I want to see real-time progress information for long-running operations, so that I know how much work remains and can make informed decisions about waiting or cancelling.
 
-**Source:** WB Architecture Brief §11 — progress reporting, event bus integration. [WB]
+**Source:** WB Architecture Brief §11 -- progress reporting, event bus integration. [WB]
 
 #### Acceptance Criteria
 
-1. THE workflow engine SHALL support two progress modes: determinate (known total — reports percentage, items processed, and total items) and indeterminate (unknown total — reports only that work is in progress with a status message).
+1. THE workflow engine SHALL support two progress modes: determinate (known total -- reports percentage, items processed, and total items) and indeterminate (unknown total -- reports only that work is in progress with a status message).
 2. WHEN a workflow step reports determinate progress, THE Progress_Event SHALL include: percentage complete (0–100), items processed count, total items count, current status message, and optional estimated time remaining.
 3. WHEN a workflow step reports indeterminate progress, THE Progress_Event SHALL include: a status message describing the current activity, and a flag indicating indeterminate mode so the UI can display a spinning or pulsing indicator.
 4. THE Workflow_Runner SHALL aggregate progress from child steps into parent workflow progress: the parent percentage SHALL be calculated as `(completed_steps + current_step_fraction) / total_steps * 100`, where `current_step_fraction` is the active step's own reported percentage divided by 100.
@@ -106,7 +106,7 @@ The workflow engine is a **platform-core subsystem** — it operates within the 
 
 **User Story:** As a user, I want workflow errors to be handled gracefully with options to retry, skip, or abort, so that a single step failure does not necessarily destroy the entire operation's progress.
 
-**Source:** WB Architecture Brief §11 — error handling, recovery, rollback. [WB]
+**Source:** WB Architecture Brief §11 -- error handling, recovery, rollback. [WB]
 
 #### Acceptance Criteria
 
@@ -126,7 +126,7 @@ The workflow engine is a **platform-core subsystem** — it operates within the 
 
 **User Story:** As a workbench developer, I want workflows to be registered in a central registry by name and category, so that the command framework, plugins, and UI can discover and invoke workflows without hardcoded references.
 
-**Source:** WB Architecture Brief §11 — workflow registry, plugin extensibility. [WB]
+**Source:** WB Architecture Brief §11 -- workflow registry, plugin extensibility. [WB]
 
 #### Acceptance Criteria
 
@@ -144,7 +144,7 @@ The workflow engine is a **platform-core subsystem** — it operates within the 
 
 **User Story:** As a user, I want long-running workflows to survive application restarts, so that I do not lose progress on operations that take significant time (large data transfers, bulk processing).
 
-**Source:** WB Architecture Brief §11 — workflow persistence, checkpoint, resume. [WB]
+**Source:** WB Architecture Brief §11 -- workflow persistence, checkpoint, resume. [WB]
 
 #### Acceptance Criteria
 

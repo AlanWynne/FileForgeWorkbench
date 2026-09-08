@@ -2,9 +2,9 @@
 
 ## Introduction
 
-This feature specifies the **Encoding and Characters** subsystem for FileForgeWorkbench — the `ff-encoding` crate. This crate provides encoding detection, BOM (Byte Order Mark) handling, encoding conversion on load and save, word-character classification (extending Scintilla's `CharClassify` to full Unicode), grapheme cluster boundary detection, and DBCS (Double-Byte Character Set) support for legacy East Asian encodings.
+This feature specifies the **Encoding and Characters** subsystem for FileForgeWorkbench -- the `ff-encoding` crate. This crate provides encoding detection, BOM (Byte Order Mark) handling, encoding conversion on load and save, word-character classification (extending Scintilla's `CharClassify` to full Unicode), grapheme cluster boundary detection, and DBCS (Double-Byte Character Set) support for legacy East Asian encodings.
 
-The encoding crate is **GUI-independent** — it has no rendering or framework dependency. It operates as a service layer consumed by the document model during file loading/saving and by the find-and-replace engine for Unicode case folding and word boundary detection.
+The encoding crate is **GUI-independent** -- it has no rendering or framework dependency. It operates as a service layer consumed by the document model during file loading/saving and by the find-and-replace engine for Unicode case folding and word boundary detection.
 
 This specification is derived primarily from Scintilla's character-handling infrastructure:
 
@@ -26,13 +26,13 @@ This specification is derived primarily from Scintilla's character-handling infr
 
 ## Cross-References
 
-- **`document-model`** — The document model stores text as UTF-8 internally; encoding conversion happens at the boundary (load/save). Character navigation methods in document-model delegate to this crate for encoding awareness. [SCI-DOC-11]
-- **`file-operations`** — File open and save operations use this crate to detect encoding on load and convert on save. BOM decisions are made during save. [FFE]
-- **`find-and-replace`** — Unicode case folding for case-insensitive search delegates to this crate's `CaseFolder`. Word-boundary detection uses this crate's character classification. [SCI-CASE]
-- **`edit-operations`** — Word-selection (double-click), word-delete, and Ctrl+arrow word navigation depend on word-character classification from this crate. [SCI-CHAR]
-- **`navigation-commands`** — Word-part navigation (camelCase/snake_case sub-word movement) uses this crate's `WordPartSeparator` classification. [SCI-DOC-11]
-- **`fileforge-integration`** — EBCDIC encoding support for mainframe file formats. [FFE]
-- **`background-io`** — Encoding detection may run as part of async file loading pipeline. [WB]
+- **`document-model`** -- The document model stores text as UTF-8 internally; encoding conversion happens at the boundary (load/save). Character navigation methods in document-model delegate to this crate for encoding awareness. [SCI-DOC-11]
+- **`file-operations`** -- File open and save operations use this crate to detect encoding on load and convert on save. BOM decisions are made during save. [FFE]
+- **`find-and-replace`** -- Unicode case folding for case-insensitive search delegates to this crate's `CaseFolder`. Word-boundary detection uses this crate's character classification. [SCI-CASE]
+- **`edit-operations`** -- Word-selection (double-click), word-delete, and Ctrl+arrow word navigation depend on word-character classification from this crate. [SCI-CHAR]
+- **`navigation-commands`** -- Word-part navigation (camelCase/snake_case sub-word movement) uses this crate's `WordPartSeparator` classification. [SCI-DOC-11]
+- **`fileforge-integration`** -- EBCDIC encoding support for mainframe file formats. [FFE]
+- **`background-io`** -- Encoding detection may run as part of async file loading pipeline. [WB]
 
 ---
 
@@ -44,7 +44,7 @@ This specification is derived primarily from Scintilla's character-handling infr
 - **CharacterCategoryMap**: An optimized lookup structure mapping Unicode code points to their General Category, using a dense array for common characters and binary search for rare ones. [SCI-CHAR]
 - **DBCS (Double-Byte Character Set)**: Legacy East Asian encodings where characters are represented by either one or two bytes. Includes Shift-JIS (CP932), GBK (CP936), Korean Wansung (CP949), Big5 (CP950), and Johab (CP1361). [SCI-DBCS]
 - **EncodingFamily**: An enum categorising encodings into families: SingleByte (ASCII, ISO-8859-x), UTF-8, DBCS (Shift-JIS, GBK, etc.), and Unicode (UTF-16, UTF-32). [SCI-DOC-11]
-- **GraphemeCluster**: A user-perceived character that may span multiple Unicode code points — e.g., base character + combining marks, regional indicator pairs (flags), emoji ZWJ sequences. [WB]
+- **GraphemeCluster**: A user-perceived character that may span multiple Unicode code points -- e.g., base character + combining marks, regional indicator pairs (flags), emoji ZWJ sequences. [WB]
 - **CaseFolder**: A component performing Unicode case folding for case-insensitive comparison. Supports fold (for search), upper, and lower conversions. Not locale-sensitive. [SCI-CASE]
 - **LeadByte**: In DBCS encodings, the first byte of a two-byte character sequence. The valid ranges differ per code page. [SCI-DBCS]
 - **TrailByte**: In DBCS encodings, the second byte of a two-byte character sequence. [SCI-DBCS]
@@ -68,7 +68,7 @@ This specification is derived primarily from Scintilla's character-handling infr
 4. WHEN the file content is valid UTF-8 (all multi-byte sequences conform to RFC 3629), THE detector SHALL classify it as UTF-8 unless a non-UTF-8 BOM is present. [SCI-UNI]
 5. IF the file content contains null bytes in a pattern consistent with UTF-16 or UTF-32 (alternating nulls for UTF-16, triple nulls for UTF-32), THEN THE detector SHALL classify accordingly based on byte-order patterns. [SCI-UNI]
 6. THE encoding detector SHALL return a confidence level (High, Medium, Low) alongside the detected encoding, enabling the caller to prompt the user when confidence is low. [WB]
-7. THE encoding detector SHALL be stateless and side-effect-free — it SHALL operate on a byte slice without modifying any document state. [WB]
+7. THE encoding detector SHALL be stateless and side-effect-free -- it SHALL operate on a byte slice without modifying any document state. [WB]
 8. WHEN an explicit encoding is provided by the user or configuration (e.g., per-file or per-project encoding override), THE system SHALL skip detection and use the specified encoding directly. [FFE]
 
 ---
@@ -88,7 +88,7 @@ This specification is derived primarily from Scintilla's character-handling infr
 5. WHEN saving a file, IF the document's `has_bom` metadata is `true`, THEN THE encoder SHALL prepend the appropriate BOM for the target encoding. [FFE]
 6. WHEN saving a file, IF the user explicitly requests BOM removal or addition (via command or configuration), THEN THE encoder SHALL honour that request regardless of the `has_bom` metadata. [FFE]
 7. IF the target save encoding is UTF-8 and no BOM preference is set, THEN THE default behaviour SHALL be to preserve the original BOM state (write BOM if file had BOM, omit if it did not). [FFE]
-8. THE BOM detector SHALL be invocable independently of full encoding detection — callers SHALL be able to check for BOM presence without triggering heuristic analysis. [WB]
+8. THE BOM detector SHALL be invocable independently of full encoding detection -- callers SHALL be able to check for BOM presence without triggering heuristic analysis. [WB]
 
 ---
 
@@ -107,7 +107,7 @@ This specification is derived primarily from Scintilla's character-handling infr
 5. WHEN converting from UTF-16 or UTF-32, THE converter SHALL correctly handle surrogate pairs (UTF-16) and supplementary plane characters, producing valid 4-byte UTF-8 sequences for code points above U+FFFF. [SCI-UNI]
 6. WHEN converting from a DBCS encoding, THE converter SHALL use the code-page-specific lead/trail byte tables to correctly segment multi-byte characters before mapping to Unicode code points. [SCI-DBCS]
 7. THE converter SHALL preserve the exact byte count of each source line after conversion, maintaining a mapping from source byte offsets to UTF-8 byte offsets for diagnostic purposes. [WB]
-8. THE conversion process SHALL be streaming-capable — it SHALL process chunks of input without requiring the entire file in memory, enabling integration with the background-io pipeline. [WB]
+8. THE conversion process SHALL be streaming-capable -- it SHALL process chunks of input without requiring the entire file in memory, enabling integration with the background-io pipeline. [WB]
 
 ---
 
@@ -120,13 +120,13 @@ This specification is derived primarily from Scintilla's character-handling infr
 #### Acceptance Criteria
 
 1. WHEN a file is saved, THE converter SHALL transcode the document's UTF-8 content to the target encoding specified in the document's encoding metadata. [SCI-UNI]
-2. THE default target encoding for save SHALL be the encoding detected (or specified) when the file was loaded — preserving the original encoding unless the user explicitly changes it. [FFE]
+2. THE default target encoding for save SHALL be the encoding detected (or specified) when the file was loaded -- preserving the original encoding unless the user explicitly changes it. [FFE]
 3. WHEN the user requests "Save As" with a different encoding, THE converter SHALL transcode to the new encoding and update the document's encoding metadata to reflect the change. [FFE]
 4. WHEN a Unicode character in the document has no representation in the target encoding (unmappable character), THE converter SHALL report the character position and code point as a save-encoding error, and SHALL NOT silently discard or corrupt the character. [WB]
 5. IF unmappable characters are detected during save-encoding, THEN THE system SHALL present the user with options: (a) abort save, (b) replace unmappable characters with a placeholder (e.g., `?`), or (c) switch to UTF-8 encoding for the save. [WB]
 6. WHEN converting to UTF-16LE/BE or UTF-32LE/BE, THE converter SHALL produce valid surrogate pairs (UTF-16) or direct code point values (UTF-32) for supplementary plane characters. [SCI-UNI]
 7. WHEN converting to a DBCS encoding, THE converter SHALL use the encoding's Unicode-to-byte mapping table to produce correct lead+trail byte sequences. [SCI-DBCS]
-8. THE save-conversion process SHALL be streaming-capable — it SHALL produce output chunks suitable for async write without buffering the entire converted file in memory. [WB]
+8. THE save-conversion process SHALL be streaming-capable -- it SHALL produce output chunks suitable for async write without buffering the entire converted file in memory. [WB]
 
 ---
 
@@ -142,9 +142,9 @@ This specification is derived primarily from Scintilla's character-handling infr
 2. WHEN `utf8_classify(bytes)` is called on a byte sequence, THE classifier SHALL return the byte length of the first character (1–4) and a validity flag. Invalid sequences SHALL be reported with their expected vs actual byte count. [SCI-UNI]
 3. WHEN `utf8_fix_invalid(text)` is called, THE repair function SHALL replace each invalid byte sequence with U+FFFD (Replacement Character), preserving all valid UTF-8 content unchanged. [SCI-UNI]
 4. THE UTF-8 classifier SHALL correctly identify trail bytes (0x80–0xBF), ASCII bytes (0x00–0x7F), and lead bytes (0xC2–0xF4), rejecting invalid lead byte values (0xC0, 0xC1, 0xF5–0xFF). [SCI-UNI]
-5. THE UTF-8 validator SHALL detect and reject overlong encodings — sequences that use more bytes than necessary to encode a code point (e.g., 0xC0 0x80 for NUL). [SCI-UNI]
+5. THE UTF-8 validator SHALL detect and reject overlong encodings -- sequences that use more bytes than necessary to encode a code point (e.g., 0xC0 0x80 for NUL). [SCI-UNI]
 6. WHEN `utf8_byte_length_from_lead(byte)` is called with a lead byte, THE function SHALL return the expected sequence length (1 for ASCII, 2–4 for multi-byte), or 1 for invalid lead bytes (treating them as single-byte replacement targets). [SCI-UNI]
-7. THE validator SHALL handle the Unicode line separator (U+2028), paragraph separator (U+2029), and NEL (U+0085) as valid UTF-8 sequences — they are valid characters that may or may not be treated as line endings depending on the document's LineEndMode. [SCI-UNI]
+7. THE validator SHALL handle the Unicode line separator (U+2028), paragraph separator (U+2029), and NEL (U+0085) as valid UTF-8 sequences -- they are valid characters that may or may not be treated as line endings depending on the document's LineEndMode. [SCI-UNI]
 
 ---
 
@@ -178,9 +178,9 @@ This specification is derived primarily from Scintilla's character-handling infr
 1. THE CharacterCategoryMap SHALL provide a `category_for(code_point)` method that returns the Unicode General Category (one of 30 categories: Lu, Ll, Lt, Lm, Lo, Mn, Mc, Me, Nd, Nl, No, Pc, Pd, Ps, Pe, Pi, Pf, Po, Sm, Sc, Sk, So, Zs, Zl, Zp, Cc, Cf, Cs, Co, Cn) for any valid Unicode code point (0–0x10FFFF). [SCI-CHAR]
 2. THE CharacterCategoryMap SHALL use a dense array for code points in the Basic Multilingual Plane (U+0000–U+FFFF) and a binary search over ranges for supplementary plane characters, balancing memory usage with lookup speed. [SCI-CHAR]
 3. WHEN `optimize(count_characters)` is called, THE map SHALL pre-allocate the dense array up to `count_characters` entries, trading memory for O(1) lookup speed for the specified range. [SCI-CHAR]
-4. THE system SHALL provide `is_id_start(code_point)` and `is_id_continue(code_point)` predicates implementing UAX #31 default identifier rules — identifying characters valid at the start of an identifier vs continuation positions. [SCI-CHAR]
+4. THE system SHALL provide `is_id_start(code_point)` and `is_id_continue(code_point)` predicates implementing UAX #31 default identifier rules -- identifying characters valid at the start of an identifier vs continuation positions. [SCI-CHAR]
 5. THE system SHALL provide `is_xid_start(code_point)` and `is_xid_continue(code_point)` predicates implementing UAX #31 extended identifier rules (XID_Start, XID_Continue properties). [SCI-CHAR]
-6. WHEN determining word boundaries for Unicode text, THE system SHALL classify characters into word-like (categories L*, Nd, Nl, Pc — letters, decimal digits, letter-numbers, connector punctuation) and non-word categories, enabling correct word selection across all scripts. [SCI-CHAR]
+6. WHEN determining word boundaries for Unicode text, THE system SHALL classify characters into word-like (categories L*, Nd, Nl, Pc -- letters, decimal digits, letter-numbers, connector punctuation) and non-word categories, enabling correct word selection across all scripts. [SCI-CHAR]
 7. THE CharacterCategoryMap data SHALL be generated from the Unicode Character Database and SHALL be updatable when new Unicode versions are released (via a build-time generation script). [SCI-CHAR]
 
 ---
@@ -206,7 +206,7 @@ This specification is derived primarily from Scintilla's character-handling infr
 
 ### Requirement 9: Grapheme Cluster Boundaries
 
-**User Story:** As a caret-movement and selection system, I want grapheme cluster boundary detection, so that the caret moves over user-perceived characters as atomic units — including combining marks, emoji sequences, and regional indicators.
+**User Story:** As a caret-movement and selection system, I want grapheme cluster boundary detection, so that the caret moves over user-perceived characters as atomic units -- including combining marks, emoji sequences, and regional indicators.
 
 **Source:** [WB], [SCI-DOC-11]
 
@@ -216,10 +216,10 @@ This specification is derived primarily from Scintilla's character-handling infr
 2. WHEN `is_grapheme_boundary(text, byte_offset)` is called, THE detector SHALL return `true` if the byte offset falls on a grapheme cluster boundary according to UAX #29 rules. [WB]
 3. WHEN `next_grapheme_boundary(text, byte_offset)` is called, THE detector SHALL return the byte offset of the next grapheme cluster boundary after the given position. [WB]
 4. WHEN `prev_grapheme_boundary(text, byte_offset)` is called, THE detector SHALL return the byte offset of the previous grapheme cluster boundary before the given position. [WB]
-5. THE detector SHALL handle combining mark sequences (base character + one or more Mn/Mc category characters) as a single grapheme cluster — the caret SHALL NOT land between a base character and its combining marks. [WB]
+5. THE detector SHALL handle combining mark sequences (base character + one or more Mn/Mc category characters) as a single grapheme cluster -- the caret SHALL NOT land between a base character and its combining marks. [WB]
 6. THE detector SHALL handle emoji modifier sequences (emoji + skin tone modifier), emoji ZWJ sequences (emoji + ZWJ + emoji), and regional indicator pairs (flag sequences) as single grapheme clusters. [WB]
 7. THE detector SHALL handle Hangul syllable sequences (L* V* T*) as single grapheme clusters per UAX #29 rules. [WB]
-8. THE grapheme cluster boundary detection SHALL be configurable at the document level — documents MAY opt into strict grapheme clustering (full UAX #29) or simplified mode (code-point-level navigation only, for performance with very large files). [WB]
+8. THE grapheme cluster boundary detection SHALL be configurable at the document level -- documents MAY opt into strict grapheme clustering (full UAX #29) or simplified mode (code-point-level navigation only, for performance with very large files). [WB]
 
 ---
 
@@ -235,7 +235,7 @@ This specification is derived primarily from Scintilla's character-handling infr
 2. WHEN `case_convert(code_point, mode)` is called, THE converter SHALL return the UTF-8 byte sequence for the converted character, or an empty result if no conversion applies. [SCI-CASE]
 3. WHEN `case_convert_string(text, mode)` is called, THE converter SHALL return a new string with all characters converted according to the specified mode, handling multi-byte expansion (converted string may be up to 3× longer than input). [SCI-CASE]
 4. THE case folding data SHALL be derived from the Unicode CaseFolding.txt database (full case folding, status C+F), enabling correct comparison of characters like ß (folds to "ss"), ﬁ (folds to "fi"), and ΐ (folds to ι + combining marks). [SCI-CASE]
-5. THE case conversion SHALL NOT be locale-sensitive — it SHALL use the default Unicode mappings regardless of system locale. Locale-sensitive operations (e.g., Turkish İ/ı) are explicitly out of scope. [SCI-CASE]
+5. THE case conversion SHALL NOT be locale-sensitive -- it SHALL use the default Unicode mappings regardless of system locale. Locale-sensitive operations (e.g., Turkish İ/ı) are explicitly out of scope. [SCI-CASE]
 6. WHEN case folding produces a multi-character expansion (e.g., ß → ss), THE fold result SHALL be the expanded form for comparison purposes. [SCI-CASE]
 7. THE CaseFolder SHALL provide a `ICaseConverter` trait with a `case_convert_string` method, enabling the find-and-replace engine to use case folding without depending on the specific implementation. [SCI-CASE]
 8. THE case conversion tables SHALL be generated at build time from Unicode data files and compiled into the crate as static data, avoiding runtime file loading. [SCI-CASE]
@@ -272,7 +272,7 @@ This specification is derived primarily from Scintilla's character-handling infr
 2. WHEN `word_part_left(text, position)` is called, THE function SHALL return the byte position of the beginning of the previous word-part to the left of `position`, respecting camelCase and snake_case boundaries. [SCI-DOC-11]
 3. WHEN `word_part_right(text, position)` is called, THE function SHALL return the byte position of the beginning of the next word-part to the right of `position`. [SCI-DOC-11]
 4. THE word-part boundaries SHALL include: (a) underscore characters, (b) transitions from lowercase letter to uppercase letter, (c) transitions from a run of uppercase letters to a lowercase letter (placing boundary before the last uppercase), (d) transitions between letter and digit. [SCI-DOC-11]
-5. THE word-part navigation SHALL respect the document's CharClassify configuration — characters not classified as Word SHALL act as hard word-part boundaries (the word-part does not span across punctuation or space). [SCI-CHAR]
+5. THE word-part navigation SHALL respect the document's CharClassify configuration -- characters not classified as Word SHALL act as hard word-part boundaries (the word-part does not span across punctuation or space). [SCI-CHAR]
 6. THE word-part functions SHALL work with Unicode text, treating any Lu/Ll category transition as a camelCase boundary, not just ASCII A-Z/a-z. [SCI-CHAR]
 
 ---

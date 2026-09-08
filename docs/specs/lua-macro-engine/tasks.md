@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-macro` crate — the scripting and automation layer for FileForgeWorkbench. The macro engine embeds a Lua 5.4 runtime (via `mlua`), exposes a rich editor API for buffer manipulation, provides a comprehensive event hook system, manages per-buffer Lua state, discovers and auto-reloads macro scripts, registers MACRO/EXEC/RUN commands, enforces security modes, and supports script debugging.
+This plan covers the complete implementation of the `ff-macro` crate -- the scripting and automation layer for FileForgeWorkbench. The macro engine embeds a Lua 5.4 runtime (via `mlua`), exposes a rich editor API for buffer manipulation, provides a comprehensive event hook system, manages per-buffer Lua state, discovers and auto-reloads macro scripts, registers MACRO/EXEC/RUN commands, enforces security modes, and supports script debugging.
 
 This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-command` (scripting bridge, command registration), `ff-document` (buffer access), `ff-undo` (macro transactions), `ff-config` (configuration), `ff-logging` (diagnostics), and `ff-plugin` (plugin lifecycle).
 
@@ -54,7 +54,7 @@ This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-com
   - [x] 5.5 Write unit tests for engine construction, plugin capability registration, and lifecycle transitions
   - Covers: Requirement 1 (AC 1.6, 1.7)
 
-- [x] 6. Editor API — buffer content functions
+- [x] 6. Editor API -- buffer content functions
   - [x] 6.1 Register Lua global table `editor` in the runtime with all required API functions
   - [x] 6.2 Implement `editor.lines()` returning total line count as Lua integer
   - [x] 6.3 Implement `editor.get_line(n)` returning 1-based line content as Lua string (excluding terminator)
@@ -66,7 +66,7 @@ This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-com
   - [x] 6.9 Write unit tests for each buffer function with valid inputs and boundary/error cases
   - Covers: Requirement 2 (AC 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.11)
 
-- [x] 7. Editor API — command dispatch and state queries
+- [x] 7. Editor API -- command dispatch and state queries
   - [x] 7.1 Implement `editor.command(str)` dispatching through the command framework's Scripting_Bridge, returning boolean success
   - [x] 7.2 Implement `editor.cursor_line()` returning 1-based cursor line number
   - [x] 7.3 Implement `editor.cursor_col()` returning 1-based cursor column
@@ -129,7 +129,7 @@ This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-com
   - [x] 12.4 Implement macro name resolution: search directories in priority order, match by filename without extension
   - [x] 12.5 Implement error reporting for `MACRO`: "Macro not found: <name>" when name doesn't resolve
   - [x] 12.6 Implement error reporting for `RUN`: "Cannot open macro file: <path>" when path is invalid
-  - [x] 12.7 Register commands with framework: `"macro.run_named"`, `"macro.exec_inline"`, `"macro.run_file"` — invocable from shortcuts, menus, and macros
+  - [x] 12.7 Register commands with framework: `"macro.run_named"`, `"macro.exec_inline"`, `"macro.run_file"` -- invocable from shortcuts, menus, and macros
   - [x] 12.8 Write unit tests for name resolution, inline execution, path execution, error messages, and command registration
   - Covers: Requirement 5 (AC 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7)
 
@@ -213,13 +213,13 @@ This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-com
   - Covers: All requirements (property-based validation)
 
 - [x] 20. Integration tests
-  - [x] 20.1 Write integration test: full macro lifecycle — load script, execute, verify buffer modifications, undo all changes
-  - [x] 20.2 Write integration test: hook cascade — register multiple OnBeforeSave handlers, verify ordering and cancellation
-  - [x] 20.3 Write integration test: per-buffer state across tab switches — set state, switch, verify isolation, switch back, verify restoration
-  - [x] 20.4 Write integration test: security gate — attempt execution in each mode, verify allow/deny decisions
-  - [x] 20.5 Write integration test: error rollback — macro that modifies 5 lines then errors, verify all 5 changes reverted
-  - [x] 20.6 Write integration test: auto-reload — modify script on disk, verify hooks re-registered without duplication
-  - [x] 20.7 Write integration test: EXEC command — evaluate expressions, verify return value display
+  - [x] 20.1 Write integration test: full macro lifecycle -- load script, execute, verify buffer modifications, undo all changes
+  - [x] 20.2 Write integration test: hook cascade -- register multiple OnBeforeSave handlers, verify ordering and cancellation
+  - [x] 20.3 Write integration test: per-buffer state across tab switches -- set state, switch, verify isolation, switch back, verify restoration
+  - [x] 20.4 Write integration test: security gate -- attempt execution in each mode, verify allow/deny decisions
+  - [x] 20.5 Write integration test: error rollback -- macro that modifies 5 lines then errors, verify all 5 changes reverted
+  - [x] 20.6 Write integration test: auto-reload -- modify script on disk, verify hooks re-registered without duplication
+  - [x] 20.7 Write integration test: EXEC command -- evaluate expressions, verify return value display
   - [x] 20.8 Write integration test: startup script and per-extension auto-load execution order
   - Covers: All requirements (end-to-end validation)
 
@@ -263,7 +263,7 @@ This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-com
 
 **Validates: Requirement 4.1, 4.3, 4.5**
 
-- **Statement:** For any sequence of buffer switches and `buffer` table writes, each buffer's table contains only the keys written while that buffer was active — keys written to one buffer are never visible in another buffer's table.
+- **Statement:** For any sequence of buffer switches and `buffer` table writes, each buffer's table contains only the keys written while that buffer was active -- keys written to one buffer are never visible in another buffer's table.
 - **Strategy:** Generate:
   - Number of buffers: integer in [2, 10]
   - Operations: sequence of 10–100 actions from {SwitchTo(buf_id), Write(key, value), Read(key)}
@@ -348,9 +348,9 @@ This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-com
 - Per-buffer state is stored as mlua `RegistryKey` references to Lua tables; swapping is implemented by updating the global `buffer` reference in the Lua registry
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
 - The `OnError` hook is invoked outside the transaction scope to prevent infinite error loops (an error in OnError is logged but does not trigger another OnError invocation)
-- Hot-discovery (Task 14.8) uses the same file watcher infrastructure as auto-reload (Task 15.1) — a single watcher monitors all configured directories
+- Hot-discovery (Task 14.8) uses the same file watcher infrastructure as auto-reload (Task 15.1) -- a single watcher monitors all configured directories
 - The startup script (Task 14.6) runs with `buffer` set to nil since no document is loaded yet; scripts must guard against nil buffer access
-- Command framework integration uses the `ScriptingBridge` defined by `ff-command` — the macro engine is the primary consumer of this bridge interface
+- Command framework integration uses the `ScriptingBridge` defined by `ff-command` -- the macro engine is the primary consumer of this bridge interface
 
 ---
 

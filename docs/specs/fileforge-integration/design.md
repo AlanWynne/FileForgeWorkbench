@@ -6,7 +6,7 @@
 
 The `ff-fileforge` crate is the **flat-file processing engine** for FileForgeWorkbench. It implements the FileForge domain logic: parsing structure definition files, building record indexes, classifying records by type, extracting and validating field values, supporting EBCDIC encoding workflows, handling COMP-3 packed decimal fields, reading variable-length binary (VB) records with RDW headers, detecting ASA carriage control, and coordinating with the document model for Grid_Edit_Mode display.
 
-This crate is **GUI-independent** — it produces structured data models that the GUI shell renders. All file access flows through the VFS abstraction (FFW-ARCH-001).
+This crate is **GUI-independent** -- it produces structured data models that the GUI shell renders. All file access flows through the VFS abstraction (FFW-ARCH-001).
 
 ### Position in Architecture
 
@@ -38,8 +38,8 @@ This crate is **GUI-independent** — it produces structured data models that th
 
 ### Design Constraints (Cross-Cutting)
 
-- **FFW-ARCH-001 (Req 1)**: ALL file access (source data, structure files, output) flows through `ff-vfs` — no `std::fs` in this crate
-- **GUI Independence (Req 2)**: Zero GUI dependencies — produces view models and data structures, never renders
+- **FFW-ARCH-001 (Req 1)**: ALL file access (source data, structure files, output) flows through `ff-vfs` -- no `std::fs` in this crate
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- produces view models and data structures, never renders
 - **Command-Driven (Req 4)**: FileForge commands (`fileforge.convert`, `fileforge.validate`, `fileforge.on`, `fileforge.off`, `asa.on`, `asa.off`, `asa.strip`) registered in `ff-command`
 - **Configuration (Req 5)**: Settings under `fileforge.*` namespace in `ff-config`
 - **Async I/O (Req 6)**: Index building, conversion, and large-file seek use async I/O via VFS
@@ -81,7 +81,7 @@ graph TD
         DESKTOP[ff-desktop<br/>Grid renderer, status bar, navigation UI]
     end
 
-    subgraph Peers [Peer Crates — Wave 12]
+    subgraph Peers [Peer Crates -- Wave 12]
         CATALOG[ff-structure-catalog<br/>Structure library & file associations]
         RSC[ff-record-selection-criteria<br/>Field-level filtering engine]
         ASA_PREV[ff-asa-report-preview<br/>ASA visual rendering]
@@ -195,7 +195,7 @@ sequenceDiagram
 crates/ff-fileforge/
 ├── Cargo.toml
 ├── src/
-│   ├── lib.rs                  # Crate root — public API re-exports
+│   ├── lib.rs                  # Crate root -- public API re-exports
 │   ├── error.rs                # FileForgeError enum
 │   ├── model/
 │   │   ├── mod.rs              # Re-exports model types
@@ -218,40 +218,40 @@ crates/ff-fileforge/
 │   │   └── lrecl_detect.rs     # LRECL auto-detection
 │   ├── record/
 │   │   ├── mod.rs              # Re-exports
-│   │   ├── classifier.rs       # RecordClassifier — type identification
-│   │   ├── extractor.rs        # FieldExtractor — bytes → typed value
-│   │   └── navigator.rs        # RecordNavigator — seek, page, first/last
+│   │   ├── classifier.rs       # RecordClassifier -- type identification
+│   │   ├── extractor.rs        # FieldExtractor -- bytes → typed value
+│   │   └── navigator.rs        # RecordNavigator -- seek, page, first/last
 │   ├── codec/
 │   │   ├── mod.rs              # Re-exports
-│   │   ├── ebcdic.rs           # EbcdicHandler — decode/encode string fields
-│   │   └── comp3.rs            # Comp3Codec — packed decimal decode/encode
+│   │   ├── ebcdic.rs           # EbcdicHandler -- decode/encode string fields
+│   │   └── comp3.rs            # Comp3Codec -- packed decimal decode/encode
 │   ├── vb/
 │   │   ├── mod.rs              # Re-exports
-│   │   └── reader.rs           # VbReader — RDW parsing, record splitting
+│   │   └── reader.rs           # VbReader -- RDW parsing, record splitting
 │   ├── asa/
 │   │   ├── mod.rs              # Re-exports
-│   │   ├── detector.rs         # AsaDetector — auto-detection logic
+│   │   ├── detector.rs         # AsaDetector -- auto-detection logic
 │   │   └── display.rs          # ASA indicator mapping
 │   ├── edit/
 │   │   ├── mod.rs              # Re-exports
-│   │   ├── engine.rs           # GridEditEngine — cell edits to byte mutations
-│   │   ├── validator.rs        # FieldValidator — type/length checking
+│   │   ├── engine.rs           # GridEditEngine -- cell edits to byte mutations
+│   │   ├── validator.rs        # FieldValidator -- type/length checking
 │   │   └── insert_delete.rs    # Record insert/delete operations
 │   ├── convert/
 │   │   ├── mod.rs              # Re-exports
-│   │   ├── engine.rs           # ConversionEngine — orchestration
+│   │   ├── engine.rs           # ConversionEngine -- orchestration
 │   │   ├── csv_writer.rs       # CSV/TSV output
 │   │   ├── json_writer.rs      # JSON output
 │   │   └── dat_writer.rs       # Fixed-width reconstruction (DAT/TXT)
 │   ├── window/
 │   │   ├── mod.rs              # Re-exports
-│   │   └── manager.rs          # WindowManager — demand loading, caching
+│   │   └── manager.rs          # WindowManager -- demand loading, caching
 │   ├── view_model/
 │   │   ├── mod.rs              # Re-exports
-│   │   └── grid.rs             # FileForgeViewModel — renderable state
+│   │   └── grid.rs             # FileForgeViewModel -- renderable state
 │   ├── commands/
 │   │   ├── mod.rs              # Re-exports
-│   │   ├── registrar.rs        # CommandRegistrar — registers all commands
+│   │   ├── registrar.rs        # CommandRegistrar -- registers all commands
 │   │   ├── convert_cmd.rs      # fileforge.convert handler
 │   │   ├── validate_cmd.rs     # fileforge.validate handler
 │   │   ├── mode_cmd.rs         # fileforge.on / fileforge.off handlers
@@ -259,7 +259,7 @@ crates/ff-fileforge/
 │   │   └── export_config_cmd.rs # fileforge.export_config handler
 │   └── activate/
 │       ├── mod.rs              # Re-exports
-│       └── activator.rs        # FileForgeActivator — mode transition logic
+│       └── activator.rs        # FileForgeActivator -- mode transition logic
 ```
 
 ---
@@ -307,11 +307,11 @@ pub struct FieldDefinition {
     pub data_type: FieldDataType,
     /// Number of implied decimal places (for numeric types)
     pub decimals: u8,
-    /// Optional list of identifier values — when a record's bytes at this
+    /// Optional list of identifier values -- when a record's bytes at this
     /// field's position match one of these values, the parent RecordStructure
     /// is applied to the record.
     pub identifiers: Vec<String>,
-    /// Optional filter list — when non-empty, only records whose identifier
+    /// Optional filter list -- when non-empty, only records whose identifier
     /// value appears in this list are displayed or exported.
     pub filters: Vec<String>,
 }
@@ -326,7 +326,7 @@ Enumeration of supported field data types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum FieldDataType {
-    /// Text string — decoded per file encoding
+    /// Text string -- decoded per file encoding
     Str,
     /// Integer numeric value
     Int,
@@ -353,13 +353,13 @@ Describes the physical record structure of the source file.
 pub enum RecordFormat {
     /// Fixed-length records (one record = LRECL bytes)
     F,
-    /// Fixed-blocked — same as F but implies blocking factor
+    /// Fixed-blocked -- same as F but implies blocking factor
     Fb,
     /// Variable-length records (newline-delimited)
     V,
-    /// Fixed-blocked binary — binary file with fixed LRECL, no newlines
+    /// Fixed-blocked binary -- binary file with fixed LRECL, no newlines
     FbBinary,
-    /// Variable-length binary — RDW-prefixed records
+    /// Variable-length binary -- RDW-prefixed records
     Vb,
     /// Fixed-blocked with ASA carriage control in column 1
     Fba,
@@ -409,13 +409,13 @@ Identifies a supported EBCDIC code page variant.
 /// Supported EBCDIC code page variants for mainframe binary files.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EbcdicCodePage {
-    /// Code page 037 — US/Canada English (default for FB_BINARY/VB)
+    /// Code page 037 -- US/Canada English (default for FB_BINARY/VB)
     Cp037,
-    /// Code page 285 — UK English
+    /// Code page 285 -- UK English
     Cp285,
-    /// Code page 500 — International (Latin-1 multilingual)
+    /// Code page 500 -- International (Latin-1 multilingual)
     Cp500,
-    /// Code page 1047 — Open Systems Latin-1
+    /// Code page 1047 -- Open Systems Latin-1
     Cp1047,
 }
 ```
@@ -533,9 +533,9 @@ The in-memory record position index enabling O(1) access.
 /// the byte offset of each record's content start.
 #[derive(Debug, Clone)]
 pub enum ByteOffsetIndex {
-    /// Computed index — record N starts at N * lrecl
+    /// Computed index -- record N starts at N * lrecl
     FixedWidth { lrecl: usize, record_count: usize },
-    /// Stored index — vec of byte offsets (one per record)
+    /// Stored index -- vec of byte offsets (one per record)
     Variable { offsets: Vec<u64> },
 }
 
@@ -614,17 +614,17 @@ pub enum RecordClassification {
 /// ASA carriage control character interpretation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AsaControl {
-    /// Space — single space before printing
+    /// Space -- single space before printing
     SingleSpace,
-    /// '0' — double space
+    /// '0' -- double space
     DoubleSpace,
-    /// '-' — triple space
+    /// '-' -- triple space
     TripleSpace,
-    /// '1' — new page (form feed)
+    /// '1' -- new page (form feed)
     NewPage,
-    /// '+' — overprint (no advance)
+    /// '+' -- overprint (no advance)
     Overprint,
-    /// 'H' — halt
+    /// 'H' -- halt
     Halt,
     /// Unknown character in column 1
     Unknown(u8),
@@ -871,7 +871,7 @@ pub enum FileForgeError {
     StructureParseError { description: String },
 
     /// A field definition has invalid parameters (negative offset, zero length, etc.)
-    #[error("[fileforge] validate structure: field '{field_name}' — {reason}")]
+    #[error("[fileforge] validate structure: field '{field_name}' -- {reason}")]
     StructureValidationError { field_name: String, reason: String },
 
     /// Source file not found via VFS.
@@ -883,7 +883,7 @@ pub enum FileForgeError {
     EmptyFile { uri: String },
 
     /// I/O error during file read, write, or seek.
-    #[error("[fileforge] {operation}: I/O error on {uri} — {source}")]
+    #[error("[fileforge] {operation}: I/O error on {uri} -- {source}")]
     IoError {
         operation: String,
         uri: String,
@@ -892,7 +892,7 @@ pub enum FileForgeError {
     },
 
     /// VB binary file has an invalid RDW.
-    #[error("[fileforge] read VB record: invalid RDW at byte offset {byte_offset} — {reason}")]
+    #[error("[fileforge] read VB record: invalid RDW at byte offset {byte_offset} -- {reason}")]
     InvalidRdw { byte_offset: u64, reason: String },
 
     /// Unexpected end of file while reading a record.
@@ -904,7 +904,7 @@ pub enum FileForgeError {
     InvalidComp3 { field_name: String, offset: usize },
 
     /// Field edit failed type validation.
-    #[error("[fileforge] validate field: {field_name} — {reason}")]
+    #[error("[fileforge] validate field: {field_name} -- {reason}")]
     FieldValidationError { field_name: String, reason: String },
 
     /// Field edit would produce bytes exceeding the declared field length.
@@ -915,7 +915,7 @@ pub enum FileForgeError {
         actual_length: usize,
     },
 
-    /// EBCDIC encoding error — a character has no mapping in the target code page.
+    /// EBCDIC encoding error -- a character has no mapping in the target code page.
     #[error("[fileforge] encode EBCDIC: character '{character}' has no mapping in {code_page:?}")]
     EbcdicEncodingError { character: char, code_page: EbcdicCodePage },
 
@@ -928,7 +928,7 @@ pub enum FileForgeError {
     RecordOutOfRange { requested: usize, total: usize },
 
     /// No FileForge_Mode session is active for the requested operation.
-    #[error("[fileforge] {operation}: no FileForge session is active — load a structure file first")]
+    #[error("[fileforge] {operation}: no FileForge session is active -- load a structure file first")]
     NoActiveSession { operation: String },
 
     /// LRECL auto-detection could not determine a uniform record length.
@@ -958,13 +958,13 @@ pub enum WarningKind {
     OverlappingFields,
     /// Both recfm VB and lrecl are specified (lrecl ignored)
     VbWithLrecl,
-    /// FB_BINARY/VB without explicit encoding — defaulting to EBCDIC-037
+    /// FB_BINARY/VB without explicit encoding -- defaulting to EBCDIC-037
     DefaultingToEbcdic,
     /// Legacy key name normalised (field_delimeter → field_delimiter)
     LegacyKeyNormalised,
     /// Legacy data_type string normalised (Python repr → short form)
     LegacyDataTypeNormalised,
-    /// Unknown encoding — defaulting to UTF-8
+    /// Unknown encoding -- defaulting to UTF-8
     DefaultingToUtf8,
     /// Field has negative offset or zero length
     InvalidFieldDimensions,
@@ -980,7 +980,7 @@ pub enum WarningKind {
 | Operation | VFS Method | Context |
 |-----------|-----------|---------|
 | Read source file for index scan | `read_stream(uri)` | Async streaming for large files |
-| Read structure file | `read(uri)` | Full file load — `.ffs` files are small |
+| Read structure file | `read(uri)` | Full file load -- `.ffs` files are small |
 | Seek-read a window of records | `read_range(uri, offset, length)` | O(1) record access via ByteOffsetIndex |
 | Write export output | `write(uri, content)` | Conversion output (CSV, JSON, DAT) |
 | Watch structure file changes | `watch(uri, callback)` | Hot-reload structure on external edit |
@@ -997,7 +997,7 @@ All VFS calls use `ResourceUri` addressing. The fileforge crate never accesses `
 | Buffer length | `DocumentHandle::byte_len()` | Determine file size for index validation |
 | Watcher registration | `DocumentHandle::add_watcher(callback)` | Detect external buffer changes |
 
-FileForge_Mode is an **overlay** on the existing document buffer — it does not duplicate storage. Records are read from the document buffer on demand.
+FileForge_Mode is an **overlay** on the existing document buffer -- it does not duplicate storage. Records are read from the document buffer on demand.
 
 ### 3. Encoding and Characters (`ff-encoding`)
 
@@ -1097,9 +1097,9 @@ For any sequence of VB records with valid RDWs:
 **Validates: Requirements 13.1, 13.2, 13.5**
 
 For any `StructureDefinition` with multiple `RecordStructure` entries and any record bytes:
-- Classification is deterministic — the same bytes always produce the same result
+- Classification is deterministic -- the same bytes always produce the same result
 - First-match-wins: if bytes match structures at indices `i` and `j` where `i < j`, the result is structure `i`
-- Classification depends only on the bytes at identifier field positions — other bytes do not affect the result
+- Classification depends only on the bytes at identifier field positions -- other bytes do not affect the result
 
 ### Property 5: Field Extraction Byte Alignment
 
@@ -1180,11 +1180,11 @@ For any file with up to 10 million records:
 
 ### D1: Overlay Architecture (Not Dual Buffer)
 
-FileForge_Mode operates as a **read overlay** on the existing `DocumentHandle` byte buffer. Records are not copied into a separate data structure — they are read from the buffer on demand using the `ByteOffsetIndex`. This avoids doubling memory usage for large files and ensures edits are immediately visible in both grid and raw/hex views.
+FileForge_Mode operates as a **read overlay** on the existing `DocumentHandle` byte buffer. Records are not copied into a separate data structure -- they are read from the buffer on demand using the `ByteOffsetIndex`. This avoids doubling memory usage for large files and ensures edits are immediately visible in both grid and raw/hex views.
 
 ### D2: Computed vs Stored Index
 
-For fixed-width files (`RecordFormat::F`, `Fb`, `FbBinary`), record positions are calculated as `index * lrecl` — no storage needed. Only variable-length and VB files store an explicit offset vector. This keeps the fixed-width path at O(1) memory regardless of file size.
+For fixed-width files (`RecordFormat::F`, `Fb`, `FbBinary`), record positions are calculated as `index * lrecl` -- no storage needed. Only variable-length and VB files store an explicit offset vector. This keeps the fixed-width path at O(1) memory regardless of file size.
 
 ### D3: Async Index Building with Progress
 
@@ -1200,11 +1200,11 @@ When multiple `RecordStructure` entries could match a record (multiple identifie
 
 ### D6: Field Validation Before Buffer Mutation
 
-All field edits pass through the `FieldValidator` before reaching the document buffer. This ensures invalid data never enters the buffer — the edit is rejected at the validation layer with a clear error message, not after partial mutation.
+All field edits pass through the `FieldValidator` before reaching the document buffer. This ensures invalid data never enters the buffer -- the edit is rejected at the validation layer with a clear error message, not after partial mutation.
 
 ### D7: ASA as Display Mode (Not Data Modification)
 
-Enabling ASA display mode (`asa.on`) is a non-destructive display toggle — column 1 is reinterpreted visually but the underlying bytes are unchanged. Only `asa.strip` modifies data (and is undoable). This ensures accidental ASA activation cannot corrupt data.
+Enabling ASA display mode (`asa.on`) is a non-destructive display toggle -- column 1 is reinterpreted visually but the underlying bytes are unchanged. Only `asa.strip` modifies data (and is undoable). This ensures accidental ASA activation cannot corrupt data.
 
 ### D8: Conversion is Read-Only on Source
 

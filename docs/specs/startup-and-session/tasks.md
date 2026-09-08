@@ -11,7 +11,7 @@
   - [x] 25.3 Run `cargo test` � all tests pass (green)
   - [x] 25.4 Update `docs/TCR.md` � Req 14.40 row updated
 
-## Phase AF Tasks — Calendar Month Navigation (Req 14.41, 14.42)
+## Phase AF Tasks -- Calendar Month Navigation (Req 14.41, 14.42)
 - [x] 26. Add < and > hotspot buttons to calendar header; support month navigation
   - [x] 26.1 Add `calendar_offset: i32` parameter to `render()` in `primary_option_menu.rs` (months relative to today; 0 = current month)
     - Validates: Requirement 14.42
@@ -27,11 +27,11 @@
     - Validates: Requirement 14.42
   - [x] 26.7 Write failing tests: `calendar_prev_decrements_offset`, `calendar_next_increments_offset`, `calendar_header_contains_lt_and_gt`, `current_day_hidden_when_offset_nonzero`, `current_day_shown_when_offset_zero`
     - Validates: Requirement 14.41, 14.42
-  - [x] 26.8 Run `cargo test` — confirm new tests fail (red)
-  - [x] 26.9 Implement; run `cargo test` — all tests pass (green)
-  - [x] 26.10 Update `docs/TCR.md` — Req 14.41, 14.42 rows added as PASS
+  - [x] 26.8 Run `cargo test` -- confirm new tests fail (red)
+  - [x] 26.9 Implement; run `cargo test` -- all tests pass (green)
+  - [x] 26.10 Update `docs/TCR.md` -- Req 14.41, 14.42 rows added as PASS
 
-## Phase AS — File Explorer Panel (POM Option 2, Req 19)
+## Phase AS -- File Explorer Panel (POM Option 2, Req 19)
 
 - [x] 27. Implement File Explorer Panel as POM option 2 with `=2`/`=FILES`/`FILES` command routing
   - [x] 27.1 Add `FileExplorerPanel` variant to `TabKind` enum in `tab_manager.rs`
@@ -42,7 +42,7 @@
     - Validates: Requirement 19.5
   - [x] 27.4 Implement tree view in `file_explorer_panel.rs`: three section headers (Mainframe Catalogs, POSIX Catalogs, Native Catalogs), each populated from `CatalogRegistry`
     - Validates: Requirement 19.5, 19.7
-  - [x] 27.5 Implement empty-state placeholder: "No catalogs open — use File Catalogs (option 1) to create or mount a catalog"
+  - [x] 27.5 Implement empty-state placeholder: "No catalogs open -- use File Catalogs (option 1) to create or mount a catalog"
     - Validates: Requirement 19.8
   - [x] 27.6 Implement expandable catalog nodes: each catalog expands to show its files/datasets via VFS list
     - Validates: Requirement 19.6
@@ -60,24 +60,24 @@
     - Validates: Requirement 19.5
   - [x] 27.13 Update `session_manager.rs` to persist and restore `FileExplorerPanel` tab kind
     - Validates: Requirement 19.12
-  - [x] 27.14 Update POM option 2 label in `primary_option_menu.rs` to `Files — File Explorer — Browse catalogs and files in a tree view`
+  - [x] 27.14 Update POM option 2 label in `primary_option_menu.rs` to `Files -- File Explorer -- Browse catalogs and files in a tree view`
     - Validates: Requirement 14.3 (updated description)
   - [x] 27.15 Write failing unit tests:
-    - `file_explorer_panel_tab_kind_exists` — `TabKind::FileExplorerPanel` variant is present
-    - `equals_2_command_transforms_tab_to_file_explorer` — `=2` transforms current tab in-place
-    - `equals_files_command_transforms_tab_to_file_explorer` — `=FILES` transforms current tab in-place
-    - `files_command_opens_new_tab` — `FILES` opens new tab, current tab unchanged
-    - `option_2_on_pom_tab_transforms_to_file_explorer` — `2` on POM tab transforms in-place
-    - `file_explorer_panel_tab_title_is_files` — tab title is `[FILES]`
-    - `file_explorer_panel_end_command_returns_to_pom` — END/F3 returns to POM
-    - `file_explorer_panel_session_round_trip` — `FileExplorerPanel` kind persists and restores
+    - `file_explorer_panel_tab_kind_exists` -- `TabKind::FileExplorerPanel` variant is present
+    - `equals_2_command_transforms_tab_to_file_explorer` -- `=2` transforms current tab in-place
+    - `equals_files_command_transforms_tab_to_file_explorer` -- `=FILES` transforms current tab in-place
+    - `files_command_opens_new_tab` -- `FILES` opens new tab, current tab unchanged
+    - `option_2_on_pom_tab_transforms_to_file_explorer` -- `2` on POM tab transforms in-place
+    - `file_explorer_panel_tab_title_is_files` -- tab title is `[FILES]`
+    - `file_explorer_panel_end_command_returns_to_pom` -- END/F3 returns to POM
+    - `file_explorer_panel_session_round_trip` -- `FileExplorerPanel` kind persists and restores
     - Validates: Requirement 19.1–19.4, 19.10–19.12
-  - [x] 27.16 Run `cargo test` — confirm new tests fail (red)
-  - [x] 27.17 Implement; run `cargo test` — all tests pass (green)
-  - [x] 27.18 Run `cargo clippy -- -D warnings` — no new lint violations
+  - [x] 27.16 Run `cargo test` -- confirm new tests fail (red)
+  - [x] 27.17 Implement; run `cargo test` -- all tests pass (green)
+  - [x] 27.18 Run `cargo clippy -- -D warnings` -- no new lint violations
   - [x] 27.19 Run `cargo fmt`
-  - [x] 27.20 Update `docs/TCR.md` — add Req 19.1–19.12 rows
-  - [x] 27.21 Update `docs/specs/project-master/tasks.md` — add Phase AS entry
+  - [x] 27.20 Update `docs/TCR.md` -- add Req 19.1–19.12 rows
+  - [x] 27.21 Update `docs/specs/project-master/tasks.md` -- add Phase AS entry
 
 ## Phase AS Completion Status (after TDD session)
 

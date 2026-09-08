@@ -2,23 +2,23 @@
 
 ## Introduction
 
-This feature specifies the **Text Decorations** subsystem for FileForgeWorkbench — the `ff-text-decorations` crate. Text decorations are visual overlays applied on top of (or underneath) the rendered text to communicate semantic information such as search matches, diagnostic errors, change history, and bookmarks. Unlike syntax highlighting (which assigns style classes to text ranges), decorations are transient, overlapping, and independently managed by multiple producers.
+This feature specifies the **Text Decorations** subsystem for FileForgeWorkbench -- the `ff-text-decorations` crate. Text decorations are visual overlays applied on top of (or underneath) the rendered text to communicate semantic information such as search matches, diagnostic errors, change history, and bookmarks. Unlike syntax highlighting (which assigns style classes to text ranges), decorations are transient, overlapping, and independently managed by multiple producers.
 
 The subsystem adapts Scintilla's indicator and line marker systems into a Rust-native architecture with the following key differences:
 
 - **Run-length-encoded storage** for per-character indicator ranges, adapted from Scintilla's `RunStyles` / `Decoration` for memory-efficient sparse coverage across large documents.
-- **Indicator styles** for inline text decorations (underlines, boxes, squiggles, colour overrides) — the 23 Scintilla indicator styles adapted to egui rendering primitives.
-- **Line markers** for gutter/margin annotations (bookmarks, change history, modified indicators) — adapted from Scintilla's `LineMarker` geometric shapes.
+- **Indicator styles** for inline text decorations (underlines, boxes, squiggles, colour overrides) -- the 23 Scintilla indicator styles adapted to egui rendering primitives.
+- **Line markers** for gutter/margin annotations (bookmarks, change history, modified indicators) -- adapted from Scintilla's `LineMarker` geometric shapes.
 - **Theme integration** for all decoration colours and style parameters, with full dark/light/high-contrast theme support.
 - **High-DPI rendering** with pixel-aligned coordinates for crisp decoration output at any scale factor.
 
-This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap analysis — FileForgeEditor did not have an explicit decoration subsystem.
+This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap analysis -- FileForgeEditor did not have an explicit decoration subsystem.
 
 **Source references:**
-- **[SCI-IND-10.1]** = Scintilla `Indicator` class — 23 indicator styles, ValueFore, hover state, fillAlpha/outlineAlpha, strokeWidth, under property, pixel-aligned drawing
-- **[SCI-MRK-10.3]** = Scintilla `LineMarker` class — geometric margin shapes, fold markers, custom colours, alpha/layer support
-- **[SCI-DEC]** = Scintilla `Decoration` / `DecorationList` / `RunStyles` — run-length-encoded per-character indicator values, InsertSpace/DeleteRange for edit tracking
-- **[WB]** = Workbench Platform Architecture Brief — GUI-independent core, theme system, command-driven architecture
+- **[SCI-IND-10.1]** = Scintilla `Indicator` class -- 23 indicator styles, ValueFore, hover state, fillAlpha/outlineAlpha, strokeWidth, under property, pixel-aligned drawing
+- **[SCI-MRK-10.3]** = Scintilla `LineMarker` class -- geometric margin shapes, fold markers, custom colours, alpha/layer support
+- **[SCI-DEC]** = Scintilla `Decoration` / `DecorationList` / `RunStyles` -- run-length-encoded per-character indicator values, InsertSpace/DeleteRange for edit tracking
+- **[WB]** = Workbench Platform Architecture Brief -- GUI-independent core, theme system, command-driven architecture
 
 ## Cross-References
 
@@ -36,7 +36,7 @@ This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap 
 ## Glossary
 
 - **Indicator**: A named text decoration style that can be applied to arbitrary character ranges in a document. Each indicator has a visual style, colour, and rendering properties. Multiple indicators may overlap on the same text range. [SCI-IND-10.1]
-- **Indicator_Style**: The visual appearance of an indicator — one of 23 predefined styles (Plain, Squiggle, Box, etc.) that determine how the decoration is drawn relative to the text. [SCI-IND-10.1]
+- **Indicator_Style**: The visual appearance of an indicator -- one of 23 predefined styles (Plain, Squiggle, Box, etc.) that determine how the decoration is drawn relative to the text. [SCI-IND-10.1]
 - **Indicator_Value**: An integer value associated with each character position for a given indicator. Value 0 means "no decoration"; any non-zero value activates the indicator. When ValueFore is enabled, the value encodes an RGB colour. [SCI-IND-10.1, SCI-DEC]
 - **Decoration**: The per-document storage of indicator values for a single indicator number. Internally uses run-length encoding for efficient sparse storage. [SCI-DEC]
 - **Decoration_List**: The collection of all active decorations for a document, indexed by indicator number. Provides aggregate queries (all indicators active at a position). [SCI-DEC]
@@ -50,7 +50,7 @@ This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap 
 - **Stroke_Width**: The line thickness in logical pixels for line-based indicators (underlines, squiggles, etc.), default 1.0. Supports fractional values for high-DPI scaling. [SCI-IND-10.1]
 - **Under_Property**: A boolean per indicator that determines whether the indicator renders below the text (between background and text glyphs) or above the text (on top of rendered glyphs). [SCI-IND-10.1]
 - **ValueFore_Mode**: A mode where the indicator colour is derived from the indicator value at each position rather than the indicator's configured foreground colour, enabling per-range colour variation within a single indicator number. [SCI-IND-10.1]
-- **Change_History_Marker**: A line marker used to indicate edit history state — whether a line has been modified, saved, reverted to origin, or reverted to a previously-saved state. [SCI-MRK-10.3]
+- **Change_History_Marker**: A line marker used to indicate edit history state -- whether a line has been modified, saved, reverted to origin, or reverted to a previously-saved state. [SCI-MRK-10.3]
 - **Bookmark_Marker**: A line marker placed by the user to mark lines of interest for quick navigation. [SCI-MRK-10.3]
 
 ## Requirements
@@ -59,7 +59,7 @@ This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap 
 
 **User Story:** As a theme designer or plugin author, I need a comprehensive set of indicator visual styles to represent different semantic meanings (errors, warnings, search matches, spelling, composition) with distinct and recognizable appearances.
 
-**Source:** [SCI-IND-10.1] — 23 `IndicatorStyle` variants adapted from Scintilla.
+**Source:** [SCI-IND-10.1] -- 23 `IndicatorStyle` variants adapted from Scintilla.
 
 #### Acceptance Criteria
 
@@ -94,7 +94,7 @@ This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap 
 
 **User Story:** As a workbench developer, I need each indicator to have configurable properties (colour, alpha, stroke width, layer ordering, hover behaviour) so that different producers can tailor their indicators to be visually distinct and semantically clear.
 
-**Source:** [SCI-IND-10.1] — `Indicator` class properties: sacNormal, sacHover, under, fillAlpha, outlineAlpha, strokeWidth, IndicFlag.
+**Source:** [SCI-IND-10.1] -- `Indicator` class properties: sacNormal, sacHover, under, fillAlpha, outlineAlpha, strokeWidth, IndicFlag.
 
 #### Acceptance Criteria
 
@@ -115,20 +115,20 @@ This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap 
 
 **User Story:** As a document with sparse decorations (a few error underlines among thousands of lines), I need indicator storage to be memory-efficient so that having many potential indicator numbers does not consume memory proportional to document length for each unused indicator.
 
-**Source:** [SCI-DEC] — `Decoration` class with `RunStyles<POS, int>` storage, `DecorationList` aggregate.
+**Source:** [SCI-DEC] -- `Decoration` class with `RunStyles<POS, int>` storage, `DecorationList` aggregate.
 
 #### Acceptance Criteria
 
 1. THE Decoration storage for each indicator number SHALL use run-length encoding, storing consecutive positions with the same indicator value as a single (value, run_length) pair rather than per-character storage.
 2. WHEN no positions in the document have a non-zero value for a given indicator, THE Decoration for that indicator SHALL be empty (consuming O(1) memory) and SHALL be omittable from the Decoration_List.
-3. THE Decoration_List SHALL create Decoration storage for an indicator lazily — only when the first non-zero value is set for that indicator number.
+3. THE Decoration_List SHALL create Decoration storage for an indicator lazily -- only when the first non-zero value is set for that indicator number.
 4. WHEN all values for a given indicator are reset to zero (the decoration becomes empty), THE Decoration_List SHALL remove that indicator's storage from the active list, freeing memory.
 5. THE Decoration_List SHALL provide a `value_at(indicator, position)` method returning the indicator value at the given character position (0 if no decoration exists).
 6. THE Decoration_List SHALL provide a `start_run(indicator, position)` method returning the start position of the run containing the given position for the specified indicator.
 7. THE Decoration_List SHALL provide an `end_run(indicator, position)` method returning the end position (exclusive) of the run containing the given position for the specified indicator.
 8. THE Decoration_List SHALL provide a `fill_range(indicator, position, value, length)` method that sets the indicator value for a contiguous range of characters, returning whether any values actually changed.
 9. THE Decoration_List SHALL provide an `all_on_for(position)` method returning a bitmask of all indicator numbers that have non-zero values at the given position, for efficient aggregate queries during rendering.
-10. THE memory consumption of Decoration storage SHALL scale with O(number_of_transitions) — the count of value changes — rather than O(document_length), ensuring that a 1MB document with 10 error underlines uses roughly the same memory as the same document with 5 error underlines (not proportional to document size).
+10. THE memory consumption of Decoration storage SHALL scale with O(number_of_transitions) -- the count of value changes -- rather than O(document_length), ensuring that a 1MB document with 10 error underlines uses roughly the same memory as the same document with 5 error underlines (not proportional to document size).
 
 ---
 
@@ -136,13 +136,13 @@ This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap 
 
 **User Story:** As a user editing a document with active decorations (search highlights, error underlines), I need decorations to remain correctly positioned after text insertions and deletions so that indicators always correspond to the intended text ranges.
 
-**Source:** [SCI-DEC] — `InsertSpace`, `DeleteRange` on `DecorationList`; [WB] — undo/redo integration.
+**Source:** [SCI-DEC] -- `InsertSpace`, `DeleteRange` on `DecorationList`; [WB] -- undo/redo integration.
 
 #### Acceptance Criteria
 
 1. WHEN text is inserted at a position within the document, THE Decoration_List SHALL call `insert_space(position, insert_length)` on all active decorations, shifting all indicator values at or after the insertion point rightward by `insert_length` characters.
 2. WHEN text is deleted from the document, THE Decoration_List SHALL call `delete_range(position, delete_length)` on all active decorations, removing indicator values in the deleted range and shifting subsequent values leftward by `delete_length` characters.
-3. WHEN text is inserted at the end of a decorated run, THE insertion SHALL NOT extend the decoration into the newly inserted text — new characters SHALL receive value 0 (no decoration) by default.
+3. WHEN text is inserted at the end of a decorated run, THE insertion SHALL NOT extend the decoration into the newly inserted text -- new characters SHALL receive value 0 (no decoration) by default.
 4. WHEN text is inserted in the middle of a decorated run, THE run SHALL be split: the portion before the insertion retains the original value, the inserted characters receive value 0, and the portion after the insertion retains the original value at their new positions.
 5. WHEN an undo operation reverses a text insertion, THE Decoration_List's position adjustments SHALL be reversed correspondingly (via the matching `delete_range`), restoring decorations to their pre-insertion positions.
 6. WHEN an undo operation reverses a text deletion, THE Decoration_List's position adjustments SHALL be reversed correspondingly (via the matching `insert_space`), restoring decorations to their pre-deletion positions.
@@ -155,12 +155,12 @@ This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap 
 
 **User Story:** As a user performing a FIND operation, I need the current match and all other matches to be visually highlighted in the document so that I can see where matches occur relative to my cursor position.
 
-**Source:** [WB] — search match highlighting; cross-ref: `find-and-replace` spec.
+**Source:** [WB] -- search match highlighting; cross-ref: `find-and-replace` spec.
 
 #### Acceptance Criteria
 
-1. THE text-decorations crate SHALL define a dedicated indicator number for the **current search match** — the match currently focused/selected by the find engine.
-2. THE text-decorations crate SHALL define a separate dedicated indicator number for **all other matches** — all matches found by the current search that are not the currently focused match.
+1. THE text-decorations crate SHALL define a dedicated indicator number for the **current search match** -- the match currently focused/selected by the find engine.
+2. THE text-decorations crate SHALL define a separate dedicated indicator number for **all other matches** -- all matches found by the current search that are not the currently focused match.
 3. THE current-match indicator SHALL use a visually prominent style (default: StraightBox with a distinct highlight colour such as bright yellow/orange) that clearly distinguishes it from other matches.
 4. THE all-matches indicator SHALL use a less prominent style (default: RoundBox with a subdued highlight colour such as pale yellow) that is visible but does not compete with the current match for attention.
 5. WHEN the find engine reports match positions, THE find-and-replace subsystem SHALL call `fill_range` on the all-matches indicator for every match range, and `fill_range` on the current-match indicator for only the focused match.
@@ -176,7 +176,7 @@ This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap 
 
 **User Story:** As a developer viewing a file with syntax errors or warnings, I need errors to be underlined with a distinct squiggle or underline style so that I can quickly identify and navigate to problematic code locations.
 
-**Source:** [SCI-IND-10.1] — Squiggle indicator style for errors; [WB] — diagnostic integration.
+**Source:** [SCI-IND-10.1] -- Squiggle indicator style for errors; [WB] -- diagnostic integration.
 
 #### Acceptance Criteria
 
@@ -197,7 +197,7 @@ This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap 
 
 **User Story:** As a user editing a file, I need to see which lines have been modified, saved, or reverted so that I can understand the edit history at a glance without needing to diff against a saved version.
 
-**Source:** [SCI-MRK-10.3] — `MarkerOutline::HistoryModified`, `HistorySaved`, `HistoryRevertedToOrigin`, `HistoryRevertedToModified`; [SCI-IND-10.1] — `IndicatorNumbers::History*` indicators for character-level change tracking; [WB] — change history markers.
+**Source:** [SCI-MRK-10.3] -- `MarkerOutline::HistoryModified`, `HistorySaved`, `HistoryRevertedToOrigin`, `HistoryRevertedToModified`; [SCI-IND-10.1] -- `IndicatorNumbers::History*` indicators for character-level change tracking; [WB] -- change history markers.
 
 #### Acceptance Criteria
 
@@ -219,14 +219,14 @@ This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap 
 
 **User Story:** As a user navigating a large file, I need to place and remove bookmarks on lines of interest so that I can quickly jump between marked locations using keyboard shortcuts or a bookmark list.
 
-**Source:** [SCI-MRK-10.3] — `MarkerSymbol::Bookmark`, `VerticalBookmark`; [WB] — bookmark margin markers.
+**Source:** [SCI-MRK-10.3] -- `MarkerSymbol::Bookmark`, `VerticalBookmark`; [WB] -- bookmark margin markers.
 
 #### Acceptance Criteria
 
 1. THE text-decorations crate SHALL define a dedicated line marker number for bookmarks.
-2. THE bookmark marker SHALL display in a bookmark margin (symbol margin) using a recognizable bookmark shape (default: `Bookmark` symbol — a flag or page-corner shape).
+2. THE bookmark marker SHALL display in a bookmark margin (symbol margin) using a recognizable bookmark shape (default: `Bookmark` symbol -- a flag or page-corner shape).
 3. WHEN the user toggles a bookmark on a line (via command or keyboard shortcut), THE bookmark marker SHALL be added to that line if not present, or removed if already present.
-4. THE bookmark system SHALL support multiple simultaneous bookmarks across a document — there is no limit on the number of bookmarked lines.
+4. THE bookmark system SHALL support multiple simultaneous bookmarks across a document -- there is no limit on the number of bookmarked lines.
 5. THE text-decorations crate SHALL provide a method to query all lines with active bookmarks, enabling a "bookmark list" panel or "next bookmark" / "previous bookmark" navigation commands.
 6. THE text-decorations crate SHALL provide `next_bookmark(from_line)` and `previous_bookmark(from_line)` methods that return the next/previous line with a bookmark marker relative to the given starting line, wrapping around the document if necessary.
 7. WHEN a bookmarked line is deleted, THE bookmark marker SHALL be removed. WHEN lines are inserted above a bookmarked line, THE bookmark SHALL move with its document line (marker positions track document line numbers).
@@ -240,7 +240,7 @@ This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap 
 
 **User Story:** As a workbench developer, I need a general-purpose line marker system that can display various symbols in gutter margins so that plugins and subsystems can annotate lines with visual markers (breakpoints, code coverage, bookmarks, change history, etc.) without coupling to specific rendering code.
 
-**Source:** [SCI-MRK-10.3] — `LineMarker` class, `MarkerSymbol` enum, marker fore/back/backSelected colours, alpha/layer support.
+**Source:** [SCI-MRK-10.3] -- `LineMarker` class, `MarkerSymbol` enum, marker fore/back/backSelected colours, alpha/layer support.
 
 #### Acceptance Criteria
 
@@ -253,7 +253,7 @@ This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap 
 7. THE line marker system SHALL provide methods to add a marker to a line (`marker_add(line, marker_number)`), remove a marker from a line (`marker_delete(line, marker_number)`), and query which markers are active on a line (`marker_get(line)` returning a Marker_Mask bitmask).
 8. THE line marker system SHALL provide a `marker_next(from_line, marker_mask)` method that returns the next line at or after `from_line` that has any marker in the given mask set.
 9. THE line marker system SHALL provide a `marker_previous(from_line, marker_mask)` method that returns the previous line at or before `from_line` that has any marker in the given mask set.
-10. WHEN lines are inserted or deleted in the document, ALL marker assignments SHALL update to track their document lines — markers do not stay at fixed line indices, they move with their logical line content.
+10. WHEN lines are inserted or deleted in the document, ALL marker assignments SHALL update to track their document lines -- markers do not stay at fixed line indices, they move with their logical line content.
 
 ---
 
@@ -261,12 +261,12 @@ This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap 
 
 **User Story:** As a user on a high-DPI display (Retina, 4K), I need text decorations to render crisply without blurring, so that underlines, squiggles, and box borders appear sharp at any display scaling factor.
 
-**Source:** [SCI-IND-10.1] — `PixelAlignOutside`, `PixelAlign`, `pixelDivisions` for sub-pixel rendering; [WB] — high-DPI support.
+**Source:** [SCI-IND-10.1] -- `PixelAlignOutside`, `PixelAlign`, `pixelDivisions` for sub-pixel rendering; [WB] -- high-DPI support.
 
 #### Acceptance Criteria
 
 1. ALL indicator drawing operations SHALL use pixel-aligned coordinates, snapping line positions and box edges to device-pixel boundaries to prevent anti-aliasing blur on straight edges.
-2. THE text-decorations renderer SHALL query the current display's pixel divisions (scale factor) and adjust coordinate alignment accordingly — on a 2x display, positions SHALL align to half logical pixels.
+2. THE text-decorations renderer SHALL query the current display's pixel divisions (scale factor) and adjust coordinate alignment accordingly -- on a 2x display, positions SHALL align to half logical pixels.
 3. THE `stroke_width` property SHALL scale with the display DPI factor so that a configured stroke width of 1.0 produces a visually consistent line thickness regardless of display scaling.
 4. FOR box-style indicators (Box, RoundBox, StraightBox, FullBox, DotBox), THE bounding rectangle SHALL be pixel-aligned outward (expanded to the nearest device pixel boundary) to ensure clean rectangular edges.
 5. FOR line-based indicators (Plain, Squiggle, Dash, Dots, SquiggleLow, TT, Diagonal), THE vertical position (y-coordinate) SHALL be pixel-aligned to ensure consistent baseline rendering across characters of different widths.
@@ -280,7 +280,7 @@ This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap 
 
 **User Story:** As a user hovering over a decorated text range (e.g., an error underline or a hyperlink indicator), I need the decoration to visually respond to hover so that I know I can interact with it (click for details, navigate to definition, etc.).
 
-**Source:** [SCI-IND-10.1] — `sacHover` state, `IsDynamic()` predicate, click notification.
+**Source:** [SCI-IND-10.1] -- `sacHover` state, `IsDynamic()` predicate, click notification.
 
 #### Acceptance Criteria
 
@@ -298,17 +298,17 @@ This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap 
 
 **User Story:** As a user making edits to a file, I need a simple visual indicator in the gutter showing which lines have been modified since the file was last opened or saved, providing immediate feedback about the scope of my changes.
 
-**Source:** [WB] — modified line indicators in gutter; [SCI-MRK-10.3] — LeftRect marker style for gutter bars.
+**Source:** [WB] -- modified line indicators in gutter; [SCI-MRK-10.3] -- LeftRect marker style for gutter bars.
 
 #### Acceptance Criteria
 
-1. THE text-decorations crate SHALL support a dedicated gutter column (or margin) for displaying modified-line indicators — a narrow colour bar adjacent to the line number column.
+1. THE text-decorations crate SHALL support a dedicated gutter column (or margin) for displaying modified-line indicators -- a narrow colour bar adjacent to the line number column.
 2. WHEN a document line has been modified since the last save, THE modified-line indicator SHALL display a coloured bar (default: amber/orange) in the change margin for that line.
 3. WHEN a document line has been modified and subsequently saved, THE modified-line indicator SHALL transition to a different colour (default: green) indicating "saved changes".
 4. WHEN a document line is reverted to its original content (via undo), THE modified-line indicator SHALL be removed from that line.
 5. THE modified-line indicator margin SHALL be independently hideable via configuration, for users who prefer a cleaner gutter appearance.
 6. THE modified-line indicator colours SHALL be configurable via the theme system with distinct defaults for dark and light themes.
-7. THE modified-line indicators SHALL be consistent with the change history markers (Requirement 7) — they represent the same underlying state and SHALL be driven by the same data source, displayed in the same margin column.
+7. THE modified-line indicators SHALL be consistent with the change history markers (Requirement 7) -- they represent the same underlying state and SHALL be driven by the same data source, displayed in the same margin column.
 
 ---
 
@@ -316,7 +316,7 @@ This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap 
 
 **User Story:** As a workbench platform with multiple decoration producers (search, diagnostics, language service, plugins), I need a clear allocation scheme for indicator numbers so that different producers do not conflict with each other.
 
-**Source:** [SCI-IND-10.1] — `IndicatorNumbers::Container` (8), `Ime` (32–35), `History*` (36–43); [WB] — plugin extensibility.
+**Source:** [SCI-IND-10.1] -- `IndicatorNumbers::Container` (8), `Ime` (32–35), `History*` (36–43); [WB] -- plugin extensibility.
 
 #### Acceptance Criteria
 
@@ -334,7 +334,7 @@ This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap 
 
 **User Story:** As the viewport renderer, I need a clear contract for querying active decorations within a visible range and rendering them in the correct layer order (background → under-indicators → text → over-indicators → margin markers) so that all decorations compose correctly.
 
-**Source:** [SCI-IND-10.1] — draw ordering (under property), layer composition; [SCI-MRK-10.3] — layer/alpha for margin markers; [WB] — rendering architecture.
+**Source:** [SCI-IND-10.1] -- draw ordering (under property), layer composition; [SCI-MRK-10.3] -- layer/alpha for margin markers; [WB] -- rendering architecture.
 
 #### Acceptance Criteria
 
@@ -342,7 +342,7 @@ This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap 
 2. THE text-decorations crate SHALL provide a method to retrieve all active indicator ranges intersecting a given character range (the visible viewport range), returning an iterator of (indicator_number, start, end, value) tuples for the renderer to draw.
 3. THE text-decorations crate SHALL provide a method to retrieve the marker mask for a given document line, enabling the margin renderer to draw the appropriate symbols for that line.
 4. WHEN multiple indicators overlap on the same character range, EACH indicator SHALL be drawn independently in indicator-number order (lower numbers first), allowing all overlapping indicators to be visible simultaneously.
-5. THE text-decorations crate SHALL NOT perform rendering itself — it provides data and configuration; the actual drawing is performed by the viewport/editor-view layer using the platform's graphics API (egui/painter).
+5. THE text-decorations crate SHALL NOT perform rendering itself -- it provides data and configuration; the actual drawing is performed by the viewport/editor-view layer using the platform's graphics API (egui/painter).
 6. THE public API SHALL expose a `DecorationRenderer` trait defining the methods needed by the viewport to query and draw decorations, decoupling the decoration data model from the specific rendering technology.
 7. WHEN the viewport requests decorations for a range, THE query SHALL complete in O(k × log n) time where k is the number of active indicators and n is the number of runs in each decoration, ensuring rendering is not bottlenecked by decoration queries.
 
@@ -352,7 +352,7 @@ This is a Wave 6 (UI and Rendering) component. It is NEW from the Scintilla gap 
 
 **User Story:** As a user switching between light, dark, and high-contrast themes, I need all text decorations and line markers to adapt their colours and rendering parameters automatically so that decorations remain visible and aesthetically consistent with the active theme.
 
-**Source:** [WB] — configurable via theme system; cross-ref: `theme-and-appearance`.
+**Source:** [WB] -- configurable via theme system; cross-ref: `theme-and-appearance`.
 
 #### Acceptance Criteria
 

@@ -10,26 +10,26 @@ The `ff-whitespace-guides` crate is the **whitespace visibility and structural g
 - Compute per-line rendering metadata: whitespace glyph positions, indent guide columns, edge column hit information, and wrap marker placement
 - Provide toggle commands registered with the command-framework for quick mode cycling
 - Integrate with `ff-theme` for colour resolution and `ff-config` for hot-reload settings
-- Remain fully GUI-independent — expose only data types and query APIs; rendering is the GUI shell's responsibility
+- Remain fully GUI-independent -- expose only data types and query APIs; rendering is the GUI shell's responsibility
 
 ### Position in Architecture
 
 ```
-Wave 6 — UI and Rendering (depends on Wave 5 Command Engine)
+Wave 6 -- UI and Rendering (depends on Wave 5 Command Engine)
 
 ┌──────────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                    │
-│   Viewport Renderer — draws glyphs, guides, edges, markers   │
+│   Viewport Renderer -- draws glyphs, guides, edges, markers   │
 ├──────────────────────────────────────────────────────────────┤
 │          THIS CRATE: ff-whitespace-guides ← Wave 6            │
 │   Settings model, per-line queries, toggle commands           │
 ├──────────────────────────────────────────────────────────────┤
 │  Upstream:                                                    │
-│    ff-document-model (Wave 4) — line content, tab size        │
-│    ff-display-line-mapping (Wave 4) — sub-line/wrap info      │
-│    ff-theme (Wave 6, peer) — colour resolution                │
-│    ff-config (Wave 2) — settings storage, hot-reload          │
-│    ff-command (Wave 2) — toggle command registration          │
+│    ff-document-model (Wave 4) -- line content, tab size        │
+│    ff-display-line-mapping (Wave 4) -- sub-line/wrap info      │
+│    ff-theme (Wave 6, peer) -- colour resolution                │
+│    ff-config (Wave 2) -- settings storage, hot-reload          │
+│    ff-command (Wave 2) -- toggle command registration          │
 ├──────────────────────────────────────────────────────────────┤
 │              Foundation Layer: ff-logging                      │
 └──────────────────────────────────────────────────────────────┘
@@ -37,8 +37,8 @@ Wave 6 — UI and Rendering (depends on Wave 5 Command Engine)
 
 ### Design Constraints (Cross-Cutting)
 
-- **FFW-ARCH-001 (Req 1)**: No direct filesystem access — content queries go through `ff-document-model`
-- **GUI Independence (Req 2)**: Zero GUI dependencies — no egui, winit, wgpu; exposes only data types and query APIs
+- **FFW-ARCH-001 (Req 1)**: No direct filesystem access -- content queries go through `ff-document-model`
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- no egui, winit, wgpu; exposes only data types and query APIs
 - **Command-Driven (Req 4)**: Toggle commands registered with `ff-command` for whitespace, indent guides, and edge column
 - **Configuration Namespace (Req 5)**: All settings use the `editor.*` namespace; keys are unique across crates
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-whitespace-guides`
@@ -515,10 +515,10 @@ impl WhitespaceGuidesHandle {
 impl WhitespaceGuidesHandle {
     /// Compute indent guide columns for a line given its context.
     ///
-    /// `line_text` — the content of the line being rendered.
-    /// `prev_indent` — indent level of the nearest preceding non-blank line
+    /// `line_text` -- the content of the line being rendered.
+    /// `prev_indent` -- indent level of the nearest preceding non-blank line
     ///                 (used by LookBoth mode; None if unavailable).
-    /// `next_indent` — indent level of the nearest following non-blank line
+    /// `next_indent` -- indent level of the nearest following non-blank line
     ///                 (used by LookForward/LookBoth; None if unavailable).
     ///
     /// Addresses: Requirement 3 AC 1–8, Requirement 4 AC 1–5
@@ -566,9 +566,9 @@ impl WhitespaceGuidesHandle {
     pub fn wrap_markers(&self, sub_line_count: u32) -> Option<WrapMarkerInfo>;
 
     /// Compute the continuation sub-line indentation for a document line.
-    /// `first_line_indent` — the leading whitespace width (in char units) of the
+    /// `first_line_indent` -- the leading whitespace width (in char units) of the
     ///                       document line's first sub-line.
-    /// `viewport_width_chars` — the viewport width in character units (for 3/4 clamp).
+    /// `viewport_width_chars` -- the viewport width in character units (for 3/4 clamp).
     ///
     /// Addresses: Requirement 7 AC 1–6
     pub fn wrap_indent(
@@ -658,7 +658,7 @@ where
 #[non_exhaustive]
 pub enum WhitespaceGuidesError {
     /// Configuration key has an invalid value.
-    #[error("[whitespace-guides] config: invalid value for key '{key}' — using default '{default}'")]
+    #[error("[whitespace-guides] config: invalid value for key '{key}' -- using default '{default}'")]
     InvalidConfigValue {
         key: String,
         default: String,
@@ -672,7 +672,7 @@ pub enum WhitespaceGuidesError {
     },
 
     /// Theme colour resolution failed (fallback applied).
-    #[error("[whitespace-guides] theme: element '{element}' not found — using fallback")]
+    #[error("[whitespace-guides] theme: element '{element}' not found -- using fallback")]
     ThemeElementMissing {
         element: String,
     },
@@ -757,9 +757,9 @@ Three commands are registered at `init()`:
 
 | Command ID | Display Name | Default Shortcut | Category |
 |------------|-------------|-----------------|----------|
-| `toggle_whitespace` | Toggle Whitespace Visibility | (none — user-assignable) | View |
-| `toggle_indent_guides` | Toggle Indent Guides | (none — user-assignable) | View |
-| `toggle_edge_column` | Toggle Edge Column | (none — user-assignable) | View |
+| `toggle_whitespace` | Toggle Whitespace Visibility | (none -- user-assignable) | View |
+| `toggle_indent_guides` | Toggle Indent Guides | (none -- user-assignable) | View |
+| `toggle_edge_column` | Toggle Edge Column | (none -- user-assignable) | View |
 
 Commands are also accessible via the menu system under View → Visual Aids.
 
@@ -771,7 +771,7 @@ These properties define invariants that property-based tests must verify.
 
 ### Property 1: Whitespace Glyph Coverage
 
-**Statement:** For any line text and any non-Invisible visibility mode, `whitespace_glyphs()` returns exactly one `GlyphPosition` for each whitespace character that is eligible under the mode — no more, no fewer.
+**Statement:** For any line text and any non-Invisible visibility mode, `whitespace_glyphs()` returns exactly one `GlyphPosition` for each whitespace character that is eligible under the mode -- no more, no fewer.
 
 **Relates to:** Requirement 1 AC 3–5, Requirement 9 AC 4
 
@@ -874,4 +874,4 @@ End-to-end test with mock `ConfigHandle` and `ThemeHandle`:
 - **No allocations in hot path**: `whitespace_glyphs()` and `indent_guides()` accept a pre-allocated output buffer option to avoid per-line allocations during rendering. The `Vec` return API allocates but is suitable for non-critical paths.
 - **Settings snapshot**: The `WhitespaceSettings` struct is small (< 128 bytes) and cheap to clone. The renderer holds a local snapshot to avoid lock contention during frame rendering.
 - **Colour cache**: `ResolvedColours` is rebuilt only on theme change events, not per-frame.
-- **Indent scanning**: `scan_forward_indent` and `scan_backward_indent` are bounded — they stop after scanning a configurable maximum number of blank lines (default 2000) to avoid O(n) pathological cases in files with large blank regions.
+- **Indent scanning**: `scan_forward_indent` and `scan_backward_indent` are bounded -- they stop after scanning a configurable maximum number of blank lines (default 2000) to avoid O(n) pathological cases in files with large blank regions.

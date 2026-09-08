@@ -1,6 +1,6 @@
-# Requirements Document — DEFERRED
+# Requirements Document -- DEFERRED
 
-> ⚠️ **STATUS: DEFERRED — Not in initial release.**
+> ⚠️ **STATUS: DEFERRED -- Not in initial release.**
 >
 > This specification documents the *future* Network/UNC filesystem connector for
 > FileForgeWorkbench. It is NOT scheduled for the initial release. The
@@ -10,20 +10,20 @@
 ## Introduction
 
 The `ff-connector-network-fs` crate will provide a VFS connector for network
-filesystem access — Windows UNC paths (`\\server\share`), SMB/CIFS shares,
+filesystem access -- Windows UNC paths (`\\server\share`), SMB/CIFS shares,
 NFS mounts, and mapped drive resolution. It will implement the `ConnectorPlugin`
 trait from `ff-connector-extensibility`, which combines `VfsProvider` (from
 `ff-vfs`) with connector lifecycle, authentication, and capability advertisement.
 
 ### What This Connector Will Provide
 
-- **Network/UNC path support** — direct access to `\\server\share\path` resources
+- **Network/UNC path support** -- direct access to `\\server\share\path` resources
   as first-class VFS entries, transparent to consuming subsystems.
-- **SMB/CIFS protocol integration** — browsing, reading, and writing files on
+- **SMB/CIFS protocol integration** -- browsing, reading, and writing files on
   Windows file shares and Samba servers.
-- **NFS mount support** — access to NFS-exported directories with appropriate
+- **NFS mount support** -- access to NFS-exported directories with appropriate
   UID/GID credential mapping.
-- **Mapped drive resolution** — resolving Windows drive letters (e.g., `Z:\`)
+- **Mapped drive resolution** -- resolving Windows drive letters (e.g., `Z:\`)
   back to their underlying UNC paths, and presenting both views coherently
   within the VFS layer.
 
@@ -44,7 +44,7 @@ and its supported capabilities.
 The `connector-extensibility` crate ships in the initial release and defines all
 the traits, error types, and registry infrastructure that this connector will
 consume. No code changes to VFS core or the workbench platform will be required
-to add this connector — it plugs in via the existing extensibility framework.
+to add this connector -- it plugs in via the existing extensibility framework.
 
 ---
 
@@ -111,16 +111,16 @@ criteria will be written when this connector moves to active development.
 
 ## References
 
-- **WB**: Workbench Architecture Brief — VFS extensibility, FFW-ARCH-001
+- **WB**: Workbench Architecture Brief -- VFS extensibility, FFW-ARCH-001
 - **FFW**: FileForgeWorkbench cross-cutting requirements (VFS Principle, Plugin Architecture)
 - Connector-extensibility requirements (Requirement 6: Future Connector Hooks)
 
 ---
 
-## Formal Acceptance Criteria (DEFERRED — Future Release)
+## Formal Acceptance Criteria (DEFERRED -- Future Release)
 
 > The following criteria are written in EARS format for traceability. All criteria
-> carry status **DEFERRED** — they are not scheduled for the initial release.
+> carry status **DEFERRED** -- they are not scheduled for the initial release.
 > Full implementation details will be added to `design.md` when this connector
 > moves to active development.
 

@@ -1,16 +1,16 @@
-# Design Document — Compiler Toolchain Integration
+# Design Document -- Compiler Toolchain Integration
 
 ## 1. Overview
 
 Compiler toolchain integration is delivered as two plugin crates that register with the existing
 `ff-plugin` plugin architecture. The core workbench binary (`ff-desktop`) has no compile-time
-dependency on either toolchain crate — they are loaded at runtime through the plugin registry.
+dependency on either toolchain crate -- they are loaded at runtime through the plugin registry.
 
 ```
 ff-desktop
   └── ff-plugin (registry)
-        ├── ff-gcc-toolchain   (plugin crate — GCC detection, install, build, diagnostics)
-        └── ff-rust-toolchain  (plugin crate — Rust/rustup detection, install, build, diagnostics)
+        ├── ff-gcc-toolchain   (plugin crate -- GCC detection, install, build, diagnostics)
+        └── ff-rust-toolchain  (plugin crate -- Rust/rustup detection, install, build, diagnostics)
 ```
 
 Both plugin crates share a common `ToolchainPlugin` trait (defined in a new `ff-toolchain-api`
@@ -28,7 +28,7 @@ crate) so that the Toolchain_Panel UI can be generic over any toolchain.
 
 ---
 
-## 3. `ff-toolchain-api` — Shared Abstractions
+## 3. `ff-toolchain-api` -- Shared Abstractions
 
 ```rust
 pub enum ToolchainState {
@@ -71,7 +71,7 @@ pub trait ToolchainPlugin: Send + Sync {
 via `std::process::Command`. All probes run synchronously on a background thread (via `ff-bgio`
 thread pool) to avoid blocking the UI thread.
 
-### 4.2 Installation — Platform Strategy
+### 4.2 Installation -- Platform Strategy
 
 | Platform | Install_Source | Command |
 |----------|---------------|---------|
@@ -175,7 +175,7 @@ The panel is docked to the bottom of the editor area by default (same zone as a 
 
 ---
 
-## 7. Data Flow — Build Cycle
+## 7. Data Flow -- Build Cycle
 
 ```
 User triggers "Compile" / "Cargo Build"

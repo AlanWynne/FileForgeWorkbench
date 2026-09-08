@@ -2,42 +2,42 @@
 
 ## Introduction
 
-This feature specifies the **ASA Report Preview** subsystem for FileForgeWorkbench (`ff-asa-report-preview` crate). It provides a visual rendering mode that interprets ASA (ANSI) carriage control characters and displays mainframe spool files as they would have appeared on a line printer — complete with page breaks, line spacing, overprint (bold/underline), and green-bar/blue-bar paper simulation.
+This feature specifies the **ASA Report Preview** subsystem for FileForgeWorkbench (`ff-asa-report-preview` crate). It provides a visual rendering mode that interprets ASA (ANSI) carriage control characters and displays mainframe spool files as they would have appeared on a line printer -- complete with page breaks, line spacing, overprint (bold/underline), and green-bar/blue-bar paper simulation.
 
 The ASA Report Preview subsystem provides:
 
-1. **ASA carriage control character interpretation** — space (single space), `0` (double space), `-` (triple space), `1` (page eject/new page), `+` (no advance/overstrike).
+1. **ASA carriage control character interpretation** -- space (single space), `0` (double space), `-` (triple space), `1` (page eject/new page), `+` (no advance/overstrike).
 2. **Auto-detection** of ASA content from first-column character pattern analysis.
-3. **PREVIEW command integration** — rendering paginated output through the `custom-file-viewers` framework.
-4. **Page-break rendering** — visual page bands with alternating colours and page numbering.
-5. **Overstrike line merging** — combining `+` (overprint) lines with their base line to produce bold and underlined text.
-6. **Print preview panel** — paginated view with headers/footers in a dockable panel.
-7. **ASA strip/restore on edit** — transparent removal of column 1 control characters during editing, with restoration on save.
-8. **Line printer emulation** — 132-column page width, 60-line page depth as defaults, simulating IBM 1403/3211 output.
-9. **Configurable page dimensions** — operator-adjustable page width, depth, and margins.
-10. **Export to PDF/text** — rendered output export with full ASA interpretation applied.
+3. **PREVIEW command integration** -- rendering paginated output through the `custom-file-viewers` framework.
+4. **Page-break rendering** -- visual page bands with alternating colours and page numbering.
+5. **Overstrike line merging** -- combining `+` (overprint) lines with their base line to produce bold and underlined text.
+6. **Print preview panel** -- paginated view with headers/footers in a dockable panel.
+7. **ASA strip/restore on edit** -- transparent removal of column 1 control characters during editing, with restoration on save.
+8. **Line printer emulation** -- 132-column page width, 60-line page depth as defaults, simulating IBM 1403/3211 output.
+9. **Configurable page dimensions** -- operator-adjustable page width, depth, and margins.
+10. **Export to PDF/text** -- rendered output export with full ASA interpretation applied.
 
 ### Design Principles
 
-1. **GUI-independent** — all ASA parsing, merging, pagination, and export logic operates on the document model without GUI framework dependency. Rendering hints are provided to the UI layer but no egui dependency exists in the core logic. [WB]
-2. **Command-framework integrated** — PREVIEW activation, export commands, and page navigation are registered with the command framework, discoverable, and scriptable. [WB]
-3. **Custom-viewer compliant** — the ASA report preview is registered as a `Custom_Viewer` with Viewer_Key `"asa-report"` through the `custom-file-viewers` framework. [FFE-ASA]
-4. **Read-only display** — Preview_Mode is a rendering transformation; it does not modify the Edit_Buffer or the file on disk. [FFE-ASA]
-5. **Sequence-aware** — operates on post-strip content when sequence number stripping is active. [FFE-ASA]
-6. **Plugin-extensible** — the viewer is registered via the plugin architecture's viewer trait, allowing future ASA variants or custom report renderers. [WB]
+1. **GUI-independent** -- all ASA parsing, merging, pagination, and export logic operates on the document model without GUI framework dependency. Rendering hints are provided to the UI layer but no egui dependency exists in the core logic. [WB]
+2. **Command-framework integrated** -- PREVIEW activation, export commands, and page navigation are registered with the command framework, discoverable, and scriptable. [WB]
+3. **Custom-viewer compliant** -- the ASA report preview is registered as a `Custom_Viewer` with Viewer_Key `"asa-report"` through the `custom-file-viewers` framework. [FFE-ASA]
+4. **Read-only display** -- Preview_Mode is a rendering transformation; it does not modify the Edit_Buffer or the file on disk. [FFE-ASA]
+5. **Sequence-aware** -- operates on post-strip content when sequence number stripping is active. [FFE-ASA]
+6. **Plugin-extensible** -- the viewer is registered via the plugin architecture's viewer trait, allowing future ASA variants or custom report renderers. [WB]
 
 This crate is a Wave 12 (FileForge Domain) component in the workbench architecture. It depends on:
-- `ff-document-model` — for edit buffer access and line content
-- `ff-command` (command-framework) — for command registration and dispatch
-- `ff-layout` (layout-and-docking) — for print preview panel docking
-- `ff-config` (configuration-system) — for page dimensions, colours, and preview settings
-- `ff-theme` (theme-and-appearance) — for Page_Band colours, line-band shading, font rendering
-- `ff-custom-viewers` (custom-file-viewers) — for Viewer_Registry integration and PREVIEW command routing
-- `ff-fileforge` (fileforge-integration) — for ASA detection hooks and RECFM metadata
+- `ff-document-model` -- for edit buffer access and line content
+- `ff-command` (command-framework) -- for command registration and dispatch
+- `ff-layout` (layout-and-docking) -- for print preview panel docking
+- `ff-config` (configuration-system) -- for page dimensions, colours, and preview settings
+- `ff-theme` (theme-and-appearance) -- for Page_Band colours, line-band shading, font rendering
+- `ff-custom-viewers` (custom-file-viewers) -- for Viewer_Registry integration and PREVIEW command routing
+- `ff-fileforge` (fileforge-integration) -- for ASA detection hooks and RECFM metadata
 
 It is consumed by:
-- `ff-custom-viewers` — registers the `"asa-report"` viewer in the Viewer_Registry
-- `ff-file-ops` (file-operations) — for ASA strip/restore on save behaviour
+- `ff-custom-viewers` -- registers the `"asa-report"` viewer in the Viewer_Registry
+- `ff-file-ops` (file-operations) -- for ASA strip/restore on save behaviour
 
 ### Source References
 
@@ -46,12 +46,12 @@ It is consumed by:
 
 ### Cross-References
 
-- **`fileforge-integration`** — Defines ASA carriage control detection (RECFM "FBA"/"VBA"), EBCDIC encoding support, and flat-file mode activation that triggers ASA preview offers.
-- **`document-model`** — Provides the TextBuffer/Document that this subsystem reads for rendering and that ASA strip/restore modifies.
-- **`layout-and-docking`** — Provides dockable panel infrastructure for the print preview panel.
-- **`command-framework`** — All commands (PREVIEW, LOCATE PAGE, PREVIEW EXPORT) are registered, dispatched, and discoverable through this framework.
-- **`theme-and-appearance`** — Provides the colour tokens, font metrics, and design system tokens used for page bands, line shading, and overstrike rendering.
-- **`custom-file-viewers`** — Defines the Viewer_Registry, PREVIEW command dispatch, viewer/edit coexistence, and split view infrastructure.
+- **`fileforge-integration`** -- Defines ASA carriage control detection (RECFM "FBA"/"VBA"), EBCDIC encoding support, and flat-file mode activation that triggers ASA preview offers.
+- **`document-model`** -- Provides the TextBuffer/Document that this subsystem reads for rendering and that ASA strip/restore modifies.
+- **`layout-and-docking`** -- Provides dockable panel infrastructure for the print preview panel.
+- **`command-framework`** -- All commands (PREVIEW, LOCATE PAGE, PREVIEW EXPORT) are registered, dispatched, and discoverable through this framework.
+- **`theme-and-appearance`** -- Provides the colour tokens, font metrics, and design system tokens used for page bands, line shading, and overstrike rendering.
+- **`custom-file-viewers`** -- Defines the Viewer_Registry, PREVIEW command dispatch, viewer/edit coexistence, and split view infrastructure.
 
 ---
 
@@ -61,7 +61,7 @@ It is consumed by:
 |------|-----------|--------|
 | **Preview_Mode** | The display mode that renders ASA carriage control characters as visual report formatting instead of raw text. Always read-only. | [FFE-ASA] |
 | **ASA_Control** | The character in column 1 of each record that defines the printer action before printing the line. Standard characters: space (single space), `0` (double space), `-` (triple space), `1` (page eject), `+` (no advance/overstrike), `H` (halt). | [FFE-ASA] |
-| **Page_Band** | The visual element rendered at each `1` (new page) control — a full-width coloured band containing a page number label, simulating a page break. | [FFE-ASA] |
+| **Page_Band** | The visual element rendered at each `1` (new page) control -- a full-width coloured band containing a page number label, simulating a page break. | [FFE-ASA] |
 | **Overprint_Line** | A line with `+` in column 1, which the printer would have printed on the same physical line as the previous record, creating bold text or underlines by character superimposition. | [FFE-ASA] |
 | **Merged_Line** | The result of combining a base line with one or more Overprint_Lines. Identical characters become bold; dash/underscore overprints become underlined. | [FFE-ASA] |
 | **Page_Counter** | The running count of `1` (new page) characters seen in the file, used to label Page_Bands. | [FFE-ASA] |
@@ -88,14 +88,14 @@ It is consumed by:
 #### Acceptance Criteria
 
 1. THE system SHALL recognise the following ASA carriage control characters in column 1 of each record: [FFE-ASA]
-  - Space (` `) — single space before printing (normal line advance)
-  - Zero (`0`) — double space before printing (skip one blank line)
-  - Minus (`-`) — triple space before printing (skip two blank lines)
-  - One (`1`) — page eject (advance to top of next page before printing)
-  - Plus (`+`) — no advance (overstrike/overprint on previous line)
-  - `H` — halt (printer halt indication)
+  - Space (` `) -- single space before printing (normal line advance)
+  - Zero (`0`) -- double space before printing (skip one blank line)
+  - Minus (`-`) -- triple space before printing (skip two blank lines)
+  - One (`1`) -- page eject (advance to top of next page before printing)
+  - Plus (`+`) -- no advance (overstrike/overprint on previous line)
+  - `H` -- halt (printer halt indication)
 
-2. WHEN Preview_Mode is active and a line has ASA control character space (` `), THE system SHALL render the line with standard single spacing — no additional blank lines inserted before it. [FFE-ASA]
+2. WHEN Preview_Mode is active and a line has ASA control character space (` `), THE system SHALL render the line with standard single spacing -- no additional blank lines inserted before it. [FFE-ASA]
 
 3. WHEN Preview_Mode is active and a line has ASA control character `0`, THE system SHALL insert one blank preview line before the line's content, producing double spacing. [FFE-ASA]
 
@@ -107,7 +107,7 @@ It is consumed by:
 
 7. WHEN Preview_Mode is active and the `H` (halt) control character is encountered, THE system SHALL render a visually distinct full-width amber warning band labelled `─── PRINTER HALT ───` at that position. [FFE-ASA]
 
-8. THE blank lines inserted for spacing (criteria 1.3, 1.4) SHALL be display artifacts only — they are NOT real document lines and SHALL NOT be editable, selectable as text, or counted in the document's line total. [FFE-ASA]
+8. THE blank lines inserted for spacing (criteria 1.3, 1.4) SHALL be display artifacts only -- they are NOT real document lines and SHALL NOT be editable, selectable as text, or counted in the document's line total. [FFE-ASA]
 
 9. WHEN a line's column 1 character is not one of the recognised ASA control characters, THE system SHALL treat it as a space (single spacing) and render a WARN-level diagnostic in the log. [WB]
 
@@ -129,7 +129,7 @@ It is consumed by:
 
 4. WHEN ASA is detected (by heuristic or RECFM metadata), THE system SHALL offer to activate the ASA report preview via a non-blocking status bar prompt, consistent with the `custom-file-viewers` Requirement 2 language-profile viewer offer. [FFE-ASA]
 
-5. WHEN `PREVIEW ON` is issued and no ASA carriage control characters are detected in the file, THE system SHALL display a warning: `PREVIEW: no ASA carriage control detected — preview may not render correctly` and activate Preview_Mode anyway. [FFE-ASA]
+5. WHEN `PREVIEW ON` is issued and no ASA carriage control characters are detected in the file, THE system SHALL display a warning: `PREVIEW: no ASA carriage control detected -- preview may not render correctly` and activate Preview_Mode anyway. [FFE-ASA]
 
 6. THE detection threshold (default 80%) and sample size (default 50 lines) SHALL be configurable in the `[asa_preview]` section of configuration. [WB]
 
@@ -167,13 +167,13 @@ It is consumed by:
 
 #### Acceptance Criteria
 
-1. WHEN Preview_Mode is active and a line with ASA control character `1` is encountered, THE system SHALL render a full-width Page_Band in the viewport at that position instead of the line's data content appearing immediately — the Page_Band appears before the line's data. [FFE-ASA]
+1. WHEN Preview_Mode is active and a line with ASA control character `1` is encountered, THE system SHALL render a full-width Page_Band in the viewport at that position instead of the line's data content appearing immediately -- the Page_Band appears before the line's data. [FFE-ASA]
 
 2. THE Page_Band SHALL span the full width of the editing area and SHALL display the text `─── PAGE N ───` centred within it, where N is the sequential page number starting from 1. [FFE-ASA]
 
-3. THE Page_Band background colour SHALL alternate between two visually distinct colours on consecutive pages — configurable via theme tokens `asa.page_band_odd` and `asa.page_band_even`. Default: muted blue for odd pages, lighter blue for even pages. [FFE-ASA]
+3. THE Page_Band background colour SHALL alternate between two visually distinct colours on consecutive pages -- configurable via theme tokens `asa.page_band_odd` and `asa.page_band_even`. Default: muted blue for odd pages, lighter blue for even pages. [FFE-ASA]
 
-4. THE Page_Band SHALL be a display artifact only — it is NOT a real document line and SHALL NOT be editable, selectable as text, or saved to disk. [FFE-ASA]
+4. THE Page_Band SHALL be a display artifact only -- it is NOT a real document line and SHALL NOT be editable, selectable as text, or saved to disk. [FFE-ASA]
 
 5. THE first `1` character in the file (if present) SHALL render a Page_Band before the first line of data content, labelled `PAGE 1`. [FFE-ASA]
 
@@ -197,14 +197,14 @@ It is consumed by:
   - IF the overprint character is the same as the base character at that column → render the character in **bold** weight.
   - IF the overprint character is `-` or `_` and the base character is a printable non-space character → render the base character with an **underline** style.
   - IF the overprint character is `-` or `_` and the base character is a space → render a dash or underscore at that position (creates a rule/underline on blank space).
-  - IF the overprint character is any other printable character and differs from the base character → render the overprint character (superimposition — last overprint wins).
+  - IF the overprint character is any other printable character and differs from the base character → render the overprint character (superimposition -- last overprint wins).
   - IF the overprint character is a space → leave the base character unchanged.
 
 3. WHEN multiple consecutive `+` lines follow a base line, THE system SHALL merge all of them into the same Merged_Line sequentially, applying each merge pass in document order. [FFE-ASA]
 
 4. THE Merged_Line SHALL be displayed in place of the original base line. The overprint source lines SHALL NOT appear as separate rows in the preview. [FFE-ASA]
 
-5. WHEN Preview_Mode is active and a `+` line appears as the very first line in the file (no preceding base line to merge with), THE system SHALL render it as a regular line with no merging and display a diagnostic `[OVERPRINT — no preceding line]` in the prefix area. [FFE-ASA]
+5. WHEN Preview_Mode is active and a `+` line appears as the very first line in the file (no preceding base line to merge with), THE system SHALL render it as a regular line with no merging and display a diagnostic `[OVERPRINT -- no preceding line]` in the prefix area. [FFE-ASA]
 
 6. THE bold and underline styles applied during overstrike merging SHALL use theme-provided font weight and decoration tokens from `theme-and-appearance`, ensuring consistent rendering across themes. [WB]
 
@@ -278,11 +278,11 @@ It is consumed by:
 
 3. WHEN Preview_Mode is active and no explicit `1` (page eject) characters are present in the file, THE system SHALL insert implicit page breaks every Page_Depth lines, simulating continuous-form paper with a fixed page length. [WB]
 
-4. WHEN both explicit `1` page-eject characters and implicit page-depth boundaries apply, explicit `1` characters SHALL take priority — implicit page breaks are only inserted in sections without explicit page control. [WB]
+4. WHEN both explicit `1` page-eject characters and implicit page-depth boundaries apply, explicit `1` characters SHALL take priority -- implicit page breaks are only inserted in sections without explicit page control. [WB]
 
 5. THE configurable page dimensions SHALL be settable via the `[asa_preview]` section in configuration: [WB]
-  - `page_width`: positive integer, default 132 — character columns per page
-  - `page_depth`: positive integer, default 60 — print lines per page
+  - `page_width`: positive integer, default 132 -- character columns per page
+  - `page_depth`: positive integer, default 60 -- print lines per page
   - `page_overflow`: `"truncate"` or `"wrap"`, default `"truncate"`
 
 6. THE system SHALL support named printer profiles that bundle page dimensions and behaviour: [WB]
@@ -311,9 +311,9 @@ It is consumed by:
 
 3. THE shading groups SHALL restart at each page boundary (each `1` control character / Page_Band). Line 1 of each page always starts in the first shading group. [FFE-ASA]
 
-4. Blank lines inserted for spacing (Requirement 1) SHALL participate in the band shading count — a blank spacing line counts as one line for shading purposes. [FFE-ASA]
+4. Blank lines inserted for spacing (Requirement 1) SHALL participate in the band shading count -- a blank spacing line counts as one line for shading purposes. [FFE-ASA]
 
-5. Page_Bands (Requirement 4) SHALL NOT be counted in the shading group — the band counter resets at each page break. [FFE-ASA]
+5. Page_Bands (Requirement 4) SHALL NOT be counted in the shading group -- the band counter resets at each page break. [FFE-ASA]
 
 6. THE line band shading colours and band size SHALL be configurable via theme tokens (`asa.line_band_tint`, `asa.line_band_size`) and the `[asa_preview]` configuration section, allowing operators to match their preferred paper style (green-bar, blue-bar, or none). [FFE-ASA], [WB]
 
@@ -329,7 +329,7 @@ It is consumed by:
 
 1. WHEN Preview_Mode is active, THE command-framework SHALL support `LOCATE PAGE n` as a navigation command that scrolls the preview viewport to the Page_Band for page number n. [FFE-ASA]
 
-2. WHEN `LOCATE PAGE n` is issued and page n does not exist (n exceeds the total page count), THE system SHALL display `Page n not found — report has M pages` and leave the viewport position unchanged. [FFE-ASA]
+2. WHEN `LOCATE PAGE n` is issued and page n does not exist (n exceeds the total page count), THE system SHALL display `Page n not found -- report has M pages` and leave the viewport position unchanged. [FFE-ASA]
 
 3. THE status bar SHALL display the current page number and total page count when Preview_Mode is active (e.g., `Preview: Page 3 of 47`). [FFE-ASA]
 
@@ -357,7 +357,7 @@ It is consumed by:
 
 4. THE text export SHALL represent double spacing as blank lines and triple spacing as two blank lines, consistent with the preview rendering. [FFE-ASA]
 
-5. THE text export SHALL represent overprint merging as plain text — bold and underline markers SHALL NOT be included. The merged character content SHALL be written as plain characters. [FFE-ASA]
+5. THE text export SHALL represent overprint merging as plain text -- bold and underline markers SHALL NOT be included. The merged character content SHALL be written as plain characters. [FFE-ASA]
 
 6. THE PDF export SHALL render pages at the configured Page_Width × Page_Depth dimensions using a monospace font, preserving: [WB]
   - Page breaks as PDF page boundaries
@@ -383,27 +383,27 @@ It is consumed by:
 #### Acceptance Criteria
 
 1. THE configuration-system SHALL accept an `[asa_preview]` section with the following optional keys: [FFE-ASA], [WB]
-  - `page_width`: positive integer, default 132 — character columns per page
-  - `page_depth`: positive integer, default 60 — print lines per page
-  - `page_overflow`: `"truncate"` or `"wrap"`, default `"truncate"` — handling of lines exceeding page width
-  - `band_size`: positive integer, default 5 — number of lines per shading band
-  - `show_line_bands`: boolean, default `true` — whether to show alternating line shading
-  - `auto_detect`: boolean, default `true` — whether to run ASA auto-detection on file open
-  - `auto_strip`: boolean, default `false` — whether to automatically strip ASA column on file open
-  - `detection_threshold`: float 0.0–1.0, default 0.8 — minimum ratio for ASA detection confidence
-  - `detection_sample_size`: positive integer, default 50 — number of lines to sample for detection
-  - `printer_profile`: string, default `"ibm-1403"` — named printer profile
-  - `export_page_separator`: `"dashes"` or `"formfeed"`, default `"dashes"` — text export page break style
-  - `implicit_page_breaks`: boolean, default `true` — whether to insert page breaks at Page_Depth intervals when no explicit `1` controls exist
+  - `page_width`: positive integer, default 132 -- character columns per page
+  - `page_depth`: positive integer, default 60 -- print lines per page
+  - `page_overflow`: `"truncate"` or `"wrap"`, default `"truncate"` -- handling of lines exceeding page width
+  - `band_size`: positive integer, default 5 -- number of lines per shading band
+  - `show_line_bands`: boolean, default `true` -- whether to show alternating line shading
+  - `auto_detect`: boolean, default `true` -- whether to run ASA auto-detection on file open
+  - `auto_strip`: boolean, default `false` -- whether to automatically strip ASA column on file open
+  - `detection_threshold`: float 0.0–1.0, default 0.8 -- minimum ratio for ASA detection confidence
+  - `detection_sample_size`: positive integer, default 50 -- number of lines to sample for detection
+  - `printer_profile`: string, default `"ibm-1403"` -- named printer profile
+  - `export_page_separator`: `"dashes"` or `"formfeed"`, default `"dashes"` -- text export page break style
+  - `implicit_page_breaks`: boolean, default `true` -- whether to insert page breaks at Page_Depth intervals when no explicit `1` controls exist
 
 2. WHEN a configuration key contains an invalid value (negative number, unknown string, out-of-range float), THE system SHALL emit a WARN-level configuration diagnostic and apply the default for that key. [FFE-ASA], [WB]
 
 3. THE theme-and-appearance system SHALL define the following ASA-specific colour tokens with sensible defaults: [WB]
-  - `asa.page_band_odd` — Page_Band background for odd pages (default: muted blue)
-  - `asa.page_band_even` — Page_Band background for even pages (default: lighter blue)
-  - `asa.page_band_text` — Page_Band label text colour (default: white)
-  - `asa.line_band_tint` — Line band shading tint (default: very light green)
-  - `asa.halt_band` — Printer halt band colour (default: amber)
-  - `asa.halt_band_text` — Printer halt band text colour (default: black)
+  - `asa.page_band_odd` -- Page_Band background for odd pages (default: muted blue)
+  - `asa.page_band_even` -- Page_Band background for even pages (default: lighter blue)
+  - `asa.page_band_text` -- Page_Band label text colour (default: white)
+  - `asa.line_band_tint` -- Line band shading tint (default: very light green)
+  - `asa.halt_band` -- Printer halt band colour (default: amber)
+  - `asa.halt_band_text` -- Printer halt band text colour (default: black)
 
 4. WHEN configuration values change at runtime (hot-reload), THE system SHALL re-render the active preview with the updated settings without requiring the operator to deactivate and reactivate Preview_Mode. [WB]

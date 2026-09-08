@@ -2,13 +2,13 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-caret-selection` crate — the visual presentation layer for carets, selections, caret-line highlighting, virtual space display, and modified line markers within FileForgeWorkbench. This crate consumes the logical selection model from `ff-edit-operations` (SelectionPosition, SelectionRange, SelectionContainer) and translates it into rendering instructions that the GUI shell executes.
+This plan covers the complete implementation of the `ff-caret-selection` crate -- the visual presentation layer for carets, selections, caret-line highlighting, virtual space display, and modified line markers within FileForgeWorkbench. This crate consumes the logical selection model from `ff-edit-operations` (SelectionPosition, SelectionRange, SelectionContainer) and translates it into rendering instructions that the GUI shell executes.
 
 This is a **Wave 6 (UI and Rendering)** sub-project. It depends on:
-- `ff-edit-operations` (Wave 4) — logical selection model, edit mode state, modified line flags
-- `ff-theme` (Wave 6 peer) — element colours, style slots, visual mode integration
-- `ff-configuration-system` (Wave 2) — configuration loading, hot-reload notifications
-- `ff-display-line-mapping` (Wave 4) — wrapped sub-line information for sub-line caret highlight
+- `ff-edit-operations` (Wave 4) -- logical selection model, edit mode state, modified line flags
+- `ff-theme` (Wave 6 peer) -- element colours, style slots, visual mode integration
+- `ff-configuration-system` (Wave 2) -- configuration loading, hot-reload notifications
+- `ff-display-line-mapping` (Wave 4) -- wrapped sub-line information for sub-line caret highlight
 
 It is consumed by the GUI shell layer (`ff-desktop`) for actual rendering.
 
@@ -276,14 +276,14 @@ It is consumed by the GUI shell layer (`ff-desktop`) for actual rendering.
 
 ## Notes
 
-- This is a Wave 6 (UI and Rendering) crate that is purely a **model and configuration layer** — it does not perform actual rendering. The GUI shell (`ff-desktop`) reads the model's state and renders accordingly.
+- This is a Wave 6 (UI and Rendering) crate that is purely a **model and configuration layer** -- it does not perform actual rendering. The GUI shell (`ff-desktop`) reads the model's state and renders accordingly.
 - GUI independence is a strict requirement: no `egui`, `wgpu`, `winit` or other rendering types in this crate's public API.
-- The logical selection model (SelectionPosition, SelectionRange, SelectionContainer, SelectionKind) is owned by `ff-edit-operations` — this crate only references those types for computing render output.
+- The logical selection model (SelectionPosition, SelectionRange, SelectionContainer, SelectionKind) is owned by `ff-edit-operations` -- this crate only references those types for computing render output.
 - Element colours (Caret, CaretAdditional, CaretLineBack, SelectionBack, etc.) are resolved through `ff-theme`'s element colour API.
-- The blink timer is NOT implemented here — only the period value and `is_visible(current_time)` query. The GUI shell owns the clock.
+- The blink timer is NOT implemented here -- only the period value and `is_visible(current_time)` query. The GUI shell owns the clock.
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property.
 - Hot-reload of theme settings leverages the configuration-system file watcher and theme change notifications from `ff-theme`.
-- Modified line marker rendering consumes `ModifiedLineTracker` from `ff-edit-operations` — no duplication of modification tracking logic.
+- Modified line marker rendering consumes `ModifiedLineTracker` from `ff-edit-operations` -- no duplication of modification tracking logic.
 
 ---
 
@@ -295,7 +295,7 @@ It is consumed by the GUI shell layer (`ff-desktop`) for actual rendering.
 | Req 2: Caret Colour | AC 2.1–2.7 | Task 3 |
 | Req 3: Caret Blink | AC 3.1–3.7 | Task 4 |
 | Req 4: Caret Line Highlight | AC 4.1–4.13 | Task 5 |
-| Req 5: Selection Display — Colours and Layers | AC 5.1–5.10 | Task 6 |
+| Req 5: Selection Display -- Colours and Layers | AC 5.1–5.10 | Task 6 |
 | Req 6: Selection Element Colours | AC 6.1–6.10 | Task 7 |
 | Req 7: Virtual Space Display | AC 7.1–7.6 | Task 8 |
 | Req 8: Rectangular Selection Display | AC 8.1–8.5 | Task 9 |

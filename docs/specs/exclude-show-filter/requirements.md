@@ -2,12 +2,12 @@
 
 ## Introduction
 
-This feature specifies the **Exclude/Show Filter** subsystem for FileForgeWorkbench — the `ff-exclude-show-filter` crate. This subsystem implements ISPF-style line visibility management, allowing users to hide and reveal document lines without modifying document content. It provides the logical visibility state engine behind the EXCLUDE, SHOW, RESET primary commands and the X/Xn/XX line commands.
+This feature specifies the **Exclude/Show Filter** subsystem for FileForgeWorkbench -- the `ff-exclude-show-filter` crate. This subsystem implements ISPF-style line visibility management, allowing users to hide and reveal document lines without modifying document content. It provides the logical visibility state engine behind the EXCLUDE, SHOW, RESET primary commands and the X/Xn/XX line commands.
 
-The exclude-show-filter is a **GUI-independent** logical layer. It manages which lines are excluded (hidden) and drives the `display-line-mapping` subsystem to update the physical display-line count. It does not render anything directly — rendering of placeholder lines ("-- N line(s) excluded --") is delegated to the viewport rendering layer, while this crate provides the data model and placeholder text generation.
+The exclude-show-filter is a **GUI-independent** logical layer. It manages which lines are excluded (hidden) and drives the `display-line-mapping` subsystem to update the physical display-line count. It does not render anything directly -- rendering of placeholder lines ("-- N line(s) excluded --") is delegated to the viewport rendering layer, while this crate provides the data model and placeholder text generation.
 
 Key architectural properties:
-- EXCLUDE/SHOW/RESET operations are **non-undoable** — they operate on transient session state, not document content.
+- EXCLUDE/SHOW/RESET operations are **non-undoable** -- they operate on transient session state, not document content.
 - All commands are dispatched through the workbench command framework.
 - Line exclusion is **flat** (not hierarchical), distinct from code folding which uses nested fold levels.
 - The exclusion state coexists with code-folding visibility in the `display-line-mapping` layer, which provides the underlying visibility storage.
@@ -21,8 +21,8 @@ This specification merges requirements from two primary sources:
 - **[FFE-CMD-7]** = FileForgeEditor core-command-semantics Requirement 7: EXCLUDE/X Command
 - **[FFE-CMD-8]** = FileForgeEditor core-command-semantics Requirement 8: SHOW/INCLUDE Command
 - **[FFE-CMD-9]** = FileForgeEditor core-command-semantics Requirement 9: RESET Command
-- **[FFE-CMD-28]** = FileForgeEditor core-command-semantics Requirement 28: Line Commands — Exclude (X, Xn, XX)
-- **[SCI-CS-12.1]** = Scintilla ContractionState / IContractionState interface — visibility tracking, SetVisible, GetVisible, HiddenLines, ShowAll, display-line integration
+- **[FFE-CMD-28]** = FileForgeEditor core-command-semantics Requirement 28: Line Commands -- Exclude (X, Xn, XX)
+- **[SCI-CS-12.1]** = Scintilla ContractionState / IContractionState interface -- visibility tracking, SetVisible, GetVisible, HiddenLines, ShowAll, display-line integration
 - **[WB]** = Workbench Platform Architecture Brief (GUI-independent core, command-driven architecture, non-destructive session state)
 
 ## Cross-References
@@ -35,11 +35,11 @@ This specification merges requirements from two primary sources:
 | `find-and-replace` | **Integration** | FIND/CHANGE with EXCLUDED/VISIBLE modifiers use the exclusion state from this subsystem to determine search scope. EXCLUDE-ALL + FIND-ALL is a core filtering workflow. |
 | `document-model` | **Dependency** | Provides document line content for text-matching operations (literal and regex) used by EXCLUDE and SHOW commands. |
 | `viewport-and-scrolling` | **Consumer** | Renders placeholder lines for contiguous excluded blocks based on data provided by this subsystem. |
-| `navigation-commands` | **Consumer** | LOCATE and scroll commands interact with visibility state — navigating to an excluded line may auto-show it depending on configuration. |
+| `navigation-commands` | **Consumer** | LOCATE and scroll commands interact with visibility state -- navigating to an excluded line may auto-show it depending on configuration. |
 
 ## Glossary
 
-- **Exclusion_State**: The per-line boolean attribute tracking whether a document line is excluded (hidden) from the viewport display. Part of transient session state — never saved to disk. [FFE-CMD-7, SCI-CS-12.1]
+- **Exclusion_State**: The per-line boolean attribute tracking whether a document line is excluded (hidden) from the viewport display. Part of transient session state -- never saved to disk. [FFE-CMD-7, SCI-CS-12.1]
 - **Excluded_Line**: A document line whose `excluded` flag is true, causing it to be hidden from the viewport and contribute zero display lines. [FFE-CMD-7, SCI-CS-12.1]
 - **Visible_Line**: A document line whose `excluded` flag is false, displayed normally in the viewport. [FFE-CMD-7]
 - **Exclusion_Block**: A contiguous range of one or more consecutive excluded lines. Rendered as a single placeholder line in the viewport. [FFE-CMD-7]
@@ -165,7 +165,7 @@ This specification merges requirements from two primary sources:
 1. THE exclude-show-filter SHALL provide a method to enumerate all Exclusion_Blocks in the document, where each block is a contiguous range of excluded lines defined by a start line and end line (inclusive). [FFE-CMD-7]
 2. FOR EACH Exclusion_Block, THE exclude-show-filter SHALL provide placeholder text generation in the format `-- N line(s) excluded --` where N is the count of excluded lines in that block. [FFE-CMD-7]
 3. THE Placeholder_Line SHALL be a display artifact only: it SHALL NOT be editable as document content, SHALL NOT be saved to disk, and SHALL NOT appear in any command operation's scope. [FFE-CMD-7]
-4. THE Placeholder_Line SHALL NOT have a modifiable prefix area — it SHALL display a fixed indicator (e.g., `- - -` or blank) in the prefix column. [FFE-CMD-7]
+4. THE Placeholder_Line SHALL NOT have a modifiable prefix area -- it SHALL display a fixed indicator (e.g., `- - -` or blank) in the prefix column. [FFE-CMD-7]
 5. WHEN excluded lines are added or removed adjacent to an existing Exclusion_Block, THE exclude-show-filter SHALL merge or split blocks automatically to maintain the invariant that each Exclusion_Block is maximally contiguous. [SCI-CS-12.1]
 6. THE exclude-show-filter SHALL provide a `block_count()` method returning the total number of Exclusion_Blocks currently in the document. [WB]
 7. THE exclude-show-filter SHALL provide a `block_at_doc_line(doc_line)` method that, given a document line within an exclusion block, returns the full block range and its placeholder text. [WB]
@@ -184,10 +184,10 @@ This specification merges requirements from two primary sources:
 1. WHEN lines are excluded, THE display-line-mapping SHALL subtract the affected lines' display heights from the total Display_Line_Count, causing those lines to occupy zero display lines. [SCI-CS-12.1]
 2. WHEN lines are shown (un-excluded), THE display-line-mapping SHALL add the restored lines' display heights back to the total Display_Line_Count. [SCI-CS-12.1]
 3. THE scrollbar range SHALL reflect only visible lines (plus one placeholder per Exclusion_Block if placeholder rendering contributes a display line), ensuring the scrollbar accurately represents the visible content extent. [SCI-CS-12.1]
-4. WHEN the user scrolls through the viewport, excluded lines SHALL be skipped entirely — the viewport SHALL jump from the last visible line before a block to the first visible line after the block, with the placeholder rendered at the transition. [FFE-CMD-7]
+4. WHEN the user scrolls through the viewport, excluded lines SHALL be skipped entirely -- the viewport SHALL jump from the last visible line before a block to the first visible line after the block, with the placeholder rendered at the transition. [FFE-CMD-7]
 5. THE exclude-show-filter SHALL emit a change notification (or trigger a display-line-mapping notification) when exclusion state changes, enabling the viewport and scrollbar to synchronize. [SCI-CS-12.1]
 6. WHEN an Exclusion_Block placeholder is rendered, IT SHALL occupy exactly one display line in the viewport regardless of how many document lines are hidden in the block. [FFE-CMD-7]
-7. THE `doc_from_display(display_line)` mapping SHALL never resolve to an excluded document line — it SHALL always return a visible line. [SCI-CS-12.1]
+7. THE `doc_from_display(display_line)` mapping SHALL never resolve to an excluded document line -- it SHALL always return a visible line. [SCI-CS-12.1]
 
 ---
 
@@ -223,7 +223,7 @@ This specification merges requirements from two primary sources:
 4. THE X, Xn, XX line commands SHALL be registered in the line-command parser's recognized command set. [FFE-CMD-28]
 5. ALL exclude-show-filter commands SHALL be executable from macros (Lua scripting engine) via the standard command dispatch API. [WB]
 6. THE exclude-show-filter commands SHALL be valid in both Edit mode and Browse/View mode (excluding lines is non-destructive and applicable regardless of edit permissions). [WB]
-7. THE exclude-show-filter commands SHALL NOT be added to undo history — they SHALL be explicitly marked as non-undoable in their command metadata. [FFE-CMD-7, FFE-CMD-8, FFE-CMD-9]
+7. THE exclude-show-filter commands SHALL NOT be added to undo history -- they SHALL be explicitly marked as non-undoable in their command metadata. [FFE-CMD-7, FFE-CMD-8, FFE-CMD-9]
 8. WHEN an EXCLUDE or SHOW command receives invalid arguments (unterminated quote, invalid regex, non-numeric range value), THE command engine SHALL display an error message identifying the problem and SHALL NOT modify exclusion state. [WB]
 
 ---

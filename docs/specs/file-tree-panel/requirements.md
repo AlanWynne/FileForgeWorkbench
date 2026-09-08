@@ -6,13 +6,13 @@ This feature specifies the File Tree Panel for FileForgeWorkbench (`ff-file-tree
 
 The panel is a `DockablePanel` implementation (registered with the layout-and-docking system) that defaults to the left dock zone. It renders a multi-root tree with three top-level sections:
 
-1. **Local Files** — workspace and project directories served by the `connector-local-fs` provider
-2. **Catalogs** — mounted dataset catalogs served by the `dataset-catalog` VFS provider, displaying datasets as a tree with PDS member navigation
-3. **Connections** — placeholder node for future remote VFS providers (FTP, SFTP, z/OS, cloud)
+1. **Local Files** -- workspace and project directories served by the `connector-local-fs` provider
+2. **Catalogs** -- mounted dataset catalogs served by the `dataset-catalog` VFS provider, displaying datasets as a tree with PDS member navigation
+3. **Connections** -- placeholder node for future remote VFS providers (FTP, SFTP, z/OS, cloud)
 
 The tree supports asynchronous directory loading (non-blocking node expansion), file watching for live updates, drag-and-drop to the editor (open file), context menus, keyboard navigation, a search/filter box, file icons by type/extension, and file category colouring from the theme palette.
 
-All resource access flows through the VFS abstraction layer (FFW-ARCH-001) — the panel never performs direct filesystem I/O. Tree operations (open, rename, delete, new file, new folder) are dispatched as commands through the command framework.
+All resource access flows through the VFS abstraction layer (FFW-ARCH-001) -- the panel never performs direct filesystem I/O. Tree operations (open, rename, delete, new file, new folder) are dispatched as commands through the command framework.
 
 **Source references:**
 - **[FFE-TREE]** = FileForgeEditor `file-tree-panel` specification (left-docked panel, async loading, colour coding, context menu, keyboard nav, search)
@@ -300,12 +300,12 @@ All resource access flows through the VFS abstraction layer (FFW-ARCH-001) — t
 #### Acceptance Criteria
 
 1. THE File_Tree_Panel SHALL read the following configuration keys from the configuration-system:
-   - `file_tree.enabled` (bool, default: `true`) — whether the panel is registered at startup
-   - `file_tree.default_width` (integer, default: `260`) — initial panel width in logical pixels
-   - `file_tree.default_root` (string, optional) — initial root path used when no bookmarked roots exist
-   - `file_tree.bookmarked_roots` (array of strings, default: `[]`) — persisted bookmark paths
-   - `file_tree.sort_order` (string, default: `"directories_first"`) — sort mode for tree nodes
-   - `file_tree.show_hidden_files` (bool, default: `false`) — whether to show hidden files/directories
+   - `file_tree.enabled` (bool, default: `true`) -- whether the panel is registered at startup
+   - `file_tree.default_width` (integer, default: `260`) -- initial panel width in logical pixels
+   - `file_tree.default_root` (string, optional) -- initial root path used when no bookmarked roots exist
+   - `file_tree.bookmarked_roots` (array of strings, default: `[]`) -- persisted bookmark paths
+   - `file_tree.sort_order` (string, default: `"directories_first"`) -- sort mode for tree nodes
+   - `file_tree.show_hidden_files` (bool, default: `false`) -- whether to show hidden files/directories
 2. THE File_Tree_Panel SHALL participate in configuration hot-reload: WHEN any `file_tree.*` configuration key changes at runtime, THE panel SHALL apply the new value without requiring application restart.
 3. WHEN the `file_tree.show_hidden_files` value changes, THE File_Tree_Panel SHALL immediately re-filter all currently displayed nodes to show or hide hidden entries.
 4. WHEN the `file_tree.sort_order` value changes, THE File_Tree_Panel SHALL re-sort all currently displayed directory contents according to the new order.
@@ -335,7 +335,7 @@ All resource access flows through the VFS abstraction layer (FFW-ARCH-001) — t
 
 **User Story:** As a user, I want to expand subdirectory nodes within a Native catalog in the File Explorer so that I can browse nested folder structures, and I want the panel to be scrollable so that I can page through large directory listings.
 
-**Source:** CR-NR-005 — user request Phase AY.
+**Source:** CR-NR-005 -- user request Phase AY.
 
 #### Acceptance Criteria
 
@@ -349,7 +349,7 @@ All resource access flows through the VFS abstraction layer (FFW-ARCH-001) — t
 
 **User Story:** As a user, I want a right-click context menu on any node in the File Explorer Context so that I can perform file operations directly from the tree without leaving the workbench.
 
-**Source:** CR-NR-006 — Phase AZ.
+**Source:** CR-NR-006 -- Phase AZ.
 
 #### Glossary additions
 
@@ -395,7 +395,7 @@ Copy Full Path
 Open Containing Folder
 Reveal in Explorer
 ────────────────
-Git ▶  [Greyed_Out — deferred]
+Git ▶  [Greyed_Out -- deferred]
 ────────────────
 Properties
 ```
@@ -420,7 +420,7 @@ Copy Full Path
 ────────────────
 Reveal in Explorer
 ────────────────
-Git ▶  [Greyed_Out — deferred]
+Git ▶  [Greyed_Out -- deferred]
 ────────────────
 Properties
 ```
@@ -444,7 +444,7 @@ Copy Full Path
 Properties
 ```
 
-No Rename, Move To, Copy To, New File, New Folder — POSIX catalogs are read-only.
+No Rename, Move To, Copy To, New File, New Folder -- POSIX catalogs are read-only.
 
 **5. Mainframe Sequential Dataset (PS) context menu**
 
@@ -490,7 +490,7 @@ WHEN the user right-clicks a PDS member node inside a Mainframe catalog, THE pan
 Open
 Open in New Tab
 ────────────────
-Submit JCL  [Greyed_Out — deferred pending SDSF]
+Submit JCL  [Greyed_Out -- deferred pending SDSF]
 Compare…
 ────────────────
 Copy Member
@@ -609,7 +609,7 @@ Refresh
 
 **User Story:** As a user, I want double-clicking a file node or selecting "Open" from the context menu to launch the platform-appropriate default application for that file type, so that non-text files (Word documents, spreadsheets, PDFs, images, etc.) open in the correct program rather than in the FFWB text editor.
 
-**Source:** CR-NR-007 — Phase BA.
+**Source:** CR-NR-007 -- Phase BA.
 
 #### Glossary additions
 
@@ -636,7 +636,7 @@ WHEN a file's extension has no matching `FileClass` rule, THE panel SHALL perfor
 
 **4. Launch failure falls back to FFWB editor**
 
-WHEN a DefaultAppLaunch fails (spawn returns an error, or on Linux `xdg-open` exits non-zero), THE panel SHALL open the file in the FFWB editor tab and display a status-bar message: `"No application registered for .<ext> — opened in editor"`.
+WHEN a DefaultAppLaunch fails (spawn returns an error, or on Linux `xdg-open` exits non-zero), THE panel SHALL open the file in the FFWB editor tab and display a status-bar message: `"No application registered for .<ext> -- opened in editor"`.
 
 **5. Open With… shows platform picker**
 
@@ -677,11 +677,11 @@ WHEN the user opens a POSIX catalog file node, THE same FileClass classification
 
 ---
 
-### Requirement 18: Native Catalog File Listing — Sorted Order and File Attributes
+### Requirement 18: Native Catalog File Listing -- Sorted Order and File Attributes
 
 **User Story:** As a user, I want the files in a Native catalog directory to be sorted alphabetically and to see file attributes (size, timestamps, permissions) alongside each file name, so that I can quickly find files and understand their state without leaving the workbench.
 
-**Source:** CR-NR-008 — Phase BB.
+**Source:** CR-NR-008 -- Phase BB.
 
 #### Acceptance Criteria
 
@@ -708,12 +708,12 @@ EACH file and directory node in a Native catalog SHALL display the last-accessed
 **6. Permission attributes**
 
 EACH file and directory node in a Native catalog SHALL display permission attributes in a user-friendly format:
-- On Windows: a compact flag string showing `R` (read-only), `H` (hidden), `S` (system), `A` (archive) where set; e.g. `RH`, `A`, or `—` if none.
+- On Windows: a compact flag string showing `R` (read-only), `H` (hidden), `S` (system), `A` (archive) where set; e.g. `RH`, `A`, or `--` if none.
 - On Linux/macOS: a compact Unix-style string e.g. `rwxr-xr-x`.
 
 **7. Inaccessible entries silently skipped**
 
-WHEN `std::fs::metadata()` returns an error for an entry (e.g. permission denied on a junction point or locked file), THE File_Explorer_Context SHALL silently skip that entry — it SHALL NOT appear in the listing and SHALL NOT display an error message for that individual entry. The remaining entries in the directory SHALL still be listed normally.
+WHEN `std::fs::metadata()` returns an error for an entry (e.g. permission denied on a junction point or locked file), THE File_Explorer_Context SHALL silently skip that entry -- it SHALL NOT appear in the listing and SHALL NOT display an error message for that individual entry. The remaining entries in the directory SHALL still be listed normally.
 
 **8. Locked-file open error**
 
@@ -725,11 +725,11 @@ THE file attribute columns SHALL be rendered to the right of the file name in th
 
 ---
 
-### Requirement 19: File Explorer Tree — Drag-Select and Copy as Text Tree
+### Requirement 19: File Explorer Tree -- Drag-Select and Copy as Text Tree
 
 **User Story:** As a user, I want to drag-select a range of nodes in the File Explorer tree and copy them as a formatted plain-text tree structure to the clipboard, so that I can paste the file listing into a text file, editor tab, or external tool.
 
-**Source:** CR-NR-009 — Phase BD.
+**Source:** CR-NR-009 -- Phase BD.
 
 #### Glossary additions
 
@@ -787,11 +787,11 @@ THE drag-select and copy behaviour SHALL apply equally to Native, POSIX, and Mai
 
 ---
 
-### Requirement 20: File Explorer — Keyboard Navigation and Focus Transfer from Command Line
+### Requirement 20: File Explorer -- Keyboard Navigation and Focus Transfer from Command Line
 
 **User Story:** As a user, I want to press Tab from the command line to move focus into the File Explorer tree, then navigate with arrow keys and select items with Shift+Arrow and Ctrl+Space, so that I can operate the file list entirely from the keyboard.
 
-**Source:** CR-NR-010 — Phase BE.
+**Source:** CR-NR-010 -- Phase BE.
 
 #### Glossary additions
 
@@ -843,7 +843,7 @@ WHEN the user holds Ctrl and presses Space, THE Cursor_Node's membership in the 
 
 **11. Ctrl+C copies selected nodes**
 
-WHEN one or more nodes are in the Keyboard_Selection and the user presses Ctrl+C, THE File_Explorer_Context SHALL copy the selected nodes' information to the OS clipboard (as per Req 19.5 — Text_Tree format for text paste, and as per Req 21.1 for file-level copy).
+WHEN one or more nodes are in the Keyboard_Selection and the user presses Ctrl+C, THE File_Explorer_Context SHALL copy the selected nodes' information to the OS clipboard (as per Req 19.5 -- Text_Tree format for text paste, and as per Req 21.1 for file-level copy).
 
 **12. Escape clears keyboard selection**
 
@@ -855,11 +855,11 @@ THE Cursor_Node SHALL be rendered with a focus ring or border distinct from the 
 
 ---
 
-### Requirement 21: File Explorer — File Copy and Paste Operations
+### Requirement 21: File Explorer -- File Copy and Paste Operations
 
 **User Story:** As a user, I want to select files in the File Explorer, press Ctrl+C to copy them, navigate to a new directory, and press Ctrl+V to copy the files there. I also want to be able to paste the list of selected file names into a file I am editing.
 
-**Source:** CR-NR-011 — Phase BE.
+**Source:** CR-NR-011 -- Phase BE.
 
 #### Glossary additions
 
@@ -915,11 +915,11 @@ THE File_Copy_Clipboard SHALL persist across navigation within the File Explorer
 
 ---
 
-### Requirement 23: File Explorer Context — egui-file-dialog Look-and-Feel with Catalog Mount Points
+### Requirement 23: File Explorer Context -- egui-file-dialog Look-and-Feel with Catalog Mount Points
 
 **User Story:** As a user, I want the File Explorer Context (POM option 2) to look and work like the egui-file-dialog widget, with each catalog appearing as a mounted node in a left sidebar, so that I can browse all catalog types through a single, consistent, polished interface.
 
-**Source:** CR-NR-014 — Phase BM.
+**Source:** CR-NR-014 -- Phase BM.
 
 #### Glossary additions
 
@@ -958,7 +958,7 @@ WHEN a POSIX catalog Mount_Node is selected, THE Content_Pane SHALL display the 
 
 **7. Empty sidebar state**
 
-WHEN no catalogs are registered, THE Sidebar SHALL display a placeholder message: "No catalogs mounted — use File Catalogs (option 1) to create or mount a catalog". The Content_Pane SHALL be empty.
+WHEN no catalogs are registered, THE Sidebar SHALL display a placeholder message: "No catalogs mounted -- use File Catalogs (option 1) to create or mount a catalog". The Content_Pane SHALL be empty.
 
 **8. Right-click context menu uses egui-file-dialog native menu**
 
@@ -974,13 +974,13 @@ WHEN the refactoring is complete, `cargo test` SHALL pass with 0 failures. No ex
 
 ---
 
-### Requirement 22: Native File Browser — egui-file-dialog Integration
+### Requirement 22: Native File Browser -- egui-file-dialog Integration
 
 > **Note:** Requirement 22 was added after Requirement 23 during Phase BK. The numbering reflects implementation order and is preserved for test annotation compatibility.
 
 **User Story:** As a user, I want the Native catalog file browser to use a polished, feature-complete file dialog widget so that I can navigate local directories with breadcrumbs, bookmarks, search, and keyboard shortcuts without the workbench having to maintain a custom tree renderer.
 
-**Source:** CR-NR-013 — Phase BK.
+**Source:** CR-NR-013 -- Phase BK.
 
 #### Glossary additions
 

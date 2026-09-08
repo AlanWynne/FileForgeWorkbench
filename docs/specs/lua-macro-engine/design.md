@@ -19,13 +19,13 @@ The `ff-lua` crate is the **scripting and automation layer** for the FileForgeWo
 ### Position in Architecture
 
 ```
-Wave 10 — Extensions and Macros
+Wave 10 -- Extensions and Macros
 
 ┌─────────────────────────────────────────────────────────┐
 │                    Application Binary (ffwb)              │
 │                (ff-desktop / GUI shell)                   │
 ├─────────────────────────────────────────────────────────┤
-│  ff-lua (THIS CRATE) — Wave 10                           │
+│  ff-lua (THIS CRATE) -- Wave 10                           │
 │  Lua runtime, editor API, hooks, macro commands          │
 ├─────────────────────────────────────────────────────────┤
 │  ff-edit-operations │ ff-document-model │ ff-undo-redo   │
@@ -37,8 +37,8 @@ Wave 10 — Extensions and Macros
 
 ### Design Constraints (Cross-Cutting)
 
-- **FFW-ARCH-001 (Req 1)**: File watching and script loading use the VFS/connector-local-fs watcher — no direct `std::fs` for content access
-- **GUI Independence (Req 2)**: Zero GUI dependencies — no egui, no windowing crate imports; dialogs (e.g., security prompt) are abstracted behind a trait
+- **FFW-ARCH-001 (Req 1)**: File watching and script loading use the VFS/connector-local-fs watcher -- no direct `std::fs` for content access
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- no egui, no windowing crate imports; dialogs (e.g., security prompt) are abstracted behind a trait
 - **Plugin Architecture (Req 3)**: The macro engine registers as a plugin providing `MacroCapability` via `ff-plugin`
 - **Command-Driven (Req 4)**: MACRO/EXEC/RUN are registered commands; `editor.command()` dispatches through the scripting bridge
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-lua`
@@ -119,15 +119,15 @@ graph TD
 
 | Layer | Role |
 |-------|------|
-| **Engine Core** | `LuaMacroEngine` — owns the `mlua::Lua` instance, orchestrates all macro operations |
-| **Editor API** | Lua global `editor` table — bridges Lua calls to document model and command framework |
-| **Hook System** | `HookRegistry` — maps event names to ordered handler lists, dispatches events |
-| **Buffer State** | `BufferStateManager` — per-buffer Lua table swap on buffer switch |
-| **Discovery** | `DirectoryScanner` — recursive `.lua` file scanning, name resolution, shadowing |
-| **Auto-Reload** | `AutoReloader` — file watcher integration, debounced re-execution |
-| **Security** | `SecurityGate` — policy enforcement before any script execution |
-| **Transactions** | `TransactionManager` — wraps macro execution in undo-group boundaries |
-| **Debug** | `DebugSupport` — trace/print routing, execution timing, traceback formatting |
+| **Engine Core** | `LuaMacroEngine` -- owns the `mlua::Lua` instance, orchestrates all macro operations |
+| **Editor API** | Lua global `editor` table -- bridges Lua calls to document model and command framework |
+| **Hook System** | `HookRegistry` -- maps event names to ordered handler lists, dispatches events |
+| **Buffer State** | `BufferStateManager` -- per-buffer Lua table swap on buffer switch |
+| **Discovery** | `DirectoryScanner` -- recursive `.lua` file scanning, name resolution, shadowing |
+| **Auto-Reload** | `AutoReloader` -- file watcher integration, debounced re-execution |
+| **Security** | `SecurityGate` -- policy enforcement before any script execution |
+| **Transactions** | `TransactionManager` -- wraps macro execution in undo-group boundaries |
+| **Debug** | `DebugSupport` -- trace/print routing, execution timing, traceback formatting |
 
 ### Macro Execution Flow
 
@@ -360,11 +360,11 @@ pub fn register_macro_commands(
 ) -> Result<(), LuaEngineError>;
 
 /// Command IDs registered by this crate:
-/// - "macro.run_named"   — MACRO <name>
-/// - "macro.exec_inline" — EXEC <expression>
-/// - "macro.run_file"    — RUN <path>
-/// - "macro.reload"      — Force reload all scripts
-/// - "macro.list"        — List available macros
+/// - "macro.run_named"   -- MACRO <name>
+/// - "macro.exec_inline" -- EXEC <expression>
+/// - "macro.run_file"    -- RUN <path>
+/// - "macro.reload"      -- Force reload all scripts
+/// - "macro.list"        -- List available macros
 ```
 
 ---
@@ -703,10 +703,10 @@ impl MacroTransaction {
     /// Open a new transaction (undo group) for a macro invocation.
     pub fn begin(undo_manager: &dyn UndoManager) -> Result<Self, LuaEngineError>;
 
-    /// Commit the transaction — all edits become a single undo unit.
+    /// Commit the transaction -- all edits become a single undo unit.
     pub fn commit(self, undo_manager: &dyn UndoManager) -> Result<(), LuaEngineError>;
 
-    /// Roll back the transaction — all edits are undone.
+    /// Roll back the transaction -- all edits are undone.
     /// Addresses: Requirement 6 AC 1
     pub fn rollback(self, undo_manager: &dyn UndoManager) -> Result<(), LuaEngineError>;
 
@@ -868,14 +868,14 @@ pub enum LuaEngineError {
 
 ## Integration Points
 
-### With `ff-command` (Command Framework — Wave 2)
+### With `ff-command` (Command Framework -- Wave 2)
 
 - **ScriptingBridge**: The `editor.command(str)` API delegates to `ScriptingBridge::execute()`, converting Lua string commands to `CommandParams` and dispatching through the command framework
 - **Command Registration**: MACRO, EXEC, RUN commands are registered with IDs `"macro.run_named"`, `"macro.exec_inline"`, `"macro.run_file"` via `PluginContext::register_command()`
 - **OnCommand Hook**: Before any command executes, `ff-lua` can intercept via the `OnCommand` cancellable hook if the engine subscribes to command-dispatch events
 - Dependency: `ff-lua` depends on `ff-command` for the `ScriptingBridge` type and `CommandParams`/`LuaValue` conversions
 
-### With `ff-plugin` (Plugin Architecture — Wave 2)
+### With `ff-plugin` (Plugin Architecture -- Wave 2)
 
 - **Plugin Registration**: `LuaMacroEngine` implements `FileForgePlugin` with metadata name `"lua-macro-engine"` and provides `MacroCapability`
 - **Lifecycle**: The plugin system manages engine startup (`initialize` → `activate`) and shutdown (`deactivate` → `shutdown`)
@@ -883,20 +883,20 @@ pub enum LuaEngineError {
 - **Capability**: Registers `Capability::Commands(CommandsCapability { command_ids: ["macro.run_named", "macro.exec_inline", "macro.run_file", "macro.reload", "macro.list"], category: "macro" })`
 - Dependency: `ff-lua` depends on `ff-plugin` for the `FileForgePlugin` trait and `PluginContext`
 
-### With `ff-edit-operations` (Edit Operations — Wave 4)
+### With `ff-edit-operations` (Edit Operations -- Wave 4)
 
 - **Transaction Wrapping**: Each macro invocation opens a `MacroTransaction` (undo group) via the edit operations transaction system; on completion it commits, on error it rolls back
 - **Buffer Mutation**: The `editor.set_line()`, `editor.insert_line()`, `editor.delete_line()` API functions use the edit operations primitives to modify buffer content, ensuring proper undo recording
 - Dependency: `ff-lua` depends on `ff-edit-operations` for `TransactionRecorder` and edit primitives
 
-### With `ff-document-model` (Document Model — Wave 4)
+### With `ff-document-model` (Document Model -- Wave 4)
 
-- **Buffer Access**: The `editor.*` API reads buffer content through `DocumentHandle` — `editor.lines()`, `editor.get_line(n)` call into the document model's line access methods
+- **Buffer Access**: The `editor.*` API reads buffer content through `DocumentHandle` -- `editor.lines()`, `editor.get_line(n)` call into the document model's line access methods
 - **Line Metadata**: `editor.tag(n)` sets metadata on the document model's line metadata store
 - **Buffer Identity**: Per-buffer state uses `BufferId` from the document model to key state tables
 - Dependency: `ff-lua` depends on `ff-document-model` for `DocumentHandle`, `LineNumber`, and buffer content access
 
-### With `ff-config` (Configuration System — Wave 2)
+### With `ff-config` (Configuration System -- Wave 2)
 
 - **Settings Read**: The engine reads all configuration keys under the `macro.*` namespace:
   - `macro.security_mode` → SecurityMode enum
@@ -912,7 +912,7 @@ pub enum LuaEngineError {
 - **Hot-Reload**: When macro configuration keys change, the engine reacts to reload callbacks
 - Dependency: `ff-lua` depends on `ff-config` for `ConfigAccess` trait and value reading
 
-### With `connector-local-fs` (File Watching — Wave 3)
+### With `connector-local-fs` (File Watching -- Wave 3)
 
 - **Script File Watching**: The auto-reload mechanism subscribes to file change events for loaded script paths via the local filesystem connector's watcher API
 - **Directory Monitoring**: Hot-discovery of new `.lua` files in macro directories uses the same watcher
@@ -1128,4 +1128,4 @@ All other dependencies are workspace-internal crates (`ff-command`, `ff-plugin`,
 | `macro.memory_limit` | Integer | `67108864` | Max Lua memory (bytes) per invocation |
 | `macro.startup_script` | String | `null` | Script to execute on engine initialization |
 | `macro.trusted_paths` | Array | `[]` | Paths trusted in TrustedOnly mode |
-| `macro.auto_load_for.<ext>` | String | — | Script name to auto-load for file extension |
+| `macro.auto_load_for.<ext>` | String | -- | Script name to auto-load for file extension |

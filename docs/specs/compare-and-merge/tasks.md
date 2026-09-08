@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-compare-merge` crate — the compare-and-merge subsystem for FileForgeWorkbench. The subsystem provides the COMPARE primary command, LCS-based line differencing (Myers and Patience algorithms), side-by-side and inline diff views, diff navigation, merge operations (accept left/right/both), three-way merge support, VFS-aware resource comparison across any registered provider, convenience comparison workflows (compare with saved, clipboard, selections), and unified diff export.
+This plan covers the complete implementation of the `ff-compare-merge` crate -- the compare-and-merge subsystem for FileForgeWorkbench. The subsystem provides the COMPARE primary command, LCS-based line differencing (Myers and Patience algorithms), side-by-side and inline diff views, diff navigation, merge operations (accept left/right/both), three-way merge support, VFS-aware resource comparison across any registered provider, convenience comparison workflows (compare with saved, clipboard, selections), and unified diff export.
 
 This is a **Wave 14 (File Explorer)** sub-project. It depends on `ff-vfs` (Wave 3), `ff-document-model` (Wave 4), `ff-command-framework` (Wave 2), `ff-workflow` (Wave 2), `ff-layout-docking` (Wave 2), `ff-theme` (Wave 2), `ff-undo-redo` (Wave 4), and `ff-edit-ops` (Wave 4).
 
@@ -79,7 +79,7 @@ This is a **Wave 14 (File Explorer)** sub-project. It depends on `ff-vfs` (Wave 
 
 - [x] 9. VFS-aware resource loading and binary detection
   - [x] 9.1 Implement resource URI resolution from bare paths via default provider
-  - [x] 9.2 Implement content loading via VFS `read()` / `read_stream()` — no direct filesystem access
+  - [x] 9.2 Implement content loading via VFS `read()` / `read_stream()` -- no direct filesystem access
   - [x] 9.3 Implement binary detection heuristic: null bytes in first 8 KB or provider metadata
   - [x] 9.4 Implement encoding normalisation to UTF-8 via encoding-and-characters subsystem
   - [x] 9.5 Implement error handling for VfsError::NotFound, VfsError::PermissionDenied
@@ -145,7 +145,7 @@ This is a **Wave 14 (File Explorer)** sub-project. It depends on `ff-vfs` (Wave 
   - [x] 15.7 Implement visual marking of resolved hunks (dimmed highlight, check gutter indicator)
   - [x] 15.8 Register `compare.accept_all_left` and `compare.accept_all_right` bulk resolution commands
   - [x] 15.9 Implement merge completion detection and status bar notification with save prompt
-  - [x] 15.10 Implement merge result as new Document (editable, saveable via VFS, discardable — originals unmodified)
+  - [x] 15.10 Implement merge result as new Document (editable, saveable via VFS, discardable -- originals unmodified)
   - [x] 15.11 Write unit tests: individual accepts, bulk accept, undo integration, completion detection, result document state
   - Covers: Requirement 7 (AC 7.1–7.10)
 
@@ -187,7 +187,7 @@ This is a **Wave 14 (File Explorer)** sub-project. It depends on `ff-vfs` (Wave 
   - [x] 19.1 Register `compare.with_saved` command
   - [x] 19.2 Implement fresh content load from VFS for persisted version of active document
   - [x] 19.3 Implement error for unsaved new document: "Document has not been saved. No saved version to compare against."
-  - [x] 19.4 Implement no-changes shortcut: status bar notification "No unsaved changes — document matches saved version." (skip diff view)
+  - [x] 19.4 Implement no-changes shortcut: status bar notification "No unsaved changes -- document matches saved version." (skip diff view)
   - [x] 19.5 Implement pane labelling: left = "Saved: {name}", right = "Unsaved Changes: {name}"
   - [x] 19.6 Implement read-only mode for both panes (no merge operations available)
   - [x] 19.7 Write unit tests: command routing, error cases, label generation, read-only enforcement
@@ -247,7 +247,7 @@ This is a **Wave 14 (File Explorer)** sub-project. It depends on `ff-vfs` (Wave 
 
 **Validates: Requirement 2.1**
 
-- **Statement:** For any two sequences of lines A and B, the Myers diff algorithm SHALL produce a minimal edit script — the total number of added + removed lines SHALL be less than or equal to that of any other valid edit script transforming A into B.
+- **Statement:** For any two sequences of lines A and B, the Myers diff algorithm SHALL produce a minimal edit script -- the total number of added + removed lines SHALL be less than or equal to that of any other valid edit script transforming A into B.
 - **Strategy:** Generate:
   - Left lines: Vec<String> of length [0, 100], each line from a small alphabet of [3, 8] unique lines (to create realistic overlap)
   - Right lines: Vec<String> of length [0, 100], drawn from the same alphabet
@@ -358,10 +358,10 @@ This is a **Wave 14 (File Explorer)** sub-project. It depends on `ff-vfs` (Wave 
 - This is a Wave 14 (File Explorer) crate depending on VFS (Wave 3), document-model and edit-operations (Wave 4), command-framework and workflow-engine (Wave 2), and layout-and-docking and theme-and-appearance (Wave 2)
 - The diff engine is GUI-independent: it operates on `&[&str]` line slices and produces pure data structures. All rendering is handled by the view layer.
 - The Myers algorithm implementation targets O(ND) time complexity where N = total input length and D = edit distance
-- The Patience algorithm anchors on unique matching lines first, then fills between anchors using Myers — producing more readable hunks for structured code
+- The Patience algorithm anchors on unique matching lines first, then fills between anchors using Myers -- producing more readable hunks for structured code
 - Three-way merge is modelled as a workflow (via `ff-workflow`) with defined steps, cooperative cancellation, and progress reporting
 - Merge operations create edit transactions on a new merge-result Document, integrating with the undo-redo system for individual accept rollback
-- All resource access is via VFS — no direct `std::fs` calls permitted. Cross-provider comparison is a first-class use case.
+- All resource access is via VFS -- no direct `std::fs` calls permitted. Cross-provider comparison is a first-class use case.
 - Binary detection uses a null-byte heuristic (first 8 KB) or provider content-type metadata
 - The Compare_Output_Panel registers as a DockablePanel in the Bottom dock zone and logs all comparison operations with timestamps
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property

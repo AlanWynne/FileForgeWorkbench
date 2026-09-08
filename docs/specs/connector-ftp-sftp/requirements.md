@@ -1,6 +1,6 @@
-# Requirements Document — DEFERRED
+# Requirements Document -- DEFERRED
 
-> ⚠️ **STATUS: DEFERRED — Not in initial release.**
+> ⚠️ **STATUS: DEFERRED -- Not in initial release.**
 >
 > This specification documents the *future* FTP/FTPS/SFTP connector for
 > FileForgeWorkbench. It is NOT scheduled for the initial release. The
@@ -16,14 +16,14 @@ connector lifecycle, authentication, and capability advertisement.
 
 ### What This Connector Will Provide
 
-- **FTP protocol support** — plain-text FTP connectivity with both active and
+- **FTP protocol support** -- plain-text FTP connectivity with both active and
   passive transfer modes, directory browsing, upload, download, rename, and
   delete operations.
-- **FTPS support (FTP over TLS/SSL)** — secure FTP using both implicit TLS
+- **FTPS support (FTP over TLS/SSL)** -- secure FTP using both implicit TLS
   (dedicated port) and explicit TLS (STARTTLS upgrade on standard port).
-- **SFTP support (SSH File Transfer Protocol)** — file transfer over SSH with
+- **SFTP support (SSH File Transfer Protocol)** -- file transfer over SSH with
   key-based authentication, agent forwarding, and known-host verification.
-- **Full file operations** — browsing, upload, download, rename, delete, and
+- **Full file operations** -- browsing, upload, download, rename, delete, and
   create-directory across all three protocols, presented uniformly through the
   VFS abstraction.
 
@@ -44,7 +44,7 @@ its supported capabilities per protocol.
 The `connector-extensibility` crate ships in the initial release and defines all
 the traits, error types, and registry infrastructure that this connector will
 consume. No code changes to VFS core or the workbench platform will be required
-to add this connector — it plugs in via the existing extensibility framework.
+to add this connector -- it plugs in via the existing extensibility framework.
 
 ---
 
@@ -117,16 +117,16 @@ criteria will be written when this connector moves to active development.
 
 ## References
 
-- **WB**: Workbench Architecture Brief — VFS extensibility, FFW-ARCH-001
+- **WB**: Workbench Architecture Brief -- VFS extensibility, FFW-ARCH-001
 - **FFW**: FileForgeWorkbench cross-cutting requirements (VFS Principle, Plugin Architecture)
 - Connector-extensibility requirements (Requirement 6: Future Connector Hooks)
 
 ---
 
-## Formal Acceptance Criteria (DEFERRED — Future Release)
+## Formal Acceptance Criteria (DEFERRED -- Future Release)
 
 > The following criteria are written in EARS format for traceability. All criteria
-> carry status **DEFERRED** — they are not scheduled for the initial release.
+> carry status **DEFERRED** -- they are not scheduled for the initial release.
 > Full implementation details will be added to `design.md` when this connector
 > moves to active development.
 

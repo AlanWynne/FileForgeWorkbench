@@ -19,7 +19,7 @@ The `ff-tabs-mask` crate provides **tab stop management** and **insert mask temp
 ### Position in Architecture
 
 ```
-Wave 11 — Display Mode
+Wave 11 -- Display Mode
 
 ┌──────────────────────────────────────────────────────────────┐
 │  Downstream Consumers:                                        │
@@ -30,12 +30,12 @@ Wave 11 — Display Mode
 │   Tab stop management, mask templates, display artifacts      │
 ├──────────────────────────────────────────────────────────────┤
 │  Upstream:                                                    │
-│    ff-logging (Wave 0) — structured diagnostics               │
-│    ff-command (Wave 2) — command registration & dispatch      │
-│    ff-config (Wave 2) — editor.default_tab_stops, tab_size    │
-│    ff-language-service (Wave 7) — per-language defaults        │
-│    ff-document-model (Wave 4) — line width, document context  │
-│    ff-edit-operations (Wave 4) — Tab key handling, insertion   │
+│    ff-logging (Wave 0) -- structured diagnostics               │
+│    ff-command (Wave 2) -- command registration & dispatch      │
+│    ff-config (Wave 2) -- editor.default_tab_stops, tab_size    │
+│    ff-language-service (Wave 7) -- per-language defaults        │
+│    ff-document-model (Wave 4) -- line width, document context  │
+│    ff-edit-operations (Wave 4) -- Tab key handling, insertion   │
 ├──────────────────────────────────────────────────────────────┤
 │              Foundation Layer: ff-logging                      │
 └──────────────────────────────────────────────────────────────┘
@@ -44,7 +44,7 @@ Wave 11 — Display Mode
 ### Design Constraints (Cross-Cutting)
 
 - **Command-Driven (Req 1–3, 6–8)**: All TABS and MASK operations are registered commands (`edit.tabs`, `edit.mask`) dispatched through `ff-command`
-- **GUI Independence**: Zero GUI dependencies — display artifact rendering is downstream; this crate manages state and command logic only
+- **GUI Independence**: Zero GUI dependencies -- display artifact rendering is downstream; this crate manages state and command logic only
 - **Multi-Crate Workspace**: Crate at `crates/ff-tabs-mask`
 - **Error Message Standards**: All errors follow `[tabs-mask] operation: description` format
 - **Session-State Only (Req 15)**: Tab stops and mask content are per-session, non-undoable, non-persisted to disk
@@ -115,7 +115,7 @@ graph TD
 |-----------|---------------|
 | **TabStopManager** | Stores the ordered tab stop list, computes next/previous stop from a column, validates column arguments, handles deduplication and sorting |
 | **MaskManager** | Stores the active insert mask string, applies mask to blank lines, handles mask editing, truncation/padding logic |
-| **DisplayArtifactManager** | Manages lifecycle of TABS_Lines and MASK_Lines in the viewport — insertion, removal, toggle, RESET handling |
+| **DisplayArtifactManager** | Manages lifecycle of TABS_Lines and MASK_Lines in the viewport -- insertion, removal, toggle, RESET handling |
 | **TabKeyHandler** | Computes Tab key target column using active tab stops, handles Insert vs Overstrike mode, delegates to edit-operations |
 | **ShiftHandler** | Computes shift targets for `>` / `<` line commands using tab stop positions |
 | **DefaultsLoader** | Loads tab stops and mask from configuration system and language definitions at session start, handles fallback logic |
@@ -276,7 +276,7 @@ impl std::fmt::Display for MaskLine {
 
 ```rust
 /// Per-session state for tab stop management.
-/// Non-undoable, non-persisted — lives only in Session_State.
+/// Non-undoable, non-persisted -- lives only in Session_State.
 /// Addresses: Requirement 15, criteria 15.1, 15.3, 15.4
 #[derive(Debug, Clone)]
 pub struct TabsState {
@@ -326,7 +326,7 @@ impl TabsState {
 
 ```rust
 /// Per-session state for insert mask management.
-/// Non-undoable, non-persisted — lives only in Session_State.
+/// Non-undoable, non-persisted -- lives only in Session_State.
 /// Addresses: Requirement 15, criteria 15.2, 15.3, 15.4
 #[derive(Debug, Clone)]
 pub struct MaskState {
@@ -753,7 +753,7 @@ pub enum EditMode {
 pub enum TabsMaskError {
     /// One or more column arguments are not valid positive integers.
     /// Addresses: Requirement 2, criterion 2.7
-    #[error("[tabs-mask] parse: invalid tab stop — column positions must be positive integers: {invalid_values:?}")]
+    #[error("[tabs-mask] parse: invalid tab stop -- column positions must be positive integers: {invalid_values:?}")]
     InvalidTabStops { invalid_values: Vec<String> },
 
     /// The TABS or MASK command was issued in a mode where it is not valid.
@@ -772,12 +772,12 @@ pub enum TabsMaskError {
 
     /// No active mask when MASK display was requested.
     /// Addresses: Requirement 6, criterion 6.2
-    #[error("[tabs-mask] display: no active mask — use MASK to set one or check the language profile")]
+    #[error("[tabs-mask] display: no active mask -- use MASK to set one or check the language profile")]
     NoActiveMask,
 
     /// Configuration key has invalid format.
     /// Addresses: Requirement 4, criterion 4.6; Requirement 13, criterion 13.3
-    #[error("[tabs-mask] config: invalid value in '{key}' — {reason}")]
+    #[error("[tabs-mask] config: invalid value in '{key}' -- {reason}")]
     InvalidConfig { key: String, reason: String },
 
     /// Line width exceeded during mask application.
@@ -794,7 +794,7 @@ pub enum TabsMaskError {
 
 ## Integration Points
 
-### With `ff-command` (Wave 2 — upstream)
+### With `ff-command` (Wave 2 -- upstream)
 
 - **Consumed API**: `CommandRegistry::register()`, `CommandMetadata`, dispatch pipeline
 - **Data flow**: This crate registers TABS and MASK commands (primary and line command forms) with the command framework. Commands are dispatched through the standard pipeline.
@@ -807,7 +807,7 @@ pub enum TabsMaskError {
   - All commands classified as non-undoable (Req 15)
   - Applicable modes: Edit, Browse, View for TABS; Edit, Browse for MASK (Req 1.10, 6.11)
 
-### With `ff-config` (Wave 2 — upstream)
+### With `ff-config` (Wave 2 -- upstream)
 
 - **Consumed API**: `ConfigProvider` trait, typed key access
 - **Data flow**: Reads `editor.default_tab_stops` (array of positive integers) and `editor.tab_size` (fallback for empty tab stop list) at session initialization
@@ -817,7 +817,7 @@ pub enum TabsMaskError {
   - Hot-reload: new defaults apply only to newly opened sessions (Req 13.7)
   - Invalid values logged and skipped (Req 4.6, 13.3)
 
-### With `ff-language-service` (Wave 7 — upstream)
+### With `ff-language-service` (Wave 7 -- upstream)
 
 - **Consumed API**: `LanguageDefinitionRef`, property access for `default_tab_stops` and `default_mask`
 - **Data flow**: At session start, queries the active language definition for per-language tab stop and mask defaults
@@ -827,25 +827,25 @@ pub enum TabsMaskError {
   - Language definition takes precedence over global config (Req 4.3, 13.6)
   - Invalid types logged and treated as absent (Req 4.6, 10.6)
 
-### With `ff-document-model` (Wave 4 — upstream)
+### With `ff-document-model` (Wave 4 -- upstream)
 
 - **Consumed information**: Document line width, current line count, cursor position context
 - **Data flow**: Provides line width for mask truncation/padding and TABS_Line rendering, document dimensions for anchor validation
 - **Key interactions**:
   - Line width used for `apply_to_width()` and `render_tabs_line()` (Req 9.5, 9.6, 17.5)
   - Line count for anchor validation (artifact positioning)
-  - No compile-time dependency required — information passed by the orchestrating session layer
+  - No compile-time dependency required -- information passed by the orchestrating session layer
 
-### With `ff-edit-operations` (Wave 4 — upstream)
+### With `ff-edit-operations` (Wave 4 -- upstream)
 
 - **Consumed API**: Tab key handling hook, line insertion hook
 - **Data flow**: This crate provides the Tab key target computation; `ff-edit-operations` executes the actual cursor movement or space insertion. For mask application, the I/In line command execution path queries this crate for mask content.
 - **Key interactions**:
   - Tab key pressed → `compute_tab_action()` called → result dispatched to edit-operations (Req 5)
   - I/In line command → `apply_mask()` called → content provided to line insertion (Req 9)
-  - Mask application is part of the insert transaction (Req 9.4) — no separate undo entry
+  - Mask application is part of the insert transaction (Req 9.4) -- no separate undo entry
 
-### With `ff-auto-indentation` (Wave 7 — coordination)
+### With `ff-auto-indentation` (Wave 7 -- coordination)
 
 - **Coordination boundary**: Tab with selection delegates to `auto-indentation` Indent command
 - **Data flow**: When Tab is pressed with a selection, this crate returns `TabKeyAction::DelegateToIndent` and does not handle the operation. The `auto-indentation` crate uses `editor.indent_size`, NOT the TABS tab stop list.
@@ -854,7 +854,7 @@ pub enum TabsMaskError {
   - Tab stop list exposed for `>` / `<` shift commands (Req 14.1–14.4)
   - Clear ownership boundary: single-cursor Tab = this crate; selection Tab/indent = auto-indentation
 
-### With `command-semantics` (RESET command — coordination)
+### With `command-semantics` (RESET command -- coordination)
 
 - **Coordination boundary**: RESET is owned by `command-semantics`; it calls into this crate to clear display artifacts
 - **Data flow**: When RESET or RESET ALL is issued, the command-semantics layer calls `handle_reset()` on this crate's state to remove TABS_Lines and MASK_Lines
@@ -862,7 +862,7 @@ pub enum TabsMaskError {
   - RESET removes display artifacts but preserves tab stops and mask content (Req 11.1–11.4)
   - RESET COMMANDS clears pending TABS/MASK line commands from prefix area (Req 11.5)
 
-### With `line-commands` (prefix area — coordination)
+### With `line-commands` (prefix area -- coordination)
 
 - **Coordination boundary**: Line command parsing/dispatch is in `line-commands`; execution is here
 - **Data flow**: When TABS or MASK is entered in the prefix area, the line-command pipeline routes to this crate for artifact insertion
@@ -1003,7 +1003,7 @@ These properties are suitable for property-based testing using the `proptest` cr
 
 ### Property 10: Toggle Behaviour Idempotence
 
-**Statement**: Issuing TABS (or MASK) twice returns the display to its original state — no artifacts remain after an even number of toggle operations.
+**Statement**: Issuing TABS (or MASK) twice returns the display to its original state -- no artifacts remain after an even number of toggle operations.
 
 **Validates: Requirements 1.4, 6.5**
 
@@ -1051,12 +1051,12 @@ These properties are suitable for property-based testing using the `proptest` cr
 ∀ state: TabsMaskState with N tabs_lines and M mask_lines:
   artifact_metadata(TabsLine).is_real_document_line == false
   artifact_metadata(MaskLine).is_real_document_line == false
-  // Structural guarantee enforced by type system — ArtifactPosition is not a document LineIndex
+  // Structural guarantee enforced by type system -- ArtifactPosition is not a document LineIndex
 ```
 
 ### Property 14: Mask Application Part of Insert Transaction
 
-**Statement**: When mask content is applied to inserted lines, the mask-filled content is removable as a single undo unit with the line insertion — no independent undo entry is created.
+**Statement**: When mask content is applied to inserted lines, the mask-filled content is removable as a single undo unit with the line insertion -- no independent undo entry is created.
 
 **Validates: Requirements 9.4**
 

@@ -41,7 +41,7 @@ The `ff-core` crate is the **GUI-independent central orchestration layer** for t
 ### Design Constraints (Cross-Cutting)
 
 - **FFW-ARCH-001**: ff-core orchestrates the VFS subsystem but does not bypass VFS for content access
-- **GUI Independence (Req 2)**: Zero GUI dependencies — no egui, winit, wgpu in Cargo.toml
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- no egui, winit, wgpu in Cargo.toml
 - **Plugin Architecture (Req 3)**: ff-core hosts plugin lifecycle via the Service Registry
 - **Command-Driven (Req 4)**: ff-core hosts command dispatch through the Event Bus
 - **Async I/O (Req 6)**: Tokio multi-threaded runtime managed by ff-core
@@ -296,11 +296,11 @@ pub enum WorkbenchEvent {
 /// Addresses: Requirement 5/6
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LifecyclePhase {
-    /// Startup in progress — services being registered
+    /// Startup in progress -- services being registered
     Initializing,
     /// All services registered, application running normally
     Running,
-    /// Shutdown in progress — services being torn down
+    /// Shutdown in progress -- services being torn down
     ShuttingDown,
     /// Application has terminated
     Terminated,
@@ -414,7 +414,7 @@ pub struct TrackedTask {
 
 ## 5. Public API Surface
 
-### WorkbenchApp — Construction and Lifecycle
+### WorkbenchApp -- Construction and Lifecycle
 
 ```rust
 impl WorkbenchApp {
@@ -466,7 +466,7 @@ impl WorkbenchApp {
 }
 ```
 
-### ServiceRegistry — Registration and Lookup
+### ServiceRegistry -- Registration and Lookup
 
 ```rust
 impl ServiceRegistry {
@@ -499,7 +499,7 @@ impl ServiceRegistry {
 }
 ```
 
-### EventBus — Dispatch and Subscription
+### EventBus -- Dispatch and Subscription
 
 ```rust
 impl EventBus {
@@ -568,7 +568,7 @@ impl EventSubscription {
 }
 ```
 
-### TokioRuntime — Async Task Management
+### TokioRuntime -- Async Task Management
 
 ```rust
 impl TokioRuntime {
@@ -686,7 +686,7 @@ pub enum CoreError {
     },
 
     /// Attempted to register a service after the registry was frozen
-    #[error("[core] registry: cannot register '{type_name}' — registry is frozen")]
+    #[error("[core] registry: cannot register '{type_name}' -- registry is frozen")]
     RegistryFrozen {
         type_name: String,
     },
@@ -718,7 +718,7 @@ pub enum CoreError {
     },
 
     /// Tokio runtime encountered a fatal error
-    #[error("[core] runtime: fatal runtime error — all worker threads panicked")]
+    #[error("[core] runtime: fatal runtime error -- all worker threads panicked")]
     RuntimeFatal,
 
     /// OS signal handling setup failed
@@ -737,7 +737,7 @@ pub enum CoreError {
 
 ## 7. Integration Points
 
-### With `ff-logging` (Foundation Layer — upstream)
+### With `ff-logging` (Foundation Layer -- upstream)
 
 - **Dependency direction**: ff-core depends on ff-logging
 - **API consumed**: `ff_logging::init()`, `ff_logging::shutdown()`, `ff_logging::is_fallback()`, `ff_logging::dropped_count()`, `log_info!`, `log_warn!`, `log_error!`
@@ -745,39 +745,39 @@ pub enum CoreError {
 - **Shutdown**: ff-core calls `ff_logging::shutdown()` as the **last** operation in its shutdown sequence (Requirement 6.1)
 - **Diagnostics**: ff-core queries `ff_logging::is_fallback()` and `ff_logging::dropped_count()` to expose logging health via the Event Bus for status bar display
 
-### With `ff-config` (Core Layer — peer)
+### With `ff-config` (Core Layer -- peer)
 
 - **Dependency direction**: ff-core depends on ff-config's `ConfigProvider` trait
 - **API consumed**: `ConfigProvider::get()`, `ConfigProvider::get_namespace()`
 - **Initialization**: ff-config is the second subsystem initialized (after logging). ff-core passes the config provider to all subsequent subsystem initializations
 - **Hot-reload**: When ff-config detects a file change and reloads, it dispatches `ConfigReloaded` through the Event Bus
 
-### With `ff-command` (Core Layer — peer)
+### With `ff-command` (Core Layer -- peer)
 
 - **Dependency direction**: ff-core wraps ff-command's lifecycle through an adapter; ff-command does NOT implement ff-core's `Subsystem` trait directly (to avoid circular dependencies)
 - **Integration**: Commands are registered with ff-command during startup. The Event Bus carries `CommandDispatched` and `CommandCompleted` events. ff-core defines event payload types (`CommandParams`, `CommandOutcome`) locally to avoid circular dependencies with ff-command.
 - **Initialization order**: Commands subsystem initializes fourth (after VFS)
 
-### With `ff-plugin` (Core Layer — peer)
+### With `ff-plugin` (Core Layer -- peer)
 
 - **Dependency direction**: ff-core manages ff-plugin lifecycle via the Subsystem trait
 - **Integration**: Plugin subsystem initializes fifth (after commands). ff-core provides the hot-restart API (`hot_restart_plugin`) that delegates to ff-plugin
 - **Hot-restart**: ff-core orchestrates the deactivate → unload → reload → initialize → activate sequence and dispatches `PluginReloaded` event on success
-- **Error handling**: Plugin initialization failures are non-critical — ff-core logs and continues (Requirement 5.3)
+- **Error handling**: Plugin initialization failures are non-critical -- ff-core logs and continues (Requirement 5.3)
 
-### With `ff-workflow` (Core Layer — peer)
+### With `ff-workflow` (Core Layer -- peer)
 
 - **Dependency direction**: ff-core registers ff-workflow as a subsystem
 - **Integration**: Workflows dispatch progress events through the Event Bus. Long-running operations use the workflow engine for cancellation and resumption
 - **Initialization**: Implicitly managed as part of the commands/plugins subsystem group
 
-### With `ff-vfs` (Core Layer — peer)
+### With `ff-vfs` (Core Layer -- peer)
 
 - **Dependency direction**: ff-core initializes ff-vfs as a registered subsystem
-- **FFW-ARCH-001 compliance**: ff-core itself does NOT use VFS for content access — it only manages VFS lifecycle. Content-accessing crates (document-model, file-operations) use VFS directly
+- **FFW-ARCH-001 compliance**: ff-core itself does NOT use VFS for content access -- it only manages VFS lifecycle. Content-accessing crates (document-model, file-operations) use VFS directly
 - **Initialization order**: VFS is the third subsystem initialized (after configuration)
 
-### With `ff-desktop` (Shell Layer — downstream)
+### With `ff-desktop` (Shell Layer -- downstream)
 
 - **Dependency direction**: ff-desktop depends on ff-core; ff-core NEVER depends on ff-desktop
 - **Communication**: Exclusively through the Event Bus. User input events flow from shell to core; state-change and notification events flow from core to shell
@@ -860,7 +860,7 @@ Addresses: Requirement 9, criterion 3
 ### Threading Rules
 
 1. **GUI thread never blocks on I/O** (Requirement 9.4): All file/network operations are dispatched to Tokio workers via channels or Event Bus
-2. **Results flow through Event Bus** (Requirement 9.5): Tokio workers communicate results back via event dispatch or oneshot channels — never by directly mutating GUI state
+2. **Results flow through Event Bus** (Requirement 9.5): Tokio workers communicate results back via event dispatch or oneshot channels -- never by directly mutating GUI state
 3. **All tasks tracked** (Requirement 9.6): Every spawned Tokio task is registered with `TaskTracker` for join/cancel during shutdown
 4. **Runtime fatal = shutdown** (Requirement 9.7): If all Tokio worker threads panic, ff-core initiates orderly shutdown
 

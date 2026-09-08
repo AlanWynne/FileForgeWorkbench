@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This feature specifies the menu bar and status bar system for FileForgeWorkbench (`ff-menu` crate). The menu system provides a top-level menu bar with standard application menus (File, Edit, Search, View, Help), context menus, and a configurable multi-segment status bar that displays real-time editor and workbench state. All menu items route through the command framework — no menu action directly mutates application state.
+This feature specifies the menu bar and status bar system for FileForgeWorkbench (`ff-menu` crate). The menu system provides a top-level menu bar with standard application menus (File, Edit, Search, View, Help), context menus, and a configurable multi-segment status bar that displays real-time editor and workbench state. All menu items route through the command framework -- no menu action directly mutates application state.
 
 The menu bar is the primary graphical command invocation surface for the workbench. It presents commands in a standard hierarchical structure that desktop users expect, while the underlying execution always flows through `command-framework` dispatch. This ensures macro recordability, shortcut consistency, and plugin extensibility for all menu-initiated operations.
 
@@ -16,14 +16,14 @@ The Command Field ("Command ===>") is an ISPF heritage element positioned above 
 - **SCI-STE** = Scintilla/SciTE concepts (recent files, view menu options, tab context menus, status bar segments)
 
 **Cross-references:**
-- `command-framework` — all menu items invoke registered commands
-- `layout-and-docking` — status bar is a workbench panel; menu bar integrated with Primary_Window
-- `file-operations` — File menu actions delegate to file operation commands
-- `edit-operations` — Edit menu actions delegate to edit commands
-- `find-and-replace` — Search menu actions delegate to find/change commands
-- `theme-and-appearance` — View menu exposes theme switching
-- `configuration-system` — status bar segment configuration, recent files persistence
-- `plugin-architecture` — plugins contribute menu items and status bar segments
+- `command-framework` -- all menu items invoke registered commands
+- `layout-and-docking` -- status bar is a workbench panel; menu bar integrated with Primary_Window
+- `file-operations` -- File menu actions delegate to file operation commands
+- `edit-operations` -- Edit menu actions delegate to edit commands
+- `find-and-replace` -- Search menu actions delegate to find/change commands
+- `theme-and-appearance` -- View menu exposes theme switching
+- `configuration-system` -- status bar segment configuration, recent files persistence
+- `plugin-architecture` -- plugins contribute menu items and status bar segments
 
 ## Glossary
 
@@ -54,7 +54,7 @@ The Command Field ("Command ===>") is an ISPF heritage element positioned above 
 
 1. THE Menu_Bar SHALL be rendered at the top of the Primary_Window, below the window title bar and above the primary command area.
 2. THE Menu_Bar SHALL contain the following top-level menus in this order: File, Edit, Search, View, and Help.
-3. THE File menu SHALL contain, at minimum, the following items in order: New, Open, Open Recent (submenu), Save, Save As, Close, and Exit — separated by Menu_Separators between logical groups (New/Open/Open Recent | Save/Save As | Close | Exit).
+3. THE File menu SHALL contain, at minimum, the following items in order: New, Open, Open Recent (submenu), Save, Save As, Close, and Exit -- separated by Menu_Separators between logical groups (New/Open/Open Recent | Save/Save As | Close | Exit).
 4. THE Edit menu SHALL contain, at minimum, the following items in order: Undo, Redo, a Menu_Separator, Cut, Copy, Paste, a Menu_Separator, and Select All.
 5. THE Search menu SHALL contain, at minimum, the following items in order: Find, Find Next, Find Previous, a Menu_Separator, Change (Replace), and Go to Line.
 6. THE View menu SHALL contain, at minimum, the following items in order: Zoom In, Zoom Out, Reset Zoom, a Menu_Separator, Word Wrap (toggle), Show Whitespace (toggle), Show Line Numbers (toggle), a Menu_Separator, and Theme (submenu listing available themes).
@@ -67,7 +67,7 @@ The Command Field ("Command ===>") is an ISPF heritage element positioned above 
 
 **User Story:** As a workbench developer, I want every menu item to invoke a registered command through the command framework, so that menu actions are undoable, macro-recordable, and consistent with keyboard shortcut invocations of the same command.
 
-**Source:** WB Architecture Brief §7 — command-driven architecture. [WB]
+**Source:** WB Architecture Brief §7 -- command-driven architecture. [WB]
 
 #### Acceptance Criteria
 
@@ -132,11 +132,11 @@ The Command Field ("Command ===>") is an ISPF heritage element positioned above 
 4. EACH Status_Segment SHALL have a unique string identifier (1 to 64 ASCII alphanumeric or underscore characters) for configuration and plugin reference.
 5. THE Status_Bar SHALL have a fixed height sufficient to display one line of text at the current UI font size, and SHALL NOT be resizable by the user.
 6. THE Status_Bar SHALL be a workbench-level panel (not editor-specific) managed by the layout system; it SHALL remain visible regardless of which panel or editor tab has focus.
-7. WHEN no editor tab is open, THE Status_Bar SHALL display placeholder values for editor-specific segments (e.g., mode shows "—", line/column shows "—/—", encoding shows "—").
+7. WHEN no editor tab is open, THE Status_Bar SHALL display placeholder values for editor-specific segments (e.g., mode shows "--", line/column shows "--/--", encoding shows "--").
 
 ---
 
-### Requirement 6: Status Bar Content — Mode and State Indicators
+### Requirement 6: Status Bar Content -- Mode and State Indicators
 
 **User Story:** As a user, I want the status bar to clearly indicate my current editing mode and insert/overstrike state, so that I understand how the editor will respond to my keystrokes.
 
@@ -153,7 +153,7 @@ The Command Field ("Command ===>") is an ISPF heritage element positioned above 
 
 ---
 
-### Requirement 7: Status Bar Content — Position and File Information
+### Requirement 7: Status Bar Content -- Position and File Information
 
 **User Story:** As a user, I want the status bar to show my cursor position (line and column), file encoding, and total line count, so that I always know where I am in the file and its basic properties.
 
@@ -174,7 +174,7 @@ The Command Field ("Command ===>") is an ISPF heritage element positioned above 
 
 **User Story:** As a plugin developer, I want to contribute custom segments to the status bar, so that my plugin can display relevant state information (e.g., Git branch, language server status, build state) alongside the core editor information.
 
-**Source:** WB Architecture Brief — plugin-contributed panels and segments. [WB]
+**Source:** WB Architecture Brief -- plugin-contributed panels and segments. [WB]
 
 #### Acceptance Criteria
 
@@ -209,7 +209,7 @@ The Command Field ("Command ===>") is an ISPF heritage element positioned above 
 
 **User Story:** As a plugin developer, I want to contribute menu items and submenus to the menu bar, so that my plugin's commands are discoverable through the standard menu hierarchy alongside built-in commands.
 
-**Source:** WB Architecture Brief — plugin architecture, command-driven menus. [WB]
+**Source:** WB Architecture Brief -- plugin architecture, command-driven menus. [WB]
 
 #### Acceptance Criteria
 
@@ -339,8 +339,8 @@ that I can navigate the entire UI without a mouse.
       (POM option rows, exit line, and calendar buttons are still skipped).
 
 12. WHEN a POM option row has focus (via Tab navigation), THE option row SHALL be rendered
-      with reversed colours — its background SHALL use the option label colour and its text
-      SHALL use the panel background colour — providing a clear visual focus indicator.
+      with reversed colours -- its background SHALL use the option label colour and its text
+      SHALL use the panel background colour -- providing a clear visual focus indicator.
 
 13. WHEN a focused POM option row is activated by pressing Enter or Space, THE shell SHALL
       perform the same navigation action as clicking that option button.
@@ -368,10 +368,10 @@ that I can navigate the entire UI without a mouse.
 
 ---
 
-### Requirement 17: Tab Window Chrome — Title Line and Command Line per Tab
+### Requirement 17: Tab Window Chrome -- Title Line and Command Line per Tab
 
 **User Story:** As an ISPF-familiar user, I want every tab's content area to have a consistent
-three-element header — a Tab_Header row, a Title_Line, and a Command_Line — so that I always
+three-element header -- a Tab_Header row, a Title_Line, and a Command_Line -- so that I always
 know what I am looking at and can issue commands without hunting for the input field.
 
 **Source:** ISPF 3270 screen layout convention; user requirement (Phase AL).
@@ -439,7 +439,7 @@ or view content side-by-side independently.
      SHALL be restored at the correct position.
 
 5. THE Detached_Workspace title bar SHALL display the tab's Title_Line content followed by
-     " — FileForge Workbench", truncated to a maximum of 80 characters if necessary.
+     " -- FileForge Workbench", truncated to a maximum of 80 characters if necessary.
 
 6. WHEN the user drags a Tab_Header beyond 20 pixels outside the tab bar boundary and
      releases it outside the Primary_Window, THE shell SHALL detach that tab into a new

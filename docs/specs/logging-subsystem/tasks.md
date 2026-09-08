@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-logging` crate — the foundational logging subsystem for FileForgeWorkbench. Every other crate in the workspace depends on `ff-logging` for diagnostic output. The subsystem provides structured file-based logging with configurable levels, automatic rotation, async buffering, graceful degradation, and a plugin-accessible logging handle.
+This plan covers the complete implementation of the `ff-logging` crate -- the foundational logging subsystem for FileForgeWorkbench. Every other crate in the workspace depends on `ff-logging` for diagnostic output. The subsystem provides structured file-based logging with configurable levels, automatic rotation, async buffering, graceful degradation, and a plugin-accessible logging handle.
 
 This is a **Wave 0 (Foundation)** sub-project with no upstream dependencies.
 
@@ -67,17 +67,17 @@ This is a **Wave 0 (Foundation)** sub-project with no upstream dependencies.
   - Covers: Requirement 4 (AC 4.5), Requirement 6 (AC 6.1, 6.5)
 
 - [x] 9. Log rotation
-  - [x] 9.1 Implement size tracking — detect when a write would exceed `max_file_size_mb`
+  - [x] 9.1 Implement size tracking -- detect when a write would exceed `max_file_size_mb`
   - [x] 9.2 Implement rotation: write final record, close current file, open new file with fresh timestamp
-  - [x] 9.3 Implement rotation failure fallback — continue writing to current file with WARN record
-  - [x] 9.4 Implement retained file cleanup — delete oldest files by filename timestamp when count exceeds limit
-  - [x] 9.5 Implement cleanup failure handling — log WARN and continue operating
+  - [x] 9.3 Implement rotation failure fallback -- continue writing to current file with WARN record
+  - [x] 9.4 Implement retained file cleanup -- delete oldest files by filename timestamp when count exceeds limit
+  - [x] 9.5 Implement cleanup failure handling -- log WARN and continue operating
   - [x] 9.6 Write unit tests for rotation trigger, file count enforcement, and failure paths
   - Covers: Requirement 5 (AC 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 5.10)
 
 - [x] 10. Async channel and buffer management
   - [x] 10.1 Implement bounded async channel (capacity: 10,000 records) between producers and writer thread
-  - [x] 10.2 Implement overflow handling — drop oldest unwritten records and increment dropped counter
+  - [x] 10.2 Implement overflow handling -- drop oldest unwritten records and increment dropped counter
   - [x] 10.3 Implement WARN record emission when overflow resolves (reporting total dropped count)
   - [x] 10.4 Implement thread-safe dropped-record counter (`AtomicU64`) with public accessor method
   - [x] 10.5 Implement periodic flush timer (≤1 second interval) for DEBUG/INFO records
@@ -92,16 +92,16 @@ This is a **Wave 0 (Foundation)** sub-project with no upstream dependencies.
   - Covers: Requirement 1 (AC 1.3, 1.4, 1.6), Requirement 7 (AC 7.7)
 
 - [x] 12. Log subsystem initialization
-  - [x] 12.1 Implement `LogSubsystem::init(config: LogConfig)` — full initialization sequence
+  - [x] 12.1 Implement `LogSubsystem::init(config: LogConfig)` -- full initialization sequence
   - [x] 12.2 Write startup INFO record with app name ("FileForgeWorkbench"), version, and RFC 3339 timestamp
   - [x] 12.3 Implement graceful fallback to no-op sink on initialization failure
-  - [x] 12.4 Implement level filtering guard — atomic level check before any formatting/allocation
-  - [x] 12.5 Implement invalid config level handling — default to INFO with WARN record
+  - [x] 12.4 Implement level filtering guard -- atomic level check before any formatting/allocation
+  - [x] 12.5 Implement invalid config level handling -- default to INFO with WARN record
   - [x] 12.6 Write unit tests for successful init, fallback paths, and startup record content
   - Covers: Requirement 1 (AC 1.1, 1.2, 1.3, 1.4, 1.5, 1.6), Requirement 3 (AC 3.2, 3.3, 3.4, 3.5)
 
 - [x] 13. Flush and shutdown logic
-  - [x] 13.1 Implement `shutdown()` method — flush all buffered records, write final "Application shutdown complete" INFO record, close file
+  - [x] 13.1 Implement `shutdown()` method -- flush all buffered records, write final "Application shutdown complete" INFO record, close file
   - [x] 13.2 Implement shutdown signal that stops accepting new log calls
   - [x] 13.3 Implement 5-second timeout for flush during shutdown
   - [x] 13.4 Write unit tests for clean shutdown sequence and timeout behavior
@@ -109,7 +109,7 @@ This is a **Wave 0 (Foundation)** sub-project with no upstream dependencies.
 
 - [x] 14. Panic hook integration
   - [x] 14.1 Implement custom panic hook that attempts to flush buffered records
-  - [x] 14.2 Implement 500 ms timeout for panic flush — abandon and allow termination on timeout or I/O error
+  - [x] 14.2 Implement 500 ms timeout for panic flush -- abandon and allow termination on timeout or I/O error
   - [x] 14.3 Install panic hook during `LogSubsystem::init()`
   - [x] 14.4 Write unit tests for panic hook flush behavior (using `std::panic::catch_unwind`)
   - Covers: Requirement 6 (AC 6.4)
@@ -118,7 +118,7 @@ This is a **Wave 0 (Foundation)** sub-project with no upstream dependencies.
   - [x] 15.1 Define `PluginLogHandle` trait with methods for all five log levels
   - [x] 15.2 Implement `PluginLogHandle` struct that auto-prefixes module path with plugin name (`[plugin:<name>::module]`)
   - [x] 15.3 Ensure same level filtering, formatting, rotation, and flushing rules apply to plugin records
-  - [x] 15.4 Implement plugin flush-on-unload — flush buffered records before `shutdown` returns
+  - [x] 15.4 Implement plugin flush-on-unload -- flush buffered records before `shutdown` returns
   - [x] 15.5 Ensure `PluginLogHandle` is `Send + Sync` for cross-thread usage
   - [x] 15.6 Write unit tests for prefix formatting, level filtering, and thread-safety
   - Covers: Requirement 10 (AC 10.1, 10.2, 10.3, 10.4, 10.5, 10.6)
@@ -132,13 +132,13 @@ This is a **Wave 0 (Foundation)** sub-project with no upstream dependencies.
 
 - [x] 17. GUI-independent process configuration
   - [x] 17.1 Document `#![windows_subsystem = "windows"]` requirement for the desktop binary (not in ff-logging itself)
-  - [x] 17.2 Ensure Log_Subsystem does not write to stdout/stderr — all output goes exclusively to Log_File
+  - [x] 17.2 Ensure Log_Subsystem does not write to stdout/stderr -- all output goes exclusively to Log_File
   - [x] 17.3 Ensure no `AllocConsole` or child process spawning in logging code
   - [x] 17.4 Write unit tests verifying no stdout/stderr output during logging operations
   - Covers: Requirement 7 (AC 7.1, 7.4, 7.5, 7.6)
 
 - [x] 18. Thread safety and performance validation
-  - [x] 18.1 Write multi-threaded stress test — spawn 10+ threads logging concurrently
+  - [x] 18.1 Write multi-threaded stress test -- spawn 10+ threads logging concurrently
   - [x] 18.2 Verify no data races using `cargo test` under Miri (if available) or thread sanitizer
   - [x] 18.3 Write test asserting log call returns within 1 ms (non-blocking check)
   - [x] 18.4 Verify `LogSubsystem` and all public types implement `Send + Sync`
@@ -249,11 +249,11 @@ This is a **Wave 0 (Foundation)** sub-project with no upstream dependencies.
 ## Notes
 
 - This is a Wave 0 (Foundation) crate with zero upstream dependencies
-- All other workspace crates will depend on `ff-logging` — the public API surface must be stable before downstream work begins
+- All other workspace crates will depend on `ff-logging` -- the public API surface must be stable before downstream work begins
 - The `configuration-system` crate does not exist yet; `LogConfig` accepts values directly and will be wired to TOML config in a later wave
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
 - Thread-safety tests should use `std::thread::spawn` with join handles rather than Tokio, since `ff-logging` itself does not depend on an async runtime
-- The `#![windows_subsystem = "windows"]` attribute belongs on the desktop binary crate, not on `ff-logging` — Task 17 documents this requirement without implementing it in the logging crate
+- The `#![windows_subsystem = "windows"]` attribute belongs on the desktop binary crate, not on `ff-logging` -- Task 17 documents this requirement without implementing it in the logging crate
 - Plugin handle trait definition lives in `ff-logging` to avoid circular dependencies; the `plugin-architecture` crate will re-export it
 
 ---

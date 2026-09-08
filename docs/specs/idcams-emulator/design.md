@@ -2,12 +2,12 @@
 
 ## Overview
 
-The `ff-idcams` crate is a thin command interpreter and orchestration layer for IBM IDCAMS (Access Method Services) within the FileForgeWorkbench ecosystem. It owns **only** command parsing and execution orchestration — all actual catalog, VSAM, allocation, and filesystem operations are delegated to downstream services through trait interfaces.
+The `ff-idcams` crate is a thin command interpreter and orchestration layer for IBM IDCAMS (Access Method Services) within the FileForgeWorkbench ecosystem. It owns **only** command parsing and execution orchestration -- all actual catalog, VSAM, allocation, and filesystem operations are delegated to downstream services through trait interfaces.
 
 ### Design Goals
 
 1. **Fidelity**: Parse IDCAMS control statements with z/OS-compatible syntax rules
-2. **Thin orchestrator**: Zero storage/VSAM logic — delegate everything through traits
+2. **Thin orchestrator**: Zero storage/VSAM logic -- delegate everything through traits
 3. **Atomic execution**: Multi-service commands use compensation-based rollback
 4. **Thread safety**: Stateless parser, no global mutable state, `Send + Sync` API
 5. **Testability**: All dependencies injected via traits; fully mockable
@@ -150,7 +150,7 @@ ff-idcams/
 ### Trait Interfaces (Downstream Dependencies)
 
 ```rust
-/// Trait for catalog operations — implemented by ff-dataset-catalog.
+/// Trait for catalog operations -- implemented by ff-dataset-catalog.
 /// ff-idcams depends on this trait only, never on the concrete implementation.
 pub trait CatalogService: Send + Sync {
     fn create_dataset(&self, params: CreateDatasetParams) -> Result<(), CatalogError>;
@@ -165,7 +165,7 @@ pub trait CatalogService: Send + Sync {
     fn import_dataset(&self, params: ImportParams) -> Result<ImportResult, CatalogError>;
 }
 
-/// Trait for VSAM operations — implemented by ff-vsam-services.
+/// Trait for VSAM operations -- implemented by ff-vsam-services.
 pub trait VsamService: Send + Sync {
     fn initialize_dataset(&self, dsn: &DatasetName, vtype: VsamType, params: VsamInitParams) -> Result<(), VsamError>;
     fn destroy_dataset(&self, dsn: &DatasetName) -> Result<(), VsamError>;
@@ -180,7 +180,7 @@ pub trait VsamService: Send + Sync {
     fn put(&self, handle: &DatasetHandle, record: &Record) -> Result<(), VsamError>;
 }
 
-/// Trait for DD/dataset allocation resolution — implemented by ff-dataset-allocator.
+/// Trait for DD/dataset allocation resolution -- implemented by ff-dataset-allocator.
 pub trait AllocatorService: Send + Sync {
     fn resolve_dd(&self, ddname: &str) -> Result<DatasetName, AllocatorError>;
 }
@@ -233,7 +233,7 @@ pub enum ConditionCode {
 
 The parser uses a two-phase approach:
 
-**Phase 1: Lexing** — Transforms input text into a flat token stream.
+**Phase 1: Lexing** -- Transforms input text into a flat token stream.
 
 ```rust
 pub enum Token {
@@ -258,7 +258,7 @@ pub enum Verb {
 }
 ```
 
-**Phase 2: Parsing** — Recursive-descent parser that produces a typed AST.
+**Phase 2: Parsing** -- Recursive-descent parser that produces a typed AST.
 
 ```rust
 pub enum Command {
@@ -399,7 +399,7 @@ pub struct DefineClusterCommand {
     pub volumes: Vec<String>,
     pub space: Option<SpaceUnit>,
     pub recordsize: Option<(u32, u32)>,      // (average, maximum)
-    pub keys: Option<(u16, u32)>,            // (length, offset) — length 1-255
+    pub keys: Option<(u16, u32)>,            // (length, offset) -- length 1-255
     pub freespace: Option<(u8, u8)>,         // (ci_percent, ca_percent) 0-100
     pub shareoptions: Option<(u8, u8)>,      // (crossregion, crosssystem) 1-4
     pub speed_recovery: Option<SpeedRecovery>,
@@ -683,7 +683,7 @@ pub enum MessageCode {
 
     // Severe messages
     IDC0700W,  // Rollback partial failure (inconsistency warning)
-    IDC0701S,  // Rollback failed — manual intervention required
+    IDC0701S,  // Rollback failed -- manual intervention required
 }
 ```
 

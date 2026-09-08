@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `ff-asa-report-preview` crate provides **ASA (ANSI) carriage control interpretation and print preview rendering** for the FileForgeWorkbench editor. It transforms mainframe spool files into a visual representation that simulates how the report would have appeared on a line printer — complete with page breaks, line spacing, overprint (bold/underline), and green-bar paper simulation.
+The `ff-asa-report-preview` crate provides **ASA (ANSI) carriage control interpretation and print preview rendering** for the FileForgeWorkbench editor. It transforms mainframe spool files into a visual representation that simulates how the report would have appeared on a line printer -- complete with page breaks, line spacing, overprint (bold/underline), and green-bar paper simulation.
 
 ### Purpose
 
@@ -182,17 +182,17 @@ crates/ff-asa-report-preview/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum AsaControl {
-    /// Space — single space before printing (normal line advance)
+    /// Space -- single space before printing (normal line advance)
     SingleSpace,
-    /// `0` — double space before printing (skip one blank line)
+    /// `0` -- double space before printing (skip one blank line)
     DoubleSpace,
-    /// `-` — triple space before printing (skip two blank lines)
+    /// `-` -- triple space before printing (skip two blank lines)
     TripleSpace,
-    /// `1` — page eject (advance to top of next page before printing)
+    /// `1` -- page eject (advance to top of next page before printing)
     PageEject,
-    /// `+` — no advance (overstrike/overprint on previous line)
+    /// `+` -- no advance (overstrike/overprint on previous line)
     Overstrike,
-    /// `H` — halt (printer halt indication)
+    /// `H` -- halt (printer halt indication)
     Halt,
 }
 
@@ -866,7 +866,7 @@ pub const VIEWER_KEY: &str = "asa-report";
 #[non_exhaustive]
 pub enum AsaPreviewError {
     /// Page number is out of valid range.
-    #[error("[asa-preview] navigate: page {page} not found — report has {total} pages")]
+    #[error("[asa-preview] navigate: page {page} not found -- report has {total} pages")]
     PageNotFound {
         page: usize,
         total: usize,
@@ -924,59 +924,59 @@ pub enum AsaPreviewError {
 
 ## Integration Points
 
-### With `ff-document-model` (Core Feature — upstream)
+### With `ff-document-model` (Core Feature -- upstream)
 
 - **Dependency direction**: ff-asa-report-preview depends on ff-document-model
 - **API consumed**: Line content access (`Document::line_count()`, `Document::get_range()`), line start/end positions, watcher registration for edit notifications
 - **Usage pattern**: Parser reads all lines from the document buffer to extract ASA controls and content. Strip/restore modifies the edit buffer through insert/delete operations.
 - **Watcher integration**: Registers a `DocumentWatcher` to receive edit notifications and trigger incremental preview re-rendering
 
-### With `ff-command` (Command Framework — upstream)
+### With `ff-command` (Command Framework -- upstream)
 
 - **Dependency direction**: ff-asa-report-preview depends on ff-command
 - **API consumed**: `CommandRegistry::register()` for all ASA commands
 - **Commands registered**:
-  - `PREVIEW asa-report` / `PREVIEW ON` / `PREVIEW` — activate preview
-  - `PREVIEW PANEL` — open print preview panel
-  - `PREVIEW EXPORT TEXT <path>` — text export
-  - `PREVIEW EXPORT PDF <path>` — PDF export
-  - `PREVIEW SET PRINTER <profile>` — switch printer profile
-  - `LOCATE PAGE <n>` — page navigation
-  - `LOCATE PAGE FIRST` / `LOCATE PAGE LAST` — first/last page
-  - `ASA STRIP` — strip control characters
-  - `ASA RESTORE` — restore control characters
+  - `PREVIEW asa-report` / `PREVIEW ON` / `PREVIEW` -- activate preview
+  - `PREVIEW PANEL` -- open print preview panel
+  - `PREVIEW EXPORT TEXT <path>` -- text export
+  - `PREVIEW EXPORT PDF <path>` -- PDF export
+  - `PREVIEW SET PRINTER <profile>` -- switch printer profile
+  - `LOCATE PAGE <n>` -- page navigation
+  - `LOCATE PAGE FIRST` / `LOCATE PAGE LAST` -- first/last page
+  - `ASA STRIP` -- strip control characters
+  - `ASA RESTORE` -- restore control characters
 
-### With `ff-layout` (Layout and Docking — upstream)
+### With `ff-layout` (Layout and Docking -- upstream)
 
 - **Dependency direction**: ff-asa-report-preview depends on ff-layout
 - **API consumed**: Panel registration and docking for the Print_Preview_Panel
 - **Usage pattern**: Preview panel is registered as a dockable panel; layout system manages its position and visibility
 
-### With `ff-config` (Configuration System — upstream)
+### With `ff-config` (Configuration System -- upstream)
 
 - **Dependency direction**: ff-asa-report-preview depends on ff-config
 - **API consumed**: Configuration reading from `[asa_preview]` TOML section, hot-reload notification
 - **Usage pattern**: Reads `AsaPreviewConfig` values on activation and subscribes to hot-reload events to re-render with updated settings
 
-### With `ff-theme` (Theme and Appearance — upstream)
+### With `ff-theme` (Theme and Appearance -- upstream)
 
 - **Dependency direction**: ff-asa-report-preview depends on ff-theme
 - **API consumed**: Colour token resolution for Page_Band backgrounds, line band tint, halt band, bold/underline font styles
 - **Tokens consumed**: `asa.page_band_odd`, `asa.page_band_even`, `asa.page_band_text`, `asa.line_band_tint`, `asa.halt_band`, `asa.halt_band_text`
 
-### With `ff-custom-viewers` (Custom File Viewers — peer)
+### With `ff-custom-viewers` (Custom File Viewers -- peer)
 
 - **Dependency direction**: ff-asa-report-preview depends on ff-custom-viewers
 - **API consumed**: `ViewerRegistry::register()` for Viewer_Key `"asa-report"`, `CustomViewer` trait implementation, PREVIEW command dispatch routing
 - **Usage pattern**: At crate init, registers the viewer. When PREVIEW is activated, the custom-viewers framework routes to this crate's viewer implementation. Split view and coexistence with the editor are managed by the custom-viewers framework.
 
-### With `ff-fileforge` (FileForge Integration — peer)
+### With `ff-fileforge` (FileForge Integration -- peer)
 
 - **Dependency direction**: ff-asa-report-preview depends on ff-fileforge
 - **API consumed**: RECFM metadata access for unconditional ASA detection (FBA/VBA), flat-file mode detection hooks
 - **Usage pattern**: When a file is opened, the detector queries ff-fileforge for RECFM metadata. If RECFM is "FBA" or "VBA", heuristic detection is bypassed and ASA mode is confirmed immediately.
 
-### With `ff-file-ops` (File Operations — downstream consumer)
+### With `ff-file-ops` (File Operations -- downstream consumer)
 
 - **Dependency direction**: ff-file-ops may consume ff-asa-report-preview
 - **Integration**: During save, ff-file-ops calls `restore_asa()` to re-insert column 1 control characters if ASA_Strip mode is active
@@ -1081,7 +1081,7 @@ Rationale:
 3. **Simplicity**: Avoids complex incremental parsing state machines for initial implementation
 4. **Acceptable cost**: Even large reports (100K+ lines) parse in milliseconds since ASA parsing is character-level extraction
 
-Trade-off: Memory usage for the preview element list. For a 100K-line document this is approximately 10–50 MB — acceptable for workbench use.
+Trade-off: Memory usage for the preview element list. For a 100K-line document this is approximately 10–50 MB -- acceptable for workbench use.
 
 ### Decision 3: MergedLine as Separate Type (Not In-Place Mutation)
 
@@ -1101,13 +1101,13 @@ Rationale:
 1. **O(1) lookup**: Line-number-indexed access is constant time
 2. **Memory efficiency**: Enum variants are 1 byte each; 100K lines = 100 KB
 3. **Line insert/delete**: Vec `insert()` and `remove()` operations are O(n) but document edits are infrequent relative to reads
-4. **Simplicity**: No key hashing, no tree balancing — just a parallel array
+4. **Simplicity**: No key hashing, no tree balancing -- just a parallel array
 
 ---
 
 ## Correctness Properties
 
-The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal — it must hold for all valid inputs.
+The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal -- it must hold for all valid inputs.
 
 ### Property 1: ASA Control Character Parse Round-Trip
 
@@ -1152,7 +1152,7 @@ The following properties are suitable for property-based testing with the `propt
 
 ### Property 4: Overstrike Lines Never Appear as Separate Rows
 
-**Statement:** For any document with overprint lines (`+` control), no PreviewElement::DataLine has a source_line that was an overprint line — all overprint lines are absorbed into their preceding base line's MergedLine.
+**Statement:** For any document with overprint lines (`+` control), no PreviewElement::DataLine has a source_line that was an overprint line -- all overprint lines are absorbed into their preceding base line's MergedLine.
 
 ```
 ∀ document D:
@@ -1172,7 +1172,7 @@ The following properties are suitable for property-based testing with the `propt
 
 ### Property 5: Overstrike Merge Preserves Base Line Length (Minimum)
 
-**Statement:** A MergedLine's character count is at least as long as the base line — overprint can extend but never shrink the merged result.
+**Statement:** A MergedLine's character count is at least as long as the base line -- overprint can extend but never shrink the merged result.
 
 ```
 ∀ base_line B, ∀ overprint_lines [O₁, ..., Oₙ]:

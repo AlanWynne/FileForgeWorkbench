@@ -18,23 +18,23 @@ The `ff-help` crate is the **context-sensitive help subsystem** for FileForgeWor
 ### Position in Architecture
 
 ```
-Wave 9 — Desktop Integration
+Wave 9 -- Desktop Integration
 
 ┌──────────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                    │
 │   Renders HelpPanel via DockablePanel::render; Markdown → UI  │
 ├──────────────────────────────────────────────────────────────┤
-│         ff-help (THIS CRATE — Wave 9)                         │
+│         ff-help (THIS CRATE -- Wave 9)                         │
 │   Context detection, topic registry, navigation, search,      │
 │   content loading, HELP command, Help Panel model              │
 ├──────────────────────────────────────────────────────────────┤
-│  ff-command (Wave 2) — command dispatch, CommandMetadata,      │
+│  ff-command (Wave 2) -- command dispatch, CommandMetadata,      │
 │                         shortcut registry (F1 reserved)        │
-│  ff-layout (Wave 2) — DockablePanel trait, dock zones          │
-│  ff-config (Wave 2) — [help] config section, hot-reload        │
-│  ff-plugin (Wave 2) — plugin lifecycle (topic registration)    │
-│  ff-keys (Wave 9) — Key_Map, Shortcut_Registry (dynamic help) │
-│  ff-core (Wave 2) — EventBus, VFS file-watcher                │
+│  ff-layout (Wave 2) -- DockablePanel trait, dock zones          │
+│  ff-config (Wave 2) -- [help] config section, hot-reload        │
+│  ff-plugin (Wave 2) -- plugin lifecycle (topic registration)    │
+│  ff-keys (Wave 9) -- Key_Map, Shortcut_Registry (dynamic help) │
+│  ff-core (Wave 2) -- EventBus, VFS file-watcher                │
 ├──────────────────────────────────────────────────────────────┤
 │              Foundation Layer: ff-logging (Wave 0)             │
 └──────────────────────────────────────────────────────────────┘
@@ -44,7 +44,7 @@ Wave 9 — Desktop Integration
 
 - **GUI Independence (Req 2)**: All help logic (context detection, topic resolution, search, navigation) is GUI-free; the Help Panel rendering is shell-side via `DockablePanel::render`
 - **Command-Driven (Req 4)**: Operations registered as commands (`help.show`, `help.search`, `help.back`, `help.forward`, `help.index`, `help.close`)
-- **Keyboard Shortcut Registry (Req 10)**: F1 is reserved (hard-coded, non-overridable) — always means Help
+- **Keyboard Shortcut Registry (Req 10)**: F1 is reserved (hard-coded, non-overridable) -- always means Help
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-help`
 - **Error Message Standards (Req 8)**: All errors follow `[help] operation: description` format
 - **Plugin Architecture (Req 3)**: Plugins register/deregister help topics during lifecycle phases
@@ -140,12 +140,12 @@ end
 
 | Layer | Role |
 |-------|------|
-| **Command Layer** | `HelpCommandHandler` — translates F1, HELP primary command, menu actions into help engine calls |
-| **Context Layer** | `ContextDetector` — inspects focus, command input, prefix area, mode to resolve a `TopicKey` |
-| **Registry Layer** | `HelpTopicRegistry` — thread-safe store of all topics; aggregates file-based, command-based, and plugin topics |
-| **Content Layer** | `ContentLoader`, `HotReloader`, `DynamicGenerator` — load, parse, and generate help content |
-| **Search Layer** | `SearchEngine` — case-insensitive keyword matching with relevance ranking |
-| **Presentation Layer** | `HelpPanelModel`, `NavigationStack` — panel state, breadcrumb, TOC, navigation history |
+| **Command Layer** | `HelpCommandHandler` -- translates F1, HELP primary command, menu actions into help engine calls |
+| **Context Layer** | `ContextDetector` -- inspects focus, command input, prefix area, mode to resolve a `TopicKey` |
+| **Registry Layer** | `HelpTopicRegistry` -- thread-safe store of all topics; aggregates file-based, command-based, and plugin topics |
+| **Content Layer** | `ContentLoader`, `HotReloader`, `DynamicGenerator` -- load, parse, and generate help content |
+| **Search Layer** | `SearchEngine` -- case-insensitive keyword matching with relevance ranking |
+| **Presentation Layer** | `HelpPanelModel`, `NavigationStack` -- panel state, breadcrumb, TOC, navigation history |
 | **Integration Layer** | `DockablePanel` implementation, config reader, plugin lifecycle hooks |
 
 ---
@@ -160,23 +160,23 @@ crates/ff-help/
 ├── src/
 │   ├── lib.rs                  # Public API re-exports, crate docs
 │   ├── topic.rs                # HelpTopic, TopicKey, TopicSource, HelpContent
-│   ├── registry.rs             # HelpTopicRegistry — thread-safe indexed store
-│   ├── context.rs              # ContextDetector — focus/command/mode → TopicKey
-│   ├── loader.rs               # ContentLoader — .help.md file parser
-│   ├── hot_reload.rs           # HotReloader — VFS watcher integration
-│   ├── search.rs               # SearchEngine — keyword search + relevance ranking
-│   ├── navigation.rs           # NavigationStack — back/forward/history
-│   ├── panel.rs                # HelpPanelModel — panel state, breadcrumb, TOC
-│   ├── dynamic.rs              # DynamicGenerator — function keys, config key topics
-│   ├── config.rs               # HelpConfig — typed config access for [help] section
+│   ├── registry.rs             # HelpTopicRegistry -- thread-safe indexed store
+│   ├── context.rs              # ContextDetector -- focus/command/mode → TopicKey
+│   ├── loader.rs               # ContentLoader -- .help.md file parser
+│   ├── hot_reload.rs           # HotReloader -- VFS watcher integration
+│   ├── search.rs               # SearchEngine -- keyword search + relevance ranking
+│   ├── navigation.rs           # NavigationStack -- back/forward/history
+│   ├── panel.rs                # HelpPanelModel -- panel state, breadcrumb, TOC
+│   ├── dynamic.rs              # DynamicGenerator -- function keys, config key topics
+│   ├── config.rs               # HelpConfig -- typed config access for [help] section
 │   ├── commands/
 │   │   ├── mod.rs              # Re-exports for all command handlers
-│   │   ├── help_show.rs        # help.show — F1 / HELP <topic> handler
-│   │   ├── help_search.rs      # help.search — search panel activation
-│   │   ├── help_back.rs        # help.back — navigate back
-│   │   ├── help_forward.rs     # help.forward — navigate forward
-│   │   ├── help_index.rs       # help.index — jump to Help Index
-│   │   └── help_close.rs       # help.close — close Help Panel (HELP OFF)
+│   │   ├── help_show.rs        # help.show -- F1 / HELP <topic> handler
+│   │   ├── help_search.rs      # help.search -- search panel activation
+│   │   ├── help_back.rs        # help.back -- navigate back
+│   │   ├── help_forward.rs     # help.forward -- navigate forward
+│   │   ├── help_index.rs       # help.index -- jump to Help Index
+│   │   └── help_close.rs       # help.close -- close Help Panel (HELP OFF)
 │   ├── error.rs                # HelpError enum
 │   └── plugin_bridge.rs        # Plugin topic registration/deregistration hooks
 └── tests/
@@ -248,7 +248,7 @@ impl TopicKey {
 ### HelpTopic
 
 ```rust
-/// A single unit of help content — one topic per command, line command, feature, or mode.
+/// A single unit of help content -- one topic per command, line command, feature, or mode.
 /// Addresses: Requirement 5 (5.1–5.6), Requirement 6 (6.1–6.7)
 #[derive(Debug, Clone)]
 pub struct HelpTopic {
@@ -426,7 +426,7 @@ impl NavigationStack {
 ### HelpIndex
 
 ```rust
-/// The top-level help index content — auto-generated from the registry.
+/// The top-level help index content -- auto-generated from the registry.
 /// Lists all topic categories with navigable links.
 /// Addresses: Requirement 12 (12.1–12.4)
 #[derive(Debug, Clone)]
@@ -483,7 +483,7 @@ pub struct SearchResult {
     pub match_location: MatchLocation,
 }
 
-/// Where within a topic the search match was found — used for ranking.
+/// Where within a topic the search match was found -- used for ranking.
 /// Addresses: Requirement 4 (4.4)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MatchLocation {
@@ -752,7 +752,7 @@ impl DynamicGenerator {
 ### HelpPanelModel
 
 ```rust
-/// The core model for the Help Panel — manages display state, navigation, search.
+/// The core model for the Help Panel -- manages display state, navigation, search.
 /// The GUI shell reads this model to render the panel content.
 /// Addresses: Requirement 2 (2.1–2.10), Requirement 3 (3.1–3.6)
 pub struct HelpPanelModel {
@@ -887,7 +887,7 @@ impl HelpPluginBridge {
 #[derive(Debug, thiserror::Error)]
 pub enum HelpError {
     /// Requested topic key does not exist in the registry.
-    #[error("[help] lookup: topic not found — {key}")]
+    #[error("[help] lookup: topic not found -- {key}")]
     TopicNotFound { key: String },
 
     /// Help content directory not found at any search location.
@@ -899,14 +899,14 @@ pub enum HelpError {
     NoHelpFiles { directory: String },
 
     /// Failed to read a `.help.md` file.
-    #[error("[help] content: failed to read {path} — {source}")]
+    #[error("[help] content: failed to read {path} -- {source}")]
     FileReadError { path: String, source: std::io::Error },
 
     /// Failed to parse a `.help.md` file (invalid topic delimiter format).
-    #[error("[help] parse: invalid topic format in {path} at line {line} — {reason}")]
+    #[error("[help] parse: invalid topic format in {path} at line {line} -- {reason}")]
     ParseError { path: String, line: usize, reason: String },
 
-    /// Navigation stack is empty — cannot go back.
+    /// Navigation stack is empty -- cannot go back.
     #[error("[help] navigation: no previous topic in history")]
     NoPreviousTopic,
 
@@ -915,7 +915,7 @@ pub enum HelpError {
     NoNextTopic,
 
     /// Configuration value is invalid (fallback applied, logged as warning).
-    #[error("[help] config: invalid value for {key}, using default — {reason}")]
+    #[error("[help] config: invalid value for {key}, using default -- {reason}")]
     InvalidConfig { key: String, reason: String },
 
     /// Help Panel is not open (close/navigate operation on closed panel).
@@ -923,7 +923,7 @@ pub enum HelpError {
     PanelNotOpen,
 
     /// Hot-reload file watcher registration failed.
-    #[error("[help] reload: failed to watch {path} — {reason}")]
+    #[error("[help] reload: failed to watch {path} -- {reason}")]
     WatcherError { path: String, reason: String },
 
     /// Plugin topic registration failed (duplicate key from same plugin).
@@ -940,7 +940,7 @@ pub enum HelpError {
 
 | Command ID | Default Shortcut | Handler | Description |
 |-----------|-----------------|---------|-------------|
-| `help.show` | F1 (reserved) | `commands::help_show` | Context-sensitive help — resolves topic from current state |
+| `help.show` | F1 (reserved) | `commands::help_show` | Context-sensitive help -- resolves topic from current state |
 | `help.search` | *(none)* | `commands::help_search` | Activate search mode in Help Panel |
 | `help.back` | Alt+Left | `commands::help_back` | Navigate to previous topic |
 | `help.forward` | Alt+Right | `commands::help_forward` | Navigate to next topic |
@@ -949,7 +949,7 @@ pub enum HelpError {
 | `help.command` | *(primary command)* | `HelpCommandHandler` | HELP primary command dispatcher |
 
 Integration notes:
-- F1 is registered as a **reserved shortcut** via `ShortcutRegistry::register_reserved()` — cannot be overridden by plugins or user key maps
+- F1 is registered as a **reserved shortcut** via `ShortcutRegistry::register_reserved()` -- cannot be overridden by plugins or user key maps
 - `help.show` and `help.command` do NOT produce undo records (`is_undoable() → false`)
 - `help.show` and `help.command` are NOT added to command history (Requirement 1.10, 13.10)
 - The system reads `CommandMetadata.help_text` and `help_syntax` fields from all registered commands to auto-populate the topic registry (Requirement 6.2, 6.3)
@@ -1016,7 +1016,7 @@ Integration notes:
 
 Integration notes:
 - Plugin-registered topics have higher priority than file-based content (Requirement 6.4)
-- Plugin deregistration is automatic — the help system listens for plugin shutdown events via `EventBus`
+- Plugin deregistration is automatic -- the help system listens for plugin shutdown events via `EventBus`
 - `HelpPluginBridge` is exposed to plugins via `PluginContext::help()` accessor
 
 ### Function Keys and History (`ff-keys`)
@@ -1024,7 +1024,7 @@ Integration notes:
 The help system uses a read-only accessor trait to query the active key map:
 
 ```rust
-/// Trait for reading key map state — implemented by ff-keys, consumed by ff-help.
+/// Trait for reading key map state -- implemented by ff-keys, consumed by ff-help.
 /// Decouples ff-help from ff-keys implementation details.
 pub trait KeyMapAccess: Send + Sync {
     /// Returns all assigned function key bindings (F1–F24).
@@ -1056,7 +1056,7 @@ The following properties are designed for verification with the `proptest` crate
 
 ### Property 1: Context Detection Always Resolves a Valid TopicKey
 
-**Statement:** For any valid `ContextState`, `ContextDetector::resolve()` always returns a `TopicKey` — never panics, never returns an empty or malformed key. If no specific context is detected, it falls back to the Help Index key.
+**Statement:** For any valid `ContextState`, `ContextDetector::resolve()` always returns a `TopicKey` -- never panics, never returns an empty or malformed key. If no specific context is detected, it falls back to the Help Index key.
 
 **Validates: Requirements 1.1, 1.3, 1.5, 1.7, 1.9**
 
@@ -1064,7 +1064,7 @@ The following properties are designed for verification with the `proptest` crate
 
 ---
 
-### Property 2: Context Priority Order — Command Input Dominates
+### Property 2: Context Priority Order -- Command Input Dominates
 
 **Statement:** When `command_input_focused` is true and `command_input` contains a non-empty recognisable command token, the resolved TopicKey always has namespace `"cmd"`, regardless of prefix area content, active mode, or focused panel.
 
@@ -1124,7 +1124,7 @@ The following properties are designed for verification with the `proptest` crate
 
 **Validates: Requirements 1.6, 2.4**
 
-**Strategy:** Create a `HelpPanelModel` with a populated registry. Open a random topic. Call toggle with the same key — assert closed. Open again. Call toggle with a different key — assert open and displaying the new key.
+**Strategy:** Create a `HelpPanelModel` with a populated registry. Open a random topic. Call toggle with the same key -- assert closed. Open again. Call toggle with a different key -- assert open and displaying the new key.
 
 ---
 
@@ -1194,16 +1194,16 @@ The following properties are designed for verification with the `proptest` crate
 
 ## Design Decisions and Rationale
 
-1. **Markdown as help content format** — Chosen over plain text for richer formatting (code blocks, links, headings) while remaining easy to author and version-control. The GUI shell handles Markdown→styled rendering; the core crate stores raw Markdown.
+1. **Markdown as help content format** -- Chosen over plain text for richer formatting (code blocks, links, headings) while remaining easy to author and version-control. The GUI shell handles Markdown→styled rendering; the core crate stores raw Markdown.
 
-2. **Topic delimiter syntax** (`<!-- TOPIC: key -->`) — Uses HTML comments rather than YAML front-matter to allow multiple topics per file without complex parsing. Valid Markdown that renderers ignore.
+2. **Topic delimiter syntax** (`<!-- TOPIC: key -->`) -- Uses HTML comments rather than YAML front-matter to allow multiple topics per file without complex parsing. Valid Markdown that renderers ignore.
 
-3. **Registry priority (runtime > file-based)** — Ensures dynamically registered commands always have up-to-date help without requiring file updates. File-based content serves as fallback documentation.
+3. **Registry priority (runtime > file-based)** -- Ensures dynamically registered commands always have up-to-date help without requiring file updates. File-based content serves as fallback documentation.
 
-4. **Dynamic generation for function keys** — Generated at display time rather than cached because key maps can change at runtime (profile switches, hot-reload). Avoids stale content.
+4. **Dynamic generation for function keys** -- Generated at display time rather than cached because key maps can change at runtime (profile switches, hot-reload). Avoids stale content.
 
-5. **GUI-free panel model** — `HelpPanelModel` contains all logic; the shell's `DockablePanel::render` merely reads state and draws. This allows unit testing all help behaviour without a GUI framework.
+5. **GUI-free panel model** -- `HelpPanelModel` contains all logic; the shell's `DockablePanel::render` merely reads state and draws. This allows unit testing all help behaviour without a GUI framework.
 
-6. **Thread-safe registry with RwLock** — Allows concurrent reads from multiple threads (rendering, search) while serializing writes (plugin registration, hot-reload). Matches the workbench concurrency model.
+6. **Thread-safe registry with RwLock** -- Allows concurrent reads from multiple threads (rendering, search) while serializing writes (plugin registration, hot-reload). Matches the workbench concurrency model.
 
-7. **Navigation stack clears on close** — Per ISPF convention, each F1 press starts a fresh help session. Users do not accumulate unbounded history across multiple help invocations.
+7. **Navigation stack clears on close** -- Per ISPF convention, each F1 press starts a fresh help session. Users do not accumulate unbounded history across multiple help invocations.

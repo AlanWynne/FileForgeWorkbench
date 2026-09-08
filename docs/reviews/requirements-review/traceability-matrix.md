@@ -1,4 +1,4 @@
-# Requirements Review — Task 8: Traceability Matrix
+# Requirements Review -- Task 8: Traceability Matrix
 
 **Phase:** Requirements Review
 **Status:** COMPLETE
@@ -35,28 +35,28 @@ spec, the code, and the tests for any given capability.
 | Quality Flag | Task 1 inventory | Baseline quality at start of review |
 | Rewrite Status | Tasks 5–7 rewrite-delta | Current state after rewrite phase |
 | TCR Status | docs/quality/TCR.md | Automated test coverage summary |
-| Actions | — | Outstanding work items |
+| Actions | -- | Outstanding work items |
 
 ### Quality Flag Key
 
 | Flag | Meaning |
 |------|---------|
-| **Compliant** | EARS format, numbered criteria, glossary, source refs — minimal rework needed |
-| **Needs Improvement** | Structural or terminology deficiencies — targeted edits required |
-| **Major Rewrite** | Free-text or stub format — full rewrite needed |
-| **Deferred Stub** | Intentionally out of scope — EARS stubs added with DEFERRED status |
+| **Compliant** | EARS format, numbered criteria, glossary, source refs -- minimal rework needed |
+| **Needs Improvement** | Structural or terminology deficiencies -- targeted edits required |
+| **Major Rewrite** | Free-text or stub format -- full rewrite needed |
+| **Deferred Stub** | Intentionally out of scope -- EARS stubs added with DEFERRED status |
 | **No Spec** | No requirements.md exists |
 
 ### Rewrite Status Key
 
 | Status | Meaning |
 |--------|---------|
-| **Compliant — No Change** | Spec was already Compliant; no edits made |
+| **Compliant -- No Change** | Spec was already Compliant; no edits made |
 | **Style Normalised** | Dot-prefix criteria converted to numbered list; numbers preserved |
 | **Terminology Pass** | Legacy terms replaced per terminology-map.md |
 | **Major Rewrite** | Spec substantially rewritten (deferred connectors, NFR additions) |
 | **Renumbered** | Requirements renumbered (e.g. compiler-toolchain Reqs 15–18 → 1–4) |
-| **Deferred** | Rewrite deferred — spec intentionally high-level |
+| **Deferred** | Rewrite deferred -- spec intentionally high-level |
 | **Not a Feature Spec** | Architecture documents, not a requirements spec |
 
 ### TCR Status Key
@@ -74,15 +74,15 @@ spec, the code, and the tests for any given capability.
 
 | Sub-Project | FR Range | Crate(s) | Quality Flag | Rewrite Status | TCR Status | Actions |
 |-------------|----------|----------|--------------|----------------|------------|---------|
-| `platform-core` | FR-0001–FR-0019 | `ff-core` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `command-framework` | FR-0020–FR-0039 | `ff-command` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `plugin-architecture` | FR-0040–FR-0059 | `ff-plugin` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `workflow-engine` | FR-0060–FR-0079 | `ff-workflow` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `layout-and-docking` | FR-0080–FR-0099 | `ff-layout` | Compliant | Terminology Pass (Req 11: "floating window" → "Detached View") | 🔲 Manual (Req 11 — UI rendering) | VERIFY-STILL-VALID: Req 11.1–11.5 |
+| `platform-core` | FR-0001–FR-0019 | `ff-core` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `command-framework` | FR-0020–FR-0039 | `ff-command` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `plugin-architecture` | FR-0040–FR-0059 | `ff-plugin` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `workflow-engine` | FR-0060–FR-0079 | `ff-workflow` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `layout-and-docking` | FR-0080–FR-0099 | `ff-layout` | Compliant | Terminology Pass (Req 11: "floating window" → "Detached View") | 🔲 Manual (Req 11 -- UI rendering) | VERIFY-STILL-VALID: Req 11.1–11.5 |
 | `configuration-system` | FR-0100–FR-0119 | `ff-config` | Compliant | Terminology Pass (Req 15.10: "PF3" → "F3") | ✅ All Pass | VERIFY-STILL-VALID: Req 15.10 |
-| `logging-subsystem` | FR-0120–FR-0129 | `ff-logging` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `virtual-file-system` | FR-0130–FR-0149 | `ff-vfs` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `connector-extensibility` | FR-0150–FR-0159 | `ff-connector-ext` | Compliant | Compliant — No Change | ✅ All Pass | None |
+| `logging-subsystem` | FR-0120–FR-0129 | `ff-logging` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `virtual-file-system` | FR-0130–FR-0149 | `ff-vfs` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `connector-extensibility` | FR-0150–FR-0159 | `ff-connector-ext` | Compliant | Compliant -- No Change | ✅ All Pass | None |
 
 ---
 
@@ -91,12 +91,12 @@ spec, the code, and the tests for any given capability.
 | Sub-Project | FR Range | Crate(s) | Quality Flag | Rewrite Status | TCR Status | Actions |
 |-------------|----------|----------|--------------|----------------|------------|---------|
 | `startup-and-session` | FR-0200–FR-0259 | `ff-session`, `ff-desktop` | Needs Improvement | Style Normalised + Terminology Pass (Reqs 13, 14, 19; "PF3" → "F3" in Req 19.10) | 🔲 Manual (Req 19.5–19.9 UI tree) | VERIFY-STILL-VALID: Req 19.10 |
-| `multi-tab-editor` | FR-0260–FR-0279 | `ff-tabs`, `ff-desktop` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `menu-and-statusbar` | FR-0280–FR-0299 | `ff-menu`, `ff-desktop` | Compliant | Style Normalised + Terminology Pass (Reqs 13, 16, 17, 18; "Command ===> field" → "Command Field") | 🔲 Manual (Req 17.1–17.9 UI chrome) | None — numbers preserved |
+| `multi-tab-editor` | FR-0260–FR-0279 | `ff-tabs`, `ff-desktop` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `menu-and-statusbar` | FR-0280–FR-0299 | `ff-menu`, `ff-desktop` | Compliant | Style Normalised + Terminology Pass (Reqs 13, 16, 17, 18; "Command ===> field" → "Command Field") | 🔲 Manual (Req 17.1–17.9 UI chrome) | None -- numbers preserved |
 | `function-keys-and-history` | FR-0300–FR-0329 | `ff-keys`, `ff-desktop` | Needs Improvement | Style Normalised + Terminology Pass ("PF Key" → "Function Key", "Key Bar" → "Key Label Bar", "window context" → "Workspace Context") | ✅ All Pass | VERIFY-STILL-VALID: Req 14 ("window context" → "Workspace Context") |
-| `shell-command` | FR-0330–FR-0339 | `ff-shell` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `context-help` | FR-0340–FR-0359 | `ff-help` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `command-completion` | FR-0360–FR-0369 | `ff-completion` | Compliant | Compliant — No Change | ✅ All Pass | None |
+| `shell-command` | FR-0330–FR-0339 | `ff-shell` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `context-help` | FR-0340–FR-0359 | `ff-help` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `command-completion` | FR-0360–FR-0369 | `ff-completion` | Compliant | Compliant -- No Change | ✅ All Pass | None |
 
 ---
 
@@ -107,11 +107,11 @@ spec, the code, and the tests for any given capability.
 | `file-tree-panel` | FR-0400–FR-0449 | `ff-tree`, `ff-desktop` | Needs Improvement | Style Normalised + Impl Refs Removed (Reqs 15–23 bold-label → numbered list; `context_menu.rs` refs removed) | 🔴 Gaps (Req 19.1, 19.9 drag-select; Req 20.3, 20.5, 20.8 keyboard nav) | VERIFY-STILL-VALID: Reqs 16–17 (impl refs removed) |
 | `virtual-catalog-manager` | FR-0450–FR-0499 | `ff-desktop` | Needs Improvement | Terminology Pass ("Windows catalog" → "Native catalog"; Req 16.5 impl ref removed) | 🔲 Manual (Req 6, 8, 9 context menus) | VERIFY-STILL-VALID: "Windows catalog" → "Native catalog"; Req 16.5 |
 | `dataset-catalog` | FR-0500–FR-0519 | `ff-dscatalog` | Needs Improvement | NFR Section Added | ✅ All Pass | NEW-TEST-NEEDED: NFR criteria |
-| `dataset-allocator` | FR-0520–FR-0539 | `ff-dsalloc` | Needs Improvement | Compliant — No Change | ✅ All Pass | None |
+| `dataset-allocator` | FR-0520–FR-0539 | `ff-dsalloc` | Needs Improvement | Compliant -- No Change | ✅ All Pass | None |
 | `dataset-ownership-model` | FR-0540–FR-0549 | `ff-desktop` | Needs Improvement | Deferred | ✅ All Pass | None |
-| `idcams-emulator` | FR-0550–FR-0569 | `ff-idcams` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `structure-catalog` | FR-0570–FR-0579 | `ff-struct` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `compare-and-merge` | FR-0580–FR-0599 | `ff-compare` | Compliant | Compliant — No Change | ✅ All Pass | None |
+| `idcams-emulator` | FR-0550–FR-0569 | `ff-idcams` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `structure-catalog` | FR-0570–FR-0579 | `ff-struct` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `compare-and-merge` | FR-0580–FR-0599 | `ff-compare` | Compliant | Compliant -- No Change | ✅ All Pass | None |
 
 ---
 
@@ -119,21 +119,21 @@ spec, the code, and the tests for any given capability.
 
 | Sub-Project | FR Range | Crate(s) | Quality Flag | Rewrite Status | TCR Status | Actions |
 |-------------|----------|----------|--------------|----------------|------------|---------|
-| `document-model` | FR-0600–FR-0619 | `ff-document-model` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `edit-operations` | FR-0620–FR-0649 | `ff-edit-operations` | Compliant | Style Normalised (Reqs 1–15 dot-prefix → numbered list) | ✅ All Pass | None — numbers preserved |
-| `undo-redo-transactions` | FR-0650–FR-0659 | `ff-undo-redo` | Compliant | Style Normalised (Reqs 1–18 dot-prefix → numbered list) | ✅ All Pass | None — numbers preserved |
-| `viewport-and-scrolling` | FR-0660–FR-0669 | `ff-viewport-scrolling` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `display-line-mapping` | FR-0670–FR-0679 | `ff-display-line-mapping` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `caret-and-selection` | FR-0680–FR-0689 | `ff-caret-selection` | Compliant | Style Normalised (Reqs 1–12 dot-prefix → numbered list) | ✅ All Pass | None — numbers preserved |
-| `hex-display` | FR-0690–FR-0699 | `ff-hex` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `sequence-numbers` | FR-0700–FR-0709 | `ff-seqnum` | Compliant | Style Normalised (Reqs 1–14 dot-prefix → numbered list) | ✅ All Pass | None — numbers preserved |
-| `tabs-and-mask` | FR-0710–FR-0719 | `ff-tabmask` | Compliant | Style Normalised (Reqs 1–18 dot-prefix → numbered list) | ✅ All Pass | None — numbers preserved |
-| `asa-report-preview` | FR-0720–FR-0729 | `ff-asa` | Compliant | Style Normalised (Reqs 1–12 dot-prefix → numbered list) | ✅ All Pass | None — numbers preserved |
-| `custom-file-viewers` | FR-0730–FR-0749 | `ff-viewers` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `fileforge-integration` | FR-0750–FR-0769 | `ff-forge` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `record-selection-criteria` | FR-0770–FR-0779 | `ff-select` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `line-wrap-toggle` | FR-0780–FR-0784 | `ff-wrap` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `view-zoom` | FR-0785–FR-0789 | `ff-zoom`, `ff-desktop` | Compliant | Compliant — No Change | 🔲 Manual (Req 2, 7 keyboard/status bar) | None |
+| `document-model` | FR-0600–FR-0619 | `ff-document-model` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `edit-operations` | FR-0620–FR-0649 | `ff-edit-operations` | Compliant | Style Normalised (Reqs 1–15 dot-prefix → numbered list) | ✅ All Pass | None -- numbers preserved |
+| `undo-redo-transactions` | FR-0650–FR-0659 | `ff-undo-redo` | Compliant | Style Normalised (Reqs 1–18 dot-prefix → numbered list) | ✅ All Pass | None -- numbers preserved |
+| `viewport-and-scrolling` | FR-0660–FR-0669 | `ff-viewport-scrolling` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `display-line-mapping` | FR-0670–FR-0679 | `ff-display-line-mapping` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `caret-and-selection` | FR-0680–FR-0689 | `ff-caret-selection` | Compliant | Style Normalised (Reqs 1–12 dot-prefix → numbered list) | ✅ All Pass | None -- numbers preserved |
+| `hex-display` | FR-0690–FR-0699 | `ff-hex` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `sequence-numbers` | FR-0700–FR-0709 | `ff-seqnum` | Compliant | Style Normalised (Reqs 1–14 dot-prefix → numbered list) | ✅ All Pass | None -- numbers preserved |
+| `tabs-and-mask` | FR-0710–FR-0719 | `ff-tabmask` | Compliant | Style Normalised (Reqs 1–18 dot-prefix → numbered list) | ✅ All Pass | None -- numbers preserved |
+| `asa-report-preview` | FR-0720–FR-0729 | `ff-asa` | Compliant | Style Normalised (Reqs 1–12 dot-prefix → numbered list) | ✅ All Pass | None -- numbers preserved |
+| `custom-file-viewers` | FR-0730–FR-0749 | `ff-viewers` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `fileforge-integration` | FR-0750–FR-0769 | `ff-forge` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `record-selection-criteria` | FR-0770–FR-0779 | `ff-select` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `line-wrap-toggle` | FR-0780–FR-0784 | `ff-wrap` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `view-zoom` | FR-0785–FR-0789 | `ff-zoom`, `ff-desktop` | Compliant | Compliant -- No Change | 🔲 Manual (Req 2, 7 keyboard/status bar) | None |
 
 ---
 
@@ -141,18 +141,18 @@ spec, the code, and the tests for any given capability.
 
 | Sub-Project | FR Range | Crate(s) | Quality Flag | Rewrite Status | TCR Status | Actions |
 |-------------|----------|----------|--------------|----------------|------------|---------|
-| `find-and-replace` | FR-0800–FR-0829 | `ff-find-and-replace` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `command-semantics` | FR-0830–FR-0849 | `ff-cmd-semantics` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `line-commands` | FR-0850–FR-0869 | `ff-line-commands` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `exclude-show-filter` | FR-0870–FR-0879 | `ff-filter` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `navigation-commands` | FR-0880–FR-0899 | `ff-nav` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `background-io` | FR-0900–FR-0919 | `ff-bgio` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `file-operations` | FR-0920–FR-0939 | `ff-fileops` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `external-modification` | FR-0940–FR-0949 | `ff-extmod` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `idle-processing` | FR-0950–FR-0959 | `ff-idle` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `large-file-performance` | FR-0960–FR-0969 | `ff-largefile` | Compliant | Compliant — No Change | ✅ All Pass | None |
+| `find-and-replace` | FR-0800–FR-0829 | `ff-find-and-replace` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `command-semantics` | FR-0830–FR-0849 | `ff-cmd-semantics` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `line-commands` | FR-0850–FR-0869 | `ff-line-commands` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `exclude-show-filter` | FR-0870–FR-0879 | `ff-filter` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `navigation-commands` | FR-0880–FR-0899 | `ff-nav` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `background-io` | FR-0900–FR-0919 | `ff-bgio` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `file-operations` | FR-0920–FR-0939 | `ff-fileops` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `external-modification` | FR-0940–FR-0949 | `ff-extmod` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `idle-processing` | FR-0950–FR-0959 | `ff-idle` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `large-file-performance` | FR-0960–FR-0969 | `ff-largefile` | Compliant | Compliant -- No Change | ✅ All Pass | None |
 | `compiler-toolchain-integration` | FR-0970–FR-0999 | `ff-toolchain-api`, `ff-gcc-toolchain`, `ff-rust-toolchain`, `ff-desktop` | Needs Improvement | Renumbered (Reqs 15–18 → Reqs 1–4) + NFR Section Added | ⚠️ Pending + 🔲 Manual | UPDATE-ANNOTATION: tests referencing Req 15.x–18.x → Req 1.x–4.x; NEW-TEST-NEEDED: NFR criteria |
-| `FFW-JES` | FR-0970–FR-0999 | `ff-jes` | Needs Improvement | Style Normalised + Terminology Pass (Reqs 1–15; JES2/JES3 clarified as emulation targets) | ✅ All Pass | None — numbers preserved |
+| `FFW-JES` | FR-0970–FR-0999 | `ff-jes` | Needs Improvement | Style Normalised + Terminology Pass (Reqs 1–15; JES2/JES3 clarified as emulation targets) | ✅ All Pass | None -- numbers preserved |
 
 ---
 
@@ -160,13 +160,13 @@ spec, the code, and the tests for any given capability.
 
 | Sub-Project | FR Range | Crate(s) | Quality Flag | Rewrite Status | TCR Status | Actions |
 |-------------|----------|----------|--------------|----------------|------------|---------|
-| `connector-local-fs` | FR-1000–FR-1019 | `ff-connector-local-fs` | Compliant | Compliant — No Change | ✅ All Pass | None |
+| `connector-local-fs` | FR-1000–FR-1019 | `ff-connector-local-fs` | Compliant | Compliant -- No Change | ✅ All Pass | None |
 | `connector-network-fs` | FR-1020–FR-1029 | *(deferred)* | Major Rewrite | Deferred Stub (6 EARS criteria added, DEFERRED status) | 🔴 Gaps (all criteria deferred) | NEW-TEST-NEEDED when implemented |
 | `connector-ftp-sftp` | FR-1030–FR-1049 | *(deferred)* | Major Rewrite | Deferred Stub (6 EARS criteria added, DEFERRED status) | 🔴 Gaps (all criteria deferred) | NEW-TEST-NEEDED when implemented |
 | `connector-mainframe` | FR-1050–FR-1079 | *(deferred)* | Major Rewrite | Deferred Stub (6 EARS criteria added, DEFERRED status) | 🔴 Gaps (all criteria deferred) | NEW-TEST-NEEDED when implemented |
 | `connector-cloud` | FR-1080–FR-1099 | *(deferred)* | Major Rewrite | Deferred Stub (6 EARS criteria added, DEFERRED status) | 🔴 Gaps (all criteria deferred) | NEW-TEST-NEEDED when implemented |
 | `database-tool` | FR-1100–FR-1149 | `ff-dbtool` | Needs Improvement | Terminology Pass ("DBeaver" removed from req text) + NFR Section Added | ✅ All Pass | NEW-TEST-NEEDED: NFR criteria |
-| `encoding-and-characters` | FR-1150–FR-1169 | `ff-encoding` | Compliant | Compliant — No Change | ✅ All Pass | None |
+| `encoding-and-characters` | FR-1150–FR-1169 | `ff-encoding` | Compliant | Compliant -- No Change | ✅ All Pass | None |
 
 ---
 
@@ -174,14 +174,14 @@ spec, the code, and the tests for any given capability.
 
 | Sub-Project | FR Range | Crate(s) | Quality Flag | Rewrite Status | TCR Status | Actions |
 |-------------|----------|----------|--------------|----------------|------------|---------|
-| `theme-and-appearance` | FR-1200–FR-1219 | `ff-theme`, `ff-desktop` | Compliant | Renumbered (Req 12 → Req 15, moved to end) | ✅ All Pass | None — Req 12 had no test references |
-| `syntax-highlighting` | FR-1220–FR-1229 | `ff-syntax` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `language-service` | FR-1230–FR-1239 | `ff-lang` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `auto-indentation` | FR-1240–FR-1249 | `ff-auto-indent` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `text-decorations` | FR-1250–FR-1259 | `ff-decorations` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `whitespace-and-guides` | FR-1260–FR-1269 | `ff-whitespace` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `clipboard-operations` | FR-1270–FR-1279 | `ff-clipboard` | Compliant | Compliant — No Change | ✅ All Pass | None |
-| `lua-macro-engine` | FR-1280–FR-1299 | `ff-lua` | Compliant | Compliant — No Change | ✅ All Pass | None |
+| `theme-and-appearance` | FR-1200–FR-1219 | `ff-theme`, `ff-desktop` | Compliant | Renumbered (Req 12 → Req 15, moved to end) | ✅ All Pass | None -- Req 12 had no test references |
+| `syntax-highlighting` | FR-1220–FR-1229 | `ff-syntax` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `language-service` | FR-1230–FR-1239 | `ff-lang` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `auto-indentation` | FR-1240–FR-1249 | `ff-auto-indent` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `text-decorations` | FR-1250–FR-1259 | `ff-decorations` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `whitespace-and-guides` | FR-1260–FR-1269 | `ff-whitespace` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `clipboard-operations` | FR-1270–FR-1279 | `ff-clipboard` | Compliant | Compliant -- No Change | ✅ All Pass | None |
+| `lua-macro-engine` | FR-1280–FR-1299 | `ff-lua` | Compliant | Compliant -- No Change | ✅ All Pass | None |
 
 ---
 
@@ -190,7 +190,7 @@ spec, the code, and the tests for any given capability.
 | Sub-Project | Status | Notes | Recommended Action |
 |-------------|--------|-------|--------------------|
 | `jcl-resolver` | No Spec (`.gitkeep` only) | JCL resolution referenced in `FFW-JES` but no standalone spec | Merge into `FFW-JES` or create `jcl-resolver` spec when JCL resolution is implemented |
-| `workbench-requirements-merge` | Not a Feature Spec | Contains architecture briefs and verification reports | Move to `docs/architecture/` — not a requirements spec |
+| `workbench-requirements-merge` | Not a Feature Spec | Contains architecture briefs and verification reports | Move to `docs/architecture/` -- not a requirements spec |
 
 ---
 
@@ -289,17 +289,17 @@ from Needs Improvement to Compliant.*
 | UX Layer | 8 | 8 | 0 | 0 | 0 |
 | **Total** | **66** | **53 (80%)** | **6 (9%)** | **6 (9%)** | **1 (2%)** |
 
-*Integration Layer gaps are all deferred connectors — intentional.*
-*Task Layer gap is `compiler-toolchain-integration` NFR criteria — new.*
-*Explorer Layer gap is `file-tree-panel` Req 19 drag-select — egui pointer limitation.*
+*Integration Layer gaps are all deferred connectors -- intentional.*
+*Task Layer gap is `compiler-toolchain-integration` NFR criteria -- new.*
+*Explorer Layer gap is `file-tree-panel` Req 19 drag-select -- egui pointer limitation.*
 
 ### 13.3 Rewrite Phase Summary
 
 | Task | Specs Processed | Changed | Unchanged | Test Annotations to Update | New Tests Needed |
 |------|-----------------|---------|-----------|---------------------------|-----------------|
-| Task 5 — Core Platform & UX | 10 | 5 | 5 | 0 | 0 |
-| Task 6 — Explorer & Content | 15 | 10 | 5 | 4 | 4 |
-| Task 7 — Task, Integration & Domain | 14 | 6 | 8 | 0 | 0 |
+| Task 5 -- Core Platform & UX | 10 | 5 | 5 | 0 | 0 |
+| Task 6 -- Explorer & Content | 15 | 10 | 5 | 4 | 4 |
+| Task 7 -- Task, Integration & Domain | 14 | 6 | 8 | 0 | 0 |
 | **Total** | **39** | **21** | **18** | **4** | **4** |
 
 ---
@@ -325,9 +325,9 @@ recorded here for resolution during future consolidation work (Task 9).
 
 This matrix feeds directly into:
 
-- **Task 9** — Consolidation Report: uses §14 overlaps and §11 new sub-projects
+- **Task 9** -- Consolidation Report: uses §14 overlaps and §11 new sub-projects
   to produce a consolidation plan and overlap resolution recommendations.
-- **Task 10** — Executive Assessment: uses §13 statistics and §12 outstanding
+- **Task 10** -- Executive Assessment: uses §13 statistics and §12 outstanding
   actions to produce the strategic recommendations and roadmap.
-- **Ongoing** — UPDATE-ANNOTATION items in §12.1 should be resolved before
+- **Ongoing** -- UPDATE-ANNOTATION items in §12.1 should be resolved before
   the next `cargo test` run to maintain accurate traceability.

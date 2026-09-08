@@ -2,15 +2,15 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-exclude-show-filter` crate — the ISPF-style line visibility management engine for FileForgeWorkbench. The crate provides EXCLUDE/SHOW/RESET primary commands and X/Xn/XX line commands for hiding and revealing document lines without modifying document content.
+This plan covers the complete implementation of the `ff-exclude-show-filter` crate -- the ISPF-style line visibility management engine for FileForgeWorkbench. The crate provides EXCLUDE/SHOW/RESET primary commands and X/Xn/XX line commands for hiding and revealing document lines without modifying document content.
 
 This is a **Wave 5 (Command Engine)** sub-project that depends on `ff-display-line-mapping` (Wave 4) for per-line visibility storage, `ff-document-model` (Wave 4) for line content access during text-matching operations, and `ff-command` (Wave 2) for command registration.
 
 Key design principles:
-- **GUI-independent** — pure logical layer with no rendering dependencies
-- **Non-undoable** — all operations modify transient session state only
-- **Flat exclusion** — no hierarchy or fold levels; distinct from code folding
-- **Delegation** — visibility storage lives in `display-line-mapping`; this crate drives state transitions
+- **GUI-independent** -- pure logical layer with no rendering dependencies
+- **Non-undoable** -- all operations modify transient session state only
+- **Flat exclusion** -- no hierarchy or fold levels; distinct from code folding
+- **Delegation** -- visibility storage lives in `display-line-mapping`; this crate drives state transitions
 
 ---
 
@@ -33,7 +33,7 @@ Key design principles:
   - [x] 2.7 Write unit tests for type construction and Display impls
   - Covers: Requirement 1 (AC 1.1–1.8), Requirement 2 (AC 2.6–2.9), Requirement 3 (AC 3.6–3.8)
 
-- [x] 3. ExclusionEngine — state model and delegation layer
+- [x] 3. ExclusionEngine -- state model and delegation layer
   - [x] 3.1 Implement `ExclusionEngine` struct holding a reference/trait object to `DisplayLineMapping` and `DocumentModel`
   - [x] 3.2 Implement `is_excluded(doc_line: usize) -> bool` delegating to `display_line_mapping.get_visible(doc_line) == false`
   - [x] 3.3 Implement `has_excluded_lines() -> bool` delegating to `display_line_mapping.hidden_lines()`
@@ -44,52 +44,52 @@ Key design principles:
   - [x] 3.8 Write unit tests for all delegation methods with mock DisplayLineMapping
   - Covers: Requirement 1 (AC 1.1–1.8), Requirement 7 (AC 7.1–7.2, 7.5)
 
-- [x] 4. Text matcher — literal and regex line matching
+- [x] 4. Text matcher -- literal and regex line matching
   - [x] 4.1 Implement `TextMatcher` struct with methods for literal text search within a line
   - [x] 4.2 Implement case-insensitive literal matching (default behaviour)
   - [x] 4.3 Implement case-sensitive literal matching (configurable)
   - [x] 4.4 Implement regex matching with compiled pattern against line content
-  - [x] 4.5 Implement regex error handling — return descriptive error for invalid patterns
+  - [x] 4.5 Implement regex error handling -- return descriptive error for invalid patterns
   - [x] 4.6 Implement `matches_line(line_content: &str, term: &str, mode: TextMatchMode) -> bool` unified interface
   - [x] 4.7 Write unit tests for literal matching (case-sensitive/insensitive), regex matching, and error cases
   - Covers: Requirement 2 (AC 2.1, 2.3), Requirement 3 (AC 3.4–3.5), Requirement 9 (AC 9.8)
 
 - [x] 5. EXCLUDE / X primary command implementation
-  - [x] 5.1 Implement `exclude_text(term: &str, scope: ExcludeScope)` — excludes visible lines containing literal text
-  - [x] 5.2 Implement `exclude_text_all(term: &str)` — excludes ALL lines (regardless of current visibility) matching text
-  - [x] 5.3 Implement `exclude_regex(pattern: &str, scope: ExcludeScope)` — excludes visible lines matching regex pattern
-  - [x] 5.4 Implement `exclude_all()` — excludes every line in the document
-  - [x] 5.5 Implement `exclude_tagged()` — excludes every line with `tagged = true`
-  - [x] 5.6 Implement `exclude_range_by_number(start: usize, end: usize)` — excludes document lines n through m inclusive (1-based)
+  - [x] 5.1 Implement `exclude_text(term: &str, scope: ExcludeScope)` -- excludes visible lines containing literal text
+  - [x] 5.2 Implement `exclude_text_all(term: &str)` -- excludes ALL lines (regardless of current visibility) matching text
+  - [x] 5.3 Implement `exclude_regex(pattern: &str, scope: ExcludeScope)` -- excludes visible lines matching regex pattern
+  - [x] 5.4 Implement `exclude_all()` -- excludes every line in the document
+  - [x] 5.5 Implement `exclude_tagged()` -- excludes every line with `tagged = true`
+  - [x] 5.6 Implement `exclude_range_by_number(start: usize, end: usize)` -- excludes document lines n through m inclusive (1-based)
   - [x] 5.7 Implement status message generation: "{N} line(s) excluded" or "No lines matched"
   - [x] 5.8 Implement `X` alias registration ensuring identical argument parsing
   - [x] 5.9 Write unit tests for each EXCLUDE variant, status messages, and zero-match handling
   - Covers: Requirement 2 (AC 2.1–2.10)
 
 - [x] 6. SHOW / INCLUDE primary command implementation
-  - [x] 6.1 Implement `show_all_lines()` — clears excluded flag on every line (SHOW ALL)
-  - [x] 6.2 Implement `show_excluded()` — clears excluded flag on all currently excluded lines (SHOW EXCLUDED)
-  - [x] 6.3 Implement `show_nonexcluded()` — no-op with confirmation message (SHOW NONEXCLUDED)
-  - [x] 6.4 Implement `show_text(term: &str)` — clears excluded flag on excluded lines containing literal text
-  - [x] 6.5 Implement `show_regex(pattern: &str)` — clears excluded flag on excluded lines matching regex
+  - [x] 6.1 Implement `show_all_lines()` -- clears excluded flag on every line (SHOW ALL)
+  - [x] 6.2 Implement `show_excluded()` -- clears excluded flag on all currently excluded lines (SHOW EXCLUDED)
+  - [x] 6.3 Implement `show_nonexcluded()` -- no-op with confirmation message (SHOW NONEXCLUDED)
+  - [x] 6.4 Implement `show_text(term: &str)` -- clears excluded flag on excluded lines containing literal text
+  - [x] 6.5 Implement `show_regex(pattern: &str)` -- clears excluded flag on excluded lines matching regex
   - [x] 6.6 Implement `INCLUDE` alias registration with identical argument parsing
   - [x] 6.7 Implement status message generation: "{N} line(s) shown" or "No excluded lines matched"
   - [x] 6.8 Write unit tests for each SHOW variant, alias equivalence, and zero-match handling
   - Covers: Requirement 3 (AC 3.1–3.9)
 
 - [x] 7. RESET command implementation (exclusion aspects)
-  - [x] 7.1 Implement `reset_default()` — clears all exclusion state (RESET with no args)
-  - [x] 7.2 Implement `reset_excluded()` — clears only excluded flags, preserving tags and pending commands
-  - [x] 7.3 Implement `reset_all()` — clears exclusion state as part of broader RESET ALL
+  - [x] 7.1 Implement `reset_default()` -- clears all exclusion state (RESET with no args)
+  - [x] 7.2 Implement `reset_excluded()` -- clears only excluded flags, preserving tags and pending commands
+  - [x] 7.3 Implement `reset_all()` -- clears exclusion state as part of broader RESET ALL
   - [x] 7.4 Implement delegation to `display_line_mapping.show_all()` for efficient bulk reset
   - [x] 7.5 Implement status message: "RESET: {N} line(s) restored to view"
   - [x] 7.6 Write unit tests for each RESET variant, message formatting, and state preservation invariants
   - Covers: Requirement 4 (AC 4.1–4.7)
 
 - [x] 8. X / Xn / XX line command implementation
-  - [x] 8.1 Implement `exclude_single_line(doc_line: usize)` — excludes one line (X command)
-  - [x] 8.2 Implement `exclude_n_lines(start_line: usize, count: usize)` — excludes n consecutive lines (Xn command)
-  - [x] 8.3 Implement `exclude_block(start_line: usize, end_line: usize)` — excludes all lines in XX..XX block
+  - [x] 8.1 Implement `exclude_single_line(doc_line: usize)` -- excludes one line (X command)
+  - [x] 8.2 Implement `exclude_n_lines(start_line: usize, count: usize)` -- excludes n consecutive lines (Xn command)
+  - [x] 8.3 Implement `exclude_block(start_line: usize, end_line: usize)` -- excludes all lines in XX..XX block
   - [x] 8.4 Implement unpaired XX detection and pending state error message "XX requires a matching pair"
   - [x] 8.5 Implement status message reporting count of excluded lines
   - [x] 8.6 Implement immediate execution semantics (no primary command required to resolve)
@@ -120,7 +120,7 @@ Key design principles:
   - [x] 11.3 Register RESET command with metadata for variants (no-arg, EXCLUDED, TAGS, COMMANDS, ALL)
   - [x] 11.4 Register X, Xn, XX in the line-command parser's recognized command set
   - [x] 11.5 Implement argument parsing and validation: unterminated quotes, invalid regex, non-numeric range
-  - [x] 11.6 Implement Edit mode and Browse/View mode support (non-destructive — valid in all modes)
+  - [x] 11.6 Implement Edit mode and Browse/View mode support (non-destructive -- valid in all modes)
   - [x] 11.7 Implement Lua scripting bridge compatibility via standard command dispatch API
   - [x] 11.8 Write unit tests for command registration, argument parsing, error messages, and mode compatibility
   - Covers: Requirement 9 (AC 9.1–9.8)
@@ -150,12 +150,12 @@ Key design principles:
   - Covers: Requirement 10 (AC 10.1–10.6)
 
 - [x] 15. Property-based tests
-  - [x] 15.1 Write PBT: exclusion state consistency — excluded lines are invisible in display-line-mapping
-  - [x] 15.2 Write PBT: SHOW reverses EXCLUDE — EXCLUDE then SHOW on same lines restores visibility
-  - [x] 15.3 Write PBT: block contiguity invariant — no two adjacent blocks can merge further
-  - [x] 15.4 Write PBT: RESET restores all visibility — after RESET, no line is excluded
-  - [x] 15.5 Write PBT: excluded line count consistency — count matches actual number of excluded lines
-  - [x] 15.6 Write PBT: EXCLUDE ALL + SHOW text filters correctly — only matching lines visible after workflow
+  - [x] 15.1 Write PBT: exclusion state consistency -- excluded lines are invisible in display-line-mapping
+  - [x] 15.2 Write PBT: SHOW reverses EXCLUDE -- EXCLUDE then SHOW on same lines restores visibility
+  - [x] 15.3 Write PBT: block contiguity invariant -- no two adjacent blocks can merge further
+  - [x] 15.4 Write PBT: RESET restores all visibility -- after RESET, no line is excluded
+  - [x] 15.5 Write PBT: excluded line count consistency -- count matches actual number of excluded lines
+  - [x] 15.6 Write PBT: EXCLUDE ALL + SHOW text filters correctly -- only matching lines visible after workflow
   - [x] 15.7 Write PBT: display-line-mapping doc_from_display never returns excluded line
   - Covers: Requirements 1–7, 10 (see Property-Based Test Definitions below)
 
@@ -269,13 +269,13 @@ Key design principles:
 ## Notes
 
 - This is a Wave 5 (Command Engine) crate depending on `ff-display-line-mapping` (Wave 4) for visibility storage via `set_visible`, `get_visible`, `hidden_lines`, and `show_all`
-- The exclude-show-filter does NOT maintain its own per-line visibility state — it delegates entirely to the display-line-mapping layer
+- The exclude-show-filter does NOT maintain its own per-line visibility state -- it delegates entirely to the display-line-mapping layer
 - Exclusion operations are explicitly non-undoable (transient session state only)
 - The `X` alias for EXCLUDE and `INCLUDE` alias for SHOW share identical argument parsing and dispatch logic
 - The EXCLUDE ALL → SHOW 'text' workflow is the primary ISPF-style filtering pattern and must be optimized
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
 - Text matching for EXCLUDE/SHOW reuses concepts from `ff-find-and-replace` but is implemented independently (no crate dependency) to avoid circular dependencies
-- Placeholder rendering is the viewport's responsibility — this crate provides only the data model (block ranges and placeholder text)
+- Placeholder rendering is the viewport's responsibility -- this crate provides only the data model (block ranges and placeholder text)
 - The line-command integration (X/Xn/XX) assumes the line-command parser from `ff-line-commands` dispatches to this crate's `exclude_single_line`, `exclude_n_lines`, and `exclude_block` methods
 - All error messages follow the `[exclude-filter] operation: description` format per cross-cutting Requirement 8
 

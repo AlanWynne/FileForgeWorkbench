@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-whitespace-guides` crate — the visual indicator layer for invisible characters, structural indentation guides, column boundary markers, and line-wrap continuation markers in FileForgeWorkbench. The crate is **GUI-independent**: it defines settings, enums, per-line metadata queries, and toggle commands, while actual rendering is delegated to the GUI shell.
+This plan covers the complete implementation of the `ff-whitespace-guides` crate -- the visual indicator layer for invisible characters, structural indentation guides, column boundary markers, and line-wrap continuation markers in FileForgeWorkbench. The crate is **GUI-independent**: it defines settings, enums, per-line metadata queries, and toggle commands, while actual rendering is delegated to the GUI shell.
 
 This is a **Wave 6 (UI and Rendering)** sub-project. It depends on:
 - `ff-configuration-system` (Wave 2) for TOML-based configuration storage, hot-reload
@@ -130,21 +130,21 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on:
   - Covers: Cross-cutting Requirement 8 (Error Message Standards)
 
 - [x] 15. Property-based tests
-  - [x] 15.1 Write PBT: whitespace glyph completeness — for any line and VisibleAlways mode, every space/tab character produces exactly one glyph
-  - [x] 15.2 Write PBT: indent guide column alignment — all guide columns are multiples of tab_size
-  - [x] 15.3 Write PBT: LookBoth produces superset of Real guides — for any document, guides in LookBoth mode at any line are a superset of guides in Real mode for that line
-  - [x] 15.4 Write PBT: continuation indent clamping — effective wrap indent never exceeds 3/4 of viewport width
-  - [x] 15.5 Write PBT: toggle command cycling — applying toggle N times returns to original state (N = number of enum variants)
-  - [x] 15.6 Write PBT: edge indicator mode consistency — EdgeMode::None always yields no indicator, non-None always yields an indicator
+  - [x] 15.1 Write PBT: whitespace glyph completeness -- for any line and VisibleAlways mode, every space/tab character produces exactly one glyph
+  - [x] 15.2 Write PBT: indent guide column alignment -- all guide columns are multiples of tab_size
+  - [x] 15.3 Write PBT: LookBoth produces superset of Real guides -- for any document, guides in LookBoth mode at any line are a superset of guides in Real mode for that line
+  - [x] 15.4 Write PBT: continuation indent clamping -- effective wrap indent never exceeds 3/4 of viewport width
+  - [x] 15.5 Write PBT: toggle command cycling -- applying toggle N times returns to original state (N = number of enum variants)
+  - [x] 15.6 Write PBT: edge indicator mode consistency -- EdgeMode::None always yields no indicator, non-None always yields an indicator
   - Covers: Requirements 1, 3, 5, 6, 7, 8 (see Property-Based Test Definitions below)
 
 - [x] 16. Integration tests
-  - [x] 16.1 Write integration test: full lifecycle — construct settings from config, toggle whitespace, verify glyph output changes
-  - [x] 16.2 Write integration test: indent guide spanning — multi-line document with blank lines, verify LookBoth guides extend through blanks
-  - [x] 16.3 Write integration test: edge column multi-line — configure multiple edges, verify all are returned
-  - [x] 16.4 Write integration test: wrap marker end-to-end — enable wrap, set flags, compute markers for wrapped line
-  - [x] 16.5 Write integration test: hot-reload cycle — modify config key, verify settings update and notification fires
-  - [x] 16.6 Write integration test: headless testability — all queries work without windowing system
+  - [x] 16.1 Write integration test: full lifecycle -- construct settings from config, toggle whitespace, verify glyph output changes
+  - [x] 16.2 Write integration test: indent guide spanning -- multi-line document with blank lines, verify LookBoth guides extend through blanks
+  - [x] 16.3 Write integration test: edge column multi-line -- configure multiple edges, verify all are returned
+  - [x] 16.4 Write integration test: wrap marker end-to-end -- enable wrap, set flags, compute markers for wrapped line
+  - [x] 16.5 Write integration test: hot-reload cycle -- modify config key, verify settings update and notification fires
+  - [x] 16.6 Write integration test: headless testability -- all queries work without windowing system
   - Covers: End-to-end validation across Requirements 1–9
 
 ---
@@ -237,14 +237,14 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on:
 
 ## Notes
 
-- This is a Wave 6 (UI and Rendering) crate; it exposes only data types and query functions — no rendering code
+- This is a Wave 6 (UI and Rendering) crate; it exposes only data types and query functions -- no rendering code
 - The crate has zero GUI framework dependencies (no `egui`, `winit`, `wgpu`) per Requirement 9
 - All colours are resolved from `ff-theme` via the element/token system; no hardcoded colour values
 - Indent guide computation for `LookForward` and `LookBoth` modes requires access to neighbouring lines from the document model
 - The active indent guide depends on caret position, which is updated by the `caret-and-selection` subsystem calling into this crate
 - Wrap markers are only meaningful when word wrap is active (controlled by `line-wrap-toggle`); the guard prevents rendering when wrap is off
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property
-- Hot-reload leverages the configuration-system file watcher — `ff-whitespace-guides` does not implement its own watcher
+- Hot-reload leverages the configuration-system file watcher -- `ff-whitespace-guides` does not implement its own watcher
 - The design.md for this crate may be generated concurrently; task structure is derived from requirements.md
 
 ---

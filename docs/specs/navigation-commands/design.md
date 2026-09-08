@@ -22,7 +22,7 @@ The `ff-navigation-commands` crate implements **all navigation, display-artifact
 ### Position in Architecture
 
 ```
-Wave 5 — Command Engine
+Wave 5 -- Command Engine
 
 ┌─────────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                   │
@@ -33,16 +33,16 @@ Wave 5 — Command Engine
 │         ff-line-commands (reads Bounds for shift)             │
 │         ff-exclude-show-filter (excluded-line queries)        │
 ├─────────────────────────────────────────────────────────────┤
-│      ff-navigation-commands (THIS CRATE — Wave 5)            │
+│      ff-navigation-commands (THIS CRATE -- Wave 5)            │
 │  LOCATE, SORT, COLS, BOUNDS, UP/DOWN/LEFT/RIGHT/TOP/BOTTOM, │
 │  paragraph nav, word nav, word-part nav, doc-start/end       │
 ├─────────────────────────────────────────────────────────────┤
-│  ff-viewport-scrolling (Wave 4) — viewport state mutations   │
-│  ff-document-model (Wave 4) — line count, content, char nav  │
-│  ff-display-line-mapping (Wave 4) — excluded-line awareness  │
-│  ff-command (Wave 2) — command registration, dispatch        │
-│  ff-undo-redo-transactions (Wave 4) — SORT transaction       │
-│  ff-configuration-system (Wave 2) — configurable defaults    │
+│  ff-viewport-scrolling (Wave 4) -- viewport state mutations   │
+│  ff-document-model (Wave 4) -- line count, content, char nav  │
+│  ff-display-line-mapping (Wave 4) -- excluded-line awareness  │
+│  ff-command (Wave 2) -- command registration, dispatch        │
+│  ff-undo-redo-transactions (Wave 4) -- SORT transaction       │
+│  ff-configuration-system (Wave 2) -- configurable defaults    │
 ├─────────────────────────────────────────────────────────────┤
 │              Foundation Layer: ff-logging                     │
 └─────────────────────────────────────────────────────────────┘
@@ -50,12 +50,12 @@ Wave 5 — Command Engine
 
 ### Design Constraints (Cross-Cutting)
 
-- **GUI Independence (Req 2)**: Zero GUI framework dependencies — all logic operates on viewport/document models
+- **GUI Independence (Req 2)**: Zero GUI framework dependencies -- all logic operates on viewport/document models
 - **Command-Driven (Req 4)**: All commands register via `ff-command` CommandRegistry and dispatch through `execute_command`
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-navigation-commands`
 - **Error Message Standards (Req 8)**: All errors follow `[navigation] operation: description` format; status messages ≤200 chars
 - **Configuration (Req 5)**: Scroll amounts, bounds_affect_find, word-characters are configurable via TOML
-- **Async I/O (Req 6)**: Not applicable — all navigation logic is synchronous (no I/O)
+- **Async I/O (Req 6)**: Not applicable -- all navigation logic is synchronous (no I/O)
 
 ---
 
@@ -142,7 +142,7 @@ end
 |-----------|---------------|
 | **LocateCommand** | Parses LOCATE arguments (line number or label), validates range, delegates viewport jump to `ff-viewport-scrolling` |
 | **SortCommand** | Parses SORT arguments, resolves scope, extracts column key, performs stable sort, records undo transaction |
-| **ColsManager** | Manages COLS_Line display artifacts — insertion, removal, toggle, position tracking, RESET handling |
+| **ColsManager** | Manages COLS_Line display artifacts -- insertion, removal, toggle, position tracking, RESET handling |
 | **BoundsManager** | Manages active Bounds state in session, BNDS_Line display artifact, public query API for other crates |
 | **ScrollCommands** | Implements UP/DOWN/LEFT/RIGHT/TOP/BOTTOM by delegating to ViewportModel scroll methods |
 | **ParagraphNav** | Detects paragraph boundaries (blank lines), moves caret across paragraphs, skips excluded lines |
@@ -162,20 +162,20 @@ crates/ff-navigation-commands/
 ├── Cargo.toml
 ├── src/
 │   ├── lib.rs                      # Public API re-exports, crate docs
-│   ├── locate.rs                   # LocateCommand — line number and label navigation
-│   ├── sort.rs                     # SortCommand — undoable line reorder
-│   ├── cols.rs                     # ColsManager — COLS_Line display artifacts
-│   ├── bounds.rs                   # BoundsManager — active bounds state + BNDS_Line
+│   ├── locate.rs                   # LocateCommand -- line number and label navigation
+│   ├── sort.rs                     # SortCommand -- undoable line reorder
+│   ├── cols.rs                     # ColsManager -- COLS_Line display artifacts
+│   ├── bounds.rs                   # BoundsManager -- active bounds state + BNDS_Line
 │   ├── scroll/
 │   │   ├── mod.rs                  # ScrollCommands re-exports
 │   │   ├── vertical.rs            # UP, DOWN, TOP, BOTTOM command handlers
 │   │   └── horizontal.rs          # LEFT, RIGHT command handlers
-│   ├── paragraph.rs               # ParagraphNav — PARA_UP, PARA_DOWN
-│   ├── word.rs                     # WordNav — WORD_LEFT, WORD_RIGHT, WORD_END_RIGHT
-│   ├── word_part.rs                # WordPartNav — WORD_PART_LEFT, WORD_PART_RIGHT
-│   ├── vertical_caret.rs          # VerticalCaretNav — line/page up/down with affinity
-│   ├── doc_nav.rs                  # DocStartEndNav — DOC_START, DOC_END
-│   ├── char_class.rs              # CharClassifier — character classification engine
+│   ├── paragraph.rs               # ParagraphNav -- PARA_UP, PARA_DOWN
+│   ├── word.rs                     # WordNav -- WORD_LEFT, WORD_RIGHT, WORD_END_RIGHT
+│   ├── word_part.rs                # WordPartNav -- WORD_PART_LEFT, WORD_PART_RIGHT
+│   ├── vertical_caret.rs          # VerticalCaretNav -- line/page up/down with affinity
+│   ├── doc_nav.rs                  # DocStartEndNav -- DOC_START, DOC_END
+│   ├── char_class.rs              # CharClassifier -- character classification engine
 │   ├── selection.rs               # Selection extension helpers (Extend modifier)
 │   ├── registration.rs            # Command framework registration and metadata
 │   ├── config.rs                   # Configuration keys and defaults
@@ -528,7 +528,7 @@ pub enum WordPartBoundary {
 
 ## Public API Surface
 
-### BoundsManager — Public Query API
+### BoundsManager -- Public Query API
 
 ```rust
 /// Public API for other crates to query active bounds.
@@ -547,7 +547,7 @@ impl BoundsManager {
 }
 ```
 
-### LocateCommand — Public API
+### LocateCommand -- Public API
 
 ```rust
 /// LOCATE command executor.
@@ -584,7 +584,7 @@ pub trait LabelRegistry {
 }
 ```
 
-### SortCommand — Public API
+### SortCommand -- Public API
 
 ```rust
 /// SORT command executor.
@@ -608,7 +608,7 @@ impl SortCommand {
 }
 ```
 
-### ScrollCommands — Public API
+### ScrollCommands -- Public API
 
 ```rust
 /// Viewport scroll command executors.
@@ -662,7 +662,7 @@ impl ScrollCommands {
 }
 ```
 
-### ParagraphNav — Public API
+### ParagraphNav -- Public API
 
 ```rust
 /// Paragraph navigation executor.
@@ -696,7 +696,7 @@ impl ParagraphNav {
 }
 ```
 
-### WordNav — Public API
+### WordNav -- Public API
 
 ```rust
 /// Word navigation executor.
@@ -736,7 +736,7 @@ impl WordNav {
 }
 ```
 
-### WordPartNav — Public API
+### WordPartNav -- Public API
 
 ```rust
 /// Word-part (sub-word / camelCase) navigation executor.
@@ -774,7 +774,7 @@ impl WordPartNav {
 }
 ```
 
-### VerticalCaretNav — Public API
+### VerticalCaretNav -- Public API
 
 ```rust
 /// Vertical caret movement with column affinity.
@@ -820,7 +820,7 @@ impl VerticalCaretNav {
 }
 ```
 
-### DocStartEndNav — Public API
+### DocStartEndNav -- Public API
 
 ```rust
 /// Document start/end navigation.
@@ -847,7 +847,7 @@ impl DocStartEndNav {
 }
 ```
 
-### CharClassifier — Public API
+### CharClassifier -- Public API
 
 ```rust
 impl CharClassifier {
@@ -931,7 +931,7 @@ pub enum NavigationError {
 | `ff-command` | `CommandRegistry::register()`, `CommandId`, `CommandMetadata`, `CommandHandler` trait, `CommandParams`, `ExecutionContext`, `CommandResult` |
 | `ff-viewport-scrolling` | `ViewportModel` (top_line, visible_count, horizontal_offset mutations, clamping), `CursorModel` (cursor_line, cursor_column, column_affinity) |
 | `ff-document-model` | `Document::line_count()`, `Document::line_start()`, `Document::line_end()`, `Document::get_range()`, `Document::character_at()`, line content access for paragraph detection and word classification |
-| `ff-display-line-mapping` | `DisplayLineMapper` trait — `is_visible()` method for skipping excluded lines during paragraph nav |
+| `ff-display-line-mapping` | `DisplayLineMapper` trait -- `is_visible()` method for skipping excluded lines during paragraph nav |
 | `ff-undo-redo-transactions` | Transaction recording API for SORT undo record |
 | `ff-configuration-system` | TOML key reads for `editor.navigation.*` and `editor.bounds.*` settings |
 | `ff-command-semantics` | `CommandToken` type for parsing SORT arguments; `SessionState` for pending CC block queries |
@@ -951,23 +951,23 @@ pub enum NavigationError {
 | Command Name | Aliases | Undoable | Modes | Handler |
 |-------------|---------|----------|-------|---------|
 | LOCATE | LOC | No | Browse, Edit | `LocateCommand` |
-| SORT | — | Yes | Edit only | `SortCommand` |
-| COLS | — | No | Browse, Edit | `ColsManager` |
+| SORT | -- | Yes | Edit only | `SortCommand` |
+| COLS | -- | No | Browse, Edit | `ColsManager` |
 | BOUNDS | BNDS | No | Browse, Edit | `BoundsManager` |
-| UP | — | No | Browse, Edit | `ScrollCommands::up_*` |
-| DOWN | — | No | Browse, Edit | `ScrollCommands::down_*` |
-| LEFT | — | No | Browse, Edit | `ScrollCommands::left_*` |
-| RIGHT | — | No | Browse, Edit | `ScrollCommands::right_*` |
-| TOP | — | No | Browse, Edit | `ScrollCommands::top` |
+| UP | -- | No | Browse, Edit | `ScrollCommands::up_*` |
+| DOWN | -- | No | Browse, Edit | `ScrollCommands::down_*` |
+| LEFT | -- | No | Browse, Edit | `ScrollCommands::left_*` |
+| RIGHT | -- | No | Browse, Edit | `ScrollCommands::right_*` |
+| TOP | -- | No | Browse, Edit | `ScrollCommands::top` |
 | BOTTOM | BOT | No | Browse, Edit | `ScrollCommands::bottom` |
-| PARA_UP | — | No | Browse, Edit | `ParagraphNav::paragraph_up` |
-| PARA_DOWN | — | No | Browse, Edit | `ParagraphNav::paragraph_down` |
-| WORD_LEFT | — | No | Browse, Edit | `WordNav::word_left` |
-| WORD_RIGHT | — | No | Browse, Edit | `WordNav::word_right` |
-| WORD_PART_LEFT | — | No | Browse, Edit | `WordPartNav::word_part_left` |
-| WORD_PART_RIGHT | — | No | Browse, Edit | `WordPartNav::word_part_right` |
-| DOC_START | — | No | Browse, Edit | `DocStartEndNav::document_start` |
-| DOC_END | — | No | Browse, Edit | `DocStartEndNav::document_end` |
+| PARA_UP | -- | No | Browse, Edit | `ParagraphNav::paragraph_up` |
+| PARA_DOWN | -- | No | Browse, Edit | `ParagraphNav::paragraph_down` |
+| WORD_LEFT | -- | No | Browse, Edit | `WordNav::word_left` |
+| WORD_RIGHT | -- | No | Browse, Edit | `WordNav::word_right` |
+| WORD_PART_LEFT | -- | No | Browse, Edit | `WordPartNav::word_part_left` |
+| WORD_PART_RIGHT | -- | No | Browse, Edit | `WordPartNav::word_part_right` |
+| DOC_START | -- | No | Browse, Edit | `DocStartEndNav::document_start` |
+| DOC_END | -- | No | Browse, Edit | `DocStartEndNav::document_end` |
 
 ---
 
@@ -975,7 +975,7 @@ pub enum NavigationError {
 
 These properties can be verified via property-based tests using the `proptest` crate.
 
-### Property 1: LOCATE Clamping — Valid Targets Always Succeed
+### Property 1: LOCATE Clamping -- Valid Targets Always Succeed
 
 **Statement:** For any line number `n` where `1 <= n <= document.line_count()`, LOCATE n SHALL succeed and set `top_line = n` and `cursor_line = n`.
 
@@ -985,7 +985,7 @@ These properties can be verified via property-based tests using the `proptest` c
 ∀ n ∈ [1, line_count]: locate_line(n) → Ok ∧ viewport.top_line == n ∧ cursor.cursor_line == n
 ```
 
-### Property 2: LOCATE Out-of-Range — Invalid Targets Always Error
+### Property 2: LOCATE Out-of-Range -- Invalid Targets Always Error
 
 **Statement:** For any line number `n` where `n < 1` or `n > document.line_count()`, LOCATE n SHALL return `NavigationError::LineOutOfRange` and viewport/cursor SHALL remain unchanged.
 
@@ -995,7 +995,7 @@ These properties can be verified via property-based tests using the `proptest` c
 ∀ n ∉ [1, line_count]: locate_line(n) → Err(LineOutOfRange) ∧ viewport unchanged ∧ cursor unchanged
 ```
 
-### Property 3: SORT Stability — Equal Keys Preserve Order
+### Property 3: SORT Stability -- Equal Keys Preserve Order
 
 **Statement:** For any sequence of lines where multiple lines have equal sort keys, the relative order of those lines SHALL be unchanged after SORT.
 
@@ -1124,7 +1124,7 @@ doc_end → cursor == (last_line, last_line_len) ∧ last_line is visible
 
 ### D1: Bounds as Shared Session State
 
-Active Bounds are session-level state (not document-level) because they affect command behaviour across multiple crates (FIND, SORT, shift). The `BoundsManager` exposes a public query API so other crates can read bounds without taking a dependency on the full navigation-commands crate — they depend only on the `ActiveBounds` type re-exported at crate root.
+Active Bounds are session-level state (not document-level) because they affect command behaviour across multiple crates (FIND, SORT, shift). The `BoundsManager` exposes a public query API so other crates can read bounds without taking a dependency on the full navigation-commands crate -- they depend only on the `ActiveBounds` type re-exported at crate root.
 
 **Rationale:** Bounds affect FIND (in ff-find-and-replace) and shift (in ff-line-commands). A shared API avoids circular dependencies while keeping bounds ownership in a single location.
 

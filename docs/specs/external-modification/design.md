@@ -19,7 +19,7 @@ The `ff-external-mod` crate detects when files open in the workbench are modifie
 ### Position in Architecture
 
 ```
-Wave 8 — File I/O and Session
+Wave 8 -- File I/O and Session
 
 ┌─────────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                   │
@@ -38,7 +38,7 @@ Wave 8 — File I/O and Session
 
 ### Design Constraints (Cross-Cutting)
 
-- **FFW-ARCH-001 (Req 1)**: ALL filesystem interaction flows through `ff-vfs` — no `std::fs` or `tokio::fs` calls for watching or stat
+- **FFW-ARCH-001 (Req 1)**: ALL filesystem interaction flows through `ff-vfs` -- no `std::fs` or `tokio::fs` calls for watching or stat
 - **GUI Independence (Req 2)**: Core detection logic is GUI-independent; user prompts are abstracted behind traits that the shell layer implements
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-external-mod`
 - **Error Message Standards (Req 8)**: All errors follow `[external-mod] operation: description` format with resource URI context
@@ -51,7 +51,7 @@ Wave 8 — File I/O and Session
 | `ff-document-model` | `DocumentHandle`, dirty state queries, content replacement on reload |
 | `ff-file-ops` | `revert_file()` for reload operations |
 | `ff-background-io` | `BackgroundIoService::spawn_load()` for async reload of large files |
-| `ff-config` | `[editor.external_modification]` namespace — policy, debounce, polling settings |
+| `ff-config` | `[editor.external_modification]` namespace -- policy, debounce, polling settings |
 | `ff-logging` | Structured diagnostics at INFO/WARN/DEBUG levels |
 
 ---
@@ -89,7 +89,7 @@ graph TD
         LOG[ff-logging]
     end
 
-    subgraph Shell [GUI Shell — ff-desktop]
+    subgraph Shell [GUI Shell -- ff-desktop]
         MOD_DIALOG[Reload / Keep / Diff Dialog]
         DEL_DIALOG[Deleted File Dialog]
         REN_DIALOG[Renamed File Dialog]
@@ -342,7 +342,7 @@ pub enum ReloadPolicy {
     Prompt,
     /// Auto-reload if buffer is clean; prompt if dirty.
     Auto,
-    /// Never notify — keep in-memory content as-is.
+    /// Never notify -- keep in-memory content as-is.
     Ignore,
 }
 
@@ -694,7 +694,7 @@ pub struct BatchReloadResult {
 #[non_exhaustive]
 pub enum ExternalModError {
     /// VFS operation failed (watch, stat, or read).
-    #[error("[external-mod] {operation}: VFS error for {uri} — {source}")]
+    #[error("[external-mod] {operation}: VFS error for {uri} -- {source}")]
     Vfs {
         operation: String,
         uri: ResourceUri,
@@ -710,20 +710,20 @@ pub enum ExternalModError {
     },
 
     /// Watch registration failed and fallback polling also failed.
-    #[error("[external-mod] watch: unable to monitor {uri} — watch unsupported and polling failed")]
+    #[error("[external-mod] watch: unable to monitor {uri} -- watch unsupported and polling failed")]
     MonitoringUnavailable {
         uri: ResourceUri,
     },
 
     /// Reload operation failed (VFS read or document update error).
-    #[error("[external-mod] reload: failed to reload {uri} — {reason}")]
+    #[error("[external-mod] reload: failed to reload {uri} -- {reason}")]
     ReloadFailed {
         uri: ResourceUri,
         reason: String,
     },
 
     /// Configuration value is invalid (out of range, wrong type).
-    #[error("[external-mod] config: invalid value for '{key}' — {reason}")]
+    #[error("[external-mod] config: invalid value for '{key}' -- {reason}")]
     ConfigError {
         key: String,
         reason: String,
@@ -771,7 +771,7 @@ pub enum ExternalModError {
 | Reload content | `revert_file(ctx, document)` | Handles full reload flow including undo |
 | Save As (deletion) | `save_file_as(ctx, document, options)` | User chooses new location after deletion |
 
-The `ff-external-mod` crate does NOT directly read file content or write to disk — all reload mechanics are delegated to `ff-file-ops` which handles the VFS read, buffer replacement, and undo-point management.
+The `ff-external-mod` crate does NOT directly read file content or write to disk -- all reload mechanics are delegated to `ff-file-ops` which handles the VFS read, buffer replacement, and undo-point management.
 
 ### Integration with `ff-background-io`
 
@@ -786,9 +786,9 @@ The `ff-external-mod` crate does NOT directly read file content or write to disk
 | Setting Key | Type | Default | Range | Purpose |
 |-------------|------|---------|-------|---------|
 | `editor.external_modification.policy` | String | `"prompt"` | prompt/auto/ignore | Reload policy |
-| `editor.external_modification.reload_preserves_undo` | bool | `false` | — | Undo history across reloads |
-| `editor.external_modification.check_on_focus` | bool | `true` | — | Focus-gained mtime scan |
-| `editor.external_modification.auto_follow_rename` | bool | `false` | — | Auto-follow renames |
+| `editor.external_modification.reload_preserves_undo` | bool | `false` | -- | Undo history across reloads |
+| `editor.external_modification.check_on_focus` | bool | `true` | -- | Focus-gained mtime scan |
+| `editor.external_modification.auto_follow_rename` | bool | `false` | -- | Auto-follow renames |
 | `editor.external_modification.batch_debounce_ms` | u64 | `500` | 100–5000 | Batch coalescing window |
 | `editor.external_modification.polling_interval_ms` | u64 | `5000` | 1000–60000 | Fallback polling interval |
 
@@ -865,7 +865,7 @@ These properties define invariants that property-based tests should verify:
 
 ### Property 9: Focus-Gained Idempotency
 
-**Statement**: Calling `on_focus_gained()` multiple times in rapid succession (without intervening file changes) SHALL produce the same result as a single call — no duplicate prompts, no duplicate reloads.
+**Statement**: Calling `on_focus_gained()` multiple times in rapid succession (without intervening file changes) SHALL produce the same result as a single call -- no duplicate prompts, no duplicate reloads.
 
 **Validates**: Requirement 9 AC 7
 

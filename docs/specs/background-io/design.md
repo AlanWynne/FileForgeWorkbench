@@ -36,12 +36,12 @@ The `ff-background-io` crate is the **async file loading and saving** coordinati
 
 ### Design Constraints (Cross-Cutting)
 
-- **FFW-ARCH-001**: ALL file I/O flows through the VFS abstraction — no `std::fs`, `tokio::fs`, or platform-specific I/O
+- **FFW-ARCH-001**: ALL file I/O flows through the VFS abstraction -- no `std::fs`, `tokio::fs`, or platform-specific I/O
 - **Async I/O Principle**: GUI thread never blocked >16ms by any file operation
 - **Multi-Crate Workspace**: Crate at `crates/ff-background-io`
 - **Error Standards**: Errors follow `[background-io] phase: description (uri: resource_uri, transferred: N bytes)` format
-- **GUI Independence**: ff-background-io has zero GUI dependencies — progress delivery is via channels, not UI calls
-- **Cooperative Cancellation**: No `tokio::task::abort()` — all cancellation is cooperative via `CancellationToken`
+- **GUI Independence**: ff-background-io has zero GUI dependencies -- progress delivery is via channels, not UI calls
+- **Cooperative Cancellation**: No `tokio::task::abort()` -- all cancellation is cooperative via `CancellationToken`
 
 ---
 
@@ -239,7 +239,7 @@ pub struct BackgroundIoService {
 ```rust
 /// A handle returned when an I/O task is spawned.
 /// Provides methods to query progress, cancel, and await completion.
-/// Cloneable — multiple consumers can observe the same task.
+/// Cloneable -- multiple consumers can observe the same task.
 ///
 /// Addresses: Requirement 1 AC 1, Requirement 3 AC 8
 #[derive(Clone)]
@@ -602,7 +602,7 @@ pub enum IoTaskType {
 
 ## 5. Public API Surface
 
-### BackgroundIoService — Construction and Lifecycle
+### BackgroundIoService -- Construction and Lifecycle
 
 ```rust
 impl BackgroundIoService {
@@ -846,51 +846,51 @@ pub enum IoError {
 
 ## 7. Integration Points
 
-### With `ff-vfs` (Wave 3 — upstream)
+### With `ff-vfs` (Wave 3 -- upstream)
 
 - **Dependency direction**: ff-background-io depends on ff-vfs
 - **API consumed**: `VfsProvider::read_stream`, `VfsProvider::write`, `VfsProvider::open`, `VfsProvider::stat`, `VfsProvider::rename`, `VfsProvider::delete`
-- **Provider access**: Obtained through `Vfs::registry()` — never constructs providers directly
+- **Provider access**: Obtained through `Vfs::registry()` -- never constructs providers directly
 - **Capability checks**: Verifies `WRITE` before save, `RENAME` before atomic save, `RANDOM_ACCESS` before seek-based partial load
 - **Error mapping**: `VfsError` variants wrapped into `IoError` with phase context
 - **Timeout handling**: `VfsError::Timeout` treated as transient error eligible for retry
 - **Resource identifiers**: All paths are `ResourceUri` values from the VFS spec
 
-### With `ff-document-model` (Wave 4 — peer/downstream consumer)
+### With `ff-document-model` (Wave 4 -- peer/downstream consumer)
 
 - **Dependency direction**: ff-background-io depends on ff-document-model's `DocumentChunkSource` trait (or defines it locally and document-model implements it)
 - **Load delivery**: LoadTask delivers chunks to the document model's streaming interface for progressive line-index construction
 - **Save source**: SaveTask reads content from document-model via `DocumentChunkSource::next_chunk()` to avoid single-allocation requirement
 - **Large-file coordination**: In streaming mode, chunks are delivered as they arrive without buffering the entire file
 
-### With `ff-file-operations` (Wave 8 — downstream consumer)
+### With `ff-file-operations` (Wave 8 -- downstream consumer)
 
 - **Dependency direction**: ff-file-operations depends on ff-background-io
 - **Integration**: file-operations invokes `spawn_load`/`spawn_save` for all Open/Save/Revert commands
 - **Coordination**: file-operations manages the user-facing workflow (encoding selection, overwrite confirmation); background-io handles execution
 - **Error handling**: file-operations receives `IoError` from `IoTaskHandle::result()` and presents it to the user
 
-### With `ff-workflow-engine` (Wave 2 — upstream)
+### With `ff-workflow-engine` (Wave 2 -- upstream)
 
 - **Dependency direction**: ff-background-io may implement workflow steps for complex I/O sequences
 - **Integration**: Long-running I/O (large-file loads) can be wrapped as workflow steps for user interaction (encoding dialog, overwrite confirmation)
 - **Progress reporting**: Workflow engine can observe I/O progress through `IoTaskHandle::subscribe_progress()`
 - **Cancellation**: Workflow cancellation propagates to the I/O task via the CancellationToken chain
 
-### With `ff-config` (Wave 2 — upstream)
+### With `ff-config` (Wave 2 -- upstream)
 
 - **Dependency direction**: ff-background-io depends on ff-config
 - **Configuration namespace**: `[io]` in the workbench TOML file
 - **Configuration keys**:
-  - `io.chunk_size_kb` — default chunk size in KB (default: 64)
-  - `io.large_file_threshold_mb` — large-file threshold in MB (default: 100)
-  - `io.max_concurrent_tasks` — concurrency limit (default: 4)
-  - `io.retry_count` — max retries for transient errors (default: 3)
-  - `io.retry_backoff_ms` — initial retry backoff in ms (default: 500)
-  - `io.shutdown_timeout_secs` — graceful shutdown timeout (default: 30)
+  - `io.chunk_size_kb` -- default chunk size in KB (default: 64)
+  - `io.large_file_threshold_mb` -- large-file threshold in MB (default: 100)
+  - `io.max_concurrent_tasks` -- concurrency limit (default: 4)
+  - `io.retry_count` -- max retries for transient errors (default: 3)
+  - `io.retry_backoff_ms` -- initial retry backoff in ms (default: 500)
+  - `io.shutdown_timeout_secs` -- graceful shutdown timeout (default: 30)
 - **Hot-reload**: Configuration changes apply to newly spawned tasks; in-progress tasks keep their initial config
 
-### With `ff-logging` (Wave 0 — upstream)
+### With `ff-logging` (Wave 0 -- upstream)
 
 - **Dependency direction**: ff-background-io depends on ff-logging
 - **Log prefix**: `[background-io]`
@@ -899,13 +899,13 @@ pub enum IoError {
 - **INFO level**: Task spawn, task completion, large-file mode activation
 - **DEBUG level**: Per-chunk progress, retry backoff timing
 
-### With `ff-external-modification` (Wave 8 — downstream consumer)
+### With `ff-external-modification` (Wave 8 -- downstream consumer)
 
 - **Dependency direction**: ff-external-modification depends on ff-background-io
 - **Integration**: When VFS file-watcher detects external changes, external-modification invokes `spawn_load` for async reload
 - **Cancellation**: If user declines reload, external-modification cancels the load task
 
-### With `ff-large-file-performance` (Wave 15 — downstream consumer)
+### With `ff-large-file-performance` (Wave 15 -- downstream consumer)
 
 - **Dependency direction**: ff-large-file-performance depends on ff-background-io
 - **Integration**: Observes progress of large-file loads to coordinate chunked rendering and measurement caching
@@ -971,7 +971,7 @@ shutdown_timeout_secs = 30
 
 ## 9. Correctness Properties (Property-Based Testing)
 
-The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal — it must hold for all valid inputs.
+The following properties are suitable for property-based testing with the `proptest` crate. Each property is universal -- it must hold for all valid inputs.
 
 ### Property 1: ChunkSize Clamping Idempotence
 
@@ -1034,7 +1034,7 @@ The following properties are suitable for property-based testing with the `propt
 
 **Validates:** Requirement 3 AC 4
 
-### Property 6: Atomic Save — Original Unmodified on Failure
+### Property 6: Atomic Save -- Original Unmodified on Failure
 
 **Statement:** If a SaveTask fails at any phase (write, flush, rename), the original target file remains unmodified. The target file's content and metadata are identical before and after the failed save.
 
@@ -1075,7 +1075,7 @@ The following properties are suitable for property-based testing with the `propt
 
 ### Property 9: Retry Preserves Position
 
-**Statement:** When a transient error occurs and retry succeeds, the LoadTask continues from the last successfully delivered byte position — it does not restart from byte 0.
+**Statement:** When a transient error occurs and retry succeeds, the LoadTask continues from the last successfully delivered byte position -- it does not restart from byte 0.
 
 ```
 ∀ load_task with transient error at byte B, retry succeeds:

@@ -38,8 +38,8 @@ The `ff-find-and-replace` crate is the **search and replacement engine** for Fil
 
 ### Design Constraints (Cross-Cutting)
 
-- **FFW-ARCH-001 (Req 1)**: No direct filesystem access — document content accessed via `CharacterIndexer` trait over the document model
-- **GUI Independence (Req 2)**: Zero GUI dependencies — no egui, winit, wgpu; search panel and highlight rendering are separate crate concerns
+- **FFW-ARCH-001 (Req 1)**: No direct filesystem access -- document content accessed via `CharacterIndexer` trait over the document model
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- no egui, winit, wgpu; search panel and highlight rendering are separate crate concerns
 - **Command-Driven (Req 4)**: FIND/RFIND/CHANGE/RCHANGE registered as commands in `ff-command`; CHANGE operations produce `UndoRecord`
 - **Async I/O (Req 6)**: Long-running FIND ALL / CHANGE ALL support cancellation tokens and progress events
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-find-and-replace`
@@ -655,7 +655,7 @@ pub trait CharacterIndexer: Send + Sync {
 }
 ```
 
-### FindEngine — Construction and Configuration
+### FindEngine -- Construction and Configuration
 
 ```rust
 impl FindEngine {
@@ -710,7 +710,7 @@ impl Default for FindEngineConfig {
 }
 ```
 
-### FindEngine — Core Search Operations
+### FindEngine -- Core Search Operations
 
 ```rust
 impl FindEngine {
@@ -771,7 +771,7 @@ impl FindEngine {
 }
 ```
 
-### FindEngine — Incremental Search
+### FindEngine -- Incremental Search
 
 ```rust
 impl FindEngine {
@@ -794,7 +794,7 @@ impl FindEngine {
 }
 ```
 
-### FindEngine — Highlight All Matches
+### FindEngine -- Highlight All Matches
 
 ```rust
 impl FindEngine {
@@ -1109,12 +1109,12 @@ The crate registers these commands with `ff-command` at initialisation:
 |-----------|-------------|-----------------|----------|
 | `search.find` | Find | Ctrl+F (focus find) | No |
 | `search.rfind` | Repeat Find | F3 (suggested) | No |
-| `search.find_next` | Find Next | — | No |
+| `search.find_next` | Find Next | -- | No |
 | `search.find_prev` | Find Previous | Shift+F3 (suggested) | No |
-| `search.find_all` | Find All | — | No |
+| `search.find_all` | Find All | -- | No |
 | `search.change` | Change | Ctrl+H (focus change) | Yes |
-| `search.rchange` | Repeat Change | — | Yes |
-| `search.replace_all` | Replace All | — | Yes |
+| `search.rchange` | Repeat Change | -- | Yes |
+| `search.replace_all` | Replace All | -- | Yes |
 
 ---
 

@@ -227,3 +227,79 @@ fastpath model.
    message `Option '<segment>' not found.` in the status area.
 4. THE existing fastpath notation for POM options (e.g. `=0`, `=1`, `=2`) SHALL
    continue to work unchanged -- they are single-segment Chained_Paths.
+
+---
+
+### Requirement 9: Configurable Menu Option Limits
+
+**User Story:** As a user or plugin author, I want the number of options in a
+Menu_File to be bounded by configurable limits rather than a hardcoded count,
+so that I can build large menus when I need to while the workbench protects
+itself against unusably large or runaway menu files.
+
+**Source:** [CR-NR-050], [WB]
+
+**Rationale:** The Menu Workspace pattern (Requirements 1-5) places no explicit
+cap on the number of Menu_Options. The figures "9" (legacy POM) and "12" (Phase
+CV POM) are the content of specific Menu_Files, not constraints of the pattern.
+An unbounded list is impractical for three reasons: single-key selection
+(Requirement 3.1) degrades when hundreds of keys compete; the per-frame
+hot-reload poll (Requirement 4.3) re-parses the whole file on change; and a very
+long flat list is a poor menu when sub-menus (Requirement 5) exist for
+structure. This requirement introduces a soft advisory limit and a hard error
+limit, both configurable.
+
+#### Glossary additions
+
+| Term | Definition |
+|------|-----------|
+| **Soft_Option_Limit** | The configured option count above which a Menu_File loads successfully but triggers a WARN log and an in-panel advisory. Default 64. |
+| **Hard_Option_Limit** | The configured option count above which a Menu_File is rejected as a load error. Default 256. |
+
+#### Acceptance Criteria
+
+1. THE workbench SHALL define two configuration keys resolved through the
+   layered configuration system (`configuration-system` Requirement 2):
+   - `menu.soft_option_limit` (unsigned integer, default `64`) -- the
+     Soft_Option_Limit.
+   - `menu.hard_option_limit` (unsigned integer, default `256`) -- the
+     Hard_Option_Limit.
+
+2. WHEN a Menu_File is loaded and its `[[options]]` count is less than or equal
+   to the Soft_Option_Limit, THE Menu_Workspace SHALL load and render every
+   option with no warning.
+
+3. WHEN a Menu_File is loaded and its `[[options]]` count is greater than the
+   Soft_Option_Limit AND less than or equal to the Hard_Option_Limit, THE
+   Menu_Workspace SHALL load and render every option, log one WARN-level record
+   naming the file path and the option count, and display a non-blocking
+   advisory line in the option area:
+   `This menu has <count> options (advised maximum <soft>). Consider grouping options into sub-menus.`
+
+4. WHEN a Menu_File is loaded and its `[[options]]` count is greater than the
+   Hard_Option_Limit, THE Menu_Workspace SHALL reject the file with the load
+   error message from Requirement 1.6, using the reason:
+   `too many options: <count> exceeds hard limit <hard>`,
+   and SHALL NOT render any option row.
+
+5. WHEN `menu.hard_option_limit` is configured to a value less than
+   `menu.soft_option_limit`, THE workbench SHALL treat the effective
+   Soft_Option_Limit as equal to the Hard_Option_Limit (the hard limit always
+   dominates) and SHALL log one WARN-level record noting the misconfiguration.
+
+6. WHEN either limit key is absent from all configuration layers, THE workbench
+   SHALL apply the default value defined in criterion 9.1.
+
+7. WHEN either limit key is present but not a non-negative integer, THE
+   workbench SHALL ignore the invalid value, apply the default from criterion
+   9.1 for that key, and log one WARN-level record naming the offending key.
+
+8. THE option-count limits SHALL be evaluated against the number of parsed
+   `[[options]]` entries before any `enabled = false` filtering, so that
+   disabled options count toward both limits.
+
+9. THE limit evaluation SHALL be re-applied on every hot-reload
+   (Requirement 4.3): a file edited to exceed the Hard_Option_Limit while the
+   workbench is running SHALL transition to the load-error state per criterion
+   9.4, and a file edited back to within limits SHALL recover on the next
+   reload.

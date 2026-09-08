@@ -18,24 +18,24 @@ The `ff-line-commands` crate implements the **ISPF line command engine** for Fil
 ### Position in Architecture
 
 ```
-Wave 5 — Command Engine
+Wave 5 -- Command Engine
 
 ┌─────────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                   │
 │     Prefix area rendering, user input collection             │
 ├─────────────────────────────────────────────────────────────┤
-│  ff-command-semantics (peer — primary command pipeline)       │
-│  ff-exclude-show-filter (downstream — SHOW/RESET)            │
+│  ff-command-semantics (peer -- primary command pipeline)       │
+│  ff-exclude-show-filter (downstream -- SHOW/RESET)            │
 ├─────────────────────────────────────────────────────────────┤
-│         ff-line-commands (THIS CRATE — Wave 5)               │
+│         ff-line-commands (THIS CRATE -- Wave 5)               │
 │   Line command parser, block pairing, pending state,         │
 │   execution engine                                           │
 ├─────────────────────────────────────────────────────────────┤
-│  ff-edit-operations (Wave 4) — edit primitives               │
-│  ff-document-model (Wave 4) — buffer access                  │
-│  ff-display-line-mapping (Wave 4) — visibility state         │
-│  ff-command (Wave 2) — command dispatch, undo integration    │
-│  ff-undo-redo-transactions (Wave 4) — transaction wrapping   │
+│  ff-edit-operations (Wave 4) -- edit primitives               │
+│  ff-document-model (Wave 4) -- buffer access                  │
+│  ff-display-line-mapping (Wave 4) -- visibility state         │
+│  ff-command (Wave 2) -- command dispatch, undo integration    │
+│  ff-undo-redo-transactions (Wave 4) -- transaction wrapping   │
 ├─────────────────────────────────────────────────────────────┤
 │              Foundation Layer: ff-logging                     │
 └─────────────────────────────────────────────────────────────┘
@@ -43,7 +43,7 @@ Wave 5 — Command Engine
 
 ### Design Constraints (Cross-Cutting)
 
-- **GUI Independence (Req 2)**: Zero GUI dependencies — prefix-area rendering is UI shell responsibility
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- prefix-area rendering is UI shell responsibility
 - **Command-Driven (Req 4)**: All line command executions dispatch through `ff-command`
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-line-commands`
 - **Error Message Standards (Req 8)**: All errors follow `[line-cmd] operation: description` format
@@ -116,12 +116,12 @@ crates/ff-line-commands/
 ├── Cargo.toml
 ├── src/
 │   ├── lib.rs                  # Public API re-exports, crate docs
-│   ├── parser.rs               # LineCommandParser — string → ParsedLineCommand
+│   ├── parser.rs               # LineCommandParser -- string → ParsedLineCommand
 │   ├── command.rs              # ParsedLineCommand, LineCommandKind, BlockCommandKind enums
-│   ├── pending.rs              # PendingCommandStore — per-session pending state
-│   ├── block_pair.rs           # BlockPairValidator — pair matching, normalization
-│   ├── compatibility.rs        # CompatibilityMatrix — primary ↔ line cmd rules
-│   ├── resolution.rs           # ResolutionEngine — determines executable commands
+│   ├── pending.rs              # PendingCommandStore -- per-session pending state
+│   ├── block_pair.rs           # BlockPairValidator -- pair matching, normalization
+│   ├── compatibility.rs        # CompatibilityMatrix -- primary ↔ line cmd rules
+│   ├── resolution.rs           # ResolutionEngine -- determines executable commands
 │   ├── execution/
 │   │   ├── mod.rs              # ExecutionEngine dispatcher
 │   │   ├── delete.rs           # Delete line command execution (D, Dn, DD)
@@ -507,20 +507,20 @@ impl LineCommandParser {
     /// Addresses: Requirement 14.6
     ///
     /// # Recognised Patterns
-    /// - `D`, `D<n>`, `DD` — Delete
-    /// - `I`, `I<n>` — Insert
-    /// - `R`, `R<n>`, `RR` — Repeat
-    /// - `C`, `CC` — Copy source
-    /// - `M`, `MM` — Move source
-    /// - `A` — After target
-    /// - `B` — Before target
-    /// - `X`, `X<n>`, `XX` — Exclude
-    /// - `T`, `TT` — Tag
-    /// - `U`, `UU` — Untag
-    /// - `>`, `><n>`, `>>` — Shift right
-    /// - `<`, `<<n>`, `<<` — Shift left
-    /// - `)`, `))` — Bounds-aware shift right
-    /// - `(`, `((` — Bounds-aware shift left
+    /// - `D`, `D<n>`, `DD` -- Delete
+    /// - `I`, `I<n>` -- Insert
+    /// - `R`, `R<n>`, `RR` -- Repeat
+    /// - `C`, `CC` -- Copy source
+    /// - `M`, `MM` -- Move source
+    /// - `A` -- After target
+    /// - `B` -- Before target
+    /// - `X`, `X<n>`, `XX` -- Exclude
+    /// - `T`, `TT` -- Tag
+    /// - `U`, `UU` -- Untag
+    /// - `>`, `><n>`, `>>` -- Shift right
+    /// - `<`, `<<n>`, `<<` -- Shift left
+    /// - `)`, `))` -- Bounds-aware shift right
+    /// - `(`, `((` -- Bounds-aware shift left
     pub fn parse(input: &str, line: u64) -> Result<ParsedLineCommand, LineCommandError>;
 
     /// Classify a parsed command into its category (Immediate, Block, Source, Target).
@@ -779,7 +779,7 @@ pub enum LineCommandError {
     #[error("[line-cmd] parse: unrecognised command '{input}'")]
     InvalidCommand { input: String },
 
-    /// Block command has only one marker — awaiting matching pair.
+    /// Block command has only one marker -- awaiting matching pair.
     /// Addresses: Requirements 1.5, 3.4, 7.4, 8.5, 8.6, 9.5, 10.5, 11.7, 11.8, 12.3
     #[error("[line-cmd] pair: {kind} requires a matching pair")]
     AwaitingPair { kind: String },
@@ -834,7 +834,7 @@ pub enum LineCommandError {
     AwaitingSource,
 
     /// Document mutation failed.
-    #[error("[line-cmd] {operation}: document error — {description}")]
+    #[error("[line-cmd] {operation}: document error -- {description}")]
     DocumentError { operation: String, description: String },
 }
 ```
@@ -843,73 +843,73 @@ pub enum LineCommandError {
 
 ## Integration Points
 
-### With `ff-document-model` (upstream — Wave 4)
+### With `ff-document-model` (upstream -- Wave 4)
 
 - `ff-line-commands` uses the `Document` API for all buffer mutations:
-  - `document.insert(position, text)` — insert blank lines (I, In)
-  - `document.delete(position, length)` — delete lines (D, Dn, DD)
-  - `document.get_range(position, length)` — read line content for copy, repeat, shift
-  - `document.line_start(line)` / `document.line_end(line)` — compute line byte ranges
-  - `document.line_count()` — validate line numbers are in range
+  - `document.insert(position, text)` -- insert blank lines (I, In)
+  - `document.delete(position, length)` -- delete lines (D, Dn, DD)
+  - `document.get_range(position, length)` -- read line content for copy, repeat, shift
+  - `document.line_start(line)` / `document.line_end(line)` -- compute line byte ranges
+  - `document.line_count()` -- validate line numbers are in range
 - Line content for shift operations is read via `split_view()` or `get_range()`
 - Insertions position new content at `line_end(line) + newline_length` (after semantics) or `line_start(line)` (before semantics)
 - The `DocumentHandle` (`Arc<RwLock<Document>>`) provides thread-safe access
 
-### With `ff-command` (upstream — Wave 2)
+### With `ff-command` (upstream -- Wave 2)
 
 - All line command operations are registered as commands via `CommandRegistry`:
   - `linecmd.delete`, `linecmd.insert`, `linecmd.repeat`, `linecmd.copy`, `linecmd.move`
   - `linecmd.exclude`, `linecmd.tag`, `linecmd.untag`
   - `linecmd.shift_right`, `linecmd.shift_left`
   - `linecmd.bounds_shift_right`, `linecmd.bounds_shift_left`
-  - `linecmd.resolve_cycle` — main entry point for processing pending commands
-  - `linecmd.reset` — clear all pending commands
+  - `linecmd.resolve_cycle` -- main entry point for processing pending commands
+  - `linecmd.reset` -- clear all pending commands
 - Undoable operations return `CommandResult::OkUndoable` with a `Box<dyn UndoRecord>`
 - Session-state operations (exclude, tag) return `CommandResult::Ok` without undo records
-- Addresses: Requirement 14.8 — all operations dispatched through command framework
+- Addresses: Requirement 14.8 -- all operations dispatched through command framework
 
-### With `ff-edit-operations` (upstream — Wave 4)
+### With `ff-edit-operations` (upstream -- Wave 4)
 
 - `ff-line-commands` reuses `EditorTransaction` and `LineSnapshot` types from `ff-edit-operations` for transaction recording
 - Shift operations leverage the BOUNDS concept from `EditBounds` in `ff-edit-operations`
 - `TransactionRecorder::record()` is used to push transactions to the undo stack
 - The `BoundsEnforcer` API provides bounds state for bounds-aware shift commands
 
-### With `ff-display-line-mapping` (upstream — Wave 4)
+### With `ff-display-line-mapping` (upstream -- Wave 4)
 
 - Exclude commands (X, Xn, XX) call `DisplayLineMapping::set_visible(doc_line, false)` to hide lines
-- The `DisplayLineMapping` trait is the interface — `ff-line-commands` depends on the trait, not the concrete `ContractionState`
-- Line number references in line commands refer to document lines, not display lines — the mapping is used only for visibility mutations
+- The `DisplayLineMapping` trait is the interface -- `ff-line-commands` depends on the trait, not the concrete `ContractionState`
+- Line number references in line commands refer to document lines, not display lines -- the mapping is used only for visibility mutations
 
-### With `ff-undo-redo-transactions` (upstream — Wave 4)
+### With `ff-undo-redo-transactions` (upstream -- Wave 4)
 
 - Undoable line commands (D, DD, I, R, RR, C+A/B, M+A/B, >, >>, <, <<, ), )), (, (() wrap mutations in a single `EditorTransaction`
 - The transaction is pushed via `TransactionStack` (trait from `ff-undo-redo-transactions`)
 - Session-state commands (X, XX, T, TT, U, UU) explicitly bypass the undo stack
 
-### With `ff-command-semantics` (peer — Wave 5)
+### With `ff-command-semantics` (peer -- Wave 5)
 
 - The primary command execution cycle (defined in `ff-command-semantics`) includes a "collect line commands" step that invokes the resolution engine
 - `ResolutionEngine::resolve()` is called during the command cycle with the primary command context
 - The `CompatibilityMatrix` gates execution based on the primary command in progress
 - Line command parsing may share infrastructure with the primary command parser (prefix-area vs. command-line parsing are separate code paths but share the `LineCommandParser`)
 
-### With `ff-exclude-show-filter` (downstream — Wave 5)
+### With `ff-exclude-show-filter` (downstream -- Wave 5)
 
 - Exclude line commands (X, Xn, XX) set the visibility flag; the `ff-exclude-show-filter` crate owns SHOW/INCLUDE/RESET EXCLUDED restoration
 - `ff-line-commands` only sets `excluded = true`; it never restores visibility (that's `ff-exclude-show-filter`'s job)
 - Both crates operate on the same `DisplayLineMapping` trait interface
 
-### With `ff-navigation-commands` (peer — Wave 5)
+### With `ff-navigation-commands` (peer -- Wave 5)
 
 - The BOUNDS/BNDS command (defined in `ff-navigation-commands`) establishes active column bounds
 - Bounds-aware shift commands (), )), (, (( read the current bounds from the session state set by BOUNDS
 - `ff-line-commands` reads bounds via the `EditBounds` struct but does not modify bounds
 
-### With `ff-configuration-system` (upstream — Wave 2)
+### With `ff-configuration-system` (upstream -- Wave 2)
 
 - Configuration key `editor.shift_width` (default: 2) controls the default shift distance
-- The configuration system provides hot-reload notification — `LineCommandConfig` is refreshed on change
+- The configuration system provides hot-reload notification -- `LineCommandConfig` is refreshed on change
 - Namespace: `[editor]` section in TOML
 
 ---

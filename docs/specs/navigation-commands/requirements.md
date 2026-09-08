@@ -5,50 +5,50 @@
 This spec defines the **Navigation Commands** subsystem for FileForgeWorkbench (`ff-navigation-commands` crate). It covers all primary commands and keyboard operations that move the viewport or caret without modifying document content, plus the SORT command which reorders lines, and the display/session-state commands COLS and BOUNDS.
 
 The navigation-commands crate is responsible for:
-- **LOCATE command** — jump to a line number or named label
-- **SORT command** — reorder lines by column key (undoable document modification)
-- **COLS command** — display/toggle a column ruler overlay
-- **BOUNDS/BNDS command** — set/clear active column boundaries for column-sensitive operations
-- **Viewport navigation commands** — UP, DOWN, LEFT, RIGHT, TOP, BOTTOM (page/line scroll)
-- **Paragraph navigation** — move caret to previous/next paragraph boundary
-- **Word navigation** — move caret by word boundaries, word-part (camelCase) boundaries
+- **LOCATE command** -- jump to a line number or named label
+- **SORT command** -- reorder lines by column key (undoable document modification)
+- **COLS command** -- display/toggle a column ruler overlay
+- **BOUNDS/BNDS command** -- set/clear active column boundaries for column-sensitive operations
+- **Viewport navigation commands** -- UP, DOWN, LEFT, RIGHT, TOP, BOTTOM (page/line scroll)
+- **Paragraph navigation** -- move caret to previous/next paragraph boundary
+- **Word navigation** -- move caret by word boundaries, word-part (camelCase) boundaries
 
 All commands are registered with the command framework and dispatched through the standard command execution pipeline. SORT is the only undoable command in this crate; LOCATE, viewport navigation, COLS, BOUNDS, paragraph nav, and word nav are non-undoable (viewport/session state changes).
 
 ### Design Principles
 
-1. **GUI-independent** — all navigation logic operates on the viewport model and document model without GUI framework dependency. [WB]
-2. **Command-framework registered** — every command is registered with metadata, help text, and undo classification. [WB]
-3. **Viewport model delegation** — scroll operations delegate to `viewport-and-scrolling` for actual viewport state mutation and clamping. [WB]
-4. **Bounds integration** — SORT respects active column bounds; BOUNDS state is shared across command specs. [FFE-CMD-20]
-5. **Character classification** — word and word-part navigation uses the document model's configurable character class tables. [SCI-DOC-16]
+1. **GUI-independent** -- all navigation logic operates on the viewport model and document model without GUI framework dependency. [WB]
+2. **Command-framework registered** -- every command is registered with metadata, help text, and undo classification. [WB]
+3. **Viewport model delegation** -- scroll operations delegate to `viewport-and-scrolling` for actual viewport state mutation and clamping. [WB]
+4. **Bounds integration** -- SORT respects active column bounds; BOUNDS state is shared across command specs. [FFE-CMD-20]
+5. **Character classification** -- word and word-part navigation uses the document model's configurable character class tables. [SCI-DOC-16]
 
 ### Source References
 
 - **[FFE-CMD-10]** = FileForgeEditor `core-command-semantics` Requirement 10 (SORT command)
-- **[FFE-CMD-11]** = FileForgeEditor `core-command-semantics` Requirement 11 (SAVE, CANCEL, END — referenced for session commands; not owned here)
-- **[FFE-CMD-12]** = FileForgeEditor `core-command-semantics` Requirement 12 (LOAD, RELOAD — referenced; not owned here)
-- **[FFE-CMD-13]** = FileForgeEditor `core-command-semantics` Requirement 13 (DELETE — referenced; owned by `edit-operations`)
-- **[FFE-CMD-14]** = FileForgeEditor `core-command-semantics` Requirement 14 (COPY in-document — referenced; owned by `edit-operations`)
-- **[FFE-CMD-15]** = FileForgeEditor `core-command-semantics` Requirement 15 (MOVE — referenced; owned by `edit-operations`)
+- **[FFE-CMD-11]** = FileForgeEditor `core-command-semantics` Requirement 11 (SAVE, CANCEL, END -- referenced for session commands; not owned here)
+- **[FFE-CMD-12]** = FileForgeEditor `core-command-semantics` Requirement 12 (LOAD, RELOAD -- referenced; not owned here)
+- **[FFE-CMD-13]** = FileForgeEditor `core-command-semantics` Requirement 13 (DELETE -- referenced; owned by `edit-operations`)
+- **[FFE-CMD-14]** = FileForgeEditor `core-command-semantics` Requirement 14 (COPY in-document -- referenced; owned by `edit-operations`)
+- **[FFE-CMD-15]** = FileForgeEditor `core-command-semantics` Requirement 15 (MOVE -- referenced; owned by `edit-operations`)
 - **[FFE-CMD-16]** = FileForgeEditor `core-command-semantics` Requirement 16 (LOCATE command)
 - **[FFE-CMD-17]** = FileForgeEditor `core-command-semantics` Requirement 17 (Navigation: UP, DOWN, LEFT, RIGHT, TOP, BOTTOM)
-- **[FFE-CMD-18]** = FileForgeEditor `core-command-semantics` Requirement 18 (MACRO/EXEC/RUN — referenced; owned by `lua-macro-engine`)
+- **[FFE-CMD-18]** = FileForgeEditor `core-command-semantics` Requirement 18 (MACRO/EXEC/RUN -- referenced; owned by `lua-macro-engine`)
 - **[FFE-CMD-19]** = FileForgeEditor `core-command-semantics` Requirement 19 (COLS command)
 - **[FFE-CMD-20]** = FileForgeEditor `core-command-semantics` Requirement 20 (BOUNDS/BNDS command)
-- **[FFE-CMD-21]** = FileForgeEditor `core-command-semantics` Requirement 21 (UNDO/REDO delegation — referenced; owned by `undo-redo-transactions`)
+- **[FFE-CMD-21]** = FileForgeEditor `core-command-semantics` Requirement 21 (UNDO/REDO delegation -- referenced; owned by `undo-redo-transactions`)
 - **[SCI-EDIT-2.2]** = Scintilla Editor Requirement 2.2 criteria 8–12 (DocumentStart/End, PageUp/PageDown, ParaUp/ParaDown, word movement, CursorUpOrDown with lastXChosen)
-- **[SCI-DOC-16]** = Scintilla Document Requirement 16 (Word Navigation — ExtendWordSelect, NextWordStart, NextWordEnd, WordPartLeft/Right, character class boundaries, camelCase detection)
+- **[SCI-DOC-16]** = Scintilla Document Requirement 16 (Word Navigation -- ExtendWordSelect, NextWordStart, NextWordEnd, WordPartLeft/Right, character class boundaries, camelCase detection)
 - **[WB]** = Workbench Platform Architecture Brief (GUI-independent, command-framework integration, crate separation)
 
 ### Cross-References
 
-- **`command-semantics`** — Defines the command execution pipeline, scope resolution, and error handling that all commands in this crate pass through.
-- **`viewport-and-scrolling`** — Owns viewport state (top_line, visible_count, horizontal_offset, cursor_line, cursor_column, column_affinity). Navigation commands delegate scroll operations to this crate.
-- **`document-model`** — Provides line count, line content, character classification tables, and paragraph detection.
-- **`undo-redo-transactions`** — SORT produces an undoable transaction; this crate records it via the transaction API.
-- **`edit-operations`** — DELETE, COPY, MOVE commands are specified there, not here (FFE-CMD-13/14/15 are not owned by this spec).
-- **`configuration-system`** — Provides configurable values for default scroll amounts, bounds_affect_find, and word-character classification.
+- **`command-semantics`** -- Defines the command execution pipeline, scope resolution, and error handling that all commands in this crate pass through.
+- **`viewport-and-scrolling`** -- Owns viewport state (top_line, visible_count, horizontal_offset, cursor_line, cursor_column, column_affinity). Navigation commands delegate scroll operations to this crate.
+- **`document-model`** -- Provides line count, line content, character classification tables, and paragraph detection.
+- **`undo-redo-transactions`** -- SORT produces an undoable transaction; this crate records it via the transaction API.
+- **`edit-operations`** -- DELETE, COPY, MOVE commands are specified there, not here (FFE-CMD-13/14/15 are not owned by this spec).
+- **`configuration-system`** -- Provides configurable values for default scroll amounts, bounds_affect_find, and word-character classification.
 
 ---
 
@@ -327,10 +327,10 @@ All commands are registered with the command framework and dispatched through th
 8.4. WHEN the caret is at the end of a word and word-part-right is triggered, THE system SHALL move to the beginning of the next word (crossing the word boundary to reach the first sub-word part of the following word). [SCI-DOC-16]
 
 8.5. THE word-part navigation SHALL detect the following boundary patterns: [SCI-DOC-16]
-   - `lowerUpper` — boundary before the uppercase letter (e.g., `my|Method`)
-   - `UPPER_UPPER_lower` — boundary before the last uppercase in a run preceding a lowercase (e.g., `XML|Parser`)
-   - `alpha_nonalpha` — boundary at transitions between alphanumeric and non-alphanumeric characters
-   - `digit_alpha` and `alpha_digit` — boundaries between digits and letters
+   - `lowerUpper` -- boundary before the uppercase letter (e.g., `my|Method`)
+   - `UPPER_UPPER_lower` -- boundary before the last uppercase in a run preceding a lowercase (e.g., `XML|Parser`)
+   - `alpha_nonalpha` -- boundary at transitions between alphanumeric and non-alphanumeric characters
+   - `digit_alpha` and `alpha_digit` -- boundaries between digits and letters
 
 8.6. THE word-part navigation commands SHALL support selection extension: when issued with the Extend modifier, THE system SHALL extend the selection from the anchor to the new caret position. [SCI-DOC-16]
 
@@ -456,7 +456,7 @@ All commands are registered with the command framework and dispatched through th
 
 ---
 
-### Requirement 14: COPY Command — In-Document Mode (Delegation)
+### Requirement 14: COPY Command -- In-Document Mode (Delegation)
 
 **User Story:** As a developer, I want to copy lines within the document using C/CC source markers and A/B target markers so that I can duplicate content to another location.
 

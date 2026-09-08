@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `ff-syntax-highlighting` crate is the **lexical highlighting engine** for FileForgeWorkbench. It assigns abstract style-slot indices (u8, 0–255) to character ranges based on lexical analysis of document content. The engine is GUI-independent — it produces style data consumed by the theme system for visual attribute resolution, never referencing colours or rendering APIs directly.
+The `ff-syntax-highlighting` crate is the **lexical highlighting engine** for FileForgeWorkbench. It assigns abstract style-slot indices (u8, 0–255) to character ranges based on lexical analysis of document content. The engine is GUI-independent -- it produces style data consumed by the theme system for visual attribute resolution, never referencing colours or rendering APIs directly.
 
 ### Purpose
 
@@ -20,30 +20,30 @@ The `ff-syntax-highlighting` crate is the **lexical highlighting engine** for Fi
 ### Position in Architecture
 
 ```
-Wave 7 — Language and Highlighting
+Wave 7 -- Language and Highlighting
 
 ┌──────────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                    │
-│   Viewport Renderer — queries styled spans for painting       │
+│   Viewport Renderer -- queries styled spans for painting       │
 ├──────────────────────────────────────────────────────────────┤
 │  Downstream consumers:                                        │
-│    ff-theme (Wave 6) — resolves style indices to colours      │
-│    ff-text-decorations (Wave 6) — coexists with syntax styles │
-│    ff-display-line-mapping (Wave 4) — consumes fold levels    │
-│    ff-idle-processing (Wave 15) — coordinates bg styling      │
+│    ff-theme (Wave 6) -- resolves style indices to colours      │
+│    ff-text-decorations (Wave 6) -- coexists with syntax styles │
+│    ff-display-line-mapping (Wave 4) -- consumes fold levels    │
+│    ff-idle-processing (Wave 15) -- coordinates bg styling      │
 ├──────────────────────────────────────────────────────────────┤
 │         THIS CRATE: ff-syntax-highlighting ← Wave 7           │
 │   Lexer trait, style buffer, incremental re-highlight,        │
 │   keyword matching, sub-styles, fold levels, idle styling     │
 ├──────────────────────────────────────────────────────────────┤
 │  Upstream:                                                    │
-│    ff-language-service (Wave 7 peer) — language definitions,  │
+│    ff-language-service (Wave 7 peer) -- language definitions,  │
 │      keyword lists, comment patterns, lexer selection          │
-│    ff-document-model (Wave 4) — text buffer, line indexing,   │
+│    ff-document-model (Wave 4) -- text buffer, line indexing,   │
 │      edit notifications                                        │
-│    ff-configuration-system (Wave 2) — lexer properties        │
-│    ff-plugin (Wave 2) — plugin-provided lexer registration    │
-│    ff-logging (Wave 0) — structured diagnostics               │
+│    ff-configuration-system (Wave 2) -- lexer properties        │
+│    ff-plugin (Wave 2) -- plugin-provided lexer registration    │
+│    ff-logging (Wave 0) -- structured diagnostics               │
 ├──────────────────────────────────────────────────────────────┤
 │              Foundation Layer: ff-logging                      │
 └──────────────────────────────────────────────────────────────┘
@@ -51,7 +51,7 @@ Wave 7 — Language and Highlighting
 
 ### Design Constraints (Cross-Cutting)
 
-- **GUI Independence (Req 2)**: Zero GUI dependencies — produces abstract style-slot indices (u8); visual attribute resolution is the theme system's responsibility
+- **GUI Independence (Req 2)**: Zero GUI dependencies -- produces abstract style-slot indices (u8); visual attribute resolution is the theme system's responsibility
 - **Plugin Architecture (Req 3)**: Plugin-provided lexers registered at runtime via the lexer registry
 - **Configuration Namespace (Req 5)**: Lexer properties live under `[syntax]` and per-language `[syntax.<language_id>]` TOML namespaces
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-syntax-highlighting`
@@ -954,7 +954,7 @@ pub enum SyntaxHighlightError {
     LexerAlreadyRegistered { language_id: String },
 
     /// Configuration property has invalid value.
-    #[error("[syntax] set_property: property '{key}' has invalid value '{value}' — {reason}")]
+    #[error("[syntax] set_property: property '{key}' has invalid value '{value}' -- {reason}")]
     InvalidPropertyValue {
         key: String,
         value: String,
@@ -967,7 +967,7 @@ pub enum SyntaxHighlightError {
 
 ## Integration Points
 
-### With `ff-language-service` (Wave 7 — peer)
+### With `ff-language-service` (Wave 7 -- peer)
 
 - **Consumed types**: `LanguageDefinition`, `LanguageId`, keyword lists, comment patterns, lexer selection
 - **Data flow**: The language-service detects document language, provides keyword lists (up to 9 sets) and language properties. The syntax-highlighting engine consumes these to configure its bound lexer.
@@ -980,7 +980,7 @@ pub enum SyntaxHighlightError {
   - `LanguageDefinition::properties()` → lexer property initialization
   - Language change notification → triggers `unbind_lexer` + `bind_lexer`
 
-### With `ff-document-model` (Wave 4 — upstream)
+### With `ff-document-model` (Wave 4 -- upstream)
 
 - **Consumed types**: Text buffer content, line indexing, edit notification events
 - **Data flow**: The document-model provides text content for lexing and emits edit notifications (insert/delete with position, length, line count) that trigger incremental re-highlighting.
@@ -991,7 +991,7 @@ pub enum SyntaxHighlightError {
   - `Document::line_count()` → synchronizes per-line state and fold level arrays
   - Edit events → `HighlightEngine::notify_insert()` / `notify_delete()`
 
-### With `ff-configuration-system` (Wave 2 — upstream)
+### With `ff-configuration-system` (Wave 2 -- upstream)
 
 - **Consumed API**: Config loading, hot-reload callbacks, typed key access
 - **Data flow**: Lexer properties and per-language configuration overrides are stored in the config system. Hot-reload events trigger property updates on the active lexer.
@@ -1004,7 +1004,7 @@ pub enum SyntaxHighlightError {
   - Config hot-reload → `HighlightEngine::set_lexer_property()` → invalidate + re-highlight
   - Initial load → populate all lexer properties at bind time
 
-### With `ff-plugin` (Wave 2 — upstream)
+### With `ff-plugin` (Wave 2 -- upstream)
 
 - **Consumed types**: Plugin lifecycle hooks, registration API
 - **Data flow**: Plugins register new lexer implementations at runtime via the `LexerRegistry`.
@@ -1014,7 +1014,7 @@ pub enum SyntaxHighlightError {
   - `Plugin::on_deactivate()` → calls `LexerRegistry::unregister(language_id)`
   - New registration → makes lexer available for language-service detection
 
-### With `ff-theme` (Wave 6 — downstream consumer)
+### With `ff-theme` (Wave 6 -- downstream consumer)
 
 - **Provided data**: `StyleSlotIndex` values per character position
 - **Data flow**: The theme system queries style indices from HighlightSpan data and resolves each to visual attributes (colour, bold, italic, underline, case). The highlighting engine never references colours.
@@ -1025,7 +1025,7 @@ pub enum SyntaxHighlightError {
   - `sub_style_base(index)` → theme inherits base style attributes for sub-styles
   - Theme changes do NOT require re-highlighting (style indices are stable)
 
-### With `ff-display-line-mapping` (Wave 4 — downstream consumer)
+### With `ff-display-line-mapping` (Wave 4 -- downstream consumer)
 
 - **Provided data**: Fold levels and fold flags per line
 - **Data flow**: The display-line-mapping queries fold levels exclusively from this crate to determine fold region boundaries and fold headers.
@@ -1035,15 +1035,15 @@ pub enum SyntaxHighlightError {
   - `fold_level_range(start, end)` → bulk fold level query for efficiency
   - Fold-level-changed notification → display-line-mapping updates fold state incrementally
 
-### With `ff-text-decorations` (Wave 6 — peer)
+### With `ff-text-decorations` (Wave 6 -- peer)
 
-- **Relationship**: Coexistence — syntax styles and indicator decorations operate on the same text independently
+- **Relationship**: Coexistence -- syntax styles and indicator decorations operate on the same text independently
 - **Data flow**: No direct data exchange. Both produce visual attributes for the same character ranges; the rendering pipeline composites them based on the indicator's `under` property.
 - **Key interactions**:
   - Re-highlighting does NOT invalidate indicators (Requirement 15, criterion 15.5)
   - Style data and indicator data are independently queryable for the same range
 
-### With `ff-idle-processing` (Wave 15 — downstream coordinator)
+### With `ff-idle-processing` (Wave 15 -- downstream coordinator)
 
 - **Consumed API**: Idle work source registration, time slice grants
 - **Data flow**: The idle-processing scheduler grants time slices during idle periods; the highlighting engine styles bounded line batches per slice.
@@ -1053,7 +1053,7 @@ pub enum SyntaxHighlightError {
   - Deregister when `is_fully_styled()` returns true
   - Edit events → cancel current idle work, re-register from new styling position
 
-### With `ff-logging` (Wave 0 — upstream)
+### With `ff-logging` (Wave 0 -- upstream)
 
 - **Consumed API**: Structured logging macros
 - **Data flow**: Diagnostic messages for lexer registration, property changes, errors
@@ -1164,7 +1164,7 @@ These properties are suitable for property-based testing using the `proptest` cr
 
 ### Property 9: Sub-Style Allocation Non-Overlap
 
-**Statement**: All allocated sub-style ranges are non-overlapping — no two ranges share any style index.
+**Statement**: All allocated sub-style ranges are non-overlapping -- no two ranges share any style index.
 
 **Validates**: Requirement 7, criteria 7.1–7.2
 
@@ -1278,7 +1278,7 @@ Storing `LexerState` at the end of each line (not at arbitrary positions) provid
 
 The registry stores `Box<dyn Fn() -> Box<dyn Lexer>>` factories rather than pre-instantiated lexers because:
 - Each document needs its own lexer instance (lexers carry mutable property state)
-- Factories allow lazy instantiation — no resources consumed until a language is actually used
+- Factories allow lazy instantiation -- no resources consumed until a language is actually used
 - Plugin lifecycle: factory remains valid even if the lexer's internal state is complex
 
 ### Decision 4: Trait-Based Consumer API (SyntaxHighlighter)

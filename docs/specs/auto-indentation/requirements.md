@@ -6,11 +6,11 @@ This feature specifies the auto-indentation subsystem for FileForgeWorkbench (`f
 
 The subsystem covers four related concerns:
 
-1. **Auto-indent on Enter** — when a new line is created, the new line's indentation matches or adjusts relative to the previous line based on language rules.
-2. **Indent-increase patterns** — regex patterns that trigger an increase in indentation level for the next line (e.g., lines ending with `{`, `:`, `do`, `then`).
-3. **Indent-decrease patterns** — regex patterns that trigger a decrease in indentation level for the current line (e.g., lines starting with `}`, `end`, `else`, `]`).
-4. **Explicit Indent/Unindent commands** — Tab and Shift+Tab commands that increase or decrease indentation of selected lines.
-5. **Block comment auto-continue** — when Enter is pressed inside a block or line comment, the new line is automatically prefixed with the appropriate comment continuation marker.
+1. **Auto-indent on Enter** -- when a new line is created, the new line's indentation matches or adjusts relative to the previous line based on language rules.
+2. **Indent-increase patterns** -- regex patterns that trigger an increase in indentation level for the next line (e.g., lines ending with `{`, `:`, `do`, `then`).
+3. **Indent-decrease patterns** -- regex patterns that trigger a decrease in indentation level for the current line (e.g., lines starting with `}`, `end`, `else`, `]`).
+4. **Explicit Indent/Unindent commands** -- Tab and Shift+Tab commands that increase or decrease indentation of selected lines.
+5. **Block comment auto-continue** -- when Enter is pressed inside a block or line comment, the new line is automatically prefixed with the appropriate comment continuation marker.
 
 All indent rules are defined per-language in TOML language definition files (managed by `language-service`). The auto-indent logic operates on the document model without GUI coupling. Indent/Unindent commands are registered with the `command-framework`. All indent modifications are recorded as undoable transactions via `edit-operations`.
 
@@ -42,9 +42,9 @@ All indent rules are defined per-language in TOML language definition files (man
 - **Statement_End_Pattern**: A regex pattern identifying the end of a multi-line statement, signalling that subsequent lines should return to the pre-statement indent level. [SCI-STE-INDENT]
 - **Block_Start_Pattern**: A language-defined regex identifying the opening of a block structure (e.g., `{`, `begin`, `do`). [SCI-STE-INDENT]
 - **Block_End_Pattern**: A language-defined regex identifying the closing of a block structure (e.g., `}`, `end`). [SCI-STE-INDENT]
-- **Indent_String**: The physical characters used to represent one indent level — either a single tab character or N space characters (where N = Indent_Size). [WB]
+- **Indent_String**: The physical characters used to represent one indent level -- either a single tab character or N space characters (where N = Indent_Size). [WB]
 - **Comment_Continue_Marker**: The prefix automatically inserted at the start of a new line when Enter is pressed inside a comment block (e.g., ` * ` for C-style block comments, `// ` for line comment continuation). [SCI-STE-INDENT]
-- **Maintain_Indent**: The simplest auto-indent behaviour — the new line receives exactly the same indentation as the previous line, regardless of content patterns. [SCI-STE-INDENT]
+- **Maintain_Indent**: The simplest auto-indent behaviour -- the new line receives exactly the same indentation as the previous line, regardless of content patterns. [SCI-STE-INDENT]
 - **Smart_Indent**: Language-aware auto-indent that goes beyond Maintain_Indent by consulting Indent_Increase_Pattern and Indent_Decrease_Pattern to adjust the indent level. [SCI-STE-INDENT]
 - **Indent_Transaction**: An EditorTransaction that groups the auto-indent adjustment with the newline insertion (or with the Indent/Unindent command) into a single undoable unit. [WB]
 
@@ -92,7 +92,7 @@ All indent rules are defined per-language in TOML language definition files (man
 
 ---
 
-### Requirement 3: Smart Indent — Indent Increase [SCI-STE-INDENT]
+### Requirement 3: Smart Indent -- Indent Increase [SCI-STE-INDENT]
 
 **User Story:** As a developer, I want the editor to automatically increase the indent level after I type a block-opening construct (like `{` or `do`), so that the next line starts at the correct nesting depth without manual adjustment.
 
@@ -112,7 +112,7 @@ All indent rules are defined per-language in TOML language definition files (man
 
 ---
 
-### Requirement 4: Smart Indent — Indent Decrease [SCI-STE-INDENT]
+### Requirement 4: Smart Indent -- Indent Decrease [SCI-STE-INDENT]
 
 **User Story:** As a developer, I want the editor to automatically decrease the indent level when I type a block-closing construct (like `}` or `end`), so that closing delimiters align with their corresponding opening constructs without manual adjustment.
 
@@ -134,7 +134,7 @@ All indent rules are defined per-language in TOML language definition files (man
 
 ---
 
-### Requirement 5: Smart Indent — Enter After Block-Start/End Patterns [SCI-STE-INDENT]
+### Requirement 5: Smart Indent -- Enter After Block-Start/End Patterns [SCI-STE-INDENT]
 
 **User Story:** As a developer, I want pressing Enter between an opening and closing brace (e.g., `{|}`) to automatically create a properly indented blank line between them, so that I can immediately start typing inside the block.
 
@@ -240,15 +240,15 @@ All indent rules are defined per-language in TOML language definition files (man
 
 ### Requirement 10: Integration with Edit Operations and Undo [WB]
 
-**User Story:** As an editor user, I want auto-indentation to be seamlessly integrated with the normal editing flow — undoable, non-disruptive, and invisible when I don't want it — so that it enhances productivity without interfering with manual formatting choices.
+**User Story:** As an editor user, I want auto-indentation to be seamlessly integrated with the normal editing flow -- undoable, non-disruptive, and invisible when I don't want it -- so that it enhances productivity without interfering with manual formatting choices.
 
 #### Acceptance Criteria
 
 10.1 WHEN auto-indent is triggered by a newline insertion, THE auto-indent modification SHALL be grouped into the same EditorTransaction as the newline operation in `edit-operations`, so that Ctrl+Z undoes both the newline and the auto-indent in a single step. [WB]
 
-10.2 WHEN the user immediately edits the auto-indented whitespace after it is inserted (e.g., pressing Backspace to reduce indent), THE system SHALL NOT fight the user — no re-indentation shall be triggered by whitespace edits on the same line within the same editing session. [WB]
+10.2 WHEN the user immediately edits the auto-indented whitespace after it is inserted (e.g., pressing Backspace to reduce indent), THE system SHALL NOT fight the user -- no re-indentation shall be triggered by whitespace edits on the same line within the same editing session. [WB]
 
-10.3 WHEN the Auto_Indent mode is `None`, THE system SHALL not modify line content in response to Enter presses — the new line shall start at column 0 with no leading whitespace. [SCI-STE-INDENT]
+10.3 WHEN the Auto_Indent mode is `None`, THE system SHALL not modify line content in response to Enter presses -- the new line shall start at column 0 with no leading whitespace. [SCI-STE-INDENT]
 
 10.4 THE auto-indentation subsystem SHALL operate purely on the document model (line content and metadata) without requiring access to any GUI components. The GUI shell triggers auto-indent through the `edit-operations` API; the subsystem returns the indentation to apply. [WB]
 

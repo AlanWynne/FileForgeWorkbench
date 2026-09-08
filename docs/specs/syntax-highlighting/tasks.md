@@ -2,19 +2,19 @@
 
 ## Overview
 
-This plan covers the complete implementation of the `ff-syntax-highlighting` crate — the syntax highlighting engine for FileForgeWorkbench. The engine performs lexical analysis on document content, assigns style-slot indices to character ranges, supports incremental re-highlighting, demand-driven styling, keyword matching, sub-styles, fold-level assignment, and idle-time background styling.
+This plan covers the complete implementation of the `ff-syntax-highlighting` crate -- the syntax highlighting engine for FileForgeWorkbench. The engine performs lexical analysis on document content, assigns style-slot indices to character ranges, supports incremental re-highlighting, demand-driven styling, keyword matching, sub-styles, fold-level assignment, and idle-time background styling.
 
 This is a **Wave 7 (Language and Highlighting)** sub-project. It depends on:
-- `ff-document-model` (Wave 3) — text buffer content, line indexing, edit notifications
-- `ff-language-service` (Wave 7 peer) — language detection, TOML-based language definitions, keyword lists, comment patterns
-- `ff-theme` (Wave 6) — style-slot table resolution at render time (not referenced directly by this crate)
-- `ff-configuration-system` (Wave 2) — lexer property storage, hot-reload notifications
-- `ff-idle-processing` (Wave 5) — idle-time scheduling for background styling
+- `ff-document-model` (Wave 3) -- text buffer content, line indexing, edit notifications
+- `ff-language-service` (Wave 7 peer) -- language detection, TOML-based language definitions, keyword lists, comment patterns
+- `ff-theme` (Wave 6) -- style-slot table resolution at render time (not referenced directly by this crate)
+- `ff-configuration-system` (Wave 2) -- lexer property storage, hot-reload notifications
+- `ff-idle-processing` (Wave 5) -- idle-time scheduling for background styling
 
 It is consumed by:
-- `ff-display-line-mapping` — fold-level queries for fold region calculation
-- `ff-desktop` (GUI shell) — styled span queries for viewport painting
-- `ff-text-decorations` — coexists independently on the same character ranges
+- `ff-display-line-mapping` -- fold-level queries for fold region calculation
+- `ff-desktop` (GUI shell) -- styled span queries for viewport painting
+- `ff-text-decorations` -- coexists independently on the same character ranges
 
 ---
 
@@ -167,7 +167,7 @@ It is consumed by:
 
 - [x] 14. Theme integration and style resolution
   - [x] 14.1 Implement `style_slot_count() -> u8` method reporting how many base style indices the active lexer uses
-  - [x] 14.2 Ensure engine produces only StyleSlotIndex values — no colour/font references in engine output
+  - [x] 14.2 Ensure engine produces only StyleSlotIndex values -- no colour/font references in engine output
   - [x] 14.3 Implement semantic name mapping support: provide style index to token name mapping for language-service
   - [x] 14.4 Implement sub-style inheritance: document that unthemed sub-styles inherit from base style in theme system
   - [x] 14.5 Write unit tests verifying no colour references in engine output, style_slot_count correctness
@@ -344,15 +344,15 @@ It is consumed by:
 
 ## Notes
 
-- This is a Wave 7 (Language and Highlighting) crate that is a **GUI-independent highlighting engine** — it produces abstract style-slot indices, never colour values or font references.
+- This is a Wave 7 (Language and Highlighting) crate that is a **GUI-independent highlighting engine** -- it produces abstract style-slot indices, never colour values or font references.
 - GUI independence is a strict requirement: no `egui`, `wgpu`, `winit`, or platform rendering types in this crate's public API or dependencies.
-- The logical document model (text buffer, line indexing, edit notifications) is owned by `ff-document-model` — this crate only consumes it for text access and edit events.
-- Style resolution (mapping style-slot indices to colours/fonts) is the responsibility of `ff-theme` at render time — the highlighting engine is not aware of themes.
-- The `StyleContext` helper struct simplifies lexer implementation by providing convenient character access, state management, and keyword matching — lexer implementors work with this API.
+- The logical document model (text buffer, line indexing, edit notifications) is owned by `ff-document-model` -- this crate only consumes it for text access and edit events.
+- Style resolution (mapping style-slot indices to colours/fonts) is the responsibility of `ff-theme` at render time -- the highlighting engine is not aware of themes.
+- The `StyleContext` helper struct simplifies lexer implementation by providing convenient character access, state management, and keyword matching -- lexer implementors work with this API.
 - Fold-level data is computed alongside styling by the lexer's `fold_text` method but stored independently, queryable by `ff-display-line-mapping` for fold region identification.
 - Thread safety is achieved via `RwLock` on the style buffer and per-line state, allowing background idle-styling on a worker thread while the GUI thread reads style data for rendering.
 - Property-based tests use the `proptest` crate with a minimum of 100 iterations per property.
-- Idle-time background styling integrates with `ff-idle-processing` scheduler — the engine registers/deregisters as an idle work source based on whether unstyled regions remain.
+- Idle-time background styling integrates with `ff-idle-processing` scheduler -- the engine registers/deregisters as an idle work source based on whether unstyled regions remain.
 - Runtime lexer registration supports plugin-provided lexers without restart; keyword set and property changes trigger full document re-highlight.
 
 ---

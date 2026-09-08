@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-The `ff-plugin` crate is the **plugin extensibility framework** for the FileForgeWorkbench workspace. It defines how optional features are packaged, discovered, loaded, and managed through well-defined lifecycle states. Every optional feature — viewers, language services, connectors, macro engines, the database tool — is implemented as a plugin that interacts with the core exclusively through traits and a context object defined here.
+The `ff-plugin` crate is the **plugin extensibility framework** for the FileForgeWorkbench workspace. It defines how optional features are packaged, discovered, loaded, and managed through well-defined lifecycle states. Every optional feature -- viewers, language services, connectors, macro engines, the database tool -- is implemented as a plugin that interacts with the core exclusively through traits and a context object defined here.
 
 ### Purpose
 
@@ -16,17 +16,17 @@ The `ff-plugin` crate is the **plugin extensibility framework** for the FileForg
 ### Position in Architecture
 
 ```
-Wave 2 — Platform Architecture (depends on Wave 0 ff-logging)
+Wave 2 -- Platform Architecture (depends on Wave 0 ff-logging)
 
 ┌─────────────────────────────────────────────────────────┐
 │                    Application Binary                     │
-│                (ffwb / GUI shell — ff-desktop)            │
+│                (ffwb / GUI shell -- ff-desktop)            │
 ├─────────────────────────────────────────────────────────┤
 │  workflow-engine │ layout-and-docking │ configuration     │
 │  document-model │ edit-operations │ all feature crates   │
 ├─────────────────────────────────────────────────────────┤
 │  platform-core │ command-framework │ plugin-architecture │
-│              (Wave 2 — Platform Architecture)             │
+│              (Wave 2 -- Platform Architecture)             │
 ├─────────────────────────────────────────────────────────┤
 │                     ff-logging (Wave 0)                   │
 └─────────────────────────────────────────────────────────┘
@@ -34,8 +34,8 @@ Wave 2 — Platform Architecture (depends on Wave 0 ff-logging)
 
 ### Design Constraints (Cross-Cutting)
 
-- **FFW-ARCH-001 (Req 1)**: Plugins access files exclusively through the VFS abstraction layer — never via `std::fs`
-- **GUI Independence (Req 2)**: The plugin system is GUI-independent — no egui, no windowing crate imports
+- **FFW-ARCH-001 (Req 1)**: Plugins access files exclusively through the VFS abstraction layer -- never via `std::fs`
+- **GUI Independence (Req 2)**: The plugin system is GUI-independent -- no egui, no windowing crate imports
 - **Plugin Architecture Principle (Req 3)**: ALL optional features are implementable as plugins; core remains minimal
 - **Command-Driven (Req 4)**: Plugin-registered commands go through the command framework
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-plugin`
@@ -65,7 +65,7 @@ graph TD
         VER[Version Checker]
     end
 
-    subgraph PlatformServices [Platform Services — injected via trait objects]
+    subgraph PlatformServices [Platform Services -- injected via trait objects]
         LOG[Logging Handle]
         CMD[Command Registration]
         CFG[Configuration Access]
@@ -97,10 +97,10 @@ graph TD
 
 | Layer | Role |
 |-------|------|
-| **Plugin Trait** | `FileForgePlugin` — the contract every plugin implements |
-| **Plugin Context** | `PluginContext` — sandboxed gateway to platform services |
-| **Registry Layer** | `Plugin_Registry` — tracks plugin states, metadata, ownership |
-| **Capability Layer** | `Capability_Registry` — dynamic index of all active capabilities |
+| **Plugin Trait** | `FileForgePlugin` -- the contract every plugin implements |
+| **Plugin Context** | `PluginContext` -- sandboxed gateway to platform services |
+| **Registry Layer** | `Plugin_Registry` -- tracks plugin states, metadata, ownership |
+| **Capability Layer** | `Capability_Registry` -- dynamic index of all active capabilities |
 | **Loading Layer** | Discovery, validation, dependency resolution, version checking |
 | **Lifecycle Layer** | State machine transitions, panic catching, shutdown orchestration |
 | **Security Layer** | API-boundary enforcement, scoped config, VFS-only file access |
@@ -165,7 +165,7 @@ crates/ff-plugin/
 use std::sync::Arc;
 
 /// The primary trait that all plugins must implement.
-/// Object-safe — the core stores plugins as `Box<dyn FileForgePlugin>`.
+/// Object-safe -- the core stores plugins as `Box<dyn FileForgePlugin>`.
 /// Addresses: Requirement 1 (all acceptance criteria)
 pub trait FileForgePlugin: Send + Sync {
     /// Returns an immutable reference to the plugin's metadata.
@@ -184,15 +184,15 @@ pub trait FileForgePlugin: Send + Sync {
     /// Addresses: Requirement 1 AC 1, AC 4
     fn initialize(&mut self, context: Arc<PluginContext>) -> Result<(), PluginError>;
 
-    /// Activate the plugin — register capabilities, start background work.
+    /// Activate the plugin -- register capabilities, start background work.
     /// Addresses: Requirement 1 AC 1
     fn activate(&mut self) -> Result<(), PluginError>;
 
-    /// Deactivate the plugin — unregister capabilities, stop background work.
+    /// Deactivate the plugin -- unregister capabilities, stop background work.
     /// Addresses: Requirement 1 AC 1
     fn deactivate(&mut self) -> Result<(), PluginError>;
 
-    /// Shutdown the plugin — release all resources, final cleanup.
+    /// Shutdown the plugin -- release all resources, final cleanup.
     /// Addresses: Requirement 1 AC 1
     fn shutdown(&mut self) -> Result<(), PluginError>;
 
@@ -537,7 +537,7 @@ impl PluginRegistry {
 
 ### Capability_Registry API
 
-> **Design Decision (Req 4 AC 4 — type-safe querying):** Runtime enum-based querying via `query_by_type()` is preferred over generic trait-based queries for object-safety and simplicity. The requirement for "type-safe querying where possible" is satisfied by the strongly-typed `CapabilityType` enum — callers know exactly what capability types exist at compile time. Full generic querying (e.g., `query::<T: CapabilityProvider>()`) is not feasible with trait objects stored in the registry.
+> **Design Decision (Req 4 AC 4 -- type-safe querying):** Runtime enum-based querying via `query_by_type()` is preferred over generic trait-based queries for object-safety and simplicity. The requirement for "type-safe querying where possible" is satisfied by the strongly-typed `CapabilityType` enum -- callers know exactly what capability types exist at compile time. Full generic querying (e.g., `query::<T: CapabilityProvider>()`) is not feasible with trait objects stored in the registry.
 
 ```rust
 impl CapabilityRegistry {
@@ -826,33 +826,33 @@ pub enum PluginError {
 
 ## 7. Integration Points
 
-### With `ff-logging` (upstream — Wave 0)
+### With `ff-logging` (upstream -- Wave 0)
 
 - `ff-plugin` depends on `ff-logging` for the `PluginLogHandle` trait
 - When constructing a `PluginContext`, the registry calls `ff_logging::create_plugin_handle(name)` to obtain a scoped logging handle
 - Plugin log records are prefixed as `[plugin:{name}::{module}]`
 
-### With `platform-core` (same wave — coordinates startup)
+### With `platform-core` (same wave -- coordinates startup)
 
 - `platform-core` constructs the `PluginRegistry` and provides `PlatformServices` (implementations of the service traits)
 - `platform-core` calls `registry.discover_plugins()` and `registry.load_all()` during startup
 - `platform-core` calls `registry.shutdown_all(Duration::from_secs(5))` during teardown
 - Dependency direction: `platform-core` depends on `ff-plugin`; `ff-plugin` does NOT depend on `platform-core`
 
-### With `command-framework` (same wave — provides CommandRegistration)
+### With `command-framework` (same wave -- provides CommandRegistration)
 
 - `command-framework` implements the `CommandRegistration` trait
 - The implementation is injected into `PluginContext` via `PlatformServices`
 - Plugins register commands through `context.register_command(...)` which delegates to the command framework
 - Dependency direction: `ff-plugin` defines traits; `ff-command` implements them
 
-### With `configuration-system` (same wave — provides PluginConfigAccess)
+### With `configuration-system` (same wave -- provides PluginConfigAccess)
 
 - `configuration-system` implements the `PluginConfigAccess` trait
 - Configuration access is scoped: `plugin_name` → `[plugins.{plugin_name}]` namespace
 - Attempts to access keys outside the namespace return `PluginError::ConfigAccessDenied`
 
-### With `virtual-file-system` (Wave 3 — provides PluginVfsAccess)
+### With `virtual-file-system` (Wave 3 -- provides PluginVfsAccess)
 
 - `virtual-file-system` implements the `PluginVfsAccess` trait
 - Plugins access files through VFS URIs (`vfs://provider/path`)
@@ -978,7 +978,7 @@ version = "1.0.0"
 - Plugins share an address space but interact ONLY through `PluginContext`
 - No plugin can reference another plugin's internal state (Req 7 AC 4)
 - Configuration is scoped per-plugin (Req 7 AC 5)
-- VFS-only file access — no `std::fs` exposed (Req 7 AC 2)
+- VFS-only file access -- no `std::fs` exposed (Req 7 AC 2)
 - Capability registrations are stamped with owner identity (Req 7 AC 6)
 - Network access requires explicit capability declaration (Req 7 AC 3)
 
@@ -1023,7 +1023,7 @@ These properties are suitable for property-based testing with `proptest`. They v
 
 ### Property 2: Dependency Graph Acyclicity After Validation
 
-**Statement**: For any set of plugins with arbitrary dependency declarations, after the registry's validation phase, the resolved dependency graph (excluding rejected plugins) is always a DAG — it contains no cycles.
+**Statement**: For any set of plugins with arbitrary dependency declarations, after the registry's validation phase, the resolved dependency graph (excluding rejected plugins) is always a DAG -- it contains no cycles.
 
 **Validates**: Requirement 3 AC 3, AC 4
 
@@ -1062,7 +1062,7 @@ These properties are suitable for property-based testing with `proptest`. They v
 
 ### Property 5: Capability Registry Consistency
 
-**Statement**: After any sequence of register/unregister operations, querying by type returns exactly the set of capabilities that have been registered and not yet unregistered — no phantom entries, no missing entries.
+**Statement**: After any sequence of register/unregister operations, querying by type returns exactly the set of capabilities that have been registered and not yet unregistered -- no phantom entries, no missing entries.
 
 **Validates**: Requirement 4 AC 2, AC 3
 
