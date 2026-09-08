@@ -30,9 +30,9 @@ summary short and link to the detailed task list.
 | Phase CS -- Test Warning Cleanup | DONE | All cargo test warnings eliminated across workspace | [project-master tasks](../specs/project-master/tasks.md) |
 | Phase CT -- Workbench/Workspace/Context Terminology | DONE | All 7 tasks complete -- 69 specs updated | [project-master tasks](../specs/project-master/tasks.md) |
 | Phase CU -- Menu Workspace Pattern | DONE | All 8 implementation tasks complete -- TabKind, loader, hot-reload, render, dispatch, defaults | [project-master tasks](../specs/project-master/tasks.md) |
-| Phase CV -- POM Redesign Spec | NEXT | Depends on CU: revise POM option list, define menus/pom.toml | [project-master tasks](../specs/project-master/tasks.md) |
-| Phase CW -- Settings Menu Spec | NEXT | Depends on CU: restructure Settings Context as Menu Workspace | [project-master tasks](../specs/project-master/tasks.md) |
-| Phase CX -- Named Workspaces + KEYS + SPLIT | NEXT | Spec + implementation: Workspace names, KEYS <name>, SPLIT command | [project-master tasks](../specs/project-master/tasks.md) |
+| Phase CV -- POM Redesign | Spec DONE, impl NEXT | Spec complete (CV.1-CV.5). CV-impl pending: DEFAULT_POM_TOML, route options 9/S/B, BUILT_IN_OPTIONS (Tasks 9-12) | [menu-workspace tasks](../specs/menu-workspace/tasks.md) |
+| Phase CW -- Settings Menu | Spec DONE, impl NEXT | Spec complete (CW.1-CW.4). CW-impl pending: DEFAULT_SETTINGS_TOML, namespace view routing (Tasks 13-15) | [menu-workspace tasks](../specs/menu-workspace/tasks.md) |
+| Phase CX -- Named Workspaces + KEYS + SPLIT | DONE | Spec + implementation complete (CX.1-CX.7) | [project-master tasks](../specs/project-master/tasks.md) |
 | Phase CZ -- FFTest Script Suite | DONE | All 9 deliverables complete | [project-master tasks](../specs/project-master/tasks.md) |
 | Deferred connectors | DEFERRED | Network, FTP/SFTP, mainframe, and cloud connectors | [connector specs](../specs/) |
 
@@ -47,7 +47,7 @@ summary short and link to the detailed task list.
 
 ## Active work item
 
-**Current focus:** Phase CU -- Menu Workspace Pattern (spec only). Next step: create `docs/specs/menu-workspace/` sub-project with requirements.md, design.md, and tasks.md. No source code changes until spec is approved.
+**Current focus:** Phase CV-impl -- POM Redesign implementation. The Menu Workspace pattern (CU), POM redesign spec (CV), Settings menu spec (CW), and Named Workspaces (CX) are complete. The CV and CW specs are approved; their implementations (menu-workspace Tasks 9-15) are the next code work. Start with CV-impl Tasks 9-12 (DEFAULT_POM_TOML + option 9/S/B routing).
 
 ### Phase CQ -- Enterprise Features (next)
 
