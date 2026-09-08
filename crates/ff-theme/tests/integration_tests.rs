@@ -8,15 +8,10 @@ use std::sync::Arc;
 use ff_theme::api::ThemeApi;
 use ff_theme::colour::ColourRGBA;
 use ff_theme::defaults;
-use ff_theme::design_tokens::SpacingLevel;
-use ff_theme::element::Element;
 use ff_theme::event::ThemeEvent;
 use ff_theme::extension::{ExtensionToken, ThemeExtension};
-use ff_theme::font::ZoomLevel;
 use ff_theme::loader::load_from_toml;
 use ff_theme::mode::VisualMode;
-use ff_theme::palette::ThemePalette;
-use ff_theme::serialiser;
 use ff_theme::style_slot::{StyleSlot, StyleSlotTable};
 use ff_theme::token::ColourToken;
 

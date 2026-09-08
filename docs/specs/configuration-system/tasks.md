@@ -515,24 +515,24 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
     - Validates: Requirement 17.1, 17.3, 17.4, 17.6, 17.8, 17.9
   - [ ] 31.7 Run `cargo test -p ff-config` -- confirm green
 
-- [ ] 32. Locked Configuration Keys (Requirement 18)
-  - [ ] 32.1 Add `KeyLocked { key: String }` variant to `ConfigError` with message `"[config] lock: key '{key}' is locked by system policy and cannot be modified"`
+- [x] 32. Locked Configuration Keys (Requirement 18)
+  - [x] 32.1 Add `KeyLocked { key: String }` variant to `ConfigError` with message `"[config] lock: key '{key}' is locked by system policy and cannot be modified"`
     - Validates: Requirement 18.7
-  - [ ] 32.2 Parse `[_locked].locked_keys` from system-layer TOML into `HashSet<String>` on `ConfigSystem`
+  - [x] 32.2 Parse `[_locked].locked_keys` from system-layer TOML into `HashSet<String>` on `ConfigSystem`
     - Validates: Requirement 18.1
-  - [ ] 32.3 Enforce locked keys in merger: after computing winning layer, override with system-layer value for locked keys; emit DEBUG log when a higher-priority layer value is suppressed
+  - [x] 32.3 Enforce locked keys in merger: after computing winning layer, override with system-layer value for locked keys; emit DEBUG log when a higher-priority layer value is suppressed
     - Validates: Requirement 18.2, 18.4
-  - [ ] 32.4 Guard `set_user_value()`: return `ConfigError::KeyLocked` if key is in locked set
+  - [x] 32.4 Guard `set_user_value()`: return `ConfigError::KeyLocked` if key is in locked set
     - Validates: Requirement 18.3
-  - [ ] 32.5 Add `is_locked(key: &str) -> bool` to `ConfigHandle`
+  - [x] 32.5 Add `is_locked(key: &str) -> bool` to `ConfigHandle`
     - Validates: Requirement 18.5
-  - [ ] 32.6 Update Settings panel in `ff-desktop`: call `is_locked()` per key; disable widget and Reset button; show "LOCKED" badge when true
+  - [x] 32.6 Update Settings panel in `ff-desktop`: call `is_locked()` per key; disable widget and Reset button; show "LOCKED" badge when true
     - Validates: Requirement 18.6
-  - [ ] 32.7 Wire hot-reload of system layer to recompute locked set and re-merge affected keys
+  - [x] 32.7 Wire hot-reload of system layer to recompute locked set and re-merge affected keys
     - Validates: Requirement 18.8
-  - [ ] 32.8 Write unit tests: `locked_key_uses_system_value_despite_user_override`, `set_user_value_locked_key_returns_error`, `is_locked_returns_true_for_locked_key`, `is_locked_returns_false_for_unlocked_key`, `hot_reload_locked_keys_list_recomputes_effective_values`, `higher_layer_value_silently_ignored_for_locked_key`
+  - [x] 32.8 Write unit tests: `locked_key_uses_system_value_despite_user_override`, `set_user_value_locked_key_returns_error`, `is_locked_returns_true_for_locked_key`, `is_locked_returns_false_for_unlocked_key`, `hot_reload_locked_keys_list_recomputes_effective_values`, `higher_layer_value_silently_ignored_for_locked_key`
     - Validates: Requirement 18.1, 18.2, 18.3, 18.4, 18.5, 18.8
-  - [ ] 32.9 Run `cargo test --workspace` -- confirm green
-  - [ ] 32.10 Run `cargo clippy -- -D warnings` -- confirm clean
-  - [ ] 32.11 Update `docs/quality/TCR.md` -- add rows for Req 16, 17, 18
-  - [ ] 32.12 Update `docs/specs/project-master/tasks.md` -- add Phase CQ section
+  - [x] 32.9 Run `cargo test --workspace` -- confirm green
+  - [x] 32.10 Run `cargo clippy -- -D warnings` -- confirm clean
+  - [x] 32.11 Update `docs/quality/TCR.md` -- add rows for Req 16, 17, 18
+  - [x] 32.12 Update `docs/specs/project-master/tasks.md` -- add Phase CQ section

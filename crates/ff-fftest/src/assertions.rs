@@ -214,6 +214,76 @@ pub fn evaluate_control_value(
     }
 }
 
+/// Evaluate `ASSERT CONTEXT IS "<context-name>"`.
+///
+/// Queries `shell.active_context` and compares case-insensitively.
+///
+/// Validates: Requirement 11.2, 11.5
+pub fn evaluate_context_is(context: &str, registry: &dyn AutomationRegistry) -> AssertionResult {
+    let assertion_text = format!("ASSERT CONTEXT IS \"{context}\"");
+    let id = AutomationId::new("shell.active_context");
+    match registry.query(&id) {
+        Some(state) => {
+            let actual = state.value.as_deref().unwrap_or("");
+            if actual.eq_ignore_ascii_case(context) {
+                AssertionResult::pass(assertion_text)
+            } else {
+                AssertionResult::fail(
+                    assertion_text,
+                    "active context does not match expected",
+                    Some(context.to_string()),
+                    Some(actual.to_string()),
+                )
+            }
+        }
+        None => AssertionResult::fail(
+            assertion_text,
+            "shell.active_context control not registered",
+            Some(context.to_string()),
+            None,
+        ),
+    }
+}
+
+/// Evaluate `ASSERT WORKSPACE COUNT IS <n>`.
+///
+/// Queries `shell.workspace_count` and compares its integer value to `n`.
+///
+/// Validates: Requirement 11.4, 11.5
+pub fn evaluate_workspace_count_is(
+    expected: usize,
+    registry: &dyn AutomationRegistry,
+) -> AssertionResult {
+    let assertion_text = format!("ASSERT WORKSPACE COUNT IS {expected}");
+    let id = AutomationId::new("shell.workspace_count");
+    match registry.query(&id) {
+        Some(state) => {
+            let raw = state.value.as_deref().unwrap_or("0");
+            match raw.parse::<usize>() {
+                Ok(actual) if actual == expected => AssertionResult::pass(assertion_text),
+                Ok(actual) => AssertionResult::fail(
+                    assertion_text,
+                    "workspace count does not match expected",
+                    Some(expected.to_string()),
+                    Some(actual.to_string()),
+                ),
+                Err(_) => AssertionResult::fail(
+                    assertion_text,
+                    format!("shell.workspace_count value '{raw}' is not a valid integer"),
+                    Some(expected.to_string()),
+                    Some(raw.to_string()),
+                ),
+            }
+        }
+        None => AssertionResult::fail(
+            assertion_text,
+            "shell.workspace_count control not registered",
+            Some(expected.to_string()),
+            None,
+        ),
+    }
+}
+
 // === Tests ==================================================================
 
 #[cfg(test)]
@@ -293,6 +363,59 @@ mod tests {
     fn window_exists_fails_when_label_differs() {
         let reg = registry_with("shell.window", ControlState::with_label("Other"));
         let result = evaluate_window_exists("My Window", &reg);
+        assert!(!result.passed);
+    }
+
+    // Validates: Requirement 11.2 -- ASSERT CONTEXT IS passes on case-insensitive match
+    #[test]
+    fn context_is_passes_on_case_insensitive_match() {
+        let reg = registry_with("shell.active_context", ControlState::with_value("Home"));
+        let result = evaluate_context_is("home", &reg);
+        assert!(result.passed);
+    }
+
+    // Validates: Requirement 11.2 -- ASSERT CONTEXT IS fails when context differs
+    #[test]
+    fn context_is_fails_when_context_differs() {
+        let reg = registry_with("shell.active_context", ControlState::with_value("Editor"));
+        let result = evaluate_context_is("Home", &reg);
+        assert!(!result.passed);
+        assert_eq!(result.expected.as_deref(), Some("Home"));
+        assert_eq!(result.actual.as_deref(), Some("Editor"));
+    }
+
+    // Validates: Requirement 11.5 -- ASSERT CONTEXT IS fails when control absent
+    #[test]
+    fn context_is_fails_when_control_absent() {
+        let reg = InMemoryAutomationRegistry::new();
+        let result = evaluate_context_is("Home", &reg);
+        assert!(!result.passed);
+        assert!(result.failure_reason.is_some());
+    }
+
+    // Validates: Requirement 11.4 -- ASSERT WORKSPACE COUNT IS passes on match
+    #[test]
+    fn workspace_count_passes_on_match() {
+        let reg = registry_with("shell.workspace_count", ControlState::with_value("3"));
+        let result = evaluate_workspace_count_is(3, &reg);
+        assert!(result.passed);
+    }
+
+    // Validates: Requirement 11.5 -- ASSERT WORKSPACE COUNT IS fails on mismatch
+    #[test]
+    fn workspace_count_fails_on_mismatch() {
+        let reg = registry_with("shell.workspace_count", ControlState::with_value("2"));
+        let result = evaluate_workspace_count_is(3, &reg);
+        assert!(!result.passed);
+        assert_eq!(result.expected.as_deref(), Some("3"));
+        assert_eq!(result.actual.as_deref(), Some("2"));
+    }
+
+    // Validates: Requirement 11.5 -- ASSERT WORKSPACE COUNT IS fails when control absent
+    #[test]
+    fn workspace_count_fails_when_control_absent() {
+        let reg = InMemoryAutomationRegistry::new();
+        let result = evaluate_workspace_count_is(1, &reg);
         assert!(!result.passed);
     }
 }

@@ -492,7 +492,6 @@ mod tests {
     fn catalog_registry_allocate_writes_to_sqlite() {
         // Validates: Requirement 13.1
         use ff_dscatalog::{
-            catalog::CatalogMount,
             dataset::{AllocParams as DsAllocParams, Dsorg as DsDsorg},
             hierarchy::CatalogScope,
             repository::Repository,
@@ -622,7 +621,7 @@ mod tests {
             hierarchy::CatalogScope,
         };
 
-        let mut reg = CatalogRegistry::new();
+        let reg = CatalogRegistry::new();
         let params = DsAllocParams {
             dsn: ff_dscatalog::dsn::Dsn::parse("TEST.DS").unwrap(),
             dsorg: DsDsorg::PS,

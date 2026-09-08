@@ -519,15 +519,55 @@
 > Adds audit logging, settings export/import, and locked config keys to `ff-config`.
 > Extends configuration-system/requirements.md with Requirements 16-18.
 
-- [ ] CQ.1 Requirements gate -- configuration-system/requirements.md Req 16-18, design.md Section 12, tasks.md Tasks 30-32, TCR rows
-- [ ] CQ.2 Audit logging -- AuditEntry, AuditLog ring buffer, file persistence, query API (Task 30)
-- [ ] CQ.3 Settings export/import -- ExportScope, ImportTarget, ImportSummary, export/import pipeline (Task 31)
-- [ ] CQ.4 Locked config keys -- KeyLocked error, locked_keys enforcement in merger, is_locked API, Settings panel lock indicator (Task 32)
-- [ ] CQ.5 TCR update + cargo test --workspace green (Task 32.11-32.12)
+- [x] CQ.1 Requirements gate -- configuration-system/requirements.md Req 16-18, design.md Section 12, tasks.md Tasks 30-32, TCR rows
+- [x] CQ.2 Audit logging -- AuditEntry, AuditLog ring buffer, file persistence, query API (Task 30)
+- [x] CQ.3 Settings export/import -- ExportScope, ImportTarget, ImportSummary, export/import pipeline (Task 31)
+- [x] CQ.4 Locked config keys -- KeyLocked error, locked_keys enforcement in merger, is_locked API, Settings panel lock indicator (Task 32)
+- [x] CQ.5 TCR update + cargo test --workspace green (Task 32.11-32.12)
 
 ---
 
-## Summary (updated after Phase BT complete -- Phase CO pending)
+### Phase CR -- OS Theme Follow + Macro Library Management (CR-NR-043)
+
+> Adds OS dark/light mode follow to ff-theme/ff-desktop and a Macro Library
+> management panel (POM option 6) to ff-desktop.
+> Extends theme-and-appearance/requirements.md Req 16 and
+> lua-macro-engine/requirements.md Req 12.
+
+- [x] CR.1 Requirements gate -- theme-and-appearance Req 16, lua-macro-engine Req 12, tasks, TCR rows
+- [x] CR.2 OS dark/light mode follow -- theme.follow_os config key, frame-level OS detection, Settings panel checkbox
+- [x] CR.3 Macro Library panel -- TabKind::MacroLibrary, MACROS command, =6 fastpath, list/run/edit/delete/filter
+- [x] CR.4 TCR update + cargo test --workspace green
+
+
+### Phase CS -- Test Warning Cleanup (CR-NR-044)
+
+> REFACTOR -- no requirements gate. Eliminates all compiler warnings in test code
+> across the workspace. Categories: unused imports, unused variables, unnecessary mut,
+> unused doc comments, dead code in test helpers. All pre-existing; none introduced
+> by Phase CR. Uses `cargo fix` where safe; manual edits for the remainder.
+
+- [x] CS.1 Run `cargo fix --tests --workspace` and review changes
+- [x] CS.2 Fix remaining warnings not covered by cargo fix (unused doc comments, dead code)
+- [x] CS.3 Run verify.ps1 -- ai-review.log must contain zero warning lines
+
+
+### Phase CT -- Workbench/Workspace/Context Terminology Standardisation (CR-CH-009)
+
+> Documentation-only pass. Applies the three-level Workbench/Workspace/Context model
+> agreed in the post-CS terminology discussion across all 69 sub-project specifications,
+> the canonical source documents, and the .amazonq/rules/ steering files.
+> No source code changes. No requirements gate (documentation refactor only).
+
+- [x] CT.1 Update canonical source documents: terminology-map.md, architecture-brief.md, README.md
+- [x] CT.2 Update Workbench Shell specs: startup-and-session, menu-and-statusbar, function-keys-and-history, layout-and-docking, theme-and-appearance, view-zoom, line-wrap-toggle
+- [x] CT.3 Update Explorer/Catalog specs: virtual-catalog-manager, file-tree-panel, dataset-catalog, dataset-allocator, virtual-file-system
+- [x] CT.4 Update UX/Shell-adjacent specs: accessibility, plugin-manager-ui, notification-system, plugin-architecture, configuration-system, logging-subsystem, platform-core
+- [x] CT.5 Update Content Editor specs: edit-operations, find-and-replace, undo-redo-transactions, caret-and-selection, clipboard-operations, viewport-and-scrolling, display-line-mapping, document-model, encoding-and-characters, background-io, file-operations, external-modification, multi-tab-editor
+- [x] CT.6 Update remaining specs (bulk pass): all remaining sub-projects not covered in CT.2-CT.5
+- [x] CT.7 Update .amazonq/rules/ steering files: specs.md, tdd-and-testing.md, rust-coding-standards.md, new-requirements-gate.md
+
+
 
 | Status | Count |
 |--------|-------|
@@ -537,7 +577,7 @@
 | `[x]` Phase CP complete | Batch Command Execution (CP.1-CP.11) |
 | `[x]` Phase W.5 complete | Generic ToolchainPlugin trait -- MockToolchain, audit, CI constraint |
 | Test count | 731 passing, 0 failures |
-| Active work | Phase CQ -- Enterprise Features (requirements gate pending) |
+| Active work | Phase CQ -- Enterprise Features COMPLETE. All 5 deliverables done. |
 
 ### Phase CO -- Accessibility, Plugin Manager UI, and Notification System (CR-NR-040)
 
@@ -954,6 +994,84 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 
 ## Summary (current -- updated after full sub-project audit)
 
+### Phase CU -- Menu Workspace Pattern (CR-NR-045) -- SPEC ONLY
+
+> Defines the Menu Workspace as a first-class pattern: a Workspace whose Context is a
+> list of options loaded from a TOML config file. The POM becomes an instance of this
+> pattern. No source code changes until spec is approved and Phase CU implementation
+> is explicitly started.
+
+- [x] CU.1 Create `docs/specs/menu-workspace/requirements.md` (Reqs 1-4: definition, chaining, POM-as-menu, per-menu config file)
+- [x] CU.2 Create `docs/specs/menu-workspace/design.md` (architecture: MenuWorkspaceState, TOML loader, hot-reload, chained path resolver)
+- [x] CU.3 Create `docs/specs/menu-workspace/tasks.md` (implementation tasks, numbered from 1)
+- [x] CU.4 Update `docs/specs/startup-and-session/requirements.md` Req 14.3 to reference Menu Workspace pattern
+- [x] CU.5 Update `docs/quality/TCR.md` with CR-NR-045 NOT COVERED rows
+- [x] CU.6 Add `menu-workspace` to `.amazonq/rules/specs.md` sub-project list
+
+---
+
+### Phase CV -- POM Redesign Spec (CR-NR-048) -- SPEC ONLY, depends on CU
+
+> Reviews and revises the POM option list. Defines the default menus/pom.toml content.
+> Depends on Phase CU (Menu Workspace pattern) being approved first.
+
+- [x] CV.1 Review current POM options (0-8) against all implemented functionality
+- [x] CV.2 Define revised 12-option list (0-8 unchanged, add 9/S/B for Jobs/Search/Batch)
+- [x] CV.3 Create `docs/specs/menu-workspace/cv-requirements.md` (Reqs 6-8: option list, pom.toml content, Req 14.3 update)
+- [x] CV.4 Update `docs/specs/startup-and-session/requirements.md` Req 14.3 with revised 12-option list
+- [x] CV.5 Update `docs/quality/TCR.md` with CR-NR-048 NOT COVERED rows
+
+---
+
+### Phase CW -- Settings as a Menu Workspace (CR-NR-047) -- SPEC ONLY, depends on CU
+
+> Restructures the Settings Context as a Menu Workspace. Defines the default
+> menus/settings.toml content with one option per major config namespace.
+> Depends on Phase CU (Menu Workspace pattern) being approved first.
+
+- [x] CW.1 Create `docs/specs/menu-workspace/cw-requirements.md` (Reqs 9-12: Settings_Menu, namespace view, settings.toml content, Req 15 update)
+- [x] CW.2 Define 10-option Settings_Menu (E/T/C/V/L/K/S/P/X/A) with Namespaces and All groups
+- [x] CW.3 Update `docs/specs/configuration-system/requirements.md` Req 15 with Phase CW two-level navigation note
+- [x] CW.4 Update `docs/quality/TCR.md` with CR-NR-047 NOT COVERED rows
+
+---
+
+### Phase CX -- Named Workspaces and KEYS + SPLIT Command (CR-NR-046, CR-CH-010)
+
+> Adds user-visible names to Workspaces, extends the KEYS command to accept a name
+> argument, and adds the SPLIT command as an ISPF-heritage alias for Workspace detach.
+> This phase includes both spec updates and implementation.
+
+- [x] CX.1 Update `docs/specs/function-keys-and-history/requirements.md` Req 20 with named Workspace KEYS extension (CR-NR-046)
+- [x] CX.2 Update `docs/specs/layout-and-docking/requirements.md` Req 3 with SPLIT command alias (CR-CH-010)
+- [x] CX.3 Update `docs/quality/TCR.md` with CR-NR-046 and CR-CH-010 NOT COVERED rows
+- [x] CX.4 Implement Workspace name property in `ff-desktop` (TabState gains a `workspace_name: Option<String>` field)
+- [x] CX.5 Implement `KEYS <name>` routing in `ff-desktop` shell command handler
+- [x] CX.6 Implement `SPLIT` command alias in `ff-desktop` (maps to existing detach logic)
+- [x] CX.7 Update `docs/quality/TCR.md` rows to PASS after implementation
+
+---
+
+### Phase CZ -- FFTest Script Suite and Context Inspection (CR-NR-049)
+
+> Extends the FFTest framework with Workspace context inspection assertions and
+> automatic bug report generation. Writes the full FFTest script suite covering
+> all major functional areas.
+
+- [x] CZ.1 Update `docs/specs/automated-dialog-testing/requirements.md` with Reqs 11-13 (context inspection, bug logging, script suite)
+- [x] CZ.2 Update `docs/quality/TCR.md` with CR-NR-049 NOT COVERED rows
+- [x] CZ.3 Implement `ASSERT CONTEXT IS` and `ASSERT WORKSPACE COUNT IS` in `ff-fftest`
+- [x] CZ.4 Implement automatic bug report generation (`reports/bugs-from-tests.md`) in `ff-fftest`
+- [x] CZ.5 Write FFTest script suite: POM navigation, file open/save/close, editor input/undo (tests/dialog/)
+- [x] CZ.6 Write FFTest script suite: catalog create/edit/delete, dataset allocation, settings navigation (tests/dialog/)
+- [x] CZ.7 Write FFTest script suite: key config dialog, compiler context, plugin manager, notification system (tests/dialog/)
+- [x] CZ.8 Write FFTest workflow scripts: batch execution, global search, command palette (tests/workflow/)
+- [x] CZ.9 Update `docs/quality/TCR.md` rows to PASS after implementation
+
+---
+
+## Summary
+
 | Status | Count |
 |--------|-------|
 | `[x]` Complete with real tests | 62 library crates (incl. ff-global-search) + ff-desktop binary |
@@ -967,7 +1085,12 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 | `[x]` Phase BS-C complete | Global Search (BS-C.1-BS-C.5) |
 | `[x]` Phase BT complete | Cross-File Replace + Search History (BT.1-BT.6) |
 | `[~]` compiler-toolchain-integration | Tasks 5.1-5.3 complete -- MockToolchain test double written, trait audited, CI constraint documented (Req 5.1-5.4) |
-| `[ ]` Phase CO pending | Accessibility, Plugin Manager UI, Notification System (CO.1-CO.7) |
+| `[x]` Phase CU complete | Menu Workspace Pattern -- spec only (CU.1-CU.6) |
+| `[x]` Phase CU-impl complete | Menu Workspace Implementation -- TabKind, loader, hot-reload, render, dispatch, defaults (Tasks 1-8) |
+| `[x]` Phase CV complete | POM Redesign Spec -- 12-option list, cv-requirements.md, Req 14.3 updated (CV.1-CV.5) |
+| `[x]` Phase CW complete | Settings Menu Spec -- 10-option Settings_Menu, cw-requirements.md, Req 15 updated (CW.1-CW.4) |
+| `[x]` Phase CX complete | Named Workspaces + KEYS name + SPLIT alias -- spec + implementation (CX.1-CX.7) |
+| `[x]` Phase CZ complete | FFTest Script Suite + Context Inspection (CZ.1-CZ.9) |
 | Sub-project audit | 67 of 69 sub-projects with tasks.md are ALL DONE; 2 have pending items |
-| Test count | 657 passing, 0 failures (cargo test --workspace) |
-| Active work | Phase CO gate -- requirements docs to be written before any code |
+| Test count | 759 passing (ff-desktop), 0 failures (cargo test --workspace after Phase CX) |
+| Active work | Phase CZ -- FFTest Script Suite + Context Inspection (next step) |

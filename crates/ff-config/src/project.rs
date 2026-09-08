@@ -43,7 +43,7 @@ pub fn load_project_config(project_root: &Path) -> Result<Option<LayerData>, Con
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::value::{ConfigTable, ConfigValue};
+    use crate::value::ConfigValue;
     use tempfile::TempDir;
 
     // Validates: Requirement 5.1 — project config loads successfully

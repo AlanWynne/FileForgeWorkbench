@@ -732,7 +732,50 @@ impl WorkbenchShell {
                         }
                     }
                     TabKind::FileExplorerPanel => {
-                        // Rendered above in the is_file_explorer block — unreachable here
+                        // Rendered above in the is_file_explorer block -- unreachable here
+                    }
+                    TabKind::MacroLibrary => {
+                        // Validates: lua-macro-engine Requirement 12.1-12.8
+                        let action =
+                            crate::macro_library_panel::render(ui, &mut self.macro_library_panel);
+                        match action {
+                            crate::macro_library_panel::MacroLibraryAction::Edit(path) => {
+                                let mut p = ff_command::CommandParams::new();
+                                p.insert("path", path.as_str());
+                                let _ = self.dispatch.execute_command("file.open", p);
+                            }
+                            crate::macro_library_panel::MacroLibraryAction::Run(_path) => {
+                                self.open_error =
+                                    Some("Lua execution not yet available".to_string());
+                            }
+                            crate::macro_library_panel::MacroLibraryAction::Delete(path) => {
+                                if let Err(e) = std::fs::remove_file(&path) {
+                                    self.open_error = Some(format!("Delete failed: {e}"));
+                                } else {
+                                    let dirs = self.macro_dirs();
+                                    self.macro_library_panel.refresh(&dirs);
+                                    self.open_error = None;
+                                }
+                            }
+                            crate::macro_library_panel::MacroLibraryAction::None => {}
+                        }
+                    }
+                    TabKind::MenuWorkspace => {
+                        // Validates: menu-workspace Requirement 2.1-2.6
+                        let active_idx = self.tabs.active_index();
+                        if let Some(mw) = self
+                            .tabs
+                            .tabs_mut()
+                            .get_mut(active_idx)
+                            .and_then(|t| t.menu_workspace.as_mut())
+                        {
+                            mw.poll_reload();
+                            if let Some(cmd) =
+                                crate::menu_workspace::render::render_menu_workspace(mw, ui)
+                            {
+                                self.pending_menu_command = Some(cmd);
+                            }
+                        }
                     }
                 }
             });

@@ -37,16 +37,16 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 | Term | Definition | Source |
 |------|-----------|--------|
 | **Startup_Sequence** | The ordered set of operations the workbench performs from process launch to first interactive UI frame. | [FFE-STARTUP] |
-| **Session_State** | The complete serialisable snapshot of the user's workspace at a point in time: open files, tab order, viewport positions, panel layout, active persona, window geometry. | [FFE-STARTUP], [WB] |
+| **Session_State** | The complete serialisable snapshot of the user's Workspace state at a point in time: open Workspaces, their order, viewport positions, panel layout, active persona, window geometry. | [FFE-STARTUP], [WB] |
 | **Session_File** | The persistence file (`session.toml`) in the User_Data_Dir that stores the most recent Session_State for restore on next launch. | [FFE-STARTUP], [WB] |
 | **Recent_Files_List** | An ordered list of recently opened file URIs with associated metadata (timestamp, last viewport position). Distinct from the full Session_State. | [FFE-STARTUP], [SCI] |
 | **Recovery_File** | A per-document periodic snapshot of undo state written by the `undo-redo-transactions` subsystem for crash recovery. | [FFE-STARTUP] |
 | **User_Data_Dir** | The platform-specific directory for user-level persistent data: `~/.config/ffworkbench/` on Linux, `~/Library/Application Support/ffworkbench/` on macOS, `%APPDATA%\ffworkbench\` on Windows. | [FFE-STARTUP], [WB] |
 | **CLI_Source_Arg** | A file path or VFS URI passed as a positional command-line argument when launching the workbench. | [FFE-STARTUP] |
-| **Default_Root** | The process working directory at launch time, used as the File_Tree_Panel root and the base for relative CLI path resolution. | [FFE-STARTUP] |
+| **Default_Root** | The process working directory at launch time, used as the File Explorer Context root and the base for relative CLI path resolution. | [FFE-STARTUP] |
 | **Startup_Phase** | One discrete numbered step within the Startup_Sequence. Each phase has a defined purpose, inputs, outputs, and failure mode. | [WB] |
 | **Degraded_Mode** | An operational state where one or more non-essential subsystems failed to initialise; the workbench remains interactive with reduced functionality. | [FFE-STARTUP] |
-| **Window_Geometry** | The persisted window position (x, y), size (width, height), maximised state, and display identifier for the Primary_Window and all Floating_Windows. | [SCI], [WB] |
+| **Window_Geometry** | The persisted window position (x, y), size (width, height), maximised state, and display identifier for the Primary_Window and all Detached Workspaces. | [SCI], [WB] |
 | **Exit_Sequence** | The ordered set of operations performed when the user requests application shutdown: unsaved-change prompts, session save, plugin shutdown, window close. | [FFE-STARTUP] |
 
 ---
@@ -132,7 +132,7 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
    - Per-tab state for each open file: viewport position (top line, horizontal scroll offset), caret position, selection ranges, active language override (if any), document-specific settings
    - The active tab identifier (which tab was focused at save time)
    - The Layout_State (panel positions, tab group arrangement, splitter sizes, persona name) as defined by `layout-and-docking`
-   - Window_Geometry for the Primary_Window and all Floating_Windows
+   - Window_Geometry for the Primary_Window and all Detached_Workspaces
    - The Recent_Files_List with timestamps and per-file metadata
    - The active configuration profile name (from `configuration-system`)
 2. THE Session_File SHALL be stored as `session.toml` in the User_Data_Dir, using TOML format consistent with the configuration system.
@@ -201,11 +201,11 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 
 #### Acceptance Criteria
 
-1. WHEN the workbench opens in the empty startup state (no file open, no session restore), THE Workbench SHALL display the default Layout_State: File_Tree_Panel in the left dock zone, the editor area (center) with a welcome tab, the command line, the status bar, and the key label bar.
+1. WHEN the workbench opens in the empty startup state (no file open, no session restore), THE Workbench SHALL display the default Layout_State: File Explorer Context in the left dock zone, the editor area (center) with a welcome tab, the command line, the status bar, and the key label bar.
 2. THE welcome tab in the editor area SHALL display a welcome message including the workbench version, a list of recent files (from the Recent_Files_List if available), and quick-action links (Open File, Open Folder, New File).
 3. THE command line SHALL be focused and ready to accept input.
 4. THE status bar SHALL show the workbench version and "No file open".
-5. THE File_Tree_Panel SHALL show the Default_Root (process working directory) as its initial root.
+5. THE File Explorer Context SHALL show the Default_Root (process working directory) as its initial root.
 6. THE user SHALL be able to open a file by: typing a command in the command line (e.g., `OPEN path`), double-clicking in the File_Tree_Panel, using the platform native open dialog (Ctrl+O), clicking a recent file in the welcome tab, or via drag-and-drop onto the workbench window.
 
 ---
@@ -219,7 +219,7 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 #### Acceptance Criteria
 
 1. WHEN `session.save_window_geometry` is `true`, THE Workbench SHALL persist the Window_Geometry of the Primary_Window as part of the Session_State: position (x, y), size (width, height), maximised/fullscreen state, and display identifier.
-2. WHEN `session.save_window_geometry` is `true` and Floating_Windows exist, THE Workbench SHALL persist the Window_Geometry of each Floating_Window, keyed by its panel/tab content identifier.
+2. WHEN `session.save_window_geometry` is `true` and Detached_Workspaces exist, THE Workbench SHALL persist the Window_Geometry of each Detached_Workspace, keyed by its panel/tab content identifier.
 3. WHEN restoring Window_Geometry and the target display is still connected, THE Workbench SHALL position the window at the recorded coordinates and size.
 4. WHEN restoring Window_Geometry and the target display is no longer connected (e.g., laptop undocked from monitor), THE Workbench SHALL reposition the window to the primary display, centred, at the recorded size (clamped to fit the available display).
 5. WHEN restoring Window_Geometry and the recorded position would place the window partially or fully off-screen on the target display (display resolution changed), THE Workbench SHALL clamp the window position and size to ensure it is fully visible.
@@ -298,28 +298,42 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 
 #### Acceptance Criteria
 
-1. WHEN the workbench application starts for the first time (no saved session), THE desktop shell SHALL open with a single tab displaying the Primary Option Menu. [ISPF-POM]
+1. WHEN the workbench application starts for the first time (no saved session), THE desktop shell SHALL open with a single Workspace displaying the Home Context (POM). [ISPF-POM]
 
 1a. WHEN a saved session exists AND the session contains at least one tab of kind PrimaryOptionMenu, THE desktop shell SHALL restore the session to the exact state it was in when last closed -- including all open tabs, their types, and their content. [ISPF-POM]
 
 1b. WHEN a saved session exists AND the session contains NO tab of kind PrimaryOptionMenu, THE desktop shell SHALL restore all saved tabs AND prepend a new PrimaryOptionMenu tab at index 0, so that the POM is always present and reachable on startup. [ISPF-POM]
    *(Added CR-CH-007: resolves B001 -- the POM is the ISPF home screen and must always be present, even when the user closed all POM tabs before the previous exit.)*
 
-2. THE Primary Option Menu tab SHALL display a centred title line in the format `FileForge Workbench — Primary Option Menu` followed by the application version, a numbered list of menu options, and a live calendar panel. [ISPF-POM]
+2. THE Home Context (POM) tab SHALL display a centred title line in the format `FileForge Workbench — Primary Option Menu` followed by the application version, a numbered list of menu options, and a live calendar panel. [ISPF-POM]
 
-3. THE Primary Option Menu SHALL display a numbered list of menu options, each with a short label and a one-line description. The built-in options SHALL be, at minimum:
-   - `0 Settings` — FFWB Settings and Client Parameters
-   - `1 File Catalogs` — Virtual File Catalogs — Mainframe, POSIX, Native
-   - `2 Files` — File Explorer — Browse catalogs and files in a tree view
-   - `3 Utilities` — Perform utility functions
-   - `4 Compilers` — Interactive language processing
-   - `5 Lua Scripts` — Run and manage Lua macros
-   - `6 Terminals` — Enter TSO or Workstation commands
-   - `7 Databases` — Database tool and query browser
-   - `8 Plugins` — Vendor added plugins
+3. THE Primary Option Menu SHALL display a numbered list of menu options, each with a short label and a one-line description. The built-in options SHALL be:
+
+   **Core options (0-8 -- unchanged from Phase AC):**
+   - `0 Settings` -- FFWB Settings and Client Parameters
+   - `1 File Catalogs` -- Virtual File Catalogs -- Mainframe, POSIX, Native
+   - `2 Files` -- File Explorer -- Browse catalogs and files in a tree view
+   - `3 Utilities` -- Perform utility functions
+   - `4 Compilers` -- Interactive language processing
+   - `5 Lua Scripts` -- Run and manage Lua macros
+   - `6 Terminals` -- Enter TSO or Workstation commands
+   - `7 Databases` -- Database tool and query browser
+   - `8 Plugins` -- Vendor added plugins
+
+   **Extended options (added Phase CV):**
+   - `9 Jobs` -- JES job monitor and spool viewer
+   - `S Search` -- Global search and replace across files
+   - `B Batch` -- Batch command execution (IKJEFT01 analogue)
+
    [ISPF-POM]
+   *(Phase CV revised this option list from 9 to 12 options, adding Jobs (9),
+   Search (S), and Batch (B). The POM will be migrated to the Menu Workspace
+   pattern backed by `menus/pom.toml` in Phase CU-impl. See
+   `docs/specs/menu-workspace/requirements.md` and
+   `docs/specs/menu-workspace/cv-requirements.md` for the pattern and
+   content definitions.)*
 
-14.3a Option `1` SHALL be labelled `File Catalogs` with description `Virtual File Catalogs — Mainframe, POSIX, Native`. WHEN selected, it SHALL open the Files_Panel (a unified virtual catalog explorer) rather than the native OS file explorer. [ISPF-POM, WB]
+14.3a Option `1` SHALL be labelled `File Catalogs` with description `Virtual File Catalogs — Mainframe, POSIX, Native`. WHEN selected, it SHALL open the Catalog_Explorer_Context (a unified virtual catalog explorer) rather than the native OS file explorer. [ISPF-POM, WB]
 
 14.3b Option `8` SHALL be labelled `Plugins` with description `Vendor added plugins`. WHEN selected, it SHALL open a Plugins management panel. [ISPF-POM]
 
@@ -327,26 +341,26 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 
 5. THE calendar panel SHALL also display the current time (HH:MM) and the day-of-year number, updated each frame. [ISPF-POM]
 
-6. WHEN the user types a menu option number (e.g., `1`) into the `Command ===>` field of a Primary Option Menu tab and presses Enter, THE shell SHALL transform that tab's content to the corresponding feature view (e.g., option `1` opens a file browser / editor view within the same tab). [ISPF-POM]
+6. WHEN the user types a menu option number (e.g., `1`) into the `Command ===>` field of a Home Context (POM) tab and presses Enter, THE shell SHALL transform that tab's content to the corresponding feature view (e.g., option `1` opens a file browser / editor view within the same tab). [ISPF-POM]
 
 7. THE menu bar SHALL include top-level menus that mirror the Primary Option Menu entries: `Settings`, `File Catalogs`, `Files`, `Utilities`, `Compilers`, `Lua`, `Terminals`, `Databases`, `Plugins`, `Help`. [ISPF-POM]
 
-8. THE workbench tab bar SHALL act as a container for all open tabbed windows. Each tab represents an independent work context (Primary Option Menu, file editor, utility panel, etc.). ALL tabs SHALL be attached by default and MAY be detached into separate floating OS windows. [ISPF-POM, WB]
+8. THE workbench tab bar SHALL act as a container for all open tabbed windows. Each tab represents an independent work context (Home Context (POM), Editor Context, utility panel, etc.). ALL tabs SHALL be attached by default and MAY be detached into separate floating OS windows. [ISPF-POM, WB]
 
 9. WHEN the user right-clicks on the empty space in the tab bar (not on a tab header), THE shell SHALL display a Tab_Bar_Context_Menu with the following items:
-   - `New` — opens a new Primary Option Menu tab
+   - `New` — opens a new Home Context (POM) tab
    - `New File` — opens a new untitled file editor tab
    [ISPF-POM]
 
-10. WHEN the user types `START` in any `Command ===>` field and presses Enter, THE shell SHALL open a new Primary Option Menu tab. [ISPF-POM]
+10. WHEN the user types `START` in any `Command ===>` field and presses Enter, THE shell SHALL open a new Home Context (POM) tab. [ISPF-POM]
 
 11. WHEN the user types `CLOSE` in any `Command ===>` field and presses Enter, THE shell SHALL close the current tab (following unsaved-changes rules). [ISPF-POM]
 
 12. WHEN the user types `EXIT`, `=X`, or presses Ctrl+X in any `Command ===>` field, THE shell SHALL initiate the application exit sequence. [ISPF-POM]
 
-13. THE Primary Option Menu tab title in the tab bar SHALL be displayed as `[POM]` to distinguish it from file tabs. [ISPF-POM]
+13. THE Home Context (POM) tab title in the tab bar SHALL be displayed as `[POM]` to distinguish it from file tabs. [ISPF-POM]
 
-14. A new Primary Option Menu tab SHALL be openable at any time via the `Settings` menu bar entry, by typing `START` in any command field, or by right-clicking the tab bar empty space and selecting `New`. [ISPF-POM]
+14. A new Home Context (POM) tab SHALL be openable at any time via the `Settings` menu bar entry, by typing `START` in any command field, or by right-clicking the tab bar empty space and selecting `New`. [ISPF-POM]
 
 15. WHEN the user right-clicks a Tab_Header, THE shell SHALL display a Tab_Context_Menu whose contents are determined by the kind of the right-clicked tab, as defined in criteria 14.15a–14.15c. [ISPF-POM, WB]
 
@@ -384,7 +398,7 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
    - Reload
    [ISPF-POM, WB]
 
-15c. The Tab_Context_Menu for a Primary Option Menu tab (TabKind::PrimaryOptionMenu) SHALL contain ONLY the universal items listed in 14.15a. No file-specific items SHALL appear — not even in a disabled state. [ISPF-POM]
+15c. The Tab_Context_Menu for a Home Context (POM) tab (TabKind::PrimaryOptionMenu) SHALL contain ONLY the universal items listed in 14.15a. No file-specific items SHALL appear — not even in a disabled state. [ISPF-POM]
 
 16. WHEN `Close` is selected from the Tab_Context_Menu, THE shell SHALL close the right-clicked tab following unsaved-changes confirmation rules. [ISPF-POM]
 
@@ -461,35 +475,35 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 
 ---
 
-### Requirement 19: File Explorer Panel (POM Option 2)
+### Requirement 19: File Explorer Context (POM Option 2)
 
-**User Story:** As an ISPF-familiar operator, I want POM option 2 to open a File Explorer panel that shows all open catalogs as tree nodes with their files listed beneath them, so that I can browse and navigate the file system from a familiar tree interface.
+**User Story:** As an ISPF-familiar operator, I want POM option 2 to open a File Explorer Context that shows all open catalogs as tree nodes with their files listed beneath them, so that I can browse and navigate the file system from a familiar tree interface.
 
 **Source:** [ISPF-POM] option 2 re-definition; [WB] VFS-unified explorer; [FFE-TREE] file tree panel.
 
 #### Acceptance Criteria
 
-1. WHEN the user types `=2` into any `Command ===>` field and presses Enter, THE shell SHALL close the current context (transform the current tab to the File_Explorer_Panel view) and switch the window to the Files context. [ISPF-POM]
+1. WHEN the user types `=2` into any `Command ===>` field and presses Enter, THE shell SHALL close the current context (transform the current tab to the File_Explorer_Context view) and switch the window to the Files context. [ISPF-POM]
 
 2. WHEN the user types `=FILES` (case-insensitive) into any `Command ===>` field and presses Enter, THE shell SHALL close the current context and switch the window to the Files context, identical to `=2`. [ISPF-POM]
 
 3. WHEN the user types `FILES` (case-insensitive, without the `=` prefix) into any `Command ===>` field and presses Enter, THE shell SHALL open a NEW tab in the Files context without closing the current tab. [ISPF-POM]
 
-4. WHEN the user selects option `2` from the Primary Option Menu (by clicking the option button or typing `2` in the command field of a POM tab), THE shell SHALL transform the current POM tab into a File_Explorer_Panel tab with title `[FILES]`. [ISPF-POM]
+4. WHEN the user selects option `2` from the Primary Option Menu (by clicking the option button or typing `2` in the command field of a POM tab), THE shell SHALL transform the current POM tab into a File_Explorer_Context tab with title `[FILES]`. [ISPF-POM]
 
-5. THE File_Explorer_Panel SHALL display a tree view where each open/mounted catalog appears as a top-level expandable node, labelled with the catalog name. [WB, FFE-TREE]
+5. THE File_Explorer_Context SHALL display a tree view where each open/mounted catalog appears as a top-level expandable node, labelled with the catalog name. [WB, FFE-TREE]
 
-6. WHEN a catalog node is expanded, THE File_Explorer_Panel SHALL list the files and datasets belonging to that catalog as child nodes in the tree, using the same node types and icons as the `file-tree-panel` specification (sequential datasets, PDS members, directories, files). [FFE-TREE]
+6. WHEN a catalog node is expanded, THE File_Explorer_Context SHALL list the files and datasets belonging to that catalog as child nodes in the tree, using the same node types and icons as the `file-tree-panel` specification (sequential datasets, PDS members, directories, files). [FFE-TREE]
 
-7. THE File_Explorer_Panel tree SHALL include a node for each catalog type registered in the Catalog_Registry: Mainframe catalogs, POSIX catalogs, and Native catalogs, each grouped under their respective section headers. [WB]
+7. THE File_Explorer_Context tree SHALL include a node for each catalog type registered in the Catalog_Registry: Mainframe catalogs, POSIX catalogs, and Native catalogs, each grouped under their respective section headers. [WB]
 
-8. WHEN no catalogs are mounted, THE File_Explorer_Panel SHALL display a placeholder message "No catalogs open — use File Catalogs (option 1) to create or mount a catalog" in the tree area. [WB]
+8. WHEN no catalogs are mounted, THE File_Explorer_Context SHALL display a placeholder message "No catalogs open — use File Catalogs (option 1) to create or mount a catalog" in the tree area. [WB]
 
-9. WHEN the user double-clicks a file node or PDS member node in the File_Explorer_Panel tree, THE shell SHALL open that file in a new editor tab. [FFE-TREE]
+9. WHEN the user double-clicks a file node or PDS member node in the File_Explorer_Context tree, THE shell SHALL open that file in a new editor tab. [FFE-TREE]
 
-10. WHEN the user presses F3 or types `END` in the File_Explorer_Panel command field, THE shell SHALL return the tab to the Primary Option Menu view. [ISPF-POM]
+10. WHEN the user presses F3 or types `END` in the File_Explorer_Context command field, THE shell SHALL return the Workspace to the Home Context (POM) view. [ISPF-POM]
 
-11. THE File_Explorer_Panel tab title in the tab bar SHALL be displayed as `[FILES]` to distinguish it from file editor tabs and the POM tab. [ISPF-POM]
+11. THE File_Explorer_Context tab title in the tab bar SHALL be displayed as `[FILES]` to distinguish it from file editor tabs and the POM tab. [ISPF-POM]
 
 12. THE `[FILES]` tab kind SHALL be persisted in the session and restored on next launch as a `FileExplorerPanel` tab kind. [WB]
 

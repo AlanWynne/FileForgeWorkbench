@@ -422,7 +422,7 @@ mod tests {
     #[test]
     fn register_requests_idle_callback() {
         // Validates: Requirement 3 AC 5, Requirement 11 AC 3
-        let notifier = ManualIdleNotifier::new();
+        let _notifier = ManualIdleNotifier::new();
         // We need to share the notifier to inspect it — use a simple approach
         let mut sched = make_scheduler();
         // After register, state should be WaitingForIdle

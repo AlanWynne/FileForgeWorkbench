@@ -84,10 +84,28 @@ impl WorkbenchShell {
             return;
         }
 
-        // ── KEYS — Validates: Requirement 20.1 ————————————————————————————
+        // ── KEYS -- Validates: Requirement 20.1, CX Requirement 2.1-2.4 ──────
         if upper == "KEYS" {
             self.key_config_dialog.open = true;
+            self.key_config_dialog.initial_scope = None;
             self.open_error = None;
+            return;
+        }
+        if upper.starts_with("KEYS ") {
+            // Validates: CX Requirement 2.2, 2.3, 2.4
+            let name = cmd.trim()[5..].trim().to_lowercase();
+            self.key_config_dialog.open = true;
+            self.key_config_dialog.initial_scope = Some(name.clone());
+            // Status message if name not found -- dialog will show Default scope
+            let known = ["pom", "editor", "settings", "files", "hex", "toolchain"];
+            if !known.contains(&name.as_str()) {
+                self.open_error = Some(format!(
+                    "Key map '{}' not found -- showing Default map.",
+                    name
+                ));
+            } else {
+                self.open_error = None;
+            }
             return;
         }
 
@@ -265,6 +283,44 @@ impl WorkbenchShell {
                     .transform_active_pom_tab(TabKind::PluginManager, "[PLUGINS]");
             } else {
                 self.tabs.open_plugin_manager_tab(&self.runtime);
+            }
+            self.open_error = None;
+            return;
+        }
+
+        // Phase CV -- Extended POM options
+        // Validates: Requirement 6.2 (cv-requirements.md)
+        if upper == "9" || upper == "JOBS" {
+            self.open_error = Some(
+                "JES job monitor: use STATUS or SUBMIT commands. Interactive JES panel not yet available."
+                    .to_string(),
+            );
+            return;
+        }
+
+        // Validates: Requirement 6.3 (cv-requirements.md)
+        if upper == "S" || upper == "=S" {
+            self.open_or_focus_search_panel();
+            self.open_error = None;
+            return;
+        }
+
+        // Validates: Requirement 6.4 (cv-requirements.md)
+        if upper == "B" || upper == "BATCH" {
+            self.open_error = Some(
+                "Batch execution is available via the --batch CLI flag or the BATCH command."
+                    .to_string(),
+            );
+            return;
+        }
+
+        if upper == "6" || upper == "=6" || upper == "MACROS" {
+            // Validates: lua-macro-engine Requirement 12.1 -- option 6 opens Macro Library
+            if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
+                self.tabs
+                    .transform_active_pom_tab(TabKind::MacroLibrary, "[MACROS]");
+            } else {
+                self.tabs.open_macro_library_tab(&self.runtime);
             }
             self.open_error = None;
             return;
@@ -621,8 +677,56 @@ impl WorkbenchShell {
             }
         }
 
-        // ── SPLIT / SWAP / UNSPLIT (split screen) — Validates: Requirement 19.11-19.14 ──
+        // ── NAME -- Validates: CX Requirement 1.2, 1.3 ──────────────────────
+        if upper == "NAME" {
+            // Clear workspace name
+            self.tabs.active_tab_mut().workspace_name = None;
+            self.open_error = None;
+            return;
+        }
+        if upper.starts_with("NAME ") {
+            // Set workspace name (max 32 chars)
+            let name = cmd.trim()[5..].trim();
+            let name = if name.len() > 32 { &name[..32] } else { name };
+            self.tabs.active_tab_mut().workspace_name = Some(name.to_string());
+            self.open_error = None;
+            return;
+        }
+
+        // ── SPLIT DETACH -- Validates: CX Requirement 3.1, 3.4 ──────────────
+        if upper == "SPLIT DETACH" {
+            let idx = self.tabs.active_index();
+            let floating_count = self.tabs.tabs().iter().filter(|t| t.is_floating).count();
+            if floating_count >= 16 {
+                self.open_error =
+                    Some("Maximum number of detached Workspaces (16) reached.".to_string());
+            } else {
+                self.tabs.tabs_mut()[idx].is_floating = true;
+                self.detach_pending = Some(idx);
+                self.open_error = None;
+            }
+            return;
+        }
+        // ── SPLIT (no arg) -- Validates: CX Requirement 3.2, 3.3 ──────────────
+        // Non-editor tabs: detach (ISPF SPLIT heritage)
+        // Editor tabs: split-screen (Req 19.11 backward compat)
         if upper == "SPLIT" {
+            let kind = self.tabs.active_tab().kind;
+            let is_editor = matches!(kind, TabKind::FileEditor | TabKind::Untitled);
+            if !is_editor {
+                let idx = self.tabs.active_index();
+                let floating_count = self.tabs.tabs().iter().filter(|t| t.is_floating).count();
+                if floating_count >= 16 {
+                    self.open_error =
+                        Some("Maximum number of detached Workspaces (16) reached.".to_string());
+                } else {
+                    self.tabs.tabs_mut()[idx].is_floating = true;
+                    self.detach_pending = Some(idx);
+                    self.open_error = None;
+                }
+                return;
+            }
+            // Editor tab: split-screen behaviour
             // Split at current cursor line
             let cursor_line = self.tabs.active_tab().cursor.cursor_line();
             self.split_screen = Some(crate::scroll_amount::SplitScreenState::new(
@@ -853,6 +957,24 @@ impl WorkbenchShell {
                 );
             }
             return;
+        }
+
+        // Menu_Workspace option key lookup -- Validates: menu-workspace Requirement 3.1, 3.6, 3.7
+        if self.tabs.active_tab().kind == crate::tab_state::TabKind::MenuWorkspace {
+            if let Some(mw) = self.tabs.active_tab().menu_workspace.as_ref() {
+                if let Some(menu) = mw.menu.as_ref() {
+                    match crate::menu_workspace::commands::lookup_option(cmd.trim(), menu) {
+                        Ok(option_cmd) => {
+                            self.handle_command(&option_cmd);
+                            return;
+                        }
+                        Err(msg) => {
+                            self.open_error = Some(msg);
+                            return;
+                        }
+                    }
+                }
+            }
         }
 
         // ── Route through CommandEngine ──────────────────────────────────

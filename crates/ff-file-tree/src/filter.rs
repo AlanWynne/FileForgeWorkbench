@@ -226,7 +226,7 @@ mod tests {
     #[test]
     fn compute_visible_set_includes_ancestors_of_matches() {
         // Validates: Requirement 9.3 — ancestors of matches are visible
-        use crate::node::{NodeType, TreeNodeData};
+        use crate::node::TreeNodeData;
         use crate::state::TreeState;
 
         let mut state = TreeState::new();

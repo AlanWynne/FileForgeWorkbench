@@ -1,0 +1,28 @@
+# FFTest Workflow Script -- Global Search
+# Functional area: Global Search (Cross-File Search)
+# Validates: Req 13.3 (automated-dialog-testing), Req 1.1, 1.2 (global-search)
+# Expected outcome: GSEARCH command opens Search Results panel
+
+# Open Global Search via command
+TYPE TEXT "GSEARCH"
+PRESS KEY ENTER
+
+ASSERT CONTEXT IS "SearchResults"
+
+CHECKPOINT "global_search_opened"
+
+# Verify the search input is present
+ASSERT CONTROL VALUE "textbox.search_query" ""
+
+# Enter a search term
+CLICK BUTTON "textbox.search_query"
+TYPE TEXT "fn main"
+
+CHECKPOINT "search_term_entered"
+
+# Return to POM
+PRESS KEY F3
+
+ASSERT CONTEXT IS "Home"
+
+CHECKPOINT "global_search_workflow_complete"

@@ -921,8 +921,8 @@ mod tests {
     #[tokio::test]
     async fn startup_with_timeout_dispatches_progress_when_timeout_exceeded() {
         // Validates: Requirement 5.5 — 5-second startup timeout with progress feedback
-        use crate::event_bus::{EventBus, EventCategory, WorkbenchEvent};
-        use std::sync::Arc;
+        use crate::event_bus::{EventBus, WorkbenchEvent};
+
         use std::time::Duration;
 
         let registry = ServiceRegistry::new();

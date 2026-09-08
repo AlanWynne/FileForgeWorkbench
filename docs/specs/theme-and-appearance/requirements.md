@@ -280,11 +280,30 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 3. WHEN a user creates a new `.toml` file in the themes directory, THE Theme_System SHALL make it available as a selectable theme on the next hot-reload cycle or application restart, without requiring any code change.
 4. A user-created theme file SHALL be able to declare `base = "<theme-name>"` to inherit all tokens from a named built-in or previously defined theme, overriding only the tokens it explicitly specifies.
 5. WHEN a user-created theme file omits any colour token, THE Theme_System SHALL inherit that token's value from the declared `base` theme, or from the built-in default for the active Visual_Mode if no `base` is declared.
-6. THE Theme_System SHALL expose the list of all available themes (built-in and user-created) through a queryable API so that the Settings panel and View menu can present them as selectable options.
-7. WHEN the user changes the active theme via the `theme.active` configuration key (through the Settings panel or by editing the config file), THE Theme_System SHALL load and apply the new theme within one hot-reload cycle without application restart.
+6. THE Theme_System SHALL expose the list of all available themes (built-in and user-created) through a queryable API so that the Settings Context and View menu can present them as selectable options.
+7. WHEN the user changes the active theme via the `theme.active` configuration key (through the Settings Context or by editing the config file), THE Theme_System SHALL load and apply the new theme within one hot-reload cycle without application restart.
 8. THE Theme_System SHALL validate every colour token value in a user-created theme file; WHEN an invalid colour format is encountered, THE Theme_System SHALL log a WARN, use the inherited or default value for that token, and continue loading the remainder of the theme.
 9. THE Theme_System SHALL provide a `serialise_theme` function that writes the current active palette to a TOML file in the themes directory, enabling users to export and share their customised theme.
 10. WHEN a user-created theme file specifies a `base` theme that cannot be resolved, THE Theme_System SHALL emit a WARN-level log record and fall back to the built-in default theme for all unresolved tokens.
+
+---
+
+### Requirement 16: OS Dark/Light Mode Follow
+
+**User Story:** As a workbench user, I want the workbench to automatically follow the operating system dark/light mode preference, so that the theme switches without manual intervention when I change my OS appearance setting.
+
+**Source:** Gap analysis medium-priority item: "System theme follow (OS dark/light mode)" -- `theme-and-appearance` gap.
+
+#### Acceptance Criteria
+
+1. THE Theme_System SHALL register a `theme.follow_os` configuration key (boolean, default `false`) that controls whether the workbench automatically follows the OS dark/light preference.
+2. WHEN `theme.follow_os` is `true` AND the OS reports a dark preference, THE Theme_System SHALL set the active Visual_Mode to `Dark` if it is not already `Dark`.
+3. WHEN `theme.follow_os` is `true` AND the OS reports a light preference, THE Theme_System SHALL set the active Visual_Mode to `Light` if it is not already `Light`.
+4. WHEN `theme.follow_os` is `false`, THE Theme_System SHALL NOT change the Visual_Mode in response to OS preference changes; the user-configured `theme.mode` value is used exclusively.
+5. WHEN the OS dark/light preference changes while the workbench is running AND `theme.follow_os` is `true`, THE Theme_System SHALL detect the change within one egui frame and apply the corresponding Visual_Mode switch.
+6. THE OS preference SHALL be detected via `eframe`/`egui`'s `visuals.dark_mode` field on the egui context, which reflects the platform system preference.
+7. WHEN `theme.follow_os` is enabled and the OS preference is applied, THE Theme_System SHALL NOT persist the auto-applied mode to the `theme.mode` config key, so that disabling `theme.follow_os` restores the user's last manually chosen mode.
+8. THE Settings Context SHALL expose `theme.follow_os` as a checkbox widget labelled "Follow OS dark/light mode".
 
 ---
 

@@ -1,0 +1,31 @@
+# FFTest Dialog Script -- File Open, Save, and Close
+# Functional area: Editor Context -- file operations
+# Validates: Req 13.1 (automated-dialog-testing), Req 4.1, 4.2 (file-operations)
+# Expected outcome: file opens in editor, can be saved, tab closes cleanly
+
+VARIABLE TESTFILE "${FFWB_TEST_FIXTURES}/sample.txt"
+
+# Open a file via the EDIT command
+TYPE TEXT "EDIT ${TESTFILE}"
+PRESS KEY ENTER
+
+# Verify an editor tab is now open
+ASSERT FILE OPEN
+
+ASSERT CONTEXT IS "Editor"
+
+CHECKPOINT "file_opened"
+
+# Save the file
+CLICK MENU "file.save"
+
+ASSERT STATUSBAR CONTAINS ""
+
+CHECKPOINT "file_saved"
+
+# Close the tab via END
+PRESS KEY F3
+
+ASSERT CONTEXT IS "Home"
+
+CHECKPOINT "file_closed"

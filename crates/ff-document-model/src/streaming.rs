@@ -122,12 +122,14 @@ mod tests {
     use tokio::io::ReadBuf;
 
     /// A mock AsyncRead that yields data in configured chunks.
+    #[allow(dead_code)]
     struct MockAsyncReader {
         data: Vec<u8>,
         position: usize,
         chunk_size: usize,
     }
 
+    #[allow(dead_code)]
     impl MockAsyncReader {
         fn new(data: Vec<u8>, chunk_size: usize) -> Self {
             Self {

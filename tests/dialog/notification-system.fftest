@@ -1,0 +1,17 @@
+# FFTest Dialog Script -- Notification System
+# Functional area: Notification System and Event Log
+# Validates: Req 13.2 (automated-dialog-testing), Req 2.1 (notification-system)
+# Expected outcome: LOG command opens Event Log panel
+
+# Open Event Log via LOG command
+TYPE TEXT "LOG"
+PRESS KEY ENTER
+
+ASSERT CONTEXT IS "EventLog"
+
+CHECKPOINT "event_log_opened"
+
+# Return to POM
+PRESS KEY F3
+
+ASSERT CONTEXT IS "Home"

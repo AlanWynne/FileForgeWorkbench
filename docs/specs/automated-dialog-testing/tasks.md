@@ -85,3 +85,30 @@
   - Satisfies: Req 7.1, 7.2, 7.3, 7.4
 - [x] 38. Update TCR.md to mark implemented criteria as PASS
   - Satisfies: all criteria above
+
+## Phase CZ -- Context Inspection, Bug Logging, and Script Suite
+
+- [x] 39. Update requirements.md with Reqs 11-13 (context inspection, bug logging, script suite)
+  - Satisfies: gate step
+- [x] 40. Add NOT COVERED rows to docs/quality/TCR.md for Reqs 11-13
+  - Satisfies: gate step
+- [x] 41. Add ASSERT CONTEXT IS and ASSERT WORKSPACE COUNT IS to ff-fftest::parser
+  - Satisfies: Req 11.1, 11.3
+- [x] 42. Add evaluate_context_is() and evaluate_workspace_count_is() to ff-fftest::assertions
+  - Satisfies: Req 11.2, 11.4, 11.5
+- [x] 43. Wire new assertions in ff-fftest::runner
+  - Satisfies: Req 11.2, 11.4
+- [x] 44. Implement BugReporter in ff-fftest::bug_report (append to reports/bugs-from-tests.md)
+  - Satisfies: Req 12.1, 12.2, 12.3, 12.4, 12.5
+- [x] 45. Wire BugReporter into runner: call on each failed assertion step
+  - Satisfies: Req 12.1
+- [x] 46. Write unit tests for new parser commands, assertions, and bug reporter
+  - Satisfies: Req 11.1-11.5, 12.1-12.5
+- [x] 47. Write tests/dialog/ script suite (POM, file ops, editor, catalog, settings)
+  - Satisfies: Req 13.1
+- [x] 48. Write tests/dialog/ script suite (key config, compiler, plugin manager, notifications)
+  - Satisfies: Req 13.2
+- [x] 49. Write tests/workflow/ script suite (batch, global search, command palette)
+  - Satisfies: Req 13.3
+- [x] 50. Update TCR.md rows for Reqs 11-13 to PASS
+  - Satisfies: Req 11-13 coverage

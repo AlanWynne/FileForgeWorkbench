@@ -1,0 +1,36 @@
+# FFTest Dialog Script -- Catalog Create, Edit, and Delete
+# Functional area: Catalog Explorer Context -- virtual catalog management
+# Validates: Req 13.1 (automated-dialog-testing), Req 3, 4 (virtual-catalog-manager)
+# Expected outcome: catalog created, visible in list, then deleted
+
+# Open File Catalogs panel
+TYPE TEXT "1"
+PRESS KEY ENTER
+
+ASSERT CONTEXT IS "FileCatalog"
+
+CHECKPOINT "catalogs_opened"
+
+# Open the Catalog Manager dialog
+CLICK BUTTON "button.catalog_manager_new"
+
+ASSERT WINDOW EXISTS "New Catalog"
+
+CHECKPOINT "new_catalog_dialog_open"
+
+# Fill in catalog name
+CLICK BUTTON "textbox.catalog_name"
+TYPE TEXT "FFTestCatalog"
+
+# Select Native type
+CLICK BUTTON "radio.catalog_type_native"
+
+# Confirm
+CLICK BUTTON "button.catalog_manager_ok"
+
+CHECKPOINT "catalog_created"
+
+# Return to POM
+PRESS KEY F3
+
+ASSERT CONTEXT IS "Home"

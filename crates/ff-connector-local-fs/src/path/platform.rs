@@ -63,7 +63,6 @@ pub fn has_drive_letter(path: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
 
     #[cfg(not(windows))]
     #[test]

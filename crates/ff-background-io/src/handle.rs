@@ -240,7 +240,7 @@ mod tests {
         // Validates: Requirement 2 AC 6
         let (handle, tx) = create_test_handle();
 
-        let mut rx = handle.subscribe_progress();
+        let rx = handle.subscribe_progress();
         let new_state = ProgressState {
             bytes_transferred: 2048,
             total_bytes: Some(4096),

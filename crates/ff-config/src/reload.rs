@@ -15,6 +15,7 @@ use crate::loader::{load_toml_file, LayerData};
 use crate::merger::merge_layers;
 use crate::schema::SchemaRegistry;
 use crate::store::EffectiveStore;
+use crate::value::ConfigTable;
 use crate::watcher::ConfigWatcher;
 
 /// Event describing what changed during a reload.
@@ -420,6 +421,18 @@ impl ReloadManager {
             .map(|l| l.source_path.as_path())
     }
 
+    /// Collect all values from a specific layer as a flat ConfigTable.
+    ///
+    /// Returns the raw (pre-merge) values from the first layer matching
+    /// `layer`. Used by export_settings(UserLayer/ProjectLayer).
+    pub fn layer_values(&self, layer: ConfigLayer) -> ConfigTable {
+        self.layers
+            .iter()
+            .find(|l| l.layer == layer)
+            .map(|l| flatten_config_table(&l.values, ""))
+            .unwrap_or_default()
+    }
+
     /// Reload all layer files. Returns events for each layer that had changes.
     ///
     /// Iterates over all currently loaded layers and re-reads each file.
@@ -438,6 +451,31 @@ impl ReloadManager {
         }
         results
     }
+}
+
+/// Flatten a nested ConfigTable into dot-path keys.
+fn flatten_config_table(
+    table: &crate::value::ConfigTable,
+    prefix: &str,
+) -> crate::value::ConfigTable {
+    let mut result = crate::value::ConfigTable::new();
+    for (k, v) in table {
+        let full_key = if prefix.is_empty() {
+            k.clone()
+        } else {
+            format!("{prefix}.{k}")
+        };
+        match v {
+            crate::value::ConfigValue::Table(sub) => {
+                let sub_flat = flatten_config_table(sub, &full_key);
+                result.extend(sub_flat);
+            }
+            other => {
+                result.insert(full_key, other.clone());
+            }
+        }
+    }
+    result
 }
 
 /// Compute the set of keys whose values differ between two stores.

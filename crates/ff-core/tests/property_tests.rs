@@ -9,8 +9,8 @@ use std::sync::Arc;
 
 use ff_core::error::CoreError;
 use ff_core::event_bus::{
-    CommandOutcome, CommandParams, DocumentId, EventBus, EventCategory, EventFilter,
-    EventSubscription, NotificationSeverity, OperationId, ProgressInfo, WorkbenchEvent,
+    CommandParams, DocumentId, EventBus, EventCategory, EventFilter, EventSubscription,
+    NotificationSeverity, OperationId, ProgressInfo, WorkbenchEvent,
 };
 use ff_core::lifecycle::{
     execute_startup, StartupOrder, Subsystem, SubsystemCriticality, SubsystemDescriptor,
@@ -38,11 +38,10 @@ struct S7(u64);
 struct S8(u64);
 struct S9(u64);
 
-/// **Validates: Requirements 2.2, 2.6**
-///
-/// Registers a random subset of 10 distinct service types in a random order,
-/// then verifies that `get::<T>()` returns `Some` for registered types and
-/// `None` for unregistered types.
+// Validates: Requirements 2.2, 2.6
+// Registers a random subset of 10 distinct service types in a random order,
+// then verifies that `get::<T>()` returns `Some` for registered types and
+// `None` for unregistered types.
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
     #[test]
@@ -170,11 +169,10 @@ fn event_with_category(cat: EventCategory) -> WorkbenchEvent {
     }
 }
 
-/// **Validates: Requirements 3.4, 3.5**
-///
-/// For any set of subscribers each with a filter and any sequence of dispatched
-/// events, every subscriber SHALL receive exactly the events matching its
-/// registered filter — no missed deliveries and no spurious deliveries.
+// Validates: Requirements 3.4, 3.5
+// For any set of subscribers each with a filter and any sequence of dispatched
+// events, every subscriber SHALL receive exactly the events matching its
+// registered filter -- no missed deliveries and no spurious deliveries.
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
     #[test]
@@ -257,10 +255,9 @@ proptest! {
 // Feature: platform-core, Property 3: The dropped event counter on the EventBus
 // is monotonically non-decreasing.
 
-/// **Validates: Requirement 3.7**
-///
-/// For any sequence of dispatch operations, the dropped_count is monotonically
-/// non-decreasing. We use a small capacity to trigger overflow.
+// Validates: Requirement 3.7
+// For any sequence of dispatch operations, the dropped_count is monotonically
+// non-decreasing. We use a small capacity to trigger overflow.
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
     #[test]
@@ -350,10 +347,9 @@ fn name_from_index(idx: u8) -> &'static str {
     }
 }
 
-/// **Validates: Requirements 5.1, 2.4**
-///
-/// For any subset of subsystems provided in any input order, repeated calls to
-/// execute_startup produce the same initialization order every time.
+// Validates: Requirements 5.1, 2.4
+// For any subset of subsystems provided in any input order, repeated calls to
+// execute_startup produce the same initialization order every time.
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
     #[test]
@@ -456,10 +452,9 @@ impl Subsystem for ShutdownTrackingSubsystem {
     }
 }
 
-/// **Validates: Requirement 6.1**
-///
-/// For any set of successfully initialized subsystems, the shutdown sequence
-/// SHALL visit them in the exact reverse order of their initialization.
+// Validates: Requirement 6.1
+// For any set of successfully initialized subsystems, the shutdown sequence
+// SHALL visit them in the exact reverse order of their initialization.
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
     #[test]
@@ -534,22 +529,31 @@ proptest! {
 // frozen state, any registration attempt SHALL fail with an error.
 
 // Additional newtype wrappers for post-freeze registration attempts
+#[allow(dead_code)]
 struct P0(u64);
+#[allow(dead_code)]
 struct P1(u64);
+#[allow(dead_code)]
 struct P2(u64);
+#[allow(dead_code)]
 struct P3(u64);
+#[allow(dead_code)]
 struct P4(u64);
+#[allow(dead_code)]
 struct P5(u64);
+#[allow(dead_code)]
 struct P6(u64);
+#[allow(dead_code)]
 struct P7(u64);
+#[allow(dead_code)]
 struct P8(u64);
+#[allow(dead_code)]
 struct P9(u64);
 
-/// **Validates: Requirement 2.8**
-///
-/// After the Service_Registry transitions to frozen state, any registration
-/// attempt SHALL fail with an error. The set of registered services SHALL
-/// remain unchanged for all subsequent get calls.
+// Validates: Requirement 2.8
+// After the Service_Registry transitions to frozen state, any registration
+// attempt SHALL fail with an error. The set of registered services SHALL
+// remain unchanged for all subsequent get calls.
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
     #[test]

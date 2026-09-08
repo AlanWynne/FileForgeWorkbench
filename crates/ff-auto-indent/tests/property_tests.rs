@@ -9,7 +9,7 @@ use ff_auto_indent::patterns::{c_like_patterns, CompiledPattern};
 use ff_auto_indent::smart::compute_smart_indent;
 use ff_auto_indent::{
     indent_lines, unindent_lines, AutoIndentMode, AutoIndentService, CommentConfig, IndentConfig,
-    IndentContext, IndentDecision, IndentLevel, IndentPatterns, IndentTableRaw,
+    IndentContext, IndentLevel, IndentPatterns, IndentTableRaw,
 };
 
 use proptest::prelude::*;
@@ -264,7 +264,7 @@ proptest! {
     #[test]
     fn property_9_none_mode_no_indent(
         leading_ws in whitespace_strategy(10),
-        content in non_whitespace_content_strategy(),
+        _content in non_whitespace_content_strategy(),
     ) {
         // Feature: ff-auto-indent, Property 9: None mode produces no indentation
         let service = AutoIndentService::new(

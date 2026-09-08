@@ -27,16 +27,16 @@ The Command Field ("Command ===>") is an ISPF heritage element positioned above 
 
 ## Glossary
 
-- **Tab_Window_Chrome**: The three-element header region rendered at the top of every tab's content area, consisting of (1) the Tab_Header row, (2) the Title_Line, and (3) the Primary_Command_Field. This chrome is present whether the tab is docked in the Primary_Window or detached into a Floating_Window.
-- **Title_Line**: A read-only single-line display rendered below the Tab_Header row and above the Primary_Command_Field. Its content is context-dependent: for a POM tab it shows the application name and version; for a file editor tab it shows the full file path; for other tab kinds it shows the tab title.
+- **Tab_Window_Chrome**: The three-element header region rendered at the top of every Workspace's content area, consisting of (1) the Tab_Header row, (2) the Title_Line, and (3) the Primary_Command_Field. This chrome is present whether the Workspace is docked in the Primary_Window or detached into a Detached Workspace.
+- **Title_Line**: A read-only single-line display rendered below the Tab_Header row and above the Primary_Command_Field. Its content is context-dependent: for a Home Context (POM) Workspace it shows the application name and version; for an Editor Context Workspace it shows the full file path; for other Workspace kinds it shows the Workspace title.
 - **Menu_Bar**: The horizontal menu bar rendered at the top of the Primary_Window, containing top-level menu headings (File, Edit, Search, View, Help) that open dropdown submenus when activated. [FFE-MVP-4]
 - **Menu_Item**: An individual entry within a dropdown submenu. Each menu item is bound to a Command_ID in the command framework and displays the command's display name and keyboard shortcut (if any). [FFE-MVP-4, WB]
 - **Menu_Separator**: A visual horizontal divider used to group related menu items within a submenu. [SCI-STE]
 - **Submenu**: A nested menu that appears when hovering or clicking a parent menu item marked as a submenu container. [SCI-STE]
-- **Context_Menu**: A popup menu triggered by a right-click or context-menu key, presenting context-sensitive actions for the clicked element (tab, editor area, panel). [SCI-STE]
+- **Context_Menu**: A popup menu triggered by a right-click or context-menu key, presenting context-sensitive actions for the clicked element (Workspace header, editor area, panel). [SCI-STE]
 - **Status_Bar**: A horizontal bar rendered at the bottom of the Primary_Window, divided into configurable segments that display real-time workbench and editor state. [FFE-MVP-4, WB]
 - **Status_Segment**: An individual display region within the Status_Bar, showing a single piece of information (e.g., line/column, mode, encoding). Each segment has an ID, content provider, alignment, and minimum width. [WB]
-- **Editor_Mode**: The current interaction mode of the active editor: Browse (read-only navigation), Edit (text modification enabled), or View (read-only, no commands). [FFE-MVP-4]
+- **Editor_Mode**: The current interaction mode of the active Editor Context: Browse (read-only navigation), Edit (text modification enabled), or View (read-only, no commands). [FFE-MVP-4]
 - **Insert_Overstrike_State**: Whether typed characters insert at the cursor position (Insert) or overwrite existing characters (Overstrike). [FFE-MVP-4]
 - **Primary_Command_Field**: The single-line text input field labelled "Command ===>" positioned in the command area above the editor, used for direct ISPF-style command entry. [FFE-MVP-4]
 - **Recent_Files_List**: An ordered collection of the most recently opened file paths, displayed as a submenu under the File menu. [SCI-STE]
@@ -378,14 +378,14 @@ know what I am looking at and can issue commands without hunting for the input f
 
 #### Acceptance Criteria
 
-1. WHEN any tab is displayed (whether docked or in a Floating_Window), THE tab's content
+1. WHEN any tab is displayed (whether docked or in a Detached_Workspace), THE tab's content
      area SHALL render the following three elements at the top, in order from top to bottom:
      (1) Tab_Header row, (2) Title_Line, (3) Primary_Command_Field ("Command ===>").
 
 2. THE Title_Line SHALL be a read-only, single-line display rendered between the Tab_Header
      row and the Primary_Command_Field. It SHALL NOT be editable by the user.
 
-3. WHEN the active tab is a Primary Option Menu tab, THE Title_Line SHALL display the
+3. WHEN the active tab is a Home Context (POM) tab, THE Title_Line SHALL display the
      application name and version in the format:
      `FileForge Workbench  vX.Y.Z`
 
@@ -395,7 +395,7 @@ know what I am looking at and can issue commands without hunting for the input f
 5. WHEN the active tab is a file editor tab with no file open (untitled), THE Title_Line
      SHALL display `[Untitled]`.
 
-6. WHEN the active tab is any other tab kind (Settings, Files Panel, etc.), THE Title_Line
+6. WHEN the active tab is any other tab kind (Settings, Catalog Explorer Context, etc.), THE Title_Line
      SHALL display the tab's title string.
 
 7. THE Title_Line SHALL be styled using the active theme's primary text colour and SHALL
@@ -417,35 +417,35 @@ know what I am looking at and can issue commands without hunting for the input f
 independent OS-level window, so that I can arrange my workspace across multiple monitors
 or view content side-by-side independently.
 
-**Source:** Layout-and-docking Requirement 3 (Floating Windows); user requirement (Phase AL).
+**Source:** Layout-and-docking Requirement 3 (Detached Workspaces); user requirement (Phase AL).
 
 #### Acceptance Criteria
 
 1. WHEN the user selects "Move to Other View" from a tab's context menu, THE shell SHALL
-     detach that tab into a new Floating_Window containing the full Tab_Window_Chrome
+     detach that tab into a new Detached_Workspace containing the full Tab_Window_Chrome
      (Tab_Header row, Title_Line, Primary_Command_Field) and the tab's content area.
 
-2. WHILE a tab is in a Floating_Window, THE tab SHALL provide full functionality identical
+2. WHILE a tab is in a Detached_Workspace, THE tab SHALL provide full functionality identical
      to the Primary_Window: the Title_Line SHALL update to reflect the tab's current state,
      the Primary_Command_Field SHALL accept commands, and all keyboard shortcuts SHALL work.
 
-3. WHEN a Floating_Window containing a tab is closed via the OS window close button,
+3. WHEN a Detached_Workspace containing a tab is closed via the OS window close button,
      THE shell SHALL redock the tab back into the Primary_Window's tab bar at its original
      position index; IF that index exceeds the current tab count, THE tab SHALL be appended
      at the end.
 
-4. WHEN a tab is detached into a Floating_Window, THE Primary_Window's tab bar SHALL
+4. WHEN a tab is detached into a Detached_Workspace, THE Primary_Window's tab bar SHALL
      remove that tab's Tab_Header from the bar. WHEN the tab is redocked, THE Tab_Header
      SHALL be restored at the correct position.
 
-5. THE Floating_Window title bar SHALL display the tab's Title_Line content followed by
+5. THE Detached_Workspace title bar SHALL display the tab's Title_Line content followed by
      " — FileForge Workbench", truncated to a maximum of 80 characters if necessary.
 
 6. WHEN the user drags a Tab_Header beyond 20 pixels outside the tab bar boundary and
      releases it outside the Primary_Window, THE shell SHALL detach that tab into a new
-     Floating_Window positioned at the mouse release coordinates.
+     Detached_Workspace positioned at the mouse release coordinates.
 
-7. THE shell SHALL support up to 16 simultaneous Floating_Windows containing detached
+7. THE shell SHALL support up to 16 simultaneous Detached_Workspaces containing detached
      tabs. IF the user attempts to detach a tab beyond this limit, THE shell SHALL display
      a status message and SHALL NOT detach the tab.
 

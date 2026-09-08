@@ -1,0 +1,1 @@
+91:    pub fn with_profile_manager(manager: ReloadManager, profile_manager: ProfileManager) - { 

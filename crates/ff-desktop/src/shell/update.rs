@@ -249,6 +249,14 @@ impl eframe::App for WorkbenchShell {
                 self.tabs.insert_pom_tab(&self.runtime);
             }
 
+            // Validates: menu-workspace Requirement 4.1, 4.2, 4.6 -- create default menu files.
+            if let Some(_session) = &self.session {
+                if let Ok(mut udd) = ff_session::UserDataDir::resolve(None) {
+                    let _ = udd.initialise();
+                    crate::menu_workspace::defaults::ensure_default_menu_files(udd.path());
+                }
+            }
+
             // Startup focus is handled by command_field_focus_requested = true (set in new()).
         }
 
@@ -320,7 +328,10 @@ impl eframe::App for WorkbenchShell {
             }
         }
 
-        // ── Detach pending — Validates: Requirement 18.1, 18.4 ───────────────
+        // Process deferred Menu_Workspace option click -- Validates: menu-workspace Requirement 3.2
+        if let Some(cmd) = self.pending_menu_command.take() {
+            self.handle_command(&cmd);
+        }
         if let Some(idx) = self.detach_pending.take() {
             if let Some(tab) = self.tabs.tabs_mut().get_mut(idx) {
                 tab.is_floating = true;
@@ -370,6 +381,25 @@ impl eframe::App for WorkbenchShell {
                 if let Some(mode) = desired_mode {
                     self.palette = ff_theme::defaults::default_palette_for_mode(mode);
                 }
+            }
+        }
+
+        // OS dark/light mode follow -- Validates: theme-and-appearance Requirement 16.1-16.4
+        // When theme.follow_os is true, read the OS dark/light preference from the egui
+        // context each frame and apply the matching palette without writing to theme.active.
+        let follow_os = self
+            .config_handle
+            .get_bool(ff_config::keys::theme::FOLLOW_OS)
+            .unwrap_or(false);
+        if follow_os {
+            let os_dark = ctx.style().visuals.dark_mode;
+            let target_mode = if os_dark {
+                ff_theme::mode::VisualMode::Dark
+            } else {
+                ff_theme::mode::VisualMode::Light
+            };
+            if target_mode != self.palette.mode {
+                self.palette = ff_theme::defaults::default_palette_for_mode(target_mode);
             }
         }
 

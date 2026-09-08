@@ -192,62 +192,72 @@ The `ff-config` crate is a Wave 2 (Platform Architecture) component. It depends 
 
 ---
 
-### Requirement 15: Settings Panel — Interactive Configuration Dialog
+### Requirement 15: Settings Context -- Interactive Configuration Dialog
 
-**User Story:** As a workbench user, I want a graphical Settings panel that lets me view and
+**User Story:** As a workbench user, I want a graphical Settings Context that lets me view and
 change all configuration values without editing TOML files manually, so that I can adjust
 workbench behaviour quickly and safely from within the application.
 
 **Source:** [WB] Configuration as Data; [ISPF-POM] POM option 0.
 
+*(Phase CW restructures the Settings Context as a two-level Menu Workspace. The primary entry
+point becomes a Settings_Menu (namespace selector) backed by `menus/settings.toml`. Each
+namespace option opens a Settings_Namespace_View (filtered flat list). The migration from the
+current flat-list implementation happens in Phase CW-impl. See
+`docs/specs/menu-workspace/cw-requirements.md` for the full definition.)*
+
 #### Acceptance Criteria
 
-1. WHEN the user selects option `0` from the Primary Option Menu, OR types `0` or `SETTINGS`
-     or `=0` in any `Command ===>` field, THE shell SHALL open the Settings panel as a new tab
-     with title `[SETTINGS]` and tab kind `SettingsPanel`.
+1. WHEN the user selects option `0` from the Home Context (Primary Option Menu), OR types `0` or `SETTINGS`
+     or `=0` in any `Command ===>` field, THE shell SHALL open the Settings Context as a new Workspace.
+     After Phase CW-impl, this opens the Settings_Menu (namespace selector). Until then, it opens
+     the flat-list Settings panel with title `[SETTINGS]` and tab kind `SettingsPanel`.
 
-2. THE Settings panel SHALL display all configuration keys registered in the `ff-config`
-     schema, grouped by namespace (e.g., `Editor`, `Logging`, `Theme`, `Catalogs`, `VFS`),
-     with each group rendered as a collapsible section.
+2. THE Settings_Namespace_View (opened from the Settings_Menu) SHALL display all configuration
+     keys for the selected namespace, grouped and rendered as a collapsible section. The
+     unfiltered flat-list view (option `A` in the Settings_Menu) SHALL display all namespaces.
 
-3. FOR each configuration key, THE Settings panel SHALL display:
+3. FOR each configuration key, THE Settings Context SHALL display:
      - The key's human-readable description (from the schema entry)
      - The current effective value
      - The provenance layer that provided the effective value (e.g., `Default`, `User`, `Project`)
      - An appropriate input widget based on the value type:
-       - Boolean → checkbox
-       - Integer / Float with min/max → slider; without constraints → numeric text field
-       - String with `allowed_values` → drop-down selector
-       - String without constraints → single-line text field
+       - Boolean -> checkbox
+       - Integer / Float with min/max -> slider; without constraints -> numeric text field
+       - String with `allowed_values` -> drop-down selector
+       - String without constraints -> single-line text field
 
-4. WHEN the user changes a value in the Settings panel and confirms (presses Enter or moves
+4. WHEN the user changes a value in the Settings Context and confirms (presses Enter or moves
      focus away from the field), THE shell SHALL validate the new value against the schema
      constraints; IF valid, THE shell SHALL write the new value to the user-layer configuration
      file and update the effective value immediately (no restart required).
 
 5. WHEN a value fails schema validation (out of range, not in allowed set, fails regex),
-     THE Settings panel SHALL display an inline error message adjacent to the field and SHALL
+     THE Settings Context SHALL display an inline error message adjacent to the field and SHALL
      NOT persist the invalid value.
 
-6. THE Settings panel SHALL display a `Reset to Default` button beside each key that has
+6. THE Settings Context SHALL display a `Reset to Default` button beside each key that has
      been overridden above the Defaults layer; WHEN clicked, THE shell SHALL remove the
      user-layer override for that key, restoring the schema default.
 
-7. THE Settings panel SHALL include a search/filter input at the top; WHEN the user types
-     in the filter, THE panel SHALL show only keys whose key path or description contains the
+7. THE Settings Context SHALL include a search/filter input at the top; WHEN the user types
+     in the filter, THE Settings Context SHALL show only keys whose key path or description contains the
      filter text (case-insensitive substring match).
 
-8. THE Settings panel SHALL display a read-only `Source File` indicator showing the path of
+8. THE Settings Context SHALL display a read-only `Source File` indicator showing the path of
      the user-layer configuration file being edited.
 
-9. THE `[SETTINGS]` tab SHALL persist in the session and be restored on next launch as a
-     `SettingsPanel` tab kind.
+9. THE `[SETTINGS]` Workspace SHALL persist in the session and be restored on next launch as a
+     `SettingsPanel` tab kind. After Phase CW-impl, a Settings_Namespace_View tab SHALL persist
+     with its namespace filter and be restored as a `SettingsPanel` tab kind with that filter.
 
-10. WHEN the user presses `F3` or types `END` in the Settings panel command field,
-      THE shell SHALL return the tab to the Primary Option Menu view.
+10. WHEN the user presses `F3` or types `END` in a Settings_Namespace_View command field,
+      THE shell SHALL return the Workspace to the Settings_Menu. WHEN the user presses `F3` or
+      types `END` in the Settings_Menu command field, THE shell SHALL return the Workspace to
+      the Home Context (Primary Option Menu) view.
 
 11. WHEN the user clicks `Settings` in the POM option list (option 0 button), THE shell
-      SHALL navigate to the Settings panel using the same routing as typing `0` in the command
+      SHALL navigate to the Settings Context using the same routing as typing `0` in the command
       field.
 
 ---
@@ -338,9 +348,9 @@ consistent policy enforcement across all workbench instances.
    wins) and emit a DEBUG-level log record identifying the key and the layer that attempted
    to override it.
 5. THE Configuration_System SHALL expose an `is_locked(key: &str) -> bool` method on
-   ConfigHandle so that the Settings panel and other consumers can check lock status before
+   ConfigHandle so that the Settings Context and other consumers can check lock status before
    attempting writes.
-6. THE Settings panel SHALL display a lock indicator (padlock icon or "LOCKED" badge) beside
+6. THE Settings Context SHALL display a lock indicator (padlock icon or "LOCKED" badge) beside
    any key that is locked, and SHALL disable the value widget and Reset to Default button for
    locked keys.
 7. THE ConfigError enum SHALL gain a `KeyLocked { key: String }` variant with message:

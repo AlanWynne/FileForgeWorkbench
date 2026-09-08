@@ -15,7 +15,7 @@ prominence, persistence, or structured detail.
 | Term | Definition |
 |------|-----------|
 | Toast notification | A brief, non-modal overlay that appears and auto-dismisses |
-| Event log | A persistent, scrollable panel showing all past notifications |
+| Event log | A persistent, scrollable Event Log Context showing all past notifications |
 | Notification level | One of: Info, Success, Warning, Error |
 | Auto-dismiss | A toast that disappears after a configurable timeout without user action |
 | Sticky notification | A toast that persists until the user explicitly dismisses it |
@@ -48,13 +48,13 @@ operations.
    maximum of 4 visible toasts.
 6. WHEN more than 4 toasts are pending, THE workbench SHALL show a
    "N more..." indicator below the stack; clicking it SHALL open the
-   Event Log panel.
+   Event Log Context.
 7. THE toast auto-dismiss timeout SHALL be configurable via
    `notifications.auto_dismiss_seconds` (range 1-30, default 4).
 
 ---
 
-## Requirement 2: Event Log Panel
+## Requirement 2: Event Log Context
 
 **User Story:** As a workbench user, I want a persistent log of all
 notifications, so that I can review what happened during a long-running
@@ -66,16 +66,16 @@ operation even after the toasts have dismissed.
 
 1. WHEN the user types `LOG` in the Command Field or clicks the
    notification bell icon in the status bar, THE workbench SHALL open
-   an `EventLogPanel` tab.
-2. THE Event Log panel SHALL display all notifications emitted since
+   an `EventLogPanel` Workspace.
+2. THE Event Log Context SHALL display all notifications emitted since
    the workbench started, in reverse-chronological order (newest first).
-3. FOR EACH log entry, THE panel SHALL display: timestamp (HH:MM:SS),
+3. FOR EACH log entry, THE Event Log Context SHALL display: timestamp (HH:MM:SS),
    level icon, title, and detail message.
-4. THE panel SHALL include a filter by level (All / Info / Success /
+4. THE Event Log Context SHALL include a filter by level (All / Info / Success /
    Warning / Error) and a text search field.
-5. WHEN the user selects a log entry, THE panel SHALL display the full
+5. WHEN the user selects a log entry, THE Event Log Context SHALL display the full
    detail text in an expandable area below the list.
-6. THE panel SHALL include a `Clear Log` button that removes all entries
+6. THE Event Log Context SHALL include a `Clear Log` button that removes all entries
    from the in-memory log (does not affect the persistent log file).
 7. THE event log SHALL be written to a rolling log file at
    `{session_dir}/notifications.log` with a maximum of 1000 entries.
@@ -124,5 +124,5 @@ needs my attention even if I missed the toast.
 2. WHEN there are unread Warning or Error notifications, THE bell icon
    SHALL show a badge with the count of unread items.
 3. WHEN the user clicks the bell icon, THE workbench SHALL open the
-   Event Log panel and mark all notifications as read.
+   Event Log Context and mark all notifications as read.
 4. WHEN all notifications have been read, THE badge SHALL be hidden.

@@ -23,6 +23,7 @@ struct MockVfsProvider {
 }
 
 #[derive(Clone)]
+#[allow(dead_code)]
 enum FailOn {
     Write,
     Rename,

@@ -349,3 +349,20 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configura
 | Req 11: Plugin Theme Extensions | AC 11.1–11.7 | Task 11 |
 | Req 12: Extensibility and Forward Compatibility | AC 12.1–12.6 | Task 14 |
 | Cross-cutting Req 8: Error Message Standards | All | Task 15 |
+| Req 16: OS Dark/Light Mode Follow | AC 16.1–16.8 | Task 20 |
+
+---
+
+## Phase CR Tasks
+
+- [ ] 20. OS dark/light mode follow (Phase CR)
+  - [x] 20.1 Register `theme.follow_os` schema key (boolean, default false) in ff-theme schema registration
+    - Covers: Requirement 16.1
+  - [x] 20.2 In ff-desktop shell update(), read `ctx.style().visuals.dark_mode` each frame; when `theme.follow_os` is true, call `set_mode(Dark)` or `set_mode(Light)` accordingly without persisting to `theme.mode`
+    - Covers: Requirement 16.2, 16.3, 16.5, 16.6, 16.7
+  - [x] 20.3 When `theme.follow_os` is false, skip OS detection entirely; active mode is solely from `theme.mode` config key
+    - Covers: Requirement 16.4
+  - [x] 20.4 Add `theme.follow_os` checkbox to Settings panel under the theme section, labelled "Follow OS dark/light mode"
+    - Covers: Requirement 16.8
+  - [x] 20.5 Write unit tests: `follow_os_false_ignores_os_preference`, `follow_os_true_dark_sets_dark_mode`, `follow_os_true_light_sets_light_mode`, `follow_os_does_not_persist_mode_key`
+    - Covers: Requirement 16.1–16.7

@@ -14,10 +14,12 @@
 //! - Runtime-queryable schema validation
 
 pub mod access;
+pub mod audit;
 pub mod callback;
 pub mod config_handle;
 pub mod editorconfig;
 pub mod error;
+pub mod export_import;
 pub mod init;
 pub mod keys;
 pub mod layer;
@@ -38,15 +40,17 @@ pub mod value;
 pub mod watcher;
 
 // Public API re-exports
+pub use audit::{AuditEntry, AuditFilter, AuditLog};
 pub use callback::{CallbackHandle, CallbackRegistry, ReloadCallback};
 pub use config_handle::ConfigHandle;
 pub use error::ConfigError;
+pub use export_import::{ExportScope, ImportSummary, ImportTarget};
 pub use init::{
     auto_detect_project_config, init, register_catalog_schema, register_core_schema, shutdown,
     ConfigInitOptions,
 };
 pub use layer::ConfigLayer;
-pub use merger::merge_layers;
+pub use merger::{merge_layers, merge_layers_with_locked};
 pub use namespace::{
     is_reserved_namespace, plugin_namespace_prefix, validate_plugin_name, RESERVED_NAMESPACES,
 };

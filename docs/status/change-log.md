@@ -397,7 +397,7 @@ Modifications to existing behaviour that already works.
 - **Date/Phase**: Phase CP (pre-gate)
 - **Prompt**: "Create a formal Requirement to provide this functionality?" (following discussion of IKJEFT01 batch execution -- feeding a file of TSO commands to FFWB for non-interactive execution)
 - **Description**: Add a headless batch execution mode to FFWB analogous to z/OS IKJEFT01 batch. The user supplies a file (or stdin) containing FFWB/FTSO primary commands; FFWB executes them sequentially without opening a GUI window, writes output to stdout or a nominated file, and exits with a meaningful return code. This enables scripted automation, CI/CD pipelines, and JCL-style job submission from outside the workbench. The feature spans ff-desktop (CLI entry point), ff-command-semantics (command pipeline), ff-shell (output capture), and ff-workflow (sequencing). A new sub-project `batch-execution` is created.
-- **Status**: IN PROGRESS
+- **Status**: DONE
 - **Linked spec**: `docs/specs/batch-execution/requirements.md` (new sub-project)
 
 ### CR-NR-040 -- Phase CO: Accessibility, Plugin Manager UI, and Notification System
@@ -411,7 +411,7 @@ Modifications to existing behaviour that already works.
   enabling, disabling, and configuring installed plugins; (3) `notification-system` sub-project --
   non-modal notification toasts and a structured event log replacing ad-hoc status bar messages
   for multi-step operations.
-- **Status**: IN PROGRESS
+- **Status**: DONE
 - **Linked spec**: `docs/specs/accessibility/requirements.md` (new sub-project),
   `docs/specs/plugin-manager-ui/requirements.md` (new sub-project),
   `docs/specs/notification-system/requirements.md` (new sub-project)
@@ -420,5 +420,68 @@ Modifications to existing behaviour that already works.
 - **Date/Phase**: Phase CQ
 - **Prompt**: "Proceed with CQ"
 - **Description**: Adds three enterprise-grade capabilities to the configuration system: (1) structured audit logging -- every configuration change is recorded with timestamp, key, old value, new value, actor, and layer, queryable via an AuditLog API and persisted to a rolling log file; (2) settings export/import -- the user can export the current effective configuration (or a specific layer) to a portable TOML file and import a previously exported file to restore settings; (3) locked config keys -- an administrator can mark specific keys as locked in the system layer, preventing user/profile/project layers from overriding them, with a clear error when a locked key is written. New sub-project: none (extends configuration-system). New requirements: Req 16 (audit logging), Req 17 (settings export/import), Req 18 (locked config keys) in configuration-system/requirements.md.
-- **Status**: IN PROGRESS
+- **Status**: DONE
 - **Linked spec**: `docs/specs/configuration-system/requirements.md` (new Requirements 16-18)
+
+### CR-NR-043 -- Phase CR: OS Theme Follow + Macro Library Management
+- **Date/Phase**: Phase CR
+- **Prompt**: "Proceed with Phase CR"
+- **Description**: Adds two medium-priority gap features: (1) OS dark/light mode follow -- the workbench detects the OS dark/light preference via egui and automatically switches the active Visual_Mode when theme.follow_os is enabled; (2) Macro Library Management panel -- POM option 6 opens a panel listing all discovered Lua scripts with Run, Edit, Delete, and filter capabilities.
+- **Status**: DONE
+- **Linked spec**: `docs/specs/theme-and-appearance/requirements.md` (new Req 16), `docs/specs/lua-macro-engine/requirements.md` (new Req 12)
+
+### CR-CH-009 -- Phase CT: Workbench/Workspace/Context Terminology Standardisation
+- **Date/Phase**: Phase CT
+- **Prompt**: "Do a review of all the Specifications and apply this terminology consistently across all specifications"
+- **Description**: Adopt a consistent three-level UI terminology model across all documentation: (1) Workbench -- the application window as a whole; (2) Workspace -- a single tab in the tab bar (the unit of work the user switches between); (3) Context -- the type of content/function active in a Workspace (e.g. Home Context, Editor Context, Settings Context, Explorer Context). Update the terminology map, the architecture brief, the README, and all 69 sub-project specifications in priority order. No source code changes -- documentation only.
+- **Affects**: `docs/reviews/requirements-review/terminology-map.md`, `docs/specs/workbench-requirements-merge/architecture-brief.md`, `README.md`, `.amazonq/rules/`, all `docs/specs/*/requirements.md` and `design.md` files
+- **Status**: DONE -- Phase CT complete, all 7 tasks done, ~200 terminology replacements across 69 sub-project specs
+
+### CR-NR-044 -- Phase CS: Test Warning Cleanup
+- **Date/Phase**: Phase CS
+- **Prompt**: "Create a dedicated cleanup task to be done next"
+- **Description**: Eliminate all compiler warnings emitted during `cargo test --workspace`. Warnings are exclusively in test code (unused imports, unused variables, unnecessary mut, unused doc comments, dead code in test helpers). All are auto-fixable via `cargo fix` or trivial manual edits. No behaviour change. REFACTOR -- no requirements gate required.
+- **Status**: DONE -- Phase CS complete, zero warnings in cargo test --workspace
+- **Linked spec**: N/A (refactor -- no new requirements)
+
+### CR-NR-045 -- Menu Workspace Pattern (Configurable ISPF-style option menus)
+- **Date/Phase**: Phase CU (pre-gate)
+- **Prompt**: "One of the features of ISPF is the ability to Customize it... we need a Solution where we can create menu workspaces that are a list of options. Each option is a number or set of characters (up to 4) Followed by a Command, and a description."
+- **Description**: Introduce a Menu Workspace as a first-class pattern: a Workspace whose Context is a list of options loaded from a TOML config file (`menus/<name>.toml`). Each option has a key (1-4 chars), a command string, and a description. The POM becomes an instance of this pattern. Chained option paths (e.g. `=0.Themes`) are supported. A default `menus/pom.toml` is written on first launch. Hot-reload on file change. New sub-project `menu-workspace`.
+- **Status**: DONE -- Phase CU complete (CU.1-CU.6), all 6 spec tasks done
+- **Linked spec**: `docs/specs/menu-workspace/requirements.md` (created Phase CU)
+
+### CR-NR-046 -- Named Workspaces and Per-Workspace KEYS Command
+- **Date/Phase**: Phase CX (pre-gate)
+- **Prompt**: "Each Workspace should have its own name to allow menu option mapping as well as Function key mapping. A workspaces Function keys can be mapped at any time by invoking the KEYS command in the workspace."
+- **Description**: Each Workspace gains a user-visible name string. The KEYS command is extended to accept an optional name argument (`KEYS <name>`) so the user can open the Key Configuration Dialog pre-loaded with any named key map, not just the current Workspace's map. The Key Configuration Dialog gains a `Map Name` field the user can change mid-session.
+- **Status**: DONE
+- **Linked spec**: `docs/specs/function-keys-and-history/requirements.md` (extension to Req 20), `docs/specs/function-keys-and-history/cx-requirements.md` (new)
+
+### CR-CH-010 -- SPLIT Command Alias for Workspace Detach
+- **Date/Phase**: Phase CX (pre-gate)
+- **Prompt**: "A Workspace should be detachable into its own Window... This serves as a replacement to the ISPF split command."
+- **Description**: Add a `SPLIT` primary command as an ISPF-heritage alias for the existing Workspace detach operation (Ctrl+Shift+T / Move to Other View). Registers as Command_ID `layout.split`. Adds an explicit note in `layout-and-docking` that this replaces ISPF split-screen with modern OS window management.
+- **Affects**: `docs/specs/layout-and-docking/requirements.md` Req 3; `ff-desktop` command handler; `docs/specs/function-keys-and-history/cx-requirements.md` Req 3
+- **Status**: DONE
+
+### CR-NR-047 -- Settings Context as a Menu Workspace
+- **Date/Phase**: Phase CW (pre-gate, depends on CR-NR-045)
+- **Prompt**: "The settings workspace should probably be a menu options workspace. A full list of available settings should be extracted from the requirements and a settings menu option created for it."
+- **Description**: Restructure the Settings Context as a Menu Workspace whose options are loaded from `menus/settings.toml`. A default settings.toml is written on first launch with one option per major config namespace (Editor, Theme, Catalogs, VFS, Logging, Key Maps, Session, Plugins). Each option opens a sub-context showing only that namespace's keys using the existing flat-list widget. The flat-list view remains accessible as a sub-context.
+- **Status**: IN PROGRESS
+- **Linked spec**: `docs/specs/configuration-system/requirements.md` Req 15 (revision), `docs/specs/menu-workspace/cw-requirements.md` (new)
+
+### CR-NR-048 -- POM Options Review and Logical Grouping
+- **Date/Phase**: Phase CV (pre-gate, depends on CR-NR-045)
+- **Prompt**: "We need a full review of the current options in the POM... perhaps we need to create menu options for those that can be grouped."
+- **Description**: Review the current 9 POM options (0-8) against all implemented functionality. Revise the option list with logical grouping, adding entries for JES (job monitor), Search (global search), and Batch (batch execution) which currently have no POM entry. Define the default `menus/pom.toml` content. Update `startup-and-session` Req 14.3 accordingly.
+- **Status**: IN PROGRESS
+- **Linked spec**: `docs/specs/startup-and-session/requirements.md` Req 14.3 (revision), `docs/specs/menu-workspace/cv-requirements.md` (new)
+
+### CR-NR-049 -- FFTest Context Inspection and Automatic Bug Logging
+- **Date/Phase**: Phase CZ (pre-gate)
+- **Prompt**: "The Automated Dialog testing capability would have to be able to examine the context of a workspace to verify that what expected to happen happened and also to write the finding to a Log file / Bug report. Bugs should be logged for repair."
+- **Description**: Extend the FFTest framework with: (1) Workspace context inspection assertions (`ASSERT CONTEXT IS`, `ASSERT WORKSPACE COUNT IS`, `ASSERT OPTION EXISTS`); (2) automatic bug report generation -- on assertion failure the runner appends a structured entry to `reports/bugs-from-tests.md` in a format compatible with `docs/status/bugs.md`; (3) a full FFTest script suite covering all major functional areas (POM navigation, file ops, editor, catalog management, settings, key config, compiler, plugin manager, notification system, batch, global search, command palette). New requirements Reqs 11-13 in `automated-dialog-testing/requirements.md`.
+- **Status**: PENDING GATE
+- **Linked spec**: `docs/specs/automated-dialog-testing/requirements.md` (new Reqs 11-13)

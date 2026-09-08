@@ -7,10 +7,7 @@ use proptest::prelude::*;
 use ff_structure_catalog::catalog::StructureCatalog;
 use ff_structure_catalog::editor::EditorState;
 use ff_structure_catalog::ffs_format::{FfsParser, FfsSerializer};
-use ff_structure_catalog::field::{
-    decode_packed_decimal, format_numeric_decimal, validate_packed_decimal, FieldDefinition,
-    FieldType,
-};
+use ff_structure_catalog::field::{decode_packed_decimal, FieldDefinition, FieldType};
 use ff_structure_catalog::grid::encode_field_value;
 use ff_structure_catalog::model::{
     FileAssociations, RecordFormat, RecordStructure, StructureDefinition, StructureMetadata,

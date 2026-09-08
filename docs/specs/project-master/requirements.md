@@ -48,7 +48,7 @@ FileForgeWorkbench is a **Rust Workbench Platform** that evolves FileForgeEditor
 | 2 | `command-framework` | Command Framework | Command registry, dispatch, metadata, undo/redo integration, scripting bridge |
 | 3 | `plugin-architecture` | Plugin Architecture | Trait-based plugins, registration, lifecycle, capability discovery, versioning |
 | 4 | `workflow-engine` | Workflow Engine | State machine workflows, step sequencing, cancellation, progress reporting |
-| 5 | `layout-and-docking` | Layout & Docking | Dockable panels, tab groups, floating windows, multi-monitor, personas, serialisable layouts |
+| 5 | `layout-and-docking` | Layout & Docking | Dockable panels, tab groups, Detached Workspaces, multi-monitor, personas, serialisable layouts |
 | 6 | `configuration-system` | Configuration System | TOML-based config, hot-reload, user profiles, per-project overrides, EditorConfig |
 
 ### Virtual File System (from WB + DSC)
@@ -198,13 +198,13 @@ FileForgeWorkbench is a **Rust Workbench Platform** that evolves FileForgeEditor
 
 | # | Spec ID | Name | Description |
 |---|---------|------|-------------|
-| 63 | `compiler-toolchain-integration` | Compiler Toolchain Integration | GCC and Rust toolchain detection, install, build invocation, diagnostic parsing, Toolchain Panel UI; generic `ToolchainPlugin` trait for future toolchains (LLVM, GnuCOBOL, OpenJDK) |
+| 63 | `compiler-toolchain-integration` | Compiler Toolchain Integration | GCC and Rust toolchain detection, install, build invocation, diagnostic parsing, Compiler Context UI; generic `ToolchainPlugin` trait for future toolchains (LLVM, GnuCOBOL, OpenJDK) |
 
 ### Virtual Catalog Manager (Phase AA -- implemented inline in ff-desktop)
 
 | # | Spec ID | Name | Description |
 |---|---------|------|-------------|
-| 64 | `virtual-catalog-manager` | Virtual Catalog Manager | ISPF-style catalog management UI: create/edit/delete Mainframe/POSIX/Native/Cloud catalogs, dataset allocation dialog, Files Panel (POM option 1), catalog registry persistence, default Home catalog |
+| 64 | `virtual-catalog-manager` | Virtual Catalog Manager | ISPF-style catalog management UI: create/edit/delete Mainframe/POSIX/Native/Cloud catalogs, dataset allocation dialog, Catalog Explorer Context (POM option 1), catalog registry persistence, default Home catalog |
 
 ### Dataset Ownership Model (Phase M governance)
 

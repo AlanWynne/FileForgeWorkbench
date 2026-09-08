@@ -111,7 +111,7 @@ fn extension_of(label: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::node::{FileCategory, NodeType, TreeNodeData};
+    use crate::node::TreeNodeData;
 
     fn dir(label: &str) -> TreeNodeData {
         TreeNodeData::directory(label)

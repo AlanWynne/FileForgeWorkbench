@@ -11,7 +11,6 @@ use ff_external_mod::config::ExternalModConfig;
 use ff_external_mod::detector::ExternalModificationDetector;
 use ff_external_mod::focus_check::FocusGainedChecker;
 use ff_external_mod::mtime_tracker::MtimeTracker;
-use ff_external_mod::prompt::BatchAction;
 use ff_external_mod::reload_policy::{PolicyAction, ReloadPolicy, ReloadPolicyEngine};
 use ff_external_mod::types::DocumentId;
 use ff_vfs::ResourceUri;

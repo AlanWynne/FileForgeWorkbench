@@ -1,0 +1,28 @@
+# FFTest Workflow Script -- Command Palette
+# Functional area: Command Palette
+# Validates: Req 13.3 (automated-dialog-testing), Req 1.1, 1.5 (command-palette)
+# Expected outcome: Ctrl+Shift+P opens palette; Escape closes it
+
+# Verify starting state
+ASSERT CONTEXT IS "Home"
+
+CHECKPOINT "palette_precondition"
+
+# Open command palette
+PRESS KEY CTRL_SHIFT_P
+
+ASSERT WINDOW EXISTS "Command Palette"
+
+CHECKPOINT "palette_opened"
+
+# Type a filter query
+TYPE TEXT "settings"
+
+CHECKPOINT "palette_filtered"
+
+# Close palette with Escape
+PRESS KEY ESCAPE
+
+ASSERT CONTEXT IS "Home"
+
+CHECKPOINT "command_palette_workflow_complete"

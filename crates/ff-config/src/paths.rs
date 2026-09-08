@@ -31,6 +31,13 @@ pub fn system_config_path() -> PathBuf {
     }
 }
 
+/// Resolve the user configuration directory (without the filename).
+///
+/// Returns `None` if the platform config directory cannot be determined.
+pub fn user_config_dir() -> Option<PathBuf> {
+    dirs::config_dir().map(|d| d.join("ffworkbench"))
+}
+
 /// Resolve the user configuration file path.
 ///
 /// Uses the platform's standard config directory:

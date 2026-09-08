@@ -1,0 +1,22 @@
+# FFTest Dialog Script -- Key Configuration Dialog
+# Functional area: Key Configuration Dialog
+# Validates: Req 13.2 (automated-dialog-testing), Req 20.1, 20.5 (function-keys-and-history)
+# Expected outcome: KEYS command opens dialog; Cancel discards changes
+
+# Open key config dialog
+TYPE TEXT "KEYS"
+PRESS KEY ENTER
+
+ASSERT WINDOW EXISTS "Key Configuration"
+
+CHECKPOINT "key_config_opened"
+
+# Verify the dialog has a Default scope tab
+ASSERT TEXT EXISTS "Default"
+
+# Cancel without saving
+CLICK BUTTON "button.key_config_cancel"
+
+CHECKPOINT "key_config_cancelled"
+
+ASSERT CONTEXT IS "Home"

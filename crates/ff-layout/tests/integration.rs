@@ -4,7 +4,6 @@
 //! persona operations, serialization round-trips, and resize scenarios.
 
 use ff_layout::dock::zone::DockZone;
-use ff_layout::engine::CloseAction;
 use ff_layout::floating::manager::FloatingWindowManager;
 use ff_layout::floating::monitor::{
     center_on_primary, is_window_sufficiently_visible, MonitorInfo,
@@ -15,9 +14,8 @@ use ff_layout::resize::manager::SplitterManager;
 use ff_layout::resize::splitter::SplitterOrientation;
 use ff_layout::state::layout_state::{DockedPanelState, LayoutState};
 use ff_layout::state::serializer;
-use ff_layout::tabs::group::{TabGroup, TabGroupId, TabGroupTree};
 use ff_layout::tabs::manager::TabGroupManager;
-use ff_layout::{LayoutEngine, Position, Rect, Size, MAX_FLOATING_WINDOWS};
+use ff_layout::{LayoutEngine, Position, Rect, Size};
 use tempfile::TempDir;
 
 /// Integration test: full panel lifecycle
@@ -210,7 +208,7 @@ fn serialization_workflow() {
 #[test]
 fn drag_and_drop_scenarios() {
     // Validates: Requirement 7 criteria 1-12
-    use ff_layout::drag::coordinator::{DragDropCoordinator, DragItem, DragPhase};
+    use ff_layout::drag::coordinator::{DragDropCoordinator, DragItem};
     use ff_layout::drag::hit_test::{build_dock_zone_targets, hit_test};
     use ff_layout::drag::indicator::DropPlacement;
 

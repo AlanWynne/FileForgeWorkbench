@@ -129,7 +129,7 @@ proptest! {
         use ff_background_io::IoError;
         use ff_vfs::VfsError;
 
-        let source = VfsError::NotFound {
+        let _source = VfsError::NotFound {
             uri: uri.clone(),
             operation: "read".to_string(),
         };

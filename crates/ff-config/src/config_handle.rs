@@ -11,6 +11,7 @@ use std::path::Path;
 use std::sync::{Arc, RwLock};
 
 use crate::access::ConfigAccess;
+use crate::audit::{AuditEntry, AuditFilter, AuditLog};
 use crate::editorconfig::parser::EditorConfigProperties;
 use crate::error::ConfigError;
 use crate::layer::ConfigLayer;
@@ -30,6 +31,12 @@ pub(crate) struct ConfigSystem {
     pub(crate) manager: ReloadManager,
     /// Profile manager for activating/deactivating named profiles.
     pub(crate) profile_manager: Option<ProfileManager>,
+    /// Keys locked by the system layer ([_locked].locked_keys).
+    /// Addresses: Requirement 18.1, 18.2
+    pub(crate) locked_keys: std::collections::HashSet<String>,
+    /// In-memory audit log ring buffer.
+    /// Addresses: Requirement 16
+    pub(crate) audit_log: AuditLog,
 }
 
 /// Thread-safe, clonable handle to the configuration system.
@@ -79,6 +86,8 @@ impl ConfigHandle {
             inner: Arc::new(RwLock::new(ConfigSystem {
                 manager,
                 profile_manager: None,
+                locked_keys: std::collections::HashSet::new(),
+                audit_log: AuditLog::new(),
             })),
         }
     }
@@ -89,6 +98,8 @@ impl ConfigHandle {
             inner: Arc::new(RwLock::new(ConfigSystem {
                 manager,
                 profile_manager: Some(profile_manager),
+                locked_keys: std::collections::HashSet::new(),
+                audit_log: AuditLog::new(),
             })),
         }
     }
@@ -195,7 +206,6 @@ impl ConfigHandle {
         let access = ConfigAccess::new(system.manager.store(), system.manager.schema());
         access.get_for_file(key, file_path)
     }
-
     // ────────────────────────────────────────────────────────────────────
     // Write access (Task 20.3): mutations acquire write lock briefly
     // ────────────────────────────────────────────────────────────────────
@@ -342,15 +352,25 @@ impl ConfigHandle {
     ///
     /// # Errors
     ///
+    /// Returns `ConfigError::KeyLocked` if the key is locked by system policy.
     /// Returns `ConfigError::Io` if the file cannot be read or written.
     /// Returns `ConfigError::ParseError` if the existing file is invalid TOML.
     ///
-    /// Validates: Requirement 15.4
+    /// Validates: Requirement 15.4, Requirement 18.3
     pub fn set_user_value(
         &self,
         key: &str,
         value: crate::value::ConfigValue,
     ) -> Result<(), crate::error::ConfigError> {
+        // Guard: reject writes to locked keys (Req 18.3)
+        {
+            let system = self.inner.read().unwrap();
+            if system.locked_keys.contains(key) {
+                return Err(crate::error::ConfigError::KeyLocked {
+                    key: key.to_string(),
+                });
+            }
+        }
         let user_path = crate::paths::user_config_path().ok_or_else(|| {
             crate::error::ConfigError::Io(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
@@ -394,9 +414,33 @@ impl ConfigHandle {
         Ok(())
     }
 
-    // ────────────────────────────────────────────────────────────────────
-    // Schema query helpers (for Settings Panel)
-    // ────────────────────────────────────────────────────────────────────
+    // === Locked Key API (Requirement 18) ===================================
+
+    /// Returns true if the given key is locked by system policy.
+    ///
+    /// Locked keys cannot be overridden by User, Profile, Project, or Workspace
+    /// layers. The Settings panel uses this to disable widgets and show a
+    /// "LOCKED" badge.
+    ///
+    /// Validates: Requirement 18.5
+    pub fn is_locked(&self, key: &str) -> bool {
+        let system = self.inner.read().unwrap();
+        system.locked_keys.contains(key)
+    }
+
+    /// Replace the locked-keys set from a freshly loaded system-layer table.
+    ///
+    /// Called during initialisation and on system-layer hot-reload.
+    /// Parses `[_locked].locked_keys` from the system layer values.
+    ///
+    /// Validates: Requirement 18.1, 18.8
+    pub fn update_locked_keys(&self, system_layer_values: &crate::value::ConfigTable) {
+        let new_locked = extract_locked_keys(system_layer_values);
+        let mut system = self.inner.write().unwrap();
+        system.locked_keys = new_locked;
+    }
+
+    // === Schema query helpers (for Settings Panel) ==========================
 
     /// List all registered schema entries.
     ///
@@ -411,6 +455,143 @@ impl ConfigHandle {
             .into_iter()
             .cloned()
             .collect()
+    }
+
+    // === Audit Log API (Requirement 16) ====================================
+
+    /// Query the in-memory audit log with the given filter.
+    ///
+    /// Returns matching entries in chronological order.
+    /// Validates: Requirement 16.3
+    pub fn query_audit_log(&self, filter: &AuditFilter) -> Vec<AuditEntry> {
+        let system = self.inner.read().unwrap();
+        system.audit_log.query(filter)
+    }
+
+    /// Clear the in-memory audit log and truncate the on-disk file.
+    ///
+    /// Validates: Requirement 16.6
+    pub fn clear_audit_log(&self) {
+        let mut system = self.inner.write().unwrap();
+        system.audit_log.clear();
+        if let Some(dir) = crate::paths::user_config_dir() {
+            crate::audit::truncate_log_file(&dir.join("audit.log"));
+        }
+    }
+
+    /// Append an audit entry to the in-memory log and persist it to disk.
+    ///
+    /// Write failures are logged at WARN level and do not block the caller.
+    /// Validates: Requirement 16.1, 16.4
+    pub fn record_audit_entry(&self, entry: AuditEntry) {
+        let audit_path = crate::paths::user_config_dir().map(|d| d.join("audit.log"));
+        let mut system = self.inner.write().unwrap();
+        if let Some(ref path) = audit_path {
+            crate::audit::persist_entry(path, &entry);
+        }
+        system.audit_log.record(entry);
+    }
+
+    // === Export / Import API (Requirement 17) ==============================
+
+    /// Export configuration values to a portable TOML file.
+    ///
+    /// The exported file includes a `[_export_meta]` header and the
+    /// effective values for the requested scope.
+    ///
+    /// Validates: Requirement 17.1, 17.3
+    pub fn export_settings(
+        &self,
+        scope: crate::export_import::ExportScope,
+        path: &std::path::Path,
+    ) -> Result<(), ConfigError> {
+        use crate::export_import::ExportScope;
+        let system = self.inner.read().unwrap();
+
+        let values = match scope {
+            ExportScope::AllLayers => {
+                let access = ConfigAccess::new(system.manager.store(), system.manager.schema());
+                collect_all_effective_values(&access, system.manager.schema())
+            }
+            ExportScope::UserLayer => collect_layer_values(&system.manager, ConfigLayer::User),
+            ExportScope::ProjectLayer => {
+                collect_layer_values(&system.manager, ConfigLayer::Project)
+            }
+        };
+
+        crate::export_import::export_settings(&values, scope, path, env!("CARGO_PKG_VERSION"))
+    }
+
+    /// Import settings from a previously exported TOML file.
+    ///
+    /// Each value is validated against the schema; invalid values are skipped
+    /// and reported in the returned `ImportSummary`. After a successful import
+    /// a hot-reload cycle is triggered so callbacks are notified.
+    ///
+    /// Validates: Requirement 17.4, 17.6, 17.7, 17.8, 17.9
+    pub fn import_settings(
+        &self,
+        path: &std::path::Path,
+        target: crate::export_import::ImportTarget,
+    ) -> Result<crate::export_import::ImportSummary, ConfigError> {
+        use crate::export_import::ImportTarget;
+
+        // Read and parse the export file (Req 17.8)
+        let imported = crate::export_import::read_export_file(path)?;
+
+        let target_path = match target {
+            ImportTarget::UserLayer => crate::paths::user_config_path().ok_or_else(|| {
+                ConfigError::Io(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "user config directory not available",
+                ))
+            })?,
+            ImportTarget::ProjectLayer => {
+                // Use the project layer source path if loaded
+                let system = self.inner.read().unwrap();
+                system
+                    .manager
+                    .project_source_path()
+                    .map(|p| p.to_path_buf())
+                    .ok_or_else(|| {
+                        ConfigError::Io(std::io::Error::new(
+                            std::io::ErrorKind::NotFound,
+                            "no project loaded",
+                        ))
+                    })?
+            }
+        };
+
+        // Build a temporary schema snapshot for validation
+        let schema_entries: Vec<crate::schema::SchemaEntry> = {
+            let system = self.inner.read().unwrap();
+            system
+                .manager
+                .schema()
+                .list_all()
+                .into_iter()
+                .cloned()
+                .collect()
+        };
+        let mut schema_snapshot = crate::schema::SchemaRegistry::new();
+        for entry in schema_entries {
+            let _ = schema_snapshot.register(entry);
+        }
+
+        let summary =
+            crate::export_import::apply_import(&imported, &schema_snapshot, &target_path)?;
+
+        // Trigger hot-reload so callbacks are notified (Req 17.9)
+        {
+            let mut system = self.inner.write().unwrap();
+            let layer = match target {
+                ImportTarget::UserLayer => ConfigLayer::User,
+                ImportTarget::ProjectLayer => ConfigLayer::Project,
+            };
+            let _ = system.manager.reload_file(&target_path, layer);
+        }
+
+        Ok(summary)
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -473,6 +654,39 @@ impl ConfigHandle {
             timestamp: std::time::SystemTime::now(),
         }
     }
+}
+
+/// Collect all effective values from the store as a flat ConfigTable.
+fn collect_all_effective_values(
+    access: &crate::access::ConfigAccess,
+    _schema: &crate::schema::SchemaRegistry,
+) -> ConfigTable {
+    access.all_values()
+}
+
+/// Collect values from a specific layer in the manager's layer stack.
+fn collect_layer_values(manager: &crate::reload::ReloadManager, layer: ConfigLayer) -> ConfigTable {
+    manager.layer_values(layer)
+}
+
+/// Extract the locked_keys set from a system-layer ConfigTable.
+///
+/// Reads `[_locked].locked_keys` as an array of strings.
+/// Returns an empty set if the table or key is absent.
+///
+/// Validates: Requirement 18.1
+fn extract_locked_keys(values: &crate::value::ConfigTable) -> std::collections::HashSet<String> {
+    let mut set = std::collections::HashSet::new();
+    if let Some(crate::value::ConfigValue::Table(locked_table)) = values.get("_locked") {
+        if let Some(crate::value::ConfigValue::Array(arr)) = locked_table.get("locked_keys") {
+            for item in arr {
+                if let crate::value::ConfigValue::String(k) = item {
+                    set.insert(k.clone());
+                }
+            }
+        }
+    }
+    set
 }
 
 /// Write a single dot-separated key to a TOML file.
@@ -934,6 +1148,115 @@ mod tests {
                 return;
             }
         }
+
         // editor table may be absent — also acceptable
+    }
+
+    // Validates: Requirement 18.5 -- is_locked returns true for locked key
+    #[test]
+    fn is_locked_returns_true_for_locked_key() {
+        let schema = crate::schema::SchemaRegistry::new();
+        let manager = ReloadManager::new(Vec::new(), schema);
+        let handle = ConfigHandle::new(manager);
+
+        {
+            let mut system = handle.inner.write().unwrap();
+            system.locked_keys.insert("editor.tab_size".to_string());
+        }
+
+        assert!(handle.is_locked("editor.tab_size"));
+        assert!(!handle.is_locked("editor.word_wrap"));
+    }
+
+    // Validates: Requirement 18.5 -- is_locked returns false for unlocked key
+    #[test]
+    fn is_locked_returns_false_for_unlocked_key() {
+        let schema = crate::schema::SchemaRegistry::new();
+        let manager = ReloadManager::new(Vec::new(), schema);
+        let handle = ConfigHandle::new(manager);
+        assert!(!handle.is_locked("editor.tab_size"));
+    }
+
+    // Validates: Requirement 18.3 -- set_user_value returns KeyLocked for locked key
+    #[test]
+    fn set_user_value_locked_key_returns_error() {
+        let schema = crate::schema::SchemaRegistry::new();
+        let manager = ReloadManager::new(Vec::new(), schema);
+        let handle = ConfigHandle::new(manager);
+
+        {
+            let mut system = handle.inner.write().unwrap();
+            system.locked_keys.insert("editor.tab_size".to_string());
+        }
+
+        let result =
+            handle.set_user_value("editor.tab_size", crate::value::ConfigValue::Integer(8));
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            crate::error::ConfigError::KeyLocked { key } => {
+                assert_eq!(key, "editor.tab_size");
+            }
+            other => panic!("Expected KeyLocked, got: {:?}", other),
+        }
+    }
+
+    // Validates: Requirement 18.1 -- extract_locked_keys parses [_locked].locked_keys
+    #[test]
+    fn extract_locked_keys_parses_system_layer_table() {
+        let mut locked_table = crate::value::ConfigTable::new();
+        locked_table.insert(
+            "locked_keys".to_string(),
+            crate::value::ConfigValue::Array(vec![
+                crate::value::ConfigValue::String("editor.tab_size".to_string()),
+                crate::value::ConfigValue::String("logging.level".to_string()),
+            ]),
+        );
+        let mut values = crate::value::ConfigTable::new();
+        values.insert(
+            "_locked".to_string(),
+            crate::value::ConfigValue::Table(locked_table),
+        );
+
+        let locked = extract_locked_keys(&values);
+        assert!(locked.contains("editor.tab_size"));
+        assert!(locked.contains("logging.level"));
+        assert_eq!(locked.len(), 2);
+    }
+
+    // Validates: Requirement 18.1 -- extract_locked_keys returns empty set when absent
+    #[test]
+    fn extract_locked_keys_returns_empty_when_absent() {
+        let values = crate::value::ConfigTable::new();
+        let locked = extract_locked_keys(&values);
+        assert!(locked.is_empty());
+    }
+
+    // Validates: Requirement 18.8 -- update_locked_keys replaces the locked set
+    #[test]
+    fn hot_reload_locked_keys_list_recomputes_effective_values() {
+        let schema = crate::schema::SchemaRegistry::new();
+        let manager = ReloadManager::new(Vec::new(), schema);
+        let handle = ConfigHandle::new(manager);
+
+        assert!(!handle.is_locked("editor.tab_size"));
+
+        let mut locked_table = crate::value::ConfigTable::new();
+        locked_table.insert(
+            "locked_keys".to_string(),
+            crate::value::ConfigValue::Array(vec![crate::value::ConfigValue::String(
+                "editor.tab_size".to_string(),
+            )]),
+        );
+        let mut sys_values = crate::value::ConfigTable::new();
+        sys_values.insert(
+            "_locked".to_string(),
+            crate::value::ConfigValue::Table(locked_table),
+        );
+
+        handle.update_locked_keys(&sys_values);
+        assert!(handle.is_locked("editor.tab_size"));
+
+        handle.update_locked_keys(&crate::value::ConfigTable::new());
+        assert!(!handle.is_locked("editor.tab_size"));
     }
 }

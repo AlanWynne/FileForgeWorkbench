@@ -344,6 +344,10 @@ pub struct WorkbenchShell {
     pending_new_file: bool,
     /// Deferred: return the active FilesPanel tab to POM view (set by F3/END in Files Panel).
     pending_return_to_pom: bool,
+    /// Deferred: command to execute from a Menu_Workspace option click (set by render, processed in update).
+    ///
+    /// Validates: menu-workspace Requirement 3.2
+    pub(crate) pending_menu_command: Option<String>,
     /// Global application zoom — single level shared across all tabs and panels.
     ///
     /// Addresses: Requirement 3.1 (view-zoom) — zoom carries forward across context switches.
@@ -402,6 +406,10 @@ pub struct WorkbenchShell {
     ///
     /// Validates: plugin-manager-ui Requirement 1.1
     plugin_manager_panel: PluginManagerPanelState,
+    /// Macro Library panel state.
+    ///
+    /// Validates: lua-macro-engine Requirement 12.1
+    macro_library_panel: crate::macro_library_panel::MacroLibraryPanelState,
     /// Event Log panel state.
     ///
     /// Validates: notification-system Requirement 2.2
@@ -561,6 +569,7 @@ impl WorkbenchShell {
             pending_new_pom: false,
             pending_new_file: false,
             pending_return_to_pom: false,
+            pending_menu_command: None,
             zoom: ZoomState::new(&ZoomConfig::default()),
             pom_calendar_offset: 0,
             last_ppp: 1.0,
@@ -577,6 +586,7 @@ impl WorkbenchShell {
             key_config_dialog: crate::key_config_dialog::KeyConfigDialog::new(),
             settings_panel: SettingsPanelState::new(),
             plugin_manager_panel: PluginManagerPanelState::new(),
+            macro_library_panel: crate::macro_library_panel::MacroLibraryPanelState::new(),
             event_log_panel: EventLogPanelState::new(),
             notification_rx,
             notification_tx,
@@ -601,6 +611,18 @@ impl WorkbenchShell {
     #[allow(dead_code)]
     pub fn notification_sender(&self) -> NotificationSender {
         NotificationSender::new(self.notification_tx.clone())
+    }
+
+    /// Return the list of directories to scan for Lua macro files.
+    ///
+    /// Validates: lua-macro-engine Requirement 12.2
+    pub(crate) fn macro_dirs(&self) -> Vec<String> {
+        if let Some(base) = dirs::data_dir() {
+            let dir = base.join("FileForgeWorkbench").join("macros");
+            vec![dir.to_string_lossy().into_owned()]
+        } else {
+            Vec::new()
+        }
     }
 
     // ── Session lifecycle helpers — Validates: Requirement 20.1, 20.2 ────
@@ -777,7 +799,9 @@ pub(crate) fn title_line_text(tab: &crate::tab_state::TabState) -> String {
         | TabKind::FileExplorerPanel
         | TabKind::SearchResults
         | TabKind::PluginManager
-        | TabKind::EventLog => tab.title.clone(),
+        | TabKind::EventLog
+        | TabKind::MacroLibrary => tab.title.clone(),
+        TabKind::MenuWorkspace => tab.title.clone(),
     }
 }
 

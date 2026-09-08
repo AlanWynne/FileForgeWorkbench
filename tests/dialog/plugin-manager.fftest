@@ -1,0 +1,26 @@
+# FFTest Dialog Script -- Plugin Manager
+# Functional area: Plugin Manager Context
+# Validates: Req 13.2 (automated-dialog-testing), Req 1.1, 1.5, 1.6 (plugin-manager-ui)
+# Expected outcome: Plugin Manager panel opens; filter input is present
+
+# Open Plugin Manager via POM option 8
+TYPE TEXT "8"
+PRESS KEY ENTER
+
+ASSERT CONTEXT IS "PluginManager"
+
+CHECKPOINT "plugin_manager_opened"
+
+# Verify filter input is present
+ASSERT CONTROL VALUE "textbox.plugin_filter" ""
+
+# Apply a filter
+CLICK BUTTON "textbox.plugin_filter"
+TYPE TEXT "gcc"
+
+CHECKPOINT "plugin_filter_applied"
+
+# Return to POM
+PRESS KEY F3
+
+ASSERT CONTEXT IS "Home"

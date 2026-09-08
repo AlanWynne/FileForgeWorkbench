@@ -217,7 +217,7 @@ pub fn type_ahead_jump(state: &TreeState, current: NodeId, prefix: &str) -> Opti
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::node::{NodeType, TreeNodeData};
+    use crate::node::TreeNodeData;
     use crate::state::TreeState;
 
     fn setup_tree() -> (TreeState, NodeId, NodeId, NodeId) {
@@ -237,7 +237,7 @@ mod tests {
     #[test]
     fn arrow_down_returns_select_next() {
         // Validates: Requirement 8.1 — Down Arrow moves selection down
-        let (state, local, _, _) = setup_tree();
+        let (state, _local, _, _) = setup_tree();
         let mut handler = KeyboardHandler::new();
         let action = handler.handle_key(KeyEvent::ArrowDown, &state);
         assert_eq!(action, Some(TreeAction::SelectNext));
@@ -365,7 +365,7 @@ mod tests {
     #[test]
     fn next_visible_node_advances_in_order() {
         // Validates: Requirement 8.1 — Down Arrow visits nodes in display order
-        let (mut state, local, child_a, child_b) = setup_tree();
+        let (state, local, child_a, child_b) = setup_tree();
         // local -> child_a -> child_b in display order
         let next = next_visible_node(&state, local);
         assert_eq!(next, Some(child_a));
@@ -376,7 +376,7 @@ mod tests {
     #[test]
     fn prev_visible_node_goes_backwards() {
         // Validates: Requirement 8.2 — Up Arrow visits nodes in reverse order
-        let (mut state, local, child_a, child_b) = setup_tree();
+        let (state, local, child_a, child_b) = setup_tree();
         let prev = prev_visible_node(&state, child_b);
         assert_eq!(prev, Some(child_a));
         let prev2 = prev_visible_node(&state, child_a);
@@ -386,7 +386,7 @@ mod tests {
     #[test]
     fn type_ahead_jump_finds_next_sibling_with_prefix() {
         // Validates: Requirement 8.12 — type-ahead jumps to matching sibling
-        let (mut state, local, child_a, child_b) = setup_tree();
+        let (state, local, child_a, child_b) = setup_tree();
         // child_a = "alpha.rs", child_b = "beta.rs"
         // From local, jump to "al" prefix -> child_a
         let result = type_ahead_jump(&state, local, "al");

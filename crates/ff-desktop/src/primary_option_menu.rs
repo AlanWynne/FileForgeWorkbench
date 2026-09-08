@@ -18,7 +18,7 @@ pub struct MenuOption {
 
 /// The built-in option list shipped with the workbench.
 ///
-/// Validates: Requirement 14.3
+/// Validates: Requirement 14.3 (startup-and-session), Requirement 6.1 (cv-requirements.md)
 pub const BUILT_IN_OPTIONS: &[MenuOption] = &[
     MenuOption {
         key: "0",
@@ -28,12 +28,12 @@ pub const BUILT_IN_OPTIONS: &[MenuOption] = &[
     MenuOption {
         key: "1",
         label: "File Catalogs",
-        description: "Virtual File Catalogs \u{2014} Mainframe, POSIX, Native",
+        description: "Virtual File Catalogs -- Mainframe, POSIX, Native",
     },
     MenuOption {
         key: "2",
         label: "Files",
-        description: "View Edit Create and Delete of files",
+        description: "File Explorer -- Browse catalogs and files in a tree view",
     },
     MenuOption {
         key: "3",
@@ -64,6 +64,22 @@ pub const BUILT_IN_OPTIONS: &[MenuOption] = &[
         key: "8",
         label: "Plugins",
         description: "Vendor added plugins",
+    },
+    // Phase CV -- Extended group
+    MenuOption {
+        key: "9",
+        label: "Jobs",
+        description: "JES job monitor and spool viewer",
+    },
+    MenuOption {
+        key: "S",
+        label: "Search",
+        description: "Global search and replace across files",
+    },
+    MenuOption {
+        key: "B",
+        label: "Batch",
+        description: "Batch command execution (IKJEFT01 analogue)",
     },
 ];
 
@@ -221,11 +237,13 @@ const MONTH_NAMES: [&str; 12] = [
 
 /// Action returned by the Primary Option Menu when the user activates an item.
 ///
-/// Validates: Requirement 14.39, 14.40
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Validates: Requirement 14.39, 14.40, Requirement 6.1 (cv-requirements.md)
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PomAction {
-    /// The user activated a numbered option (0–8).
+    /// The user activated a numeric option (0-9).
     Navigate(u8),
+    /// The user activated a non-numeric option key (e.g. "S", "B").
+    NavigateKey(String),
     /// The user activated the "Enter X to Terminate" item.
     Exit,
 }
@@ -334,8 +352,11 @@ pub fn render(
                         .fill(row_fill)
                         .stroke(egui::Stroke::NONE);
                     if ui.add(btn).clicked() {
-                        let key: u8 = opt.key.parse().unwrap_or(0);
-                        result.action = Some(PomAction::Navigate(key));
+                        if let Ok(key) = opt.key.parse::<u8>() {
+                            result.action = Some(PomAction::Navigate(key));
+                        } else {
+                            result.action = Some(PomAction::NavigateKey(opt.key.to_string()));
+                        }
                     }
                     ui.add_space(2.0);
                 }
@@ -518,7 +539,7 @@ fn render_calendar_row(
 mod tests {
     use super::*;
 
-    /// Validates: Requirement 14.3 — built-in option list contains all 9 required entries.
+    /// Validates: Requirement 14.3 -- built-in option list contains all 12 required entries.
     #[test]
     fn built_in_options_contains_all_required_entries() {
         let keys: Vec<&str> = BUILT_IN_OPTIONS.iter().map(|o| o.key).collect();
@@ -531,7 +552,11 @@ mod tests {
         assert!(keys.contains(&"6"), "missing Terminals (6)");
         assert!(keys.contains(&"7"), "missing Databases (7)");
         assert!(keys.contains(&"8"), "missing Plugins (8)");
-        assert_eq!(BUILT_IN_OPTIONS.len(), 9);
+        // Phase CV -- Extended group
+        assert!(keys.contains(&"9"), "missing Jobs (9)");
+        assert!(keys.contains(&"S"), "missing Search (S)");
+        assert!(keys.contains(&"B"), "missing Batch (B)");
+        assert_eq!(BUILT_IN_OPTIONS.len(), 12);
     }
 
     /// Validates: Requirement 14.5 — day_of_year returns correct ordinal.
@@ -577,11 +602,13 @@ mod tests {
 
     // ── Req 14.39 / 14.40 — POM option buttons ───────────────────────────────
 
-    /// Validates: Requirement 14.39 — Navigate action constructible for each option key 0–8.
+    /// Validates: Requirement 14.39 -- Navigate action constructible for each option key 0-9, S, B.
+    /// Validates: Requirement 6.1 (cv-requirements.md) -- 12 options total.
     #[test]
     fn pom_navigate_action_returned_for_each_option() {
-        for opt in BUILT_IN_OPTIONS {
-            let key: u8 = opt.key.parse().expect("option key must be a single digit");
+        // Numeric options 0-9
+        for opt in BUILT_IN_OPTIONS.iter().filter(|o| o.key.parse::<u8>().is_ok()) {
+            let key: u8 = opt.key.parse().expect("numeric key");
             let action = PomAction::Navigate(key);
             assert!(
                 matches!(action, PomAction::Navigate(k) if k == key),
@@ -589,11 +616,26 @@ mod tests {
                 opt.key
             );
         }
-        let keys: Vec<u8> = BUILT_IN_OPTIONS
+        // Non-numeric options S, B
+        for opt in BUILT_IN_OPTIONS.iter().filter(|o| o.key.parse::<u8>().is_err()) {
+            let action = PomAction::NavigateKey(opt.key.to_string());
+            assert!(
+                matches!(action, PomAction::NavigateKey(ref k) if k == opt.key),
+                "NavigateKey must be constructible for option '{}'",
+                opt.key
+            );
+        }
+        let numeric_keys: Vec<u8> = BUILT_IN_OPTIONS
             .iter()
-            .map(|o| o.key.parse::<u8>().unwrap())
+            .filter_map(|o| o.key.parse::<u8>().ok())
             .collect();
-        assert_eq!(keys, vec![0, 1, 2, 3, 4, 5, 6, 7, 8]);
+        assert_eq!(numeric_keys, vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        let alpha_keys: Vec<&str> = BUILT_IN_OPTIONS
+            .iter()
+            .filter(|o| o.key.parse::<u8>().is_err())
+            .map(|o| o.key)
+            .collect();
+        assert_eq!(alpha_keys, vec!["S", "B"]);
     }
 
     /// Validates: Requirement 14.40 — PomAction::Exit variant exists and exit line text matches spec.

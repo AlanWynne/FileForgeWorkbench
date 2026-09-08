@@ -14,8 +14,7 @@ use tokio::io::AsyncRead;
 
 use ff_background_io::save::{DocumentChunkSource, SaveOptions};
 use ff_background_io::{
-    BackgroundIoService, ChunkCallback, ChunkSize, IoConfig, IoPhase, IoTaskHandle, LoadOptions,
-    ProgressState, TaskState,
+    BackgroundIoService, ChunkCallback, IoConfig, IoPhase, IoTaskHandle, LoadOptions, TaskState,
 };
 use ff_vfs::{
     CreateOptions, DeleteOptions, OpenOptions, ProviderRegistry, ResourceUri, Vfs, VfsCapabilities,

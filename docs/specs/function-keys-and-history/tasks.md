@@ -545,3 +545,30 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
   - [x] 32.4 Write unit test: context_key_maps_parsed_from_config_value_table (editor + pom contexts, full-replacement, unknown-context fallback)
   - [x] 32.5 Write unit test: context_key_maps_invalid_key_skipped (F99 produces warning, F3 loaded)
   - Covers: Requirement 14.7
+
+---
+
+## Phase CX -- Named Workspaces, KEYS Name Argument, SPLIT Alias (CR-NR-046, CR-CH-010)
+
+### New Requirements (Req 21 in function-keys-and-history, Req 12 in layout-and-docking)
+
+See `docs/specs/function-keys-and-history/cx-requirements.md` for full criteria.
+
+- [ ] CX.1 Add `workspace_name: Option<String>` to `TabState` in `tab_state.rs`
+  - Satisfies: Req 1.1
+- [ ] CX.2 Add `NAME` command handler in `shell/commands.rs`
+  - Satisfies: Req 1.2, 1.3, 1.4
+- [ ] CX.3 Update tab header rendering to show `workspace_name` when set
+  - Satisfies: Req 1.4
+- [ ] CX.4 Persist and restore `workspace_name` in `session_manager.rs`
+  - Satisfies: Req 1.5, 1.6, Req 4.1, 4.2, 4.3
+- [ ] CX.5 Extend `KEYS` command handler to accept optional name argument
+  - Satisfies: Req 2.1, 2.2, 2.3, 2.4
+- [ ] CX.6 Add `Map Name` read-only field to `KeyConfigDialog` header
+  - Satisfies: Req 2.5
+- [ ] CX.7 Add `SPLIT DETACH` and context-sensitive `SPLIT` routing in `shell/commands.rs`
+  - Satisfies: Req 3.1, 3.2, 3.3, 3.4, 3.5, 3.6
+- [ ] CX.8 Write unit tests for all CX criteria
+  - Validates: Req 1.1-1.6, Req 2.1-2.5, Req 3.1-3.6, Req 4.1-4.3
+- [ ] CX.9 Update `docs/quality/TCR.md` -- set all CR-NR-046 and CR-CH-010 rows to PASS
+- [ ] CX.10 Update `docs/specs/project-master/tasks.md` -- mark Phase CX complete

@@ -245,9 +245,24 @@ partial matches).
 "Utility"                      → "Tool"  (when referring to the Utilities panel/menu)
 "module"                       → "capability"  (when used as a product-level grouping)
 "feature"                      → "capability"  (when used as a product-level grouping)
-"screen"                       → "view"  (when referring to a full-panel display context)
-"tree"                         → "Navigation Pane"  (when referring to the left-side panel)
-"editor"                       → "Content Editor"  (in product-level descriptions)
+"screen"                       -> "view"  (when referring to a full-panel display context)
+"tree"                         -> "Navigation Pane"  (when referring to the left-side panel)
+"editor"                       -> "Content Editor"  (in product-level descriptions)
+```
+
+Phase CT additional substitutions (apply after the above):
+
+```
+"Workspace View"               -> "Workspace"
+"Detached View"                -> "Detached Workspace"
+"Content Editor"               -> "Editor Context"  (when referring to tab content)
+"Settings Panel"               -> "Settings Context"
+"Catalog Explorer"             -> "Catalog Explorer Context"
+"Explorer Panel"               -> "File Explorer Context"
+"File Explorer Panel"          -> "File Explorer Context"
+"Toolchain Panel"              -> "Compiler Context"
+"Workbench Home View"          -> "Home Context"  (product-facing; POM alias retained)
+"Primary Option Menu"          -> "Home Context"  (product-facing; POM alias retained)
 ```
 
 ---
@@ -258,45 +273,106 @@ The following terms are the canonical vocabulary for all FFWB specifications.
 Each rewritten spec must include a Glossary section using these definitions
 (adapted as needed for the spec's scope).
 
+### 6.1 Three-Level UI Model (Phase CT -- canonical)
+
+The Workbench UI is described using exactly three levels:
+
+| Level | Term | Definition |
+|-------|------|------------|
+| 1 | **Workbench** | The FileForgeWorkbench application window -- the outermost container. |
+| 2 | **Workspace** | A single tab in the Workbench tab bar. Each Workspace has a kind that determines what it displays. |
+| 3 | **Context** | The content displayed inside a Workspace -- named by what it shows (e.g. Home Context, Editor Context). |
+
+Workspace kinds and their Context names:
+
+| Workspace kind | Context name | Activated by |
+|---------------|-------------|-------------|
+| Home | Home Context | Default on launch; `=0` through `=8` fastpath |
+| Editor | Editor Context | `EDIT <path>`, `File > Open`, CLI argument |
+| Settings | Settings Context | `0` / `SETTINGS` / `=0` / POM option 0 |
+| Catalog Explorer | Catalog Explorer Context | `1` / `FILES` / `=1` / POM option 1 |
+| File Explorer | File Explorer Context | `2` / `=2` / `=FILES` / POM option 2 |
+| Search Results | Search Results Context | `Ctrl+Shift+F` / `GSEARCH` |
+| Compiler | Compiler Context | `5` / `COMPILERS` / `=5` / POM option 5 |
+| Database | Database Context | `8` / `DATABASES` / `=8` / POM option 8 |
+| Plugin Manager | Plugin Manager Context | `8` / `PLUGINS` / `=8` / POM option 8 |
+| Macro Library | Macro Library Context | `6` / `MACROS` / `=6` / POM option 6 |
+| Event Log | Event Log Context | `LOG` command |
+| Hex | Hex Context | `HEX ON` within an Editor Context |
+
+A Workspace that has been moved to a separate OS window is called a **Detached Workspace**.
+
+### 6.2 Full Term Glossary
+
 | Term | Definition |
 |------|-----------|
-| **Workbench** | The FileForgeWorkbench application as a whole — the desktop platform that hosts all Capabilities, Features, and Tools. |
+| **Workbench** | The FileForgeWorkbench application as a whole -- the desktop platform that hosts all Capabilities, Features, and Tools. |
+| **Workspace** | A single tab in the Workbench tab bar. Each Workspace displays exactly one Context. |
+| **Context** | The content displayed inside a Workspace, named by what it shows (e.g. Home Context, Editor Context, Settings Context). |
+| **Detached Workspace** | A Workspace that has been moved to a separate OS window, retaining its content and state. Previously called "Detached View" or "floating window". |
+| **Home Context** | The ISPF-style Primary Option Menu displayed in the default Workspace on launch. Also referred to as "POM" in ISPF-heritage contexts. |
+| **Editor Context** | The text editing surface within a Workspace, providing insert/overstrike editing, syntax highlighting, and ISPF-style commands. Previously called "Content Editor". |
+| **Settings Context** | The browsable, editable view of all Profile Settings within a Workspace. Previously called "Settings Panel". |
+| **Catalog Explorer Context** | The POM option 1 view providing unified management of Virtual Catalogs (Mainframe, POSIX, Native). Previously called "Catalog Explorer" or "Files Panel". |
+| **File Explorer Context** | The POM option 2 view providing hierarchical navigation of resources from all registered VFS providers. Previously called "Explorer Panel" or "File Explorer Panel". |
+| **Search Results Context** | The view displaying global search results and replace controls. |
+| **Compiler Context** | The view displaying toolchain status, build output, and diagnostics. Previously called "Toolchain Panel". |
+| **Database Context** | The view providing integrated database tool access. |
+| **Plugin Manager Context** | The view listing installed and available plugins. |
+| **Macro Library Context** | The view listing, running, and editing Lua macros. |
+| **Event Log Context** | The view displaying the notification and event log. |
+| **Hex Context** | The hex display mode within an Editor Context. |
 | **Capability** | A major product-level grouping of related Features, aligned to one of the six architectural layers. |
 | **Feature** | A discrete, user-visible unit of functionality within a Capability, corresponding to one sub-project specification. |
-| **Workspace** | The user's current working environment within the Workbench, comprising all open Workspace Tabs, their layout, and active settings. |
-| **Workspace Tab** | A single work context within the Workbench tab bar — may contain a Content Editor, an Explorer Panel, a Tool Panel, or the Workbench Home View. |
-| **Workspace View** | A dockable or floating panel container within the Workbench layout. |
-| **Detached View** | A Workspace Tab that has been moved to a separate OS window, retaining its content and state. |
-| **Workbench Home View** | The ISPF-style Primary Option Menu that serves as the default starting view when the Workbench opens. Also referred to as "POM" in ISPF-heritage contexts. |
-| **Content Editor** | The text editing surface within a Workspace Tab, providing insert/overstrike editing, syntax highlighting, and ISPF-style commands. |
-| **Explorer Panel** | A dockable panel providing hierarchical navigation of resources (files, datasets, catalogs) from all registered VFS providers. |
-| **Catalog Explorer** | The POM option 1 panel providing unified management of Virtual Catalogs (Mainframe, POSIX, Native). |
-| **Navigation Pane** | The left-side hierarchical tree within the Explorer Panel. |
+| **Navigation Pane** | The left-side hierarchical tree within the File Explorer Context. |
 | **Command Field** | The single-line text input labelled "Command ===>" used for direct ISPF-style command entry. |
 | **Key Label Bar** | The footer region displaying current Function Key assignments as labelled slots. |
-| **Function Key** | A keyboard key in the set F1–F24, assignable to any registered command. |
+| **Function Key** | A keyboard key in the set F1-F24, assignable to any registered command. |
 | **Profile Setting** | A user-configurable preference stored in the layered TOML configuration system. |
-| **Tool** | A specialised workbench panel providing a focused capability (e.g. Database Tool, Compiler Tool). |
-| **Tool Panel** | A Workspace Tab containing a Tool. |
+| **Tool** | A specialised workbench capability providing a focused function (e.g. Database Tool, Compiler Tool). |
 | **Task** | A background operation managed by the workflow engine (e.g. file copy, build, search). |
 | **Plugin** | An independently loadable extension that registers Capabilities, Features, or Connectors with the Workbench. |
 | **Connector** | A VFS provider plugin that exposes a remote or specialised storage system through the VFS abstraction layer. |
 | **Virtual Catalog** | A named, typed container registered with the VFS that groups related files or datasets. |
-| **VFS** | Virtual File System — the abstraction layer through which all resource access is routed, regardless of backing store. |
+| **VFS** | Virtual File System -- the abstraction layer through which all resource access is routed, regardless of backing store. |
 | **Dataset** | A mainframe-style named data container (PS, PDS, PDSE, GDG) managed by the Dataset Catalog. |
 | **Session** | The persisted snapshot of the user's Workspace state, restored on next launch. |
-| **Settings** | The collection of Profile Settings configurable by the user, accessible via the Settings Panel. |
-| **Settings Panel** | The Workspace Tab providing browsable, editable access to all Profile Settings. |
+| **Settings** | The collection of Profile Settings configurable by the user, accessible via the Settings Context. |
 
 ---
 
-## 7. Next Steps
+## 7. Phase CT Additions (Workbench/Workspace/Context model)
+
+Phase CT (CR-CH-009) extends this map with the three-level UI model defined in §6.1.
+The following additional substitutions apply during the Phase CT terminology pass:
+
+```
+"Workspace View"               -> "Workspace"  (a tab is now simply a Workspace)
+"Detached View"                -> "Detached Workspace"
+"floating window"              -> "Detached Workspace"
+"Content Editor"               -> "Editor Context"  (when referring to the tab content)
+"Settings Panel"               -> "Settings Context"  (when referring to the tab content)
+"Catalog Explorer"             -> "Catalog Explorer Context"  (when referring to the tab content)
+"Explorer Panel"               -> "File Explorer Context"  (when referring to the tab content)
+"File Explorer Panel"          -> "File Explorer Context"
+"Toolchain Panel"              -> "Compiler Context"
+"Workbench Home View"          -> "Home Context"  (in product-facing text; POM alias retained)
+"Primary Option Menu"          -> "Home Context"  (in product-facing text; POM alias retained)
+"panel"                        -> "Context"  (when referring to the content of a Workspace tab)
+"view"                         -> "Context"  (when referring to the content of a Workspace tab)
+```
+
+Note: "panel" and "view" are only substituted when they refer to the content of a Workspace
+tab. They remain valid in other contexts (e.g. "Navigation Pane", "split view").
+
+## 8. Next Steps
 
 This terminology map feeds directly into:
 
-- **Task 3** — Architectural Domain Classification (uses the Capability hierarchy from §4)
-- **Tasks 5–7** — Requirement Rewrites (apply the find/replace table from §5 and templates from §4)
-- **Task 8** — Traceability Matrix (uses the FR-XXXX / NFR-XXXX numbering scheme from §4.2)
+- **Task 3** -- Architectural Domain Classification (uses the Capability hierarchy from §4)
+- **Tasks 5-7** -- Requirement Rewrites (apply the find/replace table from §5 and templates from §4)
+- **Task 8** -- Traceability Matrix (uses the FR-XXXX / NFR-XXXX numbering scheme from §4.2)
+- **Phase CT** -- Workbench/Workspace/Context pass across all 69 sub-project specs
 
 The find/replace table in §5 should be applied as a first pass on each spec
 file before the structural rewrite begins, to ensure terminology is consistent

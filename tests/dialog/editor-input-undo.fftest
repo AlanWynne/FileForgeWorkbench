@@ -1,0 +1,31 @@
+# FFTest Dialog Script -- Editor Text Input and Undo
+# Functional area: Editor Context -- text input and undo
+# Validates: Req 13.1 (automated-dialog-testing), Req 4.1 (edit-operations), Req 1 (undo-redo)
+# Expected outcome: typed text appears; Ctrl+Z undoes the change
+
+VARIABLE TESTFILE "${FFWB_TEST_FIXTURES}/sample.txt"
+
+TYPE TEXT "EDIT ${TESTFILE}"
+PRESS KEY ENTER
+
+ASSERT FILE OPEN
+ASSERT CONTEXT IS "Editor"
+
+CHECKPOINT "editor_ready"
+
+# Type some text
+TYPE TEXT "Hello from FFTest"
+PRESS KEY ENTER
+
+CHECKPOINT "text_typed"
+
+# Undo the last change
+PRESS KEY CTRL_Z
+
+CHECKPOINT "undo_applied"
+
+# Close without saving
+TYPE TEXT "QUIT"
+PRESS KEY ENTER
+
+ASSERT CONTEXT IS "Home"

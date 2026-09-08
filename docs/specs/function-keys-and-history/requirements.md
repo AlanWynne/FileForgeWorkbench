@@ -275,7 +275,7 @@ All function key assignments route through the command framework — pressing a 
 
 ### Requirement 14: Per-Context Key Map
 
-**User Story:** As a workbench user, I want each Workspace Context (POM, editor, settings panel, file browser, etc.) to have its own function key assignments that load automatically when that context becomes active, so that the most relevant shortcuts are always available for the current task.
+**User Story:** As a workbench user, I want each Workspace Context (POM, editor, Settings Context, file browser, etc.) to have its own function key assignments that load automatically when that context becomes active, so that the most relevant shortcuts are always available for the current task.
 
 **Source:** New requirement — extends Requirement 2 (Profile-Specific Key Map) to cover all Workspace Contexts, not just language profiles.
 
@@ -286,7 +286,7 @@ All function key assignments route through the command framework — pressing a 
 3. WHEN no Context_Key_Map is defined for the active context, THE Key_Map_Resolver SHALL apply the Global_Key_Map as the effective key map.
 4. WHEN the active tab changes, THE Key_Map_Resolver SHALL recompute the effective key map for the newly active tab's context and update the Key_Label_Bar within the same rendering frame.
 5. THE Context_Key_Map model SHALL use the same full-replacement semantics as the Profile_Key_Map: when a Context_Key_Map is active, the Global_Key_Map is entirely inactive for that context; keys not defined in the Context_Key_Map are unassigned.
-6. THE context name used for lookup SHALL be a stable string identifier assigned to each tab kind: `"pom"` for the Primary Option Menu, `"editor"` for file editor tabs, `"settings"` for the Settings Panel, `"files"` for the Files Panel, `"hex"` for hex display mode, `"toolchain"` for the Toolchain Panel.
+6. THE context name used for lookup SHALL be a stable string identifier assigned to each Workspace kind: `"pom"` for the Home Context (Primary Option Menu), `"editor"` for Editor Context Workspaces, `"settings"` for the Settings Context, `"files"` for the Catalog Explorer Context, `"hex"` for Hex Context, `"toolchain"` for the Compiler Context.
 7. THE configuration system SHALL accept a `[context_key_maps]` section at the top level of the workbench configuration, containing one sub-table per context name.
 
 ---

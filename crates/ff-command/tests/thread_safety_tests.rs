@@ -95,7 +95,7 @@ fn concurrent_command_dispatch() {
     ));
     let mut handles = Vec::new();
 
-    for thread_idx in 0..10 {
+    for _thread_idx in 0..10 {
         let d = dispatch.clone();
         handles.push(thread::spawn(move || {
             for cmd_idx in 0..10 {

@@ -5,11 +5,10 @@
 use proptest::prelude::*;
 
 use ff_theme::colour::ColourRGBA;
-use ff_theme::design_tokens::DesignTokens;
 use ff_theme::element::{Element, ElementColourMap};
 use ff_theme::font::{
-    clamp_font_size, FontConfig, FontStack, ZoomLevel, MAX_EFFECTIVE_SIZE_PT, MAX_FONT_SIZE_PT,
-    MIN_EFFECTIVE_SIZE_PT, MIN_FONT_SIZE_PT,
+    clamp_font_size, ZoomLevel, MAX_EFFECTIVE_SIZE_PT, MAX_FONT_SIZE_PT, MIN_EFFECTIVE_SIZE_PT,
+    MIN_FONT_SIZE_PT,
 };
 use ff_theme::mode::VisualMode;
 use ff_theme::style_slot::{CaseTransform, StyleSlot, StyleSlotTable};

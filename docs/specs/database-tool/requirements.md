@@ -584,7 +584,7 @@ The database tool is **not** a standalone application — it integrates with the
 
 **User Story:** As a workbench user, I want database panels to participate fully in the workbench layout system — dockable, floatable, saveable in personas — so that I can arrange my database workspace alongside other workbench tools.
 
-**Source:** FFW-ARCH layout-and-docking Reqs 1–3 (Panel System, Tab Groups, Floating Windows). [FFW-ARCH]
+**Source:** FFW-ARCH layout-and-docking Reqs 1–3 (Panel System, Tab Groups, Detached Workspaces). [FFW-ARCH]
 
 #### Acceptance Criteria
 
@@ -596,7 +596,7 @@ The database tool is **not** a standalone application — it integrates with the
 
 17.4. THE ErDiagramPanel SHALL register with `default_dock_zone` of `Center`, opening as editor tabs.
 
-17.5. ALL database panels SHALL support undocking to floating windows, re-docking, tab group splits, and inclusion in workbench personas (named layout configurations).
+17.5. ALL database panels SHALL support undocking to Detached Workspaces, re-docking, tab group splits, and inclusion in workbench personas (named layout configurations).
 
 17.6. WHEN multiple SQL editors are open, EACH SHALL appear as a separate tab in the center tab group with a title showing the script name or connection name.
 

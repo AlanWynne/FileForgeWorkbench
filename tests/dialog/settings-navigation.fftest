@@ -1,0 +1,30 @@
+# FFTest Dialog Script -- Settings Navigation
+# Functional area: Settings Context
+# Validates: Req 13.1 (automated-dialog-testing), Req 15.1, 15.7 (configuration-system)
+# Expected outcome: Settings panel opens; filter input narrows visible keys
+
+# Open Settings via command
+TYPE TEXT "SETTINGS"
+PRESS KEY ENTER
+
+ASSERT CONTEXT IS "Settings"
+
+CHECKPOINT "settings_opened"
+
+# Verify the settings panel control is present
+ASSERT CONTROL VALUE "textbox.settings_filter" ""
+
+# Apply a filter
+CLICK BUTTON "textbox.settings_filter"
+TYPE TEXT "theme"
+
+CHECKPOINT "settings_filtered"
+
+# Clear filter and return
+PRESS KEY ESCAPE
+
+PRESS KEY F3
+
+ASSERT CONTEXT IS "Home"
+
+CHECKPOINT "settings_closed"

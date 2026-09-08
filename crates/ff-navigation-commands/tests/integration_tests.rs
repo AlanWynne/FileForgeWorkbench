@@ -5,7 +5,7 @@
 
 use ff_navigation_commands::locate::LabelRegistry;
 use ff_navigation_commands::types::{
-    ActiveBounds, NavigationConfig, SelectionModifier, SortDirection, SortParams, SortScope,
+    ActiveBounds, SelectionModifier, SortDirection, SortParams, SortScope,
 };
 use ff_navigation_commands::{
     BoundsManager, CharClassifier, ColsManager, DocStartEndNav, LocateCommand, ParagraphNav,

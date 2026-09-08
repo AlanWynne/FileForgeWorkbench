@@ -4,7 +4,6 @@
 
 use ff_display_line_mapping::ContractionState;
 use ff_document_model::{BytePosition, Document};
-use ff_edit_operations::EditBounds;
 use ff_line_commands::config::LineCommandConfig;
 use ff_line_commands::execution::delete::get_line_content;
 use ff_line_commands::pending::PendingCommandStore;

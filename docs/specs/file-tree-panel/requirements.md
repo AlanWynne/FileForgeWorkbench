@@ -34,7 +34,7 @@ All resource access flows through the VFS abstraction layer (FFW-ARCH-001) — t
 
 ## Glossary
 
-- **File_Tree_Panel**: The dockable panel component (`ff-file-tree` crate) that renders a multi-root hierarchical tree of resources from all registered VFS providers. [FFE-TREE, WB]
+- **File_Tree_Panel**: The dockable panel component (`ff-file-tree` crate) that renders a multi-root hierarchical tree of resources from all registered VFS providers. In the three-level UI model this is the File Explorer Context when displayed as a Workspace. [FFE-TREE, WB]
 - **Tree_Root**: A top-level node in the tree representing a VFS provider category or a specific mounted root path. The panel defines three static root categories: Local Files, Catalogs, and Connections. [WB]
 - **Tree_Node**: A single entry in the tree hierarchy, representing a file, directory, dataset, PDS member, catalog, or placeholder. Each node has a label, icon, expansion state, and optional children. [FFE-TREE]
 - **Local_Files_Root**: The tree root section containing workspace/project directories sourced from the `connector-local-fs` VFS provider. Supports multiple bookmarked root paths. [FFE-TREE, WB]
@@ -339,15 +339,15 @@ All resource access flows through the VFS abstraction layer (FFW-ARCH-001) — t
 
 #### Acceptance Criteria
 
-1. WHEN the user clicks the expand arrow on a directory node inside a Native catalog, THE File_Explorer_Panel SHALL display that directory's children (subdirectories and files) as nested child nodes, sorted directories-first then alphabetically.
+1. WHEN the user clicks the expand arrow on a directory node inside a Native catalog, THE File_Explorer_Context SHALL display that directory's children (subdirectories and files) as nested child nodes, sorted directories-first then alphabetically.
 2. WHEN a directory node is expanded, THE child nodes SHALL themselves be expandable if they are directories, supporting arbitrary nesting depth.
-3. THE File_Explorer_Panel content area SHALL be wrapped in a vertical scroll region so that the user can scroll to see entries that extend beyond the visible panel height.
+3. THE File_Explorer_Context content area SHALL be wrapped in a vertical scroll region so that the user can scroll to see entries that extend beyond the visible panel height.
 
 ---
 
 ### Requirement 16: File Explorer Context Menu
 
-**User Story:** As a user, I want a right-click context menu on any node in the File Explorer Panel so that I can perform file operations directly from the tree without leaving the workbench.
+**User Story:** As a user, I want a right-click context menu on any node in the File Explorer Context so that I can perform file operations directly from the tree without leaving the workbench.
 
 **Source:** CR-NR-006 — Phase AZ.
 
@@ -365,7 +365,7 @@ All resource access flows through the VFS abstraction layer (FFW-ARCH-001) — t
 
 **1. Trigger**
 
-1. WHEN the user right-clicks any non-section-header node in the File Explorer Panel, THE panel SHALL display a Context_Menu appropriate to that node's catalog type and node kind.
+1. WHEN the user right-clicks any non-section-header node in the File Explorer Context, THE panel SHALL display a Context_Menu appropriate to that node's catalog type and node kind.
 2. WHEN the user right-clicks a section header node ("Mainframe Catalogs", "POSIX Catalogs", "Native Catalogs"), THE panel SHALL display no context menu (section headers are not actionable).
 3. THE Context_Menu SHALL be dismissed when the user clicks outside it, presses Escape, or selects an item.
 
@@ -687,7 +687,7 @@ WHEN the user opens a POSIX catalog file node, THE same FileClass classification
 
 **1. Sort order**
 
-WHEN a Native catalog directory node is expanded, THE File_Explorer_Panel SHALL display its children sorted directories-first then files, with each group sorted alphabetically case-insensitive by file name.
+WHEN a Native catalog directory node is expanded, THE File_Explorer_Context SHALL display its children sorted directories-first then files, with each group sorted alphabetically case-insensitive by file name.
 
 **2. File size**
 
@@ -713,11 +713,11 @@ EACH file and directory node in a Native catalog SHALL display permission attrib
 
 **7. Inaccessible entries silently skipped**
 
-WHEN `std::fs::metadata()` returns an error for an entry (e.g. permission denied on a junction point or locked file), THE File_Explorer_Panel SHALL silently skip that entry — it SHALL NOT appear in the listing and SHALL NOT display an error message for that individual entry. The remaining entries in the directory SHALL still be listed normally.
+WHEN `std::fs::metadata()` returns an error for an entry (e.g. permission denied on a junction point or locked file), THE File_Explorer_Context SHALL silently skip that entry — it SHALL NOT appear in the listing and SHALL NOT display an error message for that individual entry. The remaining entries in the directory SHALL still be listed normally.
 
 **8. Locked-file open error**
 
-WHEN the user attempts to open a file that is locked by another process (OS error 32 on Windows), THE File_Explorer_Panel SHALL display a status-bar message: `"Cannot open '<filename>': file is in use by another process"` and SHALL NOT open an editor tab for that file.
+WHEN the user attempts to open a file that is locked by another process (OS error 32 on Windows), THE File_Explorer_Context SHALL display a status-bar message: `"Cannot open '<filename>': file is in use by another process"` and SHALL NOT open an editor tab for that file.
 
 **9. Column layout**
 
@@ -741,15 +741,15 @@ THE file attribute columns SHALL be rendered to the right of the file name in th
 
 **1. Drag-select gesture**
 
-WHEN the user presses and holds the left mouse button on a tree node and drags to another node, THE File_Explorer_Panel SHALL highlight all visible nodes between the start node and the current cursor position (inclusive) as a Drag_Selection.
+WHEN the user presses and holds the left mouse button on a tree node and drags to another node, THE File_Explorer_Context SHALL highlight all visible nodes between the start node and the current cursor position (inclusive) as a Drag_Selection.
 
 **2. Shift-click extend**
 
-WHEN the user holds Shift and clicks a tree node, THE File_Explorer_Panel SHALL extend the current selection from the Anchor_Node to the clicked node, replacing any previous selection.
+WHEN the user holds Shift and clicks a tree node, THE File_Explorer_Context SHALL extend the current selection from the Anchor_Node to the clicked node, replacing any previous selection.
 
 **3. Ctrl-click toggle**
 
-WHEN the user holds Ctrl and clicks a tree node, THE File_Explorer_Panel SHALL toggle that node's membership in the current selection without affecting other selected nodes.
+WHEN the user holds Ctrl and clicks a tree node, THE File_Explorer_Context SHALL toggle that node's membership in the current selection without affecting other selected nodes.
 
 **4. Selection highlight**
 
@@ -757,7 +757,7 @@ EACH selected node SHALL be rendered with the theme selection background colour 
 
 **5. Copy selection to clipboard (Ctrl+C)**
 
-WHEN one or more nodes are selected and the user presses Ctrl+C (or selects "Copy as Text Tree" from the context menu), THE File_Explorer_Panel SHALL build a Text_Tree string from the selected nodes and write it to the OS clipboard as plain UTF-8 text.
+WHEN one or more nodes are selected and the user presses Ctrl+C (or selects "Copy as Text Tree" from the context menu), THE File_Explorer_Context SHALL build a Text_Tree string from the selected nodes and write it to the OS clipboard as plain UTF-8 text.
 
 **6. Text_Tree format**
 
@@ -795,7 +795,7 @@ THE drag-select and copy behaviour SHALL apply equally to Native, POSIX, and Mai
 
 #### Glossary additions
 
-- **Explorer_Focus**: The keyboard focus state where the File Explorer Panel's node list is the active input target.
+- **Explorer_Focus**: The keyboard focus state where the File Explorer Context's node list is the active input target.
 - **Keyboard_Selection**: One or more nodes highlighted as selected via keyboard gestures (Shift+Arrow, Ctrl+Space).
 - **Cursor_Node**: The node that currently has the keyboard cursor (focus ring), independent of the selection set.
 
@@ -803,7 +803,7 @@ THE drag-select and copy behaviour SHALL apply equally to Native, POSIX, and Mai
 
 **1. Tab from command line enters the file list**
 
-WHEN the File Explorer Panel is the active tab and the user presses Tab while the Command_Field has focus, THE keyboard focus SHALL transfer to the File Explorer node list and the Cursor_Node SHALL be set to the first visible catalog name node.
+WHEN the File Explorer Context is the active tab and the user presses Tab while the Command_Field has focus, THE keyboard focus SHALL transfer to the File Explorer node list and the Cursor_Node SHALL be set to the first visible catalog name node.
 
 **2. Tab advances through nodes**
 
@@ -843,7 +843,7 @@ WHEN the user holds Ctrl and presses Space, THE Cursor_Node's membership in the 
 
 **11. Ctrl+C copies selected nodes**
 
-WHEN one or more nodes are in the Keyboard_Selection and the user presses Ctrl+C, THE File_Explorer_Panel SHALL copy the selected nodes' information to the OS clipboard (as per Req 19.5 — Text_Tree format for text paste, and as per Req 21.1 for file-level copy).
+WHEN one or more nodes are in the Keyboard_Selection and the user presses Ctrl+C, THE File_Explorer_Context SHALL copy the selected nodes' information to the OS clipboard (as per Req 19.5 — Text_Tree format for text paste, and as per Req 21.1 for file-level copy).
 
 **12. Escape clears keyboard selection**
 
@@ -871,27 +871,27 @@ THE Cursor_Node SHALL be rendered with a focus ring or border distinct from the 
 
 **1. Ctrl+C copies selected file paths to the internal clipboard**
 
-WHEN one or more nodes are selected in the File Explorer and the user presses Ctrl+C, THE File_Explorer_Panel SHALL store the selected nodes' full paths (Native/POSIX) or fully-qualified DSNs (Mainframe) in the File_Copy_Clipboard with operation type `Copy`.
+WHEN one or more nodes are selected in the File Explorer and the user presses Ctrl+C, THE File_Explorer_Context SHALL store the selected nodes' full paths (Native/POSIX) or fully-qualified DSNs (Mainframe) in the File_Copy_Clipboard with operation type `Copy`.
 
 **2. Ctrl+V in the file list pastes files to the current directory**
 
-WHEN the File_Copy_Clipboard is non-empty and the user presses Ctrl+V while the File Explorer node list has Explorer_Focus, THE File_Explorer_Panel SHALL determine the Paste_Target as follows: if the Cursor_Node is a directory/container, use it as the target; otherwise use the Cursor_Node's parent directory. THE panel SHALL then dispatch a background copy operation (via `ff-bgio`) for each source path to the Paste_Target directory.
+WHEN the File_Copy_Clipboard is non-empty and the user presses Ctrl+V while the File Explorer node list has Explorer_Focus, THE File_Explorer_Context SHALL determine the Paste_Target as follows: if the Cursor_Node is a directory/container, use it as the target; otherwise use the Cursor_Node's parent directory. THE panel SHALL then dispatch a background copy operation (via `ff-bgio`) for each source path to the Paste_Target directory.
 
 **3. Paste progress indicator**
 
-WHEN a paste operation is in progress, THE File_Explorer_Panel SHALL display a Progress_Indicator in the status bar showing the number of files copied and the total. WHEN all copies complete, THE Progress_Indicator SHALL be dismissed and the Paste_Target directory SHALL be refreshed in the tree.
+WHEN a paste operation is in progress, THE File_Explorer_Context SHALL display a Progress_Indicator in the status bar showing the number of files copied and the total. WHEN all copies complete, THE Progress_Indicator SHALL be dismissed and the Paste_Target directory SHALL be refreshed in the tree.
 
 **4. Paste failure handling**
 
-WHEN a background copy fails for one or more files (e.g. permission denied, disk full, name collision), THE File_Explorer_Panel SHALL display an error message in the status bar listing the failed file names and reasons. Successfully copied files SHALL NOT be rolled back.
+WHEN a background copy fails for one or more files (e.g. permission denied, disk full, name collision), THE File_Explorer_Context SHALL display an error message in the status bar listing the failed file names and reasons. Successfully copied files SHALL NOT be rolled back.
 
 **5. Name collision on paste**
 
-WHEN a file being pasted has the same name as an existing file in the Paste_Target directory, THE File_Explorer_Panel SHALL display a per-file prompt with options: **Overwrite**, **Skip**, **Rename** (appends `_copy` suffix or increments a counter). The user's choice applies to that file only; subsequent collisions prompt again.
+WHEN a file being pasted has the same name as an existing file in the Paste_Target directory, THE File_Explorer_Context SHALL display a per-file prompt with options: **Overwrite**, **Skip**, **Rename** (appends `_copy` suffix or increments a counter). The user's choice applies to that file only; subsequent collisions prompt again.
 
 **6. Paste into editor inserts file list**
 
-WHEN the File_Copy_Clipboard is non-empty and the user presses Ctrl+V while an editor tab has focus, THE File_Explorer_Panel SHALL display a Paste_Prompt modal with two options: **\"Insert File Names\"** and **\"Insert File Contents\"**.
+WHEN the File_Copy_Clipboard is non-empty and the user presses Ctrl+V while an editor tab has focus, THE File_Explorer_Context SHALL display a Paste_Prompt modal with two options: **\"Insert File Names\"** and **\"Insert File Contents\"**.
 
 **7. Insert File Names**
 
@@ -907,7 +907,7 @@ THE copy and paste operations SHALL support Mainframe catalog nodes. Copying a M
 
 **10. POSIX catalogs are read-only for paste**
 
-WHEN the Paste_Target is within a POSIX catalog, THE File_Explorer_Panel SHALL reject the paste operation and display a status-bar message: `\"Cannot paste: POSIX catalog '<name>' is read-only\"`.
+WHEN the Paste_Target is within a POSIX catalog, THE File_Explorer_Context SHALL reject the paste operation and display a status-bar message: `\"Cannot paste: POSIX catalog '<name>' is read-only\"`.
 
 **11. File_Copy_Clipboard persists until replaced or cleared**
 
@@ -915,16 +915,16 @@ THE File_Copy_Clipboard SHALL persist across navigation within the File Explorer
 
 ---
 
-### Requirement 23: File Explorer Panel — egui-file-dialog Look-and-Feel with Catalog Mount Points
+### Requirement 23: File Explorer Context — egui-file-dialog Look-and-Feel with Catalog Mount Points
 
-**User Story:** As a user, I want the File Explorer Panel (POM option 2) to look and work like the egui-file-dialog widget, with each catalog appearing as a mounted node in a left sidebar, so that I can browse all catalog types through a single, consistent, polished interface.
+**User Story:** As a user, I want the File Explorer Context (POM option 2) to look and work like the egui-file-dialog widget, with each catalog appearing as a mounted node in a left sidebar, so that I can browse all catalog types through a single, consistent, polished interface.
 
 **Source:** CR-NR-014 — Phase BM.
 
 #### Glossary additions
 
-- **Sidebar**: The left pane of the File Explorer Panel listing all mounted catalogs as named nodes, analogous to the "Places" panel in egui-file-dialog.
-- **Content_Pane**: The right pane of the File Explorer Panel showing the files/datasets belonging to the currently selected catalog node.
+- **Sidebar**: The left pane of the File Explorer Context listing all mounted catalogs as named nodes, analogous to the "Places" panel in egui-file-dialog.
+- **Content_Pane**: The right pane of the File Explorer Context showing the files/datasets belonging to the currently selected catalog node.
 - **Mount_Node**: A catalog entry rendered in the Sidebar. Clicking it populates the Content_Pane with that catalog’s contents.
 - **Mainframe_Listing**: A flat or hierarchical list of dataset names rendered with dot-separated qualifiers (e.g. `PAYROLL.EMPLOYEE`) in the Content_Pane for Mainframe catalogs.
 - **POSIX_Listing**: A file/folder tree rendered with forward-slash paths (e.g. `/home/user/docs`) in the Content_Pane for POSIX catalogs.
@@ -934,7 +934,7 @@ THE File_Copy_Clipboard SHALL persist across navigation within the File Explorer
 
 **1. Two-pane layout**
 
-WHEN the File Explorer Panel is open, THE panel SHALL render a two-pane layout: a fixed-width left Sidebar and a resizable right Content_Pane, separated by a visible splitter. The overall visual style SHALL match the egui-file-dialog widget as closely as possible.
+WHEN the File Explorer Context is open, THE panel SHALL render a two-pane layout: a fixed-width left Sidebar and a resizable right Content_Pane, separated by a visible splitter. The overall visual style SHALL match the egui-file-dialog widget as closely as possible.
 
 **2. Sidebar lists all catalogs as mount nodes**
 
@@ -985,18 +985,18 @@ WHEN the refactoring is complete, `cargo test` SHALL pass with 0 failures. No ex
 #### Glossary additions
 
 - **egui_file_dialog**: The third-party egui widget crate (`egui-file-dialog`) that provides a ready-made file/folder picker rendered inside an egui panel or window.
-- **Native_Browser**: The portion of the File Explorer Panel that renders the contents of a Native catalog. Replaced by the `egui-file-dialog` widget in this requirement.
-- **Dataset_Browser**: The portion of the File Explorer Panel that renders Mainframe and POSIX catalog datasets. Unchanged by this requirement.
+- **Native_Browser**: The portion of the File Explorer Context that renders the contents of a Native catalog. Replaced by the `egui-file-dialog` widget in this requirement.
+- **Dataset_Browser**: The portion of the File Explorer Context that renders Mainframe and POSIX catalog datasets. Unchanged by this requirement.
 
 #### Acceptance Criteria
 
 **1. egui-file-dialog replaces render_native_children**
 
-WHEN the user expands a Native catalog node in the File Explorer Panel, THE panel SHALL render the `egui-file-dialog` widget initialised to the catalog's repository path, replacing the previous `render_native_children()` recursive tree renderer.
+WHEN the user expands a Native catalog node in the File Explorer Context, THE panel SHALL render the `egui-file-dialog` widget initialised to the catalog's repository path, replacing the previous `render_native_children()` recursive tree renderer.
 
 **2. File selection opens in editor**
 
-WHEN the user selects a file in the `egui-file-dialog` widget and confirms (double-click or Enter), THE File_Explorer_Panel SHALL dispatch the selected file's absolute path to the existing `open_path` handler, opening the file in a new editor tab (same behaviour as the previous double-click handler).
+WHEN the user selects a file in the `egui-file-dialog` widget and confirms (double-click or Enter), THE File_Explorer_Context SHALL dispatch the selected file's absolute path to the existing `open_path` handler, opening the file in a new editor tab (same behaviour as the previous double-click handler).
 
 **3. Mainframe and POSIX browsing unchanged**
 

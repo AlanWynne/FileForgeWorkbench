@@ -77,6 +77,7 @@ impl SessionManager {
                     language_override: None,
                     is_pinned: false,
                     zoom_offset: 0,
+                    workspace_name: t.workspace_name.clone(),
                 }),
                 TabKind::FilesPanel => Some(SessionTabState {
                     tab_id: format!("{}", t.id.0),
@@ -90,6 +91,7 @@ impl SessionManager {
                     language_override: None,
                     is_pinned: false,
                     zoom_offset: 0,
+                    workspace_name: t.workspace_name.clone(),
                 }),
                 TabKind::FileExplorerPanel => Some(SessionTabState {
                     tab_id: format!("{}", t.id.0),
@@ -103,13 +105,16 @@ impl SessionManager {
                     language_override: None,
                     is_pinned: false,
                     zoom_offset: 0,
+                    workspace_name: t.workspace_name.clone(),
                 }),
                 TabKind::PrimaryOptionMenu
                 | TabKind::Untitled
                 | TabKind::SettingsPanel
                 | TabKind::SearchResults
                 | TabKind::PluginManager
-                | TabKind::EventLog => None,
+                | TabKind::EventLog
+                | TabKind::MacroLibrary
+                | TabKind::MenuWorkspace => None,
             })
             .collect();
 
@@ -124,7 +129,9 @@ impl SessionManager {
                 | TabKind::FileExplorerPanel
                 | TabKind::SearchResults
                 | TabKind::PluginManager
-                | TabKind::EventLog => None,
+                | TabKind::EventLog
+                | TabKind::MacroLibrary
+                | TabKind::MenuWorkspace => None,
             }
         };
         // Note: FileExplorerPanel active_tab_id is None (no URI to track)
@@ -172,6 +179,7 @@ impl SessionManager {
                     language_override: None,
                     is_pinned: false,
                     zoom_offset: 0,
+                    workspace_name: t.workspace_name.clone(),
                 }),
                 TabKind::FilesPanel => Some(SessionTabState {
                     tab_id: format!("{}", t.id.0),
@@ -185,6 +193,7 @@ impl SessionManager {
                     language_override: None,
                     is_pinned: false,
                     zoom_offset: 0,
+                    workspace_name: t.workspace_name.clone(),
                 }),
                 TabKind::FileExplorerPanel => Some(SessionTabState {
                     tab_id: format!("{}", t.id.0),
@@ -198,13 +207,16 @@ impl SessionManager {
                     language_override: None,
                     is_pinned: false,
                     zoom_offset: 0,
+                    workspace_name: t.workspace_name.clone(),
                 }),
                 TabKind::PrimaryOptionMenu
                 | TabKind::Untitled
                 | TabKind::SettingsPanel
                 | TabKind::SearchResults
                 | TabKind::PluginManager
-                | TabKind::EventLog => None,
+                | TabKind::EventLog
+                | TabKind::MacroLibrary
+                | TabKind::MenuWorkspace => None,
             })
             .collect();
 
@@ -219,7 +231,9 @@ impl SessionManager {
                 | TabKind::FileExplorerPanel
                 | TabKind::SearchResults
                 | TabKind::PluginManager
-                | TabKind::EventLog => None,
+                | TabKind::EventLog
+                | TabKind::MacroLibrary
+                | TabKind::MenuWorkspace => None,
             }
         };
 

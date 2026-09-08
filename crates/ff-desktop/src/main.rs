@@ -24,6 +24,8 @@ mod file_explorer_panel;
 mod files_panel;
 mod find_manager;
 mod key_config_dialog;
+mod macro_library_panel;
+mod menu_workspace;
 mod nav_manager;
 mod notification;
 mod panel_layout;

@@ -64,6 +64,10 @@ pub enum Command {
     AssertFileOpen,
     /// `ASSERT CONTROL VALUE "<id>" "<expected>"`
     AssertControlValue { id: String, expected: String },
+    /// `ASSERT CONTEXT IS "<context-name>"`
+    AssertContextIs { context: String },
+    /// `ASSERT WORKSPACE COUNT IS <n>`
+    AssertWorkspaceCountIs { count: usize },
     /// `CHECKPOINT "<name>"`
     Checkpoint { name: String },
     /// `CLOSE WINDOW`
@@ -324,6 +328,30 @@ fn parse_assert(tokens: &[String], line_no: usize) -> Result<Command, ParseError
             let expected = require_arg(tokens, 4, "ASSERT CONTROL VALUE", line_no)?;
             Ok(Command::AssertControlValue { id, expected })
         }
+        ("CONTEXT", "IS") => {
+            let context = require_arg(tokens, 3, "ASSERT CONTEXT IS", line_no)?;
+            Ok(Command::AssertContextIs { context })
+        }
+        ("WORKSPACE", "COUNT") => {
+            // Expects: ASSERT WORKSPACE COUNT IS <n>
+            let is_kw = sub(tokens, 3);
+            if is_kw != "IS" {
+                return Err(ParseError::UnknownCommand {
+                    line: line_no,
+                    keyword: format!("ASSERT WORKSPACE COUNT {is_kw}"),
+                });
+            }
+            let n_str = require_arg(tokens, 4, "ASSERT WORKSPACE COUNT IS", line_no)?;
+            let count = n_str
+                .parse::<usize>()
+                .map_err(|_| ParseError::MissingArgument {
+                    line: line_no,
+                    command: "ASSERT WORKSPACE COUNT IS".to_string(),
+                    required: 1,
+                    got: 0,
+                })?;
+            Ok(Command::AssertWorkspaceCountIs { count })
+        }
         _ => Err(ParseError::UnknownCommand {
             line: line_no,
             keyword: format!("ASSERT {} {}", sub1, sub2),
@@ -509,5 +537,34 @@ VARIABLE MYVAR "value"
     fn unterminated_string_returns_error() {
         let err = parse("OPEN FILE \"unclosed").expect_err("should fail");
         assert!(matches!(err, ParseError::UnterminatedString { .. }));
+    }
+
+    // Validates: Requirement 11.1 -- ASSERT CONTEXT IS parses correctly
+    #[test]
+    fn parse_assert_context_is() {
+        let script = parse("ASSERT CONTEXT IS \"Home\"").expect("parse ok");
+        assert_eq!(
+            script.commands[0].1,
+            Command::AssertContextIs {
+                context: "Home".to_string()
+            }
+        );
+    }
+
+    // Validates: Requirement 11.3 -- ASSERT WORKSPACE COUNT IS parses correctly
+    #[test]
+    fn parse_assert_workspace_count_is() {
+        let script = parse("ASSERT WORKSPACE COUNT IS 3").expect("parse ok");
+        assert_eq!(
+            script.commands[0].1,
+            Command::AssertWorkspaceCountIs { count: 3 }
+        );
+    }
+
+    // Validates: Requirement 11.3 -- non-integer count produces error
+    #[test]
+    fn assert_workspace_count_non_integer_returns_error() {
+        let err = parse("ASSERT WORKSPACE COUNT IS abc").expect_err("should fail");
+        assert!(matches!(err, ParseError::MissingArgument { .. }));
     }
 }

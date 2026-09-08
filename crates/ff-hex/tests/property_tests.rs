@@ -3,9 +3,8 @@
 //! These tests verify universal invariants across many randomly generated inputs.
 
 use ff_hex::{
-    ByteReader, BytesPerRow, HexConfig, HexCursor, HexDigitCase, HexDumpExporter, HexDumpRange,
-    HexLayout, HexModeController, HexSearchBridge, ModifiedByteTracker, NibblePosition,
-    VecByteReader,
+    BytesPerRow, HexCursor, HexDigitCase, HexDumpExporter, HexDumpRange, HexLayout,
+    HexSearchBridge, ModifiedByteTracker, NibblePosition,
 };
 use proptest::prelude::*;
 

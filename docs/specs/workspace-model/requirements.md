@@ -146,7 +146,7 @@ a workspace without affecting my global user settings.
    `[settings]` table as the Workspace layer -- the highest-priority layer in the
    configuration precedence chain (above Project, Profile, User, System, Defaults).
 
-2. WHEN the user changes a setting in the Settings panel while a workspace is active and
+2. WHEN the user changes a setting in the Settings Context while a workspace is active and
    chooses to save at workspace scope, THE workbench SHALL write the override to the
    Workspace_File `[settings]` table rather than the user-layer config file.
 

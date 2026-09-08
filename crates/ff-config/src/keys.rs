@@ -43,6 +43,9 @@ pub mod theme {
     pub const ACTIVE: &str = "theme.active";
     /// Key for the font size setting.
     pub const FONT_SIZE: &str = "theme.font_size";
+    /// When true, the workbench follows the OS dark/light mode each frame.
+    /// Validates: theme-and-appearance Requirement 16.1
+    pub const FOLLOW_OS: &str = "theme.follow_os";
 }
 
 /// Virtual File System configuration keys.
@@ -125,6 +128,7 @@ mod tests {
         // Validates: Requirement 7.2
         assert_valid_key(theme::ACTIVE, "theme");
         assert_valid_key(theme::FONT_SIZE, "theme");
+        assert_valid_key(theme::FOLLOW_OS, "theme");
     }
 
     #[test]
@@ -158,6 +162,7 @@ mod tests {
             logging::MAX_RETAINED_FILES,
             theme::ACTIVE,
             theme::FONT_SIZE,
+            theme::FOLLOW_OS,
             vfs::DEFAULT_PROVIDER,
             accessibility::REDUCE_MOTION,
         ];

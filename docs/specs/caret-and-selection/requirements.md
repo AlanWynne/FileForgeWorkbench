@@ -385,19 +385,19 @@ This spec covers:
 
 ### Requirement 14: Selectable Text in Read-Only Panels [CR-NR-034]
 
-**User Story:** As a user, I want to be able to select and copy text from read-only panels (POM option descriptions, Settings panel values, status bar messages), so that I can paste panel content into other tools.
+**User Story:** As a user, I want to be able to select and copy text from read-only Contexts (POM option descriptions, Settings Context values, status bar messages), so that I can paste panel content into other tools.
 
 #### Acceptance Criteria
 
-14.1 WHEN text is rendered in the Primary Option Menu panel (option labels, descriptions, calendar text), THE text SHALL be rendered using egui selectable labels so the user can click-drag to select and Ctrl+C to copy.
+14.1 WHEN text is rendered in the Home Context (POM) (option labels, descriptions, calendar text), THE text SHALL be rendered using egui selectable labels so the user can click-drag to select and Ctrl+C to copy.
 
-14.2 WHEN text is rendered in the Settings panel (key names, values, descriptions), THE text SHALL be rendered using egui selectable labels.
+14.2 WHEN text is rendered in the Settings Context (key names, values, descriptions), THE text SHALL be rendered using egui selectable labels.
 
 14.3 WHEN text is rendered in the status bar (file path, line/column, encoding, messages), THE text SHALL be rendered using egui selectable labels.
 
-14.4 WHEN the user selects text in a read-only panel and presses Ctrl+C, THE OS clipboard SHALL receive the selected text via egui's built-in clipboard integration.
+14.4 WHEN the user selects text in a read-only Context and presses Ctrl+C, THE OS clipboard SHALL receive the selected text via egui's built-in clipboard integration.
 
-14.5 THE selectable label behaviour SHALL NOT interfere with existing click-to-navigate interactions (POM option buttons, Settings edit fields).
+14.5 THE selectable label behaviour SHALL NOT interfere with existing click-to-navigate interactions (Home Context option buttons, Settings Context edit fields).
 
 ---
 

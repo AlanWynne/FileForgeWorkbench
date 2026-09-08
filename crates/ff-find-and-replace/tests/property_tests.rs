@@ -10,10 +10,9 @@ use ff_find_and_replace::engine::FindEngine;
 use ff_find_and_replace::indexer::{MutableSliceIndexer, SliceIndexer};
 use ff_find_and_replace::request::{ChangeRequest, FindRequest, WordMatchMode};
 use ff_find_and_replace::result::{ChangeOutcome, FindOutcome};
-use ff_find_and_replace::scope::{AllLinesFilter, ColumnRange, ScopeModifier};
+use ff_find_and_replace::scope::{AllLinesFilter, ScopeModifier};
 use ff_find_and_replace::search_mode::SearchMode;
-use ff_find_and_replace::state::FindState;
-use ff_find_and_replace::types::{BytePosition, MatchRange};
+use ff_find_and_replace::types::BytePosition;
 
 /// Strategy for generating documents with embedded search terms.
 fn document_with_pattern() -> impl Strategy<Value = (String, String)> {
@@ -260,7 +259,7 @@ proptest! {
         tagged_flags in proptest::collection::vec(proptest::bool::ANY, 5..20),
     ) {
         // A line that passes TAGGED must NOT pass NONTAGGED and vice versa
-        for (i, &is_tagged) in tagged_flags.iter().enumerate() {
+        for (i, &_is_tagged) in tagged_flags.iter().enumerate() {
             let line = LineNumber(i as u64);
             let filter = TestScopeFilter {
                 visible: vec![true; tagged_flags.len()],

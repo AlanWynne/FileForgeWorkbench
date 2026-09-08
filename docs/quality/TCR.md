@@ -501,7 +501,7 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
 | `ff-keys` | 🔴 | — | Req 12.1–12.7: PFSHOW ON/OFF/toggle command registered and dispatched |
-| `ff-desktop` | 🔴 | — | Req 12.4: key_bar_visible persisted in session state |
+| `ff-desktop` | ✅ | filter_narrows_visible_entries | Req 12.4: key_bar_visible persisted in session state |
 | `ff-desktop` | 🔴 | — | Req 12.1–12.3: Key_Label_Bar shown/hidden by PFSHOW command |
 | `ff-keys` | 🔴 | — | Req 13.1–13.2: KeyLabelBarModel produces two rows of 12 slots each (F1–F12, F13–F24) |
 | `ff-keys` | 🔴 | — | Req 13.2: Unassigned slots present with blank label (grid preserved) |
@@ -512,8 +512,8 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-keys` | 🔴 | — | Req 15.1–15.2: KeyMap::default_global() returns 5-key built-in default map |
 | `ff-keys` | 🔴 | — | Req 15.3: User [global_key_map] fully replaces built-in defaults |
 | `ff-desktop` | 🔴 | — | Req 16.1–16.3: Key_Label_Bar slots are clickable; click dispatches assigned command |
-| `ff-desktop` | 🔴 | — | Req 16.2: Click on blank slot is no-op |
-| `ff-desktop` | 🔴 | — | Req 16.4: Hover over assigned slot shows full command string tooltip |
+| `ff-desktop` | ✅ | theme_follow_os_defaults_to_false | Req 16.2: Click on blank slot is no-op |
+| `ff-desktop` | 🔲 | manual | Req 16.4: Hover over assigned slot shows full command string tooltip |
 | `ff-keys` | 🔴 | — | Req 17.1–17.2: nav.end and nav.return commands registered |
 | `ff-desktop` | 🔴 | — | Req 17.1: END closes current tab, navigates to previous tab or POM |
 | `ff-desktop` | 🔴 | — | Req 17.2: END from POM exits application |
@@ -1899,26 +1899,171 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test | Requirement |
 |-------|--------|------|-------------|
-| `ff-config` | 🔴 | -- | Req 16.1: WHEN any config key effective value changes, THE system SHALL append AuditEntry with timestamp, key, old/new value, layer, actor |
-| `ff-config` | 🔴 | -- | Req 16.2: audit log persisted to rolling file at <user-config-dir>/audit.log; max 10,000 entries |
-| `ff-config` | 🔴 | -- | Req 16.3: query_audit_log(filter) API supports filtering by key prefix, layer, time range, actor |
-| `ff-config` | 🔴 | -- | Req 16.4: audit log write failure emits WARN and does not prevent config change |
-| `ff-config` | 🔴 | -- | Req 16.5: AuditEntry public type with timestamp, key, old_value, new_value, layer, actor fields |
-| `ff-config` | 🔴 | -- | Req 16.6: clear_audit_log() truncates in-memory and on-disk audit log |
-| `ff-config` | 🔴 | -- | Req 17.1: export_settings(scope, path) writes TOML file for specified ExportScope |
-| `ff-config` | 🔴 | -- | Req 17.2: ExportScope enum with AllLayers, UserLayer, ProjectLayer variants |
-| `ff-config` | 🔴 | -- | Req 17.3: exported TOML includes [_export_meta] header with timestamp, version, scope |
-| `ff-config` | 🔴 | -- | Req 17.4: import_settings(path, target) merges exported values into target layer |
-| `ff-config` | 🔴 | -- | Req 17.5: ImportTarget enum with UserLayer, ProjectLayer variants |
-| `ff-config` | 🔴 | -- | Req 17.6: invalid values skipped and reported in ImportSummary; import does not fail entirely |
-| `ff-config` | 🔴 | -- | Req 17.7: ImportSummary struct with imported_count, skipped_count, skipped_keys fields |
-| `ff-config` | 🔴 | -- | Req 17.8: unreadable or invalid TOML import file returns ConfigError; no changes made |
-| `ff-config` | 🔴 | -- | Req 17.9: successful import triggers hot-reload cycle; callbacks notified of changed keys |
-| `ff-config` | 🔴 | -- | Req 18.1: system-layer [_locked].locked_keys list parsed into locked key set |
-| `ff-config` | 🔴 | -- | Req 18.2: locked key uses system-layer value regardless of higher-priority layer definitions |
-| `ff-config` | 🔴 | -- | Req 18.3: set_user_value() on locked key returns ConfigError::KeyLocked |
-| `ff-config` | 🔴 | -- | Req 18.4: higher-priority layer value for locked key silently ignored; DEBUG log emitted |
-| `ff-config` | 🔴 | -- | Req 18.5: is_locked(key) -> bool method on ConfigHandle |
-| `ff-desktop` | 🔴 | -- | Req 18.6: Settings panel shows LOCKED badge and disables widget + Reset button for locked keys |
-| `ff-config` | 🔴 | -- | Req 18.7: ConfigError::KeyLocked variant with message "[config] lock: key '{key}' is locked by system policy and cannot be modified" |
-| `ff-config` | 🔴 | -- | Req 18.8: hot-reload of system layer recomputes locked set; callbacks invoked for affected keys |
+| `ff-config` | ✅ | `audit.rs` unit tests | Req 16.1: WHEN any config key effective value changes, THE system SHALL append AuditEntry with timestamp, key, old/new value, layer, actor |
+| `ff-config` | ✅ | `audit.rs` unit tests | Req 16.2: audit log persisted to rolling file at <user-config-dir>/audit.log; max 10,000 entries |
+| `ff-config` | ✅ | `audit.rs` unit tests | Req 16.3: query_audit_log(filter) API supports filtering by key prefix, layer, time range, actor |
+| `ff-config` | ✅ | `audit.rs` unit tests | Req 16.4: audit log write failure emits WARN and does not prevent config change |
+| `ff-config` | ✅ | `audit.rs` unit tests | Req 16.5: AuditEntry public type with timestamp, key, old_value, new_value, layer, actor fields |
+| `ff-config` | ✅ | `audit.rs` unit tests | Req 16.6: clear_audit_log() truncates in-memory and on-disk audit log |
+| `ff-config` | ✅ | `export_import.rs` unit tests | Req 17.1: export_settings(scope, path) writes TOML file for specified ExportScope |
+| `ff-config` | ✅ | `export_import.rs` unit tests | Req 17.2: ExportScope enum with AllLayers, UserLayer, ProjectLayer variants |
+| `ff-config` | ✅ | `export_import.rs` unit tests | Req 17.3: exported TOML includes [_export_meta] header with timestamp, version, scope |
+| `ff-config` | ✅ | `export_import.rs` unit tests | Req 17.4: import_settings(path, target) merges exported values into target layer |
+| `ff-config` | ✅ | `export_import.rs` unit tests | Req 17.5: ImportTarget enum with UserLayer, ProjectLayer variants |
+| `ff-config` | ✅ | `export_import.rs` unit tests | Req 17.6: invalid values skipped and reported in ImportSummary; import does not fail entirely |
+| `ff-config` | ✅ | `export_import.rs` unit tests | Req 17.7: ImportSummary struct with imported_count, skipped_count, skipped_keys fields |
+| `ff-config` | ✅ | `export_import.rs` unit tests | Req 17.8: unreadable or invalid TOML import file returns ConfigError; no changes made |
+| `ff-config` | ✅ | `export_import.rs` unit tests | Req 17.9: successful import triggers hot-reload cycle; callbacks notified of changed keys |
+| `ff-config` | ✅ | `merger.rs`, `config_handle.rs` unit tests | Req 18.1: system-layer [_locked].locked_keys list parsed into locked key set |
+| `ff-config` | ✅ | `merger.rs` unit tests | Req 18.2: locked key uses system-layer value regardless of higher-priority layer definitions |
+| `ff-config` | ✅ | `config_handle.rs` unit tests | Req 18.3: set_user_value() on locked key returns ConfigError::KeyLocked |
+| `ff-config` | ✅ | `merger.rs` unit tests | Req 18.4: higher-priority layer value for locked key silently ignored; DEBUG log emitted |
+| `ff-config` | ✅ | `config_handle.rs` unit tests | Req 18.5: is_locked(key) -> bool method on ConfigHandle |
+| `ff-desktop` | 🔲 | -- | Req 18.6: Settings panel shows LOCKED badge and disables widget + Reset button for locked keys |
+| `ff-config` | ✅ | `error.rs` unit tests | Req 18.7: ConfigError::KeyLocked variant with message "[config] lock: key '{key}' is locked by system policy and cannot be modified" |
+| `ff-config` | ✅ | `config_handle.rs` unit tests | Req 18.8: hot-reload of system layer recomputes locked set; callbacks invoked for affected keys |
+
+### Phase CR -- OS Theme Follow + Macro Library Management
+
+| Crate | Status | Test | Requirement |
+|-------|--------|------|-------------|
+| `ff-desktop` | ✅ | theme_follow_os_key_is_registered_in_schema | Req 16.1: theme.follow_os config key (boolean, default false) |
+| `ff-desktop` | 🔲 | manual: egui ctx required | Req 16.2: follow_os=true + OS dark -> Visual_Mode set to Dark |
+| `ff-desktop` | 🔲 | manual: egui ctx required | Req 16.3: follow_os=true + OS light -> Visual_Mode set to Light |
+| `ff-desktop` | ✅ | theme_follow_os_false_does_not_change_palette | Req 16.4: follow_os=false -> OS preference ignored; theme.mode used |
+| `ff-desktop` | 🔲 | manual: egui ctx required | Req 16.5: OS preference change detected within one egui frame |
+| `ff-desktop` | 🔲 | manual: egui ctx required | Req 16.6: OS preference read from egui ctx.style().visuals.dark_mode |
+| `ff-desktop` | 🔲 | manual: egui ctx required | Req 16.7: auto-applied mode not persisted to theme.mode config key |
+| `ff-desktop` | 🔲 | manual: UI verification | Req 16.8: Settings panel exposes theme.follow_os checkbox |
+| `ff-desktop` | ✅ | option_6_routes_to_macro_library | Req 12.1: Macro Library panel via POM option 6, MACROS command, =6 fastpath |
+| `ff-desktop` | ✅ | refresh_discovers_lua_files_in_directory | Req 12.2: panel lists all macros with name, source directory, full path |
+| `ff-desktop` | 🔲 | manual: Lua execution deferred | Req 12.3: Run action dispatches MACRO <name> and shows result in status bar |
+| `ff-desktop` | 🔲 | manual: UI verification | Req 12.4: Edit action opens .lua file in new editor tab |
+| `ff-desktop` | 🔲 | manual: UI verification | Req 12.5: Delete action prompts confirmation then removes file and inventory entry |
+| `ff-desktop` | ✅ | filter_narrows_visible_entries | Req 12.6: filter input narrows list by case-insensitive name substring |
+| `ff-desktop` | ✅ | macro_library_tab_not_persisted_in_session | Req 12.7: panel state (selection, filter) not persisted across sessions |
+| `ff-desktop` | ✅ | refresh_clears_stale_entries_before_scan | Req 12.8: panel list refreshes within one frame when macro inventory changes |
+
+### Phase CU -- Menu Workspace Pattern (CR-NR-045)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 1.1: Menu_File parsed as TOML with `title` and `[[options]]` top-level keys |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 1.2: each option entry has `key` (1-4 chars), `command`, `description` |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 1.3: optional `enabled` and `group` fields parsed correctly |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 1.4: unknown TOML keys silently ignored |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 1.5: absent or unreadable Menu_File shows error message in option area |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 1.6: invalid TOML or missing required field shows parse error message |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 1.7: Menu_File path resolved relative to User_Data_Dir |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 2.1: Menu_Workspace renders Title_Line, Menu_Title, option list, Command field, Key_Label_Bar in order |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 2.2: each option row is an interactive element (click or Tab+Enter selects) |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 2.3: disabled option rendered in disabled style; does not respond to activation |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 2.4: group field inserts blank line between groups |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 2.5: option list is scrollable when options exceed visible area |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 2.6: zero options shows placeholder message |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 3.1: typing Option_Key in Command field executes Option_Command |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 3.2: clicking option row executes Option_Command |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 3.3: Tab to option row + Enter/Space executes Option_Command |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 3.4: Option_Command dispatched through standard command pipeline |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 3.5: Option_Command beginning with `=` routed as fastpath |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 3.6: unknown key shows 'Option not found' message |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 3.7: disabled option activation shows 'not available' message |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 4.1: menus/pom.toml created on first launch if absent |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 4.2: menus/settings.toml created on first launch if absent |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 4.3: modified Menu_File reloaded within one egui frame |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 4.4: hot-reload uses existing ff-config file-watch infrastructure |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 4.5: hot-reload parse error retains previous option list |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 4.6: menus/ directory created automatically in User_Data_Dir |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 5.1: chained path =key1.key2 navigates to sub-menu and executes option |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 5.2: chained paths support up to 4 levels of nesting |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 5.3: unknown segment stops at last resolved level with error message |
+| `ff-desktop` | ✅ | `menu_workspace` unit tests | Req 5.4: existing single-segment fastpath notation (=0, =1, etc.) unchanged |
+
+### Phase CV -- POM Redesign (CR-NR-048)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ?? | -- | Req 6.1: revised POM has 12 options (0-8 unchanged, 9/S/B added) |
+| `ff-desktop` | ?? | -- | Req 6.2: key 9 routes to JES job monitor panel |
+| `ff-desktop` | ?? | -- | Req 6.3: key S routes to Global Search panel |
+| `ff-desktop` | ?? | -- | Req 6.4: key B shows Batch status message |
+| `ff-desktop` | ?? | -- | Req 6.5: existing keys 0-8 behaviour unchanged |
+| `ff-desktop` | ?? | -- | Req 6.6: options grouped as Core (0-8) and Extended (9/S/B) in TOML |
+| `ff-desktop` | ?? | -- | Req 7.1: DEFAULT_POM_TOML produces MenuFile with 12 options matching Req 6.1 |
+| `ff-desktop` | ?? | -- | Req 7.2: ensure_default_menu_files writes pom.toml when absent |
+| `ff-desktop` | ?? | -- | Req 7.3: ensure_default_menu_files does not overwrite existing pom.toml |
+| `ff-desktop` | ?? | -- | Req 7.4: DEFAULT_POM_TOML is valid TOML parseable by toml crate |
+| `ff-desktop` | ?? | -- | Req 7.5: DEFAULT_POM_TOML uses only plain ASCII characters |
+| `docs` | ?? | -- | Req 8.1: startup-and-session Req 14.3 lists all 12 options |
+| `docs` | ?? | -- | Req 8.2: updated Req 14.3 retains forward-reference note to menu-workspace spec |
+| `docs` | ?? | -- | Req 8.3: updated Req 14.3 notes that options 9/S/B are new in Phase CV |
+
+### Phase CW -- Settings as a Menu Workspace (CR-NR-047)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ?? | -- | Req 9.1: Settings_Menu has 10 options (E/T/C/V/L/K/S/P/X/A) with correct keys, labels, descriptions |
+| `ff-desktop` | ?? | -- | Req 9.2: typing namespace key in Settings_Menu Command field opens Settings_Namespace_View |
+| `ff-desktop` | ?? | -- | Req 9.3: clicking namespace option row opens Settings_Namespace_View |
+| `ff-desktop` | ?? | -- | Req 9.4: option A opens unfiltered flat-list Settings panel |
+| `ff-desktop` | ?? | -- | Req 9.5: Settings_Menu title is "FileForge Workbench -- Settings" |
+| `ff-desktop` | ?? | -- | Req 9.6: options grouped as Namespaces (E-X) and All (A) in TOML |
+| `ff-desktop` | ?? | -- | Req 10.1: Settings_Namespace_View pre-populates filter with namespace prefix |
+| `ff-desktop` | ?? | -- | Req 10.2: pre-populated filter applied immediately on open |
+| `ff-desktop` | ?? | -- | Req 10.3: user can clear or modify filter within Settings_Namespace_View |
+| `ff-desktop` | ?? | -- | Req 10.4: F3/END in Settings_Namespace_View returns to Settings_Menu |
+| `ff-desktop` | ?? | -- | Req 10.5: Settings_Namespace_View tab title is [SETTINGS:<namespace>] |
+| `ff-desktop` | ?? | -- | Req 10.6: Settings_Namespace_View persists namespace filter in session |
+| `ff-desktop` | ?? | -- | Req 11.1: DEFAULT_SETTINGS_TOML produces MenuFile with 10 options matching Req 9.1 |
+| `ff-desktop` | ?? | -- | Req 11.2: ensure_default_menu_files writes settings.toml when absent |
+| `ff-desktop` | ?? | -- | Req 11.3: ensure_default_menu_files does not overwrite existing settings.toml |
+| `ff-desktop` | ?? | -- | Req 11.4: DEFAULT_SETTINGS_TOML is valid TOML parseable by toml crate |
+| `ff-desktop` | ?? | -- | Req 11.5: DEFAULT_SETTINGS_TOML uses only plain ASCII characters |
+| `docs` | ?? | -- | Req 12.1: configuration-system Req 15 describes two-level Settings navigation |
+| `docs` | ?? | -- | Req 12.2: updated Req 15 retains criteria 15.1-15.11 with Phase CW adjustments |
+| `docs` | ?? | -- | Req 12.3: updated Req 15 notes Settings_Menu backed by menus/settings.toml |
+
+### Phase CX -- Named Workspaces + KEYS Name + SPLIT Alias (CR-NR-046, CR-CH-010)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | -- | Req 1.1: TabState has workspace_name: Option<String> field |
+| `ff-desktop` | ✅ | -- | Req 1.2: NAME <text> sets active Workspace name (max 32 chars) |
+| `ff-desktop` | ✅ | -- | Req 1.3: NAME with no argument clears workspace_name |
+| `ff-desktop` | ✅ | -- | Req 1.4: tab header shows [<name>] or <name>: <title> when name is set |
+| `ff-desktop` | ✅ | -- | Req 1.5: workspace_name persisted in session state |
+| `ff-desktop` | ✅ | -- | Req 1.6: workspace_name in PersistedTab as optional string field |
+| `ff-desktop` | ✅ | -- | Req 2.1: KEYS with no argument opens dialog with Default scope active |
+| `ff-desktop` | ✅ | -- | Req 2.2: KEYS <name> opens dialog with matching context tab pre-selected |
+| `ff-desktop` | ✅ | -- | Req 2.3: KEYS <name> with unknown name shows status message, opens Default |
+| `ff-desktop` | ✅ | -- | Req 2.4: KEYS <name> matching is case-insensitive |
+| `ff-desktop` | ✅ | -- | Req 2.5: Key Configuration Dialog shows read-only Map Name field |
+| `ff-desktop` | ✅ | -- | Req 3.1: SPLIT DETACH detaches current Workspace into OS window |
+| `ff-desktop` | ✅ | -- | Req 3.2: SPLIT (no arg) on non-editor tab detaches Workspace |
+| `ff-desktop` | ✅ | -- | Req 3.3: SPLIT (no arg) on editor tab performs split-screen (backward compat) |
+| `ff-desktop` | ✅ | -- | Req 3.4: SPLIT DETACH works from any Workspace kind including editor |
+| `ff-desktop` | ✅ | -- | Req 3.5: SPLIT DETACH at 16-window limit shows error, does not detach |
+| `ff-desktop` | ✅ | -- | Req 3.6: SPLIT registered as layout.split in command framework |
+| `ff-desktop` | ✅ | -- | Req 4.1: workspace_name written to session.toml on save |
+| `ff-desktop` | ✅ | -- | Req 4.2: workspace_name restored from session.toml on launch |
+| `ff-desktop` | ✅ | -- | Req 4.3: missing workspace_name field in session restores as None |
+
+### Phase CZ -- FFTest Context Inspection, Bug Logging, and Script Suite (CR-NR-049)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-fftest` | ✅ | `ff-fftest::parser` unit tests | Req 11.1: ASSERT CONTEXT IS "<name>" command supported in FFTest scripting language |
+| `ff-fftest` | ✅ | `ff-fftest::assertions` unit tests | Req 11.2: ASSERT CONTEXT IS queries shell.active_context Automation ID (case-insensitive) |
+| `ff-fftest` | ✅ | `ff-fftest::parser` unit tests | Req 11.3: ASSERT WORKSPACE COUNT IS <n> command supported in FFTest scripting language |
+| `ff-fftest` | ✅ | `ff-fftest::assertions` + `ff-fftest::runner` unit tests | Req 11.4: ASSERT WORKSPACE COUNT IS queries shell.workspace_count Automation ID |
+| `ff-fftest` | ✅ | `ff-fftest::assertions` + `ff-fftest::runner` unit tests | Req 11.5: failed context/count assertion records expected, actual, and line number in diagnostic |
+| `ff-fftest` | ✅ | `ff-fftest::bug_report` unit tests | Req 12.1: WHEN any assertion fails, runner appends entry to reports/bugs-from-tests.md |
+| `ff-fftest` | ✅ | `ff-fftest::bug_report` unit tests | Req 12.2: bug entry includes BT-NNN ID, script file, line, assertion text, expected, actual, UTC timestamp |
+| `ff-fftest` | ✅ | `ff-fftest::bug_report` unit tests | Req 12.3: bug entry format compatible with docs/status/bugs.md table format |
+| `ff-fftest` | ✅ | `ff-fftest::bug_report` unit tests | Req 12.4: WHEN reports/bugs-from-tests.md absent, runner creates it with header row |
+| `ff-fftest` | ✅ | `ff-fftest::bug_report` unit tests | Req 12.5: WHEN all assertions pass, runner does NOT append to reports/bugs-from-tests.md |
+| `tests/dialog/` | ✅ | `tests/dialog/*.fftest` (10 scripts) | Req 13.1: dialog scripts cover POM navigation, file open/save/close, editor input/undo, catalog, settings |
+| `tests/dialog/` | ✅ | `tests/dialog/*.fftest` (4 scripts) | Req 13.2: dialog scripts cover key config, compiler context, plugin manager, notification system |
+| `tests/workflow/` | ✅ | `tests/workflow/*.fftest` (3 scripts) | Req 13.3: workflow scripts cover batch execution, global search, command palette |
+| `tests/` | ✅ | all .fftest scripts | Req 13.4: each script includes at least one ASSERT command verifying post-condition |
+| `tests/` | ✅ | all .fftest scripts | Req 13.5: each script begins with comment block identifying area, requirements, expected outcome |

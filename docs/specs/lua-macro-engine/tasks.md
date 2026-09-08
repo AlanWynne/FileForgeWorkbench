@@ -479,3 +479,30 @@ This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-com
   - [x] 24.7 Implement FFCMD transaction wrapping: wrap entire .ffcmd file execution in a single Macro_Transaction
   - [x] 24.8 Write unit tests for DISKR/DISKW/FINIS/SKIP operations, return code conventions, FFCMD sequential execution, and transaction atomicity
   - Covers: Requirement 11 (AC 11.24, 11.25, 11.26, 11.27, 11.28, 11.29, 11.30)
+
+
+---
+
+## Phase CR Tasks
+
+- [ ] 25. Macro Library panel (Phase CR)
+  - [x] 25.1 Add `TabKind::MacroLibrary` variant to ff-desktop; route POM option 6, `MACROS` command, and `=6` fastpath to open/switch to the Macro Library tab
+    - Covers: Requirement 12.1
+  - [x] 25.2 Create `macro_library_panel.rs` in ff-desktop with `MacroLibraryPanelState` (entries list, filter string, selected index)
+    - Covers: Requirement 12.2, 12.6, 12.7
+  - [x] 25.3 Populate panel entries from macro inventory; display name, source directory, full path per row
+    - Covers: Requirement 12.2
+  - [x] 25.4 Implement Run action (Enter / Run button): dispatch `MACRO <name>` via command field and show result in status bar
+    - Covers: Requirement 12.3
+  - [x] 25.5 Implement Edit action (F2 / Edit button): open the `.lua` file path in a new editor tab
+    - Covers: Requirement 12.4
+  - [x] 25.6 Implement Delete action (Delete key / Delete button): confirmation prompt then `std::fs::remove_file` + remove from inventory
+    - Covers: Requirement 12.5
+  - [x] 25.7 Implement filter input: case-insensitive substring match on macro name; re-filter on each keystroke
+    - Covers: Requirement 12.6
+  - [x] 25.8 Refresh panel list when macro inventory changes (new discovery, deletion, auto-reload)
+    - Covers: Requirement 12.8
+  - [x] 25.9 Wire session persistence: MacroLibrary tab kind persists/restores across sessions (tab open state only; no selection/filter)
+    - Covers: Requirement 12.7
+  - [x] 25.10 Write unit tests: `macro_library_filter_case_insensitive`, `macro_library_run_dispatches_command`, `macro_library_edit_opens_tab`, `macro_library_delete_removes_entry`
+    - Covers: Requirement 12.1-12.8

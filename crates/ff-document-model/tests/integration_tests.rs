@@ -7,8 +7,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use ff_document_model::{
-    new_document, BytePosition, DeleteResult, Direction, Document, DocumentHandle, DocumentWatcher,
-    InsertResult, LineEndMode, LineNumber, LoadingProgress, WatcherHandle,
+    new_document, BytePosition, Direction, Document, DocumentWatcher, LineEndMode, LineNumber,
 };
 
 // ─── Test Watcher ───────────────────────────────────────────────────────────

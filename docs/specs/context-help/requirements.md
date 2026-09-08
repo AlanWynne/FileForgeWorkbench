@@ -83,7 +83,7 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 
 #### Acceptance Criteria
 
-2.1. THE Help_Panel SHALL implement the `DockablePanel` trait from the `layout-and-docking` system, participating in dock/undock operations, tab groups, and floating window placement. [FFE-HELP, WB]
+2.1. THE Help_Panel SHALL implement the `DockablePanel` trait from the `layout-and-docking` system, participating in dock/undock operations, tab groups, and Detached Workspace placement. [FFE-HELP, WB]
 
 2.2. THE Help_Panel SHALL default to the right dock zone, occupying no more than 40% of the window width. [FFE-HELP]
 

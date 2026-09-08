@@ -284,6 +284,20 @@ impl<'a> ConfigAccess<'a> {
         }
     }
 
+    /// Collect all effective values as a flat ConfigTable.
+    ///
+    /// Returns every key currently in the effective store as a flat
+    /// dot-path -> value map. Used by export_settings(AllLayers).
+    pub fn all_values(&self) -> ConfigTable {
+        let mut result = ConfigTable::new();
+        for key in self.store.keys() {
+            if let Some(v) = self.store.get_value(key) {
+                result.insert(key.clone(), v.clone());
+            }
+        }
+        result
+    }
+
     /// Internal: resolve a value from store or schema default.
     fn resolve_value(&self, key: &str) -> Result<ConfigValue, ConfigError> {
         if let Some(v) = self.store.get_value(key) {

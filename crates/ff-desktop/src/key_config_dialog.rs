@@ -150,6 +150,10 @@ impl ScopeRows {
 pub struct KeyConfigDialog {
     /// Whether the dialog is currently open.
     pub open: bool,
+    /// When set by `KEYS <name>`, the dialog opens with this context tab pre-selected.
+    ///
+    /// Validates: CX Requirement 2.2, 2.3
+    pub initial_scope: Option<String>,
     active_tab: ScopeTab,
     staged_default: ScopeRows,
     staged_contexts: HashMap<String, ScopeRows>,
@@ -167,6 +171,7 @@ impl KeyConfigDialog {
             .collect();
         Self {
             open: false,
+            initial_scope: None,
             active_tab: ScopeTab::Default,
             staged_default: empty.clone(),
             staged_contexts: ctx_map.clone(),
@@ -290,6 +295,17 @@ pub fn render(
 ) {
     if !dialog.open {
         return;
+    }
+
+    // Apply initial_scope from KEYS <name> command -- Validates: CX Requirement 2.2
+    if let Some(ref scope) = dialog.initial_scope.take() {
+        let matched = ["pom", "editor", "settings", "files", "hex", "toolchain"]
+            .iter()
+            .find(|&&n| n == scope.as_str())
+            .copied();
+        if let Some(name) = matched {
+            dialog.active_tab = ScopeTab::Context(name.to_string());
+        }
     }
 
     let mut save_clicked = false;

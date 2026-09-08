@@ -233,6 +233,20 @@ pub struct Workbench {
 
 **The Workbench is the root object of the application.**
 
+### 7.1 Three-Level UI Terminology (Phase CT canonical)
+
+All specifications and documentation use exactly three levels to describe the UI:
+
+| Level | Term | Description |
+|-------|------|-------------|
+| 1 | **Workbench** | The application window -- the outermost container. |
+| 2 | **Workspace** | A single tab in the Workbench tab bar. Each Workspace displays one Context. |
+| 3 | **Context** | The content inside a Workspace, named by what it shows (e.g. Home Context, Editor Context, Settings Context). |
+
+A Workspace moved to a separate OS window is a **Detached Workspace**.
+
+This model supersedes earlier terms: "Workspace View", "Workspace Tab", "Content Editor" (as a tab-level term), "Settings Panel", "Explorer Panel", "Toolchain Panel", and "Workbench Home View" are all replaced by the Workspace/Context vocabulary. "POM" is retained as an ISPF-heritage alias for the Home Context.
+
 ---
 
 ## 8. Command Architecture

@@ -112,7 +112,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut SettingsPanelState, config: &Config
 
 /// Render a single schema entry row with widget, provenance badge, and reset button.
 ///
-/// Validates: Requirement 15.3, 15.4, 15.5, 15.6
+/// Validates: Requirement 15.3, 15.4, 15.5, 15.6, 18.6
 fn render_entry(
     ui: &mut egui::Ui,
     state: &mut SettingsPanelState,
@@ -120,14 +120,22 @@ fn render_entry(
     entry: &SchemaEntry,
 ) {
     let key = &entry.key;
+    let locked = config.is_locked(key);
 
     // Resolve current effective value and provenance.
     let (effective, provenance_label) = match config.get_with_provenance(key) {
         Ok(ev) => {
-            let label = layer_label(ev.provenance.layer);
+            let label = if locked {
+                "LOCKED"
+            } else {
+                layer_label(ev.provenance.layer)
+            };
             (ev.value, label)
         }
-        Err(_) => (entry.default.clone(), "Default"),
+        Err(_) => (
+            entry.default.clone(),
+            if locked { "LOCKED" } else { "Default" },
+        ),
     };
 
     ui.horizontal(|ui| {
@@ -147,18 +155,22 @@ fn render_entry(
         });
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            // Provenance badge — Req 15.3
-            // Validates: Requirement 14.2 -- selectable provenance badge
+            // Provenance / LOCKED badge -- Req 15.3, 18.6
+            let badge_color = if locked {
+                egui::Color32::from_rgb(200, 80, 80)
+            } else {
+                egui::Color32::from_rgb(120, 180, 120)
+            };
             ui.add(egui::SelectableLabel::new(
                 false,
                 egui::RichText::new(provenance_label)
                     .small()
-                    .color(egui::Color32::from_rgb(120, 180, 120)),
+                    .color(badge_color),
             ));
 
-            // Reset to Default button — Req 15.6 (only when not at Default layer)
+            // Reset to Default button -- Req 15.6 (disabled when locked or at Default)
             let is_at_default = provenance_label == "Default";
-            ui.add_enabled_ui(!is_at_default, |ui| {
+            ui.add_enabled_ui(!is_at_default && !locked, |ui| {
                 if ui.small_button("\u{21ba} Reset").clicked() {
                     let _ = config.remove_user_value(key);
                     state.pending.remove(key);
@@ -168,10 +180,12 @@ fn render_entry(
         });
     });
 
-    // Value widget — Req 15.3
-    render_widget(ui, state, config, entry, &effective);
+    // Value widget -- disabled for locked keys (Req 18.6)
+    ui.add_enabled_ui(!locked, |ui| {
+        render_widget(ui, state, config, entry, &effective);
+    });
 
-    // Inline validation error — Req 15.5
+    // Inline validation error -- Req 15.5
     if let Some(err) = state.errors.get(key) {
         ui.colored_label(egui::Color32::RED, err.as_str());
     }

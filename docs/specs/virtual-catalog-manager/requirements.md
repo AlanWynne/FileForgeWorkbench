@@ -13,7 +13,7 @@ browsing virtual file catalogs of four distinct types:
 | **Native** | `local` | The host platform's local filesystem (the host platform (Windows, Linux, or macOS)) surfaced through the VFS |
 
 The Virtual Catalog Manager is rendered as a full-tab panel when the user selects option `1` from
-the Primary Option Menu (or types `1` / `FILES` in any command field). It replaces the previous
+the Home Context (POM) (or types `1` / `FILES` in any command field). It replaces the previous
 behaviour of option 1 opening the native Windows file explorer.
 
 ### Design Principles
@@ -41,7 +41,7 @@ behaviour of option 1 opening the native Windows file explorer.
 | `startup-and-session` | POM option 1 routes to this panel (Req 14.6 extension) |
 | `virtual-file-system` | All resource access goes through VFS providers |
 | `dataset-catalog` | Mainframe catalog CRUD delegated to `ff-dscatalog` |
-| `file-tree-panel` | Explorer tree reused/embedded within the Files panel |
+| `file-tree-panel` | Explorer tree reused/embedded within the Catalog Explorer Context |
 | `connector-local-fs` | Native catalog type backed by this provider |
 
 ---
@@ -51,22 +51,22 @@ behaviour of option 1 opening the native Windows file explorer.
 | Term | Definition |
 |---|---|
 | **Virtual_Catalog** | A named, typed container registered with the VFS that groups related files or datasets. Has one of four types: Mainframe, POSIX, Windows, Local. |
-| **Catalog_Type** | The classification of a Virtual_Catalog: `Mainframe` (z/OS dataset emulation), `POSIX` (hierarchical POSIX filesystem emulation), `Native` (the host platform's local filesystem — the host platform (Windows, Linux, or macOS)). |
-| **Files_Panel** | The full-tab panel rendered when POM option 1 is selected. Contains the catalog tree, toolbar, and action buttons. |
+| **Catalog_Type** | The classification of a Virtual_Catalog: `Mainframe` (z/OS dataset emulation), `POSIX` (hierarchical POSIX filesystem emulation), `Native` (the host platform's local filesystem -- the host platform (Windows, Linux, or macOS)). |
+| **Catalog_Explorer_Context** | The Catalog Explorer Context -- the full-Workspace view rendered when POM option 1 is selected. Contains the catalog tree, toolbar, and action buttons. Also referred to as "Catalog Explorer Context" in the three-level UI model. |
 | **Catalog_Manager_Dialog** | The modal dialog for creating, editing, and deleting Virtual_Catalogs. |
 | **Dataset_Allocation_Dialog** | The modal dialog for allocating (creating) a new mainframe-style dataset within a Mainframe catalog. |
 | **POSIX_File_Dialog** | The modal dialog for creating, renaming, and deleting files and directories within a POSIX catalog. |
 | **Catalog_Registry** | The in-memory and persisted list of all defined Virtual_Catalogs, keyed by catalog name and type. |
-| **POSIX_Catalog** | A Virtual_Catalog of type POSIX — a directory on the local filesystem presented as a POSIX-style hierarchical filesystem through the `posix` VFS provider. |
+| **POSIX_Catalog** | A Virtual_Catalog of type POSIX -- a directory on the local filesystem presented as a POSIX-style hierarchical filesystem through the `posix` VFS provider. |
 | **POSIX_Provider** | A new VFS provider (scheme `posix`) that maps a root directory to a POSIX-style namespace, enforcing POSIX path conventions and permissions model. |
 
 ---
 
 ## Requirements
 
-### Requirement 1: POM Option 1 — Files Panel
+### Requirement 1: POM Option 1 — Catalog Explorer Context
 
-**User Story:** As an ISPF-familiar operator, I want POM option 1 to open a dedicated Files panel
+**User Story:** As an ISPF-familiar operator, I want POM option 1 to open a dedicated Catalog Explorer Context
 that gives me access to all my virtual file catalogs, so that I can manage mainframe datasets,
 POSIX files, and local files from a single unified interface.
 
@@ -74,15 +74,15 @@ POSIX files, and local files from a single unified interface.
 
 #### Acceptance Criteria
 
-1.1 WHEN the user selects option `1` from the Primary Option Menu (or types `1` or `FILES` in any
-    `Command ===>` field), THE shell SHALL transform the current POM tab into a Files_Panel tab
+1.1 WHEN the user selects option `1` from the Home Context (POM) (or types `1` or `FILES` in any
+    `Command ===>` field), THE shell SHALL transform the current POM tab into a Catalog_Explorer_Context tab
     with title `[FILES]`. [ISPF-POM]
 
-1.2 THE Files_Panel SHALL display a split layout: a left-side catalog tree (showing all registered
+1.2 THE Catalog_Explorer_Context SHALL display a split layout: a left-side catalog tree (showing all registered
     Virtual_Catalogs grouped by type) and a right-side content area (showing the contents of the
     selected catalog node). [WB]
 
-1.3 THE Files_Panel SHALL display a toolbar at the top with the following actions: `New Catalog`,
+1.3 THE Catalog_Explorer_Context SHALL display a toolbar at the top with the following actions: `New Catalog`,
     `Open`, `Refresh`, `Properties`, and a search/filter input. [WB]
 
 1.4 THE catalog tree SHALL group catalogs under three collapsible section headers:
@@ -93,14 +93,14 @@ POSIX files, and local files from a single unified interface.
 1.5 WHEN no catalogs of a given type exist, THE section header SHALL display a greyed child node
     reading `No catalogs defined — click New Catalog to create one`. [WB]
 
-1.8 THE Files_Panel SHALL display three catalog type sections (not four). There is no separate
+1.8 THE Catalog_Explorer_Context SHALL display three catalog type sections (not four). There is no separate
     "Windows" and "Local" distinction — both are unified under `Native`. [WB]
 
-1.6 THE Files_Panel SHALL be navigable via the `Command ===>` field: typing a DSN or path and
+1.6 THE Catalog_Explorer_Context SHALL be navigable via the `Command ===>` field: typing a DSN or path and
     pressing Enter SHALL navigate the tree to that resource. [ISPF-POM]
 
-1.7 WHEN the user presses `PF3` / `F3` or types `END` in the Files_Panel command field, THE shell
-    SHALL return the tab to the Primary Option Menu view. [ISPF-POM]
+1.7 WHEN the user presses `PF3` / `F3` or types `END` in the Catalog_Explorer_Context command field, THE shell
+    SHALL return the tab to the Home Context (POM) view. [ISPF-POM]
 
 ---
 
@@ -140,7 +140,7 @@ can set up my working environment without editing configuration files manually.
 
 #### Acceptance Criteria
 
-3.1 WHEN the user clicks `New Catalog` in the Files_Panel toolbar or right-clicks a section header
+3.1 WHEN the user clicks `New Catalog` in the Catalog_Explorer_Context toolbar or right-clicks a section header
     and selects `New Catalog`, THE shell SHALL open the Catalog_Manager_Dialog. [WB]
 
 3.2 THE Catalog_Manager_Dialog SHALL present a `Catalog Type` selector with three options:
@@ -263,7 +263,7 @@ memorising command syntax.
 ### Requirement 6: Mainframe Dataset Management
 
 **User Story:** As a mainframe developer, I want to rename, delete, and view properties of
-datasets and PDS members directly from the Files panel, so that I can manage my catalog without
+datasets and PDS members directly from the Catalog Explorer Context, so that I can manage my catalog without
 leaving the workbench.
 
 **Source:** [DSC] dataset CRUD; [ISPF-POM] ISPF heritage.
@@ -358,14 +358,14 @@ within a POSIX catalog, so that I can manage POSIX-style files without leaving t
 ### Requirement 9: Native Catalog Browsing
 
 **User Story:** As a user on any platform, I want to register local directories as named Native
-catalogs so that I can access them from the Files panel alongside my mainframe and POSIX catalogs,
+catalogs so that I can access them from the Catalog Explorer Context alongside my mainframe and POSIX catalogs,
 regardless of whether the host OS is the host platform (Windows, Linux, or macOS).
 
 **Source:** [WB] unified explorer; [FFE-TREE] local filesystem browsing.
 
 #### Acceptance Criteria
 
-9.1 WHEN a Native catalog is mounted, THE Files_Panel SHALL display it under the `Native Catalogs`
+9.1 WHEN a Native catalog is mounted, THE Catalog_Explorer_Context SHALL display it under the `Native Catalogs`
     section header (with platform label) with its configured name. [WB]
 
 9.2 THE content area for a Native catalog SHALL render the directory tree via the
@@ -388,9 +388,9 @@ regardless of whether the host OS is the host platform (Windows, Linux, or macOS
 
 ---
 
-### Requirement 10: Files Panel — Unified Explorer View
+### Requirement 10: Catalog Explorer Context — Unified Explorer View
 
-**User Story:** As a user, I want the right-side content area of the Files panel to show the
+**User Story:** As a user, I want the right-side content area of the Catalog Explorer Context to show the
 contents of whatever catalog node I have selected, so that I can browse files without expanding
 the tree manually.
 
@@ -453,9 +453,9 @@ location by default.
 
 12.5 BOTH configuration keys SHALL be registered in the `ff-config` schema under the
      `[catalogs]` namespace with type `String`, their respective defaults, and a
-     human-readable description suitable for display in the Settings panel. [WB]
+     human-readable description suitable for display in the Settings Context. [WB]
 
-12.6 WHEN a user changes either key in the Settings panel, THE new value SHALL be persisted
+12.6 WHEN a user changes either key in the Settings Context, THE new value SHALL be persisted
      to the user-layer configuration file and SHALL take effect immediately for any
      subsequently opened Catalog_Manager_Dialog (no restart required). [WB]
 
@@ -468,7 +468,7 @@ location by default.
 ### Requirement 13: Allocated Dataset Persistence and Display
 
 **User Story:** As a mainframe developer, I want datasets I allocate via the Dataset Allocation
-Dialog to appear immediately in the Files Panel content area and persist across sessions, so that
+Dialog to appear immediately in the Catalog Explorer Context content area and persist across sessions, so that
 my work is not lost and I can see what I have created.
 
 **Source:** [DSC] dataset CRUD; [WB] session persistence.
@@ -486,14 +486,14 @@ my work is not lost and I can see what I have created.
      `ff-dscatalog`. No in-memory HashMap or session-TOML entry SHALL be created for the
      dataset.
 
-13.2 WHEN a Mainframe catalog node is selected in the Files Panel left tree, THE right content
+13.2 WHEN a Mainframe catalog node is selected in the Catalog Explorer Context left tree, THE right content
      area SHALL populate `ContentAreaState::entries` by calling
      `CatalogRegistry::list_datasets(catalog_name)`, which queries the SQLite catalog and
      returns `DatasetRecord` rows. Each row SHALL be converted to a `ContentEntry` (name from
      DSN, type from DSORG, size and modified from catalog metadata,
      `is_container = false` for PS; `is_container = true` for PO/PDSE/GDG).
 
-13.3 WHEN a Mainframe catalog node is selected in the File Explorer Panel sidebar, THE content
+13.3 WHEN a Mainframe catalog node is selected in the File Explorer Context sidebar, THE content
      pane SHALL populate its dataset list by calling the same
      `CatalogRegistry::list_datasets(catalog_name)` API.
 
@@ -509,7 +509,7 @@ my work is not lost and I can see what I have created.
 ### Requirement 14: Default Home Catalog on First Launch
 
 **User Story:** As a new user, I want the workbench to automatically create a Native catalog
-pointing to my home directory when no Native catalogs exist, so that the Files panel shows
+pointing to my home directory when no Native catalogs exist, so that the Catalog Explorer Context shows
 useful content immediately without any manual setup.
 
 **Source:** [WB] first-run experience; [FFE-STARTUP] graceful startup.
@@ -528,7 +528,7 @@ useful content immediately without any manual setup.
      [WB]
 
 14.2 WHEN the default Home catalog is created, THE startup sequence SHALL register it in the
-     `CatalogRegistry` immediately so it is visible in the Files panel on the same launch. [WB]
+     `CatalogRegistry` immediately so it is visible in the Catalog Explorer Context on the same launch. [WB]
 
 14.3 WHEN the default Home catalog is created, THE `CatalogRegistry` SHALL be persisted to
      `catalogs.toml` before the first frame is rendered, so that the catalog survives
@@ -590,7 +590,7 @@ physical file is named on disk.
 
 #### Acceptance Criteria
 
-16.1 WHEN a Mainframe dataset is opened (double-click in Files Panel or File Explorer, or
+16.1 WHEN a Mainframe dataset is opened (double-click in Catalog Explorer Context or File Explorer, or
      `EDIT <DSN>` command), THE system SHALL resolve its physical file path by calling
      `CatalogRegistry::resolve(dsn)`, which queries the SQLite `catalog.db` and returns
      the `physical_locator` (UUID-based path) stored for that dataset. The physical path

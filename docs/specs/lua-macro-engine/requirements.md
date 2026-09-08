@@ -219,6 +219,25 @@ The `ff-macro` crate depends on `ff-command` (command dispatch and scripting bri
 
 ---
 
+### Requirement 12: Macro Library Management
+
+**User Story:** As a workbench user, I want a Macro Library panel where I can see all available Lua scripts, run them, open them for editing, and delete them, so that I can manage my automation scripts without leaving the workbench.
+
+**Source:** Gap analysis medium-priority item: "Macro library management" -- `lua-macro-engine` gap.
+
+#### Acceptance Criteria
+
+1. THE workbench SHALL provide a Macro Library panel accessible via POM option 6, the `MACROS` primary command, and the `=6` fastpath command.
+2. THE Macro Library panel SHALL display a list of all discovered macro scripts, showing for each entry: script name (filename without extension), source directory, and full file path.
+3. WHEN the user selects a macro entry and activates Run (Enter key or Run button), THE panel SHALL execute the macro via the `MACRO <name>` command dispatch and display the result or error in the status bar.
+4. WHEN the user selects a macro entry and activates Edit (F2 or Edit button), THE panel SHALL open the `.lua` file in a new editor tab.
+5. WHEN the user selects a macro entry and activates Delete (Delete key or Delete button), THE panel SHALL prompt for confirmation and, on confirmation, delete the `.lua` file from disk and remove it from the macro inventory.
+6. THE Macro Library panel SHALL include a filter input field that narrows the displayed list to entries whose name contains the filter text (case-insensitive).
+7. THE Macro Library panel state (selected entry, filter text) SHALL NOT be persisted across sessions -- the panel opens with no selection and empty filter each time.
+8. WHEN the macro inventory changes (new script discovered, script deleted, script auto-reloaded), THE Macro Library panel SHALL refresh its list within one egui frame.
+
+---
+
 ## Cross-References
 
 | Dependency | Relationship |

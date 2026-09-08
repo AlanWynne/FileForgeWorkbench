@@ -139,6 +139,14 @@ pub enum ConfigError {
         /// Human-readable parse error details.
         details: String,
     },
+
+    /// A key is locked by system policy and cannot be modified.
+    /// Addresses: Requirement 18.7
+    #[error("[config] lock: key '{key}' is locked by system policy and cannot be modified")]
+    KeyLocked {
+        /// The locked key.
+        key: String,
+    },
 }
 
 #[cfg(test)]
@@ -376,10 +384,26 @@ mod tests {
                 path: PathBuf::from("f"),
                 details: "parse".to_string(),
             },
+            ConfigError::KeyLocked {
+                key: "editor.tab_size".to_string(),
+            },
         ];
 
         for error in &errors {
             assert_config_prefix(error);
         }
+    }
+
+    // Validates: Requirement 18.7
+    #[test]
+    fn key_locked_display_follows_config_prefix_pattern() {
+        let err = ConfigError::KeyLocked {
+            key: "editor.tab_size".to_string(),
+        };
+        assert_config_prefix(&err);
+        assert_eq!(
+            err.to_string(),
+            "[config] lock: key 'editor.tab_size' is locked by system policy and cannot be modified"
+        );
     }
 }

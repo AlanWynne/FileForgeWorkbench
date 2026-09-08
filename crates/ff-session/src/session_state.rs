@@ -228,6 +228,15 @@ pub struct TabState {
     /// Addresses: Requirement 6.1 (view-zoom) — per-document zoom offset persisted.
     #[serde(default)]
     pub zoom_offset: i32,
+
+    /// User-assigned Workspace name (optional).
+    ///
+    /// When `Some`, displayed in the tab header alongside the content title.
+    /// When `None`, only the content-derived title is shown.
+    ///
+    /// Validates: CX Requirement 1.1, 1.6, Requirement 4.1-4.3
+    #[serde(default)]
+    pub workspace_name: Option<String>,
 }
 
 impl Default for TabState {
@@ -244,6 +253,7 @@ impl Default for TabState {
             language_override: None,
             is_pinned: false,
             zoom_offset: 0,
+            workspace_name: None,
         }
     }
 }

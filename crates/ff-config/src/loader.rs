@@ -113,7 +113,7 @@ fn toml_value_to_config_value(value: &toml::Value) -> ConfigValue {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
+
     use tempfile::TempDir;
 
     // Validates: Requirement 1.1 — valid TOML files are parsed successfully

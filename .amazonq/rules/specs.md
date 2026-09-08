@@ -6,7 +6,7 @@ Each sub-project folder contains up to three files:
 
 | File | Purpose |
 |------|---------|
-| `requirements.md` | Acceptance criteria in EARS format (`WHEN … THE … SHALL …`). This is the source of truth for what must be implemented and tested. |
+| `requirements.md` | Acceptance criteria in EARS format (`WHEN ... THE ... SHALL ...`). This is the source of truth for what must be implemented and tested. |
 | `design.md` | Architecture and design decisions for the sub-project. |
 | `tasks.md` | Ordered implementation tasks with `[ ]` / `[x]` completion state. |
 
@@ -93,6 +93,31 @@ The following specs are available under `docs/specs/`:
 - plugin-manager-ui
 - notification-system
 - jcl-resolver (stub -- no requirements yet)
+- menu-workspace
+
+## Canonical UI Terminology (Phase CT)
+
+All specifications use the three-level UI model agreed in Phase CT:
+
+| Level | Term | Description |
+|-------|------|-------------|
+| 1 | **Workbench** | The application window -- the outermost container. |
+| 2 | **Workspace** | A single tab in the Workbench tab bar. |
+| 3 | **Context** | The content displayed inside a Workspace (e.g. Home Context, Editor Context, Settings Context). |
+
+A Workspace moved to a separate OS window is a **Detached Workspace** (previously "floating window" or "Detached View").
+
+Context names by Workspace kind:
+- Home Context (POM) -- the ISPF-style Primary Option Menu; "POM" is the retained ISPF-heritage alias
+- Editor Context -- text editing surface
+- Settings Context -- browsable/editable configuration
+- Catalog Explorer Context -- POM option 1, virtual catalog management
+- File Explorer Context -- POM option 2, VFS tree browser
+- Compiler Context -- toolchain status and build output
+- Search Results Context -- global search results
+- Database Context, Plugin Manager Context, Macro Library Context, Event Log Context, Hex Context
+
+See `docs/reviews/requirements-review/terminology-map.md` for the full glossary and substitution rules.
 
 ## Rules for Amazon Q
 

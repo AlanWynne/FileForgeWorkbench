@@ -74,16 +74,31 @@ Then follow the full gate in `.amazonq/rules/new-requirements-gate.md`
 ### QUESTION / DISCUSSION → no logging required
 
 Answer directly. No file changes unless the answer reveals a bug or gap.
+Operating mode: none -- answer only.
 
 ### TASK / IMPLEMENTATION → no new log entry
 
 The requirement or change request was already logged when the gate was run.
 Proceed directly to TDD implementation per `.amazonq/rules/tdd-and-testing.md`.
+Operating mode: `.amazonq/rules/operating-mode-code.md`.
 
 ### REFACTOR → no new log entry unless behaviour changes
 
 If during refactoring a behaviour change is discovered, reclassify as CHANGE REQUEST
 and log it before proceeding.
+Operating mode: `.amazonq/rules/operating-mode-code.md`.
+
+### NEW REQUIREMENT and CHANGE REQUEST -- operating mode
+
+After logging, follow the full gate in `.amazonq/rules/new-requirements-gate.md`.
+Operating mode for drafting and presenting specs: `.amazonq/rules/operating-mode-spec.md`.
+Operating mode for implementation once approved: `.amazonq/rules/operating-mode-code.md`.
+
+### BUG -- operating mode
+
+After logging, diagnose using read-only tools first.
+If a fix requires code changes, apply `.amazonq/rules/operating-mode-code.md`.
+If the bug reveals a missing criterion, apply `.amazonq/rules/operating-mode-spec.md` first.
 
 ---
 

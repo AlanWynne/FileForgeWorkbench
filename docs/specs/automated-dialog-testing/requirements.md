@@ -295,3 +295,98 @@ so that all contributors know where to place test artefacts.
 
 10.3 THE `tests/baselines/` directory SHALL be version-controlled so baseline
     images are shared across the team.
+
+---
+
+## Requirement 11 -- Workspace Context Inspection
+
+**User Story:** As a test author, I want to assert the active Workspace Context type
+and the number of open Workspaces, so that I can verify navigation commands produced
+the expected result.
+
+### Acceptance Criteria
+
+11.1 THE FFTest scripting language SHALL support the command:
+
+    ASSERT CONTEXT IS "<context-name>"
+
+    where `<context-name>` is one of: Home, Editor, Settings, FileExplorer,
+    FileCatalog, Compiler, MacroLibrary, PluginManager, EventLog, SearchResults,
+    CommandPalette, Database, Hex, JES, Batch.
+
+11.2 WHEN `ASSERT CONTEXT IS` is evaluated, THE runner SHALL query the
+    `shell.active_context` Automation ID and compare its value to the expected
+    context name (case-insensitive).
+
+11.3 THE FFTest scripting language SHALL support the command:
+
+    ASSERT WORKSPACE COUNT IS <n>
+
+    where `<n>` is a positive integer.
+
+11.4 WHEN `ASSERT WORKSPACE COUNT IS` is evaluated, THE runner SHALL query the
+    `shell.workspace_count` Automation ID and compare its integer value to `<n>`.
+
+11.5 WHEN either assertion fails, THE runner SHALL record the expected value,
+    the actual value observed, and the script line number in the step diagnostic.
+
+---
+
+## Requirement 12 -- Automatic Bug Report Generation
+
+**User Story:** As a QA engineer, I want assertion failures to be automatically
+logged as structured bug entries, so that I can track regressions without manually
+copying failure details.
+
+### Acceptance Criteria
+
+12.1 WHEN any assertion in a script fails, THE runner SHALL append a structured
+    entry to `reports/bugs-from-tests.md`.
+
+12.2 EACH bug entry SHALL include: a sequential bug ID (BT-NNN), the script file
+    name, the line number, the assertion text, the expected value, the actual value,
+    and the UTC timestamp of the failure.
+
+12.3 THE bug entry format SHALL be compatible with the `docs/status/bugs.md` table
+    format so entries can be copied directly into the project bug register.
+
+12.4 WHEN `reports/bugs-from-tests.md` does not exist, THE runner SHALL create it
+    with a header row before appending the first entry.
+
+12.5 WHEN all assertions in a script pass, THE runner SHALL NOT append any entry
+    to `reports/bugs-from-tests.md`.
+
+---
+
+## Requirement 13 -- FFTest Script Suite
+
+**User Story:** As a project maintainer, I want a comprehensive suite of FFTest
+scripts covering all major functional areas, so that regressions are detected
+automatically across the full application.
+
+### Acceptance Criteria
+
+13.1 THE test suite SHALL include scripts under `tests/dialog/` covering:
+    POM navigation (option selection, calendar navigation, command field),
+    file open/save/close (via menu and command field),
+    editor text input and undo,
+    catalog create/edit/delete,
+    dataset allocation,
+    settings navigation.
+
+13.2 THE test suite SHALL include scripts under `tests/dialog/` covering:
+    key configuration dialog (open, modify, save, cancel),
+    compiler context (open, build trigger),
+    plugin manager (open, filter),
+    notification system (LOG command, event log open).
+
+13.3 THE test suite SHALL include scripts under `tests/workflow/` covering:
+    batch execution (--batch flag with a command file),
+    global search (Ctrl+Shift+F, search term, result count assertion),
+    command palette (Ctrl+Shift+P, fuzzy filter, command execution).
+
+13.4 EACH script SHALL include at least one ASSERT command verifying the expected
+    post-condition of the workflow it covers.
+
+13.5 EACH script SHALL begin with a comment block identifying the functional area,
+    the requirement(s) it validates, and the expected outcome.

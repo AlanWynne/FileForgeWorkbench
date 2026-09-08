@@ -13,8 +13,8 @@ use ff_line_commands::execution::delete::get_line_content;
 use ff_line_commands::pending::{PendingCommandStore, PendingReason};
 use ff_line_commands::resolution::ResolutionEngine;
 use ff_line_commands::{
-    BlockPairValidator, ExecutableCommand, LineCommandParser, ParsedLineCommand, SourceOperation,
-    SourceTarget, TargetPosition,
+    BlockPairValidator, LineCommandParser, ParsedLineCommand, SourceOperation, SourceTarget,
+    TargetPosition,
 };
 
 // ─── Test Utilities ─────────────────────────────────────────────────────────

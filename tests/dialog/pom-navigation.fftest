@@ -1,0 +1,33 @@
+# FFTest Dialog Script -- POM Navigation
+# Functional area: Home Context (Primary Option Menu)
+# Validates: Req 13.1 (automated-dialog-testing), Req 14.1, 14.3 (startup-and-session)
+# Expected outcome: POM is active on launch; command field accepts option keys
+
+# Verify the workbench window is present
+ASSERT WINDOW EXISTS "FileForge Workbench"
+
+# Verify the Home Context is active on launch
+ASSERT CONTEXT IS "Home"
+
+# Verify at least one Workspace is open
+ASSERT WORKSPACE COUNT IS 1
+
+# Verify the status bar is present
+ASSERT STATUSBAR CONTAINS ""
+
+CHECKPOINT "pom_initial_state"
+
+# Navigate to Settings (option 0) via command field
+TYPE TEXT "0"
+PRESS KEY ENTER
+
+ASSERT CONTEXT IS "Settings"
+
+CHECKPOINT "pom_settings_opened"
+
+# Return to POM via END
+PRESS KEY F3
+
+ASSERT CONTEXT IS "Home"
+
+CHECKPOINT "pom_returned_from_settings"

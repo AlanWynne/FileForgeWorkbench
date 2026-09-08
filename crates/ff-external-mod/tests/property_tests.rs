@@ -28,6 +28,7 @@ fn arb_system_time() -> impl Strategy<Value = SystemTime> {
         .prop_map(|(secs, nanos)| SystemTime::UNIX_EPOCH + Duration::new(secs, nanos))
 }
 
+#[allow(dead_code)]
 fn arb_document_id() -> impl Strategy<Value = DocumentId> {
     (1u64..1000).prop_map(DocumentId)
 }

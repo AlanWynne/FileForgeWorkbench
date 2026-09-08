@@ -34,27 +34,27 @@ The full architectural rationale — GUI-independence principle, command-driven 
 
 ### What works today
 
-- ISPF-style Primary Option Menu (POM) — tabbed, with live calendar, month navigation, and interactive option buttons
-- Multi-tab editor — open files via `EDIT <path>`, `File > Open…`, or CLI arguments
-- Keyboard text input — typed characters insert, Backspace deletes, Enter splits lines
-- File save — `File > Save` and `Ctrl+S` write to disk
-- Per-tab viewport and cursor state — switching tabs restores scroll position and cursor
-- Keyboard navigation — Arrow keys, Page Up/Down, mouse click to position cursor
-- Ctrl+Z undo — restores document and cursor to previous state
-- Live status bar — line/column, encoding, line count, modified indicator
-- Session persistence — open tabs, zoom levels, key bar visibility, and catalog registry saved on exit and restored on next launch
-- Three built-in themes — dark, light, high-contrast; user-configurable colour tokens via TOML
-- ISPF-style `Command ===>` field — `EDIT`, `EXIT`, `QUIT`, `=X`, `=0`–`=8`, `=FILES`, `FILES`, `KEYS`, `PFSHOW`, `END`, `RETURN`, `FIND`, `CHANGE`, `LOCATE`, `SORT`, `EXCLUDE`, `SHOW`, `RESET`
-- Virtual Catalog Manager — create, edit, delete Mainframe / POSIX / Native / Cloud catalogs; catalog registry persisted across restarts
-- Default Home catalog — on first launch, a Native catalog pointing to the user's home directory is created automatically and cannot be deleted
-- Dataset Allocation dialog — ISPF-style fields, HLQ pre-population, duplicate detection, uppercase enforcement
-- File Explorer panel — `=2` / `=FILES` / `FILES` commands; tree view grouped by catalog type
-- Settings panel — all config keys browsable, editable, and resettable; filter input; provenance badges
-- Key Configuration dialog — 24-key grid per scope, modifier bindings (Shift/Ctrl/Alt+Fn), TOML persistence
-- 24-key label bar — two rows, clickable slots, PFSHOW ON/OFF, session persistence
-- Compiler Toolchain panel — GCC and Rust detection, install, build, diagnostic parsing and display
-- Detachable tab windows — tabs can be moved to separate OS windows and redocked
-- Tab-order focus cycle — Tab/Shift+Tab through command field, POM options, calendar, menu bar, tab headers
+- ISPF-style Home Context (POM) -- tabbed, with live calendar, month navigation, and interactive option buttons
+- Multi-tab Workbench -- open files via `EDIT <path>`, `File > Open...`, or CLI arguments; each file opens in an Editor Context Workspace
+- Keyboard text input -- typed characters insert, Backspace deletes, Enter splits lines
+- File save -- `File > Save` and `Ctrl+S` write to disk
+- Per-Workspace viewport and cursor state -- switching Workspaces restores scroll position and cursor
+- Keyboard navigation -- Arrow keys, Page Up/Down, mouse click to position cursor
+- Ctrl+Z undo -- restores document and cursor to previous state
+- Live status bar -- line/column, encoding, line count, modified indicator
+- Session persistence -- open Workspaces, zoom levels, key bar visibility, and catalog registry saved on exit and restored on next launch
+- Three built-in themes -- dark, light, high-contrast; user-configurable colour tokens via TOML
+- ISPF-style `Command ===>` field -- `EDIT`, `EXIT`, `QUIT`, `=X`, `=0`-`=8`, `=FILES`, `FILES`, `KEYS`, `PFSHOW`, `END`, `RETURN`, `FIND`, `CHANGE`, `LOCATE`, `SORT`, `EXCLUDE`, `SHOW`, `RESET`
+- Virtual Catalog Manager -- create, edit, delete Mainframe / POSIX / Native / Cloud catalogs; catalog registry persisted across restarts
+- Default Home catalog -- on first launch, a Native catalog pointing to the user's home directory is created automatically and cannot be deleted
+- Dataset Allocation dialog -- ISPF-style fields, HLQ pre-population, duplicate detection, uppercase enforcement
+- File Explorer Context (`=2` / `=FILES` / `FILES`) -- tree view grouped by catalog type
+- Settings Context -- all config keys browsable, editable, and resettable; filter input; provenance badges
+- Key Configuration dialog -- 24-key grid per scope, modifier bindings (Shift/Ctrl/Alt+Fn), TOML persistence
+- 24-key label bar -- two rows, clickable slots, PFSHOW ON/OFF, session persistence
+- Compiler Context -- GCC and Rust detection, install, build, diagnostic parsing and display
+- Detachable Workspaces -- Workspaces can be moved to separate OS windows and redocked
+- Tab-order focus cycle -- Tab/Shift+Tab through command field, POM options, calendar, menu bar, Workspace headers
 - Help > About dialog
 
 ### Known gaps
@@ -131,16 +131,16 @@ cargo clippy -- -D warnings        # lint
 
 ## Features
 
-- Text file editing with keyboard input, undo, and save
-- ISPF-style Primary Option Menu with live calendar
-- Virtual Catalog Manager — Mainframe, POSIX, Native, and Cloud catalog types
+- Text file editing with keyboard input, undo, and save (Editor Context)
+- ISPF-style Home Context (POM) with live calendar
+- Virtual Catalog Manager -- Mainframe, POSIX, Native, and Cloud catalog types (Catalog Explorer Context)
 - Default Home catalog auto-created on first launch
 - Dataset Allocation dialog with ISPF-style fields
-- File Explorer panel with catalog tree view
-- Settings panel — all config keys browsable and editable
-- Key Configuration dialog — 24-key grid with modifier bindings
-- Compiler Toolchain panel — GCC and Rust detection, build, diagnostics
-- Detachable tab windows
+- File Explorer Context with catalog tree view
+- Settings Context -- all config keys browsable and editable
+- Key Configuration dialog -- 24-key grid with modifier bindings
+- Compiler Context -- GCC and Rust detection, build, diagnostics
+- Detachable Workspaces
 - Source code support (syntax highlighting etc.)
 - Plugin architecture
 - Dataset Catalogues

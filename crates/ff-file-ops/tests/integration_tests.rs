@@ -14,12 +14,12 @@ use ff_vfs::{
 };
 
 use ff_file_ops::{
-    backup::{create_backup, BackupConfig, BackupLocation},
+    backup::{BackupConfig, BackupLocation},
     commands::{is_revert_enabled, is_save_enabled},
     guard::GuardAction,
     open::{determine_read_only_status, is_duplicate_open, load_resource},
-    persistence::{AtomicWriteStrategy, DirectWriteStrategy, PersistenceStrategy},
-    revert::{is_revert_available, needs_revert_confirmation, reload_from_vfs},
+    persistence::{AtomicWriteStrategy, DirectWriteStrategy},
+    revert::{is_revert_available, reload_from_vfs},
     save::{check_external_modification, execute_save, should_save_async, SaveState},
     save_as::{execute_save_as, target_exists},
     traits::UntitledCounter,

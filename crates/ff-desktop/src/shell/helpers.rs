@@ -49,6 +49,8 @@ pub(super) fn context_name_for_kind(kind: TabKind) -> Option<&'static str> {
         TabKind::SearchResults => Some("search"),
         TabKind::PluginManager => Some("plugins"),
         TabKind::EventLog => Some("log"),
+        TabKind::MacroLibrary => Some("macros"),
+        TabKind::MenuWorkspace => Some("menu"),
     }
 }
 

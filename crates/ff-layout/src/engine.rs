@@ -1077,7 +1077,7 @@ mod tests {
         engine.add_tab("main.rs", None).unwrap();
         engine.add_tab("lib.rs", None).unwrap();
         let group_id = engine.active_tab_group();
-        let window_id = engine.undock_tab(group_id, 0).unwrap();
+        let _window_id = engine.undock_tab(group_id, 0).unwrap();
         assert_eq!(engine.floating_window_count(), 1);
     }
 

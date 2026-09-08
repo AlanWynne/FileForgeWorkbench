@@ -36,7 +36,7 @@ startup.
 | **Rust Toolchain** | The Rust compiler (`rustc`), package manager (`cargo`), and toolchain manager (`rustup`). |
 | **Toolchain_State** | The detected state of a toolchain: `NotDetected`, `Detected(version)`, `Installing`, `InstallFailed(reason)`, `Ready`. |
 | **Diagnostic** | A compiler-emitted error or warning with file path, line, column, severity, and message text. |
-| **Toolchain_Panel** | The UI panel (docked or floating) that shows toolchain status, install controls, and build output. |
+| **Compiler_Context** | The UI panel (docked or floating) that shows toolchain status, install controls, and build output. |
 | **Install_Source** | The origin from which a toolchain is fetched: package manager (apt/brew/winget), official installer script (rustup), or direct binary download. |
 | **Build_Profile** | A named set of compiler flags and targets (e.g., `debug`, `release`, `check-only`). |
 
@@ -57,11 +57,11 @@ C, C++, and other GCC-supported languages without leaving the editor.
      each component in the Toolchain_State.
 
 2. WHEN all required GCC components (`gcc`, `g++`, `as`, `ld`, `ar`) are detected at the same
-     version, THE Toolchain_State SHALL transition to `Ready` and the Toolchain_Panel SHALL
+     version, THE Toolchain_State SHALL transition to `Ready` and the Compiler_Context SHALL
      display the detected GCC version string (e.g., `GCC 13.2.0 — Ready`).
 
 3. WHEN one or more required GCC components are not found on PATH, THE Toolchain_State SHALL
-     be `NotDetected` and the Toolchain_Panel SHALL display a clear message: `GCC not found —
+     be `NotDetected` and the Compiler_Context SHALL display a clear message: `GCC not found —
      [Install GCC]` with an actionable install button.
 
 4. WHEN the user activates the `[Install GCC]` action, THE workbench SHALL display a
@@ -71,7 +71,7 @@ C, C++, and other GCC-supported languages without leaving the editor.
 
 5. WHEN the user confirms the GCC installation, THE workbench SHALL launch the installation
      process via the background I/O service (`ff-bgio`), transition Toolchain_State to
-     `Installing`, and display a live progress indicator in the Toolchain_Panel. The UI SHALL
+     `Installing`, and display a live progress indicator in the Compiler_Context. The UI SHALL
      remain fully interactive during installation.
 
 6. WHEN the GCC installation completes successfully, THE workbench SHALL re-probe the PATH,
@@ -80,7 +80,7 @@ C, C++, and other GCC-supported languages without leaving the editor.
 
 7. WHEN the GCC installation fails for any reason (network error, permission denied, package
      manager error), THE workbench SHALL transition Toolchain_State to `InstallFailed(reason)`,
-     display the failure reason in the Toolchain_Panel, and offer a `[Retry]` and `[View Log]`
+     display the failure reason in the Compiler_Context, and offer a `[Retry]` and `[View Log]`
      action.
 
 8. THE GCC plugin SHALL support the full GCC compiler collection components on each platform:
@@ -90,7 +90,7 @@ C, C++, and other GCC-supported languages without leaving the editor.
        `gcc-toolset` on RHEL/Fedora).
      - **macOS**: via Homebrew (`gcc` formula providing the full collection).
 
-9. WHEN the GCC toolchain is in `Ready` state, THE Toolchain_Panel SHALL list all detected
+9. WHEN the GCC toolchain is in `Ready` state, THE Compiler_Context SHALL list all detected
      GCC components with their individual version strings.
 
 ---
@@ -108,7 +108,7 @@ I can fix issues without switching to a terminal.
      invokes `gcc` or `g++` on the active file with the active Build_Profile flags.
 
 2. WHEN a compile action is triggered, THE workbench SHALL run the compiler as a background
-     process via `ff-bgio`, stream its stdout/stderr to the Toolchain_Panel build output area,
+     process via `ff-bgio`, stream its stdout/stderr to the Compiler_Context build output area,
      and keep the editor fully interactive.
 
 3. WHEN the compiler emits output in GCC diagnostic format (`file:line:col: severity: message`),
@@ -117,10 +117,10 @@ I can fix issues without switching to a terminal.
      (error = red, warning = yellow, note = blue).
 
 4. WHEN the compiler exits with code 0, THE workbench SHALL display `Build succeeded` in the
-     Toolchain_Panel status line and clear all previous Diagnostic annotations from the editor.
+     Compiler_Context status line and clear all previous Diagnostic annotations from the editor.
 
 5. WHEN the compiler exits with a non-zero code, THE workbench SHALL display `Build failed —
-     N error(s), M warning(s)` in the Toolchain_Panel status line and retain all Diagnostic
+     N error(s), M warning(s)` in the Compiler_Context status line and retain all Diagnostic
      annotations.
 
 6. THE workbench SHALL provide at least the following built-in Build_Profiles for GCC:
@@ -128,7 +128,7 @@ I can fix issues without switching to a terminal.
      - `release`: `-O2 -DNDEBUG`
      - `check-only`: `-fsyntax-only -Wall -Wextra`
 
-7. WHEN the user clicks on a Diagnostic entry in the Toolchain_Panel output list, THE workbench
+7. WHEN the user clicks on a Diagnostic entry in the Compiler_Context output list, THE workbench
      SHALL navigate the editor to the file, line, and column referenced by that Diagnostic.
 
 ---
@@ -146,11 +146,11 @@ I can build and check Rust projects without leaving the editor.
      Toolchain_State.
 
 2. WHEN `rustc` and `cargo` are detected, THE Toolchain_State SHALL transition to `Ready` and
-     the Toolchain_Panel SHALL display the detected Rust version string (e.g.,
+     the Compiler_Context SHALL display the detected Rust version string (e.g.,
      `Rust 1.78.0 (stable) — Ready`) and the active toolchain channel (stable/beta/nightly).
 
 3. WHEN `rustc` or `cargo` are not found on PATH, THE Toolchain_State SHALL be `NotDetected`
-     and the Toolchain_Panel SHALL display: `Rust not found — [Install via rustup]` with an
+     and the Compiler_Context SHALL display: `Rust not found — [Install via rustup]` with an
      actionable install button.
 
 4. WHEN the user activates the `[Install via rustup]` action, THE workbench SHALL display a
@@ -172,10 +172,10 @@ I can build and check Rust projects without leaving the editor.
      Toolchain_State to `InstallFailed(reason)`, display the failure reason, and offer
      `[Retry]` and `[View Log]` actions.
 
-8. WHEN `rustup` is detected, THE Toolchain_Panel SHALL display a `[Update Toolchain]` button
+8. WHEN `rustup` is detected, THE Compiler_Context SHALL display a `[Update Toolchain]` button
      that runs `rustup update` in the background and reports the result.
 
-9. WHEN `rustup` is detected, THE Toolchain_Panel SHALL display the list of installed
+9. WHEN `rustup` is detected, THE Compiler_Context SHALL display the list of installed
      toolchain channels (stable, beta, nightly) with their versions and allow the user to
      switch the active channel.
 
@@ -192,10 +192,10 @@ so that I can fix issues without switching to a terminal.
 1. WHEN the Rust toolchain is `Ready` and the active editor tab is inside a Cargo workspace
      (a `Cargo.toml` is found by walking up the directory tree), THE workbench SHALL enable
      `Cargo Build`, `Cargo Check`, and `Cargo Test` actions in the Compilers menu and
-     Toolchain_Panel.
+     Compiler_Context.
 
 2. WHEN a Cargo action is triggered, THE workbench SHALL run the corresponding `cargo`
-     subcommand as a background process via `ff-bgio`, stream its output to the Toolchain_Panel
+     subcommand as a background process via `ff-bgio`, stream its output to the Compiler_Context
      build output area, and keep the editor fully interactive.
 
 3. WHEN `cargo` emits JSON diagnostic output (`--message-format=json`), THE workbench SHALL
@@ -203,12 +203,12 @@ so that I can fix issues without switching to a terminal.
      in the editor with a coloured underline and inline message.
 
 4. WHEN `cargo` exits with code 0, THE workbench SHALL display `Cargo succeeded` in the
-     Toolchain_Panel status line and clear all previous Diagnostic annotations.
+     Compiler_Context status line and clear all previous Diagnostic annotations.
 
 5. WHEN `cargo` exits with a non-zero code, THE workbench SHALL display `Cargo failed —
      N error(s), M warning(s)` and retain all Diagnostic annotations.
 
-6. WHEN the user clicks on a Diagnostic entry in the Toolchain_Panel output list, THE workbench
+6. WHEN the user clicks on a Diagnostic entry in the Compiler_Context output list, THE workbench
      SHALL navigate the editor to the file, line, and column referenced by that Diagnostic.
 
 7. THE workbench SHALL pass `--message-format=json` to all `cargo` invocations to enable
@@ -237,7 +237,7 @@ section 6.4 (Generic toolchain plugin trait -- PARTIAL, High priority).
    contract SHALL NOT contain any GCC-specific or Rust-specific assumptions.
 
 3. WHEN a new toolchain plugin crate implements `ToolchainPlugin` and registers itself
-   with the plugin registry, THE Toolchain_Panel SHALL display its status row and
+   with the plugin registry, THE Compiler_Context SHALL display its status row and
    install/build controls without any changes to the core workbench or existing plugin crates.
 
 4. THE `ff-toolchain-api` crate SHALL be the only compile-time dependency that a new

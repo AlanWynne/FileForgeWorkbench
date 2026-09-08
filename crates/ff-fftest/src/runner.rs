@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use crate::assertions::{
-    evaluate_control_value, evaluate_file_open, evaluate_statusbar_contains, evaluate_text_exists,
-    evaluate_window_exists, AssertionResult,
+    evaluate_context_is, evaluate_control_value, evaluate_file_open, evaluate_statusbar_contains,
+    evaluate_text_exists, evaluate_window_exists, evaluate_workspace_count_is, AssertionResult,
 };
 use crate::automation::{AutomationId, AutomationRegistry};
 use crate::parser::{substitute_vars, Command, ParsedScript};
@@ -257,6 +257,15 @@ impl<'a> Runner<'a> {
                 let result = evaluate_control_value(&id, &expected, self.registry);
                 StepResult::from_assertion(line, result)
             }
+            Command::AssertContextIs { context } => {
+                let context = substitute_vars(context, vars);
+                let result = evaluate_context_is(&context, self.registry);
+                StepResult::from_assertion(line, result)
+            }
+            Command::AssertWorkspaceCountIs { count } => {
+                let result = evaluate_workspace_count_is(*count, self.registry);
+                StepResult::from_assertion(line, result)
+            }
         }
     }
 }
@@ -429,5 +438,60 @@ ASSERT FILE OPEN
         let report = runner.run(&script);
         assert!(report.steps[0].passed);
         assert!(report.steps[0].description.contains("after_open"));
+    }
+
+    // Validates: Requirement 11.2 -- ASSERT CONTEXT IS passes when context matches
+    #[test]
+    fn assert_context_is_passes_when_context_matches() {
+        let mut reg = make_registry();
+        reg.register(
+            AutomationId::new("shell.active_context"),
+            ControlState::with_value("Home"),
+        );
+        let mut ids = known_ids();
+        ids.push(AutomationId::new("shell.active_context"));
+        let src = "ASSERT CONTEXT IS \"Home\"";
+        let script = parse(src).expect("parse ok");
+        let runner = Runner::new(&reg, ids);
+        let report = runner.run(&script);
+        assert!(report.all_passed());
+    }
+
+    // Validates: Requirement 11.4 -- ASSERT WORKSPACE COUNT IS passes on match
+    #[test]
+    fn assert_workspace_count_is_passes_on_match() {
+        let mut reg = make_registry();
+        reg.register(
+            AutomationId::new("shell.workspace_count"),
+            ControlState::with_value("2"),
+        );
+        let mut ids = known_ids();
+        ids.push(AutomationId::new("shell.workspace_count"));
+        let src = "ASSERT WORKSPACE COUNT IS 2";
+        let script = parse(src).expect("parse ok");
+        let runner = Runner::new(&reg, ids);
+        let report = runner.run(&script);
+        assert!(report.all_passed());
+    }
+
+    // Validates: Requirement 11.5 -- ASSERT CONTEXT IS records diagnostic on failure
+    #[test]
+    fn assert_context_is_records_diagnostic_on_failure() {
+        let mut reg = make_registry();
+        reg.register(
+            AutomationId::new("shell.active_context"),
+            ControlState::with_value("Editor"),
+        );
+        let mut ids = known_ids();
+        ids.push(AutomationId::new("shell.active_context"));
+        let src = "ASSERT CONTEXT IS \"Home\"";
+        let script = parse(src).expect("parse ok");
+        let runner = Runner::new(&reg, ids);
+        let report = runner.run(&script);
+        assert!(!report.all_passed());
+        let step = &report.steps[0];
+        let assertion = step.assertion.as_ref().expect("assertion present");
+        assert_eq!(assertion.expected.as_deref(), Some("Home"));
+        assert_eq!(assertion.actual.as_deref(), Some("Editor"));
     }
 }

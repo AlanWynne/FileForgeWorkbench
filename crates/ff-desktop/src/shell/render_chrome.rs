@@ -337,10 +337,22 @@ impl WorkbenchShell {
                         let tab_kind = tab.kind;
 
                         let bg = if is_active { active_bg } else { inactive_bg };
-                        let label = if tab.is_modified {
-                            format!("● {}", tab.title)
+                        // Validates: CX Requirement 1.4 -- show workspace_name in tab header
+                        let base_title = if let Some(ref name) = tab.workspace_name {
+                            match tab.kind {
+                                crate::tab_state::TabKind::FileEditor
+                                | crate::tab_state::TabKind::Untitled => {
+                                    format!("{}: {}", name, tab.title)
+                                }
+                                _ => format!("[{}]", name),
+                            }
                         } else {
                             tab.title.clone()
+                        };
+                        let label = if tab.is_modified {
+                            format!("● {}", base_title)
+                        } else {
+                            base_title
                         };
                         let color = if tab.is_modified {
                             modified_color

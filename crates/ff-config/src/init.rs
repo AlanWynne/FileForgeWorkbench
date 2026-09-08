@@ -207,6 +207,13 @@ pub fn register_core_schema(schema: &mut SchemaRegistry) {
             constraints: None,
         },
         SchemaEntry {
+            key: crate::keys::theme::FOLLOW_OS.to_string(),
+            value_type: ValueType::Boolean,
+            default: ConfigValue::Boolean(false),
+            description: "Follow OS dark/light mode automatically".to_string(),
+            constraints: None,
+        },
+        SchemaEntry {
             key: crate::keys::theme::FONT_SIZE.to_string(),
             value_type: ValueType::Integer,
             default: ConfigValue::Integer(14),
@@ -937,8 +944,8 @@ mod tests {
         assert!(schema.get("theme.font_size").is_some());
         assert!(schema.get("vfs.default_provider").is_some());
 
-        // Total: 12 core entries
-        assert_eq!(schema.len(), 12);
+        // Total: 13 core entries
+        assert_eq!(schema.len(), 13);
     }
 
     // Validates: Requirement 9.1 — register_core_schema is idempotent (can be called twice)

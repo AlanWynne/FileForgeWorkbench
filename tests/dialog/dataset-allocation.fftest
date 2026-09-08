@@ -1,0 +1,31 @@
+# FFTest Dialog Script -- Dataset Allocation
+# Functional area: Dataset Allocation Dialog
+# Validates: Req 13.1 (automated-dialog-testing), Req 5 (virtual-catalog-manager)
+# Expected outcome: dataset allocation dialog opens and can be cancelled
+
+# Open File Catalogs panel
+TYPE TEXT "1"
+PRESS KEY ENTER
+
+ASSERT CONTEXT IS "FileCatalog"
+
+CHECKPOINT "catalogs_opened"
+
+# Open dataset allocation dialog
+CLICK BUTTON "button.allocate_dataset"
+
+ASSERT WINDOW EXISTS "Allocate Dataset"
+
+CHECKPOINT "alloc_dialog_open"
+
+# Verify the dataset name field is present
+ASSERT CONTROL VALUE "textbox.dataset_name" ""
+
+# Cancel without allocating
+CLICK BUTTON "button.alloc_cancel"
+
+CHECKPOINT "alloc_cancelled"
+
+PRESS KEY F3
+
+ASSERT CONTEXT IS "Home"

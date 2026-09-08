@@ -41,8 +41,8 @@ fn arb_operations(max_len: usize) -> impl Strategy<Value = Vec<Op>> {
 /// Scroll operations for viewport testing.
 #[derive(Debug, Clone)]
 enum ScrollOp {
-    PageDown(u64),
-    PageUp(u64),
+    PageDown,
+    PageUp,
     LineDown(u64),
     LineUp(u64),
     SetTopLine(u64),
@@ -51,8 +51,8 @@ enum ScrollOp {
 fn arb_scroll_ops() -> impl Strategy<Value = Vec<ScrollOp>> {
     prop::collection::vec(
         prop_oneof![
-            (1u64..100).prop_map(ScrollOp::PageDown),
-            (1u64..100).prop_map(ScrollOp::PageUp),
+            Just(ScrollOp::PageDown),
+            Just(ScrollOp::PageUp),
             (1u64..50).prop_map(ScrollOp::LineDown),
             (1u64..50).prop_map(ScrollOp::LineUp),
             (1u64..200).prop_map(ScrollOp::SetTopLine),
@@ -257,8 +257,8 @@ proptest! {
 
         for op in &ops {
             match op {
-                ScrollOp::PageDown(_) => viewport.scroll_page_down(visible_count, line_count),
-                ScrollOp::PageUp(_) => viewport.scroll_page_up(visible_count),
+                ScrollOp::PageDown => viewport.scroll_page_down(visible_count, line_count),
+                ScrollOp::PageUp => viewport.scroll_page_up(visible_count),
                 ScrollOp::LineDown(n) => viewport.scroll_line_down(*n, line_count, visible_count),
                 ScrollOp::LineUp(n) => viewport.scroll_line_up(*n),
                 ScrollOp::SetTopLine(l) => viewport.set_top_line(*l, line_count, visible_count),

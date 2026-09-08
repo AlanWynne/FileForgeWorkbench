@@ -1,4 +1,4 @@
-//! `TabState` — per-tab state owned by the desktop shell.
+//! `TabState` -- per-tab state owned by the desktop shell.
 //!
 //! Each open tab holds its own `DocumentHandle`, `ViewportModel`, and
 //! `CursorModel` so that switching tabs preserves scroll position and cursor.
@@ -7,6 +7,8 @@ use ff_document_model::{DocumentHandle, LineEndMode};
 use ff_edit_operations::EditProfile;
 use ff_viewport_scrolling::{CursorModel, ViewportModel};
 use std::collections::HashMap;
+
+use crate::menu_workspace::MenuWorkspaceState;
 
 /// The kind of content a tab is displaying.
 ///
@@ -20,13 +22,13 @@ pub enum TabKind {
     FileEditor,
     /// A new, unsaved buffer with no backing file.
     Untitled,
-    /// Virtual Catalog Manager — POM option 1.
+    /// Virtual Catalog Manager -- POM option 1.
     FilesPanel,
-    /// Settings Panel — POM option 0.
+    /// Settings Panel -- POM option 0.
     ///
     /// Validates: Requirement 15.1, 15.9
     SettingsPanel,
-    /// File Explorer Panel — POM option 2 (tree view of catalog contents).
+    /// File Explorer Panel -- POM option 2 (tree view of catalog contents).
     ///
     /// Validates: Requirement 19.11, 19.12
     FileExplorerPanel,
@@ -42,6 +44,14 @@ pub enum TabKind {
     ///
     /// Validates: notification-system Requirement 2.1
     EventLog,
+    /// Macro Library panel -- POM option 6 / MACROS / =6.
+    ///
+    /// Validates: lua-macro-engine Requirement 12.1
+    MacroLibrary,
+    /// A data-driven menu loaded from a TOML file.
+    ///
+    /// Validates: menu-workspace Requirement 1, 2
+    MenuWorkspace,
 }
 
 /// A single undoable edit stored as the inverse operation to apply.
@@ -53,7 +63,7 @@ pub enum UndoEntry {
     InsertBytes { position: u64, bytes: Vec<u8> },
 }
 
-/// A unique tab identifier (simple counter — no UUID dep needed at this layer).
+/// A unique tab identifier (simple counter -- no UUID dep needed at this layer).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TabId(pub u64);
 
@@ -76,13 +86,13 @@ pub struct TabState {
     pub cursor: CursorModel,
     /// True when the document has unsaved changes.
     pub is_modified: bool,
-    /// Cached total line count — updated at load time and after edits.
+    /// Cached total line count -- updated at load time and after edits.
     pub line_count: u64,
-    /// Cached line-end / encoding mode — used to derive the encoding label.
+    /// Cached line-end / encoding mode -- used to derive the encoding label.
     pub line_end_mode: LineEndMode,
     /// Per-tab undo stack (inverse operations, most-recent last).
     pub undo_stack: Vec<UndoEntry>,
-    /// Per-line editable prefix area text (line number → current input string).
+    /// Per-line editable prefix area text (line number -> current input string).
     pub prefix_inputs: HashMap<u64, String>,
     /// True when this tab has been detached into a floating OS window.
     ///
@@ -100,6 +110,45 @@ pub struct TabState {
     ///
     /// Validates: Requirement 13.1-13.10 (caret-and-selection)
     pub canvas_selection: Option<(u64, u64, u64, u64)>,
+    /// User-assigned Workspace name (optional).
+    ///
+    /// When `Some`, displayed in the tab header alongside the content title.
+    /// When `None`, only the content-derived title is shown (existing behaviour).
+    ///
+    /// Validates: CX Requirement 1.1, 1.2, 1.3, 1.4
+    pub workspace_name: Option<String>,
+    /// Menu Workspace state -- populated when `kind == TabKind::MenuWorkspace`.
+    ///
+    /// Validates: menu-workspace Requirement 1, 2
+    pub menu_workspace: Option<MenuWorkspaceState>,
+}
+
+// === Helper macro to reduce constructor boilerplate =========================
+
+macro_rules! base_tab {
+    ($id:expr, $kind:expr, $title:expr, $doc:expr) => {{
+        let mut viewport = ViewportModel::with_line_count(1);
+        viewport.set_line_height(16);
+        TabState {
+            id: $id,
+            kind: $kind,
+            title: $title,
+            path: None,
+            document: $doc,
+            viewport,
+            cursor: CursorModel::new(),
+            is_modified: false,
+            line_count: 1,
+            line_end_mode: LineEndMode::Default,
+            undo_stack: Vec::new(),
+            prefix_inputs: HashMap::new(),
+            is_floating: false,
+            edit_profile: EditProfile::new(),
+            canvas_selection: None,
+            workspace_name: None,
+            menu_workspace: None,
+        }
+    }};
 }
 
 impl TabState {
@@ -123,6 +172,8 @@ impl TabState {
             is_floating: false,
             edit_profile: EditProfile::new(),
             canvas_selection: None,
+            workspace_name: None,
+            menu_workspace: None,
         }
     }
 
@@ -156,178 +207,96 @@ impl TabState {
             is_floating: false,
             edit_profile: EditProfile::new(),
             canvas_selection: None,
+            workspace_name: None,
+            menu_workspace: None,
         }
     }
 
     /// Create a Primary Option Menu tab.
     pub fn pom(id: TabId, document: DocumentHandle) -> Self {
-        let mut viewport = ViewportModel::with_line_count(1);
-        viewport.set_line_height(16);
-        Self {
+        base_tab!(
             id,
-            kind: TabKind::PrimaryOptionMenu,
-            title: "[POM]".to_string(),
-            path: None,
-            document,
-            viewport,
-            cursor: CursorModel::new(),
-            is_modified: false,
-            line_count: 1,
-            line_end_mode: LineEndMode::Default,
-            undo_stack: Vec::new(),
-            prefix_inputs: HashMap::new(),
-            is_floating: false,
-            edit_profile: EditProfile::new(),
-            canvas_selection: None,
-        }
+            TabKind::PrimaryOptionMenu,
+            "[POM]".to_string(),
+            document
+        )
     }
 
     /// Create a Files Panel (Virtual Catalog Manager) tab.
     pub fn files_panel(id: TabId, document: DocumentHandle) -> Self {
-        let mut viewport = ViewportModel::with_line_count(1);
-        viewport.set_line_height(16);
-        Self {
-            id,
-            kind: TabKind::FilesPanel,
-            title: "[FILES]".to_string(),
-            path: None,
-            document,
-            viewport,
-            cursor: CursorModel::new(),
-            is_modified: false,
-            line_count: 1,
-            line_end_mode: LineEndMode::Default,
-            undo_stack: Vec::new(),
-            prefix_inputs: HashMap::new(),
-            is_floating: false,
-            edit_profile: EditProfile::new(),
-            canvas_selection: None,
-        }
+        base_tab!(id, TabKind::FilesPanel, "[FILES]".to_string(), document)
     }
 
     /// Create a Settings Panel tab.
     ///
     /// Validates: Requirement 15.1, 15.9
     pub fn settings_panel(id: TabId, document: DocumentHandle) -> Self {
-        let mut viewport = ViewportModel::with_line_count(1);
-        viewport.set_line_height(16);
-        Self {
+        base_tab!(
             id,
-            kind: TabKind::SettingsPanel,
-            title: "[SETTINGS]".to_string(),
-            path: None,
-            document,
-            viewport,
-            cursor: CursorModel::new(),
-            is_modified: false,
-            line_count: 1,
-            line_end_mode: LineEndMode::Default,
-            undo_stack: Vec::new(),
-            prefix_inputs: HashMap::new(),
-            is_floating: false,
-            edit_profile: EditProfile::new(),
-            canvas_selection: None,
-        }
+            TabKind::SettingsPanel,
+            "[SETTINGS]".to_string(),
+            document
+        )
     }
 
     /// Create a File Explorer Panel tab (POM option 2).
     ///
     /// Validates: Requirement 19.11, 19.12
     pub fn file_explorer_panel(id: TabId, document: DocumentHandle) -> Self {
-        let mut viewport = ViewportModel::with_line_count(1);
-        viewport.set_line_height(16);
-        Self {
+        base_tab!(
             id,
-            kind: TabKind::FileExplorerPanel,
-            title: "[FILES]".to_string(),
-            path: None,
-            document,
-            viewport,
-            cursor: CursorModel::new(),
-            is_modified: false,
-            line_count: 1,
-            line_end_mode: LineEndMode::Default,
-            undo_stack: Vec::new(),
-            prefix_inputs: HashMap::new(),
-            is_floating: false,
-            edit_profile: EditProfile::new(),
-            canvas_selection: None,
-        }
+            TabKind::FileExplorerPanel,
+            "[FILES]".to_string(),
+            document
+        )
     }
 
     /// Create a Search Results panel tab.
     ///
     /// Validates: global-search Requirement 1.1
     pub fn search_results_panel(id: TabId, document: DocumentHandle) -> Self {
-        let mut viewport = ViewportModel::with_line_count(1);
-        viewport.set_line_height(16);
-        Self {
-            id,
-            kind: TabKind::SearchResults,
-            title: "[SEARCH]".to_string(),
-            path: None,
-            document,
-            viewport,
-            cursor: CursorModel::new(),
-            is_modified: false,
-            line_count: 1,
-            line_end_mode: LineEndMode::Default,
-            undo_stack: Vec::new(),
-            prefix_inputs: HashMap::new(),
-            is_floating: false,
-            edit_profile: EditProfile::new(),
-            canvas_selection: None,
-        }
+        base_tab!(id, TabKind::SearchResults, "[SEARCH]".to_string(), document)
     }
 
     /// Create a Plugin Manager panel tab.
     ///
     /// Validates: plugin-manager-ui Requirement 1.1
     pub fn plugin_manager(id: TabId, document: DocumentHandle) -> Self {
-        let mut viewport = ViewportModel::with_line_count(1);
-        viewport.set_line_height(16);
-        Self {
+        base_tab!(
             id,
-            kind: TabKind::PluginManager,
-            title: "[PLUGINS]".to_string(),
-            path: None,
-            document,
-            viewport,
-            cursor: CursorModel::new(),
-            is_modified: false,
-            line_count: 1,
-            line_end_mode: LineEndMode::Default,
-            undo_stack: Vec::new(),
-            prefix_inputs: HashMap::new(),
-            is_floating: false,
-            edit_profile: EditProfile::new(),
-            canvas_selection: None,
-        }
+            TabKind::PluginManager,
+            "[PLUGINS]".to_string(),
+            document
+        )
     }
 
     /// Create an Event Log panel tab.
     ///
     /// Validates: notification-system Requirement 2.1
     pub fn event_log(id: TabId, document: DocumentHandle) -> Self {
-        let mut viewport = ViewportModel::with_line_count(1);
-        viewport.set_line_height(16);
-        Self {
-            id,
-            kind: TabKind::EventLog,
-            title: "[LOG]".to_string(),
-            path: None,
-            document,
-            viewport,
-            cursor: CursorModel::new(),
-            is_modified: false,
-            line_count: 1,
-            line_end_mode: LineEndMode::Default,
-            undo_stack: Vec::new(),
-            prefix_inputs: HashMap::new(),
-            is_floating: false,
-            edit_profile: EditProfile::new(),
-            canvas_selection: None,
-        }
+        base_tab!(id, TabKind::EventLog, "[LOG]".to_string(), document)
+    }
+
+    /// Create a Macro Library panel tab.
+    ///
+    /// Validates: lua-macro-engine Requirement 12.1
+    pub fn macro_library(id: TabId, document: DocumentHandle) -> Self {
+        base_tab!(id, TabKind::MacroLibrary, "[MACROS]".to_string(), document)
+    }
+
+    /// Create a Menu Workspace tab backed by a TOML file at `file_path`.
+    ///
+    /// Validates: menu-workspace Requirement 1.1, 1.7
+    #[allow(dead_code)]
+    pub fn menu_workspace_tab(
+        id: TabId,
+        document: DocumentHandle,
+        mw_state: MenuWorkspaceState,
+    ) -> Self {
+        let title = mw_state.tab_title();
+        let mut tab = base_tab!(id, TabKind::MenuWorkspace, title, document);
+        tab.menu_workspace = Some(mw_state);
+        tab
     }
 
     /// Human-readable encoding label derived from the line-end mode.

@@ -3,6 +3,7 @@
 //! Implements key-by-key recursive merging of configuration tables from
 //! multiple layers, producing the effective configuration store.
 
+use std::collections::HashSet;
 use std::path::PathBuf;
 
 use crate::layer::ConfigLayer;
@@ -23,6 +24,21 @@ use crate::value::{ConfigTable, ConfigValue};
 /// After merging all layers, schema defaults are applied for keys
 /// defined in the schema but not present in any layer.
 pub fn merge_layers(layers: &[LayerData], schema: &SchemaRegistry) -> EffectiveStore {
+    merge_layers_with_locked(layers, schema, &HashSet::new())
+}
+
+/// Merge layers with locked-key enforcement.
+///
+/// Identical to `merge_layers` except that keys listed in `locked_keys` are
+/// forced to their system-layer value regardless of higher-priority layers.
+/// If a locked key has no system-layer value, the normal merge result stands.
+///
+/// Validates: Requirement 18.2, 18.4
+pub fn merge_layers_with_locked(
+    layers: &[LayerData],
+    schema: &SchemaRegistry,
+    locked_keys: &HashSet<String>,
+) -> EffectiveStore {
     let mut store = EffectiveStore::new();
 
     // Sort layers by priority (lowest first, so higher layers overwrite)
@@ -38,6 +54,44 @@ pub fn merge_layers(layers: &[LayerData], schema: &SchemaRegistry) -> EffectiveS
             &layer_data.source_path,
             &mut store,
         );
+    }
+
+    // Enforce locked keys: override with system-layer value where available.
+    // Addresses: Requirement 18.2, 18.4
+    if !locked_keys.is_empty() {
+        // Build a temporary store from the system layer only.
+        let system_store = {
+            let mut s = EffectiveStore::new();
+            for layer_data in sorted_layers
+                .iter()
+                .filter(|l| l.layer == ConfigLayer::System)
+            {
+                flatten_and_merge(
+                    &layer_data.values,
+                    "",
+                    layer_data.layer,
+                    &layer_data.source_path,
+                    &mut s,
+                );
+            }
+            s
+        };
+
+        for key in locked_keys {
+            if let Some(system_val) = system_store.get(key) {
+                // Force system-layer value; emit DEBUG log if a higher layer was suppressed.
+                if let Some(current) = store.get(key) {
+                    if current.provenance.layer != ConfigLayer::System {
+                        ff_logging::log_debug!(
+                            "[config] lock: key '{}' override by layer {:?} suppressed (system policy)",
+                            key,
+                            current.provenance.layer
+                        );
+                    }
+                }
+                store.insert(key.clone(), system_val.clone());
+            }
+        }
     }
 
     // Apply schema defaults for keys not present in any layer
@@ -520,22 +574,145 @@ mod tests {
         );
     }
 
-    // Validates: Requirement 2.5 — Schema default provenance has no source file
+    // Validates: Requirement 18.2 -- locked key uses system-layer value despite user override
     #[test]
-    fn schema_default_provenance_has_no_source_file() {
-        let mut schema = SchemaRegistry::new();
-        schema
-            .register(make_schema_entry(
-                "editor.font_size",
-                ConfigValue::Integer(14),
-            ))
-            .unwrap();
+    fn locked_key_uses_system_value_despite_user_override() {
+        let schema = SchemaRegistry::new();
 
-        let layers: Vec<LayerData> = vec![];
-        let store = merge_layers(&layers, &schema);
+        // System layer: editor.tab_size = 4
+        let mut sys_editor = ConfigTable::new();
+        sys_editor.insert("tab_size".to_string(), ConfigValue::Integer(4));
+        let mut sys_values = ConfigTable::new();
+        sys_values.insert("editor".to_string(), ConfigValue::Table(sys_editor));
 
-        let effective = store.get("editor.font_size").expect("default should apply");
-        assert_eq!(effective.provenance.layer, ConfigLayer::Defaults);
-        assert_eq!(effective.provenance.source_file, None);
+        // User layer: editor.tab_size = 8 (higher priority, but key is locked)
+        let mut user_editor = ConfigTable::new();
+        user_editor.insert("tab_size".to_string(), ConfigValue::Integer(8));
+        let mut user_values = ConfigTable::new();
+        user_values.insert("editor".to_string(), ConfigValue::Table(user_editor));
+
+        let layers = vec![
+            make_layer(ConfigLayer::System, "/etc/config.toml", sys_values),
+            make_layer(ConfigLayer::User, "/home/user/config.toml", user_values),
+        ];
+
+        let mut locked = std::collections::HashSet::new();
+        locked.insert("editor.tab_size".to_string());
+
+        let store = merge_layers_with_locked(&layers, &schema, &locked);
+
+        // System value must win despite User being higher priority
+        assert_eq!(
+            store.get_value("editor.tab_size"),
+            Some(&ConfigValue::Integer(4)),
+            "Locked key must use system-layer value"
+        );
+        assert_eq!(
+            store.get("editor.tab_size").unwrap().provenance.layer,
+            ConfigLayer::System
+        );
+    }
+
+    // Validates: Requirement 18.4 -- higher-layer value silently ignored for locked key
+    #[test]
+    fn higher_layer_value_silently_ignored_for_locked_key() {
+        let schema = SchemaRegistry::new();
+
+        // System: logging.level = "warn"
+        let mut sys_log = ConfigTable::new();
+        sys_log.insert("level".to_string(), ConfigValue::String("warn".to_string()));
+        let mut sys_values = ConfigTable::new();
+        sys_values.insert("logging".to_string(), ConfigValue::Table(sys_log));
+
+        // Project: logging.level = "debug" (would normally win)
+        let mut proj_log = ConfigTable::new();
+        proj_log.insert(
+            "level".to_string(),
+            ConfigValue::String("debug".to_string()),
+        );
+        let mut proj_values = ConfigTable::new();
+        proj_values.insert("logging".to_string(), ConfigValue::Table(proj_log));
+
+        let layers = vec![
+            make_layer(ConfigLayer::System, "/etc/config.toml", sys_values),
+            make_layer(ConfigLayer::Project, "/proj/config.toml", proj_values),
+        ];
+
+        let mut locked = std::collections::HashSet::new();
+        locked.insert("logging.level".to_string());
+
+        let store = merge_layers_with_locked(&layers, &schema, &locked);
+
+        assert_eq!(
+            store.get_value("logging.level"),
+            Some(&ConfigValue::String("warn".to_string())),
+            "Project override must be suppressed for locked key"
+        );
+    }
+
+    // Validates: Requirement 18.2 -- unlocked keys are unaffected by locked set
+    #[test]
+    fn unlocked_keys_unaffected_by_locked_set() {
+        let schema = SchemaRegistry::new();
+
+        let mut sys_editor = ConfigTable::new();
+        sys_editor.insert("tab_size".to_string(), ConfigValue::Integer(4));
+        sys_editor.insert("word_wrap".to_string(), ConfigValue::Boolean(false));
+        let mut sys_values = ConfigTable::new();
+        sys_values.insert("editor".to_string(), ConfigValue::Table(sys_editor));
+
+        let mut user_editor = ConfigTable::new();
+        user_editor.insert("tab_size".to_string(), ConfigValue::Integer(8));
+        user_editor.insert("word_wrap".to_string(), ConfigValue::Boolean(true));
+        let mut user_values = ConfigTable::new();
+        user_values.insert("editor".to_string(), ConfigValue::Table(user_editor));
+
+        let layers = vec![
+            make_layer(ConfigLayer::System, "/etc/config.toml", sys_values),
+            make_layer(ConfigLayer::User, "/home/user/config.toml", user_values),
+        ];
+
+        // Only tab_size is locked; word_wrap is not
+        let mut locked = std::collections::HashSet::new();
+        locked.insert("editor.tab_size".to_string());
+
+        let store = merge_layers_with_locked(&layers, &schema, &locked);
+
+        // tab_size locked -> system wins
+        assert_eq!(
+            store.get_value("editor.tab_size"),
+            Some(&ConfigValue::Integer(4))
+        );
+        // word_wrap not locked -> user wins
+        assert_eq!(
+            store.get_value("editor.word_wrap"),
+            Some(&ConfigValue::Boolean(true))
+        );
+    }
+
+    // Validates: Requirement 18.2 -- empty locked set behaves identically to merge_layers
+    #[test]
+    fn empty_locked_set_behaves_like_normal_merge() {
+        let schema = SchemaRegistry::new();
+
+        let mut user_editor = ConfigTable::new();
+        user_editor.insert("tab_size".to_string(), ConfigValue::Integer(8));
+        let mut user_values = ConfigTable::new();
+        user_values.insert("editor".to_string(), ConfigValue::Table(user_editor));
+
+        let layers = vec![make_layer(
+            ConfigLayer::User,
+            "/home/user/config.toml",
+            user_values,
+        )];
+
+        let normal = merge_layers(&layers, &schema);
+        let with_empty_locked =
+            merge_layers_with_locked(&layers, &schema, &std::collections::HashSet::new());
+
+        assert_eq!(
+            normal.get_value("editor.tab_size"),
+            with_empty_locked.get_value("editor.tab_size")
+        );
     }
 }

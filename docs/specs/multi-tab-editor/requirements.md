@@ -215,7 +215,7 @@ This specification merges requirements from three primary sources:
    - Save As
    - Reload
 
-   6.2c The Tab_Context_Menu for a Primary Option Menu tab SHALL contain ONLY the universal items from 6.2a. No file-specific items SHALL appear — not even in a disabled state.
+   6.2c The Tab_Context_Menu for a Home Context (POM) tab SHALL contain ONLY the universal items from 6.2a. No file-specific items SHALL appear — not even in a disabled state.
 3. WHEN "Close" is selected, THE system SHALL execute `tabs.close` on the right-clicked Tab, following Requirement 5 unsaved-changes rules.
 4. WHEN "Close All BUT This" is selected, THE system SHALL close all tabs except the right-clicked tab, following Requirement 5 confirmation rules for each modified tab.
 5. WHEN "Close All to the Left" is selected, THE system SHALL close all non-pinned Tabs positioned to the left of the right-clicked Tab, following Requirement 5 confirmation rules for each modified Tab.

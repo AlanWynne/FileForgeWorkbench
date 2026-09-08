@@ -325,7 +325,7 @@ mod tests {
     fn supported_actions_for_queued_job() {
         // Validates: Requirement 14 AC 5
         let provider = make_provider();
-        let id = provider.submit_job(VALID_JCL, "user").unwrap();
+        let _id = provider.submit_job(VALID_JCL, "user").unwrap();
         let job = provider.list_jobs(&JobFilter::default()).unwrap().remove(0);
         let actions = provider.supported_actions(&job);
         assert!(actions.contains(&JobAction::Hold));

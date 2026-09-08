@@ -21,6 +21,7 @@
 
 pub mod assertions;
 pub mod automation;
+pub mod bug_report;
 pub mod capture;
 pub mod parser;
 pub mod report;

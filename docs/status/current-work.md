@@ -25,7 +25,15 @@ summary short and link to the detailed task list.
 | Phase CO -- Accessibility, Plugin Manager UI, Notification System | DONE | All 7 deliverables complete | [project-master tasks](../specs/project-master/tasks.md) |
 | Phase CP -- Batch Command Execution | DONE | All 11 deliverables complete | [project-master tasks](../specs/project-master/tasks.md) |
 | Phase W.5 -- Generic ToolchainPlugin Trait Validation | DONE | MockToolchain test double, trait audit, CI constraint | [compiler-toolchain-integration tasks](../specs/compiler-toolchain-integration/tasks.md) |
-| Phase CQ -- Enterprise Features | NEXT | audit-logging, settings export/import, locked config keys | [project-master tasks](../specs/project-master/tasks.md) |
+| Phase CQ -- Enterprise Features | DONE | audit-logging, settings export/import, locked config keys | [project-master tasks](../specs/project-master/tasks.md) |
+| Phase CR -- OS Theme Follow + Macro Library | DONE | OS dark/light follow, Macro Library panel | [project-master tasks](../specs/project-master/tasks.md) |
+| Phase CS -- Test Warning Cleanup | DONE | All cargo test warnings eliminated across workspace | [project-master tasks](../specs/project-master/tasks.md) |
+| Phase CT -- Workbench/Workspace/Context Terminology | DONE | All 7 tasks complete -- 69 specs updated | [project-master tasks](../specs/project-master/tasks.md) |
+| Phase CU -- Menu Workspace Pattern | DONE | All 8 implementation tasks complete -- TabKind, loader, hot-reload, render, dispatch, defaults | [project-master tasks](../specs/project-master/tasks.md) |
+| Phase CV -- POM Redesign Spec | NEXT | Depends on CU: revise POM option list, define menus/pom.toml | [project-master tasks](../specs/project-master/tasks.md) |
+| Phase CW -- Settings Menu Spec | NEXT | Depends on CU: restructure Settings Context as Menu Workspace | [project-master tasks](../specs/project-master/tasks.md) |
+| Phase CX -- Named Workspaces + KEYS + SPLIT | NEXT | Spec + implementation: Workspace names, KEYS <name>, SPLIT command | [project-master tasks](../specs/project-master/tasks.md) |
+| Phase CZ -- FFTest Script Suite | DONE | All 9 deliverables complete | [project-master tasks](../specs/project-master/tasks.md) |
 | Deferred connectors | DEFERRED | Network, FTP/SFTP, mainframe, and cloud connectors | [connector specs](../specs/) |
 
 ## Before starting work
@@ -39,17 +47,26 @@ summary short and link to the detailed task list.
 
 ## Active work item
 
-**Current focus:** Phase CQ -- Enterprise Features (audit logging, settings export/import, locked config keys). Requirements gate pending.
+**Current focus:** Phase CU -- Menu Workspace Pattern (spec only). Next step: create `docs/specs/menu-workspace/` sub-project with requirements.md, design.md, and tasks.md. No source code changes until spec is approved.
 
 ### Phase CQ -- Enterprise Features (next)
 
 | Deliverable | Spec | Status |
 |-------------|------|--------|
-| Requirements gate | configuration-system | [ ] CQ.1 |
-| Audit logging implementation | Structured audit trail | [ ] CQ.2 |
-| Settings export/import | Save/load user config as portable TOML | [ ] CQ.3 |
-| Locked config keys | Admin-enforced settings | [ ] CQ.4 |
-| Integration tests + TCR | All new criteria | [ ] CQ.5 |
+| Requirements gate | configuration-system | [x] CQ.1 |
+| Audit logging implementation | Structured audit trail | [x] CQ.2 |
+| Settings export/import | Save/load user config as portable TOML | [x] CQ.3 |
+| Locked config keys | Admin-enforced settings | [x] CQ.4 |
+| Integration tests + TCR | All new criteria | [x] CQ.5 |
+
+### Phase CR -- OS Theme Follow + Macro Library Management (next)
+
+| Deliverable | Spec | Status |
+|-------------|------|--------|
+| Requirements gate | theme-and-appearance Req 16, lua-macro-engine Req 12 | [x] CR.1 |
+| OS dark/light mode follow | theme.follow_os config key + frame detection | [x] CR.2 |
+| Macro Library panel | TabKind::MacroLibrary, MACROS/=6, list/run/edit/delete | [x] CR.3 |
+| Integration tests + TCR | All new criteria | [x] CR.4 |
 
 ### Phase CO -- Accessibility, Plugin Manager UI, and Notification System -- COMPLETE
 

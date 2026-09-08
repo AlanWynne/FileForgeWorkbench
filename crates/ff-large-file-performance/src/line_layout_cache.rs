@@ -207,7 +207,6 @@ impl LineLayoutCache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::XPosition;
 
     fn make_layout(line: u64, text_len: u64, validity: ValidLevel) -> LineLayout {
         let mut l = LineLayout::new(line, text_len);
