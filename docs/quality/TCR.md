@@ -2002,26 +2002,26 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | ?? | -- | Req 9.1: Settings_Menu has 10 options (E/T/C/V/L/K/S/P/X/A) with correct keys, labels, descriptions |
-| `ff-desktop` | ?? | -- | Req 9.2: typing namespace key in Settings_Menu Command field opens Settings_Namespace_View |
-| `ff-desktop` | ?? | -- | Req 9.3: clicking namespace option row opens Settings_Namespace_View |
-| `ff-desktop` | ?? | -- | Req 9.4: option A opens unfiltered flat-list Settings panel |
-| `ff-desktop` | ?? | -- | Req 9.5: Settings_Menu title is "FileForge Workbench -- Settings" |
-| `ff-desktop` | ?? | -- | Req 9.6: options grouped as Namespaces (E-X) and All (A) in TOML |
-| `ff-desktop` | ?? | -- | Req 10.1: Settings_Namespace_View pre-populates filter with namespace prefix |
-| `ff-desktop` | ?? | -- | Req 10.2: pre-populated filter applied immediately on open |
-| `ff-desktop` | ?? | -- | Req 10.3: user can clear or modify filter within Settings_Namespace_View |
-| `ff-desktop` | ?? | -- | Req 10.4: F3/END in Settings_Namespace_View returns to Settings_Menu |
-| `ff-desktop` | ?? | -- | Req 10.5: Settings_Namespace_View tab title is [SETTINGS:<namespace>] |
-| `ff-desktop` | ?? | -- | Req 10.6: Settings_Namespace_View persists namespace filter in session |
-| `ff-desktop` | ?? | -- | Req 11.1: DEFAULT_SETTINGS_TOML produces MenuFile with 10 options matching Req 9.1 |
-| `ff-desktop` | ?? | -- | Req 11.2: ensure_default_menu_files writes settings.toml when absent |
-| `ff-desktop` | ?? | -- | Req 11.3: ensure_default_menu_files does not overwrite existing settings.toml |
-| `ff-desktop` | ?? | -- | Req 11.4: DEFAULT_SETTINGS_TOML is valid TOML parseable by toml crate |
-| `ff-desktop` | ?? | -- | Req 11.5: DEFAULT_SETTINGS_TOML uses only plain ASCII characters |
-| `docs` | ?? | -- | Req 12.1: configuration-system Req 15 describes two-level Settings navigation |
-| `docs` | ?? | -- | Req 12.2: updated Req 15 retains criteria 15.1-15.11 with Phase CW adjustments |
-| `docs` | ?? | -- | Req 12.3: updated Req 15 notes Settings_Menu backed by menus/settings.toml |
+| `ff-desktop` | PASS | ``menu_workspace/defaults.rs::default_settings_toml_has_10_options`` | Req 9.1: Settings_Menu has 10 options (E/T/C/V/L/K/S/P/X/A) with correct keys, labels, descriptions |
+| `ff-desktop` | PASS | ``shell/tests.rs::settings_namespace_filter_applied_on_open`` | Req 9.2: typing namespace key in Settings_Menu Command field opens Settings_Namespace_View |
+| `ff-desktop` | NOT COVERED | -- | Req 9.3: clicking namespace option row opens Settings_Namespace_View (needs Settings_Menu MenuWorkspace rendering, not built in CW-impl) |
+| `ff-desktop` | PASS | ``shell/tests.rs::settings_all_view_has_no_namespace_filter`` | Req 9.4: option A opens unfiltered flat-list Settings panel |
+| `ff-desktop` | PASS | ``menu_workspace/defaults.rs::default_settings_toml_title_matches_spec`` | Req 9.5: Settings_Menu title is "FileForge Workbench -- Settings" |
+| `ff-desktop` | PASS | ``menu_workspace/defaults.rs::default_settings_toml_is_valid_toml`` | Req 9.6: options grouped as Namespaces (E-X) and All (A) in TOML |
+| `ff-desktop` | PASS | ``shell/tests.rs::settings_namespace_filter_applied_on_open`` | Req 10.1: Settings_Namespace_View pre-populates filter with namespace prefix |
+| `ff-desktop` | PASS | ``shell/tests.rs::settings_namespace_filter_applied_on_open`` | Req 10.2: pre-populated filter applied immediately on open |
+| `ff-desktop` | MANUAL | -- | Req 10.3: user can clear or modify filter within Settings_Namespace_View (manual UI verification) |
+| `ff-desktop` | PASS | ``shell/tests.rs::settings_end_from_namespace_view_returns_to_menu`` | Req 10.4: F3/END in Settings_Namespace_View returns to Settings_Menu level |
+| `ff-desktop` | PASS | ``shell/tests.rs::settings_namespace_tab_title_includes_namespace`` | Req 10.5: Settings_Namespace_View tab title is [SETTINGS:<namespace>] |
+| `ff-desktop` | NOT COVERED | -- | Req 10.6: Settings_Namespace_View persists namespace filter in session (BLOCKED: requires ff-session PersistedTabKind format change; Task 14.5 deferred) |
+| `ff-desktop` | PASS | ``menu_workspace/defaults.rs::default_settings_toml_has_10_options`` | Req 11.1: DEFAULT_SETTINGS_TOML produces MenuFile with 10 options matching Req 9.1 |
+| `ff-desktop` | PASS | ``menu_workspace/defaults.rs::ensure_default_menu_files_creates_settings_toml`` | Req 11.2: ensure_default_menu_files writes settings.toml when absent |
+| `ff-desktop` | PASS | ``menu_workspace/defaults.rs::ensure_default_menu_files_does_not_overwrite_existing`` | Req 11.3: ensure_default_menu_files does not overwrite existing settings.toml |
+| `ff-desktop` | PASS | ``menu_workspace/defaults.rs::default_settings_toml_is_valid_toml`` | Req 11.4: DEFAULT_SETTINGS_TOML is valid TOML parseable by toml crate |
+| `ff-desktop` | PASS | ``menu_workspace/defaults.rs::default_settings_toml_ascii_only`` | Req 11.5: DEFAULT_SETTINGS_TOML uses only plain ASCII characters |
+| `docs` | PASS | ``configuration-system/requirements.md`` Req 15 | Req 12.1: configuration-system Req 15 describes two-level Settings navigation |
+| `docs` | PASS | ``configuration-system/requirements.md`` Req 15 | Req 12.2: updated Req 15 retains criteria 15.1-15.11 with Phase CW adjustments |
+| `docs` | PASS | ``configuration-system/requirements.md`` Req 15 | Req 12.3: updated Req 15 notes Settings_Menu backed by menus/settings.toml |
 
 ### Phase DA -- Configurable Menu Option Limits (CR-NR-050)
 

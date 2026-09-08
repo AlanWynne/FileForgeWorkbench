@@ -1,8 +1,8 @@
 //! Default Menu_File content and first-launch creation.
 //!
-//! Provides stub default content for `pom.toml` and `settings.toml`.
-//! Phase CV will replace DEFAULT_POM_TOML with the final 12-option content.
-//! Phase CW will replace DEFAULT_SETTINGS_TOML with the final 10-option content.
+//! Provides the default content for `pom.toml` (12-option POM, Phase CV)
+//! and `settings.toml` (10-option Settings_Menu, Phase CW), plus first-launch
+//! creation via `ensure_default_menu_files()`.
 //!
 //! Validates: Requirement 4.1, 4.2, 4.6 (menu-workspace)
 
@@ -91,20 +91,74 @@ description = "Batch command execution (IKJEFT01 analogue)"
 group = "Extended"
 "#;
 
-/// Stub default content for `menus/settings.toml`.
+/// Default content for `menus/settings.toml` -- 10-option Settings_Menu (Phase CW).
 ///
-/// Phase CW will replace this with the final 10-option Settings_Menu content.
+/// Options E-X are the Namespaces group; option A is the All group.
+/// Each namespace option carries a `SETTINGS <namespace>` command that opens
+/// a filtered Settings_Namespace_View; option A opens the unfiltered flat list.
 ///
-/// Validates: Requirement 4.2
-pub const DEFAULT_SETTINGS_TOML: &str = r#"title = "Settings"
+/// Validates: Requirement 9.1, 11.1, 11.4, 11.5 (cw-requirements.md)
+pub const DEFAULT_SETTINGS_TOML: &str = r#"title = "FileForge Workbench -- Settings"
 
-# Phase CW will populate this file with the full 10-option Settings menu.
+[[options]]
+key = "E"
+command = "SETTINGS editor"
+description = "Text editing behaviour -- indentation, line endings, encoding"
+group = "Namespaces"
+
+[[options]]
+key = "T"
+command = "SETTINGS theme"
+description = "Appearance -- active theme, font size, OS dark/light follow"
+group = "Namespaces"
+
+[[options]]
+key = "C"
+command = "SETTINGS catalog"
+description = "Default catalog roots for Mainframe and POSIX catalogs"
+group = "Namespaces"
+
+[[options]]
+key = "V"
+command = "SETTINGS vfs"
+description = "Virtual File System provider settings"
+group = "Namespaces"
+
+[[options]]
+key = "L"
+command = "SETTINGS logging"
+description = "Log level, output directory, file rotation"
+group = "Namespaces"
+
+[[options]]
+key = "K"
+command = "SETTINGS keymap"
+description = "Function key bindings and per-context key maps"
+group = "Namespaces"
+
+[[options]]
+key = "S"
+command = "SETTINGS session"
+description = "Session persistence, restore behaviour, recent files"
+group = "Namespaces"
+
+[[options]]
+key = "P"
+command = "SETTINGS plugin"
+description = "Plugin-specific configuration namespaces"
+group = "Namespaces"
+
+[[options]]
+key = "X"
+command = "SETTINGS accessibility"
+description = "Reduce motion, focus indicators, contrast settings"
+group = "Namespaces"
 
 [[options]]
 key = "A"
 command = "SETTINGS"
-description = "All Settings (flat list)"
-"#;
+description = "Browse all configuration keys (unfiltered flat list)"
+group = "All""#;
 
 // === ensure_default_menu_files ==============================================
 
@@ -230,6 +284,29 @@ mod tests {
             DEFAULT_POM_TOML.is_ascii(),
             "DEFAULT_POM_TOML must use only ASCII characters"
         );
+    }
+
+    // Validates: Requirement 11.1 (cw-requirements.md) -- DEFAULT_SETTINGS_TOML has 10 options
+    #[test]
+    fn default_settings_toml_has_10_options() {
+        let val: toml::Value = toml::from_str(DEFAULT_SETTINGS_TOML).expect("valid TOML");
+        let options = val
+            .get("options")
+            .and_then(|v| v.as_array())
+            .expect("options array");
+        assert_eq!(
+            options.len(),
+            10,
+            "DEFAULT_SETTINGS_TOML must have exactly 10 options"
+        );
+    }
+
+    // Validates: Requirement 11.1 (cw-requirements.md) -- title matches spec
+    #[test]
+    fn default_settings_toml_title_matches_spec() {
+        let val: toml::Value = toml::from_str(DEFAULT_SETTINGS_TOML).expect("valid TOML");
+        let title = val.get("title").and_then(|v| v.as_str()).expect("title");
+        assert_eq!(title, "FileForge Workbench -- Settings");
     }
 
     // Validates: Requirement 4.2 -- DEFAULT_SETTINGS_TOML uses only ASCII

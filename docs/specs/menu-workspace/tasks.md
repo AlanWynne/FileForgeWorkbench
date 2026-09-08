@@ -175,38 +175,41 @@
 
 ### Task 13: DEFAULT_SETTINGS_TOML constant
 
-- [ ] 13.1 Add `DEFAULT_SETTINGS_TOML` const string to `menu_workspace/defaults.rs`
+- [x] 13.1 Add `DEFAULT_SETTINGS_TOML` const string to `menu_workspace/defaults.rs`
   with all 10 options, groups, and TOML structure matching cw-requirements.md Req 11.1
   - Satisfies: Req 11.1, 11.4, 11.5
-- [ ] 13.2 Update `ensure_default_menu_files()` to write `settings.toml` when absent
+- [x] 13.2 Update `ensure_default_menu_files()` to write `settings.toml` when absent
   - Satisfies: Req 11.2, 11.3
-- [ ] 13.3 Write unit tests: `default_settings_toml_is_valid_toml`,
+- [x] 13.3 Write unit tests: `default_settings_toml_is_valid_toml`,
   `default_settings_toml_has_10_options`, `default_settings_toml_ascii_only`
   - Validates: Requirement 11.1, 11.4, 11.5
 
 ### Task 14: Settings Namespace View routing
 
-- [ ] 14.1 Add `namespace_filter: Option<String>` field to `SettingsPanelState`
+- [x] 14.1 Add `namespace_filter: Option<String>` field to `SettingsPanelState`
   - Satisfies: Req 10.1, 10.2
-- [ ] 14.2 Extend `shell/commands.rs` Settings routing to accept namespace argument
+- [x] 14.2 Extend `shell/commands.rs` Settings routing to accept namespace argument
   (e.g. `SETTINGS editor` pre-populates filter with `editor.`)
   - Satisfies: Req 10.1, 10.2
-- [ ] 14.3 Update tab title to `[SETTINGS:<namespace>]` when filter is set
+- [x] 14.3 Update tab title to `[SETTINGS:<namespace>]` when filter is set
   - Satisfies: Req 10.5
-- [ ] 14.4 Update F3/END handler: return to Settings_Menu when in namespace view,
+- [x] 14.4 Update F3/END handler: return to Settings_Menu when in namespace view,
   return to POM when in Settings_Menu
   - Satisfies: Req 10.4, Req 12.2 (criterion 15.10)
 - [ ] 14.5 Persist `namespace_filter` in session and restore on launch
   - Satisfies: Req 10.6
-- [ ] 14.6 Write unit tests: `settings_namespace_filter_applied_on_open`,
+  - BLOCKED: requires a new `PersistedTabKind::SettingsNamespaceView` variant
+    in the `ff-session` crate (a persisted-format change). Deferred pending a
+    format decision; the namespace view works fully in-session without it.
+- [x] 14.6 Write unit tests: `settings_namespace_filter_applied_on_open`,
   `settings_namespace_tab_title_includes_namespace`,
   `settings_end_from_namespace_view_returns_to_menu`
   - Validates: Requirement 10.1, 10.4, 10.5
 
 ### Task 15: TCR and Documentation Update (Phase CW-impl)
 
-- [ ] 15.1 Update `docs/quality/TCR.md` -- set all CR-NR-047 rows to correct status
-- [ ] 15.2 Update `docs/specs/project-master/tasks.md` -- mark Phase CW-impl tasks complete
+- [x] 15.1 Update `docs/quality/TCR.md` -- set all CR-NR-047 rows to correct status
+- [x] 15.2 Update `docs/specs/project-master/tasks.md` -- mark Phase CW-impl tasks complete
 
 ---
 

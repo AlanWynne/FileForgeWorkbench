@@ -1963,6 +1963,65 @@ fn status_with_jobname_routes_with_filter() {
     );
 }
 
+// === Phase CW: Settings namespace view routing ==========================
+
+/// Validates: cw-requirements.md Requirement 10.1, 10.2 -- SETTINGS <ns> pre-populates filter.
+#[test]
+fn settings_namespace_filter_applied_on_open() {
+    let mut shell = make_shell();
+    shell.handle_command("SETTINGS editor");
+    assert_eq!(
+        shell.settings_panel.namespace_filter.as_deref(),
+        Some("editor"),
+        "namespace_filter must be set to the requested namespace"
+    );
+    assert_eq!(
+        shell.settings_panel.filter, "editor.",
+        "flat-list filter must be pre-populated with the namespace prefix"
+    );
+}
+
+/// Validates: cw-requirements.md Requirement 10.5 -- namespace view tab title.
+#[test]
+fn settings_namespace_tab_title_includes_namespace() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("SETTINGS theme");
+    let tab = shell.tabs.active_tab();
+    assert_eq!(tab.kind, TabKind::SettingsPanel);
+    assert_eq!(tab.title, "[SETTINGS:theme]");
+}
+
+/// Validates: cw-requirements.md Requirement 9.4 -- bare SETTINGS / A opens unfiltered view.
+#[test]
+fn settings_all_view_has_no_namespace_filter() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("A");
+    assert!(shell.settings_panel.namespace_filter.is_none());
+    assert_eq!(shell.settings_panel.filter, "");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::SettingsPanel);
+    assert_eq!(shell.tabs.active_tab().title, "[SETTINGS]");
+}
+
+/// Validates: cw-requirements.md Requirement 10.4 -- END from namespace view returns to menu level.
+#[test]
+fn settings_end_from_namespace_view_returns_to_menu() {
+    let mut shell = make_shell();
+    shell.handle_command("SETTINGS editor");
+    assert_eq!(
+        shell.settings_panel.namespace_filter.as_deref(),
+        Some("editor")
+    );
+    shell.handle_command("END");
+    // END clears the namespace filter, returning to the unfiltered Settings level.
+    assert!(
+        shell.settings_panel.namespace_filter.is_none(),
+        "END from a namespace view must return to the Settings menu level"
+    );
+    assert_eq!(shell.tabs.active_tab().title, "[SETTINGS]");
+}
+
 // === Phase CV: POM extended option routing (9, S, B) =====================
 
 /// Validates: Requirement 6.2 (cv-requirements.md) -- POM key 9 routes to JES.

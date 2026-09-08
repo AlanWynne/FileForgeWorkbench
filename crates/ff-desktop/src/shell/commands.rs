@@ -138,8 +138,15 @@ impl WorkbenchShell {
                     self.open_error = Some(e.to_string());
                 }
             } else if kind == TabKind::FileExplorerPanel {
-                // Validates: Requirement 19.10 — END from FileExplorerPanel returns to POM
+                // Validates: Requirement 19.10 -- END from FileExplorerPanel returns to POM
                 self.pending_return_to_pom = true;
+            } else if kind == TabKind::SettingsPanel
+                && self.settings_panel.namespace_filter.is_some()
+            {
+                // Validates: cw-requirements.md Requirement 10.4 -- END from a
+                // Settings_Namespace_View returns to the Settings menu level
+                // (the unfiltered All-Settings view), not straight to the POM.
+                self.open_settings_view(None);
             } else {
                 // Validates: Requirement 17.1 — close current tab, go to previous
                 let current = self.tabs.active_index();
@@ -181,13 +188,20 @@ impl WorkbenchShell {
             return;
         }
 
-        if upper == "0" || upper == "SETTINGS" || upper == "=0" {
-            // Validates: Requirement 15.1 — option 0 / SETTINGS / =0 opens Settings panel
-            if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
-                self.tabs
-                    .transform_active_pom_tab(TabKind::SettingsPanel, "[SETTINGS]");
+        // Validates: Requirement 15.1, cw-requirements.md Req 9.4, 10.1-10.5
+        // Bare SETTINGS / 0 / =0 / A open the unfiltered flat list; SETTINGS <ns>
+        // opens a Settings_Namespace_View filtered to that namespace prefix.
+        if upper == "0" || upper == "SETTINGS" || upper == "=0" || upper == "A" {
+            self.open_settings_view(None);
+            self.open_error = None;
+            return;
+        }
+        if upper.starts_with("SETTINGS ") {
+            let ns = cmd.trim()[9..].trim().to_lowercase();
+            if ns.is_empty() {
+                self.open_settings_view(None);
             } else {
-                self.tabs.open_settings_panel_tab(&self.runtime);
+                self.open_settings_view(Some(ns));
             }
             self.open_error = None;
             return;
@@ -1005,6 +1019,35 @@ impl WorkbenchShell {
             }
         }
         self.tabs.open_search_results_tab(&self.runtime);
+    }
+
+    /// Open the Settings panel, optionally as a Settings_Namespace_View.
+    ///
+    /// When `namespace` is `Some(ns)` the flat-list filter is pre-populated
+    /// with `<ns>.` and the tab title becomes `[SETTINGS:<ns>]`. When `None`
+    /// the unfiltered All-Settings view is shown with title `[SETTINGS]`.
+    ///
+    /// Validates: cw-requirements.md Requirement 10.1, 10.2, 10.5, 9.4
+    pub(super) fn open_settings_view(&mut self, namespace: Option<String>) {
+        use crate::tab_state::TabKind;
+        let title = match &namespace {
+            Some(ns) => format!("[SETTINGS:{ns}]"),
+            None => "[SETTINGS]".to_string(),
+        };
+        // Pre-populate the flat-list filter with the namespace prefix so only
+        // matching keys are visible immediately (Req 10.2).
+        self.settings_panel.filter = match &namespace {
+            Some(ns) => format!("{ns}."),
+            None => String::new(),
+        };
+        self.settings_panel.namespace_filter = namespace;
+        if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
+            self.tabs
+                .transform_active_pom_tab(TabKind::SettingsPanel, &title);
+        } else {
+            self.tabs.open_settings_panel_tab(&self.runtime);
+            self.tabs.active_tab_mut().title = title;
+        }
     }
 }
 use super::WorkbenchShell;

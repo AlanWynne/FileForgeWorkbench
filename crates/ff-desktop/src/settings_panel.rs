@@ -20,6 +20,12 @@ use ff_config::ConfigHandle;
 pub struct SettingsPanelState {
     /// Current filter text (case-insensitive substring match).
     pub filter: String,
+    /// Active namespace filter when this panel is a Settings_Namespace_View
+    /// (e.g. `Some("editor".to_string())`). `None` for the unfiltered
+    /// All-Settings view. Drives the tab title and F3/END return behaviour.
+    ///
+    /// Validates: cw-requirements.md Requirement 10.1, 10.5, 10.6
+    pub namespace_filter: Option<String>,
     /// Collapsed state per namespace group (true = collapsed).
     pub collapsed: HashMap<String, bool>,
     /// Pending edit values keyed by schema key (before commit).
@@ -33,6 +39,7 @@ impl SettingsPanelState {
     pub fn new() -> Self {
         Self {
             filter: String::new(),
+            namespace_filter: None,
             collapsed: HashMap::new(),
             pending: HashMap::new(),
             errors: HashMap::new(),
