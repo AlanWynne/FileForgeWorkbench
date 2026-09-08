@@ -496,6 +496,12 @@ impl WorkbenchShell {
                                 primary_option_menu::PomAction::Navigate(key) => {
                                     self.handle_command(&key.to_string());
                                 }
+                                // Validates: Requirement 6.2, 6.3, 6.4 (cv-requirements.md)
+                                // Non-numeric option keys (S, B) route through the
+                                // same command handler as typed command-field input.
+                                primary_option_menu::PomAction::NavigateKey(key) => {
+                                    self.handle_command(&key);
+                                }
                                 primary_option_menu::PomAction::Exit => {
                                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                                 }

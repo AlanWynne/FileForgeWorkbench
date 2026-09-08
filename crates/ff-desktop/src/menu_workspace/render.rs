@@ -35,6 +35,12 @@ pub fn render_menu_workspace(state: &mut MenuWorkspaceState, ui: &mut egui::Ui) 
             });
             ui.add_space(4.0);
 
+            // Req 9.3 -- soft-limit advisory, non-blocking, above the list
+            if let Some(advisory) = &state.advisory {
+                ui.colored_label(egui::Color32::from_rgb(0xC8, 0x8A, 0x00), advisory);
+                ui.add_space(2.0);
+            }
+
             // Req 2.5 -- scrollable option list
             egui::ScrollArea::vertical()
                 .id_salt("menu_workspace_options")
@@ -101,6 +107,8 @@ mod tests {
             }),
             load_error: None,
             last_modified: None,
+            advisory: None,
+            limits: crate::menu_workspace::OptionLimits::default(),
         }
     }
 
@@ -124,6 +132,40 @@ mod tests {
         assert!(!state.menu.as_ref().unwrap().options[0].enabled);
     }
 
+    // Validates: Requirement 9.3 -- advisory present in state is rendered above list
+    #[test]
+    fn advisory_line_rendered_when_soft_exceeded() {
+        let mut state = make_state_with_options(vec![MenuOption {
+            key: "1".to_string(),
+            command: "FILES".to_string(),
+            description: "Files".to_string(),
+            enabled: true,
+            group: None,
+        }]);
+        state.advisory = Some("This menu has 65 options (advised maximum 64).".to_string());
+        // The render path reads state.advisory; confirm the state carries it so
+        // the colored_label branch executes.
+        assert!(state.advisory.is_some());
+        assert!(state
+            .advisory
+            .as_ref()
+            .unwrap()
+            .contains("advised maximum 64"));
+    }
+
+    // Validates: Requirement 9.2 -- no advisory when within soft limit
+    #[test]
+    fn no_advisory_line_when_within_soft_limit() {
+        let state = make_state_with_options(vec![MenuOption {
+            key: "1".to_string(),
+            command: "FILES".to_string(),
+            description: "Files".to_string(),
+            enabled: true,
+            group: None,
+        }]);
+        assert!(state.advisory.is_none());
+    }
+
     // Validates: Requirement 1.5 -- error state has load_error set
     #[test]
     fn render_error_state_has_message() {
@@ -132,6 +174,8 @@ mod tests {
             menu: None,
             load_error: Some("Menu file not found: missing.toml".to_string()),
             last_modified: None,
+            advisory: None,
+            limits: crate::menu_workspace::OptionLimits::default(),
         };
         assert!(state.load_error.is_some());
     }

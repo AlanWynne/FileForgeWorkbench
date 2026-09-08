@@ -14,6 +14,8 @@ pub mod render;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
+pub use loader::{LoadedMenu, OptionLimits};
+
 // === MenuOption =============================================================
 
 /// A single option entry in a Menu_File.
@@ -64,52 +66,81 @@ pub struct MenuWorkspaceState {
     pub load_error: Option<String>,
     /// Modification time of the file at last successful load, used for hot-reload.
     pub last_modified: Option<SystemTime>,
+    /// Soft-limit advisory shown above the option list, when the option count
+    /// exceeds the configured soft limit.
+    ///
+    /// Validates: menu-workspace Requirement 9.3
+    pub advisory: Option<String>,
+    /// Option-count limits applied on load and on every hot-reload.
+    ///
+    /// Validates: menu-workspace Requirement 9.1, 9.9
+    pub limits: OptionLimits,
 }
 
 impl MenuWorkspaceState {
-    /// Create a new state by loading the menu file at `path`.
+    /// Create a new state by loading the menu file at `path` with default
+    /// option limits (64 / 256).
     ///
     /// Validates: Requirement 1.5, 1.6
     #[allow(dead_code)]
     pub fn load(path: impl AsRef<Path>) -> Self {
+        Self::load_with_limits(path, OptionLimits::default())
+    }
+
+    /// Create a new state by loading the menu file at `path` with the given
+    /// option-count limits.
+    ///
+    /// Validates: Requirement 1.5, 1.6, 9.2, 9.3, 9.4
+    pub fn load_with_limits(path: impl AsRef<Path>, limits: OptionLimits) -> Self {
         let file_path = path.as_ref().to_path_buf();
         let last_modified = std::fs::metadata(&file_path)
             .ok()
             .and_then(|m| m.modified().ok());
-        match loader::load_menu_file(&file_path) {
-            Ok(menu) => Self {
-                file_path,
-                menu: Some(menu),
-                load_error: None,
-                last_modified,
-            },
-            Err(e) => Self {
-                file_path,
-                menu: None,
-                load_error: Some(e),
-                last_modified,
-            },
+        let mut state = Self {
+            file_path,
+            menu: None,
+            load_error: None,
+            last_modified,
+            advisory: None,
+            limits,
+        };
+        state.apply_load_result();
+        state
+    }
+
+    /// Load the file with the current limits and update `menu`/`load_error`/
+    /// `advisory`. On error, the previous menu is retained (used by both the
+    /// initial load and hot-reload paths).
+    ///
+    /// Validates: Requirement 9.2, 9.3, 9.4, 9.9
+    fn apply_load_result(&mut self) {
+        match loader::load_menu_file_with_limits(&self.file_path, self.limits) {
+            Ok(LoadedMenu { menu, advisory }) => {
+                self.menu = Some(menu);
+                self.load_error = None;
+                self.advisory = advisory;
+            }
+            Err(e) => {
+                // Req 4.5 / 9.9: retain previous menu on error, surface message.
+                self.load_error = Some(e);
+                self.advisory = None;
+            }
         }
     }
 
     /// Poll for file changes and reload if the modification time has changed.
     ///
-    /// Validates: Requirement 4.3, 4.5
+    /// Re-applies the option-count limits on every reload, so a file edited
+    /// past the hard limit transitions to the error state and a file edited
+    /// back under the limit recovers.
+    ///
+    /// Validates: Requirement 4.3, 4.5, 9.9
     pub fn poll_reload(&mut self) {
         if let Ok(meta) = std::fs::metadata(&self.file_path) {
             if let Ok(modified) = meta.modified() {
                 if Some(modified) != self.last_modified {
                     self.last_modified = Some(modified);
-                    match loader::load_menu_file(&self.file_path) {
-                        Ok(menu) => {
-                            self.menu = Some(menu);
-                            self.load_error = None;
-                        }
-                        Err(e) => {
-                            // Req 4.5: retain previous menu on parse error
-                            self.load_error = Some(e);
-                        }
-                    }
+                    self.apply_load_result();
                 }
             }
         }
@@ -209,5 +240,72 @@ description = "Files"
     fn tab_title_fallback_when_no_menu() {
         let state = MenuWorkspaceState::load("/nonexistent/menu.toml");
         assert_eq!(state.tab_title(), "[MENU]");
+    }
+
+    /// Build TOML text for a menu with `n` options.
+    fn toml_with_options(n: usize) -> String {
+        let mut s = String::from("title = \"T\"\n");
+        for i in 0..n {
+            s.push_str(&format!(
+                "[[options]]\nkey = \"{:X}\"\ncommand = \"NOOP\"\ndescription = \"Opt {i}\"\n",
+                i % 16
+            ));
+        }
+        s
+    }
+
+    // Validates: Requirement 9.9 -- reload past the hard limit transitions to error
+    #[test]
+    fn reload_over_hard_limit_transitions_to_error() {
+        let limits = OptionLimits::new(4, 8);
+        let mut f = NamedTempFile::new().expect("tempfile");
+        f.write_all(toml_with_options(3).as_bytes()).expect("write");
+        let mut state = MenuWorkspaceState::load_with_limits(f.path(), limits);
+        assert!(state.menu.is_some(), "initial load within limits");
+        assert!(state.load_error.is_none());
+
+        // Grow past the hard limit (9 > 8).
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        std::fs::write(f.path(), toml_with_options(9)).expect("write big");
+        state.poll_reload();
+
+        assert!(state.load_error.is_some(), "must be in error state");
+        assert!(state.load_error.as_ref().unwrap().contains("hard limit 8"));
+    }
+
+    // Validates: Requirement 9.9 -- reload back under the limit recovers
+    #[test]
+    fn reload_back_under_limit_recovers() {
+        let limits = OptionLimits::new(4, 8);
+        let mut f = NamedTempFile::new().expect("tempfile");
+        f.write_all(toml_with_options(9).as_bytes()).expect("write");
+        let mut state = MenuWorkspaceState::load_with_limits(f.path(), limits);
+        assert!(state.load_error.is_some(), "starts in error state (9 > 8)");
+
+        // Shrink back within the hard limit and below soft (3 <= 4).
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        std::fs::write(f.path(), toml_with_options(3)).expect("write small");
+        state.poll_reload();
+
+        assert!(state.load_error.is_none(), "error cleared after recovery");
+        assert!(state.menu.is_some());
+        assert!(state.advisory.is_none(), "3 options is within soft limit 4");
+    }
+
+    // Validates: Requirement 9.3 -- reload into advisory range sets advisory
+    #[test]
+    fn reload_into_advisory_range_sets_advisory() {
+        let limits = OptionLimits::new(4, 100);
+        let mut f = NamedTempFile::new().expect("tempfile");
+        f.write_all(toml_with_options(3).as_bytes()).expect("write");
+        let mut state = MenuWorkspaceState::load_with_limits(f.path(), limits);
+        assert!(state.advisory.is_none());
+
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        std::fs::write(f.path(), toml_with_options(6)).expect("write more");
+        state.poll_reload();
+
+        assert!(state.menu.is_some());
+        assert!(state.advisory.is_some(), "6 > soft 4 -> advisory");
     }
 }

@@ -69,6 +69,22 @@ pub mod accessibility {
     pub const REDUCE_MOTION: &str = "accessibility.reduce_motion";
 }
 
+/// Menu Workspace configuration keys.
+pub mod menu {
+    /// Advisory option-count limit for a Menu_File. Above this count the menu
+    /// still loads but a WARN is logged and an in-panel advisory is shown.
+    /// Default 64.
+    ///
+    /// Validates: menu-workspace Requirement 9.1
+    pub const SOFT_OPTION_LIMIT: &str = "menu.soft_option_limit";
+
+    /// Hard option-count limit for a Menu_File. Above this count the file is
+    /// rejected as a load error and no options are rendered. Default 256.
+    ///
+    /// Validates: menu-workspace Requirement 9.1
+    pub const HARD_OPTION_LIMIT: &str = "menu.hard_option_limit";
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -144,6 +160,13 @@ mod tests {
     }
 
     #[test]
+    fn menu_keys_are_valid_dot_separated_paths() {
+        // Validates: menu-workspace Requirement 9.1 -- option limit config keys
+        assert_valid_key(menu::SOFT_OPTION_LIMIT, "menu");
+        assert_valid_key(menu::HARD_OPTION_LIMIT, "menu");
+    }
+
+    #[test]
     fn all_keys_have_unique_values() {
         // Validates: Requirement 7.2
         let all_keys = [
@@ -165,6 +188,8 @@ mod tests {
             theme::FOLLOW_OS,
             vfs::DEFAULT_PROVIDER,
             accessibility::REDUCE_MOTION,
+            menu::SOFT_OPTION_LIMIT,
+            menu::HARD_OPTION_LIMIT,
         ];
 
         let unique: std::collections::HashSet<&str> = all_keys.iter().copied().collect();

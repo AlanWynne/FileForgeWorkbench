@@ -607,7 +607,10 @@ mod tests {
     #[test]
     fn pom_navigate_action_returned_for_each_option() {
         // Numeric options 0-9
-        for opt in BUILT_IN_OPTIONS.iter().filter(|o| o.key.parse::<u8>().is_ok()) {
+        for opt in BUILT_IN_OPTIONS
+            .iter()
+            .filter(|o| o.key.parse::<u8>().is_ok())
+        {
             let key: u8 = opt.key.parse().expect("numeric key");
             let action = PomAction::Navigate(key);
             assert!(
@@ -617,7 +620,10 @@ mod tests {
             );
         }
         // Non-numeric options S, B
-        for opt in BUILT_IN_OPTIONS.iter().filter(|o| o.key.parse::<u8>().is_err()) {
+        for opt in BUILT_IN_OPTIONS
+            .iter()
+            .filter(|o| o.key.parse::<u8>().is_err())
+        {
             let action = PomAction::NavigateKey(opt.key.to_string());
             assert!(
                 matches!(action, PomAction::NavigateKey(ref k) if k == opt.key),

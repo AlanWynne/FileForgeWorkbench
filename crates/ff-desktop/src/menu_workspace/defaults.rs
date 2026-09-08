@@ -197,8 +197,15 @@ mod tests {
     #[test]
     fn default_pom_toml_has_12_options() {
         let val: toml::Value = toml::from_str(DEFAULT_POM_TOML).expect("valid TOML");
-        let options = val.get("options").and_then(|v| v.as_array()).expect("options array");
-        assert_eq!(options.len(), 12, "DEFAULT_POM_TOML must have exactly 12 options");
+        let options = val
+            .get("options")
+            .and_then(|v| v.as_array())
+            .expect("options array");
+        assert_eq!(
+            options.len(),
+            12,
+            "DEFAULT_POM_TOML must have exactly 12 options"
+        );
     }
 
     // Validates: Requirement 7.1 (cv-requirements.md) -- title matches spec

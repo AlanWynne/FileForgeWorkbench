@@ -122,7 +122,7 @@ impl FocusStop {
     ///
     /// Validates: Requirement 16.3–16.10, 16.19–16.21
     pub(crate) fn next(&self, menu_count: usize, tab_count: usize, pom_active: bool) -> FocusStop {
-        let pom_count = primary_option_menu::BUILT_IN_OPTIONS.len(); // 9
+        let pom_count = primary_option_menu::BUILT_IN_OPTIONS.len(); // 12 (Phase CV)
         match self {
             FocusStop::CommandField => {
                 if pom_active {
@@ -167,7 +167,7 @@ impl FocusStop {
     ///
     /// Validates: Requirement 16.11, 16.19, 16.22
     pub(crate) fn prev(&self, menu_count: usize, tab_count: usize, pom_active: bool) -> FocusStop {
-        let pom_count = primary_option_menu::BUILT_IN_OPTIONS.len(); // 9
+        let pom_count = primary_option_menu::BUILT_IN_OPTIONS.len(); // 12 (Phase CV)
         match self {
             FocusStop::CommandField => {
                 if tab_count > 0 {

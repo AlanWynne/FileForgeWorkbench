@@ -2,7 +2,7 @@
 // Logging goes exclusively to the log file (ff-logging upholds its side of this contract).
 #![cfg_attr(not(test), windows_subsystem = "windows")]
 
-//! # ff-desktop — FileForgeWorkbench Desktop Shell
+//! # ff-desktop -- FileForgeWorkbench Desktop Shell
 //!
 //! Entry point for the `ffwb` binary. Boots the platform-core stack and
 //! launches the egui/eframe rendering window.
@@ -52,14 +52,14 @@ use shell::WorkbenchShell;
 use tokio::runtime::Runtime;
 
 fn main() -> anyhow::Result<()> {
-    // ── 1. Logging ────────────────────────────────────────────────────────
+    // == 1. Logging ========================================================
     let logging_status: LoggingStatus = init_default();
 
-    // ── 2. Configuration ──────────────────────────────────────────────────
+    // == 2. Configuration ==================================================
     let config_handle = init(ConfigInitOptions::new())
         .context("[desktop] configuration system initialisation failed")?;
 
-    // ── 2a. Register all built-in schema entries ─────────────────────────
+    // == 2a. Register all built-in schema entries =========================
     // Resolve the user data dir to derive concrete default paths for keys
     // whose defaults are platform-specific (logging dir, catalog roots).
     {
@@ -69,37 +69,37 @@ fn main() -> anyhow::Result<()> {
         register_builtin_schema(&config_handle, &user_data_dir);
     }
 
-    // ── 2b. Apply OS reduce-motion preference if user has not overridden ──
+    // == 2b. Apply OS reduce-motion preference if user has not overridden ==
     // Validates: accessibility Requirement 5.1
     apply_os_reduce_motion(&config_handle);
 
-    // ── 3. Tokio runtime ──────────────────────────────────────────────────
+    // == 3. Tokio runtime ==================================================
     let runtime = Runtime::new().context("[desktop] failed to create Tokio runtime")?;
 
-    // ── 4. WorkbenchApp ───────────────────────────────────────────────────
+    // == 4. WorkbenchApp ===================================================
     let app = WorkbenchApp::new(Box::new(config_handle.clone()), logging_status)
         .context("[desktop] WorkbenchApp construction failed")?;
 
-    // ── 5. Initial theme palette ──────────────────────────────────────────
+    // == 5. Initial theme palette ==========================================
     let palette = dark_palette();
 
-    // ── 6. CLI file arguments (Requirement 6.1–6.5) ───────────────────────
+    // == 6. CLI file arguments (Requirement 6.1-6.5) =======================
     let cwd = std::env::current_dir().unwrap_or_default();
     let all_args: Vec<String> = std::env::args().skip(1).collect();
 
-    // ── 6a. Headless FFTest mode (Req 6.1, 6.2, 6.3) ─────────────────────
+    // == 6a. Headless FFTest mode (Req 6.1, 6.2, 6.3) =====================
     if let Some(mode) = fftest_cli::detect_cli_mode(&all_args) {
         let exit_code = fftest_cli::run_headless(&mode, &cwd);
         std::process::exit(exit_code);
     }
 
-    // ── 6b. --help (Req 1.5 batch) ────────────────────────────────────────
+    // == 6b. --help (Req 1.5 batch) ========================================
     if all_args.iter().any(|a| a == "--help" || a == "-h") {
         batch::cli::print_help();
         std::process::exit(0);
     }
 
-    // ── 6c. Batch mode (Req 1.1-1.6) ─────────────────────────────────────
+    // == 6c. Batch mode (Req 1.1-1.6) =====================================
     match batch::cli::parse_batch_args(&all_args) {
         Err(msg) => {
             eprintln!("ffwb: {}", msg);
@@ -114,7 +114,7 @@ fn main() -> anyhow::Result<()> {
 
     let cli_files = resolve_cli_paths(all_args.into_iter(), &cwd);
 
-    // ── 7. eframe window ─────────────────────────────────────────────────
+    // == 7. eframe window =================================================
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("FileForge Workbench")
@@ -142,7 +142,7 @@ fn main() -> anyhow::Result<()> {
     )
     .map_err(|e| anyhow::anyhow!("[desktop] eframe error: {e}"))?;
 
-    // ── 8. Post-window cleanup ────────────────────────────────────────────
+    // == 8. Post-window cleanup ============================================
     config_shutdown(&config_handle);
     logging_shutdown();
 
@@ -213,9 +213,9 @@ fn os_prefers_reduce_motion() -> bool {
 ///
 /// Called once at startup after `ff_config::init()`. Covers all reserved
 /// core namespaces: `editor`, `logging`, `theme`, `vfs`, `catalogs`.
-/// Best-effort — logs a warning on conflict but does not abort startup.
+/// Best-effort -- logs a warning on conflict but does not abort startup.
 ///
-/// Validates: Requirement 9.1 — schema must contain every known key.
+/// Validates: Requirement 9.1 -- schema must contain every known key.
 fn register_builtin_schema(config: &ff_config::ConfigHandle, user_data_dir: &std::path::Path) {
     use ff_config::error::ValueType;
     use ff_config::schema::{Constraints, SchemaEntry};
@@ -234,7 +234,7 @@ fn register_builtin_schema(config: &ff_config::ConfigHandle, user_data_dir: &std
         .into_owned();
 
     let entries: &[SchemaEntry] = &[
-        // ── Editor ──────────────────────────────────────────────────────
+        // == Editor ======================================================
         SchemaEntry {
             key: ff_config::keys::editor::TAB_SIZE.to_string(),
             value_type: ValueType::Integer,
@@ -292,7 +292,7 @@ fn register_builtin_schema(config: &ff_config::ConfigHandle, user_data_dir: &std
             description: "Ensure file ends with a newline on save".to_string(),
             constraints: None,
         },
-        // ── Logging ─────────────────────────────────────────────────────
+        // == Logging =====================================================
         SchemaEntry {
             key: ff_config::keys::logging::LEVEL.to_string(),
             value_type: ValueType::String,
@@ -341,7 +341,7 @@ fn register_builtin_schema(config: &ff_config::ConfigHandle, user_data_dir: &std
                 pattern: None,
             }),
         },
-        // ── Theme ────────────────────────────────────────────────────────
+        // == Theme ========================================================
         SchemaEntry {
             key: ff_config::keys::theme::ACTIVE.to_string(),
             value_type: ValueType::String,
@@ -372,7 +372,7 @@ fn register_builtin_schema(config: &ff_config::ConfigHandle, user_data_dir: &std
                 pattern: None,
             }),
         },
-        // ── VFS ──────────────────────────────────────────────────────────
+        // == VFS ==========================================================
         SchemaEntry {
             key: ff_config::keys::vfs::DEFAULT_PROVIDER.to_string(),
             value_type: ValueType::String,
@@ -385,7 +385,7 @@ fn register_builtin_schema(config: &ff_config::ConfigHandle, user_data_dir: &std
                 pattern: None,
             }),
         },
-        // ── Catalogs ─────────────────────────────────────────────────────
+        // == Catalogs =====================================================
         SchemaEntry {
             key: ff_config::keys::catalogs::DEFAULT_MAINFRAME_ROOT.to_string(),
             value_type: ValueType::String,
@@ -400,13 +400,43 @@ fn register_builtin_schema(config: &ff_config::ConfigHandle, user_data_dir: &std
             description: "Default root directory for new POSIX catalogs".to_string(),
             constraints: None,
         },
-        // ── Accessibility ────────────────────────────────────────────────
+        // == Accessibility ================================================
         SchemaEntry {
             key: ff_config::keys::accessibility::REDUCE_MOTION.to_string(),
             value_type: ValueType::Boolean,
             default: ConfigValue::Boolean(false),
             description: "Disable non-essential animations (overrides OS preference)".to_string(),
             constraints: None,
+        },
+        // == Menu Workspace ===============================================
+        // Validates: menu-workspace Requirement 9.1, 9.6
+        SchemaEntry {
+            key: ff_config::keys::menu::SOFT_OPTION_LIMIT.to_string(),
+            value_type: ValueType::Integer,
+            default: ConfigValue::Integer(64),
+            description: "Advisory maximum options per menu; above it a warning \
+                          advises grouping into sub-menus"
+                .to_string(),
+            constraints: Some(Constraints {
+                min: Some(0.0),
+                max: None,
+                allowed_values: None,
+                pattern: None,
+            }),
+        },
+        SchemaEntry {
+            key: ff_config::keys::menu::HARD_OPTION_LIMIT.to_string(),
+            value_type: ValueType::Integer,
+            default: ConfigValue::Integer(256),
+            description: "Hard maximum options per menu; above it the menu file \
+                          is rejected as a load error"
+                .to_string(),
+            constraints: Some(Constraints {
+                min: Some(0.0),
+                max: None,
+                allowed_values: None,
+                pattern: None,
+            }),
         },
     ];
 
@@ -473,7 +503,35 @@ mod tests {
         );
     }
 
-    /// Validates: accessibility Requirement 7.6 — binary crate constructs WorkbenchApp and
+    /// Validates: menu-workspace Requirement 9.1, 9.6 -- menu option limit keys are
+    /// registered with their default values (64 / 256) and readable as integers.
+    #[test]
+    fn menu_limit_keys_have_correct_defaults() {
+        use tempfile::TempDir;
+        let tmp = TempDir::new().expect("tempdir");
+        let config = init(
+            ConfigInitOptions::new()
+                .with_hot_reload(false)
+                .with_project_root(tmp.path().to_path_buf()),
+        )
+        .expect("config init");
+        register_builtin_schema(&config, tmp.path());
+
+        let soft = config.get_int(ff_config::keys::menu::SOFT_OPTION_LIMIT);
+        let hard = config.get_int(ff_config::keys::menu::HARD_OPTION_LIMIT);
+        assert_eq!(
+            soft.ok(),
+            Some(64),
+            "menu.soft_option_limit default must be 64"
+        );
+        assert_eq!(
+            hard.ok(),
+            Some(256),
+            "menu.hard_option_limit default must be 256"
+        );
+    }
+
+    /// Validates: accessibility Requirement 7.6 -- binary crate constructs WorkbenchApp and
     /// boots/shuts down cleanly without a GUI window.
     #[test]
     fn workbench_app_boots_and_shuts_down_cleanly() {
@@ -496,7 +554,7 @@ mod tests {
         assert_eq!(app.phase(), LifecyclePhase::Terminated);
     }
 
-    /// Validates: Requirement 6.1 — positional args are collected as file paths.
+    /// Validates: Requirement 6.1 -- positional args are collected as file paths.
     #[test]
     fn resolve_cli_paths_collects_positional_args() {
         // Validates: startup-and-session Requirement 6.1
@@ -511,7 +569,7 @@ mod tests {
         assert!(result[1].contains("relative/file.rs"));
     }
 
-    /// Validates: Requirement 6.2 — relative paths are resolved against cwd.
+    /// Validates: Requirement 6.2 -- relative paths are resolved against cwd.
     #[test]
     fn resolve_cli_paths_resolves_relative_against_cwd() {
         // Validates: startup-and-session Requirement 6.2
@@ -529,7 +587,7 @@ mod tests {
         );
     }
 
-    /// Validates: Requirement 6.6 — named flags (--flag) are skipped.
+    /// Validates: Requirement 6.6 -- named flags (--flag) are skipped.
     #[test]
     fn resolve_cli_paths_skips_named_flags() {
         // Validates: startup-and-session Requirement 6.6
@@ -546,7 +604,7 @@ mod tests {
         assert!(result.iter().any(|p| p.contains("file.txt")));
     }
 
-    /// Validates: Requirement 6.1 — empty arg list produces empty result.
+    /// Validates: Requirement 6.1 -- empty arg list produces empty result.
     #[test]
     fn resolve_cli_paths_empty_args_returns_empty() {
         // Validates: startup-and-session Requirement 6.1
