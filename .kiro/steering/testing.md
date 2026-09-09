@@ -104,10 +104,13 @@ cargo test -p ff-desktop -- --nocapture     # single crate, show stdout
 ```
 
 ### Background full-workspace test (non-blocking)
-Fire the full run in the background and read the log later. Do NOT pipe through
-`tail` -- it suppresses output until the process exits.
+Prefer `verify.ps1` (below) for the full gate. If you need a raw background run,
+fire it and read the log later. Do NOT pipe through `tail` -- it suppresses
+output until the process exits. Prefer nextest for the aggregated summary.
 ```bat
-start /B cargo test --workspace > tools\logs\test-run.txt 2>&1
+start /B cargo nextest run --workspace > tools\logs\test-run.txt 2>&1
+REM fallback if nextest is not installed:
+REM start /B cargo test --workspace > tools\logs\test-run.txt 2>&1
 type tools\logs\test-run.txt
 tasklist | findstr cargo                      REM check if still running
 powershell "Get-Content tools\logs\test-run.txt -Tail 20"
@@ -120,7 +123,41 @@ powershell "Get-Content tools\logs\test-run.txt -Tail 20"
 | Plugin Manager UI | `cargo test -p ff-desktop -p ff-plugin` |
 | Notification System | `cargo test -p ff-desktop` |
 | Compiler Toolchain (MockToolchain) | `cargo test -p ff-toolchain-api` |
-| Full baseline check | background task (above) |
+| Full baseline check | `verify.ps1` (see below) |
+
+### Full-workspace verification -- verify.ps1 (cargo-nextest)
+The canonical gate is `tools\powershell\verify.ps1`. It runs three steps --
+`cargo fmt --check`, `cargo clippy --workspace`, and the test suite -- capturing
+each step's output to `tools\logs\` and accumulating any errors/warnings into
+`tools\logs\ai-review.log` (an empty file means the gate is clean).
+
+Tests run via `cargo-nextest` when installed: it executes every test binary
+across all cores in parallel and prints one aggregated summary, which is much
+faster than serial `cargo test` on this ~9000-test / 69-crate workspace. If
+nextest is absent, verify.ps1 falls back to `cargo test --workspace`
+automatically -- no behaviour change, just slower.
+
+```powershell
+# Full gate (proptests use their configured >=100 iterations):
+powershell -ExecutionPolicy Bypass -File tools\powershell\verify.ps1
+
+# Fast developer inner-loop signal (PROPTEST_CASES=32 -- NOT the full gate):
+powershell -ExecutionPolicy Bypass -File tools\powershell\verify.ps1 -Fast
+```
+
+Rules:
+- The `-Fast` switch is for quick iteration only. Declaring a task complete or a
+  phase done REQUIRES a clean full run (no `-Fast`), so proptests keep their
+  mandated >=100-iteration coverage.
+- After any run, read `tools\logs\ai-review.log` before claiming success. Empty
+  == clean; any lines == fix and rerun.
+- Install nextest once with: `cargo install --locked cargo-nextest`.
+
+Direct nextest use (outside the script) is also available:
+```bash
+cargo nextest run --workspace       # all crates, parallel, one summary
+cargo nextest run -p ff-desktop     # scoped
+```
 
 ### Building
 ```bash
@@ -152,7 +189,8 @@ rg "\.unwrap\(\)|\.expect\(" crates/ --glob "!**/tests/**"   # unwrap in lib cod
 5. cargo test -p <crate>         # confirm test passes (green)
 6. cargo clippy -- -D warnings   # no new lint violations
 7. cargo fmt                     # format before committing
-8. [background] cargo test --workspace > tools\logs\test-run.txt 2>&1
+8. verify.ps1                    # full gate (nextest); check ai-review.log
 ```
-Never skip step 3. Step 8 runs in the background; check the log before committing
+Never skip step 3. Step 8 is the full verification gate (`verify.ps1`, or
+`-Fast` for a quick inner-loop signal); check `ai-review.log` before committing
 or declaring a phase complete.

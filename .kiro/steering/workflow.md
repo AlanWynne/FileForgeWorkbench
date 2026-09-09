@@ -184,7 +184,11 @@ perform the next safe step rather than only describing it.
 9. Update `docs/quality/TCR.md` -- set each covered row to its correct status.
 10. Record a concise summary: requirements implemented, files changed, commands
     run, test results, known limitations, follow-ups.
-11. Run `tools\powershell\verify.ps1` (it deletes ai-review.log before running).
+11. Run `tools\powershell\verify.ps1` (fmt-check, clippy, and the test suite via
+    cargo-nextest; it clears tools\logs\*.log first and accumulates any
+    problems into ai-review.log). Use `-Fast` for a quick inner-loop signal only
+    (see `testing.md`); the completion gate REQUIRES a clean full run without
+    `-Fast` so proptests keep their >=100-iteration coverage.
 12. While `tools\logs\ai-review.log` contains errors: fix every reported problem,
     then rerun `verify.ps1`.
 13. Compact history.

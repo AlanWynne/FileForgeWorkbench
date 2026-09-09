@@ -1,0 +1,25 @@
+# Workspace build tuning for faster dev-loop and verification.
+#
+# Rationale (see tools/powershell/verify.ps1 and .kiro/steering/testing.md):
+# the verification bottleneck is the test phase over ~9000 tests across 69
+# crates. These settings reduce per-run compile cost without changing test
+# behaviour or release output. They affect only local build performance and are
+# fully reversible (delete this file to restore stock cargo defaults).
+
+# Note on linkers: LLVM lld ships with the toolchain as rust-lld and is faster
+# than the default MSVC link.exe, but switching linkers workspace-wide is a
+# heavier change with more failure surface. It is intentionally NOT enabled
+# here; the profile tuning below is the safe, high-value win. Revisit lld-link
+# separately if link time becomes the dominant cost.
+
+# Development/test profile: keep builds cheap to (re)compile.
+[profile.dev]
+# Incremental compilation caches per-module codegen between runs -- large win
+# for the warm-rebuild inner loop.
+incremental = true
+
+[profile.test]
+# Test binaries do not need full debuginfo for the pass/fail verification gate;
+# dropping it cuts codegen and link time substantially over ~9000 tests.
+debug = 0
+incremental = true
