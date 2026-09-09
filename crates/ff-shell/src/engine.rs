@@ -496,6 +496,25 @@ impl ShellEngine {
         self.config.get()
     }
 
+    /// Replaces the current configuration snapshot.
+    ///
+    /// Used by the desktop layer to seed or hot-reload `shell.*` settings
+    /// (notably `shell.mode`) after the engine has been constructed.
+    pub fn set_config(&self, config: ShellConfig) {
+        self.config.update(config);
+    }
+
+    /// Returns the number of command entries currently in the Output Panel.
+    ///
+    /// Lets the desktop layer detect and surface newly captured output without
+    /// exposing the panel's internals.
+    pub fn output_entry_count(&self) -> usize {
+        self.output_panel
+            .lock()
+            .map(|p| p.entry_count())
+            .unwrap_or(0)
+    }
+
     /// Returns the profile resolver for shell override lookups.
     pub fn profile_resolver(&self) -> &ProfileResolver {
         &self.profile_resolver

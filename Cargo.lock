@@ -1485,6 +1485,7 @@ dependencies = [
  "ff-plugin",
  "ff-rust-toolchain",
  "ff-session",
+ "ff-shell",
  "ff-theme",
  "ff-toolchain-api",
  "ff-vfs",

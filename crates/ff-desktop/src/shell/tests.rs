@@ -3427,11 +3427,14 @@ fn resolve_and_dispatch_registered_command_id_dispatches() {
 }
 
 // Validates: menu-workspace Requirement 10.6 -- an inline External target is
-// dispatched; External via a binding is deferred, so it reports a status.
+// dispatched via the ff-shell adapter. With the default shell.mode = prompt,
+// an External target is staged for confirmation rather than run immediately.
+// Validates: command-configurator Requirement 3.8
 #[test]
-fn dispatch_external_target_reports_deferred_status() {
+fn dispatch_external_target_stages_prompt_confirmation() {
     use ff_command::{CommandTarget, ExternalMode};
     let mut shell = make_shell();
+    // make_shell() leaves the engine at its default mode (prompt).
     let target = CommandTarget::External {
         program: "pwsh".to_string(),
         args: vec![],
@@ -3439,12 +3442,11 @@ fn dispatch_external_target_reports_deferred_status() {
         mode: ExternalMode::Captured,
     };
     shell.dispatch_command_target(&target);
-    let msg = shell.open_error.as_deref().unwrap_or_default();
-    assert!(msg.contains("pwsh"), "status should name the program");
-    assert!(
-        msg.contains("not yet runnable"),
-        "External binding is deferred and must report a status, got: {msg}"
-    );
+    let pending = shell
+        .pending_external
+        .as_ref()
+        .expect("prompt mode stages a pending external");
+    assert_eq!(pending.program, "pwsh");
 }
 
 // Validates: menu-workspace Requirement 10.1, 10.3 -- selecting a menu option
@@ -3864,4 +3866,142 @@ fn dispatch_menu_target_pom_opens_home_context() {
         name: "pom".to_string(),
     });
     assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
+}
+
+// === External execution adapter (command-configurator Requirement 3) ========
+
+/// Set the shell engine's mode for deterministic external-execution tests.
+fn set_shell_mode(shell: &super::WorkbenchShell, mode: ff_shell::ShellMode) {
+    let cfg = ff_shell::ShellConfig {
+        mode,
+        ..Default::default()
+    };
+    shell.shell_engine.set_config(cfg);
+}
+
+/// A trivial no-op external target for the host platform.
+fn noop_external_target() -> ff_command::CommandTarget {
+    use ff_command::{CommandTarget, ExternalMode};
+    let (program, args) = if cfg!(windows) {
+        (
+            "cmd".to_string(),
+            vec!["/C".to_string(), "exit".to_string()],
+        )
+    } else {
+        ("true".to_string(), Vec::new())
+    };
+    CommandTarget::External {
+        program,
+        args,
+        working_dir: None,
+        mode: ExternalMode::Detached,
+    }
+}
+
+// Validates: command-configurator Requirement 3.7 -- shell.mode = disabled
+// refuses external execution.
+#[test]
+fn external_disabled_refuses() {
+    let mut shell = make_shell();
+    set_shell_mode(&shell, ff_shell::ShellMode::Disabled);
+    shell.dispatch_command_target(&noop_external_target());
+    assert!(
+        shell.pending_external.is_none(),
+        "must not stage when disabled"
+    );
+    let msg = shell.open_error.as_deref().unwrap_or_default();
+    assert!(
+        msg.to_lowercase().contains("disabled"),
+        "disabled mode must report the shell-disabled message, got: {msg}"
+    );
+}
+
+// Validates: command-configurator Requirement 3.8 -- shell.mode = prompt stages
+// the run behind a confirmation instead of spawning immediately.
+#[test]
+fn external_prompt_stages_pending_confirmation() {
+    let mut shell = make_shell();
+    set_shell_mode(&shell, ff_shell::ShellMode::Prompt);
+    shell.dispatch_command_target(&noop_external_target());
+    assert!(
+        shell.pending_external.is_some(),
+        "prompt mode must stage a pending external for confirmation"
+    );
+}
+
+// Validates: command-configurator Requirement 3.2 -- shell.mode = enabled runs a
+// Detached target immediately (no pending confirmation).
+#[test]
+fn external_enabled_detached_runs_immediately() {
+    let mut shell = make_shell();
+    set_shell_mode(&shell, ff_shell::ShellMode::Enabled);
+    shell.dispatch_command_target(&noop_external_target());
+    assert!(
+        shell.pending_external.is_none(),
+        "enabled mode must not stage a confirmation"
+    );
+    let msg = shell.open_error.as_deref().unwrap_or_default();
+    assert!(
+        msg.contains("detached"),
+        "a detached run should report a started-status, got: {msg}"
+    );
+}
+
+// Validates: command-configurator Requirement 3.4 -- a Captured run appends to
+// the Output_Panel.
+#[test]
+fn external_captured_appends_to_output_panel() {
+    use ff_command::{CommandTarget, ExternalMode};
+    let mut shell = make_shell();
+    set_shell_mode(&shell, ff_shell::ShellMode::Enabled);
+    let (program, args) = if cfg!(windows) {
+        (
+            "cmd".to_string(),
+            vec!["/C".to_string(), "echo hi".to_string()],
+        )
+    } else {
+        ("echo".to_string(), vec!["hi".to_string()])
+    };
+    let before = shell.shell_engine.output_entry_count();
+    shell.dispatch_command_target(&CommandTarget::External {
+        program,
+        args,
+        working_dir: None,
+        mode: ExternalMode::Captured,
+    });
+    assert_eq!(
+        shell.shell_engine.output_entry_count(),
+        before + 1,
+        "a captured run must append one Output_Panel entry"
+    );
+}
+
+// Validates: command-configurator Requirement 3.9 -- a launch failure is
+// reported (no panic), and nothing is staged.
+#[test]
+fn external_launch_failure_reports_error() {
+    use ff_command::{CommandTarget, ExternalMode};
+    let mut shell = make_shell();
+    set_shell_mode(&shell, ff_shell::ShellMode::Enabled);
+    shell.dispatch_command_target(&CommandTarget::External {
+        program: "ffwb_nonexistent_program_db_ext".to_string(),
+        args: vec![],
+        working_dir: None,
+        mode: ExternalMode::Detached,
+    });
+    assert!(
+        shell.open_error.is_some(),
+        "launch failure must be reported"
+    );
+    assert!(shell.pending_external.is_none());
+}
+
+// Validates: command-configurator Requirement 3.6 -- ${workspace_root} and
+// ${file_dir} expand; an unresolved placeholder becomes empty.
+#[test]
+fn external_placeholder_unresolved_expands_to_empty() {
+    let shell = make_shell();
+    // No active workspace and an unsaved active tab -> both placeholders empty.
+    let expanded = shell.expand_external_placeholders("A${workspace_root}B${file_dir}C");
+    assert_eq!(expanded, "ABC");
 }

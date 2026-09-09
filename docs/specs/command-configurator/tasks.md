@@ -46,14 +46,27 @@ still `[ ]`. Each task references the acceptance criteria it satisfies.
   - Satisfies: Req 3.4, shell-command Req 19
   - DONE: `ShellEngine::execute_external` (Captured) reuses `CommandExecutor` and
     appends an `OutputEntry` (stdout/stderr + exit code) to the Output_Panel.
-- [ ] 3.3 Implement `${workspace_root}` / `${file_dir}` placeholder expansion in program/args/working_dir
+- [x] 3.3 Implement `${workspace_root}` / `${file_dir}` placeholder expansion in program/args/working_dir
   - Satisfies: Req 3.6
-- [ ] 3.4 Apply `shell.mode` gate + prompt-confirm to both modes; handle spawn-launch failure
+  - DONE: `WorkbenchShell::expand_external_placeholders` (`shell/external_adapter.rs`);
+    unresolved placeholder -> empty string + DEBUG log.
+- [x] 3.4 Apply `shell.mode` gate + prompt-confirm to both modes; handle spawn-launch failure
   - Satisfies: Req 3.7, 3.8, 3.9
-- [ ] 3.5 Apply working-directory resolution (explicit, else shell.working_directory rules)
+  - DONE: `run_external_target` gates on `shell.mode` (disabled refuses; prompt
+    stages `pending_external`; enabled runs); the confirmation dialog in
+    `shell/update.rs` runs on confirm / skips on cancel; launch failure surfaces
+    a status message.
+- [x] 3.5 Apply working-directory resolution (explicit, else shell.working_directory rules)
   - Satisfies: Req 3.5
-- [ ] 3.6 Write unit/integration tests: detached spawns and returns without capture; captured shows stdout/stderr/exit in Output_Panel; disabled refuses; prompt-declined does not spawn; placeholder expansion; visible-workspace classification
+  - DONE: explicit `working_dir` passed through; `None` falls back via the
+    ff-shell `WorkingDirResolver` (project_root / active_file plumbed from shell state).
+- [x] 3.6 Write unit/integration tests: detached spawns and returns without capture; captured shows stdout/stderr/exit in Output_Panel; disabled refuses; prompt-declined does not spawn; placeholder expansion; visible-workspace classification
   - Validates: Requirement 3.2, 3.4, 3.6, 3.7, 3.8, 3.10
+  - DONE: 6 adapter tests in `shell/tests.rs` (disabled/prompt/enabled/captured/
+    launch-failure/placeholder) plus the ff-shell engine tests.
+  - NOTE: a full dockable Output_Panel view in ff-desktop is a follow-up UI task;
+    captured output is captured into the engine's Output_Panel (asserted via
+    `output_entry_count`) and the run reports a status pointing to it.
 
 ## Task 4: Command Configurator Context
 

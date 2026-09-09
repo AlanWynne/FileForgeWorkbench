@@ -136,14 +136,16 @@ impl WorkbenchShell {
                 self.open_error =
                     Some("Macro targets are not yet runnable via a command binding.".to_string());
             }
-            CommandTarget::External { program, .. } => {
-                // External execution flows through ff-shell in the desktop
-                // adapter (command-configurator Requirement 3); tracked
-                // separately from DB.4.
-                self.open_error = Some(format!(
-                    "External target '{program}' is not yet runnable via a command binding \
-                     (pending the external execution adapter)."
-                ));
+            CommandTarget::External {
+                program,
+                args,
+                working_dir,
+                mode,
+            } => {
+                // Run via the ff-shell adapter: placeholder expansion + shell.mode
+                // gate; prompt mode stages a confirmation dialog.
+                // Validates: command-configurator Requirement 3.2-3.9.
+                self.run_external_target(program, args, working_dir.as_deref(), *mode);
             }
         }
     }

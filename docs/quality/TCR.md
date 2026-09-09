@@ -2076,11 +2076,11 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-shell` | ✅ | `engine.rs::execute_external_detached_returns_handle` | Req 3.3: Started_Task not tracked/monitored/restarted/persisted after spawn (handle dropped by caller) |
 | `ff-shell` | ✅ | `engine.rs::execute_external_captured_appends_to_output_panel` | Req 3.4: captured mode runs async, shows stdout/stderr/exit in Output_Panel |
 | `ff-shell` | ✅ | `engine.rs::spawn_detached_uses_explicit_working_dir` (explicit); `working_dir.rs` resolver tests (fallback) | Req 3.5: explicit working_dir else shell.working_directory rules |
-| `ff-desktop` | 🔴 | -- | Req 3.6: ${workspace_root} / ${file_dir} placeholder expansion (desktop adapter, DB.10-desktop) |
-| `ff-shell` | ✅ | `engine.rs::execute_external_refused_when_shell_disabled`, `spawn_detached_refused_when_shell_disabled` | Req 3.7: shell.mode = disabled refuses both modes |
-| `ff-desktop` | 🔴 | -- | Req 3.8: shell.mode = prompt confirms before spawn; decline = no spawn (UI confirm dialog is desktop adapter, DB.4) |
-| `ff-shell` | ✅ | `engine.rs::execute_external_captured_missing_program_errors`, `executor::external::tests::spawn_detached_missing_program_reports_error` | Req 3.9: launch failure reports error (SpawnFailed), opens no Workspace |
-| `ff-desktop` | 🔴 | -- | Req 3.10: External Visible_Workspace classification per command-framework Req 8.9 |
+| `ff-desktop` | ✅ | `shell/tests.rs::external_placeholder_unresolved_expands_to_empty` | Req 3.6: ${workspace_root} / ${file_dir} placeholder expansion (unresolved -> empty + DEBUG); desktop adapter |
+| `ff-shell` | ✅ | `engine.rs::execute_external_refused_when_shell_disabled`, `spawn_detached_refused_when_shell_disabled`; `shell/tests.rs::external_disabled_refuses` | Req 3.7: shell.mode = disabled refuses both modes |
+| `ff-desktop` | ✅ | `shell/tests.rs::external_prompt_stages_pending_confirmation`, `dispatch_external_target_stages_prompt_confirmation` | Req 3.8: shell.mode = prompt confirms before spawn; decline = no spawn (confirmation dialog in update.rs) |
+| `ff-shell` | ✅ | `engine.rs::execute_external_captured_missing_program_errors`, `executor::external::tests::spawn_detached_missing_program_reports_error`; `shell/tests.rs::external_launch_failure_reports_error` | Req 3.9: launch failure reports error (SpawnFailed), opens no Workspace |
+| `ff-command` | ✅ | `command_target_tests.rs::function_macro_and_detached_external_are_not_visible`, `menu_and_custom_workspace_and_captured_external_are_visible` | Req 3.10: External Visible_Workspace classification per command-framework Req 8.9 (produces_visible_workspace) |
 | `ff-desktop` | ✅ | `command_config/store.rs::validate_rejects_empty_id_and_label`, `validate_rejects_invalid_id` | Req 4.1: validation rejects bad id/label/target with specific messages |
 | `ff-desktop` | ✅ | `command_config/store.rs::validate_rejects_empty_external_program` | Req 4.2: External validation rejects empty program (mode is a typed enum) |
 | `ff-desktop` | ✅ | `command_config/mod.rs::user_command_id_resolves_to_stored_target`, `shell/tests.rs::menu_option_command_matching_definition_id_dispatches` | Req 4.3: definition id resolves to its target and a menu option dispatches it (DB.4) |

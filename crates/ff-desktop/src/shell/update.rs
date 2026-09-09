@@ -797,6 +797,44 @@ impl eframe::App for WorkbenchShell {
             }
         }
 
+        // External execution confirmation (shell.mode = prompt).
+        // Validates: command-configurator Requirement 3.8
+        if let Some(pending) = self.pending_external.clone() {
+            self.modal_open = true;
+            let mut run_clicked = false;
+            let mut cancel_clicked = false;
+            let cmd_display = if pending.args.is_empty() {
+                pending.program.clone()
+            } else {
+                format!("{} {}", pending.program, pending.args.join(" "))
+            };
+            egui::Window::new("Run external program?")
+                .collapsible(false)
+                .resizable(false)
+                .show(ctx, |ui| {
+                    ui.label("An external program is about to run:");
+                    ui.monospace(&cmd_display);
+                    ui.horizontal(|ui| {
+                        if ui.button("Run").clicked() {
+                            run_clicked = true;
+                        }
+                        if ui.button("Cancel").clicked() {
+                            cancel_clicked = true;
+                        }
+                    });
+                });
+            if run_clicked {
+                self.pending_external = None;
+                self.modal_open = false;
+                self.execute_external_now(&pending);
+            } else if cancel_clicked {
+                // Req 3.8: declining must NOT spawn the process.
+                self.pending_external = None;
+                self.modal_open = false;
+                self.open_error = Some("External execution cancelled.".to_string());
+            }
+        }
+
         // Unsaved workspace changes dialog -- Validates: workspace-model Requirement 2.5
         if self.show_unsaved_workspace_dialog {
             let mut save_clicked = false;

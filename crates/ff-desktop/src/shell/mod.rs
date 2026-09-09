@@ -353,6 +353,18 @@ pub struct WorkbenchShell {
     ///
     /// Validates: command-configurator Requirement 2.1, 2.3
     pub(crate) command_configurator_panel: crate::command_config::render::CommandConfiguratorState,
+    /// Shell engine for external program execution (Detached / Captured).
+    ///
+    /// Backs the External Command_Target adapter: runs a program by name +
+    /// argument list, gated by `shell.mode`, with captured output routed to the
+    /// Output_Panel.
+    ///
+    /// Validates: command-configurator Requirement 3; shell-command Requirement 19
+    pub(crate) shell_engine: ff_shell::ShellEngine,
+    /// Pending External target awaiting a shell.mode = prompt confirmation.
+    ///
+    /// Validates: command-configurator Requirement 3.8
+    pub(crate) pending_external: Option<crate::shell::external_adapter::PendingExternal>,
     /// Files Panel (Virtual Catalog Manager) state.
     files_panel: FilesPanelState,
     /// File Explorer Panel state (expand/collapse per catalog node).
@@ -618,6 +630,8 @@ impl WorkbenchShell {
             command_store,
             command_configurator_panel:
                 crate::command_config::render::CommandConfiguratorState::new(),
+            shell_engine: ff_shell::ShellEngine::new(ff_shell::ShellConfigProvider::new()),
+            pending_external: None,
             files_panel: FilesPanelState::new(),
             file_explorer_panel: FileExplorerPanelState::new(),
             file_explorer_panel_width: 260.0,
@@ -896,6 +910,7 @@ pub(crate) fn load_context_maps_from_config(config: &ConfigHandle, resolver: &mu
 
 mod commands;
 mod configurator;
+mod external_adapter;
 /// Convert a `ff_config::ConfigValue` to a `toml::Value` for key-map parsing.
 mod helpers;
 mod render;
