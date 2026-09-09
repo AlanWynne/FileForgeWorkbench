@@ -87,7 +87,10 @@ Status: EMPTY -- populated per sub-project during Waves 0-5, finalized in Wave 6
 | scroll-amount CSR/PAGE/HALF | viewport-and-scrolling (Req 14) + navigation-commands (Req 20) | -- | Watch | PA-WATCH-008: verify no duplicate source of truth at W1.7 |
 | cursor_line/cursor_column (viewport) vs editing caret | viewport-and-scrolling (viewport coordination) + caret-and-selection (editing caret) | -- | Watch | Verify boundary at W1.3 (relates to PA-WATCH-006) |
 | Caret/selection VISUAL config (CaretStyle, SelectionColours, BlinkState, etc.) | caret-and-selection | ff-desktop (renderer), theme | No | Sole owner ff-caret-selection -- RENDERING only |
-| `Selection` / `SelectionRange` / `SelectionPosition` (LOGICAL model) | edit-operations (owner, W1.5) | caret-and-selection (consumes for rendering), undo-redo (snapshot) | Watch | W1.3 confirmed caret-and-selection does NOT duplicate; verify undo-redo SelectionState references it at W1.5 |
+| `Selection` / `SelectionRange` / `SelectionPosition` (LOGICAL model) | edit-operations (SOLE owner) | caret-and-selection (renders), undo-redo (own snapshot) | No | RESOLVED W1.5: edit-operations sole owner; caret-and-selection does not duplicate; undo-redo SelectionState is a decoupled snapshot |
+| `EditorTransaction` (line-snapshot undo unit) | edit-operations | (claims delegation to undo-redo, NOT wired) | CONFLICT | PA-CONFLICT-002: coexists unbridged with undo-redo `Transaction`/`EditOperation`; no dependency either way |
+| `Transaction` / `EditOperation` / `ScrapStack` (undo model) | undo-redo-transactions | -- | CONFLICT | PA-CONFLICT-002: second, independent undo-unit model; not fed from edit-operations |
+| CAPS / edit profile | edit-operations (Req 16-17) | configuration-system (persistence) | No | Sole owner ff-edit-operations |
 
 ## Command IDs
 
