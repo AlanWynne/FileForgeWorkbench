@@ -4,6 +4,20 @@ inclusion: always
 
 # Project Tooling and Script Output
 
+## Available interpreters
+Both interpreters are installed; use these explicit paths so the correct engine
+runs regardless of what is on PATH:
+
+- PowerShell 7: `C:\tools\powershell7\pwsh.exe` (7.6.x). PREFER this over the
+  default Windows PowerShell 5.1. 5.1 loads a machine profile that prints a
+  Postgres/credentials banner to the terminal, mangling captured output; invoke
+  `pwsh.exe -NoProfile` to avoid it. Use pwsh 7 for `.ps1` tools.
+- Python 3: `C:\tools\python\python.exe` (3.13.x). Use for `.py` tools.
+
+Write reusable scripts in either language and save them under
+`C:\workspace\VSC\FileForgeWorkbench\tools\` (see Location and reuse below) so
+they are not rebuilt every session.
+
 ## When to use a project tool
 Use this whenever a task needs a script, data transformation, report generator,
 migration, or repository-maintenance helper.
