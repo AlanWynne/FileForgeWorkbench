@@ -49,6 +49,12 @@ Status: EMPTY -- populated per sub-project during Waves 0-5, finalized in Wave 6
 | `LineEndMode` | document-model | encoding-and-characters (broader encoding) | No | document-model owns UTF-8 nav; encoding-and-characters owns broad encoding |
 | `DocumentWatcher` (trait) | document-model | views, plugins | No | Sole owner ff-document-model |
 | VFS-only I/O (Req 4.8) | document-model (consumer) | virtual-file-system (owner) | No | VERIFIED no std::fs/tokio::fs; all I/O via ff-vfs (FFW-ARCH-001) |
+| `Vfs` / `VfsProvider` / `StorageProvider` / `ProviderRegistry` | virtual-file-system | ALL crates (FFW-ARCH-001) | No | Sole owner ff-vfs; ff-vfs is the only crate allowed direct std::fs |
+| `ResourceUri` | virtual-file-system | all consumers | No | Sole owner ff-vfs; `vfs://provider/path` |
+| `VfsError` | virtual-file-system | all consumers | No | Sole owner ff-vfs; providers map into it (no provider types leak) |
+| `WatchHandle` / `WatchEvent` | virtual-file-system | document-model, external-modification | No | Sole owner ff-vfs |
+| `VfsTransaction` (staged protocol) | virtual-file-system | dataset-catalog, virtual-catalog-manager | No | Sole owner ff-vfs (Req 11) |
+| workspace backup manifest | virtual-file-system (Req 12.2) | dataset-catalog (ff-dscatalog Req 26.3) | Watch | PA-WATCH-003: verify shared-vs-distinct manifest type in Wave 2 |
 
 ## Command IDs
 
