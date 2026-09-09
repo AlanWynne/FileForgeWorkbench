@@ -14,7 +14,7 @@ sub-projects reviewed in Wave 6 (review only).
 | 2 | configuration-system | 0 | DONE | units/configuration-system.md | COMPLETE; SPLIT CANDIDATE (spec split proposed PA-SPLIT-001); PA-STD-001, PA-DOC-002 logged |
 | 3 | logging-subsystem | 0 | DONE | units/logging-subsystem.md | FUNCTIONALLY COMPLETE; not a split candidate; Req 12 tool done but tracking stale (PA-TRACK-001); PA-LOG-002 = project-wide audit data source |
 | 4 | command-framework | 0 | DONE | units/command-framework.md | INCOMPLETE (Req 9 Command Arguments unimplemented, PA-INCOMPLETE-001); not a split candidate; Command_Target fan-out watch PA-WATCH-001 |
-| 5 | document-model | 0 | PENDING | -- | foundation |
+| 5 | document-model | 0 | DONE | units/document-model.md | COMPLETE (140/140 tasks, TCR PASS); not a split candidate; VFS-only verified; PA-WATCH-002 (document.rs at 400 cap); PA-LOG-003 (optional logging) |
 | 6 | virtual-file-system | 0 | PENDING | -- | foundation |
 | 7 | plugin-architecture | 0 | PENDING | -- | foundation |
 | 8 | workflow-engine | 0 | PENDING | -- | foundation |

@@ -43,6 +43,12 @@ Status: EMPTY -- populated per sub-project during Waves 0-5, finalized in Wave 6
 | `ShortcutBinding` / `Chord` | command-framework | ff-desktop (key handling) | No | Sole owner ff-command |
 | `CommandTarget` (5 variants) | command-framework | menu-workspace, command-configurator, startup-and-session, shell-command, lua-macro-engine | Watch | PA-WATCH-001: verify Target_Resolution consistency in each consumer |
 | reserved `arg` param key + verb/arg split | command-framework | all input sources (cmd line, menu, key, macro) | Watch | Req 9 DEFINED but UNIMPLEMENTED (PA-INCOMPLETE-001) -- watch for divergent ad-hoc parsing |
+| `Document` / `DocumentHandle` / `TextBuffer` / `GapBuffer` | document-model | edit-operations, display-line-mapping, viewport, undo-redo, ff-desktop | No | Sole owner ff-document-model (Arc<RwLock<Document>>) |
+| `LineIndex` / `SparseLineIndex` | document-model | display-line-mapping (consumes LineIndex) | No | Sole owner ff-document-model |
+| `BytePosition` / `LineNumber` / `CharacterExtracted` | document-model | edit/nav consumers | No | Sole owner ff-document-model |
+| `LineEndMode` | document-model | encoding-and-characters (broader encoding) | No | document-model owns UTF-8 nav; encoding-and-characters owns broad encoding |
+| `DocumentWatcher` (trait) | document-model | views, plugins | No | Sole owner ff-document-model |
+| VFS-only I/O (Req 4.8) | document-model (consumer) | virtual-file-system (owner) | No | VERIFIED no std::fs/tokio::fs; all I/O via ff-vfs (FFW-ARCH-001) |
 
 ## Command IDs
 
