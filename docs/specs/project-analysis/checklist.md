@@ -18,7 +18,7 @@ sub-projects reviewed in Wave 6 (review only).
 | 6 | virtual-file-system | 0 | DONE | units/virtual-file-system.md | Feature-COMPLETE (91/91, Req 1-12 TCR-PASS); IWR-005 RESOLVED; LOGGING DEFECT PA-LOG-004 (eprintln + unmet Req 3.3 WARN); weak split PA-SPLIT-002; PA-WATCH-003 |
 | 7 | plugin-architecture | 0 | DONE | units/plugin-architecture.md | COMPLETE (169/169, TCR PASS); not a split candidate; logging EXEMPLARY (PA-LOG-REF-001); registry.rs 698-line refactor PA-STD-002 |
 | 8 | workflow-engine | 0 | DONE | units/workflow-engine.md | Tracking-COMPLETE (124/124, TCR PASS); not a split candidate; LOGGING GAP PA-LOG-005 (Req 7.6 unmet, checkpoint silent errors); FFW-ARCH-001 watch PA-WATCH-004; refactor PA-STD-003 |
-| 9 | background-io | 0 | PENDING | -- | foundation |
+| 9 | background-io | 0 | DONE | units/background-io.md | INCOMPLETE despite 133/133 tasks: Req 6.6-6.9 (error log/retry/resume) NOT in load path (PA-INCOMPLETE-002, false-positive tests); no TCR rows (PA-TCR-001); FFW-ARCH-001 verified upheld; not a split candidate |
 | 10 | encoding-and-characters | 0 | PENDING | -- | foundation |
 | 11 | undo-redo-transactions | 1 | PENDING | -- | core editing/model |
 | 12 | viewport-and-scrolling | 1 | PENDING | -- | core editing/model |

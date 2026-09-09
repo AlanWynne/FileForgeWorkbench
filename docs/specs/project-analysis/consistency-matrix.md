@@ -64,6 +64,10 @@ Status: EMPTY -- populated per sub-project during Waves 0-5, finalized in Wave 6
 | `WorkflowRegistry` / `Checkpoint` / `WorkflowError` | workflow-engine | consumers | No | Sole owner ff-workflow |
 | `CancellationToken` (workflow) | workflow-engine | steps, async I/O | No | Sole owner ff-workflow (distinct from ff-background-io cancellation) |
 | checkpoint storage I/O | workflow-engine (`tokio::fs`) | virtual-file-system (would-be owner) | Watch | PA-WATCH-004: direct tokio::fs vs FFW-ARCH-001 -- owner decision |
+| `IoError` / `ProgressState` / `IoTaskHandle` | background-io | file-operations, document-model, shell | No | Sole owner ff-background-io |
+| `BackgroundIoService` / `RetryPolicy` | background-io | platform-core (singleton), file-operations | No | Sole owner ff-background-io (RetryPolicy defined but NOT wired -- PA-INCOMPLETE-002) |
+| `IoCancellationToken` | background-io | callers | No | Distinct from ff-workflow CancellationToken (confirmed W0.17) -- no conflict |
+| VFS-only I/O (Req 1.8/4.10/8.x) | background-io (consumer) | virtual-file-system (owner) | No | VERIFIED upheld; only lib.rs doc-comment mentions std::fs (stating it is NOT used) |
 
 ## Command IDs
 
