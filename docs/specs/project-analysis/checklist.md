@@ -11,7 +11,7 @@ sub-projects reviewed in Wave 6 (review only).
 | # | Sub-project | Wave | Status | Analysis Record | Notes |
 |---|-------------|------|--------|-----------------|-------|
 | 1 | platform-core | 0 | DONE | units/platform-core.md | COMPLETE; not a split candidate; PA-LOG-001, PA-DOC-001 logged |
-| 2 | configuration-system | 0 | PENDING | -- | foundation |
+| 2 | configuration-system | 0 | DONE | units/configuration-system.md | COMPLETE; SPLIT CANDIDATE (spec split proposed PA-SPLIT-001); PA-STD-001, PA-DOC-002 logged |
 | 3 | logging-subsystem | 0 | PENDING | -- | foundation; feeds Req 5 logging audit |
 | 4 | command-framework | 0 | PENDING | -- | foundation |
 | 5 | document-model | 0 | PENDING | -- | foundation |
