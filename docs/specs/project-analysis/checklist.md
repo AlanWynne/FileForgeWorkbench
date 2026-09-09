@@ -28,7 +28,7 @@ background-io Req 6.6-6.9), 1 tracking-only gap (logging-subsystem Req 12 tool).
 | 8 | workflow-engine | 0 | DONE | units/workflow-engine.md | Tracking-COMPLETE (124/124, TCR PASS); not a split candidate; LOGGING GAP PA-LOG-005 (Req 7.6 unmet, checkpoint silent errors); FFW-ARCH-001 watch PA-WATCH-004; refactor PA-STD-003 |
 | 9 | background-io | 0 | DONE | units/background-io.md | INCOMPLETE despite 133/133 tasks: Req 6.6-6.9 (error log/retry/resume) NOT in load path (PA-INCOMPLETE-002, false-positive tests); no TCR rows (PA-TCR-001); FFW-ARCH-001 verified upheld; not a split candidate |
 | 10 | encoding-and-characters | 0 | DONE | units/encoding-and-characters.md | COMPLETE (111/111, TCR PASS); BORDERLINE SPLIT (PA-SPLIT-003, 14 reqs/3 bands); zero-log CORRECT (spec-mandated stateless); convert.rs refactor PA-STD-004; PA-WATCH-005 |
-| 11 | undo-redo-transactions | 1 | PENDING | -- | core editing/model |
+| 11 | undo-redo-transactions | 1 | DONE | units/undo-redo-transactions.md | COMPLETE (159/159, TCR PASS); SPLIT CANDIDATE (PA-SPLIT-004, 19 reqs/553 lines); logging gap PA-LOG-006 (Req 3.5 WARNING); refactor PA-STD-005 (manager.rs 600); crate-name drift PA-DOC-003; recovery I/O design VERIFIED correct |
 | 12 | viewport-and-scrolling | 1 | PENDING | -- | core editing/model |
 | 13 | caret-and-selection | 1 | PENDING | -- | core editing/model |
 | 14 | display-line-mapping | 1 | PENDING | -- | core editing/model |

@@ -73,6 +73,11 @@ Status: EMPTY -- populated per sub-project during Waves 0-5, finalized in Wave 6
 | `ConversionResult` / `ConversionIssue` | encoding-and-characters | file-operations, document-model | No | Sole owner ff-encoding; lossy replacements returned to caller (Req 3.4) |
 | DBCS lead/trail + grapheme boundaries | encoding-and-characters | document-model (char nav) | No | Sole owner ff-encoding |
 | LineEndMode interaction | encoding-and-characters (validates U+2028/2029/0085) + document-model (owns LineEndMode) | -- | No | ff-encoding validates bytes; document-model decides line-end semantics -- no duplicate ownership |
+| `Transaction` / `EditOperation` / `UndoStack` / `RedoStack` | undo-redo-transactions | command-framework, document-model, edit-operations | No | Sole owner ff-undo-redo |
+| `SavePoint` / `ScrapStack` / `UndoConfig` | undo-redo-transactions | file-operations, config | No | Sole owner ff-undo-redo |
+| `SelectionState` (undo) | undo-redo-transactions (Req 9) + caret-and-selection (W1.3) | -- | Watch | PA-WATCH-006: verify no duplicate ownership in W1.3 |
+| `RecoveryPayload` (serialize-only) | undo-redo-transactions | file-operations/background-io (perform VFS write) | No | Crate serializes to Vec<u8>+CRC32; caller does VFS I/O -- GUI/IO-independent (no FFW-ARCH-001 issue) |
+| Undo_Record contract | command-framework (produces) + undo-redo-transactions (owns stacks) | -- | No | Consistent with command-framework Req 4 |
 
 ## Command IDs
 
