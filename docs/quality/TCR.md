@@ -2108,9 +2108,20 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `shell/tests.rs::menu_option_command_matching_definition_id_dispatches`, `resolve_and_dispatch_user_definition_id_dispatches` | Req 10.1: option selection resolves command to a CommandTarget and dispatches it (DB.4) |
 | `ff-desktop` | ✅ | `shell/tests.rs::resolve_and_dispatch_unknown_string_falls_through`, `dispatch_bound_command_falls_through_for_builtin` | Req 10.2: existing Menu_File format still valid; unresolved strings fall through to the existing pipeline for the same observable result (DB.4) |
 | `ff-desktop` | ✅ | `shell/tests.rs::resolve_and_dispatch_user_definition_id_dispatches`, `command_config/mod.rs::user_command_id_resolves_to_stored_target` | Req 10.3: command value equal to a user-defined id resolves to its target (DB.4) |
-| `ff-desktop` | 🔴 | -- | Req 10.4: Menu_Target opens the referenced Menu_Workspace (deferred: needs the `MENU <name>` command, menu-workspace Req 11) |
+| `ff-desktop` | ✅ | `shell/tests.rs::dispatch_menu_target_pom_opens_home_context`, `open_menu_workspace_tab_loads_named_menu` | Req 10.4: Menu_Target opens the referenced Menu_Workspace (via the MENU command path) |
 | `ff-desktop` | 🔲 | -- | Req 10.5: unresolvable option -- current behaviour preserved via fall-through to the existing pipeline, which surfaces its own status; the dedicated `Option '<key>' could not be resolved` path lands with full target execution (manual/UI) |
 | `ff-desktop` | ✅ | `menu_workspace/loader.rs::load_inline_options_target_parses`, `load_option_without_target_is_none` | Req 10.6: inline [options.target] table supported; wins over command with DEBUG log (DB.4) |
+
+### Phase DB -- The MENU Command (CR-NR-051, menu-workspace Req 11)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `shell/tests.rs::menu_command_returns_to_home_context` | Req 11.1: bare MENU opens/returns to the Home Context (POM) |
+| `ff-desktop` | ✅ | `shell/tests.rs::menu_pom_resolves_to_home_context`, `open_menu_workspace_tab_loads_named_menu` | Req 11.2: MENU <name> opens menus/<name>.toml; POM resolves to the Home Context |
+| `ff-desktop` | ✅ | `shell/commands.rs` MENU intercept (global, before pipeline) | Req 11.3: MENU is a global command with identical semantics in every Context |
+| `ff-desktop` | ✅ | `shell/tests.rs::open_menu_workspace_tab_missing_file_is_load_error` | Req 11.4: MENU <name> for a missing file opens the load-error state (`Menu file not found`) |
+| `ff-desktop` | ✅ | `shell/tests.rs::dispatch_menu_target_pom_opens_home_context` | Req 11.5: a Menu_Target executes via the MENU command path |
+| `ff-desktop` | ✅ | `shell/mod.rs` menu.open registration (`MenuOpenHandler`) | Req 11.6: MENU registered with the command framework as Command_ID `menu.open` |
 
 ### Phase DB -- External Program Execution (CR-NR-052, shell-command Req 19)
 
@@ -2132,7 +2143,7 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-session` | ✅ | `session_state.rs::menu_descriptor_round_trips_through_toml`, `editor_descriptor_round_trips_with_uri_param` | Req 21.1: Session_State persists visible Workspaces as Workspace_Descriptors in tab order |
 | `ff-session` | ✅ | `session_state.rs::editor_descriptor_round_trips_with_uri_param` | Req 21.2: Editor Context persists as CustomWorkspace{editor, uri+viewport+caret} |
 | `ff-desktop` | ✅ | `shell/tests.rs::restore_settings_descriptor_applies_namespace_filter`, `restore_settings_descriptor_without_namespace_is_unfiltered`; `session_state.rs::settings_namespace_descriptor_round_trips` | Req 21.3: Settings namespace persists/restores as CustomWorkspace{settings, {namespace}} (folds in CR-CH-011 / Task 14.5) |
-| `ff-session` | 🟡 | `session_state.rs::menu_descriptor_round_trips_through_toml` | Req 21.4: Menu_Workspace persists as MenuWorkspace{name} (round-trip DONE); restore re-open needs the MENU command wiring (DB.4) |
+| `ff-session` | 🟡 | `session_state.rs::menu_descriptor_round_trips_through_toml` | Req 21.4: Menu_Workspace persists as MenuWorkspace{name} (round-trip DONE); restore re-open path now exists via open_menu_workspace_tab -- restore-loop wiring for the Menu descriptor is a small follow-up |
 | `ff-desktop` | ✅ | `shell/tests.rs::restore_files_descriptor_opens_files_panel`, `restore_file_explorer_descriptor_opens_explorer_panel`, `restore_multiple_descriptors_opens_each_workspace`, `restore_editor_descriptor_opens_file` | Req 21.5: restore re-opens every descriptor in tab order, not only URI tabs |
 | `ff-desktop` | ✅ | `session_manager.rs::descriptor_for_tab` (Untitled -> None; no descriptor for non-visible kinds) | Req 21.6: Started_Task / Function / Macro not persisted, not restarted |
 | `ff-desktop` | 🟡 | -- | Req 21.7: Captured_Run Output_Panel result not persisted as a Workspace (holds by construction -- captured runs are not tabs; asserted with DB.10) |

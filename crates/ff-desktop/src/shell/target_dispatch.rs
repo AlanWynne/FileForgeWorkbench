@@ -122,12 +122,9 @@ impl WorkbenchShell {
                 self.handle_command(command_id);
             }
             CommandTarget::Menu { name } => {
-                // Full Menu_Target execution needs the MENU <name> command
-                // (menu-workspace Requirement 11); tracked separately.
-                self.open_error = Some(format!(
-                    "Menu target '{name}' is not yet runnable via a command binding \
-                     (pending the MENU command)."
-                ));
+                // A Menu_Target opens the referenced Menu_Workspace via the same
+                // path as the MENU command (menu-workspace Requirement 10.4, 11.5).
+                self.open_menu_by_name(name);
             }
             CommandTarget::CustomWorkspace { workspace_kind, .. } => {
                 self.open_error = Some(format!(

@@ -263,6 +263,43 @@ impl TabManager {
         let _ = runtime;
     }
 
+    /// Open a data-driven Menu Workspace tab backed by `<menus_dir>/<name>.toml`.
+    ///
+    /// If a Menu Workspace tab already backed by the same file exists, it is
+    /// activated instead of opening a duplicate. A missing file opens the tab in
+    /// its load-error state (`MenuWorkspaceState` retains `load_error`), rather
+    /// than doing nothing (menu-workspace Requirement 11.4).
+    ///
+    /// Validates: menu-workspace Requirement 11.2, 11.4
+    pub fn open_menu_workspace_tab(
+        &mut self,
+        name: &str,
+        menus_dir: &std::path::Path,
+        limits: crate::menu_workspace::OptionLimits,
+        runtime: &Runtime,
+    ) {
+        let file_path = menus_dir.join(format!("{name}.toml"));
+        if let Some(idx) = self.tabs.iter().position(|t| {
+            t.kind == TabKind::MenuWorkspace
+                && t.menu_workspace
+                    .as_ref()
+                    .map(|mw| mw.file_path == file_path)
+                    .unwrap_or(false)
+        }) {
+            self.active = idx;
+            return;
+        }
+        let mw_state =
+            crate::menu_workspace::MenuWorkspaceState::load_with_limits(&file_path, limits);
+        let document = ff_document_model::new_document();
+        let id = TabId(self.next_id);
+        self.next_id += 1;
+        let tab = crate::tab_state::TabState::menu_workspace_tab(id, document, mw_state);
+        self.tabs.push(tab);
+        self.active = self.tabs.len() - 1;
+        let _ = runtime;
+    }
+
     /// Transform the active tab in-place from `PrimaryOptionMenu` to a new kind.
     ///
     /// No-op if the active tab is not a `PrimaryOptionMenu` tab.

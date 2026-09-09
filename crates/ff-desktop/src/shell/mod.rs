@@ -81,6 +81,23 @@ impl CommandHandler for FileExitHandler {
     }
 }
 
+/// Handler for `menu.open` -- a marker registration so the id is dispatchable
+/// and palette-visible (menu-workspace Requirement 11.6). The actual
+/// menu-opening is performed by the shell, which intercepts `MENU` /
+/// `menu.open` in `handle_command` before registry dispatch.
+struct MenuOpenHandler;
+
+impl CommandHandler for MenuOpenHandler {
+    fn is_undoable(&self) -> bool {
+        false
+    }
+
+    fn execute(&self, _ctx: &ExecutionContext, _params: &CommandParams) -> CommandResult {
+        // Routing is handled by the shell intercept; nothing to do here.
+        CommandResult::Ok
+    }
+}
+
 // ── Tab-order focus cycle — Validates: Requirement 16 ──────────────────────
 
 /// The current keyboard focus stop in the shell tab-order cycle.
@@ -528,6 +545,16 @@ impl WorkbenchShell {
                 }),
             )
             .expect("file.exit registration");
+
+        // Register menu.open (menu-workspace Requirement 11.6) -- marker handler;
+        // the shell intercepts MENU / menu.open in handle_command.
+        let menu_open_id = CommandId::new("menu.open").expect("valid id");
+        let menu_open_meta = CommandMetadata::builder("Open Menu", "Open or return to a menu")
+            .category("menu")
+            .build();
+        registry
+            .register(menu_open_id, menu_open_meta, Box::new(MenuOpenHandler))
+            .expect("menu.open registration");
 
         let cmd_registry = registry.clone();
         let dispatch = CommandDispatch::new(registry, history);

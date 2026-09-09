@@ -303,7 +303,6 @@ impl TabState {
     /// Create a Menu Workspace tab backed by a TOML file at `file_path`.
     ///
     /// Validates: menu-workspace Requirement 1.1, 1.7
-    #[allow(dead_code)]
     pub fn menu_workspace_tab(
         id: TabId,
         document: DocumentHandle,

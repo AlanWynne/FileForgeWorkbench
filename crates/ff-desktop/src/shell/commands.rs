@@ -58,6 +58,19 @@ impl WorkbenchShell {
             return;
         }
 
+        // MENU / MENU <name> and the menu.open Command_ID form.
+        // Validates: menu-workspace Requirement 11.1, 11.2, 11.4, 11.6
+        if upper == "MENU" || upper.starts_with("MENU ") {
+            let arg = cmd.trim()[4..].trim();
+            self.open_menu_by_name(arg);
+            return;
+        }
+        if upper == "MENU.OPEN" || upper.starts_with("MENU.OPEN ") {
+            let arg = cmd.trim()[9..].trim();
+            self.open_menu_by_name(arg);
+            return;
+        }
+
         if upper == "CLOSE" {
             // Validates: Requirement 14.11 — CLOSE closes the current tab
             let idx = self.tabs.active_index();
@@ -1048,6 +1061,50 @@ impl WorkbenchShell {
             }
         }
         self.tabs.open_search_results_tab(&self.runtime);
+    }
+
+    /// Resolve the `menus/` directory under the User Data Dir.
+    ///
+    /// Falls back to `dirs::data_dir()/FileForgeWorkbench/menus` so the command
+    /// still resolves a path even when the session layer is unavailable.
+    pub(super) fn menus_dir(&self) -> std::path::PathBuf {
+        if let Ok(udd) = ff_session::UserDataDir::resolve(None) {
+            return udd.path().join("menus");
+        }
+        dirs::data_dir()
+            .map(|base| base.join("FileForgeWorkbench").join("menus"))
+            .unwrap_or_else(|| std::path::PathBuf::from("menus"))
+    }
+
+    /// Open (or return to) a menu by name.
+    ///
+    /// An empty name or `POM` opens/returns to the Home Context (POM); any other
+    /// name opens the data-driven Menu_Workspace backed by `menus/<name>.toml`,
+    /// with a missing file shown in the load-error state.
+    ///
+    /// Validates: menu-workspace Requirement 11.1, 11.2, 11.4, 11.5
+    pub(super) fn open_menu_by_name(&mut self, name: &str) {
+        use crate::tab_state::TabKind;
+        let lower = name.trim().to_lowercase();
+        // Req 11.1 / 11.2: bare MENU and MENU POM go to the Home Context.
+        if lower.is_empty() || lower == "pom" {
+            if self.tabs.active_tab().kind != TabKind::PrimaryOptionMenu {
+                self.tabs.insert_pom_tab(&self.runtime);
+            }
+            self.open_error = None;
+            return;
+        }
+        // Req 11.2: open menus/<name>.toml (SETTINGS -> settings.toml by file name).
+        let menus_dir = self.menus_dir();
+        let limits = crate::menu_workspace::loader::option_limits_from_config(&self.config_handle);
+        self.tabs
+            .open_menu_workspace_tab(&lower, &menus_dir, limits, &self.runtime);
+        // Surface the load-error message when the backing file is missing (11.4).
+        if let Some(mw) = self.tabs.active_tab().menu_workspace.as_ref() {
+            self.open_error = mw.load_error.clone();
+        } else {
+            self.open_error = None;
+        }
     }
 
     /// Open the Settings panel, optionally as a Settings_Namespace_View.

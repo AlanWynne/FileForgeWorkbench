@@ -3737,3 +3737,131 @@ fn restore_command_configurator_descriptor_reopens_context() {
         "a CommandConfigurator descriptor must reconstruct the Context"
     );
 }
+
+// === MENU command (menu-workspace Requirement 11) ==========================
+
+// Validates: menu-workspace Requirement 11.1 -- bare MENU returns to the Home Context.
+#[test]
+fn menu_command_returns_to_home_context() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    // Move off the POM first.
+    shell.handle_command("COMMANDS");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::CommandConfigurator);
+    shell.handle_command("MENU");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
+    assert!(shell.open_error.is_none());
+}
+
+// Validates: menu-workspace Requirement 11.2 -- MENU POM resolves to the Home Context.
+#[test]
+fn menu_pom_resolves_to_home_context() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("COMMANDS");
+    shell.handle_command("MENU POM");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
+}
+
+// Validates: menu-workspace Requirement 11.2 -- MENU <name> opens a data-driven
+// Menu_Workspace tab backed by menus/<name>.toml.
+#[test]
+fn open_menu_workspace_tab_loads_named_menu() {
+    use crate::menu_workspace::OptionLimits;
+    use crate::tab_manager::TabManager;
+    use crate::tab_state::TabKind;
+    use tokio::runtime::Runtime;
+
+    let dir = tempfile::TempDir::new().unwrap();
+    let menus = dir.path().join("menus");
+    std::fs::create_dir_all(&menus).unwrap();
+    std::fs::write(
+        menus.join("tools.toml"),
+        "title = \"Tools\"\n[[options]]\nkey = \"1\"\ncommand = \"FILES\"\ndescription = \"Files\"\n",
+    )
+    .unwrap();
+
+    let runtime = Runtime::new().expect("runtime");
+    let mut mgr = TabManager::new(&runtime, "");
+    mgr.insert_pom_tab(&runtime);
+    mgr.open_menu_workspace_tab("tools", &menus, OptionLimits::default(), &runtime);
+
+    assert_eq!(mgr.active_tab().kind, TabKind::MenuWorkspace);
+    let mw = mgr.active_tab().menu_workspace.as_ref().expect("mw state");
+    assert!(mw.load_error.is_none());
+    assert_eq!(mw.menu.as_ref().unwrap().title, "Tools");
+}
+
+// Validates: menu-workspace Requirement 11.4 -- MENU <name> for a missing file
+// opens the tab in its load-error state rather than doing nothing.
+#[test]
+fn open_menu_workspace_tab_missing_file_is_load_error() {
+    use crate::menu_workspace::OptionLimits;
+    use crate::tab_manager::TabManager;
+    use crate::tab_state::TabKind;
+    use tokio::runtime::Runtime;
+
+    let dir = tempfile::TempDir::new().unwrap();
+    let menus = dir.path().join("menus");
+    std::fs::create_dir_all(&menus).unwrap();
+
+    let runtime = Runtime::new().expect("runtime");
+    let mut mgr = TabManager::new(&runtime, "");
+    mgr.insert_pom_tab(&runtime);
+    mgr.open_menu_workspace_tab("nope", &menus, OptionLimits::default(), &runtime);
+
+    assert_eq!(mgr.active_tab().kind, TabKind::MenuWorkspace);
+    let mw = mgr.active_tab().menu_workspace.as_ref().expect("mw state");
+    assert!(mw.menu.is_none());
+    assert!(
+        mw.load_error.as_deref().unwrap_or("").contains("not found"),
+        "missing menu file must produce a load error"
+    );
+}
+
+// Validates: menu-workspace Requirement 11.2 -- opening the same menu twice
+// activates the existing tab instead of duplicating it.
+#[test]
+fn open_menu_workspace_tab_dedupes_by_file() {
+    use crate::menu_workspace::OptionLimits;
+    use crate::tab_manager::TabManager;
+    use crate::tab_state::TabKind;
+    use tokio::runtime::Runtime;
+
+    let dir = tempfile::TempDir::new().unwrap();
+    let menus = dir.path().join("menus");
+    std::fs::create_dir_all(&menus).unwrap();
+    std::fs::write(
+        menus.join("tools.toml"),
+        "title = \"Tools\"\n[[options]]\nkey = \"1\"\ncommand = \"FILES\"\ndescription = \"F\"\n",
+    )
+    .unwrap();
+
+    let runtime = Runtime::new().expect("runtime");
+    let mut mgr = TabManager::new(&runtime, "");
+    mgr.insert_pom_tab(&runtime);
+    mgr.open_menu_workspace_tab("tools", &menus, OptionLimits::default(), &runtime);
+    let count_after_first = mgr.len();
+    mgr.open_menu_workspace_tab("tools", &menus, OptionLimits::default(), &runtime);
+    assert_eq!(
+        mgr.len(),
+        count_after_first,
+        "opening the same menu twice must not duplicate the tab"
+    );
+    assert_eq!(mgr.active_tab().kind, TabKind::MenuWorkspace);
+}
+
+// Validates: menu-workspace Requirement 10.4, 11.5 -- a Menu_Target dispatches
+// through the same menu-open path (POM target returns to the Home Context).
+#[test]
+fn dispatch_menu_target_pom_opens_home_context() {
+    use crate::tab_state::TabKind;
+    use ff_command::CommandTarget;
+    let mut shell = make_shell();
+    shell.handle_command("COMMANDS");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::CommandConfigurator);
+    shell.dispatch_command_target(&CommandTarget::Menu {
+        name: "pom".to_string(),
+    });
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
+}
