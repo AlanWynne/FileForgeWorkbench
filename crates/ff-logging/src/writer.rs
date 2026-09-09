@@ -143,6 +143,41 @@ impl LogFileWriter {
 
         Ok(())
     }
+
+    /// Switches the writer to a new log directory, opening a fresh log file.
+    ///
+    /// Flushes the current buffer, ensures the new directory exists (creating
+    /// intermediate parents), opens a new log file under it with a fresh
+    /// timestamped filename, and updates the writer's directory and byte
+    /// counter. Used by runtime reconfiguration (Requirement 11, criterion 2).
+    ///
+    /// # Errors
+    ///
+    /// Returns an `std::io::Error` if the new directory cannot be created or
+    /// the new file cannot be opened. On failure, the writer is left unchanged
+    /// and continues using the current file (Requirement 11, criterion 5).
+    pub(crate) fn switch_directory(&mut self, new_directory: &Path) -> std::io::Result<()> {
+        // Flush current buffer before switching so no buffered records are lost.
+        self.writer.flush()?;
+
+        // Create the new directory (and parents) before opening the file.
+        fs::create_dir_all(new_directory)?;
+
+        let filename = generate_log_filename();
+        let new_path = new_directory.join(&filename);
+
+        let file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&new_path)?;
+
+        self.writer = BufWriter::with_capacity(BUFFER_CAPACITY, file);
+        self.current_path = new_path;
+        self.log_directory = new_directory.to_path_buf();
+        self.bytes_written = 0;
+
+        Ok(())
+    }
 }
 
 /// Generates a log filename using the current local timestamp.
@@ -165,6 +200,7 @@ pub(crate) fn generate_log_filename() -> String {
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
+    use proptest::prelude::*;
     use std::fs;
     use tempfile::TempDir;
 
@@ -404,5 +440,159 @@ mod tests {
         assert_ne!(writer.current_path(), old_path.as_path());
         assert!(writer.current_path().exists());
         assert!(old_path.exists()); // Old file should still exist
+    }
+
+    // ─── Directory Switch Tests (Requirement 11) ────────────────────────────
+
+    #[test]
+    fn switch_directory_opens_file_in_new_directory() {
+        // Validates: Requirement 11.2
+        let tmp = TempDir::new().expect("failed to create temp dir");
+        let dir1 = tmp.path().join("dir1");
+        let dir2 = tmp.path().join("dir2");
+
+        let mut writer = LogFileWriter::new(&dir1).expect("failed to create writer");
+        let old_path = writer.current_path().to_path_buf();
+
+        writer
+            .switch_directory(&dir2)
+            .expect("switch_directory failed");
+
+        assert!(dir2.exists(), "New directory should be created");
+        assert!(
+            writer.current_path().starts_with(&dir2),
+            "New file should be under the new directory"
+        );
+        assert_eq!(writer.log_directory(), dir2.as_path());
+        assert_eq!(writer.bytes_written(), 0);
+        assert!(old_path.exists(), "Old file should still exist");
+    }
+
+    #[test]
+    fn switch_directory_creates_nested_parents() {
+        // Validates: Requirement 11.2
+        let tmp = TempDir::new().expect("failed to create temp dir");
+        let mut writer = LogFileWriter::new(tmp.path()).expect("failed to create writer");
+
+        let nested = tmp.path().join("a").join("b").join("c");
+        writer
+            .switch_directory(&nested)
+            .expect("switch_directory failed");
+
+        assert!(nested.exists(), "Nested directory chain should be created");
+        assert!(writer.current_path().starts_with(&nested));
+    }
+
+    #[test]
+    fn switch_directory_flushes_current_buffer_before_switching() {
+        // Validates: Requirement 11.2 (no buffered records lost across the swap)
+        let tmp = TempDir::new().expect("failed to create temp dir");
+        let dir1 = tmp.path().join("dir1");
+        let dir2 = tmp.path().join("dir2");
+
+        let mut writer = LogFileWriter::new(&dir1).expect("failed to create writer");
+        let line = "buffered info before switch\n";
+        writer
+            .write_line(line, LogLevel::Info)
+            .expect("write failed");
+        let old_path = writer.current_path().to_path_buf();
+
+        writer
+            .switch_directory(&dir2)
+            .expect("switch_directory failed");
+
+        // The buffered INFO line must have been flushed to the old file.
+        let old_content = fs::read_to_string(&old_path).expect("read old file failed");
+        assert_eq!(old_content, line);
+    }
+
+    #[test]
+    fn switch_directory_failure_leaves_writer_on_current_file() {
+        // Validates: Requirement 11.5 (failure retains current file)
+        let tmp = TempDir::new().expect("failed to create temp dir");
+        let dir1 = tmp.path().join("dir1");
+        let mut writer = LogFileWriter::new(&dir1).expect("failed to create writer");
+        let old_path = writer.current_path().to_path_buf();
+
+        // Create a regular file, then try to switch into a path *inside* it,
+        // which cannot be created as a directory.
+        let blocker = tmp.path().join("blocker_file");
+        fs::write(&blocker, "x").expect("failed to write blocker");
+        let invalid_dir = blocker.join("cannot_create");
+
+        let result = writer.switch_directory(&invalid_dir);
+        assert!(result.is_err(), "switch into a file path should fail");
+
+        // Writer must still point at the original file and remain usable.
+        assert_eq!(writer.current_path(), old_path.as_path());
+        writer
+            .write_line("still works\n", LogLevel::Warn)
+            .expect("writer should still be usable after failed switch");
+    }
+
+    // ─── Property 11: Reconfigure Directory Swap ────────────────────────────
+
+    proptest! {
+        // Feature: logging-subsystem, Property 11: Reconfigure Directory Swap.
+        // For any records written before a directory switch and any records
+        // written after, the pre-switch records remain under the old directory
+        // and every post-switch record lands under the new directory. No
+        // pre-switch record is lost across the swap.
+        // Validates: Requirement 11.2, 11.9
+        #[test]
+        fn prop_switch_directory_routes_records_to_new_dir(
+            before in prop::collection::vec("[a-zA-Z0-9 ]{1,40}", 1..8),
+            after in prop::collection::vec("[a-zA-Z0-9 ]{1,40}", 1..8),
+        ) {
+            let base = TempDir::new().expect("tempdir");
+            let dir1 = base.path().join("d1");
+            let dir2 = base.path().join("d2");
+
+            let mut writer = LogFileWriter::new(&dir1).expect("writer");
+            let old_path = writer.current_path().to_path_buf();
+
+            // Write the "before" records (WARN forces a flush to disk).
+            for (i, msg) in before.iter().enumerate() {
+                let line = format!("BEFORE-{i}-{msg}\n");
+                writer.write_line(&line, LogLevel::Warn).expect("write before");
+            }
+
+            writer.switch_directory(&dir2).expect("switch");
+            let new_path = writer.current_path().to_path_buf();
+
+            // Write the "after" records.
+            for (i, msg) in after.iter().enumerate() {
+                let line = format!("AFTER-{i}-{msg}\n");
+                writer.write_line(&line, LogLevel::Warn).expect("write after");
+            }
+            writer.flush().expect("flush");
+
+            let old_content = fs::read_to_string(&old_path).expect("read old");
+            let new_content = fs::read_to_string(&new_path).expect("read new");
+
+            // Every "before" record is preserved in the old file (no loss).
+            for (i, msg) in before.iter().enumerate() {
+                let marker = format!("BEFORE-{i}-{msg}");
+                prop_assert!(
+                    old_content.contains(&marker),
+                    "pre-switch record missing from old file: {marker}"
+                );
+            }
+            // Every "after" record is in the new file, and none in the old file.
+            for (i, msg) in after.iter().enumerate() {
+                let marker = format!("AFTER-{i}-{msg}");
+                prop_assert!(
+                    new_content.contains(&marker),
+                    "post-switch record missing from new file: {marker}"
+                );
+                prop_assert!(
+                    !old_content.contains(&marker),
+                    "post-switch record leaked into old file: {marker}"
+                );
+            }
+            // The two files are distinct and the active dir is the new one.
+            prop_assert_ne!(old_path.as_path(), new_path.as_path());
+            prop_assert!(new_path.starts_with(&dir2));
+        }
     }
 }

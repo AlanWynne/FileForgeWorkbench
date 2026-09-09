@@ -4,6 +4,7 @@
 //! (any thread) and the dedicated writer thread. Uses `crossbeam-channel`
 //! with a capacity of 10,000 records.
 
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -27,8 +28,27 @@ pub(crate) enum ChannelMessage {
     Record(FormattedRecord),
     /// Request the writer to flush all buffered data to disk.
     Flush,
+    /// Apply new directory and rotation settings to the writer thread.
+    /// Carries the resolved settings so the writer can swap its file sink.
+    Reconfigure(ReconfigureRequest),
     /// Signal the writer thread to drain remaining records and shut down.
     Shutdown,
+}
+
+/// Payload for a runtime reconfiguration request delivered to the writer thread.
+///
+/// The minimum level is applied by the producer side (atomic store) before this
+/// message is sent, so this struct carries only the writer-owned settings.
+/// Validates: Requirement 11.
+#[derive(Debug, Clone)]
+pub(crate) struct ReconfigureRequest {
+    /// The new log directory. `None` means "keep the current directory"
+    /// (only rotation settings change).
+    pub directory: Option<PathBuf>,
+    /// The new maximum single-file size in MB (already clamped).
+    pub max_file_size_mb: u32,
+    /// The new maximum number of retained files (already clamped).
+    pub max_retained_files: u32,
 }
 
 /// A pre-formatted log line ready for writing to disk.
@@ -130,6 +150,16 @@ impl LogSender {
     /// Sends a flush command to the writer thread.
     pub(crate) fn send_flush(&self) {
         let _ = self.sender.try_send(ChannelMessage::Flush);
+    }
+
+    /// Sends a reconfiguration request to the writer thread.
+    ///
+    /// Uses a blocking send so the request is delivered even when the channel
+    /// is near capacity. Message ordering is preserved by the channel, so any
+    /// records queued before this call are written to the previous file and
+    /// records queued after are written to the new file (Requirement 11.9).
+    pub(crate) fn send_reconfigure(&self, request: ReconfigureRequest) {
+        let _ = self.sender.send(ChannelMessage::Reconfigure(request));
     }
 
     /// Sends a shutdown signal to the writer thread.

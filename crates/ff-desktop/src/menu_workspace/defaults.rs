@@ -156,7 +156,7 @@ group = "Namespaces"
 
 [[options]]
 key = "A"
-command = "SETTINGS"
+command = "A"
 description = "Browse all configuration keys (unfiltered flat list)"
 group = "All""#;
 

@@ -554,21 +554,77 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
 
 See `docs/specs/function-keys-and-history/cx-requirements.md` for full criteria.
 
-- [ ] CX.1 Add `workspace_name: Option<String>` to `TabState` in `tab_state.rs`
+- [x] CX.1 Add `workspace_name: Option<String>` to `TabState` in `tab_state.rs`
   - Satisfies: Req 1.1
-- [ ] CX.2 Add `NAME` command handler in `shell/commands.rs`
+- [x] CX.2 Add `NAME` command handler in `shell/commands.rs`
   - Satisfies: Req 1.2, 1.3, 1.4
-- [ ] CX.3 Update tab header rendering to show `workspace_name` when set
+- [x] CX.3 Update tab header rendering to show `workspace_name` when set
   - Satisfies: Req 1.4
-- [ ] CX.4 Persist and restore `workspace_name` in `session_manager.rs`
+- [x] CX.4 Persist and restore `workspace_name` in `session_manager.rs`
   - Satisfies: Req 1.5, 1.6, Req 4.1, 4.2, 4.3
-- [ ] CX.5 Extend `KEYS` command handler to accept optional name argument
+- [x] CX.5 Extend `KEYS` command handler to accept optional name argument
   - Satisfies: Req 2.1, 2.2, 2.3, 2.4
-- [ ] CX.6 Add `Map Name` read-only field to `KeyConfigDialog` header
+- [x] CX.6 Add `Map Name` read-only field to `KeyConfigDialog` header
   - Satisfies: Req 2.5
-- [ ] CX.7 Add `SPLIT DETACH` and context-sensitive `SPLIT` routing in `shell/commands.rs`
+- [x] CX.7 Add `SPLIT DETACH` and context-sensitive `SPLIT` routing in `shell/commands.rs`
   - Satisfies: Req 3.1, 3.2, 3.3, 3.4, 3.5, 3.6
-- [ ] CX.8 Write unit tests for all CX criteria
+- [x] CX.8 Write unit tests for all CX criteria
   - Validates: Req 1.1-1.6, Req 2.1-2.5, Req 3.1-3.6, Req 4.1-4.3
-- [ ] CX.9 Update `docs/quality/TCR.md` -- set all CR-NR-046 and CR-CH-010 rows to PASS
-- [ ] CX.10 Update `docs/specs/project-master/tasks.md` -- mark Phase CX complete
+- [x] CX.9 Update `docs/quality/TCR.md` -- set all CR-NR-046 and CR-CH-010 rows to PASS
+- [x] CX.10 Update `docs/specs/project-master/tasks.md` -- mark Phase CX complete
+
+
+---
+
+## Phase DE-fix -- END/RETURN Workspace-Close Semantics (CR-CH-016)
+
+> Revises the END/RETURN navigation behaviour so that issuing END or RETURN from
+> a POM tab closes only that POM Workspace when other Workspaces remain open, and
+> terminates the application only when the POM is the last Workspace. Also
+> reconciles the Key_Label_Bar blank-slot rule and the default Excluded_Command
+> set. See requirements Req 17.2, 17.2a, 17.4, 4.3, 8.2 and the glossary.
+
+- [ ] 33. Revise END-from-POM handler to close the Workspace instead of exiting
+  - [ ] 33.1 In `crates/ff-desktop/src/shell/commands.rs`, update the `END` handler: when the active tab is a POM AND more than one Workspace (tab) is open, close that POM tab and navigate to the previously active tab (via the `tab_history` stack), matching criterion 17.1 behaviour
+  - [ ] 33.2 In the same handler: when the active tab is a POM AND it is the only Workspace open, dispatch `file.exit` (terminate the application after unsaved-changes prompts)
+  - [ ] 33.3 Update the inline `// Validates:` comment to reference Requirement 17.2 and 17.2a
+  - [ ] 33.4 Write/adjust unit tests: END on a POM with other tabs open closes the POM and activates the prior tab; END on a POM that is the sole tab exits; END on a non-POM tab is unchanged (17.1)
+  - Covers: Requirement 17.2, 17.2a
+
+- [ ] 34. Revise RETURN-from-POM handler for consistency with END
+  - [ ] 34.1 In `crates/ff-desktop/src/shell/commands.rs`, update the `RETURN` handler: when the active tab is a POM AND more than one Workspace is open, close that POM tab and navigate to another open Workspace (the previously active tab, or the first remaining tab if none)
+  - [ ] 34.2 In the same handler: when the active tab is a POM AND it is the only Workspace open, dispatch `file.exit`
+  - [ ] 34.3 Update the inline `// Validates:` comment to reference Requirement 17.4
+  - [ ] 34.4 Write/adjust unit tests: RETURN on a POM with other tabs open closes the POM and activates another tab; RETURN on a sole POM tab exits; RETURN on a non-POM tab still navigates to the POM (17.3)
+  - Covers: Requirement 17.4
+
+- [ ] 35. Verify Key_Label_Bar blank-slot rule (Req 4.3 aligned to 13.2)
+  - [ ] 35.1 Confirm `KeyLabelBarModel::from_key_map` always emits a slot for every key (blank label for unassigned) and never omits a slot; add a unit test asserting no slot is omitted for unassigned keys if one does not already exist
+  - [ ] 35.2 If any render path omits blank slots, correct it so the fixed grid layout is preserved
+  - Covers: Requirement 4.3
+
+- [ ] 36. Verify END and RETURN are in the default Excluded_Command set (Req 8.2)
+  - [ ] 36.1 Confirm the built-in Excluded_Command set includes RETRIEVE, UNDO, REDO, END, RETURN; add/adjust a unit test asserting END and RETURN are excluded from Command_History
+  - [ ] 36.2 If END/RETURN are not already excluded, add them to the default set in `command_history.rs`
+  - Covers: Requirement 8.2
+
+- [ ] 37. Update Test Coverage Report for revised criteria
+  - [ ] 37.1 In `docs/quality/TCR.md`, add or update rows for Requirement 17.2, 17.2a, 17.4, 4.3, and 8.2 with their correct status after implementation
+  - Covers: Requirement 17.2, 17.2a, 17.4, 4.3, 8.2
+
+---
+
+## Phase DF -- RETRIEVE Argument Dispatch (CR-NR-054, Requirement 19 revised)
+
+- [ ] DF.1 Add `recall_list(history) -> Vec<String>` (most-recent-first, deduplicated keep-most-recent; item 0 = display number 1)
+  - Covers: Requirement 19.3
+- [ ] DF.2 Add `recall_by_number(history, n) -> Option<String>` (1-based; None when out of range)
+  - Covers: Requirement 19.4
+- [ ] DF.3 RETRIEVE argument dispatch: empty -> step back one entry (existing cycling); `LIST` -> open numbered overlay; `<n>` -> recall list item n into field (no execute); out-of-range -> field unchanged + status
+  - Covers: Requirement 19.1, 19.2, 19.4
+- [ ] DF.4 Ensure RETRIEVE (and its `LIST`/numeric argument) is never recorded in Command_History
+  - Covers: Requirement 19.8
+- [ ] DF.5 (ff-desktop) Render the numbered History_List overlay just below the command field; selection by click / Enter / number+RETRIEVE populates field without executing; Escape closes + clears; empty -> "No command history."
+  - Covers: Requirement 19.5, 19.6, 19.7, 19.9
+- [ ] DF.6 Unit tests: recall_list dedup + ordering; recall_by_number in/out of range; RETRIEVE empty/LIST/n dispatch; RETRIEVE not recorded in history
+  - Validates: Requirement 19.1-19.4, 19.8

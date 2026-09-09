@@ -160,6 +160,41 @@ This is a **Wave 0 (Foundation)** sub-project with no upstream dependencies.
   - [x] 20.6 Write PBT: control character escaping property
   - Covers: Requirement 2 (AC 2.5), Requirement 5, Requirement 8 (AC 8.4), Requirement 3 (AC 3.2), Requirement 2 (AC 2.3), Requirement 2 (AC 2.4)
 
+- [x] 21. Runtime reconfiguration API (`ff_logging::reconfigure`)
+  - [x] 21.1 Add `ChannelMessage::Reconfigure(ReconfigureRequest)` variant carrying new directory, level, and rotation limits
+  - [x] 21.2 Implement `reconfigure(config: LogConfig) -> LoggingStatus`: validate/clamp config (emit WARN records), update the atomic minimum level on the calling thread, and send the Reconfigure message to the writer thread; no-op if uninitialized or after shutdown signal
+  - [x] 21.3 Handle `Reconfigure` in the writer thread loop: flush current buffer; if directory changed, swap `LogFileWriter` to a freshly-opened file under the new dir (`switch_directory`, standard naming); update `max_file_size_mb` / `max_retained_files`
+  - [x] 21.4 On new-directory open failure, retain the current `LogFileWriter`, emit a WARN record, and drop no records
+  - [x] 21.5 On successful directory switch, write an INFO "logging reconfigured; directory = <path>" record to the new file
+  - [x] 21.6 Re-export `reconfigure` from `lib.rs`
+  - [x] 21.7 Write unit/integration tests: directory swap moves subsequent records to the new dir (tempdir); same-directory reconfigure keeps the same file; level change applies atomically; bad rotation values clamp with WARN; uninitialized and post-shutdown calls are safe no-ops
+  - [x] 21.8 Write PBT: reconfigure directory-swap property (Property 11) -- records after the call land under the new dir; no record lost; failed swap retains the old dir
+  - Covers: Requirement 11 (AC 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.8, 11.9, 11.10)
+
+- [x] 22. Desktop two-phase wiring (`ff-desktop`)
+  - [x] 22.1 Keep `init_default()` as startup step 1 (Phase 1) so no records are lost while config loads
+  - [x] 22.2 After `ff_config::init(...)` and schema registration, build a `LogConfig` from the resolved `logging.*` keys (level via `set_level_from_str`; empty `logging.directory` -> keep platform default; clamp size/retained)
+  - [x] 22.3 Call `ff_logging::reconfigure(log_config)` after config load and before the GUI shell is constructed
+  - [x] 22.4 Surface the returned `LoggingStatus` to the status-bar fallback indicator (reuse existing `is_fallback` wiring)
+  - [x] 22.5 Write a test asserting a non-default `logging.directory` (tempdir project config) results in log files under that directory after startup wiring runs
+  - Covers: Requirement 11 (AC 11.7), Requirement 4 (AC 4.2)
+
+- [ ] 23. Logging inventory and gap report tool (`tools/python/logging_inventory.py`)
+  - [ ] 23.1 Create `tools/python/logging_inventory.py` with a `log()` helper mirroring stdout to `tools/logs/logging-inventory.txt`, clearing the log at start (per tooling.md)
+  - [ ] 23.2 Walk every `*.rs` under `crates/`; classify each file/region as test vs non-test (files under `tests/` are all test; track `#[cfg(test)]` module brace depth)
+  - [ ] 23.3 Detect Log_Call_Sites: the five `ff_logging::log_*!` macros, `ff_logging::log(...)`/`log_lazy(...)` (parse literal `LogLevel::X`, else "dynamic"), and `PluginLogHandle` method calls; record crate, file, 1-based line, level, enclosing item
+  - [ ] 23.4 Detect Silent_Error_Site candidates in non-test lines: `let _ =`, trailing `.ok()`, `.unwrap()`, `.expect(`; group by crate/file:line/category
+  - [ ] 23.5 Identify Logging_Gaps: crates with non-test `.rs` source but zero Log_Call_Sites
+  - [ ] 23.6 Record unreadable/unparseable files and continue (no abort)
+  - [ ] 23.7 Write the deterministic Markdown report to `docs/quality/logging-inventory.md` (crates sorted, files by path, sites by line); overwrite any prior report; write no other files
+  - Covers: Requirement 12 (AC 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7, 12.8, 12.9)
+
+- [ ] 24. Verify and document the inventory tool
+  - [ ] 24.1 Run the tool; confirm `docs/quality/logging-inventory.md` is generated and `tools/logs/logging-inventory.txt` mirrors the run
+  - [ ] 24.2 Run twice; confirm the report is byte-identical except the timestamp line (Property 12)
+  - [ ] 24.3 Add a short usage note to `tools/README.md`
+  - Covers: Requirement 12 (AC 12.5, 12.9); Property 12
+
 ---
 
 ## Property-Based Test Definitions
@@ -272,3 +307,5 @@ This is a **Wave 0 (Foundation)** sub-project with no upstream dependencies.
 | Req 8: Thread Safety | AC 8.1–8.6 | Tasks 10, 13, 18, 20 |
 | Req 9: Platform Integration | AC 9.1–9.5 | Tasks 16, 19 |
 | Req 10: Plugin Integration | AC 10.1–10.6 | Task 15 |
+| Req 11: Runtime Reconfiguration | AC 11.1–11.10 | Tasks 21, 22 |
+| Req 12: Inventory/Gap Tool | AC 12.1–12.9 | Tasks 23, 24 |

@@ -1112,6 +1112,82 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 
 ---
 
+### Phase DC -- Two-Phase Logging Init (CR-CH-015, bug B033) -- SPEC ONLY
+
+> Fixes B033: `logging.directory` is ignored at runtime because `ff-desktop`
+> calls `init_default()` before config loads and never reconfigures. Adds
+> logging-subsystem Requirement 11 (Runtime Reconfiguration) and a new
+> `ff_logging::reconfigure(LogConfig)` API, then wires the desktop startup to
+> re-apply the loaded `logging.*` settings. Makes config-only log redirection
+> work with no recompile.
+
+- [x] DC.1 Requirements gate -- logging-subsystem/requirements.md Req 11 (AC 11.1-11.10), design.md Section 11, tasks.md Tasks 21-22, TCR rows
+- [x] DC.2 Implement `ff_logging::reconfigure` -- ChannelMessage::Reconfigure, writer-thread file swap (`switch_directory`), atomic level update, WARN on failure, INFO on switch (logging-subsystem Task 21)
+- [x] DC.3 Wire two-phase init in `ff-desktop` main.rs -- keep init_default() first, build LogConfig from resolved config keys (`apply_logging_config`), call reconfigure after config load and before GUI shell (logging-subsystem Task 22)
+- [x] DC.4 Tests -- reconfigure unit/integration + Property 11 (ff-logging); desktop tests asserting project logging.directory resolves and apply_logging_config is panic-safe
+- [x] DC.5 Update `docs/quality/TCR.md` rows to PASS after implementation; verify.ps1 clean (9008 tests pass, ai-review.log empty)
+
+---
+
+### Phase DD -- Logging Inventory and Gap Report Tool (CR-NR-055)
+
+> Adds a read-only Python maintenance tool that scans the workspace and
+> regenerates a logging inventory (every log call site by crate/level) plus a
+> gap report (crates with no logging, silent-error candidates). Output is a
+> tracked artefact under `docs/quality/`; stdout mirrored to `tools/logs/`.
+> Adds logging-subsystem Requirement 12 and Tasks 23-24. No `ff-logging`
+> crate source changes.
+
+- [ ] DD.1 Requirements gate -- logging-subsystem/requirements.md Req 12 (AC 12.1-12.9), design.md Section 12 + Property 12, tasks.md Tasks 23-24, TCR rows
+- [ ] DD.2 Implement `tools/python/logging_inventory.py` -- scan crates, detect call sites + gaps + silent-error candidates, write `docs/quality/logging-inventory.md`, mirror log (logging-subsystem Task 23)
+- [ ] DD.3 Run and verify -- report generated, run-twice determinism, usage note in `tools/README.md` (logging-subsystem Task 24)
+- [ ] DD.4 Update `docs/quality/TCR.md` Req 12 rows to their correct status
+
+---
+
+### Phase DE-fix -- END/RETURN Workspace-Close Semantics (CR-CH-016) -- depends on function-keys-and-history
+
+> Revises END/RETURN so that issuing either from a POM tab closes only that POM
+> Workspace when other Workspaces remain open, and terminates the application only
+> when the POM is the last Workspace (new criterion 17.2a). Reconciles the
+> Key_Label_Bar blank-slot rule (Req 4.3 aligned to 13.2) and the default
+> Excluded_Command set (Req 8.2 + glossary add END, RETURN). Touches
+> `ff-desktop` shell command handlers only.
+
+- [ ] DE-fix.1 Requirements gate -- function-keys-and-history/requirements.md Req 17.2/17.2a/17.4/4.3/8.2 + glossary revised; tasks 33-37 added; TCR rows (DONE for docs; awaiting code)
+- [ ] DE-fix.2 Revise END-from-POM handler: close POM Workspace when others open, exit only when sole Workspace (function-keys-and-history Task 33)
+- [ ] DE-fix.3 Revise RETURN-from-POM handler for consistency with END (function-keys-and-history Task 34)
+- [ ] DE-fix.4 Verify Key_Label_Bar never omits blank slots; verify END/RETURN in default Excluded_Command set (function-keys-and-history Tasks 35-36)
+- [ ] DE-fix.5 Update `docs/quality/TCR.md` rows for Req 17.2, 17.2a, 17.4, 4.3, 8.2 (function-keys-and-history Task 37)
+
+---
+
+### Phase DF -- Command Arguments and Command Chaining (CR-NR-054) -- SPEC ONLY
+
+> Adds a general "commands accept an argument" capability: a `Command ===>` line
+> is parsed into a verb + argument, and pressing a function key forwards the
+> command-field contents to the bound command as its argument (type `8`, press
+> F8 -> `DOWN 8`; type `LIST`, press RETRIEVE -> `RETRIEVE LIST`). Scroll commands
+> gain `M`/`MAX` and line/column counts; RETRIEVE becomes argument-driven
+> (empty / `LIST` numbered overlay / recall-by-number); `MENU <name> <key>` opens
+> a menu and activates an option by key (== `=0.E`). Chaining is key-match only.
+
+- [ ] DF.1 Add command-framework Requirement 9 (Command Arguments) -- DONE (spec appended)
+- [ ] DF.2 Add navigation-commands Requirement 20 (Scroll Amount Arguments) -- DONE (spec appended)
+- [ ] DF.3 Revise function-keys-and-history Requirement 19 (RETRIEVE argument dispatch) -- DONE (spec appended)
+- [ ] DF.4 Extend menu-workspace Requirement 5 (5.5-5.6) and Requirement 11 (11.7-11.10) for MENU chaining -- DONE (spec appended)
+- [ ] DF.5 Design deltas in all four sub-project design.md files -- DONE (appended)
+- [ ] DF.6 Add TCR NOT COVERED rows for every new criterion (command-framework 9.1-9.10, navigation-commands 20.1-20.5, function-keys Req 19.1-19.9, menu-workspace 5.5-5.6/11.7-11.10)
+- [ ] DF.7 (impl) `ff-command`: `parse_invocation` verb/arg + `arg` param at the dispatch boundary; fixed-arg on bindings
+- [ ] DF.8 (impl) `ff-navigation-commands`: `parse_scroll_amount`; UP/DOWN/LEFT/RIGHT read `arg` (M/MAX/n)
+- [ ] DF.9 (impl) `ff-desktop`: function-key forwarding of the command field as the argument; scroll field-clear; RETRIEVE overlay UI; MENU `<name> <key>` chaining
+- [ ] DF.10 (impl) `function-keys-and-history` / `ff-keys`: `recall_list` + `recall_by_number`; RETRIEVE argument dispatch; RETRIEVE excluded from history
+
+> NOTE: DF.7-DF.10 (code) are blocked until the CR-CH-015 (Phase DC) ff-logging
+> changes compile, since ff-desktop depends on ff-logging.
+
+---
+
 ## Summary
 
 | Status | Count |
@@ -1137,4 +1213,7 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 | `[~]` Phase DB | Unified Command Target + Command Configurator + Descriptor Persistence -- spec (DB.1-DB.7) done. Impl: DB.8 DONE (CommandTarget), DB.11 DONE (descriptor persistence, unblocks Task 14.5), DB.9 DONE (Command_Store + resolver + Command Configurator Context UI -- command-configurator Task 4 + 6.1), DB.10 DONE (ff-shell external Detached/Captured execution), DB.4 DONE (menu-option + shortcut binding via Target_Resolution; inline `[options.target]`), MENU command DONE (menu-workspace Req 11 + Menu_Target Req 10.4), external desktop adapter DONE (command-configurator Task 3: ff-shell wired into ff-desktop, ${workspace_root}/${file_dir} expansion, shell.mode prompt-confirm dialog, External target execution). Remaining: CustomWorkspace/Macro binding execution and a dockable Output_Panel view are follow-up UI tasks |
 | Sub-project audit | 67 of 69 sub-projects with tasks.md are ALL DONE; 2 have pending items |
 | Test count | 759 passing (ff-desktop), 0 failures (cargo test --workspace after Phase CX) |
+| `[x]` Phase DC complete | Two-Phase Logging Init (CR-CH-015, B033) -- logging-subsystem Req 11 + `ff_logging::reconfigure` + desktop `apply_logging_config` wiring (DC.1-DC.5); 9008 tests pass, verify.ps1 clean |
+| `[ ]` Phase DD | Logging Inventory and Gap Report Tool (CR-NR-055) -- adds logging-subsystem Req 12 + `tools/python/logging_inventory.py` -> `docs/quality/logging-inventory.md` (DD.1-DD.4) |
+| `[ ]` Phase DE-fix | END/RETURN from POM close the Workspace, exit only when sole Workspace (CR-CH-016) -- SPEC DONE (Req 17.2/17.2a/17.4/4.3/8.2), impl pending (DE-fix.1-DE-fix.5) |
 | Active work | Phase CZ -- FFTest Script Suite + Context Inspection (next step) |

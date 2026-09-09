@@ -1,0 +1,28 @@
+# Project-layer configuration for FileForgeWorkbench.
+#
+# Loaded automatically by the configuration system (ff-config) when the project
+# root is opened. Project-layer values override the platform defaults. See
+# docs/specs/configuration-system and docs/specs/logging-subsystem.
+#
+# PURPOSE (development): redirect application log output into the project tree
+# so the logs are readable in-repo (by developers and by an AI log-review
+# helper) instead of the platform default location
+# (%LOCALAPPDATA%\FileForgeWorkbench\logs on Windows).
+#
+# This uses the logging.directory setting sanctioned by logging-subsystem
+# Requirement 4.1/4.2 (relative path, resolved against the working directory),
+# applied at runtime by the two-phase init added in Phase DC (Requirement 11).
+# The target folder is gitignored.
+
+[logging]
+# Relative path -- resolved against the application working directory (the
+# repository root during `cargo run`). Keeps logs inside the repo for dev.
+directory = ".ffworkbench/logs"
+
+# Verbose during development so a log-review helper has DEBUG/INFO detail.
+# Valid: "trace", "debug", "info", "warn", "error". Default is "info".
+level = "debug"
+
+# Defaults for rotation; small files are easier to read and triage.
+max_file_size_mb = 10
+max_retained_files = 5

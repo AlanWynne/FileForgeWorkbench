@@ -122,7 +122,7 @@ pub use plugin_handle::PluginLogHandle;
 
 pub use init::{
     current_level, dropped_count, init, init_default, install_panic_hook, is_fallback,
-    is_logging_available, log, log_lazy,
+    is_logging_available, log, log_lazy, reconfigure,
 };
 
 pub use shutdown::shutdown;

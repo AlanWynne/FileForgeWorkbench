@@ -236,6 +236,69 @@ pub fn init_default() -> LoggingStatus {
     init(LogConfig::default())
 }
 
+/// Re-apply configuration to an already-initialized logging subsystem.
+///
+/// This is the second half of two-phase startup: `init` / `init_default` runs
+/// first (before the configuration system exists), and `reconfigure` runs once
+/// the configuration has been loaded. If the directory changed, the writer
+/// thread flushes and closes the current file and opens a new file under the
+/// new directory. The minimum level is applied atomically on this thread so
+/// producers see it immediately; rotation settings are handed to the writer
+/// thread. Out-of-range rotation values are clamped, each emitting a WARN
+/// record (same rules as [`init`]).
+///
+/// Returns [`LoggingStatus::Active`] when the subsystem is initialized and the
+/// request was dispatched, or [`LoggingStatus::Fallback`] when the subsystem is
+/// uninitialized, in no-op fallback mode, or has already received a shutdown
+/// signal. Never returns an error and never panics.
+///
+/// # Requirement Coverage
+///
+/// Implements Requirement 11 (AC 11.1-11.6, 11.8-11.10).
+pub fn reconfigure(config: LogConfig) -> LoggingStatus {
+    // No-op after shutdown signal (Requirement 11, AC 11.6).
+    if IS_SHUTDOWN.load(Ordering::Acquire) {
+        return LoggingStatus::Fallback;
+    }
+
+    // No-op if never initialized (Requirement 11, AC 11.6).
+    let Some(subsystem) = SUBSYSTEM.get() else {
+        return LoggingStatus::Fallback;
+    };
+
+    // If we are in no-op fallback mode, there is no file sink to reconfigure.
+    if is_fallback_active() {
+        return LoggingStatus::Fallback;
+    }
+
+    // Validate and clamp rotation values (Requirement 11, AC 11.4).
+    let mut config = config;
+    let warnings = config.validate();
+
+    // Apply the new minimum level atomically so producers filter against it
+    // immediately (Requirement 11, AC 11.4).
+    subsystem.level.store(config.level as u8, Ordering::Relaxed);
+
+    // Emit any clamping warnings through the normal channel.
+    for warning in &warnings {
+        log(LogLevel::Warn, "ff_logging::reconfigure", warning);
+    }
+
+    // Hand the directory and rotation settings to the writer thread. The
+    // directory is always provided; the writer compares it to its current
+    // directory and only switches files when it actually differs
+    // (Requirement 11, AC 11.2 / 11.3).
+    subsystem
+        .sender
+        .send_reconfigure(crate::channel::ReconfigureRequest {
+            directory: Some(config.directory.clone()),
+            max_file_size_mb: config.max_file_size_mb,
+            max_retained_files: config.max_retained_files,
+        });
+
+    LoggingStatus::Active
+}
+
 /// Install the custom panic hook that flushes logs within 500ms.
 ///
 /// Captures the previous panic hook and chains to it after attempting a
@@ -424,10 +487,16 @@ pub(crate) fn take_writer_handle() -> Option<std::thread::JoinHandle<()>> {
 fn writer_thread_loop(
     mut writer: LogFileWriter,
     receiver: crate::channel::LogReceiver,
-    max_file_size_mb: u32,
-    max_retained_files: u32,
-    log_directory: &Path,
+    initial_max_file_size_mb: u32,
+    initial_max_retained_files: u32,
+    initial_log_directory: &Path,
 ) {
+    // Rotation settings and the active directory are mutable so a Reconfigure
+    // message can update them at runtime (Requirement 11).
+    let mut max_file_size_mb = initial_max_file_size_mb;
+    let mut max_retained_files = initial_max_retained_files;
+    let mut log_directory = initial_log_directory.to_path_buf();
+
     loop {
         match receiver.recv_timeout() {
             Ok(ChannelMessage::Record(record)) => {
@@ -436,11 +505,20 @@ fn writer_thread_loop(
                     &record,
                     max_file_size_mb,
                     max_retained_files,
-                    log_directory,
+                    &log_directory,
                 );
             }
             Ok(ChannelMessage::Flush) => {
                 let _ = writer.flush();
+            }
+            Ok(ChannelMessage::Reconfigure(request)) => {
+                handle_reconfigure(
+                    &mut writer,
+                    request,
+                    &mut max_file_size_mb,
+                    &mut max_retained_files,
+                    &mut log_directory,
+                );
             }
             Ok(ChannelMessage::Shutdown) => {
                 // Drain all remaining records from the channel
@@ -453,11 +531,20 @@ fn writer_thread_loop(
                                 &record,
                                 max_file_size_mb,
                                 max_retained_files,
-                                log_directory,
+                                &log_directory,
                             );
                         }
                         ChannelMessage::Flush => {
                             let _ = writer.flush();
+                        }
+                        ChannelMessage::Reconfigure(request) => {
+                            handle_reconfigure(
+                                &mut writer,
+                                request,
+                                &mut max_file_size_mb,
+                                &mut max_retained_files,
+                                &mut log_directory,
+                            );
                         }
                         ChannelMessage::Shutdown => {
                             // Ignore duplicate shutdown signals
@@ -471,6 +558,50 @@ fn writer_thread_loop(
             Err(()) => {
                 // Timeout — periodic flush for buffered DEBUG/INFO records
                 let _ = writer.flush();
+            }
+        }
+    }
+}
+
+/// Applies a reconfiguration request on the writer thread.
+///
+/// Updates the rotation settings, and if the request carries a new directory
+/// that differs from the current one, switches the writer to a fresh file
+/// under it. On a successful directory switch, writes an INFO record to the
+/// new file (Requirement 11.8). On failure, retains the current file and
+/// writes a WARN record (Requirement 11.5); no buffered records are lost.
+fn handle_reconfigure(
+    writer: &mut LogFileWriter,
+    request: crate::channel::ReconfigureRequest,
+    max_file_size_mb: &mut u32,
+    max_retained_files: &mut u32,
+    log_directory: &mut PathBuf,
+) {
+    // Rotation settings always apply.
+    *max_file_size_mb = request.max_file_size_mb;
+    *max_retained_files = request.max_retained_files;
+
+    // Directory change only when a new, different directory is requested.
+    if let Some(new_dir) = request.directory {
+        if new_dir != *log_directory {
+            match writer.switch_directory(&new_dir) {
+                Ok(()) => {
+                    *log_directory = new_dir.clone();
+                    let info_line = format!(
+                        "INFO  [ff_logging::init] Logging reconfigured; directory = {}\n",
+                        new_dir.display()
+                    );
+                    let _ = writer.write_line(&info_line, LogLevel::Info);
+                }
+                Err(err) => {
+                    let warn_line = format!(
+                        "WARN  [ff_logging::init] Logging reconfigure failed to switch to '{}': {}. Retaining current directory '{}'.\n",
+                        new_dir.display(),
+                        err,
+                        log_directory.display()
+                    );
+                    let _ = writer.write_line(&warn_line, LogLevel::Warn);
+                }
             }
         }
     }

@@ -2004,9 +2004,12 @@ fn settings_all_view_has_no_namespace_filter() {
     assert_eq!(shell.tabs.active_tab().title, "[SETTINGS]");
 }
 
-/// Validates: cw-requirements.md Requirement 10.4 -- END from namespace view returns to menu level.
+/// Validates: cw-requirements.md Requirement 10.4 -- END from a namespace view
+/// returns to the Settings_Menu (the data-driven Menu_Workspace), not the flat
+/// All-Settings view.
 #[test]
 fn settings_end_from_namespace_view_returns_to_menu() {
+    use crate::tab_state::TabKind;
     let mut shell = make_shell();
     shell.handle_command("SETTINGS editor");
     assert_eq!(
@@ -2014,12 +2017,12 @@ fn settings_end_from_namespace_view_returns_to_menu() {
         Some("editor")
     );
     shell.handle_command("END");
-    // END clears the namespace filter, returning to the unfiltered Settings level.
-    assert!(
-        shell.settings_panel.namespace_filter.is_none(),
-        "END from a namespace view must return to the Settings menu level"
+    // END returns to the Settings_Menu (Menu_Workspace), not the flat list.
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::MenuWorkspace,
+        "END from a namespace view must return to the Settings_Menu"
     );
-    assert_eq!(shell.tabs.active_tab().title, "[SETTINGS]");
 }
 
 // === Phase CV: POM extended option routing (9, S, B) =====================
@@ -4004,4 +4007,99 @@ fn external_placeholder_unresolved_expands_to_empty() {
     // No active workspace and an unsaved active tab -> both placeholders empty.
     let expanded = shell.expand_external_placeholders("A${workspace_root}B${file_dir}C");
     assert_eq!(expanded, "ABC");
+}
+
+// === B032: Settings opens the data-driven Settings_Menu ====================
+
+// Validates: cw-requirements.md Req 9.1; configuration-system Req 15.1 --
+// bare SETTINGS opens the Settings_Menu (Menu_Workspace), not the flat panel.
+#[test]
+fn settings_command_opens_menu_workspace_not_flat_panel() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("SETTINGS");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::MenuWorkspace,
+        "bare SETTINGS must open the data-driven Settings_Menu, not the flat SettingsPanel"
+    );
+}
+
+// Validates: cw-requirements.md Req 9.1 -- option 0 / =0 open the Settings_Menu.
+#[test]
+fn settings_option_zero_opens_menu_workspace() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("0");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::MenuWorkspace);
+}
+
+// Validates: cw-requirements.md Req 9.4 -- option A opens the unfiltered flat
+// Settings panel (the All-Settings view), NOT the menu.
+#[test]
+fn settings_option_a_opens_flat_panel() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("A");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::SettingsPanel);
+    assert!(shell.settings_panel.namespace_filter.is_none());
+    assert_eq!(shell.tabs.active_tab().title, "[SETTINGS]");
+}
+
+// Validates: cw-requirements.md Req 10.1 -- SETTINGS <ns> opens the filtered
+// Settings_Namespace_View (flat panel with the namespace prefix applied).
+#[test]
+fn settings_namespace_opens_filtered_flat_panel() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("SETTINGS editor");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::SettingsPanel);
+    assert_eq!(
+        shell.settings_panel.namespace_filter.as_deref(),
+        Some("editor")
+    );
+    assert_eq!(shell.tabs.active_tab().title, "[SETTINGS:editor]");
+}
+
+// Validates: cw-requirements.md Req 10.4 / 15.10 -- END from the Settings_Menu
+// (a Menu_Workspace) returns to the POM.
+#[test]
+fn settings_menu_end_returns_to_pom() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("SETTINGS");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::MenuWorkspace);
+    shell.handle_command("END");
+    // END on a Menu_Workspace requests the deferred return-to-POM transform.
+    assert!(
+        shell.pending_return_to_pom,
+        "END from the Settings_Menu must return to POM"
+    );
+    let idx = shell.tabs.active_index();
+    if let Some(tab) = shell.tabs.tabs_mut().get_mut(idx) {
+        tab.kind = TabKind::PrimaryOptionMenu;
+        tab.title = "[POM]".to_string();
+    }
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
+}
+
+// Validates: cw-requirements.md Req 11.5 -- the default settings.toml option A
+// carries the "A" command (opens the flat list, not a SETTINGS-menu recursion).
+#[test]
+fn default_settings_toml_option_a_command_is_a() {
+    use crate::menu_workspace::loader::load_menu_file;
+    use std::io::Write;
+    let mut f = tempfile::NamedTempFile::new().expect("tempfile");
+    f.write_all(crate::menu_workspace::defaults::DEFAULT_SETTINGS_TOML.as_bytes())
+        .expect("write");
+    let menu = load_menu_file(f.path()).expect("valid settings.toml");
+    let opt_a = menu
+        .options
+        .iter()
+        .find(|o| o.key == "A")
+        .expect("option A present");
+    assert_eq!(
+        opt_a.command, "A",
+        "option A must open the flat All-Settings list, not re-open the Settings_Menu"
+    );
 }

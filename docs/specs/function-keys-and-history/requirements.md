@@ -4,7 +4,7 @@
 
 This spec defines the **Function Keys and Command History** subsystem for FileForgeWorkbench (`ff-function-keys` crate). It covers three closely related capabilities inspired by IBM ISPF/PDF workflows:
 
-1. **Configurable Function Keys** -- Function keys F1–F24 can be assigned to any registered command or macro invocation. A global default key map provides consistent bindings regardless of file type. Individual language profiles may define their own key maps that fully replace the global map when that profile is active.
+1. **Configurable Function Keys** -- Function keys can be assigned to any registered command or macro invocation. The Key_Configuration_Dialog (Requirement 20, redesigned in Phase DE) edits the physical range F1 to F12 across six PCOMM modifier layers (Base, SHIFT, CTRL, ALT, ALTGR, CTRL+SHIFT); the underlying Global_Key_Map and Profile_Key_Map configuration still accept the historical F1-F24 identifiers for backward compatibility. A global default key map provides consistent bindings regardless of file type. Individual language profiles may define their own key maps that fully replace the global map when that profile is active.
 
 2. **Key Label Bar** -- A visual display region showing the current function key assignments, rendered in the workbench footer area. This mirrors ISPF's bottom-of-screen key label display and serves as an always-visible command reference.
 
@@ -42,7 +42,11 @@ All function key assignments route through the command framework -- pressing a f
 | **Global_Key_Map** | The Key_Map loaded from the workbench configuration that applies when no Profile_Key_Map overrides it. | [FFE-FKEYS] |
 | **Profile_Key_Map** | A Key_Map associated with a specific Language_Profile that fully replaces the Global_Key_Map when that profile is active. | [FFE-FKEYS] |
 | **Language_Profile** | A per-language configuration file (e.g., `languages/cobol.toml`) that controls syntax, keywords, and may optionally define a Profile_Key_Map via a `[key_map]` section. | [FFE-FKEYS] |
-| **Function_Key** | A keyboard key in the set F1–F24, subject to platform key availability. | [FFE-FKEYS] |
+| **Function_Key** | A physical keyboard key in the set F1 to F12, subject to platform key availability. The Key_Configuration_Dialog (Requirement 20) reaches the full logical 3270 PF key set by combining these physical keys with the Modifier_Layers rather than by using physical keys F13 to F24. The Global_Key_Map and Profile_Key_Map continue to accept configuration entries in the historical F1-F24 range (Requirement 1.3) for backward compatibility, but the redesigned dialog edits only F1 to F12. | [FFE-FKEYS] |
+| **Modifier_Layer** | One of the six PCOMM-style layers on which a Function_Key may carry an independent binding: Base (no modifier), SHIFT, CTRL, ALT, ALTGR, and CTRL+SHIFT. A 3270 PCOMM session emulates 24 logical PF keys as F1 to F12 on the Base and SHIFT layers; the remaining layers extend the addressable command set. | New (Phase DE) |
+| **ModifiedKey** | The runtime type addressing one binding slot: a Function_Key (F1 to F12) paired with a Modifier_Layer, giving 72 slots per key map. | New (Phase DE) |
+| **Command_Picker** | The listbox or dropdown selector in the Key_Configuration_Dialog that lets the user choose a binding's command from the Command_Definitions in the Command_Store, plus an "unassigned" entry. Replaces the previous free-text command field. | New (Phase DE) |
+| **Command_Store** | The TOML file holding all Command_Definitions, owned by the command-configurator spec (command-configurator Requirement 1). Referenced here as the authoritative source of selectable commands and their descriptions. | command-configurator |
 | **Key_Label_Bar** | The UI region rendered in the workbench footer that displays the current function key assignments as labelled slots. | [FFE-FKEYS] |
 | **Key_Map_Resolver** | The subsystem that selects the active Key_Map by evaluating the Global_Key_Map and any Profile_Key_Map for the active Language_Profile. | [FFE-FKEYS] |
 | **Command_History** | The ordered, deduplicated, bounded list of previously entered primary commands maintained per user across sessions. | [FFE-FKEYS] |
@@ -51,7 +55,7 @@ All function key assignments route through the command framework -- pressing a f
 | **Retrieve_Pointer** | An internal cursor into Command_History that advances backward on each successive RETRIEVE invocation and resets when a non-RETRIEVE command is submitted. | [FFE-FKEYS] |
 | **History_Dropdown** | The interactive list control attached to the Primary_Command_Field that exposes Command_History for mouse or keyboard selection. | [FFE-FKEYS] |
 | **Primary_Command_Field** | The single-line text input labelled "Command ===>" positioned in the command area above the editor, used for direct ISPF-style command entry. Defined in `menu-and-statusbar`. | [FFE-FKEYS] |
-| **Excluded_Command** | A command that is never added to Command_History (UNDO, REDO, RETRIEVE). | [FFE-FKEYS, WB] |
+| **Excluded_Command** | A command that is never added to Command_History. The default set is UNDO, REDO, RETRIEVE (Requirement 8.2), plus the navigation meta-commands END and RETURN (Requirement 17.7); additional commands may be configured (Requirement 8.3). | [FFE-FKEYS, WB] |
 
 ---
 
@@ -117,7 +121,7 @@ All function key assignments route through the command framework -- pressing a f
 
 1. THE Key_Label_Bar SHALL be rendered in the workbench footer region, below the main editing surface. It SHALL be simultaneously visible with the Status_Bar defined in `menu-and-statusbar`. The exact relative positioning (separate row, combined row, or stacked) is an implementation decision.
 2. THE Key_Label_Bar SHALL display the key name (e.g., "F3") and a short label for each assigned Function_Key in the active Key_Map.
-3. WHEN a Function_Key has no assignment in the active Key_Map, THE Key_Label_Bar SHALL display that key's slot as blank or omit it entirely.
+3. WHEN a Function_Key has no assignment in the active Key_Map, THE Key_Label_Bar SHALL display that key's slot as blank (the key name shown, the label area empty) and SHALL NOT omit the slot, so that the fixed grid layout is preserved. (REVISED: aligned with Requirement 13.2, which is authoritative; the earlier "or omit it entirely" allowance is removed.)
 4. THE Key_Label_Bar label for each key SHALL be derived from the first token of the assigned command string (e.g., command `"FIND 'ERROR' ALL"` yields label `"FIND"`) unless an explicit label is configured.
 5. WHERE an explicit short label is configured for a Function_Key assignment (via the `label` field in the key map table), THE Key_Label_Bar SHALL display that explicit label instead of the derived label.
 6. WHEN the active Key_Map changes (due to profile switch, configuration hot-reload, or tab change), THE Key_Label_Bar SHALL update its display in the same rendering frame as the Key_Map change.
@@ -183,7 +187,7 @@ All function key assignments route through the command framework -- pressing a f
 #### Acceptance Criteria
 
 1. THE Command_History subsystem SHALL maintain a set of Excluded_Commands that are never added to Command_History regardless of invocation source (typed, function key, macro, menu).
-2. THE default Excluded_Command set SHALL contain: `RETRIEVE`, `UNDO`, `REDO`.
+2. THE default Excluded_Command set SHALL contain: `RETRIEVE`, `UNDO`, `REDO`, and the navigation meta-commands `END` and `RETURN` (added by Requirement 17.7). These five commands constitute the built-in exclusion set before any user-configured additions (Requirement 8.3).
 3. THE Excluded_Command set SHALL be configurable via the configuration-system, allowing users to add additional commands to the exclusion list.
 4. WHEN an Excluded_Command is submitted on the Primary_Command_Field or dispatched via a function key, THE Command_History subsystem SHALL NOT record it in Command_History and SHALL NOT affect the Retrieve_Pointer position.
 
@@ -261,11 +265,13 @@ All function key assignments route through the command framework -- pressing a f
 
 **User Story:** As a workbench user, I want the Key Label Bar to display all 24 function key assignments across two rows at the bottom of the window, so that I can see the full set of available shortcuts at a glance.
 
-**Source:** New requirement -- extension of Requirement 4 to support F1–F24 in a two-row layout.
+**Source:** New requirement -- extension of Requirement 4 to support F1-F24 in a two-row layout.
+
+**Reconciliation note (Phase DE, CR-CH-014):** The Key_Configuration_Dialog redesign (Requirement 20) restricts the editable physical range to F1 to F12. Requirement 20.15 states the Key_Label_Bar continues to display the Base F1 to F12 bindings. This Requirement 13 (two rows, F13-F24 in the second row) predates that redesign and is retained for backward compatibility with any Global_Key_Map still using F13-F24 identifiers (Requirement 1.3). A future change request should decide whether the second F13-F24 row is retired in favour of a single F1-F12 row plus modifier-layer indicators; that decision is out of scope for CR-CH-014 and is not made here.
 
 #### Acceptance Criteria
 
-1. THE Key_Label_Bar SHALL display function key assignments in two rows of up to 12 slots each: the first row SHALL display F1–F12 and the second row SHALL display F13–F24.
+1. THE Key_Label_Bar SHALL display function key assignments in two rows of up to 12 slots each: the first row SHALL display F1-F12 and the second row SHALL display F13-F24.
 2. WHEN a function key has no assignment in the active Key_Map, THE Key_Label_Bar SHALL display that key's slot as blank (key name shown, label area empty) rather than omitting the slot entirely, so that the two-row grid layout is preserved.
 3. THE Key_Label_Bar SHALL display each slot as a pair: the key name (e.g., "F3") followed by the short label (e.g., "END"), separated by a space or visual divider consistent with the active theme.
 4. THE two-row layout SHALL be rendered in the workbench footer region below the main editing surface, occupying at most two lines of display height.
@@ -288,6 +294,8 @@ All function key assignments route through the command framework -- pressing a f
 5. THE Context_Key_Map model SHALL use the same full-replacement semantics as the Profile_Key_Map: when a Context_Key_Map is active, the Global_Key_Map is entirely inactive for that context; keys not defined in the Context_Key_Map are unassigned.
 6. THE context name used for lookup SHALL be a stable string identifier assigned to each Workspace kind: `"pom"` for the Home Context (Primary Option Menu), `"editor"` for Editor Context Workspaces, `"settings"` for the Settings Context, `"files"` for the Catalog Explorer Context, `"hex"` for Hex Context, `"toolchain"` for the Compiler Context.
 7. THE configuration system SHALL accept a `[context_key_maps]` section at the top level of the workbench configuration, containing one sub-table per context name.
+
+8. THE Context_Key_Map SHALL use the same ModifiedKey slot model and extended key-name prefixes as the Global_Key_Map (Requirement 20.11, 20.12): each context sub-table MAY define Base bindings (`F1`-`F12`) and modifier-layer bindings (`SF`, `CF`, `AF`, `GF`, `XF` prefixes for SHIFT, CTRL, ALT, ALTGR, CTRL+SHIFT). (Added Phase DE, CR-CH-014, so the per-context maps stay consistent with the redesigned Key_Configuration_Dialog.)
 
 ---
 
@@ -340,9 +348,10 @@ All function key assignments route through the command framework -- pressing a f
 #### Acceptance Criteria
 
 1. WHEN the user submits the primary command `END` (or presses the key assigned to END), THE workbench SHALL close the current context tab and navigate to the tab that was active immediately before the current context was opened. If no prior tab exists, the workbench SHALL navigate to the POM tab.
-2. WHEN `END` is issued from the POM tab, THE workbench SHALL treat it as equivalent to `EXIT` and terminate the application (after any unsaved-changes prompts).
+2. WHEN `END` is issued from a POM tab (Home Context) AND at least one other Workspace remains open, THE workbench SHALL close that POM Workspace and navigate to the tab that was active immediately before it was opened, following the same close-and-navigate behaviour as criterion 17.1. (REVISED: END on a POM terminates only that POM Workspace when other Workspaces remain open; it terminates the application only when the POM is the last Workspace, per criterion 17.2a.)
+2a. WHEN `END` is issued from a POM tab (Home Context) AND that POM is the only Workspace currently open, THE workbench SHALL treat it as equivalent to `EXIT` and terminate the application (after any unsaved-changes prompts).
 3. WHEN the user submits the primary command `RETURN` (or presses the key assigned to RETURN), THE workbench SHALL navigate directly to the POM tab, making it the active tab, regardless of the current context depth.
-4. WHEN `RETURN` is issued from the POM tab, THE workbench SHALL treat it as equivalent to `EXIT` and terminate the application (after any unsaved-changes prompts).
+4. WHEN `RETURN` is issued from a POM tab (Home Context) AND at least one other Workspace remains open, THE workbench SHALL close that POM Workspace and navigate to another open Workspace (the previously active tab, or the first remaining tab if none). WHEN `RETURN` is issued from a POM tab AND that POM is the only Workspace currently open, THE workbench SHALL treat it as equivalent to `EXIT` and terminate the application (after any unsaved-changes prompts). (REVISED for consistency with criterion 17.2/17.2a.)
 5. THE `END` command SHALL be registered in the command framework with Command_ID `"nav.end"` and SHALL be invocable from the Primary_Command_Field and via function key assignment.
 6. THE `RETURN` command SHALL be registered in the command framework with Command_ID `"nav.return"` and SHALL be invocable from the Primary_Command_Field and via function key assignment.
 7. NEITHER `END` NOR `RETURN` SHALL be added to Command_History (they are navigation meta-commands, not substantive editing commands). Both SHALL be added to the Excluded_Command set.
@@ -363,70 +372,153 @@ All function key assignments route through the command framework -- pressing a f
 
 ---
 
-### Requirement 19: RETRIEVE with LIST -- History Browser
+### Requirement 19: RETRIEVE -- Argument-Driven History Recall and Browser
 
-**User Story:** As a workbench user, I want to type "LIST" in the command field and press the RETRIEVE key to see a deduplicated list of my previously typed commands, so that I can browse and select from my full history without cycling through it one entry at a time.
+**User Story:** As a workbench user, I want RETRIEVE to recall my previous
+command, show a numbered history list, or recall a specific numbered entry --
+driven by an argument I type or by the command-line contents when I press the
+RETRIEVE key -- so that I can browse and select from my full history as well as
+step back through it.
 
-**Source:** New requirement -- ISPF-style history list triggered by LIST + RETRIEVE.
+**Source:** New requirement -- ISPF-style history recall. REVISED [CR-NR-054]:
+RETRIEVE is argument-driven (via command-framework Requirement 9); typing
+`RETRIEVE <arg>` and typing `<arg>` then pressing the RETRIEVE key are equivalent.
+
+**Note:** RETRIEVE reads its argument via the general command-argument mechanism
+(command-framework Requirement 9.1, 9.8). `RETRIEVE LIST` and typing `LIST` then
+pressing the RETRIEVE key are the same invocation; likewise `RETRIEVE 9` and `9`
++ the RETRIEVE key.
 
 #### Acceptance Criteria
 
-1. WHEN the Primary_Command_Field contains the text `LIST` (case-insensitive) AND the user invokes the RETRIEVE command (by typing RETRIEVE, pressing the key assigned to RETRIEVE, or pressing the RETRIEVE function key), THE workbench SHALL display the Command_History as a selectable list rather than performing single-step recall.
-2. THE history list display SHALL show Command_History entries in most-recent-first order, deduplicated per the standard deduplication rules (Requirement 7).
-3. WHEN the user selects an entry from the history list (via mouse click or keyboard navigation + Enter), THE workbench SHALL populate the Primary_Command_Field with the selected command text without executing it, and SHALL close the history list.
-4. WHEN the user dismisses the history list without selecting an entry (via Escape or clicking outside), THE Primary_Command_Field SHALL be cleared and the history list SHALL close.
-5. WHEN Command_History is empty and the LIST+RETRIEVE trigger is activated, THE workbench SHALL display the history list with an empty-state message: "No command history."
-6. THE `LIST` text in the command field SHALL NOT itself be added to Command_History when used as the RETRIEVE trigger.
-7. THE history list SHALL be rendered as a modal or near-modal overlay anchored to the Primary_Command_Field, consistent with the History_Dropdown defined in Requirement 10 but triggered by the LIST keyword rather than a dropdown control.
+1. WHEN RETRIEVE is invoked with no argument (empty command field), THE workbench
+   SHALL recall the previous command into the Primary_Command_Field without
+   executing it; repeated no-argument RETRIEVE invocations SHALL step further
+   back through the Command_History one entry at a time.
+2. WHEN RETRIEVE is invoked with the argument `LIST` (case-insensitive), THE
+   workbench SHALL display the Command_History as a numbered selectable list,
+   rather than performing single-step recall.
+3. THE history list SHALL be numbered starting at 1, ordered most-recent at the
+   top (number 1) to oldest at the bottom, and deduplicated so that each distinct
+   command appears once at the position of its most recent invocation (earlier
+   duplicate occurrences are dropped), per the deduplication rules of
+   Requirement 7.
+4. WHEN RETRIEVE is invoked with a positive integer argument `n` (whether typed
+   as `RETRIEVE <n>` or as `<n>` in the field followed by the RETRIEVE key), THE
+   workbench SHALL populate the Primary_Command_Field with the command at
+   position `n` in the numbered, deduplicated list (Requirement 19.3) without
+   executing it; WHEN `n` exceeds the list length, THE field SHALL be left
+   unchanged and a status message SHALL indicate the entry does not exist.
+5. WHEN the user selects an entry from the displayed history list (mouse click,
+   or keyboard navigation + Enter, or by typing its number and pressing RETRIEVE),
+   THE workbench SHALL populate the Primary_Command_Field with the selected
+   command text without executing it, and SHALL close the history list.
+6. WHEN the user dismisses the history list without selecting an entry (Escape or
+   clicking outside), THE history list SHALL close and the Primary_Command_Field
+   SHALL be cleared.
+7. WHEN Command_History is empty and RETRIEVE `LIST` is invoked, THE workbench
+   SHALL display the history list with the empty-state message: "No command history."
+8. THE RETRIEVE command SHALL NEVER be added to Command_History, regardless of its
+   argument (empty, `LIST`, or a number); nor SHALL the `LIST`/number argument
+   text itself be recorded as a history entry.
+9. THE history list SHALL be rendered as a modal or near-modal overlay anchored
+   just below the Primary_Command_Field, consistent with the History_Dropdown
+   defined in Requirement 10 but triggered by the RETRIEVE `LIST` argument rather
+   than a dropdown control.
 
 ---
 
 ### Requirement 20: Key Configuration Dialog
 
-**User Story:** As a workbench user, I want a graphical dialog where I can view and edit all function key assignments -- for the default global map and for each named context -- including plain, Shift, Ctrl, and Alt modifier variants, with a command string and a description for each binding, so that I can configure my key maps without editing TOML files manually.
+**User Story:** As a workbench user, I want a graphical dialog where I can view and edit function key assignments -- for the default global map and for each named context -- across the physical keys F1 to F12 and the PCOMM modifier layers (Base, SHIFT, CTRL, ALT, ALTGR, CTRL+SHIFT), where each binding selects an already-defined command from a picker and displays that command's full description, so that I can configure my key maps without editing TOML files manually.
 
-**Source:** New requirement -- Phase AN.
+**Source:** New requirement -- Phase AN. REVISED Phase DE (CR-CH-014): physical range reduced from F1-F24 to F1-F12; free-text Command entry replaced by a picker restricted to defined commands; per-binding free-text Description replaced by a read-only description sourced from the selected command; modifier layers extended from Shift/Ctrl/Alt to the PCOMM set Base/SHIFT/CTRL/ALT/ALTGR/CTRL+SHIFT.
+
+**Design note -- why F1-F12:** A legacy 3270 terminal exposed 24 PF keys. In a modern 3270 PCOMM emulation session those 24 logical PF keys are reached from a PC keyboard using F1 to F12 plus Shift+F1 to Shift+F12. The physical function key range on the target keyboard is therefore F1 to F12, not F1 to F24. The full logical key set is reached through the modifier layers below rather than through physical keys F13 to F24. This criterion set supersedes the previous F1-F24 grid.
+
+#### Modifier Layer Definitions
+
+The following six Modifier_Layers apply to each physical function key. A binding may be assigned independently on each layer.
+
+| Modifier_Layer | Trigger combination | Key-name prefix (TOML) |
+|----------------|---------------------|------------------------|
+| Base | Fn with no modifier | `F` (e.g., `F3`) |
+| SHIFT | Shift + Fn | `SF` (e.g., `SF3`) |
+| CTRL | Ctrl + Fn | `CF` (e.g., `CF3`) |
+| ALT | Alt + Fn | `AF` (e.g., `AF3`) |
+| ALTGR | AltGr + Fn | `GF` (e.g., `GF3`) |
+| CTRL+SHIFT | Ctrl + Shift + Fn | `XF` (e.g., `XF3`) |
 
 #### Acceptance Criteria
 
-1. THE workbench SHALL provide a Key_Configuration_Dialog accessible via the command `KEYS` entered in the Primary_Command_Field, and via a menu item (e.g., `Edit > Key Assignments…`).
+1. THE workbench SHALL provide a Key_Configuration_Dialog accessible via the command `KEYS` entered in the Primary_Command_Field, and via a menu item (e.g., `Edit > Key Assignments`).
 
 2. THE Key_Configuration_Dialog SHALL display a tab or selector for each configurable key map scope: one tab labelled **Default (Global)** and one tab per named context (`pom`, `editor`, `settings`, `files`, `hex`, `toolchain`).
 
-3. WITHIN each scope tab, THE dialog SHALL display a grid of 24 rows -- one per function key F1–F24 -- with the following columns:
+3. WITHIN each scope tab, THE dialog SHALL display exactly 12 physical key rows, one per Function_Key in the range F1 to F12, and SHALL NOT display rows for F13 to F24.
 
-| Column | Content |
-|--------|---------|
-| Key | Key name (e.g., `F3`) -- read-only |
-| Command | Editable text field for the plain (unmodified) key command string |
-| Description | Editable text field for a human-readable description of what the command does |
-| Shift+Key Command | Editable text field for the Shift+Fn command string |
-| Shift+Key Description | Editable text field for the Shift+Fn description |
-| Ctrl+Key Command | Editable text field for the Ctrl+Fn command string |
-| Ctrl+Key Description | Editable text field for the Ctrl+Fn description |
-| Alt+Key Command | Editable text field for the Alt+Fn command string |
-| Alt+Key Description | Editable text field for the Alt+Fn description |
+4. WITHIN each physical key row, THE dialog SHALL provide exactly six independent binding editors, one per Modifier_Layer, laid out as six columns in the fixed left-to-right order Base, SHIFT, CTRL, ALT, ALTGR, CTRL+SHIFT, giving a grid of exactly 72 binding editors per scope tab (12 rows times 6 columns). Each binding editor SHALL expose the following fields:
 
-4. WHEN the user edits a Command field and moves focus away (or presses Enter), THE dialog SHALL validate that the command string is non-empty if provided; an empty string SHALL be treated as "unassigned" (clearing the binding).
+| Field | Content |
+|-------|---------|
+| Key | The physical key name and Modifier_Layer label (e.g., `F3`, `Shift+F3`, `AltGr+F3`) -- read-only |
+| Command | A Command_Picker (listbox or dropdown selector) whose entries are the Command_Definitions currently present in the Command_Store; the user selects a command rather than typing a command string |
+| Description | A read-only display of the selected command's description, sourced from the Command_Definition (its `description` field, or its `label` when no `description` is set) -- see Requirement 21 |
 
-5. THE dialog SHALL provide **Save** and **Cancel** buttons. WHEN **Save** is clicked, THE dialog SHALL write all changes to the workbench configuration (user-layer TOML) and close. WHEN **Cancel** is clicked, THE dialog SHALL discard all unsaved changes and close.
+5. THE Command field for every binding SHALL be a Command_Picker restricted to selecting a Command_Id that already exists in the Command_Store (command-configurator Requirement 1, Requirement 4). THE Command_Picker SHALL NOT provide a free-text input path, so a command string that is not a defined Command_Id cannot be entered; the only selectable values are the Command_Ids currently present in the Command_Store plus the "unassigned" choice.
 
-6. WHEN the dialog opens, THE dialog SHALL pre-populate all fields from the currently effective key map for each scope (global map for the Default tab; the registered context map for each context tab), showing blank fields for unassigned keys.
+6. THE Command_Picker SHALL include an explicit "unassigned" choice (e.g., a blank or `(none)` entry). WHEN the user selects the "unassigned" choice for a binding, THE dialog SHALL treat that Modifier_Layer of that physical key as having no assignment. IF the Command_Store contains zero Command_Definitions, THEN THE Command_Picker SHALL present only the "unassigned" choice and every binding SHALL resolve to unassigned, and the dialog SHALL remain usable.
 
-7. THE dialog SHALL display the current effective label for each plain key binding in a read-only **Label** column adjacent to the Command column, derived using the same label-derivation rules as the Key_Label_Bar (explicit label if set, otherwise first token of command).
+7. WHEN a Command_Definition is selected in a binding's Command_Picker, THE dialog SHALL display that Command_Definition's description in the read-only Description field within the same rendering frame, showing the full text without truncation (the Description field SHALL be sized to display the complete description).
 
-8. WHEN the user saves changes to the Default (Global) scope, THE workbench SHALL update the `[global_key_map]` section in the user-layer configuration file. WHEN the user saves changes to a context scope, THE workbench SHALL update the corresponding `[context_key_maps.<name>]` section.
+8. THE dialog SHALL provide **Save** and **Cancel** buttons and SHALL track whether the current tab contents differ from the values loaded when the dialog opened (the unsaved-change state). WHEN **Save** is clicked, THE dialog SHALL write all changes to the workbench configuration (user-layer TOML), clear the unsaved-change state, and close. WHEN **Cancel** is clicked and no unsaved change exists, THE dialog SHALL close and discard nothing.
 
-9. THE Key_Configuration_Dialog SHALL support modifier-key bindings (Shift+Fn, Ctrl+Fn, Alt+Fn) as independent assignments stored alongside the plain binding. Each modifier variant has its own command string and description, independent of the plain binding.
+9. WHEN the dialog opens, THE dialog SHALL pre-populate every binding from the currently effective key map for each scope (global map for the Default tab; the registered context map for each context tab), selecting the "unassigned" choice in the Command_Picker for any Modifier_Layer that has no assignment.
 
-10. WHEN a modifier-key binding is assigned in the dialog and the user presses that modifier+key combination in the workbench, THE workbench SHALL dispatch the modifier binding's command string through the command framework, following the same history and exclusion rules as plain function key presses.
+10. WHEN the user saves changes to the Default (Global) scope, THE workbench SHALL update the `[global_key_map]` section in the user-layer configuration file. WHEN the user saves changes to a context scope, THE workbench SHALL update the corresponding `[context_key_maps.<name>]` section.
 
-11. THE modifier key bindings SHALL be stored in the TOML configuration using an extended key name syntax: `SF1`–`SF24` for Shift, `CF1`–`CF24` for Ctrl, `AF1`–`AF24` for Alt, within the same `[global_key_map]` or `[context_key_maps.<name>]` section.
+11. THE modifier key bindings SHALL be stored in the TOML configuration using the extended key-name prefixes defined in the Modifier Layer table above: `SF1`-`SF12` for SHIFT, `CF1`-`CF12` for CTRL, `AF1`-`AF12` for ALT, `GF1`-`GF12` for ALTGR, and `XF1`-`XF12` for CTRL+SHIFT, within the same `[global_key_map]` or `[context_key_maps.<name>]` section. Base bindings continue to use `F1`-`F12`. (REVISED Phase DE: added the `GF` and `XF` prefixes for the ALTGR and CTRL+SHIFT layers and narrowed all prefixes from 24 to 12 keys.)
 
-12. THE `FunctionKey` type (or a new `ModifiedKey` type) SHALL be extended to represent the four modifier variants (plain, Shift, Ctrl, Alt) for each of F1–F24, giving a total of 96 addressable key slots per key map.
+12. THE `ModifiedKey` type SHALL represent, for each physical Function_Key F1 to F12, one binding slot per Modifier_Layer (Base, SHIFT, CTRL, ALT, ALTGR, CTRL+SHIFT), giving a total of 72 addressable key slots per key map (12 physical keys times 6 layers). (REVISED Phase DE: was 96 slots from 24 keys times 4 layers.)
 
-13. THE Key_Label_Bar SHALL continue to display only the plain (unmodified) F1–F24 bindings in its two-row layout. Modifier bindings are not shown in the Key_Label_Bar but are accessible via the Key_Configuration_Dialog and active at runtime.
+13. WHEN a modifier-layer binding is assigned in the dialog and the user presses that modifier plus key combination in the workbench, THE workbench SHALL dispatch the selected Command_Definition's Command_Target through the command framework, following the same history and exclusion rules as Base function key presses.
 
-14. WHEN the Key_Configuration_Dialog is open, THE workbench SHALL continue to process function key presses normally (the dialog is non-blocking with respect to the rest of the workbench).
+14. IF a stored key map entry references a Command_Id that is not present in the Command_Store when the binding is invoked, THEN THE workbench SHALL display `Command '<id>' is not defined.` and take no further action (consistent with command-configurator Requirement 4.5).
 
-15. THE dialog SHALL include a **Reset to Defaults** button per scope tab. WHEN clicked, THE dialog SHALL restore all fields in that tab to the built-in defaults (for the Default tab) or clear all fields (for context tabs), without saving until **Save** is clicked.
+15. THE Key_Label_Bar SHALL continue to display only the Base (unmodified) F1 to F12 bindings in its layout. Modifier-layer bindings are not shown in the Key_Label_Bar but are accessible via the Key_Configuration_Dialog and active at runtime.
+
+16. WHEN the Key_Configuration_Dialog is open, THE workbench SHALL continue to process function key presses normally (the dialog is non-blocking with respect to the rest of the workbench).
+
+17. THE dialog SHALL include a **Reset to Defaults** button per scope tab. WHEN clicked, THE dialog SHALL restore all bindings in that tab to the built-in defaults (for the Default tab) or set every binding to "unassigned" (for context tabs), and SHALL set the unsaved-change state for that tab, without writing to configuration until **Save** is clicked.
+
+18. WHILE a scope tab is displayed, THE dialog SHALL support keyboard navigation across the 72 binding editors: the Tab key SHALL advance keyboard focus to the next binding editor in row-major order (F1 Base through F12 CTRL+SHIFT), Shift+Tab SHALL move focus to the previous binding editor, and focus SHALL be confined to the editors and buttons of the current tab. WHEN a binding editor's Command_Picker holds keyboard focus, THE dialog SHALL allow the user to open the picker and select an entry using the keyboard alone.
+
+19. IF **Cancel** is clicked WHILE the unsaved-change state is set for any tab, THEN THE dialog SHALL present a confirmation prompt before closing; WHEN the user confirms discard, THE dialog SHALL discard all unsaved changes and close without writing to configuration; WHEN the user declines, THE dialog SHALL remain open with all unsaved changes intact.
+
+---
+
+### Requirement 21: Command Picker and Description Sourcing
+
+**User Story:** As a workbench user, I want each key binding to be chosen from a list of commands that already exist, with the command's own description shown next to it, so that I never bind a key to a command that is not defined and I never have to hand-type a description that could drift from the command's real behaviour.
+
+**Source:** New requirement -- Phase DE (CR-CH-014). Supports Requirement 20 criteria 4, 5, 7, and 14. Cross-references command-configurator Requirements 1 and 4.
+
+#### Acceptance Criteria
+
+1. THE Command_Picker SHALL present, as its selectable entries, every Command_Definition currently loaded from the Command_Store (command-configurator Requirement 1) plus a single "unassigned" entry, ordering the "unassigned" entry first and all Command_Definition entries after it sorted in ascending order by `label` using case-insensitive comparison, with ties broken by ascending Command_Id.
+
+2. THE Command_Picker SHALL display each entry using the Command_Definition's `label` so that the user selects commands by their human-readable name rather than by raw Command_Id.
+
+3. WHEN a Command_Definition is selected in the Command_Picker, THE Key_Configuration_Dialog SHALL source the binding's Description from that Command_Definition, using its `description` field when present and falling back to its `label` when no `description` is set.
+
+4. THE Description shown for a binding SHALL be read-only within the Key_Configuration_Dialog; the dialog SHALL NOT provide a free-text field for editing a per-binding description.
+
+5. WHEN the Command_Store changes while the Key_Configuration_Dialog is open (a Command_Definition is added, edited, or removed), THE Command_Picker entries and displayed Descriptions SHALL refresh to reflect the current Command_Store contents, using the same hot-reload mechanism as command-configurator Requirement 1.7.
+
+6. THE key map SHALL persist each binding as the selected Command_Id (not the label and not a free-typed command string), so that a binding remains stable when a command's label or description is later edited.
+
+7. IF the Command_Store contains no Command_Definition entries, THEN THE Command_Picker SHALL present only the "unassigned" entry and THE Key_Configuration_Dialog SHALL remain usable such that every binding resolves to unassigned.
+
+8. WHEN a stored binding references a Command_Id that is not present in the Command_Store, THE Key_Configuration_Dialog SHALL display that binding as unassigned, SHALL display a visible missing-command indicator on that binding row that identifies the unresolved Command_Id, and SHALL retain the stored Command_Id unchanged until the user saves the dialog; on save THE Key_Configuration_Dialog SHALL persist the Command_Id that is shown for the binding at save time.
+
+9. WHERE the Command_Picker contains more than 20 selectable entries, THE Command_Picker SHALL provide a text filter that restricts the visible entries to those whose `label` contains the entered text using case-insensitive substring matching, SHALL always retain the "unassigned" entry as selectable regardless of the filter text, and SHALL show a no-matching-commands indication when no Command_Definition entry matches the entered text.

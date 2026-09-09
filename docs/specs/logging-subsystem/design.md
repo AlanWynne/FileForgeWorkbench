@@ -664,6 +664,80 @@ These properties are suitable for property-based testing with `proptest`. They v
 
 ---
 
+## 11. Runtime Reconfiguration (Requirement 11)
+
+### Problem
+
+Requirement 1 mandates that the Log_Subsystem initialize before any other subsystem, including the configuration system. Requirement 4 mandates that it honor the configured `logging.directory`. These pull in opposite directions: at the moment logging starts, the configured directory is not yet known. The original desktop wiring resolved this by calling `init_default()` (platform default directory) and never re-applying the loaded configuration, so `logging.directory` was silently ignored (bug B033).
+
+### Approach: Two-Phase Initialization
+
+```
+Phase 1 (startup step 1):  ff_logging::init_default()
+                           -> file sink opens under the platform default directory
+                           -> no log record can ever be lost while config loads
+
+Phase 2 (after config load): ff_logging::reconfigure(LogConfig { directory, level, .. })
+                           -> if directory changed: flush + close current file,
+                              create new directory, open new file
+                           -> apply new level atomically; clamp + WARN on bad rotation values
+                           -> write INFO "logging reconfigured" record to the new file
+```
+
+The desktop binary performs Phase 2 immediately after `ff_config::init(...)` returns and the `[logging]` values are resolved, and before the GUI shell is constructed (Requirement 11 criterion 7).
+
+### New Public API
+
+```rust
+/// Re-apply configuration to an already-initialized logging subsystem.
+///
+/// Two-phase startup: `init`/`init_default` runs first (before config exists);
+/// `reconfigure` runs once the configuration system has loaded the `[logging]`
+/// settings. If the directory changed, the current file is flushed and closed
+/// and a new file is opened under the new directory. Level and rotation
+/// settings are applied atomically. No-op if the subsystem is not initialized
+/// or has already received a shutdown signal.
+///
+/// Never returns an error -- degrades gracefully (retains the current sink and
+/// writes a WARN record on failure), consistent with the rest of the API.
+/// Addresses: Requirement 11.
+pub fn reconfigure(config: LogConfig) -> LoggingStatus;
+```
+
+`reconfigure` is re-exported from `lib.rs` alongside `init` / `init_default`.
+
+### Internal Mechanism
+
+The writer thread already owns the `LogFileWriter` and performs rotation inline (Section 9). Reconfiguration reuses that ownership model rather than adding cross-thread mutation of the file handle:
+
+- A new `ChannelMessage::Reconfigure(ReconfigureRequest)` variant carries the new directory, level, and rotation limits to the writer thread.
+- On receipt, the writer thread: flushes the current buffer; if the directory changed, calls `resolve_log_directory` for the new path (same fallback chain as `init`), and on success swaps its `LogFileWriter` to a freshly-opened file under the new directory (standard `file_forge_workbench_YYYYMMDD_HHMMSS.log` naming); updates its `max_file_size_mb` / `max_retained_files`; and writes the INFO "logging reconfigured" record (criterion 8).
+- On directory-open failure the writer retains its existing `LogFileWriter` and emits a WARN record (criterion 5); no records are dropped.
+- The atomic minimum level (`AtomicU8` in `LogSubsystem`) is updated by `reconfigure` on the calling thread so the zero-cost level guard on producers reflects the new level immediately (criterion 4). Records already in flight are written to whichever file the writer thread currently holds (criterion 9); the bounded channel preserves order, so no record is lost across the swap.
+
+This keeps the single-writer-owns-the-file invariant intact -- there is no shared mutable file handle and no new lock on the hot path. The only producer-side change is the atomic level store, which is already lock-free.
+
+### Config Bridge (desktop)
+
+The desktop binary maps the resolved config keys to `LogConfig`:
+
+| Config key | LogConfig field |
+|------------|-----------------|
+| `logging.level` | `level` (via `set_level_from_str`, WARN on invalid) |
+| `logging.directory` | `directory` (empty string -> keep platform default) |
+| `logging.max_file_size_mb` | `max_file_size_mb` (clamped) |
+| `logging.max_retained_files` | `max_retained_files` (clamped) |
+
+An empty `logging.directory` (the schema default) means "use the platform default", i.e. Phase 2 leaves the directory unchanged. A non-empty value (absolute or relative) triggers the directory swap.
+
+### Correctness Property 11: Reconfigure Directory Swap
+
+**Statement:** For any initialized subsystem with active directory D1 and any `reconfigure` call with directory D2 (D2 creatable and writable), after the call every subsequently submitted record is written under D2 and no record submitted before the call is lost. If D2 is not creatable, the active directory remains D1 and no record is lost.
+
+**Validates:** Requirement 11, criteria 2, 5, 9.
+
+---
+
 ## Appendix A: External Crate Dependencies
 
 | Crate | Version | Purpose |
@@ -690,3 +764,75 @@ Log files follow the pattern: `file_forge_workbench_YYYYMMDD_HHMMSS.log`
 | Windows | `%LOCALAPPDATA%\FileForgeWorkbench\logs` | `LOCALAPPDATA` |
 | Linux | `$XDG_DATA_HOME/file-forge-workbench/logs` | `XDG_DATA_HOME` (fallback: `~/.local/share`) |
 | macOS | `$XDG_DATA_HOME/file-forge-workbench/logs` | `XDG_DATA_HOME` (fallback: `~/.local/share`) |
+
+---
+
+## 12. Logging Inventory and Gap Report Tool (Requirement 12)
+
+### Problem
+
+Only a minority of workspace crates emit any log records, and several durability- and I/O-critical paths swallow errors silently (bugs B034-B038). There is no repeatable way to see, at a glance, where the application logs and where it is blind. Requirement 12 adds a maintenance tool that regenerates a logging inventory and a gap report from the current source so the team can track coverage over time.
+
+### Scope and placement
+
+This is a maintenance tool, not application code. It lives under `tools/python/` per the project tooling standard (`tooling.md`), is written in Python 3 (run via `C:\tools\python\python.exe`), and depends on nothing in the workspace. It performs a static, read-only scan; it never builds or runs the crates and never imports `ff-logging`.
+
+```
+tools/python/logging_inventory.py     # the tool
+tools/logs/logging-inventory.txt      # mirrored stdout/stderr (ephemeral, git-ignored)
+docs/quality/logging-inventory.md     # generated report (tracked artefact)
+```
+
+### Detection approach
+
+The tool is a line-oriented regex scanner over every `*.rs` file under `crates/`. Full Rust parsing is unnecessary and would add a dependency; the logging call forms are textually regular. Per-file the tool tracks whether a line is inside a `#[cfg(test)]` module (brace-depth bookkeeping from the attribute) and treats any file under a `tests/` directory as entirely test code, so non-test counts exclude test scaffolding (criterion 4).
+
+Detected Log_Call_Site forms:
+
+| Form | Level source |
+|------|--------------|
+| `ff_logging::log_trace!` / `log_debug!` / `log_info!` / `log_warn!` / `log_error!` | level is the macro name (statically known) |
+| `ff_logging::log(LogLevel::X, ...)` / `log_lazy(LogLevel::X, ...)` | level parsed from the `LogLevel::X` argument when literal, else "dynamic" |
+| `PluginLogHandle` methods `.trace(` / `.debug(` / `.info(` / `.warn(` / `.error(` on a handle | level is the method name; heuristic, may over-match, noted in report |
+
+Detected Silent_Error_Site forms (non-test lines only):
+
+| Form | Pattern intent |
+|------|----------------|
+| `let _ = <expr>;` | discarded result binding |
+| `.ok();` / `.ok()` at end of statement | `Result::ok()` used to drop the error |
+| `.unwrap()` | panic-on-error in non-test code |
+| `.expect(` | panic-on-error in non-test code |
+
+Silent_Error_Site detection is deliberately reported as "candidate" sites: the scanner cannot prove the discarded expression is a `Result`, so the report frames these as review candidates rather than confirmed defects. This keeps the tool honest about the limits of a text scan (mirrors the caveat already recorded for the gap analysis).
+
+### Report structure (`docs/quality/logging-inventory.md`)
+
+1. Header: generation timestamp, tool version, workspace root, total crates scanned.
+2. Summary table: per-crate Log_Call_Site count broken down by level; a "0 calls" flag.
+3. Logging_Gaps section: crates with non-test source but zero Log_Call_Sites.
+4. Silent_Error_Site candidates: grouped by crate, file:line, category.
+5. Unreadable files (criterion 8): any path that failed to read/scan.
+6. Full inventory: every Log_Call_Site as `crate | file:line | level | enclosing item`.
+
+Ordering is deterministic: crates sorted by name, files by path, sites by line (criterion 9), so re-runs produce minimal diffs and the tracked artefact shows real coverage change.
+
+### Output and logging discipline
+
+Per `tooling.md`, the tool clears `tools/logs/logging-inventory.txt` at start, mirrors every progress line and the final summary to both stdout and that log, and reads back cleanly. It writes exactly one artefact under `docs/quality/` and touches nothing else (criteria 5, 6, 7).
+
+### Periodic invocation
+
+The tool is run on demand:
+
+```
+C:\tools\python\python.exe tools\python\logging_inventory.py
+```
+
+An optional follow-up (not required by this requirement) is a `Stop`-trigger or manual Kiro hook that runs it after logging-related work; the requirement only mandates that the tool exists, is read-only, and is safe to rerun. No design changes to the `ff-logging` crate itself are required.
+
+### Correctness Property 12: Report Determinism and Read-Only Scan
+
+**Statement:** For any fixed workspace source tree, two consecutive runs of the Logging_Inventory_Tool produce byte-identical reports (modulo the generation timestamp line), and neither run modifies, creates, or deletes any file except the report under `docs/quality/` and the log under `tools/logs/`.
+
+**Validates:** Requirement 12, criteria 5, 6, 9.

@@ -312,6 +312,39 @@ impl TabManager {
         }
     }
 
+    /// Open a data-driven Menu Workspace backed by `<menus_dir>/<name>.toml`,
+    /// transforming the active tab in place when it is a `PrimaryOptionMenu` or
+    /// a `SettingsPanel` (so the POM -> Settings_Menu -> namespace-view chain
+    /// stays on one tab and F3/END transforms back to the POM), otherwise
+    /// opening (or activating) a dedicated tab.
+    ///
+    /// Validates: cw-requirements.md Requirement 9.1, 10.4; menu-workspace Req 11.2
+    pub fn open_menu_workspace_here(
+        &mut self,
+        name: &str,
+        menus_dir: &std::path::Path,
+        limits: crate::menu_workspace::OptionLimits,
+        runtime: &Runtime,
+    ) {
+        let active_kind = self.active_tab().kind;
+        let transform_in_place = matches!(
+            active_kind,
+            TabKind::PrimaryOptionMenu | TabKind::SettingsPanel | TabKind::MenuWorkspace
+        );
+        if transform_in_place {
+            let file_path = menus_dir.join(format!("{name}.toml"));
+            let mw_state =
+                crate::menu_workspace::MenuWorkspaceState::load_with_limits(&file_path, limits);
+            let title = mw_state.tab_title();
+            let tab = &mut self.tabs[self.active];
+            tab.kind = TabKind::MenuWorkspace;
+            tab.title = title;
+            tab.menu_workspace = Some(mw_state);
+        } else {
+            self.open_menu_workspace_tab(name, menus_dir, limits, runtime);
+        }
+    }
+
     ///
     /// If the file is already open (same path), activates the existing tab
     /// instead of opening a duplicate.

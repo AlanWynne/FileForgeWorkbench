@@ -194,3 +194,52 @@ The application's process model is also formally specified: the workbench runs a
 4. IF a plugin emits log records at a rate exceeding the internal buffer capacity, THEN THE Log_Subsystem SHALL apply the same overflow handling (drop oldest, increment counter, emit WARN) as specified in Requirement 8 criterion 4, without distinguishing between plugin and core records.
 5. WHEN a plugin is unloaded or shut down, THE Log_Subsystem SHALL flush any buffered records from that plugin before the plugin's `shutdown` method returns.
 6. THE plugin logging handle SHALL be safe to use from any thread spawned by the plugin, maintaining the same thread-safety guarantees as specified in Requirement 8.
+
+---
+
+### Requirement 11: Runtime Reconfiguration After Configuration Load
+
+**User Story:** As a user, I want the `logging.directory`, `logging.level`, and rotation settings from Workbench_Config to take effect without recompiling the application, so that redirecting logs is a pure configuration change even though the Log_Subsystem must initialize before Workbench_Config is loaded.
+
+**Source:** NEW -- derived from the startup ordering tension between Requirement 1 (Log_Subsystem initializes first, before Workbench_Config exists) and Requirement 4 (Log_Subsystem honors the configured `logging.directory`). Addresses bug B033: `logging.directory` was silently ignored because the desktop binary initialized logging with defaults and never re-applied the loaded configuration. [WB]
+
+#### Acceptance Criteria
+
+1. THE Log_Subsystem SHALL expose a `reconfigure` operation that accepts a full `LogConfig` (level, directory, max_file_size_mb, max_retained_files) and applies it to the already-initialized subsystem.
+2. WHEN `reconfigure` is invoked with a `LogConfig` whose directory differs from the currently active Log_Directory, THE Log_Subsystem SHALL flush and close the current Log_File, ensure the new Log_Directory exists (creating intermediate parents), and open a new Log_File under the new Log_Directory using the standard naming pattern before any subsequent Log_Record is written.
+3. WHEN `reconfigure` is invoked with a `LogConfig` whose directory equals the currently active Log_Directory, THE Log_Subsystem SHALL continue writing to the current Log_File without creating a new file, applying only the changed level and rotation settings.
+4. WHEN `reconfigure` is invoked, THE Log_Subsystem SHALL apply the new minimum Log_Level atomically such that all Log_Records submitted after the call are filtered against the new level, and SHALL clamp out-of-range rotation values with the same rules and WARN records as Requirement 5 criteria 3 and 8.
+5. IF `reconfigure` is invoked and the new Log_Directory cannot be created or is not writable, THEN THE Log_Subsystem SHALL retain the currently active Log_File (or its current fallback state), SHALL NOT lose or drop already-buffered records, SHALL write a WARN-level Log_Record describing the failure and the retained directory, and SHALL NOT terminate the application.
+6. IF `reconfigure` is invoked before the Log_Subsystem has been initialized, or after a shutdown signal has been received, THEN THE Log_Subsystem SHALL take no action and SHALL NOT panic.
+7. WHEN the desktop application starts, THE Application_Process SHALL initialize the Log_Subsystem with defaults (per Requirement 1) before loading Workbench_Config, and SHALL invoke `reconfigure` with the resolved logging settings from Workbench_Config immediately after Workbench_Config is loaded and before the GUI shell is constructed.
+8. WHEN `reconfigure` successfully switches to a new Log_Directory, THE Log_Subsystem SHALL write an INFO-level Log_Record to the new Log_File recording that logging was reconfigured and the effective Log_Directory path.
+9. WHILE a `reconfigure` call is in progress, THE Log_Subsystem SHALL remain safe to call from any thread (per Requirement 8 criterion 1), and concurrent log calls SHALL either be written to the previous Log_File or the new Log_File without loss and without data races.
+10. WHEN `reconfigure` is invoked with a level that changes the effective minimum, THE retained Log_Files from before the call SHALL NOT be deleted solely as a result of the level change; retention cleanup SHALL continue to be governed by `logging.max_retained_files` per Requirement 5.
+
+---
+
+### Requirement 12: Logging Inventory and Gap Report Tool
+
+**User Story:** As a maintainer, I want a repeatable tool that scans the workspace source and regenerates an inventory of every logging call site plus a report of logging gaps, so that I can periodically discover under-instrumented code and silently-swallowed errors that would otherwise hide bugs.
+
+**Source:** NEW -- derived from CR-NR-055 (periodic logging inventory / gap report). [WB]
+
+#### Definitions (local to this requirement)
+
+- **Logging_Inventory_Tool**: A read-only maintenance tool under `tools/` that statically scans the Rust workspace source and generates the Logging_Inventory_Report. It is not part of the shipped application binary and does not depend on `ff-logging`.
+- **Log_Call_Site**: A source location invoking logging: a `ff_logging::log_trace!` / `log_debug!` / `log_info!` / `log_warn!` / `log_error!` macro, a `ff_logging::log(...)` or `ff_logging::log_lazy(...)` call, or a `PluginLogHandle` method call (`trace`/`debug`/`info`/`warn`/`error`).
+- **Logging_Gap**: A crate under `crates/` containing non-test Rust source but no Log_Call_Site, or a Silent_Error_Site.
+- **Silent_Error_Site**: A non-test source location that discards a fallible result without logging: `let _ =` binding a `Result`-returning call, `.ok()` used to discard a `Result`, an `unwrap()` / `expect(...)` outside a `#[cfg(test)]` module or `tests/` directory.
+- **Logging_Inventory_Report**: A generated Markdown document written under `docs/quality/` listing the Log_Call_Sites grouped by crate (with file, line, level where statically determinable, and enclosing module) and the Logging_Gaps.
+
+#### Acceptance Criteria
+
+1. WHEN the Logging_Inventory_Tool is run against the workspace, THE Logging_Inventory_Tool SHALL scan every `*.rs` file under `crates/` and identify each Log_Call_Site with its file path, 1-based line number, and the log Log_Level when it is statically determinable from the call.
+2. WHEN the Logging_Inventory_Tool generates the Logging_Inventory_Report, THE Logging_Inventory_Tool SHALL group Log_Call_Sites by crate and SHALL include per-crate and per-level counts.
+3. WHEN the Logging_Inventory_Tool generates the Logging_Inventory_Report, THE Logging_Inventory_Tool SHALL list every crate under `crates/` that contains non-test Rust source but has zero Log_Call_Sites as a Logging_Gap.
+4. WHEN the Logging_Inventory_Tool generates the Logging_Inventory_Report, THE Logging_Inventory_Tool SHALL list each Silent_Error_Site it detects with its file path and 1-based line number, and SHALL exclude sites inside `#[cfg(test)]` modules and `tests/` directories from the non-test counts.
+5. WHEN the Logging_Inventory_Tool completes, THE Logging_Inventory_Tool SHALL write the Logging_Inventory_Report to a fixed path under `docs/quality/` and SHALL overwrite any previous report at that path.
+6. THE Logging_Inventory_Tool SHALL NOT modify, create, or delete any file outside its designated report path under `docs/quality/` and its log file under `tools/logs/`.
+7. WHEN the Logging_Inventory_Tool runs, THE Logging_Inventory_Tool SHALL mirror its progress and summary output to a log file under `tools/logs/`, overwriting that log at the start of each run, per the project tooling standard.
+8. IF the Logging_Inventory_Tool encounters a source file it cannot read or parse, THEN THE Logging_Inventory_Tool SHALL record the affected path in the Logging_Inventory_Report, SHALL continue scanning the remaining files, and SHALL NOT abort the run.
+9. THE Logging_Inventory_Tool SHALL be safe to run repeatedly, producing a report that depends only on the current workspace source (deterministic ordering of crates, files, and sites).

@@ -28,6 +28,28 @@ Each reusable tool should include:
 - Safe default behavior that does not delete or overwrite data unexpectedly.
 - A note in this README or a nearby README when the tool needs special setup.
 
+## Available tools
+
+### `python/logging_inventory.py` -- Logging inventory and gap report
+
+Read-only static scan of every `*.rs` under `crates/`. Regenerates a Markdown
+report of every `ff-logging` call site (grouped by crate and level) plus a gap
+report (crates with no logging, and silent-error review candidates such as
+`let _ =`, `.ok()`, `unwrap()`, `expect()` in non-test code). Implements
+logging-subsystem Requirement 12 (CR-NR-055).
+
+Run:
+
+```
+C:\tools\python\python.exe tools\python\logging_inventory.py
+```
+
+- Report (tracked): `docs/quality/logging-inventory.md` (overwritten each run)
+- Run log (ephemeral): `tools/logs/logging-inventory.txt`
+- The tool mutates no source and writes nothing outside those two paths. It is
+  deterministic -- re-runs differ only in the generation timestamp -- so it is
+  safe to run periodically to track logging coverage over time.
+
 ## Temporary scripts
 
 Do not place one-off experiments or failed patches here. Use the session

@@ -39,6 +39,9 @@ reports/
 tools/logs/
 bootstrap/logs/*.log
 
+# ── Dev application logs (redirected via .ffworkbench/config.toml, Phase DC) ─
+.ffworkbench/logs/
+
 # ── Temporary / scratch files ────────────────────────────────────────────────
 *.log
 *.tmp

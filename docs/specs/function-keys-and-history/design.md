@@ -1,8 +1,8 @@
 # Design Document: Function Keys and Command History (`ff-keys`)
 
-## 1. Overview
+## Overview
 
-The `ff-keys` crate manages **configurable function key maps**, the **Key Label Bar display**, and the **RETRIEVE command with command history** for the FileForgeWorkbench platform. It implements the ISPF-inspired workflow of mapping F2–F24 to arbitrary commands, displaying current bindings in a footer bar, and providing a persistent, deduplicated, bounded history of previously entered commands with single-step recall.
+The `ff-keys` crate manages **configurable function key maps**, the **Key Label Bar display**, and the **RETRIEVE command with command history** for the FileForgeWorkbench platform. It implements the ISPF-inspired workflow of mapping F2-F24 to arbitrary commands, displaying current bindings in a footer bar, and providing a persistent, deduplicated, bounded history of previously entered commands with single-step recall.
 
 ### Purpose
 
@@ -22,7 +22,7 @@ Wave 9 -- Desktop Integration (depends on Wave 8)
 │              Shell Layer: ff-desktop (egui)                │
 │   (renders Key_Label_Bar, History_Dropdown in footer)     │
 ├──────────────────────────────────────────────────────────┤
-│  THIS CRATE: ff-keys ← Wave 9                            │
+│  THIS CRATE: ff-keys <- Wave 9                            │
 │  (key map resolution, history, RETRIEVE, label bar model) │
 ├──────────────────────────────────────────────────────────┤
 │  ff-command (dispatch)  │  ff-config (settings, hot-reload)│
@@ -40,7 +40,7 @@ Wave 9 -- Desktop Integration (depends on Wave 8)
 - **GUI Independence (Req 2)**: Key map resolution, history management, and RETRIEVE pointer logic are GUI-free; the shell renders using the model
 - **Multi-Crate Workspace (Req 7)**: Crate at `crates/ff-keys`
 - **Error Message Standards (Req 8)**: All errors follow `[keys] operation: description` format
-- **Keyboard Shortcut Registry (Req 10)**: F1 is reserved (context-help); F2–F24 are user-configurable via this crate
+- **Keyboard Shortcut Registry (Req 10)**: F1 is reserved (context-help); F2-F24 are user-configurable via this crate
 
 ### Upstream Dependencies
 
@@ -60,14 +60,14 @@ Wave 9 -- Desktop Integration (depends on Wave 8)
 
 ---
 
-## 2. Architecture
+## Architecture
 
 ### High-Level Architecture Diagram
 
 ```mermaid
 graph TD
     subgraph Input Sources
-        FK[Function Key Press<br/>F2–F24]
+        FK[Function Key Press<br/>F2-F24]
         CMD[Primary Command Field<br/>typed command submission]
         RET[RETRIEVE Command<br/>from command line or key]
         DD[History Dropdown<br/>selection]
@@ -77,10 +77,10 @@ graph TD
 
     subgraph ff-keys [ff-keys Crate]
         KMR[KeyMapResolver<br/>global vs profile selection]
-        GKM[GlobalKeyMap<br/>F2–F24 → command]
+        GKM[GlobalKeyMap<br/>F2-F24 -> command]
         PKM[ProfileKeyMap<br/>per-language overrides]
         KLB[KeyLabelBarModel<br/>display slots for GUI]
-        FKD[FunctionKeyDispatcher<br/>key press → execute_command]
+        FKD[FunctionKeyDispatcher<br/>key press -> execute_command]
         HIST[CommandHistory<br/>bounded deduplicated ring]
         RETR[RetrieveHandler<br/>pointer cycling logic]
         HSTORE[HistoryStore<br/>TOML persistence]
@@ -151,10 +151,10 @@ graph TD
 3. FunctionKeyDispatcher asks KeyMapResolver for active key map
 4. KeyMapResolver returns the active map (Global or Profile depending on state)
 5. FunctionKeyDispatcher looks up F5 in the active map
-   - If assigned → extract command string (e.g., "FIND 'ERROR' ALL")
-   - If unassigned → no-op, return
+   - If assigned -> extract command string (e.g., "FIND 'ERROR' ALL")
+   - If unassigned -> no-op, return
 6. FunctionKeyDispatcher calls ff-command execute_command(command_string)
-7. If command is not in ExclusionFilter → record in CommandHistory
+7. If command is not in ExclusionFilter -> record in CommandHistory
 8. CommandHistory deduplicates, inserts at front, trims if over capacity
 ```
 
@@ -164,10 +164,10 @@ graph TD
 1. User types "RETRIEVE" on Primary_Command_Field and presses Enter
 2. ff-command dispatches to RetrieveHandler (registered command)
 3. RetrieveHandler checks CommandHistory:
-   - If empty → return status message "Command history is empty"
-   - If pointer at initial → set pointer to index 0 (most recent), return entry
-   - If pointer already advanced → advance pointer by 1 (older)
-   - If pointer at end → return status message "No older history"
+   - If empty -> return status message "Command history is empty"
+   - If pointer at initial -> set pointer to index 0 (most recent), return entry
+   - If pointer already advanced -> advance pointer by 1 (older)
+   - If pointer at end -> return status message "No older history"
 4. RetrieveHandler returns RetrieveResult with the recalled command string
 5. GUI shell places the string in Primary_Command_Field without executing
 6. RETRIEVE itself is NOT recorded in history (ExclusionFilter)
@@ -175,7 +175,7 @@ graph TD
 
 ---
 
-## 3. Module Structure
+## Module Structure
 
 ```
 crates/ff-keys/
@@ -184,7 +184,7 @@ crates/ff-keys/
 │   ├── lib.rs              # Public API re-exports, crate documentation
 │   ├── key_map.rs          # FunctionKey enum, KeyMapEntry, KeyMap struct
 │   ├── resolver.rs         # KeyMapResolver: active map selection logic
-│   ├── dispatcher.rs       # FunctionKeyDispatcher: key press → command dispatch
+│   ├── dispatcher.rs       # FunctionKeyDispatcher: key press -> command dispatch
 │   ├── label_bar.rs        # KeyLabelBarModel: display slot derivation
 │   ├── history.rs          # CommandHistory: bounded dedup ring
 │   ├── retrieve.rs         # RetrieveHandler: pointer cycling, command registration
@@ -207,12 +207,12 @@ crates/ff-keys/
 
 ---
 
-## 4. Key Data Models and Types
+## Data Models
 
 ### FunctionKey
 
 ```rust
-/// Represents a function key in the F1–F24 range.
+/// Represents a function key in the F1-F24 range.
 /// F1 is reserved (context-help) but included for completeness in the enum.
 ///
 /// Addresses: Requirement 1 AC 3, Requirement 1 AC 5
@@ -236,7 +236,7 @@ impl FunctionKey {
     /// The display name (e.g., "F3", "F12").
     pub fn display_name(&self) -> &'static str;
 
-    /// Whether this key is in the assignable range (F2–F24).
+    /// Whether this key is in the assignable range (F2-F24).
     pub fn is_assignable(&self) -> bool;
 
     /// Numeric value (F1=1, F2=2, ..., F24=24).
@@ -331,7 +331,7 @@ impl KeyMap {
 /// Implements the full-replacement model: when a Profile_Key_Map is active,
 /// the Global_Key_Map is entirely inactive.
 ///
-/// Addresses: Requirement 1 AC 2, Requirement 2 AC 1–6
+/// Addresses: Requirement 1 AC 2, Requirement 2 AC 1-6
 #[derive(Debug)]
 pub struct KeyMapResolver {
     /// The loaded global key map.
@@ -398,7 +398,7 @@ pub struct KeyLabelSlot {
 /// Addresses: Requirement 4
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KeyLabelBarModel {
-    /// Ordered slots for F2–F24 (F1 reserved, not displayed).
+    /// Ordered slots for F2-F24 (F1 reserved, not displayed).
     slots: Vec<KeyLabelSlot>,
 }
 
@@ -540,7 +540,7 @@ pub enum RetrieveState {
 ```rust
 /// Result of a RETRIEVE command invocation.
 ///
-/// Addresses: Requirement 5 AC 1–7
+/// Addresses: Requirement 5 AC 1-7
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RetrieveResult {
     /// Successfully recalled a command. Place it in the command field.
@@ -575,7 +575,7 @@ pub struct KeysWarning {
 
 ---
 
-## 5. Public API Surface
+## Components and Interfaces
 
 ### Function Key Dispatch
 
@@ -603,7 +603,7 @@ impl FunctionKeyDispatcher {
     /// Returns Ok(Some(command)) if a command was dispatched,
     /// Ok(None) if the key was unassigned, or Err on dispatch failure.
     ///
-    /// Addresses: Requirement 3 AC 1–6
+    /// Addresses: Requirement 3 AC 1-6
     pub fn dispatch(&self, key: FunctionKey) -> Result<Option<String>, KeysError>;
 }
 
@@ -632,7 +632,7 @@ impl RetrieveHandler {
     /// Execute one RETRIEVE step.
     /// Advances the pointer backward and returns the recalled entry.
     ///
-    /// Addresses: Requirement 5 AC 1–4, AC 7
+    /// Addresses: Requirement 5 AC 1-4, AC 7
     pub fn retrieve(&self) -> RetrieveResult;
 
     /// Reset the pointer to initial state.
@@ -830,7 +830,7 @@ pub struct KeysSubsystem {
 
 ---
 
-## 6. Error Types
+## Error Handling
 
 ```rust
 /// Error type for all function-keys-and-history failures.
@@ -840,7 +840,7 @@ pub struct KeysSubsystem {
 #[non_exhaustive]
 pub enum KeysError {
     /// A function key identifier could not be parsed.
-    #[error("[keys] parse: invalid function key identifier '{key}' -- expected F1–F24")]
+    #[error("[keys] parse: invalid function key identifier '{key}' -- expected F1-F24")]
     InvalidFunctionKey {
         key: String,
     },
@@ -907,7 +907,7 @@ pub enum KeysError {
 
 ---
 
-## 7. Integration Points
+## Integration Points
 
 ### Integration with `ff-command` (Command Framework)
 
@@ -943,7 +943,7 @@ pub enum KeysError {
 
 | Key | Type | Default | Range | Purpose |
 |-----|------|---------|-------|---------|
-| `keys.max_history_entries` | `u32` | `200` | 1–10000 | Maximum command history entries |
+| `keys.max_history_entries` | `u32` | `200` | 1-10000 | Maximum command history entries |
 | `keys.history_file` | `String` | `"command_history.toml"` | -- | History file path (relative to User_Data_Dir) |
 | `keys.history_excluded_commands` | `[String]` | `[]` | -- | Additional commands excluded from history |
 
@@ -1000,31 +1000,31 @@ F11 = "COLS"
 
 ---
 
-## 8. Correctness Properties
+## Correctness Properties
 
 These properties are suitable for property-based testing with the `proptest` crate.
 
 ### Property 1: Profile Key Map Fully Replaces Global Key Map
 
+**Validates: Requirements 2.2, 2.5**
+
 **Statement**: When a Profile_Key_Map is active, lookups for any FunctionKey that is NOT defined in the Profile_Key_Map return None -- they never fall through to the Global_Key_Map. The Global_Key_Map is entirely inactive during profile override.
 
-**Validates**: Requirement 2 AC 2, AC 5
-
 ```rust
-// proptest strategy: generate a GlobalKeyMap with random F2–F24 assignments,
-//   and a ProfileKeyMap with a DIFFERENT subset of F2–F24 assignments.
+// proptest strategy: generate a GlobalKeyMap with random F2-F24 assignments,
+//   and a ProfileKeyMap with a DIFFERENT subset of F2-F24 assignments.
 // action: activate profile key map on KeyMapResolver.
-// assertion: for all keys K in F2–F24:
-//   if K is in ProfileKeyMap → resolver returns ProfileKeyMap entry
-//   if K is NOT in ProfileKeyMap → resolver returns None (even if K is in GlobalKeyMap)
+// assertion: for all keys K in F2-F24:
+//   if K is in ProfileKeyMap -> resolver returns ProfileKeyMap entry
+//   if K is NOT in ProfileKeyMap -> resolver returns None (even if K is in GlobalKeyMap)
 // assertion: no entry from GlobalKeyMap is ever returned while profile is active
 ```
 
 ### Property 2: History Deduplication Preserves Most-Recent-First Order
 
-**Statement**: For any sequence of command additions, if a duplicate is added, the duplicate is removed from its old position and the new entry is placed at index 0. After any addition, the history contains no duplicate entries (per the deduplication comparison rules).
+**Validates: Requirements 7.1, 7.2, 7.3**
 
-**Validates**: Requirement 7 AC 1, AC 2, AC 3
+**Statement**: For any sequence of command additions, if a duplicate is added, the duplicate is removed from its old position and the new entry is placed at index 0. After any addition, the history contains no duplicate entries (per the deduplication comparison rules).
 
 ```rust
 // proptest strategy: generate a sequence of 1..500 command strings
@@ -1037,9 +1037,9 @@ These properties are suitable for property-based testing with the `proptest` cra
 
 ### Property 3: History Capacity Is Never Exceeded
 
-**Statement**: For any `max_history_entries` value M > 0, and any sequence of add operations, the CommandHistory length never exceeds M. When an entry is added and the history is at capacity, the oldest entry is evicted.
+**Validates: Requirements 9.3**
 
-**Validates**: Requirement 9 AC 3
+**Statement**: For any `max_history_entries` value M > 0, and any sequence of add operations, the CommandHistory length never exceeds M. When an entry is added and the history is at capacity, the oldest entry is evicted.
 
 ```rust
 // proptest strategy: generate max_entries in 1..500,
@@ -1051,9 +1051,9 @@ These properties are suitable for property-based testing with the `proptest` cra
 
 ### Property 4: RETRIEVE Pointer Cycles Backward Through Entire History
 
-**Statement**: Starting from the initial state, N successive RETRIEVE invocations (where N = history.len()) return entries at indices 0, 1, 2, ..., N-1 in that order. The (N+1)th invocation returns `NoOlderHistory`. After a reset, the cycle starts from index 0 again.
+**Validates: Requirements 5.1, 5.2, 5.3, 5.4, 5.5**
 
-**Validates**: Requirement 5 AC 1, AC 2, AC 3, AC 4, AC 5
+**Statement**: Starting from the initial state, N successive RETRIEVE invocations (where N = history.len()) return entries at indices 0, 1, 2, ..., N-1 in that order. The (N+1)th invocation returns `NoOlderHistory`. After a reset, the cycle starts from index 0 again.
 
 ```rust
 // proptest strategy: generate CommandHistory with 1..100 entries.
@@ -1066,12 +1066,12 @@ These properties are suitable for property-based testing with the `proptest` cra
 
 ### Property 5: Key Label Bar Matches Active Key Map
 
+**Validates: Requirements 4.2, 4.3, 4.4, 4.5**
+
 **Statement**: For any KeyMap state, the KeyLabelBarModel produced by `from_key_map` has a slot for every assigned key with the correct display label, and blank slots for all unassigned keys. The model always reflects the current key map exactly.
 
-**Validates**: Requirement 4 AC 2, AC 3, AC 4, AC 5
-
 ```rust
-// proptest strategy: generate a KeyMap with random subset of F2–F24 assigned,
+// proptest strategy: generate a KeyMap with random subset of F2-F24 assigned,
 //   some with explicit labels, some without.
 // action: build KeyLabelBarModel from the key map.
 // assertion: for each assigned key, slot.label == entry.display_label()
@@ -1082,9 +1082,9 @@ These properties are suitable for property-based testing with the `proptest` cra
 
 ### Property 6: Excluded Commands Are Never Recorded in History
 
-**Statement**: For any command string whose first token (case-insensitive) matches an entry in the Excluded_Command set, that command is never present in CommandHistory regardless of the invocation source (typed, function key, macro).
+**Validates: Requirements 8.1, 8.2, 8.4, 3.6**
 
-**Validates**: Requirement 8 AC 1, AC 2, AC 4; Requirement 3 AC 6
+**Statement**: For any command string whose first token (case-insensitive) matches an entry in the Excluded_Command set, that command is never present in CommandHistory regardless of the invocation source (typed, function key, macro).
 
 ```rust
 // proptest strategy: generate an ExclusionFilter with defaults + 0..10 additional exclusions,
@@ -1096,9 +1096,9 @@ These properties are suitable for property-based testing with the `proptest` cra
 
 ### Property 7: History Store Round-Trip Serialisation
 
-**Statement**: For any valid CommandHistory, saving to the HistoryStore and loading back produces an identical CommandHistory (same entries, same order, same count). No data is lost or reordered in the round-trip.
+**Validates: Requirements 6.1, 6.3, 6.7**
 
-**Validates**: Requirement 6 AC 1, AC 3, AC 7
+**Statement**: For any valid CommandHistory, saving to the HistoryStore and loading back produces an identical CommandHistory (same entries, same order, same count). No data is lost or reordered in the round-trip.
 
 ```rust
 // proptest strategy: generate CommandHistory with 0..200 entries,
@@ -1110,9 +1110,9 @@ These properties are suitable for property-based testing with the `proptest` cra
 
 ### Property 8: Corrupt History File Never Prevents Operation
 
-**Statement**: For any byte sequence written as the history file (including valid TOML, invalid TOML, empty bytes, binary garbage), loading the history file either returns a valid CommandHistory or returns an empty CommandHistory. It never panics, never propagates an unrecoverable error, and never prevents the subsystem from functioning.
+**Validates: Requirements 6.5, 6.6**
 
-**Validates**: Requirement 6 AC 5, AC 6
+**Statement**: For any byte sequence written as the history file (including valid TOML, invalid TOML, empty bytes, binary garbage), loading the history file either returns a valid CommandHistory or returns an empty CommandHistory. It never panics, never propagates an unrecoverable error, and never prevents the subsystem from functioning.
 
 ```rust
 // proptest strategy: generate arbitrary byte vectors (0..10KB).
@@ -1124,13 +1124,13 @@ These properties are suitable for property-based testing with the `proptest` cra
 
 ### Property 9: Key Map Rejects Out-of-Range Keys Gracefully
 
-**Statement**: For any TOML table containing keys outside the F1–F24 range (e.g., "F0", "F25", "G3", ""), the KeyMap parser skips those entries, produces a warning for each, and successfully loads all valid entries. Invalid entries never prevent valid entries from loading.
+**Validates: Requirements 1.5**
 
-**Validates**: Requirement 1 AC 5
+**Statement**: For any TOML table containing keys outside the F1-F24 range (e.g., "F0", "F25", "G3", ""), the KeyMap parser skips those entries, produces a warning for each, and successfully loads all valid entries. Invalid entries never prevent valid entries from loading.
 
 ```rust
 // proptest strategy: generate a TOML table with a mix of:
-//   - valid keys (F2–F24 with valid command strings)
+//   - valid keys (F2-F24 with valid command strings)
 //   - invalid keys (F0, F25, F99, empty, non-F-prefixed)
 // action: parse via KeyMap::from_toml()
 // assertion: returned KeyMap contains all valid entries
@@ -1140,28 +1140,52 @@ These properties are suitable for property-based testing with the `proptest` cra
 
 ### Property 10: Deduplication Comparison Is Symmetric and Case-Correct
 
-**Statement**: The deduplication comparison (`is_duplicate_of`) is symmetric: if A is a duplicate of B, then B is a duplicate of A. Command-name comparison is case-insensitive. Argument comparison is case-sensitive (case-preserving). Two entries with the same command name but different argument casing are NOT duplicates.
+**Validates: Requirements 7.2**
 
-**Validates**: Requirement 7 AC 2
+**Statement**: The deduplication comparison (`is_duplicate_of`) is symmetric: if A is a duplicate of B, then B is a duplicate of A. Command-name comparison is case-insensitive. Argument comparison is case-sensitive (case-preserving). Two entries with the same command name but different argument casing are NOT duplicates.
 
 ```rust
 // proptest strategy: generate pairs of HistoryEntry (command_name, arguments)
 //   with various casing combinations.
 // assertion: a.is_duplicate_of(&b) == b.is_duplicate_of(&a) (symmetry)
-// assertion: entries with same name (any case) + same args (exact case) → duplicate
-// assertion: entries with same name (any case) + different arg case → NOT duplicate
-// assertion: entries with different names → NOT duplicate
+// assertion: entries with same name (any case) + same args (exact case) -> duplicate
+// assertion: entries with same name (any case) + different arg case -> NOT duplicate
+// assertion: entries with different names -> NOT duplicate
 ```
 
 ---
 
+## Testing Strategy
+
+Testing follows the workspace TDD process (see `testing.md`): each acceptance
+criterion is exercised by a test annotated `// Validates: Requirement X.Y`
+before the implementation is written.
+
+- **Unit tests** cover pure logic: key-name parsing (`ModifiedKey`, extended
+  prefixes), key map resolution priority (Context -> Profile -> Global),
+  deduplication comparison, RETRIEVE pointer cycling, exclusion filtering, and
+  label derivation. These live in `#[cfg(test)]` modules beside each source file.
+- **Integration tests** in `crates/ff-keys/tests/` cover end-to-end function key
+  dispatch, history persistence round-trips, and configuration hot-reload paths.
+- **Property-based tests** (proptest, minimum 100 iterations) cover the ten
+  correctness properties in the Correctness Properties section: full-replacement
+  resolution, dedup ordering, capacity bounds, RETRIEVE cycling, label-bar
+  fidelity, exclusion, store round-trip, corrupt-file resilience, out-of-range
+  key rejection, and dedup symmetry.
+- **Shell-level tests** in `crates/ff-desktop/src/shell/tests.rs` cover the
+  command wiring for `NAME`, `KEYS`/`KEYS <name>`, and `SPLIT`/`SPLIT DETACH`
+  (Phase CX), and the Key Configuration Dialog behaviour.
+
+The full gate is `tools\powershell\verify.ps1` (fmt-check, clippy, and the test
+suite via cargo-nextest); the completion gate requires a clean full run without
+`-Fast` so proptests keep their >=100-iteration coverage.
 ## Appendix A: Configuration Keys Reference
 
 All keys live under the `[keys]` namespace in the configuration system:
 
 ```toml
 [keys]
-max_history_entries = 200             # 1–10000 (default: 200)
+max_history_entries = 200             # 1-10000 (default: 200)
 history_file = "command_history.toml" # Relative to User_Data_Dir
 history_excluded_commands = []        # Additional excluded commands beyond defaults
 ```
@@ -1235,7 +1259,7 @@ F10 = { command = "MACRO cobol_check", label = "CHECK" }
 | Key | Owner | Cannot Be Reassigned |
 |-----|-------|---------------------|
 | F1 | `context-help` | Yes -- hardcoded per cross-cutting Requirement 10.1 |
-| F2–F24 | `ff-keys` (this crate) | No -- fully user-configurable |
+| F2-F24 | `ff-keys` (this crate) | No -- fully user-configurable |
 
 ## Appendix G: Thread Safety Model
 
@@ -1249,9 +1273,9 @@ F10 = { command = "MACRO cobol_check", label = "CHECK" }
 
 ---
 
-## 6. Per-Context Key Maps, PFSHOW, 24-Key Bar, Hotspots, END/RETURN, LIST+RETRIEVE
+## Design Changes: Per-Context Key Maps, PFSHOW, 24-Key Bar, Hotspots, END/RETURN, LIST+RETRIEVE
 
-### Design Changes for Requirements 12–19
+### Design Changes for Requirements 12-19
 
 #### 6.1 PFSHOW Command
 
@@ -1261,7 +1285,7 @@ No new crate is required. The handler lives in `ff-keys` and the session field l
 
 #### 6.2 Two-Row Key Label Bar Layout
 
-`KeyLabelBarModel` is updated to always produce exactly 24 `KeyLabelSlot` entries (F1–F24), split into two rows of 12. Unassigned slots carry `label: None`. The `ff-desktop` render loop iterates `slots[0..12]` for row 1 and `slots[12..24]` for row 2, rendering each as a clickable `egui::Button` (see §6.4).
+`KeyLabelBarModel` is updated to always produce exactly 24 `KeyLabelSlot` entries (F1-F24), split into two rows of 12. Unassigned slots carry `label: None`. The `ff-desktop` render loop iterates `slots[0..12]` for row 1 and `slots[12..24]` for row 2, rendering each as a clickable `egui::Button` (see section 6.4).
 
 #### 6.3 Per-Context Key Map
 
@@ -1300,15 +1324,15 @@ In `ff-help`'s F1 handler: after `Context_Detector::resolve()` returns a `Topic_
 
 ---
 
-## 7. Key Configuration Dialog and Modifier Key Extension (Phase AN)
+## Design Changes: Key Configuration Dialog and Modifier Key Extension (Phase AN)
 
 ### 7.1 New `ModifiedKey` Type
 
-The current `FunctionKey` enum (F1–F24) covers only plain key presses. To support Shift+Fn, Ctrl+Fn, and Alt+Fn bindings, a new `ModifiedKey` struct is introduced in `ff-keys`:
+The current `FunctionKey` enum (F1-F24) covers only plain key presses. To support Shift+Fn, Ctrl+Fn, and Alt+Fn bindings, a new `ModifiedKey` struct is introduced in `ff-keys`:
 
 ```rust
 /// A function key combined with an optional modifier.
-/// Represents one of 96 addressable key slots (4 modifiers × 24 keys).
+/// Represents one of 96 addressable key slots (4 modifiers x 24 keys).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ModifiedKey {
     pub key: FunctionKey,
@@ -1387,15 +1411,15 @@ Each scope tab renders a scrollable `egui::Grid` with 10 columns:
 
 `*` Label is read-only, derived from the staged command string.
 
-Rows are F1–F24 in order. Each editable cell is a single-line `egui::TextEdit`. Empty command strings are treated as unassigned on save.
+Rows are F1-F24 in order. Each editable cell is a single-line `egui::TextEdit`. Empty command strings are treated as unassigned on save.
 
 ### 7.5 Modifier Key Dispatch in `ff-desktop`
 
-The shell's `update()` loop already handles `egui::Key::F1`–`egui::Key::F12` (and F13–F24 where the platform supports them). The modifier state is read from `egui::Modifiers` each frame. On a key event, the shell constructs a `ModifiedKey { key, modifier }` and looks it up in the active key map via `resolver.active_key_map().get_modified(modified_key)`.
+The shell's `update()` loop already handles `egui::Key::F1`-`egui::Key::F12` (and F13-F24 where the platform supports them). The modifier state is read from `egui::Modifiers` each frame. On a key event, the shell constructs a `ModifiedKey { key, modifier }` and looks it up in the active key map via `resolver.active_key_map().get_modified(modified_key)`.
 
 ### 7.6 Key_Label_Bar Unchanged
 
-The Key_Label_Bar continues to display only `ModifiedKey { modifier: None }` bindings (plain F1–F24). Modifier bindings are silent -- they fire on key press but have no label bar representation.
+The Key_Label_Bar continues to display only `ModifiedKey { modifier: None }` bindings (plain F1-F24). Modifier bindings are silent -- they fire on key press but have no label bar representation.
 
 ### 7.7 TOML Persistence
 
@@ -1408,3 +1432,176 @@ All changes are confined to:
 - `crates/ff-keys/src/key_map.rs` -- update `KeyMap` to use `ModifiedKey`, add `description` to `KeyBinding`, update TOML parser
 - `crates/ff-desktop/src/key_config_dialog.rs` -- new file, dialog UI
 - `crates/ff-desktop/src/shell.rs` -- wire `KEYS` command, modifier dispatch, dialog open/close
+
+
+---
+
+## Design Changes: Named Workspaces, KEYS Name Argument, and SPLIT Alias (Phase CX)
+
+### Design Changes for cx-requirements.md (CR-NR-046, CR-CH-010)
+
+Phase CX adds three related capabilities. All changes are confined to
+`ff-desktop` and `ff-session`; no new crate is required and the `ff-keys`
+public API is unchanged.
+
+#### 8.1 Named Workspaces (CX Requirement 1, 4)
+
+Each Workspace (tab) gains an optional user-visible name distinct from the
+content-derived tab title.
+
+**State model:**
+- `ff-desktop`: `TabState` (in `crates/ff-desktop/src/tab_state.rs`) gains a
+  field `workspace_name: Option<String>`. It defaults to `None` in every
+  `TabState` constructor. `None` means the tab shows only its content-derived
+  title (existing behaviour).
+- `ff-session`: `TabState` (in `crates/ff-session/src/session_state.rs`) gains a
+  serialised field `workspace_name: Option<String>` marked `#[serde(default)]`
+  so older `session.toml` files (no field) restore as `None` -- backward
+  compatible with CX Requirement 4.3.
+
+**NAME command (CX Requirement 1.2, 1.3):** The shell command handler in
+`crates/ff-desktop/src/shell/commands.rs` recognises two forms in any
+`Command ===>` field:
+- `NAME <text>` -- sets `active_tab_mut().workspace_name = Some(trimmed)`,
+  truncated to a maximum of 32 characters.
+- `NAME` (no argument) -- clears the name (`workspace_name = None`), restoring
+  the content-derived title.
+
+**Tab header rendering (CX Requirement 1.4):** `render_chrome.rs` reads
+`tab.workspace_name` when building each tab's title. When a name is set the
+header shows it in the format `[<name>]` for system tabs or
+`<name>: <title>` for file editor tabs; when `None` it falls back to the
+content-derived title.
+
+**Session persistence (CX Requirement 1.5, 1.6, 4.1-4.3):** The
+`session_manager.rs` mapping between `ff-desktop` `TabState` and `ff-session`
+`TabState` copies `workspace_name` in both directions. It is written to and read
+from the `PersistedTab` TOML as an optional `workspace_name` string.
+
+#### 8.2 KEYS Name Argument (CX Requirement 2)
+
+The `KEYS` command is extended so the Key_Configuration_Dialog can open
+pre-loaded with any named key map, not just the current Workspace's map.
+
+**Dialog state:** `KeyConfigDialog` (in
+`crates/ff-desktop/src/key_config_dialog.rs`) gains a field
+`initial_scope: Option<String>`. When set, the dialog's first render selects the
+matching context tab and then clears the field (via `Option::take`), so the
+pre-selection is applied exactly once.
+
+**Command handling (CX Requirement 2.1-2.4):** In
+`crates/ff-desktop/src/shell/commands.rs`:
+- `KEYS` (no argument) -- opens the dialog with `initial_scope = None`; the
+  dialog shows the Default (Global) scope tab.
+- `KEYS <name>` -- opens the dialog with `initial_scope = Some(name)` where
+  `name` is lowercased for case-insensitive matching (CX Requirement 2.4).
+- The known context names are `pom`, `editor`, `settings`, `files`, `hex`,
+  `toolchain`. If `<name>` does not match a known context, the shell sets
+  `open_error` to a status message of the form
+  `Key map '<name>' not found -- showing Default map.` and the dialog falls back
+  to the Default scope tab (CX Requirement 2.3).
+
+**Scope resolution (CX Requirement 2.2):** On the first render after opening,
+`render()` matches `initial_scope` against the known context list and, on a
+match, sets `active_tab = ScopeTab::Context(name)`. A non-matching name leaves
+`active_tab` at the Default scope.
+
+**Map Name field (CX Requirement 2.5):** The dialog header renders a read-only
+`Map Name` field showing the name of the currently selected scope tab
+(`Default (Global)` or the context name) so the user can confirm which map is
+being edited.
+
+#### 8.3 SPLIT Command as Workspace Detach Alias (CX Requirement 3)
+
+`SPLIT` is added as an ISPF-heritage alias for the Workspace detach operation
+(the existing "Move to Other View" action, layout-and-docking Req 3.1), while
+preserving the existing editor split-screen behaviour.
+
+**Command handling (CX Requirement 3.1-3.4)** in
+`crates/ff-desktop/src/shell/commands.rs`:
+- `SPLIT DETACH` -- detaches the active Workspace from any tab kind (including
+  Editor Context). It marks the active tab `is_floating = true` and records the
+  index in `detach_pending`.
+- `SPLIT` (no argument) on a non-editor tab (POM, Settings, Files, etc.) --
+  behaves identically to `SPLIT DETACH`.
+- `SPLIT` (no argument) on an Editor Context tab (`TabKind::FileEditor` or
+  `TabKind::Untitled`) -- performs the existing split-screen operation
+  (menu-and-statusbar Req 19.11), preserving backward compatibility by creating
+  a `SplitScreenState` at the current cursor line.
+
+**Window limit (CX Requirement 3.5):** Before detaching, the handler counts tabs
+with `is_floating == true`. If the count is already 16, it sets `open_error` to
+the existing maximum-reached status message and does not detach.
+
+**Command registration (CX Requirement 3.6):** The detach variant is registered
+in the command framework with Command_ID `layout.split`.
+
+#### 8.4 No New Crate Required
+
+All Phase CX changes are confined to:
+- `crates/ff-desktop/src/tab_state.rs` -- add `workspace_name` field
+- `crates/ff-session/src/session_state.rs` -- add serialised `workspace_name` field
+- `crates/ff-desktop/src/session_manager.rs` -- map `workspace_name` on save/restore
+- `crates/ff-desktop/src/shell/commands.rs` -- `NAME`, `KEYS <name>`, `SPLIT`/`SPLIT DETACH` handling
+- `crates/ff-desktop/src/shell/render_chrome.rs` -- render `workspace_name` in tab headers
+- `crates/ff-desktop/src/key_config_dialog.rs` -- add `initial_scope`, Map Name field, scope pre-selection
+
+---
+
+## Design Delta: RETRIEVE Argument Dispatch (Requirement 19 revised, CR-NR-054)
+
+RETRIEVE becomes argument-driven via the general command-argument mechanism
+(command-framework Requirement 9). `RETRIEVE <arg>` typed on the command line and
+`<arg>` typed in the field followed by the RETRIEVE key are the same invocation
+(the key forwards the field contents as `arg`, Requirement 9.8).
+
+### Dispatch by argument
+
+```text
+RETRIEVE with arg = ""      -> step back one entry: recall the previous command
+                               into the field; repeated presses walk further back
+                               (existing single-step cycling)
+RETRIEVE with arg = "LIST"   -> open the numbered History_List overlay
+RETRIEVE with arg = <n>      -> recall list item n into the field (no execute);
+                               n out of range -> field unchanged + status message
+```
+
+RETRIEVE never executes the recalled command; it only populates the field. The
+RETRIEVE command (and its `LIST` / numeric argument) is never recorded in
+Command_History (Requirement 19.8) -- the history-record step skips the RETRIEVE
+verb regardless of argument.
+
+### The numbered, deduplicated History_List
+
+```text
+- Source: Command_History (Requirement 7 dedup rules).
+- Ordering: most-recent at the top = number 1, oldest at the bottom.
+- Dedup: each distinct command appears once, at the position of its MOST RECENT
+  invocation; earlier duplicate occurrences are dropped.
+- RETRIEVE <n> selects the command shown at position n in this list.
+```
+
+A pure helper builds the display model so it is unit-testable without the GUI:
+
+```rust
+/// Build the numbered, deduplicated recall list (most-recent-first).
+/// Item 0 in the returned Vec is display number 1.
+/// Validates: function-keys-and-history Requirement 19.3
+pub fn recall_list(history: &CommandHistory) -> Vec<String>;
+
+/// Resolve a 1-based display number to its command text, if in range.
+/// Validates: function-keys-and-history Requirement 19.4
+pub fn recall_by_number(history: &CommandHistory, n: usize) -> Option<String>;
+```
+
+### Overlay rendering (ff-desktop)
+
+The History_List overlay is a near-modal popup anchored just below the
+Primary_Command_Field (Requirement 19.9), rendered by `ff-desktop`. Selection is
+by mouse click, keyboard navigation + Enter, or by typing the number and pressing
+RETRIEVE (Requirement 19.5); Escape closes and clears the field (Requirement 19.6).
+Empty history shows "No command history." (Requirement 19.7). This supersedes the
+prior `ShowList` trigger that keyed off the literal `LIST` text: the trigger is
+now the `arg == "LIST"` value delivered through the unified argument path, so the
+command-line form (`RETRIEVE LIST`) and the key form (`LIST` + RETRIEVE key) share
+one code path.

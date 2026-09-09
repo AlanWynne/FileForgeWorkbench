@@ -2195,3 +2195,65 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `tests/workflow/` | ✅ | `tests/workflow/*.fftest` (3 scripts) | Req 13.3: workflow scripts cover batch execution, global search, command palette |
 | `tests/` | ✅ | all .fftest scripts | Req 13.4: each script includes at least one ASSERT command verifying post-condition |
 | `tests/` | ✅ | all .fftest scripts | Req 13.5: each script begins with comment block identifying area, requirements, expected outcome |
+
+## Phase DC -- Logging Runtime Reconfiguration (logging-subsystem Req 11, CR-CH-015 / B033)
+
+| Crate | Status | Test | Criterion |
+|-------|--------|------|-----------|
+| `ff-logging` | ✅ | `tests/reconfigure_integration.rs` | Req 11.1: expose `reconfigure(LogConfig)` applying config to the already-initialized subsystem |
+| `ff-logging` | ✅ | `writer.rs::switch_directory_opens_file_in_new_directory`; `tests/reconfigure_integration.rs` | Req 11.2: reconfigure with a new directory flushes/closes current file, creates new dir, opens new file before next record |
+| `ff-logging` | ✅ | `tests/reconfigure_integration.rs` (same-dir short-circuit in `handle_reconfigure`) | Req 11.3: reconfigure with the same directory keeps the current file, applies only level/rotation changes |
+| `ff-logging` | ✅ | `tests/reconfigure_integration.rs` (DEBUG becomes visible after level lowered) | Req 11.4: reconfigure applies new minimum level atomically; clamps out-of-range rotation values with WARN (per Req 5.3/5.8) |
+| `ff-logging` | ✅ | `writer.rs::switch_directory_failure_leaves_writer_on_current_file`; `tests/reconfigure_integration.rs` (failed switch retains dir) | Req 11.5: on new-directory failure, retain current file/fallback, lose no buffered records, write WARN, do not terminate |
+| `ff-logging` | ✅ | `tests/reconfigure_before_init.rs`; `tests/reconfigure_integration.rs` (post-shutdown no-op) | Req 11.6: reconfigure before init or after shutdown signal is a safe no-op (no panic) |
+| `ff-desktop` | ✅ | `main.rs::project_config_logging_directory_is_resolved_for_reconfigure`; `main.rs::apply_logging_config_is_safe_when_logging_not_active` | Req 11.7: startup initializes logging with defaults before config load, then invokes reconfigure with resolved settings before GUI shell construction |
+| `ff-logging` | ✅ | `tests/reconfigure_integration.rs` ("Logging reconfigured" INFO in new dir) | Req 11.8: successful directory switch writes an INFO record naming the effective Log_Directory to the new file |
+| `ff-logging` | ✅ | `writer.rs::prop_switch_directory_routes_records_to_new_dir` (Property 11) | Req 11.9: reconfigure is thread-safe; concurrent log calls land in the previous or new file without loss or data races |
+| `ff-logging` | ✅ | `writer.rs` switch tests (bytes reset, old files retained) | Req 11.10: level change during reconfigure does not itself delete retained files; retention stays governed by max_retained_files |
+
+### Phase DD -- Logging Inventory and Gap Report Tool (CR-NR-055, logging-subsystem Req 12)
+
+| Crate | Status | Test | Criterion |
+|-------|--------|------|-----------|
+| `tools` | 🔴 | -- | Req 12.1: scan every `*.rs` under `crates/`, identify each log call site with file, 1-based line, and level when statically determinable |
+| `tools` | 🔴 | -- | Req 12.2: report groups call sites by crate with per-crate and per-level counts |
+| `tools` | 🔴 | -- | Req 12.3: report lists every crate with non-test source but zero log call sites as a gap |
+| `tools` | 🔴 | -- | Req 12.4: report lists silent-error candidate sites with file:line; test sites excluded from non-test counts |
+| `tools` | 🔴 | -- | Req 12.5: report written to a fixed path under `docs/quality/`, overwriting any prior report |
+| `tools` | 🔴 | -- | Req 12.6: tool modifies no file outside its `docs/quality/` report path and its `tools/logs/` log |
+| `tools` | 🔴 | -- | Req 12.7: tool mirrors progress/summary to a `tools/logs/` log, overwritten each run |
+| `tools` | 🔴 | -- | Req 12.8: unreadable/unparseable file is recorded in the report; scan continues without aborting |
+| `tools` | 🔴 | -- | Req 12.9: repeated runs are deterministic (crates/files/sites in stable order); Property 12 |
+
+### Phase DF -- Command Arguments and Command Chaining (CR-NR-054)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-command` | 🔴 | -- | Req 9.1: command line parsed into verb + Argument_String (first token / trimmed remainder) |
+| `ff-command` | 🔴 | -- | Req 9.2: non-empty argument placed into Command_Params under reserved key `arg` |
+| `ff-command` | 🔴 | -- | Req 9.3: no argument -> empty Argument_String, `arg` absent (verb-only unchanged) |
+| `ff-command` | 🔴 | -- | Req 9.4: verb-only commands (SAVE/CANCEL) produce the same observable result as before |
+| `ff-command` | 🔴 | -- | Req 9.5: a Command_Definition / Shortcut_Binding may carry a fixed Argument_String, forwarded as if typed |
+| `ff-command` | 🔴 | -- | Req 9.6: a command that does not accept an argument ignores a surplus argument (no error) |
+| `ff-command` | 🔴 | -- | Req 9.7: verb/argument split performed once at the dispatch boundary (shared by all input sources) |
+| `ff-desktop` | 🔴 | -- | Req 9.8: function-key press forwards the Command field contents as the command's argument (== typed `<cmd> <field>`) |
+| `ff-desktop` | 🔴 | -- | Req 9.9: framework never force-clears the field; command decides clear/replace/keep |
+| `ff-command` | 🔴 | -- | Req 9.10: key-forwarded and typed invocations are indistinguishable to the command (same `arg`) |
+| `ff-navigation-commands` | 🔴 | -- | Req 20.1: DOWN M/MAX -> bottom; UP M/MAX -> top (case-insensitive) |
+| `ff-navigation-commands` | 🔴 | -- | Req 20.2: UP/DOWN with positive integer n -> scroll by n lines (via `arg`) |
+| `ff-navigation-commands` | 🔴 | -- | Req 20.3: malformed scroll argument -> default one-screen page, no error |
+| `ff-navigation-commands` | 🔴 | -- | Req 20.4: LEFT/RIGHT with n -> n columns; M/MAX -> horizontal extreme |
+| `ff-desktop` | 🔴 | -- | Req 20.5: scroll command clears the Command field after consuming a key-forwarded amount |
+| `ff-keys` | 🔴 | -- | Req 19.1: RETRIEVE (no argument) recalls previous command; repeated -> step back through history |
+| `ff-keys` | 🔴 | -- | Req 19.2: RETRIEVE LIST opens the numbered history list |
+| `ff-keys` | 🔴 | -- | Req 19.3: `recall_list` -- numbered most-recent-first (1=top), deduplicated keep-most-recent |
+| `ff-keys` | 🔴 | -- | Req 19.4: RETRIEVE `<n>` recalls list item n into the field; out-of-range -> unchanged + status |
+| `ff-desktop` | 🔴 | -- | Req 19.5: history-list selection (click / Enter / number+RETRIEVE) populates field without executing |
+| `ff-desktop` | 🔴 | -- | Req 19.6: Escape / click-outside closes the list and clears the field |
+| `ff-desktop` | 🔴 | -- | Req 19.7: empty history shows "No command history." |
+| `ff-keys` | 🔴 | -- | Req 19.8: RETRIEVE (and its LIST/number argument) never added to Command_History |
+| `ff-desktop` | 🔴 | -- | Req 19.9: history list rendered as a near-modal overlay just below the command field |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 11.7: MENU `<name> <key>` opens the menu and activates the option by key |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 11.8 / 5.5: MENU `<name> <key>` == `=k1.k2` == `<key>` + key bound to MENU `<name>` |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 11.9: unknown chained key -> open menu + `Option '<key>' not found.` |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 11.10 / 5.6: deeper chains forward the remaining argument to the option's own command |

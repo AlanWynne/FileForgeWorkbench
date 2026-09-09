@@ -150,17 +150,22 @@ impl WorkbenchShell {
                 if let CommandResult::Err(e) = result {
                     self.open_error = Some(e.to_string());
                 }
-            } else if kind == TabKind::FileExplorerPanel || kind == TabKind::CommandConfigurator {
-                // Validates: Requirement 19.10 (file-explorer) and
-                // command-configurator Requirement 2.8 -- END/F3 returns to POM.
+            } else if kind == TabKind::FileExplorerPanel
+                || kind == TabKind::CommandConfigurator
+                || kind == TabKind::MenuWorkspace
+            {
+                // Validates: Requirement 19.10 (file-explorer),
+                // command-configurator Requirement 2.8, and cw-requirements.md
+                // Requirement 10.4 / 15.10 -- END/F3 from a Menu_Workspace (incl.
+                // the Settings_Menu) or these Contexts returns to the POM.
                 self.pending_return_to_pom = true;
             } else if kind == TabKind::SettingsPanel
                 && self.settings_panel.namespace_filter.is_some()
             {
                 // Validates: cw-requirements.md Requirement 10.4 -- END from a
-                // Settings_Namespace_View returns to the Settings menu level
-                // (the unfiltered All-Settings view), not straight to the POM.
-                self.open_settings_view(None);
+                // Settings_Namespace_View returns to the Settings_Menu, not the
+                // flat All-Settings view and not straight to the POM.
+                self.open_settings_menu();
             } else {
                 // Validates: Requirement 17.1 — close current tab, go to previous
                 let current = self.tabs.active_index();
@@ -202,10 +207,17 @@ impl WorkbenchShell {
             return;
         }
 
-        // Validates: Requirement 15.1, cw-requirements.md Req 9.4, 10.1-10.5
-        // Bare SETTINGS / 0 / =0 / A open the unfiltered flat list; SETTINGS <ns>
-        // opens a Settings_Namespace_View filtered to that namespace prefix.
-        if upper == "0" || upper == "SETTINGS" || upper == "=0" || upper == "A" {
+        // Settings navigation (two-level, cw-requirements.md Req 9, 10, 15.1).
+        // Bare SETTINGS / 0 / =0 open the data-driven Settings_Menu
+        // (Menu_Workspace backed by menus/settings.toml). Option A opens the
+        // unfiltered flat list; SETTINGS <ns> opens a filtered namespace view.
+        if upper == "0" || upper == "SETTINGS" || upper == "=0" {
+            self.open_settings_menu();
+            self.open_error = None;
+            return;
+        }
+        if upper == "A" {
+            // Validates: cw-requirements.md Req 9.4, 10.x -- All Settings flat list.
             self.open_settings_view(None);
             self.open_error = None;
             return;
@@ -213,7 +225,7 @@ impl WorkbenchShell {
         if upper.starts_with("SETTINGS ") {
             let ns = cmd.trim()[9..].trim().to_lowercase();
             if ns.is_empty() {
-                self.open_settings_view(None);
+                self.open_settings_menu();
             } else {
                 self.open_settings_view(Some(ns));
             }
@@ -1100,6 +1112,27 @@ impl WorkbenchShell {
         self.tabs
             .open_menu_workspace_tab(&lower, &menus_dir, limits, &self.runtime);
         // Surface the load-error message when the backing file is missing (11.4).
+        if let Some(mw) = self.tabs.active_tab().menu_workspace.as_ref() {
+            self.open_error = mw.load_error.clone();
+        } else {
+            self.open_error = None;
+        }
+    }
+
+    /// Open the Settings_Menu -- the data-driven Menu_Workspace backed by
+    /// `menus/settings.toml`.
+    ///
+    /// Transforms the active POM tab in place when opened from the Home Context
+    /// (so F3/END returns to the POM), otherwise opens a dedicated tab.
+    ///
+    /// Validates: cw-requirements.md Requirement 9.1; configuration-system
+    /// Requirement 15.1
+    pub(super) fn open_settings_menu(&mut self) {
+        let menus_dir = self.menus_dir();
+        let limits = crate::menu_workspace::loader::option_limits_from_config(&self.config_handle);
+        self.tabs
+            .open_menu_workspace_here("settings", &menus_dir, limits, &self.runtime);
+        // Surface the load-error message when settings.toml is missing.
         if let Some(mw) = self.tabs.active_tab().menu_workspace.as_ref() {
             self.open_error = mw.load_error.clone();
         } else {
