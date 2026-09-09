@@ -32,6 +32,11 @@ Status: EMPTY -- populated per sub-project during Waves 0-5, finalized in Wave 6
 | `PluginConfigHandle` | configuration-system | ff-plugin (PluginContext) | No | Sole owner ff-config |
 | `AuditEntry` / `ExportScope` / `ImportTarget` / `ImportSummary` | configuration-system | ff-desktop | No | Sole owner ff-config |
 | `ConfigProvider` (trait) | platform-core (defined) | ff-config (impl) | No | Trait in ff-core, impl in ff-config -- correct direction |
+| `LogLevel` | logging-subsystem | all crates | No | Sole owner ff-logging |
+| `LogConfig` | logging-subsystem | ff-desktop (reconfigure) | No | Sole owner ff-logging; fed by ff-config `logging.*` keys |
+| `LogRecord` | logging-subsystem | -- | No | Sole owner ff-logging |
+| `log_trace!`/`log_debug!`/`log_info!`/`log_warn!`/`log_error!` (macros) | logging-subsystem | all crates | No | Sole owner ff-logging |
+| `PluginLogHandle` | logging-subsystem | ff-plugin (PluginContext) | No | Sole owner ff-logging |
 
 ## Command IDs
 
@@ -65,6 +70,8 @@ Status: EMPTY -- populated per sub-project during Waves 0-5, finalized in Wave 6
 | Plugin_Namespace | configuration-system | plugin-architecture | No | Reserved namespaces align with core crate names |
 | EditorConfig | configuration-system | edit-operations, document-model | No | Per-file resolution, overrides layers for its properties |
 | Settings_Menu / Settings_Namespace_View | configuration-system + menu-workspace | Req 15 + menu-workspace Phase CW | Watch | Settings UI shared between specs -- SPLIT proposal PA-SPLIT-001 folds Req 15 into menu-workspace |
+| Log_Level / Log_Record / Log_File / Log_Rotation | logging-subsystem | all crates | No | Foundation; consumed everywhere via macros |
+| logging.* config keys | logging-subsystem (consumer) | configuration-system (owner of `logging` namespace) | No | Two-phase init: ff-logging defaults then reconfigure from ff-config (CR-CH-015, B033) |
 
 ## Dangling Cross-References
 

@@ -12,7 +12,7 @@ sub-projects reviewed in Wave 6 (review only).
 |---|-------------|------|--------|-----------------|-------|
 | 1 | platform-core | 0 | DONE | units/platform-core.md | COMPLETE; not a split candidate; PA-LOG-001, PA-DOC-001 logged |
 | 2 | configuration-system | 0 | DONE | units/configuration-system.md | COMPLETE; SPLIT CANDIDATE (spec split proposed PA-SPLIT-001); PA-STD-001, PA-DOC-002 logged |
-| 3 | logging-subsystem | 0 | PENDING | -- | foundation; feeds Req 5 logging audit |
+| 3 | logging-subsystem | 0 | DONE | units/logging-subsystem.md | FUNCTIONALLY COMPLETE; not a split candidate; Req 12 tool done but tracking stale (PA-TRACK-001); PA-LOG-002 = project-wide audit data source |
 | 4 | command-framework | 0 | PENDING | -- | foundation |
 | 5 | document-model | 0 | PENDING | -- | foundation |
 | 6 | virtual-file-system | 0 | PENDING | -- | foundation |
