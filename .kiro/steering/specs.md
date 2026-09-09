@@ -97,6 +97,7 @@ The following specs exist under `docs/specs/`:
 - notification-system
 - jcl-resolver (stub -- no requirements yet)
 - menu-workspace
+- project-analysis (meta/analysis sub-project -- systematic whole-project analysis: split, consistency, completeness, logging audit, task re-order; no deliverable crate)
 
 ## Canonical UI Terminology (Phase CT)
 Three-level UI model:
