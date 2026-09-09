@@ -55,6 +55,11 @@ Status: EMPTY -- populated per sub-project during Waves 0-5, finalized in Wave 6
 | `WatchHandle` / `WatchEvent` | virtual-file-system | document-model, external-modification | No | Sole owner ff-vfs |
 | `VfsTransaction` (staged protocol) | virtual-file-system | dataset-catalog, virtual-catalog-manager | No | Sole owner ff-vfs (Req 11) |
 | workspace backup manifest | virtual-file-system (Req 12.2) | dataset-catalog (ff-dscatalog Req 26.3) | Watch | PA-WATCH-003: verify shared-vs-distinct manifest type in Wave 2 |
+| `FileForgePlugin` / `PluginContext` / `PluginError` | plugin-architecture | all plugin crates | No | Sole owner ff-plugin |
+| `Capability` / `CapabilityRegistry` / `PluginState` | plugin-architecture | shell, subsystems | No | Sole owner ff-plugin |
+| `PluginRegistry` / `PLUGIN_API_VERSION` | plugin-architecture | platform-core, shell | No | Sole owner ff-plugin |
+| plugin namespace `[plugins.{name}]` | plugin-architecture (Req 2.7/7.5) + configuration-system (Req 8) | -- | No | Same scoping rule in both specs -- consistent |
+| PluginLogHandle contract | plugin-architecture (Req 2 uses) + logging-subsystem (Req 10 owns) | -- | No | Consistent `[plugin:name]` prefix |
 
 ## Command IDs
 
