@@ -3543,3 +3543,197 @@ fn run_command_definition_missing_id_reports_not_defined() {
         Some("Command 'no.such.def' is not defined.")
     );
 }
+
+// === Command Configurator Context (Task 4) ==================================
+
+// Validates: command-configurator Requirement 2.1, 2.7 -- COMMANDS opens the
+// Command Configurator Context with title [COMMANDS].
+#[test]
+fn commands_opens_command_configurator_context() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("COMMANDS");
+    let tab = shell.tabs.active_tab();
+    assert_eq!(tab.kind, TabKind::CommandConfigurator);
+    assert_eq!(tab.title, "[COMMANDS]");
+    assert!(shell.open_error.is_none());
+}
+
+// Validates: command-configurator Requirement 2.8 -- END from the Command
+// Configurator returns the tab to the POM.
+#[test]
+fn command_configurator_end_returns_to_pom() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("COMMANDS");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::CommandConfigurator);
+    // END sets the deferred return-to-POM flag; apply it as update() would.
+    shell.handle_command("END");
+    assert!(
+        shell.pending_return_to_pom,
+        "END must request return to POM"
+    );
+    let idx = shell.tabs.active_index();
+    if shell.pending_return_to_pom {
+        if let Some(tab) = shell.tabs.tabs_mut().get_mut(idx) {
+            tab.kind = TabKind::PrimaryOptionMenu;
+            tab.title = "[POM]".to_string();
+        }
+    }
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
+}
+
+/// Open a temp-backed CommandStore on the shell so save() writes to a temp dir.
+fn point_store_at_temp(shell: &mut super::WorkbenchShell) -> tempfile::TempDir {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let path = dir.path().join("commands").join("commands.toml");
+    shell.command_store = crate::command_config::store::CommandStore::new(path);
+    dir
+}
+
+/// Build a Function EditForm on the configurator panel.
+fn set_add_function_form(shell: &mut super::WorkbenchShell, id: &str, command_id: &str) {
+    use crate::command_config::edit::{EditForm, TargetVariant};
+    let mut form = EditForm::new_add();
+    form.id = id.to_string();
+    form.label = format!("Run {command_id}");
+    form.variant = TargetVariant::Function;
+    form.command_id = command_id.to_string();
+    shell.command_configurator_panel.form = Some(form);
+}
+
+// Validates: command-configurator Requirement 2.3, 2.4 -- Save commits a new
+// definition to the store and closes the form.
+#[test]
+fn configurator_save_adds_definition_to_store() {
+    use crate::command_config::render::ConfiguratorAction;
+    let mut shell = make_shell();
+    let _dir = point_store_at_temp(&mut shell);
+    set_add_function_form(&mut shell, "my.build", "file.save");
+
+    shell.apply_configurator_action(ConfiguratorAction::Save);
+
+    assert!(
+        shell.command_store.find("my.build").is_some(),
+        "Save must add the definition to the store"
+    );
+    assert!(
+        shell.command_configurator_panel.form.is_none(),
+        "a successful Save closes the form"
+    );
+    assert!(shell.command_configurator_panel.error.is_none());
+}
+
+// Validates: command-configurator Requirement 4.1 -- Save rejects an invalid id
+// and leaves the store unchanged.
+#[test]
+fn configurator_save_rejects_invalid_id() {
+    use crate::command_config::render::ConfiguratorAction;
+    let mut shell = make_shell();
+    let _dir = point_store_at_temp(&mut shell);
+    // Uppercase is invalid per the Command_ID naming rule.
+    set_add_function_form(&mut shell, "BAD ID", "file.save");
+
+    shell.apply_configurator_action(ConfiguratorAction::Save);
+
+    assert!(
+        shell.command_store.definitions.is_empty(),
+        "store unchanged"
+    );
+    assert!(
+        shell.command_configurator_panel.error.is_some(),
+        "an invalid id must surface an error"
+    );
+    assert!(
+        shell.command_configurator_panel.form.is_some(),
+        "the form stays open on validation failure"
+    );
+}
+
+// Validates: command-configurator Requirement 4.6 -- Save rejects an id that
+// shadows a reserved built-in command.
+#[test]
+fn configurator_save_rejects_reserved_id() {
+    use crate::command_config::render::ConfiguratorAction;
+    let mut shell = make_shell();
+    let _dir = point_store_at_temp(&mut shell);
+    // file.exit is registered in WorkbenchShell::new(); it is reserved.
+    set_add_function_form(&mut shell, "file.exit", "file.save");
+
+    shell.apply_configurator_action(ConfiguratorAction::Save);
+
+    assert!(shell.command_store.find("file.exit").is_none());
+    assert!(shell.command_configurator_panel.error.is_some());
+}
+
+// Validates: command-configurator Requirement 2.5 -- Delete removes a
+// definition from the store.
+#[test]
+fn configurator_delete_removes_definition() {
+    use crate::command_config::render::ConfiguratorAction;
+    let mut shell = make_shell();
+    let _dir = point_store_at_temp(&mut shell);
+    set_add_function_form(&mut shell, "temp.cmd", "file.save");
+    shell.apply_configurator_action(ConfiguratorAction::Save);
+    assert!(shell.command_store.find("temp.cmd").is_some());
+
+    shell.apply_configurator_action(ConfiguratorAction::Delete("temp.cmd".to_string()));
+    assert!(
+        shell.command_store.find("temp.cmd").is_none(),
+        "Delete must remove the definition"
+    );
+}
+
+// Validates: command-configurator Requirement 2.4 -- editing an existing
+// definition updates it in place without adding a duplicate.
+#[test]
+fn configurator_edit_updates_in_place() {
+    use crate::command_config::edit::{EditForm, TargetVariant};
+    use crate::command_config::render::ConfiguratorAction;
+    let mut shell = make_shell();
+    let _dir = point_store_at_temp(&mut shell);
+    set_add_function_form(&mut shell, "edit.me", "file.save");
+    shell.apply_configurator_action(ConfiguratorAction::Save);
+
+    // Open an edit form for the same id and change the label.
+    let def = shell.command_store.find("edit.me").unwrap().clone();
+    let mut form = EditForm::from_definition(&def);
+    assert!(form.is_edit);
+    form.label = "Renamed".to_string();
+    form.variant = TargetVariant::Function;
+    form.command_id = "file.save".to_string();
+    shell.command_configurator_panel.form = Some(form);
+    shell.apply_configurator_action(ConfiguratorAction::Save);
+
+    assert_eq!(
+        shell.command_store.definitions.len(),
+        1,
+        "no duplicate added"
+    );
+    assert_eq!(
+        shell.command_store.find("edit.me").unwrap().label,
+        "Renamed"
+    );
+}
+
+// Validates: startup-and-session Requirement 21.2/21.3; command-configurator
+// Requirement 2.1 -- a CommandConfigurator descriptor reconstructs the Context.
+#[test]
+fn restore_command_configurator_descriptor_reopens_context() {
+    use crate::tab_state::TabKind;
+    use ff_session::session_state::{DescriptorParams, WorkspaceDescriptor, WorkspaceKind};
+    let mut shell = make_shell();
+    let descriptors = vec![WorkspaceDescriptor::CustomWorkspace {
+        workspace_kind: WorkspaceKind::CommandConfigurator,
+        params: DescriptorParams::new(),
+    }];
+    shell.restore_workspace_descriptors(&descriptors);
+    assert!(
+        shell
+            .tabs
+            .tabs()
+            .iter()
+            .any(|t| t.kind == TabKind::CommandConfigurator),
+        "a CommandConfigurator descriptor must reconstruct the Context"
+    );
+}

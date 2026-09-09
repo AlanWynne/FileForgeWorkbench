@@ -332,6 +332,10 @@ pub struct WorkbenchShell {
     /// Validates: command-configurator Requirement 1, 4.3; menu-workspace
     /// Requirement 10.3
     pub(crate) command_store: crate::command_config::store::CommandStore,
+    /// Command Configurator Context UI state (list + edit form + delete confirm).
+    ///
+    /// Validates: command-configurator Requirement 2.1, 2.3
+    pub(crate) command_configurator_panel: crate::command_config::render::CommandConfiguratorState,
     /// Files Panel (Virtual Catalog Manager) state.
     files_panel: FilesPanelState,
     /// File Explorer Panel state (expand/collapse per catalog node).
@@ -585,6 +589,8 @@ impl WorkbenchShell {
             show_unsaved_workspace_dialog: false,
             config_handle,
             command_store,
+            command_configurator_panel:
+                crate::command_config::render::CommandConfiguratorState::new(),
             files_panel: FilesPanelState::new(),
             file_explorer_panel: FileExplorerPanelState::new(),
             file_explorer_panel_width: 260.0,
@@ -824,7 +830,8 @@ pub(crate) fn title_line_text(tab: &crate::tab_state::TabState) -> String {
         | TabKind::SearchResults
         | TabKind::PluginManager
         | TabKind::EventLog
-        | TabKind::MacroLibrary => tab.title.clone(),
+        | TabKind::MacroLibrary
+        | TabKind::CommandConfigurator => tab.title.clone(),
         TabKind::MenuWorkspace => tab.title.clone(),
     }
 }
@@ -861,6 +868,7 @@ pub(crate) fn load_context_maps_from_config(config: &ConfigHandle, resolver: &mu
 }
 
 mod commands;
+mod configurator;
 /// Convert a `ff_config::ConfigValue` to a `toml::Value` for key-map parsing.
 mod helpers;
 mod render;

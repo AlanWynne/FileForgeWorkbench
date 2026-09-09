@@ -239,6 +239,30 @@ impl TabManager {
         self.active = self.tabs.len() - 1;
         let _ = runtime;
     }
+
+    /// Open the Command Configurator tab (COMMANDS).
+    ///
+    /// If a CommandConfigurator tab already exists, activates it instead of
+    /// inserting a duplicate.
+    /// Validates: command-configurator Requirement 2.1
+    pub fn open_command_configurator_tab(&mut self, runtime: &Runtime) {
+        if let Some(idx) = self
+            .tabs
+            .iter()
+            .position(|t| t.kind == TabKind::CommandConfigurator)
+        {
+            self.active = idx;
+            return;
+        }
+        let document = ff_document_model::new_document();
+        let id = TabId(self.next_id);
+        self.next_id += 1;
+        let tab = crate::tab_state::TabState::command_configurator(id, document);
+        self.tabs.push(tab);
+        self.active = self.tabs.len() - 1;
+        let _ = runtime;
+    }
+
     /// Transform the active tab in-place from `PrimaryOptionMenu` to a new kind.
     ///
     /// No-op if the active tab is not a `PrimaryOptionMenu` tab.

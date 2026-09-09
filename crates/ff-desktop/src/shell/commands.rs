@@ -137,8 +137,9 @@ impl WorkbenchShell {
                 if let CommandResult::Err(e) = result {
                     self.open_error = Some(e.to_string());
                 }
-            } else if kind == TabKind::FileExplorerPanel {
-                // Validates: Requirement 19.10 -- END from FileExplorerPanel returns to POM
+            } else if kind == TabKind::FileExplorerPanel || kind == TabKind::CommandConfigurator {
+                // Validates: Requirement 19.10 (file-explorer) and
+                // command-configurator Requirement 2.8 -- END/F3 returns to POM.
                 self.pending_return_to_pom = true;
             } else if kind == TabKind::SettingsPanel
                 && self.settings_panel.namespace_filter.is_some()
@@ -230,6 +231,19 @@ impl WorkbenchShell {
         if upper == "GSEARCH" || upper == "SEARCH" {
             // Validates: global-search Requirement 1.2
             self.open_or_focus_search_panel();
+            self.open_error = None;
+            return;
+        }
+
+        if upper == "COMMANDS" {
+            // Validates: command-configurator Requirement 2.1, 2.7 -- open the
+            // Command Configurator Context (title [COMMANDS]).
+            if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
+                self.tabs
+                    .transform_active_pom_tab(TabKind::CommandConfigurator, "[COMMANDS]");
+            } else {
+                self.tabs.open_command_configurator_tab(&self.runtime);
+            }
             self.open_error = None;
             return;
         }
@@ -1131,6 +1145,11 @@ impl WorkbenchShell {
                     }
                     WorkspaceKind::MacroLibrary => {
                         self.tabs.open_macro_library_tab(&self.runtime);
+                    }
+                    WorkspaceKind::CommandConfigurator => {
+                        // Validates: startup-and-session Requirement 21.2, 21.3;
+                        // command-configurator Requirement 2.1.
+                        self.tabs.open_command_configurator_tab(&self.runtime);
                     }
                     WorkspaceKind::PrimaryOptionMenu => {
                         // POM presence is guaranteed by ensure_pom_tab_present;

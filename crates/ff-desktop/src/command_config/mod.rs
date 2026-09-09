@@ -25,6 +25,8 @@
 // menu_workspace module during its spec-complete-but-unwired phase.
 #![allow(dead_code)]
 
+pub mod edit;
+pub mod render;
 pub mod store;
 
 use serde::{Deserialize, Serialize};

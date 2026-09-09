@@ -2063,14 +2063,14 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `command_config/store.rs::invalid_entry_skipped_valid_retained`, `malformed_toml_surfaces_load_error` | Req 1.6: invalid TOML/entry skipped, valid entries retained, load-error surfaced |
 | `ff-desktop` | ✅ | `command_config/store.rs::poll_reload_picks_up_disk_change` | Req 1.7: store hot-reloads via mtime poll (Menu Workspace pattern) |
 | `ff-desktop` | 🔴 | -- | Req 1.8: default/example content is plain ASCII (no default-content generator yet; lands with the Context UI) |
-| `ff-desktop` | 🔴 | -- | Req 2.1: Command Configurator Context opens via COMMANDS, lists definitions (UI deferred within DB.9) |
-| `ff-desktop` | 🔴 | -- | Req 2.2: each row shows id, label, variant, and external Execution_Mode (UI deferred) |
-| `ff-desktop` | 🟡 | `command_config/store.rs::add_validates_and_rejects_duplicate`, `remove_deletes_by_id` | Req 2.3: Add/Delete store operations DONE; Edit + confirmation UI deferred |
-| `ff-desktop` | 🟡 | `command_config/store.rs::add_validates_and_rejects_duplicate` | Req 2.4: save validates then writes store; failure leaves store unchanged (UI trigger deferred) |
-| `ff-desktop` | ✅ | `command_config/store.rs::remove_deletes_by_id` | Req 2.5: delete removes definition; save writes store back |
-| `ff-desktop` | 🔴 | -- | Req 2.6: variant-specific target editor fields (UI deferred) |
-| `ff-desktop` | 🔴 | -- | Req 2.7: Context title is [COMMANDS] (UI deferred) |
-| `ff-desktop` | 🔴 | -- | Req 2.8: F3/END returns to POM (UI deferred) |
+| `ff-desktop` | ✅ | `shell/tests.rs::commands_opens_command_configurator_context` | Req 2.1: Command Configurator Context opens via COMMANDS, lists definitions |
+| `ff-desktop` | ✅ | `command_config/render.rs::external_mode_label_reflects_mode`, `non_external_target_has_blank_mode_label` | Req 2.2: each row shows id, label, variant, and external Execution_Mode |
+| `ff-desktop` | ✅ | `shell/tests.rs::configurator_save_adds_definition_to_store`, `configurator_delete_removes_definition`, `configurator_edit_updates_in_place` | Req 2.3: Add / Edit / Delete (delete with confirmation) |
+| `ff-desktop` | ✅ | `shell/tests.rs::configurator_save_adds_definition_to_store`, `configurator_save_rejects_invalid_id` | Req 2.4: save validates then writes store; validation failure leaves store unchanged |
+| `ff-desktop` | ✅ | `shell/tests.rs::configurator_delete_removes_definition` | Req 2.5: delete removes definition; save writes store back |
+| `ff-desktop` | ✅ | `command_config/edit.rs::build_external_target_from_form`, `from_definition_prefills_external_fields` | Req 2.6: variant-specific target editor fields |
+| `ff-desktop` | ✅ | `shell/tests.rs::commands_opens_command_configurator_context` | Req 2.7: Context title is [COMMANDS] |
+| `ff-desktop` | ✅ | `shell/tests.rs::command_configurator_end_returns_to_pom` | Req 2.8: F3/END returns to POM |
 | `ff-desktop` | 🔴 | -- | Req 3.1: External target carries program, args, working_dir, mode |
 | `ff-shell` | ✅ | `engine.rs::execute_external_detached_returns_handle`, `executor::external::tests::spawn_detached_returns_handle_without_waiting` | Req 3.2: detached mode spawns Started_Task, returns immediately, no capture, no Workspace (no Output_Panel entry) |
 | `ff-shell` | ✅ | `engine.rs::execute_external_detached_returns_handle` | Req 3.3: Started_Task not tracked/monitored/restarted/persisted after spawn (handle dropped by caller) |

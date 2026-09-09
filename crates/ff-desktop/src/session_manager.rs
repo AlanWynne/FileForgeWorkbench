@@ -70,6 +70,11 @@ fn descriptor_for_tab(
         TabKind::PrimaryOptionMenu => {
             custom(WorkspaceKind::PrimaryOptionMenu, DescriptorParams::new())
         }
+        TabKind::CommandConfigurator => {
+            // Validates: command-configurator Requirement 2.1; startup-and-session
+            // Requirement 21 -- persists as a parameterless Custom Workspace.
+            custom(WorkspaceKind::CommandConfigurator, DescriptorParams::new())
+        }
         TabKind::MenuWorkspace => {
             // A data-driven menu persists as a Menu descriptor keyed by name.
             let name = t
@@ -198,7 +203,8 @@ impl SessionManager {
                 | TabKind::PluginManager
                 | TabKind::EventLog
                 | TabKind::MacroLibrary
-                | TabKind::MenuWorkspace => None,
+                | TabKind::MenuWorkspace
+                | TabKind::CommandConfigurator => None,
             }
         };
         // Note: FileExplorerPanel active_tab_id is None (no URI to track)
@@ -250,7 +256,8 @@ impl SessionManager {
                 | TabKind::PluginManager
                 | TabKind::EventLog
                 | TabKind::MacroLibrary
-                | TabKind::MenuWorkspace => None,
+                | TabKind::MenuWorkspace
+                | TabKind::CommandConfigurator => None,
             }
         };
 

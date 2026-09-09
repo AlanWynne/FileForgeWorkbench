@@ -57,18 +57,29 @@ still `[ ]`. Each task references the acceptance criteria it satisfies.
 
 ## Task 4: Command Configurator Context
 
-- [ ] 4.1 Add `WorkspaceKind::CommandConfigurator` (session-layer) and runtime `TabKind::CommandConfigurator`
+- [x] 4.1 Add `WorkspaceKind::CommandConfigurator` (session-layer) and runtime `TabKind::CommandConfigurator`
   - Satisfies: Req 2.1, 2.7
-- [ ] 4.2 Implement `COMMANDS` primary command to open the Context; F3/END returns to POM
+  - DONE: `TabKind::CommandConfigurator` + `command_configurator()` constructor
+    (`tab_state.rs`); `WorkspaceKind::CommandConfigurator` already present in
+    `ff-session`; `context_name_for_kind` -> `"commands"`.
+- [x] 4.2 Implement `COMMANDS` primary command to open the Context; F3/END returns to POM
   - Satisfies: Req 2.1, 2.8
-- [ ] 4.3 Render the definitions table (id, label, variant, external mode) in `command_config/render.rs`
+  - DONE: `COMMANDS` arm in `handle_command` (transform-or-open, title
+    `[COMMANDS]`); END/F3 sets `pending_return_to_pom` to transform back to POM.
+- [x] 4.3 Render the definitions table (id, label, variant, external mode) in `command_config/render.rs`
   - Satisfies: Req 2.2
-- [ ] 4.4 Implement Add / Edit / Delete with the variant-specific target editor in `command_config/edit.rs`
+  - DONE: `render.rs` grid with id/label/variant/mode columns.
+- [x] 4.4 Implement Add / Edit / Delete with the variant-specific target editor in `command_config/edit.rs`
   - Satisfies: Req 2.3, 2.6
-- [ ] 4.5 Implement definition validation (id rules, label, target deserialise, external program/mode)
+  - DONE: `edit.rs` `EditForm`/`TargetVariant` variant-specific editor; delete
+    confirmation window; Save applied by `shell/configurator.rs`.
+- [x] 4.5 Implement definition validation (id rules, label, target deserialise, external program/mode)
   - Satisfies: Req 4.1, 4.2
-- [ ] 4.6 Write unit tests: add/edit/delete round-trips through the store; validation rejects bad id/label/target/program/mode; title is [COMMANDS]
+  - DONE: `EditForm::build` field checks + `store::validate_definition`
+    (id/label/reserved/external-program) on commit.
+- [x] 4.6 Write unit tests: add/edit/delete round-trips through the store; validation rejects bad id/label/target/program/mode; title is [COMMANDS]
   - Validates: Requirement 2.3, 2.4, 2.5, 4.1, 4.2
+  - DONE: 8 shell tests (`shell/tests.rs`) + `render.rs`/`edit.rs` unit tests.
 
 ## Task 5: Binding integration
 
@@ -91,7 +102,10 @@ still `[ ]`. Each task references the acceptance criteria it satisfies.
 
 ## Task 6: Persistence and documentation
 
-- [ ] 6.1 Persist the Command Configurator Context as `CustomWorkspace { workspace_kind: CommandConfigurator }`; ensure Started_Tasks and captured output tabs are not persisted
+- [x] 6.1 Persist the Command Configurator Context as `CustomWorkspace { workspace_kind: CommandConfigurator }`; ensure Started_Tasks and captured output tabs are not persisted
   - Satisfies: Req 3.10, startup-and-session Req 21
+  - DONE: `descriptor_for_tab` maps `TabKind::CommandConfigurator` to
+    `CustomWorkspace { CommandConfigurator }`; `restore_workspace_descriptors`
+    reopens it. Started_Tasks / captured runs are not tabs, so not persisted.
 - [ ] 6.2 Update `docs/quality/TCR.md` -- set command-configurator rows to correct status
 - [ ] 6.3 Update `docs/specs/project-master/tasks.md` -- mark command-configurator tasks complete

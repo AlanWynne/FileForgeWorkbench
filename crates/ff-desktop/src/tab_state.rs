@@ -52,6 +52,10 @@ pub enum TabKind {
     ///
     /// Validates: menu-workspace Requirement 1, 2
     MenuWorkspace,
+    /// Command Configurator -- lists and edits user-defined command definitions.
+    ///
+    /// Validates: command-configurator Requirement 2.1, 2.7
+    CommandConfigurator,
 }
 
 /// A single undoable edit stored as the inverse operation to apply.
@@ -282,6 +286,18 @@ impl TabState {
     /// Validates: lua-macro-engine Requirement 12.1
     pub fn macro_library(id: TabId, document: DocumentHandle) -> Self {
         base_tab!(id, TabKind::MacroLibrary, "[MACROS]".to_string(), document)
+    }
+
+    /// Create a Command Configurator tab.
+    ///
+    /// Validates: command-configurator Requirement 2.1, 2.7
+    pub fn command_configurator(id: TabId, document: DocumentHandle) -> Self {
+        base_tab!(
+            id,
+            TabKind::CommandConfigurator,
+            "[COMMANDS]".to_string(),
+            document
+        )
     }
 
     /// Create a Menu Workspace tab backed by a TOML file at `file_path`.

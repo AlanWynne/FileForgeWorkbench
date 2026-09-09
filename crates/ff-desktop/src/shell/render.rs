@@ -787,6 +787,16 @@ impl WorkbenchShell {
                             }
                         }
                     }
+                    TabKind::CommandConfigurator => {
+                        // Validates: command-configurator Requirement 2.2-2.6
+                        self.command_store.poll_reload();
+                        let action = crate::command_config::render::render(
+                            ui,
+                            &mut self.command_configurator_panel,
+                            &self.command_store,
+                        );
+                        self.apply_configurator_action(action);
+                    }
                 }
             });
         } // end !is_file_explorer
