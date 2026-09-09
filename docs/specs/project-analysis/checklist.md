@@ -8,6 +8,14 @@ Status values: PENDING / IN PROGRESS / DONE. Wave is the planned analysis wave
 `ears-integration` and `workbench-requirements-merge` are analysis-artifact
 sub-projects reviewed in Wave 6 (review only).
 
+**Wave 0 COMPLETE (W0.1-W0.21).** All 10 foundation sub-projects analysed; the
+Wave 0 task-revision (W0.21) recorded the dependency-ordered remediation as
+`Phase PA-W0` (PROPOSAL) in `docs/specs/project-master/tasks.md`. Wave 0 outcome:
+3 clean/complete (platform-core, document-model, plugin-architecture), 3 complete
+with proposals (configuration-system, virtual-file-system, encoding-and-characters),
+3 with real code/logging gaps (command-framework Req 9, workflow-engine Req 7.6,
+background-io Req 6.6-6.9), 1 tracking-only gap (logging-subsystem Req 12 tool).
+
 | # | Sub-project | Wave | Status | Analysis Record | Notes |
 |---|-------------|------|--------|-----------------|-------|
 | 1 | platform-core | 0 | DONE | units/platform-core.md | COMPLETE; not a split candidate; PA-LOG-001, PA-DOC-001 logged |

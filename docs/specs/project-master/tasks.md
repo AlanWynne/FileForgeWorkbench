@@ -1188,6 +1188,50 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 
 ---
 
+### Phase PA-W0 -- Wave 0 Analysis Remediation (project-analysis CR-NR-056) -- PROPOSAL
+
+> Dependency-ordered re-ordering of the incomplete Wave 0 (foundation) work found
+> by the project-analysis pass (W0.1-W0.19). RECORDED per project-analysis Req 8
+> (non-destructive) -- surfaced here for owner scheduling, not yet executed. Each
+> item cites its incomplete-work-register ID and the owning sub-project. Items
+> already covered by an existing phase are cross-referenced, not duplicated.
+> Ordering rationale: foundation-crate logging/behaviour defects first (they are
+> consumed everywhere and undermine bug reporting), then ready-to-build features,
+> then tracking/refactor/consolidation.
+
+Group A -- foundation defects (code fixes, criteria already exist, no gate):
+- [ ] PA-W0.1 (PA-INCOMPLETE-002, `ff-background-io`) Implement Req 6.6-6.9 in `load.rs::execute_load`: wire `RetryPolicy` from config (retry transient VfsError, resume-from-position), add ERROR log on I/O failure and WARN per retry attempt; add the real mock-VFS retry integration test; then re-mark tasks 9.1-9.4/9.9/13.7. HIGH priority
+- [ ] PA-W0.2 (PA-LOG-004, `ff-vfs`) Add `ff-logging` dependency; replace the 3 `eprintln!` (registry.rs:77, subsystem.rs:87/105) with `log_info!`; add `log_warn!` on the DuplicateScheme path to satisfy Req 3.3. Follow the ff-plugin logging pattern (PA-LOG-REF-001)
+- [ ] PA-W0.3 (PA-LOG-005, `ff-workflow`) In `checkpoint.rs`: on deserialize/schema-mismatch failure emit `log_error!` and remove the invalid checkpoint (Req 7.6); replace `scan_resumable` `Err(_) => continue` with a `log_warn!`; log the `cleanup_expired` remove result
+
+Group B -- ready-to-build feature (gate complete):
+- [ ] PA-W0.4 (PA-INCOMPLETE-001, command-framework Req 9) Implement Command Arguments. Cross-ref: this is Phase DF.7-DF.10 (already tracked); no new task, listed here for Wave 0 dependency ordering. Blocked-by note per DF applies
+
+Group C -- tracking fixes (bookkeeping, no code):
+- [ ] PA-W0.5 (PA-TRACK-001, logging-subsystem) Mark tasks 23-24 `[x]` and set TCR Phase DD Req 12.1-12.9 rows to PASS (tool + report verified present and deterministic). Cross-ref: Phase DD.3/DD.4 already cover this
+- [ ] PA-W0.6 (PA-TCR-001, `ff-background-io`) Add TCR rows for Req 1-8 AFTER PA-W0.1 lands; Req 6.6-6.9 rows stay NOT COVERED/FAIL until then
+- [ ] PA-W0.7 (PA-DOC-001, platform-core) Reconcile Req 4.1 illustrative crate names to actual crate names OR annotate as illustrative (doc-only)
+- [ ] PA-W0.8 (PA-DOC-002, configuration-system) Confirm Req 10-14 are allocated elsewhere; add a one-line note to the spec Introduction (doc-only)
+
+Group D -- refactors (400-line cap, REFACTOR, no gate; do when the file is next touched):
+- [ ] PA-W0.9 (PA-STD-001, `ff-config`) Split 6 files over the cap (config_handle 809, editorconfig/parser 626, reload 510, access 486, init 446, plugin_handle 432)
+- [ ] PA-W0.10 (PA-STD-002, `ff-plugin`) Split `registry.rs` (698) by concern
+- [ ] PA-W0.11 (PA-STD-003, `ff-workflow`) Split `runner.rs` (483) and `definition.rs` (463)
+- [ ] PA-W0.12 (PA-STD-004, `ff-encoding`) Split `convert.rs` (536) by direction; also `ff-vfs` posix_provider.rs (444) / workspace.rs (410) per PA-SPLIT-002; `ff-document-model` document.rs (399, at cap) per PA-WATCH-002
+
+Group E -- proposals requiring owner approval + own gate (NOT scheduled here):
+- [ ] PA-W0.13 (PA-SPLIT-001, configuration-system) Spec split: core Req 1-9 + `configuration-enterprise` Req 16-18; fold Settings UI (Req 15, 18.6) into menu-workspace. Owner-gated
+- [ ] PA-W0.14 (PA-SPLIT-003, encoding-and-characters) Spec split: encoding-I/O (Req 1-5,11,14) + new `character-classification` (Req 6,7,12,13). Owner-gated
+- [ ] PA-W0.15 (PA-WATCH-004, `ff-workflow`) Decide checkpoint I/O: route through VFS OR document an explicit FFW-ARCH-001 exception. Owner-gated
+- [ ] PA-W0.16 (PA-LOG-002, project-wide) Decide which of the 56 zero-log crates need instrumentation (use `docs/quality/logging-inventory.md`); PA-LOG-003 (`ff-document-model`) optional logging enhancement folds in here
+- [ ] PA-W0.17 (PA-LOG-001, project-wide) One code-mode pass replacing non-ASCII in `.rs` with ASCII, EXCLUDING genuine Unicode test/data literals (ff-encoding, ff-document-model)
+
+> Consistency watches carried to later waves (no Wave 0 action): PA-WATCH-001
+> (Command_Target fan-out, Waves 1-5), PA-WATCH-003 (workspace-backup manifest
+> vs dataset-catalog, Wave 2), PA-WATCH-005 (ff-encoding Unicode-data generation).
+
+---
+
 ## Summary
 
 | Status | Count |
@@ -1216,4 +1260,5 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 | `[x]` Phase DC complete | Two-Phase Logging Init (CR-CH-015, B033) -- logging-subsystem Req 11 + `ff_logging::reconfigure` + desktop `apply_logging_config` wiring (DC.1-DC.5); 9008 tests pass, verify.ps1 clean |
 | `[ ]` Phase DD | Logging Inventory and Gap Report Tool (CR-NR-055) -- adds logging-subsystem Req 12 + `tools/python/logging_inventory.py` -> `docs/quality/logging-inventory.md` (DD.1-DD.4) |
 | `[ ]` Phase DE-fix | END/RETURN from POM close the Workspace, exit only when sole Workspace (CR-CH-016) -- SPEC DONE (Req 17.2/17.2a/17.4/4.3/8.2), impl pending (DE-fix.1-DE-fix.5) |
+| `[ ]` Phase PA-W0 (PROPOSAL) | Wave 0 Analysis Remediation (project-analysis CR-NR-056) -- dependency-ordered Wave 0 findings (PA-W0.1-PA-W0.17). Group A defects: PA-INCOMPLETE-002 (ff-background-io Req 6.6-6.9), PA-LOG-004 (ff-vfs eprintln + Req 3.3), PA-LOG-005 (ff-workflow Req 7.6). Group B: command-framework Req 9 = Phase DF. Group C tracking, Group D refactors, Group E owner-gated proposals. RECORDED, not executed |
 | Active work | Phase CZ -- FFTest Script Suite + Context Inspection (next step) |
