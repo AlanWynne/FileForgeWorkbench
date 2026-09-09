@@ -1,4 +1,4 @@
-//! Shell engine — central coordinator for the shell subsystem.
+//! Shell engine -- central coordinator for the shell subsystem.
 //!
 //! Orchestrates command handling, security gating, shell resolution,
 //! process execution, and output routing.
@@ -11,6 +11,7 @@ use crate::commands::{self, CommandForm};
 use crate::config::{ShellConfig, ShellConfigProvider, ShellMode};
 use crate::environment::EnvironmentBuilder;
 use crate::error::ShellError;
+use crate::executor::external::{ExecutionMode, ExternalOutcome, TaskHandle};
 use crate::executor::spawn::CommandExecutor;
 use crate::panel::output_panel::{OutputEntry, OutputLine, OutputPanel, OutputStream};
 use crate::panel::terminal_panel::TerminalPanel;
@@ -66,11 +67,11 @@ impl ShellEngine {
             ShellMode::Prompt => {
                 if from_macro {
                     Err(ShellError::MacroAccessDenied {
-                        reason: "shell.mode is 'prompt' — macros cannot show UI prompts"
+                        reason: "shell.mode is 'prompt' -- macros cannot show UI prompts"
                             .to_string(),
                     })
                 } else {
-                    // Direct invocation — UI layer will show confirmation
+                    // Direct invocation -- UI layer will show confirmation
                     Ok(())
                 }
             }
@@ -295,6 +296,158 @@ impl ShellEngine {
         Ok((process_id, exit_status))
     }
 
+    /// Runs an external program with an explicit program and argument list.
+    ///
+    /// Detached mode spawns fire-and-forget (no capture, no panel, returns
+    /// immediately). Captured mode runs the process asynchronously, capturing
+    /// stdout/stderr and the exit code into the Output_Panel.
+    ///
+    /// Gated by `shell.mode` identically to [`Self::execute_command`]: `disabled`
+    /// refuses; `prompt`/`enabled` proceed (the UI confirmation for `prompt` is
+    /// applied by the caller before invoking this method).
+    ///
+    /// # Arguments
+    ///
+    /// * `program` - Program name or path (no shell parsing).
+    /// * `args` - Argument list passed verbatim.
+    /// * `working_dir` - Explicit working directory; when `None`, the configured
+    ///   `shell.working_directory` resolution rules apply.
+    /// * `mode` - Detached or Captured.
+    /// * `project_root` / `active_file` - Context for working-directory fallback.
+    ///
+    /// Validates: shell-command Requirement 19.1, 19.2, 19.5, 19.6, 19.8;
+    /// command-configurator Requirement 3.2, 3.4, 3.7
+    pub async fn execute_external(
+        &self,
+        program: &str,
+        args: &[String],
+        working_dir: Option<&std::path::Path>,
+        mode: ExecutionMode,
+        project_root: Option<&std::path::Path>,
+        active_file: Option<&std::path::Path>,
+    ) -> Result<ExternalOutcome, ShellError> {
+        // Security gate: identical to execute_command (Requirement 19.5).
+        self.check_security_gate(false)?;
+
+        match mode {
+            ExecutionMode::Detached => {
+                let handle =
+                    self.spawn_detached(program, args, working_dir, project_root, active_file)?;
+                Ok(ExternalOutcome::Detached(handle))
+            }
+            ExecutionMode::Captured => {
+                let (process_id, exit_status) = self
+                    .execute_external_captured(
+                        program,
+                        args,
+                        working_dir,
+                        project_root,
+                        active_file,
+                    )
+                    .await?;
+                Ok(ExternalOutcome::Captured {
+                    process_id,
+                    exit_status,
+                })
+            }
+        }
+    }
+
+    /// Spawns an external program fire-and-forget (Detached mode).
+    ///
+    /// Does not capture output, open the Output_Panel, or wait for exit. Returns
+    /// an opaque [`TaskHandle`] that the caller may drop; the workbench does not
+    /// track, monitor, restart, or persist the process.
+    ///
+    /// Validates: shell-command Requirement 19.1, 19.3, 19.4, 19.5, 19.6, 19.8;
+    /// command-configurator Requirement 3.2, 3.3
+    pub fn spawn_detached(
+        &self,
+        program: &str,
+        args: &[String],
+        working_dir: Option<&std::path::Path>,
+        project_root: Option<&std::path::Path>,
+        active_file: Option<&std::path::Path>,
+    ) -> Result<TaskHandle, ShellError> {
+        // Security gate: identical to execute_command (Requirement 19.5).
+        self.check_security_gate(false)?;
+
+        let config = self.config.get();
+        let resolved_dir = self.resolve_external_dir(working_dir, project_root, active_file);
+        let env = EnvironmentBuilder::build(&config.env, &HashMap::new());
+
+        crate::executor::external::spawn_detached(program, args, &resolved_dir, &env)
+    }
+
+    /// Captured external run: spawn, capture output, append to the Output_Panel.
+    async fn execute_external_captured(
+        &self,
+        program: &str,
+        args: &[String],
+        working_dir: Option<&std::path::Path>,
+        project_root: Option<&std::path::Path>,
+        active_file: Option<&std::path::Path>,
+    ) -> Result<(ProcessId, ExitStatus), ShellError> {
+        let config = self.config.get();
+        let resolved_dir = self.resolve_external_dir(working_dir, project_root, active_file);
+        let env = EnvironmentBuilder::build(&config.env, &HashMap::new());
+
+        // Run the program directly (program + args), not through a shell line.
+        let (capture, exit_status) =
+            CommandExecutor::execute(std::path::Path::new(program), args, "", &resolved_dir, &env)
+                .await?;
+
+        let command_display = if args.is_empty() {
+            program.to_string()
+        } else {
+            format!("{} {}", program, args.join(" "))
+        };
+
+        let entry = OutputEntry {
+            command: command_display,
+            working_directory: resolved_dir,
+            timestamp: chrono::Local::now(),
+            lines: capture
+                .stdout_lines
+                .iter()
+                .map(|l| OutputLine {
+                    text: l.clone(),
+                    stream: OutputStream::Stdout,
+                })
+                .chain(capture.stderr_lines.iter().map(|l| OutputLine {
+                    text: l.clone(),
+                    stream: OutputStream::Stderr,
+                }))
+                .collect(),
+            exit_status: Some(exit_status.clone()),
+        };
+
+        if let Ok(mut panel) = self.output_panel.lock() {
+            panel.append_entry(entry);
+        }
+
+        Ok((ProcessId::new(), exit_status))
+    }
+
+    /// Resolves the working directory for an external run.
+    ///
+    /// When `working_dir` is provided it is used verbatim; otherwise the
+    /// configured `shell.working_directory` rules apply (Requirement 19.6).
+    fn resolve_external_dir(
+        &self,
+        working_dir: Option<&std::path::Path>,
+        project_root: Option<&std::path::Path>,
+        active_file: Option<&std::path::Path>,
+    ) -> std::path::PathBuf {
+        match working_dir {
+            Some(dir) => dir.to_path_buf(),
+            None => {
+                let config = self.config.get();
+                WorkingDirResolver::resolve(config.working_directory, project_root, active_file)
+            }
+        }
+    }
+
     /// Opens a new interactive terminal session.
     pub fn open_terminal(
         &self,
@@ -440,5 +593,135 @@ mod tests {
 
         let manager = engine.terminal_manager.lock().unwrap();
         assert!(manager.session(session_id).is_none());
+    }
+
+    fn enabled_engine() -> ShellEngine {
+        ShellEngine::new(ShellConfigProvider::with_config(ShellConfig {
+            mode: ShellMode::Enabled,
+            ..Default::default()
+        }))
+    }
+
+    /// A program that exits immediately, per host platform.
+    fn noop_external() -> (&'static str, Vec<String>) {
+        if cfg!(windows) {
+            ("cmd", vec!["/C".to_string(), "exit".to_string()])
+        } else {
+            ("true", Vec::new())
+        }
+    }
+
+    /// A program that prints a known token to stdout, per host platform.
+    fn echo_external(token: &str) -> (&'static str, Vec<String>) {
+        if cfg!(windows) {
+            ("cmd", vec!["/C".to_string(), format!("echo {}", token)])
+        } else {
+            ("echo", vec![token.to_string()])
+        }
+    }
+
+    // Validates: shell-command Requirement 19.5 (disabled refuses both modes)
+    #[tokio::test]
+    async fn execute_external_refused_when_shell_disabled() {
+        let engine = ShellEngine::new(ShellConfigProvider::with_config(ShellConfig {
+            mode: ShellMode::Disabled,
+            ..Default::default()
+        }));
+        let (program, args) = noop_external();
+
+        let detached = engine
+            .execute_external(program, &args, None, ExecutionMode::Detached, None, None)
+            .await;
+        assert!(matches!(detached, Err(ShellError::ShellDisabled)));
+
+        let captured = engine
+            .execute_external(program, &args, None, ExecutionMode::Captured, None, None)
+            .await;
+        assert!(matches!(captured, Err(ShellError::ShellDisabled)));
+    }
+
+    // Validates: shell-command Requirement 19.5 (spawn_detached honours the gate)
+    #[test]
+    fn spawn_detached_refused_when_shell_disabled() {
+        let engine = ShellEngine::new(ShellConfigProvider::with_config(ShellConfig {
+            mode: ShellMode::Disabled,
+            ..Default::default()
+        }));
+        let (program, args) = noop_external();
+        let result = engine.spawn_detached(program, &args, None, None, None);
+        assert!(matches!(result, Err(ShellError::ShellDisabled)));
+    }
+
+    // Validates: shell-command Requirement 19.1, 19.3 (detached returns a handle)
+    #[tokio::test]
+    async fn execute_external_detached_returns_handle() {
+        let engine = enabled_engine();
+        let (program, args) = noop_external();
+
+        let outcome = engine
+            .execute_external(program, &args, None, ExecutionMode::Detached, None, None)
+            .await
+            .expect("detached run should succeed");
+
+        match outcome {
+            ExternalOutcome::Detached(handle) => assert!(handle.pid.is_some()),
+            other => panic!("expected Detached outcome, got {:?}", other),
+        }
+        // Detached run must NOT append to the Output_Panel (Requirement 19.3).
+        assert_eq!(engine.output_panel.lock().unwrap().entry_count(), 0);
+    }
+
+    // Validates: shell-command Requirement 19.2 (captured output to Output_Panel)
+    #[tokio::test]
+    async fn execute_external_captured_appends_to_output_panel() {
+        let engine = enabled_engine();
+        let token = "ffwb_db10_token";
+        let (program, args) = echo_external(token);
+
+        let outcome = engine
+            .execute_external(program, &args, None, ExecutionMode::Captured, None, None)
+            .await
+            .expect("captured run should succeed");
+
+        match outcome {
+            ExternalOutcome::Captured { exit_status, .. } => {
+                assert!(exit_status.is_success());
+            }
+            other => panic!("expected Captured outcome, got {:?}", other),
+        }
+
+        let panel = engine.output_panel.lock().unwrap();
+        assert_eq!(panel.entry_count(), 1);
+        let entry = &panel.entries()[0];
+        assert!(entry.command.contains(program));
+        assert!(entry
+            .lines
+            .iter()
+            .any(|l| l.text.contains(token) && l.stream == OutputStream::Stdout));
+    }
+
+    // Validates: shell-command Requirement 19.6 (explicit working_dir honoured)
+    #[test]
+    fn spawn_detached_uses_explicit_working_dir() {
+        let engine = enabled_engine();
+        let temp = tempfile::TempDir::new().unwrap();
+        let (program, args) = noop_external();
+
+        let handle = engine
+            .spawn_detached(program, &args, Some(temp.path()), None, None)
+            .expect("detached spawn in explicit dir should succeed");
+        assert!(handle.pid.is_some());
+    }
+
+    // Validates: shell-command Requirement 19.8 (launch failure reported)
+    #[tokio::test]
+    async fn execute_external_captured_missing_program_errors() {
+        let engine = enabled_engine();
+        let missing = "ffwb_nonexistent_program_db10_engine";
+
+        let result = engine
+            .execute_external(missing, &[], None, ExecutionMode::Captured, None, None)
+            .await;
+        assert!(matches!(result, Err(ShellError::SpawnFailed { .. })));
     }
 }

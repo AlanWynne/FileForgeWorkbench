@@ -2,7 +2,9 @@
 
 Spec status: APPROVED (Phase DB gate). Implementation in progress under DB.9.
 Tasks 1 and 2 (the data + resolution layer) are complete and tested. The
-Context UI (Task 4) and external execution (Task 3, which depends on DB.10) are
+ff-shell half of external execution (Task 3.1/3.2, DB.10) is complete and tested.
+The Context UI (Task 4) and the ff-desktop adapter share of external execution
+(Task 3.3-3.6: placeholder expansion, prompt-confirm UI, adapter tests) are
 still `[ ]`. Each task references the acceptance criteria it satisfies.
 
 ---
@@ -35,10 +37,15 @@ still `[ ]`. Each task references the acceptance criteria it satisfies.
 
 ## Task 3: External execution modes (Detached / Captured)
 
-- [ ] 3.1 Add `ff_shell::spawn_detached(program, args, working_dir)` returning a dropped `TaskHandle` seam
+- [x] 3.1 Add `ff_shell::spawn_detached(program, args, working_dir)` returning a dropped `TaskHandle` seam (DB.10)
   - Satisfies: Req 3.2, 3.3
-- [ ] 3.2 Route Captured External targets through the existing `shell.execute` async path into the Output_Panel
+  - DONE: `ff_shell::spawn_detached` + `TaskHandle`/`ExecutionMode`/`ExternalOutcome`
+    in `crates/ff-shell/src/executor/external.rs`; `ShellEngine::spawn_detached`
+    applies the shell.mode gate and working_dir fallback.
+- [x] 3.2 Route Captured External targets through the existing `shell.execute` async path into the Output_Panel (DB.10)
   - Satisfies: Req 3.4, shell-command Req 19
+  - DONE: `ShellEngine::execute_external` (Captured) reuses `CommandExecutor` and
+    appends an `OutputEntry` (stdout/stderr + exit code) to the Output_Panel.
 - [ ] 3.3 Implement `${workspace_root}` / `${file_dir}` placeholder expansion in program/args/working_dir
   - Satisfies: Req 3.6
 - [ ] 3.4 Apply `shell.mode` gate + prompt-confirm to both modes; handle spawn-launch failure
@@ -65,12 +72,22 @@ still `[ ]`. Each task references the acceptance criteria it satisfies.
 
 ## Task 5: Binding integration
 
-- [ ] 5.1 Allow a Menu_Option `command` value to resolve to a Command_Definition id (menu-workspace Req 10)
+- [x] 5.1 Allow a Menu_Option `command` value to resolve to a Command_Definition id (menu-workspace Req 10) (DB.4)
   - Satisfies: Req 4.3
-- [ ] 5.2 Allow a keyboard Shortcut_Binding to target a Command_Definition id
+  - DONE: menu-option dispatch (typed + click) resolves via `ShellTargetResolver`
+    (`shell/target_dispatch.rs`); an inline `[options.target]` takes precedence
+    (menu-workspace Req 10.6). Built-in verbs fall through unchanged (Req 10.2).
+- [x] 5.2 Allow a keyboard Shortcut_Binding to target a Command_Definition id (DB.4)
   - Satisfies: Req 4.4
-- [ ] 5.3 Write tests: menu option runs the definition's target; shortcut runs the definition's target
-  - Validates: Requirement 4.3, 4.4
+  - DONE: function-key and key-label-bar dispatch route through
+    `dispatch_bound_command`; `run_command_definition` reports
+    `Command '<id>' is not defined.` for a missing id (Req 4.5).
+- [x] 5.3 Write tests: menu option runs the definition's target; shortcut runs the definition's target (DB.4)
+  - Validates: Requirement 4.3, 4.4, 4.5
+  - DONE: 11 tests across `shell/tests.rs` and `menu_workspace/loader.rs`.
+  - NOTE: executing an External/Menu/CustomWorkspace/Macro target from a binding
+    still reports a deferred status; those land with the `MENU` command and the
+    ff-shell external desktop adapter (command-configurator Req 3).
 
 ## Task 6: Persistence and documentation
 

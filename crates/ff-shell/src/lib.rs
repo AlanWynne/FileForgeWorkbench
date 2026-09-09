@@ -57,6 +57,7 @@ pub use config::{ShellConfig, ShellConfigProvider, ShellMode, WorkingDirectoryMo
 pub use engine::ShellEngine;
 pub use environment::EnvironmentBuilder;
 pub use error::ShellError;
+pub use executor::external::{spawn_detached, ExecutionMode, ExternalOutcome, TaskHandle};
 pub use panel::output_panel::{OutputEntry, OutputLine, OutputPanel, OutputStream};
 pub use panel::terminal_panel::TerminalPanel;
 pub use pipe::StdinPiper;

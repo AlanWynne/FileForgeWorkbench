@@ -2,7 +2,7 @@
 //!
 //! Validates: Requirement 3, 5 (menu-workspace)
 
-use super::MenuFile;
+use super::{MenuFile, MenuOption};
 
 // === Option lookup ==========================================================
 
@@ -16,6 +16,23 @@ pub fn lookup_option(key: &str, menu: &MenuFile) -> Result<String, String> {
     let upper = key.trim().to_uppercase();
     match menu.options.iter().find(|o| o.key == upper) {
         Some(opt) if opt.enabled => Ok(opt.command.clone()),
+        Some(opt) => Err(format!("Option '{}' is not available.", opt.key)),
+        None => Err(format!("Option '{}' not found in this menu.", upper)),
+    }
+}
+
+/// Look up an option by key (case-insensitive) and return the full
+/// [`MenuOption`], so callers can read its inline `[options.target]` in
+/// addition to the bare `command` string.
+///
+/// Returns the same error strings as [`lookup_option`] when the key is not
+/// found or the option is disabled.
+///
+/// Validates: menu-workspace Requirement 3.1, 3.6, 3.7, 10.6
+pub fn find_option<'a>(key: &str, menu: &'a MenuFile) -> Result<&'a MenuOption, String> {
+    let upper = key.trim().to_uppercase();
+    match menu.options.iter().find(|o| o.key == upper) {
+        Some(opt) if opt.enabled => Ok(opt),
         Some(opt) => Err(format!("Option '{}' is not available.", opt.key)),
         None => Err(format!("Option '{}' not found in this menu.", upper)),
     }
@@ -89,6 +106,7 @@ mod tests {
                     description: "Settings".to_string(),
                     enabled: true,
                     group: None,
+                    target: None,
                 },
                 MenuOption {
                     key: "1".to_string(),
@@ -96,6 +114,7 @@ mod tests {
                     description: "Files".to_string(),
                     enabled: true,
                     group: None,
+                    target: None,
                 },
                 MenuOption {
                     key: "DIS".to_string(),
@@ -103,6 +122,7 @@ mod tests {
                     description: "Disabled option".to_string(),
                     enabled: false,
                     group: None,
+                    target: None,
                 },
             ],
         }

@@ -104,7 +104,7 @@ fn read_u32_or_default(config: &ff_config::ConfigHandle, key: &str, default: u32
 /// A successfully loaded Menu_File plus an optional soft-limit advisory.
 ///
 /// Validates: menu-workspace Requirement 9.2, 9.3
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LoadedMenu {
     /// The parsed and validated menu.
     pub menu: MenuFile,
@@ -131,6 +131,11 @@ struct RawMenuOption {
     #[serde(default = "default_true")]
     enabled: bool,
     group: Option<String>,
+    /// Optional inline `[options.target]` table (a serialised Command_Target).
+    ///
+    /// Validates: menu-workspace Requirement 10.6
+    #[serde(default)]
+    target: Option<ff_command::CommandTarget>,
 }
 
 fn default_true() -> bool {
@@ -282,12 +287,23 @@ fn validate_option(raw: RawMenuOption, index: usize) -> Result<MenuOption, Strin
             key
         ));
     }
+    // Req 10.6: when both `command` and an inline `[options.target]` are
+    // present, the inline target wins; note the ignored `command` at DEBUG.
+    if raw.target.is_some() {
+        ff_logging::log_debug!(
+            "[menu] option '{}' has an inline [options.target]; the 'command' value \
+             '{}' is ignored for target resolution",
+            key,
+            raw.command.trim()
+        );
+    }
     Ok(MenuOption {
         key,
         command: raw.command,
         description: raw.description,
         enabled: raw.enabled,
         group: raw.group,
+        target: raw.target,
     })
 }
 
@@ -331,6 +347,44 @@ enabled = true
         assert_eq!(menu.options[0].group.as_deref(), Some("System"));
         assert!(menu.options[0].enabled);
         assert_eq!(menu.options[1].key, "1");
+    }
+
+    // Validates: Requirement 10.6 -- inline [options.target] parses into the option
+    #[test]
+    fn load_inline_options_target_parses() {
+        let toml = r#"
+title = "T"
+[[options]]
+key = "B"
+command = "IGNORED"
+description = "Build Release"
+[options.target]
+kind = "external"
+program = "pwsh"
+args = ["-File", "build.ps1"]
+mode = "captured"
+"#;
+        let f = write_toml(toml);
+        let menu = load_menu_file(f.path()).expect("load ok");
+        let opt = &menu.options[0];
+        assert!(opt.target.is_some(), "inline target should be parsed");
+        match opt.target.as_ref().unwrap() {
+            ff_command::CommandTarget::External { program, mode, .. } => {
+                assert_eq!(program, "pwsh");
+                assert_eq!(*mode, ff_command::ExternalMode::Captured);
+            }
+            other => panic!("expected External target, got {:?}", other),
+        }
+    }
+
+    // Validates: Requirement 10.6 -- absent [options.target] leaves target None
+    #[test]
+    fn load_option_without_target_is_none() {
+        let toml =
+            "title = \"T\"\n[[options]]\nkey = \"1\"\ncommand = \"FILES\"\ndescription = \"Files\"\n";
+        let f = write_toml(toml);
+        let menu = load_menu_file(f.path()).expect("load ok");
+        assert!(menu.options[0].target.is_none());
     }
 
     // Validates: Requirement 1.2 -- key normalised to uppercase
@@ -427,6 +481,7 @@ enabled = true
                 description: format!("Option {i}"),
                 enabled: true,
                 group: None,
+                target: None,
             });
         }
         for i in 0..disabled {
@@ -436,6 +491,7 @@ enabled = true
                 description: format!("Disabled {i}"),
                 enabled: false,
                 group: None,
+                target: None,
             });
         }
         MenuFile {

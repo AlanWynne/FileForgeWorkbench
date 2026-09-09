@@ -3367,3 +3367,179 @@ fn restore_editor_descriptor_opens_file() {
         "an Editor descriptor with a uri must reopen that file"
     );
 }
+
+// === DB.4 -- Command Target binding (menu options + shortcuts) ==============
+
+/// Push a user Function definition into the shell's command store.
+fn push_user_function_def(shell: &mut super::WorkbenchShell, id: &str, command_id: &str) {
+    use ff_command::{CommandTarget, TargetParams};
+    shell
+        .command_store
+        .definitions
+        .push(crate::command_config::CommandDefinition {
+            id: id.to_string(),
+            label: format!("Run {command_id}"),
+            description: None,
+            category: "user".to_string(),
+            target: CommandTarget::Function {
+                command_id: command_id.to_string(),
+                params: TargetParams::new(),
+            },
+        });
+}
+
+// Validates: menu-workspace Requirement 10.3, command-configurator Requirement 4.3 --
+// a command value equal to a user definition id resolves and is dispatched.
+#[test]
+fn resolve_and_dispatch_user_definition_id_dispatches() {
+    let mut shell = make_shell();
+    push_user_function_def(&mut shell, "my.build", "file.exit");
+    let outcome = shell.resolve_and_dispatch_command("my.build");
+    assert!(matches!(
+        outcome,
+        super::target_dispatch::ResolveOutcome::Dispatched
+    ));
+}
+
+// Validates: menu-workspace Requirement 10.2, command-framework Requirement 8.4 --
+// a command the resolver does not own falls through to the existing pipeline.
+#[test]
+fn resolve_and_dispatch_unknown_string_falls_through() {
+    let mut shell = make_shell();
+    let outcome = shell.resolve_and_dispatch_command("SOME.BUILTIN.VERB.XYZ");
+    assert!(matches!(
+        outcome,
+        super::target_dispatch::ResolveOutcome::FallThrough
+    ));
+}
+
+// Validates: command-framework Requirement 8.3 -- a bare registered Command_ID
+// resolves to a Function target and is dispatched (not fall-through).
+#[test]
+fn resolve_and_dispatch_registered_command_id_dispatches() {
+    let mut shell = make_shell();
+    // `file.exit` is registered in WorkbenchShell::new().
+    let outcome = shell.resolve_and_dispatch_command("file.exit");
+    assert!(matches!(
+        outcome,
+        super::target_dispatch::ResolveOutcome::Dispatched
+    ));
+}
+
+// Validates: menu-workspace Requirement 10.6 -- an inline External target is
+// dispatched; External via a binding is deferred, so it reports a status.
+#[test]
+fn dispatch_external_target_reports_deferred_status() {
+    use ff_command::{CommandTarget, ExternalMode};
+    let mut shell = make_shell();
+    let target = CommandTarget::External {
+        program: "pwsh".to_string(),
+        args: vec![],
+        working_dir: None,
+        mode: ExternalMode::Captured,
+    };
+    shell.dispatch_command_target(&target);
+    let msg = shell.open_error.as_deref().unwrap_or_default();
+    assert!(msg.contains("pwsh"), "status should name the program");
+    assert!(
+        msg.contains("not yet runnable"),
+        "External binding is deferred and must report a status, got: {msg}"
+    );
+}
+
+// Validates: menu-workspace Requirement 10.1, 10.3 -- selecting a menu option
+// whose command equals a user definition id dispatches its target (typed path).
+#[test]
+fn menu_option_command_matching_definition_id_dispatches() {
+    use crate::menu_workspace::{MenuFile, MenuOption, MenuWorkspaceState};
+    let mut shell = make_shell();
+    push_user_function_def(&mut shell, "my.exit", "file.exit");
+
+    // Build a Menu_Workspace tab whose option "1" runs the user definition.
+    let menu = MenuFile {
+        title: "T".to_string(),
+        options: vec![MenuOption {
+            key: "1".to_string(),
+            command: "my.exit".to_string(),
+            description: "Run my exit".to_string(),
+            enabled: true,
+            group: None,
+            target: None,
+        }],
+    };
+    let mw = MenuWorkspaceState {
+        file_path: std::path::PathBuf::from("t.toml"),
+        menu: Some(menu),
+        load_error: None,
+        last_modified: None,
+        advisory: None,
+        limits: crate::menu_workspace::OptionLimits::default(),
+    };
+    let idx = shell.tabs.active_index();
+    if let Some(tab) = shell.tabs.tabs_mut().get_mut(idx) {
+        tab.kind = crate::tab_state::TabKind::MenuWorkspace;
+        tab.menu_workspace = Some(mw);
+    }
+
+    // Selecting option "1" should resolve to the user target and dispatch it
+    // (routing file.exit through the pipeline). No "not defined" error.
+    shell.handle_command("1");
+    let msg = shell.open_error.as_deref().unwrap_or_default();
+    assert!(
+        !msg.contains("not found") && !msg.contains("is not defined"),
+        "option matching a definition id must dispatch, got error: {msg}"
+    );
+}
+
+// Validates: command-framework Requirement 8.5, command-configurator Requirement 4.4 --
+// a bound command (shortcut/label-bar) equal to a definition id dispatches its target.
+#[test]
+fn dispatch_bound_command_resolves_user_definition() {
+    let mut shell = make_shell();
+    push_user_function_def(&mut shell, "kb.exit", "file.exit");
+    // Should dispatch (route file.exit through the pipeline) without a
+    // "not found"/"not defined" error.
+    shell.dispatch_bound_command("kb.exit");
+    let msg = shell.open_error.as_deref().unwrap_or_default();
+    assert!(
+        !msg.contains("not defined") && !msg.contains("not found"),
+        "bound definition id must dispatch, got: {msg}"
+    );
+}
+
+// Validates: menu-workspace Requirement 10.2 -- a bound built-in command that
+// the resolver does not own still runs via the existing pipeline.
+#[test]
+fn dispatch_bound_command_falls_through_for_builtin() {
+    use ff_edit_operations::CapsMode;
+    let mut shell = make_shell();
+    // CAPS ON is a shell built-in, not a user definition; must still work.
+    shell.dispatch_bound_command("CAPS ON");
+    assert_eq!(shell.tabs.active_tab().edit_profile.caps, CapsMode::On);
+}
+
+// Validates: command-configurator Requirement 4.4 -- an explicit definition
+// reference runs the definition's target.
+#[test]
+fn run_command_definition_dispatches_defined_id() {
+    let mut shell = make_shell();
+    push_user_function_def(&mut shell, "def.exit", "file.exit");
+    shell.run_command_definition("def.exit");
+    let msg = shell.open_error.as_deref().unwrap_or_default();
+    assert!(
+        !msg.contains("is not defined"),
+        "a defined id must dispatch, got: {msg}"
+    );
+}
+
+// Validates: command-configurator Requirement 4.5 -- an explicit reference to a
+// missing definition id reports `Command '<id>' is not defined.`
+#[test]
+fn run_command_definition_missing_id_reports_not_defined() {
+    let mut shell = make_shell();
+    shell.run_command_definition("no.such.def");
+    assert_eq!(
+        shell.open_error.as_deref(),
+        Some("Command 'no.such.def' is not defined.")
+    );
+}

@@ -20,8 +20,12 @@ pub use loader::{LoadedMenu, OptionLimits};
 
 /// A single option entry in a Menu_File.
 ///
-/// Validates: Requirement 1.2, 1.3
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// `Eq` is intentionally NOT derived: the optional `target` carries a
+/// `ff_command::CommandTarget`, whose parameter values may include floats, so
+/// only `PartialEq` is available.
+///
+/// Validates: Requirement 1.2, 1.3, 10.6
+#[derive(Debug, Clone, PartialEq)]
 pub struct MenuOption {
     /// 1-4 character key, stored uppercase.
     pub key: String,
@@ -33,6 +37,9 @@ pub struct MenuOption {
     pub enabled: bool,
     /// Optional group label for visual separation.
     pub group: Option<String>,
+    /// Optional inline Command_Target. When present it takes precedence over
+    /// `command` during Target_Resolution (menu-workspace Requirement 10.6).
+    pub target: Option<ff_command::CommandTarget>,
 }
 
 // === MenuFile ===============================================================
@@ -40,7 +47,7 @@ pub struct MenuOption {
 /// The parsed content of a Menu_File.
 ///
 /// Validates: Requirement 1.1
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MenuFile {
     /// Title displayed at the top of the Menu_Workspace.
     pub title: String,

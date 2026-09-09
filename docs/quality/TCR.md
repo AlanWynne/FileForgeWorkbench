@@ -2045,8 +2045,8 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-command` | ✅ | `command_target_tests.rs::execute_function_target_dispatches_via_callback`, `execute_non_function_targets_are_deferred_to_shell` | Req 8.2: execute_target routes each variant and returns a CommandResult |
 | `ff-command` | ✅ | `command_target_tests.rs::user_command_definition_resolves_first`, `builtin_workspace_verb_resolves_to_custom_workspace`, `bare_registered_command_resolves_to_function_target` | Req 8.3: resolve_target converts a bare string to the correct variant |
 | `ff-command` | ✅ | `command_target_tests.rs::bare_registered_command_resolves_to_function_target`, `resolution_trims_surrounding_whitespace` | Req 8.4: no behaviour change -- every existing string resolves to an equivalent target |
-| `ff-command` | 🔴 | -- | Req 8.5: a Shortcut_Binding may target any CommandTarget (type provided by DB.8; ShortcutRegistry wiring is DB.4) |
-| `ff-command` | 🔴 | -- | Req 8.6: a Menu_Option resolves its command value to a CommandTarget (resolver provided by DB.8; menu wiring is DB.4) |
+| `ff-desktop` | ✅ | `shell/tests.rs::dispatch_bound_command_resolves_user_definition`, `dispatch_bound_command_falls_through_for_builtin` | Req 8.5: a Shortcut_Binding is routed through Target_Resolution (fkey + key-label-bar via `dispatch_bound_command`); DB.4 wiring |
+| `ff-desktop` | ✅ | `shell/tests.rs::menu_option_command_matching_definition_id_dispatches`, `resolve_and_dispatch_user_definition_id_dispatches` | Req 8.6: a Menu_Option resolves its command value to a CommandTarget and dispatches it; DB.4 wiring |
 | `ff-command` | ✅ | `command_target_tests.rs::menu_target_toml_round_trips`, `external_target_toml_round_trips_with_all_fields`, `custom_workspace_target_with_params_round_trips`, `external_target_parses_from_authored_toml`, `function_target_defaults_params_when_omitted` | Req 8.7: CommandTarget serialises to/from TOML |
 | `ff-command` | ✅ | `command_target_tests.rs::unresolved_string_returns_error_naming_input`, `execute_function_target_with_invalid_id_fails` | Req 8.8: unresolved string returns an error naming it, no panic/mutation |
 | `ff-command` | ✅ | `command_target_tests.rs::menu_and_custom_workspace_and_captured_external_are_visible`, `function_macro_and_detached_external_are_not_visible` | Req 8.9: produces_visible_workspace classification queryable without executing |
@@ -2072,32 +2072,45 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | 🔴 | -- | Req 2.7: Context title is [COMMANDS] (UI deferred) |
 | `ff-desktop` | 🔴 | -- | Req 2.8: F3/END returns to POM (UI deferred) |
 | `ff-desktop` | 🔴 | -- | Req 3.1: External target carries program, args, working_dir, mode |
-| `ff-shell` | 🔴 | -- | Req 3.2: detached mode spawns Started_Task, returns immediately, no capture, no Workspace |
-| `ff-shell` | 🔴 | -- | Req 3.3: Started_Task not tracked/monitored/restarted/persisted after spawn |
-| `ff-shell` | 🔴 | -- | Req 3.4: captured mode runs async, shows stdout/stderr/exit in Output_Panel |
-| `ff-shell` | 🔴 | -- | Req 3.5: explicit working_dir else shell.working_directory rules |
-| `ff-desktop` | 🔴 | -- | Req 3.6: ${workspace_root} / ${file_dir} placeholder expansion |
-| `ff-shell` | 🔴 | -- | Req 3.7: shell.mode = disabled refuses both modes |
-| `ff-shell` | 🔴 | -- | Req 3.8: shell.mode = prompt confirms before spawn; decline = no spawn |
-| `ff-shell` | 🔴 | -- | Req 3.9: detached launch failure reports error, opens no Workspace |
+| `ff-shell` | ✅ | `engine.rs::execute_external_detached_returns_handle`, `executor::external::tests::spawn_detached_returns_handle_without_waiting` | Req 3.2: detached mode spawns Started_Task, returns immediately, no capture, no Workspace (no Output_Panel entry) |
+| `ff-shell` | ✅ | `engine.rs::execute_external_detached_returns_handle` | Req 3.3: Started_Task not tracked/monitored/restarted/persisted after spawn (handle dropped by caller) |
+| `ff-shell` | ✅ | `engine.rs::execute_external_captured_appends_to_output_panel` | Req 3.4: captured mode runs async, shows stdout/stderr/exit in Output_Panel |
+| `ff-shell` | ✅ | `engine.rs::spawn_detached_uses_explicit_working_dir` (explicit); `working_dir.rs` resolver tests (fallback) | Req 3.5: explicit working_dir else shell.working_directory rules |
+| `ff-desktop` | 🔴 | -- | Req 3.6: ${workspace_root} / ${file_dir} placeholder expansion (desktop adapter, DB.10-desktop) |
+| `ff-shell` | ✅ | `engine.rs::execute_external_refused_when_shell_disabled`, `spawn_detached_refused_when_shell_disabled` | Req 3.7: shell.mode = disabled refuses both modes |
+| `ff-desktop` | 🔴 | -- | Req 3.8: shell.mode = prompt confirms before spawn; decline = no spawn (UI confirm dialog is desktop adapter, DB.4) |
+| `ff-shell` | ✅ | `engine.rs::execute_external_captured_missing_program_errors`, `executor::external::tests::spawn_detached_missing_program_reports_error` | Req 3.9: launch failure reports error (SpawnFailed), opens no Workspace |
 | `ff-desktop` | 🔴 | -- | Req 3.10: External Visible_Workspace classification per command-framework Req 8.9 |
 | `ff-desktop` | ✅ | `command_config/store.rs::validate_rejects_empty_id_and_label`, `validate_rejects_invalid_id` | Req 4.1: validation rejects bad id/label/target with specific messages |
 | `ff-desktop` | ✅ | `command_config/store.rs::validate_rejects_empty_external_program` | Req 4.2: External validation rejects empty program (mode is a typed enum) |
-| `ff-desktop` | 🟡 | `command_config/mod.rs::user_command_id_resolves_to_stored_target` | Req 4.3: definition id resolves to its target via UserCommandStore; Menu_Option wiring is DB.4 |
-| `ff-desktop` | 🔴 | -- | Req 4.4: definition id bindable to a keyboard Shortcut_Binding (DB.4) |
-| `ff-desktop` | 🟡 | `command_config/mod.rs::unknown_id_does_not_resolve_via_user_store` | Req 4.5: unknown id does not resolve; `Command '<id>' is not defined.` message wired with menu/shortcut binding (DB.4) |
+| `ff-desktop` | ✅ | `command_config/mod.rs::user_command_id_resolves_to_stored_target`, `shell/tests.rs::menu_option_command_matching_definition_id_dispatches` | Req 4.3: definition id resolves to its target and a menu option dispatches it (DB.4) |
+| `ff-desktop` | ✅ | `shell/tests.rs::dispatch_bound_command_resolves_user_definition`, `run_command_definition_dispatches_defined_id` | Req 4.4: definition id bindable to a keyboard Shortcut_Binding (DB.4) |
+| `ff-desktop` | ✅ | `shell/tests.rs::run_command_definition_missing_id_reports_not_defined` | Req 4.5: unknown definition id reports `Command '<id>' is not defined.` (DB.4) |
 | `ff-desktop` | ✅ | `command_config/store.rs::validate_rejects_reserved_id` | Req 4.6: user id cannot shadow a reserved built-in Command_ID |
+
+### Phase DB -- External Program Execution (CR-NR-052, shell-command Req 19, DB.10)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-shell` | ✅ | `engine.rs::execute_external_detached_returns_handle`, `execute_external_captured_appends_to_output_panel` | Req 19.1: explicit-program entry point (program + args + working_dir + mode), no shell-string composition |
+| `ff-shell` | ✅ | `engine.rs::execute_external_captured_appends_to_output_panel` | Req 19.2: captured mode runs async and shows combined stdout/stderr + exit code in Output_Panel |
+| `ff-shell` | ✅ | `engine.rs::execute_external_detached_returns_handle`, `executor::external::tests::spawn_detached_returns_handle_without_waiting` | Req 19.3: detached spawn is fire-and-forget -- no capture, no Output_Panel, returns immediately |
+| `ff-shell` | ✅ | `engine.rs::execute_external_detached_returns_handle` | Req 19.4: detached process not tracked/monitored/restarted/persisted; opaque TaskHandle may be dropped |
+| `ff-shell` | ✅ | `engine.rs::execute_external_refused_when_shell_disabled`, `spawn_detached_refused_when_shell_disabled` | Req 19.5: gated by shell.mode identically to shell.execute for both modes (disabled refuses; prompt/enabled proceed) |
+| `ff-shell` | ✅ | `engine.rs::spawn_detached_uses_explicit_working_dir`; `working_dir.rs` resolver tests | Req 19.6: explicit working_dir honoured; absent falls back to shell.working_directory rules |
+| `ff-shell` | 🔲 | -- | Req 19.7: captured external command honours shell.timeout_seconds; timeout not applied to detached (timeout wiring shared with Req 18; manual/integration verification) |
+| `ff-shell` | ✅ | `engine.rs::execute_external_captured_missing_program_errors`, `executor::external::tests::spawn_detached_missing_program_reports_error` | Req 19.8: launch failure reports an error naming the program (SpawnFailed); no partial result treated as success |
 
 ### Phase DB -- Menu Options Reference a Command Target (CR-NR-051, menu-workspace Req 10)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | -- | Req 10.1: option selection resolves command to a CommandTarget and executes it |
-| `ff-desktop` | 🔴 | -- | Req 10.2: existing Menu_File format still valid; same observable result |
-| `ff-desktop` | 🔴 | -- | Req 10.3: command value equal to a user-defined id resolves to its target |
-| `ff-desktop` | 🔴 | -- | Req 10.4: Menu_Target opens the referenced Menu_Workspace (explicit sub-menu) |
-| `ff-desktop` | 🔴 | -- | Req 10.5: unresolvable option shows resolve error, leaves Workspace unchanged |
-| `ff-desktop` | 🔴 | -- | Req 10.6: inline [options.target] table supported; wins over command with DEBUG log |
+| `ff-desktop` | ✅ | `shell/tests.rs::menu_option_command_matching_definition_id_dispatches`, `resolve_and_dispatch_user_definition_id_dispatches` | Req 10.1: option selection resolves command to a CommandTarget and dispatches it (DB.4) |
+| `ff-desktop` | ✅ | `shell/tests.rs::resolve_and_dispatch_unknown_string_falls_through`, `dispatch_bound_command_falls_through_for_builtin` | Req 10.2: existing Menu_File format still valid; unresolved strings fall through to the existing pipeline for the same observable result (DB.4) |
+| `ff-desktop` | ✅ | `shell/tests.rs::resolve_and_dispatch_user_definition_id_dispatches`, `command_config/mod.rs::user_command_id_resolves_to_stored_target` | Req 10.3: command value equal to a user-defined id resolves to its target (DB.4) |
+| `ff-desktop` | 🔴 | -- | Req 10.4: Menu_Target opens the referenced Menu_Workspace (deferred: needs the `MENU <name>` command, menu-workspace Req 11) |
+| `ff-desktop` | 🔲 | -- | Req 10.5: unresolvable option -- current behaviour preserved via fall-through to the existing pipeline, which surfaces its own status; the dedicated `Option '<key>' could not be resolved` path lands with full target execution (manual/UI) |
+| `ff-desktop` | ✅ | `menu_workspace/loader.rs::load_inline_options_target_parses`, `load_option_without_target_is_none` | Req 10.6: inline [options.target] table supported; wins over command with DEBUG log (DB.4) |
 
 ### Phase DB -- External Program Execution (CR-NR-052, shell-command Req 19)
 

@@ -94,6 +94,60 @@ impl TargetResolver for UserCommandStore<'_> {
     }
 }
 
+/// A shell-side [`TargetResolver`] composing user-defined command definitions
+/// with the workbench command registry.
+///
+/// Resolution answers, in `resolve_target` order:
+/// 1. `user_command_target` -- a definition whose id equals the input
+///    (command-configurator Requirement 4.3, menu-workspace Requirement 10.3).
+/// 3. `is_registered_command` -- a registered `Command_ID`, so a bare command
+///    id resolves to a `Function` target (command-framework Requirement 8.3).
+///
+/// `builtin_workspace_target` deliberately returns `None`: built-in workspace
+/// verbs and fastpaths (FILES, =2, SETTINGS, ...) keep their existing shell
+/// handling via fall-through, preserving observable behaviour for every command
+/// string that resolves today (command-framework Requirement 8.4,
+/// menu-workspace Requirement 10.2).
+pub struct ShellTargetResolver<'a> {
+    definitions: &'a [CommandDefinition],
+    registry: &'a ff_command::CommandRegistry,
+}
+
+impl<'a> ShellTargetResolver<'a> {
+    /// Create a resolver over the given definitions and command registry.
+    pub fn new(
+        definitions: &'a [CommandDefinition],
+        registry: &'a ff_command::CommandRegistry,
+    ) -> Self {
+        Self {
+            definitions,
+            registry,
+        }
+    }
+
+    /// Look up a definition by exact id.
+    pub fn find(&self, id: &str) -> Option<&CommandDefinition> {
+        self.definitions.iter().find(|d| d.id == id)
+    }
+}
+
+impl TargetResolver for ShellTargetResolver<'_> {
+    fn user_command_target(&self, input: &str) -> Option<CommandTarget> {
+        self.find(input).map(|d| d.target.clone())
+    }
+
+    fn builtin_workspace_target(&self, _input: &str) -> Option<CommandTarget> {
+        None
+    }
+
+    fn is_registered_command(&self, input: &str) -> bool {
+        match ff_command::CommandId::new(input.to_string()) {
+            Some(id) => self.registry.contains(&id),
+            None => false,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

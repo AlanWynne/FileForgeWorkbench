@@ -32,7 +32,7 @@ pub enum WorkingDirectoryMode {
     /// Use the project root directory (fallback: home directory).
     #[default]
     ProjectRoot,
-    /// Use the parent directory of the active file (fallback: project root → home).
+    /// Use the parent directory of the active file (fallback: project root -> home).
     FileDirectory,
 }
 
@@ -258,9 +258,11 @@ mod tests {
     #[test]
     fn config_provider_update_reflects_in_get() {
         let provider = ShellConfigProvider::new();
-        let mut new_config = ShellConfig::default();
-        new_config.mode = ShellMode::Enabled;
-        new_config.timeout_seconds = 60;
+        let new_config = ShellConfig {
+            mode: ShellMode::Enabled,
+            timeout_seconds: 60,
+            ..Default::default()
+        };
 
         provider.update(new_config);
 

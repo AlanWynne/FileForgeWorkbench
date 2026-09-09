@@ -324,6 +324,14 @@ pub struct WorkbenchShell {
     pub(crate) show_unsaved_workspace_dialog: bool,
     /// Configuration handle — used to read catalog default paths.
     config_handle: ConfigHandle,
+    /// User-defined command definitions (`commands/commands.toml`).
+    ///
+    /// Feeds Target_Resolution so a menu option or keyboard shortcut whose
+    /// command value equals a definition id runs that definition's target.
+    ///
+    /// Validates: command-configurator Requirement 1, 4.3; menu-workspace
+    /// Requirement 10.3
+    pub(crate) command_store: crate::command_config::store::CommandStore,
     /// Files Panel (Virtual Catalog Manager) state.
     files_panel: FilesPanelState,
     /// File Explorer Panel state (expand/collapse per catalog node).
@@ -344,10 +352,12 @@ pub struct WorkbenchShell {
     pending_new_file: bool,
     /// Deferred: return the active FilesPanel tab to POM view (set by F3/END in Files Panel).
     pending_return_to_pom: bool,
-    /// Deferred: command to execute from a Menu_Workspace option click (set by render, processed in update).
+    /// Deferred: option to execute from a Menu_Workspace option click (set by
+    /// render, processed in update). Carries the full option so an inline
+    /// `[options.target]` is honoured on click as well as by typing.
     ///
-    /// Validates: menu-workspace Requirement 3.2
-    pub(crate) pending_menu_command: Option<String>,
+    /// Validates: menu-workspace Requirement 3.2, 10.6
+    pub(crate) pending_menu_option: Option<crate::menu_workspace::MenuOption>,
     /// Global application zoom — single level shared across all tabs and panels.
     ///
     /// Addresses: Requirement 3.1 (view-zoom) — zoom carries forward across context switches.
@@ -520,6 +530,19 @@ impl WorkbenchShell {
 
         let session = SessionManager::try_init();
 
+        // Load user-defined commands from <User_Data_Dir>/commands/commands.toml.
+        // An absent file yields an empty store (command-configurator Req 1.5).
+        let command_store = {
+            let path = dirs::data_dir()
+                .map(|base| {
+                    base.join("FileForgeWorkbench")
+                        .join("commands")
+                        .join("commands.toml")
+                })
+                .unwrap_or_else(|| std::path::PathBuf::from("commands/commands.toml"));
+            crate::command_config::store::CommandStore::load(path)
+        };
+
         // Notification channel -- Validates: notification-system Requirement 3.1, 3.3
         let (notification_tx, notification_rx) = std::sync::mpsc::sync_channel::<Notification>(64);
         let notification_queue =
@@ -561,6 +584,7 @@ impl WorkbenchShell {
             pending_workspace_open: None,
             show_unsaved_workspace_dialog: false,
             config_handle,
+            command_store,
             files_panel: FilesPanelState::new(),
             file_explorer_panel: FileExplorerPanelState::new(),
             file_explorer_panel_width: 260.0,
@@ -569,7 +593,7 @@ impl WorkbenchShell {
             pending_new_pom: false,
             pending_new_file: false,
             pending_return_to_pom: false,
-            pending_menu_command: None,
+            pending_menu_option: None,
             zoom: ZoomState::new(&ZoomConfig::default()),
             pom_calendar_offset: 0,
             last_ppp: 1.0,
@@ -841,6 +865,7 @@ mod commands;
 mod helpers;
 mod render;
 mod render_chrome;
+mod target_dispatch;
 mod update;
 
 use helpers::*;

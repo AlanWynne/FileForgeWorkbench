@@ -335,9 +335,22 @@ impl eframe::App for WorkbenchShell {
             }
         }
 
-        // Process deferred Menu_Workspace option click -- Validates: menu-workspace Requirement 3.2
-        if let Some(cmd) = self.pending_menu_command.take() {
-            self.handle_command(&cmd);
+        // Process deferred Menu_Workspace option click.
+        // Validates: menu-workspace Requirement 3.2, 10.1, 10.3, 10.6
+        if let Some(option) = self.pending_menu_option.take() {
+            if let Some(target) = option.target.clone() {
+                // Req 10.6: inline [options.target] wins over `command`.
+                self.dispatch_command_target(&target);
+            } else {
+                // Req 10.1/10.3: resolve to a user-owned target, else fall
+                // through to the existing pipeline (Req 10.2).
+                match self.resolve_and_dispatch_command(&option.command) {
+                    super::target_dispatch::ResolveOutcome::Dispatched => {}
+                    super::target_dispatch::ResolveOutcome::FallThrough => {
+                        self.handle_command(&option.command);
+                    }
+                }
+            }
         }
         if let Some(idx) = self.detach_pending.take() {
             if let Some(tab) = self.tabs.tabs_mut().get_mut(idx) {
@@ -671,7 +684,11 @@ impl eframe::App for WorkbenchShell {
             })
         };
         if let Some(cmd) = fkey_cmd {
-            self.handle_command(&cmd);
+            // A shortcut binding may target any Command_Target, including a
+            // user-defined command id (command-framework Requirement 8.5,
+            // command-configurator Requirement 4.4). Built-in commands fall
+            // through to the existing pipeline unchanged (Requirement 10.2).
+            self.dispatch_bound_command(&cmd);
         }
 
         self.render_central_panel(ctx);

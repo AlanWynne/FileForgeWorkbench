@@ -973,14 +973,29 @@ impl WorkbenchShell {
             return;
         }
 
-        // Menu_Workspace option key lookup -- Validates: menu-workspace Requirement 3.1, 3.6, 3.7
+        // Menu_Workspace option key lookup + Target_Resolution.
+        // Validates: menu-workspace Requirement 3.1, 3.6, 3.7, 10.1, 10.3, 10.6
         if self.tabs.active_tab().kind == crate::tab_state::TabKind::MenuWorkspace {
             if let Some(mw) = self.tabs.active_tab().menu_workspace.as_ref() {
                 if let Some(menu) = mw.menu.as_ref() {
-                    match crate::menu_workspace::commands::lookup_option(cmd.trim(), menu) {
-                        Ok(option_cmd) => {
-                            self.handle_command(&option_cmd);
-                            return;
+                    match crate::menu_workspace::commands::find_option(cmd.trim(), menu) {
+                        Ok(option) => {
+                            // Req 10.6: an inline [options.target] wins over `command`.
+                            if let Some(target) = option.target.clone() {
+                                self.dispatch_command_target(&target);
+                                return;
+                            }
+                            // Req 10.1/10.3: resolve the option's command to a
+                            // user-owned target and dispatch it; otherwise fall
+                            // through to the existing pipeline (Req 10.2).
+                            let option_cmd = option.command.clone();
+                            match self.resolve_and_dispatch_command(&option_cmd) {
+                                super::target_dispatch::ResolveOutcome::Dispatched => return,
+                                super::target_dispatch::ResolveOutcome::FallThrough => {
+                                    self.handle_command(&option_cmd);
+                                    return;
+                                }
+                            }
                         }
                         Err(msg) => {
                             self.open_error = Some(msg);

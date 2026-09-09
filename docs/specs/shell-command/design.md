@@ -674,8 +674,100 @@ impl ShellEngine {
 
     /// Get a reference to the Terminal Panel for rendering.
     pub fn terminal_panel(&self) -> &TerminalPanel;
+
+    /// Run an external program with an explicit program name and argument list.
+    /// Detached mode spawns fire-and-forget; Captured mode runs async and shows
+    /// combined stdout/stderr + exit code in the Output_Panel.
+    /// Addresses: Requirement 19, all criteria
+    pub async fn execute_external(
+        &self,
+        program: &str,
+        args: &[String],
+        working_dir: Option<&std::path::Path>,
+        mode: ExecutionMode,
+        project_root: Option<&std::path::Path>,
+        active_file: Option<&std::path::Path>,
+    ) -> Result<ExternalOutcome, ShellError>;
+
+    /// Spawn an external program fire-and-forget (Detached mode).
+    /// Does not capture output, open the Output_Panel, or wait for exit.
+    /// Returns an opaque TaskHandle that the caller may drop; the workbench
+    /// does not depend on it for correctness.
+    /// Addresses: Requirement 19, criteria 1/3/4/6/8
+    pub fn spawn_detached(
+        &self,
+        program: &str,
+        args: &[String],
+        working_dir: Option<&std::path::Path>,
+        project_root: Option<&std::path::Path>,
+        active_file: Option<&std::path::Path>,
+    ) -> Result<TaskHandle, ShellError>;
 }
 ```
+
+### ExecutionMode
+
+```rust
+/// Selects how an external program is run.
+/// Addresses: Requirement 19, criterion 1
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExecutionMode {
+    /// Fire-and-forget: no capture, no panel, return immediately.
+    Detached,
+    /// Async run whose stdout/stderr + exit code go to the Output_Panel.
+    Captured,
+}
+```
+
+### TaskHandle
+
+```rust
+/// Opaque handle to a Detached (Started_Task) process.
+/// The workbench does not track, monitor, restart, or persist it
+/// (Requirement 19, criterion 4); the OS owns its lifecycle after spawn.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TaskHandle {
+    /// The OS process id of the spawned child, if known.
+    pub pid: Option<u32>,
+}
+```
+
+### ExternalOutcome
+
+```rust
+/// Result of an external execution via `execute_external`.
+/// Addresses: Requirement 19, criteria 2/3
+#[derive(Debug)]
+pub enum ExternalOutcome {
+    /// A Detached spawn succeeded; the handle is opaque and may be dropped.
+    Detached(TaskHandle),
+    /// A Captured run completed; output was appended to the Output_Panel.
+    Captured {
+        /// The process identity for this run.
+        process_id: ProcessId,
+        /// The exit status of the captured process.
+        exit_status: ExitStatus,
+    },
+}
+```
+
+Notes:
+
+- `execute_external` gates on `shell.mode` exactly like `execute_command`:
+  `disabled` returns `ShellError::ShellDisabled`; `prompt`/`enabled` proceed
+  (the UI-layer confirmation for `prompt` is applied by the desktop adapter, as
+  with `shell.execute`). This satisfies Requirement 19, criterion 5.
+- When `working_dir` is `None`, resolution falls back to the configured
+  `shell.working_directory` rules via `WorkingDirResolver` (Requirement 19,
+  criterion 6), matching `execute_command`.
+- Captured mode reuses `CommandExecutor` for spawning and the `OutputPanel`
+  entry/exit-code rendering path (Requirement 19, criterion 2). A launch failure
+  surfaces as `ShellError::SpawnFailed` for both modes (Requirement 19,
+  criterion 8); placeholder expansion and the status-area vs panel routing of
+  that error are handled by the desktop adapter (command-configurator Task 3).
+- Detached spawn uses `std::process::Command` (not tokio) so the child is not
+  tied to a captured pipe or the runtime; stdio is set to null and the handle is
+  returned then dropped by the caller.
 
 ### CaptureTarget
 

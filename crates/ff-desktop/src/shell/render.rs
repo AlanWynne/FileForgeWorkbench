@@ -181,7 +181,11 @@ impl WorkbenchShell {
                 .get_plain(key)
                 .map(|b| b.command().to_string())
             {
-                self.handle_command(&cmd);
+                // A clicked key-label bar slot is a shortcut binding; route it
+                // through Target_Resolution so a user-defined command id runs
+                // its target (command-configurator Requirement 4.4), falling
+                // through to the pipeline otherwise (Requirement 10.2).
+                self.dispatch_bound_command(&cmd);
             }
         }
     }
@@ -776,10 +780,10 @@ impl WorkbenchShell {
                             .and_then(|t| t.menu_workspace.as_mut())
                         {
                             mw.poll_reload();
-                            if let Some(cmd) =
+                            if let Some(option) =
                                 crate::menu_workspace::render::render_menu_workspace(mw, ui)
                             {
-                                self.pending_menu_command = Some(cmd);
+                                self.pending_menu_option = Some(option);
                             }
                         }
                     }

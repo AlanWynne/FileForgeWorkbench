@@ -15,9 +15,16 @@ use super::MenuWorkspaceState;
 /// (Title_Line, Command_Field, Key_Label_Bar). This function renders only
 /// the Menu_Title and option list inside the central panel area.
 ///
-/// Validates: Requirement 2.1-2.6
-pub fn render_menu_workspace(state: &mut MenuWorkspaceState, ui: &mut egui::Ui) -> Option<String> {
-    let mut selected_command: Option<String> = None;
+/// Returns the full [`MenuOption`] that was clicked (cloned) so the caller can
+/// honour an inline `[options.target]` (Requirement 10.6) as well as the bare
+/// `command` string during Target_Resolution.
+///
+/// Validates: Requirement 2.1-2.6, 10.6
+pub fn render_menu_workspace(
+    state: &mut MenuWorkspaceState,
+    ui: &mut egui::Ui,
+) -> Option<super::MenuOption> {
+    let mut selected: Option<super::MenuOption> = None;
 
     match &state.menu {
         None => {
@@ -70,7 +77,7 @@ pub fn render_menu_workspace(state: &mut MenuWorkspaceState, ui: &mut egui::Ui) 
                                 .selectable_label(false, egui::RichText::new(&row_text).monospace())
                                 .clicked()
                             {
-                                selected_command = Some(option.command.clone());
+                                selected = Some(option.clone());
                             }
                         } else {
                             // Req 2.3 -- disabled style, no interaction
@@ -88,7 +95,7 @@ pub fn render_menu_workspace(state: &mut MenuWorkspaceState, ui: &mut egui::Ui) 
         }
     }
 
-    selected_command
+    selected
 }
 
 // === Tests ==================================================================
@@ -128,6 +135,7 @@ mod tests {
             description: "Files".to_string(),
             enabled: false,
             group: None,
+            target: None,
         }]);
         assert!(!state.menu.as_ref().unwrap().options[0].enabled);
     }
@@ -141,6 +149,7 @@ mod tests {
             description: "Files".to_string(),
             enabled: true,
             group: None,
+            target: None,
         }]);
         state.advisory = Some("This menu has 65 options (advised maximum 64).".to_string());
         // The render path reads state.advisory; confirm the state carries it so
@@ -162,6 +171,7 @@ mod tests {
             description: "Files".to_string(),
             enabled: true,
             group: None,
+            target: None,
         }]);
         assert!(state.advisory.is_none());
     }
