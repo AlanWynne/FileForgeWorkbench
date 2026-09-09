@@ -42,4 +42,5 @@ LOGGING-GAP (missing/inadequate logging, fix under code mode), SUPERSEDED.
 
 | ID | Kind | Unit | Item | Proposed action | Wave |
 |----|------|------|------|-----------------|------|
-| _(none recorded yet)_ | | | | | |
+| PA-LOG-001 | LOGGING-GAP (ASCII) | platform-core (`ff-core`) + project-wide | `.rs` sources contain non-ASCII in comments and log-message string literals (em-dashes, box-drawing separators), violating rust-standards.md / documentation.md (Rust = plain ASCII only). Confirmed in ff-core (`thread_model.rs` separators; em-dashes in `shutdown.rs`/`lifecycle.rs`/`hot_restart.rs`/`event_bus.rs`/`service_registry.rs`/`panic_hook.rs`). | Schedule ONE project-wide code-mode cleanup pass replacing non-ASCII in `.rs` with ASCII (`--`, `===`); do not fix per-unit. Low severity, cosmetic. | later (dedicated) |
+| PA-DOC-001 | TRACKING-FIX | platform-core | requirements.md Req 4.1 layer-membership lists use illustrative crate names (`ff-document`, `ff-edit`, `ff-undo`, `ff-viewport`, `ff-display-lines`, `ff-find`, `ff-nav`) that differ from actual crates (`ff-document-model`, `ff-edit-operations`, `ff-undo`(?), `ff-viewport-scrolling`, `ff-display-line-mapping`, `ff-find-and-replace`, `ff-navigation-commands`). | Owner decision: reconcile to actual crate names OR annotate as illustrative. Doc-only, no gate. | 6 (consolidation) |

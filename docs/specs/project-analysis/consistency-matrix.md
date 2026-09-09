@@ -17,7 +17,12 @@ Status: EMPTY -- populated per sub-project during Waves 0-5, finalized in Wave 6
 
 | Type | Owner unit | Referencing units | Conflict? | Resolution |
 |------|-----------|-------------------|-----------|------------|
-| _(none recorded yet)_ | | | | |
+| `WorkbenchApp` | platform-core | ff-desktop, (plugin ctx) | No | Sole owner ff-core (api-consistency-report.md) |
+| `ServiceRegistry` | platform-core | ff-plugin (PluginContext) | No | Sole owner ff-core |
+| `EventBus` | platform-core | ff-desktop | No | Sole owner ff-core |
+| `LifecyclePhase` | platform-core | ff-desktop | No | Sole owner ff-core |
+| `ThreadContext` | platform-core | -- | No | Sole owner ff-core |
+| `CoreError` | platform-core | -- | No | Sole owner ff-core |
 
 ## Command IDs
 
@@ -41,7 +46,11 @@ Status: EMPTY -- populated per sub-project during Waves 0-5, finalized in Wave 6
 
 | Term | Owner unit | Definition source | Conflict? | Resolution |
 |------|-----------|-------------------|-----------|------------|
-| _(none recorded yet)_ | | | | |
+| Platform_Core | platform-core | platform-core/requirements.md | No | -- |
+| Service_Registry | platform-core | platform-core/requirements.md | No | -- |
+| Event_Bus | platform-core | platform-core/requirements.md | No | -- |
+| Startup_Sequence / Shutdown_Sequence | platform-core | platform-core/requirements.md | No | -- |
+| Five-layer model (Foundation/Core/Editor/Feature/Shell) | platform-core | platform-core/requirements.md Req 4 | Watch | Layer-member crate names drift from actual crates -- see PA-DOC-001 |
 
 ## Dangling Cross-References
 

@@ -10,7 +10,7 @@ sub-projects reviewed in Wave 6 (review only).
 
 | # | Sub-project | Wave | Status | Analysis Record | Notes |
 |---|-------------|------|--------|-----------------|-------|
-| 1 | platform-core | 0 | PENDING | -- | foundation |
+| 1 | platform-core | 0 | DONE | units/platform-core.md | COMPLETE; not a split candidate; PA-LOG-001, PA-DOC-001 logged |
 | 2 | configuration-system | 0 | PENDING | -- | foundation |
 | 3 | logging-subsystem | 0 | PENDING | -- | foundation; feeds Req 5 logging audit |
 | 4 | command-framework | 0 | PENDING | -- | foundation |
