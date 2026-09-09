@@ -1309,3 +1309,69 @@ mode = "captured"
 
 This same representation is used by the Workspace_Descriptor persistence in
 startup-and-session Requirement 21 (for Menu and CustomWorkspace targets only).
+
+---
+
+## Section: Command Arguments (Requirement 9, CR-NR-054)
+
+This is a design delta to Section 5 (Command Dispatch). It defines how a typed
+argument reaches a command, and how a function key forwards the command-line
+contents as that argument. It does not change `CommandParams` (which already
+carries string values, Requirement 2.8) -- it adds a parse step and a reserved
+key.
+
+### Command_Invocation parse (Requirement 9.1-9.4, 9.7)
+
+A single parse step runs at the dispatch boundary, so every input source shares
+one verb/argument split:
+
+```rust
+/// The result of splitting a raw `Command ===>` line into a verb and argument.
+/// Validates: command-framework Requirement 9.1
+pub struct CommandInvocation {
+    /// The first whitespace-delimited token, uppercased for matching.
+    pub verb: String,
+    /// The remainder of the line after the first run of whitespace, trimmed.
+    /// Empty when no argument was typed.
+    pub arg: String,
+}
+
+/// Split a raw command line into verb + argument (Requirement 9.1).
+pub fn parse_invocation(line: &str) -> CommandInvocation;
+```
+
+- The reserved param key is `"arg"` (a `ParamValue::String`). When `arg` is
+  non-empty, the dispatch layer inserts `params.insert("arg", invocation.arg)`
+  before invoking the handler (Requirement 9.2); when empty, `arg` is absent
+  (Requirement 9.3), so a verb-only command is unaffected (Requirement 9.4).
+- A command reads its argument with `params.get_string("arg")`. A command that
+  never reads `arg` ignores a surplus argument (Requirement 9.6).
+
+### Function-key argument forwarding (Requirement 9.8-9.10)
+
+The forwarding rule lives in the GUI shell (`ff-desktop`), not in `ff-command`,
+because the shell owns the `Command ===>` field and the key-event stream. On a
+bound function-key/shortcut press the shell composes `<command> <field-contents>`
+and routes it through the same `execute_command` path as a typed line:
+
+```text
+key press (bound to command C)
+  -> read Command ===> field contents F
+  -> dispatch C with params { arg: F }   (identical to typing "C F" + Enter)
+  -> C decides whether to clear / replace / keep the field
+```
+
+- Because parsing and dispatch are shared, a key-forwarded invocation and a typed
+  `<command> <arg>` invocation are indistinguishable to the command
+  (Requirement 9.10).
+- The framework never force-clears the field (Requirement 9.9); each command
+  decides: scroll and MENU commands clear the consumed argument, RETRIEVE
+  replaces the field with the recalled command text.
+
+### No `ff-command` API change required
+
+`CommandParams` already supports string values and the dispatch entry point is
+unchanged. Requirement 9 adds `parse_invocation` + the `arg` convention in
+`ff-command`, and the key-forwarding wiring in `ff-desktop`. `resolve_target`
+(Requirement 8) continues to operate on the verb; the argument travels alongside
+as `arg` and is consumed by the resolved target's handler.

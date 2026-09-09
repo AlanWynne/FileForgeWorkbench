@@ -1187,3 +1187,45 @@ All navigation operations accept a `SelectionModifier` parameter rather than hav
 | `doc_nav_tests.rs` | Req 10 (AC 1–6) | Unit tests for start/end positions |
 | `char_class_tests.rs` | Req 7.1, 7.9, 18.4 | Property tests for classification consistency |
 | `integration.rs` | Reqs 11–19 | End-to-end: command registration, delegation stubs, metadata validation |
+
+---
+
+## Design Delta: Scroll Amount Arguments (Requirement 20, CR-NR-054)
+
+Scroll commands become argument-aware. The argument arrives via the general
+command-argument mechanism (command-framework Requirement 9): either typed after
+the verb (`DOWN 8`) or supplied by the shell's function-key forwarding (`8` in
+the command field, then the DOWN key). This crate only interprets the `arg`
+param -- it does not know or care which input path produced it.
+
+### Argument interpretation
+
+`UP` / `DOWN` / `LEFT` / `RIGHT` read `params.get_string("arg")` and classify:
+
+```text
+arg absent / empty        -> default one-screen page (existing Req 3.1/3.3 behaviour)
+arg parses as u32 n > 0   -> scroll by n lines (UP/DOWN) or n columns (LEFT/RIGHT)
+arg == "M" | "MAX" (ci)   -> UP -> top (top_line = 1);  DOWN -> bottom (max_top_line)
+                             LEFT -> horizontal_offset = 0;  RIGHT -> max line width
+arg is anything else      -> ignore (default one-screen page); no error (Req 20.3)
+```
+
+Existing clamping (Req 3.11-3.13) is unchanged; `M`/`MAX` simply target the
+clamped extreme, reusing the `TOP`/`BOTTOM` end-state logic (Req 3.9/3.10).
+
+### Field clearing on key-invocation
+
+When a scroll command is invoked by a function key that forwarded the command
+field (command-framework Requirement 9.8), the command clears the `Command ===>`
+field after consuming the amount (Requirement 20.5), so a prefix like `8` applies
+once. This clearing is the command's decision (command-framework Requirement 9.9),
+signalled back to the shell via the existing command-result/side-effect path;
+no new API is added to `ff-navigation-commands` -- the shell clears the field when
+a scroll command reports it consumed a key-forwarded argument.
+
+### No new public types
+
+Requirement 20 adds only argument parsing inside the existing scroll command
+handlers plus a small helper (e.g. `fn parse_scroll_amount(arg: &str) ->
+ScrollAmount { Page, Lines(u32), Max }`). No change to the `BoundsManager` or
+other public API.

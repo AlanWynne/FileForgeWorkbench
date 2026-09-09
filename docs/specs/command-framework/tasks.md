@@ -379,3 +379,20 @@ This is a **Wave 2 (Platform Architecture)** sub-project. It depends on `ff-logg
 | Req 7: Command History | AC 7.6 | Task 20 |
 | Req 7: Command History | AC 7.7 | Tasks 19, 23 |
 | Req 7: Command History | AC 7.8 | Task 19 |
+
+---
+
+## Phase DF -- Command Arguments (CR-NR-054, Requirement 9)
+
+- [ ] DF.1 Implement `parse_invocation(line) -> CommandInvocation { verb, arg }` in `ff-command` (first-token verb, trimmed remainder as arg)
+  - Covers: Requirement 9.1
+- [ ] DF.2 Wire the dispatch boundary to insert `arg` (reserved key) into `CommandParams` when non-empty; absent when empty
+  - Covers: Requirement 9.2, 9.3, 9.7
+- [ ] DF.3 Verify backward compatibility: verb-only commands and commands that never read `arg` are unaffected (a surplus arg is ignored, no error)
+  - Covers: Requirement 9.4, 9.6
+- [ ] DF.4 Support a fixed Argument_String on a Command_Definition / Shortcut_Binding, forwarded as if typed
+  - Covers: Requirement 9.5
+- [ ] DF.5 (ff-desktop) Function-key forwarding: on a bound key press, invoke the command with the `Command ===>` field contents as its argument; command decides field disposition (framework never force-clears)
+  - Covers: Requirement 9.8, 9.9, 9.10
+- [ ] DF.6 Unit tests: verb/arg split (incl. multiple spaces, no arg, arg with spaces); arg param present/absent; verb-only unchanged; key-forwarded == typed
+  - Validates: Requirement 9.1-9.4, 9.6, 9.8, 9.10

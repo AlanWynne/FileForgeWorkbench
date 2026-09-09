@@ -293,3 +293,18 @@
 
 - [x] 20.1 Update `docs/quality/TCR.md` -- set all CR-NR-050 rows to PASS
 - [x] 20.2 Update `docs/specs/project-master/tasks.md` -- mark Phase DA-impl tasks complete
+
+---
+
+## Phase DF -- MENU Argument Chaining (CR-NR-054, Requirement 5.5-5.6, 11.7-11.10)
+
+- [ ] DF.1 Extend `open_menu_by_name` to accept an optional trailing option key; after loading the menu, activate the option whose key equals it (case-insensitive, key match only) via the existing option-dispatch path (Target_Resolution + inline `[options.target]` apply)
+  - Covers: Requirement 11.7, 11.10
+- [ ] DF.2 Unknown chained key: open the menu and report `Option '<key>' not found.` (reuse the existing not-found message)
+  - Covers: Requirement 11.9
+- [ ] DF.3 Share one navigation-and-activation helper between the Chained_Path resolver (`=k1.k2`, Req 5) and the chained-MENU path so the notations cannot diverge
+  - Covers: Requirement 5.5, 11.8
+- [ ] DF.4 Option `command` that is itself a chained `MENU`/Chained_Path forwards its argument on selection (via the general command-argument mechanism)
+  - Covers: Requirement 5.6, 11.10
+- [ ] DF.5 Unit tests: `MENU <name> <key>` activates the option; unknown key -> not-found + menu open; `=0.E` equivalence; deeper chain forwards remainder
+  - Validates: Requirement 5.5, 5.6, 11.7, 11.8, 11.9, 11.10

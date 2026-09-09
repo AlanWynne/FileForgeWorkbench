@@ -189,3 +189,59 @@ The `ff-command` crate is a Wave 2 (Platform Architecture) dependency. It depend
 7. THE Command_Target type SHALL be serialisable to and deserialisable from TOML, so that user-defined command definitions (command-configurator) and persisted Workspace descriptors (startup-and-session Requirement 21) can store targets in data files.
 8. WHEN Target_Resolution fails to resolve a string to any variant, THE framework SHALL return an error result naming the unresolved string, without panicking or mutating application state (consistent with Requirement 2 criterion 2).
 9. THE Command_Target SHALL classify each variant as producing a Visible_Workspace or not: Menu_Target, Custom_Workspace_Target, and External_Target in Captured mode are Visible_Workspaces; Function_Target, Macro_Target, and External_Target in Detached mode are not. This classification SHALL be queryable without executing the target (for use by session persistence, Requirement 21 of startup-and-session).
+
+---
+
+### Requirement 9: Command Arguments
+
+**User Story:** As a user, I want to pass an argument to a command from the
+`Command ===>` field (for example `DOWN 8`, `DOWN M`, or `MENU SETTINGS EDITOR`),
+so that one command verb can be parameterised at the point of invocation rather
+than requiring a separate command per variation.
+
+**Source:** [CR-NR-054], [ISPF] scroll-amount and fastpath conventions. [WB]
+
+#### Acceptance Criteria
+
+1. WHEN a Command_Invocation string is submitted from a `Command ===>` field,
+   THE framework SHALL parse it into a Command_Verb (the first whitespace-delimited
+   token) and an Argument_String (the remainder of the line after the first run
+   of whitespace, with surrounding whitespace trimmed; empty when no argument was
+   typed).
+2. WHEN a Command_Verb resolves to a registered Command_ID, THE Command_Dispatch
+   SHALL place the Argument_String into Command_Params under the reserved key
+   `arg` (a string value) before invoking the handler, so a command that accepts
+   an argument reads it from `params.arg` (extending Requirement 2.1, 2.8).
+3. WHEN no argument was typed, THE Argument_String SHALL be the empty string and
+   the `arg` param SHALL be absent, so a command receiving no argument behaves
+   exactly as it does today (backward compatibility).
+4. THE argument parsing SHALL NOT change the behaviour of any command that does
+   not read the `arg` param: a verb-only invocation (e.g. `SAVE`, `CANCEL`)
+   SHALL produce the same observable result as before this requirement.
+5. A Command_Definition (command-configurator Requirement 1) and a
+   Shortcut_Binding (Requirement 5) MAY carry a fixed Argument_String; WHEN such
+   a binding is invoked, THE framework SHALL forward that argument to the command
+   exactly as if it had been typed after the verb.
+6. WHEN a command that does not accept an argument is invoked with a non-empty
+   Argument_String, THE command SHALL ignore the surplus argument and SHALL NOT
+   error solely because an argument was present (a command MAY choose to validate
+   its own argument and return a Command_Result error for a malformed value).
+7. Argument parsing SHALL be performed once, at the dispatch boundary, so every
+   input source that routes through `execute_command` (command line, menu option,
+   keyboard binding, macro) shares one consistent verb/argument split.
+8. WHEN a function key (or keyboard shortcut) bound to a command is pressed, THE
+   shell SHALL invoke that command with the current `Command ===>` field contents
+   as its Argument_String -- observably identical to typing `<command> <field>`
+   in the command field and pressing Enter. WHEN the field is empty, the command
+   SHALL be invoked with no argument. This is the single general mechanism by
+   which a typed value parameterises a key-invoked command (e.g. type `8`, press
+   the DOWN key -> `DOWN 8`; type `LIST`, press the RETRIEVE key -> `RETRIEVE LIST`).
+9. THE framework SHALL NOT force-clear the `Command ===>` field after a
+   key-forwarded invocation; whether the field is cleared, replaced, or left
+   intact is the invoked command's own decision (e.g. a scroll or MENU command
+   clears the consumed argument, whereas RETRIEVE replaces the field with the
+   recalled command text).
+10. A key-forwarded invocation SHALL be indistinguishable, from the command's
+    point of view, from a typed `<command> <argument>` invocation: both deliver
+    the same `arg` param, so a command needs no special handling for the two
+    input paths.

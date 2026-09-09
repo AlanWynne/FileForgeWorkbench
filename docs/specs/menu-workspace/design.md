@@ -430,3 +430,63 @@ The still-unimplemented `MENU <name>` command (Section 11) resolves to a
 at runtime (opening a `TabKind::MenuWorkspace` from `menus/<name>.toml`) is the
 prerequisite for `Menu_Target` execution and is tracked in the Phase DB task
 list; it is a separate implementation step from this spec delta.
+
+---
+
+## Design Delta: MENU Argument Chaining (Requirement 5.5-5.6, 11.7-11.10, CR-NR-054)
+
+The `MENU` command becomes argument-aware via the general command-argument
+mechanism (command-framework Requirement 9). `MENU <name> <key>` opens the menu
+`<name>` and immediately activates the option whose key equals `<key>`
+(case-insensitive, key match only -- not a word alias).
+
+### MENU dispatch with a chained key
+
+```text
+MENU                       -> Home Context (POM)                 (Req 11.1)
+MENU <name>                -> open menus/<name>.toml             (Req 11.2)
+MENU <name> <key>          -> open menus/<name>.toml, then
+                              activate option whose key == <key> (Req 11.7)
+MENU <name> <key> <rest..> -> as above; <rest..> forwarded to the
+                              activated option's own command as its argument
+                              (Req 11.10 -- deeper chains compose)
+```
+
+Implementation: `open_menu_by_name` (already added for Requirement 11) gains an
+optional trailing argument. After the menu tab is opened/loaded, if a chained key
+is present the shell looks it up in the freshly loaded `MenuFile` (case-insensitive
+key match via the existing `menu_workspace::commands::find_option`) and dispatches
+that option exactly as a click/typed selection would (through the existing
+option-dispatch path, so Target_Resolution and inline `[options.target]` still
+apply). An unknown key opens the menu and reports `Option '<key>' not found.`
+(Req 11.9), reusing the existing not-found message.
+
+### Equivalence of the three forms (Req 11.8, 5.5)
+
+All three activate the same option, because all three resolve to
+"open menu <name>, then activate option <key>":
+
+```text
+MENU SETTINGS E          (chained MENU command)
+=0.E                     (Chained_Path fastpath, Req 5; 0 is the POM key for SETTINGS)
+type "E" + press a key bound to "MENU SETTINGS"   (command-framework Req 9.8)
+```
+
+The Chained_Path resolver (Requirement 5) and the chained-MENU path share one
+navigation-and-activation helper so the two notations cannot diverge (Req 5.5).
+
+### Option command forwarding (Req 5.6)
+
+A menu option whose `command` value is itself a chained `MENU <name> <key>` (or a
+Chained_Path) forwards its argument when selected, so one option can jump directly
+into a specific option of another menu. This is the same forwarding the general
+argument mechanism provides (command-framework Requirement 9.7); no menu-specific
+argument store is introduced.
+
+### Settings_Menu note (B032)
+
+With chaining in place, the Settings_Menu (menus/settings.toml) namespace options
+may be expressed either as the existing `SETTINGS <ns>` verb (opens the filtered
+Settings_Namespace_View) or, equivalently, reached by `MENU SETTINGS <key>`. The
+B032 fix (bare `SETTINGS`/`0` open the Settings_Menu Menu_Workspace) is unchanged;
+this delta only adds the chained-activation path on top of it.

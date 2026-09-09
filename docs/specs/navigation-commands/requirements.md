@@ -579,3 +579,46 @@ All commands are registered with the command framework and dispatched through th
 19.5. EACH registered command SHALL include the canonical name and any aliases (e.g., BOUNDS/BNDS, MACRO/EXEC/RUN). [WB]
 
 19.6. THE command metadata SHALL declare whether the command is valid in Browse mode, Edit mode, or both. Navigation commands (LOCATE, UP, DOWN, LEFT, RIGHT, TOP, BOTTOM, COLS, BOUNDS, paragraph, word, doc-start/end) SHALL be valid in both Browse and Edit modes. SORT SHALL be valid only in Edit mode. [WB]
+
+---
+
+### Requirement 20: Scroll Amount Arguments (line count or M/MAX)
+
+**User Story:** As a developer, I want to control how far a scroll command moves
+by giving it an amount -- a line count or `M` for maximum -- so that I can page a
+precise distance or jump to an extreme without a dedicated command per amount.
+
+**Source:** [CR-NR-054], [ISPF] scroll-amount conventions, extends Requirement 3. [WB]
+
+**Note:** How the amount reaches the command is defined generally by
+command-framework Requirement 9: it may be typed after the verb (`DOWN 8`) or
+supplied by typing it in the `Command ===>` field and pressing a scroll function
+key (`8` + DOWN key). Both deliver the same `arg` param; this requirement defines
+only how a scroll command interprets that argument.
+
+#### Acceptance Criteria
+
+20.1. WHEN a `DOWN` invocation carries the argument `M` or `MAX` (case-insensitive),
+THE system SHALL scroll the Viewport to the bottom (equivalent to `BOTTOM`:
+`top_line = max_top_line`); `UP` with `M` / `MAX` SHALL scroll to the top
+(equivalent to `TOP`: `top_line = 1`).
+
+20.2. WHEN a `UP` / `DOWN` invocation carries a positive integer argument `n`,
+THE system SHALL scroll by `n` lines (restating Requirement 3.2 / 3.4), reading
+the `arg` param delivered by command-framework Requirement 9.
+
+20.3. WHEN a scroll command receives an argument that is neither a positive
+integer nor `M` / `MAX` (e.g. `DOWN abc`), THE system SHALL ignore the malformed
+argument and scroll by the default one-screen page, without producing an error
+(consistent with Requirement 3.11 / 3.12 clamping and command-framework
+Requirement 9.6).
+
+20.4. WHEN a `LEFT` / `RIGHT` invocation carries a positive integer argument `n`,
+THE system SHALL scroll by `n` columns; WHEN it carries `M` / `MAX`, THE system
+SHALL scroll to the respective horizontal extreme (`horizontal_offset = 0` for
+`LEFT`; the maximum line width for `RIGHT`).
+
+20.5. WHEN a scroll command is invoked by a function key per command-framework
+Requirement 9.8 (the amount typed in the command field), THE scroll command
+SHALL clear the `Command ===>` field after consuming the amount, so it applies
+once and does not persist to the next key press.

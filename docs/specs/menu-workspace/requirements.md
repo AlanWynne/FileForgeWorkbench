@@ -227,6 +227,14 @@ fastpath model.
    message `Option '<segment>' not found.` in the status area.
 4. THE existing fastpath notation for POM options (e.g. `=0`, `=1`, `=2`) SHALL
    continue to work unchanged -- they are single-segment Chained_Paths.
+5. A Chained_Path SHALL be equivalent to the chained `MENU` command form
+   (Requirement 11.7): resolving `=<key1>.<key2>` activates the same option as
+   `MENU <menu-of-key1> <key2>`, so the fastpath and the MENU-argument forms
+   share one navigation-and-activation path.
+6. WHEN a menu option's own `command` value is itself a chained `MENU <name>
+   <key>` (or a Chained_Path), selecting that option SHALL forward the chained
+   argument so that one option can navigate directly into a specific option of
+   another menu (command-framework Requirement 9.7).
 
 ---
 
@@ -375,3 +383,24 @@ user-created -- are reachable through one consistent verb.
 6. THE `MENU` command SHALL be registered with the command framework
    (Command_ID `"menu.open"`) so it is dispatchable from the command line, menu
    options, keyboard bindings, and macros.
+7. WHEN the user types `MENU <name> <option-key>` (a name followed by a further
+   argument), THE shell SHALL open the Menu_Workspace `<name>` and immediately
+   activate the option in that menu whose key equals `<option-key>`
+   (case-insensitive), as if the user had opened the menu and selected that
+   option. This is the argument-chaining form of the MENU command
+   (command-framework Requirement 9). Example: `MENU SETTINGS EDITOR` opens the
+   Settings_Menu and activates its `EDITOR` option.
+8. THE chained form `MENU <name> <option-key>` SHALL be equivalent in observable
+   result to the fastpath `=<name-fastpath>.<option-key>` (Requirement 5) and to
+   typing `<option-key>` in the `Command ===>` field and pressing a function key
+   bound to `MENU <name>` (command-framework Requirement 9.5): all three activate
+   the same option.
+9. WHEN the `<option-key>` in a chained `MENU <name> <option-key>` does not match
+   any option in menu `<name>`, THE shell SHALL open the Menu_Workspace `<name>`
+   and display the message `Option '<option-key>' not found.` in the status area,
+   leaving the menu open (consistent with Requirement 5.3), rather than failing
+   silently.
+10. THE argument forwarded by a chained `MENU` invocation SHALL be the option
+    key only (a single token); any further tokens SHALL be passed on to the
+    activated option's own command as its argument, so deeper chains
+    (e.g. `MENU <a> <b> <c>`) compose through each option's dispatch.

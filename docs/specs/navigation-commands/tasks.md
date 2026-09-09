@@ -373,3 +373,18 @@ This is a **Wave 5 (Command Engine)** sub-project that depends on `ff-viewport-s
 | Req 17: UNDO/REDO (Delegation) | AC 17.1–17.4 | Task 14 |
 | Req 18: Configuration Options | AC 18.1–18.5 | Tasks 3, 6, 8, 15 |
 | Req 19: Command Registration and Metadata | AC 19.1–19.6 | Task 16 |
+
+---
+
+## Phase DF -- Scroll Amount Arguments (CR-NR-054, Requirement 20)
+
+- [ ] DF.1 Add `parse_scroll_amount(arg: &str) -> ScrollAmount { Page, Lines(u32), Max }` helper (case-insensitive `M`/`MAX`; positive integer; else `Page`)
+  - Covers: Requirement 20.1, 20.2, 20.3
+- [ ] DF.2 UP/DOWN read `params.arg` -> Page (default), Lines(n), or Max (UP=top, DOWN=bottom, reusing TOP/BOTTOM end-state + existing clamping)
+  - Covers: Requirement 20.1, 20.2, 20.3
+- [ ] DF.3 LEFT/RIGHT read `params.arg` -> columns (n) or Max (LEFT=offset 0, RIGHT=max line width)
+  - Covers: Requirement 20.4
+- [ ] DF.4 Signal field-clear when a scroll command consumed a key-forwarded argument (command-framework Req 9.9); shell clears the Command field
+  - Covers: Requirement 20.5
+- [ ] DF.5 Unit tests: parse_scroll_amount cases; UP/DOWN n and M; LEFT/RIGHT n and M; malformed arg -> default page, no error
+  - Validates: Requirement 20.1-20.5
