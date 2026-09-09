@@ -37,6 +37,12 @@ Status: EMPTY -- populated per sub-project during Waves 0-5, finalized in Wave 6
 | `LogRecord` | logging-subsystem | -- | No | Sole owner ff-logging |
 | `log_trace!`/`log_debug!`/`log_info!`/`log_warn!`/`log_error!` (macros) | logging-subsystem | all crates | No | Sole owner ff-logging |
 | `PluginLogHandle` | logging-subsystem | ff-plugin (PluginContext) | No | Sole owner ff-logging |
+| `CommandId` / `CommandParams` / `CommandResult` | command-framework | all crates | No | Sole owner ff-command |
+| `CommandRegistry` / `CommandMetadata` | command-framework | consumers | No | Sole owner ff-command |
+| `ExecutionContext` | command-framework | editor subsystems | No | Sole owner ff-command |
+| `ShortcutBinding` / `Chord` | command-framework | ff-desktop (key handling) | No | Sole owner ff-command |
+| `CommandTarget` (5 variants) | command-framework | menu-workspace, command-configurator, startup-and-session, shell-command, lua-macro-engine | Watch | PA-WATCH-001: verify Target_Resolution consistency in each consumer |
+| reserved `arg` param key + verb/arg split | command-framework | all input sources (cmd line, menu, key, macro) | Watch | Req 9 DEFINED but UNIMPLEMENTED (PA-INCOMPLETE-001) -- watch for divergent ad-hoc parsing |
 
 ## Command IDs
 
@@ -72,6 +78,8 @@ Status: EMPTY -- populated per sub-project during Waves 0-5, finalized in Wave 6
 | Settings_Menu / Settings_Namespace_View | configuration-system + menu-workspace | Req 15 + menu-workspace Phase CW | Watch | Settings UI shared between specs -- SPLIT proposal PA-SPLIT-001 folds Req 15 into menu-workspace |
 | Log_Level / Log_Record / Log_File / Log_Rotation | logging-subsystem | all crates | No | Foundation; consumed everywhere via macros |
 | logging.* config keys | logging-subsystem (consumer) | configuration-system (owner of `logging` namespace) | No | Two-phase init: ff-logging defaults then reconfigure from ff-config (CR-CH-015, B033) |
+| Reserved shortcut set (Req 5.3) | command-framework | layout-and-docking, view-zoom, edit, clipboard | No | ff-command owns reserved set (cross-cutting Req 10); consumers must not override |
+| commands.* config keys (history_depth, key map) | command-framework (consumer) | configuration-system (owner of `commands` namespace) | No | Consistent with reserved namespace list |
 
 ## Dangling Cross-References
 
