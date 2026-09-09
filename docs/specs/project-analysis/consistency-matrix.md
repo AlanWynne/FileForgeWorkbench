@@ -80,7 +80,10 @@ Status: EMPTY -- populated per sub-project during Waves 0-5, finalized in Wave 6
 | Undo_Record contract | command-framework (produces) + undo-redo-transactions (owns stacks) | -- | No | Consistent with command-framework Req 4 |
 | `Viewport` / `CaretPolicy` / `ScrollMode` / `ViewportError` | viewport-and-scrolling | ff-desktop (renderer), editor session | No | Sole owner ff-viewport-scrolling |
 | scroll commands (ScrollPageUp/Down etc.) | viewport-and-scrolling | command-framework | No | Non-undoable (Req 10.6) -- consistent with undo-redo Req 10 |
-| `DisplayLineMapper` (trait) | display-line-mapping (owner, W1.4) + viewport-and-scrolling (consumer Req 11) | -- | Watch | PA-WATCH-007: verify single ownership at W1.4 |
+| `DisplayLineMapping` (canonical trait) | display-line-mapping (owner) | ff-line-commands, ff-exclude-show-filter | No | Sole owner ff-display-line-mapping (Req 7.10) |
+| `DisplayLineMapper` (viewport-local trait) | viewport-and-scrolling (DUPLICATE local) | -- | CONFLICT | PA-CONFLICT-001: viewport defines its own trait instead of consuming canonical `DisplayLineMapping`; not bridged; contrary to viewport Req 11.1 |
+| `ContractionState` / DocLine / DisplayLine / SubLine | display-line-mapping | consumers | No | Sole owner ff-display-line-mapping |
+| Fold-level storage | syntax-highlighting/language-service (owner, W1.10) NOT display-line-mapping | display-line-mapping (stores only visibility+expanded, Req 10.7) | No | Clean boundary; confirm at W1.10 |
 | scroll-amount CSR/PAGE/HALF | viewport-and-scrolling (Req 14) + navigation-commands (Req 20) | -- | Watch | PA-WATCH-008: verify no duplicate source of truth at W1.7 |
 | cursor_line/cursor_column (viewport) vs editing caret | viewport-and-scrolling (viewport coordination) + caret-and-selection (editing caret) | -- | Watch | Verify boundary at W1.3 (relates to PA-WATCH-006) |
 | Caret/selection VISUAL config (CaretStyle, SelectionColours, BlinkState, etc.) | caret-and-selection | ff-desktop (renderer), theme | No | Sole owner ff-caret-selection -- RENDERING only |
