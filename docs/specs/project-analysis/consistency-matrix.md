@@ -68,6 +68,11 @@ Status: EMPTY -- populated per sub-project during Waves 0-5, finalized in Wave 6
 | `BackgroundIoService` / `RetryPolicy` | background-io | platform-core (singleton), file-operations | No | Sole owner ff-background-io (RetryPolicy defined but NOT wired -- PA-INCOMPLETE-002) |
 | `IoCancellationToken` | background-io | callers | No | Distinct from ff-workflow CancellationToken (confirmed W0.17) -- no conflict |
 | VFS-only I/O (Req 1.8/4.10/8.x) | background-io (consumer) | virtual-file-system (owner) | No | VERIFIED upheld; only lib.rs doc-comment mentions std::fs (stating it is NOT used) |
+| `EncodingFamily` / `CharClassify` / `CharacterCategoryMap` | encoding-and-characters | document-model, find, edit, nav | No | Sole owner ff-encoding |
+| `CaseFolder` / `ICaseConverter` | encoding-and-characters | find-and-replace | No | Sole owner ff-encoding |
+| `ConversionResult` / `ConversionIssue` | encoding-and-characters | file-operations, document-model | No | Sole owner ff-encoding; lossy replacements returned to caller (Req 3.4) |
+| DBCS lead/trail + grapheme boundaries | encoding-and-characters | document-model (char nav) | No | Sole owner ff-encoding |
+| LineEndMode interaction | encoding-and-characters (validates U+2028/2029/0085) + document-model (owns LineEndMode) | -- | No | ff-encoding validates bytes; document-model decides line-end semantics -- no duplicate ownership |
 
 ## Command IDs
 
