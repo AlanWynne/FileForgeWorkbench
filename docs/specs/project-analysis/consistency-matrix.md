@@ -42,7 +42,10 @@ sub-project during Waves 0-5, finalized in Wave 6.
 | `RecoveryPayload` (serialize-only) | undo-redo-transactions | file-operations/background-io (perform I/O) | No | Crate serialises to bytes+CRC32; caller does the write -- GUI/IO-independent |
 | `Viewport` / `CaretPolicy` / `ScrollMode` / `ViewportError` | viewport-and-scrolling | ff-desktop (renderer), editor session | No | Sole owner ff-viewport-scrolling |
 | scroll commands (ScrollPageUp/Down etc.) | viewport-and-scrolling | command-framework | No | Non-undoable (Req 10.6) -- consistent with undo-redo Req 10 |
-| `DisplayLineMapper` (viewport-local) vs `DisplayLineMapping` (canonical) | viewport-and-scrolling (DUPLICATE local) + display-line-mapping (owner, W1.4) | -- | CONFLICT | PA-CONFLICT-001: viewport defines its own trait instead of consuming canonical; not bridged; contrary to viewport Req 11.1 |
+| `DisplayLineMapping` (canonical trait) | display-line-mapping (owner, Req 7.10) | ff-line-commands, ff-exclude-show-filter, ff-desktop | No | Sole owner ff-display-line-mapping; correctly consumed by 3 crates |
+| `DisplayLineMapper` (viewport-local) vs `DisplayLineMapping` (canonical) | viewport-and-scrolling (DUPLICATE local) + display-line-mapping (owner) | -- | CONFLICT | PA-CONFLICT-001 CONFIRMED W1.4: viewport defines its own trait, never imports canonical; not bridged; contrary to viewport Req 11.1 |
+| `ContractionState` / DocLine / DisplayLine / SubLine | display-line-mapping | consumers | No | Sole owner ff-display-line-mapping |
+| Fold-level storage | syntax-highlighting/language-service (owner, W1.10) NOT display-line-mapping | display-line-mapping (stores only visibility+expanded, Req 10.7) | No | Clean boundary; confirm at W1.10 |
 | scroll-amount CSR/PAGE/HALF | viewport-and-scrolling (Req 14) + navigation-commands (Req 20) | -- | Watch | PA-WATCH-008: verify no duplicate source of truth at W1.7 |
 | Caret/selection VISUAL config (CaretStyle, SelectionColours, BlinkState) | caret-and-selection | ff-desktop (renderer), theme | No | Sole owner ff-caret-selection -- RENDERING only |
 | `Selection` / `SelectionRange` / `SelectionPosition` (LOGICAL model) | edit-operations (owner, W1.5) | caret-and-selection (renders; does NOT duplicate -- W1.3 verified), undo-redo (own snapshot) | Watch | PA-WATCH-006: confirm undo-redo SelectionState references it at W1.5 |

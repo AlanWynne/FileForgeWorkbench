@@ -48,7 +48,7 @@ instrumentation).
 | 11 | undo-redo-transactions | 1 | DONE | units/undo-redo-transactions.md | COMPLETE (159/159, TCR PASS); SPLIT CANDIDATE (PA-SPLIT-004, 19 reqs/553 lines); logging gap PA-LOG-006 (Req 3.5 WARNING); refactor PA-STD-007 (manager.rs 600); crate-name drift PA-DOC-003; PA-CONFLICT-002 (two transaction models, resolve W1.5) |
 | 12 | viewport-and-scrolling | 1 | DONE | units/viewport-and-scrolling.md | COMPLETE (129/129, TCR PASS); borderline (14 reqs) but NOT a split -- fix is refactor PA-STD-008 (viewport.rs 572); CONFLICT PA-CONFLICT-001 (own DisplayLineMapper trait, resolve W1.4); zero-log defensible; PA-DOC-004; watch PA-WATCH-008 |
 | 13 | caret-and-selection | 1 | DONE | units/caret-and-selection.md | COMPLETE (127/127, TCR PASS); NOT a split (cohesive rendering layer, well-factored, no file over cap); zero-log defensible; PA-WATCH-006 partially resolved (visual layer, no logical-model duplication; final check W1.5) |
-| 14 | display-line-mapping | 1 | PENDING | -- | core editing/model |
+| 14 | display-line-mapping | 1 | DONE | units/display-line-mapping.md | COMPLETE (87/87, TCR PASS); not a split; CONFLICT PA-CONFLICT-001 CONFIRMED (viewport's own DisplayLineMapper vs canonical DisplayLineMapping owned here); refactor PA-STD-009 (contraction_state.rs 614); zero-log defensible |
 | 15 | edit-operations | 1 | PENDING | -- | core editing/model |
 | 16 | line-commands | 1 | PENDING | -- | core editing/model |
 | 17 | navigation-commands | 1 | PENDING | -- | core editing/model |
