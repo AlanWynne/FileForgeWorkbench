@@ -245,3 +245,32 @@ than requiring a separate command per variation.
     point of view, from a typed `<command> <argument>` invocation: both deliver
     the same `arg` param, so a command needs no special handling for the two
     input paths.
+
+---
+
+### Requirement 10: Context Navigation Stack
+
+**User Story:** As an operator, I want a return stack so that pressing END (or F3) walks me back through the contexts I navigated through, with the depth of the walk controlled by whether I chained with `.` or `;`.
+
+**Source:** [CR-NR-057], integrates with Requirement 8 (Unified Command Target) and command-semantics Requirement 11 (Command Chain).
+
+#### Glossary additions
+
+- **Context_Navigation_Stack**: A per-Workbench return stack of Contexts that RETURN (END/F3) pops. Session state only; never persisted, never undoable. [CR-NR-057]
+- **Navigation_Origin**: The Context at the bottom of the Context_Navigation_Stack for a navigation produced by a command chain: the POM when the chain begins with `=`, otherwise the Context active when the command was issued. [CR-NR-057]
+
+#### Acceptance Criteria
+
+1. THE framework SHALL maintain a per-Workbench Context_Navigation_Stack of Contexts that RETURN (END/F3) pops.
+2. WHEN a navigation chain begins with `=`, THE Navigation_Origin SHALL be the POM (Home Context).
+3. WHEN a navigation command does not begin with `=`, THE Navigation_Origin SHALL be the Workspace or Context active when the command was issued.
+4. THE Navigation_Origin SHALL always be the bottom entry of the Context_Navigation_Stack for the navigation produced by the chain.
+5. WHEN a chain segment reached via a `;` (PUSH) separator opens or changes a Context, THE framework SHALL push the prior (intermediate) Context onto the Context_Navigation_Stack before switching.
+6. WHEN a chain segment reached via a `.` (STOP) separator opens or changes a Context, THE framework SHALL NOT push the intermediate Context, so only the Navigation_Origin remains beneath the destination.
+7. WHEN a command does not open or change a Context (for example a state-mutating command such as SORT or CHANGE), THE Context_Navigation_Stack SHALL be unchanged regardless of the separator.
+8. WHEN RETURN (END/F3) is issued and the Context_Navigation_Stack is non-empty, THE framework SHALL pop one entry and switch to that Context.
+9. END / RETURN SHALL itself be a chainable command usable within a Command_Chain (for example `END ; EDIT`): it SHALL pop the Context_Navigation_Stack, and the next chain segment SHALL then run from the resulting Context.
+10. THE predicate `produces_visible_workspace` (Requirement 8.9) SHALL determine whether a target counts as opening or changing a Context for Context_Navigation_Stack purposes.
+11. THE Context_Navigation_Stack SHALL have a configurable maximum depth via `navigation.stack_max_depth` (positive integer, default 32); WHEN a push would exceed the maximum, THE framework SHALL drop the oldest entry and log one WARN-level record.
+12. THE Context_Navigation_Stack SHALL be session state only: it SHALL NOT be persisted across sessions and SHALL NOT be recorded as an undoable transaction.
+13. A single unchained navigation command SHALL behave as a STOP (`.`) invocation for stack purposes: it SHALL push only the Navigation_Origin, so one RETURN returns to the origin.

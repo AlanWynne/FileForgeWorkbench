@@ -1129,3 +1129,40 @@ All other dependencies are workspace-internal crates (`ff-command`, `ff-plugin`,
 | `macro.startup_script` | String | `null` | Script to execute on engine initialization |
 | `macro.trusted_paths` | Array | `[]` | Paths trusted in TrustedOnly mode |
 | `macro.auto_load_for.<ext>` | String | -- | Script name to auto-load for file extension |
+
+## Section: Command Sequences Share the Chain Executor (Requirement 5.8-5.11, CR-NR-057)
+
+Macros and FFCMD files are command sequences. This delta ties that existing model
+(Requirement 11.29-11.30, one command per FFCMD line, whole run wrapped in a
+single Macro_Transaction) to the shared chain grammar (command-semantics
+Requirement 11) so there is one execution path, not two.
+
+### Newline equals `;`
+
+A newline between commands in a macro or FFCMD file is treated as a `;` (PUSH)
+Chain_Separator for Context Navigation Stack purposes (Requirement 5.8). Lines run
+top-to-bottom in order. A single line may itself contain a `.`/`;` chain; the
+engine runs it through the same `execute_chain` used by the command line
+(command-semantics Requirement 11), not a separate implementation (Requirement
+5.9).
+
+### Failure and rollback interplay
+
+Two mechanisms compose:
+
+- The chain fail-stop (command-semantics Requirement 11.4) halts the sequence at
+  the first failing line/segment.
+- The existing Macro_Transaction rollback (Requirement 6.1) still wraps the whole
+  macro/FFCMD invocation, so a mid-sequence failure rolls back the entire
+  invocation's document mutations atomically (Requirement 5.10).
+
+This preserves the atomic-macro guarantee while reusing the command-line chain
+executor for sequencing.
+
+### Non-goal: piping
+
+Command sequences do not pipe: each command acts on Workspace/Context state, not
+on a prior command's return value (Requirement 5.11). `editor.command(str)`
+continues to return only a success boolean; there is no stdout/value stream
+between chained commands. A value-passing pipe model is reserved for the terminal
+space and is out of scope here.

@@ -1375,3 +1375,73 @@ unchanged. Requirement 9 adds `parse_invocation` + the `arg` convention in
 `ff-command`, and the key-forwarding wiring in `ff-desktop`. `resolve_target`
 (Requirement 8) continues to operate on the verb; the argument travels alongside
 as `arg` and is consumed by the resolved target's handler.
+---
+
+## Section: Context Navigation Stack (Requirement 10, CR-NR-057)
+
+This is a design delta to the dispatch model (Requirement 2) and the Command_Target
+routing (Requirement 8). It adds a per-Workbench return stack that RETURN (END/F3)
+pops. Chained navigation (command-semantics Requirement 11) pushes onto this stack;
+whether an intermediate Context is pushed is decided by the Chain_Separator that
+introduced the segment: `;` (PUSH) pushes, `.` (STOP) does not.
+
+### Data model
+
+```rust
+/// A per-Workbench return stack of Contexts. Session state only:
+/// never persisted, never undoable.
+/// Validates: command-framework Requirement 10.1, 10.11, 10.12
+pub struct ContextNavigationStack {
+    entries: Vec<ContextRef>,
+    max_depth: usize, // navigation.stack_max_depth, default 32
+}
+
+impl ContextNavigationStack {
+    /// Push a Context; drops the oldest entry and logs one WARN on overflow.
+    /// Validates: Requirement 10.5, 10.11
+    pub fn push(&mut self, ctx: ContextRef);
+    /// Pop one entry for RETURN (END/F3). None when empty.
+    /// Validates: Requirement 10.8
+    pub fn pop(&mut self) -> Option<ContextRef>;
+}
+```
+
+`ContextRef` is a lightweight handle to a Workspace/Context (kind + identity)
+sufficient for the shell to re-activate it.
+
+### Origin rule
+
+The bottom of the stack is the Navigation_Origin for the navigation produced by a
+chain:
+
+- Chain begins with `=`  -> origin = POM (Home Context)         (Requirement 10.2)
+- Chain does not begin with `=` -> origin = the Context active when the command
+  was issued                                                    (Requirement 10.3)
+
+The origin is always the bottom entry (Requirement 10.4). STOP pushes only the
+origin; PUSH pushes the origin plus each intermediate hop (Requirement 10.6, 10.5).
+A command that does not open/change a Context leaves the stack unchanged
+regardless of separator (Requirement 10.7); a single unchained navigation command
+behaves as STOP (Requirement 10.13).
+
+### Integration with execute_target and produces_visible_workspace
+
+`produces_visible_workspace` (Requirement 8.9) is the predicate for "opens or
+changes a Context" (Requirement 10.10). When `execute_target` runs a target for
+which the predicate is true, the shell records the push/collapse decision using
+the ChainSeparator forwarded from the chain executor (command-semantics
+Requirement 11). Function/Macro targets and Detached External targets return false
+and never affect the stack.
+
+### END / RETURN as a chainable command
+
+END / RETURN is an ordinary registered command that pops the stack (Requirement
+10.8) and is usable inside a chain (for example `END ; EDIT`): it pops, then the
+next chain segment runs from the resulting Context (Requirement 10.9). No special
+dispatch path is added.
+
+### Configuration and persistence
+
+`navigation.stack_max_depth` (positive integer, default 32) bounds the stack; the
+stack is session-only and is never written to the session file nor recorded as an
+undo transaction (Requirement 10.12).

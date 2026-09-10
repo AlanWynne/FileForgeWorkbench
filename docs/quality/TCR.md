@@ -2257,3 +2257,43 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | 🔴 | -- | menu-workspace Req 11.8 / 5.5: MENU `<name> <key>` == `=k1.k2` == `<key>` + key bound to MENU `<name>` |
 | `ff-desktop` | 🔴 | -- | menu-workspace Req 11.9: unknown chained key -> open menu + `Option '<key>' not found.` |
 | `ff-desktop` | 🔴 | -- | menu-workspace Req 11.10 / 5.6: deeper chains forward the remaining argument to the option's own command |
+### Phase DH -- Command Chaining and Context Navigation Stack (CR-NR-057)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-command-semantics` | 🔴 | -- | Req 11.1: parse command line into ordered Command_Chain on top-level `.`/`;` |
+| `ff-command-semantics` | 🔴 | -- | Req 11.2: `.`/`;` inside quotes or hex literals are literal, not separators |
+| `ff-command-semantics` | 🔴 | -- | Req 11.3: execute chain left-to-right, each on prior Workspace/Context state |
+| `ff-command-semantics` | 🔴 | -- | Req 11.4: fail-stop -- halt remainder and report the failing invocation status |
+| `ff-command-semantics` | 🔴 | -- | Req 11.5: separator affects only navigation stack; `.`/`;` identical for non-navigating chains |
+| `ff-command-semantics` | 🔴 | -- | Req 11.6: empty segments (leading/trailing/doubled separator) ignored, no error |
+| `ff-command-semantics` | 🔴 | -- | Req 11.7: single command with no separator == chain of length one (backward compatible) |
+| `ff-command-semantics` | 🔴 | -- | Req 11.8: chain parser is a pure, independently unit-testable function |
+| `ff-command-semantics` | 🔴 | -- | Req 11.9: each mutating segment keeps its own undo transaction; no combined transaction |
+| `ff-command-semantics` | 🔴 | -- | Req 11.10: fastpath Chained_Path and command-line chain share one split helper |
+| `ff-command-semantics` | 🔴 | -- | Req 11.11: `commands.max_chain_length` (default 16); over-long chain reports error, executes nothing |
+| `ff-command-semantics` | 🔴 | -- | Req 11.12: split only at top-level separators outside quotes and hex literals |
+| `ff-command-semantics` | 🔴 | -- | Req 11.13: END/RETURN treated as an ordinary chainable command (no special-casing) |
+| `ff-command` | 🔴 | -- | Req 10.1: per-Workbench Context_Navigation_Stack that RETURN (END/F3) pops |
+| `ff-command` | 🔴 | -- | Req 10.2: chain beginning with `=` sets Navigation_Origin to the POM |
+| `ff-command` | 🔴 | -- | Req 10.3: non-`=` navigation command uses the current Workspace as Navigation_Origin |
+| `ff-command` | 🔴 | -- | Req 10.4: Navigation_Origin is always the bottom entry of the stack |
+| `ff-command` | 🔴 | -- | Req 10.5: `;` (PUSH) segment pushes the prior Context before switching |
+| `ff-command` | 🔴 | -- | Req 10.6: `.` (STOP) segment does not push the intermediate Context |
+| `ff-command` | 🔴 | -- | Req 10.7: non-navigating command leaves the stack unchanged regardless of separator |
+| `ff-command` | 🔴 | -- | Req 10.8: RETURN (END/F3) pops one entry and switches to that Context |
+| `ff-command` | 🔴 | -- | Req 10.9: END/RETURN is a chainable command (e.g. `END ; EDIT`) |
+| `ff-command` | 🔴 | -- | Req 10.10: `produces_visible_workspace` (Req 8.9) is the opens/changes-a-Context predicate |
+| `ff-command` | 🔴 | -- | Req 10.11: `navigation.stack_max_depth` (default 32); overflow drops oldest + WARN |
+| `ff-command` | 🔴 | -- | Req 10.12: stack is session-only; never persisted, never undoable |
+| `ff-command` | 🔴 | -- | Req 10.13: single unchained navigation command behaves as STOP (pushes only the origin) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 5.7: leading `=` means begin navigation from the POM (Navigation_Origin = POM) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 5.8: `=0.E` opens Editor Config with intermediates collapsed; END returns to POM |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 5.9: `=0;E` opens Editor Config with intermediates pushed; END -> Settings -> POM |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 5.10: non-`=` command uses current Workspace as origin; multi-hop non-`=` chain pushes each hop |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 5.11: mixed separators (`=0;E.T`); each separator independently controls push/collapse |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 5.12: fastpath and chained MENU share one navigation-and-activation helper |
+| `ff-macro` | 🔴 | -- | lua-macro-engine Req 5.8: newline in a macro/FFCMD file == `;` (PUSH) separator; sequential top-to-bottom |
+| `ff-macro` | 🔴 | -- | lua-macro-engine Req 5.9: a macro/FFCMD line chain runs through the shared command-line chain executor |
+| `ff-macro` | 🔴 | -- | lua-macro-engine Req 5.10: chain fail-stop composes with whole-invocation Macro_Transaction rollback |
+| `ff-macro` | 🔴 | -- | lua-macro-engine Req 5.11: no piping -- commands act on Workspace/Context state, not a prior return value |

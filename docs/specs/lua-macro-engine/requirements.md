@@ -117,7 +117,7 @@ The `ff-macro` crate depends on `ff-command` (command dispatch and scripting bri
 
 **User Story:** As a user, I want primary commands that let me invoke Lua macros by name from the command line, execute inline Lua expressions, and run macro files by path, so that I have multiple convenient ways to trigger automation.
 
-**Source:** FFE-MVP-7 (MACRO primary command), SCI-STE-LUA (OnExecute, dostring). [FFE-MVP-7, SCI-STE-LUA]
+**Source:** FFE-MVP-7 (MACRO primary command), SCI-STE-LUA (OnExecute, dostring). [FFE-MVP-7, SCI-STE-LUA], CR-NR-057
 
 #### Acceptance Criteria
 
@@ -128,6 +128,10 @@ The `ff-macro` crate depends on `ff-command` (command dispatch and scripting bri
 5. IF the macro name in `MACRO <name>` does not resolve to any file in the configured Macro_Directories, THEN the engine SHALL return an error displayed in the status bar: "Macro not found: <name>".
 6. IF the file path in `RUN <path>` does not exist or is not readable, THEN the engine SHALL return an error displayed in the status bar: "Cannot open macro file: <path>".
 7. THE `MACRO`, `EXEC`, and `RUN` commands SHALL be registered with the command framework (command IDs: `"macro.run_named"`, `"macro.exec_inline"`, `"macro.run_file"`) and SHALL be invocable from keyboard shortcuts, menus, and other macros via `editor.command()`.
+8. A newline separating commands in a macro script or FFCMD file SHALL be equivalent to a `;` (PUSH) Chain_Separator (command-semantics Requirement 11) for Context Navigation Stack purposes, and the commands SHALL execute sequentially in order (top-to-bottom), reconciling this with the existing FFCMD one-command-per-line model (Requirement 11.29-11.30).
+9. A macro or FFCMD line MAY itself contain a `.` / `;` Command_Chain; THE macro engine SHALL execute it through the same chain executor used by the command line (command-semantics Requirement 11), not a separate implementation.
+10. WHEN a command within a macro or FFCMD command-sequence fails, THE existing Macro_Transaction rollback (Requirement 6.1) SHALL apply to the whole macro invocation, and the chain fail-stop (command-semantics Requirement 11.4) SHALL halt the sequence at the failing line.
+11. THE macro command-sequence execution SHALL NOT introduce piping: each command SHALL act on Workspace/Context state, not on a prior command's return value (explicit non-goal; piping is reserved for the terminal space).
 
 ---
 

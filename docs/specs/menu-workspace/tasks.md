@@ -308,3 +308,19 @@
   - Covers: Requirement 5.6, 11.10
 - [ ] DF.5 Unit tests: `MENU <name> <key>` activates the option; unknown key -> not-found + menu open; `=0.E` equivalence; deeper chain forwards remainder
   - Validates: Requirement 5.5, 5.6, 11.7, 11.8, 11.9, 11.10
+
+---
+
+## Phase DG -- Chained Path Separator Semantics (CR-NR-057, Requirement 5.7-5.12)
+
+- [ ] 21. Separator-aware chained path resolution
+  - [ ] 21.1 Extend `resolve_chained_path` to return an ordered `Vec<PathStep>` (each with the separator that preceded it), reusing command-semantics `split_chain` so the fastpath and command-line notations cannot diverge
+    - Covers: Requirement 5.11, 5.12
+  - [ ] 21.2 Set the Navigation_Origin to the POM for a leading `=`, and to the current Workspace for a non-`=` navigation command
+    - Covers: Requirement 5.7, 5.10
+  - [ ] 21.3 Drive each PathStep through the option-dispatch path, pushing the intermediate Context for a PUSH (`;`) step and collapsing it for a STOP (`.`) step (command-framework Requirement 10.5, 10.6)
+    - Covers: Requirement 5.8, 5.9, 5.11
+  - [ ] 21.4 Write failing unit tests: `=0.E` -> END returns to POM; `=0;E` -> END returns to Settings then POM; `EDITOR` (no `=`) -> END returns to current Workspace; `SETTINGS ; EDITOR` two-hop stack; mixed `=0;E.T`
+    - Validates: Requirement 5.7, 5.8, 5.9, 5.10, 5.11
+  - [ ] 21.5 Update `docs/quality/TCR.md`: set the CR-NR-057 menu-workspace Req 5.7-5.12 rows to their correct status
+    - Covers: Requirement 5.7-5.12

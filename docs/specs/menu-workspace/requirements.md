@@ -212,7 +212,7 @@ restarting.
 to navigate directly to a nested menu option, consistent with the existing
 fastpath model.
 
-**Source:** [ISPF-POM] fastpath notation, [CR-NR-045]
+**Source:** [ISPF-POM] fastpath notation, [CR-NR-045], [CR-NR-057]
 
 #### Acceptance Criteria
 
@@ -235,6 +235,28 @@ fastpath model.
    <key>` (or a Chained_Path), selecting that option SHALL forward the chained
    argument so that one option can navigate directly into a specific option of
    another menu (command-framework Requirement 9.7).
+7. THE leading `=` in a Chained_Path SHALL mean "begin navigation from the POM
+   (Home Context)", making the POM the Navigation_Origin (command-framework
+   Requirement 10) regardless of the Workspace that is currently active.
+8. WHEN the user types `=0.E` from any Workspace, THE shell SHALL open the Editor
+   configuration Context with intermediate Contexts collapsed (STOP), so that
+   pressing END returns directly to the POM.
+9. WHEN the user types `=0;E` from any Workspace, THE shell SHALL open the Editor
+   configuration Context with each intermediate Context pushed (PUSH), so that
+   pressing END returns to the Settings_Menu and a second END returns to the POM.
+10. WHEN a navigation command does not begin with `=` (for example `EDITOR` typed
+    from an Edit Workspace), THE shell SHALL use the current Workspace as the
+    Navigation_Origin, so that pressing END returns to that Workspace; a
+    multi-hop non-`=` chain (for example `SETTINGS ; EDITOR`) SHALL push each
+    intermediate Context exactly as an `=` chain does, with the current Workspace
+    at the bottom of the stack.
+11. A Chained_Path MAY mix separators (for example `=0;E.T`); EACH separator SHALL
+    independently determine the push (`;`) or collapse (`.`) behaviour of the
+    segment it precedes (command-framework Requirement 10, criteria 5 and 6).
+12. THE fastpath Chained_Path form and the chained `MENU` command form
+    (Requirement 11.7) SHALL share one navigation-and-activation helper that
+    applies the separator semantics, so the two notations cannot diverge
+    (restating Requirement 5.5 for the separator/stack behaviour).
 
 ---
 

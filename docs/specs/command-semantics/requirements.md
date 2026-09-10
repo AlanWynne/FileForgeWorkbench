@@ -67,6 +67,8 @@ The command semantics engine is responsible for:
 | **Hex_Literal** | A token of the form `X'hh...'` representing binary data as hexadecimal digits. | [FFE-CMD-36] |
 | **Command_Normalization** | The process of converting a parsed command name to its canonical form (case-insensitive, abbreviation-resolved). | [FFE-CMD-36] |
 | **Invalid_Line_Command_Policy** | A configuration option determining how unrecognised line commands are handled: `reject` (error) or `ignore` (silently discard). | [FFE-CMD-39] |
+| **Command_Chain** | An ordered list of Command_Invocations parsed from one command line, split on top-level `.` (STOP) or `;` (PUSH) separators. Separators inside quoted strings or hex literals are literal. | [CR-NR-057] |
+| **Chain_Separator** | `.` (STOP) or `;` (PUSH); determines only Context Navigation Stack behaviour (command-framework Requirement 10), not sequencing or error handling. | [CR-NR-057] |
 
 ---
 
@@ -312,3 +314,37 @@ The command semantics engine is responsible for:
 10.4. THE command engine SHALL support the `PROFILE` command with syntax `PROFILE [operands]`, routing to the session profile subsystem to display or update TSO session profile settings (MSGID, INTERCOM, NOINTERCOM, PREFIX, SIZE, WTPMSG). [TSO-CMD-13]
 
 10.5. THE command engine SHALL support the `PRINTDS` command with syntax `PRINTDS DATASET(dsname) [options]`, routing to the file-operations pipeline to print the contents of a dataset to the system printer or a specified output destination. [TSO-CMD-14]
+
+### Requirement 11: Command Chain Parsing and Sequential Execution
+
+**User Story:** As an operator, I want to chain multiple commands on one command line separated by `.` or `;`, so that I can sequence navigation and editing actions the same way ISPF menu options chain, and so that macros can reuse the same grammar.
+
+**Source:** [CR-NR-057], extends Requirement 1 (execution pipeline) and Requirement 3 (parser).
+
+#### Acceptance Criteria
+
+11.1. WHEN a command line contains one or more top-level `.` or `;` separators, THE system SHALL parse it into an ordered Command_Chain of Command_Invocations, one per segment, preserving each segment's verb and argument.
+
+11.2. THE chain parser SHALL treat a `.` or `;` character that appears inside a quoted string or a hex literal as a literal character and not as a Chain_Separator, consistent with Requirement 3 tokenisation.
+
+11.3. WHEN a Command_Chain is executed, THE system SHALL execute its Command_Invocations left-to-right, each operating on the Workspace/Context state left by the previous invocation.
+
+11.4. WHEN a Command_Invocation in a chain fails, THE system SHALL stop executing the remainder of the chain and report the failing invocation's status message (fail-stop).
+
+11.5. THE Chain_Separator SHALL determine only Context Navigation Stack behaviour (command-framework Requirement 10) and SHALL NOT change sequencing order or error handling; a chain of non-navigating commands SHALL produce identical results under `.` and `;`.
+
+11.6. WHEN a chain segment is empty (a leading, trailing, or doubled separator), THE system SHALL ignore the empty segment and SHALL NOT report an error.
+
+11.7. A single command with no separator SHALL parse as a Command_Chain of length one, preserving current single-command behaviour exactly.
+
+11.8. THE chain parser SHALL be a pure function producing the ordered invocation list and SHALL be independently unit-testable.
+
+11.9. WHEN a chain is executed and a segment mutates the document, THAT segment SHALL wrap in its own undo transaction per Requirement 1.7; chaining SHALL NOT introduce a combined transaction.
+
+11.10. THE fastpath Chained_Path notation (`=a.b`, menu-workspace Requirement 5) and the command-line chain grammar SHALL share one separator-parsing helper so the two notations cannot diverge.
+
+11.11. THE maximum chain length SHALL be configurable via `commands.max_chain_length` (positive integer, default 16); a chain exceeding this SHALL report "Command chain too long: <n> exceeds max <max>" and SHALL execute nothing.
+
+11.12. THE chain parser SHALL split only at top-level separators that fall outside quoted strings and hex literals.
+
+11.13. THE chain executor SHALL treat `END` / RETURN as an ordinary chainable command dispatched through the normal pipeline (for example `END ; EDIT`), with no special-casing beyond normal dispatch.

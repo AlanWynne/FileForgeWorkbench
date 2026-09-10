@@ -396,3 +396,21 @@ This is a **Wave 2 (Platform Architecture)** sub-project. It depends on `ff-logg
   - Covers: Requirement 9.8, 9.9, 9.10
 - [ ] DF.6 Unit tests: verb/arg split (incl. multiple spaces, no arg, arg with spaces); arg param present/absent; verb-only unchanged; key-forwarded == typed
   - Validates: Requirement 9.1-9.4, 9.6, 9.8, 9.10
+
+## Phase DG -- Context Navigation Stack (CR-NR-057, Requirement 10)
+
+- [ ] 25. Context navigation stack
+  - [ ] 25.1 Add `ContextNavigationStack` (entries + `max_depth`) and `ContextRef` types with `push` (drop-oldest + WARN on overflow) and `pop`
+    - Covers: Requirement 10.1, 10.5, 10.8, 10.11
+  - [ ] 25.2 Add `navigation.stack_max_depth` (positive integer, default 32) config wiring; session-only, never persisted or undoable
+    - Covers: Requirement 10.11, 10.12
+  - [ ] 25.3 Implement the origin rule: origin = POM when the chain begins with `=`, else the active Context; origin is always the bottom entry
+    - Covers: Requirement 10.2, 10.3, 10.4, 10.13
+  - [ ] 25.4 Implement push-vs-collapse: PUSH (`;`) pushes intermediate Contexts, STOP (`.`) does not; non-navigating commands leave the stack unchanged; use `produces_visible_workspace` (Requirement 8.9) as the opens/changes-a-Context predicate
+    - Covers: Requirement 10.5, 10.6, 10.7, 10.10
+  - [ ] 25.5 Register END / RETURN as an ordinary chainable command that pops the stack and switches to the popped Context (e.g. `END ; EDIT`)
+    - Covers: Requirement 10.8, 10.9
+  - [ ] 25.6 Write failing unit tests: `=0.E` -> stack [POM], END -> POM; `=0;E` -> stack [POM, Settings], two ENDs; non-`=` origin is current Workspace; overflow drops oldest + WARN; non-navigating command leaves stack unchanged
+    - Validates: Requirement 10.1-10.13
+  - [ ] 25.7 Update `docs/quality/TCR.md`: set the CR-NR-057 command-framework Req 10 rows to their correct status
+    - Covers: Requirement 10 (all criteria)

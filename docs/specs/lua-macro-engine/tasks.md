@@ -506,3 +506,19 @@ This is a **Wave 10 (Extensions and Macros)** sub-project. It depends on `ff-com
     - Covers: Requirement 12.7
   - [x] 25.10 Write unit tests: `macro_library_filter_case_insensitive`, `macro_library_run_dispatches_command`, `macro_library_edit_opens_tab`, `macro_library_delete_removes_entry`
     - Covers: Requirement 12.1-12.8
+
+---
+
+## Phase DG -- Command Sequences Share the Chain Executor (CR-NR-057, Requirement 5.8-5.11)
+
+- [ ] 26. Macro and FFCMD command sequences
+  - [ ] 26.1 Route each macro/FFCMD line through the shared command-semantics chain executor (`execute_chain`), treating a newline as a `;` (PUSH) separator for navigation-stack purposes
+    - Covers: Requirement 5.8, 5.9
+  - [ ] 26.2 Compose the chain fail-stop (command-semantics Requirement 11.4) with the existing whole-invocation Macro_Transaction rollback (Requirement 6.1) so a mid-sequence failure rolls back the entire invocation atomically
+    - Covers: Requirement 5.10
+  - [ ] 26.3 Confirm no piping is introduced: `editor.command(str)` still returns only a success boolean; commands act on Workspace/Context state, not on a prior command's return value
+    - Covers: Requirement 5.11
+  - [ ] 26.4 Write failing unit tests: newline-separated FFCMD runs top-to-bottom; a line containing a `.`/`;` chain runs through the shared executor; mid-sequence failure rolls back the whole invocation
+    - Validates: Requirement 5.8, 5.9, 5.10
+  - [ ] 26.5 Update `docs/quality/TCR.md`: set the CR-NR-057 lua-macro-engine Req 5.8-5.11 rows to their correct status
+    - Covers: Requirement 5.8-5.11

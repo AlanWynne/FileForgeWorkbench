@@ -1202,3 +1202,86 @@ Commands registered by `ff-command-semantics` with the global `CommandRegistry`:
 | 7 (lowest) | Entire document | Commands that default to whole-doc scope |
 
 When multiple sources are present, the highest-priority source wins. Lower-priority sources are silently ignored (no error for conflict -- Requirement 2.9).
+
+---
+
+## Section: Command Chain Parsing and Sequential Execution (Requirement 11, CR-NR-057)
+
+This is a design delta to the execution pipeline (Requirement 1) and the primary
+parser (Requirement 3). A `Command ===>` line may contain several commands
+separated by `.` (STOP) or `;` (PUSH). The chain is a sequencing plus navigation
+construct only: commands act on Workspace/Context state left by the previous
+command, never on a prior command's output. Piping is an explicit non-goal
+(reserved for the terminal space).
+
+### Chain grammar and the shared split helper
+
+A single pure function splits a raw command line into ordered segments, honoring
+the existing tokenisation rules (Requirement 3): a `.` or `;` inside a quoted
+string or a hex literal is literal and does not split.
+
+```rust
+/// One segment of a Command_Chain plus the separator that preceded it.
+/// Validates: command-semantics Requirement 11.1, 11.2, 11.12
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChainSegment {
+    /// Raw segment text (verb + argument), pre-parse.
+    pub text: String,
+    /// The separator that introduced this segment (Stop for the first segment).
+    pub separator: ChainSeparator,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChainSeparator {
+    /// `.` -- collapse intermediate Contexts (jump to destination).
+    Stop,
+    /// `;` -- push each intermediate Context (unwind one level per RETURN).
+    Push,
+}
+
+/// Split a command line into ordered chain segments at top-level `.`/`;`
+/// separators only (outside quotes and hex literals). Empty segments (leading,
+/// trailing, or doubled separators) are dropped. Pure and unit-testable.
+/// Validates: command-semantics Requirement 11.1, 11.6, 11.8, 11.10, 11.12
+pub fn split_chain(line: &str) -> Vec<ChainSegment>;
+```
+
+The fastpath Chained_Path resolver (menu-workspace Requirement 5) calls this same
+`split_chain` so the two notations cannot diverge (Requirement 11.10).
+
+### Sequential execution (fail-stop)
+
+`CommandEngine` gains a chain executor that runs each segment through the existing
+`execute_command_line` path in order, stopping at the first failure:
+
+```rust
+/// Execute a Command_Chain left-to-right, fail-stop.
+/// Each segment is dispatched through the existing single-command pipeline,
+/// so mutating segments each wrap in their own undo transaction (Requirement 1.7).
+/// The ChainSeparator is forwarded to the Context Navigation Stack
+/// (command-framework Requirement 10); it does not change sequencing or errors.
+/// Validates: command-semantics Requirement 11.3, 11.4, 11.5, 11.9, 11.13
+pub fn execute_chain(&mut self, line: &str, document: &mut Document,
+                     dispatch: &CommandDispatch) -> StatusMessage;
+```
+
+- Fail-stop: on the first segment whose result is an error, execution halts and
+  that segment's StatusMessage is returned (Requirement 11.4).
+- No combined transaction: chaining does not wrap the whole chain in one undo
+  unit; each mutating segment keeps its own transaction (Requirement 11.9). The
+  atomic-macro model stays in lua-macro-engine (Macro_Transaction).
+- END / RETURN is dispatched as an ordinary command (Requirement 11.13); no
+  special-casing in the executor.
+
+### Chain length limit
+
+`commands.max_chain_length` (default 16) bounds the number of segments. A longer
+chain reports "Command chain too long: <n> exceeds max <max>" and executes
+nothing (Requirement 11.11). The value is read via the existing CommandConfig
+path and clamped/defaulted on invalid input consistent with Requirement 6.2.
+
+### No change to single-command behaviour
+
+A line with no top-level separator yields a one-element chain and flows through
+`execute_command_line` exactly as today (Requirement 11.7), so existing behaviour
+and tests are unaffected.

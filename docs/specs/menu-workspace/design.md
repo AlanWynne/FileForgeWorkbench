@@ -490,3 +490,72 @@ may be expressed either as the existing `SETTINGS <ns>` verb (opens the filtered
 Settings_Namespace_View) or, equivalently, reached by `MENU SETTINGS <key>`. The
 B032 fix (bare `SETTINGS`/`0` open the Settings_Menu Menu_Workspace) is unchanged;
 this delta only adds the chained-activation path on top of it.
+
+## Design Delta: Chained Path Separator Semantics (Requirement 5.7-5.12, CR-NR-057)
+
+This extends Section 8 (Chained Path Resolver) and the MENU Argument Chaining
+delta. The resolver already walks a dotted path left-to-right; this delta adds
+the `;` (PUSH) separator alongside `.` (STOP) and the `=`-origin rule, and routes
+the push/collapse decision to the Context Navigation Stack (command-framework
+Requirement 10). The fastpath resolver and the command-line chain executor share
+one helper (command-semantics `split_chain`, Requirement 11.10) so the two
+notations cannot diverge.
+
+### Resolver signature change
+
+`resolve_chained_path` gains per-segment separators and cooperates with the
+navigation stack rather than returning a single command string:
+
+```rust
+/// Resolve a Chained_Path (leading `=`) into an ordered list of option
+/// activations, each tagged with the separator that preceded it.
+/// `.` segments are STOP (collapse), `;` segments are PUSH.
+/// Validates: menu-workspace Requirement 5.7-5.12
+pub fn resolve_chained_path(
+    path: &str,
+    menus: &HashMap<String, MenuFile>,
+) -> Result<Vec<PathStep>, String>;
+
+pub struct PathStep {
+    pub option_command: String,
+    pub separator: ff_command_semantics::ChainSeparator, // Stop | Push
+}
+```
+
+The shell drives each PathStep in order: it activates the option, and when the
+activation opens/changes a Context (produces_visible_workspace true), it pushes
+the prior Context onto the stack for a PUSH step and does not for a STOP step
+(command-framework Requirement 10.5, 10.6).
+
+### The `=` origin
+
+A leading `=` means "begin from the POM": before walking the segments the shell
+sets the Navigation_Origin to the POM (Requirement 5.7 / command-framework 10.2).
+A non-`=` navigation command (typed verb, no leading `=`) uses the current
+Workspace as origin (command-framework 10.3), so the same PathStep machinery
+serves both notations.
+
+### Worked examples
+
+From an Edit Workspace:
+
+```text
+=0.E   -> POM -> (0) Settings -> (E) Editor Config
+          stack: [POM]                 END -> POM
+=0;E   -> POM -> (0) Settings -> (E) Editor Config
+          stack: [POM, Settings]       END -> Settings, END -> POM
+editor -> Editor Config directly (no =, origin = current Edit Workspace)
+          stack: [Edit WS]             END -> Edit WS
+settings ; editor  (no =, two hops)
+          stack: [Edit WS, Settings]   END -> Settings, END -> Edit WS
+```
+
+From the Editor Config Workspace, `END ; EDIT` pops the stack (returns to the
+previous navigation point) and then runs EDIT from there (command-framework
+Requirement 10.9).
+
+### Mixed separators
+
+A path may mix separators (for example `=0;E.T`); each separator independently
+controls the push/collapse of the segment it precedes (Requirement 5.11). The
+existing 4-level nesting limit (Requirement 5.2) is unchanged.

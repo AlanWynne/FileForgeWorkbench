@@ -420,3 +420,21 @@ This is a **Wave 5 (Command Engine)** sub-project. It depends on `ff-command` (c
 - [x] 27. TCR update for Requirement 10
   - [x] 27.1 Update docs/quality/TCR.md -- mark all Req 10.1-10.5 rows as covered once tests pass
   - Covers: Requirement 10 (all criteria)
+
+## Phase DG -- Command Chain Parsing and Sequential Execution (CR-NR-057, Requirement 11)
+
+- [ ] 28. Command chain parser and sequential executor
+  - [ ] 28.1 Add `ChainSegment` and `ChainSeparator` (Stop/Push) types and a pure `split_chain(line) -> Vec<ChainSegment>` in a new `chain.rs`; split only at top-level `.`/`;` outside quoted strings and hex literals; drop empty segments
+    - Covers: Requirement 11.1, 11.2, 11.6, 11.8, 11.12
+  - [ ] 28.2 Write failing unit tests for `split_chain`: no separator -> length 1; quotes/hex protect separators; leading/trailing/doubled separators dropped; mixed `.`/`;` recorded per segment
+    - Validates: Requirement 11.1, 11.2, 11.6, 11.7, 11.8, 11.12
+  - [ ] 28.3 Add `commands.max_chain_length` (positive integer, default 16) to `CommandConfig`; reject over-long chains with "Command chain too long: <n> exceeds max <max>" executing nothing
+    - Covers: Requirement 11.11
+  - [ ] 28.4 Implement `CommandEngine::execute_chain` running each segment through the existing `execute_command_line` path left-to-right, fail-stop on the first error, forwarding the ChainSeparator to the navigation stack
+    - Covers: Requirement 11.3, 11.4, 11.5, 11.13
+  - [ ] 28.5 Write failing unit tests: left-to-right order; fail-stop halts remainder and returns the failing status; `.` and `;` identical for non-navigating chains; each mutating segment keeps its own transaction; `END ; EDIT` dispatches END as an ordinary command
+    - Validates: Requirement 11.3, 11.4, 11.5, 11.9, 11.13
+  - [ ] 28.6 Ensure the fastpath Chained_Path resolver (menu-workspace) calls the same `split_chain` helper (shared-helper wiring point)
+    - Covers: Requirement 11.10
+  - [ ] 28.7 Update `docs/quality/TCR.md`: set the CR-NR-057 command-semantics Req 11 rows to their correct status
+    - Covers: Requirement 11 (all criteria)
