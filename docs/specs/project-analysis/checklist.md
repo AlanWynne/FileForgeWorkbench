@@ -22,7 +22,7 @@ reference but are NOT carried forward.
 | 2 | configuration-system | 0 | DONE | units/configuration-system.md | FUNCTIONALLY COMPLETE; SPLIT CANDIDATE (PA-SPLIT-001, 4/4); TRACKING GAP PA-TRACK-001 (Phase CQ tasks 30-31 stale, code+TCR done); refactor PA-STD-002 (6 files); PA-DOC-002 (Req 10-14 gap) |
 | 3 | logging-subsystem | 0 | DONE | units/logging-subsystem.md | FUNCTIONALLY COMPLETE; not a split; Req 12 tool done but tracking stale (PA-TRACK-002); PA-LOG-002 = project-wide audit data (56/69 zero-log, 792 silent-error); refactor PA-STD-003 (init.rs 640) |
 | 4 | command-framework | 0 | DONE | units/command-framework.md | INCOMPLETE (2 gaps): Req 9 Command Arguments (PA-INCOMPLETE-001) + Req 10 Context Navigation Stack CR-NR-057 (PA-INCOMPLETE-003), both gate-complete/unbuilt; Req 1-8 done; not a split; PA-WATCH-001 (Command_Target + Req 10 fan-out) |
-| 5 | document-model | 0 | PENDING | -- | foundation |
+| 5 | document-model | 0 | DONE | units/document-model.md | COMPLETE (140/140, TCR PASS); not a split; VFS-only verified; PA-WATCH-002 (document.rs at 400 cap); PA-LOG-003 (optional logging); zero-log defensible |
 | 6 | virtual-file-system | 0 | PENDING | -- | foundation; verify IWR-005 (Req 9-12 task gap) |
 | 7 | plugin-architecture | 0 | PENDING | -- | foundation |
 | 8 | workflow-engine | 0 | PENDING | -- | foundation |

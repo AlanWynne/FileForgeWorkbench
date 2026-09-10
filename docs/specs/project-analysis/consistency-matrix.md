@@ -39,6 +39,10 @@ sub-project during Waves 0-5, finalized in Wave 6.
 | `CommandTarget` (5 variants, incl. produces_visible_workspace) | command-framework | menu-workspace, command-configurator, startup-and-session, shell-command, lua-macro-engine | Watch | PA-WATCH-001: verify Target_Resolution + Req 10.10 predicate reuse |
 | Context_Navigation_Stack + `navigation.stack_max_depth` (CR-NR-057 Req 10) | command-framework | startup-and-session, menu-workspace, function-keys-and-history; paired w/ command-semantics Req 11 | Watch | PA-INCOMPLETE-003 (unbuilt) + PA-WATCH-001; config key not yet registered |
 | reserved `arg` param key + verb/arg split (Req 9) | command-framework | all input sources | Watch | Req 9 DEFINED but UNIMPLEMENTED (PA-INCOMPLETE-001) |
+| `Document` / `DocumentHandle` / `TextBuffer` / `GapBuffer` / `LineIndex` | document-model | edit-operations, display-line-mapping, viewport, undo-redo, ff-desktop | No | Sole owner ff-document-model |
+| `BytePosition` / `LineNumber` / `CharacterExtracted` / `DocumentWatcher` | document-model | edit/nav consumers | No | Sole owner ff-document-model |
+| `LineEndMode` | document-model (owns) + encoding-and-characters (validates bytes) | -- | No | No duplicate ownership |
+| VFS-only I/O (Req 4.8) | document-model (consumer) + virtual-file-system (owner) | -- | No | VERIFIED no std::fs/tokio::fs (FFW-ARCH-001) |
 
 ## Command IDs
 
