@@ -34,6 +34,11 @@ sub-project during Waves 0-5, finalized in Wave 6.
 | `LogLevel` / `LogConfig` / `LogRecord` / `PluginLogHandle` | logging-subsystem | all crates | No | Sole owner ff-logging |
 | `log_trace!`/`log_debug!`/`log_info!`/`log_warn!`/`log_error!` (macros) + `log()`/`log_lazy()` | logging-subsystem | all crates | No | Sole owner ff-logging |
 | logging.* config keys | logging-subsystem (consumer) + configuration-system (owns `logging` namespace) | -- | No | Two-phase init (CR-CH-015, B033); ff-logging inits before ff-config |
+| `CommandId` / `CommandParams` / `CommandResult` / `CommandRegistry` / `ExecutionContext` | command-framework | all crates | No | Sole owner ff-command |
+| `ShortcutBinding` / `Chord` | command-framework | ff-desktop | No | Sole owner ff-command |
+| `CommandTarget` (5 variants, incl. produces_visible_workspace) | command-framework | menu-workspace, command-configurator, startup-and-session, shell-command, lua-macro-engine | Watch | PA-WATCH-001: verify Target_Resolution + Req 10.10 predicate reuse |
+| Context_Navigation_Stack + `navigation.stack_max_depth` (CR-NR-057 Req 10) | command-framework | startup-and-session, menu-workspace, function-keys-and-history; paired w/ command-semantics Req 11 | Watch | PA-INCOMPLETE-003 (unbuilt) + PA-WATCH-001; config key not yet registered |
+| reserved `arg` param key + verb/arg split (Req 9) | command-framework | all input sources | Watch | Req 9 DEFINED but UNIMPLEMENTED (PA-INCOMPLETE-001) |
 
 ## Command IDs
 
