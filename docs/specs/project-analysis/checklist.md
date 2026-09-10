@@ -33,6 +33,27 @@ unimplemented, false-positive tests, HIGH); 2 tracking gaps (config CQ tasks
 CR-NR-058 dev/debug-logging foundation (PA-W0.1 gate then PA-W0.2 per-command
 instrumentation).
 
+**Wave 1 COMPLETE (W1.1-W1.16) on the re-baseline** (commits `fea70d6`..`ec744e2`).
+All 15 editor-core sub-projects analysed; the Wave 1 task-revision (W1.16) recorded
+the dependency-ordered remediation as `Phase PA-W1` (PROPOSAL, PA-W1.1-PA-W1.12) in
+`docs/specs/project-master/tasks.md`. Wave 1 outcome: NO spec split forced (all 15
+cohesive); ALL tracking-complete EXCEPT auto-indentation (PA-INCOMPLETE-006, HIGH:
+Req 9.7 WARN commented out + Req 10.7 per-decision DEBUG absent while 137/137 `[x]`
+-- the clearest CR-NR-058 dev-logging-in-spec case). New cross-unit conflict
+PA-CONFLICT-004 (WrapIndentMode + wrap-visual-flag DUPLICATED across ff-wrap and
+ff-whitespace-guides, unbridged, enum-vs-bitfield divergence). Recurring Wave-1
+patterns: three TOTAL-TCR-absence crates (exclude-show-filter, whitespace-guides,
+text-decorations) + four thin ones; dead/unused ff-logging deps on several pure
+models; NON-ASCII chars inside RUNTIME error/warning strings (a real output defect,
+not just comment style) across 5 crates; three 400-cap violations (highlight_engine
+462, exclusion_engine 535, run_styles 410). Confirmations (resolved in-analysis):
+three model crates (seqnum/whitespace/auto-indent) stay OUT of PA-CONFLICT-002 via
+return-data seams; fold-level ownership clean (syntax-highlighting owns,
+display-line-mapping consumes); exclude-show-filter is a POSITIVE counter-example to
+PA-CONFLICT-001 (consumes the canonical DisplayLineMapping); syntax/text-decorations
+peer boundary clean (independent RunStyles). Carried watches: PA-WATCH-009 (HILITE
+delegation, Wave 3/4), PA-WATCH-010 (exclusion+folding visibility, Wave 4).
+
 | # | Sub-project | Wave | Status | Analysis Record | Notes |
 |---|-------------|------|--------|-----------------|-------|
 | 1 | platform-core | 0 | DONE | units/platform-core.md | COMPLETE (100/100, TCR PASS); not a split; GUI-independence VERIFIED; logging EXEMPLARY; refactor PA-STD-001 (event_bus.rs 435); PA-DOC-001 (Req 4.1 crate-name drift); PA-LOG-001 (project-wide non-ASCII) |

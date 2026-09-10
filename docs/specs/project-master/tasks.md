@@ -1283,6 +1283,91 @@ Group F -- proposals requiring owner approval + own gate (NOT scheduled here):
 > (workspace-backup manifest vs dataset-catalog, Wave 2), PA-WATCH-005
 > (ff-encoding Unicode-data generation, Wave 6).
 
+### Phase PA-W1 -- Wave 1 Analysis Remediation (project-analysis CR-NR-056) -- PROPOSAL
+
+> Dependency-ordered re-ordering of the incomplete Wave 1 (editor-core) work found
+> by the project-analysis re-baseline pass (W1.1-W1.15, commits `fea70d6`..`ec744e2`).
+> RECORDED per project-analysis Req 8 (non-destructive) -- surfaced for owner
+> scheduling, not executed. Each item cites its incomplete-work-register ID +
+> owning sub-project. Wave 1 outcome: 15 sub-projects analysed, ALL tracking-complete
+> except auto-indentation (PA-INCOMPLETE-006, mandated logging stubbed). NO spec
+> split forced (all 15 cohesive). Three model crates (sequence-numbers,
+> whitespace-guides, auto-indentation) stay OUT of PA-CONFLICT-002 by returning
+> decision data and letting the caller wrap the transaction. Ordering rationale:
+> the mandated-logging + dev-logging items first (CR-NR-058 leverage), then the new
+> cross-unit conflict, then refactors and bookkeeping.
+
+Group A -- mandated logging + CR-NR-058 dev-logging (depends on Phase PA-W0.1 gate):
+- [ ] PA-W1.1 (PA-INCOMPLETE-006, `ff-auto-indent`) HIGH. Implement the two MANDATED
+      logs currently stubbed while tasks read 137/137 `[x]`: Req 9.7 invalid-regex
+      WARN (uncomment + wire `patterns.rs:47`); Req 10.7 per-decision DEBUG record
+      (ref line + matched pattern + resulting indent level) in the decision/service
+      path, GATED behind `dev-logging` so it is release-stripped. Re-open the
+      wrongly-`[x]` tasks. Clearest Wave-1 case of CR-NR-058 dev-logging as a written
+      acceptance criterion. Depends on PA-W0.1.
+- [ ] PA-W1.2 (PA-LOG-010, `ff-wrap`) MEDIUM. Resolve the mandated config-warning gap
+      (Req 4.7/5.8/11.3/12.2 say "via the logging-subsystem" but the crate has no
+      ff-logging dep): add ff-logging + emit the warnings here OR make caller-logging
+      explicit in the spec; plus dev-logging for WRAP command state changes.
+- [ ] PA-W1.3 (PA-LOG-011, `ff-text-decorations`) LOW-MED. Wire ff-logging (dep is
+      DEAD) to emit the Req 15.8 mandated WARN on invalid theme value; add
+      dev-logging edit-sync/allocation-exhaustion trace under the `dev-logging` gate.
+- [ ] PA-W1.4 (PA-LOG-006/007/008/009, seqnum/syntax/exclude/whitespace) LOW. Per the
+      Group-F PA-W0.22 pattern: after PA-W0.1/PA-W0.2 land, decide dev-logging for
+      these pure models. PA-LOG-006 (ff-seqnum: Req 1.4/2.8 WARN + command trace),
+      PA-LOG-007 (ff-syntax-highlighting: Req 10.7 DEBUG), PA-LOG-008 (ff-exclude-show-filter:
+      dead dep -> EXCLUDE/SHOW/RESET dev trace), PA-LOG-009 (ff-whitespace-guides:
+      dead dep -> config-coercion WARN + toggle trace). Drop dead deps or wire.
+
+Group B -- new cross-unit conflict (owner decision + code):
+- [ ] PA-W1.5 (PA-CONFLICT-004, `ff-wrap` / `ff-whitespace-guides`) HIGH, owner-gated.
+      `WrapIndentMode` + wrap-visual-flag types are DUPLICATED and unbridged across
+      the two crates (visual-flag shapes even diverge: enum vs bitfield), plus two
+      config surfaces (`[view.wrap]` vs `editor.wrap_*`). Make whitespace-and-guides
+      the SOLE owner (its Req 6-7 + line-wrap Req 10.7 point that way); ff-wrap
+      consumes. Reconcile shape + unify config keys. Code change + owner decision.
+
+Group C -- refactors (400-line cap, REFACTOR, no gate; do when the file is touched):
+- [ ] PA-W1.6 (PA-STD-014, `ff-syntax-highlighting`) Split `engine/highlight_engine.rs`
+      (462); `hilite.rs` (387) is a WATCH.
+- [ ] PA-W1.7 (PA-STD-016, `ff-exclude-show-filter`) Split `exclusion_engine.rs` (535).
+- [ ] PA-W1.8 (PA-STD-021, `ff-text-decorations`) Split `run_styles.rs` (410).
+
+Group D -- ASCII source cleanup (REFACTOR; several include NON-ASCII IN RUNTIME STRINGS):
+- [ ] PA-W1.9 (PA-STD-013/015/017/018/019/020/022) One code-mode pass replacing
+      non-ASCII in Wave-1 `.rs` with ASCII. PRIORITY sub-set: NON-ASCII CHARS INSIDE
+      RUNTIME `#[error]`/warning strings are genuine output defects, not just comment
+      style -- ff-exclude-show-filter (error.rs:18), ff-whitespace-guides (error.rs
+      12-59, 7 msgs), ff-auto-indent (error.rs:12), ff-wrap (config.rs + error.rs,
+      ~8 msgs), ff-text-decorations (error.rs:26,30). Fix these first; then the
+      doc-comment em/en-dash + box-drawing banners in ff-seqnum (PA-STD-013) and
+      ff-syntax-highlighting (PA-STD-015). Fold into the PA-W0.23 project-wide pass.
+
+Group E -- TCR coverage enumeration (bookkeeping, no code):
+- [ ] PA-W1.10 (PA-TCR-005/006/009) THREE TOTAL-ABSENCE crates (0 TCR rows):
+      ff-exclude-show-filter (10 reqs), ff-whitespace-guides (9 reqs),
+      ff-text-decorations (15 reqs). Add per-requirement TCR rows citing existing tests.
+- [ ] PA-W1.11 (PA-TCR-003/004/007/008) THIN-coverage crates: ff-seqnum (3 rows/14),
+      ff-syntax-highlighting (Req 16 only/16), ff-auto-indent (1 row/10 -- add Req
+      9.7/10.7 AFTER PA-W1.1), ff-wrap (1 row/13). Enumerate per-requirement rows.
+
+Group F -- doc-only naming reconciliation:
+- [ ] PA-W1.12 (PA-DOC naming) Align spec crate names with actual dirs:
+      sequence-numbers spec says `ff-sequence-numbers` (actual `ff-seqnum`);
+      line-wrap-toggle spec says `ff-line-wrap-toggle` (actual `ff-wrap`);
+      exclude-show-filter earlier summary said `ff-filter` (actual
+      `ff-exclude-show-filter`). Doc-only.
+
+> Wave-1 consistency CONFIRMATIONS (no action -- resolved during analysis):
+> PA-CONFLICT-002 clean seams (seqnum/whitespace/auto-indent return decision data);
+> fold-level ownership (syntax-highlighting owns, display-line-mapping consumes,
+> W1.10); SHOW-restore (exclude-show-filter owns semantics, consumes canonical
+> DisplayLineMapping -- positive counter-example to PA-CONFLICT-001, W1.11);
+> wrap-inactive->no-markers gate (W1.14); syntax-highlighting/text-decorations peer
+> boundary (independent RunStyles, W1.15). Carried WATCHES: PA-WATCH-009 (HILITE
+> delegation edit-ops->syntax->find, Wave 3/4), PA-WATCH-010 (exclusion+folding
+> shared visibility bit, Wave 4).
+
 ---
 
 ## Summary
