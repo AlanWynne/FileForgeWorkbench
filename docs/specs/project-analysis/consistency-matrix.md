@@ -40,6 +40,9 @@ sub-project during Waves 0-5, finalized in Wave 6.
 | `SelectionPosition` / `SelectionRange` / `Selection` (LOGICAL model) | edit-operations (SOLE owner) | caret-and-selection (renders), undo-redo (own snapshot) | No | RESOLVED W1.5: sole owner; no duplication |
 | `EditorTransaction` (line-snapshot model) vs `Transaction`/`ScrapStack` (undo-redo) | edit-operations + undo-redo-transactions | ff-line-commands PRODUCES EditorTransaction | CONFLICT | PA-CONFLICT-002 CONFIRMED W1.5: two unbridged undo-unit models; EditorTransaction de-facto canonical; undo-redo model unwired (ff-line-commands never uses its ff-undo-redo dep) |
 | CAPS / edit profile | edit-operations (Req 16-17) | configuration-system (persistence) | No | Sole owner ff-edit-operations |
+| LineCommand / BlockCommand / PendingCommand / CompatibilityMatrix | line-commands | command-semantics (collection step, W3.1) | No | Sole owner ff-line-commands |
+| undoable line-command output | line-commands PRODUCES edit-operations `EditorTransaction` | -- | No | W1.6 evidence for PA-CONFLICT-002; ff-undo-redo dep unused (PA-DEP-001) |
+| X/XX exclusion visibility | line-commands (consumes) | exclude-show-filter + display-line-mapping (canonical DisplayLineMapping) | No | Confirmed W1.4/W1.6; exclude-show-filter authoritative for SHOW restore (W1.11) |
 | `SelectionState` (undo snapshot) | undo-redo-transactions (Req 9) | -- | Watch | PA-WATCH-006: vs edit-operations Selection (W1.5) + caret-and-selection rendering (W1.3) |
 | `RecoveryPayload` (serialize-only) | undo-redo-transactions | file-operations/background-io (perform I/O) | No | Crate serialises to bytes+CRC32; caller does the write -- GUI/IO-independent |
 | `Viewport` / `CaretPolicy` / `ScrollMode` / `ViewportError` | viewport-and-scrolling | ff-desktop (renderer), editor session | No | Sole owner ff-viewport-scrolling |

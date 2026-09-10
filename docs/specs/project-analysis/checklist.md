@@ -50,7 +50,7 @@ instrumentation).
 | 13 | caret-and-selection | 1 | DONE | units/caret-and-selection.md | COMPLETE (127/127, TCR PASS); NOT a split (cohesive rendering layer, well-factored, no file over cap); zero-log defensible; PA-WATCH-006 partially resolved (visual layer, no logical-model duplication; final check W1.5) |
 | 14 | display-line-mapping | 1 | DONE | units/display-line-mapping.md | COMPLETE (87/87, TCR PASS); not a split; CONFLICT PA-CONFLICT-001 CONFIRMED (viewport's own DisplayLineMapper vs canonical DisplayLineMapping owned here); refactor PA-STD-009 (contraction_state.rs 614); zero-log defensible |
 | 15 | edit-operations | 1 | DONE | units/edit-operations.md | COMPLETE (280/280, TCR PASS); SPLIT CANDIDATE (PA-SPLIT-005, 17 reqs/553 lines); PA-WATCH-006 RESOLVED (selection ownership clean); CONFLICT PA-CONFLICT-002 CONFIRMED (EditorTransaction de-facto canonical vs unwired undo-redo model); zero-log defensible |
-| 16 | line-commands | 1 | PENDING | -- | core editing/model |
+| 16 | line-commands | 1 | DONE | units/line-commands.md | COMPLETE (215/215, 13 TCR rows PASS); NOT a split (cohesive engine); corroborates PA-CONFLICT-002 (produces EditorTransaction, ff-undo-redo dep UNUSED = PA-DEP-001); refactor PA-STD-010 (resolution.rs 422); zero-log defensible |
 | 17 | navigation-commands | 1 | PENDING | -- | core editing/model |
 | 18 | find-and-replace | 1 | PENDING | -- | core editing/model |
 | 19 | sequence-numbers | 1 | PENDING | -- | core editing/model |
