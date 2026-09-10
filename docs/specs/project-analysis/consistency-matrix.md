@@ -49,6 +49,9 @@ sub-project during Waves 0-5, finalized in Wave 6.
 | `FileForgePlugin` / `PluginContext` / `PluginError` / `Capability` / `PluginRegistry` / `PLUGIN_API_VERSION` | plugin-architecture | all plugin crates, shell | No | Sole owner ff-plugin |
 | plugin namespace `[plugins.{name}]` | plugin-architecture (Req 2.7/7.5) + configuration-system (Req 8) | -- | No | Same scoping rule both specs |
 | PluginLogHandle contract | plugin-architecture (uses) + logging-subsystem (Req 10 owns) | -- | No | Consistent `[plugin:name]` prefix |
+| `Workflow` / `WorkflowDefinition` / `WorkflowRunner` / `WorkflowRegistry` / `Checkpoint` | workflow-engine | command-framework, plugins, shell | No | Sole owner ff-workflow |
+| `CancellationToken` (workflow) | workflow-engine | steps, async I/O | No | Distinct from ff-background-io cancellation (W0.17) |
+| checkpoint storage I/O | workflow-engine (`tokio::fs`) | virtual-file-system (would-be owner) | Watch | PA-WATCH-004: direct tokio::fs vs FFW-ARCH-001 -- owner decision |
 
 ## Command IDs
 
