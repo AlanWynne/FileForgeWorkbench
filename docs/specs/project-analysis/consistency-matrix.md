@@ -18,7 +18,12 @@ sub-project during Waves 0-5, finalized in Wave 6.
 
 | Type | Owner unit | Referencing units | Conflict? | Resolution |
 |------|-----------|-------------------|-----------|------------|
-| _(none recorded yet)_ | | | | |
+| `WorkbenchApp` | platform-core | ff-desktop, (plugin ctx) | No | Sole owner ff-core |
+| `ServiceRegistry` | platform-core | ff-plugin (PluginContext) | No | Sole owner ff-core |
+| `EventBus` | platform-core | ff-desktop | No | Sole owner ff-core |
+| `LifecyclePhase` / `ThreadContext` / `CoreError` | platform-core | ff-desktop | No | Sole owner ff-core |
+| `ConfigProvider` (trait) | platform-core (defined) | ff-config (impl) | No | Trait in ff-core, impl in ff-config -- correct direction |
+| 5-layer model (Foundation/Core/Editor/Feature/Shell) | platform-core (Req 4) | whole workspace | No | Authoritative dependency-direction reference; enforced by Cargo.toml. Req 4.1 crate names illustrative -- PA-DOC-001 |
 
 ## Command IDs
 
