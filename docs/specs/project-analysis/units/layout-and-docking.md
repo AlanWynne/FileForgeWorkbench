@@ -125,12 +125,14 @@ the dead dep. Low priority.
   owns only persistence. Document the boundary.
 - **PA-STD-044 (ASCII, runtime strings)**: 61 non-ASCII bytes (2 non-comment) --
   em-dashes in runtime `#[error]` strings (error.rs 40/95). NB the SPEC .md also has
-  a mojibake `Â§3` (BOM artifact) in the intro -- fold into the doc ASCII sweep.
+  a mojibake section-sign (U+00C2 U+00A7 "3", BOM/UTF-8 artifact) in the intro --
+  fold into the doc ASCII sweep.
   Replace with `--`. REFACTOR, no gate.
 - **PA-LOG-027 (LOW)**: layout-serialization WARN + dev-logging on persona/detach/
   dock; resolve dead dep.
 - **PA-TCR-018**: enumerate per-requirement TCR rows (1 row for 11 reqs). No code.
-- **PA-DOC**: the spec intro mojibake `Â§3` (should be `Section 3`).
+- **PA-DOC**: the spec intro mojibake section-sign (U+00C2 U+00A7 before "3";
+  should read "Section 3").
 
 No requirement CHANGE proposed for ff-layout; the menu-statusbar Reqs 17-19 need
 RELOCATION to this spec (PA-WATCH-020), which is a menu-statusbar spec edit.
