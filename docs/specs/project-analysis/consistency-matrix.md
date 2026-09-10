@@ -34,6 +34,8 @@ sub-project during Waves 0-5, finalized in Wave 6.
 | `LogLevel` / `LogConfig` / `LogRecord` / `PluginLogHandle` | logging-subsystem | all crates | No | Sole owner ff-logging |
 | `log_trace!`/`log_debug!`/`log_info!`/`log_warn!`/`log_error!` (macros) + `log()`/`log_lazy()` | logging-subsystem | all crates | No | Sole owner ff-logging |
 | logging.* config keys | logging-subsystem (consumer) + configuration-system (owns `logging` namespace) | -- | No | Two-phase init (CR-CH-015, B033); ff-logging inits before ff-config |
+| `dev-logging` cargo feature + `BUILD_PROFILE_LEVEL` const (CR-NR-058 Req 13) | logging-subsystem | ALL crates (compile-time gate for their own TRACE/DEBUG) | Watch | UNIMPLEMENTED (PA-CR058). Compile-time gate; downstream crates key their dev diagnostics on the exported const |
+| per-command instrumentation at `execute_command` (CR-NR-058 Req 11) | command-framework | all invocation sources (keyboard/menu/cmd-line/macro/plugin) | Watch | UNIMPLEMENTED (PA-INCOMPLETE-004). Uniform start/params/completion at DEBUG; leverages dev-logging gate |
 | `CommandId` / `CommandParams` / `CommandResult` / `CommandRegistry` / `ExecutionContext` | command-framework | all crates | No | Sole owner ff-command |
 | `ShortcutBinding` / `Chord` | command-framework | ff-desktop | No | Sole owner ff-command |
 | `CommandTarget` (5 variants, incl. produces_visible_workspace) | command-framework | menu-workspace, command-configurator, startup-and-session, shell-command, lua-macro-engine | Watch | PA-WATCH-001: verify Target_Resolution + Req 10.10 predicate reuse |

@@ -102,3 +102,31 @@ At most 1-2 weak criteria. **NOT a split candidate.** Fix is the init.rs refacto
   matches (em-dashes in doc-comments, box-drawing separators in test headers).
   Box-drawing is disallowed in `.rs` per documentation.md. Rolled into
   project-wide PA-LOG-001; not fixed here.
+
+---
+
+## 7. ADDENDUM -- CR-NR-058 (added after W0.5 analysis)
+
+CR-NR-058 (Phase DI) added **Requirement 13: Build-Profile Compile-Time Level
+Gating** to this spec AFTER section 1-6 above were written. Updated facts:
+
+- Requirement count is now **13** (not 12). Req 13 defines a `dev-logging` cargo
+  feature: TRACE/DEBUG removed entirely from a release binary (no branch, no
+  format, no atomic read); INFO/WARN/ERROR always retained and runtime-controlled
+  by `logging.level` (Req 3). A public `BUILD_PROFILE_LEVEL` const is exported so
+  downstream crates can gate their own expensive diagnostics on the same profile.
+- **Req 13 is UNIMPLEMENTED**: `dev-logging` feature absent from
+  `crates/ff-logging/Cargo.toml` (grep 0); `BUILD_PROFILE_LEVEL` const / cfg-split
+  of `log_trace!`/`log_debug!` absent from src (grep 0). Phase DI Task 25
+  (25.1-25.x) open; TCR Phase DI rows present but NOT COVERED. Requirements gate
+  IS complete (Req 13 authored + design + tasks + TCR rows) -- ready to build.
+- Split candidacy unchanged: 13 reqs now crosses the >12 line, but Req 13 is a
+  small compile-time gate tightly bound to the macros -- still NOT a split
+  candidate.
+- **This is the KEY enabler for the project-analysis logging audit.** Req 13's
+  dev-logging gate is the correct vehicle for the optional/gap logging findings
+  elsewhere (PA-LOG-003 document-model, PA-LOG-005 workflow checkpoint, and any
+  instrumentation of the 56 zero-log crates from PA-LOG-002): TRACE/DEBUG added
+  under `dev-logging` aids testing/debugging with zero release cost. Recorded as
+  PA-CR058 in the register; those findings should be re-scoped to "add via the
+  CR-NR-058 dev-logging convention".

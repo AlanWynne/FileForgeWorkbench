@@ -116,3 +116,34 @@ Split criteria (design.md section 5) -- flag if 2+ hold:
 - **PA-LOG-001** (project-wide non-ASCII in .rs): ff-command contributes non-ASCII
   incl. em-dashes in two WARN log-message literals (history.rs). Rolled into
   project-wide PA-LOG-001.
+
+---
+
+## 7. ADDENDUM -- CR-NR-058 (added after W0.7 analysis)
+
+CR-NR-058 (Phase DI) added **Requirement 11: Uniform Command Execution
+Instrumentation** to this spec AFTER section 1-6 above were written. Updated facts:
+
+- Requirement count is now **11** (not 10). Req 11 instruments the single
+  `execute_command` dispatch boundary so EVERY command invocation logs its start
+  (id + redacted/bounded params) and completion (success/failure + result summary +
+  duration) at a dev-only level (DEBUG); failures additionally log at WARN/ERROR.
+  Sensitive params are redacted. The instrumentation is UNIFORM across all sources
+  (keyboard, menu, command line, macro, plugin) and leverages the `dev-logging`
+  compile-time gate from logging-subsystem Req 13 (CR-NR-058).
+- **Req 11 is UNIMPLEMENTED**: no instrumentation wrapper in dispatch.rs, no
+  redact_and_bound function, no Phase DI start/completion log records in code.
+  Phase DI Task 26 (26.1-26.x) open; TCR Phase DI rows present but NOT COVERED.
+  Requirements gate IS complete -- ready to build.
+- This is a THIRD incomplete-work item on command-framework (alongside Req 9
+  PA-INCOMPLETE-001 and Req 10 PA-INCOMPLETE-003). Logged as PA-INCOMPLETE-004.
+- Split candidacy unchanged: 11 reqs, 276+ lines still not a split candidate (the
+  instrumentation is one wrapper at the dispatch boundary).
+- **Project-analysis logging audit significance**: once PA-INCOMPLETE-004 (Req 11)
+  is implemented, EVERY command invocation across the entire project will log
+  its start + params + outcome at DEBUG level in dev builds, providing the
+  "logging to assist testing and debugging" the user requested. This is the
+  single highest-leverage logging improvement for bug reporting, and it composes
+  with the PA-LOG-002 inventory (many zero-log crates invoke commands but don't
+  log themselves -- the dispatch boundary will cover them automatically).
+  Recorded as PA-CR058 in the register.
