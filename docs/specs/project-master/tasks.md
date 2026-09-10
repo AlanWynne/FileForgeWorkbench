@@ -1481,6 +1481,111 @@ Group F -- TCR + doc bookkeeping (no code):
 > (ff-dataset-catalog is the intentional interface crate). Minimal-dep + injection-
 > trait design (ff-select, ff-tabmask) is a clean recurring seam.
 
+### Phase PA-W3 -- Wave 3 Analysis Remediation (project-analysis CR-NR-056) -- PROPOSAL
+
+> Dependency-ordered re-ordering of the incomplete Wave 3 (shell/commands/menus/
+> session) work found by the project-analysis pass (W3.1-W3.11, commits
+> `0cf0afb`..`263525c`). RECORDED per project-analysis Req 8 (non-destructive) --
+> surfaced for owner scheduling, not executed. Wave 3 outcome: 10 sub-projects
+> analysed; command/menu family shows CLEAN Command_Target routing + two POSITIVE
+> exemplars (shell-command enforced shell.mode gate + real logging; command-completion
+> injection-trait consumer). Dominant theme: the CR-NR-057 COMMAND-CHAINING BUNDLE --
+> three interdependent UNBUILT legs + an END/RETURN revision, all honestly tracked.
+> Ordering: the CR-NR-057 bundle first (highest-value, interdependent), then the
+> two high-value logging gaps, then the shell refactors, watches, and bookkeeping.
+
+Group A -- CR-NR-057 command-chaining bundle (HIGH, interdependent; ONE Phase DH):
+- [ ] PA-W3.1 (PA-INCOMPLETE-003 + PA-INCOMPLETE-007 + PA-INCOMPLETE-008 + PA-WATCH-017)
+      Implement the CR-NR-057 command chaining as ONE coordinated bundle:
+      (a) command-framework Req 10 Context Navigation Stack (STOP `.`/PUSH `;`
+      behaviour) = existing Phase DH (PA-INCOMPLETE-003);
+      (b) command-semantics Req 11 = `chain.rs` split_chain + execute_chain +
+      max_chain_length + fail-stop (Task 28, PA-INCOMPLETE-007);
+      (c) menu-workspace Req 5 separator-aware Chained_Path = Vec<PathStep> +
+      Navigation_Origin + PathStep dispatch + MENU chained form (Task 21 + DF.1-5,
+      PA-INCOMPLETE-008);
+      (d) the SHARED `split_chain`/navigation-activation helper (PA-WATCH-017) --
+      implement ONCE in command-semantics; menu fastpath consumes it (tasks 28.6/DF.3).
+      Req 11.5 makes (b)/(c) depend on (a). Build (a) then (b)+(c)+(d) together.
+- [ ] PA-W3.2 (PA-INCOMPLETE-009, `ff-keys`) Finish function-keys Req 17 (END/RETURN-
+      from-POM handler revision -- close Workspace vs exit; coordinate with the
+      PA-W3.1 POM/nav model) + Req 19 (RETRIEVE recall API + History_List overlay,
+      DF.1-6; LIST logic already exists) + verification/TCR (35/36/37). MEDIUM.
+
+Group B -- high-value operational logging (dead deps on critical subsystems; CR-NR-058):
+- [ ] PA-W3.3 (PA-LOG-026, `ff-session`) MEDIUM-HIGH. Wire ff-logging across the
+      FAULT-TOLERANCE paths: WARN on each skipped/corrupt/missing file (Req 11
+      graceful degradation), ERROR on unrecoverable, INFO on startup milestones +
+      crash-recovery (Req 10). A silently-degrading startup is undebuggable. 2nd only
+      to ff-dscatalog PA-LOG-012. Includes workspace-file load/save WARN.
+- [ ] PA-W3.4 (PA-LOG-018, `ff-command-semantics`) MEDIUM. Command-pipeline
+      dev-logging: bulk covered by PA-W0.2 (execute_command instrumentation); add
+      scope-resolution + Req 11 chain-step + error-path WARN under `dev-logging`.
+- [ ] PA-W3.5 (PA-LOG-024 + PA-LOG-023 + PA-LOG-019 + PA-LOG-021 + PA-LOG-025 +
+      PA-LOG-020 + PA-LOG-022) LOW/refinement cluster: ff-keys history/config errors
+      (024); ff-menu recent-files WARN + dead dep (023); ff-completion Req 10.5
+      provider-failure catch (019); command-configurator store events (021);
+      ff-shell audit gate-denial logging (025, already logs); command-palette
+      optional (020); menu-workspace dispatch dev-logging (022, already logs).
+      Resolve dead ff-logging deps or wire dev-logging per unit.
+
+Group C -- shell/POM refactors (400-line cap, REFACTOR; largest in the codebase):
+- [ ] PA-W3.6 (PA-STD-042, `ff-desktop` shell/) SEVERE: split the WorkbenchShell
+      coordinator per state/render/commands/dialogs -- commands.rs 1255, update.rs
+      1011, mod.rs 922, render.rs 873, render_chrome.rs 580. Worst caps in codebase
+      (with VCM PA-STD-025 files_panel 1195).
+- [ ] PA-W3.7 (PA-STD-035 + PA-STD-038 + PA-STD-040 + PA-STD-032 + PA-STD-033)
+      Other over-cap files: primary_option_menu.rs 537 (menu-workspace),
+      engine.rs 523 + emulator.rs 535 (ff-shell), session_state.rs 529 (ff-session),
+      tso.rs 447 (cmd-semantics), engine.rs 478 (ff-completion). REFACTOR, no gate.
+
+Group D -- ASCII source cleanup (REFACTOR; runtime-string defects first):
+- [ ] PA-W3.8 (PA-STD-036/037/039/041 + 034) One code-mode pass. PRIORITY: runtime
+      `#[error]`/warning-string em-dashes -- ff-menu (036), ff-keys (037), ff-shell
+      (039), ff-session (041). Then comment-only ff-completion (034). Fold into the
+      PA-W0.23 project-wide ASCII sweep.
+
+Group E -- owner-gated splits + fuzzy de-duplication:
+- [ ] PA-W3.9 (PA-CONFLICT-009, ff-completion / ff-desktop palette) Extract a shared
+      fuzzy-match engine (`ff-fuzzy` or expose ff-completion's) consumed by both
+      command-completion and command-palette (two diverged fuzzy matchers). LOW-MED.
+- [ ] PA-W3.10 (PA-SPLIT-011, `ff-session`) MEDIUM: split session-state + workspace-
+      model (persistence) from startup-lifecycle. PA-SPLIT-009 (ff-keys function-keys
+      vs command-history) + PA-SPLIT-010 (ff-shell emulator) are LOW, deferred.
+
+Group F -- architecture watches (mostly Wave 4/5 verification):
+- [ ] PA-W3.11 (PA-WATCH-020 + PA-WATCH-023) SPEC scope-creep: menu-and-statusbar
+      Reqs 17-19 (tab chrome/detach/split) + ff-session Reqs 13/14/19/20 (POM/File-
+      Explorer/TSO) belong to Wave-4 layout/tab units functionally. At Wave 4,
+      relocate/cross-ref the requirements to their owning specs.
+- [ ] PA-W3.12 (PA-WATCH-012 REFINED + PA-WATCH-024) Confirm the 3-layer catalog-
+      persistence restore ordering (ff-session tab descriptor -> VCM registry ->
+      ff-dscatalog mount); confirm Command Palette + Global Search consume the
+      WorkspaceState root set (Wave 5).
+- [ ] PA-W3.13 (PA-WATCH-021 + PA-WATCH-022 + PA-WATCH-019) UI/pattern consistency:
+      4 command-field overlays share positioning/keyboard-nav (021, Wave 4);
+      `TSO` verb disambiguation ff-shell vs cmd-semantics (022); shared raw-TOML
+      store loader for the menus/ family (menus/commands.toml/criteria/history/
+      recent-files/session/workspace, 019).
+
+Group G -- TCR + tracking bookkeeping (no code):
+- [ ] PA-W3.14 (PA-TCR-014/015/016/017) Enumerate/extend TCR rows: ff-completion
+      (1/10), command-palette (0/5), ff-menu (2/16), workspace-model (0/6). Contrast
+      ff-command-semantics (39), ff-shell (25), menu-workspace (63), ff-keys (33).
+- [ ] PA-W3.15 (PA-TRACK-003 + PA-TRACK-004) Bookkeeping: command-configurator
+      6.2/6.3 (TCR + project-master); menu-workspace 1.3/8.1/8.2/21.5. Verify +
+      check off; NOT feature work.
+
+> Wave-3 consistency CONFIRMATIONS (no action -- resolved during analysis):
+> shell-command shell.mode security gate ENFORCED at engine entry (PA-WATCH-018
+> RESOLVED, exemplary; configurator inherits it); command-completion is a clean
+> injection-trait consumer (zero duplication, 0 fs); command-semantics NOT in the
+> HILITE chain (PA-WATCH-009 narrowed); Command_Target routing clean across the
+> menu/command family (menu-workspace/command-configurator/menu-and-statusbar/
+> function-keys); PA-WATCH-012 REFINED to a clean 3-layer catalog persistence;
+> ff-shell + menu-workspace ACTUALLY LOG (not dead deps). Carried: PA-WATCH-020/023
+> (spec scope-creep, Wave 4), PA-WATCH-021/024 (Wave 4/5 UI + unblock).
+
 ---
 
 ## Summary

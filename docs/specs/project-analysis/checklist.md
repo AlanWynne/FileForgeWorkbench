@@ -79,6 +79,32 @@ PA-DEP-002 WITHDRAWN (ff-dataset-catalog = intentional interface crate). Carried
 watches: PA-WATCH-011 (ff-idcams listcat, Wave 5), 012/013/014/015 (Wave 3 config +
 fitness-fn coverage), 016 (Display_Artifact_Line, Wave 4).
 
+**Wave 3 COMPLETE (W3.1-W3.11) on the re-baseline** (commits `0cf0afb`..`263525c`).
+All 10 shell/commands/menus/session sub-projects analysed; the Wave 3 task-revision
+(W3.11) recorded the dependency-ordered remediation as `Phase PA-W3` (PROPOSAL,
+PA-W3.1-PA-W3.15) in `docs/specs/project-master/tasks.md`. Wave 3 outcome: clean
+Command_Target routing across the menu/command family + TWO POSITIVE EXEMPLARS
+(shell-command's ENFORCED shell.mode security gate + real logging, PA-WATCH-018
+RESOLVED; command-completion's clean injection-trait consumer). Dominant theme: the
+CR-NR-057 COMMAND-CHAINING BUNDLE -- three interdependent UNBUILT legs, all honestly
+tracked (NOT false-positives): command-framework Req 10 Context Navigation Stack
+(PA-INCOMPLETE-003), command-semantics Req 11 split_chain/execute_chain
+(PA-INCOMPLETE-007), menu-workspace Req 5 separator-aware Chained_Path
+(PA-INCOMPLETE-008), + function-keys Req 17 END/RETURN-from-POM (PA-INCOMPLETE-009);
+the shared split_chain helper (PA-WATCH-017) is a designed-shared seam within it.
+Unify as one Phase DH. Second theme: TWO high-value dead-ff-logging targets on
+critical subsystems -- ff-session fault-tolerance (crash-recovery/graceful-degradation
+logs NOTHING, PA-LOG-026 MED-HIGH) joining ff-dscatalog (PA-LOG-012); most other
+logging is LOW dev-logging. Recurring: fuzzy-matcher duplication (PA-CONFLICT-009,
+completion vs palette); SPEC SCOPE-CREEP (PA-WATCH-020/023 -- menu-statusbar Reqs
+17-19 + session Reqs 13/14/19/20 belong to Wave-4 layout/tab units); the WORST
+400-cap violations in the codebase (PA-STD-042 ff-desktop shell/ commands.rs 1255,
+update.rs 1011; + VCM files_panel 1195); crate-name drift on nearly every unit;
+several dead ff-logging deps. NEW: 3-layer catalog persistence clean (PA-WATCH-012
+REFINED: session tab descriptors / VCM registry / ff-dscatalog mounts). Carried:
+PA-WATCH-020/021/023/024 (Wave 4 layout/tab + UI consistency), PA-WATCH-022 (TSO
+verb), PA-WATCH-019 (raw-TOML store family).
+
 | # | Sub-project | Wave | Status | Analysis Record | Notes |
 |---|-------------|------|--------|-----------------|-------|
 | 1 | platform-core | 0 | DONE | units/platform-core.md | COMPLETE (100/100, TCR PASS); not a split; GUI-independence VERIFIED; logging EXEMPLARY; refactor PA-STD-001 (event_bus.rs 435); PA-DOC-001 (Req 4.1 crate-name drift); PA-LOG-001 (project-wide non-ASCII) |
