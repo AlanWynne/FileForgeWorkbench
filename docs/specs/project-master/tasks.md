@@ -1368,6 +1368,119 @@ Group F -- doc-only naming reconciliation:
 > delegation edit-ops->syntax->find, Wave 3/4), PA-WATCH-010 (exclusion+folding
 > shared visibility bit, Wave 4).
 
+### Phase PA-W2 -- Wave 2 Analysis Remediation (project-analysis CR-NR-056) -- PROPOSAL
+
+> Dependency-ordered re-ordering of the incomplete Wave 2 (catalog/dataset) work
+> found by the project-analysis pass (W2.1-W2.8, commits `a78ff62`..`337e096`).
+> RECORDED per project-analysis Req 8 (non-destructive) -- surfaced for owner
+> scheduling, not executed. Wave 2 outcome: 7 sub-projects analysed, ALL
+> tracking-complete; NO functional PA-INCOMPLETE. The cluster is ADR-001-governed
+> with a real fitness function (`ff-governance-tests`) -- one of the best-enforced
+> areas. Dominant theme: DOMAIN-TYPE FRAGMENTATION -- specs say crates should share
+> a single owner but each redefines the type (DSN, VSAM, field-model x3). Ordering:
+> the ADR-aligned structural conflicts first (they unblock the split), then the
+> catalog-domain logging, then refactors and bookkeeping.
+
+Group A -- ADR-001 structural conflicts + the big split (owner-gated, HIGH; do first):
+- [ ] PA-W2.1 (PA-SPLIT-008 + PA-CONFLICT-007, `ff-dscatalog` / `ff-vsam-services`)
+      Migrate the VSAM implementation (storage/ esds/rrds/isam/sqlite_record 843/native)
+      OUT of ff-dscatalog INTO the already-existing (trait-only) ff-vsam-services,
+      behind its `VsamService` trait; ff-dscatalog then deps ff-vsam-services
+      (Req 7.1 direction). Also extract record codecs to `ff-record-codec`
+      (Req 17.1 mandates independence). This is the PA-SPLIT-008 catalog split =
+      ADR-001 Req 5 compliance. Resolves 5 of the 9 PA-STD-023 over-cap files.
+- [ ] PA-W2.2 (PA-CONFLICT-006, `ff-dsalloc` / `ff-dscatalog`) Route DSN naming
+      validation through `ff-dscatalog::validate_dsn` (add to the CatalogProvider/
+      CatalogService trait); delete ff-dsalloc's own `DatasetName::parse` OR
+      document it as a permitted pre-parse convenience matching catalog rules.
+      Consolidate the 2-3 DSN parsers under the catalog (ADR-001 Req 3.1).
+- [ ] PA-W2.3 (PA-CONFLICT-008 + extension, `ff-forge` / `ff-structure-catalog` /
+      `ff-select`) Unify the record-structure/field-type model under ff-forge
+      (fileforge-integration): ONE `FieldDefinition`/`RecordStructure`/field-type
+      enum owned by ff-forge; structure-catalog adds only the `.ffs` catalog
+      library layer; ff-select consumes ff-forge's field-type + COMP-3 decode
+      (it currently has 3rd parallel enum + no ff-forge dep). Confirm exact
+      divergence at fileforge-integration (Wave 5). Owner-gated.
+- [ ] PA-W2.4 (PA-CONFLICT-005, `ff-desktop` / `ff-vfs`) Delete the duplicate,
+      MISPLACED `ff-desktop/src/posix_provider.rs` (a VfsProvider in the shell --
+      layering violation); keep the ff-vfs one; VCM UI consumes it via the VFS
+      registry.
+
+Group B -- catalog-domain logging (dead deps + mandated WARN/INFO; CR-NR-058, depends on PA-W0.1):
+- [ ] PA-W2.5 (PA-LOG-012, `ff-dscatalog`) HIGHEST-value Wave-2 logging: wire
+      ff-logging (dead dep) across the disk/SQLite/TRANSACTIONAL paths -- ERROR on
+      I/O + DB failures, WARN on GDG roll-off/reconcile/import-mismatch, dev-logging
+      DEBUG on command start/params/result (staged txns Req 25, integrity Req 26,
+      mount Req 5.5, import Req 6.7, codec Req 16.7).
+- [ ] PA-W2.6 (PA-LOG-013, `ff-desktop` VCM) Wire ff-logging on destructive catalog/
+      dataset ops (recursive file delete Req 4.5, allocate/delete, POSIX errors) +
+      dev-logging dialog dispatch. Consolidate with PA-W2.5 (same domain).
+- [ ] PA-W2.7 (PA-LOG-015, `ff-structure-catalog`) Wire the FOUR mandated logs
+      (Req 1.5 INFO dir-create; 1.6/2.5/2.6 WARN inaccessible-location / invalid
+      TOML / schema-fail) + dev-logging command dispatch.
+- [ ] PA-W2.8 (PA-LOG-016, `ff-select`) Wire the Req 9.9 corrupt-store WARN +
+      config-coercion warnings + `.criteria.json` load failures + dev-logging
+      CRITERIA dispatch (ff-logging is the DEAD sole dep).
+- [ ] PA-W2.9 (PA-LOG-014 + PA-LOG-017, `ff-dsalloc` + `ff-tabmask`) LOW: reconcile
+      ff-dsalloc's ff-logging spec-vs-impl drift (spec lists dep, crate lacks it) --
+      add dev-logging on RESOLVE pipeline OR correct the spec; drop/justify
+      ff-tabmask's dead sole-dep + optional config-coercion WARN.
+
+Group C -- architecture watches to verify (mostly downstream waves):
+- [ ] PA-W2.10 (PA-WATCH-015, `ff-select`) Route the Criteria_Store through ff-config
+      (spec Req 9.1 says config-managed; impl uses raw std::fs + no ff-config dep);
+      `.criteria.json` through ff-vfs per FFW-ARCH-001. Contained (2 fs sites).
+- [ ] PA-W2.11 (PA-WATCH-013, `ff-governance-tests`) Extend architecture_compliance.rs
+      to assert prohibited deps for `ff-dscatalog` (impl) + `ff-dsalloc`, not only the
+      `ff-dataset-catalog` interface crate (fitness-function coverage gap).
+- [ ] PA-W2.12 (PA-WATCH-011 remaining, ff-idcams) Verify ff-idcams `idcams.listcat`
+      delegates to the catalog query API (Wave 5). CRUD half already RESOLVED (W2.3).
+- [ ] PA-W2.13 (PA-WATCH-012 + PA-WATCH-014, config prefixes) Confirm `[virtual_catalogs]`
+      (VCM) vs `[catalog].mounted_catalogs` (ff-dscatalog) are not competing
+      persistence stores; confirm `catalog.*` (structure-catalog) vs `[catalog]`
+      (dataset-catalog) config prefixes do not collide. Wave 3 (startup/config).
+- [ ] PA-W2.14 (PA-WATCH-016, Display_Artifact_Line) Consider a shared synthetic-
+      display-line abstraction (viewport/display-line-mapping owned) unifying COLS/
+      BNDS/Placeholder/TABS/MASK. Wave 4. Not blocking.
+
+Group D -- refactors (400-line cap, REFACTOR; several resolved by PA-W2.1 split):
+- [ ] PA-W2.15 (PA-STD-023, `ff-dscatalog`) 9 files over cap; ~5 resolved by the
+      PA-W2.1 VSAM/codec split. Residual concern-splits: catalog.rs 609,
+      transactions.rs 503, integrity.rs 501, gdg.rs 459, dsn.rs 454.
+- [ ] PA-W2.16 (PA-STD-025, `ff-desktop` VCM) SEVERE: split files_panel.rs (1195),
+      file_explorer_panel.rs (935), catalog_manager_dialog.rs (645),
+      dataset_alloc_dialog.rs (419) per the ff-desktop `_state/_render/_commands/
+      _dialogs` shell layout. Worst cap violations in the analysis.
+- [ ] PA-W2.17 (PA-STD-027, `ff-dsalloc`) Split pipeline.rs (412) by stage.
+
+Group E -- ASCII source cleanup (REFACTOR; runtime-string defects first):
+- [ ] PA-W2.18 (PA-STD-024/026/028/030/031 + 029) One code-mode pass. PRIORITY:
+      NON-ASCII IN RUNTIME strings -- ff-dscatalog context-menu ellipsis (PA-STD-024),
+      ff-desktop posix_provider BOM/MOJIBAKE (PA-STD-026, worst), ff-dsalloc/ff-select/
+      ff-tabmask `#[error]`+config-warning em-dashes (028/030/031). Then comment-only
+      ff-structure-catalog (PA-STD-029, 206 em-dashes + box-drawing). Fold into the
+      PA-W0.23/PA-W1.9 project-wide ASCII sweep.
+
+Group F -- TCR + doc bookkeeping (no code):
+- [ ] PA-W2.19 (PA-TCR-010/011/012/013) Enumerate per-requirement TCR rows: ff-dsalloc
+      (1/16), ff-structure-catalog (0/15 -- TOTAL absence), ff-select (1/14),
+      ff-tabmask (1/18). Contrast ff-dscatalog's exemplary 99 rows.
+- [ ] PA-W2.20 (PA-DEP-002 RECLASSIFIED + naming drift) DOC-only: clarify
+      ff-dataset-catalog = shared-interface crate (CatalogService), ff-dscatalog =
+      impl (do NOT remove); reconcile crate-name drift across the cluster specs
+      (ff-dataset-catalog->ff-dscatalog, ff-dataset-allocator->ff-dsalloc,
+      ff-criteria->ff-select, ff-tabs-and-mask->ff-tabmask, ff-fileforge->ff-forge);
+      note that several specs list trait-injected integrations as "dependencies".
+
+> Wave-2 consistency CONFIRMATIONS (no action -- resolved during analysis):
+> ADR-001 is enforced by a real fitness function (ff-governance-tests, Req 18);
+> ff-dsalloc CRUD delegation is CLEAN (CatalogProvider trait, no dup -- PA-WATCH-011
+> CRUD half resolved W2.3); ff-dscatalog's 49 fs calls are LEGITIMATE (it IS the
+> catalog VfsProvider + NativeFileProvider, not an FFW-ARCH-001 violation);
+> ff-dscatalog TCR (99 rows) is the analysis exemplar; PA-DEP-002 WITHDRAWN
+> (ff-dataset-catalog is the intentional interface crate). Minimal-dep + injection-
+> trait design (ff-select, ff-tabmask) is a clean recurring seam.
+
 ---
 
 ## Summary

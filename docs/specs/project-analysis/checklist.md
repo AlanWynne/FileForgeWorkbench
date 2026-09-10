@@ -54,6 +54,31 @@ PA-CONFLICT-001 (consumes the canonical DisplayLineMapping); syntax/text-decorat
 peer boundary clean (independent RunStyles). Carried watches: PA-WATCH-009 (HILITE
 delegation, Wave 3/4), PA-WATCH-010 (exclusion+folding visibility, Wave 4).
 
+**Wave 2 COMPLETE (W2.1-W2.8) on the re-baseline** (commits `a78ff62`..`337e096`).
+All 7 catalog/dataset sub-projects analysed; the Wave 2 task-revision (W2.8) recorded
+the dependency-ordered remediation as `Phase PA-W2` (PROPOSAL, PA-W2.1-PA-W2.20) in
+`docs/specs/project-master/tasks.md`. Wave 2 outcome: ALL tracking-complete, NO
+functional PA-INCOMPLETE; the cluster is ADR-001-governed with a real fitness
+function (`ff-governance-tests`) -- one of the best-enforced areas. Dominant theme:
+DOMAIN-TYPE FRAGMENTATION -- specs say crates should share one owner but each
+redefines the type: PA-CONFLICT-006 (DSN validator in ff-dsalloc vs catalog-owned
+validate_dsn), PA-CONFLICT-007 (VSAM impl in ff-dscatalog storage/ vs ADR-owner
+ff-vsam-services trait-only stub -- subsumes the PA-SPLIT-008 VSAM half as a
+MIGRATION), PA-CONFLICT-008 (record-structure/field-type model duplicated x3 across
+ff-forge/structure-catalog/ff-select), PA-CONFLICT-005 (posix VfsProvider duplicated
++ MISPLACED in the ff-desktop shell). dataset-catalog is the LARGEST unit (31 reqs/
+816 lines, STRONG split PA-SPLIT-008) and the TCR EXEMPLAR (99 rows) -- vs total/thin
+TCR on the other six (PA-TCR-010/011/012/013). Recurring: dead ff-logging deps +
+mandated-but-absent WARN/INFO across nearly every unit (PA-LOG-012..017, top target
+PA-LOG-012 on the transactional catalog); SEVERE cap violations in the ff-desktop VCM
+UI (files_panel.rs 1195, PA-STD-025); non-ASCII incl. BOM/mojibake + runtime strings
+(PA-STD-024..031); crate-name drift on nearly every spec (PA-W2.20). Confirmations:
+ADR-001 fitness-function enforced; ff-dsalloc CRUD delegation clean (PA-WATCH-011 CRUD
+half resolved); ff-dscatalog's 49 fs are LEGITIMATE (it IS the VFS provider);
+PA-DEP-002 WITHDRAWN (ff-dataset-catalog = intentional interface crate). Carried
+watches: PA-WATCH-011 (ff-idcams listcat, Wave 5), 012/013/014/015 (Wave 3 config +
+fitness-fn coverage), 016 (Display_Artifact_Line, Wave 4).
+
 | # | Sub-project | Wave | Status | Analysis Record | Notes |
 |---|-------------|------|--------|-----------------|-------|
 | 1 | platform-core | 0 | DONE | units/platform-core.md | COMPLETE (100/100, TCR PASS); not a split; GUI-independence VERIFIED; logging EXEMPLARY; refactor PA-STD-001 (event_bus.rs 435); PA-DOC-001 (Req 4.1 crate-name drift); PA-LOG-001 (project-wide non-ASCII) |
