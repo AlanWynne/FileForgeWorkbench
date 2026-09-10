@@ -313,16 +313,17 @@ This is a **Wave 0 (Foundation)** sub-project with no upstream dependencies.
 ## Phase DI -- Build-Profile Compile-Time Level Gating (CR-NR-058, Requirement 13)
 
 - [ ] 25. Compile-time build-profile level gate
-  - [ ] 25.1 Add the `dev-logging` cargo feature to `crates/ff-logging/Cargo.toml` (`[features] default = []`, `dev-logging = []`)
+  - [x] 25.1 Add the `dev-logging` cargo feature to `crates/ff-logging/Cargo.toml` (`[features] default = []`, `dev-logging = []`)
     - Covers: Requirement 13.1
-  - [ ] 25.2 Add the public `BUILD_PROFILE_LEVEL` const in `level.rs` (cfg-split: `Trace` when `dev-logging`, else `Info`) and re-export from `lib.rs`
+  - [x] 25.2 Add the public `BUILD_PROFILE_LEVEL` const in `level.rs` (cfg-split: `Trace` when `dev-logging`, else `Info`) and re-export from `lib.rs`
     - Covers: Requirement 13.1, 13.7
-  - [ ] 25.3 Cfg-split `log_trace!` and `log_debug!` in `macros.rs`: full behaviour under `dev-logging`, and a no-op that type-checks but does not evaluate args (`let _ = format_args!(...)`) under `not(dev-logging)`
+  - [x] 25.3 Cfg-split `log_trace!` and `log_debug!` in `macros.rs`: full behaviour under `dev-logging`, and a no-op that type-checks but does not evaluate args (`let _ = format_args!(...)`) under `not(dev-logging)`
     - Covers: Requirement 13.2, 13.3, 13.6
-  - [ ] 25.4 Confirm `log_info!` / `log_warn!` / `log_error!` are unchanged across both profiles (no cfg gating on them)
+  - [x] 25.4 Confirm `log_info!` / `log_warn!` / `log_error!` are unchanged across both profiles (no cfg gating on them)
     - Covers: Requirement 13.4
   - [ ] 25.5 Wire the workspace so debug builds enable `dev-logging` by default and release builds do not, without a manual flag for the common case (passthrough feature on the desktop binary; document the exact wiring)
     - Covers: Requirement 13.5
+    - PARTIAL: `default = ["dev-logging"]` on ff-logging enables it for debug; but release ALSO enables it unless `--no-default-features` is passed. No ff-desktop passthrough wiring yet. Req 13.5 "release builds do not, without a manual flag" not automatic -- pending.
   - [ ] 25.6 Write failing unit tests: with `dev-logging` on, `BUILD_PROFILE_LEVEL == Trace` and a DEBUG call is runtime-guarded; with the feature off (a `#[cfg(not(feature = "dev-logging"))]` test), `BUILD_PROFILE_LEVEL == Info` and the DEBUG macro evaluates no arguments (use a side-effecting arg that must NOT run)
     - Validates: Requirement 13.1, 13.2, 13.3, 13.8
   - [ ] 25.7 Write PBT (Property 12): a captured sequence of INFO/WARN/ERROR records is identical whether `dev-logging` is on or off (behaviour-preserving strip)

@@ -1321,6 +1321,7 @@ Group F -- proposals requiring owner approval + own gate (NOT scheduled here):
 - [ ] DI.1 logging-subsystem Requirement 13 (compile-time build-profile level gating) -- SPEC DONE
 - [ ] DI.2 command-framework Requirement 11 (uniform per-command instrumentation) -- SPEC DONE
 - [ ] DI.3 (impl) `ff-logging`: `dev-logging` cargo feature, public `BUILD_PROFILE_LEVEL` const, cfg-split `log_trace!`/`log_debug!` (no-op in release), workspace debug-vs-release wiring (logging-subsystem Task 25)
+  - PARTIAL (commit `4bf6fbc`): feature + const (re-exported) + cfg-split macros DONE + verified (both profiles compile, 21 doctests pass, verify.ps1 clean; Task 25.1-25.4). REMAINING: release-vs-debug wiring so release drops `dev-logging` without a manual flag (Task 25.5, currently default-on for both); Req 13 unit tests + PBT (Task 25.6/25.7); TCR Req 13 rows (Task 25.8).
 - [ ] DI.4 (impl) `ff-command`: single Instrumentation_Point in `execute_command` -- start (DEBUG) + completion (DEBUG ok / WARN err) with redacted/bounded params and handler-only duration; rejection paths traced (command-framework Task 26)
 - [ ] DI.5 TCR rows for logging-subsystem Req 13.1-13.8 and command-framework Req 11.1-11.9 set to their correct status
 

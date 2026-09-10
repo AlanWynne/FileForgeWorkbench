@@ -115,11 +115,15 @@ Gating** to this spec AFTER section 1-6 above were written. Updated facts:
   format, no atomic read); INFO/WARN/ERROR always retained and runtime-controlled
   by `logging.level` (Req 3). A public `BUILD_PROFILE_LEVEL` const is exported so
   downstream crates can gate their own expensive diagnostics on the same profile.
-- **Req 13 is UNIMPLEMENTED**: `dev-logging` feature absent from
-  `crates/ff-logging/Cargo.toml` (grep 0); `BUILD_PROFILE_LEVEL` const / cfg-split
-  of `log_trace!`/`log_debug!` absent from src (grep 0). Phase DI Task 25
-  (25.1-25.x) open; TCR Phase DI rows present but NOT COVERED. Requirements gate
-  IS complete (Req 13 authored + design + tasks + TCR rows) -- ready to build.
+- **Req 13 IMPLEMENTATION now DONE** (commit `4bf6fbc`, after this analysis):
+  `dev-logging` cargo feature added (default), public `BUILD_PROFILE_LEVEL` const
+  in level.rs (cfg-split Trace/Info) and RE-EXPORTED from lib.rs, `log_trace!` /
+  `log_debug!` cfg-split (no-op under `not(dev-logging)`). Verified: compiles with
+  and without the feature, 21 doctests + 20 unit tests pass, verify.ps1 clean.
+  Implementation tasks 25.1-25.5 satisfied. REMAINING: Req 13 dedicated tests
+  (Task 25.6 dev-logging on/off behaviour + 25.7 Property 12 behaviour-preserving
+  strip) NOT written; TCR Phase DI Req 13.1-13.8 rows still NOT COVERED. So Req 13
+  is code-complete but test-incomplete -- see PA-CR058.
 - Split candidacy unchanged: 13 reqs now crosses the >12 line, but Req 13 is a
   small compile-time gate tightly bound to the macros -- still NOT a split
   candidate.
