@@ -24,7 +24,7 @@ reference but are NOT carried forward.
 | 4 | command-framework | 0 | DONE | units/command-framework.md | INCOMPLETE (2 gaps): Req 9 Command Arguments (PA-INCOMPLETE-001) + Req 10 Context Navigation Stack CR-NR-057 (PA-INCOMPLETE-003), both gate-complete/unbuilt; Req 1-8 done; not a split; PA-WATCH-001 (Command_Target + Req 10 fan-out) |
 | 5 | document-model | 0 | DONE | units/document-model.md | COMPLETE (140/140, TCR PASS); not a split; VFS-only verified; PA-WATCH-002 (document.rs at 400 cap); PA-LOG-003 (optional logging); zero-log defensible |
 | 6 | virtual-file-system | 0 | DONE | units/virtual-file-system.md | Feature-COMPLETE (91/91, Req 1-12 TCR-PASS); IWR-005 RESOLVED; LOGGING DEFECT PA-LOG-004 PERSISTS (eprintln + unmet Req 3.3 WARN); weak split PA-SPLIT-002; PA-WATCH-003 |
-| 7 | plugin-architecture | 0 | PENDING | -- | foundation |
+| 7 | plugin-architecture | 0 | DONE | units/plugin-architecture.md | COMPLETE (169/169, TCR PASS); not a split; logging EXEMPLARY (PA-LOG-REF-001); refactor PA-STD-004 (registry.rs 698) |
 | 8 | workflow-engine | 0 | PENDING | -- | foundation |
 | 9 | background-io | 0 | PENDING | -- | foundation |
 | 10 | encoding-and-characters | 0 | PENDING | -- | foundation |

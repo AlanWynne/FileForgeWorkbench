@@ -46,6 +46,9 @@ sub-project during Waves 0-5, finalized in Wave 6.
 | `Vfs` / `VfsProvider` / `StorageProvider` / `ProviderRegistry` / `ResourceUri` / `VfsError` | virtual-file-system | ALL crates (FFW-ARCH-001) | No | Sole owner ff-vfs; only crate allowed direct std::fs |
 | `WatchHandle` / `WatchEvent` / `VfsTransaction` | virtual-file-system | document-model, external-modification, dataset-catalog | No | Sole owner ff-vfs |
 | workspace backup manifest | virtual-file-system (Req 12.2) + dataset-catalog (ff-dscatalog Req 26.3) | -- | Watch | PA-WATCH-003: verify shared-vs-distinct manifest type at Wave 2 |
+| `FileForgePlugin` / `PluginContext` / `PluginError` / `Capability` / `PluginRegistry` / `PLUGIN_API_VERSION` | plugin-architecture | all plugin crates, shell | No | Sole owner ff-plugin |
+| plugin namespace `[plugins.{name}]` | plugin-architecture (Req 2.7/7.5) + configuration-system (Req 8) | -- | No | Same scoping rule both specs |
+| PluginLogHandle contract | plugin-architecture (uses) + logging-subsystem (Req 10 owns) | -- | No | Consistent `[plugin:name]` prefix |
 
 ## Command IDs
 
