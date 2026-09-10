@@ -6,17 +6,23 @@
 //!
 //! Each macro automatically captures `module_path!()` for the source module field.
 
-/// Emit a TRACE-level log record.
+/// Emit a TRACE-level log record (Development_Level).
 ///
-/// The format arguments are only evaluated if TRACE level passes the
-/// configured minimum level filter. The formatting closure is never
-/// invoked when the level is filtered out, ensuring zero-cost filtering.
+/// TRACE is a development-only level. It is subject to the compile-time
+/// build-profile gate (Requirement 13): when the `dev-logging` feature is
+/// enabled (the default for debug builds), the format arguments are only
+/// evaluated if TRACE passes the runtime minimum-level filter, and the closure
+/// is never invoked when filtered out (zero-cost runtime filtering). When the
+/// `dev-logging` feature is absent (release builds), this macro expands to a
+/// no-op that does not evaluate its arguments, performs no formatting, and
+/// performs no atomic level read -- the call site is removed from the binary.
 ///
 /// # Examples
 ///
 /// ```rust,ignore
 /// ff_logging::log_trace!("Processing item {}", item_id);
 /// ```
+#[cfg(feature = "dev-logging")]
 #[macro_export]
 macro_rules! log_trace {
     ($($arg:tt)*) => {
@@ -24,22 +30,60 @@ macro_rules! log_trace {
     };
 }
 
-/// Emit a DEBUG-level log record.
+/// Emit a TRACE-level log record (Development_Level) -- release no-op.
 ///
-/// The format arguments are only evaluated if DEBUG level passes the
-/// configured minimum level filter. The formatting closure is never
-/// invoked when the level is filtered out, ensuring zero-cost filtering.
+/// With the `dev-logging` feature absent, this macro expands to a statement
+/// that type-checks the format arguments (so a bad format string or a type
+/// error is still caught) without evaluating them, and produces no runtime
+/// work. Addresses: Requirement 13 (criteria 2, 6).
+#[cfg(not(feature = "dev-logging"))]
+#[macro_export]
+macro_rules! log_trace {
+    ($($arg:tt)*) => {{
+        // Type-check the arguments without evaluating them: format_args! borrows
+        // its operands lazily, and binding to `_` immediately drops the result,
+        // so no Display/Debug impl runs and nothing is formatted or allocated.
+        let _ = format_args!($($arg)*);
+    }};
+}
+
+/// Emit a DEBUG-level log record (Development_Level).
+///
+/// DEBUG is a development-only level. It is subject to the compile-time
+/// build-profile gate (Requirement 13): when the `dev-logging` feature is
+/// enabled (the default for debug builds), the format arguments are only
+/// evaluated if DEBUG passes the runtime minimum-level filter, and the closure
+/// is never invoked when filtered out (zero-cost runtime filtering). When the
+/// `dev-logging` feature is absent (release builds), this macro expands to a
+/// no-op that does not evaluate its arguments, performs no formatting, and
+/// performs no atomic level read -- the call site is removed from the binary.
 ///
 /// # Examples
 ///
 /// ```rust,ignore
 /// ff_logging::log_debug!("Cache hit for key: {}", key);
 /// ```
+#[cfg(feature = "dev-logging")]
 #[macro_export]
 macro_rules! log_debug {
     ($($arg:tt)*) => {
         $crate::log_lazy($crate::LogLevel::Debug, module_path!(), || format!($($arg)*))
     };
+}
+
+/// Emit a DEBUG-level log record (Development_Level) -- release no-op.
+///
+/// With the `dev-logging` feature absent, this macro expands to a statement
+/// that type-checks the format arguments (so a bad format string or a type
+/// error is still caught) without evaluating them, and produces no runtime
+/// work. Addresses: Requirement 13 (criteria 2, 6).
+#[cfg(not(feature = "dev-logging"))]
+#[macro_export]
+macro_rules! log_debug {
+    ($($arg:tt)*) => {{
+        // See log_trace! release arm for the rationale.
+        let _ = format_args!($($arg)*);
+    }};
 }
 
 /// Emit an INFO-level log record.

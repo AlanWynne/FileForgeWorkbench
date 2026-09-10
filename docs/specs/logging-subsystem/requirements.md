@@ -243,3 +243,29 @@ The application's process model is also formally specified: the workbench runs a
 7. WHEN the Logging_Inventory_Tool runs, THE Logging_Inventory_Tool SHALL mirror its progress and summary output to a log file under `tools/logs/`, overwriting that log at the start of each run, per the project tooling standard.
 8. IF the Logging_Inventory_Tool encounters a source file it cannot read or parse, THEN THE Logging_Inventory_Tool SHALL record the affected path in the Logging_Inventory_Report, SHALL continue scanning the remaining files, and SHALL NOT abort the run.
 9. THE Logging_Inventory_Tool SHALL be safe to run repeatedly, producing a report that depends only on the current workspace source (deterministic ordering of crates, files, and sites).
+
+---
+
+### Requirement 13: Build-Profile Compile-Time Level Gating
+
+**User Story:** As a developer, I want verbose diagnostic log calls (TRACE and DEBUG) to be present in development builds but removed entirely from a production release build, so that I can instrument the code freely during testing without paying any runtime cost (branch, string formatting, or atomic level check) in the shipped binary.
+
+**Source:** NEW -- derived from CR-NR-058. Establishes the development-vs-release logging convention and the compile-time gate mechanism that complements the runtime `logging.level` filter of Requirement 3. [WB]
+
+#### Definitions (local to this requirement)
+
+- **Build_Profile_Level**: A compile-time maximum Log_Level determined by cargo features at build time, independent of the runtime `logging.level`. Log_Records whose level is below the Build_Profile_Level are removed from the compiled binary and never evaluated at runtime.
+- **Dev_Logging_Feature**: The cargo feature `dev-logging` on the `ff-logging` crate. WHEN enabled, the Build_Profile_Level is TRACE (all levels retained). WHEN absent, the Build_Profile_Level is INFO (TRACE and DEBUG removed).
+- **Development_Level**: A Log_Level of TRACE or DEBUG, intended for diagnostics that exist only in development builds (for example, recording that a workspace Context changed).
+- **Retained_Level**: A Log_Level of INFO, WARN, or ERROR, always compiled into every build profile and controlled at runtime by `logging.level` per Requirement 3.
+
+#### Acceptance Criteria
+
+1. THE `ff-logging` crate SHALL define a cargo feature named `dev-logging` that, when enabled, sets the Build_Profile_Level to TRACE, and when absent, sets the Build_Profile_Level to INFO.
+2. WHEN the `dev-logging` feature is absent from the build, THE `log_trace!` and `log_debug!` macros SHALL expand to code that performs no runtime work: no argument evaluation, no string formatting, no allocation, and no atomic level read, such that a Development_Level call site contributes no executable instructions to the release binary beyond what an empty statement would.
+3. WHEN the `dev-logging` feature is enabled, THE `log_trace!` and `log_debug!` macros SHALL behave exactly as specified in Requirement 3 and Requirement 9 (runtime level guard, then format-on-pass).
+4. THE `log_info!`, `log_warn!`, and `log_error!` macros SHALL retain their full runtime behaviour in every build profile regardless of the `dev-logging` feature, remaining controlled by the runtime `logging.level` per Requirement 3 criterion 2.
+5. THE workspace SHALL be configured so that debug builds (`cargo build`, `cargo test`) enable the `dev-logging` feature by default and release builds (`cargo build --release`) do not, without requiring a developer to pass the feature flag manually for the common case.
+6. WHEN the Build_Profile_Level removes a Development_Level call site, THE removal SHALL NOT change the compiled behaviour of any Retained_Level call site or any non-logging code (the gate is confined to the Development_Level macros).
+7. THE effective Build_Profile_Level SHALL be queryable at compile time by other crates via a public constant exported from `ff-logging`, so that downstream crates can gate their own expensive diagnostic computations on the same profile without duplicating the feature logic.
+8. IF a Development_Level call site is compiled into a build where the Build_Profile_Level is INFO (release), THEN a subsequent runtime change to `logging.level = "debug"` SHALL NOT resurrect that call site (the compile-time gate is authoritative and cannot be overridden at runtime), and THE runtime `logging.level` setting SHALL continue to govern only the Retained_Levels that were compiled in.

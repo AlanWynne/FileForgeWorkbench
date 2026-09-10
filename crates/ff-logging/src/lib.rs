@@ -100,6 +100,12 @@ pub(crate) mod shutdown;
 /// The severity level for log records.
 pub use level::LogLevel;
 
+/// Compile-time maximum retained log level for this build profile (CR-NR-058
+/// Requirement 13.7). `Trace` with the `dev-logging` feature (default for debug
+/// builds), `Info` without it (release). Downstream crates read this to gate
+/// their own expensive diagnostics on the same profile.
+pub use level::BUILD_PROFILE_LEVEL;
+
 /// Error returned when parsing an unrecognized log level string.
 pub use level::ParseLogLevelError;
 

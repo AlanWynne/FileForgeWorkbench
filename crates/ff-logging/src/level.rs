@@ -100,6 +100,46 @@ impl LogLevel {
     }
 }
 
+/// Compile-time maximum retained level for this build profile.
+///
+/// Development_Level (`Trace`/`Debug`) call sites strictly below this level are
+/// removed by the `log_trace!` / `log_debug!` macros at compile time when the
+/// `dev-logging` feature is absent. This is the compile-time complement to the
+/// runtime `logging.level` filter: the runtime filter tunes verbosity within a
+/// build, whereas this const removes development-only call sites from a release
+/// binary entirely (no branch, no format, no atomic read).
+///
+/// - With the `dev-logging` feature enabled (the default for debug builds):
+///   `Trace` -- every level is retained and runtime-guarded.
+/// - Without it (release builds): `Info` -- `Trace` and `Debug` sites are removed.
+///
+/// Downstream crates can read this const to gate their own expensive diagnostic
+/// computations on the same profile without duplicating the feature logic.
+///
+/// Addresses: Requirement 13 (criteria 1, 7).
+///
+/// # Examples
+///
+/// ```
+/// use ff_logging::{BUILD_PROFILE_LEVEL, LogLevel};
+///
+/// if BUILD_PROFILE_LEVEL <= LogLevel::Debug {
+///     // build an expensive debug string only when DEBUG is compiled in
+/// }
+/// ```
+#[cfg(feature = "dev-logging")]
+pub const BUILD_PROFILE_LEVEL: LogLevel = LogLevel::Trace;
+
+/// Compile-time maximum retained level for this build profile.
+///
+/// See the `dev-logging`-enabled variant for full documentation. In this
+/// (release) configuration the level is `Info`, so `Trace` and `Debug` call
+/// sites are removed at compile time.
+///
+/// Addresses: Requirement 13 (criteria 1, 7).
+#[cfg(not(feature = "dev-logging"))]
+pub const BUILD_PROFILE_LEVEL: LogLevel = LogLevel::Info;
+
 impl LogLevel {
     /// Parses a level string using case-insensitive comparison with leading and
     /// trailing whitespace trimmed.

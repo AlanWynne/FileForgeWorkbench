@@ -1445,3 +1445,64 @@ dispatch path is added.
 `navigation.stack_max_depth` (positive integer, default 32) bounds the stack; the
 stack is session-only and is never written to the session file nor recorded as an
 undo transaction (Requirement 10.12).
+
+---
+
+## Section: Uniform Command Execution Instrumentation (Requirement 11, CR-NR-058)
+
+### Overview
+
+Requirement 11 turns the ad-hoc per-dispatch logging that already exists (Requirement 2.6 error WARN, Requirement 9.4 TRACE of id+params) into one uniform start/completion trace emitted at a single Instrumentation_Point inside `execute_command`. Because every invocation source routes through that entry point, instrumenting it once covers keyboard, menu, command line, macro, and plugin invocations with no per-command code.
+
+### Placement
+
+The Instrumentation_Point wraps the handler call inside `CommandDispatch::execute_command` (and the async variant shares the same wrapper). Pseudocode:
+
+```rust
+pub fn execute_command(&self, id: &str, params: CommandParams) -> CommandResult {
+    // start record (DEBUG -- Development_Level, compiled out in release)
+    ff_logging::log_debug!("cmd start id={} params={}", id, redact_and_bound(&params));
+
+    let lookup = self.registry.lookup(id);
+    // rejection paths (unregistered / disabled) still emit a completion record
+    // naming the reason (Requirement 11.7), then return the same errors as today.
+
+    let start = std::time::Instant::now();
+    let result = handler.execute(&params, &ctx);      // measured window (Requirement 11.9)
+    let elapsed_ms = start.elapsed().as_millis();
+
+    match &result {
+        CommandResult::Ok { .. } =>
+            ff_logging::log_debug!("cmd done id={} ok {} in {}ms", id, summary(&result), elapsed_ms),
+        CommandResult::Err { description, .. } =>
+            ff_logging::log_warn!("cmd done id={} err={} in {}ms", id, description, elapsed_ms),
+    }
+    result
+}
+```
+
+### Level choices and the release build
+
+- Start record and success completion: `log_debug!` -- Development_Level. Under logging-subsystem Requirement 13, these are compiled out of a release build entirely (Requirement 11.4). This is the whole point: full command tracing in development, zero cost in production.
+- Failure completion: `log_warn!` -- a Retained_Level, so it survives into release and continues to satisfy Requirement 2.6 (it replaces, not duplicates, the old standalone error WARN).
+
+This means the existing Requirement 2.6 WARN is now emitted by the completion arm of the Instrumentation_Point rather than by a separate statement, so there is exactly one failure record per failed dispatch.
+
+### Redaction and bounding
+
+- `redact_and_bound(&params)` walks the param map and replaces any Sensitive_Param value with `***` before formatting (Requirement 11.5). The sensitivity classification reuses the command-semantics Requirement 9.17 secret-operand rule; a param is sensitive if its key is on a small reserved deny-list (e.g. `password`, `secret`, `token`) or the command declares it sensitive in metadata. The exact declaration surface is an implementation detail carried on `CommandMetadata`.
+- Length bounding is delegated to the logging subsystem's existing 8192-byte per-record truncation (logging-subsystem Requirement 2.3), so no new truncation logic is added here (Requirement 11.6).
+
+### Interaction with Command_History
+
+Instrumentation is orthogonal to Command_History (Requirement 7): history still records successful executions with id, timestamp, and params. The instrumentation adds log records only and never changes history contents or command semantics (Requirement 11.8). Note history stores params as-is; secret redaction for history persistence remains governed by command-semantics Requirement 9.17 and is out of scope for this requirement, which governs only the log records.
+
+### Module impact
+
+- `dispatch.rs`: wrap the handler call with start/completion records; route the two rejection paths through a completion record before returning.
+- `metadata.rs` (minor): optional per-command sensitive-param declaration used by `redact_and_bound`.
+- No new public API; no change to `CommandResult`, `UndoStack`, or `CommandHistory` types.
+
+### Correctness note
+
+Because the start and success records are `log_debug!`, a release build compiles them out; the failure `log_warn!` remains. The dispatcher's return value, undo push, redo-clear, and history recording are identical whether or not `dev-logging` is enabled -- the instrumentation only reads `id`, `params`, `result`, and a clock, and never mutates them (Requirement 11.8).

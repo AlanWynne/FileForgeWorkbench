@@ -2297,3 +2297,25 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-macro` | 🔴 | -- | lua-macro-engine Req 5.9: a macro/FFCMD line chain runs through the shared command-line chain executor |
 | `ff-macro` | 🔴 | -- | lua-macro-engine Req 5.10: chain fail-stop composes with whole-invocation Macro_Transaction rollback |
 | `ff-macro` | 🔴 | -- | lua-macro-engine Req 5.11: no piping -- commands act on Workspace/Context state, not a prior return value |
+
+### Phase DI -- Build-Profile Logging + Uniform Command Instrumentation (CR-NR-058)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-logging` | 🔴 | -- | Req 13.1: `dev-logging` cargo feature sets Build_Profile_Level (Trace when on, Info when off) |
+| `ff-logging` | 🔴 | -- | Req 13.2: with `dev-logging` off, `log_trace!`/`log_debug!` evaluate no args, no format, no atomic read |
+| `ff-logging` | 🔴 | -- | Req 13.3: with `dev-logging` on, `log_trace!`/`log_debug!` behave per Req 3 and Req 9 (runtime guard) |
+| `ff-logging` | 🔴 | -- | Req 13.4: `log_info!`/`log_warn!`/`log_error!` retain full runtime behaviour in every profile |
+| `ff-logging` | 🔴 | -- | Req 13.5: debug builds enable `dev-logging` by default; release builds do not; no manual flag needed |
+| `ff-logging` | 🔴 | -- | Req 13.6: stripping a Development_Level site does not change any Retained_Level or non-logging code |
+| `ff-logging` | 🔴 | -- | Req 13.7: public `BUILD_PROFILE_LEVEL` const queryable at compile time by downstream crates |
+| `ff-logging` | 🔴 | -- | Req 13.8: runtime `logging.level = "debug"` cannot resurrect a stripped release site |
+| `ff-command` | 🔴 | -- | Req 11.1: start DEBUG record (id + params) emitted before the handler runs |
+| `ff-command` | 🔴 | -- | Req 11.2: completion record (id, ok/err, Result_Summary, duration ms) -- DEBUG on success, WARN on failure |
+| `ff-command` | 🔴 | -- | Req 11.3: instrumentation applied uniformly to every invocation source via the single `execute_command` |
+| `ff-command` | 🔴 | -- | Req 11.4: release (`dev-logging` off) compiles out start + success records; failure WARN remains |
+| `ff-command` | 🔴 | -- | Req 11.5: Sensitive_Param values redacted (`***`) in start and completion records |
+| `ff-command` | 🔴 | -- | Req 11.6: params rendering bounded by the logging subsystem's 8192-byte truncation (Req 2.3) |
+| `ff-command` | 🔴 | -- | Req 11.7: rejected commands (unregistered/disabled) still emit start + completion naming the reason |
+| `ff-command` | 🔴 | -- | Req 11.8: instrumentation never alters CommandResult, undo, history, or side-effect ordering |
+| `ff-command` | 🔴 | -- | Req 11.9: completion duration measures the handler window only |

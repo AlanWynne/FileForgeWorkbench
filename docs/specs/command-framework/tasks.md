@@ -414,3 +414,23 @@ This is a **Wave 2 (Platform Architecture)** sub-project. It depends on `ff-logg
     - Validates: Requirement 10.1-10.13
   - [ ] 25.7 Update `docs/quality/TCR.md`: set the CR-NR-057 command-framework Req 10 rows to their correct status
     - Covers: Requirement 10 (all criteria)
+
+## Phase DI -- Uniform Command Execution Instrumentation (CR-NR-058, Requirement 11)
+
+- [ ] 26. Uniform command execution instrumentation
+  - [ ] 26.1 Add a single Instrumentation_Point in `dispatch.rs` wrapping the handler call: emit a `log_debug!` start record (id + redacted/bounded params) before the handler runs
+    - Covers: Requirement 11.1, 11.3
+  - [ ] 26.2 Emit a completion record after the handler returns: `log_debug!` on success (id + Result_Summary + duration ms), `log_warn!` on failure (id + error description + duration ms), replacing the standalone Req 2.6 error WARN so there is exactly one failure record
+    - Covers: Requirement 11.2, 11.9
+  - [ ] 26.3 Route the rejection paths (unregistered id, disabled command) through a completion record naming the rejection reason, after the start record, before returning the existing errors
+    - Covers: Requirement 11.7
+  - [ ] 26.4 Implement `redact_and_bound(&params)`: replace Sensitive_Param values with `***` (reserved-key deny-list plus optional per-command metadata flag), leaving length bounding to the logging subsystem's 8192-byte truncation
+    - Covers: Requirement 11.5, 11.6
+  - [ ] 26.5 Measure duration across the handler invocation only (Instant just before call to just after return)
+    - Covers: Requirement 11.9
+  - [ ] 26.6 Ensure the async `execute_command` path shares the same instrumentation wrapper
+    - Covers: Requirement 11.3
+  - [ ] 26.7 Write failing unit tests: start+completion emitted for success (DEBUG) and failure (WARN); rejection paths still emit start+completion with reason; sensitive param redacted in both records; instrumentation does not change CommandResult, undo, or history; with `dev-logging` off, success/start records are compiled out while the failure WARN remains
+    - Validates: Requirement 11.1-11.5, 11.7, 11.8
+  - [ ] 26.8 Update `docs/quality/TCR.md`: set the CR-NR-058 command-framework Req 11 rows to their correct status
+    - Covers: Requirement 11 (all criteria)

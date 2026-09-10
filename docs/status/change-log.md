@@ -589,3 +589,12 @@ Modifications to existing behaviour that already works.
 - **Status**: PENDING GATE
 - **Affects**: `docs/specs/command-semantics/requirements.md` (new Requirement 11), `docs/specs/command-framework/requirements.md` (new Requirement 10), `docs/specs/menu-workspace/requirements.md` (extends Requirement 5), `docs/specs/lua-macro-engine/requirements.md` (extends Requirement 5); later `ff-command-semantics`, `ff-command`, `ff-desktop` shell, `ff-macro`
 - **Linked spec**: `docs/specs/command-semantics/requirements.md` Requirement 11, `docs/specs/command-framework/requirements.md` Requirement 10, `docs/specs/menu-workspace/requirements.md` Requirement 5, `docs/specs/lua-macro-engine/requirements.md` Requirement 5
+
+### CR-NR-058 -- Build-profile logging: compile-time dev/release gating + uniform per-command instrumentation
+- **Date/Phase**: Phase DI
+- **Prompt**: "We dont want to create excesive logging, but we do want to log certain things while testing and debugging... when we build for a production release we don't necessarily want to include all the logging overhead... Also perhaps all commands must log start, the parameters they receive and the completion result?"
+- **Description**: Two related capabilities. (1) `ff-logging` gains a compile-time build-profile gate: a cargo feature (`dev-logging`, enabled for debug builds, absent for release) sets a compile-time maximum level so that TRACE/DEBUG call sites are removed entirely from a release binary (no branch, no format, no atomic load), while INFO/WARN/ERROR remain runtime-controlled by `logging.level`. Release builds strip everything below INFO by default. (2) `ff-command` instruments the single `execute_command` dispatch boundary so every command logs its start (id + params) and completion (success/failure + result summary + duration) at a dev-only level, with failures always at WARN/ERROR; sensitive params are redacted and long values bounded. The instrumentation is uniform across every invocation source (keyboard, menu, command line, macro, plugin).
+- **Status**: PENDING GATE
+- **Linked spec**: `docs/specs/logging-subsystem/requirements.md` (new Requirement 13), `docs/specs/command-framework/requirements.md` (new Requirement 11)
+
+| Phase DI | CR-NR-058 added -- build-profile compile-time logging gate + uniform per-command start/params/completion instrumentation |

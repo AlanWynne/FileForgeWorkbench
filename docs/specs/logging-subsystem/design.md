@@ -836,3 +836,83 @@ An optional follow-up (not required by this requirement) is a `Stop`-trigger or 
 **Statement:** For any fixed workspace source tree, two consecutive runs of the Logging_Inventory_Tool produce byte-identical reports (modulo the generation timestamp line), and neither run modifies, creates, or deletes any file except the report under `docs/quality/` and the log under `tools/logs/`.
 
 **Validates:** Requirement 12, criteria 5, 6, 9.
+
+---
+
+## 12. Build-Profile Compile-Time Level Gating (Requirement 13)
+
+### Problem
+
+Requirement 3 provides a *runtime* level filter (`logging.level`) with a zero-cost atomic guard: a filtered call still compiles into an atomic load and a branch. That is the right tool for tuning verbosity in a shipped build, but it does not remove the call site. For development-only diagnostics (TRACE/DEBUG) we want them *gone* from a release binary -- no branch, no format closure, no atomic read -- so that heavily-instrumented hot paths (for example a workspace Context-change trace) cost literally nothing in production. This is the standard two-layer approach used by the `log` and `tracing` ecosystems: a compile-time maximum level plus a runtime filter.
+
+### Approach: cargo feature sets a compile-time const cap
+
+A single cargo feature, `dev-logging`, selects the Build_Profile_Level:
+
+| Build | `dev-logging` | `BUILD_PROFILE_LEVEL` | TRACE/DEBUG sites | INFO/WARN/ERROR sites |
+|-------|---------------|-----------------------|-------------------|-----------------------|
+| debug (`cargo build`/`test`) | enabled (default) | `LogLevel::Trace` | compiled in, runtime-guarded | compiled in, runtime-guarded |
+| release (`cargo build --release`) | absent | `LogLevel::Info` | removed at compile time | compiled in, runtime-guarded |
+
+```rust
+/// Compile-time maximum retained level for this build profile.
+/// Development_Level (Trace/Debug) call sites below this are removed by the
+/// log_trace!/log_debug! macros at compile time. Addresses: Requirement 13.
+#[cfg(feature = "dev-logging")]
+pub const BUILD_PROFILE_LEVEL: LogLevel = LogLevel::Trace;
+#[cfg(not(feature = "dev-logging"))]
+pub const BUILD_PROFILE_LEVEL: LogLevel = LogLevel::Info;
+```
+
+`BUILD_PROFILE_LEVEL` is public (Requirement 13 criterion 7) so a downstream crate can gate its own expensive diagnostic computation on the same profile:
+
+```rust
+if ff_logging::BUILD_PROFILE_LEVEL <= ff_logging::LogLevel::Debug {
+    // build an expensive debug string only in dev builds
+}
+```
+
+### Macro changes
+
+The `log_trace!` and `log_debug!` macros gain a compile-time `#[cfg]` split. Under `not(feature = "dev-logging")` they expand to a no-op that still type-checks the arguments without evaluating them (so unused-variable and type errors are not introduced or hidden), matching Requirement 13 criteria 2 and 6:
+
+```rust
+#[cfg(feature = "dev-logging")]
+#[macro_export]
+macro_rules! log_debug {
+    ($($arg:tt)*) => { $crate::log_lazy($crate::LogLevel::Debug, module_path!(), || format!($($arg)*)) };
+}
+#[cfg(not(feature = "dev-logging"))]
+#[macro_export]
+macro_rules! log_debug {
+    // No-op in release: arguments are not evaluated; no atomic read, no format.
+    ($($arg:tt)*) => {{ let _ = format_args!($($arg)*); }};
+}
+```
+
+`log_info!`, `log_warn!`, and `log_error!` are unchanged in every profile (Requirement 13 criterion 4). The runtime `logging.level` (Requirement 3) continues to govern whatever levels the profile compiled in; it can never resurrect a stripped site (Requirement 13 criterion 8).
+
+### Cargo wiring (Requirement 13 criterion 5)
+
+`ff-logging` declares:
+
+```toml
+[features]
+default = []
+dev-logging = []
+```
+
+The feature is turned on for debug-profile builds workspace-wide without a manual flag. The chosen mechanism is a workspace-level dev-only dependency edge: crates depend on `ff-logging` normally, and the workspace enables `ff-logging/dev-logging` through a `[features]` passthrough that is active for debug builds (documented in the implementation task). Release builds (`--release`) leave the feature off. The exact wiring (a `dev-logging` passthrough feature on the desktop binary plus `cargo test`/`cargo build` defaulting to it) is validated by the build-profile tests rather than asserted here; the invariant that matters for the spec is the truth table above.
+
+### Module impact
+
+- `level.rs`: add the `BUILD_PROFILE_LEVEL` const (cfg-split).
+- `macros.rs`: cfg-split `log_trace!` / `log_debug!`.
+- `Cargo.toml`: add the `dev-logging` feature.
+- No change to the channel, writer, rotation, or reconfiguration machinery.
+
+### Correctness Property 12: Development-Level Strip Is Behaviour-Preserving
+
+**Statement:** For any program, compiling with `dev-logging` absent SHALL produce identical observable behaviour to compiling with it present, except that no TRACE or DEBUG Log_Record is written. In particular, the sequence and content of INFO/WARN/ERROR records is unchanged, and no side effect that a caller relies on occurs inside a `log_trace!`/`log_debug!` argument (arguments must be side-effect free, which the no-op expansion enforces by not evaluating them).
+
+**Validates:** Requirement 13, criteria 2, 4, 6, 8.

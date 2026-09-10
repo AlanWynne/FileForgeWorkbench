@@ -274,3 +274,29 @@ than requiring a separate command per variation.
 11. THE Context_Navigation_Stack SHALL have a configurable maximum depth via `navigation.stack_max_depth` (positive integer, default 32); WHEN a push would exceed the maximum, THE framework SHALL drop the oldest entry and log one WARN-level record.
 12. THE Context_Navigation_Stack SHALL be session state only: it SHALL NOT be persisted across sessions and SHALL NOT be recorded as an undoable transaction.
 13. A single unchained navigation command SHALL behave as a STOP (`.`) invocation for stack purposes: it SHALL push only the Navigation_Origin, so one RETURN returns to the origin.
+
+---
+
+### Requirement 11: Uniform Command Execution Instrumentation
+
+**User Story:** As a developer debugging the workbench, I want every command that flows through the dispatcher to log its start (id and parameters), and its completion (success or failure, a result summary, and how long it took), at a development-only level, so that I have a single consistent trace of user actions during testing without adding logging to each command by hand and without any of this overhead in a production release build.
+
+**Source:** NEW -- derived from CR-NR-058. Generalises the existing per-dispatch logging (Requirement 2 criterion 6 error logging, Requirement 9 criterion 4 TRACE of id and params) into a uniform start/completion instrumentation applied once at the dispatch boundary. Depends on logging-subsystem Requirement 13 for the compile-time gate. [WB]
+
+#### Glossary additions
+
+- **Instrumentation_Point**: The single location inside `Command_Dispatch::execute_command` (and its async counterpart) where start and completion Log_Records are emitted for every command, regardless of invocation source.
+- **Result_Summary**: A bounded, non-sensitive description of a Command_Result: for success, the result kind and value shape; for failure, the error description. Never the full contents of a large return value.
+- **Sensitive_Param**: A Command_Param whose key or command declares it as carrying secret or privacy-relevant data (for example a password operand, or free-text search content), which must be redacted rather than logged verbatim. Aligns with command-semantics Requirement 9 criterion 17 (secret operand redaction).
+
+#### Acceptance Criteria
+
+1. WHEN `execute_command` is invoked for a registered command, THE Command_Dispatch SHALL emit, at the Instrumentation_Point before invoking the handler, a Development_Level (DEBUG) Log_Record containing the Command_ID and the Command_Params.
+2. WHEN a command handler returns, THE Command_Dispatch SHALL emit, at the Instrumentation_Point, a completion Log_Record containing the Command_ID, a success-or-failure indicator, a Result_Summary, and the elapsed execution duration in milliseconds; for a successful command this record SHALL be at Development_Level (DEBUG), and for a failed command it SHALL be at WARN level (consistent with, and not duplicating, Requirement 2 criterion 6).
+3. THE start and completion instrumentation SHALL be applied uniformly to every invocation regardless of source (keyboard shortcut, menu option, `Command ===>` line, Lua macro via the Scripting_Bridge, or plugin), because all sources route through the single `execute_command` entry point (Requirement 2 criterion 1).
+4. WHEN the `dev-logging` feature is absent (release build per logging-subsystem Requirement 13), THE start record and the success completion record SHALL contribute no runtime overhead (they are compiled out), WHILE the failure completion record SHALL remain because it is emitted at WARN level (a Retained_Level).
+5. WHEN Command_Params contain a Sensitive_Param, THE Command_Dispatch SHALL redact that parameter's value in both the start and completion Log_Records (for example replacing the value with `***`), and SHALL NOT write the raw value to the log.
+6. THE Command_Params rendering in a Log_Record SHALL be bounded in length using the logging subsystem's existing per-record truncation (logging-subsystem Requirement 2 criterion 3), so a command invoked with a very large parameter map does not produce an unbounded log line.
+7. WHEN a command is rejected before its handler runs (unregistered id per Requirement 2 criterion 2, or disabled per Requirement 2 criterion 5), THE Command_Dispatch SHALL still emit the start Log_Record and SHALL emit a completion Log_Record whose Result_Summary names the rejection reason, so the trace shows both attempted-but-rejected and executed commands.
+8. THE instrumentation SHALL NOT alter command semantics: the presence or absence of the `dev-logging` feature SHALL NOT change any Command_Result, undo behaviour, or Command_History recording (Requirement 7), and SHALL NOT change the observable ordering of side effects.
+9. THE completion duration SHALL be measured across the handler invocation only (from just before the handler is called to just after it returns), so the reported duration reflects command work and excludes dispatch bookkeeping.

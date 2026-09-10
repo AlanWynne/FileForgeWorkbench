@@ -5,6 +5,22 @@ edition = "2021"
 description = "Structured logging subsystem for FileForgeWorkbench"
 authors = ["FileForge Contributors"]
 
+[features]
+# Build-profile compile-time level gate (CR-NR-058, Requirement 13).
+#
+# When `dev-logging` is enabled, BUILD_PROFILE_LEVEL is Trace and the
+# `log_trace!` / `log_debug!` macros are fully active (runtime-guarded). When it
+# is absent, BUILD_PROFILE_LEVEL is Info and those two macros expand to no-ops,
+# so Development_Level (TRACE/DEBUG) call sites are removed from the binary.
+#
+# It is a DEFAULT feature so the common developer inner loop (`cargo build`,
+# `cargo test`, verify.ps1) automatically retains development logging without a
+# manual flag (Requirement 13.5). Production release builds strip it by dropping
+# default features, e.g. `cargo build --release --no-default-features` (the
+# release packaging tooling passes this); INFO/WARN/ERROR are unaffected.
+default = ["dev-logging"]
+dev-logging = []
+
 [dependencies]
 chrono = { version = "0.4", features = ["clock"] }
 crossbeam-channel = "0.5"
