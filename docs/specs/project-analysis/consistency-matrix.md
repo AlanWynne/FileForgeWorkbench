@@ -43,6 +43,9 @@ sub-project during Waves 0-5, finalized in Wave 6.
 | `BytePosition` / `LineNumber` / `CharacterExtracted` / `DocumentWatcher` | document-model | edit/nav consumers | No | Sole owner ff-document-model |
 | `LineEndMode` | document-model (owns) + encoding-and-characters (validates bytes) | -- | No | No duplicate ownership |
 | VFS-only I/O (Req 4.8) | document-model (consumer) + virtual-file-system (owner) | -- | No | VERIFIED no std::fs/tokio::fs (FFW-ARCH-001) |
+| `Vfs` / `VfsProvider` / `StorageProvider` / `ProviderRegistry` / `ResourceUri` / `VfsError` | virtual-file-system | ALL crates (FFW-ARCH-001) | No | Sole owner ff-vfs; only crate allowed direct std::fs |
+| `WatchHandle` / `WatchEvent` / `VfsTransaction` | virtual-file-system | document-model, external-modification, dataset-catalog | No | Sole owner ff-vfs |
+| workspace backup manifest | virtual-file-system (Req 12.2) + dataset-catalog (ff-dscatalog Req 26.3) | -- | Watch | PA-WATCH-003: verify shared-vs-distinct manifest type at Wave 2 |
 
 ## Command IDs
 
