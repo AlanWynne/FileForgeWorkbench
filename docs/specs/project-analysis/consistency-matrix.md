@@ -24,6 +24,13 @@ sub-project during Waves 0-5, finalized in Wave 6.
 | `LifecyclePhase` / `ThreadContext` / `CoreError` | platform-core | ff-desktop | No | Sole owner ff-core |
 | `ConfigProvider` (trait) | platform-core (defined) | ff-config (impl) | No | Trait in ff-core, impl in ff-config -- correct direction |
 | 5-layer model (Foundation/Core/Editor/Feature/Shell) | platform-core (Req 4) | whole workspace | No | Authoritative dependency-direction reference; enforced by Cargo.toml. Req 4.1 crate names illustrative -- PA-DOC-001 |
+| `ConfigValue` / `ConfigTable` / `ConfigLayer` / `ConfigHandle` / `ConfigError` | configuration-system | all consumer crates | No | Sole owner ff-config |
+| `EffectiveValue` / `Provenance` / `SchemaEntry` | configuration-system | ff-desktop (Settings) | No | Sole owner ff-config |
+| `PluginConfigHandle` | configuration-system | ff-plugin (PluginContext) | No | Sole owner ff-config |
+| `AuditEntry` / `ExportScope` / `ImportTarget` / `ImportSummary` | configuration-system | ff-desktop | No | Sole owner ff-config (Req 16/17) |
+| `ConfigProvider` (trait) | platform-core (defined) | ff-config (impl) | No | Correct direction (W0.1) |
+| plugin namespace `[plugins.{name}]` | configuration-system (Req 8) + plugin-architecture (Req 2.7/7.5) | -- | No | Same scoping rule both specs |
+| Settings_Menu / Settings_Namespace_View | configuration-system (Req 15) + menu-workspace | -- | Watch | Settings UI shared -- PA-SPLIT-001 folds Req 15 into menu-workspace |
 
 ## Command IDs
 

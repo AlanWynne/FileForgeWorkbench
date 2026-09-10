@@ -19,7 +19,7 @@ reference but are NOT carried forward.
 | # | Sub-project | Wave | Status | Analysis Record | Notes |
 |---|-------------|------|--------|-----------------|-------|
 | 1 | platform-core | 0 | DONE | units/platform-core.md | COMPLETE (100/100, TCR PASS); not a split; GUI-independence VERIFIED; logging EXEMPLARY; refactor PA-STD-001 (event_bus.rs 435); PA-DOC-001 (Req 4.1 crate-name drift); PA-LOG-001 (project-wide non-ASCII) |
-| 2 | configuration-system | 0 | PENDING | -- | foundation |
+| 2 | configuration-system | 0 | DONE | units/configuration-system.md | FUNCTIONALLY COMPLETE; SPLIT CANDIDATE (PA-SPLIT-001, 4/4); TRACKING GAP PA-TRACK-001 (Phase CQ tasks 30-31 stale, code+TCR done); refactor PA-STD-002 (6 files); PA-DOC-002 (Req 10-14 gap) |
 | 3 | logging-subsystem | 0 | PENDING | -- | foundation; feeds Req 5 logging audit |
 | 4 | command-framework | 0 | PENDING | -- | foundation; CR-NR-057 added Req 10 (Context Navigation Stack) |
 | 5 | document-model | 0 | PENDING | -- | foundation |
