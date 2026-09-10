@@ -1188,6 +1188,103 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 
 ---
 
+### Phase PA-W0 -- Wave 0 Analysis Remediation (project-analysis CR-NR-056) -- PROPOSAL
+
+> Dependency-ordered re-ordering of the incomplete Wave 0 (foundation) work found
+> by the project-analysis re-baseline pass (W0.1-W0.19, commits `7330b06`..`df79cd0`
+> against the CR-NR-057/CR-NR-058 specs). RECORDED per project-analysis Req 8
+> (non-destructive) -- surfaced here for owner scheduling, not yet executed. Each
+> item cites its incomplete-work-register ID + owning sub-project; items already
+> tracked by an existing phase (DF/DH/DI/DD) are cross-referenced, not duplicated.
+> Ordering rationale: the dev/debug-logging foundation FIRST (it is the highest-
+> leverage bug-reporting improvement and a prerequisite for per-command
+> instrumentation), then the other foundation code/behaviour defects, ready-to-
+> build gated features, tracking fixes, refactors, and owner-gated proposals.
+
+Group A -- dev/debug logging foundation (CR-NR-058, HIGHEST leverage; do first):
+- [ ] PA-W0.1 (PA-CR058 / logging Req 13, `ff-logging`) Implement the build-profile
+      compile-time gate: `dev-logging` cargo feature, `BUILD_PROFILE_LEVEL` const,
+      cfg-split `log_trace!`/`log_debug!` (no-op in release), workspace wiring so
+      debug/test builds enable it by default. Cross-ref: Phase DI Task 25. This is
+      the prerequisite for PA-W0.2 and the vehicle for all dev/debug logging below.
+- [ ] PA-W0.2 (PA-INCOMPLETE-004 / command Req 11, `ff-command`) Implement uniform
+      per-command instrumentation at the `execute_command` boundary: start (id +
+      redacted/bounded params) + completion (success/failure + result + duration)
+      at DEBUG, failures at WARN/ERROR; `redact_and_bound`; shared by sync + async
+      paths. Cross-ref: Phase DI Task 26. Depends on PA-W0.1. Instruments EVERY
+      command invocation project-wide -- the core "log while testing/debugging".
+
+Group B -- other foundation defects (code fixes, criteria already exist, no gate):
+- [ ] PA-W0.3 (PA-INCOMPLETE-002, `ff-background-io`) Implement Req 6.6-6.9 in
+      `load.rs::execute_load`: wire `RetryPolicy` from config (retry transient
+      VfsError, resume-from-position), add ERROR log on I/O failure + WARN per
+      retry; add the real mock-VFS retry integration test; then re-mark tasks
+      9.1-9.4/9.9/13.7. HIGH priority (silent unretried failures + unlogged errors).
+- [ ] PA-W0.4 (PA-LOG-004, `ff-vfs`) Add `ff-logging` dependency; replace the 3
+      `eprintln!` (registry.rs:77, subsystem.rs:87/105) with `log_info!`; add
+      `log_warn!` on the DuplicateScheme path to satisfy Req 3.3. Follow the
+      ff-plugin / ff-core exemplar (PA-LOG-REF-001).
+- [ ] PA-W0.5 (PA-LOG-005, `ff-workflow`) In `checkpoint.rs`: on deserialize/
+      schema-mismatch failure emit `log_error!` + remove the invalid checkpoint
+      (Req 7.6); replace `scan_resumable` `Err(_) => continue` with a `log_warn!`;
+      log the `cleanup_expired` remove result.
+
+Group C -- ready-to-build gated features (cross-ref existing phases):
+- [ ] PA-W0.6 (PA-INCOMPLETE-001, command Req 9) Command Arguments = Phase DF.7-DF.10
+      (already tracked); listed here for Wave 0 dependency ordering.
+- [ ] PA-W0.7 (PA-INCOMPLETE-003, command Req 10) Context Navigation Stack
+      (CR-NR-057) = Phase DH / Task 25 (already tracked); paired with
+      command-semantics Req 11 (W3.1).
+
+Group D -- tracking fixes (bookkeeping, no code):
+- [ ] PA-W0.8 (PA-TRACK-001, configuration-system) Check Phase CQ tasks 30-31 (Req
+      16 Audit / Req 17 Export/Import) -- code + TCR done, checkboxes stale.
+- [ ] PA-W0.9 (PA-TRACK-002, logging-subsystem) Check tasks 23-24 + set TCR Phase DD
+      Req 12.1-12.5 to PASS (tool + report verified present/deterministic).
+- [ ] PA-W0.10 (PA-TCR-001, `ff-background-io`) Add TCR rows Req 1-8 AFTER PA-W0.3;
+      Req 6.6-6.9 stay NOT COVERED/FAIL until then.
+- [ ] PA-W0.11 (PA-DOC-001, platform-core) Reconcile Req 4.1 illustrative crate
+      names OR annotate as illustrative (doc-only).
+- [ ] PA-W0.12 (PA-DOC-002, configuration-system) Confirm Req 10-14 allocated
+      elsewhere; add a note to the spec Introduction (doc-only).
+
+Group E -- refactors (400-line cap, REFACTOR, no gate; do when the file is touched):
+- [ ] PA-W0.13 (PA-STD-001, `ff-core`) Split `event_bus.rs` (435).
+- [ ] PA-W0.14 (PA-STD-002, `ff-config`) Split 6 files over the cap (config_handle
+      809, editorconfig/parser 626, reload 510, access 486, init 446, plugin_handle
+      432).
+- [ ] PA-W0.15 (PA-STD-003, `ff-logging`) Split `init.rs` (640).
+- [ ] PA-W0.16 (PA-STD-004, `ff-plugin`) Split `registry.rs` (698).
+- [ ] PA-W0.17 (PA-STD-005, `ff-workflow`) Split `runner.rs` (483) / `definition.rs`
+      (463).
+- [ ] PA-W0.18 (PA-STD-006, `ff-encoding`) Split `convert.rs` (536); also `ff-vfs`
+      posix_provider.rs (444) / workspace.rs (410) per PA-SPLIT-002;
+      `ff-document-model` document.rs (399 at cap) per PA-WATCH-002 on next touch.
+
+Group F -- proposals requiring owner approval + own gate (NOT scheduled here):
+- [ ] PA-W0.19 (PA-SPLIT-001, configuration-system) Spec split: core Req 1-9 +
+      `configuration-enterprise` Req 16-18; fold Settings UI (Req 15, 18.6) into
+      menu-workspace. Owner-gated.
+- [ ] PA-W0.20 (PA-SPLIT-003, encoding-and-characters) Spec split: encoding-I/O
+      (Req 1-5,11,14) + new `character-classification` (Req 6,7,12,13). Owner-gated.
+- [ ] PA-W0.21 (PA-WATCH-004, `ff-workflow`) Decide checkpoint I/O: route through
+      VFS OR document an explicit FFW-ARCH-001 exception. Owner-gated.
+- [ ] PA-W0.22 (PA-LOG-002 + PA-LOG-003, project-wide) After PA-W0.1/PA-W0.2 land,
+      decide which of the 56 zero-log crates still need manual instrumentation
+      (many are covered automatically by per-command instrumentation); add
+      remaining dev diagnostics via the `dev-logging` convention. PA-LOG-003
+      (`ff-document-model`) folds in here.
+- [ ] PA-W0.23 (PA-LOG-001, project-wide) One code-mode pass replacing non-ASCII in
+      `.rs` with ASCII, EXCLUDING genuine Unicode test/data literals (ff-encoding,
+      ff-document-model).
+
+> Consistency watches carried to later waves (no Wave 0 action): PA-WATCH-001
+> (Command_Target + Context-Navigation-Stack fan-out, Waves 3-5), PA-WATCH-003
+> (workspace-backup manifest vs dataset-catalog, Wave 2), PA-WATCH-005
+> (ff-encoding Unicode-data generation, Wave 6).
+
+---
+
 ## Summary
 
 | Status | Count |
@@ -1218,3 +1315,16 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 | `[ ]` Phase DE-fix | END/RETURN from POM close the Workspace, exit only when sole Workspace (CR-CH-016) -- SPEC DONE (Req 17.2/17.2a/17.4/4.3/8.2), impl pending (DE-fix.1-DE-fix.5) |
 | Active work | Phase CZ -- FFTest Script Suite + Context Inspection (next step) |
 | `[ ]` Phase DH (spec) | Command Chaining and Context Navigation Stack (CR-NR-057) -- SPEC DONE: command-semantics Req 11 (Command_Chain parse + fail-stop sequential execute, `commands.max_chain_length` default 16), command-framework Req 10 (Context_Navigation_Stack, `=`-origin rule, `.` STOP vs `;` PUSH, END/RETURN chainable, `navigation.stack_max_depth` default 32), menu-workspace Req 5.7-5.12 (separator semantics + `=` origin in the chained-path resolver), lua-macro-engine Req 5.8-5.11 (newline == `;`, shared chain executor, no piping). Impl pending: command-semantics Task 28, command-framework Task 25, menu-workspace Task 21, lua-macro-engine Task 26 |
+
+## Phase DI -- Build-Profile Logging + Uniform Command Instrumentation (CR-NR-058)
+
+- [ ] DI.1 logging-subsystem Requirement 13 (compile-time build-profile level gating) -- SPEC DONE
+- [ ] DI.2 command-framework Requirement 11 (uniform per-command instrumentation) -- SPEC DONE
+- [ ] DI.3 (impl) `ff-logging`: `dev-logging` cargo feature, public `BUILD_PROFILE_LEVEL` const, cfg-split `log_trace!`/`log_debug!` (no-op in release), workspace debug-vs-release wiring (logging-subsystem Task 25)
+- [ ] DI.4 (impl) `ff-command`: single Instrumentation_Point in `execute_command` -- start (DEBUG) + completion (DEBUG ok / WARN err) with redacted/bounded params and handler-only duration; rejection paths traced (command-framework Task 26)
+- [ ] DI.5 TCR rows for logging-subsystem Req 13.1-13.8 and command-framework Req 11.1-11.9 set to their correct status
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase DI (spec) | Build-Profile Logging + Uniform Command Instrumentation (CR-NR-058) -- SPEC DONE: logging-subsystem Req 13 (compile-time `dev-logging` gate, `BUILD_PROFILE_LEVEL` const, TRACE/DEBUG stripped from release), command-framework Req 11 (uniform start/params/completion instrumentation at the `execute_command` boundary, DEBUG for start/success, WARN for failure, redaction + duration). Impl pending: logging-subsystem Task 25, command-framework Task 26 |
+| `[ ]` Phase PA-W0 (PROPOSAL) | Wave 0 Analysis Remediation (project-analysis CR-NR-056, re-baselined for CR-NR-057/CR-NR-058) -- dependency-ordered Wave 0 findings (PA-W0.1-PA-W0.23). Group A: dev-logging foundation (CR-NR-058 Req 13 gate + Req 11 instrumentation = Phase DI). Group B defects: PA-INCOMPLETE-002 (ff-background-io Req 6.6-6.9), PA-LOG-004 (ff-vfs Req 3.3), PA-LOG-005 (ff-workflow Req 7.6). Group C features: command Req 9 = Phase DF, Req 10 = Phase DH. Groups D-F: tracking, refactors, owner-gated proposals. RECORDED, not executed |

@@ -16,6 +16,23 @@ superseded. All sub-projects reset to PENDING; re-run from W0.1 against the new
 baseline. The prior records remain in git history (up to `edb690d`) for
 reference but are NOT carried forward.
 
+**Wave 0 COMPLETE (W0.1-W0.21) on the re-baseline** (commits `7330b06`..`df79cd0`).
+All 10 foundation sub-projects analysed against the CR-NR-057 + CR-NR-058 specs;
+the Wave 0 task-revision (W0.21) recorded the dependency-ordered remediation as
+`Phase PA-W0` (PROPOSAL, PA-W0.1-PA-W0.23) in
+`docs/specs/project-master/tasks.md`. Wave 0 outcome: 3 clean/complete
+(platform-core, document-model, plugin-architecture); 3 complete-with-proposals
+(configuration-system split, virtual-file-system IWR-005-resolved,
+encoding-and-characters borderline split); command-framework INCOMPLETE on THREE
+gated-but-unbuilt reqs (Req 9 args, Req 10 nav-stack CR-NR-057, Req 11
+per-command instrumentation CR-NR-058); workflow-engine (Req 7.6 + tokio::fs);
+virtual-file-system (PA-LOG-004 eprintln defect); background-io (Req 6.6-6.9
+unimplemented, false-positive tests, HIGH); 2 tracking gaps (config CQ tasks
+30-31, logging Req 12 tool); logging-subsystem gained CR-NR-058 Req 13
+(build-profile dev-logging gate, UNIMPLEMENTED). Top remediation priority: the
+CR-NR-058 dev/debug-logging foundation (PA-W0.1 gate then PA-W0.2 per-command
+instrumentation).
+
 | # | Sub-project | Wave | Status | Analysis Record | Notes |
 |---|-------------|------|--------|-----------------|-------|
 | 1 | platform-core | 0 | DONE | units/platform-core.md | COMPLETE (100/100, TCR PASS); not a split; GUI-independence VERIFIED; logging EXEMPLARY; refactor PA-STD-001 (event_bus.rs 435); PA-DOC-001 (Req 4.1 crate-name drift); PA-LOG-001 (project-wide non-ASCII) |
