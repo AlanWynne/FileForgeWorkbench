@@ -52,7 +52,7 @@ instrumentation).
 | 15 | edit-operations | 1 | DONE | units/edit-operations.md | COMPLETE (280/280, TCR PASS); SPLIT CANDIDATE (PA-SPLIT-005, 17 reqs/553 lines); PA-WATCH-006 RESOLVED (selection ownership clean); CONFLICT PA-CONFLICT-002 CONFIRMED (EditorTransaction de-facto canonical vs unwired undo-redo model); zero-log defensible |
 | 16 | line-commands | 1 | DONE | units/line-commands.md | COMPLETE (215/215, 13 TCR rows PASS); NOT a split (cohesive engine); corroborates PA-CONFLICT-002 (produces EditorTransaction, ff-undo-redo dep UNUSED = PA-DEP-001); refactor PA-STD-010 (resolution.rs 422); zero-log defensible |
 | 17 | navigation-commands | 1 | DONE | units/navigation-commands.md | INCOMPLETE (Req 20 Scroll Amount Args, Phase DF, PA-INCOMPLETE-005, ships with cmd Req 9); Req 1-19 done; SPLIT CANDIDATE (PA-SPLIT-006, 20 reqs/624 lines -- SORT + COLS/BOUNDS seams); PA-WATCH-008 RESOLVED (delegates to viewport, no duplication); zero-log defensible |
-| 18 | find-and-replace | 1 | PENDING | -- | core editing/model |
+| 18 | find-and-replace | 1 | DONE | units/find-and-replace.md | Tracking-COMPLETE (185/185); SPLIT CANDIDATE (PA-SPLIT-007, 20 reqs/437 lines -- extract NFA regex); CONFLICT PA-CONFLICT-003 (duplicate CaseFolder vs ff-encoding); refactor PA-STD-011 (regex.rs 993, engine.rs 838); TCR thin PA-TCR-002 (1 row/20 reqs); zero-log defensible |
 | 19 | sequence-numbers | 1 | PENDING | -- | core editing/model |
 | 20 | syntax-highlighting | 1 | PENDING | -- | core editing/model |
 | 21 | exclude-show-filter | 1 | PENDING | -- | core editing/model |

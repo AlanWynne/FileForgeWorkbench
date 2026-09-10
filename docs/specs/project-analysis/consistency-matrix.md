@@ -54,6 +54,9 @@ sub-project during Waves 0-5, finalized in Wave 6.
 | scroll-amount: commands (M/MAX/n) vs field (CSR/PAGE/HALF) | navigation-commands (Req 20 commands, DELEGATES) + viewport-and-scrolling (Req 14 field + state/clamping) | -- | No | PA-WATCH-008 RESOLVED W1.7: single source of truth; nav delegates viewport state; complementary layers |
 | UP/DOWN/LEFT/RIGHT/TOP/BOTTOM/LOCATE/SORT/COLS/BOUNDS commands | navigation-commands | command-framework, viewport-and-scrolling (delegate) | No | Sole owner ff-navigation-commands |
 | active Bounds state + query API (Req 5.15) | navigation-commands (owner) | line-commands (bounds-aware shift), find-and-replace (CHANGE/FIND), SORT | No | Single owner, multiple readers -- consistent |
+| `FindEngine` / `FindRequest` / `FindResult` / `RegexEngine` / `FindState` | find-and-replace | command-semantics, exclude-show-filter, ff-desktop | No | Sole owner ff-find-and-replace |
+| `CaseFolder` / `ICaseConverter` | encoding-and-characters (declared owner, Req 10) + find-and-replace (DUPLICATE own impl) | -- | CONFLICT | PA-CONFLICT-003: find-and-replace defines its own CaseFolder instead of consuming ff-encoding's via ICaseConverter; not bridged; contrary to its own cross-ref |
+| `RegexEngine` (NFA) | find-and-replace | -- | No | Sole owner; PA-SPLIT-007 proposes extracting to `ff-regex` |
 | Caret/selection VISUAL config (CaretStyle, SelectionColours, BlinkState) | caret-and-selection | ff-desktop (renderer), theme | No | Sole owner ff-caret-selection -- RENDERING only |
 | `Selection` / `SelectionRange` / `SelectionPosition` (LOGICAL model) | edit-operations (owner, W1.5) | caret-and-selection (renders; does NOT duplicate -- W1.3 verified), undo-redo (own snapshot) | Watch | PA-WATCH-006: confirm undo-redo SelectionState references it at W1.5 |
 | `CommandId` / `CommandParams` / `CommandResult` / `CommandRegistry` / `ExecutionContext` | command-framework | all crates | No | Sole owner ff-command |
