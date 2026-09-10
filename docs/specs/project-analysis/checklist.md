@@ -46,7 +46,7 @@ instrumentation).
 | 9 | background-io | 0 | DONE | units/background-io.md | INCOMPLETE despite 133/133 tasks: Req 6.6-6.9 (error log/retry/resume) NOT in load path (PA-INCOMPLETE-002, false-positive tests, HIGH); no TCR rows (PA-TCR-001); FFW-ARCH-001 verified upheld; not a split candidate |
 | 10 | encoding-and-characters | 0 | DONE | units/encoding-and-characters.md | COMPLETE (111/111, TCR PASS); BORDERLINE SPLIT (PA-SPLIT-003, 14 reqs/3 bands); zero-log CORRECT (spec-mandated stateless); convert.rs refactor PA-STD-006; PA-WATCH-005 |
 | 11 | undo-redo-transactions | 1 | DONE | units/undo-redo-transactions.md | COMPLETE (159/159, TCR PASS); SPLIT CANDIDATE (PA-SPLIT-004, 19 reqs/553 lines); logging gap PA-LOG-006 (Req 3.5 WARNING); refactor PA-STD-007 (manager.rs 600); crate-name drift PA-DOC-003; PA-CONFLICT-002 (two transaction models, resolve W1.5) |
-| 12 | viewport-and-scrolling | 1 | PENDING | -- | core editing/model |
+| 12 | viewport-and-scrolling | 1 | DONE | units/viewport-and-scrolling.md | COMPLETE (129/129, TCR PASS); borderline (14 reqs) but NOT a split -- fix is refactor PA-STD-008 (viewport.rs 572); CONFLICT PA-CONFLICT-001 (own DisplayLineMapper trait, resolve W1.4); zero-log defensible; PA-DOC-004; watch PA-WATCH-008 |
 | 13 | caret-and-selection | 1 | PENDING | -- | core editing/model |
 | 14 | display-line-mapping | 1 | PENDING | -- | core editing/model |
 | 15 | edit-operations | 1 | PENDING | -- | core editing/model |

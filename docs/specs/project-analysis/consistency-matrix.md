@@ -40,6 +40,10 @@ sub-project during Waves 0-5, finalized in Wave 6.
 | `EditorTransaction` (line-snapshot model) vs `Transaction` (undo-redo) | edit-operations + undo-redo-transactions | -- | CONFLICT | PA-CONFLICT-002: two undo-unit models; verify bridged/duplicate at W1.5 |
 | `SelectionState` (undo snapshot) | undo-redo-transactions (Req 9) | -- | Watch | PA-WATCH-006: vs edit-operations Selection (W1.5) + caret-and-selection rendering (W1.3) |
 | `RecoveryPayload` (serialize-only) | undo-redo-transactions | file-operations/background-io (perform I/O) | No | Crate serialises to bytes+CRC32; caller does the write -- GUI/IO-independent |
+| `Viewport` / `CaretPolicy` / `ScrollMode` / `ViewportError` | viewport-and-scrolling | ff-desktop (renderer), editor session | No | Sole owner ff-viewport-scrolling |
+| scroll commands (ScrollPageUp/Down etc.) | viewport-and-scrolling | command-framework | No | Non-undoable (Req 10.6) -- consistent with undo-redo Req 10 |
+| `DisplayLineMapper` (viewport-local) vs `DisplayLineMapping` (canonical) | viewport-and-scrolling (DUPLICATE local) + display-line-mapping (owner, W1.4) | -- | CONFLICT | PA-CONFLICT-001: viewport defines its own trait instead of consuming canonical; not bridged; contrary to viewport Req 11.1 |
+| scroll-amount CSR/PAGE/HALF | viewport-and-scrolling (Req 14) + navigation-commands (Req 20) | -- | Watch | PA-WATCH-008: verify no duplicate source of truth at W1.7 |
 | `CommandId` / `CommandParams` / `CommandResult` / `CommandRegistry` / `ExecutionContext` | command-framework | all crates | No | Sole owner ff-command |
 | `ShortcutBinding` / `Chord` | command-framework | ff-desktop | No | Sole owner ff-command |
 | `CommandTarget` (5 variants, incl. produces_visible_workspace) | command-framework | menu-workspace, command-configurator, startup-and-session, shell-command, lua-macro-engine | Watch | PA-WATCH-001: verify Target_Resolution + Req 10.10 predicate reuse |
