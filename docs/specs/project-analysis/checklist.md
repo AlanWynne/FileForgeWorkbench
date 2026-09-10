@@ -8,31 +8,31 @@ Status values: PENDING / IN PROGRESS / DONE. Wave is the planned analysis wave
 `ears-integration` and `workbench-requirements-merge` are analysis-artifact
 sub-projects reviewed in Wave 6 (review only).
 
-**Wave 0 COMPLETE (W0.1-W0.21).** All 10 foundation sub-projects analysed; the
-Wave 0 task-revision (W0.21) recorded the dependency-ordered remediation as
-`Phase PA-W0` (PROPOSAL) in `docs/specs/project-master/tasks.md`. Wave 0 outcome:
-3 clean/complete (platform-core, document-model, plugin-architecture), 3 complete
-with proposals (configuration-system, virtual-file-system, encoding-and-characters),
-3 with real code/logging gaps (command-framework Req 9, workflow-engine Req 7.6,
-background-io Req 6.6-6.9), 1 tracking-only gap (logging-subsystem Req 12 tool).
+**RE-BASELINED (restart) after CR-NR-057** (command chaining + Context Navigation
+Stack, commit `b537737`). CR-NR-057 changed foundational core specs
+(command-framework Req 10, command-semantics, lua-macro-engine, menu-workspace),
+so the prior analysis pass (W0.1-W1.5, committed through `edb690d`) is
+superseded. All sub-projects reset to PENDING; re-run from W0.1 against the new
+baseline. The prior records remain in git history (up to `edb690d`) for
+reference but are NOT carried forward.
 
 | # | Sub-project | Wave | Status | Analysis Record | Notes |
 |---|-------------|------|--------|-----------------|-------|
-| 1 | platform-core | 0 | DONE | units/platform-core.md | COMPLETE; not a split candidate; PA-LOG-001, PA-DOC-001 logged |
-| 2 | configuration-system | 0 | DONE | units/configuration-system.md | COMPLETE; SPLIT CANDIDATE (spec split proposed PA-SPLIT-001); PA-STD-001, PA-DOC-002 logged |
-| 3 | logging-subsystem | 0 | DONE | units/logging-subsystem.md | FUNCTIONALLY COMPLETE; not a split candidate; Req 12 tool done but tracking stale (PA-TRACK-001); PA-LOG-002 = project-wide audit data source |
-| 4 | command-framework | 0 | DONE | units/command-framework.md | INCOMPLETE (Req 9 Command Arguments unimplemented, PA-INCOMPLETE-001); not a split candidate; Command_Target fan-out watch PA-WATCH-001 |
-| 5 | document-model | 0 | DONE | units/document-model.md | COMPLETE (140/140 tasks, TCR PASS); not a split candidate; VFS-only verified; PA-WATCH-002 (document.rs at 400 cap); PA-LOG-003 (optional logging) |
-| 6 | virtual-file-system | 0 | DONE | units/virtual-file-system.md | Feature-COMPLETE (91/91, Req 1-12 TCR-PASS); IWR-005 RESOLVED; LOGGING DEFECT PA-LOG-004 (eprintln + unmet Req 3.3 WARN); weak split PA-SPLIT-002; PA-WATCH-003 |
-| 7 | plugin-architecture | 0 | DONE | units/plugin-architecture.md | COMPLETE (169/169, TCR PASS); not a split candidate; logging EXEMPLARY (PA-LOG-REF-001); registry.rs 698-line refactor PA-STD-002 |
-| 8 | workflow-engine | 0 | DONE | units/workflow-engine.md | Tracking-COMPLETE (124/124, TCR PASS); not a split candidate; LOGGING GAP PA-LOG-005 (Req 7.6 unmet, checkpoint silent errors); FFW-ARCH-001 watch PA-WATCH-004; refactor PA-STD-003 |
-| 9 | background-io | 0 | DONE | units/background-io.md | INCOMPLETE despite 133/133 tasks: Req 6.6-6.9 (error log/retry/resume) NOT in load path (PA-INCOMPLETE-002, false-positive tests); no TCR rows (PA-TCR-001); FFW-ARCH-001 verified upheld; not a split candidate |
-| 10 | encoding-and-characters | 0 | DONE | units/encoding-and-characters.md | COMPLETE (111/111, TCR PASS); BORDERLINE SPLIT (PA-SPLIT-003, 14 reqs/3 bands); zero-log CORRECT (spec-mandated stateless); convert.rs refactor PA-STD-004; PA-WATCH-005 |
-| 11 | undo-redo-transactions | 1 | DONE | units/undo-redo-transactions.md | COMPLETE (159/159, TCR PASS); SPLIT CANDIDATE (PA-SPLIT-004, 19 reqs/553 lines); logging gap PA-LOG-006 (Req 3.5 WARNING); refactor PA-STD-005 (manager.rs 600); crate-name drift PA-DOC-003; recovery I/O design VERIFIED correct |
-| 12 | viewport-and-scrolling | 1 | DONE | units/viewport-and-scrolling.md | COMPLETE (129/129, TCR PASS); borderline (14 reqs) but NOT a split -- fix is refactor PA-STD-006 (viewport.rs 572); zero-log defensible; PA-DOC-004 name drift; watches PA-WATCH-007/008 |
-| 13 | caret-and-selection | 1 | DONE | units/caret-and-selection.md | COMPLETE (127/127, TCR PASS); NOT a split (cohesive rendering layer, well-factored, no file over cap); zero-log defensible; PA-WATCH-006 partially resolved (visual layer, no logical-model duplication; final check W1.5) |
-| 14 | display-line-mapping | 1 | DONE | units/display-line-mapping.md | COMPLETE (87/87, TCR PASS); not a split; CONFLICT PA-CONFLICT-001 (viewport's own DisplayLineMapper vs canonical DisplayLineMapping, PA-WATCH-007 resolved); refactor PA-STD-007 (contraction_state.rs 614); zero-log defensible |
-| 15 | edit-operations | 1 | DONE | units/edit-operations.md | COMPLETE (280/280, TCR PASS); SPLIT CANDIDATE (PA-SPLIT-005, 17 reqs/553 lines); PA-WATCH-006 RESOLVED (selection ownership clean); CONFLICT PA-CONFLICT-002 (two unbridged transaction models edit-operations vs undo-redo); zero-log defensible |
+| 1 | platform-core | 0 | PENDING | -- | foundation |
+| 2 | configuration-system | 0 | PENDING | -- | foundation |
+| 3 | logging-subsystem | 0 | PENDING | -- | foundation; feeds Req 5 logging audit |
+| 4 | command-framework | 0 | PENDING | -- | foundation; CR-NR-057 added Req 10 (Context Navigation Stack) |
+| 5 | document-model | 0 | PENDING | -- | foundation |
+| 6 | virtual-file-system | 0 | PENDING | -- | foundation; verify IWR-005 (Req 9-12 task gap) |
+| 7 | plugin-architecture | 0 | PENDING | -- | foundation |
+| 8 | workflow-engine | 0 | PENDING | -- | foundation |
+| 9 | background-io | 0 | PENDING | -- | foundation |
+| 10 | encoding-and-characters | 0 | PENDING | -- | foundation |
+| 11 | undo-redo-transactions | 1 | PENDING | -- | core editing/model |
+| 12 | viewport-and-scrolling | 1 | PENDING | -- | core editing/model |
+| 13 | caret-and-selection | 1 | PENDING | -- | core editing/model |
+| 14 | display-line-mapping | 1 | PENDING | -- | core editing/model |
+| 15 | edit-operations | 1 | PENDING | -- | core editing/model |
 | 16 | line-commands | 1 | PENDING | -- | core editing/model |
 | 17 | navigation-commands | 1 | PENDING | -- | core editing/model |
 | 18 | find-and-replace | 1 | PENDING | -- | core editing/model |
@@ -50,11 +50,11 @@ background-io Req 6.6-6.9), 1 tracking-only gap (logging-subsystem Req 12 tool).
 | 30 | structure-catalog | 2 | PENDING | -- | catalog/dataset |
 | 31 | record-selection-criteria | 2 | PENDING | -- | catalog/dataset |
 | 32 | tabs-and-mask | 2 | PENDING | -- | catalog/dataset |
-| 33 | command-semantics | 3 | PENDING | -- | shell/commands/menus |
+| 33 | command-semantics | 3 | PENDING | -- | shell/commands/menus; CR-NR-057 change |
 | 34 | command-completion | 3 | PENDING | -- | shell/commands/menus |
 | 35 | command-palette | 3 | PENDING | -- | shell/commands/menus |
 | 36 | command-configurator | 3 | PENDING | -- | shell/commands/menus |
-| 37 | menu-workspace | 3 | PENDING | -- | shell/commands/menus |
+| 37 | menu-workspace | 3 | PENDING | -- | shell/commands/menus; CR-NR-057 change |
 | 38 | menu-and-statusbar | 3 | PENDING | -- | shell/commands/menus |
 | 39 | function-keys-and-history | 3 | PENDING | -- | shell/commands/menus |
 | 40 | shell-command | 3 | PENDING | -- | shell/commands/menus |
@@ -82,7 +82,7 @@ background-io Req 6.6-6.9), 1 tracking-only gap (logging-subsystem Req 12 tool).
 | 62 | compiler-toolchain-integration | 5 | PENDING | -- | tools |
 | 63 | batch-execution | 5 | PENDING | -- | tools |
 | 64 | asa-report-preview | 5 | PENDING | -- | tools |
-| 65 | lua-macro-engine | 5 | PENDING | -- | tools |
+| 65 | lua-macro-engine | 5 | PENDING | -- | tools; CR-NR-057 change |
 | 66 | language-service | 5 | PENDING | -- | tools |
 | 67 | custom-file-viewers | 5 | PENDING | -- | tools |
 | 68 | compare-and-merge | 5 | PENDING | -- | tools |
@@ -108,3 +108,7 @@ background-io Req 6.6-6.9), 1 tracking-only gap (logging-subsystem Req 12 tool).
 - Total subjects: 81 folders under `docs/specs/`, minus `project-analysis`
   (the analysis itself) = 80 analysed here; `project-master`,
   `workbench-requirements-merge`, and `ears-integration` are meta/review entries.
+- **CR-NR-057 re-baseline**: restart triggered because CR-NR-057 modified
+  foundational specs (command-framework Req 10 Context Navigation Stack,
+  command-semantics, lua-macro-engine, menu-workspace). Prior pass superseded at
+  commit `edb690d`.
