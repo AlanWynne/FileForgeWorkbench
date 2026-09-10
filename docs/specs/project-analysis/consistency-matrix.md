@@ -51,7 +51,9 @@ sub-project during Waves 0-5, finalized in Wave 6.
 | `DisplayLineMapper` (viewport-local) vs `DisplayLineMapping` (canonical) | viewport-and-scrolling (DUPLICATE local) + display-line-mapping (owner) | -- | CONFLICT | PA-CONFLICT-001 CONFIRMED W1.4: viewport defines its own trait, never imports canonical; not bridged; contrary to viewport Req 11.1 |
 | `ContractionState` / DocLine / DisplayLine / SubLine | display-line-mapping | consumers | No | Sole owner ff-display-line-mapping |
 | Fold-level storage | syntax-highlighting/language-service (owner, W1.10) NOT display-line-mapping | display-line-mapping (stores only visibility+expanded, Req 10.7) | No | Clean boundary; confirm at W1.10 |
-| scroll-amount CSR/PAGE/HALF | viewport-and-scrolling (Req 14) + navigation-commands (Req 20) | -- | Watch | PA-WATCH-008: verify no duplicate source of truth at W1.7 |
+| scroll-amount: commands (M/MAX/n) vs field (CSR/PAGE/HALF) | navigation-commands (Req 20 commands, DELEGATES) + viewport-and-scrolling (Req 14 field + state/clamping) | -- | No | PA-WATCH-008 RESOLVED W1.7: single source of truth; nav delegates viewport state; complementary layers |
+| UP/DOWN/LEFT/RIGHT/TOP/BOTTOM/LOCATE/SORT/COLS/BOUNDS commands | navigation-commands | command-framework, viewport-and-scrolling (delegate) | No | Sole owner ff-navigation-commands |
+| active Bounds state + query API (Req 5.15) | navigation-commands (owner) | line-commands (bounds-aware shift), find-and-replace (CHANGE/FIND), SORT | No | Single owner, multiple readers -- consistent |
 | Caret/selection VISUAL config (CaretStyle, SelectionColours, BlinkState) | caret-and-selection | ff-desktop (renderer), theme | No | Sole owner ff-caret-selection -- RENDERING only |
 | `Selection` / `SelectionRange` / `SelectionPosition` (LOGICAL model) | edit-operations (owner, W1.5) | caret-and-selection (renders; does NOT duplicate -- W1.3 verified), undo-redo (own snapshot) | Watch | PA-WATCH-006: confirm undo-redo SelectionState references it at W1.5 |
 | `CommandId` / `CommandParams` / `CommandResult` / `CommandRegistry` / `ExecutionContext` | command-framework | all crates | No | Sole owner ff-command |
