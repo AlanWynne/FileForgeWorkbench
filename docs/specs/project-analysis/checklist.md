@@ -27,7 +27,7 @@ reference but are NOT carried forward.
 | 7 | plugin-architecture | 0 | DONE | units/plugin-architecture.md | COMPLETE (169/169, TCR PASS); not a split; logging EXEMPLARY (PA-LOG-REF-001); refactor PA-STD-004 (registry.rs 698) |
 | 8 | workflow-engine | 0 | DONE | units/workflow-engine.md | Tracking-COMPLETE (124/124, TCR PASS); not a split; LOGGING GAP PA-LOG-005 (Req 7.6 unmet, checkpoint silent errors); FFW-ARCH-001 watch PA-WATCH-004 (checkpoint tokio::fs); refactor PA-STD-005 |
 | 9 | background-io | 0 | DONE | units/background-io.md | INCOMPLETE despite 133/133 tasks: Req 6.6-6.9 (error log/retry/resume) NOT in load path (PA-INCOMPLETE-002, false-positive tests, HIGH); no TCR rows (PA-TCR-001); FFW-ARCH-001 verified upheld; not a split candidate |
-| 10 | encoding-and-characters | 0 | PENDING | -- | foundation |
+| 10 | encoding-and-characters | 0 | DONE | units/encoding-and-characters.md | COMPLETE (111/111, TCR PASS); BORDERLINE SPLIT (PA-SPLIT-003, 14 reqs/3 bands); zero-log CORRECT (spec-mandated stateless); convert.rs refactor PA-STD-006; PA-WATCH-005 |
 | 11 | undo-redo-transactions | 1 | PENDING | -- | core editing/model |
 | 12 | viewport-and-scrolling | 1 | PENDING | -- | core editing/model |
 | 13 | caret-and-selection | 1 | PENDING | -- | core editing/model |

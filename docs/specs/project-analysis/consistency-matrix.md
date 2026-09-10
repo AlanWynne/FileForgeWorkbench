@@ -55,6 +55,9 @@ sub-project during Waves 0-5, finalized in Wave 6.
 | `IoError` / `ProgressState` / `IoTaskHandle` / `BackgroundIoService` / `RetryPolicy` | background-io | file-operations, document-model, shell | No | Sole owner ff-background-io (RetryPolicy defined but NOT wired -- PA-INCOMPLETE-002) |
 | `IoCancellationToken` | background-io | callers | No | Distinct from ff-workflow CancellationToken |
 | VFS-only I/O (Req 1.8/4.10/8.x) | background-io (consumer) + virtual-file-system (owner) | -- | No | VERIFIED upheld (only lib.rs doc-comment mentions std::fs) |
+| `EncodingFamily` / `CharClassify` / `CharacterCategoryMap` / `CaseFolder` | encoding-and-characters | document-model, find, edit, nav | No | Sole owner ff-encoding |
+| `ConversionResult` / `ConversionIssue` | encoding-and-characters | file-operations, document-model | No | Sole owner ff-encoding; lossy replacements returned to caller (Req 3.4) |
+| LineEndMode interaction | encoding-and-characters (validates U+2028/2029/0085) + document-model (owns LineEndMode) | -- | No | ff-encoding validates bytes; document-model decides semantics -- no duplicate ownership |
 
 ## Command IDs
 
