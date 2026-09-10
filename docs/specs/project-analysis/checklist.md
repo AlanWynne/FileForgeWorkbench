@@ -20,7 +20,7 @@ reference but are NOT carried forward.
 |---|-------------|------|--------|-----------------|-------|
 | 1 | platform-core | 0 | DONE | units/platform-core.md | COMPLETE (100/100, TCR PASS); not a split; GUI-independence VERIFIED; logging EXEMPLARY; refactor PA-STD-001 (event_bus.rs 435); PA-DOC-001 (Req 4.1 crate-name drift); PA-LOG-001 (project-wide non-ASCII) |
 | 2 | configuration-system | 0 | DONE | units/configuration-system.md | FUNCTIONALLY COMPLETE; SPLIT CANDIDATE (PA-SPLIT-001, 4/4); TRACKING GAP PA-TRACK-001 (Phase CQ tasks 30-31 stale, code+TCR done); refactor PA-STD-002 (6 files); PA-DOC-002 (Req 10-14 gap) |
-| 3 | logging-subsystem | 0 | PENDING | -- | foundation; feeds Req 5 logging audit |
+| 3 | logging-subsystem | 0 | DONE | units/logging-subsystem.md | FUNCTIONALLY COMPLETE; not a split; Req 12 tool done but tracking stale (PA-TRACK-002); PA-LOG-002 = project-wide audit data (56/69 zero-log, 792 silent-error); refactor PA-STD-003 (init.rs 640) |
 | 4 | command-framework | 0 | PENDING | -- | foundation; CR-NR-057 added Req 10 (Context Navigation Stack) |
 | 5 | document-model | 0 | PENDING | -- | foundation |
 | 6 | virtual-file-system | 0 | PENDING | -- | foundation; verify IWR-005 (Req 9-12 task gap) |

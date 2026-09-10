@@ -31,6 +31,9 @@ sub-project during Waves 0-5, finalized in Wave 6.
 | `ConfigProvider` (trait) | platform-core (defined) | ff-config (impl) | No | Correct direction (W0.1) |
 | plugin namespace `[plugins.{name}]` | configuration-system (Req 8) + plugin-architecture (Req 2.7/7.5) | -- | No | Same scoping rule both specs |
 | Settings_Menu / Settings_Namespace_View | configuration-system (Req 15) + menu-workspace | -- | Watch | Settings UI shared -- PA-SPLIT-001 folds Req 15 into menu-workspace |
+| `LogLevel` / `LogConfig` / `LogRecord` / `PluginLogHandle` | logging-subsystem | all crates | No | Sole owner ff-logging |
+| `log_trace!`/`log_debug!`/`log_info!`/`log_warn!`/`log_error!` (macros) + `log()`/`log_lazy()` | logging-subsystem | all crates | No | Sole owner ff-logging |
+| logging.* config keys | logging-subsystem (consumer) + configuration-system (owns `logging` namespace) | -- | No | Two-phase init (CR-CH-015, B033); ff-logging inits before ff-config |
 
 ## Command IDs
 
