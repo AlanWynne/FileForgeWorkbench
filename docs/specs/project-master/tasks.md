@@ -1667,6 +1667,117 @@ THE HEADLINE FINDING: FOUR complete, well-tested infrastructure crates are ORPHA
 > (0 real fs); ff-file-ops is NOT an orphan (consumed by ff-global-search) -- breaks the streak;
 > file-ops CONFIRMS ff-external-mod was built standalone (0 ff-external-mod dep) so the
 > PA-CONFLICT-014 fix is wiring, not re-housing.
+> CORRECTION (W5.12): the "ff-file-ops NOT an orphan (consumed by global-search)" note
+> above is DECLARATION-ONLY -- global-search declares ff-file-ops but uses it 0 times
+> (raw std::fs instead). See PA-W5.3 / PA-DEP-005.
+
+---
+
+### Phase PA-W5 -- Wave 5 Analysis Remediation (project-analysis CR-NR-056) -- PROPOSAL
+
+Wave 5 (emulators, tools, connectors: jes-emulator, idcams-emulator, jcl-resolver,
+database-tool, compiler-toolchain-integration, batch-execution, asa-report-preview,
+lua-macro-engine, language-service, custom-file-viewers, compare-and-merge, global-search,
+connector-extensibility, connector-local-fs, connector-network-fs/-ftp-sftp/-cloud/
+-mainframe, fileforge-integration, automated-dialog-testing, bootstrap-scripts). Findings
+below are PROPOSALS (no source changed during analysis). All tasks `[ ]`. Cross-refs:
+`docs/specs/project-analysis/units/`, `consistency-matrix.md`, `incomplete-work-register.md`.
+
+TWO dominant Wave-5 themes: (A) REIMPLEMENT-INSTEAD-OF-REUSE duplication, and (B)
+DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-complete.
+
+- [ ] PA-W5.1 (PA-CONFLICT-019 + PA-CONFLICT-022 + PA-CONFLICT-018) DUPLICATION cluster
+  (owner-gated, MEDIUM-HIGH). Consolidate reimplemented capabilities onto single owners:
+  ASA carriage control is in THREE crates (ff-asa [wired owner] + ff-viewers/asa_report.rs
+  + ff-forge/asa.rs) -> consolidate onto ff-asa; EBCDIC in TWO (ff-encoding [owner] +
+  ff-forge/ebcdic.rs) -> ff-forge reuse ff-encoding; hex in TWO (ff-hex + ff-viewers/hex.rs);
+  language detection duplicated (ff-language-service [orphan] vs ff-syntax-highlighting
+  inline) -> rewire syntax-highlighting onto ff-language-service (also its idle-styling ->
+  ff-idle-processing, PA-CONFLICT-012); PREVIEW command DOUBLE-OWNER (ff-viewers + ff-asa)
+  -> one owner (framework dispatches). Decide framework-vs-point per capability; delete the
+  losing copies OR document intentional divergence + share low-level tables. Code + owner.
+- [ ] PA-W5.2 (PA-CONFLICT-015 + PA-CONFLICT-020) DATA-SAFETY raw-fs WRITE bypasses
+  (owner-gated, MEDIUM-HIGH). Route workbench-data writes through the safe path (ff-vfs /
+  ff-file-ops atomic-rename + backup), not raw std::fs: JES job-queue persistence
+  (queue.rs read/create_dir_all/write, no ff-vfs dep) and global-search cross-file REPLACE
+  (replace.rs raw write, bulk mutation with no atomic/backup). Both risk partial/corrupt
+  writes. NOTE: legitimate raw fs (ff-connector-local-fs = the fs layer; ff-fftest test
+  artifacts; toolchain locating OS compilers; lua macro-dir scan PA-WATCH-026) is NOT in
+  scope. Code + owner.
+- [ ] PA-W5.3 (PA-DEP-005 + W4.15 correction) ff-file-ops dead dep in global-search
+  (declared, 0 uses -- raw std::fs instead). Either USE ff-file-ops for the replace writes
+  (preferred -- also resolves PA-W5.2's global-search half + makes the W4.15 "consumed"
+  claim true) or drop the dep. Correct the W4.15 record's "consumed by global-search" note.
+  Code + docs.
+- [ ] PA-W5.4 (PA-CONFLICT-016) idcams-emulator orphan + MISSING DUAL integration
+  (owner-gated, MEDIUM-HIGH). ff-idcams is complete but wired to nothing; spec Req 20
+  designs (a) command-framework registration + (b) JES EXEC PGM=IDCAMS batch-step
+  invocation -- NEITHER built (ff-jes has 0 idcams refs). Register with command framework +
+  wire the JES batch-step so IDCAMS runs inside JES jobs. Code + owner.
+- [ ] PA-W5.5 (PA-INCOMPLETE-014) database-tool FALSE-POSITIVE-COMPLETE (HIGH, tracking
+  integrity). 157/157 tasks `[x]` but the impl is a foundation SKELETON (thiserror+serde
+  only; ~14 of 17 reqs -- panels/pooling/async/ER/transfer/admin/integrations -- unbuilt).
+  Re-open the unbuilt tasks as `[ ]`; keep only the foundation done; correct the "complete"
+  framing. Then an owner-prioritised implementation effort. Tracking + honest re-scope.
+- [ ] PA-W5.6 (PA-INCOMPLETE-015 + PA-INCOMPLETE-016) honestly-tracked open work:
+  batch-execution task 10.2 (`--batch-log <file>` parsed but not wired to an ff-logging
+  file sink -- small); lua-macro Macro Library panel (Req 12, task 25) + FFCMD-sequence
+  chaining (tasks 26.x = ANOTHER CR-NR-057 leg -> Phase DH, reuse the shared chain
+  executor). Code + tests.
+- [ ] PA-W5.7 (PA-STD-057 + PA-STD-066) SEVERE / notable cap violations: idcams
+  parser/mod.rs = 1372 non-test (the WORST file in the project; a mod.rs holding 41 fns)
+  + handlers.rs 833 + services.rs 765 + ast.rs 538; and compare-and-merge session.rs = 557
+  which IS the DiffEngine (cap + MISLEADING filename -> rename to diff_engine.rs). Split by
+  concern. REFACTOR (comparable to the shell split PA-W3.6).
+- [ ] PA-W5.8 (PA-STD-059/068/069/062/063/073) other 400-cap splits: toolchain plugins
+  (gcc 421 + rust 462), connector-extensibility registry.rs 460, connector-local-fs
+  provider.rs 542, lua-macro engine.rs 506 (+tso_builtins 431/ispf 405), language-service
+  definition.rs 464, fftest parser.rs 406. Split each by concern. REFACTOR.
+- [ ] PA-W5.9 (PA-LOG-041/042/046/050 + 044/047/048/049/051/052/043/045/037/038/039/040)
+  Wave-5 logging. HIGH-VALUE (MEDIUM+): job engines log NOTHING (JES PA-LOG-041, idcams
+  PA-LOG-042); lua-macro security-gate decisions are audit-relevant + ff-logging DEAD
+  (PA-LOG-046); global-search bulk replace should log changes (PA-LOG-050); toolchain
+  install steps (PA-LOG-044). LOWER: asa/compare/viewers/language-service/fileforge pure
+  transforms + database-tool deferred to build. Add ff-logging + gated dev-logging per unit
+  (resolve dead deps). Code.
+- [ ] PA-W5.10 (PA-STD ASCII cluster: 052/053/054/055/056/058/060/061/064/065/067/070/071/072)
+  runtime-string + comment ASCII across Wave-5 crates: em-dashes / multiplication signs
+  (U+00D7, ff-asa) / minus signs (U+2212, compare-merge) in runtime strings; mojibake
+  comment separators in .rs (ff-jes/ffjcl, database-tool, toolchain, connector-local-fs);
+  Cargo-desc mojibake (idle); design.md mojibake STATUS lines (deferred connectors,
+  PA-STD-071). Replace with ASCII. REFACTOR, no gate.
+- [ ] PA-W5.11 (PA-TCR-024..036, excl. exemplars) TCR enumeration for Wave-5 crates. NOTE
+  the TOTAL-ABSENCE crates (0 rows): idle/large-file/external-mod (W4) + language-service
+  (PA-TCR-031) + connector-extensibility (PA-TCR-034); THIN: idcams 1/26 (widest by spec
+  size), asa 1/12, compare 1/17, fileforge 1/16, local-fs 1/7. Add per-req rows. NOTE
+  EXEMPLARS (no gap): JES 74, fftest 62, toolchain 38 -- do NOT touch. No code.
+- [ ] PA-W5.12 (PA-DOC-006..010 + PA-TRACK-005/006) DOCS: crate-name-drift reconciliation
+  (ff-external-modification->ff-external-mod, ff-asa-report-preview->ff-asa, ff-macro->
+  ff-lua, ff-compare->ff-compare-merge, ff-fileforge->ff-forge -- extend the naming set);
+  jcl-resolver stub (PA-CONFLICT-017: JCL fragmented across ff-dsalloc + ff-jes/ffjcl;
+  PA-TRACK-005 readiness-summary wrongly says folded into FFW-JES Req 11); mark the 4
+  DEFERRED connector specs clearly (PA-TRACK-006). Docs only.
+- [ ] PA-W5.13 (PA-CONFLICT-021, DOWNGRADED to LOW-MED/WATCH) connector-extensibility is
+  the INTENTIONAL base for the DEFERRED remote connectors (network-fs/ftp-sftp/cloud/
+  mainframe specs state they implement its trait; local-fs uses ff-vfs directly by design)
+  -- NOT an abandoned orphan. KEEP it; add an implementers-are-deferred note to its spec;
+  re-confirm the trait API against real FTP/SFTP/z-OS semantics when the first remote
+  connector is built (cloud OAuth + z/OS auth will test the auth layer). Docs now; code
+  later.
+
+> Wave-5 consistency CONFIRMATIONS (no action -- resolved / positive during analysis):
+> POSITIVE exemplars -- compiler-toolchain-integration (genuinely complete, wired 99x,
+> clean VFS test-only fs, 38 TCR), batch-execution (uses ff-logging -- the CR-NR-058
+> behaviour), compare-and-merge (single diff owner, clean-seam, VFS-by-interface),
+> connector-local-fs (correct primary VFS provider, 51 LEGIT fs, logs), automated-dialog-
+> testing (egui-DECOUPLED AutomationId model, 62 TCR), bootstrap-scripts (cleanest unit,
+> zero findings); SECURITY-GATE consistency -- lua-macro SecurityMode ENFORCED (mirrors
+> shell.mode PA-WATCH-018), the two code-execution surfaces both gate untrusted code with a
+> safe default; CLEAN scope boundary -- local mainframe EMULATION (dataset-catalog/JES/
+> IDCAMS) vs REMOTE connectivity (deferred connector-mainframe), complementary not
+> duplicative; ff-jes is a PLUGIN not an orphan (wired 19x, 74 TCR -- exemplary); TWO
+> self-corrections this wave (ff-file-ops "consumed" claim -> declaration-only PA-W5.3;
+> connector-extensibility orphan -> intentional deferred-base PA-W5.13).
 
 ---
 

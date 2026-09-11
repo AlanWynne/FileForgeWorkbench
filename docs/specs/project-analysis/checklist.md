@@ -129,7 +129,36 @@ needs MANUAL assistive-tech testing). Recurring: shell file-explorer tangle
 absent TCR incl. THREE orphan crates with ZERO rows (PA-W4.10). POSITIVE EXEMPLARS:
 ff-theme clean single-owner (0 dups); FIVE clean-seam crates + file-ops stay OUT of
 PA-CONFLICT-002; EXEMPLARY VFS discipline (external-mod + file-ops, 0 real fs); ff-file-ops
-is NOT an orphan (consumed by global-search).
+is NOT an orphan (consumed by global-search) [CORRECTED W5.12: declaration-only -- global-
+search uses raw std::fs, not ff-file-ops].
+
+**Wave 5 COMPLETE (W5.1-W5.20 = rows 58-78) on the re-baseline** (commits `a2faba3`..
+`6b73661`). All emulators/tools/connectors analysed; the Wave 5 task-revision (W5.21)
+recorded the remediation as `Phase PA-W5` (PROPOSAL, PA-W5.1-PA-W5.13) in
+`docs/specs/project-master/tasks.md`. TWO DOMINANT WAVE-5 THEMES: (A) REIMPLEMENT-INSTEAD-
+OF-REUSE duplication -- ASA in THREE crates (ff-asa/ff-viewers/ff-forge), EBCDIC in TWO
+(ff-encoding/ff-forge), hex in TWO (ff-hex/ff-viewers), the ff-viewers framework
+duplicating ff-asa+ff-hex with a PREVIEW double-owner, and language-service ignored by
+syntax-highlighting which reimplements detection inline (PA-CONFLICT-018/019/022) -> PA-W5.1.
+(B) DATA-SAFETY raw-fs WRITE bypasses -- JES job-queue (PA-CONFLICT-015) + global-search
+cross-file REPLACE (PA-CONFLICT-020) write raw std::fs, skipping ff-vfs/ff-file-ops
+atomic-rename+backup (risk partial/corrupt writes) -> PA-W5.2. Other majors: idcams orphan
++ MISSING dual integration (command-fw registration + JES EXEC PGM=IDCAMS, neither built,
+PA-CONFLICT-016 -> PA-W5.4); database-tool FALSE-POSITIVE-COMPLETE (157/157 `[x]` but a
+thiserror+serde SKELETON, ~14/17 reqs unbuilt, PA-INCOMPLETE-014 -> PA-W5.5); the WORST
+cap violation in the project (idcams parser/mod.rs = 1372 nt, PA-STD-057 -> PA-W5.7).
+lua-macro FFCMD chaining is ANOTHER CR-NR-057 leg (-> Phase DH). POSITIVE EXEMPLARS
+(the back half of the wave): compiler-toolchain (complete, wired 99x, 38 TCR),
+batch-execution (actually uses ff-logging), compare-and-merge (single diff owner,
+clean-seam), connector-local-fs (correct primary VFS provider, 51 LEGIT fs), FFTest
+(egui-DECOUPLED AutomationId model, 62 TCR), bootstrap-scripts (cleanest unit, 0 findings);
+lua-macro SecurityMode ENFORCED gate mirrors shell.mode; JES is a PLUGIN (74 TCR, exemplary)
+not an orphan. CONNECTOR FAMILY: 1 built (local-fs) + 1 INTENTIONAL base (connector-
+extensibility -- for the 4 DEFERRED remote connectors, PA-CONFLICT-021 DOWNGRADED). TWO
+self-corrections this wave (ff-file-ops "consumed" claim; connector-extensibility orphan ->
+intentional deferred-base) -- the analysis distinguishes ABANDONED from AWAITING-DEFERRED-WORK.
+ORPHAN TALLY now 6 (file-tree/idle/large-file/external-mod/language-service/viewers +
+idcams unwired-engine) -- the dominant structural theme for Wave-6 finalization.
 
 | # | Sub-project | Wave | Status | Analysis Record | Notes |
 |---|-------------|------|--------|-----------------|-------|
