@@ -105,7 +105,7 @@ pub fn is_empty_continuation(line_text: &str, comment_config: &CommentConfig) ->
         if trimmed == marker_trimmed {
             return true;
         }
-        // Also check with asterisk only (common case: " * " → "*")
+        // Also check with asterisk only (common case: " * " -> "*")
         if trimmed == "*" && marker_trimmed.contains('*') {
             return true;
         }
@@ -142,7 +142,7 @@ pub fn compute_comment_continuation(
     // Double-Enter break-out: if the reference line is an empty continuation,
     // signal removal rather than adding another marker
     if context.is_empty_comment_continuation {
-        // Return no indent — the caller should remove the previous marker
+        // Return no indent -- the caller should remove the previous marker
         return None;
     }
 
@@ -255,7 +255,7 @@ mod tests {
 
     #[test]
     fn block_comment_continuation() {
-        // Validates: Requirement 6.1 — block comment continues with marker
+        // Validates: Requirement 6.1 -- block comment continues with marker
         let config = make_config();
         let comment_config = CommentConfig::c_style();
         let ctx = make_context("     * some comment text", true);
@@ -274,7 +274,7 @@ mod tests {
 
     #[test]
     fn line_comment_continuation() {
-        // Validates: Requirement 6.2 — line comment continues with prefix
+        // Validates: Requirement 6.2 -- line comment continues with prefix
         let config = make_config();
         let comment_config = CommentConfig::c_style();
         let ctx = IndentContext {
@@ -311,7 +311,7 @@ mod tests {
 
     #[test]
     fn no_continuation_on_block_end_line() {
-        // Validates: Requirement 6.4 — no continue on closing line
+        // Validates: Requirement 6.4 -- no continue on closing line
         let config = make_config();
         let comment_config = CommentConfig::c_style();
         let ctx = make_context("     */", true);
@@ -353,7 +353,7 @@ mod tests {
 
     #[test]
     fn double_enter_break_out() {
-        // Validates: Requirement 6.6 — double-Enter removes continuation
+        // Validates: Requirement 6.6 -- double-Enter removes continuation
         let config = make_config();
         let comment_config = CommentConfig::c_style();
         let ctx = IndentContext {

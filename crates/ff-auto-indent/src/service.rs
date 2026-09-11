@@ -108,9 +108,9 @@ impl AutoIndentService {
     ///
     /// This is the primary entry point. It coordinates mode selection
     /// and delegates to the appropriate engine:
-    /// - None → no indent
-    /// - Maintain → copy reference whitespace
-    /// - Smart → priority: block expansion → comment continuation → pattern-based
+    /// - None -> no indent
+    /// - Maintain -> copy reference whitespace
+    /// - Smart -> priority: block expansion -> comment continuation -> pattern-based
     pub fn compute_newline_indent(
         &self,
         context: &IndentContext,
@@ -190,7 +190,7 @@ mod tests {
 
     #[test]
     fn none_mode_returns_no_indent() {
-        // Validates: Requirement 10.3 — None mode produces zero indent
+        // Validates: Requirement 10.3 -- None mode produces zero indent
         let service = AutoIndentService::new(
             IndentConfig::new(4, 4, IndentStyle::Spaces),
             AutoIndentMode::None,
@@ -234,7 +234,7 @@ mod tests {
 
     #[test]
     fn smart_mode_block_expansion_takes_priority() {
-        // Validates: Requirement 5.1 — block expansion has highest priority in smart mode
+        // Validates: Requirement 5.1 -- block expansion has highest priority in smart mode
         let service = make_service();
         let patterns = c_like_patterns();
         let comment = CommentConfig::empty();
@@ -275,7 +275,7 @@ mod tests {
 
     #[test]
     fn hot_reload_config_update() {
-        // Validates: Requirement 1.4 — hot-reload updates config
+        // Validates: Requirement 1.4 -- hot-reload updates config
         let service = make_service();
         assert_eq!(service.config().indent_size(), 4);
 
@@ -285,7 +285,7 @@ mod tests {
 
     #[test]
     fn hot_reload_mode_update() {
-        // Validates: Requirement 1.4 — hot-reload updates mode
+        // Validates: Requirement 1.4 -- hot-reload updates mode
         let service = make_service();
         assert_eq!(service.mode(), AutoIndentMode::Smart);
 
@@ -295,7 +295,7 @@ mod tests {
 
     #[test]
     fn pattern_cache_operations() {
-        // Validates: Requirement 9.5 — language change reloads patterns
+        // Validates: Requirement 9.5 -- language change reloads patterns
         let service = make_service();
         assert!(service.get_patterns("rust").is_none());
 

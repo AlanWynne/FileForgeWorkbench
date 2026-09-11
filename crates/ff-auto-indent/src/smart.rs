@@ -1,4 +1,4 @@
-//! Smart-indent engine — pattern-based increase/decrease logic.
+//! Smart-indent engine -- pattern-based increase/decrease logic.
 //!
 //! Applies language-specific indent patterns to compute the correct
 //! indentation for new lines based on the reference line content.
@@ -82,12 +82,12 @@ pub fn compute_smart_indent(
     patterns: &IndentPatterns,
     config: &IndentConfig,
 ) -> IndentDecision {
-    // Caret at column 0 → no indent regardless of patterns
+    // Caret at column 0 -> no indent regardless of patterns
     if context.caret_column == 0 {
         return IndentDecision::no_indent();
     }
 
-    // No increase pattern defined → fall back to maintain
+    // No increase pattern defined -> fall back to maintain
     if patterns.increase_pattern.is_none() && patterns.statement_pattern.is_none() {
         return compute_maintain_indent(&context.reference_line, context.caret_column, config);
     }
@@ -105,10 +105,10 @@ pub fn compute_smart_indent(
         // Increase pattern matched (and decrease did not)
         reference_level.increment()
     } else if is_statement {
-        // Statement pattern matched — indent next line by one
+        // Statement pattern matched -- indent next line by one
         reference_level.increment()
     } else {
-        // No increase, no statement — maintain reference level
+        // No increase, no statement -- maintain reference level
         reference_level
     };
 
@@ -126,7 +126,7 @@ pub fn compute_decrease_on_type(
     patterns: &IndentPatterns,
     config: &IndentConfig,
 ) -> Option<String> {
-    // No decrease pattern → no adjustment
+    // No decrease pattern -> no adjustment
     let decrease_pattern = patterns.decrease_pattern.as_ref()?;
 
     // Guard: only trigger when content before the typed character is only whitespace.
@@ -177,7 +177,7 @@ mod tests {
 
     #[test]
     fn smart_indent_increase_on_brace() {
-        // Validates: Requirement 3.1 — increase pattern adds one level
+        // Validates: Requirement 3.1 -- increase pattern adds one level
         let config = make_config();
         let patterns = c_like_patterns();
         let ctx = IndentContext::simple("    if (true) {", 15);
@@ -188,7 +188,7 @@ mod tests {
 
     #[test]
     fn smart_indent_no_increase_maintains_level() {
-        // Validates: Requirement 3.3 — no pattern match → maintain
+        // Validates: Requirement 3.3 -- no pattern match -> maintain
         let config = make_config();
         let patterns = c_like_patterns();
         let ctx = IndentContext::simple("    let x = 5;", 14);
@@ -199,7 +199,7 @@ mod tests {
 
     #[test]
     fn smart_indent_net_cancellation() {
-        // Validates: Requirement 3.5 — both increase and decrease cancel
+        // Validates: Requirement 3.5 -- both increase and decrease cancel
         let config = make_config();
         let patterns = c_like_patterns();
         // "} else {" matches both increase AND decrease
@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     fn smart_indent_fallback_to_maintain_when_no_patterns() {
-        // Validates: Requirement 3.3 — fallback to maintain
+        // Validates: Requirement 3.3 -- fallback to maintain
         let config = make_config();
         let patterns = IndentPatterns::empty();
         let ctx = IndentContext::simple("    hello world", 15);
@@ -222,7 +222,7 @@ mod tests {
 
     #[test]
     fn smart_indent_caret_at_column_zero() {
-        // Validates: Requirement 2.5 — column 0 always no indent
+        // Validates: Requirement 2.5 -- column 0 always no indent
         let config = make_config();
         let patterns = c_like_patterns();
         let ctx = IndentContext::simple("    if (true) {", 0);
@@ -233,7 +233,7 @@ mod tests {
 
     #[test]
     fn smart_indent_statement_continuation() {
-        // Validates: Requirement 3.6 — statement pattern indents next line
+        // Validates: Requirement 3.6 -- statement pattern indents next line
         let config = make_config();
         let patterns = c_like_patterns();
         let ctx = IndentContext::simple("    if (condition)", 18);
@@ -249,13 +249,13 @@ mod tests {
         let patterns = c_like_patterns();
         let ctx = IndentContext::simple("fn main() {", 12);
         let result = compute_smart_indent(&ctx, &patterns, &config);
-        assert_eq!(result.indent_text, "    "); // level 0 → level 1
+        assert_eq!(result.indent_text, "    "); // level 0 -> level 1
         assert_eq!(result.indent_level, 1);
     }
 
     #[test]
     fn decrease_on_type_triggers_on_closing_brace() {
-        // Validates: Requirement 4.1 — decrease triggers on }
+        // Validates: Requirement 4.1 -- decrease triggers on }
         let config = make_config();
         let patterns = c_like_patterns();
         // Line is "        }" (8 spaces + }), caret at col 9
@@ -266,7 +266,7 @@ mod tests {
 
     #[test]
     fn decrease_on_type_no_trigger_with_content_before() {
-        // Validates: Requirement 4.7 — no decrease when content before caret
+        // Validates: Requirement 4.7 -- no decrease when content before caret
         let config = make_config();
         let patterns = c_like_patterns();
         // Line has content before the brace
@@ -276,7 +276,7 @@ mod tests {
 
     #[test]
     fn decrease_on_type_floor_at_zero() {
-        // Validates: Requirement 4.6 — never goes below zero
+        // Validates: Requirement 4.6 -- never goes below zero
         let config = make_config();
         let patterns = c_like_patterns();
         // Line at level 0 with closing brace
@@ -287,7 +287,7 @@ mod tests {
 
     #[test]
     fn decrease_on_type_no_pattern() {
-        // Validates: Requirement 4.3 — no decrease when pattern undefined
+        // Validates: Requirement 4.3 -- no decrease when pattern undefined
         let config = make_config();
         let patterns = IndentPatterns::empty();
         let result = compute_decrease_on_type("        }", 9, &patterns, &config);

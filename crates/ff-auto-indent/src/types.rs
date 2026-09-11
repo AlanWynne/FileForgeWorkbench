@@ -43,7 +43,7 @@ mod tests {
 
     #[test]
     fn indent_level_new_returns_given_value() {
-        // Validates: Requirement 4.6 — IndentLevel never goes negative
+        // Validates: Requirement 4.6 -- IndentLevel never goes negative
         let level = IndentLevel::new(5);
         assert_eq!(level.value(), 5);
     }
@@ -71,14 +71,14 @@ mod tests {
 
     #[test]
     fn indent_level_decrement_clamps_at_zero() {
-        // Validates: Requirement 4.6 — decrement at zero returns zero
+        // Validates: Requirement 4.6 -- decrement at zero returns zero
         let level = IndentLevel::new(0);
         assert_eq!(level.decrement().value(), 0);
     }
 
     #[test]
     fn indent_level_increment_saturates_at_max() {
-        // Validates: Requirement 4.6 — no overflow panic
+        // Validates: Requirement 4.6 -- no overflow panic
         let level = IndentLevel::new(u32::MAX);
         assert_eq!(level.increment().value(), u32::MAX);
     }

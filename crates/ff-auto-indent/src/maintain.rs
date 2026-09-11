@@ -1,4 +1,4 @@
-//! Maintain-indent engine — copies reference line whitespace.
+//! Maintain-indent engine -- copies reference line whitespace.
 //!
 //! Implements the simplest auto-indent behaviour: the new line receives
 //! exactly the same indentation as the reference line (the line where
@@ -98,7 +98,7 @@ pub fn compute_maintain_indent(
     caret_column: u64,
     config: &IndentConfig,
 ) -> IndentDecision {
-    // Caret at column 0 → no indent
+    // Caret at column 0 -> no indent
     if caret_column == 0 {
         return IndentDecision::no_indent();
     }
@@ -153,7 +153,7 @@ mod tests {
         // Validates: Requirement 2.2
         let info = parse_line_indent("\t  hello", 4);
         assert_eq!(info.whitespace, "\t  ");
-        assert_eq!(info.column_width, 6); // tab → col 4, then 2 spaces
+        assert_eq!(info.column_width, 6); // tab -> col 4, then 2 spaces
         assert_eq!(info.first_content_column, 6);
     }
 
@@ -183,7 +183,7 @@ mod tests {
 
     #[test]
     fn maintain_indent_caret_at_column_zero() {
-        // Validates: Requirement 2.5 — Enter at column 0 produces no indent
+        // Validates: Requirement 2.5 -- Enter at column 0 produces no indent
         let config = IndentConfig::new(4, 4, IndentStyle::Spaces);
         let result = compute_maintain_indent("    hello", 0, &config);
         assert_eq!(result.indent_text, "");
@@ -192,7 +192,7 @@ mod tests {
 
     #[test]
     fn maintain_indent_caret_after_content_reproduces_full_whitespace() {
-        // Validates: Requirement 2.1 — maintain copies reference whitespace
+        // Validates: Requirement 2.1 -- maintain copies reference whitespace
         let config = IndentConfig::new(4, 4, IndentStyle::Spaces);
         let result = compute_maintain_indent("    hello world", 10, &config);
         assert_eq!(result.indent_text, "    ");
@@ -201,10 +201,10 @@ mod tests {
 
     #[test]
     fn maintain_indent_caret_within_whitespace() {
-        // Validates: Requirement 2.6 — caret within indent copies partial
+        // Validates: Requirement 2.6 -- caret within indent copies partial
         let config = IndentConfig::new(4, 4, IndentStyle::Spaces);
         let result = compute_maintain_indent("        hello", 4, &config);
-        // Caret at column 4 in 8-space indent → reproduce 4 cols
+        // Caret at column 4 in 8-space indent -> reproduce 4 cols
         assert_eq!(result.indent_text, "    ");
         assert_eq!(result.indent_level, 1);
     }
@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn maintain_indent_mixed_reference_uses_config_style() {
-        // Validates: Requirement 2.3 — reproduces using configured style
+        // Validates: Requirement 2.3 -- reproduces using configured style
         let config = IndentConfig::new(4, 4, IndentStyle::Spaces);
         // Reference has tab (col 4) + 2 spaces (col 6)
         let result = compute_maintain_indent("\t  hello", 10, &config);

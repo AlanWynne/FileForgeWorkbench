@@ -6,7 +6,7 @@
 //! Example: pressing Enter between `{` and `}` produces:
 //! ```text
 //! {
-//!     |  ← caret here, indented one level
+//!     |  <- caret here, indented one level
 //! }
 //! ```
 
@@ -80,7 +80,7 @@ mod tests {
 
     #[test]
     fn block_expansion_between_braces() {
-        // Validates: Requirement 5.1 — Enter between {} produces 3-line expansion
+        // Validates: Requirement 5.1 -- Enter between {} produces 3-line expansion
         let config = make_config();
         let patterns = c_like_patterns();
         let ctx = IndentContext {
@@ -131,7 +131,7 @@ mod tests {
 
     #[test]
     fn no_expansion_when_patterns_undefined() {
-        // Validates: Requirement 5.4 — no expansion when patterns missing
+        // Validates: Requirement 5.4 -- no expansion when patterns missing
         let config = make_config();
         let patterns = IndentPatterns::empty();
         let ctx = IndentContext::simple("fn main() {}", 11);

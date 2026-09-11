@@ -196,14 +196,14 @@ mod tests {
 
     #[test]
     fn compiled_pattern_valid_regex() {
-        // Validates: Requirement 9.7 — valid patterns compile successfully
+        // Validates: Requirement 9.7 -- valid patterns compile successfully
         let pattern = CompiledPattern::try_compile(r"\{\s*$");
         assert!(pattern.is_some());
     }
 
     #[test]
     fn compiled_pattern_invalid_regex_returns_none() {
-        // Validates: Requirement 9.7 — invalid patterns return None
+        // Validates: Requirement 9.7 -- invalid patterns return None
         let pattern = CompiledPattern::try_compile(r"[unclosed");
         assert!(pattern.is_none());
     }
@@ -253,7 +253,7 @@ mod tests {
 
     #[test]
     fn indent_patterns_with_invalid_regex_degrades() {
-        // Validates: Requirement 9.7 — invalid regex treated as None
+        // Validates: Requirement 9.7 -- invalid regex treated as None
         let raw = IndentTableRaw {
             increase_pattern: Some(r"[invalid".to_string()),
             decrease_pattern: Some(r"^\s*\}".to_string()),
@@ -306,7 +306,7 @@ mod tests {
 
     #[test]
     fn empty_pattern_none_never_matches() {
-        // Validates: Requirement 9.7 — None pattern never matches
+        // Validates: Requirement 9.7 -- None pattern never matches
         let patterns = IndentPatterns::empty();
         assert!(!patterns.matches_increase("anything { with braces"));
         assert!(!patterns.matches_decrease("} closing"));

@@ -61,7 +61,7 @@ pub fn unindent_lines(
             let indent_info = parse_line_indent(content, config.tab_size());
 
             if indent_info.column_width == 0 {
-                // Already at column 0 — no change
+                // Already at column 0 -- no change
                 return IndentLineEdit {
                     line: line_num,
                     new_indent: String::new(),
@@ -104,23 +104,23 @@ mod tests {
 
     #[test]
     fn indent_single_line() {
-        // Validates: Requirement 7.1 — indent adds one level
+        // Validates: Requirement 7.1 -- indent adds one level
         let config = make_config();
         let result = indent_lines(&[0], &["    hello"], &config);
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0].new_indent, "        "); // 4 → 8 spaces
+        assert_eq!(result[0].new_indent, "        "); // 4 -> 8 spaces
         assert!(result[0].modified);
     }
 
     #[test]
     fn indent_multiple_lines() {
-        // Validates: Requirement 7.1 — indent all selected lines
+        // Validates: Requirement 7.1 -- indent all selected lines
         let config = make_config();
         let result = indent_lines(&[0, 1, 2], &["hello", "    world", "        end"], &config);
         assert_eq!(result.len(), 3);
-        assert_eq!(result[0].new_indent, "    "); // 0 → 4
-        assert_eq!(result[1].new_indent, "        "); // 4 → 8
-        assert_eq!(result[2].new_indent, "            "); // 8 → 12
+        assert_eq!(result[0].new_indent, "    "); // 0 -> 4
+        assert_eq!(result[1].new_indent, "        "); // 4 -> 8
+        assert_eq!(result[2].new_indent, "            "); // 8 -> 12
     }
 
     #[test]
@@ -134,11 +134,11 @@ mod tests {
 
     #[test]
     fn unindent_single_line() {
-        // Validates: Requirement 8.1 — unindent removes one level
+        // Validates: Requirement 8.1 -- unindent removes one level
         let config = make_config();
         let result = unindent_lines(&[0], &["        hello"], &config);
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0].new_indent, "    "); // 8 → 4
+        assert_eq!(result[0].new_indent, "    "); // 8 -> 4
         assert!(result[0].modified);
     }
 
@@ -151,14 +151,14 @@ mod tests {
             &["        a", "    b", "            c"],
             &config,
         );
-        assert_eq!(result[0].new_indent, "    "); // 8 → 4
-        assert_eq!(result[1].new_indent, ""); // 4 → 0
-        assert_eq!(result[2].new_indent, "        "); // 12 → 8
+        assert_eq!(result[0].new_indent, "    "); // 8 -> 4
+        assert_eq!(result[1].new_indent, ""); // 4 -> 0
+        assert_eq!(result[2].new_indent, "        "); // 12 -> 8
     }
 
     #[test]
     fn unindent_below_floor_removes_all() {
-        // Validates: Requirement 8.2 — less than one level removes all
+        // Validates: Requirement 8.2 -- less than one level removes all
         let config = make_config();
         let result = unindent_lines(&[0], &["  hello"], &config);
         assert_eq!(result[0].new_indent, ""); // 2 cols < 4, remove all
@@ -167,7 +167,7 @@ mod tests {
 
     #[test]
     fn unindent_at_column_zero_unchanged() {
-        // Validates: Requirement 8.2 — already at zero, no change
+        // Validates: Requirement 8.2 -- already at zero, no change
         let config = make_config();
         let result = unindent_lines(&[0], &["hello"], &config);
         assert_eq!(result[0].new_indent, "");
@@ -179,20 +179,20 @@ mod tests {
         // Validates: Requirement 7.1 with tab style
         let config = IndentConfig::new(4, 4, IndentStyle::Tabs);
         let result = indent_lines(&[0], &["\thello"], &config);
-        assert_eq!(result[0].new_indent, "\t\t"); // 1 tab → 2 tabs
+        assert_eq!(result[0].new_indent, "\t\t"); // 1 tab -> 2 tabs
     }
 
     #[test]
     fn unindent_with_tabs() {
-        // Validates: Requirement 8.7 — tab counts as tab_size columns
+        // Validates: Requirement 8.7 -- tab counts as tab_size columns
         let config = IndentConfig::new(4, 4, IndentStyle::Tabs);
         let result = unindent_lines(&[0], &["\t\thello"], &config);
-        assert_eq!(result[0].new_indent, "\t"); // 2 tabs → 1 tab
+        assert_eq!(result[0].new_indent, "\t"); // 2 tabs -> 1 tab
     }
 
     #[test]
     fn normalise_whitespace_mixed_to_spaces() {
-        // Validates: Requirement 7.5 — normalise mixed whitespace
+        // Validates: Requirement 7.5 -- normalise mixed whitespace
         let config = make_config();
         // Tab (4 cols) + 2 spaces = 6 columns total
         let result = normalise_whitespace("\t  hello", &config);
@@ -210,7 +210,7 @@ mod tests {
 
     #[test]
     fn indent_unindent_roundtrip() {
-        // Validates: Requirements 7.1, 8.1 — roundtrip identity
+        // Validates: Requirements 7.1, 8.1 -- roundtrip identity
         let config = make_config();
         let original = "        hello"; // 8 spaces = level 2
         let indented = indent_lines(&[0], &[original], &config);
@@ -225,13 +225,13 @@ mod tests {
         // Test with different indent size
         let config = IndentConfig::new(2, 4, IndentStyle::Spaces);
         let result = indent_lines(&[0], &["  hello"], &config);
-        assert_eq!(result[0].new_indent, "    "); // 2 → 4 spaces
+        assert_eq!(result[0].new_indent, "    "); // 2 -> 4 spaces
     }
 
     #[test]
     fn unindent_size_2() {
         let config = IndentConfig::new(2, 4, IndentStyle::Spaces);
         let result = unindent_lines(&[0], &["    hello"], &config);
-        assert_eq!(result[0].new_indent, "  "); // 4 → 2 spaces
+        assert_eq!(result[0].new_indent, "  "); // 4 -> 2 spaces
     }
 }

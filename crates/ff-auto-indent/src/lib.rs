@@ -1,4 +1,4 @@
-//! # ff-auto-indent — Language-Aware Automatic Indentation Engine
+//! # ff-auto-indent -- Language-Aware Automatic Indentation Engine
 //!
 //! This crate provides the auto-indentation subsystem for FileForgeWorkbench.
 //! It computes indentation adjustments triggered by newline insertion, provides
@@ -7,20 +7,20 @@
 //!
 //! ## Design Principles
 //!
-//! - **GUI-independent** — operates purely on document model line content
-//! - **Language-aware** — uses regex patterns from language TOML definitions
-//! - **Three modes** — None, Maintain, Smart (with fallback logic)
-//! - **Transaction-safe** — all modifications grouped for single-step undo
-//! - **Hot-reload** — configuration changes apply without document close/reopen
+//! - **GUI-independent** -- operates purely on document model line content
+//! - **Language-aware** -- uses regex patterns from language TOML definitions
+//! - **Three modes** -- None, Maintain, Smart (with fallback logic)
+//! - **Transaction-safe** -- all modifications grouped for single-step undo
+//! - **Hot-reload** -- configuration changes apply without document close/reopen
 //!
 //! ## Architecture
 //!
 //! The auto-indent engine is triggered by:
-//! 1. Newline insertion (via `ff-edit-operations`) → `compute_newline_indent()`
-//! 2. Character typed (closing delimiter) → `compute_decrease_on_type()`
-//! 3. Indent/Unindent commands (via `ff-command`) → `indent_lines()` / `unindent_lines()`
+//! 1. Newline insertion (via `ff-edit-operations`) -> `compute_newline_indent()`
+//! 2. Character typed (closing delimiter) -> `compute_decrease_on_type()`
+//! 3. Indent/Unindent commands (via `ff-command`) -> `indent_lines()` / `unindent_lines()`
 
-// ─── Public Modules ─────────────────────────────────────────────────────────
+// === Public Modules =========================================================
 
 /// Auto-indent mode enum and resolution logic.
 pub mod mode;
@@ -28,10 +28,10 @@ pub mod mode;
 /// Indent configuration (indent_size, tab_size, use_tabs) and accessors.
 pub mod config;
 
-/// Maintain-indent engine — copies reference line whitespace.
+/// Maintain-indent engine -- copies reference line whitespace.
 pub mod maintain;
 
-/// Smart-indent engine — pattern-based increase/decrease logic.
+/// Smart-indent engine -- pattern-based increase/decrease logic.
 pub mod smart;
 
 /// Indent pattern compilation, caching, and matching.
@@ -58,7 +58,7 @@ pub mod types;
 /// Top-level auto-indent service facade.
 pub mod service;
 
-// ─── Public API Re-exports ──────────────────────────────────────────────────
+// === Public API Re-exports ==================================================
 
 pub use comment::{CommentConfig, CommentTableRaw};
 pub use config::IndentConfig;

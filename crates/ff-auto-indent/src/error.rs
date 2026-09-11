@@ -9,7 +9,7 @@
 pub enum AutoIndentError {
     /// Invalid auto-indent mode string in configuration.
     #[error(
-        "[auto-indent] config: invalid mode '{value}' — expected 'none', 'maintain', or 'smart'"
+        "[auto-indent] config: invalid mode '{value}' -- expected 'none', 'maintain', or 'smart'"
     )]
     InvalidMode { value: String },
 
@@ -134,7 +134,7 @@ mod tests {
 
     #[test]
     fn pattern_compile_error_is_degradable() {
-        // Validates: Cross-cutting — graceful degradation
+        // Validates: Cross-cutting -- graceful degradation
         let err = AutoIndentError::PatternCompileError {
             language_id: "rust".to_string(),
             pattern_name: "increase".to_string(),
@@ -145,7 +145,7 @@ mod tests {
 
     #[test]
     fn invalid_config_is_degradable() {
-        // Validates: Cross-cutting — graceful degradation
+        // Validates: Cross-cutting -- graceful degradation
         let err = AutoIndentError::InvalidConfig {
             key: "editor.indent_size".to_string(),
             reason: "out of range".to_string(),
@@ -155,7 +155,7 @@ mod tests {
 
     #[test]
     fn invalid_mode_is_not_degradable() {
-        // Validates: Cross-cutting — invalid mode is a user-facing error
+        // Validates: Cross-cutting -- invalid mode is a user-facing error
         let err = AutoIndentError::InvalidMode {
             value: "bad".to_string(),
         };

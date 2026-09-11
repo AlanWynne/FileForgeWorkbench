@@ -42,7 +42,7 @@ impl AutoIndentMode {
 }
 
 impl Default for AutoIndentMode {
-    /// Defaults to `Smart` — language-aware indentation when patterns are available.
+    /// Defaults to `Smart` -- language-aware indentation when patterns are available.
     fn default() -> Self {
         Self::Smart
     }
@@ -68,9 +68,9 @@ impl std::fmt::Display for AutoIndentMode {
 ///
 /// # Arguments
 ///
-/// * `global_mode` — The mode set in global configuration (`editor.auto_indent`).
-/// * `has_language_patterns` — Whether the active language has indent patterns defined.
-/// * `language_mode_override` — Optional per-language mode override from the language TOML.
+/// * `global_mode` -- The mode set in global configuration (`editor.auto_indent`).
+/// * `has_language_patterns` -- Whether the active language has indent patterns defined.
+/// * `language_mode_override` -- Optional per-language mode override from the language TOML.
 pub fn resolve_effective_mode(
     global_mode: AutoIndentMode,
     has_language_patterns: bool,
@@ -95,13 +95,13 @@ mod tests {
 
     #[test]
     fn default_mode_is_smart() {
-        // Validates: Requirement 1.1 — Smart is the default mode
+        // Validates: Requirement 1.1 -- Smart is the default mode
         assert_eq!(AutoIndentMode::default(), AutoIndentMode::Smart);
     }
 
     #[test]
     fn from_config_str_parses_none() {
-        // Validates: Requirement 1.3 — mode configurable via string
+        // Validates: Requirement 1.3 -- mode configurable via string
         assert_eq!(
             AutoIndentMode::from_config_str("none").unwrap(),
             AutoIndentMode::None
@@ -154,7 +154,7 @@ mod tests {
 
     #[test]
     fn from_config_str_rejects_unknown() {
-        // Validates: Requirement 1.3 — unknown mode returns error
+        // Validates: Requirement 1.3 -- unknown mode returns error
         let err = AutoIndentMode::from_config_str("unknown").unwrap_err();
         match err {
             AutoIndentError::InvalidMode { value } => assert_eq!(value, "unknown"),
@@ -171,35 +171,35 @@ mod tests {
 
     #[test]
     fn resolve_effective_mode_smart_when_patterns_available() {
-        // Validates: Requirement 1.2 — Smart when language has patterns
+        // Validates: Requirement 1.2 -- Smart when language has patterns
         let mode = resolve_effective_mode(AutoIndentMode::Smart, true, None);
         assert_eq!(mode, AutoIndentMode::Smart);
     }
 
     #[test]
     fn resolve_effective_mode_maintain_when_no_patterns() {
-        // Validates: Requirement 1.2 — Maintain when no language patterns
+        // Validates: Requirement 1.2 -- Maintain when no language patterns
         let mode = resolve_effective_mode(AutoIndentMode::Smart, false, None);
         assert_eq!(mode, AutoIndentMode::Maintain);
     }
 
     #[test]
     fn resolve_effective_mode_respects_explicit_none() {
-        // Validates: Requirement 1.3 — user can explicitly set None
+        // Validates: Requirement 1.3 -- user can explicitly set None
         let mode = resolve_effective_mode(AutoIndentMode::None, true, None);
         assert_eq!(mode, AutoIndentMode::None);
     }
 
     #[test]
     fn resolve_effective_mode_respects_explicit_maintain() {
-        // Validates: Requirement 1.3 — user can explicitly set Maintain
+        // Validates: Requirement 1.3 -- user can explicitly set Maintain
         let mode = resolve_effective_mode(AutoIndentMode::Maintain, true, None);
         assert_eq!(mode, AutoIndentMode::Maintain);
     }
 
     #[test]
     fn resolve_effective_mode_language_override_takes_precedence() {
-        // Validates: Requirement 1.3 — per-language override
+        // Validates: Requirement 1.3 -- per-language override
         let mode =
             resolve_effective_mode(AutoIndentMode::Smart, true, Some(AutoIndentMode::Maintain));
         assert_eq!(mode, AutoIndentMode::Maintain);
