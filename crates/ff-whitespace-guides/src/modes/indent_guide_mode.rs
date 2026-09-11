@@ -21,7 +21,7 @@ pub enum IndentGuideMode {
 
 impl IndentGuideMode {
     /// Cycle to the next mode in order:
-    /// None → Real → LookForward → LookBoth → None
+    /// None -> Real -> LookForward -> LookBoth -> None
     pub fn next(self) -> Self {
         match self {
             Self::None => Self::Real,

@@ -18,12 +18,12 @@ pub enum ScrollbarVisibility {
 /// Determine if the horizontal scrollbar should be visible given the current wrap state.
 ///
 /// Rules:
-/// - `None` mode → always Visible (horizontal scrolling needed for long lines)
-/// - `Word`/`Character` + `Viewport` boundary → Hidden (all content fits)
-/// - `Word`/`Character` + `Column(n)` + viewport < n → Visible (content may overflow viewport)
-/// - `Word`/`Character` + `Column(n)` + viewport >= n → Hidden (wrapped content fits)
+/// - `None` mode -> always Visible (horizontal scrolling needed for long lines)
+/// - `Word`/`Character` + `Viewport` boundary -> Hidden (all content fits)
+/// - `Word`/`Character` + `Column(n)` + viewport < n -> Visible (content may overflow viewport)
+/// - `Word`/`Character` + `Column(n)` + viewport >= n -> Hidden (wrapped content fits)
 ///
-/// Addresses: Requirement 7 AC 1–5
+/// Addresses: Requirement 7 AC 1-5
 pub fn scrollbar_visibility(state: &WrapState, viewport_width: u16) -> ScrollbarVisibility {
     match state.mode() {
         WrapMode::None => ScrollbarVisibility::Visible,
@@ -42,7 +42,7 @@ pub fn scrollbar_visibility(state: &WrapState, viewport_width: u16) -> Scrollbar
 
 /// Determine if horizontal_offset should be reset when wrap state changes.
 ///
-/// Returns `true` when transitioning from None → active mode with Viewport boundary.
+/// Returns `true` when transitioning from None -> active mode with Viewport boundary.
 ///
 /// Addresses: Requirement 7 AC 1
 pub fn should_reset_horizontal_offset(state: &WrapState) -> bool {
@@ -53,7 +53,7 @@ pub fn should_reset_horizontal_offset(state: &WrapState) -> bool {
 ///
 /// Equivalent to `scrollbar_visibility(state, viewport_width) == Visible`.
 ///
-/// Addresses: Requirement 7 AC 1–5
+/// Addresses: Requirement 7 AC 1-5
 pub fn should_show_horizontal_scrollbar(state: &WrapState, viewport_width: u16) -> bool {
     scrollbar_visibility(state, viewport_width) == ScrollbarVisibility::Visible
 }

@@ -83,7 +83,7 @@ pub fn apply_numbering(
 
     let overflow_message = if overflow {
         Some(format!(
-            "NUMBER: sequence overflow — numbers truncated to fit COLS {}-{}",
+            "NUMBER: sequence overflow -- numbers truncated to fit COLS {}-{}",
             range.start(),
             range.end()
         ))
@@ -143,7 +143,7 @@ mod tests {
     use super::*;
     use crate::traits::DocumentAccess;
 
-    // ─── Test Helpers ───────────────────────────────────────────────────────
+    // === Test Helpers =======================================================
 
     struct MockDoc {
         lines: Vec<String>,
@@ -190,7 +190,7 @@ mod tests {
         }
     }
 
-    // ─── Tests ──────────────────────────────────────────────────────────────
+    // === Tests ==============================================================
 
     #[test]
     fn generate_numeric_sequence_6_col() {
@@ -234,7 +234,7 @@ mod tests {
         let (values, overflow) = generate_sequence(3, 990, 10, 3, &SequenceFormat::Numeric);
         assert!(overflow);
         assert_eq!(values[0], "990");
-        // 990 + 10 = 1000 > 999 → overflow
+        // 990 + 10 = 1000 > 999 -> overflow
         assert_eq!(values[1], "999"); // Truncated to max
     }
 

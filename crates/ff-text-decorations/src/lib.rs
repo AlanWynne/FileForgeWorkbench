@@ -1,4 +1,4 @@
-//! # ff-text-decorations — Visual Overlay Subsystem
+//! # ff-text-decorations -- Visual Overlay Subsystem
 //!
 //! This crate manages transient, overlapping decorations applied on top of
 //! (or beneath) rendered text to communicate semantic information:
@@ -15,19 +15,19 @@
 //! exposes query APIs; actual rendering is performed by the shell layer (egui).
 //!
 //! Key data structures:
-//! - [`RunStyles<T>`] — generic run-length encoded storage
-//! - [`DecorationList`] — per-document aggregate of all indicator decorations
-//! - [`MarkerStore`] — per-line marker bitmask storage
-//! - [`IndicatorCatalogue`] — style configuration for all 44 indicator slots
-//! - [`HoverState`] — mouse tracking for dynamic indicators
+//! - [`RunStyles<T>`] -- generic run-length encoded storage
+//! - [`DecorationList`] -- per-document aggregate of all indicator decorations
+//! - [`MarkerStore`] -- per-line marker bitmask storage
+//! - [`IndicatorCatalogue`] -- style configuration for all 44 indicator slots
+//! - [`HoverState`] -- mouse tracking for dynamic indicators
 //!
 //! ## Dependencies
 //!
-//! - `ff-logging` — structured diagnostic output
-//! - `ff-command` — bookmark command registration
-//! - `ff-config` — hot-reload configuration integration
+//! - `ff-logging` -- structured diagnostic output
+//! - `ff-command` -- bookmark command registration
+//! - `ff-config` -- hot-reload configuration integration
 
-// ─── Public Modules ─────────────────────────────────────────────────────────
+// === Public Modules =========================================================
 
 pub mod allocator;
 pub mod catalogue;
@@ -49,7 +49,7 @@ pub mod rendering;
 pub mod run_styles;
 pub mod theme_integration;
 
-// ─── Public API Re-exports ──────────────────────────────────────────────────
+// === Public API Re-exports ==================================================
 
 pub use allocator::IndicatorAllocator;
 pub use catalogue::IndicatorCatalogue;
@@ -69,9 +69,9 @@ pub use rendering::{DecorationRenderer, RenderingProvider};
 pub use run_styles::{Run, RunStyles};
 pub use theme_integration::ThemeDecorationProvider;
 
-// ─── Core Newtypes ──────────────────────────────────────────────────────────
+// === Core Newtypes ==========================================================
 
-/// Indicator number (0–43).
+/// Indicator number (0-43).
 ///
 /// Addresses: Requirement 13
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -91,7 +91,7 @@ impl IndicatorNumber {
     }
 }
 
-/// Marker number (0–31).
+/// Marker number (0-31).
 ///
 /// Addresses: Requirement 9 AC 1
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -111,7 +111,7 @@ impl MarkerNumber {
     }
 }
 
-/// Bitmask of active markers on a line (bits 0–31).
+/// Bitmask of active markers on a line (bits 0-31).
 ///
 /// Addresses: Requirement 9 AC 7
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -139,7 +139,7 @@ impl MarkerMask {
     }
 }
 
-/// RGBA colour representation (0–255 per component).
+/// RGBA colour representation (0-255 per component).
 ///
 /// Addresses: Requirement 15 (theme integration)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

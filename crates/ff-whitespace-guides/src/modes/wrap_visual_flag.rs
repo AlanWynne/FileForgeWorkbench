@@ -35,7 +35,7 @@ impl WrapVisualFlag {
         self.0 & Self::MARGIN.0 != 0
     }
 
-    /// Create from raw bits, masking to valid range (0–7).
+    /// Create from raw bits, masking to valid range (0-7).
     pub fn from_bits(bits: u8) -> Self {
         Self(bits & 0x07)
     }

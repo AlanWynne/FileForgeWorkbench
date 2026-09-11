@@ -6,7 +6,7 @@ use crate::types::ColourRGBA;
 ///
 /// Refreshed on theme change events.
 ///
-/// Addresses: Requirement 2 AC 2.7–2.9, Requirement 3 AC 3.6,
+/// Addresses: Requirement 2 AC 2.7-2.9, Requirement 3 AC 3.6,
 ///            Requirement 4 AC 4.4, Requirement 5, Requirement 6 AC 6.8
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedColours {

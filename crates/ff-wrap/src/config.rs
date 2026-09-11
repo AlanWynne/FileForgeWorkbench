@@ -22,7 +22,7 @@ pub struct ConfigWarning {
 
 /// Raw configuration values before validation (direct from TOML parse).
 ///
-/// All fields are optional — missing keys receive defaults during validation.
+/// All fields are optional -- missing keys receive defaults during validation.
 #[derive(Debug, Clone, Default)]
 pub struct RawWrapConfig {
     /// Raw `default_mode` string value.
@@ -56,7 +56,7 @@ pub struct WrapConfig {
     pub indent_mode: WrapIndentMode,
 
     /// Fixed indent amount in characters (used when `indent_mode` is `Fixed`).
-    /// Valid range: 0–40. Default: 0.
+    /// Valid range: 0-40. Default: 0.
     pub indent_amount: u8,
 
     /// Wrap visual flags (continuation markers).
@@ -96,7 +96,7 @@ impl WrapConfig {
                     warnings.push(ConfigWarning {
                         key: "view.wrap.default_mode".to_string(),
                         message: format!(
-                            "invalid value '{}' — expected 'none', 'word', or 'character'; using default 'none'",
+                            "invalid value '{}' -- expected 'none', 'word', or 'character'; using default 'none'",
                             mode_str
                         ),
                     });
@@ -112,7 +112,7 @@ impl WrapConfig {
                 warnings.push(ConfigWarning {
                     key: "view.wrap.wrap_column".to_string(),
                     message: format!(
-                        "value {} is out of range (0–10000) — using default (viewport)",
+                        "value {} is out of range (0-10000) -- using default (viewport)",
                         col_val
                     ),
                 });
@@ -130,7 +130,7 @@ impl WrapConfig {
                     warnings.push(ConfigWarning {
                         key: "view.wrap.indent_mode".to_string(),
                         message: format!(
-                            "invalid value '{}' — expected 'fixed', 'same', 'indent', or 'deep_indent'; using default 'fixed'",
+                            "invalid value '{}' -- expected 'fixed', 'same', 'indent', or 'deep_indent'; using default 'fixed'",
                             mode_str
                         ),
                     });
@@ -144,13 +144,13 @@ impl WrapConfig {
                 config.indent_amount = 0;
                 warnings.push(ConfigWarning {
                     key: "view.wrap.indent_amount".to_string(),
-                    message: format!("value {} is out of range (0–40) — clamped to 0", amount),
+                    message: format!("value {} is out of range (0-40) -- clamped to 0", amount),
                 });
             } else if amount > 40 {
                 config.indent_amount = 40;
                 warnings.push(ConfigWarning {
                     key: "view.wrap.indent_amount".to_string(),
-                    message: format!("value {} is out of range (0–40) — clamped to 40", amount),
+                    message: format!("value {} is out of range (0-40) -- clamped to 40", amount),
                 });
             } else {
                 config.indent_amount = amount as u8;
@@ -169,7 +169,7 @@ impl WrapConfig {
                     warnings.push(ConfigWarning {
                         key: "view.wrap.visual_flags".to_string(),
                         message: format!(
-                            "invalid value '{}' — expected 'none', 'end', 'start', 'start_end', or 'margin'; using default 'none'",
+                            "invalid value '{}' -- expected 'none', 'end', 'start', 'start_end', or 'margin'; using default 'none'",
                             flags_str
                         ),
                     });

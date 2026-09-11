@@ -1,4 +1,4 @@
-//! Strip engine — core column clearing logic.
+//! Strip engine -- core column clearing logic.
 //!
 //! Replaces sequence column content with spaces and stores originals
 //! in the side-table for potential restoration or overlay display.
@@ -27,7 +27,7 @@ pub fn strip_columns(line: &str, range: &ColumnRange) -> Option<String> {
     let end = range.end_offset();
 
     if line.len() <= start {
-        return None; // Line shorter than start — unchanged
+        return None; // Line shorter than start -- unchanged
     }
 
     let actual_end = end.min(line.len());
@@ -112,7 +112,7 @@ fn strip_range_impl(
                     }
                     // Store original in side-table
                     if ranges.len() == 1 {
-                        // Single range — determine if it's front or back by position
+                        // Single range -- determine if it's front or back by position
                         if range.start() <= 10 {
                             side_table.store_stripped_values(line_idx, Some(orig), None);
                         } else {
@@ -181,7 +181,7 @@ mod tests {
     use super::*;
     use crate::traits::DocumentAccess;
 
-    // ─── Test Helpers ───────────────────────────────────────────────────────
+    // === Test Helpers =======================================================
 
     struct MockDoc {
         lines: Vec<String>,
@@ -232,7 +232,7 @@ mod tests {
         format!("{}{}{}", &f[..6], &b_pad[..66], &bk[..8])
     }
 
-    // ─── Unit Tests ─────────────────────────────────────────────────────────
+    // === Unit Tests =========================================================
 
     #[test]
     fn strip_columns_replaces_with_spaces() {

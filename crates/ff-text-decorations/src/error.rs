@@ -14,20 +14,20 @@ pub enum DecorationError {
     )]
     PositionOutOfRange { position: u64, document_length: u64 },
 
-    /// Indicator number is out of the valid range (0–43).
+    /// Indicator number is out of the valid range (0-43).
     #[error("[decorations] indicator: number {number} exceeds maximum 43")]
     InvalidIndicatorNumber { number: u8 },
 
-    /// Marker number is out of the valid range (0–31).
+    /// Marker number is out of the valid range (0-31).
     #[error("[decorations] marker: number {number} exceeds maximum 31")]
     InvalidMarkerNumber { number: u8 },
 
-    /// Attempted to write to the lexer range (0–7) from non-lexer code.
-    #[error("[decorations] fill_range: indicator {number} is in the lexer range (0–7), reserved for syntax-highlighting")]
+    /// Attempted to write to the lexer range (0-7) from non-lexer code.
+    #[error("[decorations] fill_range: indicator {number} is in the lexer range (0-7), reserved for syntax-highlighting")]
     LexerRangeViolation { number: u8 },
 
     /// No available indicator slots in the container range.
-    #[error("[decorations] allocate: all container-range indicator numbers (8–31) are allocated")]
+    #[error("[decorations] allocate: all container-range indicator numbers (8-31) are allocated")]
     NoAvailableIndicators,
 
     /// Attempted to release an indicator that was not allocated.

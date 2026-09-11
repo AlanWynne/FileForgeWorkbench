@@ -11,7 +11,7 @@ use crate::{IndicatorNumber, MarkerNumber};
 pub mod indicators {
     use super::IndicatorNumber;
 
-    // Container range (8–31): application-managed
+    // Container range (8-31): application-managed
     /// Current search match indicator (StraightBox bright orange).
     pub const SEARCH_CURRENT: IndicatorNumber = IndicatorNumber(8);
     /// All other search matches indicator (RoundBox pale yellow).
@@ -24,9 +24,9 @@ pub mod indicators {
     pub const INFO: IndicatorNumber = IndicatorNumber(12);
     /// Hint diagnostic indicator (Dots grey).
     pub const HINT: IndicatorNumber = IndicatorNumber(13);
-    // 14–31: available for plugins
+    // 14-31: available for plugins
 
-    // IME range (32–35)
+    // IME range (32-35)
     /// IME input composition.
     pub const IME_INPUT: IndicatorNumber = IndicatorNumber(32);
     /// IME target (selected in composition).
@@ -36,7 +36,7 @@ pub mod indicators {
     /// IME target non-converted.
     pub const IME_TARGET_NON_CONVERTED: IndicatorNumber = IndicatorNumber(35);
 
-    // History range (36–43)
+    // History range (36-43)
     /// Modified line, insertion indicator.
     pub const HISTORY_MODIFIED_INSERTION: IndicatorNumber = IndicatorNumber(36);
     /// Modified line, deletion indicator.
@@ -71,5 +71,5 @@ pub mod markers {
     pub const HISTORY_REVERTED_ORIGIN: MarkerNumber = MarkerNumber(3);
     /// Reverted to previously modified state.
     pub const HISTORY_REVERTED_MODIFIED: MarkerNumber = MarkerNumber(4);
-    // 5–31: available for fold markers, plugins, etc.
+    // 5-31: available for fold markers, plugins, etc.
 }

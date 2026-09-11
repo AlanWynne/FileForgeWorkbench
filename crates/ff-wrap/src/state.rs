@@ -167,7 +167,7 @@ mod tests {
         let config = WrapConfig::default();
         let mut state = WrapState::from_config(&config);
 
-        // Start from None — last_active_mode defaults to Word
+        // Start from None -- last_active_mode defaults to Word
         assert_eq!(state.last_active_mode(), WrapMode::Word);
 
         // Setting to Character from None doesn't update last_active_mode

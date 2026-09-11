@@ -17,7 +17,7 @@ pub fn columns_overlap_bounds(seq_range: &ColumnRange, bounds_start: u32, bounds
 /// Generate a warning message when sequence columns overlap with BOUNDS.
 pub fn overlap_warning_message(range: &ColumnRange) -> String {
     format!(
-        "NUMBER ON: sequence columns {}-{} overlap with active BOUNDS — auto-numbering disabled for overlapping range",
+        "NUMBER ON: sequence columns {}-{} overlap with active BOUNDS -- auto-numbering disabled for overlapping range",
         range.start(),
         range.end()
     )

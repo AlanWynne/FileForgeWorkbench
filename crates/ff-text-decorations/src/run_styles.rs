@@ -292,7 +292,7 @@ impl<T: Clone + Eq + Default + Debug> RunStyles<T> {
         &self.runs
     }
 
-    // ─── Private Helpers ────────────────────────────────────────────────────
+    // === Private Helpers ====================================================
 
     /// Find the index of the run containing `position` using binary search.
     fn find_run_index(&self, position: u64) -> usize {
@@ -452,7 +452,7 @@ mod tests {
 
     #[test]
     fn fill_range_idempotent_returns_false() {
-        // Validates: Property 2 — fill_range idempotency
+        // Validates: Property 2 -- fill_range idempotency
         let mut rs: RunStyles<u32> = RunStyles::new(100);
         rs.fill_range(10, 5, 20);
         let changed = rs.fill_range(10, 5, 20);
@@ -461,10 +461,10 @@ mod tests {
 
     #[test]
     fn fill_range_merges_adjacent_same_value_runs() {
-        // Validates: Property 9 — run merge optimality
+        // Validates: Property 9 -- run merge optimality
         let mut rs: RunStyles<u32> = RunStyles::new(100);
         rs.fill_range(10, 5, 10); // [10..20) = 5
-        rs.fill_range(20, 5, 10); // [20..30) = 5 → should merge
+        rs.fill_range(20, 5, 10); // [20..30) = 5 -> should merge
                                   // No adjacent runs with same value
         for i in 0..rs.runs().len() - 1 {
             assert_ne!(rs.runs()[i].value, rs.runs()[i + 1].value);
@@ -508,7 +508,7 @@ mod tests {
 
     #[test]
     fn insert_delete_round_trip_restores_state() {
-        // Validates: Property 3 — insert-delete round trip
+        // Validates: Property 3 -- insert-delete round trip
         let mut rs: RunStyles<u32> = RunStyles::new(100);
         rs.fill_range(10, 3, 20);
         rs.fill_range(50, 7, 10);
@@ -554,7 +554,7 @@ mod tests {
 
     #[test]
     fn total_length_preserved_after_operations() {
-        // Validates: Property 1 — RLE total length preservation
+        // Validates: Property 1 -- RLE total length preservation
         let mut rs: RunStyles<u32> = RunStyles::new(100);
         rs.fill_range(10, 5, 20);
         assert_eq!(rs.total_length(), 100);

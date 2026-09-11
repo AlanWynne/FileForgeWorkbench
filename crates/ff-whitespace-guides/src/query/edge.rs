@@ -32,7 +32,7 @@ impl Default for EdgeConfig {
 /// Returns `None` when mode is `None`, otherwise returns the appropriate
 /// `EdgeInfo` variant.
 ///
-/// Addresses: Requirement 5 AC 5.1–5.5
+/// Addresses: Requirement 5 AC 5.1-5.5
 pub fn compute_edge_indicator(config: &EdgeConfig) -> Option<EdgeInfo> {
     match config.mode {
         EdgeMode::None => None,

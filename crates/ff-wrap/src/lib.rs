@@ -1,4 +1,4 @@
-//! # ff-wrap — Per-Editor-Instance Line Wrap Management
+//! # ff-wrap -- Per-Editor-Instance Line Wrap Management
 //!
 //! This crate provides the line wrap toggle subsystem for FileForgeWorkbench.
 //! It controls whether and how long document lines are visually broken across
@@ -6,15 +6,15 @@
 //!
 //! ## Core Types
 //!
-//! - [`WrapMode`] — enum with variants None, Word, Character
-//! - [`WrapBoundary`] — viewport-width dynamic or fixed-column static wrapping
-//! - [`WrapColumn`] — validated column number newtype (1–10000)
-//! - [`WrapIndentMode`] — continuation line indent mode (Fixed/Same/Indent/DeepIndent)
-//! - [`WrapVisualFlags`] — visual markers at wrap break points
-//! - [`WrapConfig`] — validated configuration from `[view.wrap]` TOML namespace
-//! - [`WrapState`] — per-editor-instance mutable wrap settings
-//! - [`WrapSnapshot`] — serialisable state for session persistence
-//! - [`WrapOperation`] — command operations (On/Off/Toggle/Word/Char/Col)
+//! - [`WrapMode`] -- enum with variants None, Word, Character
+//! - [`WrapBoundary`] -- viewport-width dynamic or fixed-column static wrapping
+//! - [`WrapColumn`] -- validated column number newtype (1-10000)
+//! - [`WrapIndentMode`] -- continuation line indent mode (Fixed/Same/Indent/DeepIndent)
+//! - [`WrapVisualFlags`] -- visual markers at wrap break points
+//! - [`WrapConfig`] -- validated configuration from `[view.wrap]` TOML namespace
+//! - [`WrapState`] -- per-editor-instance mutable wrap settings
+//! - [`WrapSnapshot`] -- serialisable state for session persistence
+//! - [`WrapOperation`] -- command operations (On/Off/Toggle/Word/Char/Col)
 //!
 //! ## Architecture
 //!

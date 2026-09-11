@@ -15,7 +15,7 @@ pub enum ExcludeFilterError {
 
     /// Invalid line range arguments (start > end, non-numeric, out of bounds).
     #[error(
-        "[exclude-filter] exclude: invalid line range {start}–{end} (document has {total} lines)"
+        "[exclude-filter] exclude: invalid line range {start}-{end} (document has {total} lines)"
     )]
     InvalidRange {
         start: usize,
@@ -65,7 +65,7 @@ mod tests {
             end: 10,
             total: 100,
         };
-        assert!(err.to_string().contains("invalid line range 50–10"));
+        assert!(err.to_string().contains("invalid line range 50-10"));
         assert!(err.to_string().contains("document has 100 lines"));
     }
 

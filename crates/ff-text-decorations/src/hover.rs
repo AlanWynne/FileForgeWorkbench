@@ -9,7 +9,7 @@ use crate::IndicatorNumber;
 
 /// Tracks mouse hover position and dynamic indicator interaction.
 ///
-/// Addresses: Requirement 11 AC 1–7
+/// Addresses: Requirement 11 AC 1-7
 pub struct HoverState {
     /// Current character position under the mouse cursor, or None if outside text.
     current_position: Option<u64>,

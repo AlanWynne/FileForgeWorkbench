@@ -1,4 +1,4 @@
-//! # ff-seqnum — Sequence Number Detection, Stripping, and Numbering
+//! # ff-seqnum -- Sequence Number Detection, Stripping, and Numbering
 //!
 //! This crate implements the sequence number subsystem for FileForgeWorkbench.
 //! It handles the detection, stripping, re-insertion, and display overlay of
@@ -8,24 +8,24 @@
 //!
 //! ## Design Principles
 //!
-//! - **GUI-independent** — all logic operates on the document model via traits
-//! - **Stripping is the default** — auto-strip on open when language profile enables it
-//! - **Re-insertion is explicit** — NUMBER command with confirmation
-//! - **Command-framework integrated** — UNNUM, NUMBER, NUMBER SHOW are registered commands
-//! - **BOUNDS-aware** — sequence operations never alter active BOUNDS state
-//! - **Undo-safe** — UNNUM and NUMBER are single-transaction undoable operations
+//! - **GUI-independent** -- all logic operates on the document model via traits
+//! - **Stripping is the default** -- auto-strip on open when language profile enables it
+//! - **Re-insertion is explicit** -- NUMBER command with confirmation
+//! - **Command-framework integrated** -- UNNUM, NUMBER, NUMBER SHOW are registered commands
+//! - **BOUNDS-aware** -- sequence operations never alter active BOUNDS state
+//! - **Undo-safe** -- UNNUM and NUMBER are single-transaction undoable operations
 //!
 //! ## Architecture
 //!
 //! The crate is organized into layers:
-//! 1. **Detection** — heuristic sampling to find sequence numbers
-//! 2. **Strip** — column clearing with side-table storage
-//! 3. **Number** — sequence generation and column insertion
-//! 4. **Display** — NUMBER SHOW overlay data model
-//! 5. **Save** — restore/strip on save pipeline hook
-//! 6. **Command** — command registration and argument dispatch
+//! 1. **Detection** -- heuristic sampling to find sequence numbers
+//! 2. **Strip** -- column clearing with side-table storage
+//! 3. **Number** -- sequence generation and column insertion
+//! 4. **Display** -- NUMBER SHOW overlay data model
+//! 5. **Save** -- restore/strip on save pipeline hook
+//! 6. **Command** -- command registration and argument dispatch
 
-// ─── Public Modules ─────────────────────────────────────────────────────────
+// === Public Modules =========================================================
 
 /// Error types for the sequence numbers subsystem.
 pub mod error;
@@ -45,7 +45,7 @@ pub mod detector;
 /// Per-document state tracking and side-table.
 pub mod state;
 
-/// Strip engine — core column clearing logic.
+/// Strip engine -- core column clearing logic.
 pub mod strip;
 
 /// Auto-strip on file open orchestration.
@@ -84,7 +84,7 @@ pub mod undo_integration;
 /// Command registration and dispatch integration.
 pub mod commands;
 
-// ─── Public API Re-exports ──────────────────────────────────────────────────
+// === Public API Re-exports ==================================================
 
 pub use auto_strip::{auto_strip_on_open, AutoStripResult};
 pub use commands::{

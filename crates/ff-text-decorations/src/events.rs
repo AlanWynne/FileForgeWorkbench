@@ -1,4 +1,4 @@
-//! Decoration events — click and hover notifications.
+//! Decoration events -- click and hover notifications.
 //!
 //! Defines the event types emitted by the decoration system
 //! when the user interacts with decorated text.

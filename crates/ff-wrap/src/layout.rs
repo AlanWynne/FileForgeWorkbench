@@ -65,7 +65,7 @@ pub fn compute_word_breaks(line: &str, wrap_width: u32, indent_offset: usize) ->
                 pos = bp;
             }
             _ => {
-                // No word boundary found — force break at character position
+                // No word boundary found -- force break at character position
                 breaks.push(end);
                 pos = end;
             }
@@ -412,7 +412,7 @@ mod tests {
     #[test]
     fn height_from_width_with_indent_offset() {
         // 10 char first line, then continuation lines have width 10 - 4 = 6
-        // 25 chars: first line takes 10, remaining 15 in chunks of 6 → ceil(15/6) = 3
+        // 25 chars: first line takes 10, remaining 15 in chunks of 6 -> ceil(15/6) = 3
         // Total: 1 + 3 = 4
         assert_eq!(compute_height_from_width(25, 10, WrapMode::Character, 4), 4);
     }

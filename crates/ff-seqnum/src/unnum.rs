@@ -12,7 +12,7 @@ use crate::types::ColumnRange;
 /// Parsed UNNUM command variant.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnnumVariant {
-    /// No arguments — use language profile columns.
+    /// No arguments -- use language profile columns.
     Default,
     /// Explicit column range: `UNNUM COLS start end`.
     Cols { range: ColumnRange },
@@ -67,7 +67,7 @@ pub fn parse_unnum_args(args: &[&str]) -> Result<UnnumVariant, SeqNumError> {
         "ALL" => Ok(UnnumVariant::All),
         _ => Err(SeqNumError::InvalidColumnRange {
             value: args.join(" "),
-            reason: "unrecognized UNNUM argument — expected COLS, FRONT, BACK, or ALL".to_string(),
+            reason: "unrecognized UNNUM argument -- expected COLS, FRONT, BACK, or ALL".to_string(),
         }),
     }
 }
@@ -152,7 +152,7 @@ mod tests {
     use super::*;
     use crate::traits::DocumentAccess;
 
-    // ─── Test Helpers ───────────────────────────────────────────────────────
+    // === Test Helpers =======================================================
 
     struct MockDoc {
         lines: Vec<String>,
@@ -222,7 +222,7 @@ mod tests {
         format!("{}{}{}", &f[..6], &b_pad[..66], &bk[..8])
     }
 
-    // ─── Tests ──────────────────────────────────────────────────────────────
+    // === Tests ==============================================================
 
     #[test]
     fn parse_no_args() {

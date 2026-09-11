@@ -13,7 +13,7 @@ use crate::types::{ColumnRange, SequenceFormat};
 /// Parsed NUMBER command variant.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NumberVariant {
-    /// No arguments — display usage.
+    /// No arguments -- display usage.
     Usage,
     /// NUMBER COLS start end [FORMAT format_name].
     Cols {
@@ -24,11 +24,11 @@ pub enum NumberVariant {
     },
     /// NUMBER STD [start increment].
     Std { start_value: u32, increment: u32 },
-    /// NUMBER ON — enable auto-numbering.
+    /// NUMBER ON -- enable auto-numbering.
     On,
-    /// NUMBER OFF — disable auto-numbering.
+    /// NUMBER OFF -- disable auto-numbering.
     Off,
-    /// NUMBER SHOW — toggle display overlay.
+    /// NUMBER SHOW -- toggle display overlay.
     Show,
 }
 
@@ -325,7 +325,7 @@ fn format_result_message(result: &NumberResult, range: &ColumnRange) -> String {
     let mut msg = format!("NUMBER: {} lines numbered", result.lines_numbered);
     if result.overflow_occurred {
         msg.push_str(&format!(
-            " — WARNING: sequence overflow at COLS {}-{}",
+            " -- WARNING: sequence overflow at COLS {}-{}",
             range.start(),
             range.end()
         ));
@@ -347,9 +347,9 @@ fn get_usage_text() -> String {
     "NUMBER command usage:\n\
      NUMBER COLS start end [start_val increment] [FORMAT NUMERIC|ALPHA prefix]\n\
      NUMBER STD [start_val increment]\n\
-     NUMBER ON    — enable auto-numbering\n\
-     NUMBER OFF   — disable auto-numbering\n\
-     NUMBER SHOW  — toggle sequence number overlay"
+     NUMBER ON    -- enable auto-numbering\n\
+     NUMBER OFF   -- disable auto-numbering\n\
+     NUMBER SHOW  -- toggle sequence number overlay"
         .to_string()
 }
 

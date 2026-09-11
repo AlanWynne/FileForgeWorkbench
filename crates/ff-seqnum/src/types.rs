@@ -195,7 +195,7 @@ pub enum DetectedFormat {
 mod tests {
     use super::*;
 
-    // ─── ColumnRange Tests ──────────────────────────────────────────────────
+    // === ColumnRange Tests ==================================================
 
     #[test]
     fn column_range_new_valid() {
@@ -296,7 +296,7 @@ mod tests {
         assert_eq!(format!("{range}"), "73-80");
     }
 
-    // ─── SequenceFormat Tests ───────────────────────────────────────────────
+    // === SequenceFormat Tests ===============================================
 
     #[test]
     fn numeric_format_value() {

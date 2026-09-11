@@ -11,7 +11,7 @@
 pub enum WrapError {
     /// Invalid sub-command provided to WRAP command.
     #[error(
-        "[wrap] command: invalid sub-command '{arg}' — valid: ON, OFF, TOGGLE, WORD, CHAR, COL <n>"
+        "[wrap] command: invalid sub-command '{arg}' -- valid: ON, OFF, TOGGLE, WORD, CHAR, COL <n>"
     )]
     InvalidSubCommand {
         /// The invalid argument that was provided.
@@ -19,14 +19,14 @@ pub enum WrapError {
     },
 
     /// Invalid column value for WRAP COL command.
-    #[error("[wrap] command: invalid column '{value}' — must be 0–10000")]
+    #[error("[wrap] command: invalid column '{value}' -- must be 0-10000")]
     InvalidColumn {
         /// The invalid column value string.
         value: String,
     },
 
     /// Configuration key has invalid value.
-    #[error("[wrap] config: key '{key}' has invalid value '{value}' — using default '{default}'")]
+    #[error("[wrap] config: key '{key}' has invalid value '{value}' -- using default '{default}'")]
     InvalidConfig {
         /// The configuration key name.
         key: String,
@@ -38,7 +38,7 @@ pub enum WrapError {
 
     /// Wrap column out of valid range in configuration.
     #[error(
-        "[wrap] config: wrap_column {value} is out of range (0–10000) — using default (viewport)"
+        "[wrap] config: wrap_column {value} is out of range (0-10000) -- using default (viewport)"
     )]
     ColumnOutOfRange {
         /// The out-of-range column value.
@@ -46,7 +46,7 @@ pub enum WrapError {
     },
 
     /// Indent amount out of valid range.
-    #[error("[wrap] config: indent_amount {value} is out of range (0–40) — clamped to {clamped}")]
+    #[error("[wrap] config: indent_amount {value} is out of range (0-40) -- clamped to {clamped}")]
     IndentAmountOutOfRange {
         /// The out-of-range indent amount.
         value: i64,
@@ -59,7 +59,7 @@ pub enum WrapError {
     NoActiveEditor,
 
     /// Session restore encountered an unrecognised wrap mode.
-    #[error("[wrap] restore: unrecognised mode '{mode}' — falling back to None")]
+    #[error("[wrap] restore: unrecognised mode '{mode}' -- falling back to None")]
     UnrecognisedPersistedMode {
         /// The unrecognised mode string.
         mode: String,
@@ -89,7 +89,7 @@ mod tests {
         };
         let msg = err.to_string();
         assert!(msg.contains("abc"));
-        assert!(msg.contains("0–10000"));
+        assert!(msg.contains("0-10000"));
     }
 
     #[test]
@@ -97,7 +97,7 @@ mod tests {
         let err = WrapError::ColumnOutOfRange { value: -5 };
         let msg = err.to_string();
         assert!(msg.contains("-5"));
-        assert!(msg.contains("0–10000"));
+        assert!(msg.contains("0-10000"));
     }
 
     #[test]

@@ -72,7 +72,7 @@ pub fn prepare_save_content(
 
 /// Apply restorations to a line content string for save output.
 ///
-/// Does not modify the edit buffer — produces a new string for the save pipeline.
+/// Does not modify the edit buffer -- produces a new string for the save pipeline.
 pub fn apply_restoration_to_line(
     line: &str,
     restoration: &LineRestoration,

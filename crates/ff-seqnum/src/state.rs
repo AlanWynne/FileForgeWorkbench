@@ -197,7 +197,7 @@ pub struct AutoNumberState {
 /// The status indicator displayed in the status bar.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SeqNumStatusIndicator {
-    /// No sequence columns detected or defined — no indicator shown.
+    /// No sequence columns detected or defined -- no indicator shown.
     None,
     /// Sequence numbers detected and stripped.
     Stripped { has_front: bool, has_back: bool },

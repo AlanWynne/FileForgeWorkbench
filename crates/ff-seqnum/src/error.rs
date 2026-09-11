@@ -8,11 +8,11 @@
 #[non_exhaustive]
 pub enum SeqNumError {
     /// A column range string is malformed (not "start-end", start > end, or zero values).
-    #[error("[seqnum] column-range: invalid range '{value}' — {reason}")]
+    #[error("[seqnum] column-range: invalid range '{value}' -- {reason}")]
     InvalidColumnRange { value: String, reason: String },
 
     /// No sequence columns are defined for the active language.
-    #[error("[seqnum] {command}: no sequence columns defined for this language — use {command} COLS to specify a range")]
+    #[error("[seqnum] {command}: no sequence columns defined for this language -- use {command} COLS to specify a range")]
     NoSequenceColumns { command: String },
 
     /// The alpha-prefix is too long for the target column width.
@@ -20,7 +20,7 @@ pub enum SeqNumError {
     PrefixTooLong { prefix: String, width: u32 },
 
     /// Sequence number generation overflowed the column width.
-    #[error("[seqnum] number: sequence overflow — numbers truncated to fit COLS {start}-{end}")]
+    #[error("[seqnum] number: sequence overflow -- numbers truncated to fit COLS {start}-{end}")]
     OverflowWarning { start: u32, end: u32 },
 
     /// The command is not applicable in Grid_Edit_Mode.
@@ -28,7 +28,7 @@ pub enum SeqNumError {
     GridEditModeNotAllowed { command: String },
 
     /// A configuration value is outside the valid range (clamped).
-    #[error("[seqnum] config: value {value} for '{key}' outside valid range {min}–{max}, clamped to {clamped}")]
+    #[error("[seqnum] config: value {value} for '{key}' outside valid range {min}-{max}, clamped to {clamped}")]
     ConfigOutOfRange {
         key: String,
         value: i64,

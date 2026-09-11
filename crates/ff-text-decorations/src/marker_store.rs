@@ -9,7 +9,7 @@ use crate::{MarkerMask, MarkerNumber};
 
 /// Per-document storage of line marker assignments.
 ///
-/// Addresses: Requirement 9 AC 7–10
+/// Addresses: Requirement 9 AC 7-10
 pub struct MarkerStore {
     /// Map from document line number to marker bitmask.
     /// Lines without markers are not present in the map.
@@ -245,7 +245,7 @@ mod tests {
 
     #[test]
     fn marker_next_wraps_around() {
-        // Validates: Property 8 — bookmark wrapping
+        // Validates: Property 8 -- bookmark wrapping
         let mut store = MarkerStore::new(100);
         let marker = MarkerNumber::new(0).unwrap();
         store.marker_add(10, marker);
@@ -309,7 +309,7 @@ mod tests {
         store.lines_deleted(12, 5); // delete lines 12..17
                                     // Line 10 unchanged
         assert!(store.marker_get(10).has(marker));
-        // Line 15 was in deleted range — gone
+        // Line 15 was in deleted range -- gone
         assert!(!store.marker_get(15).has(marker));
         // Line 30 shifted down by 5
         assert!(store.marker_get(25).has(marker));

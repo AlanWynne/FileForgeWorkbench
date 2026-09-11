@@ -52,7 +52,7 @@ pub struct WrapMarkerPosition {
 ///
 /// Returns an empty vec when flags are `None` or height is 1 (no continuation lines).
 ///
-/// Addresses: Requirement 10 AC 2–5
+/// Addresses: Requirement 10 AC 2-5
 pub fn compute_markers(line_height: u32, flags: WrapVisualFlags) -> Vec<WrapMarkerPosition> {
     if line_height <= 1 {
         return Vec::new();

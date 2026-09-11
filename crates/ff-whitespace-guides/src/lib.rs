@@ -1,12 +1,12 @@
-//! # ff-whitespace-guides — Whitespace Visibility and Structural Guides
+//! # ff-whitespace-guides -- Whitespace Visibility and Structural Guides
 //!
 //! This crate provides the data model, configuration, and per-line metadata
 //! computation for visual annotations in FileForgeWorkbench:
 //!
-//! - **Whitespace visibility** — dots for spaces, arrows/strikeouts for tabs
-//! - **Indent guides** — vertical guide lines at each indentation level
-//! - **Edge column indicator** — vertical line(s) or background shading at column boundaries
-//! - **Wrap markers** — visual indicators at start/end of wrapped sub-lines
+//! - **Whitespace visibility** -- dots for spaces, arrows/strikeouts for tabs
+//! - **Indent guides** -- vertical guide lines at each indentation level
+//! - **Edge column indicator** -- vertical line(s) or background shading at column boundaries
+//! - **Wrap markers** -- visual indicators at start/end of wrapped sub-lines
 //!
 //! ## GUI Independence
 //!
@@ -17,12 +17,12 @@
 //! ## Architecture
 //!
 //! ```text
-//! Shell Layer (egui) → reads settings + per-line queries → draws glyphs
-//! THIS CRATE          → settings model, query API, toggle commands
-//! Upstream            → ff-config (settings), ff-command (toggle commands)
+//! Shell Layer (egui) -> reads settings + per-line queries -> draws glyphs
+//! THIS CRATE          -> settings model, query API, toggle commands
+//! Upstream            -> ff-config (settings), ff-command (toggle commands)
 //! ```
 
-// ─── Public Modules ─────────────────────────────────────────────────────────
+// === Public Modules =========================================================
 
 /// Mode enums for whitespace visibility, tab drawing, indent guides, edge, and wrap.
 pub mod modes;
@@ -51,7 +51,7 @@ pub mod types;
 /// Error types for the whitespace-guides subsystem.
 pub mod error;
 
-// ─── Public API Re-exports ──────────────────────────────────────────────────
+// === Public API Re-exports ==================================================
 
 pub use modes::{
     EdgeMode, IndentGuideMode, TabDrawMode, WhitespaceVisibility, WrapIndentMode, WrapVisualFlag,

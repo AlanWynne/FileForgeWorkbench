@@ -2,7 +2,7 @@
 //!
 //! Samples file content and determines whether sequence numbers are present
 //! in defined column ranges using configurable heuristic rules.
-//! The detection algorithm is purely read-only — it never modifies the edit buffer.
+//! The detection algorithm is purely read-only -- it never modifies the edit buffer.
 
 use crate::config::SeqNumConfig;
 use crate::traits::{DocumentAccess, LanguageProfile};
@@ -10,7 +10,7 @@ use crate::types::{ColumnRange, DetectedFormat, DetectionResult};
 
 /// Samples file content to detect sequence number presence.
 ///
-/// Read-only operation — never modifies the edit buffer or source file.
+/// Read-only operation -- never modifies the edit buffer or source file.
 #[derive(Debug)]
 pub struct SequenceDetector {
     config: SeqNumConfig,
@@ -223,7 +223,7 @@ impl SequenceDetector {
 mod tests {
     use super::*;
 
-    // ─── Test Helpers ───────────────────────────────────────────────────────
+    // === Test Helpers =======================================================
 
     struct MockDocument {
         lines: Vec<String>,
@@ -287,7 +287,7 @@ mod tests {
         format!("{}{}{}", &front[..6], &body_padded[..66], &back[..8])
     }
 
-    // ─── Detection Tests ────────────────────────────────────────────────────
+    // === Detection Tests ====================================================
 
     #[test]
     fn detect_cobol_with_valid_sequence_numbers() {
@@ -330,7 +330,7 @@ mod tests {
     #[test]
     fn detect_short_file_requires_100_percent() {
         // Validates: Requirement 2.3
-        // 4 lines (< 5), one doesn't match → should be Absent
+        // 4 lines (< 5), one doesn't match -> should be Absent
         let mut lines: Vec<String> = (1..=3)
             .map(|i| {
                 make_cobol_line(
@@ -379,7 +379,7 @@ mod tests {
         let config = SeqNumConfig::default();
         let detector = SequenceDetector::new(&config);
 
-        // Lines that are only 50 chars long — shorter than col 73
+        // Lines that are only 50 chars long -- shorter than col 73
         let short_lines: Vec<&str> = vec![
             "      MOVE A TO B.                                ",
             "      MOVE C TO D.                                ",

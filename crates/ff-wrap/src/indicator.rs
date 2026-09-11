@@ -25,7 +25,7 @@ pub fn format_indicator(state: &WrapState) -> Option<String> {
 
 /// Compute the next wrap mode in the cycle for status bar click.
 ///
-/// Cycle: None → Word → Character → None
+/// Cycle: None -> Word -> Character -> None
 ///
 /// Addresses: Requirement 8 AC 5
 pub fn next_mode_in_cycle(current: WrapMode) -> WrapMode {

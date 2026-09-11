@@ -4,7 +4,7 @@ use crate::modes::{EdgeMode, IndentGuideMode, WhitespaceVisibility};
 
 /// Cycle whitespace visibility to the next mode.
 ///
-/// Order: Invisible → VisibleAlways → VisibleAfterIndent → VisibleOnlyInIndent → Invisible
+/// Order: Invisible -> VisibleAlways -> VisibleAfterIndent -> VisibleOnlyInIndent -> Invisible
 ///
 /// Addresses: Requirement 8 AC 8.1
 pub fn toggle_whitespace(current: WhitespaceVisibility) -> WhitespaceVisibility {
@@ -13,7 +13,7 @@ pub fn toggle_whitespace(current: WhitespaceVisibility) -> WhitespaceVisibility 
 
 /// Cycle indent guide mode to the next mode.
 ///
-/// Order: None → Real → LookForward → LookBoth → None
+/// Order: None -> Real -> LookForward -> LookBoth -> None
 ///
 /// Addresses: Requirement 8 AC 8.2
 pub fn toggle_indent_guides(current: IndentGuideMode) -> IndentGuideMode {

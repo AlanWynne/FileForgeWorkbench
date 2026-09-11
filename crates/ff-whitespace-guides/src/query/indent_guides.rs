@@ -155,7 +155,7 @@ mod tests {
             b"    next",     // indent 4
         ];
         let result = compute_look_both_guides(&lines, 1, 4);
-        // Max of prev=8, next=4 → effective=8 → guides at 4, 8
+        // Max of prev=8, next=4 -> effective=8 -> guides at 4, 8
         assert_eq!(result, vec![4, 8]);
     }
 

@@ -15,7 +15,7 @@ use crate::types::{GlyphPosition, WhitespaceGlyph};
 /// * `visibility` - The current whitespace visibility mode.
 /// * `tab_draw_mode` - How tab characters should be rendered.
 ///
-/// Addresses: Requirement 1 AC 1.3–1.5, Requirement 2 AC 2.1–2.2
+/// Addresses: Requirement 1 AC 1.3-1.5, Requirement 2 AC 2.1-2.2
 pub fn compute_whitespace_glyphs(
     line: &[u8],
     tab_size: u32,
@@ -83,11 +83,11 @@ fn should_include(
         WhitespaceVisibility::VisibleAlways => true,
         WhitespaceVisibility::VisibleAfterIndent => match first_non_ws {
             Some(first) => byte_idx > first,
-            None => false, // all whitespace line — no "after indent" chars
+            None => false, // all whitespace line -- no "after indent" chars
         },
         WhitespaceVisibility::VisibleOnlyInIndent => match first_non_ws {
             Some(first) => byte_idx < first,
-            None => true, // all whitespace line — all are "in indent"
+            None => true, // all whitespace line -- all are "in indent"
         },
     }
 }

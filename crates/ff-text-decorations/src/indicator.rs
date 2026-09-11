@@ -1,4 +1,4 @@
-//! Indicator configuration — style, colours, alpha, stroke width, flags.
+//! Indicator configuration -- style, colours, alpha, stroke width, flags.
 //!
 //! Each of the 44 indicator slots has a complete configuration controlling
 //! how the decoration renders in both normal and hover states.
@@ -28,7 +28,7 @@ pub struct StyleAppearance {
 
 /// Complete configuration for a single indicator slot.
 ///
-/// Addresses: Requirement 2 AC 1–9
+/// Addresses: Requirement 2 AC 1-9
 #[derive(Debug, Clone, PartialEq)]
 pub struct IndicatorConfig {
     /// Normal-state appearance.
@@ -37,9 +37,9 @@ pub struct IndicatorConfig {
     pub hover: StyleAppearance,
     /// Whether indicator renders below text glyphs.
     pub under: bool,
-    /// Interior fill opacity for box-style indicators (0–255, default 30).
+    /// Interior fill opacity for box-style indicators (0-255, default 30).
     pub fill_alpha: u8,
-    /// Border/outline opacity for box-style indicators (0–255, default 50).
+    /// Border/outline opacity for box-style indicators (0-255, default 50).
     pub outline_alpha: u8,
     /// Line thickness in logical pixels (default 1.0).
     pub stroke_width: f32,

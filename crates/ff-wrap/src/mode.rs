@@ -8,25 +8,25 @@
 ///
 /// # Variants
 ///
-/// - `None` — No wrapping; each document line occupies exactly one display row.
-/// - `Word` — Lines break at word boundaries (whitespace, punctuation adjacent to alphanumeric).
-/// - `Character` — Lines break at the exact character position filling the boundary width.
+/// - `None` -- No wrapping; each document line occupies exactly one display row.
+/// - `Word` -- Lines break at word boundaries (whitespace, punctuation adjacent to alphanumeric).
+/// - `Character` -- Lines break at the exact character position filling the boundary width.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
 )]
 #[non_exhaustive]
 pub enum WrapMode {
-    /// No wrapping — each document line occupies exactly one display row.
+    /// No wrapping -- each document line occupies exactly one display row.
     /// Long lines extend beyond the viewport edge (horizontal scroll required).
     #[default]
     None,
 
-    /// Word-boundary wrapping — lines break at word boundaries (whitespace,
+    /// Word-boundary wrapping -- lines break at word boundaries (whitespace,
     /// punctuation adjacent to alphanumeric). Falls back to character-level
     /// for words exceeding the boundary width.
     Word,
 
-    /// Character-boundary wrapping — lines break at the exact character
+    /// Character-boundary wrapping -- lines break at the exact character
     /// position that fills the boundary width.
     Character,
 }
@@ -47,9 +47,9 @@ impl WrapMode {
 
     /// Returns a display label suitable for status messages.
     ///
-    /// - `None` → `"Off"`
-    /// - `Word` → `"Word"`
-    /// - `Character` → `"Char"`
+    /// - `None` -> `"Off"`
+    /// - `Word` -> `"Word"`
+    /// - `Character` -> `"Char"`
     pub fn display_label(self) -> &'static str {
         match self {
             Self::None => "Off",
@@ -71,7 +71,7 @@ mod tests {
 
     #[test]
     fn wrap_mode_default_is_none() {
-        // Validates: Requirement 2.2 — default mode is None
+        // Validates: Requirement 2.2 -- default mode is None
         assert_eq!(WrapMode::default(), WrapMode::None);
     }
 

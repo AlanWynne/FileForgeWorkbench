@@ -10,7 +10,7 @@ use crate::marker_store::MarkerStore;
 ///
 /// Coordinates decoration position adjustments in response to document edits.
 ///
-/// Addresses: Requirement 4 AC 1–8
+/// Addresses: Requirement 4 AC 1-8
 pub struct EditSync;
 
 impl EditSync {

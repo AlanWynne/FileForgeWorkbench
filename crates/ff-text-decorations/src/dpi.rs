@@ -5,7 +5,7 @@
 
 /// High-DPI pixel alignment utility.
 ///
-/// Addresses: Requirement 10 AC 1–8
+/// Addresses: Requirement 10 AC 1-8
 pub struct PixelAligner {
     /// Display scale factor (e.g., 1.0, 1.5, 2.0).
     scale_factor: f32,
@@ -81,16 +81,16 @@ mod tests {
     fn align_at_2x_snaps_to_half_pixel() {
         // Validates: Requirement 10 AC 1
         let pa = PixelAligner::new(2.0);
-        // 10.3 * 2 = 20.6 → round to 21 → 21 / 2 = 10.5
+        // 10.3 * 2 = 20.6 -> round to 21 -> 21 / 2 = 10.5
         assert_eq!(pa.align(10.3), 10.5);
-        // 10.1 * 2 = 20.2 → round to 20 → 20 / 2 = 10.0
+        // 10.1 * 2 = 20.2 -> round to 20 -> 20 / 2 = 10.0
         assert_eq!(pa.align(10.1), 10.0);
     }
 
     #[test]
     fn align_at_1_5x_snaps_to_third_pixel() {
         let pa = PixelAligner::new(1.5);
-        // 10.0 * 1.5 = 15.0 → round to 15 → 15 / 1.5 = 10.0
+        // 10.0 * 1.5 = 15.0 -> round to 15 -> 15 / 1.5 = 10.0
         assert_eq!(pa.align(10.0), 10.0);
     }
 
@@ -117,9 +117,9 @@ mod tests {
     #[test]
     fn scale_stroke_at_2x_scales_and_rounds() {
         let pa = PixelAligner::new(2.0);
-        // 1.0 * 2.0 = 2.0 → round = 2.0 → 2.0 / 2.0 = 1.0
+        // 1.0 * 2.0 = 2.0 -> round = 2.0 -> 2.0 / 2.0 = 1.0
         assert_eq!(pa.scale_stroke(1.0), 1.0);
-        // 0.5 * 2.0 = 1.0 → round = 1.0 → 1.0 / 2.0 = 0.5
+        // 0.5 * 2.0 = 1.0 -> round = 1.0 -> 1.0 / 2.0 = 0.5
         assert_eq!(pa.scale_stroke(0.5), 0.5);
     }
 
@@ -134,7 +134,7 @@ mod tests {
     #[test]
     fn scale_stroke_minimum_is_one_device_pixel() {
         let pa = PixelAligner::new(2.0);
-        // Very thin stroke: 0.1 * 2.0 = 0.2 → round = 0 → max(1.0) → 1.0 / 2.0 = 0.5
+        // Very thin stroke: 0.1 * 2.0 = 0.2 -> round = 0 -> max(1.0) -> 1.0 / 2.0 = 0.5
         assert_eq!(pa.scale_stroke(0.1), 0.5);
     }
 }

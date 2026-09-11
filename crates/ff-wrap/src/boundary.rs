@@ -32,7 +32,7 @@ impl WrapColumn {
     }
 }
 
-/// The wrap boundary — determines at what column position wrapping occurs.
+/// The wrap boundary -- determines at what column position wrapping occurs.
 ///
 /// Addresses: Requirement 4 (Wrap Boundary)
 #[derive(
@@ -51,9 +51,9 @@ pub enum WrapBoundary {
 impl WrapBoundary {
     /// Create a `WrapBoundary` from a raw integer column value.
     ///
-    /// - `0` → `Viewport`
-    /// - `1..=10000` → `Column(n)`
-    /// - Negative or `>10000` → `Viewport` (caller should emit a warning)
+    /// - `0` -> `Viewport`
+    /// - `1..=10000` -> `Column(n)`
+    /// - Negative or `>10000` -> `Viewport` (caller should emit a warning)
     ///
     /// Returns `(boundary, is_valid)` where `is_valid` is false if the value
     /// was out of range and the default was applied.
@@ -71,8 +71,8 @@ impl WrapBoundary {
 
     /// Resolve the effective wrap column in characters given a viewport width.
     ///
-    /// - `Viewport` → returns `viewport_width_cols`
-    /// - `Column(n)` → returns `n`
+    /// - `Viewport` -> returns `viewport_width_cols`
+    /// - `Column(n)` -> returns `n`
     pub fn effective_column(self, viewport_width_cols: u16) -> u16 {
         match self {
             Self::Viewport => viewport_width_cols,

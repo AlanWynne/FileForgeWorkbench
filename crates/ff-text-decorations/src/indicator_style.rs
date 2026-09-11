@@ -5,7 +5,7 @@
 
 /// Visual style for an indicator decoration.
 ///
-/// Addresses: Requirement 1 AC 1–24
+/// Addresses: Requirement 1 AC 1-24
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum IndicatorStyle {
@@ -51,7 +51,7 @@ pub enum IndicatorStyle {
     PointCharacter,
     /// Top-to-bottom gradient fill from indicator colour to transparent.
     Gradient,
-    /// Gradient fill: transparent → indicator colour at centre → transparent.
+    /// Gradient fill: transparent -> indicator colour at centre -> transparent.
     GradientCentre,
     /// Small downward-pointing triangle at top-left of first decorated character.
     PointTop,

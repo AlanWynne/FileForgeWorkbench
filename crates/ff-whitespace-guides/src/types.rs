@@ -1,4 +1,4 @@
-//! Data types for query results — glyph positions, guide columns, edge info, etc.
+//! Data types for query results -- glyph positions, guide columns, edge info, etc.
 
 use crate::modes::WrapIndentMode;
 use crate::modes::WrapVisualLocation;
@@ -7,14 +7,14 @@ use serde::{Deserialize, Serialize};
 /// RGBA colour representation.
 ///
 /// Simple 8-bit-per-channel colour type used throughout the crate.
-/// No GUI dependency — just data.
+/// No GUI dependency -- just data.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct ColourRGBA {
-    /// Red channel (0–255).
+    /// Red channel (0-255).
     pub r: u8,
-    /// Green channel (0–255).
+    /// Green channel (0-255).
     pub g: u8,
-    /// Blue channel (0–255).
+    /// Blue channel (0-255).
     pub b: u8,
     /// Alpha channel (0=transparent, 255=opaque).
     pub a: u8,
@@ -63,7 +63,7 @@ pub struct EdgeProperties {
 
 /// Edge column information for the viewport renderer.
 ///
-/// Addresses: Requirement 5 AC 5.3–5.5
+/// Addresses: Requirement 5 AC 5.3-5.5
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EdgeInfo {
     /// Single vertical line at the specified column.
@@ -89,7 +89,7 @@ pub enum EdgeInfo {
 
 /// The set of indent guide columns for a line.
 ///
-/// Addresses: Requirement 3 AC 3.3–3.5, Requirement 4 AC 4.1–4.2
+/// Addresses: Requirement 3 AC 3.3-3.5, Requirement 4 AC 4.1-4.2
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IndentGuideInfo {
     /// Columns at which inactive guides should be drawn.
@@ -100,7 +100,7 @@ pub struct IndentGuideInfo {
 
 /// Information about wrap markers for a document line's sub-lines.
 ///
-/// Addresses: Requirement 6 AC 6.1–6.6
+/// Addresses: Requirement 6 AC 6.1-6.6
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WrapMarkerInfo {
     /// Sub-line indices that need an end marker (continuing to next sub-line).
@@ -115,7 +115,7 @@ pub struct WrapMarkerInfo {
 
 /// Continuation sub-line indentation info.
 ///
-/// Addresses: Requirement 7 AC 7.1–7.6
+/// Addresses: Requirement 7 AC 7.1-7.6
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WrapIndentInfo {
     /// Mode in use.

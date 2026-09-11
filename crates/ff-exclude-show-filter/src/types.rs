@@ -5,11 +5,11 @@
 
 use std::fmt;
 
-// ─── Command Argument Types ─────────────────────────────────────────────────
+// === Command Argument Types =================================================
 
 /// Scope modifier for EXCLUDE text/regex operations.
 ///
-/// Addresses: Requirement 2 AC 1–2
+/// Addresses: Requirement 2 AC 1-2
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ExcludeScope {
     /// Search only visible lines (default for EXCLUDE without ALL modifier).
@@ -38,21 +38,21 @@ pub enum TextMatchMode {
 /// Addresses: Requirement 2
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExcludeArgs {
-    /// EXCLUDE 'text' — literal text match on lines in scope.
+    /// EXCLUDE 'text' -- literal text match on lines in scope.
     Text {
         pattern: String,
         scope: ExcludeScope,
     },
-    /// EXCLUDE REGEX 'pattern' — regex match on lines in scope.
+    /// EXCLUDE REGEX 'pattern' -- regex match on lines in scope.
     Regex {
         pattern: String,
         scope: ExcludeScope,
     },
-    /// EXCLUDE ALL — exclude every line in the document.
+    /// EXCLUDE ALL -- exclude every line in the document.
     All,
-    /// EXCLUDE TAGGED — exclude lines with tag flag set.
+    /// EXCLUDE TAGGED -- exclude lines with tag flag set.
     Tagged,
-    /// EXCLUDE n m — exclude a specific line range (1-based inclusive).
+    /// EXCLUDE n m -- exclude a specific line range (1-based inclusive).
     Range { start_line: usize, end_line: usize },
 }
 
@@ -61,15 +61,15 @@ pub enum ExcludeArgs {
 /// Addresses: Requirement 3
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShowArgs {
-    /// SHOW ALL — make all lines visible.
+    /// SHOW ALL -- make all lines visible.
     All,
-    /// SHOW EXCLUDED — make all excluded lines visible.
+    /// SHOW EXCLUDED -- make all excluded lines visible.
     Excluded,
-    /// SHOW NONEXCLUDED — no-op, confirms current state.
+    /// SHOW NONEXCLUDED -- no-op, confirms current state.
     NonExcluded,
-    /// SHOW 'text' — show excluded lines matching literal text.
+    /// SHOW 'text' -- show excluded lines matching literal text.
     Text { pattern: String },
-    /// SHOW REGEX 'pattern' — show excluded lines matching regex.
+    /// SHOW REGEX 'pattern' -- show excluded lines matching regex.
     Regex { pattern: String },
 }
 
@@ -78,15 +78,15 @@ pub enum ShowArgs {
 /// Addresses: Requirement 4
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResetVariant {
-    /// RESET (no args) — clear exclusion state and delegate to other subsystems.
+    /// RESET (no args) -- clear exclusion state and delegate to other subsystems.
     Default,
-    /// RESET EXCLUDED — clear only exclusion state.
+    /// RESET EXCLUDED -- clear only exclusion state.
     Excluded,
-    /// RESET ALL — clear exclusion as part of full session reset.
+    /// RESET ALL -- clear exclusion as part of full session reset.
     All,
 }
 
-// ─── Exclusion Block ────────────────────────────────────────────────────────
+// === Exclusion Block ========================================================
 
 /// A contiguous range of excluded document lines.
 /// Used by the viewport renderer to display placeholder lines.
@@ -141,11 +141,11 @@ impl fmt::Display for ExclusionBlock {
     }
 }
 
-// ─── Operation Results ──────────────────────────────────────────────────────
+// === Operation Results ======================================================
 
 /// Result of an EXCLUDE operation.
 ///
-/// Addresses: Requirement 2 AC 8–9
+/// Addresses: Requirement 2 AC 8-9
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExcludeResult {
     /// Number of lines whose visibility state was changed to excluded.
@@ -177,7 +177,7 @@ impl fmt::Display for ExcludeResult {
 
 /// Result of a SHOW operation.
 ///
-/// Addresses: Requirement 3 AC 7–8
+/// Addresses: Requirement 3 AC 7-8
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShowResult {
     /// Number of lines whose visibility state was changed to visible.
@@ -242,22 +242,22 @@ impl fmt::Display for ResetResult {
     }
 }
 
-// ─── Line Command Types ─────────────────────────────────────────────────────
+// === Line Command Types =====================================================
 
 /// A resolved X/Xn/XX line command ready for execution.
 ///
 /// Addresses: Requirement 5
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LineCommandExclude {
-    /// X — exclude a single line (0-based).
+    /// X -- exclude a single line (0-based).
     Single { line: usize },
-    /// Xn — exclude n consecutive lines starting at line (0-based).
+    /// Xn -- exclude n consecutive lines starting at line (0-based).
     Count { line: usize, count: usize },
-    /// XX...XX — exclude a block of lines (inclusive range, 0-based).
+    /// XX...XX -- exclude a block of lines (inclusive range, 0-based).
     Block { start: usize, end: usize },
 }
 
-// ─── Change Notification ────────────────────────────────────────────────────
+// === Change Notification ====================================================
 
 /// Event emitted when exclusion state changes.
 /// Consumed by viewport/scrollbar for synchronization.

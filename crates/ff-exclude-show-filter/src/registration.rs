@@ -3,7 +3,7 @@
 //! Registers all exclude-show-filter commands with the `ff-command` framework,
 //! including aliases (X for EXCLUDE, INCLUDE for SHOW) and line command entries.
 //!
-//! Addresses: Requirement 9 (AC 9.1–9.8)
+//! Addresses: Requirement 9 (AC 9.1-9.8)
 
 use ff_command::{CommandMetadata, CommandRegistry};
 
@@ -84,7 +84,7 @@ fn line_x_metadata() -> CommandMetadata {
 
 /// Command handler for EXCLUDE that is non-undoable.
 ///
-/// Addresses: Requirement 9 AC 7 — explicitly marked as non-undoable.
+/// Addresses: Requirement 9 AC 7 -- explicitly marked as non-undoable.
 pub struct ExcludeCommandHandler;
 
 impl ff_command::CommandHandler for ExcludeCommandHandler {
@@ -165,10 +165,10 @@ impl ff_command::CommandHandler for LineExcludeCommandHandler {
 /// Register all exclude-show-filter commands with the command registry.
 ///
 /// This function registers:
-/// - `filter.exclude` (EXCLUDE / X alias) — non-undoable
-/// - `filter.show` (SHOW / INCLUDE alias) — non-undoable
-/// - `filter.reset` (RESET) — non-undoable
-/// - `filter.line_x` (X/Xn/XX line commands) — non-undoable
+/// - `filter.exclude` (EXCLUDE / X alias) -- non-undoable
+/// - `filter.show` (SHOW / INCLUDE alias) -- non-undoable
+/// - `filter.reset` (RESET) -- non-undoable
+/// - `filter.line_x` (X/Xn/XX line commands) -- non-undoable
 ///
 /// All commands are valid in both Edit mode and Browse/View mode.
 ///
@@ -176,7 +176,7 @@ impl ff_command::CommandHandler for LineExcludeCommandHandler {
 ///
 /// Returns an error if any command ID is already registered.
 ///
-/// Addresses: Requirement 9 AC 1–4, 9 AC 6, 9 AC 7
+/// Addresses: Requirement 9 AC 1-4, 9 AC 6, 9 AC 7
 pub fn register_commands(registry: &CommandRegistry) -> Result<(), ff_command::CommandError> {
     registry.register(
         ids::exclude(),
@@ -246,9 +246,9 @@ pub mod aliases {
 /// Recognized line command prefixes for the line-command parser.
 ///
 /// The line-command parser should recognize these patterns:
-/// - `X` — single line exclude
-/// - `Xn` (where n is digits) — exclude n lines
-/// - `XX` — block marker (paired)
+/// - `X` -- single line exclude
+/// - `Xn` (where n is digits) -- exclude n lines
+/// - `XX` -- block marker (paired)
 pub mod line_command_patterns {
     /// Check if a prefix string is an X line command.
     /// Returns the variant if recognized.
@@ -276,11 +276,11 @@ pub mod line_command_patterns {
     /// The kind of X line command recognized from a prefix.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum XLineCommandKind {
-        /// `X` — exclude a single line.
+        /// `X` -- exclude a single line.
         Single,
-        /// `Xn` — exclude n consecutive lines.
+        /// `Xn` -- exclude n consecutive lines.
         Count(usize),
-        /// `XX` — block marker for paired exclusion.
+        /// `XX` -- block marker for paired exclusion.
         Block,
     }
 }

@@ -1,4 +1,4 @@
-//! Indicator catalogue — registry of style configurations for all 44 slots.
+//! Indicator catalogue -- registry of style configurations for all 44 slots.
 
 use crate::indicator::{IndicatorConfig, IndicatorFlags, StyleAppearance};
 use crate::indicator_style::IndicatorStyle;
@@ -9,7 +9,7 @@ use crate::{ColourRGBA, IndicatorNumber};
 ///
 /// Addresses: Requirements 1, 2, 15
 pub struct IndicatorCatalogue {
-    /// Configuration for each indicator number (0–43).
+    /// Configuration for each indicator number (0-43).
     configs: Vec<IndicatorConfig>,
 }
 
@@ -45,7 +45,7 @@ impl IndicatorCatalogue {
 
     /// Reload all configurations from theme palette.
     ///
-    /// Validates values (alpha 0–255, stroke_width 0.5–10.0),
+    /// Validates values (alpha 0-255, stroke_width 0.5-10.0),
     /// falling back to defaults for invalid entries.
     ///
     /// Addresses: Requirement 15 AC 3

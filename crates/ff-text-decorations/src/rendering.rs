@@ -42,7 +42,7 @@ pub trait DecorationRenderer: Send + Sync {
 
 /// Implementation of `DecorationRenderer` composing all subsystems.
 ///
-/// Addresses: Requirement 14 AC 1–7
+/// Addresses: Requirement 14 AC 1-7
 pub struct RenderingProvider {
     /// Per-document indicator decoration storage.
     pub decoration_list: DecorationList,

@@ -1,6 +1,6 @@
 //! Indicator number allocation and namespace management.
 //!
-//! Manages the container range (8–31) for plugin indicator allocation,
+//! Manages the container range (8-31) for plugin indicator allocation,
 //! preventing conflicts between independent producers.
 
 use crate::error::DecorationError;
@@ -8,9 +8,9 @@ use crate::IndicatorNumber;
 
 /// Manages indicator number allocation and namespace enforcement.
 ///
-/// Addresses: Requirement 13 AC 1–6
+/// Addresses: Requirement 13 AC 1-6
 pub struct IndicatorAllocator {
-    /// Tracks which container-range indicators (8–31) are allocated.
+    /// Tracks which container-range indicators (8-31) are allocated.
     allocated: [bool; 24],
     /// Plugin ID associated with each allocated slot.
     owners: [Option<String>; 24],
@@ -25,7 +25,7 @@ impl IndicatorAllocator {
         }
     }
 
-    /// Allocate an indicator number from the container range (8–31) for a plugin.
+    /// Allocate an indicator number from the container range (8-31) for a plugin.
     ///
     /// Addresses: Requirement 13 AC 4, 5
     pub fn allocate(&mut self, plugin_id: &str) -> Result<IndicatorNumber, DecorationError> {
@@ -57,24 +57,24 @@ impl IndicatorAllocator {
         Ok(())
     }
 
-    /// Check if an indicator number is in the lexer range (0–7).
+    /// Check if an indicator number is in the lexer range (0-7).
     ///
     /// Addresses: Requirement 13 AC 6
     pub fn is_lexer_range(indicator: IndicatorNumber) -> bool {
         indicator.0 <= 7
     }
 
-    /// Check if an indicator number is in the container range (8–31).
+    /// Check if an indicator number is in the container range (8-31).
     pub fn is_container_range(indicator: IndicatorNumber) -> bool {
         indicator.0 >= 8 && indicator.0 <= 31
     }
 
-    /// Check if an indicator number is in the IME range (32–35).
+    /// Check if an indicator number is in the IME range (32-35).
     pub fn is_ime_range(indicator: IndicatorNumber) -> bool {
         indicator.0 >= 32 && indicator.0 <= 35
     }
 
-    /// Check if an indicator number is in the history range (36–43).
+    /// Check if an indicator number is in the history range (36-43).
     pub fn is_history_range(indicator: IndicatorNumber) -> bool {
         indicator.0 >= 36 && indicator.0 <= 43
     }

@@ -9,7 +9,7 @@
 pub enum WhitespaceGuidesError {
     /// Configuration key has an invalid value for whitespace mode.
     #[error(
-        "[whitespace-guides] config: invalid whitespace mode '{value}' — using default 'invisible'"
+        "[whitespace-guides] config: invalid whitespace mode '{value}' -- using default 'invisible'"
     )]
     InvalidWhitespaceMode {
         /// The invalid value that was encountered.
@@ -18,7 +18,7 @@ pub enum WhitespaceGuidesError {
 
     /// Configuration key has an invalid value for tab draw mode.
     #[error(
-        "[whitespace-guides] config: invalid tab draw mode '{value}' — using default 'long_arrow'"
+        "[whitespace-guides] config: invalid tab draw mode '{value}' -- using default 'long_arrow'"
     )]
     InvalidTabDrawMode {
         /// The invalid value that was encountered.
@@ -27,7 +27,7 @@ pub enum WhitespaceGuidesError {
 
     /// Configuration key has an invalid value for indent guide mode.
     #[error(
-        "[whitespace-guides] config: invalid indent guide mode '{value}' — using default 'none'"
+        "[whitespace-guides] config: invalid indent guide mode '{value}' -- using default 'none'"
     )]
     InvalidIndentGuideMode {
         /// The invalid value that was encountered.
@@ -35,28 +35,28 @@ pub enum WhitespaceGuidesError {
     },
 
     /// Configuration key has an invalid value for edge mode.
-    #[error("[whitespace-guides] config: invalid edge mode '{value}' — using default 'none'")]
+    #[error("[whitespace-guides] config: invalid edge mode '{value}' -- using default 'none'")]
     InvalidEdgeMode {
         /// The invalid value that was encountered.
         value: String,
     },
 
     /// Configuration key has an invalid edge column value.
-    #[error("[whitespace-guides] config: invalid edge column '{value}' — using default 80")]
+    #[error("[whitespace-guides] config: invalid edge column '{value}' -- using default 80")]
     InvalidEdgeColumn {
         /// The invalid value that was encountered.
         value: String,
     },
 
     /// Configuration key has an invalid wrap flags value.
-    #[error("[whitespace-guides] config: invalid wrap flags '{value}' — using default 0 (none)")]
+    #[error("[whitespace-guides] config: invalid wrap flags '{value}' -- using default 0 (none)")]
     InvalidWrapFlags {
         /// The invalid value that was encountered.
         value: String,
     },
 
     /// Configuration system read error.
-    #[error("[whitespace-guides] config: failed to read key '{key}' — {reason}")]
+    #[error("[whitespace-guides] config: failed to read key '{key}' -- {reason}")]
     ConfigReadError {
         /// The key that failed to read.
         key: String,

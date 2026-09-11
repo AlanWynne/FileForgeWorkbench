@@ -40,7 +40,7 @@ pub enum AutoStripResult {
 /// 3. If detected and `auto_unnum` is true, strips the columns.
 /// 4. Returns a status result for UI feedback.
 ///
-/// This operation is NOT added to the undo stack — it is classified as a
+/// This operation is NOT added to the undo stack -- it is classified as a
 /// session initialisation operation (Requirement 3.5).
 pub fn auto_strip_on_open(
     document: &mut dyn DocumentMutate,
@@ -51,7 +51,7 @@ pub fn auto_strip_on_open(
     let front_cols = profile.sequence_cols_front();
     let back_cols = profile.sequence_cols_back();
 
-    // No columns defined → nothing to do
+    // No columns defined -> nothing to do
     if front_cols.is_none() && back_cols.is_none() {
         return AutoStripResult::NoColumnsConfigured;
     }
@@ -72,7 +72,7 @@ pub fn auto_strip_on_open(
 
     // Check auto_unnum flag
     if !profile.auto_unnum() {
-        let message = "SEQUENCE NUMBERS DETECTED — not removed".to_string();
+        let message = "SEQUENCE NUMBERS DETECTED -- not removed".to_string();
         return AutoStripResult::Detected { message };
     }
 
@@ -116,7 +116,7 @@ mod tests {
     use super::*;
     use crate::traits::DocumentAccess;
 
-    // ─── Test Helpers ───────────────────────────────────────────────────────
+    // === Test Helpers =======================================================
 
     struct MockDoc {
         lines: Vec<String>,
@@ -187,7 +187,7 @@ mod tests {
         format!("{}{}{}", &f[..6], &b_pad[..66], &bk[..8])
     }
 
-    // ─── Tests ──────────────────────────────────────────────────────────────
+    // === Tests ==============================================================
 
     #[test]
     fn auto_strip_enabled_and_detected() {

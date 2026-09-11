@@ -1,4 +1,4 @@
-//! # ff-exclude-show-filter — Line Visibility Management Engine
+//! # ff-exclude-show-filter -- Line Visibility Management Engine
 //!
 //! This crate implements the ISPF-style EXCLUDE/SHOW/RESET primary commands
 //! and X/Xn/XX line commands for FileForgeWorkbench. It provides a
@@ -49,7 +49,7 @@
 //! assert!(!engine.is_excluded(1));
 //! ```
 
-// ─── Public Modules ─────────────────────────────────────────────────────────
+// === Public Modules =========================================================
 
 pub mod error;
 pub mod exclusion_engine;
@@ -57,7 +57,7 @@ pub mod registration;
 pub mod text_matcher;
 pub mod types;
 
-// ─── Public API Re-exports ──────────────────────────────────────────────────
+// === Public API Re-exports ==================================================
 
 pub use error::ExcludeFilterError;
 pub use exclusion_engine::{DocumentAccess, ExclusionEngine, ExclusionListener};

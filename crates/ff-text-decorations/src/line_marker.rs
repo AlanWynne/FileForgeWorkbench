@@ -1,6 +1,6 @@
 //! Line marker configuration.
 //!
-//! Each marker number (0–31) has an associated configuration controlling
+//! Each marker number (0-31) has an associated configuration controlling
 //! the visual symbol, colours, alpha, layer, and stroke width.
 
 use crate::marker_symbol::MarkerSymbol;
@@ -20,7 +20,7 @@ pub enum MarkerLayer {
 
 /// Complete configuration for a single marker number slot.
 ///
-/// Addresses: Requirement 9 AC 2–6
+/// Addresses: Requirement 9 AC 2-6
 #[derive(Debug, Clone, PartialEq)]
 pub struct LineMarkerConfig {
     /// The geometric shape or pixmap to render.
@@ -31,7 +31,7 @@ pub struct LineMarkerConfig {
     pub back: ColourRGBA,
     /// Background colour when the line is selected.
     pub back_selected: ColourRGBA,
-    /// Opacity (0–255).
+    /// Opacity (0-255).
     pub alpha: u8,
     /// Rendering layer (base or overlay).
     pub layer: MarkerLayer,

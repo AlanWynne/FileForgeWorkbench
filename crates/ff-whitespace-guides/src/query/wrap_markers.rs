@@ -10,7 +10,7 @@ use crate::types::{WrapIndentInfo, WrapMarkerInfo};
 ///
 /// Returns `None` when flags are `NONE` or sub_line_count is 1 (no wrapping).
 ///
-/// Addresses: Requirement 6 AC 6.3–6.5
+/// Addresses: Requirement 6 AC 6.3-6.5
 pub fn compute_wrap_markers(
     sub_line_count: u32,
     flags: WrapVisualFlag,
@@ -59,7 +59,7 @@ pub fn compute_wrap_markers(
 /// * `start_indent` - The fixed offset for `Fixed` mode.
 /// * `viewport_width` - The viewport width in character units.
 ///
-/// Addresses: Requirement 7 AC 7.1–7.6
+/// Addresses: Requirement 7 AC 7.1-7.6
 pub fn compute_continuation_indent(
     first_subline_indent: u32,
     tab_size: u32,

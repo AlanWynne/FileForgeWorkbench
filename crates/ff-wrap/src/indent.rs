@@ -35,11 +35,11 @@ impl WrapIndentMode {
     ///
     /// # Arguments
     ///
-    /// - `indent_amount` — The fixed indent amount (used only in `Fixed` mode).
-    /// - `first_non_ws_col` — Column of the first non-whitespace character on the line.
-    /// - `indent_width` — The width of one indent level (e.g., 4 spaces).
+    /// - `indent_amount` -- The fixed indent amount (used only in `Fixed` mode).
+    /// - `first_non_ws_col` -- Column of the first non-whitespace character on the line.
+    /// - `indent_width` -- The width of one indent level (e.g., 4 spaces).
     ///
-    /// Addresses: Requirement 5 AC 2–5
+    /// Addresses: Requirement 5 AC 2-5
     pub fn compute_indent(
         self,
         indent_amount: u8,

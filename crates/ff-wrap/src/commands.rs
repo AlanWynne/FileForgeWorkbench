@@ -20,7 +20,7 @@ pub enum WrapOperation {
     /// `WRAP OFF`
     Off,
 
-    /// Toggle: if None → Word; if Word/Character → None.
+    /// Toggle: if None -> Word; if Word/Character -> None.
     /// `WRAP TOGGLE` or `WRAP` with no arguments.
     Toggle,
 
@@ -43,13 +43,13 @@ pub const WRAP_COMMAND_ID: &str = "view.wrap";
 /// Parse WRAP command arguments into a `WrapOperation`.
 ///
 /// Supported forms:
-/// - `""` (empty) → Toggle
-/// - `"ON"` → On
-/// - `"OFF"` → Off
-/// - `"TOGGLE"` → Toggle
-/// - `"WORD"` → SetWord
-/// - `"CHAR"` → SetCharacter
-/// - `"COL n"` → SetColumn(n)
+/// - `""` (empty) -> Toggle
+/// - `"ON"` -> On
+/// - `"OFF"` -> Off
+/// - `"TOGGLE"` -> Toggle
+/// - `"WORD"` -> SetWord
+/// - `"CHAR"` -> SetCharacter
+/// - `"COL n"` -> SetColumn(n)
 ///
 /// Addresses: Requirement 3 AC 14
 pub fn parse_wrap_args(args: &str) -> Result<WrapOperation, WrapError> {
@@ -105,7 +105,7 @@ pub struct WrapCommandResult {
 ///
 /// Returns a result with the status message and whether state changed.
 ///
-/// Addresses: Requirement 3 AC 2–10
+/// Addresses: Requirement 3 AC 2-10
 pub fn execute_wrap_operation(
     operation: &WrapOperation,
     state: &mut WrapState,
@@ -113,7 +113,7 @@ pub fn execute_wrap_operation(
     match operation {
         WrapOperation::On => {
             if state.is_active() {
-                // Already active — return confirmation
+                // Already active -- return confirmation
                 WrapCommandResult {
                     message: format!("Wrap: {} (already active)", state.mode().display_label()),
                     state_changed: false,

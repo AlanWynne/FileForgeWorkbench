@@ -21,7 +21,7 @@ pub enum WhitespaceVisibility {
 
 impl WhitespaceVisibility {
     /// Cycle to the next mode in order:
-    /// Invisible → VisibleAlways → VisibleAfterIndent → VisibleOnlyInIndent → Invisible
+    /// Invisible -> VisibleAlways -> VisibleAfterIndent -> VisibleOnlyInIndent -> Invisible
     pub fn next(self) -> Self {
         match self {
             Self::Invisible => Self::VisibleAlways,

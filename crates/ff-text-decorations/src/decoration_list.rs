@@ -10,9 +10,9 @@ use crate::IndicatorNumber;
 
 /// Per-document aggregate of all active indicator decorations.
 ///
-/// Addresses: Requirement 3 AC 2–9
+/// Addresses: Requirement 3 AC 2-9
 pub struct DecorationList {
-    /// Lazily populated map: indicator_number → RunStyles storage.
+    /// Lazily populated map: indicator_number -> RunStyles storage.
     decorations: HashMap<IndicatorNumber, RunStyles<u32>>,
     /// Document length for invariant enforcement.
     document_length: u64,
@@ -127,7 +127,7 @@ impl DecorationList {
         self.decorations.retain(|_, rs| !rs.is_empty());
     }
 
-    /// Clear all values for indicators in the lexer range (0–7).
+    /// Clear all values for indicators in the lexer range (0-7).
     ///
     /// Addresses: Requirement 13 AC 7
     pub fn delete_lexer_decorations(&mut self) {

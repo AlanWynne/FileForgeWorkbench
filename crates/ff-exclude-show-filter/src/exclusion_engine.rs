@@ -1,4 +1,4 @@
-//! Core exclusion engine — orchestrates all visibility operations.
+//! Core exclusion engine -- orchestrates all visibility operations.
 //!
 //! The `ExclusionEngine` delegates visibility storage to the
 //! `DisplayLineMapping` trait and provides the public API for
@@ -38,7 +38,7 @@ pub trait ExclusionListener: Send + Sync {
 /// Holds a mutable reference to a `DisplayLineMapping` and a reference to
 /// document content for text matching. This is owned per-editor-session.
 ///
-/// Addresses: Requirements 1–10
+/// Addresses: Requirements 1-10
 pub struct ExclusionEngine<D: DisplayLineMapping, A: DocumentAccess> {
     /// The display-line-mapping for visibility storage.
     display_mapping: D,
@@ -78,7 +78,7 @@ impl<D: DisplayLineMapping, A: DocumentAccess> ExclusionEngine<D, A> {
         &self.document
     }
 
-    // ─── Query Methods ──────────────────────────────────────────────────
+    // === Query Methods ==================================================
 
     /// Check if a specific document line is excluded.
     /// Delegates to display_line_mapping.get_visible(doc_line) == false.
@@ -108,7 +108,7 @@ impl<D: DisplayLineMapping, A: DocumentAccess> ExclusionEngine<D, A> {
         self.display_mapping.lines_in_doc()
     }
 
-    // ─── Scope Iterators ────────────────────────────────────────────────
+    // === Scope Iterators ================================================
 
     /// Iterate over all currently visible line indices.
     ///
@@ -126,7 +126,7 @@ impl<D: DisplayLineMapping, A: DocumentAccess> ExclusionEngine<D, A> {
         (0..total).filter(|&line| self.is_excluded(line))
     }
 
-    // ─── Low-Level Mutation Methods ─────────────────────────────────────
+    // === Low-Level Mutation Methods =====================================
 
     /// Exclude a single line by index.
     ///
@@ -183,7 +183,7 @@ impl<D: DisplayLineMapping, A: DocumentAccess> ExclusionEngine<D, A> {
         self.display_mapping.show_all();
     }
 
-    // ─── EXCLUDE Command Operations ─────────────────────────────────────
+    // === EXCLUDE Command Operations =====================================
 
     /// Execute an EXCLUDE command with the given arguments.
     ///
@@ -204,9 +204,9 @@ impl<D: DisplayLineMapping, A: DocumentAccess> ExclusionEngine<D, A> {
         }
     }
 
-    /// EXCLUDE 'text' — excludes lines containing literal text.
+    /// EXCLUDE 'text' -- excludes lines containing literal text.
     ///
-    /// Addresses: Requirement 2 AC 1–2
+    /// Addresses: Requirement 2 AC 1-2
     fn exclude_text(
         &mut self,
         pattern: &str,
@@ -233,7 +233,7 @@ impl<D: DisplayLineMapping, A: DocumentAccess> ExclusionEngine<D, A> {
         Ok(ExcludeResult::new(count))
     }
 
-    /// EXCLUDE REGEX 'pattern' — excludes lines matching regex.
+    /// EXCLUDE REGEX 'pattern' -- excludes lines matching regex.
     ///
     /// Addresses: Requirement 2 AC 3
     fn exclude_regex(
@@ -262,7 +262,7 @@ impl<D: DisplayLineMapping, A: DocumentAccess> ExclusionEngine<D, A> {
         Ok(ExcludeResult::new(count))
     }
 
-    /// EXCLUDE ALL — excludes every line in the document.
+    /// EXCLUDE ALL -- excludes every line in the document.
     ///
     /// Addresses: Requirement 2 AC 4
     fn exclude_all(&mut self) -> ExcludeResult {
@@ -276,7 +276,7 @@ impl<D: DisplayLineMapping, A: DocumentAccess> ExclusionEngine<D, A> {
         ExcludeResult::new(total)
     }
 
-    /// EXCLUDE TAGGED — excludes lines with tagged flag.
+    /// EXCLUDE TAGGED -- excludes lines with tagged flag.
     ///
     /// Addresses: Requirement 2 AC 5
     fn exclude_tagged(&mut self) -> ExcludeResult {
@@ -290,7 +290,7 @@ impl<D: DisplayLineMapping, A: DocumentAccess> ExclusionEngine<D, A> {
         ExcludeResult::new(count)
     }
 
-    /// EXCLUDE n m — excludes document lines in range (1-based inclusive).
+    /// EXCLUDE n m -- excludes document lines in range (1-based inclusive).
     ///
     /// Addresses: Requirement 2 AC 6
     fn exclude_range_by_number(
@@ -327,7 +327,7 @@ impl<D: DisplayLineMapping, A: DocumentAccess> ExclusionEngine<D, A> {
         Ok(ExcludeResult::new(count))
     }
 
-    // ─── SHOW Command Operations ────────────────────────────────────────
+    // === SHOW Command Operations ========================================
 
     /// Execute a SHOW/INCLUDE command with the given arguments.
     ///
@@ -342,7 +342,7 @@ impl<D: DisplayLineMapping, A: DocumentAccess> ExclusionEngine<D, A> {
         }
     }
 
-    /// SHOW ALL — clears excluded flag on every line.
+    /// SHOW ALL -- clears excluded flag on every line.
     ///
     /// Addresses: Requirement 3 AC 1
     fn show_all_lines(&mut self) -> ShowResult {
@@ -351,7 +351,7 @@ impl<D: DisplayLineMapping, A: DocumentAccess> ExclusionEngine<D, A> {
         ShowResult::new(count)
     }
 
-    /// SHOW EXCLUDED — clears excluded flag on all excluded lines.
+    /// SHOW EXCLUDED -- clears excluded flag on all excluded lines.
     ///
     /// Addresses: Requirement 3 AC 2
     fn show_excluded(&mut self) -> ShowResult {
@@ -360,7 +360,7 @@ impl<D: DisplayLineMapping, A: DocumentAccess> ExclusionEngine<D, A> {
         ShowResult::new(count)
     }
 
-    /// SHOW 'text' — show excluded lines containing literal text.
+    /// SHOW 'text' -- show excluded lines containing literal text.
     ///
     /// Addresses: Requirement 3 AC 4
     fn show_text(&mut self, pattern: &str) -> Result<ShowResult, ExcludeFilterError> {
@@ -381,7 +381,7 @@ impl<D: DisplayLineMapping, A: DocumentAccess> ExclusionEngine<D, A> {
         Ok(ShowResult::new(count))
     }
 
-    /// SHOW REGEX 'pattern' — show excluded lines matching regex.
+    /// SHOW REGEX 'pattern' -- show excluded lines matching regex.
     ///
     /// Addresses: Requirement 3 AC 5
     fn show_regex(&mut self, pattern: &str) -> Result<ShowResult, ExcludeFilterError> {
@@ -402,7 +402,7 @@ impl<D: DisplayLineMapping, A: DocumentAccess> ExclusionEngine<D, A> {
         Ok(ShowResult::new(count))
     }
 
-    // ─── RESET Command Operations ───────────────────────────────────────
+    // === RESET Command Operations =======================================
 
     /// Execute a RESET command variant.
     ///
@@ -418,7 +418,7 @@ impl<D: DisplayLineMapping, A: DocumentAccess> ExclusionEngine<D, A> {
         }
     }
 
-    // ─── Line Command Operations ────────────────────────────────────────
+    // === Line Command Operations ========================================
 
     /// Process a resolved X/Xn/XX line command.
     ///
@@ -466,7 +466,7 @@ impl<D: DisplayLineMapping, A: DocumentAccess> ExclusionEngine<D, A> {
         }
     }
 
-    // ─── Placeholder / Block Model ──────────────────────────────────────
+    // === Placeholder / Block Model ======================================
 
     /// Enumerate all contiguous exclusion blocks in the document.
     ///
@@ -519,7 +519,7 @@ impl<D: DisplayLineMapping, A: DocumentAccess> ExclusionEngine<D, A> {
         Some(ExclusionBlock::new(start, end))
     }
 
-    // ─── Notifications ──────────────────────────────────────────────────
+    // === Notifications ==================================================
 
     /// Emit an exclusion-changed notification to all listeners.
     fn notify_change(&self, total_excluded: usize, block_count: usize, lines_changed: usize) {

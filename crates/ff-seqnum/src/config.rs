@@ -11,10 +11,10 @@ use crate::types::{ColumnRange, SequenceFormat};
 /// Out-of-range values are clamped and logged at WARN level.
 #[derive(Debug, Clone)]
 pub struct SeqNumConfig {
-    /// Detection threshold percentage (50–100, default 80).
+    /// Detection threshold percentage (50-100, default 80).
     /// Minimum percentage of sampled lines that must match numeric pattern.
     pub detection_threshold: u8,
-    /// Sample size — maximum non-blank lines to sample (5–100, default 20).
+    /// Sample size -- maximum non-blank lines to sample (5-100, default 20).
     pub sample_size: u8,
     /// Whether to highlight sequence columns with background shading.
     pub highlight_columns: bool,

@@ -10,7 +10,7 @@ use crate::types::TextMatchMode;
 
 /// A compiled text matcher that can test whether a line matches a search pattern.
 ///
-/// Addresses: Requirement 2 AC 1, 2 AC 3, Requirement 3 AC 4–5
+/// Addresses: Requirement 2 AC 1, 2 AC 3, Requirement 3 AC 4-5
 #[derive(Debug, Clone)]
 pub struct TextMatcher {
     pattern: String,
@@ -88,7 +88,7 @@ impl TextMatcher {
 mod tests {
     use super::*;
 
-    // ─── Literal Matching ───────────────────────────────────────────────
+    // === Literal Matching ===============================================
 
     #[test]
     fn literal_match_case_insensitive_finds_substring() {
@@ -120,7 +120,7 @@ mod tests {
         assert!(matcher.matches_line(""));
     }
 
-    // ─── Regex Matching ─────────────────────────────────────────────────
+    // === Regex Matching =================================================
 
     #[test]
     fn regex_match_simple_literal() {
@@ -198,7 +198,7 @@ mod tests {
         assert!(!matcher.matches_line("foobar"));
     }
 
-    // ─── Regex Validation ───────────────────────────────────────────────
+    // === Regex Validation ===============================================
 
     #[test]
     fn regex_invalid_empty_pattern() {

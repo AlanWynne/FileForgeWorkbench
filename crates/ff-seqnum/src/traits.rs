@@ -22,7 +22,7 @@ pub trait DocumentAccess {
 /// Mutable access to document line content.
 ///
 /// Extends `DocumentAccess` with the ability to replace column ranges
-/// within lines — used by the strip and number engines.
+/// within lines -- used by the strip and number engines.
 pub trait DocumentMutate: DocumentAccess {
     /// Replace the byte content of the specified column range on the given line
     /// with the provided replacement string.

@@ -1,4 +1,4 @@
-//! Theme integration — palette reload for decoration colours.
+//! Theme integration -- palette reload for decoration colours.
 //!
 //! Defines the `ThemeDecorationProvider` trait that abstracts
 //! theme palette access, decoupling this crate from concrete theme implementations.
@@ -12,7 +12,7 @@ use crate::{ColourRGBA, IndicatorNumber, MarkerNumber};
 /// Implemented by the theme system's palette to avoid hard-coupling
 /// to the concrete theme crate.
 ///
-/// Addresses: Requirement 15 AC 1–8
+/// Addresses: Requirement 15 AC 1-8
 pub trait ThemeDecorationProvider: Send + Sync {
     /// Get the configured colour for an indicator number.
     fn indicator_fore(&self, indicator: IndicatorNumber) -> Option<ColourRGBA>;
