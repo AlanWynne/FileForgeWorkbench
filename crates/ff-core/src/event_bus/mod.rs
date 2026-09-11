@@ -1,4 +1,4 @@
-//! # Event Bus — Async-Safe Typed Event Dispatch
+//! # Event Bus -- Async-Safe Typed Event Dispatch
 //!
 //! This module implements the `EventBus`, an async-safe typed event dispatch
 //! and subscription system for bidirectional communication between the core
@@ -9,7 +9,6 @@
 //! threads. It implements an oldest-event-drop overflow policy with WARN-level
 //! logging when events are discarded.
 
-use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::sync::broadcast;
@@ -30,7 +29,7 @@ pub const DEFAULT_EVENT_BUS_CAPACITY: usize = 10_000;
 /// tick/frame cycle. Because `dispatch()` writes synchronously to the
 /// broadcast channel's internal buffer, every subscriber that has already
 /// called `subscribe()` or `subscribe_all()` can immediately retrieve the
-/// event via `try_recv()` — no deferred or queued delivery across ticks.
+/// event via `try_recv()` -- no deferred or queued delivery across ticks.
 ///
 /// # Overflow Policy
 ///
@@ -53,7 +52,7 @@ impl EventBus {
     ///
     /// # Arguments
     ///
-    /// * `capacity` — The maximum number of pending events in the broadcast
+    /// * `capacity` -- The maximum number of pending events in the broadcast
     ///   channel before oldest events are dropped.
     pub fn new(capacity: usize) -> Self {
         let (sender, _) = broadcast::channel(capacity);
@@ -114,178 +113,16 @@ impl EventBus {
     }
 }
 
-// ─── Locally-Defined Event Payload Types ────────────────────────────────────
+mod events;
+mod payloads;
 
-/// Opaque document identifier. Defined here to avoid layer violations.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct DocumentId(pub u64);
+pub use events::{EventCategory, WorkbenchEvent};
+pub use payloads::{
+    CommandOutcome, CommandParams, DocumentId, NotificationSeverity, OperationId, ParamValue,
+    ProgressInfo,
+};
 
-/// Opaque operation identifier for progress tracking.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct OperationId(pub u64);
-
-/// Parameters passed to a command at dispatch time.
-/// Defined locally in ff-core to avoid circular dependency with ff-command.
-#[derive(Debug, Clone, Default)]
-pub struct CommandParams(pub HashMap<String, ParamValue>);
-
-/// A single parameter value within CommandParams.
-#[derive(Debug, Clone, PartialEq)]
-pub enum ParamValue {
-    /// A string value.
-    String(String),
-    /// A 64-bit signed integer value.
-    Integer(i64),
-    /// A 64-bit floating-point value.
-    Float(f64),
-    /// A boolean value.
-    Boolean(bool),
-    /// A nested map of string keys to parameter values.
-    Map(HashMap<String, ParamValue>),
-}
-
-/// Outcome of a dispatched command, used in event payloads.
-/// Simplified status type defined locally to avoid circular dependency with ff-command.
-#[derive(Debug, Clone)]
-pub struct CommandOutcome {
-    /// Whether the command completed successfully.
-    pub success: bool,
-    /// Optional human-readable message describing the outcome.
-    pub message: Option<String>,
-}
-
-/// Severity level for GUI notifications.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum NotificationSeverity {
-    /// Informational message — no action required.
-    Info,
-    /// Warning — something unexpected but non-fatal occurred.
-    Warning,
-    /// Error — an operation failed.
-    Error,
-}
-
-/// Progress information for long-running operations.
-#[derive(Debug, Clone)]
-pub struct ProgressInfo {
-    /// Human-readable label describing the operation in progress.
-    pub label: String,
-    /// Completion fraction in [0.0, 1.0], or `None` for indeterminate progress.
-    pub fraction: Option<f32>,
-    /// Whether the user can cancel this operation.
-    pub cancellable: bool,
-}
-
-// ─── WorkbenchEvent Enum ────────────────────────────────────────────────────
-
-/// All events that flow through the Event Bus. Categorized per Requirement 3.2.
-///
-/// Addresses: Requirement 3, criteria 1/2
-#[derive(Debug, Clone)]
-#[non_exhaustive]
-pub enum WorkbenchEvent {
-    // --- Commands (user-initiated operations) ---
-    /// A command was dispatched for execution.
-    CommandDispatched {
-        /// The unique identifier of the command being dispatched.
-        command_id: String,
-        /// Parameters passed to the command.
-        params: CommandParams,
-    },
-    /// A command completed execution.
-    CommandCompleted {
-        /// The unique identifier of the command that completed.
-        command_id: String,
-        /// The outcome of the command execution.
-        outcome: CommandOutcome,
-    },
-
-    // --- Notifications (informational messages to GUI) ---
-    /// Informational message for the status bar or notification area.
-    Notification {
-        /// The notification message text.
-        message: String,
-        /// The severity level of the notification.
-        severity: NotificationSeverity,
-    },
-
-    // --- State-change signals (model updates requiring re-render) ---
-    /// A document's content changed.
-    DocumentChanged {
-        /// The identifier of the document that changed.
-        document_id: DocumentId,
-    },
-    /// The active document/tab changed.
-    ActiveDocumentChanged {
-        /// The identifier of the newly active document, or `None` if no document is active.
-        document_id: Option<DocumentId>,
-    },
-    /// Configuration was reloaded.
-    ConfigReloaded,
-
-    // --- Progress updates (long-running operation status) ---
-    /// Progress update for an async operation.
-    Progress {
-        /// The identifier of the operation reporting progress.
-        operation_id: OperationId,
-        /// The current progress information.
-        progress: ProgressInfo,
-    },
-
-    // --- Lifecycle events ---
-    /// The workbench has completed startup and is ready for interaction.
-    WorkbenchReady,
-    /// A shutdown sequence has been initiated.
-    ShutdownInitiated,
-    /// A plugin was successfully hot-reloaded.
-    PluginReloaded {
-        /// The name of the plugin that was reloaded.
-        plugin_name: String,
-    },
-}
-
-// ─── Event Categories ───────────────────────────────────────────────────────
-
-/// Event categories for subscription filtering.
-///
-/// Subscribers can register interest in one or more categories to receive
-/// only relevant events.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum EventCategory {
-    /// Command dispatch and completion events.
-    Command,
-    /// Informational notification events.
-    Notification,
-    /// State-change signals requiring UI updates.
-    StateChange,
-    /// Progress updates for long-running operations.
-    Progress,
-    /// Application lifecycle events (ready, shutdown, plugin reload).
-    Lifecycle,
-}
-
-// ─── WorkbenchEvent Implementation ─────────────────────────────────────────
-
-impl WorkbenchEvent {
-    /// Returns the category of this event for subscription filtering.
-    pub fn category(&self) -> EventCategory {
-        match self {
-            Self::CommandDispatched { .. } | Self::CommandCompleted { .. } => {
-                EventCategory::Command
-            }
-            Self::Notification { .. } => EventCategory::Notification,
-            Self::DocumentChanged { .. }
-            | Self::ActiveDocumentChanged { .. }
-            | Self::ConfigReloaded => EventCategory::StateChange,
-            Self::Progress { .. } => EventCategory::Progress,
-            Self::WorkbenchReady | Self::ShutdownInitiated | Self::PluginReloaded { .. } => {
-                EventCategory::Lifecycle
-            }
-        }
-    }
-}
-
-// ─── Event Subscription ─────────────────────────────────────────────────────
+// === Event Subscription =====================================================
 
 /// Filter for event subscriptions.
 ///
@@ -334,7 +171,7 @@ impl EventSubscription {
                     // Skip non-matching events
                 }
                 Err(broadcast::error::RecvError::Lagged(n)) => {
-                    // Events were dropped due to overflow — record the count
+                    // Events were dropped due to overflow -- record the count
                     // and continue receiving from the next available event.
                     self.dropped_counter.fetch_add(n, Ordering::Relaxed);
                     ff_logging::log_warn!(
@@ -366,7 +203,7 @@ impl EventSubscription {
                     // Skip non-matching, continue trying
                 }
                 Err(broadcast::error::TryRecvError::Lagged(n)) => {
-                    // Events were dropped due to overflow — record the count
+                    // Events were dropped due to overflow -- record the count
                     // and continue receiving from the next available event.
                     self.dropped_counter.fetch_add(n, Ordering::Relaxed);
                     ff_logging::log_warn!(
@@ -401,7 +238,7 @@ impl EventBus {
     ///
     /// # Arguments
     ///
-    /// * `filter` — The filter controlling which events this subscription receives.
+    /// * `filter` -- The filter controlling which events this subscription receives.
     ///
     /// # Examples
     ///
@@ -430,17 +267,17 @@ impl EventBus {
     }
 }
 
-// ─── Unit Tests ─────────────────────────────────────────────────────────────
+// === Unit Tests =============================================================
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashSet;
+    use std::collections::{HashMap, HashSet};
 
-    // Validates: Requirement 1.2 — interface compiles independently of any GUI crate
-    // Validates: Requirement 3.2 — event categories
+    // Validates: Requirement 1.2 -- interface compiles independently of any GUI crate
+    // Validates: Requirement 3.2 -- event categories
 
-    // ─── WorkbenchEvent variant construction ────────────────────────────────
+    // === WorkbenchEvent variant construction ================================
 
     #[test]
     fn workbench_event_command_dispatched_can_be_constructed() {
@@ -530,7 +367,7 @@ mod tests {
         assert!(matches!(event, WorkbenchEvent::PluginReloaded { .. }));
     }
 
-    // ─── WorkbenchEvent::category() correctness ─────────────────────────────
+    // === WorkbenchEvent::category() correctness =============================
 
     #[test]
     fn category_returns_command_for_command_dispatched() {
@@ -615,7 +452,7 @@ mod tests {
         assert_eq!(event.category(), EventCategory::Lifecycle);
     }
 
-    // ─── EventCategory has all expected variants ────────────────────────────
+    // === EventCategory has all expected variants ============================
 
     #[test]
     fn event_category_has_all_expected_variants() {
@@ -631,7 +468,7 @@ mod tests {
         assert_eq!(as_set.len(), 5);
     }
 
-    // ─── DocumentId and OperationId types ───────────────────────────────────
+    // === DocumentId and OperationId types ===================================
 
     #[test]
     fn document_id_construction_and_equality() {
@@ -669,7 +506,7 @@ mod tests {
         assert_eq!(set.len(), 2);
     }
 
-    // ─── CommandParams ──────────────────────────────────────────────────────
+    // === CommandParams ======================================================
 
     #[test]
     fn command_params_default_is_empty() {
@@ -692,7 +529,7 @@ mod tests {
         );
     }
 
-    // ─── ParamValue variants ────────────────────────────────────────────────
+    // === ParamValue variants ================================================
 
     #[test]
     fn param_value_string_variant_works() {
@@ -727,7 +564,7 @@ mod tests {
         assert_eq!(val, ParamValue::Map(inner));
     }
 
-    // ─── NotificationSeverity variants are distinct ─────────────────────────
+    // === NotificationSeverity variants are distinct =========================
 
     #[test]
     fn notification_severity_variants_are_distinct() {
@@ -736,7 +573,7 @@ mod tests {
         assert_ne!(NotificationSeverity::Info, NotificationSeverity::Error);
     }
 
-    // ─── ProgressInfo fields ────────────────────────────────────────────────
+    // === ProgressInfo fields ================================================
 
     #[test]
     fn progress_info_determinate_progress() {
@@ -762,9 +599,9 @@ mod tests {
         assert!(!info.cancellable);
     }
 
-    // ─── EventBus struct construction and capacity ──────────────────────────
+    // === EventBus struct construction and capacity ==========================
 
-    // Validates: Requirement 3.1 — EventBus uses bounded async-capable channel
+    // Validates: Requirement 3.1 -- EventBus uses bounded async-capable channel
 
     #[test]
     fn event_bus_with_default_capacity_has_10000_capacity() {
@@ -818,9 +655,9 @@ mod tests {
         assert_eq!(DEFAULT_EVENT_BUS_CAPACITY, 10_000);
     }
 
-    // ─── EventBus::dispatch and subscribe ───────────────────────────────────
+    // === EventBus::dispatch and subscribe ===================================
 
-    // Validates: Requirement 3.1 — bidirectional event flow
+    // Validates: Requirement 3.1 -- bidirectional event flow
 
     #[test]
     fn dispatch_returns_zero_when_no_subscribers() {
@@ -849,10 +686,10 @@ mod tests {
 
     #[test]
     fn bidirectional_event_flow_core_to_gui_and_gui_to_core() {
-        // Validates: Requirement 3.1 — bidirectional event flow
+        // Validates: Requirement 3.1 -- bidirectional event flow
         // The same EventBus supports events flowing in both directions:
-        // - Core→GUI: state-change events (e.g., DocumentChanged)
-        // - GUI→Core: input events (e.g., CommandDispatched)
+        // - Core->GUI: state-change events (e.g., DocumentChanged)
+        // - GUI->Core: input events (e.g., CommandDispatched)
         let bus = EventBus::with_default_capacity();
 
         // Simulate a "GUI subscriber" that listens for core state-change events
@@ -860,7 +697,7 @@ mod tests {
         // Simulate a "Core subscriber" that listens for GUI input events
         let mut core_rx = bus.subscribe();
 
-        // Core dispatches a state-change event (Core→GUI direction)
+        // Core dispatches a state-change event (Core->GUI direction)
         bus.dispatch(WorkbenchEvent::DocumentChanged {
             document_id: DocumentId(1),
         });
@@ -883,7 +720,7 @@ mod tests {
             }
         ));
 
-        // GUI dispatches a command event (GUI→Core direction)
+        // GUI dispatches a command event (GUI->Core direction)
         bus.dispatch(WorkbenchEvent::CommandDispatched {
             command_id: "file.open".to_string(),
             params: CommandParams::default(),
@@ -915,18 +752,18 @@ mod tests {
         assert_eq!(count, 0);
     }
 
-    // ─── Non-blocking dispatch from any thread (Task 6.3) ───────────────────
+    // === Non-blocking dispatch from any thread (Task 6.3) ===================
 
     #[test]
     fn event_bus_is_send_and_sync() {
-        // Validates: Requirement 3.3 — EventBus can be shared across threads
+        // Validates: Requirement 3.3 -- EventBus can be shared across threads
         fn assert_send_sync<T: Send + Sync>() {}
         assert_send_sync::<EventBus>();
     }
 
     #[test]
     fn dispatch_from_multiple_threads_is_non_blocking() {
-        // Validates: Requirement 3.3 — non-blocking dispatch from any thread
+        // Validates: Requirement 3.3 -- non-blocking dispatch from any thread
         use std::sync::Arc;
         use std::thread;
 
@@ -957,9 +794,9 @@ mod tests {
         assert_eq!(count, 5);
     }
 
-    // ─── EventFilter and EventSubscription (Task 7.1) ───────────────────────
+    // === EventFilter and EventSubscription (Task 7.1) =======================
 
-    // Validates: Requirement 3.4 — event subscription with interest registration
+    // Validates: Requirement 3.4 -- event subscription with interest registration
 
     #[test]
     fn subscribe_all_receives_every_event() {
@@ -981,7 +818,7 @@ mod tests {
 
     #[test]
     fn all_subscribers_receive_event_in_same_tick() {
-        // Validates: Requirement 3.5 — delivery within same tick/frame cycle
+        // Validates: Requirement 3.5 -- delivery within same tick/frame cycle
         let bus = EventBus::with_default_capacity();
         let mut sub1 = bus.subscribe_all();
         let mut sub2 = bus.subscribe_all();
@@ -1001,12 +838,12 @@ mod tests {
         let mut sub = bus.subscribe_filtered(EventFilter::Categories(vec![EventCategory::Command]));
 
         // Dispatch events of different categories
-        bus.dispatch(WorkbenchEvent::WorkbenchReady); // Lifecycle — should be skipped
+        bus.dispatch(WorkbenchEvent::WorkbenchReady); // Lifecycle -- should be skipped
         bus.dispatch(WorkbenchEvent::CommandDispatched {
             command_id: "test.cmd".to_string(),
             params: CommandParams::default(),
-        }); // Command — should be received
-        bus.dispatch(WorkbenchEvent::ConfigReloaded); // StateChange — should be skipped
+        }); // Command -- should be received
+        bus.dispatch(WorkbenchEvent::ConfigReloaded); // StateChange -- should be skipped
 
         let received = sub.try_recv();
         assert!(received.is_some());
@@ -1027,12 +864,12 @@ mod tests {
             EventCategory::Notification,
         ]));
 
-        bus.dispatch(WorkbenchEvent::ConfigReloaded); // StateChange — skipped
-        bus.dispatch(WorkbenchEvent::WorkbenchReady); // Lifecycle — received
+        bus.dispatch(WorkbenchEvent::ConfigReloaded); // StateChange -- skipped
+        bus.dispatch(WorkbenchEvent::WorkbenchReady); // Lifecycle -- received
         bus.dispatch(WorkbenchEvent::Notification {
             message: "hi".to_string(),
             severity: NotificationSeverity::Warning,
-        }); // Notification — received
+        }); // Notification -- received
         bus.dispatch(WorkbenchEvent::Progress {
             operation_id: OperationId(1),
             progress: ProgressInfo {
@@ -1040,7 +877,7 @@ mod tests {
                 fraction: None,
                 cancellable: false,
             },
-        }); // Progress — skipped
+        }); // Progress -- skipped
 
         let first = sub.try_recv().unwrap();
         assert!(matches!(*first, WorkbenchEvent::WorkbenchReady));
@@ -1117,9 +954,9 @@ mod tests {
         assert!(lifecycle_sub.try_recv().is_none());
     }
 
-    // ─── Overflow and oldest-event-drop policy (Task 8.2) ───────────────────
+    // === Overflow and oldest-event-drop policy (Task 8.2) ===================
 
-    // Validates: Requirement 3.7 — oldest-event-drop policy when buffer is full
+    // Validates: Requirement 3.7 -- oldest-event-drop policy when buffer is full
 
     #[test]
     fn overflow_drops_oldest_events_and_increments_dropped_count() {
@@ -1147,7 +984,7 @@ mod tests {
             received_count += 1;
         }
 
-        // The subscriber could not receive all events — some were dropped.
+        // The subscriber could not receive all events -- some were dropped.
         // The dropped_count on the bus should reflect the overflow.
         let dropped = bus.dropped_count();
         assert!(
@@ -1170,7 +1007,7 @@ mod tests {
 
     #[test]
     fn overflow_tracked_via_subscription_recv_async() {
-        // Validates: Requirement 3.7 — dropped events reported through async recv
+        // Validates: Requirement 3.7 -- dropped events reported through async recv
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
@@ -1222,14 +1059,14 @@ mod tests {
 
     #[test]
     fn multiple_subscribers_each_report_their_own_lag_to_shared_counter() {
-        // Validates: Requirement 3.7 — multiple lagged subscribers accumulate into the same counter
+        // Validates: Requirement 3.7 -- multiple lagged subscribers accumulate into the same counter
         let capacity = 4;
         let bus = EventBus::new(capacity);
 
         let mut sub1 = bus.subscribe_all();
         let mut sub2 = bus.subscribe_all();
 
-        // Overflow the buffer — both subscribers will be lagged
+        // Overflow the buffer -- both subscribers will be lagged
         for i in 0..(capacity + 3) {
             bus.dispatch(WorkbenchEvent::Notification {
                 message: format!("multi-{}", i),
