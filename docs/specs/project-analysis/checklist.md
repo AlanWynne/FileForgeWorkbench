@@ -105,6 +105,32 @@ REFINED: session tab descriptors / VCM registry / ff-dscatalog mounts). Carried:
 PA-WATCH-020/021/023/024 (Wave 4 layout/tab + UI consistency), PA-WATCH-022 (TSO
 verb), PA-WATCH-019 (raw-TOML store family).
 
+**Wave 4 COMPLETE (W4.1-W4.15) on the re-baseline** (commits `ca54241`..`4857657`).
+All 15 UI/panels/layout sub-projects analysed; the Wave 4 task-revision (W4.16)
+recorded the remediation as `Phase PA-W4` (PROPOSAL, PA-W4.1-PA-W4.11) in
+`docs/specs/project-master/tasks.md`. THE DOMINANT WAVE-4 THEME: FOUR complete,
+well-tested INFRASTRUCTURE CRATES ARE ORPHANS (used by no crate) -- ff-file-tree
+(shell reimplements file-explorer inline, PA-CONFLICT-011), ff-idle-processing
+(syntax-highlighting reimplements idle inline at the same 10ms budget, PA-CONFLICT-012),
+ff-large-file-performance (render path neither wires nor reimplements -- the 60fps>1M-line
+promise is unrealized, PA-CONFLICT-013), and ff-external-mod (spec never resolved its
+own placement; detector unwired, PA-CONFLICT-014). Rewire or delete-and-reconcile each
+(PA-W4.1); idle + large-file integrate together. Second theme: DEAD/OVER-DECLARED deps --
+a new PA-DEP category (ff-clipboard declares ff-edit-operations + ff-undo-redo unused,
+PA-DEP-003; ff-file-ops declares ff-undo-redo unused, PA-DEP-004) atop the pervasive
+dead-ff-logging cluster; a cargo-machete-style sweep would catch the family (PA-W4.7).
+Third theme: ELEVATED (MEDIUM) data-safety logging on a file-watcher + a persistence
+crate (external-mod PA-LOG-039, file-ops PA-LOG-040 -- both DEAD ff-logging; strong
+CR-NR-058 candidates, PA-W4.5). Fourth: PARTIAL UI surfaces (theme Req 16, notification
+toast/bell, plugin enable/disable, accesskit -- PA-W4.4; accessibility conformance also
+needs MANUAL assistive-tech testing). Recurring: shell file-explorer tangle
+(files_panel 1195 / file_explorer 935 + posix-path, PA-W4.3), tab-chrome triple-spec
+(PA-W4.2), runtime-string ASCII cluster (PA-W4.8), crate-name drift (PA-DOC-006), thin/
+absent TCR incl. THREE orphan crates with ZERO rows (PA-W4.10). POSITIVE EXEMPLARS:
+ff-theme clean single-owner (0 dups); FIVE clean-seam crates + file-ops stay OUT of
+PA-CONFLICT-002; EXEMPLARY VFS discipline (external-mod + file-ops, 0 real fs); ff-file-ops
+is NOT an orphan (consumed by global-search).
+
 | # | Sub-project | Wave | Status | Analysis Record | Notes |
 |---|-------------|------|--------|-----------------|-------|
 | 1 | platform-core | 0 | DONE | units/platform-core.md | COMPLETE (100/100, TCR PASS); not a split; GUI-independence VERIFIED; logging EXEMPLARY; refactor PA-STD-001 (event_bus.rs 435); PA-DOC-001 (Req 4.1 crate-name drift); PA-LOG-001 (project-wide non-ASCII) |

@@ -1588,6 +1588,88 @@ Group G -- TCR + tracking bookkeeping (no code):
 
 ---
 
+### Phase PA-W4 -- Wave 4 Analysis Remediation (project-analysis CR-NR-056) -- PROPOSAL
+
+Wave 4 (UI, panels, layout: layout-and-docking, multi-tab-editor, file-tree-panel,
+theme-and-appearance, view-zoom, hex-display, notification-system, plugin-manager-ui,
+accessibility, context-help, clipboard-operations, idle-processing,
+large-file-performance, external-modification, file-operations). Every unit's
+tracking was COMPLETE; the findings below are PROPOSALS (no source changed during
+analysis). All tasks `[ ]`. Cross-references: `docs/specs/project-analysis/units/`,
+`consistency-matrix.md`, `incomplete-work-register.md`.
+
+THE HEADLINE FINDING: FOUR complete, well-tested infrastructure crates are ORPHANS
+(used by no crate) -- the dominant Wave-4 theme.
+
+- [ ] PA-W4.1 (PA-CONFLICT-011 + PA-CONFLICT-012 + PA-CONFLICT-013 + PA-CONFLICT-014)
+  ORPHAN-CRATE cluster (owner-gated, MEDIUM-HIGH). FOUR complete/tested infra crates
+  used by NO crate: `ff-file-tree` (shell reimplements file-explorer inline --
+  files_panel.rs 1195 + file_explorer.rs 935), `ff-idle-processing` (syntax-highlighting
+  reimplements idle inline -- idle_styling.rs, same 10ms budget), `ff-large-file-performance`
+  (render path neither wires nor reimplements -- 60fps>1M-line promise unrealized),
+  `ff-external-mod` (spec never resolved placement; not wired to shell/document lifecycle).
+  Per crate, owner-decide: REWIRE the consumer/shell onto the crate (preferred -- all are
+  tested + well-decomposed) OR delete + reconcile spec. NOTE the pairing: idle-scheduler
+  drives large-file layout work -- one integration effort wires BOTH. Code + owner decision.
+- [ ] PA-W4.2 (PA-CONFLICT-010, multi-tab-editor / tabs-and-mask / menu-workspace) Tab-chrome
+  triple-spec: reconcile the three specs that each define tab rendering/behaviour so a single
+  owner drives the tab bar. Owner-gated. Code + spec.
+- [ ] PA-W4.3 (PA-CONFLICT-005 + PA-SPLIT-012, file-tree-panel `ff-desktop`) Shell
+  file-explorer tangle: posix-path assumption (PA-CONFLICT-005) + split the oversized
+  files_panel.rs (1195) / file_explorer.rs (935) by concern. Ties PA-W4.1 (ff-file-tree
+  orphan) -- ideally the split lands as the rewire onto ff-file-tree. Code (REFACTOR + fix).
+- [ ] PA-W4.4 (PA-INCOMPLETE-010 + PA-INCOMPLETE-011 + PA-INCOMPLETE-012 + PA-INCOMPLETE-013)
+  Partial UI surfaces: theme Req 16 (PA-INCOMPLETE-010), notification toast/bell
+  (PA-INCOMPLETE-011), plugin enable/disable (PA-INCOMPLETE-012), accesskit/screen-reader
+  wiring (PA-INCOMPLETE-013). Finish each UI surface; NOTE accessibility conformance also
+  needs MANUAL assistive-tech testing (code presence necessary not sufficient). Code + tests.
+- [ ] PA-W4.5 (PA-LOG-039 + PA-LOG-040) MEDIUM -- data-safety logging (strong CR-NR-058):
+  `ff-external-mod` file-watcher (watch lifecycle, fs-event -> ChangeType classification,
+  batch-coalescing, focus-gained re-check) and `ff-file-ops` persistence (save / atomic
+  rename-on-write / backup / read-only / revert -- silent partial writes are dangerous).
+  Both have DEAD ff-logging deps. Resolve dead deps + add dev-logging under the `dev-logging`
+  gate. Code.
+- [ ] PA-W4.6 (PA-LOG-027 through PA-LOG-038, excl. 039/040 in PA-W4.5) LOW dev-logging +
+  dead-ff-logging cluster across Wave-4 UI crates (layout, multi-tab, file-tree, theme,
+  view-zoom, hex, notification, plugin, context-help, clipboard, idle, large-file). Resolve
+  dead ff-logging deps; add gated dev-logging where it aids debugging (idle/large-file
+  deferred to their PA-W4.1 wiring). Code, LOW priority.
+- [ ] PA-W4.7 (PA-DEP-003 + PA-DEP-004) Dead/over-declared Cargo deps (LOW):
+  `ff-clipboard` declares ff-edit-operations + ff-undo-redo (0 usages -- clean-seam design
+  needs neither); `ff-file-ops` declares ff-undo-redo (0 usages). Audit + prune workspace-wide
+  (a cargo-machete-style unused-dependency sweep would catch the whole family, incl. the
+  dead-ff-logging cluster). Code (Cargo cleanup).
+- [ ] PA-W4.8 (PA-STD-043 through PA-STD-055) ASCII runtime-string cluster: replace em-dashes/
+  arrows in runtime `#[error]` + status strings across Wave-4 crates (layout, multi-tab,
+  theme, view-zoom, hex, context-help, clipboard, idle [+ Cargo-desc mojibake],
+  large-file, external-mod, file-ops). PA-STD-042 (shell split) is already PA-W3.6.
+  REFACTOR, no gate.
+- [ ] PA-W4.9 (PA-DOC-006) Crate-name-drift reconciliation (docs): `ff-external-modification`
+  (spec) vs `ff-external-mod` (dir). Add to the naming-reconciliation set with the other
+  drifts (ff-hex/ff-select/ff-tabmask/ff-forge/ff-keys/ff-completion/ff-wrap/ff-seqnum/
+  ff-dscatalog). Docs only.
+- [ ] PA-W4.10 (PA-TCR-018 through PA-TCR-027) TCR enumeration for Wave-4 crates. NOTE the
+  THREE orphan infra crates with TOTAL TCR absence (0 rows): ff-idle-processing (PA-TCR-024),
+  ff-large-file-performance (PA-TCR-025), ff-external-mod (PA-TCR-026). Add per-requirement
+  rows citing existing tests. No code.
+- [ ] PA-W4.11 (PA-WATCH-021 + PA-WATCH-022 + PA-WATCH-024) Carried Wave-4 watches: resolve
+  the remaining UI/pattern-consistency + unblock items observed in Waves 3-4. Confirm or
+  downgrade each during Wave 5/6. Analysis + targeted code.
+
+> Wave-4 consistency CONFIRMATIONS (no action -- resolved during analysis):
+> ff-theme is a CLEAN single-owner exemplar (sole StyleSlotTable + colour groups, 0 dups --
+> counter-example to Wave-2 field-model fragmentation); PA-WATCH-020 RESOLVED (menu-statusbar
+> Reqs 17-19 misfiled -> ff-layout owns); PA-WATCH-025 RESOLVED (WCAG verifier + high-contrast
+> producer both in ff-theme); PA-WATCH-023 RESOLVED (menu-and-statusbar scope-creep folded);
+> FIVE clean-seam crates stay OUT of PA-CONFLICT-002 (seqnum, whitespace-guides, auto-indent,
+> hex-display ByteReader, clipboard ClipboardEntry) -- and file-ops joins them (reads
+> document.is_dirty, no transactions); EXEMPLARY VFS discipline in ff-external-mod + ff-file-ops
+> (0 real fs); ff-file-ops is NOT an orphan (consumed by ff-global-search) -- breaks the streak;
+> file-ops CONFIRMS ff-external-mod was built standalone (0 ff-external-mod dep) so the
+> PA-CONFLICT-014 fix is wiring, not re-housing.
+
+---
+
 ## Summary
 
 | Status | Count |
