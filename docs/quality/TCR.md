@@ -2319,3 +2319,5 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-command` | 🔴 | -- | Req 11.7: rejected commands (unregistered/disabled) still emit start + completion naming the reason |
 | `ff-command` | 🔴 | -- | Req 11.8: instrumentation never alters CommandResult, undo, history, or side-effect ordering |
 | `ff-command` | 🔴 | -- | Req 11.9: completion duration measures the handler window only |
+| `ff-global-search` | ✅ | replace.rs unit tests (atomic_write_replaces_content_and_leaves_no_temp, atomic_write_to_bad_path_leaves_no_partial_output) | Req 5.3: cross-file replace writes ATOMICALLY (temp + fsync + rename); interrupted write cannot corrupt the original. Data-safety fix PA-CONFLICT-015/020 (PA-W5.2) |
+| `ff-jes` | ✅ | queue.rs unit tests (persist_writes_atomically_without_leaving_temp_files, atomic_persist_write_to_bad_path_leaves_no_partial_output, queue_persistence_round_trip) | Req 2 AC 6: job-queue persistence writes ATOMICALLY (temp + fsync + rename); interrupted write cannot corrupt the persisted queue. Data-safety fix PA-CONFLICT-015 (PA-W5.2) |

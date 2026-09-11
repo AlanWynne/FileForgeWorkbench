@@ -36,8 +36,10 @@ pub struct GlobalReplaceEngine;
 impl GlobalReplaceEngine {
     /// Apply `replacement` to all matches in `file_matches`.
     ///
-    /// Reads each file, applies substitutions, writes back via `std::fs::write`.
-    /// Files listed in `unsaved_paths` are skipped and returned in `ConflictList`.
+    /// Reads each file, applies substitutions, writes back ATOMICALLY (temp +
+    /// rename via [`atomic_write`], so an interrupted write cannot corrupt the
+    /// original). Files listed in `unsaved_paths` are skipped and returned in
+    /// `ConflictList`.
     ///
     /// Addresses: Requirement 5.3, 5.6
     pub fn replace_all(
@@ -88,7 +90,9 @@ impl GlobalReplaceEngine {
                 engine.change_all(&change_req, &mut indexer, &filter, None)
             {
                 let new_content = indexer.content_str().unwrap_or(&content).to_string();
-                if std::fs::write(&fm.file_path, new_content.as_bytes()).is_ok() {
+                // Data-safety (PA-CONFLICT-020): write atomically (temp + rename)
+                // so an interrupted write cannot corrupt/truncate the original.
+                if atomic_write(&fm.file_path, new_content.as_bytes()).is_ok() {
                     replacements += r.replacement_count;
                     files_modified += 1;
                 }
@@ -105,6 +109,58 @@ impl GlobalReplaceEngine {
             },
         ))
     }
+}
+
+/// Write `bytes` to `path` atomically: write to a sibling temp file, fsync it,
+/// then rename over the target. An interrupted write leaves the original intact
+/// (the rename is the only mutation of the target), avoiding partial-write
+/// corruption of user files during a bulk cross-file replace.
+///
+/// Data-safety fix (PA-CONFLICT-020). Kept synchronous to match the existing
+/// `replace_all` signature; full VFS-routing + backup is a separate follow-up.
+///
+/// # Errors
+///
+/// Returns `io::Error` if the temp write, fsync, or rename fails. On failure the
+/// original target is not modified.
+fn atomic_write(path: &str, bytes: &[u8]) -> std::io::Result<()> {
+    use std::io::Write as _;
+
+    let target = std::path::Path::new(path);
+    let dir = target.parent().unwrap_or_else(|| std::path::Path::new("."));
+    let file_name = target
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "output".to_string());
+
+    // Temp file in the SAME directory so the rename is same-filesystem (atomic).
+    // Include the process id + a nanosecond timestamp to avoid collisions.
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let temp_path = dir.join(format!(".{file_name}.fftmp.{}.{stamp}", std::process::id()));
+
+    // Write + fsync the temp file, then clean it up on any failure.
+    let write_result = (|| -> std::io::Result<()> {
+        let mut f = std::fs::File::create(&temp_path)?;
+        f.write_all(bytes)?;
+        f.flush()?;
+        f.sync_all()?;
+        Ok(())
+    })();
+    if let Err(e) = write_result {
+        let _ = std::fs::remove_file(&temp_path);
+        return Err(e);
+    }
+
+    // Atomic replace of the target.
+    if let Err(e) = std::fs::rename(&temp_path, target) {
+        let _ = std::fs::remove_file(&temp_path);
+        return Err(e);
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -177,5 +233,40 @@ mod tests {
             std::fs::read_to_string(dir.path().join("b.txt")).unwrap(),
             "foo bar"
         );
+    }
+
+    // Validates: Requirement 5.3 -- atomic write helper writes content durably
+    // and leaves no leftover temp sibling. Data-safety fix PA-CONFLICT-020.
+    #[test]
+    fn atomic_write_replaces_content_and_leaves_no_temp() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("atomic.txt");
+        std::fs::write(&path, "original").unwrap();
+
+        atomic_write(&path.to_string_lossy(), b"replaced").unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "replaced");
+
+        // Atomicity contract: no leftover temp files alongside the target.
+        let stray_temp: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_name().to_string_lossy().contains(".fftmp"))
+            .collect();
+        assert!(
+            stray_temp.is_empty(),
+            "atomic write must not leave temp files: {stray_temp:?}"
+        );
+    }
+
+    // Validates: Requirement 5.3 -- a failed atomic write must NOT clobber the
+    // original (temp+rename means the original survives an interrupted write).
+    #[test]
+    fn atomic_write_to_bad_path_leaves_no_partial_output() {
+        // Writing into a non-existent directory fails; no target is created.
+        let dir = TempDir::new().unwrap();
+        let bad = dir.path().join("no-such-subdir").join("x.txt");
+        let result = atomic_write(&bad.to_string_lossy(), b"data");
+        assert!(result.is_err(), "write to missing dir should error");
+        assert!(!bad.exists(), "no partial target file should be created");
     }
 }

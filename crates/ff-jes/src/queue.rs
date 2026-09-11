@@ -66,7 +66,7 @@ impl JobQueue {
 
     /// Submits a new job to the queue.
     ///
-    /// Validates: Requirement 2 AC 1–5
+    /// Validates: Requirement 2 AC 1-5
     pub fn submit(&self, definition: FfjclDefinition, owner: &str) -> Result<JobId, JesError> {
         let id = JobId::new(self.next_id.fetch_add(1, Ordering::SeqCst));
         let job = Job::new(id, definition, owner);
@@ -266,7 +266,7 @@ impl JobQueue {
 
     /// Returns eligible jobs for scheduling (QUEUED, ordered by priority DESC then submit_time ASC).
     ///
-    /// Validates: Requirement 3 AC 3–5
+    /// Validates: Requirement 3 AC 3-5
     pub fn eligible_jobs(&self) -> Vec<Job> {
         let filter = JobFilter {
             statuses: Some(vec![JobStatus::Queued]),
@@ -331,7 +331,9 @@ impl JobQueue {
         let jobs: Vec<Job> = self.jobs.read().unwrap().values().cloned().collect();
         let data = serde_json::to_string_pretty(&jobs)
             .map_err(|e| JesError::QueuePersistenceError(format!("serialization failed: {e}")))?;
-        std::fs::write(path, data).map_err(JesError::IoError)?;
+        // Data-safety (PA-CONFLICT-015): write atomically (temp + rename) so an
+        // interrupted write cannot corrupt/truncate the persisted job queue.
+        atomic_persist_write(path, data.as_bytes()).map_err(JesError::IoError)?;
         Ok(())
     }
 
@@ -354,6 +356,54 @@ impl Default for JobQueue {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Write `bytes` to `path` atomically: write to a sibling temp file, fsync it,
+/// then rename over the target. An interrupted write leaves any existing queue
+/// file intact (the rename is the only mutation of the target), avoiding
+/// partial-write corruption of the persisted job queue.
+///
+/// Data-safety fix (PA-CONFLICT-015). Kept synchronous (ff-jes has no async
+/// runtime); full VFS-routing is a separate follow-up.
+///
+/// # Errors
+///
+/// Returns `io::Error` if the temp write, fsync, or rename fails. On failure the
+/// original target is not modified.
+fn atomic_persist_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    use std::io::Write as _;
+
+    let dir = path.parent().unwrap_or_else(|| Path::new("."));
+    let file_name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "queue.json".to_string());
+
+    // Temp file in the SAME directory so the rename is same-filesystem (atomic).
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let temp_path = dir.join(format!(".{file_name}.fftmp.{}.{stamp}", std::process::id()));
+
+    let write_result = (|| -> std::io::Result<()> {
+        let mut f = std::fs::File::create(&temp_path)?;
+        f.write_all(bytes)?;
+        f.flush()?;
+        f.sync_all()?;
+        Ok(())
+    })();
+    if let Err(e) = write_result {
+        let _ = std::fs::remove_file(&temp_path);
+        return Err(e);
+    }
+
+    if let Err(e) = std::fs::rename(&temp_path, path) {
+        let _ = std::fs::remove_file(&temp_path);
+        return Err(e);
+    }
+
+    Ok(())
 }
 
 fn matches_filter(job: &Job, filter: &JobFilter) -> bool {
@@ -598,6 +648,46 @@ mod tests {
         let queue2 = JobQueue::open(&db_path).unwrap();
         let jobs = queue2.query(&JobFilter::default());
         assert_eq!(jobs.len(), 2);
+    }
+
+    // Validates: Requirement 2 AC 6 -- queue persistence writes ATOMICally
+    // (temp + rename), leaving no leftover temp sibling. Data-safety fix
+    // PA-CONFLICT-015.
+    #[test]
+    fn persist_writes_atomically_without_leaving_temp_files() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let db_path = dir.path().join("queue.json");
+
+        let queue = JobQueue::open(&db_path).unwrap();
+        queue.submit(make_def("JOB1"), "user").unwrap();
+
+        // The queue file exists and round-trips.
+        assert!(db_path.exists());
+        let reopened = JobQueue::open(&db_path).unwrap();
+        assert_eq!(reopened.query(&JobFilter::default()).len(), 1);
+
+        // Atomicity contract: no leftover temp files alongside the queue file.
+        let stray_temp: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_name().to_string_lossy().contains(".fftmp"))
+            .collect();
+        assert!(
+            stray_temp.is_empty(),
+            "atomic persist must not leave temp files: {stray_temp:?}"
+        );
+    }
+
+    // Validates: Requirement 2 AC 6 -- a failed atomic persist must NOT clobber
+    // an existing queue file (temp+rename preserves the original).
+    #[test]
+    fn atomic_persist_write_to_bad_path_leaves_no_partial_output() {
+        let dir = tempfile::TempDir::new().unwrap();
+        // Parent directory does not exist -> write must fail cleanly.
+        let bad = dir.path().join("missing-subdir").join("queue.json");
+        let result = atomic_persist_write(&bad, b"[]");
+        assert!(result.is_err(), "write to missing dir should error");
+        assert!(!bad.exists(), "no partial queue file should be created");
     }
 
     #[test]

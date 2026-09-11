@@ -70,6 +70,18 @@ These are the highest-risk findings (data loss). NOTE: legitimate raw fs is OUT 
 locates OS compilers; lua scans the macro dir. Recommendation: route the two write paths
 through ff-vfs / ff-file-ops.
 
+UPDATE (PA-W5.2 IMPLEMENTED): the ATOMICITY half of both findings is now FIXED in code --
+both write paths write via a sync temp-file + fsync + `std::fs::rename` helper
+(`atomic_persist_write` in ff-jes/queue.rs; `atomic_write` in ff-global-search/replace.rs),
+so an interrupted/partial write can no longer corrupt the job queue or a user file. TDD
+(4 new tests), verify.ps1 FULL gate clean. Kept SYNCHRONOUS deliberately: the ff-vfs/
+ff-file-ops safe-write API is uniformly async + URI-based with no sync wrapper, and
+converting ff-jes would force adding tokio + an async ripple through all callers -- out of
+proportion to the fix. STILL DEFERRED (owner-gated follow-up): full VFS-routing (the
+FFW-ARCH-001 discipline half), backup-copy on replace, and PA-DEP-005 (global-search still
+does not consume ff-file-ops). The corruption RISK -- the highest-priority concern -- is
+resolved.
+
 ## Theme 4 -- TRACKING INTEGRITY
 
 - `ff-database-tool` FALSE-POSITIVE-COMPLETE (PA-INCOMPLETE-014): 157/157 tasks `[x]` but
