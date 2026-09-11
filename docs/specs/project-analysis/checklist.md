@@ -4,6 +4,13 @@ Status of every sub-project in the systematic analysis pass (CR-NR-056).
 Status values: PENDING / IN PROGRESS / DONE. Wave is the planned analysis wave
 (design section 3); it may be re-slotted mid-analysis with a recorded reason.
 
+**ANALYSIS COMPLETE: all 81 sub-projects DONE (0 PENDING), Waves 0-6.** 263 findings
+recorded (PA-CONFLICT 22, PA-INCOMPLETE 16, PA-STD 73, PA-LOG 52, PA-TCR 36, PA-SPLIT 14,
+PA-WATCH 25, PA-DOC 11, PA-DEP 5, PA-TRACK 9). Remediation proposed as Phases PA-W0..PA-W5
+in `docs/specs/project-master/tasks.md`. See **`executive-summary.md`** for the whole-
+project synthesis (7 cross-cutting themes + recommended remediation order). Non-destructive:
+no source outside `docs/` changed; all findings are PROPOSALS pending owner approval.
+
 `project-analysis` itself is excluded (it is the analysis, not a subject).
 `ears-integration` and `workbench-requirements-merge` are analysis-artifact
 sub-projects reviewed in Wave 6 (review only).
