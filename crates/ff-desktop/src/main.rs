@@ -20,6 +20,7 @@ mod dataset_alloc_dialog;
 mod editor_panel;
 mod event_log_panel;
 mod exclude_manager;
+mod explorer_view;
 mod fftest_cli;
 mod file_explorer_panel;
 mod files_panel;

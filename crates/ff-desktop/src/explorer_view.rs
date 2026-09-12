@@ -1,0 +1,513 @@
+//! Modern, NavModel-backed File Explorer view (CR-NR-060 Slice A).
+//!
+//! This module builds the File Explorer interaction + rendering on top of the
+//! canonical `ff-file-tree` model (via [`crate::nav_model::NavModel`]), replacing
+//! the legacy path-string / `std::fs` inline explorer. Identity is `NodeId`
+//! throughout (ADR-002 D1); selection, cursor, and anchor are `NodeId`-keyed.
+//!
+//! The egui-free interaction core (selection model, visible-row flattening,
+//! keyboard reduction, open classification) lives here and is unit-tested; the
+//! egui rendering is a thin layer over it.
+//!
+//! Validates: Requirement 24.1, 24.2, 24.6, 24.9 (file-tree-panel Req 8/19/20)
+
+#![allow(dead_code)]
+
+use std::collections::HashSet;
+
+use ff_file_tree::keyboard::{
+    first_visible_node, last_visible_node, next_visible_node, prev_visible_node, type_ahead_jump,
+};
+use ff_file_tree::{NodeId, TreeAction};
+
+use crate::nav_model::NavModel;
+
+/// Keyboard/mouse selection state for the File Explorer, keyed entirely on
+/// `NodeId` (never on path strings). Mirrors the cursor-vs-selection model of
+/// file-tree-panel Requirement 20.
+///
+/// Validates: Requirement 24.2 (Req 20.1-20.13)
+#[derive(Debug, Default, Clone)]
+pub struct ExplorerSelection {
+    /// The node with the keyboard cursor (focus ring), independent of selection.
+    pub cursor: Option<NodeId>,
+    /// The set of selected nodes.
+    pub selected: HashSet<NodeId>,
+    /// The anchor node for range selection (Shift+Arrow).
+    pub anchor: Option<NodeId>,
+}
+
+impl ExplorerSelection {
+    /// Clear the selection set but keep the cursor as a single-node selection
+    /// (Req 20.12: Escape clears selection, cursor remains).
+    pub fn clear_to_cursor(&mut self) {
+        self.selected.clear();
+        if let Some(c) = self.cursor {
+            self.selected.insert(c);
+        }
+        self.anchor = None;
+    }
+
+    /// Move the cursor to `id` without changing the selection (plain Arrow /
+    /// Ctrl+Arrow -- Req 20.4, 20.9).
+    pub fn move_cursor(&mut self, id: NodeId) {
+        self.cursor = Some(id);
+    }
+
+    /// Move the cursor to `id` and add it to the selection, setting the anchor
+    /// on first extension (Shift+Arrow -- Req 20.6, 20.7).
+    pub fn extend_to(&mut self, id: NodeId) {
+        if self.anchor.is_none() {
+            self.anchor = self.cursor.or(Some(id));
+        }
+        self.cursor = Some(id);
+        self.selected.insert(id);
+    }
+
+    /// Toggle membership of the cursor node in the selection (Ctrl+Space --
+    /// Req 20.10).
+    pub fn toggle_cursor(&mut self) {
+        if let Some(c) = self.cursor {
+            if !self.selected.remove(&c) {
+                self.selected.insert(c);
+            }
+        }
+    }
+
+    /// Set a single-node selection + cursor (plain click / initial focus).
+    pub fn select_single(&mut self, id: NodeId) {
+        self.cursor = Some(id);
+        self.selected.clear();
+        self.selected.insert(id);
+        self.anchor = Some(id);
+    }
+
+    /// True if `id` is in the selection set.
+    pub fn is_selected(&self, id: NodeId) -> bool {
+        self.selected.contains(&id)
+    }
+}
+
+/// A row in the flattened, display-ordered visible tree, carrying enough for the
+/// renderer: node id, depth (for indent), label, whether expandable/expanded.
+///
+/// Validates: Requirement 24.1
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VisibleRow {
+    pub id: NodeId,
+    pub depth: u32,
+    pub label: String,
+    pub expandable: bool,
+    pub expanded: bool,
+}
+
+/// Flatten the model's visible nodes (respecting expansion, filter, hidden-file
+/// rule) into display-ordered rows for the renderer.
+///
+/// Validates: Requirement 24.1, 24.6
+pub fn visible_rows(model: &NavModel) -> Vec<VisibleRow> {
+    model
+        .tree
+        .visible_nodes_iter()
+        .into_iter()
+        .map(|n| VisibleRow {
+            id: n.id,
+            depth: n.depth,
+            label: n.label.clone(),
+            expandable: n.node_type.is_expandable(),
+            expanded: n.expanded,
+        })
+        .collect()
+}
+
+/// The set of keyboard gestures the explorer understands, expressed
+/// independently of egui so the reducer is unit-testable. Modifier state is
+/// captured explicitly (Req 20.6/20.9/20.10).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ExplorerKey {
+    Down { shift: bool, ctrl: bool },
+    Up { shift: bool, ctrl: bool },
+    Right,
+    Left,
+    Enter,
+    Escape,
+    CtrlSpace,
+    Home,
+    End,
+}
+
+/// Outcome of reducing a keyboard gesture over the model + selection: an
+/// optional side effect the caller must perform (expand/collapse/open a node).
+///
+/// Validates: Requirement 24.2 (Req 20)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ExplorerEffect {
+    None,
+    Expand(NodeId),
+    Collapse(NodeId),
+    Open(NodeId),
+}
+
+/// Reduce a keyboard gesture over the model and selection, returning the side
+/// effect (if any) the caller must apply. This is the NodeId-native equivalent
+/// of the legacy path-string keyboard handler, preserving Req 8 + Req 20.
+///
+/// Validates: Requirement 24.2 (Req 8.1-8.11, Req 20.4-20.12)
+pub fn reduce_key(
+    model: &NavModel,
+    sel: &mut ExplorerSelection,
+    key: ExplorerKey,
+) -> ExplorerEffect {
+    match key {
+        ExplorerKey::Down { shift, ctrl } => {
+            if let Some(next) = cursor_step(model, sel, next_visible_node, first_visible_node) {
+                apply_move(sel, next, shift, ctrl);
+            }
+            ExplorerEffect::None
+        }
+        ExplorerKey::Up { shift, ctrl } => {
+            if let Some(prev) = cursor_step(model, sel, prev_visible_node, last_visible_node) {
+                apply_move(sel, prev, shift, ctrl);
+            }
+            ExplorerEffect::None
+        }
+        ExplorerKey::Right => {
+            if let Some(c) = sel.cursor {
+                if let Some(node) = model.tree.get_node(c) {
+                    if node.node_type.is_expandable() && !node.expanded {
+                        return ExplorerEffect::Expand(c);
+                    }
+                }
+            }
+            ExplorerEffect::None
+        }
+        ExplorerKey::Left => {
+            if let Some(c) = sel.cursor {
+                if let Some(node) = model.tree.get_node(c) {
+                    if node.node_type.is_expandable() && node.expanded {
+                        return ExplorerEffect::Collapse(c);
+                    }
+                    // Move cursor to parent (Req 8.6 / 20.5).
+                    if node.parent != NodeId::ROOT {
+                        sel.move_cursor(node.parent);
+                    }
+                }
+            }
+            ExplorerEffect::None
+        }
+        ExplorerKey::Enter => {
+            if let Some(c) = sel.cursor {
+                if let Some(node) = model.tree.get_node(c) {
+                    if node.node_type.is_expandable() {
+                        return if node.expanded {
+                            ExplorerEffect::Collapse(c)
+                        } else {
+                            ExplorerEffect::Expand(c)
+                        };
+                    }
+                    return ExplorerEffect::Open(c);
+                }
+            }
+            ExplorerEffect::None
+        }
+        ExplorerKey::CtrlSpace => {
+            sel.toggle_cursor();
+            ExplorerEffect::None
+        }
+        ExplorerKey::Escape => {
+            sel.clear_to_cursor();
+            ExplorerEffect::None
+        }
+        ExplorerKey::Home => {
+            if let Some(first) = first_visible_node(&model.tree) {
+                sel.select_single(first);
+            }
+            ExplorerEffect::None
+        }
+        ExplorerKey::End => {
+            if let Some(last) = last_visible_node(&model.tree) {
+                sel.select_single(last);
+            }
+            ExplorerEffect::None
+        }
+    }
+}
+
+/// Compute the next cursor target for an Up/Down step, falling back to the
+/// first/last visible node when there is no current cursor.
+fn cursor_step(
+    model: &NavModel,
+    sel: &ExplorerSelection,
+    step: fn(&ff_file_tree::TreeState, NodeId) -> Option<NodeId>,
+    fallback: fn(&ff_file_tree::TreeState) -> Option<NodeId>,
+) -> Option<NodeId> {
+    match sel.cursor {
+        Some(c) => step(&model.tree, c).or(Some(c)),
+        None => fallback(&model.tree),
+    }
+}
+
+fn apply_move(sel: &mut ExplorerSelection, target: NodeId, shift: bool, ctrl: bool) {
+    if shift {
+        sel.extend_to(target);
+    } else if ctrl {
+        sel.move_cursor(target);
+    } else {
+        sel.select_single(target);
+    }
+}
+
+/// Type-ahead jump helper exposed for the renderer (Req 8.12).
+pub fn type_ahead(model: &NavModel, current: NodeId, prefix: &str) -> Option<NodeId> {
+    type_ahead_jump(&model.tree, current, prefix)
+}
+
+/// Translate a `ff-file-tree` `TreeAction` (from its `KeyboardHandler`) into an
+/// `ExplorerEffect` against the selection, for callers that prefer to reuse the
+/// model's own handler rather than `reduce_key`.
+///
+/// Validates: Requirement 24.11 (reuse the canonical model)
+pub fn effect_from_action(
+    model: &NavModel,
+    sel: &mut ExplorerSelection,
+    action: TreeAction,
+) -> ExplorerEffect {
+    match action {
+        TreeAction::SelectNext => {
+            if let Some(c) = sel.cursor {
+                if let Some(n) = next_visible_node(&model.tree, c) {
+                    sel.select_single(n);
+                }
+            }
+            ExplorerEffect::None
+        }
+        TreeAction::SelectPrevious => {
+            if let Some(c) = sel.cursor {
+                if let Some(n) = prev_visible_node(&model.tree, c) {
+                    sel.select_single(n);
+                }
+            }
+            ExplorerEffect::None
+        }
+        TreeAction::Expand(id) | TreeAction::ToggleExpand(id) => ExplorerEffect::Expand(id),
+        TreeAction::Collapse(id) => ExplorerEffect::Collapse(id),
+        TreeAction::Open(id) => ExplorerEffect::Open(id),
+        TreeAction::SelectFirstChild(id) | TreeAction::SelectParent(id) => {
+            sel.select_single(id);
+            ExplorerEffect::None
+        }
+        TreeAction::SelectFirst => {
+            if let Some(f) = first_visible_node(&model.tree) {
+                sel.select_single(f);
+            }
+            ExplorerEffect::None
+        }
+        TreeAction::SelectLast => {
+            if let Some(l) = last_visible_node(&model.tree) {
+                sel.select_single(l);
+            }
+            ExplorerEffect::None
+        }
+        TreeAction::TypeAheadJump(prefix) => {
+            if let Some(c) = sel.cursor {
+                if let Some(t) = type_ahead_jump(&model.tree, c, &prefix) {
+                    sel.select_single(t);
+                }
+            }
+            ExplorerEffect::None
+        }
+        TreeAction::Delete(_) | TreeAction::Rename(_) => ExplorerEffect::None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ff_vfs::ResourceUri;
+
+    /// Build a model: local root with dir "src" (containing "a.rs") and file "b.rs".
+    fn model_with_tree() -> (NavModel, NodeId, NodeId, NodeId) {
+        let mut m = NavModel::new();
+        let local = m.tree.root_categories[0];
+        m.set_uri(local, ResourceUri::new("local", "/root"));
+        m.apply_listing(
+            local,
+            "local",
+            &[
+                ff_vfs::VfsEntry {
+                    name: "src".into(),
+                    entry_type: ff_vfs::VfsEntryType::Directory,
+                    size: None,
+                    modified: None,
+                },
+                ff_vfs::VfsEntry {
+                    name: "b.rs".into(),
+                    entry_type: ff_vfs::VfsEntryType::File,
+                    size: None,
+                    modified: None,
+                },
+            ],
+        );
+        let children = m.tree.get_node(local).unwrap().children.clone();
+        let src = children
+            .iter()
+            .copied()
+            .find(|&id| m.tree.get_node(id).unwrap().label == "src")
+            .unwrap();
+        let b = children
+            .iter()
+            .copied()
+            .find(|&id| m.tree.get_node(id).unwrap().label == "b.rs")
+            .unwrap();
+        (m, local, src, b)
+    }
+
+    #[test]
+    fn visible_rows_are_node_id_keyed_and_ordered() {
+        // Validates: Requirement 24.1 -- rows come from the model, keyed on NodeId
+        let (m, local, _src, _b) = model_with_tree();
+        let rows = visible_rows(&m);
+        // local is expanded (apply_children expands it), so its children are visible.
+        assert!(rows
+            .iter()
+            .any(|r| r.id == local && r.label == "Local Files"));
+        assert!(rows.iter().any(|r| r.label == "src" && r.expandable));
+        assert!(rows.iter().any(|r| r.label == "b.rs" && !r.expandable));
+    }
+
+    #[test]
+    fn select_single_sets_cursor_and_one_selection() {
+        // Validates: Requirement 24.2 (Req 20 cursor vs selection)
+        let (_m, local, _src, _b) = model_with_tree();
+        let mut sel = ExplorerSelection::default();
+        sel.select_single(local);
+        assert_eq!(sel.cursor, Some(local));
+        assert!(sel.is_selected(local));
+        assert_eq!(sel.selected.len(), 1);
+    }
+
+    #[test]
+    fn shift_extend_accumulates_selection() {
+        // Validates: Requirement 24.2 (Req 20.6, 20.7)
+        let (m, _local, src, b) = model_with_tree();
+        let mut sel = ExplorerSelection::default();
+        sel.select_single(src);
+        // Shift+Down onto b accumulates.
+        let _ = reduce_key(
+            &m,
+            &mut sel,
+            ExplorerKey::Down {
+                shift: true,
+                ctrl: false,
+            },
+        );
+        assert!(sel.is_selected(src));
+        assert!(sel.is_selected(b));
+        assert_eq!(sel.cursor, Some(b));
+    }
+
+    #[test]
+    fn ctrl_arrow_moves_cursor_without_changing_selection() {
+        // Validates: Requirement 24.2 (Req 20.9)
+        let (m, _local, src, _b) = model_with_tree();
+        let mut sel = ExplorerSelection::default();
+        sel.select_single(src);
+        let before = sel.selected.clone();
+        let _ = reduce_key(
+            &m,
+            &mut sel,
+            ExplorerKey::Down {
+                shift: false,
+                ctrl: true,
+            },
+        );
+        assert_eq!(sel.selected, before, "ctrl+arrow must not change selection");
+        assert_ne!(sel.cursor, Some(src), "cursor should have moved");
+    }
+
+    #[test]
+    fn ctrl_space_toggles_cursor_membership() {
+        // Validates: Requirement 24.2 (Req 20.10)
+        let (m, _local, src, _b) = model_with_tree();
+        let mut sel = ExplorerSelection::default();
+        sel.move_cursor(src);
+        let _ = reduce_key(&m, &mut sel, ExplorerKey::CtrlSpace);
+        assert!(sel.is_selected(src));
+        let _ = reduce_key(&m, &mut sel, ExplorerKey::CtrlSpace);
+        assert!(!sel.is_selected(src));
+    }
+
+    #[test]
+    fn escape_clears_to_cursor() {
+        // Validates: Requirement 24.2 (Req 20.12)
+        let (m, _local, src, b) = model_with_tree();
+        let mut sel = ExplorerSelection::default();
+        sel.select_single(src);
+        let _ = reduce_key(
+            &m,
+            &mut sel,
+            ExplorerKey::Down {
+                shift: true,
+                ctrl: false,
+            },
+        );
+        assert!(sel.selected.len() >= 2);
+        let _ = reduce_key(&m, &mut sel, ExplorerKey::Escape);
+        assert_eq!(sel.selected.len(), 1);
+        assert!(sel.is_selected(b)); // cursor was on b after the shift-down
+    }
+
+    #[test]
+    fn right_on_collapsed_dir_requests_expand() {
+        // Validates: Requirement 24.2 (Req 8.3 / 20.5)
+        let (mut m, _local, src, _b) = model_with_tree();
+        // Ensure src is collapsed.
+        if let Some(n) = m.tree.get_node_mut(src) {
+            n.expanded = false;
+        }
+        let mut sel = ExplorerSelection::default();
+        sel.move_cursor(src);
+        let eff = reduce_key(&m, &mut sel, ExplorerKey::Right);
+        assert_eq!(eff, ExplorerEffect::Expand(src));
+    }
+
+    #[test]
+    fn enter_on_file_requests_open() {
+        // Validates: Requirement 24.2 (Req 8.7)
+        let (m, _local, _src, b) = model_with_tree();
+        let mut sel = ExplorerSelection::default();
+        sel.move_cursor(b);
+        let eff = reduce_key(&m, &mut sel, ExplorerKey::Enter);
+        assert_eq!(eff, ExplorerEffect::Open(b));
+    }
+
+    #[test]
+    fn enter_on_dir_toggles_expand() {
+        // Validates: Requirement 24.2 (Req 8.8)
+        // A freshly-listed child directory is collapsed (only the listed parent
+        // is expanded by apply_children), so Enter on it requests Expand; Enter
+        // again (once expanded) requests Collapse.
+        let (mut m, _local, src, _b) = model_with_tree();
+        let mut sel = ExplorerSelection::default();
+        sel.move_cursor(src);
+        let eff = reduce_key(&m, &mut sel, ExplorerKey::Enter);
+        assert_eq!(eff, ExplorerEffect::Expand(src));
+        // Now expand it and confirm Enter collapses.
+        m.tree.toggle_expand(src);
+        let eff2 = reduce_key(&m, &mut sel, ExplorerKey::Enter);
+        assert_eq!(eff2, ExplorerEffect::Collapse(src));
+    }
+
+    #[test]
+    fn home_end_jump_to_first_last() {
+        // Validates: Requirement 24.2 (Req 8.11)
+        let (m, _local, _src, _b) = model_with_tree();
+        let mut sel = ExplorerSelection::default();
+        let _ = reduce_key(&m, &mut sel, ExplorerKey::End);
+        let last = last_visible_node(&m.tree);
+        assert_eq!(sel.cursor, last);
+        let _ = reduce_key(&m, &mut sel, ExplorerKey::Home);
+        let first = first_visible_node(&m.tree);
+        assert_eq!(sel.cursor, first);
+    }
+}
