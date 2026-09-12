@@ -76,6 +76,68 @@ impl NavModel {
             self.tree.all_node_ids().into_iter().collect();
         self.uris.retain(|id, _| live.contains(id));
     }
+
+    /// Populate a container node's children from a provider's directory listing.
+    ///
+    /// Drives the entries returned by `entries` (obtained from an async
+    /// `VfsProvider::list()` call) through the provider's Namespace_Mapping into
+    /// `TreeNodeData`, applies them to the tree under `parent`, and records each
+    /// new child's `ResourceUri` in the side table (built by joining the parent
+    /// URI with the entry name, forward-slash). The parent's URI must already be
+    /// associated (via `set_uri`) so child URIs can be derived.
+    ///
+    /// This method performs NO I/O itself -- the caller obtains `entries` via the
+    /// provider (e.g. `runtime.block_on(provider.list(path))`), keeping NavModel
+    /// synchronous and unit-testable with any `VfsProvider` mock. All File
+    /// Explorer directory loading flows through a provider `list()`, never
+    /// `std::fs` (Requirement 24.3).
+    ///
+    /// Validates: Requirement 24.2, 24.4, 24.5
+    pub fn apply_listing(&mut self, parent: NodeId, scheme: &str, entries: &[VfsEntry]) {
+        let parent_uri = self.uris.get(&parent).cloned();
+        let mapped = map_entries(scheme, entries);
+        self.tree.apply_children(parent, mapped);
+        // Associate each freshly-created child with its resource URI (by name,
+        // in the same order the entries were applied).
+        if let Some(parent_uri) = parent_uri {
+            let child_ids: Vec<NodeId> = self
+                .tree
+                .get_node(parent)
+                .map(|n| n.children.clone())
+                .unwrap_or_default();
+            for (id, entry) in child_ids.iter().zip(entries.iter()) {
+                let uri = child_uri(&parent_uri, &entry.name);
+                self.uris.insert(*id, uri);
+            }
+        }
+    }
+
+    /// Record a load error under a container node (replaces children with an
+    /// error indicator), mirroring `TreeState::apply_error`.
+    ///
+    /// Validates: Requirement 24.5
+    pub fn apply_load_error(&mut self, parent: NodeId, message: impl Into<String>) {
+        self.tree.apply_error(parent, message.into());
+    }
+}
+
+/// Drive an async `VfsProvider::list()` to completion on the given Tokio runtime
+/// and return the entries, or an error message string suitable for an error node.
+///
+/// This is the single choke point where the File Explorer reaches the VFS for a
+/// directory listing. It uses `block_on` in the same style the editor panel uses
+/// for document I/O -- there is no direct `std::fs` in the File Explorer path
+/// (Requirement 24.3).
+///
+/// Validates: Requirement 24.3
+pub fn list_via_provider(
+    runtime: &tokio::runtime::Runtime,
+    provider: &dyn ff_vfs::VfsProvider,
+    path: &str,
+) -> Result<Vec<VfsEntry>, String> {
+    runtime
+        .block_on(provider.list(path))
+        .map_err(|e| e.to_string())
 }
 
 /// The provider-defined `Namespace_Mapping`: convert a provider's directory
@@ -276,5 +338,162 @@ mod tests {
         // Validates: Requirement 24.4 -- dotfile classified hidden
         let mapped = map_entry("posix", &entry(".env", VfsEntryType::File));
         assert!(mapped.is_hidden);
+    }
+
+    #[test]
+    fn apply_listing_populates_children_and_child_uris() {
+        // Validates: Requirement 24.5, 24.2 -- listing -> apply_children + child URIs
+        let mut m = NavModel::new();
+        let local = m.tree.root_categories[0];
+        m.set_uri(local, ResourceUri::new("local", "/home/user"));
+        m.apply_listing(
+            local,
+            "local",
+            &[
+                entry("src", VfsEntryType::Directory),
+                entry("main.rs", VfsEntryType::File),
+            ],
+        );
+        let children = m.tree.get_node(local).unwrap().children.clone();
+        assert_eq!(children.len(), 2);
+        // Directory-first is applied by the tree/sort layer at render time; here
+        // we assert the children exist with correct types and URIs by name.
+        let src = children
+            .iter()
+            .copied()
+            .find(|&id| m.tree.get_node(id).unwrap().label == "src")
+            .unwrap();
+        let main_rs = children
+            .iter()
+            .copied()
+            .find(|&id| m.tree.get_node(id).unwrap().label == "main.rs")
+            .unwrap();
+        assert_eq!(m.tree.get_node(src).unwrap().node_type, NodeType::Directory);
+        assert_eq!(m.tree.get_node(main_rs).unwrap().node_type, NodeType::File);
+        assert_eq!(m.uri_of(src).unwrap().path(), "/home/user/src");
+        assert_eq!(m.uri_of(main_rs).unwrap().path(), "/home/user/main.rs");
+    }
+
+    #[test]
+    fn apply_load_error_replaces_children_with_error_node() {
+        // Validates: Requirement 24.5 -- provider error becomes an error node
+        let mut m = NavModel::new();
+        let local = m.tree.root_categories[0];
+        m.set_uri(local, ResourceUri::new("local", "/home/user"));
+        m.apply_load_error(local, "permission denied");
+        let children = m.tree.get_node(local).unwrap().children.clone();
+        assert_eq!(children.len(), 1);
+        assert_eq!(
+            m.tree.get_node(children[0]).unwrap().node_type,
+            ff_file_tree::NodeType::ErrorIndicator
+        );
+    }
+
+    // A mock VfsProvider that records that list() was called and returns a fixed
+    // listing -- proves the File Explorer load path goes through VfsProvider::list()
+    // and NOT std::fs (Requirement 24.3).
+    struct MockProvider {
+        listed: std::sync::atomic::AtomicBool,
+    }
+
+    #[async_trait::async_trait]
+    impl ff_vfs::VfsProvider for MockProvider {
+        fn scheme(&self) -> &str {
+            "local"
+        }
+        fn capabilities(&self) -> ff_vfs::VfsCapabilities {
+            ff_vfs::VfsCapabilities {
+                read: true,
+                write: false,
+                watch: false,
+                search: false,
+                random_access: false,
+                append: false,
+                rename: false,
+                delete: false,
+                list: true,
+                create_directory: false,
+            }
+        }
+        async fn open(
+            &self,
+            _p: &str,
+            _o: ff_vfs::OpenOptions,
+        ) -> Result<Box<dyn ff_vfs::VfsFile>, ff_vfs::VfsError> {
+            Err(ff_vfs::VfsError::UnsupportedOperation {
+                operation: "open".into(),
+                provider: "mock".into(),
+            })
+        }
+        async fn read(&self, _p: &str) -> Result<Vec<u8>, ff_vfs::VfsError> {
+            Ok(Vec::new())
+        }
+        async fn read_stream(
+            &self,
+            _p: &str,
+        ) -> Result<std::pin::Pin<Box<dyn tokio::io::AsyncRead + Send>>, ff_vfs::VfsError> {
+            Err(ff_vfs::VfsError::UnsupportedOperation {
+                operation: "read_stream".into(),
+                provider: "mock".into(),
+            })
+        }
+        async fn write(&self, _p: &str, _d: &[u8]) -> Result<(), ff_vfs::VfsError> {
+            Ok(())
+        }
+        async fn create(
+            &self,
+            _p: &str,
+            _o: ff_vfs::CreateOptions,
+        ) -> Result<(), ff_vfs::VfsError> {
+            Ok(())
+        }
+        async fn delete(
+            &self,
+            _p: &str,
+            _o: ff_vfs::DeleteOptions,
+        ) -> Result<(), ff_vfs::VfsError> {
+            Ok(())
+        }
+        async fn rename(&self, _o: &str, _n: &str) -> Result<(), ff_vfs::VfsError> {
+            Ok(())
+        }
+        async fn list(&self, _p: &str) -> Result<Vec<VfsEntry>, ff_vfs::VfsError> {
+            self.listed.store(true, std::sync::atomic::Ordering::SeqCst);
+            Ok(vec![
+                entry("docs", VfsEntryType::Directory),
+                entry("readme.md", VfsEntryType::File),
+            ])
+        }
+        async fn stat(&self, _p: &str) -> Result<ff_vfs::VfsMetadata, ff_vfs::VfsError> {
+            Err(ff_vfs::VfsError::UnsupportedOperation {
+                operation: "stat".into(),
+                provider: "mock".into(),
+            })
+        }
+        async fn exists(&self, _p: &str) -> Result<bool, ff_vfs::VfsError> {
+            Ok(true)
+        }
+    }
+
+    #[test]
+    fn load_goes_through_vfs_provider_list_not_std_fs() {
+        // Validates: Requirement 24.3 -- directory load uses VfsProvider::list()
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let provider = MockProvider {
+            listed: std::sync::atomic::AtomicBool::new(false),
+        };
+        let entries = list_via_provider(&runtime, &provider, "/").unwrap();
+        assert!(
+            provider.listed.load(std::sync::atomic::Ordering::SeqCst),
+            "provider.list() must have been invoked"
+        );
+        assert_eq!(entries.len(), 2);
+
+        // And feeding those entries into the model populates the tree.
+        let mut m = NavModel::new();
+        let local = m.tree.root_categories[0];
+        m.set_uri(local, ResourceUri::new("local", "/"));
+        m.apply_listing(local, "local", &entries);
+        assert_eq!(m.tree.get_node(local).unwrap().children.len(), 2);
     }
 }
