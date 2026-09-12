@@ -1,11 +1,11 @@
-//! Workflow definition — declarative state machine descriptions.
+//! Workflow definition -- declarative state machine descriptions.
 //!
 //! A `WorkflowDefinition` describes a workflow as a directed graph of states
 //! and transitions. Definitions are constructed via the `WorkflowBuilder` and
 //! validated for structural correctness (exactly one initial state, at least
 //! one terminal state, no unreachable states).
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashSet;
 use std::time::Duration;
 
 use crate::context::{ContextValue, ContextValueType};
@@ -96,7 +96,7 @@ pub enum StepKind {
         /// Names of member steps in this parallel group.
         member_steps: Vec<String>,
     },
-    /// A conditional branch point — routes transitions based on predicates.
+    /// A conditional branch point -- routes transitions based on predicates.
     Conditional,
 }
 
@@ -358,107 +358,10 @@ impl WorkflowBuilder {
     }
 }
 
-/// Finds all states that are unreachable from the initial state via transitions.
-fn find_unreachable_states(
-    initial: &str,
-    steps: &[StepDefinition],
-    transitions: &[Transition],
-    terminal_steps: &[String],
-) -> Vec<String> {
-    let all_step_names: HashSet<&str> = steps.iter().map(|s| s.name.as_str()).collect();
+mod validate;
 
-    // Build adjacency list
-    let mut adjacency: HashMap<&str, Vec<&str>> = HashMap::new();
-    for t in transitions {
-        adjacency
-            .entry(t.from.as_str())
-            .or_default()
-            .push(t.to.as_str());
-    }
-
-    // BFS from initial
-    let mut visited: HashSet<&str> = HashSet::new();
-    let mut queue: VecDeque<&str> = VecDeque::new();
-    queue.push_back(initial);
-    visited.insert(initial);
-
-    while let Some(current) = queue.pop_front() {
-        if let Some(neighbors) = adjacency.get(current) {
-            for &next in neighbors {
-                if visited.insert(next) {
-                    queue.push_back(next);
-                }
-            }
-        }
-    }
-
-    // Terminal steps are always considered reachable (they don't need outgoing transitions)
-    for t in terminal_steps {
-        visited.insert(t.as_str());
-    }
-
-    // Find unreachable states
-    all_step_names
-        .iter()
-        .filter(|&&name| !visited.contains(name))
-        .map(|&name| name.to_string())
-        .collect()
-}
-
-/// Validates a workflow definition for structural correctness.
-///
-/// Checks:
-/// - Exactly one initial state
-/// - At least one terminal state
-/// - No unreachable states from the initial state
-///
-/// Addresses: Requirement 1, criterion 3
-pub fn validate_definition(def: &WorkflowDefinition) -> Result<(), WorkflowError> {
-    let step_names: HashSet<&str> = def.steps.iter().map(|s| s.name.as_str()).collect();
-
-    // Check initial step exists
-    if !step_names.contains(def.initial_step.as_str()) {
-        return Err(WorkflowError::InvalidDefinition {
-            description: format!(
-                "initial step '{}' is not in the step list",
-                def.initial_step
-            ),
-        });
-    }
-
-    // Check at least one terminal
-    if def.terminal_steps.is_empty() {
-        return Err(WorkflowError::NoTerminalStates {
-            name: def.name.clone(),
-        });
-    }
-
-    // Check terminal steps exist
-    for t in &def.terminal_steps {
-        if !step_names.contains(t.as_str()) {
-            return Err(WorkflowError::InvalidDefinition {
-                description: format!("terminal step '{}' is not in the step list", t),
-            });
-        }
-    }
-
-    // Check reachability
-    let unreachable = find_unreachable_states(
-        &def.initial_step,
-        &def.steps,
-        &def.transitions,
-        &def.terminal_steps,
-    );
-
-    if !unreachable.is_empty() {
-        return Err(WorkflowError::UnreachableStates {
-            name: def.name.clone(),
-            states: unreachable,
-        });
-    }
-
-    Ok(())
-}
+use validate::find_unreachable_states;
+pub use validate::validate_definition;
 
 #[cfg(test)]
 mod tests {
@@ -481,7 +384,7 @@ mod tests {
         }
     }
 
-    // Validates: Requirement 1.3 — definition validation: exactly one initial, at least one terminal
+    // Validates: Requirement 1.3 -- definition validation: exactly one initial, at least one terminal
 
     #[test]
     fn valid_linear_workflow_builds_successfully() {
@@ -560,7 +463,7 @@ mod tests {
         ));
     }
 
-    // Validates: Requirement 1.2 — three step-sequencing modes
+    // Validates: Requirement 1.2 -- three step-sequencing modes
 
     #[test]
     fn workflow_with_conditional_step_builds() {
@@ -594,7 +497,7 @@ mod tests {
         assert!(def.is_ok());
     }
 
-    // Validates: Requirement 1.4 — builder API (data-driven definitions)
+    // Validates: Requirement 1.4 -- builder API (data-driven definitions)
 
     #[test]
     fn builder_sets_all_metadata() {
@@ -621,7 +524,7 @@ mod tests {
         assert!(def.supports_pause);
     }
 
-    // Validates: Requirement 1.6 — parameterization
+    // Validates: Requirement 1.6 -- parameterization
 
     #[test]
     fn builder_accepts_parameters() {
