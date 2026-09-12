@@ -1,6 +1,6 @@
 //! Plugin configuration handle.
 //!
-//! Provides `PluginConfigHandle` — a scoped configuration interface given to
+//! Provides `PluginConfigHandle` -- a scoped configuration interface given to
 //! plugins via `PluginContext`. Restricts read and write access to the
 //! plugin's own namespace (`plugins.{plugin-name}.*`).
 //!
@@ -10,9 +10,9 @@
 use std::sync::Arc;
 
 use crate::callback::{CallbackHandle, CallbackRegistry, ReloadCallback};
-use crate::error::{ConfigError, ValueType};
-use crate::namespace::{is_reserved_namespace, plugin_namespace_prefix, validate_plugin_name};
-use crate::schema::{Constraints, SchemaEntry, SchemaRegistry};
+use crate::error::ConfigError;
+use crate::namespace::plugin_namespace_prefix;
+use crate::schema::SchemaRegistry;
 use crate::store::EffectiveStore;
 use crate::value::ConfigValue;
 
@@ -50,9 +50,9 @@ impl std::fmt::Debug for PluginConfigHandle<'_> {
 impl<'a> PluginConfigHandle<'a> {
     /// Create a new plugin configuration handle.
     ///
-    /// This is an internal constructor — use `create_plugin_config_handle`
+    /// This is an internal constructor -- use `create_plugin_config_handle`
     /// for the validated public API.
-    fn new(
+    pub(super) fn new(
         plugin_name: String,
         store: &'a EffectiveStore,
         schema: &'a SchemaRegistry,
@@ -272,169 +272,19 @@ impl<'a> PluginConfigHandle<'a> {
     }
 }
 
-/// Create a validated plugin configuration handle.
-///
-/// Validates the plugin name against naming rules and checks that it
-/// is not a reserved core namespace.
-///
-/// # Errors
-///
-/// Returns `ConfigError::InvalidPluginName` if the name fails validation.
-/// Returns `ConfigError::ReservedNamespace` if the name matches a reserved namespace.
-pub fn create_plugin_config_handle<'a>(
-    store: &'a EffectiveStore,
-    schema: &'a SchemaRegistry,
-    plugin_name: &str,
-) -> Result<PluginConfigHandle<'a>, ConfigError> {
-    validate_plugin_name(plugin_name)?;
-
-    if is_reserved_namespace(plugin_name) {
-        return Err(ConfigError::ReservedNamespace {
-            plugin: plugin_name.to_string(),
-            namespace: plugin_name.to_string(),
-        });
-    }
-
-    Ok(PluginConfigHandle::new(
-        plugin_name.to_string(),
-        store,
-        schema,
-        None,
-    ))
-}
-
-/// Create a validated plugin configuration handle with callback registry access.
-///
-/// Same as `create_plugin_config_handle` but also provides access to the
-/// callback registry, enabling the plugin to register reload callbacks via
-/// [`PluginConfigHandle::on_reload`].
-///
-/// # Errors
-///
-/// Returns `ConfigError::InvalidPluginName` if the name fails validation.
-/// Returns `ConfigError::ReservedNamespace` if the name matches a reserved namespace.
-pub fn create_plugin_config_handle_with_callbacks<'a>(
-    store: &'a EffectiveStore,
-    schema: &'a SchemaRegistry,
-    callbacks: &'a Arc<CallbackRegistry>,
-    plugin_name: &str,
-) -> Result<PluginConfigHandle<'a>, ConfigError> {
-    validate_plugin_name(plugin_name)?;
-
-    if is_reserved_namespace(plugin_name) {
-        return Err(ConfigError::ReservedNamespace {
-            plugin: plugin_name.to_string(),
-            namespace: plugin_name.to_string(),
-        });
-    }
-
-    Ok(PluginConfigHandle::new(
-        plugin_name.to_string(),
-        store,
-        schema,
-        Some(callbacks),
-    ))
-}
-
-/// A default value declared by a plugin for one of its configuration keys.
-///
-/// Plugins declare their defaults in their manifest. During plugin initialization,
-/// these defaults are registered as the Defaults layer for the plugin's namespace.
-#[derive(Debug, Clone)]
-pub struct PluginDefault {
-    /// The relative key within the plugin's namespace (e.g., `"max_rows"`).
-    pub key: String,
-    /// The expected value type for this key.
-    pub value_type: ValueType,
-    /// The default value applied when no layer provides this key.
-    pub default: ConfigValue,
-    /// Human-readable description of the setting's purpose.
-    pub description: String,
-    /// Optional validation constraints.
-    pub constraints: Option<Constraints>,
-}
-
-/// Register plugin default configuration values in the schema registry.
-///
-/// Each default entry's key is auto-prefixed with the plugin's namespace
-/// (e.g., `"max_rows"` → `"plugins.sql-viewer.max_rows"`) and registered
-/// as a `SchemaEntry`. This makes the defaults available through the
-/// schema's default fallback mechanism.
-///
-/// # Arguments
-///
-/// * `schema` — The schema registry to register defaults in.
-/// * `plugin_name` — The plugin's registered name (must be pre-validated).
-/// * `defaults` — The list of default declarations from the plugin's manifest.
-///
-/// # Errors
-///
-/// Returns `ConfigError::SchemaConflict` if a key is already registered
-/// with a different type. Otherwise returns `Ok(())`.
-pub fn register_plugin_defaults(
-    schema: &mut SchemaRegistry,
-    plugin_name: &str,
-    defaults: Vec<PluginDefault>,
-) -> Result<(), ConfigError> {
-    let prefix = plugin_namespace_prefix(plugin_name);
-
-    for plugin_default in defaults {
-        let full_key = format!("{}{}", prefix, plugin_default.key);
-        let entry = SchemaEntry {
-            key: full_key,
-            value_type: plugin_default.value_type,
-            default: plugin_default.default,
-            description: plugin_default.description,
-            constraints: plugin_default.constraints,
-        };
-        schema.register(entry)?;
-    }
-
-    Ok(())
-}
-
-/// Unload a plugin from the configuration system.
-///
-/// Performs the following cleanup:
-/// 1. Removes all schema entries with keys prefixed by `plugins.{plugin_name}.`
-/// 2. Deregisters all callback handles provided
-///
-/// Previously persisted configuration values are NOT removed from config files
-/// — they are retained on disk but no longer actively served.
-///
-/// # Arguments
-///
-/// * `plugin_name` — The plugin's registered name.
-/// * `schema` — The schema registry to deregister entries from.
-/// * `callbacks` — The callback registry to deregister callbacks from.
-/// * `handles` — The callback handles to deregister.
-///
-/// # Returns
-///
-/// The number of schema entries that were removed.
-pub fn unload_plugin(
-    plugin_name: &str,
-    schema: &mut SchemaRegistry,
-    callbacks: &CallbackRegistry,
-    handles: Vec<CallbackHandle>,
-) -> usize {
-    let prefix = plugin_namespace_prefix(plugin_name);
-
-    // Deregister all callback handles
-    for handle in handles {
-        callbacks.remove_callback(handle);
-    }
-
-    // Remove all schema entries for the plugin namespace
-    schema.deregister(&prefix)
-}
+mod lifecycle;
+pub use lifecycle::{
+    create_plugin_config_handle, create_plugin_config_handle_with_callbacks,
+    register_plugin_defaults, unload_plugin, PluginDefault,
+};
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::ValueType;
     use crate::layer::ConfigLayer;
     use crate::provenance::{EffectiveValue, Provenance};
-    use crate::schema::SchemaEntry;
+    use crate::schema::{Constraints, SchemaEntry};
     use std::path::PathBuf;
 
     /// Helper: build a store with a single key-value entry.
@@ -468,9 +318,9 @@ mod tests {
         schema
     }
 
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
     // create_plugin_config_handle
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
 
     // Validates: Requirement 8.1, 8.2
     #[test]
@@ -511,7 +361,7 @@ mod tests {
             );
         }
 
-        // `_session` has an underscore so it fails name validation first —
+        // `_session` has an underscore so it fails name validation first --
         // the system still prevents registration under this namespace.
         let result = create_plugin_config_handle(&store, &schema, "_session");
         assert!(
@@ -524,9 +374,9 @@ mod tests {
         );
     }
 
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
     // Scoped getters
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
 
     // Validates: Requirement 8.2
     #[test]
@@ -608,9 +458,9 @@ mod tests {
         assert!(matches!(result, Err(ConfigError::UndefinedKey { .. })));
     }
 
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
     // Scoped set
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
 
     // Validates: Requirement 8.2
     #[test]
@@ -658,9 +508,9 @@ mod tests {
         assert!(handle.pending_writes().is_empty());
     }
 
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
     // Namespace violation detection
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
 
     // Validates: Requirement 8.3
     #[test]
@@ -673,16 +523,16 @@ mod tests {
         assert!(matches!(result, Err(ConfigError::TypeMismatch { .. })));
     }
 
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
     // Namespace violation detection (Task 18.6)
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
 
-    // Validates: Requirement 8.3 — plugin cannot read core namespace keys
+    // Validates: Requirement 8.3 -- plugin cannot read core namespace keys
     #[test]
     fn namespace_violation_detected_for_core_key_via_resolve() {
         // The resolve_key method always prepends the namespace prefix,
         // so even if a plugin passes "editor.tab_size" as a relative key,
-        // it becomes "plugins.sql-viewer.editor.tab_size" — which is valid
+        // it becomes "plugins.sql-viewer.editor.tab_size" -- which is valid
         // from a namespace perspective (it's under the plugin's namespace).
         // The real violation scenario is when the full key would escape the prefix.
         // Since resolve_key always prepends, namespace violations arise from
@@ -692,16 +542,16 @@ mod tests {
         let schema = SchemaRegistry::new();
         let handle = create_plugin_config_handle(&store, &schema, "sql-viewer").unwrap();
 
-        // Relative key "max_rows" becomes "plugins.sql-viewer.max_rows" — valid namespace
+        // Relative key "max_rows" becomes "plugins.sql-viewer.max_rows" -- valid namespace
         // The handle always prepends its prefix, so namespace violations from `get`/`set`
         // can only happen if we ever call check_namespace with an external key.
         // The current design ensures all public methods go through resolve_key which
-        // always prepends the prefix — namespace violation is structurally impossible
+        // always prepends the prefix -- namespace violation is structurally impossible
         // via the public API (which is the desired security property).
         assert_eq!(handle.namespace(), "plugins.sql-viewer.");
     }
 
-    // Validates: Requirement 8.3 — plugin handles are isolated from each other
+    // Validates: Requirement 8.3 -- plugin handles are isolated from each other
     #[test]
     fn different_plugins_cannot_see_each_others_keys() {
         let store = store_with(
@@ -718,7 +568,7 @@ mod tests {
         assert!(matches!(result, Err(ConfigError::UndefinedKey { .. })));
     }
 
-    // Validates: Requirement 8.3 — set is also namespace-scoped
+    // Validates: Requirement 8.3 -- set is also namespace-scoped
     #[test]
     fn set_is_namespace_scoped_to_plugin_prefix() {
         let store = EffectiveStore::new();
@@ -731,7 +581,7 @@ mod tests {
         assert!(key.starts_with("plugins.sql-viewer."));
     }
 
-    // Validates: Requirement 8.3 — nested relative keys work correctly
+    // Validates: Requirement 8.3 -- nested relative keys work correctly
     #[test]
     fn nested_relative_keys_are_properly_scoped() {
         let store = store_with(
@@ -741,12 +591,12 @@ mod tests {
         let schema = SchemaRegistry::new();
         let handle = create_plugin_config_handle(&store, &schema, "sql-viewer").unwrap();
 
-        // "display.theme" → "plugins.sql-viewer.display.theme"
+        // "display.theme" -> "plugins.sql-viewer.display.theme"
         let result = handle.get_string("display.theme");
         assert_eq!(result.unwrap(), "dark");
     }
 
-    // Validates: Requirement 8.7 — all reserved namespaces enumerated
+    // Validates: Requirement 8.7 -- all reserved namespaces enumerated
     #[test]
     fn reserved_namespaces_list_contains_expected_entries() {
         use crate::namespace::RESERVED_NAMESPACES;
@@ -760,11 +610,11 @@ mod tests {
         assert!(RESERVED_NAMESPACES.contains(&"_session"));
     }
 
-    // ──────────────────────────────────────────────────────────────────
-    // Task 19.1 — Plugin default registration
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
+    // Task 19.1 -- Plugin default registration
+    // ==================================================================
 
-    // Validates: Requirement 8.4 — register_plugin_defaults creates schema entries
+    // Validates: Requirement 8.4 -- register_plugin_defaults creates schema entries
     #[test]
     fn register_plugin_defaults_creates_schema_entries_with_correct_keys() {
         let mut schema = SchemaRegistry::new();
@@ -803,7 +653,7 @@ mod tests {
         assert_eq!(entry2.default, ConfigValue::Float(30.0));
     }
 
-    // Validates: Requirement 8.4 — defaults are used as fallback in PluginConfigHandle
+    // Validates: Requirement 8.4 -- defaults are used as fallback in PluginConfigHandle
     #[test]
     fn registered_defaults_serve_as_fallback_values() {
         let mut schema = SchemaRegistry::new();
@@ -816,7 +666,7 @@ mod tests {
         }];
         register_plugin_defaults(&mut schema, "sql-viewer", defaults).unwrap();
 
-        let store = EffectiveStore::new(); // empty store — no user values
+        let store = EffectiveStore::new(); // empty store -- no user values
         let handle = create_plugin_config_handle(&store, &schema, "sql-viewer").unwrap();
 
         // Should fall back to schema default
@@ -824,7 +674,7 @@ mod tests {
         assert_eq!(result.unwrap(), 1000);
     }
 
-    // Validates: Requirement 8.4 — constraints are preserved in registered schema entries
+    // Validates: Requirement 8.4 -- constraints are preserved in registered schema entries
     #[test]
     fn register_plugin_defaults_preserves_constraints() {
         let mut schema = SchemaRegistry::new();
@@ -848,7 +698,7 @@ mod tests {
         assert_eq!(constraints.max, Some(10000.0));
     }
 
-    // Validates: Requirement 8.4 — type conflict returns SchemaConflict error
+    // Validates: Requirement 8.4 -- type conflict returns SchemaConflict error
     #[test]
     fn register_plugin_defaults_with_type_conflict_returns_error() {
         let mut schema = SchemaRegistry::new();
@@ -863,7 +713,7 @@ mod tests {
         }];
         register_plugin_defaults(&mut schema, "sql-viewer", defaults1).unwrap();
 
-        // Try to re-register with different type → should fail
+        // Try to re-register with different type -> should fail
         let defaults2 = vec![PluginDefault {
             key: "max_rows".to_string(),
             value_type: ValueType::String,
@@ -875,7 +725,7 @@ mod tests {
         assert!(matches!(result, Err(ConfigError::SchemaConflict { .. })));
     }
 
-    // Validates: Requirement 8.4 — empty defaults list is a no-op
+    // Validates: Requirement 8.4 -- empty defaults list is a no-op
     #[test]
     fn register_plugin_defaults_with_empty_list_is_noop() {
         let mut schema = SchemaRegistry::new();
@@ -884,11 +734,11 @@ mod tests {
         assert_eq!(schema.len(), 0);
     }
 
-    // ──────────────────────────────────────────────────────────────────
-    // Task 19.2 — Plugin reload callback registration via on_reload
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
+    // Task 19.2 -- Plugin reload callback registration via on_reload
+    // ==================================================================
 
-    // Validates: Requirement 8.5 — on_reload registers callback with prefixed keys
+    // Validates: Requirement 8.5 -- on_reload registers callback with prefixed keys
     #[test]
     fn on_reload_registers_callback_with_prefixed_keys() {
         let store = EffectiveStore::new();
@@ -904,7 +754,7 @@ mod tests {
         assert_eq!(callbacks.len(), 1);
     }
 
-    // Validates: Requirement 8.5 — callback returns a handle for deregistration
+    // Validates: Requirement 8.5 -- callback returns a handle for deregistration
     #[test]
     fn on_reload_returns_callback_handle() {
         let store = EffectiveStore::new();
@@ -924,7 +774,7 @@ mod tests {
         assert_eq!(callbacks.len(), 0);
     }
 
-    // Validates: Requirement 8.5 — on_reload without callback registry returns error
+    // Validates: Requirement 8.5 -- on_reload without callback registry returns error
     #[test]
     fn on_reload_without_callbacks_returns_error() {
         let store = EffectiveStore::new();
@@ -937,11 +787,11 @@ mod tests {
         assert!(result.is_err());
     }
 
-    // ──────────────────────────────────────────────────────────────────
-    // Task 19.3 — Plugin hot-reload: callbacks fire for plugin namespace changes
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
+    // Task 19.3 -- Plugin hot-reload: callbacks fire for plugin namespace changes
+    // ==================================================================
 
-    // Validates: Requirement 8.5 — callback fires when plugin namespace key changes
+    // Validates: Requirement 8.5 -- callback fires when plugin namespace key changes
     #[test]
     fn plugin_reload_callback_fires_when_namespace_key_changes() {
         use crate::reload::ReloadEvent;
@@ -979,7 +829,7 @@ mod tests {
         assert_eq!(invocation_count.load(Ordering::SeqCst), 1);
     }
 
-    // Validates: Requirement 8.5 — callback does NOT fire for other plugin's keys
+    // Validates: Requirement 8.5 -- callback does NOT fire for other plugin's keys
     #[test]
     fn plugin_reload_callback_does_not_fire_for_other_plugins_keys() {
         use crate::reload::ReloadEvent;
@@ -1006,7 +856,7 @@ mod tests {
             )
             .unwrap();
 
-        // Event for a DIFFERENT plugin's key — should NOT fire
+        // Event for a DIFFERENT plugin's key -- should NOT fire
         let event = ReloadEvent {
             changed_keys: vec!["plugins.git-helper.enabled".to_string()],
             source_layer: ConfigLayer::User,
@@ -1017,7 +867,7 @@ mod tests {
         assert_eq!(invocation_count.load(Ordering::SeqCst), 0);
     }
 
-    // Validates: Requirement 8.5 — callback receives correct event data
+    // Validates: Requirement 8.5 -- callback receives correct event data
     #[test]
     fn plugin_reload_callback_receives_event_with_changed_keys() {
         use crate::reload::ReloadEvent;
@@ -1060,11 +910,11 @@ mod tests {
         assert!(keys.contains(&"editor.tab_size".to_string()));
     }
 
-    // ──────────────────────────────────────────────────────────────────
-    // Task 19.4 — Plugin unload cleanup
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
+    // Task 19.4 -- Plugin unload cleanup
+    // ==================================================================
 
-    // Validates: Requirement 8.6 — unload removes schema entries
+    // Validates: Requirement 8.6 -- unload removes schema entries
     #[test]
     fn unload_plugin_removes_schema_entries() {
         let mut schema = SchemaRegistry::new();
@@ -1095,7 +945,7 @@ mod tests {
         assert!(schema.get("plugins.sql-viewer.timeout").is_none());
     }
 
-    // Validates: Requirement 8.6 — unload deregisters callbacks
+    // Validates: Requirement 8.6 -- unload deregisters callbacks
     #[test]
     fn unload_plugin_deregisters_callbacks() {
         let mut schema = SchemaRegistry::new();
@@ -1112,7 +962,7 @@ mod tests {
         assert_eq!(callbacks.len(), 0); // both callbacks deregistered
     }
 
-    // Validates: Requirement 8.6 — unload does not affect other plugins' schema entries
+    // Validates: Requirement 8.6 -- unload does not affect other plugins' schema entries
     #[test]
     fn unload_plugin_does_not_affect_other_plugins() {
         let mut schema = SchemaRegistry::new();
@@ -1143,7 +993,7 @@ mod tests {
         assert!(schema.get("plugins.sql-viewer.max_rows").is_none());
     }
 
-    // Validates: Requirement 8.6 — persisted values retained (not actively served after unload)
+    // Validates: Requirement 8.6 -- persisted values retained (not actively served after unload)
     #[test]
     fn unload_plugin_retains_persisted_values_in_store() {
         let mut schema = SchemaRegistry::new();
@@ -1174,7 +1024,7 @@ mod tests {
         );
     }
 
-    // Validates: Requirement 8.6 — callback not invoked after unload
+    // Validates: Requirement 8.6 -- callback not invoked after unload
     #[test]
     fn unloaded_plugin_callback_not_invoked_after_deregistration() {
         use crate::reload::ReloadEvent;
@@ -1197,7 +1047,7 @@ mod tests {
         // Unload the plugin (deregisters callback)
         unload_plugin("sql-viewer", &mut schema, &callbacks, vec![cb_handle]);
 
-        // Invoke with the plugin's key — callback should NOT fire
+        // Invoke with the plugin's key -- callback should NOT fire
         let event = ReloadEvent {
             changed_keys: vec!["plugins.sql-viewer.max_rows".to_string()],
             source_layer: ConfigLayer::User,
