@@ -1475,6 +1475,7 @@ dependencies = [
  "ff-edit-operations",
  "ff-exclude-show-filter",
  "ff-fftest",
+ "ff-file-tree",
  "ff-find-and-replace",
  "ff-gcc-toolchain",
  "ff-global-search",

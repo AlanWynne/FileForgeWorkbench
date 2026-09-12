@@ -28,6 +28,7 @@ mod key_config_dialog;
 mod macro_library_panel;
 mod menu_workspace;
 mod nav_manager;
+mod nav_model;
 mod notification;
 mod panel_layout;
 mod plugin_manager_panel;

@@ -26,6 +26,7 @@ ff-find-and-replace    = { path = "../ff-find-and-replace" }
 ff-navigation-commands  = { path = "../ff-navigation-commands" }
 ff-exclude-show-filter  = { path = "../ff-exclude-show-filter" }
 ff-display-line-mapping = { path = "../ff-display-line-mapping" }
+ff-file-tree            = { path = "../ff-file-tree" }
 ff-keys                 = { path = "../ff-keys" }
 ff-help                 = { path = "../ff-help" }
 ff-session             = { path = "../ff-session" }
