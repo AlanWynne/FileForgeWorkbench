@@ -1013,3 +1013,66 @@ THE `THIRD_PARTY_CREDITS.md` file at the workspace root SHALL contain an entry f
 **6. All existing tests continue to pass**
 
 WHEN the refactoring is complete, `cargo test` SHALL pass with 0 failures. No existing test SHALL be removed or modified to accommodate the change.
+
+---
+
+### Requirement 24: Unified Navigation Model -- ff-file-tree canonical, node-identity, provider mapping, POSIX rewire (Slice A)
+
+**User Story:** As a user, I want a single modern File Explorer built on one tree model that presents every namespace (starting with local/POSIX files) in its native idiom, so that navigation is consistent, responsive, and free of the duplicated, path-string-based, direct-filesystem explorer the shell ships today. As a developer, I want the explorer to consume the canonical `ff-file-tree` model and drive all I/O through the VFS provider layer, so there is one source of truth and no FFW-ARCH-001 violation.
+
+**Source:** CR-NR-060 (Slice A); ADR-002 (Unified Navigation Model), decisions D1, D3, D4, D5.
+
+**Scope note:** Slice A covers the navigation model, the provider-mapping abstraction, the POSIX/local rewire onto `ff-file-tree`, retirement of the inline path-string explorer, the modern presentation, and retention of the command line. The Mainframe-catalog qualifier/dataset duality mapping (ADR-002 D2, HlqGroup + sibling dataset/group nodes, PDS-members-as-files, GDG) is deferred to Slice B (a later requirement extending this one and `virtual-catalog-manager`). Slice A SHALL model catalog roots generically (as opaque VFS provider roots) without implementing the mainframe qualifier semantics.
+
+#### Glossary additions
+
+- **Navigation_Model**: The canonical in-memory tree model provided by the `ff-file-tree` crate (`TreeState` + `TreeNode`/`NodeType`/`NodeId`). It is the single source of truth for File Explorer structure and state.
+- **Node_Identity**: The rule that every tree entry is identified by its opaque `NodeId` (and, at the VFS boundary, by a `ResourceUri` of the form `vfs://provider/path`), NEVER by a reconstructed concatenated path string. Two entries that share a display label are distinct nodes with distinct `NodeId`s.
+- **Namespace_Mapping**: A per-provider mapping layer that converts a VFS provider's `list()` results (`VfsEntry` plus `VfsMetadata.extra`) into `ff-file-tree` `TreeNodeData` with the correct `NodeType`, deciding container-vs-leaf and separator semantics for that namespace. Provider-defined; the generic tree carries no namespace-specific rules.
+- **Explorer_Command_Line**: The persistent shell-level `Command ===>` field (rendered by the shell chrome on every Workspace/Context), through which a command can be executed while the File Explorer Context is active.
+
+#### Acceptance Criteria
+
+**1. ff-file-tree is the canonical model consumed by the shell**
+
+WHEN the File Explorer Context renders, THE `ff-desktop` shell SHALL drive its tree structure and state from the `ff-file-tree` `TreeState` model (nodes, expansion, selection, filter, sort), and SHALL declare `ff-file-tree` as a Cargo dependency. The shell SHALL NOT maintain a parallel, independently-structured tree model for the File Explorer.
+
+**2. Node identity is a NodeId / ResourceUri, never a path string**
+
+THE File Explorer SHALL identify every tree entry by its `ff-file-tree` `NodeId` and, at the VFS boundary, by a `ResourceUri` (`vfs://provider/path`). Cursor position, selection set, anchor, and expansion state SHALL be keyed on `NodeId` (not on `String` paths). Two nodes sharing a display label SHALL remain distinct entries with distinct `NodeId`s and SHALL NOT collide.
+
+**3. All File Explorer I/O flows through VFS providers (no direct std::fs)**
+
+WHEN the File Explorer loads or refreshes a node's children, THE shell SHALL obtain entries via a `VfsProvider::list()` call (async) for the node's scheme, and SHALL NOT call `std::fs` (or provider-specific data-source APIs) directly from the File Explorer render or load path. This aligns the File Explorer with FFW-ARCH-001 (which the shipping inline explorer currently violates via `std::fs::read_dir`).
+
+**4. Provider-defined Namespace_Mapping converts VFS entries to tree nodes**
+
+THE shell SHALL define a Namespace_Mapping step that converts each `VfsEntry` (with any `VfsMetadata.extra` attributes) returned by a provider's `list()` into an `ff-file-tree` `TreeNodeData` with the appropriate `NodeType` and `FileCategory`. For the local/POSIX provider (scheme `posix`/`local`), directories SHALL map to `NodeType::Directory` (expandable) and files to `NodeType::File` (leaf), with paths presented using forward-slash separators regardless of host OS.
+
+**5. POSIX/local browsing is rewired onto the model + provider**
+
+WHEN the user expands a local/POSIX directory node, THE File Explorer SHALL call `TreeState::apply_children()` with `TreeNodeData` produced by the Namespace_Mapping from the provider's async `list()` result, driving expansion, the Loading_Indicator, error nodes, sort, filter, and keyboard navigation through the existing `ff-file-tree` API (Requirements 3, 4, 8, 9) rather than the inline re-derivation.
+
+**6. The inline path-string explorer is retired**
+
+WHEN Slice A is complete, THE inline `FileExplorerPanelState` tree representation in `ff-desktop` (path-string-keyed `cursor_node`/`selected_nodes`/`open_directories` + `std::fs`-based `collect_native_entries`) SHALL be removed or reduced to a thin adapter over the `ff-file-tree`-backed model, such that the File Explorer Context no longer maintains a second, path-keyed tree. No feature covered by Requirements 15-23 SHALL regress.
+
+**7. Modern presentation**
+
+THE File Explorer Context SHALL render with a modernized presentation (consistent spacing, iconography, selection/focus treatment, and indent guides) driven by the `theme-and-appearance` palette (`file_tree.*` colour keys per Requirement 4.4 and the accessibility treatments of Requirement 14). The modernization SHALL NOT remove the mainframe/POSIX/native grouping information conveyed today; it SHALL present that information in the unified model.
+
+**8. Catalog roots modelled generically in Slice A**
+
+WHEN a Mainframe or POSIX catalog root is shown in Slice A, THE File Explorer SHALL model it as a generic VFS provider root (`NodeType::CatalogRoot` with children obtained via the provider's `list()`), WITHOUT implementing the mainframe qualifier-group/dataset duality semantics (which are deferred to Slice B). Existing catalog browsing behaviour (Requirement 10, Requirement 23) SHALL continue to function through the generic model or its current path until Slice B refines it.
+
+**9. Explorer_Command_Line retained**
+
+THE persistent shell-level Explorer_Command_Line (`Command ===>`) SHALL remain available and functional while the File Explorer Context is active, and THE Tab focus-transfer between the command line and the tree node list (Requirement 20.1) SHALL continue to operate against the `ff-file-tree`-backed node list. Command dispatch semantics (command-semantics Requirement 8) SHALL be unchanged.
+
+**10. Behaviour preservation and gate**
+
+WHEN the rewire is complete, `cargo test` for the affected crates SHALL pass with 0 failures and `verify.ps1` SHALL be clean. No existing test SHALL be deleted or weakened to accommodate the change; where a test asserted the inline path-string model directly, it SHALL be updated to assert the equivalent `ff-file-tree`-backed behaviour, preserving the original intent.
+
+**11. No behaviour ahead of the model**
+
+THE File Explorer SHALL NOT introduce navigation behaviour that the `ff-file-tree` model does not support; where the model needs an extension to satisfy a criterion above, that extension SHALL be added to the `ff-file-tree` crate (with tests) as part of Slice A, keeping the model canonical.

@@ -355,3 +355,20 @@ required.
 - `ff-config` schema gains two new keys under `[catalogs]` -- no reserved namespace conflict
 - `ff-core` `user_data_dir` is already resolved at startup; the default values are computed
   once and passed as strings to `register_schema`, keeping `ff-config` free of any `ff-core` dependency
+
+---
+
+## Design Delta: CR-NR-060 Slice A -- No design changes required
+
+CR-NR-060 Slice A (the unified navigation model + local/POSIX File Explorer rewire
+onto `ff-file-tree`, per file-tree-panel Requirement 24 and ADR-002 D1/D3/D4/D5)
+makes NO design changes to virtual-catalog-manager. Slice A models catalog roots
+generically as opaque VFS provider roots (`NodeType::CatalogRoot` with children via
+`VfsProvider::list()`); it does not alter the catalog lifecycle, registry,
+allocation, POSIX/Native catalog providers, DSN->path resolution, or the POM
+option-1 Catalog Explorer Context owned by this spec.
+
+The Mainframe qualifier-group / dataset-duality presentation (ADR-002 D2 --
+HlqGroup, sibling dataset+group nodes, PDS-members-as-files, GDG) is Slice B, which
+WILL extend this spec (next free Requirement number here is 17; note the existing
+Requirement 11 gap must be confirmed intentional before Slice B authoring).

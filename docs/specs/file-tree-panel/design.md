@@ -1356,3 +1356,120 @@ Native catalog browsing is replaced by the `egui-file-dialog` widget. All Mainfr
 - The file attribute columns (size, timestamps, permissions) introduced in Requirement 18 are no longer rendered for Native catalogs -- `egui-file-dialog` provides its own metadata display. The `format_size`, `format_timestamp`, `format_permissions`, `collect_native_entries`, and `FileEntryRow` helpers remain in the file for use by any future non-dialog rendering path and for their existing unit tests.
 - No changes to `render_dataset_children()`, `resolve_dataset_path()`, `shell/render.rs` open-path dispatch, or any Mainframe/POSIX logic.
 - No new crate dependencies beyond `egui-file-dialog`.
+
+---
+
+## Design Delta: Unified Navigation Model (CR-NR-060 Slice A, Requirement 24)
+
+This section records the architectural decisions for adopting `ff-file-tree` as
+the canonical File Explorer model and rewiring the local/POSIX explorer onto it.
+It implements ADR-002 decisions D1, D3, D4, D5. (D2 -- the mainframe qualifier /
+dataset duality -- is Slice B and is out of scope here.)
+
+### Problem being corrected
+
+The shipping File Explorer Context (`ff-desktop/file_explorer_panel.rs`, ~2487
+lines, and `files_panel.rs`, ~2138 lines) maintains its OWN tree representation
+keyed on `String` paths (`cursor_node: Option<String>`,
+`selected_nodes: HashSet<String>`, `open_directories: HashSet<String>`), and loads
+directory entries with DIRECT `std::fs::read_dir` (`collect_native_entries`),
+bypassing the VFS layer. It references `ff-file-tree` ZERO times, so the clean,
+tested model crate is orphaned (PA-CONFLICT-011). This delta makes `ff-file-tree`
+canonical and routes I/O through `VfsProvider`.
+
+### Decision D-A1: ff-file-tree TreeState is the single source of truth
+
+The shell holds one `ff-file-tree::TreeState` for the File Explorer Context and
+drives structure/expansion/selection/filter/sort through its existing API
+(`insert_node`, `apply_children`, `apply_error`, `toggle_expand`,
+`visible_nodes_iter`, `select`, `FilterEngine`, `SortEngine`, `KeyboardHandler`).
+The inline `FileExplorerPanelState` is reduced to view-only ephemeral state
+(rename buffer, dialog handles, paste progress) plus a thin adapter; it no longer
+stores a parallel tree.
+
+### Decision D-A2: identity is NodeId + ResourceUri, never a path string
+
+Cursor, selection, anchor, and expansion are keyed on `ff-file-tree::NodeId`. At
+the VFS boundary each node carries a `ResourceUri` (`vfs://provider/path`) for I/O
+and for the open/copy/paste operations that currently pass `String` paths. Because
+the tree keys on `NodeId`, two nodes with the same display label never collide --
+this is the mechanism that will make the Slice-B mainframe duality collision-free.
+`TreeNode` gains no new identity field (NodeId already suffices); the shell keeps a
+side table `NodeId -> ResourceUri` for the nodes it has materialized.
+
+### Decision D-A3: Namespace_Mapping layer (provider -> tree nodes)
+
+A new mapping step in the shell converts a provider's `VfsProvider::list()` output
+(`Vec<VfsEntry>`, plus `VfsMetadata.extra`) into `Vec<ff-file-tree::TreeNodeData>`:
+
+```text
+VfsEntry { name, entry_type, size, modified }  ->  TreeNodeData { label, node_type, size, category, ... }
+```
+
+- POSIX/local provider (scheme `posix`/`local`): `VfsEntryType::Directory` ->
+  `NodeType::Directory` (expandable); `File` -> `NodeType::File` (leaf, category by
+  extension); `Symlink` -> `NodeType::SymbolicLink`. Paths presented forward-slash.
+- The mapping is provider-keyed (by `scheme()`), so mainframe mapping (HlqGroup /
+  DatasetSequential / DatasetPartitioned / PdsMember / GdgBase) plugs in at Slice B
+  WITHOUT touching the generic tree. `NodeType` already contains those variants.
+
+This layer builds on the EXISTING `VfsProvider` trait and `ResourceUri`; it does
+NOT introduce a competing provider abstraction. The `VfsMetadata.extra` HashMap is
+the carrier for provider-specific attributes (e.g. mainframe DSORG/RECFM) when
+Slice B needs them.
+
+### Decision D-A4: load path becomes async VFS
+
+Expand triggers an async `VfsProvider::list(path)` (per Requirement 3's existing
+async-load model), whose result is fed through Namespace_Mapping into
+`TreeState::apply_children`. Errors become `apply_error` nodes; the Loading_Indicator
+and 8-concurrent-load cap of Requirement 3 are honored. The hand-rolled
+`collect_native_entries` / `format_size` / `format_timestamp` / `format_permissions`
+in `file_explorer_panel.rs` are removed; equivalent metadata comes from
+`VfsMetadata` (size/modified) with the attribute columns of Requirement 18 sourced
+from `VfsMetadata.extra` where the provider supplies them.
+
+### Decision D-A5: retire the inline tree, preserve features
+
+`file_explorer_panel.rs` is reduced: the two-pane sidebar+content layout
+(Requirement 23) is retained but the content pane's POSIX/native tree is rendered
+from `visible_nodes_iter()` over the shared `TreeState`. The features in
+Requirements 15-23 (context menus, copy/paste, drag-select, keyboard nav, attribute
+columns, native egui-file-dialog for Native catalogs) are preserved by re-pointing
+them at `NodeId`/`ResourceUri` instead of `String` paths. This is also the natural
+opportunity to shrink the two over-cap files below the 400-line rule (a REFACTOR
+side effect, not a new requirement).
+
+### Decision D-A6: modern presentation via the theme
+
+Presentation modernization (spacing, iconography, selection vs focus-ring, indent
+guides) uses the `theme-and-appearance` `file_tree.*` palette (Requirement 4.4) and
+the accessibility treatments of Requirement 14. No new colour groups are required
+for Slice A; if a modern treatment needs a new palette key, it is added to the
+theme spec, not hard-coded.
+
+### Decision D-A7: command line unchanged, honored
+
+The persistent shell-level `Command ===>` field (`shell/render.rs
+render_command_field`, drawn every frame by the shell chrome) already renders on
+the File Explorer Context, so D5 requires NO new command-field rendering. The
+Tab focus-transfer (Requirement 20.1) is re-pointed at the `ff-file-tree`-backed
+node list. Command dispatch (command-semantics Req 8) is untouched.
+
+### ff-file-tree extensions (if needed)
+
+If a Requirement-24 criterion needs model support the crate lacks (e.g. a helper to
+look up a node by `ResourceUri`, or to expose the `NodeId -> ResourceUri` association
+if the shell prefers to store it on the node), the extension is added to
+`ff-file-tree` WITH tests, keeping the model canonical (criterion 24.11). Preferred
+default: the shell keeps the `NodeId -> ResourceUri` side table and no `TreeNode`
+field is added, to keep the model pure.
+
+### What is NOT changed in Slice A
+
+- No mainframe qualifier-group / dataset-duality / members-as-files / GDG semantics
+  (Slice B, ADR-002 D2).
+- No change to `virtual-catalog-manager` catalog lifecycle, allocation, or the POM
+  option-1 Catalog Explorer (that spec owns those; Slice B extends it).
+- No change to command-semantics dispatch or the VFS provider trait surface (the
+  mapping consumes the existing `list()`/`ResourceUri`).

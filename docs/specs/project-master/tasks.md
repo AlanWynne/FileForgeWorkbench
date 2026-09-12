@@ -1825,3 +1825,95 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 |--------|-------|
 | `[ ]` Phase DI (spec) | Build-Profile Logging + Uniform Command Instrumentation (CR-NR-058) -- SPEC DONE: logging-subsystem Req 13 (compile-time `dev-logging` gate, `BUILD_PROFILE_LEVEL` const, TRACE/DEBUG stripped from release), command-framework Req 11 (uniform start/params/completion instrumentation at the `execute_command` boundary, DEBUG for start/success, WARN for failure, redaction + duration). Impl pending: logging-subsystem Task 25, command-framework Task 26 |
 | `[ ]` Phase PA-W0 (PROPOSAL) | Wave 0 Analysis Remediation (project-analysis CR-NR-056, re-baselined for CR-NR-057/CR-NR-058) -- dependency-ordered Wave 0 findings (PA-W0.1-PA-W0.23). Group A: dev-logging foundation (CR-NR-058 Req 13 gate + Req 11 instrumentation = Phase DI). Group B defects: PA-INCOMPLETE-002 (ff-background-io Req 6.6-6.9), PA-LOG-004 (ff-vfs Req 3.3), PA-LOG-005 (ff-workflow Req 7.6). Group C features: command Req 9 = Phase DF, Req 10 = Phase DH. Groups D-F: tracking, refactors, owner-gated proposals. RECORDED, not executed |
+
+
+## Phase (calendar-responsive) -- Calendar Responsive Hide (CR-NR-059) -- DEFERRED
+
+> DEFERRED (CR-NR-059). Accepted but not scheduled. When a POM or Menu_Workspace
+> is resized too small to render the calendar at its normal size, the shell
+> omits the calendar for that frame (rather than drawing it deformed/clipped)
+> and restores it once there is room again. Render/layout only; no new command,
+> config key, or persistence change. Do not implement without a separate
+> instruction.
+
+- [ ] CAL.1 Add `CALENDAR_MIN_RENDER_SIZE` constant and available-area check in `primary_option_menu.rs`; omit calendar widgets when below the threshold (startup-and-session Req 14.43)
+- [ ] CAL.2 Restore the calendar on the next frame when the available area is >= the threshold, based solely on the current frame's available area (startup-and-session Req 14.44)
+- [ ] CAL.3 Keep the hide/restore branch free of `pom_calendar_offset` / current-day-state mutation so the restored calendar shows the same month (startup-and-session Req 14.45)
+- [ ] CAL.4 Tests: omitted below threshold, present at/above threshold, offset unchanged across a hide/restore cycle (startup-and-session Req 14.43-14.45)
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (calendar-responsive) | Calendar Responsive Hide (CR-NR-059) -- DEFERRED, SPEC DONE: startup-and-session Req 14.43-14.45 (omit calendar below `CALENDAR_MIN_RENDER_SIZE`, restore at/above it, no calendar-state mutation). Impl NOT scheduled: startup-and-session Tasks 27.1-27.5 (CAL.1-CAL.4) |
+
+## Phase (navigation-modernization) -- Unified Navigation Model + File Explorer Modernization, Slice A (CR-NR-060)
+
+> Bucket 1 orphan/duplication resolution (PA-CONFLICT-011). Make `ff-file-tree`
+> the canonical File Explorer model, rewire the local/POSIX explorer onto it
+> through the VFS provider layer (removing the direct-std::fs, path-string inline
+> tree), modernize the presentation, and retain the persistent ISPF command line.
+> Per ADR-002 (D1/D3/D4/D5). Mainframe qualifier/dataset duality (D2) is Slice B.
+> Gated (CR-NR-060 PENDING GATE); implement only after owner approval of the
+> authored requirements/design/tasks below.
+
+- [ ] NAV.1 ff-desktop consumes ff-file-tree TreeState as the canonical File Explorer model (file-tree-panel Req 24.1)
+- [ ] NAV.2 Node identity = NodeId + ResourceUri; retire path-string keying of cursor/selection/anchor/expansion (file-tree-panel Req 24.2)
+- [ ] NAV.3 All File Explorer load/refresh via async VfsProvider::list(); no direct std::fs (FFW-ARCH-001) (file-tree-panel Req 24.3)
+- [ ] NAV.4 Provider-defined Namespace_Mapping (VfsEntry + VfsMetadata.extra -> TreeNodeData); POSIX/local mapping (file-tree-panel Req 24.4)
+- [ ] NAV.5 Rewire POSIX/local browsing onto apply_children + ff-file-tree sort/filter/keyboard (file-tree-panel Req 24.5)
+- [ ] NAV.6 Retire the inline FileExplorerPanelState tree; preserve Req 15-23 features on the shared model (file-tree-panel Req 24.6)
+- [ ] NAV.7 Modern presentation via theme file_tree.* + accessibility treatments (file-tree-panel Req 24.7)
+- [ ] NAV.8 Model catalog roots generically (CatalogRoot via provider list()); NO mainframe duality in Slice A (file-tree-panel Req 24.8)
+- [ ] NAV.9 Retain the persistent shell Command ===> on the File Explorer Context; re-point Tab focus-transfer at the model (file-tree-panel Req 24.9)
+- [ ] NAV.10 Behaviour preservation: affected-crate cargo test + verify.ps1 clean; update (never weaken) tests that asserted the inline model (file-tree-panel Req 24.10)
+- [ ] NAV.11 Any needed ff-file-tree model extension added WITH tests, keeping the model canonical (file-tree-panel Req 24.11)
+- [ ] NAV.12 TCR: set file-tree-panel Req 24.1-24.11 rows to correct status (file-tree-panel Req 24.10)
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (navigation-modernization) | Unified Navigation Model + File Explorer Modernization Slice A (CR-NR-060): file-tree-panel Requirement 24 (24.1-24.11), tasks 26.1-26.15 (NAV.1-NAV.12). PENDING GATE -- authored, not executed. ADR-002 D1/D3/D4/D5. Slice B (mainframe duality, D2) separate |
+
+## Phase (file-formatter-design) -- File Formatter Plugin UX Design Session (CR-NR-061) -- PROPOSAL / SPEC-ONLY, SCHEDULE BEFORE JES + DATABASE PLUGIN BUILD
+
+> A new File-AID-inspired plugin, "File Formatter", that views and edits
+> record-oriented data files (flat ASCII, VSAM ESDS/KSDS, binary) according to a
+> known record structure. This phase is a UX DESIGN SESSION ONLY -- it produces
+> the workspace designs and resolves the open questions BEFORE the requirements
+> gate is run. Per the owner's request it is sequenced ahead of the JES emulator
+> and Database tool plugin BUILD work. No requirements.md/design.md/tasks.md and
+> NO source code until the design-session output is approved and the gate is run
+> (CR-NR-061 is PENDING GATE). Prior art: the TextFileConverter project
+> (C:\workspace\Kiro\TextFileConverter) -- its `.fc.json` record_structures
+> (offset/length/decimals/data_type/identifiers/filters), multi-record-type
+> identification, and filter semantics are the closest existing model.
+
+- [ ] FFMT-D.1 Run the UX design session: design the File Formatter workspaces --
+      (a) View/Edit Dataset Specification (data file, record-layout source,
+      filter/selection criteria; edit-mode selector F/C/V/U; layout usage
+      S/X/N; selection usage E/T/M/Q/N); (b) Vertical field/level/name/format
+      view; (c) Horizontal/Columnar view; (d) structure-select/define context
+      (the MAP-with-no-structure target); (e) the structure-import workspace.
+- [ ] FFMT-D.2 Decide the FFWB-native record-structure format (TOML vs JSON) and
+      whether to REUSE/extend the existing field-model crates (structure-catalog
+      `ff-structure-catalog`, fileforge-integration `ff-forge`) rather than
+      introduce a parallel model -- reconcile with PA-W2.3 domain-type unification.
+- [ ] FFMT-D.3 Decide the import-source scope: COBOL copybook first; enumerate
+      which additional sources (PL/I, assembler DSECT, CSV header, hand-authored)
+      are in scope and how each maps to the native structure format.
+- [ ] FFMT-D.4 Decide per-file spec storage/discovery: companion file next to the
+      data file vs catalog metadata vs a File Formatter config file; define how
+      the spec (data file + structure + filter) is saved and reloaded.
+- [ ] FFMT-D.5 Decide edit-in-place semantics over the record-oriented
+      VFS/StorageProvider (CR-NR-016) for VSAM/binary vs flat text; define the
+      data-type enforcement rules and the hex fallback display (e.g. X'4040').
+- [ ] FFMT-D.6 Decide the relationship to record-selection-criteria (`ff-select`)
+      for the filter/selection-criteria usage field.
+- [ ] FFMT-D.7 Define the built-in command set behaviour (VFMT, HFMT, CHAR, MAP)
+      and the File Explorer right-click integration ("View with FF" / "Edit with FF").
+- [ ] FFMT-D.8 Produce the design-session summary and, on approval, run the
+      requirements gate: create `docs/specs/file-formatter/` (requirements.md,
+      design.md, tasks.md), register it in `specs.md`, add TCR NOT COVERED rows,
+      and add the implementation phase to this master task list.
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (file-formatter-design) | File Formatter plugin (CR-NR-061) -- UX DESIGN SESSION proposal, SPEC-ONLY. Scheduled BEFORE JES + Database plugin build. FFMT-D.1-D.8: design workspaces, choose native structure format + reuse of ff-structure-catalog/ff-forge, import-source scope (COBOL copybook first), per-file spec storage, record-oriented edit-in-place + hex fallback, ff-select relationship, VFMT/HFMT/CHAR/MAP + right-click. Gate NOT yet run |

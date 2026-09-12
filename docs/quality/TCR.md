@@ -201,6 +201,9 @@ None -- all crates compile and pass.
 | `ff-desktop` | ✅ | `primary_option_menu.rs` unit tests | Req 14.40: POM exit line text is "Enter X to Terminate using log/list defaults"; rendered as interactive button; activating it exits the app |
 | `ff-desktop` | ✅ | `primary_option_menu.rs` unit tests | Req 14.41: Calendar header rendered as `<  MonthName YYYY  >` with `<` and `>` as interactive hotspot buttons |
 | `ff-desktop` | ✅ | `primary_option_menu.rs` unit tests | Req 14.42: Clicking `<`/`>` navigates calendar to previous/next month; current-day highlight suppressed when offset != 0 |
+| `ff-desktop` | 🔴 | -- | Req 14.43: calendar omitted (not deformed/clipped) when the POM/Menu_Workspace area is below CALENDAR_MIN_RENDER_SIZE -- DEFERRED (CR-NR-059) |
+| `ff-desktop` | 🔴 | -- | Req 14.44: calendar restored on the next frame when the area is >= CALENDAR_MIN_RENDER_SIZE; decision from current-frame available area only -- DEFERRED (CR-NR-059) |
+| `ff-desktop` | 🔴 | -- | Req 14.45: hiding the calendar does not mutate `pom_calendar_offset` / current-day state; restored calendar shows the same month -- DEFERRED (CR-NR-059) |
 
 | `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 6.8: no exclusions → display list equals all lines in order |
 | `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 6.1, 6.2: single exclusion block produces one placeholder row |
@@ -2321,3 +2324,19 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-command` | 🔴 | -- | Req 11.9: completion duration measures the handler window only |
 | `ff-global-search` | ✅ | replace.rs unit tests (atomic_write_replaces_content_and_leaves_no_temp, atomic_write_to_bad_path_leaves_no_partial_output) | Req 5.3: cross-file replace writes ATOMICALLY (temp + fsync + rename); interrupted write cannot corrupt the original. Data-safety fix PA-CONFLICT-015/020 (PA-W5.2) |
 | `ff-jes` | ✅ | queue.rs unit tests (persist_writes_atomically_without_leaving_temp_files, atomic_persist_write_to_bad_path_leaves_no_partial_output, queue_persistence_round_trip) | Req 2 AC 6: job-queue persistence writes ATOMICALLY (temp + fsync + rename); interrupted write cannot corrupt the persisted queue. Data-safety fix PA-CONFLICT-015 (PA-W5.2) |
+
+### Phase (navigation-modernization) -- Unified Navigation Model + File Explorer Modernization Slice A (CR-NR-060, file-tree-panel Requirement 24)
+
+| Crate | Status | Test | Criterion |
+|-------|--------|------|-----------|
+| `ff-desktop` | 🔴 | -- | Req 24.1: File Explorer drives its tree from ff-file-tree TreeState; ff-desktop declares ff-file-tree dep; no parallel tree model |
+| `ff-desktop` | 🔴 | -- | Req 24.2: node identity is NodeId + ResourceUri; cursor/selection/anchor/expansion keyed on NodeId; same-label nodes do not collide |
+| `ff-desktop` | 🔴 | -- | Req 24.3: File Explorer load/refresh via async VfsProvider::list(); no direct std::fs in the explorer path (FFW-ARCH-001) |
+| `ff-desktop` | 🔴 | -- | Req 24.4: provider-defined Namespace_Mapping (VfsEntry + VfsMetadata.extra -> TreeNodeData); POSIX/local dir->Directory, file->File, symlink->SymbolicLink, forward-slash paths |
+| `ff-desktop` | 🔴 | -- | Req 24.5: POSIX/local expand -> list() -> Namespace_Mapping -> TreeState::apply_children; Loading_Indicator + error nodes + sort/filter/keyboard via ff-file-tree |
+| `ff-desktop` | 🔴 | -- | Req 24.6: inline FileExplorerPanelState tree retired to a thin adapter; Req 15-23 features preserved, no regression |
+| `ff-desktop` | 🔴 | -- | Req 24.7: modern presentation via theme file_tree.* palette + Req 14 accessibility treatments; grouping information preserved |
+| `ff-desktop` | 🔴 | -- | Req 24.8: catalog roots modelled generically (CatalogRoot via provider list()) in Slice A; no mainframe qualifier/duality semantics (Slice B) |
+| `ff-desktop` | 🔴 | -- | Req 24.9: persistent shell Command ===> retained on File Explorer Context; Tab focus-transfer (Req 20.1) re-pointed at the ff-file-tree node list; dispatch unchanged |
+| `ff-desktop` | 🔴 | -- | Req 24.10: cargo test (affected crates) + verify.ps1 clean; tests asserting the inline model updated (not weakened) to the ff-file-tree-backed equivalent |
+| `ff-file-tree` | 🔴 | -- | Req 24.11: any model extension needed by Req 24 added to ff-file-tree WITH tests, keeping the model canonical |
