@@ -10,14 +10,13 @@
 use std::path::PathBuf;
 
 use crate::config_handle::ConfigHandle;
-use crate::error::{ConfigError, ValueType};
+use crate::error::ConfigError;
 use crate::layer::ConfigLayer;
 use crate::loader::{load_toml_file, LayerData};
 use crate::paths;
 use crate::profile::ProfileManager;
 use crate::reload::{ReloadEvent, ReloadManager};
-use crate::schema::{SchemaEntry, SchemaRegistry};
-use crate::value::ConfigValue;
+use crate::schema::SchemaRegistry;
 use crate::watcher::ConfigWatcher;
 
 /// Options for initializing the configuration system.
@@ -32,7 +31,7 @@ pub struct ConfigInitOptions {
     /// The project root directory. When provided, the initialization sequence
     /// automatically detects `.ffworkbench/config.toml` in this directory and
     /// loads it as the Project layer. If the file does not exist, no error is
-    /// raised — the project simply has no project-layer config.
+    /// raised -- the project simply has no project-layer config.
     pub project_root: Option<PathBuf>,
 
     /// The workspace root directory. When provided, the initialization sequence
@@ -84,198 +83,8 @@ impl ConfigInitOptions {
     }
 }
 
-/// Register core schema entries for all well-known configuration keys.
-///
-/// Populates the schema registry with the default entries for editor, logging,
-/// theme, and VFS namespaces. These defaults serve as the Defaults layer (priority 0)
-/// in the six-layer model.
-///
-/// Addresses: Requirement 2 (AC 2.1), Requirement 9 (AC 9.1)
-pub fn register_core_schema(schema: &mut SchemaRegistry) {
-    let entries = [
-        SchemaEntry {
-            key: crate::keys::editor::TAB_SIZE.to_string(),
-            value_type: ValueType::Integer,
-            default: ConfigValue::Integer(4),
-            description: "Number of spaces per tab stop".to_string(),
-            constraints: Some(crate::schema::Constraints {
-                min: Some(1.0),
-                max: Some(16.0),
-                allowed_values: None,
-                pattern: None,
-            }),
-        },
-        SchemaEntry {
-            key: crate::keys::editor::INDENT_STYLE.to_string(),
-            value_type: ValueType::String,
-            default: ConfigValue::String("space".to_string()),
-            description: "Indent style: space or tab".to_string(),
-            constraints: Some(crate::schema::Constraints {
-                min: None,
-                max: None,
-                allowed_values: Some(vec![
-                    ConfigValue::String("space".to_string()),
-                    ConfigValue::String("tab".to_string()),
-                ]),
-                pattern: None,
-            }),
-        },
-        SchemaEntry {
-            key: crate::keys::editor::LINE_ENDINGS.to_string(),
-            value_type: ValueType::String,
-            default: ConfigValue::String("lf".to_string()),
-            description: "Line ending style: lf, crlf, or cr".to_string(),
-            constraints: Some(crate::schema::Constraints {
-                min: None,
-                max: None,
-                allowed_values: Some(vec![
-                    ConfigValue::String("lf".to_string()),
-                    ConfigValue::String("crlf".to_string()),
-                    ConfigValue::String("cr".to_string()),
-                ]),
-                pattern: None,
-            }),
-        },
-        SchemaEntry {
-            key: crate::keys::editor::TRIM_TRAILING_WHITESPACE.to_string(),
-            value_type: ValueType::Boolean,
-            default: ConfigValue::Boolean(false),
-            description: "Whether to trim trailing whitespace on save".to_string(),
-            constraints: None,
-        },
-        SchemaEntry {
-            key: crate::keys::editor::INSERT_FINAL_NEWLINE.to_string(),
-            value_type: ValueType::Boolean,
-            default: ConfigValue::Boolean(true),
-            description: "Whether to insert a final newline on save".to_string(),
-            constraints: None,
-        },
-        SchemaEntry {
-            key: crate::keys::logging::LEVEL.to_string(),
-            value_type: ValueType::String,
-            default: ConfigValue::String("info".to_string()),
-            description: "Logging level: trace, debug, info, warn, error".to_string(),
-            constraints: Some(crate::schema::Constraints {
-                min: None,
-                max: None,
-                allowed_values: Some(vec![
-                    ConfigValue::String("trace".to_string()),
-                    ConfigValue::String("debug".to_string()),
-                    ConfigValue::String("info".to_string()),
-                    ConfigValue::String("warn".to_string()),
-                    ConfigValue::String("error".to_string()),
-                ]),
-                pattern: None,
-            }),
-        },
-        SchemaEntry {
-            key: crate::keys::logging::DIRECTORY.to_string(),
-            value_type: ValueType::String,
-            default: ConfigValue::String(String::new()),
-            description: "Directory for log file output".to_string(),
-            constraints: None,
-        },
-        SchemaEntry {
-            key: crate::keys::logging::MAX_FILE_SIZE_MB.to_string(),
-            value_type: ValueType::Integer,
-            default: ConfigValue::Integer(10),
-            description: "Maximum log file size in megabytes before rotation".to_string(),
-            constraints: Some(crate::schema::Constraints {
-                min: Some(1.0),
-                max: Some(1024.0),
-                allowed_values: None,
-                pattern: None,
-            }),
-        },
-        SchemaEntry {
-            key: crate::keys::logging::MAX_RETAINED_FILES.to_string(),
-            value_type: ValueType::Integer,
-            default: ConfigValue::Integer(5),
-            description: "Maximum number of retained rotated log files".to_string(),
-            constraints: Some(crate::schema::Constraints {
-                min: Some(1.0),
-                max: Some(100.0),
-                allowed_values: None,
-                pattern: None,
-            }),
-        },
-        SchemaEntry {
-            key: crate::keys::theme::ACTIVE.to_string(),
-            value_type: ValueType::String,
-            default: ConfigValue::String("default".to_string()),
-            description: "Active theme name".to_string(),
-            constraints: None,
-        },
-        SchemaEntry {
-            key: crate::keys::theme::FOLLOW_OS.to_string(),
-            value_type: ValueType::Boolean,
-            default: ConfigValue::Boolean(false),
-            description: "Follow OS dark/light mode automatically".to_string(),
-            constraints: None,
-        },
-        SchemaEntry {
-            key: crate::keys::theme::FONT_SIZE.to_string(),
-            value_type: ValueType::Integer,
-            default: ConfigValue::Integer(14),
-            description: "Font size in points".to_string(),
-            constraints: Some(crate::schema::Constraints {
-                min: Some(6.0),
-                max: Some(72.0),
-                allowed_values: None,
-                pattern: None,
-            }),
-        },
-        SchemaEntry {
-            key: crate::keys::vfs::DEFAULT_PROVIDER.to_string(),
-            value_type: ValueType::String,
-            default: ConfigValue::String("local".to_string()),
-            description: "Default virtual file system provider".to_string(),
-            constraints: None,
-        },
-    ];
-
-    for entry in entries {
-        // Core schema registration should never conflict — unwrap is safe here
-        // since we control all entries and they have unique keys.
-        schema
-            .register(entry)
-            .expect("core schema entries must not conflict");
-    }
-}
-
-/// Register catalog schema entries with resolved default paths.
-///
-/// Called from `ff-desktop` after the user data directory is resolved,
-/// so the defaults are concrete filesystem paths rather than templates.
-///
-/// Addresses: Requirement 12.3, 12.4, 12.5
-pub fn register_catalog_schema(
-    schema: &mut SchemaRegistry,
-    mainframe_root: &str,
-    posix_root: &str,
-) {
-    let entries = [
-        SchemaEntry {
-            key: crate::keys::catalogs::DEFAULT_MAINFRAME_ROOT.to_string(),
-            value_type: ValueType::String,
-            default: ConfigValue::String(mainframe_root.to_string()),
-            description: "Default repository root directory for new Mainframe catalogs".to_string(),
-            constraints: None,
-        },
-        SchemaEntry {
-            key: crate::keys::catalogs::DEFAULT_POSIX_ROOT.to_string(),
-            value_type: ValueType::String,
-            default: ConfigValue::String(posix_root.to_string()),
-            description: "Default root directory for new POSIX catalogs".to_string(),
-            constraints: None,
-        },
-    ];
-    for entry in entries {
-        schema
-            .register(entry)
-            .expect("catalog schema entries must not conflict");
-    }
-}
+mod schema;
+pub use schema::{register_catalog_schema, register_core_schema};
 
 ///
 /// Performs the full initialization sequence:
@@ -287,7 +96,7 @@ pub fn register_catalog_schema(
 /// 6. Detect and load workspace configuration file (if workspace_root provided)
 /// 7. Start file watcher (if enable_hot_reload is true)
 ///
-/// Missing layer files are skipped silently — only files that exist and are
+/// Missing layer files are skipped silently -- only files that exist and are
 /// readable are loaded. Invalid TOML in any layer is logged as WARN and the
 /// layer is skipped.
 ///
@@ -454,10 +263,10 @@ mod tests {
     use tempfile::TempDir;
 
     // ========================================================================
-    // 15.3 — Automatic project config detection when project is opened
+    // 15.3 -- Automatic project config detection when project is opened
     // ========================================================================
 
-    // Validates: Requirement 5.2 — auto_detect_project_config loads project config when project_root is set
+    // Validates: Requirement 5.2 -- auto_detect_project_config loads project config when project_root is set
     #[test]
     fn auto_detect_loads_project_config_when_project_root_set() {
         let dir = TempDir::new().unwrap();
@@ -492,7 +301,7 @@ mod tests {
         );
     }
 
-    // Validates: Requirement 5.2 — auto_detect returns None when no project_root in options
+    // Validates: Requirement 5.2 -- auto_detect returns None when no project_root in options
     #[test]
     fn auto_detect_returns_none_when_no_project_root() {
         let schema = SchemaRegistry::new();
@@ -509,7 +318,7 @@ mod tests {
         assert!(!manager.has_project_layer());
     }
 
-    // Validates: Requirement 5.2 — auto_detect does nothing when config file doesn't exist
+    // Validates: Requirement 5.2 -- auto_detect does nothing when config file doesn't exist
     #[test]
     fn auto_detect_does_nothing_when_no_config_file_exists() {
         let dir = TempDir::new().unwrap();
@@ -531,7 +340,7 @@ mod tests {
         assert!(!manager.has_project_layer());
     }
 
-    // Validates: Requirement 5.7 — auto_detect handles invalid TOML gracefully (no error propagated)
+    // Validates: Requirement 5.7 -- auto_detect handles invalid TOML gracefully (no error propagated)
     #[test]
     fn auto_detect_handles_invalid_toml_gracefully() {
         let dir = TempDir::new().unwrap();
@@ -560,7 +369,7 @@ mod tests {
         assert!(!manager.has_project_layer());
     }
 
-    // Validates: Requirement 5.2 — auto_detect merges project config at correct priority
+    // Validates: Requirement 5.2 -- auto_detect merges project config at correct priority
     #[test]
     fn auto_detect_merges_at_project_priority_overriding_user_layer() {
         let dir = TempDir::new().unwrap();
@@ -605,7 +414,7 @@ mod tests {
         );
     }
 
-    // Validates: Requirement 5.2 — open_project on ReloadManager works as automatic entry point
+    // Validates: Requirement 5.2 -- open_project on ReloadManager works as automatic entry point
     #[test]
     fn open_project_loads_config_seamlessly() {
         let dir = TempDir::new().unwrap();
@@ -631,7 +440,7 @@ mod tests {
         );
     }
 
-    // Validates: Requirement 5.2 — open_project with no config does nothing
+    // Validates: Requirement 5.2 -- open_project with no config does nothing
     #[test]
     fn open_project_with_no_config_file_is_noop() {
         let dir = TempDir::new().unwrap();
@@ -645,7 +454,7 @@ mod tests {
         assert!(!manager.has_project_layer());
     }
 
-    // Validates: Requirement 5.7 — open_project with invalid TOML doesn't propagate error
+    // Validates: Requirement 5.7 -- open_project with invalid TOML doesn't propagate error
     #[test]
     fn open_project_with_invalid_toml_returns_empty_event() {
         let dir = TempDir::new().unwrap();
@@ -656,7 +465,7 @@ mod tests {
         let schema = SchemaRegistry::new();
         let mut manager = ReloadManager::new(Vec::new(), schema);
 
-        // Should not panic — errors are handled gracefully
+        // Should not panic -- errors are handled gracefully
         let event = manager.open_project(dir.path());
 
         assert!(event.changed_keys.is_empty());
@@ -687,10 +496,10 @@ mod tests {
     }
 
     // ========================================================================
-    // 21.1 — init() function returns ConfigHandle
+    // 21.1 -- init() function returns ConfigHandle
     // ========================================================================
 
-    // Validates: Requirement 1.1, 1.2 — init with no config files succeeds with schema defaults
+    // Validates: Requirement 1.1, 1.2 -- init with no config files succeeds with schema defaults
     // Uses ReloadManager directly to avoid loading the real user config file from disk,
     // which may override schema defaults on the developer's machine (B029).
     #[test]
@@ -722,10 +531,10 @@ mod tests {
     }
 
     // ========================================================================
-    // 21.2 — Initialization ordering: layer loading sequence
+    // 21.2 -- Initialization ordering: layer loading sequence
     // ========================================================================
 
-    // Validates: Requirement 2.1 — init loads project config from project_root
+    // Validates: Requirement 2.1 -- init loads project config from project_root
     // Uses ReloadManager directly to avoid loading the real user config file from disk,
     // which may override schema defaults on the developer's machine (B029).
     #[test]
@@ -752,7 +561,7 @@ mod tests {
         assert_eq!(handle.get_string("logging.level").unwrap(), "info");
     }
 
-    // Validates: Requirement 2.1 — init loads workspace config from workspace_root
+    // Validates: Requirement 2.1 -- init loads workspace config from workspace_root
     #[test]
     fn init_loads_workspace_config_when_workspace_root_provided() {
         let dir = TempDir::new().unwrap();
@@ -776,7 +585,7 @@ mod tests {
         assert_eq!(handle.get_string("logging.level").unwrap(), "debug");
     }
 
-    // Validates: Requirement 2.1 — workspace overrides project in layer precedence
+    // Validates: Requirement 2.1 -- workspace overrides project in layer precedence
     #[test]
     fn init_workspace_overrides_project_layer() {
         let dir = TempDir::new().unwrap();
@@ -809,10 +618,10 @@ mod tests {
     }
 
     // ========================================================================
-    // 21.5 — Graceful handling of missing layer files
+    // 21.5 -- Graceful handling of missing layer files
     // ========================================================================
 
-    // Validates: Requirement 1.1 — missing project config file is skipped silently
+    // Validates: Requirement 1.1 -- missing project config file is skipped silently
     #[test]
     fn init_skips_missing_project_config_gracefully() {
         let dir = TempDir::new().unwrap();
@@ -831,7 +640,7 @@ mod tests {
         assert_eq!(handle.get_int("editor.tab_size").unwrap(), 4);
     }
 
-    // Validates: Requirement 1.1 — missing workspace config file is skipped silently
+    // Validates: Requirement 1.1 -- missing workspace config file is skipped silently
     #[test]
     fn init_skips_missing_workspace_config_gracefully() {
         let dir = TempDir::new().unwrap();
@@ -846,7 +655,7 @@ mod tests {
         assert_eq!(handle.get_int("editor.tab_size").unwrap(), 4);
     }
 
-    // Validates: Requirement 1.1 — partial layer availability loads what is available
+    // Validates: Requirement 1.1 -- partial layer availability loads what is available
     #[test]
     fn init_with_partial_layer_availability_loads_available_layers() {
         let dir = TempDir::new().unwrap();
@@ -879,10 +688,10 @@ mod tests {
     }
 
     // ========================================================================
-    // 21.4 — shutdown() cleanup
+    // 21.4 -- shutdown() cleanup
     // ========================================================================
 
-    // Validates: Requirement 1 — shutdown stops file watcher and deregisters callbacks
+    // Validates: Requirement 1 -- shutdown stops file watcher and deregisters callbacks
     #[test]
     fn shutdown_stops_watcher_and_deregisters_callbacks() {
         let options = ConfigInitOptions::new().with_hot_reload(true);
@@ -903,7 +712,7 @@ mod tests {
         assert_eq!(handle.get_int("editor.tab_size").unwrap(), 4);
     }
 
-    // Validates: Requirement 1 — shutdown is safe when no watcher is active
+    // Validates: Requirement 1 -- shutdown is safe when no watcher is active
     // Uses ReloadManager directly to avoid loading the real user config file from disk,
     // which may override schema defaults on the developer's machine (B029).
     #[test]
@@ -921,10 +730,10 @@ mod tests {
     }
 
     // ========================================================================
-    // 21.6 — register_core_schema populates all expected entries
+    // 21.6 -- register_core_schema populates all expected entries
     // ========================================================================
 
-    // Validates: Requirement 9.1 — register_core_schema registers all well-known keys
+    // Validates: Requirement 9.1 -- register_core_schema registers all well-known keys
     #[test]
     fn register_core_schema_registers_all_well_known_keys() {
         let mut schema = SchemaRegistry::new();
@@ -948,14 +757,14 @@ mod tests {
         assert_eq!(schema.len(), 13);
     }
 
-    // Validates: Requirement 9.1 — register_core_schema is idempotent (can be called twice)
+    // Validates: Requirement 9.1 -- register_core_schema is idempotent (can be called twice)
     #[test]
     fn register_core_schema_is_idempotent() {
         let mut schema = SchemaRegistry::new();
         register_core_schema(&mut schema);
         let first_count = schema.len();
 
-        // Call again — should not panic or produce conflicts
+        // Call again -- should not panic or produce conflicts
         register_core_schema(&mut schema);
         assert_eq!(schema.len(), first_count);
     }
