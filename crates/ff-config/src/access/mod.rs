@@ -4,14 +4,8 @@
 //! `get_bool`, `get_array`, `get_table`) for reading effective configuration
 //! values with automatic type checking and schema-default fallback.
 //!
-//! Addresses: Requirement 9 (AC 9.1–9.11)
+//! Addresses: Requirement 9 (AC 9.1-9.11)
 
-use std::path::Path;
-
-use crate::editorconfig::parser::{
-    Charset, EditorConfigProperties, EndOfLine, IndentSize, IndentStyle,
-};
-use crate::editorconfig::resolver::resolve_editorconfig as resolve_editorconfig_for_path;
 use crate::error::{ConfigError, ValueType};
 use crate::provenance::EffectiveValue;
 use crate::schema::SchemaRegistry;
@@ -25,8 +19,8 @@ use crate::value::{ConfigTable, ConfigValue};
 /// and returns the value or falls back to the schema default on type mismatch
 /// or validation failure.
 pub struct ConfigAccess<'a> {
-    store: &'a EffectiveStore,
-    schema: &'a SchemaRegistry,
+    pub(super) store: &'a EffectiveStore,
+    pub(super) schema: &'a SchemaRegistry,
 }
 
 impl<'a> ConfigAccess<'a> {
@@ -94,12 +88,12 @@ impl<'a> ConfigAccess<'a> {
                 Ok(s)
             }
             other => {
-                // Type mismatch — try schema default
+                // Type mismatch -- try schema default
                 let found_type = value_type_of(&other);
                 if let Some(entry) = self.schema.get(key) {
                     if let ConfigValue::String(ref default_s) = entry.default {
                         ff_logging::log_warn!(
-                            "[config] type mismatch: key \"{}\" expected string, found {} — applying default",
+                            "[config] type mismatch: key \"{}\" expected string, found {} -- applying default",
                             key,
                             found_type
                         );
@@ -137,7 +131,7 @@ impl<'a> ConfigAccess<'a> {
                 if let Some(entry) = self.schema.get(key) {
                     if let ConfigValue::Integer(ref default_i) = entry.default {
                         ff_logging::log_warn!(
-                            "[config] type mismatch: key \"{}\" expected integer, found {} — applying default",
+                            "[config] type mismatch: key \"{}\" expected integer, found {} -- applying default",
                             key,
                             found_type
                         );
@@ -174,7 +168,7 @@ impl<'a> ConfigAccess<'a> {
                 if let Some(entry) = self.schema.get(key) {
                     if let ConfigValue::Float(ref default_f) = entry.default {
                         ff_logging::log_warn!(
-                            "[config] type mismatch: key \"{}\" expected float, found {} — applying default",
+                            "[config] type mismatch: key \"{}\" expected float, found {} -- applying default",
                             key,
                             found_type
                         );
@@ -212,7 +206,7 @@ impl<'a> ConfigAccess<'a> {
                 if let Some(entry) = self.schema.get(key) {
                     if let ConfigValue::Boolean(ref default_b) = entry.default {
                         ff_logging::log_warn!(
-                            "[config] type mismatch: key \"{}\" expected boolean, found {} — applying default",
+                            "[config] type mismatch: key \"{}\" expected boolean, found {} -- applying default",
                             key,
                             found_type
                         );
@@ -240,7 +234,7 @@ impl<'a> ConfigAccess<'a> {
                 if let Some(entry) = self.schema.get(key) {
                     if let ConfigValue::Array(ref default_a) = entry.default {
                         ff_logging::log_warn!(
-                            "[config] type mismatch: key \"{}\" expected array, found {} — applying default",
+                            "[config] type mismatch: key \"{}\" expected array, found {} -- applying default",
                             key,
                             found_type
                         );
@@ -268,7 +262,7 @@ impl<'a> ConfigAccess<'a> {
                 if let Some(entry) = self.schema.get(key) {
                     if let ConfigValue::Table(ref default_t) = entry.default {
                         ff_logging::log_warn!(
-                            "[config] type mismatch: key \"{}\" expected table, found {} — applying default",
+                            "[config] type mismatch: key \"{}\" expected table, found {} -- applying default",
                             key,
                             found_type
                         );
@@ -323,7 +317,7 @@ impl<'a> ConfigAccess<'a> {
             ValidationResult::Valid(v) => Some(v),
             ValidationResult::DefaultApplied { reason, default } => {
                 ff_logging::log_warn!(
-                    "[config] validation: key \"{}\": {} — applying default",
+                    "[config] validation: key \"{}\": {} -- applying default",
                     key,
                     reason
                 );
@@ -331,161 +325,19 @@ impl<'a> ConfigAccess<'a> {
             }
         }
     }
-
-    /// Resolve EditorConfig properties for a given file path.
-    ///
-    /// Delegates to the EditorConfig resolver, which traverses the directory
-    /// hierarchy looking for `.editorconfig` files and merges matching sections.
-    ///
-    /// # Arguments
-    ///
-    /// * `file_path` — The absolute path of the file to resolve properties for.
-    ///
-    /// # Returns
-    ///
-    /// The merged `EditorConfigProperties` for the given file path.
-    pub fn resolve_editorconfig(&self, file_path: &Path) -> EditorConfigProperties {
-        resolve_editorconfig_for_path(file_path)
-    }
-
-    /// Get a configuration value for a specific file, applying EditorConfig
-    /// precedence for editor-scoped keys.
-    ///
-    /// For keys in the `editor.*` namespace, this method first resolves
-    /// EditorConfig properties for the given file path. If EditorConfig
-    /// provides a value for the corresponding property, that value is returned
-    /// (EditorConfig overrides ALL configuration layers for editor keys).
-    ///
-    /// For keys outside the `editor.*` namespace (e.g., `logging.*`, `theme.*`,
-    /// `plugins.*`, `vfs.*`), EditorConfig is never consulted and the normal
-    /// layered resolution applies.
-    ///
-    /// # Arguments
-    ///
-    /// * `key` — The configuration key to look up (e.g., `"editor.indent_style"`).
-    /// * `file_path` — The absolute path of the file being edited.
-    ///
-    /// # Returns
-    ///
-    /// The resolved `ConfigValue`, or a `ConfigError` if the key is undefined.
-    pub fn get_for_file(&self, key: &str, file_path: &Path) -> Result<ConfigValue, ConfigError> {
-        // Only editor-scoped keys consult EditorConfig (Task 17.5)
-        if is_editor_key(key) {
-            let ec_props = self.resolve_editorconfig(file_path);
-            if let Some(value) = editorconfig_value_for_key(key, &ec_props) {
-                return Ok(value);
-            }
-        }
-        // Fall back to normal layered resolution
-        self.get(key)
-    }
-
-    /// Get a string value for a specific file, applying EditorConfig precedence.
-    ///
-    /// Behaves like `get_string`, but for editor-scoped keys, EditorConfig
-    /// values take priority over all configuration layers.
-    pub fn get_string_for_file(&self, key: &str, file_path: &Path) -> Result<String, ConfigError> {
-        if is_editor_key(key) {
-            let ec_props = self.resolve_editorconfig(file_path);
-            if let Some(ConfigValue::String(s)) = editorconfig_value_for_key(key, &ec_props) {
-                return Ok(s);
-            }
-        }
-        self.get_string(key)
-    }
-
-    /// Get an integer value for a specific file, applying EditorConfig precedence.
-    ///
-    /// Behaves like `get_int`, but for editor-scoped keys, EditorConfig
-    /// values take priority over all configuration layers.
-    pub fn get_int_for_file(&self, key: &str, file_path: &Path) -> Result<i64, ConfigError> {
-        if is_editor_key(key) {
-            let ec_props = self.resolve_editorconfig(file_path);
-            if let Some(ConfigValue::Integer(i)) = editorconfig_value_for_key(key, &ec_props) {
-                return Ok(i);
-            }
-        }
-        self.get_int(key)
-    }
-
-    /// Get a boolean value for a specific file, applying EditorConfig precedence.
-    ///
-    /// Behaves like `get_bool`, but for editor-scoped keys, EditorConfig
-    /// values take priority over all configuration layers.
-    pub fn get_bool_for_file(&self, key: &str, file_path: &Path) -> Result<bool, ConfigError> {
-        if is_editor_key(key) {
-            let ec_props = self.resolve_editorconfig(file_path);
-            if let Some(ConfigValue::Boolean(b)) = editorconfig_value_for_key(key, &ec_props) {
-                return Ok(b);
-            }
-        }
-        self.get_bool(key)
-    }
 }
 
-/// Check whether a configuration key is in the `editor.*` namespace.
-///
-/// Only editor-scoped keys are eligible for EditorConfig override.
-/// Keys in other namespaces (logging, theme, plugins, vfs, etc.) are
-/// never affected by EditorConfig settings.
-fn is_editor_key(key: &str) -> bool {
-    key.starts_with("editor.")
-}
+mod editorconfig_access;
 
-/// Map a configuration key to the corresponding EditorConfig property value.
-///
-/// Returns `Some(ConfigValue)` if the EditorConfig properties have a value
-/// for the property that maps to the given key. Returns `None` if the
-/// EditorConfig has no value for this key.
-fn editorconfig_value_for_key(key: &str, props: &EditorConfigProperties) -> Option<ConfigValue> {
-    match key {
-        "editor.indent_style" => props.indent_style.map(|v| {
-            ConfigValue::String(
-                match v {
-                    IndentStyle::Space => "space",
-                    IndentStyle::Tab => "tab",
-                }
-                .to_string(),
-            )
-        }),
-        "editor.indent_size" | "editor.tab_size" => props.indent_size.map(|v| match v {
-            IndentSize::Value(n) => ConfigValue::Integer(i64::from(n)),
-            IndentSize::Tab => ConfigValue::String("tab".to_string()),
-        }),
-        "editor.tab_width" => props.tab_width.map(|v| ConfigValue::Integer(i64::from(v))),
-        "editor.end_of_line" | "editor.line_endings" => props.end_of_line.map(|v| {
-            ConfigValue::String(
-                match v {
-                    EndOfLine::Lf => "lf",
-                    EndOfLine::CrLf => "crlf",
-                    EndOfLine::Cr => "cr",
-                }
-                .to_string(),
-            )
-        }),
-        "editor.charset" => props.charset.map(|v| {
-            ConfigValue::String(
-                match v {
-                    Charset::Utf8 => "utf-8",
-                    Charset::Utf8Bom => "utf-8-bom",
-                    Charset::Latin1 => "latin1",
-                    Charset::Utf16Be => "utf-16be",
-                    Charset::Utf16Le => "utf-16le",
-                }
-                .to_string(),
-            )
-        }),
-        "editor.trim_trailing_whitespace" => {
-            props.trim_trailing_whitespace.map(ConfigValue::Boolean)
-        }
-        "editor.insert_final_newline" => props.insert_final_newline.map(ConfigValue::Boolean),
-        _ => None,
-    }
-}
+// Re-export the module's free fns so `super::is_editor_key` /
+// `super::editorconfig_value_for_key` resolve from the test module below.
+#[cfg(test)]
+use editorconfig_access::{editorconfig_value_for_key, is_editor_key};
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::editorconfig::parser::{EditorConfigProperties, IndentStyle};
     use crate::layer::ConfigLayer;
     use crate::provenance::Provenance;
     use crate::schema::{Constraints, SchemaEntry};
@@ -542,11 +394,11 @@ mod tests {
         schema
     }
 
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
     // Task 9.1: get_string
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
 
-    // Validates: Requirement 9.1 — get_string returns string value
+    // Validates: Requirement 9.1 -- get_string returns string value
     #[test]
     fn get_string_returns_value_when_type_matches() {
         let store = store_with("theme.name", ConfigValue::String("dark".to_string()));
@@ -561,7 +413,7 @@ mod tests {
         assert_eq!(result.unwrap(), "dark");
     }
 
-    // Validates: Requirement 9.1 — get_string returns UndefinedKey for missing key
+    // Validates: Requirement 9.1 -- get_string returns UndefinedKey for missing key
     #[test]
     fn get_string_returns_undefined_key_when_not_found() {
         let store = EffectiveStore::new();
@@ -572,7 +424,7 @@ mod tests {
         assert!(matches!(result, Err(ConfigError::UndefinedKey { .. })));
     }
 
-    // Validates: Requirement 9.1 — get_string returns schema default when key absent from store
+    // Validates: Requirement 9.1 -- get_string returns schema default when key absent from store
     #[test]
     fn get_string_returns_schema_default_when_key_absent_from_store() {
         let store = EffectiveStore::new();
@@ -587,11 +439,11 @@ mod tests {
         assert_eq!(result.unwrap(), "light");
     }
 
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
     // Task 9.2: get_int
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
 
-    // Validates: Requirement 9.2 — get_int returns integer value
+    // Validates: Requirement 9.2 -- get_int returns integer value
     #[test]
     fn get_int_returns_value_when_type_matches() {
         let store = store_with("editor.tab_size", ConfigValue::Integer(8));
@@ -606,7 +458,7 @@ mod tests {
         assert_eq!(result.unwrap(), 8);
     }
 
-    // Validates: Requirement 9.2 — get_int returns UndefinedKey for missing key
+    // Validates: Requirement 9.2 -- get_int returns UndefinedKey for missing key
     #[test]
     fn get_int_returns_undefined_key_when_not_found() {
         let store = EffectiveStore::new();
@@ -617,7 +469,7 @@ mod tests {
         assert!(matches!(result, Err(ConfigError::UndefinedKey { .. })));
     }
 
-    // Validates: Requirement 9.2 — get_int returns schema default when key absent from store
+    // Validates: Requirement 9.2 -- get_int returns schema default when key absent from store
     #[test]
     fn get_int_returns_schema_default_when_key_absent_from_store() {
         let store = EffectiveStore::new();
@@ -632,11 +484,11 @@ mod tests {
         assert_eq!(result.unwrap(), 4);
     }
 
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
     // Task 9.3: get_float
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
 
-    // Validates: Requirement 9.3 — get_float returns float value
+    // Validates: Requirement 9.3 -- get_float returns float value
     #[test]
     fn get_float_returns_value_when_type_matches() {
         let store = store_with("editor.font_size", ConfigValue::Float(14.5));
@@ -651,7 +503,7 @@ mod tests {
         assert!((result.unwrap() - 14.5).abs() < f64::EPSILON);
     }
 
-    // Validates: Requirement 9.3 — get_float returns UndefinedKey for missing key
+    // Validates: Requirement 9.3 -- get_float returns UndefinedKey for missing key
     #[test]
     fn get_float_returns_undefined_key_when_not_found() {
         let store = EffectiveStore::new();
@@ -662,7 +514,7 @@ mod tests {
         assert!(matches!(result, Err(ConfigError::UndefinedKey { .. })));
     }
 
-    // Validates: Requirement 9.3 — get_float returns schema default when key absent
+    // Validates: Requirement 9.3 -- get_float returns schema default when key absent
     #[test]
     fn get_float_returns_schema_default_when_key_absent_from_store() {
         let store = EffectiveStore::new();
@@ -677,11 +529,11 @@ mod tests {
         assert!((result.unwrap() - 12.0).abs() < f64::EPSILON);
     }
 
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
     // Task 9.4: get_bool
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
 
-    // Validates: Requirement 9.4 — get_bool returns boolean value
+    // Validates: Requirement 9.4 -- get_bool returns boolean value
     #[test]
     fn get_bool_returns_value_when_type_matches() {
         let store = store_with("editor.word_wrap", ConfigValue::Boolean(true));
@@ -696,7 +548,7 @@ mod tests {
         assert_eq!(result.unwrap(), true);
     }
 
-    // Validates: Requirement 9.4 — get_bool returns UndefinedKey for missing key
+    // Validates: Requirement 9.4 -- get_bool returns UndefinedKey for missing key
     #[test]
     fn get_bool_returns_undefined_key_when_not_found() {
         let store = EffectiveStore::new();
@@ -707,7 +559,7 @@ mod tests {
         assert!(matches!(result, Err(ConfigError::UndefinedKey { .. })));
     }
 
-    // Validates: Requirement 9.4 — get_bool returns schema default when key absent
+    // Validates: Requirement 9.4 -- get_bool returns schema default when key absent
     #[test]
     fn get_bool_returns_schema_default_when_key_absent_from_store() {
         let store = EffectiveStore::new();
@@ -722,11 +574,11 @@ mod tests {
         assert_eq!(result.unwrap(), false);
     }
 
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
     // Task 9.5: get_array
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
 
-    // Validates: Requirement 9.5 — get_array returns array value
+    // Validates: Requirement 9.5 -- get_array returns array value
     #[test]
     fn get_array_returns_value_when_type_matches() {
         let arr = vec![
@@ -745,7 +597,7 @@ mod tests {
         assert_eq!(result.unwrap(), arr);
     }
 
-    // Validates: Requirement 9.5 — get_array returns UndefinedKey for missing key
+    // Validates: Requirement 9.5 -- get_array returns UndefinedKey for missing key
     #[test]
     fn get_array_returns_undefined_key_when_not_found() {
         let store = EffectiveStore::new();
@@ -756,7 +608,7 @@ mod tests {
         assert!(matches!(result, Err(ConfigError::UndefinedKey { .. })));
     }
 
-    // Validates: Requirement 9.5 — get_array returns schema default when key absent
+    // Validates: Requirement 9.5 -- get_array returns schema default when key absent
     #[test]
     fn get_array_returns_schema_default_when_key_absent_from_store() {
         let store = EffectiveStore::new();
@@ -772,11 +624,11 @@ mod tests {
         assert_eq!(result.unwrap(), default_arr);
     }
 
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
     // Task 9.6: get_table
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
 
-    // Validates: Requirement 9.6 — get_table returns table value
+    // Validates: Requirement 9.6 -- get_table returns table value
     #[test]
     fn get_table_returns_value_when_type_matches() {
         let mut table = ConfigTable::new();
@@ -793,7 +645,7 @@ mod tests {
         assert_eq!(result.unwrap(), table);
     }
 
-    // Validates: Requirement 9.6 — get_table returns UndefinedKey for missing key
+    // Validates: Requirement 9.6 -- get_table returns UndefinedKey for missing key
     #[test]
     fn get_table_returns_undefined_key_when_not_found() {
         let store = EffectiveStore::new();
@@ -804,7 +656,7 @@ mod tests {
         assert!(matches!(result, Err(ConfigError::UndefinedKey { .. })));
     }
 
-    // Validates: Requirement 9.6 — get_table returns schema default when key absent
+    // Validates: Requirement 9.6 -- get_table returns schema default when key absent
     #[test]
     fn get_table_returns_schema_default_when_key_absent_from_store() {
         let store = EffectiveStore::new();
@@ -821,11 +673,11 @@ mod tests {
         assert_eq!(result.unwrap(), default_table);
     }
 
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
     // Task 9.7: get (generic getter)
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
 
-    // Validates: Requirement 9.7 — get returns raw ConfigValue
+    // Validates: Requirement 9.7 -- get returns raw ConfigValue
     #[test]
     fn get_returns_raw_value_from_store() {
         let store = store_with("editor.tab_size", ConfigValue::Integer(8));
@@ -840,7 +692,7 @@ mod tests {
         assert_eq!(result.unwrap(), ConfigValue::Integer(8));
     }
 
-    // Validates: Requirement 9.7 — get falls back to schema default
+    // Validates: Requirement 9.7 -- get falls back to schema default
     #[test]
     fn get_returns_schema_default_when_key_absent_from_store() {
         let store = EffectiveStore::new();
@@ -855,7 +707,7 @@ mod tests {
         assert_eq!(result.unwrap(), ConfigValue::Integer(4));
     }
 
-    // Validates: Requirement 9.7 — get returns UndefinedKey when neither store nor schema has key
+    // Validates: Requirement 9.7 -- get returns UndefinedKey when neither store nor schema has key
     #[test]
     fn get_returns_undefined_key_when_not_found_anywhere() {
         let store = EffectiveStore::new();
@@ -866,11 +718,11 @@ mod tests {
         assert!(matches!(result, Err(ConfigError::UndefinedKey { .. })));
     }
 
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
     // Task 9.8: get_with_provenance
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
 
-    // Validates: Requirement 9.8 — get_with_provenance returns EffectiveValue
+    // Validates: Requirement 9.8 -- get_with_provenance returns EffectiveValue
     #[test]
     fn get_with_provenance_returns_effective_value() {
         let store = store_with("editor.tab_size", ConfigValue::Integer(8));
@@ -886,7 +738,7 @@ mod tests {
         );
     }
 
-    // Validates: Requirement 9.8 — get_with_provenance returns UndefinedKey when neither store nor schema has key
+    // Validates: Requirement 9.8 -- get_with_provenance returns UndefinedKey when neither store nor schema has key
     #[test]
     fn get_with_provenance_returns_undefined_key_when_not_found() {
         let store = EffectiveStore::new();
@@ -897,7 +749,7 @@ mod tests {
         assert!(matches!(result, Err(ConfigError::UndefinedKey { .. })));
     }
 
-    // Validates: Requirement 2.5 — get_with_provenance returns schema default with Defaults provenance
+    // Validates: Requirement 2.5 -- get_with_provenance returns schema default with Defaults provenance
     #[test]
     fn get_with_provenance_returns_schema_default_with_defaults_provenance() {
         let store = EffectiveStore::new();
@@ -914,11 +766,11 @@ mod tests {
         assert!(result.provenance.source_file.is_none());
     }
 
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
     // Task 9.9: Type mismatch fallback
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
 
-    // Validates: Requirement 9.9 — get_string type mismatch falls back to schema default
+    // Validates: Requirement 9.9 -- get_string type mismatch falls back to schema default
     #[test]
     fn get_string_type_mismatch_falls_back_to_schema_default() {
         let store = store_with("theme.name", ConfigValue::Integer(42));
@@ -933,7 +785,7 @@ mod tests {
         assert_eq!(result.unwrap(), "dark");
     }
 
-    // Validates: Requirement 9.9 — get_int type mismatch falls back to schema default
+    // Validates: Requirement 9.9 -- get_int type mismatch falls back to schema default
     #[test]
     fn get_int_type_mismatch_falls_back_to_schema_default() {
         let store = store_with("editor.tab_size", ConfigValue::String("four".to_string()));
@@ -948,7 +800,7 @@ mod tests {
         assert_eq!(result.unwrap(), 4);
     }
 
-    // Validates: Requirement 9.9 — get_float type mismatch falls back to schema default
+    // Validates: Requirement 9.9 -- get_float type mismatch falls back to schema default
     #[test]
     fn get_float_type_mismatch_falls_back_to_schema_default() {
         let store = store_with("editor.font_size", ConfigValue::Boolean(true));
@@ -963,7 +815,7 @@ mod tests {
         assert!((result.unwrap() - 12.0).abs() < f64::EPSILON);
     }
 
-    // Validates: Requirement 9.9 — get_bool type mismatch falls back to schema default
+    // Validates: Requirement 9.9 -- get_bool type mismatch falls back to schema default
     #[test]
     fn get_bool_type_mismatch_falls_back_to_schema_default() {
         let store = store_with("editor.word_wrap", ConfigValue::Integer(1));
@@ -978,7 +830,7 @@ mod tests {
         assert_eq!(result.unwrap(), true);
     }
 
-    // Validates: Requirement 9.9 — get_array type mismatch falls back to schema default
+    // Validates: Requirement 9.9 -- get_array type mismatch falls back to schema default
     #[test]
     fn get_array_type_mismatch_falls_back_to_schema_default() {
         let store = store_with("editor.rulers", ConfigValue::String("80".to_string()));
@@ -994,7 +846,7 @@ mod tests {
         assert_eq!(result.unwrap(), default_arr);
     }
 
-    // Validates: Requirement 9.9 — get_table type mismatch falls back to schema default
+    // Validates: Requirement 9.9 -- get_table type mismatch falls back to schema default
     #[test]
     fn get_table_type_mismatch_falls_back_to_schema_default() {
         let store = store_with("editor.settings", ConfigValue::Integer(99));
@@ -1011,7 +863,7 @@ mod tests {
         assert_eq!(result.unwrap(), default_table);
     }
 
-    // Validates: Requirement 9.9 — type mismatch without schema returns TypeMismatch error
+    // Validates: Requirement 9.9 -- type mismatch without schema returns TypeMismatch error
     #[test]
     fn get_string_type_mismatch_without_schema_returns_error() {
         let store = store_with("unknown.key", ConfigValue::Integer(42));
@@ -1029,11 +881,11 @@ mod tests {
         ));
     }
 
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
     // Task 9.10: Validation failure fallback
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
 
-    // Validates: Requirement 9.10 — validation failure falls back to schema default (integer range)
+    // Validates: Requirement 9.10 -- validation failure falls back to schema default (integer range)
     #[test]
     fn get_int_validation_failure_falls_back_to_schema_default() {
         let store = store_with("editor.tab_size", ConfigValue::Integer(999));
@@ -1054,7 +906,7 @@ mod tests {
         assert_eq!(result.unwrap(), 4);
     }
 
-    // Validates: Requirement 9.10 — validation failure falls back to schema default (string pattern)
+    // Validates: Requirement 9.10 -- validation failure falls back to schema default (string pattern)
     #[test]
     fn get_string_validation_failure_falls_back_to_schema_default() {
         let store = store_with(
@@ -1078,7 +930,7 @@ mod tests {
         assert_eq!(result.unwrap(), "info");
     }
 
-    // Validates: Requirement 9.10 — validation failure with enum constraint falls back
+    // Validates: Requirement 9.10 -- validation failure with enum constraint falls back
     #[test]
     fn get_string_enum_validation_failure_falls_back_to_schema_default() {
         let store = store_with(
@@ -1105,7 +957,7 @@ mod tests {
         assert_eq!(result.unwrap(), "space");
     }
 
-    // Validates: Requirement 9.10 — float validation failure falls back to schema default
+    // Validates: Requirement 9.10 -- float validation failure falls back to schema default
     #[test]
     fn get_float_validation_failure_falls_back_to_schema_default() {
         let store = store_with("editor.font_size", ConfigValue::Float(200.0));
@@ -1126,7 +978,7 @@ mod tests {
         assert!((result.unwrap() - 12.0).abs() < f64::EPSILON);
     }
 
-    // Validates: Requirement 9.10 — valid value passes through without fallback
+    // Validates: Requirement 9.10 -- valid value passes through without fallback
     #[test]
     fn get_int_valid_value_passes_through_without_fallback() {
         let store = store_with("editor.tab_size", ConfigValue::Integer(8));
@@ -1147,11 +999,11 @@ mod tests {
         assert_eq!(result.unwrap(), 8);
     }
 
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
     // Task 17.3: resolve_editorconfig on ConfigAccess
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
 
-    // Validates: Requirement 6 AC 6.3 — resolve_editorconfig delegates correctly
+    // Validates: Requirement 6 AC 6.3 -- resolve_editorconfig delegates correctly
     #[test]
     fn resolve_editorconfig_delegates_to_resolver() {
         use std::fs;
@@ -1185,11 +1037,11 @@ mod tests {
         );
     }
 
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
     // Task 17.4: EditorConfig precedence over all layers
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
 
-    // Validates: Requirement 6 AC 6.3 — EditorConfig overrides workspace-layer value
+    // Validates: Requirement 6 AC 6.3 -- EditorConfig overrides workspace-layer value
     #[test]
     fn get_for_file_editorconfig_overrides_workspace_layer_for_editor_key() {
         use std::fs;
@@ -1220,7 +1072,7 @@ mod tests {
         assert_eq!(result, ConfigValue::Integer(2));
     }
 
-    // Validates: Requirement 6 AC 6.3 — EditorConfig overrides for indent_style
+    // Validates: Requirement 6 AC 6.3 -- EditorConfig overrides for indent_style
     #[test]
     fn get_string_for_file_editorconfig_overrides_for_indent_style() {
         use std::fs;
@@ -1253,7 +1105,7 @@ mod tests {
         assert_eq!(result, "tab");
     }
 
-    // Validates: Requirement 6 AC 6.3 — EditorConfig overrides for boolean properties
+    // Validates: Requirement 6 AC 6.3 -- EditorConfig overrides for boolean properties
     #[test]
     fn get_bool_for_file_editorconfig_overrides_trim_trailing_whitespace() {
         use std::fs;
@@ -1286,7 +1138,7 @@ mod tests {
         assert!(result);
     }
 
-    // Validates: Requirement 6 AC 6.3 — falls back to layered value when EditorConfig has no value
+    // Validates: Requirement 6 AC 6.3 -- falls back to layered value when EditorConfig has no value
     #[test]
     fn get_for_file_falls_back_to_store_when_editorconfig_has_no_value() {
         use std::fs;
@@ -1315,7 +1167,7 @@ mod tests {
         assert_eq!(result, ConfigValue::Integer(4));
     }
 
-    // Validates: Requirement 6 AC 6.5 — multiple .editorconfig files merge correctly
+    // Validates: Requirement 6 AC 6.5 -- multiple .editorconfig files merge correctly
     #[test]
     fn get_for_file_merges_multiple_editorconfig_files_closer_wins() {
         use std::fs;
@@ -1358,11 +1210,11 @@ mod tests {
         assert_eq!(result, ConfigValue::String("utf-8".to_string()));
     }
 
-    // ──────────────────────────────────────────────────────────────────
-    // Task 17.5: Scope restriction — EditorConfig only applies to editor keys
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
+    // Task 17.5: Scope restriction -- EditorConfig only applies to editor keys
+    // ==================================================================
 
-    // Validates: Requirement 6 AC 6.7 — logging keys are not affected by EditorConfig
+    // Validates: Requirement 6 AC 6.7 -- logging keys are not affected by EditorConfig
     #[test]
     fn get_for_file_does_not_apply_editorconfig_to_logging_keys() {
         use std::fs;
@@ -1389,7 +1241,7 @@ mod tests {
         assert_eq!(result, ConfigValue::String("debug".to_string()));
     }
 
-    // Validates: Requirement 6 AC 6.7 — theme keys are not affected by EditorConfig
+    // Validates: Requirement 6 AC 6.7 -- theme keys are not affected by EditorConfig
     #[test]
     fn get_for_file_does_not_apply_editorconfig_to_theme_keys() {
         use std::fs;
@@ -1415,7 +1267,7 @@ mod tests {
         assert_eq!(result, ConfigValue::String("dark".to_string()));
     }
 
-    // Validates: Requirement 6 AC 6.7 — plugin keys are not affected by EditorConfig
+    // Validates: Requirement 6 AC 6.7 -- plugin keys are not affected by EditorConfig
     #[test]
     fn get_for_file_does_not_apply_editorconfig_to_plugin_keys() {
         use std::fs;
@@ -1443,7 +1295,7 @@ mod tests {
         assert_eq!(result, ConfigValue::Boolean(true));
     }
 
-    // Validates: Requirement 6 AC 6.7 — vfs keys are not affected by EditorConfig
+    // Validates: Requirement 6 AC 6.7 -- vfs keys are not affected by EditorConfig
     #[test]
     fn get_for_file_does_not_apply_editorconfig_to_vfs_keys() {
         use std::fs;
@@ -1474,11 +1326,11 @@ mod tests {
         assert_eq!(result, ConfigValue::String("local".to_string()));
     }
 
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
     // Unit tests for helper functions
-    // ──────────────────────────────────────────────────────────────────
+    // ==================================================================
 
-    // Validates: Requirement 6 AC 6.7 — is_editor_key correctly identifies editor namespace
+    // Validates: Requirement 6 AC 6.7 -- is_editor_key correctly identifies editor namespace
     #[test]
     fn is_editor_key_identifies_editor_namespace() {
         assert!(super::is_editor_key("editor.tab_size"));
@@ -1490,7 +1342,7 @@ mod tests {
         assert!(!super::is_editor_key("vfs.default_provider"));
     }
 
-    // Validates: Requirement 6 AC 6.3 — editorconfig_value_for_key maps correctly
+    // Validates: Requirement 6 AC 6.3 -- editorconfig_value_for_key maps correctly
     #[test]
     fn editorconfig_value_for_key_maps_all_properties() {
         use crate::editorconfig::parser::{Charset, EndOfLine, IndentSize, IndentStyle};
@@ -1543,7 +1395,7 @@ mod tests {
         );
     }
 
-    // Validates: Requirement 6 AC 6.7 — unmapped editor keys return None
+    // Validates: Requirement 6 AC 6.7 -- unmapped editor keys return None
     #[test]
     fn editorconfig_value_for_key_returns_none_for_unmapped_editor_keys() {
         let props = EditorConfigProperties {
@@ -1558,7 +1410,7 @@ mod tests {
         );
     }
 
-    // Validates: Requirement 6 AC 6.3 — None properties return None from mapping
+    // Validates: Requirement 6 AC 6.3 -- None properties return None from mapping
     #[test]
     fn editorconfig_value_for_key_returns_none_when_property_not_set() {
         let props = EditorConfigProperties::default();
