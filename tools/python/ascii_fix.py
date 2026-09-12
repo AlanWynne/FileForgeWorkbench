@@ -60,6 +60,7 @@ UTF8_MAP = [
     (b"\xe2\x89\xa0", b"!="),   # !=
     (b"\xc3\x97", b"x"),        # multiplication sign
     (b"\xc2\xa0", b" "),        # non-breaking space
+    (b"\xc2\xa7", b"Sec "),     # section sign (e.g. "Design Sec 9")
 ]
 
 # Mojibake: the above UTF-8 sequences RE-ENCODED after a wrong Latin-1/CP1252
