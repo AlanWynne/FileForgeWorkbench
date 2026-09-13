@@ -219,6 +219,20 @@ impl WorkbenchShell {
                     }
                 });
                 ui.menu_button("Utilities", |ui| {
+                    // CR-NR-060 Slice A preview toggle: show the modern
+                    // ff-file-tree-backed File Explorer beneath the legacy panel
+                    // (File Explorer Context / option 2). Parallel-build preview;
+                    // removed at the swap.
+                    if ui
+                        .checkbox(
+                            &mut self.nav_explorer_preview,
+                            "Modern File Explorer (preview)",
+                        )
+                        .clicked()
+                    {
+                        ui.close_menu();
+                    }
+                    ui.separator();
                     if ui.button("Compare Files…").clicked() {
                         ui.close_menu();
                     }
