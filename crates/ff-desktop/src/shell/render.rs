@@ -926,6 +926,28 @@ impl WorkbenchShell {
                     }
                     OpenTarget::None => {}
                 },
+                ExplorerEffect::CopyPath(id) => {
+                    // Req 16 Copy Full Path: copy the node's resource path.
+                    if let Some(uri) = self.nav_model.uri_of(id) {
+                        if let Ok(mut cb) = arboard::Clipboard::new() {
+                            let _ = cb.set_text(uri.path());
+                        }
+                    }
+                }
+                ExplorerEffect::Reveal(id) => {
+                    // Req 16 Reveal in Explorer: open the OS file manager at the
+                    // node. Only local/POSIX nodes map to a real host path.
+                    if let Some(uri) = self.nav_model.uri_of(id).cloned() {
+                        if uri.scheme() == "posix" || uri.scheme() == "local" {
+                            let root_dir = dirs::home_dir()
+                                .or_else(|| std::env::current_dir().ok())
+                                .unwrap_or_else(|| std::path::PathBuf::from("."));
+                            let rel = uri.path().trim_start_matches('/');
+                            let full = root_dir.join(rel);
+                            crate::file_explorer_panel::reveal_in_explorer(&full.to_string_lossy());
+                        }
+                    }
+                }
                 ExplorerEffect::None => {}
             }
         }

@@ -154,6 +154,10 @@ pub enum ExplorerEffect {
     Expand(NodeId),
     Collapse(NodeId),
     Open(NodeId),
+    /// Copy the node's resource path to the OS clipboard (Req 16 Copy Path).
+    CopyPath(NodeId),
+    /// Reveal the node in the OS file manager (Req 16 Reveal in Explorer).
+    Reveal(NodeId),
 }
 
 /// Reduce a keyboard gesture over the model and selection, returning the side
@@ -467,10 +471,56 @@ pub fn render_tree(
                         effects.push(ExplorerEffect::Open(row.id));
                     }
                 }
+                // Right-click context menu (Req 16). Selecting a row on
+                // right-click mirrors the legacy panel so the acted-on node is
+                // unambiguous.
+                resp.context_menu(|ui| {
+                    if let Some(eff) = context_menu_ui(ui, row) {
+                        sel.select_single(row.id);
+                        effects.push(eff);
+                    }
+                });
             }
         });
 
     effects
+}
+
+/// Render the right-click context menu for a tree row and return the chosen
+/// effect (if any). Slice A wires the actions the NavModel can perform without
+/// the legacy path-string state: Open (files), Copy Full Path, and Reveal in
+/// the OS file manager. The mutating operations (Rename, Delete, New) are shown
+/// disabled with a tooltip; they are ported with the full swap.
+///
+/// Validates: Requirement 24.2 (file-tree-panel Req 16.1-16.9)
+fn context_menu_ui(ui: &mut egui::Ui, row: &VisibleRow) -> Option<ExplorerEffect> {
+    let mut chosen = None;
+    // Open: only meaningful for leaf (file/dataset) nodes; containers use
+    // expand/collapse instead.
+    if !row.expandable && ui.button("Open").clicked() {
+        chosen = Some(ExplorerEffect::Open(row.id));
+        ui.close_menu();
+    }
+    if ui.button("Copy Full Path").clicked() {
+        chosen = Some(ExplorerEffect::CopyPath(row.id));
+        ui.close_menu();
+    }
+    if ui.button("Reveal in File Manager").clicked() {
+        chosen = Some(ExplorerEffect::Reveal(row.id));
+        ui.close_menu();
+    }
+    ui.separator();
+    // Deferred (full swap): mutating operations need a write provider + model
+    // refresh. Shown disabled so the menu is complete and honest.
+    ui.add_enabled(false, egui::Button::new("Rename"))
+        .on_disabled_hover_text("Available in a later update");
+    ui.add_enabled(false, egui::Button::new("Delete"))
+        .on_disabled_hover_text("Available in a later update");
+    ui.add_enabled(false, egui::Button::new("New File"))
+        .on_disabled_hover_text("Available in a later update");
+    ui.add_enabled(false, egui::Button::new("New Folder"))
+        .on_disabled_hover_text("Available in a later update");
+    chosen
 }
 
 /// Translate this frame's egui keyboard input into explorer gestures, run them

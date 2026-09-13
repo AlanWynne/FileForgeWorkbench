@@ -1150,7 +1150,7 @@ fn write_to_clipboard(text: &str) {
 /// Open the OS file manager at the parent directory of `path`.
 ///
 /// Validates: Requirement 16.14
-fn reveal_in_explorer(path: &str) {
+pub(crate) fn reveal_in_explorer(path: &str) {
     let target = std::path::Path::new(path);
     let dir = if target.is_dir() {
         target.to_path_buf()
