@@ -525,6 +525,38 @@ mod tests {
     }
 
     #[test]
+    fn catalog_child_uri_splits_to_catalog_relative_path_for_edit_ops() {
+        // Validates: Requirement 24.6 (B042) -- a catalog-subtree file node has
+        // scheme `catalog` and a catalog-relative path, and split_catalog_uri_path
+        // yields the catalog name + the sub-path an edit op passes to a provider
+        // rooted at the catalog's backing directory.
+        use ff_vfs::{DeleteOptions, VfsProvider};
+        let tmp = tempfile::TempDir::new().expect("tempdir"); // stands in for the catalog root
+        std::fs::create_dir(tmp.path().join("src")).expect("dir");
+        std::fs::write(tmp.path().join("src").join("main.rs"), b"x").expect("file");
+
+        // A file node under Native catalog "MyCat": vfs://catalog/MyCat/src/main.rs
+        let child = ResourceUri::new("catalog", "/MyCat/src/main.rs");
+        let (name, rel) = split_catalog_uri_path(child.path());
+        assert_eq!(name, "MyCat");
+        assert_eq!(rel, "/src/main.rs");
+
+        // A provider rooted at the catalog dir deletes the catalog-relative path.
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        let provider = {
+            let _g = rt.enter();
+            crate::posix_provider::PosixProvider::new(tmp.path().to_path_buf(), false)
+                .expect("provider")
+        };
+        rt.block_on(provider.delete(&rel, DeleteOptions { recursive: false }))
+            .expect("delete catalog-relative file");
+        assert!(
+            !tmp.path().join("src").join("main.rs").exists(),
+            "catalog file deleted via catalog-rooted provider + relative path"
+        );
+    }
+
+    #[test]
     fn copy_file_via_provider_read_create_write_round_trip() {
         // Validates: Requirement 24.2, 24.3 (Req 21) -- file paste copies bytes
         // from a source into a target directory through the VFS provider, and the

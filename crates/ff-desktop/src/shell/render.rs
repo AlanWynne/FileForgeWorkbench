@@ -969,35 +969,26 @@ impl WorkbenchShell {
         let Some(parent_uri) = self.nav_model.uri_of(parent).cloned() else {
             return;
         };
-        if parent_uri.scheme() != "posix" && parent_uri.scheme() != "local" {
-            self.open_error =
-                Some("New file/folder is only supported for local files in this view.".to_string());
-            return;
-        }
         let child = child_uri(&parent_uri, name);
-        let root_dir = dirs::home_dir()
-            .or_else(|| std::env::current_dir().ok())
-            .unwrap_or_else(|| std::path::PathBuf::from("."));
-        let provider = {
-            let _rt_guard = self.runtime.enter();
-            crate::posix_provider::PosixProvider::new(root_dir, false)
-        };
-        let Ok(provider) = provider else {
-            self.open_error = Some("Create failed: cannot open provider".to_string());
-            return;
+        let (provider, child_path) = match self.nav_edit_provider(&child) {
+            Ok(v) => v,
+            Err(e) => {
+                self.open_error = Some(format!("New file/folder: {e}"));
+                return;
+            }
         };
         let opts = CreateOptions {
             create_parents: false,
             is_directory: is_dir,
         };
-        let result = self.runtime.block_on(provider.create(child.path(), opts));
+        let result = self.runtime.block_on(provider.create(&child_path, opts));
         match result {
             Ok(()) => {
                 // Ensure the parent is expanded, then refresh its listing.
                 if let Some(n) = self.nav_model.tree.get_node_mut(parent) {
                     n.expanded = true;
                 }
-                self.expand_local_node(parent, &parent_uri);
+                self.refresh_nav_parent(parent);
             }
             Err(e) => self.open_error = Some(format!("Create failed: {e}")),
         }
@@ -1022,21 +1013,14 @@ impl WorkbenchShell {
         let Some(target_uri) = self.nav_model.uri_of(target).cloned() else {
             return;
         };
-        if target_uri.scheme() != "posix" && target_uri.scheme() != "local" {
-            self.open_error =
-                Some("Paste is only supported into local directories in this view.".to_string());
-            return;
-        }
-        let root_dir = dirs::home_dir()
-            .or_else(|| std::env::current_dir().ok())
-            .unwrap_or_else(|| std::path::PathBuf::from("."));
-        let provider = {
-            let _rt_guard = self.runtime.enter();
-            crate::posix_provider::PosixProvider::new(root_dir, false)
-        };
-        let Ok(provider) = provider else {
-            self.open_error = Some("Paste failed: cannot open provider".to_string());
-            return;
+        // Resolve the writable target provider (Local Files or a POSIX/Native
+        // catalog rooted at its backing path); rejects Mainframe/read-only.
+        let (target_provider, _target_path) = match self.nav_edit_provider(&target_uri) {
+            Ok(v) => v,
+            Err(e) => {
+                self.open_error = Some(format!("Paste: {e}"));
+                return;
+            }
         };
         let sources = self.nav_file_clipboard.clone();
         let mut errors = 0;
@@ -1046,23 +1030,38 @@ impl WorkbenchShell {
             if name.is_empty() {
                 continue;
             }
+            // Destination URI inherits the target scheme; resolve both source and
+            // destination to their (possibly different) providers + relative paths.
             let dest = child_uri(&target_uri, name);
-            // Skip a no-op copy onto itself.
-            if dest.path() == src.path() {
-                continue;
+            if dest.path() == src.path() && dest.scheme() == src.scheme() {
+                continue; // no-op copy onto itself
             }
+            let (src_provider, src_path) = match self.nav_edit_provider(src) {
+                Ok(v) => v,
+                Err(_) => {
+                    errors += 1;
+                    continue;
+                }
+            };
+            let (_dp, dest_path) = match self.nav_edit_provider(&dest) {
+                Ok(v) => v,
+                Err(_) => {
+                    errors += 1;
+                    continue;
+                }
+            };
             let copy = self.runtime.block_on(async {
-                let bytes = provider.read(src.path()).await?;
-                provider
+                let bytes = src_provider.read(&src_path).await?;
+                target_provider
                     .create(
-                        dest.path(),
+                        &dest_path,
                         CreateOptions {
                             create_parents: false,
                             is_directory: false,
                         },
                     )
                     .await?;
-                provider.write(dest.path(), &bytes).await
+                target_provider.write(&dest_path, &bytes).await
             });
             if copy.is_err() {
                 errors += 1;
@@ -1075,7 +1074,7 @@ impl WorkbenchShell {
         if let Some(n) = self.nav_model.tree.get_node_mut(target) {
             n.expanded = true;
         }
-        self.expand_local_node(target, &target_uri);
+        self.refresh_nav_parent(target);
     }
 
     /// Render the modern-explorer delete-confirmation dialog and apply the delete
@@ -1122,11 +1121,6 @@ impl WorkbenchShell {
         let Some(uri) = self.nav_model.uri_of(id).cloned() else {
             return;
         };
-        if uri.scheme() != "posix" && uri.scheme() != "local" {
-            self.open_error =
-                Some("Delete is only supported for local files in this view.".to_string());
-            return;
-        }
         let recursive = self
             .nav_model
             .tree
@@ -1134,27 +1128,20 @@ impl WorkbenchShell {
             .map(|n| n.node_type.is_expandable())
             .unwrap_or(false);
         let parent = self.nav_model.tree.get_node(id).map(|n| n.parent);
-        let root_dir = dirs::home_dir()
-            .or_else(|| std::env::current_dir().ok())
-            .unwrap_or_else(|| std::path::PathBuf::from("."));
-        let provider = {
-            let _rt_guard = self.runtime.enter();
-            crate::posix_provider::PosixProvider::new(root_dir, false)
-        };
-        let Ok(provider) = provider else {
-            self.open_error = Some("Delete failed: cannot open provider".to_string());
-            return;
+        let (provider, path) = match self.nav_edit_provider(&uri) {
+            Ok(v) => v,
+            Err(e) => {
+                self.open_error = Some(format!("Delete: {e}"));
+                return;
+            }
         };
         let result = self
             .runtime
-            .block_on(provider.delete(uri.path(), DeleteOptions { recursive }));
+            .block_on(provider.delete(&path, DeleteOptions { recursive }));
         match result {
             Ok(()) => {
                 if let Some(parent) = parent {
-                    if let Some(puri) = self.nav_model.uri_of(parent).cloned() {
-                        self.expand_local_node(parent, &puri);
-                    }
-                    self.nav_model.prune_uris();
+                    self.refresh_nav_parent(parent);
                 }
             }
             Err(e) => self.open_error = Some(format!("Delete failed: {e}")),
@@ -1217,41 +1204,101 @@ impl WorkbenchShell {
         let Some(uri) = self.nav_model.uri_of(id).cloned() else {
             return;
         };
-        if uri.scheme() != "posix" && uri.scheme() != "local" {
-            self.open_error =
-                Some("Rename is only supported for local files in this view.".to_string());
-            return;
-        }
+        // `rename_uri` preserves scheme + parent, so the new URI resolves to the
+        // same provider; take its provider-relative path for the destination.
         let new_uri = rename_uri(&uri, new_name);
-        let root_dir = dirs::home_dir()
-            .or_else(|| std::env::current_dir().ok())
-            .unwrap_or_else(|| std::path::PathBuf::from("."));
-        // Writable provider (read_only = false) for the rename. Enter the runtime
-        // context so the watcher can spawn (B040).
-        let provider = {
-            let _rt_guard = self.runtime.enter();
-            crate::posix_provider::PosixProvider::new(root_dir, false)
+        let (provider, old_path) = match self.nav_edit_provider(&uri) {
+            Ok(v) => v,
+            Err(e) => {
+                self.open_error = Some(format!("Rename: {e}"));
+                return;
+            }
         };
-        let Ok(provider) = provider else {
-            self.open_error = Some("Rename failed: cannot open provider".to_string());
-            return;
+        let new_path = match self.nav_edit_provider(&new_uri) {
+            Ok((_, p)) => p,
+            Err(e) => {
+                self.open_error = Some(format!("Rename: {e}"));
+                return;
+            }
         };
-        let result = self
-            .runtime
-            .block_on(provider.rename(uri.path(), new_uri.path()));
+        let result = self.runtime.block_on(provider.rename(&old_path, &new_path));
         match result {
             Ok(()) => {
-                // Refresh the parent listing so the renamed node is reflected.
                 let parent = self.nav_model.tree.get_node(id).map(|n| n.parent);
                 if let Some(parent) = parent {
-                    if let Some(puri) = self.nav_model.uri_of(parent).cloned() {
-                        self.expand_local_node(parent, &puri);
-                    }
-                    self.nav_model.prune_uris();
+                    self.refresh_nav_parent(parent);
                 }
             }
             Err(e) => self.open_error = Some(format!("Rename failed: {e}")),
         }
+    }
+
+    /// Resolve a node URI to a writable provider plus the provider-relative path
+    /// for an edit operation (delete/rename/new/paste). Supports the Local Files
+    /// subtree (`posix`/`local`, rooted at home) and POSIX/Native catalog
+    /// subtrees (`catalog`, rooted at the catalog's backing path). Mainframe
+    /// dataset nodes (`dataset`) and read-only catalogs are rejected with a
+    /// message. (B042.)
+    ///
+    /// Validates: Requirement 24.6 (file-tree-panel Req 16.10-16.13)
+    fn nav_edit_provider(
+        &self,
+        uri: &ff_vfs::ResourceUri,
+    ) -> Result<(crate::posix_provider::PosixProvider, String), String> {
+        use crate::catalog_registry::CatalogType;
+        use crate::nav_model::split_catalog_uri_path;
+        let (root_dir, rel_path) = match uri.scheme() {
+            "posix" | "local" => {
+                let home = dirs::home_dir()
+                    .or_else(|| std::env::current_dir().ok())
+                    .unwrap_or_else(|| std::path::PathBuf::from("."));
+                (home, uri.path().to_string())
+            }
+            "catalog" => {
+                let (name, sub_path) = split_catalog_uri_path(uri.path());
+                let cat = self
+                    .files_panel
+                    .registry
+                    .get_by_name(name)
+                    .ok_or_else(|| format!("Catalog '{name}' not found"))?;
+                match cat.catalog_type {
+                    CatalogType::Posix | CatalogType::Native => {}
+                    CatalogType::Mainframe => {
+                        return Err("Editing Mainframe datasets is available in a later update."
+                            .to_string());
+                    }
+                }
+                if cat.read_only {
+                    return Err(format!("Catalog '{name}' is read-only."));
+                }
+                (std::path::PathBuf::from(&cat.path), sub_path)
+            }
+            "dataset" => {
+                return Err("Editing Mainframe datasets is available in a later update.".to_string())
+            }
+            other => return Err(format!("Editing is not supported for '{other}' resources.")),
+        };
+        // Writable provider; enter the runtime so the watcher can spawn (B040).
+        let provider = {
+            let _rt_guard = self.runtime.enter();
+            crate::posix_provider::PosixProvider::new(root_dir, false)
+        };
+        provider
+            .map(|p| (p, rel_path))
+            .map_err(|_| "cannot open provider".to_string())
+    }
+
+    /// Refresh a parent node's listing after an edit, dispatching on its URI
+    /// scheme (catalog subtrees re-list via the catalog path). (B042.)
+    fn refresh_nav_parent(&mut self, parent: ff_file_tree::NodeId) {
+        if let Some(puri) = self.nav_model.uri_of(parent).cloned() {
+            if puri.scheme() == "catalog" {
+                self.expand_catalog_node(parent, &puri);
+            } else {
+                self.expand_local_node(parent, &puri);
+            }
+        }
+        self.nav_model.prune_uris();
     }
 
     /// Expand a Local Files (posix/local) node: list its provider-relative path
