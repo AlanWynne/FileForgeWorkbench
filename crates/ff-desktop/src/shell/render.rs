@@ -335,6 +335,12 @@ impl WorkbenchShell {
         }
 
         let is_file_explorer = self.tabs.active_tab().kind == TabKind::FileExplorerPanel;
+        // CR-NR-060 Slice A (parallel-build): render the NavModel-backed explorer
+        // preview beneath the legacy panel when the preview gate is on. Default
+        // off, so the shipping explorer is unaffected until the swap.
+        if is_file_explorer && self.nav_explorer_preview {
+            self.render_nav_explorer_preview(ctx);
+        }
         if is_file_explorer {
             let open_path = egui::CentralPanel::default().show(ctx, |ui| {
                 // Req 20.2–20.12 — keyboard handling when explorer has focus.
@@ -800,6 +806,94 @@ impl WorkbenchShell {
                 }
             });
         } // end !is_file_explorer
+    }
+
+    /// Render the NavModel-backed File Explorer preview (CR-NR-060 Slice A,
+    /// parallel-build). Seeds the Local Files root from the local/POSIX provider
+    /// on first display, renders the modern tree, and applies the returned
+    /// effects (expand -> async VFS list; collapse; open -> file.open dispatch or
+    /// OS default app). Gated behind `nav_explorer_preview`; removed at the swap.
+    ///
+    /// Validates: Requirement 24.1, 24.3, 24.5, 24.9
+    fn render_nav_explorer_preview(&mut self, ctx: &egui::Context) {
+        use crate::explorer_view::{render_tree, resolve_open, ExplorerEffect, OpenTarget};
+        use crate::nav_model::list_via_provider;
+
+        // Seed the Local Files root on first display: associate its URI and load
+        // its immediate children via the provider (never std::fs).
+        let local_root = self.nav_model.tree.root_categories[0];
+        let needs_seed = self
+            .nav_model
+            .tree
+            .get_node(local_root)
+            .map(|n| !n.children_loaded)
+            .unwrap_or(false);
+        if needs_seed {
+            let root_dir = dirs::home_dir()
+                .or_else(|| std::env::current_dir().ok())
+                .unwrap_or_else(|| std::path::PathBuf::from("."));
+            if let Ok(provider) = crate::posix_provider::PosixProvider::new(root_dir, true) {
+                let root_uri = ff_vfs::ResourceUri::new("posix", "/");
+                self.nav_model.set_uri(local_root, root_uri.clone());
+                match list_via_provider(&self.runtime, &provider, root_uri.path()) {
+                    Ok(entries) => self.nav_model.apply_listing(local_root, "posix", &entries),
+                    Err(e) => self.nav_model.apply_load_error(local_root, e),
+                }
+            }
+        }
+
+        let mut effects = Vec::new();
+        egui::TopBottomPanel::bottom("nav_explorer_preview")
+            .resizable(true)
+            .default_height(240.0)
+            .show(ctx, |ui| {
+                ui.label(
+                    egui::RichText::new("File Explorer (preview -- ff-file-tree)")
+                        .monospace()
+                        .strong(),
+                );
+                effects = render_tree(ui, &self.nav_model, &mut self.nav_selection, &self.palette);
+            });
+
+        // Apply interaction effects outside the render borrow.
+        for eff in effects {
+            match eff {
+                ExplorerEffect::Expand(id) => {
+                    if let Some(uri) = self.nav_model.uri_of(id).cloned() {
+                        // Root-jail provider rooted at the local root; the URI
+                        // path is provider-relative (Requirement 24.3).
+                        let root_dir = dirs::home_dir()
+                            .or_else(|| std::env::current_dir().ok())
+                            .unwrap_or_else(|| std::path::PathBuf::from("."));
+                        if let Ok(provider) =
+                            crate::posix_provider::PosixProvider::new(root_dir, true)
+                        {
+                            match list_via_provider(&self.runtime, &provider, uri.path()) {
+                                Ok(entries) => {
+                                    self.nav_model.apply_listing(id, uri.scheme(), &entries)
+                                }
+                                Err(e) => self.nav_model.apply_load_error(id, e),
+                            }
+                        }
+                    } else {
+                        self.nav_model.tree.toggle_expand(id);
+                    }
+                }
+                ExplorerEffect::Collapse(id) => self.nav_model.tree.toggle_expand(id),
+                ExplorerEffect::Open(id) => match resolve_open(&self.nav_model, id) {
+                    OpenTarget::Editor(uri) => {
+                        let mut p = ff_command::CommandParams::new();
+                        p.insert("path", uri.path());
+                        let _ = self.dispatch.execute_command("file.open", p);
+                    }
+                    OpenTarget::External(uri) => {
+                        crate::context_menu::launch_default_app(uri.path());
+                    }
+                    OpenTarget::None => {}
+                },
+                ExplorerEffect::None => {}
+            }
+        }
     }
 }
 

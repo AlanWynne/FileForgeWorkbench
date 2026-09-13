@@ -375,6 +375,15 @@ pub struct WorkbenchShell {
     ///
     /// Validates: Requirement 1.3 file-tree-panel (fix B019)
     file_explorer_panel_width: f32,
+    /// Canonical ff-file-tree-backed navigation model for the File Explorer
+    /// (CR-NR-060 Slice A). Runs in parallel with the legacy panel until the
+    /// swap; identity is NodeId + ResourceUri (Requirement 24.1, 24.2).
+    nav_model: crate::nav_model::NavModel,
+    /// Selection/cursor state for the NavModel-backed explorer (Requirement 24.2).
+    nav_selection: crate::explorer_view::ExplorerSelection,
+    /// When true, render the new NavModel-backed explorer preview alongside the
+    /// legacy panel (parallel-build gate; removed at swap). Default false.
+    nav_explorer_preview: bool,
     /// Toolchain panel state — GCC and Rust plugin entries.
     toolchain_panel: ToolchainPanelState,
     /// Whether the Toolchain Panel is currently visible.
@@ -635,6 +644,9 @@ impl WorkbenchShell {
             files_panel: FilesPanelState::new(),
             file_explorer_panel: FileExplorerPanelState::new(),
             file_explorer_panel_width: 260.0,
+            nav_model: crate::nav_model::NavModel::new(),
+            nav_selection: crate::explorer_view::ExplorerSelection::default(),
+            nav_explorer_preview: false,
             toolchain_panel: ToolchainPanelState::new(),
             show_toolchain_panel: false,
             pending_new_pom: false,
