@@ -393,6 +393,10 @@ pub struct WorkbenchShell {
     /// Active delete-confirmation dialog for the modern explorer: (target node,
     /// display label). `None` when no delete is pending. (Req 16 Delete.)
     nav_delete: Option<(ff_file_tree::NodeId, String)>,
+
+    /// Active new-child dialog for the modern explorer: (parent directory node,
+    /// is_directory, name buffer). `None` when none pending. (Req 16 New.)
+    nav_new: Option<(ff_file_tree::NodeId, bool, String)>,
     /// Toolchain panel state — GCC and Rust plugin entries.
     toolchain_panel: ToolchainPanelState,
     /// Whether the Toolchain Panel is currently visible.
@@ -658,6 +662,7 @@ impl WorkbenchShell {
             use_legacy_explorer: false,
             nav_rename: None,
             nav_delete: None,
+            nav_new: None,
             toolchain_panel: ToolchainPanelState::new(),
             show_toolchain_panel: false,
             pending_new_pom: false,

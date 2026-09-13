@@ -162,6 +162,14 @@ pub enum ExplorerEffect {
     Rename(NodeId),
     /// Begin deleting the node (opens the confirmation dialog) (Req 16 Delete).
     Delete(NodeId),
+    /// Begin creating a new child (opens the name dialog). `anchor` is the
+    /// right-clicked node; the shell resolves the containing directory (the
+    /// anchor itself if it is a directory, else its parent). `is_dir` chooses
+    /// folder vs file (Req 16 New File / New Folder).
+    NewChild {
+        anchor: NodeId,
+        is_dir: bool,
+    },
 }
 
 /// Reduce a keyboard gesture over the model and selection, returning the side
@@ -550,12 +558,20 @@ fn context_menu_ui(ui: &mut egui::Ui, row: &VisibleRow) -> Option<ExplorerEffect
         chosen = Some(ExplorerEffect::Delete(row.id));
         ui.close_menu();
     }
-    // Deferred (full swap): remaining mutating operations need a write provider +
-    // model refresh. Shown disabled so the menu is complete and honest.
-    ui.add_enabled(false, egui::Button::new("New File"))
-        .on_disabled_hover_text("Available in a later update");
-    ui.add_enabled(false, egui::Button::new("New Folder"))
-        .on_disabled_hover_text("Available in a later update");
+    if ui.button("New File").clicked() {
+        chosen = Some(ExplorerEffect::NewChild {
+            anchor: row.id,
+            is_dir: false,
+        });
+        ui.close_menu();
+    }
+    if ui.button("New Folder").clicked() {
+        chosen = Some(ExplorerEffect::NewChild {
+            anchor: row.id,
+            is_dir: true,
+        });
+        ui.close_menu();
+    }
     chosen
 }
 

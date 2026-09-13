@@ -962,6 +962,18 @@ impl WorkbenchShell {
                         self.nav_delete = Some((id, label));
                     }
                 }
+                ExplorerEffect::NewChild { anchor, is_dir } => {
+                    // Resolve the containing directory: the anchor itself if it
+                    // is a directory, else the anchor's parent (Req 16 New).
+                    if let Some(node) = self.nav_model.tree.get_node(anchor) {
+                        let parent_dir = if node.node_type.is_expandable() {
+                            anchor
+                        } else {
+                            node.parent
+                        };
+                        self.nav_new = Some((parent_dir, is_dir, String::new()));
+                    }
+                }
                 ExplorerEffect::Reveal(id) => {
                     // Req 16 Reveal in Explorer: open the OS file manager at the
                     // node. Only local/POSIX nodes map to a real host path.
@@ -980,9 +992,100 @@ impl WorkbenchShell {
             }
         }
 
-        // Rename + Delete dialogs (Req 16) -- modal, applied on confirm.
+        // Rename + Delete + New dialogs (Req 16) -- modal, applied on confirm.
         self.render_nav_rename_dialog(ctx);
         self.render_nav_delete_dialog(ctx);
+        self.render_nav_new_dialog(ctx);
+    }
+
+    /// Render the modern-explorer new-file / new-folder dialog and create the
+    /// child on confirm (local/POSIX only), then refresh the parent listing.
+    ///
+    /// Validates: Requirement 24.2 (file-tree-panel Req 16 New File / New Folder)
+    fn render_nav_new_dialog(&mut self, ctx: &egui::Context) {
+        let Some((parent, is_dir, mut buffer)) = self.nav_new.take() else {
+            return;
+        };
+        let title = if is_dir { "New Folder" } else { "New File" };
+        let mut still_open = true;
+        let mut confirm = false;
+        egui::Window::new(title)
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+            .show(ctx, |ui| {
+                ui.label("Name:");
+                let resp = ui.text_edit_singleline(&mut buffer);
+                resp.request_focus();
+                let enter = resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+                ui.horizontal(|ui| {
+                    if ui.button("Create").clicked() || enter {
+                        confirm = true;
+                    }
+                    if ui.button("Cancel").clicked() {
+                        still_open = false;
+                    }
+                });
+                if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                    still_open = false;
+                }
+            });
+
+        if confirm {
+            self.apply_nav_new(parent, is_dir, buffer.trim());
+            return;
+        }
+        if still_open {
+            self.nav_new = Some((parent, is_dir, buffer));
+        }
+    }
+
+    /// Create a new child (`is_dir` chooses folder vs file) named `name` under
+    /// the `parent` directory node via a writable provider, then refresh the
+    /// parent listing. Local/POSIX only.
+    ///
+    /// Validates: Requirement 24.2, 24.3 (Req 16 New File / New Folder)
+    fn apply_nav_new(&mut self, parent: ff_file_tree::NodeId, is_dir: bool, name: &str) {
+        use crate::nav_model::child_uri;
+        use ff_vfs::{CreateOptions, VfsProvider};
+        if name.is_empty() {
+            return;
+        }
+        let Some(parent_uri) = self.nav_model.uri_of(parent).cloned() else {
+            return;
+        };
+        if parent_uri.scheme() != "posix" && parent_uri.scheme() != "local" {
+            self.open_error =
+                Some("New file/folder is only supported for local files in this view.".to_string());
+            return;
+        }
+        let child = child_uri(&parent_uri, name);
+        let root_dir = dirs::home_dir()
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| std::path::PathBuf::from("."));
+        let provider = {
+            let _rt_guard = self.runtime.enter();
+            crate::posix_provider::PosixProvider::new(root_dir, false)
+        };
+        let Ok(provider) = provider else {
+            self.open_error = Some("Create failed: cannot open provider".to_string());
+            return;
+        };
+        let opts = CreateOptions {
+            create_parents: false,
+            is_directory: is_dir,
+        };
+        let result = self.runtime.block_on(provider.create(child.path(), opts));
+        match result {
+            Ok(()) => {
+                // Ensure the parent is expanded, then refresh its listing.
+                if let Some(n) = self.nav_model.tree.get_node_mut(parent) {
+                    n.expanded = true;
+                }
+                self.expand_local_node(parent, &parent_uri);
+            }
+            Err(e) => self.open_error = Some(format!("Create failed: {e}")),
+        }
     }
 
     /// Render the modern-explorer delete-confirmation dialog and apply the delete

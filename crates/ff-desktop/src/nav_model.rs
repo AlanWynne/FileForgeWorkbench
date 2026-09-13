@@ -485,6 +485,45 @@ mod tests {
     }
 
     #[test]
+    fn create_via_writable_provider_makes_file_and_folder() {
+        // Validates: Requirement 24.2, 24.3 -- new file and new folder are
+        // created through the VFS provider and appear in the refreshed listing.
+        use ff_vfs::{CreateOptions, VfsProvider};
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        let provider = {
+            let _g = rt.enter();
+            crate::posix_provider::PosixProvider::new(tmp.path().to_path_buf(), false)
+                .expect("provider")
+        };
+        // child_uri mirrors the shell's path construction for a new child.
+        let parent = ResourceUri::new("posix", "/");
+        let file = child_uri(&parent, "note.txt");
+        let folder = child_uri(&parent, "sub");
+        rt.block_on(provider.create(
+            file.path(),
+            CreateOptions {
+                create_parents: false,
+                is_directory: false,
+            },
+        ))
+        .expect("create file");
+        rt.block_on(provider.create(
+            folder.path(),
+            CreateOptions {
+                create_parents: false,
+                is_directory: true,
+            },
+        ))
+        .expect("create folder");
+
+        let entries = list_via_provider(&rt, &provider, "/").expect("list");
+        let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
+        assert!(names.contains(&"note.txt"), "new file present");
+        assert!(names.contains(&"sub"), "new folder present");
+    }
+
+    #[test]
     fn split_catalog_uri_path_extracts_name_and_root() {
         // Validates: Requirement 24.8 -- catalog root lists at "/"
         assert_eq!(
