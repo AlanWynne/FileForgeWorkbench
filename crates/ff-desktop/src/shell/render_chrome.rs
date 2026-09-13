@@ -219,15 +219,12 @@ impl WorkbenchShell {
                     }
                 });
                 ui.menu_button("Utilities", |ui| {
-                    // CR-NR-060 Slice A preview toggle: show the modern
-                    // ff-file-tree-backed File Explorer beneath the legacy panel
-                    // (File Explorer Context / option 2). Parallel-build preview;
-                    // removed at the swap.
+                    // CR-NR-060 Slice A swap: the modern ff-file-tree-backed File
+                    // Explorer is the default. This fallback toggle switches back
+                    // to the legacy inline tree (File Explorer Context / option 2)
+                    // until the legacy path is retired entirely.
                     if ui
-                        .checkbox(
-                            &mut self.nav_explorer_preview,
-                            "Modern File Explorer (preview)",
-                        )
+                        .checkbox(&mut self.use_legacy_explorer, "Use legacy File Explorer")
                         .clicked()
                     {
                         ui.close_menu();

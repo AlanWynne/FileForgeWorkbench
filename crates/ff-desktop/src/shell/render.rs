@@ -335,13 +335,11 @@ impl WorkbenchShell {
         }
 
         let is_file_explorer = self.tabs.active_tab().kind == TabKind::FileExplorerPanel;
-        // CR-NR-060 Slice A (parallel-build): render the NavModel-backed explorer
-        // preview beneath the legacy panel when the preview gate is on. Default
-        // off, so the shipping explorer is unaffected until the swap.
-        if is_file_explorer && self.nav_explorer_preview {
-            self.render_nav_explorer_preview(ctx);
-        }
-        if is_file_explorer {
+        // CR-NR-060 Slice A (swap, option b): the NavModel-backed modern explorer
+        // is the default File Explorer content. The legacy inline tree remains as
+        // a fallback (Settings > Utilities toggle) until it is retired entirely.
+        let use_modern_explorer = is_file_explorer && !self.use_legacy_explorer;
+        if is_file_explorer && self.use_legacy_explorer {
             let open_path = egui::CentralPanel::default().show(ctx, |ui| {
                 // Req 20.2–20.12 — keyboard handling when explorer has focus.
                 if self.file_explorer_panel.explorer_focused {
@@ -471,6 +469,13 @@ impl WorkbenchShell {
                         let _ = col; // column navigation deferred to Phase W follow-up
                     }
                 });
+        }
+
+        // CR-NR-060 Slice A (swap): modern explorer is the CentralPanel for the
+        // File Explorer Context. Rendered here -- after all bottom/side panels --
+        // so the CentralPanel is added last (egui panel-ordering requirement).
+        if use_modern_explorer {
+            self.render_nav_explorer(ctx);
         }
 
         // Validates: Requirement 14.8 — central panel dispatches on tab kind
@@ -808,14 +813,16 @@ impl WorkbenchShell {
         } // end !is_file_explorer
     }
 
-    /// Render the NavModel-backed File Explorer preview (CR-NR-060 Slice A,
-    /// parallel-build). Seeds the Local Files root from the local/POSIX provider
-    /// on first display, renders the modern tree, and applies the returned
-    /// effects (expand -> async VFS list; collapse; open -> file.open dispatch or
-    /// OS default app). Gated behind `nav_explorer_preview`; removed at the swap.
+    /// Render the NavModel-backed File Explorer as the primary File Explorer
+    /// Context content (CR-NR-060 Slice A). Seeds the Local Files root from the
+    /// local/POSIX provider on first display, renders the modern tree in the
+    /// CentralPanel, and applies the returned effects (expand -> async VFS list;
+    /// collapse; open -> file.open dispatch, OS default app, or dataset resolve;
+    /// copy path; reveal). This is the default explorer; the legacy inline tree
+    /// remains available as a fallback when `use_legacy_explorer` is set.
     ///
-    /// Validates: Requirement 24.1, 24.3, 24.5, 24.9
-    fn render_nav_explorer_preview(&mut self, ctx: &egui::Context) {
+    /// Validates: Requirement 24.1, 24.3, 24.5, 24.7, 24.9
+    fn render_nav_explorer(&mut self, ctx: &egui::Context) {
         use crate::explorer_view::{
             keyboard_effects, render_tree, resolve_open, ExplorerEffect, OpenTarget,
         };
@@ -869,31 +876,25 @@ impl WorkbenchShell {
         }
 
         let mut effects = Vec::new();
-        egui::TopBottomPanel::bottom("nav_explorer_preview")
-            .resizable(true)
-            .default_height(240.0)
-            .show(ctx, |ui| {
-                ui.label(
-                    egui::RichText::new("File Explorer (preview -- ff-file-tree)")
-                        .monospace()
-                        .strong(),
-                );
-                // Keyboard navigation (Req 8/20) when the preview panel is
-                // hovered/focused, then mouse interactions from the tree.
-                if ui.rect_contains_pointer(ui.max_rect()) {
-                    effects.extend(keyboard_effects(
-                        ui,
-                        &self.nav_model,
-                        &mut self.nav_selection,
-                    ));
-                }
-                effects.extend(render_tree(
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.label(egui::RichText::new("File Explorer").monospace().strong());
+            ui.separator();
+            // Keyboard navigation (Req 8/20) when the explorer is hovered/
+            // focused, then mouse interactions from the tree.
+            if ui.rect_contains_pointer(ui.max_rect()) {
+                effects.extend(keyboard_effects(
                     ui,
                     &self.nav_model,
                     &mut self.nav_selection,
-                    &self.palette,
                 ));
-            });
+            }
+            effects.extend(render_tree(
+                ui,
+                &self.nav_model,
+                &mut self.nav_selection,
+                &self.palette,
+            ));
+        });
 
         // Apply interaction effects outside the render borrow.
         for eff in effects {

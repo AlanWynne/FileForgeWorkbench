@@ -381,9 +381,10 @@ pub struct WorkbenchShell {
     nav_model: crate::nav_model::NavModel,
     /// Selection/cursor state for the NavModel-backed explorer (Requirement 24.2).
     nav_selection: crate::explorer_view::ExplorerSelection,
-    /// When true, render the new NavModel-backed explorer preview alongside the
-    /// legacy panel (parallel-build gate; removed at swap). Default false.
-    nav_explorer_preview: bool,
+    /// When true, fall back to the legacy inline File Explorer tree instead of
+    /// the default NavModel-backed modern explorer (CR-NR-060 Slice A swap).
+    /// Default false -- the modern explorer is the default.
+    use_legacy_explorer: bool,
     /// Toolchain panel state — GCC and Rust plugin entries.
     toolchain_panel: ToolchainPanelState,
     /// Whether the Toolchain Panel is currently visible.
@@ -646,7 +647,7 @@ impl WorkbenchShell {
             file_explorer_panel_width: 260.0,
             nav_model: crate::nav_model::NavModel::new(),
             nav_selection: crate::explorer_view::ExplorerSelection::default(),
-            nav_explorer_preview: false,
+            use_legacy_explorer: false,
             toolchain_panel: ToolchainPanelState::new(),
             show_toolchain_panel: false,
             pending_new_pom: false,
