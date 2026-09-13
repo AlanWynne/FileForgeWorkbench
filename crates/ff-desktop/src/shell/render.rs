@@ -834,7 +834,14 @@ impl WorkbenchShell {
             let root_dir = dirs::home_dir()
                 .or_else(|| std::env::current_dir().ok())
                 .unwrap_or_else(|| std::path::PathBuf::from("."));
-            if let Ok(provider) = crate::posix_provider::PosixProvider::new(root_dir, true) {
+            // Enter the Tokio runtime context so the provider's file-watcher
+            // (which calls `tokio::spawn`) can start; constructing the provider
+            // outside a runtime context panics ("no reactor running") -- B040.
+            let provider = {
+                let _rt_guard = self.runtime.enter();
+                crate::posix_provider::PosixProvider::new(root_dir, true)
+            };
+            if let Ok(provider) = provider {
                 let root_uri = ff_vfs::ResourceUri::new("posix", "/");
                 self.nav_model.set_uri(local_root, root_uri.clone());
                 match list_via_provider(&self.runtime, &provider, root_uri.path()) {
@@ -898,9 +905,13 @@ impl WorkbenchShell {
                         let root_dir = dirs::home_dir()
                             .or_else(|| std::env::current_dir().ok())
                             .unwrap_or_else(|| std::path::PathBuf::from("."));
-                        if let Ok(provider) =
+                        // Enter the runtime context so the provider's watcher can
+                        // spawn (constructing outside a runtime panics -- B040).
+                        let provider = {
+                            let _rt_guard = self.runtime.enter();
                             crate::posix_provider::PosixProvider::new(root_dir, true)
-                        {
+                        };
+                        if let Ok(provider) = provider {
                             match list_via_provider(&self.runtime, &provider, uri.path()) {
                                 Ok(entries) => {
                                     self.nav_model.apply_listing(id, uri.scheme(), &entries)
