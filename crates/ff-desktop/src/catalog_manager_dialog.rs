@@ -290,6 +290,22 @@ pub fn render(
                         }
                         None => {
                             let catalog = build_catalog(form);
+                            // Create the physical repository structure now for
+                            // Mainframe catalogs (B041): without this the catalog
+                            // is metadata-only and the first dataset allocation
+                            // fails with "repository root does not exist". Wired
+                            // to the previously-inert `create_repository_now`
+                            // checkbox (default on). Validates: Requirement 12.3.
+                            if form.catalog_type == CatalogType::Mainframe
+                                && form.create_repository_now
+                            {
+                                let repo = ff_dscatalog::repository::Repository::new(&catalog.path);
+                                if let Err(e) = repo.initialize(&catalog.name) {
+                                    form.error = Some(format!("Failed to create repository: {e}"));
+                                    // Do not register/confirm on failure.
+                                    return;
+                                }
+                            }
                             // register() cannot fail here — validate() already checked uniqueness
                             let _ = registry.register(catalog);
                             form.error = None;

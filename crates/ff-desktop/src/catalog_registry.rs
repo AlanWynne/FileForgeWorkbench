@@ -14,6 +14,7 @@ use ff_dscatalog::{
     catalog::Catalog,
     dataset::{AllocParams as DsAllocParams, DatasetRecord},
     error::CatalogError,
+    repository::Repository,
 };
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -213,7 +214,17 @@ impl CatalogRegistry {
                 name: catalog_name.to_string(),
                 operation: "open_dscatalog".to_string(),
             })?;
-        Catalog::mount(std::path::Path::new(&entry.path), 1)
+        let path = std::path::Path::new(&entry.path);
+        // Self-heal metadata-only catalogs (B041): a Mainframe catalog created
+        // before repository-initialisation was wired has no on-disk repository,
+        // so mount's validate() fails with "repository root does not exist".
+        // `initialize` is idempotent (create_dir_all + IF NOT EXISTS schema), so
+        // it is safe to call on every mount to guarantee the structure exists.
+        let repository = Repository::new(path);
+        if repository.validate().is_err() {
+            repository.initialize(catalog_name)?;
+        }
+        Catalog::mount(path, 1)
     }
 
     /// Allocate a dataset in the named Mainframe catalog via ff-dscatalog.
@@ -305,6 +316,55 @@ mod tests {
             mount_point: None,
             read_only: false,
         }
+    }
+
+    /// Allocating into a Mainframe catalog whose repository directory does not
+    /// yet exist self-heals: `open_dscatalog` initialises the repository before
+    /// mount, so allocation succeeds instead of failing with "repository root
+    /// does not exist" (B041).
+    ///
+    /// Validates: Requirement 13.1 (repository self-heal on mount)
+    #[test]
+    fn allocate_into_uninitialised_mainframe_catalog_self_heals() {
+        use ff_dscatalog::dataset::{AllocParams, Dsorg, Recfm};
+        use ff_dscatalog::dsn::Dsn;
+        use ff_dscatalog::hierarchy::CatalogScope;
+
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        // Point the catalog at a subdirectory that does NOT exist on disk,
+        // mirroring a metadata-only catalog created via the registry.
+        let repo_path = tmp
+            .path()
+            .join("catalogs")
+            .join("mainframe")
+            .join("TESTING");
+        assert!(!repo_path.exists(), "precondition: repo dir absent");
+
+        let mut reg = CatalogRegistry::new();
+        let mut cat = mainframe_catalog("TESTING");
+        cat.path = repo_path.to_string_lossy().into_owned();
+        reg.register(cat).expect("register");
+
+        let params = AllocParams {
+            dsn: Dsn::parse("TESTING.DATA").expect("dsn"),
+            dsorg: Dsorg::PS,
+            recfm: Some(Recfm::FB),
+            lrecl: Some(80),
+            blksize: Some(800),
+            dir_blocks: None,
+            gdg_limit: None,
+            gdg_scratch: None,
+            subtype: None,
+            description: None,
+            scope: CatalogScope::User,
+        };
+
+        reg.allocate("TESTING", params)
+            .expect("allocation should succeed after repository self-heal");
+        assert!(repo_path.exists(), "repository directory created");
+        let datasets = reg.list_datasets("TESTING").expect("list");
+        assert_eq!(datasets.len(), 1);
+        assert_eq!(datasets[0].dsn.as_str(), "TESTING.DATA");
     }
 
     /// Validates: Requirement 2.3 — register adds a catalog to the list.
