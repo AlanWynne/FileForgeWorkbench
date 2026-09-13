@@ -1539,3 +1539,49 @@ data = { ... }  # Opaque layout structure from ff-layout serialisation
 | `session.clear` | Clear session state (reset to empty) | -- |
 | `session.recent_clear` | Clear the recent files list | -- |
 | `app.exit` | Initiate the exit sequence | Alt+F4 |
+
+
+## Design Delta: Calendar Responsive Hide (Requirement 14.43-14.45, CR-NR-059) -- DEFERRED
+
+> DEFERRED (CR-NR-059). This delta records the intended design so the criteria
+> are traceable. No source code is written until a separate implementation
+> instruction is given.
+
+The POM and any Menu_Workspace render the option list on the left and the
+calendar panel on the right (Requirement 14.4). On a small Workspace the fixed
+calendar grid can no longer fit and is currently drawn deformed/clipped. This
+delta makes the calendar a size-gated element.
+
+### Approach
+
+- Define a `CALENDAR_MIN_RENDER_SIZE` constant in `primary_option_menu.rs`: the
+  smallest `egui::Vec2` (width, height) in which the calendar header, day-of-week
+  header, full month grid, time line, and day-of-year line fit at their normal
+  fixed size without truncation. The concrete value is fixed here at
+  implementation time (a first estimate is roughly 220 x 200 logical points; to
+  be confirmed against the rendered widget).
+- In `primary_option_menu::render()` (or its call site in
+  `shell.rs::render_central_panel()`), measure the area available to the
+  option-and-calendar region for the current frame via `ui.available_size()`.
+- WHEN either dimension of the available area is below the corresponding
+  dimension of `CALENDAR_MIN_RENDER_SIZE`, skip emitting the calendar widgets for
+  that frame entirely (Requirement 14.43). The option list and `Command ===>`
+  field are laid out to use the reclaimed space and remain fully functional.
+- WHEN the available area is greater than or equal to `CALENDAR_MIN_RENDER_SIZE`,
+  render the calendar in its normal position (Requirement 14.44).
+- The decision is recomputed every frame from the available area alone; it reads
+  no persisted setting and requires no user action (Requirement 14.44 note).
+
+### State invariance (Requirement 14.45)
+
+Hiding is a pure render-time branch. The existing `pom_calendar_offset` field on
+the POM tab state (and any current-day tracking) is neither read for the hide
+decision nor mutated by it, so restoring the calendar shows exactly the month
+that would otherwise have been displayed. `CalendarNav` handling is unchanged.
+
+### Scope
+
+Render/layout only. No new crate dependency, no new command, no config key, no
+session-persistence change, and no change to calendar navigation
+(Requirement 14.41/14.42). Applies uniformly to the POM (Requirement 14) and to
+Menu_Workspace tabs that display a calendar (menu-workspace Requirement 2).

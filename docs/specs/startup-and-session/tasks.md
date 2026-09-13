@@ -146,3 +146,23 @@ Completed work:
 - [x] 33. TCR update for Requirement 20
   - [x] 33.1 Update docs/quality/TCR.md -- mark all Req 20.1-20.6 rows as covered once tests pass
   - Covers: Requirement 20 (all criteria)
+
+
+## Phase (calendar-responsive) Tasks -- Calendar Responsive Hide (Req 14.43-14.45) -- DEFERRED
+
+DEFERRED (CR-NR-059). Accepted but not scheduled. These tasks are recorded so
+the acceptance criteria are traceable; no source code is written until a
+separate implementation instruction is given.
+
+- [ ] 27. Calendar responsive hide on small Workspace (ff-desktop)
+  - DEFERRED: not scheduled -- do not implement without a separate instruction.
+  - [ ] 27.1 Add `CALENDAR_MIN_RENDER_SIZE` constant to `primary_option_menu.rs` (smallest area that fits the calendar at normal size)
+    - Validates: Requirement 14.43
+  - [ ] 27.2 In `primary_option_menu::render()` (or its `shell.rs` call site), read the available area and skip emitting the calendar widgets when either dimension is below `CALENDAR_MIN_RENDER_SIZE`; lay out the option list and command field to use the reclaimed space
+    - Validates: Requirement 14.43
+  - [ ] 27.3 Restore the calendar to its normal position on the next frame when the available area is >= `CALENDAR_MIN_RENDER_SIZE`; base the decision solely on the current frame's available area (no persisted setting, no user action)
+    - Validates: Requirement 14.44
+  - [ ] 27.4 Ensure the hide/restore branch does not read or mutate `pom_calendar_offset` or current-day tracking, so the restored calendar shows the same month it would otherwise have shown
+    - Validates: Requirement 14.45
+  - [ ] 27.5 Write failing tests: calendar omitted below the threshold, calendar present at/above the threshold, and `pom_calendar_offset` unchanged across a hide/restore cycle
+    - Validates: Requirement 14.43, 14.44, 14.45

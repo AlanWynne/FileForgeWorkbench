@@ -460,6 +460,15 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 
 42. WHEN the user clicks the `<` hotspot or tabs to it and presses Enter, THE calendar SHALL navigate to the previous month. WHEN the user clicks the `>` hotspot or tabs to it and presses Enter, THE calendar SHALL navigate to the next month. The calendar grid, day-of-year, and time display SHALL update to reflect the selected month. The current day highlight SHALL only appear when the displayed month matches the current real month and year. [ISPF-POM]
 
+43. WHEN a Home Context (POM) tab or a Menu_Workspace tab is displayed AND the available width or height of the option-and-calendar area is less than the Calendar_Minimum_Render_Size, THE shell SHALL omit the calendar panel entirely for that frame rather than render a deformed, clipped, or overlapping calendar. The option list and `Command ===>` field SHALL remain fully functional while the calendar is omitted. [ISPF-POM, WB]
+   *(DEFERRED -- CR-NR-059. Accepted but not scheduled for implementation. The Calendar_Minimum_Render_Size is the smallest area in which the calendar header, day-of-week header, full month grid, time, and day-of-year can be drawn at their normal fixed size without truncation; the concrete value is fixed in the design document at implementation time.)*
+
+44. WHEN a Home Context (POM) tab or a Menu_Workspace tab is subsequently resized so that the available area is greater than or equal to the Calendar_Minimum_Render_Size, THE shell SHALL restore the calendar panel to its normal position and size on the next frame. [ISPF-POM]
+   *(DEFERRED -- CR-NR-059. The omit/restore transition SHALL be based solely on the currently available area each frame; no user action, command, or persisted setting is required to hide or restore the calendar.)*
+
+45. WHEN the calendar panel is omitted per criterion 14.43, THE shell SHALL NOT alter the calendar's underlying state (selected-month offset, current-day tracking) so that restoring the calendar per criterion 14.44 SHALL display the same month that would have been shown had it never been omitted. [ISPF-POM]
+   *(DEFERRED -- CR-NR-059. Hiding the calendar is a render-time decision only and SHALL NOT mutate the `pom_calendar_offset` or any related calendar state.)*
+
 ---
 
 ### Requirement 13: Desktop Shell Editor Interactions
