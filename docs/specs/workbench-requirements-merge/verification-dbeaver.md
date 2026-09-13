@@ -1,5 +1,14 @@
 # Verification Report: DBeaver-Derived Database Tool Requirements
 
+> **SCOPE (PA-TRACK-008): this report verifies SPEC coverage, not implementation.**
+> Every "COVERED" entry below means the requirement is SPECIFIED (research mapped
+> to a requirement). It does NOT mean the feature is built. The project-analysis
+> code-level pass found the `ff-database-tool` IMPLEMENTATION is a `thiserror`+`serde`
+> foundation skeleton with ~14 of 17 requirements (panels, pooling, async, ER,
+> transfer, admin, integrations) UNBUILT (PA-INCOMPLETE-014); its `tasks.md` has been
+> re-opened accordingly (PA-W5.5). For the authoritative status of outstanding
+> implementation work, see `docs/specs/project-analysis/`.
+
 > **Task:** 18.4 -- Verify DBeaver-derived database tool requirements are complete and integrated with workbench architecture
 > **Date:** 2025-01-XX
 > **Scope:** Compare all DBeaver research files (tasks 16.1–16.7) against the synthesized `database-tool/requirements.md` and verify architecture integration.

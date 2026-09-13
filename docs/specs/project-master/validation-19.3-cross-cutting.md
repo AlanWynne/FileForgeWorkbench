@@ -1,5 +1,11 @@
 # Validation Report: Cross-Cutting Architectural Requirements Coverage
 
+> **RECONCILIATION (PA-TRACK-007): pre-analysis, spec-level validation -- NOT the
+> current source of truth for outstanding work.** Cross-cutting "coverage" here is
+> at the requirements level; the project-analysis code-level re-baseline found
+> exceptions (e.g. FFW-ARCH-001 raw-fs write bypasses PA-CONFLICT-015/020). See
+> `docs/specs/project-analysis/` and the PA-W phases in `project-master/tasks.md`.
+
 **Task:** 19.3 -- Verify all cross-cutting architectural requirements (FFW-ARCH-001 through Requirement 10) are addressed in relevant designs
 
 **Date:** Validated against current design documents in `.kiro/specs/`

@@ -25,8 +25,14 @@ the record so nothing downstream is misled):
       database-tool/tasks.md corrected (tasks 5, 7-16 re-opened to `[ ]`;
       foundation tasks 1-4, 6 kept `[x]`; status-correction note added; file
       ASCII-cleaned). PA-INCOMPLETE-014 recorded; build-out is a Bucket 5 effort.
-- [ ] PA-TRACK-007 / PA-TRACK-008 reconcile master + verification narrative to
-      point at project-analysis as the source of truth (docs-only).
+- [x] PA-TRACK-007 / PA-TRACK-008 reconcile master + verification narrative to
+      point at project-analysis as the source of truth (docs-only) -- DONE:
+      added a RECONCILIATION banner to the 6 project-master narrative docs
+      (readiness-summary, sub-project-audit, api-consistency-report,
+      validation-19.2/19.3/19.4) [PA-TRACK-007] and a SCOPE banner to the 3
+      verification reports (verification-vfs-principle, -dbeaver, -gap-analysis)
+      [PA-TRACK-008], each pointing at `docs/specs/project-analysis/` as the
+      source of truth and cross-referencing the code-level exceptions.
 
 ---
 

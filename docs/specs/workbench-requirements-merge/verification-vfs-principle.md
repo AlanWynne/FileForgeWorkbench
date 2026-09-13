@@ -1,5 +1,16 @@
 # VFS Principle (FFW-ARCH-001) Verification Report
 
+> **SCOPE (PA-TRACK-008): this report verifies SPEC coverage, not implementation.**
+> The "PASS / all honour FFW-ARCH-001" verdict below is a REQUIREMENTS-level
+> finding: every file-related spec states that I/O flows through the VFS. It does
+> NOT assert the code is free of direct filesystem calls. The project-analysis
+> code-level pass found exceptions the spec-level verdict does not capture:
+> - JES queue store writes raw `std::fs` (PA-CONFLICT-015).
+> - global-search bulk replace writes raw `std::fs` (PA-CONFLICT-020).
+>   (Both now write ATOMICALLY -- PA-W5.2 -- but full VFS-routing is still deferred.)
+> For the authoritative status of outstanding implementation work, see
+> `docs/specs/project-analysis/` (checklist, consistency-matrix, incomplete-work-register).
+
 ## Overview
 
 **Architectural Principle:** FFW-ARCH-001 -- "All content accessed through Virtual File System abstraction."

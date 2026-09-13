@@ -1,5 +1,17 @@
 # FileForgeWorkbench -- Project Readiness Summary
 
+> **RECONCILIATION (PA-TRACK-007): this is a PRE-ANALYSIS, SPEC-LEVEL readiness
+> picture -- it is NOT the current source of truth for outstanding work.** It was
+> generated before the project-analysis code-level re-baseline, presents an
+> "all ready" view, and does not mention the code-level findings that pass
+> surfaced: six orphan crates, the `ff-database-tool` false-positive-complete
+> skeleton (PA-INCOMPLETE-014 / re-opened by PA-W5.5), ASA/EBCDIC/hex/language-
+> detection duplication, and the raw-fs write bypasses (PA-CONFLICT-015/020).
+> For the AUTHORITATIVE status of outstanding work, see
+> `docs/specs/project-analysis/` (checklist, consistency-matrix,
+> incomplete-work-register, remediation-plan) and the PA-W0..PA-W5 phases in
+> `docs/specs/project-master/tasks.md`.
+
 **Generated:** Final Validation Task 19.5  
 **Scope:** All sub-project specifications under `.kiro/specs/`
 

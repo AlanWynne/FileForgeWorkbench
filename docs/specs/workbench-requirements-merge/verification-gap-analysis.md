@@ -1,5 +1,12 @@
 # Verification Report: Gap Analysis HIGH/MEDIUM Items Coverage
 
+> **SCOPE (PA-TRACK-008): this report verifies SPEC coverage, not implementation.**
+> "Addressed" below means each gap item has been mapped to a REQUIREMENT, not that
+> it is implemented in code. For the authoritative status of outstanding
+> implementation work (orphan crates, false-positive-complete tracking, raw-fs
+> write bypasses, duplication), see `docs/specs/project-analysis/`
+> (incomplete-work-register + consistency-matrix).
+
 **Task:** 18.3 -- Verify gap analysis HIGH/MEDIUM items are all addressed  
 **Date:** 2025-01-XX  
 **Source Document:** `FileForgeEditor/.kiro/specs/project-master/scintilla-gap-analysis.md`  
