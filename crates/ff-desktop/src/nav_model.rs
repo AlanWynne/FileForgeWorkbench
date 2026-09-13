@@ -261,6 +261,28 @@ pub fn split_catalog_uri_path(uri_path: &str) -> (&str, String) {
     }
 }
 
+/// Compute the `ResourceUri` for renaming a node to `new_name`: the same scheme
+/// and parent path, with the final path segment replaced. `new_name` is the bare
+/// leaf name (no slashes). Returns the rebuilt URI.
+///
+/// Example: `vfs://posix/a/b/old.txt` renamed to `new.txt` ->
+/// `vfs://posix/a/b/new.txt`.
+///
+/// Validates: Requirement 24.2 (file-tree-panel Req 16 Rename)
+pub fn rename_uri(uri: &ResourceUri, new_name: &str) -> ResourceUri {
+    let path = uri.path();
+    let parent = match path.rfind('/') {
+        Some(idx) => &path[..idx], // keep everything up to (not incl.) last '/'
+        None => "",
+    };
+    let new_path = if parent.is_empty() {
+        format!("/{new_name}")
+    } else {
+        format!("{parent}/{new_name}")
+    };
+    ResourceUri::new(uri.scheme(), new_path)
+}
+
 /// Build the child `ResourceUri` for an entry under a parent URI, using
 /// forward-slash separators regardless of host OS (Requirement 24.4).
 ///
@@ -388,6 +410,49 @@ mod tests {
         m.tree.remove_node(child);
         m.prune_uris();
         assert_eq!(m.uri_count(), 0);
+    }
+
+    #[test]
+    fn rename_uri_replaces_final_segment_keeping_parent_and_scheme() {
+        // Validates: Requirement 24.2 (Req 16 Rename)
+        let uri = ResourceUri::new("posix", "/a/b/old.txt");
+        let renamed = rename_uri(&uri, "new.txt");
+        assert_eq!(renamed.scheme(), "posix");
+        assert_eq!(renamed.path(), "/a/b/new.txt");
+    }
+
+    #[test]
+    fn rename_uri_handles_root_level_node() {
+        // Validates: Requirement 24.2 -- a top-level node under "/"
+        let uri = ResourceUri::new("posix", "/only.txt");
+        assert_eq!(rename_uri(&uri, "renamed.txt").path(), "/renamed.txt");
+    }
+
+    #[test]
+    fn rename_via_writable_provider_moves_file_and_relists() {
+        // Validates: Requirement 24.2, 24.3 -- rename goes through the VFS
+        // provider and the refreshed listing reflects the new name (end-to-end
+        // over a real writable POSIX provider on a temp directory).
+        use ff_vfs::VfsProvider;
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        std::fs::write(tmp.path().join("old.txt"), b"hello").expect("seed file");
+
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        let provider = {
+            let _g = rt.enter();
+            crate::posix_provider::PosixProvider::new(tmp.path().to_path_buf(), false)
+                .expect("provider")
+        };
+        let uri = ResourceUri::new("posix", "/old.txt");
+        let new_uri = rename_uri(&uri, "new.txt");
+        rt.block_on(provider.rename(uri.path(), new_uri.path()))
+            .expect("rename");
+
+        // Re-list the root and confirm old is gone, new is present.
+        let entries = list_via_provider(&rt, &provider, "/").expect("list");
+        let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
+        assert!(!names.contains(&"old.txt"), "old name removed");
+        assert!(names.contains(&"new.txt"), "new name present");
     }
 
     #[test]

@@ -948,6 +948,13 @@ impl WorkbenchShell {
                         }
                     }
                 }
+                ExplorerEffect::Rename(id) => {
+                    // Open the rename dialog seeded with the node's current label
+                    // (Req 16 Rename). The rename is applied on dialog confirm.
+                    if let Some(label) = self.nav_model.tree.get_node(id).map(|n| n.label.clone()) {
+                        self.nav_rename = Some((id, label));
+                    }
+                }
                 ExplorerEffect::Reveal(id) => {
                     // Req 16 Reveal in Explorer: open the OS file manager at the
                     // node. Only local/POSIX nodes map to a real host path.
@@ -964,6 +971,102 @@ impl WorkbenchShell {
                 }
                 ExplorerEffect::None => {}
             }
+        }
+
+        // Rename dialog (Req 16 Rename) -- modal, applied on confirm.
+        self.render_nav_rename_dialog(ctx);
+    }
+
+    /// Render the modern-explorer rename dialog when a rename is in progress and
+    /// apply the rename on confirm. Local/POSIX nodes are renamed via a writable
+    /// provider then the parent listing is refreshed. Non-local schemes (catalog
+    /// roots, datasets) are not renamable here in Slice A.
+    ///
+    /// Validates: Requirement 24.2 (file-tree-panel Req 16 Rename)
+    fn render_nav_rename_dialog(&mut self, ctx: &egui::Context) {
+        let Some((id, mut buffer)) = self.nav_rename.take() else {
+            return;
+        };
+        let mut still_open = true;
+        let mut confirm = false;
+        egui::Window::new("Rename")
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+            .show(ctx, |ui| {
+                ui.label("New name:");
+                let resp = ui.text_edit_singleline(&mut buffer);
+                resp.request_focus();
+                let enter = resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+                ui.horizontal(|ui| {
+                    if ui.button("Rename").clicked() || enter {
+                        confirm = true;
+                    }
+                    if ui.button("Cancel").clicked() {
+                        still_open = false;
+                    }
+                });
+                if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                    still_open = false;
+                }
+            });
+
+        if confirm {
+            self.apply_nav_rename(id, buffer.trim());
+            return; // dialog closed
+        }
+        if still_open {
+            self.nav_rename = Some((id, buffer));
+        }
+    }
+
+    /// Apply a rename of node `id` to `new_name` (local/POSIX only), then refresh
+    /// the parent listing so the model reflects the new name.
+    ///
+    /// Validates: Requirement 24.2, 24.3 (Req 16 Rename)
+    fn apply_nav_rename(&mut self, id: ff_file_tree::NodeId, new_name: &str) {
+        use crate::nav_model::rename_uri;
+        use ff_vfs::VfsProvider;
+        if new_name.is_empty() {
+            return;
+        }
+        let Some(uri) = self.nav_model.uri_of(id).cloned() else {
+            return;
+        };
+        if uri.scheme() != "posix" && uri.scheme() != "local" {
+            self.open_error =
+                Some("Rename is only supported for local files in this view.".to_string());
+            return;
+        }
+        let new_uri = rename_uri(&uri, new_name);
+        let root_dir = dirs::home_dir()
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| std::path::PathBuf::from("."));
+        // Writable provider (read_only = false) for the rename. Enter the runtime
+        // context so the watcher can spawn (B040).
+        let provider = {
+            let _rt_guard = self.runtime.enter();
+            crate::posix_provider::PosixProvider::new(root_dir, false)
+        };
+        let Ok(provider) = provider else {
+            self.open_error = Some("Rename failed: cannot open provider".to_string());
+            return;
+        };
+        let result = self
+            .runtime
+            .block_on(provider.rename(uri.path(), new_uri.path()));
+        match result {
+            Ok(()) => {
+                // Refresh the parent listing so the renamed node is reflected.
+                let parent = self.nav_model.tree.get_node(id).map(|n| n.parent);
+                if let Some(parent) = parent {
+                    if let Some(puri) = self.nav_model.uri_of(parent).cloned() {
+                        self.expand_local_node(parent, &puri);
+                    }
+                    self.nav_model.prune_uris();
+                }
+            }
+            Err(e) => self.open_error = Some(format!("Rename failed: {e}")),
         }
     }
 

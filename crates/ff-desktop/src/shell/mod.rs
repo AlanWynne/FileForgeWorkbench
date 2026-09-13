@@ -385,6 +385,10 @@ pub struct WorkbenchShell {
     /// the default NavModel-backed modern explorer (CR-NR-060 Slice A swap).
     /// Default false -- the modern explorer is the default.
     use_legacy_explorer: bool,
+
+    /// Active rename dialog for the modern explorer: (target node, edit buffer).
+    /// `None` when no rename is in progress. (CR-NR-060 Slice A, Req 16 Rename.)
+    nav_rename: Option<(ff_file_tree::NodeId, String)>,
     /// Toolchain panel state — GCC and Rust plugin entries.
     toolchain_panel: ToolchainPanelState,
     /// Whether the Toolchain Panel is currently visible.
@@ -648,6 +652,7 @@ impl WorkbenchShell {
             nav_model: crate::nav_model::NavModel::new(),
             nav_selection: crate::explorer_view::ExplorerSelection::default(),
             use_legacy_explorer: false,
+            nav_rename: None,
             toolchain_panel: ToolchainPanelState::new(),
             show_toolchain_panel: false,
             pending_new_pom: false,
