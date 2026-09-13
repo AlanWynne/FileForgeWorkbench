@@ -136,6 +136,55 @@ pub fn visible_rows(model: &NavModel) -> Vec<VisibleRow> {
         .collect()
 }
 
+/// Build an indented ASCII text tree of the selected nodes, in display order,
+/// for the OS clipboard (Req 19.5/19.6). Keyed on `NodeId`/`VisibleRow` (not on
+/// path strings) so it is independent of the legacy inline tree.
+///
+/// Rules (mirroring the retired legacy `build_text_tree`):
+/// - The shallowest selected node sits at indent level 0.
+/// - Each additional depth level adds two spaces of indentation.
+/// - Expandable (directory/container) nodes are prefixed with `[DIR] `.
+/// - When a selected node's parent is also selected, a `|-- ` connector is used.
+///
+/// Returns an empty string when nothing is selected.
+///
+/// Validates: Requirement 24.2 (file-tree-panel Req 19.5, 19.6)
+pub fn build_selection_text_tree(model: &NavModel, selected: &HashSet<NodeId>) -> String {
+    if selected.is_empty() {
+        return String::new();
+    }
+    // Selected rows in display order.
+    let rows: Vec<VisibleRow> = visible_rows(model)
+        .into_iter()
+        .filter(|r| selected.contains(&r.id))
+        .collect();
+    if rows.is_empty() {
+        return String::new();
+    }
+    let min_depth = rows.iter().map(|r| r.depth).min().unwrap_or(0);
+    let mut lines = Vec::with_capacity(rows.len());
+    for row in &rows {
+        let rel_depth = row.depth.saturating_sub(min_depth) as usize;
+        // Does this node's parent (in the model) also appear in the selection?
+        let parent_selected = model
+            .tree
+            .get_node(row.id)
+            .map(|n| n.parent)
+            .map(|p| selected.contains(&p))
+            .unwrap_or(false);
+        let indent = if rel_depth == 0 {
+            String::new()
+        } else if parent_selected {
+            format!("{}|-- ", "  ".repeat(rel_depth - 1))
+        } else {
+            "  ".repeat(rel_depth)
+        };
+        let prefix = if row.expandable { "[DIR] " } else { "" };
+        lines.push(format!("{indent}{prefix}{}", row.label));
+    }
+    lines.join("\n")
+}
+
 /// The set of keyboard gestures the explorer understands, expressed
 /// independently of egui so the reducer is unit-testable. Modifier state is
 /// captured explicitly (Req 20.6/20.9/20.10).
@@ -164,6 +213,9 @@ pub enum ExplorerEffect {
     Open(NodeId),
     /// Copy the node's resource path to the OS clipboard (Req 16 Copy Path).
     CopyPath(NodeId),
+    /// Copy the given pre-built text (an indented tree of the multi-selection)
+    /// to the OS clipboard (Req 19.5/19.6 copy-as-text-tree).
+    CopySelection(String),
     /// Reveal the node in the OS file manager (Req 16 Reveal in Explorer).
     Reveal(NodeId),
     /// Begin renaming the node (opens the rename dialog) (Req 16 Rename).
@@ -656,11 +708,22 @@ pub fn keyboard_effects(
         }
     });
 
+    // Ctrl+C over a non-empty selection copies an indented text tree of the
+    // selected nodes to the OS clipboard (Req 19.5/19.6). Handled outside the
+    // gesture reducer since it produces text, not a selection/navigation change.
+    let copy_selection = ctrl && ui.input(|i| i.key_pressed(egui::Key::C));
+
     let mut effects = Vec::new();
     for g in gestures {
         let eff = reduce_key(model, sel, g);
         if eff != ExplorerEffect::None {
             effects.push(eff);
+        }
+    }
+    if copy_selection && !sel.selected.is_empty() {
+        let text = build_selection_text_tree(model, &sel.selected);
+        if !text.is_empty() {
+            effects.push(ExplorerEffect::CopySelection(text));
         }
     }
     effects
@@ -917,6 +980,58 @@ mod tests {
             }
             other => panic!("expected Dataset, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn build_selection_text_tree_flat_uses_labels() {
+        // Validates: Requirement 24.2 (Req 19.6) -- flat selection, one label/line.
+        let (m, _local, src, b) = model_with_tree();
+        // src is a dir (expandable), b.rs is a file.
+        let mut sel = HashSet::new();
+        sel.insert(src);
+        sel.insert(b);
+        let text = build_selection_text_tree(&m, &sel);
+        let lines: Vec<&str> = text.lines().collect();
+        assert_eq!(lines.len(), 2);
+        // Both are direct children of the local root -> same depth -> no indent.
+        assert!(lines.iter().any(|l| l == &"[DIR] src"));
+        assert!(lines.iter().any(|l| l == &"b.rs"));
+    }
+
+    #[test]
+    fn build_selection_text_tree_nested_uses_connector() {
+        // Validates: Requirement 24.2 (Req 19.6) -- parent+child selected ->
+        // child is indented with the |-- connector.
+        let (mut m, local, src, _b) = model_with_tree();
+        // Expand src and give it a child so we have a real depth-2 node.
+        m.set_uri(src, ResourceUri::new("local", "/root/src"));
+        m.apply_listing(
+            src,
+            "local",
+            &[ff_vfs::VfsEntry {
+                name: "a.rs".into(),
+                entry_type: ff_vfs::VfsEntryType::File,
+                size: None,
+                modified: None,
+            }],
+        );
+        let child = m.tree.get_node(src).unwrap().children[0];
+        let mut sel = HashSet::new();
+        sel.insert(src);
+        sel.insert(child);
+        let text = build_selection_text_tree(&m, &sel);
+        let lines: Vec<&str> = text.lines().collect();
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0], "[DIR] src");
+        assert_eq!(lines[1], "|-- a.rs");
+        let _ = local;
+    }
+
+    #[test]
+    fn build_selection_text_tree_empty_selection_is_empty() {
+        // Validates: Requirement 24.2 (Req 19.6) -- nothing selected -> empty.
+        let (m, _local, _src, _b) = model_with_tree();
+        assert_eq!(build_selection_text_tree(&m, &HashSet::new()), "");
     }
 
     #[test]

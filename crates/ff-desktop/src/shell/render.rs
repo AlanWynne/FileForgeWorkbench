@@ -948,6 +948,13 @@ impl WorkbenchShell {
                         }
                     }
                 }
+                ExplorerEffect::CopySelection(text) => {
+                    // Req 19.5/19.6: copy the indented text tree of the current
+                    // multi-selection to the OS clipboard.
+                    if let Ok(mut cb) = arboard::Clipboard::new() {
+                        let _ = cb.set_text(&text);
+                    }
+                }
                 ExplorerEffect::Rename(id) => {
                     // Open the rename dialog seeded with the node's current label
                     // (Req 16 Rename). The rename is applied on dialog confirm.
