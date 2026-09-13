@@ -223,6 +223,25 @@ fn map_generic_entry(entry: &VfsEntry) -> TreeNodeData {
     }
 }
 
+/// Split a `vfs://catalog/{name}[/{subpath...}]` URI path into the catalog name
+/// and the directory path relative to the catalog root (leading-slash form).
+///
+/// The catalog name is the first path segment; the remainder (if any) is the
+/// sub-path to list, defaulting to `/` (the catalog root). Used to route
+/// generic catalog expansion (Req 24.8) to a provider rooted at the catalog.
+///
+/// Examples: `/PAYROLL` -> `("PAYROLL", "/")`;
+/// `/PAYROLL/src/data` -> `("PAYROLL", "/src/data")`.
+///
+/// Validates: Requirement 24.8
+pub fn split_catalog_uri_path(uri_path: &str) -> (&str, String) {
+    let trimmed = uri_path.trim_start_matches('/');
+    match trimmed.split_once('/') {
+        Some((name, rest)) => (name, format!("/{rest}")),
+        None => (trimmed, "/".to_string()),
+    }
+}
+
 /// Build the child `ResourceUri` for an entry under a parent URI, using
 /// forward-slash separators regardless of host OS (Requirement 24.4).
 ///
@@ -350,6 +369,23 @@ mod tests {
         m.tree.remove_node(child);
         m.prune_uris();
         assert_eq!(m.uri_count(), 0);
+    }
+
+    #[test]
+    fn split_catalog_uri_path_extracts_name_and_root() {
+        // Validates: Requirement 24.8 -- catalog root lists at "/"
+        assert_eq!(
+            split_catalog_uri_path("/PAYROLL"),
+            ("PAYROLL", "/".to_string())
+        );
+    }
+
+    #[test]
+    fn split_catalog_uri_path_extracts_name_and_subpath() {
+        // Validates: Requirement 24.8 -- nested catalog dir lists relative subpath
+        let (name, sub) = split_catalog_uri_path("/PAYROLL/src/data");
+        assert_eq!(name, "PAYROLL");
+        assert_eq!(sub, "/src/data");
     }
 
     #[test]

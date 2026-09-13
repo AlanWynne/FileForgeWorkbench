@@ -900,24 +900,15 @@ impl WorkbenchShell {
             match eff {
                 ExplorerEffect::Expand(id) => {
                     if let Some(uri) = self.nav_model.uri_of(id).cloned() {
-                        // Root-jail provider rooted at the local root; the URI
-                        // path is provider-relative (Requirement 24.3).
-                        let root_dir = dirs::home_dir()
-                            .or_else(|| std::env::current_dir().ok())
-                            .unwrap_or_else(|| std::path::PathBuf::from("."));
-                        // Enter the runtime context so the provider's watcher can
-                        // spawn (constructing outside a runtime panics -- B040).
-                        let provider = {
-                            let _rt_guard = self.runtime.enter();
-                            crate::posix_provider::PosixProvider::new(root_dir, true)
-                        };
-                        if let Ok(provider) = provider {
-                            match list_via_provider(&self.runtime, &provider, uri.path()) {
-                                Ok(entries) => {
-                                    self.nav_model.apply_listing(id, uri.scheme(), &entries)
-                                }
-                                Err(e) => self.nav_model.apply_load_error(id, e),
-                            }
+                        match uri.scheme() {
+                            // Catalogs root child: resolve the catalog by name and
+                            // list its backing directory generically (Req 24.8 --
+                            // no mainframe qualifier/dataset duality; that is
+                            // Slice B). URI is vfs://catalog/{name}.
+                            "catalog" => self.expand_catalog_node(id, &uri),
+                            // Local Files (posix/local): root-jailed provider at the
+                            // local root; URI path is provider-relative (Req 24.3).
+                            _ => self.expand_local_node(id, &uri),
                         }
                     } else {
                         self.nav_model.tree.toggle_expand(id);
@@ -937,6 +928,70 @@ impl WorkbenchShell {
                 },
                 ExplorerEffect::None => {}
             }
+        }
+    }
+
+    /// Expand a Local Files (posix/local) node: list its provider-relative path
+    /// through a root-jailed provider rooted at the local root.
+    ///
+    /// Validates: Requirement 24.3, 24.5
+    fn expand_local_node(&mut self, id: ff_file_tree::NodeId, uri: &ff_vfs::ResourceUri) {
+        use crate::nav_model::list_via_provider;
+        let root_dir = dirs::home_dir()
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| std::path::PathBuf::from("."));
+        // Enter the runtime context so the provider's watcher can spawn
+        // (constructing outside a runtime panics -- B040).
+        let provider = {
+            let _rt_guard = self.runtime.enter();
+            crate::posix_provider::PosixProvider::new(root_dir, true)
+        };
+        if let Ok(provider) = provider {
+            match list_via_provider(&self.runtime, &provider, uri.path()) {
+                Ok(entries) => self.nav_model.apply_listing(id, "posix", &entries),
+                Err(e) => self.nav_model.apply_load_error(id, e),
+            }
+        }
+    }
+
+    /// Expand a Catalogs root child generically (Req 24.8): resolve the catalog
+    /// by name (URI `vfs://catalog/{name}`) and list its backing directory
+    /// through a provider rooted at the catalog `path`. No mainframe qualifier/
+    /// dataset duality is applied here -- that is Slice B. If the catalog is
+    /// unknown or its directory cannot be listed, an error node is shown.
+    ///
+    /// Validates: Requirement 24.8, 24.5
+    fn expand_catalog_node(&mut self, id: ff_file_tree::NodeId, uri: &ff_vfs::ResourceUri) {
+        use crate::nav_model::{list_via_provider, split_catalog_uri_path};
+        // URI path is "/{name}[/{subpath...}]": the first segment is the catalog
+        // name, the remainder is a directory path relative to the catalog root.
+        let (name, sub_path) = split_catalog_uri_path(uri.path());
+        let resolved = self
+            .files_panel
+            .registry
+            .get_by_name(name)
+            .map(|c| (std::path::PathBuf::from(&c.path), c.read_only));
+        let (root_dir, read_only) = match resolved {
+            Some(v) => v,
+            None => {
+                self.nav_model
+                    .apply_load_error(id, format!("Catalog '{name}' not found"));
+                return;
+            }
+        };
+        // Enter the runtime context so the provider's watcher can spawn (B040).
+        let provider = {
+            let _rt_guard = self.runtime.enter();
+            crate::posix_provider::PosixProvider::new(root_dir, read_only)
+        };
+        match provider {
+            Ok(provider) => match list_via_provider(&self.runtime, &provider, &sub_path) {
+                // Map generically as file/dir nodes; children keep the catalog
+                // scheme so nested expansion resolves back through this method.
+                Ok(entries) => self.nav_model.apply_listing(id, "posix", &entries),
+                Err(e) => self.nav_model.apply_load_error(id, e),
+            },
+            Err(e) => self.nav_model.apply_load_error(id, e.to_string()),
         }
     }
 }
