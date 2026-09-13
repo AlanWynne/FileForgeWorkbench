@@ -11,8 +11,6 @@
 //!
 //! Validates: Requirement 24.1, 24.2, 24.6, 24.9 (file-tree-panel Req 8/19/20)
 
-#![allow(dead_code)]
-
 use std::collections::HashSet;
 
 use eframe::egui;
@@ -282,6 +280,9 @@ fn apply_move(sel: &mut ExplorerSelection, target: NodeId, shift: bool, ctrl: bo
 }
 
 /// Type-ahead jump helper exposed for the renderer (Req 8.12).
+// Type-ahead search is not yet wired to egui key input; retained + tested for a
+// later update.
+#[allow(dead_code)]
 pub fn type_ahead(model: &NavModel, current: NodeId, prefix: &str) -> Option<NodeId> {
     type_ahead_jump(&model.tree, current, prefix)
 }
@@ -291,6 +292,10 @@ pub fn type_ahead(model: &NavModel, current: NodeId, prefix: &str) -> Option<Nod
 /// model's own handler rather than `reduce_key`.
 ///
 /// Validates: Requirement 24.11 (reuse the canonical model)
+// Alternative reducer that adapts the model's own KeyboardHandler TreeActions;
+// the shell currently uses `reduce_key` directly. Retained as the documented
+// bridge for callers that prefer the model's handler.
+#[allow(dead_code)]
 pub fn effect_from_action(
     model: &NavModel,
     sel: &mut ExplorerSelection,

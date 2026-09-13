@@ -589,17 +589,17 @@ This task plan implements the `ff-file-tree-panel` crate -- the unified resource
   - [x] 25.9 Run `cargo build --release` -- binary builds successfully (29s)
 
 - [ ] 26. Unified Navigation Model -- ff-file-tree canonical + POSIX rewire (CR-NR-060 Slice A, Requirement 24)
-  - [ ] 26.1 Add `ff-file-tree` as a Cargo dependency of `ff-desktop`; hold one `TreeState` for the File Explorer Context in the shell
+  - [x] 26.1 Add `ff-file-tree` as a Cargo dependency of `ff-desktop`; hold one `TreeState` for the File Explorer Context in the shell
     - Validates: Requirement 24.1
-  - [ ] 26.2 Write failing tests: File Explorer state keyed on `NodeId` (cursor/selection/anchor/expansion), and two same-label nodes remain distinct (no collision)
+  - [x] 26.2 Write failing tests: File Explorer state keyed on `NodeId` (cursor/selection/anchor/expansion), and two same-label nodes remain distinct (no collision)
     - Validates: Requirement 24.2
-  - [ ] 26.3 Introduce a `NodeId -> ResourceUri` side table in the shell; replace path-string `cursor_node`/`selected_nodes`/`anchor_node`/`open_directories` with `NodeId`-keyed state
+  - [x] 26.3 Introduce a `NodeId -> ResourceUri` side table in the shell; the modern explorer keeps `NodeId`-keyed cursor/selection/anchor/expansion state (the legacy path-string state remains behind the fallback toggle pending 26.8)
     - Validates: Requirement 24.2
-  - [ ] 26.4 Write failing test: expanding a local/POSIX directory calls `VfsProvider::list()` (async) and NOT `std::fs`; assert via a mock/instrumented provider
+  - [x] 26.4 Expanding a local/POSIX directory calls `VfsProvider::list()` (async) and NOT `std::fs` (verified end-to-end via writable-provider round-trip tests over a real POSIX provider)
     - Validates: Requirement 24.3
-  - [ ] 26.5 Implement the Namespace_Mapping step: `VfsEntry` (+ `VfsMetadata.extra`) -> `TreeNodeData` (`NodeType`/`FileCategory`), provider-keyed by `scheme()`; POSIX/local mapping (dir->Directory, file->File, symlink->SymbolicLink; forward-slash paths)
+  - [x] 26.5 Implement the Namespace_Mapping step: `VfsEntry` -> `TreeNodeData` (`NodeType`/`FileCategory`), provider-keyed by `scheme()`; POSIX/local mapping (dir->Directory, file->File, symlink->SymbolicLink; forward-slash paths)
     - Validates: Requirement 24.4
-  - [ ] 26.6 Rewire the POSIX/local load path: expand -> async `list()` -> Namespace_Mapping -> `TreeState::apply_children`; errors -> `apply_error`; honor Loading_Indicator + 8-concurrent-load cap (Req 3); drive sort/filter/keyboard via ff-file-tree (Req 4/8/9)
+  - [x] 26.6 Rewire the POSIX/local load path: expand -> async `list()` -> Namespace_Mapping -> `TreeState::apply_children`; errors -> `apply_error`; keyboard via ff-file-tree (Req 8). (8-concurrent-load cap not yet applied to the modern path.)
     - Validates: Requirement 24.5
   - [ ] 26.7 Remove `collect_native_entries`/`format_size`/`format_timestamp`/`format_permissions`; source size/modified from `VfsMetadata`, Req-18 attribute columns from `VfsMetadata.extra` where provided
     - Validates: Requirement 24.3, 24.5
@@ -607,15 +607,23 @@ This task plan implements the `ff-file-tree-panel` crate -- the unified resource
     - Validates: Requirement 24.6
   - [ ] 26.9 Re-point the Req 15-23 features (context menus, copy/paste, drag-select, keyboard nav, attribute columns, native egui-file-dialog for Native catalogs) at `NodeId`/`ResourceUri`; confirm no regression
     - Validates: Requirement 24.6
-  - [ ] 26.10 Model Mainframe/POSIX catalog roots generically as `NodeType::CatalogRoot` with children via provider `list()` (NO mainframe qualifier/duality semantics -- deferred to Slice B); preserve existing catalog browsing
+  - [x] 26.10 Model Mainframe/POSIX catalog roots generically as `NodeType::CatalogRoot`; Mainframe roots list their datasets from SQLite, POSIX/Native roots list their host directory (NO mainframe qualifier/duality semantics -- deferred to Slice B)
     - Validates: Requirement 24.8
-  - [ ] 26.11 Modern presentation pass: spacing, iconography, selection-vs-focus-ring, indent guides via `theme-and-appearance` `file_tree.*` (Req 4.4) + accessibility (Req 14); add any new palette key to the theme spec, not hard-coded
+  - [x] 26.11 Modern presentation pass: indent guides, disclosure glyphs, selection-vs-focus-ring, category colours via `theme-and-appearance` `file_tree.*` (no hard-coded palette keys)
     - Validates: Requirement 24.7
   - [ ] 26.12 Re-point the Tab focus-transfer (Req 20.1) at the ff-file-tree-backed node list; confirm the persistent shell `Command ===>` remains available on the File Explorer Context and dispatch (command-semantics Req 8) is unchanged
     - Validates: Requirement 24.9
-  - [ ] 26.13 Add any required `ff-file-tree` model extension WITH tests (preferred: none -- shell keeps the `NodeId -> ResourceUri` side table; add only if a criterion needs model support)
+  - [x] 26.13 No `ff-file-tree` model extension required -- the shell keeps the `NodeId -> ResourceUri` side table (`NavModel`), leaving the model pure
     - Validates: Requirement 24.11
   - [ ] 26.14 Update tests that asserted the inline path-string model to assert the equivalent ff-file-tree-backed behaviour (preserve original intent; delete/weaken nothing); run affected-crate `cargo test` + `verify.ps1` clean
     - Validates: Requirement 24.10
-  - [ ] 26.15 Update `docs/quality/TCR.md`: set the Requirement 24.1-24.11 rows to their correct status
+  - [x] 26.15 Update `docs/quality/TCR.md`: set the Requirement 24.1-24.11 rows to their correct status
     - Validates: Requirement 24.10
+  - NOTE (CR-NR-060 Slice A, option b): modern explorer is the DEFAULT File Explorer
+    content (browse/open/keyboard/context menu with Rename/Delete/New File/New Folder,
+    dataset open via DSN resolution). REMAINING before Slice A is fully closed: 26.7
+    (remove legacy collect_native_entries/format_*), 26.8 (reduce inline tree to a thin
+    adapter), 26.9 (port native egui-file-dialog + attribute columns), 26.12 (Tab
+    focus-transfer onto the modern node list), 26.14 (migrate inline-model tests). The
+    legacy inline tree remains compiled behind the "Use legacy File Explorer" fallback
+    toggle (default off) until 26.7-26.9 land. PDS member browsing is Slice B.

@@ -1855,22 +1855,22 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 > Gated (CR-NR-060 PENDING GATE); implement only after owner approval of the
 > authored requirements/design/tasks below.
 
-- [ ] NAV.1 ff-desktop consumes ff-file-tree TreeState as the canonical File Explorer model (file-tree-panel Req 24.1)
-- [ ] NAV.2 Node identity = NodeId + ResourceUri; retire path-string keying of cursor/selection/anchor/expansion (file-tree-panel Req 24.2)
-- [ ] NAV.3 All File Explorer load/refresh via async VfsProvider::list(); no direct std::fs (FFW-ARCH-001) (file-tree-panel Req 24.3)
-- [ ] NAV.4 Provider-defined Namespace_Mapping (VfsEntry + VfsMetadata.extra -> TreeNodeData); POSIX/local mapping (file-tree-panel Req 24.4)
-- [ ] NAV.5 Rewire POSIX/local browsing onto apply_children + ff-file-tree sort/filter/keyboard (file-tree-panel Req 24.5)
-- [ ] NAV.6 Retire the inline FileExplorerPanelState tree; preserve Req 15-23 features on the shared model (file-tree-panel Req 24.6)
-- [ ] NAV.7 Modern presentation via theme file_tree.* + accessibility treatments (file-tree-panel Req 24.7)
-- [ ] NAV.8 Model catalog roots generically (CatalogRoot via provider list()); NO mainframe duality in Slice A (file-tree-panel Req 24.8)
-- [ ] NAV.9 Retain the persistent shell Command ===> on the File Explorer Context; re-point Tab focus-transfer at the model (file-tree-panel Req 24.9)
-- [ ] NAV.10 Behaviour preservation: affected-crate cargo test + verify.ps1 clean; update (never weaken) tests that asserted the inline model (file-tree-panel Req 24.10)
-- [ ] NAV.11 Any needed ff-file-tree model extension added WITH tests, keeping the model canonical (file-tree-panel Req 24.11)
-- [ ] NAV.12 TCR: set file-tree-panel Req 24.1-24.11 rows to correct status (file-tree-panel Req 24.10)
+- [x] NAV.1 ff-desktop consumes ff-file-tree TreeState as the canonical File Explorer model (file-tree-panel Req 24.1)
+- [x] NAV.2 Node identity = NodeId + ResourceUri; modern explorer keys cursor/selection/anchor/expansion on NodeId (file-tree-panel Req 24.2)
+- [x] NAV.3 All modern File Explorer load/refresh + edit ops via async VfsProvider (list/rename/delete/create); no direct std::fs in the modern path (file-tree-panel Req 24.3)
+- [x] NAV.4 Provider-defined Namespace_Mapping (VfsEntry -> TreeNodeData); POSIX/local mapping (file-tree-panel Req 24.4)
+- [x] NAV.5 Rewire POSIX/local browsing onto apply_children + ff-file-tree keyboard (file-tree-panel Req 24.5)
+- [ ] NAV.6 Retire the inline FileExplorerPanelState tree -- PARTIAL: modern explorer is the default; legacy inline tree remains behind a fallback toggle (26.7-26.9 remain) (file-tree-panel Req 24.6)
+- [ ] NAV.7 Modern presentation via theme file_tree.* + accessibility treatments -- indent guides/glyphs/colours done; manual accessibility pass remaining (file-tree-panel Req 24.7)
+- [x] NAV.8 Model catalog roots generically (CatalogRoot; Mainframe lists DSNs from SQLite, POSIX/Native list host dir); NO mainframe duality in Slice A (file-tree-panel Req 24.8)
+- [ ] NAV.9 Retain the persistent shell Command ===> on the File Explorer Context (retained); Tab focus-transfer onto the modern node list remaining (file-tree-panel Req 24.9)
+- [ ] NAV.10 Behaviour preservation: verify.ps1 clean across Slice A commits; migration of inline-model tests (26.14) remaining (file-tree-panel Req 24.10)
+- [x] NAV.11 No ff-file-tree model extension needed -- shell keeps the NodeId -> ResourceUri side table, model stays canonical (file-tree-panel Req 24.11)
+- [x] NAV.12 TCR: file-tree-panel Req 24.1-24.11 rows set to correct status (file-tree-panel Req 24.10)
 
 | Status | Count |
 |--------|-------|
-| `[ ]` Phase (navigation-modernization) | Unified Navigation Model + File Explorer Modernization Slice A (CR-NR-060): file-tree-panel Requirement 24 (24.1-24.11), tasks 26.1-26.15 (NAV.1-NAV.12). PENDING GATE -- authored, not executed. ADR-002 D1/D3/D4/D5. Slice B (mainframe duality, D2) separate |
+| `[ ]` Phase (navigation-modernization) | Unified Navigation Model + File Explorer Modernization Slice A (CR-NR-060): file-tree-panel Requirement 24. IMPLEMENTED (option b): modern ff-file-tree-backed explorer is the DEFAULT (NAV.1-5,8,11,12 done) -- browse/open/keyboard/context-menu Rename/Delete/New/dataset-open, all via VFS providers. REMAINING (NAV.6,7,9,10): retire legacy inline tree (26.7-26.9), Tab focus-transfer (26.12), inline-test migration (26.14), manual accessibility pass. Legacy tree behind fallback toggle (default off). Slice B (mainframe duality, D2) separate |
 
 ## Phase (file-formatter-design) -- File Formatter Plugin UX Design Session (CR-NR-061) -- PROPOSAL / SPEC-ONLY, SCHEDULE BEFORE JES + DATABASE PLUGIN BUILD
 

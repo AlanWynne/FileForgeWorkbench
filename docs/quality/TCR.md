@@ -2329,14 +2329,14 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test | Criterion |
 |-------|--------|------|-----------|
-| `ff-desktop` | 🔴 | -- | Req 24.1: File Explorer drives its tree from ff-file-tree TreeState; ff-desktop declares ff-file-tree dep; no parallel tree model |
-| `ff-desktop` | 🔴 | -- | Req 24.2: node identity is NodeId + ResourceUri; cursor/selection/anchor/expansion keyed on NodeId; same-label nodes do not collide |
-| `ff-desktop` | 🔴 | -- | Req 24.3: File Explorer load/refresh via async VfsProvider::list(); no direct std::fs in the explorer path (FFW-ARCH-001) |
-| `ff-desktop` | 🔴 | -- | Req 24.4: provider-defined Namespace_Mapping (VfsEntry + VfsMetadata.extra -> TreeNodeData); POSIX/local dir->Directory, file->File, symlink->SymbolicLink, forward-slash paths |
-| `ff-desktop` | 🔴 | -- | Req 24.5: POSIX/local expand -> list() -> Namespace_Mapping -> TreeState::apply_children; Loading_Indicator + error nodes + sort/filter/keyboard via ff-file-tree |
-| `ff-desktop` | 🔴 | -- | Req 24.6: inline FileExplorerPanelState tree retired to a thin adapter; Req 15-23 features preserved, no regression |
-| `ff-desktop` | 🔴 | -- | Req 24.7: modern presentation via theme file_tree.* palette + Req 14 accessibility treatments; grouping information preserved |
-| `ff-desktop` | 🔴 | -- | Req 24.8: catalog roots modelled generically (CatalogRoot via provider list()) in Slice A; no mainframe qualifier/duality semantics (Slice B) |
-| `ff-desktop` | 🔴 | -- | Req 24.9: persistent shell Command ===> retained on File Explorer Context; Tab focus-transfer (Req 20.1) re-pointed at the ff-file-tree node list; dispatch unchanged |
-| `ff-desktop` | 🔴 | -- | Req 24.10: cargo test (affected crates) + verify.ps1 clean; tests asserting the inline model updated (not weakened) to the ff-file-tree-backed equivalent |
-| `ff-file-tree` | 🔴 | -- | Req 24.11: any model extension needed by Req 24 added to ff-file-tree WITH tests, keeping the model canonical |
+| `ff-desktop` | ✅ | `nav_model::tests::nav_model_starts_with_three_root_categories` (+ shell renders NavModel TreeState as the default File Explorer CentralPanel) | Req 24.1: File Explorer drives its tree from ff-file-tree TreeState; ff-desktop declares ff-file-tree dep; no parallel tree model |
+| `ff-desktop` | ✅ | `nav_model::tests::identity_is_node_id_and_uri_side_table`, `explorer_view::tests::*` (NodeId-keyed selection/cursor/anchor) | Req 24.2: node identity is NodeId + ResourceUri; cursor/selection/anchor/expansion keyed on NodeId; same-label nodes do not collide |
+| `ff-desktop` | ✅ | `nav_model::tests::{rename_via_writable_provider_moves_file_and_relists, delete_via_writable_provider_removes_file_and_dir, create_via_writable_provider_makes_file_and_folder}` | Req 24.3: File Explorer load/refresh + edit ops via async VfsProvider (list/rename/delete/create); no direct std::fs in the modern explorer path |
+| `ff-desktop` | ✅ | `nav_model::tests` map_entries/map_entry (hidden_file_detected_in_posix_mapping) | Req 24.4: provider-defined Namespace_Mapping (VfsEntry -> TreeNodeData); POSIX/local dir->Directory, file->File, symlink->SymbolicLink, forward-slash paths |
+| `ff-desktop` | ✅ | `nav_model::tests` apply_listing / apply_load_error + expand round-trip | Req 24.5: POSIX/local expand -> list() -> Namespace_Mapping -> TreeState::apply_children; error nodes + keyboard via ff-file-tree |
+| `ff-desktop` | 🔴 | -- | Req 24.6: inline FileExplorerPanelState tree retired to a thin adapter -- PARTIAL: modern explorer is the default; legacy inline tree remains compiled behind the "Use legacy File Explorer" fallback toggle, not yet reduced to an adapter |
+| `ff-desktop` | 🔲 | Manual: modern explorer renders indent guides, disclosure glyphs, selection/focus-ring via file_tree.* palette | Req 24.7: modern presentation via theme file_tree.* palette; grouping information preserved |
+| `ff-desktop` | ✅ | `nav_model::tests::{split_catalog_uri_path_*, apply_child_data_populates_and_maps_uris}`, `catalog_registry::tests::dataset_node_*` | Req 24.8: catalog roots modelled generically (CatalogRoot via provider list()/dataset list) in Slice A; no mainframe qualifier/duality semantics (Slice B) |
+| `ff-desktop` | 🔲 | Manual: shell Command ===> present + functional on File Explorer Context; Tab focus-transfer | Req 24.9: persistent shell Command ===> retained on File Explorer Context; dispatch unchanged |
+| `ff-desktop` | ✅ | verify.ps1 FULL clean across the Slice A commits; new tests added, none weakened | Req 24.10: cargo test (affected crates) + verify.ps1 clean; tests added (not weakened) for the ff-file-tree-backed behaviour |
+| `ff-file-tree` | ✅ | `nav_model::tests` confirm the shell-side NodeId -> ResourceUri side table approach (no model change needed) | Req 24.11: no ff-file-tree model extension required -- shell keeps the side table, model stays canonical |

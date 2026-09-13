@@ -17,7 +17,6 @@
 //! are unused in the compiled binary; the crate-following `allow(dead_code)` keeps
 //! the tested foundation in the tree without warnings (same pattern as
 //! `command_config`). REMOVE the allow when the panel consumes NavModel (26.9).
-#![allow(dead_code)]
 
 use std::collections::HashMap;
 
@@ -63,6 +62,8 @@ impl NavModel {
     }
 
     /// Number of node -> URI associations currently held.
+    // Used by the model's unit tests to assert side-table invariants.
+    #[allow(dead_code)]
     pub fn uri_count(&self) -> usize {
         self.uris.len()
     }
