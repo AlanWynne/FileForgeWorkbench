@@ -955,6 +955,23 @@ impl WorkbenchShell {
                         let _ = cb.set_text(&text);
                     }
                 }
+                ExplorerEffect::MarkCopy(id) => {
+                    // Req 21.1: mark the selection (or this node) for a file copy.
+                    // Record the source URIs of the selected local/POSIX files.
+                    let ids: Vec<ff_file_tree::NodeId> = if self.nav_selection.selected.is_empty() {
+                        vec![id]
+                    } else {
+                        self.nav_selection.selected.iter().copied().collect()
+                    };
+                    self.nav_file_clipboard = ids
+                        .into_iter()
+                        .filter_map(|n| self.nav_model.uri_of(n).cloned())
+                        .filter(|u| u.scheme() == "posix" || u.scheme() == "local")
+                        .collect();
+                }
+                ExplorerEffect::Paste(anchor) => {
+                    self.apply_nav_paste(anchor);
+                }
                 ExplorerEffect::Rename(id) => {
                     // Open the rename dialog seeded with the node's current label
                     // (Req 16 Rename). The rename is applied on dialog confirm.
@@ -1093,6 +1110,81 @@ impl WorkbenchShell {
             }
             Err(e) => self.open_error = Some(format!("Create failed: {e}")),
         }
+    }
+
+    /// Paste the file clipboard into the directory resolved from `anchor` (the
+    /// anchor if a directory, else its parent). Each source file is read and
+    /// written into the target directory via a writable provider, then the
+    /// target listing is refreshed. Local/POSIX only (Req 21.2/21.3).
+    ///
+    /// Validates: Requirement 24.2 (file-tree-panel Req 21)
+    fn apply_nav_paste(&mut self, anchor: ff_file_tree::NodeId) {
+        use crate::explorer_view::paste_target;
+        use crate::nav_model::child_uri;
+        use ff_vfs::{CreateOptions, VfsProvider};
+        if self.nav_file_clipboard.is_empty() {
+            return;
+        }
+        let Some(target) = paste_target(&self.nav_model, anchor) else {
+            return;
+        };
+        let Some(target_uri) = self.nav_model.uri_of(target).cloned() else {
+            return;
+        };
+        if target_uri.scheme() != "posix" && target_uri.scheme() != "local" {
+            self.open_error =
+                Some("Paste is only supported into local directories in this view.".to_string());
+            return;
+        }
+        let root_dir = dirs::home_dir()
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| std::path::PathBuf::from("."));
+        let provider = {
+            let _rt_guard = self.runtime.enter();
+            crate::posix_provider::PosixProvider::new(root_dir, false)
+        };
+        let Ok(provider) = provider else {
+            self.open_error = Some("Paste failed: cannot open provider".to_string());
+            return;
+        };
+        let sources = self.nav_file_clipboard.clone();
+        let mut errors = 0;
+        for src in &sources {
+            // Derive the destination file name from the source path's last segment.
+            let name = src.path().rsplit('/').next().unwrap_or("");
+            if name.is_empty() {
+                continue;
+            }
+            let dest = child_uri(&target_uri, name);
+            // Skip a no-op copy onto itself.
+            if dest.path() == src.path() {
+                continue;
+            }
+            let copy = self.runtime.block_on(async {
+                let bytes = provider.read(src.path()).await?;
+                provider
+                    .create(
+                        dest.path(),
+                        CreateOptions {
+                            create_parents: false,
+                            is_directory: false,
+                        },
+                    )
+                    .await?;
+                provider.write(dest.path(), &bytes).await
+            });
+            if copy.is_err() {
+                errors += 1;
+            }
+        }
+        if errors > 0 {
+            self.open_error = Some(format!("Paste: {errors} file(s) could not be copied"));
+        }
+        // Refresh the target directory listing so the pasted files appear.
+        if let Some(n) = self.nav_model.tree.get_node_mut(target) {
+            n.expanded = true;
+        }
+        self.expand_local_node(target, &target_uri);
     }
 
     /// Render the modern-explorer delete-confirmation dialog and apply the delete

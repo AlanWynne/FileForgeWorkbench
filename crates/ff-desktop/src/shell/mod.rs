@@ -401,6 +401,10 @@ pub struct WorkbenchShell {
     /// When true, the modern explorer node list holds keyboard focus (Tab moved
     /// focus from the shell Command ===> into the tree). (Req 24.9 / 20.1.)
     nav_focused: bool,
+
+    /// File clipboard for the modern explorer: source resource URIs marked for a
+    /// copy, pasted into a target directory on Paste. (Req 21.1 / 21.3.)
+    nav_file_clipboard: Vec<ff_vfs::ResourceUri>,
     /// Toolchain panel state — GCC and Rust plugin entries.
     toolchain_panel: ToolchainPanelState,
     /// Whether the Toolchain Panel is currently visible.
@@ -668,6 +672,7 @@ impl WorkbenchShell {
             nav_delete: None,
             nav_new: None,
             nav_focused: false,
+            nav_file_clipboard: Vec::new(),
             toolchain_panel: ToolchainPanelState::new(),
             show_toolchain_panel: false,
             pending_new_pom: false,

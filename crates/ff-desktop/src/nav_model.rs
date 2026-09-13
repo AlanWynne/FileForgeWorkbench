@@ -525,6 +525,49 @@ mod tests {
     }
 
     #[test]
+    fn copy_file_via_provider_read_create_write_round_trip() {
+        // Validates: Requirement 24.2, 24.3 (Req 21) -- file paste copies bytes
+        // from a source into a target directory through the VFS provider, and the
+        // destination appears in the refreshed listing with identical content.
+        use ff_vfs::{CreateOptions, VfsProvider};
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        std::fs::create_dir(tmp.path().join("dest")).expect("dest dir");
+        std::fs::write(tmp.path().join("src.txt"), b"payload").expect("seed src");
+
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        let provider = {
+            let _g = rt.enter();
+            crate::posix_provider::PosixProvider::new(tmp.path().to_path_buf(), false)
+                .expect("provider")
+        };
+        // Copy /src.txt -> /dest/src.txt (child_uri mirrors the shell's dest path).
+        let target = ResourceUri::new("posix", "/dest");
+        let dest = child_uri(&target, "src.txt");
+        rt.block_on(async {
+            let bytes = provider.read("/src.txt").await.expect("read");
+            provider
+                .create(
+                    dest.path(),
+                    CreateOptions {
+                        create_parents: false,
+                        is_directory: false,
+                    },
+                )
+                .await
+                .expect("create");
+            provider.write(dest.path(), &bytes).await.expect("write");
+        });
+
+        let entries = list_via_provider(&rt, &provider, "/dest").expect("list dest");
+        assert!(
+            entries.iter().any(|e| e.name == "src.txt"),
+            "pasted file present in target dir"
+        );
+        let copied = std::fs::read(tmp.path().join("dest").join("src.txt")).expect("read copy");
+        assert_eq!(copied, b"payload", "content copied verbatim");
+    }
+
+    #[test]
     fn split_catalog_uri_path_extracts_name_and_root() {
         // Validates: Requirement 24.8 -- catalog root lists at "/"
         assert_eq!(

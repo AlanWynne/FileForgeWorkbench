@@ -230,6 +230,28 @@ pub enum ExplorerEffect {
         anchor: NodeId,
         is_dir: bool,
     },
+    /// Mark the current selection (or the given node) for a file copy -- the
+    /// shell records the source URIs in its file clipboard (Req 21.1).
+    MarkCopy(NodeId),
+    /// Paste the file clipboard into the directory resolved from `anchor` (the
+    /// anchor if it is a directory, else its parent) (Req 21.2/21.3).
+    Paste(NodeId),
+}
+
+/// Resolve the paste target directory node from an anchor node: the anchor
+/// itself when it is a directory/container, otherwise its parent (Req 21.2).
+/// Returns `None` if the anchor has no usable parent.
+///
+/// Validates: Requirement 24.2 (file-tree-panel Req 21.2)
+pub fn paste_target(model: &NavModel, anchor: NodeId) -> Option<NodeId> {
+    let node = model.tree.get_node(anchor)?;
+    if node.node_type.is_expandable() {
+        Some(anchor)
+    } else if node.parent != NodeId::ROOT {
+        Some(node.parent)
+    } else {
+        None
+    }
 }
 
 /// Reduce a keyboard gesture over the model and selection, returning the side
@@ -630,6 +652,16 @@ fn context_menu_ui(ui: &mut egui::Ui, row: &VisibleRow) -> Option<ExplorerEffect
         chosen = Some(ExplorerEffect::Open(row.id));
         ui.close_menu();
     }
+    if ui.button("Copy").clicked() {
+        // Mark the selection (or this node) for a file copy (Req 21.1).
+        chosen = Some(ExplorerEffect::MarkCopy(row.id));
+        ui.close_menu();
+    }
+    if ui.button("Paste").clicked() {
+        // Paste the file clipboard into this node's directory (Req 21.2/21.3).
+        chosen = Some(ExplorerEffect::Paste(row.id));
+        ui.close_menu();
+    }
     if ui.button("Copy Full Path").clicked() {
         chosen = Some(ExplorerEffect::CopyPath(row.id));
         ui.close_menu();
@@ -980,6 +1012,16 @@ mod tests {
             }
             other => panic!("expected Dataset, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn paste_target_is_dir_itself_or_parent() {
+        // Validates: Requirement 24.2 (Req 21.2) -- dir -> itself, file -> parent.
+        let (m, local, src, b) = model_with_tree();
+        // src is a directory -> target is src itself.
+        assert_eq!(paste_target(&m, src), Some(src));
+        // b.rs is a file whose parent is local -> target is local.
+        assert_eq!(paste_target(&m, b), Some(local));
     }
 
     #[test]
