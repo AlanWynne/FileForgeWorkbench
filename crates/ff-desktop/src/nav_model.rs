@@ -456,6 +456,35 @@ mod tests {
     }
 
     #[test]
+    fn delete_via_writable_provider_removes_file_and_dir() {
+        // Validates: Requirement 24.2, 24.3 -- delete goes through the VFS
+        // provider (file non-recursive, directory recursive) and the refreshed
+        // listing no longer contains the deleted entries.
+        use ff_vfs::{DeleteOptions, VfsProvider};
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        std::fs::write(tmp.path().join("file.txt"), b"x").expect("seed file");
+        std::fs::create_dir(tmp.path().join("dir")).expect("seed dir");
+        std::fs::write(tmp.path().join("dir").join("inner.txt"), b"y").expect("seed inner");
+
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        let provider = {
+            let _g = rt.enter();
+            crate::posix_provider::PosixProvider::new(tmp.path().to_path_buf(), false)
+                .expect("provider")
+        };
+
+        rt.block_on(provider.delete("/file.txt", DeleteOptions { recursive: false }))
+            .expect("delete file");
+        rt.block_on(provider.delete("/dir", DeleteOptions { recursive: true }))
+            .expect("delete dir recursively");
+
+        let entries = list_via_provider(&rt, &provider, "/").expect("list");
+        let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
+        assert!(!names.contains(&"file.txt"), "file removed");
+        assert!(!names.contains(&"dir"), "directory removed");
+    }
+
+    #[test]
     fn split_catalog_uri_path_extracts_name_and_root() {
         // Validates: Requirement 24.8 -- catalog root lists at "/"
         assert_eq!(

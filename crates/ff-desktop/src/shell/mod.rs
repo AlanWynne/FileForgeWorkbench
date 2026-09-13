@@ -389,6 +389,10 @@ pub struct WorkbenchShell {
     /// Active rename dialog for the modern explorer: (target node, edit buffer).
     /// `None` when no rename is in progress. (CR-NR-060 Slice A, Req 16 Rename.)
     nav_rename: Option<(ff_file_tree::NodeId, String)>,
+
+    /// Active delete-confirmation dialog for the modern explorer: (target node,
+    /// display label). `None` when no delete is pending. (Req 16 Delete.)
+    nav_delete: Option<(ff_file_tree::NodeId, String)>,
     /// Toolchain panel state — GCC and Rust plugin entries.
     toolchain_panel: ToolchainPanelState,
     /// Whether the Toolchain Panel is currently visible.
@@ -653,6 +657,7 @@ impl WorkbenchShell {
             nav_selection: crate::explorer_view::ExplorerSelection::default(),
             use_legacy_explorer: false,
             nav_rename: None,
+            nav_delete: None,
             toolchain_panel: ToolchainPanelState::new(),
             show_toolchain_panel: false,
             pending_new_pom: false,

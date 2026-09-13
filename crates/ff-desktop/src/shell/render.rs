@@ -955,6 +955,13 @@ impl WorkbenchShell {
                         self.nav_rename = Some((id, label));
                     }
                 }
+                ExplorerEffect::Delete(id) => {
+                    // Open the delete-confirmation dialog (Req 16 Delete). The
+                    // delete is applied only on explicit confirm.
+                    if let Some(label) = self.nav_model.tree.get_node(id).map(|n| n.label.clone()) {
+                        self.nav_delete = Some((id, label));
+                    }
+                }
                 ExplorerEffect::Reveal(id) => {
                     // Req 16 Reveal in Explorer: open the OS file manager at the
                     // node. Only local/POSIX nodes map to a real host path.
@@ -973,8 +980,92 @@ impl WorkbenchShell {
             }
         }
 
-        // Rename dialog (Req 16 Rename) -- modal, applied on confirm.
+        // Rename + Delete dialogs (Req 16) -- modal, applied on confirm.
         self.render_nav_rename_dialog(ctx);
+        self.render_nav_delete_dialog(ctx);
+    }
+
+    /// Render the modern-explorer delete-confirmation dialog and apply the delete
+    /// on confirm. Local/POSIX nodes only; directories delete recursively.
+    ///
+    /// Validates: Requirement 24.2 (file-tree-panel Req 16 Delete)
+    fn render_nav_delete_dialog(&mut self, ctx: &egui::Context) {
+        let Some((id, label)) = self.nav_delete.take() else {
+            return;
+        };
+        let mut decision: Option<bool> = None; // Some(true)=delete, Some(false)=cancel
+        egui::Window::new("Delete")
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+            .show(ctx, |ui| {
+                ui.label(format!("Delete '{label}'? This cannot be undone."));
+                ui.horizontal(|ui| {
+                    if ui.button("Delete").clicked() {
+                        decision = Some(true);
+                    }
+                    if ui.button("Cancel").clicked() {
+                        decision = Some(false);
+                    }
+                });
+                if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                    decision = Some(false);
+                }
+            });
+
+        match decision {
+            Some(true) => self.apply_nav_delete(id),
+            Some(false) => {} // cancelled -- dialog already taken (closed)
+            None => self.nav_delete = Some((id, label)), // keep open
+        }
+    }
+
+    /// Apply a delete of node `id` (local/POSIX only) via a writable provider,
+    /// then refresh the parent listing. Directories are deleted recursively.
+    ///
+    /// Validates: Requirement 24.2, 24.3 (Req 16 Delete)
+    fn apply_nav_delete(&mut self, id: ff_file_tree::NodeId) {
+        use ff_vfs::{DeleteOptions, VfsProvider};
+        let Some(uri) = self.nav_model.uri_of(id).cloned() else {
+            return;
+        };
+        if uri.scheme() != "posix" && uri.scheme() != "local" {
+            self.open_error =
+                Some("Delete is only supported for local files in this view.".to_string());
+            return;
+        }
+        let recursive = self
+            .nav_model
+            .tree
+            .get_node(id)
+            .map(|n| n.node_type.is_expandable())
+            .unwrap_or(false);
+        let parent = self.nav_model.tree.get_node(id).map(|n| n.parent);
+        let root_dir = dirs::home_dir()
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| std::path::PathBuf::from("."));
+        let provider = {
+            let _rt_guard = self.runtime.enter();
+            crate::posix_provider::PosixProvider::new(root_dir, false)
+        };
+        let Ok(provider) = provider else {
+            self.open_error = Some("Delete failed: cannot open provider".to_string());
+            return;
+        };
+        let result = self
+            .runtime
+            .block_on(provider.delete(uri.path(), DeleteOptions { recursive }));
+        match result {
+            Ok(()) => {
+                if let Some(parent) = parent {
+                    if let Some(puri) = self.nav_model.uri_of(parent).cloned() {
+                        self.expand_local_node(parent, &puri);
+                    }
+                    self.nav_model.prune_uris();
+                }
+            }
+            Err(e) => self.open_error = Some(format!("Delete failed: {e}")),
+        }
     }
 
     /// Render the modern-explorer rename dialog when a rename is in progress and

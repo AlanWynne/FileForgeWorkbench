@@ -160,6 +160,8 @@ pub enum ExplorerEffect {
     Reveal(NodeId),
     /// Begin renaming the node (opens the rename dialog) (Req 16 Rename).
     Rename(NodeId),
+    /// Begin deleting the node (opens the confirmation dialog) (Req 16 Delete).
+    Delete(NodeId),
 }
 
 /// Reduce a keyboard gesture over the model and selection, returning the side
@@ -544,10 +546,12 @@ fn context_menu_ui(ui: &mut egui::Ui, row: &VisibleRow) -> Option<ExplorerEffect
         chosen = Some(ExplorerEffect::Rename(row.id));
         ui.close_menu();
     }
+    if ui.button("Delete").clicked() {
+        chosen = Some(ExplorerEffect::Delete(row.id));
+        ui.close_menu();
+    }
     // Deferred (full swap): remaining mutating operations need a write provider +
     // model refresh. Shown disabled so the menu is complete and honest.
-    ui.add_enabled(false, egui::Button::new("Delete"))
-        .on_disabled_hover_text("Available in a later update");
     ui.add_enabled(false, egui::Button::new("New File"))
         .on_disabled_hover_text("Available in a later update");
     ui.add_enabled(false, egui::Button::new("New Folder"))
