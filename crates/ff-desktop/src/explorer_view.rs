@@ -15,12 +15,19 @@
 
 use std::collections::HashSet;
 
+use eframe::egui;
 use ff_file_tree::keyboard::{
     first_visible_node, last_visible_node, next_visible_node, prev_visible_node, type_ahead_jump,
 };
-use ff_file_tree::{NodeId, TreeAction};
+use ff_file_tree::{FileCategory, NodeId, TreeAction};
+use ff_theme::{ColourRGBA, ThemePalette};
 
 use crate::nav_model::NavModel;
+
+/// Indentation (logical px) applied per tree depth level.
+const INDENT_PER_LEVEL: f32 = 16.0;
+/// Left padding before the first indent level.
+const ROW_LEFT_PAD: f32 = 6.0;
 
 /// Keyboard/mouse selection state for the File Explorer, keyed entirely on
 /// `NodeId` (never on path strings). Mirrors the cursor-vs-selection model of
@@ -318,6 +325,114 @@ pub fn effect_from_action(
         }
         TreeAction::Delete(_) | TreeAction::Rename(_) => ExplorerEffect::None,
     }
+}
+
+// === Rendering (egui) ===================================================
+
+/// Convert a theme `ColourRGBA` to an `egui::Color32` (local copy of the shell
+/// helper, which is private to the shell module).
+fn to_egui_color(c: ColourRGBA) -> egui::Color32 {
+    egui::Color32::from_rgba_premultiplied(c.r, c.g, c.b, c.a)
+}
+
+/// Map a node's `FileCategory` to its theme palette colour (Requirement 24.7 --
+/// presentation driven by the `file_tree.*` palette group).
+fn category_colour(cat: FileCategory, palette: &ThemePalette) -> ColourRGBA {
+    match cat {
+        FileCategory::NonEditableBinary => palette.file_tree.binary,
+        FileCategory::FileForgeStructured => palette.file_tree.structured,
+        FileCategory::StandardText => palette.file_tree.text,
+        FileCategory::Unknown => palette.file_tree.unknown,
+        FileCategory::Directory => palette.file_tree.directory,
+        FileCategory::SymbolicLink => palette.file_tree.symlink,
+        // FileCategory is #[non_exhaustive]; fall back to the "unknown" colour.
+        _ => palette.file_tree.unknown,
+    }
+}
+
+/// A glyph prefix for a row, chosen by expandability/expansion state -- modern,
+/// theme-neutral disclosure + type iconography (Requirement 24.7).
+fn row_glyph(row: &VisibleRow) -> &'static str {
+    if row.expandable {
+        if row.expanded {
+            "\u{25BC}" // down-pointing triangle (expanded)
+        } else {
+            "\u{25B6}" // right-pointing triangle (collapsed)
+        }
+    } else {
+        "\u{2022}" // bullet (leaf)
+    }
+}
+
+/// Render the NavModel-backed tree as modern, indented, theme-coloured rows and
+/// return the interaction effects the caller must apply (expand/collapse loads,
+/// opens). Selection/cursor are updated in place on `sel`.
+///
+/// The renderer performs NO VFS I/O: expand/collapse and open are returned as
+/// `ExplorerEffect`s so the shell (which owns the runtime + providers) performs
+/// the async `list_via_provider` -> `apply_listing` load (Requirement 24.3/24.5).
+///
+/// Validates: Requirement 24.1, 24.2, 24.6, 24.7
+pub fn render_tree(
+    ui: &mut egui::Ui,
+    model: &NavModel,
+    sel: &mut ExplorerSelection,
+    palette: &ThemePalette,
+) -> Vec<ExplorerEffect> {
+    let mut effects = Vec::new();
+    let rows = visible_rows(model);
+    let focus_stroke = egui::Stroke::new(1.5_f32, to_egui_color(palette.ui.focus_ring));
+
+    egui::ScrollArea::vertical()
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            for row in &rows {
+                let category = model
+                    .tree
+                    .get_node(row.id)
+                    .map(|n| n.category)
+                    .unwrap_or(FileCategory::Unknown);
+                let fg = to_egui_color(category_colour(category, palette));
+                let indent = ROW_LEFT_PAD + (row.depth as f32) * INDENT_PER_LEVEL;
+                let is_selected = sel.is_selected(row.id);
+                let is_cursor = sel.cursor == Some(row.id);
+
+                let label = format!("{} {}", row_glyph(row), row.label);
+                let text = egui::RichText::new(label).monospace().color(fg);
+
+                // Full-width selectable row with leading indent.
+                let resp = ui
+                    .horizontal(|ui| {
+                        ui.add_space(indent);
+                        ui.add(egui::SelectableLabel::new(is_selected, text))
+                    })
+                    .inner;
+
+                // Cursor focus ring, distinct from the selection fill (Req 20.13).
+                if is_cursor {
+                    ui.painter()
+                        .rect_stroke(resp.rect.expand(1.0_f32), 2.0_f32, focus_stroke);
+                }
+
+                if resp.clicked() {
+                    sel.select_single(row.id);
+                }
+                if resp.double_clicked() {
+                    sel.select_single(row.id);
+                    if row.expandable {
+                        effects.push(if row.expanded {
+                            ExplorerEffect::Collapse(row.id)
+                        } else {
+                            ExplorerEffect::Expand(row.id)
+                        });
+                    } else {
+                        effects.push(ExplorerEffect::Open(row.id));
+                    }
+                }
+            }
+        });
+
+    effects
 }
 
 #[cfg(test)]
