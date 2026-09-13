@@ -962,16 +962,19 @@ impl WorkbenchShell {
     ///
     /// Validates: Requirement 24.8, 24.5
     fn expand_catalog_node(&mut self, id: ff_file_tree::NodeId, uri: &ff_vfs::ResourceUri) {
-        use crate::nav_model::{list_via_provider, split_catalog_uri_path};
+        use crate::catalog_registry::CatalogType;
+        use crate::nav_model::split_catalog_uri_path;
         // URI path is "/{name}[/{subpath...}]": the first segment is the catalog
         // name, the remainder is a directory path relative to the catalog root.
         let (name, sub_path) = split_catalog_uri_path(uri.path());
-        let resolved = self
-            .files_panel
-            .registry
-            .get_by_name(name)
-            .map(|c| (std::path::PathBuf::from(&c.path), c.read_only));
-        let (root_dir, read_only) = match resolved {
+        let resolved = self.files_panel.registry.get_by_name(name).map(|c| {
+            (
+                c.catalog_type,
+                std::path::PathBuf::from(&c.path),
+                c.read_only,
+            )
+        });
+        let (catalog_type, root_dir, read_only) = match resolved {
             Some(v) => v,
             None => {
                 self.nav_model
@@ -979,15 +982,65 @@ impl WorkbenchShell {
                 return;
             }
         };
+        match catalog_type {
+            // Mainframe catalog root: list the datasets registered in SQLite,
+            // not the repository's internal directory layout. Members/qualifier
+            // duality is Slice B; a dataset node is a leaf (or shows a Slice B
+            // placeholder if expanded).
+            CatalogType::Mainframe if sub_path == "/" => self.list_catalog_datasets(id, name),
+            CatalogType::Mainframe => {
+                // A dataset node under a Mainframe catalog was expanded: member
+                // navigation is deferred to Slice B.
+                self.nav_model.apply_load_error(
+                    id,
+                    "Dataset member browsing is available in a later update.".to_string(),
+                );
+            }
+            // POSIX / Native catalog: a real host directory -- list it generically.
+            CatalogType::Posix | CatalogType::Native => {
+                self.list_catalog_directory(id, root_dir, read_only, &sub_path)
+            }
+        }
+    }
+
+    /// List the datasets of a Mainframe catalog (from SQLite) as tree nodes.
+    /// PS -> sequential (leaf), PO -> partitioned, GDG -> GDG base. Dataset node
+    /// URIs use the `dataset` scheme (`vfs://dataset/{catalog}/{DSN}`) so open/
+    /// expand routing can distinguish them from directories.
+    ///
+    /// Validates: Requirement 24.8
+    fn list_catalog_datasets(&mut self, id: ff_file_tree::NodeId, catalog: &str) {
+        use crate::catalog_registry::dataset_node;
+        match self.files_panel.registry.list_datasets(catalog) {
+            Ok(records) => {
+                let children = records
+                    .iter()
+                    .map(|r| dataset_node(catalog, r))
+                    .collect::<Vec<_>>();
+                self.nav_model.apply_child_data(id, children);
+            }
+            Err(e) => self.nav_model.apply_load_error(id, e.to_string()),
+        }
+    }
+
+    /// List a POSIX/Native catalog's backing directory generically (Req 24.8).
+    ///
+    /// Validates: Requirement 24.8, 24.5
+    fn list_catalog_directory(
+        &mut self,
+        id: ff_file_tree::NodeId,
+        root_dir: std::path::PathBuf,
+        read_only: bool,
+        sub_path: &str,
+    ) {
+        use crate::nav_model::list_via_provider;
         // Enter the runtime context so the provider's watcher can spawn (B040).
         let provider = {
             let _rt_guard = self.runtime.enter();
             crate::posix_provider::PosixProvider::new(root_dir, read_only)
         };
         match provider {
-            Ok(provider) => match list_via_provider(&self.runtime, &provider, &sub_path) {
-                // Map generically as file/dir nodes; children keep the catalog
-                // scheme so nested expansion resolves back through this method.
+            Ok(provider) => match list_via_provider(&self.runtime, &provider, sub_path) {
                 Ok(entries) => self.nav_model.apply_listing(id, "posix", &entries),
                 Err(e) => self.nav_model.apply_load_error(id, e),
             },

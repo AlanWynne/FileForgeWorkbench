@@ -138,6 +138,25 @@ impl NavModel {
         self.uris.insert(id, uri);
         id
     }
+
+    /// Populate a container node's children from pre-built `TreeNodeData` paired
+    /// with explicit `ResourceUri`s, for children that do NOT come from a VFS
+    /// directory `list()` (e.g. catalog datasets enumerated from SQLite). The
+    /// parent is expanded and each child's URI is recorded in the side table.
+    ///
+    /// Validates: Requirement 24.2, 24.8
+    pub fn apply_child_data(&mut self, parent: NodeId, children: Vec<(TreeNodeData, ResourceUri)>) {
+        let (data, uris): (Vec<TreeNodeData>, Vec<ResourceUri>) = children.into_iter().unzip();
+        self.tree.apply_children(parent, data);
+        let child_ids: Vec<NodeId> = self
+            .tree
+            .get_node(parent)
+            .map(|n| n.children.clone())
+            .unwrap_or_default();
+        for (id, uri) in child_ids.iter().zip(uris) {
+            self.uris.insert(*id, uri);
+        }
+    }
 }
 
 /// Drive an async `VfsProvider::list()` to completion on the given Tokio runtime
@@ -386,6 +405,35 @@ mod tests {
         let (name, sub) = split_catalog_uri_path("/PAYROLL/src/data");
         assert_eq!(name, "PAYROLL");
         assert_eq!(sub, "/src/data");
+    }
+
+    #[test]
+    fn apply_child_data_populates_and_maps_uris() {
+        // Validates: Requirement 24.8 -- datasets applied as children with URIs
+        let mut m = NavModel::new();
+        let catalogs = m.tree.root_categories[1];
+        let cat = m.add_child(
+            catalogs,
+            "TESTING",
+            NodeType::CatalogRoot,
+            ResourceUri::new("catalog", "/TESTING"),
+        );
+        let children = vec![
+            (
+                TreeNodeData::file("TESTING.DATA"),
+                ResourceUri::new("dataset", "/TESTING/TESTING.DATA"),
+            ),
+            (
+                TreeNodeData::file("TESTING.LOG"),
+                ResourceUri::new("dataset", "/TESTING/TESTING.LOG"),
+            ),
+        ];
+        m.apply_child_data(cat, children);
+        let kids = m.tree.get_node(cat).unwrap().children.clone();
+        assert_eq!(kids.len(), 2);
+        assert!(m.tree.get_node(cat).unwrap().expanded);
+        assert_eq!(m.uri_of(kids[0]).unwrap().scheme(), "dataset");
+        assert_eq!(m.uri_of(kids[0]).unwrap().path(), "/TESTING/TESTING.DATA");
     }
 
     #[test]

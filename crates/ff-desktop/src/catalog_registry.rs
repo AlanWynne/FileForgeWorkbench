@@ -286,6 +286,42 @@ impl CatalogRegistry {
     }
 }
 
+/// Map a catalog `DatasetRecord` to a File Explorer tree node plus its resource
+/// URI, for display under a Mainframe catalog root (Req 24.8, generic Slice A).
+///
+/// The node type reflects the dataset organisation: PS -> sequential (leaf),
+/// PO -> partitioned, GDG -> GDG base. The URI uses the `dataset` scheme
+/// (`vfs://dataset/{catalog}/{DSN}`) so open/expand routing can tell a dataset
+/// node apart from a directory node. Member/qualifier navigation is Slice B.
+///
+/// Validates: Requirement 24.8
+pub fn dataset_node(
+    catalog: &str,
+    record: &DatasetRecord,
+) -> (ff_file_tree::TreeNodeData, ff_vfs::ResourceUri) {
+    use ff_dscatalog::dataset::Dsorg;
+    use ff_file_tree::{FileCategory, NodeType, TreeNodeData};
+
+    let dsn = record.dsn.as_str();
+    let (node_type, category) = match record.dsorg {
+        // Partitioned / GDG datasets are container-like (directory colour);
+        // sequential datasets are editable content (text colour).
+        Dsorg::PO => (NodeType::DatasetPartitioned, FileCategory::Directory),
+        Dsorg::GDG => (NodeType::GdgBase, FileCategory::Directory),
+        _ => (NodeType::DatasetSequential, FileCategory::StandardText),
+    };
+    let data = TreeNodeData {
+        label: dsn.to_string(),
+        node_type,
+        size: None,
+        category,
+        has_structure: false,
+        is_hidden: false,
+    };
+    let uri = ff_vfs::ResourceUri::new("dataset", format!("/{catalog}/{dsn}"));
+    (data, uri)
+}
+
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -365,6 +401,67 @@ mod tests {
         let datasets = reg.list_datasets("TESTING").expect("list");
         assert_eq!(datasets.len(), 1);
         assert_eq!(datasets[0].dsn.as_str(), "TESTING.DATA");
+    }
+
+    /// A sequential dataset maps to a leaf node with the `dataset` scheme URI.
+    ///
+    /// Validates: Requirement 24.8
+    #[test]
+    fn dataset_node_maps_sequential_to_leaf_with_dataset_uri() {
+        use ff_dscatalog::dataset::{Dsorg, Recfm};
+        use ff_dscatalog::dsn::Dsn;
+        use ff_dscatalog::hierarchy::CatalogScope;
+        use ff_file_tree::NodeType;
+
+        let record = DatasetRecord {
+            id: 1,
+            dsn: Dsn::parse("TESTING.DATA").expect("dsn"),
+            dsorg: Dsorg::PS,
+            storage_path: "storage/abc".to_string(),
+            recfm: Some(Recfm::FB),
+            lrecl: Some(80),
+            blksize: Some(800),
+            subtype: None,
+            scope: CatalogScope::User,
+            created: None,
+            modified: None,
+            accessed: None,
+        };
+        let (data, uri) = dataset_node("TESTING", &record);
+        assert_eq!(data.label, "TESTING.DATA");
+        assert_eq!(data.node_type, NodeType::DatasetSequential);
+        assert!(!data.node_type.is_expandable());
+        assert_eq!(uri.scheme(), "dataset");
+        assert_eq!(uri.path(), "/TESTING/TESTING.DATA");
+    }
+
+    /// A partitioned dataset maps to an expandable partitioned node.
+    ///
+    /// Validates: Requirement 24.8
+    #[test]
+    fn dataset_node_maps_partitioned_to_expandable() {
+        use ff_dscatalog::dataset::Dsorg;
+        use ff_dscatalog::dsn::Dsn;
+        use ff_dscatalog::hierarchy::CatalogScope;
+        use ff_file_tree::NodeType;
+
+        let record = DatasetRecord {
+            id: 2,
+            dsn: Dsn::parse("TESTING.LIB").expect("dsn"),
+            dsorg: Dsorg::PO,
+            storage_path: "pds/def".to_string(),
+            recfm: None,
+            lrecl: None,
+            blksize: None,
+            subtype: None,
+            scope: CatalogScope::User,
+            created: None,
+            modified: None,
+            accessed: None,
+        };
+        let (data, _uri) = dataset_node("TESTING", &record);
+        assert_eq!(data.node_type, NodeType::DatasetPartitioned);
+        assert!(data.node_type.is_expandable());
     }
 
     /// Validates: Requirement 2.3 — register adds a catalog to the list.
