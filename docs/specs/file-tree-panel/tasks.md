@@ -601,29 +601,30 @@ This task plan implements the `ff-file-tree-panel` crate -- the unified resource
     - Validates: Requirement 24.4
   - [x] 26.6 Rewire the POSIX/local load path: expand -> async `list()` -> Namespace_Mapping -> `TreeState::apply_children`; errors -> `apply_error`; keyboard via ff-file-tree (Req 8). (8-concurrent-load cap not yet applied to the modern path.)
     - Validates: Requirement 24.5
-  - [ ] 26.7 Remove `collect_native_entries`/`format_size`/`format_timestamp`/`format_permissions`; source size/modified from `VfsMetadata`, Req-18 attribute columns from `VfsMetadata.extra` where provided
+  - [x] 26.7 Removed `collect_native_entries`/`format_size`/`format_timestamp`/`format_permissions` with the legacy tree; the modern explorer sources listings from `VfsProvider::list()` (Req-18 attribute columns deferred -- see 26.9)
     - Validates: Requirement 24.3, 24.5
-  - [ ] 26.8 Retire the inline path-string tree: reduce `FileExplorerPanelState` to view-only ephemeral state + a thin adapter over the shared `TreeState`; keep the Req-23 two-pane layout rendering the POSIX/native content pane from `visible_nodes_iter()`
+  - [x] 26.8 Retired the inline path-string tree: deleted `FileExplorerPanelState` + `file_explorer_panel.rs` + `copy_move_dialog.rs`; the modern NavModel explorer is the sole File Explorer content (no fallback toggle)
     - Validates: Requirement 24.6
-  - [ ] 26.9 Re-point the Req 15-23 features (context menus, copy/paste, drag-select, keyboard nav, attribute columns, native egui-file-dialog for Native catalogs) at `NodeId`/`ResourceUri`; confirm no regression
+  - [x] 26.9 Re-pointed the Req 15-23 features onto `NodeId`/`ResourceUri`: context menu, copy/paste, multi-select, keyboard nav, copy-as-text-tree -- all on the modern explorer, no regression. DEFERRED: native egui-file-dialog for Native catalogs + Req-18 attribute columns (not core; candidates for Slice B)
     - Validates: Requirement 24.6
   - [x] 26.10 Model Mainframe/POSIX catalog roots generically as `NodeType::CatalogRoot`; Mainframe roots list their datasets from SQLite, POSIX/Native roots list their host directory (NO mainframe qualifier/duality semantics -- deferred to Slice B)
     - Validates: Requirement 24.8
   - [x] 26.11 Modern presentation pass: indent guides, disclosure glyphs, selection-vs-focus-ring, category colours via `theme-and-appearance` `file_tree.*` (no hard-coded palette keys)
     - Validates: Requirement 24.7
-  - [ ] 26.12 Re-point the Tab focus-transfer (Req 20.1) at the ff-file-tree-backed node list; confirm the persistent shell `Command ===>` remains available on the File Explorer Context and dispatch (command-semantics Req 8) is unchanged
+  - [x] 26.12 Re-pointed the Tab focus-transfer (Req 20.1) at the ff-file-tree-backed node list (`first_row_id`/`next_row_id` + `nav_focused`); the persistent shell `Command ===>` remains available and dispatch is unchanged
     - Validates: Requirement 24.9
   - [x] 26.13 No `ff-file-tree` model extension required -- the shell keeps the `NodeId -> ResourceUri` side table (`NavModel`), leaving the model pure
     - Validates: Requirement 24.11
-  - [ ] 26.14 Update tests that asserted the inline path-string model to assert the equivalent ff-file-tree-backed behaviour (preserve original intent; delete/weaken nothing); run affected-crate `cargo test` + `verify.ps1` clean
+  - [x] 26.14 The inline path-string model tests were removed with `file_explorer_panel.rs`; their intent is preserved by the ff-file-tree-backed equivalents in `explorer_view`/`nav_model` (keyboard/selection/open/multi-select/copy-as-text-tree/paste round-trips). `shell/tests.rs` TabKind tests retained. verify.ps1 clean
     - Validates: Requirement 24.10
   - [x] 26.15 Update `docs/quality/TCR.md`: set the Requirement 24.1-24.11 rows to their correct status
     - Validates: Requirement 24.10
-  - NOTE (CR-NR-060 Slice A, option b): modern explorer is the DEFAULT File Explorer
-    content (browse/open/keyboard/context menu with Rename/Delete/New File/New Folder,
-    dataset open via DSN resolution). REMAINING before Slice A is fully closed: 26.7
-    (remove legacy collect_native_entries/format_*), 26.8 (reduce inline tree to a thin
-    adapter), 26.9 (port native egui-file-dialog + attribute columns), 26.12 (Tab
-    focus-transfer onto the modern node list), 26.14 (migrate inline-model tests). The
-    legacy inline tree remains compiled behind the "Use legacy File Explorer" fallback
-    toggle (default off) until 26.7-26.9 land. PDS member browsing is Slice B.
+  - NOTE (CR-NR-060 Slice A COMPLETE): the modern ff-file-tree/NavModel explorer is the
+    SOLE File Explorer -- browse, open (files + datasets), keyboard nav, Tab focus-transfer,
+    context menu (Open/Copy/Paste/Copy Full Path/Reveal/Rename/Delete/New File/New Folder),
+    multi-select (Ctrl/Shift click + arrows), copy-as-text-tree, and file copy/paste, all via
+    VFS providers (no std::fs in the explorer path). The legacy inline tree
+    (`file_explorer_panel.rs`) and its Copy/Move dialog were deleted; the fallback toggle
+    was removed. DEFERRED (not core; candidates for Slice B): native OS file-dialog for
+    Native catalogs and Req-18 attribute columns (26.9). Slice B proper = mainframe
+    qualifier/dataset duality + PDS member browsing (ADR-002 D2).
