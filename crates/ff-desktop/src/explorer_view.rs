@@ -21,6 +21,7 @@ use ff_file_tree::keyboard::{
 };
 use ff_file_tree::{FileCategory, NodeId, TreeAction};
 use ff_theme::{ColourRGBA, ThemePalette};
+use ff_vfs::ResourceUri;
 
 use crate::nav_model::NavModel;
 
@@ -327,6 +328,43 @@ pub fn effect_from_action(
     }
 }
 
+// === Open resolution ====================================================
+
+/// What the shell should do when a leaf node is opened.
+///
+/// Resolution is done here (NodeId -> ResourceUri -> classification); the shell
+/// performs the actual open (editor tab via its existing open path, or the OS
+/// default application) so that File Explorer I/O stays in one place.
+///
+/// Validates: Requirement 24.2, 24.9
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OpenTarget {
+    /// Open this resource in a FFWB editor tab (Text / FfwbStructured).
+    Editor(ResourceUri),
+    /// Hand this resource to the OS default application (External).
+    External(ResourceUri),
+    /// The node has no associated URI (e.g. a category header) -- nothing to open.
+    None,
+}
+
+/// Resolve an opened node to an [`OpenTarget`], classifying the resource by its
+/// URI path (reusing `context_menu::classify_file`). For local/posix schemes the
+/// URI path is the on-disk path; for other schemes the path is passed through to
+/// the classifier (external opens fall back gracefully).
+///
+/// Validates: Requirement 24.2, 24.9
+pub fn resolve_open(model: &NavModel, id: NodeId) -> OpenTarget {
+    let Some(uri) = model.uri_of(id) else {
+        return OpenTarget::None;
+    };
+    match crate::context_menu::classify_file(uri.path()) {
+        crate::context_menu::FileClass::Text | crate::context_menu::FileClass::FfwbStructured => {
+            OpenTarget::Editor(uri.clone())
+        }
+        crate::context_menu::FileClass::External => OpenTarget::External(uri.clone()),
+    }
+}
+
 // === Rendering (egui) ===================================================
 
 /// Convert a theme `ColourRGBA` to an `egui::Color32` (local copy of the shell
@@ -438,7 +476,6 @@ pub fn render_tree(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ff_vfs::ResourceUri;
 
     /// Build a model: local root with dir "src" (containing "a.rs") and file "b.rs".
     fn model_with_tree() -> (NavModel, NodeId, NodeId, NodeId) {
@@ -611,6 +648,43 @@ mod tests {
         m.tree.toggle_expand(src);
         let eff2 = reduce_key(&m, &mut sel, ExplorerKey::Enter);
         assert_eq!(eff2, ExplorerEffect::Collapse(src));
+    }
+
+    #[test]
+    fn resolve_open_text_file_targets_editor() {
+        // Validates: Requirement 24.2, 24.9 -- text/source resolves to Editor
+        let (m, _local, _src, b) = model_with_tree();
+        // b.rs already has a URI from apply_listing (child of /root).
+        match resolve_open(&m, b) {
+            OpenTarget::Editor(uri) => assert_eq!(uri.path(), "/root/b.rs"),
+            other => panic!("expected Editor, got {other:?}"),
+        }
+        // A URI-less category node (Catalogs root, no set_uri) resolves to None.
+        let catalogs = m.tree.root_categories[1];
+        assert_eq!(resolve_open(&m, catalogs), OpenTarget::None);
+    }
+
+    #[test]
+    fn resolve_open_binary_file_targets_external() {
+        // Validates: Requirement 24.9 -- non-editable resolves to External
+        let mut m = NavModel::new();
+        let local = m.tree.root_categories[0];
+        m.set_uri(local, ResourceUri::new("local", "/root"));
+        m.apply_listing(
+            local,
+            "local",
+            &[ff_vfs::VfsEntry {
+                name: "image.png".into(),
+                entry_type: ff_vfs::VfsEntryType::File,
+                size: None,
+                modified: None,
+            }],
+        );
+        let png = m.tree.get_node(local).unwrap().children[0];
+        match resolve_open(&m, png) {
+            OpenTarget::External(uri) => assert_eq!(uri.path(), "/root/image.png"),
+            other => panic!("expected External, got {other:?}"),
+        }
     }
 
     #[test]
