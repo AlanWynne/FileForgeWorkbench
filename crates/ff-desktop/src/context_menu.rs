@@ -1,11 +1,21 @@
 //! # Context Menu — File Explorer Panel
 //!
-//! Defines `NodeKind`, `MenuItem`, `ExtensionRule`, and `build_context_menu()`.
-//! The menu spec for each of the 8 node kinds is driven by the requirements
-//! table in Requirement 16.2–16.9.  Extension rules can promote a
-//! `Disabled` item to an active one (e.g. `*.jcl` enabling Submit JCL).
+//! Surviving public surface used by the modern explorer: `FileClass`,
+//! `classify_file`/`classify_extension`, `launch_default_app`, and
+//! `reveal_in_explorer`.
+//!
+//! The `NodeKind`/`MenuItem`/`MenuAction`/`build_context_menu` menu-model below
+//! (and its name-transform helpers) encoded the retired legacy inline File
+//! Explorer's context menus (Req 16.2-16.9). The modern explorer builds its own
+//! context menu in `explorer_view::context_menu_ui`, so this model is currently
+//! unused. It is retained (tested) as the Req-16 reference and pruned in a
+//! dedicated follow-up commit; see CR-NR-060 Slice A tasks 26.7/26.9.
 //!
 //! Validates: Requirement 16.1–16.9, 16.15, 16.16, 16.17
+// TODO(CR-NR-060 26.9): prune the unused legacy menu-model (NodeKind/MenuItem/
+// MenuAction/build_context_menu/ExtensionRule + tests) now that the modern
+// explorer supplies its own context menu.
+#![allow(dead_code)]
 
 use crate::catalog_registry::CatalogType;
 
@@ -451,6 +461,34 @@ impl MenuAction {
         return "Reveal in Finder";
         #[cfg(not(any(target_os = "windows", target_os = "macos")))]
         return "Open Containing Folder";
+    }
+}
+
+// === Reveal in Explorer =====================================================
+
+/// Open the OS file manager at `path` (or its parent directory when `path` is a
+/// file). Non-blocking. Used by both the File Explorer context menu and the
+/// modern explorer's Reveal action.
+///
+/// Validates: Requirement 16.14
+pub(crate) fn reveal_in_explorer(path: &str) {
+    let target = std::path::Path::new(path);
+    let dir = if target.is_dir() {
+        target.to_path_buf()
+    } else {
+        target.parent().unwrap_or(target).to_path_buf()
+    };
+    #[cfg(target_os = "windows")]
+    {
+        let _ = std::process::Command::new("explorer").arg(&dir).spawn();
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("open").arg(&dir).spawn();
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+        let _ = std::process::Command::new("xdg-open").arg(&dir).spawn();
     }
 }
 

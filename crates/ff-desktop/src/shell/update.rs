@@ -78,36 +78,6 @@ pub(super) fn ensure_pom_tab_present(
     }
 }
 
-/// Auto-open a catalog or directory node when Tab lands on it.
-///
-/// For `cat:NAME` nodes: inserts into `open_catalogs` and opens the egui
-/// `CollapsingState` so files become visible immediately.
-/// For directory paths: inserts into `open_directories` and opens the egui
-/// `CollapsingState` keyed by `fep_dir_<path>`.
-///
-/// Validates: Requirement 20.2
-fn auto_open_node(
-    ctx: &egui::Context,
-    node: &str,
-    panel: &mut crate::file_explorer_panel::FileExplorerPanelState,
-) {
-    if let Some(name) = node.strip_prefix("cat:") {
-        panel.open_catalogs.insert(name.to_string());
-        let id = egui::Id::new(format!("fep_cat_{name}"));
-        let mut cs =
-            egui::collapsing_header::CollapsingState::load_with_default_open(ctx, id, false);
-        cs.set_open(true);
-        cs.store(ctx);
-    } else if std::path::Path::new(node).is_dir() {
-        panel.open_directories.insert(node.to_string());
-        let id = egui::Id::new(format!("fep_dir_{node}"));
-        let mut cs =
-            egui::collapsing_header::CollapsingState::load_with_default_open(ctx, id, false);
-        cs.set_open(true);
-        cs.store(ctx);
-    }
-}
-
 /// Convert the UI-layer `AllocParams` to the ff-dscatalog `AllocParams`.
 ///
 /// Returns `Err` if the dataset name is not a valid DSN.
@@ -202,7 +172,7 @@ impl eframe::App for WorkbenchShell {
                 self.key_bar_visible = state.key_bar_visible;
                 // Validates: Requirement 23.9 (file-tree-panel) -- restore sidebar width.
                 if state.file_explorer_sidebar_width >= 120.0 {
-                    self.file_explorer_panel.sidebar_width = state.file_explorer_sidebar_width;
+                    self.file_explorer_panel_width = state.file_explorer_sidebar_width;
                 }
                 // Validates: command-palette Requirement 5.2 -- restore recent palette commands.
                 self.recent_palette_commands = state.recent_palette_commands.clone();
@@ -520,7 +490,6 @@ impl eframe::App for WorkbenchShell {
             // Escape while explorer has focus also exits the tree back to CommandField.
             if !self.modal_open
                 && is_file_explorer
-                && !self.use_legacy_explorer
                 && self.nav_focused
                 && ctx.input(|i| i.key_pressed(egui::Key::Escape))
             {
@@ -529,21 +498,7 @@ impl eframe::App for WorkbenchShell {
                 self.nav_selection.cursor = None;
                 self.focus_stop = FocusStop::CommandField;
                 self.command_field_focus_requested = true;
-            } else if !self.modal_open
-                && is_file_explorer
-                && self.use_legacy_explorer
-                && self.file_explorer_panel.explorer_focused
-                && ctx.input(|i| i.key_pressed(egui::Key::Escape))
-            {
-                self.file_explorer_panel.explorer_focused = false;
-                self.file_explorer_panel.cursor_node = None;
-                self.focus_stop = FocusStop::CommandField;
-                self.command_field_focus_requested = true;
-            } else if tab_pressed
-                && is_file_explorer
-                && !self.use_legacy_explorer
-                && (cmd_has_focus || self.nav_focused)
-            {
+            } else if tab_pressed && is_file_explorer && (cmd_has_focus || self.nav_focused) {
                 // Modern explorer Tab focus-transfer (Req 20.1 / 24.9): Tab from
                 // the command field enters the tree (cursor on the first visible
                 // node); Tab within advances to the next visible node; Tab past
@@ -565,70 +520,6 @@ impl eframe::App for WorkbenchShell {
                         self.nav_selection.cursor = None;
                         self.focus_stop = FocusStop::CommandField;
                         self.command_field_focus_requested = true;
-                    }
-                }
-            } else if tab_pressed
-                && is_file_explorer
-                && self.use_legacy_explorer
-                && (cmd_has_focus || self.file_explorer_panel.explorer_focused)
-            {
-                let entering = !self.file_explorer_panel.explorer_focused;
-
-                if entering {
-                    // Entering from command field — open first catalog and land on
-                    // its first child.
-                    self.file_explorer_panel.explorer_focused = true;
-                    // Open the first catalog node immediately.
-                    let first_cat =
-                        crate::file_explorer_panel::collect_visible_node_paths_with_dirs(
-                            &self.files_panel.registry,
-                            &self.files_panel,
-                            &self.file_explorer_panel.open_catalogs,
-                            &self.file_explorer_panel.open_directories,
-                        )
-                        .into_iter()
-                        .next();
-                    if let Some(ref node) = first_cat {
-                        auto_open_node(ctx, node, &mut self.file_explorer_panel);
-                    }
-                    // Recompute with the catalog now open.
-                    let visible2 = crate::file_explorer_panel::collect_visible_node_paths_with_dirs(
-                        &self.files_panel.registry,
-                        &self.files_panel,
-                        &self.file_explorer_panel.open_catalogs,
-                        &self.file_explorer_panel.open_directories,
-                    );
-                    // Land on first child (index 1), or the catalog itself if empty.
-                    self.file_explorer_panel.cursor_node =
-                        visible2.into_iter().nth(1).or(first_cat);
-                } else {
-                    // Already inside the tree — open current container (if any) then advance.
-                    if let Some(ref cur) = self.file_explorer_panel.cursor_node.clone() {
-                        if cur.starts_with("cat:") || std::path::Path::new(cur.as_str()).is_dir() {
-                            auto_open_node(ctx, cur, &mut self.file_explorer_panel);
-                        }
-                    }
-                    // Recompute visible after any container open.
-                    let visible = crate::file_explorer_panel::collect_visible_node_paths_with_dirs(
-                        &self.files_panel.registry,
-                        &self.files_panel,
-                        &self.file_explorer_panel.open_catalogs,
-                        &self.file_explorer_panel.open_directories,
-                    );
-                    let current_idx = self
-                        .file_explorer_panel
-                        .cursor_node
-                        .as_ref()
-                        .and_then(|c| visible.iter().position(|p| p == c));
-                    let next = current_idx.map(|i| i + 1).unwrap_or(0);
-                    if next >= visible.len() {
-                        // Past the last node — exit tree, return to CommandField.
-                        self.file_explorer_panel.explorer_focused = false;
-                        self.file_explorer_panel.cursor_node = None;
-                        self.focus_stop = FocusStop::CommandField;
-                        self.command_field_focus_requested = true;
-                    } else {
-                        self.file_explorer_panel.cursor_node = visible.into_iter().nth(next);
                     }
                 }
             } else if tab_pressed {
@@ -1017,7 +908,7 @@ impl eframe::App for WorkbenchShell {
                 &self.tabs,
                 self.zoom.offset().value(),
                 self.key_bar_visible,
-                self.file_explorer_panel.sidebar_width,
+                self.file_explorer_panel_width,
                 ws_path,
                 self.recent_palette_commands.clone(),
                 self.search_results_panel.history.clone(),

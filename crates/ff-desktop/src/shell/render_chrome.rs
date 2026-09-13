@@ -219,17 +219,6 @@ impl WorkbenchShell {
                     }
                 });
                 ui.menu_button("Utilities", |ui| {
-                    // CR-NR-060 Slice A swap: the modern ff-file-tree-backed File
-                    // Explorer is the default. This fallback toggle switches back
-                    // to the legacy inline tree (File Explorer Context / option 2)
-                    // until the legacy path is retired entirely.
-                    if ui
-                        .checkbox(&mut self.use_legacy_explorer, "Use legacy File Explorer")
-                        .clicked()
-                    {
-                        ui.close_menu();
-                    }
-                    ui.separator();
                     if ui.button("Compare Files…").clicked() {
                         ui.close_menu();
                     }

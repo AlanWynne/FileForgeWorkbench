@@ -24,7 +24,6 @@ use crate::automation::ShellAutomationRegistry;
 use crate::command_palette::CommandPaletteState;
 use crate::event_log_panel::EventLogPanelState;
 use crate::exclude_manager::ExcludeManager;
-use crate::file_explorer_panel::FileExplorerPanelState;
 use crate::files_panel::FilesPanelState;
 use crate::find_manager::FindManager;
 use crate::nav_manager::NavManager;
@@ -367,24 +366,16 @@ pub struct WorkbenchShell {
     pub(crate) pending_external: Option<crate::shell::external_adapter::PendingExternal>,
     /// Files Panel (Virtual Catalog Manager) state.
     files_panel: FilesPanelState,
-    /// File Explorer Panel state (expand/collapse per catalog node).
-    ///
-    /// Validates: Requirement 19.5, 19.6
-    file_explorer_panel: FileExplorerPanelState,
     /// Persisted width of the File Explorer side panel (logical pixels).
+    /// Session-persisted via `file_explorer_sidebar_width` (ff-session).
     ///
-    /// Validates: Requirement 1.3 file-tree-panel (fix B019)
+    /// Validates: Requirement 1.3 file-tree-panel (fix B019), 23.9
     file_explorer_panel_width: f32,
     /// Canonical ff-file-tree-backed navigation model for the File Explorer
-    /// (CR-NR-060 Slice A). Runs in parallel with the legacy panel until the
-    /// swap; identity is NodeId + ResourceUri (Requirement 24.1, 24.2).
+    /// (CR-NR-060 Slice A). Identity is NodeId + ResourceUri (Req 24.1, 24.2).
     nav_model: crate::nav_model::NavModel,
     /// Selection/cursor state for the NavModel-backed explorer (Requirement 24.2).
     nav_selection: crate::explorer_view::ExplorerSelection,
-    /// When true, fall back to the legacy inline File Explorer tree instead of
-    /// the default NavModel-backed modern explorer (CR-NR-060 Slice A swap).
-    /// Default false -- the modern explorer is the default.
-    use_legacy_explorer: bool,
 
     /// Active rename dialog for the modern explorer: (target node, edit buffer).
     /// `None` when no rename is in progress. (CR-NR-060 Slice A, Req 16 Rename.)
@@ -663,11 +654,9 @@ impl WorkbenchShell {
             shell_engine: ff_shell::ShellEngine::new(ff_shell::ShellConfigProvider::new()),
             pending_external: None,
             files_panel: FilesPanelState::new(),
-            file_explorer_panel: FileExplorerPanelState::new(),
             file_explorer_panel_width: 260.0,
             nav_model: crate::nav_model::NavModel::new(),
             nav_selection: crate::explorer_view::ExplorerSelection::default(),
-            use_legacy_explorer: false,
             nav_rename: None,
             nav_delete: None,
             nav_new: None,

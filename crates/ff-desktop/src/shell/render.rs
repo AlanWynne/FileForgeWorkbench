@@ -11,7 +11,6 @@ use ff_keys::FunctionKey;
 use crate::catalog_manager_dialog::{self, NewCatalogForm};
 use crate::dataset_alloc_dialog::{self};
 use crate::editor_panel;
-use crate::file_explorer_panel;
 use crate::files_panel;
 use crate::tab_state::TabKind;
 use crate::toolchain_panel;
@@ -335,116 +334,8 @@ impl WorkbenchShell {
         }
 
         let is_file_explorer = self.tabs.active_tab().kind == TabKind::FileExplorerPanel;
-        // CR-NR-060 Slice A (swap, option b): the NavModel-backed modern explorer
-        // is the default File Explorer content. The legacy inline tree remains as
-        // a fallback (Settings > Utilities toggle) until it is retired entirely.
-        let use_modern_explorer = is_file_explorer && !self.use_legacy_explorer;
-        if is_file_explorer && self.use_legacy_explorer {
-            let open_path = egui::CentralPanel::default().show(ctx, |ui| {
-                // Req 20.2–20.12 — keyboard handling when explorer has focus.
-                if self.file_explorer_panel.explorer_focused {
-                    let visible = file_explorer_panel::collect_visible_node_paths_with_dirs(
-                        &self.files_panel.registry,
-                        &self.files_panel,
-                        &self.file_explorer_panel.open_catalogs,
-                        &self.file_explorer_panel.open_directories,
-                    );
-                    file_explorer_panel::handle_explorer_keyboard(
-                        ui,
-                        &mut self.file_explorer_panel,
-                        &visible,
-                    );
-                    if ui.input(|i| i.pointer.any_click())
-                        && !ui.rect_contains_pointer(ui.max_rect())
-                    {
-                        self.file_explorer_panel.explorer_focused = false;
-                    }
-                }
-
-                file_explorer_panel::render(
-                    ui,
-                    &mut self.file_explorer_panel,
-                    &self.files_panel.registry,
-                    &self.files_panel,
-                    self.active_workspace
-                        .as_ref()
-                        .map(|ws| {
-                            let root_names: Vec<String> = ws
-                                .roots
-                                .iter()
-                                .filter_map(|r| r.file_name())
-                                .map(|n| n.to_string_lossy().into_owned())
-                                .collect();
-                            (ws.name.as_str(), root_names)
-                        })
-                        .as_ref()
-                        .map(|(name, names)| (*name, names.as_slice())),
-                )
-            });
-            // Persist sidebar width from the state (updated inside render())
-            self.file_explorer_panel_width =
-                self.file_explorer_panel.sidebar_width.clamp(120.0, 600.0);
-            if let Some(dsn) = open_path.inner {
-                // Req 16 — for Mainframe datasets, resolve physical path via SQLite.
-                // Search all Mainframe catalogs for the DSN.
-                let mainframe_catalog = self
-                    .files_panel
-                    .registry
-                    .list_by_type(crate::catalog_registry::CatalogType::Mainframe)
-                    .into_iter()
-                    .find(|c| {
-                        if let Ok(parsed) = ff_dscatalog::dsn::Dsn::parse(&dsn) {
-                            self.files_panel
-                                .registry
-                                .resolve_dsn(&c.name, &parsed)
-                                .is_ok()
-                        } else {
-                            false
-                        }
-                    })
-                    .map(|c| c.name.clone());
-                match mainframe_catalog {
-                    Some(catalog_name) => {
-                        match open_mainframe_dsn(&self.files_panel.registry, &catalog_name, &dsn) {
-                            Err(e) => self.open_error = Some(e),
-                            Ok(path_str) => {
-                                let mut p = ff_command::CommandParams::new();
-                                p.insert("path", path_str.as_str());
-                                let _ = self.dispatch.execute_command("file.open", p);
-                            }
-                        }
-                    }
-                    None => {
-                        // Native path or unknown — dispatch directly
-                        let mut p = ff_command::CommandParams::new();
-                        p.insert("path", dsn.as_str());
-                        let _ = self.dispatch.execute_command("file.open", p);
-                    }
-                }
-            }
-            if let Some(err) = self.file_explorer_panel.last_error.take() {
-                self.open_error = Some(err);
-            }
-
-            // Req 21.6 — paste-into-editor prompt when Ctrl+V pressed while
-            // file_copy_clipboard is non-empty. Write the file list to the OS
-            // clipboard as plain text so the user can paste it into any editor tab.
-            // Req 21.7 — one path per line.
-            if self.file_explorer_panel.paste_prompt_open {
-                self.file_explorer_panel.paste_prompt_open = false;
-                if let Some(ref cb) = self.file_explorer_panel.file_copy_clipboard.clone() {
-                    let text = cb.paths.join("\n");
-                    if let Ok(mut clipboard) = arboard::Clipboard::new() {
-                        let _ = clipboard.set_text(&text);
-                    }
-                    self.open_error = Some(format!(
-                        "{} file path(s) copied to clipboard — press Ctrl+V in editor to paste",
-                        cb.paths.len()
-                    ));
-                }
-            }
-        }
-
+        // CR-NR-060 Slice A: the NavModel-backed modern explorer is the sole File
+        // Explorer content (legacy inline tree retired).
         // ── Toolchain Panel (bottom dock) ────────────────────────────────
         if self.show_toolchain_panel {
             egui::TopBottomPanel::bottom("toolchain_panel")
@@ -471,10 +362,10 @@ impl WorkbenchShell {
                 });
         }
 
-        // CR-NR-060 Slice A (swap): modern explorer is the CentralPanel for the
-        // File Explorer Context. Rendered here -- after all bottom/side panels --
-        // so the CentralPanel is added last (egui panel-ordering requirement).
-        if use_modern_explorer {
+        // CR-NR-060 Slice A: the modern NavModel explorer is the File Explorer
+        // Context content. Rendered here -- after all bottom/side panels -- so
+        // the CentralPanel is added last (egui panel-ordering requirement).
+        if is_file_explorer {
             self.render_nav_explorer(ctx);
         }
 
@@ -1008,7 +899,7 @@ impl WorkbenchShell {
                                 .unwrap_or_else(|| std::path::PathBuf::from("."));
                             let rel = uri.path().trim_start_matches('/');
                             let full = root_dir.join(rel);
-                            crate::file_explorer_panel::reveal_in_explorer(&full.to_string_lossy());
+                            crate::context_menu::reveal_in_explorer(&full.to_string_lossy());
                         }
                     }
                 }
