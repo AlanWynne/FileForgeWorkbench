@@ -347,13 +347,32 @@ pub enum OpenTarget {
     Editor(ResourceUri),
     /// Hand this resource to the OS default application (External).
     External(ResourceUri),
+    /// Open a Mainframe dataset: resolve `dsn` in `catalog` to a physical path
+    /// (creating the backing file if missing) then open it in the editor.
+    Dataset { catalog: String, dsn: String },
     /// The node has no associated URI (e.g. a category header) -- nothing to open.
     None,
 }
 
-/// Resolve an opened node to an [`OpenTarget`], classifying the resource by its
-/// URI path (reusing `context_menu::classify_file`). For local/posix schemes the
-/// URI path is the on-disk path; for other schemes the path is passed through to
+/// Split a `vfs://dataset/{catalog}/{DSN}` URI path into `(catalog, dsn)`.
+/// The catalog is the first path segment; the DSN is the remainder (a DSN
+/// contains no `/`). Returns `None` if either part is empty.
+///
+/// Validates: Requirement 24.9
+pub fn split_dataset_uri_path(uri_path: &str) -> Option<(&str, &str)> {
+    let trimmed = uri_path.trim_start_matches('/');
+    let (catalog, dsn) = trimmed.split_once('/')?;
+    if catalog.is_empty() || dsn.is_empty() {
+        return None;
+    }
+    Some((catalog, dsn))
+}
+
+/// Resolve an opened node to an [`OpenTarget`]. Dataset-scheme nodes
+/// (`vfs://dataset/{catalog}/{DSN}`) resolve to [`OpenTarget::Dataset`] so the
+/// shell can map the DSN to its physical path via the catalog. Other schemes
+/// classify the resource by its URI path (reusing `context_menu::classify_file`);
+/// for local/posix the path is the on-disk path, other schemes fall through to
 /// the classifier (external opens fall back gracefully).
 ///
 /// Validates: Requirement 24.2, 24.9
@@ -361,6 +380,15 @@ pub fn resolve_open(model: &NavModel, id: NodeId) -> OpenTarget {
     let Some(uri) = model.uri_of(id) else {
         return OpenTarget::None;
     };
+    if uri.scheme() == "dataset" {
+        return match split_dataset_uri_path(uri.path()) {
+            Some((catalog, dsn)) => OpenTarget::Dataset {
+                catalog: catalog.to_string(),
+                dsn: dsn.to_string(),
+            },
+            None => OpenTarget::None,
+        };
+    }
     match crate::context_menu::classify_file(uri.path()) {
         crate::context_menu::FileClass::Text | crate::context_menu::FileClass::FfwbStructured => {
             OpenTarget::Editor(uri.clone())
@@ -788,6 +816,45 @@ mod tests {
         match resolve_open(&m, png) {
             OpenTarget::External(uri) => assert_eq!(uri.path(), "/root/image.png"),
             other => panic!("expected External, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn split_dataset_uri_path_extracts_catalog_and_dsn() {
+        // Validates: Requirement 24.9 -- dataset URI -> (catalog, dsn)
+        assert_eq!(
+            split_dataset_uri_path("/TESTING/TESTING.DATA"),
+            Some(("TESTING", "TESTING.DATA"))
+        );
+        // Missing DSN or catalog is rejected.
+        assert_eq!(split_dataset_uri_path("/TESTING"), None);
+        assert_eq!(split_dataset_uri_path("/"), None);
+    }
+
+    #[test]
+    fn resolve_open_dataset_node_targets_dataset() {
+        // Validates: Requirement 24.9 -- a dataset-scheme node resolves to the
+        // Dataset open target carrying the catalog + DSN for shell resolution.
+        let mut m = NavModel::new();
+        let catalogs = m.tree.root_categories[1];
+        let cat = m.add_child(
+            catalogs,
+            "TESTING",
+            ff_file_tree::NodeType::CatalogRoot,
+            ResourceUri::new("catalog", "/TESTING"),
+        );
+        let ds = m.add_child(
+            cat,
+            "TESTING.DATA",
+            ff_file_tree::NodeType::DatasetSequential,
+            ResourceUri::new("dataset", "/TESTING/TESTING.DATA"),
+        );
+        match resolve_open(&m, ds) {
+            OpenTarget::Dataset { catalog, dsn } => {
+                assert_eq!(catalog, "TESTING");
+                assert_eq!(dsn, "TESTING.DATA");
+            }
+            other => panic!("expected Dataset, got {other:?}"),
         }
     }
 

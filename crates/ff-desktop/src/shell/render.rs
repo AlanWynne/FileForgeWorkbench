@@ -924,6 +924,19 @@ impl WorkbenchShell {
                     OpenTarget::External(uri) => {
                         crate::context_menu::launch_default_app(uri.path());
                     }
+                    OpenTarget::Dataset { catalog, dsn } => {
+                        // Resolve the DSN to its physical file (create if
+                        // missing) and open it in the editor -- same path the
+                        // legacy panel uses. Req 16.1/16.3.
+                        match open_mainframe_dsn(&self.files_panel.registry, &catalog, &dsn) {
+                            Ok(path_str) => {
+                                let mut p = ff_command::CommandParams::new();
+                                p.insert("path", path_str.as_str());
+                                let _ = self.dispatch.execute_command("file.open", p);
+                            }
+                            Err(e) => self.open_error = Some(e),
+                        }
+                    }
                     OpenTarget::None => {}
                 },
                 ExplorerEffect::CopyPath(id) => {
