@@ -1714,11 +1714,14 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
   designs (a) command-framework registration + (b) JES EXEC PGM=IDCAMS batch-step
   invocation -- NEITHER built (ff-jes has 0 idcams refs). Register with command framework +
   wire the JES batch-step so IDCAMS runs inside JES jobs. Code + owner.
-- [ ] PA-W5.5 (PA-INCOMPLETE-014) database-tool FALSE-POSITIVE-COMPLETE (HIGH, tracking
-  integrity). 157/157 tasks `[x]` but the impl is a foundation SKELETON (thiserror+serde
+- [x] PA-W5.5 (PA-INCOMPLETE-014) database-tool FALSE-POSITIVE-COMPLETE (HIGH, tracking
+  integrity) -- TRACKING RE-OPEN DONE. The impl is a foundation SKELETON (thiserror+serde
   only; ~14 of 17 reqs -- panels/pooling/async/ER/transfer/admin/integrations -- unbuilt).
-  Re-open the unbuilt tasks as `[ ]`; keep only the foundation done; correct the "complete"
-  framing. Then an owner-prioritised implementation effort. Tracking + honest re-scope.
+  Corrected `docs/specs/database-tool/tasks.md`: re-opened tasks 5, 7-16 (+ subtasks) to
+  `[ ]`; kept only the built foundation (tasks 1-4, 6) `[x]`; added a status-correction
+  note with the Cargo.toml/src evidence; ASCII-cleaned the file. The actual IDE build-out
+  (add runtime + upstream deps, implement panels/pooling/async/ER/transfer/admin behind the
+  requirements gate) remains OPEN as the Bucket 5 effort -- not part of this bookkeeping fix.
 - [ ] PA-W5.6 (PA-INCOMPLETE-015 + PA-INCOMPLETE-016) honestly-tracked open work:
   batch-execution task 10.2 (`--batch-log <file>` parsed but not wired to an ff-logging
   file sink -- small); lua-macro Macro Library panel (Req 12, task 25) + FFCMD-sequence

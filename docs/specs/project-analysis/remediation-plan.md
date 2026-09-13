@@ -21,8 +21,10 @@ Cross-cutting items done UP-FRONT regardless of bucket (near-zero-risk, correct
 the record so nothing downstream is misled):
 - [x] PA-W5.2 data-safety atomic writes (file-operations + global-search + JES
       queue) -- atomicity DONE (commit dc45eca); VFS-routing/backup deferred.
-- [ ] PA-W5.5 re-open database-tool false-positive-complete tracking (do before
-      Bucket 5; it is a bookkeeping correction, safe to do now).
+- [x] PA-W5.5 re-open database-tool false-positive-complete tracking -- DONE:
+      database-tool/tasks.md corrected (tasks 5, 7-16 re-opened to `[ ]`;
+      foundation tasks 1-4, 6 kept `[x]`; status-correction note added; file
+      ASCII-cleaned). PA-INCOMPLETE-014 recorded; build-out is a Bucket 5 effort.
 - [ ] PA-TRACK-007 / PA-TRACK-008 reconcile master + verification narrative to
       point at project-analysis as the source of truth (docs-only).
 
