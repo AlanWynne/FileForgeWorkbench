@@ -53,6 +53,7 @@ The following specs exist under `docs/specs/`:
 - external-modification
 - global-search
 - jes-emulator (folder was FFW-JES -- renamed Phase BR to match kebab-case convention)
+- file-formatter (File-AID-inspired record-structure View/Edit plugin -- CR-NR-061, design-input only, gate not yet run)
 - file-operations
 - file-tree-panel
 - fileforge-integration
@@ -73,7 +74,6 @@ The following specs exist under `docs/specs/`:
 - navigation-commands
 - platform-core
 - plugin-architecture
-- project-master
 - record-selection-criteria
 - sequence-numbers
 - shell-command
@@ -97,7 +97,10 @@ The following specs exist under `docs/specs/`:
 - notification-system
 - jcl-resolver (stub -- no requirements yet)
 - menu-workspace
-- project-analysis (meta/analysis sub-project -- systematic whole-project analysis: split, consistency, completeness, logging audit, task re-order; no deliverable crate)
+
+NOTE: `project-master` and `project-analysis` are NOT specifications -- they are
+project-management data and now live under `docs/project-management/` (see
+`docs/project-management/ROADMAP.md`, the control-tower doc).
 
 ## Canonical UI Terminology (Phase CT)
 Three-level UI model:
@@ -131,8 +134,9 @@ See `docs/reviews/requirements-review/terminology-map.md` for the full glossary.
   `// Validates: Requirement X.Y` (see `testing.md`).
 - Before proposing a design, read the sub-project `design.md` to avoid contradictions.
 - For task status, read the sub-project `tasks.md`.
-- `docs/specs/project-master/` holds cross-cutting reports and master requirements --
-  read it for work spanning multiple sub-projects.
+- `docs/project-management/project-master/` holds cross-cutting reports and master
+  requirements -- read it for work spanning multiple sub-projects. `docs/project-management/`
+  also holds `project-analysis/` and the control-tower `ROADMAP.md`.
 - Reuse maintenance scripts from `tools/` per `tooling.md`.
 
 ---

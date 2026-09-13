@@ -4,7 +4,7 @@
 > current source of truth for outstanding work.** "Complete" here means the SPEC
 > is complete, not the implementation; the project-analysis code-level re-baseline
 > supersedes this picture (e.g. database-tool tracking was 157/157 but the crate
-> is a skeleton -- PA-INCOMPLETE-014 / PA-W5.5). See `docs/specs/project-analysis/`
+> is a skeleton -- PA-INCOMPLETE-014 / PA-W5.5). See `docs/project-management/project-analysis/`
 > and the PA-W phases in `project-master/tasks.md`.
 
 **Generated:** 2025-01-XX (automated validation)

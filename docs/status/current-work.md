@@ -17,23 +17,23 @@ summary short and link to the detailed task list.
 
 | Area | Status | Current focus | Detailed tracking |
 |------|--------|---------------|-------------------|
-| Phase BR -- Requirements Maintenance | DONE | CA-01/CA-02 annotations, FFW-JES rename, B009/CR-NR-035 housekeeping | [project-master tasks](../specs/project-master/tasks.md) |
+| Phase BR -- Requirements Maintenance | DONE | CA-01/CA-02 annotations, FFW-JES rename, B009/CR-NR-035 housekeeping | [project-master tasks](../project-management/project-master/tasks.md) |
 | Phase BT -- Cross-File Search and Replace | DONE | GlobalReplaceEngine, Replace UI, search history | [global-search tasks](../specs/global-search/tasks.md) |
 | Phase BS-A -- Workspace Model | DONE | WorkspaceState, session persistence, lifecycle commands, root management | [workspace-model tasks](../specs/workspace-model/tasks.md) |
 | Phase BS-B -- Command Palette | DONE | Fuzzy engine, palette state, rendering, Ctrl+Shift+P activation | [command-palette tasks](../specs/command-palette/tasks.md) |
 | Phase BS-C -- Global Search | DONE | ff-global-search crate, Search Results panel, Ctrl+Shift+F, GSEARCH command | [global-search tasks](../specs/global-search/tasks.md) |
-| Phase CO -- Accessibility, Plugin Manager UI, Notification System | DONE | All 7 deliverables complete | [project-master tasks](../specs/project-master/tasks.md) |
-| Phase CP -- Batch Command Execution | DONE | All 11 deliverables complete | [project-master tasks](../specs/project-master/tasks.md) |
+| Phase CO -- Accessibility, Plugin Manager UI, Notification System | DONE | All 7 deliverables complete | [project-master tasks](../project-management/project-master/tasks.md) |
+| Phase CP -- Batch Command Execution | DONE | All 11 deliverables complete | [project-master tasks](../project-management/project-master/tasks.md) |
 | Phase W.5 -- Generic ToolchainPlugin Trait Validation | DONE | MockToolchain test double, trait audit, CI constraint | [compiler-toolchain-integration tasks](../specs/compiler-toolchain-integration/tasks.md) |
-| Phase CQ -- Enterprise Features | DONE | audit-logging, settings export/import, locked config keys | [project-master tasks](../specs/project-master/tasks.md) |
-| Phase CR -- OS Theme Follow + Macro Library | DONE | OS dark/light follow, Macro Library panel | [project-master tasks](../specs/project-master/tasks.md) |
-| Phase CS -- Test Warning Cleanup | DONE | All cargo test warnings eliminated across workspace | [project-master tasks](../specs/project-master/tasks.md) |
-| Phase CT -- Workbench/Workspace/Context Terminology | DONE | All 7 tasks complete -- 69 specs updated | [project-master tasks](../specs/project-master/tasks.md) |
-| Phase CU -- Menu Workspace Pattern | DONE | All 8 implementation tasks complete -- TabKind, loader, hot-reload, render, dispatch, defaults | [project-master tasks](../specs/project-master/tasks.md) |
+| Phase CQ -- Enterprise Features | DONE | audit-logging, settings export/import, locked config keys | [project-master tasks](../project-management/project-master/tasks.md) |
+| Phase CR -- OS Theme Follow + Macro Library | DONE | OS dark/light follow, Macro Library panel | [project-master tasks](../project-management/project-master/tasks.md) |
+| Phase CS -- Test Warning Cleanup | DONE | All cargo test warnings eliminated across workspace | [project-master tasks](../project-management/project-master/tasks.md) |
+| Phase CT -- Workbench/Workspace/Context Terminology | DONE | All 7 tasks complete -- 69 specs updated | [project-master tasks](../project-management/project-master/tasks.md) |
+| Phase CU -- Menu Workspace Pattern | DONE | All 8 implementation tasks complete -- TabKind, loader, hot-reload, render, dispatch, defaults | [project-master tasks](../project-management/project-master/tasks.md) |
 | Phase CV -- POM Redesign | Spec DONE, impl NEXT | Spec complete (CV.1-CV.5). CV-impl pending: DEFAULT_POM_TOML, route options 9/S/B, BUILT_IN_OPTIONS (Tasks 9-12) | [menu-workspace tasks](../specs/menu-workspace/tasks.md) |
 | Phase CW -- Settings Menu | Spec DONE, impl NEXT | Spec complete (CW.1-CW.4). CW-impl pending: DEFAULT_SETTINGS_TOML, namespace view routing (Tasks 13-15) | [menu-workspace tasks](../specs/menu-workspace/tasks.md) |
-| Phase CX -- Named Workspaces + KEYS + SPLIT | DONE | Spec + implementation complete (CX.1-CX.7) | [project-master tasks](../specs/project-master/tasks.md) |
-| Phase CZ -- FFTest Script Suite | DONE | All 9 deliverables complete | [project-master tasks](../specs/project-master/tasks.md) |
+| Phase CX -- Named Workspaces + KEYS + SPLIT | DONE | Spec + implementation complete (CX.1-CX.7) | [project-master tasks](../project-management/project-master/tasks.md) |
+| Phase CZ -- FFTest Script Suite | DONE | All 9 deliverables complete | [project-master tasks](../project-management/project-master/tasks.md) |
 | Deferred connectors | DEFERRED | Network, FTP/SFTP, mainframe, and cloud connectors | [connector specs](../specs/) |
 
 ## Before starting work

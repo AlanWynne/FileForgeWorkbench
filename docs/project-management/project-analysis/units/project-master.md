@@ -38,7 +38,7 @@ analysis contradicts in specific, actionable ways.
 
 Recorded PA-TRACK-007 (docs, MEDIUM): reconcile the master narrative with the analysis --
 update readiness-summary.md (and note in sub-project-audit.md) to REFERENCE
-`docs/specs/project-analysis/` (checklist + incomplete-work-register + consistency-matrix)
+`docs/project-management/project-analysis/` (checklist + incomplete-work-register + consistency-matrix)
 and summarise the headline findings (orphan cluster, database-tool re-open, duplication
 consolidation, data-safety writes, Phase DH, PA-W0..W5 remediation phases). The master
 should point to the analysis as the current source of truth for "what still needs doing,"

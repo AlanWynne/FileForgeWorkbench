@@ -7,7 +7,7 @@
 > foundation skeleton with ~14 of 17 requirements (panels, pooling, async, ER,
 > transfer, admin, integrations) UNBUILT (PA-INCOMPLETE-014); its `tasks.md` has been
 > re-opened accordingly (PA-W5.5). For the authoritative status of outstanding
-> implementation work, see `docs/specs/project-analysis/`.
+> implementation work, see `docs/project-management/project-analysis/`.
 
 > **Task:** 18.4 -- Verify DBeaver-derived database tool requirements are complete and integrated with workbench architecture
 > **Date:** 2025-01-XX

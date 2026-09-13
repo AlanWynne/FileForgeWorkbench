@@ -5,7 +5,7 @@ Cross-unit record of shared/public artifacts and their owning Logical_Unit
 contradiction. Populated incrementally as each sub-project is analysed; finalized
 in Wave 6.
 
-Where `docs/specs/project-master/api-consistency-report.md` and
+Where `docs/project-management/project-master/api-consistency-report.md` and
 `docs/reviews/requirements-review/terminology-map.md` already establish an owner,
 cite them in the Resolution column rather than re-deriving.
 

@@ -4,7 +4,7 @@
 > current source of truth for outstanding work.** Verified at the requirements
 > level; the project-analysis code-level re-baseline supersedes it (e.g. IDCAMS
 > is not yet wired into JES jobs PA-CONFLICT-016; JES queue raw-fs PA-CONFLICT-015).
-> See `docs/specs/project-analysis/` and the PA-W phases in `project-master/tasks.md`.
+> See `docs/project-management/project-analysis/` and the PA-W phases in `project-master/tasks.md`.
 
 **Task:** 19.4 -- Verify FFW-JES design correctly integrates with upstream designs  
 **Date:** 2025-01-XX  

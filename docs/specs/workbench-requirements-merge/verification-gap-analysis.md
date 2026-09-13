@@ -4,7 +4,7 @@
 > "Addressed" below means each gap item has been mapped to a REQUIREMENT, not that
 > it is implemented in code. For the authoritative status of outstanding
 > implementation work (orphan crates, false-positive-complete tracking, raw-fs
-> write bypasses, duplication), see `docs/specs/project-analysis/`
+> write bypasses, duplication), see `docs/project-management/project-analysis/`
 > (incomplete-work-register + consistency-matrix).
 
 **Task:** 18.3 -- Verify gap analysis HIGH/MEDIUM items are all addressed  

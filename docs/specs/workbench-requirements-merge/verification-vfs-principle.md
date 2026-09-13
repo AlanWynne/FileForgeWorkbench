@@ -9,7 +9,7 @@
 > - global-search bulk replace writes raw `std::fs` (PA-CONFLICT-020).
 >   (Both now write ATOMICALLY -- PA-W5.2 -- but full VFS-routing is still deferred.)
 > For the authoritative status of outstanding implementation work, see
-> `docs/specs/project-analysis/` (checklist, consistency-matrix, incomplete-work-register).
+> `docs/project-management/project-analysis/` (checklist, consistency-matrix, incomplete-work-register).
 
 ## Overview
 

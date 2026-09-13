@@ -4,7 +4,7 @@ Whole-project systematic analysis of all 81 sub-projects across 7 dependency wav
 (W0-W6). Every unit has an analysis record under `units/`; every finding is in
 `incomplete-work-register.md`; cross-unit relationships are in `consistency-matrix.md`;
 per-unit status is in `checklist.md`; remediation is proposed as Phases PA-W0..PA-W5 in
-`docs/specs/project-master/tasks.md`. This analysis was NON-DESTRUCTIVE: no source
+`docs/project-management/project-master/tasks.md`. This analysis was NON-DESTRUCTIVE: no source
 outside `docs/` was changed. All findings are PROPOSALS pending owner approval.
 
 ## Scope + coverage

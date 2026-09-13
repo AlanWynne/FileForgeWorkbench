@@ -1595,7 +1595,7 @@ theme-and-appearance, view-zoom, hex-display, notification-system, plugin-manage
 accessibility, context-help, clipboard-operations, idle-processing,
 large-file-performance, external-modification, file-operations). Every unit's
 tracking was COMPLETE; the findings below are PROPOSALS (no source changed during
-analysis). All tasks `[ ]`. Cross-references: `docs/specs/project-analysis/units/`,
+analysis). All tasks `[ ]`. Cross-references: `docs/project-management/project-analysis/units/`,
 `consistency-matrix.md`, `incomplete-work-register.md`.
 
 THE HEADLINE FINDING: FOUR complete, well-tested infrastructure crates are ORPHANS
@@ -1681,7 +1681,7 @@ lua-macro-engine, language-service, custom-file-viewers, compare-and-merge, glob
 connector-extensibility, connector-local-fs, connector-network-fs/-ftp-sftp/-cloud/
 -mainframe, fileforge-integration, automated-dialog-testing, bootstrap-scripts). Findings
 below are PROPOSALS (no source changed during analysis). All tasks `[ ]`. Cross-refs:
-`docs/specs/project-analysis/units/`, `consistency-matrix.md`, `incomplete-work-register.md`.
+`docs/project-management/project-analysis/units/`, `consistency-matrix.md`, `incomplete-work-register.md`.
 
 TWO dominant Wave-5 themes: (A) REIMPLEMENT-INSTEAD-OF-REUSE duplication, and (B)
 DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-complete.

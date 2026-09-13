@@ -4,7 +4,7 @@
 > current source of truth for outstanding work.** The project-analysis code-level
 > re-baseline supersedes the "ready" picture here (orphan crates, database-tool
 > skeleton PA-INCOMPLETE-014, duplication, raw-fs bypasses). See
-> `docs/specs/project-analysis/` and the PA-W phases in `project-master/tasks.md`.
+> `docs/project-management/project-analysis/` and the PA-W phases in `project-master/tasks.md`.
 
 **Date:** Phase CO pre-gate
 **Purpose:** Full cross-reference of spec folders, crates, and project-master inventory.

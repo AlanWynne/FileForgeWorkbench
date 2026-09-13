@@ -1,7 +1,7 @@
 # Remediation Plan -- Product-Layered Build Order
 
 This is the AUTHORITATIVE sequencing for executing the analysis remediation
-(the PA-W0..PA-W5 phases in `docs/specs/project-master/tasks.md`). It is a VIEW
+(the PA-W0..PA-W5 phases in `docs/project-management/project-master/tasks.md`). It is a VIEW
 over those phases -- an ordering by PRODUCT LAYER, not a rewrite. The PA-W task
 IDs remain the detail layer; this plan says WHAT ORDER to tackle them in and WHY.
 
@@ -31,7 +31,7 @@ the record so nothing downstream is misled):
       (readiness-summary, sub-project-audit, api-consistency-report,
       validation-19.2/19.3/19.4) [PA-TRACK-007] and a SCOPE banner to the 3
       verification reports (verification-vfs-principle, -dbeaver, -gap-analysis)
-      [PA-TRACK-008], each pointing at `docs/specs/project-analysis/` as the
+      [PA-TRACK-008], each pointing at `docs/project-management/project-analysis/` as the
       source of truth and cross-referencing the code-level exceptions.
 
 ---

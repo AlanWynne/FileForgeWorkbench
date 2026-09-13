@@ -4,7 +4,7 @@
 > current source of truth for outstanding work.** The project-analysis code-level
 > re-baseline supersedes the "ready" picture here (orphan crates, database-tool
 > skeleton PA-INCOMPLETE-014, duplication, raw-fs bypasses). See
-> `docs/specs/project-analysis/` and the PA-W phases in `project-master/tasks.md`.
+> `docs/project-management/project-analysis/` and the PA-W phases in `project-master/tasks.md`.
 
 **Task:** 19.1 -- Cross-reference all design.md files for API consistency  
 **Date:** Generated during Final Validation wave  

@@ -21,7 +21,7 @@ state to audit against.
 ## 2. Output Artifacts
 
 ```
-docs/specs/project-analysis/
+docs/project-management/project-analysis/
   requirements.md              -- this analysis's requirements
   design.md                    -- this document
   tasks.md                     -- the ordered task list (one commit per sub-project)
@@ -175,7 +175,7 @@ claimed owner or a contradiction:
 ## Dangling Cross-Refs | from-unit -> missing target | Correction
 ```
 
-Where `docs/specs/project-master/api-consistency-report.md` and
+Where `docs/project-management/project-master/api-consistency-report.md` and
 `docs/reviews/requirements-review/terminology-map.md` already establish an owner,
 the matrix cites them rather than re-deriving.
 

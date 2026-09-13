@@ -8,9 +8,9 @@
 > skeleton (PA-INCOMPLETE-014 / re-opened by PA-W5.5), ASA/EBCDIC/hex/language-
 > detection duplication, and the raw-fs write bypasses (PA-CONFLICT-015/020).
 > For the AUTHORITATIVE status of outstanding work, see
-> `docs/specs/project-analysis/` (checklist, consistency-matrix,
+> `docs/project-management/project-analysis/` (checklist, consistency-matrix,
 > incomplete-work-register, remediation-plan) and the PA-W0..PA-W5 phases in
-> `docs/specs/project-master/tasks.md`.
+> `docs/project-management/project-master/tasks.md`.
 
 **Generated:** Final Validation Task 19.5  
 **Scope:** All sub-project specifications under `.kiro/specs/`

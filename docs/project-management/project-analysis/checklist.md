@@ -7,7 +7,7 @@ Status values: PENDING / IN PROGRESS / DONE. Wave is the planned analysis wave
 **ANALYSIS COMPLETE: all 81 sub-projects DONE (0 PENDING), Waves 0-6.** 263 findings
 recorded (PA-CONFLICT 22, PA-INCOMPLETE 16, PA-STD 73, PA-LOG 52, PA-TCR 36, PA-SPLIT 14,
 PA-WATCH 25, PA-DOC 11, PA-DEP 5, PA-TRACK 9). Remediation proposed as Phases PA-W0..PA-W5
-in `docs/specs/project-master/tasks.md`. See **`executive-summary.md`** for the whole-
+in `docs/project-management/project-master/tasks.md`. See **`executive-summary.md`** for the whole-
 project synthesis (7 cross-cutting themes + recommended remediation order). Non-destructive:
 no source outside `docs/` changed; all findings are PROPOSALS pending owner approval.
 
@@ -27,7 +27,7 @@ reference but are NOT carried forward.
 All 10 foundation sub-projects analysed against the CR-NR-057 + CR-NR-058 specs;
 the Wave 0 task-revision (W0.21) recorded the dependency-ordered remediation as
 `Phase PA-W0` (PROPOSAL, PA-W0.1-PA-W0.23) in
-`docs/specs/project-master/tasks.md`. Wave 0 outcome: 3 clean/complete
+`docs/project-management/project-master/tasks.md`. Wave 0 outcome: 3 clean/complete
 (platform-core, document-model, plugin-architecture); 3 complete-with-proposals
 (configuration-system split, virtual-file-system IWR-005-resolved,
 encoding-and-characters borderline split); command-framework INCOMPLETE on THREE
@@ -43,7 +43,7 @@ instrumentation).
 **Wave 1 COMPLETE (W1.1-W1.16) on the re-baseline** (commits `fea70d6`..`ec744e2`).
 All 15 editor-core sub-projects analysed; the Wave 1 task-revision (W1.16) recorded
 the dependency-ordered remediation as `Phase PA-W1` (PROPOSAL, PA-W1.1-PA-W1.12) in
-`docs/specs/project-master/tasks.md`. Wave 1 outcome: NO spec split forced (all 15
+`docs/project-management/project-master/tasks.md`. Wave 1 outcome: NO spec split forced (all 15
 cohesive); ALL tracking-complete EXCEPT auto-indentation (PA-INCOMPLETE-006, HIGH:
 Req 9.7 WARN commented out + Req 10.7 per-decision DEBUG absent while 137/137 `[x]`
 -- the clearest CR-NR-058 dev-logging-in-spec case). New cross-unit conflict
@@ -64,7 +64,7 @@ delegation, Wave 3/4), PA-WATCH-010 (exclusion+folding visibility, Wave 4).
 **Wave 2 COMPLETE (W2.1-W2.8) on the re-baseline** (commits `a78ff62`..`337e096`).
 All 7 catalog/dataset sub-projects analysed; the Wave 2 task-revision (W2.8) recorded
 the dependency-ordered remediation as `Phase PA-W2` (PROPOSAL, PA-W2.1-PA-W2.20) in
-`docs/specs/project-master/tasks.md`. Wave 2 outcome: ALL tracking-complete, NO
+`docs/project-management/project-master/tasks.md`. Wave 2 outcome: ALL tracking-complete, NO
 functional PA-INCOMPLETE; the cluster is ADR-001-governed with a real fitness
 function (`ff-governance-tests`) -- one of the best-enforced areas. Dominant theme:
 DOMAIN-TYPE FRAGMENTATION -- specs say crates should share one owner but each
@@ -89,7 +89,7 @@ fitness-fn coverage), 016 (Display_Artifact_Line, Wave 4).
 **Wave 3 COMPLETE (W3.1-W3.11) on the re-baseline** (commits `0cf0afb`..`263525c`).
 All 10 shell/commands/menus/session sub-projects analysed; the Wave 3 task-revision
 (W3.11) recorded the dependency-ordered remediation as `Phase PA-W3` (PROPOSAL,
-PA-W3.1-PA-W3.15) in `docs/specs/project-master/tasks.md`. Wave 3 outcome: clean
+PA-W3.1-PA-W3.15) in `docs/project-management/project-master/tasks.md`. Wave 3 outcome: clean
 Command_Target routing across the menu/command family + TWO POSITIVE EXEMPLARS
 (shell-command's ENFORCED shell.mode security gate + real logging, PA-WATCH-018
 RESOLVED; command-completion's clean injection-trait consumer). Dominant theme: the
@@ -115,7 +115,7 @@ verb), PA-WATCH-019 (raw-TOML store family).
 **Wave 4 COMPLETE (W4.1-W4.15) on the re-baseline** (commits `ca54241`..`4857657`).
 All 15 UI/panels/layout sub-projects analysed; the Wave 4 task-revision (W4.16)
 recorded the remediation as `Phase PA-W4` (PROPOSAL, PA-W4.1-PA-W4.11) in
-`docs/specs/project-master/tasks.md`. THE DOMINANT WAVE-4 THEME: FOUR complete,
+`docs/project-management/project-master/tasks.md`. THE DOMINANT WAVE-4 THEME: FOUR complete,
 well-tested INFRASTRUCTURE CRATES ARE ORPHANS (used by no crate) -- ff-file-tree
 (shell reimplements file-explorer inline, PA-CONFLICT-011), ff-idle-processing
 (syntax-highlighting reimplements idle inline at the same 10ms budget, PA-CONFLICT-012),
@@ -142,7 +142,7 @@ search uses raw std::fs, not ff-file-ops].
 **Wave 5 COMPLETE (W5.1-W5.20 = rows 58-78) on the re-baseline** (commits `a2faba3`..
 `6b73661`). All emulators/tools/connectors analysed; the Wave 5 task-revision (W5.21)
 recorded the remediation as `Phase PA-W5` (PROPOSAL, PA-W5.1-PA-W5.13) in
-`docs/specs/project-master/tasks.md`. TWO DOMINANT WAVE-5 THEMES: (A) REIMPLEMENT-INSTEAD-
+`docs/project-management/project-master/tasks.md`. TWO DOMINANT WAVE-5 THEMES: (A) REIMPLEMENT-INSTEAD-
 OF-REUSE duplication -- ASA in THREE crates (ff-asa/ff-viewers/ff-forge), EBCDIC in TWO
 (ff-encoding/ff-forge), hex in TWO (ff-hex/ff-viewers), the ff-viewers framework
 duplicating ff-asa+ff-hex with a PREVIEW double-owner, and language-service ignored by

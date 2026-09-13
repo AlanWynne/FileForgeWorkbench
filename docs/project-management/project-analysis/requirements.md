@@ -40,7 +40,7 @@ The analysis MUST build on the existing review artifacts under
 | **Logical_Unit** | A cohesive, single-responsibility slice of functionality. A Sub_Project is either already one Logical_Unit or decomposes into several. |
 | **Split_Candidate** | A Sub_Project whose size, responsibility count, or crate count indicates it SHOULD be evaluated for decomposition. |
 | **Split_Plan** | An approved proposal to divide a Sub_Project into named Logical_Units (new or existing sub-project folders), with requirement/criterion reassignment. |
-| **Analysis_Record** | The per-Sub_Project written output of one analysis pass, stored under `docs/specs/project-analysis/units/<name>.md`. |
+| **Analysis_Record** | The per-Sub_Project written output of one analysis pass, stored under `docs/project-management/project-analysis/units/<name>.md`. |
 | **Consistency_Matrix** | The cross-unit record of shared types, commands, config keys, and terminology, flagging conflicts and duplicate ownership. |
 | **Incomplete_Work_Register** | The consolidated, living list of every pending/incomplete task across the project, with status and re-ordered sequence. |
 | **Logging_Audit** | The per-crate assessment that appropriate log records exist at the right levels for bug diagnosis (per logging-subsystem). |
@@ -72,7 +72,7 @@ the units that depend on them and no sub-project is missed.
    dependency data and `source-of-truth-map.md`) have been analysed or explicitly
    deferred with a recorded reason.
 4. THE analysis SHALL produce one Analysis_Record per Sub_Project under
-   `docs/specs/project-analysis/units/<name>.md`, following the template defined
+   `docs/project-management/project-analysis/units/<name>.md`, following the template defined
    in the design document.
 5. THE analysis SHALL reuse and cross-reference the existing artifacts
    (`ears-integration/incomplete-work-audit.md`, `gap-analysis.md`,
@@ -136,7 +136,7 @@ keys, and terminology have a single owner and no contradictions.
    an existing requirement/criterion, and SHALL log dangling cross-references for
    correction.
 5. THE Consistency_Matrix and its conflicts SHALL be stored under
-   `docs/specs/project-analysis/consistency-matrix.md`.
+   `docs/project-management/project-analysis/consistency-matrix.md`.
 
 ### Requirement 4: Completeness and Incomplete-Work Register
 
@@ -156,7 +156,7 @@ for action, so that the true remaining backlog is known.
    PASS/MANUAL TCR coverage and all tasks `[x]`), PARTIAL (some coverage/tasks
    outstanding), or NOT STARTED.
 3. THE analysis SHALL produce a consolidated Incomplete_Work_Register under
-   `docs/specs/project-analysis/incomplete-work-register.md` listing every
+   `docs/project-management/project-analysis/incomplete-work-register.md` listing every
    pending task, orphaned requirement (requirement with no task), and NOT COVERED
    TCR row that lacks a task, extending the prior
    `ears-integration/incomplete-work-audit.md` rather than replacing it.

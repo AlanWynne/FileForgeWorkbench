@@ -83,7 +83,7 @@ touching any source file. No file outside `docs/` may change until step 7.
 2. REQUIREMENTS   write/update docs/specs/<sub-project>/requirements.md
 3. DESIGN         write/update docs/specs/<sub-project>/design.md
 4. TASKS          write/update docs/specs/<sub-project>/tasks.md
-5. MASTER         add the new tasks to docs/specs/project-master/tasks.md
+5. MASTER         add the new tasks to docs/project-management/project-master/tasks.md
 6. TCR            add a NOT COVERED row to docs/quality/TCR.md per new criterion
 7. CONFIRM        show the user the docs and wait for approval
 8. CODE           only now write failing tests, then implementation
@@ -104,7 +104,7 @@ Step details:
 - **tasks.md**: concrete, independently completable tasks; `[ ]` only, never
   pre-mark `[x]`; number continuing from the last; reference the criterion(a)
   satisfied; follow the format in `specs.md`.
-- **project-master/tasks.md**: add/extend a Phase section, one line per logical
+- **project-management/project-master/tasks.md**: add/extend a Phase section, one line per logical
   deliverable, `[ ]` only, update the Summary counts.
 - **TCR**: one NOT COVERED row per new criterion, in the correct crate section:
   `` | `ff-desktop` | 🔴 | -- | Req X.Y: <one-line description> | ``
@@ -138,13 +138,13 @@ outside `docs/` may change until step 9.
    changes required".
 6. Draft the task list -- independently completable, cross-referencing criteria,
    `[ ]` only.
-7. Draft the `project-master/tasks.md` additions and the `TCR.md` NOT COVERED rows.
+7. Draft the `project-management/project-master/tasks.md` additions and the `TCR.md` NOT COVERED rows.
 8. Check every drafted file for prohibited characters per `documentation.md`.
 9. Present the complete draft: requirement numbers/criteria, design decisions
    made or deferred, master tasks added, TCR rows to add.
 10. Wait for explicit approval. Write nothing before approval.
 11. Write the approved files: `requirements.md`, `design.md`, `tasks.md`,
-    `project-master/tasks.md`, `TCR.md`, and `change-log.md` if not already updated.
+    `project-management/project-master/tasks.md`, `TCR.md`, and `change-log.md` if not already updated.
 12. Confirm each file written.
 13. Stop -- do not implement without a separate TASK / IMPLEMENTATION instruction.
 

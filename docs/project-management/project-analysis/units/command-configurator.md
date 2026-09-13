@@ -22,7 +22,7 @@ internal or external targets). No file over cap (edit.rs 339 largest). No split.
 
 Tracking: 24/26 tasks done, 2 OPEN -- but BOTH are pure BOOKKEEPING:
 - 6.2 "Update docs/quality/TCR.md -- set command-configurator rows to correct status"
-- 6.3 "Update docs/specs/project-master/tasks.md -- mark command-configurator tasks complete"
+- 6.3 "Update docs/project-management/project-master/tasks.md -- mark command-configurator tasks complete"
 
 The actual implementation + tests are DONE (17 TCR rows already exist for the
 crate; the code covers all 4 reqs). These are stale tracking checkboxes -- the same
