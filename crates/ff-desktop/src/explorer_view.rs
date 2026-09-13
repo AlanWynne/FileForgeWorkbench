@@ -473,6 +473,60 @@ pub fn render_tree(
     effects
 }
 
+/// Translate this frame's egui keyboard input into explorer gestures, run them
+/// through the tested `reduce_key` reducer against the model + selection, and
+/// return the resulting effects for the caller to apply. Call this once per
+/// frame while the explorer has focus. Mirrors the legacy handler's key set
+/// (Req 8 arrows/Enter/Home/End + Req 20 Shift/Ctrl selection semantics).
+///
+/// Validates: Requirement 24.2 (Req 8, Req 20.4-20.12)
+pub fn keyboard_effects(
+    ui: &egui::Ui,
+    model: &NavModel,
+    sel: &mut ExplorerSelection,
+) -> Vec<ExplorerEffect> {
+    let (ctrl, shift) = ui.input(|i| (i.modifiers.ctrl, i.modifiers.shift));
+    let mut gestures: Vec<ExplorerKey> = Vec::new();
+    ui.input(|i| {
+        if i.key_pressed(egui::Key::ArrowDown) {
+            gestures.push(ExplorerKey::Down { shift, ctrl });
+        }
+        if i.key_pressed(egui::Key::ArrowUp) {
+            gestures.push(ExplorerKey::Up { shift, ctrl });
+        }
+        if i.key_pressed(egui::Key::ArrowRight) {
+            gestures.push(ExplorerKey::Right);
+        }
+        if i.key_pressed(egui::Key::ArrowLeft) {
+            gestures.push(ExplorerKey::Left);
+        }
+        if i.key_pressed(egui::Key::Enter) {
+            gestures.push(ExplorerKey::Enter);
+        }
+        if i.key_pressed(egui::Key::Escape) {
+            gestures.push(ExplorerKey::Escape);
+        }
+        if ctrl && i.key_pressed(egui::Key::Space) {
+            gestures.push(ExplorerKey::CtrlSpace);
+        }
+        if i.key_pressed(egui::Key::Home) {
+            gestures.push(ExplorerKey::Home);
+        }
+        if i.key_pressed(egui::Key::End) {
+            gestures.push(ExplorerKey::End);
+        }
+    });
+
+    let mut effects = Vec::new();
+    for g in gestures {
+        let eff = reduce_key(model, sel, g);
+        if eff != ExplorerEffect::None {
+            effects.push(eff);
+        }
+    }
+    effects
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

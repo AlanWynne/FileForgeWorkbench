@@ -816,7 +816,9 @@ impl WorkbenchShell {
     ///
     /// Validates: Requirement 24.1, 24.3, 24.5, 24.9
     fn render_nav_explorer_preview(&mut self, ctx: &egui::Context) {
-        use crate::explorer_view::{render_tree, resolve_open, ExplorerEffect, OpenTarget};
+        use crate::explorer_view::{
+            keyboard_effects, render_tree, resolve_open, ExplorerEffect, OpenTarget,
+        };
         use crate::nav_model::list_via_provider;
 
         // Seed the Local Files root on first display: associate its URI and load
@@ -840,6 +842,23 @@ impl WorkbenchShell {
                     Err(e) => self.nav_model.apply_load_error(local_root, e),
                 }
             }
+
+            // Seed the Catalogs root generically: one CatalogRoot node per
+            // registered catalog (Slice A -- no mainframe qualifier/dataset
+            // duality; that is Slice B). Requirement 24.8.
+            let catalogs_root = self.nav_model.tree.root_categories[1];
+            for cat in self.files_panel.registry.list() {
+                let uri = ff_vfs::ResourceUri::new("catalog", format!("/{}", cat.name));
+                self.nav_model.add_child(
+                    catalogs_root,
+                    cat.name.clone(),
+                    ff_file_tree::NodeType::CatalogRoot,
+                    uri,
+                );
+            }
+            if let Some(n) = self.nav_model.tree.get_node_mut(catalogs_root) {
+                n.children_loaded = true;
+            }
         }
 
         let mut effects = Vec::new();
@@ -852,7 +871,21 @@ impl WorkbenchShell {
                         .monospace()
                         .strong(),
                 );
-                effects = render_tree(ui, &self.nav_model, &mut self.nav_selection, &self.palette);
+                // Keyboard navigation (Req 8/20) when the preview panel is
+                // hovered/focused, then mouse interactions from the tree.
+                if ui.rect_contains_pointer(ui.max_rect()) {
+                    effects.extend(keyboard_effects(
+                        ui,
+                        &self.nav_model,
+                        &mut self.nav_selection,
+                    ));
+                }
+                effects.extend(render_tree(
+                    ui,
+                    &self.nav_model,
+                    &mut self.nav_selection,
+                    &self.palette,
+                ));
             });
 
         // Apply interaction effects outside the render borrow.

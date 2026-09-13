@@ -119,6 +119,25 @@ impl NavModel {
     pub fn apply_load_error(&mut self, parent: NodeId, message: impl Into<String>) {
         self.tree.apply_error(parent, message.into());
     }
+
+    /// Insert a single typed child node under `parent` with an associated URI,
+    /// returning its `NodeId`. Used to seed provider roots (e.g. catalog roots)
+    /// that are not produced by a directory `list()`.
+    ///
+    /// Validates: Requirement 24.2, 24.8
+    pub fn add_child(
+        &mut self,
+        parent: NodeId,
+        label: impl Into<String>,
+        node_type: NodeType,
+        uri: ResourceUri,
+    ) -> NodeId {
+        let depth = self.tree.get_node(parent).map(|n| n.depth + 1).unwrap_or(1);
+        let node = ff_file_tree::TreeNode::new(NodeId::ROOT, parent, label, node_type, depth);
+        let id = self.tree.insert_node(parent, node);
+        self.uris.insert(id, uri);
+        id
+    }
 }
 
 /// Drive an async `VfsProvider::list()` to completion on the given Tokio runtime
@@ -331,6 +350,28 @@ mod tests {
         m.tree.remove_node(child);
         m.prune_uris();
         assert_eq!(m.uri_count(), 0);
+    }
+
+    #[test]
+    fn add_child_seeds_catalog_root_with_uri() {
+        // Validates: Requirement 24.2, 24.8 -- generic catalog root node + URI
+        let mut m = NavModel::new();
+        let catalogs = m.tree.root_categories[1];
+        let id = m.add_child(
+            catalogs,
+            "PAYROLL",
+            NodeType::CatalogRoot,
+            ResourceUri::new("catalog", "/PAYROLL"),
+        );
+        assert_eq!(
+            m.tree.get_node(id).unwrap().node_type,
+            NodeType::CatalogRoot
+        );
+        assert_eq!(m.tree.get_node(id).unwrap().label, "PAYROLL");
+        assert!(m.tree.get_node(catalogs).unwrap().children.contains(&id));
+        assert_eq!(m.uri_of(id).unwrap().path(), "/PAYROLL");
+        // CatalogRoot is expandable (a container) per ff-file-tree NodeType.
+        assert!(m.tree.get_node(id).unwrap().node_type.is_expandable());
     }
 
     #[test]
