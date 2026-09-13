@@ -80,6 +80,16 @@ impl ExplorerSelection {
         }
     }
 
+    /// Ctrl+click: move the cursor to `id` and toggle its membership in the
+    /// selection, leaving the rest of the selection intact (Req 19.3).
+    pub fn ctrl_click(&mut self, id: NodeId) {
+        self.cursor = Some(id);
+        if !self.selected.remove(&id) {
+            self.selected.insert(id);
+        }
+        self.anchor = Some(id);
+    }
+
     /// Set a single-node selection + cursor (plain click / initial focus).
     pub fn select_single(&mut self, id: NodeId) {
         self.cursor = Some(id);
@@ -514,7 +524,17 @@ pub fn render_tree(
                 }
 
                 if resp.clicked() {
-                    sel.select_single(row.id);
+                    // Modifier-aware selection (Req 19.2/19.3): Shift extends a
+                    // range from the anchor, Ctrl toggles the clicked node, plain
+                    // click selects just this node.
+                    let (ctrl, shift) = ui.input(|i| (i.modifiers.ctrl, i.modifiers.shift));
+                    if shift {
+                        sel.extend_to(row.id);
+                    } else if ctrl {
+                        sel.ctrl_click(row.id);
+                    } else {
+                        sel.select_single(row.id);
+                    }
                 }
                 if resp.double_clicked() {
                     sel.select_single(row.id);
@@ -897,6 +917,37 @@ mod tests {
             }
             other => panic!("expected Dataset, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn ctrl_click_toggles_node_leaving_others_selected() {
+        // Validates: Requirement 24.2 (Req 19.3) -- Ctrl+click toggles one node.
+        let (_m, local, src, b) = model_with_tree();
+        let mut sel = ExplorerSelection::default();
+        sel.select_single(src);
+        // Ctrl+click b: adds b, keeps src.
+        sel.ctrl_click(b);
+        assert!(sel.is_selected(src));
+        assert!(sel.is_selected(b));
+        assert_eq!(sel.cursor, Some(b));
+        // Ctrl+click b again: removes b, keeps src.
+        sel.ctrl_click(b);
+        assert!(sel.is_selected(src));
+        assert!(!sel.is_selected(b));
+        let _ = local;
+    }
+
+    #[test]
+    fn shift_click_extends_range_from_anchor() {
+        // Validates: Requirement 24.2 (Req 19.2) -- Shift+click extends selection.
+        let (_m, _local, src, b) = model_with_tree();
+        let mut sel = ExplorerSelection::default();
+        sel.select_single(src); // anchor = src
+        sel.extend_to(b);
+        assert!(sel.is_selected(src));
+        assert!(sel.is_selected(b));
+        assert_eq!(sel.anchor, Some(src));
+        assert_eq!(sel.cursor, Some(b));
     }
 
     #[test]
