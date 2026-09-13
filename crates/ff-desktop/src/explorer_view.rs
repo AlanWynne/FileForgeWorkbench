@@ -279,6 +279,18 @@ fn apply_move(sel: &mut ExplorerSelection, target: NodeId, shift: bool, ctrl: bo
     }
 }
 
+/// The first visible node in display order, if any (used by Tab focus-transfer
+/// to land the cursor on entry). Req 20.1.
+pub fn first_row_id(model: &NavModel) -> Option<NodeId> {
+    first_visible_node(&model.tree)
+}
+
+/// The next visible node after `cursor` in display order, if any (used by Tab to
+/// advance the cursor within the tree; `None` means past the last row). Req 20.1.
+pub fn next_row_id(model: &NavModel, cursor: NodeId) -> Option<NodeId> {
+    next_visible_node(&model.tree, cursor)
+}
+
 /// Type-ahead jump helper exposed for the renderer (Req 8.12).
 // Type-ahead search is not yet wired to egui key input; retained + tested for a
 // later update.
@@ -885,6 +897,30 @@ mod tests {
             }
             other => panic!("expected Dataset, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn first_row_id_is_the_first_visible_node() {
+        // Validates: Requirement 24.9 (Req 20.1) -- Tab lands on the first row.
+        let (m, local, _src, _b) = model_with_tree();
+        assert_eq!(first_row_id(&m), Some(local));
+    }
+
+    #[test]
+    fn next_row_id_advances_then_returns_none_past_last() {
+        // Validates: Requirement 24.9 (Req 20.1) -- Tab advances, then exits.
+        let (m, _local, _src, _b) = model_with_tree();
+        let first = first_row_id(&m).expect("first");
+        // Walking next_row_id from the first row must eventually yield None
+        // (past the last visible row), and never loop forever.
+        let mut cur = Some(first);
+        let mut steps = 0;
+        while let Some(c) = cur {
+            cur = next_row_id(&m, c);
+            steps += 1;
+            assert!(steps < 100, "next_row_id must terminate");
+        }
+        assert!(steps >= 1, "at least one advance from the first row");
     }
 
     #[test]

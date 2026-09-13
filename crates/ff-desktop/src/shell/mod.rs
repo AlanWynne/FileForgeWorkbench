@@ -397,6 +397,10 @@ pub struct WorkbenchShell {
     /// Active new-child dialog for the modern explorer: (parent directory node,
     /// is_directory, name buffer). `None` when none pending. (Req 16 New.)
     nav_new: Option<(ff_file_tree::NodeId, bool, String)>,
+
+    /// When true, the modern explorer node list holds keyboard focus (Tab moved
+    /// focus from the shell Command ===> into the tree). (Req 24.9 / 20.1.)
+    nav_focused: bool,
     /// Toolchain panel state — GCC and Rust plugin entries.
     toolchain_panel: ToolchainPanelState,
     /// Whether the Toolchain Panel is currently visible.
@@ -663,6 +667,7 @@ impl WorkbenchShell {
             nav_rename: None,
             nav_delete: None,
             nav_new: None,
+            nav_focused: false,
             toolchain_panel: ToolchainPanelState::new(),
             show_toolchain_panel: false,
             pending_new_pom: false,

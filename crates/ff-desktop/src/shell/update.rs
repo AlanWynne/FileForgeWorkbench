@@ -520,6 +520,18 @@ impl eframe::App for WorkbenchShell {
             // Escape while explorer has focus also exits the tree back to CommandField.
             if !self.modal_open
                 && is_file_explorer
+                && !self.use_legacy_explorer
+                && self.nav_focused
+                && ctx.input(|i| i.key_pressed(egui::Key::Escape))
+            {
+                // Modern explorer: Escape exits the tree back to the command field.
+                self.nav_focused = false;
+                self.nav_selection.cursor = None;
+                self.focus_stop = FocusStop::CommandField;
+                self.command_field_focus_requested = true;
+            } else if !self.modal_open
+                && is_file_explorer
+                && self.use_legacy_explorer
                 && self.file_explorer_panel.explorer_focused
                 && ctx.input(|i| i.key_pressed(egui::Key::Escape))
             {
@@ -529,6 +541,35 @@ impl eframe::App for WorkbenchShell {
                 self.command_field_focus_requested = true;
             } else if tab_pressed
                 && is_file_explorer
+                && !self.use_legacy_explorer
+                && (cmd_has_focus || self.nav_focused)
+            {
+                // Modern explorer Tab focus-transfer (Req 20.1 / 24.9): Tab from
+                // the command field enters the tree (cursor on the first visible
+                // node); Tab within advances to the next visible node; Tab past
+                // the last node exits back to the command field.
+                use crate::explorer_view::{first_row_id, next_row_id};
+                let next = if !self.nav_focused {
+                    self.nav_focused = true;
+                    first_row_id(&self.nav_model)
+                } else {
+                    self.nav_selection
+                        .cursor
+                        .and_then(|c| next_row_id(&self.nav_model, c))
+                };
+                match next {
+                    Some(id) => self.nav_selection.move_cursor(id),
+                    None => {
+                        // Past the last node (or empty tree) -- exit to command field.
+                        self.nav_focused = false;
+                        self.nav_selection.cursor = None;
+                        self.focus_stop = FocusStop::CommandField;
+                        self.command_field_focus_requested = true;
+                    }
+                }
+            } else if tab_pressed
+                && is_file_explorer
+                && self.use_legacy_explorer
                 && (cmd_has_focus || self.file_explorer_panel.explorer_focused)
             {
                 let entering = !self.file_explorer_panel.explorer_focused;
