@@ -344,7 +344,17 @@ impl KeyMap {
     /// Build the built-in default global key map.
     ///
     /// Provides ISPF-standard bindings used when no user configuration overrides them:
-    /// F1=HELP/Help, F3=END/End, F7=UP MAX/Up, F8=DOWN MAX/Down, F12=RETRIEVE/Retrieve.
+    /// F1=HELP/Help, F3=END/End, F7=UP/Up, F8=DOWN/Down, F12=RETRIEVE/Retrieve.
+    ///
+    /// F7/F8 scroll by one page (the ISPF UP/DOWN default). MAX scrolling is NOT
+    /// bound to a function key: it is invoked by typing `M`/`MAX` on the command
+    /// line and then pressing UP/DOWN (navigation-commands Req 3.1/3.3 -- bare
+    /// UP/DOWN scroll one screen; the MAX modifier is an explicit command-line
+    /// action). Binding F7/F8 to "UP MAX"/"DOWN MAX" was incorrect (B046).
+    ///
+    /// Every binding here is a DEFAULT only and is fully overridable through the
+    /// key configuration (function-keys-and-history Req 14/15; configurable per
+    /// context with Ctrl/Alt/Shift modifiers).
     ///
     /// Validates: Requirement 15.1
     pub fn default_global() -> Self {
@@ -359,11 +369,11 @@ impl KeyMap {
         );
         map.set(
             ModifiedKey::plain(FunctionKey::F7),
-            KeyBinding::with_label("UP MAX", "Up"),
+            KeyBinding::with_label("UP", "Up"),
         );
         map.set(
             ModifiedKey::plain(FunctionKey::F8),
-            KeyBinding::with_label("DOWN MAX", "Down"),
+            KeyBinding::with_label("DOWN", "Down"),
         );
         map.set(
             ModifiedKey::plain(FunctionKey::F12),
@@ -634,11 +644,10 @@ mod tests {
             "Help"
         );
         assert_eq!(map.get_plain(FunctionKey::F3).unwrap().command(), "END");
-        assert_eq!(map.get_plain(FunctionKey::F7).unwrap().command(), "UP MAX");
-        assert_eq!(
-            map.get_plain(FunctionKey::F8).unwrap().command(),
-            "DOWN MAX"
-        );
+        // B046: F7/F8 default to bare UP/DOWN (page scroll), NOT "UP MAX"/"DOWN
+        // MAX". MAX is invoked by typing M/MAX on the command line then UP/DOWN.
+        assert_eq!(map.get_plain(FunctionKey::F7).unwrap().command(), "UP");
+        assert_eq!(map.get_plain(FunctionKey::F8).unwrap().command(), "DOWN");
         assert_eq!(
             map.get_plain(FunctionKey::F12).unwrap().command(),
             "RETRIEVE"

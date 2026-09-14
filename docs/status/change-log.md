@@ -708,3 +708,14 @@ Modifications to existing behaviour that already works.
 | Phase (core-test-triage) | CR-NR-068 added -- Menu Workspace editor (create/edit/delete POM/Settings/custom/menu-bar menus); DESIGN SESSION requested; closes CORE #2 test rows 2.4-2.7 |
 | Phase (core-test-triage) | CR-NR-069 added -- Key Assignment editor workspace (named key-assignment sets); DESIGN SESSION requested |
 | Phase (core-test-triage) | CR-NR-070 added -- Theme Settings workspace + theme commands (set theme, invoke theme settings); DESIGN SESSION requested; CORE (pairs with B039 fix) |
+
+### CR-NR-071 -- CORE context help: markdown help content + help viewer for every core context
+- **Date/Phase**: Phase (fkey-triage) (pre-gate)
+- **Prompt**: "H! gives message 'Help not yet available for the Help Index [topic-key: in' This should be part of the core, so part of the core is to get help up and running at least for the core functions. Help should present a view of perhaps a 'Markdown' help file for the context. We need to build markdown help for each possible context, it should be part of the plan."
+- **Description**: F1/HELP already dispatches (the mechanism works) but shows "Help not yet available for <context>" because help CONTENT does not exist. Make context help CORE: (1) a help viewer that renders a markdown help file for the current context; (2) authored markdown help files for every core context (Home/POM, Editor View/Edit, File Explorer, Settings, Command line, etc.); (3) F1 and the HELP command open the help for the active context. Building the per-context markdown help set is part of the CORE plan and needs Core Acceptance Test Plan coverage.
+- **Status**: PENDING GATE -- recorded; requirements gate NOT run. CORE-scoped.
+- **Affects**: `docs/specs/context-help/`, `docs/specs/custom-file-viewers/` or a markdown viewer, `docs/specs/menu-and-statusbar/` (F1 binding); `ff-help`, `ff-desktop`; a `help/` content directory of markdown files.
+- **Linked spec**: to be authored at the gate. Relates to B046 (F1 fires but no content). The help content authoring is an ongoing deliverable to track in the ROADMAP/test plan.
+
+| Phase (fkey-triage) | CR-NR-071 added -- CORE context help: markdown help content + help viewer for every core context (F1 fires but content missing); help authoring is part of the CORE plan |
+| Phase (fkey-defaults) | CR-NR-069 scope confirmed by owner -- the whole keylist (F1-F12 + Ctrl/Alt/Shift) must be configurable with the standard bindings as defaults but alterable via configuration; F7/F8 default corrected to UP/DOWN (B046 partial fix) |

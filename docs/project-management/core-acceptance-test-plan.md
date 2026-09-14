@@ -97,7 +97,7 @@ not blocking.
 |---|------|-----------------|---------------|--------|
 | 3.1 | Open the File Explorer (option 2 / FILES). | Modern tree: Local Files + Catalogs roots. | file-tree-panel 24.1 | [ ] |
 | 3.2 | Expand "Local Files" and compare to the real drive. | The tree matches actual filesystem contents; the Local Files root path is discoverable; Windows known-folder junctions (Documents, My Documents, My Music/Pictures/Videos) resolve to their real target or are omitted -- never shown as dead/empty non-expandable nodes. | B044; file-tree-panel 24.5 | [F] |
-| 3.3 | Double-click a text file. | Opens in an editor workspace. | file-tree-panel 24.9 | [ ] |
+| 3.3 | Double-click a real local text file (incl. a path with spaces / OneDrive). | Opens in an editor workspace; no "resource not found" error; the VFS URI resolves to the real file. | file-tree-panel 24.9; B047 | [F] |
 | 3.4 | Right-click a file -> context menu. | Menu shows View, Edit, Copy, Paste, Copy Full Path, Reveal, Rename, Delete, New File, New Folder. "Open" is REPLACED by "View" + "Edit" (View -> editor in View mode; Edit -> editor in Edit mode). | CR-NR-062 scope-ext (pending) | [B] |
 | 3.5 | Use each context-menu action, and its matching command-line command. | Every action (View, Edit, Copy, Paste, Copy Full Path, Reveal, Rename, Delete, New File, New Folder) has a command-line equivalent that accepts the selected file name as a parameter and behaves per its spec. | CR-NR-062 scope-ext (pending) | [B] |
 | 3.6 | Rename a file via the context menu. | File renamed on disk; tree refreshes. | file-tree-panel 16 | [ ] |
@@ -162,9 +162,10 @@ relevant context (POM, editor View/Edit, File Explorer).
 
 | # | Step | Expected result | Req / Backing | Result |
 |---|------|-----------------|---------------|--------|
-| 7.1 | Press F1 in a context with help. | Context help opens for the current context. | function-keys-and-history; B046 | [F] |
-| 7.2 | Press F3/END in the editor, POM, and explorer. | Performs the mapped END/return action per context (POM per CR-CH-016). | function-keys-and-history; B046; CR-CH-016 | [F] |
-| 7.3 | Press F7 / F8 in a scrollable context. | Scroll up / down by page. | function-keys-and-history; B046 | [F] |
+| 7.1 | Press F1 in a context. | Context help opens showing the markdown help for the current context. | function-keys-and-history; CR-NR-071 (help content pending) | [B] |
+| 7.2 | Press F3/END in the editor, POM, and explorer. | Performs the mapped END/return action per context. F3 confirmed working; POM-not-last-tab case per CR-CH-016. | function-keys-and-history (works); CR-CH-016 (POM case) | [ ] |
+| 7.3 | Press F7 / F8 in a scrollable context. | Scroll up / down by one page (bare UP/DOWN). NOT to end-of-file. | navigation-commands 3.1/3.3; B046 (FIXED, retest) | [ ] |
+| 7.3a | Type `M` (or `MAX`) on the command line, then press UP / DOWN (or F7/F8). | Scrolls to the top / bottom (MAX modifier); MAX is a command-line action, not an F-key binding. | navigation-commands; B046 | [ ] |
 | 7.4 | Press PF2 while editing. | Splits the screen at the cursor line into two independent editor halves. | menu-and-statusbar 11; B046 | [F] |
 | 7.5 | Press PF9 while split. | Swaps keyboard focus between the two split halves. | menu-and-statusbar 12; B046 | [F] |
 | 7.6 | Press F3 (END) while split. | Unsplits, restoring the single-panel view. | menu-and-statusbar 14; B046 | [F] |
@@ -222,7 +223,9 @@ fixed. Keep this map updated as rows are added.
 | B043 (SWAP command) | OPEN | 1.4, 1.5 |
 | B044 (Local Files content / junctions) | OPEN | 3.2 |
 | B045 (detach not wired) | OPEN | 1.9, 1.10, 1.11 |
-| B046 (function keys not working) | OPEN | 7.1-7.7 |
+| B046 (function keys) | PARTIAL: F7/F8 defaults FIXED (retest 7.3/7.3a); rest OPEN | 7.1-7.7, 7.3a |
+| B047 (navigator file open resource-not-found) | OPEN | 3.3, 3.12 |
+| CR-NR-071 (CORE context help content) | PENDING GATE | 7.1 |
 | CR-CH-016 (END from POM) | PENDING GATE | 1.7, 1.8, 4.10, 7.2 |
 | CR-NR-062 (View/Edit + context-menu commands) | PENDING GATE | 3.4, 3.5, 3.12, 4.1, 4.3, 4.9, 5.2 |
 | CR-NR-066 (`cd` focuses navigator) | PENDING GATE | 3.13 |
