@@ -109,6 +109,7 @@ Modifications to existing behaviour that already works.
 - **Description**: Revised function-keys-and-history Requirement 17.2/17.4. END (and RETURN) issued from a POM tab now close only that POM Workspace and navigate to another open Workspace; the application terminates only when the POM is the last Workspace open (new criterion 17.2a). Requirement 4.3 aligned with 13.2 (blank slot never omitted), and the default Excluded_Command set (Req 8.2 + glossary) updated to include END and RETURN.
 - **Affects**: `ff-desktop` `shell/commands.rs` (END/RETURN handlers), `docs/specs/function-keys-and-history/requirements.md` (Req 17.2, 17.2a, 17.4, 4.3, 8.2, glossary)
 - **Status**: PENDING GATE
+- **Re-reported (Phase core-test-triage)**: reproduced in the CORE test session -- "End command on a POM shuts the whole application, it should only shut down the current tab, and only shut down the whole application if we were in the POM and only had one tab open! No Test Criteria to test this?" Confirms the change request; ALSO flags a Core Acceptance Test Plan gap -- an END-from-POM test row (close-tab vs terminate-when-last) must be added at the gate. No new CR id (already CR-CH-016).
 
 ### CR-CH-001 â€” POM option 2 description update
 - **Date/Phase**: Phase AS
@@ -631,7 +632,9 @@ Modifications to existing behaviour that already works.
 - **Status**: PENDING GATE
 - **Affects**: `docs/specs/file-tree-panel/requirements.md` (new Requirement 25 -- click-to-command-line, Enter-opens-View, right-click preserved); `docs/specs/multi-tab-editor/requirements.md` (new Requirement 16 -- Editor_Mode View/Edit, enforcement, EDIT switches View->Edit, filtering allowed in View, per-tab mode state + persistence); `docs/specs/edit-operations/requirements.md` (revise Req 17.5/17.6 to reference the real enforced View/Browse mode instead of "deferred"); later code: `ff-desktop` (explorer_view.rs click path, shell command_text population, editor_panel.rs mutation gate, VIEW/EDIT dispatch), `ff-edit-operations` (mode-aware guard). Must fit alongside in-flight CR-NR-060 / file-tree-panel Req 24 (NavModel explorer, preview-gated) and complements CR-NR-061 File Formatter's record-level View/Edit modes (shares the View/Edit mode concept).
 - **Linked spec**: `docs/specs/file-tree-panel/requirements.md` Req 25; `docs/specs/multi-tab-editor/requirements.md` Req 16; `docs/specs/edit-operations/requirements.md` Req 17 (revision)
+- **Re-reported + scope extension (Phase core-test-triage)**: CORE test session -- "Right Clicking a file ... displays the menu 'Open' 'copy' 'paste' 'copy full path' 'reveal in File Manager' 'rename' 'Delete' 'New File' 'New Folder'. ... the open does not work, and is the wrong command anyway ... the Open Should be 2 commands 'View' and another one 'Edit'. ... Each of these options should have a test criteria in the 'Core Acceptance Test Plan'. Each of the options in the list should have a command that could be used in the command line. Each of these commands should accept the file name that is selected as a parameter. We should have Specifications ... describing the expected behaviour of each command and acceptance criteria of how each command should behave." EXTENDS CR-NR-062: (a) the right-click context menu must REPLACE "Open" with two entries "View" and "Edit" (View -> Editor in View mode, Edit -> Editor in Edit mode); (b) the "Open" action is currently broken and must be removed/replaced; (c) EVERY context-menu action (View, Edit, Copy, Paste, Copy Full Path, Reveal, Rename, Delete, New File, New Folder) must have a matching command-line command that accepts the selected file name as a parameter, each with its own specification + acceptance criteria + a Core Acceptance Test Plan row. The context-menu-command parity + per-command specs are added to the CR-NR-062 gate scope (file-tree-panel Req 16 + Req 25). No new CR id.
 | Phase (view-edit-modes) | CR-NR-062 added -- File Explorer click populates Command ===> with VIEW '<file>'; Enter opens Editor in View mode; VIEW/EDIT commands open view/edit workspaces; enforced Editor View vs Edit modes with EDIT switching View->Edit and filtering allowed in View |
+| Phase (core-test-triage) | CR-NR-062 scope extended -- right-click "Open" split into "View" + "Edit"; every context-menu action needs a matching command-line command taking the selected file name, each with its own spec + acceptance criteria + Core Acceptance Test Plan row |
 
 ### CR-NR-063 -- Revised Storage and Catalog Data Model (supersedes/extends CR-NR-016)
 - **Date/Phase**: Phase (core-reorg) (pre-gate)
@@ -659,3 +662,49 @@ Modifications to existing behaviour that already works.
 - **Affects**: `docs/specs/jes-emulator/`, `docs/specs/idcams-emulator/`, `docs/specs/jcl-resolver/`, `docs/specs/plugin-architecture/`, `docs/specs/plugin-manager-ui/`; later code: `ff-jes`, `ff-idcams`.
 - **Linked spec**: existing `docs/specs/jes-emulator/requirements.md`; plugin framing to be confirmed at the gate. Cross-ref ROADMAP Section 7d + project-analysis Bucket 4.
 | Phase (core-reorg) | CR-NR-065 added -- formalise JES/SDSF as the Job Monitor plugin (+ IDCAMS utility); gate deferred to its PLUGIN phase |
+
+### CR-NR-066 -- `cd <path>` sets the File Navigator focus/expansion point
+- **Date/Phase**: Phase (core-test-triage) (pre-gate)
+- **Prompt**: "When Typing 'cd ' and providing a path in the command line this should become the focus point in the file navigator, the same as selecting it with a mouse point. if it is an expandable node, it should expand."
+- **Description**: WHEN the user types `cd <path>` on the command line and presses Enter, THE File Navigator (File Explorer Context) SHALL set the focus/cursor to the node for `<path>` exactly as if the user had clicked it with the mouse, AND IF that node is expandable THE navigator SHALL expand it. Scrolls the node into view. Complements CR-NR-062 (click-to-command-line) as the inverse command-to-navigator direction, and the modern NavModel explorer (file-tree-panel Req 24).
+- **Status**: PENDING GATE -- recorded; requirements gate NOT run.
+- **Affects**: `docs/specs/file-tree-panel/` (navigator focus/expand from a command), `docs/specs/navigation-commands/` or `docs/specs/command-semantics/` (the `cd` command binding), `ff-desktop` NavModel + command dispatch.
+- **Linked spec**: to be authored at the gate. Cross-ref CR-NR-062, CR-NR-060.
+
+### CR-NR-067 -- Configurable menu bar as a named Menu Workspace (per-workspace menu bar)
+- **Date/Phase**: Phase (core-test-triage) (pre-gate)
+- **Prompt**: "The options on the menu bar need to be brought into align with what is available ... This menu bar should also be configurable, and part of the Core. It should be configurable in the same way a menu workspace is configurable ... a custom workspace that allows us to edit Menu Workspaces, like the POM, and the Settings menu, the menu bar should just be a menu workspace presented as a Menu bar, i should be able to open the Menu bar as a menu workspace, Each workspace should be able to name the menu bar that it uses ... an attribute of a named workspace should be it's associated named Menu Bar. The Primary option Menu bar would be the default menu bar for all Workspaces that do not have their own custom named Menu bar. THIS SHOULD ALL BE PART OF THE CORE. AND PART OF THE INITIAL CORE TESTING."
+- **Description**: Model the application menu bar as a Menu_Workspace rendered in menu-bar form (options with matching commands and descriptions), configurable exactly like the POM and Settings menus. A named workspace gains an attribute: its associated named Menu Bar; the "Primary" menu bar is the default for any workspace that does not name its own. The menu bar can be opened AS a Menu Workspace (for editing). First step also realigns the current hard-coded bar ("Settings, File Catalogs, Files, View, Search, Utilities, Compilers, Lua, Terminals, Database, Plugins, Edit, Help") with what is actually available. CORE scope; needs Core Acceptance Test Plan coverage.
+- **Status**: PENDING GATE -- recorded; requirements gate NOT run. CORE-scoped.
+- **Affects**: `docs/specs/menu-workspace/`, `docs/specs/menu-and-statusbar/` (menu-bar rendering), `docs/specs/workspace-model/` (per-workspace named-menu-bar attribute), `docs/specs/configuration-system/` (menu-bar definition files); `ff-desktop` shell chrome + MenuWorkspace machinery.
+- **Linked spec**: to be authored at the gate. Depends on the menu-workspace framework (see B032) and the menu-workspace editor (CR-NR-068).
+
+### CR-NR-068 -- Menu Workspace editor (create/edit/delete Menu Workspaces incl. POM, Settings, menu bars)
+- **Date/Phase**: Phase (core-test-triage) (pre-gate)
+- **Prompt**: "perhaps we need a design session to design a workspace to edit/create/delete menu workspaces ... a custom workspace that allows us to edit Menu Workspaces, like the POM, and the Settings menu"
+- **Description**: A dedicated workspace (Context) to create, edit, and delete Menu Workspaces -- editing the option/command/description rows and menu metadata for the POM, the Settings menu, custom menus, and menu-bar menus (CR-NR-067). This is the "Create/Edit Menu" capability that Core Acceptance Test Plan Group 2 (2.4-2.7) already flags as the KEY gap for Core #2. Owner requests a DESIGN SESSION for this workspace.
+- **Status**: PENDING GATE -- recorded; DESIGN SESSION requested before the requirements gate.
+- **Affects**: `docs/specs/menu-workspace/` (editor Context + persisted menu definition files), `docs/specs/command-configurator/` (option->command mapping), `ff-desktop`.
+- **Linked spec**: to be authored after the design session. Underpins CR-NR-067 and closes CORE #2 test rows 2.4-2.7. Relates to B032 (Settings must BE a menu workspace).
+
+### CR-NR-069 -- Key Assignment editor workspace (create/edit/delete named key assignments)
+- **Date/Phase**: Phase (core-test-triage) (pre-gate)
+- **Prompt**: "also to design a workspace to create/edit/delete named key assignments"
+- **Description**: A dedicated workspace (Context) to create, edit, and delete named key-assignment sets (function-key and shortcut bindings). Complements the existing Key Assignments dialog and the function-keys-and-history spec; supports naming a set so workspaces/menu bars can reference it. Owner requests a DESIGN SESSION. Relates to B046 (function keys not working / fold Fkey spec into CORE).
+- **Status**: PENDING GATE -- recorded; DESIGN SESSION requested before the requirements gate.
+- **Affects**: `docs/specs/function-keys-and-history/`, `docs/specs/menu-workspace/` (editor pattern), `docs/specs/configuration-system/` (persisted named key-assignment sets); `ff-keys`, `ff-desktop`.
+- **Linked spec**: to be authored after the design session.
+
+### CR-NR-070 -- Theme Settings workspace + theme commands (set theme, invoke theme settings)
+- **Date/Phase**: Phase (core-test-triage) (pre-gate)
+- **Prompt**: "Theme changing also not working. This should also be part of the core. Also need a workspace to be able to set theme settings. So we need commands to set the theme to be used and to invoke the theme settings workspace ... a design session to a workspace to create/edit/delete theme settings."
+- **Description**: (1) A dedicated Theme Settings workspace (Context) to create/edit/delete theme settings. (2) Commands: one to set the active theme by name, one to open (invoke) the Theme Settings workspace. CORE scope; needs Core Acceptance Test Plan coverage. Distinct from B039 (theme changing currently BROKEN -- the bug fix); this CR adds the settings workspace + commands. Owner requests a DESIGN SESSION.
+- **Status**: PENDING GATE -- recorded; DESIGN SESSION requested before the requirements gate. CORE-scoped.
+- **Affects**: `docs/specs/theme-and-appearance/`, `docs/specs/menu-workspace/` (editor pattern), `docs/specs/command-semantics/` (theme commands), `docs/specs/configuration-system/`; `ff-theme`, `ff-desktop`.
+- **Linked spec**: to be authored after the design session. Pair with B039 (theme round-trip fix) so the workspace operates on a working theme pipeline.
+
+| Phase (core-test-triage) | CR-NR-066 added -- `cd <path>` sets File Navigator focus + expands (inverse of CR-NR-062 click-to-command-line) |
+| Phase (core-test-triage) | CR-NR-067 added -- configurable menu bar as a named Menu Workspace; per-workspace named menu bar attribute; realign current hard-coded bar; CORE |
+| Phase (core-test-triage) | CR-NR-068 added -- Menu Workspace editor (create/edit/delete POM/Settings/custom/menu-bar menus); DESIGN SESSION requested; closes CORE #2 test rows 2.4-2.7 |
+| Phase (core-test-triage) | CR-NR-069 added -- Key Assignment editor workspace (named key-assignment sets); DESIGN SESSION requested |
+| Phase (core-test-triage) | CR-NR-070 added -- Theme Settings workspace + theme commands (set theme, invoke theme settings); DESIGN SESSION requested; CORE (pairs with B039 fix) |

@@ -24,8 +24,8 @@ Legend: [ ] not run, [P] pass, [F] fail, [B] blocked.
 
 | # | Step | Expected result | Req | Result |
 |---|------|-----------------|-----|--------|
-| 1.1 | Launch the app. | Workbench opens with a POM workspace as the first tab; `Command ===>` line visible; status bar present. | startup-and-session 14.1 | [ ] |
-| 1.2 | Open a second workspace (e.g. type `2`/`FILES`, or `1`). | A new tab opens and becomes active; previous tab remains in the tab bar. | multi-tab-editor | [ ] |
+| 1.1 | Launch the app. | Workbench opens with a POM workspace as the first tab; `Command ===>` line visible; status bar present. | startup-and-session 14.1 | [X] |
+| 1.2 | Open a second workspace (e.g. type `2`/`FILES`, or `1`). | A new tab opens and becomes active; previous tab remains in the tab bar. | multi-tab-editor | [X] |
 | 1.3 | Switch between tabs (click / keyboard). | Active tab changes; content swaps; no crash. | multi-tab-editor | [ ] |
 | 1.4 | Close a tab via its close control. | Tab closes; a sensible neighbour becomes active; POM cannot be lost (at least one tab remains). | multi-tab-editor 3.8 | [ ] |
 | 1.5 | Detach a workspace to its own OS window. | Workspace becomes a Detached Workspace in a separate window; content intact. | layout-and-docking | [ ] |
@@ -125,3 +125,30 @@ CORE is signed off when all REQUIRED rows are [P]. Record:
 
 Once signed off, PLUGIN phases (ROADMAP Section 5) may begin, each with its own
 test pass before the next.
+
+---
+
+## Known Test-Plan Gaps (from the CORE test session -- to be filled at each gate)
+
+The CORE test session surfaced behaviours that have NO acceptance-test rows yet.
+These are recorded here so they are not lost; the concrete rows are authored at
+the relevant requirements gate (they are not added to the numbered groups above
+until the gate defines the criteria they trace to). Each references its bug or
+change-request id.
+
+| Gap | Belongs in group | Backing item | What the missing test must cover |
+|-----|------------------|--------------|----------------------------------|
+| SWAP command | Group 1 (tabs) | B043 (+ new multi-tab-editor criterion) | `SWAP n` switches to the n-th tab; `SWAP LIST` shows a tab picker; click a row or type a number + Enter switches. |
+| END from POM closes the tab, not the app | Group 1 / Group 2 | CR-CH-016 | END on a POM closes only that Workspace; terminates the app only when the POM is the last Workspace open. |
+| Detach / redock a workspace | Group 1 (rows 1.5/1.6 exist but untested) | B045, layout-and-docking Req 3 | Right-click Detach and drag-out both create a Detached Workspace; close redocks. |
+| View vs Edit context-menu + commands | Group 3 / Group 4 | CR-NR-062 (scope-extended) | Right-click shows View + Edit (not Open); each context action has a matching command taking the selected file; VIEW opens read-only, EDIT opens mutable. |
+| File Navigator content correctness | Group 3 | B044 | Local Files matches the real drive; junction/known-folder nodes resolve or are omitted, never dead/empty. |
+| `cd <path>` focuses/expands the navigator | Group 3 | CR-NR-066 | `cd <path>` + Enter sets navigator focus to that node and expands it if expandable. |
+| Function keys (whole spec is CORE) | NEW dedicated group | B046, function-keys-and-history | Each PF key fires its mapped action in each context (POM, editor View/Edit, explorer); F1 help; F3/END per CR-CH-016; PF2 split / PF9 swap-focus / PF3 unsplit. |
+| Settings as a Menu Workspace | Group 2 | B032, CR-NR-068 | Settings renders as a POM-modelled menu; each option has a matching command; typing the command switches to that option. |
+| Configurable menu bar as a Menu Workspace | Group 2 | CR-NR-067 | Menu bar is a named Menu Workspace; a workspace can name its menu bar; Primary is the default; the bar can be opened/edited as a menu. |
+| Theme changing (CORE) + Theme Settings workspace | NEW theme group | B039 (fix), CR-NR-070 (workspace/commands) | Selecting a theme applies and persists; a command sets the theme by name; a command opens the Theme Settings workspace. |
+
+NOTE: Groups for function keys and theme, and the SWAP/END/detach/menu-bar rows,
+are added to the numbered plan when their gates define the criteria. Until then
+this table is the checklist of what CORE sign-off must eventually include.
