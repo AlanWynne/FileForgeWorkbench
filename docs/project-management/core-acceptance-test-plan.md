@@ -219,7 +219,7 @@ fixed. Keep this map updated as rows are added.
 | B032 (Settings not a menu workspace) | OPEN | 2.2, 2.4 |
 | B039 (theme changing broken -- follow_os clobber) | FIXED (retest 8.1) | 8.1 |
 | B048 (tests wrote real user config) | FIXED | (test-suite) |
-| B049 (history dedup THEME LEGACY vs theme legacy) | OPEN (owner decision) | (Group 1 history rows) |
+| B049 (history dedup THEME LEGACY vs theme legacy) | FIXED (quote-aware dedup) | (Group 1 history rows) |
 | B040 (preview toggle crash) | FIXED | 3.1, 3.2 |
 | B041 (catalog repo init / expand) | FIXED | 3.10 |
 | B042 (catalog subtree edit ops) | FIXED | 3.10 |

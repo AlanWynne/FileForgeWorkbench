@@ -1,8 +1,10 @@
 //! Command History — bounded, deduplicated, ordered ring of past commands.
 //!
 //! Entries are stored most-recent-first. Deduplication uses case-insensitive
-//! comparison on the command name (first token) and case-sensitive comparison
-//! on arguments (remaining tokens).
+//! comparison on the command name (first token). Arguments are compared
+//! case-insensitively outside quotes and case-sensitively inside single/double
+//! quotes, so `THEME LEGACY` and `theme legacy` de-duplicate while
+//! `FIND 'ERROR'` and `FIND 'error'` remain distinct (ISPF semantics, B049).
 
 use std::collections::VecDeque;
 
@@ -45,13 +47,51 @@ impl HistoryEntry {
     }
 
     /// Check if this entry is a duplicate of another using the deduplication rules:
-    /// - Case-insensitive on command name (first token)
-    /// - Case-sensitive on arguments (remaining tokens)
+    /// - Case-insensitive on the command name (first token).
+    /// - Arguments compared case-insensitively OUTSIDE quotes, but
+    ///   case-sensitively INSIDE single or double quotes.
+    ///
+    /// This matches ISPF command semantics and the owner's expectation: a
+    /// command whose arguments are case-insensitive (e.g. `THEME LEGACY` vs
+    /// `theme legacy`) de-duplicates as the same command, while quoted operands
+    /// that ARE case-sensitive (e.g. a search string `FIND 'ERROR'` vs
+    /// `FIND 'error'`) remain distinct. (B049)
     pub fn is_duplicate_of(&self, other: &HistoryEntry) -> bool {
         self.command_name()
             .eq_ignore_ascii_case(other.command_name())
-            && self.arguments() == other.arguments()
+            && normalise_args_for_dedup(self.arguments())
+                == normalise_args_for_dedup(other.arguments())
     }
+}
+
+/// Build a comparison key for an argument string: characters outside quotes are
+/// lowercased (case-insensitive), characters inside single or double quotes are
+/// preserved verbatim (case-sensitive). A quote toggles the in-quote state; the
+/// quote characters themselves are kept so mismatched quoting stays distinct.
+///
+/// Validates: B049 -- quote-aware, ISPF-style argument de-duplication.
+fn normalise_args_for_dedup(args: &str) -> String {
+    let mut out = String::with_capacity(args.len());
+    let mut quote: Option<char> = None;
+    for c in args.chars() {
+        match quote {
+            None => {
+                if c == '\'' || c == '"' {
+                    quote = Some(c);
+                    out.push(c);
+                } else {
+                    out.extend(c.to_lowercase());
+                }
+            }
+            Some(q) => {
+                out.push(c);
+                if c == q {
+                    quote = None;
+                }
+            }
+        }
+    }
+    out
 }
 
 /// Bounded, deduplicated, ordered command history ring.
@@ -204,11 +244,36 @@ mod tests {
     }
 
     #[test]
-    fn history_entry_dedup_case_sensitive_args() {
-        // Validates: Requirement 7.2 — case-preserving on arguments
+    fn history_entry_dedup_case_sensitive_inside_quotes() {
+        // Validates: Requirement 7.2 + B049 -- quoted operands stay case-sensitive,
+        // so two searches for differently-cased strings remain distinct.
         let a = HistoryEntry::new("FIND 'ERROR'");
         let b = HistoryEntry::new("FIND 'error'");
         assert!(!a.is_duplicate_of(&b));
+    }
+
+    #[test]
+    fn history_entry_dedup_case_insensitive_unquoted_args() {
+        // Validates: B049 -- unquoted arguments (e.g. a theme mode name) are
+        // compared case-insensitively, so `THEME LEGACY` and `theme legacy`
+        // de-duplicate as the same command.
+        let a = HistoryEntry::new("THEME LEGACY");
+        let b = HistoryEntry::new("theme legacy");
+        assert!(a.is_duplicate_of(&b));
+        assert!(b.is_duplicate_of(&a));
+
+        // And a genuinely different unquoted arg is still distinct.
+        let c = HistoryEntry::new("THEME dark");
+        assert!(!a.is_duplicate_of(&c));
+    }
+
+    #[test]
+    fn history_add_deduplicates_theme_regardless_of_case() {
+        // Validates: B049 end-to-end -- adding both casings yields one entry.
+        let mut history = CommandHistory::new(10);
+        history.add("THEME legacy");
+        history.add("THEME LEGACY");
+        assert_eq!(history.len(), 1, "case-only difference must de-duplicate");
     }
 
     #[test]
