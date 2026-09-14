@@ -1396,6 +1396,23 @@ fn make_shell() -> super::WorkbenchShell {
     use ff_theme::defaults::dark_palette;
     use tokio::runtime::Runtime;
 
+    // Test isolation (B048): redirect user-config writes to a unique temp file so
+    // `set_user_value`-invoking tests (theme, follow_os, workspace overrides)
+    // never read or write the developer's real per-user config. Under nextest
+    // (process-per-test) this fully isolates each test; the env var is read by
+    // `ff_config::paths::user_config_path`. Set BEFORE `init()` so the config
+    // system resolves the temp path from the start.
+    let unique = format!(
+        "ffwb_test_cfg_{}_{}.toml",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    );
+    let cfg_path = std::env::temp_dir().join(unique);
+    std::env::set_var("FFWB_USER_CONFIG_PATH", &cfg_path);
+
     let config_handle = init(ConfigInitOptions::new().with_hot_reload(false)).expect("config init");
     let runtime = Runtime::new().expect("runtime");
     let app =
@@ -3015,6 +3032,91 @@ fn nav_open_path_rejects_parent_traversal() {
     let shell = make_shell();
     let uri = ff_vfs::ResourceUri::new("posix", "/../../etc/passwd");
     assert!(shell.nav_open_path(&uri).is_err());
+}
+
+/// Validates: function-keys-and-history Requirement 21.7 -- shell-intercept
+/// commands are recorded in the RETRIEVE history so F12 can recall them.
+/// Regression for the owner report: `THEME legacy` (a shell intercept) was not
+/// retrievable while `LOCATE 1` (engine-routed) was, because history was only
+/// recorded on some paths. History is now recorded once at the top of
+/// handle_command for every submitted command.
+#[test]
+fn shell_intercept_commands_are_recorded_in_history() {
+    let mut shell = make_shell();
+    // A shell-intercept command (previously not recorded).
+    shell.handle_command("THEME legacy");
+    // An engine-routed command (was already recorded).
+    shell.handle_command("LOCATE 1");
+
+    // Both must be present in history (most-recent-first).
+    assert_eq!(
+        shell.cmd_history.get(0).map(|e| e.command()),
+        Some("LOCATE 1")
+    );
+    assert_eq!(
+        shell.cmd_history.get(1).map(|e| e.command()),
+        Some("THEME legacy")
+    );
+
+    // RETRIEVE itself must NOT be recorded (it is the recall action).
+    shell.handle_command("RETRIEVE");
+    assert_eq!(
+        shell.cmd_history.get(0).map(|e| e.command()),
+        Some("LOCATE 1"),
+        "RETRIEVE must not be added to history"
+    );
+
+    // Clean up the theme.active user-config write made by THEME legacy.
+    let _ = shell
+        .config_handle
+        .remove_user_value(ff_config::keys::theme::ACTIVE);
+}
+
+/// Validates: theme-and-appearance Requirement 16.4/16.7 -- B039 root cause.
+/// An explicit theme selection must turn OFF `theme.follow_os`, otherwise the
+/// per-frame follow_os block rebuilds the palette from the OS preference every
+/// frame and clobbers the chosen mode (confirmed by runtime logging: the theme
+/// block set Legacy, follow_os reset it to Dark, every frame -- so the theme
+/// never visibly changed).
+#[test]
+fn set_theme_disables_follow_os_so_selection_is_not_clobbered() {
+    use ff_theme::mode::VisualMode;
+    let shell_setup = make_shell();
+    // Enable follow_os (as a leaked/legacy config value would).
+    let _ = shell_setup.config_handle.set_user_value(
+        ff_config::keys::theme::FOLLOW_OS,
+        ff_config::ConfigValue::Boolean(true),
+    );
+    let mut shell = shell_setup;
+    assert!(
+        shell
+            .config_handle
+            .get_bool(ff_config::keys::theme::FOLLOW_OS)
+            .unwrap_or(false),
+        "precondition: follow_os is true"
+    );
+
+    // Explicitly choose a theme.
+    shell.handle_command("THEME legacy");
+    assert_eq!(shell.palette.mode, VisualMode::Legacy);
+
+    // The explicit selection must have disabled follow_os so the per-frame
+    // block cannot override it.
+    assert!(
+        !shell
+            .config_handle
+            .get_bool(ff_config::keys::theme::FOLLOW_OS)
+            .unwrap_or(true),
+        "explicit THEME selection must turn follow_os OFF (B039)"
+    );
+
+    // Clean up user-config writes.
+    let _ = shell
+        .config_handle
+        .remove_user_value(ff_config::keys::theme::ACTIVE);
+    let _ = shell
+        .config_handle
+        .remove_user_value(ff_config::keys::theme::FOLLOW_OS);
 }
 
 // === THEME command (command parity) -- theme-and-appearance Requirement 17 ===

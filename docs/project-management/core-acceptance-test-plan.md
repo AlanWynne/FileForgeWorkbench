@@ -181,7 +181,7 @@ Settings workspace + commands (CR-NR-070).
 
 | # | Step | Expected result | Req / Backing | Result |
 |---|------|-----------------|---------------|--------|
-| 8.1 | Select each theme (Dark / Light / Legacy / High Contrast) from Settings (menu dispatches the THEME command). | The theme applies immediately and persists across frames and restart; High Contrast sticks (does not revert to Dark). | B039 (FIXED, retest); theme-and-appearance 5.x, 16.x, 17.5 | [ ] |
+| 8.1 | Select each theme (Dark / Light / Legacy / High Contrast) from Settings (menu dispatches the THEME command), and via `THEME <mode>`. | The theme applies immediately AND STICKS (does not revert next frame); persists across restart; High Contrast sticks. Selecting a theme turns OFF follow-OS so it is not clobbered. | B039 (FIXED real cause: follow_os clobber, retest); theme-and-appearance 5.x, 16.4, 17.5 | [ ] |
 | 8.2 | `THEME <mode>` on the command line (dark/light/high_contrast/legacy); bare `THEME`; invalid `THEME xyz`. | `THEME <mode>` sets + persists the theme (same as the menu); bare `THEME` reports the current mode; invalid errors clearly. | theme-and-appearance 17.1-17.4 (IMPLEMENTED, retest) | [ ] |
 | 8.3 | Invoke the Theme Settings workspace by command. | A command opens the Theme Settings workspace. | CR-NR-070 (pending) | [B] |
 | 8.4 | Create / edit / delete a theme setting in the Theme Settings workspace. | Theme settings can be created, edited, and deleted; changes take effect. | CR-NR-070 (pending) | [B] |
@@ -217,7 +217,9 @@ fixed. Keep this map updated as rows are added.
 | Backing item | Status | Affected rows |
 |--------------|--------|---------------|
 | B032 (Settings not a menu workspace) | OPEN | 2.2, 2.4 |
-| B039 (theme changing broken) | FIXED (retest 8.1) | 8.1 |
+| B039 (theme changing broken -- follow_os clobber) | FIXED (retest 8.1) | 8.1 |
+| B048 (tests wrote real user config) | FIXED | (test-suite) |
+| B049 (history dedup THEME LEGACY vs theme legacy) | OPEN (owner decision) | (Group 1 history rows) |
 | B040 (preview toggle crash) | FIXED | 3.1, 3.2 |
 | B041 (catalog repo init / expand) | FIXED | 3.10 |
 | B042 (catalog subtree edit ops) | FIXED | 3.10 |

@@ -46,7 +46,17 @@ pub fn user_config_dir() -> Option<PathBuf> {
 /// - macOS: `~/Library/Application Support/FFWorkbench/config.toml`
 ///
 /// Returns `None` if the platform config directory cannot be determined.
+///
+/// Test/override seam: if the `FFWB_USER_CONFIG_PATH` environment variable is
+/// set, its value is used verbatim as the user config file path. This lets
+/// tests (and embedding hosts) redirect user-config writes to a temporary file
+/// instead of the real per-user config, so `set_user_value`-invoking tests do
+/// not read/write the developer's actual config (test-isolation hazard B048).
+/// When the variable is unset, production behaviour is unchanged.
 pub fn user_config_path() -> Option<PathBuf> {
+    if let Some(p) = std::env::var_os("FFWB_USER_CONFIG_PATH") {
+        return Some(PathBuf::from(p));
+    }
     dirs::config_dir().map(|d| d.join("ffworkbench").join("config.toml"))
 }
 

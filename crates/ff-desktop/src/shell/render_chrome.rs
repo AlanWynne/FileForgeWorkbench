@@ -59,12 +59,28 @@ impl WorkbenchShell {
     pub(super) fn set_theme(&mut self, mode: ff_theme::mode::VisualMode) {
         self.palette = ff_theme::defaults::default_palette_for_mode(mode);
         let mode_str = mode.section_name().to_string();
-        // Persist so the per-frame theme-active block reads the same mode back
-        // and does not clobber the selection. If persistence fails (e.g. the
-        // user config directory is unavailable, the key is locked, or a write
-        // error), the next frame's read-back would otherwise silently revert the
-        // palette to the stale/default mode -- so surface the error instead of
-        // swallowing it (was `let _ =`, a hidden revert path for B039).
+
+        // An EXPLICIT theme selection opts out of "follow OS" -- otherwise the
+        // per-frame follow_os block (update.rs) rebuilds the palette from the OS
+        // dark/light preference every frame and clobbers the chosen mode, so the
+        // selection never visibly sticks (B039 root cause, confirmed by runtime
+        // logging: theme block set Legacy, follow_os reset it to Dark, every
+        // frame). theme-and-appearance Req 16.4/16.7: follow_os must not override
+        // an explicit user choice. Turn it off before persisting the mode.
+        if self
+            .config_handle
+            .get_bool(ff_config::keys::theme::FOLLOW_OS)
+            .unwrap_or(false)
+        {
+            let _ = self.config_handle.set_user_value(
+                ff_config::keys::theme::FOLLOW_OS,
+                ff_config::ConfigValue::Boolean(false),
+            );
+        }
+
+        // Persist the active mode so the per-frame theme-active block reads the
+        // same mode back and does not revert the selection. Surface a persist
+        // failure instead of swallowing it (was `let _ =`, a hidden revert path).
         if let Err(e) = self.config_handle.set_user_value(
             ff_config::keys::theme::ACTIVE,
             ff_config::ConfigValue::String(mode_str),

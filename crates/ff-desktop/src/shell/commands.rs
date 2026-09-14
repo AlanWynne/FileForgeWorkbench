@@ -17,6 +17,19 @@ impl WorkbenchShell {
     pub(super) fn handle_command(&mut self, cmd: &str) {
         let upper = cmd.trim().to_uppercase();
 
+        // Record every submitted command in the RETRIEVE history exactly once,
+        // BEFORE the branch handlers run, so that shell-intercept commands
+        // (THEME, CAPS, NULLS, STATS, LOCK, ...) are recallable via F12 just like
+        // command-engine commands. Previously each handler had to remember to
+        // call `cmd_history.add`, and the intercepts did not -- so e.g.
+        // `THEME legacy` could not be retrieved (only engine-routed commands
+        // like `LOCATE 1` were). RETRIEVE itself is excluded (it is the recall
+        // action, not a recallable command); empty input is skipped by
+        // `CommandHistory::add`, which also de-duplicates.
+        if upper != "RETRIEVE" {
+            self.cmd_history.add(cmd);
+        }
+
         // ── Shell-level intercepts ───────────────────────────────────────
         if upper == "EXIT" || upper == "QUIT" || upper == "=X" || upper == "X" || upper == "LOGOFF"
         {
@@ -404,21 +417,18 @@ impl WorkbenchShell {
             } else {
                 Some(status)
             };
-            self.cmd_history.add(cmd);
             return;
         }
 
         if upper == "TOP" {
             self.nav_manager.top(&mut self.tabs);
             self.open_error = None;
-            self.cmd_history.add(cmd);
             return;
         }
 
         if upper == "BOTTOM" {
             self.nav_manager.bottom(&mut self.tabs);
             self.open_error = None;
-            self.cmd_history.add(cmd);
             return;
         }
 
@@ -426,7 +436,6 @@ impl WorkbenchShell {
             let n = parse_optional_u64(cmd.trim().get(2..).unwrap_or("").trim());
             self.nav_manager.up(n, &mut self.tabs);
             self.open_error = None;
-            self.cmd_history.add(cmd);
             return;
         }
 
@@ -434,7 +443,6 @@ impl WorkbenchShell {
             let n = parse_optional_u64(cmd.trim().get(4..).unwrap_or("").trim());
             self.nav_manager.down(n, &mut self.tabs);
             self.open_error = None;
-            self.cmd_history.add(cmd);
             return;
         }
 
@@ -442,7 +450,6 @@ impl WorkbenchShell {
             let n = parse_optional_u64(cmd.trim().get(4..).unwrap_or("").trim());
             self.nav_manager.left(n, &mut self.tabs);
             self.open_error = None;
-            self.cmd_history.add(cmd);
             return;
         }
 
@@ -450,7 +457,6 @@ impl WorkbenchShell {
             let n = parse_optional_u64(cmd.trim().get(5..).unwrap_or("").trim());
             self.nav_manager.right(n, &mut self.tabs);
             self.open_error = None;
-            self.cmd_history.add(cmd);
             return;
         }
 
@@ -463,7 +469,6 @@ impl WorkbenchShell {
             } else {
                 Some(status)
             };
-            self.cmd_history.add(cmd);
             return;
         }
 
@@ -473,7 +478,6 @@ impl WorkbenchShell {
                 .exclude_manager
                 .exclude_all(&mut self.tabs, &self.runtime);
             self.open_error = info_or_error(&msg);
-            self.cmd_history.add(cmd);
             return;
         }
 
@@ -493,14 +497,12 @@ impl WorkbenchShell {
                     .exclude_text(text, &mut self.tabs, &self.runtime)
             };
             self.open_error = info_or_error(&msg);
-            self.cmd_history.add(cmd);
             return;
         }
 
         if upper == "SHOW ALL" || upper == "INCLUDE ALL" {
             let msg = self.exclude_manager.show_all(&mut self.tabs, &self.runtime);
             self.open_error = info_or_error(&msg);
-            self.cmd_history.add(cmd);
             return;
         }
 
@@ -514,7 +516,6 @@ impl WorkbenchShell {
                 .exclude_manager
                 .show_text(rest, &mut self.tabs, &self.runtime);
             self.open_error = info_or_error(&msg);
-            self.cmd_history.add(cmd);
             return;
         }
 
@@ -531,7 +532,6 @@ impl WorkbenchShell {
                 .exclude_manager
                 .reset(variant, &mut self.tabs, &self.runtime);
             self.open_error = info_or_error(&msg);
-            self.cmd_history.add(cmd);
             return;
         }
 
@@ -544,7 +544,6 @@ impl WorkbenchShell {
                 self.open_error = None;
                 None
             };
-            self.cmd_history.add(cmd);
             return;
         }
 
@@ -555,7 +554,6 @@ impl WorkbenchShell {
             } else {
                 None
             };
-            self.cmd_history.add(cmd);
             return;
         }
 
@@ -567,7 +565,6 @@ impl WorkbenchShell {
             } else {
                 None
             };
-            self.cmd_history.add(cmd);
             return;
         }
 
@@ -587,7 +584,6 @@ impl WorkbenchShell {
                 self.open_error =
                     Some("CHANGE requires two arguments: CHANGE 'old' 'new'".to_string());
             }
-            self.cmd_history.add(cmd);
             return;
         }
 
@@ -1086,10 +1082,8 @@ impl WorkbenchShell {
                 self.open_error = Some(status.text.clone());
             }
         }
-        // Record in history (skip empty / error-only inputs)
-        if !cmd.trim().is_empty() {
-            self.cmd_history.add(cmd);
-        }
+        // (History is recorded once at the top of handle_command for every
+        // submitted command, so no per-path recording is needed here.)
     }
     /// Open the Search Results panel, or focus it if already open.
     ///
