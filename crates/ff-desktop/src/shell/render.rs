@@ -809,12 +809,24 @@ impl WorkbenchShell {
                 ExplorerEffect::Collapse(id) => self.nav_model.tree.toggle_expand(id),
                 ExplorerEffect::Open(id) => match resolve_open(&self.nav_model, id) {
                     OpenTarget::Editor(uri) => {
-                        let mut p = ff_command::CommandParams::new();
-                        p.insert("path", uri.path());
-                        let _ = self.dispatch.execute_command("file.open", p);
+                        // Resolve the provider-relative navigator URI to a real
+                        // absolute host path before dispatching file.open, which
+                        // reads through a default-rooted provider (B047).
+                        match self.nav_open_path(&uri) {
+                            Ok(host_path) => {
+                                let mut p = ff_command::CommandParams::new();
+                                p.insert("path", host_path.as_str());
+                                let _ = self.dispatch.execute_command("file.open", p);
+                            }
+                            Err(e) => self.open_error = Some(e),
+                        }
                     }
                     OpenTarget::External(uri) => {
-                        crate::context_menu::launch_default_app(uri.path());
+                        // Launch the OS default app with the real host path.
+                        match self.nav_open_path(&uri) {
+                            Ok(host_path) => crate::context_menu::launch_default_app(&host_path),
+                            Err(e) => self.open_error = Some(e),
+                        }
                     }
                     OpenTarget::Dataset { catalog, dsn } => {
                         // Resolve the DSN to its physical file (create if
@@ -1286,6 +1298,58 @@ impl WorkbenchShell {
         provider
             .map(|p| (p, rel_path))
             .map_err(|_| "cannot open provider".to_string())
+    }
+
+    /// Resolve a navigator node URI to a real absolute host filesystem path so
+    /// it can be opened via `file.open` (which reads through a default-rooted
+    /// `LocalFsProvider`, i.e. it expects a real path, not a provider-relative
+    /// one).
+    ///
+    /// The modern explorer seeds Local Files through a `posix` provider jailed
+    /// at the home directory, so a node's `uri.path()` (e.g.
+    /// `/OneDrive - Standard Bank/Clipbook.md`) is relative to that jail root,
+    /// NOT an absolute path. Passing it straight to `file.open` produced
+    /// "resource not found" (B047). This joins the correct root (home for
+    /// posix/local; the catalog `path` for catalog subtrees) with the
+    /// provider-relative path, using the host path separator.
+    ///
+    /// Validates: file-tree-panel Requirement 24.9 (open resolves to the real
+    /// file); B047.
+    pub(super) fn nav_open_path(&self, uri: &ff_vfs::ResourceUri) -> Result<String, String> {
+        use crate::nav_model::split_catalog_uri_path;
+        let (root_dir, rel_path) = match uri.scheme() {
+            "posix" | "local" => {
+                let home = dirs::home_dir()
+                    .or_else(|| std::env::current_dir().ok())
+                    .unwrap_or_else(|| std::path::PathBuf::from("."));
+                (home, uri.path().to_string())
+            }
+            "catalog" => {
+                let (name, sub_path) = split_catalog_uri_path(uri.path());
+                let cat = self
+                    .files_panel
+                    .registry
+                    .get_by_name(name)
+                    .ok_or_else(|| format!("Catalog '{name}' not found"))?;
+                (std::path::PathBuf::from(&cat.path), sub_path)
+            }
+            other => {
+                return Err(format!(
+                    "Cannot resolve a host path for '{other}' resources."
+                ))
+            }
+        };
+        // Join the root with each forward-slash segment of the provider-relative
+        // path, using the host separator. Reject `..` traversal out of the jail.
+        let mut resolved = root_dir;
+        for segment in rel_path.trim_start_matches('/').split('/') {
+            match segment {
+                "" | "." => {}
+                ".." => return Err("Invalid path (parent traversal)".to_string()),
+                s => resolved.push(s),
+            }
+        }
+        Ok(resolved.to_string_lossy().into_owned())
     }
 
     /// Refresh a parent node's listing after an edit, dispatching on its URI

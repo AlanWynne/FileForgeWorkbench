@@ -254,10 +254,23 @@ impl VfsProvider for LocalFsProvider {
             .map_err(|e| map_io_error(e, "list", &uri))?
         {
             let name = entry.file_name().to_string_lossy().to_string();
-            let file_type = entry
-                .file_type()
-                .await
-                .map_err(|e| map_io_error(e, "list", &uri))?;
+            // Per-entry resilience (B044, mirrors the legacy B017 fix): if the
+            // file type cannot be determined for a single entry (e.g. a locked
+            // file, a permission-denied Windows known-folder junction, or a
+            // broken reparse point), skip THAT entry rather than aborting the
+            // whole listing. A single bad entry must never blank the directory.
+            let file_type = match entry.file_type().await {
+                Ok(ft) => ft,
+                Err(e) => {
+                    ff_logging::log_debug!(
+                        "[connector-local-fs] list: skipping entry '{}' under {}: file_type failed: {}",
+                        name,
+                        uri,
+                        e
+                    );
+                    continue;
+                }
+            };
 
             let entry_type = if file_type.is_dir() {
                 VfsEntryType::Directory

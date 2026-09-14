@@ -2981,6 +2981,42 @@ fn theme_active_allowed_values_accept_every_visual_mode_section_name() {
     }
 }
 
+/// Validates: file-tree-panel Requirement 24.9 (open resolves to the real file)
+/// -- B047 regression. A Local Files node URI is `posix`-scheme and relative to
+/// the home jail root; `nav_open_path` must turn it into a real absolute host
+/// path (home + relative), NOT pass the jail-relative path straight through
+/// (which produced "resource not found: vfs://local/C:/On...").
+#[test]
+fn nav_open_path_resolves_posix_uri_to_absolute_host_path() {
+    let shell = make_shell();
+    let home = dirs::home_dir()
+        .or_else(|| std::env::current_dir().ok())
+        .unwrap_or_else(|| std::path::PathBuf::from("."));
+
+    // A file with spaces in a subdirectory, exactly like the reported case.
+    let uri = ff_vfs::ResourceUri::new("posix", "/OneDrive - Standard Bank/Clipbook.md");
+    let resolved = shell
+        .nav_open_path(&uri)
+        .expect("posix uri must resolve to a host path");
+
+    let expected = home
+        .join("OneDrive - Standard Bank")
+        .join("Clipbook.md")
+        .to_string_lossy()
+        .into_owned();
+    assert_eq!(resolved, expected);
+    // Must be absolute -- never the jail-relative "/OneDrive - ..." form.
+    assert_ne!(resolved, "/OneDrive - Standard Bank/Clipbook.md");
+}
+
+/// Validates: B047 -- `nav_open_path` rejects parent-traversal out of the jail.
+#[test]
+fn nav_open_path_rejects_parent_traversal() {
+    let shell = make_shell();
+    let uri = ff_vfs::ResourceUri::new("posix", "/../../etc/passwd");
+    assert!(shell.nav_open_path(&uri).is_err());
+}
+
 // === Phase CR: Macro Library Panel (Requirement 12) ========================
 
 /// Validates: lua-macro-engine Requirement 12.1 -- MacroLibrary TabKind variant exists.

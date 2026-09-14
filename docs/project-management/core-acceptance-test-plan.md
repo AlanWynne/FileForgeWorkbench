@@ -96,8 +96,9 @@ not blocking.
 | # | Step | Expected result | Req / Backing | Result |
 |---|------|-----------------|---------------|--------|
 | 3.1 | Open the File Explorer (option 2 / FILES). | Modern tree: Local Files + Catalogs roots. | file-tree-panel 24.1 | [ ] |
-| 3.2 | Expand "Local Files" and compare to the real drive. | The tree matches actual filesystem contents; the Local Files root path is discoverable; Windows known-folder junctions (Documents, My Documents, My Music/Pictures/Videos) resolve to their real target or are omitted -- never shown as dead/empty non-expandable nodes. | B044; file-tree-panel 24.5 | [F] |
-| 3.3 | Double-click a real local text file (incl. a path with spaces / OneDrive). | Opens in an editor workspace; no "resource not found" error; the VFS URI resolves to the real file. | file-tree-panel 24.9; B047 | [F] |
+| 3.2 | Expand "Local Files" (rooted at the user home). | The tree matches home-directory contents; a single locked/permission-denied entry does not blank or truncate the listing (B044 per-entry skip). | B044 (per-entry skip FIXED, retest); file-tree-panel 24.5 | [ ] |
+| 3.2a | Expand a Windows known-folder junction (Documents / My Documents / My Music). | Directory junctions expand to show their real contents (or are clearly marked), not dead/empty leaves. | CR-NR-072 (pending) | [B] |
+| 3.3 | Double-click a real local text file (incl. a path with spaces / OneDrive). | Opens in an editor workspace; no "resource not found" error; the VFS URI resolves to the real file. | file-tree-panel 24.9; B047 (FIXED, retest) | [ ] |
 | 3.4 | Right-click a file -> context menu. | Menu shows View, Edit, Copy, Paste, Copy Full Path, Reveal, Rename, Delete, New File, New Folder. "Open" is REPLACED by "View" + "Edit" (View -> editor in View mode; Edit -> editor in Edit mode). | CR-NR-062 scope-ext (pending) | [B] |
 | 3.5 | Use each context-menu action, and its matching command-line command. | Every action (View, Edit, Copy, Paste, Copy Full Path, Reveal, Rename, Delete, New File, New Folder) has a command-line equivalent that accepts the selected file name as a parameter and behaves per its spec. | CR-NR-062 scope-ext (pending) | [B] |
 | 3.6 | Rename a file via the context menu. | File renamed on disk; tree refreshes. | file-tree-panel 16 | [ ] |
@@ -221,11 +222,12 @@ fixed. Keep this map updated as rows are added.
 | B041 (catalog repo init / expand) | FIXED | 3.10 |
 | B042 (catalog subtree edit ops) | FIXED | 3.10 |
 | B043 (SWAP command) | OPEN | 1.4, 1.5 |
-| B044 (Local Files content / junctions) | OPEN | 3.2 |
+| B044 (Local Files per-entry skip) | PARTIAL: per-entry skip FIXED (retest 3.2); junctions -> CR-NR-072 | 3.2, 3.2a |
 | B045 (detach not wired) | OPEN | 1.9, 1.10, 1.11 |
 | B046 (function keys) | PARTIAL: F7/F8 defaults FIXED (retest 7.3/7.3a); rest OPEN | 7.1-7.7, 7.3a |
-| B047 (navigator file open resource-not-found) | OPEN | 3.3, 3.12 |
+| B047 (navigator file open resource-not-found) | FIXED (retest 3.3/3.12) | 3.3, 3.12 |
 | CR-NR-071 (CORE context help content) | PENDING GATE | 7.1 |
+| CR-NR-072 (navigator junction/symlink expansion) | PENDING GATE | 3.2a |
 | CR-CH-016 (END from POM) | PENDING GATE | 1.7, 1.8, 4.10, 7.2 |
 | CR-NR-062 (View/Edit + context-menu commands) | PENDING GATE | 3.4, 3.5, 3.12, 4.1, 4.3, 4.9, 5.2 |
 | CR-NR-066 (`cd` focuses navigator) | PENDING GATE | 3.13 |

@@ -719,3 +719,15 @@ Modifications to existing behaviour that already works.
 
 | Phase (fkey-triage) | CR-NR-071 added -- CORE context help: markdown help content + help viewer for every core context (F1 fires but content missing); help authoring is part of the CORE plan |
 | Phase (fkey-defaults) | CR-NR-069 scope confirmed by owner -- the whole keylist (F1-F12 + Ctrl/Alt/Shift) must be configurable with the standard bindings as defaults but alterable via configuration; F7/F8 default corrected to UP/DOWN (B046 partial fix) |
+
+### CR-NR-072 -- File navigator: expand Windows known-folder junctions / directory symlinks
+- **Date/Phase**: Phase (nav-open-fix) (pre-gate)
+- **Prompt**: (from B044) "'Documents' ... has three nodes ... 'My Music', 'My Pictures' and 'My Videos' all empty ... 'My Documents' ... not expandable and double clicking on it nothing happens."
+- **Description**: Windows known-folder junctions (Documents, My Documents, My Music/Pictures/Videos) are directory reparse points. `DirEntry::file_type()` reports them as symlink/neither (it does not follow reparse points), so the navigator maps them to leaf `SymbolicLink` nodes that cannot be expanded. Making them behave as expandable directories requires a policy for following symlinks/junctions -- whether to follow at all, only directory junctions, cycle protection, permission handling, and how to display broken links. This is a behaviour/spec decision, deliberately NOT bundled into the B044 bug fix (which only restored per-entry-skip resilience). Decide at the gate whether a directory symlink/junction is stat-followed and rendered as an expandable directory.
+- **Status**: PENDING GATE -- recorded; requirements gate NOT run.
+- **Affects**: `docs/specs/file-tree-panel/` (symlink/junction traversal policy), `docs/specs/virtual-file-system/` / `ff-connector-local-fs` (whether `list` classifies a followed directory symlink as Directory); `ff-desktop` nav_model mapping.
+- **Linked spec**: to be authored at the gate. Relates to B044 (partial fix shipped) and file-tree-panel Req 24.5.
+
+| Phase (nav-open-fix) | B047 FIXED -- navigator file open resolves the provider-relative posix URI to a real absolute host path via `nav_open_path` before file.open (was passing the home-jail-relative path, causing "resource not found"); Editor + External open paths rewired; 2 regression tests |
+| Phase (nav-open-fix) | B044 PARTIAL FIX -- restored B017-style per-entry skip in `LocalFsProvider::list()` (a single failing `file_type()` no longer aborts/blanks the whole directory); Local Files home-root confirmed by-design; junction/symlink directory expansion carved out to CR-NR-072 |
+| Phase (nav-open-fix) | CR-NR-072 added -- navigator expansion of Windows known-folder junctions / directory symlinks (follow-reparse-point policy) deferred to the gate; not guessed in the bug fix |
