@@ -71,6 +71,30 @@ Next id: read the relevant file, find the highest `B###` / `CR-NR-###` /
 - Do not log because a fix is "small"; do not log QUESTION prompts; do not log a
   direct follow-up to an already-gated item.
 
+### 1a. Core Acceptance Test Plan sync -- MANDATORY ON EVERY BUG / CR TRIAGE
+
+`docs/project-management/core-acceptance-test-plan.md` is a LIVING regression
+document that the owner walks top-to-bottom every manual test cycle. Whenever a
+prompt is triaged as a BUG, NEW REQUIREMENT, or CHANGE REQUEST that concerns
+observable CORE behaviour, in the SAME turn as the bug/change-log entry you MUST
+also amend the test plan so the next pass covers it:
+
+- INSERT or UPDATE the test case in its correct group AT ITS LOGICAL POSITION --
+  never append a separate "gaps" list at the end. The owner tests sequentially;
+  the row must sit where it belongs in the flow.
+- Set the row Result marker: `[F]` for a reproduced bug (a `B###` must exist);
+  `[B]` for a capability not built yet (row traces to a PENDING GATE `CR-...`);
+  `[ ]` for built-but-needs-retest.
+- Put the backing id (`B###` / `CR-...`) in the row's Req / Backing column.
+- Add or update the row in the plan's "Regression Traceability" map (backing item
+  -> affected rows) so that after a fix the affected rows can be reset to `[ ]`
+  (needs retest) and re-run -- this is how regressions are caught.
+- If the behaviour needs a whole new group (e.g. a new subsystem), add the group
+  in a logical place in the sequence, not at the tail.
+- Test-plan edits are documentation and do not themselves need the gate; but a
+  NEW REQUIREMENT / CHANGE REQUEST still runs the full gate (section 2) for its
+  criteria, and the authoritative criteria rows are finalised there.
+
 ---
 
 ## 2. Requirements Gate -- MANDATORY BEFORE ANY CODE CHANGE
