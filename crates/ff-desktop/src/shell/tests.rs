@@ -2924,6 +2924,63 @@ fn theme_follow_os_false_does_not_change_palette() {
     );
 }
 
+/// Validates: theme-and-appearance Requirement 5.2/5.3 (mode round-trip) +
+/// configuration-system Requirement 7.4 (enum validation) -- B039 regression.
+///
+/// `set_theme()` persists `VisualMode::section_name()` into `theme.active`, and
+/// config validation rejects any value not in the schema `allowed_values`
+/// (substituting the default). If the two ever disagree the selected mode is
+/// silently reverted. This test pins every built-in mode's `section_name()` to
+/// be present in the schema's allowed set so the High Contrast revert (B039)
+/// cannot regress.
+#[test]
+fn theme_active_allowed_values_accept_every_visual_mode_section_name() {
+    use ff_config::ConfigValue;
+    use ff_theme::mode::VisualMode;
+
+    let shell = make_shell();
+    // Match production wiring: the real app calls register_builtin_schema after
+    // ff-config init, which is where theme.active gains its allowed_values
+    // constraint. make_shell only runs register_core_schema, so register the
+    // builtin schema here to exercise the same constraint the running app uses.
+    let tmp = tempfile::tempdir().expect("tempdir");
+    crate::register_builtin_schema(&shell.config_handle, tmp.path());
+
+    let entries = shell.config_handle.list_schema_entries();
+    let entry = entries
+        .iter()
+        .find(|e| e.key == ff_config::keys::theme::ACTIVE)
+        .expect("theme.active must be in schema");
+    let allowed = entry
+        .constraints
+        .as_ref()
+        .and_then(|c| c.allowed_values.as_ref())
+        .expect("theme.active must constrain allowed_values");
+
+    for mode in [
+        VisualMode::Dark,
+        VisualMode::Light,
+        VisualMode::HighContrast,
+        VisualMode::Legacy,
+    ] {
+        let name = mode.section_name();
+        let present = allowed
+            .iter()
+            .any(|v| matches!(v, ConfigValue::String(s) if s == name));
+        assert!(
+            present,
+            "theme.active allowed_values must contain section_name() '{name}' for {mode:?}; \
+             a mismatch silently reverts the selected theme (B039)"
+        );
+        // And the persisted value must parse back to the same mode.
+        assert_eq!(
+            VisualMode::from_str_loose(name),
+            Some(mode),
+            "section_name() '{name}' must round-trip through from_str_loose"
+        );
+    }
+}
+
 // === Phase CR: Macro Library Panel (Requirement 12) ========================
 
 /// Validates: lua-macro-engine Requirement 12.1 -- MacroLibrary TabKind variant exists.

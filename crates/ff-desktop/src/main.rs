@@ -419,7 +419,13 @@ fn register_builtin_schema(config: &ff_config::ConfigHandle, user_data_dir: &std
             key: ff_config::keys::theme::ACTIVE.to_string(),
             value_type: ValueType::String,
             default: ConfigValue::String("dark".to_string()),
-            description: "Active colour theme: 'dark', 'light', 'high-contrast', or 'legacy'"
+            // The allowed values MUST match `VisualMode::section_name()` exactly,
+            // because `set_theme()` persists `section_name()` into this key and
+            // config validation rejects any value not in this set (substituting
+            // the default). `section_name()` uses the underscore spelling
+            // `high_contrast`; using the hyphen form here caused High Contrast to
+            // be rejected on reload and revert to `dark` (B039).
+            description: "Active colour theme: 'dark', 'light', 'high_contrast', or 'legacy'"
                 .to_string(),
             constraints: Some(Constraints {
                 min: None,
@@ -427,7 +433,7 @@ fn register_builtin_schema(config: &ff_config::ConfigHandle, user_data_dir: &std
                 allowed_values: Some(vec![
                     ConfigValue::String("dark".to_string()),
                     ConfigValue::String("light".to_string()),
-                    ConfigValue::String("high-contrast".to_string()),
+                    ConfigValue::String("high_contrast".to_string()),
                     ConfigValue::String("legacy".to_string()),
                 ]),
                 pattern: None,

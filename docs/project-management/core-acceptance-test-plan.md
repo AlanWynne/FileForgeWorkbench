@@ -179,7 +179,7 @@ Settings workspace + commands (CR-NR-070).
 
 | # | Step | Expected result | Req / Backing | Result |
 |---|------|-----------------|---------------|--------|
-| 8.1 | Select each theme (Dark / Light / Legacy / High Contrast) from Settings. | The theme applies immediately and persists across frames and restart; High Contrast sticks (does not revert to Dark). | B039; theme-and-appearance 5.x, 16.x | [F] |
+| 8.1 | Select each theme (Dark / Light / Legacy / High Contrast) from Settings. | The theme applies immediately and persists across frames and restart; High Contrast sticks (does not revert to Dark). | B039 (FIXED, retest); theme-and-appearance 5.x, 16.x | [ ] |
 | 8.2 | Set a theme by command from the command line. | A command sets the active theme by name; the change applies and persists. | CR-NR-070 (pending) | [B] |
 | 8.3 | Invoke the Theme Settings workspace by command. | A command opens the Theme Settings workspace. | CR-NR-070 (pending) | [B] |
 | 8.4 | Create / edit / delete a theme setting in the Theme Settings workspace. | Theme settings can be created, edited, and deleted; changes take effect. | CR-NR-070 (pending) | [B] |
@@ -215,7 +215,7 @@ fixed. Keep this map updated as rows are added.
 | Backing item | Status | Affected rows |
 |--------------|--------|---------------|
 | B032 (Settings not a menu workspace) | OPEN | 2.2, 2.4 |
-| B039 (theme changing broken) | OPEN | 8.1 |
+| B039 (theme changing broken) | FIXED (retest 8.1) | 8.1 |
 | B040 (preview toggle crash) | FIXED | 3.1, 3.2 |
 | B041 (catalog repo init / expand) | FIXED | 3.10 |
 | B042 (catalog subtree edit ops) | FIXED | 3.10 |
