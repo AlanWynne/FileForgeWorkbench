@@ -18,11 +18,21 @@ good.
 
 Process (how we keep it working as we go):
 - You run the app and work down the groups in sequence.
-- When a step FAILs or you spot a gap, tell the agent the symptom in a prompt.
-- The agent triages that prompt (bug vs new requirement vs change request per
-  `.kiro/steering/workflow.md`), logs it to `docs/status/bugs.md` or
-  `docs/status/change-log.md`, AND amends THIS document -- inserting or updating
-  the test case in its correct group/position so the next pass covers it.
+- When a step FAILs or you spot something, tell the agent the symptom in a prompt.
+- "No test criteria for this" does NOT automatically mean a criterion is missing.
+  You often test things ahead of where the sequential walk has reached, so you
+  simply have not arrived at that row yet. Before treating anything as a gap, the
+  agent MUST first search this plan AND the specs for an existing criterion that
+  already covers it:
+    - If one exists (a row further down, another group, or a spec criterion), the
+      agent points you to it and records your result against that existing row --
+      no new row is invented. It was just ahead of your position, not a gap.
+    - Only if it genuinely exists nowhere does the agent log it and insert a new
+      row in its correct place.
+- On a real FAIL, the agent triages the prompt (bug vs new requirement vs change
+  request per `.kiro/steering/workflow.md`), logs it to `docs/status/bugs.md` or
+  `docs/status/change-log.md`, AND updates the matching test row (existing or new)
+  in its correct group/position so the next pass covers it.
 - After any code change, the affected group(s) are reset to `[ ]` (needs retest)
   using the Regression Traceability map at the bottom, so nothing is skipped just
   because it worked previously.

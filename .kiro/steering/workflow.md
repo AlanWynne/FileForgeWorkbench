@@ -74,10 +74,21 @@ Next id: read the relevant file, find the highest `B###` / `CR-NR-###` /
 ### 1a. Core Acceptance Test Plan sync -- MANDATORY ON EVERY BUG / CR TRIAGE
 
 `docs/project-management/core-acceptance-test-plan.md` is a LIVING regression
-document that the owner walks top-to-bottom every manual test cycle. Whenever a
-prompt is triaged as a BUG, NEW REQUIREMENT, or CHANGE REQUEST that concerns
-observable CORE behaviour, in the SAME turn as the bug/change-log entry you MUST
-also amend the test plan so the next pass covers it:
+document that the owner walks top-to-bottom every manual test cycle.
+
+SEARCH BEFORE DECLARING A GAP. When the owner says "no test criteria" / "no test
+for this", do NOT assume the criterion is missing. The owner frequently tests a
+behaviour ahead of where the sequential walk has reached, so the row simply has
+not been arrived at yet. First search the test plan AND `docs/specs/**` for an
+existing criterion covering the behaviour:
+- If one exists (a later row, another group, or a spec criterion), point to it
+  and record the owner's result against that existing row -- do not invent a new
+  row. It was ahead of position, not a gap.
+- Only if it exists nowhere is it a genuine gap to log and insert.
+
+Whenever a prompt is triaged as a BUG, NEW REQUIREMENT, or CHANGE REQUEST that
+concerns observable CORE behaviour, in the SAME turn as the bug/change-log entry
+you MUST also amend the test plan so the next pass covers it:
 
 - INSERT or UPDATE the test case in its correct group AT ITS LOGICAL POSITION --
   never append a separate "gaps" list at the end. The owner tests sequentially;
