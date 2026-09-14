@@ -1513,3 +1513,31 @@ All other elements have their alpha forced to 255 (fully opaque).
 | 39 | Fold Display | Collapsed fold placeholder text |
 
 Indices 0–31 and 40–255 are available for language-specific syntax styles.
+
+
+---
+
+## Design Delta: THEME Command (Requirement 17, Command Parity)
+
+The Settings theme menu previously called `WorkbenchShell::set_theme(mode)`
+directly, bypassing the command dispatcher and violating architecture-brief
+Principle 2 (Command Driven). There was no `THEME` command, so typing `THEME`
+fell through to the command engine's generic "command not yet implemented".
+
+Design:
+- Add a `THEME` verb to `WorkbenchShell::handle_command` (ff-desktop
+  `shell/commands.rs`), following the existing shell-intercept pattern (CAPS /
+  NULLS / STATS): parse the argument with `ff_theme::mode::VisualMode::from_str_loose`;
+  on a valid mode call the existing `set_theme(mode)` (single source of truth for
+  applying + persisting); bare `THEME` reports the current `self.palette.mode` in
+  the status area; an unrecognised argument sets a clear `open_error`.
+- The Settings menu theme buttons dispatch `handle_command("THEME <mode>")`
+  instead of calling `set_theme` directly, so the menu and the typed command are
+  the same code path (Req 17.5).
+- `set_theme` continues to be the only place that mutates the palette and
+  persists `theme.active`; it surfaces a non-silent message on persist failure
+  (Req 17.6), replacing the previous `let _ =` swallow.
+
+No new config keys, palette structures, or serialisation changes. No change to
+the per-frame theme-active read-back block (it remains the authority across
+frames; `set_theme` writes both memory and config so they agree).

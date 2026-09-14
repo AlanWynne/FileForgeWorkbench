@@ -59,10 +59,21 @@ impl WorkbenchShell {
     pub(super) fn set_theme(&mut self, mode: ff_theme::mode::VisualMode) {
         self.palette = ff_theme::defaults::default_palette_for_mode(mode);
         let mode_str = mode.section_name().to_string();
-        let _ = self.config_handle.set_user_value(
+        // Persist so the per-frame theme-active block reads the same mode back
+        // and does not clobber the selection. If persistence fails (e.g. the
+        // user config directory is unavailable, the key is locked, or a write
+        // error), the next frame's read-back would otherwise silently revert the
+        // palette to the stale/default mode -- so surface the error instead of
+        // swallowing it (was `let _ =`, a hidden revert path for B039).
+        if let Err(e) = self.config_handle.set_user_value(
             ff_config::keys::theme::ACTIVE,
             ff_config::ConfigValue::String(mode_str),
-        );
+        ) {
+            self.open_error = Some(format!(
+                "Theme changed to {} for this session, but could not be saved: {e}",
+                mode.section_name()
+            ));
+        }
     }
 
     // ── Legacy POM colours ────────────────────────────────────────────────
@@ -112,20 +123,24 @@ impl WorkbenchShell {
                         ui.close_menu();
                     }
                     ui.separator();
+                    // Command parity (theme-and-appearance Req 17.5, architecture
+                    // -brief Principle 2): the menu dispatches the THEME command
+                    // -- the SAME code path as typing it on the command line --
+                    // rather than calling set_theme directly.
                     if ui.button("Dark Theme").clicked() {
-                        self.set_theme(ff_theme::mode::VisualMode::Dark);
+                        self.handle_command("THEME dark");
                         ui.close_menu();
                     }
                     if ui.button("Light Theme").clicked() {
-                        self.set_theme(ff_theme::mode::VisualMode::Light);
+                        self.handle_command("THEME light");
                         ui.close_menu();
                     }
                     if ui.button("High Contrast").clicked() {
-                        self.set_theme(ff_theme::mode::VisualMode::HighContrast);
+                        self.handle_command("THEME high_contrast");
                         ui.close_menu();
                     }
                     if ui.button("Legacy (ISPF 3270)").clicked() {
-                        self.set_theme(ff_theme::mode::VisualMode::Legacy);
+                        self.handle_command("THEME legacy");
                         ui.close_menu();
                     }
                     ui.separator();

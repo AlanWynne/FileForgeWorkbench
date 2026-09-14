@@ -181,8 +181,8 @@ Settings workspace + commands (CR-NR-070).
 
 | # | Step | Expected result | Req / Backing | Result |
 |---|------|-----------------|---------------|--------|
-| 8.1 | Select each theme (Dark / Light / Legacy / High Contrast) from Settings. | The theme applies immediately and persists across frames and restart; High Contrast sticks (does not revert to Dark). | B039 (FIXED, retest); theme-and-appearance 5.x, 16.x | [ ] |
-| 8.2 | Set a theme by command from the command line. | A command sets the active theme by name; the change applies and persists. | CR-NR-070 (pending) | [B] |
+| 8.1 | Select each theme (Dark / Light / Legacy / High Contrast) from Settings (menu dispatches the THEME command). | The theme applies immediately and persists across frames and restart; High Contrast sticks (does not revert to Dark). | B039 (FIXED, retest); theme-and-appearance 5.x, 16.x, 17.5 | [ ] |
+| 8.2 | `THEME <mode>` on the command line (dark/light/high_contrast/legacy); bare `THEME`; invalid `THEME xyz`. | `THEME <mode>` sets + persists the theme (same as the menu); bare `THEME` reports the current mode; invalid errors clearly. | theme-and-appearance 17.1-17.4 (IMPLEMENTED, retest) | [ ] |
 | 8.3 | Invoke the Theme Settings workspace by command. | A command opens the Theme Settings workspace. | CR-NR-070 (pending) | [B] |
 | 8.4 | Create / edit / delete a theme setting in the Theme Settings workspace. | Theme settings can be created, edited, and deleted; changes take effect. | CR-NR-070 (pending) | [B] |
 
@@ -234,4 +234,6 @@ fixed. Keep this map updated as rows are added.
 | CR-NR-067 (configurable menu bar) | PENDING GATE | 2.5, 2.6, 2.7 |
 | CR-NR-068 (Menu Workspace editor) | PENDING GATE | 2.4, 2.8, 2.9, 2.10, 2.11 |
 | CR-NR-069 (Key Assignment editor) | PENDING GATE | (adds rows to Group 7 at its gate) |
-| CR-NR-070 (Theme Settings workspace + commands) | PENDING GATE | 8.2, 8.3, 8.4 |
+| theme-and-appearance Req 17 (THEME command parity) | IMPLEMENTED (retest 8.1/8.2) | 8.1, 8.2 |
+| CR-NR-070 (Theme Settings workspace + invoke-settings command) | PENDING GATE | 8.3, 8.4 |
+| B048 (tests write real user config -- isolation hazard) | OPEN | (test-suite; no plan row) |

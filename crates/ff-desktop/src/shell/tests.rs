@@ -3017,6 +3017,87 @@ fn nav_open_path_rejects_parent_traversal() {
     assert!(shell.nav_open_path(&uri).is_err());
 }
 
+// === THEME command (command parity) -- theme-and-appearance Requirement 17 ===
+
+/// Validates: theme-and-appearance Requirement 17.2 -- `THEME <mode>` sets the
+/// active visual mode (same path the Settings menu now dispatches).
+#[test]
+fn theme_command_sets_mode() {
+    use ff_theme::mode::VisualMode;
+    let mut shell = make_shell();
+    // Start from a known mode. `THEME <mode>` sets `self.palette.mode`
+    // (in-memory) which is the observable effect asserted here.
+    shell.handle_command("THEME dark");
+    assert_eq!(shell.palette.mode, VisualMode::Dark);
+
+    shell.handle_command("THEME legacy");
+    assert_eq!(shell.palette.mode, VisualMode::Legacy);
+
+    // Underscore and hyphen spellings both resolve to High Contrast.
+    shell.handle_command("THEME high_contrast");
+    assert_eq!(shell.palette.mode, VisualMode::HighContrast);
+    shell.handle_command("THEME light");
+    assert_eq!(shell.palette.mode, VisualMode::Light);
+    shell.handle_command("THEME high-contrast");
+    assert_eq!(shell.palette.mode, VisualMode::HighContrast);
+
+    // set_theme persists theme.active to the real user config; remove the
+    // override so the test leaves no external state (testing.md: deterministic,
+    // no external files).
+    let _ = shell
+        .config_handle
+        .remove_user_value(ff_config::keys::theme::ACTIVE);
+}
+
+/// Validates: theme-and-appearance Requirement 17.2 -- mode name is
+/// case-insensitive.
+#[test]
+fn theme_command_is_case_insensitive() {
+    use ff_theme::mode::VisualMode;
+    let mut shell = make_shell();
+    shell.handle_command("theme LeGaCy");
+    assert_eq!(shell.palette.mode, VisualMode::Legacy);
+    let _ = shell
+        .config_handle
+        .remove_user_value(ff_config::keys::theme::ACTIVE);
+}
+
+/// Validates: theme-and-appearance Requirement 17.3 -- bare `THEME` reports the
+/// current mode and does not change the theme.
+#[test]
+fn theme_command_bare_reports_current_and_does_not_change() {
+    use ff_theme::mode::VisualMode;
+    let mut shell = make_shell();
+    shell.handle_command("THEME light");
+    assert_eq!(shell.palette.mode, VisualMode::Light);
+    shell.handle_command("THEME");
+    // Mode unchanged; a status message names the current theme.
+    assert_eq!(shell.palette.mode, VisualMode::Light);
+    let msg = shell.open_error.clone().unwrap_or_default();
+    assert!(
+        msg.to_lowercase().contains("light"),
+        "bare THEME must report the current mode, got: {msg:?}"
+    );
+}
+
+/// Validates: theme-and-appearance Requirement 17.4 -- an unrecognised mode
+/// errors clearly and does not change the theme.
+#[test]
+fn theme_command_invalid_arg_errors_and_keeps_mode() {
+    use ff_theme::mode::VisualMode;
+    let mut shell = make_shell();
+    shell.handle_command("THEME light");
+    assert_eq!(shell.palette.mode, VisualMode::Light);
+    shell.handle_command("THEME banana");
+    // Mode unchanged; error surfaced.
+    assert_eq!(shell.palette.mode, VisualMode::Light);
+    let msg = shell.open_error.clone().unwrap_or_default();
+    assert!(
+        msg.contains("banana") && msg.to_lowercase().contains("valid"),
+        "invalid THEME arg must produce a clear error, got: {msg:?}"
+    );
+}
+
 // === Phase CR: Macro Library Panel (Requirement 12) ========================
 
 /// Validates: lua-macro-engine Requirement 12.1 -- MacroLibrary TabKind variant exists.

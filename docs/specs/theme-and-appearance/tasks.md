@@ -366,3 +366,13 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configura
     - Covers: Requirement 16.8
   - [x] 20.5 Write unit tests: `follow_os_false_ignores_os_preference`, `follow_os_true_dark_sets_dark_mode`, `follow_os_true_light_sets_light_mode`, `follow_os_does_not_persist_mode_key`
     - Covers: Requirement 16.1–16.7
+
+- [ ] 21. THEME command and menu command-parity (Requirement 17)
+  - [ ] 21.1 Add a `THEME` intercept to `WorkbenchShell::handle_command` (ff-desktop `shell/commands.rs`): `THEME <mode>` -> `VisualMode::from_str_loose` -> `set_theme(mode)`; bare `THEME` -> report current mode; invalid arg -> clear `open_error` listing valid modes
+    - Covers: Requirement 17.1, 17.2, 17.3, 17.4
+  - [ ] 21.2 Route the Settings menu theme buttons (Dark / Light / High Contrast / Legacy) through `handle_command("THEME <mode>")` instead of calling `set_theme` directly
+    - Covers: Requirement 17.5
+  - [ ] 21.3 Keep `set_theme` surfacing a non-silent message on persist failure (no silent revert)
+    - Covers: Requirement 17.6
+  - [ ] 21.4 Write unit tests: `theme_command_sets_mode`, `theme_command_bare_reports_current`, `theme_command_invalid_arg_errors`, `theme_menu_and_command_same_path`
+    - Covers: Requirement 17.1-17.6

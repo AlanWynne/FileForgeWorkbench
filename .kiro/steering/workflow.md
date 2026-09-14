@@ -106,6 +106,31 @@ you MUST also amend the test plan so the next pass covers it:
   NEW REQUIREMENT / CHANGE REQUEST still runs the full gate (section 2) for its
   criteria, and the authoritative criteria rows are finalised there.
 
+### 1b. Command parity -- EVERY user action routes through a command
+
+Governing principle (already in `docs/specs/workbench-requirements-merge/architecture-brief.md`
+Principle 2, "Command Driven"): "Every user action is a command. Menus,
+toolbars, keyboard shortcuts, automation scripts and future AI agents invoke
+commands through the same dispatcher."
+
+Therefore, whenever you add or change a user-facing action:
+- IMPLEMENT a command for it (registered/dispatchable by name from the command
+  line), and make the UI affordance (menu item, toolbar button, keyboard
+  shortcut, context-menu entry) INVOKE THAT COMMAND rather than calling the
+  underlying logic directly. The menu path and the typed-command path must be the
+  SAME code path.
+- Do NOT wire a menu/button straight to a handler that bypasses the command
+  layer. If you find existing UI that bypasses a command (e.g. a menu calling an
+  internal `set_*` method directly), treat closing that gap as principle
+  conformance (bug-class), not a new feature -- the requirement already exists.
+- The ONLY exception: when an action genuinely cannot be meaningfully expressed
+  as a command. In that rare case, add an explicit note (in the relevant
+  requirements.md and/or a code comment) stating that this function has no
+  corresponding command and why. Absence of a command is never silent.
+- New command syntax still needs acceptance criteria (run the gate for the
+  criteria); but the parity obligation itself is an existing principle, not a new
+  requirement to re-justify each time.
+
 ---
 
 ## 2. Requirements Gate -- MANDATORY BEFORE ANY CODE CHANGE

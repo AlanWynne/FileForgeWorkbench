@@ -322,3 +322,20 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 5. THE Theme_System SHALL support theme inheritance: a theme file MAY declare a `base` theme name, and all tokens not explicitly defined in the file SHALL be inherited from the base theme rather than from the built-in defaults.
 6. WHEN a theme file specifies a `base` theme that cannot be found, THE Theme_System SHALL emit a WARN-level log record and fall back to the built-in default theme for unresolved tokens.
 
+
+---
+
+### Requirement 17: THEME Command (Command Parity)
+
+**User Story:** As a workbench user, I want to change the theme by typing a command on the command line exactly as I can from the Settings menu, so that theme switching honours the command-driven principle (every user action is a command) and is scriptable/automatable.
+
+**Source:** `docs/specs/workbench-requirements-merge/architecture-brief.md` Principle 2 (Command Driven -- "Every user action is a command. Menus, toolbars, keyboard shortcuts, automation scripts and future AI agents invoke commands through the same dispatcher."). Closes the gap where the Settings theme menu called the theme setter directly, bypassing the command layer, and no `THEME` command existed.
+
+#### Acceptance Criteria
+
+1. THE workbench SHALL provide a `THEME` command invocable from the command line in any context.
+2. WHEN `THEME <mode>` is issued with a recognised mode name, THE workbench SHALL set the active Visual_Mode to that mode and persist it via `theme.active`, identical to selecting the mode from the Settings menu. Recognised mode names SHALL be `dark`, `light`, `high_contrast` (also accepting `high-contrast`), and `legacy`, matched case-insensitively (consistent with `VisualMode::from_str_loose`).
+3. WHEN `THEME` is issued with no argument, THE workbench SHALL report the currently active mode in the status area and SHALL NOT change the theme.
+4. WHEN `THEME <arg>` is issued with an unrecognised mode name, THE workbench SHALL display a clear error naming the invalid value and listing the valid modes, and SHALL NOT change the theme.
+5. THE Settings menu theme actions (Dark / Light / High Contrast / Legacy) SHALL invoke the `THEME` command through the same dispatch path used by the typed command, so that the menu action and the typed command are the same code path (command parity).
+6. WHEN setting the theme via the `THEME` command or the menu fails to persist (e.g. the user config location is unavailable or the key is locked), THE workbench SHALL apply the theme for the current session AND surface a non-silent message that the change could not be saved (no silent revert).

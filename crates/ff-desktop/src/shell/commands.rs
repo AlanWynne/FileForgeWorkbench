@@ -602,6 +602,36 @@ impl WorkbenchShell {
             self.open_error = None;
             return;
         }
+        // == THEME -- command parity for theme switching ======================
+        // Validates: theme-and-appearance Requirement 17 (architecture-brief
+        // Principle 2: every user action is a command). `THEME <mode>` sets the
+        // theme (same code path as the Settings menu, which dispatches this
+        // command); bare `THEME` reports the current mode; an invalid mode errors.
+        if upper == "THEME" {
+            self.open_error = Some(format!(
+                "Current theme: {}. Usage: THEME dark|light|high_contrast|legacy",
+                self.palette.mode.section_name()
+            ));
+            return;
+        }
+        if upper.starts_with("THEME ") {
+            let arg = cmd.trim().get(6..).unwrap_or("").trim();
+            match ff_theme::mode::VisualMode::from_str_loose(arg) {
+                Some(mode) => {
+                    // Clear any stale error first; set_theme applies + persists
+                    // and re-sets open_error only if persistence fails (Req 17.6).
+                    self.open_error = None;
+                    self.set_theme(mode);
+                }
+                None => {
+                    self.open_error = Some(format!(
+                        "Unknown theme '{arg}'. Valid: dark, light, high_contrast, legacy"
+                    ));
+                }
+            }
+            return;
+        }
+
         if upper == "CAPS" {
             let tab = self.tabs.active_tab_mut();
             tab.edit_profile.caps = tab.edit_profile.caps.toggle();

@@ -2340,3 +2340,14 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `explorer_view::tests::{first_row_id_is_the_first_visible_node, next_row_id_advances_then_returns_none_past_last}` (Tab focus-transfer helpers); Command ===> retained | Req 24.9: persistent shell Command ===> retained on File Explorer Context; Tab focus-transfer re-pointed at the ff-file-tree node list; dispatch unchanged |
 | `ff-desktop` | ✅ | verify.ps1 FULL clean across the Slice A commits; new tests added, none weakened | Req 24.10: cargo test (affected crates) + verify.ps1 clean; tests added (not weakened) for the ff-file-tree-backed behaviour |
 | `ff-file-tree` | ✅ | `nav_model::tests` confirm the shell-side NodeId -> ResourceUri side table approach (no model change needed) | Req 24.11: no ff-file-tree model extension required -- shell keeps the side table, model stays canonical |
+
+### Phase (theme-command) -- THEME Command Parity (theme-and-appearance Req 17)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | Req 17.1: `THEME` command invocable from the command line in any context |
+| `ff-desktop` | 🔴 | -- | Req 17.2: `THEME <mode>` sets active mode + persists theme.active (dark/light/high_contrast/legacy, case-insensitive, hyphen accepted) |
+| `ff-desktop` | 🔴 | -- | Req 17.3: bare `THEME` reports the current mode in the status area; does not change theme |
+| `ff-desktop` | 🔴 | -- | Req 17.4: `THEME <invalid>` shows a clear error listing valid modes; does not change theme |
+| `ff-desktop` | 🔴 | -- | Req 17.5: Settings menu theme actions invoke the THEME command (menu == typed-command code path) |
+| `ff-desktop` | 🔴 | -- | Req 17.6: persist failure applies theme for the session and surfaces a non-silent message (no silent revert) |
