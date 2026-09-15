@@ -20,15 +20,17 @@ pub struct ThemeInfo {
     pub base: Option<String>,
 }
 
-/// Names of the four built-in themes.
+/// Names of the built-in themes (four originals plus the Default Legacy fallback).
 pub const BUILTIN_THEME_NAMES: &[&str] = &[
     "Default Dark",
     "Default Light",
     "Default High Contrast",
     "Legacy (ISPF 3270)",
+    // Canonical always-available fallback theme (Req 18.1/18.3).
+    "Default Legacy",
 ];
 
-/// Return `ThemeInfo` entries for all four built-in themes.
+/// Return `ThemeInfo` entries for all built-in themes.
 pub fn builtin_themes() -> Vec<ThemeInfo> {
     BUILTIN_THEME_NAMES
         .iter()
@@ -138,20 +140,32 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    fn builtin_themes_returns_four_entries() {
-        // Validates: Requirement 14.2, 14.6
+    fn builtin_themes_returns_five_entries() {
+        // Validates: Requirement 14.2, 14.6; theme-and-appearance Req 18.3
+        // (four originals + Default Legacy).
         let themes = builtin_themes();
-        assert_eq!(themes.len(), 4);
+        assert_eq!(themes.len(), 5);
         assert!(themes.iter().all(|t| t.is_builtin));
         assert!(themes.iter().all(|t| t.path.is_none()));
     }
 
+    // Validates: theme-and-appearance Requirement 18.3 -- Default Legacy is a
+    // listed, selectable built-in theme.
+    #[test]
+    fn builtin_themes_includes_default_legacy() {
+        let themes = builtin_themes();
+        assert!(
+            themes.iter().any(|t| t.name == "Default Legacy"),
+            "Default Legacy must be a built-in theme"
+        );
+    }
+
     #[test]
     fn list_all_themes_includes_builtins_when_dir_absent() {
-        // Validates: Requirement 14.6 — built-ins always present
+        // Validates: Requirement 14.6 — built-ins always present; Req 18.3.
         let dir = PathBuf::from("/nonexistent/themes/dir");
         let themes = list_all_themes(&dir);
-        assert_eq!(themes.len(), 4);
+        assert_eq!(themes.len(), 5);
         assert!(themes.iter().all(|t| t.is_builtin));
     }
 
@@ -207,7 +221,7 @@ mod tests {
         std::fs::write(dir.path().join("custom.toml"), r#"name = "Custom""#).unwrap();
 
         let themes = list_all_themes(dir.path());
-        assert_eq!(themes.len(), 5); // 4 built-in + 1 user
+        assert_eq!(themes.len(), 6); // 5 built-in (incl. Default Legacy) + 1 user
         assert!(themes.iter().any(|t| t.name == "Custom" && !t.is_builtin));
         assert!(themes
             .iter()

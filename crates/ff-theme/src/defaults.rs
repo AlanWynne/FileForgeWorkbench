@@ -115,6 +115,28 @@ pub fn default_palette_for_mode(mode: VisualMode) -> ThemePalette {
     }
 }
 
+/// Build the `Default Legacy` palette: a canonical, always-available theme based
+/// on the Legacy ISPF 3270 look. Its colours are identical to `legacy_palette()`;
+/// only the name differs, so users can freely edit the `Legacy (ISPF 3270)` theme
+/// or their own themes and still fall back to a known-good baseline.
+///
+/// Validates: theme-and-appearance Requirement 18.1
+pub fn default_legacy_palette() -> ThemePalette {
+    ThemePalette {
+        name: "Default Legacy".to_string(),
+        ..legacy_palette()
+    }
+}
+
+/// The canonical Fallback_Theme used when the configured active theme cannot be
+/// resolved (missing file, invalid TOML, unresolved `base`). Returns
+/// `default_legacy_palette()`.
+///
+/// Validates: theme-and-appearance Requirement 18.2, 18.6
+pub fn fallback_palette() -> ThemePalette {
+    default_legacy_palette()
+}
+
 // ─── Dark Mode Colours ──────────────────────────────────────────────────────
 
 fn dark_editor_colours() -> EditorColours {
@@ -756,5 +778,49 @@ mod tests {
         assert_eq!(palette.ui.menu_bar_fg, ColourRGBA::rgb(255, 255, 255));
         // Primary menu background is Blue
         assert_eq!(palette.ui.primary_menu_bg, ColourRGBA::rgb(0, 0, 170));
+    }
+
+    // Validates: theme-and-appearance Requirement 18.1 -- Default Legacy has the
+    // same colours as the Legacy palette; only the name differs.
+    #[test]
+    fn default_legacy_matches_legacy_colours() {
+        let legacy = legacy_palette();
+        let default_legacy = default_legacy_palette();
+        assert_eq!(default_legacy.name, "Default Legacy");
+        assert_eq!(default_legacy.mode, VisualMode::Legacy);
+        // Same colour groups (compare everything except the name).
+        assert_eq!(default_legacy.editor, legacy.editor);
+        assert_eq!(default_legacy.syntax, legacy.syntax);
+        assert_eq!(default_legacy.file_tree, legacy.file_tree);
+        assert_eq!(default_legacy.tab_bar, legacy.tab_bar);
+        assert_eq!(default_legacy.chrome, legacy.chrome);
+        assert_eq!(default_legacy.decorations, legacy.decorations);
+        assert_eq!(default_legacy.indicators, legacy.indicators);
+        assert_eq!(default_legacy.ui, legacy.ui);
+    }
+
+    // Validates: theme-and-appearance Requirement 18.2/18.6 -- the canonical
+    // fallback is Default Legacy.
+    #[test]
+    fn fallback_is_default_legacy() {
+        let fb = fallback_palette();
+        assert_eq!(fb.name, "Default Legacy");
+        assert_eq!(fb.mode, VisualMode::Legacy);
+        assert_eq!(fb.editor, default_legacy_palette().editor);
+    }
+
+    // Validates: theme-and-appearance Requirement 18.5 -- serialising the
+    // Default Legacy palette and parsing it back yields an equal palette
+    // (round-trip; consistent with Requirement 9.2).
+    #[test]
+    fn default_legacy_serialise_round_trips() {
+        let original = default_legacy_palette();
+        let toml = crate::serialiser::serialise(&original);
+        let parsed = crate::loader::load_from_toml(&toml, VisualMode::Legacy)
+            .expect("Default Legacy TOML must parse");
+        assert_eq!(parsed.editor, original.editor);
+        assert_eq!(parsed.ui, original.ui);
+        assert_eq!(parsed.syntax, original.syntax);
+        assert_eq!(parsed.decorations, original.decorations);
     }
 }

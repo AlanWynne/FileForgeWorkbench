@@ -373,10 +373,11 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-theme` | 🔴 | -- | Req 18.1: `default_legacy_palette()` built-in (name "Default Legacy", colours == Legacy ISPF) |
-| `ff-theme` | 🔴 | -- | Req 18.2/18.6: `Default Legacy` is the canonical fallback when the active theme cannot be resolved; reserved name cannot be shadowed by a malformed file |
-| `ff-theme` | 🔴 | -- | Req 18.3: five built-ins (incl. Default Legacy) listed by `list_all_themes` and selectable |
-| `ff-desktop` | 🔴 | -- | Req 18.4/18.5: reset-to-baseline restores a theme's `.toml` to the built-in content (round-trips equal), with confirmation |
+| `ff-theme` | ✅ | `defaults.rs::default_legacy_matches_legacy_colours` | Req 18.1: `default_legacy_palette()` built-in (name "Default Legacy", colours == Legacy ISPF) |
+| `ff-theme` | ✅ | `defaults.rs::fallback_is_default_legacy` | Req 18.2/18.6: `Default Legacy` is the canonical fallback (`fallback_palette()`) when the active theme cannot be resolved; reserved built-in name |
+| `ff-theme` | ✅ | `discovery.rs::builtin_themes_includes_default_legacy`, `builtin_themes_returns_five_entries` | Req 18.3: five built-ins (incl. Default Legacy) listed by `list_all_themes` and selectable |
+| `ff-theme` | ✅ | `defaults.rs::default_legacy_serialise_round_trips` | Req 18.5: serialise(default_legacy) parses back equal (round-trip) |
+| `ff-desktop` | 🔴 | -- | Req 18.4: reset-to-baseline restores a theme's `.toml` to the built-in content, with confirmation (lands with the editor, task 24.5) |
 | `ff-desktop` | 🔴 | -- | Req 19.1/19.2: `themes/` dir created on first launch; built-ins materialised as `.toml` (write-if-absent) |
 | `ff-desktop` | 🔴 | -- | Req 19.3: `theme.active_name` config key added (theme file NAME); existing `theme.active` (mode) unchanged; mode-only configs still resolve |
 | `ff-desktop` | 🔴 | -- | Req 19.4/19.5: startup loads the active theme file to drive `self.palette` before first frame; missing/invalid -> Default Legacy fallback + WARN, no crash |

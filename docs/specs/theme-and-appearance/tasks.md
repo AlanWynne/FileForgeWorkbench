@@ -380,14 +380,15 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configura
 ## Phase (theme-editor) Tasks -- File-backed themes + Theme editor (Requirements 18-20, CR-NR-074)
 
 - [ ] 22. Default Legacy built-in palette + reset baseline (Requirement 18)
-  - [ ] 22.1 Add `ff_theme::defaults::default_legacy_palette()` (name `"Default Legacy"`, colours identical to `legacy_palette()`, `mode: VisualMode::Legacy`)
+  - [x] 22.1 Add `ff_theme::defaults::default_legacy_palette()` (name `"Default Legacy"`, colours identical to `legacy_palette()`, `mode: VisualMode::Legacy`)
     - Covers: Requirement 18.1
-  - [ ] 22.2 Add `Default Legacy` to `BUILTIN_THEME_NAMES` / `builtin_themes()` in `discovery.rs` so it appears in `list_all_themes`
+  - [x] 22.2 Add `Default Legacy` to `BUILTIN_THEME_NAMES` / `builtin_themes()` in `discovery.rs` so it appears in `list_all_themes`
     - Covers: Requirement 18.3
-  - [ ] 22.3 Add `ff_theme::defaults::fallback_palette()` returning `default_legacy_palette()`; document it as the canonical Fallback_Theme
+  - [x] 22.3 Add `ff_theme::defaults::fallback_palette()` returning `default_legacy_palette()`; document it as the canonical Fallback_Theme
     - Covers: Requirement 18.2, 18.6
-  - [ ] 22.4 Write tests: `default_legacy_matches_legacy_colours`, `default_legacy_in_builtin_list`, `fallback_is_default_legacy`, and a round-trip test that serialise(default_legacy) parses back equal (Req 18.5)
+  - [x] 22.4 Wrote tests: `default_legacy_matches_legacy_colours`, `builtin_themes_includes_default_legacy`, `fallback_is_default_legacy`, `default_legacy_serialise_round_trips` (Req 18.5); updated built-in count tests to 5
     - Covers: Requirement 18.1-18.6
+    - NOTE: 22.1-22.4 (the ff-theme palette + fallback + listing) done. Reset-to-baseline (Req 18.4) is a ff-desktop shell action implemented with the editor (task 24.5); the ff-theme building blocks are in place.
 
 - [ ] 23. File-backed active theme: themes dir, startup load, hot-reload, config split (Requirement 19)
   - [ ] 23.1 Add `ff-desktop` `theme_defaults::ensure_default_theme_files(user_data_dir)` mirroring `ensure_default_menu_files`: create `themes/`, `write_if_absent` each built-in serialised via `ff_theme::serialiser::serialise` (`default-dark.toml`, `default-light.toml`, `default-high-contrast.toml`, `legacy.toml`, `default-legacy.toml`)
