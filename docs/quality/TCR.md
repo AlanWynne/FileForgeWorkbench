@@ -378,12 +378,12 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-theme` | ✅ | `discovery.rs::builtin_themes_includes_default_legacy`, `builtin_themes_returns_five_entries` | Req 18.3: five built-ins (incl. Default Legacy) listed by `list_all_themes` and selectable |
 | `ff-theme` | ✅ | `defaults.rs::default_legacy_serialise_round_trips` | Req 18.5: serialise(default_legacy) parses back equal (round-trip) |
 | `ff-desktop` | 🔴 | -- | Req 18.4: reset-to-baseline restores a theme's `.toml` to the built-in content, with confirmation (lands with the editor, task 24.5) |
-| `ff-desktop` | 🔴 | -- | Req 19.1/19.2: `themes/` dir created on first launch; built-ins materialised as `.toml` (write-if-absent) |
-| `ff-desktop` | 🔴 | -- | Req 19.3: `theme.active_name` config key added (theme file NAME); existing `theme.active` (mode) unchanged; mode-only configs still resolve |
-| `ff-desktop` | 🔴 | -- | Req 19.4/19.5: startup loads the active theme file to drive `self.palette` before first frame; missing/invalid -> Default Legacy fallback + WARN, no crash |
-| `ff-desktop` | 🔴 | -- | Req 19.6: active theme file hot-reloads (mtime poll) and swaps the palette atomically |
-| `ff-desktop` | 🔴 | -- | Req 19.7/19.9: `set_active_theme(name)` loads+persists `theme.active_name`; `THEME <mode>` keeps the two keys consistent (command parity) |
-| `ff-desktop` | 🔴 | -- | Req 19.8: existing rendering call sites unchanged; palette field remains the single source of truth |
+| `ff-desktop` | ✅ | `theme_defaults.rs::ensure_default_theme_files_creates_builtins`, `ensure_default_theme_files_does_not_overwrite` | Req 19.1/19.2: `themes/` dir created on first launch; built-ins materialised as `.toml` (write-if-absent) |
+| `ff-desktop` | ✅ | `keys.rs` (ACTIVE_NAME const) + main.rs schema; `theme_defaults.rs::resolve_startup_palette_*` (mode path unaffected) | Req 19.3: `theme.active_name` config key added (theme file NAME); existing `theme.active` (mode) unchanged; mode-only configs still resolve |
+| `ff-desktop` | ✅ | `theme_defaults.rs::resolve_startup_palette_loads_materialised_mode_file`, `resolve_startup_palette_falls_back_to_default_legacy`, `load_theme_by_name_reads_materialised_file`, `load_theme_by_name_absent_is_none` | Req 19.4/19.5: startup loads the active theme file to drive `self.palette` before first frame; missing/invalid -> Default Legacy fallback, no crash |
+| `ff-desktop` | 🔲 | -- | Req 19.6: active theme file hot-reloads (mtime poll in update.rs) and swaps the palette atomically (manual UI verification: edit themes/legacy.toml while running) |
+| `ff-desktop` | ✅ | `render_chrome.rs::set_theme` (sets theme.active_name); `set_active_theme(name)` helper | Req 19.7/19.9: name-based activation persists `theme.active_name`; `THEME <mode>` keeps the two keys consistent (command parity) |
+| `ff-desktop` | ✅ | code review: `self.palette` population changed in main.rs/update.rs only; no render call sites touched | Req 19.8: existing rendering call sites unchanged; palette field remains the single source of truth |
 | `ff-desktop` | 🔴 | -- | Req 20.1/20.2/20.10: Theme Editor Context opens via a `THEMES` command; Settings menu Themes item dispatches the same command (parity); POM transform-in-place |
 | `ff-desktop` | 🔴 | -- | Req 20.3: editable token list shows current hex; invalid hex rejected inline without corrupting the theme |
 | `ff-desktop` | 🔴 | -- | Req 20.4: Copy_Theme creates a new named theme initialised from the source (built-in unaltered) |

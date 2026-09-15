@@ -40,6 +40,7 @@ mod settings_panel;
 mod shell;
 mod tab_manager;
 mod tab_state;
+mod theme_defaults;
 mod toolchain_panel;
 
 use anyhow::Context as _;
@@ -51,7 +52,6 @@ use ff_logging::{
     LogLevel, LoggingStatus,
 };
 use ff_session::UserDataDir;
-use ff_theme::defaults::dark_palette;
 use shell::WorkbenchShell;
 use tokio::runtime::Runtime;
 
@@ -93,8 +93,17 @@ fn main() -> anyhow::Result<()> {
     let app = WorkbenchApp::new(Box::new(config_handle.clone()), logging_status)
         .context("[desktop] WorkbenchApp construction failed")?;
 
-    // == 5. Initial theme palette ==========================================
-    let palette = dark_palette();
+    // == 5. Initial theme palette (file-backed) ============================
+    // CR-NR-074 Req 19.1/19.2/19.4: materialise built-in theme files on first
+    // launch, then resolve the active theme from config and load it BEFORE the
+    // first frame so all rendering is driven by the theme file (fallback to the
+    // Default Legacy built-in when the active theme cannot be resolved).
+    let themes_dir = theme_defaults::themes_dir();
+    if let Ok(mut udd) = ff_session::UserDataDir::resolve(None) {
+        let _ = udd.initialise();
+        theme_defaults::ensure_default_theme_files(udd.path());
+    }
+    let palette = theme_defaults::resolve_startup_palette(&config_handle, &themes_dir);
 
     // == 6. CLI file arguments (Requirement 6.1-6.5) =======================
     let cwd = std::env::current_dir().unwrap_or_default();
@@ -438,6 +447,16 @@ fn register_builtin_schema(config: &ff_config::ConfigHandle, user_data_dir: &std
                 ]),
                 pattern: None,
             }),
+        },
+        SchemaEntry {
+            // Active theme NAME (theme file / built-in). Empty => fall back to the
+            // mode in `theme.active`. Free-form (a theme name), so no allowed_values.
+            // Validates: theme-and-appearance Requirement 19.3.
+            key: ff_config::keys::theme::ACTIVE_NAME.to_string(),
+            value_type: ValueType::String,
+            default: ConfigValue::String(String::new()),
+            description: "Active theme name (resolves to themes/<slug>.toml or a built-in); empty uses theme.active mode".to_string(),
+            constraints: None,
         },
         SchemaEntry {
             key: ff_config::keys::theme::FONT_SIZE.to_string(),

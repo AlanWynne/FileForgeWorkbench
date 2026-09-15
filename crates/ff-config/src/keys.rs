@@ -39,8 +39,13 @@ pub mod logging {
 
 /// Theme-related configuration keys.
 pub mod theme {
-    /// Key for the active theme name.
+    /// Key for the active Visual_Mode (dark/light/high_contrast/legacy).
+    /// Historically named "active"; it holds a MODE, not a file name.
     pub const ACTIVE: &str = "theme.active";
+    /// Key for the active theme NAME (resolves to a `themes/<slug>.toml` file or
+    /// a built-in theme by name). Empty means "use the mode from `theme.active`".
+    /// Validates: theme-and-appearance Requirement 19.3
+    pub const ACTIVE_NAME: &str = "theme.active_name";
     /// Key for the font size setting.
     pub const FONT_SIZE: &str = "theme.font_size";
     /// When true, the workbench follows the OS dark/light mode each frame.

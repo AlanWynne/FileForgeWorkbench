@@ -445,6 +445,14 @@ pub struct WorkbenchShell {
     ///
     /// Validates: Requirement 14.42
     pom_calendar_offset: i32,
+
+    /// The active theme's backing file path and its last-seen modification time,
+    /// used to hot-reload the palette when the file changes on disk (CR-NR-074).
+    /// `None` when the active theme is not file-backed (e.g. a compiled built-in
+    /// with no on-disk file yet).
+    ///
+    /// Validates: theme-and-appearance Requirement 19.6
+    active_theme_file: Option<(std::path::PathBuf, std::time::SystemTime)>,
     /// Last pixels_per_point applied by zoom — avoids overwriting OS DPI every frame.
     last_ppp: f32,
     /// True while the user is holding the mouse button down (window drag in progress).
@@ -696,6 +704,7 @@ impl WorkbenchShell {
             pending_menu_option: None,
             zoom: ZoomState::new(&ZoomConfig::default()),
             pom_calendar_offset: 0,
+            active_theme_file: None,
             last_ppp: 1.0,
             is_dragging: false,
             pending_ppp: None,

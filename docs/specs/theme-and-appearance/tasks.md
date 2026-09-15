@@ -391,23 +391,23 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configura
     - NOTE: 22.1-22.4 (the ff-theme palette + fallback + listing) done. Reset-to-baseline (Req 18.4) is a ff-desktop shell action implemented with the editor (task 24.5); the ff-theme building blocks are in place.
 
 - [ ] 23. File-backed active theme: themes dir, startup load, hot-reload, config split (Requirement 19)
-  - [ ] 23.1 Add `ff-desktop` `theme_defaults::ensure_default_theme_files(user_data_dir)` mirroring `ensure_default_menu_files`: create `themes/`, `write_if_absent` each built-in serialised via `ff_theme::serialiser::serialise` (`default-dark.toml`, `default-light.toml`, `default-high-contrast.toml`, `legacy.toml`, `default-legacy.toml`)
+  - [x] 23.1 Added `theme_defaults::ensure_default_theme_files` (create `themes/`, `write_if_absent` each built-in serialised: default-dark/light/high-contrast/legacy/default-legacy)
     - Covers: Requirement 19.1, 19.2
-  - [ ] 23.2 Call `ensure_default_theme_files` at the same first-launch point as `ensure_default_menu_files` in `shell/update.rs`
+  - [x] 23.2 Called `ensure_default_theme_files` at first-launch (in `main.rs` startup, before palette resolution)
     - Covers: Requirement 19.1
-  - [ ] 23.3 Register a new config key `theme.active_name` (string, default empty) in the theme schema; keep `theme.active` (mode) unchanged
+  - [x] 23.3 Registered `theme.active_name` config key (string, default empty) in the theme schema (`ff_config::keys::theme::ACTIVE_NAME` + main.rs schema); `theme.active` (mode) unchanged
     - Covers: Requirement 19.3
-  - [ ] 23.4 Implement `resolve_startup_palette(config, themes_dir) -> ThemePalette`: if `theme.active_name` set -> load `themes/<slug>.toml` (or built-in by name) via `load_from_toml`; else resolve `theme.active` mode -> built-in's `themes/` file or compiled palette; on any error -> `fallback_palette()` + WARN
+  - [x] 23.4 Implemented `resolve_startup_palette(config, themes_dir)`: active_name -> `themes/<slug>.toml`; else mode -> built-in file/compiled; on error -> `fallback_palette()` (Default Legacy) + WARN
     - Covers: Requirement 19.3, 19.4, 19.5
-  - [ ] 23.5 Wire `resolve_startup_palette` into startup so `self.palette` is file-loaded BEFORE the first frame (replace the unconditional `dark_palette()` in `main.rs`)
+  - [x] 23.5 Wired `resolve_startup_palette` into `main.rs` so `self.palette` is file-loaded before the first frame (replaced unconditional `dark_palette()`)
     - Covers: Requirement 19.4, 19.8
-  - [ ] 23.6 Extend the per-frame theme block in `update.rs` to poll the active theme file mtime and reload via `load_from_toml` on change, swapping `self.palette` atomically; keep the mode/follow_os logic
+  - [x] 23.6 Extended the per-frame theme block in `update.rs` to poll the active theme file mtime and reload via the resolver on change, swapping `self.palette`; kept mode/follow_os
     - Covers: Requirement 19.6
-  - [ ] 23.7 Update `set_theme` (render_chrome.rs): `THEME <mode>` also updates `theme.active_name` to the built-in theme for that mode so the keys stay consistent (command parity preserved)
+  - [x] 23.7 `set_theme` also updates `theme.active_name` to the built-in theme for the mode (keys stay consistent)
     - Covers: Requirement 19.9
-  - [ ] 23.8 Add a `set_active_theme(name)` shell helper that loads the named theme file, swaps `self.palette`, and persists `theme.active_name`
+  - [x] 23.8 Added `set_active_theme(name)` shell helper (loads by name, swaps palette, persists `theme.active_name`) -- used by the editor (increment C)
     - Covers: Requirement 19.7
-  - [ ] 23.9 Write tests: themes dir + built-in files created on first launch; startup loads the active-name file; missing/invalid file falls back to Default Legacy without panic; a mode-only legacy config still resolves; set_active persists and reloads
+  - [x] 23.9 Tests: themes dir + built-in files created; not overwritten; load by name; absent -> None; resolver fallback + materialised mode-file load (isolated via FFWB_USER_CONFIG_PATH)
     - Covers: Requirement 19.1-19.9
 
 - [ ] 24. Theme Editor Context (Requirement 20)

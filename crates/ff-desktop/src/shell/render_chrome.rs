@@ -90,6 +90,53 @@ impl WorkbenchShell {
                 mode.section_name()
             ));
         }
+
+        // CR-NR-074 Req 19.9: keep theme.active_name consistent with the mode so
+        // the file-backed resolver and the mode command agree. `THEME <mode>`
+        // selects the built-in theme for that mode.
+        let builtin_name = ff_theme::defaults::default_palette_for_mode(mode).name;
+        let _ = self.config_handle.set_user_value(
+            ff_config::keys::theme::ACTIVE_NAME,
+            ff_config::ConfigValue::String(builtin_name),
+        );
+    }
+
+    /// Set the active theme by NAME (a theme file / built-in), loading it,
+    /// applying it immediately, and persisting `theme.active_name` so the same
+    /// theme is active on the next launch. Used by the Theme editor Set_Active
+    /// action (Requirement 20.6) and any name-based theme selection.
+    ///
+    /// Validates: theme-and-appearance Requirement 19.7
+    // Used by the Theme editor Set_Active action (increment C, task 24.5); the
+    // helper lands with increment B so startup/hot-reload and the editor share
+    // one name-based activation path.
+    #[allow(dead_code)]
+    pub(super) fn set_active_theme(&mut self, name: &str) {
+        let themes_dir = crate::theme_defaults::themes_dir();
+        match crate::theme_defaults::load_theme_by_name(name, &themes_dir) {
+            Some(palette) => {
+                self.palette = palette;
+                self.active_theme_file = {
+                    let path = themes_dir
+                        .join(format!("{}.toml", crate::theme_defaults::theme_slug(name)));
+                    std::fs::metadata(&path)
+                        .ok()
+                        .and_then(|m| m.modified().ok())
+                        .map(|mt| (path, mt))
+                };
+                if let Err(e) = self.config_handle.set_user_value(
+                    ff_config::keys::theme::ACTIVE_NAME,
+                    ff_config::ConfigValue::String(name.to_string()),
+                ) {
+                    self.open_error = Some(format!(
+                        "Theme '{name}' applied for this session, but could not be saved: {e}"
+                    ));
+                }
+            }
+            None => {
+                self.open_error = Some(format!("Theme '{name}' could not be loaded"));
+            }
+        }
     }
 
     // ── Legacy POM colours ────────────────────────────────────────────────
