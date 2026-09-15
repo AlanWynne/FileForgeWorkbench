@@ -42,7 +42,14 @@ impl WorkbenchShell {
                 ui.painter().rect_filled(rect, 0.0, bg);
                 ui.colored_label(fg, egui::RichText::new(text).monospace());
             } else {
-                ui.label(egui::RichText::new(text).monospace());
+                // Validates: Requirement 21.5 -- non-Legacy title line paints the
+                // accent-tinted primary_menu_bg background with menu_bar_fg text,
+                // mirroring the Legacy branch (previously flat / no fill).
+                let bg = to_egui_color(self.palette.ui.primary_menu_bg);
+                let fg = to_egui_color(self.palette.ui.menu_bar_fg);
+                let rect = ui.available_rect_before_wrap();
+                ui.painter().rect_filled(rect, 0.0, bg);
+                ui.colored_label(fg, egui::RichText::new(text).monospace());
             }
         });
     }

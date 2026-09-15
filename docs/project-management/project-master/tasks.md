@@ -1003,12 +1003,12 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 > Legacy otherwise byte-identical. Two render tweaks: non-Legacy title-bar background
 > + wire the dead tab_bar.* group. All new pairs >= AA; High Contrast unchanged.
 
-- [ ] TP.1 Legacy blue-on-black legibility (ISPF_BLUE_HI for line_number/comment/unknown/margins) (Task 26.1; Req 22)
-- [ ] TP.2 Dark ui/tab_bar accent + surface hierarchy (Task 26.2; Req 21)
-- [ ] TP.3 Light ui/tab_bar accent + surface hierarchy (Task 26.3; Req 21)
-- [ ] TP.4 render_title_line non-Legacy accent background (Task 26.4; Req 21.5)
-- [ ] TP.5 render_tab_bar reads tab_bar.* group (Task 26.5; Req 21.6)
-- [ ] TP.6 Contrast tests + TCR; verify.ps1 CLEAN; rebuild; commit+push (Task 26.6-26.7)
+- [x] TP.1 Legacy blue-on-black legibility (ISPF_BLUE_HI for line_number/comment/unknown/margins) (Task 26.1; Req 22)
+- [x] TP.2 Dark ui/tab_bar accent + surface hierarchy (Task 26.2; Req 21)
+- [x] TP.3 Light ui/tab_bar accent + surface hierarchy (Task 26.3; Req 21)
+- [x] TP.4 render_title_line non-Legacy accent background (Task 26.4; Req 21.5)
+- [x] TP.5 render_tab_bar reads tab_bar.* group (Task 26.5; Req 21.6)
+- [x] TP.6 Contrast tests + TCR; verify.ps1 CLEAN; rebuild; commit+push (Task 26.6-26.7)
 
 ---
 

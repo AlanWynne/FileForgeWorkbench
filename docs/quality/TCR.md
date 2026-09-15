@@ -401,15 +401,15 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-theme` | 🔴 | -- | Req 21.1: Dark/Light define a 3-level background hierarchy (panel_bg / button_bg / input_bg perceptibly distinct) |
-| `ff-theme` | 🔴 | -- | Req 21.2: Dark/Light focus_ring = the theme accent |
-| `ff-theme` | 🔴 | -- | Req 21.3: Dark/Light active tab (tab_bar.active_bg) accent-tinted, distinct from inactive |
-| `ff-theme` | 🔴 | -- | Req 21.4: Dark/Light accent-tinted primary_menu_bg (title-bar band) distinct from panel_bg |
-| `ff-desktop` | 🔴 | -- | Req 21.5: non-Legacy title line paints primary_menu_bg background + menu_bar_fg text |
-| `ff-desktop` | 🔴 | -- | Req 21.6: render_tab_bar reads the tab_bar.* group (active/inactive bg+text) instead of ui/editor reuse |
-| `ff-theme` | 🔴 | -- | Req 21.7: new chrome fg/bg pairs meet WCAG AA (title 8.64/6.37:1, active tab 7.88/5.76:1; inactive tab >= 3:1) |
-| `ff-theme` | 🔴 | -- | Req 21.8/21.9: Catppuccin editor/syntax identity preserved; High Contrast unchanged (AAA) |
-| `ff-theme` | 🔴 | -- | Req 22.1-22.4: Legacy blue-on-black uses ISPF_BLUE_HI (#7878FF, 5.93:1) for line numbers/comments/unknown/margins; otherwise byte-identical; primary_menu_bg unchanged |
+| `ff-theme` | ✅ | `defaults.rs::dark_chrome_has_three_level_surface_hierarchy`, `light_chrome_has_three_level_surface_hierarchy` | Req 21.1: Dark/Light define a 3-level background hierarchy (panel_bg / button_bg / input_bg perceptibly distinct) |
+| `ff-theme` | ✅ | `defaults.rs::dark_and_light_focus_ring_is_accent` | Req 21.2: Dark/Light focus_ring = the theme accent |
+| `ff-theme` | ✅ | `defaults.rs::dark_and_light_active_tab_is_distinct_and_accented` | Req 21.3: Dark/Light active tab (tab_bar.active_bg) accent-tinted, distinct from inactive |
+| `ff-theme` | ✅ | `defaults.rs::dark_and_light_title_bar_is_accented_and_legible` | Req 21.4: Dark/Light accent-tinted primary_menu_bg (title-bar band) distinct from panel_bg |
+| `ff-desktop` | 🔲 | -- | Req 21.5: non-Legacy title line paints primary_menu_bg background + menu_bar_fg text (egui render path -- manual UI verification; contrast guarded by ff-theme menu_bar_fg/primary_menu_bg pair) |
+| `ff-desktop` | 🔲 | -- | Req 21.6: render_tab_bar reads the tab_bar.* group (active/inactive bg+text) instead of ui/editor reuse (egui render path -- manual UI verification; contrast guarded by ff-theme tab_bar pairs) |
+| `ff-theme` | ✅ | `defaults.rs::dark_and_light_title_bar_is_accented_and_legible`, `dark_and_light_palettes_have_no_contrast_warnings`, `contrast.rs::check_theme_contrast_*_passes` | Req 21.7: new chrome fg/bg pairs meet WCAG AA (title 8.64/6.37:1, active tab 7.88/5.76:1; inactive tab >= 3:1) |
+| `ff-theme` | ✅ | `defaults.rs::high_contrast_unchanged_no_warnings`, `high_contrast_fg_bg_pairs_meet_wcag_aaa` | Req 21.8/21.9: Catppuccin editor/syntax identity preserved; High Contrast unchanged (AAA) |
+| `ff-theme` | ✅ | `defaults.rs::legacy_blue_on_black_uses_bright_blue_for_legibility`, `legacy_retains_look_and_feel` | Req 22.1-22.4: Legacy blue-on-black uses ISPF_BLUE_HI (#7878FF, 5.93:1) for line numbers/comments/unknown/margins; otherwise byte-identical; primary_menu_bg unchanged |
 
 ### Phase AE -- Legacy Theme Colour Semantics
 

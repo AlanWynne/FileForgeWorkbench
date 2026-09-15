@@ -409,9 +409,13 @@ impl WorkbenchShell {
     // ── Tab bar ──────────────────────────────────────────────────────────
 
     pub(super) fn render_tab_bar(&mut self, ctx: &egui::Context) {
-        let active_bg = to_egui_color(self.palette.ui.input_bg);
-        let inactive_bg = to_egui_color(self.palette.ui.panel_bg);
-        let text_color = to_egui_color(self.palette.editor.foreground);
+        // Validates: Requirement 21.6 -- render_tab_bar reads the tab_bar.* palette
+        // group (previously dead: bg reused ui.input_bg/panel_bg and text reused
+        // editor.foreground). Active/inactive tabs now get distinct bg + text.
+        let active_bg = to_egui_color(self.palette.tab_bar.active_bg);
+        let inactive_bg = to_egui_color(self.palette.tab_bar.inactive_bg);
+        let active_text = to_egui_color(self.palette.tab_bar.active_text);
+        let inactive_text = to_egui_color(self.palette.tab_bar.inactive_text);
         let modified_color = to_egui_color(self.palette.editor.accent);
 
         // Collect context-menu actions outside the borrow of self.tabs.
@@ -439,6 +443,11 @@ impl WorkbenchShell {
                         let tab_kind = tab.kind;
 
                         let bg = if is_active { active_bg } else { inactive_bg };
+                        let tab_text = if is_active {
+                            active_text
+                        } else {
+                            inactive_text
+                        };
                         // Validates: CX Requirement 1.4 -- show workspace_name in tab header
                         let base_title = if let Some(ref name) = tab.workspace_name {
                             match tab.kind {
@@ -459,7 +468,7 @@ impl WorkbenchShell {
                         let color = if tab.is_modified {
                             modified_color
                         } else {
-                            text_color
+                            tab_text
                         };
 
                         let btn =
@@ -485,7 +494,7 @@ impl WorkbenchShell {
                         let close_resp = ui.add(
                             egui::Button::new(
                                 egui::RichText::new("\u{00d7}")
-                                    .color(text_color)
+                                    .color(tab_text)
                                     .monospace()
                                     .small(),
                             )

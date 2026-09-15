@@ -69,6 +69,13 @@ pub fn check_theme_contrast(palette: &ThemePalette) -> Vec<ContrastWarning> {
             palette.tab_bar.active_text,
             palette.tab_bar.active_bg,
         ),
+        // CR-CH-020 Req 21.5: the title line now paints primary_menu_bg with
+        // menu_bar_fg text for every non-POM theme, so guard that pair.
+        (
+            "ui.menu_bar_fg / ui.primary_menu_bg",
+            palette.ui.menu_bar_fg,
+            palette.ui.primary_menu_bg,
+        ),
     ];
 
     for (name, fg, bg) in text_pairs {

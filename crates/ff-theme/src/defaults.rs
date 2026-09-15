@@ -179,10 +179,11 @@ fn dark_file_tree_colours() -> FileTreeColours {
 
 fn dark_tab_bar_colours() -> TabBarColours {
     TabBarColours {
-        active_bg: ColourRGBA::rgb(30, 30, 46),
-        inactive_bg: ColourRGBA::rgb(24, 24, 37),
-        active_text: ColourRGBA::rgb(205, 214, 244),
-        inactive_text: ColourRGBA::rgb(108, 112, 134),
+        // CR-CH-020 Req 21.3: accent-tinted active tab, distinct from inactive.
+        active_bg: ColourRGBA::rgb(46, 58, 82), // #2E3A52 -- Mocha base toward accent
+        inactive_bg: ColourRGBA::rgb(24, 24, 37), // #181825
+        active_text: ColourRGBA::rgb(205, 214, 244), // #CDD6F4 -- 7.88:1 on active_bg
+        inactive_text: ColourRGBA::rgb(108, 112, 134), // #6C7086 -- 3.59:1 on inactive_bg (UI)
         modified_indicator: ColourRGBA::rgb(249, 226, 175),
         close_button: ColourRGBA::rgb(108, 112, 134),
         drop_target: ColourRGBA::rgba(137, 180, 250, 80),
@@ -229,7 +230,9 @@ fn dark_ui_colours() -> UiColours {
         panel_bg: ColourRGBA::rgb(24, 24, 37),
         panel_fg: ColourRGBA::rgb(205, 214, 244),
         panel_border: ColourRGBA::rgb(49, 50, 68),
-        button_bg: ColourRGBA::rgb(49, 50, 68),
+        // CR-CH-020 Req 21.1: raised surface (#2A2A3C), distinct from window
+        // (#181825) and input (#1E1E2E) for a 3-level hierarchy.
+        button_bg: ColourRGBA::rgb(42, 42, 60),
         button_fg: ColourRGBA::rgb(205, 214, 244),
         button_hover: ColourRGBA::rgb(69, 71, 90),
         input_bg: ColourRGBA::rgb(30, 30, 46),
@@ -240,8 +243,10 @@ fn dark_ui_colours() -> UiColours {
         tooltip_bg: ColourRGBA::rgb(49, 50, 68),
         tooltip_fg: ColourRGBA::rgb(205, 214, 244),
         menu_bar_fg: ColourRGBA::rgb(205, 214, 244),
-        primary_menu_bg: ColourRGBA::rgb(24, 24, 37),
-        focus_ring: ColourRGBA::rgb(79, 195, 247), // #4FC3F7 -- light blue, 3:1 on dark bg
+        // CR-CH-020 Req 21.4: accent-tinted title bar (#28344A); text 8.64:1.
+        primary_menu_bg: ColourRGBA::rgb(40, 52, 74),
+        // CR-CH-020 Req 21.2: focus ring is the Catppuccin accent #89B4FA.
+        focus_ring: ColourRGBA::rgb(137, 180, 250),
     }
 }
 
@@ -287,10 +292,11 @@ fn light_file_tree_colours() -> FileTreeColours {
 
 fn light_tab_bar_colours() -> TabBarColours {
     TabBarColours {
-        active_bg: ColourRGBA::rgb(239, 241, 245),
-        inactive_bg: ColourRGBA::rgb(220, 224, 232),
+        // CR-CH-020 Req 21.3: accent-tinted active tab (#D0DBF7); text 5.76:1.
+        active_bg: ColourRGBA::rgb(208, 219, 247), // #D0DBF7
+        inactive_bg: ColourRGBA::rgb(230, 233, 239), // #E6E9EF
         active_text: ColourRGBA::rgb(76, 79, 105),
-        inactive_text: ColourRGBA::rgb(90, 94, 120), // darkened from 140,143,161 -- 3.0:1 on inactive_bg
+        inactive_text: ColourRGBA::rgb(90, 94, 120), // #5A5E78 -- 3:1 on inactive_bg
         modified_indicator: ColourRGBA::rgb(223, 142, 29),
         close_button: ColourRGBA::rgb(140, 143, 161),
         drop_target: ColourRGBA::rgba(30, 102, 245, 60),
@@ -337,7 +343,9 @@ fn light_ui_colours() -> UiColours {
         panel_bg: ColourRGBA::rgb(230, 233, 239),
         panel_fg: ColourRGBA::rgb(76, 79, 105),
         panel_border: ColourRGBA::rgb(204, 208, 218),
-        button_bg: ColourRGBA::rgb(204, 208, 218),
+        // CR-CH-020 Req 21.1: raised surface (#DCE0E8) -- 3-level hierarchy
+        // window #E6E9EF -> raised #DCE0E8 -> input #EFF1F5.
+        button_bg: ColourRGBA::rgb(220, 224, 232),
         button_fg: ColourRGBA::rgb(76, 79, 105),
         button_hover: ColourRGBA::rgb(188, 192, 204),
         input_bg: ColourRGBA::rgb(239, 241, 245),
@@ -348,8 +356,10 @@ fn light_ui_colours() -> UiColours {
         tooltip_bg: ColourRGBA::rgb(204, 208, 218),
         tooltip_fg: ColourRGBA::rgb(76, 79, 105),
         menu_bar_fg: ColourRGBA::rgb(76, 79, 105),
-        primary_menu_bg: ColourRGBA::rgb(230, 233, 239),
-        focus_ring: ColourRGBA::rgb(2, 119, 189), // #0277BD -- dark blue, 3:1 on light bg
+        // CR-CH-020 Req 21.4: accent-tinted title bar (#DCE6FB); text 6.37:1.
+        primary_menu_bg: ColourRGBA::rgb(220, 230, 251),
+        // CR-CH-020 Req 21.2: focus ring is the Catppuccin Latte accent #1E66F5.
+        focus_ring: ColourRGBA::rgb(30, 102, 245),
     }
 }
 
@@ -520,8 +530,10 @@ fn legacy_syntax_colours() -> SyntaxColours {
     SyntaxColours {
         // Keywords are Yellow — commands / interactive actions in ISPF
         keyword: ISPF_YELLOW_HI,
-        // Comments are Blue — informational / non-interactive labels
-        comment: ISPF_BLUE,
+        // Comments are Blue -- informational / non-interactive labels.
+        // Bright blue for legibility on black (CR-CH-020 Req 22: #0000AA is
+        // ~1.58:1 on black; #7878FF is ~5.93:1).
+        comment: ISPF_BLUE_HI,
         // String literals are Green — positive / data content
         string: ISPF_GREEN,
         // Numbers are White — heading-intensity data values
@@ -549,8 +561,8 @@ fn legacy_file_tree_colours() -> FileTreeColours {
         structured: ISPF_TURQUOISE_HI,
         // Plain text files are Blue — normal informational
         text: ISPF_BLUE_HI,
-        // Unknown files are muted Blue
-        unknown: ISPF_BLUE,
+        // Unknown files are Blue -- bright for legibility on black (Req 22).
+        unknown: ISPF_BLUE_HI,
         // Directories are White — heading / title emphasis
         directory: ISPF_WHITE_HI,
         // Symlinks are Turquoise — indirect / input-adjacent
@@ -579,13 +591,14 @@ fn legacy_chrome_colours() -> ChromeColours {
         // Cursor row border is Turquoise — marks the active input position
         cursor_row_border: ISPF_TURQUOISE,
         cursor_column_indicator: ISPF_TURQUOISE,
-        // Line numbers are Blue — informational / non-interactive labels
+        // Line numbers are bright Blue — legible on black (Req 22)
         line_number_fg: ISPF_BLUE_HI,
         line_number_bg: ISPF_BG,
         fold_margin_bg: ISPF_BG,
-        fold_margin_fg: ISPF_BLUE,
-        // Margin separator is a dim Blue line
-        margin_separator: ISPF_BLUE,
+        // Fold margin foreground: bright blue for legibility on black (Req 22)
+        fold_margin_fg: ISPF_BLUE_HI,
+        // Margin separator is a bright Blue line — legible on black (Req 22)
+        margin_separator: ISPF_BLUE_HI,
     }
 }
 
@@ -822,5 +835,133 @@ mod tests {
         assert_eq!(parsed.ui, original.ui);
         assert_eq!(parsed.syntax, original.syntax);
         assert_eq!(parsed.decorations, original.decorations);
+    }
+
+    // === CR-CH-020: non-monochrome Dark/Light chrome + Legacy legibility =====
+
+    // Validates: Requirement 22.1/22.2 -- Legacy blue-on-black foreground uses
+    // the bright blue #7878FF (ISPF_BLUE_HI, ~5.93:1 on black) instead of the
+    // barely-legible #0000AA (~1.58:1). Applies to comment, unknown file tree,
+    // fold margin foreground and margin separator (line_number_fg already used
+    // the bright variant).
+    #[test]
+    fn legacy_blue_on_black_uses_bright_blue_for_legibility() {
+        let p = legacy_palette();
+        assert_eq!(p.syntax.comment, ISPF_BLUE_HI);
+        assert_eq!(p.file_tree.unknown, ISPF_BLUE_HI);
+        assert_eq!(p.chrome.fold_margin_fg, ISPF_BLUE_HI);
+        assert_eq!(p.chrome.margin_separator, ISPF_BLUE_HI);
+        assert_eq!(p.chrome.line_number_fg, ISPF_BLUE_HI);
+        // The bright blue clears the >= 3:1 UI-component bar on black; the dim
+        // #0000AA it replaced does not.
+        let black = ColourRGBA::rgb(0, 0, 0);
+        assert!(
+            ISPF_BLUE_HI.contrast_ratio(&black) >= 3.0,
+            "bright legacy blue must be legible on black"
+        );
+        assert!(
+            ColourRGBA::rgb(0, 0, 170).contrast_ratio(&black) < 3.0,
+            "the dim blue it replaced was not legible (guards the regression)"
+        );
+    }
+
+    // Validates: Requirement 22.3 -- everything else in Legacy is byte-identical
+    // to the pre-CR-CH-020 look and feel (spot-check the invariants that were
+    // NOT touched).
+    #[test]
+    fn legacy_retains_look_and_feel() {
+        let p = legacy_palette();
+        assert_eq!(p.editor.background, ColourRGBA::rgb(0, 0, 0)); // black
+        assert_eq!(p.editor.foreground, ColourRGBA::rgb(0, 255, 0)); // green body
+        assert_eq!(p.editor.accent, ColourRGBA::rgb(255, 255, 0)); // yellow command
+        assert_eq!(p.ui.input_fg, ColourRGBA::rgb(0, 255, 255)); // turquoise inputs
+        assert_eq!(p.ui.menu_bar_fg, ColourRGBA::rgb(255, 255, 255)); // white
+        assert_eq!(p.ui.primary_menu_bg, ColourRGBA::rgb(0, 0, 170)); // blue title bar
+    }
+
+    // Validates: Requirement 21.1 -- Dark chrome has a 3-level surface hierarchy
+    // (window #181825, raised #2A2A3C, input #1E1E2E) with distinct values.
+    #[test]
+    fn dark_chrome_has_three_level_surface_hierarchy() {
+        let p = dark_palette();
+        assert_eq!(p.ui.panel_bg, ColourRGBA::rgb(24, 24, 37)); // #181825
+        assert_eq!(p.ui.button_bg, ColourRGBA::rgb(42, 42, 60)); // #2A2A3C
+        assert_eq!(p.ui.input_bg, ColourRGBA::rgb(30, 30, 46)); // #1E1E2E
+        assert_ne!(p.ui.panel_bg, p.ui.button_bg);
+        assert_ne!(p.ui.button_bg, p.ui.input_bg);
+        assert_ne!(p.ui.panel_bg, p.ui.input_bg);
+    }
+
+    // Validates: Requirement 21.1 -- Light chrome 3-level surface hierarchy.
+    #[test]
+    fn light_chrome_has_three_level_surface_hierarchy() {
+        let p = light_palette();
+        assert_eq!(p.ui.panel_bg, ColourRGBA::rgb(230, 233, 239)); // #E6E9EF
+        assert_eq!(p.ui.button_bg, ColourRGBA::rgb(220, 224, 232)); // #DCE0E8
+        assert_eq!(p.ui.input_bg, ColourRGBA::rgb(239, 241, 245)); // #EFF1F5
+        assert_ne!(p.ui.panel_bg, p.ui.button_bg);
+        assert_ne!(p.ui.button_bg, p.ui.input_bg);
+        assert_ne!(p.ui.panel_bg, p.ui.input_bg);
+    }
+
+    // Validates: Requirement 21.2 -- the focus ring is the theme accent colour
+    // for Dark and Light (not a generic blue).
+    #[test]
+    fn dark_and_light_focus_ring_is_accent() {
+        let dark = dark_palette();
+        assert_eq!(dark.ui.focus_ring, dark.editor.accent); // #89B4FA
+        let light = light_palette();
+        assert_eq!(light.ui.focus_ring, light.editor.accent); // #1E66F5
+    }
+
+    // Validates: Requirement 21.3 -- active tab is accent-tinted and distinct
+    // from the inactive tab, for Dark and Light.
+    #[test]
+    fn dark_and_light_active_tab_is_distinct_and_accented() {
+        let dark = dark_palette();
+        assert_eq!(dark.tab_bar.active_bg, ColourRGBA::rgb(46, 58, 82)); // #2E3A52
+        assert_ne!(dark.tab_bar.active_bg, dark.tab_bar.inactive_bg);
+        let light = light_palette();
+        assert_eq!(light.tab_bar.active_bg, ColourRGBA::rgb(208, 219, 247)); // #D0DBF7
+        assert_ne!(light.tab_bar.active_bg, light.tab_bar.inactive_bg);
+    }
+
+    // Validates: Requirement 21.4 -- the title bar background is accent-tinted
+    // (primary_menu_bg differs from the plain panel background) for Dark/Light,
+    // and the fg/bg pair clears WCAG AA (4.5:1).
+    #[test]
+    fn dark_and_light_title_bar_is_accented_and_legible() {
+        for p in [dark_palette(), light_palette()] {
+            assert_ne!(
+                p.ui.primary_menu_bg, p.ui.panel_bg,
+                "title bar must be tinted, not a flat panel"
+            );
+            let ratio = p.ui.menu_bar_fg.contrast_ratio(&p.ui.primary_menu_bg);
+            assert!(
+                ratio >= 4.5,
+                "title text ratio {ratio:.2} must clear AA on the tinted bar"
+            );
+        }
+    }
+
+    // Validates: Requirement 21.7 -- Dark and Light palettes emit no new
+    // below-threshold contrast pairs after the chrome enhancement.
+    #[test]
+    fn dark_and_light_palettes_have_no_contrast_warnings() {
+        for p in [dark_palette(), light_palette()] {
+            let warnings = crate::check_theme_contrast(&p);
+            assert!(
+                warnings.is_empty(),
+                "unexpected contrast warnings: {warnings:?}"
+            );
+        }
+    }
+
+    // Validates: Requirement 21.8 -- High Contrast is unchanged; it still meets
+    // its stronger bar and produces no warnings.
+    #[test]
+    fn high_contrast_unchanged_no_warnings() {
+        let warnings = crate::check_theme_contrast(&high_contrast_palette());
+        assert!(warnings.is_empty(), "HC warnings: {warnings:?}");
     }
 }
