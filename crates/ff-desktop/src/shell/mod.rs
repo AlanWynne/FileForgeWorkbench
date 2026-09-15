@@ -458,6 +458,11 @@ pub struct WorkbenchShell {
     ///
     /// Validates: theme-and-appearance Requirement 19.6
     active_theme_file: Option<(std::path::PathBuf, std::time::SystemTime)>,
+
+    /// Test-only override for the themes directory. Production leaves this
+    /// `None` (the real `<User_Data_Dir>/themes/`); tests set it to a TempDir so
+    /// Theme editor file operations are deterministic and isolated.
+    themes_dir_override: Option<std::path::PathBuf>,
     /// Last pixels_per_point applied by zoom — avoids overwriting OS DPI every frame.
     last_ppp: f32,
     /// True while the user is holding the mouse button down (window drag in progress).
@@ -711,6 +716,7 @@ impl WorkbenchShell {
             zoom: ZoomState::new(&ZoomConfig::default()),
             pom_calendar_offset: 0,
             active_theme_file: None,
+            themes_dir_override: None,
             last_ppp: 1.0,
             is_dragging: false,
             pending_ppp: None,

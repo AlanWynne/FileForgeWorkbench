@@ -363,7 +363,7 @@ impl eframe::App for WorkbenchShell {
         // or when the configured active theme changes. This keeps the palette
         // driven by the theme file (not just the compiled mode default).
         {
-            let themes_dir = crate::theme_defaults::themes_dir();
+            let themes_dir = self.themes_dir();
             // Determine the active theme's file path: prefer theme.active_name,
             // else the built-in for the current theme.active mode.
             let active_name = self

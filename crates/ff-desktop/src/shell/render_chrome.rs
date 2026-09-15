@@ -110,7 +110,7 @@ impl WorkbenchShell {
     /// Used by the Theme editor Set_Active action (task 24.5) and any name-based
     /// theme selection, sharing one activation path with startup/hot-reload.
     pub(super) fn set_active_theme(&mut self, name: &str) {
-        let themes_dir = crate::theme_defaults::themes_dir();
+        let themes_dir = self.themes_dir();
         match crate::theme_defaults::load_theme_by_name(name, &themes_dir) {
             Some(palette) => {
                 self.palette = palette;

@@ -4545,3 +4545,105 @@ fn theme_editor_reset_non_builtin_errors() {
         "reset of a non-built-in theme must surface an error"
     );
 }
+
+/// Point the shell's themes directory at a fresh TempDir (isolates Theme editor
+/// file operations) and materialise the built-in theme files there.
+fn point_themes_at_temp(shell: &mut super::WorkbenchShell) -> tempfile::TempDir {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    crate::theme_defaults::ensure_default_theme_files(dir.path());
+    shell.themes_dir_override = Some(dir.path().join("themes"));
+    dir
+}
+
+/// Validates: Requirement 20.4 -- Copy creates a new named theme file from the
+/// working copy and makes it the edit target, without altering the source.
+#[test]
+fn theme_editor_copy_creates_new_named_theme_file() {
+    use crate::theme_editor_panel::ThemeEditorAction;
+    let mut shell = make_shell();
+    let _dir = point_themes_at_temp(&mut shell);
+    shell.handle_command("THEMES");
+    shell.apply_theme_editor_action(ThemeEditorAction::Copy("my-theme".to_string()));
+    // The new file exists and the editor now targets it.
+    let themes = shell.themes_dir_override.clone().unwrap();
+    assert!(
+        themes.join("my-theme.toml").exists(),
+        "copy must write a file"
+    );
+    assert_eq!(
+        shell.theme_editor_panel.selected.as_deref(),
+        Some("my-theme")
+    );
+    assert!(shell.theme_editor_panel.error.is_none());
+    // Copy is listed as an available theme after the refresh.
+    assert!(shell
+        .theme_editor_panel
+        .available
+        .iter()
+        .any(|n| n == "my-theme"));
+}
+
+/// Validates: Requirement 20.5 -- Save writes the working copy to the selected
+/// theme's file (edited colour persists on disk).
+#[test]
+fn theme_editor_save_writes_edited_colour_to_disk() {
+    use crate::theme_editor_panel::{EditableToken, ThemeEditorAction};
+    use ff_theme::{ColourRGBA, ThemePalette};
+    let mut shell = make_shell();
+    let _dir = point_themes_at_temp(&mut shell);
+    shell.handle_command("THEMES");
+    // Copy to a user theme so we edit/save without touching a built-in.
+    shell.apply_theme_editor_action(ThemeEditorAction::Copy("edited".to_string()));
+    // Edit a token and Save.
+    let red = ColourRGBA::rgb(255, 0, 0);
+    shell.apply_theme_editor_action(ThemeEditorAction::EditToken(EditableToken::UiPanelBg, red));
+    shell.apply_theme_editor_action(ThemeEditorAction::Save);
+    // Reload the file from disk and confirm the edited colour persisted.
+    let themes = shell.themes_dir_override.clone().unwrap();
+    let toml = std::fs::read_to_string(themes.join("edited.toml")).expect("read");
+    let reloaded: ThemePalette =
+        ff_theme::loader::load_from_toml(&toml, ff_theme::mode::VisualMode::Dark).expect("parse");
+    assert_eq!(
+        reloaded.ui.panel_bg, red,
+        "edited colour must persist to disk"
+    );
+}
+
+/// Validates: Requirement 20.5 -- Save As writes to a new named file.
+#[test]
+fn theme_editor_save_as_writes_new_file() {
+    use crate::theme_editor_panel::ThemeEditorAction;
+    let mut shell = make_shell();
+    let _dir = point_themes_at_temp(&mut shell);
+    shell.handle_command("THEMES");
+    shell.apply_theme_editor_action(ThemeEditorAction::SaveAs("saved-as".to_string()));
+    let themes = shell.themes_dir_override.clone().unwrap();
+    assert!(themes.join("saved-as.toml").exists());
+    assert_eq!(
+        shell.theme_editor_panel.selected.as_deref(),
+        Some("saved-as")
+    );
+}
+
+/// Validates: Requirement 20.6 / 19.7 -- Set Active loads the theme, swaps the
+/// palette, and persists theme.active_name for future launches.
+#[test]
+fn theme_editor_set_active_swaps_palette_and_persists() {
+    use crate::theme_editor_panel::ThemeEditorAction;
+    let mut shell = make_shell();
+    let _dir = point_themes_at_temp(&mut shell);
+    shell.handle_command("THEMES");
+    // Copy a distinctly-coloured user theme, then set it active.
+    shell.apply_theme_editor_action(ThemeEditorAction::Copy("active-me".to_string()));
+    shell.apply_theme_editor_action(ThemeEditorAction::SetActive("active-me".to_string()));
+    assert_eq!(
+        shell.palette.name, "active-me",
+        "active palette must be the chosen theme"
+    );
+    // Persisted for next launch.
+    let persisted = shell
+        .config_handle
+        .get_string(ff_config::keys::theme::ACTIVE_NAME)
+        .unwrap_or_default();
+    assert_eq!(persisted, "active-me");
+}

@@ -1149,6 +1149,16 @@ impl WorkbenchShell {
             .unwrap_or_else(|| std::path::PathBuf::from("menus"))
     }
 
+    /// The themes directory: the test override when set, else the real
+    /// `<User_Data_Dir>/themes/` (via `theme_defaults::themes_dir`). All Theme
+    /// editor / active-theme file operations route through this so tests can
+    /// isolate them to a TempDir (CR-NR-074).
+    pub(super) fn themes_dir(&self) -> std::path::PathBuf {
+        self.themes_dir_override
+            .clone()
+            .unwrap_or_else(crate::theme_defaults::themes_dir)
+    }
+
     /// Open (or return to) a menu by name.
     ///
     /// An empty name or `POM` opens/returns to the Home Context (POM); any other
@@ -1283,7 +1293,7 @@ impl WorkbenchShell {
     /// Validates: theme-and-appearance Requirement 20.1, 20.2
     pub(super) fn open_theme_editor(&mut self) {
         use crate::tab_state::TabKind;
-        let themes_dir = crate::theme_defaults::themes_dir();
+        let themes_dir = self.themes_dir();
         // Available themes (built-in + user).
         let available: Vec<String> = ff_theme::list_all_themes(&themes_dir)
             .into_iter()
@@ -1315,7 +1325,7 @@ impl WorkbenchShell {
         action: crate::theme_editor_panel::ThemeEditorAction,
     ) {
         use crate::theme_editor_panel::ThemeEditorAction as A;
-        let themes_dir = crate::theme_defaults::themes_dir();
+        let themes_dir = self.themes_dir();
         match action {
             A::None => {}
             A::Select(name) => {
@@ -1388,7 +1398,7 @@ impl WorkbenchShell {
 
     /// Serialise `palette` and write it to `<themes>/<slug>.toml`.
     fn write_theme_file(&self, name: &str, palette: &ff_theme::ThemePalette) -> Result<(), String> {
-        let themes_dir = crate::theme_defaults::themes_dir();
+        let themes_dir = self.themes_dir();
         std::fs::create_dir_all(&themes_dir)
             .map_err(|e| format!("could not create themes dir: {e}"))?;
         let path = themes_dir.join(format!("{}.toml", crate::theme_defaults::theme_slug(name)));
@@ -1425,7 +1435,7 @@ impl WorkbenchShell {
 
     /// Refresh the Theme Editor's available-themes list from disk + built-ins.
     fn refresh_theme_editor_list(&mut self) {
-        let themes_dir = crate::theme_defaults::themes_dir();
+        let themes_dir = self.themes_dir();
         self.theme_editor_panel.available = ff_theme::list_all_themes(&themes_dir)
             .into_iter()
             .map(|t| t.name)

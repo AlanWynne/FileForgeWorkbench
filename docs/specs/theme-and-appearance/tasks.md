@@ -427,5 +427,5 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configura
     - Covers: Requirement 20.9
   - [x] 24.8 Live preview on EditToken; edits live in the working copy. (Full discard-on-close revert is a follow-up nicety; unsaved edits are not written to disk, and the persisted active theme is unchanged unless SetActive/Save is used.)
     - Covers: Requirement 20.8
-  - [x] 24.9 Tests: THEMES opens the Context (+POM transform); EditToken updates working + live-previews; Reset loads built-in baseline; Reset non-built-in errors; panel unit tests (load_working, get/set, advisories, labels). File-write actions (Copy/Save/SaveAs) exercised via theme_defaults unit tests + manual (themes_dir not injectable in shell tests)
+  - [x] 24.9 Tests: THEMES opens the Context (+POM transform); EditToken updates working + live-previews; Reset loads built-in baseline; Reset non-built-in errors; panel unit tests (load_working, get/set, advisories, labels). Copy/Save/SaveAs/SetActive file writes + persistence fully automated via a `themes_dir_override` test seam (point_themes_at_temp): copy writes a file, save persists an edited colour to disk, save-as writes a new file, set-active swaps the palette + persists theme.active_name
     - Covers: Requirement 20.1-20.10
