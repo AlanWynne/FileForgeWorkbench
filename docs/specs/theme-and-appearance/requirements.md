@@ -339,3 +339,60 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 4. WHEN `THEME <arg>` is issued with an unrecognised mode name, THE workbench SHALL display a clear error naming the invalid value and listing the valid modes, and SHALL NOT change the theme.
 5. THE Settings menu theme actions (Dark / Light / High Contrast / Legacy) SHALL invoke the `THEME` command through the same dispatch path used by the typed command, so that the menu action and the typed command are the same code path (command parity).
 6. WHEN setting the theme via the `THEME` command or the menu fails to persist (e.g. the user config location is unavailable or the key is locked), THE workbench SHALL apply the theme for the current session AND surface a non-silent message that the change could not be saved (no silent revert).
+---
+
+### Requirement 18: Default Legacy Palette and Reset-to-Default
+
+**User Story:** As a workbench user, I want a canonical built-in theme I can always fall back to (based on the Legacy ISPF look), and a way to reset any theme back to its built-in baseline, so that after experimenting with colours I can always return to a known-good appearance.
+
+**Source:** User requirement (CR-NR-074). "a hardcoded internal theme based on legacy, possibly called 'Default'... people make bad choices so we want them to be able to go back to Default."
+
+#### Acceptance Criteria
+
+1. THE Theme_System SHALL provide a fifth built-in palette named `Default Legacy` whose colours are identical to the existing `Legacy (ISPF 3270)` palette at the time of definition. It is a compiled-in palette (like the other built-ins) and cannot be deleted from disk in a way that removes it from the selectable list; it is always available.
+2. THE `Default Legacy` palette SHALL be the canonical Fallback_Theme: WHEN the configured active theme cannot be resolved (missing file, invalid TOML, or unresolved `base`), THE Theme_System SHALL fall back to `Default Legacy` (rather than `Default Dark`) and emit a WARN-level log record naming the unresolved theme. This supersedes Requirement 1.3's "built-in default dark theme" fallback for the file-backed path (Requirement 19); Requirement 1.3 remains the contract for the legacy mode-only path until Requirement 19 is implemented.
+3. THE five built-in palettes (`Default Dark`, `Default Light`, `Default High Contrast`, `Legacy (ISPF 3270)`, `Default Legacy`) SHALL all appear in the available-themes list (Requirement 14.6) and each SHALL be selectable as the active theme.
+4. THE Theme_System SHALL provide a Reset_Theme operation that, given a theme identified by name, restores its on-disk `.toml` to the built-in baseline content for that theme (for a built-in theme, the compiled palette serialised to TOML; for a user theme with a resolvable `base`, the `base` theme's content). Reset SHALL require confirmation before overwriting an existing file.
+5. WHEN a built-in theme's `.toml` file is reset, THE resulting file content SHALL round-trip: loading it produces a palette equal to the compiled built-in palette (consistent with Requirement 9.2).
+6. THE `Default Legacy` name SHALL be stable and reserved: a user-created theme file SHALL NOT be able to shadow or replace the compiled `Default Legacy` fallback used in criterion 2, even if a `default-legacy.toml` on disk is malformed.
+
+---
+
+### Requirement 19: File-Backed Active Theme (Startup and Switch)
+
+**User Story:** As a workbench user, I want the workbench to read which theme I have selected from configuration, load that theme's file, and use it to drive all rendering from then on, so that my saved custom theme is actually used and edits to the file take effect.
+
+**Source:** User requirement (CR-NR-074). "When FFWB starts up it should look for what the configuration says about which theme is in use, and then go looking for the theme file, and from then on use the theme file to guide all rendering." Wires Requirement 1 (Theme_File loading), Requirement 7 (startup loading), and Requirement 14 (custom themes) into the running application.
+
+#### Acceptance Criteria
+
+1. THE Theme_System SHALL manage a `<User_Data_Dir>/themes/` directory. WHEN the workbench starts and this directory does not exist, THE workbench SHALL create it, mirroring the first-launch creation of `<User_Data_Dir>/menus/` (menu-workspace Requirement 4.6).
+2. WHEN the `themes/` directory is created (or when a built-in theme's file is absent) on first launch, THE workbench SHALL materialise each built-in palette as an editable `.toml` file in `themes/` (e.g. `default-dark.toml`, `default-light.toml`, `default-high-contrast.toml`, `legacy.toml`, `default-legacy.toml`) using the serialiser (Requirement 9), and SHALL NOT overwrite a file that already exists (a user may have edited it).
+3. THE configuration SHALL distinguish the active theme (which named theme/file) from the Visual_Mode (dark/light/high-contrast/legacy). The active theme SHALL be identified by a configuration key holding a theme NAME (resolving to a `themes/<slug>.toml` file or a built-in). WHERE the existing `theme.active` key currently holds a MODE string (dark/light/high_contrast/legacy), the gate's design (Requirement 19, design) SHALL define the key(s) so that: (a) the existing `THEME <mode>` command (Requirement 17) and `theme.follow_os` (Requirement 16) continue to work unchanged, and (b) no existing persisted config value causes a startup failure (a mode string SHALL resolve to the corresponding built-in theme).
+4. WHEN the workbench starts, THE Theme_System SHALL resolve the active theme name to a `themes/<slug>.toml` file, load and validate it via the loader (Requirement 1, resolving `base` per Requirement 14.4/15.5), and set `self.palette` from the loaded palette BEFORE the first frame is rendered (Requirement 7.1), so that all rendering is driven by the file, not the compiled default.
+5. WHEN the active theme file is missing or invalid at startup, THE Theme_System SHALL fall back to the `Default Legacy` built-in (Requirement 18.2), apply it for the session, and emit a WARN naming the unresolved theme, WITHOUT crashing.
+6. WHEN the active theme's `.toml` file changes on disk while the workbench is running, THE Theme_System SHALL reload it and atomically swap the active palette within one hot-reload cycle (Requirement 7.5/7.6), so edits made in an external editor or by the Theme editor (Requirement 20) take effect without restart.
+7. WHEN the user selects a different theme (by name) as active, THE Theme_System SHALL load that theme's file, set it as the active palette, and persist the selection so the same theme is active on the next launch.
+8. ALL existing rendering that reads `self.palette` (chrome, menus, POM, editor, focus ring) SHALL be driven by the file-loaded palette with no code change at the call sites (the palette field remains the single source of truth; only its population changes from compiled-only to file-backed).
+9. THE `THEME <mode>` command (Requirement 17.2) SHALL continue to select the corresponding built-in-mode theme; when file-backed themes are active, `THEME <mode>` SHALL switch to the built-in theme for that mode (loading its `themes/` file if present, else the compiled palette), preserving command parity and existing behaviour.
+
+---
+
+### Requirement 20: Theme Editor Context
+
+**User Story:** As a workbench user, I want a simple, fast workspace where I can copy an existing theme, change its colours, save it under its own name, and select it for future use, so that I can personalise the appearance without editing TOML by hand or restarting.
+
+**Source:** User requirement (CR-NR-074). "we need to create a workspace where i can copy/change/Save theme's. Once i have saved a theme with it's own name i should be able to select it so that FFWB will use it in the future." Owner directed: keep it simple and fast first; a richer graphical editor can come later.
+
+#### Acceptance Criteria
+
+1. THE workbench SHALL provide a Theme_Editor Context (a Workspace, opened via a command so it honours command parity -- architecture-brief Principle 2) that lists the available themes (Requirement 14.6) and lets the user select one to edit.
+2. THE Theme_Editor SHALL open via a `THEMES` (or equivalently named) command from any context, and the Settings menu Themes affordance SHALL invoke that same command (same code path as the typed command). WHEN opened from the Home Context (POM), it MAY transform the active POM tab in place (consistent with the Settings/Commands Contexts) so END/RETURN returns to the POM.
+3. THE Theme_Editor SHALL present the selected theme's editable colour tokens (at minimum the `ui`, `editor`, and Legacy-semantic colours that drive the visible chrome) with their current values shown as `#RRGGBB`/`#RRGGBBAA`, and SHALL allow the user to change a token's value by entering a hex colour. Invalid hex input SHALL be rejected with an inline message and SHALL NOT corrupt the theme.
+4. THE Theme_Editor SHALL provide a Copy_Theme action that creates a new theme initialised from the currently selected theme's colours, prompting for a new unique name; the copy becomes the edit target. This is how a user derives a custom theme from a built-in without altering the built-in.
+5. THE Theme_Editor SHALL provide a Save action that writes the edited theme to its `themes/<slug>.toml` file via the serialiser (Requirement 9), and a Save_As action that writes to a new named file. Saving a built-in theme's file is permitted (the built-in compiled palette remains the reset baseline, Requirement 18.4).
+6. THE Theme_Editor SHALL provide a Set_Active action that makes the selected/edited theme the active theme (Requirement 19.7), applying it immediately (within one frame) and persisting the selection for future launches.
+7. THE Theme_Editor SHALL provide a Reset action (Requirement 18.4) that restores the selected theme's file to its built-in baseline, with confirmation.
+8. WHEN the user edits a colour in the Theme_Editor, THE editor MAY show a live preview by applying the in-progress palette; edits are not persisted until Save/Save_As. Closing the editor without saving SHALL discard unsaved in-progress edits and leave the on-disk file and the active theme unchanged.
+9. THE Theme_Editor SHALL surface a contrast advisory (using `check_theme_contrast`, Requirement 5.6/accessibility) for foreground/background pairs that fall below the WCAG AA threshold, as a non-blocking warning, so users are guided away from unreadable combinations.
+10. EVERY Theme_Editor action (open, copy, save, save-as, set-active, reset) SHALL be expressible as a command routed through the shell dispatcher (command parity); UI affordances (menu items, buttons) SHALL invoke those commands rather than calling the underlying logic directly.

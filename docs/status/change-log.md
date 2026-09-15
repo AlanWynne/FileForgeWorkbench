@@ -22,6 +22,13 @@ Never delete a row â€” update `Status` in-place.
 
 New capabilities that did not previously exist.
 
+### CR-NR-074 -- File-backed, user-editable themes with a Theme editor workspace
+- **Date/Phase**: Phase (theme-editor) (gate)
+- **Prompt**: "The Themes should be configurable and we should be able to create new themes and save them... a hardcoded internal theme based on legacy, possibly called 'Default'... When FFWB starts up it should look for what the configuration says about which theme is in use, and then go looking for the theme file, and from then on use the theme file to guide all rendering... a workspace where i can copy/change/Save theme's... Once i have saved a theme with it's own name i should be able to select it so that FFWB will use it in the future."
+- **Description**: Make themes file-backed and user-editable. (a) Materialise the built-in palettes as editable `.toml` files under `<User_Data_Dir>/themes/` on first launch (mirroring `menus/`), including a new hardcoded "Default Legacy" palette (copy of the Legacy ISPF palette) as the canonical fall-back; the four existing built-ins (Default Dark/Light/High Contrast, Legacy ISPF 3270) remain. (b) At startup, read the configured active theme, load its `.toml` via `ff_theme::loader::load_from_toml`, and drive ALL rendering from that palette, falling back to the compiled built-in when the file is missing/invalid. (c) Add a simple, fast Theme editor Context (a Menu/editor-style Workspace) to copy an existing theme, edit its colours, Save / Save As a new named theme, and Set Active; selecting a saved theme by name makes FFWB use it thereafter. Reset-to-Default restores the built-in baseline. The `ff-theme` loader/discovery/serialiser already exist but are not wired into `ff-desktop`; this CR wires them and adds the editor. NOTE: `theme.active` is currently (mis)used as a MODE name; the gate must resolve the mode-vs-file-name split without breaking the existing `THEME <mode>` command / follow_os behaviour.
+- **Status**: PENDING GATE
+- **Linked spec**: `docs/specs/theme-and-appearance/requirements.md`
+
 ### CR-NR-001 â€” Prompt triage and change tracking
 - **Date/Phase**: Phase AS
 - **Prompt**: "Can we create a steering rule that every prompt is evaluated as a bug or a new requirement"
@@ -751,6 +758,7 @@ Modifications to existing behaviour that already works.
 - **Linked spec**: source `docs/source-documents/Task-Schedula-plugin-FileForgeWorkbench.md` (+ `Task-Schedular-plugin-FileForgeWorkbench.docx`); to be authored at the gate. Cross-ref ROADMAP PLUGIN order.
 
 | Phase (swap-command) | CR-NR-073 added -- Task Scheduler plugin; owner source docs recorded under docs/source-documents/; full requirements gate DEFERRED until after the existing plugins are complete (not scheduled now) |
+| Phase (theme-editor) | CR-NR-074 added -- file-backed user-editable themes: materialise built-ins (+ new "Default Legacy") to themes/, load the active theme file at startup to drive rendering, and add a simple Theme editor Context (copy/edit/save-as/set-active); wires the existing ff-theme loader/discovery/serialiser; gate authored |
 
 ### CR-CH-018 -- Unify the POM and Menu_Workspace into ONE config-driven menu renderer
 - **Date/Phase**: Phase (unified-menu-renderer) (gate)

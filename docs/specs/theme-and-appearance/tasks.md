@@ -376,3 +376,55 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configura
     - Covers: Requirement 17.6
   - [ ] 21.4 Write unit tests: `theme_command_sets_mode`, `theme_command_bare_reports_current`, `theme_command_invalid_arg_errors`, `theme_menu_and_command_same_path`
     - Covers: Requirement 17.1-17.6
+
+## Phase (theme-editor) Tasks -- File-backed themes + Theme editor (Requirements 18-20, CR-NR-074)
+
+- [ ] 22. Default Legacy built-in palette + reset baseline (Requirement 18)
+  - [ ] 22.1 Add `ff_theme::defaults::default_legacy_palette()` (name `"Default Legacy"`, colours identical to `legacy_palette()`, `mode: VisualMode::Legacy`)
+    - Covers: Requirement 18.1
+  - [ ] 22.2 Add `Default Legacy` to `BUILTIN_THEME_NAMES` / `builtin_themes()` in `discovery.rs` so it appears in `list_all_themes`
+    - Covers: Requirement 18.3
+  - [ ] 22.3 Add `ff_theme::defaults::fallback_palette()` returning `default_legacy_palette()`; document it as the canonical Fallback_Theme
+    - Covers: Requirement 18.2, 18.6
+  - [ ] 22.4 Write tests: `default_legacy_matches_legacy_colours`, `default_legacy_in_builtin_list`, `fallback_is_default_legacy`, and a round-trip test that serialise(default_legacy) parses back equal (Req 18.5)
+    - Covers: Requirement 18.1-18.6
+
+- [ ] 23. File-backed active theme: themes dir, startup load, hot-reload, config split (Requirement 19)
+  - [ ] 23.1 Add `ff-desktop` `theme_defaults::ensure_default_theme_files(user_data_dir)` mirroring `ensure_default_menu_files`: create `themes/`, `write_if_absent` each built-in serialised via `ff_theme::serialiser::serialise` (`default-dark.toml`, `default-light.toml`, `default-high-contrast.toml`, `legacy.toml`, `default-legacy.toml`)
+    - Covers: Requirement 19.1, 19.2
+  - [ ] 23.2 Call `ensure_default_theme_files` at the same first-launch point as `ensure_default_menu_files` in `shell/update.rs`
+    - Covers: Requirement 19.1
+  - [ ] 23.3 Register a new config key `theme.active_name` (string, default empty) in the theme schema; keep `theme.active` (mode) unchanged
+    - Covers: Requirement 19.3
+  - [ ] 23.4 Implement `resolve_startup_palette(config, themes_dir) -> ThemePalette`: if `theme.active_name` set -> load `themes/<slug>.toml` (or built-in by name) via `load_from_toml`; else resolve `theme.active` mode -> built-in's `themes/` file or compiled palette; on any error -> `fallback_palette()` + WARN
+    - Covers: Requirement 19.3, 19.4, 19.5
+  - [ ] 23.5 Wire `resolve_startup_palette` into startup so `self.palette` is file-loaded BEFORE the first frame (replace the unconditional `dark_palette()` in `main.rs`)
+    - Covers: Requirement 19.4, 19.8
+  - [ ] 23.6 Extend the per-frame theme block in `update.rs` to poll the active theme file mtime and reload via `load_from_toml` on change, swapping `self.palette` atomically; keep the mode/follow_os logic
+    - Covers: Requirement 19.6
+  - [ ] 23.7 Update `set_theme` (render_chrome.rs): `THEME <mode>` also updates `theme.active_name` to the built-in theme for that mode so the keys stay consistent (command parity preserved)
+    - Covers: Requirement 19.9
+  - [ ] 23.8 Add a `set_active_theme(name)` shell helper that loads the named theme file, swaps `self.palette`, and persists `theme.active_name`
+    - Covers: Requirement 19.7
+  - [ ] 23.9 Write tests: themes dir + built-in files created on first launch; startup loads the active-name file; missing/invalid file falls back to Default Legacy without panic; a mode-only legacy config still resolves; set_active persists and reloads
+    - Covers: Requirement 19.1-19.9
+
+- [ ] 24. Theme Editor Context (Requirement 20)
+  - [ ] 24.1 Add `TabKind::ThemeEditor` (tab_state.rs, title `[THEME]`) and `WorkspaceKind::ThemeEditor` for session restore
+    - Covers: Requirement 20.1
+  - [ ] 24.2 Add `theme_editor_panel: ThemeEditorState` field on `WorkbenchShell`; state holds available themes, selected name, working-copy palette, token->hex buffers, validation messages
+    - Covers: Requirement 20.1, 20.3
+  - [ ] 24.3 Add a `THEMES` command intercept in `handle_command` that opens the Theme Editor Context (transform the active POM tab in place, else new tab); route the Settings menu "Themes" item through the same `THEMES` command
+    - Covers: Requirement 20.2, 20.10
+  - [ ] 24.4 Implement `theme_editor_panel::render` returning a `ThemeEditorAction` (`Select`, `EditToken`, `Copy`, `Save`, `SaveAs`, `SetActive`, `Reset`, `None`); render the token list with current hex values and inline hex validation
+    - Covers: Requirement 20.3
+  - [ ] 24.5 Apply `ThemeEditorAction` in the shell (side effects in the command layer): Copy (new named working copy), Save/SaveAs (serialise -> themes/<slug>.toml), SetActive (set_active_theme + persist), Reset (restore built-in baseline with confirmation), EditToken (parse hex, update working copy, live preview)
+    - Covers: Requirement 20.4, 20.5, 20.6, 20.7, 20.8
+  - [ ] 24.6 Add the render arm `TabKind::ThemeEditor => theme_editor_panel::render(...)` in `shell/render.rs` and apply the returned action
+    - Covers: Requirement 20.1
+  - [ ] 24.7 Contrast advisory: run `check_theme_contrast(&working_palette)` and show below-AA pairs as a non-blocking list
+    - Covers: Requirement 20.9
+  - [ ] 24.8 Discard-on-close: closing the editor without saving reverts any live-preview palette to the persisted active theme; on-disk files unchanged
+    - Covers: Requirement 20.8
+  - [ ] 24.9 Write tests: THEMES opens the Context (POM transform); Copy creates a new named theme from the source; EditToken rejects invalid hex; Save writes the file; SetActive persists theme.active_name and swaps palette; Reset restores baseline; menu item and command share one path; contrast advisory lists below-AA pairs
+    - Covers: Requirement 20.1-20.10

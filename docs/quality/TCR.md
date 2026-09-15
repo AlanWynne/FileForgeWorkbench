@@ -369,6 +369,29 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-theme` | ✅ | `discovery.rs` unit tests | Req 14.9: `export_theme()` serialises active palette to TOML (`export_theme_round_trips_name`, `export_theme_produces_valid_toml`) |
 | `ff-theme` | ✅ | `loader.rs` unit tests | Req 14.10: Unresolvable `base` theme logs WARN and falls back to built-in default (`base_inheritance_fills_missing_tokens`) |
 
+### Phase (theme-editor) -- File-backed themes + Theme editor (CR-NR-074, theme-and-appearance Req 18-20)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-theme` | 🔴 | -- | Req 18.1: `default_legacy_palette()` built-in (name "Default Legacy", colours == Legacy ISPF) |
+| `ff-theme` | 🔴 | -- | Req 18.2/18.6: `Default Legacy` is the canonical fallback when the active theme cannot be resolved; reserved name cannot be shadowed by a malformed file |
+| `ff-theme` | 🔴 | -- | Req 18.3: five built-ins (incl. Default Legacy) listed by `list_all_themes` and selectable |
+| `ff-desktop` | 🔴 | -- | Req 18.4/18.5: reset-to-baseline restores a theme's `.toml` to the built-in content (round-trips equal), with confirmation |
+| `ff-desktop` | 🔴 | -- | Req 19.1/19.2: `themes/` dir created on first launch; built-ins materialised as `.toml` (write-if-absent) |
+| `ff-desktop` | 🔴 | -- | Req 19.3: `theme.active_name` config key added (theme file NAME); existing `theme.active` (mode) unchanged; mode-only configs still resolve |
+| `ff-desktop` | 🔴 | -- | Req 19.4/19.5: startup loads the active theme file to drive `self.palette` before first frame; missing/invalid -> Default Legacy fallback + WARN, no crash |
+| `ff-desktop` | 🔴 | -- | Req 19.6: active theme file hot-reloads (mtime poll) and swaps the palette atomically |
+| `ff-desktop` | 🔴 | -- | Req 19.7/19.9: `set_active_theme(name)` loads+persists `theme.active_name`; `THEME <mode>` keeps the two keys consistent (command parity) |
+| `ff-desktop` | 🔴 | -- | Req 19.8: existing rendering call sites unchanged; palette field remains the single source of truth |
+| `ff-desktop` | 🔴 | -- | Req 20.1/20.2/20.10: Theme Editor Context opens via a `THEMES` command; Settings menu Themes item dispatches the same command (parity); POM transform-in-place |
+| `ff-desktop` | 🔴 | -- | Req 20.3: editable token list shows current hex; invalid hex rejected inline without corrupting the theme |
+| `ff-desktop` | 🔴 | -- | Req 20.4: Copy_Theme creates a new named theme initialised from the source (built-in unaltered) |
+| `ff-desktop` | 🔴 | -- | Req 20.5: Save / Save_As write the theme to `themes/<slug>.toml` via the serialiser |
+| `ff-desktop` | 🔴 | -- | Req 20.6: Set_Active applies the theme immediately and persists it for future launches |
+| `ff-desktop` | 🔴 | -- | Req 20.7: Reset restores the selected theme's file to its built-in baseline (confirmation) |
+| `ff-desktop` | 🔴 | -- | Req 20.8: live preview while editing; close-without-save discards in-progress edits and leaves disk + active theme unchanged |
+| `ff-desktop` | 🔴 | -- | Req 20.9: contrast advisory (check_theme_contrast) lists below-AA foreground/background pairs, non-blocking |
+
 ### Phase AE -- Legacy Theme Colour Semantics
 
 | Crate | Status | Test files | Notes |

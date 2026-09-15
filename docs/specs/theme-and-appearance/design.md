@@ -1541,3 +1541,62 @@ Design:
 No new config keys, palette structures, or serialisation changes. No change to
 the per-frame theme-active read-back block (it remains the authority across
 frames; `set_theme` writes both memory and config so they agree).
+
+---
+
+## 13. File-Backed Active Theme + Theme Editor Context (Requirements 18-20, CR-NR-074)
+
+This section is the design delta for wiring the (already-implemented, already-tested) `ff-theme` loader/discovery/serialiser into the running `ff-desktop` shell, adding the `Default Legacy` built-in and reset, and adding a simple Theme editor Context. It builds on Sections 10-12 (theme file format, discovery) which are already designed.
+
+### 13.1 Current state (grounding)
+
+Confirmed by code inspection (Phase theme-editor investigation):
+- Startup builds a compiled `dark_palette()` in `main.rs` and hands it to `WorkbenchShell::new`; the per-frame block in `shell/update.rs` then re-applies the persisted MODE from the `theme.active` config key via `default_palette_for_mode`. No file is ever loaded.
+- `theme.active` is (mis)used to hold a MODE string (dark/light/high_contrast/legacy), constrained by the schema in `main.rs`. It is NOT a theme file name.
+- `ff_theme::loader::load_from_toml`, `discovery::scan_themes_dir`/`list_all_themes`/`export_theme`, and `serialiser::serialise` exist and are unit-tested but have NO caller in `ff-desktop`.
+- There is no `themes/` directory and no `ensure_default_theme_files`; the parallel for menus is `menu_workspace::defaults::ensure_default_menu_files`, called at first launch in `shell/update.rs`.
+- `self.palette: ThemePalette` on `WorkbenchShell` is the single source of truth consumed by all rendering (`self.palette.<group>.<field>` and `self.palette.colour(token)`).
+- Built-ins: `Default Dark`, `Default Light`, `Default High Contrast`, `Legacy (ISPF 3270)`. No fifth/Default theme, no reset.
+
+### 13.2 Default Legacy built-in (Requirement 18)
+
+- Add `ff_theme::defaults::default_legacy_palette()` returning a palette with `name = "Default Legacy"` and the SAME colour groups as `legacy_palette()`, `mode: VisualMode::Legacy`. (Simplest correct form: build `legacy_palette()` and set `name`.)
+- Add it to `builtin_themes()` / `BUILTIN_THEME_NAMES` in `discovery.rs` so it appears in `list_all_themes`.
+- Fallback: introduce a `fallback_palette()` (or a documented constant) returning `default_legacy_palette()`; the file-backed loader (13.4) uses it when resolution fails. Requirement 1.3's dark fallback remains for the mode-only path until 13.4 lands.
+- Reset: a shell/theme helper `reset_theme_file(name)` that serialises the built-in baseline for `name` (or the resolved `base`) and writes it to `themes/<slug>.toml` after confirmation.
+
+### 13.3 Mode-vs-filename config resolution (Requirement 19.3)
+
+The existing `theme.active` holds a MODE. To avoid breaking `THEME <mode>` (Req 17) and `follow_os` (Req 16) and any persisted config, the design:
+- KEEPS `theme.active` as the MODE selector for the built-in-mode path (its current meaning and schema are unchanged; `THEME <mode>` still writes it).
+- ADDS a new key `theme.active_name` (string, default empty) holding the NAME of the active theme file/built-in. Resolution at startup (13.4):
+  1. If `theme.active_name` is non-empty, resolve it to a `themes/<slug>.toml` (or a built-in by name) and load that.
+  2. Else fall back to the mode path: resolve `theme.active` (MODE) to the corresponding built-in, loading `themes/<slug>.toml` for that mode if present, else the compiled palette.
+- `THEME <mode>` (Req 17.9): sets `theme.active` (mode) AND updates `theme.active_name` to the built-in theme for that mode, so the two keys stay consistent and command parity holds.
+- Set_Active from the editor (Req 20.6) writes `theme.active_name` (and, when the chosen theme has a definite mode, `theme.active`).
+- This split is additive: existing configs (only `theme.active` mode set) resolve correctly with no migration (criterion 19.3b).
+
+### 13.4 Startup + hot-reload wiring (Requirement 19.1, 19.2, 19.4-19.6)
+
+- First-launch: add `ff-desktop` `theme_defaults::ensure_default_theme_files(user_data_dir)` mirroring `ensure_default_menu_files`: create `themes/`, and `write_if_absent` each built-in serialised via `ff_theme::serialiser::serialise` to `default-dark.toml`, `default-light.toml`, `default-high-contrast.toml`, `legacy.toml`, `default-legacy.toml`. Called at the same first-launch point as `ensure_default_menu_files` in `update.rs`.
+- Startup palette: replace the `main.rs` unconditional `dark_palette()` with a resolver `resolve_startup_palette(config, themes_dir) -> ThemePalette` that applies 13.3 resolution: load the active theme file via `load_from_toml`; on any error return `default_legacy_palette()` and WARN. Because `main.rs` currently constructs the palette before `WorkbenchShell::new`, the resolver runs there (or the shell loads on the first frame before render, consistent with Req 7.1). Loading BEFORE the first frame satisfies 19.4.
+- Hot-reload: extend the existing per-frame theme block in `update.rs` to also poll the active theme file's mtime (same pattern as `MenuWorkspaceState::poll_reload`) and reload via `load_from_toml` on change, swapping `self.palette` atomically (19.6). The mode-follow and `theme.active` mode logic remain.
+- No render call sites change (19.8): only `self.palette` population changes.
+
+### 13.5 Theme Editor Context (Requirement 20)
+
+Mirrors the SettingsPanel/CommandConfigurator editor-Context recipe:
+- `TabKind::ThemeEditor` added to `tab_state.rs`; tab title `[THEME]`.
+- `theme_editor_panel: ThemeEditorState` field on `WorkbenchShell` (like `settings_panel`/`command_configurator_panel`). State holds: the list of available themes (from `list_all_themes(themes_dir)` + built-ins), the selected theme name, the in-progress editable `ThemePalette` (working copy), a map of token->hex text-edit buffers, and transient validation/advisory messages.
+- Open command: `THEMES` (plural, distinct from the `THEME <mode>` switch command) routed through `handle_command`; on a POM tab it calls `transform_active_pom_tab(TabKind::ThemeEditor, "[THEME]")`, else opens a dedicated tab. The Settings menu "Themes" item dispatches the same `THEMES` command (Req 20.2, 20.10).
+- Render arm: `TabKind::ThemeEditor => crate::theme_editor_panel::render(ui, &mut self.theme_editor_panel, ...)` returning a `ThemeEditorAction` enum (`Copy{new_name}`, `Save`, `SaveAs{name}`, `SetActive{name}`, `Reset{name}`, `EditToken{token,hex}`, `Select{name}`, `None`) that the shell applies -- keeping the panel pure/testable and the side effects (file writes, palette swap, config persist) in the shell (command layer).
+- Colour editing: present the visible-chrome tokens first (ui + editor groups + Legacy semantic tokens). Each shows current `to_hex()`; on edit, parse with `ColourRGBA::from_hex`, reject invalid inline (Req 20.3). Live preview (Req 20.8) = apply the working-copy palette to `self.palette` transiently while editing; discard on close-without-save.
+- Save/SaveAs/Reset use `ff_theme::serialiser::serialise` + `export_theme`; SetActive persists `theme.active_name` (13.3) and swaps `self.palette`.
+- Contrast advisory (Req 20.9): run `check_theme_contrast(&working_palette)` and show a non-blocking list of below-AA pairs.
+- Session restore: add `WorkspaceKind::ThemeEditor` so a persisted Theme editor Workspace reopens (mirrors `WorkspaceKind::Settings`).
+
+### 13.6 Risk / scope notes
+
+- HIGH-touch files: `main.rs` (startup palette), `shell/update.rs` (hot-reload + first-launch), `shell/render_chrome.rs` (`set_theme` to also set `theme.active_name`), `ff-theme/src/defaults.rs` + `discovery.rs` (Default Legacy). Split implementation: (A) Default Legacy + fallback (ff-theme, low risk); (B) themes/ materialisation + startup file-load + hot-reload (behaviour-changing, needs careful config-compat tests); (C) Theme editor Context (additive). Each is a separate verifiable increment.
+- Keep the editor SIMPLE first (owner directive): a token list with hex edits + Copy/Save/Save As/Set Active/Reset. A graphical colour picker with swatches is explicitly out of scope for this CR and can be a later enhancement.
+- No contradiction with existing Req 1/5/7/9/14: this delta IMPLEMENTS them in the shell and adds 18-20. Req 1.3's dark fallback is superseded only on the file-backed path by Req 18.2 (Default Legacy), noted in 18.2.
