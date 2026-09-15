@@ -399,3 +399,37 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 8. WHEN the user edits a colour in the Theme_Editor, THE editor MAY show a live preview by applying the in-progress palette; edits are not persisted until Save/Save_As. Closing the editor without saving SHALL discard unsaved in-progress edits and leave the on-disk file and the active theme unchanged.
 9. THE Theme_Editor SHALL surface a contrast advisory (using `check_theme_contrast`, Requirement 5.6/accessibility) for foreground/background pairs that fall below the WCAG AA threshold, as a non-blocking warning, so users are guided away from unreadable combinations.
 10. EVERY Theme_Editor action (open, copy, save, save-as, set-active, reset) SHALL be expressible as a command routed through the shell dispatcher (command parity); UI affordances (menu items, buttons) SHALL invoke those commands rather than calling the underlying logic directly.
+---
+
+### Requirement 21: Non-Monochrome Chrome for Dark and Light Themes
+
+**User Story:** As a workbench user, I want the Dark and Light built-in themes to use accent colour and a sense of depth in the application chrome (the POM, menus, panels, tab bar, title line), so that the interface looks designed and layered rather than a flat wash of one grey.
+
+**Source:** User requirement (CR-CH-020). "the default themes apart from the legacy theme appear very Monochrome". UX evaluation established the cause: the accent is defined but applied only inside the editor; every chrome surface is a near-identical grey. Keeps the Catppuccin base and calm feel.
+
+#### Acceptance Criteria
+
+1. THE Dark and Light built-in palettes SHALL define a THREE-LEVEL background hierarchy so that layered surfaces are visually distinct: a window/base level (`ui.panel_bg`), a raised-surface level (`ui.button_bg`), and an input/inset level (`ui.input_bg`). The three SHALL be perceptibly different (not the near-identical values used before this change) while remaining within the theme's family.
+2. THE Dark and Light palettes SHALL apply the theme accent to the keyboard focus ring (`ui.focus_ring` = the theme accent colour), so the focused element is clearly indicated.
+3. THE Dark and Light palettes SHALL give the ACTIVE tab an accent-tinted background (`tab_bar.active_bg`) distinct from the inactive-tab background (`tab_bar.inactive_bg`), so the focused Workspace stands out in the tab bar.
+4. THE Dark and Light palettes SHALL provide an accent-tinted primary-menu / title-bar background (`ui.primary_menu_bg`) distinct from the base panel background, so the Title_Line reads as a header band rather than blending into the body.
+5. WHEN the active theme is NOT the Legacy theme AND NOT the POM's own hardcoded header, THE Title_Line SHALL be painted with the `ui.primary_menu_bg` background and `ui.menu_bar_fg` text (mirroring the Legacy title-line branch), so criterion 4's colour is actually visible. (Render tweak: the non-Legacy title-line branch previously painted no background.)
+6. THE tab bar SHALL derive its active/inactive tab background and text from the `tab_bar` palette group (`tab_bar.active_bg`, `tab_bar.inactive_bg`, `tab_bar.active_text`, `tab_bar.inactive_text`) rather than reusing `ui.input_bg`/`ui.panel_bg`/`editor.foreground`, so per-theme tab colours (criterion 3) are honoured. (Render tweak: `render_tab_bar` previously ignored the `tab_bar` group.)
+7. FOR ALL foreground/background pairs changed by this requirement (title-bar text on `primary_menu_bg`, active/inactive tab text on their backgrounds), THE contrast SHALL meet WCAG AA: normal text >= 4.5:1; the intentionally-muted inactive-tab text MAY use the >= 3:1 UI-element threshold.
+8. THE syntax colour groups, editor colours, and the overall Catppuccin identity of Dark and Light SHALL be preserved; this requirement changes chrome/`ui`/`tab_bar` colours and the accent's reach into the chrome, not the editor content palette.
+9. THE High-Contrast theme SHALL be unchanged by this requirement and SHALL continue to meet its AAA (7:1) contrast contract (Requirement 5.6).
+
+---
+
+### Requirement 22: Legacy Theme Blue-on-Black Legibility
+
+**User Story:** As a user of the Legacy (ISPF 3270) theme, I want the blue informational text (line numbers, comments, unknown files, margins) to be readable on the black background, while the theme keeps its authentic ISPF look everywhere else.
+
+**Source:** User requirement (CR-CH-020). The normal-intensity ISPF blue `#0000AA` on black is ~1.58:1 -- effectively unreadable. Real 3270 sessions used the brighter blue for legibility.
+
+#### Acceptance Criteria
+
+1. WHERE the Legacy palette uses the normal-intensity ISPF blue (`#0000AA`, `ISPF_BLUE`) as a FOREGROUND on the black background -- specifically `chrome.line_number_fg`, `chrome.fold_margin_fg`, `chrome.margin_separator`, `syntax.comment`, and `file_tree.unknown` -- THE Legacy palette SHALL instead use the bright ISPF blue (`#7878FF`, `ISPF_BLUE_HI`), which achieves ~5.93:1 on black (WCAG AA).
+2. ALL other Legacy colours SHALL remain byte-identical (the ISPF semantic attribute mapping, turquoise input fields, yellow commands, green body text, white headings, blue primary-menu background, etc. are unchanged). This is a targeted legibility fix, not a re-theme.
+3. THE `Default Legacy` palette (Requirement 18.1), being a copy of the Legacy palette, SHALL inherit the same legibility fix automatically.
+4. THE Legacy `primary_menu_bg` (blue `#0000AA` as a BACKGROUND with white text) SHALL be unchanged -- white on `#0000AA` is a background pairing, not the blue-on-black foreground problem this requirement addresses.

@@ -994,6 +994,24 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 
 ## Summary (current -- updated after full sub-project audit)
 
+### Phase (theme-polish) -- Non-monochrome Dark/Light chrome + Legacy legibility (CR-CH-020, Req 21/22)
+
+> UX: Dark/Light chrome looked monochrome (accent only in the editor). Enhance the
+> chrome with accent active tab + focus ring, accent-tinted title bar, and a 3-level
+> surface hierarchy (Catppuccin base kept). Legacy legibility bump: blue-on-black
+> #0000AA (1.58:1) -> #7878FF (5.93:1) for line numbers/comments/unknown/margins;
+> Legacy otherwise byte-identical. Two render tweaks: non-Legacy title-bar background
+> + wire the dead tab_bar.* group. All new pairs >= AA; High Contrast unchanged.
+
+- [ ] TP.1 Legacy blue-on-black legibility (ISPF_BLUE_HI for line_number/comment/unknown/margins) (Task 26.1; Req 22)
+- [ ] TP.2 Dark ui/tab_bar accent + surface hierarchy (Task 26.2; Req 21)
+- [ ] TP.3 Light ui/tab_bar accent + surface hierarchy (Task 26.3; Req 21)
+- [ ] TP.4 render_title_line non-Legacy accent background (Task 26.4; Req 21.5)
+- [ ] TP.5 render_tab_bar reads tab_bar.* group (Task 26.5; Req 21.6)
+- [ ] TP.6 Contrast tests + TCR; verify.ps1 CLEAN; rebuild; commit+push (Task 26.6-26.7)
+
+---
+
 ### Phase (theme-editor-fixes) -- Built-ins code-only + Save As bug (CR-CH-019, B052)
 
 > Owner testing found duplicate themes (built-ins listed both compiled and as files)

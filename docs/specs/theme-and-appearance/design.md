@@ -1643,3 +1643,54 @@ those files are ignored for listing (built-in name wins), so they no longer caus
 duplicates; they are harmless orphans. The implementation MAY optionally delete
 known built-in-named files on startup, but the de-dup rule already prevents the
 duplicate symptom, so cleanup is optional and out of scope for this CR.
+
+### Design Delta 13.8: Non-monochrome Dark/Light chrome + Legacy legibility (CR-CH-020, Req 21/22)
+
+UX evaluation found the Dark/Light chrome monochrome because the accent
+(`editor.accent`) is applied only inside the editor; the `ui` group is a flat set
+of near-identical greys and the `tab_bar` group is never read by the renderer.
+Fix = palette edits + two tiny render tweaks. Catppuccin base and calm feel kept.
+
+Concrete palette values (all contrast-verified >= WCAG AA):
+
+DARK (`dark_ui_colours` / `dark_tab_bar_colours`), accent `#89B4FA`:
+- `panel_bg`   `#181825` (window/base -- unchanged)
+- `button_bg`  `#2A2A3C` (raised surface -- was `#313244`; kept distinct from base+input)
+- `input_bg`   `#1E1E2E` (inset -- unchanged)
+- `primary_menu_bg` `#28344A` (accent-tinted header band -- was `#181825`)
+- `focus_ring` `#89B4FA` (accent -- was `#4FC3F7`)
+- `tab_bar.active_bg` `#2E3A52` (accent-tinted), `active_text` `#CDD6F4`
+- `tab_bar.inactive_bg` `#181825`, `inactive_text` `#6C7086`
+- title text `#CDD6F4` on `#28344A` = 8.64:1; active-tab text = 7.88:1; inactive-tab text `#6C7086` on `#181825` = 3.59:1 (UI threshold 3:1).
+
+LIGHT (`light_ui_colours` / `light_tab_bar_colours`), accent `#1E66F5`:
+- `panel_bg`   `#E6E9EF` (base)
+- `button_bg`  `#DCE0E8` (raised)
+- `input_bg`   `#EFF1F5` (inset)
+- `primary_menu_bg` `#DCE6FB` (accent-tinted header band -- was `#E6E9EF`)
+- `focus_ring` `#1E66F5` (accent -- was `#0277BD`)
+- `tab_bar.active_bg` `#D0DBF7` (accent-tinted), `active_text` `#4C4F69`
+- `tab_bar.inactive_bg` `#E6E9EF`, `inactive_text` `#5A5E78`
+- title text `#4C4F69` on `#DCE6FB` = 6.37:1; active-tab text on `#D0DBF7` = 5.76:1.
+
+LEGACY legibility (Req 22): replace `ISPF_BLUE` (`#0000AA`, ~1.58:1 on black) with
+`ISPF_BLUE_HI` (`#7878FF`, ~5.93:1) ONLY at these foreground uses:
+`chrome.line_number_fg`, `chrome.fold_margin_fg`, `chrome.margin_separator`,
+`syntax.comment`, `file_tree.unknown`. Everything else in Legacy is byte-identical;
+`primary_menu_bg` stays `#0000AA` (it is a background with white text).
+
+Render tweaks (Req 21.5, 21.6):
+- `render_title_line` (render.rs): the else (non-Legacy, non-POM) branch currently
+  does a plain `ui.label(...)` with no fill. Change it to paint
+  `ui.primary_menu_bg` as the background and `ui.menu_bar_fg` text, mirroring the
+  Legacy branch. The POM hardcoded branch and the Legacy branch are unchanged.
+- `render_tab_bar` (render_chrome.rs): change the four local bindings from
+  `ui.input_bg`/`ui.panel_bg`/`editor.foreground` to `tab_bar.active_bg`/
+  `tab_bar.inactive_bg`/`tab_bar.active_text`/`tab_bar.inactive_text`. The active
+  outline + modified "*" keep using `editor.accent`/`tab_bar.modified_indicator`.
+  This activates the previously-dead `tab_bar` group for ALL themes; the Legacy
+  and High-Contrast `tab_bar` groups already have sensible values, so they are
+  honoured too (no regression -- verified their pairs stay >= their thresholds).
+
+Validation: run `ff_theme::check_theme_contrast` on the revised Dark/Light/Legacy
+palettes; add explicit contrast assertions for the new chrome pairs.

@@ -397,6 +397,20 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `shell/tests.rs::theme_editor_edit_token_updates_working_and_previews` | Req 20.8: live preview while editing; unsaved edits live in the working copy and are not written to disk |
 | `ff-desktop` | ✅ | `theme_editor_panel.rs::recompute_advisories_reads_working_palette` | Req 20.9: contrast advisory (check_theme_contrast) lists below-AA foreground/background pairs, non-blocking |
 
+### Phase (theme-polish) -- Non-monochrome Dark/Light chrome + Legacy legibility (CR-CH-020, Req 21/22)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-theme` | 🔴 | -- | Req 21.1: Dark/Light define a 3-level background hierarchy (panel_bg / button_bg / input_bg perceptibly distinct) |
+| `ff-theme` | 🔴 | -- | Req 21.2: Dark/Light focus_ring = the theme accent |
+| `ff-theme` | 🔴 | -- | Req 21.3: Dark/Light active tab (tab_bar.active_bg) accent-tinted, distinct from inactive |
+| `ff-theme` | 🔴 | -- | Req 21.4: Dark/Light accent-tinted primary_menu_bg (title-bar band) distinct from panel_bg |
+| `ff-desktop` | 🔴 | -- | Req 21.5: non-Legacy title line paints primary_menu_bg background + menu_bar_fg text |
+| `ff-desktop` | 🔴 | -- | Req 21.6: render_tab_bar reads the tab_bar.* group (active/inactive bg+text) instead of ui/editor reuse |
+| `ff-theme` | 🔴 | -- | Req 21.7: new chrome fg/bg pairs meet WCAG AA (title 8.64/6.37:1, active tab 7.88/5.76:1; inactive tab >= 3:1) |
+| `ff-theme` | 🔴 | -- | Req 21.8/21.9: Catppuccin editor/syntax identity preserved; High Contrast unchanged (AAA) |
+| `ff-theme` | 🔴 | -- | Req 22.1-22.4: Legacy blue-on-black uses ISPF_BLUE_HI (#7878FF, 5.93:1) for line numbers/comments/unknown/margins; otherwise byte-identical; primary_menu_bg unchanged |
+
 ### Phase AE -- Legacy Theme Colour Semantics
 
 | Crate | Status | Test files | Notes |

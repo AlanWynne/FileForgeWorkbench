@@ -449,3 +449,21 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configura
     - Covers: Requirement 18.4, 19.2/19.2a, 20.5/20.7; B052
   - [x] 25.8 Updated TCR (18.2/19.1/19.2/19.2a/20.5/20.7); verify.ps1 CLEAN; rebuilt binary
     - Covers: Requirement 18-20 (revised)
+
+## Phase (theme-polish) Tasks -- Non-monochrome Dark/Light chrome + Legacy legibility (CR-CH-020, Req 21/22)
+
+- [ ] 26. Enhance Dark/Light chrome + Legacy legibility (Requirement 21, 22)
+  - [ ] 26.1 Legacy (Req 22): switch `chrome.line_number_fg`, `chrome.fold_margin_fg`, `chrome.margin_separator`, `syntax.comment`, `file_tree.unknown` from `ISPF_BLUE` to `ISPF_BLUE_HI`; leave everything else byte-identical
+    - Covers: Requirement 22.1, 22.2, 22.3, 22.4
+  - [ ] 26.2 Dark `ui`/`tab_bar` (Req 21): `button_bg` `#2A2A3C` (distinct raised surface), `primary_menu_bg` `#28344A`, `focus_ring` `#89B4FA`; `tab_bar.active_bg` `#2E3A52`, `inactive_bg` `#181825`, `active_text` `#CDD6F4`, `inactive_text` `#6C7086`
+    - Covers: Requirement 21.1, 21.2, 21.3, 21.4
+  - [ ] 26.3 Light `ui`/`tab_bar` (Req 21): `button_bg` `#DCE0E8`, `primary_menu_bg` `#DCE6FB`, `focus_ring` `#1E66F5`; `tab_bar.active_bg` `#D0DBF7`, `inactive_bg` `#E6E9EF`, `active_text` `#4C4F69`, `inactive_text` `#5A5E78`
+    - Covers: Requirement 21.1, 21.2, 21.3, 21.4
+  - [ ] 26.4 Render tweak: `render_title_line` non-Legacy/non-POM branch paints `ui.primary_menu_bg` background + `ui.menu_bar_fg` text (mirror the Legacy branch)
+    - Covers: Requirement 21.5
+  - [ ] 26.5 Render tweak: `render_tab_bar` reads `tab_bar.active_bg/inactive_bg/active_text/inactive_text` instead of `ui.input_bg`/`ui.panel_bg`/`editor.foreground`
+    - Covers: Requirement 21.6
+  - [ ] 26.6 Tests: contrast assertions for the new chrome pairs (Dark/Light title + active/inactive tab) >= AA; `check_theme_contrast` on revised Dark/Light/Legacy has no NEW below-AA text pair; Legacy blue-on-black uses now `ISPF_BLUE_HI`; High Contrast unchanged (AAA)
+    - Covers: Requirement 21.7, 21.8, 21.9, 22.1
+  - [ ] 26.7 Update TCR (Req 21/22 rows); verify.ps1 CLEAN; rebuild; commit+push
+    - Covers: Requirement 21, 22
