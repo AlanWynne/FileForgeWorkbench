@@ -61,8 +61,8 @@ not blocking.
 | 1.1 | Launch the app. | Workbench opens with a POM workspace as the first tab; `Command ===>` line visible; status bar present. | startup-and-session 14.1 | [ ] |
 | 1.2 | Open a second workspace (type `2`/`FILES`, or `1`). | A new tab opens and becomes active; previous tab remains in the tab bar. | multi-tab-editor | [ ] |
 | 1.3 | Switch between tabs (click / keyboard). | Active tab changes; content swaps; no crash. | multi-tab-editor | [ ] |
-| 1.4 | `SWAP n` on the command line (e.g. `SWAP 2`). | Switches to the n-th tab/workspace (`SWAP 1` -> first, `SWAP 2` -> second). | B043; multi-tab-editor (criterion pending) | [B] |
-| 1.5 | `SWAP LIST` on the command line. | A selectable list of open tabs pops up; clicking a row OR typing a number + Enter switches to that tab. | B043; multi-tab-editor (criterion pending) | [B] |
+| 1.4 | `SWAP n` on the command line (e.g. `SWAP 2`); also `SWAP 0`/`SWAP 999`/`SWAP xyz`. | `SWAP 1` -> first tab, `SWAP 2` -> second; out-of-range/invalid shows a clear error and does not switch. | B043 (FIXED, retest); multi-tab-editor 18.1, 18.2 | [ ] |
+| 1.5 | `SWAP LIST` (and bare `SWAP` with no split). | A selectable list of open tabs pops up (`n: title`); clicking a row OR typing a number + Enter switches; Escape cancels. | B043 (FIXED, retest); multi-tab-editor 18.3-18.7 | [ ] |
 | 1.6 | Close a tab via its close control. | Tab closes; a sensible neighbour becomes active; POM cannot be lost (at least one tab remains). | multi-tab-editor 3.8 | [ ] |
 | 1.7 | END (F3) from a POM tab when other tabs are open. | Closes only that POM Workspace and navigates to another open Workspace; the app does NOT exit. | CR-CH-016 (pending) | [B] |
 | 1.8 | END (F3) from a POM tab when it is the LAST tab open. | The application terminates. | CR-CH-016 (pending) | [B] |
@@ -223,7 +223,7 @@ fixed. Keep this map updated as rows are added.
 | B040 (preview toggle crash) | FIXED | 3.1, 3.2 |
 | B041 (catalog repo init / expand) | FIXED | 3.10 |
 | B042 (catalog subtree edit ops) | FIXED | 3.10 |
-| B043 (SWAP command) | OPEN | 1.4, 1.5 |
+| B043 (SWAP command -- tab switching) | FIXED (retest 1.4/1.5) | 1.4, 1.5 |
 | B044 (Local Files per-entry skip) | PARTIAL: per-entry skip FIXED (retest 3.2); junctions -> CR-NR-072 | 3.2, 3.2a |
 | B045 (detach not wired) | OPEN | 1.9, 1.10, 1.11 |
 | B046 (function keys) | PARTIAL: F7/F8 defaults FIXED (retest 7.3/7.3a); rest OPEN | 7.1-7.7, 7.3a |

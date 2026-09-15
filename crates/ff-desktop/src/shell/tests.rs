@@ -1846,13 +1846,99 @@ fn swap_command_swaps_split_focus() {
     assert!(shell.open_error.is_none());
 }
 
-/// Validates: Requirement 19.12 -- SWAP without split shows error.
+/// Validates: multi-tab-editor Requirement 18.7 -- bare SWAP with no split
+/// screen opens the tab picker (it no longer reports an error).
 #[test]
-fn swap_without_split_shows_error() {
-    // Validates: Requirement 19.12
+fn swap_without_split_opens_tab_picker() {
+    // Validates: Requirement 18.7 (supersedes the old "shows error" behaviour)
     let mut shell = make_shell();
+    assert!(shell.split_screen.is_none());
     shell.handle_command("SWAP");
+    assert!(
+        shell.show_swap_list.is_some(),
+        "bare SWAP with no split must open the tab picker"
+    );
+    assert!(shell.open_error.is_none());
+}
+
+/// Validates: multi-tab-editor Requirement 18.1 -- `SWAP n` activates the n-th
+/// tab (1-based).
+#[test]
+fn swap_n_activates_nth_tab() {
+    // Validates: Requirement 18.1
+    let mut shell = make_shell();
+    // Ensure at least 2 tabs exist: open a second workspace (File Explorer).
+    shell.handle_command("2");
+    let count = shell.tabs.len();
+    assert!(count >= 2, "need >=2 tabs for the test (have {count})");
+
+    shell.handle_command("SWAP 1");
+    assert_eq!(shell.tabs.active_index(), 0);
+    assert!(shell.open_error.is_none());
+
+    shell.handle_command("SWAP 2");
+    assert_eq!(shell.tabs.active_index(), 1);
+    assert!(shell.open_error.is_none());
+}
+
+/// Validates: multi-tab-editor Requirement 18.2 -- out-of-range / invalid
+/// `SWAP n` errors and does not change the active tab.
+#[test]
+fn swap_n_out_of_range_errors_and_keeps_active() {
+    // Validates: Requirement 18.2
+    let mut shell = make_shell();
+    shell.handle_command("2"); // ensure >=2 tabs
+    shell.handle_command("SWAP 1");
+    let before = shell.tabs.active_index();
+
+    // Too high.
+    shell.handle_command("SWAP 999");
+    assert_eq!(
+        shell.tabs.active_index(),
+        before,
+        "out-of-range must not switch"
+    );
     assert!(shell.open_error.is_some());
+
+    // Zero is invalid (1-based).
+    shell.open_error = None;
+    shell.handle_command("SWAP 0");
+    assert_eq!(shell.tabs.active_index(), before);
+    assert!(shell.open_error.is_some());
+
+    // Non-numeric, non-LIST argument.
+    shell.open_error = None;
+    shell.handle_command("SWAP frog");
+    assert_eq!(shell.tabs.active_index(), before);
+    assert!(shell.open_error.is_some());
+}
+
+/// Validates: multi-tab-editor Requirement 18.3 -- `SWAP LIST` opens the tab
+/// picker.
+#[test]
+fn swap_list_opens_tab_picker() {
+    // Validates: Requirement 18.3
+    let mut shell = make_shell();
+    shell.handle_command("SWAP LIST");
+    assert!(shell.show_swap_list.is_some());
+    assert!(shell.open_error.is_none());
+}
+
+/// Validates: multi-tab-editor Requirement 18.6 -- bare SWAP with an active
+/// split still swaps split focus (preserved behaviour, does not open picker).
+#[test]
+fn swap_bare_with_split_swaps_focus_not_picker() {
+    // Validates: Requirement 18.6
+    let mut shell = make_shell();
+    shell.handle_command("SPLIT");
+    let initial_half = shell.split_screen.as_ref().unwrap().active_half;
+    shell.handle_command("SWAP");
+    let swapped_half = shell.split_screen.as_ref().unwrap().active_half;
+    assert_ne!(initial_half, swapped_half);
+    assert!(
+        shell.show_swap_list.is_none(),
+        "with a split active, bare SWAP swaps focus and must NOT open the picker"
+    );
 }
 
 /// Validates: Requirement 19.14 -- UNSPLIT removes split screen.

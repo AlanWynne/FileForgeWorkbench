@@ -111,6 +111,14 @@ Modifications to existing behaviour that already works.
 - **Status**: PENDING GATE
 - **Re-reported (Phase core-test-triage)**: reproduced in the CORE test session -- "End command on a POM shuts the whole application, it should only shut down the current tab, and only shut down the whole application if we were in the POM and only had one tab open! No Test Criteria to test this?" Confirms the change request; ALSO flags a Core Acceptance Test Plan gap -- an END-from-POM test row (close-tab vs terminate-when-last) must be added at the gate. No new CR id (already CR-CH-016).
 
+### CR-CH-017 -- SWAP command extended to tab/workspace switching (SWAP n / SWAP LIST)
+- **Date/Phase**: Phase (swap-command) (gate)
+- **Prompt**: "SWAP does not work, it does nothing.." + earlier B043 report: "SWAP 2 should switch to 2nd Tab, SWAP 1 to 1st, SWAP List should popup a list of tabs to select one with the mouse or type a number then Enter".
+- **Description**: `SWAP` currently only swaps split-screen focus (no argument; menu-and-statusbar Req 19.12) and does nothing for `SWAP n` / `SWAP LIST`. Extend it (multi-tab-editor Req 18): `SWAP n` activates the n-th tab (1-based, validated); `SWAP LIST` opens a selectable tab picker (click or type-number+Enter; Escape cancels); bare `SWAP` keeps swapping split focus when a split is active and otherwise opens the picker. This resolves a naming collision (ISPF SWAP is the screen-switch command; the split-focus reuse is FFW-specific) by making SWAP primarily the tab switcher while preserving the split-focus case.
+- **Affects**: `ff-desktop` `shell/commands.rs` (SWAP intercept), `shell/mod.rs` + `shell/update.rs` (tab picker overlay, modal_open guard), `docs/specs/multi-tab-editor/requirements.md` Req 18, `docs/quality/TCR.md`
+- **Status**: DONE -- Req 18 gated + implemented (SWAP n / SWAP LIST / bare-SWAP picker-or-split-focus); 7 tests; verify.ps1 CLEAN full nextest. Fixes B043.
+- **Linked spec**: `docs/specs/multi-tab-editor/requirements.md` Requirement 18
+
 ### CR-CH-001 â€” POM option 2 description update
 - **Date/Phase**: Phase AS
 - **Prompt**: "opetion 2 needs to be a file Exploere..."

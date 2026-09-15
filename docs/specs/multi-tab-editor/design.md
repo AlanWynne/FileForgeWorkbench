@@ -1570,3 +1570,36 @@ Integration tests in `tests/integration.rs` exercise end-to-end flows with mock 
 - Split view: create split → edit in one view → verify sync in other
 - Bulk close with mixed pinned/modified/unmodified tabs
 - Command dispatch: register commands → execute via command registry → verify tab state changes
+
+
+---
+
+## Design Delta: SWAP Command (Requirement 18, tab switching)
+
+A `SWAP` intercept already exists in `ff-desktop shell/commands.rs` for the
+no-argument split-screen focus swap (menu-and-statusbar Req 19.12). This delta
+extends it with tab-switching arguments without removing that behaviour.
+
+Design:
+- In `WorkbenchShell::handle_command`, replace the exact `upper == "SWAP"` match
+  with argument parsing:
+  - `SWAP <n>` (positive integer): activate the n-th tab via
+    `self.tabs.set_active(n - 1)` (1-based -> 0-based). Validate `1 <= n <=
+    tabs.len()`; otherwise set a clear `open_error` and do not change the tab.
+  - `SWAP LIST`: open the tab picker (see below).
+  - bare `SWAP`: if `self.split_screen.is_some()`, swap split focus (unchanged);
+    otherwise open the tab picker (Req 18.7).
+- Tab picker: add shell state `show_swap_list: Option<()>` (or reuse a small
+  struct). Render it as a modal overlay mirroring the existing
+  `show_history_list` overlay (update.rs): list each open tab as
+  `"{i+1}: {title}"` (using `workspace_name` when present, else `title`).
+  Selection by mouse click activates that tab and closes the picker. A numeric
+  entry field (or reusing the command line) lets the user type a number +
+  Enter to select. Escape closes without changing the tab.
+- Add `show_swap_list.is_some()` to the `modal_open` guard so Tab-cycle and
+  command-field focus do not fight the picker (mirrors show_history_list).
+- The picker reuses `tabs.tabs()` for titles and `tabs.set_active` for
+  switching; no new tab API is needed.
+
+No session-format or tab-model change. `SWAP` is recorded in history by the
+centralised recorder in handle_command.

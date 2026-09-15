@@ -2351,3 +2351,16 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | 🔴 | -- | Req 17.4: `THEME <invalid>` shows a clear error listing valid modes; does not change theme |
 | `ff-desktop` | 🔴 | -- | Req 17.5: Settings menu theme actions invoke the THEME command (menu == typed-command code path) |
 | `ff-desktop` | 🔴 | -- | Req 17.6: persist failure applies theme for the session and surfaces a non-silent message (no silent revert) |
+
+### Phase (swap-command) -- SWAP Tab Switching (multi-tab-editor Req 18)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `shell::tests::swap_n_activates_nth_tab` | Req 18.1: `SWAP n` activates the n-th tab (1-based, Tab_Bar order) |
+| `ff-desktop` | ✅ | `shell::tests::swap_n_out_of_range_errors_and_keeps_active` | Req 18.2: `SWAP n` with 0/negative/non-numeric/out-of-range errors clearly; no change |
+| `ff-desktop` | ✅ | `shell::tests::{swap_list_opens_tab_picker, swap_without_split_opens_tab_picker}` | Req 18.3: `SWAP LIST` opens a selectable picker of open tabs (position + title) |
+| `ff-desktop` | 🔲 | Manual: click a row / type number+Enter in the picker | Req 18.4: picker selection by click OR type-number+Enter switches and closes (egui render) |
+| `ff-desktop` | 🔲 | Manual: Escape closes the picker | Req 18.5: Escape/dismiss closes the picker without changing the active tab (egui render) |
+| `ff-desktop` | ✅ | `shell::tests::swap_bare_with_split_swaps_focus_not_picker` | Req 18.6: bare `SWAP` with a split active swaps split-screen focus (preserved 19.12) |
+| `ff-desktop` | ✅ | `shell::tests::swap_without_split_opens_tab_picker` | Req 18.7: bare `SWAP` with no split opens the picker (not an error) |
+| `ff-desktop` | ✅ | `shell::tests` (SWAP routed through handle_command) | Req 18.8: `SWAP` command-line dispatchable; tab-switch affordances route through it |

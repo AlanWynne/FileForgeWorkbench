@@ -454,6 +454,7 @@ impl eframe::App for WorkbenchShell {
             || self.show_about
             || self.palette_state.open
             || self.show_history_list.is_some()
+            || self.show_swap_list.is_some()
             || self.show_unsaved_workspace_dialog
             || !matches!(self.files_panel.dialog, files_panel::FilesDialogState::None);
         {
@@ -726,6 +727,81 @@ impl eframe::App for WorkbenchShell {
             } else if !keep_open || ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
                 self.command_text.clear();
                 self.show_history_list = None;
+            }
+        }
+
+        // SWAP tab picker overlay -- Validates: multi-tab-editor Req 18.3-18.5.
+        // Lists open tabs as "{n}: {title}" (1-based). Selection by mouse click,
+        // or by typing a number + Enter. Escape / Cancel closes without change.
+        if self.show_swap_list.is_some() {
+            // Build the display rows from the live tab list (1-based).
+            let rows: Vec<(usize, String)> = self
+                .tabs
+                .tabs()
+                .iter()
+                .enumerate()
+                .map(|(i, t)| {
+                    let label = t.workspace_name.clone().unwrap_or_else(|| t.title.clone());
+                    (i + 1, label)
+                })
+                .collect();
+
+            let mut chosen: Option<usize> = None; // 1-based selection
+            let mut cancel = false;
+            let num_id = egui::Id::new("swap_list_number_input");
+            egui::Window::new("Swap to Tab")
+                .collapsible(false)
+                .resizable(true)
+                .show(ctx, |ui| {
+                    egui::ScrollArea::vertical()
+                        .max_height(300.0)
+                        .show(ui, |ui| {
+                            for (n, label) in &rows {
+                                if ui
+                                    .selectable_label(
+                                        false,
+                                        egui::RichText::new(format!("{n}: {label}")).monospace(),
+                                    )
+                                    .clicked()
+                                {
+                                    chosen = Some(*n);
+                                }
+                            }
+                        });
+                    ui.separator();
+                    ui.horizontal(|ui| {
+                        ui.label("Number:");
+                        let mut num_text: String =
+                            ui.data_mut(|d| d.get_temp::<String>(num_id).unwrap_or_default());
+                        let resp = ui.add(
+                            egui::TextEdit::singleline(&mut num_text)
+                                .desired_width(60.0)
+                                .id(num_id),
+                        );
+                        let enter =
+                            resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+                        if enter {
+                            if let Ok(n) = num_text.trim().parse::<usize>() {
+                                if n >= 1 && n <= rows.len() {
+                                    chosen = Some(n);
+                                }
+                            }
+                        }
+                        ui.data_mut(|d| d.insert_temp(num_id, num_text));
+                        if ui.button("Cancel").clicked() {
+                            cancel = true;
+                        }
+                    });
+                });
+
+            if let Some(n) = chosen {
+                self.tabs.set_active(n - 1);
+                self.show_swap_list = None;
+                self.open_error = None;
+                ctx.data_mut(|d| d.remove::<String>(num_id));
+            } else if cancel || ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
+                self.show_swap_list = None;
+                ctx.data_mut(|d| d.remove::<String>(num_id));
             }
         }
 

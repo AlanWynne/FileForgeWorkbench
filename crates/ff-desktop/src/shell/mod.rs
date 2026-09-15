@@ -324,6 +324,10 @@ pub struct WorkbenchShell {
     ///
     /// Validates: Requirement 19.3
     show_history_list: Option<Vec<String>>,
+    /// When Some, show the SWAP tab-picker overlay (multi-tab-editor Req 18.3).
+    /// The unit payload keeps the state a simple open/closed flag; the picker
+    /// reads the live tab list at render time.
+    show_swap_list: Option<()>,
     /// Session persistence -- None when User Data Dir is unavailable.
     session: Option<SessionManager>,
     /// Active workspace -- None when no workspace is loaded.
@@ -643,6 +647,7 @@ impl WorkbenchShell {
             key_bar_visible: true,
             tab_history: Vec::new(),
             show_history_list: None,
+            show_swap_list: None,
             session,
             active_workspace: None,
             pending_workspace_open: None,

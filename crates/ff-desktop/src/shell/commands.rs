@@ -814,13 +814,44 @@ impl WorkbenchShell {
             self.open_error = None;
             return;
         }
-        if upper == "SWAP" {
-            // Validates: Requirement 19.12 -- swap focus between halves
-            if let Some(ref mut ss) = self.split_screen {
-                ss.swap_focus();
+        if upper == "SWAP" || upper.starts_with("SWAP ") {
+            // SWAP is primarily the tab/workspace switcher (multi-tab-editor
+            // Req 18), and also retains the split-screen focus-swap behaviour
+            // for the no-argument case when a split is active (menu-and-statusbar
+            // Req 19.12). Parse the argument to decide.
+            let arg = cmd.trim().get(4..).unwrap_or("").trim().to_string();
+            let arg_upper = arg.to_uppercase();
+
+            if arg.is_empty() {
+                // Bare SWAP: swap split focus if a split is active, else open the
+                // tab picker (Req 18.6, 18.7).
+                if let Some(ref mut ss) = self.split_screen {
+                    ss.swap_focus();
+                    self.open_error = None;
+                } else {
+                    self.show_swap_list = Some(());
+                    self.open_error = None;
+                }
+            } else if arg_upper == "LIST" {
+                // SWAP LIST: open the tab picker (Req 18.3).
+                self.show_swap_list = Some(());
                 self.open_error = None;
+            } else if let Ok(n) = arg.parse::<usize>() {
+                // SWAP n: activate the n-th tab, 1-based (Req 18.1, 18.2).
+                let count = self.tabs.len();
+                if n >= 1 && n <= count {
+                    self.tabs.set_active(n - 1);
+                    self.open_error = None;
+                } else {
+                    self.open_error = Some(format!(
+                        "SWAP: tab number {n} out of range (valid: 1 to {count})"
+                    ));
+                }
             } else {
-                self.open_error = Some("SWAP: no split screen active".to_string());
+                // Non-numeric, non-LIST argument (Req 18.2).
+                self.open_error = Some(format!(
+                    "SWAP: invalid argument '{arg}'. Usage: SWAP <n>, SWAP LIST"
+                ));
             }
             return;
         }

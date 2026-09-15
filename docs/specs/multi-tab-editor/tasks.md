@@ -254,6 +254,18 @@ This is a **Wave 8 (File I/O and Session)** sub-project. It depends on `ff-comma
   - [x] 19.14 Write integration test: CLI multi-argument startup with partial failures
   - Covers: Cross-requirement interaction validation
 
+- [x] 20. SWAP command -- tab/workspace switching (Requirement 18)
+  - [x] 20.1 Extend the `SWAP` intercept in `ff-desktop shell/commands.rs`: parse `SWAP <n>` (1-based) -> `tabs.set_active(n-1)` with `1 <= n <= tabs.len()` validation; invalid -> clear `open_error`, no change
+    - Covers: Requirement 18.1, 18.2
+  - [x] 20.2 `SWAP LIST` opens a tab picker overlay; bare `SWAP` swaps split focus when a split is active, else opens the picker
+    - Covers: Requirement 18.3, 18.6, 18.7
+  - [x] 20.3 Add `show_swap_list` shell state + render the picker overlay (mirror `show_history_list`): rows `"{i+1}: {title}"`; click selects; type number + Enter selects; Escape closes without change; add to `modal_open` guard
+    - Covers: Requirement 18.3, 18.4, 18.5
+  - [x] 20.4 Ensure `SWAP` is command-line dispatchable and any tab-switch affordance routes through it (command parity)
+    - Covers: Requirement 18.8
+  - [x] 20.5 Tests: `swap_n_activates_nth_tab`, `swap_n_out_of_range_errors`, bare-SWAP-with-split still swaps focus, bare-SWAP-without-split opens picker, picker selection switches
+    - Covers: Requirement 18.1-18.8
+
 ---
 
 ## Property-Based Test Definitions

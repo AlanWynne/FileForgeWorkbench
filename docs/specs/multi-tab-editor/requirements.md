@@ -422,3 +422,23 @@ requirement (Phase AL).
 15.4 THE per-tab state (Requirement 2) SHALL include the Title_Line text as a derived,
      read-only field -- it is computed from the tab's ResourceUri and kind, not stored
      independently.
+
+
+---
+
+### Requirement 18: SWAP Command (Tab/Workspace Switching)
+
+**User Story:** As a user, I want to switch to a specific open tab (workspace) by number, or pick one from a list, using the `SWAP` command on the command line, so that I can move between open workspaces without the mouse -- consistent with the ISPF SWAP screen-switch command and the command-driven principle.
+
+**Source:** Owner requirement (B043). ISPF SWAP screen-switch semantics (`SWAP n`, `SWAP LIST`). `docs/specs/workbench-requirements-merge/architecture-brief.md` Principle 2 (Command Driven). NOTE: a pre-existing `SWAP` (no argument) already swaps focus between split-screen halves (menu-and-statusbar Requirement 19.12 / PF9); this requirement extends `SWAP` with tab-switching arguments and defines how the no-argument case behaves, without removing the split-focus behaviour.
+
+#### Acceptance Criteria
+
+1. WHEN `SWAP n` is issued with a positive integer `n`, THE workbench SHALL make the n-th open tab active, where `n` is 1-based (`SWAP 1` activates the first tab, `SWAP 2` the second), counting tabs left-to-right in Tab_Bar order.
+2. IF `n` is 0, negative, non-numeric, or greater than the number of open tabs, THEN THE workbench SHALL display a clear error naming the invalid value and the valid range, and SHALL NOT change the active tab.
+3. WHEN `SWAP LIST` is issued, THE workbench SHALL open a selectable list (picker) of all open tabs, each shown with its 1-based position and title, most-usefully ordered in Tab_Bar order.
+4. WHILE the SWAP tab picker is open, THE user SHALL be able to select a tab by clicking its row with the mouse, OR by typing its number and pressing Enter; either action SHALL make that tab active and close the picker.
+5. WHEN the SWAP tab picker is open AND the user presses Escape (or dismisses it), THE picker SHALL close without changing the active tab.
+6. WHEN `SWAP` is issued with NO argument AND a split screen is active, THE workbench SHALL swap focus between the split-screen halves (preserving the existing menu-and-statusbar Requirement 19.12 behaviour).
+7. WHEN `SWAP` is issued with NO argument AND NO split screen is active, THE workbench SHALL open the SWAP tab picker (criterion 18.3), rather than reporting an error.
+8. THE `SWAP` command SHALL be dispatchable from the command line in any context, and any menu/toolbar affordance for tab switching SHALL invoke the same `SWAP` command (command parity, architecture-brief Principle 2).
