@@ -133,6 +133,12 @@ pub struct TabState {
     ///
     /// Validates: menu-workspace Requirement 1, 2
     pub menu_workspace: Option<MenuWorkspaceState>,
+    /// Per-tab Navigation_Stack: the ordered ancestors of the current Context,
+    /// most-recent last. The current Context is NOT on the stack; an empty stack
+    /// means this tab is at its root (END closes the Workspace).
+    ///
+    /// Validates: menu-workspace Requirement 14.1 (CR-CH-022)
+    pub nav_stack: Vec<ff_session::WorkspaceDescriptor>,
 }
 
 // === Helper macro to reduce constructor boilerplate =========================
@@ -159,6 +165,7 @@ macro_rules! base_tab {
             canvas_selection: None,
             workspace_name: None,
             menu_workspace: None,
+            nav_stack: Vec::new(),
         }
     }};
 }
@@ -186,6 +193,7 @@ impl TabState {
             canvas_selection: None,
             workspace_name: None,
             menu_workspace: None,
+            nav_stack: Vec::new(),
         }
     }
 
@@ -221,6 +229,7 @@ impl TabState {
             canvas_selection: None,
             workspace_name: None,
             menu_workspace: None,
+            nav_stack: Vec::new(),
         }
     }
 
@@ -311,6 +320,9 @@ impl TabState {
     /// Create a Theme Editor tab.
     ///
     /// Validates: theme-and-appearance Requirement 20.1
+    // CR-CH-022: only used by the retained open_theme_editor_tab (in-place
+    // navigation transforms an existing tab rather than constructing a new one).
+    #[allow(dead_code)]
     pub fn theme_editor(id: TabId, document: DocumentHandle) -> Self {
         base_tab!(id, TabKind::ThemeEditor, "[THEME]".to_string(), document)
     }
@@ -318,6 +330,8 @@ impl TabState {
     /// Create a Menus Editor tab.
     ///
     /// Validates: menu-workspace Requirement 13.1 (CR-NR-075)
+    // CR-CH-022: only used by the retained open_menus_editor_tab.
+    #[allow(dead_code)]
     pub fn menus_editor(id: TabId, document: DocumentHandle) -> Self {
         base_tab!(id, TabKind::MenusEditor, "[MENUS]".to_string(), document)
     }

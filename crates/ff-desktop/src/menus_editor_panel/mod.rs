@@ -9,4 +9,4 @@ mod render;
 mod state;
 
 pub use render::render;
-pub use state::{MenusEditorAction, MenusEditorState, OptionField};
+pub use state::{MenusEditorAction, MenusEditorState};

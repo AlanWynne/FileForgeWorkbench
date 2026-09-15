@@ -1005,6 +1005,7 @@ mod external_adapter;
 /// Convert a `ff_config::ConfigValue` to a `toml::Value` for key-map parsing.
 mod helpers;
 mod menus_editor;
+mod nav_stack;
 mod render;
 mod render_chrome;
 mod reset_bare;

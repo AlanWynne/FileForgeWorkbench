@@ -1,54 +1,18 @@
 //! State and Action types for the Menus Editor (menu-workspace Req 13).
 
-use crate::menu_workspace::{GroupSeparator, MenuFile};
+use crate::menu_workspace::MenuFile;
 
-/// Which text field of an option row an [`MenusEditorAction::EditOption`]
-/// targets.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum OptionField {
-    /// The Option_Key (1-4 chars, uppercased on save).
-    Key,
-    /// The Option_Command.
-    Command,
-    /// The Option_Description.
-    Description,
-    /// The optional group label.
-    Group,
-}
-
-/// An action produced by the Menus Editor render, applied by the shell.
+/// A structural action produced by the Menus Editor render, applied by the
+/// shell. Text and toggle fields mutate the working `MenuFile` directly in the
+/// render (B054) and do NOT produce actions.
 ///
-/// Validates: menu-workspace Requirement 13.4-13.9, 13.12.
+/// Validates: menu-workspace Requirement 13.4-13.9.
 #[derive(Debug, Clone, PartialEq)]
 pub enum MenusEditorAction {
     /// No action this frame.
     None,
     /// Select a different menu to edit (by name: "POM", "Settings", or user).
     Select(String),
-    /// Set the menu title.
-    EditTitle(String),
-    /// Toggle the per-menu calendar.
-    SetShowCalendar(bool),
-    /// Set the group boundary style.
-    SetGroupSeparator(GroupSeparator),
-    /// Toggle group header labels.
-    SetGroupHeaders(bool),
-    /// Edit a text field of the option at `index`.
-    EditOption {
-        /// Zero-based option index.
-        index: usize,
-        /// Which field is edited.
-        field: OptionField,
-        /// The new value.
-        value: String,
-    },
-    /// Set the `enabled` flag of the option at `index`.
-    SetOptionEnabled {
-        /// Zero-based option index.
-        index: usize,
-        /// The new enabled state.
-        enabled: bool,
-    },
     /// Append a new blank option.
     AddOption,
     /// Delete the option at `index`.
@@ -79,11 +43,6 @@ pub struct MenusEditorState {
     pub name_buffer: String,
     /// The most recent validation/save error, shown inline.
     pub error: Option<String>,
-    /// True when the editor was opened from the Settings menu (so END returns
-    /// to the Settings menu, not straight to the POM). Mirrors the
-    /// Settings_Namespace_View one-level-back behaviour (cw-requirements
-    /// Req 10.4; menu-workspace Req 13.1, B053).
-    pub opened_from_settings: bool,
 }
 
 impl MenusEditorState {

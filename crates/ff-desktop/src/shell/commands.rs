@@ -80,9 +80,22 @@ impl WorkbenchShell {
             return;
         }
 
-        if upper == "START" || upper == "POM" {
-            // Validates: Requirement 14.10, 14.14 — START/POM opens a new POM tab
+        if upper == "POM" {
+            // Validates: Requirement 14.10, 14.14 -- POM opens a new POM tab.
             self.tabs.insert_pom_tab(&self.runtime);
+            self.open_error = None;
+            return;
+        }
+
+        if upper == "START" || upper.starts_with("START ") {
+            // Validates: menu-workspace Requirement 14.8, 14.9 (CR-CH-022) --
+            // START is the ONLY tab-creator. Forms:
+            //   START            -> new tab rooted at the POM (empty stack)
+            //   START =<path>    -> new POM tab, then drill along <path> (POM on
+            //                       the stack via the `=` origin rule)
+            //   START <arg>      -> new tab rooted DIRECTLY at <arg> (empty stack)
+            let arg = cmd.trim().get(5..).map(str::trim).unwrap_or("");
+            self.start_new_workspace(arg);
             self.open_error = None;
             return;
         }
@@ -170,89 +183,24 @@ impl WorkbenchShell {
 
         // ── END — Validates: Requirement 17.1, 17.2 ———————————————————————
         if upper == "END" {
-            let kind = self.tabs.active_tab().kind;
-            if kind == TabKind::PrimaryOptionMenu {
-                // Validates: Requirement 17.2 / 17.2a -- END from a POM closes
-                // only that POM Workspace and navigates to the previously-active
-                // tab when other Workspaces remain open; it terminates the app
-                // only when the POM is the last Workspace open (equivalent to
-                // EXIT). (CR-CH-016.)
-                if self.tabs.len() <= 1 {
-                    // Last Workspace -> terminate (Req 17.2a).
-                    let result = self
-                        .dispatch
-                        .execute_command("file.exit", CommandParams::new());
-                    if let CommandResult::Err(e) = result {
-                        self.open_error = Some(e.to_string());
-                    }
-                } else {
-                    // Other Workspaces remain -> close-and-navigate (Req 17.2,
-                    // same behaviour as criterion 17.1).
-                    self.close_current_and_navigate_back();
-                }
-            } else if kind == TabKind::MenusEditor && self.menus_editor_panel.opened_from_settings {
-                // Validates: menu-workspace Req 13.1 + cw-requirements Req 10.4
-                // (B053) -- END from the Menus Editor opened via the Settings
-                // menu returns ONE LEVEL to the Settings menu, not the POM
-                // (mirroring the Settings_Namespace_View rule below).
-                self.open_settings_menu();
-            } else if kind == TabKind::FileExplorerPanel
-                || kind == TabKind::CommandConfigurator
-                || kind == TabKind::MenuWorkspace
-                || kind == TabKind::MenusEditor
-            {
-                // Validates: Requirement 19.10 (file-explorer),
-                // command-configurator Requirement 2.8, cw-requirements.md
-                // Requirement 10.4 / 15.10, and menu-workspace Req 13.1 -- END/F3
-                // from a Menu_Workspace (incl. the Settings_Menu), the Menus
-                // Editor opened from the POM, or these Contexts returns to the POM.
-                self.pending_return_to_pom = true;
-            } else if kind == TabKind::SettingsPanel
-                && self.settings_panel.namespace_filter.is_some()
-            {
-                // Validates: cw-requirements.md Requirement 10.4 -- END from a
-                // Settings_Namespace_View returns to the Settings_Menu, not the
-                // flat All-Settings view and not straight to the POM.
-                self.open_settings_menu();
-            } else {
-                // Validates: Requirement 17.1 -- close current tab, go to previous
-                self.close_current_and_navigate_back();
-            }
+            // Validates: menu-workspace Requirement 14.4, 14.5 (CR-CH-022) --
+            // END pops one level of the active tab's Navigation_Stack and
+            // reconstructs the parent Context in place; an empty stack closes the
+            // Workspace (terminates when last, preserving CR-CH-016). This
+            // replaces the former per-kind END rules and the three ad-hoc
+            // mechanisms (pending_return_to_pom / namespace_filter /
+            // opened_from_settings).
+            self.nav_end();
             self.open_error = None;
             return;
         }
 
-        // ── RETURN — Validates: Requirement 17.3, 17.4 ————————————————————
+        // ── RETURN -- Validates: menu-workspace Requirement 14.10 (CR-CH-022) ──
         if upper == "RETURN" {
-            let is_pom = self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu;
-            if is_pom {
-                // Validates: Requirement 17.4 (REVISED, CR-CH-016) -- RETURN from
-                // a POM behaves like END: close only that POM Workspace and
-                // navigate back when other Workspaces remain open; terminate the
-                // app only when the POM is the last Workspace open.
-                if self.tabs.len() <= 1 {
-                    let result = self
-                        .dispatch
-                        .execute_command("file.exit", CommandParams::new());
-                    if let CommandResult::Err(e) = result {
-                        self.open_error = Some(e.to_string());
-                    }
-                } else {
-                    self.close_current_and_navigate_back();
-                }
-            } else {
-                // Validates: Requirement 17.3 — navigate to POM tab
-                if let Some(pom_idx) = self
-                    .tabs
-                    .tabs()
-                    .iter()
-                    .position(|t| t.kind == TabKind::PrimaryOptionMenu)
-                {
-                    self.tabs.set_active(pom_idx);
-                } else {
-                    self.tabs.insert_pom_tab(&self.runtime);
-                }
-            }
+            // RETURN collapses the whole Navigation_Stack to the tab's ROOT
+            // Context in one step (distinct from END's one-level pop); at the
+            // root it behaves as END-at-root (close / exit when last, CR-CH-016).
+            self.nav_return();
             self.open_error = None;
             return;
         }
@@ -298,29 +246,10 @@ impl WorkbenchShell {
             return;
         }
 
-        if upper == "=FILES" {
-            // Validates: Requirement 19.1, 19.2 -- =FILES transforms the current
-            // POM tab in place (fastpath from the Home Context).
-            if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
-                self.tabs
-                    .transform_active_pom_tab(TabKind::FileExplorerPanel, "[FILES]");
-            } else {
-                self.tabs.open_file_explorer_panel_tab(&self.runtime);
-            }
-            self.open_error = None;
-            return;
-        }
-
-        if upper == "FILES" {
-            // Validates: Requirement 19.3; menu-workspace Req 2.1e -- FILES opens
-            // the File Explorer Context (config-driven by command name). On a POM
-            // tab it transforms in place; elsewhere it opens a new tab.
-            if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
-                self.tabs
-                    .transform_active_pom_tab(TabKind::FileExplorerPanel, "[FILES]");
-            } else {
-                self.tabs.open_file_explorer_panel_tab(&self.runtime);
-            }
+        if upper == "=FILES" || upper == "FILES" {
+            // Validates: Requirement 19.1-19.3; menu-workspace Req 14.2
+            // (CR-CH-022) -- navigate the CURRENT tab in place; never a new tab.
+            self.nav_to_kind(ff_session::session_state::WorkspaceKind::FileExplorer);
             self.open_error = None;
             return;
         }
@@ -333,14 +262,9 @@ impl WorkbenchShell {
         }
 
         if upper == "COMMANDS" {
-            // Validates: command-configurator Requirement 2.1, 2.7 -- open the
-            // Command Configurator Context (title [COMMANDS]).
-            if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
-                self.tabs
-                    .transform_active_pom_tab(TabKind::CommandConfigurator, "[COMMANDS]");
-            } else {
-                self.tabs.open_command_configurator_tab(&self.runtime);
-            }
+            // Validates: command-configurator Requirement 2.1, 2.7; menu-workspace
+            // Req 14.2 (CR-CH-022) -- navigate the current tab in place.
+            self.nav_to_kind(ff_session::session_state::WorkspaceKind::CommandConfigurator);
             self.open_error = None;
             return;
         }
@@ -372,8 +296,9 @@ impl WorkbenchShell {
         }
 
         if upper == "LOG" {
-            // Validates: notification-system Requirement 2.1
-            self.tabs.open_event_log_tab(&self.runtime);
+            // Validates: notification-system Requirement 2.1; menu-workspace Req
+            // 14.2 (CR-CH-022) -- navigate the current tab in place.
+            self.nav_to_kind(ff_session::session_state::WorkspaceKind::EventLog);
             self.notification_queue
                 .lock()
                 .expect("queue")
@@ -383,27 +308,17 @@ impl WorkbenchShell {
         }
 
         if upper == "FILE CATALOGS" || upper == "CATALOGS" {
-            // Validates: Requirement 1.1, 14.6; menu-workspace Req 2.1e/2.1h --
-            // File Catalogs Context, resolved by command name (config-driven).
-            if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
-                self.tabs
-                    .transform_active_pom_tab(TabKind::FilesPanel, "[FILES]");
-            } else {
-                self.tabs.open_files_panel_tab(&self.runtime);
-            }
+            // Validates: Requirement 1.1, 14.6; menu-workspace Req 14.2
+            // (CR-CH-022) -- navigate the current tab in place.
+            self.nav_to_kind(ff_session::session_state::WorkspaceKind::Files);
             self.open_error = None;
             return;
         }
 
         if upper == "PLUGINS" {
             // Validates: plugin-manager-ui Requirement 1.1; menu-workspace Req
-            // 2.1e -- PLUGINS opens the Plugin Manager (config-driven by name).
-            if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
-                self.tabs
-                    .transform_active_pom_tab(TabKind::PluginManager, "[PLUGINS]");
-            } else {
-                self.tabs.open_plugin_manager_tab(&self.runtime);
-            }
+            // 14.2 (CR-CH-022) -- navigate the current tab in place.
+            self.nav_to_kind(ff_session::session_state::WorkspaceKind::PluginManager);
             self.open_error = None;
             return;
         }
@@ -411,14 +326,9 @@ impl WorkbenchShell {
         // Phase CV -- Extended POM options
         // Validates: Requirement 6.2 (cv-requirements.md)
         if upper == "MACROS" {
-            // Validates: lua-macro-engine Requirement 12.1; menu-workspace Req 2.1e
-            // -- MACROS opens the Macro Library Context (config-driven by name).
-            if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
-                self.tabs
-                    .transform_active_pom_tab(TabKind::MacroLibrary, "[MACROS]");
-            } else {
-                self.tabs.open_macro_library_tab(&self.runtime);
-            }
+            // Validates: lua-macro-engine Requirement 12.1; menu-workspace Req
+            // 14.2 (CR-CH-022) -- navigate the current tab in place.
+            self.nav_to_kind(ff_session::session_state::WorkspaceKind::MacroLibrary);
             self.open_error = None;
             return;
         }
@@ -1327,7 +1237,6 @@ impl WorkbenchShell {
     ///
     /// Validates: theme-and-appearance Requirement 20.1, 20.2
     pub(super) fn open_theme_editor(&mut self) {
-        use crate::tab_state::TabKind;
         let themes_dir = self.themes_dir();
         // Available themes (built-in + user).
         let available: Vec<String> = ff_theme::list_all_themes(&themes_dir)
@@ -1342,12 +1251,22 @@ impl WorkbenchShell {
         self.theme_editor_panel
             .load_working(&selected, self.palette.clone());
 
-        if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
-            self.tabs
-                .transform_active_pom_tab(TabKind::ThemeEditor, "[THEME]");
-        } else {
-            self.tabs.open_theme_editor_tab(&self.runtime);
-        }
+        // CR-CH-022 Req 14.2: navigate the current tab in place (push). The
+        // Theme editor's working state is already set on the shell above.
+        self.navigate_to(
+            ff_session::session_state::WorkspaceDescriptor::CustomWorkspace {
+                workspace_kind: ff_session::session_state::WorkspaceKind::CommandConfigurator,
+                params: {
+                    let mut p = ff_session::session_state::DescriptorParams::new();
+                    p.insert(
+                        "editor".to_string(),
+                        ff_session::session_state::DescriptorValue::from("theme"),
+                    );
+                    p
+                },
+            },
+            true,
+        );
     }
 
     /// Apply a `ThemeEditorAction` produced by the Theme Editor render. Side
@@ -1496,29 +1415,28 @@ impl WorkbenchShell {
     /// Validates: cw-requirements.md Requirement 9.1; configuration-system
     /// Requirement 15.1
     pub(super) fn open_settings_menu(&mut self) {
-        let menus_dir = self.menus_dir();
-        let limits = crate::menu_workspace::loader::option_limits_from_config(&self.config_handle);
-        self.tabs
-            .open_menu_workspace_here("settings", &menus_dir, limits, &self.runtime);
-        // CR-CH-021 Req 12.4/12.5: Settings is code-only. When no valid user
-        // settings.toml produced a menu, fall back to the compiled
-        // Recovery_Baseline. A file that EXISTED but failed to PARSE (load_error
-        // starting "Menu file error") gets a non-blocking notice; a merely
-        // ABSENT file ("Menu file not found") falls back silently.
+        // CR-CH-022 Req 14.2: navigate the current tab to the Settings menu in
+        // place (push onto the Navigation_Stack); never a new tab. The
+        // reconstruct path (nav_stack.rs) loads settings.toml with the compiled
+        // Recovery_Baseline fallback (CR-CH-021 Req 12.4/12.5).
+        self.navigate_to(
+            ff_session::session_state::WorkspaceDescriptor::Menu {
+                name: "settings".to_string(),
+            },
+            true,
+        );
+        // Surface a non-blocking notice when a present settings.toml failed to
+        // parse (a bypassed user file), matching the prior behaviour.
         let idx = self.tabs.active_index();
         if let Some(tab) = self.tabs.tabs_mut().get_mut(idx) {
-            if let Some(mw) = tab.menu_workspace.as_mut() {
-                if mw.menu.is_none() {
-                    let parse_error = mw
-                        .load_error
-                        .as_deref()
-                        .filter(|e| e.starts_with("Menu file error"))
-                        .map(str::to_string);
-                    mw.menu = Some(crate::menu_workspace::defaults::recovery_settings_menu());
-                    mw.load_error = None;
-                    if let Some(err) = parse_error {
-                        self.notify_menu_fallback("settings.toml", &err);
-                    }
+            if let Some(mw) = tab.menu_workspace.as_ref() {
+                if let Some(err) = mw
+                    .load_error
+                    .as_deref()
+                    .filter(|e| e.starts_with("Menu file error"))
+                    .map(str::to_string)
+                {
+                    self.notify_menu_fallback("settings.toml", &err);
                 }
             }
         }
@@ -1547,24 +1465,54 @@ impl WorkbenchShell {
     ///
     /// Validates: cw-requirements.md Requirement 10.1, 10.2, 10.5, 9.4
     pub(super) fn open_settings_view(&mut self, namespace: Option<String>) {
-        use crate::tab_state::TabKind;
-        let title = match &namespace {
-            Some(ns) => format!("[SETTINGS:{ns}]"),
-            None => "[SETTINGS]".to_string(),
-        };
-        // Pre-populate the flat-list filter with the namespace prefix so only
-        // matching keys are visible immediately (Req 10.2).
-        self.settings_panel.filter = match &namespace {
-            Some(ns) => format!("{ns}."),
-            None => String::new(),
-        };
-        self.settings_panel.namespace_filter = namespace;
-        if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
-            self.tabs
-                .transform_active_pom_tab(TabKind::SettingsPanel, &title);
+        // CR-CH-022 Req 14.2 + cw-requirements Req 10.4: navigate the current tab
+        // in place. For a NAMESPACE view, the parent on the Navigation_Stack must
+        // be the Settings MENU (so END returns to the menu, not straight to the
+        // grandparent). Achieve this by first navigating to the Settings menu
+        // (pushing the current Context), then to the namespace view (pushing the
+        // Settings menu). The unfiltered All-Settings view (namespace None) is a
+        // single hop from the current Context.
+        if let Some(ns) = &namespace {
+            // Only insert the Settings-menu parent when we are not already on it
+            // (avoid a redundant [Settings, Settings] pair when opened via the
+            // Settings menu option).
+            let already_on_settings_menu = self.tabs.active_tab().kind
+                == crate::tab_state::TabKind::MenuWorkspace
+                && self
+                    .tabs
+                    .active_tab()
+                    .menu_workspace
+                    .as_ref()
+                    .and_then(|mw| mw.menu.as_ref())
+                    .map(|m| m.title.eq_ignore_ascii_case("Settings"))
+                    .unwrap_or(false);
+            if !already_on_settings_menu {
+                self.open_settings_menu();
+            }
+            self.settings_panel.filter = format!("{ns}.");
+            self.settings_panel.namespace_filter = Some(ns.clone());
+            let mut params = ff_session::session_state::DescriptorParams::new();
+            params.insert(
+                "namespace".to_string(),
+                ff_session::session_state::DescriptorValue::from(ns.as_str()),
+            );
+            self.navigate_to(
+                ff_session::session_state::WorkspaceDescriptor::CustomWorkspace {
+                    workspace_kind: ff_session::session_state::WorkspaceKind::Settings,
+                    params,
+                },
+                true,
+            );
         } else {
-            self.tabs.open_settings_panel_tab(&self.runtime);
-            self.tabs.active_tab_mut().title = title;
+            self.settings_panel.filter = String::new();
+            self.settings_panel.namespace_filter = None;
+            self.navigate_to(
+                ff_session::session_state::WorkspaceDescriptor::CustomWorkspace {
+                    workspace_kind: ff_session::session_state::WorkspaceKind::Settings,
+                    params: ff_session::session_state::DescriptorParams::new(),
+                },
+                true,
+            );
         }
     }
 

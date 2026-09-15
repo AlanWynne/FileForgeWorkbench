@@ -1,19 +1,21 @@
 //! Pure render for the Menus Editor (menu-workspace Req 13).
 //!
-//! Returns a [`MenusEditorAction`]; the shell applies all side effects. Uses the
-//! two-slot pattern (button/selector `action` wins over a text-field
-//! `field_action` produced on commit) so a button click is never lost to a
-//! same-frame `lost_focus` edit (the B052 rule from the Theme editor).
+//! Returns a [`MenusEditorAction`]; the shell applies structural side effects
+//! (select / add / delete / move / save). Text and toggle fields are bound
+//! DIRECTLY to the mutable working `MenuFile` so edits persist across frames
+//! (B054); they do not produce actions.
 
-use super::state::{MenusEditorAction, MenusEditorState, OptionField};
+use super::state::{MenusEditorAction, MenusEditorState};
 use crate::menu_workspace::GroupSeparator;
 
 /// Render the Menus Editor Context, returning the action to apply.
 ///
 /// Validates: menu-workspace Requirement 13.1-13.12.
 pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAction {
+    // B054: text fields now mutate the working menu directly (no field-commit
+    // action), so a single `action` slot suffices -- only the structural
+    // buttons (select / add / delete / move / save / save as) produce actions.
     let mut action = MenusEditorAction::None;
-    let mut field_action = MenusEditorAction::None;
 
     ui.vertical_centered(|ui| {
         ui.label(egui::RichText::new("Menus Editor").strong().size(14.0));
@@ -53,23 +55,17 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
     ui.separator();
 
     // --- Menu-level fields ----------------------------------------------
+    // B054 fix: bind the TextEdit DIRECTLY to the mutable working menu so
+    // keystrokes persist across frames (a per-frame local buffer is discarded
+    // before the next frame and the field appears frozen).
     ui.horizontal(|ui| {
         ui.label("Title:");
-        let mut title = menu.title.clone();
-        if ui.text_edit_singleline(&mut title).lost_focus() && title != menu.title {
-            field_action = MenusEditorAction::EditTitle(title);
-        }
+        ui.text_edit_singleline(&mut menu.title);
     });
 
     ui.horizontal(|ui| {
-        let mut show_cal = menu.show_calendar;
-        if ui.checkbox(&mut show_cal, "Show calendar").changed() {
-            action = MenusEditorAction::SetShowCalendar(show_cal);
-        }
-        let mut headers = menu.group_headers;
-        if ui.checkbox(&mut headers, "Group headers").changed() {
-            action = MenusEditorAction::SetGroupHeaders(headers);
-        }
+        ui.checkbox(&mut menu.show_calendar, "Show calendar");
+        ui.checkbox(&mut menu.group_headers, "Group headers");
     });
 
     ui.horizontal(|ui| {
@@ -83,7 +79,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
                 .selectable_label(menu.group_separator == sep, label)
                 .clicked()
             {
-                action = MenusEditorAction::SetGroupSeparator(sep);
+                menu.group_separator = sep;
             }
         }
     });
@@ -92,74 +88,61 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
     ui.label(egui::RichText::new("Options (key | command | description)").strong());
 
     // --- Option rows ----------------------------------------------------
+    // B054 fix: iterate the options MUTABLY and bind each TextEdit directly to
+    // the working field, so typed input persists across frames. Structural
+    // actions (add/delete/move) still fire as actions since they change the
+    // vector length and cannot run during this mutable borrow.
     let option_count = menu.options.len();
+    let mut group_buf = String::new();
     egui::ScrollArea::vertical()
         .id_salt("menus_editor_options")
         .show(ui, |ui| {
-            for (i, option) in menu.options.iter().enumerate() {
+            for (i, option) in menu.options.iter_mut().enumerate() {
                 ui.horizontal(|ui| {
-                    // Key
-                    let mut key = option.key.clone();
+                    // Key -- edited directly; uppercased on commit (lost_focus).
                     let key_resp = ui.add(
-                        egui::TextEdit::singleline(&mut key)
+                        egui::TextEdit::singleline(&mut option.key)
                             .desired_width(48.0)
                             .hint_text("key"),
                     );
-                    if key_resp.lost_focus() && key != option.key {
-                        field_action = MenusEditorAction::EditOption {
-                            index: i,
-                            field: OptionField::Key,
-                            value: key,
-                        };
+                    if key_resp.lost_focus() {
+                        let upper = option.key.trim().to_uppercase();
+                        if upper != option.key {
+                            option.key = upper;
+                        }
                     }
-                    // Command
-                    let mut command = option.command.clone();
-                    let cmd_resp = ui.add(
-                        egui::TextEdit::singleline(&mut command)
+                    // Command / Description -- edited directly.
+                    ui.add(
+                        egui::TextEdit::singleline(&mut option.command)
                             .desired_width(120.0)
                             .hint_text("command"),
                     );
-                    if cmd_resp.lost_focus() && command != option.command {
-                        field_action = MenusEditorAction::EditOption {
-                            index: i,
-                            field: OptionField::Command,
-                            value: command,
-                        };
-                    }
-                    // Description
-                    let mut desc = option.description.clone();
-                    let desc_resp = ui.add(
-                        egui::TextEdit::singleline(&mut desc)
+                    ui.add(
+                        egui::TextEdit::singleline(&mut option.description)
                             .desired_width(200.0)
                             .hint_text("description"),
                     );
-                    if desc_resp.lost_focus() && desc != option.description {
-                        field_action = MenusEditorAction::EditOption {
-                            index: i,
-                            field: OptionField::Description,
-                            value: desc,
-                        };
+                    // Group -- Option<String> edited via a scratch buffer.
+                    group_buf.clear();
+                    if let Some(g) = &option.group {
+                        group_buf.push_str(g);
                     }
-                    // Group
-                    let mut group = option.group.clone().unwrap_or_default();
                     let grp_resp = ui.add(
-                        egui::TextEdit::singleline(&mut group)
+                        egui::TextEdit::singleline(&mut group_buf)
                             .desired_width(80.0)
                             .hint_text("group"),
                     );
-                    if grp_resp.lost_focus() && group != option.group.clone().unwrap_or_default() {
-                        field_action = MenusEditorAction::EditOption {
-                            index: i,
-                            field: OptionField::Group,
-                            value: group,
+                    if grp_resp.changed() {
+                        let trimmed = group_buf.trim();
+                        option.group = if trimmed.is_empty() {
+                            None
+                        } else {
+                            Some(group_buf.clone())
                         };
                     }
-                    // Enabled
-                    let mut enabled = option.enabled;
-                    if ui.checkbox(&mut enabled, "on").changed() {
-                        action = MenusEditorAction::SetOptionEnabled { index: i, enabled };
-                    }
-                    // Reorder / delete
+                    // Enabled -- edited directly.
+                    ui.checkbox(&mut option.enabled, "on");
+                    // Reorder / delete (structural -> action; applied after loop).
                     if ui.add_enabled(i > 0, egui::Button::new("^")).clicked() {
                         action = MenusEditorAction::MoveOptionUp(i);
                     }
@@ -201,10 +184,5 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
         }
     });
 
-    // Button/selector actions win over a same-frame field commit (B052).
-    if action != MenusEditorAction::None {
-        action
-    } else {
-        field_action
-    }
+    action
 }

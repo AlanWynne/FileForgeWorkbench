@@ -297,14 +297,12 @@ impl eframe::App for WorkbenchShell {
             self.pending_new_file = false;
             self.tabs.new_untitled_tab(&self.runtime);
         }
-        // Validates: Requirement 1.7 — F3/END in Files Panel returns tab to POM view.
+        // F3/END from the Files Panel (or another panel deferring an END) pops
+        // one level of the tab's Navigation_Stack (menu-workspace Req 14.4,
+        // CR-CH-022) -- the same uniform END path as the command.
         if self.pending_return_to_pom {
             self.pending_return_to_pom = false;
-            let idx = self.tabs.active_index();
-            if let Some(tab) = self.tabs.tabs_mut().get_mut(idx) {
-                tab.kind = crate::tab_state::TabKind::PrimaryOptionMenu;
-                tab.title = "[POM]".to_string();
-            }
+            self.nav_end();
         }
 
         // Process deferred Menu_Workspace option click.

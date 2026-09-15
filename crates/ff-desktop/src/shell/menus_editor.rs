@@ -7,7 +7,7 @@
 
 use super::WorkbenchShell;
 use crate::menu_workspace::{MenuFile, MenuOption};
-use crate::menus_editor_panel::{MenusEditorAction, OptionField};
+use crate::menus_editor_panel::MenusEditorAction;
 
 impl WorkbenchShell {
     /// Open the Menus Editor Context and populate its state: list editable
@@ -18,23 +18,7 @@ impl WorkbenchShell {
     ///
     /// Validates: menu-workspace Requirement 13.1, 13.2, 13.3
     pub(super) fn open_menus_editor(&mut self) {
-        use crate::tab_state::TabKind;
         self.refresh_menus_editor_list();
-        // Origin for END (B053): opened from the Settings menu (a MenuWorkspace
-        // tab backed by settings.toml) -> END returns to the Settings menu;
-        // otherwise END returns to the POM. Mirrors the Settings_Namespace_View
-        // one-level-back rule (cw-requirements Req 10.4).
-        let from_settings = self.tabs.active_tab().kind == TabKind::MenuWorkspace
-            && self
-                .tabs
-                .active_tab()
-                .menu_workspace
-                .as_ref()
-                .and_then(|mw| mw.menu.as_ref())
-                .map(|m| m.title.eq_ignore_ascii_case("Settings"))
-                .unwrap_or(false);
-        self.menus_editor_panel.opened_from_settings = from_settings;
-
         // Default the selection to POM the first time the editor opens.
         let selected = self
             .menus_editor_panel
@@ -44,17 +28,24 @@ impl WorkbenchShell {
         let menu = self.load_menu_for_editor(&selected);
         self.menus_editor_panel.load_working(&selected, menu);
 
-        if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu
-            || self.tabs.active_tab().kind == TabKind::MenuWorkspace
-        {
-            // Transform in place from the POM or the Settings menu so END can
-            // restore the origin on a single tab (no orphaned tab left behind).
-            let tab = self.tabs.active_tab_mut();
-            tab.kind = TabKind::MenusEditor;
-            tab.title = "[MENUS]".to_string();
-        } else {
-            self.tabs.open_menus_editor_tab(&self.runtime);
-        }
+        // CR-CH-022 Req 14.2: navigate the current tab to the Menus editor in
+        // place (push onto the Navigation_Stack). END pops back to whatever the
+        // editor was opened from (Settings, POM, ...) via the stack -- no
+        // per-flag origin tracking needed (supersedes B053's opened_from_settings).
+        self.navigate_to(
+            ff_session::session_state::WorkspaceDescriptor::CustomWorkspace {
+                workspace_kind: ff_session::session_state::WorkspaceKind::CommandConfigurator,
+                params: {
+                    let mut p = ff_session::session_state::DescriptorParams::new();
+                    p.insert(
+                        "editor".to_string(),
+                        ff_session::session_state::DescriptorValue::from("menus"),
+                    );
+                    p
+                },
+            },
+            true,
+        );
     }
 
     /// Apply a [`MenusEditorAction`] produced by the Menus Editor render.
@@ -68,57 +59,9 @@ impl WorkbenchShell {
                 let menu = self.load_menu_for_editor(&name);
                 self.menus_editor_panel.load_working(&name, menu);
             }
-            A::EditTitle(title) => {
-                if let Some(m) = self.menus_editor_panel.working.as_mut() {
-                    m.title = title;
-                }
-            }
-            A::SetShowCalendar(v) => {
-                if let Some(m) = self.menus_editor_panel.working.as_mut() {
-                    m.show_calendar = v;
-                }
-            }
-            A::SetGroupSeparator(sep) => {
-                if let Some(m) = self.menus_editor_panel.working.as_mut() {
-                    m.group_separator = sep;
-                }
-            }
-            A::SetGroupHeaders(v) => {
-                if let Some(m) = self.menus_editor_panel.working.as_mut() {
-                    m.group_headers = v;
-                }
-            }
-            A::EditOption {
-                index,
-                field,
-                value,
-            } => {
-                if let Some(m) = self.menus_editor_panel.working.as_mut() {
-                    if let Some(opt) = m.options.get_mut(index) {
-                        match field {
-                            // Keys are stored uppercase (loader Req 1.2).
-                            OptionField::Key => opt.key = value.trim().to_uppercase(),
-                            OptionField::Command => opt.command = value,
-                            OptionField::Description => opt.description = value,
-                            OptionField::Group => {
-                                let g = value.trim();
-                                opt.group = if g.is_empty() {
-                                    None
-                                } else {
-                                    Some(g.to_string())
-                                };
-                            }
-                        }
-                    }
-                }
-            }
-            A::SetOptionEnabled { index, enabled } => {
-                if let Some(m) = self.menus_editor_panel.working.as_mut() {
-                    if let Some(opt) = m.options.get_mut(index) {
-                        opt.enabled = enabled;
-                    }
-                }
-            }
+            // Note: title, display toggles, and per-option field edits are
+            // applied DIRECTLY by the render on the mutable working menu (B054),
+            // so they do not appear as actions here -- only structural changes do.
             A::AddOption => {
                 if let Some(m) = self.menus_editor_panel.working.as_mut() {
                     m.options.push(MenuOption {

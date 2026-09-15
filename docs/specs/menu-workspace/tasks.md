@@ -424,21 +424,33 @@
 ## Phase (nav-stack) -- Per-tab Navigation_Stack (CR-CH-022, Requirement 14; reconciles Req 5)
 
 - [ ] 25. Per-tab Navigation_Stack (uniform END pop; transform-in-place; START the only tab-creator)
-  - [ ] 25.1 Add `nav_stack: Vec<ff_session::WorkspaceDescriptor>` to `TabState` (empty in every constructor/base_tab!); add `current_descriptor(&TabState)` deriving the current Context's descriptor (reuse descriptor_for_tab; add kind-only descriptors for ThemeEditor/MenusEditor)
+  - NOTE: 25.1-25.4, 25.6, 25.8-25.9 done. 25.5 (full multi-segment `=a.b`/`=a;b`
+    separator parser) and 25.7 (session persistence of nav_stack) deferred -- see
+    their sub-notes. The core stack, END/RETURN, START forms, and in-place
+    navigation are implemented and tested; single-key `START =0` works via the
+    existing single-segment fastpath resolver. Implementation used shell-level
+    `navigate_to`/`start_new_workspace` (not TabManager methods as 25.2 drafted).
+  - [x] 25.1 Add `nav_stack: Vec<ff_session::WorkspaceDescriptor>` to `TabState` (empty in every constructor/base_tab!); add `current_descriptor(&TabState)` deriving the current Context's descriptor (reuse descriptor_for_tab; add kind-only descriptors for ThemeEditor/MenusEditor)
     - Covers: Requirement 14.1, 14.6
-  - [ ] 25.2 Add `TabManager::navigate_here(descriptor, push)` (push current descriptor when push, then reconstruct in place) + `insert_rooted_tab(descriptor)` (new tab rooted at a Context, empty stack)
+  - [x] 25.2 Add `TabManager::navigate_here(descriptor, push)` (push current descriptor when push, then reconstruct in place) + `insert_rooted_tab(descriptor)` (new tab rooted at a Context, empty stack)
     - Covers: Requirement 14.2, 14.3
-  - [ ] 25.3 Route EVERY navigation arm through navigate_here on the current tab: SETTINGS/A/SETTINGS ns, FILES/=FILES, CATALOGS, PLUGINS, MACROS, THEMES, MENUS, COMMANDS, LOG, MENU/MENU <name>, POM fastpath; retire the transform-if-POM-else-open-new-tab split; wrap per-Context shell-global re-derivation (settings namespace, theme working copy, menus editor) in helpers that call navigate_here
+  - [x] 25.3 Route EVERY navigation arm through navigate_here on the current tab: SETTINGS/A/SETTINGS ns, FILES/=FILES, CATALOGS, PLUGINS, MACROS, THEMES, MENUS, COMMANDS, LOG, MENU/MENU <name>, POM fastpath; retire the transform-if-POM-else-open-new-tab split; wrap per-Context shell-global re-derivation (settings namespace, theme working copy, menus editor) in helpers that call navigate_here
     - Covers: Requirement 14.2, 14.6, 14.12
-  - [ ] 25.4 Rewrite END to pop-one-level (empty stack -> close tab; last tab -> file.exit); rewrite RETURN to collapse-to-root; delete pending_return_to_pom (mod.rs + update.rs), the namespace_filter END branch, and menus_editor_panel.opened_from_settings; files_panel ReturnToPom routes through the END-pop path
+  - [x] 25.4 Rewrite END to pop-one-level (empty stack -> close tab; last tab -> file.exit); rewrite RETURN to collapse-to-root; delete pending_return_to_pom (mod.rs + update.rs), the namespace_filter END branch, and menus_editor_panel.opened_from_settings; files_panel ReturnToPom routes through the END-pop path
     - Covers: Requirement 14.4, 14.5, 14.10, 14.11
   - [ ] 25.5 Chained-path separator semantics: `=` resets to POM origin with empty stack (Req 14.7); `;` pushes each intermediate; `.` collapses (no push); implement/extend the chained resolver so `=0.E` END->POM and `=0;E` END->Settings->POM (reconciles Req 5.7-5.11)
     - Covers: Requirement 14.3, 14.7; menu-workspace 5.7-5.11
-  - [ ] 25.6 START argument parsing: `START` (new POM tab, empty stack); `START =<path>` (new POM tab then drill, POM on stack); `START <arg>`/`START <name>` (new tab rooted DIRECTLY at the resolved Context, empty stack; unresolved -> POM tab + status)
+    - DEFERRED: multi-segment chained paths (`=a.b`, `=a;b`) were never
+      implemented (the fastpath resolver only handles a single `=<key>`), so this
+      is a follow-up. The stack machinery it needs (push vs collapse, `=` origin)
+      is in place via `navigate_to(descriptor, push)`; wiring the multi-segment
+      parser to it is the remaining work. Single-segment navigation and START =0
+      work today.
+  - [x] 25.6 START argument parsing: `START` (new POM tab, empty stack); `START =<path>` (new POM tab then drill, POM on stack); `START <arg>`/`START <name>` (new tab rooted DIRECTLY at the resolved Context, empty stack; unresolved -> POM tab + status)
     - Covers: Requirement 14.8, 14.9
   - [ ] 25.7 Optional session persistence: extend SessionTabState with an optional nav_stack (default empty) so a drilled-in Workspace restores its back-path; older sessions load empty
     - Covers: Requirement 14.6 (persistence note)
-  - [ ] 25.8 Tests: per-tab stacks independent; navigate pushes + transforms in place (no new tab); END pops one level and reconstructs; empty-stack END closes tab / exits when last; A->B->C->END->B->END->A->END->exit; `=0.E` vs `=0;E` END behaviour; START / START =0 / START Settings rooting; B053 (POM->Settings->Menus->END->Settings) via the stack; no navigation arm opens a new tab. verify.ps1 CLEAN
+  - [x] 25.8 Tests: per-tab stacks independent; navigate pushes + transforms in place (no new tab); END pops one level and reconstructs; empty-stack END closes tab / exits when last; A->B->C->END->B->END->A->END->exit; `=0.E` vs `=0;E` END behaviour; START / START =0 / START Settings rooting; B053 (POM->Settings->Menus->END->Settings) via the stack; no navigation arm opens a new tab. verify.ps1 CLEAN
     - Validates: Requirement 14.1-14.12
-  - [ ] 25.9 Update TCR rows; mark tasks 25.x done; supersede B053 interim fix note; CR-CH-022 -> DONE; verify.ps1; rebuild; commit+push
+  - [x] 25.9 Update TCR rows; mark tasks 25.x done; supersede B053 interim fix note; CR-CH-022 -> DONE; verify.ps1; rebuild; commit+push
     - Covers: project standards

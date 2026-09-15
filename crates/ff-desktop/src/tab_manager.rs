@@ -266,6 +266,10 @@ impl TabManager {
     /// Open the Theme Editor tab, activating an existing one rather than
     /// inserting a duplicate.
     /// Validates: theme-and-appearance Requirement 20.1
+    // CR-CH-022: navigation now transforms in place (navigate_to); this
+    // dedicated-tab opener is retained for session restore and potential
+    // detached-window use, but is not called by the in-place navigation path.
+    #[allow(dead_code)]
     pub fn open_theme_editor_tab(&mut self, runtime: &Runtime) {
         if let Some(idx) = self
             .tabs
@@ -288,6 +292,9 @@ impl TabManager {
     /// inserting a duplicate.
     ///
     /// Validates: menu-workspace Requirement 13.1 (CR-NR-075)
+    // CR-CH-022: retained for session restore / detached windows; in-place
+    // navigation (navigate_to) does not use it.
+    #[allow(dead_code)]
     pub fn open_menus_editor_tab(&mut self, runtime: &Runtime) {
         if let Some(idx) = self
             .tabs
@@ -347,6 +354,10 @@ impl TabManager {
     ///
     /// No-op if the active tab is not a `PrimaryOptionMenu` tab.
     /// Validates: Requirement 14.6
+    // CR-CH-022: superseded by the shell-level navigate_to (which transforms ANY
+    // current tab in place and pushes the Navigation_Stack). Retained as a
+    // low-level primitive exercised by tab-manager unit tests.
+    #[allow(dead_code)]
     pub fn transform_active_pom_tab(&mut self, kind: TabKind, title: &str) {
         let tab = &mut self.tabs[self.active];
         if tab.kind == TabKind::PrimaryOptionMenu {
@@ -362,6 +373,10 @@ impl TabManager {
     /// opening (or activating) a dedicated tab.
     ///
     /// Validates: cw-requirements.md Requirement 9.1, 10.4; menu-workspace Req 11.2
+    // CR-CH-022: superseded by the shell reconstruct path (reconstruct_settings_menu
+    // / reconstruct_named_menu drive Menu_Workspace transforms in place). Retained
+    // for reference / potential reuse.
+    #[allow(dead_code)]
     pub fn open_menu_workspace_here(
         &mut self,
         name: &str,

@@ -1071,14 +1071,14 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 > tab-creator: START (POM), START =X (POM then drill), START X (rooted at X, no
 > POM beneath). Implements Req 5 = / ; / . semantics. Gate authored.
 
-- [ ] NS.1 nav_stack field on TabState + current_descriptor (Task 25.1; Req 14.1/14.6)
-- [ ] NS.2 navigate_here + insert_rooted_tab primitives (Task 25.2; Req 14.2/14.3)
-- [ ] NS.3 Route all navigation arms through navigate_here; retire transform-else-new-tab (Task 25.3; Req 14.2/14.6/14.12)
-- [ ] NS.4 END pop-one-level + RETURN collapse-to-root; delete the 3 ad-hoc mechanisms (Task 25.4; Req 14.4/14.5/14.10/14.11)
-- [ ] NS.5 Chained =/;/. separator semantics (Task 25.5; Req 14.3/14.7, Req 5.7-5.11)
-- [ ] NS.6 START argument parsing (POM / =path / rooted-at-arg) (Task 25.6; Req 14.8/14.9)
-- [ ] NS.7 Optional nav_stack session persistence (Task 25.7; Req 14.6)
-- [ ] NS.8 Tests + TCR; verify.ps1 CLEAN; rebuild; commit+push (Task 25.8-25.9)
+- [x] NS.1 nav_stack field on TabState + descriptor_for_current_context (Task 25.1; Req 14.1/14.6)
+- [x] NS.2 navigate_to + start_new_workspace primitives (shell-level) (Task 25.2; Req 14.2/14.3)
+- [x] NS.3 Route all navigation arms through navigate_to; retire transform-else-new-tab (Task 25.3; Req 14.2/14.6/14.12)
+- [x] NS.4 END pop-one-level + RETURN collapse-to-root; delete the 3 ad-hoc mechanisms (Task 25.4; Req 14.4/14.5/14.10/14.11)
+- [ ] NS.5 Chained =/;/. multi-segment separator semantics (Task 25.5; Req 14.3/14.7, Req 5.7-5.11) -- DEFERRED (never implemented; single-segment works; stack push/collapse machinery is in place)
+- [x] NS.6 START argument parsing (POM / =path / rooted-at-arg) (Task 25.6; Req 14.8/14.9)
+- [ ] NS.7 Optional nav_stack session persistence (Task 25.7; Req 14.6) -- DEFERRED (older sessions load empty stacks; core behaviour unaffected)
+- [x] NS.8 Tests + TCR; verify.ps1 CLEAN; rebuild; commit+push (Task 25.8-25.9)
 
 ---
 

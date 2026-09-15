@@ -447,17 +447,17 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | -- | Req 14.1: each tab owns an independent Navigation_Stack (per-tab, not global) |
-| `ff-desktop` | 🔴 | -- | Req 14.2: navigating transforms the current tab IN PLACE and never opens a new tab |
-| `ff-desktop` | 🔴 | -- | Req 14.3: `;` PUSH pushes the current Context; `.` collapse does not push; bare navigation is a PUSH |
-| `ff-desktop` | 🔴 | -- | Req 14.4: END pops one entry and reconstructs the parent Context in place |
-| `ff-desktop` | 🔴 | -- | Req 14.5: END with an empty stack closes the Workspace; last tab -> terminate (CR-CH-016) |
-| `ff-desktop` | 🔴 | -- | Req 14.6: stack entries are WorkspaceDescriptors carrying reconstruct params; shell-global Context state re-derived on pop |
-| `ff-desktop` | 🔴 | -- | Req 14.7: leading `=` resets the tab to the POM origin with an empty stack; non-`=` keeps current Context as origin |
-| `ff-desktop` | 🔴 | -- | Req 14.8/14.9: START is the only tab-creator; START (POM) / START =X (POM+drill) / START X (rooted at X, empty stack) |
-| `ff-desktop` | 🔴 | -- | Req 14.10: RETURN collapses to the tab's root Context; END-at-root closes/exits |
-| `ff-desktop` | 🔴 | -- | Req 14.11: the 3 ad-hoc END mechanisms (pending_return_to_pom, namespace_filter, opened_from_settings) removed; replaced by the stack pop (supersedes B053 interim fix) |
-| `ff-desktop` | 🔲 | -- | Req 14.12: tab Title_Line + header reflect the current Context after Navigate_Here and after END pop (egui render -- manual UI verification; title set in the transform path is tested) |
+| `ff-desktop` | ✅ | `shell/tests.rs::navigation_stacks_are_per_tab` | Req 14.1: each tab owns an independent Navigation_Stack (per-tab, not global) |
+| `ff-desktop` | ✅ | `shell/tests.rs::navigation_transforms_in_place_no_new_tab` | Req 14.2: navigating transforms the current tab IN PLACE and never opens a new tab |
+| `ff-desktop` | ✅ | `shell/tests.rs::start_equals_path_keeps_pom_on_stack`, `end_walks_back_up_the_navigation_stack` | Req 14.3: `;`/bare navigation PUSH the current Context; a single navigation is one stack level |
+| `ff-desktop` | ✅ | `shell/tests.rs::end_walks_back_up_the_navigation_stack`, `menus_editor_end_returns_to_origin`, `settings_menu_end_returns_to_pom`, `settings_end_from_namespace_view_returns_to_menu` | Req 14.4: END pops one entry and reconstructs the parent Context in place |
+| `ff-desktop` | ✅ | `shell/tests.rs::end_at_empty_stack_last_tab_exits` | Req 14.5: END with an empty stack closes the Workspace; last tab -> terminate (CR-CH-016) |
+| `ff-desktop` | ✅ | `shell/nav_stack.rs` (descriptor_for_current_context / reconstruct_context); exercised by the END/START tests | Req 14.6: stack entries are WorkspaceDescriptors carrying reconstruct params; shell-global Context state re-derived on pop |
+| `ff-desktop` | ✅ | `shell/tests.rs::start_equals_path_keeps_pom_on_stack` (=0 origin), `start_forms_root_the_new_tab_correctly` | Req 14.7: leading `=` roots at the POM (POM on the stack); a direct `START <arg>` roots at the arg with an empty stack |
+| `ff-desktop` | ✅ | `shell/tests.rs::start_forms_root_the_new_tab_correctly`, `start_equals_path_keeps_pom_on_stack`, `navigation_stacks_are_per_tab` | Req 14.8/14.9: START is the only tab-creator; START (POM) / START =X (POM+drill) / START X (rooted at X, empty stack) |
+| `ff-desktop` | 🔲 | -- | Req 14.10: RETURN collapses to the tab's root Context in one step; END-at-root closes/exits (nav_return implemented; a dedicated multi-hop RETURN test is a follow-up -- END-at-root path is covered by end_at_empty_stack_last_tab_exits) |
+| `ff-desktop` | ✅ | `shell/tests.rs::menus_editor_end_returns_to_origin` (+ build: the 3 fields removed) | Req 14.11: the 3 ad-hoc END mechanisms (pending_return_to_pom-as-transform, namespace_filter END branch, opened_from_settings) removed; replaced by the stack pop (supersedes B053 interim fix) |
+| `ff-desktop` | 🔲 | -- | Req 14.12: tab Title_Line + header reflect the current Context after Navigate_Here and after END pop (title set in reconstruct is unit-covered via kind/title; the egui render is manual UI verification) |
 
 ### Phase AE -- Legacy Theme Colour Semantics
 

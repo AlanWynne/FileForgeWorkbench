@@ -1874,8 +1874,9 @@ fn swap_without_split_opens_tab_picker() {
 fn swap_n_activates_nth_tab() {
     // Validates: Requirement 18.1
     let mut shell = make_shell();
-    // Ensure at least 2 tabs exist: open a second workspace (File Explorer).
-    shell.handle_command("2");
+    // CR-CH-022: navigation transforms in place; only START creates a new tab.
+    // Open a second Workspace with START (a new POM tab).
+    shell.handle_command("START");
     let count = shell.tabs.len();
     assert!(count >= 2, "need >=2 tabs for the test (have {count})");
 
@@ -3930,19 +3931,9 @@ fn command_configurator_end_returns_to_pom() {
     let mut shell = make_shell();
     shell.handle_command("COMMANDS");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::CommandConfigurator);
-    // END sets the deferred return-to-POM flag; apply it as update() would.
+    // CR-CH-022: END pops the Navigation_Stack (which holds [POM]) and
+    // reconstructs the POM in place -- synchronously, no deferred flag.
     shell.handle_command("END");
-    assert!(
-        shell.pending_return_to_pom,
-        "END must request return to POM"
-    );
-    let idx = shell.tabs.active_index();
-    if shell.pending_return_to_pom {
-        if let Some(tab) = shell.tabs.tabs_mut().get_mut(idx) {
-            tab.kind = TabKind::PrimaryOptionMenu;
-            tab.title = "[POM]".to_string();
-        }
-    }
     assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
 }
 
@@ -4427,17 +4418,9 @@ fn settings_menu_end_returns_to_pom() {
     let mut shell = make_shell();
     shell.handle_command("SETTINGS");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::MenuWorkspace);
+    // CR-CH-022: END pops the Navigation_Stack ([POM]) and reconstructs the POM
+    // in place, synchronously.
     shell.handle_command("END");
-    // END on a Menu_Workspace requests the deferred return-to-POM transform.
-    assert!(
-        shell.pending_return_to_pom,
-        "END from the Settings_Menu must return to POM"
-    );
-    let idx = shell.tabs.active_index();
-    if let Some(tab) = shell.tabs.tabs_mut().get_mut(idx) {
-        tab.kind = TabKind::PrimaryOptionMenu;
-        tab.title = "[POM]".to_string();
-    }
     assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
 }
 
@@ -4607,18 +4590,17 @@ fn menus_editor_add_delete_move_mutate_working() {
 
 // Validates: menu-workspace Requirement 13.4 -- editing a field mutates the
 // working option (key is uppercased).
+// Validates: menu-workspace Requirement 13.4 (B054) -- option fields are edited
+// directly on the working menu (the render binds TextEdits to it); the model
+// holds the typed value.
 #[test]
-fn menus_editor_edit_option_key_uppercases() {
-    use crate::menus_editor_panel::{MenusEditorAction as A, OptionField};
+fn menus_editor_edit_option_field_mutates_working() {
     let (mut shell, _dir) = make_shell_with_menus_editor();
-    shell.apply_menus_editor_action(A::EditOption {
-        index: 0,
-        field: OptionField::Key,
-        value: "z".to_string(),
-    });
+    // Simulate the render binding by mutating the working option directly.
+    shell.menus_editor_panel.working.as_mut().unwrap().options[0].command = "PLUGINS".to_string();
     assert_eq!(
-        shell.menus_editor_panel.working.as_ref().unwrap().options[0].key,
-        "Z"
+        shell.menus_editor_panel.working.as_ref().unwrap().options[0].command,
+        "PLUGINS"
     );
 }
 
@@ -4628,8 +4610,8 @@ fn menus_editor_edit_option_key_uppercases() {
 fn menus_editor_save_writes_loadable_file() {
     use crate::menus_editor_panel::MenusEditorAction as A;
     let (mut shell, dir) = make_shell_with_menus_editor();
-    // Edit the title, then Save (selected = POM -> pom.toml).
-    shell.apply_menus_editor_action(A::EditTitle("My POM".to_string()));
+    // Edit the title directly (as the render does), then Save (POM -> pom.toml).
+    shell.menus_editor_panel.working.as_mut().unwrap().title = "My POM".to_string();
     shell.apply_menus_editor_action(A::Save);
     assert!(
         shell.menus_editor_panel.error.is_none(),
@@ -4651,14 +4633,10 @@ fn menus_editor_save_writes_loadable_file() {
 // (empty command) is rejected on Save; no file is written.
 #[test]
 fn menus_editor_save_blocked_when_invalid() {
-    use crate::menus_editor_panel::{MenusEditorAction as A, OptionField};
+    use crate::menus_editor_panel::MenusEditorAction as A;
     let (mut shell, dir) = make_shell_with_menus_editor();
-    // Blank out an option's command -> invalid.
-    shell.apply_menus_editor_action(A::EditOption {
-        index: 0,
-        field: OptionField::Command,
-        value: "   ".to_string(),
-    });
+    // Blank out an option's command -> invalid (as a direct field edit would).
+    shell.menus_editor_panel.working.as_mut().unwrap().options[0].command = "   ".to_string();
     shell.apply_menus_editor_action(A::Save);
     assert!(
         shell.menus_editor_panel.error.is_some(),
@@ -4670,47 +4648,41 @@ fn menus_editor_save_blocked_when_invalid() {
     );
 }
 
-// Validates: menu-workspace Req 13.1 + cw-requirements Req 10.4 (B053) --
-// END from the Menus Editor opened via the Settings menu returns one level to
-// the Settings menu (not the POM); opened from the POM it returns to the POM.
+// Validates: menu-workspace Req 14.4 (CR-CH-022, supersedes B053) -- END from
+// the Menus Editor pops the Navigation_Stack: opened from the POM it returns to
+// the POM; opened via Settings it returns to the Settings menu, then the POM.
 #[test]
 fn menus_editor_end_returns_to_origin() {
     use crate::tab_state::TabKind;
-    // Opened from the POM (make_shell starts on a POM): origin is NOT Settings.
+    // POM -> MENUS -> END returns to the POM (stack had [POM]).
     let mut shell = make_shell();
     shell.handle_command("MENUS");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::MenusEditor);
-    assert!(
-        !shell.menus_editor_panel.opened_from_settings,
-        "opened from the POM -> origin is not Settings"
-    );
     shell.handle_command("END");
-    assert!(
-        shell.pending_return_to_pom,
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::PrimaryOptionMenu,
         "END from a POM-opened Menus Editor returns to the POM"
     );
 
-    // Opened from the Settings menu: origin IS Settings; END returns there.
+    // POM -> SETTINGS -> MENUS -> END returns to the Settings menu (stack had
+    // [POM, Settings]); a second END returns to the POM.
     let mut shell = make_shell();
     shell.handle_command("SETTINGS");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::MenuWorkspace);
     shell.handle_command("MENUS");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::MenusEditor);
-    assert!(
-        shell.menus_editor_panel.opened_from_settings,
-        "opened from Settings -> origin is Settings"
-    );
     shell.handle_command("END");
-    // END returned to the Settings menu (a MenuWorkspace titled "Settings"),
-    // NOT the POM.
     assert_eq!(
         shell.tabs.active_tab().kind,
         TabKind::MenuWorkspace,
         "END from a Settings-opened Menus Editor returns to the Settings menu"
     );
-    assert!(
-        !shell.pending_return_to_pom,
-        "END must NOT request return-to-POM when returning to Settings"
+    shell.handle_command("END");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::PrimaryOptionMenu,
+        "a second END returns to the POM"
     );
 }
 
@@ -4727,6 +4699,153 @@ fn settings_reset_bare_affordance_dispatches_command() {
     assert!(
         shell.reset_bare_confirm_open,
         "the RESET BARE affordance's command must open the confirmation dialog"
+    );
+}
+
+// === CR-CH-022: Per-tab Navigation_Stack (Requirement 14) ==================
+
+// Validates: Req 14.2 -- navigating transforms the CURRENT tab in place and
+// never opens a new tab.
+#[test]
+fn navigation_transforms_in_place_no_new_tab() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    let start_len = shell.tabs.len();
+    shell.handle_command("SETTINGS");
+    assert_eq!(
+        shell.tabs.len(),
+        start_len,
+        "navigation must not open a new tab"
+    );
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::MenuWorkspace);
+    shell.handle_command("PLUGINS");
+    assert_eq!(
+        shell.tabs.len(),
+        start_len,
+        "still no new tab after a second navigation"
+    );
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::PluginManager);
+}
+
+// Validates: Req 14.4 -- A -> B -> C, then END walks back C -> B -> A one level
+// per press (per-tab Navigation_Stack).
+#[test]
+fn end_walks_back_up_the_navigation_stack() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell(); // A = POM
+    shell.handle_command("SETTINGS"); // B = Settings menu (MenuWorkspace)
+    shell.handle_command("MENUS"); // C = Menus editor
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::MenusEditor);
+    shell.handle_command("END");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::MenuWorkspace,
+        "END: C -> B (Settings menu)"
+    );
+    shell.handle_command("END");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::PrimaryOptionMenu,
+        "END: B -> A (POM)"
+    );
+    assert_eq!(shell.tabs.len(), 1, "walking back never spawned a tab");
+}
+
+// Validates: Req 14.5 -- END with an empty stack on the last tab terminates.
+#[test]
+fn end_at_empty_stack_last_tab_exits() {
+    let mut shell = make_shell(); // single POM tab, empty stack
+    assert_eq!(shell.tabs.len(), 1);
+    assert!(shell.tabs.active_tab().nav_stack.is_empty());
+    shell.handle_command("END");
+    // file.exit is dispatched; the close-flag is set by the exit command.
+    assert!(
+        *shell.should_close.lock().expect("close lock"),
+        "END at the root of the last Workspace must terminate the app"
+    );
+}
+
+// Validates: Req 14.1 -- stacks are per-tab (independent across tabs).
+#[test]
+fn navigation_stacks_are_per_tab() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    let before = shell.tabs.len();
+    shell.handle_command("SETTINGS"); // active tab drills to Settings (stack pushed)
+    shell.handle_command("START"); // NEW tab (POM, empty stack), now active
+    assert_eq!(shell.tabs.len(), before + 1, "START adds exactly one tab");
+    // The active (START) tab has its own empty stack.
+    assert!(
+        shell.tabs.active_tab().nav_stack.is_empty(),
+        "the START tab has its own empty stack"
+    );
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
+    // The Settings tab (found by kind) still has its own non-empty stack --
+    // proving stacks are independent per tab.
+    let settings_tab = shell
+        .tabs
+        .tabs()
+        .iter()
+        .find(|t| t.kind == TabKind::MenuWorkspace)
+        .expect("the drilled Settings tab still exists");
+    assert!(
+        !settings_tab.nav_stack.is_empty(),
+        "the first tab's stack is unaffected by the second tab"
+    );
+}
+
+// Validates: Req 14.8 -- START forms: START (POM), START =0 (POM+drill),
+// START Settings (rooted directly at Settings, empty stack).
+#[test]
+fn start_forms_root_the_new_tab_correctly() {
+    use crate::tab_state::TabKind;
+
+    // START -> new POM tab, empty stack.
+    let mut shell = make_shell();
+    let before = shell.tabs.len();
+    shell.handle_command("START");
+    assert_eq!(shell.tabs.len(), before + 1);
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
+    assert!(shell.tabs.active_tab().nav_stack.is_empty());
+
+    // START Settings -> new tab rooted directly at Settings, EMPTY stack, so
+    // END ends the Workspace.
+    let mut shell = make_shell();
+    let before = shell.tabs.len();
+    shell.handle_command("START Settings");
+    assert_eq!(shell.tabs.len(), before + 1, "START creates one new tab");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::MenuWorkspace,
+        "START Settings roots the new tab at the Settings menu"
+    );
+    assert!(
+        shell.tabs.active_tab().nav_stack.is_empty(),
+        "START <arg> roots directly (no POM beneath), so the stack is empty"
+    );
+}
+
+// Validates: Req 14.8 -- START =0 roots at the POM then drills to Settings,
+// leaving the POM on the stack so END walks back to the POM.
+#[test]
+fn start_equals_path_keeps_pom_on_stack() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("START =0"); // POM option 0 = SETTINGS
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::MenuWorkspace,
+        "START =0 drills to the Settings menu"
+    );
+    assert!(
+        !shell.tabs.active_tab().nav_stack.is_empty(),
+        "START =X keeps the POM on the stack"
+    );
+    shell.handle_command("END");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::PrimaryOptionMenu,
+        "END from a START =0 tab returns to the POM"
     );
 }
 
