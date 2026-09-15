@@ -14,6 +14,22 @@ use crate::tab_state::TabKind;
 use super::helpers::*;
 
 impl WorkbenchShell {
+    /// Close the current tab and navigate to the tab that was active immediately
+    /// before it was opened (the top of `tab_history`), clamped to the remaining
+    /// range. Shared by END from any Context, including a POM when other
+    /// Workspaces remain open (Requirement 17.1, 17.2).
+    ///
+    /// `TabManager::close_tab` keeps at least one tab open, so callers must
+    /// decide the last-Workspace case (terminate) before calling this.
+    pub(super) fn close_current_and_navigate_back(&mut self) {
+        let current = self.tabs.active_index();
+        self.tabs.close_tab(current);
+        if let Some(prev) = self.tab_history.pop() {
+            let clamped = prev.min(self.tabs.len().saturating_sub(1));
+            self.tabs.set_active(clamped);
+        }
+    }
+
     pub(super) fn handle_command(&mut self, cmd: &str) {
         let upper = cmd.trim().to_uppercase();
 
@@ -156,12 +172,23 @@ impl WorkbenchShell {
         if upper == "END" {
             let kind = self.tabs.active_tab().kind;
             if kind == TabKind::PrimaryOptionMenu {
-                // Validates: Requirement 17.2 — END from POM exits
-                let result = self
-                    .dispatch
-                    .execute_command("file.exit", CommandParams::new());
-                if let CommandResult::Err(e) = result {
-                    self.open_error = Some(e.to_string());
+                // Validates: Requirement 17.2 / 17.2a -- END from a POM closes
+                // only that POM Workspace and navigates to the previously-active
+                // tab when other Workspaces remain open; it terminates the app
+                // only when the POM is the last Workspace open (equivalent to
+                // EXIT). (CR-CH-016.)
+                if self.tabs.len() <= 1 {
+                    // Last Workspace -> terminate (Req 17.2a).
+                    let result = self
+                        .dispatch
+                        .execute_command("file.exit", CommandParams::new());
+                    if let CommandResult::Err(e) = result {
+                        self.open_error = Some(e.to_string());
+                    }
+                } else {
+                    // Other Workspaces remain -> close-and-navigate (Req 17.2,
+                    // same behaviour as criterion 17.1).
+                    self.close_current_and_navigate_back();
                 }
             } else if kind == TabKind::FileExplorerPanel
                 || kind == TabKind::CommandConfigurator
@@ -180,13 +207,8 @@ impl WorkbenchShell {
                 // flat All-Settings view and not straight to the POM.
                 self.open_settings_menu();
             } else {
-                // Validates: Requirement 17.1 — close current tab, go to previous
-                let current = self.tabs.active_index();
-                self.tabs.close_tab(current);
-                if let Some(prev) = self.tab_history.pop() {
-                    let clamped = prev.min(self.tabs.len().saturating_sub(1));
-                    self.tabs.set_active(clamped);
-                }
+                // Validates: Requirement 17.1 -- close current tab, go to previous
+                self.close_current_and_navigate_back();
             }
             self.open_error = None;
             return;
@@ -196,12 +218,19 @@ impl WorkbenchShell {
         if upper == "RETURN" {
             let is_pom = self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu;
             if is_pom {
-                // Validates: Requirement 17.4 — RETURN from POM exits
-                let result = self
-                    .dispatch
-                    .execute_command("file.exit", CommandParams::new());
-                if let CommandResult::Err(e) = result {
-                    self.open_error = Some(e.to_string());
+                // Validates: Requirement 17.4 (REVISED, CR-CH-016) -- RETURN from
+                // a POM behaves like END: close only that POM Workspace and
+                // navigate back when other Workspaces remain open; terminate the
+                // app only when the POM is the last Workspace open.
+                if self.tabs.len() <= 1 {
+                    let result = self
+                        .dispatch
+                        .execute_command("file.exit", CommandParams::new());
+                    if let CommandResult::Err(e) = result {
+                        self.open_error = Some(e.to_string());
+                    }
+                } else {
+                    self.close_current_and_navigate_back();
                 }
             } else {
                 // Validates: Requirement 17.3 — navigate to POM tab

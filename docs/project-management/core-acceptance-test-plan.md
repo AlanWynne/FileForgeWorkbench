@@ -64,8 +64,8 @@ not blocking.
 | 1.4 | `SWAP n` on the command line (e.g. `SWAP 2`); also `SWAP 0`/`SWAP 999`/`SWAP xyz`. | `SWAP 1` -> first tab, `SWAP 2` -> second; out-of-range/invalid shows a clear error and does not switch. | B043 (FIXED, retest); multi-tab-editor 18.1, 18.2 | [ ] |
 | 1.5 | `SWAP LIST` (and bare `SWAP` with no split). | A selectable list of open tabs pops up (`n: title`); clicking a row OR typing a number + Enter switches; Escape cancels. | B043 (FIXED, retest); multi-tab-editor 18.3-18.7 | [ ] |
 | 1.6 | Close a tab via its close control. | Tab closes; a sensible neighbour becomes active; POM cannot be lost (at least one tab remains). | multi-tab-editor 3.8 | [ ] |
-| 1.7 | END (F3) from a POM tab when other tabs are open. | Closes only that POM Workspace and navigates to another open Workspace; the app does NOT exit. | CR-CH-016 (pending) | [B] |
-| 1.8 | END (F3) from a POM tab when it is the LAST tab open. | The application terminates. | CR-CH-016 (pending) | [B] |
+| 1.7 | END (F3) from a POM tab when other tabs are open. | Closes only that POM Workspace and navigates to another open Workspace; the app does NOT exit. | CR-CH-016 (FIXED, retest) | [ ] |
+| 1.8 | END (F3) from a POM tab when it is the LAST tab open. | The application terminates. | CR-CH-016 (FIXED, retest) | [ ] |
 | 1.9 | Detach a workspace via the tab right-click menu (Detach/Undock action). | A Detach/Undock action exists in the tab context menu; invoking it moves the workspace into a separate OS window (Detached Workspace); content intact. | B045; layout-and-docking 3.1 | [B] |
 | 1.10 | Detach by dragging a tab >20px outside the tab bar and releasing. | A new Detached Workspace is created at the release point; content intact. | B045; layout-and-docking 3.9 | [B] |
 | 1.11 | Re-dock the detached workspace (close its window or redock gesture). | It returns to the tab bar at its origin; content intact. | B045; layout-and-docking 3.5, 3.11 | [B] |
@@ -230,7 +230,7 @@ fixed. Keep this map updated as rows are added.
 | B047 (navigator file open resource-not-found) | FIXED (retest 3.3/3.12) | 3.3, 3.12 |
 | CR-NR-071 (CORE context help content) | PENDING GATE | 7.1 |
 | CR-NR-072 (navigator junction/symlink expansion) | PENDING GATE | 3.2a |
-| CR-CH-016 (END from POM) | PENDING GATE | 1.7, 1.8, 4.10, 7.2 |
+| CR-CH-016 (END/RETURN from POM) | FIXED (retest 1.7/1.8/4.10/7.2) | 1.7, 1.8, 4.10, 7.2 |
 | CR-NR-062 (View/Edit + context-menu commands) | PENDING GATE | 3.4, 3.5, 3.12, 4.1, 4.3, 4.9, 5.2 |
 | CR-NR-066 (`cd` focuses navigator) | PENDING GATE | 3.13 |
 | CR-NR-067 (configurable menu bar) | PENDING GATE | 2.5, 2.6, 2.7 |

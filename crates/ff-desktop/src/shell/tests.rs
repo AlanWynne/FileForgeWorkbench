@@ -1344,6 +1344,94 @@ fn file_explorer_panel_tab_title_is_files() {
     assert_eq!(mgr.active_tab().title, "[FILES]");
 }
 
+/// Validates: function-keys-and-history Requirement 17.2 (CR-CH-016) -- END from
+/// a POM with other Workspaces open closes only that POM and navigates back; it
+/// does NOT terminate the application.
+#[test]
+fn end_from_pom_with_other_tabs_closes_pom_not_app() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    // Make the active tab a POM, then open a second Workspace so the POM is not
+    // the only tab.
+    let idx = shell.tabs.active_index();
+    if let Some(tab) = shell.tabs.tabs_mut().get_mut(idx) {
+        tab.kind = TabKind::PrimaryOptionMenu;
+        tab.title = "[POM]".to_string();
+    }
+    shell.tabs.insert_pom_tab(&shell.runtime); // second tab
+                                               // Re-select the first (a POM) as active.
+    shell.tabs.set_active(0);
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
+    let before = shell.tabs.len();
+    assert!(before >= 2, "precondition: more than one Workspace open");
+
+    shell.handle_command("END");
+
+    // The POM Workspace was closed (count decreased); the app was NOT terminated.
+    assert_eq!(
+        shell.tabs.len(),
+        before - 1,
+        "END from a POM with other tabs must close that one tab"
+    );
+}
+
+/// Validates: function-keys-and-history Requirement 17.2a (CR-CH-016) -- END from
+/// a POM that is the ONLY Workspace open does not close/navigate (it takes the
+/// terminate path); the tab is preserved (close_tab keeps the last tab, and the
+/// exit branch is taken instead of close-and-navigate).
+#[test]
+fn end_from_pom_as_only_workspace_does_not_close_tab() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    // Reduce to a single POM tab.
+    while shell.tabs.len() > 1 {
+        shell.tabs.close_tab(shell.tabs.len() - 1);
+    }
+    let idx = shell.tabs.active_index();
+    if let Some(tab) = shell.tabs.tabs_mut().get_mut(idx) {
+        tab.kind = TabKind::PrimaryOptionMenu;
+        tab.title = "[POM]".to_string();
+    }
+    assert_eq!(shell.tabs.len(), 1);
+
+    shell.handle_command("END");
+
+    // Only Workspace -> terminate path (file.exit), which does not close the tab
+    // in-model; the single tab remains.
+    assert_eq!(
+        shell.tabs.len(),
+        1,
+        "END from the only POM takes the exit path, not close-and-navigate"
+    );
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
+}
+
+/// Validates: function-keys-and-history Requirement 17.4 (REVISED, CR-CH-016) --
+/// RETURN from a POM with other Workspaces open closes only that POM (same as
+/// END), not the app.
+#[test]
+fn return_from_pom_with_other_tabs_closes_pom_not_app() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    let idx = shell.tabs.active_index();
+    if let Some(tab) = shell.tabs.tabs_mut().get_mut(idx) {
+        tab.kind = TabKind::PrimaryOptionMenu;
+        tab.title = "[POM]".to_string();
+    }
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.tabs.set_active(0);
+    let before = shell.tabs.len();
+    assert!(before >= 2);
+
+    shell.handle_command("RETURN");
+
+    assert_eq!(
+        shell.tabs.len(),
+        before - 1,
+        "RETURN from a POM with other tabs must close that one tab (revised 17.4)"
+    );
+}
+
 /// Validates: Requirement 19.10 -- END command on FileExplorerPanel returns tab to POM.
 #[test]
 fn file_explorer_panel_end_command_returns_to_pom() {
