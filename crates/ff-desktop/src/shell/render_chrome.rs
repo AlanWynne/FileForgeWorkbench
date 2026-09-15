@@ -107,10 +107,8 @@ impl WorkbenchShell {
     /// action (Requirement 20.6) and any name-based theme selection.
     ///
     /// Validates: theme-and-appearance Requirement 19.7
-    // Used by the Theme editor Set_Active action (increment C, task 24.5); the
-    // helper lands with increment B so startup/hot-reload and the editor share
-    // one name-based activation path.
-    #[allow(dead_code)]
+    /// Used by the Theme editor Set_Active action (task 24.5) and any name-based
+    /// theme selection, sharing one activation path with startup/hot-reload.
     pub(super) fn set_active_theme(&mut self, name: &str) {
         let themes_dir = crate::theme_defaults::themes_dir();
         match crate::theme_defaults::load_theme_by_name(name, &themes_dir) {
@@ -204,7 +202,11 @@ impl WorkbenchShell {
                     if ui.button("Preferences…").clicked() {
                         ui.close_menu();
                     }
-                    if ui.button("Themes").clicked() {
+                    // Command parity (Req 20.2/20.10): the Themes item dispatches
+                    // the THEMES command -- the same code path as typing it --
+                    // opening the Theme Editor Context.
+                    if ui.button("Theme Editor").clicked() {
+                        self.handle_command("THEMES");
                         ui.close_menu();
                     }
                     ui.separator();

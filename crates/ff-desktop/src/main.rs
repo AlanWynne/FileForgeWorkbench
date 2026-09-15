@@ -41,6 +41,7 @@ mod shell;
 mod tab_manager;
 mod tab_state;
 mod theme_defaults;
+mod theme_editor_panel;
 mod toolchain_panel;
 
 use anyhow::Context as _;

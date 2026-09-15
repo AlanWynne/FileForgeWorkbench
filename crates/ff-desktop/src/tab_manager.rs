@@ -263,6 +263,27 @@ impl TabManager {
         let _ = runtime;
     }
 
+    /// Open the Theme Editor tab, activating an existing one rather than
+    /// inserting a duplicate.
+    /// Validates: theme-and-appearance Requirement 20.1
+    pub fn open_theme_editor_tab(&mut self, runtime: &Runtime) {
+        if let Some(idx) = self
+            .tabs
+            .iter()
+            .position(|t| t.kind == TabKind::ThemeEditor)
+        {
+            self.active = idx;
+            return;
+        }
+        let document = ff_document_model::new_document();
+        let id = TabId(self.next_id);
+        self.next_id += 1;
+        let tab = crate::tab_state::TabState::theme_editor(id, document);
+        self.tabs.push(tab);
+        self.active = self.tabs.len() - 1;
+        let _ = runtime;
+    }
+
     /// Open a data-driven Menu Workspace tab backed by `<menus_dir>/<name>.toml`.
     ///
     /// If a Menu Workspace tab already backed by the same file exists, it is

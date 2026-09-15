@@ -56,6 +56,10 @@ pub enum TabKind {
     ///
     /// Validates: command-configurator Requirement 2.1, 2.7
     CommandConfigurator,
+    /// Theme Editor -- copy/edit/save/set-active themes.
+    ///
+    /// Validates: theme-and-appearance Requirement 20.1
+    ThemeEditor,
 }
 
 /// A single undoable edit stored as the inverse operation to apply.
@@ -298,6 +302,13 @@ impl TabState {
             "[COMMANDS]".to_string(),
             document
         )
+    }
+
+    /// Create a Theme Editor tab.
+    ///
+    /// Validates: theme-and-appearance Requirement 20.1
+    pub fn theme_editor(id: TabId, document: DocumentHandle) -> Self {
+        base_tab!(id, TabKind::ThemeEditor, "[THEME]".to_string(), document)
     }
 
     /// Create a Menu Workspace tab backed by a TOML file at `file_path`.

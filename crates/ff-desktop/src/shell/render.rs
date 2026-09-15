@@ -707,6 +707,12 @@ impl WorkbenchShell {
                             }
                         }
                     }
+                    TabKind::ThemeEditor => {
+                        // Validates: theme-and-appearance Requirement 20.1, 20.3-20.9
+                        let action =
+                            crate::theme_editor_panel::render(ui, &mut self.theme_editor_panel);
+                        self.apply_theme_editor_action(action);
+                    }
                     TabKind::CommandConfigurator => {
                         // Validates: command-configurator Requirement 2.2-2.6
                         self.command_store.poll_reload();

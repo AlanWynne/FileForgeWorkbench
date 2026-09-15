@@ -4448,3 +4448,100 @@ fn default_settings_toml_option_a_command_is_a() {
         "option A must open the flat All-Settings list, not re-open the Settings_Menu"
     );
 }
+
+// === CR-NR-074: Theme Editor Context (Requirement 20) ======================
+
+/// Validates: Requirement 20.1, 20.2 -- THEMES opens the Theme Editor Context
+/// and populates its panel state (available themes + working copy).
+#[test]
+fn themes_command_opens_theme_editor() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("THEMES");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::ThemeEditor,
+        "THEMES must open the Theme Editor Context"
+    );
+    // The panel is populated: a working copy is loaded and the built-ins are listed.
+    assert!(shell.theme_editor_panel.working.is_some());
+    assert!(shell
+        .theme_editor_panel
+        .available
+        .iter()
+        .any(|n| n == "Default Legacy"));
+}
+
+/// Validates: Requirement 20.2 -- on a POM tab, THEMES transforms it in place
+/// (so END/RETURN returns to the POM), like the Settings/Commands Contexts.
+#[test]
+fn themes_command_transforms_pom_tab_in_place() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    // Ensure the active tab is a POM.
+    shell.handle_command("START");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
+    let count_before = shell.tabs.len();
+    shell.handle_command("THEMES");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::ThemeEditor);
+    assert_eq!(
+        shell.tabs.len(),
+        count_before,
+        "opening the editor from the POM transforms in place (no new tab)"
+    );
+}
+
+/// Validates: Requirement 20.3, 20.8 -- EditToken updates the working copy and
+/// live-previews it by applying to the active palette.
+#[test]
+fn theme_editor_edit_token_updates_working_and_previews() {
+    use crate::theme_editor_panel::{EditableToken, ThemeEditorAction};
+    use ff_theme::ColourRGBA;
+    let mut shell = make_shell();
+    shell.handle_command("THEMES");
+    let red = ColourRGBA::rgb(255, 0, 0);
+    shell.apply_theme_editor_action(ThemeEditorAction::EditToken(EditableToken::UiPanelBg, red));
+    // Working copy updated.
+    let working = shell.theme_editor_panel.working.as_ref().unwrap();
+    assert_eq!(EditableToken::UiPanelBg.get(working), red);
+    // Live preview: active palette reflects the edit.
+    assert_eq!(shell.palette.ui.panel_bg, red);
+}
+
+/// Validates: Requirement 20.7 / 18.4 -- Reset loads the built-in baseline into
+/// the working copy for a built-in theme.
+#[test]
+fn theme_editor_reset_loads_builtin_baseline() {
+    use crate::theme_editor_panel::{EditableToken, ThemeEditorAction};
+    use ff_theme::ColourRGBA;
+    let mut shell = make_shell();
+    shell.handle_command("THEMES");
+    // Point the editor at Default Legacy and mutate the working copy.
+    shell.apply_theme_editor_action(ThemeEditorAction::EditToken(
+        EditableToken::EditorForeground,
+        ColourRGBA::rgb(1, 2, 3),
+    ));
+    // Reset Default Legacy: working copy returns to the built-in colours.
+    shell.apply_theme_editor_action(ThemeEditorAction::Reset("Default Legacy".to_string()));
+    let working = shell.theme_editor_panel.working.as_ref().unwrap();
+    assert_eq!(
+        working.editor.foreground,
+        ff_theme::defaults::default_legacy_palette()
+            .editor
+            .foreground
+    );
+}
+
+/// Validates: Requirement 20.7 -- Reset of a non-built-in theme surfaces an error
+/// rather than silently doing nothing.
+#[test]
+fn theme_editor_reset_non_builtin_errors() {
+    use crate::theme_editor_panel::ThemeEditorAction;
+    let mut shell = make_shell();
+    shell.handle_command("THEMES");
+    shell.apply_theme_editor_action(ThemeEditorAction::Reset("My Custom Theme".to_string()));
+    assert!(
+        shell.theme_editor_panel.error.is_some(),
+        "reset of a non-built-in theme must surface an error"
+    );
+}

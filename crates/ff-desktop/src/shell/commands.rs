@@ -337,6 +337,15 @@ impl WorkbenchShell {
             return;
         }
 
+        if upper == "THEMES" {
+            // Validates: theme-and-appearance Requirement 20.1, 20.2 -- open the
+            // Theme Editor Context. On a POM tab, transform in place; else open a
+            // dedicated tab. (Distinct from `THEME <mode>` which switches theme.)
+            self.open_theme_editor();
+            self.open_error = None;
+            return;
+        }
+
         if upper == "LOG" {
             // Validates: notification-system Requirement 2.1
             self.tabs.open_event_log_tab(&self.runtime);
@@ -1263,6 +1272,164 @@ impl WorkbenchShell {
             .iter()
             .find(|o| o.key.eq_ignore_ascii_case(key) && o.enabled)?;
         Some(option.command.clone())
+    }
+
+    /// Open the Theme Editor Context and populate its state: list available
+    /// themes, select the current active theme, and load it as the working copy.
+    ///
+    /// On a POM tab, transforms in place (so END/RETURN returns to the POM);
+    /// otherwise opens a dedicated tab.
+    ///
+    /// Validates: theme-and-appearance Requirement 20.1, 20.2
+    pub(super) fn open_theme_editor(&mut self) {
+        use crate::tab_state::TabKind;
+        let themes_dir = crate::theme_defaults::themes_dir();
+        // Available themes (built-in + user).
+        let available: Vec<String> = ff_theme::list_all_themes(&themes_dir)
+            .into_iter()
+            .map(|t| t.name)
+            .collect();
+        // Selected = the current active palette's name (the running theme).
+        let selected = self.palette.name.clone();
+        self.theme_editor_panel.available = available;
+        // Load the current palette as the working copy so edits start from what
+        // is on screen.
+        self.theme_editor_panel
+            .load_working(&selected, self.palette.clone());
+
+        if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
+            self.tabs
+                .transform_active_pom_tab(TabKind::ThemeEditor, "[THEME]");
+        } else {
+            self.tabs.open_theme_editor_tab(&self.runtime);
+        }
+    }
+
+    /// Apply a `ThemeEditorAction` produced by the Theme Editor render. Side
+    /// effects (file writes, palette swap, config persist) live here in the
+    /// command layer, keeping the panel render pure.
+    ///
+    /// Validates: theme-and-appearance Requirement 20.4-20.8
+    pub(super) fn apply_theme_editor_action(
+        &mut self,
+        action: crate::theme_editor_panel::ThemeEditorAction,
+    ) {
+        use crate::theme_editor_panel::ThemeEditorAction as A;
+        let themes_dir = crate::theme_defaults::themes_dir();
+        match action {
+            A::None => {}
+            A::Select(name) => {
+                // Load the selected theme as the new working copy (Req 20.1).
+                if let Some(p) = crate::theme_defaults::load_theme_by_name(&name, &themes_dir) {
+                    self.theme_editor_panel.load_working(&name, p);
+                } else {
+                    self.theme_editor_panel.error =
+                        Some(format!("Theme '{name}' could not be loaded"));
+                }
+            }
+            A::EditToken(token, colour) => {
+                // Update the working copy and live-preview it (Req 20.3, 20.8).
+                if let Some(p) = self.theme_editor_panel.working.as_mut() {
+                    token.set(p, colour);
+                    let preview = p.clone();
+                    self.theme_editor_panel.recompute_advisories();
+                    // Live preview: apply the working copy to the active palette.
+                    self.palette = preview;
+                }
+            }
+            A::Copy(new_name) => {
+                // New named theme initialised from the working copy (Req 20.4).
+                if let Some(mut p) = self.theme_editor_panel.working.clone() {
+                    p.name = new_name.clone();
+                    if let Err(e) = self.write_theme_file(&new_name, &p) {
+                        self.theme_editor_panel.error = Some(e);
+                    } else {
+                        self.theme_editor_panel.name_buffer.clear();
+                        self.refresh_theme_editor_list();
+                        self.theme_editor_panel.load_working(&new_name, p);
+                    }
+                }
+            }
+            A::Save => {
+                // Save the working copy to the selected theme's file (Req 20.5).
+                if let (Some(name), Some(p)) = (
+                    self.theme_editor_panel.selected.clone(),
+                    self.theme_editor_panel.working.clone(),
+                ) {
+                    if let Err(e) = self.write_theme_file(&name, &p) {
+                        self.theme_editor_panel.error = Some(e);
+                    } else {
+                        self.theme_editor_panel.error = None;
+                    }
+                }
+            }
+            A::SaveAs(new_name) => {
+                if let Some(mut p) = self.theme_editor_panel.working.clone() {
+                    p.name = new_name.clone();
+                    if let Err(e) = self.write_theme_file(&new_name, &p) {
+                        self.theme_editor_panel.error = Some(e);
+                    } else {
+                        self.theme_editor_panel.name_buffer.clear();
+                        self.refresh_theme_editor_list();
+                        self.theme_editor_panel.load_working(&new_name, p);
+                    }
+                }
+            }
+            A::SetActive(name) => {
+                // Apply immediately + persist (Req 20.6). Uses the shared helper.
+                self.set_active_theme(&name);
+            }
+            A::Reset(name) => {
+                // Restore the built-in baseline for this theme (Req 20.7/18.4).
+                self.reset_theme_file(&name);
+            }
+        }
+    }
+
+    /// Serialise `palette` and write it to `<themes>/<slug>.toml`.
+    fn write_theme_file(&self, name: &str, palette: &ff_theme::ThemePalette) -> Result<(), String> {
+        let themes_dir = crate::theme_defaults::themes_dir();
+        std::fs::create_dir_all(&themes_dir)
+            .map_err(|e| format!("could not create themes dir: {e}"))?;
+        let path = themes_dir.join(format!("{}.toml", crate::theme_defaults::theme_slug(name)));
+        let toml = ff_theme::serialiser::serialise(palette);
+        std::fs::write(&path, toml).map_err(|e| format!("could not write theme '{name}': {e}"))
+    }
+
+    /// Reset a theme's file to its built-in baseline (Requirement 18.4 / 20.7).
+    /// For a built-in name, writes the compiled palette; otherwise reports an error.
+    fn reset_theme_file(&mut self, name: &str) {
+        let builtin = match name {
+            "Default Dark" => Some(ff_theme::defaults::dark_palette()),
+            "Default Light" => Some(ff_theme::defaults::light_palette()),
+            "Default High Contrast" => Some(ff_theme::defaults::high_contrast_palette()),
+            "Legacy (ISPF 3270)" => Some(ff_theme::defaults::legacy_palette()),
+            "Default Legacy" => Some(ff_theme::defaults::default_legacy_palette()),
+            _ => None,
+        };
+        match builtin {
+            Some(p) => {
+                if let Err(e) = self.write_theme_file(name, &p) {
+                    self.theme_editor_panel.error = Some(e);
+                } else {
+                    self.theme_editor_panel.load_working(name, p);
+                }
+            }
+            None => {
+                self.theme_editor_panel.error = Some(format!(
+                    "'{name}' has no built-in baseline; reset is only available for built-in themes"
+                ));
+            }
+        }
+    }
+
+    /// Refresh the Theme Editor's available-themes list from disk + built-ins.
+    fn refresh_theme_editor_list(&mut self) {
+        let themes_dir = crate::theme_defaults::themes_dir();
+        self.theme_editor_panel.available = ff_theme::list_all_themes(&themes_dir)
+            .into_iter()
+            .map(|t| t.name)
+            .collect();
     }
 
     /// Open the Settings_Menu -- the data-driven Menu_Workspace backed by

@@ -377,6 +377,11 @@ pub struct WorkbenchShell {
     ///
     /// Validates: command-configurator Requirement 2.1, 2.3
     pub(crate) command_configurator_panel: crate::command_config::render::CommandConfiguratorState,
+
+    /// Theme Editor Context state (CR-NR-074).
+    ///
+    /// Validates: theme-and-appearance Requirement 20.1
+    pub(crate) theme_editor_panel: crate::theme_editor_panel::ThemeEditorState,
     /// Shell engine for external program execution (Detached / Captured).
     ///
     /// Backs the External Command_Target adapter: runs a program by name +
@@ -685,6 +690,7 @@ impl WorkbenchShell {
             command_store,
             command_configurator_panel:
                 crate::command_config::render::CommandConfiguratorState::new(),
+            theme_editor_panel: crate::theme_editor_panel::ThemeEditorState::new(),
             shell_engine: ff_shell::ShellEngine::new(ff_shell::ShellConfigProvider::new()),
             pending_external: None,
             files_panel: FilesPanelState::new(),
@@ -934,7 +940,8 @@ pub(crate) fn title_line_text(tab: &crate::tab_state::TabState) -> String {
         | TabKind::PluginManager
         | TabKind::EventLog
         | TabKind::MacroLibrary
-        | TabKind::CommandConfigurator => tab.title.clone(),
+        | TabKind::CommandConfigurator
+        | TabKind::ThemeEditor => tab.title.clone(),
         TabKind::MenuWorkspace => tab.title.clone(),
     }
 }

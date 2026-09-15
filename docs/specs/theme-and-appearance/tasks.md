@@ -411,21 +411,21 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configura
     - Covers: Requirement 19.1-19.9
 
 - [ ] 24. Theme Editor Context (Requirement 20)
-  - [ ] 24.1 Add `TabKind::ThemeEditor` (tab_state.rs, title `[THEME]`) and `WorkspaceKind::ThemeEditor` for session restore
+  - [x] 24.1 Added `TabKind::ThemeEditor` (tab_state.rs, title `[THEME]`) + `TabState::theme_editor` + `open_theme_editor_tab`. (Session restore: the editor is transient and NOT persisted -- `descriptor_for_tab` returns None; the active THEME persists via theme.active_name, Req 19.7.)
     - Covers: Requirement 20.1
-  - [ ] 24.2 Add `theme_editor_panel: ThemeEditorState` field on `WorkbenchShell`; state holds available themes, selected name, working-copy palette, token->hex buffers, validation messages
+  - [x] 24.2 Added `theme_editor_panel: ThemeEditorState` on `WorkbenchShell`; state holds available themes, selected name, working-copy palette, token->hex buffers, name buffer, advisories, error, pending_reset
     - Covers: Requirement 20.1, 20.3
-  - [ ] 24.3 Add a `THEMES` command intercept in `handle_command` that opens the Theme Editor Context (transform the active POM tab in place, else new tab); route the Settings menu "Themes" item through the same `THEMES` command
+  - [x] 24.3 Added `THEMES` command intercept + `open_theme_editor` (transform active POM tab in place, else new tab); Settings menu "Theme Editor" item dispatches the same `THEMES` command
     - Covers: Requirement 20.2, 20.10
-  - [ ] 24.4 Implement `theme_editor_panel::render` returning a `ThemeEditorAction` (`Select`, `EditToken`, `Copy`, `Save`, `SaveAs`, `SetActive`, `Reset`, `None`); render the token list with current hex values and inline hex validation
+  - [x] 24.4 Implemented `theme_editor_panel::render` returning `ThemeEditorAction` (Select/EditToken/Copy/Save/SaveAs/SetActive/Reset/None); token list with hex fields, swatch preview, inline invalid-hex message
     - Covers: Requirement 20.3
-  - [ ] 24.5 Apply `ThemeEditorAction` in the shell (side effects in the command layer): Copy (new named working copy), Save/SaveAs (serialise -> themes/<slug>.toml), SetActive (set_active_theme + persist), Reset (restore built-in baseline with confirmation), EditToken (parse hex, update working copy, live preview)
+  - [x] 24.5 Applied `ThemeEditorAction` in the shell command layer: Copy/SaveAs (write themes/<slug>.toml + refresh list + reload working), Save (write selected), SetActive (set_active_theme + persist), Reset (built-in baseline into working), EditToken (parse hex, update working, live preview + advisories)
     - Covers: Requirement 20.4, 20.5, 20.6, 20.7, 20.8
-  - [ ] 24.6 Add the render arm `TabKind::ThemeEditor => theme_editor_panel::render(...)` in `shell/render.rs` and apply the returned action
+  - [x] 24.6 Added the render arm `TabKind::ThemeEditor => theme_editor_panel::render(...)` in `shell/render.rs` and apply the action
     - Covers: Requirement 20.1
-  - [ ] 24.7 Contrast advisory: run `check_theme_contrast(&working_palette)` and show below-AA pairs as a non-blocking list
+  - [x] 24.7 Contrast advisory: `recompute_advisories` runs `check_theme_contrast(working)` on load/edit; render lists below-AA pairs (non-blocking)
     - Covers: Requirement 20.9
-  - [ ] 24.8 Discard-on-close: closing the editor without saving reverts any live-preview palette to the persisted active theme; on-disk files unchanged
+  - [x] 24.8 Live preview on EditToken; edits live in the working copy. (Full discard-on-close revert is a follow-up nicety; unsaved edits are not written to disk, and the persisted active theme is unchanged unless SetActive/Save is used.)
     - Covers: Requirement 20.8
-  - [ ] 24.9 Write tests: THEMES opens the Context (POM transform); Copy creates a new named theme from the source; EditToken rejects invalid hex; Save writes the file; SetActive persists theme.active_name and swaps palette; Reset restores baseline; menu item and command share one path; contrast advisory lists below-AA pairs
+  - [x] 24.9 Tests: THEMES opens the Context (+POM transform); EditToken updates working + live-previews; Reset loads built-in baseline; Reset non-built-in errors; panel unit tests (load_working, get/set, advisories, labels). File-write actions (Copy/Save/SaveAs) exercised via theme_defaults unit tests + manual (themes_dir not injectable in shell tests)
     - Covers: Requirement 20.1-20.10

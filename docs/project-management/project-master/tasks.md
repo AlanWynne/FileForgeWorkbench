@@ -1002,14 +1002,14 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 > file to drive all rendering (fallback to Default Legacy), hot-reload, and a simple Theme editor
 > Context (copy/edit/save-as/set-active/reset). Gate authored; implementation after approval.
 
-- [ ] TE.1 Default Legacy built-in palette + fallback_palette + discovery listing (theme-and-appearance Task 22; Req 18)
-- [ ] TE.2 themes/ dir + ensure_default_theme_files (built-ins serialised) on first launch (Task 23.1-23.2; Req 19.1/19.2)
-- [ ] TE.3 theme.active_name config key + resolve_startup_palette + wire into startup before first frame (Task 23.3-23.5; Req 19.3-19.5)
-- [ ] TE.4 Active-theme-file hot-reload; set_theme keeps theme.active_name consistent; set_active_theme helper (Task 23.6-23.8; Req 19.6/19.7/19.9)
-- [ ] TE.5 TabKind::ThemeEditor + WorkspaceKind + theme_editor_panel state + THEMES command (menu parity) (Task 24.1-24.3; Req 20.1/20.2/20.10)
-- [ ] TE.6 Theme editor render + ThemeEditorAction apply (copy/edit/save/save-as/set-active/reset + live preview) (Task 24.4-24.6/24.8; Req 20.3-20.8)
-- [ ] TE.7 Contrast advisory in editor (Task 24.7; Req 20.9)
-- [ ] TE.8 Tests + TCR Req 18-20 to PASS; verify.ps1 CLEAN; rebuild; commit+push (Tasks 22.4/23.9/24.9)
+- [x] TE.1 Default Legacy built-in palette + fallback_palette + discovery listing (theme-and-appearance Task 22; Req 18) -- pushed c018193
+- [x] TE.2 themes/ dir + ensure_default_theme_files (built-ins serialised) on first launch (Task 23.1-23.2; Req 19.1/19.2) -- pushed 6249a57
+- [x] TE.3 theme.active_name config key + resolve_startup_palette + wire into startup before first frame (Task 23.3-23.5; Req 19.3-19.5) -- pushed 6249a57
+- [x] TE.4 Active-theme-file hot-reload; set_theme keeps theme.active_name consistent; set_active_theme helper (Task 23.6-23.8; Req 19.6/19.7/19.9) -- pushed 6249a57
+- [x] TE.5 TabKind::ThemeEditor + theme_editor_panel state + THEMES command (menu parity); editor is transient (not session-persisted; active theme persists via theme.active_name) (Task 24.1-24.3; Req 20.1/20.2/20.10)
+- [x] TE.6 Theme editor render + ThemeEditorAction apply (copy/edit/save/save-as/set-active/reset + live preview) (Task 24.4-24.6/24.8; Req 20.3-20.8)
+- [x] TE.7 Contrast advisory in editor (Task 24.7; Req 20.9)
+- [x] TE.8 Tests + TCR Req 18-20 PASS; verify.ps1 CLEAN; rebuilt binary (Tasks 22.4/23.9/24.9)
 
 ---
 
