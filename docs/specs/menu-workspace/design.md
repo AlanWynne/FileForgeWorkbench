@@ -911,3 +911,119 @@ No new mechanism: the editor writes `menus/<name>.toml`; the existing
 Menu_Workspace (including the POM/Settings) within the existing reload window.
 The editor is not itself a Menu_Workspace, so it does not poll; it re-reads on
 Select.
+
+---
+
+## Design Delta: Per-Tab Navigation_Stack (Requirement 14, CR-CH-022)
+
+Replaces three ad-hoc END mechanisms with one uniform per-tab stack. Grounded in
+the investigation: only `TabState.menu_workspace` is per-tab; all other Context
+editing state is shell-global, so a stack entry must carry the params to
+re-derive the shared state. `WorkspaceDescriptor` (ff-session) already does this
+and is the entry type.
+
+### 1. Data model
+
+Add to `TabState` (tab_state.rs):
+
+```rust
+/// Ordered ancestors of the current Context (most-recent last). The current
+/// Context is NOT on the stack. Empty = this tab is at its root.
+pub nav_stack: Vec<ff_session::WorkspaceDescriptor>,
+```
+
+Initialised empty in every constructor / `base_tab!`. A POM tab created by
+`START` (no arg) has an empty stack. A tab created by `START =0` has
+`[POM-descriptor]` after drilling to Settings.
+
+A helper `current_descriptor(&TabState) -> WorkspaceDescriptor` derives the
+descriptor for the tab's CURRENT Context (reusing the existing
+`descriptor_for_tab` logic in session_manager.rs; for transient kinds
+ThemeEditor/MenusEditor that currently return None, add a descriptor so they can
+sit on the stack -- a lightweight `CustomWorkspace { workspace_kind }` with the
+kind, since their editing buffer is shell-global and re-derived on reconstruct).
+
+### 2. The single navigation primitive
+
+`TabManager::navigate_here(descriptor, push: bool)`:
+- if `push`, `self.active_tab_mut().nav_stack.push(current_descriptor(active))`,
+- then reconstruct `descriptor` IN PLACE on the active tab (set kind, title, and
+  per-tab `menu_workspace` when it is a Menu; the shell re-derives shell-global
+  state for Settings/Theme/Menus/etc. exactly as the open_* helpers do today).
+
+Every navigation arm in `handle_command` (SETTINGS, A, SETTINGS ns, FILES,
+=FILES, CATALOGS, PLUGINS, MACROS, THEMES, MENUS, COMMANDS, LOG, MENU, the POM
+fastpath, chained paths) routes through `navigate_here` on the CURRENT tab. The
+`transform_active_pom_tab` / `else { open_*_tab }` split is retired: there is no
+longer an "else open a new tab" branch -- navigation always transforms in place.
+The `open_*_tab` methods remain only for START and session-restore (and the
+dedup-by-kind logic is no longer used for navigation).
+
+Because the shell applies shell-global Context state, the shell wraps
+`navigate_here` in per-Context helpers (e.g. `nav_to_settings(namespace, push)`
+sets `settings_panel.namespace_filter`/`filter` then calls `navigate_here`),
+so the existing re-derivation code (open_settings_view body, open_theme_editor
+body, open_menus_editor body) is reused, not duplicated.
+
+### 3. END / RETURN
+
+`handle_command` END arm becomes uniform:
+
+```text
+END:
+  if active.nav_stack is empty:
+      if tabs.len() <= 1: file.exit           # last workspace -> terminate
+      else: close_current_and_navigate_back    # close this tab
+  else:
+      let parent = active.nav_stack.pop()
+      reconstruct(parent) in place on the active tab
+```
+
+RETURN arm:
+
+```text
+RETURN:
+  if active.nav_stack is empty: (same as END-at-root)
+  else:
+      let root = active.nav_stack.drain(..).next()   # bottom entry
+      clear the stack; reconstruct(root) in place
+```
+
+The `pending_return_to_pom` flag (mod.rs + update.rs processing), the
+`namespace_filter.is_some()` END branch, and the `opened_from_settings` field
+(menus_editor_panel) are DELETED. Files-panel `ReturnToPom` action instead calls
+the same END-pop path.
+
+Reconstruction of a parent descriptor reuses the open_* helper bodies (kind,
+title, per-tab menu_workspace, shell-global params). A `.` collapse pushes
+nothing (so END skips it); a `;` push adds the intermediate; per Req 5.
+
+### 4. START argument parsing
+
+`START` arm:
+- no arg -> `insert_pom_tab` (new POM tab, empty stack) -- unchanged.
+- `START =<path>` -> `insert_pom_tab`, then apply the chained path to the NEW tab
+  (POM becomes the stack bottom via the `=` origin rule, Req 14.7).
+- `START <arg>` (no `=`) -> create a new tab, resolve `<arg>` (POM option key via
+  `resolve_pom_option_key`, else a known command), and root the new tab DIRECTLY
+  at that Context with an EMPTY stack (no POM beneath). Unresolved -> new POM tab
+  + status message.
+
+A small `TabManager::insert_rooted_tab(descriptor)` creates a new tab rooted at a
+given Context with an empty stack (used by `START <arg>`).
+
+### 5. Session persistence interaction
+
+The per-tab `nav_stack` is `Vec<WorkspaceDescriptor>` -- already serialisable.
+Extend `SessionTabState` with an optional `nav_stack` field (default empty) so a
+drilled-in Workspace restores its back-path; older sessions load with an empty
+stack (graceful). Not required for the core behaviour; called out so restore
+does not silently flatten stacks.
+
+### 6. Why WorkspaceDescriptor (not a bespoke enum)
+
+It already exists, already round-trips through TOML, already carries the exact
+params that vary (Settings namespace, Menu name, Editor uri), and is what
+session-restore reconstructs from -- so navigation and restore share one
+reconstruction path. The only additions are descriptors for ThemeEditor /
+MenusEditor (kind-only) so they can appear on a stack.

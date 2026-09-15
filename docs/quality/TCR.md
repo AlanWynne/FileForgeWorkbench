@@ -443,6 +443,22 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | 🔲 | -- | menu-workspace Req 13.12: pure render -> Action, button click wins over field lost_focus (B052) (egui interaction -- manual UI verification; the two-slot pattern mirrors the tested Theme editor) |
 | `ff-desktop` | ✅ | `shell/tests.rs::settings_reset_bare_affordance_dispatches_command`, `defaults.rs::default_settings_toml_has_recovery_baseline_options` | configuration-system Req 19.7 (closes task 23.9): Settings baseline R row dispatches the RESET BARE command through the command path (opens the dialog, does not bypass) |
 
+### Phase (nav-stack) -- Per-tab Navigation_Stack (CR-CH-022, Req 14)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | Req 14.1: each tab owns an independent Navigation_Stack (per-tab, not global) |
+| `ff-desktop` | 🔴 | -- | Req 14.2: navigating transforms the current tab IN PLACE and never opens a new tab |
+| `ff-desktop` | 🔴 | -- | Req 14.3: `;` PUSH pushes the current Context; `.` collapse does not push; bare navigation is a PUSH |
+| `ff-desktop` | 🔴 | -- | Req 14.4: END pops one entry and reconstructs the parent Context in place |
+| `ff-desktop` | 🔴 | -- | Req 14.5: END with an empty stack closes the Workspace; last tab -> terminate (CR-CH-016) |
+| `ff-desktop` | 🔴 | -- | Req 14.6: stack entries are WorkspaceDescriptors carrying reconstruct params; shell-global Context state re-derived on pop |
+| `ff-desktop` | 🔴 | -- | Req 14.7: leading `=` resets the tab to the POM origin with an empty stack; non-`=` keeps current Context as origin |
+| `ff-desktop` | 🔴 | -- | Req 14.8/14.9: START is the only tab-creator; START (POM) / START =X (POM+drill) / START X (rooted at X, empty stack) |
+| `ff-desktop` | 🔴 | -- | Req 14.10: RETURN collapses to the tab's root Context; END-at-root closes/exits |
+| `ff-desktop` | 🔴 | -- | Req 14.11: the 3 ad-hoc END mechanisms (pending_return_to_pom, namespace_filter, opened_from_settings) removed; replaced by the stack pop (supersedes B053 interim fix) |
+| `ff-desktop` | 🔲 | -- | Req 14.12: tab Title_Line + header reflect the current Context after Navigate_Here and after END pop (egui render -- manual UI verification; title set in the transform path is tested) |
+
 ### Phase AE -- Legacy Theme Colour Semantics
 
 | Crate | Status | Test files | Notes |

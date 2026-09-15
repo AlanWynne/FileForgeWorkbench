@@ -620,3 +620,87 @@ open a Workspace to create, change and save Menus"); reserved by Requirement 12.
 13. THE Menus Editor SHALL NOT be able to save a menu that the loader would
     reject; the editor's validation and the loader's validation SHALL share one
     rule set so the editor cannot produce an unloadable file.
+
+---
+
+### Requirement 14: Per-Tab Navigation Stack
+
+**User Story:** As an operator, I want each Workspace to remember the path of
+Contexts I traversed to reach the current one, so that END always walks me back
+up that path one level at a time, and so that navigating never unexpectedly
+opens a new tab.
+
+**Source:** [CR-CH-022]; owner ("Every Workspace should surely have a path
+variable store... Stack per tab; Transform in place... the only time a new tab
+is created is if we type start"); reconciles Requirement 5 (Chained Navigation).
+
+#### Glossary additions
+
+| Term | Definition |
+|------|-----------|
+| **Navigation_Stack** | An ordered, per-tab list of `WorkspaceDescriptor` entries recording the Contexts traversed to reach the current one. The current Context is NOT on the stack; the stack holds only the ancestors, most-recent last. |
+| **Navigate_Here** | The single operation that changes a tab's Context: it pushes the current Context's descriptor onto that tab's Navigation_Stack and transforms the tab in place to the new Context. |
+
+#### Acceptance Criteria
+
+1. EACH Workspace tab SHALL own its own Navigation_Stack. Navigation state is
+   per-tab, never global; two tabs have independent stacks.
+2. WHEN the user navigates from the current Context to another Context (by any
+   means: a menu option, a command such as `SETTINGS`/`FILES`/`MENUS`, a POM
+   fastpath key, or a chained path), THE shell SHALL transform the CURRENT tab
+   in place to the new Context and SHALL NOT open a new tab. Navigation never
+   creates a tab (see Requirement 14.8 for the sole exception, START).
+3. WHEN a `;` (PUSH) navigation step occurs, THE shell SHALL push the current
+   Context's descriptor onto the tab's Navigation_Stack before transforming.
+   WHEN a `.` (collapse / STOP) navigation step occurs, THE shell SHALL transform
+   without pushing (the intermediate Context is collapsed). A bare
+   single-Context navigation (e.g. `SETTINGS`) is a PUSH of the current Context.
+   This implements the separator semantics of Requirement 5.8-5.11.
+4. WHEN the user issues END (or F3), THE shell SHALL POP the top entry of the
+   active tab's Navigation_Stack and reconstruct that Context in place on the
+   same tab (restoring the parent). END pops exactly one level per press.
+5. WHEN the user issues END (or F3) AND the active tab's Navigation_Stack is
+   EMPTY, THE shell SHALL close the Workspace (the tab). WHEN that tab is the
+   last open Workspace, THE shell SHALL terminate the application instead
+   (preserving CR-CH-016). This replaces the POM-specific and
+   per-context END rules.
+6. THE Navigation_Stack entries SHALL be `WorkspaceDescriptor` values carrying
+   the kind and the params needed to reconstruct the Context in place (e.g. the
+   Menu name for a Menu_Workspace, the namespace for a Settings view). Because
+   most Context editing state is shell-global (only `menu_workspace` state is
+   per-tab), reconstruction SHALL re-derive the shared Context state from the
+   descriptor exactly as opening that Context does.
+7. THE leading `=` of a chained path SHALL set the tab's Navigation_Origin to the
+   POM: before applying the path segments, THE shell SHALL reset the active tab
+   to the POM Context with an empty Navigation_Stack, then apply each segment
+   per criterion 14.3. A non-`=` navigation SHALL keep the current Context as the
+   origin (its descriptor becomes the bottom of the stack on the first PUSH).
+   This restates Requirement 5.7/5.10 in stack terms.
+8. THE `START` command SHALL be the ONLY command that creates a new tab (a new
+   Workspace with its own Navigation_Stack). Its forms:
+   - `START` (no argument): a new tab rooted at the POM Context, Navigation_Stack
+     empty (END closes it, or exits when last).
+   - `START =<path>`: a new tab rooted at the POM, then navigated along `<path>`
+     applying criterion 14.3/14.7 (the POM is on the stack, so END walks back to
+     the POM then closes).
+   - `START <arg>` / `START <name>` (no leading `=`): a new tab rooted DIRECTLY
+     at the Context named by `<arg>` (e.g. `START Settings`, `START 0`), with an
+     EMPTY Navigation_Stack (no POM beneath it), so END from that Context ends
+     the Workspace (exits when last).
+9. WHEN `START <arg>` names a POM option key or a known Context/command, THE
+   shell SHALL resolve it to that Context (reusing the POM option resolution and
+   command routing) and root the new tab there. WHEN `<arg>` cannot be resolved,
+   THE shell SHALL open the new tab at the POM and report the unresolved argument
+   in the status area.
+10. THE RETURN command SHALL remain distinct from END: RETURN collapses the
+    entire Navigation_Stack and returns to the tab's ROOT Context in one step
+    (the bottom of the stack), whereas END pops one level. WHEN RETURN is issued
+    at the root (empty stack), it behaves as END at the root (close / exit when
+    last), preserving Requirement 17.3/17.4 (CR-CH-016).
+11. THE three former ad-hoc END mechanisms -- the global `pending_return_to_pom`
+    flag, the `settings_panel.namespace_filter`-based END branch, and the
+    `menus_editor_panel.opened_from_settings` boolean (B053) -- SHALL be removed
+    and replaced by the single Navigation_Stack pop of criterion 14.4/14.5.
+12. THE tab Title_Line and tab-header title SHALL reflect the current Context
+    after every Navigate_Here and every END pop, so the header never goes stale
+    (consistent with menu-and-statusbar Req 17; related to B050).
