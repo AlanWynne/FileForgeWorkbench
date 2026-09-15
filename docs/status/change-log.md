@@ -741,3 +741,13 @@ Modifications to existing behaviour that already works.
 | Phase (nav-open-fix) | CR-NR-072 added -- navigator expansion of Windows known-folder junctions / directory symlinks (follow-reparse-point policy) deferred to the gate; not guessed in the bug fix |
 
 | Phase (theme-command) | THEME command implemented -- theme-and-appearance Req 17 (command parity per architecture-brief Principle 2): `THEME <mode>` sets/persists via set_theme, bare `THEME` reports current, invalid arg errors; Settings menu theme buttons now dispatch the THEME command (menu == typed-command path). Partially advances CR-NR-070 (the set-theme-by-command part); the Theme Settings WORKSPACE + invoke-settings command remain under CR-NR-070. Added workflow.md rule 1b (command parity). |
+
+### CR-NR-073 -- Task Scheduler plugin (deferred; source docs recorded)
+- **Date/Phase**: Phase (swap-command) (pre-gate, recorded only)
+- **Prompt**: "the untracked files are specs for later plugin development. it will require a full new requirements gate but deferred until after existing plugins are complete"
+- **Description**: A Task Scheduler plugin for FileForgeWorkbench. Owner-provided source specs dropped into `docs/source-documents/`. This is recorded ONLY -- no requirements gate is run now. It requires a FULL new requirements gate, DEFERRED until after the existing planned plugins are complete (ROADMAP PLUGIN order: Utilities, Mainframe dataset emulation, POSIX emulation, File Formatter [CR-NR-061], Database [CR-NR-064], Job Monitor JES/SDSF [CR-NR-065]). Task Scheduler slots in as a later PLUGIN phase after those.
+- **Status**: DEFERRED -- source recorded; full requirements gate NOT run and not scheduled until the existing plugins are complete.
+- **Affects**: later -- a new `docs/specs/task-scheduler/` sub-project + an `ff-task-scheduler` plugin crate; intersects `docs/specs/plugin-architecture/`, `docs/specs/plugin-manager-ui/`, `docs/specs/workflow-engine/` (scheduling/automation), `docs/specs/batch-execution/`.
+- **Linked spec**: source `docs/source-documents/Task-Schedula-plugin-FileForgeWorkbench.md` (+ `Task-Schedular-plugin-FileForgeWorkbench.docx`); to be authored at the gate. Cross-ref ROADMAP PLUGIN order.
+
+| Phase (swap-command) | CR-NR-073 added -- Task Scheduler plugin; owner source docs recorded under docs/source-documents/; full requirements gate DEFERRED until after the existing plugins are complete (not scheduled now) |
