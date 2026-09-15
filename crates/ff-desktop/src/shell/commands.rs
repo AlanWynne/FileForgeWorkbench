@@ -190,14 +190,22 @@ impl WorkbenchShell {
                     // same behaviour as criterion 17.1).
                     self.close_current_and_navigate_back();
                 }
+            } else if kind == TabKind::MenusEditor && self.menus_editor_panel.opened_from_settings {
+                // Validates: menu-workspace Req 13.1 + cw-requirements Req 10.4
+                // (B053) -- END from the Menus Editor opened via the Settings
+                // menu returns ONE LEVEL to the Settings menu, not the POM
+                // (mirroring the Settings_Namespace_View rule below).
+                self.open_settings_menu();
             } else if kind == TabKind::FileExplorerPanel
                 || kind == TabKind::CommandConfigurator
                 || kind == TabKind::MenuWorkspace
+                || kind == TabKind::MenusEditor
             {
                 // Validates: Requirement 19.10 (file-explorer),
-                // command-configurator Requirement 2.8, and cw-requirements.md
-                // Requirement 10.4 / 15.10 -- END/F3 from a Menu_Workspace (incl.
-                // the Settings_Menu) or these Contexts returns to the POM.
+                // command-configurator Requirement 2.8, cw-requirements.md
+                // Requirement 10.4 / 15.10, and menu-workspace Req 13.1 -- END/F3
+                // from a Menu_Workspace (incl. the Settings_Menu), the Menus
+                // Editor opened from the POM, or these Contexts returns to the POM.
                 self.pending_return_to_pom = true;
             } else if kind == TabKind::SettingsPanel
                 && self.settings_panel.namespace_filter.is_some()
@@ -347,19 +355,10 @@ impl WorkbenchShell {
         }
 
         if upper == "MENUS" {
-            // Validates: menu-workspace Requirement 12.6 (CR-CH-021) -- the MENUS
-            // command name is reserved so the Recovery_Baseline `M` rows resolve.
-            // The Menus editor Workspace is delivered by a separate change
-            // request; until then, show a non-blocking notice and leave the
-            // current Workspace unchanged.
-            use crate::notification::{Notification, NotificationLevel};
-            if let Ok(mut queue) = self.notification_queue.lock() {
-                queue.push(Notification::new(
-                    NotificationLevel::Info,
-                    "Menus editor is not yet available.".to_string(),
-                    None,
-                ));
-            }
+            // Validates: menu-workspace Requirement 13.1 (CR-NR-075) -- open the
+            // Menus Editor Context. Both the POM `M` row and the Settings `M` row
+            // dispatch this command, so both entry points open the editor.
+            self.open_menus_editor();
             self.open_error = None;
             return;
         }
@@ -1167,6 +1166,11 @@ impl WorkbenchShell {
     /// Falls back to `dirs::data_dir()/FileForgeWorkbench/menus` so the command
     /// still resolves a path even when the session layer is unavailable.
     pub(super) fn menus_dir(&self) -> std::path::PathBuf {
+        // Test override (menu-workspace Req 13, CR-NR-075): isolates Menus editor
+        // file operations to a TempDir. Production leaves this None.
+        if let Some(dir) = &self.menus_dir_override {
+            return dir.clone();
+        }
         if let Ok(udd) = ff_session::UserDataDir::resolve(None) {
             return udd.path().join("menus");
         }

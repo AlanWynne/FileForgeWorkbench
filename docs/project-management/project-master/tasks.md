@@ -1031,7 +1031,7 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 - [x] MR.3 Absent -> baseline (silent); corrupt -> baseline + notice; Settings fallback added (Task 23.3; Req 12.4/12.5, startup 11.8)
 - [x] MR.4 Reserve MENUS command (notice until the editor CR) (Task 23.4; Req 12.6)
 - [x] MR.5 Configurable group separator (space/line/none) + optional header (Task 23.5; Req 2.4/4a/4b)
-- [ ] MR.6 RESET BARE command + confirm dialog + archive helper + in-memory barebones reset + Settings affordance (Task 23.6-23.9; configuration-system Req 19) -- command/dialog/archive/reset DONE; the Settings BUTTON affordance (23.9) is deferred to the editor work (command is dispatchable by name meanwhile)
+- [x] MR.6 RESET BARE command + confirm dialog + archive helper + in-memory barebones reset + Settings affordance (Task 23.6-23.9; configuration-system Req 19) -- affordance (23.9) closed by CR-NR-075 (Settings baseline R -> RESET BARE row, command-parity dispatch)
 - [x] MR.7 Home catalog regression guard (Task 23.10)
 - [x] MR.8 Tests + TCR; verify.ps1 CLEAN; rebuild; commit+push (Task 23.11-23.12)
 
@@ -1048,14 +1048,14 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 > fallback. Also closes the CR-CH-021 RESET BARE Settings affordance (23.9).
 > Gate authored.
 
-- [ ] ME.1 MenuFile -> TOML serialiser + round-trip test (Task 24.1-24.2; Req 13.8/13.10)
-- [ ] ME.2 Shared validate_menu used by load + editor Save (Task 24.3; Req 13.7/13.13)
-- [ ] ME.3 menus_editor_panel (state + pure render -> Action, B052 two-slot) (Task 24.4; Req 13.4-13.6/13.12)
-- [ ] ME.4 TabKind::MenusEditor + tab/END/render wiring (Task 24.5; Req 13.1)
-- [ ] ME.5 shell/menus_editor.rs: open/apply/write + menus_dir_override; replace MENUS notice (Task 24.6-24.7; Req 13.1-13.3/13.8/13.9)
-- [ ] ME.6 Save = user override the renderer prefers; hot-reload into open POM/Settings (Task 24.8; Req 13.8/13.11)
-- [ ] ME.7 Settings RESET BARE affordance via command path -- closes 23.9 (Task 24.9; configuration-system Req 19.7)
-- [ ] ME.8 Tests + TCR; verify.ps1 CLEAN; rebuild; commit+push (Task 24.10-24.11)
+- [x] ME.1 MenuFile -> TOML serialiser + round-trip test (Task 24.1-24.2; Req 13.8/13.10)
+- [x] ME.2 Shared validate_menu used by load + editor Save (Task 24.3; Req 13.7/13.13)
+- [x] ME.3 menus_editor_panel (state + pure render -> Action, B052 two-slot) (Task 24.4; Req 13.4-13.6/13.12)
+- [x] ME.4 TabKind::MenusEditor + tab/END/render wiring (Task 24.5; Req 13.1)
+- [x] ME.5 shell/menus_editor.rs: open/apply/write + menus_dir_override; replace MENUS notice (Task 24.6-24.7; Req 13.1-13.3/13.8/13.9)
+- [x] ME.6 Save = user override the renderer prefers; hot-reload into open POM/Settings (Task 24.8; Req 13.8/13.11)
+- [x] ME.7 Settings RESET BARE affordance via command path -- closes 23.9 (Task 24.9; configuration-system Req 19.7)
+- [x] ME.8 Tests + TCR; verify.ps1 CLEAN; rebuild; commit+push (Task 24.10-24.11)
 
 ---
 

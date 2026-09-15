@@ -26,6 +26,7 @@ mod find_manager;
 mod key_config_dialog;
 mod macro_library_panel;
 mod menu_workspace;
+mod menus_editor_panel;
 mod nav_manager;
 mod nav_model;
 mod notification;

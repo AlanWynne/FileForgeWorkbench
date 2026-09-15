@@ -53,6 +53,7 @@ pub(super) fn context_name_for_kind(kind: TabKind) -> Option<&'static str> {
         TabKind::MenuWorkspace => Some("menu"),
         TabKind::CommandConfigurator => Some("commands"),
         TabKind::ThemeEditor => Some("theme"),
+        TabKind::MenusEditor => Some("menus"),
     }
 }
 

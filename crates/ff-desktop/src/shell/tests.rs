@@ -4464,27 +4464,27 @@ fn default_settings_toml_option_a_command_is_a() {
 
 // === CR-CH-021: menus code-only + Recovery Baseline + RESET BARE ===========
 
-// Validates: menu-workspace Requirement 12.6 -- MENUS shows a non-blocking
-// notice and leaves the current Workspace unchanged (reserved for the editor CR).
+// Validates: menu-workspace Requirement 13.1 (CR-NR-075) -- MENUS opens the
+// Menus Editor Context (replacing the CR-CH-021 placeholder notice).
 #[test]
-fn menus_command_shows_not_yet_available_notice() {
+fn menus_command_opens_menus_editor() {
+    use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    let kind_before = shell.tabs.active_tab().kind;
-    let len_before = shell.tabs.len();
     shell.handle_command("MENUS");
     assert_eq!(
         shell.tabs.active_tab().kind,
-        kind_before,
-        "MENUS must not change the active Workspace"
+        TabKind::MenusEditor,
+        "MENUS must open the Menus Editor Context"
     );
-    assert_eq!(shell.tabs.len(), len_before, "MENUS must not open a tab");
-    let queue = shell.notification_queue.lock().expect("lock");
+    // A working menu is loaded (POM by default) with options to edit.
+    assert!(shell.menus_editor_panel.working.is_some());
     assert!(
-        queue
-            .entries()
+        shell
+            .menus_editor_panel
+            .available
             .iter()
-            .any(|n| n.title.contains("Menus editor is not yet available")),
-        "MENUS must push the not-yet-available notice"
+            .any(|n| n == "POM"),
+        "the selector must list POM"
     );
 }
 
@@ -4521,6 +4521,212 @@ fn execute_reset_bare_reopens_home_context() {
     assert!(
         !shell.palette.name.is_empty(),
         "a valid palette must be active after RESET BARE"
+    );
+}
+
+// === CR-NR-075: Menus Editor Context (Requirement 13) ======================
+
+/// Seed a shell whose menus_dir is an isolated TempDir, with the Menus editor
+/// open on the POM working copy.
+fn make_shell_with_menus_editor() -> (super::WorkbenchShell, tempfile::TempDir) {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let mut shell = make_shell();
+    shell.menus_dir_override = Some(dir.path().join("menus"));
+    shell.handle_command("MENUS");
+    (shell, dir)
+}
+
+// Validates: menu-workspace Requirement 13.3 -- selecting a built-in with no
+// user file loads the compiled Recovery_Baseline as the working copy.
+#[test]
+fn menus_editor_loads_recovery_baseline_when_no_file() {
+    let (shell, _dir) = make_shell_with_menus_editor();
+    let working = shell.menus_editor_panel.working.as_ref().expect("working");
+    let keys: Vec<&str> = working.options.iter().map(|o| o.key.as_str()).collect();
+    assert_eq!(keys, vec!["0", "1", "2", "L", "M", "X"]);
+}
+
+// Validates: menu-workspace Requirement 13.5 -- add / delete / move mutate the
+// working menu.
+#[test]
+fn menus_editor_add_delete_move_mutate_working() {
+    use crate::menus_editor_panel::MenusEditorAction as A;
+    let (mut shell, _dir) = make_shell_with_menus_editor();
+    let before = shell
+        .menus_editor_panel
+        .working
+        .as_ref()
+        .unwrap()
+        .options
+        .len();
+
+    shell.apply_menus_editor_action(A::AddOption);
+    assert_eq!(
+        shell
+            .menus_editor_panel
+            .working
+            .as_ref()
+            .unwrap()
+            .options
+            .len(),
+        before + 1
+    );
+
+    // Move the first option down, then confirm order changed.
+    let first_key = shell.menus_editor_panel.working.as_ref().unwrap().options[0]
+        .key
+        .clone();
+    shell.apply_menus_editor_action(A::MoveOptionDown(0));
+    assert_eq!(
+        shell.menus_editor_panel.working.as_ref().unwrap().options[1].key,
+        first_key,
+        "MoveOptionDown swaps the first two options"
+    );
+
+    // Delete the last (blank) option we added.
+    let last = shell
+        .menus_editor_panel
+        .working
+        .as_ref()
+        .unwrap()
+        .options
+        .len()
+        - 1;
+    shell.apply_menus_editor_action(A::DeleteOption(last));
+    assert_eq!(
+        shell
+            .menus_editor_panel
+            .working
+            .as_ref()
+            .unwrap()
+            .options
+            .len(),
+        before
+    );
+}
+
+// Validates: menu-workspace Requirement 13.4 -- editing a field mutates the
+// working option (key is uppercased).
+#[test]
+fn menus_editor_edit_option_key_uppercases() {
+    use crate::menus_editor_panel::{MenusEditorAction as A, OptionField};
+    let (mut shell, _dir) = make_shell_with_menus_editor();
+    shell.apply_menus_editor_action(A::EditOption {
+        index: 0,
+        field: OptionField::Key,
+        value: "z".to_string(),
+    });
+    assert_eq!(
+        shell.menus_editor_panel.working.as_ref().unwrap().options[0].key,
+        "Z"
+    );
+}
+
+// Validates: menu-workspace Requirement 13.8/13.10 -- Save writes a file that
+// loads back to an equal menu.
+#[test]
+fn menus_editor_save_writes_loadable_file() {
+    use crate::menus_editor_panel::MenusEditorAction as A;
+    let (mut shell, dir) = make_shell_with_menus_editor();
+    // Edit the title, then Save (selected = POM -> pom.toml).
+    shell.apply_menus_editor_action(A::EditTitle("My POM".to_string()));
+    shell.apply_menus_editor_action(A::Save);
+    assert!(
+        shell.menus_editor_panel.error.is_none(),
+        "save must succeed, got: {:?}",
+        shell.menus_editor_panel.error
+    );
+    let pom_path = dir.path().join("menus").join("pom.toml");
+    assert!(pom_path.exists(), "Save must write menus/pom.toml");
+    let loaded =
+        crate::menu_workspace::loader::load_menu_file(&pom_path).expect("saved file must load");
+    assert_eq!(loaded.title, "My POM");
+    assert_eq!(
+        loaded.options,
+        shell.menus_editor_panel.working.as_ref().unwrap().options
+    );
+}
+
+// Validates: menu-workspace Requirement 13.7/13.13 -- an invalid working menu
+// (empty command) is rejected on Save; no file is written.
+#[test]
+fn menus_editor_save_blocked_when_invalid() {
+    use crate::menus_editor_panel::{MenusEditorAction as A, OptionField};
+    let (mut shell, dir) = make_shell_with_menus_editor();
+    // Blank out an option's command -> invalid.
+    shell.apply_menus_editor_action(A::EditOption {
+        index: 0,
+        field: OptionField::Command,
+        value: "   ".to_string(),
+    });
+    shell.apply_menus_editor_action(A::Save);
+    assert!(
+        shell.menus_editor_panel.error.is_some(),
+        "an invalid menu must set an inline error"
+    );
+    assert!(
+        !dir.path().join("menus").join("pom.toml").exists(),
+        "an invalid menu must NOT be written"
+    );
+}
+
+// Validates: menu-workspace Req 13.1 + cw-requirements Req 10.4 (B053) --
+// END from the Menus Editor opened via the Settings menu returns one level to
+// the Settings menu (not the POM); opened from the POM it returns to the POM.
+#[test]
+fn menus_editor_end_returns_to_origin() {
+    use crate::tab_state::TabKind;
+    // Opened from the POM (make_shell starts on a POM): origin is NOT Settings.
+    let mut shell = make_shell();
+    shell.handle_command("MENUS");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::MenusEditor);
+    assert!(
+        !shell.menus_editor_panel.opened_from_settings,
+        "opened from the POM -> origin is not Settings"
+    );
+    shell.handle_command("END");
+    assert!(
+        shell.pending_return_to_pom,
+        "END from a POM-opened Menus Editor returns to the POM"
+    );
+
+    // Opened from the Settings menu: origin IS Settings; END returns there.
+    let mut shell = make_shell();
+    shell.handle_command("SETTINGS");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::MenuWorkspace);
+    shell.handle_command("MENUS");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::MenusEditor);
+    assert!(
+        shell.menus_editor_panel.opened_from_settings,
+        "opened from Settings -> origin is Settings"
+    );
+    shell.handle_command("END");
+    // END returned to the Settings menu (a MenuWorkspace titled "Settings"),
+    // NOT the POM.
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::MenuWorkspace,
+        "END from a Settings-opened Menus Editor returns to the Settings menu"
+    );
+    assert!(
+        !shell.pending_return_to_pom,
+        "END must NOT request return-to-POM when returning to Settings"
+    );
+}
+
+// Validates: configuration-system Requirement 19.7 (closes task 23.9) -- the
+// Settings baseline carries a RESET BARE affordance whose command opens the
+// confirmation dialog through the normal command path.
+#[test]
+fn settings_reset_bare_affordance_dispatches_command() {
+    let mut shell = make_shell();
+    // The Settings Recovery_Baseline includes an R -> "RESET BARE" row; its
+    // command dispatches through handle_command exactly as a typed command.
+    assert!(!shell.reset_bare_confirm_open);
+    shell.handle_command("RESET BARE");
+    assert!(
+        shell.reset_bare_confirm_open,
+        "the RESET BARE affordance's command must open the confirmation dialog"
     );
 }
 

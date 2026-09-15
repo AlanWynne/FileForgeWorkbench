@@ -357,10 +357,10 @@
 
 ## Phase (menu-recovery) -- Code-only menus + Recovery Baseline + configurable group separator + RESET BARE (CR-CH-021, Req 4 revised, Req 12, configuration-system Req 19, startup Req 11.8/11.9)
 
-- [ ] 23. Code-only menus, Recovery Baseline, configurable separator, RESET BARE
-  - NOTE: 23.1-23.8, 23.10-23.12 complete; 23.9 (Settings button affordance)
-    outstanding -- the RESET BARE command + dialog are implemented and
-    dispatchable, only the dedicated Settings button is deferred.
+- [x] 23. Code-only menus, Recovery Baseline, configurable separator, RESET BARE
+  - NOTE: 23.1-23.8, 23.10-23.12 done in CR-CH-021; 23.9 (Settings RESET BARE
+    affordance) closed by CR-NR-075 via the Settings baseline `R -> RESET BARE`
+    row (command-parity dispatch).
   - [x] 23.1 Stop materialising built-in menus: remove the `write_if_absent(pom.toml)` / `write_if_absent(settings.toml)` writes; keep only a dir-ensure (`ensure_menus_dir`) called from `shell/update.rs`. Remove the `ensure_default_menu_files` materialise call at the startup site
     - Covers: Requirement 4.1, 4.2 (revised); startup-and-session 11.9
   - [x] 23.2 Recovery_Baseline content: update `DEFAULT_POM_TOML` to the barebones POM (0 Settings, 1 Catalogs, 2 Files, L Log, M Menus, X Return, single group) and `DEFAULT_SETTINGS_TOML` to (T Themes, M Menus, A All); add `recovery_pom_menu()`/`recovery_settings_menu()` builders that parse these (one source of content)
@@ -377,13 +377,13 @@
     - Covers: configuration-system Requirement 19.4, 19.5, 19.8
   - [x] 23.8 On confirm: run archive, then reset in-memory config/menus/theme/catalog to compiled baselines, re-create the default Home catalog, and reopen the Recovery_Baseline POM (no relaunch)
     - Covers: configuration-system Requirement 19.6
-  - [ ] 23.9 Settings affordance dispatches `RESET BARE` through the command path (parity, does not bypass the dialog)
+  - [x] 23.9 Settings affordance dispatches `RESET BARE` through the command path (parity, does not bypass the dialog)
     - Covers: configuration-system Requirement 19.7
-    - NOTE: the `RESET BARE` command + confirmation dialog are implemented and
-      dispatchable (typed command path). The Settings BUTTON affordance is not
-      yet wired; it will be added with the Menus/Settings editor work. The
-      command remains reachable by name and via any user menu option that maps
-      to it, so parity is available; a dedicated button is the outstanding item.
+    - DONE (CR-NR-075): the Settings Recovery_Baseline now carries an `R -> RESET
+      BARE` row (group "Recovery"). Selecting it dispatches the RESET BARE command
+      through the menu-option = command path, opening the confirmation dialog
+      without bypassing it. Tested by `settings_reset_bare_affordance_dispatches_command`
+      and `default_settings_toml_has_recovery_baseline_options`.
   - [x] 23.10 Home catalog regression criterion: assert `ensure_default_home_catalog` still seeds "Home" -> user home when no Native catalog exists
     - Covers: startup-and-session Requirement 14 (regression guard for CR-NR-004)
   - [x] 23.11 Tests: no-materialise (menus/ empty after startup); absent user file -> Recovery_Baseline no notice; corrupt user file -> Recovery_Baseline + notice; Settings fallback; group_separator space/line/none rendering; RESET BARE confirm archives+resets and Cancel no-ops; MENUS notice; Home catalog seeded. verify.ps1 CLEAN
@@ -395,26 +395,26 @@
 
 ## Phase (menus-editor) -- Menus editor Context (CR-NR-075, Requirement 13; closes 23.9)
 
-- [ ] 24. Menus editor Context (create / edit / reorder / save menu TOMLs)
-  - [ ] 24.1 MenuFile -> TOML serialiser: new `menu_workspace/serialiser.rs` `serialise(&MenuFile) -> String` (title; show_calendar/group_separator/group_headers only when non-default; one `[[options]]` block per option with key/command/description/enabled(when false)/group(when Some)/inline target when present)
+- [x] 24. Menus editor Context (create / edit / reorder / save menu TOMLs)
+  - [x] 24.1 MenuFile -> TOML serialiser: new `menu_workspace/serialiser.rs` `serialise(&MenuFile) -> String` (title; show_calendar/group_separator/group_headers only when non-default; one `[[options]]` block per option with key/command/description/enabled(when false)/group(when Some)/inline target when present)
     - Covers: Requirement 13.8, 13.10
-  - [ ] 24.2 Round-trip test: `parse_menu_str(serialise(&m)) == m` for representative menus (POM baseline, Settings baseline, a multi-group menu, options with enabled=false and groups); confirm/handle CommandTarget serialisation
+  - [x] 24.2 Round-trip test: `parse_menu_str(serialise(&m)) == m` for representative menus (POM baseline, Settings baseline, a multi-group menu, options with enabled=false and groups); confirm/handle CommandTarget serialisation
     - Covers: Requirement 13.10
-  - [ ] 24.3 Shared validation: factor loader per-option checks into `validate_menu(&MenuFile, limits) -> Result<(), String>`; the load path and the editor Save path both call it (editor cannot produce an unloadable file)
+  - [x] 24.3 Shared validation: factor loader per-option checks into `validate_menu(&MenuFile, limits) -> Result<(), String>`; the load path and the editor Save path both call it (editor cannot produce an unloadable file)
     - Covers: Requirement 13.7, 13.13
-  - [ ] 24.4 Panel: new `menus_editor_panel/{mod,state,render}.rs` with `MenusEditorState` (available/selected/working/name_buffer/error) and `MenusEditorAction`; pure `render(ui, state) -> Action` with the two-slot B052 rule (button click wins over field lost_focus)
+  - [x] 24.4 Panel: new `menus_editor_panel/{mod,state,render}.rs` with `MenusEditorState` (available/selected/working/name_buffer/error) and `MenusEditorAction`; pure `render(ui, state) -> Action` with the two-slot B052 rule (button click wins over field lost_focus)
     - Covers: Requirement 13.4, 13.5, 13.6, 13.12
-  - [ ] 24.5 Tab wiring: `TabKind::MenusEditor` + `TabState::menus_editor` (`[MENUS]`) + `tab_manager::open_menus_editor_tab`; add MenusEditor to the END/RETURN return-to-POM branch; render dispatch arm in `shell/render.rs`
+  - [x] 24.5 Tab wiring: `TabKind::MenusEditor` + `TabState::menus_editor` (`[MENUS]`) + `tab_manager::open_menus_editor_tab`; add MenusEditor to the END/RETURN return-to-POM branch; render dispatch arm in `shell/render.rs`
     - Covers: Requirement 13.1
-  - [ ] 24.6 Shell impl `shell/menus_editor.rs`: `open_menus_editor` (available = POM/Settings + user files; built-in -> Recovery_Baseline when no file; transform-in-place on POM else dedicated tab), `apply_menus_editor_action` (edit/add/delete/move mutate working; Save/SaveAs validate + write), `write_menu_file` (menu_slug; POM/Settings -> pom.toml/settings.toml), `menus_dir_override` field for test isolation
+  - [x] 24.6 Shell impl `shell/menus_editor.rs`: `open_menus_editor` (available = POM/Settings + user files; built-in -> Recovery_Baseline when no file; transform-in-place on POM else dedicated tab), `apply_menus_editor_action` (edit/add/delete/move mutate working; Save/SaveAs validate + write), `write_menu_file` (menu_slug; POM/Settings -> pom.toml/settings.toml), `menus_dir_override` field for test isolation
     - Covers: Requirement 13.1, 13.2, 13.3, 13.8, 13.9
-  - [ ] 24.7 Replace the `upper == "MENUS"` notice arm with `open_menus_editor()`; both POM `M` and Settings `M` rows now open the editor
+  - [x] 24.7 Replace the `upper == "MENUS"` notice arm with `open_menus_editor()`; both POM `M` and Settings `M` rows now open the editor
     - Covers: Requirement 13.1
-  - [ ] 24.8 Save writes a user override the renderer prefers over the Recovery_Baseline; deleting the file restores the baseline (built-in stays code-only); saved file hot-reloads into an open POM/Settings within the existing window
+  - [x] 24.8 Save writes a user override the renderer prefers over the Recovery_Baseline; deleting the file restores the baseline (built-in stays code-only); saved file hot-reloads into an open POM/Settings within the existing window
     - Covers: Requirement 13.8, 13.11
-  - [ ] 24.9 Settings RESET BARE affordance: a button/option that dispatches the `RESET BARE` command through the command path (opens the dialog; does not bypass it) -- CLOSES task 23.9
+  - [x] 24.9 Settings RESET BARE affordance: a button/option that dispatches the `RESET BARE` command through the command path (opens the dialog; does not bypass it) -- CLOSES task 23.9
     - Covers: configuration-system Requirement 19.7
-  - [ ] 24.10 Tests: serialiser round-trip; validation rejects bad key/empty command/over-limit and Save is blocked; add/delete/move reorder working; Select loads built-in baseline when no file; Save writes menus/<name>.toml and it reloads; MENUS opens the editor; RESET BARE affordance dispatches the command. verify.ps1 CLEAN
+  - [x] 24.10 Tests: serialiser round-trip; validation rejects bad key/empty command/over-limit and Save is blocked; add/delete/move reorder working; Select loads built-in baseline when no file; Save writes menus/<name>.toml and it reloads; MENUS opens the editor; RESET BARE affordance dispatches the command. verify.ps1 CLEAN
     - Validates: Requirement 13.1-13.13; configuration-system 19.7
-  - [ ] 24.11 Update `docs/quality/TCR.md` rows; mark tasks 24.x + 23.9 done; CR-NR-075 -> DONE; verify.ps1; rebuild; commit+push
+  - [x] 24.11 Update `docs/quality/TCR.md` rows; mark tasks 24.x + 23.9 done; CR-NR-075 -> DONE; verify.ps1; rebuild; commit+push
     - Covers: project standards

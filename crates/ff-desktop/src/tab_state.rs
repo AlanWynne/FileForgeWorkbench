@@ -60,6 +60,10 @@ pub enum TabKind {
     ///
     /// Validates: theme-and-appearance Requirement 20.1
     ThemeEditor,
+    /// In-app Menus editor Context (create/edit/reorder/save menu TOMLs).
+    ///
+    /// Validates: menu-workspace Requirement 13.1 (CR-NR-075)
+    MenusEditor,
 }
 
 /// A single undoable edit stored as the inverse operation to apply.
@@ -309,6 +313,13 @@ impl TabState {
     /// Validates: theme-and-appearance Requirement 20.1
     pub fn theme_editor(id: TabId, document: DocumentHandle) -> Self {
         base_tab!(id, TabKind::ThemeEditor, "[THEME]".to_string(), document)
+    }
+
+    /// Create a Menus Editor tab.
+    ///
+    /// Validates: menu-workspace Requirement 13.1 (CR-NR-075)
+    pub fn menus_editor(id: TabId, document: DocumentHandle) -> Self {
+        base_tab!(id, TabKind::MenusEditor, "[MENUS]".to_string(), document)
     }
 
     /// Create a Menu Workspace tab backed by a TOML file at `file_path`.

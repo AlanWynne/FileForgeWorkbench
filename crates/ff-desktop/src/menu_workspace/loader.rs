@@ -299,6 +299,56 @@ fn apply_limits(
     })
 }
 
+/// Validate an in-memory [`MenuFile`] with the same rules the loader applies on
+/// parse, so the Menus editor cannot produce a file that would fail to load
+/// (menu-workspace Req 13.7, 13.13, CR-NR-075).
+///
+/// Checks: non-empty title; each option key 1-4 chars, command and description
+/// non-empty; and the option count does not exceed the hard limit. Returns the
+/// same human-readable error strings as the parse path.
+///
+/// Note: this validates an already-typed `MenuFile` (keys are expected to be
+/// stored uppercase by the editor). It does not mutate.
+///
+/// Validates: menu-workspace Requirement 13.7, 13.13
+pub fn validate_menu(menu: &MenuFile, limits: OptionLimits) -> Result<(), String> {
+    if menu.title.trim().is_empty() {
+        return Err("Menu file error: 'title' field is required and must not be empty".to_string());
+    }
+    for (i, option) in menu.options.iter().enumerate() {
+        let key = option.key.trim();
+        if key.is_empty() || key.len() > 4 {
+            return Err(format!(
+                "Menu file error: option {} key '{}' must be 1-4 characters",
+                i + 1,
+                option.key
+            ));
+        }
+        if option.command.trim().is_empty() {
+            return Err(format!(
+                "Menu file error: option {} (key '{}') 'command' field is required",
+                i + 1,
+                key
+            ));
+        }
+        if option.description.trim().is_empty() {
+            return Err(format!(
+                "Menu file error: option {} (key '{}') 'description' field is required",
+                i + 1,
+                key
+            ));
+        }
+    }
+    let count = menu.options.len() as u64;
+    let hard = limits.hard as u64;
+    if count > hard {
+        return Err(format!(
+            "Menu file error: too many options: {count} exceeds hard limit {hard}"
+        ));
+    }
+    Ok(())
+}
+
 /// Validate and normalise a single raw option.
 ///
 /// Validates: Requirement 1.2 -- key 1-4 chars, stored uppercase

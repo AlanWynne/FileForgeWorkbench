@@ -720,6 +720,12 @@ impl WorkbenchShell {
                             crate::theme_editor_panel::render(ui, &mut self.theme_editor_panel);
                         self.apply_theme_editor_action(action);
                     }
+                    TabKind::MenusEditor => {
+                        // Validates: menu-workspace Requirement 13.1-13.12 (CR-NR-075)
+                        let action =
+                            crate::menus_editor_panel::render(ui, &mut self.menus_editor_panel);
+                        self.apply_menus_editor_action(action);
+                    }
                     TabKind::CommandConfigurator => {
                         // Validates: command-configurator Requirement 2.2-2.6
                         self.command_store.poll_reload();

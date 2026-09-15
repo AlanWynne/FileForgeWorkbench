@@ -89,6 +89,9 @@ fn descriptor_for_tab(
         // not restored on next launch. The active THEME is persisted separately
         // via `theme.active_name` (CR-NR-074 Req 19.7), which is what matters.
         TabKind::ThemeEditor => None,
+        // The Menus Editor is likewise a transient editing Context; edits are
+        // persisted as menu files, not as a restored tab (menu-workspace Req 13).
+        TabKind::MenusEditor => None,
         // Untitled buffers are not persisted (never were).
         TabKind::Untitled => None,
     }
@@ -209,7 +212,8 @@ impl SessionManager {
                 | TabKind::MacroLibrary
                 | TabKind::MenuWorkspace
                 | TabKind::CommandConfigurator
-                | TabKind::ThemeEditor => None,
+                | TabKind::ThemeEditor
+                | TabKind::MenusEditor => None,
             }
         };
         // Note: FileExplorerPanel active_tab_id is None (no URI to track)
@@ -263,7 +267,8 @@ impl SessionManager {
                 | TabKind::MacroLibrary
                 | TabKind::MenuWorkspace
                 | TabKind::CommandConfigurator
-                | TabKind::ThemeEditor => None,
+                | TabKind::ThemeEditor
+                | TabKind::MenusEditor => None,
             }
         };
 

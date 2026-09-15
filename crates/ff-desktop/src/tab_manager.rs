@@ -284,6 +284,28 @@ impl TabManager {
         let _ = runtime;
     }
 
+    /// Open the Menus Editor tab, activating an existing one rather than
+    /// inserting a duplicate.
+    ///
+    /// Validates: menu-workspace Requirement 13.1 (CR-NR-075)
+    pub fn open_menus_editor_tab(&mut self, runtime: &Runtime) {
+        if let Some(idx) = self
+            .tabs
+            .iter()
+            .position(|t| t.kind == TabKind::MenusEditor)
+        {
+            self.active = idx;
+            return;
+        }
+        let document = ff_document_model::new_document();
+        let id = TabId(self.next_id);
+        self.next_id += 1;
+        let tab = crate::tab_state::TabState::menus_editor(id, document);
+        self.tabs.push(tab);
+        self.active = self.tabs.len() - 1;
+        let _ = runtime;
+    }
+
     /// Open a data-driven Menu Workspace tab backed by `<menus_dir>/<name>.toml`.
     ///
     /// If a Menu Workspace tab already backed by the same file exists, it is
@@ -350,7 +372,10 @@ impl TabManager {
         let active_kind = self.active_tab().kind;
         let transform_in_place = matches!(
             active_kind,
-            TabKind::PrimaryOptionMenu | TabKind::SettingsPanel | TabKind::MenuWorkspace
+            TabKind::PrimaryOptionMenu
+                | TabKind::SettingsPanel
+                | TabKind::MenuWorkspace
+                | TabKind::MenusEditor
         );
         if transform_in_place {
             let file_path = menus_dir.join(format!("{name}.toml"));

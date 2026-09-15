@@ -10,6 +10,7 @@ pub mod commands;
 pub mod defaults;
 pub mod loader;
 pub mod render;
+pub mod serialiser;
 
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;

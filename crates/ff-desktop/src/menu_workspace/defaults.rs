@@ -92,6 +92,12 @@ key = "A"
 command = "A"
 description = "Browse all configuration keys (unfiltered flat list)"
 group = "Settings"
+
+[[options]]
+key = "R"
+command = "RESET BARE"
+description = "Reset to barebones -- archive config and start fresh"
+group = "Recovery"
 "#;
 
 /// Build the compiled Recovery_Baseline POM `MenuFile` (menu-workspace Req 12).
@@ -208,9 +214,12 @@ mod tests {
     fn recovery_settings_menu_has_barebones_options() {
         let menu = recovery_settings_menu();
         let keys: Vec<&str> = menu.options.iter().map(|o| o.key.as_str()).collect();
-        assert_eq!(keys, vec!["T", "M", "A"]);
+        // T Themes / M Menus / A All + R Reset-to-barebones (CR-NR-075 task 24.9:
+        // the RESET BARE Settings affordance dispatches the command via the menu
+        // option = command path, satisfying configuration-system Req 19.7).
+        assert_eq!(keys, vec!["T", "M", "A", "R"]);
         let commands: Vec<&str> = menu.options.iter().map(|o| o.command.as_str()).collect();
-        assert_eq!(commands, vec!["THEMES", "MENUS", "A"]);
+        assert_eq!(commands, vec!["THEMES", "MENUS", "A", "RESET BARE"]);
     }
 
     // Validates: Requirement 7.4 (cv-requirements.md) -- DEFAULT_POM_TOML is valid TOML
@@ -285,8 +294,10 @@ mod tests {
         );
     }
 
-    // Validates: Requirement 12.3 (menu-workspace, CR-CH-021) -- Recovery_Baseline
-    // Settings has the barebones option set (T Themes / M Menus / A All).
+    // Validates: Requirement 12.3 (menu-workspace, CR-CH-021) + CR-NR-075 task
+    // 24.9 -- Recovery_Baseline Settings: T Themes / M Menus / A All, plus the
+    // R RESET BARE affordance (dispatched via the menu-option = command path,
+    // configuration-system Req 19.7).
     #[test]
     fn default_settings_toml_has_recovery_baseline_options() {
         let val: toml::Value = toml::from_str(DEFAULT_SETTINGS_TOML).expect("valid TOML");
@@ -296,14 +307,14 @@ mod tests {
             .expect("options array");
         assert_eq!(
             options.len(),
-            3,
-            "Recovery_Baseline Settings must have exactly 3 options"
+            4,
+            "Recovery_Baseline Settings must have T/M/A + the RESET BARE affordance"
         );
         let commands: Vec<&str> = options
             .iter()
             .filter_map(|o| o.get("command").and_then(|c| c.as_str()))
             .collect();
-        assert_eq!(commands, vec!["THEMES", "MENUS", "A"]);
+        assert_eq!(commands, vec!["THEMES", "MENUS", "A", "RESET BARE"]);
     }
 
     // Validates: Requirement 11.1 (cw-requirements.md) -- title matches spec

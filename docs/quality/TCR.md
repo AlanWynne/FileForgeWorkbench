@@ -432,16 +432,16 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 13.8/13.10: MenuFile -> TOML serialiser; `parse_menu_str(serialise(&m)) == m` round-trip |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 13.7/13.13: shared validate_menu (key 1-4 upper, command/description required, hard limit); editor Save blocked when invalid |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 13.4/13.5: option list edit (key/command/description/enabled/group), add/delete/move reorder mutate the working menu |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 13.6: edit title + show_calendar/group_separator/group_headers on the working menu |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 13.2/13.3: selector lists POM/Settings + user files; built-in with no file loads the Recovery_Baseline |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 13.8/13.9: Save/Save As writes menus/<name>.toml (POM/Settings -> pom.toml/settings.toml) as a user override |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 13.11: saved menu hot-reloads into an open POM/Settings within the existing window |
-| `ff-desktop` | 🔲 | -- | menu-workspace Req 13.1: MENUS opens the editor `[MENUS]`; POM/Settings M rows both open it (egui open/transform path -- manual UI verification; command wiring tested) |
-| `ff-desktop` | 🔲 | -- | menu-workspace Req 13.12: pure render -> Action, button click wins over field lost_focus (B052) (egui interaction -- manual UI verification) |
-| `ff-desktop` | 🔴 | -- | configuration-system Req 19.7 (closes task 23.9): Settings RESET BARE affordance dispatches the RESET BARE command through the command path (opens the dialog, does not bypass) |
+| `ff-desktop` | ✅ | `serialiser.rs::recovery_pom_round_trips`, `recovery_settings_round_trips`, `full_featured_menu_round_trips`, `defaults_are_omitted_but_parse_back`, `special_characters_in_title_escaped` | menu-workspace Req 13.8/13.10: MenuFile -> TOML serialiser; `parse_menu_str(serialise(&m)) == m` round-trip |
+| `ff-desktop` | ✅ | `shell/tests.rs::menus_editor_save_blocked_when_invalid` (+ `loader::validate_menu`) | menu-workspace Req 13.7/13.13: shared validate_menu (key 1-4 upper, command/description required, hard limit); editor Save blocked when invalid |
+| `ff-desktop` | ✅ | `shell/tests.rs::menus_editor_add_delete_move_mutate_working`, `menus_editor_edit_option_key_uppercases` | menu-workspace Req 13.4/13.5: option list edit (key/command/description/enabled/group), add/delete/move reorder mutate the working menu |
+| `ff-desktop` | ✅ | `shell/tests.rs::menus_editor_save_writes_loadable_file` (title edit round-trips) | menu-workspace Req 13.6: edit title + show_calendar/group_separator/group_headers on the working menu |
+| `ff-desktop` | ✅ | `shell/tests.rs::menus_editor_loads_recovery_baseline_when_no_file`, `menus_command_opens_menus_editor` | menu-workspace Req 13.2/13.3: selector lists POM/Settings + user files; built-in with no file loads the Recovery_Baseline |
+| `ff-desktop` | ✅ | `shell/tests.rs::menus_editor_save_writes_loadable_file`, `shell/menus_editor.rs::menu_file_stem_maps_built_ins_and_slugs_users` | menu-workspace Req 13.8/13.9: Save/Save As writes menus/<name>.toml (POM/Settings -> pom.toml/settings.toml) as a user override |
+| `ff-desktop` | 🔲 | -- | menu-workspace Req 13.11: saved menu hot-reloads into an open POM/Settings within the existing window (mtime poll_reload -- exercised at runtime; manual UI verification) |
+| `ff-desktop` | ✅ | `shell/tests.rs::menus_command_opens_menus_editor` | menu-workspace Req 13.1: MENUS opens the editor `[MENUS]`; POM/Settings M rows both dispatch MENUS |
+| `ff-desktop` | 🔲 | -- | menu-workspace Req 13.12: pure render -> Action, button click wins over field lost_focus (B052) (egui interaction -- manual UI verification; the two-slot pattern mirrors the tested Theme editor) |
+| `ff-desktop` | ✅ | `shell/tests.rs::settings_reset_bare_affordance_dispatches_command`, `defaults.rs::default_settings_toml_has_recovery_baseline_options` | configuration-system Req 19.7 (closes task 23.9): Settings baseline R row dispatches the RESET BARE command through the command path (opens the dialog, does not bypass) |
 
 ### Phase AE -- Legacy Theme Colour Semantics
 

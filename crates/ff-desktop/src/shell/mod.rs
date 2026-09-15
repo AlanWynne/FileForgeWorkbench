@@ -382,6 +382,8 @@ pub struct WorkbenchShell {
     ///
     /// Validates: theme-and-appearance Requirement 20.1
     pub(crate) theme_editor_panel: crate::theme_editor_panel::ThemeEditorState,
+    /// Menus Editor Context state (menu-workspace Req 13, CR-NR-075).
+    pub(crate) menus_editor_panel: crate::menus_editor_panel::MenusEditorState,
     /// Shell engine for external program execution (Detached / Captured).
     ///
     /// Backs the External Command_Target adapter: runs a program by name +
@@ -463,6 +465,12 @@ pub struct WorkbenchShell {
     /// `None` (the real `<User_Data_Dir>/themes/`); tests set it to a TempDir so
     /// Theme editor file operations are deterministic and isolated.
     themes_dir_override: Option<std::path::PathBuf>,
+
+    /// Test-only override for the menus directory (menu-workspace Req 13,
+    /// CR-NR-075). Production leaves this `None` (the real
+    /// `<User_Data_Dir>/menus/`); tests set it to a TempDir so Menus editor file
+    /// operations are deterministic and isolated.
+    menus_dir_override: Option<std::path::PathBuf>,
     /// Last pixels_per_point applied by zoom — avoids overwriting OS DPI every frame.
     last_ppp: f32,
     /// True while the user is holding the mouse button down (window drag in progress).
@@ -700,6 +708,7 @@ impl WorkbenchShell {
             command_configurator_panel:
                 crate::command_config::render::CommandConfiguratorState::new(),
             theme_editor_panel: crate::theme_editor_panel::ThemeEditorState::new(),
+            menus_editor_panel: crate::menus_editor_panel::MenusEditorState::new(),
             shell_engine: ff_shell::ShellEngine::new(ff_shell::ShellConfigProvider::new()),
             pending_external: None,
             files_panel: FilesPanelState::new(),
@@ -721,6 +730,7 @@ impl WorkbenchShell {
             pom_calendar_offset: 0,
             active_theme_file: None,
             themes_dir_override: None,
+            menus_dir_override: None,
             last_ppp: 1.0,
             is_dragging: false,
             pending_ppp: None,
@@ -952,7 +962,8 @@ pub(crate) fn title_line_text(tab: &crate::tab_state::TabState) -> String {
         | TabKind::EventLog
         | TabKind::MacroLibrary
         | TabKind::CommandConfigurator
-        | TabKind::ThemeEditor => tab.title.clone(),
+        | TabKind::ThemeEditor
+        | TabKind::MenusEditor => tab.title.clone(),
         TabKind::MenuWorkspace => tab.title.clone(),
     }
 }
@@ -993,6 +1004,7 @@ mod configurator;
 mod external_adapter;
 /// Convert a `ff_config::ConfigValue` to a `toml::Value` for key-map parsing.
 mod helpers;
+mod menus_editor;
 mod render;
 mod render_chrome;
 mod reset_bare;
