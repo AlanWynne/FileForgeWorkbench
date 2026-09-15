@@ -152,6 +152,55 @@ and a `Command ===>` field -- so that the pattern is immediately familiar.
     (`primary_option_menu`) column+calendar layout is folded into the shared
     renderer so there is a single code path. POM options become add/remove-able
     purely by editing `menus/pom.toml`. (CR-CH-018.)
+1d. THE Home Context (POM) SHALL retain its `TabKind::PrimaryOptionMenu` tab
+    identity and its POM-specific chrome -- the `[POM]` tab-header title and the
+    Title_Line styling (black background, blue centred text) -- even though its
+    option list is now rendered by the shared menu renderer from a
+    `MenuWorkspaceState` backed by `menus/pom.toml`. Rendering the POM through
+    the shared renderer SHALL NOT change the tab kind, tab title, or Title_Line
+    appearance. (CR-CH-018.)
+1e. THE behaviour of selecting a Menu_Option -- in the POM OR any other
+    Menu_Workspace, by mouse click, by typing its Option_Key, or by the keyboard
+    focus ring (Enter/Space) -- SHALL be driven SOLELY by that option's
+    Option_Command string dispatched through the shell command pipeline. NO
+    option behaviour SHALL be keyed to the option's position, its Option_Key
+    character, or the identity of the menu. There SHALL be no compiled-in
+    per-option behaviour: editing the `command` value in the Menu_File is the
+    only thing that changes what an option does. (Command-driven principle;
+    CR-CH-018.) The pre-existing digit-keyed shell dispatch arms (e.g. matching
+    `"1"`, `"6"`, `"8"` to open specific panels) that couple an option's key to
+    its behaviour SHALL be removed, as they violate this principle and command
+    parity (architecture-brief Principle 2).
+1f. THE keyboard focus ring and Enter/Space activation on the POM (Tab/Shift+Tab
+    cycling through option rows and the calendar `<`/`>` stops, as required by
+    function-keys-and-history Req 16) SHALL be driven by the loaded
+    `menus/pom.toml` option list, NOT by a compiled-in option array. The number
+    of focusable option stops SHALL equal the number of options in the loaded
+    POM menu, and activating the focused option SHALL dispatch that option's
+    Option_Command exactly as a mouse click does (per Requirement 2.1e).
+    (CR-CH-018.)
+1g. THE terminate action SHALL be an ordinary data-driven `menus/pom.toml`
+    option (default Option_Key `X`, Option_Command `RETURN`) -- NOT a bespoke
+    exit line. Selecting it dispatches the `RETURN` command, which returns to the
+    Home Context from any Workspace and, when issued from the POM as the only
+    Workspace, terminates the application (function-keys-and-history Req 17.3/
+    17.4; consistent with `=X`). The previous bespoke "Enter X to Terminate"
+    line, `PomAction::Exit`, and `FocusStop::PomExit` special-casing SHALL be
+    removed. (CR-CH-018.)
+1h. EVERY Option_Command in the default `menus/pom.toml` SHALL resolve through
+    the shell command pipeline by command NAME (independent of any key). WHERE a
+    needed command name does not already resolve, the command dispatcher SHALL be
+    extended to accept it (e.g. `CATALOGS` opening the File Catalogs Context). IN
+    NO CASE SHALL a default POM option dispatch to an "unknown command" error.
+    THE default `menus/pom.toml` SHALL contain ONLY options whose Option_Command
+    maps to built, testable functionality; options for unimplemented features
+    (e.g. Utilities, Compilers, Terminals, Databases, Jobs, interactive Batch)
+    SHALL be omitted and added later as their functionality is built and tested.
+    (CR-CH-018.)
+1i. THE fastpath `=<key>` notation (e.g. `=0`, `=1`, `=2`) SHALL continue to
+    resolve to "the option whose Option_Key is `<key>` in the target menu, then
+    dispatch that option's Option_Command", so fastpath navigation from the Home
+    Context is itself config-driven and behaves as before. (CR-CH-018.)
 2. EACH option row SHALL be rendered as an interactive element: the user can
    click it or tab to it and press Enter to select it.
 3. WHEN an option has `enabled = false`, THE option row SHALL be rendered in a

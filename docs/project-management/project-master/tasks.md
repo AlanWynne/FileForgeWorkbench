@@ -994,6 +994,27 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 
 ## Summary (current -- updated after full sub-project audit)
 
+### Phase (pom-via-shared-renderer) -- POM rendered through the shared menu renderer (CR-CH-018, task 22.4)
+
+> Final slice of CR-CH-018: render the POM (Home Context) through the shared
+> `render_menu_workspace` against a `menus/pom.toml`-backed MenuWorkspaceState,
+> keeping TabKind::PrimaryOptionMenu, the `[POM]` title, the POM Title_Line, the
+> keyboard focus ring (now sourced from the loaded options), the terminate
+> action (data-driven `X`->END option), and `=0`/`=1`/`=2` fastpath. Retires the
+> bespoke `primary_option_menu::render`/BUILT_IN_OPTIONS once tests are migrated.
+> Menu-workspace Req 2.1c-2.1h.
+
+- [ ] PVSR.1 Attach a pom.toml-backed MenuWorkspaceState to the POM tab (keep TabKind::PrimaryOptionMenu; `[POM]` title + POM Title_Line preserved) (Task 22.4a; Req 2.1d)
+- [ ] PVSR.2 Render the POM via shared `render_menu_workspace`; clicked option -> `pending_menu_option` (Task 22.4b; Req 2.1c/2.1d)
+- [ ] PVSR.3 Config-driven selection: dispatch ONLY the option's command; DELETE digit-keyed key->panel dispatch arms; `=<key>` resolves the keyed option then runs its command (Task 22.4c; Req 2.1e/2.1i)
+- [ ] PVSR.4 Port focus ring + Enter/Space activation to the loaded POM options (Task 22.4d; Req 2.1f)
+- [ ] PVSR.5 Data-driven terminate option (`X`->RETURN); remove bespoke exit-line/PomAction::Exit/PomExit (Task 22.4e; Req 2.1g)
+- [ ] PVSR.6 Add `CATALOGS` dispatch arm; trim DEFAULT_POM_TOML to built+testable options only (0/1/2/5/8/S/X); update defaults tests (Task 22.4f; Req 2.1h)
+- [ ] PVSR.7 Retire primary_option_menu::render/BUILT_IN_OPTIONS/PomAction/EXIT_LINE_TEXT; migrate tests (Task 22.4g/22.5; Req 2.1c)
+- [ ] PVSR.8 TCR rows Req 2.1c-2.1i to PASS; verify.ps1 CLEAN; rebuild; commit+push (Task 22.6)
+
+---
+
 ### Phase CU -- Menu Workspace Pattern (CR-NR-045) -- SPEC ONLY
 
 > Defines the Menu Workspace as a first-class pattern: a Workspace whose Context is a

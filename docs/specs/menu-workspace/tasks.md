@@ -334,7 +334,21 @@
     - Covers: Requirement 2.1b, 1.8
   - [ ] 22.4 Render the POM (Home Context) via the shared `render_menu_workspace` against a `pom.toml`-backed MenuWorkspaceState; preserve POM option dispatch + focus/keyboard behaviour; POM options become data-driven from `menus/pom.toml`
     - Covers: Requirement 2.1c
-  - [ ] 22.5 Write tests: three-column layout present (key+command+description); `show_calendar=false` omits calendar / true includes it; POM renders via shared renderer with pom.toml options; calendar month-nav still works; existing menu-workspace tests still pass
-    - Covers: Requirement 2.1a-2.1c, 1.8
-  - [ ] 22.6 Update `docs/quality/TCR.md` rows for Req 1.8 / 2.1a-2.1c
-    - Covers: Requirement 1.8, 2.1a-2.1c
+  - [ ] 22.4a Attach a `MenuWorkspaceState` (loaded from `menus/pom.toml`) to the POM tab while KEEPING `TabKind::PrimaryOptionMenu`; `insert_pom_tab`/`ensure_pom_tab_present` load the POM menu-workspace state; tab title stays `[POM]` and Title_Line stays POM-styled
+    - Covers: Requirement 2.1d
+  - [ ] 22.4b Call the shared `render_menu_workspace` from the `TabKind::PrimaryOptionMenu` render arm against the POM's MenuWorkspaceState; a clicked option flows into `pending_menu_option`; remove the `primary_option_menu::render` call
+    - Covers: Requirement 2.1c, 2.1d
+  - [ ] 22.4c Make selection config-driven (Req 2.1e): dispatch ONLY the selected option's `command` string; DELETE the digit-keyed `handle_command` arms that couple key->panel (`"1"|"=1"|"FILE CATALOGS"`, `"2"|"=2"`, `"3"`, `"4"`, `"6"|"MACROS"`, `"7"`, `"8"|"PLUGINS"`, `"9"`, `"B"`); `=<key>` resolves to the option whose key matches, then runs its command
+    - Covers: Requirement 2.1e, 2.1i
+  - [ ] 22.4d Port the keyboard focus ring + Enter/Space activation to read the loaded POM option list (option count and each option's command) instead of `BUILT_IN_OPTIONS`; degrade gracefully when the POM menu failed to load
+    - Covers: Requirement 2.1f
+  - [ ] 22.4e Terminate as a data-driven `menus/pom.toml` option (key `X`, command `RETURN`); remove the bespoke `EXIT_LINE_TEXT`/`PomAction::Exit`/`FocusStop::PomExit` so terminate is one code path
+    - Covers: Requirement 2.1g
+  - [ ] 22.4f Ensure every default `pom.toml` command resolves by NAME: add a `CATALOGS` dispatch arm (File Catalogs Context); trim `DEFAULT_POM_TOML` to built+testable options only (0 SETTINGS, 1 CATALOGS, 2 FILES, 5 MACROS, 8 PLUGINS, S SEARCH, X RETURN); update the defaults tests (option count/title)
+    - Covers: Requirement 2.1h
+  - [ ] 22.4g Retire `primary_option_menu::render`, `BUILT_IN_OPTIONS`, `PomAction`, `PomRenderResult`, `EXIT_LINE_TEXT` once the POM renders through the shared path and tests are migrated; keep the pure calendar/date helpers and `PomColours`
+    - Covers: Requirement 2.1c
+  - [ ] 22.5 Write/migrate tests: POM renders via shared renderer from pom.toml options; selecting an option dispatches its command only (no digit coupling); focus ring cycles the loaded options and Enter activates them; terminate option (`X`->RETURN) returns/exits per CR-CH-016; `=1`/`=2` fastpath resolves the keyed option's command; calendar month-nav works; `[POM]` title + POM Title_Line preserved; trimmed default pom.toml; existing menu-workspace + POM tests migrated and green
+    - Covers: Requirement 2.1c-2.1i
+  - [ ] 22.6 Update `docs/quality/TCR.md` rows for Req 2.1c-2.1i (1.8 / 2.1a / 2.1b already PASS)
+    - Covers: Requirement 2.1c-2.1i

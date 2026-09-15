@@ -604,3 +604,68 @@ Migration/back-compat: `pom.toml` is written from `DEFAULT_POM_TOML`
 not overwritten. The `primary_option_menu` module's pure calendar/date helpers
 are retained (moved or re-exported) since the shared renderer depends on them;
 only its bespoke top-level `render` layout is superseded.
+
+### Design Delta: POM rendered via the shared renderer (Requirement 2.1c-2.1h, task 22.4)
+
+Investigation of the live code (Phase pom-via-shared-renderer) established that
+the POM is NOT a thin wrapper today: its 12 options are compiled into
+`primary_option_menu::BUILT_IN_OPTIONS`, its keyboard focus ring and Enter/Space
+activation read that array directly, it has a dedicated Exit line, and its tab
+carries `menu_workspace: None`. A naive "make the POM a MenuWorkspace tab" would
+regress function-keys-and-history Req 16 (focus ring), the Exit behaviour, the
+`[POM]` tab title, the black/blue Title_Line, and about six tests. It would also
+mis-dispatch, because the existing `DEFAULT_POM_TOML` command strings do not all
+resolve (`CATALOGS` and `TERMINALS` have no matching `handle_command` arm; the
+digit `6` maps to the Macro Library, not "Terminals").
+
+Chosen approach (preserves all behaviour; Req 2.1d-2.1h):
+
+- KEEP `TabKind::PrimaryOptionMenu` as the POM tab kind. Attach a
+  `MenuWorkspaceState` (loaded from `menus/pom.toml`) to the POM tab -- the tab
+  gains a populated `menu_workspace: Some(state)`. The tab title stays `[POM]`
+  and the Title_Line stays POM-styled (Req 2.1d). `insert_pom_tab` /
+  `ensure_pom_tab_present` load the POM menu-workspace state.
+- In the `TabKind::PrimaryOptionMenu` render arm, call the SHARED
+  `render_menu_workspace(state, ui, calendar_offset, menu_colours)` against the
+  POM's `MenuWorkspaceState`, replacing the `primary_option_menu::render` call.
+  A clicked option flows into `pending_menu_option` (same as any Menu_Workspace)
+  and dispatches through the existing deferred path.
+- PORT the focus ring to the loaded options (Req 2.1e): `FocusStop::next/prev`
+  and the Enter/Space handler read the POM tab's `menu_workspace` option count
+  and the selected option's `command`, instead of `BUILT_IN_OPTIONS.len()` and
+  `BUILT_IN_OPTIONS[i].key`. When the POM has no loaded menu (load error) the
+  ring degrades to CommandField + menu bar + tabs only.
+- COMMAND-DRIVEN principle (Req 2.1e): selection dispatches ONLY the option's
+  `command` string. DELETE the digit-keyed dispatch arms in `handle_command`
+  that couple an option's key to a panel (`"1" | "=1" | "FILE CATALOGS"`,
+  `"2" | "=2"`, `"3"`, `"4"`, `"6" | "MACROS"`, `"7"`, `"8" | "PLUGINS"`,
+  `"9"`, `"B"`, etc.). Dispatch resolves by command NAME only. `=<key>`
+  resolves to "the option whose key is `<key>`, then run its command"
+  (Req 2.1i), so fastpaths stay config-driven.
+- COMMAND-NAME resolution (Req 2.1h): ensure every default `pom.toml` command
+  resolves by name. `SETTINGS`, `FILES`, `MACROS`, `PLUGINS`, `SEARCH`,
+  `RETURN` already resolve; ADD a `CATALOGS` arm opening the File Catalogs
+  Context (today only the digit `1`/`FILE CATALOGS` did). No behaviour keyed to
+  the key character remains.
+- TERMINATE action (Req 2.1g): a data-driven `pom.toml` option (key `X`,
+  command `RETURN`); selecting it routes through `handle_command("RETURN")`,
+  which returns to the POM / exits when the POM is the only Workspace
+  (CR-CH-016, function-keys Req 17.3/17.4). Remove the bespoke `EXIT_LINE_TEXT`
+  / `PomAction::Exit` / `FocusStop::PomExit` so terminate is one code path.
+- TRIMMED default `pom.toml` (Req 2.1h): ship ONLY built + testable options.
+  Kept: `0 SETTINGS`, `1 CATALOGS`, `2 FILES`, `5 MACROS`, `8 PLUGINS`,
+  `S SEARCH`, `X RETURN`. Removed (add back when built/tested): `3 Utilities`,
+  `4 Compilers`, `6 Terminals`, `7 Databases`, `9 Jobs`, `B Batch`. Keys are
+  NOT renumbered (0/1/2/5/8/S/X retained) to preserve muscle memory and `=N`.
+- RETIRE `primary_option_menu::render` (the bespoke top-level layout),
+  `BUILT_IN_OPTIONS`, `PomAction`, `PomRenderResult`, and `EXIT_LINE_TEXT` once
+  the POM renders through the shared path and its tests are migrated. The pure
+  calendar/date helpers and `PomColours` stay (the shared renderer uses them).
+- Session/startup: the POM tab is still guaranteed by `ensure_pom_tab_present`;
+  it now also ensures the POM `MenuWorkspaceState` is loaded. Persistence is
+  unchanged (POM is guaranteed, not restored from a descriptor).
+
+Risk controls: implement behind the existing tests, migrate the focus-ring and
+option-dispatch tests to assert against the loaded pom.toml options, and verify
+`=0`/`=1`/`=2`, Tab cycling, Enter activation, the calendar, and END-terminate
+all still work before retiring the bespoke module.
