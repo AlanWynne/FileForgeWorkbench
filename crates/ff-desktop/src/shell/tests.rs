@@ -6,6 +6,11 @@ use ff_command::{
     CommandParams, CommandRegistry, CommandResult, ExecutionContext,
 };
 
+/// Representative POM option count for focus-ring transition tests. The focus
+/// ring is now sized by the loaded pom.toml option list (menu-workspace Req
+/// 2.1f); the default file ships 7 options (0/1/2/5/8/S/X).
+const POM_N: usize = 7;
+
 fn make_dispatch() -> (Arc<CommandRegistry>, CommandDispatch) {
     let registry = Arc::new(CommandRegistry::new());
     let history = Arc::new(CommandHistory::new(100));
@@ -414,61 +419,9 @@ fn is_shell_command(cmd: &str) -> bool {
 // ── Phase AC: POM option list reorganisation tests ──────────────────────
 
 /// Validates: Requirement 14.3 -- POM has exactly 9 built-in options (0-8).
-#[test]
-fn pom_has_twelve_built_in_options() {
-    // Validates: Requirement 6.1 (cv-requirements.md) -- 12 options (0-8, 9, S, B)
-    use crate::primary_option_menu::BUILT_IN_OPTIONS;
-    assert_eq!(BUILT_IN_OPTIONS.len(), 12);
-}
-
-/// Validates: Requirement 14.3 -- option keys are 0-8 in order.
-#[test]
-fn pom_option_keys_are_zero_through_eight_then_extended() {
-    // Validates: Requirement 6.1 (cv-requirements.md) -- keys 0-8, then 9, S, B
-    use crate::primary_option_menu::BUILT_IN_OPTIONS;
-    let keys: Vec<&str> = BUILT_IN_OPTIONS.iter().map(|o| o.key).collect();
-    assert_eq!(
-        keys,
-        vec!["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "S", "B"]
-    );
-}
-
-/// Validates: Requirement 14.3a -- option 1 is labelled "File Catalogs".
-#[test]
-fn pom_option_1_label_is_file_catalogs() {
-    // Validates: Requirement 14.3a
-    use crate::primary_option_menu::BUILT_IN_OPTIONS;
-    let opt1 = BUILT_IN_OPTIONS.iter().find(|o| o.key == "1").unwrap();
-    assert_eq!(opt1.label, "File Catalogs");
-}
-
-/// Validates: Requirement 14.3b -- option 8 is labelled "Plugins".
-#[test]
-fn pom_option_8_label_is_plugins() {
-    // Validates: Requirement 14.3b
-    use crate::primary_option_menu::BUILT_IN_OPTIONS;
-    let opt8 = BUILT_IN_OPTIONS.iter().find(|o| o.key == "8").unwrap();
-    assert_eq!(opt8.label, "Plugins");
-    assert_eq!(opt8.description, "Vendor added plugins");
-}
-
-/// Validates: Requirement 14.3 -- option 7 is labelled "Databases".
-#[test]
-fn pom_option_7_label_is_databases() {
-    // Validates: Requirement 14.3
-    use crate::primary_option_menu::BUILT_IN_OPTIONS;
-    let opt7 = BUILT_IN_OPTIONS.iter().find(|o| o.key == "7").unwrap();
-    assert_eq!(opt7.label, "Databases");
-}
-
-/// Validates: Requirement 14.3 -- option 0 description updated.
-#[test]
-fn pom_option_0_description_is_settings_and_client_parameters() {
-    // Validates: Requirement 14.3
-    use crate::primary_option_menu::BUILT_IN_OPTIONS;
-    let opt0 = BUILT_IN_OPTIONS.iter().find(|o| o.key == "0").unwrap();
-    assert_eq!(opt0.description, "FFWB Settings and Client Parameters");
-}
+// POM option-list/label tests removed: the POM option list is now data-driven
+// from menus/pom.toml (menu-workspace Req 2.1c-2.1i, CR-CH-018) and is covered
+// by the menu_workspace defaults/loader/render tests.
 
 // ── Task 26: SettingsPanel tab kind and routing tests ────────────────────
 
@@ -511,15 +464,6 @@ fn settings_panel_tab_kind_is_distinct_from_other_kinds() {
     assert_ne!(TabKind::SettingsPanel, TabKind::FileEditor);
     assert_ne!(TabKind::SettingsPanel, TabKind::FilesPanel);
     assert_ne!(TabKind::SettingsPanel, TabKind::Untitled);
-}
-
-/// Validates: Requirement 14.3 -- option 2 is labelled "Files".
-#[test]
-fn pom_option_2_label_is_files() {
-    // Validates: Requirement 14.3
-    use crate::primary_option_menu::BUILT_IN_OPTIONS;
-    let opt2 = BUILT_IN_OPTIONS.iter().find(|o| o.key == "2").unwrap();
-    assert_eq!(opt2.label, "Files");
 }
 
 /// Validates: Requirement 14.7 -- menu bar includes a `File Catalogs` top-level menu.
@@ -685,7 +629,7 @@ fn focus_stop_initial_state_is_command_field() {
 fn focus_cycle_tab_forward_from_command_field_goes_to_pom_option_0() {
     // Validates: Requirement 16.3
     use super::FocusStop;
-    let next = FocusStop::CommandField.next(11, 0, true);
+    let next = FocusStop::CommandField.next(11, 0, true, POM_N);
     assert_eq!(next, FocusStop::PomOption { index: 0 });
 }
 
@@ -694,36 +638,25 @@ fn focus_cycle_tab_forward_from_command_field_goes_to_pom_option_0() {
 fn focus_cycle_tab_forward_from_command_field_goes_to_menu_when_no_pom() {
     // Validates: Requirement 16.19
     use super::FocusStop;
-    let next = FocusStop::CommandField.next(11, 0, false);
+    let next = FocusStop::CommandField.next(11, 0, false, 0);
     assert_eq!(next, FocusStop::MenuBar { index: 0 });
 }
 
-/// Validates: Requirement 16.4 -- Tab advances through all POM option rows.
-///
-/// The option count is derived from `BUILT_IN_OPTIONS` so this test tracks the
-/// current POM size (12 since Phase CV) rather than a hardcoded count.
+/// Validates: Requirement 16.4; menu-workspace Req 2.1f -- Tab advances through
+/// all POM option rows, whose count is the loaded pom.toml option count.
 #[test]
 fn focus_cycle_tab_forward_through_all_pom_options() {
-    // Validates: Requirement 16.4
+    // Validates: Requirement 16.4; menu-workspace 2.1f
     use super::FocusStop;
-    let pom_count = super::primary_option_menu::BUILT_IN_OPTIONS.len();
+    let pom_count = POM_N;
     let mut stop = FocusStop::PomOption { index: 0 };
     for expected in 1..pom_count {
-        stop = stop.next(11, 0, true);
+        stop = stop.next(11, 0, true, pom_count);
         assert_eq!(stop, FocusStop::PomOption { index: expected });
     }
-    // After the last option -> PomExit
-    stop = stop.next(11, 0, true);
-    assert_eq!(stop, FocusStop::PomExit);
-}
-
-/// Validates: Requirement 16.6 -- Tab from PomExit goes to CalendarPrev.
-#[test]
-fn focus_cycle_tab_forward_from_pom_exit_goes_to_calendar_prev() {
-    // Validates: Requirement 16.6
-    use super::FocusStop;
-    let next = FocusStop::PomExit.next(11, 0, true);
-    assert_eq!(next, FocusStop::CalendarPrev);
+    // After the last option -> CalendarPrev (no bespoke exit stop; Req 2.1g)
+    stop = stop.next(11, 0, true, pom_count);
+    assert_eq!(stop, FocusStop::CalendarPrev);
 }
 
 /// Validates: Requirement 16.7 -- Tab from CalendarPrev goes to CalendarNext.
@@ -731,7 +664,7 @@ fn focus_cycle_tab_forward_from_pom_exit_goes_to_calendar_prev() {
 fn focus_cycle_tab_forward_from_calendar_prev_goes_to_calendar_next() {
     // Validates: Requirement 16.7
     use super::FocusStop;
-    let next = FocusStop::CalendarPrev.next(11, 0, true);
+    let next = FocusStop::CalendarPrev.next(11, 0, true, POM_N);
     assert_eq!(next, FocusStop::CalendarNext);
 }
 
@@ -740,7 +673,7 @@ fn focus_cycle_tab_forward_from_calendar_prev_goes_to_calendar_next() {
 fn focus_cycle_tab_forward_from_calendar_next_goes_to_first_menu() {
     // Validates: Requirement 16.8
     use super::FocusStop;
-    let next = FocusStop::CalendarNext.next(11, 0, true);
+    let next = FocusStop::CalendarNext.next(11, 0, true, POM_N);
     assert_eq!(next, FocusStop::MenuBar { index: 0 });
 }
 
@@ -753,11 +686,11 @@ fn focus_cycle_tab_forward_from_last_menu_wraps_to_command_field() {
     // Advance through all menu items
     let mut stop = FocusStop::MenuBar { index: 0 };
     for expected in 1..menu_count {
-        stop = stop.next(menu_count, 0, true);
+        stop = stop.next(menu_count, 0, true, POM_N);
         assert_eq!(stop, FocusStop::MenuBar { index: expected });
     }
     // Last menu -> CommandField (tab_count=0 so no TabHeader stop)
-    stop = stop.next(menu_count, 0, true);
+    stop = stop.next(menu_count, 0, true, POM_N);
     assert_eq!(stop, FocusStop::CommandField);
 }
 
@@ -768,7 +701,7 @@ fn focus_cycle_shift_tab_from_command_field_goes_to_last_menu() {
     use super::FocusStop;
     let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
     // tab_count=0: CommandField -> last MenuBar (no TabHeader)
-    let prev = FocusStop::CommandField.prev(menu_count, 0, true);
+    let prev = FocusStop::CommandField.prev(menu_count, 0, true, POM_N);
     assert_eq!(
         prev,
         FocusStop::MenuBar {
@@ -784,10 +717,10 @@ fn focus_cycle_shift_tab_from_first_menu_goes_to_command_field() {
     use super::FocusStop;
     // Non-POM: first menu -> CommandField
     // tab_count=0, non-POM: first menu -> CommandField
-    let prev = FocusStop::MenuBar { index: 0 }.prev(11, 0, false);
+    let prev = FocusStop::MenuBar { index: 0 }.prev(11, 0, false, 0);
     assert_eq!(prev, FocusStop::CommandField);
     // POM active: first menu -> CalendarNext
-    let prev_pom = FocusStop::MenuBar { index: 0 }.prev(11, 0, true);
+    let prev_pom = FocusStop::MenuBar { index: 0 }.prev(11, 0, true, POM_N);
     assert_eq!(prev_pom, FocusStop::CalendarNext);
 }
 
@@ -798,24 +731,24 @@ fn focus_cycle_non_pom_tab_skips_pom_stops() {
     use super::FocusStop;
     let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
     // Forward: CommandField -> MenuBar(0) (no PomOption)
-    let next = FocusStop::CommandField.next(menu_count, 0, false);
+    let next = FocusStop::CommandField.next(menu_count, 0, false, 0);
     assert_eq!(next, FocusStop::MenuBar { index: 0 });
     // Forward: last MenuBar -> CommandField (tab_count=0, no TabHeader)
     let wrap = FocusStop::MenuBar {
         index: menu_count - 1,
     }
-    .next(menu_count, 0, false);
+    .next(menu_count, 0, false, 0);
     assert_eq!(wrap, FocusStop::CommandField);
     // Backward: CommandField -> last MenuBar (tab_count=0, no TabHeader)
-    let prev = FocusStop::CommandField.prev(menu_count, 0, false);
+    let prev = FocusStop::CommandField.prev(menu_count, 0, false, 0);
     assert_eq!(
         prev,
         FocusStop::MenuBar {
             index: menu_count - 1
         }
     );
-    // Backward: MenuBar(0) -> CommandField (tab_count=0, no PomExit)
-    let prev0 = FocusStop::MenuBar { index: 0 }.prev(menu_count, 0, false);
+    // Backward: MenuBar(0) -> CommandField (tab_count=0, non-POM)
+    let prev0 = FocusStop::MenuBar { index: 0 }.prev(menu_count, 0, false, 0);
     assert_eq!(prev0, FocusStop::CommandField);
 }
 
@@ -844,17 +777,18 @@ fn focused_pom_option_renders_with_reversed_colours() {
 fn focus_stop_shift_tab_moves_backward_through_menu_bar_items() {
     // Validates: Requirement 16.11
     use super::FocusStop;
-    let prev = FocusStop::MenuBar { index: 5 }.prev(11, 0, false);
+    let prev = FocusStop::MenuBar { index: 5 }.prev(11, 0, false, 0);
     assert_eq!(prev, FocusStop::MenuBar { index: 4 });
 }
 
-/// Validates: Requirement 16.11 -- Shift+Tab from CalendarPrev goes to PomExit.
+/// Validates: Requirement 16.11; menu-workspace Req 2.1g -- Shift+Tab from
+/// CalendarPrev goes to the last POM option (no bespoke exit stop).
 #[test]
-fn focus_stop_shift_tab_from_calendar_prev_goes_to_pom_exit() {
-    // Validates: Requirement 16.11
+fn focus_stop_shift_tab_from_calendar_prev_goes_to_last_pom_option() {
+    // Validates: Requirement 16.11; menu-workspace 2.1g
     use super::FocusStop;
-    let prev = FocusStop::CalendarPrev.prev(11, 0, true);
-    assert_eq!(prev, FocusStop::PomExit);
+    let prev = FocusStop::CalendarPrev.prev(11, 0, true, POM_N);
+    assert_eq!(prev, FocusStop::PomOption { index: POM_N - 1 });
 }
 
 /// Validates: Requirement 16.11 -- Shift+Tab from CalendarNext goes to CalendarPrev.
@@ -862,23 +796,8 @@ fn focus_stop_shift_tab_from_calendar_prev_goes_to_pom_exit() {
 fn focus_stop_shift_tab_from_calendar_next_goes_to_calendar_prev() {
     // Validates: Requirement 16.11
     use super::FocusStop;
-    let prev = FocusStop::CalendarNext.prev(11, 0, true);
+    let prev = FocusStop::CalendarNext.prev(11, 0, true, POM_N);
     assert_eq!(prev, FocusStop::CalendarPrev);
-}
-
-/// Validates: Requirement 16.11 -- Shift+Tab from PomExit goes to last POM option.
-#[test]
-fn focus_stop_shift_tab_from_pom_exit_goes_to_last_pom_option() {
-    // Validates: Requirement 16.11
-    use super::FocusStop;
-    use crate::primary_option_menu::BUILT_IN_OPTIONS;
-    let prev = FocusStop::PomExit.prev(11, 0, true);
-    assert_eq!(
-        prev,
-        FocusStop::PomOption {
-            index: BUILT_IN_OPTIONS.len() - 1
-        }
-    );
 }
 
 /// Validates: Requirement 16.11 -- Shift+Tab from PomOption(0) goes to CommandField.
@@ -886,7 +805,7 @@ fn focus_stop_shift_tab_from_pom_exit_goes_to_last_pom_option() {
 fn focus_stop_shift_tab_from_pom_option_0_goes_to_command_field() {
     // Validates: Requirement 16.11
     use super::FocusStop;
-    let prev = FocusStop::PomOption { index: 0 }.prev(11, 0, true);
+    let prev = FocusStop::PomOption { index: 0 }.prev(11, 0, true, POM_N);
     assert_eq!(prev, FocusStop::CommandField);
 }
 
@@ -910,11 +829,11 @@ fn focus_stop_full_backward_cycle_from_last_menu_to_command_field() {
         index: menu_count - 1,
     };
     for expected in (0..menu_count - 1).rev() {
-        stop = stop.prev(menu_count, 0, false);
+        stop = stop.prev(menu_count, 0, false, 0);
         assert_eq!(stop, FocusStop::MenuBar { index: expected });
     }
     // tab_count=0: MenuBar(0) -> CommandField (no TabHeader)
-    stop = stop.prev(menu_count, 0, false);
+    stop = stop.prev(menu_count, 0, false, 0);
     assert_eq!(stop, FocusStop::CommandField);
 }
 
@@ -1019,7 +938,7 @@ fn focus_cycle_tab_forward_from_last_menu_goes_to_first_tab_header() {
     let last_menu = FocusStop::MenuBar {
         index: menu_count - 1,
     };
-    let next = last_menu.next(menu_count, 3, false);
+    let next = last_menu.next(menu_count, 3, false, 0);
     assert_eq!(next, FocusStop::TabHeader { index: 0 });
 }
 
@@ -1030,9 +949,9 @@ fn focus_cycle_tab_forward_through_all_tab_headers() {
     use super::FocusStop;
     let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
     let mut stop = FocusStop::TabHeader { index: 0 };
-    stop = stop.next(menu_count, 3, false);
+    stop = stop.next(menu_count, 3, false, 0);
     assert_eq!(stop, FocusStop::TabHeader { index: 1 });
-    stop = stop.next(menu_count, 3, false);
+    stop = stop.next(menu_count, 3, false, 0);
     assert_eq!(stop, FocusStop::TabHeader { index: 2 });
 }
 
@@ -1042,7 +961,7 @@ fn focus_cycle_tab_forward_from_last_tab_header_wraps_to_command_field() {
     // Validates: Requirement 16.21
     use super::FocusStop;
     let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
-    let next = FocusStop::TabHeader { index: 2 }.next(menu_count, 3, false);
+    let next = FocusStop::TabHeader { index: 2 }.next(menu_count, 3, false, 0);
     assert_eq!(next, FocusStop::CommandField);
 }
 
@@ -1052,7 +971,7 @@ fn focus_cycle_shift_tab_from_command_field_goes_to_last_tab_header() {
     // Validates: Requirement 16.11
     use super::FocusStop;
     let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
-    let prev = FocusStop::CommandField.prev(menu_count, 3, false);
+    let prev = FocusStop::CommandField.prev(menu_count, 3, false, 0);
     assert_eq!(prev, FocusStop::TabHeader { index: 2 });
 }
 
@@ -1062,7 +981,7 @@ fn focus_cycle_shift_tab_from_first_tab_header_goes_to_last_menu() {
     // Validates: Requirement 16.11
     use super::FocusStop;
     let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
-    let prev = FocusStop::TabHeader { index: 0 }.prev(menu_count, 3, false);
+    let prev = FocusStop::TabHeader { index: 0 }.prev(menu_count, 3, false, 0);
     assert_eq!(
         prev,
         FocusStop::MenuBar {
@@ -1080,18 +999,18 @@ fn focus_cycle_non_pom_includes_tab_headers() {
     // Full forward cycle: CommandField -> MenuBar(0..last) -> TabHeader(0..1) -> CommandField
     let mut stop = FocusStop::CommandField;
     // Step 1: CommandField -> MenuBar(0)
-    stop = stop.next(menu_count, 2, false);
+    stop = stop.next(menu_count, 2, false, 0);
     assert_eq!(stop, FocusStop::MenuBar { index: 0 });
     // Steps 2..menu_count: advance through remaining menu items to last
     for _ in 0..menu_count - 1 {
-        stop = stop.next(menu_count, 2, false);
+        stop = stop.next(menu_count, 2, false, 0);
     }
     // Now at MenuBar { index: menu_count - 1 }; one more step -> TabHeader(0)
-    stop = stop.next(menu_count, 2, false);
+    stop = stop.next(menu_count, 2, false, 0);
     assert_eq!(stop, FocusStop::TabHeader { index: 0 });
-    stop = stop.next(menu_count, 2, false);
+    stop = stop.next(menu_count, 2, false, 0);
     assert_eq!(stop, FocusStop::TabHeader { index: 1 });
-    stop = stop.next(menu_count, 2, false);
+    stop = stop.next(menu_count, 2, false, 0);
     assert_eq!(stop, FocusStop::CommandField);
 }
 
@@ -2218,23 +2137,8 @@ fn settings_end_from_namespace_view_returns_to_menu() {
 
 // === Phase CV: POM extended option routing (9, S, B) =====================
 
-/// Validates: Requirement 6.2 (cv-requirements.md) -- POM key 9 routes to JES.
-#[test]
-fn pom_key_9_routes_to_jes() {
-    let mut shell = make_shell();
-    shell.handle_command("9");
-    let msg = shell.open_error.as_deref().unwrap_or("");
-    assert!(
-        msg.to_uppercase().contains("JES"),
-        "key 9 must route to JES job monitor, got: {msg}"
-    );
-    assert!(
-        !msg.to_uppercase().contains("UNKNOWN"),
-        "key 9 must not produce unknown-command error"
-    );
-}
-
-/// Validates: Requirement 6.3 (cv-requirements.md) -- POM key S opens Global Search.
+/// Validates: menu-workspace Req 2.1e/2.1i -- POM key S resolves to its
+/// configured command (SEARCH) and opens Global Search.
 #[test]
 fn pom_key_s_routes_to_search() {
     let mut shell = make_shell();
@@ -2251,28 +2155,17 @@ fn pom_key_s_routes_to_search() {
     assert!(has_search, "key S must open a Search Results tab");
 }
 
-/// Validates: Requirement 6.4 (cv-requirements.md) -- POM key B shows batch message.
+/// Validates: menu-workspace Req 2.1e/2.1i -- a POM key resolves to its
+/// configured command (key 2 -> FILES -> File Explorer), config-driven.
 #[test]
-fn pom_key_b_shows_batch_message() {
-    let mut shell = make_shell();
-    shell.handle_command("B");
-    let msg = shell.open_error.as_deref().unwrap_or("");
-    assert!(
-        msg.contains("Batch execution is available via the --batch CLI flag or the BATCH command."),
-        "key B must show the batch status message, got: {msg}"
-    );
-}
-
-/// Validates: Requirement 6.5 (cv-requirements.md) -- keys 0-8 unaffected by 9/S/B routing.
-#[test]
-fn pom_keys_0_to_8_unchanged() {
-    // Key 2 (Files) must still route to the File Explorer, not the new handlers.
+fn pom_key_resolves_to_configured_command() {
     let mut shell = make_shell();
     shell.handle_command("2");
-    let msg = shell.open_error.as_deref().unwrap_or("");
-    assert!(
-        !msg.to_uppercase().contains("UNKNOWN"),
-        "key 2 must remain a valid POM option, got: {msg}"
+    use crate::tab_state::TabKind;
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::FileExplorerPanel,
+        "key 2 must resolve to its pom.toml command (FILES)"
     );
 }
 
@@ -3389,10 +3282,11 @@ fn macro_library_tab_kind_exists() {
 
 /// Validates: lua-macro-engine Requirement 12.1 -- option 6 routes to MacroLibrary.
 #[test]
-fn option_6_routes_to_macro_library() {
-    // Validates: lua-macro-engine Requirement 12.1
+fn option_5_routes_to_macro_library() {
+    // Validates: lua-macro-engine Requirement 12.1; menu-workspace Req 2.1e/2.1i
+    // -- POM key 5 resolves to its configured command (MACROS).
     let mut shell = make_shell();
-    shell.handle_command("6");
+    shell.handle_command("5");
     use crate::tab_state::TabKind;
     assert_eq!(shell.tabs.active_tab().kind, TabKind::MacroLibrary);
 }
@@ -3407,12 +3301,12 @@ fn macros_command_routes_to_macro_library() {
     assert_eq!(shell.tabs.active_tab().kind, TabKind::MacroLibrary);
 }
 
-/// Validates: lua-macro-engine Requirement 12.1 -- =6 command routes to MacroLibrary.
+/// Validates: lua-macro-engine Requirement 12.1; menu-workspace Req 2.1i --
+/// =5 fastpath resolves the POM key to its command (MACROS) and routes.
 #[test]
-fn equals_6_command_routes_to_macro_library() {
-    // Validates: lua-macro-engine Requirement 12.1
+fn equals_5_command_routes_to_macro_library() {
     let mut shell = make_shell();
-    shell.handle_command("=6");
+    shell.handle_command("=5");
     use crate::tab_state::TabKind;
     assert_eq!(shell.tabs.active_tab().kind, TabKind::MacroLibrary);
 }

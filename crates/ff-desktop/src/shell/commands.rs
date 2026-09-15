@@ -249,11 +249,26 @@ impl WorkbenchShell {
             return;
         }
 
+        // Config-driven POM fastpath (menu-workspace Req 2.1e, 2.1i): a bare
+        // option key (e.g. `1`, `S`) or `=<key>` (e.g. `=1`) is resolved against
+        // the loaded pom.toml option list to the option's Option_Command, which
+        // is then dispatched. There is NO behaviour keyed to the digit itself --
+        // editing pom.toml's `command` is the only thing that changes what a key
+        // does. Only the option's command re-enters handle_command below.
+        if let Some(pom_command) = self.resolve_pom_option_key(&upper) {
+            // Guard against a self-referential loop (an option whose command is
+            // its own key): only recurse when the resolved command differs.
+            if pom_command.to_uppercase() != upper {
+                self.handle_command(&pom_command);
+                return;
+            }
+        }
+
         // Settings navigation (two-level, cw-requirements.md Req 9, 10, 15.1).
-        // Bare SETTINGS / 0 / =0 open the data-driven Settings_Menu
-        // (Menu_Workspace backed by menus/settings.toml). Option A opens the
-        // unfiltered flat list; SETTINGS <ns> opens a filtered namespace view.
-        if upper == "0" || upper == "SETTINGS" || upper == "=0" {
+        // Bare SETTINGS opens the data-driven Settings_Menu (Menu_Workspace
+        // backed by menus/settings.toml). Option A opens the unfiltered flat
+        // list; SETTINGS <ns> opens a filtered namespace view.
+        if upper == "SETTINGS" {
             self.open_settings_menu();
             self.open_error = None;
             return;
@@ -275,9 +290,9 @@ impl WorkbenchShell {
             return;
         }
 
-        if upper == "2" || upper == "=2" || upper == "=FILES" {
-            // Validates: Requirement 19.1, 19.2, 19.4
-            // =2 and =FILES transform current tab in-place; bare 2 on POM also transforms.
+        if upper == "=FILES" {
+            // Validates: Requirement 19.1, 19.2 -- =FILES transforms the current
+            // POM tab in place (fastpath from the Home Context).
             if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
                 self.tabs
                     .transform_active_pom_tab(TabKind::FileExplorerPanel, "[FILES]");
@@ -289,8 +304,15 @@ impl WorkbenchShell {
         }
 
         if upper == "FILES" {
-            // Validates: Requirement 19.3 — FILES (no =) always opens a NEW tab
-            self.tabs.open_file_explorer_panel_tab(&self.runtime);
+            // Validates: Requirement 19.3; menu-workspace Req 2.1e -- FILES opens
+            // the File Explorer Context (config-driven by command name). On a POM
+            // tab it transforms in place; elsewhere it opens a new tab.
+            if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
+                self.tabs
+                    .transform_active_pom_tab(TabKind::FileExplorerPanel, "[FILES]");
+            } else {
+                self.tabs.open_file_explorer_panel_tab(&self.runtime);
+            }
             self.open_error = None;
             return;
         }
@@ -326,8 +348,9 @@ impl WorkbenchShell {
             return;
         }
 
-        if upper == "1" || upper == "=1" || upper == "FILE CATALOGS" {
-            // Validates: Requirement 1.1, 14.6 — option 1 opens the Files Panel
+        if upper == "FILE CATALOGS" || upper == "CATALOGS" {
+            // Validates: Requirement 1.1, 14.6; menu-workspace Req 2.1e/2.1h --
+            // File Catalogs Context, resolved by command name (config-driven).
             if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
                 self.tabs
                     .transform_active_pom_tab(TabKind::FilesPanel, "[FILES]");
@@ -338,41 +361,9 @@ impl WorkbenchShell {
             return;
         }
 
-        if upper == "3" || upper == "UTILITIES" {
-            // Req 14.6 — option 3 opens Utilities (stub)
-            if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
-                self.tabs
-                    .transform_active_pom_tab(TabKind::Untitled, "Utilities");
-            }
-            self.open_error = None;
-            return;
-        }
-
-        if upper == "4" || upper == "COMPILERS" {
-            // Req 14.6 — option 4 opens the Toolchain Panel
-            if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
-                self.show_toolchain_panel = true;
-                self.tabs
-                    .transform_active_pom_tab(TabKind::Untitled, "Compilers");
-            } else {
-                self.show_toolchain_panel = true;
-            }
-            self.open_error = None;
-            return;
-        }
-
-        if upper == "7" || upper == "DATABASES" {
-            // Req 14.6 — option 7 opens the Databases panel (stub)
-            if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
-                self.tabs
-                    .transform_active_pom_tab(TabKind::Untitled, "Databases");
-            }
-            self.open_error = None;
-            return;
-        }
-
-        if upper == "8" || upper == "=8" || upper == "PLUGINS" {
-            // Validates: plugin-manager-ui Requirement 1.1 -- option 8 opens Plugin Manager
+        if upper == "PLUGINS" {
+            // Validates: plugin-manager-ui Requirement 1.1; menu-workspace Req
+            // 2.1e -- PLUGINS opens the Plugin Manager (config-driven by name).
             if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
                 self.tabs
                     .transform_active_pom_tab(TabKind::PluginManager, "[PLUGINS]");
@@ -385,32 +376,9 @@ impl WorkbenchShell {
 
         // Phase CV -- Extended POM options
         // Validates: Requirement 6.2 (cv-requirements.md)
-        if upper == "9" || upper == "JOBS" {
-            self.open_error = Some(
-                "JES job monitor: use STATUS or SUBMIT commands. Interactive JES panel not yet available."
-                    .to_string(),
-            );
-            return;
-        }
-
-        // Validates: Requirement 6.3 (cv-requirements.md)
-        if upper == "S" || upper == "=S" {
-            self.open_or_focus_search_panel();
-            self.open_error = None;
-            return;
-        }
-
-        // Validates: Requirement 6.4 (cv-requirements.md)
-        if upper == "B" || upper == "BATCH" {
-            self.open_error = Some(
-                "Batch execution is available via the --batch CLI flag or the BATCH command."
-                    .to_string(),
-            );
-            return;
-        }
-
-        if upper == "6" || upper == "=6" || upper == "MACROS" {
-            // Validates: lua-macro-engine Requirement 12.1 -- option 6 opens Macro Library
+        if upper == "MACROS" {
+            // Validates: lua-macro-engine Requirement 12.1; menu-workspace Req 2.1e
+            // -- MACROS opens the Macro Library Context (config-driven by name).
             if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
                 self.tabs
                     .transform_active_pom_tab(TabKind::MacroLibrary, "[MACROS]");
@@ -1201,6 +1169,100 @@ impl WorkbenchShell {
         } else {
             self.open_error = None;
         }
+    }
+
+    /// Ensure the active POM tab carries a loaded `MenuWorkspaceState` backed by
+    /// `menus/pom.toml`, loading it lazily on first render. The POM keeps its
+    /// `TabKind::PrimaryOptionMenu` identity, `[POM]` title, and Title_Line
+    /// styling; only its option list becomes data-driven (menu-workspace Req
+    /// 2.1c, 2.1d). Idempotent: does nothing if the state is already present or
+    /// the active tab is not a POM.
+    ///
+    /// Validates: menu-workspace Requirement 2.1c, 2.1d
+    pub(super) fn ensure_pom_menu_loaded(&mut self) {
+        use crate::tab_state::TabKind;
+        if self.tabs.active_tab().kind != TabKind::PrimaryOptionMenu {
+            return;
+        }
+        if self.tabs.active_tab().menu_workspace.is_some() {
+            return;
+        }
+        let pom_path = self.menus_dir().join("pom.toml");
+        let limits = crate::menu_workspace::loader::option_limits_from_config(&self.config_handle);
+        let mut state =
+            crate::menu_workspace::MenuWorkspaceState::load_with_limits(&pom_path, limits);
+        // Config-driven fallback (menu-workspace Req 2.1h): if the on-disk
+        // pom.toml is missing or invalid, fall back to the built-in default POM
+        // content so the Home Context always has its options. This also keeps
+        // the POM deterministic in tests that do not seed a menus directory.
+        if state.menu.is_none() {
+            if let Ok(menu) = crate::menu_workspace::loader::parse_menu_str(
+                crate::menu_workspace::defaults::DEFAULT_POM_TOML,
+            ) {
+                state.menu = Some(menu);
+                state.load_error = None;
+            }
+        }
+        let idx = self.tabs.active_index();
+        if let Some(tab) = self.tabs.tabs_mut().get_mut(idx) {
+            tab.menu_workspace = Some(state);
+        }
+    }
+
+    /// Resolve a POM fastpath key to its Option_Command using the loaded
+    /// `pom.toml` option list. Accepts a bare Option_Key (e.g. `1`, `S`) or the
+    /// `=<key>` fastpath form (e.g. `=1`). Returns the option's `command` when a
+    /// matching, enabled option exists in the POM menu; otherwise `None`.
+    ///
+    /// This is how `=<key>` and bare keys become config-driven (menu-workspace
+    /// Req 2.1e, 2.1i): the key selects a row, and that row's command drives the
+    /// behaviour -- no digit is coupled to a destination in code.
+    ///
+    /// The lookup uses the POM tab's menu regardless of which Workspace is
+    /// active, so `=1` from any context resolves against the POM (Navigation
+    /// Origin, menu-workspace Req 5.7).
+    ///
+    /// Validates: menu-workspace Requirement 2.1e, 2.1i
+    pub(super) fn resolve_pom_option_key(&mut self, upper: &str) -> Option<String> {
+        use crate::tab_state::TabKind;
+        // Normalise: strip a single leading '=' for the fastpath form.
+        let key = upper.strip_prefix('=').unwrap_or(upper);
+        // Only single short keys are POM option keys (1-4 chars, no spaces).
+        if key.is_empty() || key.len() > 4 || key.contains(' ') {
+            return None;
+        }
+        // Ensure the active POM tab's menu is loaded so a fastpath resolves even
+        // before the POM has rendered.
+        if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
+            self.ensure_pom_menu_loaded();
+        }
+        // Prefer a loaded POM tab's menu (respects user edits / hot-reload);
+        // otherwise consult the on-disk pom.toml, then the built-in default, so
+        // the fastpath is config-driven from any Workspace (Navigation Origin =
+        // POM, menu-workspace Req 5.7). The default fallback also keeps the
+        // resolver deterministic when no POM tab exists yet.
+        let menu = self
+            .tabs
+            .tabs()
+            .iter()
+            .find(|t| t.kind == TabKind::PrimaryOptionMenu)
+            .and_then(|t| t.menu_workspace.as_ref())
+            .and_then(|mw| mw.menu.clone())
+            .or_else(|| {
+                let pom_path = self.menus_dir().join("pom.toml");
+                crate::menu_workspace::loader::load_menu_file(&pom_path).ok()
+            })
+            .or_else(|| {
+                crate::menu_workspace::loader::parse_menu_str(
+                    crate::menu_workspace::defaults::DEFAULT_POM_TOML,
+                )
+                .ok()
+            })?;
+        let option = menu
+            .options
+            .iter()
+            .find(|o| o.key.eq_ignore_ascii_case(key) && o.enabled)?;
+        Some(option.command.clone())
     }
 
     /// Open the Settings_Menu -- the data-driven Menu_Workspace backed by

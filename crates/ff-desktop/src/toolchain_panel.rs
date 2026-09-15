@@ -525,18 +525,9 @@ mod tests {
         );
     }
 
-    // ── Task 4.6 — Compilers menu option 3 ───────────────────────────────────
-
-    /// Validates: Req 14.6 — option key "4" maps to "Compilers" in the POM.
-    #[test]
-    fn primary_option_menu_option_3_is_compilers() {
-        // Validates: Requirement 14.6
-        // After POM reorganisation (Req 14.3), Compilers moved from key "3" to key "4".
-        use crate::primary_option_menu::BUILT_IN_OPTIONS;
-        let opt = BUILT_IN_OPTIONS.iter().find(|o| o.key == "4");
-        assert!(opt.is_some(), "option 4 must exist");
-        assert_eq!(opt.unwrap().label, "Compilers");
-    }
+    // Compilers-as-POM-option-4 test removed: POM options are now data-driven
+    // from menus/pom.toml (menu-workspace Req 2.1h) and Compilers is omitted
+    // from the default until the toolchain has a proper Context.
 
     // ── ToolchainPanelState construction ─────────────────────────────────────
 

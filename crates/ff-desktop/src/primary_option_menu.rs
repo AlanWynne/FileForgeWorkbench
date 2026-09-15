@@ -6,87 +6,11 @@
 use chrono::{Datelike, Local, Timelike};
 use eframe::egui;
 
-/// A single entry in the Primary Option Menu.
-pub struct MenuOption {
-    /// Single-character or short numeric key the user types to navigate.
-    pub key: &'static str,
-    /// Short label shown in the option list.
-    pub label: &'static str,
-    /// One-line description shown to the right of the label.
-    pub description: &'static str,
-}
-
-/// The built-in option list shipped with the workbench.
-///
-/// Validates: Requirement 14.3 (startup-and-session), Requirement 6.1 (cv-requirements.md)
-pub const BUILT_IN_OPTIONS: &[MenuOption] = &[
-    MenuOption {
-        key: "0",
-        label: "Settings",
-        description: "FFWB Settings and Client Parameters",
-    },
-    MenuOption {
-        key: "1",
-        label: "File Catalogs",
-        description: "Virtual File Catalogs -- Mainframe, POSIX, Native",
-    },
-    MenuOption {
-        key: "2",
-        label: "Files",
-        description: "File Explorer -- Browse catalogs and files in a tree view",
-    },
-    MenuOption {
-        key: "3",
-        label: "Utilities",
-        description: "Perform utility functions",
-    },
-    MenuOption {
-        key: "4",
-        label: "Compilers",
-        description: "Interactive language processing",
-    },
-    MenuOption {
-        key: "5",
-        label: "Lua Scripts",
-        description: "Run and manage Lua macros",
-    },
-    MenuOption {
-        key: "6",
-        label: "Terminals",
-        description: "Enter TSO or Workstation commands",
-    },
-    MenuOption {
-        key: "7",
-        label: "Databases",
-        description: "Database tool and query browser",
-    },
-    MenuOption {
-        key: "8",
-        label: "Plugins",
-        description: "Vendor added plugins",
-    },
-    // Phase CV -- Extended group
-    MenuOption {
-        key: "9",
-        label: "Jobs",
-        description: "JES job monitor and spool viewer",
-    },
-    MenuOption {
-        key: "S",
-        label: "Search",
-        description: "Global search and replace across files",
-    },
-    MenuOption {
-        key: "B",
-        label: "Batch",
-        description: "Batch command execution (IKJEFT01 analogue)",
-    },
-];
-
-/// Text displayed on the exit action line at the bottom of the Primary Option Menu.
-///
-/// Validates: Requirement 14.40
-pub const EXIT_LINE_TEXT: &str = "  Enter X to Terminate using log/list defaults";
+// The POM option list and exit line are no longer defined here: the POM is a
+// data-driven Menu_Workspace backed by `menus/pom.toml`, rendered by the shared
+// `menu_workspace::render::render_menu_workspace` (menu-workspace Req 2.1c-2.1i,
+// CR-CH-018). This module now provides only the shared calendar (`render_calendar`
+// + date helpers), the `CalendarNav` type, and the `PomColours` palette mapping.
 
 /// Returns the day-of-year (1-based) for the given date components.
 ///
@@ -159,7 +83,10 @@ pub struct PomColours {
     pub option_key: egui::Color32,
     /// Option item name / label (Turquoise in Legacy).
     pub option_label: egui::Color32,
-    /// Primary menu title / structural text (Blue in Legacy).
+    /// Primary menu title / structural text (Blue in Legacy). Part of the
+    /// Legacy palette contract (asserted by tests); reserved for the focus-row
+    /// reversal colour when that is ported into the shared menu renderer.
+    #[allow(dead_code)]
     pub primary_text: egui::Color32,
     /// Calendar body text (Turquoise in Legacy).
     pub calendar_fg: egui::Color32,
@@ -238,19 +165,6 @@ const MONTH_NAMES: [&str; 12] = [
     "December",
 ];
 
-/// Action returned by the Primary Option Menu when the user activates an item.
-///
-/// Validates: Requirement 14.39, 14.40, Requirement 6.1 (cv-requirements.md)
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PomAction {
-    /// The user activated a numeric option (0-9).
-    Navigate(u8),
-    /// The user activated a non-numeric option key (e.g. "S", "B").
-    NavigateKey(String),
-    /// The user activated the "Enter X to Terminate" item.
-    Exit,
-}
-
 /// Calendar navigation direction returned when the user clicks < or >.
 ///
 /// Validates: Requirement 14.41, 14.42
@@ -260,17 +174,6 @@ pub enum CalendarNav {
     Prev,
     /// Navigate to the next month.
     Next,
-}
-
-/// Combined result returned by `render()`.
-///
-/// Validates: Requirement 14.39, 14.40, 14.41, 14.42
-#[derive(Debug, Default)]
-pub struct PomRenderResult {
-    /// A menu option or exit action activated this frame.
-    pub action: Option<PomAction>,
-    /// A calendar navigation direction activated this frame.
-    pub calendar_nav: Option<CalendarNav>,
 }
 
 /// Render the live calendar column into `ui`, returning any month-navigation
@@ -374,119 +277,6 @@ pub fn render_calendar(
     nav
 }
 
-/// Render the Primary Option Menu into `ui`.
-///
-/// `calendar_offset` is the number of months relative to the current month
-/// (0 = current month, -1 = previous, +1 = next).
-/// `colours` controls per-element colours; use `PomColours::inherited()` for
-/// non-Legacy themes.
-/// `focused_pom_option` is the 0-based index of the option row that currently
-/// holds keyboard focus (via Tab navigation), or `None` if no row is focused.
-/// The focused row is rendered with reversed colours per Requirement 16.12.
-///
-/// Returns a `PomRenderResult` describing any action taken this frame.
-///
-/// Validates: Requirements 14.1, 14.2, 14.3, 14.4, 14.5, 14.39, 14.40, 14.41, 14.42, 16.12
-pub fn render(
-    ui: &mut egui::Ui,
-    calendar_offset: i32,
-    colours: PomColours,
-    focused_pom_option: Option<usize>,
-) -> PomRenderResult {
-    // Calendar date computation now lives in `render_calendar` (shared path).
-    let mut result = PomRenderResult::default();
-
-    // Resolve semantic colours — PLACEHOLDER falls back to egui theme colour.
-    let normal_text = PomColours::resolve(colours.normal_text, ui);
-    let option_key = PomColours::resolve(colours.option_key, ui);
-    let option_label = PomColours::resolve(colours.option_label, ui);
-    let calendar_fg = PomColours::resolve(colours.calendar_fg, ui);
-    let use_today_reverse = colours.today_bg != egui::Color32::PLACEHOLDER;
-    // Reversed-colour background for focused option row — Validates: Requirement 16.12
-    let focus_bg = option_label;
-    let focus_fg = if colours.primary_text != egui::Color32::PLACEHOLDER {
-        PomColours::resolve(colours.primary_text, ui)
-    } else {
-        ui.visuals().panel_fill
-    };
-
-    ui.vertical(|ui| {
-        // Two-column layout: options left, calendar right
-        ui.horizontal(|ui| {
-            // Option list
-            ui.vertical(|ui| {
-                for (row_idx, opt) in BUILT_IN_OPTIONS.iter().enumerate() {
-                    // Validates: Requirement 14.39 — each row is a clickable button
-                    // Validates: Requirement 13.4 (key=white), 13.5 (label=turquoise), 13.6 (desc=green)
-                    // Validates: Requirement 16.12 — focused row uses reversed colours
-                    let is_focused = focused_pom_option == Some(row_idx);
-                    let (row_key_col, row_label_col, row_desc_col, row_fill) = if is_focused {
-                        (focus_fg, focus_fg, focus_fg, focus_bg)
-                    } else {
-                        (
-                            option_key,
-                            option_label,
-                            normal_text,
-                            egui::Color32::TRANSPARENT,
-                        )
-                    };
-                    let mut job = egui::text::LayoutJob::default();
-                    let fmt = |color| egui::TextFormat {
-                        font_id: egui::FontId::monospace(14.0),
-                        color,
-                        ..Default::default()
-                    };
-                    job.append("  ", 0.0, fmt(row_key_col));
-                    job.append(opt.key, 0.0, fmt(row_key_col));
-                    job.append("  ", 0.0, fmt(row_key_col));
-                    job.append(&format!("{:<14}", opt.label), 0.0, fmt(row_label_col));
-                    job.append("  ", 0.0, fmt(row_desc_col));
-                    job.append(opt.description, 0.0, fmt(row_desc_col));
-                    let btn = egui::Button::new(job)
-                        .fill(row_fill)
-                        .stroke(egui::Stroke::NONE);
-                    if ui.add(btn).clicked() {
-                        if let Ok(key) = opt.key.parse::<u8>() {
-                            result.action = Some(PomAction::Navigate(key));
-                        } else {
-                            result.action = Some(PomAction::NavigateKey(opt.key.to_string()));
-                        }
-                    }
-                    ui.add_space(2.0);
-                }
-                ui.add_space(12.0);
-                // Validates: Requirement 14.40 — Exit line is a clickable button
-                let exit_btn = egui::Button::new(
-                    egui::RichText::new(EXIT_LINE_TEXT)
-                        .monospace()
-                        .color(normal_text),
-                )
-                .fill(egui::Color32::TRANSPARENT)
-                .stroke(egui::Stroke::NONE);
-                if ui.add(exit_btn).clicked() {
-                    result.action = Some(PomAction::Exit);
-                }
-            });
-
-            ui.add_space(32.0);
-
-            // Calendar -- shared code path (Req 13.7/13.8, 14.41/14.42).
-            if let Some(nav) = render_calendar(
-                ui,
-                calendar_offset,
-                calendar_fg,
-                colours.today_bg,
-                colours.today_fg,
-                use_today_reverse,
-            ) {
-                result.calendar_nav = Some(nav);
-            }
-        });
-    });
-
-    result
-}
-
 /// Render one week row of the calendar grid.
 ///
 /// When `use_today_reverse` is true, today's cell gets a coloured background
@@ -559,25 +349,9 @@ fn render_calendar_row(
 mod tests {
     use super::*;
 
-    /// Validates: Requirement 14.3 -- built-in option list contains all 12 required entries.
-    #[test]
-    fn built_in_options_contains_all_required_entries() {
-        let keys: Vec<&str> = BUILT_IN_OPTIONS.iter().map(|o| o.key).collect();
-        assert!(keys.contains(&"0"), "missing Settings (0)");
-        assert!(keys.contains(&"1"), "missing File Catalogs (1)");
-        assert!(keys.contains(&"2"), "missing Files (2)");
-        assert!(keys.contains(&"3"), "missing Utilities (3)");
-        assert!(keys.contains(&"4"), "missing Compilers (4)");
-        assert!(keys.contains(&"5"), "missing Lua Scripts (5)");
-        assert!(keys.contains(&"6"), "missing Terminals (6)");
-        assert!(keys.contains(&"7"), "missing Databases (7)");
-        assert!(keys.contains(&"8"), "missing Plugins (8)");
-        // Phase CV -- Extended group
-        assert!(keys.contains(&"9"), "missing Jobs (9)");
-        assert!(keys.contains(&"S"), "missing Search (S)");
-        assert!(keys.contains(&"B"), "missing Batch (B)");
-        assert_eq!(BUILT_IN_OPTIONS.len(), 12);
-    }
+    // POM option-list tests removed: the option list is now data-driven from
+    // menus/pom.toml and covered by menu_workspace loader/render/defaults tests
+    // (menu-workspace Req 2.1c-2.1i, CR-CH-018).
 
     /// Validates: Requirement 14.5 — day_of_year returns correct ordinal.
     #[test]
@@ -604,72 +378,6 @@ mod tests {
         assert_eq!(first_weekday_of_month(2026, 8), 6);
         assert_eq!(first_weekday_of_month(2026, 1), 4);
         assert_eq!(first_weekday_of_month(2026, 3), 0);
-    }
-
-    /// Validates: Requirement 14.3 — every option has a non-empty key, label, and description.
-    #[test]
-    fn all_options_have_non_empty_fields() {
-        for opt in BUILT_IN_OPTIONS {
-            assert!(!opt.key.is_empty(), "empty key");
-            assert!(!opt.label.is_empty(), "empty label for key {}", opt.key);
-            assert!(
-                !opt.description.is_empty(),
-                "empty description for key {}",
-                opt.key
-            );
-        }
-    }
-
-    // ── Req 14.39 / 14.40 — POM option buttons ───────────────────────────────
-
-    /// Validates: Requirement 14.39 -- Navigate action constructible for each option key 0-9, S, B.
-    /// Validates: Requirement 6.1 (cv-requirements.md) -- 12 options total.
-    #[test]
-    fn pom_navigate_action_returned_for_each_option() {
-        // Numeric options 0-9
-        for opt in BUILT_IN_OPTIONS
-            .iter()
-            .filter(|o| o.key.parse::<u8>().is_ok())
-        {
-            let key: u8 = opt.key.parse().expect("numeric key");
-            let action = PomAction::Navigate(key);
-            assert!(
-                matches!(action, PomAction::Navigate(k) if k == key),
-                "Navigate({key}) must be constructible for option '{}'",
-                opt.key
-            );
-        }
-        // Non-numeric options S, B
-        for opt in BUILT_IN_OPTIONS
-            .iter()
-            .filter(|o| o.key.parse::<u8>().is_err())
-        {
-            let action = PomAction::NavigateKey(opt.key.to_string());
-            assert!(
-                matches!(action, PomAction::NavigateKey(ref k) if k == opt.key),
-                "NavigateKey must be constructible for option '{}'",
-                opt.key
-            );
-        }
-        let numeric_keys: Vec<u8> = BUILT_IN_OPTIONS
-            .iter()
-            .filter_map(|o| o.key.parse::<u8>().ok())
-            .collect();
-        assert_eq!(numeric_keys, vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-        let alpha_keys: Vec<&str> = BUILT_IN_OPTIONS
-            .iter()
-            .filter(|o| o.key.parse::<u8>().is_err())
-            .map(|o| o.key)
-            .collect();
-        assert_eq!(alpha_keys, vec!["S", "B"]);
-    }
-
-    /// Validates: Requirement 14.40 — PomAction::Exit variant exists and exit line text matches spec.
-    #[test]
-    fn pom_exit_action_is_distinct_from_navigate() {
-        let exit = PomAction::Exit;
-        assert!(!matches!(exit, PomAction::Navigate(_)));
-        assert!(EXIT_LINE_TEXT.contains("Terminate using log/list defaults"));
     }
 
     // ── Req 14.41 / 14.42 — Calendar navigation ──────────────────────────────
@@ -759,14 +467,6 @@ mod tests {
             format_calendar_header("January", 2026),
             "<  January   2026  >"
         );
-    }
-
-    /// Validates: Requirement 14.41 — PomRenderResult has both action and calendar_nav fields.
-    #[test]
-    fn pom_render_result_default_is_none() {
-        let r = PomRenderResult::default();
-        assert!(r.action.is_none());
-        assert!(r.calendar_nav.is_none());
     }
 
     // ── Req 13 — Legacy theme PomColours ─────────────────────────────────────

@@ -207,6 +207,29 @@ pub fn load_menu_file_with_limits(path: &Path, limits: OptionLimits) -> Result<L
     apply_limits(menu, limits, &path.display().to_string())
 }
 
+/// Parse a Menu_File from an in-memory TOML string (same validation as
+/// [`load_menu_file`]). Used for built-in fallback content (e.g. the default
+/// POM) so a menu always has its options even when the on-disk file is absent.
+///
+/// Validates: menu-workspace Requirement 1.1-1.4
+pub fn parse_menu_str(source: &str) -> Result<MenuFile, String> {
+    let raw: RawMenuFile = toml::from_str(source).map_err(|e| format!("Menu file error: {}", e))?;
+    if raw.title.is_empty() {
+        return Err("Menu file error: 'title' field is required and must not be empty".to_string());
+    }
+    let options = raw
+        .options
+        .into_iter()
+        .enumerate()
+        .map(|(i, o)| validate_option(o, i))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(MenuFile {
+        title: raw.title,
+        options,
+        show_calendar: raw.show_calendar,
+    })
+}
+
 /// Apply option-count limits to an already-parsed menu.
 ///
 /// Separated from I/O so it is directly unit-testable without a temp file.

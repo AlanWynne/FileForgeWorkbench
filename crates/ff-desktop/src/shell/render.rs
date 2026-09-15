@@ -374,42 +374,40 @@ impl WorkbenchShell {
             egui::CentralPanel::default().show(ctx, |ui| {
                 match self.tabs.active_tab().kind {
                     TabKind::PrimaryOptionMenu => {
-                        // Validates: Requirement 14.1, 14.2-14.5, 14.39, 14.40, 14.41, 14.42
-                        // Validates: Requirement 13 (Legacy theme semantic colours)
-                        let pom_colours = self.legacy_pom_colours();
-                        let focused_pom_option = match self.focus_stop {
-                            FocusStop::PomOption { index } => Some(index),
-                            _ => None,
-                        };
-                        let pom_result = primary_option_menu::render(
-                            ui,
-                            self.pom_calendar_offset,
-                            pom_colours,
-                            focused_pom_option,
-                        );
-                        if let Some(nav) = pom_result.calendar_nav {
+                        // Validates: menu-workspace Requirement 2.1c, 2.1d -- the POM is
+                        // rendered by the SHARED menu renderer against a pom.toml-backed
+                        // MenuWorkspaceState, keeping the PrimaryOptionMenu tab identity.
+                        // Validates: Requirement 13 (Legacy theme semantic colours).
+                        self.ensure_pom_menu_loaded();
+                        let menu_cal = self.menu_colours();
+                        let calendar_offset = self.pom_calendar_offset;
+                        let active_idx = self.tabs.active_index();
+                        let mut calendar_nav = None;
+                        if let Some(mw) = self
+                            .tabs
+                            .tabs_mut()
+                            .get_mut(active_idx)
+                            .and_then(|t| t.menu_workspace.as_mut())
+                        {
+                            mw.poll_reload();
+                            let result = crate::menu_workspace::render::render_menu_workspace(
+                                mw,
+                                ui,
+                                calendar_offset,
+                                menu_cal,
+                            );
+                            if let Some(option) = result.selected {
+                                self.pending_menu_option = Some(option);
+                            }
+                            calendar_nav = result.calendar_nav;
+                        }
+                        if let Some(nav) = calendar_nav {
                             match nav {
                                 primary_option_menu::CalendarNav::Prev => {
                                     self.pom_calendar_offset -= 1
                                 }
                                 primary_option_menu::CalendarNav::Next => {
                                     self.pom_calendar_offset += 1
-                                }
-                            }
-                        }
-                        if let Some(pom_action) = pom_result.action {
-                            match pom_action {
-                                primary_option_menu::PomAction::Navigate(key) => {
-                                    self.handle_command(&key.to_string());
-                                }
-                                // Validates: Requirement 6.2, 6.3, 6.4 (cv-requirements.md)
-                                // Non-numeric option keys (S, B) route through the
-                                // same command handler as typed command-field input.
-                                primary_option_menu::PomAction::NavigateKey(key) => {
-                                    self.handle_command(&key);
-                                }
-                                primary_option_menu::PomAction::Exit => {
-                                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                                 }
                             }
                         }

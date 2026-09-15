@@ -29,7 +29,6 @@ use crate::find_manager::FindManager;
 use crate::nav_manager::NavManager;
 use crate::notification::{Notification, NotificationQueue, NotificationSender};
 use crate::plugin_manager_panel::PluginManagerPanelState;
-use crate::primary_option_menu;
 pub(crate) use crate::scroll_amount::{ScrollAmount, SplitScreenState};
 use crate::session_manager::SessionManager;
 use crate::settings_panel::SettingsPanelState;
@@ -113,10 +112,10 @@ impl CommandHandler for MenuOpenHandler {
 pub(crate) enum FocusStop {
     /// The primary command field ("Command ===>").
     CommandField,
-    /// A numbered POM option row (0-based index into BUILT_IN_OPTIONS).
+    /// A POM option row (0-based index into the loaded pom.toml option list).
+    ///
+    /// Validates: menu-workspace Requirement 2.1f -- sourced from loaded options.
     PomOption { index: usize },
-    /// The POM exit line ("Enter X to Terminate…").
-    PomExit,
     /// The calendar `<` (previous-month) button on the active POM tab.
     CalendarPrev,
     /// The calendar `>` (next-month) button on the active POM tab.
@@ -135,14 +134,26 @@ impl FocusStop {
     /// `menu_count` is the number of top-level menu bar headings.
     /// `tab_count` is the number of open tabs.
     /// `pom_active` is true when the active tab is a POM tab.
+    /// `pom_option_count` is the number of options in the loaded pom.toml (Req
+    /// 2.1f) -- the focus ring is sized by the data-driven menu, not a compiled
+    /// array. When the POM has no loaded menu this is 0 and the ring skips the
+    /// option rows.
     ///
-    /// Validates: Requirement 16.3–16.10, 16.19–16.21
-    pub(crate) fn next(&self, menu_count: usize, tab_count: usize, pom_active: bool) -> FocusStop {
-        let pom_count = primary_option_menu::BUILT_IN_OPTIONS.len(); // 12 (Phase CV)
+    /// Validates: Requirement 16.3-16.10, 16.19-16.21; menu-workspace Req 2.1f
+    pub(crate) fn next(
+        &self,
+        menu_count: usize,
+        tab_count: usize,
+        pom_active: bool,
+        pom_option_count: usize,
+    ) -> FocusStop {
+        let pom_count = pom_option_count;
         match self {
             FocusStop::CommandField => {
-                if pom_active {
+                if pom_active && pom_count > 0 {
                     FocusStop::PomOption { index: 0 }
+                } else if pom_active {
+                    FocusStop::CalendarPrev
                 } else {
                     FocusStop::MenuBar { index: 0 }
                 }
@@ -152,10 +163,9 @@ impl FocusStop {
                 if next < pom_count {
                     FocusStop::PomOption { index: next }
                 } else {
-                    FocusStop::PomExit
+                    FocusStop::CalendarPrev
                 }
             }
-            FocusStop::PomExit => FocusStop::CalendarPrev,
             FocusStop::CalendarPrev => FocusStop::CalendarNext,
             FocusStop::CalendarNext => FocusStop::MenuBar { index: 0 },
             FocusStop::MenuBar { index } => {
@@ -181,9 +191,15 @@ impl FocusStop {
 
     /// Advance to the previous stop in the backward (Shift+Tab) direction.
     ///
-    /// Validates: Requirement 16.11, 16.19, 16.22
-    pub(crate) fn prev(&self, menu_count: usize, tab_count: usize, pom_active: bool) -> FocusStop {
-        let pom_count = primary_option_menu::BUILT_IN_OPTIONS.len(); // 12 (Phase CV)
+    /// Validates: Requirement 16.11, 16.19, 16.22; menu-workspace Req 2.1f
+    pub(crate) fn prev(
+        &self,
+        menu_count: usize,
+        tab_count: usize,
+        pom_active: bool,
+        pom_option_count: usize,
+    ) -> FocusStop {
+        let pom_count = pom_option_count;
         match self {
             FocusStop::CommandField => {
                 if tab_count > 0 {
@@ -203,10 +219,15 @@ impl FocusStop {
                     FocusStop::PomOption { index: index - 1 }
                 }
             }
-            FocusStop::PomExit => FocusStop::PomOption {
-                index: pom_count - 1,
-            },
-            FocusStop::CalendarPrev => FocusStop::PomExit,
+            FocusStop::CalendarPrev => {
+                if pom_count > 0 {
+                    FocusStop::PomOption {
+                        index: pom_count - 1,
+                    }
+                } else {
+                    FocusStop::CommandField
+                }
+            }
             FocusStop::CalendarNext => FocusStop::CalendarPrev,
             FocusStop::MenuBar { index } => {
                 if *index == 0 {

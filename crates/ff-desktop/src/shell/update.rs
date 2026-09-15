@@ -21,7 +21,6 @@ use ff_dscatalog::{
 use super::helpers::*;
 use super::FocusStop;
 use super::WorkbenchShell;
-use crate::primary_option_menu;
 use crate::tab_state::TabKind;
 use ff_fftest::AutomationRegistry as _;
 use ff_keys::FunctionKey;
@@ -461,6 +460,16 @@ impl eframe::App for WorkbenchShell {
             let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
             let tab_count = self.tabs.len();
             let pom_active = self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu;
+            // Focus ring is sized by the loaded pom.toml option list (Req 2.1f),
+            // not a compiled array. 0 when the POM menu failed to load.
+            let pom_option_count = self
+                .tabs
+                .active_tab()
+                .menu_workspace
+                .as_ref()
+                .and_then(|mw| mw.menu.as_ref())
+                .map(|m| m.options.len())
+                .unwrap_or(0);
             let is_file_explorer = self.tabs.active_tab().kind == TabKind::FileExplorerPanel;
             let cmd_id = egui::Id::new("command_field_input");
             let cmd_has_focus = ctx.memory(|m| m.focused() == Some(cmd_id));
@@ -524,12 +533,16 @@ impl eframe::App for WorkbenchShell {
                     }
                 }
             } else if tab_pressed {
-                self.focus_stop = self.focus_stop.next(menu_count, tab_count, pom_active);
+                self.focus_stop =
+                    self.focus_stop
+                        .next(menu_count, tab_count, pom_active, pom_option_count);
                 if self.focus_stop == FocusStop::CommandField {
                     self.command_field_focus_requested = true;
                 }
             } else if shift_tab_pressed {
-                self.focus_stop = self.focus_stop.prev(menu_count, tab_count, pom_active);
+                self.focus_stop =
+                    self.focus_stop
+                        .prev(menu_count, tab_count, pom_active, pom_option_count);
                 if self.focus_stop == FocusStop::CommandField {
                     self.command_field_focus_requested = true;
                 }
@@ -549,14 +562,20 @@ impl eframe::App for WorkbenchShell {
                 if enter_or_space {
                     match &self.focus_stop.clone() {
                         FocusStop::PomOption { index } => {
-                            let key = primary_option_menu::BUILT_IN_OPTIONS
-                                .get(*index)
-                                .map(|o| o.key)
-                                .unwrap_or("0");
-                            self.handle_command(key);
-                        }
-                        FocusStop::PomExit => {
-                            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                            // Validates: menu-workspace Req 2.1e/2.1f -- activate the
+                            // focused option by dispatching its loaded command, exactly
+                            // as a mouse click does (via pending_menu_option).
+                            let option = self
+                                .tabs
+                                .active_tab()
+                                .menu_workspace
+                                .as_ref()
+                                .and_then(|mw| mw.menu.as_ref())
+                                .and_then(|m| m.options.get(*index))
+                                .cloned();
+                            if let Some(option) = option {
+                                self.pending_menu_option = Some(option);
+                            }
                         }
                         FocusStop::CalendarPrev => {
                             self.pom_calendar_offset -= 1;

@@ -10,12 +10,20 @@ use std::path::Path;
 
 // === Default content ========================================================
 
-/// Default content for `menus/pom.toml` -- 12-option POM (Phase CV).
+/// Default content for `menus/pom.toml`.
 ///
-/// Options 0-8 are the Core group (unchanged from Phase AC).
-/// Options 9, S, B are the Extended group added in Phase CV.
+/// Config-driven principle (menu-workspace Req 2.1e/2.1h, CR-CH-018): the POM is
+/// a data-driven Menu_Workspace. This default ships ONLY options whose command
+/// maps to built, testable functionality; options for unimplemented features
+/// (Utilities, Compilers, Terminals, Databases, Jobs, interactive Batch) are
+/// omitted and added back as they are built and tested. Selecting an option
+/// dispatches its `command` string -- there is no behaviour keyed to the key
+/// character or position.
 ///
-/// Validates: Requirement 7.1, 7.4, 7.5 (cv-requirements.md)
+/// The historical option keys (0/1/2/5/8/S) are retained so `=N` fastpaths and
+/// muscle memory keep working; `X` -> `RETURN` is the terminate action.
+///
+/// Validates: Requirement 2.1e, 2.1g, 2.1h (menu-workspace); 7.4 (cv-requirements.md)
 pub const DEFAULT_POM_TOML: &str = r#"title = "FileForge Workbench -- Primary Option Menu"
 
 [[options]]
@@ -37,33 +45,9 @@ description = "File Explorer -- Browse catalogs and files in a tree view"
 group = "Core"
 
 [[options]]
-key = "3"
-command = "UTILITIES"
-description = "Perform utility functions"
-group = "Core"
-
-[[options]]
-key = "4"
-command = "COMPILERS"
-description = "Interactive language processing"
-group = "Core"
-
-[[options]]
 key = "5"
 command = "MACROS"
 description = "Run and manage Lua macros"
-group = "Core"
-
-[[options]]
-key = "6"
-command = "TERMINALS"
-description = "Enter TSO or Workstation commands"
-group = "Core"
-
-[[options]]
-key = "7"
-command = "DATABASES"
-description = "Database tool and query browser"
 group = "Core"
 
 [[options]]
@@ -73,22 +57,16 @@ description = "Vendor added plugins"
 group = "Core"
 
 [[options]]
-key = "9"
-command = "JOBS"
-description = "JES job monitor and spool viewer"
-group = "Extended"
-
-[[options]]
 key = "S"
 command = "SEARCH"
 description = "Global search and replace across files"
-group = "Extended"
+group = "Core"
 
 [[options]]
-key = "B"
-command = "BATCH"
-description = "Batch command execution (IKJEFT01 analogue)"
-group = "Extended"
+key = "X"
+command = "RETURN"
+description = "Return to the Primary Option Menu (exit when last)"
+group = "Core"
 "#;
 
 /// Default content for `menus/settings.toml` -- 10-option Settings_Menu (Phase CW).
@@ -247,9 +225,10 @@ mod tests {
         assert!(result.is_ok(), "DEFAULT_POM_TOML must be valid TOML");
     }
 
-    // Validates: Requirement 7.1 (cv-requirements.md) -- DEFAULT_POM_TOML has 12 options
+    // Validates: Requirement 2.1h (menu-workspace) -- default POM ships only
+    // built+testable options (0/1/2/5/8/S + X terminate = 7).
     #[test]
-    fn default_pom_toml_has_12_options() {
+    fn default_pom_toml_has_only_built_testable_options() {
         let val: toml::Value = toml::from_str(DEFAULT_POM_TOML).expect("valid TOML");
         let options = val
             .get("options")
@@ -257,9 +236,34 @@ mod tests {
             .expect("options array");
         assert_eq!(
             options.len(),
-            12,
-            "DEFAULT_POM_TOML must have exactly 12 options"
+            7,
+            "DEFAULT_POM_TOML must contain only the 7 built+testable options"
         );
+        // The commands must all be ones the shell resolves by name (Req 2.1h).
+        let commands: Vec<&str> = options
+            .iter()
+            .filter_map(|o| o.get("command").and_then(|c| c.as_str()))
+            .collect();
+        assert_eq!(
+            commands,
+            vec!["SETTINGS", "CATALOGS", "FILES", "MACROS", "PLUGINS", "SEARCH", "RETURN"],
+        );
+    }
+
+    // Validates: Requirement 2.1g (menu-workspace) -- terminate is a data-driven
+    // X -> RETURN option, not a bespoke exit line.
+    #[test]
+    fn default_pom_toml_terminate_is_x_return() {
+        let val: toml::Value = toml::from_str(DEFAULT_POM_TOML).expect("valid TOML");
+        let options = val
+            .get("options")
+            .and_then(|v| v.as_array())
+            .expect("options array");
+        let x = options
+            .iter()
+            .find(|o| o.get("key").and_then(|k| k.as_str()) == Some("X"))
+            .expect("X option present");
+        assert_eq!(x.get("command").and_then(|c| c.as_str()), Some("RETURN"));
     }
 
     // Validates: Requirement 7.1 (cv-requirements.md) -- title matches spec
