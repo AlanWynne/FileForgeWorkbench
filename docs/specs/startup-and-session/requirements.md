@@ -287,6 +287,8 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 5. WHEN Layout_State restoration fails (corrupt layout data, missing panel types), THE Workbench SHALL fall back to the default layout and log a WARN-level record.
 6. WHEN the workbench has started in Degraded_Mode and the underlying issue is resolved (e.g., User_Data_Dir becomes writable, a plugin is manually reloaded), THE Workbench SHALL clear the degraded indicator for that subsystem.
 7. WHEN a file is opened during or after startup, the full file-open pipeline SHALL execute regardless of Degraded_Mode: VFS resolution, encoding detection, language detection, Recovery_File check, and plugin hooks (for loaded plugins). Degraded_Mode does NOT skip file-processing steps -- it only affects session-level persistence and failed subsystems.
+8. WHEN a user Menu_File (`menus/pom.toml` or `menus/settings.toml`) is missing or fails to parse, THE Workbench SHALL fall back to the compiled Recovery_Baseline for that menu (menu-workspace Requirement 12) so the Home Context and Settings always have their options. A parse failure SHALL surface a deferred, non-blocking notice (per criterion 3) identifying the file and reason; a missing file SHALL NOT produce a notice. (CR-CH-021.)
+9. THE built-in menus SHALL NOT be materialised to disk on first launch (menu-workspace Requirement 4.1); the barebones Recovery_Baseline is compiled-only, so a fresh install with no `menus/` files still opens to a fully usable Home Context. (CR-CH-021.)
 
 ---
 

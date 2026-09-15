@@ -206,9 +206,22 @@ and a `Command ===>` field -- so that the pattern is immediately familiar.
 3. WHEN an option has `enabled = false`, THE option row SHALL be rendered in a
    visually distinct disabled style (greyed out) and SHALL NOT respond to click
    or keyboard activation.
-4. WHEN a `group` field is present on an option, THE renderer SHALL insert a
-   blank line before the first option in each new group. An optional group
-   header label MAY be rendered if the group string is non-empty.
+4. WHEN a `group` field is present on an option AND the group value differs from
+   the immediately preceding option's group, THE renderer SHALL insert a visual
+   group boundary before that option. (REVISED by CR-CH-021: the boundary is a
+   per-menu, config-driven style -- see 4a/4b -- not an unconditional divider.)
+4a. THE separator style SHALL be controlled by an optional top-level Menu_File
+    key `group_separator` with values: `line` (a horizontal rule), `space` (a
+    blank line only), or `none` (no visual boundary). WHEN `group_separator` is
+    absent, THE default SHALL be `space` (a blank line), matching the ISPF-style
+    grouped-list look and avoiding a heavy divider. A boundary is only ever
+    drawn between two DIFFERENT non-empty groups (never before the first option,
+    and never for options that carry no `group`).
+4b. WHEN an option is the first of a new non-empty group AND that group value
+    has not already been shown as a header in this menu, THE renderer MAY render
+    the group value as a header label above the group when the Menu_File sets
+    the optional top-level key `group_headers = true` (default `false`, so
+    existing menus are unchanged). The header uses the menu's description colour.
 5. THE option list SHALL be scrollable when the number of options exceeds the
    visible area.
 6. WHEN the Menu_File defines zero options (empty `[[options]]` array), THE
@@ -250,22 +263,24 @@ or clicking its row, so that the associated command is executed immediately.
 
 ### Requirement 4: Default Menu Files and Hot-Reload
 
-**User Story:** As a first-time user, I want the workbench to create default
-menu files automatically so that the POM and Settings menus work out of the box,
-and I want changes I make to those files to take effect immediately without
-restarting.
+**User Story:** As a user, I want the POM and Settings menus to work out of the
+box from compiled built-in content (never written to disk), and I want any menu
+file I create to take effect immediately without restarting.
 
-**Source:** [CR-NR-045], [WB]
+**Source:** [CR-NR-045], [WB], [CR-CH-021]
 
 #### Acceptance Criteria
 
-1. WHEN the workbench starts and `<User_Data_Dir>/menus/pom.toml` does not
-   exist, THE workbench SHALL create it with the Default_POM_Content defined in
-   the design document (Phase CV will define the final content; until then the
-   existing hardcoded POM options are used).
-2. WHEN the workbench starts and `<User_Data_Dir>/menus/settings.toml` does not
-   exist, THE workbench SHALL create it with the Default_Settings_Content
-   defined in the design document (Phase CW will define the final content).
+1. THE workbench SHALL NOT materialise the built-in menus (`pom.toml`,
+   `settings.toml`) to `<User_Data_Dir>/menus/` on first launch or at any other
+   time. The built-in POM and Settings content are COMPILED-ONLY (the
+   Recovery_Baseline, Requirement 12). (REVISED by CR-CH-021 -- this supersedes
+   the earlier requirement to write `pom.toml`/`settings.toml` on first launch;
+   it mirrors the themes code-only rule, theme-and-appearance Req 18.2/19.2.)
+2. THE `menus/` directory SHALL contain ONLY user-authored Menu_Files. It MAY be
+   empty. When a user Menu_File exists at a well-known path (`menus/pom.toml`,
+   `menus/settings.toml`, or `menus/<name>.toml`) and parses successfully, it
+   OVERRIDES the compiled built-in for that menu. (REVISED by CR-CH-021.)
 3. WHEN a Menu_File is written or modified on disk while the workbench is
    running, THE Menu_Workspace backed by that file SHALL reload its option list
    within one egui frame of the modification being detected.
@@ -501,3 +516,44 @@ user-created -- are reachable through one consistent verb.
     key only (a single token); any further tokens SHALL be passed on to the
     activated option's own command as its argument, so deeper chains
     (e.g. `MENU <a> <b> <c>`) compose through each option's dispatch.
+
+---
+
+### Requirement 12: Recovery Baseline (Barebones Menus)
+
+**User Story:** As an operator whose menu configuration is missing, deleted, or
+corrupted, I want the workbench to open with a minimal built-in menu set so that
+I can always reach Settings, Catalogs, Files, the event Log, and the Menus editor
+to rebuild or recover my configuration, instead of being locked out.
+
+**Source:** [CR-CH-021]
+
+#### Acceptance Criteria
+
+1. THE workbench SHALL define a compiled Recovery_Baseline for the POM and for
+   the Settings menu. These are the code-only built-in menus (Requirement 4.1)
+   and are never written to disk.
+2. THE Recovery_Baseline POM SHALL contain exactly these options, in order:
+   `0` -> `SETTINGS` (Settings), `1` -> `CATALOGS` (Catalogs), `2` -> `FILES`
+   (Files), `L` -> `LOG` (Event Log), `M` -> `MENUS` (Menus editor), `X` ->
+   `RETURN` (Return / exit when last). All in a single group (no stray boundary).
+3. THE Recovery_Baseline Settings menu SHALL contain exactly these options, in
+   order: `T` -> `THEMES` (Theme editor), `M` -> `MENUS` (Menus editor), `A` ->
+   `A` (Browse all configuration keys). 
+4. WHEN a user Menu_File for the POM or Settings is ABSENT, THE workbench SHALL
+   render the corresponding Recovery_Baseline (the compiled built-in), without a
+   load error, so the menu always has its options.
+5. WHEN a user Menu_File for the POM or Settings is PRESENT but fails to parse
+   (invalid TOML, missing required field, or exceeds the hard option limit), THE
+   workbench SHALL fall back to the corresponding Recovery_Baseline AND surface a
+   non-blocking notice identifying the file and the parse error, so the operator
+   knows their file was bypassed and why. (This closes the current gap where a
+   corrupt `settings.toml` shows no options and no fallback.)
+6. WHEN the `MENUS` command is invoked before the Menus editor Workspace exists
+   (it is delivered by a separate change request), THE shell SHALL display a
+   non-blocking notice `Menus editor is not yet available.` and leave the current
+   Workspace unchanged. The `MENUS` command name is reserved by this requirement
+   so the Recovery_Baseline rows resolve.
+7. THE Recovery_Baseline SHALL be the single source of the compiled default menu
+   content; the POM fastpath resolver and the Settings opener SHALL both use it
+   as their fallback (no duplicate hardcoded option lists).

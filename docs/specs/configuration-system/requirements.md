@@ -363,3 +363,51 @@ consistent policy enforcement across all workbench instances.
 8. WHEN the system-layer configuration file is hot-reloaded and the locked_keys list changes,
    THE Configuration_System SHALL recompute effective values for all newly locked or unlocked
    keys and invoke reload callbacks for any keys whose effective value changed as a result.
+
+---
+
+### Requirement 19: Reset to Barebones (RESET BARE)
+
+**User Story:** As an operator whose configuration has become broken, cluttered,
+or unrecoverable, I want a single command to archive my current configuration and
+restart the workbench in a clean barebones state, so that I can rebuild from a
+known-good baseline while keeping my old configuration safe for recovery.
+
+**Source:** [CR-CH-021]
+
+#### Acceptance Criteria
+
+1. THE shell SHALL provide a `RESET BARE` command, registered with the command
+   framework (Command_ID `"config.reset_bare"`) so it is dispatchable from the
+   command line, menu options, keyboard bindings, and macros.
+2. WHEN `RESET BARE` is invoked, THE shell SHALL FIRST present a modal
+   confirmation dialog describing the action (archive current configuration and
+   reopen in barebones mode) with explicit Confirm and Cancel actions. No files
+   SHALL be moved or changed until the user confirms.
+3. WHEN the user cancels the confirmation, THE shell SHALL take no action and
+   leave all configuration and the current Workspaces unchanged.
+4. WHEN the user confirms, THE shell SHALL ARCHIVE (move, not delete) the current
+   configuration into `<User_Data_Dir>/config-archive/<timestamp>/`, where
+   `<timestamp>` is a filesystem-safe UTC timestamp. The archive SHALL include,
+   when present: the `menus/` directory, the `themes/` directory, `session.toml`,
+   the active `config.toml` (user layer), and the catalog registry file. Files
+   that do not exist are skipped without error.
+5. THE archive operation SHALL be non-destructive: after a successful `RESET
+   BARE`, every archived file SHALL exist under `config-archive/<timestamp>/` and
+   SHALL NOT remain at its original location. WHEN a move fails for any single
+   item, THE shell SHALL report the failure in a non-blocking notice and continue
+   with the remaining items (best-effort), leaving already-archived items in the
+   archive.
+6. AFTER a confirmed `RESET BARE`, THE workbench SHALL reset its in-memory
+   configuration, menus, theme, and catalog state to the compiled baselines and
+   reopen the Home Context showing the Recovery_Baseline POM (menu-workspace
+   Requirement 12), WITHOUT requiring the user to relaunch the process. The
+   default Home catalog SHALL be re-created (CR-NR-004 behaviour) so Files is
+   immediately usable.
+7. THE Settings Context (or the Settings menu) SHALL expose an affordance
+   (button or menu option) that dispatches the `RESET BARE` command through the
+   same command path (command parity); the affordance SHALL NOT bypass the
+   command or its confirmation dialog.
+8. THE archived configuration SHALL remain readable so the operator can manually
+   restore files from `config-archive/<timestamp>/` back into `<User_Data_Dir>/`;
+   `RESET BARE` SHALL NOT delete or prune previous archive directories.

@@ -411,6 +411,23 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-theme` | ✅ | `defaults.rs::high_contrast_unchanged_no_warnings`, `high_contrast_fg_bg_pairs_meet_wcag_aaa` | Req 21.8/21.9: Catppuccin editor/syntax identity preserved; High Contrast unchanged (AAA) |
 | `ff-theme` | ✅ | `defaults.rs::legacy_blue_on_black_uses_bright_blue_for_legibility`, `legacy_retains_look_and_feel` | Req 22.1-22.4: Legacy blue-on-black uses ISPF_BLUE_HI (#7878FF, 5.93:1) for line numbers/comments/unknown/margins; otherwise byte-identical; primary_menu_bg unchanged |
 
+### Phase (menu-recovery) -- Code-only menus + Recovery Baseline + configurable separator + RESET BARE (CR-CH-021)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 4.1/4.2: built-in menus are code-only; ensure_default_menu_files no longer writes pom.toml/settings.toml (menus/ empty after startup) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 12.1-12.3/12.7: compiled Recovery_Baseline (POM 0/1/2/L/M/X; Settings T/M/A) is the single compiled source |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 12.4: absent user Menu_File -> Recovery_Baseline rendered, no load error, no notice |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 12.5 / startup Req 11.8: corrupt user Menu_File -> Recovery_Baseline + non-blocking notice (Settings gains this fallback) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 12.6: MENUS command shows "not yet available" notice, Workspace unchanged (reserved for the Menus-editor CR) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 2.4/4a/4b: group_separator (space default / line / none) + optional group_headers; boundary only between two different non-empty groups |
+| `ff-desktop` | 🔴 | -- | configuration-system Req 19.1-19.3: RESET BARE command opens a confirmation dialog; Cancel is a no-op |
+| `ff-desktop` | 🔴 | -- | configuration-system Req 19.4/19.5/19.8: archive_config moves (not deletes) menus/themes/session.toml/config.toml/catalog registry to config-archive/<timestamp>/; missing skipped; never prunes |
+| `ff-desktop` | 🔲 | -- | configuration-system Req 19.6: after confirm, in-memory reset to baselines + Home catalog re-created + Recovery_Baseline POM reopened without relaunch (partly egui runtime -- manual UI verification) |
+| `ff-desktop` | 🔲 | -- | configuration-system Req 19.7: Settings affordance dispatches RESET BARE via the command path, does not bypass the dialog (egui affordance -- manual UI verification) |
+| `ff-desktop` | 🔴 | -- | startup Req 14 (regression, CR-NR-004): ensure_default_home_catalog still seeds "Home" -> user home when no Native catalog exists |
+| `ff-desktop` | 🔴 | -- | startup Req 11.9: built-in menus not materialised on first launch; fresh install with no menus/ still opens a usable Home Context |
+
 ### Phase AE -- Legacy Theme Colour Semantics
 
 | Crate | Status | Test files | Notes |

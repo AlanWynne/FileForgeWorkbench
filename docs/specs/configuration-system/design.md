@@ -1371,3 +1371,25 @@ Reset button when true, showing a "LOCKED" provenance badge.
   effective value computation. No other component needs to know about locking.
 - The `KeyLocked` error variant is `#[non_exhaustive]`-safe -- it is a new variant on the
   existing `ConfigError` enum.
+
+---
+
+## Design Delta: RESET BARE (Requirement 19, CR-CH-021)
+
+The `RESET BARE` command (`config.reset_bare`) archives the current configuration
+non-destructively and reopens the workbench in barebones mode. The full design
+(confirmation dialog, archive helper `archive_config(user_data_dir)`, in-memory
+reset, Settings affordance with command parity) is documented in
+`docs/specs/menu-workspace/design.md` (Design Delta: RESET BARE) because it is
+implemented in the `ff-desktop` shell alongside the Recovery_Baseline it depends
+on. Key configuration-system points:
+
+- Archive target: `<User_Data_Dir>/config-archive/<UTC-timestamp>/`; includes
+  `config.toml` (user layer), `session.toml`, `menus/`, `themes/`, catalog
+  registry, when present. Move-not-delete; never prunes prior archives.
+- After reset, the configuration reloads to compiled schema defaults (Requirement
+  7 typed-access defaults apply), so no user-layer overrides remain until the
+  operator rebuilds or restores from the archive.
+- Locked keys (Requirement 18): RESET BARE archives the USER layer only; the
+  system layer (and its locked keys) is untouched, so policy enforcement survives
+  a barebones reset.

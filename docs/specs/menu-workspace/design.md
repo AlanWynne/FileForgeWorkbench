@@ -669,3 +669,128 @@ Risk controls: implement behind the existing tests, migrate the focus-ring and
 option-dispatch tests to assert against the loaded pom.toml options, and verify
 `=0`/`=1`/`=2`, Tab cycling, Enter activation, the calendar, and END-terminate
 all still work before retiring the bespoke module.
+
+---
+
+## Design Delta: Code-only menus + Recovery Baseline + configurable group separator (CR-CH-021)
+
+This delta REVISES Section 9 (Default Menu Files) and Section 6 (Rendering group
+separator), and adds the Recovery_Baseline concept. It mirrors the themes
+code-only decision (theme-and-appearance CR-CH-019).
+
+### 1. Menus become code-only (revises Section 9)
+
+`shell/update.rs` no longer calls `ensure_default_menu_files()` to WRITE
+`pom.toml`/`settings.toml`. The `menus/` directory is still created (empty is
+fine) so a user has a place to author menus. `ensure_default_menu_files()` is
+retired for writing built-ins; if a thin dir-ensure is still wanted it becomes a
+`ensure_menus_dir()` that only `create_dir_all`s the folder (no file writes),
+matching `theme_defaults::ensure_default_theme_files`.
+
+Removed: the `write_if_absent(pom.toml)` / `write_if_absent(settings.toml)`
+calls and the `DEFAULT_*_TOML`-to-disk behaviour. The `DEFAULT_POM_TOML` /
+`DEFAULT_SETTINGS_TOML` constants are repurposed as the compiled
+Recovery_Baseline (below) and shrink to the barebones option set.
+
+### 2. Recovery_Baseline (new; menu-workspace Req 12)
+
+`menu_workspace::defaults` exposes:
+
+```rust
+pub fn recovery_pom_menu() -> MenuFile;       // 0 Settings,1 Catalogs,2 Files,L Log,M Menus,X Return
+pub fn recovery_settings_menu() -> MenuFile;  // T Themes, M Menus, A All
+```
+
+These build a `MenuFile` directly (single group, no stray separator). The
+existing `DEFAULT_POM_TOML`/`DEFAULT_SETTINGS_TOML` string constants are updated
+to the same barebones content and remain the parse source used by
+`parse_menu_str` fallbacks, so there is ONE source of the compiled content
+(Req 12.7). `MENUS`/`M` and `LOG`/`L` rows are added; `CATALOGS`, `SETTINGS`,
+`FILES`, `THEMES`, `RETURN`, `A` commands already resolve.
+
+### 3. Fallback wiring (POM already has it; Settings gains it)
+
+- `ensure_pom_menu_loaded()` (commands.rs) already falls back to
+  `parse_menu_str(DEFAULT_POM_TOML)` when the on-disk file is missing/invalid.
+  It keeps doing so; only the content changes.
+- `open_settings_menu()` (commands.rs) currently surfaces `load_error` with NO
+  fallback. Change: when the loaded Settings `MenuWorkspaceState` has
+  `menu.is_none()`, fall back to `parse_menu_str(DEFAULT_SETTINGS_TOML)` and, if
+  the on-disk file EXISTED but failed to parse, push a non-blocking notification
+  (`"settings.toml: <error> -- using built-in Settings menu"`). A simply-absent
+  file falls back silently (Req 12.4 vs 12.5; startup Req 11.8).
+- `MenuWorkspaceState` gains no new field; the fallback is applied at the open
+  site (same pattern as the POM) to keep the state type unchanged.
+
+### 4. `MENUS` command reservation (Req 12.6)
+
+`handle_command` gains an `upper == "MENUS"` arm that, until the Menus editor CR
+lands, pushes a notification `"Menus editor is not yet available."` and returns
+without changing the Workspace. The command name is reserved so the
+Recovery_Baseline `M` rows dispatch cleanly.
+
+### 5. Configurable group separator (revises Section 6, Req 2.4/4a/4b)
+
+`RawMenuFile`/`MenuFile` gain two optional top-level fields:
+
+```rust
+group_separator: GroupSeparator,  // Line | Space | None; default Space
+group_headers: bool,              // default false
+```
+
+`GroupSeparator` is a small enum deserialised from the strings `"line"`,
+`"space"`, `"none"` (serde rename_all = "lowercase"), defaulting to `Space`.
+
+`render_menu_workspace` replaces the unconditional `ui.separator()` at a group
+change with:
+- `Space` -> `ui.add_space(row_gap)` (a blank line; the new default),
+- `Line`  -> `ui.separator()` (the previous behaviour),
+- `None`  -> nothing.
+
+The boundary is still only drawn when `current_group != last_group &&
+last_group.is_some()` AND both groups are non-empty (options with no `group` do
+not trigger a boundary). When `group_headers == true` and a new non-empty group
+begins, a header label (menu description colour) is drawn above the group.
+
+### 6. Why this shape
+
+- Code-only removes the stale-file class of bug entirely: there is no on-disk
+  built-in to go stale, so the reported "line between 8 and 9" (an old
+  materialised pom.toml with a Core/Extended boundary) cannot recur.
+- The Recovery_Baseline guarantees the app is never option-less: absent OR
+  corrupt user files both resolve to a usable barebones menu, and the operator
+  is told when their file was bypassed.
+- `Space` default matches the ISPF grouped-list look without a heavy divider,
+  and `line`/`none` remain available per menu.
+
+## Design Delta: RESET BARE (configuration-system Req 19)
+
+`RESET BARE` is a new shell command (`config.reset_bare`) with a confirmation
+dialog and a non-destructive archive step.
+
+### Flow
+
+1. `handle_command` intercepts `upper == "RESET BARE"` and opens a modal
+   confirmation dialog (`reset_bare_confirm_open = true`), taking no other action.
+2. On Confirm, the shell calls an archive helper (in ff-desktop, or a thin
+   helper in ff-session that owns the User_Data_Dir):
+   `archive_config(user_data_dir) -> Result<PathBuf, Vec<String>>` which:
+   - computes `config-archive/<UTC-timestamp>/` (timestamp filesystem-safe),
+   - `fs::rename` (fall back to copy+remove across volumes) each of: `menus/`,
+     `themes/`, `session.toml`, `config.toml`, catalog registry file, when
+     present; missing items skipped; per-item failures collected best-effort.
+3. The shell then resets in-memory state: reload config to defaults, drop menu
+   workspace state (so the POM/Settings reload from the compiled
+   Recovery_Baseline), reset the active palette to the compiled Default (Legacy
+   fallback), clear the catalog registry and re-run `ensure_default_home_catalog`,
+   and reopen the Home Context showing the Recovery_Baseline POM -- no process
+   relaunch.
+4. A Settings affordance (button/menu option) dispatches `RESET BARE` through the
+   same command path (parity, workflow.md 1b); it does not bypass the dialog.
+
+### Notes
+
+- Archive is move-not-delete and never prunes prior archives (Req 19.8), so the
+  operator can manually restore.
+- Cross-volume `rename` failure is handled by copy-then-remove; a failure to
+  remove the source after copy is reported but leaves a recoverable copy.

@@ -1012,6 +1012,31 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 
 ---
 
+### Phase (menu-recovery) -- Code-only menus + Recovery Baseline + configurable separator + RESET BARE (CR-CH-021)
+
+> Owner testing found a stray group-separator line in the POM (a stale on-disk
+> pom.toml from before the option trim, shadowing the compiled default). Root
+> cause: menus are still MATERIALISED to disk (opposite of the themes decision).
+> Fix mirrors CR-CH-019 for themes: built-in menus are code-only (never written);
+> a compiled Recovery_Baseline (POM: 0 Settings/1 Catalogs/2 Files/L Log/M Menus/
+> X Return; Settings: T Themes/M Menus/A All) is the fallback for absent OR
+> corrupt user files (Settings gains a fallback it lacked). Group separator
+> becomes per-menu configurable (space default / line / none, optional header).
+> New RESET BARE command: confirm -> archive (not delete) config to
+> config-archive/<timestamp>/ -> reopen barebones. Menus editor Workspace is a
+> SEPARATE CR. Gate authored.
+
+- [ ] MR.1 Stop materialising built-in menus; dir-ensure only; remove startup materialise call (Task 23.1; Req 4.1/4.2 revised)
+- [ ] MR.2 Recovery_Baseline content (barebones POM + Settings) as the single compiled source (Task 23.2; Req 12.1-12.3/12.7)
+- [ ] MR.3 Absent -> baseline (silent); corrupt -> baseline + notice; Settings fallback added (Task 23.3; Req 12.4/12.5, startup 11.8)
+- [ ] MR.4 Reserve MENUS command (notice until the editor CR) (Task 23.4; Req 12.6)
+- [ ] MR.5 Configurable group separator (space/line/none) + optional header (Task 23.5; Req 2.4/4a/4b)
+- [ ] MR.6 RESET BARE command + confirm dialog + archive helper + in-memory barebones reset + Settings affordance (Task 23.6-23.9; configuration-system Req 19)
+- [ ] MR.7 Home catalog regression guard (Task 23.10)
+- [ ] MR.8 Tests + TCR; verify.ps1 CLEAN; rebuild; commit+push (Task 23.11-23.12)
+
+---
+
 ### Phase (theme-editor-fixes) -- Built-ins code-only + Save As bug (CR-CH-019, B052)
 
 > Owner testing found duplicate themes (built-ins listed both compiled and as files)
