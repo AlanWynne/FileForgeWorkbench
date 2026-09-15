@@ -428,6 +428,21 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `shell/update.rs::startup_tests` (ensure_default_home_catalog tests) | startup Req 14 (regression, CR-NR-004): ensure_default_home_catalog still seeds "Home" -> user home when no Native catalog exists |
 | `ff-desktop` | ✅ | `defaults.rs::ensure_menus_dir_does_not_materialise_built_in_menus` | startup Req 11.9: built-in menus not materialised on first launch; fresh install with no menus/ still opens a usable Home Context (Recovery_Baseline) |
 
+### Phase (menus-editor) -- In-app Menus editor Context (CR-NR-075, Req 13; closes 23.9)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 13.8/13.10: MenuFile -> TOML serialiser; `parse_menu_str(serialise(&m)) == m` round-trip |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 13.7/13.13: shared validate_menu (key 1-4 upper, command/description required, hard limit); editor Save blocked when invalid |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 13.4/13.5: option list edit (key/command/description/enabled/group), add/delete/move reorder mutate the working menu |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 13.6: edit title + show_calendar/group_separator/group_headers on the working menu |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 13.2/13.3: selector lists POM/Settings + user files; built-in with no file loads the Recovery_Baseline |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 13.8/13.9: Save/Save As writes menus/<name>.toml (POM/Settings -> pom.toml/settings.toml) as a user override |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 13.11: saved menu hot-reloads into an open POM/Settings within the existing window |
+| `ff-desktop` | 🔲 | -- | menu-workspace Req 13.1: MENUS opens the editor `[MENUS]`; POM/Settings M rows both open it (egui open/transform path -- manual UI verification; command wiring tested) |
+| `ff-desktop` | 🔲 | -- | menu-workspace Req 13.12: pure render -> Action, button click wins over field lost_focus (B052) (egui interaction -- manual UI verification) |
+| `ff-desktop` | 🔴 | -- | configuration-system Req 19.7 (closes task 23.9): Settings RESET BARE affordance dispatches the RESET BARE command through the command path (opens the dialog, does not bypass) |
+
 ### Phase AE -- Legacy Theme Colour Semantics
 
 | Crate | Status | Test files | Notes |

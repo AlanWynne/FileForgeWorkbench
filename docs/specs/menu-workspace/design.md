@@ -794,3 +794,120 @@ dialog and a non-destructive archive step.
   operator can manually restore.
 - Cross-volume `rename` failure is handled by copy-then-remove; a failure to
   remove the source after copy is reported but leaves a recoverable copy.
+
+---
+
+## Design Delta: Menus Editor Context (Requirement 13, CR-NR-075)
+
+A new in-app editor for menu TOML files, mirroring the Theme editor
+(theme-and-appearance Req 20) exactly: a pure render returning an Action, with
+all side effects (validation, serialisation, file write) applied by the shell
+command layer.
+
+### 1. New MenuFile -> TOML serialiser (`menu_workspace/serialiser.rs`)
+
+No serialiser exists today (the loader is Deserialize-only; built-in content is
+hand-written string consts). Add `serialise(menu: &MenuFile) -> String` mirroring
+`ff_theme::serialiser::serialise`:
+- Emit `title`, then `show_calendar` / `group_separator` / `group_headers` only
+  when they differ from their defaults (keeps files clean; loader defaults fill
+  the rest).
+- Emit one `[[options]]` block per option: `key`, `command`, `description`,
+  `enabled` (only when false), `group` (only when Some), and an inline
+  `[options.target]` table only when `target` is Some.
+- `group_separator` serialises to its lowercase string (`line`/`space`/`none`).
+- Round-trip guarantee (Req 13.10): `parse_menu_str(serialise(&m))` equals `m`.
+  A property/unit test asserts this. NOTE: `ff_command::CommandTarget` must
+  serialise for the inline-target case; if it does not derive `Serialize`, the
+  serialiser emits only the `command` string for options that carry a target and
+  logs a DEBUG note (the loader already treats an inline target as authoritative,
+  Req 10.6) -- to be confirmed at implementation and reflected in the tests.
+
+### 2. New panel (`menus_editor_panel/`, pre-split for the 400-line rule)
+
+`menus_editor_panel/{mod.rs, state.rs, render.rs}` mirroring `theme_editor_panel`:
+
+```rust
+pub struct MenusEditorState {
+    pub available: Vec<String>,     // "POM", "Settings", user menu names
+    pub selected: Option<String>,   // selected menu name
+    pub working: Option<MenuFile>,  // unsaved edits live here
+    pub name_buffer: String,        // Save As new name
+    pub error: Option<String>,      // inline validation/save error
+}
+
+pub enum MenusEditorAction {
+    None,
+    Select(String),
+    EditTitle(String),
+    SetShowCalendar(bool),
+    SetGroupSeparator(GroupSeparator),
+    SetGroupHeaders(bool),
+    EditOption { index: usize, field: OptionField, value: String },
+    SetOptionEnabled { index: usize, enabled: bool },
+    AddOption,
+    DeleteOption(usize),
+    MoveOptionUp(usize),
+    MoveOptionDown(usize),
+    Save,
+    SaveAs(String),
+}
+```
+
+`render(ui, state) -> MenusEditorAction` is pure. It uses the same two-slot
+pattern as the Theme editor (B052): an explicit `action` for button clicks
+(add/delete/move/save/selector) that WINS over a `field_action` produced by a
+row text-field's commit-on-`lost_focus`, so clicking a button never loses to a
+same-frame field commit.
+
+### 3. Shell wiring (`shell/menus_editor.rs`, a new shell submodule)
+
+To avoid growing the already-large `shell/commands.rs`, put the editor impl
+methods in a new `shell/menus_editor.rs` (mirroring `shell/reset_bare.rs`):
+- `open_menus_editor()`: build `available` from `["POM","Settings"]` + user
+  files in `menus_dir()`; load the selected menu's working copy (built-in ->
+  Recovery_Baseline when no file); `transform_active_pom_tab(TabKind::MenusEditor,
+  "[MENUS]")` on a POM tab else `open_menus_editor_tab`.
+- `apply_menus_editor_action(action)`: mutate `working` for edit/add/delete/move
+  actions; `Save`/`SaveAs` VALIDATE (shared rule with the loader -- see below)
+  then `write_menu_file(name, &menu)`; refresh the available list.
+- `write_menu_file(name, menu)`: `create_dir_all(menus_dir())`, serialise, write
+  `menus/<menu_slug(name)>.toml` (POM/Settings map to pom.toml/settings.toml).
+- Add a `menus_dir_override: Option<PathBuf>` field on the shell (mirroring
+  `themes_dir_override`) so save-file tests are isolated to a TempDir; production
+  is `None` (real user dir).
+
+Shared validation (Req 13.7/13.13): factor the loader's per-option checks into a
+reusable `menu_workspace::loader::validate_menu(&MenuFile, limits) -> Result<(),
+String>` that both the (existing) load path and the (new) editor Save path call,
+so the editor cannot produce an unloadable file. This is a refactor of the
+existing `validate_option` logic into a MenuFile-level check; the load path keeps
+its current behaviour.
+
+### 4. Tab + command + return wiring
+
+- `TabKind::MenusEditor` in `tab_state.rs`; `TabState::menus_editor(id, document)`
+  with title `"[MENUS]"`; `tab_manager::open_menus_editor_tab` (dedup by kind).
+- Replace the `upper == "MENUS"` notice arm (shell/commands.rs) with
+  `self.open_menus_editor();`. Both the POM `M` row and the Settings `M` row
+  dispatch `MENUS`, so both entry points light up automatically.
+- Add `TabKind::MenusEditor` to the END/RETURN return-to-POM branch so F3/END
+  from a transformed POM restores the Home Context.
+- Render dispatch: a `TabKind::MenusEditor` arm in `shell/render.rs` calling
+  `menus_editor_panel::render` and `apply_menus_editor_action`.
+
+### 5. Closing CR-CH-021 task 23.9 (RESET BARE affordance)
+
+Add a Settings-side affordance (a button in the Menus/Settings area, or a
+`RESET BARE` option row) that dispatches the existing `RESET BARE` command
+through the command path -- it opens the confirmation dialog, it does NOT call
+the archive/reset internals directly (command parity, workflow.md 1b). The
+command and dialog already exist (CR-CH-021); this only adds the affordance.
+
+### 6. Hot-reload interaction (Req 13.11)
+
+No new mechanism: the editor writes `menus/<name>.toml`; the existing
+`MenuWorkspaceState::poll_reload` (mtime-based) picks up the change for any open
+Menu_Workspace (including the POM/Settings) within the existing reload window.
+The editor is not itself a Menu_Workspace, so it does not poll; it re-reads on
+Select.

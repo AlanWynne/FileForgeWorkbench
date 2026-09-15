@@ -1037,6 +1037,28 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 
 ---
 
+### Phase (menus-editor) -- In-app Menus editor Context (CR-NR-075, Req 13; closes 23.9)
+
+> The reserved MENUS command (CR-CH-021) becomes a real Workspace, modelled on
+> the Theme editor: pick a menu (POM/Settings/user), edit/add/delete/reorder
+> options (key/command/description/enabled/group), edit title + display settings
+> (show_calendar/group_separator/group_headers), Save/Save As to menus/<name>.toml.
+> Needs a new MenuFile->TOML serialiser (none exists). Saving a built-in name
+> writes a user override the renderer prefers; the built-in stays a code-only
+> fallback. Also closes the CR-CH-021 RESET BARE Settings affordance (23.9).
+> Gate authored.
+
+- [ ] ME.1 MenuFile -> TOML serialiser + round-trip test (Task 24.1-24.2; Req 13.8/13.10)
+- [ ] ME.2 Shared validate_menu used by load + editor Save (Task 24.3; Req 13.7/13.13)
+- [ ] ME.3 menus_editor_panel (state + pure render -> Action, B052 two-slot) (Task 24.4; Req 13.4-13.6/13.12)
+- [ ] ME.4 TabKind::MenusEditor + tab/END/render wiring (Task 24.5; Req 13.1)
+- [ ] ME.5 shell/menus_editor.rs: open/apply/write + menus_dir_override; replace MENUS notice (Task 24.6-24.7; Req 13.1-13.3/13.8/13.9)
+- [ ] ME.6 Save = user override the renderer prefers; hot-reload into open POM/Settings (Task 24.8; Req 13.8/13.11)
+- [ ] ME.7 Settings RESET BARE affordance via command path -- closes 23.9 (Task 24.9; configuration-system Req 19.7)
+- [ ] ME.8 Tests + TCR; verify.ps1 CLEAN; rebuild; commit+push (Task 24.10-24.11)
+
+---
+
 ### Phase (theme-editor-fixes) -- Built-ins code-only + Save As bug (CR-CH-019, B052)
 
 > Owner testing found duplicate themes (built-ins listed both compiled and as files)

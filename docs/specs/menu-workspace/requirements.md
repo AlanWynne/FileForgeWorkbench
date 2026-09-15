@@ -557,3 +557,66 @@ to rebuild or recover my configuration, instead of being locked out.
 7. THE Recovery_Baseline SHALL be the single source of the compiled default menu
    content; the POM fastpath resolver and the Settings opener SHALL both use it
    as their fallback (no duplicate hardcoded option lists).
+
+---
+
+### Requirement 13: Menus Editor Context
+
+**User Story:** As an operator, I want an in-app Menus editor so that I can
+create, change, reorder and save my menus (the POM, Settings, and any custom
+menu) without hand-editing TOML files, and have my changes take effect
+immediately.
+
+**Source:** [CR-NR-075]; owner request during CR-CH-021 ("The Menus Option will
+open a Workspace to create, change and save Menus"); reserved by Requirement 12.6.
+
+#### Acceptance Criteria
+
+1. WHEN the `MENUS` command is invoked, THE shell SHALL open the Menus Editor
+   Context (title `[MENUS]`). On a POM tab it transforms in place (so END/RETURN
+   returns to the POM); otherwise it opens or activates a dedicated tab. This
+   replaces the "not yet available" placeholder of Requirement 12.6.
+2. THE Menus Editor SHALL present a menu SELECTOR listing the editable menus:
+   the built-in names `POM` and `Settings`, plus every user `menus/<name>.toml`
+   discovered on disk. Selecting an entry loads it as the working copy.
+3. WHEN a selected built-in menu (`POM` / `Settings`) has NO user file on disk,
+   THE editor SHALL load the compiled Recovery_Baseline (Requirement 12) as the
+   working copy, so the user starts from the current built-in content.
+4. THE Menus Editor SHALL display the working menu's options in an ORDERED,
+   editable list; for each option THE editor SHALL allow editing the Option_Key,
+   Option_Command, Option_Description, the `enabled` flag, and the `group` label.
+5. THE Menus Editor SHALL allow ADDING a new option, DELETING an option, and
+   MOVING an option up or down to change its order.
+6. THE Menus Editor SHALL allow editing the menu Title and the per-menu display
+   settings: `show_calendar` (Requirement 1.8), `group_separator`
+   (Requirement 4a: line / space / none), and `group_headers` (Requirement 4b).
+7. WHEN the user requests Save, THE editor SHALL VALIDATE the working menu with
+   the same rules as the loader (Requirement 1.2/1.3, 9.4): each Option_Key is
+   1-4 characters (stored uppercase), each Option_Command and Option_Description
+   is non-empty, and the option count does not exceed the hard limit. WHEN
+   validation fails, THE editor SHALL display the first failure inline and SHALL
+   NOT write the file.
+8. WHEN validation passes and the user requests Save, THE editor SHALL SERIALISE
+   the working menu to TOML and write it to `menus/<name>.toml` under the
+   User_Data_Dir. Saving a built-in name (`POM` / `Settings`) writes
+   `menus/pom.toml` / `menus/settings.toml`; that saved file is a USER OVERRIDE
+   that the renderer then prefers over the compiled Recovery_Baseline
+   (consistent with Requirement 4.2). The built-in remains a code-only fallback
+   (a Save does not "materialise a default"; deleting the file restores the
+   baseline).
+9. THE Menus Editor SHALL support Save As `<new-name>`, writing a new
+   `menus/<new-name>.toml` and selecting it as the working copy.
+10. THE serialised TOML SHALL round-trip: loading a file the editor wrote SHALL
+    reproduce an equal `MenuFile` (title, ordered options with all fields, and
+    the display settings), consistent with the loader (Requirement 1.1-1.4).
+11. WHEN a menu is saved, THE corresponding open Menu_Workspace (including the
+    POM or Settings) SHALL reflect the change within the existing hot-reload
+    window (Requirement 4.3), so edits take effect without a restart.
+12. THE Menus Editor render SHALL be a pure function returning an editor Action;
+    all file writes and state changes SHALL be applied by the shell command
+    layer (mirroring the Theme editor, theme-and-appearance Requirement 20), so
+    the render has no side effects. A button click SHALL take priority over a
+    same-frame text-field commit (the B052 two-slot rule).
+13. THE Menus Editor SHALL NOT be able to save a menu that the loader would
+    reject; the editor's validation and the loader's validation SHALL share one
+    rule set so the editor cannot produce an unloadable file.

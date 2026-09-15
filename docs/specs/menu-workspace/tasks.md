@@ -390,3 +390,31 @@
     - Validates: Requirement 4.1/4.2/12.1-12.7/2.4; configuration-system 19.1-19.8; startup 11.8/11.9
   - [x] 23.12 Update `docs/quality/TCR.md` rows for the new criteria; mark tasks done; commit+push
     - Covers: project standards
+
+---
+
+## Phase (menus-editor) -- Menus editor Context (CR-NR-075, Requirement 13; closes 23.9)
+
+- [ ] 24. Menus editor Context (create / edit / reorder / save menu TOMLs)
+  - [ ] 24.1 MenuFile -> TOML serialiser: new `menu_workspace/serialiser.rs` `serialise(&MenuFile) -> String` (title; show_calendar/group_separator/group_headers only when non-default; one `[[options]]` block per option with key/command/description/enabled(when false)/group(when Some)/inline target when present)
+    - Covers: Requirement 13.8, 13.10
+  - [ ] 24.2 Round-trip test: `parse_menu_str(serialise(&m)) == m` for representative menus (POM baseline, Settings baseline, a multi-group menu, options with enabled=false and groups); confirm/handle CommandTarget serialisation
+    - Covers: Requirement 13.10
+  - [ ] 24.3 Shared validation: factor loader per-option checks into `validate_menu(&MenuFile, limits) -> Result<(), String>`; the load path and the editor Save path both call it (editor cannot produce an unloadable file)
+    - Covers: Requirement 13.7, 13.13
+  - [ ] 24.4 Panel: new `menus_editor_panel/{mod,state,render}.rs` with `MenusEditorState` (available/selected/working/name_buffer/error) and `MenusEditorAction`; pure `render(ui, state) -> Action` with the two-slot B052 rule (button click wins over field lost_focus)
+    - Covers: Requirement 13.4, 13.5, 13.6, 13.12
+  - [ ] 24.5 Tab wiring: `TabKind::MenusEditor` + `TabState::menus_editor` (`[MENUS]`) + `tab_manager::open_menus_editor_tab`; add MenusEditor to the END/RETURN return-to-POM branch; render dispatch arm in `shell/render.rs`
+    - Covers: Requirement 13.1
+  - [ ] 24.6 Shell impl `shell/menus_editor.rs`: `open_menus_editor` (available = POM/Settings + user files; built-in -> Recovery_Baseline when no file; transform-in-place on POM else dedicated tab), `apply_menus_editor_action` (edit/add/delete/move mutate working; Save/SaveAs validate + write), `write_menu_file` (menu_slug; POM/Settings -> pom.toml/settings.toml), `menus_dir_override` field for test isolation
+    - Covers: Requirement 13.1, 13.2, 13.3, 13.8, 13.9
+  - [ ] 24.7 Replace the `upper == "MENUS"` notice arm with `open_menus_editor()`; both POM `M` and Settings `M` rows now open the editor
+    - Covers: Requirement 13.1
+  - [ ] 24.8 Save writes a user override the renderer prefers over the Recovery_Baseline; deleting the file restores the baseline (built-in stays code-only); saved file hot-reloads into an open POM/Settings within the existing window
+    - Covers: Requirement 13.8, 13.11
+  - [ ] 24.9 Settings RESET BARE affordance: a button/option that dispatches the `RESET BARE` command through the command path (opens the dialog; does not bypass it) -- CLOSES task 23.9
+    - Covers: configuration-system Requirement 19.7
+  - [ ] 24.10 Tests: serialiser round-trip; validation rejects bad key/empty command/over-limit and Save is blocked; add/delete/move reorder working; Select loads built-in baseline when no file; Save writes menus/<name>.toml and it reloads; MENUS opens the editor; RESET BARE affordance dispatches the command. verify.ps1 CLEAN
+    - Validates: Requirement 13.1-13.13; configuration-system 19.7
+  - [ ] 24.11 Update `docs/quality/TCR.md` rows; mark tasks 24.x + 23.9 done; CR-NR-075 -> DONE; verify.ps1; rebuild; commit+push
+    - Covers: project standards
