@@ -2364,3 +2364,12 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `shell::tests::swap_bare_with_split_swaps_focus_not_picker` | Req 18.6: bare `SWAP` with a split active swaps split-screen focus (preserved 19.12) |
 | `ff-desktop` | ✅ | `shell::tests::swap_without_split_opens_tab_picker` | Req 18.7: bare `SWAP` with no split opens the picker (not an error) |
 | `ff-desktop` | ✅ | `shell::tests` (SWAP routed through handle_command) | Req 18.8: `SWAP` command-line dispatchable; tab-switch affordances route through it |
+
+### Phase (unified-menu-renderer) -- One config-driven menu renderer (menu-workspace Req 1.8, 2.1a-2.1c; CR-CH-018)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | Req 1.8: Menu_File `show_calendar` (bool, default true) parsed by the loader |
+| `ff-desktop` | 🔴 | -- | Req 2.1a: three-column option list (Option_Key \| Option_Command \| Option_Description) for every menu incl. POM/Settings |
+| `ff-desktop` | 🔴 | -- | Req 2.1b: live calendar drawn right of the option list when `show_calendar` true; full-width columns when false |
+| `ff-desktop` | 🔴 | -- | Req 2.1c: POM + Settings rendered by the shared menu renderer; bespoke primary_option_menu layout folded in; POM options data-driven from pom.toml |

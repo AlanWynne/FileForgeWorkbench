@@ -559,3 +559,48 @@ Requirement 10.9).
 A path may mix separators (for example `=0;E.T`); each separator independently
 controls the push/collapse of the segment it precedes (Requirement 5.11). The
 existing 4-level nesting limit (Requirement 5.2) is unchanged.
+
+
+---
+
+## Design Delta: Unified config-driven menu renderer (Requirement 2.1a-2.1c, CR-CH-018)
+
+Today there are TWO renderers: `primary_option_menu.rs` (POM: three columns
+key/command/description + live calendar) and `menu_workspace/render.rs`
+(Menu_Workspace: a single `key  description` line, no command column, no
+calendar). The owner directive is ONE renderer: the POM is just a Menu_Workspace
+backed by `menus/pom.toml`; Settings is the same renderer with `settings.toml`;
+both files share the identical structure so POM options are add/removable by
+editing config.
+
+Design:
+- Fold the POM's column + calendar layout (`primary_option_menu::render` and its
+  `render_calendar_row` / calendar helpers) into the shared menu renderer
+  (`menu_workspace/render.rs`), so `render_menu_workspace` draws:
+  - a three-column option list (Option_Key | Option_Command | Option_Description),
+    aligned, replacing the current single-line `{key:<4}  {description}` row;
+  - the live calendar panel on the right when the menu's `show_calendar`
+    (Requirement 1.8) is true, reusing the existing calendar date/grid helpers
+    (day_of_year, days_in_month, first_weekday_of_month, offset_month,
+    format_calendar_header, render_calendar_row) -- these stay as pure helpers,
+    now called from the shared renderer.
+- The calendar month-navigation state (`pom_calendar_offset`) and the
+  `CalendarNav` return become part of the menu renderer's return so any menu
+  showing the calendar can navigate months.
+- The POM stops using a bespoke render path: the Home Context is rendered via
+  the shared `render_menu_workspace` against the `pom.toml`-backed
+  MenuWorkspaceState. POM option routing continues to dispatch each option's
+  `command` through the standard pipeline (Requirement 3/10), so existing POM
+  option behaviour is preserved while the option list itself becomes data-driven
+  from `menus/pom.toml`.
+- `show_calendar` defaults to true (so POM and Settings show the calendar with
+  no config change); a menu author sets `show_calendar = false` for a
+  full-width, calendar-less menu.
+- Focus/keyboard model (Tab into option rows, calendar `<`/`>` hotspots, POM
+  option focus reversal) is preserved by the shared renderer.
+
+Migration/back-compat: `pom.toml` is written from `DEFAULT_POM_TOML`
+(cv-requirements Req 7) via `write_if_absent`; existing user `pom.toml` files are
+not overwritten. The `primary_option_menu` module's pure calendar/date helpers
+are retained (moved or re-exported) since the shared renderer depends on them;
+only its bespoke top-level `render` layout is superseded.

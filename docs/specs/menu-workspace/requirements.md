@@ -96,6 +96,12 @@ TOML file, so that I can customise the option list without modifying source code
      is displayed in a disabled style and cannot be selected.
    - `group` (string, optional) -- a group label used to visually separate
      options with a blank line and optional group header.
+8. THE top-level table MAY contain a `show_calendar` key (boolean, optional,
+   default `true`) that controls whether the shared menu renderer draws the
+   calendar panel for this menu (Requirement 2). This makes the calendar a
+   per-menu, config-driven choice: the POM and Settings menus show it by
+   default; a menu author may set `show_calendar = false` to render the option
+   columns full-width with no calendar. (CR-CH-018.)
 4. WHEN a Menu_File contains a key that is not listed in criteria 1-3, THE
    workbench SHALL ignore the unknown key and log a DEBUG-level record.
 5. WHEN a Menu_File is absent or cannot be read, THE Menu_Workspace SHALL
@@ -118,14 +124,34 @@ and a `Command ===>` field -- so that the pattern is immediately familiar.
 #### Acceptance Criteria
 
 1. WHEN a Menu_Workspace is the active Workspace, THE shell SHALL render the
-   following elements in order from top to bottom:
+   following elements in order from top to bottom, using ONE shared menu
+   renderer for ALL menus including the POM (CR-CH-018 -- the POM is not a
+   separate bespoke renderer; it is a Menu_Workspace backed by `menus/pom.toml`
+   rendered by this same renderer):
    - The standard Title_Line (as defined by `menu-and-statusbar` Req 17).
    - The Menu_Title from the Menu_File, centred, in the Legacy theme's title
      colour.
-   - The option list: one row per Menu_Option, each row showing the Option_Key
-     left-aligned, followed by the Option_Description.
+   - The option area: a THREE-COLUMN option list on the left and, when
+     `show_calendar` is true (Requirement 1.8), the calendar panel on the right,
+     laid out identically to the POM home screen.
    - The `Command ===>` field.
    - The standard Key_Label_Bar.
+1a. THE three-column option list SHALL show, for each Menu_Option, in aligned
+    columns: the Option_Key, the Option_Command, and the Option_Description
+    (key | command | description). This applies to every menu including the POM
+    and Settings menus, so the command each option runs is visible alongside its
+    description. (CR-CH-018.)
+1b. WHEN `show_calendar` is true for the menu (Requirement 1.8), THE shared
+    renderer SHALL draw the calendar panel to the right of the option list --
+    the same live calendar (header with `<`/`>` month navigation, day-of-week
+    header, month grid with today highlighted, time, day-of-year) currently
+    rendered on the POM. WHEN `show_calendar` is false, THE option columns SHALL
+    use the full width and no calendar is drawn. (CR-CH-018.)
+1c. THE POM (`menus/pom.toml`) and Settings (`menus/settings.toml`) SHALL be
+    rendered by this shared renderer; the previous bespoke POM renderer
+    (`primary_option_menu`) column+calendar layout is folded into the shared
+    renderer so there is a single code path. POM options become add/remove-able
+    purely by editing `menus/pom.toml`. (CR-CH-018.)
 2. EACH option row SHALL be rendered as an interactive element: the user can
    click it or tab to it and press Enter to select it.
 3. WHEN an option has `enabled = false`, THE option row SHALL be rendered in a
