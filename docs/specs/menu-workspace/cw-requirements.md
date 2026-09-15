@@ -75,7 +75,9 @@ of settings I need without scrolling through an undifferentiated flat list.
    existing unfiltered flat-list Settings panel, identical to the current
    `SETTINGS` command behaviour.
 
-5. THE Settings_Menu title SHALL be `FileForge Workbench -- Settings`.
+5. THE Settings_Menu title SHALL be `Settings`. (The `FileForge Workbench --`
+   prefix was removed as redundant -- the application identity is already known;
+   the Menu_Title should be just the menu's own name. Owner request.)
 
 6. THE Settings_Menu options SHALL be divided into two visual groups in the
    TOML file using the `group` field:
@@ -131,7 +133,7 @@ Workspace pattern it works correctly out of the box.
 1. THE `DEFAULT_SETTINGS_TOML` constant in `menu_workspace/defaults.rs` SHALL
    contain valid TOML that, when parsed by `load_menu_file()`, produces a
    `MenuFile` with:
-   - `title = "FileForge Workbench -- Settings"`
+   - `title = "Settings"`
    - 10 options matching the table in Requirement 9.1 exactly (keys, labels,
      descriptions, groups).
 

@@ -98,7 +98,7 @@ group = "Extended"
 /// a filtered Settings_Namespace_View; option A opens the unfiltered flat list.
 ///
 /// Validates: Requirement 9.1, 11.1, 11.4, 11.5 (cw-requirements.md)
-pub const DEFAULT_SETTINGS_TOML: &str = r#"title = "FileForge Workbench -- Settings"
+pub const DEFAULT_SETTINGS_TOML: &str = r#"title = "Settings"
 
 [[options]]
 key = "E"
@@ -306,7 +306,9 @@ mod tests {
     fn default_settings_toml_title_matches_spec() {
         let val: toml::Value = toml::from_str(DEFAULT_SETTINGS_TOML).expect("valid TOML");
         let title = val.get("title").and_then(|v| v.as_str()).expect("title");
-        assert_eq!(title, "FileForge Workbench -- Settings");
+        // Just "Settings" -- the "FileForge Workbench --" prefix is redundant
+        // (we already know which app we are in). B050-follow-up / owner request.
+        assert_eq!(title, "Settings");
     }
 
     // Validates: Requirement 4.2 -- DEFAULT_SETTINGS_TOML uses only ASCII
