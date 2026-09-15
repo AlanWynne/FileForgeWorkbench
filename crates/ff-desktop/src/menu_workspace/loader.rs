@@ -120,6 +120,9 @@ struct RawMenuFile {
     title: String,
     #[serde(default)]
     options: Vec<RawMenuOption>,
+    /// Whether to draw the calendar panel (menu-workspace Req 1.8). Default true.
+    #[serde(default = "default_true")]
+    show_calendar: bool,
 }
 
 /// Raw TOML representation of a single option.
@@ -174,6 +177,7 @@ pub fn load_menu_file(path: &Path) -> Result<MenuFile, String> {
     Ok(MenuFile {
         title: raw.title,
         options,
+        show_calendar: raw.show_calendar,
     })
 }
 
@@ -468,6 +472,28 @@ mode = "captured"
         assert!(menu.options.is_empty());
     }
 
+    // Validates: Requirement 1.8 -- show_calendar defaults to true when absent
+    #[test]
+    fn load_show_calendar_defaults_to_true() {
+        let f = write_toml("title = \"Menu\"\n");
+        let menu = load_menu_file(f.path()).expect("load ok");
+        assert!(
+            menu.show_calendar,
+            "show_calendar must default to true when the key is absent"
+        );
+    }
+
+    // Validates: Requirement 1.8 -- show_calendar = false is parsed and preserved
+    #[test]
+    fn load_show_calendar_false_preserved() {
+        let f = write_toml("title = \"Menu\"\nshow_calendar = false\n");
+        let menu = load_menu_file(f.path()).expect("load ok");
+        assert!(
+            !menu.show_calendar,
+            "show_calendar = false must be preserved by the loader"
+        );
+    }
+
     // === Option limits (Requirement 9) ==================================
 
     /// Build a MenuFile with `n` enabled options and `disabled` extra disabled
@@ -497,6 +523,7 @@ mode = "captured"
         MenuFile {
             title: "T".to_string(),
             options,
+            show_calendar: true,
         }
     }
 

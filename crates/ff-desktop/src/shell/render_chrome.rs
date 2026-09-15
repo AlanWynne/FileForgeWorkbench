@@ -110,6 +110,23 @@ impl WorkbenchShell {
         }
     }
 
+    /// Calendar colours for the shared menu renderer, derived from the same
+    /// palette semantics as the POM. In Legacy mode the ISPF turquoise/reversed
+    /// scheme is used; other themes inherit egui colours (PLACEHOLDER).
+    ///
+    /// Validates: menu-workspace Requirement 2.1b; Requirement 13.7, 13.8
+    pub(super) fn menu_calendar_colours(
+        &self,
+    ) -> crate::menu_workspace::render::MenuCalendarColours {
+        let pom = self.legacy_pom_colours();
+        crate::menu_workspace::render::MenuCalendarColours {
+            calendar_fg: pom.calendar_fg,
+            today_bg: pom.today_bg,
+            today_fg: pom.today_fg,
+            use_today_reverse: pom.today_bg != eframe::egui::Color32::PLACEHOLDER,
+        }
+    }
+
     // ── Menu bar ─────────────────────────────────────────────────────────
 
     pub(super) fn render_menu_bar(&mut self, ctx: &egui::Context) {

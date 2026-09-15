@@ -2369,7 +2369,7 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | -- | Req 1.8: Menu_File `show_calendar` (bool, default true) parsed by the loader |
-| `ff-desktop` | 🔴 | -- | Req 2.1a: three-column option list (Option_Key \| Option_Command \| Option_Description) for every menu incl. POM/Settings |
-| `ff-desktop` | 🔴 | -- | Req 2.1b: live calendar drawn right of the option list when `show_calendar` true; full-width columns when false |
-| `ff-desktop` | 🔴 | -- | Req 2.1c: POM + Settings rendered by the shared menu renderer; bespoke primary_option_menu layout folded in; POM options data-driven from pom.toml |
+| `ff-desktop` | ✅ | `menu_workspace/loader.rs::load_show_calendar_defaults_to_true`, `load_show_calendar_false_preserved` | Req 1.8: Menu_File `show_calendar` (bool, default true) parsed by the loader |
+| `ff-desktop` | ✅ | `menu_workspace/render.rs::format_option_row_produces_three_aligned_columns`, `command_column_width_uses_widest_command_clamped`, `format_option_rows_align_descriptions_at_common_width` | Req 2.1a: three-column option list (Option_Key \| Option_Command \| Option_Description) for every menu incl. POM/Settings |
+| `ff-desktop` | ✅ | `menu_workspace/render.rs::show_calendar_flag_is_carried_on_menu`, `show_calendar_false_is_respected_on_menu`, `menu_calendar_colours_default_is_inherited`, `menu_render_result_default_is_empty` | Req 2.1b: live calendar drawn right of the option list when `show_calendar` true; full-width columns when false |
+| `ff-desktop` | 🔴 | -- | Req 2.1c: POM + Settings rendered by the shared menu renderer; bespoke primary_option_menu layout folded in; POM options data-driven from pom.toml (task 22.4) |

@@ -673,8 +673,13 @@ impl WorkbenchShell {
                         }
                     }
                     TabKind::MenuWorkspace => {
-                        // Validates: menu-workspace Requirement 2.1-2.6
+                        // Validates: menu-workspace Requirement 2.1-2.6, 2.1a-2.1c
+                        // Resolve calendar colours and month offset before borrowing
+                        // the active tab mutably (menu_calendar_colours borrows &self).
+                        let menu_cal = self.menu_calendar_colours();
+                        let calendar_offset = self.pom_calendar_offset;
                         let active_idx = self.tabs.active_index();
+                        let mut calendar_nav = None;
                         if let Some(mw) = self
                             .tabs
                             .tabs_mut()
@@ -682,10 +687,25 @@ impl WorkbenchShell {
                             .and_then(|t| t.menu_workspace.as_mut())
                         {
                             mw.poll_reload();
-                            if let Some(option) =
-                                crate::menu_workspace::render::render_menu_workspace(mw, ui)
-                            {
+                            let result = crate::menu_workspace::render::render_menu_workspace(
+                                mw,
+                                ui,
+                                calendar_offset,
+                                menu_cal,
+                            );
+                            if let Some(option) = result.selected {
                                 self.pending_menu_option = Some(option);
+                            }
+                            calendar_nav = result.calendar_nav;
+                        }
+                        if let Some(nav) = calendar_nav {
+                            match nav {
+                                primary_option_menu::CalendarNav::Prev => {
+                                    self.pom_calendar_offset -= 1
+                                }
+                                primary_option_menu::CalendarNav::Next => {
+                                    self.pom_calendar_offset += 1
+                                }
                             }
                         }
                     }

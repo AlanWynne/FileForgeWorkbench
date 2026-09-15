@@ -53,6 +53,12 @@ pub struct MenuFile {
     pub title: String,
     /// Ordered list of options.
     pub options: Vec<MenuOption>,
+    /// Whether the shared menu renderer draws the calendar panel for this menu.
+    /// Defaults to `true` (POM and Settings show the calendar); a menu author
+    /// may set `show_calendar = false` for a full-width, calendar-less layout.
+    ///
+    /// Validates: menu-workspace Requirement 1.8 (CR-CH-018)
+    pub show_calendar: bool,
 }
 
 // === MenuWorkspaceState =====================================================

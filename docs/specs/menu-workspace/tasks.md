@@ -326,11 +326,11 @@
     - Covers: Requirement 5.7-5.12
 
 - [ ] 22. Unified config-driven menu renderer -- POM + Settings + all menus (Requirement 2.1a-2.1c, 1.8; CR-CH-018)
-  - [ ] 22.1 Add `show_calendar` (bool, default true) to the Menu_File format + loader (`RawMenuFile`, `MenuFile`); unknown-key/ASCII rules unchanged
+  - [x] 22.1 Add `show_calendar` (bool, default true) to the Menu_File format + loader (`RawMenuFile`, `MenuFile`); unknown-key/ASCII rules unchanged
     - Covers: Requirement 1.8
-  - [ ] 22.2 Fold the POM column+calendar layout into `menu_workspace/render.rs`: render a three-column option list (key | command | description) replacing the single-line row; retain group separators, disabled style, scroll, empty-state
+  - [x] 22.2 Fold the POM column+calendar layout into `menu_workspace/render.rs`: render a three-column option list (key | command | description) replacing the single-line row; retain group separators, disabled style, scroll, empty-state
     - Covers: Requirement 2.1a
-  - [ ] 22.3 Render the live calendar panel on the right when `show_calendar` is true, reusing the calendar/date helpers (keep them as pure fns); return `CalendarNav` so month `<`/`>` works; full-width option columns when false
+  - [x] 22.3 Render the live calendar panel on the right when `show_calendar` is true, reusing the calendar/date helpers (keep them as pure fns); return `CalendarNav` so month `<`/`>` works; full-width option columns when false
     - Covers: Requirement 2.1b, 1.8
   - [ ] 22.4 Render the POM (Home Context) via the shared `render_menu_workspace` against a `pom.toml`-backed MenuWorkspaceState; preserve POM option dispatch + focus/keyboard behaviour; POM options become data-driven from `menus/pom.toml`
     - Covers: Requirement 2.1c

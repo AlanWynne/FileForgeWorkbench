@@ -125,6 +125,7 @@ mod tests {
                     target: None,
                 },
             ],
+            show_calendar: true,
         }
     }
 

@@ -211,7 +211,10 @@ impl PomColours {
     }
 
     /// Resolve a colour: if PLACEHOLDER, fall back to egui's current text colour.
-    fn resolve(c: egui::Color32, ui: &egui::Ui) -> egui::Color32 {
+    /// Resolve a colour: PLACEHOLDER falls back to the ui's inherited text
+    /// colour; any explicit colour is returned as-is. Shared with the
+    /// menu-workspace renderer so the calendar colours match POM semantics.
+    pub(crate) fn resolve(c: egui::Color32, ui: &egui::Ui) -> egui::Color32 {
         if c == egui::Color32::PLACEHOLDER {
             ui.visuals().text_color()
         } else {
@@ -270,6 +273,107 @@ pub struct PomRenderResult {
     pub calendar_nav: Option<CalendarNav>,
 }
 
+/// Render the live calendar column into `ui`, returning any month-navigation
+/// the user triggered this frame (clicking the `<`/`>` hotspots in the header).
+///
+/// This is the single calendar-drawing code path shared by the Primary Option
+/// Menu and by the unified Menu_Workspace renderer (menu-workspace Req 2.1b,
+/// CR-CH-018), so the calendar looks and behaves identically wherever it
+/// appears.
+///
+/// `calendar_offset` is the number of months relative to the current month
+/// (0 = current, -1 = previous, +1 = next). `calendar_fg` is the body colour;
+/// `today_bg`/`today_fg`/`use_today_reverse` control today's cell styling.
+///
+/// Validates: Requirement 14.1, 14.41, 14.42, 13.7, 13.8; menu-workspace 2.1b
+pub fn render_calendar(
+    ui: &mut egui::Ui,
+    calendar_offset: i32,
+    calendar_fg: egui::Color32,
+    today_bg: egui::Color32,
+    today_fg: egui::Color32,
+    use_today_reverse: bool,
+) -> Option<CalendarNav> {
+    let now = Local::now();
+    let today_year = now.year();
+    let today_month = now.month();
+    let today_day = now.day();
+    let hour = now.hour();
+    let min = now.minute();
+
+    let (year, month) = offset_month(today_year, today_month, calendar_offset);
+    let is_current_month = year == today_year && month == today_month;
+    let doy = day_of_year(today_year, today_month, today_day);
+
+    let mut nav: Option<CalendarNav> = None;
+
+    ui.vertical(|ui| {
+        // Validates: Requirement 14.41 -- header is < MonthName YYYY >
+        let header = format_calendar_header(MONTH_NAMES[(month - 1) as usize], year);
+        let header_resp = ui.add(
+            egui::Label::new(
+                egui::RichText::new(&header)
+                    .monospace()
+                    .strong()
+                    .color(calendar_fg),
+            )
+            .sense(egui::Sense::click()),
+        );
+        if header_resp.clicked() {
+            if let Some(pos) = ui.input(|i| i.pointer.interact_pos()) {
+                let rect = header_resp.rect;
+                let sixth = rect.width() / 6.0;
+                if pos.x < rect.left() + sixth {
+                    nav = Some(CalendarNav::Prev);
+                } else if pos.x > rect.right() - sixth {
+                    nav = Some(CalendarNav::Next);
+                }
+            }
+        }
+
+        ui.add(egui::SelectableLabel::new(
+            false,
+            egui::RichText::new("Su Mo Tu We Th Fr Sa")
+                .monospace()
+                .color(calendar_fg),
+        ));
+
+        let first_wd = first_weekday_of_month(year, month);
+        let total_days = days_in_month(year, month);
+        let mut col = first_wd;
+        let mut row: Vec<(u32, bool)> = (0..first_wd).map(|_| (0, false)).collect();
+        for d in 1..=total_days {
+            let is_today = is_current_month && d == today_day;
+            row.push((d, is_today));
+            col += 1;
+            if col == 7 {
+                render_calendar_row(ui, &row, calendar_fg, today_bg, today_fg, use_today_reverse);
+                row.clear();
+                col = 0;
+            }
+        }
+        if !row.is_empty() {
+            render_calendar_row(ui, &row, calendar_fg, today_bg, today_fg, use_today_reverse);
+        }
+
+        ui.add_space(4.0);
+        ui.add(egui::SelectableLabel::new(
+            false,
+            egui::RichText::new(format!("Time . . . . : {:02}:{:02}", hour, min))
+                .monospace()
+                .color(calendar_fg),
+        ));
+        ui.add(egui::SelectableLabel::new(
+            false,
+            egui::RichText::new(format!("Day of year. :   {}", doy))
+                .monospace()
+                .color(calendar_fg),
+        ));
+    });
+
+    nav
+}
+
 /// Render the Primary Option Menu into `ui`.
 ///
 /// `calendar_offset` is the number of months relative to the current month
@@ -289,17 +393,7 @@ pub fn render(
     colours: PomColours,
     focused_pom_option: Option<usize>,
 ) -> PomRenderResult {
-    let now = Local::now();
-    let today_year = now.year();
-    let today_month = now.month();
-    let today_day = now.day();
-    let hour = now.hour();
-    let min = now.minute();
-
-    let (year, month) = offset_month(today_year, today_month, calendar_offset);
-    let is_current_month = year == today_year && month == today_month;
-    let doy = day_of_year(today_year, today_month, today_day);
-
+    // Calendar date computation now lives in `render_calendar` (shared path).
     let mut result = PomRenderResult::default();
 
     // Resolve semantic colours — PLACEHOLDER falls back to egui theme colour.
@@ -376,91 +470,17 @@ pub fn render(
 
             ui.add_space(32.0);
 
-            // Calendar — Validates: Requirement 13.7 (turquoise), 13.8 (today reversed)
-            ui.vertical(|ui| {
-                // Validates: Requirement 14.41 — header is < MonthName YYYY >
-                let header = format_calendar_header(MONTH_NAMES[(month - 1) as usize], year);
-                let header_resp = ui.add(
-                    egui::Label::new(
-                        egui::RichText::new(&header)
-                            .monospace()
-                            .strong()
-                            .color(calendar_fg),
-                    )
-                    .sense(egui::Sense::click()),
-                );
-                if header_resp.clicked() {
-                    if let Some(pos) = ui.input(|i| i.pointer.interact_pos()) {
-                        let rect = header_resp.rect;
-                        let sixth = rect.width() / 6.0;
-                        if pos.x < rect.left() + sixth {
-                            result.calendar_nav = Some(CalendarNav::Prev);
-                        } else if pos.x > rect.right() - sixth {
-                            result.calendar_nav = Some(CalendarNav::Next);
-                        }
-                    }
-                }
-
-                // Day-of-week header
-                // Validates: Requirement 14.1 -- selectable calendar text
-                ui.add(egui::SelectableLabel::new(
-                    false,
-                    egui::RichText::new("Su Mo Tu We Th Fr Sa")
-                        .monospace()
-                        .color(calendar_fg),
-                ));
-
-                // Calendar grid — build week rows, flush at col 7.
-                let first_wd = first_weekday_of_month(year, month);
-                let total_days = days_in_month(year, month);
-                let mut col = first_wd;
-                // Each entry: (day_number, is_today). day_number==0 means blank.
-                let mut row: Vec<(u32, bool)> = (0..first_wd).map(|_| (0, false)).collect();
-
-                for d in 1..=total_days {
-                    // Validates: Requirement 14.42 — highlight only in current month
-                    let is_today = is_current_month && d == today_day;
-                    row.push((d, is_today));
-                    col += 1;
-                    if col == 7 {
-                        render_calendar_row(
-                            ui,
-                            &row,
-                            calendar_fg,
-                            colours.today_bg,
-                            colours.today_fg,
-                            use_today_reverse,
-                        );
-                        row.clear();
-                        col = 0;
-                    }
-                }
-                if !row.is_empty() {
-                    render_calendar_row(
-                        ui,
-                        &row,
-                        calendar_fg,
-                        colours.today_bg,
-                        colours.today_fg,
-                        use_today_reverse,
-                    );
-                }
-
-                ui.add_space(4.0);
-                // Validates: Requirement 14.1 -- selectable time/date text
-                ui.add(egui::SelectableLabel::new(
-                    false,
-                    egui::RichText::new(format!("Time . . . . : {:02}:{:02}", hour, min))
-                        .monospace()
-                        .color(calendar_fg),
-                ));
-                ui.add(egui::SelectableLabel::new(
-                    false,
-                    egui::RichText::new(format!("Day of year. :   {}", doy))
-                        .monospace()
-                        .color(calendar_fg),
-                ));
-            });
+            // Calendar -- shared code path (Req 13.7/13.8, 14.41/14.42).
+            if let Some(nav) = render_calendar(
+                ui,
+                calendar_offset,
+                calendar_fg,
+                colours.today_bg,
+                colours.today_fg,
+                use_today_reverse,
+            ) {
+                result.calendar_nav = Some(nav);
+            }
         });
     });
 

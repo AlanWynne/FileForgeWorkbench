@@ -3921,6 +3921,7 @@ fn menu_option_command_matching_definition_id_dispatches() {
             group: None,
             target: None,
         }],
+        show_calendar: true,
     };
     let mw = MenuWorkspaceState {
         file_path: std::path::PathBuf::from("t.toml"),
