@@ -759,6 +759,15 @@ Modifications to existing behaviour that already works.
 
 | Phase (swap-command) | CR-NR-073 added -- Task Scheduler plugin; owner source docs recorded under docs/source-documents/; full requirements gate DEFERRED until after the existing plugins are complete (not scheduled now) |
 | Phase (theme-editor) | CR-NR-074 added -- file-backed user-editable themes: materialise built-ins (+ new "Default Legacy") to themes/, load the active theme file at startup to drive rendering, and add a simple Theme editor Context (copy/edit/save-as/set-active); wires the existing ff-theme loader/discovery/serialiser; gate authored |
+| Phase (theme-editor-fixes) | CR-CH-019 added -- built-in themes are code-only (Option 1): stop materialising built-ins to themes/ (revises CR-NR-074 Req 19.2); themes/ holds only user themes; list de-dups (built-in wins); Save on a built-in redirects to Save As; a built-in stays a permanent read-only baseline. Fixes duplicate theme list + the "saving un-defaults a default" ambiguity. Gate authored |
+
+### CR-CH-019 -- Built-in themes are code-only; themes/ holds only user themes (Option 1)
+- **Date/Phase**: Phase (theme-editor-fixes) (gate)
+- **Prompt**: "The list of themes has duplicates... i think the duplicates are a result of the Built in defaults are hardcoded and exist in both built in condition and in File configuration Version... Built in default could be saved but then they are no longer defaults? What do you think?" (owner chose Option 1.)
+- **Description**: Revises CR-NR-074 Req 19.2. The built-in palettes (Default Dark/Light/High Contrast, Legacy ISPF 3270, Default Legacy) are PERMANENT, read-only, compiled themes -- they are NOT materialised to `<User_Data_Dir>/themes/` on first launch. `themes/` holds ONLY user-created themes (from Copy / Save As). `list_all_themes` de-duplicates by name with the built-in winning, so no theme appears twice. To customise a built-in the user Copies it (creating a new named user theme); a built-in cannot be overwritten, so a default always stays a default. In the Theme editor, `Save` on a built-in is disallowed and redirects to `Save As`. `Reset` re-selects the compiled built-in (there is no file to restore). This eliminates the duplicate theme list and the "saving un-defaults a default" ambiguity the owner flagged. (Standard model: built-in themes are read-only baselines; edits always become new named user themes.)
+- **Affects**: `crates/ff-desktop` (`theme_defaults.rs` ensure_default_theme_files no longer writes built-ins; `resolve_startup_palette` uses compiled built-ins for built-in names; `shell/commands.rs` Save-on-built-in redirect; `theme_editor_panel` list de-dup), `crates/ff-theme` (`discovery::list_all_themes` de-dup by name, built-in wins). Revises `docs/specs/theme-and-appearance/requirements.md` Req 19.2 (+ 18.4, 20.5, 20.7) and adds a de-dup criterion.
+- **Status**: PENDING GATE
+- **Linked spec**: `docs/specs/theme-and-appearance/requirements.md` Req 18, 19, 20
 
 ### CR-CH-018 -- Unify the POM and Menu_Workspace into ONE config-driven menu renderer
 - **Date/Phase**: Phase (unified-menu-renderer) (gate)

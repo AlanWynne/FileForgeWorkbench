@@ -994,6 +994,23 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 
 ## Summary (current -- updated after full sub-project audit)
 
+### Phase (theme-editor-fixes) -- Built-ins code-only + Save As bug (CR-CH-019, B052)
+
+> Owner testing found duplicate themes (built-ins listed both compiled and as files)
+> and a no-op Save As. Option 1: built-ins are permanent read-only compiled themes,
+> never materialised to themes/; themes/ holds only user themes; list de-dups
+> (built-in wins); Save on a built-in redirects to Save As; reset re-selects the
+> compiled built-in. Plus fix the Save As action-clobber bug (B052). Gate authored.
+
+- [ ] TEF.1 ensure_default_theme_files: stop writing built-in files (only ensure themes/ exists) (Task 25.1; Req 19.2)
+- [ ] TEF.2 list_all_themes de-dup by name, built-in wins + is_builtin_theme helper (Task 25.2; Req 19.2a)
+- [ ] TEF.3 built-in name resolves to compiled palette (no file); user names read files (Task 25.3; Req 19.4)
+- [ ] TEF.4 Save on built-in -> Save As; reset built-in re-selects compiled palette (Task 25.4-25.5; Req 20.5/20.7/18.4)
+- [ ] TEF.5 Fix B052 Save As clobber: button action priority over token lost_focus EditToken (Task 25.6; Req 20.5)
+- [ ] TEF.6 Tests + TCR revise; verify.ps1 CLEAN; rebuild; commit+push (Task 25.7-25.8)
+
+---
+
 ### Phase (theme-editor) -- File-backed themes + Theme editor Context (CR-NR-074, theme-and-appearance Req 18-20)
 
 > Wires the existing (unwired) ff-theme loader/discovery/serialiser into ff-desktop so themes are

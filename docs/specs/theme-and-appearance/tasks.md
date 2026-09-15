@@ -429,3 +429,23 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configura
     - Covers: Requirement 20.8
   - [x] 24.9 Tests: THEMES opens the Context (+POM transform); EditToken updates working + live-previews; Reset loads built-in baseline; Reset non-built-in errors; panel unit tests (load_working, get/set, advisories, labels). Copy/Save/SaveAs/SetActive file writes + persistence fully automated via a `themes_dir_override` test seam (point_themes_at_temp): copy writes a file, save persists an edited colour to disk, save-as writes a new file, set-active swaps the palette + persists theme.active_name
     - Covers: Requirement 20.1-20.10
+
+## Phase (theme-editor-fixes) Tasks -- Built-ins code-only + Save As bug (CR-CH-019, B052)
+
+- [ ] 25. Built-in themes are code-only; de-dup list; fix Save As (Requirement 18.2/18.4, 19.2/19.2a, 20.5/20.7; CR-CH-019, B052)
+  - [ ] 25.1 `ensure_default_theme_files` no longer writes the built-in `.toml` files; it only ensures the (possibly empty) `themes/` directory exists
+    - Covers: Requirement 19.2
+  - [ ] 25.2 `ff_theme::discovery::list_all_themes` de-duplicates by name (built-in wins): skip any user file whose `name` matches a built-in name; add `is_builtin_theme(name)` helper (or reuse `BUILTIN_THEME_NAMES`)
+    - Covers: Requirement 19.2a
+  - [ ] 25.3 `resolve_startup_palette` / `load_theme_by_name`: a BUILT-IN name resolves to the compiled built-in palette (no file read); only USER names read `themes/<slug>.toml`
+    - Covers: Requirement 19.4
+  - [ ] 25.4 Theme editor Save on a built-in redirects to Save As (or is disabled with a message); Save/Save As only write user files; `write_theme_file` never targets a built-in
+    - Covers: Requirement 20.5
+  - [ ] 25.5 Reset for a built-in re-selects the compiled built-in palette into the working copy (no file restore); user-theme reset restores `base` colours
+    - Covers: Requirement 18.4, 20.7
+  - [ ] 25.6 Fix B052: the Theme editor render must not let a token field's `lost_focus` EditToken clobber an explicit button action in the same frame -- give button actions priority (or apply token commits to the working copy directly, separate from the button-action slot)
+    - Covers: Requirement 20.5 (Save As works); B052
+  - [ ] 25.7 Tests: no duplicate theme in `list_all_themes` when a built-in-named user file exists; built-in name resolves without a file (empty themes dir); Save on a built-in does not write a built-in file (redirects); Save As works after editing a token (B052 regression); reset built-in re-selects compiled palette
+    - Covers: Requirement 18.4, 19.2/19.2a, 20.5/20.7; B052
+  - [ ] 25.8 Update TCR (revise 18.2/18.4, 19.1/19.2 rows; add 19.2a; revise 20.5/20.7); verify.ps1 CLEAN; rebuild; commit+push
+    - Covers: Requirement 18-20 (revised)

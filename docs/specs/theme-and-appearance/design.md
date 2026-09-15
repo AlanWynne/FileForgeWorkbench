@@ -1600,3 +1600,46 @@ Mirrors the SettingsPanel/CommandConfigurator editor-Context recipe:
 - HIGH-touch files: `main.rs` (startup palette), `shell/update.rs` (hot-reload + first-launch), `shell/render_chrome.rs` (`set_theme` to also set `theme.active_name`), `ff-theme/src/defaults.rs` + `discovery.rs` (Default Legacy). Split implementation: (A) Default Legacy + fallback (ff-theme, low risk); (B) themes/ materialisation + startup file-load + hot-reload (behaviour-changing, needs careful config-compat tests); (C) Theme editor Context (additive). Each is a separate verifiable increment.
 - Keep the editor SIMPLE first (owner directive): a token list with hex edits + Copy/Save/Save As/Set Active/Reset. A graphical colour picker with swatches is explicitly out of scope for this CR and can be a later enhancement.
 - No contradiction with existing Req 1/5/7/9/14: this delta IMPLEMENTS them in the shell and adds 18-20. Req 1.3's dark fallback is superseded only on the file-backed path by Req 18.2 (Default Legacy), noted in 18.2.
+
+### Design Delta 13.7: Built-ins are code-only (CR-CH-019, Option 1)
+
+Owner decision after testing: the theme list showed duplicates and "Save As" was a
+no-op. Root causes: (1) built-ins were materialised to `themes/` AND returned by
+`builtin_themes()`, so `list_all_themes` = built-ins + every file listed each
+built-in twice; (2) saving a built-in file would silently "un-default" a default.
+Chosen fix (Option 1): built-ins are permanent, read-only, COMPILED themes; they
+are never written to disk. `themes/` holds only user themes.
+
+Changes to Section 13 (revises 13.2/13.4/13.5):
+
+- `ensure_default_theme_files` (13.4): DO NOT write the five built-in files.
+  Keep creating the (possibly empty) `themes/` directory on first launch so
+  Save/Save As have a target. The function becomes "ensure the themes directory
+  exists"; built-in `.toml` writing is removed.
+- `ff_theme::discovery::list_all_themes` (13.x): de-duplicate by NAME with the
+  built-in winning. Collect built-in names into a set; when scanning `themes/`,
+  skip any user file whose `name` matches a built-in name. Result: each name
+  appears once; a user cannot shadow a built-in name (Req 19.2a).
+- `resolve_startup_palette` / `load_theme_by_name` (13.3/13.4): when the active
+  name is a BUILT-IN name, return the compiled built-in palette directly (no file
+  read). Only USER names hit `themes/<slug>.toml`. A built-in name therefore
+  always resolves even with an empty `themes/`.
+- Theme editor Save (13.5, Req 20.5): when the selected theme is a built-in,
+  Save is redirected to Save As (prompt for a new user-theme name) or disabled
+  with a message. `write_theme_file` is only ever called for user themes.
+- Reset (Req 18.4/20.7): for a built-in, re-select the compiled built-in palette
+  into the working copy (no file restore). `reset_theme_file`'s file-write path
+  is retired for built-ins; a built-in reset is a pure in-memory re-select.
+- Copy (Req 20.4): unchanged and now the ONLY way to derive an editable theme
+  from a built-in -- it writes a new user file with a new name.
+
+Is-built-in test: compare the theme name against `ff_theme::discovery::BUILTIN_THEME_NAMES`
+(or a helper `ff_theme::is_builtin_theme(name)`), so the shell and the editor
+share one definition of "built-in".
+
+Migration note: users who already ran the previous build will have built-in
+`.toml` files in `themes/` (default-dark.toml, legacy.toml, etc.). With Option 1
+those files are ignored for listing (built-in name wins), so they no longer cause
+duplicates; they are harmless orphans. The implementation MAY optionally delete
+known built-in-named files on startup, but the de-dup rule already prevents the
+duplicate symptom, so cleanup is optional and out of scope for this CR.
