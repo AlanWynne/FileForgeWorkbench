@@ -501,6 +501,10 @@ pub struct WorkbenchShell {
     /// True when any modal dialog is open — suppresses the shell Tab-cycle and
     /// command-field focus steal so keystrokes reach the dialog's own widgets.
     modal_open: bool,
+    /// True when the RESET BARE confirmation dialog is open (CR-CH-021,
+    /// configuration-system Req 19.2). No configuration is archived or reset
+    /// until the user confirms.
+    reset_bare_confirm_open: bool,
     /// Key Configuration Dialog state.
     ///
     /// Validates: Requirement 20.1
@@ -728,6 +732,7 @@ impl WorkbenchShell {
             split_screen: None,
             scroll_field_text: "PAGE".to_string(),
             modal_open: false,
+            reset_bare_confirm_open: false,
             key_config_dialog: crate::key_config_dialog::KeyConfigDialog::new(),
             settings_panel: SettingsPanelState::new(),
             plugin_manager_panel: PluginManagerPanelState::new(),
@@ -990,6 +995,7 @@ mod external_adapter;
 mod helpers;
 mod render;
 mod render_chrome;
+mod reset_bare;
 mod target_dispatch;
 mod update;
 

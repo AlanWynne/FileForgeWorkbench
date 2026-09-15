@@ -1,29 +1,31 @@
-//! Default Menu_File content and first-launch creation.
+//! Compiled Recovery_Baseline menu content (menu-workspace Req 12, CR-CH-021).
 //!
-//! Provides the default content for `pom.toml` (12-option POM, Phase CV)
-//! and `settings.toml` (10-option Settings_Menu, Phase CW), plus first-launch
-//! creation via `ensure_default_menu_files()`.
+//! Built-in menus are CODE-ONLY: [`DEFAULT_POM_TOML`] and
+//! [`DEFAULT_SETTINGS_TOML`] are the barebones POM and Settings content used as
+//! the fallback when no valid user `menus/*.toml` exists. They are NEVER written
+//! to disk (revised Req 4.1/4.2, mirroring the themes code-only rule).
+//! [`ensure_menus_dir`] only creates the (possibly empty) `menus/` directory.
 //!
-//! Validates: Requirement 4.1, 4.2, 4.6 (menu-workspace)
+//! Validates: Requirement 4.1, 4.2 (revised), 4.6, 12 (menu-workspace)
 
 use std::path::Path;
 
 // === Default content ========================================================
 
-/// Default content for `menus/pom.toml`.
+/// Compiled Recovery_Baseline content for the POM (menu-workspace Req 12,
+/// CR-CH-021).
 ///
-/// Config-driven principle (menu-workspace Req 2.1e/2.1h, CR-CH-018): the POM is
-/// a data-driven Menu_Workspace. This default ships ONLY options whose command
-/// maps to built, testable functionality; options for unimplemented features
-/// (Utilities, Compilers, Terminals, Databases, Jobs, interactive Batch) are
-/// omitted and added back as they are built and tested. Selecting an option
-/// dispatches its `command` string -- there is no behaviour keyed to the key
-/// character or position.
+/// This is the CODE-ONLY barebones POM: it is NEVER written to disk (CR-CH-021
+/// revised Req 4.1). It is the fallback rendered when no valid user
+/// `menus/pom.toml` exists, and it is deliberately minimal so a user whose
+/// configuration is missing or corrupt can always reach Settings, Catalogs,
+/// Files, the event Log, and the Menus editor to rebuild or recover.
 ///
-/// The historical option keys (0/1/2/5/8/S) are retained so `=N` fastpaths and
-/// muscle memory keep working; `X` -> `RETURN` is the terminate action.
+/// Selecting an option dispatches its `command` string (config-driven, no
+/// behaviour keyed to the key character). A single group means no stray
+/// separator is drawn.
 ///
-/// Validates: Requirement 2.1e, 2.1g, 2.1h (menu-workspace); 7.4 (cv-requirements.md)
+/// Validates: Requirement 12.1, 12.2, 12.7 (menu-workspace)
 pub const DEFAULT_POM_TOML: &str = r#"title = "FileForge Workbench -- Primary Option Menu"
 
 [[options]]
@@ -45,21 +47,15 @@ description = "File Explorer -- Browse catalogs and files in a tree view"
 group = "Core"
 
 [[options]]
-key = "5"
-command = "MACROS"
-description = "Run and manage Lua macros"
+key = "L"
+command = "LOG"
+description = "Event Log -- view startup and runtime messages"
 group = "Core"
 
 [[options]]
-key = "8"
-command = "PLUGINS"
-description = "Vendor added plugins"
-group = "Core"
-
-[[options]]
-key = "S"
-command = "SEARCH"
-description = "Global search and replace across files"
+key = "M"
+command = "MENUS"
+description = "Menus editor -- create, change and save menus"
 group = "Core"
 
 [[options]]
@@ -69,104 +65,73 @@ description = "Return to the Primary Option Menu (exit when last)"
 group = "Core"
 "#;
 
-/// Default content for `menus/settings.toml` -- 10-option Settings_Menu (Phase CW).
+/// Compiled Recovery_Baseline content for the Settings menu (menu-workspace
+/// Req 12, CR-CH-021).
 ///
-/// Options E-X are the Namespaces group; option A is the All group.
-/// Each namespace option carries a `SETTINGS <namespace>` command that opens
-/// a filtered Settings_Namespace_View; option A opens the unfiltered flat list.
+/// CODE-ONLY barebones Settings: never written to disk. Fallback rendered when
+/// no valid user `menus/settings.toml` exists. Minimal set: the Theme editor,
+/// the Menus editor, and the browse-all-keys view -- enough to rebuild the rest.
 ///
-/// Validates: Requirement 9.1, 11.1, 11.4, 11.5 (cw-requirements.md)
+/// Validates: Requirement 12.1, 12.3, 12.7 (menu-workspace)
 pub const DEFAULT_SETTINGS_TOML: &str = r#"title = "Settings"
 
 [[options]]
-key = "E"
-command = "SETTINGS editor"
-description = "Text editing behaviour -- indentation, line endings, encoding"
-group = "Namespaces"
-
-[[options]]
 key = "T"
-command = "SETTINGS theme"
-description = "Appearance -- active theme, font size, OS dark/light follow"
-group = "Namespaces"
+command = "THEMES"
+description = "Theme editor -- copy, edit, save and select themes"
+group = "Settings"
 
 [[options]]
-key = "C"
-command = "SETTINGS catalog"
-description = "Default catalog roots for Mainframe and POSIX catalogs"
-group = "Namespaces"
-
-[[options]]
-key = "V"
-command = "SETTINGS vfs"
-description = "Virtual File System provider settings"
-group = "Namespaces"
-
-[[options]]
-key = "L"
-command = "SETTINGS logging"
-description = "Log level, output directory, file rotation"
-group = "Namespaces"
-
-[[options]]
-key = "K"
-command = "SETTINGS keymap"
-description = "Function key bindings and per-context key maps"
-group = "Namespaces"
-
-[[options]]
-key = "S"
-command = "SETTINGS session"
-description = "Session persistence, restore behaviour, recent files"
-group = "Namespaces"
-
-[[options]]
-key = "P"
-command = "SETTINGS plugin"
-description = "Plugin-specific configuration namespaces"
-group = "Namespaces"
-
-[[options]]
-key = "X"
-command = "SETTINGS accessibility"
-description = "Reduce motion, focus indicators, contrast settings"
-group = "Namespaces"
+key = "M"
+command = "MENUS"
+description = "Menus editor -- create, change and save menus"
+group = "Settings"
 
 [[options]]
 key = "A"
 command = "A"
 description = "Browse all configuration keys (unfiltered flat list)"
-group = "All""#;
+group = "Settings"
+"#;
+
+/// Build the compiled Recovery_Baseline POM `MenuFile` (menu-workspace Req 12).
+///
+/// Parses [`DEFAULT_POM_TOML`] so there is a SINGLE source of the compiled
+/// content (Req 12.7). Panics only on a programmer error (the constant failing
+/// to parse), which a unit test guards against.
+///
+/// Validates: Requirement 12.1, 12.2, 12.7
+pub fn recovery_pom_menu() -> crate::menu_workspace::MenuFile {
+    crate::menu_workspace::loader::parse_menu_str(DEFAULT_POM_TOML)
+        .expect("compiled Recovery_Baseline POM must parse")
+}
+
+/// Build the compiled Recovery_Baseline Settings `MenuFile` (menu-workspace
+/// Req 12). Parses [`DEFAULT_SETTINGS_TOML`] (single content source, Req 12.7).
+///
+/// Validates: Requirement 12.1, 12.3, 12.7
+pub fn recovery_settings_menu() -> crate::menu_workspace::MenuFile {
+    crate::menu_workspace::loader::parse_menu_str(DEFAULT_SETTINGS_TOML)
+        .expect("compiled Recovery_Baseline Settings menu must parse")
+}
 
 // === ensure_default_menu_files ==============================================
 
-/// Create `menus/pom.toml` and `menus/settings.toml` under `user_data_dir`
-/// if they do not already exist.
+/// Ensure the `menus/` directory exists under `user_data_dir` (creating it if
+/// absent), so a user has a place to author Menu_Files. The directory may be
+/// empty.
 ///
-/// Also creates the `menus/` directory if absent.
+/// CR-CH-021 (revised Req 4.1/4.2): built-in menus are CODE-ONLY -- this
+/// function NO LONGER writes `pom.toml`/`settings.toml`. The compiled
+/// Recovery_Baseline ([`recovery_pom_menu`] / [`recovery_settings_menu`]) is
+/// used at render time when no valid user file exists. This mirrors the themes
+/// code-only rule (`theme_defaults::ensure_default_theme_files`).
 ///
-/// Validates: Requirement 4.1, 4.2, 4.6
-pub fn ensure_default_menu_files(user_data_dir: &Path) {
+/// Validates: Requirement 4.1, 4.2 (revised), 4.6
+pub fn ensure_menus_dir(user_data_dir: &Path) {
     let menus_dir = user_data_dir.join("menus");
-    if let Err(_e) = std::fs::create_dir_all(&menus_dir) {
-        // Best-effort -- ignore errors (graceful degradation)
-        return;
-    }
-
-    write_if_absent(&menus_dir.join("pom.toml"), DEFAULT_POM_TOML);
-    write_if_absent(&menus_dir.join("settings.toml"), DEFAULT_SETTINGS_TOML);
-}
-
-/// Write `content` to `path` only when the file does not already exist.
-///
-/// Validates: Requirement 4.1, 4.2 -- does not overwrite existing files
-fn write_if_absent(path: &Path, content: &str) {
-    if path.exists() {
-        return;
-    }
-    if let Err(_e) = std::fs::write(path, content) {
-        // Best-effort -- ignore write errors (graceful degradation)
-    }
+    // Best-effort -- ignore errors (graceful degradation).
+    let _ = std::fs::create_dir_all(&menus_dir);
 }
 
 // === Tests ==================================================================
@@ -176,46 +141,76 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    // Validates: Requirement 4.1 -- pom.toml created when absent
-    #[test]
-    fn ensure_default_menu_files_creates_pom_toml() {
-        let dir = TempDir::new().expect("tempdir");
-        ensure_default_menu_files(dir.path());
-        assert!(dir.path().join("menus").join("pom.toml").exists());
-    }
-
-    // Validates: Requirement 4.2 -- settings.toml created when absent
-    #[test]
-    fn ensure_default_menu_files_creates_settings_toml() {
-        let dir = TempDir::new().expect("tempdir");
-        ensure_default_menu_files(dir.path());
-        assert!(dir.path().join("menus").join("settings.toml").exists());
-    }
-
     // Validates: Requirement 4.6 -- menus/ directory created automatically
     #[test]
-    fn ensure_default_menu_files_creates_menus_dir() {
+    fn ensure_menus_dir_creates_menus_dir() {
         let dir = TempDir::new().expect("tempdir");
         let menus_dir = dir.path().join("menus");
         assert!(!menus_dir.exists());
-        ensure_default_menu_files(dir.path());
+        ensure_menus_dir(dir.path());
         assert!(menus_dir.exists());
     }
 
-    // Validates: Requirement 4.1 -- does not overwrite existing pom.toml
+    // Validates: Requirement 4.1/4.2 (revised, CR-CH-021) -- built-in menus are
+    // CODE-ONLY; ensure_menus_dir never writes pom.toml/settings.toml.
     #[test]
-    fn ensure_default_menu_files_does_not_overwrite_existing() {
+    fn ensure_menus_dir_does_not_materialise_built_in_menus() {
+        let dir = TempDir::new().expect("tempdir");
+        ensure_menus_dir(dir.path());
+        let menus_dir = dir.path().join("menus");
+        assert!(
+            !menus_dir.join("pom.toml").exists(),
+            "pom.toml must NOT be materialised (menus are code-only, CR-CH-021)"
+        );
+        assert!(
+            !menus_dir.join("settings.toml").exists(),
+            "settings.toml must NOT be materialised (menus are code-only, CR-CH-021)"
+        );
+    }
+
+    // Validates: Requirement 4.2 (revised) -- a pre-existing user file is left
+    // untouched (ensure_menus_dir does not read or write menu files at all).
+    #[test]
+    fn ensure_menus_dir_leaves_existing_user_file_untouched() {
         let dir = TempDir::new().expect("tempdir");
         let menus_dir = dir.path().join("menus");
         std::fs::create_dir_all(&menus_dir).expect("create dir");
         let pom_path = menus_dir.join("pom.toml");
         std::fs::write(&pom_path, b"custom content").expect("write");
-        ensure_default_menu_files(dir.path());
+        ensure_menus_dir(dir.path());
         let content = std::fs::read_to_string(&pom_path).expect("read");
+        assert_eq!(content, "custom content", "user file must not be touched");
+    }
+
+    // Validates: Requirement 12.1, 12.2, 12.7 -- Recovery_Baseline POM parses
+    // from the single compiled source and has the barebones option set.
+    #[test]
+    fn recovery_pom_menu_has_barebones_options() {
+        let menu = recovery_pom_menu();
+        let keys: Vec<&str> = menu.options.iter().map(|o| o.key.as_str()).collect();
+        assert_eq!(keys, vec!["0", "1", "2", "L", "M", "X"]);
+        let commands: Vec<&str> = menu.options.iter().map(|o| o.command.as_str()).collect();
         assert_eq!(
-            content, "custom content",
-            "existing file must not be overwritten"
+            commands,
+            vec!["SETTINGS", "CATALOGS", "FILES", "LOG", "MENUS", "RETURN"]
         );
+        // Single group -> no stray separator boundary.
+        let groups: std::collections::BTreeSet<&str> = menu
+            .options
+            .iter()
+            .filter_map(|o| o.group.as_deref())
+            .collect();
+        assert_eq!(groups.len(), 1, "Recovery POM uses a single group");
+    }
+
+    // Validates: Requirement 12.1, 12.3, 12.7 -- Recovery_Baseline Settings.
+    #[test]
+    fn recovery_settings_menu_has_barebones_options() {
+        let menu = recovery_settings_menu();
+        let keys: Vec<&str> = menu.options.iter().map(|o| o.key.as_str()).collect();
+        assert_eq!(keys, vec!["T", "M", "A"]);
+        let commands: Vec<&str> = menu.options.iter().map(|o| o.command.as_str()).collect();
+        assert_eq!(commands, vec!["THEMES", "MENUS", "A"]);
     }
 
     // Validates: Requirement 7.4 (cv-requirements.md) -- DEFAULT_POM_TOML is valid TOML
@@ -225,10 +220,11 @@ mod tests {
         assert!(result.is_ok(), "DEFAULT_POM_TOML must be valid TOML");
     }
 
-    // Validates: Requirement 2.1h (menu-workspace) -- default POM ships only
-    // built+testable options (0/1/2/5/8/S + X terminate = 7).
+    // Validates: Requirement 12.2 (menu-workspace, CR-CH-021) -- the compiled
+    // Recovery_Baseline POM ships exactly the barebones option set whose commands
+    // the shell resolves by name.
     #[test]
-    fn default_pom_toml_has_only_built_testable_options() {
+    fn default_pom_toml_has_recovery_baseline_options() {
         let val: toml::Value = toml::from_str(DEFAULT_POM_TOML).expect("valid TOML");
         let options = val
             .get("options")
@@ -236,17 +232,16 @@ mod tests {
             .expect("options array");
         assert_eq!(
             options.len(),
-            7,
-            "DEFAULT_POM_TOML must contain only the 7 built+testable options"
+            6,
+            "Recovery_Baseline POM must contain exactly 6 options"
         );
-        // The commands must all be ones the shell resolves by name (Req 2.1h).
         let commands: Vec<&str> = options
             .iter()
             .filter_map(|o| o.get("command").and_then(|c| c.as_str()))
             .collect();
         assert_eq!(
             commands,
-            vec!["SETTINGS", "CATALOGS", "FILES", "MACROS", "PLUGINS", "SEARCH", "RETURN"],
+            vec!["SETTINGS", "CATALOGS", "FILES", "LOG", "MENUS", "RETURN"],
         );
     }
 
@@ -290,9 +285,10 @@ mod tests {
         );
     }
 
-    // Validates: Requirement 11.1 (cw-requirements.md) -- DEFAULT_SETTINGS_TOML has 10 options
+    // Validates: Requirement 12.3 (menu-workspace, CR-CH-021) -- Recovery_Baseline
+    // Settings has the barebones option set (T Themes / M Menus / A All).
     #[test]
-    fn default_settings_toml_has_10_options() {
+    fn default_settings_toml_has_recovery_baseline_options() {
         let val: toml::Value = toml::from_str(DEFAULT_SETTINGS_TOML).expect("valid TOML");
         let options = val
             .get("options")
@@ -300,9 +296,14 @@ mod tests {
             .expect("options array");
         assert_eq!(
             options.len(),
-            10,
-            "DEFAULT_SETTINGS_TOML must have exactly 10 options"
+            3,
+            "Recovery_Baseline Settings must have exactly 3 options"
         );
+        let commands: Vec<&str> = options
+            .iter()
+            .filter_map(|o| o.get("command").and_then(|c| c.as_str()))
+            .collect();
+        assert_eq!(commands, vec!["THEMES", "MENUS", "A"]);
     }
 
     // Validates: Requirement 11.1 (cw-requirements.md) -- title matches spec

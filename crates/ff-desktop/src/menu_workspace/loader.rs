@@ -123,6 +123,13 @@ struct RawMenuFile {
     /// Whether to draw the calendar panel (menu-workspace Req 1.8). Default true.
     #[serde(default = "default_true")]
     show_calendar: bool,
+    /// Group boundary style (menu-workspace Req 2.4/4a, CR-CH-021). Default
+    /// `space` (a blank line).
+    #[serde(default)]
+    group_separator: super::GroupSeparator,
+    /// Whether to render group header labels (menu-workspace Req 4b). Default false.
+    #[serde(default)]
+    group_headers: bool,
 }
 
 /// Raw TOML representation of a single option.
@@ -178,6 +185,8 @@ pub fn load_menu_file(path: &Path) -> Result<MenuFile, String> {
         title: raw.title,
         options,
         show_calendar: raw.show_calendar,
+        group_separator: raw.group_separator,
+        group_headers: raw.group_headers,
     })
 }
 
@@ -227,6 +236,8 @@ pub fn parse_menu_str(source: &str) -> Result<MenuFile, String> {
         title: raw.title,
         options,
         show_calendar: raw.show_calendar,
+        group_separator: raw.group_separator,
+        group_headers: raw.group_headers,
     })
 }
 
@@ -517,6 +528,40 @@ mode = "captured"
         );
     }
 
+    // Validates: Requirement 2.4/4a (CR-CH-021) -- group_separator defaults to
+    // Space when the key is absent.
+    #[test]
+    fn load_group_separator_defaults_to_space() {
+        let f = write_toml("title = \"Menu\"\n");
+        let menu = load_menu_file(f.path()).expect("load ok");
+        assert_eq!(menu.group_separator, super::super::GroupSeparator::Space);
+        assert!(!menu.group_headers, "group_headers defaults to false");
+    }
+
+    // Validates: Requirement 2.4/4a -- group_separator values parse from TOML.
+    #[test]
+    fn load_group_separator_values_parse() {
+        for (toml_val, expected) in [
+            ("line", super::super::GroupSeparator::Line),
+            ("space", super::super::GroupSeparator::Space),
+            ("none", super::super::GroupSeparator::None),
+        ] {
+            let f = write_toml(&format!(
+                "title = \"Menu\"\ngroup_separator = \"{toml_val}\"\n"
+            ));
+            let menu = load_menu_file(f.path()).expect("load ok");
+            assert_eq!(menu.group_separator, expected, "for value {toml_val}");
+        }
+    }
+
+    // Validates: Requirement 4b -- group_headers = true parses.
+    #[test]
+    fn load_group_headers_true_parses() {
+        let f = write_toml("title = \"Menu\"\ngroup_headers = true\n");
+        let menu = load_menu_file(f.path()).expect("load ok");
+        assert!(menu.group_headers);
+    }
+
     // === Option limits (Requirement 9) ==================================
 
     /// Build a MenuFile with `n` enabled options and `disabled` extra disabled
@@ -547,6 +592,8 @@ mode = "captured"
             title: "T".to_string(),
             options,
             show_calendar: true,
+            group_separator: super::super::GroupSeparator::default(),
+            group_headers: false,
         }
     }
 

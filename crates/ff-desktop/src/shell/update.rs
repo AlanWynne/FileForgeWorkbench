@@ -225,11 +225,14 @@ impl eframe::App for WorkbenchShell {
                 self.tabs.insert_pom_tab(&self.runtime);
             }
 
-            // Validates: menu-workspace Requirement 4.1, 4.2, 4.6 -- create default menu files.
+            // Validates: menu-workspace Requirement 4.1/4.2 (revised, CR-CH-021),
+            // 4.6 -- built-in menus are code-only; only ensure the (possibly
+            // empty) menus/ directory exists. The compiled Recovery_Baseline is
+            // used at render time when no valid user file exists.
             if let Some(_session) = &self.session {
                 if let Ok(mut udd) = ff_session::UserDataDir::resolve(None) {
                     let _ = udd.initialise();
-                    crate::menu_workspace::defaults::ensure_default_menu_files(udd.path());
+                    crate::menu_workspace::defaults::ensure_menus_dir(udd.path());
                 }
             }
 
@@ -896,6 +899,46 @@ impl eframe::App for WorkbenchShell {
                 self.pending_external = None;
                 self.modal_open = false;
                 self.open_error = Some("External execution cancelled.".to_string());
+            }
+        }
+
+        // RESET BARE confirmation dialog.
+        // Validates: configuration-system Requirement 19.2, 19.3, 19.6 (CR-CH-021)
+        if self.reset_bare_confirm_open {
+            self.modal_open = true;
+            let mut confirm_clicked = false;
+            let mut cancel_clicked = false;
+            egui::Window::new("Reset to barebones?")
+                .collapsible(false)
+                .resizable(false)
+                .show(ctx, |ui| {
+                    ui.label(
+                        "This archives your current configuration and reopens the \
+                         workbench in a minimal barebones state.",
+                    );
+                    ui.label(
+                        "Your menus, themes, session, config and catalogs are MOVED \
+                         (not deleted) to a timestamped folder under config-archive/ \
+                         so you can recover them later.",
+                    );
+                    ui.horizontal(|ui| {
+                        if ui.button("Confirm reset").clicked() {
+                            confirm_clicked = true;
+                        }
+                        if ui.button("Cancel").clicked() {
+                            cancel_clicked = true;
+                        }
+                    });
+                });
+            if confirm_clicked {
+                self.reset_bare_confirm_open = false;
+                self.modal_open = false;
+                self.execute_reset_bare();
+            } else if cancel_clicked {
+                // Req 19.3: cancelling leaves all configuration untouched.
+                self.reset_bare_confirm_open = false;
+                self.modal_open = false;
+                self.open_error = None;
             }
         }
 

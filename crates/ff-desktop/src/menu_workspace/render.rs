@@ -190,12 +190,36 @@ pub fn render_menu_workspace(
 
                     let mut last_group: Option<&str> = None;
                     for option in &menu.options {
-                        // Req 2.4 -- group separator
-                        let current_group = option.group.as_deref();
-                        if current_group != last_group && last_group.is_some() {
-                            ui.separator();
+                        // Req 2.4/4a (CR-CH-021) -- configurable group boundary.
+                        // Only between two DIFFERENT non-empty groups (never
+                        // before the first option, never for ungrouped options).
+                        let current_group = option.group.as_deref().filter(|g| !g.is_empty());
+                        let last_non_empty = last_group.filter(|g: &&str| !g.is_empty());
+                        if current_group.is_some()
+                            && last_non_empty.is_some()
+                            && current_group != last_non_empty
+                        {
+                            match menu.group_separator {
+                                crate::menu_workspace::GroupSeparator::Line => {
+                                    ui.separator();
+                                }
+                                crate::menu_workspace::GroupSeparator::Space => {
+                                    ui.add_space(8.0);
+                                }
+                                crate::menu_workspace::GroupSeparator::None => {}
+                            }
                         }
-                        last_group = current_group;
+                        // Req 4b -- optional group header when entering a new
+                        // non-empty group.
+                        if menu.group_headers
+                            && current_group.is_some()
+                            && current_group != last_non_empty
+                        {
+                            if let Some(g) = current_group {
+                                ui.colored_label(desc_col, egui::RichText::new(g).strong());
+                            }
+                        }
+                        last_group = option.group.as_deref();
 
                         // Three aligned columns, each in its POM semantic colour
                         // (Req 2.1a; 13.4 key, 13.5 command, 13.6 description).
@@ -265,6 +289,8 @@ mod tests {
                 title: "Test Menu".to_string(),
                 options,
                 show_calendar: true,
+                group_separator: crate::menu_workspace::GroupSeparator::default(),
+                group_headers: false,
             }),
             load_error: None,
             last_modified: None,

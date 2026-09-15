@@ -126,6 +126,8 @@ mod tests {
                 },
             ],
             show_calendar: true,
+            group_separator: crate::menu_workspace::GroupSeparator::default(),
+            group_headers: false,
         }
     }
 

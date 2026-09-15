@@ -59,6 +59,32 @@ pub struct MenuFile {
     ///
     /// Validates: menu-workspace Requirement 1.8 (CR-CH-018)
     pub show_calendar: bool,
+    /// Visual style drawn at a group boundary (between two different non-empty
+    /// groups). Defaults to [`GroupSeparator::Space`] (a blank line).
+    ///
+    /// Validates: menu-workspace Requirement 2.4, 4a (CR-CH-021)
+    pub group_separator: GroupSeparator,
+    /// When true, the first option of each non-empty group is preceded by a
+    /// header label showing the group name. Defaults to `false`.
+    ///
+    /// Validates: menu-workspace Requirement 4b (CR-CH-021)
+    pub group_headers: bool,
+}
+
+/// The visual style drawn at a boundary between two different non-empty option
+/// groups (menu-workspace Requirement 2.4/4a, CR-CH-021).
+///
+/// Deserialised from the lowercase strings `"line"`, `"space"`, `"none"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum GroupSeparator {
+    /// A horizontal rule (the pre-CR-CH-021 behaviour).
+    Line,
+    /// A blank line only (the default -- ISPF-style grouped list).
+    #[default]
+    Space,
+    /// No visual boundary.
+    None,
 }
 
 // === MenuWorkspaceState =====================================================

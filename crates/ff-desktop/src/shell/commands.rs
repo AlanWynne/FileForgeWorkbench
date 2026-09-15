@@ -346,6 +346,32 @@ impl WorkbenchShell {
             return;
         }
 
+        if upper == "MENUS" {
+            // Validates: menu-workspace Requirement 12.6 (CR-CH-021) -- the MENUS
+            // command name is reserved so the Recovery_Baseline `M` rows resolve.
+            // The Menus editor Workspace is delivered by a separate change
+            // request; until then, show a non-blocking notice and leave the
+            // current Workspace unchanged.
+            use crate::notification::{Notification, NotificationLevel};
+            if let Ok(mut queue) = self.notification_queue.lock() {
+                queue.push(Notification::new(
+                    NotificationLevel::Info,
+                    "Menus editor is not yet available.".to_string(),
+                    None,
+                ));
+            }
+            self.open_error = None;
+            return;
+        }
+
+        if upper == "RESET BARE" {
+            // Validates: configuration-system Requirement 19.1, 19.2 (CR-CH-021)
+            // -- open the confirmation dialog; take no action until confirmed.
+            self.reset_bare_confirm_open = true;
+            self.open_error = None;
+            return;
+        }
+
         if upper == "LOG" {
             // Validates: notification-system Requirement 2.1
             self.tabs.open_event_log_tab(&self.runtime);
@@ -1210,16 +1236,21 @@ impl WorkbenchShell {
         let limits = crate::menu_workspace::loader::option_limits_from_config(&self.config_handle);
         let mut state =
             crate::menu_workspace::MenuWorkspaceState::load_with_limits(&pom_path, limits);
-        // Config-driven fallback (menu-workspace Req 2.1h): if the on-disk
-        // pom.toml is missing or invalid, fall back to the built-in default POM
-        // content so the Home Context always has its options. This also keeps
-        // the POM deterministic in tests that do not seed a menus directory.
+        // Code-only fallback (menu-workspace Req 12.4/12.5, CR-CH-021): if no
+        // valid user pom.toml produced a menu, use the compiled Recovery_Baseline
+        // so the Home Context always has its options. A file that EXISTED but
+        // failed to PARSE gets a non-blocking notice; a merely absent file is
+        // silent. Keeps the POM deterministic in tests with no menus dir.
         if state.menu.is_none() {
-            if let Ok(menu) = crate::menu_workspace::loader::parse_menu_str(
-                crate::menu_workspace::defaults::DEFAULT_POM_TOML,
-            ) {
-                state.menu = Some(menu);
-                state.load_error = None;
+            let parse_error = state
+                .load_error
+                .as_deref()
+                .filter(|e| e.starts_with("Menu file error"))
+                .map(str::to_string);
+            state.menu = Some(crate::menu_workspace::defaults::recovery_pom_menu());
+            state.load_error = None;
+            if let Some(err) = parse_error {
+                self.notify_menu_fallback("pom.toml", &err);
             }
         }
         let idx = self.tabs.active_index();
@@ -1465,11 +1496,42 @@ impl WorkbenchShell {
         let limits = crate::menu_workspace::loader::option_limits_from_config(&self.config_handle);
         self.tabs
             .open_menu_workspace_here("settings", &menus_dir, limits, &self.runtime);
-        // Surface the load-error message when settings.toml is missing.
-        if let Some(mw) = self.tabs.active_tab().menu_workspace.as_ref() {
-            self.open_error = mw.load_error.clone();
-        } else {
-            self.open_error = None;
+        // CR-CH-021 Req 12.4/12.5: Settings is code-only. When no valid user
+        // settings.toml produced a menu, fall back to the compiled
+        // Recovery_Baseline. A file that EXISTED but failed to PARSE (load_error
+        // starting "Menu file error") gets a non-blocking notice; a merely
+        // ABSENT file ("Menu file not found") falls back silently.
+        let idx = self.tabs.active_index();
+        if let Some(tab) = self.tabs.tabs_mut().get_mut(idx) {
+            if let Some(mw) = tab.menu_workspace.as_mut() {
+                if mw.menu.is_none() {
+                    let parse_error = mw
+                        .load_error
+                        .as_deref()
+                        .filter(|e| e.starts_with("Menu file error"))
+                        .map(str::to_string);
+                    mw.menu = Some(crate::menu_workspace::defaults::recovery_settings_menu());
+                    mw.load_error = None;
+                    if let Some(err) = parse_error {
+                        self.notify_menu_fallback("settings.toml", &err);
+                    }
+                }
+            }
+        }
+        self.open_error = None;
+    }
+
+    /// Push a non-blocking notice that a user Menu_File was bypassed in favour of
+    /// the compiled Recovery_Baseline because it failed to parse (CR-CH-021
+    /// Req 12.5; startup-and-session Req 11.8).
+    pub(super) fn notify_menu_fallback(&self, file: &str, reason: &str) {
+        use crate::notification::{Notification, NotificationLevel};
+        if let Ok(mut queue) = self.notification_queue.lock() {
+            queue.push(Notification::new(
+                NotificationLevel::Warning,
+                format!("{file}: using built-in menu"),
+                Some(format!("{reason} -- your {file} was bypassed.")),
+            ));
         }
     }
 

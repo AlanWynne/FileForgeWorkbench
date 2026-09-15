@@ -1026,14 +1026,14 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 > config-archive/<timestamp>/ -> reopen barebones. Menus editor Workspace is a
 > SEPARATE CR. Gate authored.
 
-- [ ] MR.1 Stop materialising built-in menus; dir-ensure only; remove startup materialise call (Task 23.1; Req 4.1/4.2 revised)
-- [ ] MR.2 Recovery_Baseline content (barebones POM + Settings) as the single compiled source (Task 23.2; Req 12.1-12.3/12.7)
-- [ ] MR.3 Absent -> baseline (silent); corrupt -> baseline + notice; Settings fallback added (Task 23.3; Req 12.4/12.5, startup 11.8)
-- [ ] MR.4 Reserve MENUS command (notice until the editor CR) (Task 23.4; Req 12.6)
-- [ ] MR.5 Configurable group separator (space/line/none) + optional header (Task 23.5; Req 2.4/4a/4b)
-- [ ] MR.6 RESET BARE command + confirm dialog + archive helper + in-memory barebones reset + Settings affordance (Task 23.6-23.9; configuration-system Req 19)
-- [ ] MR.7 Home catalog regression guard (Task 23.10)
-- [ ] MR.8 Tests + TCR; verify.ps1 CLEAN; rebuild; commit+push (Task 23.11-23.12)
+- [x] MR.1 Stop materialising built-in menus; dir-ensure only; remove startup materialise call (Task 23.1; Req 4.1/4.2 revised)
+- [x] MR.2 Recovery_Baseline content (barebones POM + Settings) as the single compiled source (Task 23.2; Req 12.1-12.3/12.7)
+- [x] MR.3 Absent -> baseline (silent); corrupt -> baseline + notice; Settings fallback added (Task 23.3; Req 12.4/12.5, startup 11.8)
+- [x] MR.4 Reserve MENUS command (notice until the editor CR) (Task 23.4; Req 12.6)
+- [x] MR.5 Configurable group separator (space/line/none) + optional header (Task 23.5; Req 2.4/4a/4b)
+- [ ] MR.6 RESET BARE command + confirm dialog + archive helper + in-memory barebones reset + Settings affordance (Task 23.6-23.9; configuration-system Req 19) -- command/dialog/archive/reset DONE; the Settings BUTTON affordance (23.9) is deferred to the editor work (command is dispatchable by name meanwhile)
+- [x] MR.7 Home catalog regression guard (Task 23.10)
+- [x] MR.8 Tests + TCR; verify.ps1 CLEAN; rebuild; commit+push (Task 23.11-23.12)
 
 ---
 

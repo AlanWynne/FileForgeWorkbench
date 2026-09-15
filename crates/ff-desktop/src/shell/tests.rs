@@ -2141,18 +2141,20 @@ fn settings_end_from_namespace_view_returns_to_menu() {
 /// configured command (SEARCH) and opens Global Search.
 #[test]
 fn pom_key_s_routes_to_search() {
+    // CR-CH-021: the Recovery_Baseline POM no longer carries an `S` key; SEARCH
+    // remains reachable by name (and via any user menu that maps a key to it).
     let mut shell = make_shell();
-    shell.handle_command("S");
+    shell.handle_command("SEARCH");
     // Opening the search panel clears open_error (success path).
     assert!(
         shell.open_error.is_none(),
-        "key S must open Search without error, got: {:?}",
+        "SEARCH must open Search without error, got: {:?}",
         shell.open_error
     );
     use crate::tab_state::TabKind;
     let has_search =
         (0..shell.tabs.len()).any(|i| shell.tabs.tabs()[i].kind == TabKind::SearchResults);
-    assert!(has_search, "key S must open a Search Results tab");
+    assert!(has_search, "SEARCH must open a Search Results tab");
 }
 
 /// Validates: menu-workspace Req 2.1e/2.1i -- a POM key resolves to its
@@ -2616,8 +2618,10 @@ fn plugin_manager_tab_kind_exists() {
 #[test]
 fn option_8_routes_to_plugin_manager() {
     // Validates: plugin-manager-ui Requirement 1.1
+    // CR-CH-021: the Recovery_Baseline POM no longer carries an `8` key; PLUGINS
+    // remains reachable by name (and via any user menu that maps a key to it).
     let mut shell = make_shell();
-    shell.handle_command("8");
+    shell.handle_command("PLUGINS");
     use crate::tab_state::TabKind;
     assert_eq!(shell.tabs.active_tab().kind, TabKind::PluginManager);
 }
@@ -2695,14 +2699,16 @@ fn title_line_plugin_manager_shows_plugins() {
     assert_eq!(text, "[PLUGINS]");
 }
 
-/// Validates: plugin-manager-ui Requirement 1.1 -- =8 command routes to PluginManager.
+/// Validates: menu-workspace Req 2.1i -- a POM fastpath key resolves to its
+/// configured command and routes there.
 #[test]
 fn equals_8_command_routes_to_plugin_manager() {
-    // Validates: plugin-manager-ui Requirement 1.1
+    // CR-CH-021: the Recovery_Baseline POM key set is 0/1/2/L/M/X. Exercise the
+    // fastpath resolver against a baseline key (=1 -> CATALOGS -> FilesPanel).
     let mut shell = make_shell();
-    shell.handle_command("=8");
+    shell.handle_command("=1");
     use crate::tab_state::TabKind;
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::PluginManager);
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::FilesPanel);
 }
 
 // === Phase CO: Notification System (Requirement 1-4) =======================
@@ -3284,9 +3290,12 @@ fn macro_library_tab_kind_exists() {
 #[test]
 fn option_5_routes_to_macro_library() {
     // Validates: lua-macro-engine Requirement 12.1; menu-workspace Req 2.1e/2.1i
-    // -- POM key 5 resolves to its configured command (MACROS).
+    // -- a POM option resolves to its configured command (MACROS -> MacroLibrary).
+    // CR-CH-021: the Recovery_Baseline POM no longer carries a `5` key (it ships
+    // only 0/1/2/L/M/X); MACROS remains reachable by name and via any user menu
+    // that maps a key to it. This test exercises the command routing directly.
     let mut shell = make_shell();
-    shell.handle_command("5");
+    shell.handle_command("MACROS");
     use crate::tab_state::TabKind;
     assert_eq!(shell.tabs.active_tab().kind, TabKind::MacroLibrary);
 }
@@ -3301,14 +3310,16 @@ fn macros_command_routes_to_macro_library() {
     assert_eq!(shell.tabs.active_tab().kind, TabKind::MacroLibrary);
 }
 
-/// Validates: lua-macro-engine Requirement 12.1; menu-workspace Req 2.1i --
-/// =5 fastpath resolves the POM key to its command (MACROS) and routes.
+/// Validates: menu-workspace Req 2.1i -- a POM fastpath key resolves to its
+/// configured command and routes there.
 #[test]
 fn equals_5_command_routes_to_macro_library() {
+    // CR-CH-021: MACROS is no longer a baseline POM key; exercise the fastpath
+    // resolver against a baseline key (=2 -> FILES -> File Explorer).
     let mut shell = make_shell();
-    shell.handle_command("=5");
+    shell.handle_command("=2");
     use crate::tab_state::TabKind;
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::MacroLibrary);
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::FileExplorerPanel);
 }
 
 /// Validates: lua-macro-engine Requirement 12.1 -- MacroLibrary tab title is [MACROS].
@@ -3816,6 +3827,8 @@ fn menu_option_command_matching_definition_id_dispatches() {
             target: None,
         }],
         show_calendar: true,
+        group_separator: crate::menu_workspace::GroupSeparator::default(),
+        group_headers: false,
     };
     let mw = MenuWorkspaceState {
         file_path: std::path::PathBuf::from("t.toml"),
@@ -4446,6 +4459,68 @@ fn default_settings_toml_option_a_command_is_a() {
     assert_eq!(
         opt_a.command, "A",
         "option A must open the flat All-Settings list, not re-open the Settings_Menu"
+    );
+}
+
+// === CR-CH-021: menus code-only + Recovery Baseline + RESET BARE ===========
+
+// Validates: menu-workspace Requirement 12.6 -- MENUS shows a non-blocking
+// notice and leaves the current Workspace unchanged (reserved for the editor CR).
+#[test]
+fn menus_command_shows_not_yet_available_notice() {
+    let mut shell = make_shell();
+    let kind_before = shell.tabs.active_tab().kind;
+    let len_before = shell.tabs.len();
+    shell.handle_command("MENUS");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        kind_before,
+        "MENUS must not change the active Workspace"
+    );
+    assert_eq!(shell.tabs.len(), len_before, "MENUS must not open a tab");
+    let queue = shell.notification_queue.lock().expect("lock");
+    assert!(
+        queue
+            .entries()
+            .iter()
+            .any(|n| n.title.contains("Menus editor is not yet available")),
+        "MENUS must push the not-yet-available notice"
+    );
+}
+
+// Validates: configuration-system Requirement 19.2 -- RESET BARE opens the
+// confirmation dialog and does NOT act until confirmed.
+#[test]
+fn reset_bare_command_opens_confirmation_dialog() {
+    let mut shell = make_shell();
+    assert!(!shell.reset_bare_confirm_open);
+    shell.handle_command("RESET BARE");
+    assert!(
+        shell.reset_bare_confirm_open,
+        "RESET BARE must open the confirmation dialog"
+    );
+}
+
+// Validates: configuration-system Requirement 19.6 -- a confirmed RESET BARE
+// resets in-memory state: the POM (Home Context) is present and a valid palette
+// is active. (The archive step is unit-tested in reset_bare.rs against a temp
+// dir; here we exercise the in-memory reset path.)
+#[test]
+fn execute_reset_bare_reopens_home_context() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.execute_reset_bare();
+    assert!(
+        shell
+            .tabs
+            .tabs()
+            .iter()
+            .any(|t| t.kind == TabKind::PrimaryOptionMenu),
+        "after RESET BARE the Home Context (POM) must be present"
+    );
+    assert!(
+        !shell.palette.name.is_empty(),
+        "a valid palette must be active after RESET BARE"
     );
 }
 

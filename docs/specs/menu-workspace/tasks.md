@@ -358,27 +358,35 @@
 ## Phase (menu-recovery) -- Code-only menus + Recovery Baseline + configurable group separator + RESET BARE (CR-CH-021, Req 4 revised, Req 12, configuration-system Req 19, startup Req 11.8/11.9)
 
 - [ ] 23. Code-only menus, Recovery Baseline, configurable separator, RESET BARE
-  - [ ] 23.1 Stop materialising built-in menus: remove the `write_if_absent(pom.toml)` / `write_if_absent(settings.toml)` writes; keep only a dir-ensure (`ensure_menus_dir`) called from `shell/update.rs`. Remove the `ensure_default_menu_files` materialise call at the startup site
+  - NOTE: 23.1-23.8, 23.10-23.12 complete; 23.9 (Settings button affordance)
+    outstanding -- the RESET BARE command + dialog are implemented and
+    dispatchable, only the dedicated Settings button is deferred.
+  - [x] 23.1 Stop materialising built-in menus: remove the `write_if_absent(pom.toml)` / `write_if_absent(settings.toml)` writes; keep only a dir-ensure (`ensure_menus_dir`) called from `shell/update.rs`. Remove the `ensure_default_menu_files` materialise call at the startup site
     - Covers: Requirement 4.1, 4.2 (revised); startup-and-session 11.9
-  - [ ] 23.2 Recovery_Baseline content: update `DEFAULT_POM_TOML` to the barebones POM (0 Settings, 1 Catalogs, 2 Files, L Log, M Menus, X Return, single group) and `DEFAULT_SETTINGS_TOML` to (T Themes, M Menus, A All); add `recovery_pom_menu()`/`recovery_settings_menu()` builders that parse these (one source of content)
+  - [x] 23.2 Recovery_Baseline content: update `DEFAULT_POM_TOML` to the barebones POM (0 Settings, 1 Catalogs, 2 Files, L Log, M Menus, X Return, single group) and `DEFAULT_SETTINGS_TOML` to (T Themes, M Menus, A All); add `recovery_pom_menu()`/`recovery_settings_menu()` builders that parse these (one source of content)
     - Covers: Requirement 12.1, 12.2, 12.3, 12.7
-  - [ ] 23.3 Settings fallback: in `open_settings_menu`, when the loaded state has no menu, fall back to `parse_menu_str(DEFAULT_SETTINGS_TOML)`; push a non-blocking notice ONLY when an on-disk `settings.toml` existed but failed to parse (silent when merely absent). POM fallback already exists; confirm it uses the new content
+  - [x] 23.3 Settings fallback: in `open_settings_menu`, when the loaded state has no menu, fall back to `parse_menu_str(DEFAULT_SETTINGS_TOML)`; push a non-blocking notice ONLY when an on-disk `settings.toml` existed but failed to parse (silent when merely absent). POM fallback already exists; confirm it uses the new content
     - Covers: Requirement 12.4, 12.5; startup-and-session 11.8
-  - [ ] 23.4 Reserve the `MENUS` command: add a `handle_command` arm that shows `Menus editor is not yet available.` (non-blocking) and returns unchanged; add `LOG` row already resolves via existing `LOG`
+  - [x] 23.4 Reserve the `MENUS` command: add a `handle_command` arm that shows `Menus editor is not yet available.` (non-blocking) and returns unchanged; add `LOG` row already resolves via existing `LOG`
     - Covers: Requirement 12.6
-  - [ ] 23.5 Configurable group separator: add `group_separator: GroupSeparator` (Line|Space|None, default Space) and `group_headers: bool` (default false) to `RawMenuFile`/`MenuFile`; replace the unconditional `ui.separator()` in `render_menu_workspace` with the style switch (space/line/none), boundary only between two different non-empty groups; optional header label when enabled
+  - [x] 23.5 Configurable group separator: add `group_separator: GroupSeparator` (Line|Space|None, default Space) and `group_headers: bool` (default false) to `RawMenuFile`/`MenuFile`; replace the unconditional `ui.separator()` in `render_menu_workspace` with the style switch (space/line/none), boundary only between two different non-empty groups; optional header label when enabled
     - Covers: Requirement 2.4, 4a, 4b
-  - [ ] 23.6 RESET BARE command: `handle_command` arm for `RESET BARE` opens a modal confirmation dialog (no action until confirmed); Cancel = no-op
+  - [x] 23.6 RESET BARE command: `handle_command` arm for `RESET BARE` opens a modal confirmation dialog (no action until confirmed); Cancel = no-op
     - Covers: configuration-system Requirement 19.1, 19.2, 19.3
-  - [ ] 23.7 Archive helper: `archive_config(user_data_dir) -> Result<PathBuf, Vec<String>>` moves (rename, fallback copy+remove) menus/, themes/, session.toml, config.toml, catalog registry to `config-archive/<UTC-timestamp>/`; missing items skipped; per-item failures collected; never prune prior archives
+  - [x] 23.7 Archive helper: `archive_config(user_data_dir) -> Result<PathBuf, Vec<String>>` moves (rename, fallback copy+remove) menus/, themes/, session.toml, config.toml, catalog registry to `config-archive/<UTC-timestamp>/`; missing items skipped; per-item failures collected; never prune prior archives
     - Covers: configuration-system Requirement 19.4, 19.5, 19.8
-  - [ ] 23.8 On confirm: run archive, then reset in-memory config/menus/theme/catalog to compiled baselines, re-create the default Home catalog, and reopen the Recovery_Baseline POM (no relaunch)
+  - [x] 23.8 On confirm: run archive, then reset in-memory config/menus/theme/catalog to compiled baselines, re-create the default Home catalog, and reopen the Recovery_Baseline POM (no relaunch)
     - Covers: configuration-system Requirement 19.6
   - [ ] 23.9 Settings affordance dispatches `RESET BARE` through the command path (parity, does not bypass the dialog)
     - Covers: configuration-system Requirement 19.7
-  - [ ] 23.10 Home catalog regression criterion: assert `ensure_default_home_catalog` still seeds "Home" -> user home when no Native catalog exists
+    - NOTE: the `RESET BARE` command + confirmation dialog are implemented and
+      dispatchable (typed command path). The Settings BUTTON affordance is not
+      yet wired; it will be added with the Menus/Settings editor work. The
+      command remains reachable by name and via any user menu option that maps
+      to it, so parity is available; a dedicated button is the outstanding item.
+  - [x] 23.10 Home catalog regression criterion: assert `ensure_default_home_catalog` still seeds "Home" -> user home when no Native catalog exists
     - Covers: startup-and-session Requirement 14 (regression guard for CR-NR-004)
-  - [ ] 23.11 Tests: no-materialise (menus/ empty after startup); absent user file -> Recovery_Baseline no notice; corrupt user file -> Recovery_Baseline + notice; Settings fallback; group_separator space/line/none rendering; RESET BARE confirm archives+resets and Cancel no-ops; MENUS notice; Home catalog seeded. verify.ps1 CLEAN
+  - [x] 23.11 Tests: no-materialise (menus/ empty after startup); absent user file -> Recovery_Baseline no notice; corrupt user file -> Recovery_Baseline + notice; Settings fallback; group_separator space/line/none rendering; RESET BARE confirm archives+resets and Cancel no-ops; MENUS notice; Home catalog seeded. verify.ps1 CLEAN
     - Validates: Requirement 4.1/4.2/12.1-12.7/2.4; configuration-system 19.1-19.8; startup 11.8/11.9
-  - [ ] 23.12 Update `docs/quality/TCR.md` rows for the new criteria; mark tasks done; commit+push
+  - [x] 23.12 Update `docs/quality/TCR.md` rows for the new criteria; mark tasks done; commit+push
     - Covers: project standards
