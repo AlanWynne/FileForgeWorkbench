@@ -201,7 +201,13 @@ impl ThemeEditorState {
 ///
 /// Validates: theme-and-appearance Requirement 20.1, 20.3-20.9.
 pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAction {
+    // B052 fix: keep explicit button/selector actions separate from the token
+    // editor's commit-on-lost-focus action. A button click must WIN over a
+    // same-frame `lost_focus` EditToken (clicking a button makes the focused hex
+    // field lose focus that same frame). We return `action` when it is set, else
+    // fall back to `token_action`.
     let mut action = ThemeEditorAction::None;
+    let mut token_action = ThemeEditorAction::None;
 
     ui.vertical_centered(|ui| {
         ui.label(egui::RichText::new("Theme Editor").strong().size(14.0));
@@ -244,7 +250,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAct
         ui.horizontal(|ui| {
             ui.colored_label(
                 egui::Color32::from_rgb(0xC8, 0x8A, 0x00),
-                format!("Reset '{name}' to its built-in baseline? This overwrites the file."),
+                format!("Reset '{name}' to its baseline and discard edits?"),
             );
             if ui.button("Confirm reset").clicked() {
                 action = ThemeEditorAction::Reset(name.clone());
@@ -320,9 +326,11 @@ pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAct
                                         2.0,
                                         egui::Color32::from_rgba_premultiplied(c.r, c.g, c.b, c.a),
                                     );
-                                    // On commit (lost focus), emit an EditToken action.
+                                    // On commit (lost focus), record an EditToken
+                                    // in the SEPARATE token slot so it cannot
+                                    // clobber a same-frame button click (B052).
                                     if resp.lost_focus() {
-                                        action = ThemeEditorAction::EditToken(*token, c);
+                                        token_action = ThemeEditorAction::EditToken(*token, c);
                                     }
                                 }
                                 Err(_) => {
@@ -349,7 +357,13 @@ pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAct
         }
     }
 
-    action
+    // Button/selector actions take priority; a token commit only applies when no
+    // explicit action was triggered this frame (B052).
+    if action != ThemeEditorAction::None {
+        action
+    } else {
+        token_action
+    }
 }
 
 // === Tests ==================================================================

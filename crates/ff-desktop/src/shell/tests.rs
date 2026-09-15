@@ -4647,3 +4647,119 @@ fn theme_editor_set_active_swaps_palette_and_persists() {
         .unwrap_or_default();
     assert_eq!(persisted, "active-me");
 }
+
+// === CR-CH-019 / B052: built-ins code-only + Save As fix ====================
+
+/// Validates: B052 -- Save As works even when a hex token field had focus (the
+/// token's lost_focus EditToken must not clobber the SaveAs button action). Here
+/// we drive the shell directly (the render-level clobber is prevented by the
+/// action/token_action split); this asserts the SaveAs action writes a file.
+#[test]
+fn theme_editor_save_as_after_edit_writes_file_b052() {
+    use crate::theme_editor_panel::{EditableToken, ThemeEditorAction};
+    use ff_theme::ColourRGBA;
+    let mut shell = make_shell();
+    let _dir = point_themes_at_temp(&mut shell);
+    shell.handle_command("THEMES");
+    // Simulate: user edited a token, then clicked Save As. The editor emits the
+    // button action (SaveAs) this frame, not the token edit.
+    shell.apply_theme_editor_action(ThemeEditorAction::EditToken(
+        EditableToken::UiPanelBg,
+        ColourRGBA::rgb(10, 20, 30),
+    ));
+    shell.apply_theme_editor_action(ThemeEditorAction::SaveAs("after-edit".to_string()));
+    let themes = shell.themes_dir_override.clone().unwrap();
+    assert!(
+        themes.join("after-edit.toml").exists(),
+        "Save As must write the file even after a token edit"
+    );
+}
+
+/// Validates: Requirement 19.2 (CR-CH-019) -- opening the Theme Editor does not
+/// materialise built-in theme files; the themes dir holds only user themes.
+#[test]
+fn theme_editor_does_not_materialise_builtins() {
+    let mut shell = make_shell();
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    crate::theme_defaults::ensure_default_theme_files(dir.path());
+    shell.themes_dir_override = Some(dir.path().join("themes"));
+    shell.handle_command("THEMES");
+    let themes = dir.path().join("themes");
+    for slug in ["default-dark", "legacy", "default-legacy"] {
+        assert!(
+            !themes.join(format!("{slug}.toml")).exists(),
+            "built-in {slug}.toml must NOT be materialised"
+        );
+    }
+}
+
+/// Validates: Requirement 19.2a (CR-CH-019) -- the editor's available-themes
+/// list contains no duplicates and lists each built-in exactly once.
+#[test]
+fn theme_editor_list_has_no_duplicates() {
+    let mut shell = make_shell();
+    let _dir = point_themes_at_temp(&mut shell);
+    // Add a user theme, then copy a built-in (also a user theme now).
+    shell.handle_command("THEMES");
+    shell.apply_theme_editor_action(crate::theme_editor_panel::ThemeEditorAction::Copy(
+        "mine".to_string(),
+    ));
+    // Re-open to refresh the list.
+    shell.handle_command("THEMES");
+    let list = &shell.theme_editor_panel.available;
+    let mut sorted = list.clone();
+    sorted.sort();
+    let total = sorted.len();
+    sorted.dedup();
+    assert_eq!(
+        sorted.len(),
+        total,
+        "theme list must have no duplicates: {list:?}"
+    );
+    // The five built-ins each appear exactly once.
+    for b in [
+        "Default Dark",
+        "Default Light",
+        "Default High Contrast",
+        "Legacy (ISPF 3270)",
+        "Default Legacy",
+    ] {
+        assert_eq!(
+            list.iter().filter(|n| n.as_str() == b).count(),
+            1,
+            "built-in '{b}' must appear exactly once"
+        );
+    }
+}
+
+/// Validates: Requirement 20.5 (CR-CH-019) -- Save on a built-in does not write
+/// a built-in file; with no new name it surfaces a guiding message.
+#[test]
+fn theme_editor_save_on_builtin_does_not_write_builtin() {
+    use crate::theme_editor_panel::ThemeEditorAction;
+    let mut shell = make_shell();
+    let _dir = point_themes_at_temp(&mut shell);
+    shell.handle_command("THEMES");
+    // The editor opens with the active theme selected (a built-in in the default
+    // config). Save with an empty name buffer must not write a built-in file and
+    // must surface a message.
+    let selected = shell.theme_editor_panel.selected.clone().unwrap();
+    if ff_theme::is_builtin_theme(&selected) {
+        shell.theme_editor_panel.name_buffer.clear();
+        shell.apply_theme_editor_action(ThemeEditorAction::Save);
+        let themes = shell.themes_dir_override.clone().unwrap();
+        assert!(
+            !themes
+                .join(format!(
+                    "{}.toml",
+                    crate::theme_defaults::theme_slug(&selected)
+                ))
+                .exists(),
+            "Save must not write a built-in file"
+        );
+        assert!(
+            shell.theme_editor_panel.error.is_some(),
+            "Save on a built-in with no new name must guide the user"
+        );
+    }
+}

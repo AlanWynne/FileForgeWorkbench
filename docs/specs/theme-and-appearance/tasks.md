@@ -432,20 +432,20 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configura
 
 ## Phase (theme-editor-fixes) Tasks -- Built-ins code-only + Save As bug (CR-CH-019, B052)
 
-- [ ] 25. Built-in themes are code-only; de-dup list; fix Save As (Requirement 18.2/18.4, 19.2/19.2a, 20.5/20.7; CR-CH-019, B052)
-  - [ ] 25.1 `ensure_default_theme_files` no longer writes the built-in `.toml` files; it only ensures the (possibly empty) `themes/` directory exists
+- [x] 25. Built-in themes are code-only; de-dup list; fix Save As (Requirement 18.2/18.4, 19.2/19.2a, 20.5/20.7; CR-CH-019, B052)
+  - [x] 25.1 `ensure_default_theme_files` no longer writes built-in `.toml` files; only ensures the (possibly empty) `themes/` directory exists
     - Covers: Requirement 19.2
-  - [ ] 25.2 `ff_theme::discovery::list_all_themes` de-duplicates by name (built-in wins): skip any user file whose `name` matches a built-in name; add `is_builtin_theme(name)` helper (or reuse `BUILTIN_THEME_NAMES`)
+  - [x] 25.2 `ff_theme::discovery::list_all_themes` de-duplicates by name (built-in wins); added `is_builtin_theme(name)` helper (exported)
     - Covers: Requirement 19.2a
-  - [ ] 25.3 `resolve_startup_palette` / `load_theme_by_name`: a BUILT-IN name resolves to the compiled built-in palette (no file read); only USER names read `themes/<slug>.toml`
+  - [x] 25.3 `load_theme_by_name`: a BUILT-IN name resolves to the compiled palette (no file read) via `builtin_palette_by_name`; only USER names read `themes/<slug>.toml`
     - Covers: Requirement 19.4
-  - [ ] 25.4 Theme editor Save on a built-in redirects to Save As (or is disabled with a message); Save/Save As only write user files; `write_theme_file` never targets a built-in
+  - [x] 25.4 Theme editor Save on a built-in redirects to Save As (uses the typed name, else surfaces a guiding message); Save/Save As only write user files
     - Covers: Requirement 20.5
-  - [ ] 25.5 Reset for a built-in re-selects the compiled built-in palette into the working copy (no file restore); user-theme reset restores `base` colours
+  - [x] 25.5 Reset for a built-in re-selects the compiled palette into the working copy (no file); user-theme reset reloads the saved file (`reset_theme_reselect`)
     - Covers: Requirement 18.4, 20.7
-  - [ ] 25.6 Fix B052: the Theme editor render must not let a token field's `lost_focus` EditToken clobber an explicit button action in the same frame -- give button actions priority (or apply token commits to the working copy directly, separate from the button-action slot)
+  - [x] 25.6 Fixed B052: render splits `action` (buttons/selectors) from `token_action` (token lost_focus EditToken); button actions take priority, so Save As is no longer clobbered
     - Covers: Requirement 20.5 (Save As works); B052
-  - [ ] 25.7 Tests: no duplicate theme in `list_all_themes` when a built-in-named user file exists; built-in name resolves without a file (empty themes dir); Save on a built-in does not write a built-in file (redirects); Save As works after editing a token (B052 regression); reset built-in re-selects compiled palette
+  - [x] 25.7 Tests: de-dup (built-in-named user file ignored, `is_builtin_theme`); built-in resolves without a file; editor does not materialise built-ins; list has no duplicates; Save on built-in doesn't write a built-in; Save As after edit writes the file (B052 regression)
     - Covers: Requirement 18.4, 19.2/19.2a, 20.5/20.7; B052
-  - [ ] 25.8 Update TCR (revise 18.2/18.4, 19.1/19.2 rows; add 19.2a; revise 20.5/20.7); verify.ps1 CLEAN; rebuild; commit+push
+  - [x] 25.8 Updated TCR (18.2/19.1/19.2/19.2a/20.5/20.7); verify.ps1 CLEAN; rebuilt binary
     - Covers: Requirement 18-20 (revised)

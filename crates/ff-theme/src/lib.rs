@@ -89,7 +89,9 @@ pub use design_tokens::{
     AnimationDef, AnimationLevel, AnimationScale, BorderRadiusScale, DesignTokens, RadiusLevel,
     ShadowDef, ShadowLevel, ShadowScale, SpacingLevel, SpacingScale,
 };
-pub use discovery::{builtin_themes, export_theme, list_all_themes, scan_themes_dir, ThemeInfo};
+pub use discovery::{
+    builtin_themes, export_theme, is_builtin_theme, list_all_themes, scan_themes_dir, ThemeInfo,
+};
 pub use element::Element;
 pub use error::ThemeError;
 pub use event::ThemeEvent;

@@ -78,13 +78,33 @@ pub fn scan_themes_dir(themes_dir: &Path) -> Result<Vec<ThemeInfo>, ThemeError> 
     Ok(infos)
 }
 
-/// Return all available themes: built-ins first, then user-created (sorted by name).
+/// True when `name` is one of the compiled built-in theme names. Built-ins are
+/// read-only and code-only; a user theme cannot share a built-in name in the
+/// available-themes list (theme-and-appearance Req 19.2a, CR-CH-019).
+pub fn is_builtin_theme(name: &str) -> bool {
+    BUILTIN_THEME_NAMES.contains(&name)
+}
+
+/// Return all available themes: the compiled built-ins first, then user-created
+/// themes from `themes_dir`, DE-DUPLICATED by name with the built-in winning.
+///
+/// A user `.toml` whose `name` matches a built-in is ignored for listing (a user
+/// cannot shadow a built-in name). No theme appears more than once.
 ///
 /// Does not fail if the themes directory is absent — returns only built-ins.
+///
+/// Validates: theme-and-appearance Requirement 19.2a (CR-CH-019)
 pub fn list_all_themes(themes_dir: &Path) -> Vec<ThemeInfo> {
     let mut all = builtin_themes();
+    let mut seen: std::collections::HashSet<String> = all.iter().map(|t| t.name.clone()).collect();
     if let Ok(user) = scan_themes_dir(themes_dir) {
-        all.extend(user);
+        for info in user {
+            // Skip a user theme whose name collides with a built-in or another
+            // already-listed user theme (built-in / first-seen wins).
+            if seen.insert(info.name.clone()) {
+                all.push(info);
+            }
+        }
     }
     all
 }
@@ -223,9 +243,48 @@ mod tests {
         let themes = list_all_themes(dir.path());
         assert_eq!(themes.len(), 6); // 5 built-in (incl. Default Legacy) + 1 user
         assert!(themes.iter().any(|t| t.name == "Custom" && !t.is_builtin));
+        // No theme appears more than once (Req 19.2a).
+        let mut names: Vec<&str> = themes.iter().map(|t| t.name.as_str()).collect();
+        names.sort_unstable();
+        let unique = names.len();
+        names.dedup();
+        assert_eq!(names.len(), unique, "no duplicate theme names");
         assert!(themes
             .iter()
             .any(|t| t.name == "Default Dark" && t.is_builtin));
+    }
+
+    // Validates: Requirement 19.2a (CR-CH-019) -- a user file whose name matches
+    // a built-in is ignored for listing (built-in wins); no duplicate appears.
+    #[test]
+    fn list_all_themes_dedups_builtin_named_user_file() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(
+            dir.path().join("legacy.toml"),
+            "name = \"Default Legacy\"\n[editor]\nbackground = \"#123456\"\n",
+        )
+        .unwrap();
+        let themes = list_all_themes(dir.path());
+        let matches: Vec<&ThemeInfo> = themes
+            .iter()
+            .filter(|t| t.name == "Default Legacy")
+            .collect();
+        assert_eq!(matches.len(), 1, "built-in name must not be duplicated");
+        assert!(
+            matches[0].is_builtin,
+            "the built-in entry wins over the user file"
+        );
+        assert_eq!(themes.len(), 5, "shadowing user file adds nothing");
+    }
+
+    // Validates: Requirement 19.2a -- is_builtin_theme identifies built-in names.
+    #[test]
+    fn is_builtin_theme_identifies_builtins() {
+        assert!(is_builtin_theme("Default Dark"));
+        assert!(is_builtin_theme("Legacy (ISPF 3270)"));
+        assert!(is_builtin_theme("Default Legacy"));
+        assert!(!is_builtin_theme("My Custom Theme"));
+        assert!(!is_builtin_theme(""));
     }
 
     #[test]

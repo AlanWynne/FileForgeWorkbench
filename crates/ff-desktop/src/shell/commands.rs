@@ -1366,7 +1366,19 @@ impl WorkbenchShell {
                     self.theme_editor_panel.selected.clone(),
                     self.theme_editor_panel.working.clone(),
                 ) {
-                    if let Err(e) = self.write_theme_file(&name, &p) {
+                    // CR-CH-019: a built-in is read-only and code-only -- Save
+                    // redirects to Save As. Use the typed new name if present,
+                    // else guide the user to enter one.
+                    if ff_theme::is_builtin_theme(&name) {
+                        let new_name = self.theme_editor_panel.name_buffer.trim().to_string();
+                        if new_name.is_empty() {
+                            self.theme_editor_panel.error = Some(format!(
+                                "'{name}' is a built-in theme and cannot be overwritten. Enter a new name and use Save As (or Copy) to keep your changes."
+                            ));
+                        } else {
+                            self.apply_theme_editor_action(A::SaveAs(new_name));
+                        }
+                    } else if let Err(e) = self.write_theme_file(&name, &p) {
                         self.theme_editor_panel.error = Some(e);
                     } else {
                         self.theme_editor_panel.error = None;
@@ -1390,8 +1402,9 @@ impl WorkbenchShell {
                 self.set_active_theme(&name);
             }
             A::Reset(name) => {
-                // Restore the built-in baseline for this theme (Req 20.7/18.4).
-                self.reset_theme_file(&name);
+                // Re-select the baseline for this theme (Req 20.7/18.4). For a
+                // built-in this re-selects the compiled palette (no file write).
+                self.reset_theme_reselect(&name);
             }
         }
     }
@@ -1406,29 +1419,26 @@ impl WorkbenchShell {
         std::fs::write(&path, toml).map_err(|e| format!("could not write theme '{name}': {e}"))
     }
 
-    /// Reset a theme's file to its built-in baseline (Requirement 18.4 / 20.7).
-    /// For a built-in name, writes the compiled palette; otherwise reports an error.
-    fn reset_theme_file(&mut self, name: &str) {
-        let builtin = match name {
-            "Default Dark" => Some(ff_theme::defaults::dark_palette()),
-            "Default Light" => Some(ff_theme::defaults::light_palette()),
-            "Default High Contrast" => Some(ff_theme::defaults::high_contrast_palette()),
-            "Legacy (ISPF 3270)" => Some(ff_theme::defaults::legacy_palette()),
-            "Default Legacy" => Some(ff_theme::defaults::default_legacy_palette()),
-            _ => None,
-        };
-        match builtin {
-            Some(p) => {
-                if let Err(e) = self.write_theme_file(name, &p) {
-                    self.theme_editor_panel.error = Some(e);
-                } else {
-                    self.theme_editor_panel.load_working(name, p);
-                }
-            }
+    /// Reset a theme to its baseline (Requirement 18.4 / 20.7; CR-CH-019).
+    /// For a BUILT-IN name, re-selects the compiled built-in palette into the
+    /// working copy -- no file is written (built-ins are code-only). For a user
+    /// theme with a resolvable `base`, restores the base colours; otherwise
+    /// reports that there is no baseline to reset to.
+    fn reset_theme_reselect(&mut self, name: &str) {
+        if let Some(p) = crate::theme_defaults::builtin_palette_by_name(name) {
+            // Built-in: pure in-memory re-select, no file touched.
+            self.theme_editor_panel.load_working(name, p);
+            return;
+        }
+        // User theme: reload from disk (discards unsaved edits). A future
+        // enhancement could restore from a declared `base`; for now reloading
+        // the saved file is the baseline for a user theme.
+        let themes_dir = self.themes_dir();
+        match crate::theme_defaults::load_theme_by_name(name, &themes_dir) {
+            Some(p) => self.theme_editor_panel.load_working(name, p),
             None => {
-                self.theme_editor_panel.error = Some(format!(
-                    "'{name}' has no built-in baseline; reset is only available for built-in themes"
-                ));
+                self.theme_editor_panel.error =
+                    Some(format!("'{name}' has no saved baseline to reset to"));
             }
         }
     }

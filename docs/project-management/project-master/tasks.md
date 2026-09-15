@@ -1002,12 +1002,12 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 > (built-in wins); Save on a built-in redirects to Save As; reset re-selects the
 > compiled built-in. Plus fix the Save As action-clobber bug (B052). Gate authored.
 
-- [ ] TEF.1 ensure_default_theme_files: stop writing built-in files (only ensure themes/ exists) (Task 25.1; Req 19.2)
-- [ ] TEF.2 list_all_themes de-dup by name, built-in wins + is_builtin_theme helper (Task 25.2; Req 19.2a)
-- [ ] TEF.3 built-in name resolves to compiled palette (no file); user names read files (Task 25.3; Req 19.4)
-- [ ] TEF.4 Save on built-in -> Save As; reset built-in re-selects compiled palette (Task 25.4-25.5; Req 20.5/20.7/18.4)
-- [ ] TEF.5 Fix B052 Save As clobber: button action priority over token lost_focus EditToken (Task 25.6; Req 20.5)
-- [ ] TEF.6 Tests + TCR revise; verify.ps1 CLEAN; rebuild; commit+push (Task 25.7-25.8)
+- [x] TEF.1 ensure_default_theme_files: stops writing built-in files (only ensures themes/ exists) (Task 25.1; Req 19.2)
+- [x] TEF.2 list_all_themes de-dup by name, built-in wins + is_builtin_theme/builtin_palette_by_name helpers (Task 25.2; Req 19.2a)
+- [x] TEF.3 built-in name resolves to compiled palette (no file); user names read files (Task 25.3; Req 19.4)
+- [x] TEF.4 Save on built-in -> Save As; reset built-in re-selects compiled palette (Task 25.4-25.5; Req 20.5/20.7/18.4)
+- [x] TEF.5 Fixed B052 Save As clobber: button action priority over token lost_focus EditToken (Task 25.6; Req 20.5)
+- [x] TEF.6 Tests + TCR revised; verify.ps1 CLEAN; binary rebuilt (Task 25.7-25.8)
 
 ---
 

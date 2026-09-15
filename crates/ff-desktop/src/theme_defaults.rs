@@ -11,21 +11,6 @@ use std::path::{Path, PathBuf};
 
 use ff_theme::ThemePalette;
 
-/// The built-in palettes that are materialised to `themes/` on first launch,
-/// paired with their on-disk file slug (without extension).
-///
-/// Validates: Requirement 19.2
-fn builtin_theme_files() -> Vec<(&'static str, ThemePalette)> {
-    use ff_theme::defaults;
-    vec![
-        ("default-dark", defaults::dark_palette()),
-        ("default-light", defaults::light_palette()),
-        ("default-high-contrast", defaults::high_contrast_palette()),
-        ("legacy", defaults::legacy_palette()),
-        ("default-legacy", defaults::default_legacy_palette()),
-    ]
-}
-
 /// Convert a theme NAME to its on-disk file slug (lowercase, spaces/parens/
 /// punctuation collapsed to single hyphens). E.g. `"Legacy (ISPF 3270)"` ->
 /// `"legacy-ispf-3270"`, `"Default Legacy"` -> `"default-legacy"`.
@@ -50,25 +35,18 @@ pub fn theme_slug(name: &str) -> String {
     slug
 }
 
-/// Create `<user_data_dir>/themes/` if absent and write each built-in palette
-/// as a `.toml` file, without overwriting a file that already exists (the user
-/// may have edited it). Best-effort: errors are ignored (graceful degradation),
-/// mirroring `menu_workspace::defaults::ensure_default_menu_files`.
+/// Ensure `<user_data_dir>/themes/` exists (creating it if absent) so the Theme
+/// editor has a target for user themes. The directory may be empty.
 ///
-/// Validates: Requirement 19.1, 19.2
+/// CR-CH-019 (Option 1): the built-in palettes are permanent, read-only, COMPILED
+/// themes and are NOT materialised to disk. `themes/` holds ONLY user themes
+/// (created via Copy / Save As). This eliminates the duplicate theme list and the
+/// "saving a built-in un-defaults it" ambiguity. Best-effort; errors are ignored.
+///
+/// Validates: Requirement 19.1, 19.2 (revised, CR-CH-019)
 pub fn ensure_default_theme_files(user_data_dir: &Path) {
     let themes_dir = user_data_dir.join("themes");
-    if std::fs::create_dir_all(&themes_dir).is_err() {
-        return;
-    }
-    for (slug, palette) in builtin_theme_files() {
-        let path = themes_dir.join(format!("{slug}.toml"));
-        if path.exists() {
-            continue;
-        }
-        let toml = ff_theme::serialiser::serialise(&palette);
-        let _ = std::fs::write(path, toml);
-    }
+    let _ = std::fs::create_dir_all(&themes_dir);
 }
 
 /// Resolve the startup palette from configuration and the themes directory.
@@ -116,31 +94,44 @@ pub fn resolve_startup_palette(
 /// Load a theme by NAME: resolve to `themes/<slug>.toml` and parse it. Returns
 /// `None` if the file is missing or invalid (caller decides the fallback).
 ///
-/// The `VisualMode` for the loader is inferred from the built-in of the same
-/// name when known, else Dark (the loader fills missing tokens from the mode's
-/// built-in default).
+/// A built-in name returns the compiled palette (no file read); a user theme is
+/// loaded from its file with Dark as the base mode (the loader fills missing
+/// tokens from the mode default).
 ///
 /// Validates: Requirement 19.3, 19.4
 pub fn load_theme_by_name(name: &str, themes_dir: &Path) -> Option<ThemePalette> {
+    // CR-CH-019 (Option 1): a built-in name resolves to the compiled palette --
+    // there is no file to read (built-ins are code-only). Only user themes are
+    // read from `themes/<slug>.toml`.
+    if let Some(p) = builtin_palette_by_name(name) {
+        return Some(p);
+    }
     let slug = theme_slug(name);
     let path = themes_dir.join(format!("{slug}.toml"));
     let source = std::fs::read_to_string(&path).ok()?;
-    let mode = mode_for_builtin_name(name);
-    ff_theme::loader::load_from_toml(&source, mode).ok()
+    // User themes may declare a `base`; the loader fills missing tokens from the
+    // mode default. Default to Dark mode for user themes without a known mode.
+    ff_theme::loader::load_from_toml(&source, ff_theme::mode::VisualMode::Dark).ok()
+}
+
+/// The compiled built-in palette for a built-in theme NAME, or `None` if `name`
+/// is not a built-in. Built-ins are code-only (CR-CH-019).
+///
+/// Validates: theme-and-appearance Requirement 18.2, 19.4
+pub fn builtin_palette_by_name(name: &str) -> Option<ThemePalette> {
+    use ff_theme::defaults;
+    match name {
+        "Default Dark" => Some(defaults::dark_palette()),
+        "Default Light" => Some(defaults::light_palette()),
+        "Default High Contrast" => Some(defaults::high_contrast_palette()),
+        "Legacy (ISPF 3270)" => Some(defaults::legacy_palette()),
+        "Default Legacy" => Some(defaults::default_legacy_palette()),
+        _ => None,
+    }
 }
 
 /// The `VisualMode` associated with a built-in theme name, defaulting to Dark
 /// for user themes (the loader fills omitted tokens from the mode default).
-fn mode_for_builtin_name(name: &str) -> ff_theme::mode::VisualMode {
-    use ff_theme::mode::VisualMode;
-    match name {
-        "Default Light" => VisualMode::Light,
-        "Default High Contrast" => VisualMode::HighContrast,
-        "Legacy (ISPF 3270)" | "Default Legacy" => VisualMode::Legacy,
-        _ => VisualMode::Dark,
-    }
-}
-
 /// Path to the themes directory under the resolved user data dir. Falls back to
 /// the data dir when the session layer is unavailable, mirroring `menus_dir`.
 pub fn themes_dir() -> PathBuf {
@@ -179,13 +170,15 @@ mod tests {
         assert!(!theme_slug("Legacy (ISPF 3270)").ends_with('-'));
     }
 
-    // Validates: Requirement 19.1, 19.2 -- themes dir + built-in files created.
+    // Validates: Requirement 19.1, 19.2 (CR-CH-019) -- themes dir is created but
+    // built-ins are NOT materialised (built-ins are code-only).
     #[test]
-    fn ensure_default_theme_files_creates_builtins() {
+    fn ensure_default_theme_files_creates_empty_dir_no_builtins() {
         let dir = TempDir::new().expect("tempdir");
         ensure_default_theme_files(dir.path());
         let themes = dir.path().join("themes");
         assert!(themes.exists(), "themes dir must be created");
+        // No built-in files are written.
         for slug in [
             "default-dark",
             "default-light",
@@ -194,50 +187,57 @@ mod tests {
             "default-legacy",
         ] {
             assert!(
-                themes.join(format!("{slug}.toml")).exists(),
-                "{slug}.toml must be materialised"
+                !themes.join(format!("{slug}.toml")).exists(),
+                "{slug}.toml must NOT be materialised (built-ins are code-only)"
             );
         }
+        // The directory is empty (no user themes yet).
+        let count = std::fs::read_dir(&themes).map(|d| d.count()).unwrap_or(0);
+        assert_eq!(count, 0, "themes dir starts empty");
     }
 
-    // Validates: Requirement 19.2 -- existing files are not overwritten.
+    // Validates: Requirement 19.4 (CR-CH-019) -- a built-in name resolves to the
+    // compiled palette WITHOUT any file (built-ins are code-only).
     #[test]
-    fn ensure_default_theme_files_does_not_overwrite() {
-        let dir = TempDir::new().expect("tempdir");
-        let themes = dir.path().join("themes");
-        std::fs::create_dir_all(&themes).expect("mk themes");
-        let legacy = themes.join("legacy.toml");
-        std::fs::write(&legacy, "name = \"my edit\"\n").expect("write");
-        ensure_default_theme_files(dir.path());
-        let content = std::fs::read_to_string(&legacy).expect("read");
-        assert_eq!(
-            content, "name = \"my edit\"\n",
-            "user edit must be preserved"
-        );
-    }
-
-    // Validates: Requirement 19.4 -- a materialised theme loads by name.
-    #[test]
-    fn load_theme_by_name_reads_materialised_file() {
+    fn load_theme_by_name_builtin_resolves_without_file() {
         let dir = TempDir::new().expect("tempdir");
         ensure_default_theme_files(dir.path());
         let themes = dir.path().join("themes");
-        let p = load_theme_by_name("Default Legacy", &themes);
-        assert!(p.is_some(), "Default Legacy must load from its file");
-        let p = p.unwrap();
-        // Colours match the built-in Default Legacy.
+        let p = load_theme_by_name("Default Legacy", &themes).expect("built-in resolves");
+        assert_eq!(p.name, "Default Legacy");
         assert_eq!(
             p.editor,
             ff_theme::defaults::default_legacy_palette().editor
         );
+        // And it works even with a non-existent themes dir.
+        let none_dir = dir.path().join("does-not-exist");
+        assert!(load_theme_by_name("Default Dark", &none_dir).is_some());
     }
 
-    // Validates: Requirement 19.4 -- unknown/absent theme file returns None.
+    // Validates: Requirement 19.4 -- unknown/absent USER theme returns None.
     #[test]
-    fn load_theme_by_name_absent_is_none() {
+    fn load_theme_by_name_absent_user_theme_is_none() {
         let dir = TempDir::new().expect("tempdir");
         let themes = dir.path().join("themes");
         assert!(load_theme_by_name("No Such Theme", &themes).is_none());
+    }
+
+    // Validates: Requirement 19.4 -- a USER theme file loads by name.
+    #[test]
+    fn load_theme_by_name_reads_user_file() {
+        let dir = TempDir::new().expect("tempdir");
+        let themes = dir.path().join("themes");
+        std::fs::create_dir_all(&themes).expect("mk themes");
+        std::fs::write(
+            themes.join("my-theme.toml"),
+            "name = \"my-theme\"\n[editor]\nbackground = \"#123456\"\n",
+        )
+        .expect("write");
+        let p = load_theme_by_name("my-theme", &themes).expect("user theme loads");
+        assert_eq!(
+            p.editor.background,
+            ff_theme::ColourRGBA::rgb(0x12, 0x34, 0x56)
+        );
     }
 
     fn temp_config(root: &Path) -> ff_config::ConfigHandle {
