@@ -676,7 +676,7 @@ impl WorkbenchShell {
                         // Validates: menu-workspace Requirement 2.1-2.6, 2.1a-2.1c
                         // Resolve calendar colours and month offset before borrowing
                         // the active tab mutably (menu_calendar_colours borrows &self).
-                        let menu_cal = self.menu_calendar_colours();
+                        let menu_cal = self.menu_colours();
                         let calendar_offset = self.pom_calendar_offset;
                         let active_idx = self.tabs.active_index();
                         let mut calendar_nav = None;

@@ -110,16 +110,21 @@ impl WorkbenchShell {
         }
     }
 
-    /// Calendar colours for the shared menu renderer, derived from the same
-    /// palette semantics as the POM. In Legacy mode the ISPF turquoise/reversed
-    /// scheme is used; other themes inherit egui colours (PLACEHOLDER).
+    /// Semantic option + calendar colours for the shared menu renderer, derived
+    /// from the same palette semantics as the POM. In Legacy mode the ISPF
+    /// white/turquoise/green option scheme and turquoise/reversed calendar are
+    /// used; other themes inherit egui colours (PLACEHOLDER).
     ///
-    /// Validates: menu-workspace Requirement 2.1b; Requirement 13.7, 13.8
-    pub(super) fn menu_calendar_colours(
-        &self,
-    ) -> crate::menu_workspace::render::MenuCalendarColours {
+    /// Validates: menu-workspace Requirement 2.1a, 2.1b; Requirement 13.4-13.8
+    pub(super) fn menu_colours(&self) -> crate::menu_workspace::render::MenuColours {
         let pom = self.legacy_pom_colours();
-        crate::menu_workspace::render::MenuCalendarColours {
+        crate::menu_workspace::render::MenuColours {
+            // Key column = POM option key (white in Legacy).
+            option_key: pom.option_key,
+            // Command column = POM option label (turquoise in Legacy).
+            option_command: pom.option_label,
+            // Description column = POM normal body text (green in Legacy).
+            description: pom.normal_text,
             calendar_fg: pom.calendar_fg,
             today_bg: pom.today_bg,
             today_fg: pom.today_fg,
