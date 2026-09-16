@@ -37,7 +37,7 @@ impl FenwickTree {
         tree[1..(n + 1)].copy_from_slice(&values[..n]);
         // Build prefix sums in-place
         for i in 1..=n {
-            let parent = i + (i & i.wrapping_neg());
+            let parent = i + i.isolate_lowest_one();
             if parent <= n {
                 tree[parent] += tree[i];
             }
@@ -54,7 +54,7 @@ impl FenwickTree {
         let mut i = idx; // 1-indexed: sum of [1..idx] = sum of 0-indexed [0..idx)
         while i > 0 {
             sum += self.tree[i];
-            i -= i & i.wrapping_neg();
+            i -= i.isolate_lowest_one();
         }
         sum
     }
@@ -75,7 +75,7 @@ impl FenwickTree {
         let mut i = idx + 1; // Convert to 1-indexed
         while i <= n {
             self.tree[i] += delta;
-            i += i & i.wrapping_neg();
+            i += i.isolate_lowest_one();
         }
     }
 

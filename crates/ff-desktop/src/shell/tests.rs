@@ -4686,32 +4686,11 @@ fn menus_editor_end_returns_to_origin() {
     );
 }
 
-// Validates: accessibility keyboard reachability -- the Menus editor Tab focus
-// ring always begins with the command line, then appends the render-captured
-// interactive control ids (menu selector, title, checkboxes, separator,
-// per-option controls, footer). Ids are captured during render, so in a headless
-// test focus_ids is empty and the ring is just the command line; when the panel
-// records ids they are appended in order.
-#[test]
-fn menus_editor_focus_ring_starts_with_command_line_and_appends_captured_ids() {
-    let (mut shell, _dir) = make_shell_with_menus_editor();
-    // Headless: render has not run, so no captured ids yet.
-    let ring = shell.menus_editor_focus_ring();
-    assert_eq!(ring.len(), 1);
-    assert_eq!(ring[0], egui::Id::new("command_field_input"));
-
-    // Simulate what render does: publish an ordered set of control ids.
-    shell.menus_editor_panel.focus_ids = vec![
-        egui::Id::new("menus_editor_title"),
-        egui::Id::new(("menus_opt_key", 0)),
-        egui::Id::new(("menus_opt_command", 0)),
-    ];
-    let ring = shell.menus_editor_focus_ring();
-    assert_eq!(ring.len(), 4, "command line + 3 captured control ids");
-    assert_eq!(ring[0], egui::Id::new("command_field_input"));
-    assert_eq!(ring[1], egui::Id::new("menus_editor_title"));
-    assert_eq!(ring[3], egui::Id::new(("menus_opt_command", 0)));
-}
+// Note: the former `menus_editor_focus_ring_starts_with_command_line_...` test
+// was removed with CR-NR-076 Option X -- the shell-driven focus ring
+// (menus_editor_focus_ring / focus_ids) no longer exists. The Menus Editor now
+// uses egui-native Tab traversal, regression-tested headlessly by the
+// egui_kittest harness tests in menus_editor_panel::render (Req 14.6, 14.7).
 
 // Validates: configuration-system Requirement 19.7 (closes task 23.9) -- the
 // Settings baseline carries a RESET BARE affordance whose command opens the

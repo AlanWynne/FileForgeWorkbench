@@ -128,6 +128,10 @@ fn detect_null_byte_patterns(bytes: &[u8]) -> Option<DetectionResult> {
     let check_len = (bytes.len() / 4) * 4;
 
     if check_len >= 8 {
+        // `chunks_exact` is the correct, stable idiom here; the suggested
+        // `as_chunks` alternative is unstable. Lint surfaced by a clippy
+        // toolchain bump (CR-NR-076); behaviour unchanged.
+        #[allow(clippy::chunks_exact_to_as_chunks)]
         for chunk in bytes[..check_len].chunks_exact(4) {
             // UTF-32LE: char at [0], nulls at [1,2,3]
             if chunk[1] == 0 && chunk[2] == 0 && chunk[3] == 0 && chunk[0] != 0 {
@@ -162,6 +166,7 @@ fn detect_null_byte_patterns(bytes: &[u8]) -> Option<DetectionResult> {
     let check_len = (bytes.len() / 2) * 2;
 
     if check_len >= 4 {
+        #[allow(clippy::chunks_exact_to_as_chunks)]
         for chunk in bytes[..check_len].chunks_exact(2) {
             if chunk[1] == 0 && chunk[0] != 0 {
                 utf16le_nulls += 1;

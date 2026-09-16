@@ -22,6 +22,14 @@
 //! - [`FileOpsError`] — Unified error type for all operations
 //! - [`commands::ids`] — Command ID constants for registration
 
+// The unified `FileOpsError` enum is intentionally rich (it carries VFS paths,
+// I/O context and backup metadata), which makes the `Err` variant larger than
+// clippy's `result_large_err` threshold. Boxing every fallible signature to
+// shrink the `Err` is a cross-cutting change to the crate's public API that is
+// out of scope here; the lint was newly enforced by a clippy toolchain bump
+// (CR-NR-076). Allow it crate-wide and defer the error-boxing refactor.
+#![allow(clippy::result_large_err)]
+
 // ─── Public Modules ─────────────────────────────────────────────────────────
 
 pub mod backup;

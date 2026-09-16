@@ -101,8 +101,8 @@ impl InvalidationCoordinator {
             line_layout_cache.downgrade_all_to(ValidLevel::Positions);
         }
 
-        // Process remaining events
-        let events: Vec<_> = self.pending_events.drain(..).collect();
+        // Process remaining events (take the queue, leaving it empty).
+        let events = std::mem::take(&mut self.pending_events);
         for event in events {
             match event {
                 InvalidationEvent::LineEdited { line_number } => {

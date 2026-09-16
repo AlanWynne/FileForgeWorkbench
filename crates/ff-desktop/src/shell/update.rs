@@ -523,6 +523,14 @@ impl eframe::App for WorkbenchShell {
                 if self.modal_open {
                     return (false, false);
                 }
+                // CR-NR-076 (Option X): the Menus Editor uses egui-native Tab
+                // traversal (its widgets are created in visual order). Leave the
+                // Tab event in the queue so egui performs the focus move, and do
+                // NOT report it as a shell tab press -- the shell focus_stop ring
+                // must not run for that tab.
+                if is_menus_editor {
+                    return (false, false);
+                }
                 let shift = i.modifiers.shift;
                 let tab = i.key_pressed(egui::Key::Tab);
                 if tab {
@@ -577,53 +585,6 @@ impl eframe::App for WorkbenchShell {
                         self.command_field_focus_requested = true;
                     }
                 }
-            } else if is_menus_editor && (tab_pressed || shift_tab_pressed) {
-                // Menus Editor Tab ring: command line -> each option's
-                // key/command/description/group (in order) -> back to the command
-                // line. Focus is driven explicitly via egui request_focus on the
-                // stable per-field ids, so Tab reaches the editable fields instead
-                // of egui's create-order traversal drifting to the menu bar.
-                let ring = self.menus_editor_focus_ring();
-                if !ring.is_empty() {
-                    // Anchor selection (B054 Tab double-advance fix): anchor on
-                    // the id WE last drove focus to, NOT egui's currently-focused
-                    // id. egui runs its own Tab-navigation pass at the START of
-                    // the frame -- before this handler -- which advances
-                    // `memory().focused()` by one. If we then anchored on that
-                    // already-advanced id and advanced again, every Tab moved the
-                    // ring position by TWO, skipping every other widget (Title,
-                    // Group headers, separator Line were skipped). Anchoring on
-                    // our own last target makes egui's native advance irrelevant
-                    // to our position maths. egui's focused id is consulted ONLY
-                    // as the entry anchor (first Tab into the editor, or after a
-                    // click clears last_focus_target) via the None fallback below.
-                    let anchor = self.menus_editor_panel.last_focus_target.or_else(|| {
-                        ctx.memory(|m| m.focused())
-                            .filter(|f| ring.iter().any(|id| id == f))
-                    });
-                    let cur = anchor.and_then(|f| ring.iter().position(|id| *id == f));
-                    // Pure, unit-tested advance (see menus_editor::next_ring_index):
-                    // +1 / -1 with wrap, or enter at end/start when unanchored.
-                    let next_idx =
-                        Self::next_ring_index(ring.len(), cur, shift_tab_pressed).unwrap_or(0);
-                    let target = ring[next_idx];
-                    ctx.memory_mut(|m| m.request_focus(target));
-                    self.menus_editor_panel.last_focus_target = Some(target);
-                    // TEMP DIAGNOSTIC (B054/Tab): log ring, anchor, and target so
-                    // we can see whether Title/Group-headers ids are present and
-                    // whether request_focus to them is issued but ignored.
-                    ff_logging::log_debug!(
-                        "[menus-tab] shift={} anchor={:?} cur={:?} -> target={:?} ring={:?}",
-                        shift_tab_pressed,
-                        anchor,
-                        cur,
-                        target,
-                        ring
-                    );
-                    if target == cmd_id {
-                        self.focus_stop = FocusStop::CommandField;
-                    }
-                }
             } else if tab_pressed {
                 self.focus_stop =
                     self.focus_stop
@@ -641,7 +602,16 @@ impl eframe::App for WorkbenchShell {
             }
             // Validates: Requirement 16.20 — request egui focus on the tab header button
             // when a TabHeader stop is active (one-shot on Tab press).
-            if tab_pressed || shift_tab_pressed {
+            //
+            // B054: this MUST NOT fire while the Menus Editor is driving its own
+            // Tab ring. It is a SEPARATE `if` (not part of the else-if chain
+            // above), so without this guard it would issue a SECOND
+            // request_focus in the same frame -- to the tab-header button --
+            // overwriting the ring walk's target (last writer wins in egui
+            // memory) and stealing focus away from the editor's fields. The
+            // menus editor manages its own focus entirely, so skip the tab-header
+            // focus request for it.
+            if (tab_pressed || shift_tab_pressed) && !is_menus_editor {
                 if let FocusStop::TabHeader { index } = self.focus_stop {
                     let tab_btn_id = egui::Id::new("tab_header_btn").with(index);
                     ctx.memory_mut(|m| m.request_focus(tab_btn_id));
