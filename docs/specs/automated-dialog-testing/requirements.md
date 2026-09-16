@@ -390,3 +390,63 @@ automatically across the full application.
 
 13.5 EACH script SHALL begin with a comment block identifying the functional area,
     the requirement(s) it validates, and the expected outcome.
+
+---
+
+## Requirement 14 -- Headless Widget-Focus Test Harness (egui_kittest)
+
+**User Story:** As a developer, I want a headless egui test harness that renders a
+real panel and drives keyboard input in `cargo test`, so that focus order, Tab
+traversal, and widget state are verified automatically instead of by repeated
+manual reproduction.
+
+### Background
+
+FFTest (Requirements 1-13) is a script-driven, end-to-end framework (Layers 2-4).
+Requirement 14 adds a complementary Layer 1 capability: a `cargo test` harness
+(`egui_kittest`) that renders a single panel headlessly, injects input events, and
+inspects resulting widget focus and state. This is the fast inner-loop counterpart
+to the FFTest runner and directly serves Requirement 1.4 (maximise non-GUI-loaded
+testing) and Requirement 2.5 (query rendered control state without a display).
+
+The harness requires the workspace egui/eframe stack to be at a version for which
+`egui_kittest` is published. The workspace is on egui/eframe 0.29, for which no
+`egui_kittest` exists (its minimum is 0.30). Requirement 14 therefore includes a
+controlled upgrade of the egui/eframe stack to the lowest version that unlocks the
+harness while minimising API churn.
+
+### Acceptance Criteria
+
+14.1 THE workspace SHALL depend on a single egui major-minor version across every
+    crate (no two egui versions resolved simultaneously in `Cargo.lock`).
+
+14.2 THE workspace egui and eframe dependencies SHALL be upgraded to version 0.31,
+    the lowest version for which a compatible `egui_kittest` and a published
+    `egui-file-dialog` both exist, to minimise breaking-change surface.
+
+14.3 WHEN the egui/eframe stack is upgraded, THE `egui-file-dialog` dependency
+    SHALL be a published release compatible with the upgraded egui (0.9.x for
+    egui 0.31), and the local `vendor/egui-file-dialog` patch SHALL be removed.
+
+14.4 AFTER the upgrade, THE full workspace SHALL build, pass `cargo clippy --
+    -D warnings`, and pass the complete test suite (verify.ps1 clean) with no
+    behaviour change to existing features.
+
+14.5 THE `ff-desktop` crate SHALL carry `egui_kittest` as a dev-dependency at a
+    version matching the upgraded egui (0.31.x).
+
+14.6 THE test suite SHALL include a headless `egui_kittest` harness test that
+    renders the Menus Editor panel, injects Tab keypresses, and asserts the
+    resulting focused-widget order.
+
+14.7 WHEN the Menus Editor panel is rendered and Tab is pressed repeatedly, THE
+    focus order SHALL visit every interactive control exactly once in visual
+    order with no widget skipped: menu selector, title, show-calendar,
+    group-headers, each group-separator option, then per option in order the
+    key / command / description / group / enabled / move-up / move-down / delete
+    controls, then the footer add / save / save-as-name / save-as controls,
+    before wrapping to the shell command line.
+
+14.8 THE headless harness SHALL execute without an attached display device
+    (consistent with Requirement 6.1) and be runnable under `cargo test` and
+    `cargo nextest`.

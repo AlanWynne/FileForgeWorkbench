@@ -2469,3 +2469,17 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `menu_workspace/defaults.rs::default_pom_toml_terminate_is_x_return`; `shell/tests.rs::return_from_pom_with_other_tabs_closes_pom_not_app` | Req 2.1g: data-driven terminate option (X->RETURN) returns to POM / exits when last, per CR-CH-016; bespoke exit-line/PomAction::Exit/PomExit removed (task 22.4e) |
 | `ff-desktop` | ✅ | `menu_workspace/defaults.rs::default_pom_toml_has_only_built_testable_options`; `shell/tests.rs::option_5_routes_to_macro_library`, `equals_8_command_routes_to_plugin_manager` | Req 2.1h: every default pom.toml command resolves by name (CATALOGS arm added); default pom.toml trimmed to built+testable options only (task 22.4f) |
 | `ff-desktop` | ✅ | `shell/tests.rs::equals_5_command_routes_to_macro_library`, `equals_8_command_routes_to_plugin_manager` (=<key> resolves the keyed option then dispatches its command) | Req 2.1i: `=<key>` fastpath resolves the keyed option then dispatches its command (config-driven), preserved via shared renderer (task 22.4c) |
+
+
+### Phase CQ -- egui 0.31 Upgrade + egui_kittest Focus Harness (CR-NR-076, Req 14 automated-dialog-testing)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | Req 14.1: workspace resolves a single egui major-minor version (no two egui versions in Cargo.lock) |
+| `ff-desktop` | 🔴 | -- | Req 14.2: workspace egui and eframe upgraded to 0.31 |
+| `ff-desktop` | 🔴 | -- | Req 14.3: egui-file-dialog is published 0.9.x; vendor patch removed |
+| `ff-desktop` | 🔴 | -- | Req 14.4: after upgrade the full workspace builds, clippy -D warnings clean, and the full test suite passes (verify.ps1 clean) with no behaviour change |
+| `ff-desktop` | 🔴 | -- | Req 14.5: ff-desktop carries egui_kittest dev-dependency at 0.31.x |
+| `ff-desktop` | 🔴 | -- | Req 14.6: headless egui_kittest harness test renders the Menus Editor and injects Tab, asserting focused-widget order |
+| `ff-desktop` | 🔴 | -- | Req 14.7: Tab focus visits every Menus Editor control once in visual order (no widget skipped) then wraps to the command line |
+| `ff-desktop` | 🔴 | -- | Req 14.8: the headless harness runs without a display device under cargo test and cargo nextest |

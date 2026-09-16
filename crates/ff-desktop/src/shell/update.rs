@@ -585,18 +585,41 @@ impl eframe::App for WorkbenchShell {
                 // of egui's create-order traversal drifting to the menu bar.
                 let ring = self.menus_editor_focus_ring();
                 if !ring.is_empty() {
-                    let focused = ctx.memory(|m| m.focused());
-                    let cur = focused.and_then(|f| ring.iter().position(|id| *id == f));
-                    let next_idx = match cur {
-                        Some(i) if shift_tab_pressed => (i + ring.len() - 1) % ring.len(),
-                        Some(i) => (i + 1) % ring.len(),
-                        // Not currently on a ring widget: Tab enters at the first
-                        // field, Shift+Tab enters at the last.
-                        None if shift_tab_pressed => ring.len() - 1,
-                        None => 0,
-                    };
+                    // Anchor selection (B054 Tab double-advance fix): anchor on
+                    // the id WE last drove focus to, NOT egui's currently-focused
+                    // id. egui runs its own Tab-navigation pass at the START of
+                    // the frame -- before this handler -- which advances
+                    // `memory().focused()` by one. If we then anchored on that
+                    // already-advanced id and advanced again, every Tab moved the
+                    // ring position by TWO, skipping every other widget (Title,
+                    // Group headers, separator Line were skipped). Anchoring on
+                    // our own last target makes egui's native advance irrelevant
+                    // to our position maths. egui's focused id is consulted ONLY
+                    // as the entry anchor (first Tab into the editor, or after a
+                    // click clears last_focus_target) via the None fallback below.
+                    let anchor = self.menus_editor_panel.last_focus_target.or_else(|| {
+                        ctx.memory(|m| m.focused())
+                            .filter(|f| ring.iter().any(|id| id == f))
+                    });
+                    let cur = anchor.and_then(|f| ring.iter().position(|id| *id == f));
+                    // Pure, unit-tested advance (see menus_editor::next_ring_index):
+                    // +1 / -1 with wrap, or enter at end/start when unanchored.
+                    let next_idx =
+                        Self::next_ring_index(ring.len(), cur, shift_tab_pressed).unwrap_or(0);
                     let target = ring[next_idx];
                     ctx.memory_mut(|m| m.request_focus(target));
+                    self.menus_editor_panel.last_focus_target = Some(target);
+                    // TEMP DIAGNOSTIC (B054/Tab): log ring, anchor, and target so
+                    // we can see whether Title/Group-headers ids are present and
+                    // whether request_focus to them is issued but ignored.
+                    ff_logging::log_debug!(
+                        "[menus-tab] shift={} anchor={:?} cur={:?} -> target={:?} ring={:?}",
+                        shift_tab_pressed,
+                        anchor,
+                        cur,
+                        target,
+                        ring
+                    );
                     if target == cmd_id {
                         self.focus_stop = FocusStop::CommandField;
                     }

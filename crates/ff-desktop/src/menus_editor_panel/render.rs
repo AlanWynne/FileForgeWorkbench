@@ -233,6 +233,27 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
     // Append the footer controls after the option controls, then publish the
     // full ordered ring for the shell's Tab handler.
     focus_ids.extend(footer_ids);
+
+    // TEMP DIAGNOSTIC (B054/Tab): report the full captured ring once, and flag
+    // any duplicate ids (a duplicate would make the Tab handler's position()
+    // land on the first occurrence and skip the second widget). Logged every
+    // frame at trace; grep "[menus-ring]".
+    {
+        let mut seen = std::collections::HashSet::new();
+        let mut dups: Vec<egui::Id> = Vec::new();
+        for id in &focus_ids {
+            if !seen.insert(*id) {
+                dups.push(*id);
+            }
+        }
+        ff_logging::log_debug!(
+            "[menus-ring] captured {} ids dups={:?} ids={:?}",
+            focus_ids.len(),
+            dups,
+            focus_ids
+        );
+    }
+
     state.focus_ids = focus_ids;
 
     action

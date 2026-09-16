@@ -22,6 +22,13 @@ Never delete a row â€” update `Status` in-place.
 
 New capabilities that did not previously exist.
 
+### CR-NR-076 -- egui 0.31 upgrade + egui_kittest headless focus-test harness
+- **Date/Phase**: Phase CQ (menus-editor-tab triage)
+- **Prompt**: "How do we automate the testing of the Tab order? ... i think we are going to need egui-kittest quite a bit"
+- **Description**: Upgrade the workspace egui/eframe stack from 0.29 to 0.31 (the lowest version for which both egui_kittest and a published egui-file-dialog exist) to unlock a headless widget-focus test harness in cargo test. Remove the vendored egui-file-dialog 0.6.1 patch (pins egui 0.29) in favour of published egui-file-dialog 0.9.0 (targets egui 0.31). Add egui_kittest 0.31 as an ff-desktop dev-dependency and write a harness test that renders the Menus Editor panel, injects Tab keypresses, and asserts the focused-widget order -- then use that failing test to root-cause and fix the remaining B054 Title/Line/key Tab-focus skip. No runtime behaviour change intended; this is a dependency-version upgrade plus a dev-only test capability.
+- **Status**: PENDING GATE
+- **Linked spec**: `docs/specs/automated-dialog-testing/requirements.md` (Requirement 14)
+
 ### CR-NR-075 -- Menus editor Context (create / edit / reorder / save menu TOMLs in-app)
 - **Date/Phase**: Phase (menus-editor) (gate)
 - **Prompt**: "The Menus Option will open a Workspace to create, change and save Menus." (owner, during CR-CH-021 scoping; the editor was split out as a separate CR and the `MENUS` command was reserved with a placeholder notice, menu-workspace Req 12.6.)

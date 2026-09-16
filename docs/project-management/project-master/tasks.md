@@ -1213,6 +1213,22 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 - [x] CZ.8 Write FFTest workflow scripts: batch execution, global search, command palette (tests/workflow/)
 - [x] CZ.9 Update `docs/quality/TCR.md` rows to PASS after implementation
 
+### Phase CQ -- egui 0.31 Upgrade + egui_kittest Focus Harness (CR-NR-076)
+
+> Upgrades the workspace egui/eframe stack from 0.29 to 0.31 -- the lowest version
+> for which egui_kittest and a published egui-file-dialog both exist -- to unlock a
+> headless widget-focus test harness. Replaces the vendored egui-file-dialog patch
+> with published 0.9.0. Adds a kittest harness test for the Menus Editor Tab order
+> and uses it to fix the remaining Title/Line/key focus skip (B054). Requirement 14
+> in automated-dialog-testing/requirements.md.
+
+- [ ] CQ.1 Bump workspace egui+eframe to 0.31; remove vendor/egui-file-dialog patch;
+        use published egui-file-dialog 0.9; set egui_kittest dev-dep to 0.31 (Tasks 51-54)
+- [ ] CQ.2 Fix all egui 0.29->0.31 API breakages; restore clean gate (build, clippy,
+        verify.ps1) with no behaviour change (Tasks 55-56)
+- [ ] CQ.3 Write the egui_kittest Menus Editor Tab-focus harness; fix the Title/Line/key
+        skip; update TCR to PASS (Tasks 57-59)
+
 ---
 
 ### Phase DA -- Configurable Menu Option Limits (CR-NR-050) -- SPEC ONLY, depends on CU
@@ -1950,6 +1966,7 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | `[x]` Phase CW complete | Settings Menu Spec -- 10-option Settings_Menu, cw-requirements.md, Req 15 updated (CW.1-CW.4) |
 | `[x]` Phase CX complete | Named Workspaces + KEYS name + SPLIT alias -- spec + implementation (CX.1-CX.7) |
 | `[x]` Phase CZ complete | FFTest Script Suite + Context Inspection (CZ.1-CZ.9) |
+| `[ ]` Phase CQ | egui 0.31 upgrade + egui_kittest focus harness (CR-NR-076) -- spec done (Req 14, Tasks 51-59); impl pending (CQ.1-CQ.3) |
 | `[x]` Phase DA complete | Configurable Menu Option Limits -- spec + impl (DA.1-DA.7, Tasks 16-20) |
 | `[~]` Phase DB | Unified Command Target + Command Configurator + Descriptor Persistence -- spec (DB.1-DB.7) done. Impl: DB.8 DONE (CommandTarget), DB.11 DONE (descriptor persistence, unblocks Task 14.5), DB.9 DONE (Command_Store + resolver + Command Configurator Context UI -- command-configurator Task 4 + 6.1), DB.10 DONE (ff-shell external Detached/Captured execution), DB.4 DONE (menu-option + shortcut binding via Target_Resolution; inline `[options.target]`), MENU command DONE (menu-workspace Req 11 + Menu_Target Req 10.4), external desktop adapter DONE (command-configurator Task 3: ff-shell wired into ff-desktop, ${workspace_root}/${file_dir} expansion, shell.mode prompt-confirm dialog, External target execution). Remaining: CustomWorkspace/Macro binding execution and a dockable Output_Panel view are follow-up UI tasks |
 | Sub-project audit | 67 of 69 sub-projects with tasks.md are ALL DONE; 2 have pending items |

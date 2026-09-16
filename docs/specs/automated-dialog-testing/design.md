@@ -317,3 +317,80 @@ must be driveable without a display device.
 `ff-fftest` does NOT depend on egui directly. It communicates with `ff-desktop`
 through the `AutomationRegistry` interface, which is defined in `ff-core` as a
 trait. This preserves the GUI-independence principle.
+
+---
+
+## 11. Design Delta -- Requirement 14 (egui 0.31 upgrade + egui_kittest harness)
+
+### 11.1 Version target rationale
+
+The harness (`egui_kittest`) is versioned in lockstep with egui. The workspace is
+on egui/eframe 0.29, for which no `egui_kittest` is published (minimum 0.30). The
+chosen target is **egui/eframe 0.31** because it is the lowest version where BOTH
+of the following are simultaneously satisfied:
+
+- `egui_kittest 0.31.1` exists (unlocks the harness -- the actual objective).
+- `egui-file-dialog 0.9.0` targets `egui ^0.31` (a published release, so the local
+  `vendor/egui-file-dialog` v0.6.1 patch -- which pins egui 0.29.0 -- can be
+  removed rather than re-vendored).
+
+Targeting 0.31 rather than the newest (0.36) minimises the breaking-change surface
+(one minor hop past the file-dialog constraint instead of seven) while still
+delivering the capability. A later hop to a newer egui remains possible as its own
+gated change if newer egui features are needed.
+
+### 11.2 Dependency changes
+
+Workspace `Cargo.toml`:
+- `egui = "0.31"` (was `0.29`).
+- `eframe = { version = "0.31", features = ["default_fonts"] }` (was `0.29`).
+- Remove the `[patch.crates-io] egui-file-dialog = { path = "vendor/egui-file-dialog" }`
+  entry (both duplicated lines).
+
+`ff-desktop/Cargo.toml`:
+- `egui-file-dialog = "0.9"` (was `"0.6"`; now the published crate, no patch).
+- dev-dependency `egui_kittest = "0.31"` (correcting the mistakenly-added 0.36.2).
+
+The `vendor/egui-file-dialog/` directory is retired from the build (patch removed).
+It may be deleted in a follow-up housekeeping change once the published 0.9.0 is
+confirmed to cover all call sites used by `ff-desktop` (files_panel, catalog
+dialogs).
+
+### 11.3 Expected API-breakage surface (0.29 -> 0.31)
+
+Concentrated in `ff-desktop` (~25 files) plus `main.rs` eframe entry. Anticipated
+changes to verify and fix by iterating `cargo check`:
+- `eframe` App / `run_native` / `NativeOptions` / `CreationContext` signature
+  adjustments.
+- egui input/memory access (`ctx.input`, `ctx.memory`) minor signature changes.
+- `TextEdit`, `Response`, `Frame`, `Margin`, `ComboBox`, `ScrollArea` minor API
+  deltas. Much of the codebase already uses the 0.31-era API (`from_id_salt`,
+  `id_salt`), reducing churn.
+
+No architectural change: rendering remains egui-immediate-mode; the command-driven
+principle is untouched. This is a dependency-version upgrade plus a new dev-only
+test harness -- no runtime behaviour change is intended (Req 14.4).
+
+### 11.4 The Menus Editor Tab-focus harness (Req 14.6, 14.7)
+
+A dev-only test (in `ff-desktop`) uses `egui_kittest::Harness` to render
+`menus_editor_panel::render` against a fixture `MenusEditorState` with a loaded
+menu that has at least one option. The test:
+
+1. Runs one frame to lay out widgets and populate `focus_ids`.
+2. Repeatedly injects a Tab key event and runs a frame.
+3. After each Tab, reads the focused widget id from the harness egui context and
+   records it.
+4. Asserts the recorded id sequence equals the expected visual order (Req 14.7).
+
+Because the harness renders the REAL panel, it catches focus-application failures
+(e.g. `request_focus` not landing on a specific widget) that the pure ring-walk
+unit tests (`WorkbenchShell::next_ring_index`) cannot. The two layers are
+complementary: the pure tests guard the walk arithmetic; the harness guards live
+focus behaviour.
+
+### 11.5 Headless execution (Req 14.8)
+
+`egui_kittest` runs without a window or GPU (CPU-only layout pass), so the harness
+satisfies the headless requirement and runs under `cargo test` / `cargo nextest`
+in CI with no display device.

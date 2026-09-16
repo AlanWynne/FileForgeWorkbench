@@ -53,6 +53,11 @@ pub struct MenusEditorState {
     ///
     /// Validates: accessibility (keyboard reachability); menu-workspace Req 13.4.
     pub focus_ids: Vec<egui::Id>,
+    /// The ring id the shell last requested focus for (Tab/Shift+Tab). Advancing
+    /// from THIS -- rather than from egui's reported focus -- avoids skipping a
+    /// stop when a `request_focus` needs a frame to take effect (some widgets do
+    /// not report as focused the same frame the request is made).
+    pub last_focus_target: Option<egui::Id>,
 }
 
 impl MenusEditorState {

@@ -112,3 +112,29 @@
   - Satisfies: Req 13.3
 - [x] 50. Update TCR.md rows for Reqs 11-13 to PASS
   - Satisfies: Req 11-13 coverage
+
+## Phase CQ -- egui 0.31 Upgrade and egui_kittest Focus Harness (Req 14)
+
+- [ ] 51. Bump workspace egui and eframe to 0.31 in the root Cargo.toml
+  - Satisfies: Req 14.1, 14.2
+- [ ] 52. Remove the vendor/egui-file-dialog [patch.crates-io] entry and set
+    ff-desktop egui-file-dialog to the published "0.9"
+  - Satisfies: Req 14.3
+- [ ] 53. Set ff-desktop dev-dependency egui_kittest to "0.31" (correct the 0.36.2 add)
+  - Satisfies: Req 14.5
+- [ ] 54. Update Cargo.lock and confirm a single egui version resolves workspace-wide
+  - Satisfies: Req 14.1
+- [ ] 55. Fix all egui/eframe 0.29->0.31 API breakages across ff-desktop and main.rs
+    until cargo build succeeds
+  - Satisfies: Req 14.4
+- [ ] 56. Restore a clean quality gate: cargo clippy -D warnings and verify.ps1 clean
+    (nextest), no behaviour change to existing features
+  - Satisfies: Req 14.4
+- [ ] 57. Write the egui_kittest headless harness test rendering the Menus Editor panel
+    and injecting Tab keypresses
+  - Satisfies: Req 14.6, 14.8
+- [ ] 58. Assert the Tab focus order visits every control once in visual order (Req 14.7);
+    use the failing harness to root-cause and fix the Title/Line/key focus skip
+  - Satisfies: Req 14.6, 14.7
+- [ ] 59. Update docs/quality/TCR.md rows for Req 14 criteria to PASS
+  - Satisfies: Req 14 coverage
