@@ -10,6 +10,26 @@ use crate::menu_workspace::{MenuFile, MenuOption};
 use crate::menus_editor_panel::MenusEditorAction;
 
 impl WorkbenchShell {
+    /// The ordered Tab focus ring for the Menus Editor: the shell command line,
+    /// then each working option's key/command/description/group fields in order.
+    /// The ids MUST match those the panel render assigns
+    /// (`menus_editor_panel::render`) so `request_focus` lands on the real
+    /// widgets. Returns just the command line when no menu is loaded.
+    ///
+    /// Validates: menu-workspace Requirement 13.4 (editable fields reachable by Tab).
+    pub(super) fn menus_editor_focus_ring(&self) -> Vec<egui::Id> {
+        // The shell command line is the first stop; the remainder is the ordered
+        // list of EVERY interactive control the panel render captured this frame
+        // (menu selector, title, checkboxes, separator selectables, and per
+        // option: key/command/description/group/enabled/up/down/delete, then the
+        // footer buttons). Capturing the real egui ids in render -- rather than
+        // predicting them -- keeps every control keyboard-reachable
+        // (accessibility) without fragile id guessing.
+        let mut ring = vec![egui::Id::new("command_field_input")];
+        ring.extend(self.menus_editor_panel.focus_ids.iter().copied());
+        ring
+    }
+
     /// Open the Menus Editor Context and populate its state: list editable
     /// menus and load the current selection (or POM) as the working copy.
     ///

@@ -17,6 +17,13 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
     // buttons (select / add / delete / move / save / save as) produce actions.
     let mut action = MenusEditorAction::None;
 
+    // Accessibility (keyboard reachability): capture EVERY interactive control's
+    // real egui id, in visual order, so the shell's Tab handler can walk them
+    // all -- combo, checkboxes and separator selectables included, not just text
+    // fields. We collect into a local and store it on the state at the end
+    // (the state is borrowed mutably as `menu` in between).
+    let mut focus_ids: Vec<egui::Id> = Vec::new();
+
     ui.vertical_centered(|ui| {
         ui.label(egui::RichText::new("Menus Editor").strong().size(14.0));
     });
@@ -29,7 +36,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
             .selected
             .clone()
             .unwrap_or_else(|| "(none)".to_string());
-        egui::ComboBox::from_id_salt("menus_editor_select")
+        let combo = egui::ComboBox::from_id_salt("menus_editor_select")
             .selected_text(current)
             .show_ui(ui, |ui| {
                 for name in state.available.clone() {
@@ -41,6 +48,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
                     }
                 }
             });
+        focus_ids.push(combo.response.id);
     });
 
     if let Some(err) = &state.error {
@@ -49,6 +57,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
 
     let Some(menu) = state.working.as_mut() else {
         ui.label("Select a menu to edit.");
+        state.focus_ids = focus_ids;
         return action;
     };
 
@@ -60,12 +69,17 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
     // before the next frame and the field appears frozen).
     ui.horizontal(|ui| {
         ui.label("Title:");
-        ui.text_edit_singleline(&mut menu.title);
+        let r = ui.add(
+            egui::TextEdit::singleline(&mut menu.title)
+                .id(egui::Id::new("menus_editor_title"))
+                .desired_width(260.0),
+        );
+        focus_ids.push(r.id);
     });
 
     ui.horizontal(|ui| {
-        ui.checkbox(&mut menu.show_calendar, "Show calendar");
-        ui.checkbox(&mut menu.group_headers, "Group headers");
+        focus_ids.push(ui.checkbox(&mut menu.show_calendar, "Show calendar").id);
+        focus_ids.push(ui.checkbox(&mut menu.group_headers, "Group headers").id);
     });
 
     ui.horizontal(|ui| {
@@ -75,114 +89,151 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
             ("Line", GroupSeparator::Line),
             ("None", GroupSeparator::None),
         ] {
-            if ui
-                .selectable_label(menu.group_separator == sep, label)
-                .clicked()
-            {
+            let r = ui.selectable_label(menu.group_separator == sep, label);
+            if r.clicked() {
                 menu.group_separator = sep;
             }
+            focus_ids.push(r.id);
         }
     });
 
     ui.separator();
-    ui.label(egui::RichText::new("Options (key | command | description)").strong());
+    ui.label(egui::RichText::new("Options (key | command | description | group)").strong());
 
-    // --- Option rows ----------------------------------------------------
-    // B054 fix: iterate the options MUTABLY and bind each TextEdit directly to
-    // the working field, so typed input persists across frames. Structural
-    // actions (add/delete/move) still fire as actions since they change the
-    // vector length and cannot run during this mutable borrow.
     let option_count = menu.options.len();
-    let mut group_buf = String::new();
-    egui::ScrollArea::vertical()
-        .id_salt("menus_editor_options")
-        .show(ui, |ui| {
-            for (i, option) in menu.options.iter_mut().enumerate() {
-                ui.horizontal(|ui| {
-                    // Key -- edited directly; uppercased on commit (lost_focus).
-                    let key_resp = ui.add(
-                        egui::TextEdit::singleline(&mut option.key)
-                            .desired_width(48.0)
-                            .hint_text("key"),
-                    );
-                    if key_resp.lost_focus() {
-                        let upper = option.key.trim().to_uppercase();
-                        if upper != option.key {
-                            option.key = upper;
-                        }
-                    }
-                    // Command / Description -- edited directly.
-                    ui.add(
-                        egui::TextEdit::singleline(&mut option.command)
-                            .desired_width(120.0)
-                            .hint_text("command"),
-                    );
-                    ui.add(
-                        egui::TextEdit::singleline(&mut option.description)
-                            .desired_width(200.0)
-                            .hint_text("description"),
-                    );
-                    // Group -- Option<String> edited via a scratch buffer.
-                    group_buf.clear();
-                    if let Some(g) = &option.group {
-                        group_buf.push_str(g);
-                    }
-                    let grp_resp = ui.add(
-                        egui::TextEdit::singleline(&mut group_buf)
-                            .desired_width(80.0)
-                            .hint_text("group"),
-                    );
-                    if grp_resp.changed() {
-                        let trimmed = group_buf.trim();
-                        option.group = if trimmed.is_empty() {
-                            None
-                        } else {
-                            Some(group_buf.clone())
-                        };
-                    }
-                    // Enabled -- edited directly.
-                    ui.checkbox(&mut option.enabled, "on");
-                    // Reorder / delete (structural -> action; applied after loop).
-                    if ui.add_enabled(i > 0, egui::Button::new("^")).clicked() {
-                        action = MenusEditorAction::MoveOptionUp(i);
-                    }
-                    if ui
-                        .add_enabled(i + 1 < option_count, egui::Button::new("v"))
-                        .clicked()
-                    {
-                        action = MenusEditorAction::MoveOptionDown(i);
-                    }
-                    if ui.button("Delete").clicked() {
-                        action = MenusEditorAction::DeleteOption(i);
-                    }
-                });
+
+    // Reserve the fixed footer (Add / Save / Save As) at the BOTTOM first, then
+    // let the option ScrollArea fill only the remaining height. Rendering the
+    // footer bottom-up before the scroll body is what keeps the buttons on
+    // screen (previously the unbounded ScrollArea grew past the visible central
+    // panel and pushed the footer behind the status bar). Validates Req 13.5.
+    // Footer ids are collected separately and APPENDED to the ring after the
+    // option ids, so the Tab order is menu-level -> options -> footer even though
+    // the footer panel is drawn first (bottom-up) in code.
+    let mut footer_ids: Vec<egui::Id> = Vec::new();
+    egui::TopBottomPanel::bottom("menus_editor_footer")
+        .frame(egui::Frame::none().inner_margin(egui::Margin::symmetric(0.0, 4.0)))
+        .show_inside(ui, |ui| {
+            let add = ui.button("Add option");
+            if add.clicked() {
+                action = MenusEditorAction::AddOption;
             }
+            footer_ids.push(add.id);
+            ui.separator();
+            ui.horizontal(|ui| {
+                let save = ui.button("Save");
+                if save.clicked() {
+                    action = MenusEditorAction::Save;
+                }
+                footer_ids.push(save.id);
+                ui.label("Save As:");
+                footer_ids.push(
+                    ui.add(
+                        egui::TextEdit::singleline(&mut state.name_buffer)
+                            .id(egui::Id::new("menus_editor_save_as_name"))
+                            .desired_width(120.0)
+                            .hint_text("new name"),
+                    )
+                    .id,
+                );
+                let save_as = ui.button("Save As");
+                if save_as.clicked() {
+                    let name = state.name_buffer.trim().to_string();
+                    if !name.is_empty() {
+                        action = MenusEditorAction::SaveAs(name);
+                    }
+                }
+                footer_ids.push(save_as.id);
+            });
         });
 
-    if ui.button("Add option").clicked() {
-        action = MenusEditorAction::AddOption;
-    }
+    // --- Option rows (original compact single-row-per-option layout) --------
+    // Each option is ONE row: key | command | description | group | on |
+    // Up | Down | Delete. Wrapped in a CentralPanel so the ScrollArea fills the
+    // space left above the footer (never overlapping the status bar), and in a
+    // horizontal ScrollArea so wide rows scroll rather than clip. Fields bind
+    // directly to the working model with explicit unique ids (B054).
+    egui::CentralPanel::default()
+        .frame(egui::Frame::none())
+        .show_inside(ui, |ui| {
+            egui::ScrollArea::both()
+                .id_salt("menus_editor_options")
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    for (i, option) in menu.options.iter_mut().enumerate() {
+                        ui.horizontal(|ui| {
+                            let key_resp = ui.add(
+                                egui::TextEdit::singleline(&mut option.key)
+                                    .id(egui::Id::new(("menus_opt_key", i)))
+                                    .desired_width(44.0)
+                                    .hint_text("key"),
+                            );
+                            if key_resp.lost_focus() {
+                                let upper = option.key.trim().to_uppercase();
+                                if upper != option.key {
+                                    option.key = upper;
+                                }
+                            }
+                            focus_ids.push(key_resp.id);
+                            focus_ids.push(
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut option.command)
+                                        .id(egui::Id::new(("menus_opt_command", i)))
+                                        .desired_width(120.0)
+                                        .hint_text("command"),
+                                )
+                                .id,
+                            );
+                            focus_ids.push(
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut option.description)
+                                        .id(egui::Id::new(("menus_opt_description", i)))
+                                        .desired_width(200.0)
+                                        .hint_text("description"),
+                                )
+                                .id,
+                            );
+                            let mut group_val = option.group.clone().unwrap_or_default();
+                            let grp_resp = ui.add(
+                                egui::TextEdit::singleline(&mut group_val)
+                                    .id(egui::Id::new(("menus_opt_group", i)))
+                                    .desired_width(80.0)
+                                    .hint_text("group"),
+                            );
+                            if grp_resp.changed() {
+                                let trimmed = group_val.trim();
+                                option.group = if trimmed.is_empty() {
+                                    None
+                                } else {
+                                    Some(group_val.clone())
+                                };
+                            }
+                            focus_ids.push(grp_resp.id);
+                            focus_ids.push(ui.checkbox(&mut option.enabled, "on").id);
+                            let up = ui.add_enabled(i > 0, egui::Button::new("^"));
+                            if up.clicked() {
+                                action = MenusEditorAction::MoveOptionUp(i);
+                            }
+                            focus_ids.push(up.id);
+                            let down = ui.add_enabled(i + 1 < option_count, egui::Button::new("v"));
+                            if down.clicked() {
+                                action = MenusEditorAction::MoveOptionDown(i);
+                            }
+                            focus_ids.push(down.id);
+                            let del = ui.button("Delete");
+                            if del.clicked() {
+                                action = MenusEditorAction::DeleteOption(i);
+                            }
+                            focus_ids.push(del.id);
+                        });
+                    }
+                });
+        });
 
-    ui.separator();
-
-    // --- Save / Save As -------------------------------------------------
-    ui.horizontal(|ui| {
-        if ui.button("Save").clicked() {
-            action = MenusEditorAction::Save;
-        }
-        ui.label("Save As:");
-        ui.add(
-            egui::TextEdit::singleline(&mut state.name_buffer)
-                .desired_width(120.0)
-                .hint_text("new name"),
-        );
-        if ui.button("Save As").clicked() {
-            let name = state.name_buffer.trim().to_string();
-            if !name.is_empty() {
-                action = MenusEditorAction::SaveAs(name);
-            }
-        }
-    });
+    // Append the footer controls after the option controls, then publish the
+    // full ordered ring for the shell's Tab handler.
+    focus_ids.extend(footer_ids);
+    state.focus_ids = focus_ids;
 
     action
 }

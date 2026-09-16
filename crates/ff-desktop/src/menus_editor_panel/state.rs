@@ -43,6 +43,16 @@ pub struct MenusEditorState {
     pub name_buffer: String,
     /// The most recent validation/save error, shown inline.
     pub error: Option<String>,
+    /// Ordered egui widget ids of every focusable control in the editor, in
+    /// visual (top-to-bottom, left-to-right) order, captured fresh each render.
+    /// The shell's Tab handler walks this list so EVERY interactive control --
+    /// including the menu selector, checkboxes and the separator selectables,
+    /// not just text fields -- is reachable by keyboard (accessibility). The
+    /// command line is prepended by the shell, so this holds only the editor's
+    /// own controls.
+    ///
+    /// Validates: accessibility (keyboard reachability); menu-workspace Req 13.4.
+    pub focus_ids: Vec<egui::Id>,
 }
 
 impl MenusEditorState {

@@ -509,10 +509,17 @@ impl eframe::App for WorkbenchShell {
                 .map(|m| m.options.len())
                 .unwrap_or(0);
             let is_file_explorer = self.tabs.active_tab().kind == TabKind::FileExplorerPanel;
+            // The Menus Editor manages its OWN Tab traversal: the shell intercepts
+            // Tab and cycles egui focus through the editor's own widgets (command
+            // line -> each option's key/command/description/group -> back), rather
+            // than running the POM focus_stop ring (which would drift up to the
+            // menu bar and never reach the editable fields). B054 follow-up.
+            let is_menus_editor = self.tabs.active_tab().kind == TabKind::MenusEditor;
             let cmd_id = egui::Id::new("command_field_input");
             let cmd_has_focus = ctx.memory(|m| m.focused() == Some(cmd_id));
 
             let (tab_pressed, shift_tab_pressed) = ctx.input_mut(|i| {
+                // Do not intercept Tab when a modal is open (dialog handles it).
                 if self.modal_open {
                     return (false, false);
                 }
@@ -568,6 +575,30 @@ impl eframe::App for WorkbenchShell {
                         self.nav_selection.cursor = None;
                         self.focus_stop = FocusStop::CommandField;
                         self.command_field_focus_requested = true;
+                    }
+                }
+            } else if is_menus_editor && (tab_pressed || shift_tab_pressed) {
+                // Menus Editor Tab ring: command line -> each option's
+                // key/command/description/group (in order) -> back to the command
+                // line. Focus is driven explicitly via egui request_focus on the
+                // stable per-field ids, so Tab reaches the editable fields instead
+                // of egui's create-order traversal drifting to the menu bar.
+                let ring = self.menus_editor_focus_ring();
+                if !ring.is_empty() {
+                    let focused = ctx.memory(|m| m.focused());
+                    let cur = focused.and_then(|f| ring.iter().position(|id| *id == f));
+                    let next_idx = match cur {
+                        Some(i) if shift_tab_pressed => (i + ring.len() - 1) % ring.len(),
+                        Some(i) => (i + 1) % ring.len(),
+                        // Not currently on a ring widget: Tab enters at the first
+                        // field, Shift+Tab enters at the last.
+                        None if shift_tab_pressed => ring.len() - 1,
+                        None => 0,
+                    };
+                    let target = ring[next_idx];
+                    ctx.memory_mut(|m| m.request_focus(target));
+                    if target == cmd_id {
+                        self.focus_stop = FocusStop::CommandField;
                     }
                 }
             } else if tab_pressed {
