@@ -593,8 +593,12 @@ pub fn render_tree(
 
                 // Cursor focus ring, distinct from the selection fill (Req 20.13).
                 if is_cursor {
-                    ui.painter()
-                        .rect_stroke(resp.rect.expand(1.0_f32), 2.0_f32, focus_stroke);
+                    ui.painter().rect_stroke(
+                        resp.rect.expand(1.0_f32),
+                        2.0_f32,
+                        focus_stroke,
+                        egui::StrokeKind::Outside,
+                    );
                 }
 
                 if resp.clicked() {

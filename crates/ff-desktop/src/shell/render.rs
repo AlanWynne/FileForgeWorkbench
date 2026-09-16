@@ -1533,8 +1533,12 @@ pub(crate) fn render_focus_indicator(
 ) {
     use ff_theme::ColourToken;
     let colour = to_egui_color(palette.colour(ColourToken::UiFocusRing));
-    ui.painter()
-        .rect_stroke(rect.expand(2.0), 2.0, egui::Stroke::new(2.0_f32, colour));
+    ui.painter().rect_stroke(
+        rect.expand(2.0),
+        2.0,
+        egui::Stroke::new(2.0_f32, colour),
+        egui::StrokeKind::Outside,
+    );
 }
 
 /// Collect search root paths from the active workspace or mounted Native catalogs.

@@ -112,7 +112,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
     // the footer panel is drawn first (bottom-up) in code.
     let mut footer_ids: Vec<egui::Id> = Vec::new();
     egui::TopBottomPanel::bottom("menus_editor_footer")
-        .frame(egui::Frame::none().inner_margin(egui::Margin::symmetric(0.0, 4.0)))
+        .frame(egui::Frame::NONE.inner_margin(egui::Margin::symmetric(0, 4)))
         .show_inside(ui, |ui| {
             let add = ui.button("Add option");
             if add.clicked() {
@@ -154,7 +154,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
     // horizontal ScrollArea so wide rows scroll rather than clip. Fields bind
     // directly to the working model with explicit unique ids (B054).
     egui::CentralPanel::default()
-        .frame(egui::Frame::none())
+        .frame(egui::Frame::NONE)
         .show_inside(ui, |ui| {
             egui::ScrollArea::both()
                 .id_salt("menus_editor_options")

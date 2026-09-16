@@ -668,6 +668,7 @@ fn render_section(
                             resp.rect,
                             2.0,
                             egui::Stroke::new(1.5_f32, ui.visuals().selection.stroke.color),
+                            egui::StrokeKind::Inside,
                         );
                     }
                     // Left-click selects catalog — Req 10.1

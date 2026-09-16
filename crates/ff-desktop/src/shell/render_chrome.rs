@@ -598,13 +598,13 @@ impl WorkbenchShell {
                                     if let Some(title) =
                                         self.tabs.tabs().get(i).map(|t| t.title.clone())
                                     {
-                                        ui.output_mut(|o| o.copied_text = title);
+                                        ui.ctx().copy_text(title);
                                     }
                                     ui.close_menu();
                                 }
                                 if ui.button("Copy Path to Clipboard").clicked() {
                                     if let Some(path) = self.tabs.tabs()[i].path.clone() {
-                                        ui.output_mut(|o| o.copied_text = path);
+                                        ui.ctx().copy_text(path);
                                     }
                                     ui.close_menu();
                                 }
