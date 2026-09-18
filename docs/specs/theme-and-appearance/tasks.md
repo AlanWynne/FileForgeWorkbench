@@ -467,3 +467,49 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configura
     - Covers: Requirement 21.7, 21.8, 21.9, 22.1
   - [x] 26.7 Update TCR (Req 21/22 rows); verify.ps1 CLEAN; rebuild; commit+push
     - Covers: Requirement 21, 22
+- [x] 27. Consolidate legacy themes + name-based THEME command (Requirement 17 rewrite, 18 revised; CR-CH-024)
+  - [x] 27.1 `discovery.rs`: reduce `BUILTIN_THEME_NAMES` to four (`Default Dark`, `Default Light`, `Default High Contrast`, `Default Legacy`); drop `Legacy (ISPF 3270)`; retarget `builtin_themes_returns_five_entries` test to four
+    - Covers: Requirement 18.1, 18.3
+  - [x] 27.2 `defaults.rs` / `theme_defaults.rs::resolve_by_name`: keep `default_legacy_palette()` (selectable built-in + fallback); remove the `Legacy (ISPF 3270)` built-in name arm; legacy colours unchanged
+    - Covers: Requirement 18.1, 18.3
+  - [x] 27.3 Implement `resolve_theme_arg(arg, available)`: exact case-insensitive name match first (first match wins), else built-in shorthand (dark/light/high contrast/legacy -> Default *)
+    - Covers: Requirement 17.2, 17.3
+  - [x] 27.4 Rewrite the shell THEME command handler to use the resolver: select+persist on match; on no match leave the theme unchanged and set status `THEME: '<name>' does not exist`; NO-ARG opens the Theme Editor via the existing open-editor path (navigate-in-place + Navigation_Stack push; END/RETURN per CR-CH-022)
+    - Covers: Requirement 17.1, 17.2, 17.4, 17.5, 17.7
+  - [x] 27.4a Remove the `THEMES` command from the shell intercept set; repoint the command palette entry and any `THEMES` references to `THEME`
+    - Covers: Requirement 17.1 (single command)
+  - [x] 27.5 `render_chrome.rs` + `menus/settings.toml`: relabel the former `Legacy (ISPF 3270)` menu item to `Default Legacy` (dispatch `THEME Default Legacy`); repoint the "Theme Editor" menu item and the Settings `T` option from `THEMES` to `THEME` (simplest fix; full menu-bar revision deferred)
+    - Covers: Requirement 17.6
+  - [x] 27.6 Config compatibility: persisted `legacy` mode string resolves to `Default Legacy`; the removed `Legacy (ISPF 3270)` name degrades to the `Default Legacy` fallback with a WARN (no crash)
+    - Covers: Requirement 18.2, 19.3
+  - [x] 27.7 Tests: resolver unit tests (exact/shorthand/ambiguous-first/not-found); full-shell egui_kittest tests -- `THEME xyz` (unknown) leaves the theme unchanged and shows the message; `THEME Dark` selects Default Dark; `THEME Legacy` selects Default Legacy; bare `THEME` opens the Theme Editor context (and END returns); `THEMES` is no longer recognised; four-built-in list assertion
+    - Covers: Requirement 17.2, 17.3, 17.4, 17.5; 18.3
+  - [x] 27.8 Update TCR rows (Req 17, Req 18 revised); verify.ps1 CLEAN; rebuild
+    - Covers: Requirement 17, 18
+
+## Phase (theme-list) Tasks -- THEME LIST popup selector + Settings Themes submenu (Requirement 17.8-17.13, CR-NR-077)
+
+> Arrow-navigable theme picker, invokable via the `THEME LIST` command (centred
+> popup) and a Settings Themes submenu; both route through the shared
+> `set_active_theme` apply+persist path (command parity). Reuses the
+> Command_Palette popup pattern. No existing behaviour changes.
+
+- [ ] 28. THEME LIST popup + Settings Themes submenu
+  - [ ] 28.1 New popup state modelled on `command_palette::state`: `ThemeListState { open, themes: Vec<String>, selected_index }` with `open(active, themes)` (pre-selects the entry equal to `active`, else 0), `close`, `select_next`/`select_prev` (wrap, guard empty), `selected`; and `ThemeListOutcome { None, Apply(String), Dismissed }`
+    - Covers: Requirement 17.8, 17.9, 17.10
+  - [ ] 28.2 Pure render `render_theme_list(ctx, &mut ThemeListState) -> ThemeListOutcome` modelled on `render_command_palette`: centred fixed Window, ScrollArea of selectable name rows (active row highlighted), Escape/click-outside -> Dismissed, ArrowDown/Up -> select, Enter/row-click -> Apply(name)
+    - Covers: Requirement 17.10
+  - [ ] 28.3 Failing state tests first: `open` pre-selects the active theme (and 0 when the active name is absent); `select_next`/`select_prev` wrap; `selected` returns the highlighted name
+    - Validates: Requirement 17.9, 17.10
+  - [ ] 28.4 Shell field `theme_list_state: ThemeListState`; add `|| self.theme_list_state.open` to the `modal_open` OR (update.rs) so Tab-cycle / function keys / Ctrl+S are suppressed while open
+    - Covers: Requirement 17.12
+  - [ ] 28.5 `THEME LIST` command guard in `handle_command`, ordered BEFORE the `THEME ` prefix and bare `THEME` guards: build the name list from `list_all_themes`, open the popup pre-selecting the active theme (`self.palette.name`)
+    - Covers: Requirement 17.8, 17.9
+  - [ ] 28.6 Per-frame render block (dialogs area of update.rs): when open, call `render_theme_list`; on `Apply(name)` call `self.set_active_theme(&name)` (shared apply+persist path); Dismissed/None do nothing
+    - Covers: Requirement 17.10, 17.11
+  - [ ] 28.7 Settings menu-bar nested `ui.menu_button("Themes", ...)` in `render_chrome.rs`, populated from `list_all_themes`, each item dispatching `THEME <name>` via `handle_command` (command parity); keep the `menu_first_id` capture intact
+    - Covers: Requirement 17.13
+  - [ ] 28.8 Full-shell egui_kittest test: `THEME LIST` opens the popup; ArrowDown then Enter applies a different theme (assert `open_error` is None and the active palette / `theme.active_name` changed); Escape closes without changing the theme. Parity test: the Settings Themes submenu path changes the active theme via the command
+    - Validates: Requirement 17.10, 17.11, 17.13
+  - [ ] 28.9 Update `docs/quality/TCR.md` (Req 17.8-17.13 rows -> PASS); verify.ps1 CLEAN (FULL, nextest); rebuild ffwb.exe
+    - Covers: Requirement 17.8-17.13

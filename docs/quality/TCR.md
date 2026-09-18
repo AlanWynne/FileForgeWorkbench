@@ -376,7 +376,7 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-theme` | ✅ | `defaults.rs::default_legacy_matches_legacy_colours` | Req 18.1: `default_legacy_palette()` built-in (name "Default Legacy", colours == Legacy ISPF) |
 | `ff-theme` | ✅ | `defaults.rs::fallback_is_default_legacy` | Req 18.2/18.6: `Default Legacy` is the canonical fallback (`fallback_palette()`) when the active theme cannot be resolved; reserved built-in name |
 | `ff-desktop` | ✅ | `theme_defaults.rs::ensure_default_theme_files_creates_empty_dir_no_builtins`, `load_theme_by_name_builtin_resolves_without_file`; `shell/tests.rs::theme_editor_does_not_materialise_builtins` | Req 18.2 (CR-CH-019): built-ins are code-only, never materialised to themes/; a built-in stays a permanent read-only baseline |
-| `ff-theme` | ✅ | `discovery.rs::builtin_themes_includes_default_legacy`, `builtin_themes_returns_five_entries` | Req 18.3: five built-ins (incl. Default Legacy) listed by `list_all_themes` and selectable |
+| `ff-theme` | ✅ | `discovery.rs::builtin_themes_includes_default_legacy`, `builtin_themes_returns_five_entries` | Req 18.3 (SUPERSEDED by CR-CH-024: now FOUR built-ins, `Legacy (ISPF 3270)` removed -- see the CR-CH-024 TCR section) -- five built-ins (incl. Default Legacy) listed by `list_all_themes` and selectable |
 | `ff-theme` | ✅ | `defaults.rs::default_legacy_serialise_round_trips` | Req 18.5: serialise(default_legacy) parses back equal (round-trip) |
 | `ff-desktop` | ✅ | `shell/tests.rs::theme_editor_reset_loads_builtin_baseline`, `theme_editor_reset_non_builtin_errors` | Req 18.4: reset-to-baseline restores a built-in theme to its compiled content (with confirmation in render); non-built-in errors |
 | `ff-desktop` | ✅ | `theme_defaults.rs::ensure_default_theme_files_creates_empty_dir_no_builtins`, `load_theme_by_name_reads_user_file` | Req 19.1/19.2 (REVISED CR-CH-019): `themes/` dir created (possibly empty) on first launch; built-ins NOT materialised -- themes/ holds only user themes |
@@ -567,7 +567,7 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 17.3: POM tab Title_Line shows "FileForge Workbench  vX.Y.Z" -- `title_line_pom_tab_shows_app_name_and_version` |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 17.4: File editor tab Title_Line shows full absolute path -- `title_line_file_editor_shows_path` |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 17.5: Untitled file editor tab Title_Line shows "[Untitled]" -- `title_line_untitled_shows_placeholder` |
-| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 17.6: SettingsPanel tab Title_Line shows "[SETTINGS]" -- `title_line_settings_panel_shows_settings` |
+| `ff-desktop` | ✅ | `shell.rs` unit tests | Req 17.6: ConfigPanel tab Title_Line shows "[CONFIG]" -- `title_line_config_panel_shows_config` |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 17.6: FilesPanel tab Title_Line shows "[FILES]" -- `title_line_files_panel_shows_files` |
 | `ff-desktop` | 🔲 | -- | Req 17.1: Three-element chrome order (Tab_Header, Title_Line, Command_Field) visible at runtime (manual UI verification) |
 | `ff-desktop` | 🔲 | -- | Req 17.2: Title_Line is read-only (manual UI verification) |
@@ -642,6 +642,98 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | 🔴 | -- | Req 12.4: `key_bar_visible` session persistence (TOML round-trip) -- deferred |
 | `ff-desktop` | 🔴 | -- | Req 18.1–18.3: contextual help "not available yet" fallback -- deferred (ff-help crate) |
 | `ff-desktop` | 🔴 | -- | Req 14.7: `[context_key_maps]` TOML config parsing -- deferred (config integration) |
+
+### CR-CH-027 -- Full compiled default key map + keymaps/ override files (Slice 1)
+
+> Owner-specified full Base + Shift default key map (code-only, like the compiled
+> POM/Settings menus); per-workspace-kind override files at
+> `<User_Data_Dir>/keymaps/<context>.toml` layered over the compiled default;
+> RESET BARE archives `keymaps/`.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-keys` | ✅ | `key_map.rs::key_map_default_global_has_full_base_row` | function-keys Req 15.1: `KeyMap::default_global()` contains the full Base row (F1 HELP, F2 SPLIT, F3 END, F4 RETURN, F5 RFIND, F6 RCHANGE, F7 UP, F8 DOWN, F9 SWAP, F10 LEFT, F11 RIGHT, F12 RETRIEVE) with labels |
+| `ff-keys` | ✅ | `key_map.rs::key_map_default_global_has_full_shift_row` | function-keys Req 15.2: `default_global()` contains the Shift row (SF1 HELP..SF6 RCHANGE mirror base; SF7 UP MAX, SF8 DOWN MAX, SF9 SWAP, SF10 LEFT MAX, SF11 RIGHT MAX, SF12 CURSOR) |
+| `ff-keys` | ✅ | `key_map.rs::key_map_default_global_binds_exactly_base_and_shift_f1_to_f12`; `shell::tests::keymaps_file_present_overrides_default_for_context` (full-replacement) | function-keys Req 15.3: the compiled default is overridable in full by `[global_key_map]` or a `keymaps/<context>.toml` file (full-replacement); Ctrl/Alt + keys beyond F12 unassigned |
+| `ff-keys` | ✅ | `key_map.rs::key_map_default_global_*` (built by `KeyMap::empty` + `set`, no file read) | function-keys Req 15.1 (code-only): the default map is compiled, NOT a shipped TOML file |
+| `ff-desktop` | ✅ | `shell::tests::ensure_keymaps_dir_creates_keymaps_dir` | function-keys Req 14.11: `ensure_keymaps_dir` creates `<User_Data_Dir>/keymaps/` (may be empty); built-in defaults never materialised |
+| `ff-desktop` | ✅ | `shell::tests::keymaps_file_present_overrides_default_for_context`, `keymaps_malformed_file_is_skipped_and_falls_back` | function-keys Req 14.9/14.10: `keymaps/<context>.toml` present -> loaded as the context map; absent -> compiled default; malformed -> skipped (DEBUG) + default fallback |
+| `ff-desktop` | ✅ | `shell::tests::keymaps_file_takes_precedence_over_config_section` | function-keys Req 14.12: a `keymaps/<context>.toml` FILE takes precedence over a `[context_key_maps.<name>]` config section for the same context (file loaded second) |
+| `ff-desktop` | ✅ | `shell::reset_bare::tests::archive_config_moves_present_items_and_removes_originals` | configuration-system Req 19.4 (CR-CH-027): RESET BARE archives the `keymaps/` directory (move-not-delete) alongside menus/themes |
+
+### CR-CH-028 -- Cursor_Context package on every command (Slice 2a)
+
+> ADDITIVE, behaviour-preserving. A flexible Cursor_Context (fixed core + open
+> extras bag) is threaded to every command via the existing `ExecutionContext` /
+> `ContextProvider` seam. Commands merely receive it (CSR consumption deferred).
+> Delivers CR-NR-079 context-aware HELP + the canonical "not implemented yet" message.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-command` | ✅ | `context::tests::empty_context_has_empty_cursor_context` | command-framework Req 12.1: `ExecutionContext` carries a `CursorContext`; handlers that ignore it are unchanged (additive) |
+| `ff-command` | ✅ | `context::tests::builder_sets_cursor_context_core` | command-framework Req 12.2: Cursor_Context CORE fields (workspace context, focused-control identity, focused text, cursor line/col, selection, scroll setting), each optional |
+| `ff-command` | ✅ | `context::tests::cursor_context_extras_bag_holds_typed_values`, `cursor_context_default_is_empty` | command-framework Req 12.3: open EXTRAS bag (string-keyed `ContextValue`); commands ignore unrecognised keys; empty when nothing extra |
+| `ff-desktop` | ✅ | `shell::tests::cursor_context_snapshot_reflects_command_line_focus`, `context_provider_returns_populated_cursor_context` | command-framework Req 12.4: shell-backed `ShellContextProvider` populates the package from live focus/selection; command-line + bound paths carry the SAME package (parity) |
+| `ff-desktop` | ✅ | `shell::tests::cursor_context_snapshot_reflects_command_line_focus` (snapshot refreshed each frame from live focus) | command-framework Req 12.5: Cursor_Context is a per-invocation snapshot; not retained/mutated by a command |
+| `ff-command` | 🔲 | -- | command-framework Req 12.6: explicit params take precedence over context. DELIVERY-ONLY this slice (no command consumes context yet); the precedence rule is verified when the first consumer (CSR LEFT/RIGHT/UP/DOWN) lands in Slice 2b. MANUAL/deferred: no behaviour to assert until a consumer exists |
+| `ff-desktop` | ✅ | `shell::tests::not_implemented_message_is_canonical` | command-framework Req 12.7: single canonical "command not implemented yet" message constant on the bound path ("out of context" is command-owned, deferred); bound-path consumers land in Slice 2b |
+| `ff-desktop` | ✅ | `shell::tests::help_consumes_focused_menu_option_context` | command-framework Req 12.8 (CR-NR-079): HELP consumes the Cursor_Context -- F1 on a focused Menu_Option resolves that option's help topic (F1 on FILES -> `cmd:FILES`) |
+
+### CR-CH-029 -- Keys Workspace replaces the modal dialog (Key Assignments Slice 3)
+
+> The modal `KeyConfigDialog` is re-homed into a Keys Workspace Context (modelled
+> on the Menus/Theme editors): a workspace-KIND dropdown + Save to
+> `keymaps/<kind>.toml` (closes CR-CH-027); `K` -> `KEYS` in Settings. The
+> Command_Picker/72-slot model (Req 20/21) is deferred.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `shell::tests::keys_command_opens_keys_workspace` | function-keys Req 22.1: Keys Workspace (`TabKind::KeysEditor`) replaces the modal `KeyConfigDialog` (modal retired), modelled on the Menus/Theme editor Contexts |
+| `ff-desktop` | ✅ | `keys_editor_panel::state::tests::*`, `shell::tests::keys_with_kind_preselects_that_kind` | function-keys Req 22.2: workspace-KIND dropdown lists the stable context names; selecting a kind loads its key list (keymaps file or compiled default) |
+| `ff-desktop` | ✅ | `keys_editor_panel::state::tests::*` | function-keys Req 22.3: editable key grid for the selected kind (current grid; Command_Picker deferred) |
+| `ff-desktop` | ✅ | `shell::tests::keys_editor_save_writes_keymaps_file_for_kind` | function-keys Req 22.4: Save writes `<User_Data_Dir>/keymaps/<kind>.toml` (the resolver's override file, CR-CH-027) and reloads that kind's context map |
+| `ff-desktop` | ✅ | `shell::tests::keys_command_opens_keys_workspace` | function-keys Req 22.5: `KEYS` opens the Keys Workspace in place (nav-stack push); menu affordance dispatches `KEYS` (command parity) |
+| `ff-desktop` | ✅ | `menu_workspace::defaults::tests::default_settings_toml_has_recovery_baseline_options`, `recovery_settings_menu_has_barebones_options` | function-keys Req 22.6 / menu-workspace Req 12.3: `DEFAULT_SETTINGS_TOML` Core group gains `K` -> `KEYS` "Keys" |
+| `ff-desktop` | ✅ | `shell::tests::full_shell_keys_first_tab_focuses_kind_dropdown` | function-keys Req 22.7: Keys Workspace reports its `InteriorFocus` (kind dropdown = first interior); full-shell first-Tab test (no phantom stop) |
+| `ff-desktop` | ✅ | `session_manager` (KeysEditor -> None, transient) | function-keys Req 22.8: Keys Workspace is a transient editing Context (not restored as a tab; keymaps files are the persisted artefacts) |
+
+### CR-NR-077 -- THEME LIST popup selector + Settings Themes submenu
+
+> A `THEME LIST` command opens a centred arrow-navigable popup of the available
+> themes (Up/Down/Enter/Escape); the Settings menu gains a Themes submenu. Both
+> route through the shared `set_active_theme` apply+persist path (command parity).
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | theme-and-appearance Req 17.8: `THEME LIST` (matched before `THEME <name>`) opens a centred Theme_List_Popup listing available themes in list order; does not change the active theme on open |
+| `ff-desktop` | 🔴 | -- | theme-and-appearance Req 17.9: the popup pre-selects the entry equal to the currently active theme (else the first entry) |
+| `ff-desktop` | 🔴 | -- | theme-and-appearance Req 17.10: Down/Up move (wrapping), Enter applies + closes, Escape / click-outside closes without changing the theme, row-click applies |
+| `ff-desktop` | 🔴 | -- | theme-and-appearance Req 17.11: choosing an entry applies + persists via the shared `set_active_theme` path (exact name; persistence failure surfaces the non-silent message of 17.7) |
+| `ff-desktop` | 🔴 | -- | theme-and-appearance Req 17.12: while open the popup is modal for input -- shell Tab-cycle, function keys, and Ctrl+S suppressed (folded into `modal_open`) |
+| `ff-desktop` | 🔴 | -- | theme-and-appearance Req 17.13: Settings Themes submenu lists themes; selecting one dispatches `THEME <name>` via `handle_command` (command parity), not a direct setter |
+
+> NOTE (CR-NR-080): the CR-NR-077 theme-picker behaviour above (Req 17.8-17.13) is
+> now DELIVERED via the configurable menu-bar mechanism (CR-NR-080 Slice D,
+> menu-workspace Req 17.10/17.11) rather than a bespoke popup. These rows will be
+> satisfied by that work.
+
+### CR-NR-080 -- Configurable named menu bars (a menu rendered horizontally)
+
+> The menu bar becomes a Menu_File rendered horizontally; top-level buttons PEEK
+> their referenced submenu as a dropdown (not navigate); leaves dispatch commands
+> (parity). Named + editable + per-kind assignable; dynamic Themes source. Model +
+> command resolution unchanged. SLICED: A rows below; B-D added when those slices
+> are specced into tasks.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 17.1: the menu bar renders from a Menu_File (each top-level option -> a dropdown button, in option order), not from hardcoded button definitions |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 17.2: compiled `DEFAULT_MENUBAR_TOML` (code-only fallback) reproduces today's bar incl. a trailing `Help`; the bar renders from it when no user file exists |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 17.3: opening a top-level button PEEKS the menu its command references (renders that menu's options as dropdown items) WITHOUT navigating the workspace |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 17.4: selecting a leaf dropdown item dispatches its command via `handle_command` (command parity) and closes the dropdown |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 17.5: dropdown items are keyboard-navigable via egui-native menu behaviour (arrows/Enter/Escape) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 17.6: first/last top-level button ids still captured for the CR-CH-023 Boundary_Policy from the data-driven bar (Tab reaches the bar; last button wraps to command field) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 17.7: the POM/Settings vertical Menu_Workspace render is unchanged by the data-driven bar |
 
 ## Final Summary (after Phase AM)
 
@@ -2483,3 +2575,118 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | 🔴 | -- | Req 14.6: headless egui_kittest harness test renders the Menus Editor and injects Tab, asserting focused-widget order |
 | `ff-desktop` | 🔴 | -- | Req 14.7: Tab focus visits every Menus Editor control once in visual order (no widget skipped) then wraps to the command line |
 | `ff-desktop` | 🔴 | -- | Req 14.8: the headless harness runs without a display device under cargo test and cargo nextest |
+
+### CR-CH-023 -- Unified tab-order model (Req 16 rework; menu-workspace Req 15)
+
+> Supersedes the Phase AJ / AK Req 16 rows above (the old `FocusStop` ring:
+> PomOption/PomExit/CalendarPrev/CalendarNext/MenuBar/TabHeader stops). Those rows
+> described the removed ring and no longer apply; the criteria below are the
+> authoritative Req 16 rows after CR-CH-023.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `shell::tests::full_shell_launch_focus_is_command_field` | menu-and-statusbar Req 16.1: on launch, focus is on the Primary_Command_Field (full-shell egui_kittest build_eframe harness) |
+| `ff-desktop` | 🔲 | -- | menu-and-statusbar Req 16.1a: focus returns to the command field on every Workspace entry (navigate_to / start_new_workspace / active-tab change set the flag; harness covers launch; navigation entry is manual/UI verification) |
+| `ff-desktop` | 🔲 | -- | menu-and-statusbar Req 16.2: printable char goes to the command field when it has focus (manual/UI verification) |
+| `ff-desktop` | ✅ | `shell::tests::full_shell_tab_from_command_field_enters_first_option` | menu-and-statusbar Req 16.3: Tab from command field enters the active Workspace's first Interior_Control, not the SCROLL field (full-shell harness) |
+| `ff-desktop` | ✅ | `shell::tests::full_shell_theme_editor_first_tab_focuses_theme_selector` | menu-and-statusbar Req 16.3 (B057): on the Theme Editor Context the first Tab lands on the Theme selector combo (reported first interior), with no phantom/invisible focus stop -- the ThemeEditor arm now reports interior ids and honours the focus latch like the other Contexts |
+| `ff-desktop` | ✅ | `shell::tests::full_shell_config_first_tab_focuses_filter_field` | menu-and-statusbar Req 16.3 (B058): on the Config Panel (`CONFIG`) the first Tab lands on the Filter field (reported first interior), with no phantom stop -- the ConfigPanel arm now reports the stable Filter-field id and honours the focus latch like the other Contexts |
+| `ff-desktop` | ✅ | `shell::tests::full_shell_plugin_manager_first_tab_focuses_interior`, `full_shell_event_log_first_tab_focuses_interior`, `full_shell_macro_library_first_tab_focuses_interior`, `full_shell_search_results_first_tab_focuses_interior`, `full_shell_command_configurator_first_tab_focuses_interior` | menu-and-statusbar Req 16.3 (B059): the remaining workspace Contexts (Plugin Manager, Event Log, Macro Library, Search Results, Command Configurator) each land the first Tab on their reported first interior control, no phantom stop -- all five arms now report interior ids + honour the focus latch. Enforced for future workspaces by `.kiro/steering/workspace-conformance.md`. (FilesPanel/FileEditor excluded as special cases.) |
+| `ff-desktop` | ✅ | `menu_workspace::render::tests::menu_workspace_tab_visits_options_then_calendar` | menu-and-statusbar Req 16.4: Tab advances through Interior_Controls in egui-native visual order (verified for the menu-workspace interior) |
+| `ff-desktop` | ✅ | `shell::tests::full_shell_tab_cycle_wraps_to_command_field_and_skips_chrome` | menu-and-statusbar Req 16.5: Tab from the last Interior_Control moves to the Menu_Bar (part of the full-shell wrap cycle) |
+| `ff-desktop` | 🔲 | -- | menu-and-statusbar Req 16.6: Tab advances through Menu_Bar items (egui-native; manual/UI verification) |
+| `ff-desktop` | ✅ | `shell::tests::full_shell_tab_cycle_wraps_to_command_field_and_skips_chrome` | menu-and-statusbar Req 16.7: Tab from the last Menu_Bar item wraps to the command field (full-shell harness proves the cycle wraps) |
+| `ff-desktop` | ✅ | `shell::tests::full_shell_shift_tab_from_command_field_goes_to_menu_bar` | menu-and-statusbar Req 16.8: Shift+Tab reverses -- from the command field it goes to the Menu_Bar, not chrome (full-shell harness) |
+| `ff-desktop` | ✅ | `shell::tests::key_label_bar_buttons_are_not_tab_focus_stops`, `status_bar_segments_are_not_tab_focus_stops`, `full_shell_tab_cycle_wraps_to_command_field_and_skips_chrome` | menu-and-statusbar Req 16.9: chrome is not a Tab stop -- Status_Bar + Key_Label_Bar proven by isolated harness; the SCROLL field proven absent from the real full-shell cycle; tab headers use click-only Sense |
+| `ff-desktop` | 🔲 | -- | menu-and-statusbar Req 16.10: focused menu-option Interior_Control shows the reversed-colour focus indicator (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | menu-and-statusbar Req 16.11: Enter/Space on a focused Interior_Control performs the same action as a click (egui button native activation; manual UI verification) |
+| `ff-desktop` | 🔲 | -- | menu-and-statusbar Req 16.12: focused Menu_Bar item shows a visible focus indicator (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | menu-and-statusbar Req 16.13: Enter/Space on a focused Menu_Bar item opens its dropdown (manual UI verification) |
+| `ff-desktop` | 🔲 | -- | menu-and-statusbar Req 16.14: the Boundary_Policy is implemented once at the shell level and applies to every Workspace kind (no per-Workspace focus code; design/manual verification) |
+| `ff-desktop` | ✅ | `menu_workspace::render::tests::menu_workspace_tab_visits_options_then_calendar`, `menu_workspace_disabled_option_is_skipped` | menu-workspace Req 15.1-15.4: enabled options are focus stops in declared order; disabled options skipped |
+| `ff-desktop` | ✅ | `menu_workspace::render::tests::menu_workspace_tab_visits_options_then_calendar`, `menu_workspace_no_calendar_last_interior_is_last_option` | menu-workspace Req 15.5/15.6: with the calendar shown Tab reaches the calendar `>` after the last option; no calendar stops when hidden (last interior = last option) |
+| `ff-desktop` | ✅ | `primary_option_menu::tests::calendar_prev_next_are_focusable_buttons`, `calendar_prev_button_enter_returns_prev_nav` | menu-workspace Req 15.7/15.8: calendar prev/next are real focusable buttons; Enter changes the month |
+| `ff-desktop` | ✅ | `shell::tests::full_shell_shift_tab_from_command_field_goes_to_menu_bar` | menu-workspace Req 15.9: Shift+Tab reverses the cycle -- the command-field reverse boundary (-> Menu_Bar) is harness-proven; interior reverse steps are egui-native |
+| `ff-desktop` | ✅ | `primary_option_menu::tests::calendar_prev_next_are_focusable_buttons` | menu-workspace Req 15.10: only the calendar prev/next buttons are focusable; day cells are not focus stops (day cells are plain labels) |
+| `ff-desktop` | ✅ | `menu_workspace::render::tests` (interior order derived from menu.options each frame) | menu-workspace Req 15.11: adding/removing/reordering options in the Menu_File changes the Tab order with no code change |
+| `ff-desktop` | ✅ | `shell::tests::key_label_bar_buttons_are_not_tab_focus_stops`, `menu_workspace::render::tests::menu_workspace_tab_visits_options_then_calendar` | automated-dialog-testing Req 14.9: egui_kittest harness validates chrome-not-focusable and the POM/menu-workspace interior order (options -> calendar) |
+
+### CR-CH-024 -- Legacy theme consolidation + name-based THEME command
+
+> theme-and-appearance Requirement 17 (rewritten to name-based) and Requirement 18
+> (built-in set 5 -> 4; `Legacy (ISPF 3270)` removed, `Default Legacy` retained as
+> selectable built-in + fallback). Supersedes the Phase (theme-editor) "five
+> built-ins" row above.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-theme` | ✅ | `discovery.rs::builtin_themes_returns_four_entries`; `shell/tests.rs::full_shell_theme_list_has_four_builtins` | theme Req 18.1/18.3: built-in set is exactly FOUR (`Default Dark`, `Default Light`, `Default High Contrast`, `Default Legacy`); `Legacy (ISPF 3270)` is not a built-in name; legacy colours unchanged under `Default Legacy` |
+| `ff-desktop` | ✅ | `theme_defaults.rs::resolve_theme_arg_exact_name_case_insensitive`, `resolve_theme_arg_exact_user_name_beats_shorthand` | theme Req 17.2a: `THEME <name>` selects by EXACT case-insensitive real-name match (built-in or user) first |
+| `ff-desktop` | ✅ | `theme_defaults.rs::resolve_theme_arg_shorthand_maps_to_default_builtins`; `shell/tests.rs::full_shell_theme_shorthand_selects_default_builtins` | theme Req 17.2b: `THEME <shorthand>` selects the built-in that omits the `Default ` prefix (`Dark`/`Light`/`High Contrast`/`Legacy` -> `Default *`); `legacy` -> `Default Legacy` |
+| `ff-desktop` | ✅ | `theme_defaults.rs::resolve_theme_arg_ambiguous_resolves_to_first` | theme Req 17.3: two case-insensitive user matches resolve to the FIRST listed, no error |
+| `ff-desktop` | ✅ | `shell/tests.rs::full_shell_bare_theme_opens_editor_and_end_returns` | theme Req 17.4: bare `THEME` (no argument) opens the Theme Editor context in place (Navigation_Stack push; END returns), does NOT change the active theme, via the same path the removed `THEMES` used |
+| `ff-desktop` | ✅ | `shell/tests.rs::full_shell_themes_command_is_removed` | theme Req 17.1: `THEMES` command removed (no longer recognised); Settings "Theme Editor" item, `menus/settings.toml` `T` option, and command palette repointed to `THEME` |
+| `ff-desktop` | ✅ | `theme_defaults.rs::resolve_theme_arg_unknown_returns_none`; `shell/tests.rs::full_shell_theme_unknown_leaves_theme_unchanged` | theme Req 17.5: `THEME <unknown>` leaves the active theme unchanged and shows `THEME: '<name>' does not exist` |
+| `ff-desktop` | 🔲 | -- | theme Req 17.6: the Settings menu theme items dispatch `THEME <name>` (parity); former `Legacy (ISPF 3270)` item relabelled `Default Legacy`. MANUAL: exact pixel labels/menu-item placement pending the menu-bar redesign; the dispatch path itself is covered by `full_shell_themes_command_is_removed` and the shorthand tests |
+| `ff-desktop` | ✅ | `theme_defaults.rs::resolve_theme_arg_shorthand_maps_to_default_builtins` (legacy -> Default Legacy), `resolve_theme_arg_unknown_returns_none` (removed name is not a built-in) | theme Req 18.2/19.3 (CR-CH-024): persisted `legacy` mode string resolves to `Default Legacy`; the removed `Legacy (ISPF 3270)` name degrades to the `Default Legacy` fallback with a WARN (no crash) |
+
+### CR-CH-025 -- Unified command-resolution chain + Settings launcher + CONFIG command
+
+> command-framework Requirement 8 (ordered chain + shadowing + menu-name/macro
+> stages), menu-workspace Requirement 3.6/11.11-11.12/12.3 (keyword-less menu-name
+> resolution; Settings baseline reorder; retire SETTINGS/A special cases), and
+> configuration-system Requirement 20 (the CONFIG command) + Req 15 revisions.
+> Closes B032. The macro stage is specified but deferred, so its row is MANUAL/NOT
+> COVERED until Lua execution is wired.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-command` | ✅ | `command_target_tests::menu_name_resolves_to_menu_target`, `menu_name_matches_first_token_for_chaining` | Req 8.3/8.11: `resolve_target` resolves a bare first-token match to a `Menu_Target` when the token is a resolvable Menu_Name (user file or built-in `pom`/`settings`) |
+| `ff-command` | ✅ | `command_target_tests::builtin_command_shadows_same_named_menu`, `menu_name_shadows_same_named_macro` | Req 8.10: shadowing rule -- a built-in command / Command_ID beats a same-named Menu_Name, which beats a same-named Macro; first match within a stage wins; matching is case-insensitive |
+| `ff-command` | ✅ | `command_target_tests::deferred_macro_stage_default_none_falls_through_to_error`, `macro_name_resolves_when_no_earlier_stage_matches`; `command_config::tests::shell_resolver_macro_stage_is_deferred_none` | Req 8.12: the macro stage is present in the chain order but DEFERRED -- `macro_name_target` returns None so a non-built-in, non-menu token falls through to the unresolved-command error |
+| `ff-desktop` | ✅ | `shell::tests::settings_t_chains_to_theme_editor` | Req 8.13 / menu-workspace 11.7: a menu-name match with a trailing token opens the menu and activates the option keyed by that token (`SETTINGS T` == open Settings + activate `T`) |
+| `ff-desktop` | ✅ | `shell::tests::settings_command_opens_menu_workspace_not_flat_panel`, `keyword_less_pom_menu_name_opens_home_context`; `command_config::tests::shell_resolver_builtin_menu_name_resolves_without_file`, `shell_resolver_user_menu_file_resolves` | menu-workspace Req 11.11: keyword-less menu-name form -- a bare token matching a resolvable menu opens it without the `MENU` keyword; `SETTINGS`/`POM`/user menu names all resolve identically |
+| `ff-desktop` | ✅ | `command_config::tests::shell_resolver_unknown_menu_name_does_not_resolve`; `shell::tests::unknown_token_is_unresolved_not_a_menu` | menu-workspace Req 11.12 / command-framework 8.10: a user menu/macro cannot shadow a built-in verb (built-in precedence); an unknown token is unresolved, not silently swallowed |
+| `ff-desktop` | ✅ | `shell::tests::settings_command_opens_menu_workspace_not_flat_panel` (Err falls through), `unknown_token_is_unresolved_not_a_menu` | menu-workspace Req 3.6: the current-menu Option_Key lookup is the FIRST chain stage; a non-matching token falls through to the remaining stages instead of erroring |
+| `ff-desktop` | ✅ | `menu_workspace::defaults::tests::default_settings_toml_has_recovery_baseline_options`, `recovery_settings_menu_has_barebones_options`; `shell::tests::default_settings_toml_option_a_command_is_config` | menu-workspace Req 12.3: `DEFAULT_SETTINGS_TOML` is ordered Core[`A` CONFIG, `T` THEME, `M` MENUS] then Recovery[`R` RESET BARE]; `A -> CONFIG`, `T -> THEME` (not THEMES), `R -> RESET BARE`; built-ins stay code-only |
+| `ff-desktop` | ✅ | `shell::tests::config_command_is_registered`, `settings_all_view_has_no_namespace_filter`, `settings_option_a_opens_flat_panel` | configuration-system Req 20.2: bare `CONFIG` opens the flat config-key view unfiltered (Command_ID `config.open`, resolves as a built-in) |
+| `ff-desktop` | ✅ | `shell::tests::settings_namespace_filter_applied_on_open`, `settings_namespace_opens_filtered_flat_panel`, `settings_namespace_tab_title_includes_namespace`, `config_unknown_namespace_opens_editable_view` | configuration-system Req 20.3/20.4: `CONFIG <namespace>` opens the flat view filtered to `<namespace>.`; an unmatched namespace opens an empty-but-editable filter (no error) |
+| `ff-desktop` | ✅ | `shell::tests::default_settings_toml_option_a_command_is_config` (menu row -> CONFIG); the removed `A`/`SETTINGS <ns>` intercepts are covered by the migrated `CONFIG`/`settings_*` tests | configuration-system Req 20.6: the Settings `A` option dispatches `CONFIG` (command parity); the `A`-named command and the `SETTINGS <namespace>` intercept are removed |
+| `ff-desktop` | 🔲 | -- | configuration-system Req 20.7: the Config View persists/restores as `CustomWorkspace { workspace_kind = config, params = { namespace } }` with the namespace reapplied. MANUAL: covered structurally by the existing config-descriptor persistence (Req 15.9 / `config_namespace_descriptor_round_trips`) tests; the `CONFIG`-entry-point round trip is verified manually pending a dedicated persistence test |
+| `ff-desktop` | ✅ | `shell::tests::settings_command_opens_menu_workspace_not_flat_panel`, `settings_menu_end_returns_to_pom` | B032 (closed by CR-CH-025): opening Settings is menu-name resolution of `SETTINGS`, not a bespoke verb; the Settings_Menu is a real Menu_Workspace |
+
+### CR-CH-026 -- Calendar Visibility and Fit; Settings default off (menu-workspace Req 16, B060)
+
+> Fixes B060: a `show_calendar = true` menu drew the calendar (and its focusable
+> `<`/`>` buttons) off the visible right edge in a narrow workspace -- invisible
+> yet still Tab stops. Settings now defaults calendar off; a shown calendar must
+> be visible and its buttons on-screen; an omitted calendar contributes zero Tab
+> stops.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `menu_workspace::defaults::tests::default_settings_toml_hides_calendar`; `shell::tests::full_shell_settings_tab_walks_options_only_no_calendar_stops` | menu-workspace Req 16.1: the compiled Settings default (`DEFAULT_SETTINGS_TOML`) sets `show_calendar = false`; the Settings Menu_Workspace shows no calendar and has no calendar Tab stops by default |
+| `ff-desktop` | ✅ | `menu_workspace::render::tests::menu_calendar_shown_when_wide_next_button_is_on_screen` | menu-workspace Req 16.2: WHEN `show_calendar = true` AND it fits (available >= OPTION_LIST_MIN_WIDTH + CALENDAR_GAP + CALENDAR_MIN_WIDTH), the calendar is laid out within the visible width with `<`/`>` on-screen and reachable (POM, Settings, custom alike) |
+| `ff-desktop` | ✅ | `menu_workspace::render::tests::menu_calendar_omitted_when_too_narrow_no_calendar_tab_stops` | menu-workspace Req 16.3: WHEN `show_calendar = true` BUT the workspace is too narrow, the calendar is omitted for that frame (decision uses only the current frame's available width -> restored on a wider frame, no persisted state) |
+| `ff-desktop` | ✅ | `menu_workspace::render::tests::menu_calendar_omitted_when_too_narrow_no_calendar_tab_stops`, `menu_workspace_no_calendar_last_interior_is_last_option`; `shell::tests::full_shell_settings_tab_walks_options_only_no_calendar_stops` | menu-workspace Req 16.4: WHEN the calendar is omitted (narrow-fit OR `show_calendar = false`), its `<`/`>` ids are NOT in the reported interior focus contract -- zero calendar Tab stops; last interior = last enabled option |
+| `ff-desktop` | ✅ | `menu_workspace::render::tests::menu_calendar_shown_when_wide_next_button_is_on_screen` (asserts the `>` rect is within `ui.clip_rect()`) | menu-workspace Req 16.5: WHEN the calendar is displayed, the reported last interior (`>`) button's on-screen rect is within the visible width (never an off-screen phantom stop) -- the B060 invariant |
+| `ff-desktop` | ✅ | option list constrained via `ScrollArea::max_width` + `set_max_width` to `available - gap - CALENDAR_MIN_WIDTH` (reserved right column); guarded by `menu_calendar_shown_when_wide_next_button_is_on_screen` | menu-workspace Req 16.6: the displayed calendar does not overlap the option list; the option list keeps a readable width/scroll and the calendar occupies a reserved right-hand column |
+
+### CR-NR-078 -- WorkspaceContext trait framework (phase 1)
+
+> Compiler-enforced workspace-Context contract: `WorkspaceContext::render ->
+> InteriorFocus`, single shell dispatch (owned-panel swap), `ShellServices` +
+> `ShellRequest`, host-agnostic (detach-ready), layered above
+> `ff-layout::DockablePanel`. Phase-1 proof scope: MenuWorkspace (POM + Settings),
+> Theme Editor, Menus Editor, Config panel. Behaviour-preserving -- the existing
+> full-shell first-Tab tests are the safety net.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `shell::workspace_context::tests::interior_focus_none_is_both_none`, `interior_focus_single_sets_both_to_same_id`, `interior_focus_new_sets_distinct_first_and_last` | Req 1.1/1.3: `InteriorFocus { first, last }` with `none()`/`single()`/`new()`; `WorkspaceContext::render` RETURNS it so an implementor cannot omit the focus contract |
+| `ff-desktop` | ✅ | `shell::tests::full_shell_config_first_tab_focuses_filter_field`, `full_shell_theme_editor_first_tab_focuses_theme_selector`, `full_shell_menus_editor_first_tab_focuses_menu_selector` (all pass unchanged through the single `render_workspace_context` dispatch) | Req 1.2: the shell dispatches the active Context's render through the trait on ONE code path (`render_workspace_context` / shared `apply_interior_focus`) and honours the latch; no per-kind focus-latch ritual remains for migrated Contexts |
+| `ff-desktop` | ✅ | `shell::workspace_context::tests::shell_request_helpers_enqueue`; exercised by the migrated arms | Req 2.1-2.3: `ShellServices` mediates shell access (config/runtime/notifications/dirs) without `&mut WorkbenchShell`; Contexts enqueue `ShellRequest`s drained by `apply_shell_requests` (pure render -> action generalised) |
+| `ff-desktop` | ✅ | `shell::tests::full_shell_config_first_tab_focuses_filter_field`, `full_shell_theme_editor_first_tab_focuses_theme_selector`, `full_shell_menus_editor_first_tab_focuses_menu_selector`, `full_shell_first_tab_focuses_reported_first_interior` (POM), `settings_command_opens_menu_workspace_not_flat_panel`; theme/menus-editor behaviour suites unchanged | Req 1.4/1.5: MenuWorkspace (POM + Settings), Theme Editor, Menus Editor, and Config panel each implement `WorkspaceContext` with IDENTICAL observable behaviour -- all 944 ff-desktop tests pass unchanged |
+| `ff-desktop` | ✅ | full test suite green after each per-Context migration (944 tests) | Req 3.1-3.3: migration was incremental and behaviour-preserving; the migrated arms use trait dispatch and their inline focus-latch ritual was removed |
+| `ff-desktop` | ✅ | `shell/workspace_context.rs` module doc + `docs/specs/workspace-framework/design.md` section 10 | Req 4.1/4.2: `WorkspaceContext` (ff-desktop) is layered above `ff-layout::DockablePanel` (Option Y); `ff-layout` stays GUI-independent |
+| `ff-desktop` | ✅ | `shell::tests::workspace_context_render_is_host_agnostic` | Req 6.1/6.2: `render` is host-agnostic -- the Config Context renders correctly into a non-central-panel `Ui` and returns the same `InteriorFocus` (detach-ready), without building the detach feature |

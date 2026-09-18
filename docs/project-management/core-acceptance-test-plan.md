@@ -61,6 +61,11 @@ not blocking.
 | 1.1 | Launch the app. | Workbench opens with a POM workspace as the first tab; `Command ===>` line visible; status bar present. | startup-and-session 14.1 | [ ] |
 | 1.2 | Open a second workspace (type `2`/`FILES`, or `1`). | A new tab opens and becomes active; previous tab remains in the tab bar. | multi-tab-editor | [ ] |
 | 1.3 | Switch between tabs (click / keyboard). | Active tab changes; content swaps; no crash. | multi-tab-editor | [ ] |
+| 1.3a | At launch, press Tab repeatedly from the command field. | Focus enters the active Workspace's first control (POM: first enabled option), walks the interior in visual order, then the Menu_Bar, then wraps to the command field. Focus NEVER lands on a Status_Bar segment ("RUNNING", session start, "Ln x, Col y", encoding, line count, version label), the `SCROLL ===>` field, or a Key_Label_Bar F-key button. | B055 (FIXED); CR-CH-023 (AUTOMATED: full-shell egui_kittest tests + retest); menu-and-statusbar 16 | [ ] |
+| 1.3b | On a POM, press Tab from the command field through the whole cycle; then Shift+Tab back. | Command line -> each enabled POM option in order -> calendar `<` -> calendar `>` (calendar shown) -> Menu_Bar items -> wrap to command line. Disabled options are skipped. Shift+Tab reverses exactly. | CR-CH-023 (AUTOMATED: interior order + full-shell wrap/Shift+Tab harness tests; retest); menu-workspace 15; menu-and-statusbar 16 | [ ] |
+| 1.3c | Open the Menus Editor (`MENUS`); press Tab from the command field. | Command line -> Menu selector -> Title -> Show Calendar -> Group Headers -> Sep Space/Line/None -> per option (key -> Command -> Description -> Group -> on -> up -> down -> delete) -> Add Option -> Save -> New Name -> Save As -> Menu_Bar items -> wrap to command line. No SCROLL field or F-key button in the cycle. | CR-CH-023 (implemented, retest); menu-and-statusbar 16 | [ ] |
+| 1.3d | Open the Theme Editor (bare `THEME`); press Tab from the command field. | Command line -> Theme selector combo (NO invisible stop first) -> Set Active -> Reset to built-in -> (Confirm reset / Cancel when a reset is pending) -> New name field -> Copy -> Save As -> Save -> colour hex fields in order -> Menu_Bar items -> wrap to command line. No phantom/invisible focus stop between the command line and the Theme selector. | B057 (VERIFIED by owner); CR-CH-023 (AUTOMATED: full-shell egui_kittest test); menu-and-statusbar 16; theme-and-appearance 20.1 | [x] |
+| 1.3e | Open the CONFIG panel (`CONFIG`); press Tab from the command field. | Command line -> Filter field (NO invisible stop first) -> the per-key widgets in order -> Menu_Bar -> wrap. No phantom focus stop between the command line and the Filter field. | B058 (FIXED, CR-CH-025/config-tab, AUTOMATED: `full_shell_config_first_tab_focuses_filter_field`); menu-and-statusbar 16; configuration-system 20 | [ ] |
 | 1.4 | `SWAP n` on the command line (e.g. `SWAP 2`); also `SWAP 0`/`SWAP 999`/`SWAP xyz`. | `SWAP 1` -> first tab, `SWAP 2` -> second; out-of-range/invalid shows a clear error and does not switch. | B043 (FIXED, retest); multi-tab-editor 18.1, 18.2 | [ ] |
 | 1.5 | `SWAP LIST` (and bare `SWAP` with no split). | A selectable list of open tabs pops up (`n: title`); clicking a row OR typing a number + Enter switches; Escape cancels. | B043 (FIXED, retest); multi-tab-editor 18.3-18.7 | [ ] |
 | 1.6 | Close a tab via its close control. | Tab closes; a sensible neighbour becomes active; POM cannot be lost (at least one tab remains). | multi-tab-editor 3.8 | [ ] |
@@ -78,9 +83,12 @@ not blocking.
 | # | Step | Expected result | Req / Backing | Result |
 |---|------|-----------------|---------------|--------|
 | 2.1 | View the POM. | Rendered as a menu workspace: rows of option / command / description. | menu-workspace | [ ] |
-| 2.2 | Open the Settings menu (`SETTINGS` / `0` / `=0`). | Opens as a POM-modelled menu workspace (option/command/description rows), NOT the flat custom panel. | B032; menu-workspace 11.2 | [B] |
+| 2.2 | Open the Settings menu (`SETTINGS` / `0` / `=0`). | Opens as a POM-modelled menu workspace (option/command/description rows), NOT the flat custom panel. Options: A Config, T Theme, M Menus (Core); R Reset BARE (Recovery). | B032 (FIXED, CR-CH-025, AUTOMATED: `settings_command_opens_menu_workspace_not_flat_panel`); menu-workspace 11.2 | [ ] |
+| 2.2a | Open the Settings menu; press Tab from the command line to the end of the option list and beyond. | No calendar is shown (Settings defaults `show_calendar = false`). Tab walks ONLY the option rows, then the Menu_Bar -- there are NO extra "invisible" Tab stops after the last option. | B060 (FIXED, CR-CH-026, AUTOMATED: `default_settings_toml_hides_calendar`, `full_shell_settings_tab_walks_options_only_no_calendar_stops`); menu-workspace 16.1, 16.4 | [ ] |
+| 2.2b | Edit a menu (or Settings) to set `show_calendar = true`, open it in a normal and in a NARROW window. | Normal window: the calendar is VISIBLE on the right and its `<`/`>` month buttons are reachable by Tab and on-screen. Narrow window (too small to fit): the calendar is omitted (not drawn off-screen) and there are NO calendar Tab stops. In neither case is there an invisible/off-screen focus stop. | B060 (FIXED, CR-CH-026, AUTOMATED at render level: `menu_calendar_shown_when_wide_next_button_is_on_screen`, `menu_calendar_omitted_when_too_narrow_no_calendar_tab_stops`; live narrow-window resize is MANUAL); menu-workspace 16.2, 16.3, 16.5, 16.6 | [ ] |
 | 2.3 | In the Settings menu, select an option by its key. | Routes to the mapped target (same as typing it on the command line). | menu-workspace 3.x | [ ] |
-| 2.4 | Type the command for a Settings option on the command line + Enter. | Switches to that option/namespace -- every Settings option has a matching command. | B032; CR-NR-068 (pending) | [B] |
+| 2.4 | Type the command for a Settings option on the command line + Enter (e.g. `CONFIG`, `THEME`, `MENUS`), and the chained form `SETTINGS T`. | Switches to that option/namespace -- every Settings option has a matching command; `SETTINGS T` opens Settings then activates `T` (THEME). | B032 (FIXED, CR-CH-025, AUTOMATED: `settings_t_chains_to_theme_editor`, `config_command_is_registered`); CR-CH-025 | [ ] |
+| 2.4a | From ANY workspace, type an `=` fastpath jump on the command line + Enter (e.g. `=0.K`). | The `=` pops to the POM origin, then the path walks option-by-option: `=0.K` = POM option 0 (Settings) then option K (KEYS) -> lands on the Keys Workspace. No "command not yet implemented" error. Bare dotted `2.1` still works; ordinary dotted text (`abc.def`) is not hijacked. | B061 (FIXED, AUTOMATED: `chained_fastpath_equals_zero_dot_k_opens_keys_workspace`, `chained_fastpath_pops_to_pom_origin_from_non_pom`); menu-workspace Req 5 | [ ] |
 | 2.5 | Inspect the application menu bar. | The bar entries align with what is actually available (no dead entries). | CR-NR-067 (pending) | [B] |
 | 2.6 | Open the menu bar AS a Menu Workspace. | The menu bar is itself a named Menu Workspace that can be opened and viewed like the POM. | CR-NR-067 (pending) | [B] |
 | 2.7 | Give a workspace its own named menu bar; open another with none. | A workspace uses its named menu bar; a workspace with none falls back to the Primary menu bar. | CR-NR-067 (pending) | [B] |
@@ -182,7 +190,8 @@ Settings workspace + commands (CR-NR-070).
 | # | Step | Expected result | Req / Backing | Result |
 |---|------|-----------------|---------------|--------|
 | 8.1 | Select each theme (Dark / Light / Legacy / High Contrast) from Settings (menu dispatches the THEME command), and via `THEME <mode>`. | The theme applies immediately AND STICKS (does not revert next frame); persists across restart; High Contrast sticks. Selecting a theme turns OFF follow-OS so it is not clobbered. | B039 (FIXED real cause: follow_os clobber, retest); theme-and-appearance 5.x, 16.4, 17.5 | [ ] |
-| 8.2 | `THEME <mode>` on the command line (dark/light/high_contrast/legacy); bare `THEME`; invalid `THEME xyz`. | `THEME <mode>` sets + persists the theme (same as the menu); bare `THEME` reports the current mode; invalid errors clearly. | theme-and-appearance 17.1-17.4 (IMPLEMENTED, retest) | [ ] |
+| 8.2 | `THEME <name>` on the command line: shorthands (`THEME Dark`/`Light`/`High Contrast`/`Legacy`), full names (`THEME Default Dark`), a saved user theme by name; bare `THEME`; unknown `THEME xyz`; and confirm `THEMES` is gone. | Shorthand selects the matching `Default *` built-in (`Legacy` -> `Default Legacy`); full/user names select by exact case-insensitive match; bare `THEME` opens the Theme Editor (END returns); unknown leaves the theme unchanged and shows `THEME: 'xyz' does not exist`; `THEMES` is no longer a recognised command. | theme-and-appearance 17.1-17.5 (CR-CH-024, IMPLEMENTED + AUTOMATED: `full_shell_theme_*`, `resolve_theme_arg_*`; retest) | [ ] |
+| 8.5 | Open the theme list (Settings / Theme editor). | Exactly FOUR built-ins: Default Dark, Default Light, Default High Contrast, Default Legacy. NO separate "Legacy (ISPF 3270)" entry. Saving a copy of Default Legacy under a new name adds it as a selectable user theme. | theme-and-appearance 18.1/18.3 (CR-CH-024, IMPLEMENTED + AUTOMATED: `builtin_themes_returns_four_entries`, `full_shell_theme_list_has_four_builtins`) | [ ] |
 | 8.3 | Invoke the Theme Settings workspace by command. | A command opens the Theme Settings workspace. | CR-NR-070 (pending) | [B] |
 | 8.4 | Create / edit / delete a theme setting in the Theme Settings workspace. | Theme settings can be created, edited, and deleted; changes take effect. | CR-NR-070 (pending) | [B] |
 
@@ -216,7 +225,7 @@ fixed. Keep this map updated as rows are added.
 
 | Backing item | Status | Affected rows |
 |--------------|--------|---------------|
-| B032 (Settings not a menu workspace) | OPEN | 2.2, 2.4 |
+| B032 (Settings not a menu workspace) | FIXED (CR-CH-025, retest 2.2, 2.4) | 2.2, 2.4 |
 | B039 (theme changing broken -- follow_os clobber) | FIXED (retest 8.1) | 8.1 |
 | B048 (tests wrote real user config) | FIXED | (test-suite) |
 | B049 (history dedup THEME LEGACY vs theme legacy) | FIXED (quote-aware dedup) | (Group 1 history rows) |
@@ -228,6 +237,11 @@ fixed. Keep this map updated as rows are added.
 | B045 (detach not wired) | OPEN | 1.9, 1.10, 1.11 |
 | B046 (function keys) | PARTIAL: F7/F8 defaults FIXED (retest 7.3/7.3a); rest OPEN | 7.1-7.7, 7.3a |
 | B047 (navigator file open resource-not-found) | FIXED (retest 3.3/3.12) | 3.3, 3.12 |
+| B055 (Tab lands on status bar segments before menu/POM) | FIXED (retest 1.3a) | 1.3a |
+| B057 (Theme Editor phantom Tab stop before selector combo) | VERIFIED (owner-confirmed) | 1.3d |
+| B058 (CONFIG/Settings panel phantom Tab stop before Filter field) | FIXED (retest 1.3e) | 1.3e |
+| B060 (Settings calendar off-screen but tabbable; calendar-on menu not visible/reachable in narrow workspace) | FIXED (CR-CH-026; retest 2.2a, 2.2b) | 2.2a, 2.2b |
+| CR-CH-023 (unified tab-order: egui-native interior + shell boundary; chrome non-focusable) | IMPLEMENTED (retest 1.3a/1.3b/1.3c) | 1.3a, 1.3b, 1.3c |
 | CR-NR-071 (CORE context help content) | PENDING GATE | 7.1 |
 | CR-NR-072 (navigator junction/symlink expansion) | PENDING GATE | 3.2a |
 | CR-CH-016 (END/RETURN from POM) | FIXED (retest 1.7/1.8/4.10/7.2) | 1.7, 1.8, 4.10, 7.2 |
@@ -237,5 +251,6 @@ fixed. Keep this map updated as rows are added.
 | CR-NR-068 (Menu Workspace editor) | PENDING GATE | 2.4, 2.8, 2.9, 2.10, 2.11 |
 | CR-NR-069 (Key Assignment editor) | PENDING GATE | (adds rows to Group 7 at its gate) |
 | theme-and-appearance Req 17 (THEME command parity) | IMPLEMENTED (retest 8.1/8.2) | 8.1, 8.2 |
+| CR-CH-024 (legacy theme consolidation + name-based THEME command) | IMPLEMENTED (retest 8.2, 8.5) | 8.2, 8.5 |
 | CR-NR-070 (Theme Settings workspace + invoke-settings command) | PENDING GATE | 8.3, 8.4 |
 | B048 (tests write real user config -- isolation hazard) | OPEN | (test-suite; no plan row) |

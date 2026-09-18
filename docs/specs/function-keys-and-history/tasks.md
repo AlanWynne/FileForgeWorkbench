@@ -628,3 +628,74 @@ See `docs/specs/function-keys-and-history/cx-requirements.md` for full criteria.
   - Covers: Requirement 19.5, 19.6, 19.7, 19.9
 - [ ] DF.6 Unit tests: recall_list dedup + ordering; recall_by_number in/out of range; RETRIEVE empty/LIST/n dispatch; RETRIEVE not recorded in history
   - Validates: Requirement 19.1-19.4, 19.8
+
+---
+
+## Phase (key-defaults) -- Full compiled default map + keymaps/ override files (CR-CH-027, Slice 1)
+
+- [x] 38. Expand the compiled default Global_Key_Map (Requirement 15)
+  - [x] 38.1 In `ff-keys` `KeyMap::default_global()`, replace the 5-key baseline with the full owner-specified set: Base F1 HELP, F2 SPLIT, F3 END, F4 RETURN, F5 RFIND, F6 RCHANGE, F7 UP, F8 DOWN, F9 SWAP, F10 LEFT, F11 RIGHT, F12 RETRIEVE (each `with_label`)
+    - Covers: Requirement 15.1
+  - [x] 38.2 Add the Shift row: SF1 HELP, SF2 SPLIT, SF3 END, SF4 RETURN, SF5 RFIND, SF6 RCHANGE, SF7 "UP MAX", SF8 "DOWN MAX", SF9 SWAP, SF10 "LEFT MAX", SF11 "RIGHT MAX", SF12 CURSOR (`ModifiedKey::shift` + `with_label`)
+    - Covers: Requirement 15.2
+  - [x] 38.3 Update existing `default_global` unit tests (Base F7/F8 already plain UP/DOWN per B046; MAX variants now on Shift+F7/F8); wrote failing tests first (`key_map_default_global_has_full_base_row` / `_has_full_shift_row` / `_binds_exactly_base_and_shift_f1_to_f12`), confirmed RED, then green
+    - Validates: Requirement 15.1, 15.2, 15.3
+  - [x] 38.4 Confirmed the default map stays CODE-ONLY (built by `KeyMap::empty` + `set`; no ensure_* writes global_key_map.toml)
+    - Validates: Requirement 15.1 (code-only)
+
+- [x] 39. keymaps/ per-context override files (Requirement 14.9-14.12)
+  - [x] 39.1 Added `ensure_keymaps_dir(user_data_dir)` in `ff-desktop` mirroring `ensure_menus_dir` / `ensure_default_theme_files` (create `<User_Data_Dir>/keymaps/`, best-effort, may be empty); wired into startup; test `ensure_keymaps_dir_creates_keymaps_dir`
+    - Covers: Requirement 14.11
+  - [x] 39.2 Added `load_context_maps_from_keymaps_dir(dir, resolver)` in `ff-desktop`: scans `keymaps/*.toml`, parses each with `KeyMap::from_toml_table`, registers via `resolver.set_context_map(<stem>, map)`; parse failure skips the file (`ff_logging::log_debug!`) and leaves the compiled default; called at startup AFTER `load_context_maps_from_config` (file precedence, Req 14.12)
+    - Covers: Requirement 14.9, 14.10, 14.12
+  - [x] 39.3 Failing tests first (RED then green): `keymaps_file_present_overrides_default_for_context` (present overrides + absent falls back), `keymaps_malformed_file_is_skipped_and_falls_back`, `keymaps_file_takes_precedence_over_config_section`
+    - Validates: Requirement 14.9, 14.10, 14.12
+  - [x] 39.4 Updated `docs/quality/TCR.md`: CR-CH-027 Req 14.9-14.12 + Req 15.1-15.3 rows -> PASS
+    - Covers: Requirement 14.9-14.12, 15.1-15.3
+
+- [x] 40. RESET BARE archives keymaps/ (configuration-system Requirement 19.4)
+  - [x] 40.1 Added `"keymaps"` to `ARCHIVED_ITEMS` in `ff-desktop/src/shell/reset_bare.rs`
+    - Covers: configuration-system Requirement 19.4
+  - [x] 40.2 Extended `archive_config_moves_present_items_and_removes_originals` to seed a `keymaps/<ctx>.toml` and assert it is moved into `config-archive/<timestamp>/keymaps/` and removed from the original location
+    - Validates: configuration-system Requirement 19.4, 19.5
+
+---
+
+## Phase (keys-workspace) -- Keys Workspace replaces the modal dialog (CR-CH-029, Requirement 22; Key Assignments Slice 3)
+
+> Replaces the modal `KeyConfigDialog` with a Keys Workspace Context modelled on
+> the Menus/Theme editors (workspace-framework Req 1). Workspace-KIND dropdown +
+> Save to `keymaps/<kind>.toml` (closes CR-CH-027). `K` -> `KEYS` in Settings.
+> Command_Picker/72-slot (Req 20/21) DEFERRED -- keep the current editable grid.
+
+- [x] 41. New `keys_editor_panel` module (state + pure render), modelled on `menus_editor_panel`
+  - [x] 41.1 `keys_editor_panel/state.rs`: `KeysEditorState` (selected kind, staged rows, `#[default] None` `KeysEditorAction` `pending_action`, first-interior id); move/share the `ScopeRows`/`KeyRow` row model + `to_config_table` from `key_config_dialog.rs`
+    - Covers: Requirement 22.1, 22.2, 22.3
+  - [x] 41.2 `keys_editor_panel/render.rs`: pure `render` drawing the kind dropdown (capture its `response.id` as first interior), the editable grid, Save/Reset; no filesystem/config writes; stashes `KeysEditorAction::Save { kind, rows }`
+    - Covers: Requirement 22.2, 22.3, 22.4
+  - [x] 41.3 Failing tests first: state defaults; the kind dropdown lists the stable context names; Save stashes the action with the selected kind + rows
+    - Validates: Requirement 22.2, 22.4
+
+- [x] 42. TabKind + framework dispatch + Save-to-file
+  - [x] 42.1 Add `TabKind::KeysEditor` + `context_name_for_kind(KeysEditor) => "keys"`; add a `keys_editor_panel` field on `WorkbenchShell`
+    - Covers: Requirement 22.1, 22.7
+  - [x] 42.2 `impl WorkspaceContext for KeysEditorState` returning `InteriorFocus` (first = kind dropdown id); new `TabKind::KeysEditor` render arm dispatches via `render_workspace_context` (owned-panel swap) then drains the action via `apply_keys_editor_action`
+    - Covers: Requirement 22.7; workspace-framework Requirement 1
+  - [x] 42.3 `keymaps_dir()` resolver (test override + `<User_Data_Dir>/keymaps`, mirroring `menus_dir`); `apply_keys_editor_action(Save)` writes `keymaps/<kind>.toml` (reuse `to_config_table` -> TOML), then reloads that kind's context map into the resolver
+    - Covers: Requirement 22.4
+  - [x] 42.4 Full-shell first-Tab egui_kittest test: `KEYS` opens the Keys Workspace; first Tab from the command field focuses the kind dropdown (no phantom stop)
+    - Validates: Requirement 22.7
+  - [x] 42.5 Round-trip test: Save for a kind writes `keymaps/<kind>.toml` that the resolver then loads as that kind's context map
+    - Validates: Requirement 22.4
+
+- [x] 43. KEYS command + Settings entry + retire the modal
+  - [x] 43.1 `KEYS` / `KEYS <kind>` opens the Keys Workspace in place (Navigation_Stack push like THEME/MENUS); known argument pre-selects the kind, unknown shows a status message
+    - Covers: Requirement 22.5
+  - [x] 43.2 Add `K` -> `KEYS` "Keys" to `DEFAULT_SETTINGS_TOML` Core group; update the `default_settings_toml_*` tests (option count/order includes K KEYS)
+    - Covers: Requirement 22.6; menu-workspace Requirement 12.3
+  - [x] 43.3 Retire the modal `KeyConfigDialog`: remove its `modal_open` entry, its `render_if_open` call, and the `Edit > Key Assignments` flag-set (the menu item dispatches `KEYS`); delete `key_config_dialog.rs` once unreferenced
+    - Covers: Requirement 22.1, 22.5 (command parity)
+  - [x] 43.4 Update/replace the CX Req 2 KEYS-opens-dialog tests to assert `KEYS` opens `TabKind::KeysEditor` (workspace), not a modal
+    - Validates: Requirement 22.1, 22.5
+  - [x] 43.5 Update `docs/quality/TCR.md`: set the CR-CH-029 Req 22 rows to their status
+    - Covers: Requirement 22 (all criteria)

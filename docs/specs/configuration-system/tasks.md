@@ -536,3 +536,20 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
   - [x] 32.10 Run `cargo clippy -- -D warnings` -- confirm clean
   - [x] 32.11 Update `docs/quality/TCR.md` -- add rows for Req 16, 17, 18
   - [x] 32.12 Update `docs/specs/project-master/tasks.md` -- add Phase CQ section
+## Phase (command-resolution) -- The CONFIG command (CR-CH-025, Requirement 20; Req 15 update)
+
+- [x] 33. CONFIG [namespace] command + Settings-launcher wiring
+  - [x] 33.1 Register the `CONFIG` command (Command_ID `"config.open"`) in the command registry so it resolves as a built-in through the unified chain (command-framework Req 8.3 stage 2) and beats same-named menus/macros (Req 8.10)
+    - Validates: Requirement 20.1
+  - [x] 33.2 Implement the `CONFIG` handler in `shell/commands.rs`: bare `CONFIG` opens the flat config-key view (existing `SettingsPanel`) with an empty filter; `CONFIG <namespace>` opens it with the filter pre-populated to `<namespace>.` (case-insensitive). Reuse/rename `open_settings_view` as the single entry point
+    - Validates: Requirement 20.2, 20.3, 20.5
+  - [x] 33.3 A non-matching `<namespace>` still opens the view (filter applied, no rows), leaving the filter user-editable (no error)
+    - Validates: Requirement 20.4
+  - [x] 33.4 Point the Settings_Menu `A` option at `command = "CONFIG"` (menu-workspace Req 12.3) so selecting `A` dispatches `CONFIG` (command parity); remove the `A`-named command and the `SETTINGS <namespace>` intercept
+    - Validates: Requirement 20.6
+  - [x] 33.5 Preserve session persistence: the `CONFIG` view persists as `CustomWorkspace { workspace_kind = settings, params = { namespace } }` with the namespace reapplied on restore (Req 15.9 / startup-and-session Req 21.3)
+    - Validates: Requirement 20.7
+  - [x] 33.6 Write failing unit tests: bare `CONFIG` opens unfiltered; `CONFIG editor` pre-populates `editor.`; unknown namespace opens empty-but-editable; `A` on the Settings menu dispatches `CONFIG`; the old `A` command and `SETTINGS <ns>` intercepts are gone; namespace round-trips through session persistence
+    - Validates: Requirement 20.1-20.7
+  - [x] 33.7 Update `docs/quality/TCR.md`: set the CR-CH-025 configuration-system Req 20 rows to their correct status; update the Req 15 rows revised by CR-CH-025
+    - Covers: Requirement 20 (all criteria); Requirement 15 (revised criteria)

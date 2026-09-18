@@ -18,15 +18,15 @@ use crate::tab_state::{TabKind, TabState as RuntimeTab};
 /// Build the Workspace_Descriptor for a runtime tab, or `None` when the tab is
 /// not a persistable visible Workspace.
 ///
-/// `settings_namespace` is the shell-wide Settings namespace filter, applied
-/// only to a `SettingsPanel` tab so a namespace-filtered Settings Context
-/// restores with its filter (Requirement 21.3). It is `None` for the unfiltered
-/// Settings view and for every other tab kind.
+/// `config_namespace` is the shell-wide Config namespace filter, applied only to
+/// a `ConfigPanel` tab so a namespace-filtered Config Context restores with its
+/// filter (Requirement 21.3). It is `None` for the unfiltered Config view and
+/// for every other tab kind.
 ///
 /// Validates: startup-and-session Requirement 21.1, 21.2, 21.3, 21.6.
 fn descriptor_for_tab(
     t: &RuntimeTab,
-    settings_namespace: Option<&str>,
+    config_namespace: Option<&str>,
 ) -> Option<WorkspaceDescriptor> {
     let custom = |kind: WorkspaceKind, params: DescriptorParams| {
         Some(WorkspaceDescriptor::CustomWorkspace {
@@ -56,12 +56,12 @@ fn descriptor_for_tab(
         }
         TabKind::FilesPanel => custom(WorkspaceKind::Files, DescriptorParams::new()),
         TabKind::FileExplorerPanel => custom(WorkspaceKind::FileExplorer, DescriptorParams::new()),
-        TabKind::SettingsPanel => {
+        TabKind::ConfigPanel => {
             let mut params = DescriptorParams::new();
-            if let Some(ns) = settings_namespace {
+            if let Some(ns) = config_namespace {
                 params.insert("namespace".to_string(), DescriptorValue::from(ns));
             }
-            custom(WorkspaceKind::Settings, params)
+            custom(WorkspaceKind::Config, params)
         }
         TabKind::SearchResults => custom(WorkspaceKind::Search, DescriptorParams::new()),
         TabKind::PluginManager => custom(WorkspaceKind::PluginManager, DescriptorParams::new()),
@@ -92,6 +92,10 @@ fn descriptor_for_tab(
         // The Menus Editor is likewise a transient editing Context; edits are
         // persisted as menu files, not as a restored tab (menu-workspace Req 13).
         TabKind::MenusEditor => None,
+        // The Keys Editor is a transient editing Context; edits persist as
+        // keymaps/<kind>.toml files, not as a restored tab (function-keys
+        // Requirement 22.8, CR-CH-029).
+        TabKind::KeysEditor => None,
         // Untitled buffers are not persisted (never were).
         TabKind::Untitled => None,
     }
@@ -101,8 +105,8 @@ fn descriptor_for_tab(
 /// Workspace_Descriptor. Returns `None` when the tab is not persistable.
 ///
 /// Validates: startup-and-session Requirement 21.1, 21.2, 21.3.
-fn session_tab_for(t: &RuntimeTab, settings_namespace: Option<&str>) -> Option<SessionTabState> {
-    let descriptor = descriptor_for_tab(t, settings_namespace)?;
+fn session_tab_for(t: &RuntimeTab, config_namespace: Option<&str>) -> Option<SessionTabState> {
+    let descriptor = descriptor_for_tab(t, config_namespace)?;
     // Legacy fields are kept populated so an older build can still read the
     // file (Requirement 21.10 in reverse) and so `uri`/viewport remain
     // available without unpacking the descriptor.
@@ -189,12 +193,12 @@ impl SessionManager {
         zoom_offset: i32,
         key_bar_visible: bool,
         file_explorer_sidebar_width: f32,
-        settings_namespace: Option<&str>,
+        config_namespace: Option<&str>,
     ) {
         let session_tabs: Vec<SessionTabState> = tabs
             .tabs()
             .iter()
-            .filter_map(|t| session_tab_for(t, settings_namespace))
+            .filter_map(|t| session_tab_for(t, config_namespace))
             .collect();
 
         let active_tab_id = {
@@ -204,7 +208,7 @@ impl SessionManager {
                 TabKind::FilesPanel => Some(format!("{}", active.id.0)),
                 TabKind::PrimaryOptionMenu
                 | TabKind::Untitled
-                | TabKind::SettingsPanel
+                | TabKind::ConfigPanel
                 | TabKind::FileExplorerPanel
                 | TabKind::SearchResults
                 | TabKind::PluginManager
@@ -213,7 +217,8 @@ impl SessionManager {
                 | TabKind::MenuWorkspace
                 | TabKind::CommandConfigurator
                 | TabKind::ThemeEditor
-                | TabKind::MenusEditor => None,
+                | TabKind::MenusEditor
+                | TabKind::KeysEditor => None,
             }
         };
         // Note: FileExplorerPanel active_tab_id is None (no URI to track)
@@ -244,12 +249,12 @@ impl SessionManager {
         active_workspace_path: Option<String>,
         recent_palette_commands: Vec<String>,
         search_history: Vec<String>,
-        settings_namespace: Option<&str>,
+        config_namespace: Option<&str>,
     ) {
         let session_tabs: Vec<SessionTabState> = tabs
             .tabs()
             .iter()
-            .filter_map(|t| session_tab_for(t, settings_namespace))
+            .filter_map(|t| session_tab_for(t, config_namespace))
             .collect();
 
         let active_tab_id = {
@@ -259,7 +264,7 @@ impl SessionManager {
                 TabKind::FilesPanel => Some(format!("{}", active.id.0)),
                 TabKind::PrimaryOptionMenu
                 | TabKind::Untitled
-                | TabKind::SettingsPanel
+                | TabKind::ConfigPanel
                 | TabKind::FileExplorerPanel
                 | TabKind::SearchResults
                 | TabKind::PluginManager
@@ -268,7 +273,8 @@ impl SessionManager {
                 | TabKind::MenuWorkspace
                 | TabKind::CommandConfigurator
                 | TabKind::ThemeEditor
-                | TabKind::MenusEditor => None,
+                | TabKind::MenusEditor
+                | TabKind::KeysEditor => None,
             }
         };
 

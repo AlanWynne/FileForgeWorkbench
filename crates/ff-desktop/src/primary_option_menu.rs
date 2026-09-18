@@ -67,6 +67,13 @@ pub fn offset_month(today_year: i32, today_month: u32, offset: i32) -> (i32, u32
 /// month name starts at position 4, year ends at position 17.
 ///
 /// Validates: Requirement 14.41
+///
+/// CR-CH-023: the rendered calendar header is now three widgets -- a focusable
+/// `<` button, a month/year label, and a focusable `>` button -- so this
+/// single fixed-width string is no longer used by `render_calendar`. It is
+/// retained for the Req 14.41 fixed-width-format unit test and as a reference
+/// for the exact ISPF column layout.
+#[allow(dead_code)]
 pub fn format_calendar_header(month_name: &str, year: i32) -> String {
     format!("<  {:<9} {}  >", month_name, year)
 }
@@ -176,6 +183,20 @@ pub enum CalendarNav {
     Next,
 }
 
+/// What `render_calendar` reports for one frame: the month-navigation the user
+/// triggered (if any) plus the egui ids of the focusable `<`/`>` buttons so the
+/// shell Boundary_Policy can treat the `>` button as the last interior control
+/// (CR-CH-023; menu-workspace Req 15.5-15.8).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct CalendarRender {
+    /// Month navigation triggered this frame, if any.
+    pub nav: Option<CalendarNav>,
+    /// Egui id of the `<` (previous-month) button.
+    pub prev_id: Option<egui::Id>,
+    /// Egui id of the `>` (next-month) button.
+    pub next_id: Option<egui::Id>,
+}
+
 /// Render the live calendar column into `ui`, returning any month-navigation
 /// the user triggered this frame (clicking the `<`/`>` hotspots in the header).
 ///
@@ -196,7 +217,7 @@ pub fn render_calendar(
     today_bg: egui::Color32,
     today_fg: egui::Color32,
     use_today_reverse: bool,
-) -> Option<CalendarNav> {
+) -> CalendarRender {
     let now = Local::now();
     let today_year = now.year();
     let today_month = now.month();
@@ -209,37 +230,57 @@ pub fn render_calendar(
     let doy = day_of_year(today_year, today_month, today_day);
 
     let mut nav: Option<CalendarNav> = None;
+    let mut prev_id: Option<egui::Id> = None;
+    let mut next_id: Option<egui::Id> = None;
 
     ui.vertical(|ui| {
-        // Validates: Requirement 14.41 -- header is < MonthName YYYY >
-        let header = format_calendar_header(MONTH_NAMES[(month - 1) as usize], year);
-        let header_resp = ui.add(
-            egui::Label::new(
-                egui::RichText::new(&header)
+        // Validates: Requirement 14.41; menu-workspace Req 15.7/15.8 --
+        // header is `<  MonthName YYYY  >` with `<` and `>` as REAL focusable
+        // buttons (CR-CH-023 replaces the former single click-region label, so
+        // the buttons participate in egui-native Tab traversal and respond to
+        // Enter/Space as well as mouse clicks).
+        let month_label = format!("{}  {}", MONTH_NAMES[(month - 1) as usize], year);
+        ui.horizontal(|ui| {
+            let prev = ui.add(
+                egui::Button::new(
+                    egui::RichText::new("<")
+                        .monospace()
+                        .strong()
+                        .color(calendar_fg),
+                )
+                .frame(false),
+            );
+            prev_id = Some(prev.id);
+            if prev.clicked() {
+                nav = Some(CalendarNav::Prev);
+            }
+            ui.label(
+                egui::RichText::new(&month_label)
                     .monospace()
                     .strong()
                     .color(calendar_fg),
-            )
-            .sense(egui::Sense::click()),
-        );
-        if header_resp.clicked() {
-            if let Some(pos) = ui.input(|i| i.pointer.interact_pos()) {
-                let rect = header_resp.rect;
-                let sixth = rect.width() / 6.0;
-                if pos.x < rect.left() + sixth {
-                    nav = Some(CalendarNav::Prev);
-                } else if pos.x > rect.right() - sixth {
-                    nav = Some(CalendarNav::Next);
-                }
+            );
+            let next = ui.add(
+                egui::Button::new(
+                    egui::RichText::new(">")
+                        .monospace()
+                        .strong()
+                        .color(calendar_fg),
+                )
+                .frame(false),
+            );
+            next_id = Some(next.id);
+            if next.clicked() {
+                nav = Some(CalendarNav::Next);
             }
-        }
+        });
 
-        ui.add(egui::SelectableLabel::new(
-            false,
+        // Day-of-week header: non-interactive (not a Tab stop).
+        ui.label(
             egui::RichText::new("Su Mo Tu We Th Fr Sa")
                 .monospace()
                 .color(calendar_fg),
-        ));
+        );
 
         let first_wd = first_weekday_of_month(year, month);
         let total_days = days_in_month(year, month);
@@ -260,21 +301,23 @@ pub fn render_calendar(
         }
 
         ui.add_space(4.0);
-        ui.add(egui::SelectableLabel::new(
-            false,
+        ui.label(
             egui::RichText::new(format!("Time . . . . : {:02}:{:02}", hour, min))
                 .monospace()
                 .color(calendar_fg),
-        ));
-        ui.add(egui::SelectableLabel::new(
-            false,
+        );
+        ui.label(
             egui::RichText::new(format!("Day of year. :   {}", doy))
                 .monospace()
                 .color(calendar_fg),
-        ));
+        );
     });
 
-    nav
+    CalendarRender {
+        nav,
+        prev_id,
+        next_id,
+    }
 }
 
 /// Render one week row of the calendar grid.
@@ -303,12 +346,14 @@ fn render_calendar_row(
                 line.push_str(&format!("{:>2} ", d));
             }
         }
-        ui.add(egui::SelectableLabel::new(
-            false,
+        // Non-interactive: day-grid rows must NOT be Tab focus stops
+        // (menu-workspace Req 15.10; B056 -- SelectableLabel is focusable and was
+        // adding a focus stop per week row between the calendar and the menu bar).
+        ui.label(
             egui::RichText::new(line.trim_end().to_string())
                 .monospace()
                 .color(calendar_fg),
-        ));
+        );
     } else {
         // Slow path: cell-by-cell so today gets a filled background rect.
         ui.horizontal(|ui| {
@@ -330,13 +375,12 @@ fn render_calendar_row(
                     // Trailing space separator
                     ui.label(egui::RichText::new(" ").monospace().color(calendar_fg));
                 } else {
-                    // Validates: Requirement 14.1 -- selectable calendar day text
-                    ui.add(egui::SelectableLabel::new(
-                        false,
+                    // Non-interactive day cell (Req 15.10; B056: not a Tab stop).
+                    ui.label(
                         egui::RichText::new(format!("{:>2} ", d))
                             .monospace()
                             .color(calendar_fg),
-                    ));
+                    );
                 }
             }
         });
@@ -388,6 +432,88 @@ mod tests {
         assert_eq!(CalendarNav::Prev, CalendarNav::Prev);
         assert_eq!(CalendarNav::Next, CalendarNav::Next);
         assert_ne!(CalendarNav::Prev, CalendarNav::Next);
+    }
+
+    /// Validates: menu-workspace Req 15.7 (CR-CH-023) -- the calendar `<`/`>`
+    /// month-navigation controls are REAL focusable buttons: rendering the
+    /// calendar and pressing Tab must land on two distinct focusable widgets
+    /// (previously the header was a single non-tab-reachable click-region).
+    #[test]
+    fn calendar_prev_next_are_focusable_buttons() {
+        use egui_kittest::Harness;
+        let mut harness = Harness::builder()
+            .with_size(egui::Vec2::new(400.0, 400.0))
+            .build_ui(|ui| {
+                let _r = render_calendar(
+                    ui,
+                    0,
+                    egui::Color32::WHITE,
+                    egui::Color32::from_rgb(0, 0xAA, 0xAA),
+                    egui::Color32::BLACK,
+                    false,
+                );
+            });
+        // Press Tab well past the number of week rows: if any day-grid row were
+        // focusable it would show up as an extra distinct focus stop.
+        let mut focused: Vec<egui::Id> = Vec::new();
+        for _ in 0..12 {
+            harness.press_key(egui::Key::Tab);
+            harness.run();
+            if let Some(id) = harness.ctx.memory(|m| m.focused()) {
+                focused.push(id);
+            }
+        }
+        let distinct: std::collections::HashSet<egui::Id> = focused.iter().copied().collect();
+        // EXACTLY two focusable widgets: the `<` and `>` buttons. Day-of-week
+        // header, week rows, time and day-of-year are non-interactive labels
+        // (menu-workspace Req 15.10; B056 -- week rows were SelectableLabels and
+        // added spurious focus stops).
+        assert_eq!(
+            distinct.len(),
+            2,
+            "calendar must expose EXACTLY two focusable widgets (< and >), not day cells; \
+             focused ids: {focused:?}"
+        );
+    }
+
+    /// Validates: menu-workspace Req 15.8 -- activating the `<` button with
+    /// Enter navigates to the previous month (returns CalendarNav::Prev). The
+    /// harness focuses the first button (the `<`) and presses Enter; the render
+    /// closure records the returned nav.
+    #[test]
+    fn calendar_prev_button_enter_returns_prev_nav() {
+        use egui_kittest::Harness;
+        use std::cell::Cell;
+        use std::rc::Rc;
+        let nav_seen: Rc<Cell<Option<CalendarNav>>> = Rc::new(Cell::new(None));
+        let nav_for_ui = Rc::clone(&nav_seen);
+        let mut harness = Harness::builder()
+            .with_size(egui::Vec2::new(400.0, 400.0))
+            .build_ui(move |ui| {
+                let r = render_calendar(
+                    ui,
+                    0,
+                    egui::Color32::WHITE,
+                    egui::Color32::from_rgb(0, 0xAA, 0xAA),
+                    egui::Color32::BLACK,
+                    false,
+                );
+                if r.nav.is_some() {
+                    nav_for_ui.set(r.nav);
+                }
+            });
+        // Tab once -> focus the first focusable widget (the `<` button), then
+        // activate it with Enter.
+        harness.press_key(egui::Key::Tab);
+        harness.run();
+        harness.press_key(egui::Key::Enter);
+        harness.run();
+        harness.run();
+        assert_eq!(
+            nav_seen.get(),
+            Some(CalendarNav::Prev),
+            "Enter on the focused `<` button must return CalendarNav::Prev"
+        );
     }
 
     /// Validates: Requirement 14.42 — offset_month decrements correctly for Prev.

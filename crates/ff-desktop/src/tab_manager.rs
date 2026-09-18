@@ -129,15 +129,15 @@ impl TabManager {
         let _ = runtime;
     }
 
-    /// Open the Settings Panel tab.
+    /// Open the Config Panel tab (the flat config-key browser).
     ///
-    /// If a SettingsPanel tab already exists, activates it instead of inserting a duplicate.
+    /// If a ConfigPanel tab already exists, activates it instead of inserting a duplicate.
     /// Validates: Requirement 15.1, 15.9
-    pub fn open_settings_panel_tab(&mut self, runtime: &Runtime) {
+    pub fn open_config_panel_tab(&mut self, runtime: &Runtime) {
         if let Some(idx) = self
             .tabs
             .iter()
-            .position(|t| t.kind == TabKind::SettingsPanel)
+            .position(|t| t.kind == TabKind::ConfigPanel)
         {
             self.active = idx;
             return;
@@ -145,7 +145,7 @@ impl TabManager {
         let document = ff_document_model::new_document();
         let id = TabId(self.next_id);
         self.next_id += 1;
-        let tab = TabState::settings_panel(id, document);
+        let tab = TabState::config_panel(id, document);
         self.tabs.push(tab);
         self.active = self.tabs.len() - 1;
         let _ = runtime;
@@ -368,8 +368,8 @@ impl TabManager {
 
     /// Open a data-driven Menu Workspace backed by `<menus_dir>/<name>.toml`,
     /// transforming the active tab in place when it is a `PrimaryOptionMenu` or
-    /// a `SettingsPanel` (so the POM -> Settings_Menu -> namespace-view chain
-    /// stays on one tab and F3/END transforms back to the POM), otherwise
+    /// a `ConfigPanel` (so the POM -> Settings_Menu / Config chain stays on one
+    /// tab and F3/END transforms back to the POM), otherwise
     /// opening (or activating) a dedicated tab.
     ///
     /// Validates: cw-requirements.md Requirement 9.1, 10.4; menu-workspace Req 11.2
@@ -388,7 +388,7 @@ impl TabManager {
         let transform_in_place = matches!(
             active_kind,
             TabKind::PrimaryOptionMenu
-                | TabKind::SettingsPanel
+                | TabKind::ConfigPanel
                 | TabKind::MenuWorkspace
                 | TabKind::MenusEditor
         );

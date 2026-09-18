@@ -26,6 +26,22 @@ use ff_command::CommandTarget;
 use super::WorkbenchShell;
 use crate::command_config::ShellTargetResolver;
 
+/// The single canonical message shown when a bound key or menu affordance
+/// dispatches a command that does not yet exist (is not built), replacing
+/// scattered per-command "not yet available" strings on the bound path.
+///
+/// The complementary "out of context" message (a command that EXISTS but is
+/// meaningless in the current Workspace) is NOT owned here -- each command emits
+/// it as it is built, using the Cursor_Context.
+///
+/// Validates: command-framework Requirement 12.7 (CR-CH-028). Its bound-path
+/// consumers are the not-yet-built commands (CURSOR, SPLIT H/V) landing in
+/// Slice 2b; this slice establishes the single canonical string (asserted by
+/// `not_implemented_message_is_canonical`). Kept ahead of its runtime consumers,
+/// not dead code.
+#[allow(dead_code)]
+pub(crate) const NOT_IMPLEMENTED_MSG: &str = "Command not implemented yet.";
+
 /// Outcome of attempting to resolve a bare command string to a user-owned
 /// Command_Target.
 pub(super) enum ResolveOutcome {
@@ -47,8 +63,11 @@ impl WorkbenchShell {
     /// Validates: menu-workspace Requirement 10.1, 10.3; command-framework
     /// Requirement 8.3, 8.4
     pub(super) fn resolve_and_dispatch_command(&mut self, input: &str) -> ResolveOutcome {
-        let resolver =
-            ShellTargetResolver::new(&self.command_store.definitions, &self.cmd_registry);
+        let resolver = ShellTargetResolver::new(
+            &self.command_store.definitions,
+            &self.cmd_registry,
+            self.menus_dir(),
+        );
         match ff_command::resolve_target(input, &resolver) {
             Ok(target) => {
                 self.dispatch_command_target(&target);

@@ -18,6 +18,12 @@ pub enum SearchPanelOutcome {
     Cancel,
 }
 
+/// Stable egui id of the Search query field -- the FIRST interior control of the
+/// Search Results panel, reported to the shell Boundary_Policy (CR-CH-023, B059).
+pub fn query_field_id() -> egui::Id {
+    egui::Id::new("search_results_query")
+}
+
 /// Render the Search Results panel into the current egui UI.
 ///
 /// `roots` is the list of directories to search (workspace roots or native catalogs).
@@ -43,6 +49,7 @@ pub fn render(
         ui.label("Search:");
         let resp = ui.add(
             egui::TextEdit::singleline(&mut state.query)
+                .id(query_field_id())
                 .hint_text("Search across files...")
                 .desired_width(280.0),
         );

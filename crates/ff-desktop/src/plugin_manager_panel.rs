@@ -90,6 +90,13 @@ fn state_label(state: &PluginState) -> &'static str {
 
 /// Render the Plugin Manager panel.
 ///
+/// Stable egui id of the Filter field -- the FIRST interior control of the
+/// Plugin Manager, reported to the shell Boundary_Policy so the command-field ->
+/// first-interior Tab jump latches to a real widget (CR-CH-023, B059).
+pub fn filter_field_id() -> egui::Id {
+    egui::Id::new("plugin_manager_filter")
+}
+
 /// Validates: plugin-manager-ui Requirement 1.1-1.6, 2.1-2.5, 3.1-3.3
 pub fn render(ui: &mut egui::Ui, state: &mut PluginManagerPanelState) {
     ui.horizontal(|ui| {
@@ -98,6 +105,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut PluginManagerPanelState) {
         ui.label("Filter:");
         ui.add(
             egui::TextEdit::singleline(&mut state.filter)
+                .id(filter_field_id())
                 .desired_width(200.0)
                 .hint_text("plugin name..."),
         );

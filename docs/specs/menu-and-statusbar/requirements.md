@@ -281,90 +281,94 @@ that I can navigate the entire UI without a mouse.
 
 **Source:** ISPF 3270 terminal tab-order convention; standard desktop accessibility.
 
+**Revised by CR-CH-023 (unified tab-order model).** The previous criteria enumerated a
+per-Workspace focus ring in the shell (POM option rows, exit line, calendar buttons, menu bar
+items, tab headers as explicit stops). That ring is REPLACED by a single shared model that
+applies to every Workspace:
+
+- **Interior order is egui-native.** Each Workspace lays out its interactive controls in
+  visual/creation order and the GUI toolkit's built-in Tab traversal walks them. No Workspace
+  defines its own focus ring, and the shell does not enumerate per-Workspace stops.
+- **A single shell-level Boundary_Policy** handles the three transitions that cross a
+  Workspace boundary (command-line entry, menu-bar-last, wrap).
+- **Non-interactive chrome is not focusable** so it never appears in the cycle.
+
+The terms below are used across this requirement:
+
+| Term | Definition |
+|------|-----------|
+| **Interior_Control** | An interactive widget rendered inside the active Workspace's content area (option button, text field, checkbox, toggle, action button, calendar navigation button). |
+| **Chrome** | Non-content shell panels: the Tab_Bar, Title_Line, Status_Bar, `SCROLL ===>` field, and the Key_Label_Bar. |
+| **Boundary_Policy** | The shell rule governing Tab transitions between the Primary_Command_Field, the active Workspace interior, and the Menu_Bar. |
+
 #### Acceptance Criteria
 
 1. WHEN the application launches, THE keyboard focus SHALL be placed on the
      Primary_Command_Field ("Command ===>") automatically, so that the user can begin
      typing a command immediately without clicking.
 
+1a. WHEN any Workspace becomes active (launch, navigation in place, tab switch, START, or
+      opening any Context), THE keyboard focus SHALL be placed on the Primary_Command_Field,
+      so that the command line always holds focus on entering a Workspace.
+
 2. WHEN the user types any printable character while the Primary_Command_Field has focus,
      THE character SHALL appear in the command field.
 
 3. WHEN the Primary_Command_Field has focus and the user presses Tab (forward), THE focus
-     SHALL move to the first POM option row (option `0 Settings`) if a POM tab is active,
-     otherwise to the first top-level menu bar item.
+     SHALL move to the FIRST Interior_Control of the active Workspace (in the Workspace's
+     visual/creation order). WHEN the active Workspace has no Interior_Control, THE focus
+     SHALL move to the first Menu_Bar item.
 
-4. WHEN a POM option row has focus and the user presses Tab (forward), THE focus SHALL
-     advance to the next option row in sequence (0 → 1 → 2 → … → 8).
+4. WHEN an Interior_Control has focus and the user presses Tab (forward), THE focus SHALL
+     advance to the NEXT Interior_Control in the active Workspace's visual/creation order.
+     THE shell SHALL NOT enumerate, reorder, or override this interior order; it is produced
+     by the toolkit's native Tab traversal over the controls as the Workspace renders them.
 
-5. WHEN the last POM option row (option `8 Plugins`) has focus and the user presses Tab
-     (forward), THE focus SHALL move to the POM exit line
-     ("Enter X to Terminate using log/list defaults").
+5. WHEN the LAST Interior_Control of the active Workspace has focus and the user presses Tab
+     (forward), THE focus SHALL move to the first top-level Menu_Bar item (the leftmost menu
+     heading).
 
-6. WHEN the POM exit line has focus and the user presses Tab (forward), THE focus SHALL
-     move to the calendar `<` (previous-month) button.
+6. WHEN a Menu_Bar item has focus and the user presses Tab (forward), THE focus SHALL
+     advance to the next Menu_Bar item to the right.
 
-7. WHEN the calendar `<` button has focus and the user presses Tab (forward), THE focus
-     SHALL move to the calendar `>` (next-month) button.
+7. WHEN the LAST Menu_Bar item has focus and the user presses Tab (forward), THE focus SHALL
+     wrap back to the Primary_Command_Field.
 
-8. WHEN the calendar `>` button has focus and the user presses Tab (forward), THE focus
-     SHALL move to the first top-level menu bar item (the leftmost menu heading, `Settings`).
+8. Shift+Tab (Back Tab) SHALL be the exact reverse of the forward cycle at every point:
+      - From Primary_Command_Field -> last Menu_Bar item
+      - From the first Menu_Bar item -> last Interior_Control of the active Workspace (or, when
+        the Workspace has no Interior_Control, the Primary_Command_Field)
+      - From any later Menu_Bar item -> previous Menu_Bar item
+      - From the first Interior_Control -> Primary_Command_Field
+      - From any later Interior_Control -> previous Interior_Control
 
-9. WHEN a menu bar item has focus and the user presses Tab (forward), THE focus SHALL
-     advance to the next menu bar item to the right.
+9. THE Chrome SHALL NOT contain keyboard focus stops. Specifically THE Status_Bar segments,
+     THE `SCROLL ===>` field, THE Tab_Bar tab headers, and THE Key_Label_Bar F-key buttons
+     SHALL NOT be reachable by Tab or Shift+Tab. (Tab switching is performed by the SWAP
+     command and mouse click, not by tabbing to tab headers; the SCROLL amount is set by the
+     SCROLL command; F-keys are invoked by their physical keys.)
 
-10. WHEN the last menu bar item (`Help`) has focus and the user presses Tab (forward),
-      THE focus SHALL move to the first tab header in the tab bar (the leftmost tab).
+10. WHEN an Interior_Control has focus (via Tab navigation) that renders as a menu option row,
+      THE row SHALL be shown with a clear visual focus indicator (for the POM/menu-workspace,
+      reversed colours: background uses the option label colour and text uses the panel
+      background colour).
 
-11. Shift+Tab (Back Tab) SHALL be the exact reverse of the forward Tab cycle:
-      - From Primary_Command_Field → last tab header
-      - From first tab header → last menu bar item (`Help`)
-      - From any tab header → previous tab header
-      - From first menu bar item (`Settings`) → calendar `>` (if POM active) or last tab header (if not POM)
-      - From any menu bar item → previous menu bar item
-      - From `<` calendar button → POM exit line
-      - From `>` calendar button → `<` calendar button
-      - From POM exit line → last POM option row (option `8`)
-      - From first POM option row (option `0`) → Primary_Command_Field
-      - From any POM option row → previous POM option row
+11. WHEN a focused Interior_Control is activated by pressing Enter or Space, THE shell SHALL
+      perform the same action as clicking that control (for a menu option, the same navigation
+      as clicking the option button).
 
-20. WHEN a tab header has focus and the user presses Tab (forward), THE focus SHALL
-      advance to the next tab header to the right.
-
-21. WHEN the last tab header has focus and the user presses Tab (forward), THE focus
-      SHALL wrap back to the Primary_Command_Field.
-
-22. WHEN the Tab cycle is active and the current tab is NOT a POM tab, the cycle
-      SHALL be: Primary_Command_Field → menu bar items → tab headers → Primary_Command_Field
-      (POM option rows, exit line, and calendar buttons are still skipped).
-
-12. WHEN a POM option row has focus (via Tab navigation), THE option row SHALL be rendered
-      with reversed colours -- its background SHALL use the option label colour and its text
-      SHALL use the panel background colour -- providing a clear visual focus indicator.
-
-13. WHEN a focused POM option row is activated by pressing Enter or Space, THE shell SHALL
-      perform the same navigation action as clicking that option button.
-
-14. WHEN a focused POM exit line is activated by pressing Enter or Space, THE shell SHALL
-      initiate the application exit sequence.
-
-15. WHEN a focused calendar `<` button is activated by pressing Enter or Space, THE calendar
-      SHALL navigate to the previous month.
-
-16. WHEN a focused calendar `>` button is activated by pressing Enter or Space, THE calendar
-      SHALL navigate to the next month.
-
-17. WHEN a menu bar item has focus (via Tab navigation), THE item SHALL receive a visible
+12. WHEN a Menu_Bar item has focus (via Tab navigation), THE item SHALL receive a visible
       focus indicator (highlight or border) so the user can see which item is currently focused.
 
-18. WHEN a focused menu bar item is activated by pressing Enter or Space, THE item's
-      dropdown menu SHALL open; subsequent Tab/Shift+Tab presses SHALL navigate within the
-      open dropdown rather than moving to the next shell focus stop.
+13. WHEN a focused Menu_Bar item is activated by pressing Enter or Space, THE item's dropdown
+      menu SHALL open; subsequent Tab/Shift+Tab presses SHALL navigate within the open dropdown
+      rather than moving to the next Boundary_Policy stop.
 
-19. WHEN the Tab cycle is active and the current tab is NOT a POM tab (e.g., a file editor
-      tab), THE POM option rows, exit line, and calendar buttons SHALL be skipped; the cycle
-      SHALL be: Primary_Command_Field → menu bar items → Primary_Command_Field.
-
+14. THE Boundary_Policy in criteria 3-8 SHALL be implemented ONCE at the shell level and apply
+      uniformly to every Workspace kind (POM/menu workspaces, editors, Settings, Menus Editor,
+      Theme Editor, File Explorer, and any future or plugin-provided Workspace), so that a new
+      Workspace obtains correct Tab behaviour solely by rendering its controls in visual order,
+      without adding any per-Workspace focus code.
 
 ---
 

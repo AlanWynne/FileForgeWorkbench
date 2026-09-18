@@ -16,7 +16,7 @@ use crate::tab_state::TabKind;
 use crate::toolchain_panel;
 
 use super::helpers::*;
-use super::{FocusStop, WorkbenchShell};
+use super::WorkbenchShell;
 
 impl WorkbenchShell {
     pub(super) fn render_title_line(&self, ctx: &egui::Context) {
@@ -93,7 +93,6 @@ impl WorkbenchShell {
                     self.command_text.clear();
                     self.handle_command(&cmd);
                     // Return focus to the command field after every command execution.
-                    self.focus_stop = FocusStop::CommandField;
                     self.command_field_focus_requested = true;
                 }
 
@@ -123,7 +122,6 @@ impl WorkbenchShell {
                         ));
                     }
                     // Return focus to command field.
-                    self.focus_stop = FocusStop::CommandField;
                     self.command_field_focus_requested = true;
                 }
             });
@@ -160,16 +158,24 @@ impl WorkbenchShell {
                             .get_plain(key)
                             .map(|b| b.command().to_string())
                             .unwrap_or_default();
-                        let resp = ui.add_enabled(
-                            enabled,
-                            egui::Button::new(
-                                egui::RichText::new(&btn_text)
-                                    .color(if enabled { label_color } else { key_color })
-                                    .monospace()
-                                    .small(),
-                            )
-                            .frame(false),
-                        );
+                        // CR-CH-023 Req 16.9: the Key_Label_Bar slots are
+                        // clickable but MUST NOT be keyboard Tab stops (they
+                        // duplicate the physical function keys). A plain
+                        // `Button` senses `CLICK | FOCUSABLE`; rendering a
+                        // `Label` with a click-only Sense (no FOCUSABLE bit)
+                        // keeps the mouse click while removing the widget from
+                        // egui-native Tab traversal.
+                        let text = egui::RichText::new(&btn_text)
+                            .color(if enabled { label_color } else { key_color })
+                            .monospace()
+                            .small();
+                        let resp = if enabled {
+                            ui.add(egui::Label::new(text).sense(egui::Sense::CLICK))
+                        } else {
+                            // Disabled slots are pure display (never a Tab stop
+                            // and not clickable).
+                            ui.add(egui::Label::new(text))
+                        };
                         if enabled && !tooltip.is_empty() {
                             resp.clone().on_hover_text(&tooltip);
                         }
@@ -207,28 +213,29 @@ impl WorkbenchShell {
                     LifecyclePhase::ShuttingDown => "SHUTTING DOWN",
                     LifecyclePhase::Terminated => "TERMINATED",
                 };
-                // Validates: Requirement 14.3 -- selectable status bar text
-                ui.add(egui::SelectableLabel::new(false, phase_label));
+                // Status_Bar segments are non-interactive labels, NOT
+                // SelectableLabel. SelectableLabel uses Sense::click() and is a
+                // focusable egui widget; that made each segment an egui-native
+                // Tab focus stop, so at launch Tab walked all six segments
+                // before reaching the menu/POM (B055). Requirement 16 enumerates
+                // the exclusive shell tab stops and the Status_Bar is not among
+                // them, so the segments must not be focusable.
+                // Validates: Requirement 5 (status bar display); B055 (not a tab stop).
+                ui.label(phase_label);
                 ui.separator();
 
                 // Validates: Requirement 20.1 -- session start timestamp
-                ui.add(egui::SelectableLabel::new(
-                    false,
-                    self.format_session_start(),
-                ));
+                ui.label(self.format_session_start());
                 ui.separator();
 
                 let tab = self.tabs.active_tab();
                 let line = tab.cursor.cursor_line();
                 let col = tab.cursor.cursor_column();
                 // Requirement 7.1: format "Ln {line}, Col {col}" (1-based)
-                ui.add(egui::SelectableLabel::new(
-                    false,
-                    format!("Ln {line}, Col {col}"),
-                ));
+                ui.label(format!("Ln {line}, Col {col}"));
                 ui.separator();
                 // Requirement 7.3: real encoding from document
-                ui.add(egui::SelectableLabel::new(false, tab.encoding_label()));
+                ui.label(tab.encoding_label());
                 ui.separator();
                 // Requirement 7.1 (view-zoom) -- zoom indicator when non-zero
                 {
@@ -241,10 +248,7 @@ impl WorkbenchShell {
                     }
                 }
                 // Requirement 7.4: real line count
-                ui.add(egui::SelectableLabel::new(
-                    false,
-                    format!("{} lines", tab.line_count),
-                ));
+                ui.label(format!("{} lines", tab.line_count));
                 ui.separator();
                 // Requirement 6.5: modified indicator
                 if tab.is_modified {
@@ -273,11 +277,8 @@ impl WorkbenchShell {
                 }
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    // Validates: Requirement 14.3 -- selectable version label
-                    ui.add(egui::SelectableLabel::new(
-                        false,
-                        "FileForge Workbench v0.1.0",
-                    ));
+                    // Non-interactive version label (B055: not a Tab focus stop).
+                    ui.label("FileForge Workbench v0.1.0");
                 });
             });
         });
@@ -300,6 +301,116 @@ impl WorkbenchShell {
     }
 
     // ── Central panel ────────────────────────────────────────────────────
+
+    /// Honour the one-shot interior-focus latches set by the Boundary_Policy
+    /// (B056). Called by each Workspace render arm AFTER it has produced its
+    /// interior controls this frame, so the id passed is the FRESH same-frame id
+    /// that egui will actually recognise (a stale previous-frame id does not
+    /// round-trip through `request_focus`).
+    ///
+    /// Validates: Requirement 16.3, 16.8 (CR-CH-023)
+    fn honour_interior_focus_latch(
+        &mut self,
+        ctx: &egui::Context,
+        first_interior: Option<egui::Id>,
+        last_interior: Option<egui::Id>,
+    ) {
+        if self.focus_first_interior_requested {
+            self.focus_first_interior_requested = false;
+            if let Some(id) = first_interior {
+                ctx.memory_mut(|m| m.request_focus(id));
+            }
+        }
+        if self.focus_last_interior_requested {
+            self.focus_last_interior_requested = false;
+            if let Some(id) = last_interior {
+                ctx.memory_mut(|m| m.request_focus(id));
+            }
+        }
+    }
+
+    /// Apply the [`ShellRequest`]s a `WorkspaceContext` enqueued during its
+    /// `render`, routing each through the existing shell pipelines so the
+    /// observable result is identical to the pre-framework per-arm handling
+    /// (CR-NR-078, Requirement 2.2). Drained AFTER the panel is put back, so no
+    /// borrow conflicts arise.
+    pub(super) fn apply_shell_requests(
+        &mut self,
+        requests: Vec<super::workspace_context::ShellRequest>,
+    ) {
+        use super::workspace_context::ShellRequest;
+        for req in requests {
+            match req {
+                ShellRequest::Command(cmd) => self.handle_command(&cmd),
+                ShellRequest::Target(target) => self.dispatch_command_target(&target),
+                ShellRequest::OpenFile(path) => {
+                    let mut p = ff_command::CommandParams::new();
+                    p.insert("path", path.as_str());
+                    if let ff_command::CommandResult::Err(e) =
+                        self.dispatch.execute_command("file.open", p)
+                    {
+                        self.open_error = Some(e.to_string());
+                    }
+                }
+                ShellRequest::Status(message) => self.open_error = Some(message),
+            }
+        }
+    }
+
+    /// Dispatch a [`WorkspaceContext`] through the single framework code path
+    /// (CR-NR-078, Requirement 1.2), using the owned-panel-swap borrow strategy
+    /// (Option A): the caller moves the panel OUT of the shell, hands it here
+    /// with a `ShellServices` builder that borrows the shell's OTHER fields, we
+    /// render, drain the panel's `ShellRequest`s, and honour the focus latch with
+    /// the returned `InteriorFocus`. The panel is put back by the caller. This is
+    /// the ONE place the focus contract is applied, so a migrated arm cannot omit
+    /// it.
+    ///
+    /// Returns the `InteriorFocus` the Context reported (so the caller records it
+    /// on `first_interior_id`/`last_interior_id`).
+    pub(super) fn render_workspace_context<C>(
+        &mut self,
+        ctx: &egui::Context,
+        ui: &mut egui::Ui,
+        context: &mut C,
+    ) -> super::workspace_context::InteriorFocus
+    where
+        C: super::workspace_context::WorkspaceContext,
+    {
+        use super::workspace_context::ShellServices;
+        let mut requests = Vec::new();
+        let focus = {
+            let mut services = ShellServices {
+                config: &self.config_handle,
+                runtime: &self.runtime,
+                notifications: &self.notification_queue,
+                themes_dir: self.themes_dir(),
+                menus_dir: self.menus_dir(),
+                requests: &mut requests,
+            };
+            context.render(ui, &mut services)
+        };
+        self.apply_shell_requests(requests);
+        self.apply_interior_focus(ctx, focus);
+        focus
+    }
+
+    /// Record a Context's reported [`InteriorFocus`] on the shell and honour the
+    /// focus latch -- the ONE place the CR-CH-023 Boundary_Policy interior anchors
+    /// are applied (CR-NR-078, Requirement 1.2). Both the generic trait dispatch
+    /// (`render_workspace_context`) and the specialized MenuWorkspace arm (whose
+    /// render signature carries menu-specific calendar inputs/outputs and so does
+    /// not fit the `ShellServices`-only trait) route through here, so no arm can
+    /// "forget" to apply the focus contract.
+    pub(super) fn apply_interior_focus(
+        &mut self,
+        ctx: &egui::Context,
+        focus: super::workspace_context::InteriorFocus,
+    ) {
+        self.first_interior_id = focus.first;
+        self.last_interior_id = focus.last;
+        self.honour_interior_focus_latch(ctx, focus.first, focus.last);
+    }
 
     pub(super) fn render_central_panel(&mut self, ctx: &egui::Context) {
         // ── File Explorer side panel (ctx-level, resizable) ────────────
@@ -379,6 +490,12 @@ impl WorkbenchShell {
         // Validates: Requirement 14.8 — central panel dispatches on tab kind
         if !is_file_explorer {
             egui::CentralPanel::default().show(ctx, |ui| {
+                // CR-CH-023: reset the Boundary_Policy interior anchors each
+                // frame; the active Workspace arm re-populates them if it has
+                // interior focus stops. Workspaces that leave them None cause
+                // Tab from the command field to go straight to the menu bar.
+                self.first_interior_id = None;
+                self.last_interior_id = None;
                 match self.tabs.active_tab().kind {
                     TabKind::PrimaryOptionMenu => {
                         // Validates: menu-workspace Requirement 2.1c, 2.1d -- the POM is
@@ -390,6 +507,8 @@ impl WorkbenchShell {
                         let calendar_offset = self.pom_calendar_offset;
                         let active_idx = self.tabs.active_index();
                         let mut calendar_nav = None;
+                        let mut first_interior = None;
+                        let mut last_interior = None;
                         if let Some(mw) = self
                             .tabs
                             .tabs_mut()
@@ -407,7 +526,21 @@ impl WorkbenchShell {
                                 self.pending_menu_option = Some(option);
                             }
                             calendar_nav = result.calendar_nav;
+                            first_interior = result.first_interior_id;
+                            last_interior = result.last_interior_id;
+                            // CR-CH-028: record the focused option for the
+                            // Cursor_Context (Req 12.2).
+                            self.focused_menu_option = result.focused_option;
                         }
+                        // CR-NR-078: MenuWorkspace routes its focus contract
+                        // through the shared framework helper (single latch path).
+                        self.apply_interior_focus(
+                            ctx,
+                            crate::shell::workspace_context::InteriorFocus {
+                                first: first_interior,
+                                last: last_interior,
+                            },
+                        );
                         if let Some(nav) = calendar_nav {
                             match nav {
                                 primary_option_menu::CalendarNav::Prev => {
@@ -562,21 +695,27 @@ impl WorkbenchShell {
                             self.open_error = Some(err);
                         }
                     }
-                    TabKind::SettingsPanel => {
-                        // Validates: Requirement 15.1, 15.2, 15.3
-                        crate::settings_panel::render(
-                            ui,
-                            &mut self.settings_panel,
-                            &self.config_handle,
-                        );
+                    TabKind::ConfigPanel => {
+                        // Validates: Requirement 15.1-15.3; CR-NR-078 (framework).
+                        // Migrated to the WorkspaceContext trait: owned-panel swap
+                        // (Option A) so the single dispatch path reports the focus
+                        // contract and honours the latch -- no inline ritual.
+                        let mut panel = std::mem::take(&mut self.config_panel);
+                        self.render_workspace_context(ctx, ui, &mut panel);
+                        self.config_panel = panel;
                     }
                     TabKind::PluginManager => {
                         // Validates: plugin-manager-ui Requirement 1.1-1.6
                         crate::plugin_manager_panel::render(ui, &mut self.plugin_manager_panel);
+                        // CR-CH-023 (B059): Filter field is the first/last interior.
+                        let id = crate::plugin_manager_panel::filter_field_id();
+                        self.first_interior_id = Some(id);
+                        self.last_interior_id = Some(id);
+                        self.honour_interior_focus_latch(ctx, Some(id), Some(id));
                     }
                     TabKind::EventLog => {
                         // Validates: notification-system Requirement 2.1-2.6
-                        crate::event_log_panel::render(
+                        let first_interior_ev = crate::event_log_panel::render(
                             ui,
                             &mut self.event_log_panel,
                             &self.notification_queue,
@@ -585,6 +724,11 @@ impl WorkbenchShell {
                             self.event_log_panel.clear_requested = false;
                             self.notification_queue.lock().expect("queue").clear();
                         }
+                        // CR-CH-023 (B059): the level-filter combo is the first
+                        // interior; its fresh id is returned by the render.
+                        self.first_interior_id = first_interior_ev;
+                        self.last_interior_id = first_interior_ev;
+                        self.honour_interior_focus_latch(ctx, first_interior_ev, first_interior_ev);
                     }
                     TabKind::SearchResults => {
                         // Validates: global-search Requirement 1.1, 4.1
@@ -647,6 +791,11 @@ impl WorkbenchShell {
                             }
                             _ => {}
                         }
+                        // CR-CH-023 (B059): the Search query field is the first/last interior.
+                        let id = crate::search_results_panel::query_field_id();
+                        self.first_interior_id = Some(id);
+                        self.last_interior_id = Some(id);
+                        self.honour_interior_focus_latch(ctx, Some(id), Some(id));
                     }
                     TabKind::FileExplorerPanel => {
                         // Rendered above in the is_file_explorer block -- unreachable here
@@ -676,6 +825,11 @@ impl WorkbenchShell {
                             }
                             crate::macro_library_panel::MacroLibraryAction::None => {}
                         }
+                        // CR-CH-023 (B059): the Filter field is the first/last interior.
+                        let id = crate::macro_library_panel::filter_field_id();
+                        self.first_interior_id = Some(id);
+                        self.last_interior_id = Some(id);
+                        self.honour_interior_focus_latch(ctx, Some(id), Some(id));
                     }
                     TabKind::MenuWorkspace => {
                         // Validates: menu-workspace Requirement 2.1-2.6, 2.1a-2.1c
@@ -685,6 +839,8 @@ impl WorkbenchShell {
                         let calendar_offset = self.pom_calendar_offset;
                         let active_idx = self.tabs.active_index();
                         let mut calendar_nav = None;
+                        let mut first_interior = None;
+                        let mut last_interior = None;
                         if let Some(mw) = self
                             .tabs
                             .tabs_mut()
@@ -702,7 +858,21 @@ impl WorkbenchShell {
                                 self.pending_menu_option = Some(option);
                             }
                             calendar_nav = result.calendar_nav;
+                            first_interior = result.first_interior_id;
+                            last_interior = result.last_interior_id;
+                            // CR-CH-028: record the focused option for the
+                            // Cursor_Context (Req 12.2).
+                            self.focused_menu_option = result.focused_option;
                         }
+                        // CR-NR-078: MenuWorkspace routes its focus contract
+                        // through the shared framework helper (single latch path).
+                        self.apply_interior_focus(
+                            ctx,
+                            crate::shell::workspace_context::InteriorFocus {
+                                first: first_interior,
+                                last: last_interior,
+                            },
+                        );
                         if let Some(nav) = calendar_nav {
                             match nav {
                                 primary_option_menu::CalendarNav::Prev => {
@@ -715,16 +885,35 @@ impl WorkbenchShell {
                         }
                     }
                     TabKind::ThemeEditor => {
-                        // Validates: theme-and-appearance Requirement 20.1, 20.3-20.9
-                        let action =
-                            crate::theme_editor_panel::render(ui, &mut self.theme_editor_panel);
+                        // Validates: theme-and-appearance Req 20.1, 20.3-20.9;
+                        // CR-NR-078 (framework). Owned-panel swap: render through
+                        // the trait (reports first/last interior + honours the
+                        // latch), then apply the stashed action.
+                        let mut panel = std::mem::take(&mut self.theme_editor_panel);
+                        self.render_workspace_context(ctx, ui, &mut panel);
+                        let action = std::mem::take(&mut panel.pending_action);
+                        self.theme_editor_panel = panel;
                         self.apply_theme_editor_action(action);
                     }
                     TabKind::MenusEditor => {
-                        // Validates: menu-workspace Requirement 13.1-13.12 (CR-NR-075)
-                        let action =
-                            crate::menus_editor_panel::render(ui, &mut self.menus_editor_panel);
+                        // Validates: menu-workspace Req 13.1-13.12 (CR-NR-075);
+                        // CR-NR-078 (framework). Owned-panel swap: render through
+                        // the trait, then apply the stashed action.
+                        let mut panel = std::mem::take(&mut self.menus_editor_panel);
+                        self.render_workspace_context(ctx, ui, &mut panel);
+                        let action = std::mem::take(&mut panel.pending_action);
+                        self.menus_editor_panel = panel;
                         self.apply_menus_editor_action(action);
+                    }
+                    TabKind::KeysEditor => {
+                        // Validates: function-keys Req 22 (CR-CH-029); CR-NR-078
+                        // (framework). Owned-panel swap: render through the trait,
+                        // then apply the stashed action.
+                        let mut panel = std::mem::take(&mut self.keys_editor_panel);
+                        self.render_workspace_context(ctx, ui, &mut panel);
+                        let action = std::mem::take(&mut panel.pending_action);
+                        self.keys_editor_panel = panel;
+                        self.apply_keys_editor_action(action);
                     }
                     TabKind::CommandConfigurator => {
                         // Validates: command-configurator Requirement 2.2-2.6
@@ -735,6 +924,12 @@ impl WorkbenchShell {
                             &self.command_store,
                         );
                         self.apply_configurator_action(action);
+                        // CR-CH-023 (B059): the "Add" button is the first interior
+                        // (its fresh id captured by the render onto panel state).
+                        let id = self.command_configurator_panel.first_interior_id;
+                        self.first_interior_id = id;
+                        self.last_interior_id = id;
+                        self.honour_interior_focus_latch(ctx, id, id);
                     }
                 }
             });
@@ -1524,8 +1719,12 @@ impl WorkbenchShell {
 
 /// Draw a 2 px focus ring around `rect` using the theme's `focus_ring` colour.
 ///
-/// Call this once per frame for the currently focused `FocusStop` element.
-/// Validates: accessibility Requirement 3.1, 3.3, 3.4
+/// Retained for accessibility Requirement 3.1/3.3/3.4 (focus indicator helper).
+/// Under CR-CH-023 the shell no longer drives a per-widget focus ring
+/// (egui draws its own focus highlight for the focused Interior_Control and
+/// Menu_Bar item), so this helper currently has no production caller; kept for
+/// the accessibility API contract and potential future custom indicators.
+#[allow(dead_code)]
 pub(crate) fn render_focus_indicator(
     ui: &egui::Ui,
     rect: egui::Rect,

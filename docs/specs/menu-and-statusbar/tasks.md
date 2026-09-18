@@ -469,3 +469,33 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-command` 
 - [x] 30. TCR update for Requirement 19
   - [x] 30.1 Update docs/quality/TCR.md -- mark all Req 19.1-19.14 rows as covered once tests pass
   - Covers: Requirement 19 (all criteria)
+- [ ] 31. Unified tab-order model (Requirement 16 rework, CR-CH-023)
+  - [x] 31.1 Remove the `FocusStop` enum and its `next()`/`prev()` methods from `shell/mod.rs`
+    - Covers: Requirement 16 (ring removal)
+  - [x] 31.2 Remove the ring-drive block and the `is_menus_editor` "Option X" special-case from `shell/update.rs`
+    - Covers: Requirement 16.4, 16.14
+  - [x] 31.3 Implement the shared shell Boundary_Policy in `shell/update.rs`: Tab from command field -> first interior control; Tab from last interior control -> first Menu_Bar item; Tab from last Menu_Bar item -> command field; Shift+Tab reverse (reuse the File Explorer sentinel/boundary pattern)
+    - Covers: Requirement 16.3, 16.5, 16.6, 16.7, 16.8, 16.14
+  - [x] 31.4 Ensure command-field focus on every Workspace entry (launch, navigate-in-place, tab switch, START, open Context)
+    - Covers: Requirement 16.1, 16.1a
+  - [ ] 31.5 Make the `SCROLL ===>` field non-focusable (not a Tab stop) in `render_command_field`
+    - Implemented indirectly: the Boundary_Policy consumes Tab at the command-field boundary, so egui-native Tab never flows command field -> SCROLL field. SCROLL stays click/focus-on-click reachable. Manual retest confirms it is not a Tab stop.
+    - Covers: Requirement 16.9
+  - [x] 31.6 Make the Key_Label_Bar F-key buttons non-focusable in `render_key_label_bar` (mouse click still works)
+    - Covers: Requirement 16.9
+  - [x] 31.7 Confirm Tab_Bar tab headers are not Tab stops under the new model (removal of the tab-header focus request)
+    - Tab-header + close buttons rendered with `Sense::CLICK` (click-only, no FOCUSABLE); FocusStop tab-header focus request/indicator removed.
+    - Covers: Requirement 16.9
+  - [ ] 31.8 Menu_Bar item focus + Enter/Space opens the dropdown; visible focus indicator on the focused menu item
+    - egui-native: menu buttons focus/activate natively; manual UI verification.
+    - Covers: Requirement 16.12, 16.13
+  - [x] 31.9 egui_kittest harness test: chrome (status bar, F-key buttons) receives no Tab focus
+    - `status_bar_segments_are_not_tab_focus_stops`, `key_label_bar_buttons_are_not_tab_focus_stops`.
+    - Covers: Requirement 16.9; automated-dialog-testing 14.9
+  - [ ] 31.10 egui_kittest harness test: boundary/wrap -- Tab from command field enters interior, last interior -> menu bar, last menu bar -> command field; Shift+Tab reverse
+    - Full-shell boundary/wrap is verified via the manual core-acceptance-test-plan rows 1.3a/1.3b/1.3c (driving the whole `WorkbenchShell::update` headlessly is impractical); the interior order is harness-tested.
+    - Covers: Requirement 16.3, 16.5, 16.7, 16.8
+  - [x] 31.11 Menus Editor harness test uses the shared model (no special-case); visual-order assertion retained
+    - Covers: automated-dialog-testing 14.6, 14.7
+  - [x] 31.12 Update TCR rows for Requirement 16
+    - Covers: Requirement 16 (all criteria)

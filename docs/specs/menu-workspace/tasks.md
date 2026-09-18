@@ -454,3 +454,96 @@
     - Validates: Requirement 14.1-14.12
   - [x] 25.9 Update TCR rows; mark tasks 25.x done; supersede B053 interim fix note; CR-CH-022 -> DONE; verify.ps1; rebuild; commit+push
     - Covers: project standards
+- [ ] 26. Menu Workspace tab order and focusable calendar (Requirement 15, CR-CH-023)
+  - [x] 26.1 Confirm enabled option rows are focusable buttons and disabled options are non-focusable Labels; rely on the shared shell Boundary_Policy (no menu-workspace focus ring)
+    - Covers: Requirement 15.1, 15.2, 15.3, 15.4
+  - [x] 26.2 Replace the calendar `<`/`>` painted hit-region with two real focusable `egui::Button`s in `primary_option_menu::render_calendar`, returning `CalendarNav` on click or Enter/Space
+    - Covers: Requirement 15.7, 15.8
+  - [x] 26.3 Position the calendar buttons so egui-native traversal reaches them after the last enabled option and before the Menu_Bar when `show_calendar` is true; no calendar stops when false
+    - `render_menu_workspace` reports `last_interior_id` = calendar `>` when shown, else the last enabled option.
+    - Covers: Requirement 15.5, 15.6
+  - [x] 26.4 Keep day cells non-focusable (calendar stays minimal)
+    - Covers: Requirement 15.10
+  - [x] 26.5 egui_kittest harness test: on a menu-workspace, Tab visits each enabled option in order then the calendar `<`/`>`; disabled options skipped; no-calendar case ends on the last option
+    - `menu_workspace_tab_visits_options_then_calendar`, `menu_workspace_disabled_option_is_skipped`, `menu_workspace_no_calendar_last_interior_is_last_option`. Full command-line/menu-bar/wrap boundary is manual (plan 1.3b); Shift+Tab reverse is manual (15.9).
+    - Covers: Requirement 15.2, 15.3, 15.4, 15.5, 15.6; automated-dialog-testing 14.9
+  - [x] 26.6 Update TCR rows for Requirement 15
+    - Covers: Requirement 15 (all criteria)
+---
+
+## Phase (command-resolution) -- Keyword-less menu-name resolution + Settings launcher (CR-CH-025, Req 3.6, 11.11-11.12, 12.3)
+
+- [x] 27. Retire SETTINGS/A special cases; menu-name resolution; Settings baseline reorder
+  - [x] 27.1 Remove the hardcoded `SETTINGS`, `SETTINGS <ns>`, and `A` intercepts from `handle_command`; opening the Settings menu becomes menu-name resolution of the token `SETTINGS` (command-framework Req 8.11 stage 3), reusing `open_menu_by_name`/`open_settings_menu`
+    - Covers: Requirement 11.11; command-framework Requirement 8.3, 8.11
+  - [x] 27.2 Wire the keyword-less menu-name form: a bare token matching a resolvable Menu_Name (user `menus/<name>.toml` or built-in `pom`/`settings`) opens that menu without the `MENU` keyword; a trailing token is forwarded as the Option_Key (equals `MENU <name> <key>`)
+    - Covers: Requirement 11.11; command-framework Requirement 8.13
+  - [x] 27.3 Enforce built-in precedence: a Menu_Name resolves only when no earlier chain stage (current-menu Option_Key, built-in command/Command_ID) claims the token (shadowing rule)
+    - Covers: Requirement 11.12; command-framework Requirement 8.10
+  - [x] 27.4 Move the on-menu Option_Key lookup to be the first chain stage; a non-matching token falls through to the remaining stages instead of erroring (Req 3.6 revision)
+    - Covers: Requirement 3.6
+  - [x] 27.5 Reorder `DEFAULT_SETTINGS_TOML` in `menu_workspace/defaults.rs` to Core[`A` CONFIG, `T` THEME, `M` MENUS] then Recovery[`R` RESET BARE]; `group_separator = "line"`; correct stale `THEMES`->`THEME`; replace `A -> A` with `A -> CONFIG`. Built-ins stay code-only; RESET BARE unchanged
+    - Covers: Requirement 12.3
+  - [x] 27.6 Update the `default_settings_toml_*` unit tests (option count/order, `A -> CONFIG`, `T -> THEME`, `R -> RESET BARE`, groups Core/Recovery, ASCII-only); add/adjust tests for keyword-less `SETTINGS`/`SETTINGS T` resolution and the removed `A` command
+    - Validates: Requirement 12.3, 11.11
+  - [x] 27.7 Update `docs/quality/TCR.md`: set the CR-CH-025 menu-workspace rows to their correct status
+    - Covers: Requirement 3.6, 11.11, 11.12, 12.3
+
+---
+
+## Phase (calendar-visibility) -- Calendar Visibility and Fit; Settings default off (CR-CH-026, Requirement 16, B060)
+
+- [x] 28. Settings default: no calendar
+  - [x] 28.1 Add `show_calendar = false` to `DEFAULT_SETTINGS_TOML` in `menu_workspace/defaults.rs` (compiled Recovery_Baseline Settings). Keep the `MenuFile` field default `true` (POM + author-enabled menus unaffected)
+    - Covers: Requirement 16.1
+  - [x] 28.2 Update `default_settings_toml_*` unit tests to assert `show_calendar = false` parses and is preserved (`default_settings_toml_hides_calendar`); the serialiser already emits `show_calendar = false` only when != default (covered by existing serialiser tests)
+    - Validates: Requirement 16.1
+  - [x] 28.3 Full-shell egui_kittest test `full_shell_settings_tab_walks_options_only_no_calendar_stops`: from the Settings command field, Tab walks the option rows; reported first/last interior are option ids (distinct), not a calendar id
+    - Validates: Requirement 16.1, 16.4
+
+- [x] 29. Calendar fit-aware layout in `render_menu_workspace`
+  - [x] 29.1 Define `CALENDAR_MIN_WIDTH` (180px), `OPTION_LIST_MIN_WIDTH` (260px), `CALENDAR_GAP` (32px); compute available width at the option/calendar row
+    - Covers: Requirement 16.2, 16.6
+  - [x] 29.2 WHEN `show_calendar` true AND width fits: render the calendar in a reserved right-hand column WITHIN the visible clip width and constrain the option `ScrollArea` (`max_width` + `set_max_width`) to the remaining width, so the calendar (and its `<`/`>`) is fully on-screen and never overlaps the option list
+    - Covers: Requirement 16.2, 16.5, 16.6
+  - [x] 29.3 WHEN `show_calendar` true BUT width does NOT fit: omit the calendar for that frame (decision uses only the current frame's available width -> restored on a wider frame; no persisted state) and set `result.last_interior_id = last_enabled_option_id` (do NOT report the calendar ids)
+    - Covers: Requirement 16.3, 16.4
+  - [x] 29.4 Failing egui_kittest tests first (RED-confirmed): `menu_calendar_shown_when_wide_next_button_is_on_screen` (reports `>` id AND its rect is inside `ui.clip_rect()` -- B060 regression guard); `menu_calendar_omitted_when_too_narrow_no_calendar_tab_stops` (narrow -> reported last interior is on-screen, no off-screen calendar stop)
+    - Validates: Requirement 16.2, 16.3, 16.4, 16.5
+  - [x] 29.5 Update `docs/quality/TCR.md`: set the CR-CH-026 menu-workspace Req 16.1-16.6 rows to ✅; bugs.md B060 -> FIXED
+    - Covers: Requirement 16.1-16.6
+
+## Phase (menu-bar) -- Configurable named menu bars (CR-NR-080, Requirement 17)
+
+> The menu bar becomes a Menu_File rendered horizontally: top-level buttons PEEK
+> their referenced submenu as a dropdown (not navigate); leaves dispatch commands
+> (parity). Menu model + command resolution unchanged. SLICED: A is the immediate
+> work; B-D follow in later phases.
+
+- [ ] 30. Slice A: data-driven horizontal menu bar (replaces the hardcoded bar)
+  - [ ] 30.1 Add `DEFAULT_MENUBAR_TOML` to `menu_workspace/defaults.rs` (code-only, parsed once), reproducing the current bar's top-level entries in order INCLUDING a trailing `Help`; each top-level option's `command` names its submenu (Settings -> `SETTINGS`, etc.). Add `default_menubar_menu()` accessor; unit tests for valid-TOML + ASCII-only + expected top-level option list
+    - Covers: Requirement 17.2
+  - [ ] 30.2 Add `render_menu_bar_from_menu(&mut self, ctx, menu: &MenuFile)` (menu_workspace/render.rs or a `menu_bar` submodule): `TopBottomPanel::top("menu_bar")` + `menu::bar`, one `menu_button(option.description)` per top-level option in order
+    - Covers: Requirement 17.1
+  - [ ] 30.3 PEEK inside each top-level button: resolve the option command to a menu (reuse `TargetResolver::menu_name_target` + loader/compiled default); render the referenced menu's options as `ui.button(child.description)`; on click `self.handle_command(&child.command)` + `ui.close_menu()`. Non-menu commands render as a direct actionable button dispatching their own command
+    - Covers: Requirement 17.3, 17.4, 17.5
+  - [ ] 30.4 Boundary_Policy: capture the FIRST and LAST top-level button `response.id` into `self.menu_first_id` / `self.menu_last_id` from the data-driven loop; remove/replace `MENU_BAR_TOP_LEVEL_LABELS` + its `debug_assert_eq!`; retarget label-asserting tests to the Default_Menu_Bar option list
+    - Covers: Requirement 17.6
+  - [ ] 30.5 Replace the hardcoded `render_menu_bar` body with a call to `render_menu_bar_from_menu(default_menubar_menu())` (Slice A always uses the default; naming/assignment come in B/C). POM/Settings vertical workspace untouched
+    - Covers: Requirement 17.1, 17.7
+  - [ ] 30.6 Failing full-shell egui_kittest tests first: the bar renders the Default_Menu_Bar's top-level buttons in order (incl. Help); opening a top-level button peeks its submenu's options; activating a leaf dispatches its command (assert the resulting state change, e.g. THEME leaf changes the active theme); first Tab from the last interior still reaches the bar and wraps (Boundary_Policy preserved)
+    - Validates: Requirement 17.1, 17.3, 17.4, 17.6
+  - [ ] 30.7 Update `docs/quality/TCR.md` (CR-NR-080 Slice A rows -> PASS); verify.ps1 CLEAN (FULL, nextest); rebuild ffwb.exe
+    - Covers: Requirement 17.1-17.7
+
+- [ ] 31. Slice B: named + editable menu-bar files (LATER)
+  - [ ] 31.1 Resolve a menu-bar by name to `menus/<name>.toml` via the existing loader; a user file overrides `DEFAULT_MENUBAR_TOML` (code-only fallback). `MB-` naming convention (not enforced). Editable via the existing Menus Editor + serialiser
+    - Covers: Requirement 17.8
+
+- [ ] 32. Slice C: per-workspace-kind menu-bar assignment (LATER)
+  - [ ] 32.1 Config mapping workspace-kind (context name) -> menu-bar name, mirroring the keymaps per-kind pattern (CR-CH-027); active tab kind selects the bar; default bar when unassigned
+    - Covers: Requirement 17.9
+
+- [ ] 33. Slice D: dynamic option sources -> Themes dropdown (LATER; delivers ex-CR-NR-077)
+  - [ ] 33.1 A menu-bar option with a dynamic source (themes) peeks a dropdown generated from `list_all_themes`, each item dispatching `THEME <name>` via `handle_command` (shared `set_active_theme` apply+persist path)
+    - Covers: Requirement 17.10, 17.11

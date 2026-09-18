@@ -43,7 +43,7 @@ pub(super) fn context_name_for_kind(kind: TabKind) -> Option<&'static str> {
     match kind {
         TabKind::PrimaryOptionMenu => Some("pom"),
         TabKind::FileEditor | TabKind::Untitled => Some("editor"),
-        TabKind::SettingsPanel => Some("settings"),
+        TabKind::ConfigPanel => Some("config"),
         TabKind::FilesPanel => Some("files"),
         TabKind::FileExplorerPanel => Some("files"),
         TabKind::SearchResults => Some("search"),
@@ -54,6 +54,7 @@ pub(super) fn context_name_for_kind(kind: TabKind) -> Option<&'static str> {
         TabKind::CommandConfigurator => Some("commands"),
         TabKind::ThemeEditor => Some("theme"),
         TabKind::MenusEditor => Some("menus"),
+        TabKind::KeysEditor => Some("keys"),
     }
 }
 

@@ -7,9 +7,10 @@ use crate::menu_workspace::MenuFile;
 /// render (B054) and do NOT produce actions.
 ///
 /// Validates: menu-workspace Requirement 13.4-13.9.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum MenusEditorAction {
     /// No action this frame.
+    #[default]
     None,
     /// Select a different menu to edit (by name: "POM", "Settings", or user).
     Select(String),
@@ -43,6 +44,15 @@ pub struct MenusEditorState {
     pub name_buffer: String,
     /// The most recent validation/save error, shown inline.
     pub error: Option<String>,
+    /// Egui id of the FIRST focusable interior control (the "Menu:" selector
+    /// combo), captured fresh each frame by `render` so the shell
+    /// Boundary_Policy can focus it on Tab from the command field (CR-CH-023,
+    /// B056: a stale/guessed id does not round-trip through egui focus).
+    /// Transient render output; not serialised.
+    pub first_interior_id: Option<egui::Id>,
+    /// Action produced by the most recent `WorkspaceContext::render`, stashed for
+    /// the shell to apply via `apply_menus_editor_action` (CR-NR-078). Transient.
+    pub pending_action: MenusEditorAction,
 }
 
 impl MenusEditorState {

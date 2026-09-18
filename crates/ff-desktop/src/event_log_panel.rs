@@ -46,14 +46,18 @@ pub fn render(
     ui: &mut egui::Ui,
     state: &mut EventLogPanelState,
     queue: &Arc<Mutex<NotificationQueue>>,
-) {
+) -> Option<egui::Id> {
     let queue_guard = queue.lock().expect("notification queue lock");
+    // FIRST interior control (CR-CH-023, B059): the level-filter combo. Captured
+    // from the combo's fresh response id each frame and returned to the shell so
+    // the command-field -> first-interior Tab jump latches to a real widget.
+    let mut first_interior: Option<egui::Id> = None;
 
     ui.horizontal(|ui| {
         ui.label(egui::RichText::new("Event Log").monospace().strong());
         ui.separator();
         // Level filter -- Validates: Req 2.4
-        egui::ComboBox::from_id_salt("event_log_level_filter")
+        let combo = egui::ComboBox::from_id_salt("event_log_level_filter")
             .selected_text(match state.level_filter {
                 None => "All",
                 Some(NotificationLevel::Info) => "Info",
@@ -84,6 +88,8 @@ pub fn render(
                     "Error",
                 );
             });
+        // The level-filter combo is the first interior Tab stop (B059).
+        first_interior = Some(combo.response.id);
         ui.add(
             egui::TextEdit::singleline(&mut state.text_filter)
                 .desired_width(150.0)
@@ -116,7 +122,7 @@ pub fn render(
 
     if entries.is_empty() {
         ui.label(egui::RichText::new("No log entries.").weak().italics());
-        return;
+        return first_interior;
     }
 
     // Validates: Req 2.3 -- reverse-chronological (queue already newest-first)
@@ -151,6 +157,7 @@ pub fn render(
             }
         }
     }
+    first_interior
 }
 
 fn level_colour(level: NotificationLevel) -> egui::Color32 {

@@ -1,4 +1,4 @@
-﻿# Implementation Plan: Command Framework (`ff-command`)
+# Implementation Plan: Command Framework (`ff-command`)
 
 ## Overview
 
@@ -434,3 +434,60 @@ This is a **Wave 2 (Platform Architecture)** sub-project. It depends on `ff-logg
     - Validates: Requirement 11.1-11.5, 11.7, 11.8
   - [ ] 26.8 Update `docs/quality/TCR.md`: set the CR-NR-058 command-framework Req 11 rows to their correct status
     - Covers: Requirement 11 (all criteria)
+## Phase (command-resolution) -- Unified command-resolution chain (CR-CH-025, Requirement 8.3/8.10-8.13)
+
+- [x] 27. Ordered command-resolution chain (menu-name + macro stages, shadowing rule)
+  - [x] 27.1 Extend the `TargetResolver` trait with `menu_name_target(&self, input) -> Option<CommandTarget>` and `macro_name_target(&self, input) -> Option<CommandTarget>`; add stages 3 (menu name) and 4 (macro) to `resolve_target` AFTER the registered-Command_ID check and BEFORE the `Err`, preserving built-in > menu > macro precedence
+    - Covers: Requirement 8.3, 8.10, 8.11, 8.12
+  - [x] 27.2 Implement `ShellTargetResolver::menu_name_target` in ff-desktop: resolve a first-token match when `menus/<name>.toml` exists OR the token is a compiled built-in menu name (`pom`/`settings`); return `Menu { name }`
+    - Covers: Requirement 8.11
+  - [x] 27.3 Implement `ShellTargetResolver::macro_name_target` as a DEFERRED stub returning `None`, with a doc-comment pointing at the future macro-execution wiring (ff-lua not yet a dependency)
+    - Covers: Requirement 8.12
+  - [x] 27.4 Move the current-menu Option_Key lookup (`find_option`) to be the FIRST stage of `handle_command` (stage 1), before the built-in intercepts; a non-matching token falls through to the rest of the chain instead of erroring
+    - Covers: Requirement 8.3 (stage 1); menu-workspace Requirement 3.6
+  - [x] 27.5 Wire trailing-token forwarding: a stage-3 menu-name match with a trailing token opens the menu and activates the option keyed by that token, via the shared `open_menu_by_name` + chained-key helper (keyword-less form equals `MENU <name> <key>`)
+    - Covers: Requirement 8.13; menu-workspace Requirement 11.7, 11.11
+  - [x] 27.6 Write failing unit tests: resolver returns Menu for a menu-name token; built-in beats same-named menu (shadowing); macro stage returns None (deferred); unknown token errors; trailing token resolves to the option-key activation
+    - Validates: Requirement 8.3, 8.10, 8.11, 8.12, 8.13
+  - [x] 27.7 Update `docs/quality/TCR.md`: set the CR-CH-025 command-framework Req 8 rows to their correct status
+    - Covers: Requirement 8 (CR-CH-025 criteria)
+
+---
+
+## Phase (cursor-context) -- Cursor_Context package on every command (CR-CH-028, Requirement 12; Slice 2a)
+
+> ADDITIVE, behaviour-preserving. Threads a flexible Cursor_Context (fixed core +
+> open extras bag) into every command via the existing `ExecutionContext` /
+> `ContextProvider` seam. Commands merely RECEIVE it here; per-command CONSUMPTION
+> (CSR scroll, etc.) is deferred. Delivers CR-NR-079 context-aware HELP + the
+> canonical "command not implemented yet" message.
+
+- [x] 28. Extend `ff-command` `ExecutionContext` with the Cursor_Context (additive)
+  - [x] 28.1 Added a `CursorContext` type (fixed core: `workspace_context`, `focused_identity`, `focused_text`, `cursor_line`, `cursor_column`, `selection`, `scroll_setting`; open `extras: BTreeMap<String, ContextValue>`) and a `ContextValue` enum (String/Int/Float/Bool) in `context.rs`; added `cursor_context: CursorContext` to `ExecutionContext` with `Default`
+    - Covers: Requirement 12.1, 12.2, 12.3
+  - [x] 28.2 Extended `ExecutionContextBuilder` with a `cursor_context(..)` setter; `empty()` unchanged (all-none core + empty extras)
+    - Covers: Requirement 12.1
+  - [x] 28.3 Failing tests first (RED then green): builder sets/reads core + extras; `empty()` unchanged; existing `ExecutionContext` tests still pass
+    - Validates: Requirement 12.1, 12.2, 12.3
+
+- [x] 29. Wire a shell-backed ContextProvider + capture on both paths (ff-desktop)
+  - [x] 29.1 Added a `cursor_context_snapshot: Arc<Mutex<CursorContext>>` on `WorkbenchShell` and a `capture_cursor_context(ctx)` helper that builds the package from live focus/selection (`context_name_for_kind`, `ctx.memory().focused()` -> command-line or focused Menu_Option identity/text, editor cursor, scroll setting)
+    - Covers: Requirement 12.2, 12.4
+  - [x] 29.2 Implemented `ShellContextProvider` (holds an `Arc` clone of the snapshot) and call `dispatch.set_context_provider(..)` in `WorkbenchShell::new`
+    - Covers: Requirement 12.4
+  - [x] 29.3 Refresh the snapshot via `refresh_cursor_context_snapshot(ctx)` each frame before dispatch (function-key + command-line + registry paths carry the same package); snapshot is per-invocation, never retained
+    - Covers: Requirement 12.4, 12.5
+  - [x] 29.4 Record the focused Menu_Option (id -> command/label) each frame (`MenuRenderResult.focused_option` -> `self.focused_menu_option`) so a focused option id resolves to its semantic identity (start scope: menu option + command line)
+    - Covers: Requirement 12.2
+  - [x] 29.5 Failing tests first (RED then green): `cursor_context_snapshot_reflects_command_line_focus` (populated package reflecting focus), `context_provider_returns_populated_cursor_context`
+    - Validates: Requirement 12.2, 12.4
+
+- [x] 30. Canonical "command not implemented yet" message + HELP consumer (CR-NR-079)
+  - [x] 30.1 Added the shared `NOT_IMPLEMENTED_MSG` constant (dispatcher-owned); did NOT add "out of context" (command-owned, later). Bound-path consumers land in Slice 2b; `#[allow(dead_code)]` with justification until then
+    - Covers: Requirement 12.7
+  - [x] 30.2 Generalised the HELP handler to build the ff-help `EditorContext` FROM the Cursor_Context snapshot: a focused Menu_Option resolves the help Topic_Key for that option's command (F1 on FILES -> `cmd:FILES`); absent a specific focused control, falls back to today's behaviour
+    - Covers: Requirement 12.8; function-keys-and-history Requirement 18
+  - [x] 30.3 Failing tests first (RED then green): `not_implemented_message_is_canonical` (exact string); `help_consumes_focused_menu_option_context` (`cmd:FILES` topic)
+    - Validates: Requirement 12.7, 12.8
+  - [x] 30.4 Updated `docs/quality/TCR.md`: CR-CH-028 Req 12 rows -> PASS (12.6 MANUAL/deferred until first consumer); behaviour-preserving confirmed
+    - Covers: Requirement 12 (all criteria)

@@ -1012,48 +1012,81 @@ No new crate dependencies. No architectural contradictions with existing decisio
 
 ---
 
-## 9. Tab-Order Focus Cycle (Requirement 16)
+## 9. Tab-Order Focus Cycle (Requirement 16) -- unified model (CR-CH-023)
 
-Implemented entirely in `ff-desktop/src/shell.rs` using egui's `egui::Id`-based focus API.
-No new crate dependency is required.
+**Superseded design.** The original Section 9 described a shell-owned focus ring: a `FocusStop`
+enum enumerating `CommandField`, `PomOption(0..8)`, `PomExit`, `CalendarPrev`, `CalendarNext`,
+`MenuBar{index}`, and `TabHeader{index}`, advanced by `next()`/`prev()` and driven onto widgets
+via `request_focus`. CR-CH-023 REMOVES that ring in favour of one shared model that every
+Workspace uses without per-Workspace focus code.
 
-### Focus stops (Tab order)
+### Model
 
-```
-[1]  Primary_Command_Field  ("Command ===>")  -- always present
-[2]  PomOption(0..8)        (only when active tab is POM)
-[3]  PomExit                (only when active tab is POM)
-[4]  CalendarPrev           (only when active tab is POM)
-[5]  CalendarNext           (only when active tab is POM)
-[6]  Menu bar item 0        (Settings)
-...  (one stop per top-level menu heading)
-[N]  Menu bar item last     (Help)
-[N+1] Tab header 0          (leftmost tab)
-...  (one stop per open tab)
-[M]  Tab header last        (rightmost tab)
-→ wraps back to [1] (Primary_Command_Field)
-```
+1. **Interior order = egui-native.** Each Workspace renders its interactive controls in
+   visual/creation order; egui's built-in Tab traversal walks them. The POM/menu-workspace
+   option rows are ALREADY real focusable `egui::Button`s, and the Menus/Theme editors already
+   create their fields in visual order, so their interior Tab order is correct with no shell
+   involvement. Disabled menu options are non-interactive `Label`s and are naturally skipped.
 
-Back Tab (Shift+Tab) reverses the sequence exactly.
+2. **Shell Boundary_Policy (implemented once, applies to all Workspaces).** The shell handles
+   only the three transitions that cross a Workspace boundary. Each frame, for the active
+   Workspace, on a Tab/Shift+Tab press the shell:
+   - **Enter:** if focus is on the Primary_Command_Field and Tab is pressed, move focus to the
+     Workspace's FIRST interior control. The shell learns the first/last interior control ids
+     generically -- see "Interior boundary detection" below -- rather than hard-coding them.
+   - **Exit to menu bar:** if focus is on the LAST interior control and Tab is pressed, move to
+     the first Menu_Bar item.
+   - **Wrap:** if focus is on the LAST Menu_Bar item and Tab is pressed, move to the
+     Primary_Command_Field.
+   Shift+Tab performs the exact reverse at each boundary. Between boundaries the shell consumes
+   nothing and lets egui move focus natively.
 
-### Command field focus reliability
+3. **Chrome not focusable.** The Status_Bar segments (already `ui.label`, B055), the
+   `SCROLL ===>` field, the Tab_Bar tab headers, and the Key_Label_Bar F-key buttons are made
+   non-focusable so they never appear in the cycle. For egui this means rendering them so their
+   `Response`/`Sense` is not focusable (e.g. plain `ui.label`, or a button/`add` with focus
+   suppressed), and NOT calling `request_focus` on them.
 
-The command field must receive egui focus on every frame where `focus_stop == CommandField`,
-not only on the startup frame. This ensures that typing always goes to the command field
-regardless of what egui may have focused internally (e.g., after a menu interaction).
+### Interior boundary detection
 
-### FocusStop enum
+To keep the Boundary_Policy generic (no per-Workspace enumeration), the shell needs the FIRST
+and LAST focusable interior control of the active Workspace. Two viable mechanisms, to be
+finalised in implementation:
 
-`FocusStop` gains a new variant `TabHeader { index: usize }` for tab bar stops.
-`next()` and `prev()` are updated: after the last `MenuBar` stop, the cycle advances to
-`TabHeader { index: 0 }`, then through all tab headers, then wraps to `CommandField`.
-Shift+Tab from `CommandField` goes to the last `TabHeader`.
+- **(a) egui tab-navigation surrogate:** rely on egui's own "focus wrapped" signal. When Tab
+  from the command field would leave the command field, the shell requests egui move focus into
+  the central panel; when egui reports focus has wrapped past the last central-panel widget, the
+  shell redirects to the Menu_Bar / command field. This needs the command field, menu bar, and
+  chrome to be arranged so egui's natural wrap coincides with the desired boundaries (achieved
+  by making chrome non-focusable and by ordering the panels so the central panel's widgets are a
+  contiguous focus run).
+- **(b) sentinel ids:** the central panel exposes a stable "first interior" id (the shell
+  focuses it on Enter) and the shell detects "last interior" by observing that a Tab press while
+  the central panel held focus produced no in-panel focus move (focus left the panel), then
+  redirects to the Menu_Bar. This mirrors the existing File Explorer Tab-transfer approach
+  (Tab from the command line enters the tree; Tab past the last node exits to the command line).
 
-### Tab count
+Mechanism (b) matches an already-proven pattern in the codebase (File Explorer) and is the
+preferred starting point; (a) is the fallback if egui 0.31 provides a clean wrap signal.
 
-The tab count is passed into `next()` and `prev()` alongside `menu_count` and `pom_active`.
-When there are zero tabs (impossible in practice -- POM is always present), the cycle skips
-tab header stops and wraps directly to `CommandField`.
+### Menu-workspace and calendar
+
+The menu-workspace renderer already emits option rows as focusable buttons (Requirement 2.2).
+The calendar changes from a single painted click-region widget to two REAL focusable buttons
+`<` (previous month) and `>` (next month), created after the option column, so egui-native
+traversal reaches them after the last option and before the Menu_Bar (menu-workspace
+Requirement 15.5-15.8). The existing month-change side effect (`CalendarNav::Prev`/`Next`) is
+driven by the buttons' click/activate instead of a hit-region test.
+
+### Removal
+
+- Delete the `FocusStop` enum and its `next()`/`prev()` methods from `shell/mod.rs`.
+- Remove the ring-drive block and the `is_menus_editor` "Option X" special-case from
+  `shell/update.rs`; replace with the generic Boundary_Policy.
+- Keep `command_field_focus_requested` (used for Req 16.1/16.1a initial and on-entry focus).
+
+Back Tab (Shift+Tab) reverses the sequence exactly. There is no per-Workspace focus code: a new
+Workspace obtains correct Tab order solely by rendering its controls in visual order.
 
 ---
 
@@ -1109,5 +1142,5 @@ context menu item currently stubs out to a no-op. When implemented, it will use 
 and the tab's content. The `ff-layout` `FloatingWindowManager` will track the window state.
 
 No architectural contradictions with existing decisions. The Title_Line is a pure addition
-to the rendering pipeline -- it does not affect the `FocusStop` cycle (the command field
-remains the third element and retains its existing focus behaviour).
+to the rendering pipeline -- it is non-interactive and does not participate in the tab-order
+cycle (Section 9, unified model per CR-CH-023); the command field retains its focus behaviour.

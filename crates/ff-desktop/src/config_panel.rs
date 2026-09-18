@@ -1,4 +1,7 @@
-//! Settings Panel — interactive configuration editor.
+//! Config Panel — the interactive flat configuration-key browser/editor opened
+//! by the `CONFIG` command. This is NOT the Settings MENU (a data-driven
+//! Menu_Workspace backed by `menus/settings.toml`); "Settings" refers to that
+//! menu, "Config" refers to this key browser (CR-CH-025).
 //!
 //! Displays all schema-registered configuration keys grouped by namespace,
 //! with type-appropriate widgets, provenance badges, inline validation,
@@ -14,15 +17,15 @@ use ff_config::schema::SchemaEntry;
 use ff_config::value::ConfigValue;
 use ff_config::ConfigHandle;
 
-/// Persistent state for the Settings Panel tab.
+/// Persistent state for the Config Panel tab (the flat config-key browser).
 ///
 /// Validates: Requirement 15.2, 15.7
-pub struct SettingsPanelState {
+pub struct ConfigPanelState {
     /// Current filter text (case-insensitive substring match).
     pub filter: String,
-    /// Active namespace filter when this panel is a Settings_Namespace_View
-    /// (e.g. `Some("editor".to_string())`). `None` for the unfiltered
-    /// All-Settings view. Drives the tab title and F3/END return behaviour.
+    /// Active namespace filter when this Config view is namespace-scoped
+    /// (e.g. `Some("editor".to_string())`, opened by `CONFIG editor`). `None`
+    /// for the unfiltered all-keys view. Drives the tab title and F3/END return.
     ///
     /// Validates: cw-requirements.md Requirement 10.1, 10.5, 10.6
     pub namespace_filter: Option<String>,
@@ -34,8 +37,8 @@ pub struct SettingsPanelState {
     pub errors: HashMap<String, String>,
 }
 
-impl SettingsPanelState {
-    /// Create a new, empty settings panel state.
+impl ConfigPanelState {
+    /// Create a new, empty config panel state.
     pub fn new() -> Self {
         Self {
             filter: String::new(),
@@ -47,20 +50,47 @@ impl SettingsPanelState {
     }
 }
 
-impl Default for SettingsPanelState {
+impl Default for ConfigPanelState {
     fn default() -> Self {
         Self::new()
     }
 }
 
-/// Render the Settings Panel into `ui`.
+/// Render the Config Panel into `ui`.
 ///
+/// Stable egui id of the Filter field -- the FIRST interior control of the
+/// Settings/CONFIG panel. The shell reports this as `first_interior_id` so the
+/// CR-CH-023 Boundary_Policy can latch the command-field -> first-interior Tab
+/// jump to a real, non-phantom widget (B058).
+pub fn filter_field_id() -> egui::Id {
+    egui::Id::new("config_panel_filter")
+}
+
+/// `WorkspaceContext` impl (CR-NR-078): the Config panel renders the flat
+/// config-key browser and reports the Filter field as its single interior focus
+/// stop. Config changes are committed in-place through the `ConfigHandle`, so
+/// there are no `ShellRequest`s to enqueue.
+///
+/// Validates: workspace-framework Requirement 1.4, 1.5, 6.1.
+impl crate::shell::workspace_context::WorkspaceContext for ConfigPanelState {
+    fn render(
+        &mut self,
+        ui: &mut egui::Ui,
+        services: &mut crate::shell::workspace_context::ShellServices<'_>,
+    ) -> crate::shell::workspace_context::InteriorFocus {
+        render(ui, self, services.config);
+        crate::shell::workspace_context::InteriorFocus::single(filter_field_id())
+    }
+}
+
 /// Validates: Requirement 15.1–15.8
-pub fn render(ui: &mut egui::Ui, state: &mut SettingsPanelState, config: &ConfigHandle) {
+pub fn render(ui: &mut egui::Ui, state: &mut ConfigPanelState, config: &ConfigHandle) {
     // ── Filter bar — Req 15.7 ────────────────────────────────────────────
     ui.horizontal(|ui| {
         ui.label("Filter:");
-        ui.text_edit_singleline(&mut state.filter);
+        // Stable id so Tab focus round-trips and the shell can anchor the
+        // command-field -> first-interior boundary here (B058).
+        ui.add(egui::TextEdit::singleline(&mut state.filter).id(filter_field_id()));
         if ui.small_button("✕").clicked() {
             state.filter.clear();
         }
@@ -122,7 +152,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut SettingsPanelState, config: &Config
 /// Validates: Requirement 15.3, 15.4, 15.5, 15.6, 18.6
 fn render_entry(
     ui: &mut egui::Ui,
-    state: &mut SettingsPanelState,
+    state: &mut ConfigPanelState,
     config: &ConfigHandle,
     entry: &SchemaEntry,
 ) {
@@ -203,7 +233,7 @@ fn render_entry(
 /// Validates: Requirement 15.3
 fn render_widget(
     ui: &mut egui::Ui,
-    state: &mut SettingsPanelState,
+    state: &mut ConfigPanelState,
     config: &ConfigHandle,
     entry: &SchemaEntry,
     effective: &ConfigValue,
@@ -375,7 +405,7 @@ fn render_widget(
 ///
 /// Validates: Requirement 15.4, 15.5
 fn commit_value(
-    state: &mut SettingsPanelState,
+    state: &mut ConfigPanelState,
     config: &ConfigHandle,
     key: &str,
     value: ConfigValue,
@@ -646,7 +676,7 @@ mod tests {
     #[test]
     fn f3_returns_to_pom_via_end_command() {
         // F3 is mapped to "END" in the default key map.
-        // "END" is not currently a shell-level intercept for SettingsPanel,
+        // "END" is not currently a shell-level intercept for ConfigPanel,
         // but the F3 key binding routes through handle_command("END").
         // This test verifies the key map binding exists.
         use ff_keys::{FunctionKey, KeyBinding, KeyMap};

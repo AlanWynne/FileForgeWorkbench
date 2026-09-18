@@ -343,42 +343,63 @@ impl KeyMap {
 
     /// Build the built-in default global key map.
     ///
-    /// Provides ISPF-standard bindings used when no user configuration overrides them:
-    /// F1=HELP/Help, F3=END/End, F7=UP/Up, F8=DOWN/Down, F12=RETRIEVE/Retrieve.
+    /// The full owner-specified ISPF-standard default (CR-CH-027), CODE-ONLY
+    /// (compiled, never a shipped TOML file -- mirroring the compiled default
+    /// POM/Settings menus). It binds the Base (unmodified) F1-F12 row and the
+    /// Shift+F1-F12 row:
     ///
-    /// F7/F8 scroll by one page (the ISPF UP/DOWN default). MAX scrolling is NOT
-    /// bound to a function key: it is invoked by typing `M`/`MAX` on the command
-    /// line and then pressing UP/DOWN (navigation-commands Req 3.1/3.3 -- bare
-    /// UP/DOWN scroll one screen; the MAX modifier is an explicit command-line
-    /// action). Binding F7/F8 to "UP MAX"/"DOWN MAX" was incorrect (B046).
+    /// Base : F1 HELP, F2 SPLIT, F3 END, F4 RETURN, F5 RFIND, F6 RCHANGE,
+    ///        F7 UP, F8 DOWN, F9 SWAP, F10 LEFT, F11 RIGHT, F12 RETRIEVE.
+    /// Shift: mirrors Base except SF7 "UP MAX", SF8 "DOWN MAX", SF10 "LEFT MAX",
+    ///        SF11 "RIGHT MAX", SF12 CURSOR.
+    ///
+    /// Base F7/F8 scroll by one page (bare UP/DOWN); the MAX scroll variants are
+    /// on Shift+F7/F8/F10/F11 (B046: Base F7/F8 are NOT "UP MAX"/"DOWN MAX").
+    /// Ctrl/Alt layers and keys beyond F12 are unassigned in the baseline.
     ///
     /// Every binding here is a DEFAULT only and is fully overridable through the
-    /// key configuration (function-keys-and-history Req 14/15; configurable per
-    /// context with Ctrl/Alt/Shift modifiers).
+    /// key configuration or a `keymaps/<context>.toml` override file
+    /// (function-keys-and-history Req 14/15).
     ///
-    /// Validates: Requirement 15.1
+    /// Validates: function-keys-and-history Requirement 15.1, 15.2, 15.3
     pub fn default_global() -> Self {
         let mut map = Self::empty("global");
-        map.set(
-            ModifiedKey::plain(FunctionKey::F1),
-            KeyBinding::with_label("HELP", "Help"),
-        );
-        map.set(
-            ModifiedKey::plain(FunctionKey::F3),
-            KeyBinding::with_label("END", "End"),
-        );
-        map.set(
-            ModifiedKey::plain(FunctionKey::F7),
-            KeyBinding::with_label("UP", "Up"),
-        );
-        map.set(
-            ModifiedKey::plain(FunctionKey::F8),
-            KeyBinding::with_label("DOWN", "Down"),
-        );
-        map.set(
-            ModifiedKey::plain(FunctionKey::F12),
-            KeyBinding::with_label("RETRIEVE", "Retrieve"),
-        );
+        // Base (unmodified) row: (key, command, label).
+        let base: [(FunctionKey, &str, &str); 12] = [
+            (FunctionKey::F1, "HELP", "Help"),
+            (FunctionKey::F2, "SPLIT", "Split"),
+            (FunctionKey::F3, "END", "End"),
+            (FunctionKey::F4, "RETURN", "Return"),
+            (FunctionKey::F5, "RFIND", "RFind"),
+            (FunctionKey::F6, "RCHANGE", "RChange"),
+            (FunctionKey::F7, "UP", "Up"),
+            (FunctionKey::F8, "DOWN", "Down"),
+            (FunctionKey::F9, "SWAP", "Swap"),
+            (FunctionKey::F10, "LEFT", "Left"),
+            (FunctionKey::F11, "RIGHT", "Right"),
+            (FunctionKey::F12, "RETRIEVE", "Retrieve"),
+        ];
+        for (key, cmd, label) in base {
+            map.set(ModifiedKey::plain(key), KeyBinding::with_label(cmd, label));
+        }
+        // Shift row: mirrors Base except the four scroll-max variants and Cursor.
+        let shift: [(FunctionKey, &str, &str); 12] = [
+            (FunctionKey::F1, "HELP", "Help"),
+            (FunctionKey::F2, "SPLIT", "Split"),
+            (FunctionKey::F3, "END", "End"),
+            (FunctionKey::F4, "RETURN", "Return"),
+            (FunctionKey::F5, "RFIND", "RFind"),
+            (FunctionKey::F6, "RCHANGE", "RChange"),
+            (FunctionKey::F7, "UP MAX", "Up Max"),
+            (FunctionKey::F8, "DOWN MAX", "Down Max"),
+            (FunctionKey::F9, "SWAP", "Swap"),
+            (FunctionKey::F10, "LEFT MAX", "Left Max"),
+            (FunctionKey::F11, "RIGHT MAX", "Right Max"),
+            (FunctionKey::F12, "CURSOR", "Cursor"),
+        ];
+        for (key, cmd, label) in shift {
+            map.set(ModifiedKey::shift(key), KeyBinding::with_label(cmd, label));
+        }
         map
     }
 }
@@ -634,43 +655,88 @@ mod tests {
     }
 
     #[test]
-    fn key_map_default_global_has_five_assignments() {
-        // Validates: Requirement 15.1
+    fn key_map_default_global_has_full_base_row() {
+        // Validates: function-keys Requirement 15.1 (CR-CH-027) -- the full Base
+        // (unmodified F-key) row with commands and labels.
         let map = KeyMap::default_global();
-        assert_eq!(map.len(), 5);
-        assert_eq!(map.get_plain(FunctionKey::F1).unwrap().command(), "HELP");
-        assert_eq!(
-            map.get_plain(FunctionKey::F1).unwrap().display_label(),
-            "Help"
-        );
-        assert_eq!(map.get_plain(FunctionKey::F3).unwrap().command(), "END");
-        // B046: F7/F8 default to bare UP/DOWN (page scroll), NOT "UP MAX"/"DOWN
-        // MAX". MAX is invoked by typing M/MAX on the command line then UP/DOWN.
-        assert_eq!(map.get_plain(FunctionKey::F7).unwrap().command(), "UP");
-        assert_eq!(map.get_plain(FunctionKey::F8).unwrap().command(), "DOWN");
-        assert_eq!(
-            map.get_plain(FunctionKey::F12).unwrap().command(),
-            "RETRIEVE"
-        );
+        let expected: [(FunctionKey, &str, &str); 12] = [
+            (FunctionKey::F1, "HELP", "Help"),
+            (FunctionKey::F2, "SPLIT", "Split"),
+            (FunctionKey::F3, "END", "End"),
+            (FunctionKey::F4, "RETURN", "Return"),
+            (FunctionKey::F5, "RFIND", "RFind"),
+            (FunctionKey::F6, "RCHANGE", "RChange"),
+            (FunctionKey::F7, "UP", "Up"),
+            (FunctionKey::F8, "DOWN", "Down"),
+            (FunctionKey::F9, "SWAP", "Swap"),
+            (FunctionKey::F10, "LEFT", "Left"),
+            (FunctionKey::F11, "RIGHT", "Right"),
+            (FunctionKey::F12, "RETRIEVE", "Retrieve"),
+        ];
+        for (key, cmd, label) in expected {
+            let b = map
+                .get(ModifiedKey::plain(key))
+                .unwrap_or_else(|| panic!("Base {key} must be bound"));
+            assert_eq!(b.command(), cmd, "Base {key} command");
+            assert_eq!(b.display_label(), label, "Base {key} label");
+        }
     }
 
     #[test]
-    fn key_map_default_global_remaining_keys_unassigned() {
-        // Validates: Requirement 15.2
+    fn key_map_default_global_has_full_shift_row() {
+        // Validates: function-keys Requirement 15.2 (CR-CH-027) -- the Shift row
+        // mirrors Base except the four scroll-max variants and Cursor.
         let map = KeyMap::default_global();
+        let expected: [(FunctionKey, &str, &str); 12] = [
+            (FunctionKey::F1, "HELP", "Help"),
+            (FunctionKey::F2, "SPLIT", "Split"),
+            (FunctionKey::F3, "END", "End"),
+            (FunctionKey::F4, "RETURN", "Return"),
+            (FunctionKey::F5, "RFIND", "RFind"),
+            (FunctionKey::F6, "RCHANGE", "RChange"),
+            (FunctionKey::F7, "UP MAX", "Up Max"),
+            (FunctionKey::F8, "DOWN MAX", "Down Max"),
+            (FunctionKey::F9, "SWAP", "Swap"),
+            (FunctionKey::F10, "LEFT MAX", "Left Max"),
+            (FunctionKey::F11, "RIGHT MAX", "Right Max"),
+            (FunctionKey::F12, "CURSOR", "Cursor"),
+        ];
+        for (key, cmd, label) in expected {
+            let b = map
+                .get(ModifiedKey::shift(key))
+                .unwrap_or_else(|| panic!("Shift+{key} must be bound"));
+            assert_eq!(b.command(), cmd, "Shift+{key} command");
+            assert_eq!(b.display_label(), label, "Shift+{key} label");
+        }
+    }
+
+    #[test]
+    fn key_map_default_global_binds_exactly_base_and_shift_f1_to_f12() {
+        // Validates: function-keys Requirement 15.3 -- Ctrl/Alt layers and keys
+        // beyond F12 are unassigned in the baseline (24 bindings: 12 Base + 12
+        // Shift). No Ctrl/Alt bindings exist by default.
+        let map = KeyMap::default_global();
+        assert_eq!(map.len(), 24, "default map = 12 Base + 12 Shift");
         for key in FunctionKey::ALL {
-            if ![
-                FunctionKey::F1,
-                FunctionKey::F3,
-                FunctionKey::F7,
-                FunctionKey::F8,
-                FunctionKey::F12,
-            ]
-            .contains(&key)
-            {
+            // No Ctrl or Alt bindings in the default.
+            assert!(
+                map.get(ModifiedKey::ctrl(key)).is_none(),
+                "Ctrl+{key} must be unassigned by default"
+            );
+            assert!(
+                map.get(ModifiedKey::alt(key)).is_none(),
+                "Alt+{key} must be unassigned by default"
+            );
+            // Keys beyond F12 have no Base or Shift binding either.
+            let num = key.number();
+            if num > 12 {
                 assert!(
-                    map.get_plain(key).is_none(),
-                    "{key} should be unassigned in default map"
+                    map.get(ModifiedKey::plain(key)).is_none(),
+                    "Base {key} (>F12) must be unassigned"
+                );
+                assert!(
+                    map.get(ModifiedKey::shift(key)).is_none(),
+                    "Shift+{key} (>F12) must be unassigned"
                 );
             }
         }

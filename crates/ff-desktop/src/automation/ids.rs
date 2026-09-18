@@ -112,10 +112,10 @@ pub const DIALOG_ALLOC_CONFIRM: &str = "dialog.dataset_alloc.confirm_button";
 /// The Cancel button in the Allocate Dataset dialog.
 pub const DIALOG_ALLOC_CANCEL: &str = "dialog.dataset_alloc.cancel_button";
 
-// === Settings Panel =========================================================
+// === Config Panel ===========================================================
 
-/// The filter input field in the Settings Panel.
-pub const SETTINGS_FILTER: &str = "settings.filter_field";
+/// The filter input field in the Config Panel (the flat config-key browser).
+pub const CONFIG_FILTER: &str = "config.filter_field";
 
 // === Key Config Dialog ======================================================
 

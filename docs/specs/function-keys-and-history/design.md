@@ -1605,3 +1605,156 @@ prior `ShowList` trigger that keyed off the literal `LIST` text: the trigger is
 now the `arg == "LIST"` value delivered through the unified argument path, so the
 command-line form (`RETRIEVE LIST`) and the key form (`LIST` + RETRIEVE key) share
 one code path.
+
+---
+
+## Design Delta: Full compiled default key map + keymaps/ override files (Requirement 14/15, CR-CH-027)
+
+Design delta to the "Per-Context Key Maps" section and the `default_global`
+baseline. Slice 1 of the Key Assignments work (owner-approved). No new crate.
+
+### Compiled default (code-only), Requirement 15
+
+`ff_keys::KeyMap::default_global()` expands from 5 bindings to the full
+owner-specified Base + Shift set (Requirement 15.1/15.2). It stays CODE-ONLY --
+built in Rust exactly like the compiled Recovery_Baseline POM/Settings menus
+(`DEFAULT_POM_TOML` / `DEFAULT_SETTINGS_TOML`); no `global_key_map.toml` is ever
+written to disk. Bindings use `ModifiedKey::plain` (Base) and `ModifiedKey::shift`
+(Shift) with `KeyBinding::with_label(command, label)`:
+
+```text
+Base : F1 HELP, F2 SPLIT, F3 END, F4 RETURN, F5 RFIND, F6 RCHANGE,
+       F7 UP, F8 DOWN, F9 SWAP, F10 LEFT, F11 RIGHT, F12 RETRIEVE
+Shift: SF1 HELP, SF2 SPLIT, SF3 END, SF4 RETURN, SF5 RFIND, SF6 RCHANGE,
+       SF7 "UP MAX", SF8 "DOWN MAX", SF9 SWAP, SF10 "LEFT MAX",
+       SF11 "RIGHT MAX", SF12 CURSOR
+```
+
+NOTE (supersedes the old baseline): the previous default bound Base F7/F8 to
+`UP MAX`/`DOWN MAX`. Under CR-CH-027 Base F7/F8 are plain `UP`/`DOWN` (one page)
+and the MAX scroll moves to Shift+F7/Shift+F8 (`UP MAX`/`DOWN MAX`), with
+Shift+F10/F11 = `LEFT MAX`/`RIGHT MAX`. Existing `default_global` tests are
+updated accordingly. This also gives F2 a Base binding (`SPLIT`), which the old
+baseline left unassigned (relevant to the failing PF2 acceptance row / B046).
+
+### Per-context override FILES: keymaps/<context>.toml, Requirement 14.9-14.12
+
+A new `<User_Data_Dir>/keymaps/` directory holds per-workspace-kind override
+files named by the stable context name (`context_name_for_kind` in
+`ff-desktop/src/shell/helpers.rs`): `pom.toml`, `editor.toml`, `config.toml`,
+`files.toml`, `search.toml`, `plugins.toml`, `log.toml`, `macros.toml`,
+`menu.toml`, `commands.toml`, `theme.toml`, `menus.toml`.
+
+- `ensure_keymaps_dir(user_data_dir)` in `ff-desktop` mirrors
+  `theme_defaults::ensure_default_theme_files` / `ensure_menus_dir`:
+  `create_dir_all(user_data_dir.join("keymaps"))`, best-effort. The directory may
+  be empty; built-in defaults are code-only and never materialised (Req 14.11).
+- Loading: a new `load_context_maps_from_keymaps_dir(dir, resolver)` scans
+  `keymaps/*.toml`, parses each with the existing `KeyMap::from_toml_table`
+  (reused, so the schema and warnings are identical), and registers each as
+  `resolver.set_context_map(<stem>, map)`. Called at startup right after the
+  existing `load_context_maps_from_config` (Req 14.10). A parse failure skips the
+  file (DEBUG log) and leaves the context on the compiled default (Req 14.10).
+- Resolution is UNCHANGED: `KeyMapResolver::active_key_map()` already resolves
+  Context > Profile > Global with full replacement. A registered context map
+  (from a keymaps file) replaces the compiled default for that context; an absent
+  file leaves no context map, so the resolver falls back to Global = the compiled
+  default (Req 14.3/14.5). Tab switch still calls `set_context(context_name)`.
+
+### Precedence when BOTH a keymaps file and a [context_key_maps.<name>] section exist (Req 14.12)
+
+Both entry points call `resolver.set_context_map(name, map)` for the same context
+name, so the LATER registration wins. The documented, deterministic order:
+`load_context_maps_from_config` (the `[context_key_maps]` config table) runs
+FIRST, then `load_context_maps_from_keymaps_dir` runs SECOND -- so a
+`keymaps/<context>.toml` FILE takes precedence over a `[context_key_maps.<name>]`
+config section for the same context. This keeps a single effective map per
+context (Req 14.12) and matches the menus model where a `menus/<name>.toml` file
+is the authoring surface. (The config-table path is retained for backward
+compatibility with existing user configs; the file path is the going-forward
+authoring surface the Key Assignments editor will write in Slice 3.)
+
+### RESET BARE (configuration-system Req 19.4)
+
+`ff-desktop/src/shell/reset_bare.rs` `ARCHIVED_ITEMS` gains `"keymaps"` (a
+directory entry handled by the existing move-not-delete `move_path`). No
+mechanism change -- the archive already skips missing items and moves present
+directories exactly like `menus`/`themes`.
+
+### Out of scope for this delta (Slice 2/3)
+
+The "out of context" and "not implemented yet" runtime messages, the CURSOR
+command, the `SPLIT H`/`SPLIT V` tiling forms, context-aware LEFT/RIGHT, and the
+Key Assignments editor as a WorkspaceContext (72-slot Command_Picker model) are
+NOT part of this delta. Slice 1 only expands the compiled default and adds the
+keymaps/ file layer + RESET BARE archiving.
+
+---
+
+## Design Delta: Keys Workspace replaces the modal dialog (Requirement 22, CR-CH-029)
+
+Design delta re-homing the Key_Configuration surface from the modal
+`KeyConfigDialog` into a Keys Workspace Context, modelled on the Menus editor
+(menu-workspace Requirement 13) and Theme editor, on the `WorkspaceContext`
+framework (workspace-framework Requirement 1, CR-NR-078). The Command_Picker /
+72-slot rich model (Requirement 20.4-20.7, 21) is DEFERRED; this delta delivers
+the Workspace shell, the workspace-kind scope dropdown, and Save-to-file.
+
+### New module: `keys_editor_panel` (mirrors `menus_editor_panel`)
+
+- `keys_editor_panel/state.rs`: `KeysEditorState` holding the selected workspace
+  KIND (a stable context-name string), the staged editable rows for that kind
+  (reuse the `ScopeRows`/`KeyRow` row model currently in `key_config_dialog.rs`,
+  moved/shared here), a `#[default] None` `KeysEditorAction` `pending_action`
+  field, and a first-interior id captured from the kind dropdown each frame.
+  `KeysEditorAction::Save { kind, rows }` is the only rich action for this slice.
+- `keys_editor_panel/render.rs`: a pure `render` (no filesystem, no config
+  writes) that draws the kind dropdown (its `response.id` captured as the first
+  interior), the editable grid for the selected kind, and Save/Reset buttons;
+  returns via `impl WorkspaceContext` an `InteriorFocus` whose FIRST is the
+  dropdown id (Requirement 22.7), stashing `pending_action` for the shell to
+  drain (the Theme/Menus editor pattern).
+- `keys_editor_panel/mod.rs`: re-exports `KeysEditorState` / `KeysEditorAction`.
+
+### TabKind + framework dispatch
+
+- Add `TabKind::KeysEditor`; add `context_name_for_kind(KeysEditor) => "keys"`
+  (helpers.rs).
+- Add a `keys_editor_panel: KeysEditorState` field on `WorkbenchShell`.
+- New render arm `TabKind::KeysEditor`: owned-panel swap through
+  `render_workspace_context` (the CR-NR-078 migrated pattern), then drain the
+  stashed `KeysEditorAction` via a shell-side `apply_keys_editor_action`.
+
+### Save path: keymaps/<kind>.toml (closes CR-CH-027)
+
+`apply_keys_editor_action(Save { kind, rows })` serialises the staged rows to the
+`keymaps/<kind>.toml` file schema (Base `F1`-`F12` + `SF`/`CF`/`AF`/`GF`/`XF`),
+reusing the existing `ScopeRows::to_config_table` -> TOML rendering but writing a
+FILE under the keymaps dir rather than `config.set_user_value`. A `keymaps_dir()`
+resolver on the shell mirrors `menus_dir()` / `themes_dir()` (test override +
+`<User_Data_Dir>/keymaps`). After Save, the resolver's context map for that kind
+is refreshed (reload the file into `KeyMapResolver::set_context_map`) so the new
+bindings take effect without a relaunch.
+
+### KEYS command + Settings entry (command parity)
+
+- `KEYS` (and `KEYS <kind>`) opens the Keys Workspace in place with a
+  Navigation_Stack push (like `THEME`/`MENUS`), pre-selecting the kind when a
+  known argument is given. The `KeyConfigDialog` modal is removed: its
+  `modal_open` entry, its `render_if_open` call, and the `Edit > Key Assignments`
+  flag-set are retired; the menu affordance dispatches the `KEYS` command.
+- `DEFAULT_SETTINGS_TOML` gains `K` -> `KEYS` "Keys" in the Core group
+  (menu-workspace Requirement 12.3).
+
+### Row model reuse
+
+The `ScopeRows`/`KeyRow` types and the `to_config_table` serialisation currently
+in `key_config_dialog.rs` are the reusable core. They move into (or are shared by)
+`keys_editor_panel`; `key_config_dialog.rs` is deleted once nothing references it.
+
+### Deferred (follow-up, Requirement 20.4-20.7 / 21)
+
+The Command_Picker (select an existing Command_Id, no free text), the read-only
+per-binding description, the full 72-slot 6-layer grid presentation, and the
+unsaved-change/Cancel-confirm flow remain the Requirement 20/21 target for a later
+CR; this slice keeps the current editable command grid.

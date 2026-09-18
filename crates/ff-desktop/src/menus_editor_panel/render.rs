@@ -19,6 +19,26 @@ use crate::menu_workspace::GroupSeparator;
 /// screen. There is no shell-driven focus ring any more -- the previous
 /// request_focus ring fought egui's own Tab pass and skipped widgets (B054).
 ///
+/// `WorkspaceContext` impl (CR-NR-078): render the Menus Editor, stash the
+/// produced `MenusEditorAction` on `pending_action` for the shell to apply, and
+/// report interior focus: FIRST = the "Menu:" selector combo (captured on
+/// `first_interior_id`), LAST = the stable Save-As name field.
+///
+/// Validates: workspace-framework Requirement 1.4, 1.5, 6.1.
+impl crate::shell::workspace_context::WorkspaceContext for MenusEditorState {
+    fn render(
+        &mut self,
+        ui: &mut egui::Ui,
+        _services: &mut crate::shell::workspace_context::ShellServices<'_>,
+    ) -> crate::shell::workspace_context::InteriorFocus {
+        self.pending_action = render(ui, self);
+        crate::shell::workspace_context::InteriorFocus {
+            first: self.first_interior_id,
+            last: Some(egui::Id::new("menus_editor_save_as_name")),
+        }
+    }
+}
+
 /// Validates: menu-workspace Requirement 13.1-13.12; automated-dialog-testing
 /// Requirement 14.7 (Tab reaches every control in visual order).
 pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAction {
@@ -33,13 +53,15 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
     ui.add_space(4.0);
 
     // --- Menu selector --------------------------------------------------
+    // Reset the reported first-interior id each frame; the combo below sets it.
+    state.first_interior_id = None;
     ui.horizontal(|ui| {
         ui.label("Menu:");
         let current = state
             .selected
             .clone()
             .unwrap_or_else(|| "(none)".to_string());
-        egui::ComboBox::from_id_salt("menus_editor_select")
+        let combo = egui::ComboBox::from_id_salt("menus_editor_select")
             .selected_text(current)
             .show_ui(ui, |ui| {
                 for name in state.available.clone() {
@@ -51,6 +73,11 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
                     }
                 }
             });
+        // The "Menu:" selector combo is the FIRST focusable interior control;
+        // report its FRESH id so the shell Boundary_Policy focuses it on Tab
+        // from the command field (B056: it was skipped when the shell latched to
+        // the Title field instead).
+        state.first_interior_id = Some(combo.response.id);
     });
 
     if let Some(err) = &state.error {

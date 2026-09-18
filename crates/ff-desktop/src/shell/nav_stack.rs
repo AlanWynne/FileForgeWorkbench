@@ -43,12 +43,12 @@ impl WorkbenchShell {
                     .unwrap_or_else(|| "pom".to_string());
                 WorkspaceDescriptor::Menu { name }
             }
-            TabKind::SettingsPanel => {
+            TabKind::ConfigPanel => {
                 let mut params = DescriptorParams::new();
-                if let Some(ns) = self.settings_panel.namespace_filter.as_deref() {
+                if let Some(ns) = self.config_panel.namespace_filter.as_deref() {
                     params.insert("namespace".to_string(), DescriptorValue::from(ns));
                 }
-                custom(WorkspaceKind::Settings, params)
+                custom(WorkspaceKind::Config, params)
             }
             TabKind::FilesPanel => custom(WorkspaceKind::Files, DescriptorParams::new()),
             TabKind::FileExplorerPanel => {
@@ -79,6 +79,11 @@ impl WorkbenchShell {
             TabKind::MenusEditor => custom(WorkspaceKind::CommandConfigurator, {
                 let mut p = DescriptorParams::new();
                 p.insert("editor".to_string(), DescriptorValue::from("menus"));
+                p
+            }),
+            TabKind::KeysEditor => custom(WorkspaceKind::CommandConfigurator, {
+                let mut p = DescriptorParams::new();
+                p.insert("editor".to_string(), DescriptorValue::from("keys"));
                 p
             }),
         }
@@ -168,21 +173,21 @@ impl WorkbenchShell {
                 self.tabs.active_tab_mut().menu_workspace = None;
                 self.ensure_pom_menu_loaded();
             }
-            WorkspaceKind::Settings => {
+            WorkspaceKind::Config => {
                 let namespace = match params.get("namespace") {
                     Some(DescriptorValue::String(ns)) => Some(ns.clone()),
                     _ => None,
                 };
                 let title = match &namespace {
-                    Some(ns) => format!("[SETTINGS:{ns}]"),
-                    None => "[SETTINGS]".to_string(),
+                    Some(ns) => format!("[CONFIG:{ns}]"),
+                    None => "[CONFIG]".to_string(),
                 };
-                self.settings_panel.filter = match &namespace {
+                self.config_panel.filter = match &namespace {
                     Some(ns) => format!("{ns}."),
                     None => String::new(),
                 };
-                self.settings_panel.namespace_filter = namespace;
-                self.set_active_tab_context(TabKind::SettingsPanel, &title);
+                self.config_panel.namespace_filter = namespace;
+                self.set_active_tab_context(TabKind::ConfigPanel, &title);
             }
             WorkspaceKind::Files => self.set_active_tab_context(TabKind::FilesPanel, "[FILES]"),
             WorkspaceKind::FileExplorer => {
@@ -210,6 +215,9 @@ impl WorkbenchShell {
                     }
                     Some(DescriptorValue::String(e)) if e == "menus" => {
                         self.set_active_tab_context(TabKind::MenusEditor, "[MENUS]")
+                    }
+                    Some(DescriptorValue::String(e)) if e == "keys" => {
+                        self.set_active_tab_context(TabKind::KeysEditor, "[KEYS]")
                     }
                     _ => self.set_active_tab_context(TabKind::CommandConfigurator, "[COMMANDS]"),
                 }
@@ -241,6 +249,9 @@ impl WorkbenchShell {
             self.tabs.active_tab_mut().nav_stack.push(current);
         }
         self.reconstruct_context(&descriptor);
+        // CR-CH-023 Req 16.1a: entering a Workspace context places focus on the
+        // command field.
+        self.command_field_focus_requested = true;
     }
 
     /// Convenience: navigate the current tab to a parameterless CustomWorkspace
@@ -304,6 +315,8 @@ impl WorkbenchShell {
         // Always begin with a fresh POM tab (the only tab-creation point).
         self.tabs.insert_pom_tab(&self.runtime);
         self.ensure_pom_menu_loaded();
+        // CR-CH-023 Req 16.1a: a new Workspace places focus on the command field.
+        self.command_field_focus_requested = true;
 
         let arg = arg.trim();
         if arg.is_empty() {

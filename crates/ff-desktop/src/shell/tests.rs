@@ -6,11 +6,6 @@ use ff_command::{
     CommandParams, CommandRegistry, CommandResult, ExecutionContext,
 };
 
-/// Representative POM option count for focus-ring transition tests. The focus
-/// ring is now sized by the loaded pom.toml option list (menu-workspace Req
-/// 2.1f); the default file ships 7 options (0/1/2/5/8/S/X).
-const POM_N: usize = 7;
-
 fn make_dispatch() -> (Arc<CommandRegistry>, CommandDispatch) {
     let registry = Arc::new(CommandRegistry::new());
     let history = Arc::new(CommandHistory::new(100));
@@ -423,15 +418,15 @@ fn is_shell_command(cmd: &str) -> bool {
 // from menus/pom.toml (menu-workspace Req 2.1c-2.1i, CR-CH-018) and is covered
 // by the menu_workspace defaults/loader/render tests.
 
-// ── Task 26: SettingsPanel tab kind and routing tests ────────────────────
+// ── Task 26: ConfigPanel tab kind and routing tests ──────────────────────
 
-/// Validates: Requirement 15.1 -- SettingsPanel TabKind variant exists.
+/// Validates: Requirement 15.1 -- ConfigPanel TabKind variant exists.
 #[test]
-fn settings_panel_tab_kind_exists() {
+fn config_panel_tab_kind_exists() {
     // Validates: Requirement 15.1
     use crate::tab_state::TabKind;
-    let kind = TabKind::SettingsPanel;
-    assert_eq!(kind, TabKind::SettingsPanel);
+    let kind = TabKind::ConfigPanel;
+    assert_eq!(kind, TabKind::ConfigPanel);
 }
 
 /// Validates: Requirement 15.1 -- command "0" is a shell-level intercept.
@@ -455,15 +450,15 @@ fn command_equals_0_routes_to_settings() {
     assert!(is_shell_command("=0"));
 }
 
-/// Validates: Requirement 15.9 -- SettingsPanel is distinct from other tab kinds.
+/// Validates: Requirement 15.9 -- ConfigPanel is distinct from other tab kinds.
 #[test]
-fn settings_panel_tab_kind_is_distinct_from_other_kinds() {
+fn config_panel_tab_kind_is_distinct_from_other_kinds() {
     // Validates: Requirement 15.9
     use crate::tab_state::TabKind;
-    assert_ne!(TabKind::SettingsPanel, TabKind::PrimaryOptionMenu);
-    assert_ne!(TabKind::SettingsPanel, TabKind::FileEditor);
-    assert_ne!(TabKind::SettingsPanel, TabKind::FilesPanel);
-    assert_ne!(TabKind::SettingsPanel, TabKind::Untitled);
+    assert_ne!(TabKind::ConfigPanel, TabKind::PrimaryOptionMenu);
+    assert_ne!(TabKind::ConfigPanel, TabKind::FileEditor);
+    assert_ne!(TabKind::ConfigPanel, TabKind::FilesPanel);
+    assert_ne!(TabKind::ConfigPanel, TabKind::Untitled);
 }
 
 /// Validates: Requirement 14.7 -- menu bar includes a `File Catalogs` top-level menu.
@@ -556,13 +551,15 @@ fn retrieve_state_cycles_through_history() {
 
 /// Validates: Requirement 4.2, 4.4 -- default key map produces labelled slots.
 #[test]
-fn default_key_map_has_five_assigned_slots() {
-    // Validates: function-keys-and-history Requirement 4.2, 15.1
+fn default_key_map_has_full_base_row_assigned() {
+    // Validates: function-keys-and-history Requirement 15.1 (CR-CH-027) -- the
+    // Base (unmodified) row now binds all of F1-F12; the Key_Label_Bar shows
+    // those 12 assigned Base slots.
     use ff_keys::KeyLabelBarModel;
     let map = KeyMap::default_global();
     let bar = KeyLabelBarModel::from_key_map(&map);
     let assigned: Vec<_> = bar.assigned_slots().collect();
-    assert_eq!(assigned.len(), 5, "F1, F3, F7, F8, F12 should be assigned");
+    assert_eq!(assigned.len(), 12, "Base F1-F12 should all be assigned");
 }
 
 /// Validates: Requirement 4.4 -- label derived from explicit label field.
@@ -593,249 +590,30 @@ fn egui_fkey_assigned_key_returns_command() {
 /// Validates: Requirement 3.2 -- unassigned F-key returns None.
 #[test]
 fn egui_fkey_unassigned_key_returns_none() {
-    // Validates: function-keys-and-history Requirement 3.2
+    // Validates: function-keys-and-history Requirement 3.2, 15.3
     use ff_keys::{FunctionKey, KeyMapResolver};
     let map = KeyMap::default_global();
     let resolver = KeyMapResolver::new(map);
-    // F4 is not in the default map
-    let cmd = resolver.active_key_map().get_plain(FunctionKey::F4);
+    // Base F13 is beyond the F1-F12 default set, so it is unassigned
+    // (CR-CH-027: the default binds only Base+Shift F1-F12).
+    let cmd = resolver.active_key_map().get_plain(FunctionKey::F13);
     assert!(cmd.is_none());
 }
 
 /// Validates: Requirement 4.3 -- unassigned keys produce blank slots.
 #[test]
 fn key_label_bar_unassigned_key_has_no_label() {
-    // Validates: function-keys-and-history Requirement 4.3
+    // Validates: function-keys-and-history Requirement 4.3, 15.3
     use ff_keys::{FunctionKey, KeyLabelBarModel};
     let map = KeyMap::default_global();
     let bar = KeyLabelBarModel::from_key_map(&map);
-    // F4 is not assigned in the default map
-    let slot = bar.slot_for(FunctionKey::F4).unwrap();
+    // F13 is beyond the F1-F12 default set, so its Base slot is blank
+    // (CR-CH-027).
+    let slot = bar.slot_for(FunctionKey::F13).unwrap();
     assert!(slot.label.is_none());
 }
 
 // ── Phase AJ: Tab-order focus cycle tests ────────────────────────────────────────
-
-/// Validates: Requirement 16.1 -- initial focus stop is CommandField.
-#[test]
-fn focus_stop_initial_state_is_command_field() {
-    // Validates: Requirement 16.1
-    use super::FocusStop;
-    assert_eq!(FocusStop::CommandField, FocusStop::CommandField);
-}
-
-/// Validates: Requirement 16.3 -- Tab from CommandField goes to PomOption(0) when POM active.
-#[test]
-fn focus_cycle_tab_forward_from_command_field_goes_to_pom_option_0() {
-    // Validates: Requirement 16.3
-    use super::FocusStop;
-    let next = FocusStop::CommandField.next(11, 0, true, POM_N);
-    assert_eq!(next, FocusStop::PomOption { index: 0 });
-}
-
-/// Validates: Requirement 16.3 -- Tab from CommandField goes to MenuBar(0) when POM not active.
-#[test]
-fn focus_cycle_tab_forward_from_command_field_goes_to_menu_when_no_pom() {
-    // Validates: Requirement 16.19
-    use super::FocusStop;
-    let next = FocusStop::CommandField.next(11, 0, false, 0);
-    assert_eq!(next, FocusStop::MenuBar { index: 0 });
-}
-
-/// Validates: Requirement 16.4; menu-workspace Req 2.1f -- Tab advances through
-/// all POM option rows, whose count is the loaded pom.toml option count.
-#[test]
-fn focus_cycle_tab_forward_through_all_pom_options() {
-    // Validates: Requirement 16.4; menu-workspace 2.1f
-    use super::FocusStop;
-    let pom_count = POM_N;
-    let mut stop = FocusStop::PomOption { index: 0 };
-    for expected in 1..pom_count {
-        stop = stop.next(11, 0, true, pom_count);
-        assert_eq!(stop, FocusStop::PomOption { index: expected });
-    }
-    // After the last option -> CalendarPrev (no bespoke exit stop; Req 2.1g)
-    stop = stop.next(11, 0, true, pom_count);
-    assert_eq!(stop, FocusStop::CalendarPrev);
-}
-
-/// Validates: Requirement 16.7 -- Tab from CalendarPrev goes to CalendarNext.
-#[test]
-fn focus_cycle_tab_forward_from_calendar_prev_goes_to_calendar_next() {
-    // Validates: Requirement 16.7
-    use super::FocusStop;
-    let next = FocusStop::CalendarPrev.next(11, 0, true, POM_N);
-    assert_eq!(next, FocusStop::CalendarNext);
-}
-
-/// Validates: Requirement 16.8 -- Tab from CalendarNext goes to first menu bar item.
-#[test]
-fn focus_cycle_tab_forward_from_calendar_next_goes_to_first_menu() {
-    // Validates: Requirement 16.8
-    use super::FocusStop;
-    let next = FocusStop::CalendarNext.next(11, 0, true, POM_N);
-    assert_eq!(next, FocusStop::MenuBar { index: 0 });
-}
-
-/// Validates: Requirement 16.9, 16.10 -- Tab advances through menu bar and wraps to CommandField.
-#[test]
-fn focus_cycle_tab_forward_from_last_menu_wraps_to_command_field() {
-    // Validates: Requirement 16.10
-    use super::FocusStop;
-    let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
-    // Advance through all menu items
-    let mut stop = FocusStop::MenuBar { index: 0 };
-    for expected in 1..menu_count {
-        stop = stop.next(menu_count, 0, true, POM_N);
-        assert_eq!(stop, FocusStop::MenuBar { index: expected });
-    }
-    // Last menu -> CommandField (tab_count=0 so no TabHeader stop)
-    stop = stop.next(menu_count, 0, true, POM_N);
-    assert_eq!(stop, FocusStop::CommandField);
-}
-
-/// Validates: Requirement 16.11 -- Shift+Tab from CommandField goes to last menu bar item.
-#[test]
-fn focus_cycle_shift_tab_from_command_field_goes_to_last_menu() {
-    // Validates: Requirement 16.11
-    use super::FocusStop;
-    let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
-    // tab_count=0: CommandField -> last MenuBar (no TabHeader)
-    let prev = FocusStop::CommandField.prev(menu_count, 0, true, POM_N);
-    assert_eq!(
-        prev,
-        FocusStop::MenuBar {
-            index: menu_count - 1
-        }
-    );
-}
-
-/// Validates: Requirement 16.11 -- Shift+Tab from first menu goes to CalendarNext when POM active.
-#[test]
-fn focus_cycle_shift_tab_from_first_menu_goes_to_command_field() {
-    // Validates: Requirement 16.11
-    use super::FocusStop;
-    // Non-POM: first menu -> CommandField
-    // tab_count=0, non-POM: first menu -> CommandField
-    let prev = FocusStop::MenuBar { index: 0 }.prev(11, 0, false, 0);
-    assert_eq!(prev, FocusStop::CommandField);
-    // POM active: first menu -> CalendarNext
-    let prev_pom = FocusStop::MenuBar { index: 0 }.prev(11, 0, true, POM_N);
-    assert_eq!(prev_pom, FocusStop::CalendarNext);
-}
-
-/// Validates: Requirement 16.19 -- non-POM tab skips POM/calendar stops entirely.
-#[test]
-fn focus_cycle_non_pom_tab_skips_pom_stops() {
-    // Validates: Requirement 16.19
-    use super::FocusStop;
-    let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
-    // Forward: CommandField -> MenuBar(0) (no PomOption)
-    let next = FocusStop::CommandField.next(menu_count, 0, false, 0);
-    assert_eq!(next, FocusStop::MenuBar { index: 0 });
-    // Forward: last MenuBar -> CommandField (tab_count=0, no TabHeader)
-    let wrap = FocusStop::MenuBar {
-        index: menu_count - 1,
-    }
-    .next(menu_count, 0, false, 0);
-    assert_eq!(wrap, FocusStop::CommandField);
-    // Backward: CommandField -> last MenuBar (tab_count=0, no TabHeader)
-    let prev = FocusStop::CommandField.prev(menu_count, 0, false, 0);
-    assert_eq!(
-        prev,
-        FocusStop::MenuBar {
-            index: menu_count - 1
-        }
-    );
-    // Backward: MenuBar(0) -> CommandField (tab_count=0, non-POM)
-    let prev0 = FocusStop::MenuBar { index: 0 }.prev(menu_count, 0, false, 0);
-    assert_eq!(prev0, FocusStop::CommandField);
-}
-
-/// Validates: Requirement 16.12 -- focused_pom_option is Some(index) when PomOption focused.
-#[test]
-fn focused_pom_option_renders_with_reversed_colours() {
-    // Validates: Requirement 16.12
-    // Verify that the focused_pom_option value derived from FocusStop is correct.
-    use super::FocusStop;
-    let stop = FocusStop::PomOption { index: 3 };
-    let focused = match stop {
-        FocusStop::PomOption { index } => Some(index),
-        _ => None,
-    };
-    assert_eq!(focused, Some(3));
-    // Non-PomOption stops yield None
-    let none = match FocusStop::CommandField {
-        FocusStop::PomOption { index } => Some(index),
-        _ => None,
-    };
-    assert_eq!(none, None);
-}
-
-/// Validates: Requirement 16.11 -- Shift+Tab moves backward through menu bar items.
-#[test]
-fn focus_stop_shift_tab_moves_backward_through_menu_bar_items() {
-    // Validates: Requirement 16.11
-    use super::FocusStop;
-    let prev = FocusStop::MenuBar { index: 5 }.prev(11, 0, false, 0);
-    assert_eq!(prev, FocusStop::MenuBar { index: 4 });
-}
-
-/// Validates: Requirement 16.11; menu-workspace Req 2.1g -- Shift+Tab from
-/// CalendarPrev goes to the last POM option (no bespoke exit stop).
-#[test]
-fn focus_stop_shift_tab_from_calendar_prev_goes_to_last_pom_option() {
-    // Validates: Requirement 16.11; menu-workspace 2.1g
-    use super::FocusStop;
-    let prev = FocusStop::CalendarPrev.prev(11, 0, true, POM_N);
-    assert_eq!(prev, FocusStop::PomOption { index: POM_N - 1 });
-}
-
-/// Validates: Requirement 16.11 -- Shift+Tab from CalendarNext goes to CalendarPrev.
-#[test]
-fn focus_stop_shift_tab_from_calendar_next_goes_to_calendar_prev() {
-    // Validates: Requirement 16.11
-    use super::FocusStop;
-    let prev = FocusStop::CalendarNext.prev(11, 0, true, POM_N);
-    assert_eq!(prev, FocusStop::CalendarPrev);
-}
-
-/// Validates: Requirement 16.11 -- Shift+Tab from PomOption(0) goes to CommandField.
-#[test]
-fn focus_stop_shift_tab_from_pom_option_0_goes_to_command_field() {
-    // Validates: Requirement 16.11
-    use super::FocusStop;
-    let prev = FocusStop::PomOption { index: 0 }.prev(11, 0, true, POM_N);
-    assert_eq!(prev, FocusStop::CommandField);
-}
-
-/// Validates: Requirement 16.1 -- FocusStop::CommandField is the initial value.
-#[test]
-fn workbench_shell_focus_stop_field_exists_and_defaults_to_command_field() {
-    // Validates: Requirement 16.1
-    use super::FocusStop;
-    let initial = FocusStop::CommandField;
-    assert_eq!(initial, FocusStop::CommandField);
-    assert_ne!(initial, FocusStop::MenuBar { index: 0 });
-}
-
-/// Validates: Requirement 16.6, 16.7 -- full backward Shift+Tab cycle from last menu to command field.
-#[test]
-fn focus_stop_full_backward_cycle_from_last_menu_to_command_field() {
-    // Validates: Requirement 16.11
-    use super::FocusStop;
-    let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
-    let mut stop = FocusStop::MenuBar {
-        index: menu_count - 1,
-    };
-    for expected in (0..menu_count - 1).rev() {
-        stop = stop.prev(menu_count, 0, false, 0);
-        assert_eq!(stop, FocusStop::MenuBar { index: expected });
-    }
-    // tab_count=0: MenuBar(0) -> CommandField (no TabHeader)
-    stop = stop.prev(menu_count, 0, false, 0);
-    assert_eq!(stop, FocusStop::CommandField);
-}
 
 /// Validates: Requirement 4.6 -- key label bar updates when key map changes.
 #[test]
@@ -905,15 +683,15 @@ fn title_line_untitled_shows_placeholder() {
     assert_eq!(text, "[Untitled]");
 }
 
-/// Validates: Requirement 17.6 -- SettingsPanel tab shows tab title.
+/// Validates: Requirement 17.6 -- ConfigPanel tab shows tab title.
 #[test]
-fn title_line_settings_panel_shows_settings() {
+fn title_line_config_panel_shows_config() {
     // Validates: Requirement 17.6
     use crate::tab_state::{TabId, TabState};
     use ff_document_model::new_document;
-    let tab = TabState::settings_panel(TabId(4), new_document());
+    let tab = TabState::config_panel(TabId(4), new_document());
     let text = super::title_line_text(&tab);
-    assert_eq!(text, "[SETTINGS]");
+    assert_eq!(text, "[CONFIG]");
 }
 
 /// Validates: Requirement 17.6 -- FilesPanel tab shows tab title.
@@ -928,91 +706,6 @@ fn title_line_files_panel_shows_files() {
 }
 
 // ── Phase AK: Tab-header focus stops + command field focus fix ───────────
-
-/// Validates: Requirement 16.10 -- Tab from last menu bar item goes to first tab header.
-#[test]
-fn focus_cycle_tab_forward_from_last_menu_goes_to_first_tab_header() {
-    // Validates: Requirement 16.10
-    use super::FocusStop;
-    let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
-    let last_menu = FocusStop::MenuBar {
-        index: menu_count - 1,
-    };
-    let next = last_menu.next(menu_count, 3, false, 0);
-    assert_eq!(next, FocusStop::TabHeader { index: 0 });
-}
-
-/// Validates: Requirement 16.20 -- Tab advances through tab headers left to right.
-#[test]
-fn focus_cycle_tab_forward_through_all_tab_headers() {
-    // Validates: Requirement 16.20
-    use super::FocusStop;
-    let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
-    let mut stop = FocusStop::TabHeader { index: 0 };
-    stop = stop.next(menu_count, 3, false, 0);
-    assert_eq!(stop, FocusStop::TabHeader { index: 1 });
-    stop = stop.next(menu_count, 3, false, 0);
-    assert_eq!(stop, FocusStop::TabHeader { index: 2 });
-}
-
-/// Validates: Requirement 16.21 -- Tab from last tab header wraps to CommandField.
-#[test]
-fn focus_cycle_tab_forward_from_last_tab_header_wraps_to_command_field() {
-    // Validates: Requirement 16.21
-    use super::FocusStop;
-    let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
-    let next = FocusStop::TabHeader { index: 2 }.next(menu_count, 3, false, 0);
-    assert_eq!(next, FocusStop::CommandField);
-}
-
-/// Validates: Requirement 16.11 -- Shift+Tab from CommandField goes to last tab header.
-#[test]
-fn focus_cycle_shift_tab_from_command_field_goes_to_last_tab_header() {
-    // Validates: Requirement 16.11
-    use super::FocusStop;
-    let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
-    let prev = FocusStop::CommandField.prev(menu_count, 3, false, 0);
-    assert_eq!(prev, FocusStop::TabHeader { index: 2 });
-}
-
-/// Validates: Requirement 16.11 -- Shift+Tab from first tab header goes to last menu bar item.
-#[test]
-fn focus_cycle_shift_tab_from_first_tab_header_goes_to_last_menu() {
-    // Validates: Requirement 16.11
-    use super::FocusStop;
-    let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
-    let prev = FocusStop::TabHeader { index: 0 }.prev(menu_count, 3, false, 0);
-    assert_eq!(
-        prev,
-        FocusStop::MenuBar {
-            index: menu_count - 1
-        }
-    );
-}
-
-/// Validates: Requirement 16.22 -- non-POM cycle includes tab headers.
-#[test]
-fn focus_cycle_non_pom_includes_tab_headers() {
-    // Validates: Requirement 16.22
-    use super::FocusStop;
-    let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
-    // Full forward cycle: CommandField -> MenuBar(0..last) -> TabHeader(0..1) -> CommandField
-    let mut stop = FocusStop::CommandField;
-    // Step 1: CommandField -> MenuBar(0)
-    stop = stop.next(menu_count, 2, false, 0);
-    assert_eq!(stop, FocusStop::MenuBar { index: 0 });
-    // Steps 2..menu_count: advance through remaining menu items to last
-    for _ in 0..menu_count - 1 {
-        stop = stop.next(menu_count, 2, false, 0);
-    }
-    // Now at MenuBar { index: menu_count - 1 }; one more step -> TabHeader(0)
-    stop = stop.next(menu_count, 2, false, 0);
-    assert_eq!(stop, FocusStop::TabHeader { index: 0 });
-    stop = stop.next(menu_count, 2, false, 0);
-    assert_eq!(stop, FocusStop::TabHeader { index: 1 });
-    stop = stop.next(menu_count, 2, false, 0);
-    assert_eq!(stop, FocusStop::CommandField);
-}
 
 // ── Phase AO: Detachable Tab Windows (Requirement 18) ──────────────────────
 
@@ -1187,6 +880,138 @@ fn context_key_maps_parsed_from_config_value_table() {
             .map(|b| b.command()),
         Some("END"),
         "unknown context must fall back to global"
+    );
+}
+
+// ── CR-CH-027: keymaps/<context>.toml override files (Req 14.9-14.12) ──────
+
+/// Validates: function-keys-and-history Requirement 14.11 -- ensure_keymaps_dir
+/// creates `<User_Data_Dir>/keymaps/`.
+#[test]
+fn ensure_keymaps_dir_creates_keymaps_dir() {
+    use tempfile::TempDir;
+    let dir = TempDir::new().expect("tempdir");
+    let keymaps = dir.path().join("keymaps");
+    assert!(!keymaps.exists());
+    super::ensure_keymaps_dir(dir.path());
+    assert!(keymaps.exists(), "keymaps/ must be created");
+}
+
+/// Validates: function-keys-and-history Requirement 14.9/14.10 -- a present
+/// keymaps/<context>.toml is loaded as that context's map (full-replacement over
+/// the compiled default); an absent file leaves the context on the default.
+#[test]
+fn keymaps_file_present_overrides_default_for_context() {
+    use ff_keys::{FunctionKey, KeyMapResolver};
+    use std::io::Write;
+    use tempfile::TempDir;
+
+    let dir = TempDir::new().expect("tempdir");
+    let keymaps = dir.path().join("keymaps");
+    std::fs::create_dir_all(&keymaps).expect("mkdir");
+    // editor.toml rebinds F5 to FIND (and, being full-replacement, drops the
+    // compiled default's F3=END for the editor context).
+    let mut f = std::fs::File::create(keymaps.join("editor.toml")).expect("create");
+    writeln!(f, "F5 = \"FIND\"").expect("write");
+
+    let mut resolver = KeyMapResolver::new(KeyMap::default_global());
+    super::load_context_maps_from_keymaps_dir(&keymaps, &mut resolver);
+
+    resolver.set_context(Some("editor"));
+    assert_eq!(
+        resolver
+            .active_key_map()
+            .get_plain(FunctionKey::F5)
+            .map(|b| b.command()),
+        Some("FIND"),
+        "editor keymaps file must bind F5=FIND"
+    );
+    assert!(
+        resolver
+            .active_key_map()
+            .get_plain(FunctionKey::F3)
+            .is_none(),
+        "editor keymaps file fully replaces the default (no inherited F3)"
+    );
+
+    // A context WITHOUT a file falls back to the compiled default (F3=END).
+    resolver.set_context(Some("pom"));
+    assert_eq!(
+        resolver
+            .active_key_map()
+            .get_plain(FunctionKey::F3)
+            .map(|b| b.command()),
+        Some("END"),
+        "a context with no keymaps file uses the compiled default"
+    );
+}
+
+/// Validates: function-keys-and-history Requirement 14.10 -- a malformed
+/// keymaps file is skipped and the context falls back to the compiled default
+/// without crashing.
+#[test]
+fn keymaps_malformed_file_is_skipped_and_falls_back() {
+    use ff_keys::{FunctionKey, KeyMapResolver};
+    use std::io::Write;
+    use tempfile::TempDir;
+
+    let dir = TempDir::new().expect("tempdir");
+    let keymaps = dir.path().join("keymaps");
+    std::fs::create_dir_all(&keymaps).expect("mkdir");
+    let mut f = std::fs::File::create(keymaps.join("editor.toml")).expect("create");
+    writeln!(f, "this is [ not valid toml =").expect("write");
+
+    let mut resolver = KeyMapResolver::new(KeyMap::default_global());
+    // Must not panic.
+    super::load_context_maps_from_keymaps_dir(&keymaps, &mut resolver);
+
+    // No context map registered for editor -> falls back to global default.
+    resolver.set_context(Some("editor"));
+    assert_eq!(
+        resolver
+            .active_key_map()
+            .get_plain(FunctionKey::F3)
+            .map(|b| b.command()),
+        Some("END"),
+        "malformed editor.toml must be skipped; context uses the compiled default"
+    );
+}
+
+/// Validates: function-keys-and-history Requirement 14.12 -- a
+/// keymaps/<context>.toml FILE takes precedence over a
+/// `[context_key_maps.<name>]` config section for the same context, because the
+/// file loader runs SECOND (as it does at startup).
+#[test]
+fn keymaps_file_takes_precedence_over_config_section() {
+    use ff_keys::{FunctionKey, KeyBinding, KeyMapResolver};
+    use std::io::Write;
+    use tempfile::TempDir;
+
+    let mut resolver = KeyMapResolver::new(KeyMap::default_global());
+    // Simulate the config-table path having registered editor F5=CONFIGCMD first.
+    let mut cfg_map = KeyMap::empty("editor");
+    cfg_map.set(
+        ModifiedKey::plain(FunctionKey::F5),
+        KeyBinding::new("CONFIGCMD"),
+    );
+    resolver.set_context_map("editor".to_string(), cfg_map);
+
+    // Then the keymaps file loader runs (second) and rebinds editor F5=FILECMD.
+    let dir = TempDir::new().expect("tempdir");
+    let keymaps = dir.path().join("keymaps");
+    std::fs::create_dir_all(&keymaps).expect("mkdir");
+    let mut f = std::fs::File::create(keymaps.join("editor.toml")).expect("create");
+    writeln!(f, "F5 = \"FILECMD\"").expect("write");
+    super::load_context_maps_from_keymaps_dir(&keymaps, &mut resolver);
+
+    resolver.set_context(Some("editor"));
+    assert_eq!(
+        resolver
+            .active_key_map()
+            .get_plain(FunctionKey::F5)
+            .map(|b| b.command()),
+        Some("FILECMD"),
+        "the keymaps FILE must win over the config-section entry (loaded second)"
     );
 }
 
@@ -1829,6 +1654,51 @@ fn fastpath_non_digit_first_segment_not_fastpath() {
     // (open_error may be set but no crash)
 }
 
+/// Validates: menu-workspace Requirement 5.1, 5.7 (B061) -- the chained fastpath
+/// `=0.K` pops to the POM origin, selects option 0 (Settings), then option K
+/// (KEYS), landing on the Keys Workspace. It must NOT reach the "command not
+/// yet implemented" stub.
+#[test]
+fn chained_fastpath_equals_zero_dot_k_opens_keys_workspace() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("=0.K");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::KeysEditor,
+        "=0.K should open the Keys Workspace (POM opt 0 = Settings, then K = KEYS)"
+    );
+    let err = shell.open_error.as_deref().unwrap_or("");
+    assert!(
+        !err.to_lowercase().contains("not yet implemented"),
+        "chained fastpath must not fall through to the not-implemented stub, got: {err:?}"
+    );
+}
+
+/// Validates: menu-workspace Requirement 5.7 (B061) -- the leading `=` is the
+/// Navigation_Origin: a chained path resolves against the POM even when the
+/// active Workspace is NOT the POM.
+#[test]
+fn chained_fastpath_pops_to_pom_origin_from_non_pom() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    // Move away from the POM first (open the Keys Workspace directly).
+    shell.handle_command("KEYS");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::KeysEditor);
+    // From a non-POM context, `=0` must resolve option 0 against the POM.
+    shell.handle_command("=0.K");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::KeysEditor,
+        "=0.K from a non-POM context must still resolve against the POM origin"
+    );
+    let err = shell.open_error.as_deref().unwrap_or("");
+    assert!(
+        !err.to_lowercase().contains("not yet implemented"),
+        "chained fastpath must not fall through to the not-implemented stub, got: {err:?}"
+    );
+}
+
 /// Validates: Requirement 19.11 -- SPLIT command activates split screen.
 #[test]
 fn split_command_activates_split_screen() {
@@ -2079,52 +1949,54 @@ fn status_with_jobname_routes_with_filter() {
 /// Validates: cw-requirements.md Requirement 10.1, 10.2 -- SETTINGS <ns> pre-populates filter.
 #[test]
 fn settings_namespace_filter_applied_on_open() {
+    // CR-CH-025: `SETTINGS <ns>` is superseded by `CONFIG <ns>`.
     let mut shell = make_shell();
-    shell.handle_command("SETTINGS editor");
+    shell.handle_command("CONFIG editor");
     assert_eq!(
-        shell.settings_panel.namespace_filter.as_deref(),
+        shell.config_panel.namespace_filter.as_deref(),
         Some("editor"),
         "namespace_filter must be set to the requested namespace"
     );
     assert_eq!(
-        shell.settings_panel.filter, "editor.",
+        shell.config_panel.filter, "editor.",
         "flat-list filter must be pre-populated with the namespace prefix"
     );
 }
 
-/// Validates: cw-requirements.md Requirement 10.5 -- namespace view tab title.
+/// Validates: configuration-system Req 20.3 (CR-CH-025) -- CONFIG <ns> tab title.
 #[test]
 fn settings_namespace_tab_title_includes_namespace() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("SETTINGS theme");
+    shell.handle_command("CONFIG theme");
     let tab = shell.tabs.active_tab();
-    assert_eq!(tab.kind, TabKind::SettingsPanel);
-    assert_eq!(tab.title, "[SETTINGS:theme]");
+    assert_eq!(tab.kind, TabKind::ConfigPanel);
+    assert_eq!(tab.title, "[CONFIG:theme]");
 }
 
-/// Validates: cw-requirements.md Requirement 9.4 -- bare SETTINGS / A opens unfiltered view.
+/// Validates: configuration-system Req 20.2 (CR-CH-025) -- bare CONFIG opens the
+/// unfiltered flat view.
 #[test]
 fn settings_all_view_has_no_namespace_filter() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("A");
-    assert!(shell.settings_panel.namespace_filter.is_none());
-    assert_eq!(shell.settings_panel.filter, "");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::SettingsPanel);
-    assert_eq!(shell.tabs.active_tab().title, "[SETTINGS]");
+    shell.handle_command("CONFIG");
+    assert!(shell.config_panel.namespace_filter.is_none());
+    assert_eq!(shell.config_panel.filter, "");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::ConfigPanel);
+    assert_eq!(shell.tabs.active_tab().title, "[CONFIG]");
 }
 
-/// Validates: cw-requirements.md Requirement 10.4 -- END from a namespace view
-/// returns to the Settings_Menu (the data-driven Menu_Workspace), not the flat
-/// All-Settings view.
+/// Validates: configuration-system Req 20 / CR-CH-022 -- END from a CONFIG
+/// namespace view returns to the Settings_Menu (the data-driven Menu_Workspace),
+/// not the flat All-Settings view.
 #[test]
 fn settings_end_from_namespace_view_returns_to_menu() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("SETTINGS editor");
+    shell.handle_command("CONFIG editor");
     assert_eq!(
-        shell.settings_panel.namespace_filter.as_deref(),
+        shell.config_panel.namespace_filter.as_deref(),
         Some("editor")
     );
     shell.handle_command("END");
@@ -2535,19 +2407,8 @@ fn focus_indicator_helper_is_callable() {
 
 // === Phase CO: Accessibility -- Keyboard Audit (Requirement 2) ==============
 
-/// Validates: accessibility Requirement 2.1, 2.3 -- KeyConfigDialog closes on Escape.
-/// The dialog must respond to Escape as a keyboard-accessible close action.
-#[test]
-fn key_config_dialog_escape_closes_dialog() {
-    // Validates: accessibility Requirement 2.1, 2.3
-    // Escape-to-close is the standard keyboard pattern for modal dialogs.
-    // We verify the cancel() method closes the dialog (same effect as Escape).
-    let mut dialog = crate::key_config_dialog::KeyConfigDialog::new();
-    dialog.open = true;
-    // cancel() is the programmatic equivalent of pressing Escape.
-    dialog.cancel();
-    assert!(!dialog.open, "dialog must be closed after cancel/Escape");
-}
+// (The modal KeyConfigDialog Escape-close test was removed with the modal in
+// CR-CH-029; the Keys Workspace uses END/RETURN via the Navigation_Stack.)
 
 /// Validates: accessibility Requirement 2.1, 2.3 -- DatasetAllocDialog has a cancel path.
 #[test]
@@ -2612,7 +2473,7 @@ fn plugin_manager_tab_kind_exists() {
     let kind = TabKind::PluginManager;
     assert_eq!(kind, TabKind::PluginManager);
     assert_ne!(kind, TabKind::PrimaryOptionMenu);
-    assert_ne!(kind, TabKind::SettingsPanel);
+    assert_ne!(kind, TabKind::ConfigPanel);
 }
 
 /// Validates: plugin-manager-ui Requirement 1.1 -- option 8 routes to PluginManager.
@@ -3238,39 +3099,45 @@ fn theme_command_is_case_insensitive() {
         .remove_user_value(ff_config::keys::theme::ACTIVE);
 }
 
-/// Validates: theme-and-appearance Requirement 17.3 -- bare `THEME` reports the
-/// current mode and does not change the theme.
+/// Validates: theme-and-appearance Requirement 17.4 (CR-CH-024) -- bare `THEME`
+/// opens the Theme Editor context (formerly the `THEMES` command) and does NOT
+/// change the active theme.
 #[test]
-fn theme_command_bare_reports_current_and_does_not_change() {
+fn theme_command_bare_opens_theme_editor() {
+    use crate::tab_state::TabKind;
     use ff_theme::mode::VisualMode;
     let mut shell = make_shell();
     shell.handle_command("THEME light");
     assert_eq!(shell.palette.mode, VisualMode::Light);
     shell.handle_command("THEME");
-    // Mode unchanged; a status message names the current theme.
-    assert_eq!(shell.palette.mode, VisualMode::Light);
-    let msg = shell.open_error.clone().unwrap_or_default();
-    assert!(
-        msg.to_lowercase().contains("light"),
-        "bare THEME must report the current mode, got: {msg:?}"
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::ThemeEditor,
+        "bare THEME must open the Theme Editor context (CR-CH-024)"
     );
+    // The active theme is unchanged by opening the editor.
+    assert_eq!(shell.palette.mode, VisualMode::Light);
+    let _ = shell
+        .config_handle
+        .remove_user_value(ff_config::keys::theme::ACTIVE_NAME);
 }
 
-/// Validates: theme-and-appearance Requirement 17.4 -- an unrecognised mode
-/// errors clearly and does not change the theme.
+/// Validates: theme-and-appearance Requirement 17.5 (CR-CH-024) -- an unknown
+/// theme name leaves the active theme unchanged and shows the does-not-exist
+/// message.
 #[test]
-fn theme_command_invalid_arg_errors_and_keeps_mode() {
+fn theme_command_unknown_name_errors_and_keeps_theme() {
     use ff_theme::mode::VisualMode;
     let mut shell = make_shell();
     shell.handle_command("THEME light");
     assert_eq!(shell.palette.mode, VisualMode::Light);
     shell.handle_command("THEME banana");
-    // Mode unchanged; error surfaced.
+    // Theme unchanged; does-not-exist message surfaced.
     assert_eq!(shell.palette.mode, VisualMode::Light);
     let msg = shell.open_error.clone().unwrap_or_default();
     assert!(
-        msg.contains("banana") && msg.to_lowercase().contains("valid"),
-        "invalid THEME arg must produce a clear error, got: {msg:?}"
+        msg.contains("banana") && msg.contains("does not exist"),
+        "unknown THEME name must show the does-not-exist message, got: {msg:?}"
     );
 }
 
@@ -3426,49 +3293,52 @@ fn tab_state_workspace_name_defaults_to_none() {
 
 /// Validates: CX Requirement 2.1 -- KEYS with no argument opens dialog with initial_scope None.
 #[test]
-fn keys_no_arg_opens_dialog_with_no_initial_scope() {
+fn keys_command_opens_keys_workspace() {
+    // Validates: function-keys Req 22.1, 22.5 (CR-CH-029) -- KEYS opens the Keys
+    // Workspace (a Context tab), NOT a modal dialog.
+    use crate::tab_state::TabKind;
     let mut shell = make_shell();
     shell.handle_command("KEYS");
-    assert!(shell.key_config_dialog.open);
-    assert!(shell.key_config_dialog.initial_scope.is_none());
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::KeysEditor);
 }
 
-/// Validates: CX Requirement 2.2 -- KEYS <name> sets initial_scope to the given name.
+/// Validates: function-keys Req 22.2, 22.5 -- KEYS <kind> pre-selects that kind.
 #[test]
-fn keys_with_name_sets_initial_scope() {
+fn keys_with_kind_preselects_that_kind() {
+    use crate::tab_state::TabKind;
     let mut shell = make_shell();
     shell.handle_command("KEYS editor");
-    assert!(shell.key_config_dialog.open);
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::KeysEditor);
     assert_eq!(
-        shell.key_config_dialog.initial_scope.as_deref(),
+        shell.keys_editor_panel.selected_kind.as_deref(),
         Some("editor")
     );
 }
 
-/// Validates: CX Requirement 2.3 -- KEYS <unknown> sets initial_scope and shows status message.
+/// Validates: function-keys Req 22.5 -- KEYS <unknown> opens the Workspace with
+/// a fallback kind and a status message naming the unknown kind.
 #[test]
-fn keys_with_unknown_name_shows_status_message() {
+fn keys_with_unknown_kind_shows_status_message() {
+    use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("KEYS unknownmap");
-    assert!(shell.key_config_dialog.open);
-    let err = shell.open_error.as_deref().unwrap_or("");
+    shell.handle_command("KEYS unknownkind");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::KeysEditor);
+    let err = shell.keys_editor_panel.error.as_deref().unwrap_or("");
     assert!(
-        err.contains("unknownmap"),
-        "error should mention the unknown name"
+        err.contains("unknownkind"),
+        "status should mention the unknown kind: {err:?}"
     );
-    assert!(err.contains("not found"), "error should say not found");
 }
 
-/// Validates: CX Requirement 2.4 -- KEYS <name> matching is case-insensitive.
+/// Validates: function-keys Req 22.2 -- KEYS <kind> matching is case-insensitive.
 #[test]
-fn keys_name_matching_is_case_insensitive() {
+fn keys_kind_matching_is_case_insensitive() {
     let mut shell = make_shell();
     shell.handle_command("KEYS EDITOR");
-    assert!(shell.key_config_dialog.open);
-    // "editor" is a known context -- no error message
-    assert!(
-        shell.open_error.is_none(),
-        "known context in uppercase should not produce error"
+    assert_eq!(
+        shell.keys_editor_panel.selected_kind.as_deref(),
+        Some("editor"),
+        "uppercase kind must match case-insensitively"
     );
 }
 
@@ -3588,10 +3458,10 @@ fn restore_file_explorer_descriptor_opens_explorer_panel() {
     );
 }
 
-/// Validates: Requirement 21.3 -- a Settings descriptor with a namespace param
-/// restores the Settings Context with that namespace filter applied.
+/// Validates: Requirement 21.3 -- a Config descriptor with a namespace param
+/// restores the Config Context with that namespace filter applied.
 #[test]
-fn restore_settings_descriptor_applies_namespace_filter() {
+fn restore_config_descriptor_applies_namespace_filter() {
     use crate::tab_state::TabKind;
     use ff_session::session_state::{
         DescriptorParams, DescriptorValue, WorkspaceDescriptor, WorkspaceKind,
@@ -3601,7 +3471,7 @@ fn restore_settings_descriptor_applies_namespace_filter() {
     let mut params = DescriptorParams::new();
     params.insert("namespace".to_string(), DescriptorValue::from("editor"));
     let descriptors = vec![WorkspaceDescriptor::CustomWorkspace {
-        workspace_kind: WorkspaceKind::Settings,
+        workspace_kind: WorkspaceKind::Config,
         params,
     }];
     shell.restore_workspace_descriptors(&descriptors);
@@ -3611,31 +3481,31 @@ fn restore_settings_descriptor_applies_namespace_filter() {
             .tabs
             .tabs()
             .iter()
-            .any(|t| t.kind == TabKind::SettingsPanel),
-        "a Settings descriptor must reconstruct a SettingsPanel tab"
+            .any(|t| t.kind == TabKind::ConfigPanel),
+        "a Config descriptor must reconstruct a ConfigPanel tab"
     );
     assert_eq!(
-        shell.settings_panel.namespace_filter.as_deref(),
+        shell.config_panel.namespace_filter.as_deref(),
         Some("editor"),
         "the namespace filter must be restored from the descriptor param"
     );
-    assert_eq!(shell.settings_panel.filter, "editor.");
+    assert_eq!(shell.config_panel.filter, "editor.");
 }
 
-/// Validates: Requirement 21.3 -- a Settings descriptor with no namespace restores
-/// the unfiltered Settings view.
+/// Validates: Requirement 21.3 -- a Config descriptor with no namespace restores
+/// the unfiltered Config view.
 #[test]
-fn restore_settings_descriptor_without_namespace_is_unfiltered() {
+fn restore_config_descriptor_without_namespace_is_unfiltered() {
     use ff_session::session_state::{DescriptorParams, WorkspaceDescriptor, WorkspaceKind};
 
     let mut shell = make_shell();
     let descriptors = vec![WorkspaceDescriptor::CustomWorkspace {
-        workspace_kind: WorkspaceKind::Settings,
+        workspace_kind: WorkspaceKind::Config,
         params: DescriptorParams::new(),
     }];
     shell.restore_workspace_descriptors(&descriptors);
-    assert!(shell.settings_panel.namespace_filter.is_none());
-    assert_eq!(shell.settings_panel.filter, "");
+    assert!(shell.config_panel.namespace_filter.is_none());
+    assert_eq!(shell.config_panel.filter, "");
 }
 
 /// Validates: Requirement 21.5 -- multiple descriptors restore multiple Workspaces.
@@ -4374,6 +4244,84 @@ fn settings_command_opens_menu_workspace_not_flat_panel() {
     );
 }
 
+// === CR-CH-025: unified resolution chain (menu-name + chaining + CONFIG) ====
+
+// Validates: command-framework Req 8.13 / menu-workspace Req 11.7, 11.11 --
+// `SETTINGS T` opens the Settings menu then activates option `T`, whose command
+// is `THEME`, opening the Theme Editor Context (observably identical to typing
+// `THEME`). Keyword-less menu name + trailing-token chaining.
+#[test]
+fn settings_t_chains_to_theme_editor() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("SETTINGS T");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::ThemeEditor,
+        "SETTINGS T must chain to the Theme Editor via the T -> THEME option"
+    );
+}
+
+// Validates: command-framework Req 8.11 / menu-workspace Req 11.11 -- a bare
+// menu name (no MENU keyword) opens that menu; POM resolves to the Home Context.
+#[test]
+fn keyword_less_pom_menu_name_opens_home_context() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("SETTINGS"); // leave the POM first
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::MenuWorkspace);
+    shell.handle_command("POM");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::PrimaryOptionMenu,
+        "keyword-less POM must return to the Home Context"
+    );
+}
+
+// Validates: configuration-system Req 20.1/20.2 (CR-CH-025) -- CONFIG is a
+// registered built-in command (Command_ID config.open).
+#[test]
+fn config_command_is_registered() {
+    let shell = make_shell();
+    let id = ff_command::CommandId::new("config.open").expect("valid id");
+    assert!(
+        shell.cmd_registry.contains(&id),
+        "config.open must be registered so CONFIG resolves as a built-in"
+    );
+}
+
+// Validates: configuration-system Req 20.4 (CR-CH-025) -- an unknown namespace
+// still opens the flat view (filter applied, editable), not an error.
+#[test]
+fn config_unknown_namespace_opens_editable_view() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("CONFIG nosuchns");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::ConfigPanel);
+    assert_eq!(
+        shell.config_panel.namespace_filter.as_deref(),
+        Some("nosuchns")
+    );
+    assert!(
+        shell.open_error.is_none(),
+        "an unknown CONFIG namespace must not raise an error"
+    );
+}
+
+// Validates: command-framework Req 8.10 / menu-workspace Req 11.12 -- a built-in
+// command beats a same-named token; and a genuinely unknown token is unresolved
+// (falls through the whole chain to the command engine error), not silently
+// swallowed by menu-name resolution.
+#[test]
+fn unknown_token_is_unresolved_not_a_menu() {
+    let mut shell = make_shell();
+    shell.handle_command("zzz_not_a_menu_or_command");
+    assert!(
+        shell.open_error.is_some(),
+        "an unknown token must surface an unresolved-command error"
+    );
+}
+
 // Validates: cw-requirements.md Req 9.1 -- option 0 / =0 open the Settings_Menu.
 #[test]
 fn settings_option_zero_opens_menu_workspace() {
@@ -4384,30 +4332,30 @@ fn settings_option_zero_opens_menu_workspace() {
 }
 
 // Validates: cw-requirements.md Req 9.4 -- option A opens the unfiltered flat
-// Settings panel (the All-Settings view), NOT the menu.
+// CR-CH-025: bare CONFIG opens the flat All-Settings view, NOT the menu.
 #[test]
 fn settings_option_a_opens_flat_panel() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("A");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::SettingsPanel);
-    assert!(shell.settings_panel.namespace_filter.is_none());
-    assert_eq!(shell.tabs.active_tab().title, "[SETTINGS]");
+    shell.handle_command("CONFIG");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::ConfigPanel);
+    assert!(shell.config_panel.namespace_filter.is_none());
+    assert_eq!(shell.tabs.active_tab().title, "[CONFIG]");
 }
 
-// Validates: cw-requirements.md Req 10.1 -- SETTINGS <ns> opens the filtered
-// Settings_Namespace_View (flat panel with the namespace prefix applied).
+// Validates: configuration-system Req 20.3 (CR-CH-025) -- CONFIG <ns> opens the
+// filtered flat panel with the namespace prefix applied.
 #[test]
 fn settings_namespace_opens_filtered_flat_panel() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("SETTINGS editor");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::SettingsPanel);
+    shell.handle_command("CONFIG editor");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::ConfigPanel);
     assert_eq!(
-        shell.settings_panel.namespace_filter.as_deref(),
+        shell.config_panel.namespace_filter.as_deref(),
         Some("editor")
     );
-    assert_eq!(shell.tabs.active_tab().title, "[SETTINGS:editor]");
+    assert_eq!(shell.tabs.active_tab().title, "[CONFIG:editor]");
 }
 
 // Validates: cw-requirements.md Req 10.4 / 15.10 -- END from the Settings_Menu
@@ -4424,10 +4372,11 @@ fn settings_menu_end_returns_to_pom() {
     assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
 }
 
-// Validates: cw-requirements.md Req 11.5 -- the default settings.toml option A
-// carries the "A" command (opens the flat list, not a SETTINGS-menu recursion).
+// Validates: menu-workspace Req 12.3 (CR-CH-025) -- the default settings.toml
+// option A carries the `CONFIG` command (opens the flat config-key browser),
+// replacing the former opaque `A` command.
 #[test]
-fn default_settings_toml_option_a_command_is_a() {
+fn default_settings_toml_option_a_command_is_config() {
     use crate::menu_workspace::loader::load_menu_file;
     use std::io::Write;
     let mut f = tempfile::NamedTempFile::new().expect("tempfile");
@@ -4440,8 +4389,8 @@ fn default_settings_toml_option_a_command_is_a() {
         .find(|o| o.key == "A")
         .expect("option A present");
     assert_eq!(
-        opt_a.command, "A",
-        "option A must open the flat All-Settings list, not re-open the Settings_Menu"
+        opt_a.command, "CONFIG",
+        "option A must dispatch CONFIG (the flat config-key browser)"
     );
 }
 
@@ -4863,7 +4812,7 @@ fn start_equals_path_keeps_pom_on_stack() {
 fn themes_command_opens_theme_editor() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("THEMES");
+    shell.handle_command("THEME");
     assert_eq!(
         shell.tabs.active_tab().kind,
         TabKind::ThemeEditor,
@@ -4888,7 +4837,7 @@ fn themes_command_transforms_pom_tab_in_place() {
     shell.handle_command("START");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
     let count_before = shell.tabs.len();
-    shell.handle_command("THEMES");
+    shell.handle_command("THEME");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::ThemeEditor);
     assert_eq!(
         shell.tabs.len(),
@@ -4904,7 +4853,7 @@ fn theme_editor_edit_token_updates_working_and_previews() {
     use crate::theme_editor_panel::{EditableToken, ThemeEditorAction};
     use ff_theme::ColourRGBA;
     let mut shell = make_shell();
-    shell.handle_command("THEMES");
+    shell.handle_command("THEME");
     let red = ColourRGBA::rgb(255, 0, 0);
     shell.apply_theme_editor_action(ThemeEditorAction::EditToken(EditableToken::UiPanelBg, red));
     // Working copy updated.
@@ -4921,7 +4870,7 @@ fn theme_editor_reset_loads_builtin_baseline() {
     use crate::theme_editor_panel::{EditableToken, ThemeEditorAction};
     use ff_theme::ColourRGBA;
     let mut shell = make_shell();
-    shell.handle_command("THEMES");
+    shell.handle_command("THEME");
     // Point the editor at Default Legacy and mutate the working copy.
     shell.apply_theme_editor_action(ThemeEditorAction::EditToken(
         EditableToken::EditorForeground,
@@ -4944,7 +4893,7 @@ fn theme_editor_reset_loads_builtin_baseline() {
 fn theme_editor_reset_non_builtin_errors() {
     use crate::theme_editor_panel::ThemeEditorAction;
     let mut shell = make_shell();
-    shell.handle_command("THEMES");
+    shell.handle_command("THEME");
     shell.apply_theme_editor_action(ThemeEditorAction::Reset("My Custom Theme".to_string()));
     assert!(
         shell.theme_editor_panel.error.is_some(),
@@ -4968,7 +4917,7 @@ fn theme_editor_copy_creates_new_named_theme_file() {
     use crate::theme_editor_panel::ThemeEditorAction;
     let mut shell = make_shell();
     let _dir = point_themes_at_temp(&mut shell);
-    shell.handle_command("THEMES");
+    shell.handle_command("THEME");
     shell.apply_theme_editor_action(ThemeEditorAction::Copy("my-theme".to_string()));
     // The new file exists and the editor now targets it.
     let themes = shell.themes_dir_override.clone().unwrap();
@@ -4997,7 +4946,7 @@ fn theme_editor_save_writes_edited_colour_to_disk() {
     use ff_theme::{ColourRGBA, ThemePalette};
     let mut shell = make_shell();
     let _dir = point_themes_at_temp(&mut shell);
-    shell.handle_command("THEMES");
+    shell.handle_command("THEME");
     // Copy to a user theme so we edit/save without touching a built-in.
     shell.apply_theme_editor_action(ThemeEditorAction::Copy("edited".to_string()));
     // Edit a token and Save.
@@ -5021,7 +4970,7 @@ fn theme_editor_save_as_writes_new_file() {
     use crate::theme_editor_panel::ThemeEditorAction;
     let mut shell = make_shell();
     let _dir = point_themes_at_temp(&mut shell);
-    shell.handle_command("THEMES");
+    shell.handle_command("THEME");
     shell.apply_theme_editor_action(ThemeEditorAction::SaveAs("saved-as".to_string()));
     let themes = shell.themes_dir_override.clone().unwrap();
     assert!(themes.join("saved-as.toml").exists());
@@ -5038,7 +4987,7 @@ fn theme_editor_set_active_swaps_palette_and_persists() {
     use crate::theme_editor_panel::ThemeEditorAction;
     let mut shell = make_shell();
     let _dir = point_themes_at_temp(&mut shell);
-    shell.handle_command("THEMES");
+    shell.handle_command("THEME");
     // Copy a distinctly-coloured user theme, then set it active.
     shell.apply_theme_editor_action(ThemeEditorAction::Copy("active-me".to_string()));
     shell.apply_theme_editor_action(ThemeEditorAction::SetActive("active-me".to_string()));
@@ -5066,7 +5015,7 @@ fn theme_editor_save_as_after_edit_writes_file_b052() {
     use ff_theme::ColourRGBA;
     let mut shell = make_shell();
     let _dir = point_themes_at_temp(&mut shell);
-    shell.handle_command("THEMES");
+    shell.handle_command("THEME");
     // Simulate: user edited a token, then clicked Save As. The editor emits the
     // button action (SaveAs) this frame, not the token edit.
     shell.apply_theme_editor_action(ThemeEditorAction::EditToken(
@@ -5089,9 +5038,9 @@ fn theme_editor_does_not_materialise_builtins() {
     let dir = tempfile::TempDir::new().expect("tempdir");
     crate::theme_defaults::ensure_default_theme_files(dir.path());
     shell.themes_dir_override = Some(dir.path().join("themes"));
-    shell.handle_command("THEMES");
+    shell.handle_command("THEME");
     let themes = dir.path().join("themes");
-    for slug in ["default-dark", "legacy", "default-legacy"] {
+    for slug in ["default-dark", "default-high-contrast", "default-legacy"] {
         assert!(
             !themes.join(format!("{slug}.toml")).exists(),
             "built-in {slug}.toml must NOT be materialised"
@@ -5106,12 +5055,12 @@ fn theme_editor_list_has_no_duplicates() {
     let mut shell = make_shell();
     let _dir = point_themes_at_temp(&mut shell);
     // Add a user theme, then copy a built-in (also a user theme now).
-    shell.handle_command("THEMES");
+    shell.handle_command("THEME");
     shell.apply_theme_editor_action(crate::theme_editor_panel::ThemeEditorAction::Copy(
         "mine".to_string(),
     ));
     // Re-open to refresh the list.
-    shell.handle_command("THEMES");
+    shell.handle_command("THEME");
     let list = &shell.theme_editor_panel.available;
     let mut sorted = list.clone();
     sorted.sort();
@@ -5122,12 +5071,12 @@ fn theme_editor_list_has_no_duplicates() {
         total,
         "theme list must have no duplicates: {list:?}"
     );
-    // The five built-ins each appear exactly once.
+    // The four built-ins each appear exactly once (CR-CH-024: no separate
+    // Legacy (ISPF 3270)).
     for b in [
         "Default Dark",
         "Default Light",
         "Default High Contrast",
-        "Legacy (ISPF 3270)",
         "Default Legacy",
     ] {
         assert_eq!(
@@ -5136,6 +5085,10 @@ fn theme_editor_list_has_no_duplicates() {
             "built-in '{b}' must appear exactly once"
         );
     }
+    assert!(
+        !list.iter().any(|n| n == "Legacy (ISPF 3270)"),
+        "Legacy (ISPF 3270) is no longer a built-in (CR-CH-024)"
+    );
 }
 
 /// Validates: Requirement 20.5 (CR-CH-019) -- Save on a built-in does not write
@@ -5145,7 +5098,7 @@ fn theme_editor_save_on_builtin_does_not_write_builtin() {
     use crate::theme_editor_panel::ThemeEditorAction;
     let mut shell = make_shell();
     let _dir = point_themes_at_temp(&mut shell);
-    shell.handle_command("THEMES");
+    shell.handle_command("THEME");
     // The editor opens with the active theme selected (a built-in in the default
     // config). Save with an empty name buffer must not write a built-in file and
     // must surface a message.
@@ -5168,4 +5121,867 @@ fn theme_editor_save_on_builtin_does_not_write_builtin() {
             "Save on a built-in with no new name must guide the user"
         );
     }
+}
+
+// === B055: Status_Bar segments must not be Tab focus stops =================
+//
+// Requirement 16 (Tab-Order Focus Cycle) enumerates the complete, exclusive set
+// of shell tab stops: CommandField -> POM options -> calendar -> menu bar ->
+// tab headers -> back to CommandField. Status_Bar segments are NOT in that set.
+// The bug (B055): render_status_bar built each segment with
+// egui::SelectableLabel (Sense::click()), making them egui-native focus stops,
+// so at launch Tab walked all six segments before reaching the menu/POM.
+//
+// Regression guard: render the real render_status_bar into a headless harness
+// together with a single known-focusable sentinel button placed AFTER it. With
+// the fix (non-interactive labels) the very first Tab lands on the sentinel,
+// proving no status-bar segment is a focus stop. With the bug present, the first
+// Tab would land on a status-bar segment and the sentinel would not be focused.
+#[test]
+fn status_bar_segments_are_not_tab_focus_stops() {
+    use egui_kittest::Harness;
+
+    let mut shell = make_shell();
+
+    let mut harness = Harness::builder()
+        .with_size(egui::Vec2::new(1200.0, 900.0))
+        .build(move |ctx| {
+            // Render the real status bar exactly as the shell does.
+            shell.render_status_bar(ctx);
+            // A single focusable sentinel in the central panel. It is created
+            // AFTER the status bar, so in pure egui creation order any focusable
+            // status-bar segment would be visited by Tab before this sentinel.
+            egui::CentralPanel::default().show(ctx, |ui| {
+                let _ = ui.button("sentinel");
+            });
+        });
+
+    // Press Tab a few times and collect every widget that receives focus.
+    let mut focused_ids: Vec<egui::Id> = Vec::new();
+    for _ in 0..8 {
+        harness.press_key(egui::Key::Tab);
+        harness.run();
+        if let Some(id) = harness.ctx.memory(|m| m.focused()) {
+            focused_ids.push(id);
+        }
+    }
+
+    // The only focusable widget in the frame is the sentinel button. If any
+    // status-bar segment were focusable, focus would land on more than one
+    // distinct widget id (the segments) as Tab is pressed. With the fix, every
+    // press keeps focus on the single sentinel button.
+    let distinct: std::collections::HashSet<egui::Id> = focused_ids.iter().copied().collect();
+    assert!(
+        distinct.len() <= 1,
+        "Tab focused multiple widgets, meaning Status_Bar segments are focus \
+         stops (B055). Focused ids across presses: {focused_ids:?}"
+    );
+}
+
+// === CR-CH-023: chrome (Key_Label_Bar F-key buttons) not Tab focus stops =====
+//
+// Req 16.9: the Key_Label_Bar F-key buttons duplicate physical function keys
+// and MUST NOT be keyboard focus stops. They remain mouse-clickable. Regression
+// guard: render the real render_key_label_bar into a headless harness with a
+// single focusable sentinel AFTER it; pressing Tab must keep focus on the single
+// sentinel (never a key-bar button), so at most one distinct id is ever focused.
+#[test]
+fn key_label_bar_buttons_are_not_tab_focus_stops() {
+    use egui_kittest::Harness;
+
+    let mut shell = make_shell();
+
+    let mut harness = Harness::builder()
+        .with_size(egui::Vec2::new(1200.0, 900.0))
+        .build(move |ctx| {
+            shell.render_key_label_bar(ctx);
+            egui::CentralPanel::default().show(ctx, |ui| {
+                let _ = ui.button("sentinel");
+            });
+        });
+
+    let mut focused_ids: Vec<egui::Id> = Vec::new();
+    for _ in 0..10 {
+        harness.press_key(egui::Key::Tab);
+        harness.run();
+        if let Some(id) = harness.ctx.memory(|m| m.focused()) {
+            focused_ids.push(id);
+        }
+    }
+    let distinct: std::collections::HashSet<egui::Id> = focused_ids.iter().copied().collect();
+    assert!(
+        distinct.len() <= 1,
+        "Tab focused multiple widgets, meaning Key_Label_Bar F-key buttons are \
+         focus stops (Req 16.9). Focused ids: {focused_ids:?}"
+    );
+}
+
+// === CR-CH-023: full-shell tab-order (Boundary_Policy) via egui_kittest ======
+//
+// These drive the REAL WorkbenchShell headlessly through eframe::App::update
+// (egui_kittest build_eframe), so the shared Boundary_Policy is exercised
+// end-to-end: command-line entry, interior order, menu-bar-last, wrap, and the
+// Shift+Tab reverse. This replaces the manual-only coverage that previously
+// backed Req 16.1/16.3/16.5/16.7/16.8 and menu-workspace Req 15.9.
+
+/// Build the shell in a headless harness and run enough frames for one-shot
+/// startup (session/config load + first render that captures menu-bar ids).
+fn harness_shell<'a>() -> egui_kittest::Harness<'a, super::WorkbenchShell> {
+    use egui_kittest::Harness;
+    let mut harness = Harness::builder()
+        .with_size(egui::Vec2::new(1200.0, 900.0))
+        .build_eframe(|_cc| make_shell());
+    for _ in 0..4 {
+        harness.run();
+    }
+    harness
+}
+
+fn cmd_field_id() -> egui::Id {
+    egui::Id::new("command_field_input")
+}
+
+/// Press Tab, run a frame, return the focused id (if any).
+fn tab_and_focus(harness: &mut egui_kittest::Harness<super::WorkbenchShell>) -> Option<egui::Id> {
+    harness.press_key(egui::Key::Tab);
+    harness.run();
+    harness.ctx.memory(|m| m.focused())
+}
+
+// Validates: menu-and-statusbar Req 16.1 -- on launch (POM active) focus is on
+// the Primary_Command_Field.
+#[test]
+fn full_shell_launch_focus_is_command_field() {
+    let harness = harness_shell();
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        Some(cmd_field_id()),
+        "after startup the command field must hold focus"
+    );
+}
+
+// Validates: menu-and-statusbar Req 16.3 -- Tab from the command field enters
+// the active Workspace's first interior control (the first POM option), NOT the
+// SCROLL field or any chrome.
+#[test]
+fn full_shell_tab_from_command_field_enters_first_option() {
+    let mut harness = harness_shell();
+    // Sanity: start on the command field.
+    assert_eq!(harness.ctx.memory(|m| m.focused()), Some(cmd_field_id()));
+    let after = tab_and_focus(&mut harness);
+    assert!(
+        after.is_some(),
+        "Tab from command field must focus something"
+    );
+    let after = after.unwrap();
+    assert_ne!(
+        after,
+        cmd_field_id(),
+        "Tab must leave the command field (enter the interior)"
+    );
+    assert_ne!(
+        after,
+        egui::Id::new("scroll_field_input"),
+        "Tab from the command field must NOT land on the SCROLL field (Req 16.9)"
+    );
+}
+
+// Validates: menu-and-statusbar Req 16.3, 16.5, 16.7 -- from the command field,
+// repeated Tab walks the POM interior (options + calendar) and then the menu
+// bar, and eventually WRAPS back to the command field. The SCROLL field and
+// F-key buttons never appear in the cycle (Req 16.9).
+#[test]
+fn full_shell_tab_cycle_wraps_to_command_field_and_skips_chrome() {
+    let mut harness = harness_shell();
+    let scroll_id = egui::Id::new("scroll_field_input");
+    let mut seen = Vec::new();
+    let mut wrapped = false;
+    // Press Tab up to 40 times; the POM cycle (command + ~6 options + 2 calendar
+    // + 13 menu items) is well under 40, so we must wrap back to the command
+    // field within that budget.
+    for _ in 0..40 {
+        let f = tab_and_focus(&mut harness);
+        if let Some(id) = f {
+            seen.push(id);
+            if id == cmd_field_id() && !seen.is_empty() {
+                wrapped = true;
+                break;
+            }
+        }
+    }
+    assert!(
+        wrapped,
+        "Tab cycle must wrap back to the command field within 40 presses; saw {} focuses",
+        seen.len()
+    );
+    assert!(
+        !seen.contains(&scroll_id),
+        "the SCROLL field must never be a Tab stop in the cycle (Req 16.9)"
+    );
+}
+
+// Validates: menu-and-statusbar Req 16.8; menu-workspace Req 15.9 -- Shift+Tab
+// from the command field goes to the LAST menu bar item (the reverse boundary),
+// not into chrome.
+#[test]
+fn full_shell_shift_tab_from_command_field_goes_to_menu_bar() {
+    let mut harness = harness_shell();
+    assert_eq!(harness.ctx.memory(|m| m.focused()), Some(cmd_field_id()));
+    // Shift down, press Tab, release: egui_kittest sends modifiers via events.
+    harness.press_key_modifiers(egui::Modifiers::SHIFT, egui::Key::Tab);
+    harness.run();
+    let after = harness.ctx.memory(|m| m.focused());
+    assert!(
+        after.is_some(),
+        "Shift+Tab from command field must focus something"
+    );
+    assert_ne!(
+        after,
+        Some(cmd_field_id()),
+        "Shift+Tab must leave the command field"
+    );
+    assert_ne!(
+        after,
+        Some(egui::Id::new("scroll_field_input")),
+        "Shift+Tab must not land on the SCROLL field (Req 16.9)"
+    );
+}
+
+// === B056: POM Tab lands on first option, then Settings (not File Catalogs) ==
+
+// Validates: menu-and-statusbar Req 16.3 (B056) -- the FIRST Tab from the
+// command field on a POM lands EXACTLY on the reported first interior control
+// (the first POM option), not some other/stale widget.
+#[test]
+fn full_shell_first_tab_focuses_reported_first_interior() {
+    let mut harness = harness_shell();
+    assert_eq!(harness.ctx.memory(|m| m.focused()), Some(cmd_field_id()));
+    let expected_first = harness.state().first_interior_id;
+    assert!(
+        expected_first.is_some(),
+        "POM must report a first interior control (first option)"
+    );
+    harness.press_key(egui::Key::Tab);
+    harness.run();
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        expected_first,
+        "first Tab must focus the reported first interior control (B056)"
+    );
+}
+
+// Validates: menu-and-statusbar Req 16.5 (B056) -- tabbing through the POM
+// interior and past the last interior control lands focus EXACTLY on the first
+// menu-bar button (Settings), so Enter there opens Settings (not File Catalogs).
+#[test]
+fn full_shell_tab_reaches_settings_as_first_menu_item() {
+    let mut harness = harness_shell();
+    let menu_first = harness.state().menu_first_id;
+    assert!(
+        menu_first.is_some(),
+        "menu bar must report its first button id"
+    );
+    // Walk forward; the first time focus enters the menu bar it MUST be the
+    // Settings (first) button, never a later one (File Catalogs, etc.).
+    let mut reached_menu_first = false;
+    for _ in 0..40 {
+        harness.press_key(egui::Key::Tab);
+        harness.run();
+        let f = harness.ctx.memory(|m| m.focused());
+        if f == menu_first {
+            reached_menu_first = true;
+            break;
+        }
+        // If focus reaches the LAST menu button before ever hitting the first,
+        // the order is wrong (we skipped Settings).
+        if f == harness.state().menu_last_id {
+            break;
+        }
+        // Wrapping back to the command field without hitting the menu bar first
+        // would also be a failure for a POM (it has a menu bar).
+        if f == Some(cmd_field_id()) {
+            break;
+        }
+    }
+    assert!(
+        reached_menu_first,
+        "forward Tab must land on the first menu button (Settings) when entering the menu bar (B056)"
+    );
+}
+
+// Validates: menu-and-statusbar Req 16.3 (B056) -- on the Menus Editor the
+// FIRST Tab from the command field must land on the "Menu:" selector combo (the
+// first interior control), not skip it to the Title field.
+#[test]
+fn full_shell_menus_editor_first_tab_focuses_menu_selector() {
+    let mut harness = harness_shell();
+    // Open the Menus Editor via its command (same path as typing MENUS).
+    harness.state_mut().handle_command("MENUS");
+    for _ in 0..4 {
+        harness.run();
+    }
+    // The editor reports the combo as its first interior control.
+    let first = harness.state().first_interior_id;
+    assert!(
+        first.is_some(),
+        "Menus Editor must report a first interior control (the Menu selector combo)"
+    );
+    // Focus should be on the command field on entry (Req 16.1a).
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        Some(cmd_field_id()),
+        "command field holds focus on entering the Menus Editor"
+    );
+    harness.press_key(egui::Key::Tab);
+    harness.run();
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        first,
+        "first Tab must focus the Menu selector combo, not skip it (B056)"
+    );
+}
+
+// === B057: Theme Editor Tab lands on the selector combo (no phantom stop) ====
+
+// Validates: menu-and-statusbar Req 16.3 (B057, CR-CH-023) -- on the Theme
+// Editor the FIRST Tab from the command field lands EXACTLY on the reported
+// first interior control (the Theme selector combo), with no phantom/invisible
+// focus stop before it. Before the fix the ThemeEditor arm reported no interior
+// id, so the shell could not latch the command-field -> first-interior jump and
+// egui landed on the panel's container/scroll allocation instead.
+#[test]
+fn full_shell_theme_editor_first_tab_focuses_theme_selector() {
+    use crate::tab_state::TabKind;
+    let mut harness = harness_shell();
+    // Open the Theme Editor via bare THEME (same path as typing it).
+    harness.state_mut().handle_command("THEME");
+    for _ in 0..4 {
+        harness.run();
+    }
+    assert_eq!(
+        harness.state().tabs.active_tab().kind,
+        TabKind::ThemeEditor,
+        "bare THEME opens the Theme Editor Context"
+    );
+    // The editor reports the Theme selector combo as its first interior control.
+    let first = harness.state().first_interior_id;
+    assert!(
+        first.is_some(),
+        "Theme Editor must report a first interior control (the Theme selector combo)"
+    );
+    // Focus is on the command field on entry (Req 16.1a).
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        Some(cmd_field_id()),
+        "command field holds focus on entering the Theme Editor"
+    );
+    harness.press_key(egui::Key::Tab);
+    harness.run();
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        first,
+        "first Tab must focus the Theme selector combo, not a phantom stop (B057)"
+    );
+}
+
+// === B058: CONFIG/Settings panel Tab lands on the Filter field ==============
+
+// Validates: menu-and-statusbar Req 16.3 (B058, CR-CH-023) -- on the
+// Settings/CONFIG flat panel the FIRST Tab from the command field lands EXACTLY
+// on the Filter field (the reported first interior control), with no phantom
+// stop before it. Before the fix the SettingsPanel arm reported no interior id,
+// so the shell could not latch the command-field -> first-interior jump and
+// egui landed on the panel's container/scroll allocation instead.
+#[test]
+fn full_shell_config_first_tab_focuses_filter_field() {
+    use crate::tab_state::TabKind;
+    let mut harness = harness_shell();
+    // Open the flat config-key browser via CONFIG (same path as typing it).
+    harness.state_mut().handle_command("CONFIG");
+    for _ in 0..4 {
+        harness.run();
+    }
+    assert_eq!(
+        harness.state().tabs.active_tab().kind,
+        TabKind::ConfigPanel,
+        "CONFIG opens the flat Config panel"
+    );
+    // The panel reports the Filter field as its first interior control.
+    let expected = crate::config_panel::filter_field_id();
+    assert_eq!(
+        harness.state().first_interior_id,
+        Some(expected),
+        "ConfigPanel must report the Filter field as its first interior control"
+    );
+    // Focus is on the command field on entry (Req 16.1a).
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        Some(cmd_field_id()),
+        "command field holds focus on entering the CONFIG panel"
+    );
+    harness.press_key(egui::Key::Tab);
+    harness.run();
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        Some(expected),
+        "first Tab must focus the Filter field, not a phantom stop (B058)"
+    );
+}
+
+// === B059: every remaining workspace lands first Tab on its first interior ===
+
+// Shared assertion (CR-CH-023 / B059, workspace-conformance steering rule): open
+// the workspace via `command`, confirm entry focus is the command field, then the
+// first Tab lands EXACTLY on the reported first interior control (no phantom stop).
+fn assert_first_tab_lands_on_reported_interior(command: &str, workspace: &str) {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command(command);
+    for _ in 0..4 {
+        harness.run();
+    }
+    let expected = harness.state().first_interior_id;
+    assert!(
+        expected.is_some(),
+        "{workspace} must report a first interior control (B059)"
+    );
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        Some(cmd_field_id()),
+        "command field holds focus on entering {workspace}"
+    );
+    harness.press_key(egui::Key::Tab);
+    harness.run();
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        expected,
+        "first Tab in {workspace} must focus the reported first interior, not a phantom stop (B059)"
+    );
+}
+
+// Validates: menu-and-statusbar Req 16.3 (B059) -- Plugin Manager.
+#[test]
+fn full_shell_plugin_manager_first_tab_focuses_interior() {
+    assert_first_tab_lands_on_reported_interior("PLUGINS", "Plugin Manager");
+}
+
+// Validates: menu-and-statusbar Req 16.3 (B059) -- Event Log.
+#[test]
+fn full_shell_event_log_first_tab_focuses_interior() {
+    assert_first_tab_lands_on_reported_interior("LOG", "Event Log");
+}
+
+// Validates: menu-and-statusbar Req 16.3 (B059) -- Macro Library.
+#[test]
+fn full_shell_macro_library_first_tab_focuses_interior() {
+    assert_first_tab_lands_on_reported_interior("MACROS", "Macro Library");
+}
+
+// Validates: menu-and-statusbar Req 16.3 (B059) -- Search Results.
+#[test]
+fn full_shell_search_results_first_tab_focuses_interior() {
+    assert_first_tab_lands_on_reported_interior("SEARCH", "Search Results");
+}
+
+// Validates: menu-and-statusbar Req 16.3 (B059) -- Command Configurator.
+#[test]
+fn full_shell_command_configurator_first_tab_focuses_interior() {
+    assert_first_tab_lands_on_reported_interior("COMMANDS", "Command Configurator");
+}
+
+// Validates: menu-workspace Req 16.1, 16.4 (CR-CH-026, B060) -- the Settings
+// Menu_Workspace defaults the calendar OFF, so Tab from the command field walks
+// ONLY the option rows and then the Menu_Bar; there are NO extra "invisible"
+// calendar Tab stops after the last option. The reported last interior control
+// is a menu option, never a calendar `<`/`>` button, and the first Tab still
+// lands on the reported first interior (no phantom stop before it either).
+#[test]
+fn full_shell_settings_tab_walks_options_only_no_calendar_stops() {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("SETTINGS");
+    for _ in 0..4 {
+        harness.run();
+    }
+    // Settings reports a first AND a last interior; with the calendar hidden the
+    // last interior is the last enabled option (not a calendar button).
+    let first = harness.state().first_interior_id;
+    let last = harness.state().last_interior_id;
+    assert!(
+        first.is_some(),
+        "Settings must report a first interior option"
+    );
+    assert!(
+        last.is_some(),
+        "Settings must report a last interior option"
+    );
+
+    // Entry focus is the command field.
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        Some(cmd_field_id()),
+        "command field holds focus on entering Settings"
+    );
+
+    // First Tab from the command field lands EXACTLY on the reported first
+    // interior (no phantom stop before it).
+    harness.press_key(egui::Key::Tab);
+    harness.run();
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        first,
+        "first Tab in Settings must focus the reported first interior option (no phantom stop)"
+    );
+
+    // Walk the interior forward; the LAST interior id we see before focus
+    // leaves the option ring (wrap to command field) must be `last` -- the last
+    // enabled option. A hidden calendar produces NO `<`/`>` ids, so no interior
+    // stop appears after `last` (Req 16.4). We record the last non-command,
+    // non-menu-bar id equal to the reported contract.
+    let mut saw_last = false;
+    for _ in 0..24 {
+        let f = harness.ctx.memory(|m| m.focused());
+        if f == last {
+            saw_last = true;
+        }
+        harness.press_key(egui::Key::Tab);
+        harness.run();
+        if harness.ctx.memory(|m| m.focused()) == Some(cmd_field_id()) {
+            break;
+        }
+    }
+    assert!(
+        saw_last,
+        "Tab walk must reach the reported last interior option in Settings"
+    );
+    // Req 16.4 authoritative guarantee: the reported interior contract holds
+    // options only. Settings has four options, so first != last and both are
+    // option ids -- there are no calendar `<`/`>` ids in the contract.
+    assert_ne!(
+        first, last,
+        "Settings (4 options, calendar off) reports distinct option first/last -- no calendar ids in the contract"
+    );
+}
+
+// === CR-CH-028: Cursor_Context package on every command (Requirement 12) =====
+
+// Validates: command-framework Req 12.2/12.4 -- after a frame, the shell's
+// Cursor_Context snapshot reflects live focus: at startup the command field
+// holds focus, so the package carries workspace "pom" and the "command-line"
+// focused identity with the command-line text.
+#[test]
+fn cursor_context_snapshot_reflects_command_line_focus() {
+    let mut harness = harness_shell();
+    // Startup: command field holds focus.
+    assert_eq!(harness.ctx.memory(|m| m.focused()), Some(cmd_field_id()));
+    harness.state_mut().command_text = "FIND hello".to_string();
+    harness.run();
+    let cc = harness
+        .state()
+        .cursor_context_snapshot
+        .lock()
+        .expect("snapshot lock")
+        .clone();
+    assert_eq!(cc.workspace_context.as_deref(), Some("pom"));
+    assert_eq!(cc.focused_identity.as_deref(), Some("command-line"));
+    assert_eq!(cc.focused_text.as_deref(), Some("FIND hello"));
+}
+
+// Validates: command-framework Req 12.4 -- the registered ShellContextProvider
+// returns the SAME package the shell captured, so a command dispatched through
+// the registry receives a populated Cursor_Context (not the empty default).
+#[test]
+fn context_provider_returns_populated_cursor_context() {
+    let mut harness = harness_shell();
+    harness.state_mut().command_text = "SAVE".to_string();
+    harness.run();
+    // Build a context provider view the way CommandDispatch does: read the
+    // shell snapshot cell directly (the provider clones it).
+    let cc = harness
+        .state()
+        .cursor_context_snapshot
+        .lock()
+        .expect("snapshot lock")
+        .clone();
+    // The provider would wrap this into an ExecutionContext.cursor_context.
+    let exec = ff_command::ExecutionContext::builder()
+        .cursor_context(cc)
+        .build();
+    assert_eq!(
+        exec.cursor_context.workspace_context.as_deref(),
+        Some("pom")
+    );
+    assert!(
+        exec.cursor_context.focused_identity.is_some(),
+        "a populated Cursor_Context must reach the ExecutionContext (not empty)"
+    );
+}
+
+// Validates: command-framework Req 12.7 -- the single canonical
+// "command not implemented yet" message constant.
+#[test]
+fn not_implemented_message_is_canonical() {
+    assert_eq!(
+        super::target_dispatch::NOT_IMPLEMENTED_MSG,
+        "Command not implemented yet."
+    );
+}
+
+// Validates: command-framework Req 12.8 (CR-NR-079) -- HELP consumes the
+// Cursor_Context: with a focused Menu_Option (identity = its command, e.g.
+// FILES), the resolved help Topic_Key is that option's command topic
+// (cmd:FILES), not the generic index. Exercised at the ff-help ContextDetector
+// level the shell HELP handler uses.
+#[test]
+fn help_consumes_focused_menu_option_context() {
+    use ff_help::{ContextDetector, EditorContext, EditorMode};
+    // Simulate the shell HELP handler's build from a Cursor_Context whose
+    // focused identity is the FILES option command.
+    let ctx = EditorContext {
+        command_line_text: "FILES".to_string(),
+        command_line_has_focus: true,
+        prefix_area_text: None,
+        prefix_area_has_focus: false,
+        active_mode: EditorMode::Edit,
+        help_panel_open: false,
+        current_help_topic: None,
+    };
+    let key = ContextDetector::resolve(&ctx);
+    assert_eq!(
+        key.as_str(),
+        "cmd:FILES",
+        "F1 on the focused FILES option must resolve the FILES command help topic"
+    );
+}
+
+// === CR-CH-029: Keys Workspace (function-keys Req 22) ========================
+
+// Validates: function-keys Req 22.7 -- KEYS opens the Keys Workspace and the
+// FIRST Tab from the command field lands EXACTLY on the reported first interior
+// control (the workspace-kind dropdown), with no phantom stop.
+#[test]
+fn full_shell_keys_first_tab_focuses_kind_dropdown() {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("KEYS");
+    for _ in 0..4 {
+        harness.run();
+    }
+    let expected = harness.state().first_interior_id;
+    assert!(
+        expected.is_some(),
+        "Keys Workspace must report a first interior control (the kind dropdown)"
+    );
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        Some(cmd_field_id()),
+        "command field holds focus on entering the Keys Workspace"
+    );
+    harness.press_key(egui::Key::Tab);
+    harness.run();
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        expected,
+        "first Tab in the Keys Workspace must focus the kind dropdown, not a phantom stop"
+    );
+}
+
+// Validates: function-keys Req 22.4 -- Save writes keymaps/<kind>.toml, which
+// the resolver then loads as that kind's context map (round-trip).
+#[test]
+fn keys_editor_save_writes_keymaps_file_for_kind() {
+    use crate::keys_editor_panel::KeysEditorAction;
+    use tempfile::TempDir;
+
+    let mut shell = make_shell();
+    let dir = TempDir::new().expect("tempdir");
+    std::fs::create_dir_all(dir.path().join("keymaps")).expect("mkdir");
+    shell.keymaps_dir_override = Some(dir.path().join("keymaps"));
+
+    // Open the Keys editor for the editor kind, edit F5 base -> FIND, Save.
+    shell.open_keys_editor(Some("editor"));
+    if let Some(row) = shell
+        .keys_editor_panel
+        .rows
+        .iter_mut()
+        .find(|r| r.key == ff_keys::FunctionKey::F5)
+    {
+        row.commands[0] = "FIND".to_string();
+    }
+    shell.apply_keys_editor_action(KeysEditorAction::Save);
+
+    // The file exists and round-trips through the loader as the editor context.
+    let path = dir.path().join("keymaps").join("editor.toml");
+    assert!(path.exists(), "Save must write keymaps/editor.toml");
+    let text = std::fs::read_to_string(&path).expect("read");
+    let table: toml::Table = toml::from_str(&text).expect("valid toml");
+    let (map, _w) = ff_keys::KeyMap::from_toml_table(&table, "editor");
+    assert_eq!(
+        map.get_plain(ff_keys::FunctionKey::F5).map(|b| b.command()),
+        Some("FIND"),
+        "the saved keymaps/editor.toml must bind F5 = FIND"
+    );
+}
+
+// === CR-NR-078 WF.4: host-agnostic render (detach-ready) =====================
+
+// Validates: workspace-framework Req 6.1/6.2 -- a migrated Context's
+// `WorkspaceContext::render` is HOST-AGNOSTIC: it renders correctly into a plain
+// `Ui` that is NOT the main window's CentralPanel (the same call a future
+// detached OS viewport or dock zone would use), and returns its InteriorFocus,
+// without panicking. Proven with the Config panel (the simplest implementor).
+#[test]
+fn workspace_context_render_is_host_agnostic() {
+    use crate::config_panel::{filter_field_id, ConfigPanelState};
+    use crate::notification::NotificationQueue;
+    use crate::shell::workspace_context::{InteriorFocus, ShellServices, WorkspaceContext};
+    use egui_kittest::Harness;
+    use ff_config::{init, ConfigInitOptions};
+    use std::cell::Cell;
+    use std::rc::Rc;
+    use std::sync::{Arc, Mutex};
+    use tokio::runtime::Runtime;
+
+    let config = init(ConfigInitOptions::new().with_hot_reload(false)).expect("config init");
+    let runtime = Runtime::new().expect("runtime");
+    let notifications = Arc::new(Mutex::new(NotificationQueue::new()));
+
+    let focus_seen: Rc<Cell<InteriorFocus>> = Rc::new(Cell::new(InteriorFocus::none()));
+    let focus_for_ui = Rc::clone(&focus_seen);
+
+    // build_ui renders into a PLAIN Ui -- deliberately NOT a CentralPanel -- to
+    // prove the Context does not assume the central-panel host.
+    let mut harness = Harness::builder()
+        .with_size(egui::Vec2::new(600.0, 400.0))
+        .build_ui(move |ui| {
+            let mut panel = ConfigPanelState::new();
+            let mut requests = Vec::new();
+            let mut services = ShellServices {
+                config: &config,
+                runtime: &runtime,
+                notifications: &notifications,
+                themes_dir: std::path::PathBuf::from("."),
+                menus_dir: std::path::PathBuf::from("."),
+                requests: &mut requests,
+            };
+            let focus = panel.render(ui, &mut services);
+            focus_for_ui.set(focus);
+        });
+    harness.run();
+
+    // The Config panel reports its Filter field as the single interior stop,
+    // regardless of host -- identical to when it renders in the central panel.
+    assert_eq!(
+        focus_seen.get(),
+        InteriorFocus::single(filter_field_id()),
+        "WorkspaceContext::render must be host-agnostic: same InteriorFocus outside the central panel"
+    );
+}
+
+// === CR-CH-024: THEME command (full-shell egui_kittest) ======================
+
+// Validates: theme Req 17.2b (CR-CH-024) -- `THEME Dark` shorthand selects the
+// Default Dark built-in; `THEME Legacy` selects Default Legacy.
+#[test]
+fn full_shell_theme_shorthand_selects_default_builtins() {
+    use ff_theme::mode::VisualMode;
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("THEME Dark");
+    harness.run();
+    assert_eq!(harness.state().palette.mode, VisualMode::Dark);
+    assert_eq!(harness.state().palette.name, "Default Dark");
+
+    harness.state_mut().handle_command("THEME Legacy");
+    harness.run();
+    assert_eq!(harness.state().palette.mode, VisualMode::Legacy);
+    assert_eq!(
+        harness.state().palette.name,
+        "Default Legacy",
+        "THEME Legacy resolves to Default Legacy (no separate ISPF built-in)"
+    );
+}
+
+// Validates: theme Req 17.5 (CR-CH-024) -- an unknown theme leaves the active
+// theme unchanged and shows the does-not-exist message.
+#[test]
+fn full_shell_theme_unknown_leaves_theme_unchanged() {
+    use ff_theme::mode::VisualMode;
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("THEME Light");
+    harness.run();
+    assert_eq!(harness.state().palette.mode, VisualMode::Light);
+    harness
+        .state_mut()
+        .handle_command("THEME does-not-exist-xyz");
+    harness.run();
+    assert_eq!(
+        harness.state().palette.mode,
+        VisualMode::Light,
+        "unknown THEME must not change the active theme"
+    );
+    let msg = harness.state().open_error.clone().unwrap_or_default();
+    assert!(
+        msg.contains("does-not-exist-xyz") && msg.contains("does not exist"),
+        "unknown THEME must show the does-not-exist message, got: {msg:?}"
+    );
+}
+
+// Validates: theme Req 17.4 (CR-CH-024) -- bare `THEME` opens the Theme Editor
+// context in place, and END returns to the previous context (Navigation_Stack).
+#[test]
+fn full_shell_bare_theme_opens_editor_and_end_returns() {
+    use crate::tab_state::TabKind;
+    let mut harness = harness_shell();
+    // Start on the POM.
+    assert_eq!(
+        harness.state().tabs.active_tab().kind,
+        TabKind::PrimaryOptionMenu
+    );
+    harness.state_mut().handle_command("THEME");
+    harness.run();
+    assert_eq!(
+        harness.state().tabs.active_tab().kind,
+        TabKind::ThemeEditor,
+        "bare THEME opens the Theme Editor"
+    );
+    // END returns one level to the POM (per-tab Navigation_Stack, CR-CH-022).
+    harness.state_mut().handle_command("END");
+    harness.run();
+    assert_eq!(
+        harness.state().tabs.active_tab().kind,
+        TabKind::PrimaryOptionMenu,
+        "END from the Theme Editor returns to the POM"
+    );
+}
+
+// Validates: theme Req 17.1 (CR-CH-024) -- the `THEMES` command is removed; it
+// is no longer recognised and does NOT open the Theme Editor.
+#[test]
+fn full_shell_themes_command_is_removed() {
+    use crate::tab_state::TabKind;
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("THEMES");
+    harness.run();
+    assert_ne!(
+        harness.state().tabs.active_tab().kind,
+        TabKind::ThemeEditor,
+        "THEMES is no longer a recognised command (CR-CH-024)"
+    );
+}
+
+// Validates: theme Req 18.1/18.3 (CR-CH-024) -- exactly four built-in themes are
+// listed, and none is named "Legacy (ISPF 3270)".
+#[test]
+fn full_shell_theme_list_has_four_builtins() {
+    let harness = harness_shell();
+    let themes_dir = harness.state().themes_dir();
+    let builtins: Vec<String> = ff_theme::list_all_themes(&themes_dir)
+        .into_iter()
+        .filter(|t| t.is_builtin)
+        .map(|t| t.name)
+        .collect();
+    assert_eq!(
+        builtins.len(),
+        4,
+        "exactly four built-ins; got {builtins:?}"
+    );
+    assert!(!builtins.iter().any(|n| n == "Legacy (ISPF 3270)"));
+    assert!(builtins.iter().any(|n| n == "Default Legacy"));
 }

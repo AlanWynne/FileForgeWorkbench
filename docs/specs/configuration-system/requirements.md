@@ -192,32 +192,48 @@ The `ff-config` crate is a Wave 2 (Platform Architecture) component. It depends 
 
 ---
 
-### Requirement 15: Settings Context -- Interactive Configuration Dialog
+### Requirement 15: Config View -- Interactive Configuration-Key Browser
 
-**User Story:** As a workbench user, I want a graphical Settings Context that lets me view and
+> **Terminology (CR-CH-025 rename).** This requirement governs the CONFIG VIEW:
+> the flat configuration-key browser/editor opened by the `CONFIG` command
+> (Config Context, `TabKind::ConfigPanel`, `WorkspaceKind::Config`, tab title
+> `[CONFIG]`). It is NOT the SETTINGS MENU (the data-driven `Menu_Workspace`
+> backed by `menus/settings.toml`, opened by the menu name `SETTINGS`). Throughout
+> this spec, "Settings" refers to that MENU; "Config"/"CONFIG" refers to this
+> key browser.
+
+**User Story:** As a workbench user, I want a graphical Config View that lets me view and
 change all configuration values without editing TOML files manually, so that I can adjust
 workbench behaviour quickly and safely from within the application.
 
 **Source:** [WB] Configuration as Data; [ISPF-POM] POM option 0.
 
-*(Phase CW restructures the Settings Context as a two-level Menu Workspace. The primary entry
-point becomes a Settings_Menu (namespace selector) backed by `menus/settings.toml`. Each
-namespace option opens a Settings_Namespace_View (filtered flat list). The migration from the
-current flat-list implementation happens in Phase CW-impl. See
-`docs/specs/menu-workspace/cw-requirements.md` for the full definition.)*
+*(REVISED by CR-CH-025. The earlier Phase CW design -- a two-level Settings_Menu that acted as a
+NAMESPACE SELECTOR whose options each opened a filtered `Settings_Namespace_View` -- is
+SUPERSEDED. The Settings_Menu is now a small LAUNCHER (options `A` -> `CONFIG`, `T` -> `THEME`,
+`M` -> `MENUS`, `R` -> `RESET BARE`; menu-workspace Requirement 12.3), reached by resolving the
+menu name `SETTINGS` through the unified command-resolution chain (command-framework Requirement
+8.3) -- NOT a hardcoded verb. The flat configuration-key browser, and namespace filtering, now
+live on the first-class `CONFIG [<namespace>]` command (Requirement 20). cw-requirements Req 9/10
+[the namespace-selector Settings_Menu and the per-option Settings_Namespace_View] are superseded
+accordingly; see `docs/specs/menu-workspace/cw-requirements.md`.)*
 
 #### Acceptance Criteria
 
-1. WHEN the user selects option `0` from the Home Context (Primary Option Menu), OR types `0` or `SETTINGS`
-     or `=0` in any `Command ===>` field, THE shell SHALL open the Settings Context as a new Workspace.
-     After Phase CW-impl, this opens the Settings_Menu (namespace selector). Until then, it opens
-     the flat-list Settings panel with title `[SETTINGS]` and tab kind `SettingsPanel`.
+1. WHEN the user selects the Settings option from the Home Context (Primary Option Menu), OR the
+     menu name `SETTINGS` resolves through the command-resolution chain (command-framework
+     Requirement 8.3 stage 3; e.g. typing `SETTINGS` or `=0`), THE shell SHALL open the
+     Settings_Menu -- the Menu_Workspace backed by `menus/settings.toml` (or the compiled Settings
+     Recovery_Baseline when no user file exists). (REVISED by CR-CH-025: `SETTINGS` is a Menu_Name,
+     not a bespoke verb; the Settings_Menu is a launcher, not a namespace selector.)
 
-2. THE Settings_Namespace_View (opened from the Settings_Menu) SHALL display all configuration
-     keys for the selected namespace, grouped and rendered as a collapsible section. The
-     unfiltered flat-list view (option `A` in the Settings_Menu) SHALL display all namespaces.
+2. THE flat configuration-key view (the widget that lists keys with their values, provenance, and
+     edit controls) SHALL be opened by the `CONFIG` command (Requirement 20): bare `CONFIG` shows
+     ALL keys unfiltered; `CONFIG <namespace>` shows only keys under that namespace prefix. (REVISED
+     by CR-CH-025: this replaces the former Settings_Namespace_View opened per namespace option and
+     the opaque `A` command; the Settings_Menu `A` option dispatches `CONFIG`.)
 
-3. FOR each configuration key, THE Settings Context SHALL display:
+3. FOR each configuration key, THE Config View SHALL display:
      - The key's human-readable description (from the schema entry)
      - The current effective value
      - The provenance layer that provided the effective value (e.g., `Default`, `User`, `Project`)
@@ -227,43 +243,43 @@ current flat-list implementation happens in Phase CW-impl. See
        - String with `allowed_values` -> drop-down selector
        - String without constraints -> single-line text field
 
-4. WHEN the user changes a value in the Settings Context and confirms (presses Enter or moves
+4. WHEN the user changes a value in the Config View and confirms (presses Enter or moves
      focus away from the field), THE shell SHALL validate the new value against the schema
      constraints; IF valid, THE shell SHALL write the new value to the user-layer configuration
      file and update the effective value immediately (no restart required).
 
 5. WHEN a value fails schema validation (out of range, not in allowed set, fails regex),
-     THE Settings Context SHALL display an inline error message adjacent to the field and SHALL
+     THE Config View SHALL display an inline error message adjacent to the field and SHALL
      NOT persist the invalid value.
 
-6. THE Settings Context SHALL display a `Reset to Default` button beside each key that has
+6. THE Config View SHALL display a `Reset to Default` button beside each key that has
      been overridden above the Defaults layer; WHEN clicked, THE shell SHALL remove the
      user-layer override for that key, restoring the schema default.
 
-7. THE Settings Context SHALL include a search/filter input at the top; WHEN the user types
-     in the filter, THE Settings Context SHALL show only keys whose key path or description contains the
+7. THE Config View SHALL include a search/filter input at the top; WHEN the user types
+     in the filter, THE Config View SHALL show only keys whose key path or description contains the
      filter text (case-insensitive substring match).
 
-8. THE Settings Context SHALL display a read-only `Source File` indicator showing the path of
+8. THE Config View SHALL display a read-only `Source File` indicator showing the path of
      the user-layer configuration file being edited.
 
-9. THE `[SETTINGS]` Workspace SHALL persist in the session and be restored on next launch as a
-     `SettingsPanel` tab kind. After Phase CW-impl, a Settings_Namespace_View tab SHALL persist
-     with its namespace filter and be restored as a `SettingsPanel` tab kind with that filter.
-     *(Phase DB, CR-CH-012: session persistence no longer uses a closed "tab kind" enumeration.
-     The Settings Context persists as a `CustomWorkspace { workspace_kind = settings,
+9. THE `[CONFIG]` Workspace SHALL persist in the session and be restored on next launch as a
+     `ConfigPanel` tab kind, with its namespace filter (if any) reapplied.
+     *(CR-CH-012 / CR-CH-025: session persistence uses Workspace_Descriptors, not a closed "tab
+     kind" enumeration. The Config View persists as a `CustomWorkspace { workspace_kind = config,
      params = { namespace } }` Workspace_Descriptor and is restored with that namespace filter
-     applied -- see startup-and-session Requirement 21.3. "tab kind" in this criterion should be
-     read as the Workspace_Kind `settings`.)*
+     applied -- see startup-and-session Requirement 21.3.)*
 
-10. WHEN the user presses `F3` or types `END` in a Settings_Namespace_View command field,
-      THE shell SHALL return the Workspace to the Settings_Menu. WHEN the user presses `F3` or
-      types `END` in the Settings_Menu command field, THE shell SHALL return the Workspace to
-      the Home Context (Primary Option Menu) view.
+10. END/F3 navigation SHALL follow the per-tab Navigation_Stack (CR-CH-022): pressing `F3` or
+      typing `END` pops one level. (REVISED by CR-CH-025: with the Settings_Namespace_View removed,
+      the concrete effect is -- from a `CONFIG` flat view opened via the Settings_Menu `A` option,
+      END returns to the Settings_Menu; from the Settings_Menu, END returns to the Home Context
+      (POM). The stack, not a bespoke Settings return rule, governs this.)
 
 11. WHEN the user clicks `Settings` in the POM option list (option 0 button), THE shell
-      SHALL navigate to the Settings Context using the same routing as typing `0` in the command
-      field.
+      SHALL navigate to the Settings_Menu (the Menu_Workspace, per criterion 1) using the same
+      routing as typing `0` in the command field. (The flat Config View is reached from there via
+      the `A` -> `CONFIG` option, or directly by the `CONFIG` command.)
 
 ---
 
@@ -353,9 +369,9 @@ consistent policy enforcement across all workbench instances.
    wins) and emit a DEBUG-level log record identifying the key and the layer that attempted
    to override it.
 5. THE Configuration_System SHALL expose an `is_locked(key: &str) -> bool` method on
-   ConfigHandle so that the Settings Context and other consumers can check lock status before
+   ConfigHandle so that the Config View and other consumers can check lock status before
    attempting writes.
-6. THE Settings Context SHALL display a lock indicator (padlock icon or "LOCKED" badge) beside
+6. THE Config View SHALL display a lock indicator (padlock icon or "LOCKED" badge) beside
    any key that is locked, and SHALL disable the value widget and Reset to Default button for
    locked keys.
 7. THE ConfigError enum SHALL gain a `KeyLocked { key: String }` variant with message:
@@ -389,9 +405,11 @@ known-good baseline while keeping my old configuration safe for recovery.
 4. WHEN the user confirms, THE shell SHALL ARCHIVE (move, not delete) the current
    configuration into `<User_Data_Dir>/config-archive/<timestamp>/`, where
    `<timestamp>` is a filesystem-safe UTC timestamp. The archive SHALL include,
-   when present: the `menus/` directory, the `themes/` directory, `session.toml`,
-   the active `config.toml` (user layer), and the catalog registry file. Files
-   that do not exist are skipped without error.
+   when present: the `menus/` directory, the `themes/` directory, the `keymaps/`
+   directory (per-context key-map override files, function-keys-and-history
+   Requirement 14, CR-CH-027), `session.toml`, the active `config.toml` (user
+   layer), and the catalog registry file. Files that do not exist are skipped
+   without error.
 5. THE archive operation SHALL be non-destructive: after a successful `RESET
    BARE`, every archived file SHALL exist under `config-archive/<timestamp>/` and
    SHALL NOT remain at its original location. WHEN a move fails for any single
@@ -404,10 +422,52 @@ known-good baseline while keeping my old configuration safe for recovery.
    Requirement 12), WITHOUT requiring the user to relaunch the process. The
    default Home catalog SHALL be re-created (CR-NR-004 behaviour) so Files is
    immediately usable.
-7. THE Settings Context (or the Settings menu) SHALL expose an affordance
-   (button or menu option) that dispatches the `RESET BARE` command through the
-   same command path (command parity); the affordance SHALL NOT bypass the
+7. THE Settings_Menu SHALL expose an affordance (the `R` -> `RESET BARE` menu
+   option) that dispatches the `RESET BARE` command through the same command
+   path (command parity); the affordance SHALL NOT bypass the
    command or its confirmation dialog.
 8. THE archived configuration SHALL remain readable so the operator can manually
    restore files from `config-archive/<timestamp>/` back into `<User_Data_Dir>/`;
    `RESET BARE` SHALL NOT delete or prune previous archive directories.
+---
+
+### Requirement 20: The CONFIG Command
+
+**User Story:** As a workbench user, I want a single `CONFIG` command that opens the
+configuration-key browser -- optionally scoped to one namespace -- so that I can view and edit
+settings without the Settings menu being a special case and without an opaque one-letter command.
+
+**Source:** [CR-CH-025]; owner request ("i like the config command idea to do the 'Settings A'
+that we currently have"). Supersedes cw-requirements Req 9/10 (the Settings_Menu namespace
+selector and per-option Settings_Namespace_View).
+
+#### Acceptance Criteria
+
+1. THE shell SHALL provide a `CONFIG` command, registered with the command framework
+   (Command_ID `"config.open"`) so it is dispatchable from the command line, menu options,
+   keyboard bindings, and macros, and resolvable through the unified command-resolution chain as a
+   built-in command (command-framework Requirement 8.3 stage 2).
+2. WHEN the user types bare `CONFIG` (no argument) in any `Command ===>` field, THE shell SHALL
+   open the Config View (flat configuration-key browser) showing ALL keys, unfiltered (the
+   behaviour previously reached by the opaque `A` command). It transforms the
+   current tab in place and pushes the per-tab Navigation_Stack (CR-CH-022) so END returns to the
+   previous Context.
+3. WHEN the user types `CONFIG <namespace>` (e.g. `CONFIG editor`), THE shell SHALL open the flat
+   configuration-key view with the filter pre-populated to that namespace prefix (e.g. `editor.`),
+   so only keys under that namespace are shown on open. The namespace token SHALL be matched
+   case-insensitively.
+4. WHEN `<namespace>` does not match any configuration key prefix, THE shell SHALL still open the
+   flat view (with the filter applied, showing no rows) rather than erroring, so the user can clear
+   or edit the filter -- consistent with Requirement 15.7 (the filter is user-editable in place).
+5. THE `CONFIG` view SHALL be the SAME flat configuration-key widget defined by Requirement 15
+   (key, description, effective value, provenance, type-appropriate input, Reset-to-Default,
+   validation, Source File indicator, search/filter). `CONFIG` only chooses the initial filter; it
+   does not introduce a second settings surface.
+6. THE Settings_Menu `A` option (menu-workspace Requirement 12.3) SHALL carry `command = "CONFIG"`,
+   so selecting `A` on the Settings menu dispatches `CONFIG` through the same code path as typing
+   it (command parity). There SHALL be NO remaining `A`-named command and NO hardcoded
+   `SETTINGS <namespace>` intercept; namespace filtering is reached only via `CONFIG <namespace>`.
+7. THE Config View SHALL persist in the session and be restored on next launch as a
+   `CustomWorkspace { workspace_kind = config, params = { namespace } }` Workspace_Descriptor
+   (startup-and-session Requirement 21.3), with the namespace filter (if any) reapplied -- the same
+   persistence contract Requirement 15.9 defines for the Config Workspace.

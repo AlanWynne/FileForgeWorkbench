@@ -24,10 +24,10 @@ pub enum TabKind {
     Untitled,
     /// Virtual Catalog Manager -- POM option 1.
     FilesPanel,
-    /// Settings Panel -- POM option 0.
+    /// Config Panel -- the flat config-key browser opened by `CONFIG`.
     ///
     /// Validates: Requirement 15.1, 15.9
-    SettingsPanel,
+    ConfigPanel,
     /// File Explorer Panel -- POM option 2 (tree view of catalog contents).
     ///
     /// Validates: Requirement 19.11, 19.12
@@ -64,6 +64,12 @@ pub enum TabKind {
     ///
     /// Validates: menu-workspace Requirement 13.1 (CR-NR-075)
     MenusEditor,
+    /// In-app Keys editor Context (edit/save per-workspace-kind key lists to
+    /// `keymaps/<kind>.toml`). Replaces the retired modal Key Configuration
+    /// dialog.
+    ///
+    /// Validates: function-keys-and-history Requirement 22 (CR-CH-029)
+    KeysEditor,
 }
 
 /// A single undoable edit stored as the inverse operation to apply.
@@ -248,16 +254,11 @@ impl TabState {
         base_tab!(id, TabKind::FilesPanel, "[FILES]".to_string(), document)
     }
 
-    /// Create a Settings Panel tab.
+    /// Create a Config Panel tab (the flat config-key browser).
     ///
     /// Validates: Requirement 15.1, 15.9
-    pub fn settings_panel(id: TabId, document: DocumentHandle) -> Self {
-        base_tab!(
-            id,
-            TabKind::SettingsPanel,
-            "[SETTINGS]".to_string(),
-            document
-        )
+    pub fn config_panel(id: TabId, document: DocumentHandle) -> Self {
+        base_tab!(id, TabKind::ConfigPanel, "[CONFIG]".to_string(), document)
     }
 
     /// Create a File Explorer Panel tab (POM option 2).

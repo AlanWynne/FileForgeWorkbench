@@ -2,7 +2,7 @@
 //!
 //! A simple, fast editor Workspace: pick a theme, edit its visible-chrome
 //! colours as hex, and Copy / Save / Save As / Set Active / Reset. The render
-//! function is a free function (mirroring `settings_panel::render` and
+//! function is a free function (mirroring `config_panel::render` and
 //! `command_config::render`) returning a [`ThemeEditorAction`] the shell
 //! applies against the themes directory and the active palette.
 //!
@@ -119,9 +119,10 @@ impl EditableToken {
 /// An action produced by the Theme Editor render, applied by the shell.
 ///
 /// Validates: theme-and-appearance Requirement 20.4-20.8.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum ThemeEditorAction {
     /// No action this frame.
+    #[default]
     None,
     /// Select a different theme to edit (by name).
     Select(String),
@@ -140,7 +141,7 @@ pub enum ThemeEditorAction {
 }
 
 /// Per-Context UI state for the Theme Editor. Lives on the shell (like
-/// `SettingsPanelState` / `CommandConfiguratorState`), not on the `TabState`.
+/// `ConfigPanelState` / `CommandConfiguratorState`), not on the `TabState`.
 ///
 /// Validates: theme-and-appearance Requirement 20.1, 20.3.
 #[derive(Debug, Clone, Default)]
@@ -161,6 +162,18 @@ pub struct ThemeEditorState {
     pub error: Option<String>,
     /// A theme name pending reset confirmation.
     pub pending_reset: Option<String>,
+    /// The egui id of the FIRST interior control (the Theme selector combo),
+    /// captured each frame so the shell Boundary_Policy can latch the
+    /// command-field -> first-interior Tab jump to the FRESH same-frame id
+    /// (B057: a stale/guessed id does not round-trip through egui focus, and
+    /// without it the shell cannot perform the latch, leaving a phantom stop).
+    /// Transient render output; not serialised.
+    pub first_interior_id: Option<egui::Id>,
+    /// The action produced by the most recent `WorkspaceContext::render`, stashed
+    /// here so the shell arm can apply it via `apply_theme_editor_action` after
+    /// the panel is put back (CR-NR-078: the rich shell-side action does not map
+    /// to a generic `ShellRequest`). Transient; not serialised.
+    pub pending_action: ThemeEditorAction,
 }
 
 impl ThemeEditorState {
@@ -198,6 +211,29 @@ impl ThemeEditorState {
 }
 
 /// Render the Theme Editor Context, returning the action to apply.
+/// `WorkspaceContext` impl (CR-NR-078): render the Theme Editor, stash the
+/// produced `ThemeEditorAction` on `pending_action` for the shell to apply via
+/// `apply_theme_editor_action` (the action is rich shell-side state, not a
+/// generic `ShellRequest`), and report the interior focus contract: FIRST = the
+/// Theme selector combo (captured on `first_interior_id`), LAST = the final
+/// colour hex field.
+///
+/// Validates: workspace-framework Requirement 1.4, 1.5, 6.1.
+impl crate::shell::workspace_context::WorkspaceContext for ThemeEditorState {
+    fn render(
+        &mut self,
+        ui: &mut egui::Ui,
+        _services: &mut crate::shell::workspace_context::ShellServices<'_>,
+    ) -> crate::shell::workspace_context::InteriorFocus {
+        self.pending_action = render(ui, self);
+        let last = egui::Id::new(("theme_editor_hex", EditableToken::ALL.len() - 1));
+        crate::shell::workspace_context::InteriorFocus {
+            first: self.first_interior_id,
+            last: Some(last),
+        }
+    }
+}
+
 ///
 /// Validates: theme-and-appearance Requirement 20.1, 20.3-20.9.
 pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAction {
@@ -215,13 +251,17 @@ pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAct
     ui.add_space(4.0);
 
     // --- Theme selector -------------------------------------------------
+    // Reset the reported first-interior id each frame; the combo below sets it
+    // (B057: mirrors the Menus Editor so the shell Boundary_Policy can latch the
+    // command-field -> first-interior Tab jump to the combo's FRESH id).
+    state.first_interior_id = None;
     ui.horizontal(|ui| {
         ui.label("Theme:");
         let current = state
             .selected
             .clone()
             .unwrap_or_else(|| "(none)".to_string());
-        egui::ComboBox::from_id_salt("theme_editor_select")
+        let combo = egui::ComboBox::from_id_salt("theme_editor_select")
             .selected_text(current)
             .show_ui(ui, |ui| {
                 for name in state.available.clone() {
@@ -233,6 +273,8 @@ pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAct
                     }
                 }
             });
+        // The combo's toggle button is the FIRST interior Tab stop (B057).
+        state.first_interior_id = Some(combo.response.id);
         if ui.button("Set Active").clicked() {
             if let Some(name) = &state.selected {
                 action = ThemeEditorAction::SetActive(name.clone());
@@ -309,8 +351,11 @@ pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAct
                             if state.hex_buffers.len() <= i {
                                 state.hex_buffers.resize(i + 1, String::new());
                             }
+                            // Stable per-row id so Tab focus round-trips reliably and the LAST
+                            // row can anchor the shell's last-interior boundary (B057).
                             let resp = ui.add(
                                 egui::TextEdit::singleline(&mut state.hex_buffers[i])
+                                    .id(egui::Id::new(("theme_editor_hex", i)))
                                     .desired_width(90.0)
                                     .font(egui::TextStyle::Monospace),
                             );

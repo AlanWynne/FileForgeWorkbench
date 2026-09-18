@@ -39,6 +39,16 @@ that migration happens in Phase CW-impl.
 
 ## Requirement 9: Settings Menu Option List
 
+> **SUPERSEDED by CR-CH-025.** The Settings_Menu is no longer a NAMESPACE
+> SELECTOR. It is a small LAUNCHER (options `A` -> `CONFIG`, `T` -> `THEME`,
+> `M` -> `MENUS`, `R` -> `RESET BARE`; menu-workspace Requirement 12.3), reached
+> by resolving the menu name `SETTINGS` through the unified command-resolution
+> chain (command-framework Requirement 8.3). The per-namespace option list below
+> and the `Settings_Namespace_View` of Requirement 10 are retired; namespace
+> filtering now lives on the `CONFIG [<namespace>]` command (configuration-system
+> Requirement 20). The criteria below are retained for historical context only
+> and are NOT authoritative.
+
 **User Story:** As a workbench user, I want the Settings Context to open as a
 menu of configuration namespaces, so that I can navigate directly to the group
 of settings I need without scrolling through an undifferentiated flat list.
@@ -87,6 +97,13 @@ of settings I need without scrolling through an undifferentiated flat list.
 ---
 
 ## Requirement 10: Settings Namespace View
+
+> **SUPERSEDED by CR-CH-025.** The `Settings_Namespace_View` (a flat list opened
+> per namespace option) is retired. The flat configuration-key browser is now the
+> `CONFIG` command: bare `CONFIG` shows all keys, `CONFIG <namespace>` shows a
+> namespace-filtered view (configuration-system Requirement 20). END/F3 follows
+> the per-tab Navigation_Stack (CR-CH-022). The criteria below are retained for
+> historical context only and are NOT authoritative.
 
 **User Story:** As a workbench user, I want each namespace option to open a
 filtered view showing only that namespace's keys, so that I can focus on the

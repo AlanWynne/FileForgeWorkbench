@@ -110,26 +110,52 @@ impl TargetResolver for UserCommandStore<'_> {
 /// handling via fall-through, preserving observable behaviour for every command
 /// string that resolves today (command-framework Requirement 8.4,
 /// menu-workspace Requirement 10.2).
+///
+/// CR-CH-025: `menu_name_target` resolves a bare token to a `Menu` target when
+/// it names a resolvable menu (a user `menus/<name>.toml` that exists, or a
+/// compiled built-in menu name `pom`/`settings`); `macro_name_target` is a
+/// DEFERRED stub returning `None` until macro execution is wired.
 pub struct ShellTargetResolver<'a> {
     definitions: &'a [CommandDefinition],
     registry: &'a ff_command::CommandRegistry,
+    /// Directory scanned for `menus/<name>.toml` user menus (CR-CH-025 stage 3).
+    menus_dir: std::path::PathBuf,
 }
 
+/// Compiled built-in menu names that always resolve (no file required).
+/// Mirrors the code-only Recovery_Baseline menus (menu-workspace Req 12).
+const BUILTIN_MENU_NAMES: &[&str] = &["pom", "settings"];
+
 impl<'a> ShellTargetResolver<'a> {
-    /// Create a resolver over the given definitions and command registry.
+    /// Create a resolver over the given definitions, command registry, and the
+    /// menus directory used for menu-name resolution (CR-CH-025).
     pub fn new(
         definitions: &'a [CommandDefinition],
         registry: &'a ff_command::CommandRegistry,
+        menus_dir: std::path::PathBuf,
     ) -> Self {
         Self {
             definitions,
             registry,
+            menus_dir,
         }
     }
 
     /// Look up a definition by exact id.
     pub fn find(&self, id: &str) -> Option<&CommandDefinition> {
         self.definitions.iter().find(|d| d.id == id)
+    }
+
+    /// True when `name` (case-insensitive) is a resolvable menu: a compiled
+    /// built-in (`pom`/`settings`) or a user `menus/<name>.toml` on disk.
+    fn is_resolvable_menu(&self, name: &str) -> bool {
+        let lower = name.to_ascii_lowercase();
+        if BUILTIN_MENU_NAMES.contains(&lower.as_str()) {
+            return true;
+        }
+        // A user menu file. Reuse the slugging rule used elsewhere is overkill
+        // here -- menu names are already file-stem tokens; probe `<name>.toml`.
+        self.menus_dir.join(format!("{lower}.toml")).exists()
     }
 }
 
@@ -147,6 +173,30 @@ impl TargetResolver for ShellTargetResolver<'_> {
             Some(id) => self.registry.contains(&id),
             None => false,
         }
+    }
+
+    /// Resolve the FIRST token to a `Menu` target when it names a resolvable
+    /// menu. The trailing token (if any) is applied as an Option_Key by the
+    /// shell's chaining helper, so only the first token is inspected here.
+    ///
+    /// Validates: command-framework Requirement 8.11 (CR-CH-025)
+    fn menu_name_target(&self, input: &str) -> Option<CommandTarget> {
+        let first = input.split_whitespace().next().unwrap_or("");
+        if first.is_empty() || !self.is_resolvable_menu(first) {
+            return None;
+        }
+        Some(CommandTarget::Menu {
+            name: first.to_ascii_lowercase(),
+        })
+    }
+
+    /// DEFERRED (CR-CH-025, command-framework Requirement 8.12): the macro stage
+    /// is part of the specified chain order but matches nothing until the shell
+    /// gains Lua/macro execution (ff-desktop does not yet depend on the macro
+    /// engine). When macro execution is wired, this will look the FIRST token up
+    /// in the Macro_Library and return `CommandTarget::Macro`.
+    fn macro_name_target(&self, _input: &str) -> Option<CommandTarget> {
+        None
     }
 }
 
@@ -210,5 +260,76 @@ command_id = "file.save"
         let def: CommandDefinition = toml::from_str(toml).expect("parse");
         assert_eq!(def.category, "user");
         assert!(def.description.is_none());
+    }
+
+    // === CR-CH-025: ShellTargetResolver menu-name + macro stages ============
+
+    // Validates: command-framework Requirement 8.11 -- a compiled built-in menu
+    // name resolves to a Menu target without any file on disk.
+    #[test]
+    fn shell_resolver_builtin_menu_name_resolves_without_file() {
+        let defs: Vec<CommandDefinition> = vec![];
+        let registry = ff_command::CommandRegistry::new();
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let resolver = ShellTargetResolver::new(&defs, &registry, dir.path().to_path_buf());
+        assert_eq!(
+            resolve_target("settings", &resolver).unwrap(),
+            CommandTarget::Menu {
+                name: "settings".to_string()
+            }
+        );
+        // Case-insensitive; POM is also a built-in.
+        assert_eq!(
+            resolve_target("POM", &resolver).unwrap(),
+            CommandTarget::Menu {
+                name: "pom".to_string()
+            }
+        );
+    }
+
+    // Validates: command-framework Requirement 8.11 -- a user menu file resolves.
+    #[test]
+    fn shell_resolver_user_menu_file_resolves() {
+        let defs: Vec<CommandDefinition> = vec![];
+        let registry = ff_command::CommandRegistry::new();
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        std::fs::write(dir.path().join("reports.toml"), "title = \"Reports\"\n").expect("write");
+        let resolver = ShellTargetResolver::new(&defs, &registry, dir.path().to_path_buf());
+        assert_eq!(
+            resolve_target("reports", &resolver).unwrap(),
+            CommandTarget::Menu {
+                name: "reports".to_string()
+            }
+        );
+        // Resolution inspects the FIRST token only (trailing key chains later).
+        assert_eq!(
+            resolve_target("reports x", &resolver).unwrap(),
+            CommandTarget::Menu {
+                name: "reports".to_string()
+            }
+        );
+    }
+
+    // Validates: command-framework Requirement 8.11 -- an unknown token with no
+    // menu file and no built-in match does not resolve as a menu.
+    #[test]
+    fn shell_resolver_unknown_menu_name_does_not_resolve() {
+        let defs: Vec<CommandDefinition> = vec![];
+        let registry = ff_command::CommandRegistry::new();
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let resolver = ShellTargetResolver::new(&defs, &registry, dir.path().to_path_buf());
+        assert!(resolve_target("nosuchmenu", &resolver).is_err());
+    }
+
+    // Validates: command-framework Requirement 8.12 -- the macro stage is
+    // deferred: it never resolves, so a macro-named token is unresolved for now.
+    #[test]
+    fn shell_resolver_macro_stage_is_deferred_none() {
+        let defs: Vec<CommandDefinition> = vec![];
+        let registry = ff_command::CommandRegistry::new();
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let resolver = ShellTargetResolver::new(&defs, &registry, dir.path().to_path_buf());
+        assert_eq!(resolver.macro_name_target("format"), None);
+        assert!(resolve_target("format", &resolver).is_err());
     }
 }

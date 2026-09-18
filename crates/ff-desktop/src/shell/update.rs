@@ -19,7 +19,6 @@ use ff_dscatalog::{
 };
 
 use super::helpers::*;
-use super::FocusStop;
 use super::WorkbenchShell;
 use crate::tab_state::TabKind;
 use ff_fftest::AutomationRegistry as _;
@@ -252,6 +251,15 @@ impl eframe::App for WorkbenchShell {
             while let Ok(n) = self.notification_rx.try_recv() {
                 queue.push(n);
             }
+        }
+
+        // CR-CH-023 Req 16.1a: when the active tab changes (tab click, SWAP,
+        // END navigation, close, etc.), re-arm command-field focus so entering
+        // a Workspace always places focus on the command line.
+        let active_now = self.tabs.active_index();
+        if active_now != self.last_active_tab {
+            self.last_active_tab = active_now;
+            self.command_field_focus_requested = true;
         }
 
         let path = self.pending_open.lock().expect("pending lock").take();
@@ -487,8 +495,7 @@ impl eframe::App for WorkbenchShell {
         // ── Tab-order focus cycle — Validates: Requirement 16.2–16.22 ───────────
         // Consume Tab / Shift+Tab before egui processes them so we control focus.
         // Suppressed when a modal dialog is open so Tab navigates inside the dialog.
-        self.modal_open = self.key_config_dialog.open
-            || self.show_about
+        self.modal_open = self.show_about
             || self.palette_state.open
             || self.show_history_list.is_some()
             || self.show_swap_list.is_some()
@@ -496,44 +503,119 @@ impl eframe::App for WorkbenchShell {
             || !matches!(self.files_panel.dialog, files_panel::FilesDialogState::None);
         {
             let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
-            let tab_count = self.tabs.len();
-            let pom_active = self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu;
-            // Focus ring is sized by the loaded pom.toml option list (Req 2.1f),
-            // not a compiled array. 0 when the POM menu failed to load.
-            let pom_option_count = self
-                .tabs
-                .active_tab()
-                .menu_workspace
-                .as_ref()
-                .and_then(|mw| mw.menu.as_ref())
-                .map(|m| m.options.len())
-                .unwrap_or(0);
             let is_file_explorer = self.tabs.active_tab().kind == TabKind::FileExplorerPanel;
-            // The Menus Editor manages its OWN Tab traversal: the shell intercepts
-            // Tab and cycles egui focus through the editor's own widgets (command
-            // line -> each option's key/command/description/group -> back), rather
-            // than running the POM focus_stop ring (which would drift up to the
-            // menu bar and never reach the editable fields). B054 follow-up.
-            let is_menus_editor = self.tabs.active_tab().kind == TabKind::MenusEditor;
             let cmd_id = egui::Id::new("command_field_input");
             let cmd_has_focus = ctx.memory(|m| m.focused() == Some(cmd_id));
 
-            let (tab_pressed, shift_tab_pressed) = ctx.input_mut(|i| {
-                // Do not intercept Tab when a modal is open (dialog handles it).
+            // CR-CH-023 unified tab-order: the shell owns only the Boundary_Policy
+            // (command-line entry, menu-bar-last, wrap). Interior order is
+            // egui-native, so between boundaries the Tab event is LEFT in the
+            // queue for egui to process. At a boundary the shell consumes Tab and
+            // redirects focus. The File Explorer keeps its own tree-transfer.
+            //
+            // Snapshot the boundary anchors reported by last frame's render and
+            // the currently-focused widget so we can decide, BEFORE egui gets the
+            // Tab event, whether this press is a boundary (shell handles it) or an
+            // interior/menu-internal move (egui-native handles it).
+            let first_interior = self.first_interior_id;
+            let last_interior = self.last_interior_id;
+            let menu_first_id = self.menu_first_id;
+            let menu_last_id = self.menu_last_id;
+            let focused = ctx.memory(|m| m.focused());
+            let on_menu_last = menu_last_id.is_some() && focused == menu_last_id;
+            let on_menu_first = menu_first_id.is_some() && focused == menu_first_id;
+            let on_last_interior = last_interior.is_some() && focused == last_interior;
+            let on_first_interior = first_interior.is_some() && focused == first_interior;
+            let _ = menu_count;
+
+            // Classify the boundary this frame (None = not a shell boundary; let
+            // egui-native traversal handle it). Computed from focus position only.
+            #[derive(Clone, Copy)]
+            enum Boundary {
+                None,
+                /// Focus the given (reliable) id -- used for menu-bar buttons.
+                Focus(egui::Id),
+                /// Latch: interior render focuses its first control (fresh id).
+                FirstInterior,
+                /// Latch: interior render focuses its last control (fresh id).
+                LastInterior,
+                /// Re-arm command-field focus.
+                CommandField,
+            }
+            let is_explorer_transfer = is_file_explorer && (cmd_has_focus || self.nav_focused);
+
+            // Detect Tab/Shift+Tab AND, in the SAME input pass, decide the
+            // boundary and consume the event ONLY when the shell will handle it.
+            // Consuming during detection (not afterwards) is essential: egui
+            // latches the Tab into its `give_to_next` focus machinery while
+            // rendering, which would otherwise override our request_focus (B056).
+            let boundary = ctx.input_mut(|i| {
                 if self.modal_open {
-                    return (false, false);
-                }
-                // CR-NR-076 (Option X): the Menus Editor uses egui-native Tab
-                // traversal (its widgets are created in visual order). Leave the
-                // Tab event in the queue so egui performs the focus move, and do
-                // NOT report it as a shell tab press -- the shell focus_stop ring
-                // must not run for that tab.
-                if is_menus_editor {
-                    return (false, false);
+                    return Boundary::None;
                 }
                 let shift = i.modifiers.shift;
-                let tab = i.key_pressed(egui::Key::Tab);
-                if tab {
+                if !i.key_pressed(egui::Key::Tab) {
+                    return Boundary::None;
+                }
+                // The File Explorer tree-transfer consumes Tab in its own branch.
+                if is_explorer_transfer {
+                    return Boundary::None;
+                }
+                // Boundary_Policy (B056). egui-native traversal handles the ORDER
+                // WITHIN the interior and WITHIN the menu bar; the shell handles
+                // the boundary JUMPS. The command -> first-interior jump uses a
+                // one-shot latch (`FirstInterior`) honoured by the interior render
+                // with the FRESH same-frame id, because interior option auto-ids
+                // do NOT round-trip through egui focus when requested from a
+                // previous frame. Menu-bar jumps use the reliable captured
+                // menu-button ids directly.
+                // egui-native traversal already produces the correct ORDER
+                // through the interior and the menu bar and wraps back to the
+                // command field on its own. The shell only needs to intercept the
+                // command-field -> interior entry so egui does not first stop on
+                // the SCROLL field / other command-panel widgets: use the
+                // one-shot latch that focuses the FRESH first-interior id (B056).
+                // Reverse Shift+Tab from the command field similarly latches to
+                // the LAST interior. Everything else is egui-native.
+                // egui-native traversal handles the interior order, interior ->
+                // menu bar, and the menu-bar order. The shell handles the moves
+                // egui gets wrong on its own (B056):
+                //  - FORWARD from the command field: egui would stop on the
+                //    SCROLL field (chrome) next, so latch to the FRESH
+                //    first-interior id instead.
+                //  - FORWARD from the last menu button: egui wraps to the first
+                //    focusable of the frame (the first menu button, since the
+                //    menu bar renders first), NOT the command field -- so wrap to
+                //    the command field explicitly.
+                //  - REVERSE from the command field: jump to the last menu button.
+                //  - REVERSE from the first menu button: jump to the last interior
+                //    (latch) or the command field when there is no interior.
+                // Menu-bar button ids are reliable (they round-trip through
+                // egui focus); the interior uses the fresh-id latch.
+                let decision = if !shift {
+                    if cmd_has_focus && first_interior.is_some() {
+                        Boundary::FirstInterior
+                    } else if on_menu_last {
+                        Boundary::CommandField
+                    } else {
+                        Boundary::None
+                    }
+                } else if cmd_has_focus {
+                    menu_last_id.map(Boundary::Focus).unwrap_or(Boundary::None)
+                } else if on_menu_first {
+                    if last_interior.is_some() {
+                        Boundary::LastInterior
+                    } else {
+                        Boundary::CommandField
+                    }
+                } else {
+                    Boundary::None
+                };
+                let _ = (menu_first_id, on_last_interior, on_first_interior);
+                // Consume Tab only when the shell handles this boundary; otherwise
+                // leave it for egui-native interior/menu-bar traversal
+                // (Req 16.4, 16.6, 16.14).
+                if !matches!(decision, Boundary::None) {
                     i.events.retain(|e| {
                         !matches!(
                             e,
@@ -544,28 +626,39 @@ impl eframe::App for WorkbenchShell {
                         )
                     });
                 }
-                (tab && !shift, tab && shift)
+                decision
             });
 
-            // Validates: Requirement 20.1 — Tab from shell command field while File Explorer
-            // is active transfers focus into the explorer tree instead of cycling focus stops.
-            // Tab past the last tree node exits the tree and returns focus to CommandField.
-            // Escape while explorer has focus also exits the tree back to CommandField.
+            // Validates: Requirement 20.1 (file-tree-panel) -- Escape exits the
+            // explorer tree back to the command field.
             if !self.modal_open
                 && is_file_explorer
                 && self.nav_focused
                 && ctx.input(|i| i.key_pressed(egui::Key::Escape))
             {
-                // Modern explorer: Escape exits the tree back to the command field.
                 self.nav_focused = false;
                 self.nav_selection.cursor = None;
-                self.focus_stop = FocusStop::CommandField;
                 self.command_field_focus_requested = true;
-            } else if tab_pressed && is_file_explorer && (cmd_has_focus || self.nav_focused) {
-                // Modern explorer Tab focus-transfer (Req 20.1 / 24.9): Tab from
-                // the command field enters the tree (cursor on the first visible
-                // node); Tab within advances to the next visible node; Tab past
-                // the last node exits back to the command field.
+            } else if is_explorer_transfer
+                && ctx.input_mut(|i| {
+                    // Modern explorer Tab focus-transfer (Req 20.1 / 24.9):
+                    // consume Tab in its own branch and move the tree cursor.
+                    if i.key_pressed(egui::Key::Tab) && !i.modifiers.shift {
+                        i.events.retain(|e| {
+                            !matches!(
+                                e,
+                                egui::Event::Key {
+                                    key: egui::Key::Tab,
+                                    ..
+                                }
+                            )
+                        });
+                        true
+                    } else {
+                        false
+                    }
+                })
+            {
                 use crate::explorer_view::{first_row_id, next_row_id};
                 let next = if !self.nav_focused {
                     self.nav_focused = true;
@@ -578,75 +671,24 @@ impl eframe::App for WorkbenchShell {
                 match next {
                     Some(id) => self.nav_selection.move_cursor(id),
                     None => {
-                        // Past the last node (or empty tree) -- exit to command field.
                         self.nav_focused = false;
                         self.nav_selection.cursor = None;
-                        self.focus_stop = FocusStop::CommandField;
                         self.command_field_focus_requested = true;
                     }
                 }
-            } else if tab_pressed {
-                self.focus_stop =
-                    self.focus_stop
-                        .next(menu_count, tab_count, pom_active, pom_option_count);
-                if self.focus_stop == FocusStop::CommandField {
-                    self.command_field_focus_requested = true;
-                }
-            } else if shift_tab_pressed {
-                self.focus_stop =
-                    self.focus_stop
-                        .prev(menu_count, tab_count, pom_active, pom_option_count);
-                if self.focus_stop == FocusStop::CommandField {
-                    self.command_field_focus_requested = true;
-                }
-            }
-            // Validates: Requirement 16.20 — request egui focus on the tab header button
-            // when a TabHeader stop is active (one-shot on Tab press).
-            //
-            // B054: this MUST NOT fire while the Menus Editor is driving its own
-            // Tab ring. It is a SEPARATE `if` (not part of the else-if chain
-            // above), so without this guard it would issue a SECOND
-            // request_focus in the same frame -- to the tab-header button --
-            // overwriting the ring walk's target (last writer wins in egui
-            // memory) and stealing focus away from the editor's fields. The
-            // menus editor manages its own focus entirely, so skip the tab-header
-            // focus request for it.
-            if (tab_pressed || shift_tab_pressed) && !is_menus_editor {
-                if let FocusStop::TabHeader { index } = self.focus_stop {
-                    let tab_btn_id = egui::Id::new("tab_header_btn").with(index);
-                    ctx.memory_mut(|m| m.request_focus(tab_btn_id));
-                }
-            }
-            // Validates: Requirement 16.13–16.16 — Enter/Space activates focused POM stop.
-            if pom_active {
-                let enter_or_space = ctx
-                    .input(|i| i.key_pressed(egui::Key::Enter) || i.key_pressed(egui::Key::Space));
-                if enter_or_space {
-                    match &self.focus_stop.clone() {
-                        FocusStop::PomOption { index } => {
-                            // Validates: menu-workspace Req 2.1e/2.1f -- activate the
-                            // focused option by dispatching its loaded command, exactly
-                            // as a mouse click does (via pending_menu_option).
-                            let option = self
-                                .tabs
-                                .active_tab()
-                                .menu_workspace
-                                .as_ref()
-                                .and_then(|mw| mw.menu.as_ref())
-                                .and_then(|m| m.options.get(*index))
-                                .cloned();
-                            if let Some(option) = option {
-                                self.pending_menu_option = Some(option);
-                            }
-                        }
-                        FocusStop::CalendarPrev => {
-                            self.pom_calendar_offset -= 1;
-                        }
-                        FocusStop::CalendarNext => {
-                            self.pom_calendar_offset += 1;
-                        }
-                        _ => {}
+            } else {
+                match boundary {
+                    Boundary::Focus(id) => ctx.memory_mut(|m| m.request_focus(id)),
+                    Boundary::FirstInterior => {
+                        self.focus_first_interior_requested = true;
+                        self.focus_last_interior_requested = false;
                     }
+                    Boundary::LastInterior => {
+                        self.focus_last_interior_requested = true;
+                        self.focus_first_interior_requested = false;
+                    }
+                    Boundary::CommandField => self.command_field_focus_requested = true,
+                    Boundary::None => {}
                 }
             }
         }
@@ -658,6 +700,12 @@ impl eframe::App for WorkbenchShell {
         self.render_command_field(ctx);
         self.render_key_label_bar(ctx);
         self.render_status_bar(ctx);
+
+        // CR-CH-028 (Requirement 12.4/12.5): refresh the Cursor_Context snapshot
+        // from live focus/selection BEFORE any dispatch this frame, so the
+        // function-key path, the command line, and registry dispatch all carry
+        // the same per-invocation package.
+        self.refresh_cursor_context_snapshot(ctx);
 
         // ── Function key dispatch (Req 3.1, 3.2) ────────────────────────
         // Suppressed when a modal dialog is open so Ctrl/Shift/Alt combos inside
@@ -762,13 +810,8 @@ impl eframe::App for WorkbenchShell {
             crate::about_dialog::render(ctx, &mut self.show_about);
         }
 
-        // Key Configuration Dialog -- Validates: Requirement 20.1
-        crate::key_config_dialog::render_if_open(
-            ctx,
-            &mut self.key_config_dialog,
-            &self.key_map_resolver,
-            &self.config_handle,
-        );
+        // (The modal Key Configuration Dialog was retired in CR-CH-029; key
+        // assignments are now edited in the Keys Workspace, TabKind::KeysEditor.)
 
         // History list overlay -- Validates: Requirement 19.3, 19.4
         if let Some(entries) = self.show_history_list.clone() {
@@ -1109,7 +1152,7 @@ impl eframe::App for WorkbenchShell {
                 ws_path,
                 self.recent_palette_commands.clone(),
                 self.search_results_panel.history.clone(),
-                self.settings_panel.namespace_filter.as_deref(),
+                self.config_panel.namespace_filter.as_deref(),
             );
             session.save_catalog_registry(&self.files_panel.registry);
         }

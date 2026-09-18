@@ -124,10 +124,49 @@ pub fn builtin_palette_by_name(name: &str) -> Option<ThemePalette> {
         "Default Dark" => Some(defaults::dark_palette()),
         "Default Light" => Some(defaults::light_palette()),
         "Default High Contrast" => Some(defaults::high_contrast_palette()),
-        "Legacy (ISPF 3270)" => Some(defaults::legacy_palette()),
+        // CR-CH-024: `Legacy (ISPF 3270)` removed as a built-in name; the legacy
+        // colours are reachable only under `Default Legacy` (and via the
+        // `THEME Legacy` shorthand).
         "Default Legacy" => Some(defaults::default_legacy_palette()),
         _ => None,
     }
+}
+
+/// Resolve a `THEME <arg>` argument to a concrete theme NAME from `available`
+/// (the available-themes list, built-ins + user themes, in list order).
+///
+/// Resolution order (CR-CH-024; theme-and-appearance Req 17.2/17.3):
+///   (a) EXACT case-insensitive match against a real theme name -> FIRST such
+///       name (a user theme named e.g. "Dark" wins over the shorthand).
+///   (b) otherwise a BUILT-IN SHORTHAND omitting the `Default ` prefix:
+///       `dark`->`Default Dark`, `light`->`Default Light`,
+///       `high contrast`/`high_contrast`/`high-contrast`->`Default High Contrast`,
+///       `legacy`->`Default Legacy`. The shorthand only succeeds if that built-in
+///       name is present in `available`.
+/// Returns `None` when nothing matches (the caller leaves the theme unchanged
+/// and reports "does not exist", Req 17.5).
+///
+/// Validates: theme-and-appearance Requirement 17.2, 17.3
+pub fn resolve_theme_arg(arg: &str, available: &[String]) -> Option<String> {
+    let a = arg.trim();
+    if a.is_empty() {
+        return None;
+    }
+    // (a) exact case-insensitive name match; first match in list order wins.
+    if let Some(name) = available.iter().find(|n| n.eq_ignore_ascii_case(a)) {
+        return Some(name.clone());
+    }
+    // (b) built-in shorthand (normalise separators to single spaces).
+    let key = a.to_ascii_lowercase().replace(['-', '_'], " ");
+    let key = key.split_whitespace().collect::<Vec<_>>().join(" ");
+    let builtin = match key.as_str() {
+        "dark" => "Default Dark",
+        "light" => "Default Light",
+        "high contrast" => "Default High Contrast",
+        "legacy" => "Default Legacy",
+        _ => return None,
+    };
+    available.iter().find(|n| n.as_str() == builtin).cloned()
 }
 
 /// The `VisualMode` associated with a built-in theme name, defaulting to Dark
@@ -168,6 +207,87 @@ mod tests {
         assert_eq!(theme_slug("Legacy (ISPF 3270)"), "legacy-ispf-3270");
         // Trailing/edge punctuation does not produce trailing hyphens.
         assert!(!theme_slug("Legacy (ISPF 3270)").ends_with('-'));
+    }
+
+    fn builtins() -> Vec<String> {
+        vec![
+            "Default Dark".to_string(),
+            "Default Light".to_string(),
+            "Default High Contrast".to_string(),
+            "Default Legacy".to_string(),
+        ]
+    }
+
+    // Validates: theme Req 17.2b -- built-in shorthand omits the "Default " prefix.
+    #[test]
+    fn resolve_theme_arg_shorthand_maps_to_default_builtins() {
+        let a = builtins();
+        assert_eq!(
+            resolve_theme_arg("Dark", &a).as_deref(),
+            Some("Default Dark")
+        );
+        assert_eq!(
+            resolve_theme_arg("light", &a).as_deref(),
+            Some("Default Light")
+        );
+        assert_eq!(
+            resolve_theme_arg("High Contrast", &a).as_deref(),
+            Some("Default High Contrast")
+        );
+        assert_eq!(
+            resolve_theme_arg("high_contrast", &a).as_deref(),
+            Some("Default High Contrast")
+        );
+        assert_eq!(
+            resolve_theme_arg("high-contrast", &a).as_deref(),
+            Some("Default High Contrast")
+        );
+        // Legacy shorthand resolves to Default Legacy (no separate ISPF built-in).
+        assert_eq!(
+            resolve_theme_arg("Legacy", &a).as_deref(),
+            Some("Default Legacy")
+        );
+    }
+
+    // Validates: theme Req 17.2a -- exact case-insensitive full name match.
+    #[test]
+    fn resolve_theme_arg_exact_name_case_insensitive() {
+        let a = builtins();
+        assert_eq!(
+            resolve_theme_arg("default dark", &a).as_deref(),
+            Some("Default Dark")
+        );
+        assert_eq!(
+            resolve_theme_arg("DEFAULT LEGACY", &a).as_deref(),
+            Some("Default Legacy")
+        );
+    }
+
+    // Validates: theme Req 17.2a -- an exact user-theme name wins over a shorthand.
+    #[test]
+    fn resolve_theme_arg_exact_user_name_beats_shorthand() {
+        let mut a = builtins();
+        a.push("Dark".to_string()); // a user theme literally named "Dark"
+                                    // Exact match to the user "Dark" wins over the "Default Dark" shorthand.
+        assert_eq!(resolve_theme_arg("Dark", &a).as_deref(), Some("Dark"));
+    }
+
+    // Validates: theme Req 17.3 -- two case-insensitive user matches resolve to
+    // the FIRST in list order, no error.
+    #[test]
+    fn resolve_theme_arg_ambiguous_resolves_to_first() {
+        let a = vec!["MyTheme".to_string(), "mytheme".to_string()];
+        assert_eq!(resolve_theme_arg("MYTHEME", &a).as_deref(), Some("MyTheme"));
+    }
+
+    // Validates: theme Req 17.5 -- unknown name resolves to None.
+    #[test]
+    fn resolve_theme_arg_unknown_returns_none() {
+        let a = builtins();
+        assert_eq!(resolve_theme_arg("nonexistent", &a), None);
+        assert_eq!(resolve_theme_arg("", &a), None);
+        // The removed name is not a built-in; only matches if a user saved it.
+        assert_eq!(resolve_theme_arg("Legacy (ISPF 3270)", &a), None);
     }
 
     // Validates: Requirement 19.1, 19.2 (CR-CH-019) -- themes dir is created but

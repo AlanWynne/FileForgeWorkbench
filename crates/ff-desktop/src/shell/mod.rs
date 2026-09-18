@@ -22,6 +22,7 @@ use tokio::runtime::Runtime;
 
 use crate::automation::ShellAutomationRegistry;
 use crate::command_palette::CommandPaletteState;
+use crate::config_panel::ConfigPanelState;
 use crate::event_log_panel::EventLogPanelState;
 use crate::exclude_manager::ExcludeManager;
 use crate::files_panel::FilesPanelState;
@@ -31,7 +32,6 @@ use crate::notification::{Notification, NotificationQueue, NotificationSender};
 use crate::plugin_manager_panel::PluginManagerPanelState;
 pub(crate) use crate::scroll_amount::{ScrollAmount, SplitScreenState};
 use crate::session_manager::SessionManager;
-use crate::settings_panel::SettingsPanelState;
 use crate::tab_manager::TabManager;
 use crate::toolchain_panel::ToolchainPanelState;
 use ff_session::{load_workspace, save_workspace, WorkspaceState};
@@ -85,6 +85,25 @@ impl CommandHandler for FileExitHandler {
 /// `menu.open` in `handle_command` before registry dispatch.
 struct MenuOpenHandler;
 
+/// A [`ContextProvider`](ff_command::ContextProvider) backed by the shell's live
+/// Cursor_Context snapshot (CR-CH-028, command-framework Requirement 12.4).
+///
+/// The shell refreshes the shared `snapshot` cell from live focus/selection at
+/// each dispatch; this provider returns a fresh `ExecutionContext` carrying a
+/// clone of that snapshot, so a command dispatched through the registry receives
+/// the SAME package the string-path commands see (command parity, Requirement
+/// 12.4). `current_context` takes `&self`, hence the shared cell.
+struct ShellContextProvider {
+    snapshot: Arc<Mutex<ff_command::CursorContext>>,
+}
+
+impl ff_command::ContextProvider for ShellContextProvider {
+    fn current_context(&self) -> ExecutionContext {
+        let cc = self.snapshot.lock().map(|g| g.clone()).unwrap_or_default();
+        ExecutionContext::builder().cursor_context(cc).build()
+    }
+}
+
 impl CommandHandler for MenuOpenHandler {
     fn is_undoable(&self) -> bool {
         false
@@ -96,164 +115,20 @@ impl CommandHandler for MenuOpenHandler {
     }
 }
 
-// ── Tab-order focus cycle — Validates: Requirement 16 ──────────────────────
+/// Marker handler for `config.open` (CR-CH-025). Registration makes bare
+/// `CONFIG` resolve as a built-in command through the resolution chain; the
+/// actual opening of the flat config-key view is performed by the shell
+/// intercept in `handle_command`.
+struct ConfigOpenHandler;
 
-/// The current keyboard focus stop in the shell tab-order cycle.
-///
-/// Full POM cycle (Tab):
-///   CommandField → PomOption(0..8) → PomExit → CalendarPrev → CalendarNext
-///   → MenuBar(0..N-1) → TabHeader(0..T-1) → CommandField
-/// Non-POM cycle (Tab):
-///   CommandField → MenuBar(0..N-1) → TabHeader(0..T-1) → CommandField
-/// Shift+Tab is the exact reverse.
-///
-/// Validates: Requirement 16.1–16.22
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum FocusStop {
-    /// The primary command field ("Command ===>").
-    CommandField,
-    /// A POM option row (0-based index into the loaded pom.toml option list).
-    ///
-    /// Validates: menu-workspace Requirement 2.1f -- sourced from loaded options.
-    PomOption { index: usize },
-    /// The calendar `<` (previous-month) button on the active POM tab.
-    CalendarPrev,
-    /// The calendar `>` (next-month) button on the active POM tab.
-    CalendarNext,
-    /// A top-level menu bar heading at the given 0-based index.
-    MenuBar { index: usize },
-    /// A tab header button at the given 0-based index.
-    ///
-    /// Validates: Requirement 16.20, 16.21
-    TabHeader { index: usize },
-}
-
-impl FocusStop {
-    /// Advance to the next stop in the forward (Tab) direction.
-    ///
-    /// `menu_count` is the number of top-level menu bar headings.
-    /// `tab_count` is the number of open tabs.
-    /// `pom_active` is true when the active tab is a POM tab.
-    /// `pom_option_count` is the number of options in the loaded pom.toml (Req
-    /// 2.1f) -- the focus ring is sized by the data-driven menu, not a compiled
-    /// array. When the POM has no loaded menu this is 0 and the ring skips the
-    /// option rows.
-    ///
-    /// Validates: Requirement 16.3-16.10, 16.19-16.21; menu-workspace Req 2.1f
-    pub(crate) fn next(
-        &self,
-        menu_count: usize,
-        tab_count: usize,
-        pom_active: bool,
-        pom_option_count: usize,
-    ) -> FocusStop {
-        let pom_count = pom_option_count;
-        match self {
-            FocusStop::CommandField => {
-                if pom_active && pom_count > 0 {
-                    FocusStop::PomOption { index: 0 }
-                } else if pom_active {
-                    FocusStop::CalendarPrev
-                } else {
-                    FocusStop::MenuBar { index: 0 }
-                }
-            }
-            FocusStop::PomOption { index } => {
-                let next = index + 1;
-                if next < pom_count {
-                    FocusStop::PomOption { index: next }
-                } else {
-                    FocusStop::CalendarPrev
-                }
-            }
-            FocusStop::CalendarPrev => FocusStop::CalendarNext,
-            FocusStop::CalendarNext => FocusStop::MenuBar { index: 0 },
-            FocusStop::MenuBar { index } => {
-                let next = index + 1;
-                if next < menu_count {
-                    FocusStop::MenuBar { index: next }
-                } else if tab_count > 0 {
-                    FocusStop::TabHeader { index: 0 }
-                } else {
-                    FocusStop::CommandField
-                }
-            }
-            FocusStop::TabHeader { index } => {
-                let next = index + 1;
-                if next < tab_count {
-                    FocusStop::TabHeader { index: next }
-                } else {
-                    FocusStop::CommandField
-                }
-            }
-        }
+impl CommandHandler for ConfigOpenHandler {
+    fn is_undoable(&self) -> bool {
+        false
     }
 
-    /// Advance to the previous stop in the backward (Shift+Tab) direction.
-    ///
-    /// Validates: Requirement 16.11, 16.19, 16.22; menu-workspace Req 2.1f
-    pub(crate) fn prev(
-        &self,
-        menu_count: usize,
-        tab_count: usize,
-        pom_active: bool,
-        pom_option_count: usize,
-    ) -> FocusStop {
-        let pom_count = pom_option_count;
-        match self {
-            FocusStop::CommandField => {
-                if tab_count > 0 {
-                    FocusStop::TabHeader {
-                        index: tab_count - 1,
-                    }
-                } else {
-                    FocusStop::MenuBar {
-                        index: menu_count.saturating_sub(1),
-                    }
-                }
-            }
-            FocusStop::PomOption { index } => {
-                if *index == 0 {
-                    FocusStop::CommandField
-                } else {
-                    FocusStop::PomOption { index: index - 1 }
-                }
-            }
-            FocusStop::CalendarPrev => {
-                if pom_count > 0 {
-                    FocusStop::PomOption {
-                        index: pom_count - 1,
-                    }
-                } else {
-                    FocusStop::CommandField
-                }
-            }
-            FocusStop::CalendarNext => FocusStop::CalendarPrev,
-            FocusStop::MenuBar { index } => {
-                if *index == 0 {
-                    if pom_active {
-                        FocusStop::CalendarNext
-                    } else if tab_count > 0 {
-                        FocusStop::TabHeader {
-                            index: tab_count - 1,
-                        }
-                    } else {
-                        FocusStop::CommandField
-                    }
-                } else {
-                    FocusStop::MenuBar { index: index - 1 }
-                }
-            }
-            FocusStop::TabHeader { index } => {
-                if *index == 0 {
-                    FocusStop::MenuBar {
-                        index: menu_count.saturating_sub(1),
-                    }
-                } else {
-                    FocusStop::TabHeader { index: index - 1 }
-                }
-            }
-        }
+    fn execute(&self, _ctx: &ExecutionContext, _params: &CommandParams) -> CommandResult {
+        // Routing is handled by the shell intercept; nothing to do here.
+        CommandResult::Ok
     }
 }
 
@@ -313,6 +188,18 @@ pub struct WorkbenchShell {
     open_error: Option<String>,
     /// Command dispatch — routes file.open / file.exit through the registry.
     dispatch: CommandDispatch,
+    /// The per-invocation Cursor_Context snapshot (CR-CH-028, command-framework
+    /// Requirement 12). The shell refreshes this from live focus/selection at
+    /// each dispatch; the registered `ShellContextProvider` holds an `Arc` clone
+    /// and returns it so commands dispatched through the registry receive a
+    /// populated package. A shared cell is required because `ContextProvider`
+    /// takes `&self`.
+    cursor_context_snapshot: Arc<Mutex<ff_command::CursorContext>>,
+    /// The focused Menu_Option recorded during the last menu render (its egui id,
+    /// command, and label), so a focused id resolves to its semantic identity
+    /// when building the Cursor_Context (Requirement 12.2). `None` when no menu
+    /// option is focused.
+    focused_menu_option: Option<(egui::Id, String, String)>,
     /// Shared command registry — used by the Command Palette to enumerate commands.
     ///
     /// Validates: command-palette Requirement 2.1
@@ -384,6 +271,8 @@ pub struct WorkbenchShell {
     pub(crate) theme_editor_panel: crate::theme_editor_panel::ThemeEditorState,
     /// Menus Editor Context state (menu-workspace Req 13, CR-NR-075).
     pub(crate) menus_editor_panel: crate::menus_editor_panel::MenusEditorState,
+    /// Keys Editor Context state (function-keys Req 22, CR-CH-029).
+    pub(crate) keys_editor_panel: crate::keys_editor_panel::KeysEditorState,
     /// Shell engine for external program execution (Detached / Captured).
     ///
     /// Backs the External Command_Target adapter: runs a program by name +
@@ -471,6 +360,11 @@ pub struct WorkbenchShell {
     /// `<User_Data_Dir>/menus/`); tests set it to a TempDir so Menus editor file
     /// operations are deterministic and isolated.
     menus_dir_override: Option<std::path::PathBuf>,
+    /// Test-only override for the keymaps directory (function-keys Req 22,
+    /// CR-CH-029). Production leaves this `None` (the real
+    /// `<User_Data_Dir>/keymaps/`); tests set it to a TempDir so Keys editor
+    /// file operations are deterministic and isolated.
+    keymaps_dir_override: Option<std::path::PathBuf>,
     /// Last pixels_per_point applied by zoom — avoids overwriting OS DPI every frame.
     last_ppp: f32,
     /// True while the user is holding the mouse button down (window drag in progress).
@@ -513,14 +407,10 @@ pub struct WorkbenchShell {
     /// configuration-system Req 19.2). No configuration is archived or reset
     /// until the user confirms.
     reset_bare_confirm_open: bool,
-    /// Key Configuration Dialog state.
-    ///
-    /// Validates: Requirement 20.1
-    key_config_dialog: crate::key_config_dialog::KeyConfigDialog,
-    /// Settings Panel state.
+    /// Config Panel state (the flat config-key browser opened by `CONFIG`).
     ///
     /// Validates: Requirement 15.1, 15.2
-    settings_panel: SettingsPanelState,
+    config_panel: ConfigPanelState,
     /// Plugin Manager panel state.
     ///
     /// Validates: plugin-manager-ui Requirement 1.1
@@ -546,16 +436,53 @@ pub struct WorkbenchShell {
     ///
     /// Validates: notification-system Requirement 1.1
     pub(crate) notification_queue: std::sync::Arc<std::sync::Mutex<NotificationQueue>>,
-    /// Current keyboard focus stop in the shell tab-order cycle.
+    /// True for exactly one frame after Tab/Shift+Tab moves focus back to the
+    /// command field, on the startup frame, or on any Workspace entry. Causes a
+    /// one-shot request_focus on the command field. Cleared immediately after
+    /// the request fires so we do NOT steal focus every frame.
     ///
-    /// Validates: Requirement 16.1–16.7
-    focus_stop: FocusStop,
-    /// True for exactly one frame after Tab/Shift+Tab moves focus_stop to CommandField
-    /// or on the startup frame. Causes a one-shot request_focus on the command field.
-    /// Cleared immediately after the request fires so we do NOT steal focus every frame.
-    ///
-    /// Validates: Requirement 16.1, 16.2
+    /// Validates: Requirement 16.1, 16.1a, 16.2
     command_field_focus_requested: bool,
+    /// Egui id of the FIRST focusable interior control of the active Workspace,
+    /// reported by the Workspace renderer each frame. The shell Boundary_Policy
+    /// focuses it when Tab is pressed from the command field. `None` when the
+    /// Workspace has no interior control (focus goes straight to the menu bar).
+    ///
+    /// Validates: Requirement 16.3, 16.14 (CR-CH-023)
+    first_interior_id: Option<egui::Id>,
+    /// Egui id of the LAST focusable interior control of the active Workspace.
+    /// The shell Boundary_Policy moves focus from it to the first Menu_Bar item
+    /// on Tab (menu-bar-last).
+    ///
+    /// Validates: Requirement 16.5, 16.14 (CR-CH-023)
+    last_interior_id: Option<egui::Id>,
+    /// Egui id of the FIRST top-level Menu_Bar button ("Settings"), captured by
+    /// the menu-bar render for the Boundary_Policy (last-interior -> menu bar).
+    ///
+    /// Validates: Requirement 16.5, 16.7 (CR-CH-023)
+    menu_first_id: Option<egui::Id>,
+    /// Egui id of the LAST top-level Menu_Bar button ("Help"), captured by the
+    /// menu-bar render for the Boundary_Policy (last-menu -> wrap to command).
+    ///
+    /// Validates: Requirement 16.7, 16.8 (CR-CH-023)
+    menu_last_id: Option<egui::Id>,
+    /// Active tab index observed on the previous frame. When it changes, the
+    /// shell re-arms command-field focus (Req 16.1a: entering a Workspace via a
+    /// tab switch places focus on the command field).
+    last_active_tab: usize,
+    /// One-shot latch: set when Tab is pressed from the command field so the
+    /// active Workspace render focuses its FIRST interior control using the id
+    /// it allocates THIS frame (a stale previous-frame id does not round-trip
+    /// through egui focus; requesting the fresh same-frame id does -- B056).
+    /// Cleared by the render that honours it.
+    ///
+    /// Validates: Requirement 16.3 (CR-CH-023)
+    pub(crate) focus_first_interior_requested: bool,
+    /// One-shot latch (reverse Shift+Tab): focus the active Workspace's LAST
+    /// interior control using the fresh same-frame id.
+    ///
+    /// Validates: Requirement 16.8 (CR-CH-023)
+    pub(crate) focus_last_interior_requested: bool,
     /// Session start timestamp -- recorded when the shell is created.
     ///
     /// Validates: Requirement 20.1, 20.2
@@ -644,8 +571,36 @@ impl WorkbenchShell {
             .register(menu_open_id, menu_open_meta, Box::new(MenuOpenHandler))
             .expect("menu.open registration");
 
+        // Register config.open (CR-CH-025, configuration-system Requirement 20)
+        // -- marker handler; the shell intercepts CONFIG in handle_command. Being
+        // registered lets a bare `CONFIG` resolve as a built-in (chain stage 2),
+        // shadowing any same-named menu/macro.
+        let config_open_id = CommandId::new("config.open").expect("valid id");
+        let config_open_meta = CommandMetadata::builder(
+            "Configuration",
+            "Browse all configuration keys (optionally filtered by namespace)",
+        )
+        .build();
+        registry
+            .register(
+                config_open_id,
+                config_open_meta,
+                Box::new(ConfigOpenHandler),
+            )
+            .expect("config.open registration");
+
         let cmd_registry = registry.clone();
         let dispatch = CommandDispatch::new(registry, history);
+
+        // CR-CH-028: wire the shell-backed Cursor_Context provider so commands
+        // dispatched through the registry receive a populated package. The shell
+        // refreshes `cursor_context_snapshot` at each dispatch; the provider
+        // returns a clone of it (Requirement 12.4).
+        let cursor_context_snapshot: Arc<Mutex<ff_command::CursorContext>> =
+            Arc::new(Mutex::new(ff_command::CursorContext::empty()));
+        dispatch.set_context_provider(Box::new(ShellContextProvider {
+            snapshot: Arc::clone(&cursor_context_snapshot),
+        }));
 
         let session = SessionManager::try_init();
 
@@ -673,6 +628,23 @@ impl WorkbenchShell {
         let mut key_map_resolver = KeyMapResolver::new(global_map);
         // Load [context_key_maps] from config at startup — Validates: Requirement 14.7
         load_context_maps_from_config(&config_handle, &mut key_map_resolver);
+        // Then load keymaps/<context>.toml override FILES, which take precedence
+        // over the config-table entries (loaded second) — Validates:
+        // function-keys-and-history Requirement 14.9-14.12 (CR-CH-027).
+        {
+            let user_data_dir = ff_session::UserDataDir::resolve(None)
+                .map(|udd| udd.path().to_path_buf())
+                .unwrap_or_else(|_| {
+                    dirs::data_dir()
+                        .map(|base| base.join("FileForgeWorkbench"))
+                        .unwrap_or_else(|| std::path::PathBuf::from("."))
+                });
+            ensure_keymaps_dir(&user_data_dir);
+            load_context_maps_from_keymaps_dir(
+                &user_data_dir.join("keymaps"),
+                &mut key_map_resolver,
+            );
+        }
 
         Self {
             app,
@@ -709,6 +681,7 @@ impl WorkbenchShell {
                 crate::command_config::render::CommandConfiguratorState::new(),
             theme_editor_panel: crate::theme_editor_panel::ThemeEditorState::new(),
             menus_editor_panel: crate::menus_editor_panel::MenusEditorState::new(),
+            keys_editor_panel: crate::keys_editor_panel::KeysEditorState::new(),
             shell_engine: ff_shell::ShellEngine::new(ff_shell::ShellConfigProvider::new()),
             pending_external: None,
             files_panel: FilesPanelState::new(),
@@ -728,9 +701,12 @@ impl WorkbenchShell {
             pending_menu_option: None,
             zoom: ZoomState::new(&ZoomConfig::default()),
             pom_calendar_offset: 0,
+            cursor_context_snapshot,
+            focused_menu_option: None,
             active_theme_file: None,
             themes_dir_override: None,
             menus_dir_override: None,
+            keymaps_dir_override: None,
             last_ppp: 1.0,
             is_dragging: false,
             pending_ppp: None,
@@ -743,16 +719,21 @@ impl WorkbenchShell {
             scroll_field_text: "PAGE".to_string(),
             modal_open: false,
             reset_bare_confirm_open: false,
-            key_config_dialog: crate::key_config_dialog::KeyConfigDialog::new(),
-            settings_panel: SettingsPanelState::new(),
+            config_panel: ConfigPanelState::new(),
             plugin_manager_panel: PluginManagerPanelState::new(),
             macro_library_panel: crate::macro_library_panel::MacroLibraryPanelState::new(),
             event_log_panel: EventLogPanelState::new(),
             notification_rx,
             notification_tx,
             notification_queue,
-            focus_stop: FocusStop::CommandField,
             command_field_focus_requested: true,
+            first_interior_id: None,
+            last_interior_id: None,
+            menu_first_id: None,
+            menu_last_id: None,
+            last_active_tab: 0,
+            focus_first_interior_requested: false,
+            focus_last_interior_requested: false,
             automation: ShellAutomationRegistry::new(),
             floating_tabs: Vec::new(),
             detach_pending: None,
@@ -955,7 +936,7 @@ pub(crate) fn title_line_text(tab: &crate::tab_state::TabState) -> String {
             .unwrap_or_else(|| "[Untitled]".to_string()),
         TabKind::Untitled => "[Untitled]".to_string(),
         TabKind::FilesPanel
-        | TabKind::SettingsPanel
+        | TabKind::ConfigPanel
         | TabKind::FileExplorerPanel
         | TabKind::SearchResults
         | TabKind::PluginManager
@@ -963,7 +944,8 @@ pub(crate) fn title_line_text(tab: &crate::tab_state::TabState) -> String {
         | TabKind::MacroLibrary
         | TabKind::CommandConfigurator
         | TabKind::ThemeEditor
-        | TabKind::MenusEditor => tab.title.clone(),
+        | TabKind::MenusEditor
+        | TabKind::KeysEditor => tab.title.clone(),
         TabKind::MenuWorkspace => tab.title.clone(),
     }
 }
@@ -999,11 +981,81 @@ pub(crate) fn load_context_maps_from_config(config: &ConfigHandle, resolver: &mu
     }
 }
 
+/// Ensure the `keymaps/` directory exists under `user_data_dir` (creating it if
+/// absent), so a user has a place to author per-context key-map override files
+/// (`keymaps/<context>.toml`). The directory may be empty.
+///
+/// Mirrors `ensure_menus_dir` / `ensure_default_theme_files`: built-in default
+/// key maps are CODE-ONLY (compiled `KeyMap::default_global`) and are NEVER
+/// written here.
+///
+/// Validates: function-keys-and-history Requirement 14.11 (CR-CH-027)
+pub(crate) fn ensure_keymaps_dir(user_data_dir: &std::path::Path) {
+    let keymaps_dir = user_data_dir.join("keymaps");
+    // Best-effort -- ignore errors (graceful degradation).
+    let _ = std::fs::create_dir_all(&keymaps_dir);
+}
+
+/// Load per-context key-map override FILES from `<user_data_dir>/keymaps/*.toml`
+/// into the resolver, keyed by the file stem (the context name).
+///
+/// Each `keymaps/<context>.toml` uses the same key-name schema as
+/// `[global_key_map]` (Base `F1`-`F12` plus `SF`/`CF`/`AF`/`GF`/`XF` prefixes).
+/// A present file is registered as the Context_Key_Map for that context
+/// (full-replacement over the compiled default); a file that cannot be read or
+/// parsed is skipped (DEBUG record) and the context falls back to the compiled
+/// default.
+///
+/// Called at startup AFTER [`load_context_maps_from_config`], so a
+/// `keymaps/<context>.toml` FILE takes precedence over a
+/// `[context_key_maps.<name>]` config section for the same context
+/// (Requirement 14.12).
+///
+/// Validates: function-keys-and-history Requirement 14.9, 14.10, 14.12 (CR-CH-027)
+pub(crate) fn load_context_maps_from_keymaps_dir(
+    keymaps_dir: &std::path::Path,
+    resolver: &mut KeyMapResolver,
+) {
+    use ff_keys::KeyMap;
+
+    let Ok(entries) = std::fs::read_dir(keymaps_dir) else {
+        return; // Absent/unreadable dir: every context keeps the compiled default.
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        // Only `*.toml` files; the stem is the context name.
+        if path.extension().and_then(|e| e.to_str()) != Some("toml") {
+            continue;
+        }
+        let Some(ctx_name) = path.file_stem().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            ff_logging::log_debug!("[keys] could not read keymaps file {}", path.display());
+            continue;
+        };
+        let table: toml::Table = match toml::from_str(&text) {
+            Ok(t) => t,
+            Err(e) => {
+                // Req 14.10: malformed file skipped; context keeps the default.
+                ff_logging::log_debug!(
+                    "[keys] skipping malformed keymaps file {}: {e}",
+                    path.display()
+                );
+                continue;
+            }
+        };
+        let (map, _warnings) = KeyMap::from_toml_table(&table, ctx_name);
+        resolver.set_context_map(ctx_name.to_string(), map);
+    }
+}
+
 mod commands;
 mod configurator;
 mod external_adapter;
 /// Convert a `ff_config::ConfigValue` to a `toml::Value` for key-map parsing.
 mod helpers;
+mod keys_editor;
 mod menus_editor;
 mod nav_stack;
 mod render;
@@ -1011,6 +1063,7 @@ mod render_chrome;
 mod reset_bare;
 mod target_dispatch;
 mod update;
+pub(crate) mod workspace_context;
 
 use helpers::*;
 

@@ -5,5 +5,5 @@
 pub mod render;
 pub mod state;
 
-pub use render::{render, SearchPanelOutcome};
+pub use render::{query_field_id, render, SearchPanelOutcome};
 pub use state::SearchResultsPanelState;

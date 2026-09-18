@@ -20,13 +20,15 @@ pub struct ThemeInfo {
     pub base: Option<String>,
 }
 
-/// Names of the built-in themes (four originals plus the Default Legacy fallback).
+/// Names of the built-in themes (CR-CH-024: four total). `Default Legacy` carries
+/// the ISPF 3270 legacy colours and is BOTH a selectable built-in and the
+/// compiled Fallback_Theme (Req 18.1/18.2/18.3). The former separate
+/// `Legacy (ISPF 3270)` built-in was removed as redundant -- the legacy look now
+/// lives only under `Default Legacy`; `THEME Legacy` resolves to it via shorthand.
 pub const BUILTIN_THEME_NAMES: &[&str] = &[
     "Default Dark",
     "Default Light",
     "Default High Contrast",
-    "Legacy (ISPF 3270)",
-    // Canonical always-available fallback theme (Req 18.1/18.3).
     "Default Legacy",
 ];
 
@@ -160,13 +162,18 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    fn builtin_themes_returns_five_entries() {
+    fn builtin_themes_returns_four_entries() {
         // Validates: Requirement 14.2, 14.6; theme-and-appearance Req 18.3
-        // (four originals + Default Legacy).
+        // (CR-CH-024: four built-ins -- Default Dark/Light/High Contrast/Legacy;
+        // the separate Legacy (ISPF 3270) built-in was removed).
         let themes = builtin_themes();
-        assert_eq!(themes.len(), 5);
+        assert_eq!(themes.len(), 4);
         assert!(themes.iter().all(|t| t.is_builtin));
         assert!(themes.iter().all(|t| t.path.is_none()));
+        assert!(
+            !themes.iter().any(|t| t.name == "Legacy (ISPF 3270)"),
+            "Legacy (ISPF 3270) is no longer a built-in (CR-CH-024)"
+        );
     }
 
     // Validates: theme-and-appearance Requirement 18.3 -- Default Legacy is a
@@ -185,7 +192,7 @@ mod tests {
         // Validates: Requirement 14.6 — built-ins always present; Req 18.3.
         let dir = PathBuf::from("/nonexistent/themes/dir");
         let themes = list_all_themes(&dir);
-        assert_eq!(themes.len(), 5);
+        assert_eq!(themes.len(), 4);
         assert!(themes.iter().all(|t| t.is_builtin));
     }
 
@@ -241,7 +248,7 @@ mod tests {
         std::fs::write(dir.path().join("custom.toml"), r#"name = "Custom""#).unwrap();
 
         let themes = list_all_themes(dir.path());
-        assert_eq!(themes.len(), 6); // 5 built-in (incl. Default Legacy) + 1 user
+        assert_eq!(themes.len(), 5); // 4 built-in (incl. Default Legacy) + 1 user
         assert!(themes.iter().any(|t| t.name == "Custom" && !t.is_builtin));
         // No theme appears more than once (Req 19.2a).
         let mut names: Vec<&str> = themes.iter().map(|t| t.name.as_str()).collect();
@@ -274,14 +281,15 @@ mod tests {
             matches[0].is_builtin,
             "the built-in entry wins over the user file"
         );
-        assert_eq!(themes.len(), 5, "shadowing user file adds nothing");
+        assert_eq!(themes.len(), 4, "shadowing user file adds nothing");
     }
 
     // Validates: Requirement 19.2a -- is_builtin_theme identifies built-in names.
     #[test]
     fn is_builtin_theme_identifies_builtins() {
         assert!(is_builtin_theme("Default Dark"));
-        assert!(is_builtin_theme("Legacy (ISPF 3270)"));
+        // CR-CH-024: Legacy (ISPF 3270) is no longer a built-in name.
+        assert!(!is_builtin_theme("Legacy (ISPF 3270)"));
         assert!(is_builtin_theme("Default Legacy"));
         assert!(!is_builtin_theme("My Custom Theme"));
         assert!(!is_builtin_theme(""));

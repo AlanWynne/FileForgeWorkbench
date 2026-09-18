@@ -1393,3 +1393,32 @@ on. Key configuration-system points:
 - Locked keys (Requirement 18): RESET BARE archives the USER layer only; the
   system layer (and its locked keys) is untouched, so policy enforcement survives
   a barebones reset.
+---
+
+## Design Delta: The CONFIG command (Requirement 20, CR-CH-025)
+
+No `ff-config` CRATE design changes are required. `CONFIG` is a SHELL command
+(ff-desktop), not a configuration-system crate feature: `ff-config` remains
+GUI-independent (Design Constraint "GUI Independence, Req 2") and exposes no new
+API. The `CONFIG` command reuses the existing schema-registry query and the
+provenance-aware typed-access API the Settings Context already consumes.
+
+Shell-side design (implemented in ff-desktop, cross-referenced here):
+
+- `CONFIG` is registered with Command_ID `"config.open"` and resolves through the
+  unified command-resolution chain as a built-in (command-framework Req 8.3
+  stage 2), so it beats any same-named menu/macro (Req 8.10).
+- Bare `CONFIG` opens the flat configuration-key view (the existing
+  `SettingsPanel` widget) with an empty filter; `CONFIG <namespace>` opens it with
+  the filter pre-populated to `<namespace>.`. This replaces the former
+  `open_settings_view(Option<namespace>)` entry points and the opaque `A` command.
+- The view is the SAME widget defined by Requirement 15 (key/description/value/
+  provenance/input/reset/validation/source-file/search); `CONFIG` only chooses the
+  initial filter (Requirement 20.5).
+- Session persistence is unchanged: the view persists as
+  `CustomWorkspace { workspace_kind = settings, params = { namespace } }`
+  (Requirement 15.9 / startup-and-session Req 21.3).
+
+The namespace-selector Settings_Menu and per-option `Settings_Namespace_View`
+(cw-requirements Req 9/10) are superseded; namespace filtering is reached only via
+`CONFIG <namespace>`.

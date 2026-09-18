@@ -1,7 +1,7 @@
 //! Command Configurator Context -- render the definitions table and dispatch
 //! Add / Edit / Delete actions.
 //!
-//! The render function is a free function (mirroring `settings_panel::render`)
+//! The render function is a free function (mirroring `config_panel::render`)
 //! that draws the list of `CommandDefinition`s and any open edit form or
 //! delete-confirmation dialog, returning a [`ConfiguratorAction`] the shell
 //! applies against the `CommandStore`.
@@ -28,7 +28,7 @@ pub enum ConfiguratorAction {
 
 /// Per-Context UI state for the Command Configurator.
 ///
-/// Lives on the shell (like `SettingsPanelState`), not on the `TabState`.
+/// Lives on the shell (like `ConfigPanelState`), not on the `TabState`.
 ///
 /// Validates: command-configurator Requirement 2.1, 2.3.
 #[derive(Debug, Clone, Default)]
@@ -39,6 +39,11 @@ pub struct CommandConfiguratorState {
     pub pending_delete: Option<String>,
     /// The most recent validation or save error, shown inline.
     pub error: Option<String>,
+    /// The egui id of the FIRST interior control (the "Add" button), captured
+    /// each frame so the shell Boundary_Policy can latch the command-field ->
+    /// first-interior Tab jump to a real widget (CR-CH-023, B059). Transient
+    /// render output; not serialised.
+    pub first_interior_id: Option<egui::Id>,
 }
 
 impl CommandConfiguratorState {
@@ -59,10 +64,14 @@ pub fn render(
     let mut action = ConfiguratorAction::None;
 
     // Header + Add action (Requirement 2.3).
+    state.first_interior_id = None;
     ui.horizontal(|ui| {
         ui.heading("Command Configurator");
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ui.button("Add").clicked() && state.form.is_none() {
+            let add = ui.button("Add");
+            // The "Add" button is the first interior Tab stop (B059).
+            state.first_interior_id = Some(add.id);
+            if add.clicked() && state.form.is_none() {
                 state.form = Some(EditForm::new_add());
                 state.error = None;
             }

@@ -86,7 +86,7 @@ pub use command_target::{
     execute_target, resolve_target, target_from_toml, target_to_toml, CommandTarget, ExternalMode,
     MacroSource, TargetExecution, TargetParams, TargetResolveError, TargetResolver, TargetValue,
 };
-pub use context::ExecutionContext;
+pub use context::{ContextValue, CursorContext, ExecutionContext};
 pub use dispatch::{CommandDispatch, ContextProvider};
 pub use error::{CommandError, ScriptingError};
 pub use handler::{AsyncCommandHandler, CommandHandler};

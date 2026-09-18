@@ -15,6 +15,7 @@ use super::WorkbenchShell;
 const ARCHIVED_ITEMS: &[&str] = &[
     "menus",
     "themes",
+    "keymaps",
     "session.toml",
     "config.toml",
     "catalogs.toml",
@@ -219,6 +220,8 @@ mod tests {
         let udd = dir.path();
         write_file(&udd.join("menus").join("pom.toml"), "title=\"x\"");
         write_file(&udd.join("themes").join("mine.toml"), "name=\"mine\"");
+        // CR-CH-027: keymaps/ is archived alongside menus/themes.
+        write_file(&udd.join("keymaps").join("editor.toml"), "F5=\"FIND\"");
         write_file(&udd.join("session.toml"), "a=1");
         write_file(&udd.join("config.toml"), "b=2");
         write_file(&udd.join("catalogs.toml"), "c=3");
@@ -228,12 +231,14 @@ mod tests {
         // Every item now lives under the archive and NOT at its original path.
         assert!(archive.join("menus").join("pom.toml").exists());
         assert!(archive.join("themes").join("mine.toml").exists());
+        assert!(archive.join("keymaps").join("editor.toml").exists());
         assert!(archive.join("session.toml").exists());
         assert!(archive.join("config.toml").exists());
         assert!(archive.join("catalogs.toml").exists());
 
         assert!(!udd.join("menus").exists(), "menus/ must be moved");
         assert!(!udd.join("themes").exists(), "themes/ must be moved");
+        assert!(!udd.join("keymaps").exists(), "keymaps/ must be moved");
         assert!(!udd.join("session.toml").exists());
         assert!(!udd.join("config.toml").exists());
         assert!(!udd.join("catalogs.toml").exists());

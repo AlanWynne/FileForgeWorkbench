@@ -8,7 +8,7 @@ use crate::primary_option_menu;
 use crate::tab_state::TabKind;
 
 use super::helpers::*;
-use super::{FocusStop, WorkbenchShell};
+use super::WorkbenchShell;
 
 impl WorkbenchShell {
     pub(super) fn apply_theme(&self, ctx: &egui::Context) {
@@ -56,6 +56,11 @@ impl WorkbenchShell {
     ///
     /// Writes the mode name to the `theme.active` config key so the per-frame
     /// hot-reload block picks it up and the palette is not clobbered next frame.
+    ///
+    /// CR-CH-024: the `THEME` command is now name-based and routes through
+    /// `set_active_theme`; this mode-based helper is retained for the mode
+    /// config key path and the `follow_os` opt-out regression test.
+    #[allow(dead_code)]
     pub(super) fn set_theme(&mut self, mode: ff_theme::mode::VisualMode) {
         self.palette = ff_theme::defaults::default_palette_for_mode(mode);
         let mode_str = mode.section_name().to_string();
@@ -114,6 +119,20 @@ impl WorkbenchShell {
         match crate::theme_defaults::load_theme_by_name(name, &themes_dir) {
             Some(palette) => {
                 self.palette = palette;
+                // An EXPLICIT theme selection opts out of "follow OS" -- otherwise
+                // the per-frame follow_os block rebuilds the palette from the OS
+                // dark/light preference and clobbers the chosen theme every frame
+                // (B039 root cause). theme-and-appearance Req 16.4/16.7.
+                if self
+                    .config_handle
+                    .get_bool(ff_config::keys::theme::FOLLOW_OS)
+                    .unwrap_or(false)
+                {
+                    let _ = self.config_handle.set_user_value(
+                        ff_config::keys::theme::FOLLOW_OS,
+                        ff_config::ConfigValue::Boolean(false),
+                    );
+                }
                 self.active_theme_file = {
                     let path = themes_dir
                         .join(format!("{}.toml", crate::theme_defaults::theme_slug(name)));
@@ -188,25 +207,23 @@ impl WorkbenchShell {
         );
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
-                // ── Focus request for menu bar stops — Validates: Requirement 16.8
-                // When focus_stop is MenuBar{index}, request focus on that button's Id.
-                for (idx, label) in super::MENU_BAR_TOP_LEVEL_LABELS.iter().enumerate() {
-                    if self.focus_stop == (FocusStop::MenuBar { index: idx }) {
-                        let id = egui::Id::new("menu_bar_btn").with(idx);
-                        ui.memory_mut(|m| m.request_focus(id));
-                        let _ = label; // label used only for Id derivation above
-                    }
-                }
+                // CR-CH-023: the shell Boundary_Policy needs the egui ids of the
+                // FIRST and LAST top-level menu buttons so it can move focus to
+                // the menu bar (last-interior -> menu bar) and wrap (last menu ->
+                // command field). `menu_button` assigns auto-ids, so we capture
+                // the first ("Settings") and last ("Help") button ids here into
+                // shell fields for the next frame's Boundary_Policy.
                 // ── Settings ────────────────────────────────────────────
-                ui.menu_button("Settings", |ui| {
+                let settings_btn = ui.menu_button("Settings", |ui| {
                     if ui.button("Preferences…").clicked() {
                         ui.close_menu();
                     }
-                    // Command parity (Req 20.2/20.10): the Themes item dispatches
-                    // the THEMES command -- the same code path as typing it --
-                    // opening the Theme Editor Context.
+                    // Command parity (Req 17.6): the Theme Editor item dispatches
+                    // bare `THEME` -- the same code path as typing it -- opening
+                    // the Theme Editor Context. (CR-CH-024: the former `THEMES`
+                    // command is removed.)
                     if ui.button("Theme Editor").clicked() {
-                        self.handle_command("THEMES");
+                        self.handle_command("THEME");
                         ui.close_menu();
                     }
                     ui.separator();
@@ -226,8 +243,10 @@ impl WorkbenchShell {
                         self.handle_command("THEME high_contrast");
                         ui.close_menu();
                     }
-                    if ui.button("Legacy (ISPF 3270)").clicked() {
-                        self.handle_command("THEME legacy");
+                    // CR-CH-024: relabelled from "Legacy (ISPF 3270)"; dispatches
+                    // the surviving Default Legacy theme by name.
+                    if ui.button("Default Legacy").clicked() {
+                        self.handle_command("THEME Default Legacy");
                         ui.close_menu();
                     }
                     ui.separator();
@@ -237,6 +256,8 @@ impl WorkbenchShell {
                         ui.close_menu();
                     }
                 });
+                // Capture the first menu-bar button id for the Boundary_Policy.
+                self.menu_first_id = Some(settings_btn.response.id);
                 // ── File Catalogs — Validates: Requirement 14.7 (mirrors POM option 1) ──
                 ui.menu_button("File Catalogs", |ui| {
                     if ui.button("Open File Catalogs").clicked() {
@@ -374,7 +395,9 @@ impl WorkbenchShell {
                 // ── Edit (always present) ────────────────────────────────
                 ui.menu_button("Edit", |ui| {
                     if ui.button("Key Assignments\u{2026}").clicked() {
-                        self.key_config_dialog.open = true;
+                        // Command parity (CR-CH-029): dispatch KEYS rather than
+                        // opening a modal directly; opens the Keys Workspace.
+                        self.handle_command("KEYS");
                         ui.close_menu();
                     }
                     ui.separator();
@@ -396,12 +419,14 @@ impl WorkbenchShell {
                     }
                 });
                 // ── Help ────────────────────────────────────────────────
-                ui.menu_button("Help", |ui| {
+                let help_btn = ui.menu_button("Help", |ui| {
                     if ui.button("About FileForge Workbench").clicked() {
                         self.show_about = true;
                         ui.close_menu();
                     }
                 });
+                // Capture the last menu-bar button id for the Boundary_Policy.
+                self.menu_last_id = Some(help_btn.response.id);
             });
         });
     }
@@ -471,6 +496,10 @@ impl WorkbenchShell {
                             tab_text
                         };
 
+                        // CR-CH-023 Req 16.9: tab headers are clickable but not
+                        // keyboard Tab stops (tab switching is via the SWAP
+                        // command / mouse). `Sense::CLICK` keeps the click and
+                        // removes the FOCUSABLE bit so egui-native Tab skips it.
                         let btn =
                             egui::Button::new(egui::RichText::new(&label).color(color).monospace())
                                 .fill(bg)
@@ -479,18 +508,19 @@ impl WorkbenchShell {
                                 } else {
                                     egui::Stroke::NONE
                                 })
-                                .min_size(egui::vec2(0.0, 24.0));
+                                .min_size(egui::vec2(0.0, 24.0))
+                                .sense(egui::Sense::CLICK);
 
                         let resp = ui.add(btn);
                         if resp.clicked() {
                             activate_idx = Some(i);
                         }
-                        // Validates: accessibility Requirement 3.1, 3.4, 3.5 -- focus ring on focused tab header.
-                        if self.focus_stop == (FocusStop::TabHeader { index: i }) {
-                            super::render::render_focus_indicator(ui, resp.rect, &self.palette);
-                        }
+                        // CR-CH-023: tab headers are no longer keyboard focus
+                        // stops (Req 16.9), so there is no tab-header focus ring
+                        // indicator here anymore.
 
                         // Validates: Requirement 3.8 multi-tab-editor — close button on tab header (B002/B015)
+                        // CR-CH-023 Req 16.9: click-only sense (not a Tab stop).
                         let close_resp = ui.add(
                             egui::Button::new(
                                 egui::RichText::new("\u{00d7}")
@@ -500,7 +530,8 @@ impl WorkbenchShell {
                             )
                             .fill(bg)
                             .stroke(egui::Stroke::NONE)
-                            .min_size(egui::vec2(16.0, 24.0)),
+                            .min_size(egui::vec2(16.0, 24.0))
+                            .sense(egui::Sense::CLICK),
                         );
                         if close_resp.clicked() {
                             close_idx = Some(i);

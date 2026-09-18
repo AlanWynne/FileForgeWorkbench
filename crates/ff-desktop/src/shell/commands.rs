@@ -30,6 +30,72 @@ impl WorkbenchShell {
         }
     }
 
+    /// Build the current [`CursorContext`](ff_command::CursorContext) from live
+    /// focus/selection state (CR-CH-028, command-framework Requirement 12.2).
+    ///
+    /// Start scope (Requirement 12.2, focused-control identity): the command
+    /// line and the focused Menu_Option; other workspaces populate the workspace
+    /// context name and editor cursor/selection where applicable and MAY add
+    /// EXTRAS later. This is a per-invocation SNAPSHOT (Requirement 12.5).
+    pub(super) fn capture_cursor_context(&self, ctx: &egui::Context) -> ff_command::CursorContext {
+        let mut b = ff_command::CursorContext::builder();
+
+        // (a) Focused Workspace context name.
+        if let Some(name) = context_name_for_kind(self.tabs.active_tab().kind) {
+            b = b.workspace_context(name);
+        }
+
+        // (b)/(c) Focused-control identity + text. The command field id mirrors
+        // `cmd_field_id()` (the shell's "Command ===>" TextEdit). A focused Menu
+        // _Option is recorded during render in `focused_menu_option`.
+        let focused = ctx.memory(|m| m.focused());
+        let cmd_field = egui::Id::new("command_field_input");
+        if focused == Some(cmd_field) {
+            b = b.focused_identity("command-line");
+            if !self.command_text.trim().is_empty() {
+                b = b.focused_text(self.command_text.clone());
+            }
+        } else if let Some((id, command, label)) = &self.focused_menu_option {
+            if focused == Some(*id) {
+                // The option's command is its semantic identity (e.g. "FILES");
+                // the label is the human text.
+                b = b.focused_identity(command.clone());
+                if !label.trim().is_empty() {
+                    b = b.focused_text(label.clone());
+                }
+            }
+        }
+
+        // (d) Editor cursor + selection when an editor document is active.
+        if matches!(
+            self.tabs.active_tab().kind,
+            TabKind::FileEditor | TabKind::Untitled
+        ) {
+            let tab = self.tabs.active_tab();
+            b = b
+                .cursor_line(tab.cursor.cursor_line() as usize)
+                .cursor_column(tab.cursor.cursor_column() as usize);
+        }
+
+        // (e) Active scroll setting (for the deferred CSR consumer).
+        if !self.scroll_field_text.trim().is_empty() {
+            b = b.scroll_setting(self.scroll_field_text.clone());
+        }
+
+        b.build()
+    }
+
+    /// Refresh the shared Cursor_Context snapshot so both the registry provider
+    /// and the string-path commands see the same per-invocation package
+    /// (CR-CH-028, command-framework Requirement 12.4). Called once per frame
+    /// before any dispatch.
+    pub(super) fn refresh_cursor_context_snapshot(&mut self, ctx: &egui::Context) {
+        let cc = self.capture_cursor_context(ctx);
+        if let Ok(mut guard) = self.cursor_context_snapshot.lock() {
+            *guard = cc;
+        }
+    }
+
     pub(super) fn handle_command(&mut self, cmd: &str) {
         let upper = cmd.trim().to_uppercase();
 
@@ -46,7 +112,16 @@ impl WorkbenchShell {
             self.cmd_history.add(cmd);
         }
 
-        // ── Shell-level intercepts ───────────────────────────────────────
+        // Stage 1 (CR-CH-025, command-framework Req 8.3): current-menu Option_Key
+        // lookup. When the active Workspace is a Menu_Workspace and the typed
+        // string matches an Option_Key of the CURRENT menu, activate that option
+        // (menu-workspace Req 3.1). A NON-matching token falls through to the
+        // rest of the chain (Req 3.6) -- it is NOT a terminal error here.
+        if self.try_current_menu_option(cmd) {
+            return;
+        }
+
+        // ── Shell-level intercepts (stage 2: built-in command / Command_ID) ──
         if upper == "EXIT" || upper == "QUIT" || upper == "=X" || upper == "X" || upper == "LOGOFF"
         {
             // Validates: Requirement 20.3 -- LOGOFF is an alias for EXIT
@@ -121,11 +196,35 @@ impl WorkbenchShell {
             return;
         }
 
-        // ── HELP / F1 fallback — Validates: Requirement 18.1, 18.2 ————————
+        // ── HELP / F1 fallback — Validates: Requirement 18.1, 18.2;
+        //    command-framework Requirement 12.8 (CR-NR-079) ————————————————————
         if upper == "HELP" {
             let registry = HelpTopicRegistry::new(); // empty registry — no topics loaded yet
+                                                     // CR-NR-079 (Req 12.8): build the HELP EditorContext FROM the
+                                                     // Cursor_Context snapshot so a focused Menu_Option resolves that
+                                                     // option's help topic (F1 on FILES -> cmd:FILES). The Cursor_Context
+                                                     // records a focused option's COMMAND as `focused_identity` (and
+                                                     // "command-line" when the command field is focused). We feed that
+                                                     // command through the command-line path of ContextDetector so it
+                                                     // resolves `cmd:<OPTION_COMMAND>`; absent a specific focused control
+                                                     // we fall back to today's behaviour (the command-line text).
+            let cc = self
+                .cursor_context_snapshot
+                .lock()
+                .map(|g| g.clone())
+                .unwrap_or_default();
+            let is_menu_option = cc
+                .focused_identity
+                .as_deref()
+                .map(|id| id != "command-line")
+                .unwrap_or(false);
+            let command_line_text = if is_menu_option {
+                cc.focused_identity.clone().unwrap_or_default()
+            } else {
+                self.command_text.clone()
+            };
             let ctx = EditorContext {
-                command_line_text: self.command_text.clone(),
+                command_line_text,
                 command_line_has_focus: true,
                 prefix_area_text: None,
                 prefix_area_has_focus: false,
@@ -141,26 +240,18 @@ impl WorkbenchShell {
 
         // ── KEYS -- Validates: Requirement 20.1, CX Requirement 2.1-2.4 ──────
         if upper == "KEYS" {
-            self.key_config_dialog.open = true;
-            self.key_config_dialog.initial_scope = None;
+            // Validates: function-keys Requirement 22.1, 22.5 (CR-CH-029) --
+            // KEYS opens the Keys Workspace in place (replaces the modal).
+            self.open_keys_editor(None);
             self.open_error = None;
             return;
         }
         if upper.starts_with("KEYS ") {
-            // Validates: CX Requirement 2.2, 2.3, 2.4
-            let name = cmd.trim()[5..].trim().to_lowercase();
-            self.key_config_dialog.open = true;
-            self.key_config_dialog.initial_scope = Some(name.clone());
-            // Status message if name not found -- dialog will show Default scope
-            let known = ["pom", "editor", "settings", "files", "hex", "toolchain"];
-            if !known.contains(&name.as_str()) {
-                self.open_error = Some(format!(
-                    "Key map '{}' not found -- showing Default map.",
-                    name
-                ));
-            } else {
-                self.open_error = None;
-            }
+            // Validates: function-keys Requirement 22.5 -- KEYS <kind> opens the
+            // Keys Workspace with that workspace kind pre-selected.
+            let kind = cmd.trim()[5..].trim();
+            self.open_keys_editor(Some(kind));
+            self.open_error = None;
             return;
         }
 
@@ -220,27 +311,27 @@ impl WorkbenchShell {
             }
         }
 
-        // Settings navigation (two-level, cw-requirements.md Req 9, 10, 15.1).
-        // Bare SETTINGS opens the data-driven Settings_Menu (Menu_Workspace
-        // backed by menus/settings.toml). Option A opens the unfiltered flat
-        // list; SETTINGS <ns> opens a filtered namespace view.
-        if upper == "SETTINGS" {
-            self.open_settings_menu();
+        // CR-CH-025: the hardcoded `SETTINGS`, `SETTINGS <ns>`, and `A`
+        // intercepts are REMOVED. Opening the Settings menu is now keyword-less
+        // menu-name resolution of the token `SETTINGS` (stage 3, see
+        // `try_menu_name_dispatch`), identical to `POM` or any user menu; the
+        // flat config-key browser and namespace filtering moved to the `CONFIG
+        // [<namespace>]` command below (configuration-system Req 20).
+
+        // ── CONFIG [<namespace>] -- flat configuration-key browser (Req 20) ──
+        if upper == "CONFIG" {
+            // Bare CONFIG: the unfiltered All-Settings flat list.
+            self.open_config_view(None);
             self.open_error = None;
             return;
         }
-        if upper == "A" {
-            // Validates: cw-requirements.md Req 9.4, 10.x -- All Settings flat list.
-            self.open_settings_view(None);
-            self.open_error = None;
-            return;
-        }
-        if upper.starts_with("SETTINGS ") {
-            let ns = cmd.trim()[9..].trim().to_lowercase();
+        if upper.starts_with("CONFIG ") {
+            // CONFIG <namespace>: the flat list pre-filtered to `<namespace>.`.
+            let ns = cmd.trim()[7..].trim().to_lowercase();
             if ns.is_empty() {
-                self.open_settings_menu();
+                self.open_config_view(None);
             } else {
-                self.open_settings_view(Some(ns));
+                self.open_config_view(Some(ns));
             }
             self.open_error = None;
             return;
@@ -269,14 +360,8 @@ impl WorkbenchShell {
             return;
         }
 
-        if upper == "THEMES" {
-            // Validates: theme-and-appearance Requirement 20.1, 20.2 -- open the
-            // Theme Editor Context. On a POM tab, transform in place; else open a
-            // dedicated tab. (Distinct from `THEME <mode>` which switches theme.)
-            self.open_theme_editor();
-            self.open_error = None;
-            return;
-        }
+        // CR-CH-024: the `THEMES` command is removed; bare `THEME` (handled
+        // below) now opens the Theme Editor. No `THEMES` intercept remains.
 
         if upper == "MENUS" {
             // Validates: menu-workspace Requirement 13.1 (CR-NR-075) -- open the
@@ -539,31 +624,34 @@ impl WorkbenchShell {
             self.open_error = None;
             return;
         }
-        // == THEME -- command parity for theme switching ======================
+        // == THEME -- single name-based theme command (CR-CH-024) =============
         // Validates: theme-and-appearance Requirement 17 (architecture-brief
-        // Principle 2: every user action is a command). `THEME <mode>` sets the
-        // theme (same code path as the Settings menu, which dispatches this
-        // command); bare `THEME` reports the current mode; an invalid mode errors.
+        // Principle 2: every user action is a command).
+        //   - bare `THEME` opens the Theme Editor Context (in place; the removed
+        //     `THEMES` command's behaviour, Req 17.4).
+        //   - `THEME <name>` selects by exact case-insensitive name, else by
+        //     built-in shorthand (Req 17.2); unknown leaves the theme unchanged
+        //     and reports it (Req 17.5).
         if upper == "THEME" {
-            self.open_error = Some(format!(
-                "Current theme: {}. Usage: THEME dark|light|high_contrast|legacy",
-                self.palette.mode.section_name()
-            ));
+            self.open_theme_editor();
+            self.open_error = None;
             return;
         }
         if upper.starts_with("THEME ") {
             let arg = cmd.trim().get(6..).unwrap_or("").trim();
-            match ff_theme::mode::VisualMode::from_str_loose(arg) {
-                Some(mode) => {
-                    // Clear any stale error first; set_theme applies + persists
-                    // and re-sets open_error only if persistence fails (Req 17.6).
+            let available: Vec<String> = ff_theme::list_all_themes(&self.themes_dir())
+                .into_iter()
+                .map(|t| t.name)
+                .collect();
+            match crate::theme_defaults::resolve_theme_arg(arg, &available) {
+                Some(name) => {
+                    // set_active_theme applies + persists and re-sets open_error
+                    // only if persistence fails (Req 17.7).
                     self.open_error = None;
-                    self.set_theme(mode);
+                    self.set_active_theme(&name);
                 }
                 None => {
-                    self.open_error = Some(format!(
-                        "Unknown theme '{arg}'. Valid: dark, light, high_contrast, legacy"
-                    ));
+                    self.open_error = Some(format!("THEME: '{arg}' does not exist"));
                 }
             }
             return;
@@ -675,25 +763,19 @@ impl WorkbenchShell {
             return;
         }
 
-        // ── Fastpath dotted notation (e.g. 3.1) — Validates: Requirement 19.4 ──
-        // A dotted path like "3.1" navigates to POM option 3 sub-option 1.
-        // For now, resolve the first segment as a POM option and record the
-        // sub-option for future nested navigation.
-        if upper.contains('.') && !upper.starts_with('.') {
-            let parts: Vec<&str> = upper.splitn(2, '.').collect();
-            if parts.len() == 2 {
-                let first = parts[0].trim();
-                let rest = parts[1].trim();
-                // Only treat as fastpath if first segment is a single digit
-                if first.len() == 1 && first.chars().all(|c| c.is_ascii_digit()) {
-                    // Navigate to the top-level option first
-                    self.handle_command(first);
-                    // Then navigate to the sub-option if non-empty
-                    if !rest.is_empty() {
-                        self.handle_command(rest);
-                    }
-                    return;
-                }
+        // ── Chained fastpath navigation (menu-workspace Requirement 5) ───────
+        // A dotted/semicolon path like `=0.K`, `3.1`, or `=0;E.T` walks a menu
+        // option chain. The leading `=` is the Navigation_Origin (Req 5.7): it
+        // pops to the POM before resolving segment 1, so `=0.K` resolves option
+        // `0` on the POM regardless of the active Workspace. A bare dotted path
+        // (no `=`) resolves its first segment against the CURRENT menu (the
+        // legacy `3.1` behaviour). Each `.`/`;` separator delimits the next
+        // segment; every segment is dispatched as an Option_Key through
+        // handle_command, which opens the sub-menu and activates the option
+        // (the same path `MENU <name> <key>` uses). Fixes B061.
+        if let Some(handled) = self.try_chained_fastpath(&upper) {
+            if handled {
+                return;
             }
         }
 
@@ -1010,40 +1092,17 @@ impl WorkbenchShell {
             return;
         }
 
-        // Menu_Workspace option key lookup + Target_Resolution.
-        // Validates: menu-workspace Requirement 3.1, 3.6, 3.7, 10.1, 10.3, 10.6
-        if self.tabs.active_tab().kind == crate::tab_state::TabKind::MenuWorkspace {
-            if let Some(mw) = self.tabs.active_tab().menu_workspace.as_ref() {
-                if let Some(menu) = mw.menu.as_ref() {
-                    match crate::menu_workspace::commands::find_option(cmd.trim(), menu) {
-                        Ok(option) => {
-                            // Req 10.6: an inline [options.target] wins over `command`.
-                            if let Some(target) = option.target.clone() {
-                                self.dispatch_command_target(&target);
-                                return;
-                            }
-                            // Req 10.1/10.3: resolve the option's command to a
-                            // user-owned target and dispatch it; otherwise fall
-                            // through to the existing pipeline (Req 10.2).
-                            let option_cmd = option.command.clone();
-                            match self.resolve_and_dispatch_command(&option_cmd) {
-                                super::target_dispatch::ResolveOutcome::Dispatched => return,
-                                super::target_dispatch::ResolveOutcome::FallThrough => {
-                                    self.handle_command(&option_cmd);
-                                    return;
-                                }
-                            }
-                        }
-                        Err(msg) => {
-                            self.open_error = Some(msg);
-                            return;
-                        }
-                    }
-                }
-            }
+        // Stage 3 (CR-CH-025): keyword-less MENU-NAME resolution. A bare token
+        // that reaches here (not claimed by the current-menu Option_Key stage at
+        // the top, nor by any built-in intercept above) may name a resolvable
+        // menu (user `menus/<name>.toml` or built-in `pom`/`settings`). If so,
+        // open it -- forwarding a trailing token as an Option_Key (Req 11.7,
+        // 11.11) -- exactly as `MENU <name>` does, with no `MENU` keyword.
+        if self.try_menu_name_dispatch(cmd.trim()) {
+            return;
         }
 
-        // ── Route through CommandEngine ──────────────────────────────────
+        // ── Route through CommandEngine (stage 5: unresolved) ────────────
         self.retrieve_state.reset();
         let status = self.cmd_engine.execute_command_line(cmd);
         match status.kind {
@@ -1130,6 +1189,92 @@ impl WorkbenchShell {
         }
     }
 
+    /// Stage 1 of the command-resolution chain (CR-CH-025, command-framework
+    /// Req 8.3): when the active Workspace is a Menu_Workspace and `cmd` matches
+    /// an Option_Key of the CURRENT menu, activate that option and return `true`.
+    /// Returns `false` when the active tab is not a menu OR the token is not an
+    /// Option_Key of it, so the caller falls through to the rest of the chain
+    /// (menu-workspace Req 3.6 -- a non-matching token is NOT a terminal error).
+    ///
+    /// Validates: menu-workspace Requirement 3.1, 3.6, 10.1, 10.3, 10.6
+    fn try_current_menu_option(&mut self, cmd: &str) -> bool {
+        if self.tabs.active_tab().kind != crate::tab_state::TabKind::MenuWorkspace {
+            return false;
+        }
+        // Extract the option (clone what we need) without holding the borrow.
+        let resolved: Option<(Option<ff_command::CommandTarget>, String)> = self
+            .tabs
+            .active_tab()
+            .menu_workspace
+            .as_ref()
+            .and_then(|mw| mw.menu.as_ref())
+            .and_then(|menu| {
+                crate::menu_workspace::commands::find_option(cmd.trim(), menu)
+                    .ok()
+                    .map(|opt| (opt.target.clone(), opt.command.clone()))
+            });
+        let Some((target, option_cmd)) = resolved else {
+            // Not an Option_Key of this menu: fall through (Req 3.6). A disabled
+            // option (find_option Err) also falls through; the chain will report
+            // an unresolved command if nothing else matches.
+            return false;
+        };
+        // Req 10.6: an inline [options.target] wins over `command`.
+        if let Some(target) = target {
+            self.dispatch_command_target(&target);
+            return true;
+        }
+        // Req 10.1/10.3: resolve the option's command to a user-owned target and
+        // dispatch it; otherwise handle the raw command string (Req 10.2).
+        match self.resolve_and_dispatch_command(&option_cmd) {
+            super::target_dispatch::ResolveOutcome::Dispatched => {}
+            super::target_dispatch::ResolveOutcome::FallThrough => {
+                self.handle_command(&option_cmd);
+            }
+        }
+        true
+    }
+
+    /// Stage 3 of the command-resolution chain (CR-CH-025, command-framework
+    /// Req 8.11, menu-workspace Req 11.11): when the FIRST token of `cmd` names a
+    /// resolvable menu (user `menus/<name>.toml` or built-in `pom`/`settings`),
+    /// open that Menu_Workspace -- forwarding a trailing token as an Option_Key
+    /// (Req 11.7) -- and return `true`. Returns `false` when the first token is
+    /// not a resolvable menu name, so the caller falls through to the error
+    /// stage. Built-in commands are matched earlier in `handle_command`, so a
+    /// built-in always shadows a same-named menu (Req 8.10 / 11.12).
+    fn try_menu_name_dispatch(&mut self, cmd: &str) -> bool {
+        let mut tokens = cmd.split_whitespace();
+        let Some(first) = tokens.next() else {
+            return false;
+        };
+        let rest: String = tokens.collect::<Vec<_>>().join(" ");
+        // Ask the shared resolver whether the first token names a menu.
+        let resolver = crate::command_config::ShellTargetResolver::new(
+            &self.command_store.definitions,
+            &self.cmd_registry,
+            self.menus_dir(),
+        );
+        let name = match ff_command::TargetResolver::menu_name_target(&resolver, first) {
+            Some(ff_command::CommandTarget::Menu { name }) => name,
+            _ => return false,
+        };
+        // Open the named menu through its proper opener so the Navigation_Stack
+        // (CR-CH-022) and Settings/POM chrome are preserved.
+        match name.as_str() {
+            "pom" => self.open_menu_by_name("pom"),
+            "settings" => self.open_settings_menu(),
+            other => self.open_menu_by_name(other),
+        }
+        // Trailing token: activate the option keyed by it on the now-open menu
+        // (Req 11.7). Re-dispatch so it hits the stage-1 Option_Key lookup.
+        let trailing = rest.trim();
+        if !trailing.is_empty() {
+            self.handle_command(trailing);
+        }
+        true
+    }
+
     /// Ensure the active POM tab carries a loaded `MenuWorkspaceState` backed by
     /// `menus/pom.toml`, loading it lazily on first render. The POM keeps its
     /// `TabKind::PrimaryOptionMenu` identity, `[POM]` title, and Title_Line
@@ -1171,6 +1316,81 @@ impl WorkbenchShell {
         if let Some(tab) = self.tabs.tabs_mut().get_mut(idx) {
             tab.menu_workspace = Some(state);
         }
+    }
+
+    /// Handle a chained fastpath navigation path (menu-workspace Requirement 5).
+    ///
+    /// A chained path walks a menu Option_Key chain across one or more levels,
+    /// e.g. `=0.K` (POM option 0 -> Settings, then option K -> KEYS), `3.1`, or
+    /// `=0;E.T` (mixed separators). Segments are separated by `.` (collapse /
+    /// STOP) or `;` (push / PUSH); this method splits on BOTH.
+    ///
+    /// Semantics:
+    /// - A leading `=` is the Navigation_Origin (Req 5.7): the shell pops to the
+    ///   POM before resolving the first segment, so `=<k>...` always resolves
+    ///   `<k>` against the POM regardless of the active Workspace.
+    /// - A bare dotted path (no `=`) resolves its first segment against the
+    ///   CURRENT menu (the legacy `3.1` behaviour, Requirement 19.4). To avoid
+    ///   hijacking ordinary dotted input (dataset names, `abc.def`), a bare path
+    ///   is only treated as a fastpath when its first segment is a single digit.
+    /// - Each segment is dispatched as an Option_Key through `handle_command`,
+    ///   which opens the target sub-menu and activates the option (the same code
+    ///   path `MENU <name> <key>` and the single-segment fastpath use).
+    /// - Depth is capped at 4 segments (Req 5.2); deeper paths report an error.
+    ///
+    /// Returns `Some(true)` when the input was a chained path and was handled
+    /// (the caller must return), `Some(false)`/`None` when the input is NOT a
+    /// chained path and the caller should fall through to the rest of the chain.
+    ///
+    /// Validates: menu-workspace Requirement 5.1, 5.2, 5.4, 5.7; Requirement 19.4
+    pub(super) fn try_chained_fastpath(&mut self, upper: &str) -> Option<bool> {
+        let has_sep = upper.contains('.') || upper.contains(';');
+        let is_origin = upper.starts_with('=');
+        // Not a chained path unless it has a separator (or is a bare `=<key>`,
+        // which the single-segment fastpath below already handles -- so require
+        // a separator here). A leading `.`/`;` is not a path.
+        if !has_sep || upper.starts_with('.') || upper.starts_with(';') {
+            return None;
+        }
+
+        // Strip the Navigation_Origin marker; split into segments on either
+        // separator, preserving order. splitn-style cap at 5 so >4 is an error.
+        let body = upper.strip_prefix('=').unwrap_or(upper);
+        let segments: Vec<&str> = body
+            .split(['.', ';'])
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .collect();
+        if segments.is_empty() {
+            return None;
+        }
+        if segments.len() > 4 {
+            self.open_error = Some("Chained path exceeds maximum depth of 4 segments.".to_string());
+            return Some(true);
+        }
+
+        // A bare dotted path (no `=`) is only a fastpath when the first segment
+        // is a single digit -- otherwise ordinary dotted text (`abc.def`, DSNs)
+        // would be hijacked. An `=`-origin path is always a fastpath.
+        let first = segments[0];
+        if !is_origin && !(first.len() == 1 && first.chars().all(|c| c.is_ascii_digit())) {
+            return None;
+        }
+
+        // Navigation_Origin: `=` pops to the POM before resolving segment 1.
+        if is_origin && self.tabs.active_tab().kind != crate::tab_state::TabKind::PrimaryOptionMenu
+        {
+            self.tabs.insert_pom_tab(&self.runtime);
+            self.ensure_pom_menu_loaded();
+        }
+
+        // Dispatch each segment as an Option_Key. Every re-entry routes through
+        // the stage-1 current-menu Option_Key lookup / stage-3 menu-name path,
+        // which opens the sub-menu and activates the option in place.
+        for segment in segments {
+            self.handle_command(segment);
+        }
+        Some(true)
     }
 
     /// Resolve a POM fastpath key to its Option_Command using the loaded
@@ -1457,14 +1677,15 @@ impl WorkbenchShell {
         }
     }
 
-    /// Open the Settings panel, optionally as a Settings_Namespace_View.
+    /// Open the Config panel (flat config-key browser), optionally filtered to a
+    /// namespace (the `CONFIG [<namespace>]` command).
     ///
     /// When `namespace` is `Some(ns)` the flat-list filter is pre-populated
-    /// with `<ns>.` and the tab title becomes `[SETTINGS:<ns>]`. When `None`
-    /// the unfiltered All-Settings view is shown with title `[SETTINGS]`.
+    /// with `<ns>.` and the tab title becomes `[CONFIG:<ns>]`. When `None`
+    /// the unfiltered all-keys Config view is shown with title `[CONFIG]`.
     ///
     /// Validates: cw-requirements.md Requirement 10.1, 10.2, 10.5, 9.4
-    pub(super) fn open_settings_view(&mut self, namespace: Option<String>) {
+    pub(super) fn open_config_view(&mut self, namespace: Option<String>) {
         // CR-CH-022 Req 14.2 + cw-requirements Req 10.4: navigate the current tab
         // in place. For a NAMESPACE view, the parent on the Navigation_Stack must
         // be the Settings MENU (so END returns to the menu, not straight to the
@@ -1489,8 +1710,8 @@ impl WorkbenchShell {
             if !already_on_settings_menu {
                 self.open_settings_menu();
             }
-            self.settings_panel.filter = format!("{ns}.");
-            self.settings_panel.namespace_filter = Some(ns.clone());
+            self.config_panel.filter = format!("{ns}.");
+            self.config_panel.namespace_filter = Some(ns.clone());
             let mut params = ff_session::session_state::DescriptorParams::new();
             params.insert(
                 "namespace".to_string(),
@@ -1498,17 +1719,17 @@ impl WorkbenchShell {
             );
             self.navigate_to(
                 ff_session::session_state::WorkspaceDescriptor::CustomWorkspace {
-                    workspace_kind: ff_session::session_state::WorkspaceKind::Settings,
+                    workspace_kind: ff_session::session_state::WorkspaceKind::Config,
                     params,
                 },
                 true,
             );
         } else {
-            self.settings_panel.filter = String::new();
-            self.settings_panel.namespace_filter = None;
+            self.config_panel.filter = String::new();
+            self.config_panel.namespace_filter = None;
             self.navigate_to(
                 ff_session::session_state::WorkspaceDescriptor::CustomWorkspace {
-                    workspace_kind: ff_session::session_state::WorkspaceKind::Settings,
+                    workspace_kind: ff_session::session_state::WorkspaceKind::Config,
                     params: ff_session::session_state::DescriptorParams::new(),
                 },
                 true,
@@ -1554,22 +1775,22 @@ impl WorkbenchShell {
                     WorkspaceKind::FileExplorer => {
                         self.tabs.open_file_explorer_panel_tab(&self.runtime);
                     }
-                    WorkspaceKind::Settings => {
+                    WorkspaceKind::Config => {
                         let namespace = match params.get("namespace") {
                             Some(DescriptorValue::String(ns)) => Some(ns.clone()),
                             _ => None,
                         };
-                        self.tabs.open_settings_panel_tab(&self.runtime);
-                        self.settings_panel.filter = match &namespace {
+                        self.tabs.open_config_panel_tab(&self.runtime);
+                        self.config_panel.filter = match &namespace {
                             Some(ns) => format!("{ns}."),
                             None => String::new(),
                         };
                         let title = match &namespace {
-                            Some(ns) => format!("[SETTINGS:{ns}]"),
-                            None => "[SETTINGS]".to_string(),
+                            Some(ns) => format!("[CONFIG:{ns}]"),
+                            None => "[CONFIG]".to_string(),
                         };
                         self.tabs.active_tab_mut().title = title;
-                        self.settings_panel.namespace_filter = namespace;
+                        self.config_panel.namespace_filter = namespace;
                     }
                     WorkspaceKind::Search => {
                         self.tabs.open_search_results_tab(&self.runtime);

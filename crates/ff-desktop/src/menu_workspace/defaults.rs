@@ -74,24 +74,32 @@ group = "Core"
 ///
 /// Validates: Requirement 12.1, 12.3, 12.7 (menu-workspace)
 pub const DEFAULT_SETTINGS_TOML: &str = r#"title = "Settings"
+show_calendar = false
+group_separator = "line"
+
+[[options]]
+key = "A"
+command = "CONFIG"
+description = "All settings -- browse every configuration key"
+group = "Core"
 
 [[options]]
 key = "T"
-command = "THEMES"
+command = "THEME"
 description = "Theme editor -- copy, edit, save and select themes"
-group = "Settings"
+group = "Core"
 
 [[options]]
 key = "M"
 command = "MENUS"
 description = "Menus editor -- create, change and save menus"
-group = "Settings"
+group = "Core"
 
 [[options]]
-key = "A"
-command = "A"
-description = "Browse all configuration keys (unfiltered flat list)"
-group = "Settings"
+key = "K"
+command = "KEYS"
+description = "Keys -- edit and save per-workspace key assignments"
+group = "Core"
 
 [[options]]
 key = "R"
@@ -214,12 +222,16 @@ mod tests {
     fn recovery_settings_menu_has_barebones_options() {
         let menu = recovery_settings_menu();
         let keys: Vec<&str> = menu.options.iter().map(|o| o.key.as_str()).collect();
-        // T Themes / M Menus / A All + R Reset-to-barebones (CR-NR-075 task 24.9:
-        // the RESET BARE Settings affordance dispatches the command via the menu
-        // option = command path, satisfying configuration-system Req 19.7).
-        assert_eq!(keys, vec!["T", "M", "A", "R"]);
+        // CR-CH-025 + CR-CH-029: ordered A Config / T Theme / M Menus / K Keys
+        // (group Core), then R Reset-to-barebones (group Recovery). Affordances
+        // dispatch via the menu option = command path; `K -> KEYS` opens the
+        // Keys Workspace (function-keys Req 22).
+        assert_eq!(keys, vec!["A", "T", "M", "K", "R"]);
         let commands: Vec<&str> = menu.options.iter().map(|o| o.command.as_str()).collect();
-        assert_eq!(commands, vec!["THEMES", "MENUS", "A", "RESET BARE"]);
+        assert_eq!(
+            commands,
+            vec!["CONFIG", "THEME", "MENUS", "KEYS", "RESET BARE"]
+        );
     }
 
     // Validates: Requirement 7.4 (cv-requirements.md) -- DEFAULT_POM_TOML is valid TOML
@@ -307,14 +319,29 @@ mod tests {
             .expect("options array");
         assert_eq!(
             options.len(),
-            4,
-            "Recovery_Baseline Settings must have T/M/A + the RESET BARE affordance"
+            5,
+            "Recovery_Baseline Settings: A/T/M/K + the RESET BARE affordance"
         );
+        // CR-CH-025 + CR-CH-029: ordered A CONFIG, T THEME, M MENUS, K KEYS
+        // (group Core), then R RESET BARE (group Recovery).
+        let keys: Vec<&str> = options
+            .iter()
+            .filter_map(|o| o.get("key").and_then(|c| c.as_str()))
+            .collect();
+        assert_eq!(keys, vec!["A", "T", "M", "K", "R"]);
         let commands: Vec<&str> = options
             .iter()
             .filter_map(|o| o.get("command").and_then(|c| c.as_str()))
             .collect();
-        assert_eq!(commands, vec!["THEMES", "MENUS", "A", "RESET BARE"]);
+        assert_eq!(
+            commands,
+            vec!["CONFIG", "THEME", "MENUS", "KEYS", "RESET BARE"]
+        );
+        let groups: Vec<&str> = options
+            .iter()
+            .filter_map(|o| o.get("group").and_then(|c| c.as_str()))
+            .collect();
+        assert_eq!(groups, vec!["Core", "Core", "Core", "Core", "Recovery"]);
     }
 
     // Validates: Requirement 11.1 (cw-requirements.md) -- title matches spec
@@ -333,6 +360,29 @@ mod tests {
         assert!(
             DEFAULT_SETTINGS_TOML.is_ascii(),
             "DEFAULT_SETTINGS_TOML must use only ASCII characters"
+        );
+    }
+
+    // Validates: menu-workspace Requirement 16.1 (CR-CH-026, B060) -- the
+    // compiled Settings default hides the calendar, so the Settings
+    // Menu_Workspace has no calendar and no calendar Tab stops by default.
+    #[test]
+    fn default_settings_toml_hides_calendar() {
+        let val: toml::Value = toml::from_str(DEFAULT_SETTINGS_TOML).expect("valid TOML");
+        let show = val
+            .get("show_calendar")
+            .and_then(|v| v.as_bool())
+            .expect("show_calendar key present");
+        assert!(
+            !show,
+            "Settings default must set show_calendar = false (Req 16.1)"
+        );
+        // And it survives the loader (which defaults absent -> true).
+        let menu =
+            crate::menu_workspace::loader::parse_menu_str(DEFAULT_SETTINGS_TOML).expect("parse ok");
+        assert!(
+            !menu.show_calendar,
+            "loader must preserve show_calendar = false for Settings"
         );
     }
 }

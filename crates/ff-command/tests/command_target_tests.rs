@@ -17,6 +17,10 @@ struct MockResolver {
     user: Vec<(String, CommandTarget)>,
     builtins: Vec<(String, CommandTarget)>,
     registered: Vec<String>,
+    /// Menu names that resolve (stage 3). Matched against the FIRST token.
+    menus: Vec<String>,
+    /// Macro names that resolve (stage 4). Matched against the FIRST token.
+    macros: Vec<String>,
 }
 
 impl MockResolver {
@@ -25,6 +29,8 @@ impl MockResolver {
             user: Vec::new(),
             builtins: Vec::new(),
             registered: Vec::new(),
+            menus: Vec::new(),
+            macros: Vec::new(),
         }
     }
 }
@@ -46,6 +52,24 @@ impl TargetResolver for MockResolver {
 
     fn is_registered_command(&self, input: &str) -> bool {
         self.registered.iter().any(|k| k == input)
+    }
+
+    fn menu_name_target(&self, input: &str) -> Option<CommandTarget> {
+        let first = input.split_whitespace().next().unwrap_or("");
+        self.menus
+            .iter()
+            .find(|m| m.eq_ignore_ascii_case(first))
+            .map(|m| CommandTarget::Menu { name: m.clone() })
+    }
+
+    fn macro_name_target(&self, input: &str) -> Option<CommandTarget> {
+        let first = input.split_whitespace().next().unwrap_or("");
+        self.macros
+            .iter()
+            .find(|m| m.eq_ignore_ascii_case(first))
+            .map(|m| CommandTarget::Macro {
+                source: MacroSource::Name(m.clone()),
+            })
     }
 }
 
@@ -141,6 +165,8 @@ fn user_command_definition_resolves_first() {
         builtins: vec![],
         // Even if it were also a registered id, the user definition wins.
         registered: vec!["build.release".to_string()],
+        menus: vec![],
+        macros: vec![],
     };
     let resolved = resolve_target("build.release", &resolver).expect("resolves");
     assert_eq!(resolved, target);
@@ -157,6 +183,8 @@ fn builtin_workspace_verb_resolves_to_custom_workspace() {
         user: vec![],
         builtins: vec![("FILES".to_string(), files.clone())],
         registered: vec![],
+        menus: vec![],
+        macros: vec![],
     };
     assert_eq!(resolve_target("FILES", &resolver).unwrap(), files);
 }
@@ -168,6 +196,8 @@ fn bare_registered_command_resolves_to_function_target() {
         user: vec![],
         builtins: vec![],
         registered: vec!["file.save".to_string()],
+        menus: vec![],
+        macros: vec![],
     };
     let resolved = resolve_target("file.save", &resolver).unwrap();
     assert_eq!(
@@ -186,6 +216,8 @@ fn resolution_trims_surrounding_whitespace() {
         user: vec![],
         builtins: vec![],
         registered: vec!["edit.copy".to_string()],
+        menus: vec![],
+        macros: vec![],
     };
     let padded = resolve_target("   edit.copy  ", &resolver).unwrap();
     assert_eq!(
@@ -206,6 +238,106 @@ fn unresolved_string_returns_error_naming_input() {
     let err = resolve_target("totally.unknown", &resolver).unwrap_err();
     assert_eq!(err.input, "totally.unknown");
     assert!(err.to_string().contains("totally.unknown"));
+}
+
+// === Requirement 8.10-8.13 (CR-CH-025): menu-name + macro stages ==========
+
+#[test]
+fn menu_name_resolves_to_menu_target() {
+    // Validates: Requirement 8.11 -- a bare token matching a menu name resolves
+    // to a Menu target when no earlier stage claims it.
+    let resolver = MockResolver {
+        menus: vec!["settings".to_string()],
+        ..MockResolver::empty()
+    };
+    assert_eq!(
+        resolve_target("settings", &resolver).unwrap(),
+        CommandTarget::Menu {
+            name: "settings".to_string()
+        }
+    );
+    // Case-insensitive.
+    assert_eq!(
+        resolve_target("SETTINGS", &resolver).unwrap(),
+        CommandTarget::Menu {
+            name: "settings".to_string()
+        }
+    );
+}
+
+#[test]
+fn menu_name_matches_first_token_for_chaining() {
+    // Validates: Requirement 8.13 -- `SETTINGS T` resolves the menu on the first
+    // token (the trailing key is applied by the shell's chaining helper).
+    let resolver = MockResolver {
+        menus: vec!["settings".to_string()],
+        ..MockResolver::empty()
+    };
+    assert_eq!(
+        resolve_target("SETTINGS T", &resolver).unwrap(),
+        CommandTarget::Menu {
+            name: "settings".to_string()
+        }
+    );
+}
+
+#[test]
+fn builtin_command_shadows_same_named_menu() {
+    // Validates: Requirement 8.10 -- a registered Command_ID beats a same-named
+    // menu; a user cannot shadow a core verb with a menu.
+    let resolver = MockResolver {
+        registered: vec!["settings".to_string()],
+        menus: vec!["settings".to_string()],
+        ..MockResolver::empty()
+    };
+    assert_eq!(
+        resolve_target("settings", &resolver).unwrap(),
+        CommandTarget::Function {
+            command_id: "settings".to_string(),
+            params: TargetParams::new(),
+        }
+    );
+}
+
+#[test]
+fn menu_name_shadows_same_named_macro() {
+    // Validates: Requirement 8.10 -- a menu beats a same-named macro.
+    let resolver = MockResolver {
+        menus: vec!["reports".to_string()],
+        macros: vec!["reports".to_string()],
+        ..MockResolver::empty()
+    };
+    assert_eq!(
+        resolve_target("reports", &resolver).unwrap(),
+        CommandTarget::Menu {
+            name: "reports".to_string()
+        }
+    );
+}
+
+#[test]
+fn macro_name_resolves_when_no_earlier_stage_matches() {
+    // Validates: Requirement 8.12 -- the macro stage resolves a name when it is
+    // not a built-in or a menu.
+    let resolver = MockResolver {
+        macros: vec!["format".to_string()],
+        ..MockResolver::empty()
+    };
+    assert_eq!(
+        resolve_target("format", &resolver).unwrap(),
+        CommandTarget::Macro {
+            source: MacroSource::Name("format".to_string())
+        }
+    );
+}
+
+#[test]
+fn deferred_macro_stage_default_none_falls_through_to_error() {
+    // Validates: Requirement 8.12 -- with no menu/macro fixtures (the deferred
+    // default), a non-built-in token is unresolved rather than silently ignored.
+    let resolver = MockResolver::empty();
+    let err = resolve_target("notabuiltin", &resolver).unwrap_err();
+    assert_eq!(err.input, "notabuiltin");
 }
 
 // === Requirement 8.2: execute_target routing ==============================

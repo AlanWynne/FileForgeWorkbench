@@ -218,15 +218,46 @@ pub trait TargetResolver {
 
     /// Return true if `input` (trimmed) is a registered Command_ID.
     fn is_registered_command(&self, input: &str) -> bool;
+
+    /// Return a `Menu` target when `input`'s FIRST token names a resolvable menu
+    /// (a user `menus/<name>.toml` that exists, or a compiled built-in menu name
+    /// such as `POM`/`SETTINGS`), or `None`. Stage 3 of the resolution chain
+    /// (command-framework Requirement 8.3, 8.11, CR-CH-025).
+    ///
+    /// The default returns `None` so a resolver that does not participate in
+    /// menu-name resolution (e.g. a pure user-command view) is unaffected.
+    fn menu_name_target(&self, _input: &str) -> Option<CommandTarget> {
+        None
+    }
+
+    /// Return a `Macro` target when `input`'s FIRST token names a macro in the
+    /// Macro_Library, or `None`. Stage 4 of the resolution chain
+    /// (command-framework Requirement 8.3, 8.12, CR-CH-025).
+    ///
+    /// The default returns `None`. This is also the DEFERRED behaviour for the
+    /// desktop shell until Lua/macro execution is wired: the stage is present in
+    /// the chain order but matches nothing, so a non-built-in, non-menu token
+    /// falls through to the unresolved-command error.
+    fn macro_name_target(&self, _input: &str) -> Option<CommandTarget> {
+        None
+    }
 }
 
 /// Convert a bare command string into a [`CommandTarget`].
 ///
-/// Resolution order (first match wins), chosen to preserve existing behaviour:
+/// Resolution order (first match wins), chosen to preserve existing behaviour
+/// and extended by CR-CH-025 with the menu-name and macro stages:
 /// 1. A user-defined command definition whose id equals the trimmed input.
 /// 2. A built-in workspace verb / fastpath.
 /// 3. A registered Command_ID -> a `Function` target.
-/// 4. Otherwise -> `Err(TargetResolveError)`.
+/// 4. A resolvable menu name -> a `Menu` target (Requirement 8.11).
+/// 5. A macro-library name -> a `Macro` target (Requirement 8.12; deferred).
+/// 6. Otherwise -> `Err(TargetResolveError)`.
+///
+/// The order enforces the shadowing rule (Requirement 8.10): built-in commands
+/// beat same-named menus, which beat same-named macros. The current-menu
+/// Option_Key stage (Requirement 8.3 stage 1) is applied by the shell BEFORE
+/// this function is consulted.
 ///
 /// Callers whose input string is not resolvable here (e.g. editor pipeline
 /// verbs like `LOCATE`) are expected to fall through to the existing command
@@ -250,6 +281,18 @@ pub fn resolve_target<R: TargetResolver + ?Sized>(
             command_id: trimmed.to_string(),
             params: TargetParams::new(),
         });
+    }
+    // Stage 3 (CR-CH-025): a resolvable menu name -> Menu_Target. Runs AFTER the
+    // built-in / Command_ID checks so a built-in always beats a same-named menu
+    // (shadowing rule, Requirement 8.10).
+    if let Some(t) = resolver.menu_name_target(trimmed) {
+        return Ok(t);
+    }
+    // Stage 4 (CR-CH-025): a macro-library name -> Macro_Target. Runs after the
+    // menu-name stage (menu beats macro). Deferred in the desktop shell (the
+    // default returns None) until macro execution is wired.
+    if let Some(t) = resolver.macro_name_target(trimmed) {
+        return Ok(t);
     }
     Err(TargetResolveError {
         input: trimmed.to_string(),

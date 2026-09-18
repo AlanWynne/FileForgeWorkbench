@@ -445,8 +445,22 @@ harness while minimising API churn.
     group-headers, each group-separator option, then per option in order the
     key / command / description / group / enabled / move-up / move-down / delete
     controls, then the footer add / save / save-as-name / save-as controls,
-    before wrapping to the shell command line.
+    before wrapping to the shell command line. (Revised by CR-CH-023: this order
+    is produced by egui-native traversal over controls created in visual order,
+    NOT by a Menus-Editor-specific shell focus ring; the Menus Editor is no
+    longer a special-cased Workspace -- it follows the shared model of
+    menu-and-statusbar Requirement 16 exactly like every other Workspace.)
 
 14.8 THE headless harness SHALL execute without an attached display device
     (consistent with Requirement 6.1) and be runnable under `cargo test` and
     `cargo nextest`.
+
+14.9 THE test suite SHALL include headless `egui_kittest` harness tests that
+    validate the shared tab-order model (menu-and-statusbar Requirement 16,
+    CR-CH-023) beyond the Menus Editor: (a) that non-interactive Chrome -- the
+    Status_Bar segments, the `SCROLL ===>` field, the Tab_Bar tab headers, and
+    the Key_Label_Bar F-key buttons -- receives no keyboard focus under repeated
+    Tab; and (b) that in a Menu_Workspace (POM/Settings) Tab visits the command
+    line, then each enabled option in order, then (when the calendar is shown)
+    the calendar previous/next buttons, then the Menu_Bar, wrapping to the
+    command line -- with disabled options skipped.

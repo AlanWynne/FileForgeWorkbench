@@ -91,6 +91,7 @@ The following specs exist under `docs/specs/`:
 - whitespace-and-guides
 - workbench-requirements-merge (architecture docs and validation reports -- no deliverable crate)
 - workflow-engine
+- workspace-framework (CR-NR-078: WorkspaceContext trait framework -- design proposal, gate pending)
 - workspace-model
 - accessibility
 - plugin-manager-ui

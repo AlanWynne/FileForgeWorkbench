@@ -1027,3 +1027,278 @@ params that vary (Settings namespace, Menu name, Editor uri), and is what
 session-restore reconstructs from -- so navigation and restore share one
 reconstruction path. The only additions are descriptors for ThemeEditor /
 MenusEditor (kind-only) so they can appear on a stack.
+
+---
+
+## 15. Menu Workspace Tab Order and Focusable Calendar (Requirement 15, CR-CH-023)
+
+Design delta to Section 6 (Rendering) and the calendar helpers.
+
+### Shared tab-order model
+The Menu_Workspace does NOT own a focus ring. It relies on the shared shell model
+(menu-and-statusbar Requirement 16, unified per CR-CH-023): the shell Boundary_Policy handles
+command-line entry, menu-bar-last, and wrap; the interior order is whatever egui-native
+traversal produces over the controls as `render_menu_workspace` creates them. The prior
+`FocusStop::PomOption`/`CalendarPrev`/`CalendarNext` enumeration is removed.
+
+### Option rows (already correct)
+Enabled options are already real focusable `egui::Button`s (transparent fill, no stroke), so
+egui walks them in declared order for free. Disabled options are `ui.add_enabled(false, Label)`
+and are non-focusable, so Tab skips them (Requirement 15.4). No change needed to make options
+tab-reachable; the change is the REMOVAL of the shell ring that previously drove their focus.
+
+### Calendar: painted hotspot -> two focusable buttons
+Today `primary_option_menu::render_calendar` draws the month header and detects `<`/`>` by
+hit-testing which sixth of the header rect was clicked, returning `Option<CalendarNav>`. Under
+CR-CH-023 the header renders two REAL `egui::Button`s labelled `<` and `>` (created after the
+option column and before any trailing content), each returning its `CalendarNav` on click OR on
+keyboard activate (Enter/Space) when focused (Requirement 15.7, 15.8). Because they are ordinary
+focusable buttons created in visual order, egui-native traversal reaches them right after the
+last option (Requirement 15.5). The `pom_calendar_offset` state and `CalendarNav::Prev`/`Next`
+side effect are unchanged; only the input surface changes from a hit-region to two buttons. The
+optional legacy click-region MAY be retained for mouse users but MUST produce the same month
+change. Day cells remain non-focusable (Requirement 15.10) -- the calendar stays minimal pending
+a future redesign.
+
+### No new crate dependency
+Uses existing egui button/focus APIs and the existing calendar helpers.
+---
+
+## Design Delta: Keyword-less menu-name resolution + Settings baseline reorder (Requirement 3.6, 11.11-11.12, 12.3, CR-CH-025)
+
+This delta REVISES Section 7/13 (Command Dispatch / Command Target Integration) and the
+Recovery_Baseline content (Section "Code-only menus"). It removes the hardcoded `SETTINGS`
+special-casing and reorders the compiled Settings baseline. No new module or Workspace kind.
+
+### 1. Menu name is resolved by the chain, not a hardcoded verb
+
+The bare-token menu-name form (Requirement 11.11) is implemented as stage 3 of the unified
+command-resolution chain (command-framework Req 8.3 / design delta). When a typed token is
+not claimed by the current-menu Option_Key stage or the built-in/Command_ID stage, the shell
+asks the resolver whether the token is a resolvable Menu_Name (a user `menus/<name>.toml`
+that exists, or a compiled built-in `pom`/`settings`); if so it dispatches
+`Menu_Target { name }` via the existing `open_menu_by_name`. A trailing token is forwarded as
+the chained Option_Key (the MENU Argument Chaining delta above), so `SETTINGS T` == open
+Settings + activate `T`.
+
+Consequently the following hardcoded `handle_command` intercepts are REMOVED:
+`if upper == "SETTINGS"`, `if upper.starts_with("SETTINGS ")`, and `if upper == "A"`. Opening
+the Settings menu is now stage-3 resolution of `SETTINGS`, identical to `POM` and to any user
+menu. `open_settings_menu()` is retained as the helper the Menu_Target/`open_menu_by_name`
+path calls for the `settings` name; `open_settings_view(..)` is superseded by the `CONFIG`
+command handler (configuration-system Req 20).
+
+Precedence (Req 11.12 / command-framework Req 8.10): built-ins beat same-named menus, so a
+user cannot shadow a core verb by naming a menu after it. The current-menu Option_Key lookup
+stays first, so an option key like `T` on the Settings menu still runs `THEME` before any
+global interpretation.
+
+### 2. Option-key lookup becomes the first chain stage, not a terminal check
+
+Section 7's on-menu block (`if active tab is MenuWorkspace { find_option(..) }`) is MOVED to
+the TOP of `handle_command` (before the built-in intercepts) so it is stage 1 of the chain.
+Requirement 3.6 changes accordingly: a non-matching token no longer errors immediately -- it
+falls through to the remaining stages (built-in, menu name, macro) and only errors when NO
+stage resolves it.
+
+### 3. Settings Recovery_Baseline reorder (Requirement 12.3)
+
+`DEFAULT_SETTINGS_TOML` in `menu_workspace/defaults.rs` is rewritten to:
+
+```toml
+title = "Settings"
+group_separator = "line"
+
+[[options]]
+key = "A"
+command = "CONFIG"
+description = "All settings -- browse every configuration key"
+group = "Core"
+
+[[options]]
+key = "T"
+command = "THEME"
+description = "Theme editor -- copy, edit, save and select themes"
+group = "Core"
+
+[[options]]
+key = "M"
+command = "MENUS"
+description = "Menus editor -- create, change and save menus"
+group = "Core"
+
+[[options]]
+key = "R"
+command = "RESET BARE"
+description = "Reset to barebones -- archive config and start fresh"
+group = "Recovery"
+```
+
+Order A, T, M (group `Core`) then R (group `Recovery`); the group change draws a boundary
+(Requirement 2.4). Corrects the stale `T -> THEMES` to `T -> THEME` (CR-CH-024) and replaces
+`A -> A` with `A -> CONFIG`. Built-ins stay CODE-ONLY (CR-CH-021); RESET BARE is UNCHANGED
+(archive/move, no file writes). `recovery_settings_menu()` continues to parse this single
+constant (Req 12.7).
+
+### No new crate dependency
+Reuses `open_menu_by_name`, `find_option`, `menus_dir`, and the existing chained-key helper.
+
+---
+
+## Design Delta: Calendar Visibility and Fit (Requirement 16, CR-CH-026, B060)
+
+Design delta to Section 6 (Rendering), the "Unified config-driven menu renderer"
+delta, and Section 15 (Tab order). Fixes B060.
+
+### Problem
+
+`render_menu_workspace` renders the option list inside
+`ui.horizontal_top(|ui| { ui.vertical(|ui| ScrollArea::vertical(...)) ; add_space(32) ; calendar })`.
+The `ScrollArea::vertical()` has no width constraint, so the option column takes
+its natural width; the calendar is then placed to its right at a FIXED offset
+that does not reflow to the visible clip width. In a workspace narrower than the
+option-list natural width, the calendar (and its focusable `<`/`>` buttons) is
+positioned past the right clip edge: invisible but still in the Tab ring -- two
+phantom stops after the last option (confirmed empirically: the `>` button x
+stays fixed regardless of panel width and falls outside the clip rect at narrow
+widths).
+
+### Fix
+
+1. Settings default: `DEFAULT_SETTINGS_TOML` in `menu_workspace/defaults.rs` adds
+   `show_calendar = false` (Requirement 16.1). The `MenuFile` field default stays
+   `true` (the POM and any author-enabled menu keep it). The serialiser already
+   omits `show_calendar` only when it equals the default `true`, so an explicit
+   `false` is written -- no serialiser change required, but a round-trip test is
+   added.
+
+2. Layout: reserve the calendar column FIRST from the right within the visible
+   width, then give the option list the remaining width. Concretely, compute the
+   available width at the top of the option/calendar row; define
+   `CALENDAR_MIN_WIDTH` (approx 160-180px, the `<  Month YYYY  >` header + 7-column
+   grid) and a minimum readable option-list width. WHEN `show_calendar` is true
+   AND `available_width >= option_min + gap + CALENDAR_MIN_WIDTH`, render the
+   calendar in a right-hand column sized to `CALENDAR_MIN_WIDTH` and constrain the
+   option `ScrollArea` to the remaining width (Requirement 16.2, 16.5, 16.6).
+   Options: `ui.columns`-style split, or an explicit right-to-left allocation
+   (`ui.with_layout(Layout::right_to_left(...))` for the calendar, remainder for
+   the options), or a `ScrollArea::vertical().max_width(option_width)`. The chosen
+   approach must keep the calendar rect inside `ui.clip_rect()`.
+
+3. Fit gate + focus contract: WHEN `show_calendar` is true BUT
+   `available_width < option_min + gap + CALENDAR_MIN_WIDTH`, OMIT the calendar
+   for that frame (Requirement 16.3, mirroring the deferred CR-NR-059
+   responsive-hide) and set `result.last_interior_id = last_enabled_option_id`
+   (do NOT report the calendar `<`/`>` ids). The existing `else` branch (when
+   `show_calendar` is false) already does this; the new narrow-fit branch joins
+   it. Net effect (Requirement 16.4): the calendar contributes a Tab stop ONLY
+   when it is actually displayed within the visible area.
+
+### Tests (egui_kittest, per testing.md)
+
+- `full_shell_settings_first_to_last_tab_walks_options_only` (full-shell, Settings
+  workspace): from the command field, Tab walks exactly the option rows then the
+  menu bar; the reported `last_interior_id` is the last option, not a calendar id
+  (Requirement 16.1, 16.4).
+- `menu_calendar_shown_when_wide_next_button_is_on_screen`: a calendar-on menu at
+  a wide size reports the `>` id AND its rect is within `ui.clip_rect()`
+  (Requirement 16.2, 16.5) -- the regression guard for B060.
+- `menu_calendar_omitted_when_too_narrow_no_calendar_tab_stops`: the same menu at
+  a narrow size omits the calendar and reports the last option as last interior,
+  with no calendar ids (Requirement 16.3, 16.4).
+- Serialiser round-trip: `show_calendar = false` on Settings survives
+  serialise/parse.
+
+---
+
+## Design Delta: Configurable Named Menu Bars (Requirement 17, CR-NR-080)
+
+The menu bar becomes a Menu_File rendered horizontally. The menu MODEL and
+command RESOLUTION are unchanged: nesting is already expressed through command
+resolution (an option whose command names a menu -- Requirement 3/5/11 -- and
+chained fastpaths like `=0.K`, B061). This delta is a RENDER + configuration +
+assignment change, plus one net-new dynamic-options hook. Design is written
+whole for Requirement 17; implementation is SLICED (A first).
+
+### DM.1 Slice A -- data-driven horizontal render (the immediate work)
+
+Today `WorkbenchShell::render_menu_bar` (`shell/render_chrome.rs`) hand-wires 13
+`ui.menu_button(...)` calls and `super::MENU_BAR_TOP_LEVEL_LABELS` is a fixed
+array asserted by a `debug_assert_eq!`. Slice A replaces that with a render
+driven by a Menu_File:
+
+- NEW compiled default `DEFAULT_MENUBAR_TOML` in `menu_workspace/defaults.rs`
+  (code-only, parsed once via `parse_menu_str`, mirroring `DEFAULT_POM_TOML` /
+  `DEFAULT_SETTINGS_TOML`, with a `default_menubar_menu()` accessor and an
+  ASCII-only + valid-TOML unit test). Its top-level options reproduce the current
+  bar's entries in order and INCLUDE a trailing `Help` entry (Requirement 17.2).
+  Each top-level option's `command` names the submenu it opens (e.g. Settings
+  option command = `SETTINGS`, resolvable to the Settings menu), so peeking can
+  resolve the referenced menu's options.
+- NEW render `render_menu_bar_from_menu(ctx, menu: &MenuFile, ...)` (in
+  `menu_workspace/render.rs` or a `menu_bar` submodule): `egui::TopBottomPanel::
+  top("menu_bar")` + `egui::menu::bar`, iterating `menu.options` in order. For
+  each top-level option it draws a `ui.menu_button(option.description, |ui| {
+  ... })`. Inside the button (Requirement 17.3, PEEK): resolve the option's
+  command to a menu (reuse the resolver used by `try_menu_name_dispatch` --
+  `ff_command::TargetResolver::menu_name_target` -- and load that menu's options
+  via the loader / compiled default); render each of the referenced menu's
+  options as `ui.button(child.description)`. On click of a child (Requirement
+  17.4): `self.handle_command(&child.command)` then `ui.close_menu()`. WHERE a
+  top-level option's command does NOT resolve to a menu, render it as a direct
+  `ui.button` dispatching its own command.
+- Keyboard nav inside a dropdown is egui-native (Requirement 17.5): `menu_button`
+  dropdowns already support arrow/Enter/Escape; no bespoke handling.
+- Boundary_Policy (Requirement 17.6, CR-CH-023): capture the FIRST top-level
+  button's `response.id` into `self.menu_first_id` and the LAST into
+  `self.menu_last_id` (today only `menu_first_id` = Settings is captured; the
+  last must also be captured from the data-driven loop -- the LAST option, which
+  is `Help`). The existing `MENU_BAR_TOP_LEVEL_LABELS` array + `debug_assert_eq!`
+  are removed or replaced by "the bar has >= 1 top-level option"; tests that
+  assert specific labels are retargeted to assert against the Default_Menu_Bar's
+  option list instead.
+- The vertical POM/Settings Menu_Workspace render is untouched (Requirement 17.7).
+
+Borrow note: peeking calls `self.handle_command` from within the closure passed
+to `menu_button`; follow the existing pattern (the current bar already calls
+`self.handle_command("THEME ...")` inside `menu_button` closures), so no new
+borrow structure is needed.
+
+### DM.2 Slice B -- named + editable (later)
+
+A menu-bar file is just `menus/<name>.toml` loaded via the existing loader; a
+user file overrides `DEFAULT_MENUBAR_TOML` (code-only fallback, CR-CH-021). It is
+editable via the existing Menus Editor (Requirement 13) + serialiser (CR-NR-075).
+Convention `MB-<name>` (e.g. `MB-POM`), NOT enforced. Add a `menubar_name` the
+shell resolves to a file (default when absent).
+
+### DM.3 Slice C -- per-kind assignment (later)
+
+Mirror the keymaps per-kind pattern (CR-CH-027): a config mapping workspace-kind
+(context name, Requirement 14.6) -> menu-bar name. The active tab's kind selects
+the bar; a kind with no assignment uses the default bar name. Resolution mirrors
+`keymaps_dir` / `context_name_for_kind`.
+
+### DM.4 Slice D -- dynamic option sources (later; delivers ex-CR-NR-077)
+
+A top-level (or nested) option MAY carry a dynamic-source marker (e.g. an option
+whose command is `THEME LIST`, or a `source = "themes"` field). When peeked, the
+dropdown items are generated at runtime: for themes, one `ui.button(name)` per
+`ff_theme::list_all_themes(&self.themes_dir())` entry, each dispatching
+`THEME <name>` via `handle_command` (Requirement 17.10, 17.11; command parity).
+This uses the shared `set_active_theme` apply+persist path and delivers the
+theme-and-appearance Req 17.8-17.13 behaviour without a bespoke popup. The
+command-line `THEME LIST` (optional) can render the same generated list as a
+centred popup for parity, but the menu-bar dropdown is the primary presentation.
+
+### DM.5 No model / resolution change; no contradiction
+
+- Requirement 1 (Menu_File format), 3/5/11 (option -> command -> menu
+  resolution), 12 (compiled defaults), 13 (Menus Editor), 15/16 (Tab order /
+  calendar) are unchanged. Requirement 17 ADDS a horizontal render role + naming
+  + per-kind assignment + dynamic sources.
+- The PEEK behaviour is the one behavioural distinction from normal option
+  activation: a top-level bar button shows a submenu's options in place instead
+  of navigating. Leaf activation is identical to normal command dispatch.
+- CR-CH-023 Boundary_Policy is preserved by capturing first/last button ids from
+  the data-driven loop (DM.1).

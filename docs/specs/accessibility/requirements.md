@@ -69,7 +69,21 @@ can use the full feature set without a mouse.
    mouse click.
 2. THE Tab/Shift+Tab focus cycle SHALL traverse all interactive elements
    in a logical reading order (top-to-bottom, left-to-right within each
-   panel).
+   panel), following the shared shell tab-order model
+   (menu-and-statusbar Requirement 16): the active Workspace's interior
+   controls in visual order, then the Menu_Bar, wrapping to the
+   Primary_Command_Field.
+2a. Certain non-content Chrome SHALL be excluded from the Tab cycle
+   without violating criterion 2.1, because it is either non-interactive
+   or fully operable by another keyboard means (CR-CH-023,
+   menu-and-statusbar Req 16.9): the Status_Bar segments are read-only
+   display and are exposed to screen readers as a live region
+   (Requirement 4.3) rather than as focus stops; Tab_Bar tab headers are
+   reached by the SWAP command (which the Command Field and shortcuts
+   invoke); the `SCROLL ===>` amount is set by the SCROLL command; and
+   the Key_Label_Bar buttons duplicate physical function keys that are
+   invoked directly. Each such exclusion SHALL have a keyboard-operable
+   equivalent so no capability is lost.
 3. WHEN a modal dialog is open, THE keyboard focus SHALL be trapped
    within the dialog -- Tab SHALL NOT move focus to elements behind
    the dialog.
@@ -107,9 +121,10 @@ element will be activated when I press Enter or Space.
 4. THE focus indicator style SHALL be consistent across all panels --
    the same visual treatment SHALL be used for buttons, list items,
    text fields, and tab headers.
-5. WHEN the `FocusStop` cycle (Tab/Shift+Tab) is active, THE currently
-   focused stop SHALL display the focus indicator defined in criterion
-   3.1.
+5. WHEN the shared tab-order cycle (Tab/Shift+Tab, menu-and-statusbar
+   Requirement 16) is active, THE currently focused control -- whether a
+   Workspace Interior_Control or a Menu_Bar item -- SHALL display the
+   focus indicator defined in criterion 3.1.
 
 ---
 

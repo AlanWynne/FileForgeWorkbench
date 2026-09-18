@@ -22,6 +22,76 @@ failing test.
 
 No implementation line may be written before steps 2 and 3 are complete.
 
+## GUI Behaviour Testing -- egui_kittest (MANDATORY)
+
+The TDD cycle applies to GUI behaviour too. `egui_kittest` renders a real panel
+(or the whole shell) headlessly, injects input, and inspects focus/state under
+`cargo test` / `cargo nextest`. Prefer it over deferring to manual verification.
+
+### The rule
+
+WHENEVER an acceptance criterion is about RENDERED WIDGET BEHAVIOUR, it MUST have
+an `egui_kittest` harness test (written first, red before green). This includes:
+
+- keyboard focus and Tab / Shift+Tab order (which widget is focused after input);
+- a widget being present / absent, enabled / disabled, or a Tab stop / not a Tab
+  stop;
+- keyboard interaction and activation (Enter / Space / arrows / Escape) and the
+  action it triggers;
+- text entry landing in the intended field;
+- state that changes in response to input (toggles, selection, month navigation).
+
+`MANUAL` (TCR square) is NOT the default for GUI criteria. It is a JUSTIFIED
+EXCEPTION, allowed ONLY when the behaviour genuinely cannot be driven headlessly:
+
+- pixel-exact appearance / colour / layout geometry (use snapshot tests only if
+  a stable image baseline is warranted; otherwise assert the model, not pixels);
+- OS-native dialogs (`rfd` file pickers), real OS windows, and true
+  multi-viewport / detached-window behaviour;
+- screen-reader / assistive-technology output that requires a real AT client;
+- anything requiring a GPU/display the CI headless runner does not provide.
+
+When a criterion is marked `MANUAL` in `docs/quality/TCR.md`, the row MUST state
+WHY it cannot be harness-tested. "Manual UI verification" with no reason is not
+acceptable for a new criterion.
+
+### The whole shell is harness-able
+
+`egui_kittest`'s `build_eframe` drives a real `eframe::App` headlessly, so the
+entire `WorkbenchShell` can be tested end-to-end, not just isolated panels. The
+`eframe` feature is enabled on the `egui_kittest` dev-dependency for this reason.
+
+```rust
+use egui_kittest::Harness;
+let mut harness = Harness::builder()
+    .with_size(egui::Vec2::new(1200.0, 900.0))
+    .build_eframe(|_cc| make_shell());   // make_shell() -> WorkbenchShell
+for _ in 0..4 { harness.run(); }         // settle one-shot startup
+harness.press_key(egui::Key::Tab);       // or press_key_modifiers(Modifiers::SHIFT, Key::Tab)
+harness.run();
+let focused = harness.ctx.memory(|m| m.focused());   // assert focus/state
+```
+
+Isolated-panel harness (`build_ui` / `build_ui_state`) remains fine for pure
+render functions (e.g. `render_menu_workspace`, `render_calendar`). Widgets that
+must be reachable by a stable id (for focus assertions or the shell
+Boundary_Policy) should be given a stable `egui::Id` at their render site.
+
+### Determinism
+
+- Run a fixed, bounded number of `harness.run()` frames; never loop until a
+  timeout. Cap Tab-walk loops (e.g. <= 40 presses) and assert the expected
+  outcome is reached within the budget.
+- Assert on widget ids / focus / model state, not on frame counts or pixels.
+- Under `nextest` each test is process-isolated, so `make_shell()` env-var
+  config isolation (B048) holds; do not share a `Harness` across tests.
+
+### Converting existing MANUAL rows
+
+When you touch code behind an existing `MANUAL` TCR row whose criterion is
+actually harness-able, add the `egui_kittest` test and flip the row to `PASS`.
+Do not leave harness-able behaviour as manual once you are already editing it.
+
 ## Test Organisation
 
 - Unit tests: `#[cfg(test)] mod tests { ... }` at the bottom of the source file.
@@ -67,11 +137,12 @@ fn scroll_down_clamps_at_last_line() {
 |--------|--------|---------|
 | PASS | ✅ | Automated test exists and passes |
 | FAIL | ❌ | Automated test exists but fails |
-| MANUAL | 🔲 | Requires manual/UI verification |
+| MANUAL | 🔲 | Requires manual/UI verification -- allowed only as a JUSTIFIED exception (see "GUI Behaviour Testing"); the row MUST state why it cannot be harness-tested |
 | NOT COVERED | 🔴 | No test exists yet |
 
 TCR is append-only for criteria rows -- never remove a row, only update status
-in place.
+in place. For GUI criteria, prefer `egui_kittest` (PASS) over MANUAL; MANUAL is
+reserved for the exception list in the "GUI Behaviour Testing" section.
 
 ## Test Checklist Verification
 

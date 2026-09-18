@@ -203,8 +203,10 @@ pub enum WorkspaceKind {
     Files,
     /// The File Explorer tree Context.
     FileExplorer,
-    /// The Settings Context (optionally namespace-filtered).
-    Settings,
+    /// The Config Context: the flat configuration-key browser (optionally
+    /// namespace-filtered), opened by the `CONFIG` command. Distinct from the
+    /// Settings MENU, which is a data-driven `Menu` Workspace (CR-CH-025).
+    Config,
     /// The Global Search Results Context.
     Search,
     /// The Plugin Manager Context.
@@ -267,7 +269,7 @@ impl From<String> for DescriptorValue {
 }
 
 /// An ordered, serialisable parameter bag carried by a `CustomWorkspace`
-/// descriptor (e.g. a Settings namespace filter, an editor URI). `BTreeMap`
+/// descriptor (e.g. a Config namespace filter, an editor URI). `BTreeMap`
 /// gives deterministic ordering for stable TOML output and reproducible tests.
 pub type DescriptorParams = std::collections::BTreeMap<String, DescriptorValue>;
 
@@ -680,15 +682,15 @@ mod tests {
     }
 
     #[test]
-    fn settings_namespace_descriptor_round_trips() {
-        // Validates: Requirement 21.3 -- Settings namespace filter persists
+    fn config_namespace_descriptor_round_trips() {
+        // Validates: Requirement 21.3 -- Config namespace filter persists
         let mut params = DescriptorParams::new();
         params.insert("namespace".to_string(), DescriptorValue::from("editor"));
         let state = SessionState {
             tabs: vec![TabState {
                 tab_id: "3".to_string(),
                 descriptor: Some(WorkspaceDescriptor::CustomWorkspace {
-                    workspace_kind: WorkspaceKind::Settings,
+                    workspace_kind: WorkspaceKind::Config,
                     params,
                 }),
                 ..Default::default()
@@ -702,13 +704,13 @@ mod tests {
                 workspace_kind,
                 params,
             }) => {
-                assert_eq!(*workspace_kind, WorkspaceKind::Settings);
+                assert_eq!(*workspace_kind, WorkspaceKind::Config);
                 assert_eq!(
                     params.get("namespace"),
                     Some(&DescriptorValue::String("editor".to_string()))
                 );
             }
-            other => panic!("expected settings CustomWorkspace, got {other:?}"),
+            other => panic!("expected config CustomWorkspace, got {other:?}"),
         }
     }
 

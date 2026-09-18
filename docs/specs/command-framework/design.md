@@ -1506,3 +1506,181 @@ Instrumentation is orthogonal to Command_History (Requirement 7): history still 
 ### Correctness note
 
 Because the start and success records are `log_debug!`, a release build compiles them out; the failure `log_warn!` remains. The dispatcher's return value, undo push, redo-clear, and history recording are identical whether or not `dev-logging` is enabled -- the instrumentation only reads `id`, `params`, `result`, and a clock, and never mutates them (Requirement 11.8).
+---
+
+## Design Delta: Unified command-resolution chain (Requirement 8.3/8.10-8.13, CR-CH-025)
+
+This delta makes the resolution ORDER of Section "Unified Command Target" authoritative
+and adds two stages (menu-name, macro) that were previously unspecified. It touches
+`resolve_target` in `ff-command` and the `ShellTargetResolver` in `ff-desktop`; it does NOT
+introduce a new type or Workspace kind.
+
+### The ordered chain
+
+A bare string submitted in a `Command ===>` field is resolved in this fixed order (first
+match wins; case-insensitive). Stages 1 and 5 live in the desktop shell (`handle_command`);
+stages 2-4 are the resolver's concern:
+
+1. Current-menu Option_Key (shell; only on a Menu_Workspace) -- `find_option` against the
+   active menu (menu-workspace Req 3.1). This is moved to be the FIRST thing tried when the
+   active tab is a Menu_Workspace.
+2. Built-in command / registered Command_ID / user-defined definition -- the existing
+   `resolve_target` stages (user def -> builtin workspace verb -> registered Command_ID ->
+   Function).
+3. Menu name -- NEW resolver stage: the first token matches a resolvable Menu_Name.
+4. Macro -- NEW resolver stage (DEFERRED): the first token matches a Macro_Library entry.
+5. Unresolved -> error naming the string (Req 8.8).
+
+### Resolver trait extension
+
+`TargetResolver` (ff-command) gains two lookups so the ordered chain lives in one pure
+function and stays unit-testable:
+
+```rust
+pub trait TargetResolver {
+    fn user_command_target(&self, input: &str) -> Option<CommandTarget>;
+    fn builtin_workspace_target(&self, input: &str) -> Option<CommandTarget>;
+    fn is_registered_command(&self, input: &str) -> bool;
+    // NEW (CR-CH-025):
+    /// A resolvable menu name (user `menus/<name>.toml` exists, or a compiled
+    /// built-in menu name) -> Some(Menu { name }). First token only.
+    fn menu_name_target(&self, input: &str) -> Option<CommandTarget>;
+    /// A macro-library name match -> Some(Macro { .. }). DEFERRED: the shell
+    /// implementation returns None until Lua execution is wired.
+    fn macro_name_target(&self, input: &str) -> Option<CommandTarget>;
+}
+```
+
+`resolve_target` gains stages 3 and 4 AFTER the registered-Command_ID check and BEFORE the
+`Err`, preserving Req 8.10 (built-ins beat menus beat macros). `ShellTargetResolver`
+(ff-desktop) implements `menu_name_target` by probing `menus_dir().join("<name>.toml")`
+existence plus the compiled built-in names (`pom`, `settings`); `macro_name_target` returns
+`None` for now (deferred) with a doc-comment pointing at the future macro wiring.
+
+### Trailing-token forwarding (Req 8.13)
+
+When stage 3 matches with a trailing token (`SETTINGS T`), the shell opens the named menu
+then activates the option whose key equals the trailing token, reusing the existing
+`open_menu_by_name` + chained-key path (the MENU Argument Chaining delta in
+menu-workspace/design.md). The keyword-less form `<name> <key>` and the explicit
+`MENU <name> <key>` share one helper so they cannot diverge.
+
+### Backward compatibility
+
+Every string that resolves today still resolves the same way: stages 1-2 are the current
+behaviour; stage 3 only fires for tokens that are NOT built-ins (so it cannot shadow a core
+verb, Req 8.10); stage 4 is inert until macros are wired. The `SETTINGS`/`SETTINGS <ns>`/`A`
+hardcoded intercepts are removed BECAUSE stage 3 now resolves `SETTINGS` as a menu name and
+`CONFIG [<namespace>]` (configuration-system Req 20) replaces the namespace/flat-list role.
+
+---
+
+## Design Delta: Cursor_Context Package on Every Command (Requirement 12, CR-CH-028)
+
+Design delta to Section 4 (`ExecutionContext`), Section 5 (`ContextProvider`
+seam), and the shell dispatch choke points in `ff-desktop`. ADDITIVE and
+behaviour-preserving: no handler signature changes; the `ExecutionContext`
+already threaded to every `CommandHandler::execute` gains new optional fields.
+
+### Why this is small at the type level
+
+`ff-command` ALREADY defines `ExecutionContext`, the `ContextProvider` trait, and
+`CommandDispatch::set_context_provider`, and every `CommandHandler::execute`
+already receives `&ExecutionContext`. Today `ff-desktop` never calls
+`set_context_provider`, so dispatch runs with `EmptyContextProvider`. This delta
+(1) extends `ExecutionContext` additively, (2) wires a shell-backed provider, and
+(3) captures the same snapshot on the string path. Handlers that ignore the new
+fields are unchanged.
+
+### 1. Extend `ExecutionContext` (ff-command, additive)
+
+Add a `cursor_context: CursorContext` field (defaulting empty) alongside the
+existing `active_document` / `cursor_position` / `selection` / `active_panel`:
+
+```rust
+#[derive(Debug, Clone, Default)]
+pub struct CursorContext {
+    // --- fixed CORE (Requirement 12.2) ---
+    pub workspace_context: Option<String>,   // stable per-kind name: "pom","editor",...
+    pub focused_identity: Option<String>,    // e.g. focused Menu_Option command/label
+    pub focused_text: Option<String>,        // command-line text / focused option label
+    pub cursor_line: Option<usize>,
+    pub cursor_column: Option<usize>,
+    pub selection: Option<(usize, usize, usize, usize)>,
+    pub scroll_setting: Option<String>,      // e.g. "CSR" / "HALF" / "PAGE" / "DATA <n>"
+    // --- open EXTRAS bag (Requirement 12.3) ---
+    pub extras: std::collections::BTreeMap<String, ContextValue>,
+}
+```
+
+`ContextValue` is a small typed enum (`String`/`Int`/`Float`/`Bool`) mirroring
+`ParamValue`, so extras are typed but open-ended. `CursorContext::default()` is
+the empty package (all `None`, empty extras); a builder mirrors
+`ExecutionContextBuilder` for tests. `ExecutionContext::builder()` gains a
+`cursor_context(..)` setter. Existing `ExecutionContext` tests keep passing
+(`empty()` still yields all-none core + empty extras).
+
+### 2. Shell-backed ContextProvider (ff-desktop)
+
+A `ShellContextProvider` supplies the live snapshot. `ContextProvider::current_context()`
+takes `&self` (no `&mut`), so the shell publishes the snapshot into a shared cell
+the provider reads:
+
+- Add `cursor_context_snapshot: Arc<Mutex<CursorContext>>` (or an `RwLock`) to
+  `WorkbenchShell`. Each frame / at each dispatch, the shell writes the current
+  package into it (see 3). The provider holds an `Arc` clone and returns a clone
+  of the snapshot merged into a fresh `ExecutionContext`.
+- Call `self.dispatch.set_context_provider(Box::new(ShellContextProvider { .. }))`
+  once at startup (in `WorkbenchShell::new`).
+
+Building the package (a `WorkbenchShell::capture_cursor_context()` helper):
+- `workspace_context` = `context_name_for_kind(active_tab().kind)`.
+- `focused_identity` / `focused_text`: map `ctx.memory().focused()` to a semantic
+  identity. START with (a) the command line (`cmd_field_id()` focused -> identity
+  `"command-line"`, text = `command_text`), and (b) the focused Menu_Option: the
+  menu render already exposes each option's `Response.id` and its
+  command/label (`MenuRenderResult` / `MenuOption`); the shell records a
+  per-frame `focused_option: Option<(egui::Id, command, label)>` so a focused id
+  resolves to the option's command/label. Other workspaces populate `None` for
+  now and MAY add EXTRAS later (Requirement 12.3).
+- `cursor_line`/`cursor_column`/`selection`: from the active editor tab's cursor
+  when an editor document is active.
+- `scroll_setting`: the active editor scroll amount setting (for the deferred CSR
+  consumer, Requirement 12.6).
+
+### 3. Capture on BOTH dispatch paths (command parity, Requirement 12.4)
+
+- Typed path: `CommandDispatch::execute_command` already pulls from the provider;
+  wiring `set_context_provider` is sufficient for `file.open`/`file.exit`/future
+  registry commands.
+- String path: `WorkbenchShell::handle_command` is the near-universal choke point.
+  Before dispatching, refresh the snapshot cell (call `capture_cursor_context()`)
+  so the package reflects the moment of invocation for every source (typed line,
+  function key via `dispatch_bound_command`, menu option via `pending_menu_option`,
+  palette). Since all bound sources converge on `handle_command` /
+  `dispatch_command_target`, one capture point covers them.
+
+### 4. Canonical "command not implemented yet" message (Requirement 12.7)
+
+Add one shared constant (e.g. `pub(crate) const NOT_IMPLEMENTED_MSG: &str =
+"Command not implemented yet.";`) used by the bound-command path when a bound key
+/ affordance targets a command that does not exist. The dispatcher does NOT emit
+"out of context" -- that stays each command's own responsibility (emitted later
+as commands are built, using the Cursor_Context).
+
+### 5. HELP as the first consumer (Requirement 12.8, CR-NR-079)
+
+Generalise the HELP handler: instead of hardcoding `EditorContext {
+command_line_has_focus: true, .. }`, build the `EditorContext` (ff-help) FROM the
+Cursor_Context so a focused Menu_Option yields `cmd:<OPTION_COMMAND>` (e.g. F1 on
+`FILES` -> topic `cmd:FILES`). Absent a specific focused control, HELP falls back
+to today's behaviour (function-keys-and-history Requirement 18). This is the only
+command changed in this slice; all others merely RECEIVE the package.
+
+### Out of scope for this delta (later slices)
+
+Per-command CONSUMPTION of the package (e.g. bare LEFT/RIGHT/UP/DOWN reading the
+scroll setting for CSR cursor-relative scrolling), the CURSOR command, and
+`SPLIT H`/`SPLIT V` tiling are deferred (Slice 2b). This delta only guarantees the
+package is BUILT, THREADED, and DELIVERED to every handler, plus the HELP consumer
+and the not-implemented message.

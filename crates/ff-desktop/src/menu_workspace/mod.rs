@@ -55,10 +55,14 @@ pub struct MenuFile {
     /// Ordered list of options.
     pub options: Vec<MenuOption>,
     /// Whether the shared menu renderer draws the calendar panel for this menu.
-    /// Defaults to `true` (POM and Settings show the calendar); a menu author
+    /// The field default is `true` (the POM shows the calendar); a menu author
     /// may set `show_calendar = false` for a full-width, calendar-less layout.
+    /// The compiled Settings default sets it `false` (CR-CH-026, Req 16.1). When
+    /// `true`, the calendar is only DISPLAYED (and Tab-reachable) if it fits the
+    /// visible width; otherwise it is omitted and contributes no Tab stops
+    /// (Requirement 16).
     ///
-    /// Validates: menu-workspace Requirement 1.8 (CR-CH-018)
+    /// Validates: menu-workspace Requirement 1.8 (CR-CH-018), Requirement 16 (CR-CH-026)
     pub show_calendar: bool,
     /// Visual style drawn at a group boundary (between two different non-empty
     /// groups). Defaults to [`GroupSeparator::Space`] (a blank line).

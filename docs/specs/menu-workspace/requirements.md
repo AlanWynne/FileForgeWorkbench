@@ -99,9 +99,12 @@ TOML file, so that I can customise the option list without modifying source code
 8. THE top-level table MAY contain a `show_calendar` key (boolean, optional,
    default `true`) that controls whether the shared menu renderer draws the
    calendar panel for this menu (Requirement 2). This makes the calendar a
-   per-menu, config-driven choice: the POM and Settings menus show it by
-   default; a menu author may set `show_calendar = false` to render the option
-   columns full-width with no calendar. (CR-CH-018.)
+   per-menu, config-driven choice: a menu author may set `show_calendar = false`
+   to render the option columns full-width with no calendar. (CR-CH-018.) The
+   POM shows the calendar by default. The compiled Settings menu default
+   (Requirement 12) SHALL set `show_calendar = false` (Requirement 16.1,
+   CR-CH-026); a user or author may still set it `true`, in which case
+   Requirement 16 governs its visibility and Tab participation. (CR-CH-026.)
 4. WHEN a Menu_File contains a key that is not listed in criteria 1-3, THE
    workbench SHALL ignore the unknown key and log a DEBUG-level record.
 5. WHEN a Menu_File is absent or cannot be read, THE Menu_Workspace SHALL
@@ -252,9 +255,16 @@ or clicking its row, so that the associated command is executed immediately.
    standard command pipeline.
 5. WHEN the Option_Command begins with `=` (fastpath notation), THE shell SHALL
    route it as a fastpath navigation command.
-6. WHEN the typed key does not match any Option_Key in the current menu, THE
-   shell SHALL display the message `Option '<key>' not found in this menu.` in
-   the status area and leave the Workspace unchanged.
+6. WHEN the typed string does not match any Option_Key in the current menu, THE
+   shell SHALL NOT immediately error; instead it SHALL fall through to the
+   remaining stages of the command-resolution chain (command-framework
+   Requirement 8.3: built-in command / Command_ID, then Menu_Name, then Macro).
+   (REVISED by CR-CH-025: the current-menu Option_Key lookup is the FIRST stage of
+   the unified chain, not a terminal check. Only when NO stage resolves the string
+   SHALL the shell display an unresolved-command error naming the string, leaving
+   the Workspace unchanged.) A single-token string that looks like an Option_Key
+   but is absent from the current menu MAY still resolve as a built-in command or
+   a Menu_Name; a genuinely unknown token produces the unresolved-command error.
 7. WHEN an option with `enabled = false` is selected by any means, THE shell
    SHALL display the message `Option '<key>' is not available.` and take no
    further action.
@@ -516,6 +526,25 @@ user-created -- are reachable through one consistent verb.
     key only (a single token); any further tokens SHALL be passed on to the
     activated option's own command as its argument, so deeper chains
     (e.g. `MENU <a> <b> <c>`) compose through each option's dispatch.
+11. **(CR-CH-025 -- keyword-less menu-name form.)** WHEN the user types a bare
+    token in any `Command ===>` field that is NOT claimed by an earlier stage of
+    the command-resolution chain (command-framework Requirement 8.3: current-menu
+    Option_Key, then built-in command / Command_ID) AND that token matches a
+    resolvable Menu_Name (a user `menus/<name>.toml` that exists, or a compiled
+    built-in menu name `POM`/`SETTINGS`), THE shell SHALL open that Menu_Workspace
+    exactly as `MENU <name>` does -- WITHOUT requiring the `MENU` keyword. The
+    keyword-less form `<name> <option-key>` SHALL be equivalent to
+    `MENU <name> <option-key>` (criterion 7): e.g. `SETTINGS` opens the Settings
+    menu and `SETTINGS T` opens it and activates option `T`. This is what allows
+    the hardcoded `SETTINGS` / `SETTINGS <ns>` intercepts to be REMOVED: `SETTINGS`
+    is resolved as a Menu_Name like any other menu (including user-created menus),
+    so no menu is a special case. The `MENU <name>` explicit form (criterion 2)
+    continues to work unchanged for disambiguation.
+12. **(CR-CH-025 -- built-in command precedence.)** WHERE a Menu_Name would
+    collide with a built-in command name (command-framework Requirement 8.10
+    shadowing rule), the BUILT-IN command SHALL win; a user cannot shadow a core
+    verb by naming a menu after it. The keyword-less menu-name form (criterion 11)
+    resolves ONLY when no earlier chain stage claims the token.
 
 ---
 
@@ -538,8 +567,21 @@ to rebuild or recover my configuration, instead of being locked out.
    (Files), `L` -> `LOG` (Event Log), `M` -> `MENUS` (Menus editor), `X` ->
    `RETURN` (Return / exit when last). All in a single group (no stray boundary).
 3. THE Recovery_Baseline Settings menu SHALL contain exactly these options, in
-   order: `T` -> `THEMES` (Theme editor), `M` -> `MENUS` (Menus editor), `A` ->
-   `A` (Browse all configuration keys). 
+   order (REVISED by CR-CH-025 -- reordered, regrouped, and repointed; REVISED
+   again by CR-CH-029 -- added the `K` -> `KEYS` option):
+   group `Core` -- `A` -> `CONFIG` (All settings -- browse every configuration
+   key), `T` -> `THEME` (Theme editor -- copy, edit, save and select themes),
+   `M` -> `MENUS` (Menus editor -- create, change and save menus), `K` -> `KEYS`
+   (Keys -- the Key assignments editor, function-keys-and-history Requirement 22);
+   then group `Recovery` -- `R` -> `RESET BARE` (Reset to barebones -- archive
+   config and start fresh). NOTES: (a) the former `A` -> `A` opaque command is
+   replaced by `A` -> `CONFIG` (configuration-system Requirement 15; the flat
+   config-key browser is now the first-class `CONFIG` command); (b) `T` -> `THEME`
+   corrects the stale `THEMES` (removed by CR-CH-024); (c) `K` -> `KEYS` opens the
+   Keys Workspace (CR-CH-029); (d) the two groups render with a
+   boundary between them (Requirement 2.4). Built-ins remain code-only
+   (Requirement 4.1); a user may Save this menu via the Menus Editor to obtain an
+   editable `menus/settings.toml` override.
 4. WHEN a user Menu_File for the POM or Settings is ABSENT, THE workbench SHALL
    render the corresponding Recovery_Baseline (the compiled built-in), without a
    load error, so the menu always has its options.
@@ -704,3 +746,247 @@ is created is if we type start"); reconciles Requirement 5 (Chained Navigation).
 12. THE tab Title_Line and tab-header title SHALL reflect the current Context
     after every Navigate_Here and every END pop, so the header never goes stale
     (consistent with menu-and-statusbar Req 17; related to B050).
+
+---
+
+### Requirement 15: Menu Workspace Tab Order and Calendar Navigation
+
+**User Story:** As a keyboard-centric operator, I want Tab in any Menu_Workspace (the POM,
+Settings, or any custom menu) to move from the command line through each selectable option and
+then, when the calendar is shown, to the calendar's previous/next buttons, so that I can reach
+every interactive control with the keyboard without a per-menu focus ring.
+
+**Source:** [CR-CH-023]; owner ("we should not need a focus tab ring for any menu workspace...
+In a Menu workspace the tab order should be from Command line to each option in the menu, then
+if the calendar is visible we should be able to tab to the left and right button on the
+calendar"). Implements the shared model of menu-and-statusbar Requirement 16 for Menu_Workspaces.
+
+#### Acceptance Criteria
+
+1. THE Menu_Workspace SHALL rely on the shared shell Boundary_Policy (menu-and-statusbar
+   Requirement 16) for entry from and return to the Primary_Command_Field; it SHALL NOT
+   define its own focus ring.
+
+2. WHEN a Menu_Workspace is the active Workspace and the user presses Tab from the
+   Primary_Command_Field, THE focus SHALL move to the FIRST enabled Menu_Option row.
+
+3. WHEN an enabled Menu_Option row has focus and the user presses Tab (forward), THE focus
+   SHALL advance to the NEXT enabled Menu_Option row in the menu's declared order.
+
+4. A disabled Menu_Option (Requirement 1.3, `enabled = false`) SHALL NOT be a keyboard focus
+   stop; Tab SHALL skip it (it is rendered as a non-interactive Label, Requirement 2.3).
+
+5. WHEN the calendar is DISPLAYED (`show_calendar` true AND it fits, Requirement 16.2) AND the
+   LAST enabled Menu_Option row has focus and the user presses Tab (forward), THE focus SHALL
+   move to the calendar previous-month (`<`) button, then on the next Tab to the calendar
+   next-month (`>`) button, and then on the next Tab to the first Menu_Bar item (per the
+   shared Boundary_Policy).
+
+6. WHEN the calendar is NOT displayed (either `show_calendar` false OR it cannot fit and is
+   omitted per Requirement 16.3), THE last enabled Menu_Option row SHALL be the last
+   Interior_Control: Tab from it moves directly to the first Menu_Bar item (no calendar stops).
+   The omitted calendar's `<`/`>` ids SHALL NOT appear in the reported interior focus contract
+   (Requirement 16.4).
+
+7. THE calendar previous-month and next-month controls SHALL be rendered as REAL focusable
+   buttons (`<` and `>`), so that they participate in the toolkit's native Tab traversal as
+   ordinary Interior_Controls. This replaces the prior single painted calendar widget whose
+   month navigation was reachable only by clicking a hit-region.
+
+8. WHEN the calendar `<` button has focus and is activated by Enter, Space, or a mouse click,
+   THE calendar SHALL navigate to the previous month. WHEN the calendar `>` button has focus
+   and is activated by Enter, Space, or a mouse click, THE calendar SHALL navigate to the next
+   month. Existing mouse click-through-hit-region behaviour, if retained, SHALL produce the
+   same month change.
+
+9. Shift+Tab (Back Tab) within a Menu_Workspace SHALL be the exact reverse of criteria 2-6:
+   from the calendar `>` button to the calendar `<` button, from `<` to the last enabled
+   option, from the first enabled option to the Primary_Command_Field.
+
+10. THE calendar SHALL be kept minimal for now: only the `<`/`>` month-navigation buttons are
+    focusable Interior_Controls; individual day cells are NOT focus stops. (Future calendar
+    enhancements are out of scope for CR-CH-023.)
+
+11. THE POM (`TabKind::PrimaryOptionMenu`) and every other Menu_Workspace SHALL obtain this
+    Tab order from the shared renderer and the shell Boundary_Policy alone; adding, removing,
+    or reordering options by editing the Menu_File SHALL change the Tab order accordingly with
+    no code change (consistent with Requirement 2.1c).
+
+---
+
+### Requirement 16: Calendar Visibility and Fit (no off-screen phantom Tab stops)
+
+**User Story:** As an operator, I want a menu's calendar, when I turn it on, to
+actually be visible and its month-navigation buttons reachable; and when it is
+off (or the workspace is too narrow to fit it) I do not want it leaving invisible
+Tab stops after the last option.
+
+**Source:** [CR-CH-026]; owner ("in the settings menu, after the last item in the
+menu there are 2 invisible tabs ... I think these are the Calendar tabs but
+calendar is hidden"; "the calendar for the settings menu says true [but] the
+calendar is invisible or not displayed"; "the Settings menu will default to show
+calendar as false, but if i change it to true the calendar must become visible.
+if i create other menus the calendar option should remain optional and if
+selected be visible"). Fixes B060. Relates to Requirement 15 (Tab order) and the
+deferred CR-NR-059 calendar-responsive-hide.
+
+Background (root cause of B060): the shared renderer laid the calendar to the
+RIGHT of the option list at the option column's natural width plus a fixed gap,
+a position that did NOT reflow to the visible panel width. In a workspace
+narrower than the option-list natural width the calendar was drawn past the
+right clip edge -- invisible, yet its `<`/`>` buttons remained focusable, so
+Tab reached two "phantom" stops after the last option. This was confirmed
+empirically (a throwaway harness probe): the `>` button stayed at a fixed x
+regardless of panel width, falling outside the clip rect at narrow widths.
+
+#### Acceptance Criteria
+
+1. THE compiled Settings menu default (Requirement 12) SHALL set
+   `show_calendar = false`, so the Settings Menu_Workspace shows no calendar and
+   has no calendar Tab stops by default.
+
+2. WHEN a menu has `show_calendar = true` AND the Menu_Workspace has enough
+   horizontal room for the calendar alongside the option list, THE renderer
+   SHALL lay out the calendar ENTIRELY within the visible (clip) width, with its
+   `<` and `>` month-navigation buttons fully on-screen and reachable, for the
+   POM, Settings, and any custom menu alike.
+
+3. WHEN a menu has `show_calendar = true` BUT the Menu_Workspace is too narrow
+   to fit the calendar alongside the option list (below a defined minimum), THE
+   renderer SHALL OMIT the calendar for that frame (rather than draw it clipped
+   or off-screen) and SHALL restore it on a later frame once there is room
+   (based solely on the current frame's available width, no persisted state).
+
+4. WHEN the calendar is omitted for either reason in criterion 3 OR because
+   `show_calendar = false`, THE renderer SHALL NOT include the calendar `<`/`>`
+   button ids in the reported interior focus contract
+   (`first_interior_id`/`last_interior_id`), so the calendar contributes ZERO
+   Tab stops: the last enabled Menu_Option row is the last Interior_Control
+   (consistent with Requirement 15.6).
+
+5. WHEN the calendar IS displayed (criterion 2), THE reported last
+   Interior_Control SHALL be the calendar next-month (`>`) button, and that
+   button's on-screen position SHALL be within the visible width (it SHALL NOT
+   be an off-screen focus stop). This is the invariant B060 violated.
+
+6. THE calendar, when displayed, SHALL NOT visually overlap the option list; the
+   option list SHALL retain at least its readable natural width (or a scroll
+   region) and the calendar SHALL occupy a reserved column to its right within
+   the visible area.
+
+---
+
+### Requirement 17: Configurable Named Menu Bars (a menu rendered horizontally)
+
+**User Story:** As an operator, I want the application menu bar to be a menu like
+any other -- configurable, savable, and nameable -- so that I can change what the
+bar contains by editing configuration, and potentially assign different menu bars
+to different kinds of workspace, instead of the bar being hardcoded chrome.
+
+**Source:** CR-NR-080 (supersedes CR-NR-077). Owner: "I want the menu bar to be
+configurable and I want to be able to change it at any time. It could potentially
+be a menu like any other. With each item in the menu either an actual command or
+a menu in itself ... Menu Bars should have names so that we can select them and
+assign them to different workspaces. so each workspace kind could potentially have
+it's own menu bar?" + clarifications: nesting already works via command resolution
+(an option whose command names a menu opens that menu -- Requirement 3, 5, 11), so
+NO nested option data structure is introduced; the menu MODEL and command
+RESOLUTION are unchanged. The only new render behaviour is that a menu bar's
+top-level buttons PEEK their referenced submenu as a dropdown (they do not
+navigate the workspace), and leaf options DISPATCH their command. A compiled
+default menu bar (built from the current POM + Settings content) is the code-only
+fallback, exactly like the POM and Settings defaults (Requirement 12); editing a
+user menu file overrides it. Menu-bar menus are conventionally named with an
+`MB-` prefix (e.g. `MB-POM`) -- a naming CONVENTION, not an enforced rule.
+
+**Glossary addition:**
+- **Menu_Bar** -- a Menu_File (Requirement 1) rendered HORIZONTALLY as a row of
+  dropdown buttons at the top of the Workbench, rather than as a vertical option
+  list in a Menu_Workspace. A Menu_Bar is not a distinct type; it is a Menu_File
+  used in the bar role.
+- **Peek** -- rendering a referenced menu's options inside an open menu-bar
+  dropdown WITHOUT navigating the active Workspace to that menu. Only selecting a
+  leaf option dispatches a command.
+- **Default_Menu_Bar** -- the compiled code-only Menu_File used for the bar when
+  no user menu-bar file exists (analogous to the compiled POM / Settings defaults
+  of Requirement 12), reproducing the current hardcoded bar.
+
+#### Acceptance Criteria
+
+**Slice A -- horizontal peek-dropdown render of a (default) menu-bar menu.**
+
+1. THE Workbench menu bar SHALL be rendered from a Menu_File (Requirement 1),
+   not from hardcoded button definitions. THE bar SHALL render each top-level
+   Menu_Option as a dropdown button, in the Menu_File's option order, left to
+   right.
+
+2. THE workbench SHALL provide a compiled Default_Menu_Bar (a code-only
+   `DEFAULT_MENUBAR_TOML`, parsed once, the single source of the compiled bar
+   content, analogous to `DEFAULT_POM_TOML` / `DEFAULT_SETTINGS_TOML`). WHEN no
+   user menu-bar Menu_File is available, THE bar SHALL render from the
+   Default_Menu_Bar. The Default_Menu_Bar SHALL reproduce the current bar's
+   top-level entries, INCLUDING a trailing `Help` entry.
+
+3. WHEN a top-level menu-bar button is opened (by mouse hover/click or keyboard
+   focus), THE bar SHALL PEEK the menu referenced by that option's command: it
+   SHALL render that referenced menu's options as the dropdown's items WITHOUT
+   navigating the active Workspace. WHERE the option's command does not resolve
+   to a menu (it names a plain command), the option SHALL appear as a directly
+   actionable item rather than a submenu.
+
+4. WHEN a leaf item in an open menu-bar dropdown is selected, THE workbench SHALL
+   DISPATCH that item's command through the SAME command path as typing it on
+   the command line (`handle_command`; command parity, architecture-brief
+   Principle 2), and SHALL close the dropdown. Selecting a leaf SHALL NOT require
+   any bar-specific code path distinct from normal command dispatch.
+
+5. WHILE a menu-bar dropdown is open, THE items within it SHALL be
+   keyboard-navigable using the egui-native menu behaviour (arrow keys move
+   between items, Enter activates, Escape closes), consistent with a standard
+   application menu. (No bespoke Tab-ring entry for dropdown items is added.)
+
+6. THE menu bar SHALL continue to participate in the unified Tab-order model
+   (Requirement 15, CR-CH-023): the FIRST and LAST top-level menu-bar buttons'
+   ids SHALL still be captured each frame for the shell Boundary_Policy, so
+   Tab from the last Interior_Control reaches the bar and Tab from the last bar
+   button wraps to the command field, exactly as before. Making the bar
+   data-driven SHALL NOT regress the Boundary_Policy.
+
+7. THE POM and Settings VERTICAL Menu_Workspaces (Requirement 2) SHALL be
+   UNCHANGED by this requirement. A Menu_Bar is a separate, horizontally-rendered
+   menu; the vertical Menu_Workspace rendering is not affected.
+
+**Slice B -- named + editable menu-bar files.**
+
+8. A Menu_Bar Menu_File SHALL be a user file under `<User_Data_Dir>/menus/`
+   (Requirement 1.7), loaded via the existing loader and editable/savable via the
+   existing Menus Editor (Requirement 13). WHERE a user menu-bar file exists, it
+   OVERRIDES the compiled Default_Menu_Bar (a saved file is a user override; the
+   built-in remains a code-only fallback, consistent with Requirement 12 /
+   CR-CH-021). Menu-bar files are conventionally named with an `MB-` prefix
+   (e.g. `MB-POM`); the prefix is a CONVENTION and SHALL NOT be enforced.
+
+**Slice C -- per-workspace-kind assignment.**
+
+9. THE workbench SHALL support assigning a Menu_Bar (by name) to a workspace KIND
+   (the stable context names of Requirement 14.6), mirroring the per-kind keymaps
+   pattern (function-keys Req 14.9-14.12, CR-CH-027). WHEN a Workspace of a given
+   kind is active, THE bar SHALL render the Menu_Bar assigned to that kind; WHERE
+   a kind has no assignment, THE Default_Menu_Bar (or a configured default bar
+   name) SHALL be used.
+
+**Slice D -- dynamic option sources (delivers the theme picker, ex-CR-NR-077).**
+
+10. A Menu_Option MAY declare a DYNAMIC option source instead of (or in addition
+    to) a static referenced menu: WHEN such an option is peeked, THE dropdown's
+    items SHALL be generated at runtime from the named source. THE first source
+    SHALL be the available-themes list: a `Themes` menu-bar item whose peeked
+    dropdown lists every theme from the theme list (theme-and-appearance
+    Requirement 14.6, in list order), each item dispatching `THEME <name>`.
+
+11. Selecting a theme from the dynamic `Themes` dropdown SHALL apply and persist
+    it through the SAME `THEME <name>` command path (theme-and-appearance
+    Requirement 17.2, `set_active_theme`) -- command parity -- delivering the
+    theme-picker behaviour previously specified as theme-and-appearance
+    Requirement 17.8-17.13 (CR-NR-077), now via the menu-bar mechanism rather
+    than a bespoke popup.

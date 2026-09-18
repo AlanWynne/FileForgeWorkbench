@@ -108,7 +108,7 @@ mod tests {
             ids::DIALOG_ALLOC_DSN,
             ids::DIALOG_ALLOC_CONFIRM,
             ids::DIALOG_ALLOC_CANCEL,
-            ids::SETTINGS_FILTER,
+            ids::CONFIG_FILTER,
             ids::DIALOG_KEYS_SAVE,
             ids::DIALOG_KEYS_CANCEL,
             ids::DIALOG_ABOUT_CLOSE,

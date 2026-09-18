@@ -327,18 +327,103 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 
 ### Requirement 17: THEME Command (Command Parity)
 
-**User Story:** As a workbench user, I want to change the theme by typing a command on the command line exactly as I can from the Settings menu, so that theme switching honours the command-driven principle (every user action is a command) and is scriptable/automatable.
+**User Story:** As a workbench user, I want a single `THEME` command: `THEME <name>` switches to a named theme from the command line exactly as from the Settings menu, and bare `THEME` opens the Theme Editor -- so theme switching honours the command-driven principle (every user action is a command), is scriptable/automatable, and there is no redundant second command.
 
 **Source:** `docs/specs/workbench-requirements-merge/architecture-brief.md` Principle 2 (Command Driven -- "Every user action is a command. Menus, toolbars, keyboard shortcuts, automation scripts and future AI agents invoke commands through the same dispatcher."). Closes the gap where the Settings theme menu called the theme setter directly, bypassing the command layer, and no `THEME` command existed.
 
 #### Acceptance Criteria
 
+**Revised by CR-CH-024 (name-based THEME command).** `THEME <mode>` (mode-keyword-only)
+is replaced by `THEME <name>`, a general selector over the full theme list (built-ins
+plus user themes). The old mode keywords (`dark`/`light`/`high_contrast`/`legacy`) still
+work because they are built-in shorthands, so nothing regresses. The separate `THEMES`
+command is REMOVED (redundant): `THEME` with no argument now opens the Theme Editor
+context that `THEMES` used to open, so there is ONE theme command.
+
 1. THE workbench SHALL provide a `THEME` command invocable from the command line in any context.
-2. WHEN `THEME <mode>` is issued with a recognised mode name, THE workbench SHALL set the active Visual_Mode to that mode and persist it via `theme.active`, identical to selecting the mode from the Settings menu. Recognised mode names SHALL be `dark`, `light`, `high_contrast` (also accepting `high-contrast`), and `legacy`, matched case-insensitively (consistent with `VisualMode::from_str_loose`).
-3. WHEN `THEME` is issued with no argument, THE workbench SHALL report the currently active mode in the status area and SHALL NOT change the theme.
-4. WHEN `THEME <arg>` is issued with an unrecognised mode name, THE workbench SHALL display a clear error naming the invalid value and listing the valid modes, and SHALL NOT change the theme.
-5. THE Settings menu theme actions (Dark / Light / High Contrast / Legacy) SHALL invoke the `THEME` command through the same dispatch path used by the typed command, so that the menu action and the typed command are the same code path (command parity).
-6. WHEN setting the theme via the `THEME` command or the menu fails to persist (e.g. the user config location is unavailable or the key is locked), THE workbench SHALL apply the theme for the current session AND surface a non-silent message that the change could not be saved (no silent revert).
+     THE `THEMES` command SHALL be removed; `THEME` is the sole theme command. Any prior
+     `THEMES` call site (Settings menu "Theme Editor" item, the Settings `T` option in
+     `menus/settings.toml`, the command palette) SHALL dispatch `THEME` instead.
+
+2. WHEN `THEME <name>` is issued, THE workbench SHALL resolve `<name>` against the available
+     themes list (built-ins plus user themes, Requirement 14.6) case-insensitively, using this
+     order and selecting the FIRST match:
+     (a) an EXACT case-insensitive match against a real theme NAME (built-in or user);
+     (b) otherwise a BUILT-IN SHORTHAND that omits the `Default ` prefix: `dark` -> `Default Dark`,
+         `light` -> `Default Light`, `high contrast` (also `high_contrast` / `high-contrast`)
+         -> `Default High Contrast`, `legacy` -> `Default Legacy`.
+     WHEN a match is found, THE workbench SHALL set it as the active theme and persist the
+     selection (Requirement 19.7), identical to selecting it from the Settings menu.
+
+3. WHEN two or more user themes match `<name>` case-insensitively (e.g. differing only by
+     letter case), THE workbench SHALL resolve to the FIRST match in the available-themes list
+     and SHALL NOT error.
+
+4. WHEN `THEME` is issued with NO argument, THE workbench SHALL navigate the current Workspace
+     in place to the Theme Editor context (the same context reached by the Settings `T` /
+     Themes option, i.e. `0.T`, and formerly by the removed `THEMES` command), pushing the
+     per-tab Navigation_Stack so that END returns one level to the previous context and RETURN
+     collapses to the tab root (CR-CH-022). Bare `THEME` SHALL NOT change the active theme. It
+     SHALL route through the SAME open-Theme-Editor code path as the Settings Themes option
+     (command parity, one code path).
+
+5. WHEN `THEME <name>` is issued and no theme matches by exact name or built-in shorthand, THE
+     workbench SHALL LEAVE the active theme unchanged and display the message
+     `THEME: '<name>' does not exist` (echoing the entered value).
+
+6. THE Settings menu theme actions SHALL invoke the `THEME` command through the same dispatch
+     path used by the typed command (command parity). Until the menu-bar redesign: the
+     theme-selection items dispatch `THEME <name>` for their respective themes (the former
+     `Legacy (ISPF 3270)` item is relabelled `Default Legacy` and dispatches
+     `THEME Default Legacy`); and the "Theme Editor" menu item -- which previously dispatched
+     the removed `THEMES` -- dispatches bare `THEME` (opening the Theme Editor per criterion 4).
+     The Settings `T` option in `menus/settings.toml` (previously `THEMES`) SHALL likewise
+     dispatch `THEME`.
+
+7. WHEN setting the theme via the `THEME` command or the menu fails to persist (e.g. the user
+     config location is unavailable or the key is locked), THE workbench SHALL apply the theme
+     for the current session AND surface a non-silent message that the change could not be saved
+     (no silent revert).
+
+**Added by CR-NR-077 (THEME LIST popup selector).** A `THEME LIST` sub-command opens
+an arrow-navigable popup of the available themes, and the Settings menu gains a
+Themes submenu. Both are command-parity affordances over the SAME `set_active_theme`
+apply path as `THEME <name>` (criterion 17.2).
+
+8. WHEN `THEME LIST` is issued from the command line (matched case-insensitively, BEFORE the
+     general `THEME <name>` selector of criterion 17.2 so `LIST` is never treated as a theme
+     name), THE workbench SHALL open a Theme_List_Popup: a centred modal overlay listing the
+     available themes (built-ins plus user themes, Requirement 14.6) in list order (the order
+     returned by the theme-list source, built-ins first). The popup SHALL NOT change the active
+     theme merely by opening.
+
+9. WHEN the Theme_List_Popup opens, THE workbench SHALL pre-select the entry whose name equals
+     the currently active theme; WHERE the active theme is not in the list, the first entry
+     SHALL be selected.
+
+10. WHILE the Theme_List_Popup is open, THE workbench SHALL move the selection with the Down and
+     Up arrow keys (wrapping at the ends), SHALL apply the selected theme and close the popup
+     when Enter is pressed, and SHALL close the popup WITHOUT changing the active theme when
+     Escape is pressed or the user clicks outside the popup. Clicking an entry SHALL apply it
+     and close the popup.
+
+11. WHEN a theme is chosen from the Theme_List_Popup, THE workbench SHALL apply and persist it
+     through the SAME activation path as `THEME <name>` (criterion 17.2, `set_active_theme`):
+     the chosen entry's exact name is used (the popup lists real names, so no shorthand
+     resolution is needed), the palette is applied for the session, and the selection is
+     persisted (Requirement 19.7). A persistence failure SHALL surface the same non-silent
+     message as criterion 17.7.
+
+12. WHILE the Theme_List_Popup is open, THE popup SHALL be treated as a modal overlay for input
+     purposes: the shell Tab-order cycle, function-key dispatch, and Ctrl+S SHALL be suppressed
+     (consistent with the existing Command_Palette / dialog modal behaviour) so keyboard input
+     is consumed by the popup.
+
+13. THE Settings menu SHALL provide a Themes submenu listing the available themes; selecting an
+     entry SHALL dispatch the `THEME <name>` command (command parity, architecture-brief
+     Principle 2) -- the SAME code path as typing it -- rather than calling the theme setter
+     directly. (The submenu is the menu-bar equivalent of the `THEME LIST` popup; it does NOT
+     splice into the CR-CH-023 Boundary_Policy Tab ring -- it is an egui-native nested menu.)
 ---
 
 ### Requirement 18: Default Legacy Palette and Reset-to-Default
@@ -349,11 +434,27 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 
 #### Acceptance Criteria
 
-1. THE Theme_System SHALL provide a fifth built-in palette named `Default Legacy` whose colours are identical to the existing `Legacy (ISPF 3270)` palette at the time of definition. It is a compiled-in palette (like the other built-ins) and cannot be deleted from disk in a way that removes it from the selectable list; it is always available.
+**Revised by CR-CH-024 (built-in set consolidated 5 -> 4).** The separate
+`Legacy (ISPF 3270)` built-in is REMOVED; the ISPF 3270 legacy look now lives ONLY under the
+name `Default Legacy`. The built-in set is FOUR: `Default Dark`, `Default Light`,
+`Default High Contrast`, `Default Legacy`. Rationale: the two entries were byte-identical, so
+a separate selectable `Legacy (ISPF 3270)` is redundant -- any theme (including `Default
+Legacy`) can be copied to a new named, editable, selectable user theme (Requirement 20.4). No
+legacy colour changes; only the redundant name is dropped.
+
+1. THE Theme_System SHALL provide a compiled-in built-in palette named `Default Legacy` carrying
+     the ISPF 3270 legacy colours (as defined by Requirement 13 and the legibility fix of
+     Requirement 22). It is always available and cannot be removed from the selectable list by
+     deleting a disk file. (This is the same palette formerly also exposed under the removed name
+     `Legacy (ISPF 3270)`.)
 2. THE `Default Legacy` palette SHALL be the canonical Fallback_Theme: WHEN the configured active theme cannot be resolved (missing file, invalid TOML, or unresolved `base`), THE Theme_System SHALL fall back to `Default Legacy` (rather than `Default Dark`) and emit a WARN-level log record naming the unresolved theme. This supersedes Requirement 1.3's "built-in default dark theme" fallback for the file-backed path (Requirement 19); Requirement 1.3 remains the contract for the legacy mode-only path until Requirement 19 is implemented.
 
-   **(CR-CH-019, Option 1)** THE five built-in palettes are PERMANENT, read-only, COMPILED themes and SHALL NOT be materialised as `.toml` files in the themes directory. They exist only in code. This supersedes any earlier requirement to write built-in theme files to disk (see Requirement 19.2 as revised). Built-ins are the reset baseline and the fallback; the user customises a built-in by copying it to a new named user theme (Requirement 20.4), never by editing the built-in itself.
-3. THE five built-in palettes (`Default Dark`, `Default Light`, `Default High Contrast`, `Legacy (ISPF 3270)`, `Default Legacy`) SHALL all appear in the available-themes list (Requirement 14.6) and each SHALL be selectable as the active theme.
+   **(CR-CH-019, Option 1; count revised to four by CR-CH-024)** THE built-in palettes are PERMANENT, read-only, COMPILED themes and SHALL NOT be materialised as `.toml` files in the themes directory. They exist only in code. This supersedes any earlier requirement to write built-in theme files to disk (see Requirement 19.2 as revised). Built-ins are the reset baseline and the fallback; the user customises a built-in by copying it to a new named user theme (Requirement 20.4), never by editing the built-in itself.
+3. THE FOUR built-in palettes (`Default Dark`, `Default Light`, `Default High Contrast`,
+     `Default Legacy`) SHALL all appear in the available-themes list (Requirement 14.6) and each
+     SHALL be selectable as the active theme. (CR-CH-024: `Legacy (ISPF 3270)` is no longer a
+     separate built-in; `THEME Legacy` and the former menu item resolve to `Default Legacy` via
+     the built-in shorthand of Requirement 17.2b.)
 4. THE Theme_System SHALL provide a Reset_Theme operation, given a theme identified by name. **(CR-CH-019, Option 1)** For a BUILT-IN theme, Reset SHALL re-select the compiled built-in palette as the working/active theme (there is no on-disk file to restore, because built-ins are code-only). For a USER theme with a resolvable `base`, Reset SHALL restore the theme's colours to the `base` theme's content. Reset SHALL require confirmation before discarding edits / overwriting a user file.
 5. THE compiled built-in palettes SHALL be the immutable reset baseline: resetting to a built-in always yields a palette equal to the compiled built-in palette (a built-in cannot be permanently altered, so a default always stays a default). (Consistent with Requirement 9.2 round-trip when a built-in is copied to a user file.)
 6. THE `Default Legacy` name SHALL be stable and reserved: a user-created theme file SHALL NOT be able to shadow or replace the compiled `Default Legacy` fallback used in criterion 2, even if a `default-legacy.toml` on disk is malformed.
@@ -371,7 +472,7 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 1. THE Theme_System SHALL manage a `<User_Data_Dir>/themes/` directory. WHEN the workbench starts and this directory does not exist, THE workbench SHALL create it, mirroring the first-launch creation of `<User_Data_Dir>/menus/` (menu-workspace Requirement 4.6). The directory MAY be empty; it holds ONLY user-created themes.
 2. **(REVISED by CR-CH-019, Option 1.)** THE workbench SHALL NOT materialise the built-in palettes as `.toml` files. The `themes/` directory contains ONLY user themes created via Copy / Save As (Requirement 20.4/20.5). Built-in themes are compiled-in and read-only (Requirement 18.1/18.2). (This supersedes the earlier requirement to write `default-dark.toml`/`legacy.toml`/etc. on first launch, which caused each built-in to appear twice in the theme list -- once compiled, once as its file -- and made "saving a built-in" ambiguous.)
 2a. THE available-themes list (Requirement 14.6) SHALL be de-duplicated by theme NAME: each name appears at most once. WHERE a user `.toml` in `themes/` has the same name as a built-in, the built-in (compiled) entry wins and the user file of that name is ignored for listing (a user cannot shadow a built-in name). No theme SHALL appear more than once in the list.
-3. THE configuration SHALL distinguish the active theme (which named theme/file) from the Visual_Mode (dark/light/high-contrast/legacy). The active theme SHALL be identified by a configuration key holding a theme NAME (resolving to a `themes/<slug>.toml` file or a built-in). WHERE the existing `theme.active` key currently holds a MODE string (dark/light/high_contrast/legacy), the gate's design (Requirement 19, design) SHALL define the key(s) so that: (a) the existing `THEME <mode>` command (Requirement 17) and `theme.follow_os` (Requirement 16) continue to work unchanged, and (b) no existing persisted config value causes a startup failure (a mode string SHALL resolve to the corresponding built-in theme).
+3. THE configuration SHALL distinguish the active theme (which named theme/file) from the Visual_Mode (dark/light/high-contrast/legacy). The active theme SHALL be identified by a configuration key holding a theme NAME (resolving to a `themes/<slug>.toml` file or a built-in). WHERE the existing `theme.active` key currently holds a MODE string (dark/light/high_contrast/legacy), the gate's design (Requirement 19, design) SHALL define the key(s) so that: (a) the `THEME <name>` command (Requirement 17, name-based per CR-CH-024 -- mode words remain valid as built-in shorthands) and `theme.follow_os` (Requirement 16) continue to work, and (b) no existing persisted config value causes a startup failure (a mode string SHALL resolve to the corresponding built-in theme; a persisted `legacy` resolves to `Default Legacy`).
 4. WHEN the workbench starts, THE Theme_System SHALL resolve the active theme name and set `self.palette` from it BEFORE the first frame is rendered (Requirement 7.1). **(CR-CH-019, Option 1.)** WHERE the active theme name is a BUILT-IN name, the compiled built-in palette is used directly (no file read). WHERE it names a USER theme, `themes/<slug>.toml` is loaded and validated via the loader (Requirement 1, resolving `base` per Requirement 14.4/15.5). Either way, all rendering is driven by the resolved palette.
 5. WHEN the active theme file is missing or invalid at startup, THE Theme_System SHALL fall back to the `Default Legacy` built-in (Requirement 18.2), apply it for the session, and emit a WARN naming the unresolved theme, WITHOUT crashing.
 6. WHEN the active theme's `.toml` file changes on disk while the workbench is running, THE Theme_System SHALL reload it and atomically swap the active palette within one hot-reload cycle (Requirement 7.5/7.6), so edits made in an external editor or by the Theme editor (Requirement 20) take effect without restart.

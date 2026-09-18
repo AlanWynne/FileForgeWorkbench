@@ -2082,3 +2082,256 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[ ]` Phase (file-formatter-design) | File Formatter plugin (CR-NR-061) -- UX DESIGN SESSION proposal, SPEC-ONLY. Scheduled BEFORE JES + Database plugin build. FFMT-D.1-D.8: design workspaces, choose native structure format + reuse of ff-structure-catalog/ff-forge, import-source scope (COBOL copybook first), per-file spec storage, record-oriented edit-in-place + hex fallback, ff-select relationship, VFMT/HFMT/CHAR/MAP + right-click. Gate NOT yet run |
+
+### Phase (tab-order-unify) -- Unified tab-order model (CR-CH-023, Req 16 rework)
+
+> Replaces the shell-owned per-Workspace focus ring (`FocusStop` enum + `next`/`prev`)
+> and the Menus-Editor egui-native "Option X" special-case with ONE shared model:
+> egui-native interior order + a single shell Boundary_Policy (command-line entry,
+> menu-bar-last, wrap) + non-focusable chrome (Status_Bar done via B055; SCROLL field;
+> Key_Label_Bar F-key buttons; Tab headers). Menu-workspace options are already
+> focusable buttons; the calendar gains two real `<`/`>` focusable buttons. No
+> per-Workspace focus code -- a new Workspace gets correct Tab order by rendering in
+> visual order. DONE (Phase tab-order-unify): FocusStop ring removed; shell
+> Boundary_Policy implemented; chrome non-focusable (Sense::CLICK); calendar
+> `<`/`>` real focusable buttons; command-field focus on Workspace entry. New
+> egui_kittest harness tests; verify.ps1 CLEAN. Full-shell boundary/wrap is
+> manual (plan 1.3a/1.3b/1.3c).
+
+- [x] TOU.1 menu-and-statusbar Tasks 31.1-31.12 -- removed `FocusStop`; shared Boundary_Policy;
+      command-field focus on Workspace entry; F-key bar + tab headers non-focusable (Sense::CLICK),
+      SCROLL excluded via command-field boundary; menu-bar boundary focus; egui_kittest harness
+      tests; Menus Editor harness uses shared model; TCR updated. (Full-shell boundary/wrap manual.)
+      Covers: menu-and-statusbar Req 16 (all); automated-dialog-testing 14.6/14.7/14.9.
+- [x] TOU.2 menu-workspace Tasks 26.1-26.6 -- options focusable / disabled skipped; calendar `<`/`>`
+      are real focusable buttons; ordering after last option and before Menu_Bar when `show_calendar`;
+      day cells non-focusable; egui_kittest interior-order tests; TCR updated.
+      Covers: menu-workspace Req 15 (all).
+- [x] TOU.3 accessibility reconciliation -- Req 2.2/2a chrome carve-out and Req 3.5 wording are
+      spec-only; no code contradicts (status-bar live region Req 4.3 already present).
+
+### Phase (theme-consolidate) -- Legacy theme consolidation + name-based THEME (CR-CH-024)
+
+> Removes the redundant `Legacy (ISPF 3270)` built-in (byte-identical to `Default
+> Legacy`); the built-in set becomes four. `THEME <name>` becomes a general
+> name-based selector: exact case-insensitive name match first, then built-in
+> shorthand (Dark/Light/High Contrast/Legacy -> Default *); unknown name leaves
+> the theme unchanged and shows `THEME: '<name>' does not exist`. Settings menu
+> "Legacy (ISPF 3270)" item relabelled to "Default Legacy" (simplest fix; full
+> menu-bar redesign is a later CR). GATE COMPLETE (spec approved); IMPLEMENTED
+> (Phase theme-consolidate): verify.ps1 CLEAN (FULL, nextest), ffwb.exe rebuilt.
+
+- [x] TC.1 theme-and-appearance Tasks 27.1-27.8: four built-ins; `resolve_theme_arg`
+      (exact-then-shorthand); THEME handler (select/persist, not-found message, no-arg report);
+      Settings menu relabel; config compatibility; resolver + full-shell egui_kittest tests; TCR.
+      Covers: theme-and-appearance Req 17 (rewritten), Req 18 (revised), Req 19.3.
+### Phase (command-resolution) -- Unified command-resolution chain + Settings launcher + CONFIG (CR-CH-025)
+
+> Makes command resolution one explicit ordered chain (current-menu Option_Key ->
+> built-in/Command_ID -> menu name -> macro -> error) with a shadowing rule
+> (built-ins beat same-named menus/macros). `SETTINGS` stops being a hardcoded
+> verb: it is resolved as a Menu_Name like `POM` or any user menu, and `SETTINGS T`
+> chains to the option keyed `T` (Req 11.7). Adds the first-class `CONFIG
+> [<namespace>]` command (bare = all keys, arg = filtered), superseding the
+> cw-requirements Settings namespace selector / Settings_Namespace_View. Settings
+> baseline reordered: Core[A CONFIG, T THEME, M MENUS], Recovery[R RESET BARE].
+> Macro stage SPECIFIED but DEFERRED (ff-lua not yet wired). Closes B032. GATE
+> COMPLETE (spec approved); IMPLEMENTED (Phase command-resolution): all 934
+> ff-desktop tests + ff-command tests pass; verify.ps1 CLEAN (FULL, nextest);
+> ffwb.exe rebuilt.
+
+- [x] CR.1 command-framework Tasks 27.1-27.7: extend `TargetResolver` (menu-name +
+      macro-name lookups); add stages 3/4 to `resolve_target` with the shadowing rule; move the
+      current-menu Option_Key lookup to stage 1; trailing-token forwarding; resolver unit tests; TCR.
+      Covers: command-framework Req 8.3, 8.10-8.13.
+- [x] CR.2 menu-workspace Tasks 27.1-27.7: retire `SETTINGS`/`SETTINGS <ns>`/`A` intercepts;
+      keyword-less menu-name resolution + built-in precedence; on-menu key becomes the first chain
+      stage (Req 3.6); reorder `DEFAULT_SETTINGS_TOML` (A CONFIG, T THEME, M MENUS | R RESET BARE);
+      tests; TCR.
+      Covers: menu-workspace Req 3.6, 11.11, 11.12, 12.3.
+- [x] CR.3 configuration-system Tasks 33.1-33.7: register + implement `CONFIG [<namespace>]`
+      (Command_ID `config.open`); point Settings `A` at `CONFIG`; remove the `A` command and
+      `SETTINGS <ns>` intercept; session persistence; tests; TCR + Req 15 revisions.
+      Covers: configuration-system Req 20; Req 15 (revised).
+- [x] CR.4 Close B032 (Settings is now a real Menu_Workspace resolved by name, not a bespoke
+      verb); set the bug + core-acceptance-test-plan rows accordingly after implementation.
+      Covers: B032.
+### Phase (workspace-framework) -- WorkspaceContext trait framework (CR-NR-078)
+
+> Makes the workspace-Context contract COMPILER-ENFORCED so the phantom-Tab-stop
+> bug class (B056/B057/B058/B059) cannot be written: every Context implements
+> `WorkspaceContext` whose `render` RETURNS `InteriorFocus`, dispatched on one
+> shell code path (no per-kind focus-latch ritual). `ShellServices` + `ShellRequest`
+> mediate shell access (Option A owned-panel swap) so the borrow checker permits
+> trait dispatch. Layered ABOVE `ff-layout::DockablePanel` (Option Y), host-agnostic
+> so the SAME Context renders as a tab, a dock zone, or a detached OS viewport
+> (single FFWB process) with no per-Context change. GATE APPROVED (design decisions
+> 1-5 confirmed). Phase-1 proof scope: MenuWorkspace (POM + Settings), Theme Editor,
+> Menus Editor, Config panel. Key Assignment Editor is authored ON the framework
+> afterwards. Remaining panels + FilesPanel/FileEditor migrate in a later phase.
+
+- [x] WF.1 workspace-framework Tasks 1.1-1.5: define `InteriorFocus`,
+      `WorkspaceContext` (host-agnostic `render -> InteriorFocus`), `ShellServices` +
+      `ShellRequest`, and the single owned-panel-swap dispatch helper; unit tests. Coexists with
+      the `match` (nothing migrated yet).
+      Covers: workspace-framework Req 1.1-1.3, 2.1-2.3, 6.1.
+- [x] WF.2 workspace-framework Tasks 2-4: migrate Config panel, Theme Editor, Menus Editor to the
+      trait; switch their `render.rs` arms to trait dispatch; existing full-shell first-Tab tests
+      stay green.
+      Covers: workspace-framework Req 1.4, 1.5, 3.1-3.3.
+- [x] WF.3 workspace-framework Task 5: migrate the MenuWorkspace implementor (POM + Settings +
+      user menus); preserve POM identity / titles / Legacy chrome; tests green.
+      Covers: workspace-framework Req 1.4, 1.5, 3.1-3.3.
+- [x] WF.4 workspace-framework Task 6: DockablePanel reconciliation note (Option Y) + a
+      host-agnostic render test (render a migrated Context into a non-central-panel Ui) proving
+      detach-readiness without building detach.
+      Covers: workspace-framework Req 4.1, 4.2, 6.1, 6.2.
+- [x] WF.5 workspace-framework Task 7: update `workspace-conformance.md` (trait = enforcement for
+      migrated Contexts), TCR rows, verify.ps1 CLEAN, rebuild ffwb.exe, change-log phase-1 DONE.
+      Covers: workspace-framework Req 3.3.
+- [ ] WF.6 (LATER phase, not phase 1) workspace-framework Task 8: migrate the remaining panels
+      (Plugin Manager, Event Log, Macro Library, Search Results, Command Configurator) and the two
+      special cases (FilesPanel, FileEditor); remove the `match kind` render arms entirely.
+      Covers: workspace-framework Req 3.4, 3.3.
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (workspace-framework) PHASE 1 complete | WorkspaceContext trait framework (CR-NR-078) -- WF.1-WF.5 DONE: `InteriorFocus`/`WorkspaceContext`/`ShellServices`/`ShellRequest` + owned-panel-swap dispatch; Config, Theme Editor, Menus Editor, and MenuWorkspace (POM + Settings) migrated (compiler-enforced focus contract); host-agnostic render test proves detach-readiness. All 944 ff-desktop tests pass; verify.ps1 FULL CLEAN; ffwb.exe rebuilt. Key Assignment Editor is the next major item, built on this framework |
+| `[ ]` Phase (workspace-framework) LATER | WF.6 (phase 8): migrate remaining Contexts (Plugin Manager, Event Log, Macro Library, Search Results, Command Configurator) + special cases FilesPanel/FileEditor; remove the `match kind` arms entirely (workspace-framework Task 8) |
+
+## Phase (calendar-visibility) -- Calendar Visibility and Fit; Settings default off (CR-CH-026, B060)
+
+> Fixes B060. The shared Menu_Workspace renderer drew a `show_calendar = true`
+> calendar (and its focusable `<`/`>` buttons) off the visible right edge in a
+> narrow workspace -- invisible yet still Tab stops. Settings now defaults the
+> calendar off; a shown calendar must be visible and reachable; an omitted
+> calendar contributes zero Tab stops. Menu-workspace Requirement 16 (16.1-16.6).
+
+- [x] CV26.1 menu-workspace Task 28: Settings default `show_calendar = false`
+      (`DEFAULT_SETTINGS_TOML`); `default_settings_toml_hides_calendar` +
+      `full_shell_settings_tab_walks_options_only_no_calendar_stops`.
+      Covers: menu-workspace Req 16.1, 16.4.
+- [x] CV26.2 menu-workspace Task 29: fit-aware calendar layout in
+      `render_menu_workspace` (reserve calendar column within the visible width;
+      omit + drop ids when too narrow); egui_kittest guards
+      `menu_calendar_shown_when_wide_next_button_is_on_screen` (B060 regression)
+      and `menu_calendar_omitted_when_too_narrow_no_calendar_tab_stops`; TCR rows.
+      Covers: menu-workspace Req 16.2, 16.3, 16.4, 16.5, 16.6.
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (calendar-visibility) COMPLETE | Calendar Visibility and Fit + Settings default off (CR-CH-026, B060) -- DONE: menu-workspace Req 16.1-16.6 (Settings default calendar off; shown calendar is visible + reachable within the clip width; too-narrow calendar omitted; omitted calendar contributes zero Tab stops). menu-workspace Tasks 28-29 (CV26.1-CV26.2); verify.ps1 CLEAN; ffwb.exe rebuilt |
+
+## Phase (key-defaults) -- Full compiled default key map + keymaps/ override files (CR-CH-027, Key Assignments Slice 1)
+
+> Owner-approved Slice 1 of the Key Assignments work. Full Base + Shift compiled
+> default key map (code-only, like the POM/Settings menus); per-workspace-kind
+> override files `<User_Data_Dir>/keymaps/<context>.toml` layered over the
+> default; RESET BARE archives keymaps/. Slices 2 (messages/CURSOR/SPLIT H|V/
+> context-aware LEFT-RIGHT) and 3 (editor as WorkspaceContext, Command_Picker)
+> follow. function-keys-and-history Req 14/15, configuration-system Req 19.
+
+- [x] KD.1 function-keys Task 38: expanded `ff_keys::KeyMap::default_global()` to the
+      full owner-specified Base + Shift set (code-only); updated default_global tests
+      (Base F7/F8 plain UP/DOWN; MAX on Shift+F7/F8).
+      Covers: function-keys Req 15.1, 15.2, 15.3.
+- [x] KD.2 function-keys Task 39: `keymaps/<context>.toml` per-kind override files --
+      `ensure_keymaps_dir` + `load_context_maps_from_keymaps_dir` (loaded after the
+      config-table path, file precedence); present overrides / absent falls back /
+      malformed skips; TCR rows.
+      Covers: function-keys Req 14.9, 14.10, 14.11, 14.12.
+- [x] KD.3 function-keys Task 40 + configuration-system Req 19.4: added `keymaps` to
+      RESET BARE `ARCHIVED_ITEMS`; extended the archive test.
+      Covers: configuration-system Req 19.4.
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (key-defaults) COMPLETE | Full compiled default key map + keymaps/ override files (CR-CH-027, Slice 1) -- DONE: function-keys Req 15 (full Base+Shift code-only default), Req 14.9-14.12 (keymaps/ files + precedence), configuration-system Req 19.4 (archive keymaps/). function-keys Tasks 38-40 (KD.1-KD.3); all 949 ff-desktop nextest + ff-keys tests pass; verify.ps1 CLEAN; ffwb.exe rebuilt. Slices 2 (messages/CURSOR/SPLIT H|V/context-aware LEFT-RIGHT + CR-NR-079 HELP) and 3 (editor as WorkspaceContext) follow |
+
+## Phase (cursor-context) -- Cursor_Context package on every command (CR-CH-028, Key Assignments Slice 2a)
+
+> ADDITIVE, behaviour-preserving. Threads a flexible Cursor_Context (fixed core +
+> open extras bag) into every command via the existing `ExecutionContext` /
+> `ContextProvider` seam (currently unused). Commands merely RECEIVE it; per-command
+> consumption (CSR scroll, etc.) is deferred to Slice 2b. Delivers CR-NR-079
+> context-aware HELP + the canonical "command not implemented yet" message.
+> command-framework Requirement 12.
+
+- [x] CC.1 command-framework Task 28: extended `ff-command` `ExecutionContext` with a
+      `CursorContext` (fixed core + open `extras` bag) + `ContextValue` enum (additive,
+      builder, empty() unchanged).
+      Covers: command-framework Req 12.1, 12.2, 12.3.
+- [x] CC.2 command-framework Task 29: shell-backed `ShellContextProvider` +
+      `capture_cursor_context` in ff-desktop; `set_context_provider` at startup; refresh
+      snapshot each frame before dispatch (command parity); focused Menu_Option identity
+      recording (start scope: menu option + command line).
+      Covers: command-framework Req 12.2, 12.4, 12.5.
+- [x] CC.3 command-framework Task 30: canonical "command not implemented yet" message
+      constant (bound-path consumers land in Slice 2b); generalised HELP to consume the
+      Cursor_Context (CR-NR-079: F1 on FILES option -> help for FILES); TCR rows;
+      behaviour-preserving.
+      Covers: command-framework Req 12.6, 12.7, 12.8; delivers CR-NR-079.
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (cursor-context) COMPLETE | Cursor_Context package on every command (CR-CH-028, Slice 2a) -- DONE: command-framework Req 12.1-12.8 (flexible core+extras package, ContextProvider wiring, command parity, canonical not-implemented message, HELP consumer/CR-NR-079). ADDITIVE/behaviour-preserving; Req 12.6 CSR consumption deferred to Slice 2b. command-framework Tasks 28-30 (CC.1-CC.3); verify.ps1 CLEAN; ffwb.exe rebuilt; delivers CR-NR-079 |
+
+## Phase (keys-workspace) -- Keys Workspace replaces the modal dialog (CR-CH-029, Key Assignments Slice 3)
+
+> Re-homes the Key_Configuration surface from the modal `KeyConfigDialog` into a
+> Keys Workspace Context (modelled on the Menus/Theme editors, workspace-framework
+> Req 1). Workspace-KIND dropdown + Save to `keymaps/<kind>.toml` (closes
+> CR-CH-027); `K` -> `KEYS` in Settings; modal retired. Command_Picker/72-slot
+> (function-keys Req 20/21) DEFERRED. function-keys-and-history Requirement 22.
+
+- [x] KW.1 function-keys Task 41: new `keys_editor_panel` module (state + pure render,
+      modelled on `menus_editor_panel`): KIND dropdown, editable grid, stashed
+      `KeysEditorAction::Save { kind, rows }`; reuse the `ScopeRows`/`KeyRow` model.
+      Covers: function-keys Req 22.1, 22.2, 22.3, 22.4.
+- [x] KW.2 function-keys Task 42: `TabKind::KeysEditor` + `context_name_for_kind("keys")`;
+      `impl WorkspaceContext` (first interior = KIND dropdown); `render_workspace_context`
+      dispatch + `apply_keys_editor_action` writing `keymaps/<kind>.toml` (reload context
+      map); full-shell first-Tab test; Save round-trip test.
+      Covers: function-keys Req 22.4, 22.7; workspace-framework Req 1.
+- [x] KW.3 function-keys Task 43: `KEYS` opens the Keys Workspace (nav-stack push);
+      `K` -> `KEYS` in `DEFAULT_SETTINGS_TOML` Core; retire the modal `KeyConfigDialog`
+      (menu dispatches `KEYS`); update CX Req 2 tests to KEYS-opens-workspace; TCR rows.
+      Covers: function-keys Req 22.1, 22.5, 22.6; menu-workspace Req 12.3.
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (keys-workspace) COMPLETE | Keys Workspace replaces the modal dialog (CR-CH-029, Slice 3) -- DONE: function-keys Req 22.1-22.8 (Keys Workspace on the WorkspaceContext framework, workspace-kind dropdown, Save to keymaps/<kind>.toml closing CR-CH-027, K->KEYS in Settings, modal `KeyConfigDialog` retired), menu-workspace Req 12.3 amended. function-keys Tasks 41-43 (KW.1-KW.3); verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR CR-CH-029 8 rows PASS. Command_Picker/72-slot (Req 20/21) deferred |
+
+## Phase (menu-bar) -- Configurable named menu bars (CR-NR-080, menu-workspace Requirement 17; supersedes CR-NR-077)
+
+> The menu bar becomes a Menu_File rendered horizontally: top-level buttons PEEK
+> their referenced submenu as a dropdown (not navigate); leaves dispatch commands
+> (parity). Menu bars are named files, editable via the Menus Editor, assignable
+> per workspace kind; dynamic option sources deliver the theme picker (ex-CR-NR-077).
+> Menu MODEL + command RESOLUTION unchanged (nesting is already via command
+> resolution + chained fastpaths). SLICED: A first; B-D later.
+
+- [ ] MB.A menu-workspace Task 30: Slice A -- data-driven horizontal menu bar.
+      `DEFAULT_MENUBAR_TOML` (code-only, reproduces today's bar incl. Help);
+      `render_menu_bar_from_menu` drawing top-level options as `menu_button`
+      dropdowns that PEEK their referenced submenu's options (no navigate); leaves
+      dispatch via `handle_command` (parity); egui-native keyboard nav in dropdowns;
+      first/last top-level button ids captured for the CR-CH-023 Boundary_Policy;
+      remove `MENU_BAR_TOP_LEVEL_LABELS`; POM/Settings vertical workspace untouched.
+      Full-shell egui_kittest + verify.ps1 CLEAN + ffwb.exe rebuilt.
+      Covers: menu-workspace Req 17.1-17.7.
+- [ ] MB.B menu-workspace Task 31: Slice B (LATER) -- named + editable menu-bar files
+      (`menus/<name>.toml`, user override of the compiled default, `MB-` naming
+      convention, Menus Editor + serialiser).
+      Covers: menu-workspace Req 17.8.
+- [ ] MB.C menu-workspace Task 32: Slice C (LATER) -- per-workspace-kind menu-bar
+      assignment (config kind -> bar name, mirroring keymaps CR-CH-027).
+      Covers: menu-workspace Req 17.9.
+- [ ] MB.D menu-workspace Task 33: Slice D (LATER) -- dynamic option sources: the
+      Themes dropdown generated from `list_all_themes`, each item dispatching
+      `THEME <name>` (delivers ex-CR-NR-077 theme-and-appearance Req 17.8-17.13).
+      Covers: menu-workspace Req 17.10, 17.11.
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (menu-bar) | Configurable named menu bars (CR-NR-080, supersedes CR-NR-077) -- SPEC DONE: menu-workspace Req 17.1-17.11 (menu bar = a Menu_File rendered horizontally, peek-dropdown top-level buttons, leaf command parity, named + editable, per-kind assignment, dynamic Themes source). Impl SLICED: MB.A (Task 30) first; MB.B-MB.D (Tasks 31-33) later. No code yet |

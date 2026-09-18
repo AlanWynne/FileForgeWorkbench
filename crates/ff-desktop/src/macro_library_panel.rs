@@ -112,6 +112,12 @@ impl Default for MacroLibraryPanelState {
 ///
 /// Returns a `MacroLibraryAction` describing any user action this frame.
 ///
+/// Stable egui id of the Filter field -- the FIRST interior control of the
+/// Macro Library, reported to the shell Boundary_Policy (CR-CH-023, B059).
+pub fn filter_field_id() -> egui::Id {
+    egui::Id::new("macro_library_filter")
+}
+
 /// Validates: lua-macro-engine Requirement 12.1-12.8
 pub fn render(ui: &mut egui::Ui, state: &mut MacroLibraryPanelState) -> MacroLibraryAction {
     let mut action = MacroLibraryAction::None;
@@ -119,7 +125,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut MacroLibraryPanelState) -> MacroLib
     // Filter bar -- Validates: Requirement 12.4
     ui.horizontal(|ui| {
         ui.label("Filter:");
-        ui.text_edit_singleline(&mut state.filter);
+        ui.add(egui::TextEdit::singleline(&mut state.filter).id(filter_field_id()));
         if ui.small_button("x").clicked() {
             state.filter.clear();
         }

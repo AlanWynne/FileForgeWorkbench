@@ -297,29 +297,95 @@ All function key assignments route through the command framework -- pressing a f
 
 8. THE Context_Key_Map SHALL use the same ModifiedKey slot model and extended key-name prefixes as the Global_Key_Map (Requirement 20.11, 20.12): each context sub-table MAY define Base bindings (`F1`-`F12`) and modifier-layer bindings (`SF`, `CF`, `AF`, `GF`, `XF` prefixes for SHIFT, CTRL, ALT, ALTGR, CTRL+SHIFT). (Added Phase DE, CR-CH-014, so the per-context maps stay consistent with the redesigned Key_Configuration_Dialog.)
 
+9. THE workbench SHALL support a per-workspace-kind key-map OVERRIDE FILE at `<User_Data_Dir>/keymaps/<context>.toml`, where `<context>` is the stable context name of criterion 14.6 (e.g. `keymaps/editor.toml`, `keymaps/pom.toml`). The file uses the same key-name schema as `[global_key_map]` (Base `F1`-`F12` plus the `SF`/`CF`/`AF`/`GF`/`XF` modifier-layer prefixes). This mirrors the code-only-default-plus-file-override model of the POM and Settings menus (menu-workspace Requirement 12): the COMPILED default key map (Requirement 15) is the baseline, and a present `keymaps/<context>.toml` replaces it for that context (full-replacement, criterion 14.5). (CR-CH-027.)
+
+10. WHEN a `keymaps/<context>.toml` file is present at startup, THE Key_Map_Resolver SHALL load it as the Context_Key_Map for that context; WHEN it is absent, the context SHALL fall back to the compiled default map (criterion 14.3). WHEN a `keymaps/<context>.toml` file cannot be parsed, THE workbench SHALL skip it (log a DEBUG record) and fall back to the compiled default for that context, without crashing. (CR-CH-027.)
+
+11. THE `keymaps/` directory SHALL be created under the User_Data_Dir if absent (mirroring the `menus/` and `themes/` directories), MAY be empty, and SHALL be archived by `RESET BARE` (configuration-system Requirement 19.4). Built-in default key maps are CODE-ONLY and are NEVER written to `keymaps/` (mirroring the code-only menus/themes rule). (CR-CH-027.)
+
+12. THE `keymaps/<context>.toml` override files and the `[context_key_maps.<name>]` configuration section (criterion 14.1/14.7) are two entry points to the SAME per-context override model; when both are present for a context, the resolver SHALL apply exactly one per the documented precedence (design.md, CR-CH-027) so a context has a single effective map. (CR-CH-027.)
+
 ---
 
-### Requirement 15: Default 24-Key Assignment Set
+### Requirement 15: Default Key Assignment Set
 
-**User Story:** As a new workbench user, I want a sensible default set of 24 function key assignments pre-configured out of the box, so that common operations are immediately accessible without any manual configuration.
+**User Story:** As a new workbench user, I want a full, sensible default set of
+function key assignments pre-configured out of the box (Base and Shift rows),
+compiled into the workbench like the default POM and Settings menus, so that
+common operations are immediately accessible without any configuration file.
 
-**Source:** New requirement -- defines the initial default key map for the workbench.
+**Source:** New requirement -- defines the initial default key map for the
+workbench. REVISED (CR-CH-027): expanded from the 5-key baseline to the full
+owner-specified Base + Shift set; the default map is CODE-ONLY (compiled, never
+a shipped TOML file), mirroring the compiled Recovery_Baseline POM/Settings menus
+(menu-workspace Requirement 12).
 
 #### Acceptance Criteria
 
-1. THE workbench SHALL ship with a built-in default Global_Key_Map containing the following assignments as the baseline when no user configuration overrides them:
+1. THE workbench SHALL ship with a built-in, COMPILED default Global_Key_Map
+   (code-only -- NOT a TOML file written to disk, mirroring the compiled default
+   POM/Settings menus of menu-workspace Requirement 12) containing the following
+   Base (unmodified F-key) assignments as the baseline when no user
+   configuration overrides them:
 
-| Key | Command | Label |
-|-----|---------|-------|
-| F1  | HELP    | Help  |
-| F3  | END     | End   |
-| F7  | UP MAX  | Up    |
-| F8  | DOWN MAX | Down |
+| Key | Command  | Label    |
+|-----|----------|----------|
+| F1  | HELP     | Help     |
+| F2  | SPLIT    | Split    |
+| F3  | END      | End      |
+| F4  | RETURN   | Return   |
+| F5  | RFIND    | RFind    |
+| F6  | RCHANGE  | RChange  |
+| F7  | UP       | Up       |
+| F8  | DOWN     | Down     |
+| F9  | SWAP     | Swap     |
+| F10 | LEFT     | Left     |
+| F11 | RIGHT    | Right    |
 | F12 | RETRIEVE | Retrieve |
 
-2. THE built-in default assignments for F2, F4–F6, F9–F11, F13–F24 SHALL be unassigned in the baseline default map, leaving those slots blank in the Key_Label_Bar until the user configures them.
-3. THE built-in default key map SHALL be overridable in full by providing a `[global_key_map]` section in the user configuration file; user-provided entries replace the built-in defaults entirely (full-replacement model).
-4. THE built-in default key map SHALL be documented in the workbench help system under Topic_Key `"feature:function_keys"`.
+2. THE compiled default Global_Key_Map SHALL ALSO contain the following Shift
+   (SHIFT + F-key) assignments. The Shift row mirrors the Base row except for the
+   four scroll-max variants and the Cursor binding:
+
+| Key       | Command   | Label     |
+|-----------|-----------|-----------|
+| Shift+F1  | HELP      | Help      |
+| Shift+F2  | SPLIT     | Split     |
+| Shift+F3  | END       | End       |
+| Shift+F4  | RETURN    | Return    |
+| Shift+F5  | RFIND     | RFind     |
+| Shift+F6  | RCHANGE   | RChange   |
+| Shift+F7  | UP MAX    | Up Max    |
+| Shift+F8  | DOWN MAX  | Down Max  |
+| Shift+F9  | SWAP      | Swap      |
+| Shift+F10 | LEFT MAX  | Left Max  |
+| Shift+F11 | RIGHT MAX | Right Max |
+| Shift+F12 | CURSOR    | Cursor    |
+
+3. THE built-in default assignments for the CTRL, ALT, ALTGR, and CTRL+SHIFT
+   modifier layers, and for physical keys beyond F12, SHALL be unassigned in the
+   baseline default map, leaving those slots blank in the Key_Label_Bar until the
+   user configures them.
+
+4. THE built-in default key map SHALL be overridable by the user: a
+   `[global_key_map]` section in the user configuration file, OR a per-context
+   override file (Requirement 14, `keymaps/<context>.toml`), replaces the
+   compiled default for that scope entirely (full-replacement model). The
+   compiled default is the baseline that applies when no override is present.
+
+5. THE built-in default key map SHALL be documented in the workbench help system
+   under Topic_Key `"feature:function_keys"`.
+
+6. NOTE on commands referenced by the default map (SPLIT, RETURN, RFIND, RCHANGE,
+   UP, DOWN, SWAP, LEFT, RIGHT, RETRIEVE, HELP, END, and the yet-to-be-built
+   CURSOR and the `SPLIT H`/`SPLIT V` tiling forms): a default binding is a
+   DECLARATION. WHEN a bound command does not yet exist, pressing the key SHALL
+   surface the standard "not implemented yet" message; WHEN a bound command
+   exists but is meaningless in the active Workspace (e.g. LEFT/RIGHT on the
+   POM), pressing the key SHALL surface the standard "out of context" message.
+   The exact message conventions and the CURSOR/SPLIT H/SPLIT V commands are
+   specified separately (CR-CH-027 Slice 2); Requirement 15 only fixes the
+   default bindings.
 
 ---
 
@@ -432,6 +498,8 @@ pressing the RETRIEVE key are the same invocation; likewise `RETRIEVE 9` and `9`
 
 **User Story:** As a workbench user, I want a graphical dialog where I can view and edit function key assignments -- for the default global map and for each named context -- across the physical keys F1 to F12 and the PCOMM modifier layers (Base, SHIFT, CTRL, ALT, ALTGR, CTRL+SHIFT), where each binding selects an already-defined command from a picker and displays that command's full description, so that I can configure my key maps without editing TOML files manually.
 
+**Reconciliation note (Phase key-editor-workspace, CR-CH-029):** The Key_Configuration surface is RE-HOMED from a modal dialog into the Keys Workspace (Requirement 22), a Workspace Context modelled on the Menus editor and Theme editor (menu-workspace Requirement 13; workspace-framework Requirement 1). The modal `KeyConfigDialog` is RETIRED. This Requirement 20 continues to define the RICH binding model (72-slot grid, Command_Picker, per-binding description, unsaved-change/Cancel-confirm) as the DEFERRED target for the Keys Workspace's editing grid; CR-CH-029 delivers the Workspace shell, the workspace-kind scope selector, and Save-to-`keymaps/<kind>.toml`, and keeps the current editable command grid until the Command_Picker model (Requirement 20.4-20.7, 21) is implemented in a follow-up. Where Requirement 20 says "dialog", read "Keys Workspace"; where it says "tab or selector for each scope" (criterion 20.2), Requirement 22.2 supersedes it with a workspace-kind dropdown. Where it says Save writes `[global_key_map]`/`[context_key_maps.<name>]` (criterion 20.10), Requirement 22.5 supersedes it with Save writing `keymaps/<kind>.toml` (CR-CH-027).
+
 **Source:** New requirement -- Phase AN. REVISED Phase DE (CR-CH-014): physical range reduced from F1-F24 to F1-F12; free-text Command entry replaced by a picker restricted to defined commands; per-binding free-text Description replaced by a read-only description sourced from the selected command; modifier layers extended from Shift/Ctrl/Alt to the PCOMM set Base/SHIFT/CTRL/ALT/ALTGR/CTRL+SHIFT.
 
 **Design note -- why F1-F12:** A legacy 3270 terminal exposed 24 PF keys. In a modern 3270 PCOMM emulation session those 24 logical PF keys are reached from a PC keyboard using F1 to F12 plus Shift+F1 to Shift+F12. The physical function key range on the target keyboard is therefore F1 to F12, not F1 to F24. The full logical key set is reached through the modifier layers below rather than through physical keys F13 to F24. This criterion set supersedes the previous F1-F24 grid.
@@ -522,3 +590,29 @@ The following six Modifier_Layers apply to each physical function key. A binding
 8. WHEN a stored binding references a Command_Id that is not present in the Command_Store, THE Key_Configuration_Dialog SHALL display that binding as unassigned, SHALL display a visible missing-command indicator on that binding row that identifies the unresolved Command_Id, and SHALL retain the stored Command_Id unchanged until the user saves the dialog; on save THE Key_Configuration_Dialog SHALL persist the Command_Id that is shown for the binding at save time.
 
 9. WHERE the Command_Picker contains more than 20 selectable entries, THE Command_Picker SHALL provide a text filter that restricts the visible entries to those whose `label` contains the entered text using case-insensitive substring matching, SHALL always retain the "unassigned" entry as selectable regardless of the filter text, and SHALL show a no-matching-commands indication when no Command_Definition entry matches the entered text.
+
+---
+
+### Requirement 22: Keys Workspace (named per-workspace-kind key list editor)
+
+**User Story:** As a workbench user, I want to edit and save a key list that is linked by name to a workspace kind, in a Keys Workspace that looks and works like the Menus editor and Theme editor, reachable from the Settings menu, so that each kind of workspace (POM, editor, config, etc.) can have its own saved key assignments.
+
+**Source:** CR-CH-029. Owner: "We need the ability to store a key list per workspace. So we need a keys Workspace that allows us to save a keys list with a name that links it to the relevant workspace it is used for ... The current keys list has a save but does not have a name. This workspace should also be added to the default Settings Menu under Menu." Owner decisions: (Q1) the name is a DROPDOWN of available workspace KINDS; (Q2) REPLACE the modal with a Keys Workspace modelled on the Menus/Theme editors; (Q3) Settings option `K` -> `KEYS` "Keys"; (Q4) the Command_Picker/72-slot redesign (Requirement 20.4-20.7, 21) is DEFERRED -- keep the current editable command grid for now. Builds on the `keymaps/<kind>.toml` override files (Requirement 14.9-14.12, CR-CH-027) and the `WorkspaceContext` framework (workspace-framework Requirement 1, CR-NR-078).
+
+#### Acceptance Criteria
+
+1. THE workbench SHALL provide a Keys Workspace: a Workspace Context (its own tab, `TabKind::KeysEditor`) that REPLACES the former modal Key_Configuration_Dialog. The modal `KeyConfigDialog` SHALL be retired (no longer opened by any path). The Keys Workspace SHALL be modelled on the Menus editor and Theme editor Contexts (a pure render returning an action the shell applies; menu-workspace Requirement 13).
+
+2. THE Keys Workspace SHALL present a workspace-KIND selector (a dropdown) whose entries are the available workspace kinds identified by their stable context names (criterion 14.6: `pom`, `editor`, `config`, `files`, `search`, `plugins`, `log`, `macros`, `menu`, `commands`, `theme`, `menus`). The selected kind is the "name" that links the edited key list to the workspace kind it is used for. Selecting a kind SHALL load that kind's current key list into the editing grid (from `keymaps/<kind>.toml` when present, else the compiled default for that kind).
+
+3. THE Keys Workspace SHALL display an editable key-assignment grid for the selected kind. For this slice (CR-CH-029) the grid is the current command grid (F1-F12 physical rows with per-Modifier_Layer command entries); the Command_Picker / read-only-description model of Requirement 20.4-20.7 and Requirement 21 is DEFERRED to a follow-up and is NOT required here.
+
+4. THE Keys Workspace SHALL provide a Save action. WHEN Save is invoked, THE workbench SHALL write the edited key list for the selected kind to `<User_Data_Dir>/keymaps/<kind>.toml` (the same override file the resolver reads, Requirement 14.9-14.12), using the key-name schema of criterion 14.9 (`F1`-`F12` plus `SF`/`CF`/`AF`/`GF`/`XF` prefixes). This CLOSES the CR-CH-027 loop: the Keys Workspace is the authoring surface for the `keymaps/<kind>.toml` files.
+
+5. THE `KEYS` command SHALL open the Keys Workspace (navigate-in-place with a Navigation_Stack push, so END/RETURN return to the prior Context, consistent with the Theme editor and Menus editor). The former `KEYS <name>` argument MAY pre-select the matching kind in the dropdown; an unknown argument opens the Keys Workspace with a default kind selected and a status message. Command parity (architecture-brief Principle 2): the Settings menu affordance and any menu-bar item SHALL DISPATCH the `KEYS` command rather than setting an open flag directly.
+
+6. THE compiled default Settings menu (`DEFAULT_SETTINGS_TOML`, menu-workspace Requirement 12.3) SHALL include, in its Core group, an option `K` -> `KEYS` labelled "Keys" (the Key assignments editor), alongside the existing Config/Theme/Menus options.
+
+7. THE Keys Workspace SHALL participate in the unified tab-order model (CR-CH-023, workspace-conformance): it SHALL report its interior focus contract via the `WorkspaceContext` trait (workspace-framework Requirement 1), with the workspace-kind dropdown as the FIRST interior control, and SHALL ship a full-shell first-Tab `egui_kittest` test asserting the first Tab from the command field lands on the dropdown (no phantom stop).
+
+8. THE Keys Workspace SHALL be a transient editing Context (like the Theme editor and Menus editor): it is NOT restored as a tab on next launch; the persisted artefacts are the `keymaps/<kind>.toml` files it writes.
