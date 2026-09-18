@@ -23,6 +23,12 @@ pub fn serialise(palette: &ThemePalette) -> String {
 
     out.push_str("name = \"");
     out.push_str(&palette.name);
+    out.push_str("\"\n");
+    // Persist the visual mode as a real (parseable) field so it round-trips
+    // through the loader (B063). Without this a user theme saved from Legacy
+    // reloads as the loader's default mode and loses its ISPF colour semantics.
+    out.push_str("mode = \"");
+    out.push_str(palette.mode.section_name());
     out.push_str("\"\n\n");
 
     // Editor colours
@@ -363,6 +369,34 @@ mod tests {
         assert_eq!(original.chrome, round_tripped.chrome);
         assert_eq!(original.decorations, round_tripped.decorations);
         assert_eq!(original.ui, round_tripped.ui);
+    }
+
+    // Validates: Requirement 5, 9.2, 13 (B063) -- the visual MODE round-trips
+    // through serialise/load. A Legacy palette serialised then re-loaded (even
+    // with a DIFFERENT default mode passed to the loader) must come back as
+    // Legacy, so a user theme saved from Legacy keeps its ISPF colour semantics.
+    #[test]
+    fn serialise_round_trip_preserves_legacy_mode() {
+        let original = defaults::default_legacy_palette();
+        assert_eq!(original.mode, VisualMode::Legacy);
+        let toml_str = serialise(&original);
+        // Pass a NON-Legacy default to prove the file's mode wins over the arg.
+        let round_tripped = load_from_toml(&toml_str, VisualMode::Dark).unwrap();
+        assert_eq!(
+            round_tripped.mode,
+            VisualMode::Legacy,
+            "the serialised Legacy mode must round-trip (B063), not fall back to the passed default"
+        );
+    }
+
+    // Validates: Requirement 9.2 (B063) -- an absent `mode` field falls back to
+    // the mode passed to the loader (backward compatible with older files that
+    // did not persist a mode field).
+    #[test]
+    fn load_without_mode_field_uses_passed_default() {
+        let toml = "name = \"NoMode\"\n";
+        let p = load_from_toml(toml, VisualMode::Light).unwrap();
+        assert_eq!(p.mode, VisualMode::Light);
     }
 
     #[test]

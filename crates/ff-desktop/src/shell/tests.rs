@@ -1372,6 +1372,33 @@ fn make_shell() -> super::WorkbenchShell {
     super::WorkbenchShell::new(app, runtime, palette, vec![], config_handle)
 }
 
+/// Validates: menu-workspace Req 2.1a / theme Req 13.4-13.6 -- when the Legacy
+/// palette is active, `menu_colours()` returns the ISPF per-column scheme
+/// (key=white, command=turquoise, description=green), NOT placeholders. Guards
+/// the "POM options all white in Legacy" regression.
+#[test]
+fn menu_colours_are_legacy_scheme_when_legacy_palette_active() {
+    let mut shell = make_shell();
+    shell.palette = ff_theme::defaults::default_legacy_palette();
+    let mc = shell.menu_colours();
+    let ph = eframe::egui::Color32::PLACEHOLDER;
+    assert_ne!(
+        mc.option_key, ph,
+        "Legacy key column must be a real colour (white)"
+    );
+    assert_ne!(
+        mc.option_command, ph,
+        "Legacy command column must be a real colour (turquoise)"
+    );
+    assert_ne!(
+        mc.description, ph,
+        "Legacy description column must be a real colour (green)"
+    );
+    // The three columns must be DISTINCT (white / turquoise / green).
+    assert_ne!(mc.option_key, mc.option_command);
+    assert_ne!(mc.option_command, mc.description);
+}
+
 /// Validates: Requirement 16.1 -- CAPS ON converts typed chars to uppercase.
 #[test]
 fn caps_on_command_sets_caps_mode_on() {

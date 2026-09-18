@@ -34,6 +34,17 @@ pub fn load_from_toml(toml_str: &str, mode: VisualMode) -> Result<ThemePalette, 
                 detail: e.to_string(),
             })?;
 
+    // The effective mode is the file's `mode` field when present (B063), else
+    // the mode passed by the caller (backward compatible with older files that
+    // did not persist a mode). Using it for the default palette + style slots +
+    // the final `mode` keeps token fallbacks and the visual mode consistent, so
+    // a user theme saved from Legacy reloads as Legacy.
+    let mode = table
+        .get("mode")
+        .and_then(|v| v.as_str())
+        .and_then(VisualMode::from_str_loose)
+        .unwrap_or(mode);
+
     let default = defaults::default_palette_for_mode(mode);
     let name = table
         .get("name")
