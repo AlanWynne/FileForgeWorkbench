@@ -2327,9 +2327,11 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 - [ ] MB.C menu-workspace Task 32: Slice C (LATER) -- per-workspace-kind menu-bar
       assignment (config kind -> bar name, mirroring keymaps CR-CH-027).
       Covers: menu-workspace Req 17.9.
-- [ ] MB.D menu-workspace Task 33: Slice D (LATER) -- dynamic option sources: the
-      Themes dropdown generated from `list_all_themes`, each item dispatching
-      `THEME <name>` (delivers ex-CR-NR-077 theme-and-appearance Req 17.8-17.13).
+- [x] MB.D menu-workspace Task 33: Slice D -- dynamic option sources: `THEME LIST`
+      yields a Themes dropdown generated from `list_all_themes` (`dynamic_menu_options`),
+      each item dispatching `THEME <name>` (delivers ex-CR-NR-077 theme-and-appearance
+      Req 17.8-17.13). Mechanism delivered + tested (Option B: barebones default not
+      yet wired). verify.ps1 CLEAN; ffwb.exe rebuilt.
       Covers: menu-workspace Req 17.10, 17.11.
 
 | Status | Count |

@@ -531,6 +531,46 @@ fn menu_bar_peek_of_settings_returns_settings_menu_options() {
     );
 }
 
+/// Validates: menu-workspace Req 17.10 (CR-NR-080 Slice D) -- a `THEME LIST`
+/// option is a DYNAMIC source: its dropdown is generated at runtime, one item
+/// per available theme, each dispatching `THEME <name>`.
+#[test]
+fn menu_bar_dynamic_theme_list_generates_one_item_per_theme() {
+    let shell = make_shell();
+    let dynamic = shell
+        .dynamic_menu_options("THEME LIST")
+        .expect("THEME LIST is a dynamic source");
+    assert!(
+        !dynamic.is_empty(),
+        "dynamic Themes source must produce at least the built-in themes"
+    );
+    // Each generated child dispatches `THEME <name>` (command parity) and is
+    // labelled by the theme name.
+    for opt in &dynamic {
+        assert!(
+            opt.command.starts_with("THEME "),
+            "each dynamic theme item must dispatch `THEME <name>`, got: {}",
+            opt.command
+        );
+    }
+    // The built-in Default Dark must be present as `THEME Default Dark`.
+    assert!(
+        dynamic.iter().any(|o| o.command == "THEME Default Dark"),
+        "dynamic Themes list must include the built-in Default Dark"
+    );
+}
+
+/// Validates: menu-workspace Req 17.10 -- a non-dynamic command yields no
+/// dynamic options (so the bar falls back to peek / direct dispatch).
+#[test]
+fn menu_bar_dynamic_options_none_for_ordinary_command() {
+    let shell = make_shell();
+    assert!(
+        shell.dynamic_menu_options("SETTINGS").is_none(),
+        "an ordinary command must not be a dynamic source"
+    );
+}
+
 /// Validates: menu-workspace Req 17.4 -- a top-level option whose command does
 /// NOT name a menu peeks empty (the bar then renders it as a direct-dispatch
 /// item rather than a submenu).

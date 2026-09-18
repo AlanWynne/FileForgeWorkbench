@@ -241,13 +241,28 @@ impl WorkbenchShell {
                     menu.options.iter().filter(|o| o.show_in_menu_bar).collect();
                 let last_index = bar_options.len().saturating_sub(1);
                 for (i, option) in bar_options.iter().enumerate() {
-                    // PEEK: resolve the option's command to a referenced menu's
-                    // options. Empty => not a menu; render a single direct item.
-                    let peeked = self.peek_menu_options(&option.command);
+                    // A DYNAMIC source (e.g. `THEME LIST`) generates its children
+                    // at runtime (Req 17.10); otherwise PEEK the referenced menu's
+                    // options (Req 17.3). Empty peek => a plain direct command.
+                    let dynamic = self.dynamic_menu_options(&option.command);
+                    let peeked = if dynamic.is_some() {
+                        Vec::new()
+                    } else {
+                        self.peek_menu_options(&option.command)
+                    };
                     // Bar buttons are labelled by the option's COMMAND (the verb
                     // the user would type), not its description (CR-NR-080).
                     let btn = ui.menu_button(option.command.clone(), |ui| {
-                        if peeked.is_empty() {
+                        if let Some(children) = &dynamic {
+                            // Dynamic children (Req 17.10, 17.11): labelled by the
+                            // theme name (description), dispatch `THEME <name>`.
+                            for child in children {
+                                if ui.button(child.description.clone()).clicked() {
+                                    self.handle_command(&child.command);
+                                    ui.close_menu();
+                                }
+                            }
+                        } else if peeked.is_empty() {
                             // Non-menu command: one item that dispatches it (Req 17.4).
                             if ui.button(option.command.clone()).clicked() {
                                 self.handle_command(&option.command);
@@ -314,6 +329,41 @@ impl WorkbenchShell {
                 _ => crate::menu_workspace::defaults::recovery_pom_menu(),
             });
         menu.options
+    }
+
+    /// Generate a DYNAMIC option source for a menu-bar dropdown, if `command`
+    /// names one (menu-workspace Requirement 17.10, CR-NR-080 Slice D).
+    ///
+    /// A dynamic source produces its child options at RUNTIME rather than from a
+    /// file. The first (and currently only) source is `THEME LIST`: it yields one
+    /// child per available theme (`ff_theme::list_all_themes`, in list order),
+    /// each labelled by the theme name and dispatching `THEME <name>` (command
+    /// parity, theme-and-appearance Requirement 17.2, applied via the shared
+    /// `set_active_theme` path). This delivers the CR-NR-077 theme picker via the
+    /// menu bar. Returns `None` for any command that is not a dynamic source, so
+    /// the caller falls back to `peek_menu_options` / direct dispatch.
+    ///
+    /// Validates: menu-workspace Requirement 17.10, 17.11
+    pub(super) fn dynamic_menu_options(
+        &self,
+        command: &str,
+    ) -> Option<Vec<crate::menu_workspace::MenuOption>> {
+        if !command.trim().eq_ignore_ascii_case("THEME LIST") {
+            return None;
+        }
+        let options = ff_theme::list_all_themes(&self.themes_dir())
+            .into_iter()
+            .map(|t| crate::menu_workspace::MenuOption {
+                key: String::new(),
+                command: format!("THEME {}", t.name),
+                description: t.name.clone(),
+                enabled: true,
+                group: None,
+                show_in_menu_bar: true,
+                target: None,
+            })
+            .collect();
+        Some(options)
     }
 
     // ── Tab bar ──────────────────────────────────────────────────────────

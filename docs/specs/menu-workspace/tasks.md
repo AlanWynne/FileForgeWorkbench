@@ -544,6 +544,6 @@
   - [ ] 32.1 Config mapping workspace-kind (context name) -> menu-bar name, mirroring the keymaps per-kind pattern (CR-CH-027); active tab kind selects the bar; default bar when unassigned
     - Covers: Requirement 17.9
 
-- [ ] 33. Slice D: dynamic option sources -> Themes dropdown (LATER; delivers ex-CR-NR-077)
-  - [ ] 33.1 A menu-bar option with a dynamic source (themes) peeks a dropdown generated from `list_all_themes`, each item dispatching `THEME <name>` via `handle_command` (shared `set_active_theme` apply+persist path)
+- [x] 33. Slice D: dynamic option sources -> Themes dropdown (delivers ex-CR-NR-077)
+  - [x] 33.1 A menu-bar option with a dynamic source (`THEME LIST`) yields a dropdown generated from `list_all_themes` (`dynamic_menu_options`), each item dispatching `THEME <name>` via `handle_command` (shared `set_active_theme` apply+persist path). The bar render consults `dynamic_menu_options` before `peek_menu_options`. Mechanism delivered + tested; the barebones default does not yet wire a Themes dropdown (Option B -- usable when a menu includes a `THEME LIST` option).
     - Covers: Requirement 17.10, 17.11
