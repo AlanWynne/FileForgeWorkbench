@@ -1414,6 +1414,76 @@ fn make_shell_with_history_path(history_path: &std::path::Path) -> super::Workbe
     super::WorkbenchShell::new(app, runtime, palette, vec![], config_handle)
 }
 
+// === B062: command-line arguments are case-preserved (verb case-insensitive) ==
+// The command line matches VERBS case-insensitively but MUST pass ARGUMENTS to
+// handlers with their original case (critical for FIND/CHANGE/LOCATE search
+// strings). These regression tests lock that guarantee in place.
+
+/// Validates: B062 -- `handle_command` does NOT uppercase the whole line before
+/// recording it; the recorded command-line history preserves argument case.
+/// Every arm slices its argument from this same original `cmd`, so a preserved
+/// recorded line evidences preserved handler arguments.
+#[test]
+fn command_arguments_preserve_case_in_history() {
+    let mut shell = make_shell();
+    // Mixed-case arguments across the case-sensitive commands.
+    shell.handle_command("FIND 'MixedCase'");
+    assert_eq!(
+        shell.command_line_history.most_recent(),
+        Some("FIND 'MixedCase'"),
+        "FIND search term case must be preserved (not uppercased)"
+    );
+    shell.handle_command("LOCATE MyLabel");
+    assert_eq!(
+        shell.command_line_history.most_recent(),
+        Some("LOCATE MyLabel")
+    );
+    shell.handle_command("CHANGE 'Old' 'New'");
+    assert_eq!(
+        shell.command_line_history.most_recent(),
+        Some("CHANGE 'Old' 'New'")
+    );
+    // A lowercase VERB still matches (verb is case-insensitive) and its argument
+    // keeps case.
+    shell.handle_command("find 'AlsoMixed'");
+    assert_eq!(
+        shell.command_line_history.most_recent(),
+        Some("find 'AlsoMixed'")
+    );
+}
+
+/// Validates: B062 -- the CHANGE argument parser preserves the case of both the
+/// from- and to- strings (quoted and bare).
+#[test]
+fn parse_two_args_preserves_argument_case() {
+    use super::helpers::parse_two_args;
+    let (old, new) = parse_two_args("'Error' 'ERROR'").expect("two quoted args");
+    assert_eq!(old, "Error");
+    assert_eq!(new, "ERROR");
+    let (a, b) = parse_two_args("MixedOld MixedNew").expect("two bare args");
+    assert_eq!(a, "MixedOld");
+    assert_eq!(b, "MixedNew");
+}
+
+/// Validates: B062 -- a mixed-case VERB with a mixed-case argument resolves: the
+/// verb matches case-insensitively and the argument reaches the handler intact.
+/// `theme Default Legacy` (lowercase verb, cased name) activates Default Legacy.
+#[test]
+fn mixed_case_theme_verb_and_argument_resolve() {
+    let mut shell = make_shell();
+    shell.handle_command("theme Default Dark");
+    assert_eq!(
+        shell.palette.name, "Default Dark",
+        "lowercase verb + cased theme name must resolve and preserve the name"
+    );
+    let _ = shell
+        .config_handle
+        .remove_user_value(ff_config::keys::theme::ACTIVE);
+    let _ = shell
+        .config_handle
+        .remove_user_value(ff_config::keys::theme::ACTIVE_NAME);
+}
+
 /// Validates: function-keys-and-history Req 6.2 -- at startup the shell loads a
 /// persisted command history file into the command-line history.
 #[test]
