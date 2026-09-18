@@ -4619,6 +4619,36 @@ fn execute_reset_bare_reopens_home_context() {
     );
 }
 
+// Validates: configuration-system Req 19.6 + B064 -- a confirmed RESET BARE
+// resets the ACTIVE profile's theme to the Default Legacy baseline, even when a
+// different (built-in) theme was active. Clearing archived files alone did NOT
+// reset the theme (the in-memory config kept the old key); RESET BARE now clears
+// the theme keys and applies Default Legacy.
+#[test]
+fn execute_reset_bare_resets_theme_to_default_legacy() {
+    let mut shell = make_shell();
+    // Start on a NON-Legacy built-in theme (a built-in resolves without a file,
+    // which is exactly the case that previously survived the reset).
+    shell.handle_command("THEME Default Dark");
+    assert_eq!(shell.palette.name, "Default Dark");
+
+    shell.execute_reset_bare();
+
+    assert_eq!(
+        shell.palette.name, "Default Legacy",
+        "RESET BARE must reset the active theme to the Default Legacy baseline (B064)"
+    );
+    // The user theme override key is cleared for this (active) profile.
+    let active_name = shell
+        .config_handle
+        .get_string(ff_config::keys::theme::ACTIVE_NAME)
+        .unwrap_or_default();
+    assert_eq!(
+        active_name, "Default Legacy",
+        "theme.active_name should reflect the baseline after reset, got: {active_name:?}"
+    );
+}
+
 // === CR-NR-075: Menus Editor Context (Requirement 13) ======================
 
 /// Seed a shell whose menus_dir is an isolated TempDir, with the Menus editor

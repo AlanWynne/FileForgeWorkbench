@@ -6,6 +6,58 @@
 
 use std::path::{Path, PathBuf};
 
+// === Application Profile awareness (CR-NR-081, startup-and-session Req 22) ====
+
+/// Process-global active Application_Profile for the CONFIG layer. `None` = the
+/// DEFAULT_PROFILE (config at `<config>/ffworkbench/config.toml`, unchanged).
+///
+/// ff-config cannot depend on ff-session (layering), so it keeps its OWN
+/// set-once profile mirror; the desktop shell sets BOTH `ff_session` and this
+/// from the single startup arg-parse, BEFORE `init()` (Req 22.5).
+static ACTIVE_PROFILE: std::sync::RwLock<Option<String>> = std::sync::RwLock::new(None);
+
+/// Set the active Application_Profile for the config layer (CR-NR-081).
+///
+/// `Some(name)` isolates config under `profiles/<slug>/`; `None` (or an
+/// empty/blank name) uses the default location. Call ONCE at startup BEFORE
+/// `init()` so config resolves the right profile from the first read.
+///
+/// Validates: startup-and-session Requirement 22.3, 22.5
+pub fn set_active_profile(name: Option<&str>) {
+    let normalised = name
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string);
+    if let Ok(mut guard) = ACTIVE_PROFILE.write() {
+        *guard = normalised;
+    }
+}
+
+/// Return the active config-layer profile name, or `None` for the default.
+pub fn active_profile() -> Option<String> {
+    ACTIVE_PROFILE.read().ok().and_then(|g| g.clone())
+}
+
+/// Slug a profile name for a directory component: lowercase, non-alphanumeric
+/// replaced by `-`. Matches `ff_session::profile_slug` so both layers resolve
+/// the SAME `profiles/<slug>/` directory for a given profile name.
+fn profile_slug(name: &str) -> String {
+    name.trim()
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect()
+}
+
+/// Join the active profile's sub-directory onto the ffworkbench config base
+/// when a profile is active, else return the base unchanged.
+fn profile_aware_base(base: PathBuf) -> PathBuf {
+    match active_profile() {
+        Some(name) => base.join("profiles").join(profile_slug(&name)),
+        None => base,
+    }
+}
+
 /// Resolve the system-wide configuration file path.
 ///
 /// Returns the platform-specific path for the system configuration file:
@@ -35,7 +87,9 @@ pub fn system_config_path() -> PathBuf {
 ///
 /// Returns `None` if the platform config directory cannot be determined.
 pub fn user_config_dir() -> Option<PathBuf> {
-    dirs::config_dir().map(|d| d.join("ffworkbench"))
+    // Profile-aware (CR-NR-081): `<config>/ffworkbench/profiles/<slug>` when a
+    // profile is active, else `<config>/ffworkbench` (default, unchanged).
+    dirs::config_dir().map(|d| profile_aware_base(d.join("ffworkbench")))
 }
 
 /// Resolve the user configuration file path.
@@ -54,10 +108,14 @@ pub fn user_config_dir() -> Option<PathBuf> {
 /// not read/write the developer's actual config (test-isolation hazard B048).
 /// When the variable is unset, production behaviour is unchanged.
 pub fn user_config_path() -> Option<PathBuf> {
+    // The test/host override always wins (test isolation, B048).
     if let Some(p) = std::env::var_os("FFWB_USER_CONFIG_PATH") {
         return Some(PathBuf::from(p));
     }
-    dirs::config_dir().map(|d| d.join("ffworkbench").join("config.toml"))
+    // Profile-aware (CR-NR-081): `<config>/ffworkbench/profiles/<slug>/config.toml`
+    // when a profile is active, else `<config>/ffworkbench/config.toml` (default,
+    // unchanged), so each Application_Profile has its own isolated config.
+    dirs::config_dir().map(|d| profile_aware_base(d.join("ffworkbench")).join("config.toml"))
 }
 
 /// Resolve the user profiles directory.
@@ -155,6 +213,53 @@ mod tests {
                 parent.display()
             );
         }
+    }
+
+    // Validates: startup-and-session Req 22.3 (CR-NR-081, B064) -- when a config
+    // profile is active, the user config path is isolated under
+    // `.../ffworkbench/profiles/<slug>/config.toml`; the default (None) is the
+    // unchanged base path. Drives the process-global serially and restores it.
+    // Guarded by the env override being unset so the test seam does not mask it.
+    #[test]
+    fn user_config_path_is_profile_aware() {
+        // Skip if a host/test override is active (it always wins by design).
+        if std::env::var_os("FFWB_USER_CONFIG_PATH").is_some() {
+            return;
+        }
+        // Only meaningful when the platform config dir resolves.
+        set_active_profile(None);
+        let Some(default_path) = user_config_path() else {
+            return;
+        };
+        // Default: <config>/ffworkbench/config.toml, NOT under profiles/.
+        assert!(default_path.ends_with("config.toml"));
+        assert!(
+            !default_path.to_string_lossy().contains("profiles"),
+            "default config must not be under profiles/, got: {}",
+            default_path.display()
+        );
+
+        // Active profile 'ispf' -> <config>/ffworkbench/profiles/ispf/config.toml.
+        set_active_profile(Some("ISPF"));
+        let ispf_path = user_config_path().expect("path");
+        let base = default_path.parent().unwrap(); // <config>/ffworkbench
+        assert_eq!(
+            ispf_path,
+            base.join("profiles").join("ispf").join("config.toml")
+        );
+
+        // A different profile resolves to a distinct dir.
+        set_active_profile(Some("rust"));
+        let rust_path = user_config_path().expect("path");
+        assert_ne!(rust_path, ispf_path);
+        assert_eq!(
+            rust_path,
+            base.join("profiles").join("rust").join("config.toml")
+        );
+
+        // Restore the default so no other test sees a stray profile.
+        set_active_profile(None);
+        assert_eq!(user_config_path(), Some(default_path));
     }
 
     // Validates: Requirement 4.1 — profiles directory is under user config dir

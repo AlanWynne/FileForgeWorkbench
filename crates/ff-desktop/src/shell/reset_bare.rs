@@ -155,12 +155,26 @@ impl WorkbenchShell {
     fn reset_in_memory_to_baseline(&mut self) {
         use crate::tab_state::TabKind;
 
-        // Theme -> compiled default (resolver falls back to Default Legacy when
-        // no file/config resolves). Uses an empty themes dir so no user file is
-        // read after archiving.
-        let themes_dir = self.themes_dir();
-        self.palette =
-            crate::theme_defaults::resolve_startup_palette(&self.config_handle, &themes_dir);
+        // Theme -> Default Legacy baseline (the ISPF barebones aesthetic). B064:
+        // clearing the archived files alone does NOT reset the theme, because the
+        // running config_handle still holds the old theme keys in memory (and a
+        // built-in theme name resolves with no file). So explicitly CLEAR the
+        // user theme overrides for the ACTIVE profile, then select the baseline.
+        // remove_user_value writes to the active profile's config.toml only, so
+        // other profiles are untouched.
+        let _ = self
+            .config_handle
+            .remove_user_value(ff_config::keys::theme::ACTIVE_NAME);
+        let _ = self
+            .config_handle
+            .remove_user_value(ff_config::keys::theme::ACTIVE);
+        let _ = self
+            .config_handle
+            .remove_user_value(ff_config::keys::theme::FOLLOW_OS);
+        // Apply + persist the Default Legacy baseline via the shared activation
+        // path (also opts out of follow_os). This lands the palette on Default
+        // Legacy regardless of what was active before the reset.
+        self.set_active_theme("Default Legacy");
 
         // Catalogs -> clear and re-seed the default Home catalog (CR-NR-004).
         self.files_panel.registry = crate::catalog_registry::CatalogRegistry::new();

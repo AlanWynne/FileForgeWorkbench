@@ -67,7 +67,13 @@ fn main() -> anyhow::Result<()> {
     // (today's location, no behaviour change, Req 22.2).
     let mut cli_args: Vec<String> = std::env::args().skip(1).collect();
     let active_profile = extract_profile_arg(&mut cli_args);
+    // Set the active profile on BOTH layers before any resolve/config init:
+    // ff-session (User_Data_Dir: themes/menus/keymaps/session/catalogs/logs) and
+    // ff-config (user config.toml). ff-config keeps its own mirror because it
+    // cannot depend on ff-session (layering). Both slug identically so they
+    // resolve the SAME profiles/<slug>/ directory (Req 22.3).
     ff_session::set_active_profile(active_profile.as_deref());
+    ff_config::paths::set_active_profile(active_profile.as_deref());
 
     // == 1. Logging (Phase 1: defaults) ====================================
     // Initialize logging FIRST with platform defaults so no diagnostic record
