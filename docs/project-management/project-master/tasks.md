@@ -2320,9 +2320,11 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
       remove `MENU_BAR_TOP_LEVEL_LABELS`; POM/Settings vertical workspace untouched.
       Full-shell egui_kittest + verify.ps1 CLEAN + ffwb.exe rebuilt.
       Covers: menu-workspace Req 17.1-17.7.
-- [ ] MB.B menu-workspace Task 31: Slice B (LATER) -- named + editable menu-bar files
-      (`menus/<name>.toml`, user override of the compiled default, `MB-` naming
-      convention, Menus Editor + serialiser).
+- [x] MB.B menu-workspace Task 31: Slice B -- named + editable menu-bar files.
+      `resolve_menu_bar_menu()` loads `menus/mb-pom.toml` (default bar name `MB-POM`)
+      via the loader, user file overrides the compiled default (barebones POM) else
+      falls back; authorable via the Menus Editor (same slugging). verify.ps1 CLEAN;
+      ffwb.exe rebuilt.
       Covers: menu-workspace Req 17.8.
 - [ ] MB.C menu-workspace Task 32: Slice C (LATER) -- per-workspace-kind menu-bar
       assignment (config kind -> bar name, mirroring keymaps CR-CH-027).

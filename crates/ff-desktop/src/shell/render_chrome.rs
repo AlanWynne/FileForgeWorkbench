@@ -10,6 +10,18 @@ use crate::tab_state::TabKind;
 use super::helpers::*;
 use super::WorkbenchShell;
 
+/// Map a Menu_Bar name to its file stem (menu-workspace Req 17.8, CR-NR-080),
+/// matching the slugging the Menus editor uses for user menu names: lowercase,
+/// non-alphanumerics replaced by `-`. So `MB-POM` -> `mb-pom` (loaded from
+/// `menus/mb-pom.toml`). The `MB-` prefix is a convention, not enforced.
+fn menu_bar_slug(name: &str) -> String {
+    name.trim()
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect()
+}
+
 impl WorkbenchShell {
     pub(super) fn apply_theme(&self, ctx: &egui::Context) {
         let p = &self.palette;
@@ -207,8 +219,27 @@ impl WorkbenchShell {
     ///
     /// Validates: menu-workspace Requirement 17.1, 17.7
     pub(super) fn render_menu_bar(&mut self, ctx: &egui::Context) {
-        let menu = crate::menu_workspace::defaults::default_menubar_menu();
+        let menu = self.resolve_menu_bar_menu();
         self.render_menu_bar_from_menu(ctx, &menu);
+    }
+
+    /// Resolve the active Menu_Bar `MenuFile` (menu-workspace Req 17.8,
+    /// CR-NR-080 Slice B).
+    ///
+    /// The bar is a NAMED menu: it resolves the active menu-bar name to
+    /// `menus/<slug>.toml` via the loader, so a user file OVERRIDES the compiled
+    /// default. WHEN the file is absent or invalid, it falls back to the
+    /// compiled default (`default_menubar_menu`, the barebones POM). For Slice B
+    /// the name is the single default `DEFAULT_MENU_BAR_NAME` (`MB-POM`, slug
+    /// `mb-pom`); Slice C will select the name per workspace kind. The `MB-`
+    /// prefix is a naming convention, not enforced.
+    ///
+    /// Validates: menu-workspace Requirement 17.8
+    pub(super) fn resolve_menu_bar_menu(&self) -> crate::menu_workspace::MenuFile {
+        let slug = menu_bar_slug(crate::menu_workspace::defaults::DEFAULT_MENU_BAR_NAME);
+        let path = self.menus_dir().join(format!("{slug}.toml"));
+        crate::menu_workspace::loader::load_menu_file(&path)
+            .unwrap_or_else(|_| crate::menu_workspace::defaults::default_menubar_menu())
     }
 
     /// Render a `MenuFile` as a horizontal menu bar of dropdown buttons.

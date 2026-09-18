@@ -124,6 +124,13 @@ pub fn recovery_settings_menu() -> crate::menu_workspace::MenuFile {
         .expect("compiled Recovery_Baseline Settings menu must parse")
 }
 
+/// The default Menu_Bar NAME (menu-workspace Req 17.8, CR-NR-080). A user file
+/// at `menus/<slug>.toml` (slug = `mb-pom`) OVERRIDES the compiled default bar;
+/// the `MB-` prefix is a naming CONVENTION, not an enforced rule. Slice C will
+/// let a workspace kind select a different bar name; until then this is the
+/// single default the shell resolves.
+pub const DEFAULT_MENU_BAR_NAME: &str = "MB-POM";
+
 /// Build the compiled default Menu_Bar `MenuFile` (menu-workspace Req 17,
 /// CR-NR-080).
 ///

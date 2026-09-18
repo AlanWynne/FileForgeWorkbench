@@ -536,8 +536,8 @@
   - [x] 30.7 Update `docs/quality/TCR.md` (CR-NR-080 Slice A rows -> PASS); verify.ps1 CLEAN (FULL, nextest); rebuild ffwb.exe
     - Covers: Requirement 17.1-17.7
 
-- [ ] 31. Slice B: named + editable menu-bar files (LATER)
-  - [ ] 31.1 Resolve a menu-bar by name to `menus/<name>.toml` via the existing loader; a user file overrides `DEFAULT_MENUBAR_TOML` (code-only fallback). `MB-` naming convention (not enforced). Editable via the existing Menus Editor + serialiser
+- [x] 31. Slice B: named + editable menu-bar files
+  - [x] 31.1 `resolve_menu_bar_menu()` resolves the default bar name (`DEFAULT_MENU_BAR_NAME` = `MB-POM`, slug `mb-pom`) to `menus/<slug>.toml` via the loader; a user file OVERRIDES the compiled default (`default_menubar_menu` = barebones POM), else falls back to it. `render_menu_bar` calls it. `MB-` naming convention (not enforced); the file uses the same slugging as the Menus Editor so it is authorable there + round-trips `show_in_menu_bar` via the serialiser. Tests: `resolve_menu_bar_falls_back_to_compiled_default`, `resolve_menu_bar_loads_user_file_when_present`.
     - Covers: Requirement 17.8
 
 - [ ] 32. Slice C: per-workspace-kind menu-bar assignment (LATER)
