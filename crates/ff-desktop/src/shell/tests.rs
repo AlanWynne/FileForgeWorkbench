@@ -1363,6 +1363,18 @@ fn make_shell() -> super::WorkbenchShell {
     );
     let cfg_path = std::env::temp_dir().join(unique);
     std::env::set_var("FFWB_USER_CONFIG_PATH", &cfg_path);
+    // Test isolation (B048, function-keys Req 6): redirect the command-line
+    // history file to a unique temp path so tests never read/write the real
+    // command_history.toml. Distinct per test id so no cross-test bleed.
+    let hist_unique = format!(
+        "ffwb_test_hist_{}_{}.toml",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    );
+    std::env::set_var("FFWB_HISTORY_PATH", std::env::temp_dir().join(hist_unique));
 
     let config_handle = init(ConfigInitOptions::new().with_hot_reload(false)).expect("config init");
     let runtime = Runtime::new().expect("runtime");
@@ -1370,6 +1382,110 @@ fn make_shell() -> super::WorkbenchShell {
         WorkbenchApp::new(Box::new(config_handle.clone()), LoggingStatus::Fallback).expect("app");
     let palette = dark_palette();
     super::WorkbenchShell::new(app, runtime, palette, vec![], config_handle)
+}
+
+/// Build a shell whose command-line history file is the given path (function-keys
+/// Req 6). Sets `FFWB_HISTORY_PATH` before `new` so the shell loads/saves there,
+/// keeping the test isolated from the real user history file.
+fn make_shell_with_history_path(history_path: &std::path::Path) -> super::WorkbenchShell {
+    use ff_config::init;
+    use ff_config::ConfigInitOptions;
+    use ff_core::WorkbenchApp;
+    use ff_logging::LoggingStatus;
+    use ff_theme::defaults::dark_palette;
+    use tokio::runtime::Runtime;
+
+    let unique = format!(
+        "ffwb_test_cfg_{}_{}.toml",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    );
+    std::env::set_var("FFWB_USER_CONFIG_PATH", std::env::temp_dir().join(unique));
+    std::env::set_var("FFWB_HISTORY_PATH", history_path);
+
+    let config_handle = init(ConfigInitOptions::new().with_hot_reload(false)).expect("config init");
+    let runtime = Runtime::new().expect("runtime");
+    let app =
+        WorkbenchApp::new(Box::new(config_handle.clone()), LoggingStatus::Fallback).expect("app");
+    let palette = dark_palette();
+    super::WorkbenchShell::new(app, runtime, palette, vec![], config_handle)
+}
+
+/// Validates: function-keys-and-history Req 6.2 -- at startup the shell loads a
+/// persisted command history file into the command-line history.
+#[test]
+fn startup_loads_persisted_command_history() {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let hist = dir.path().join("command_history.toml");
+    // Most-recent-first, matching the History_Store schema.
+    std::fs::write(
+        &hist,
+        "schema_version = 1\n\
+         [[entries]]\ncommand = \"THEME legacy\"\n\
+         [[entries]]\ncommand = \"LOCATE 1\"\n",
+    )
+    .expect("write history");
+
+    let shell = make_shell_with_history_path(&hist);
+    assert_eq!(
+        shell.command_line_history.list(),
+        vec!["THEME legacy".to_string(), "LOCATE 1".to_string()],
+        "startup must load the persisted history most-recent-first"
+    );
+    // And RETRIEVE recalls the most recent loaded entry.
+    assert_eq!(
+        shell.command_line_history.most_recent(),
+        Some("THEME legacy")
+    );
+}
+
+/// Validates: function-keys-and-history Req 6.5/6.6 -- a missing or corrupt
+/// history file yields an empty history without failing startup.
+#[test]
+fn startup_missing_or_corrupt_history_is_empty_no_panic() {
+    // Missing file.
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let missing = dir.path().join("does_not_exist.toml");
+    let shell = make_shell_with_history_path(&missing);
+    assert!(shell.command_line_history.is_empty());
+
+    // Corrupt file.
+    let corrupt = dir.path().join("corrupt.toml");
+    std::fs::write(&corrupt, "this is { not valid toml =").expect("write");
+    let shell2 = make_shell_with_history_path(&corrupt);
+    assert!(
+        shell2.command_line_history.is_empty(),
+        "a corrupt history file must degrade to empty, not panic"
+    );
+}
+
+/// Validates: function-keys-and-history Req 6.3 -- on exit the shell writes the
+/// current command history to the History_Store, which reloads on next startup.
+#[test]
+fn exit_saves_command_history_and_reloads() {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let hist = dir.path().join("command_history.toml");
+
+    {
+        let mut shell = make_shell_with_history_path(&hist);
+        shell.handle_command("LOCATE 1");
+        shell.handle_command("THEME legacy");
+        shell.persist_command_history(); // the on_exit save path
+        let _ = shell
+            .config_handle
+            .remove_user_value(ff_config::keys::theme::ACTIVE);
+    }
+    assert!(hist.exists(), "on-exit save must write the history file");
+
+    // A fresh shell reloads what was saved (most-recent-first).
+    let reloaded = make_shell_with_history_path(&hist);
+    assert_eq!(
+        reloaded.command_line_history.list(),
+        vec!["THEME legacy".to_string(), "LOCATE 1".to_string()]
+    );
 }
 
 /// Validates: menu-workspace Req 2.1a / theme Req 13.4-13.6 -- when the Legacy

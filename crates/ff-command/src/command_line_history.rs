@@ -444,6 +444,11 @@ impl CommandLineHistory {
         &self.ring
     }
 
+    /// The configured maximum number of entries (ring capacity).
+    pub fn max_entries(&self) -> usize {
+        self.ring.max_entries()
+    }
+
     /// Replace the ring contents from persisted command strings (Requirement 6),
     /// preserving the configured capacity, and reset the pointer.
     pub fn load_command_strings(&mut self, commands: Vec<String>) {

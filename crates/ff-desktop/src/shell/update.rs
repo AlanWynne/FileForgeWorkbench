@@ -1175,7 +1175,31 @@ impl eframe::App for WorkbenchShell {
             );
             session.save_catalog_registry(&self.files_panel.registry);
         }
+
+        // Persist the command-line history (function-keys-and-history Req 6.3).
+        self.persist_command_history();
+
         self.runtime.block_on(self.app.shutdown());
+    }
+}
+
+impl super::WorkbenchShell {
+    /// Write the current command-line history to the History_Store
+    /// (function-keys-and-history Requirement 6.3). Best-effort: a write failure
+    /// is logged, never fatal. Called from `on_exit`; extracted so it is
+    /// unit-testable without driving a full eframe shutdown.
+    ///
+    /// Validates: function-keys-and-history Requirement 6.3, 6.7
+    pub(super) fn persist_command_history(&self) {
+        if let Some(store) = &self.history_store {
+            let ring = ff_command::CommandLineRing::from_command_strings(
+                self.command_line_history.list(),
+                self.command_line_history.max_entries(),
+            );
+            if let Err(e) = store.save(&ring) {
+                ff_logging::log_warn!("[keys] command history save failed: {}", e);
+            }
+        }
     }
 }
 

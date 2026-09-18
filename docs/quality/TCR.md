@@ -2750,3 +2750,12 @@ coverage and confirm the shell behaviour is unchanged after the move.
 |-------|--------|-----------|-------|
 | `ff-command` | ✅ | `command_line_history::tests::{owner_records_and_recalls_most_recent, owner_excludes_retrieve_from_history, owner_non_retrieve_resets_pointer, owner_list_returns_all_entries_most_recent_first, owner_load_command_strings_replaces_and_resets, add_deduplicates_and_promotes, capacity_enforcement_evicts_oldest, list_trigger_returns_show_list, successive_retrieves_cycle_backward, ...}` | function-keys-and-history Req 5-9, 19.1-19.4 (CR-NR-084): new `CommandLineHistory` owner -- record+dedup-promote, RETRIEVE-verb exclusion (bare + B067 merged form), bare step-back + reset, LIST. Primitives moved from ff-keys (which re-exports them) |
 | `ff-desktop` | ✅ | `shell::tests::{shell_intercept_commands_are_recorded_in_history, retrieve_via_key_with_nonempty_field_recalls_previous_command, retrieve_list_via_key_opens_history_overlay, command_history_records_entries, retrieve_state_cycles_through_history}` | function-keys-and-history Req 19.1-19.9 (CR-NR-084): shell forwards to `CommandLineHistory` (`record`/`retrieve`); observable RETRIEVE behaviour unchanged (recall with non-empty field per B067, no history pollution, LIST overlay). cmd_history/retrieve_state fields removed |
+
+### Phase (retrieve-stack) -- command-line history persistence (function-keys-and-history Req 6, CR-NR-084 follow-on)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `shell::tests::startup_loads_persisted_command_history` | function-keys-and-history Req 6.2: at startup the shell loads `<User_Data_Dir>/command_history.toml` into `CommandLineHistory` (most-recent-first) |
+| `ff-desktop` | ✅ | `shell::tests::startup_missing_or_corrupt_history_is_empty_no_panic` | Req 6.5, 6.6: missing or corrupt history file degrades to an empty history without failing startup (warnings logged) |
+| `ff-desktop` | ✅ | `shell::tests::exit_saves_command_history_and_reloads` | Req 6.3, 6.7: on exit the shell writes the history via `HistoryStore` (atomic write), and a fresh shell reloads it; `persist_command_history` extracted for testability |
+| `ff-keys` | ✅ | `config_keys.rs::history_file_path_relative_to_user_data_dir` | Req 6.4: history file path resolves relative to the User_Data_Dir (default `command_history.toml`); `FFWB_HISTORY_PATH` override for test isolation |

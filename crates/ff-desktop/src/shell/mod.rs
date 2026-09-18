@@ -15,7 +15,7 @@ use ff_command::{
 use ff_command_semantics::CommandEngine;
 use ff_config::ConfigHandle;
 use ff_core::WorkbenchApp;
-use ff_keys::{KeyLabelBarModel, KeyMap, KeyMapResolver};
+use ff_keys::{HistoryStore, KeyLabelBarModel, KeyMap, KeyMapResolver};
 use ff_theme::ThemePalette;
 use ff_zoom::{ZoomConfig, ZoomState};
 use tokio::runtime::Runtime;
@@ -199,6 +199,12 @@ pub struct WorkbenchShell {
     /// layer (CR-NR-084, Option B). The shell forwards every submitted command
     /// line to it (`record`) and drives recall through it (`retrieve`).
     command_line_history: CommandLineHistory,
+    /// Persistence store for the command-line history (function-keys-and-history
+    /// Requirement 6). Resolved once at startup to
+    /// `<User_Data_Dir>/command_history.toml` (or the `FFWB_HISTORY_PATH`
+    /// override for test isolation); `None` when the path cannot be resolved.
+    /// Loaded in `new`, saved in `on_exit`.
+    history_store: Option<HistoryStore>,
     /// Find/replace engine — FIND, RFIND, CHANGE, RCHANGE.
     find_manager: FindManager,
     /// Navigation engine — LOCATE, SORT, UP, DOWN, LEFT, RIGHT, TOP, BOTTOM.
@@ -636,6 +642,19 @@ impl WorkbenchShell {
             );
         }
 
+        // Command-line history persistence (function-keys-and-history Req 6):
+        // resolve the store, load any persisted history, and seed the owner.
+        // Missing/corrupt file -> empty history, no failure (Req 6.5, 6.6).
+        let history_store = resolve_history_path().map(HistoryStore::new);
+        let mut command_line_history = CommandLineHistory::new(500);
+        if let Some(store) = &history_store {
+            let (ring, warnings) = store.load(500);
+            for w in warnings {
+                ff_logging::log_warn!("[keys] command history load: {}: {}", w.field, w.message);
+            }
+            command_line_history.load_command_strings(ring.to_command_strings());
+        }
+
         Self {
             app,
             runtime,
@@ -650,7 +669,8 @@ impl WorkbenchShell {
             dispatch,
             cmd_registry,
             cmd_engine: CommandEngine::new(),
-            command_line_history: CommandLineHistory::new(500),
+            command_line_history,
+            history_store,
             find_manager: FindManager::new(),
             nav_manager: NavManager::new(),
             exclude_manager: ExcludeManager::new(),
@@ -980,6 +1000,23 @@ pub(crate) fn load_context_maps_from_config(config: &ConfigHandle, resolver: &mu
             resolver.set_context_map(ctx_name, map);
         }
     }
+}
+
+/// Resolve the command-line history file path (function-keys-and-history
+/// Requirement 6.4): `<User_Data_Dir>/command_history.toml` by default, honouring
+/// the profile-aware `UserDataDir`. The `FFWB_HISTORY_PATH` environment variable
+/// overrides it verbatim -- a test-isolation seam (B048) mirroring
+/// `FFWB_USER_CONFIG_PATH`, so tests never read/write the developer's real
+/// command history. Returns `None` when no path can be resolved.
+///
+/// Validates: function-keys-and-history Requirement 6.4
+pub(crate) fn resolve_history_path() -> Option<std::path::PathBuf> {
+    if let Some(p) = std::env::var_os("FFWB_HISTORY_PATH") {
+        return Some(std::path::PathBuf::from(p));
+    }
+    ff_session::UserDataDir::resolve(None)
+        .ok()
+        .map(|udd| udd.path().join(ff_keys::DEFAULT_HISTORY_FILE))
 }
 
 /// Ensure the `keymaps/` directory exists under `user_data_dir` (creating it if
