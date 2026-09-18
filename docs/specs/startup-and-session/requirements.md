@@ -573,3 +573,83 @@ Requirement 14.1a and Requirement 19.12. [ISPF-POM, WB]
 8. THE POM-always-present guarantee (Requirement 14.1 / 14.1b) SHALL continue to hold under the descriptor model: after restoring all descriptors, IF no Home Context (POM) Workspace is present, THE shell SHALL prepend one at index 0.
 9. WHEN a persisted Workspace_Descriptor references an unknown `workspace_kind` or a `params` shape it cannot interpret (e.g. a session written by a newer build), THE workbench SHALL skip that single descriptor, log a WARN-level record, and continue restoring the remaining Workspaces (graceful degradation, consistent with Requirement 11).
 10. THE Workspace_Descriptor persistence format SHALL be backward compatible with existing `session.toml` files: a session written in the previous `PersistedTabKind` format SHALL still load, mapping its known kinds (FileEditor, FilesPanel, FileExplorerPanel) to the equivalent CustomWorkspace descriptors, so that upgrading does not discard a saved session.
+
+---
+
+### Requirement 22: Application Profiles
+
+**User Story:** As an operator, I want to launch the workbench under a named
+Application Profile (e.g. `ffwb --profile ispf` or `ffwb -p rust`) so that a
+single installed executable can run with entirely separate configurations --
+each profile keeping its own config, themes, menus, keymaps, session, and
+catalogs in its own directory -- without installing multiple copies of the
+application.
+
+**Source:** CR-NR-081 (re-scoped from Named Workspaces). Owner: "give the whole
+application a profile ... `ffwb ispf` opens with a full set of configuration
+saved in a sub directory called ispf ... a way to configure it differently
+without saving different versions of the application multiple times on the drive.
+The application will have to keep track of the profile it is running under." Owner
+decisions: flag is `--profile <name>` (or `-p <name>`); profiles stored under a
+`profiles/<name>/` directory beneath the User_Data_Dir base; the active profile
+is shown in the title/status bar. (The distinct per-tab "Workspace Profile"
+concept is deferred to CR-NR-082.)
+
+**Glossary addition:**
+- **Application_Profile**: A named, self-contained configuration tree selected at
+  launch. When active, the User_Data_Dir resolves to a per-profile sub-directory
+  so every user-configurable subsystem (config, `themes/`, `menus/`, `keymaps/`,
+  `session.toml`, `catalogs.toml`, logs) is isolated to that profile. The
+  DEFAULT_PROFILE is the profile used when no `--profile` argument is given; it
+  preserves the pre-CR-NR-081 User_Data_Dir location (no behaviour change for
+  existing users).
+
+#### Acceptance Criteria
+
+1. WHEN the workbench is launched with `--profile <name>` (or the short form
+   `-p <name>`), THE workbench SHALL run under the Application_Profile `<name>`
+   for the entire process lifetime, and SHALL record `<name>` as the Active_Profile.
+
+2. WHEN no `--profile`/`-p` argument is given, THE workbench SHALL run under the
+   DEFAULT_PROFILE, and the resolved User_Data_Dir SHALL be IDENTICAL to the
+   pre-CR-NR-081 location (`<platform config dir>/ffworkbench/`), so existing
+   installations see no change.
+
+3. WHILE an Application_Profile `<name>` is active, THE User_Data_Dir SHALL
+   resolve to `<platform config dir>/ffworkbench/profiles/<slug>/` (where `<slug>`
+   is `<name>` lowercased with non-alphanumeric characters replaced by `-`), and
+   EVERY subsystem that resolves paths through the User_Data_Dir -- configuration,
+   `themes/`, `menus/`, `keymaps/`, `session.toml`, `catalogs.toml`, and logs --
+   SHALL thereby be isolated to that profile with NO per-subsystem code change.
+
+4. WHEN a profile's directory does not yet exist on first launch under that
+   profile, THE workbench SHALL create it (and its required sub-directories,
+   Requirement 3) exactly as it does for the default User_Data_Dir, yielding a
+   clean first-run configuration for that profile.
+
+5. THE profile name SHALL be resolved ONCE, BEFORE any subsystem resolves the
+   User_Data_Dir (before configuration initialisation and before the first
+   `UserDataDir::resolve`), so that no subsystem can read or write the wrong
+   profile's data.
+
+6. WHEN a `--profile`/`-p` argument is present but its `<name>` value is missing
+   or empty, THE workbench SHALL treat it as the DEFAULT_PROFILE and log a
+   WARN-level record naming the problem (it SHALL NOT abort startup).
+
+7. THE `--profile`/`-p <name>` argument SHALL NOT be treated as a file to open:
+   the profile flag and its value SHALL be removed from the positional file-path
+   arguments (Requirement 6) so that `ffwb -p rust file.txt` opens `file.txt`
+   under the `rust` profile.
+
+8. THE Active_Profile name SHALL be surfaced in the user interface: the workbench
+   SHALL display the active profile (including an explicit indication of the
+   DEFAULT_PROFILE) in the Title_Line and/or the Status_Bar, so the operator can
+   always see which profile is running.
+
+9. Application_Profiles SHALL be independent: writes made while running under one
+   profile (config edits, saved themes/menus/keymaps, session, catalogs) SHALL
+   NOT affect any other profile's directory.
+
+10. THE `RESET BARE` archive operation (configuration-system Requirement 19)
+    SHALL operate on the ACTIVE profile's User_Data_Dir, archiving and resetting
+    only that profile, leaving other profiles untouched.

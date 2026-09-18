@@ -1585,3 +1585,87 @@ Render/layout only. No new crate dependency, no new command, no config key, no
 session-persistence change, and no change to calendar navigation
 (Requirement 14.41/14.42). Applies uniformly to the POM (Requirement 14) and to
 Menu_Workspace tabs that display a calendar (menu-workspace Requirement 2).
+
+---
+
+## Design Delta: Application Profiles (Requirement 22, CR-NR-081)
+
+Make one installed executable run under a named Application_Profile that isolates
+ALL user-configurable data. The key architectural fact (confirmed by audit):
+`UserDataDir::resolve(None)` is the single seam nearly everything routes through
+-- called from ~8 sites (main.rs schema/theme init, session_manager `try_init`,
+`themes_dir`, `menus_dir`, `keymaps_dir`, shell startup keymaps, reset_bare,
+update.rs menus-dir) -- and they all funnel through the one private function
+`platform_default_path()` in `crates/ff-session/src/user_data_dir.rs`. So the
+whole feature is a change at that ONE resolution point plus a startup CLI parse,
+with NO per-subsystem edits.
+
+### AP.1 Process-wide active profile (ff-session)
+
+- Add a process-global Active_Profile in `ff-session` (a
+  `std::sync::OnceLock<Option<String>>` or an `AtomicPtr`-free `RwLock<Option<String>>`),
+  with `set_active_profile(name: Option<&str>)` (called ONCE at startup, before
+  any resolve) and `active_profile() -> Option<String>`. `None` = DEFAULT_PROFILE.
+- `platform_default_path()` becomes: `base = dirs::config_dir()?.join(APP_DIR_NAME)`;
+  then `match active_profile() { Some(name) => base.join("profiles").join(slug(name)), None => base }`.
+  The `slug` rule matches the menu/keymap slugging (lowercase, non-alphanumeric
+  -> `-`). This satisfies Req 22.2 (default unchanged), 22.3 (per-profile root),
+  and 22.9 (independence) for FREE across every `resolve(None)` caller.
+- `UserDataDir::initialise()` already creates the dir + REQUIRED_SUBDIRS, so a
+  new profile's tree is created on first launch (Req 22.4) with no extra code.
+- A `set_active_profile_for_test` + serial-guard (or `#[cfg(test)]` override) is
+  provided so tests can exercise a profile without racing the global; unit tests
+  that touch the real resolver run serially (nextest process-isolation already
+  isolates env, but the global is in-process, so profile tests use an explicit
+  override param where practical -- prefer resolving through a passed base in new
+  code).
+
+### AP.2 Startup CLI parse (ff-desktop main.rs)
+
+- BEFORE step 2a (the first `UserDataDir::resolve`, main.rs ~L75) and before
+  `init()` (config), parse `--profile <name>` / `-p <name>` out of `all_args`:
+  a small helper `extract_profile_arg(&mut Vec<String>) -> Option<String>` that
+  removes the flag AND its value from the arg list and returns the name. Then
+  `ff_session::set_active_profile(profile.as_deref())`. This satisfies Req 22.1,
+  22.5 (resolved once, before any resolve), and 22.7 (flag + value removed from
+  positional file args -- `resolve_cli_paths` then never sees them).
+- Missing/empty value after `--profile`/`-p` -> treat as DEFAULT_PROFILE + WARN
+  (Req 22.6). The flag parse runs before the fftest/batch/`--help` branches so a
+  profile can be combined with them; batch/fftest also honour the active profile
+  because they resolve the UDD through the same seam.
+- The Active_Profile name is stored on the shell (a field, default label e.g.
+  "default") for display.
+
+### AP.3 UI display (ff-desktop)
+
+- Surface the Active_Profile in the Title_Line and/or Status_Bar (Req 22.8).
+  The Title_Line already varies by tab; add the profile as a suffix/segment
+  (e.g. `... [profile: ispf]`, and `[profile: default]` for the default) or a
+  Status_Bar segment. Exact placement is a small render choice; a
+  full-shell/render assertion covers that the active profile string is present.
+
+### AP.4 RESET BARE scoping (Req 22.10)
+
+`reset_bare.rs` already archives `UserDataDir::resolve(None).path()`, which under
+AP.1 is the ACTIVE profile's dir -- so RESET BARE automatically scopes to the
+active profile with no change. A test asserts the archive path is under the
+active profile's dir.
+
+### AP.5 What is NOT changed
+
+No per-subsystem edits (config/themes/menus/keymaps/session/catalogs all inherit
+via the resolver). No session-format change. No new command (profile is a launch
+concern, not a runtime switch -- switching profiles requires relaunch, matching
+the owner's model). The per-tab "Workspace Profile" concept (kind + menu + bar +
+keymap preset) is a SEPARATE later CR (CR-NR-082), as is the
+PrimaryOptionMenu->MenuWorkspace unification.
+
+### AP.6 Slicing
+
+1. AP-core: `ff-session` active-profile global + `platform_default_path` profile
+   join + `set_active_profile`/`active_profile` API; unit tests (default path
+   unchanged; profile path = base/profiles/<slug>).
+2. AP-cli: main.rs `extract_profile_arg` + `set_active_profile` before any
+   resolve; `resolve_cli_paths` excludes the flag+value; missing-value WARN.
+3. AP-ui: display the active profile in the Title_Line/Status_Bar.
+Each slice is independently testable; AP-core carries the isolation guarantee.

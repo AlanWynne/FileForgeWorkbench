@@ -740,6 +740,25 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `shell::tests::menu_bar_leaf_dispatch_is_command_parity`, `theme_command_sets_mode` | menu-workspace Req 17.11 (CR-NR-080 Slice D): selecting a generated theme item dispatches `THEME <name>` via `handle_command` (command parity, shared `set_active_theme` apply+persist). This delivers the CR-NR-077 theme-picker behaviour (theme-and-appearance Req 17.8-17.13) via the menu-bar mechanism rather than a bespoke popup |
 | `ff-desktop` | ✅ | `shell::tests::resolve_menu_bar_falls_back_to_compiled_default`, `resolve_menu_bar_loads_user_file_when_present` | menu-workspace Req 17.8 (CR-NR-080 Slice B): the bar is a NAMED menu -- `resolve_menu_bar_menu` loads `menus/<slug>.toml` for the default bar name (`MB-POM` -> `mb-pom`) via the loader; a user file OVERRIDES the compiled default, else falls back to it. Authorable via the existing Menus Editor (same slugging); `MB-` is a convention |
 
+### CR-NR-081 -- Application Profiles (startup-and-session Requirement 22)
+
+> `--profile <name>` / `-p <name>` redirects the User_Data_Dir to
+> `profiles/<slug>/` at the single `platform_default_path` seam so every subsystem
+> is isolated per profile; default profile = today's location; active profile
+> shown in the UI; RESET BARE scoped to the active profile.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-session` | 🔴 | -- | startup-and-session Req 22.1: `set_active_profile`/`active_profile` process-global set once at startup records the Active_Profile |
+| `ff-session` | 🔴 | -- | startup-and-session Req 22.2: no `--profile` -> DEFAULT_PROFILE; resolved User_Data_Dir identical to the pre-CR-NR-081 location |
+| `ff-session` | 🔴 | -- | startup-and-session Req 22.3, 22.9: active profile -> `<base>/ffworkbench/profiles/<slug>/`; every `UserDataDir::resolve` caller inherits it; profiles independent |
+| `ff-session` | 🔴 | -- | startup-and-session Req 22.4: a fresh profile's dir + required sub-dirs are created on first `initialise()` |
+| `ff-desktop` | 🔴 | -- | startup-and-session Req 22.5: the profile is resolved ONCE before any `UserDataDir::resolve`/config `init()` |
+| `ff-desktop` | 🔴 | -- | startup-and-session Req 22.6: missing/empty `--profile` value -> DEFAULT_PROFILE + WARN, no abort |
+| `ff-desktop` | 🔴 | -- | startup-and-session Req 22.7: `--profile`/`-p` and its value are removed from positional file args (`ffwb -p rust file.txt` opens `file.txt`) |
+| `ff-desktop` | 🔴 | -- | startup-and-session Req 22.8: the Active_Profile (incl. explicit DEFAULT_PROFILE) is shown in the Title_Line and/or Status_Bar |
+| `ff-desktop` | 🔴 | -- | startup-and-session Req 22.10: `RESET BARE` archives/resets only the ACTIVE profile's User_Data_Dir |
+
 ## Final Summary (after Phase AM)
 
 | Status | Count |

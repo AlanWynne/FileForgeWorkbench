@@ -2339,3 +2339,32 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[ ]` Phase (menu-bar) | Configurable named menu bars (CR-NR-080, supersedes CR-NR-077) -- SPEC DONE: menu-workspace Req 17.1-17.11. Slice A (MB.A, Task 30) DONE: data-driven horizontal bar (`DEFAULT_MENUBAR_TOML` + `default_menubar_menu`; `render_menu_bar_from_menu` peek-dropdowns via `peek_menu_options`; leaf dispatch = command parity; first/last button ids preserved for CR-CH-023; `MENU_BAR_TOP_LEVEL_LABELS` removed); menu-workspace Req 17.1-17.4/17.6/17.7 PASS, 17.5 MANUAL (egui-native); verify.ps1 CLEAN; ffwb.exe rebuilt. Slices B-D (MB.B-MB.D, Tasks 31-33) LATER |
+
+## Phase (app-profile) -- Application Profiles (CR-NR-081, startup-and-session Requirement 22)
+
+> One installed executable runs under a named Application_Profile via
+> `--profile <name>` / `-p <name>`, isolating config/themes/menus/keymaps/
+> session/catalogs/logs under `profiles/<slug>/`. Implemented at the single
+> `UserDataDir::resolve` seam (`platform_default_path`) so every subsystem
+> inherits it; default profile = today's location (no behaviour change); active
+> profile shown in the UI. (Re-scoped from Named Workspaces; the per-tab
+> "Workspace Profile" concept is deferred to CR-NR-082.)
+
+- [ ] AP.core startup-and-session Task 35.1-35.3: `ff-session` process-global
+      Active_Profile (`set_active_profile`/`active_profile` + `profile_slug`);
+      `platform_default_path` joins `profiles/<slug>` when active, else base
+      unchanged; fresh-profile dir created on `initialise`.
+      Covers: startup-and-session Req 22.1-22.4, 22.9.
+- [ ] AP.cli startup-and-session Task 35.4: `main.rs` `extract_profile_arg`
+      removes `--profile`/`-p` + value and calls `set_active_profile` before any
+      resolve/`init()`; missing value -> default + WARN; `resolve_cli_paths`
+      excludes the flag/value.
+      Covers: startup-and-session Req 22.5-22.7.
+- [ ] AP.ui startup-and-session Task 35.5-35.7: display the active profile in the
+      Title_Line/Status_Bar; RESET BARE scopes to the active profile; TCR;
+      verify.ps1 CLEAN; ffwb.exe rebuilt.
+      Covers: startup-and-session Req 22.8, 22.10.
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (app-profile) | Application Profiles (CR-NR-081) -- SPEC DONE, PENDING GATE APPROVAL: startup-and-session Req 22.1-22.10 (`--profile`/`-p` redirects the User_Data_Dir to `profiles/<slug>/` at the single `platform_default_path` seam; default unchanged; active profile shown in UI; RESET BARE scoped). Sliced AP.core / AP.cli / AP.ui. No code yet. Per-tab Workspace Profile deferred to CR-NR-082 |

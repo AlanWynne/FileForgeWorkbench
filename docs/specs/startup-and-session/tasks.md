@@ -166,3 +166,28 @@ separate implementation instruction is given.
     - Validates: Requirement 14.45
   - [ ] 27.5 Write failing tests: calendar omitted below the threshold, calendar present at/above the threshold, and `pom_calendar_offset` unchanged across a hide/restore cycle
     - Validates: Requirement 14.43, 14.44, 14.45
+
+## Phase (app-profile) -- Application Profiles (CR-NR-081, Requirement 22)
+
+> One installed executable runs under a named Application_Profile selected by
+> `--profile <name>` / `-p <name>`, isolating all user data under
+> `profiles/<slug>/`. Implemented at the single `UserDataDir::resolve` seam
+> (`platform_default_path`) so every subsystem inherits it. Default profile =
+> today's location (no behaviour change). Active profile shown in the UI. Sliced
+> AP-core / AP-cli / AP-ui.
+
+- [ ] 35. Application Profiles
+  - [ ] 35.1 (AP-core) `ff-session`: add a process-global Active_Profile (`OnceLock`/`RwLock<Option<String>>`) with `set_active_profile(Option<&str>)` (set once at startup) and `active_profile() -> Option<String>`; add a `profile_slug` (lowercase, non-alphanumeric -> `-`). Failing tests first.
+    - Covers: Requirement 22.1
+  - [ ] 35.2 (AP-core) `platform_default_path()` joins `profiles/<slug>` when a profile is active, else returns the base unchanged; every `UserDataDir::resolve(None)` caller inherits it. Tests: default path == pre-CR path; active profile path == `<base>/ffworkbench/profiles/<slug>`; two profiles resolve to distinct dirs.
+    - Covers: Requirement 22.2, 22.3, 22.9
+  - [ ] 35.3 (AP-core) A new profile's dir + REQUIRED_SUBDIRS are created on first `initialise()` (already the behaviour); test that initialise under a fresh profile creates the tree.
+    - Covers: Requirement 22.4
+  - [ ] 35.4 (AP-cli) `main.rs`: `extract_profile_arg(&mut Vec<String>) -> Option<String>` removes `--profile`/`-p` AND its value from `all_args`; call `ff_session::set_active_profile(..)` BEFORE step 2a and `init()`. Missing/empty value -> DEFAULT_PROFILE + WARN. `resolve_cli_paths` never sees the flag/value.
+    - Covers: Requirement 22.5, 22.6, 22.7
+  - [ ] 35.5 (AP-ui) Store the Active_Profile name on the shell and display it in the Title_Line and/or Status_Bar (default shown explicitly as "default"). Full-shell/render assertion that the active profile string is present.
+    - Covers: Requirement 22.8
+  - [ ] 35.6 RESET BARE scopes to the active profile: assert the archive path is under the active profile's User_Data_Dir.
+    - Covers: Requirement 22.10
+  - [ ] 35.7 Update `docs/quality/TCR.md` (Req 22.1-22.10 rows -> status); verify.ps1 CLEAN (FULL, nextest); rebuild ffwb.exe.
+    - Covers: Requirement 22 (all criteria)
