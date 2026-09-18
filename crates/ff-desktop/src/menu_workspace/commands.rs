@@ -50,6 +50,7 @@ mod tests {
                     description: "Settings".to_string(),
                     enabled: true,
                     group: None,
+                    show_in_menu_bar: true,
                     target: None,
                 },
                 MenuOption {
@@ -58,6 +59,7 @@ mod tests {
                     description: "Files".to_string(),
                     enabled: true,
                     group: None,
+                    show_in_menu_bar: true,
                     target: None,
                 },
                 MenuOption {
@@ -66,6 +68,7 @@ mod tests {
                     description: "Disabled option".to_string(),
                     enabled: false,
                     group: None,
+                    show_in_menu_bar: true,
                     target: None,
                 },
             ],

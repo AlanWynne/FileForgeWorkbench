@@ -47,15 +47,9 @@ description = "File Explorer -- Browse catalogs and files in a tree view"
 group = "Core"
 
 [[options]]
-key = "L"
-command = "LOG"
-description = "Event Log -- view startup and runtime messages"
-group = "Core"
-
-[[options]]
-key = "M"
-command = "MENUS"
-description = "Menus editor -- create, change and save menus"
+key = "3"
+command = "HELP"
+description = "Help -- workbench help and topics"
 group = "Core"
 
 [[options]]
@@ -63,6 +57,7 @@ key = "X"
 command = "RETURN"
 description = "Return to the Primary Option Menu (exit when last)"
 group = "Core"
+show_in_menu_bar = false
 "#;
 
 /// Compiled Recovery_Baseline content for the Settings menu (menu-workspace
@@ -127,6 +122,27 @@ pub fn recovery_pom_menu() -> crate::menu_workspace::MenuFile {
 pub fn recovery_settings_menu() -> crate::menu_workspace::MenuFile {
     crate::menu_workspace::loader::parse_menu_str(DEFAULT_SETTINGS_TOML)
         .expect("compiled Recovery_Baseline Settings menu must parse")
+}
+
+/// Build the compiled default Menu_Bar `MenuFile` (menu-workspace Req 17,
+/// CR-NR-080).
+///
+/// A Menu_Bar is a `MenuFile` rendered HORIZONTALLY (each top-level option is a
+/// dropdown button). Per owner decision, the barebones menu bar is the SAME as
+/// the barebones POM: this returns [`recovery_pom_menu`] so there is a SINGLE
+/// source of truth and the two can never diverge. The horizontal render skips
+/// options whose `show_in_menu_bar` is `false` (Req 17.2), so the barebones POM
+/// option `RETURN` (marked `show_in_menu_bar = false`) does NOT appear on the
+/// bar, leaving Settings / Catalogs / Files / Help.
+///
+/// A top-level option's `command`, when it names a resolvable menu (e.g.
+/// `SETTINGS`), is PEEKED as a dropdown (Req 17.3); otherwise the button
+/// dispatches the command directly (Req 17.4). Later slices add named user
+/// menu-bar files and per-kind assignment; until then the bar is the POM.
+///
+/// Validates: menu-workspace Requirement 17.1, 17.2
+pub fn default_menubar_menu() -> crate::menu_workspace::MenuFile {
+    recovery_pom_menu()
 }
 
 // === ensure_default_menu_files ==============================================
@@ -202,11 +218,13 @@ mod tests {
     fn recovery_pom_menu_has_barebones_options() {
         let menu = recovery_pom_menu();
         let keys: Vec<&str> = menu.options.iter().map(|o| o.key.as_str()).collect();
-        assert_eq!(keys, vec!["0", "1", "2", "L", "M", "X"]);
+        // CR-NR-080: barebones POM = Settings / Catalogs / Files / Help / Return
+        // (Menus moved to the Settings menu; Log dropped from the barebones set).
+        assert_eq!(keys, vec!["0", "1", "2", "3", "X"]);
         let commands: Vec<&str> = menu.options.iter().map(|o| o.command.as_str()).collect();
         assert_eq!(
             commands,
-            vec!["SETTINGS", "CATALOGS", "FILES", "LOG", "MENUS", "RETURN"]
+            vec!["SETTINGS", "CATALOGS", "FILES", "HELP", "RETURN"]
         );
         // Single group -> no stray separator boundary.
         let groups: std::collections::BTreeSet<&str> = menu
@@ -234,6 +252,60 @@ mod tests {
         );
     }
 
+    // Validates: menu-workspace Req 17.1, 17.2 (CR-NR-080) -- the default Menu_Bar
+    // is the barebones POM (single source): default_menubar_menu() equals
+    // recovery_pom_menu().
+    #[test]
+    fn default_menubar_is_the_barebones_pom() {
+        assert_eq!(
+            default_menubar_menu(),
+            recovery_pom_menu(),
+            "the default Menu_Bar must be the barebones POM (single source of truth)"
+        );
+    }
+
+    // Validates: menu-workspace Req 17.2 -- the barebones POM includes Help and
+    // marks RETURN hidden from the bar, so the bar-visible options are
+    // Settings / Catalogs / Files / Help (RETURN excluded).
+    #[test]
+    fn default_menubar_bar_visible_options_are_settings_catalogs_files_help() {
+        let menu = default_menubar_menu();
+        let bar_cmds: Vec<&str> = menu
+            .options
+            .iter()
+            .filter(|o| o.show_in_menu_bar)
+            .map(|o| o.command.as_str())
+            .collect();
+        assert_eq!(
+            bar_cmds,
+            vec!["SETTINGS", "CATALOGS", "FILES", "HELP"],
+            "bar-visible options must be Settings / Catalogs / Files / Help (RETURN hidden)"
+        );
+        // RETURN is present in the POM but hidden from the bar.
+        let ret = menu
+            .options
+            .iter()
+            .find(|o| o.command == "RETURN")
+            .expect("RETURN present in POM");
+        assert!(
+            !ret.show_in_menu_bar,
+            "RETURN must be hidden from the menu bar (show_in_menu_bar = false)"
+        );
+    }
+
+    // Validates: menu-workspace Req 17.3 -- the Settings top-level option's
+    // command names the Settings menu, so opening it can PEEK that menu.
+    #[test]
+    fn default_menubar_settings_option_commands_settings_menu() {
+        let menu = default_menubar_menu();
+        let settings = menu
+            .options
+            .iter()
+            .find(|o| o.command == "SETTINGS")
+            .expect("Settings entry present");
+        assert_eq!(settings.command, "SETTINGS");
+    }
+
     // Validates: Requirement 7.4 (cv-requirements.md) -- DEFAULT_POM_TOML is valid TOML
     #[test]
     fn default_pom_toml_is_valid_toml() {
@@ -253,16 +325,18 @@ mod tests {
             .expect("options array");
         assert_eq!(
             options.len(),
-            6,
-            "Recovery_Baseline POM must contain exactly 6 options"
+            5,
+            "Recovery_Baseline POM must contain exactly 5 options"
         );
+        // CR-NR-080: barebones POM = Settings / Catalogs / Files / Help / Return
+        // (Menus moved under Settings; Log dropped from the barebones set).
         let commands: Vec<&str> = options
             .iter()
             .filter_map(|o| o.get("command").and_then(|c| c.as_str()))
             .collect();
         assert_eq!(
             commands,
-            vec!["SETTINGS", "CATALOGS", "FILES", "LOG", "MENUS", "RETURN"],
+            vec!["SETTINGS", "CATALOGS", "FILES", "HELP", "RETURN"],
         );
     }
 

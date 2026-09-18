@@ -183,6 +183,10 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
                         };
                     }
                     ui.checkbox(&mut option.enabled, "on");
+                    // CR-NR-080: whether this option appears on a horizontal
+                    // Menu_Bar (default true). Bound directly so edits persist
+                    // and Save serialises `show_in_menu_bar = false` when off.
+                    ui.checkbox(&mut option.show_in_menu_bar, "bar");
                     if ui.add_enabled(i > 0, egui::Button::new("^")).clicked() {
                         action = MenusEditorAction::MoveOptionUp(i);
                     }
@@ -247,6 +251,7 @@ mod tests {
                 description: format!("Option {i}"),
                 enabled: true,
                 group: None,
+                show_in_menu_bar: true,
                 target: None,
             })
             .collect();

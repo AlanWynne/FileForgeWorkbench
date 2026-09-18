@@ -132,24 +132,13 @@ impl CommandHandler for ConfigOpenHandler {
     }
 }
 
-// ── Menu bar top-level label registry — Validates: Requirement 14.7 ────────
-/// Ordered top-level menu bar labels mirroring the 9-option POM plus Help.
-/// Tests assert against this array; render_menu_bar must contain a menu_button for each entry.
-pub(crate) const MENU_BAR_TOP_LEVEL_LABELS: &[&str] = &[
-    "Settings",
-    "File Catalogs",
-    "Files",
-    "View",
-    "Utilities",
-    "Compilers",
-    "Lua",
-    "Terminals",
-    "Databases",
-    "Plugins",
-    "Search",
-    "Edit",
-    "Help",
-];
+// ── Menu bar (data-driven) — Validates: menu-workspace Req 17.1 ────────────
+// CR-NR-080 (menu-workspace Req 17.1): the menu bar is now DATA-DRIVEN, rendered
+// from the compiled default Menu_Bar (`menu_workspace::defaults::default_menubar_menu`)
+// rather than a hardcoded label list. The former `MENU_BAR_TOP_LEVEL_LABELS`
+// const (and its `debug_assert_eq!` in `render_menu_bar`) were removed; the
+// bar's top-level entries are the default Menu_Bar's option `description`s, and
+// tests assert against `default_menubar_menu()` instead.
 
 // ── Detachable tab windows — Validates: Requirement 18.1–18.7 ──────────────
 

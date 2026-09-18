@@ -198,237 +198,120 @@ impl WorkbenchShell {
 
     // ── Menu bar ─────────────────────────────────────────────────────────
 
+    /// Render the Workbench menu bar (menu-workspace Requirement 17, CR-NR-080).
+    ///
+    /// The bar is now DATA-DRIVEN: it renders from the compiled default Menu_Bar
+    /// (`default_menubar_menu`), a `MenuFile` drawn HORIZONTALLY. Later slices
+    /// (B/C) add named user files and per-workspace-kind selection; Slice A
+    /// always uses the default, which reproduces the previous hardcoded bar.
+    ///
+    /// Validates: menu-workspace Requirement 17.1, 17.7
     pub(super) fn render_menu_bar(&mut self, ctx: &egui::Context) {
-        // Validates: Requirement 14.7 — every label in the registry must have a menu_button below.
-        debug_assert_eq!(
-            super::MENU_BAR_TOP_LEVEL_LABELS.len(),
-            13,
-            "render_menu_bar must contain one menu_button per super::MENU_BAR_TOP_LEVEL_LABELS entry"
-        );
+        let menu = crate::menu_workspace::defaults::default_menubar_menu();
+        self.render_menu_bar_from_menu(ctx, &menu);
+    }
+
+    /// Render a `MenuFile` as a horizontal menu bar of dropdown buttons.
+    ///
+    /// Each top-level option becomes a `menu_button` labelled by its
+    /// `description`. Opening a button PEEKS the menu its `command` references
+    /// (rendering that menu's options as the dropdown items) WITHOUT navigating
+    /// the active Workspace (Req 17.3); WHERE the command does not name a menu,
+    /// the dropdown holds a single item that dispatches the command directly
+    /// (Req 17.4). Selecting any item routes through `handle_command` (command
+    /// parity) and closes the dropdown. Dropdown items are keyboard-navigable via
+    /// egui-native menu behaviour (Req 17.5).
+    ///
+    /// The FIRST and LAST top-level button ids are captured into
+    /// `menu_first_id` / `menu_last_id` for the CR-CH-023 Boundary_Policy
+    /// (Req 17.6), from the data-driven loop rather than hardcoded buttons.
+    ///
+    /// Validates: menu-workspace Requirement 17.1, 17.3, 17.4, 17.5, 17.6
+    pub(super) fn render_menu_bar_from_menu(
+        &mut self,
+        ctx: &egui::Context,
+        menu: &crate::menu_workspace::MenuFile,
+    ) {
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
-                // CR-CH-023: the shell Boundary_Policy needs the egui ids of the
-                // FIRST and LAST top-level menu buttons so it can move focus to
-                // the menu bar (last-interior -> menu bar) and wrap (last menu ->
-                // command field). `menu_button` assigns auto-ids, so we capture
-                // the first ("Settings") and last ("Help") button ids here into
-                // shell fields for the next frame's Boundary_Policy.
-                // ── Settings ────────────────────────────────────────────
-                let settings_btn = ui.menu_button("Settings", |ui| {
-                    if ui.button("Preferences…").clicked() {
-                        ui.close_menu();
-                    }
-                    // Command parity (Req 17.6): the Theme Editor item dispatches
-                    // bare `THEME` -- the same code path as typing it -- opening
-                    // the Theme Editor Context. (CR-CH-024: the former `THEMES`
-                    // command is removed.)
-                    if ui.button("Theme Editor").clicked() {
-                        self.handle_command("THEME");
-                        ui.close_menu();
-                    }
-                    ui.separator();
-                    // Command parity (theme-and-appearance Req 17.5, architecture
-                    // -brief Principle 2): the menu dispatches the THEME command
-                    // -- the SAME code path as typing it on the command line --
-                    // rather than calling set_theme directly.
-                    if ui.button("Dark Theme").clicked() {
-                        self.handle_command("THEME dark");
-                        ui.close_menu();
-                    }
-                    if ui.button("Light Theme").clicked() {
-                        self.handle_command("THEME light");
-                        ui.close_menu();
-                    }
-                    if ui.button("High Contrast").clicked() {
-                        self.handle_command("THEME high_contrast");
-                        ui.close_menu();
-                    }
-                    // CR-CH-024: relabelled from "Legacy (ISPF 3270)"; dispatches
-                    // the surviving Default Legacy theme by name.
-                    if ui.button("Default Legacy").clicked() {
-                        self.handle_command("THEME Default Legacy");
-                        ui.close_menu();
-                    }
-                    ui.separator();
-                    // Validates: Requirement 14.14 — open new POM tab from Settings menu
-                    if ui.button("Primary Option Menu").clicked() {
-                        self.tabs.insert_pom_tab(&self.runtime);
-                        ui.close_menu();
-                    }
-                });
-                // Capture the first menu-bar button id for the Boundary_Policy.
-                self.menu_first_id = Some(settings_btn.response.id);
-                // ── File Catalogs — Validates: Requirement 14.7 (mirrors POM option 1) ──
-                ui.menu_button("File Catalogs", |ui| {
-                    if ui.button("Open File Catalogs").clicked() {
-                        ui.close_menu();
-                    }
-                });
-                // ── Files ───────────────────────────────────────────────
-                ui.menu_button("Files", |ui| {
-                    if ui.button("New").clicked() {
-                        ui.close_menu();
-                    }
-                    if ui.button("Open…").clicked() {
-                        self.open_file_dialog();
-                        ui.close_menu();
-                    }
-                    ui.separator();
-                    if ui.button("Save").clicked() {
-                        if let Err(e) = self.tabs.save_active_tab(&self.runtime) {
-                            self.open_error = Some(e);
+                // Bar shows only options flagged for the menu bar (Req 17.2):
+                // e.g. a terminal `RETURN` option (show_in_menu_bar = false) is
+                // kept in the vertical POM but hidden from the horizontal bar.
+                let bar_options: Vec<&crate::menu_workspace::MenuOption> =
+                    menu.options.iter().filter(|o| o.show_in_menu_bar).collect();
+                let last_index = bar_options.len().saturating_sub(1);
+                for (i, option) in bar_options.iter().enumerate() {
+                    // PEEK: resolve the option's command to a referenced menu's
+                    // options. Empty => not a menu; render a single direct item.
+                    let peeked = self.peek_menu_options(&option.command);
+                    // Bar buttons are labelled by the option's COMMAND (the verb
+                    // the user would type), not its description (CR-NR-080).
+                    let btn = ui.menu_button(option.command.clone(), |ui| {
+                        if peeked.is_empty() {
+                            // Non-menu command: one item that dispatches it (Req 17.4).
+                            if ui.button(option.command.clone()).clicked() {
+                                self.handle_command(&option.command);
+                                ui.close_menu();
+                            }
                         } else {
-                            self.open_error = None;
-                        }
-                        ui.close_menu();
-                    }
-                    if ui.button("Save As…").clicked() {
-                        ui.close_menu();
-                    }
-                    ui.separator();
-                    if ui.button("Close").clicked() {
-                        let idx = self.tabs.active_index();
-                        self.tabs.close_tab(idx);
-                        ui.close_menu();
-                    }
-                    ui.separator();
-                    ui.separator();
-                    // -- Workspace items -- Validates: workspace-model Requirement 2.1-2.4
-                    if ui.button("Open Workspace...").clicked() {
-                        self.open_error = Some("Use: WORKSPACE OPEN <path>".to_string());
-                        ui.close_menu();
-                    }
-                    let ws_name = self.active_workspace.as_ref().map(|ws| ws.name.clone());
-                    ui.add_enabled_ui(ws_name.is_some(), |ui| {
-                        let label = ws_name
-                            .as_deref()
-                            .map(|n| format!("Save Workspace ({})", n))
-                            .unwrap_or_else(|| "Save Workspace".to_string());
-                        if ui.button(label).clicked() {
-                            self.save_workspace_to(None);
-                            ui.close_menu();
+                            // Peeked submenu options: each dispatches its own
+                            // command (Req 17.3, 17.4, command parity).
+                            for child in &peeked {
+                                if ui.button(child.description.clone()).clicked() {
+                                    self.handle_command(&child.command);
+                                    ui.close_menu();
+                                }
+                            }
                         }
                     });
-                    ui.add_enabled_ui(self.active_workspace.is_some(), |ui| {
-                        if ui.button("Save Workspace As...").clicked() {
-                            self.open_error = Some("Use: WORKSPACE SAVE AS <path>".to_string());
-                            ui.close_menu();
-                        }
-                    });
-                    ui.add_enabled_ui(self.active_workspace.is_some(), |ui| {
-                        if ui.button("Close Workspace").clicked() {
-                            self.close_workspace();
-                            ui.close_menu();
-                        }
-                    });
-                    ui.separator();
-                    if ui.button("Exit").clicked() {
-                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                    // CR-CH-023 Boundary_Policy: capture the FIRST and LAST
+                    // top-level button ids for the next frame (Req 17.6).
+                    if i == 0 {
+                        self.menu_first_id = Some(btn.response.id);
                     }
-                });
-                // ── View -- Validates: command-palette Requirement 1.4 ────
-                ui.menu_button("View", |ui| {
-                    if ui.button("Command Palette  Ctrl+Shift+P").clicked() {
-                        self.palette_state.open();
-                        ui.close_menu();
+                    if i == last_index {
+                        self.menu_last_id = Some(btn.response.id);
                     }
-                });
-                // ── Utilities ───────────────────────────────────────────
-                // —— Search ———————————————————————
-                ui.menu_button("Search", |ui| {
-                    if ui.button("Find in Files  Ctrl+Shift+F").clicked() {
-                        self.open_or_focus_search_panel();
-                        ui.close_menu();
-                    }
-                });
-                ui.menu_button("Utilities", |ui| {
-                    if ui.button("Compare Files…").clicked() {
-                        ui.close_menu();
-                    }
-                    if ui.button("File Tree").clicked() {
-                        ui.close_menu();
-                    }
-                });
-                // ── Compilers ───────────────────────────────────────────
-                ui.menu_button("Compilers", |ui| {
-                    if ui.button("Toolchain Panel").clicked() {
-                        self.show_toolchain_panel = !self.show_toolchain_panel;
-                        ui.close_menu();
-                    }
-                    if ui.button("Build").clicked() {
-                        ui.close_menu();
-                    }
-                    if ui.button("Run").clicked() {
-                        ui.close_menu();
-                    }
-                });
-                // ── Lua ─────────────────────────────────────────────────
-                ui.menu_button("Lua", |ui| {
-                    if ui.button("Run Script…").clicked() {
-                        ui.close_menu();
-                    }
-                    if ui.button("Macro Editor").clicked() {
-                        ui.close_menu();
-                    }
-                });
-                // ── Terminals ───────────────────────────────────────────
-                ui.menu_button("Terminals", |ui| {
-                    if ui.button("New Terminal").clicked() {
-                        ui.close_menu();
-                    }
-                });
-                // ── Databases ───────────────────────────────────────────
-                ui.menu_button("Databases", |ui| {
-                    if ui.button("Connect…").clicked() {
-                        ui.close_menu();
-                    }
-                    if ui.button("Query Browser").clicked() {
-                        ui.close_menu();
-                    }
-                });
-                // ── Plugins — Validates: Requirement 14.7 (mirrors POM option 8) ─────
-                ui.menu_button("Plugins", |ui| {
-                    if ui.button("Manage Plugins").clicked() {
-                        ui.close_menu();
-                    }
-                });
-                // ── Edit (always present) ────────────────────────────────
-                ui.menu_button("Edit", |ui| {
-                    if ui.button("Key Assignments\u{2026}").clicked() {
-                        // Command parity (CR-CH-029): dispatch KEYS rather than
-                        // opening a modal directly; opens the Keys Workspace.
-                        self.handle_command("KEYS");
-                        ui.close_menu();
-                    }
-                    ui.separator();
-                    if ui.button("Undo").clicked() {
-                        ui.close_menu();
-                    }
-                    if ui.button("Redo").clicked() {
-                        ui.close_menu();
-                    }
-                    ui.separator();
-                    if ui.button("Cut").clicked() {
-                        ui.close_menu();
-                    }
-                    if ui.button("Copy").clicked() {
-                        ui.close_menu();
-                    }
-                    if ui.button("Paste").clicked() {
-                        ui.close_menu();
-                    }
-                });
-                // ── Help ────────────────────────────────────────────────
-                let help_btn = ui.menu_button("Help", |ui| {
-                    if ui.button("About FileForge Workbench").clicked() {
-                        self.show_about = true;
-                        ui.close_menu();
-                    }
-                });
-                // Capture the last menu-bar button id for the Boundary_Policy.
-                self.menu_last_id = Some(help_btn.response.id);
+                }
             });
         });
+    }
+
+    /// Peek the options of the menu referenced by `command`, WITHOUT navigating.
+    ///
+    /// Returns the referenced menu's `[MenuOption]` when `command`'s first token
+    /// names a resolvable menu (a user `menus/<name>.toml` or a compiled built-in
+    /// `pom`/`settings`); otherwise returns an empty vec (the caller then treats
+    /// the option as a direct command). This uses the SAME resolver the command
+    /// line uses (`ShellTargetResolver::menu_name_target`), so the bar and typed
+    /// commands agree on what names a menu.
+    ///
+    /// Validates: menu-workspace Requirement 17.3
+    pub(super) fn peek_menu_options(
+        &self,
+        command: &str,
+    ) -> Vec<crate::menu_workspace::MenuOption> {
+        use ff_command::{CommandTarget, TargetResolver};
+        let resolver = crate::command_config::ShellTargetResolver::new(
+            &self.command_store.definitions,
+            &self.cmd_registry,
+            self.menus_dir(),
+        );
+        let name = match resolver.menu_name_target(command) {
+            Some(CommandTarget::Menu { name }) => name,
+            _ => return Vec::new(),
+        };
+        // Load the referenced menu's options: a user file if present, else the
+        // compiled Recovery_Baseline for the built-in names.
+        let menus_dir = self.menus_dir();
+        let path = menus_dir.join(format!("{name}.toml"));
+        let menu = crate::menu_workspace::loader::load_menu_file(&path)
+            .ok()
+            .unwrap_or_else(|| match name.as_str() {
+                "settings" => crate::menu_workspace::defaults::recovery_settings_menu(),
+                _ => crate::menu_workspace::defaults::recovery_pom_menu(),
+            });
+        menu.options
     }
 
     // ── Tab bar ──────────────────────────────────────────────────────────

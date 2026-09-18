@@ -70,6 +70,7 @@ impl WorkbenchShell {
                         description: String::new(),
                         enabled: true,
                         group: None,
+                        show_in_menu_bar: true,
                         target: None,
                     });
                 }

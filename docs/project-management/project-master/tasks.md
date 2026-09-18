@@ -2311,7 +2311,7 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 > Menu MODEL + command RESOLUTION unchanged (nesting is already via command
 > resolution + chained fastpaths). SLICED: A first; B-D later.
 
-- [ ] MB.A menu-workspace Task 30: Slice A -- data-driven horizontal menu bar.
+- [x] MB.A menu-workspace Task 30: Slice A -- data-driven horizontal menu bar.
       `DEFAULT_MENUBAR_TOML` (code-only, reproduces today's bar incl. Help);
       `render_menu_bar_from_menu` drawing top-level options as `menu_button`
       dropdowns that PEEK their referenced submenu's options (no navigate); leaves
@@ -2334,4 +2334,4 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 
 | Status | Count |
 |--------|-------|
-| `[ ]` Phase (menu-bar) | Configurable named menu bars (CR-NR-080, supersedes CR-NR-077) -- SPEC DONE: menu-workspace Req 17.1-17.11 (menu bar = a Menu_File rendered horizontally, peek-dropdown top-level buttons, leaf command parity, named + editable, per-kind assignment, dynamic Themes source). Impl SLICED: MB.A (Task 30) first; MB.B-MB.D (Tasks 31-33) later. No code yet |
+| `[ ]` Phase (menu-bar) | Configurable named menu bars (CR-NR-080, supersedes CR-NR-077) -- SPEC DONE: menu-workspace Req 17.1-17.11. Slice A (MB.A, Task 30) DONE: data-driven horizontal bar (`DEFAULT_MENUBAR_TOML` + `default_menubar_menu`; `render_menu_bar_from_menu` peek-dropdowns via `peek_menu_options`; leaf dispatch = command parity; first/last button ids preserved for CR-CH-023; `MENU_BAR_TOP_LEVEL_LABELS` removed); menu-workspace Req 17.1-17.4/17.6/17.7 PASS, 17.5 MANUAL (egui-native); verify.ps1 CLEAN; ffwb.exe rebuilt. Slices B-D (MB.B-MB.D, Tasks 31-33) LATER |

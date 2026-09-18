@@ -141,6 +141,10 @@ struct RawMenuOption {
     #[serde(default = "default_true")]
     enabled: bool,
     group: Option<String>,
+    /// Whether this option appears when the menu is rendered as a horizontal
+    /// Menu_Bar. Defaults to `true` (menu-workspace Req 17.2, CR-NR-080).
+    #[serde(default = "default_true")]
+    show_in_menu_bar: bool,
     /// Optional inline `[options.target]` table (a serialised Command_Target).
     ///
     /// Validates: menu-workspace Requirement 10.6
@@ -391,6 +395,7 @@ fn validate_option(raw: RawMenuOption, index: usize) -> Result<MenuOption, Strin
         description: raw.description,
         enabled: raw.enabled,
         group: raw.group,
+        show_in_menu_bar: raw.show_in_menu_bar,
         target: raw.target,
     })
 }
@@ -501,6 +506,32 @@ mode = "captured"
         let f = write_toml(toml);
         let menu = load_menu_file(f.path()).expect("load ok");
         assert!(!menu.options[0].enabled);
+    }
+
+    // Validates: menu-workspace Req 1.3, 17.2 (CR-NR-080) -- show_in_menu_bar
+    // defaults to true when the key is absent.
+    #[test]
+    fn load_show_in_menu_bar_defaults_to_true() {
+        let toml = "title = \"T\"\n[[options]]\nkey = \"1\"\ncommand = \"FILES\"\ndescription = \"Files\"\n";
+        let f = write_toml(toml);
+        let menu = load_menu_file(f.path()).expect("load ok");
+        assert!(
+            menu.options[0].show_in_menu_bar,
+            "show_in_menu_bar must default to true"
+        );
+    }
+
+    // Validates: menu-workspace Req 17.2 -- show_in_menu_bar = false is parsed
+    // and preserved (so an option can be hidden from the horizontal bar).
+    #[test]
+    fn load_show_in_menu_bar_false_preserved() {
+        let toml = "title = \"T\"\n[[options]]\nkey = \"X\"\ncommand = \"RETURN\"\ndescription = \"Return\"\nshow_in_menu_bar = false\n";
+        let f = write_toml(toml);
+        let menu = load_menu_file(f.path()).expect("load ok");
+        assert!(
+            !menu.options[0].show_in_menu_bar,
+            "show_in_menu_bar = false must be preserved"
+        );
     }
 
     // Validates: Requirement 1.4 -- unknown keys silently ignored
@@ -625,6 +656,7 @@ mode = "captured"
                 description: format!("Option {i}"),
                 enabled: true,
                 group: None,
+                show_in_menu_bar: true,
                 target: None,
             });
         }
@@ -635,6 +667,7 @@ mode = "captured"
                 description: format!("Disabled {i}"),
                 enabled: false,
                 group: None,
+                show_in_menu_bar: true,
                 target: None,
             });
         }

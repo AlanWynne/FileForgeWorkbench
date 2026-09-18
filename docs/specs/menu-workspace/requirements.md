@@ -96,6 +96,11 @@ TOML file, so that I can customise the option list without modifying source code
      is displayed in a disabled style and cannot be selected.
    - `group` (string, optional) -- a group label used to visually separate
      options with a blank line and optional group header.
+   - `show_in_menu_bar` (boolean, optional, default `true`, CR-NR-080) -- when
+     `false`, the option is hidden when the menu is rendered as a horizontal
+     Menu_Bar (Requirement 17) but still appears in the vertical menu. Used to
+     keep a terminal option like `RETURN` out of the bar. The vertical render
+     ignores this flag; only the horizontal bar render honours it.
 8. THE top-level table MAY contain a `show_calendar` key (boolean, optional,
    default `true`) that controls whether the shared menu renderer draws the
    calendar panel for this menu (Requirement 2). This makes the calendar a
@@ -562,10 +567,15 @@ to rebuild or recover my configuration, instead of being locked out.
 1. THE workbench SHALL define a compiled Recovery_Baseline for the POM and for
    the Settings menu. These are the code-only built-in menus (Requirement 4.1)
    and are never written to disk.
-2. THE Recovery_Baseline POM SHALL contain exactly these options, in order:
-   `0` -> `SETTINGS` (Settings), `1` -> `CATALOGS` (Catalogs), `2` -> `FILES`
-   (Files), `L` -> `LOG` (Event Log), `M` -> `MENUS` (Menus editor), `X` ->
-   `RETURN` (Return / exit when last). All in a single group (no stray boundary).
+2. THE Recovery_Baseline POM SHALL contain exactly these options, in order
+   (REVISED by CR-NR-080): `0` -> `SETTINGS` (Settings), `1` -> `CATALOGS`
+   (Catalogs), `2` -> `FILES` (Files), `3` -> `HELP` (Help), `X` -> `RETURN`
+   (Return / exit when last, marked `show_in_menu_bar = false` so it is hidden
+   from the horizontal Menu_Bar, Requirement 17.2a). All in a single group (no
+   stray boundary). `MENUS` is NOT a POM option -- it belongs to the Settings
+   menu (criterion 12.3); `LOG` was dropped from the barebones set (still
+   reachable via the `LOG` command and Settings). This barebones POM is also the
+   Default_Menu_Bar (Requirement 17.2).
 3. THE Recovery_Baseline Settings menu SHALL contain exactly these options, in
    order (REVISED by CR-CH-025 -- reordered, regrouped, and repointed; REVISED
    again by CR-CH-029 -- added the `K` -> `KEYS` option):
@@ -908,24 +918,36 @@ user menu file overrides it. Menu-bar menus are conventionally named with an
   dropdown WITHOUT navigating the active Workspace to that menu. Only selecting a
   leaf option dispatches a command.
 - **Default_Menu_Bar** -- the compiled code-only Menu_File used for the bar when
-  no user menu-bar file exists (analogous to the compiled POM / Settings defaults
-  of Requirement 12), reproducing the current hardcoded bar.
+  no user menu-bar file exists. Per owner decision (CR-NR-080) the barebones
+  Menu_Bar IS the barebones POM: the Default_Menu_Bar is the compiled POM
+  (Requirement 12), so there is a SINGLE source of truth and the two cannot
+  diverge.
 
 #### Acceptance Criteria
 
 **Slice A -- horizontal peek-dropdown render of a (default) menu-bar menu.**
 
 1. THE Workbench menu bar SHALL be rendered from a Menu_File (Requirement 1),
-   not from hardcoded button definitions. THE bar SHALL render each top-level
-   Menu_Option as a dropdown button, in the Menu_File's option order, left to
-   right.
+   not from hardcoded button definitions. THE bar SHALL render each bar-visible
+   top-level Menu_Option (criterion 17.2a) as a dropdown button, in the
+   Menu_File's option order, left to right. EACH top-level button SHALL be
+   LABELLED by the option's `command` (the verb the user would type), NOT its
+   `description`.
 
-2. THE workbench SHALL provide a compiled Default_Menu_Bar (a code-only
-   `DEFAULT_MENUBAR_TOML`, parsed once, the single source of the compiled bar
-   content, analogous to `DEFAULT_POM_TOML` / `DEFAULT_SETTINGS_TOML`). WHEN no
-   user menu-bar Menu_File is available, THE bar SHALL render from the
-   Default_Menu_Bar. The Default_Menu_Bar SHALL reproduce the current bar's
-   top-level entries, INCLUDING a trailing `Help` entry.
+2. THE workbench SHALL provide a compiled Default_Menu_Bar. Per owner decision
+   the barebones Menu_Bar is the SAME as the barebones POM: `default_menubar_menu()`
+   SHALL return the compiled POM (`recovery_pom_menu` / `DEFAULT_POM_TOML`,
+   Requirement 12), a single source of truth (no separate menu-bar constant).
+   WHEN no user menu-bar Menu_File is available, THE bar SHALL render from this
+   Default_Menu_Bar.
+
+2a. THE bar SHALL render ONLY options whose `show_in_menu_bar` is `true`
+   (Requirement 1.3). An option with `show_in_menu_bar = false` (e.g. the
+   barebones POM's `RETURN`) SHALL NOT appear on the bar, while remaining in the
+   vertical menu. The barebones POM (Requirement 12) SHALL contain, in order,
+   `SETTINGS`, `CATALOGS`, `FILES`, `HELP`, `RETURN`, with `RETURN` marked
+   `show_in_menu_bar = false`; so the bar-visible entries are Settings, Catalogs,
+   Files, Help.
 
 3. WHEN a top-level menu-bar button is opened (by mouse hover/click or keyboard
    focus), THE bar SHALL PEEK the menu referenced by that option's command: it

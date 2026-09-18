@@ -727,13 +727,15 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 17.1: the menu bar renders from a Menu_File (each top-level option -> a dropdown button, in option order), not from hardcoded button definitions |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 17.2: compiled `DEFAULT_MENUBAR_TOML` (code-only fallback) reproduces today's bar incl. a trailing `Help`; the bar renders from it when no user file exists |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 17.3: opening a top-level button PEEKS the menu its command references (renders that menu's options as dropdown items) WITHOUT navigating the workspace |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 17.4: selecting a leaf dropdown item dispatches its command via `handle_command` (command parity) and closes the dropdown |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 17.5: dropdown items are keyboard-navigable via egui-native menu behaviour (arrows/Enter/Escape) |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 17.6: first/last top-level button ids still captured for the CR-CH-023 Boundary_Policy from the data-driven bar (Tab reaches the bar; last button wraps to command field) |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 17.7: the POM/Settings vertical Menu_Workspace render is unchanged by the data-driven bar |
+| `ff-desktop` | ✅ | `menu_workspace::defaults::tests::default_menubar_is_the_barebones_pom`; `shell::tests::menu_bar_has_file_catalogs_menu` | menu-workspace Req 17.1: the menu bar renders from a Menu_File (`render_menu_bar_from_menu` iterates bar-visible options as dropdown buttons in order); top-level buttons labelled by `command` |
+| `ff-desktop` | ✅ | `menu_workspace::defaults::tests::default_menubar_is_the_barebones_pom` | menu-workspace Req 17.2: `default_menubar_menu()` returns the compiled POM (single source of truth); the bar renders from it when no user file exists |
+| `ff-desktop` | ✅ | `menu_workspace::defaults::tests::default_menubar_bar_visible_options_are_settings_catalogs_files_help`, `shell::tests::menu_bar_has_help_and_excludes_return` | menu-workspace Req 17.2a: the bar renders only `show_in_menu_bar = true` options; barebones `RETURN` (false) excluded, leaving Settings/Catalogs/Files/Help |
+| `ff-desktop` | ✅ | `shell::tests::menu_bar_peek_of_settings_returns_settings_menu_options` | menu-workspace Req 17.3: opening a top-level button PEEKS the menu its command references (`peek_menu_options` returns that menu's options) WITHOUT navigating the workspace |
+| `ff-desktop` | ✅ | `shell::tests::menu_bar_peek_of_non_menu_command_is_empty`, `menu_bar_leaf_dispatch_is_command_parity` | menu-workspace Req 17.4: a non-menu command peeks empty (rendered as a direct item); selecting a leaf dispatches its command via `handle_command` (command parity) |
+| `ff-desktop` | 🔲 | -- | menu-workspace Req 17.5: dropdown items keyboard-navigable via egui-native `menu_button` behaviour (arrows/Enter/Escape). MANUAL: egui-native menu keyboard traversal inside an open dropdown is provided by egui and not driven by the kittest harness |
+| `ff-desktop` | ✅ | `shell::tests::full_shell_tab_reaches_settings_as_first_menu_item`, `full_shell_tab_cycle_wraps_to_command_field_and_skips_chrome` | menu-workspace Req 17.6: first/last top-level button ids captured from the data-driven bar for the CR-CH-023 Boundary_Policy (Tab reaches the bar; last button wraps to the command field) |
+| `ff-desktop` | ✅ | `menu_workspace::render` POM/menu tests unchanged; `shell::tests::menu_bar_peek_of_settings_returns_settings_menu_options` (peek does not navigate) | menu-workspace Req 17.7: the POM/Settings vertical Menu_Workspace render is unchanged by the data-driven bar |
+| `ff-desktop` | ✅ | `menu_workspace::loader::tests::load_show_in_menu_bar_defaults_to_true`, `load_show_in_menu_bar_false_preserved`; `menu_workspace::serialiser::tests::recovery_pom_round_trips`, `defaults_are_omitted_but_parse_back` | menu-workspace Req 1.3 (CR-NR-080): `show_in_menu_bar` (bool, default true) parses, defaults true when absent, round-trips (omitted when true, written when false); Menus Editor exposes a "bar" checkbox |
 
 ## Final Summary (after Phase AM)
 

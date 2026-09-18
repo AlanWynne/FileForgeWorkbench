@@ -424,6 +424,7 @@ mod tests {
             description: "Files".to_string(),
             enabled: false,
             group: None,
+            show_in_menu_bar: true,
             target: None,
         }]);
         assert!(!state.menu.as_ref().unwrap().options[0].enabled);
@@ -438,6 +439,7 @@ mod tests {
             description: "Files".to_string(),
             enabled: true,
             group: None,
+            show_in_menu_bar: true,
             target: None,
         }]);
         state.advisory = Some("This menu has 65 options (advised maximum 64).".to_string());
@@ -460,6 +462,7 @@ mod tests {
             description: "Files".to_string(),
             enabled: true,
             group: None,
+            show_in_menu_bar: true,
             target: None,
         }]);
         assert!(state.advisory.is_none());
@@ -486,6 +489,7 @@ mod tests {
             description: description.to_string(),
             enabled: true,
             group: None,
+            show_in_menu_bar: true,
             target: None,
         }
     }
@@ -598,6 +602,7 @@ mod tests {
             description: format!("Option {key}"),
             enabled,
             group: None,
+            show_in_menu_bar: true,
             target: None,
         }
     }

@@ -58,6 +58,10 @@ fn serialise_option(option: &MenuOption) -> String {
     if let Some(group) = &option.group {
         s.push_str(&format!("group = {}\n", toml_string(group)));
     }
+    // Default is true; emit only when hidden from the bar (CR-NR-080).
+    if !option.show_in_menu_bar {
+        s.push_str("show_in_menu_bar = false\n");
+    }
     // Inline Command_Target (menu-workspace Req 10.6). CommandTarget derives
     // Serialize, so emit it as an `[options.target]` sub-table. If serialisation
     // ever fails, fall back to the bare `command` (already written above).
@@ -130,6 +134,7 @@ mod tests {
                     description: "Files".to_string(),
                     enabled: true,
                     group: Some("Core".to_string()),
+                    show_in_menu_bar: true,
                     target: None,
                 },
                 MenuOption {
@@ -138,6 +143,8 @@ mod tests {
                     description: "Plugins".to_string(),
                     enabled: false,
                     group: Some("Extended".to_string()),
+                    // CR-NR-080: non-default (false) must round-trip.
+                    show_in_menu_bar: false,
                     target: None,
                 },
             ],
@@ -162,6 +169,7 @@ mod tests {
                 description: "All".to_string(),
                 enabled: true,
                 group: None,
+                show_in_menu_bar: true,
                 target: None,
             }],
             show_calendar: true,
@@ -180,6 +188,10 @@ mod tests {
         assert!(!toml.contains("group_headers"), "default headers omitted");
         assert!(!toml.contains("enabled"), "default enabled omitted");
         assert!(!toml.contains("group ="), "absent group omitted");
+        assert!(
+            !toml.contains("show_in_menu_bar"),
+            "default show_in_menu_bar (true) omitted"
+        );
         let parsed = parse_menu_str(&toml).expect("parse");
         assert_eq!(parsed, menu);
     }
@@ -196,6 +208,7 @@ mod tests {
                 description: "Return".to_string(),
                 enabled: true,
                 group: None,
+                show_in_menu_bar: true,
                 target: None,
             }],
             show_calendar: true,

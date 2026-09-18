@@ -290,6 +290,12 @@ impl WorkbenchShell {
     ///
     /// When the user picks a file the path is written into `pending_open`;
     /// the next egui frame will pick it up and open the tab.
+    ///
+    /// CR-NR-080 Slice A: the data-driven menu bar no longer hardwires a
+    /// "Files > Open..." item, so this has no current caller. It is retained
+    /// (not deleted) because a menu-file option or command will invoke it once
+    /// the file-operations menu content is authored (Slice B onward).
+    #[allow(dead_code)]
     pub(super) fn open_file_dialog(&self) {
         let pending = self.pending_open.clone();
         self.runtime.spawn_blocking(move || {

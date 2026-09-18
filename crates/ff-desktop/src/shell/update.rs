@@ -502,7 +502,6 @@ impl eframe::App for WorkbenchShell {
             || self.show_unsaved_workspace_dialog
             || !matches!(self.files_panel.dialog, files_panel::FilesDialogState::None);
         {
-            let menu_count = super::MENU_BAR_TOP_LEVEL_LABELS.len();
             let is_file_explorer = self.tabs.active_tab().kind == TabKind::FileExplorerPanel;
             let cmd_id = egui::Id::new("command_field_input");
             let cmd_has_focus = ctx.memory(|m| m.focused() == Some(cmd_id));
@@ -526,7 +525,6 @@ impl eframe::App for WorkbenchShell {
             let on_menu_first = menu_first_id.is_some() && focused == menu_first_id;
             let on_last_interior = last_interior.is_some() && focused == last_interior;
             let on_first_interior = first_interior.is_some() && focused == first_interior;
-            let _ = menu_count;
 
             // Classify the boundary this frame (None = not a shell boundary; let
             // egui-native traversal handle it). Computed from focus position only.

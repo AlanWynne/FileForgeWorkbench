@@ -38,6 +38,15 @@ pub struct MenuOption {
     pub enabled: bool,
     /// Optional group label for visual separation.
     pub group: Option<String>,
+    /// Whether this option appears when the menu is rendered as a horizontal
+    /// Menu_Bar (menu-workspace Requirement 17, CR-NR-080). Defaults to `true`.
+    /// A menu author sets `show_in_menu_bar = false` to keep an option in the
+    /// vertical menu but hide it from the bar (e.g. a terminal `RETURN` option
+    /// that makes no sense as a bar dropdown). The VERTICAL menu render ignores
+    /// this flag; only the horizontal bar render honours it.
+    ///
+    /// Validates: menu-workspace Requirement 1.3, 17.2
+    pub show_in_menu_bar: bool,
     /// Optional inline Command_Target. When present it takes precedence over
     /// `command` during Target_Resolution (menu-workspace Requirement 10.6).
     pub target: Option<ff_command::CommandTarget>,

@@ -520,20 +520,20 @@
 > (parity). Menu model + command resolution unchanged. SLICED: A is the immediate
 > work; B-D follow in later phases.
 
-- [ ] 30. Slice A: data-driven horizontal menu bar (replaces the hardcoded bar)
-  - [ ] 30.1 Add `DEFAULT_MENUBAR_TOML` to `menu_workspace/defaults.rs` (code-only, parsed once), reproducing the current bar's top-level entries in order INCLUDING a trailing `Help`; each top-level option's `command` names its submenu (Settings -> `SETTINGS`, etc.). Add `default_menubar_menu()` accessor; unit tests for valid-TOML + ASCII-only + expected top-level option list
+- [x] 30. Slice A: data-driven horizontal menu bar (replaces the hardcoded bar)
+  - [x] 30.1 Add `DEFAULT_MENUBAR_TOML` to `menu_workspace/defaults.rs` (code-only, parsed once), reproducing the current bar's top-level entries in order INCLUDING a trailing `Help`; each top-level option's `command` names its submenu (Settings -> `SETTINGS`, etc.). Add `default_menubar_menu()` accessor; unit tests for valid-TOML + ASCII-only + expected top-level option list
     - Covers: Requirement 17.2
-  - [ ] 30.2 Add `render_menu_bar_from_menu(&mut self, ctx, menu: &MenuFile)` (menu_workspace/render.rs or a `menu_bar` submodule): `TopBottomPanel::top("menu_bar")` + `menu::bar`, one `menu_button(option.description)` per top-level option in order
+  - [x] 30.2 Add `render_menu_bar_from_menu(&mut self, ctx, menu: &MenuFile)` (menu_workspace/render.rs or a `menu_bar` submodule): `TopBottomPanel::top("menu_bar")` + `menu::bar`, one `menu_button(option.description)` per top-level option in order
     - Covers: Requirement 17.1
-  - [ ] 30.3 PEEK inside each top-level button: resolve the option command to a menu (reuse `TargetResolver::menu_name_target` + loader/compiled default); render the referenced menu's options as `ui.button(child.description)`; on click `self.handle_command(&child.command)` + `ui.close_menu()`. Non-menu commands render as a direct actionable button dispatching their own command
+  - [x] 30.3 PEEK inside each top-level button: resolve the option command to a menu (reuse `TargetResolver::menu_name_target` + loader/compiled default); render the referenced menu's options as `ui.button(child.description)`; on click `self.handle_command(&child.command)` + `ui.close_menu()`. Non-menu commands render as a direct actionable button dispatching their own command
     - Covers: Requirement 17.3, 17.4, 17.5
-  - [ ] 30.4 Boundary_Policy: capture the FIRST and LAST top-level button `response.id` into `self.menu_first_id` / `self.menu_last_id` from the data-driven loop; remove/replace `MENU_BAR_TOP_LEVEL_LABELS` + its `debug_assert_eq!`; retarget label-asserting tests to the Default_Menu_Bar option list
+  - [x] 30.4 Boundary_Policy: capture the FIRST and LAST top-level button `response.id` into `self.menu_first_id` / `self.menu_last_id` from the data-driven loop; remove/replace `MENU_BAR_TOP_LEVEL_LABELS` + its `debug_assert_eq!`; retarget label-asserting tests to the Default_Menu_Bar option list
     - Covers: Requirement 17.6
-  - [ ] 30.5 Replace the hardcoded `render_menu_bar` body with a call to `render_menu_bar_from_menu(default_menubar_menu())` (Slice A always uses the default; naming/assignment come in B/C). POM/Settings vertical workspace untouched
+  - [x] 30.5 Replace the hardcoded `render_menu_bar` body with a call to `render_menu_bar_from_menu(default_menubar_menu())` (Slice A always uses the default; naming/assignment come in B/C). POM/Settings vertical workspace untouched
     - Covers: Requirement 17.1, 17.7
-  - [ ] 30.6 Failing full-shell egui_kittest tests first: the bar renders the Default_Menu_Bar's top-level buttons in order (incl. Help); opening a top-level button peeks its submenu's options; activating a leaf dispatches its command (assert the resulting state change, e.g. THEME leaf changes the active theme); first Tab from the last interior still reaches the bar and wraps (Boundary_Policy preserved)
+  - [x] 30.6 Failing full-shell egui_kittest tests first: the bar renders the Default_Menu_Bar's top-level buttons in order (incl. Help); opening a top-level button peeks its submenu's options; activating a leaf dispatches its command (assert the resulting state change, e.g. THEME leaf changes the active theme); first Tab from the last interior still reaches the bar and wraps (Boundary_Policy preserved)
     - Validates: Requirement 17.1, 17.3, 17.4, 17.6
-  - [ ] 30.7 Update `docs/quality/TCR.md` (CR-NR-080 Slice A rows -> PASS); verify.ps1 CLEAN (FULL, nextest); rebuild ffwb.exe
+  - [x] 30.7 Update `docs/quality/TCR.md` (CR-NR-080 Slice A rows -> PASS); verify.ps1 CLEAN (FULL, nextest); rebuild ffwb.exe
     - Covers: Requirement 17.1-17.7
 
 - [ ] 31. Slice B: named + editable menu-bar files (LATER)
