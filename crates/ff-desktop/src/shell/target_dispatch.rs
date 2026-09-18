@@ -93,6 +93,31 @@ impl WorkbenchShell {
         }
     }
 
+    /// Dispatch a command bound to a FUNCTION KEY (physical key press or a
+    /// Key_Label_Bar click), merging the current `Command ===>` field content
+    /// as the command's Argument_String.
+    ///
+    /// This implements command-framework Requirement 9.8: pressing a key bound
+    /// to a command invokes it with the command-field contents as its argument,
+    /// observably identical to typing `<command> <field>` and pressing Enter
+    /// (e.g. type `1`, press F9=SWAP -> `SWAP 1`; type `8`, press F8=DOWN ->
+    /// `DOWN 8`). WHEN the field is empty the bare bound command runs unchanged
+    /// (Req 9.8). Argument merging happens once, here at the shared key-dispatch
+    /// boundary (Req 9.7). The field is NOT force-cleared -- whether the invoked
+    /// command consumes/replaces/leaves it is the command's own decision
+    /// (Req 9.9); this fixes B066.
+    ///
+    /// Validates: command-framework Requirement 9.7, 9.8, 9.9, 9.10
+    pub(super) fn dispatch_key_command(&mut self, command: &str) {
+        let field = self.command_text.trim();
+        if field.is_empty() {
+            self.dispatch_bound_command(command);
+        } else {
+            let merged = format!("{} {}", command.trim(), field);
+            self.dispatch_bound_command(&merged);
+        }
+    }
+
     /// Run a user Command_Definition by its id.
     ///
     /// This is the explicit definition-reference entry point used when a

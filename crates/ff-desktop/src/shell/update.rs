@@ -748,7 +748,9 @@ impl eframe::App for WorkbenchShell {
             // user-defined command id (command-framework Requirement 8.5,
             // command-configurator Requirement 4.4). Built-in commands fall
             // through to the existing pipeline unchanged (Requirement 10.2).
-            self.dispatch_bound_command(&cmd);
+            // The current Command ===> field content is merged as the argument
+            // (Req 9.8, B066): type `1` + F9=SWAP -> `SWAP 1`.
+            self.dispatch_key_command(&cmd);
         }
 
         self.render_central_panel(ctx);

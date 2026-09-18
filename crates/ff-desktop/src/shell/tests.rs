@@ -1905,6 +1905,72 @@ fn swap_n_activates_nth_tab() {
     assert!(shell.open_error.is_none());
 }
 
+/// Validates: command-framework Req 9.8 (B066) -- pressing a key bound to a
+/// command merges the current Command ===> field content as the argument, so
+/// typing `1` then pressing F9 (=SWAP) behaves like `SWAP 1`.
+#[test]
+fn key_command_merges_command_field_as_argument() {
+    let mut shell = make_shell();
+    shell.handle_command("START"); // ensure >=2 tabs
+    assert!(shell.tabs.len() >= 2);
+
+    // Type `1` in the command field, then "press" the SWAP-bound key.
+    shell.command_text = "1".to_string();
+    shell.dispatch_key_command("SWAP");
+    assert_eq!(
+        shell.tabs.active_index(),
+        0,
+        "`1` + SWAP key -> workspace 1"
+    );
+    assert!(shell.open_error.is_none());
+    // It must NOT have opened the tab picker (the old bare-SWAP behaviour).
+    assert!(
+        shell.show_swap_list.is_none(),
+        "a typed argument must run SWAP <n>, not open the picker"
+    );
+
+    // `2` + SWAP key -> workspace 2.
+    shell.command_text = "2".to_string();
+    shell.dispatch_key_command("SWAP");
+    assert_eq!(
+        shell.tabs.active_index(),
+        1,
+        "`2` + SWAP key -> workspace 2"
+    );
+    assert!(shell.open_error.is_none());
+}
+
+/// Validates: command-framework Req 9.8 (B066) -- with an EMPTY command field,
+/// a key-bound command runs bare (no argument), so F9=SWAP with no split opens
+/// the tab picker (the existing bare-SWAP behaviour is preserved).
+#[test]
+fn key_command_with_empty_field_runs_bare_command() {
+    let mut shell = make_shell();
+    assert!(shell.split_screen.is_none());
+    shell.command_text.clear();
+    shell.dispatch_key_command("SWAP");
+    assert!(
+        shell.show_swap_list.is_some(),
+        "empty field + SWAP key -> bare SWAP (tab picker with no split)"
+    );
+    assert!(shell.open_error.is_none());
+}
+
+/// Validates: command-framework Req 9.9 (B066) -- a key-forwarded invocation
+/// does NOT force-clear the command field; the invoked command decides. SWAP
+/// does not clear it, so `1` remains after the swap.
+#[test]
+fn key_command_does_not_force_clear_command_field() {
+    let mut shell = make_shell();
+    shell.handle_command("START");
+    shell.command_text = "1".to_string();
+    shell.dispatch_key_command("SWAP");
+    assert_eq!(
+        shell.command_text, "1",
+        "the key-dispatch boundary must not force-clear the field (Req 9.9)"
+    );
+}
+
 /// Validates: multi-tab-editor Requirement 18.2 -- out-of-range / invalid
 /// `SWAP n` errors and does not change the active tab.
 #[test]

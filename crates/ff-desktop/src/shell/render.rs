@@ -193,11 +193,13 @@ impl WorkbenchShell {
                 .get_plain(key)
                 .map(|b| b.command().to_string())
             {
-                // A clicked key-label bar slot is a shortcut binding; route it
-                // through Target_Resolution so a user-defined command id runs
-                // its target (command-configurator Requirement 4.4), falling
-                // through to the pipeline otherwise (Requirement 10.2).
-                self.dispatch_bound_command(&cmd);
+                // A clicked key-label bar slot is treated as if the function
+                // key was pressed (function-keys Req 16.1): route it through the
+                // shared key-dispatch so the Command ===> field content is
+                // merged as the argument (Req 9.8, B066), then Target_Resolution
+                // runs a user-defined command id's target (Req 4.4) or falls
+                // through to the pipeline (Req 10.2).
+                self.dispatch_key_command(&cmd);
             }
         }
     }
