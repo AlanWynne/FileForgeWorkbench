@@ -2409,3 +2409,29 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[x]` Phase (reset-bare-targets) COMPLETE | Targeted RESET BARE (CR-NR-083) -- DONE: `RESET BARE <p1> [<p2> ...]` (one-or-more named profiles) and `RESET BARE ALL`; every form resolves to a target LIST and reuses the SAME confirmation dialog (only change: it names the profile(s)); bare RESET BARE unchanged (active profile only); unknown name blocks all-or-nothing (no dialog); `ALL` keyword only as the sole arg. `ff_session::default_base`/`profiles_root`; `reset_bare::{enumerate_profiles_under, profile_udd_path, resolve_reset_bare_target_under, ResetBareTarget}`; `execute_reset_bare(&target)` archives each best-effort + in-memory reset iff active in list. configuration-system Req 19.9-19.15. verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR Req 19.9-19.14 PASS, 19.15 MANUAL (dialog label text). |
+
+## Phase (retrieve-stack) -- command-line history owned by the command processor (CR-NR-084)
+
+> Behaviour-preserving RE-HOME (Option B): the RETRIEVE Command_History +
+> Retrieve_Pointer move out of the ff-desktop shell into a new processor-layer
+> owner `ff_command::CommandLineHistory`; the shell forwards every submitted line
+> to it. NO acceptance-criterion change (function-keys-and-history Req 5-10, 19
+> unchanged); RETRIEVE observable behaviour is identical. Chosen over moving the
+> ring into ff-command directly (ff-keys already depends on ff-command) and over
+> deferring; the shell still triggers `record(line)` because no lower layer sees
+> the raw line for both dispatch sinks (documented limitation).
+
+- [x] RS.owner function-keys Task 44.1-44.3: `ff_command::CommandLineHistory`
+      owner (ring + pointer + record/retrieve/reset/list, dedup-promote,
+      RETRIEVE-verb exclusion incl. the B067 merged form) + unit tests. Ring +
+      pointer primitives moved from ff-keys (which re-exports them).
+      Covers: function-keys-and-history Req 5-9, 19.1-19.4.
+- [x] RS.wire function-keys Task 44.4-44.5: shell holds one CommandLineHistory and
+      forwards record/retrieve; the shell-owned cmd_history/retrieve_state removed;
+      shell tests migrated (behaviour identical, incl. B067); verify.ps1 CLEAN FULL
+      nextest; ffwb.exe rebuilt; TCR re-pointed (PASS).
+      Covers: function-keys-and-history Req 10, 19.5-19.9 (behaviour preserved).
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (retrieve-stack) COMPLETE | Command-line history re-homed to the command processor (CR-NR-084, Option B) -- DONE: new `ff_command::CommandLineHistory` owns the recall ring + retrieve pointer (primitives moved from ff-keys, re-exported); the shell forwards every submitted line via `record`/`retrieve`; the shell-owned cmd_history/retrieve_state fields removed. Behaviour unchanged (function-keys-and-history Req 5-10, 19; all RETRIEVE/history tests pass incl. B067). verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. |

@@ -3212,19 +3212,14 @@ fn shell_intercept_commands_are_recorded_in_history() {
     shell.handle_command("LOCATE 1");
 
     // Both must be present in history (most-recent-first).
-    assert_eq!(
-        shell.cmd_history.get(0).map(|e| e.command()),
-        Some("LOCATE 1")
-    );
-    assert_eq!(
-        shell.cmd_history.get(1).map(|e| e.command()),
-        Some("THEME legacy")
-    );
+    let hist = shell.command_line_history.list();
+    assert_eq!(hist.first().map(String::as_str), Some("LOCATE 1"));
+    assert_eq!(hist.get(1).map(String::as_str), Some("THEME legacy"));
 
     // RETRIEVE itself must NOT be recorded (it is the recall action).
     shell.handle_command("RETRIEVE");
     assert_eq!(
-        shell.cmd_history.get(0).map(|e| e.command()),
+        shell.command_line_history.most_recent(),
         Some("LOCATE 1"),
         "RETRIEVE must not be added to history"
     );
@@ -3266,7 +3261,7 @@ fn retrieve_via_key_with_nonempty_field_recalls_previous_command() {
 
     // The merged `RETRIEVE ...` form must NOT be added to history (Req 19.6).
     assert_eq!(
-        shell.cmd_history.get(0).map(|e| e.command()),
+        shell.command_line_history.most_recent(),
         Some("THEME legacy"),
         "RETRIEVE (even merged) must not pollute history"
     );

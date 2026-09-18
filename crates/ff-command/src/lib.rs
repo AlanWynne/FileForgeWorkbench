@@ -77,11 +77,18 @@ pub mod scripting;
 /// Command history — bounded, persistent log.
 pub mod history;
 
+/// Command-line recall ring + RETRIEVE pointer, owned by the command processor
+/// (CR-NR-084). Distinct from `history` (the CommandId audit log).
+pub mod command_line_history;
+
 /// Error types for the command framework.
 pub mod error;
 
 // ─── Public API Re-exports ──────────────────────────────────────────────────
 
+pub use command_line_history::{
+    CommandLineEntry, CommandLineHistory, CommandLineRing, RetrieveResult, RetrieveState,
+};
 pub use command_target::{
     execute_target, resolve_target, target_from_toml, target_to_toml, CommandTarget, ExternalMode,
     MacroSource, TargetExecution, TargetParams, TargetResolveError, TargetResolver, TargetValue,

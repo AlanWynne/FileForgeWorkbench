@@ -9,13 +9,13 @@ use std::sync::{Arc, Mutex};
 use eframe::egui;
 use ff_command::CommandHistory as DispatchHistory;
 use ff_command::{
-    CommandDispatch, CommandHandler, CommandId, CommandMetadata, CommandParams, CommandRegistry,
-    CommandResult, ExecutionContext,
+    CommandDispatch, CommandHandler, CommandId, CommandLineHistory, CommandMetadata, CommandParams,
+    CommandRegistry, CommandResult, ExecutionContext,
 };
 use ff_command_semantics::CommandEngine;
 use ff_config::ConfigHandle;
 use ff_core::WorkbenchApp;
-use ff_keys::{CommandHistory, KeyLabelBarModel, KeyMap, KeyMapResolver, RetrieveState};
+use ff_keys::{KeyLabelBarModel, KeyMap, KeyMapResolver};
 use ff_theme::ThemePalette;
 use ff_zoom::{ZoomConfig, ZoomState};
 use tokio::runtime::Runtime;
@@ -195,10 +195,10 @@ pub struct WorkbenchShell {
     cmd_registry: Arc<CommandRegistry>,
     /// ISPF command semantics engine — parses and executes primary commands.
     cmd_engine: CommandEngine,
-    /// Command history for RETRIEVE cycling.
-    cmd_history: CommandHistory,
-    /// RETRIEVE pointer state.
-    retrieve_state: RetrieveState,
+    /// Command-line history + RETRIEVE pointer, owned by the command-processor
+    /// layer (CR-NR-084, Option B). The shell forwards every submitted command
+    /// line to it (`record`) and drives recall through it (`retrieve`).
+    command_line_history: CommandLineHistory,
     /// Find/replace engine — FIND, RFIND, CHANGE, RCHANGE.
     find_manager: FindManager,
     /// Navigation engine — LOCATE, SORT, UP, DOWN, LEFT, RIGHT, TOP, BOTTOM.
@@ -650,8 +650,7 @@ impl WorkbenchShell {
             dispatch,
             cmd_registry,
             cmd_engine: CommandEngine::new(),
-            cmd_history: CommandHistory::new(500),
-            retrieve_state: RetrieveState::new(),
+            command_line_history: CommandLineHistory::new(500),
             find_manager: FindManager::new(),
             nav_manager: NavManager::new(),
             exclude_manager: ExcludeManager::new(),

@@ -1758,3 +1758,85 @@ The Command_Picker (select an existing Command_Id, no free text), the read-only
 per-binding description, the full 72-slot 6-layer grid presentation, and the
 unsaved-change/Cancel-confirm flow remain the Requirement 20/21 target for a later
 CR; this slice keeps the current editable command grid.
+
+---
+
+## Design Delta: Command-line history owned by the command processor (CR-NR-084, Option B)
+
+**Behaviour: UNCHANGED.** This delta relocates OWNERSHIP of the RETRIEVE
+Command_History + Retrieve_Pointer; it does not alter any acceptance criterion.
+Requirements 5, 6, 7, 8, 9, 10 and 19 remain exactly as written -- recording on
+submit, dedup-promote (Req 7), RETRIEVE excluded (Req 8.2 / 19.8), bare RETRIEVE
+steps back (19.1), `RETRIEVE <n>` recalls position n (19.4), `RETRIEVE LIST`
+opens the numbered scrollable popup whose selection POPULATES the command line
+without executing (19.5, owner-confirmed). No criterion is added, removed, or
+edited by this CR.
+
+### Owner model
+
+Every command executed from the command line is pushed onto a command-line
+history stack owned by the command-processor layer (not the GUI shell); older
+duplicates are removed (most-recent promotion); RETRIEVE is never pushed. Bare
+RETRIEVE recalls the most recent entry into the command line, repeated RETRIEVE
+steps older; `RETRIEVE <n>` recalls position n; `RETRIEVE LIST` opens the
+scrollable popup and a selection populates the command line for editing. The
+LIFO-stack-vs-pointer-into-list shape is an implementation detail (choose the
+most efficient); the observable contract above is what matters.
+
+### Ownership move (as-is -> to-be)
+
+- AS-IS: `WorkbenchShell` (ff-desktop) owns `cmd_history: ff_keys::CommandHistory`
+  and `retrieve_state: ff_keys::RetrieveState`. `handle_command` records the
+  submitted line (excluding RETRIEVE), runs the RETRIEVE branch, and resets the
+  pointer on a non-RETRIEVE engine-route.
+- TO-BE (Option B): a NEW processor-layer owner, `ff_command::CommandLineHistory`,
+  owns the ring + the retrieve pointer and exposes the whole command-line-history
+  contract as one object:
+  - `record(line: &str)` -- push with dedup-promote; skips empty; skips the
+    RETRIEVE verb (matches `RETRIEVE` / `RETRIEVE ...`, so the B067 merged form is
+    excluded); resets the retrieve pointer for a non-RETRIEVE line (Req 19.5).
+  - `retrieve(field_text: &str) -> RetrieveOutcome` -- the single-step / LIST /
+    numbered-recall decision (wraps the existing `RetrieveState::retrieve` logic).
+  - `reset()`, `list() -> Vec<String>`, `len()`, `is_empty()`, capacity + the
+    `to_command_strings`/`from_command_strings` round-trip (for future persistence).
+  The shell holds ONE `CommandLineHistory` and FORWARDS to it: `handle_command`
+  calls `history.record(line)` at the top and `history.retrieve(field)` in the
+  RETRIEVE branch; the non-RETRIEVE pointer reset moves inside `record`.
+
+### Why ff-command (not ff-keys, not the shell)
+
+`ff-keys` already DEPENDS ON `ff-command`, so the ring cannot move UP into a crate
+ff-command would import without a cycle. Placing the new `CommandLineHistory`
+owner in `ff-command` (the command-processor crate) is cycle-free: `ff-desktop`
+already depends on `ff-command`, and `ff-keys` may re-export or continue to own
+the underlying `CommandHistory`/`RetrieveState` primitives that `CommandLineHistory`
+composes. This is DISTINCT from the pre-existing `ff_command::CommandHistory`
+audit log (CommandId + params + timestamp, disk-persistable) -- that stays as-is;
+`CommandLineHistory` is the raw-command-line recall ring.
+
+### The recording trigger stays at the shell boundary (documented limitation)
+
+There is no single lower-layer choke point that sees the raw submitted STRING for
+BOTH execution sinks (`CommandDispatch::execute_command` sees `CommandId`s;
+`CommandEngine::execute_command_line` sees strings). The shell's `handle_command`
+is the only place that sees the raw line for every route, so the shell CALLS
+`history.record(line)` -- the DATA and the recall/dedup/exclusion LOGIC move into
+the processor-layer owner, while the trigger (which line was submitted) remains
+the shell's to report. This is an accepted consequence of the current two-sink
+dispatch, not a defect; a future single-choke-point dispatch could move the
+trigger down without changing `CommandLineHistory`.
+
+### Persistence
+
+Neither history is persisted by the shell today (the `ff-keys` `HistoryStore` is
+unwired). `CommandLineHistory` keeps the `to_command_strings`/`from_command_strings`
+seam so persistence can be wired later (Req 6) without a further move.
+
+### Testing
+
+The existing `ff_keys` unit tests for `CommandHistory`/`RetrieveState` stay green
+(the primitives are unchanged). New `ff_command::command_line_history` unit tests
+cover the composed owner: record+dedup, RETRIEVE-verb exclusion (including the
+B067 merged form), pointer step-back / reset, `RETRIEVE <n>` and LIST. The shell
+tests migrate to the forwarding API but assert identical observable behaviour
+(recall, no-history-pollution, LIST overlay) -- proving no behaviour change.

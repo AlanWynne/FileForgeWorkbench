@@ -108,15 +108,13 @@ impl WorkbenchShell {
         // like `LOCATE 1` were). RETRIEVE itself is excluded (it is the recall
         // action, not a recallable command); empty input is skipped by
         // `CommandHistory::add`, which also de-duplicates.
-        // RETRIEVE is excluded (it is the recall action, not a recallable
-        // command). Match the VERB, not the exact string: B066's key-dispatch
-        // merges the command-field content, so an F12 press with a non-empty
-        // field arrives here as `RETRIEVE <field>` -- that must also be excluded
-        // (B067). Empty input is skipped by `CommandHistory::add`.
-        let is_retrieve = upper == "RETRIEVE" || upper.starts_with("RETRIEVE ");
-        if !is_retrieve {
-            self.cmd_history.add(cmd);
-        }
+        // Forward every submitted line to the command-processor-owned
+        // command-line history (CR-NR-084, Option B). `record` handles the
+        // RETRIEVE-verb exclusion (bare or the B066/B067 merged `RETRIEVE
+        // <field>` form -- neither is recorded) and resets the retrieve pointer
+        // for any non-RETRIEVE line (Req 19.5), so the shell no longer owns that
+        // logic. Empty input is ignored by the ring.
+        self.command_line_history.record(cmd);
 
         // Stage 1 (CR-CH-025, command-framework Req 8.3): current-menu Option_Key
         // lookup. When the active Workspace is a Menu_Workspace and the typed
@@ -446,8 +444,11 @@ impl WorkbenchShell {
         // field) -- the source of truth for the LIST trigger / empty check
         // (Req 19.1) -- rather than the merged argument.
         if upper == "RETRIEVE" || upper.starts_with("RETRIEVE ") {
+            // Drive recall through the command-processor-owned history
+            // (CR-NR-084). The handler still reads `self.command_text` (the
+            // actual field) as the LIST/empty trigger source of truth (Req 19.1).
             let cmd_text = self.command_text.clone();
-            match self.retrieve_state.retrieve(&self.cmd_history, &cmd_text) {
+            match self.command_line_history.retrieve(&cmd_text) {
                 RetrieveResult::Recalled { command } => {
                     self.command_text = command;
                 }
@@ -1130,7 +1131,8 @@ impl WorkbenchShell {
         }
 
         // ── Route through CommandEngine (stage 5: unresolved) ────────────
-        self.retrieve_state.reset();
+        // (The retrieve pointer was already reset for this non-RETRIEVE line by
+        // `command_line_history.record` at the top of handle_command, CR-NR-084.)
         let status = self.cmd_engine.execute_command_line(cmd);
         match status.kind {
             StatusKind::Info => {

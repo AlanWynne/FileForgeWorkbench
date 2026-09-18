@@ -699,3 +699,35 @@ See `docs/specs/function-keys-and-history/cx-requirements.md` for full criteria.
     - Validates: Requirement 22.1, 22.5
   - [x] 43.5 Update `docs/quality/TCR.md`: set the CR-CH-029 Req 22 rows to their status
     - Covers: Requirement 22 (all criteria)
+
+## Phase (retrieve-stack) -- command-line history owned by the command processor (CR-NR-084, Option B)
+
+Behaviour-preserving re-home. NO acceptance criterion changes (Req 5-10, 19 unchanged).
+
+- [x] 44. Re-home Command_History + Retrieve_Pointer into a processor-layer owner
+  - [x] 44.1 Add `ff_command::CommandLineHistory` owning the command-line recall
+          ring + retrieve pointer, composing the existing `ff_keys::CommandHistory`
+          dedup ring and the `RetrieveState` pointer logic (re-export or depend as
+          needed; no ff-keys <-> ff-command cycle). Failing unit tests first.
+    - Validates: function-keys-and-history Req 5, 6, 7 (unchanged; ownership move)
+  - [x] 44.2 API: `record(line)` (dedup-promote; skip empty; skip the RETRIEVE
+          verb incl. the B067 merged `RETRIEVE ...` form; reset the pointer for a
+          non-RETRIEVE line -- Req 19.5); `retrieve(field) -> RetrieveOutcome`
+          (single-step / LIST / numbered); `reset()`, `list()`, `len()`,
+          `is_empty()`, capacity, `to_command_strings`/`from_command_strings`.
+    - Validates: Req 8.2/8.4 (exclusion), 19.1-19.4 (recall/LIST/number), 7 (dedup)
+  - [x] 44.3 Owner unit tests: record+dedup-promote; RETRIEVE-verb exclusion
+          (bare + merged); bare step-back and reset; `RETRIEVE <n>`; `RETRIEVE LIST`.
+    - Validates: Req 5.1-5.4, 7.1-7.3, 8.2, 19.1-19.4
+  - [x] 44.4 Shell forwards to the owner: `WorkbenchShell` holds one
+          `CommandLineHistory`; `handle_command` calls `record(line)` at the top
+          and `retrieve(field)` in the RETRIEVE branch; the non-RETRIEVE pointer
+          reset moves inside `record`. Remove the shell-owned `cmd_history` /
+          `retrieve_state` fields (or make them the owner). Behaviour identical.
+    - Validates: Req 19.1-19.9 (observable behaviour unchanged)
+  - [x] 44.5 Migrate shell tests to the forwarding API; assert identical
+          observable behaviour (recall with non-empty field per B067, no history
+          pollution, LIST overlay). verify.ps1 CLEAN (FULL, nextest); rebuild
+          ffwb.exe; update TCR (re-point the Req 5-10/19 rows to the new owner
+          tests, keep PASS); update project-master.
+    - Covers: function-keys-and-history Req 5-10, 19 (re-home, behaviour preserved)

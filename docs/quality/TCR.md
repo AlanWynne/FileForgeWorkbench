@@ -2739,3 +2739,14 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
 | `ff-desktop` | ✅ | `shell::tests::{retrieve_via_key_with_nonempty_field_recalls_previous_command, retrieve_list_via_key_opens_history_overlay}` | function-keys-and-history Req 19.1-19.3, 19.6 (B067): F12 RETRIEVE recalls the previous command even when the command field is non-empty (the merged `RETRIEVE <field>` from B066 is matched by verb prefix in both the history-exclusion guard and the dispatch branch); RETRIEVE LIST via key opens the overlay; the merged form is not added to history |
+
+### Phase (retrieve-stack) -- command-line history re-homed to the command processor (CR-NR-084, Option B)
+
+Behaviour-preserving re-home; no new acceptance criteria. The Req 5-10/19 rows
+elsewhere in this document remain valid; these rows record the new owner's
+coverage and confirm the shell behaviour is unchanged after the move.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-command` | ✅ | `command_line_history::tests::{owner_records_and_recalls_most_recent, owner_excludes_retrieve_from_history, owner_non_retrieve_resets_pointer, owner_list_returns_all_entries_most_recent_first, owner_load_command_strings_replaces_and_resets, add_deduplicates_and_promotes, capacity_enforcement_evicts_oldest, list_trigger_returns_show_list, successive_retrieves_cycle_backward, ...}` | function-keys-and-history Req 5-9, 19.1-19.4 (CR-NR-084): new `CommandLineHistory` owner -- record+dedup-promote, RETRIEVE-verb exclusion (bare + B067 merged form), bare step-back + reset, LIST. Primitives moved from ff-keys (which re-exports them) |
+| `ff-desktop` | ✅ | `shell::tests::{shell_intercept_commands_are_recorded_in_history, retrieve_via_key_with_nonempty_field_recalls_previous_command, retrieve_list_via_key_opens_history_overlay, command_history_records_entries, retrieve_state_cycles_through_history}` | function-keys-and-history Req 19.1-19.9 (CR-NR-084): shell forwards to `CommandLineHistory` (`record`/`retrieve`); observable RETRIEVE behaviour unchanged (recall with non-empty field per B067, no history pollution, LIST overlay). cmd_history/retrieve_state fields removed |
