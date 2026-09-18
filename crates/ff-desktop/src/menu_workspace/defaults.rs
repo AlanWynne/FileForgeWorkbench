@@ -30,31 +30,31 @@ pub const DEFAULT_POM_TOML: &str = r#"title = "FileForge Workbench -- Primary Op
 
 [[options]]
 key = "0"
-command = "SETTINGS"
+command = "Settings"
 description = "FFWB Settings and Client Parameters"
 group = "Core"
 
 [[options]]
 key = "1"
-command = "CATALOGS"
+command = "Catalogs"
 description = "Virtual File Catalogs -- Mainframe, POSIX, Native"
 group = "Core"
 
 [[options]]
 key = "2"
-command = "FILES"
+command = "Files"
 description = "File Explorer -- Browse catalogs and files in a tree view"
 group = "Core"
 
 [[options]]
 key = "3"
-command = "HELP"
+command = "Help"
 description = "Help -- workbench help and topics"
 group = "Core"
 
 [[options]]
 key = "X"
-command = "RETURN"
+command = "Return"
 description = "Return to the Primary Option Menu (exit when last)"
 group = "Core"
 show_in_menu_bar = false
@@ -74,31 +74,31 @@ group_separator = "line"
 
 [[options]]
 key = "A"
-command = "CONFIG"
+command = "Config"
 description = "All settings -- browse every configuration key"
 group = "Core"
 
 [[options]]
 key = "T"
-command = "THEME"
+command = "Theme"
 description = "Theme editor -- copy, edit, save and select themes"
 group = "Core"
 
 [[options]]
 key = "M"
-command = "MENUS"
+command = "Menus"
 description = "Menus editor -- create, change and save menus"
 group = "Core"
 
 [[options]]
 key = "K"
-command = "KEYS"
+command = "Keys"
 description = "Keys -- edit and save per-workspace key assignments"
 group = "Core"
 
 [[options]]
 key = "R"
-command = "RESET BARE"
+command = "Reset bare"
 description = "Reset to barebones -- archive config and start fresh"
 group = "Recovery"
 "#;
@@ -224,7 +224,7 @@ mod tests {
         let commands: Vec<&str> = menu.options.iter().map(|o| o.command.as_str()).collect();
         assert_eq!(
             commands,
-            vec!["SETTINGS", "CATALOGS", "FILES", "HELP", "RETURN"]
+            vec!["Settings", "Catalogs", "Files", "Help", "Return"]
         );
         // Single group -> no stray separator boundary.
         let groups: std::collections::BTreeSet<&str> = menu
@@ -248,7 +248,7 @@ mod tests {
         let commands: Vec<&str> = menu.options.iter().map(|o| o.command.as_str()).collect();
         assert_eq!(
             commands,
-            vec!["CONFIG", "THEME", "MENUS", "KEYS", "RESET BARE"]
+            vec!["Config", "Theme", "Menus", "Keys", "Reset bare"]
         );
     }
 
@@ -278,14 +278,14 @@ mod tests {
             .collect();
         assert_eq!(
             bar_cmds,
-            vec!["SETTINGS", "CATALOGS", "FILES", "HELP"],
+            vec!["Settings", "Catalogs", "Files", "Help"],
             "bar-visible options must be Settings / Catalogs / Files / Help (RETURN hidden)"
         );
         // RETURN is present in the POM but hidden from the bar.
         let ret = menu
             .options
             .iter()
-            .find(|o| o.command == "RETURN")
+            .find(|o| o.command == "Return")
             .expect("RETURN present in POM");
         assert!(
             !ret.show_in_menu_bar,
@@ -301,9 +301,9 @@ mod tests {
         let settings = menu
             .options
             .iter()
-            .find(|o| o.command == "SETTINGS")
+            .find(|o| o.command == "Settings")
             .expect("Settings entry present");
-        assert_eq!(settings.command, "SETTINGS");
+        assert_eq!(settings.command, "Settings");
     }
 
     // Validates: Requirement 7.4 (cv-requirements.md) -- DEFAULT_POM_TOML is valid TOML
@@ -336,7 +336,7 @@ mod tests {
             .collect();
         assert_eq!(
             commands,
-            vec!["SETTINGS", "CATALOGS", "FILES", "HELP", "RETURN"],
+            vec!["Settings", "Catalogs", "Files", "Help", "Return"],
         );
     }
 
@@ -353,7 +353,7 @@ mod tests {
             .iter()
             .find(|o| o.get("key").and_then(|k| k.as_str()) == Some("X"))
             .expect("X option present");
-        assert_eq!(x.get("command").and_then(|c| c.as_str()), Some("RETURN"));
+        assert_eq!(x.get("command").and_then(|c| c.as_str()), Some("Return"));
     }
 
     // Validates: Requirement 7.1 (cv-requirements.md) -- title matches spec
@@ -409,7 +409,7 @@ mod tests {
             .collect();
         assert_eq!(
             commands,
-            vec!["CONFIG", "THEME", "MENUS", "KEYS", "RESET BARE"]
+            vec!["Config", "Theme", "Menus", "Keys", "Reset bare"]
         );
         let groups: Vec<&str> = options
             .iter()

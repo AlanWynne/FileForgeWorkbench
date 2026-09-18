@@ -473,8 +473,8 @@ fn menu_bar_has_file_catalogs_menu() {
         .map(|o| o.command.clone())
         .collect();
     assert!(
-        cmds.iter().any(|c| c == "CATALOGS"),
-        "default Menu_Bar must contain the File Catalogs (CATALOGS) entry (POM option 1)"
+        cmds.iter().any(|c| c == "Catalogs"),
+        "default Menu_Bar must contain the File Catalogs (Catalogs) entry (POM option 1)"
     );
 }
 
@@ -490,11 +490,11 @@ fn menu_bar_has_help_and_excludes_return() {
         .map(|o| o.command.clone())
         .collect();
     assert!(
-        bar_cmds.iter().any(|c| c == "HELP"),
+        bar_cmds.iter().any(|c| c == "Help"),
         "the barebones menu bar must include a Help entry"
     );
     assert!(
-        !bar_cmds.iter().any(|c| c == "RETURN"),
+        !bar_cmds.iter().any(|c| c == "Return"),
         "RETURN must be excluded from the menu bar (show_in_menu_bar = false)"
     );
 }
@@ -510,11 +510,11 @@ fn menu_bar_peek_of_settings_returns_settings_menu_options() {
         !peeked.is_empty(),
         "peeking SETTINGS must return the Settings menu's options"
     );
-    // The compiled Settings baseline has A CONFIG / T THEME / M MENUS / K KEYS / R.
+    // The compiled Settings baseline has A Config / T Theme / M Menus / K Keys / R.
     let cmds: Vec<&str> = peeked.iter().map(|o| o.command.as_str()).collect();
     assert!(
-        cmds.contains(&"THEME") && cmds.contains(&"CONFIG"),
-        "peeked Settings options must include CONFIG and THEME, got: {cmds:?}"
+        cmds.contains(&"Theme") && cmds.contains(&"Config"),
+        "peeked Settings options must include Config and Theme, got: {cmds:?}"
     );
     // The active tab must be UNCHANGED by peeking (peek does not navigate).
     let kind_before = shell.tabs.active_tab().kind;
@@ -4469,8 +4469,8 @@ fn default_settings_toml_option_a_command_is_config() {
         .find(|o| o.key == "A")
         .expect("option A present");
     assert_eq!(
-        opt_a.command, "CONFIG",
-        "option A must dispatch CONFIG (the flat config-key browser)"
+        opt_a.command, "Config",
+        "option A must dispatch Config (the flat config-key browser)"
     );
 }
 

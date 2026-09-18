@@ -254,10 +254,12 @@ impl WorkbenchShell {
                                 ui.close_menu();
                             }
                         } else {
-                            // Peeked submenu options: each dispatches its own
-                            // command (Req 17.3, 17.4, command parity).
+                            // Peeked submenu options: each is labelled by its
+                            // COMMAND and dispatches that command (Req 17.3,
+                            // 17.4, command parity) -- consistent with the
+                            // top-level buttons.
                             for child in &peeked {
-                                if ui.button(child.description.clone()).clicked() {
+                                if ui.button(child.command.clone()).clicked() {
                                     self.handle_command(&child.command);
                                     ui.close_menu();
                                 }
