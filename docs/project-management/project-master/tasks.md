@@ -2435,3 +2435,26 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[x]` Phase (retrieve-stack) COMPLETE | Command-line history re-homed to the command processor (CR-NR-084, Option B) -- DONE: new `ff_command::CommandLineHistory` owns the recall ring + retrieve pointer (primitives moved from ff-keys, re-exported); the shell forwards every submitted line via `record`/`retrieve`; the shell-owned cmd_history/retrieve_state fields removed. Behaviour unchanged (function-keys-and-history Req 5-10, 19; all RETRIEVE/history tests pass incl. B067). verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. |
+
+## Phase (swap-previous) -- bare SWAP toggles to the previously active workspace (CR-CH-031)
+
+> Owner: "pressing F9 on its own should swap the previously active workspace."
+> Change bare `SWAP` (no arg, no split) from opening the tab picker to
+> activating the Previous_Active_Tab (Alt+Tab-style toggle). `SWAP n`,
+> `SWAP LIST`, and bare-SWAP-with-split unchanged. Revises multi-tab-editor
+> Req 18.7; adds Previous_Active_Tab tracking (Req 18.9) + single-tab picker
+> fallback (Req 18.10). Distinct from the deferred Req 7 MRU_Stack.
+
+- [x] SP.track multi-tab-editor Task 21.1: `TabManager.previous_active` updated
+      via a single `activate` seam (old active -> previous on real change; no-op
+      leaves it) + `previous_active_index()` + `close_tab` repair + insert/clear
+      reset.
+      Covers: multi-tab-editor Req 18.9.
+- [x] SP.swap multi-tab-editor Task 21.2-21.3: bare-SWAP no-split arm activates
+      the previous tab (fallback to picker when none); tests + verify.ps1 CLEAN;
+      ffwb.exe rebuilt; TCR Req 18.7/18.9/18.10.
+      Covers: multi-tab-editor Req 18.7, 18.10.
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (swap-previous) COMPLETE | Bare SWAP/F9 toggles to the previously active workspace (CR-CH-031) -- DONE: `TabManager.previous_active` tracked via a single `activate` seam (+ `previous_active_index`, close-repair, insert/clear reset); bare-SWAP no-split arm toggles to it, else opens the picker (18.10). multi-tab-editor Req 18.7/18.9/18.10. verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. |

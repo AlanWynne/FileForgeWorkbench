@@ -2568,8 +2568,16 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | 🔲 | Manual: click a row / type number+Enter in the picker | Req 18.4: picker selection by click OR type-number+Enter switches and closes (egui render) |
 | `ff-desktop` | 🔲 | Manual: Escape closes the picker | Req 18.5: Escape/dismiss closes the picker without changing the active tab (egui render) |
 | `ff-desktop` | ✅ | `shell::tests::swap_bare_with_split_swaps_focus_not_picker` | Req 18.6: bare `SWAP` with a split active swaps split-screen focus (preserved 19.12) |
-| `ff-desktop` | ✅ | `shell::tests::swap_without_split_opens_tab_picker` | Req 18.7: bare `SWAP` with no split opens the picker (not an error) |
+| `ff-desktop` | ✅ | `shell::tests::swap_without_split_opens_tab_picker` | Req 18.7: bare `SWAP` with no split opens the picker (not an error) -- SUPERSEDED by CR-CH-031 (now toggles to the previous tab; picker only when no previous exists) |
 | `ff-desktop` | ✅ | `shell::tests` (SWAP routed through handle_command) | Req 18.8: `SWAP` command-line dispatchable; tab-switch affordances route through it |
+
+### Phase (swap-previous) -- bare SWAP toggles to the previously active workspace (CR-CH-031)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `shell::tests::swap_bare_toggles_to_previously_active_tab` | multi-tab-editor Req 18.7 (REVISED, CR-CH-031): bare `SWAP` with no split activates the Previous_Active_Tab (Alt+Tab-style toggle), not the picker; repeated bare SWAP ping-pongs |
+| `ff-desktop` | ✅ | `tab_manager::tests::{previous_active_tracks_last_other_tab, previous_active_none_with_single_tab, previous_active_repaired_on_close}` | multi-tab-editor Req 18.9 (CR-CH-031): `TabManager` tracks Previous_Active_Tab via the single `activate` seam (skips no-op activations); `close_tab` repairs the pointer for the removal shift |
+| `ff-desktop` | ✅ | `shell::tests::swap_without_split_or_previous_opens_tab_picker` | multi-tab-editor Req 18.10 (CR-CH-031): with only one tab (no Previous_Active_Tab), bare SWAP falls back to the picker |
 
 ### Phase (unified-menu-renderer) -- One config-driven menu renderer (menu-workspace Req 1.8, 2.1a-2.1c; CR-CH-018)
 

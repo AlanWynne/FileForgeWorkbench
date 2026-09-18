@@ -2077,18 +2077,60 @@ fn swap_command_swaps_split_focus() {
 }
 
 /// Validates: multi-tab-editor Requirement 18.7 -- bare SWAP with no split
-/// screen opens the tab picker (it no longer reports an error).
+/// screen and NO previously active tab (only one tab open) falls back to the
+/// tab picker (Req 18.10, CR-CH-031).
 #[test]
-fn swap_without_split_opens_tab_picker() {
-    // Validates: Requirement 18.7 (supersedes the old "shows error" behaviour)
+fn swap_without_split_or_previous_opens_tab_picker() {
+    // Validates: Requirement 18.10 -- single tab (no Previous_Active_Tab) -> picker.
     let mut shell = make_shell();
     assert!(shell.split_screen.is_none());
+    assert_eq!(shell.tabs.len(), 1, "make_shell starts with one tab");
     shell.handle_command("SWAP");
     assert!(
         shell.show_swap_list.is_some(),
-        "bare SWAP with no split must open the tab picker"
+        "bare SWAP with no split and no previous tab must open the tab picker"
     );
     assert!(shell.open_error.is_none());
+}
+
+/// Validates: multi-tab-editor Req 18.7/18.9 (CR-CH-031) -- bare SWAP with no
+/// split toggles to the previously active workspace, and repeated bare SWAP
+/// ping-pongs between the two most-recent tabs (does NOT open the picker).
+#[test]
+fn swap_bare_toggles_to_previously_active_tab() {
+    let mut shell = make_shell();
+    // Open a second tab. START inserts a fresh POM at index 0 (which resets the
+    // previous pointer); the original tab is now at index 1. Establish a normal
+    // two-tab navigation history by explicitly activating each: go to tab 2,
+    // then tab 1, so `previous_active` = tab 2 (index 1).
+    shell.handle_command("START");
+    assert!(shell.tabs.len() >= 2);
+    shell.handle_command("SWAP 2"); // activate index 1
+    assert_eq!(shell.tabs.active_index(), 1);
+    shell.handle_command("SWAP 1"); // activate index 0; previous = 1
+    assert_eq!(shell.tabs.active_index(), 0);
+
+    // Bare SWAP toggles back to the previously active tab (index 1), no picker.
+    shell.handle_command("SWAP");
+    assert_eq!(
+        shell.tabs.active_index(),
+        1,
+        "bare SWAP must toggle to the previously active tab"
+    );
+    assert!(
+        shell.show_swap_list.is_none(),
+        "toggle must NOT open the picker"
+    );
+    assert!(shell.open_error.is_none());
+
+    // Repeated bare SWAP ping-pongs back to index 0.
+    shell.handle_command("SWAP");
+    assert_eq!(
+        shell.tabs.active_index(),
+        0,
+        "repeated bare SWAP ping-pongs"
+    );
+    assert!(shell.show_swap_list.is_none());
 }
 
 /// Validates: multi-tab-editor Requirement 18.1 -- `SWAP n` activates the n-th

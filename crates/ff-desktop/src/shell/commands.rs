@@ -849,10 +849,15 @@ impl WorkbenchShell {
             let arg_upper = arg.to_uppercase();
 
             if arg.is_empty() {
-                // Bare SWAP: swap split focus if a split is active, else open the
-                // tab picker (Req 18.6, 18.7).
+                // Bare SWAP: swap split focus if a split is active (Req 18.6);
+                // else toggle to the previously active workspace (Req 18.7,
+                // CR-CH-031), falling back to the tab picker when there is no
+                // distinct previous tab (Req 18.10).
                 if let Some(ref mut ss) = self.split_screen {
                     ss.swap_focus();
+                    self.open_error = None;
+                } else if let Some(prev) = self.tabs.previous_active_index() {
+                    self.tabs.set_active(prev);
                     self.open_error = None;
                 } else {
                     self.show_swap_list = Some(());

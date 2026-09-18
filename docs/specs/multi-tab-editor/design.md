@@ -1603,3 +1603,38 @@ Design:
 
 No session-format or tab-model change. `SWAP` is recorded in history by the
 centralised recorder in handle_command.
+
+---
+
+## Design Delta: bare SWAP -> Previous_Active_Tab (Requirement 18.7, 18.9, 18.10; CR-CH-031)
+
+Bare `SWAP` (no argument, no split) becomes a quick Alt+Tab-style toggle to the
+previously active tab instead of opening the picker. `SWAP n`, `SWAP LIST`, and
+bare-SWAP-with-split are unchanged.
+
+- Previous_Active_Tab source (Req 18.9): `TabManager` gains a
+  `previous_active: Option<usize>` field, updated in `set_active(index)` -- the
+  OLD `active` becomes `previous_active` whenever the active index actually
+  changes (skip when `index == active`, so a no-op activation does not clobber
+  the toggle target). Expose `previous_active_index() -> Option<usize>`. Because
+  every activation path (`SWAP n`, tab click, `=`/menu navigation, open) funnels
+  through `set_active`, this captures "the last other tab" without touching each
+  call site. `close_tab` clears/repairs `previous_active` if it pointed at (or
+  past) the closed index so it never dangles.
+- Bare-SWAP arm (`shell/commands.rs`, the existing `arg.is_empty()` branch that
+  today does `self.show_swap_list = Some(())` when there is no split): change to
+  `match self.tabs.previous_active_index() { Some(i) => self.tabs.set_active(i),
+  None => self.show_swap_list = Some(()) }`. The split-active branch is
+  untouched (Req 18.6). Toggling to the previous tab goes through `set_active`,
+  which sets the just-left tab as the new `previous_active` -- so repeated bare
+  SWAP ping-pongs between the same two tabs (Req 18.9).
+- Fallback (Req 18.10): a single open tab, or a previous index that no longer
+  resolves, yields `None` -> open the picker (today's behaviour), preserving
+  discoverability.
+- No session-format change (Previous_Active_Tab is transient session state, not
+  persisted). No change to `SWAP LIST` / `SWAP n`.
+
+Testing: `tab_manager` unit tests for `previous_active` tracking (activation
+updates it, no-op activation does not, close repairs it); shell tests that bare
+SWAP with >=2 tabs toggles to the previous tab and ping-pongs, and that bare SWAP
+with one tab (no previous) opens the picker.

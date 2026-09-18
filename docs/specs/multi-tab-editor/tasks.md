@@ -562,3 +562,24 @@ This is a **Wave 8 (File I/O and Session)** sub-project. It depends on `ff-comma
 | Req 14: Session Persistence | AC 14.4 | Task 15 |
 | Req 14: Session Persistence | AC 14.5 | Task 15 |
 | Req 14: Session Persistence | AC 14.6 | Task 15 |
+
+## Phase (swap-previous) -- bare SWAP toggles to the previously active tab (CR-CH-031, Req 18.7/18.9/18.10)
+
+- [x] 21. Bare SWAP -> Previous_Active_Tab (Alt+Tab-style toggle)
+  - [x] 21.1 `TabManager`: add `previous_active: Option<usize>`; update it in
+          `set_active` (old active becomes previous when the index actually
+          changes; no-op activation leaves it); add `previous_active_index()`;
+          repair/clear it in `close_tab` so it never dangles. Failing unit tests
+          first.
+    - Validates: multi-tab-editor Requirement 18.9
+  - [x] 21.2 Bare-SWAP arm in `shell/commands.rs` (no-split branch): activate
+          `previous_active_index()` when present, else fall back to the picker
+          (`show_swap_list = Some(())`). Leave the split-active branch (Req 18.6)
+          and `SWAP n` / `SWAP LIST` unchanged.
+    - Validates: multi-tab-editor Requirement 18.7, 18.10
+  - [x] 21.3 Tests: `tab_manager` unit tests (activation updates previous, no-op
+          does not, close repairs); shell tests (bare SWAP with >=2 tabs toggles
+          to previous and ping-pongs; bare SWAP with one tab opens the picker;
+          bare SWAP with a split still swaps split focus). verify.ps1 CLEAN (FULL,
+          nextest); rebuild ffwb.exe; update TCR Req 18.7/18.9/18.10.
+    - Covers: multi-tab-editor Requirement 18.7, 18.9, 18.10

@@ -14,6 +14,11 @@ use crate::tab_state::{TabId, TabKind, TabState};
 pub struct TabManager {
     tabs: Vec<TabState>,
     active: usize,
+    /// The tab index that was active immediately BEFORE the current `active`
+    /// (CR-CH-031, multi-tab-editor Req 18.9). Updated on every real active-tab
+    /// change so bare `SWAP` can toggle to the previously active workspace.
+    /// `None` until a second distinct tab has been activated.
+    previous_active: Option<usize>,
     next_id: u64,
 }
 
@@ -30,8 +35,31 @@ impl TabManager {
         Self {
             tabs: vec![tab],
             active: 0,
+            previous_active: None,
             next_id: 1,
         }
+    }
+
+    /// Set the active tab index, recording the outgoing index as the
+    /// Previous_Active_Tab (CR-CH-031, Req 18.9). The single internal seam every
+    /// activation path uses. A no-op activation (same index) does NOT clobber
+    /// the previous pointer, so a bare-`SWAP` toggle target survives. Clamps to
+    /// the valid range.
+    fn activate(&mut self, index: usize) {
+        let clamped = index.min(self.tabs.len().saturating_sub(1));
+        if clamped != self.active {
+            self.previous_active = Some(self.active);
+            self.active = clamped;
+        }
+    }
+
+    /// The tab index that was active immediately before the current one, or
+    /// `None` when there is no distinct previous tab (CR-CH-031, Req 18.9).
+    /// Returns `None` if the recorded index no longer resolves or equals the
+    /// current active (so a stale/dangling pointer never toggles).
+    pub fn previous_active_index(&self) -> Option<usize> {
+        self.previous_active
+            .filter(|&p| p < self.tabs.len() && p != self.active)
     }
 
     /// Number of open tabs.
@@ -44,9 +72,10 @@ impl TabManager {
         self.active
     }
 
-    /// Set the active tab by index. Clamps to valid range.
+    /// Set the active tab by index. Clamps to valid range. Records the outgoing
+    /// tab as the Previous_Active_Tab (CR-CH-031).
     pub fn set_active(&mut self, index: usize) {
-        self.active = index.min(self.tabs.len().saturating_sub(1));
+        self.activate(index);
     }
 
     /// Immutable slice of all tabs (for rendering the tab bar).
@@ -81,6 +110,7 @@ impl TabManager {
             // We cannot call close_tab (it guards len >= 1), so swap directly.
             self.tabs.clear();
             self.active = 0;
+            self.previous_active = None;
         }
     }
 
@@ -94,7 +124,11 @@ impl TabManager {
         self.next_id += 1;
         let tab = TabState::pom(id, document);
         self.tabs.insert(0, tab);
+        // Insert-at-0 shifts every existing index up by one, invalidating the
+        // Previous_Active_Tab pointer; a fresh POM has no meaningful previous
+        // (CR-CH-031). Reset it rather than track the shift.
         self.active = 0;
+        self.previous_active = None;
         let _ = runtime;
     }
 
@@ -107,7 +141,7 @@ impl TabManager {
         self.next_id += 1;
         let tab = TabState::untitled(id, document, 1);
         self.tabs.push(tab);
-        self.active = self.tabs.len() - 1;
+        self.activate(self.tabs.len() - 1);
         let _ = runtime;
     }
 
@@ -117,7 +151,7 @@ impl TabManager {
     /// Validates: Requirement 1.1, 11.2
     pub fn open_files_panel_tab(&mut self, runtime: &Runtime) {
         if let Some(idx) = self.tabs.iter().position(|t| t.kind == TabKind::FilesPanel) {
-            self.active = idx;
+            self.activate(idx);
             return;
         }
         let document = ff_document_model::new_document();
@@ -125,7 +159,7 @@ impl TabManager {
         self.next_id += 1;
         let tab = TabState::files_panel(id, document);
         self.tabs.push(tab);
-        self.active = self.tabs.len() - 1;
+        self.activate(self.tabs.len() - 1);
         let _ = runtime;
     }
 
@@ -139,7 +173,7 @@ impl TabManager {
             .iter()
             .position(|t| t.kind == TabKind::ConfigPanel)
         {
-            self.active = idx;
+            self.activate(idx);
             return;
         }
         let document = ff_document_model::new_document();
@@ -147,7 +181,7 @@ impl TabManager {
         self.next_id += 1;
         let tab = TabState::config_panel(id, document);
         self.tabs.push(tab);
-        self.active = self.tabs.len() - 1;
+        self.activate(self.tabs.len() - 1);
         let _ = runtime;
     }
 
@@ -161,7 +195,7 @@ impl TabManager {
         self.next_id += 1;
         let tab = crate::tab_state::TabState::file_explorer_panel(id, document);
         self.tabs.push(tab);
-        self.active = self.tabs.len() - 1;
+        self.activate(self.tabs.len() - 1);
         let _ = runtime;
     }
 
@@ -174,7 +208,7 @@ impl TabManager {
         self.next_id += 1;
         let tab = crate::tab_state::TabState::search_results_panel(id, document);
         self.tabs.push(tab);
-        self.active = self.tabs.len() - 1;
+        self.activate(self.tabs.len() - 1);
         let _ = runtime;
     }
 
@@ -188,7 +222,7 @@ impl TabManager {
             .iter()
             .position(|t| t.kind == TabKind::PluginManager)
         {
-            self.active = idx;
+            self.activate(idx);
             return;
         }
         let document = ff_document_model::new_document();
@@ -196,7 +230,7 @@ impl TabManager {
         self.next_id += 1;
         let tab = crate::tab_state::TabState::plugin_manager(id, document);
         self.tabs.push(tab);
-        self.active = self.tabs.len() - 1;
+        self.activate(self.tabs.len() - 1);
         let _ = runtime;
     }
 
@@ -206,7 +240,7 @@ impl TabManager {
     /// Validates: notification-system Requirement 2.1
     pub fn open_event_log_tab(&mut self, runtime: &Runtime) {
         if let Some(idx) = self.tabs.iter().position(|t| t.kind == TabKind::EventLog) {
-            self.active = idx;
+            self.activate(idx);
             return;
         }
         let document = ff_document_model::new_document();
@@ -214,7 +248,7 @@ impl TabManager {
         self.next_id += 1;
         let tab = crate::tab_state::TabState::event_log(id, document);
         self.tabs.push(tab);
-        self.active = self.tabs.len() - 1;
+        self.activate(self.tabs.len() - 1);
         let _ = runtime;
     }
 
@@ -228,7 +262,7 @@ impl TabManager {
             .iter()
             .position(|t| t.kind == TabKind::MacroLibrary)
         {
-            self.active = idx;
+            self.activate(idx);
             return;
         }
         let document = ff_document_model::new_document();
@@ -236,7 +270,7 @@ impl TabManager {
         self.next_id += 1;
         let tab = crate::tab_state::TabState::macro_library(id, document);
         self.tabs.push(tab);
-        self.active = self.tabs.len() - 1;
+        self.activate(self.tabs.len() - 1);
         let _ = runtime;
     }
 
@@ -251,7 +285,7 @@ impl TabManager {
             .iter()
             .position(|t| t.kind == TabKind::CommandConfigurator)
         {
-            self.active = idx;
+            self.activate(idx);
             return;
         }
         let document = ff_document_model::new_document();
@@ -259,7 +293,7 @@ impl TabManager {
         self.next_id += 1;
         let tab = crate::tab_state::TabState::command_configurator(id, document);
         self.tabs.push(tab);
-        self.active = self.tabs.len() - 1;
+        self.activate(self.tabs.len() - 1);
         let _ = runtime;
     }
 
@@ -276,7 +310,7 @@ impl TabManager {
             .iter()
             .position(|t| t.kind == TabKind::ThemeEditor)
         {
-            self.active = idx;
+            self.activate(idx);
             return;
         }
         let document = ff_document_model::new_document();
@@ -284,7 +318,7 @@ impl TabManager {
         self.next_id += 1;
         let tab = crate::tab_state::TabState::theme_editor(id, document);
         self.tabs.push(tab);
-        self.active = self.tabs.len() - 1;
+        self.activate(self.tabs.len() - 1);
         let _ = runtime;
     }
 
@@ -301,7 +335,7 @@ impl TabManager {
             .iter()
             .position(|t| t.kind == TabKind::MenusEditor)
         {
-            self.active = idx;
+            self.activate(idx);
             return;
         }
         let document = ff_document_model::new_document();
@@ -309,7 +343,7 @@ impl TabManager {
         self.next_id += 1;
         let tab = crate::tab_state::TabState::menus_editor(id, document);
         self.tabs.push(tab);
-        self.active = self.tabs.len() - 1;
+        self.activate(self.tabs.len() - 1);
         let _ = runtime;
     }
 
@@ -336,7 +370,7 @@ impl TabManager {
                     .map(|mw| mw.file_path == file_path)
                     .unwrap_or(false)
         }) {
-            self.active = idx;
+            self.activate(idx);
             return;
         }
         let mw_state =
@@ -346,7 +380,7 @@ impl TabManager {
         self.next_id += 1;
         let tab = crate::tab_state::TabState::menu_workspace_tab(id, document, mw_state);
         self.tabs.push(tab);
-        self.active = self.tabs.len() - 1;
+        self.activate(self.tabs.len() - 1);
         let _ = runtime;
     }
 
@@ -418,7 +452,7 @@ impl TabManager {
             .iter()
             .position(|t| t.path.as_deref() == Some(path))
         {
-            self.active = idx;
+            self.activate(idx);
             return Ok(());
         }
 
@@ -445,7 +479,7 @@ impl TabManager {
         self.next_id += 1;
         let tab = TabState::for_file(id, path.to_string(), document, line_count, line_end_mode);
         self.tabs.push(tab);
-        self.active = self.tabs.len() - 1;
+        self.activate(self.tabs.len() - 1);
         Ok(())
     }
 
@@ -492,11 +526,25 @@ impl TabManager {
             return;
         }
         self.tabs.remove(index);
+
+        // Repair the active index for the removal shift (indices > index shift
+        // down by one). This is index bookkeeping, not a user activation, so it
+        // does NOT go through `activate`.
         if self.active >= self.tabs.len() {
             self.active = self.tabs.len() - 1;
         } else if index < self.active {
             self.active -= 1;
         }
+
+        // Repair the Previous_Active_Tab pointer for the same shift (CR-CH-031):
+        // clear it if it pointed at the closed tab, else shift it down when it
+        // was after the removed index. `previous_active_index()` also guards
+        // against an out-of-range/equal-to-active value, so this is belt-and-braces.
+        self.previous_active = match self.previous_active {
+            Some(p) if p == index => None,
+            Some(p) if p > index => Some(p - 1),
+            other => other,
+        };
     }
 }
 
@@ -678,6 +726,52 @@ mod tests {
         let mut mgr = TabManager::new(&runtime, "");
         mgr.close_tab(0);
         assert_eq!(mgr.len(), 1); // cannot go below 1
+    }
+
+    // Validates: multi-tab-editor Req 18.9 (CR-CH-031) -- activating a different
+    // tab records the outgoing index as the Previous_Active_Tab; a no-op
+    // activation does not clobber it.
+    #[test]
+    fn previous_active_tracks_last_other_tab() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = TabManager::new(&runtime, "");
+        mgr.new_untitled_tab(&runtime); // now 2 tabs, active = 1, prev = 0
+        assert_eq!(mgr.active_index(), 1);
+        assert_eq!(mgr.previous_active_index(), Some(0));
+
+        mgr.set_active(0); // active = 0, prev = 1
+        assert_eq!(mgr.previous_active_index(), Some(1));
+
+        // A no-op activation (same index) must NOT change the previous pointer.
+        mgr.set_active(0);
+        assert_eq!(mgr.previous_active_index(), Some(1));
+    }
+
+    // Validates: multi-tab-editor Req 18.9 -- a single-tab manager has no
+    // distinct previous tab.
+    #[test]
+    fn previous_active_none_with_single_tab() {
+        let runtime = Runtime::new().expect("runtime");
+        let mgr = TabManager::new(&runtime, "");
+        assert_eq!(mgr.previous_active_index(), None);
+    }
+
+    // Validates: multi-tab-editor Req 18.9 -- closing a tab repairs the
+    // Previous_Active_Tab pointer (clears it if it pointed at the closed tab).
+    #[test]
+    fn previous_active_repaired_on_close() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = TabManager::new(&runtime, "");
+        mgr.new_untitled_tab(&runtime); // 2 tabs, active 1, prev 0
+        mgr.new_untitled_tab(&runtime); // 3 tabs, active 2, prev 1
+        assert_eq!(mgr.previous_active_index(), Some(1));
+        // Close the previous tab (index 1); the pointer must not dangle.
+        mgr.close_tab(1);
+        assert_eq!(
+            mgr.previous_active_index(),
+            None,
+            "closing the previous tab clears the dangling pointer"
+        );
     }
 
     /// Validates: task 18.5 — set_active clamps to valid range.
