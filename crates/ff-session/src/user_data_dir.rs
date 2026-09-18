@@ -143,15 +143,72 @@ impl UserDataDir {
     }
 }
 
+// === Application Profile (CR-NR-081, startup-and-session Requirement 22) =====
+
+/// Process-global Active_Profile. `None` = the DEFAULT_PROFILE (the pre-CR-NR-081
+/// User_Data_Dir location, no behaviour change). Set ONCE at startup, before any
+/// subsystem resolves the User_Data_Dir (Requirement 22.5).
+static ACTIVE_PROFILE: std::sync::RwLock<Option<String>> = std::sync::RwLock::new(None);
+
+/// Set the Active_Profile for the process (Requirement 22.1).
+///
+/// `Some(name)` selects Application_Profile `name`; `None` (or an empty/blank
+/// name) selects the DEFAULT_PROFILE. Call this ONCE during startup BEFORE any
+/// `UserDataDir::resolve`/configuration init so no subsystem resolves the wrong
+/// profile's data.
+///
+/// Validates: startup-and-session Requirement 22.1, 22.5, 22.6
+pub fn set_active_profile(name: Option<&str>) {
+    let normalised = name
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string);
+    if let Ok(mut guard) = ACTIVE_PROFILE.write() {
+        *guard = normalised;
+    }
+}
+
+/// Return the Active_Profile name, or `None` for the DEFAULT_PROFILE.
+///
+/// Validates: startup-and-session Requirement 22.1
+pub fn active_profile() -> Option<String> {
+    ACTIVE_PROFILE.read().ok().and_then(|g| g.clone())
+}
+
+/// Slug a profile name for use as a directory component (Requirement 22.3):
+/// lowercase, with every non-alphanumeric character replaced by `-`. Matches the
+/// slugging used for menu / menu-bar names so naming is consistent across the
+/// app.
+///
+/// Validates: startup-and-session Requirement 22.3
+pub fn profile_slug(name: &str) -> String {
+    name.trim()
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect()
+}
+
 /// Resolve the platform-default User Data Directory path.
 ///
-/// Uses the `dirs` crate for platform-aware directory resolution.
+/// Uses the `dirs` crate for platform-aware directory resolution. WHEN an
+/// Application_Profile is active (CR-NR-081, Requirement 22), the path is the
+/// per-profile sub-directory `<base>/ffworkbench/profiles/<slug>/`; otherwise it
+/// is `<base>/ffworkbench/` (the DEFAULT_PROFILE, unchanged). Every
+/// `UserDataDir::resolve(None)` caller funnels through here, so the active
+/// profile isolates all user data with no per-subsystem change.
+///
+/// Validates: startup-and-session Requirement 22.2, 22.3, 22.9
 fn platform_default_path() -> Result<PathBuf, SessionError> {
     let base = dirs::config_dir().ok_or_else(|| SessionError::UserDataDirUnavailable {
         path: PathBuf::from("(unknown)"),
         reason: "cannot determine platform config directory".to_string(),
     })?;
-    Ok(base.join(APP_DIR_NAME))
+    let app_base = base.join(APP_DIR_NAME);
+    match active_profile() {
+        Some(name) => Ok(app_base.join("profiles").join(profile_slug(&name))),
+        None => Ok(app_base),
+    }
 }
 
 #[cfg(test)]
@@ -173,6 +230,58 @@ mod tests {
         let udd = UserDataDir::resolve(None).unwrap();
         let path_str = udd.path().to_string_lossy();
         assert!(path_str.contains(APP_DIR_NAME));
+    }
+
+    // Validates: startup-and-session Req 22.3 (CR-NR-081) -- profile_slug rule.
+    #[test]
+    fn profile_slug_lowercases_and_replaces_non_alphanumerics() {
+        assert_eq!(profile_slug("ispf"), "ispf");
+        assert_eq!(profile_slug("Rust"), "rust");
+        assert_eq!(profile_slug("My Profile"), "my-profile");
+        assert_eq!(profile_slug("ISPF_3270"), "ispf-3270");
+        assert_eq!(profile_slug("  spaced  "), "spaced");
+    }
+
+    // Validates: startup-and-session Req 22.1, 22.2, 22.3, 22.9 (CR-NR-081) --
+    // the active profile redirects the resolved User_Data_Dir to a per-profile
+    // sub-directory; the DEFAULT_PROFILE (None) is the base, unchanged; distinct
+    // profiles resolve to distinct dirs. A SINGLE serialized test drives the
+    // process-global so it does not race other tests; it always restores None.
+    #[test]
+    fn active_profile_redirects_resolved_user_data_dir() {
+        // Default (None): base path, unchanged (Req 22.2).
+        set_active_profile(None);
+        let default_path = UserDataDir::resolve(None).unwrap().path().to_path_buf();
+        assert!(
+            default_path.ends_with(APP_DIR_NAME),
+            "default = <base>/ffworkbench"
+        );
+        assert!(
+            !default_path.to_string_lossy().contains("profiles"),
+            "default profile must NOT be under a profiles/ sub-directory"
+        );
+
+        // Active profile 'ispf' -> <base>/ffworkbench/profiles/ispf (Req 22.1, 22.3).
+        set_active_profile(Some("ispf"));
+        let ispf_path = UserDataDir::resolve(None).unwrap().path().to_path_buf();
+        assert_eq!(ispf_path, default_path.join("profiles").join("ispf"));
+        assert_eq!(active_profile().as_deref(), Some("ispf"));
+
+        // A different profile resolves to a DISTINCT dir (Req 22.9).
+        set_active_profile(Some("Rust"));
+        let rust_path = UserDataDir::resolve(None).unwrap().path().to_path_buf();
+        assert_eq!(rust_path, default_path.join("profiles").join("rust"));
+        assert_ne!(rust_path, ispf_path);
+
+        // Empty/blank name is treated as the DEFAULT_PROFILE (Req 22.6).
+        set_active_profile(Some("   "));
+        assert_eq!(active_profile(), None);
+        let blank_path = UserDataDir::resolve(None).unwrap().path().to_path_buf();
+        assert_eq!(blank_path, default_path);
+
+        // Always restore the default so no other test sees a stray profile.
+        set_active_profile(None);
+        assert_eq!(active_profile(), None);
     }
 
     #[test]

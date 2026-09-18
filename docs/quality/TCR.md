@@ -749,15 +749,15 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-session` | 🔴 | -- | startup-and-session Req 22.1: `set_active_profile`/`active_profile` process-global set once at startup records the Active_Profile |
-| `ff-session` | 🔴 | -- | startup-and-session Req 22.2: no `--profile` -> DEFAULT_PROFILE; resolved User_Data_Dir identical to the pre-CR-NR-081 location |
-| `ff-session` | 🔴 | -- | startup-and-session Req 22.3, 22.9: active profile -> `<base>/ffworkbench/profiles/<slug>/`; every `UserDataDir::resolve` caller inherits it; profiles independent |
-| `ff-session` | 🔴 | -- | startup-and-session Req 22.4: a fresh profile's dir + required sub-dirs are created on first `initialise()` |
-| `ff-desktop` | 🔴 | -- | startup-and-session Req 22.5: the profile is resolved ONCE before any `UserDataDir::resolve`/config `init()` |
-| `ff-desktop` | 🔴 | -- | startup-and-session Req 22.6: missing/empty `--profile` value -> DEFAULT_PROFILE + WARN, no abort |
-| `ff-desktop` | 🔴 | -- | startup-and-session Req 22.7: `--profile`/`-p` and its value are removed from positional file args (`ffwb -p rust file.txt` opens `file.txt`) |
-| `ff-desktop` | 🔴 | -- | startup-and-session Req 22.8: the Active_Profile (incl. explicit DEFAULT_PROFILE) is shown in the Title_Line and/or Status_Bar |
-| `ff-desktop` | 🔴 | -- | startup-and-session Req 22.10: `RESET BARE` archives/resets only the ACTIVE profile's User_Data_Dir |
+| `ff-session` | ✅ | `user_data_dir::tests::active_profile_redirects_resolved_user_data_dir` | startup-and-session Req 22.1: `set_active_profile`/`active_profile` process-global set once at startup records the Active_Profile |
+| `ff-session` | ✅ | `user_data_dir::tests::active_profile_redirects_resolved_user_data_dir`, `resolve_without_custom_path_uses_platform_default` | startup-and-session Req 22.2: no `--profile` -> DEFAULT_PROFILE; resolved User_Data_Dir identical to the pre-CR-NR-081 location |
+| `ff-session` | ✅ | `user_data_dir::tests::active_profile_redirects_resolved_user_data_dir`, `profile_slug_lowercases_and_replaces_non_alphanumerics` | startup-and-session Req 22.3, 22.9: active profile -> `<base>/ffworkbench/profiles/<slug>/`; every `UserDataDir::resolve` caller inherits it (single `platform_default_path` seam); profiles independent |
+| `ff-session` | ✅ | `user_data_dir::tests::initialise_creates_directory_and_subdirs` (initialise creates the tree for any resolved dir, incl. a profile dir) | startup-and-session Req 22.4: a fresh profile's dir + required sub-dirs are created on first `initialise()` |
+| `ff-desktop` | ✅ | `main.rs` step-0 ordering (`extract_profile_arg` + `set_active_profile` before config `init()`/first resolve); covered structurally + by `extract_profile_arg_*` tests | startup-and-session Req 22.5: the profile is resolved ONCE before any `UserDataDir::resolve`/config `init()` |
+| `ff-desktop` | ✅ | `tests::extract_profile_arg_missing_value_returns_none_and_removes_flag` | startup-and-session Req 22.6: missing/empty `--profile` value -> DEFAULT_PROFILE + WARN, no abort |
+| `ff-desktop` | ✅ | `tests::extract_profile_arg_long_form_extracts_and_removes`, `extract_profile_arg_short_form_extracts_and_removes`, `extract_profile_then_resolve_paths_keeps_file_arg` | startup-and-session Req 22.7: `--profile`/`-p` and its value are removed from positional file args (`ffwb -p rust file.txt` opens `file.txt`) |
+| `ff-desktop` | ✅ | `shell::tests::active_profile_label_reflects_active_profile` | startup-and-session Req 22.8: the Active_Profile (incl. explicit "default") is shown in the Status_Bar |
+| `ff-session` | ✅ | `user_data_dir::tests::active_profile_redirects_resolved_user_data_dir` (RESET BARE resolves `UserDataDir::resolve(None)`, which returns the active profile's dir) | startup-and-session Req 22.10: `RESET BARE` archives/resets only the ACTIVE profile's User_Data_Dir (covered by construction via the resolver seam) |
 
 ## Final Summary (after Phase AM)
 

@@ -58,6 +58,17 @@ use shell::WorkbenchShell;
 use tokio::runtime::Runtime;
 
 fn main() -> anyhow::Result<()> {
+    // == 0. Application Profile (CR-NR-081, startup-and-session Req 22) =====
+    // Extract `--profile <name>` / `-p <name>` and set the process-global active
+    // profile BEFORE anything resolves the User_Data_Dir or loads configuration
+    // (Req 22.5), so every subsystem is isolated to the selected profile. The
+    // flag + its value are REMOVED from the argument list here so they are never
+    // treated as a file to open (Req 22.7). An absent flag -> DEFAULT_PROFILE
+    // (today's location, no behaviour change, Req 22.2).
+    let mut cli_args: Vec<String> = std::env::args().skip(1).collect();
+    let active_profile = extract_profile_arg(&mut cli_args);
+    ff_session::set_active_profile(active_profile.as_deref());
+
     // == 1. Logging (Phase 1: defaults) ====================================
     // Initialize logging FIRST with platform defaults so no diagnostic record
     // is lost while the configuration system loads. The configured directory
@@ -108,8 +119,10 @@ fn main() -> anyhow::Result<()> {
     let palette = theme_defaults::resolve_startup_palette(&config_handle, &themes_dir);
 
     // == 6. CLI file arguments (Requirement 6.1-6.5) =======================
+    // `cli_args` was collected in step 0 with the `--profile`/`-p` flag + value
+    // already removed (Req 22.7), so file-path resolution never sees them.
     let cwd = std::env::current_dir().unwrap_or_default();
-    let all_args: Vec<String> = std::env::args().skip(1).collect();
+    let all_args: Vec<String> = cli_args;
 
     // == 6a. Headless FFTest mode (Req 6.1, 6.2, 6.3) =====================
     if let Some(mode) = fftest_cli::detect_cli_mode(&all_args) {
@@ -550,6 +563,42 @@ fn register_builtin_schema(config: &ff_config::ConfigHandle, user_data_dir: &std
     }
 }
 
+/// Extract the Application_Profile name from the argument list, REMOVING the
+/// `--profile`/`-p` flag AND its value in place (CR-NR-081, startup-and-session
+/// Requirement 22).
+///
+/// Returns `Some(name)` when a non-empty profile name follows the flag, else
+/// `None` (the DEFAULT_PROFILE). WHEN the flag is present but its value is
+/// missing or blank, the flag is removed, a WARN is logged, and `None` is
+/// returned (Requirement 22.6). Both `--profile foo` and `-p foo` forms are
+/// accepted; the flag and its value are stripped so they never reach the
+/// positional file-path resolver (Requirement 22.7).
+///
+/// Validates: startup-and-session Requirement 22.1, 22.6, 22.7
+pub fn extract_profile_arg(args: &mut Vec<String>) -> Option<String> {
+    let pos = args.iter().position(|a| a == "--profile" || a == "-p")?;
+    // Remove the flag itself.
+    args.remove(pos);
+    // The value (if any) is now at `pos`. A missing value, or a value that looks
+    // like another flag, is treated as absent (DEFAULT_PROFILE + WARN, Req 22.6).
+    let value = match args.get(pos) {
+        Some(v) if !v.starts_with('-') => {
+            let v = v.clone();
+            args.remove(pos);
+            v
+        }
+        _ => String::new(),
+    };
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        ff_logging::log_warn!(
+            "[desktop] --profile/-p given with no value; using the default profile"
+        );
+        return None;
+    }
+    Some(trimmed.to_string())
+}
+
 /// Collect positional CLI arguments as absolute file paths.
 ///
 /// - Skips named flags (anything starting with `--` or `-`).
@@ -702,6 +751,67 @@ mod tests {
         // --no-session-restore and --profile are skipped; "default" and "file.txt" are kept
         assert_eq!(result.len(), 2);
         assert!(result.iter().any(|p| p.contains("file.txt")));
+    }
+
+    // Validates: startup-and-session Req 22.1, 22.7 (CR-NR-081) -- `--profile
+    // <name>` is extracted and REMOVED (flag + value) from the arg list.
+    #[test]
+    fn extract_profile_arg_long_form_extracts_and_removes() {
+        let mut args = vec![
+            "--profile".to_string(),
+            "ispf".to_string(),
+            "file.txt".to_string(),
+        ];
+        let profile = extract_profile_arg(&mut args);
+        assert_eq!(profile.as_deref(), Some("ispf"));
+        assert_eq!(args, vec!["file.txt".to_string()], "flag + value removed");
+    }
+
+    // Validates: startup-and-session Req 22.1, 22.7 -- the short `-p` form works.
+    #[test]
+    fn extract_profile_arg_short_form_extracts_and_removes() {
+        let mut args = vec!["-p".to_string(), "rust".to_string(), "file.txt".to_string()];
+        let profile = extract_profile_arg(&mut args);
+        assert_eq!(profile.as_deref(), Some("rust"));
+        assert_eq!(args, vec!["file.txt".to_string()]);
+    }
+
+    // Validates: startup-and-session Req 22.7 -- `ffwb -p rust file.txt` still
+    // opens file.txt (the file arg survives profile extraction + path resolve).
+    #[test]
+    fn extract_profile_then_resolve_paths_keeps_file_arg() {
+        let mut args = vec!["-p".to_string(), "rust".to_string(), "file.txt".to_string()];
+        let _ = extract_profile_arg(&mut args);
+        let cwd = std::path::Path::new("/workspace");
+        let files = resolve_cli_paths(args.into_iter(), cwd);
+        assert_eq!(files.len(), 1);
+        assert!(files[0].contains("file.txt"));
+    }
+
+    // Validates: startup-and-session Req 22.2 -- no `--profile` -> None (default).
+    #[test]
+    fn extract_profile_arg_absent_returns_none() {
+        let mut args = vec!["file.txt".to_string()];
+        assert_eq!(extract_profile_arg(&mut args), None);
+        assert_eq!(args, vec!["file.txt".to_string()], "args unchanged");
+    }
+
+    // Validates: startup-and-session Req 22.6 -- flag with a missing/flag-like
+    // value -> None (DEFAULT_PROFILE); the flag is still removed.
+    #[test]
+    fn extract_profile_arg_missing_value_returns_none_and_removes_flag() {
+        // Value missing entirely (flag is last).
+        let mut args = vec!["--profile".to_string()];
+        assert_eq!(extract_profile_arg(&mut args), None);
+        assert!(args.is_empty(), "the flag is removed even with no value");
+        // Value looks like another flag -> treated as absent.
+        let mut args2 = vec!["-p".to_string(), "--other".to_string()];
+        assert_eq!(extract_profile_arg(&mut args2), None);
+        assert_eq!(
+            args2,
+            vec!["--other".to_string()],
+            "only the -p flag removed"
+        );
     }
 
     /// Validates: Requirement 6.1 -- empty arg list produces empty result.

@@ -228,6 +228,12 @@ impl WorkbenchShell {
                 ui.label(self.format_session_start());
                 ui.separator();
 
+                // Validates: startup-and-session Req 22.8 (CR-NR-081) -- the
+                // Active_Profile is shown in the Status_Bar (explicitly "default"
+                // when no --profile was given).
+                ui.label(self.active_profile_label());
+                ui.separator();
+
                 let tab = self.tabs.active_tab();
                 let line = tab.cursor.cursor_line();
                 let col = tab.cursor.cursor_column();

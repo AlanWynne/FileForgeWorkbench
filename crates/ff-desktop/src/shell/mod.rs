@@ -764,6 +764,18 @@ impl WorkbenchShell {
         format!("Started: {}", self.session_start.format("%H:%M"))
     }
 
+    /// The Active_Profile label for the Status_Bar / Title_Line (CR-NR-081,
+    /// startup-and-session Requirement 22.8). Shows the running Application_Profile
+    /// name, or `Profile: default` when no `--profile` was given.
+    ///
+    /// Validates: startup-and-session Requirement 22.8
+    pub(crate) fn active_profile_label(&self) -> String {
+        match ff_session::active_profile() {
+            Some(name) => format!("Profile: {name}"),
+            None => "Profile: default".to_string(),
+        }
+    }
+
     /// Format the logoff message as `Logoff at HH:MM -- session duration: Xm Ys`.
     ///
     /// Validates: Requirement 20.2

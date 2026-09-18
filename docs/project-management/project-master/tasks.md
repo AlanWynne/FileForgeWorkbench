@@ -2350,21 +2350,21 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 > profile shown in the UI. (Re-scoped from Named Workspaces; the per-tab
 > "Workspace Profile" concept is deferred to CR-NR-082.)
 
-- [ ] AP.core startup-and-session Task 35.1-35.3: `ff-session` process-global
+- [x] AP.core startup-and-session Task 35.1-35.3: `ff-session` process-global
       Active_Profile (`set_active_profile`/`active_profile` + `profile_slug`);
       `platform_default_path` joins `profiles/<slug>` when active, else base
       unchanged; fresh-profile dir created on `initialise`.
       Covers: startup-and-session Req 22.1-22.4, 22.9.
-- [ ] AP.cli startup-and-session Task 35.4: `main.rs` `extract_profile_arg`
+- [x] AP.cli startup-and-session Task 35.4: `main.rs` `extract_profile_arg`
       removes `--profile`/`-p` + value and calls `set_active_profile` before any
       resolve/`init()`; missing value -> default + WARN; `resolve_cli_paths`
       excludes the flag/value.
       Covers: startup-and-session Req 22.5-22.7.
-- [ ] AP.ui startup-and-session Task 35.5-35.7: display the active profile in the
+- [x] AP.ui startup-and-session Task 35.5-35.7: display the active profile in the
       Title_Line/Status_Bar; RESET BARE scopes to the active profile; TCR;
       verify.ps1 CLEAN; ffwb.exe rebuilt.
       Covers: startup-and-session Req 22.8, 22.10.
 
 | Status | Count |
 |--------|-------|
-| `[ ]` Phase (app-profile) | Application Profiles (CR-NR-081) -- SPEC DONE, PENDING GATE APPROVAL: startup-and-session Req 22.1-22.10 (`--profile`/`-p` redirects the User_Data_Dir to `profiles/<slug>/` at the single `platform_default_path` seam; default unchanged; active profile shown in UI; RESET BARE scoped). Sliced AP.core / AP.cli / AP.ui. No code yet. Per-tab Workspace Profile deferred to CR-NR-082 |
+| `[x]` Phase (app-profile) COMPLETE | Application Profiles (CR-NR-081) -- DONE: startup-and-session Req 22.1-22.10 (`--profile`/`-p` redirects the User_Data_Dir to `profiles/<slug>/` at the single `ff_session::platform_default_path` seam; default unchanged; active profile shown in the Status_Bar; RESET BARE scoped by construction). AP.core (ff-session active-profile global + resolver), AP.cli (main.rs `extract_profile_arg` before any resolve/init), AP.ui (`active_profile_label` Status_Bar segment). verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR Req 22 rows PASS. Per-tab Workspace Profile deferred to CR-NR-082 |

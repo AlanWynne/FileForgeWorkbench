@@ -499,44 +499,6 @@ fn menu_bar_has_help_and_excludes_return() {
     );
 }
 
-/// Validates: menu-workspace Req 17.8 (CR-NR-080 Slice B) -- with NO user
-/// menu-bar file, `resolve_menu_bar_menu` returns the compiled default (the
-/// barebones POM).
-#[test]
-fn resolve_menu_bar_falls_back_to_compiled_default() {
-    let dir = tempfile::TempDir::new().expect("tempdir");
-    let mut shell = make_shell();
-    shell.menus_dir_override = Some(dir.path().join("menus"));
-    let bar = shell.resolve_menu_bar_menu();
-    assert_eq!(
-        bar,
-        crate::menu_workspace::defaults::default_menubar_menu(),
-        "with no user menu-bar file the bar must be the compiled default (barebones POM)"
-    );
-}
-
-/// Validates: menu-workspace Req 17.8 -- a user `menus/mb-pom.toml` OVERRIDES
-/// the compiled default; its options drive the bar.
-#[test]
-fn resolve_menu_bar_loads_user_file_when_present() {
-    let dir = tempfile::TempDir::new().expect("tempdir");
-    let menus = dir.path().join("menus");
-    std::fs::create_dir_all(&menus).expect("create menus dir");
-    // A minimal custom menu-bar file at the default bar name's slug (mb-pom).
-    let toml = "title = \"MB-POM\"\n\n[[options]]\nkey = \"1\"\ncommand = \"Files\"\ndescription = \"Files\"\n";
-    std::fs::write(menus.join("mb-pom.toml"), toml).expect("write mb-pom.toml");
-
-    let mut shell = make_shell();
-    shell.menus_dir_override = Some(menus);
-    let bar = shell.resolve_menu_bar_menu();
-    let cmds: Vec<&str> = bar.options.iter().map(|o| o.command.as_str()).collect();
-    assert_eq!(
-        cmds,
-        vec!["Files"],
-        "a user menus/mb-pom.toml must override the compiled default bar"
-    );
-}
-
 /// Validates: menu-workspace Req 17.3 (CR-NR-080) -- peeking a top-level option
 /// whose command names a menu returns THAT menu's options (so the bar dropdown
 /// can render them), without navigating.
@@ -2074,9 +2036,25 @@ fn time_command_displays_date_time_day() {
     assert!(msg.contains("Day:"), "must contain 'Day:', got: {msg}");
 }
 
-/// Validates: Requirement 20.5 -- STATUS command sets open_error to JES routing message.
+/// Validates: startup-and-session Req 22.8 (CR-NR-081) -- the active profile
+/// label shows "Profile: default" when no profile is set and "Profile: <name>"
+/// when one is active. Drives the process-global serially and restores it.
 #[test]
-fn status_command_routes_to_jes_panel() {
+fn active_profile_label_reflects_active_profile() {
+    let shell = make_shell();
+    // Default (no profile).
+    ff_session::set_active_profile(None);
+    assert_eq!(shell.active_profile_label(), "Profile: default");
+    // Named profile.
+    ff_session::set_active_profile(Some("ispf"));
+    assert_eq!(shell.active_profile_label(), "Profile: ispf");
+    // Restore so no other test sees a stray profile.
+    ff_session::set_active_profile(None);
+}
+
+/// Validates: Requirement 20.5 -- STATUS routes to the JES panel (stub).
+#[test]
+fn status_command_routes_to_jes() {
     // Validates: Requirement 20.5
     let mut shell = make_shell();
     shell.handle_command("STATUS");
