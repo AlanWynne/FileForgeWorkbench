@@ -169,6 +169,26 @@ pub(super) fn info_or_error(msg: &str) -> Option<String> {
     }
 }
 
+/// Match a command VERB case-insensitively and return its case-PRESERVED
+/// argument (B062, Option C). The first whitespace-delimited word of `cmd`
+/// (trimmed) is compared to `verb` with `eq_ignore_ascii_case`; on a match the
+/// TRIMMED remainder is returned (empty string for the bare verb), else `None`.
+///
+/// This centralises the "case-insensitive verb, case-preserving argument" rule
+/// so arms no longer hand-count byte offsets (`cmd.trim()[5..]`) against an
+/// uppercased `starts_with`. A caller that wants ONLY the arg form checks
+/// `!arg.is_empty()`; a caller that wants ONLY the bare form checks
+/// `arg.is_empty()`.
+pub(super) fn verb_arg<'a>(cmd: &'a str, verb: &str) -> Option<&'a str> {
+    let c = cmd.trim();
+    let (head, rest) = c.split_once(char::is_whitespace).unwrap_or((c, ""));
+    if head.eq_ignore_ascii_case(verb) {
+        Some(rest.trim())
+    } else {
+        None
+    }
+}
+
 /// Parse two single-quoted or bare-word arguments from a CHANGE command tail.
 /// Handles: `'old text' 'new text'`, `old new`, `'old' new`, `old 'new'`.
 pub(super) fn parse_two_args(s: &str) -> Option<(String, String)> {

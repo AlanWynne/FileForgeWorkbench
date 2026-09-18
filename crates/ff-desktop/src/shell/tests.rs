@@ -1452,6 +1452,27 @@ fn command_arguments_preserve_case_in_history() {
     );
 }
 
+/// Validates: B062 (Option C) -- `verb_arg` matches the verb case-insensitively
+/// and returns the case-preserved, trimmed remainder (empty for the bare verb),
+/// or None when the verb does not match.
+#[test]
+fn verb_arg_matches_case_insensitively_and_preserves_argument() {
+    use super::helpers::verb_arg;
+    // Case-insensitive verb, case-preserved argument.
+    assert_eq!(verb_arg("FIND 'MixedCase'", "FIND"), Some("'MixedCase'"));
+    assert_eq!(verb_arg("find 'MixedCase'", "FIND"), Some("'MixedCase'"));
+    assert_eq!(
+        verb_arg("  Theme  Default Dark  ", "THEME"),
+        Some("Default Dark")
+    );
+    // Bare verb -> empty remainder (Some, not None).
+    assert_eq!(verb_arg("THEME", "THEME"), Some(""));
+    assert_eq!(verb_arg("theme", "THEME"), Some(""));
+    // Non-matching verb -> None (and does not match a prefix of a longer word).
+    assert_eq!(verb_arg("FINDER x", "FIND"), None);
+    assert_eq!(verb_arg("LOCATE x", "FIND"), None);
+}
+
 /// Validates: B062 -- the CHANGE argument parser preserves the case of both the
 /// from- and to- strings (quoted and bare).
 #[test]

@@ -142,8 +142,7 @@ impl WorkbenchShell {
             return;
         }
 
-        if upper.starts_with("EDIT") && (upper == "EDIT" || upper.starts_with("EDIT ")) {
-            let rest = cmd.trim().split_once(' ').map(|x| x.1.trim()).unwrap_or("");
+        if let Some(rest) = verb_arg(cmd, "EDIT") {
             if rest.is_empty() {
                 self.open_error = Some("EDIT requires a file path".to_string());
             } else {
@@ -166,14 +165,13 @@ impl WorkbenchShell {
             return;
         }
 
-        if upper == "START" || upper.starts_with("START ") {
+        if let Some(arg) = verb_arg(cmd, "START") {
             // Validates: menu-workspace Requirement 14.8, 14.9 (CR-CH-022) --
             // START is the ONLY tab-creator. Forms:
             //   START            -> new tab rooted at the POM (empty stack)
             //   START =<path>    -> new POM tab, then drill along <path> (POM on
             //                       the stack via the `=` origin rule)
             //   START <arg>      -> new tab rooted DIRECTLY at <arg> (empty stack)
-            let arg = cmd.trim().get(5..).map(str::trim).unwrap_or("");
             self.start_new_workspace(arg);
             self.open_error = None;
             return;
@@ -181,13 +179,11 @@ impl WorkbenchShell {
 
         // MENU / MENU <name> and the menu.open Command_ID form.
         // Validates: menu-workspace Requirement 11.1, 11.2, 11.4, 11.6
-        if upper == "MENU" || upper.starts_with("MENU ") {
-            let arg = cmd.trim()[4..].trim();
+        if let Some(arg) = verb_arg(cmd, "MENU") {
             self.open_menu_by_name(arg);
             return;
         }
-        if upper == "MENU.OPEN" || upper.starts_with("MENU.OPEN ") {
-            let arg = cmd.trim()[9..].trim();
+        if let Some(arg) = verb_arg(cmd, "MENU.OPEN") {
             self.open_menu_by_name(arg);
             return;
         }
@@ -243,18 +239,12 @@ impl WorkbenchShell {
         }
 
         // ── KEYS -- Validates: Requirement 20.1, CX Requirement 2.1-2.4 ──────
-        if upper == "KEYS" {
+        if let Some(kind) = verb_arg(cmd, "KEYS") {
             // Validates: function-keys Requirement 22.1, 22.5 (CR-CH-029) --
-            // KEYS opens the Keys Workspace in place (replaces the modal).
-            self.open_keys_editor(None);
-            self.open_error = None;
-            return;
-        }
-        if upper.starts_with("KEYS ") {
-            // Validates: function-keys Requirement 22.5 -- KEYS <kind> opens the
-            // Keys Workspace with that workspace kind pre-selected.
-            let kind = cmd.trim()[5..].trim();
-            self.open_keys_editor(Some(kind));
+            // bare KEYS opens the Keys Workspace in place (replaces the modal);
+            // KEYS <kind> opens it with that workspace kind pre-selected.
+            let kind = if kind.is_empty() { None } else { Some(kind) };
+            self.open_keys_editor(kind);
             self.open_error = None;
             return;
         }
@@ -323,15 +313,10 @@ impl WorkbenchShell {
         // [<namespace>]` command below (configuration-system Req 20).
 
         // ── CONFIG [<namespace>] -- flat configuration-key browser (Req 20) ──
-        if upper == "CONFIG" {
-            // Bare CONFIG: the unfiltered All-Settings flat list.
-            self.open_config_view(None);
-            self.open_error = None;
-            return;
-        }
-        if upper.starts_with("CONFIG ") {
-            // CONFIG <namespace>: the flat list pre-filtered to `<namespace>.`.
-            let ns = cmd.trim()[7..].trim().to_lowercase();
+        if let Some(arg) = verb_arg(cmd, "CONFIG") {
+            // Bare CONFIG -> unfiltered All-Settings flat list; CONFIG <namespace>
+            // -> the flat list pre-filtered to `<namespace>.` (lowercased).
+            let ns = arg.to_lowercase();
             if ns.is_empty() {
                 self.open_config_view(None);
             } else {
@@ -463,8 +448,7 @@ impl WorkbenchShell {
         }
 
         // ── LOCATE / SORT / UP / DOWN / LEFT / RIGHT / TOP / BOTTOM ────────
-        if upper.starts_with("LOCATE ") {
-            let arg = cmd.trim()[7..].trim();
+        if let Some(arg) = verb_arg(cmd, "LOCATE").filter(|a| !a.is_empty()) {
             let status = self.nav_manager.locate(arg, &mut self.tabs);
             self.open_error = if status.is_empty() {
                 None
@@ -486,36 +470,34 @@ impl WorkbenchShell {
             return;
         }
 
-        if upper == "UP" || upper.starts_with("UP ") {
-            let n = parse_optional_u64(cmd.trim().get(2..).unwrap_or("").trim());
-            self.nav_manager.up(n, &mut self.tabs);
+        if let Some(arg) = verb_arg(cmd, "UP") {
+            self.nav_manager.up(parse_optional_u64(arg), &mut self.tabs);
             self.open_error = None;
             return;
         }
 
-        if upper == "DOWN" || upper.starts_with("DOWN ") {
-            let n = parse_optional_u64(cmd.trim().get(4..).unwrap_or("").trim());
-            self.nav_manager.down(n, &mut self.tabs);
+        if let Some(arg) = verb_arg(cmd, "DOWN") {
+            self.nav_manager
+                .down(parse_optional_u64(arg), &mut self.tabs);
             self.open_error = None;
             return;
         }
 
-        if upper == "LEFT" || upper.starts_with("LEFT ") {
-            let n = parse_optional_u64(cmd.trim().get(4..).unwrap_or("").trim());
-            self.nav_manager.left(n, &mut self.tabs);
+        if let Some(arg) = verb_arg(cmd, "LEFT") {
+            self.nav_manager
+                .left(parse_optional_u64(arg), &mut self.tabs);
             self.open_error = None;
             return;
         }
 
-        if upper == "RIGHT" || upper.starts_with("RIGHT ") {
-            let n = parse_optional_u64(cmd.trim().get(5..).unwrap_or("").trim());
-            self.nav_manager.right(n, &mut self.tabs);
+        if let Some(arg) = verb_arg(cmd, "RIGHT") {
+            self.nav_manager
+                .right(parse_optional_u64(arg), &mut self.tabs);
             self.open_error = None;
             return;
         }
 
-        if upper == "SORT" || upper.starts_with("SORT ") {
-            let rest = cmd.trim().get(4..).unwrap_or("").trim();
+        if let Some(rest) = verb_arg(cmd, "SORT") {
             let args: Vec<&str> = rest.split_whitespace().collect();
             let status = self.nav_manager.sort(&args, &mut self.tabs, &self.runtime);
             self.open_error = if status.is_empty() {
@@ -611,8 +593,7 @@ impl WorkbenchShell {
             return;
         }
 
-        if upper.starts_with("FIND ") {
-            let term = cmd.trim()[5..].trim();
+        if let Some(term) = verb_arg(cmd, "FIND").filter(|a| !a.is_empty()) {
             let status = self.find_manager.find(term, &mut self.tabs, &self.runtime);
             self.open_error = if status.contains("NOT FOUND") || status.contains("error") {
                 Some(status)
@@ -622,9 +603,8 @@ impl WorkbenchShell {
             return;
         }
 
-        if upper.starts_with("CHANGE ") {
+        if let Some(rest) = verb_arg(cmd, "CHANGE").filter(|a| !a.is_empty()) {
             // Parse: CHANGE 'old' 'new'  (single-quoted or bare words)
-            let rest = cmd.trim()[7..].trim();
             if let Some((old, new)) = parse_two_args(rest) {
                 let status = self
                     .find_manager
@@ -660,13 +640,13 @@ impl WorkbenchShell {
         //   - `THEME <name>` selects by exact case-insensitive name, else by
         //     built-in shorthand (Req 17.2); unknown leaves the theme unchanged
         //     and reports it (Req 17.5).
-        if upper == "THEME" {
-            self.open_theme_editor();
-            self.open_error = None;
-            return;
-        }
-        if upper.starts_with("THEME ") {
-            let arg = cmd.trim().get(6..).unwrap_or("").trim();
+        if let Some(arg) = verb_arg(cmd, "THEME") {
+            if arg.is_empty() {
+                // Bare THEME opens the Theme Editor Context (Req 17.4).
+                self.open_theme_editor();
+                self.open_error = None;
+                return;
+            }
             let available: Vec<String> = ff_theme::list_all_themes(&self.themes_dir())
                 .into_iter()
                 .map(|t| t.name)
@@ -734,8 +714,7 @@ impl WorkbenchShell {
             self.open_error = Some(summary);
             return;
         }
-        if upper.starts_with("PROFILE ") {
-            let rest = cmd.trim()[8..].trim();
+        if let Some(rest) = verb_arg(cmd, "PROFILE").filter(|a| !a.is_empty()) {
             let mut parts = rest.splitn(2, ' ');
             let key = parts.next().unwrap_or("");
             let val = parts.next().unwrap_or("").trim();
@@ -756,8 +735,7 @@ impl WorkbenchShell {
         }
 
         // ── HILITE — Validates: Requirement 16.12 ────────────────────────────
-        if upper == "HILITE" || upper.starts_with("HILITE ") {
-            let keyword = cmd.trim().get(6..).unwrap_or("").trim();
+        if let Some(keyword) = verb_arg(cmd, "HILITE") {
             let mode = if keyword.is_empty() {
                 Some(ff_edit_operations::HiliteMode::On)
             } else {
@@ -776,8 +754,7 @@ impl WorkbenchShell {
         }
 
         // ── SCROLL field update via command — Validates: Requirement 19.2 ──────
-        if upper.starts_with("SCROLL ") {
-            let arg = cmd.trim()[7..].trim();
+        if let Some(arg) = verb_arg(cmd, "SCROLL").filter(|a| !a.is_empty()) {
             if let Some(amount) = crate::scroll_amount::ScrollAmount::parse(arg) {
                 self.scroll_amount = amount;
                 self.scroll_field_text = self.scroll_amount.display_string();
@@ -808,17 +785,15 @@ impl WorkbenchShell {
         }
 
         // ── NAME -- Validates: CX Requirement 1.2, 1.3 ──────────────────────
-        if upper == "NAME" {
-            // Clear workspace name
-            self.tabs.active_tab_mut().workspace_name = None;
-            self.open_error = None;
-            return;
-        }
-        if upper.starts_with("NAME ") {
-            // Set workspace name (max 32 chars)
-            let name = cmd.trim()[5..].trim();
-            let name = if name.len() > 32 { &name[..32] } else { name };
-            self.tabs.active_tab_mut().workspace_name = Some(name.to_string());
+        if let Some(name) = verb_arg(cmd, "NAME") {
+            if name.is_empty() {
+                // Clear workspace name.
+                self.tabs.active_tab_mut().workspace_name = None;
+            } else {
+                // Set workspace name (max 32 chars).
+                let name = if name.len() > 32 { &name[..32] } else { name };
+                self.tabs.active_tab_mut().workspace_name = Some(name.to_string());
+            }
             self.open_error = None;
             return;
         }
@@ -920,8 +895,7 @@ impl WorkbenchShell {
             self.handle_command(&redirected);
             return;
         }
-        if upper == "NUM" || upper.starts_with("NUM ") {
-            let rest = cmd.trim().get(3..).unwrap_or("").trim();
+        if let Some(rest) = verb_arg(cmd, "NUM") {
             let redirected = if rest.is_empty() {
                 "NUMBER".to_string()
             } else {
@@ -952,16 +926,11 @@ impl WorkbenchShell {
         }
 
         // ── STATUS — Validates: Requirement 20.5, 20.6 ───────────────────────
-        if upper == "STATUS" || upper.starts_with("STATUS ") {
-            let jobname = if upper.starts_with("STATUS ") {
-                let j = cmd.trim()[7..].trim();
-                if j.is_empty() {
-                    None
-                } else {
-                    Some(j.to_string())
-                }
-            } else {
+        if let Some(arg) = verb_arg(cmd, "STATUS") {
+            let jobname = if arg.is_empty() {
                 None
+            } else {
+                Some(arg.to_string())
             };
             let msg = match jobname {
                 Some(ref j) => format!("STATUS: routing to JES panel (filter: {})", j),
@@ -972,74 +941,49 @@ impl WorkbenchShell {
         }
 
         // ── CREATE — Validates: Requirement 17.2 ─────────────────────────────
-        if upper.starts_with("CREATE ") {
-            let dsn = cmd.trim()[7..].trim();
-            if dsn.is_empty() {
-                self.open_error = Some("CREATE requires a dataset name argument".to_string());
-            } else {
-                // Stub: dataset creation deferred to Phase BU/CB.
-                self.open_error = Some(format!("CREATE {dsn}: dataset creation not yet available"));
-            }
+        if let Some(dsn) = verb_arg(cmd, "CREATE").filter(|a| !a.is_empty()) {
+            // Stub: dataset creation deferred to Phase BU/CB.
+            self.open_error = Some(format!("CREATE {dsn}: dataset creation not yet available"));
             return;
         }
 
         // ── REPLACE — Validates: Requirement 17.3 ────────────────────────────
-        if upper.starts_with("REPLACE ") {
-            let dsn = cmd.trim()[8..].trim();
-            if dsn.is_empty() {
-                self.open_error = Some("REPLACE requires a dataset name argument".to_string());
-            } else {
-                self.open_error = Some(format!("REPLACE {dsn}: dataset replace not yet available"));
-            }
+        if let Some(dsn) = verb_arg(cmd, "REPLACE").filter(|a| !a.is_empty()) {
+            self.open_error = Some(format!("REPLACE {dsn}: dataset replace not yet available"));
             return;
         }
 
         // ── BROWSE — Validates: Requirement 17.5 ─────────────────────────────
-        if upper.starts_with("BROWSE ") {
-            let dsn = cmd.trim()[7..].trim();
-            if dsn.is_empty() {
-                self.open_error = Some("BROWSE requires a dataset name argument".to_string());
+        if let Some(dsn) = verb_arg(cmd, "BROWSE").filter(|a| !a.is_empty()) {
+            // Open as read-only editor tab (full browse mode deferred).
+            let mut p = CommandParams::new();
+            p.insert("path", dsn);
+            let result = self.dispatch.execute_command("file.open", p);
+            if let CommandResult::Err(e) = result {
+                self.open_error = Some(e.to_string());
             } else {
-                // Open as read-only editor tab (full browse mode deferred).
-                let mut p = CommandParams::new();
-                p.insert("path", dsn);
-                let result = self.dispatch.execute_command("file.open", p);
-                if let CommandResult::Err(e) = result {
-                    self.open_error = Some(e.to_string());
-                } else {
-                    self.open_error = None;
-                }
+                self.open_error = None;
             }
             return;
         }
 
         // ── VIEW — Validates: Requirement 17.6 ───────────────────────────────
-        if upper.starts_with("VIEW ") {
-            let dsn = cmd.trim()[5..].trim();
-            if dsn.is_empty() {
-                self.open_error = Some("VIEW requires a dataset name argument".to_string());
+        if let Some(dsn) = verb_arg(cmd, "VIEW").filter(|a| !a.is_empty()) {
+            let mut p = CommandParams::new();
+            p.insert("path", dsn);
+            let result = self.dispatch.execute_command("file.open", p);
+            if let CommandResult::Err(e) = result {
+                self.open_error = Some(e.to_string());
             } else {
-                let mut p = CommandParams::new();
-                p.insert("path", dsn);
-                let result = self.dispatch.execute_command("file.open", p);
-                if let CommandResult::Err(e) = result {
-                    self.open_error = Some(e.to_string());
-                } else {
-                    self.open_error = None;
-                }
+                self.open_error = None;
             }
             return;
         }
 
         // ── COMPARE — Validates: Requirement 17.7 ────────────────────────────
-        if upper.starts_with("COMPARE ") {
-            let dsn = cmd.trim()[8..].trim();
-            if dsn.is_empty() {
-                self.open_error = Some("COMPARE requires a dataset name argument".to_string());
-            } else {
-                // Stub: compare view deferred to Phase BX/ff-compare.
-                self.open_error = Some(format!("COMPARE {dsn}: compare view not yet available"));
-            }
+        if let Some(dsn) = verb_arg(cmd, "COMPARE").filter(|a| !a.is_empty()) {
+            // Stub: compare view deferred to Phase BX/ff-compare.
+            self.open_error = Some(format!("COMPARE {dsn}: compare view not yet available"));
             return;
         }
 
