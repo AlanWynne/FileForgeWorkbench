@@ -181,6 +181,7 @@ relevant context (POM, editor View/Edit, File Explorer).
 | 7.5 | Press PF9 while split. | Swaps keyboard focus between the two split halves. | menu-and-statusbar 12; B046 | [F] |
 | 7.6 | Press F3 (END) while split. | Unsplits, restoring the single-panel view. | menu-and-statusbar 14; B046 | [F] |
 | 7.7 | Confirm each remaining PF binding in the spec fires its action. | Every PF key mapped in the function-keys spec performs its action in-context. | function-keys-and-history; B046 | [F] |
+| 7.8 | Type a command and Enter; then press F12 (RETRIEVE) with the field EMPTY, and again with some text already in the field (as often happens in a freshly opened/navigated workspace). | F12 recalls the most recent command into the `Command ===>` field WITHOUT executing it, in BOTH cases (empty and non-empty field); repeated F12 walks older entries; a non-RETRIEVE submission resets the pointer. F12 does not error and does not pollute history with `RETRIEVE ...`. | B067 (FIXED, AUTOMATED: `retrieve_via_key_with_nonempty_field_recalls_previous_command`, `retrieve_list_via_key_opens_history_overlay`); function-keys-and-history Req 19.1-19.7, 22.2 | [ ] |
 
 ---
 
@@ -245,6 +246,7 @@ fixed. Keep this map updated as rows are added.
 | B060 (Settings calendar off-screen but tabbable; calendar-on menu not visible/reachable in narrow workspace) | FIXED (CR-CH-026; retest 2.2a, 2.2b) | 2.2a, 2.2b |
 | B065 (menu option description does not hang-indent when it wraps; continuation aligns under key column) | FIXED (retest 2.2c) | 2.2c |
 | B066 (F-keys ignore the Command ===> field content; `1`+F9 runs bare SWAP instead of `SWAP 1`) | FIXED (retest 7.3b) | 7.3b |
+| B067 (F12 RETRIEVE broken when field non-empty; regression from B066's merged `RETRIEVE <field>`) | FIXED (retest 7.8) | 7.8 |
 | CR-CH-023 (unified tab-order: egui-native interior + shell boundary; chrome non-focusable) | IMPLEMENTED (retest 1.3a/1.3b/1.3c) | 1.3a, 1.3b, 1.3c |
 | CR-NR-071 (CORE context help content) | PENDING GATE | 7.1 |
 | CR-NR-072 (navigator junction/symlink expansion) | PENDING GATE | 3.2a |

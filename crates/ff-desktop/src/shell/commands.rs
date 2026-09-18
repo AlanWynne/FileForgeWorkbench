@@ -108,7 +108,13 @@ impl WorkbenchShell {
         // like `LOCATE 1` were). RETRIEVE itself is excluded (it is the recall
         // action, not a recallable command); empty input is skipped by
         // `CommandHistory::add`, which also de-duplicates.
-        if upper != "RETRIEVE" {
+        // RETRIEVE is excluded (it is the recall action, not a recallable
+        // command). Match the VERB, not the exact string: B066's key-dispatch
+        // merges the command-field content, so an F12 press with a non-empty
+        // field arrives here as `RETRIEVE <field>` -- that must also be excluded
+        // (B067). Empty input is skipped by `CommandHistory::add`.
+        let is_retrieve = upper == "RETRIEVE" || upper.starts_with("RETRIEVE ");
+        if !is_retrieve {
             self.cmd_history.add(cmd);
         }
 
@@ -433,7 +439,13 @@ impl WorkbenchShell {
             return;
         }
 
-        if upper == "RETRIEVE" {
+        // Match the RETRIEVE VERB by prefix (not exact string): B066's
+        // key-dispatch may append the command-field content, so F12 with a
+        // non-empty field arrives as `RETRIEVE <field>` and must still trigger
+        // recall (B067). The handler reads `self.command_text` (the actual
+        // field) -- the source of truth for the LIST trigger / empty check
+        // (Req 19.1) -- rather than the merged argument.
+        if upper == "RETRIEVE" || upper.starts_with("RETRIEVE ") {
             let cmd_text = self.command_text.clone();
             match self.retrieve_state.retrieve(&self.cmd_history, &cmd_text) {
                 RetrieveResult::Recalled { command } => {

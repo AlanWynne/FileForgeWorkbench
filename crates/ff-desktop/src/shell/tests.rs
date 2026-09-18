@@ -3235,6 +3235,63 @@ fn shell_intercept_commands_are_recorded_in_history() {
         .remove_user_value(ff_config::keys::theme::ACTIVE);
 }
 
+/// Validates: function-keys-and-history Req 19.1/19.2 (B067) -- pressing F12
+/// (RETRIEVE) with a NON-EMPTY command field still recalls the previous
+/// command. Regression from B066: `dispatch_key_command` merges the field, so
+/// F12 dispatches `RETRIEVE <field>`; the RETRIEVE recall must still fire (the
+/// verb is matched by prefix, not exact string).
+#[test]
+fn retrieve_via_key_with_nonempty_field_recalls_previous_command() {
+    let mut shell = make_shell();
+    shell.handle_command("LOCATE 1");
+    shell.handle_command("THEME legacy");
+    // History (most recent first): ["THEME legacy", "LOCATE 1"].
+
+    // Simulate F12 while the user has typed something in the field.
+    shell.command_text = "some typed text".to_string();
+    shell.dispatch_key_command("RETRIEVE");
+
+    // The most recent command is recalled INTO the field (Req 19.2), not an error.
+    assert_eq!(
+        shell.command_text, "THEME legacy",
+        "F12 with a non-empty field must recall the most recent command"
+    );
+    assert!(shell.open_error.is_none(), "RETRIEVE must not error");
+
+    // A second F12 walks one older (Req 19.3). The field now holds the recalled
+    // command; RETRIEVE reads the field to decide LIST/empty, and "THEME legacy"
+    // is neither, so it advances the pointer.
+    shell.dispatch_key_command("RETRIEVE");
+    assert_eq!(shell.command_text, "LOCATE 1", "second F12 walks older");
+
+    // The merged `RETRIEVE ...` form must NOT be added to history (Req 19.6).
+    assert_eq!(
+        shell.cmd_history.get(0).map(|e| e.command()),
+        Some("THEME legacy"),
+        "RETRIEVE (even merged) must not pollute history"
+    );
+
+    let _ = shell
+        .config_handle
+        .remove_user_value(ff_config::keys::theme::ACTIVE);
+}
+
+/// Validates: function-keys-and-history Req 19.1 (B067) -- `RETRIEVE LIST`
+/// dispatched via a key (merged form) still opens the history-list overlay.
+#[test]
+fn retrieve_list_via_key_opens_history_overlay() {
+    let mut shell = make_shell();
+    shell.handle_command("LOCATE 1");
+    // Type LIST then press the RETRIEVE key -> dispatch_key_command merges to
+    // "RETRIEVE LIST".
+    shell.command_text = "LIST".to_string();
+    shell.dispatch_key_command("RETRIEVE");
+    assert!(
+        shell.show_history_list.is_some(),
+        "RETRIEVE LIST via key must open the history overlay"
+    );
+}
+
 /// Validates: theme-and-appearance Requirement 16.4/16.7 -- B039 root cause.
 /// An explicit theme selection must turn OFF `theme.follow_os`, otherwise the
 /// per-frame follow_os block rebuilds the palette from the OS preference every

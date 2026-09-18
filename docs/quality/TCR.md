@@ -2733,3 +2733,9 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 |-------|--------|-----------|-------|
 | `ff-desktop` | ✅ | `shell::tests::{key_command_merges_command_field_as_argument, key_command_with_empty_field_runs_bare_command, key_command_does_not_force_clear_command_field}` | command-framework Req 9.7/9.8/9.9/9.10 (B066): a key-bound command is invoked with the Command ===> field content as its argument (type `1` + F9=SWAP -> `SWAP 1`); empty field -> bare command; the field is not force-cleared. Implements the F-key portion of Req 9 (CR-NR-054, otherwise still PENDING GATE) |
 | `ff-desktop` | ✅ | `menu_workspace::render::tests::{wrap_description_short_is_single_line_no_indent, wrap_description_long_hangs_continuation_under_description, wrap_description_zero_budget_is_single_line, wrap_description_overlong_word_is_kept, option_row_job_wraps_with_hanging_indent, option_row_job_preserves_column_alignment}` | menu-workspace Req 2.1a (B065): a wrapped menu option description hang-indents under the description column (continuation lines prefixed by the key+command column width); first-line column alignment and the no-wrap path unchanged. Live narrow-window resize remains MANUAL |
+
+### Phase (fkey-arg) -- B067 F12 RETRIEVE with a non-empty field (B066 regression fix)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `shell::tests::{retrieve_via_key_with_nonempty_field_recalls_previous_command, retrieve_list_via_key_opens_history_overlay}` | function-keys-and-history Req 19.1-19.3, 19.6 (B067): F12 RETRIEVE recalls the previous command even when the command field is non-empty (the merged `RETRIEVE <field>` from B066 is matched by verb prefix in both the history-exclusion guard and the dispatch branch); RETRIEVE LIST via key opens the overlay; the merged form is not added to history |
