@@ -107,47 +107,212 @@ fn copy_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
     }
 }
 
+/// Display name used for the DEFAULT_PROFILE in RESET BARE target lists and the
+/// confirmation dialog (CR-NR-083). The default profile has no `profiles/<slug>/`
+/// directory; its User_Data_Dir is the base itself.
+pub(super) const DEFAULT_PROFILE_DISPLAY: &str = "(default)";
+
+/// A resolved RESET BARE target: the list of profiles to archive/reset and
+/// whether the running process's Active_Profile is among them (CR-NR-083).
+///
+/// Every command form (bare, one-or-more named, ALL) resolves to one of these,
+/// so the confirmation dialog and the execute path handle them uniformly
+/// (Requirement 19.9-19.15). `profiles` is `(display_name, user_data_dir)`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct ResetBareTarget {
+    /// The profiles that will be archived and reset, in display order.
+    pub profiles: Vec<(String, PathBuf)>,
+    /// True when the running process's Active_Profile is in `profiles`, so the
+    /// live in-memory state must also be reset (Requirement 19.11, 19.13).
+    pub includes_active: bool,
+}
+
+impl ResetBareTarget {
+    /// A single-profile target (bare RESET BARE or a one-name list).
+    pub fn single(display: String, udd: PathBuf, includes_active: bool) -> Self {
+        Self {
+            profiles: vec![(display, udd)],
+            includes_active,
+        }
+    }
+}
+
+/// Build a named profile's User_Data_Dir path under a profiles root, using the
+/// same slug rule as `ff_session::profile_slug` (CR-NR-083, Requirement 19.10).
+pub(super) fn profile_udd_path(profiles_root: &Path, name: &str) -> PathBuf {
+    profiles_root.join(ff_session::profile_slug(name))
+}
+
+/// Enumerate every Application_Profile under a config base: the DEFAULT_PROFILE
+/// (the base itself) plus each `profiles/<slug>/` child directory. Returns
+/// `(display_name, user_data_dir)` pairs; the default is first and named
+/// profiles follow in sorted slug order for a stable dialog listing.
+///
+/// This takes the base as an argument (rather than calling `ff_session`) so it
+/// is unit-testable against a `TempDir` layout (Requirement 19.13).
+///
+/// Validates: configuration-system Requirement 19.13
+pub(super) fn enumerate_profiles_under(base: &Path) -> Vec<(String, PathBuf)> {
+    let mut out: Vec<(String, PathBuf)> =
+        vec![(DEFAULT_PROFILE_DISPLAY.to_string(), base.to_path_buf())];
+
+    let profiles_root = base.join("profiles");
+    if let Ok(entries) = std::fs::read_dir(&profiles_root) {
+        let mut named: Vec<(String, PathBuf)> = entries
+            .flatten()
+            .filter(|e| e.path().is_dir())
+            .map(|e| (e.file_name().to_string_lossy().to_string(), e.path()))
+            .collect();
+        named.sort_by(|a, b| a.0.cmp(&b.0));
+        out.extend(named);
+    }
+    out
+}
+
+/// Pure resolution of a RESET BARE argument string into a target profile list,
+/// against an explicit config `base` and `active_slug` (CR-NR-083, Requirement
+/// 19.9-19.14). Separated from the shell method so it is fully unit-testable
+/// against a `TempDir` layout. `args` is the case-preserving text after
+/// `RESET BARE`. See `resolve_reset_bare_target` for the semantics.
+///
+/// Validates: configuration-system Requirement 19.9, 19.10, 19.12, 19.13, 19.14
+pub(super) fn resolve_reset_bare_target_under(
+    base: &Path,
+    active_slug: Option<&str>,
+    args: &str,
+) -> Result<ResetBareTarget, String> {
+    let profiles_root = base.join("profiles");
+
+    // Bare RESET BARE -> the running process's profile only (19.9).
+    if args.is_empty() {
+        let (display, udd) = match active_slug {
+            Some(slug) => (slug.to_string(), profile_udd_path(&profiles_root, slug)),
+            None => (DEFAULT_PROFILE_DISPLAY.to_string(), base.to_path_buf()),
+        };
+        return Ok(ResetBareTarget::single(display, udd, true));
+    }
+
+    // `ALL` as the SOLE argument -> every profile (19.13, 19.14).
+    if args.eq_ignore_ascii_case("ALL") {
+        let profiles = enumerate_profiles_under(base);
+        // The active profile is always within the ALL set.
+        return Ok(ResetBareTarget {
+            profiles,
+            includes_active: true,
+        });
+    }
+
+    // Otherwise: a whitespace-separated list of named profiles (19.10). Slug
+    // each, de-duplicate preserving first-seen display order, and verify each
+    // exists (19.12, all-or-nothing).
+    let mut seen: Vec<String> = Vec::new();
+    let mut profiles: Vec<(String, PathBuf)> = Vec::new();
+    let mut unknown: Vec<String> = Vec::new();
+    let mut includes_active = false;
+    for raw in args.split_whitespace() {
+        let slug = ff_session::profile_slug(raw);
+        if slug.is_empty() || seen.contains(&slug) {
+            continue;
+        }
+        seen.push(slug.clone());
+        let udd = profile_udd_path(&profiles_root, &slug);
+        if !udd.is_dir() {
+            unknown.push(raw.to_string());
+            continue;
+        }
+        if active_slug == Some(slug.as_str()) {
+            includes_active = true;
+        }
+        profiles.push((slug, udd));
+    }
+
+    if !unknown.is_empty() {
+        return Err(format!(
+            "RESET BARE: unknown profile(s): {}. No profile was reset.",
+            unknown.join(", ")
+        ));
+    }
+    if profiles.is_empty() {
+        return Err("RESET BARE: no valid profile named.".to_string());
+    }
+    Ok(ResetBareTarget {
+        profiles,
+        includes_active,
+    })
+}
+
 impl WorkbenchShell {
-    /// Execute a confirmed RESET BARE: archive the current configuration, then
-    /// reset in-memory state to the compiled baselines and reopen the
-    /// Recovery_Baseline POM. No process relaunch is required.
+    /// Resolve the RESET BARE argument string into a target profile list
+    /// (CR-NR-083, Requirement 19.9-19.14). `args` is the case-preserving text
+    /// after `RESET BARE`:
+    /// - empty          -> the running process's profile only (19.9).
+    /// - `ALL` (sole arg, case-insensitive) -> every profile (19.13, 19.14).
+    /// - one or more names -> each named profile, slug-matched + de-duplicated
+    ///   (19.10); any unknown name makes the WHOLE command fail (19.12).
     ///
-    /// Validates: configuration-system Requirement 19.4, 19.5, 19.6
-    pub(super) fn execute_reset_bare(&mut self) {
+    /// Returns `Err(message)` when a named profile does not exist (all-or-
+    /// nothing); the caller shows the message and opens NO dialog.
+    ///
+    /// Validates: configuration-system Requirement 19.9, 19.10, 19.12, 19.13, 19.14
+    pub(super) fn resolve_reset_bare_target(&self, args: &str) -> Result<ResetBareTarget, String> {
+        let base = ff_session::default_base()
+            .map_err(|e| format!("could not resolve the configuration directory: {e}"))?;
+        let active_slug = ff_session::active_profile().map(|n| ff_session::profile_slug(&n));
+        resolve_reset_bare_target_under(&base, active_slug.as_deref(), args)
+    }
+
+    /// Execute a confirmed RESET BARE against a resolved target list: archive
+    /// (move-not-delete) EACH listed profile best-effort, then -- iff the list
+    /// includes the running process's Active_Profile -- reset the live in-memory
+    /// state to the compiled baselines and reopen the Recovery_Baseline POM. No
+    /// process relaunch is required.
+    ///
+    /// Validates: configuration-system Requirement 19.4, 19.5, 19.6, 19.11, 19.13
+    pub(super) fn execute_reset_bare(&mut self, target: &ResetBareTarget) {
         use crate::notification::{Notification, NotificationLevel};
 
-        // 1. Archive (move-not-delete) under the resolved User_Data_Dir.
-        let archive_result = match ff_session::UserDataDir::resolve(None) {
-            Ok(udd) => archive_config(udd.path()),
-            Err(e) => Err(vec![format!("could not resolve user data dir: {e}")]),
-        };
-
-        match &archive_result {
-            Ok(path) => {
-                if let Ok(mut q) = self.notification_queue.lock() {
-                    q.push(Notification::new(
-                        NotificationLevel::Info,
-                        "Configuration archived; reset to barebones.".to_string(),
-                        Some(format!(
-                            "Previous configuration moved to {}",
-                            path.display()
-                        )),
-                    ));
-                }
-            }
-            Err(errs) => {
-                if let Ok(mut q) = self.notification_queue.lock() {
-                    q.push(Notification::new(
-                        NotificationLevel::Warning,
-                        "RESET BARE completed with some archive errors.".to_string(),
-                        Some(errs.join("; ")),
-                    ));
+        // 1. Archive each targeted profile (best-effort; one failure does not
+        //    abort the rest -- Req 19.5, 19.13).
+        let mut archived: Vec<String> = Vec::new();
+        let mut errors: Vec<String> = Vec::new();
+        for (display, udd) in &target.profiles {
+            match archive_config(udd) {
+                Ok(path) => archived.push(format!("{display} -> {}", path.display())),
+                Err(errs) => {
+                    for e in errs {
+                        errors.push(format!("{display}: {e}"));
+                    }
                 }
             }
         }
 
-        // 2. Reset in-memory state to compiled baselines.
-        self.reset_in_memory_to_baseline();
+        if let Ok(mut q) = self.notification_queue.lock() {
+            if !archived.is_empty() {
+                q.push(Notification::new(
+                    NotificationLevel::Info,
+                    format!(
+                        "RESET BARE: archived {} profile(s) to barebones.",
+                        archived.len()
+                    ),
+                    Some(archived.join("; ")),
+                ));
+            }
+            if !errors.is_empty() {
+                q.push(Notification::new(
+                    NotificationLevel::Warning,
+                    "RESET BARE completed with some archive errors.".to_string(),
+                    Some(errors.join("; ")),
+                ));
+            }
+        }
+
+        // 2. Reset the live in-memory state ONLY when the running process's
+        //    profile was among the targets (Req 19.11); otherwise the archived
+        //    profiles are other-process/on-disk only and the running shell is
+        //    left untouched.
+        if target.includes_active {
+            self.reset_in_memory_to_baseline();
+        }
     }
 
     /// Reset the in-memory configuration, menus, theme, and catalog state to the
@@ -302,5 +467,157 @@ mod tests {
         write_file(&udd.join("session.toml"), "a=1");
         let archive = archive_config(udd).expect("archive");
         assert!(archive.starts_with(udd.join("config-archive")));
+    }
+
+    // Validates: configuration-system Req 19.13 (CR-NR-083) -- enumerate returns
+    // the DEFAULT_PROFILE (base) first, then each profiles/<slug>/ child in
+    // sorted order.
+    #[test]
+    fn enumerate_profiles_lists_default_first_then_named_sorted() {
+        let dir = TempDir::new().expect("tempdir");
+        let base = dir.path();
+        std::fs::create_dir_all(base.join("profiles").join("rust")).expect("mk");
+        std::fs::create_dir_all(base.join("profiles").join("ispf")).expect("mk");
+        // A stray file (not a dir) under profiles/ must be ignored.
+        write_file(&base.join("profiles").join("notes.txt"), "x");
+
+        let profiles = enumerate_profiles_under(base);
+        assert_eq!(profiles.len(), 3, "default + ispf + rust");
+        assert_eq!(profiles[0].0, DEFAULT_PROFILE_DISPLAY);
+        assert_eq!(profiles[0].1, base.to_path_buf());
+        assert_eq!(profiles[1].0, "ispf");
+        assert_eq!(profiles[1].1, base.join("profiles").join("ispf"));
+        assert_eq!(profiles[2].0, "rust");
+    }
+
+    // Validates: configuration-system Req 19.13 -- with no profiles/ dir, only
+    // the DEFAULT_PROFILE is returned.
+    #[test]
+    fn enumerate_profiles_with_no_profiles_dir_returns_only_default() {
+        let dir = TempDir::new().expect("tempdir");
+        let profiles = enumerate_profiles_under(dir.path());
+        assert_eq!(profiles.len(), 1);
+        assert_eq!(profiles[0].0, DEFAULT_PROFILE_DISPLAY);
+    }
+
+    // Validates: configuration-system Req 19.10 -- profile_udd_path slugs the
+    // name (case-insensitive, non-alphanumeric -> '-') under the profiles root.
+    #[test]
+    fn profile_udd_path_slugs_the_name() {
+        let root = Path::new("/base/ffworkbench/profiles");
+        assert_eq!(profile_udd_path(root, "ISPF"), root.join("ispf"));
+        assert_eq!(
+            profile_udd_path(root, "My Profile"),
+            root.join("my-profile")
+        );
+    }
+
+    /// Create a base with the given named profile dirs under `profiles/`.
+    fn base_with_profiles(names: &[&str]) -> TempDir {
+        let dir = TempDir::new().expect("tempdir");
+        for n in names {
+            std::fs::create_dir_all(dir.path().join("profiles").join(n)).expect("mk");
+        }
+        dir
+    }
+
+    // Validates: configuration-system Req 19.9 -- bare RESET BARE targets the
+    // running process's profile only; default profile when none active.
+    #[test]
+    fn resolve_bare_targets_default_when_no_active_profile() {
+        let dir = base_with_profiles(&[]);
+        let t = resolve_reset_bare_target_under(dir.path(), None, "").expect("ok");
+        assert_eq!(t.profiles.len(), 1);
+        assert_eq!(t.profiles[0].0, DEFAULT_PROFILE_DISPLAY);
+        assert_eq!(t.profiles[0].1, dir.path().to_path_buf());
+        assert!(t.includes_active, "bare always includes the active profile");
+    }
+
+    // Validates: configuration-system Req 19.9 -- bare RESET BARE under an active
+    // profile targets that profile's dir.
+    #[test]
+    fn resolve_bare_targets_active_profile_dir() {
+        let dir = base_with_profiles(&["ispf"]);
+        let t = resolve_reset_bare_target_under(dir.path(), Some("ispf"), "").expect("ok");
+        assert_eq!(t.profiles.len(), 1);
+        assert_eq!(t.profiles[0].0, "ispf");
+        assert_eq!(t.profiles[0].1, dir.path().join("profiles").join("ispf"));
+        assert!(t.includes_active);
+    }
+
+    // Validates: configuration-system Req 19.10, 19.11 -- a named subset resolves
+    // each existing profile; includes_active is false when the active profile is
+    // not in the list.
+    #[test]
+    fn resolve_named_subset_resolves_each_and_excludes_active() {
+        let dir = base_with_profiles(&["ispf", "rust"]);
+        // Active profile is a THIRD profile not in the list.
+        let t = resolve_reset_bare_target_under(dir.path(), Some("web"), "ispf rust").expect("ok");
+        assert_eq!(t.profiles.len(), 2);
+        assert_eq!(t.profiles[0].0, "ispf");
+        assert_eq!(t.profiles[1].0, "rust");
+        assert!(
+            !t.includes_active,
+            "active profile not in the list -> running shell untouched"
+        );
+    }
+
+    // Validates: configuration-system Req 19.11 -- when the active profile IS in
+    // the named list, includes_active is true.
+    #[test]
+    fn resolve_named_subset_including_active_sets_flag() {
+        let dir = base_with_profiles(&["ispf", "rust"]);
+        let t = resolve_reset_bare_target_under(dir.path(), Some("rust"), "ispf rust").expect("ok");
+        assert!(t.includes_active);
+    }
+
+    // Validates: configuration-system Req 19.10, 19.14 -- names are slug-matched
+    // (case-insensitive) and de-duplicated.
+    #[test]
+    fn resolve_named_list_slugs_and_deduplicates() {
+        let dir = base_with_profiles(&["ispf"]);
+        let t = resolve_reset_bare_target_under(dir.path(), None, "ISPF ispf").expect("ok");
+        assert_eq!(
+            t.profiles.len(),
+            1,
+            "duplicate slug collapses to one target"
+        );
+        assert_eq!(t.profiles[0].0, "ispf");
+    }
+
+    // Validates: configuration-system Req 19.12 -- any unknown name in the list
+    // makes the WHOLE command fail (all-or-nothing), naming the unknown one.
+    #[test]
+    fn resolve_named_list_with_unknown_errors_all_or_nothing() {
+        let dir = base_with_profiles(&["ispf"]);
+        let err = resolve_reset_bare_target_under(dir.path(), None, "ispf nonesuch")
+            .expect_err("unknown must error");
+        assert!(
+            err.contains("nonesuch"),
+            "error names the unknown profile: {err}"
+        );
+    }
+
+    // Validates: configuration-system Req 19.13, 19.14 -- `ALL` (sole arg,
+    // case-insensitive) targets every profile (default + named) and always
+    // includes the active profile.
+    #[test]
+    fn resolve_all_targets_every_profile() {
+        let dir = base_with_profiles(&["ispf", "rust"]);
+        let t = resolve_reset_bare_target_under(dir.path(), Some("ispf"), "all").expect("ok");
+        assert_eq!(t.profiles.len(), 3, "default + ispf + rust");
+        assert_eq!(t.profiles[0].0, DEFAULT_PROFILE_DISPLAY);
+        assert!(t.includes_active);
+    }
+
+    // Validates: configuration-system Req 19.14 -- `ALL` is only the keyword as
+    // the SOLE argument; mixed with another name it is an ordinary (unknown)
+    // profile name, so the command errors rather than resetting everything.
+    #[test]
+    fn resolve_all_mixed_with_a_name_is_not_the_keyword() {
+        let dir = base_with_profiles(&["ispf"]);
+        let err = resolve_reset_bare_target_under(dir.path(), None, "all ispf")
+            .expect_err("'all ispf' treats 'all' as an unknown profile name");
+        assert!(err.contains("all"), "error names 'all' as unknown: {err}");
     }
 }

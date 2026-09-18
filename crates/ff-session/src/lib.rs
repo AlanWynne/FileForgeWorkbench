@@ -98,6 +98,8 @@ pub use session_state::{
 pub use startup::{
     execute_startup_sequence, PhaseOutcome, PhaseResult, StartupPhase, StartupResult,
 };
-pub use user_data_dir::{active_profile, profile_slug, set_active_profile, UserDataDir};
+pub use user_data_dir::{
+    active_profile, default_base, profile_slug, profiles_root, set_active_profile, UserDataDir,
+};
 pub use window_geometry::{clamp_to_display, is_visible_on, restore_geometry, DisplayBounds};
 pub use workspace::{load_workspace, save_workspace, WorkspaceRecentFile, WorkspaceState};

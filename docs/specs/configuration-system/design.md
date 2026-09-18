@@ -1393,6 +1393,83 @@ on. Key configuration-system points:
 - Locked keys (Requirement 18): RESET BARE archives the USER layer only; the
   system layer (and its locked keys) is untouched, so policy enforcement survives
   a barebones reset.
+
+### Design Delta: targeted RESET BARE -- named profile / ALL (Requirement 19.9-19.15, CR-NR-083)
+
+Extends the existing single-profile `RESET BARE` to accept a list of named
+profiles or the `ALL` keyword. Every form resolves to a LIST of target profiles
+and reuses the SAME confirmation dialog. Configuration-system-crate impact: NONE
+new beyond CR-NR-081 (the `ff_config` profile-awareness already landed). This is
+a SHELL feature; the design is recorded here (owning requirement) but implemented
+in `ff-desktop`.
+
+- Argument parsing: `RESET BARE` keeps its whole-line-uppercase intercept, but
+  the shell now inspects the whitespace-separated remainder after `RESET BARE`:
+  - empty            -> target list = [ the running process's profile ] (19.9).
+  - `ALL` (any case, SOLE arg) -> target list = every profile (19.13, 19.14).
+  - one or more names -> target list = each named profile, slug-deduplicated
+                          (19.10); `ALL` mixed with other names is treated as an
+                          ordinary (and almost certainly unknown) profile name,
+                          NOT the keyword (19.14).
+  Because a profile name is case-preserving-but-slug-compared, the shell slugs
+  each argument with the SAME rule as `ff_session::profile_slug` before matching.
+  A single `ResetBareTarget = Profiles(Vec<(String display, PathBuf udd)>)` (plus
+  a flag/derivation of whether the active profile is in the list) covers bare,
+  single, subset and ALL uniformly.
+
+- Profile enumeration + path building (new shell helper, e.g.
+  `reset_bare::enumerate_profiles()` / `profile_udd_path(slug)`): the DEFAULT
+  base is `<config>/ffworkbench/` and named profiles are its `profiles/<slug>/`
+  children. `ff_session::platform_default_path` returns the ACTIVE profile's dir
+  (not the base), so the shell needs a base-independent resolver. Options
+  (decide at implementation): (a) add a small `ff_session` helper
+  `profiles_root()` / `default_base()` that returns `<config>/ffworkbench` and
+  `<config>/ffworkbench/profiles` regardless of the active profile, reused by
+  the shell; or (b) compute the base in the shell from `dirs::config_dir()`.
+  Recommendation: (a) -- keep path knowledge in `ff_session` (single source of
+  the `ffworkbench`/`profiles` layout), the shell only enumerates and calls the
+  existing `archive_config(path)`.
+
+- Reset semantics (which reuse the existing helpers, no new archive logic):
+  - `archive_config(user_data_dir)` already accepts an arbitrary directory, so
+    archiving a named/default/other profile is just calling it with that
+    profile's path. No change to the archive helper.
+  - In-memory reset (`reset_in_memory_to_baseline`) is meaningful ONLY for the
+    running process's profile. The shell calls it IFF the target LIST includes
+    the Active_Profile: always for bare `RESET BARE` (19.9) and `RESET BARE ALL`
+    (19.13); for a named list only when one of the listed profiles slugs to the
+    Active_Profile (19.11). For a list of non-active profiles, only those
+    profiles' on-disk config is archived; the running shell is untouched.
+
+- Unknown profile (19.12, all-or-nothing): the shell resolves EVERY named target
+  BEFORE opening the dialog; if ANY name has no `profiles/<slug>/` (and is not
+  the default base) it sets `open_error`/pushes a Warning naming the unknown
+  name(s) and returns without a dialog or any archiving.
+
+- Confirmation model (new shell state, replacing the single bool) -- ONE dialog:
+  - Today: `reset_bare_confirm_open: bool` + a single dialog in `update.rs`.
+  - New: carry the resolved TARGET LIST alongside the open flag, e.g.
+    `reset_bare_confirm: Option<ResetBareTarget>` where `ResetBareTarget` holds
+    `profiles: Vec<(String display, PathBuf udd)>`. The EXISTING dialog is reused
+    unchanged except its body text now names the target(s): the single profile
+    name when the list has one entry, or an enumerated list of names when it has
+    more (subset or ALL). Confirm/Cancel buttons are unchanged. No separate ALL
+    modal and no typed-confirmation field -- per owner: "all that should change
+    in this dialog is the inclusion of the profile name(s) being reset".
+
+- Command parity (workflow.md 1b): the new forms are the SAME `RESET BARE`
+  command with arguments; menu/Settings affordances that dispatch `RESET BARE`
+  are unaffected (they still target the active profile). No affordance bypasses
+  the command.
+
+- Testing: `egui_kittest` full-shell tests for (1) `RESET BARE ISPF` when ISPF is
+  not active archives ISPF on disk and leaves the running shell's theme
+  unchanged; the dialog names ISPF; (2) `RESET BARE nonesuch` -> error, no
+  dialog; (3) a subset `RESET BARE ispf rust` resolves a two-profile target list
+  the dialog enumerates; an unknown name in the list blocks the whole command
+  (19.12); (4) `RESET BARE ALL` resolves a list of every profile the dialog
+  enumerates; (5) slug case-insensitivity / de-duplication. Archive/enumeration
+  path logic is unit-tested against `TempDir` (as `archive_config` already is).
 ---
 
 ## Design Delta: The CONFIG command (Requirement 20, CR-CH-025)

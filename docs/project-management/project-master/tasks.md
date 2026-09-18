@@ -2368,3 +2368,44 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[x]` Phase (app-profile) COMPLETE | Application Profiles (CR-NR-081) -- DONE: startup-and-session Req 22.1-22.10 (`--profile`/`-p` redirects the User_Data_Dir to `profiles/<slug>/` at the single `ff_session::platform_default_path` seam; default unchanged; active profile shown in the Status_Bar; RESET BARE scoped by construction). AP.core (ff-session active-profile global + resolver), AP.cli (main.rs `extract_profile_arg` before any resolve/init), AP.ui (`active_profile_label` Status_Bar segment). verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR Req 22 rows PASS. Per-tab Workspace Profile deferred to CR-NR-082 |
+
+## Phase (reset-bare-targets) -- targeted RESET BARE: named profile / ALL (CR-NR-083)
+
+> Extends RESET BARE (configuration-system Req 19) with `RESET BARE <profilename>`
+> (reset one named Application_Profile) and `RESET BARE ALL` (reset every profile
+> incl. the default) behind a GRADUATED confirmation (type `ALL` + Confirm).
+> Bare `RESET BARE` still targets only the running process's profile. Builds on
+> CR-NR-081 profile-awareness; `ALL` is a reserved keyword (a profile named `all`
+> can't be targeted individually -- documented). Owner: harder to reset all than
+> one.
+
+- [x] RBT.paths configuration-system Task 34.1-34.2: base/profiles path resolver
+      independent of the active profile (`ff_session::profiles_root`/`default_base`)
+      + shell `enumerate_profiles_under()` (default base + `profiles/<slug>/` children).
+      Covers: configuration-system Req 19.10, 19.13.
+- [x] RBT.parse configuration-system Task 34.3-34.4: `RESET BARE` argument-LIST
+      parse (empty -> active; `ALL` sole arg -> all; else one-or-more named,
+      slug-compared + de-duplicated); target-list-carrying
+      `reset_bare_confirm: Option<ResetBareTarget>`; all-or-nothing unknown guard
+      (error, no dialog).
+      Covers: configuration-system Req 19.9, 19.10, 19.12, 19.13, 19.14.
+- [x] RBT.exec configuration-system Task 34.5-34.6: confirmed reset reuses
+      `archive_config(path)` per listed target; in-memory reset IFF the active
+      profile is in the list; ALL archives every profile best-effort then resets
+      once.
+      Covers: configuration-system Req 19.10, 19.11, 19.13.
+- [x] RBT.confirm configuration-system Task 34.7: reuse the EXISTING single
+      confirmation dialog for every target list; its body text names the
+      profile(s) -- one name, or the enumerated list for a subset/ALL. No
+      separate modal, no typed field.
+      Covers: configuration-system Req 19.11, 19.15.
+- [x] RBT.verify configuration-system Task 34.8-34.9: resolver/command tests
+      (bare default+active, named non-active excludes-active, active-in-list,
+      unknown-in-list blocks all, subset list, ALL list, slug case/dedup,
+      ALL-mixed-not-keyword); verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt;
+      TCR Req 19.9-19.14 PASS, 19.15 MANUAL (dialog label text).
+      Covers: configuration-system Req 19.9-19.15.
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (reset-bare-targets) COMPLETE | Targeted RESET BARE (CR-NR-083) -- DONE: `RESET BARE <p1> [<p2> ...]` (one-or-more named profiles) and `RESET BARE ALL`; every form resolves to a target LIST and reuses the SAME confirmation dialog (only change: it names the profile(s)); bare RESET BARE unchanged (active profile only); unknown name blocks all-or-nothing (no dialog); `ALL` keyword only as the sole arg. `ff_session::default_base`/`profiles_root`; `reset_bare::{enumerate_profiles_under, profile_udd_path, resolve_reset_bare_target_under, ResetBareTarget}`; `execute_reset_bare(&target)` archives each best-effort + in-memory reset iff active in list. configuration-system Req 19.9-19.15. verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR Req 19.9-19.14 PASS, 19.15 MANUAL (dialog label text). |

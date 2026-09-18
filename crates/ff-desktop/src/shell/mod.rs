@@ -392,10 +392,11 @@ pub struct WorkbenchShell {
     /// True when any modal dialog is open — suppresses the shell Tab-cycle and
     /// command-field focus steal so keystrokes reach the dialog's own widgets.
     modal_open: bool,
-    /// True when the RESET BARE confirmation dialog is open (CR-CH-021,
-    /// configuration-system Req 19.2). No configuration is archived or reset
-    /// until the user confirms.
-    reset_bare_confirm_open: bool,
+    /// The resolved RESET BARE target when the confirmation dialog is open, else
+    /// `None` (CR-CH-021 / CR-NR-083, configuration-system Req 19.2, 19.9-19.15).
+    /// Carries the profile list the dialog names and the execute path resets. No
+    /// configuration is archived or reset until the user confirms.
+    reset_bare_confirm: Option<reset_bare::ResetBareTarget>,
     /// Config Panel state (the flat config-key browser opened by `CONFIG`).
     ///
     /// Validates: Requirement 15.1, 15.2
@@ -707,7 +708,7 @@ impl WorkbenchShell {
             split_screen: None,
             scroll_field_text: "PAGE".to_string(),
             modal_open: false,
-            reset_bare_confirm_open: false,
+            reset_bare_confirm: None,
             config_panel: ConfigPanelState::new(),
             plugin_manager_panel: PluginManagerPanelState::new(),
             macro_library_panel: crate::macro_library_panel::MacroLibraryPanelState::new(),

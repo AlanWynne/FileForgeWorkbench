@@ -965,24 +965,42 @@ impl eframe::App for WorkbenchShell {
             }
         }
 
-        // RESET BARE confirmation dialog.
-        // Validates: configuration-system Requirement 19.2, 19.3, 19.6 (CR-CH-021)
-        if self.reset_bare_confirm_open {
+        // RESET BARE confirmation dialog (CR-CH-021, CR-NR-083). The SAME single
+        // dialog is reused for every target list; the only difference is that it
+        // now names the profile(s) that will be reset -- one name, or the
+        // enumerated list for a subset / ALL.
+        // Validates: configuration-system Requirement 19.2, 19.3, 19.6, 19.15
+        if self.reset_bare_confirm.is_some() {
             self.modal_open = true;
             let mut confirm_clicked = false;
             let mut cancel_clicked = false;
+            // Snapshot the display names for the body without holding a borrow
+            // across the closure.
+            let profile_names: Vec<String> = self
+                .reset_bare_confirm
+                .as_ref()
+                .map(|t| t.profiles.iter().map(|(name, _)| name.clone()).collect())
+                .unwrap_or_default();
             egui::Window::new("Reset to barebones?")
                 .collapsible(false)
                 .resizable(false)
                 .show(ctx, |ui| {
                     ui.label(
-                        "This archives your current configuration and reopens the \
+                        "This archives the current configuration and reopens the \
                          workbench in a minimal barebones state.",
                     );
+                    if profile_names.len() == 1 {
+                        ui.label(format!("Profile to be reset: {}", profile_names[0]));
+                    } else {
+                        ui.label(format!("{} profiles will be reset:", profile_names.len()));
+                        for name in &profile_names {
+                            ui.label(format!("    - {name}"));
+                        }
+                    }
                     ui.label(
-                        "Your menus, themes, session, config and catalogs are MOVED \
-                         (not deleted) to a timestamped folder under config-archive/ \
-                         so you can recover them later.",
+                        "Each profile's menus, themes, session, config and catalogs \
+                         are MOVED (not deleted) to a timestamped folder under that \
+                         profile's config-archive/ so you can recover them later.",
                     );
                     ui.horizontal(|ui| {
                         if ui.button("Confirm reset").clicked() {
@@ -994,12 +1012,13 @@ impl eframe::App for WorkbenchShell {
                     });
                 });
             if confirm_clicked {
-                self.reset_bare_confirm_open = false;
                 self.modal_open = false;
-                self.execute_reset_bare();
+                if let Some(target) = self.reset_bare_confirm.take() {
+                    self.execute_reset_bare(&target);
+                }
             } else if cancel_clicked {
                 // Req 19.3: cancelling leaves all configuration untouched.
-                self.reset_bare_confirm_open = false;
+                self.reset_bare_confirm = None;
                 self.modal_open = false;
                 self.open_error = None;
             }

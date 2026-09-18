@@ -429,6 +429,68 @@ known-good baseline while keeping my old configuration safe for recovery.
 8. THE archived configuration SHALL remain readable so the operator can manually
    restore files from `config-archive/<timestamp>/` back into `<User_Data_Dir>/`;
    `RESET BARE` SHALL NOT delete or prune previous archive directories.
+
+<!-- CR-NR-083: targeted RESET BARE. The existing criteria 19.1-19.8 describe
+     bare `RESET BARE`. The criteria below add the `<profilename> [<profilename>
+     ...]` (one or more named profiles) and `ALL` targets. All forms resolve to a
+     LIST of target profiles and reuse the SAME single confirmation dialog
+     (criterion 19.2), which now names the profile(s) to be reset. -->
+
+9. WHEN bare `RESET BARE` (no argument) is invoked, THE shell SHALL target ONLY
+   the Application_Profile the running process is under (startup-and-session
+   Requirement 22): the Active_Profile when one is active, else the
+   DEFAULT_PROFILE. It SHALL archive and reset ONLY that profile's User_Data_Dir
+   and SHALL leave every other profile's User_Data_Dir untouched. (This restates
+   the existing single-profile behaviour so the argument forms below are
+   unambiguous.)
+10. THE shell SHALL accept `RESET BARE <profilename> [<profilename> ...]`, a
+    whitespace-separated list of one or more Application_Profile names to reset.
+    Each name's User_Data_Dir is resolved as
+    `<config-base>/ffworkbench/profiles/<slug>/`. Profile-name matching SHALL use
+    the same slug rule as startup-and-session Requirement 22.3 (lowercase;
+    non-alphanumeric replaced by `-`), so `RESET BARE ISPF` and `RESET BARE ispf`
+    target the same profile. Duplicate names in the list (after slugging) SHALL
+    be collapsed to a single target.
+11. WHEN a `RESET BARE <profilename> ...` list is confirmed, THE shell SHALL, for
+    EACH named profile, archive (move, not delete) that profile's configuration
+    into that profile's own `<User_Data_Dir>/config-archive/<timestamp>/`
+    (criteria 19.4, 19.5, 19.8 apply per-profile; best-effort -- a failure on one
+    profile does not abort the others) and SHALL leave every profile NOT in the
+    list untouched. WHEN the list INCLUDES the Active_Profile, THE shell SHALL
+    additionally reset the running in-memory state to the compiled baselines and
+    reopen the Recovery_Baseline POM (criterion 19.6); otherwise the running
+    process's in-memory state and open Workspaces SHALL be left unchanged (only
+    the targeted profiles' on-disk configuration is archived).
+12. WHEN a `RESET BARE <profilename> ...` list contains ANY name that does not
+    exist (no `profiles/<slug>/` directory and it is not the DEFAULT_PROFILE),
+    THE shell SHALL take no action, archive nothing, and report a non-blocking
+    error naming the unknown profile(s). The confirmation dialog SHALL NOT be
+    shown when any named profile is unknown (all-or-nothing: the operator fixes
+    the name and retries).
+13. THE shell SHALL accept `RESET BARE ALL`, which targets EVERY Application_
+    Profile: the DEFAULT_PROFILE (`<config-base>/ffworkbench/`) AND every
+    `profiles/<slug>/` directory discovered under the config base. WHEN
+    confirmed, THE shell SHALL archive each targeted profile into that profile's
+    own `config-archive/<timestamp>/` (best-effort per criterion 19.5; a failure
+    on one profile does not abort the others) and THEN reset the running
+    in-memory state to the compiled baselines and reopen the Recovery_Baseline
+    POM (criterion 19.6), because the Active_Profile is always within the ALL
+    set.
+14. `ALL` SHALL be a reserved, case-insensitive keyword for criterion 19.13:
+    `RESET BARE ALL`, `RESET BARE all`, and `RESET BARE All` all mean "every
+    profile". A profile whose name slugs to `all` therefore CANNOT be targeted
+    individually by name through this command; this is a documented limitation
+    (such a profile is still reset as part of `RESET BARE ALL`). No other profile
+    name is reserved. `ALL` is only a keyword when it is the SOLE argument; it is
+    NOT mixed with other names in a subset list.
+15. AFTER resolving the target list (bare, one-or-more named, or ALL) and BEFORE
+    archiving anything, THE shell SHALL present the SAME single confirmation
+    dialog as criterion 19.2, with its existing Confirm and Cancel buttons, the
+    ONLY difference being that the dialog SHALL name the profile(s) that will be
+    reset: the single profile name for one target, or the enumerated list of
+    profile names (DEFAULT_PROFILE plus each named profile) for a subset or ALL.
+    Confirm resets exactly the listed profiles (criteria 19.11, 19.13); Cancel
+    leaves all profiles untouched (criterion 19.3 applies).
 ---
 
 ### Requirement 20: The CONFIG Command

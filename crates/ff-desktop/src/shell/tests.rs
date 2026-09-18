@@ -4588,11 +4588,51 @@ fn menus_command_opens_menus_editor() {
 #[test]
 fn reset_bare_command_opens_confirmation_dialog() {
     let mut shell = make_shell();
-    assert!(!shell.reset_bare_confirm_open);
+    assert!(shell.reset_bare_confirm.is_none());
     shell.handle_command("RESET BARE");
     assert!(
-        shell.reset_bare_confirm_open,
+        shell.reset_bare_confirm.is_some(),
         "RESET BARE must open the confirmation dialog"
+    );
+}
+
+// Validates: configuration-system Req 19.9 (CR-NR-083) -- bare RESET BARE
+// resolves a single-profile target for the running process's profile and opens
+// the dialog with no error.
+#[test]
+fn reset_bare_bare_resolves_single_default_target() {
+    ff_session::set_active_profile(None);
+    let mut shell = make_shell();
+    shell.handle_command("RESET BARE");
+    let target = shell
+        .reset_bare_confirm
+        .as_ref()
+        .expect("bare RESET BARE opens the dialog");
+    assert_eq!(target.profiles.len(), 1, "bare targets exactly one profile");
+    assert!(
+        target.includes_active,
+        "bare always targets the running profile"
+    );
+    assert!(shell.open_error.is_none());
+}
+
+// Validates: configuration-system Req 19.12 (CR-NR-083) -- RESET BARE naming an
+// unknown profile blocks the whole command: no dialog opens and a non-blocking
+// error names the unknown profile.
+#[test]
+fn reset_bare_unknown_named_profile_errors_without_dialog() {
+    ff_session::set_active_profile(None);
+    let mut shell = make_shell();
+    // A slug that will not exist as a real profiles/<slug>/ directory.
+    shell.handle_command("RESET BARE zzz-nonesuch-profile");
+    assert!(
+        shell.reset_bare_confirm.is_none(),
+        "an unknown profile must NOT open the confirmation dialog"
+    );
+    let err = shell.open_error.as_deref().unwrap_or("");
+    assert!(
+        err.contains("zzz-nonesuch-profile"),
+        "error must name the unknown profile, got: {err:?}"
     );
 }
 
@@ -4604,7 +4644,10 @@ fn reset_bare_command_opens_confirmation_dialog() {
 fn execute_reset_bare_reopens_home_context() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.execute_reset_bare();
+    let target = shell
+        .resolve_reset_bare_target("")
+        .expect("bare target resolves");
+    shell.execute_reset_bare(&target);
     assert!(
         shell
             .tabs
@@ -4632,7 +4675,10 @@ fn execute_reset_bare_resets_theme_to_default_legacy() {
     shell.handle_command("THEME Default Dark");
     assert_eq!(shell.palette.name, "Default Dark");
 
-    shell.execute_reset_bare();
+    let target = shell
+        .resolve_reset_bare_target("")
+        .expect("bare target resolves");
+    shell.execute_reset_bare(&target);
 
     assert_eq!(
         shell.palette.name, "Default Legacy",
@@ -4843,10 +4889,10 @@ fn settings_reset_bare_affordance_dispatches_command() {
     let mut shell = make_shell();
     // The Settings Recovery_Baseline includes an R -> "RESET BARE" row; its
     // command dispatches through handle_command exactly as a typed command.
-    assert!(!shell.reset_bare_confirm_open);
+    assert!(shell.reset_bare_confirm.is_none());
     shell.handle_command("RESET BARE");
     assert!(
-        shell.reset_bare_confirm_open,
+        shell.reset_bare_confirm.is_some(),
         "the RESET BARE affordance's command must open the confirmation dialog"
     );
 }

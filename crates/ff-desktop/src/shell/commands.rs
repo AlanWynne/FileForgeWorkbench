@@ -372,11 +372,26 @@ impl WorkbenchShell {
             return;
         }
 
-        if upper == "RESET BARE" {
-            // Validates: configuration-system Requirement 19.1, 19.2 (CR-CH-021)
-            // -- open the confirmation dialog; take no action until confirmed.
-            self.reset_bare_confirm_open = true;
-            self.open_error = None;
+        if upper == "RESET BARE" || upper.starts_with("RESET BARE ") {
+            // Validates: configuration-system Requirement 19.1, 19.2, 19.9-19.15
+            // (CR-CH-021, CR-NR-083) -- resolve the target profile list from the
+            // argument(s), then open the confirmation dialog. Take no action
+            // until confirmed. An unknown named profile blocks with an error and
+            // no dialog (Req 19.12). The argument is taken from the ORIGINAL
+            // (case-preserving) command so profile names keep their case for
+            // display; matching is slug-based.
+            let args = cmd.trim().get("RESET BARE".len()..).unwrap_or("").trim();
+            match self.resolve_reset_bare_target(args) {
+                Ok(target) => {
+                    self.reset_bare_confirm = Some(target);
+                    self.open_error = None;
+                }
+                Err(message) => {
+                    // Req 19.12: unknown profile -> error, no dialog.
+                    self.reset_bare_confirm = None;
+                    self.open_error = Some(message);
+                }
+            }
             return;
         }
 

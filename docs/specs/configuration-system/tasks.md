@@ -553,3 +553,65 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
     - Validates: Requirement 20.1-20.7
   - [x] 33.7 Update `docs/quality/TCR.md`: set the CR-CH-025 configuration-system Req 20 rows to their correct status; update the Req 15 rows revised by CR-CH-025
     - Covers: Requirement 20 (all criteria); Requirement 15 (revised criteria)
+
+## Phase (reset-bare-targets) -- targeted RESET BARE (CR-NR-083, Requirement 19.9-19.15)
+
+- [x] 34. RESET BARE <profilename> and RESET BARE ALL (names target profile(s) in the shared dialog)
+  - [x] 34.1 Add a base/profiles path resolver independent of the active profile
+          (recommended: `ff_session::profiles_root()` returning
+          `<config>/ffworkbench/profiles` and a `default_base()` returning
+          `<config>/ffworkbench`, reused by the shell). Failing unit tests first.
+    - Validates: Requirement 19.10, 19.13
+  - [x] 34.2 Add a shell enumeration helper `reset_bare::enumerate_profiles_under()`
+          returning the DEFAULT base plus each `profiles/<slug>/` child (display
+          name + path); unit-test against a `TempDir` layout.
+    - Validates: Requirement 19.13
+  - [x] 34.3 Parse the `RESET BARE` argument list in `shell/commands.rs`: empty
+          -> [active profile] (19.9); `ALL` (case-insensitive, SOLE arg) -> every
+          profile (19.13, 19.14); otherwise a whitespace-separated list of named
+          profiles, slug-compared and de-duplicated (19.10). Replace
+          `reset_bare_confirm_open: bool` with a target-list-carrying
+          `reset_bare_confirm: Option<ResetBareTarget>`.
+    - Validates: Requirement 19.9, 19.10, 19.13, 19.14
+  - [x] 34.4 Unknown-profile guard (all-or-nothing): resolve EVERY named target
+          first; if ANY has no `profiles/<slug>/` dir (and is not the default),
+          set a non-blocking error naming the unknown name(s), open NO dialog,
+          archive nothing.
+    - Validates: Requirement 19.12
+  - [x] 34.5 Execute a confirmed named-list reset: `archive_config(path)` for
+          EACH listed profile (best-effort); run `reset_in_memory_to_baseline`
+          IFF the list includes the active profile; leave non-listed profiles'
+          on-disk data and (for a non-active-only list) the running shell
+          untouched.
+    - Validates: Requirement 19.10, 19.11
+  - [x] 34.6 Execute a confirmed ALL reset: `archive_config` each enumerated
+          profile best-effort (one failure does not abort the rest), then run the
+          in-memory reset once (active profile is always in the set).
+    - Validates: Requirement 19.13
+  - [x] 34.7 Reuse the EXISTING single confirmation dialog for all target lists;
+          its body text names the profile(s): the single name for one target, or
+          the enumerated list of names for a subset/ALL. Confirm/Cancel buttons
+          unchanged; no separate ALL modal, no typed field.
+    - Validates: Requirement 19.11, 19.15
+  - [x] 34.8 Tests (target resolution + command guard are shell STATE, not
+          rendered-widget focus/interaction, so covered by deterministic
+          TempDir/command tests rather than egui_kittest): `reset_bare::tests`
+          `resolve_bare_targets_default_when_no_active_profile`,
+          `resolve_bare_targets_active_profile_dir`,
+          `resolve_named_subset_resolves_each_and_excludes_active`,
+          `resolve_named_subset_including_active_sets_flag`,
+          `resolve_named_list_slugs_and_deduplicates`,
+          `resolve_named_list_with_unknown_errors_all_or_nothing`,
+          `resolve_all_targets_every_profile`,
+          `resolve_all_mixed_with_a_name_is_not_the_keyword`,
+          `enumerate_profiles_*`, `profile_udd_path_slugs_the_name`; shell
+          `reset_bare_bare_resolves_single_default_target`,
+          `reset_bare_unknown_named_profile_errors_without_dialog`; ff-session
+          `default_base_and_profiles_root_ignore_active_profile`. The dialog's
+          added label text (naming the profiles) is a minor extension of the
+          already-tested existing modal -> MANUAL for the pixel-exact body text.
+    - Validates: Requirement 19.10, 19.11, 19.12, 19.13, 19.14, 19.15
+  - [x] 34.9 Run verify.ps1 CLEAN (FULL, nextest); rebuild ffwb.exe; update
+          `docs/quality/TCR.md` Req 19.9-19.15 rows; update
+          `docs/project-management/project-master/tasks.md` Phase (reset-bare-targets).
+    - Covers: Requirement 19.9-19.15

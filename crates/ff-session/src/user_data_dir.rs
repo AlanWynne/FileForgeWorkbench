@@ -1,4 +1,4 @@
-//! User Data Directory initialisation — platform-specific path resolution,
+//! User Data Directory initialisation -- platform-specific path resolution,
 //! directory creation, subdirectory repair, and permission checking.
 //!
 //! Addresses: Requirement 3 (User Data Directory Initialisation)
@@ -13,7 +13,7 @@ pub const REQUIRED_SUBDIRS: &[&str] = &["sessions", "recovery", "profiles", "plu
 /// The application directory name used within platform config paths.
 const APP_DIR_NAME: &str = "ffworkbench";
 
-/// Manages the User Data Directory — location resolution, creation,
+/// Manages the User Data Directory -- location resolution, creation,
 /// and subdirectory repair.
 ///
 /// The User Data Directory is the platform-specific location for persistent
@@ -59,7 +59,7 @@ impl UserDataDir {
         })
     }
 
-    /// Initialise the User Data Directory — create it and all required
+    /// Initialise the User Data Directory -- create it and all required
     /// subdirectories if they don't exist.
     ///
     /// Performs incremental repair: creates missing subdirectories without
@@ -211,6 +211,34 @@ fn platform_default_path() -> Result<PathBuf, SessionError> {
     }
 }
 
+/// Resolve the DEFAULT_PROFILE's User_Data_Dir base -- `<config>/ffworkbench` --
+/// INDEPENDENT of the active profile.
+///
+/// Unlike `UserDataDir::resolve(None)` (which funnels through
+/// `platform_default_path` and therefore returns the ACTIVE profile's
+/// sub-directory), this always returns the profile-agnostic base. Used by
+/// features that must address the default profile and enumerate all profiles
+/// regardless of which profile the process is running under (e.g. targeted
+/// RESET BARE, CR-NR-083).
+///
+/// Validates: startup-and-session Requirement 22.2, 22.3
+pub fn default_base() -> Result<PathBuf, SessionError> {
+    let base = dirs::config_dir().ok_or_else(|| SessionError::UserDataDirUnavailable {
+        path: PathBuf::from("(unknown)"),
+        reason: "cannot determine platform config directory".to_string(),
+    })?;
+    Ok(base.join(APP_DIR_NAME))
+}
+
+/// Resolve the profiles root -- `<config>/ffworkbench/profiles` -- INDEPENDENT of
+/// the active profile. Each named Application_Profile is a `<slug>/` child of
+/// this directory (CR-NR-081, Requirement 22.3).
+///
+/// Validates: startup-and-session Requirement 22.3
+pub fn profiles_root() -> Result<PathBuf, SessionError> {
+    Ok(default_base()?.join("profiles"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -282,6 +310,34 @@ mod tests {
         // Always restore the default so no other test sees a stray profile.
         set_active_profile(None);
         assert_eq!(active_profile(), None);
+    }
+
+    // Validates: startup-and-session Req 22.2, 22.3 (CR-NR-083) -- default_base
+    // and profiles_root are INDEPENDENT of the active profile: they return the
+    // profile-agnostic base and profiles root regardless of which profile is
+    // active. Serialized with the profile global; always restores None.
+    #[test]
+    fn default_base_and_profiles_root_ignore_active_profile() {
+        set_active_profile(None);
+        let base_default = default_base().expect("base");
+        let root_default = profiles_root().expect("root");
+        assert!(base_default.ends_with(APP_DIR_NAME));
+        assert_eq!(root_default, base_default.join("profiles"));
+        assert!(
+            !base_default.to_string_lossy().contains("profiles"),
+            "default_base must be the profile-agnostic base"
+        );
+
+        // Even with an active profile, the base/root are UNCHANGED (unlike
+        // UserDataDir::resolve(None), which would return the profile sub-dir).
+        set_active_profile(Some("ispf"));
+        assert_eq!(default_base().expect("base"), base_default);
+        assert_eq!(profiles_root().expect("root"), root_default);
+        // The active profile's own dir is a child of the profiles root.
+        let active = UserDataDir::resolve(None).unwrap().path().to_path_buf();
+        assert_eq!(active, root_default.join("ispf"));
+
+        set_active_profile(None);
     }
 
     #[test]
