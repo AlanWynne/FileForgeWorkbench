@@ -499,3 +499,14 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-command` 
     - Covers: automated-dialog-testing 14.6, 14.7
   - [x] 31.12 Update TCR rows for Requirement 16
     - Covers: Requirement 16 (all criteria)
+
+
+- [ ] 32. Header label derived from live Context state (CR-CH-034, B050)
+  - [ ] 32.1 Add `context_header_label(tab) -> String` in `shell/mod.rs` deriving the label from live state (workspace_name > is_home > MenuWorkspace loaded-menu title > per-kind bracket label > editor path/[Untitled])
+    - Covers: Requirement 17.10
+  - [ ] 32.2 Route `title_line_text` through the shared derivation so a non-home Menu_Workspace shows its currently loaded menu title (not the cached `tab.title`)
+    - Covers: Requirement 17.10, 17.6
+  - [ ] 32.3 Route `render_tab_bar` `base_title` through the shared derivation (workspace_name precedence preserved for CX Req 1.4)
+    - Covers: Requirement 17.10
+  - [ ] 32.4 Regression test: an in-place Menu_Workspace context switch that updates the loaded menu but leaves the cached `tab.title` stale still renders the NEW context label (header no longer stale) -- B050
+    - Covers: Requirement 17.10

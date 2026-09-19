@@ -220,6 +220,14 @@ New capabilities that did not previously exist.
 
 Modifications to existing behaviour that already works.
 
+### CR-CH-034 -- Tab_Header and Title_Line derive the label from the live context (never a stale cached title) [B050]
+- **Date/Phase**: Phase (bug-sweep) (gate, Wave 3)
+- **Prompt**: (bug B050, prioritised in the outstanding-bug sweep) "When typing =1 from a files workspace the context of the window changes to the settings workspace but the tab heading still says files... it should say settings?"
+- **Description**: The Tab_Header (render_chrome.rs `render_tab_bar`) and the Title_Line (`title_line_text`) render the active tab's cached `tab.title` string. An in-place context switch that mutates `tab.kind` / the loaded `menu_workspace` but fails to also rewrite the cached `tab.title` leaves the header showing the PREVIOUS context's label (the phantom-stale-title class). Fix: for system/panel and Menu_Workspace Contexts, derive the displayed label from the LIVE authoritative state (`tab.is_home`, `tab.kind`, and the loaded `menu_workspace` title) via a single `context_header_label` helper, so the header can never drift from the content. A user-assigned `workspace_name` still wins where set (CX Req 1.4); the file-editor path (path / `[Untitled]`) is unchanged.
+- **Affects**: `ff-desktop` (shell/mod.rs `title_line_text`, shell/render_chrome.rs `render_tab_bar`)
+- **Status**: DONE
+- **Linked spec**: `docs/specs/menu-and-statusbar/requirements.md` Requirement 17 (Tab Window Chrome -- Title_Line; criterion 17.10 added); relates to multi-tab-editor Req 3 (tab header title) and `.kiro/steering/workspace-conformance.md`. Fixes B050.
+
 ### CR-CH-033 -- Clear the Command ===> field after a key-forwarded command (except when the command replaces it)
 - **Date/Phase**: Phase (command-line-outcome) (gate, sliced)
 - **Prompt**: "Typing 1 and pressing F9 leaves the 1 in the command line ... the command can decide what to do with the command line ... clear the command just before handing control to the command; the command then decides whether to put anything back ... if the handler cannot find the command it remains for typing correction; if the command itself errors (e.g. FIND does not find the string) it must populate the command back ... a command framework/pattern/trait that all commands are built on ... the most flexible design would allow the command to determine what goes back into the command line ... a command that could create suggested prompts ... LUA/REXX macro scripts should be able to address these ... commands written in other languages should be able to make use of this if adequately documented."

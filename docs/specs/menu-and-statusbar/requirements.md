@@ -413,6 +413,18 @@ know what I am looking at and can issue commands without hunting for the input f
 9. THE Primary_Command_Field SHALL remain the third element in the chrome, directly below
      the Title_Line, and SHALL retain all existing behaviour defined in Requirement 9.
 
+10. WHEN the active tab's Context is switched in place (its `kind` and/or its loaded
+     Menu_Workspace change without a new tab being opened), THE Tab_Header label AND the
+     Title_Line SHALL reflect the NEW Context immediately, never a stale label from the
+     previous Context. To guarantee this, for a Home Context, a system/panel Context
+     (Catalog Explorer, File Explorer, Config, Search Results, Plugin Manager, Event Log,
+     Macro Library, Command Configurator, Theme/Menus/Keys Editor) and a Menu_Workspace
+     Context, THE displayed label SHALL be derived from the tab's LIVE state -- its Home
+     flag, its `kind`, and (for a Menu_Workspace) the title of its currently loaded menu --
+     rather than from a cached title string that a mutation path could leave unupdated. A
+     user-assigned `workspace_name` (CX Requirement 1.4), when set, SHALL still take
+     precedence; the file-editor path (Requirement 17.4/17.5) is unchanged. [B050]
+
 ---
 
 ### Requirement 18: Detachable Tab Windows

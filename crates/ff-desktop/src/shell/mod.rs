@@ -974,7 +974,15 @@ pub(crate) fn title_line_text(tab: &crate::tab_state::TabState) -> String {
         | TabKind::ThemeEditor
         | TabKind::MenusEditor
         | TabKind::KeysEditor => tab.title.clone(),
-        TabKind::MenuWorkspace => tab.title.clone(),
+        // CR-CH-034 / B050 (menu-and-statusbar Req 17.10): a non-Home
+        // Menu_Workspace's label is derived from its CURRENTLY loaded menu, not
+        // the cached `tab.title` (which an in-place context switch could leave
+        // stale). Falls back to the cached title only when no menu is loaded.
+        TabKind::MenuWorkspace => tab
+            .menu_workspace
+            .as_ref()
+            .map(|mw| mw.tab_title())
+            .unwrap_or_else(|| tab.title.clone()),
     }
 }
 

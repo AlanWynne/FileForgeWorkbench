@@ -1144,3 +1144,39 @@ and the tab's content. The `ff-layout` `FloatingWindowManager` will track the wi
 No architectural contradictions with existing decisions. The Title_Line is a pure addition
 to the rendering pipeline -- it is non-interactive and does not participate in the tab-order
 cycle (Section 9, unified model per CR-CH-023); the command field retains its focus behaviour.
+
+
+### CR-CH-034 delta -- header label derived from live Context state (B050 phantom-stale-title)
+
+The original Section 10 table derived the Title_Line from `TabKind` + `path`, but for the
+panel and Menu_Workspace kinds the shell had drifted to rendering the cached `tab.title`
+string in BOTH the Tab_Header (`render_tab_bar`) and the Title_Line (`title_line_text`). A
+cached string must be rewritten at every in-place context-switch site; when one site mutates
+`tab.kind` / the loaded `menu_workspace` but forgets the title (the same class as the
+workspace-conformance phantom Tab-stop bug), the header shows the previous Context's label.
+B050 is one instance (an in-place `=<key>` fastpath from a Files Context whose header stayed
+`files` after the content changed).
+
+Fix (Requirement 17.10): introduce a single helper `context_header_label(tab) -> String` in
+`shell/mod.rs` that derives the label from the tab's LIVE state, and route both
+`title_line_text` and `render_tab_bar`'s `base_title` through it:
+
+| Live state | Header label |
+|------------|--------------|
+| `tab.workspace_name == Some(name)` (and kind is a panel/menu, not an editor) | `[name]` (CX Req 1.4, unchanged precedence) |
+| `tab.is_home` | app banner (Title_Line) / `[POM]` (Tab_Header) |
+| `kind == MenuWorkspace` (non-home) | `tab.menu_workspace.as_ref().map(tab_title).unwrap_or(tab.title)` -- the CURRENTLY loaded menu's title |
+| `kind == FileEditor` | `path` or `[Untitled]` (unchanged) |
+| `kind == Untitled` | `[Untitled]` |
+| other panel kinds (Config, Files, FileExplorer, Search, PluginManager, EventLog, MacroLibrary, CommandConfigurator, Theme/Menus/Keys editors) | the kind's canonical bracket label |
+
+The Menu_Workspace row is the key change: a non-home Menu_Workspace's displayed label now
+comes from the loaded `menu_workspace` (Settings, a named user menu, etc.) rather than the
+cached `tab.title`, so an in-place reload of the menu can never leave the header stale. The
+panel kinds return a fixed per-kind bracket label (they have no variable content title), so
+their label is likewise independent of the cached string. `tab.title` remains stored (it is
+still the persistence/session field and the editor label source) but is no longer the display
+source for the drift-prone Contexts.
+
+No architectural contradiction: the Title_Line stays a pure, non-interactive derivation; only
+its INPUT changes from a cached field to the live kind/menu, eliminating the drift class.

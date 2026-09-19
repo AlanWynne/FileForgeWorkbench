@@ -574,6 +574,7 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | 🔲 | -- | Req 17.7: Title_Line visually distinct from editor content area (manual UI verification) |
 | `ff-desktop` | 🔲 | -- | Req 17.8: Legacy theme Title_Line uses blue background / white text (manual UI verification) |
 | `ff-desktop` | 🔲 | -- | Req 17.9: Command_Field remains third element below Title_Line (manual UI verification) |
+| `ff-desktop` | 🔴 | -- | Req 17.10 (CR-CH-034, B050): Tab_Header + Title_Line derive the label from live Context state (kind / loaded menu), never a stale cached title after an in-place context switch |
 | `ff-desktop` | 🔴 | -- | Req 18.1–18.7: Detachable tab windows -- deferred to future phase |
 
 | `ff-desktop` | 🔲 | `shell.rs` unit tests | Req 8.1: Command field Enter-to-submit -- pressing Enter while field has focus executes the command |

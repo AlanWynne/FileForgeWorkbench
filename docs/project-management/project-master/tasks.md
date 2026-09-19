@@ -2556,6 +2556,13 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
       fallback/drop indicator (B038). B036 (remote connectors) reframed
       forward-looking + deferred (no connector crates exist yet).
       Covers: logging-subsystem Req 8.7, 9.6, 9.7, 9.8.
+- [ ] BS.header B050 / CR-CH-034 (Wave 3a): Tab_Header + Title_Line derive the
+      displayed label from live Context state (is_home / kind / loaded
+      Menu_Workspace title) via a shared `context_header_label` helper, so an
+      in-place context switch can never leave the header showing the previous
+      Context (phantom-stale-title class). workspace_name precedence preserved.
+      Regression test on a stale-title Menu_Workspace.
+      Covers: menu-and-statusbar Req 17.10.
 
 | Status | Count |
 |--------|-------|

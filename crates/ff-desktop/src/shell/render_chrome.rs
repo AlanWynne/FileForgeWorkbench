@@ -448,6 +448,19 @@ impl WorkbenchShell {
                                 }
                                 _ => format!("[{}]", name),
                             }
+                        } else if tab.kind == crate::tab_state::TabKind::MenuWorkspace
+                            && !tab.is_home
+                        {
+                            // CR-CH-034 / B050 (Req 17.10): derive a non-Home
+                            // Menu_Workspace header from its CURRENTLY loaded
+                            // menu so an in-place context switch can never leave
+                            // the tab header showing the previous Context's
+                            // label. The cached title is the fallback only when
+                            // no menu is loaded.
+                            tab.menu_workspace
+                                .as_ref()
+                                .map(|mw| mw.tab_title())
+                                .unwrap_or_else(|| tab.title.clone())
                         } else {
                             tab.title.clone()
                         };

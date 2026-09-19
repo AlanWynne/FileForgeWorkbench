@@ -826,6 +826,44 @@ fn title_line_files_panel_shows_files() {
     assert_eq!(text, "[FILES]");
 }
 
+/// Validates: menu-and-statusbar Requirement 17.10 (CR-CH-034, B050) -- a
+/// non-Home Menu_Workspace tab whose cached `tab.title` is STALE (left as a
+/// previous Context's label after an in-place context switch) still renders the
+/// Title_Line label of the CURRENTLY loaded menu, derived from live state --
+/// never the stale cached string. This is the phantom-stale-title reproduction:
+/// the tab holds a loaded "Settings" menu but its `title` field still reads
+/// "[FILES]" from before the switch.
+#[test]
+fn title_line_menu_workspace_uses_loaded_menu_not_stale_title() {
+    // Validates: menu-and-statusbar Requirement 17.10
+    use crate::menu_workspace::MenuWorkspaceState;
+    use crate::tab_state::{TabId, TabState};
+    use ff_document_model::new_document;
+    use std::io::Write;
+
+    // A loaded menu titled "Settings" -> its live label is "[SETTINGS]".
+    let mut f = tempfile::NamedTempFile::new().expect("tempfile");
+    f.write_all(
+        b"title = \"Settings\"\n[[options]]\nkey=\"0\"\ncommand=\"CONFIG\"\ndescription=\"Config\"\n",
+    )
+    .expect("write");
+    let mw = MenuWorkspaceState::load(f.path());
+    assert_eq!(mw.tab_title(), "[SETTINGS]", "sanity: loaded menu label");
+
+    let mut tab = TabState::menu_workspace_tab(TabId(7), new_document(), mw);
+    // Simulate an in-place context switch that updated the loaded menu but left
+    // the cached title pointing at the PREVIOUS Files Context (the B050 bug).
+    tab.title = "[FILES]".to_string();
+    tab.is_home = false;
+
+    let text = super::title_line_text(&tab);
+    assert_eq!(
+        text, "[SETTINGS]",
+        "Title_Line must derive a non-Home Menu_Workspace label from its loaded \
+         menu, not the stale cached tab.title"
+    );
+}
+
 // ── Phase AK: Tab-header focus stops + command field focus fix ───────────
 
 // ── Phase AO: Detachable Tab Windows (Requirement 18) ──────────────────────
