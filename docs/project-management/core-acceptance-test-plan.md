@@ -71,9 +71,9 @@ not blocking.
 | 1.6 | Close a tab via its close control. | Tab closes; a sensible neighbour becomes active; POM cannot be lost (at least one tab remains). | multi-tab-editor 3.8 | [x] |
 | 1.7 | END (F3) from a POM tab when other tabs are open. | Closes only that POM Workspace and navigates to another open Workspace; the app does NOT exit. | CR-CH-016 (FIXED, retest) | [x] |
 | 1.8 | END (F3) from a POM tab when it is the LAST tab open. | The application terminates. | CR-CH-016 (FIXED, retest) | [x] |
-| 1.9 | Detach a workspace via the tab right-click menu (Detach/Undock action). | A Detach/Undock action exists in the tab context menu; invoking it moves the workspace into a separate OS window (Detached Workspace); content intact. | B045; layout-and-docking 3.1 | [B] |
-| 1.10 | Detach by dragging a tab >20px outside the tab bar and releasing. | A new Detached Workspace is created at the release point; content intact. | B045; layout-and-docking 3.9 | [B] |
-| 1.11 | Re-dock the detached workspace (close its window or redock gesture). | It returns to the tab bar at its origin; content intact. | B045; layout-and-docking 3.5, 3.11 | [B] |
+| 1.9 | Detach a workspace via the tab right-click menu ("Move to Other View" / SPLIT). | The action moves the workspace into a separate OS window (Detached Workspace) showing the tab's REAL interactive content (Title_Line + content), not a placeholder; the tab's header is removed from the primary bar. | B045 (FIXED, AUTOMATED headless: full_shell_detach_sets_floating_and_records_floating_tab; real OS-window appearance MANUAL); CR-CH-035; menu-and-statusbar 18.1/18.2/18.4/18.8 | [ ] |
+| 1.10 | Detach by dragging a tab >20px outside the tab bar and releasing. | A new Detached Workspace is created at the release point; content intact. | B045; CR-CH-035; menu-and-statusbar 18.6 (drag-out MANUAL follow-up -- context-menu/SPLIT detach works today, row 1.9); layout-and-docking 3.9 | [B] |
+| 1.11 | Re-dock the detached workspace (close its window). | It returns to the tab bar at its origin index (remove+reinsert, order preserved); content/cursor/modified state intact. | B045 (FIXED, AUTOMATED headless: full_shell_redock_restores_tab_at_origin; real OS-window close MANUAL); CR-CH-035; menu-and-statusbar 18.3/18.9 | [ ] |
 | 1.12 | Exit and relaunch. | Session restores tabs/active workspace; POM present. | startup-and-session 14.1b | [ ] |
 | 1.13 | Run with the log directory unwritable (or force a log-buffer overflow) and view the status bar. | When logging has DEGRADED (fallback mode because the log file could not be created, or dropped-record count > 0), the status bar shows a logging-degradation indicator (e.g. `LOG!`); when logging is healthy nothing is shown. | B038 (FIXED, AUTOMATED: full-shell egui_kittest status-bar indicator present-when-degraded / absent-when-healthy); logging-subsystem 8.7 | [ ] |
 
@@ -256,7 +256,7 @@ fixed. Keep this map updated as rows are added.
 | B042 (catalog subtree edit ops) | FIXED | 3.10 |
 | B043 (SWAP command -- tab switching) | FIXED (retest 1.4/1.5) | 1.4, 1.5 |
 | B044 (Local Files per-entry skip) | PARTIAL: per-entry skip FIXED (retest 3.2); junctions -> CR-NR-072 | 3.2, 3.2a |
-| B045 (detach not wired) | OPEN | 1.9, 1.10, 1.11 |
+| B045 (detach) | FIXED (CR-CH-035): real immediate-viewport content + faithful redock + 80-char title + unified 16-limit; AUTOMATED headless (detach/redock/limit/truncate); real OS window + drag-out (18.6) MANUAL | 1.9, 1.11 (retest); 1.10 [B] drag-out |
 | B046 (function keys) | PARTIAL: dispatch works + F7/F8 defaults FIXED (UP/DOWN); remnants parcelled to CRs -- configurable keylist = CR-NR-069, F1 help content = CR-NR-071, SCROLL-amount-aware UP/DOWN (MAX modifier) = CR-NR-087, PF2/PF9/PF3 split = menu-and-statusbar 11-14 | 7.1-7.8, 7.3a |
 | B047 (navigator file open resource-not-found) | FIXED (retest 3.3/3.12) | 3.3, 3.12 |
 | B055 (Tab lands on status bar segments before menu/POM) | FIXED (retest 1.3a) | 1.3a |

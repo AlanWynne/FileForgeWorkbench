@@ -864,6 +864,31 @@ fn title_line_menu_workspace_uses_loaded_menu_not_stale_title() {
     );
 }
 
+/// Validates: menu-and-statusbar Requirement 18.5 (CR-CH-035, B045) -- the
+/// Detached_Workspace OS title is truncated to at most 80 chars on a char
+/// boundary; a short title is unchanged.
+#[test]
+fn truncate_title_clamps_to_max_on_char_boundary() {
+    // Validates: menu-and-statusbar Requirement 18.5
+    let short = "[FILES] -- FileForge Workbench";
+    assert_eq!(
+        super::truncate_title(short, 80),
+        short,
+        "short title unchanged"
+    );
+
+    let long = "X".repeat(200);
+    let out = super::truncate_title(&long, 80);
+    assert_eq!(out.chars().count(), 80, "must clamp to exactly max chars");
+    assert!(out.ends_with('~'), "truncated title marks the cut");
+
+    // Multi-byte safety: a title of multi-byte chars must not split a char.
+    let multi = "e\u{0301}".repeat(100); // combining acute; each unit is 2 chars
+    let out2 = super::truncate_title(&multi, 10);
+    assert_eq!(out2.chars().count(), 10);
+    // Round-trips as valid UTF-8 (no panic / no split) -- implicit by String.
+}
+
 // ── Phase AK: Tab-header focus stops + command field focus fix ───────────
 
 // ── Phase AO: Detachable Tab Windows (Requirement 18) ──────────────────────
@@ -898,7 +923,7 @@ fn floating_tab_limit_enforced_at_16() {
     for i in 0..16 {
         floating.push(FloatingTab {
             viewport_id: egui::ViewportId::from_hash_of(format!("ft_{i}")),
-            tab_index: i,
+            tab_id: crate::tab_state::TabId(i as u64),
             origin_index: i,
         });
     }
@@ -919,11 +944,11 @@ fn floating_tab_origin_index_preserved() {
 
     let ft = FloatingTab {
         viewport_id: egui::ViewportId::from_hash_of("test"),
-        tab_index: 3,
+        tab_id: crate::tab_state::TabId(3),
         origin_index: 3,
     };
     assert_eq!(ft.origin_index, 3);
-    assert_eq!(ft.tab_index, 3);
+    assert_eq!(ft.tab_id, crate::tab_state::TabId(3));
 }
 
 /// Validates: Requirement 18.3 -- redock clamps origin_index to current tab count.
@@ -4007,34 +4032,27 @@ fn split_detach_sets_detach_pending() {
 #[test]
 fn split_detach_at_limit_shows_error() {
     let mut shell = make_shell();
-    // Directly set is_floating on the first tab and add 15 more floating POM tabs
-    // by manipulating the tab state directly
-    shell.tabs.tabs_mut()[0].is_floating = true;
-    for _ in 1..16 {
-        shell.tabs.insert_pom_tab(&shell.runtime);
-        // Mark the newly inserted tab as floating
-        // insert_pom_tab appends and sets active to the new tab
-        let idx = shell.tabs.active_index();
-        shell.tabs.tabs_mut()[idx].is_floating = true;
+    // CR-CH-035: the 16-window limit now counts recorded FloatingTabs (the shared
+    // source of truth). Fabricate 16 entries so the next SPLIT DETACH is rejected
+    // deterministically (no environment-dependent soft skip).
+    for i in 0..16 {
+        shell.floating_tabs.push(super::FloatingTab {
+            viewport_id: egui::ViewportId::from_hash_of(format!("limit_{i}")),
+            tab_id: crate::tab_state::TabId(20_000 + i),
+            origin_index: 0,
+        });
     }
-    let count = shell.tabs.tabs().iter().filter(|t| t.is_floating).count();
-    // If we couldn't get to 16, skip -- the mechanism is tested by the handler logic
-    if count < 16 {
-        // Manually force the count by marking all tabs floating
-        for tab in shell.tabs.tabs_mut().iter_mut() {
-            tab.is_floating = true;
-        }
-    }
-    let count = shell.tabs.tabs().iter().filter(|t| t.is_floating).count();
-    if count >= 16 {
-        shell.handle_command("SPLIT DETACH");
-        assert!(
-            shell.open_error.is_some(),
-            "SPLIT DETACH at limit should show error"
-        );
-    }
-    // If count < 16 after forcing, the test environment doesn't support this scenario
-    // -- the handler logic is still correct by code inspection
+    shell.open_error = None;
+    shell.handle_command("SPLIT DETACH");
+    assert!(
+        shell.open_error.is_some(),
+        "SPLIT DETACH at the 16-window limit must show a status message"
+    );
+    assert_eq!(
+        shell.floating_tabs.len(),
+        16,
+        "no 17th FloatingTab may be recorded at the limit"
+    );
 }
 
 // === Phase DB (DB.11): descriptor-based restore (startup-and-session Req 21) ===
@@ -6823,5 +6841,141 @@ fn full_shell_status_bar_hides_logging_indicator_when_healthy() {
         state.as_deref(),
         Some(""),
         "logging-degradation indicator must be hidden (empty) when logging is healthy"
+    );
+}
+
+// ── CR-CH-035 (B045): full-shell Detached Workspace behaviour ───────────────
+// These drive the REAL WorkbenchShell headlessly (build_eframe) through the
+// detach/redock state machine. The actual separate OS window (its appearance,
+// taskbar presence, independent move/resize) is a justified MANUAL row per
+// testing.md (real multi-viewport windows are the documented harness exception);
+// here we assert the shell-side state transitions and that the immediate
+// viewport render path executes without panicking.
+
+/// Validates: menu-and-statusbar Requirement 18.1/18.4/18.8 (CR-CH-035, B045) --
+/// detaching a tab (via the SPLIT DETACH command, the same path the "Move to
+/// Other View" context item uses) sets is_floating on the tab and records a
+/// FloatingTab, so the primary tab bar no longer shows it and its content is
+/// rendered in a floating viewport.
+#[test]
+fn full_shell_detach_sets_floating_and_records_floating_tab() {
+    // Validates: menu-and-statusbar Requirement 18.1, 18.4, 18.8
+    let mut harness = harness_shell();
+    // Open a second workspace so at least one tab remains docked after detach.
+    harness.state_mut().handle_command("START"); // opens a new POM tab
+    harness.run();
+    let detach_idx = harness.state().tabs.active_index();
+    let detach_id = harness.state().tabs.active_tab().id;
+    // Detach the active tab (SPLIT on a non-editor tab detaches; SPLIT DETACH is
+    // the explicit form). Sets detach_pending; the next frame consumes it.
+    harness.state_mut().handle_command("SPLIT DETACH");
+    for _ in 0..3 {
+        harness.run();
+    }
+    let state = harness.state();
+    assert_eq!(
+        state.floating_tabs.len(),
+        1,
+        "detach must record exactly one FloatingTab"
+    );
+    assert_eq!(
+        state.floating_tabs[0].tab_id, detach_id,
+        "FloatingTab must track the detached tab's stable id"
+    );
+    assert_eq!(
+        state.floating_tabs[0].origin_index, detach_idx,
+        "FloatingTab must record the origin index for redock"
+    );
+    let tab = state
+        .tabs
+        .tabs()
+        .iter()
+        .find(|t| t.id == detach_id)
+        .expect("detached tab still lives in the TabManager");
+    assert!(tab.is_floating, "detached tab must be flagged is_floating");
+}
+
+/// Validates: menu-and-statusbar Requirement 18.3/18.9 (CR-CH-035, B045) --
+/// closing a Detached_Workspace (simulated by pushing its origin into
+/// redock_pending, exactly as the viewport close callback does) redocks the tab:
+/// is_floating cleared, FloatingTab removed, tab restored to its origin index.
+#[test]
+fn full_shell_redock_restores_tab_at_origin() {
+    // Validates: menu-and-statusbar Requirement 18.3, 18.9
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("START");
+    harness.run();
+    let origin = harness.state().tabs.active_index();
+    let detach_id = harness.state().tabs.active_tab().id;
+    harness.state_mut().handle_command("SPLIT DETACH");
+    for _ in 0..3 {
+        harness.run();
+    }
+    assert_eq!(
+        harness.state().floating_tabs.len(),
+        1,
+        "precondition: detached"
+    );
+
+    // Simulate the OS-window close: the viewport callback pushes origin_index.
+    harness
+        .state_mut()
+        .redock_pending
+        .lock()
+        .expect("redock lock")
+        .push(origin);
+    for _ in 0..3 {
+        harness.run();
+    }
+    let state = harness.state();
+    assert!(
+        state.floating_tabs.is_empty(),
+        "redock must remove the FloatingTab"
+    );
+    let idx = state
+        .tabs
+        .index_of_id(detach_id)
+        .expect("redocked tab still exists");
+    assert_eq!(
+        idx, origin,
+        "redock must restore the tab to its origin index"
+    );
+    assert!(
+        !state.tabs.tabs()[idx].is_floating,
+        "redocked tab must no longer be is_floating"
+    );
+}
+
+/// Validates: menu-and-statusbar Requirement 18.7 (CR-CH-035, B045) -- with 16
+/// Detached Workspaces already open, a further detach is rejected with a status
+/// message and no new FloatingTab.
+#[test]
+fn full_shell_detach_rejected_at_16_window_limit() {
+    // Validates: menu-and-statusbar Requirement 18.7
+    let mut harness = harness_shell();
+    // Fabricate 16 floating entries directly (the guard reads floating_tabs.len()).
+    for i in 0..16 {
+        let vid = egui::ViewportId::from_hash_of(format!("limit_ft_{i}"));
+        harness.state_mut().floating_tabs.push(super::FloatingTab {
+            viewport_id: vid,
+            tab_id: crate::tab_state::TabId(10_000 + i),
+            origin_index: 0,
+        });
+    }
+    harness.state_mut().open_error = None;
+    // Attempt one more detach via the context-menu path guard (SPLIT DETACH uses
+    // the is_floating count; the "Move to Other View" item uses floating_tabs.len
+    // -- both reject at 16). Drive SPLIT DETACH and confirm no 17th entry.
+    harness.state_mut().handle_command("SPLIT DETACH");
+    for _ in 0..2 {
+        harness.run();
+    }
+    assert!(
+        harness.state().floating_tabs.len() <= 16,
+        "must never exceed 16 Detached Workspaces"
+    );
+    assert!(
+        harness.state().open_error.is_some(),
+        "detach beyond the 16-window limit must report a status message"
     );
 }

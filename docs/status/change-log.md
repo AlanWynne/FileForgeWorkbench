@@ -227,6 +227,14 @@ New capabilities that did not previously exist.
 
 Modifications to existing behaviour that already works.
 
+### CR-CH-035 -- Detached Workspaces render real interactive content + faithful redock (proper B045 fix) [B045]
+- **Date/Phase**: Phase (bug-sweep) (gate, Wave A)
+- **Prompt**: (bug B045, owner) "Detaching a workspace does not work ... dragging it does not detach it. Right clicking on the tab [has no Detach]." + "The detaching is a core requirement. I want this fixed properly before we move on."
+- **Description**: The detach path is already wired (context menu "Move to Other View" / SPLIT -> `detach_pending` -> `show_viewport_deferred` OS window -> close -> `redock_pending` -> swap-to-origin; the primary tab bar already hides `is_floating` tabs). The DEFECT is that the detached window renders a hardcoded placeholder (`ui.label("Tab N -- floating")`) instead of the tab's real Tab_Window_Chrome + content, because `show_viewport_deferred` takes a `'static move` closure that cannot borrow `&mut self`. Fix: render detached windows with `show_viewport_immediate` (synchronous, can borrow the shell) so each Detached Workspace shows the SAME interactive Title_Line + Primary_Command_Field + content as when docked (menu-and-statusbar Req 18.1/18.2); truncate the OS-window title to 80 chars (Req 18.5); make redock a faithful remove+reinsert at the origin index (Req 18.3/18.4) via a new `TabManager` insert-at-index seam rather than a positional swap; keep the 16-window limit (Req 18.7). Drag-out-to-detach (Req 18.6) is assessed for headless testability; if it needs real pointer-vs-OS-window geometry it is a justified MANUAL row. The detached window's title routes through the shared `title_line_text`/`context_header_label` derivation so the later Workspace Definition model (Wave B) changes the title source in ONE place.
+- **Affects**: `ff-desktop` (shell/update.rs floating-viewport loop + detach/redock frame logic, shell/render.rs central-panel render parameterised by tab, tab_manager.rs insert-at-index seam, shell/mod.rs FloatingTab)
+- **Status**: DONE (drag-out Req 18.6 + real-OS-window appearance are the documented MANUAL follow-ups)
+- **Linked spec**: `docs/specs/menu-and-statusbar/requirements.md` Requirement 18 (Detachable Tab Windows, 18.1-18.7 -- already specified; added 18.8 for the immediate-viewport real-content invariant + 18.9 for faithful redock-at-origin); `docs/specs/layout-and-docking/requirements.md` Requirement 3 (Detached Workspaces 3.1-3.16). Fixes B045.
+
 ### CR-CH-034 -- Tab_Header and Title_Line derive the label from the live context (never a stale cached title) [B050]
 - **Date/Phase**: Phase (bug-sweep) (gate, Wave 3)
 - **Prompt**: (bug B050, prioritised in the outstanding-bug sweep) "When typing =1 from a files workspace the context of the window changes to the settings workspace but the tab heading still says files... it should say settings?"

@@ -565,401 +565,402 @@ impl WorkbenchShell {
         // Validates: Requirement 14.8 — central panel dispatches on tab kind
         if !is_file_explorer {
             egui::CentralPanel::default().show(ctx, |ui| {
-                // CR-CH-023: reset the Boundary_Policy interior anchors each
-                // frame; the active Workspace arm re-populates them if it has
-                // interior focus stops. Workspaces that leave them None cause
-                // Tab from the command field to go straight to the menu bar.
-                self.first_interior_id = None;
-                self.last_interior_id = None;
-                match self.tabs.active_tab().kind {
-                    TabKind::FilesPanel => {
-                        // Validates: Requirement 1.1, 1.7
-                        let action = files_panel::render(ui, &mut self.files_panel);
-                        match action {
-                            files_panel::FilesPanelAction::ReturnToPom => {
-                                self.pending_return_to_pom = true;
+                self.render_active_tab_body(ctx, ui);
+            });
+        } // end !is_file_explorer
+    }
+
+    /// Render the ACTIVE tab's Context body (the `match tab.kind` dispatch) into
+    /// `ui`. Extracted from `render_central_panel` (CR-CH-035, B045) so the SAME
+    /// code renders a docked tab in the primary CentralPanel AND a detached tab
+    /// inside its floating viewport: the floating loop temporarily sets the
+    /// active index to the detached tab, calls this, and restores it. Behaviour
+    /// for the docked path is unchanged.
+    ///
+    /// Validates: menu-and-statusbar Requirement 18.8 (real detached content)
+    pub(super) fn render_active_tab_body(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        {
+            // CR-CH-023: reset the Boundary_Policy interior anchors each
+            // frame; the active Workspace arm re-populates them if it has
+            // interior focus stops. Workspaces that leave them None cause
+            // Tab from the command field to go straight to the menu bar.
+            self.first_interior_id = None;
+            self.last_interior_id = None;
+            match self.tabs.active_tab().kind {
+                TabKind::FilesPanel => {
+                    // Validates: Requirement 1.1, 1.7
+                    let action = files_panel::render(ui, &mut self.files_panel);
+                    match action {
+                        files_panel::FilesPanelAction::ReturnToPom => {
+                            self.pending_return_to_pom = true;
+                        }
+                        files_panel::FilesPanelAction::NewCatalog => {
+                            if matches!(
+                                self.files_panel.dialog,
+                                files_panel::FilesDialogState::None
+                            ) {
+                                // Req 12.1, 12.2 — pre-populate with configured defaults
+                                let mf_root = self
+                                    .config_handle
+                                    .get_string(ff_config::keys::catalogs::DEFAULT_MAINFRAME_ROOT)
+                                    .unwrap_or_default();
+                                let posix_root = self
+                                    .config_handle
+                                    .get_string(ff_config::keys::catalogs::DEFAULT_POSIX_ROOT)
+                                    .unwrap_or_default();
+                                self.files_panel.dialog = files_panel::FilesDialogState::NewCatalog(
+                                    NewCatalogForm::with_defaults(mf_root, posix_root),
+                                );
                             }
-                            files_panel::FilesPanelAction::NewCatalog => {
-                                if matches!(
-                                    self.files_panel.dialog,
-                                    files_panel::FilesDialogState::None
-                                ) {
-                                    // Req 12.1, 12.2 — pre-populate with configured defaults
-                                    let mf_root = self
-                                        .config_handle
-                                        .get_string(
-                                            ff_config::keys::catalogs::DEFAULT_MAINFRAME_ROOT,
-                                        )
-                                        .unwrap_or_default();
-                                    let posix_root = self
-                                        .config_handle
-                                        .get_string(ff_config::keys::catalogs::DEFAULT_POSIX_ROOT)
-                                        .unwrap_or_default();
+                        }
+                        files_panel::FilesPanelAction::EditCatalog(name) => {
+                            // Req 4.1 - open Edit Catalog dialog pre-populated
+                            if matches!(
+                                self.files_panel.dialog,
+                                files_panel::FilesDialogState::None
+                            ) {
+                                if let Some(cat) = self.files_panel.registry.get_by_name(&name) {
+                                    let form =
+                                        catalog_manager_dialog::EditCatalogForm::from_catalog(cat);
                                     self.files_panel.dialog =
-                                        files_panel::FilesDialogState::NewCatalog(
-                                            NewCatalogForm::with_defaults(mf_root, posix_root),
-                                        );
+                                        files_panel::FilesDialogState::EditCatalog(form);
                                 }
                             }
-                            files_panel::FilesPanelAction::EditCatalog(name) => {
-                                // Req 4.1 - open Edit Catalog dialog pre-populated
-                                if matches!(
-                                    self.files_panel.dialog,
-                                    files_panel::FilesDialogState::None
-                                ) {
-                                    if let Some(cat) = self.files_panel.registry.get_by_name(&name)
-                                    {
-                                        let form =
-                                            catalog_manager_dialog::EditCatalogForm::from_catalog(
-                                                cat,
-                                            );
-                                        self.files_panel.dialog =
-                                            files_panel::FilesDialogState::EditCatalog(form);
-                                    }
-                                }
-                            }
-                            files_panel::FilesPanelAction::DeleteCatalog(name) => {
-                                // Req 4.3 - open Delete Catalog confirmation dialog
-                                if matches!(
-                                    self.files_panel.dialog,
-                                    files_panel::FilesDialogState::None
-                                ) {
-                                    if let Some(cat) = self.files_panel.registry.get_by_name(&name)
-                                    {
-                                        let confirm =
+                        }
+                        files_panel::FilesPanelAction::DeleteCatalog(name) => {
+                            // Req 4.3 - open Delete Catalog confirmation dialog
+                            if matches!(
+                                self.files_panel.dialog,
+                                files_panel::FilesDialogState::None
+                            ) {
+                                if let Some(cat) = self.files_panel.registry.get_by_name(&name) {
+                                    let confirm =
                                         catalog_manager_dialog::DeleteCatalogConfirm::from_catalog(
                                             cat,
                                         );
-                                        self.files_panel.dialog =
-                                            files_panel::FilesDialogState::DeleteCatalog(confirm);
-                                    }
-                                }
-                            }
-
-                            files_panel::FilesPanelAction::AllocateDataset(catalog_name) => {
-                                // Req 5.1 - open Allocate Dataset dialog
-                                // Req 13.2 - record which catalog opened the dialog
-                                if matches!(
-                                    self.files_panel.dialog,
-                                    files_panel::FilesDialogState::None
-                                ) {
-                                    self.files_panel.pending_alloc_catalog =
-                                        Some(catalog_name.clone());
-                                    // Req 5.7 — pre-populate Dataset Name with catalog HLQ if set
-                                    let form = self
-                                        .files_panel
-                                        .registry
-                                        .get_by_name(&catalog_name)
-                                        .and_then(|c| c.default_hlq.as_deref())
-                                        .map(dataset_alloc_dialog::AllocDatasetForm::with_hlq)
-                                        .unwrap_or_default();
                                     self.files_panel.dialog =
-                                        files_panel::FilesDialogState::AllocateDataset(form);
+                                        files_panel::FilesDialogState::DeleteCatalog(confirm);
                                 }
                             }
-                            files_panel::FilesPanelAction::OpenFile(dsn) => {
-                                // Req 16 — resolve physical path from catalog repository + DSN
-                                let is_mainframe = self
+                        }
+
+                        files_panel::FilesPanelAction::AllocateDataset(catalog_name) => {
+                            // Req 5.1 - open Allocate Dataset dialog
+                            // Req 13.2 - record which catalog opened the dialog
+                            if matches!(
+                                self.files_panel.dialog,
+                                files_panel::FilesDialogState::None
+                            ) {
+                                self.files_panel.pending_alloc_catalog = Some(catalog_name.clone());
+                                // Req 5.7 — pre-populate Dataset Name with catalog HLQ if set
+                                let form = self
+                                    .files_panel
+                                    .registry
+                                    .get_by_name(&catalog_name)
+                                    .and_then(|c| c.default_hlq.as_deref())
+                                    .map(dataset_alloc_dialog::AllocDatasetForm::with_hlq)
+                                    .unwrap_or_default();
+                                self.files_panel.dialog =
+                                    files_panel::FilesDialogState::AllocateDataset(form);
+                            }
+                        }
+                        files_panel::FilesPanelAction::OpenFile(dsn) => {
+                            // Req 16 — resolve physical path from catalog repository + DSN
+                            let is_mainframe = self
+                                .files_panel
+                                .content
+                                .selected_catalog
+                                .as_deref()
+                                .and_then(|n| self.files_panel.registry.get_by_name(n))
+                                .map(|c| {
+                                    c.catalog_type
+                                        == crate::catalog_registry::CatalogType::Mainframe
+                                })
+                                .unwrap_or(false);
+                            if is_mainframe {
+                                let catalog_name = self
                                     .files_panel
                                     .content
                                     .selected_catalog
-                                    .as_deref()
-                                    .and_then(|n| self.files_panel.registry.get_by_name(n))
-                                    .map(|c| {
-                                        c.catalog_type
-                                            == crate::catalog_registry::CatalogType::Mainframe
-                                    })
-                                    .unwrap_or(false);
-                                if is_mainframe {
-                                    let catalog_name = self
-                                        .files_panel
-                                        .content
-                                        .selected_catalog
-                                        .clone()
-                                        .unwrap_or_default();
-                                    match open_mainframe_dsn(
-                                        &self.files_panel.registry,
-                                        &catalog_name,
-                                        &dsn,
-                                    ) {
-                                        Err(e) => self.open_error = Some(e),
-                                        Ok(path_str) => {
-                                            let mut p = ff_command::CommandParams::new();
-                                            p.insert("path", path_str.as_str());
-                                            let _ = self.dispatch.execute_command("file.open", p);
-                                        }
-                                    }
-                                } else {
-                                    let mut p = ff_command::CommandParams::new();
-                                    p.insert("path", dsn.as_str());
-                                    let _ = self.dispatch.execute_command("file.open", p);
-                                }
-                            }
-                            files_panel::FilesPanelAction::NavigateInto(_) => {}
-                            files_panel::FilesPanelAction::None => {}
-                        }
-                    }
-                    TabKind::FileEditor | TabKind::Untitled => {
-                        let tab_id = self.tabs.active_tab().id;
-                        let scroll_amount = self.scroll_amount.clone();
-                        let tab = self.tabs.active_tab_mut();
-                        if let Some(err) = editor_panel::render(
-                            ui,
-                            tab,
-                            &self.runtime,
-                            &mut self.cmd_engine,
-                            &mut self.exclude_manager,
-                            tab_id,
-                            &scroll_amount,
-                        ) {
-                            self.open_error = Some(err);
-                        }
-                    }
-                    TabKind::ConfigPanel => {
-                        // Validates: Requirement 15.1-15.3; CR-NR-078 (framework).
-                        // Migrated to the WorkspaceContext trait: owned-panel swap
-                        // (Option A) so the single dispatch path reports the focus
-                        // contract and honours the latch -- no inline ritual.
-                        let mut panel = std::mem::take(&mut self.config_panel);
-                        self.render_workspace_context(ctx, ui, &mut panel);
-                        self.config_panel = panel;
-                    }
-                    TabKind::PluginManager => {
-                        // Validates: plugin-manager-ui Requirement 1.1-1.6
-                        crate::plugin_manager_panel::render(ui, &mut self.plugin_manager_panel);
-                        // CR-CH-023 (B059): Filter field is the first/last interior.
-                        let id = crate::plugin_manager_panel::filter_field_id();
-                        self.first_interior_id = Some(id);
-                        self.last_interior_id = Some(id);
-                        self.honour_interior_focus_latch(ctx, Some(id), Some(id));
-                    }
-                    TabKind::EventLog => {
-                        // Validates: notification-system Requirement 2.1-2.6
-                        let first_interior_ev = crate::event_log_panel::render(
-                            ui,
-                            &mut self.event_log_panel,
-                            &self.notification_queue,
-                        );
-                        if self.event_log_panel.clear_requested {
-                            self.event_log_panel.clear_requested = false;
-                            self.notification_queue.lock().expect("queue").clear();
-                        }
-                        // CR-CH-023 (B059): the level-filter combo is the first
-                        // interior; its fresh id is returned by the render.
-                        self.first_interior_id = first_interior_ev;
-                        self.last_interior_id = first_interior_ev;
-                        self.honour_interior_focus_latch(ctx, first_interior_ev, first_interior_ev);
-                    }
-                    TabKind::SearchResults => {
-                        // Validates: global-search Requirement 1.1, 4.1
-                        let roots = collect_search_roots(
-                            &self.files_panel.registry,
-                            self.active_workspace.as_ref(),
-                        );
-                        let outcome = crate::search_results_panel::render(
-                            ui,
-                            &mut self.search_results_panel,
-                            &roots,
-                            &self.runtime,
-                        );
-                        match outcome {
-                            crate::search_results_panel::SearchPanelOutcome::OpenMatch {
-                                path,
-                                line,
-                            } => {
-                                if let Err(e) = self.tabs.open_file(&path, &self.runtime) {
-                                    self.open_error = Some(e);
-                                } else {
-                                    // Scroll to the matching line.
-                                    let idx = self.tabs.active_index();
-                                    if let Some(tab) = self.tabs.tabs_mut().get_mut(idx) {
-                                        tab.viewport.scroll_to_line(
-                                            line.saturating_sub(1).max(1),
-                                            &tab.cursor.clone(),
-                                        );
+                                    .clone()
+                                    .unwrap_or_default();
+                                match open_mainframe_dsn(
+                                    &self.files_panel.registry,
+                                    &catalog_name,
+                                    &dsn,
+                                ) {
+                                    Err(e) => self.open_error = Some(e),
+                                    Ok(path_str) => {
+                                        let mut p = ff_command::CommandParams::new();
+                                        p.insert("path", path_str.as_str());
+                                        let _ = self.dispatch.execute_command("file.open", p);
                                     }
                                 }
-                            }
-                            crate::search_results_panel::SearchPanelOutcome::ReplaceAll => {
-                                let unsaved: Vec<String> = self
-                                    .tabs
-                                    .tabs()
-                                    .iter()
-                                    .filter(|t| t.is_modified)
-                                    .filter_map(|t| t.path.clone())
-                                    .collect();
-                                let req = self.search_results_panel.build_request(roots).ok();
-                                if let Some(r) = req {
-                                    let results = self.search_results_panel.results.clone();
-                                    match ff_global_search::GlobalReplaceEngine::replace_all(
-                                        &results,
-                                        &r,
-                                        &self.search_results_panel.replace_text.clone(),
-                                        &unsaved,
-                                    ) {
-                                        Ok((summary, _conflicts)) => {
-                                            self.open_error = Some(format!(
-                                                "Replaced {} occurrence(s) in {} file(s)",
-                                                summary.replacements, summary.files_modified
-                                            ));
-                                        }
-                                        Err(e) => {
-                                            self.open_error = Some(format!("Replace failed: {e}"));
-                                        }
-                                    }
-                                }
-                            }
-                            _ => {}
-                        }
-                        // CR-CH-023 (B059): the Search query field is the first/last interior.
-                        let id = crate::search_results_panel::query_field_id();
-                        self.first_interior_id = Some(id);
-                        self.last_interior_id = Some(id);
-                        self.honour_interior_focus_latch(ctx, Some(id), Some(id));
-                    }
-                    TabKind::FileExplorerPanel => {
-                        // Rendered above in the is_file_explorer block -- unreachable here
-                    }
-                    TabKind::MacroLibrary => {
-                        // Validates: lua-macro-engine Requirement 12.1-12.8
-                        let action =
-                            crate::macro_library_panel::render(ui, &mut self.macro_library_panel);
-                        match action {
-                            crate::macro_library_panel::MacroLibraryAction::Edit(path) => {
+                            } else {
                                 let mut p = ff_command::CommandParams::new();
-                                p.insert("path", path.as_str());
+                                p.insert("path", dsn.as_str());
                                 let _ = self.dispatch.execute_command("file.open", p);
                             }
-                            crate::macro_library_panel::MacroLibraryAction::Run(_path) => {
-                                self.open_error =
-                                    Some("Lua execution not yet available".to_string());
-                            }
-                            crate::macro_library_panel::MacroLibraryAction::Delete(path) => {
-                                if let Err(e) = std::fs::remove_file(&path) {
-                                    self.open_error = Some(format!("Delete failed: {e}"));
-                                } else {
-                                    let dirs = self.macro_dirs();
-                                    self.macro_library_panel.refresh(&dirs);
-                                    self.open_error = None;
-                                }
-                            }
-                            crate::macro_library_panel::MacroLibraryAction::None => {}
                         }
-                        // CR-CH-023 (B059): the Filter field is the first/last interior.
-                        let id = crate::macro_library_panel::filter_field_id();
-                        self.first_interior_id = Some(id);
-                        self.last_interior_id = Some(id);
-                        self.honour_interior_focus_latch(ctx, Some(id), Some(id));
-                    }
-                    TabKind::MenuWorkspace => {
-                        // Validates: menu-workspace Requirement 2.1-2.6, 2.1a-2.1c,
-                        // 18.2, 18.4. After CR-NR-082 Slice 1 the Home Context (POM)
-                        // is a MenuWorkspace tab, so this single arm renders both the
-                        // POM and every named menu via the SHARED menu renderer.
-                        // ensure_pom_menu_loaded is a no-op unless the tab is Home
-                        // (it seeds pom.toml / the barebones Recovery_Baseline).
-                        self.ensure_pom_menu_loaded();
-                        // Resolve calendar colours and month offset before borrowing
-                        // the active tab mutably (menu_calendar_colours borrows &self).
-                        let menu_cal = self.menu_colours();
-                        let calendar_offset = self.pom_calendar_offset;
-                        let active_idx = self.tabs.active_index();
-                        let mut calendar_nav = None;
-                        let mut first_interior = None;
-                        let mut last_interior = None;
-                        if let Some(mw) = self
-                            .tabs
-                            .tabs_mut()
-                            .get_mut(active_idx)
-                            .and_then(|t| t.menu_workspace.as_mut())
-                        {
-                            mw.poll_reload();
-                            let result = crate::menu_workspace::render::render_menu_workspace(
-                                mw,
-                                ui,
-                                calendar_offset,
-                                menu_cal,
-                            );
-                            if let Some(option) = result.selected {
-                                self.pending_menu_option = Some(option);
-                            }
-                            calendar_nav = result.calendar_nav;
-                            first_interior = result.first_interior_id;
-                            last_interior = result.last_interior_id;
-                            // CR-CH-028: record the focused option for the
-                            // Cursor_Context (Req 12.2).
-                            self.focused_menu_option = result.focused_option;
-                        }
-                        // CR-NR-078: MenuWorkspace routes its focus contract
-                        // through the shared framework helper (single latch path).
-                        self.apply_interior_focus(
-                            ctx,
-                            crate::shell::workspace_context::InteriorFocus {
-                                first: first_interior,
-                                last: last_interior,
-                            },
-                        );
-                        if let Some(nav) = calendar_nav {
-                            match nav {
-                                primary_option_menu::CalendarNav::Prev => {
-                                    self.pom_calendar_offset -= 1
-                                }
-                                primary_option_menu::CalendarNav::Next => {
-                                    self.pom_calendar_offset += 1
-                                }
-                            }
-                        }
-                    }
-                    TabKind::ThemeEditor => {
-                        // Validates: theme-and-appearance Req 20.1, 20.3-20.9;
-                        // CR-NR-078 (framework). Owned-panel swap: render through
-                        // the trait (reports first/last interior + honours the
-                        // latch), then apply the stashed action.
-                        let mut panel = std::mem::take(&mut self.theme_editor_panel);
-                        self.render_workspace_context(ctx, ui, &mut panel);
-                        let action = std::mem::take(&mut panel.pending_action);
-                        self.theme_editor_panel = panel;
-                        self.apply_theme_editor_action(action);
-                    }
-                    TabKind::MenusEditor => {
-                        // Validates: menu-workspace Req 13.1-13.12 (CR-NR-075);
-                        // CR-NR-078 (framework). Owned-panel swap: render through
-                        // the trait, then apply the stashed action.
-                        let mut panel = std::mem::take(&mut self.menus_editor_panel);
-                        self.render_workspace_context(ctx, ui, &mut panel);
-                        let action = std::mem::take(&mut panel.pending_action);
-                        self.menus_editor_panel = panel;
-                        self.apply_menus_editor_action(action);
-                    }
-                    TabKind::KeysEditor => {
-                        // Validates: function-keys Req 22 (CR-CH-029); CR-NR-078
-                        // (framework). Owned-panel swap: render through the trait,
-                        // then apply the stashed action.
-                        let mut panel = std::mem::take(&mut self.keys_editor_panel);
-                        self.render_workspace_context(ctx, ui, &mut panel);
-                        let action = std::mem::take(&mut panel.pending_action);
-                        self.keys_editor_panel = panel;
-                        self.apply_keys_editor_action(action);
-                    }
-                    TabKind::CommandConfigurator => {
-                        // Validates: command-configurator Requirement 2.2-2.6
-                        self.command_store.poll_reload();
-                        let action = crate::command_config::render::render(
-                            ui,
-                            &mut self.command_configurator_panel,
-                            &self.command_store,
-                        );
-                        self.apply_configurator_action(action);
-                        // CR-CH-023 (B059): the "Add" button is the first interior
-                        // (its fresh id captured by the render onto panel state).
-                        let id = self.command_configurator_panel.first_interior_id;
-                        self.first_interior_id = id;
-                        self.last_interior_id = id;
-                        self.honour_interior_focus_latch(ctx, id, id);
+                        files_panel::FilesPanelAction::NavigateInto(_) => {}
+                        files_panel::FilesPanelAction::None => {}
                     }
                 }
-            });
-        } // end !is_file_explorer
+                TabKind::FileEditor | TabKind::Untitled => {
+                    let tab_id = self.tabs.active_tab().id;
+                    let scroll_amount = self.scroll_amount.clone();
+                    let tab = self.tabs.active_tab_mut();
+                    if let Some(err) = editor_panel::render(
+                        ui,
+                        tab,
+                        &self.runtime,
+                        &mut self.cmd_engine,
+                        &mut self.exclude_manager,
+                        tab_id,
+                        &scroll_amount,
+                    ) {
+                        self.open_error = Some(err);
+                    }
+                }
+                TabKind::ConfigPanel => {
+                    // Validates: Requirement 15.1-15.3; CR-NR-078 (framework).
+                    // Migrated to the WorkspaceContext trait: owned-panel swap
+                    // (Option A) so the single dispatch path reports the focus
+                    // contract and honours the latch -- no inline ritual.
+                    let mut panel = std::mem::take(&mut self.config_panel);
+                    self.render_workspace_context(ctx, ui, &mut panel);
+                    self.config_panel = panel;
+                }
+                TabKind::PluginManager => {
+                    // Validates: plugin-manager-ui Requirement 1.1-1.6
+                    crate::plugin_manager_panel::render(ui, &mut self.plugin_manager_panel);
+                    // CR-CH-023 (B059): Filter field is the first/last interior.
+                    let id = crate::plugin_manager_panel::filter_field_id();
+                    self.first_interior_id = Some(id);
+                    self.last_interior_id = Some(id);
+                    self.honour_interior_focus_latch(ctx, Some(id), Some(id));
+                }
+                TabKind::EventLog => {
+                    // Validates: notification-system Requirement 2.1-2.6
+                    let first_interior_ev = crate::event_log_panel::render(
+                        ui,
+                        &mut self.event_log_panel,
+                        &self.notification_queue,
+                    );
+                    if self.event_log_panel.clear_requested {
+                        self.event_log_panel.clear_requested = false;
+                        self.notification_queue.lock().expect("queue").clear();
+                    }
+                    // CR-CH-023 (B059): the level-filter combo is the first
+                    // interior; its fresh id is returned by the render.
+                    self.first_interior_id = first_interior_ev;
+                    self.last_interior_id = first_interior_ev;
+                    self.honour_interior_focus_latch(ctx, first_interior_ev, first_interior_ev);
+                }
+                TabKind::SearchResults => {
+                    // Validates: global-search Requirement 1.1, 4.1
+                    let roots = collect_search_roots(
+                        &self.files_panel.registry,
+                        self.active_workspace.as_ref(),
+                    );
+                    let outcome = crate::search_results_panel::render(
+                        ui,
+                        &mut self.search_results_panel,
+                        &roots,
+                        &self.runtime,
+                    );
+                    match outcome {
+                        crate::search_results_panel::SearchPanelOutcome::OpenMatch {
+                            path,
+                            line,
+                        } => {
+                            if let Err(e) = self.tabs.open_file(&path, &self.runtime) {
+                                self.open_error = Some(e);
+                            } else {
+                                // Scroll to the matching line.
+                                let idx = self.tabs.active_index();
+                                if let Some(tab) = self.tabs.tabs_mut().get_mut(idx) {
+                                    tab.viewport.scroll_to_line(
+                                        line.saturating_sub(1).max(1),
+                                        &tab.cursor.clone(),
+                                    );
+                                }
+                            }
+                        }
+                        crate::search_results_panel::SearchPanelOutcome::ReplaceAll => {
+                            let unsaved: Vec<String> = self
+                                .tabs
+                                .tabs()
+                                .iter()
+                                .filter(|t| t.is_modified)
+                                .filter_map(|t| t.path.clone())
+                                .collect();
+                            let req = self.search_results_panel.build_request(roots).ok();
+                            if let Some(r) = req {
+                                let results = self.search_results_panel.results.clone();
+                                match ff_global_search::GlobalReplaceEngine::replace_all(
+                                    &results,
+                                    &r,
+                                    &self.search_results_panel.replace_text.clone(),
+                                    &unsaved,
+                                ) {
+                                    Ok((summary, _conflicts)) => {
+                                        self.open_error = Some(format!(
+                                            "Replaced {} occurrence(s) in {} file(s)",
+                                            summary.replacements, summary.files_modified
+                                        ));
+                                    }
+                                    Err(e) => {
+                                        self.open_error = Some(format!("Replace failed: {e}"));
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                    // CR-CH-023 (B059): the Search query field is the first/last interior.
+                    let id = crate::search_results_panel::query_field_id();
+                    self.first_interior_id = Some(id);
+                    self.last_interior_id = Some(id);
+                    self.honour_interior_focus_latch(ctx, Some(id), Some(id));
+                }
+                TabKind::FileExplorerPanel => {
+                    // Rendered above in the is_file_explorer block -- unreachable here
+                }
+                TabKind::MacroLibrary => {
+                    // Validates: lua-macro-engine Requirement 12.1-12.8
+                    let action =
+                        crate::macro_library_panel::render(ui, &mut self.macro_library_panel);
+                    match action {
+                        crate::macro_library_panel::MacroLibraryAction::Edit(path) => {
+                            let mut p = ff_command::CommandParams::new();
+                            p.insert("path", path.as_str());
+                            let _ = self.dispatch.execute_command("file.open", p);
+                        }
+                        crate::macro_library_panel::MacroLibraryAction::Run(_path) => {
+                            self.open_error = Some("Lua execution not yet available".to_string());
+                        }
+                        crate::macro_library_panel::MacroLibraryAction::Delete(path) => {
+                            if let Err(e) = std::fs::remove_file(&path) {
+                                self.open_error = Some(format!("Delete failed: {e}"));
+                            } else {
+                                let dirs = self.macro_dirs();
+                                self.macro_library_panel.refresh(&dirs);
+                                self.open_error = None;
+                            }
+                        }
+                        crate::macro_library_panel::MacroLibraryAction::None => {}
+                    }
+                    // CR-CH-023 (B059): the Filter field is the first/last interior.
+                    let id = crate::macro_library_panel::filter_field_id();
+                    self.first_interior_id = Some(id);
+                    self.last_interior_id = Some(id);
+                    self.honour_interior_focus_latch(ctx, Some(id), Some(id));
+                }
+                TabKind::MenuWorkspace => {
+                    // Validates: menu-workspace Requirement 2.1-2.6, 2.1a-2.1c,
+                    // 18.2, 18.4. After CR-NR-082 Slice 1 the Home Context (POM)
+                    // is a MenuWorkspace tab, so this single arm renders both the
+                    // POM and every named menu via the SHARED menu renderer.
+                    // ensure_pom_menu_loaded is a no-op unless the tab is Home
+                    // (it seeds pom.toml / the barebones Recovery_Baseline).
+                    self.ensure_pom_menu_loaded();
+                    // Resolve calendar colours and month offset before borrowing
+                    // the active tab mutably (menu_calendar_colours borrows &self).
+                    let menu_cal = self.menu_colours();
+                    let calendar_offset = self.pom_calendar_offset;
+                    let active_idx = self.tabs.active_index();
+                    let mut calendar_nav = None;
+                    let mut first_interior = None;
+                    let mut last_interior = None;
+                    if let Some(mw) = self
+                        .tabs
+                        .tabs_mut()
+                        .get_mut(active_idx)
+                        .and_then(|t| t.menu_workspace.as_mut())
+                    {
+                        mw.poll_reload();
+                        let result = crate::menu_workspace::render::render_menu_workspace(
+                            mw,
+                            ui,
+                            calendar_offset,
+                            menu_cal,
+                        );
+                        if let Some(option) = result.selected {
+                            self.pending_menu_option = Some(option);
+                        }
+                        calendar_nav = result.calendar_nav;
+                        first_interior = result.first_interior_id;
+                        last_interior = result.last_interior_id;
+                        // CR-CH-028: record the focused option for the
+                        // Cursor_Context (Req 12.2).
+                        self.focused_menu_option = result.focused_option;
+                    }
+                    // CR-NR-078: MenuWorkspace routes its focus contract
+                    // through the shared framework helper (single latch path).
+                    self.apply_interior_focus(
+                        ctx,
+                        crate::shell::workspace_context::InteriorFocus {
+                            first: first_interior,
+                            last: last_interior,
+                        },
+                    );
+                    if let Some(nav) = calendar_nav {
+                        match nav {
+                            primary_option_menu::CalendarNav::Prev => self.pom_calendar_offset -= 1,
+                            primary_option_menu::CalendarNav::Next => self.pom_calendar_offset += 1,
+                        }
+                    }
+                }
+                TabKind::ThemeEditor => {
+                    // Validates: theme-and-appearance Req 20.1, 20.3-20.9;
+                    // CR-NR-078 (framework). Owned-panel swap: render through
+                    // the trait (reports first/last interior + honours the
+                    // latch), then apply the stashed action.
+                    let mut panel = std::mem::take(&mut self.theme_editor_panel);
+                    self.render_workspace_context(ctx, ui, &mut panel);
+                    let action = std::mem::take(&mut panel.pending_action);
+                    self.theme_editor_panel = panel;
+                    self.apply_theme_editor_action(action);
+                }
+                TabKind::MenusEditor => {
+                    // Validates: menu-workspace Req 13.1-13.12 (CR-NR-075);
+                    // CR-NR-078 (framework). Owned-panel swap: render through
+                    // the trait, then apply the stashed action.
+                    let mut panel = std::mem::take(&mut self.menus_editor_panel);
+                    self.render_workspace_context(ctx, ui, &mut panel);
+                    let action = std::mem::take(&mut panel.pending_action);
+                    self.menus_editor_panel = panel;
+                    self.apply_menus_editor_action(action);
+                }
+                TabKind::KeysEditor => {
+                    // Validates: function-keys Req 22 (CR-CH-029); CR-NR-078
+                    // (framework). Owned-panel swap: render through the trait,
+                    // then apply the stashed action.
+                    let mut panel = std::mem::take(&mut self.keys_editor_panel);
+                    self.render_workspace_context(ctx, ui, &mut panel);
+                    let action = std::mem::take(&mut panel.pending_action);
+                    self.keys_editor_panel = panel;
+                    self.apply_keys_editor_action(action);
+                }
+                TabKind::CommandConfigurator => {
+                    // Validates: command-configurator Requirement 2.2-2.6
+                    self.command_store.poll_reload();
+                    let action = crate::command_config::render::render(
+                        ui,
+                        &mut self.command_configurator_panel,
+                        &self.command_store,
+                    );
+                    self.apply_configurator_action(action);
+                    // CR-CH-023 (B059): the "Add" button is the first interior
+                    // (its fresh id captured by the render onto panel state).
+                    let id = self.command_configurator_panel.first_interior_id;
+                    self.first_interior_id = id;
+                    self.last_interior_id = id;
+                    self.honour_interior_focus_latch(ctx, id, id);
+                }
+            }
+        }
     }
 
     /// Render the NavModel-backed File Explorer as the primary File Explorer

@@ -2563,6 +2563,17 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
       Context (phantom-stale-title class). workspace_name precedence preserved.
       Regression test on a stale-title Menu_Workspace.
       Covers: menu-and-statusbar Req 17.10.
+- [x] BS.detach B045 / CR-CH-035 (Wave A): Detached Workspaces render the tab's
+      REAL Context via `show_viewport_immediate` (was a placeholder under
+      `show_viewport_deferred`); 80-char title truncation; faithful redock via
+      new `TabManager::remove_at`/`insert_at`/`move_tab` at the origin index;
+      FloatingTab tracks tab by stable TabId; 16-window guard unified on
+      floating_tabs.len. Full-shell egui_kittest for headless parts (detach/
+      redock/limit) + TabManager reorder + truncate_title units; real OS window
+      + drag-out (18.6) MANUAL. Title routes through the shared title_line_text
+      so the Wave B Workspace Definition model swaps the source in one place.
+      verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt.
+      Covers: menu-and-statusbar Req 18.1-18.9.
 
 | Status | Count |
 |--------|-------|

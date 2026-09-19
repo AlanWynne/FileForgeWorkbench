@@ -1180,3 +1180,65 @@ source for the drift-prone Contexts.
 
 No architectural contradiction: the Title_Line stays a pure, non-interactive derivation; only
 its INPUT changes from a cached field to the live kind/menu, eliminating the drift class.
+
+
+### CR-CH-035 delta -- Detached Workspaces render real content (proper B045 fix)
+
+The Phase AL/AO scaffolding wired a LIVE detach path (context menu "Move to Other View" and
+the SPLIT/SPLIT DETACH commands set `detach_pending`; the frame loop consumes it, sets
+`TabState.is_floating`, and pushes a `FloatingTab { viewport_id, tab_index, origin_index }`;
+the primary tab bar skips `is_floating` tabs; closing the OS window pushes `origin_index`
+into `redock_pending` which the primary frame drains). The DEFECT (B045) was that the
+floating window was drawn with `ctx.show_viewport_deferred`, whose render closure is
+`'static` + `move` and therefore cannot borrow `&mut self` -- so it could only draw a
+placeholder `ui.label("Tab N -- floating")`.
+
+Fix decisions:
+
+1. **Immediate viewport (Req 18.8).** Replace `show_viewport_deferred` with
+   `ctx.show_viewport_immediate`, which runs the child-viewport UI SYNCHRONOUSLY within the
+   current `update()` call and CAN borrow `&mut self`. Each floating window then renders the
+   tab's real Context through the same code the docked central panel uses. To render a
+   SPECIFIC (non-active) tab without disturbing the docked active tab, the central-panel
+   render is factored so it can draw a given tab index into a supplied `egui::Ui`
+   (`render_tab_context_into(ui, tab_index)`), and the floating loop calls it for each
+   `FloatingTab.tab_index`. The docked path continues to render the active tab; because the
+   tab bar hides `is_floating` tabs, a detached tab is never also the docked active tab, so
+   there is no double-render conflict.
+
+2. **Title truncation (Req 18.5).** The window title is
+   `truncate_title(format!("{} -- FileForge Workbench", title_line_text(tab)), 80)` where
+   `truncate_title` clamps to 80 chars on a char boundary. Routing through `title_line_text`
+   (the shared derivation, CR-CH-034) means the later Workspace Definition model (Wave B)
+   changes the title source in one place.
+
+3. **Faithful redock (Req 18.9).** Redock becomes a remove-and-reinsert at the origin index
+   rather than a positional `swap`. `TabManager` gains `remove_at(index) -> TabState` and
+   `insert_at(index, TabState)` seams (index bookkeeping mirrors `close_tab`: repair
+   `active`/`previous_active`). On redock the tab is removed from its current slot and
+   reinserted at `origin_index.min(len)` (append when the origin now exceeds the count, per
+   18.3). Detach conversely does NOT remove the tab from `TabManager` (its content/cursor/
+   profile must survive live in the same `TabState`); it only sets `is_floating` so the bar
+   hides it and the floating loop renders it. This keeps a single source of truth for the
+   tab's `TabState` (no clone/restore), satisfying the "identity/content/cursor/profile
+   survive the round-trip" clause.
+
+4. **Drag-out (Req 18.6).** Detaching by dragging a Tab_Header >20px outside the bar and
+   releasing outside the Primary_Window depends on real pointer-vs-OS-window geometry that
+   the headless `egui_kittest` harness cannot drive deterministically; it is implemented
+   against egui drag deltas where feasible and its acceptance is a justified MANUAL TCR row.
+
+Testability: the headless-testable behaviour -- detach creates a `FloatingTab` + sets
+`is_floating` + removes the header from the bar; redock removes the `FloatingTab`, clears
+`is_floating`, and reinserts at the origin index; the 16-window guard; the 80-char title
+truncation (pure function) -- is covered by full-shell `egui_kittest` `build_eframe` tests
+and unit tests. The REAL multi-viewport OS window (its actual separate-window appearance,
+taskbar presence, independent move/resize) is a justified MANUAL row per testing.md (real
+OS windows / multi-viewport are the documented harness exception). `show_viewport_immediate`
+child content CAN be exercised headlessly for the render-without-panic + correct-tab
+assertions.
+
+No architectural contradiction: this completes the deferred Phase AL/AO intent using egui's
+supported immediate-viewport API; the detach/redock state machine (`detach_pending` /
+`FloatingTab` / `redock_pending`) is retained, only its viewport call and redock mechanics
+are corrected.

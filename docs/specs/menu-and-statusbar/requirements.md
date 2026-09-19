@@ -465,6 +465,19 @@ or view content side-by-side independently.
      tabs. IF the user attempts to detach a tab beyond this limit, THE shell SHALL display
      a status message and SHALL NOT detach the tab.
 
+8. THE content rendered inside a Detached_Workspace SHALL be the tab's ACTUAL rendered
+     Context (the same render path that draws it when docked -- Title_Line, Primary_Command_Field,
+     and the kind-specific content area), NOT a placeholder or summary. A detached tab and the
+     same tab when docked SHALL be visually and functionally equivalent. This makes criteria
+     18.1/18.2 concrete: the shell SHALL render Detached_Workspaces via an immediate (synchronous)
+     viewport so the live shell state drives their content each frame. [B045]
+
+9. WHEN a tab is redocked (its Detached_Workspace closed), THE shell SHALL reinsert the tab
+     into the Primary_Window's tab bar at its recorded origin position index (remove-and-reinsert),
+     preserving the relative order of the other tabs; IF the origin index exceeds the current tab
+     count, THE tab SHALL be appended at the end (per 18.3). The tab's identity, content, cursor,
+     modification state, and per-tab profile SHALL survive the detach/redock round-trip unchanged. [B045]
+
 ### Requirement 19: ISPF Navigation Enhancements (SCROLL Field, Fastpath, Split Screen, List Panel LOCATE)
 
 **User Story:** As an ISPF-familiar user, I want the full ISPF navigation model including a SCROLL ===> field, fastpath notation, split-screen capability, list panel LOCATE, and FTSO panel chrome, so that the workbench matches the ISPF navigation experience.

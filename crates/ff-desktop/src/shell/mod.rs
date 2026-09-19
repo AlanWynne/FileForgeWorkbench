@@ -145,13 +145,14 @@ impl CommandHandler for ConfigOpenHandler {
 /// Tracks a tab that has been detached into a floating OS window.
 ///
 /// Validates: Requirement 18.1, 18.2, 18.3
-#[allow(dead_code)]
 pub(crate) struct FloatingTab {
     /// egui viewport id allocated for this floating window.
     pub viewport_id: egui::ViewportId,
-    /// Current index of this tab in `TabManager` (kept in sync on redock).
-    pub tab_index: usize,
-    /// The tab index at the moment of detach — used to restore position on redock.
+    /// Stable identity of the detached tab. The live TabManager index is resolved
+    /// from this each frame (`index_of_id`) so concurrent detach/redock reorderings
+    /// never desync the floating window from its tab (CR-CH-035, Req 18.9).
+    pub tab_id: crate::tab_state::TabId,
+    /// The tab index at the moment of detach -- used to restore position on redock.
     pub origin_index: usize,
 }
 
@@ -494,18 +495,15 @@ pub struct WorkbenchShell {
     /// All currently floating (detached) tabs.
     ///
     /// Validates: Requirement 18.1, 18.2
-    #[allow(dead_code)]
     floating_tabs: Vec<FloatingTab>,
-    /// Index of the tab to detach on the next frame (set by context menu).
+    /// Index of the tab to detach on the next frame (set by context menu / SPLIT).
     ///
     /// Validates: Requirement 18.2
-    #[allow(dead_code)]
     detach_pending: Option<usize>,
     /// Origin indices of floating tabs that have been closed and need redocking.
     ///
     /// Written by the floating viewport's close callback; read by the primary frame.
     /// Validates: Requirement 18.3
-    #[allow(dead_code)]
     redock_pending: Arc<Mutex<Vec<usize>>>,
 }
 
@@ -984,6 +982,26 @@ pub(crate) fn title_line_text(tab: &crate::tab_state::TabState) -> String {
             .map(|mw| mw.tab_title())
             .unwrap_or_else(|| tab.title.clone()),
     }
+}
+
+/// Truncate a Detached_Workspace OS-window title to at most `max` characters,
+/// clamping on a char boundary so multi-byte characters are never split. When
+/// the title is longer than `max`, the last character of the kept prefix is
+/// replaced with an ellipsis marker so the truncation is visible.
+///
+/// Validates: menu-and-statusbar Requirement 18.5 (CR-CH-035, B045)
+pub(crate) fn truncate_title(title: &str, max: usize) -> String {
+    if title.chars().count() <= max {
+        return title.to_string();
+    }
+    if max == 0 {
+        return String::new();
+    }
+    // Keep `max - 1` chars and append a single-char ellipsis marker ("~") so the
+    // result is exactly `max` chars and the cut is visible without a non-ASCII
+    // ellipsis (documentation.md: plain ASCII in .rs).
+    let kept: String = title.chars().take(max.saturating_sub(1)).collect();
+    format!("{kept}~")
 }
 
 /// Load `[context_key_maps]` from the workbench configuration into the resolver.

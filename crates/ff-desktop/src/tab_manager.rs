@@ -72,6 +72,14 @@ impl TabManager {
         self.active
     }
 
+    /// Find the current index of the tab with the given stable `TabId`, or
+    /// `None` if no such tab exists. Used by detach/redock to track a detached
+    /// tab across reorderings by identity rather than a drifting index
+    /// (CR-CH-035, menu-and-statusbar Req 18.9).
+    pub fn index_of_id(&self, id: crate::tab_state::TabId) -> Option<usize> {
+        self.tabs.iter().position(|t| t.id == id)
+    }
+
     /// Set the active tab by index. Clamps to valid range. Records the outgoing
     /// tab as the Previous_Active_Tab (CR-CH-031).
     pub fn set_active(&mut self, index: usize) {
@@ -549,6 +557,71 @@ impl TabManager {
             other => other,
         };
     }
+
+    /// Remove and return the tab at `index`, repairing `active` /
+    /// `previous_active` for the removal shift (indices above `index` shift down
+    /// by one). Unlike [`close_tab`], this has NO minimum-one guard and does not
+    /// choose a neighbour to activate: it is a low-level reordering primitive for
+    /// faithful redock (CR-CH-035, menu-and-statusbar Req 18.9). Panics only if
+    /// `index` is out of range (caller's contract).
+    ///
+    /// Validates: menu-and-statusbar Requirement 18.9
+    pub fn remove_at(&mut self, index: usize) -> TabState {
+        let tab = self.tabs.remove(index);
+        if self.active > index {
+            self.active -= 1;
+        } else if self.active == index {
+            // The removed tab was active; clamp into range so `active` stays
+            // valid. The caller (redock) typically reinserts immediately.
+            self.active = self.active.min(self.tabs.len().saturating_sub(1));
+        }
+        self.previous_active = match self.previous_active {
+            Some(p) if p == index => None,
+            Some(p) if p > index => Some(p - 1),
+            other => other,
+        };
+        tab
+    }
+
+    /// Insert `tab` at `index` (clamped to `0..=len`), repairing `active` /
+    /// `previous_active` for the insertion shift (indices at or above `index`
+    /// shift up by one). The inserted tab is NOT auto-activated; the caller
+    /// decides. Companion to [`remove_at`] for faithful redock at the origin
+    /// position (CR-CH-035, menu-and-statusbar Req 18.9).
+    ///
+    /// Validates: menu-and-statusbar Requirement 18.9
+    pub fn insert_at(&mut self, index: usize, tab: TabState) {
+        let idx = index.min(self.tabs.len());
+        self.tabs.insert(idx, tab);
+        if self.active >= idx {
+            self.active += 1;
+        }
+        self.previous_active = self
+            .previous_active
+            .map(|p| if p >= idx { p + 1 } else { p });
+    }
+
+    /// Move the tab at `from` to position `to` (clamped to the valid range),
+    /// preserving the relative order of the other tabs (a remove-then-insert,
+    /// NOT a positional swap). Used by redock to restore a detached tab to its
+    /// origin index (CR-CH-035, menu-and-statusbar Req 18.9). Returns the tab's
+    /// final index. The moved tab keeps its identity/content/cursor/profile
+    /// (same `TabState`). A no-op when `from == to`.
+    ///
+    /// Validates: menu-and-statusbar Requirement 18.9
+    pub fn move_tab(&mut self, from: usize, to: usize) -> usize {
+        if from >= self.tabs.len() {
+            return from.min(self.tabs.len().saturating_sub(1));
+        }
+        let was_active = self.active == from;
+        let tab = self.remove_at(from);
+        let target = to.min(self.tabs.len());
+        self.insert_at(target, tab);
+        if was_active {
+            self.active = target;
+        }
+        target
+    }
 }
 
 #[cfg(test)]
@@ -731,6 +804,87 @@ mod tests {
         let mut mgr = TabManager::new(&runtime, "");
         mgr.close_tab(0);
         assert_eq!(mgr.len(), 1); // cannot go below 1
+    }
+
+    /// Helper: a manager with N titled tabs (title = "T{i}") for order assertions.
+    #[cfg(test)]
+    fn mgr_with_titled(runtime: &Runtime, n: usize) -> TabManager {
+        let mut mgr = TabManager::new(runtime, "");
+        mgr.tabs[0].title = "T0".to_string();
+        for i in 1..n {
+            mgr.new_untitled_tab(runtime);
+            let last = mgr.tabs.len() - 1;
+            mgr.tabs[last].title = format!("T{i}");
+        }
+        mgr
+    }
+
+    /// Validates: menu-and-statusbar Req 18.9 -- remove_at returns the tab and
+    /// shifts higher indices down, preserving the order of the rest.
+    #[test]
+    fn remove_at_returns_tab_and_preserves_order() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = mgr_with_titled(&runtime, 4); // T0 T1 T2 T3
+        let removed = mgr.remove_at(1);
+        assert_eq!(removed.title, "T1");
+        let titles: Vec<&str> = mgr.tabs().iter().map(|t| t.title.as_str()).collect();
+        assert_eq!(titles, vec!["T0", "T2", "T3"]);
+    }
+
+    /// Validates: menu-and-statusbar Req 18.9 -- insert_at places the tab at the
+    /// index and shifts the rest up, preserving order.
+    #[test]
+    fn insert_at_places_tab_and_preserves_order() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = mgr_with_titled(&runtime, 3); // T0 T1 T2
+        let removed = mgr.remove_at(2); // T2 out; [T0 T1]
+        mgr.insert_at(1, removed); // -> [T0 T2 T1]
+        let titles: Vec<&str> = mgr.tabs().iter().map(|t| t.title.as_str()).collect();
+        assert_eq!(titles, vec!["T0", "T2", "T1"]);
+    }
+
+    /// Validates: menu-and-statusbar Req 18.9 -- move_tab restores a tab to its
+    /// origin index preserving the order of the other tabs (NOT a swap).
+    #[test]
+    fn move_tab_restores_to_origin_preserving_order() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = mgr_with_titled(&runtime, 4); // T0 T1 T2 T3
+                                                    // Simulate a tab that was detached from index 1 and now sits at the end
+                                                    // (as if appended); move it back to origin 1.
+        let t1 = mgr.remove_at(1); // [T0 T2 T3]
+        mgr.insert_at(mgr.len(), t1); // [T0 T2 T3 T1]
+        let moved_from = mgr.tabs().iter().position(|t| t.title == "T1").unwrap();
+        mgr.move_tab(moved_from, 1); // back to origin 1
+        let titles: Vec<&str> = mgr.tabs().iter().map(|t| t.title.as_str()).collect();
+        assert_eq!(
+            titles,
+            vec!["T0", "T1", "T2", "T3"],
+            "move_tab must reinsert at origin, not swap (order preserved)"
+        );
+    }
+
+    /// Validates: menu-and-statusbar Req 18.9 -- move_tab keeps the moved tab
+    /// active when it was active, tracking its new index.
+    #[test]
+    fn move_tab_follows_active_tab() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = mgr_with_titled(&runtime, 4); // active = 3 (last)
+        mgr.set_active(3);
+        mgr.move_tab(3, 0);
+        assert_eq!(mgr.active_index(), 0);
+        assert_eq!(mgr.active_tab().title, "T3");
+    }
+
+    /// Validates: menu-and-statusbar Req 18.9 -- move_tab clamps an origin index
+    /// beyond the current count to the end (append), per Req 18.3.
+    #[test]
+    fn move_tab_clamps_origin_beyond_count_to_end() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = mgr_with_titled(&runtime, 3); // T0 T1 T2
+        let final_idx = mgr.move_tab(0, 99); // origin beyond count -> append
+        assert_eq!(final_idx, 2);
+        let titles: Vec<&str> = mgr.tabs().iter().map(|t| t.title.as_str()).collect();
+        assert_eq!(titles, vec!["T1", "T2", "T0"]);
     }
 
     // Validates: multi-tab-editor Req 18.9 (CR-CH-031) -- activating a different

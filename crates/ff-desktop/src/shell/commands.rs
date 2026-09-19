@@ -872,12 +872,13 @@ impl WorkbenchShell {
         // ── SPLIT DETACH -- Validates: CX Requirement 3.1, 3.4 ──────────────
         if upper == "SPLIT DETACH" {
             let idx = self.tabs.active_index();
-            let floating_count = self.tabs.tabs().iter().filter(|t| t.is_floating).count();
-            if floating_count >= 16 {
+            // CR-CH-035: the 16-window limit counts recorded FloatingTabs, the
+            // single source of truth shared with the "Move to Other View" context
+            // item (was `is_floating` count here -- an inconsistency, B045).
+            if self.floating_tabs.len() >= 16 {
                 self.open_error =
                     Some("Maximum number of detached Workspaces (16) reached.".to_string());
             } else {
-                self.tabs.tabs_mut()[idx].is_floating = true;
                 self.detach_pending = Some(idx);
                 self.open_error = None;
             }
@@ -891,12 +892,11 @@ impl WorkbenchShell {
             let is_editor = matches!(kind, TabKind::FileEditor | TabKind::Untitled);
             if !is_editor {
                 let idx = self.tabs.active_index();
-                let floating_count = self.tabs.tabs().iter().filter(|t| t.is_floating).count();
-                if floating_count >= 16 {
+                // CR-CH-035: count recorded FloatingTabs (shared limit source).
+                if self.floating_tabs.len() >= 16 {
                     self.open_error =
                         Some("Maximum number of detached Workspaces (16) reached.".to_string());
                 } else {
-                    self.tabs.tabs_mut()[idx].is_floating = true;
                     self.detach_pending = Some(idx);
                     self.open_error = None;
                 }

@@ -113,7 +113,6 @@ pub struct TabState {
     /// True when this tab has been detached into a floating OS window.
     ///
     /// Validates: Requirement 18.4
-    #[allow(dead_code)]
     pub is_floating: bool,
     /// ISPF edit profile for this tab (CAPS, NULLS, STATS, LOCK, HILITE).
     ///

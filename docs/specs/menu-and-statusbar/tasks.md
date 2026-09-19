@@ -510,3 +510,22 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-command` 
     - Covers: Requirement 17.10
   - [ ] 32.4 Regression test: an in-place Menu_Workspace context switch that updates the loaded menu but leaves the cached `tab.title` stale still renders the NEW context label (header no longer stale) -- B050
     - Covers: Requirement 17.10
+
+
+- [ ] 33. Detached Workspaces render real content + faithful redock (CR-CH-035, B045)
+  - [x] 33.1 Add `TabManager::remove_at(index) -> TabState`, `insert_at(index, TabState)`, `move_tab(from,to)`, `index_of_id(id)` seams (repair active/previous_active like close_tab); unit tests for order preservation, active-follow, clamp
+    - Covers: Requirement 18.9
+  - [x] 33.2 Add `truncate_title(s, max)` pure helper (char-boundary safe, <= 80); unit test incl. a >80-char + multibyte title
+    - Covers: Requirement 18.5
+  - [x] 33.3 Factor the central-panel render so the active tab body can be drawn into a supplied `egui::Ui` (`render_active_tab_body`), reused by the docked path and the floating loop
+    - Covers: Requirement 18.8
+  - [x] 33.4 Replace `show_viewport_deferred` with `show_viewport_immediate` in the floating-tab loop; render the real tab Context (Title_Line + content) into the viewport (active-index swap+restore); title = truncate_title(title_line_text + " -- FileForge Workbench", 80)
+    - Covers: Requirement 18.1, 18.2, 18.5, 18.8
+  - [x] 33.5 Redock via move_tab (remove_at + insert_at) at origin_index (append when origin >= len); clear is_floating; drop the FloatingTab; FloatingTab tracks tab by stable TabId
+    - Covers: Requirement 18.3, 18.4, 18.9
+  - [x] 33.6 Full-shell egui_kittest tests: detach (via SPLIT DETACH, same path as "Move to Other View") creates a FloatingTab + sets is_floating; redock reinserts at origin; 16-window guard (unified on floating_tabs.len); truncate_title (pure). Immediate viewport renders the correct tab without panic.
+    - Covers: Requirement 18.1, 18.3, 18.4, 18.7, 18.8, 18.9
+  - [ ] 33.7 Drag-out-to-detach (Req 18.6): MANUAL -- real pointer-vs-OS-window geometry is not headless-drivable (test-plan 1.10). Context-menu + SPLIT detach paths give a working detach today; drag-out is the documented follow-up.
+    - Covers: Requirement 18.6
+  - [x] 33.8 Update TCR rows 18.1-18.9 to their achieved status (PASS for headless-covered, MANUAL-with-reason for real OS window + drag-out)
+    - Covers: Requirement 18 (all criteria)

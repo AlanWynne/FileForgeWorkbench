@@ -330,11 +330,11 @@ impl eframe::App for WorkbenchShell {
         if let Some(idx) = self.detach_pending.take() {
             if let Some(tab) = self.tabs.tabs_mut().get_mut(idx) {
                 tab.is_floating = true;
-                let vid =
-                    egui::ViewportId::from_hash_of(format!("floating_tab_{idx}_{}", tab.title));
+                let tab_id = tab.id;
+                let vid = egui::ViewportId::from_hash_of(format!("floating_tab_{}", tab_id.0));
                 self.floating_tabs.push(super::FloatingTab {
                     viewport_id: vid,
-                    tab_index: idx,
+                    tab_id,
                     origin_index: idx,
                 });
             }
@@ -353,14 +353,18 @@ impl eframe::App for WorkbenchShell {
                 .position(|ft| ft.origin_index == origin)
             {
                 let ft = self.floating_tabs.remove(ft_pos);
-                let tab_idx = ft.tab_index;
-                if let Some(tab) = self.tabs.tabs_mut().get_mut(tab_idx) {
-                    tab.is_floating = false;
-                }
-                // Restore to origin_index (clamped to current tab count).
-                let target = origin.min(self.tabs.len().saturating_sub(1));
-                if tab_idx != target && tab_idx < self.tabs.len() {
-                    self.tabs.tabs_mut().swap(tab_idx, target);
+                // Resolve the tab's CURRENT index from its stable id (it may have
+                // shifted while other tabs detached/redocked).
+                if let Some(tab_idx) = self.tabs.index_of_id(ft.tab_id) {
+                    if let Some(tab) = self.tabs.tabs_mut().get_mut(tab_idx) {
+                        tab.is_floating = false;
+                    }
+                    // CR-CH-035 (Req 18.3/18.9): faithful redock -- move the tab
+                    // back to its origin index preserving the order of the other
+                    // tabs (remove+reinsert, not a positional swap). `move_tab`
+                    // clamps an origin beyond the current count to the end
+                    // (append, per 18.3).
+                    self.tabs.move_tab(tab_idx, ft.origin_index);
                 }
             }
         }
@@ -752,32 +756,69 @@ impl eframe::App for WorkbenchShell {
 
         self.render_central_panel(ctx);
 
-        // ── Floating tab viewports — Validates: Requirement 18.1, 18.2, 18.5 ──
+        // ── Floating tab viewports — Validates: Requirement 18.1, 18.2, 18.5, 18.8 ──
+        // CR-CH-035 (B045): render each Detached_Workspace with an IMMEDIATE
+        // viewport (synchronous, so the closure can borrow `&mut self`), drawing
+        // the tab's REAL Context via `render_active_tab_body` -- not a placeholder.
+        // The detached tab is temporarily made the active tab for the duration of
+        // its render, then the previous active index is restored, so the shared
+        // render path (which operates on the active tab) draws the correct tab
+        // without duplicating the whole `match tab.kind`. Detached tabs are
+        // `is_floating`, so the primary tab bar never shows them as active; there
+        // is no double-render of the same tab in one frame.
         for ft_idx in 0..self.floating_tabs.len() {
             let vid = self.floating_tabs[ft_idx].viewport_id;
-            let tab_index = self.floating_tabs[ft_idx].tab_index;
+            let tab_id = self.floating_tabs[ft_idx].tab_id;
             let origin_index = self.floating_tabs[ft_idx].origin_index;
+            // Resolve the live index from the stable id each frame.
+            let Some(tab_index) = self.tabs.index_of_id(tab_id) else {
+                continue;
+            };
             let title = self
                 .tabs
                 .tabs()
                 .get(tab_index)
-                .map(|t| format!("{} — FileForge Workbench", super::title_line_text(t)))
+                .map(|t| {
+                    super::truncate_title(
+                        &format!("{} -- FileForge Workbench", super::title_line_text(t)),
+                        80,
+                    )
+                })
                 .unwrap_or_else(|| "FileForge Workbench".to_string());
             let redock_tx = Arc::clone(&self.redock_pending);
-            ctx.show_viewport_deferred(
+            ctx.show_viewport_immediate(
                 vid,
                 egui::ViewportBuilder::default().with_title(&title),
-                move |ctx, class| {
-                    if class == egui::ViewportClass::Deferred {
-                        // Detect close — push origin_index into redock_pending.
-                        if ctx.input(|i| i.viewport().close_requested()) {
-                            redock_tx.lock().expect("redock lock").push(origin_index);
-                            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-                        }
-                        egui::CentralPanel::default().show(ctx, |ui| {
-                            ui.label(format!("Tab {tab_index} — floating"));
-                        });
+                |vctx, _class| {
+                    // Detect OS-window close -> queue a redock at the origin index.
+                    if vctx.input(|i| i.viewport().close_requested()) {
+                        redock_tx.lock().expect("redock lock").push(origin_index);
+                        vctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
                     }
+                    if tab_index >= self.tabs.len() {
+                        return;
+                    }
+                    // Title_Line for the detached tab (read-only chrome, Req 18.1).
+                    egui::TopBottomPanel::top(egui::Id::new(("floating_title", tab_index))).show(
+                        vctx,
+                        |ui| {
+                            ui.label(
+                                egui::RichText::new(super::title_line_text(
+                                    &self.tabs.tabs()[tab_index],
+                                ))
+                                .monospace()
+                                .strong(),
+                            );
+                        },
+                    );
+                    // Render the tab's REAL Context body by temporarily making it
+                    // the active tab (Req 18.2/18.8), then restoring.
+                    let saved_active = self.tabs.active_index();
+                    self.tabs.set_active(tab_index);
+                    egui::CentralPanel::default().show(vctx, |ui| {
+                        self.render_active_tab_body(vctx, ui);
+                    });
+                    self.tabs.set_active(saved_active);
                 },
             );
         }

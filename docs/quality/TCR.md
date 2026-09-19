@@ -575,7 +575,13 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | 🔲 | -- | Req 17.8: Legacy theme Title_Line uses blue background / white text (manual UI verification) |
 | `ff-desktop` | 🔲 | -- | Req 17.9: Command_Field remains third element below Title_Line (manual UI verification) |
 | `ff-desktop` | 🔴 | -- | Req 17.10 (CR-CH-034, B050): Tab_Header + Title_Line derive the label from live Context state (kind / loaded menu), never a stale cached title after an in-place context switch |
-| `ff-desktop` | 🔴 | -- | Req 18.1–18.7: Detachable tab windows -- deferred to future phase |
+| `ff-desktop` | 🔴 | -- | Req 18.1–18.7: Detachable tab windows -- deferred to future phase (superseded by CR-CH-035 rows below) |
+| `ff-desktop` | ✅ | `shell/tests.rs::full_shell_detach_sets_floating_and_records_floating_tab` | Req 18.1/18.2/18.8 (CR-CH-035, B045): Detached Workspace renders the tab's REAL Context (immediate viewport), not a placeholder -- detach records a FloatingTab + sets is_floating; immediate-viewport render path executes without panic. Real OS-window APPEARANCE remains MANUAL (row below) |
+| `ff-desktop` | ✅ | `shell/tests.rs::full_shell_redock_restores_tab_at_origin`, `tab_manager.rs::{move_tab_restores_to_origin_preserving_order, move_tab_follows_active_tab, move_tab_clamps_origin_beyond_count_to_end, remove_at_*, insert_at_*}` | Req 18.3/18.4/18.9 (CR-CH-035, B045): detach hides the header (bar skips is_floating) + sets is_floating; redock reinserts at origin index via move_tab (remove+reinsert, order preserved), tab identity/content survive round-trip (tracked by stable TabId) |
+| `ff-desktop` | ✅ | `shell/tests.rs::truncate_title_clamps_to_max_on_char_boundary` | Req 18.5 (CR-CH-035, B045): Detached_Workspace OS title = title_line_text + " -- FileForge Workbench", truncated to 80 chars on a char boundary (pure truncate_title) |
+| `ff-desktop` | 🔲 | -- | Req 18.6 (CR-CH-035, B045): drag Tab_Header >20px outside the bar detaches at release point -- MANUAL: real pointer-vs-OS-window geometry not headless-drivable (context-menu + SPLIT detach paths cover the headless case; drag-out is the follow-up) |
+| `ff-desktop` | ✅ | `shell/tests.rs::full_shell_detach_rejected_at_16_window_limit`, `split_detach_at_limit_shows_error` | Req 18.7 (CR-CH-035, B045): max 16 Detached Workspaces (limit unified on floating_tabs.len across context-menu + SPLIT paths); beyond -> status message, no detach |
+| `ff-desktop` | 🔲 | -- | Req 18.1/18.2 (CR-CH-035, B045): the ACTUAL separate OS window (appearance, taskbar presence, independent move/resize/minimize) -- MANUAL: real multi-viewport OS windows are the documented egui_kittest exception (testing.md) |
 
 | `ff-desktop` | 🔲 | `shell.rs` unit tests | Req 8.1: Command field Enter-to-submit -- pressing Enter while field has focus executes the command |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 8.2: Command field Enter on empty field is a no-op |
