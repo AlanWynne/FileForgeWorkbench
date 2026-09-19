@@ -31,16 +31,18 @@ impl WorkbenchShell {
                 params,
             };
         match tab.kind {
-            TabKind::PrimaryOptionMenu => {
-                custom(WorkspaceKind::PrimaryOptionMenu, DescriptorParams::new())
-            }
             TabKind::MenuWorkspace => {
-                let name = tab
-                    .menu_workspace
-                    .as_ref()
-                    .and_then(|mw| mw.menu.as_ref())
-                    .map(|m| m.title.to_lowercase())
-                    .unwrap_or_else(|| "pom".to_string());
+                // The Home Context (POM) always maps to `Menu{name:"pom"}`
+                // regardless of the loaded menu's title (menu-workspace Req 18.8).
+                let name = if tab.is_home {
+                    "pom".to_string()
+                } else {
+                    tab.menu_workspace
+                        .as_ref()
+                        .and_then(|mw| mw.menu.as_ref())
+                        .map(|m| m.title.to_lowercase())
+                        .unwrap_or_else(|| "pom".to_string())
+                };
                 WorkspaceDescriptor::Menu { name }
             }
             TabKind::ConfigPanel => {
@@ -99,9 +101,7 @@ impl WorkbenchShell {
             WorkspaceDescriptor::Menu { name } => {
                 // POM is the Home Context; any other name is a Menu_Workspace.
                 if name.eq_ignore_ascii_case("pom") {
-                    self.set_active_tab_context(TabKind::PrimaryOptionMenu, "[POM]");
-                    self.tabs.active_tab_mut().menu_workspace = None;
-                    self.ensure_pom_menu_loaded();
+                    self.set_active_tab_home();
                 } else if name.eq_ignore_ascii_case("settings") {
                     self.reconstruct_settings_menu();
                 } else {
@@ -120,6 +120,25 @@ impl WorkbenchShell {
         let tab = self.tabs.active_tab_mut();
         tab.kind = kind;
         tab.title = title.to_string();
+        // Only the dedicated Home reconstruction sets `is_home`; any other
+        // Context reset clears it so a former Home tab becomes a plain Context.
+        tab.is_home = false;
+    }
+
+    /// Reconstruct the Home Context (POM) on the active tab in place: a
+    /// `MenuWorkspace` tab flagged `is_home`, with the menu cleared so
+    /// `ensure_pom_menu_loaded` re-seeds `pom.toml` (or the barebones fallback).
+    ///
+    /// Validates: menu-workspace Requirement 18.2, 18.4
+    fn set_active_tab_home(&mut self) {
+        {
+            let tab = self.tabs.active_tab_mut();
+            tab.kind = TabKind::MenuWorkspace;
+            tab.title = "[POM]".to_string();
+            tab.is_home = true;
+            tab.menu_workspace = None;
+        }
+        self.ensure_pom_menu_loaded();
     }
 
     /// Reconstruct the Settings menu (Menu_Workspace backed by settings.toml,
@@ -148,6 +167,7 @@ impl WorkbenchShell {
         let tab = self.tabs.active_tab_mut();
         tab.kind = TabKind::MenuWorkspace;
         tab.title = "[SETTINGS]".to_string();
+        tab.is_home = false;
         tab.menu_workspace = Some(mw);
     }
 
@@ -161,6 +181,7 @@ impl WorkbenchShell {
         let tab = self.tabs.active_tab_mut();
         tab.kind = TabKind::MenuWorkspace;
         tab.title = title;
+        tab.is_home = false;
         tab.menu_workspace = Some(mw);
     }
 
@@ -168,10 +189,10 @@ impl WorkbenchShell {
     /// any shell-global state from params.
     fn reconstruct_custom(&mut self, kind: WorkspaceKind, params: &DescriptorParams) {
         match kind {
+            // Legacy sessions persisted the POM as this custom kind; route it to
+            // the unified Home Context (menu-workspace Req 18.8).
             WorkspaceKind::PrimaryOptionMenu => {
-                self.set_active_tab_context(TabKind::PrimaryOptionMenu, "[POM]");
-                self.tabs.active_tab_mut().menu_workspace = None;
-                self.ensure_pom_menu_loaded();
+                self.set_active_tab_home();
             }
             WorkspaceKind::Config => {
                 let namespace = match params.get("namespace") {
@@ -225,14 +246,12 @@ impl WorkbenchShell {
             WorkspaceKind::Editor | WorkspaceKind::Untitled => {
                 // An editor Context cannot be reconstructed without its document;
                 // fall back to the POM rather than leave a blank editor.
-                self.set_active_tab_context(TabKind::PrimaryOptionMenu, "[POM]");
-                self.ensure_pom_menu_loaded();
+                self.set_active_tab_home();
             }
             // WorkspaceKind is #[non_exhaustive]; any future kind falls back to
             // the POM so navigation never lands on an unhandled Context.
             _ => {
-                self.set_active_tab_context(TabKind::PrimaryOptionMenu, "[POM]");
-                self.ensure_pom_menu_loaded();
+                self.set_active_tab_home();
             }
         }
     }

@@ -23,7 +23,7 @@ impl WorkbenchShell {
         use ff_theme::mode::VisualMode;
         let text = super::title_line_text(self.tabs.active_tab());
         let is_legacy = self.palette.mode == VisualMode::Legacy;
-        let is_pom = self.tabs.active_tab().kind == crate::tab_state::TabKind::PrimaryOptionMenu;
+        let is_pom = self.tabs.active_tab().is_home;
         egui::TopBottomPanel::top("title_line").show(ctx, |ui| {
             if is_pom {
                 // POM title: black background, blue text, centered
@@ -511,61 +511,6 @@ impl WorkbenchShell {
                 self.first_interior_id = None;
                 self.last_interior_id = None;
                 match self.tabs.active_tab().kind {
-                    TabKind::PrimaryOptionMenu => {
-                        // Validates: menu-workspace Requirement 2.1c, 2.1d -- the POM is
-                        // rendered by the SHARED menu renderer against a pom.toml-backed
-                        // MenuWorkspaceState, keeping the PrimaryOptionMenu tab identity.
-                        // Validates: Requirement 13 (Legacy theme semantic colours).
-                        self.ensure_pom_menu_loaded();
-                        let menu_cal = self.menu_colours();
-                        let calendar_offset = self.pom_calendar_offset;
-                        let active_idx = self.tabs.active_index();
-                        let mut calendar_nav = None;
-                        let mut first_interior = None;
-                        let mut last_interior = None;
-                        if let Some(mw) = self
-                            .tabs
-                            .tabs_mut()
-                            .get_mut(active_idx)
-                            .and_then(|t| t.menu_workspace.as_mut())
-                        {
-                            mw.poll_reload();
-                            let result = crate::menu_workspace::render::render_menu_workspace(
-                                mw,
-                                ui,
-                                calendar_offset,
-                                menu_cal,
-                            );
-                            if let Some(option) = result.selected {
-                                self.pending_menu_option = Some(option);
-                            }
-                            calendar_nav = result.calendar_nav;
-                            first_interior = result.first_interior_id;
-                            last_interior = result.last_interior_id;
-                            // CR-CH-028: record the focused option for the
-                            // Cursor_Context (Req 12.2).
-                            self.focused_menu_option = result.focused_option;
-                        }
-                        // CR-NR-078: MenuWorkspace routes its focus contract
-                        // through the shared framework helper (single latch path).
-                        self.apply_interior_focus(
-                            ctx,
-                            crate::shell::workspace_context::InteriorFocus {
-                                first: first_interior,
-                                last: last_interior,
-                            },
-                        );
-                        if let Some(nav) = calendar_nav {
-                            match nav {
-                                primary_option_menu::CalendarNav::Prev => {
-                                    self.pom_calendar_offset -= 1
-                                }
-                                primary_option_menu::CalendarNav::Next => {
-                                    self.pom_calendar_offset += 1
-                                }
-                            }
-                        }
-                    }
                     TabKind::FilesPanel => {
                         // Validates: Requirement 1.1, 1.7
                         let action = files_panel::render(ui, &mut self.files_panel);
@@ -846,7 +791,13 @@ impl WorkbenchShell {
                         self.honour_interior_focus_latch(ctx, Some(id), Some(id));
                     }
                     TabKind::MenuWorkspace => {
-                        // Validates: menu-workspace Requirement 2.1-2.6, 2.1a-2.1c
+                        // Validates: menu-workspace Requirement 2.1-2.6, 2.1a-2.1c,
+                        // 18.2, 18.4. After CR-NR-082 Slice 1 the Home Context (POM)
+                        // is a MenuWorkspace tab, so this single arm renders both the
+                        // POM and every named menu via the SHARED menu renderer.
+                        // ensure_pom_menu_loaded is a no-op unless the tab is Home
+                        // (it seeds pom.toml / the barebones Recovery_Baseline).
+                        self.ensure_pom_menu_loaded();
                         // Resolve calendar colours and month offset before borrowing
                         // the active tab mutably (menu_calendar_colours borrows &self).
                         let menu_cal = self.menu_colours();

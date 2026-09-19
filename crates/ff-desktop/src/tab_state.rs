@@ -16,8 +16,6 @@ use crate::menu_workspace::MenuWorkspaceState;
 /// are shown when the user right-clicks the tab header.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TabKind {
-    /// ISPF-style Primary Option Menu.
-    PrimaryOptionMenu,
     /// A file loaded from the VFS.
     FileEditor,
     /// A new, unsaved buffer with no backing file.
@@ -139,6 +137,15 @@ pub struct TabState {
     ///
     /// Validates: menu-workspace Requirement 1, 2
     pub menu_workspace: Option<MenuWorkspaceState>,
+    /// True when this Menu Workspace is the Home Context (the POM). After the
+    /// CR-NR-082 Slice 1 unification the POM is just a `MenuWorkspace` tab whose
+    /// menu is `pom`; this flag is the stable Home identity (survives before the
+    /// menu is lazily loaded, and independent of a user `workspace_name`). It
+    /// drives the barebones pom-seed, the Title_Line Home styling, the `pom`
+    /// keymap context, and the persistence descriptor.
+    ///
+    /// Validates: menu-workspace Requirement 18.1, 18.2, 18.5, 18.6
+    pub is_home: bool,
     /// Per-tab Navigation_Stack: the ordered ancestors of the current Context,
     /// most-recent last. The current Context is NOT on the stack; an empty stack
     /// means this tab is at its root (END closes the Workspace).
@@ -171,6 +178,7 @@ macro_rules! base_tab {
             canvas_selection: None,
             workspace_name: None,
             menu_workspace: None,
+            is_home: false,
             nav_stack: Vec::new(),
         }
     }};
@@ -199,6 +207,7 @@ impl TabState {
             canvas_selection: None,
             workspace_name: None,
             menu_workspace: None,
+            is_home: false,
             nav_stack: Vec::new(),
         }
     }
@@ -235,18 +244,23 @@ impl TabState {
             canvas_selection: None,
             workspace_name: None,
             menu_workspace: None,
+            is_home: false,
             nav_stack: Vec::new(),
         }
     }
 
-    /// Create a Primary Option Menu tab.
+    /// Create the Home Context (the Primary Option Menu).
+    ///
+    /// After the CR-NR-082 Slice 1 unification the POM is a `MenuWorkspace`
+    /// tab whose menu is `pom`; `is_home` is the stable Home identity. The
+    /// menu itself is seeded lazily on first render (barebones fallback when
+    /// `pom.toml` is absent) via `ensure_pom_menu_loaded`.
+    ///
+    /// Validates: menu-workspace Requirement 18.1, 18.2
     pub fn pom(id: TabId, document: DocumentHandle) -> Self {
-        base_tab!(
-            id,
-            TabKind::PrimaryOptionMenu,
-            "[POM]".to_string(),
-            document
-        )
+        let mut tab = base_tab!(id, TabKind::MenuWorkspace, "[POM]".to_string(), document);
+        tab.is_home = true;
+        tab
     }
 
     /// Create a Files Panel (Virtual Catalog Manager) tab.

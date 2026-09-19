@@ -946,10 +946,12 @@ impl WorkbenchShell {
 /// Validates: Requirement 17.3, 17.4, 17.5, 17.6
 pub(crate) fn title_line_text(tab: &crate::tab_state::TabState) -> String {
     use crate::tab_state::TabKind;
+    // The Home Context (POM) is a MenuWorkspace tab but shows the app banner.
+    // Validates: Requirement 17.3; menu-workspace Requirement 18.6
+    if tab.is_home {
+        return format!("FileForge Workbench  v{}", env!("CARGO_PKG_VERSION"));
+    }
     match tab.kind {
-        TabKind::PrimaryOptionMenu => {
-            format!("FileForge Workbench  v{}", env!("CARGO_PKG_VERSION"))
-        }
         TabKind::FileEditor => tab
             .path
             .as_deref()

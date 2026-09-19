@@ -67,9 +67,6 @@ fn descriptor_for_tab(
         TabKind::PluginManager => custom(WorkspaceKind::PluginManager, DescriptorParams::new()),
         TabKind::EventLog => custom(WorkspaceKind::EventLog, DescriptorParams::new()),
         TabKind::MacroLibrary => custom(WorkspaceKind::MacroLibrary, DescriptorParams::new()),
-        TabKind::PrimaryOptionMenu => {
-            custom(WorkspaceKind::PrimaryOptionMenu, DescriptorParams::new())
-        }
         TabKind::CommandConfigurator => {
             // Validates: command-configurator Requirement 2.1; startup-and-session
             // Requirement 21 -- persists as a parameterless Custom Workspace.
@@ -77,12 +74,17 @@ fn descriptor_for_tab(
         }
         TabKind::MenuWorkspace => {
             // A data-driven menu persists as a Menu descriptor keyed by name.
-            let name = t
-                .menu_workspace
-                .as_ref()
-                .and_then(|mw| mw.menu.as_ref())
-                .map(|m| m.title.to_lowercase())
-                .unwrap_or_else(|| "pom".to_string());
+            // The Home Context (POM) always persists as `Menu{name:"pom"}`
+            // regardless of the loaded menu's title (menu-workspace Req 18.8).
+            let name = if t.is_home {
+                "pom".to_string()
+            } else {
+                t.menu_workspace
+                    .as_ref()
+                    .and_then(|mw| mw.menu.as_ref())
+                    .map(|m| m.title.to_lowercase())
+                    .unwrap_or_else(|| "pom".to_string())
+            };
             Some(WorkspaceDescriptor::Menu { name })
         }
         // The Theme Editor is a transient editing Context (like a dialog); it is
@@ -123,7 +125,6 @@ fn session_tab_for(t: &RuntimeTab, config_namespace: Option<&str>) -> Option<Ses
         TabKind::SearchResults => (PersistedTabKind::SearchResults, None, 1, 1, 1),
         TabKind::PluginManager => (PersistedTabKind::PluginManager, None, 1, 1, 1),
         TabKind::EventLog => (PersistedTabKind::EventLog, None, 1, 1, 1),
-        TabKind::PrimaryOptionMenu => (PersistedTabKind::PrimaryOptionMenu, None, 1, 1, 1),
         // Kinds with no legacy PersistedTabKind variant fall back to the default;
         // the descriptor is the source of truth for these on restore.
         _ => (PersistedTabKind::default(), None, 1, 1, 1),
@@ -206,8 +207,7 @@ impl SessionManager {
             match active.kind {
                 TabKind::FileEditor => active.path.as_ref().map(|_| format!("{}", active.id.0)),
                 TabKind::FilesPanel => Some(format!("{}", active.id.0)),
-                TabKind::PrimaryOptionMenu
-                | TabKind::Untitled
+                TabKind::Untitled
                 | TabKind::ConfigPanel
                 | TabKind::FileExplorerPanel
                 | TabKind::SearchResults
@@ -262,8 +262,7 @@ impl SessionManager {
             match active.kind {
                 TabKind::FileEditor => active.path.as_ref().map(|_| format!("{}", active.id.0)),
                 TabKind::FilesPanel => Some(format!("{}", active.id.0)),
-                TabKind::PrimaryOptionMenu
-                | TabKind::Untitled
+                TabKind::Untitled
                 | TabKind::ConfigPanel
                 | TabKind::FileExplorerPanel
                 | TabKind::SearchResults

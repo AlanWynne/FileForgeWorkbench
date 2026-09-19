@@ -2458,3 +2458,28 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[x]` Phase (swap-previous) COMPLETE | Bare SWAP/F9 toggles to the previously active workspace (CR-CH-031) -- DONE: `TabManager.previous_active` tracked via a single `activate` seam (+ `previous_active_index`, close-repair, insert/clear reset); bare-SWAP no-split arm toggles to it, else opens the picker (18.10). multi-tab-editor Req 18.7/18.9/18.10. verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. |
+
+## Phase (workspace-unify) -- unify POM into a single Menu Workspace (CR-NR-082 Slice 1)
+
+> Owner: "there should be only one" menu-workspace kind. Option (b): fully
+> remove `TabKind::PrimaryOptionMenu`; the POM is the Menu Workspace named `pom`
+> seeded with the compiled barebones baseline. Behaviour-preserving; reconciles
+> the three overlapping Context enums + the POM<->Menu persistence divergence.
+> Slice 1 of 4 (later: named workspaces id/name/kind/menu; per-workspace
+> menu-bar+keymap; per-workspace Profile store). menu-workspace Req 18.
+
+- [x] WU.seed menu-workspace Task 34.1-34.2: generalise the barebones-seed load;
+      remove `TabKind::PrimaryOptionMenu`; Home Context = MenuWorkspace menu `pom`.
+      Covers: menu-workspace Req 18.1, 18.2.
+- [x] WU.render menu-workspace Task 34.3-34.4: collapse the two render arms into
+      one; title-line/keymap key off the `pom` menu name; nav fallback + END
+      target the Home Menu Workspace.
+      Covers: menu-workspace Req 18.3-18.6.
+- [x] WU.persist menu-workspace Task 34.5-34.6: Home persists as `Menu{name:pom}`;
+      legacy POM enums retained read-only (`from_legacy` -> Home); retarget tests;
+      verify.ps1 CLEAN; ffwb.exe rebuilt; TCR Req 18.
+      Covers: menu-workspace Req 18.7-18.9.
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (workspace-unify) COMPLETE | CR-NR-082 Slice 1: unified POM into one Menu Workspace kind -- DONE: removed `TabKind::PrimaryOptionMenu`; Home Context = `MenuWorkspace` flagged `is_home` (menu `pom` + barebones `recovery_pom_menu()` fallback); collapsed the two render arms into one; title-line/keymap/nav-fallback/persistence key off `is_home`; Home persists as `Menu{name:"pom"}`; legacy `WorkspaceKind`/`PersistedTabKind` POM enums retained read-only (route to Home); POM tests retargeted + 6 new Slice 1 tests. Behaviour preserved. menu-workspace Req 18. verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. Slices 2-4 (named workspaces / per-workspace menu-bar+keymap / Profile store) are later gates. |

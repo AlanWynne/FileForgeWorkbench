@@ -1302,3 +1302,69 @@ centred popup for parity, but the menu-bar dropdown is the primary presentation.
   of navigating. Leaf activation is identical to normal command dispatch.
 - CR-CH-023 Boundary_Policy is preserved by capturing first/last button ids from
   the data-driven loop (DM.1).
+
+---
+
+## Design Delta: Unified Menu Workspace -- remove TabKind::PrimaryOptionMenu (Requirement 18, CR-NR-082 Slice 1)
+
+Behaviour-preserving unification: the POM becomes the Menu Workspace whose menu
+name is `pom`. Owner decision (b): fully remove the separate POM tab kind.
+
+### As-is (the duplication being removed)
+
+- `crates/ff-desktop/src/tab_state.rs`: `TabKind` has BOTH `PrimaryOptionMenu`
+  and `MenuWorkspace`; both `TabState` variants already carry
+  `menu_workspace: Option<MenuWorkspaceState>`.
+- `crates/ff-desktop/src/shell/render.rs`: TWO near-identical match arms
+  (`TabKind::PrimaryOptionMenu` and `TabKind::MenuWorkspace`) both call
+  `render_menu_workspace`; the POM arm additionally calls
+  `ensure_pom_menu_loaded()`.
+- `shell/commands.rs::ensure_pom_menu_loaded` seeds `menus/pom.toml` with the
+  `recovery_pom_menu()` barebones fallback.
+- Persistence divergence (`session_manager.rs::descriptor_for_tab`): POM ->
+  `CustomWorkspace { WorkspaceKind::PrimaryOptionMenu }`; other menus ->
+  `Menu { name }`.
+- Three enums duplicate the POM: `TabKind::PrimaryOptionMenu`,
+  `ff_session::WorkspaceKind::PrimaryOptionMenu`,
+  `PersistedTabKind::PrimaryOptionMenu`. Only `TabKind` has `MenuWorkspace`.
+
+### To-be
+
+- Remove `TabKind::PrimaryOptionMenu`. The Home Context is a `TabKind::MenuWorkspace`
+  tab whose `menu_workspace` menu name is `pom`. `TabState::pom(...)` becomes a
+  thin constructor that builds a MenuWorkspace tab tagged as the Home menu
+  (menu name `pom`) -- or `insert_pom_tab` builds a MenuWorkspace tab and seeds
+  it via the shared menu-load-with-barebones-fallback helper.
+- Collapse the two render arms into ONE `TabKind::MenuWorkspace` arm. The
+  barebones-fallback seeding (`ensure_pom_menu_loaded`) generalises to "ensure
+  this menu workspace has a loaded menu; if its name is `pom` and no file, use
+  `recovery_pom_menu()`" -- applied for any menu workspace whose tab has no
+  loaded `menu_workspace` yet. The `is_pom` title-line special-case keys off the
+  menu name (`pom`) instead of the removed tab kind.
+- Keymap context: `context_name_for_kind` no longer has a `PrimaryOptionMenu`
+  arm; the Home Context resolves to the `pom` keymap context by menu name (a
+  `context_name_for_menu(menu_name)` helper, or the MenuWorkspace arm returns
+  `pom` when the menu name is `pom`, else `menu`). No key binding changes.
+- nav_stack.rs POM fallback (`set_active_tab_context(PrimaryOptionMenu, "[POM]")`
+  + `ensure_pom_menu_loaded`) becomes "open/transform to the Home Menu Workspace
+  (menu `pom`)". END/RETURN unwind to Home unchanged.
+- Persistence: the Home Context persists as `WorkspaceDescriptor::Menu { name:
+  "pom" }` like any menu; `descriptor_for_tab`'s POM arm is removed.
+  `WorkspaceKind::PrimaryOptionMenu` and `PersistedTabKind::PrimaryOptionMenu`
+  are RETAINED for reading legacy sessions (`from_legacy` maps a legacy POM to
+  the Home Menu descriptor), but NEW saves never emit them. This keeps
+  backward-compatible load (Req 21.10) while removing the runtime POM kind.
+- The three enums: `TabKind` loses `PrimaryOptionMenu`. `WorkspaceKind` and
+  `PersistedTabKind` keep their POM variants ONLY as legacy-read mappings
+  (documented), mapping to the unified Menu Workspace on restore.
+
+### Behaviour preservation + testing
+
+Every existing POM/menu test must pass, adjusted only where it names
+`TabKind::PrimaryOptionMenu` (retarget to the Home Menu Workspace: kind
+`MenuWorkspace` + menu name `pom`). Add a test asserting the Home Context is a
+single MenuWorkspace (no `PrimaryOptionMenu` kind exists), that a fresh launch
+seeds the barebones POM menu, that END/RETURN returns to the Home Menu Workspace,
+and that a legacy session with a persisted POM restores the Home Context. No new
+user-visible menu behaviour. Slices 2-4 (named workspaces, per-workspace
+menu-bar/keymap, Profile store) build on this single kind.

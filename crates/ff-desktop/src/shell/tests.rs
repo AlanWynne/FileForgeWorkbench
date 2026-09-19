@@ -74,7 +74,8 @@ fn first_launch_inserts_pom_tab() {
     let runtime = Runtime::new().expect("runtime");
     let mut mgr = TabManager::new(&runtime, "");
     mgr.insert_pom_tab(&runtime);
-    assert_eq!(mgr.tabs()[0].kind, TabKind::PrimaryOptionMenu);
+    assert!(mgr.tabs()[0].is_home);
+    assert_eq!(mgr.tabs()[0].kind, TabKind::MenuWorkspace);
     assert_eq!(mgr.tabs()[0].title, "[POM]");
 }
 
@@ -100,7 +101,8 @@ fn pom_tab_context_menu_items_are_universal_only() {
     // The context menu for a POM tab must NOT include file-specific items.
     // We verify this by checking the TabKind dispatch logic directly.
     use crate::tab_state::TabKind;
-    let pom_kind = TabKind::PrimaryOptionMenu;
+    // The Home Context (POM) is a MenuWorkspace tab after CR-NR-082 Slice 1.
+    let pom_kind = TabKind::MenuWorkspace;
     let file_kind = TabKind::FileEditor;
     // File-specific items are only shown when kind == FileEditor.
     assert!(file_kind == TabKind::FileEditor);
@@ -455,7 +457,7 @@ fn command_equals_0_routes_to_settings() {
 fn config_panel_tab_kind_is_distinct_from_other_kinds() {
     // Validates: Requirement 15.9
     use crate::tab_state::TabKind;
-    assert_ne!(TabKind::ConfigPanel, TabKind::PrimaryOptionMenu);
+    assert_ne!(TabKind::ConfigPanel, TabKind::MenuWorkspace);
     assert_ne!(TabKind::ConfigPanel, TabKind::FileEditor);
     assert_ne!(TabKind::ConfigPanel, TabKind::FilesPanel);
     assert_ne!(TabKind::ConfigPanel, TabKind::Untitled);
@@ -610,7 +612,7 @@ fn pom_option_1_on_pom_tab_transforms_tab_in_place() {
     let runtime = Runtime::new().expect("runtime");
     let mut mgr = TabManager::new(&runtime, "");
     mgr.insert_pom_tab(&runtime);
-    assert_eq!(mgr.active_tab().kind, TabKind::PrimaryOptionMenu);
+    assert!(mgr.active_tab().is_home);
     // Typing "1" on a POM tab must transform it in-place to FilesPanel.
     mgr.transform_active_pom_tab(TabKind::FilesPanel, "[FILES]");
     assert_eq!(mgr.active_tab().kind, TabKind::FilesPanel);
@@ -1155,7 +1157,7 @@ fn equals_2_command_transforms_tab_to_file_explorer() {
     let runtime = Runtime::new().expect("runtime");
     let mut mgr = TabManager::new(&runtime, "");
     mgr.insert_pom_tab(&runtime);
-    assert_eq!(mgr.active_tab().kind, TabKind::PrimaryOptionMenu);
+    assert!(mgr.active_tab().is_home);
     mgr.transform_active_pom_tab(TabKind::FileExplorerPanel, "[FILES]");
     assert_eq!(mgr.active_tab().kind, TabKind::FileExplorerPanel);
     assert_eq!(mgr.active_tab().title, "[FILES]");
@@ -1218,13 +1220,14 @@ fn end_from_pom_with_other_tabs_closes_pom_not_app() {
     // the only tab.
     let idx = shell.tabs.active_index();
     if let Some(tab) = shell.tabs.tabs_mut().get_mut(idx) {
-        tab.kind = TabKind::PrimaryOptionMenu;
+        tab.kind = TabKind::MenuWorkspace;
+        tab.is_home = true;
         tab.title = "[POM]".to_string();
     }
     shell.tabs.insert_pom_tab(&shell.runtime); // second tab
                                                // Re-select the first (a POM) as active.
     shell.tabs.set_active(0);
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
+    assert!(shell.tabs.active_tab().is_home);
     let before = shell.tabs.len();
     assert!(before >= 2, "precondition: more than one Workspace open");
 
@@ -1252,7 +1255,8 @@ fn end_from_pom_as_only_workspace_does_not_close_tab() {
     }
     let idx = shell.tabs.active_index();
     if let Some(tab) = shell.tabs.tabs_mut().get_mut(idx) {
-        tab.kind = TabKind::PrimaryOptionMenu;
+        tab.kind = TabKind::MenuWorkspace;
+        tab.is_home = true;
         tab.title = "[POM]".to_string();
     }
     assert_eq!(shell.tabs.len(), 1);
@@ -1266,7 +1270,7 @@ fn end_from_pom_as_only_workspace_does_not_close_tab() {
         1,
         "END from the only POM takes the exit path, not close-and-navigate"
     );
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
+    assert!(shell.tabs.active_tab().is_home);
 }
 
 /// Validates: function-keys-and-history Requirement 17.4 (REVISED, CR-CH-016) --
@@ -1278,7 +1282,8 @@ fn return_from_pom_with_other_tabs_closes_pom_not_app() {
     let mut shell = make_shell();
     let idx = shell.tabs.active_index();
     if let Some(tab) = shell.tabs.tabs_mut().get_mut(idx) {
-        tab.kind = TabKind::PrimaryOptionMenu;
+        tab.kind = TabKind::MenuWorkspace;
+        tab.is_home = true;
         tab.title = "[POM]".to_string();
     }
     shell.tabs.insert_pom_tab(&shell.runtime);
@@ -1310,10 +1315,11 @@ fn file_explorer_panel_end_command_returns_to_pom() {
     // Simulate END: transform back to POM
     let idx = mgr.active_index();
     if let Some(tab) = mgr.tabs_mut().get_mut(idx) {
-        tab.kind = TabKind::PrimaryOptionMenu;
+        tab.kind = TabKind::MenuWorkspace;
+        tab.is_home = true;
         tab.title = "[POM]".to_string();
     }
-    assert_eq!(mgr.active_tab().kind, TabKind::PrimaryOptionMenu);
+    assert!(mgr.active_tab().is_home);
 }
 
 /// Validates: Requirement 19.12 -- FileExplorerPanel kind is distinct from FilesPanel.
@@ -1322,7 +1328,7 @@ fn file_explorer_panel_kind_is_distinct_from_files_panel() {
     // Validates: Requirement 19.12
     use crate::tab_state::TabKind;
     assert_ne!(TabKind::FileExplorerPanel, TabKind::FilesPanel);
-    assert_ne!(TabKind::FileExplorerPanel, TabKind::PrimaryOptionMenu);
+    assert_ne!(TabKind::FileExplorerPanel, TabKind::MenuWorkspace);
     assert_ne!(TabKind::FileExplorerPanel, TabKind::FileEditor);
 }
 
@@ -1976,7 +1982,6 @@ fn fastpath_notation_navigates_to_option() {
     // Validates: Requirement 19.4
     // "2.1" navigates to option 2 then sub-option 1.
     // Option 2 on POM -> FileExplorerPanel; then "1" on non-POM -> FilesPanel.
-    use crate::tab_state::TabKind;
     let mut shell = make_shell();
     shell.handle_command("2.1");
     // After fastpath, the active tab should have been navigated (no panic, no unknown-command error)
@@ -1987,11 +1992,9 @@ fn fastpath_notation_navigates_to_option() {
         !err.to_uppercase().contains("UNKNOWN"),
         "fastpath should not produce unknown-command error, got: {err}"
     );
-    // The tab kind should be one of the navigated kinds (not POM)
-    let kind = shell.tabs.active_tab().kind;
-    assert_ne!(
-        kind,
-        TabKind::PrimaryOptionMenu,
+    // The tab should have navigated away from the Home Context (POM).
+    assert!(
+        !shell.tabs.active_tab().is_home,
         "fastpath should have navigated away from POM"
     );
 }
@@ -2949,7 +2952,7 @@ fn plugin_manager_tab_kind_exists() {
     use crate::tab_state::TabKind;
     let kind = TabKind::PluginManager;
     assert_eq!(kind, TabKind::PluginManager);
-    assert_ne!(kind, TabKind::PrimaryOptionMenu);
+    assert_ne!(kind, TabKind::MenuWorkspace);
     assert_ne!(kind, TabKind::ConfigPanel);
 }
 
@@ -3679,7 +3682,7 @@ fn macro_library_tab_kind_exists() {
     use crate::tab_state::TabKind;
     let kind = TabKind::MacroLibrary;
     assert_eq!(kind, TabKind::MacroLibrary);
-    assert_ne!(kind, TabKind::PrimaryOptionMenu);
+    assert_ne!(kind, TabKind::MenuWorkspace);
     assert_ne!(kind, TabKind::PluginManager);
 }
 
@@ -3882,13 +3885,10 @@ fn split_on_pom_tab_sets_detach_pending() {
         .tabs
         .tabs()
         .iter()
-        .rposition(|t| t.kind == crate::tab_state::TabKind::PrimaryOptionMenu)
+        .rposition(|t| t.is_home)
         .expect("POM tab must exist after START");
     shell.tabs.set_active(pom_idx);
-    assert_eq!(
-        shell.tabs.active_tab().kind,
-        crate::tab_state::TabKind::PrimaryOptionMenu
-    );
+    assert!(shell.tabs.active_tab().is_home);
     shell.handle_command("SPLIT");
     assert!(
         shell.detach_pending.is_some(),
@@ -4334,7 +4334,7 @@ fn command_configurator_end_returns_to_pom() {
     // CR-CH-022: END pops the Navigation_Stack (which holds [POM]) and
     // reconstructs the POM in place -- synchronously, no deferred flag.
     shell.handle_command("END");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
+    assert!(shell.tabs.active_tab().is_home);
 }
 
 /// Open a temp-backed CommandStore on the shell so save() writes to a temp dir.
@@ -4503,18 +4503,17 @@ fn menu_command_returns_to_home_context() {
     shell.handle_command("COMMANDS");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::CommandConfigurator);
     shell.handle_command("MENU");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
+    assert!(shell.tabs.active_tab().is_home);
     assert!(shell.open_error.is_none());
 }
 
 // Validates: menu-workspace Requirement 11.2 -- MENU POM resolves to the Home Context.
 #[test]
 fn menu_pom_resolves_to_home_context() {
-    use crate::tab_state::TabKind;
     let mut shell = make_shell();
     shell.handle_command("COMMANDS");
     shell.handle_command("MENU POM");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
+    assert!(shell.tabs.active_tab().is_home);
 }
 
 // Validates: menu-workspace Requirement 11.2 -- MENU <name> opens a data-driven
@@ -4617,7 +4616,7 @@ fn dispatch_menu_target_pom_opens_home_context() {
     shell.dispatch_command_target(&CommandTarget::Menu {
         name: "pom".to_string(),
     });
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
+    assert!(shell.tabs.active_tab().is_home);
 }
 
 // === External execution adapter (command-configurator Requirement 3) ========
@@ -4801,9 +4800,8 @@ fn keyword_less_pom_menu_name_opens_home_context() {
     shell.handle_command("SETTINGS"); // leave the POM first
     assert_eq!(shell.tabs.active_tab().kind, TabKind::MenuWorkspace);
     shell.handle_command("POM");
-    assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::PrimaryOptionMenu,
+    assert!(
+        shell.tabs.active_tab().is_home,
         "keyword-less POM must return to the Home Context"
     );
 }
@@ -4899,7 +4897,7 @@ fn settings_menu_end_returns_to_pom() {
     // CR-CH-022: END pops the Navigation_Stack ([POM]) and reconstructs the POM
     // in place, synchronously.
     shell.handle_command("END");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
+    assert!(shell.tabs.active_tab().is_home);
 }
 
 // Validates: menu-workspace Req 12.3 (CR-CH-025) -- the default settings.toml
@@ -5009,18 +5007,13 @@ fn reset_bare_unknown_named_profile_errors_without_dialog() {
 // dir; here we exercise the in-memory reset path.)
 #[test]
 fn execute_reset_bare_reopens_home_context() {
-    use crate::tab_state::TabKind;
     let mut shell = make_shell();
     let target = shell
         .resolve_reset_bare_target("")
         .expect("bare target resolves");
     shell.execute_reset_bare(&target);
     assert!(
-        shell
-            .tabs
-            .tabs()
-            .iter()
-            .any(|t| t.kind == TabKind::PrimaryOptionMenu),
+        shell.tabs.tabs().iter().any(|t| t.is_home),
         "after RESET BARE the Home Context (POM) must be present"
     );
     assert!(
@@ -5215,9 +5208,8 @@ fn menus_editor_end_returns_to_origin() {
     shell.handle_command("MENUS");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::MenusEditor);
     shell.handle_command("END");
-    assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::PrimaryOptionMenu,
+    assert!(
+        shell.tabs.active_tab().is_home,
         "END from a POM-opened Menus Editor returns to the POM"
     );
 
@@ -5235,9 +5227,8 @@ fn menus_editor_end_returns_to_origin() {
         "END from a Settings-opened Menus Editor returns to the Settings menu"
     );
     shell.handle_command("END");
-    assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::PrimaryOptionMenu,
+    assert!(
+        shell.tabs.active_tab().is_home,
         "a second END returns to the POM"
     );
 }
@@ -5305,11 +5296,7 @@ fn end_walks_back_up_the_navigation_stack() {
         "END: C -> B (Settings menu)"
     );
     shell.handle_command("END");
-    assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::PrimaryOptionMenu,
-        "END: B -> A (POM)"
-    );
+    assert!(shell.tabs.active_tab().is_home, "END: B -> A (POM)");
     assert_eq!(shell.tabs.len(), 1, "walking back never spawned a tab");
 }
 
@@ -5341,14 +5328,16 @@ fn navigation_stacks_are_per_tab() {
         shell.tabs.active_tab().nav_stack.is_empty(),
         "the START tab has its own empty stack"
     );
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
-    // The Settings tab (found by kind) still has its own non-empty stack --
-    // proving stacks are independent per tab.
+    assert!(shell.tabs.active_tab().is_home);
+    // The Settings tab (a non-Home MenuWorkspace) still has its own non-empty
+    // stack -- proving stacks are independent per tab. The freshly inserted
+    // START tab is ALSO a MenuWorkspace (the Home Context), so filter it out via
+    // is_home to find the drilled Settings tab specifically.
     let settings_tab = shell
         .tabs
         .tabs()
         .iter()
-        .find(|t| t.kind == TabKind::MenuWorkspace)
+        .find(|t| t.kind == TabKind::MenuWorkspace && !t.is_home)
         .expect("the drilled Settings tab still exists");
     assert!(
         !settings_tab.nav_stack.is_empty(),
@@ -5367,7 +5356,7 @@ fn start_forms_root_the_new_tab_correctly() {
     let before = shell.tabs.len();
     shell.handle_command("START");
     assert_eq!(shell.tabs.len(), before + 1);
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
+    assert!(shell.tabs.active_tab().is_home);
     assert!(shell.tabs.active_tab().nav_stack.is_empty());
 
     // START Settings -> new tab rooted directly at Settings, EMPTY stack, so
@@ -5404,9 +5393,8 @@ fn start_equals_path_keeps_pom_on_stack() {
         "START =X keeps the POM on the stack"
     );
     shell.handle_command("END");
-    assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::PrimaryOptionMenu,
+    assert!(
+        shell.tabs.active_tab().is_home,
         "END from a START =0 tab returns to the POM"
     );
 }
@@ -5442,7 +5430,7 @@ fn themes_command_transforms_pom_tab_in_place() {
     let mut shell = make_shell();
     // Ensure the active tab is a POM.
     shell.handle_command("START");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::PrimaryOptionMenu);
+    assert!(shell.tabs.active_tab().is_home);
     let count_before = shell.tabs.len();
     shell.handle_command("THEME");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::ThemeEditor);
@@ -6537,10 +6525,7 @@ fn full_shell_bare_theme_opens_editor_and_end_returns() {
     use crate::tab_state::TabKind;
     let mut harness = harness_shell();
     // Start on the POM.
-    assert_eq!(
-        harness.state().tabs.active_tab().kind,
-        TabKind::PrimaryOptionMenu
-    );
+    assert!(harness.state().tabs.active_tab().is_home);
     harness.state_mut().handle_command("THEME");
     harness.run();
     assert_eq!(
@@ -6551,9 +6536,8 @@ fn full_shell_bare_theme_opens_editor_and_end_returns() {
     // END returns one level to the POM (per-tab Navigation_Stack, CR-CH-022).
     harness.state_mut().handle_command("END");
     harness.run();
-    assert_eq!(
-        harness.state().tabs.active_tab().kind,
-        TabKind::PrimaryOptionMenu,
+    assert!(
+        harness.state().tabs.active_tab().is_home,
         "END from the Theme Editor returns to the POM"
     );
 }
@@ -6591,4 +6575,108 @@ fn full_shell_theme_list_has_four_builtins() {
     );
     assert!(!builtins.iter().any(|n| n == "Legacy (ISPF 3270)"));
     assert!(builtins.iter().any(|n| n == "Default Legacy"));
+}
+
+// === CR-NR-082 Slice 1: Unified Menu Workspace (Requirement 18) =============
+
+/// Validates: menu-workspace Requirement 18.1 -- the Home Context (POM) is
+/// represented by the single Menu Workspace kind flagged `is_home`; there is no
+/// separate Primary-Option-Menu tab kind.
+#[test]
+fn home_context_is_a_menu_workspace_flagged_is_home() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    let home = shell.tabs.active_tab();
+    assert!(home.is_home, "the startup Home tab must be flagged is_home");
+    assert_eq!(
+        home.kind,
+        TabKind::MenuWorkspace,
+        "the Home Context must be the unified Menu Workspace kind"
+    );
+    assert_eq!(home.title, "[POM]");
+}
+
+/// Validates: menu-workspace Requirement 18.2 -- the Home Context loads its menu
+/// lazily and falls back to the compiled barebones Recovery_Baseline when no
+/// user pom.toml exists (make_shell has no menus dir).
+#[test]
+fn home_context_seeds_barebones_menu_on_render() {
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    // Before render the menu is unseeded; ensure_pom_menu_loaded seeds it.
+    shell.ensure_pom_menu_loaded();
+    let home = shell.tabs.active_tab();
+    assert!(home.is_home);
+    let mw = home
+        .menu_workspace
+        .as_ref()
+        .expect("Home Context must carry a MenuWorkspaceState after seeding");
+    assert!(
+        mw.menu.is_some(),
+        "the barebones Recovery_Baseline POM must be present when no file exists"
+    );
+}
+
+/// Validates: menu-workspace Requirement 18.5 -- the Title_Line presents the
+/// Home Context with the app banner, derived from the Menu Workspace (is_home),
+/// not a distinct POM tab kind.
+#[test]
+fn home_context_title_line_shows_app_banner() {
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    let text = super::title_line_text(shell.tabs.active_tab());
+    assert!(
+        text.starts_with("FileForge Workbench  v"),
+        "Home Context title line must be the app banner, got: {text:?}"
+    );
+}
+
+/// Validates: menu-workspace Requirement 18.6 -- the Home Context resolves to the
+/// `pom` keymap context, while a non-Home Menu Workspace resolves to `menu`.
+#[test]
+fn home_context_resolves_to_pom_keymap_context() {
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    assert_eq!(
+        super::helpers::context_name_for_tab(shell.tabs.active_tab()),
+        Some("pom"),
+        "the Home Context must use the `pom` keymap context"
+    );
+}
+
+/// Validates: menu-workspace Requirement 18.7, 18.8 -- the Home Context persists
+/// as a single Menu Workspace descriptor keyed by the reserved name `pom`.
+#[test]
+fn home_context_persists_as_menu_pom_descriptor() {
+    use ff_session::WorkspaceDescriptor;
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    let descriptor = shell.descriptor_for_current_context();
+    match descriptor {
+        WorkspaceDescriptor::Menu { name } => assert_eq!(name, "pom"),
+        other => panic!("Home Context must persist as Menu{{name:\"pom\"}}, got: {other:?}"),
+    }
+}
+
+/// Validates: menu-workspace Requirement 18.4 -- END unwinding to the origin
+/// restores a Home Context Menu Workspace (is_home), the always-present-Home
+/// guarantee, after drilling into a sub-menu.
+#[test]
+fn end_from_drilled_menu_restores_home_context() {
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    assert!(shell.tabs.active_tab().is_home);
+    // Drill into Settings (pushes the Home Context onto the nav stack).
+    shell.handle_command("SETTINGS");
+    assert!(
+        !shell.tabs.active_tab().is_home,
+        "after SETTINGS the active Context is the Settings menu, not Home"
+    );
+    // END pops back to the Home Context.
+    shell.handle_command("END");
+    assert!(
+        shell.tabs.active_tab().is_home,
+        "END from the drilled Settings menu must restore the Home Context"
+    );
 }

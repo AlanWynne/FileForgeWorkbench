@@ -318,8 +318,6 @@ impl WorkbenchShell {
     /// Reset the in-memory configuration, menus, theme, and catalog state to the
     /// compiled baselines and reopen the Recovery_Baseline POM (Req 19.6).
     fn reset_in_memory_to_baseline(&mut self) {
-        use crate::tab_state::TabKind;
-
         // Theme -> Default Legacy baseline (the ISPF barebones aesthetic). B064:
         // clearing the archived files alone does NOT reset the theme, because the
         // running config_handle still holds the old theme keys in memory (and a
@@ -354,11 +352,7 @@ impl WorkbenchShell {
 
         // Menus -> drop any loaded POM menu so it reloads from the compiled
         // Recovery_Baseline on the next render. Reopen the Home Context (POM).
-        let pom_idx = self
-            .tabs
-            .tabs()
-            .iter()
-            .position(|t| t.kind == TabKind::PrimaryOptionMenu);
+        let pom_idx = self.tabs.tabs().iter().position(|t| t.is_home);
         match pom_idx {
             Some(idx) => {
                 if let Some(tab) = self.tabs.tabs_mut().get_mut(idx) {

@@ -547,3 +547,53 @@
 - [x] 33. Slice D: dynamic option sources -> Themes dropdown (delivers ex-CR-NR-077)
   - [x] 33.1 A menu-bar option with a dynamic source (`THEME LIST`) yields a dropdown generated from `list_all_themes` (`dynamic_menu_options`), each item dispatching `THEME <name>` via `handle_command` (shared `set_active_theme` apply+persist path). The bar render consults `dynamic_menu_options` before `peek_menu_options`. Mechanism delivered + tested; the barebones default does not yet wire a Themes dropdown (Option B -- usable when a menu includes a `THEME LIST` option).
     - Covers: Requirement 17.10, 17.11
+
+## Phase (workspace-unify) -- unify the POM into a single Menu Workspace (CR-NR-082 Slice 1, Req 18)
+
+Behaviour-preserving. Option (b): fully remove `TabKind::PrimaryOptionMenu`.
+(Note: the deferred Slice C per-kind menu-bar, task 32, is subsumed by CR-NR-082
+Slice 3 -- per-named-workspace menu-bar/keymap -- gated later.)
+
+- [x] 34. Unify POM and Menu Workspace into one kind
+  - [x] 34.1 Fold the barebones-seed path: generalise `ensure_pom_menu_loaded`
+          so any MenuWorkspace tab whose menu is unloaded gets its menu loaded,
+          with the `recovery_pom_menu()` fallback used when the menu name is
+          `pom` and no file/parse. Failing tests first.
+    - Validates: menu-workspace Requirement 18.2
+    - Note: implemented via a stable `is_home` marker on `TabState` (set by
+      `TabState::pom`); `ensure_pom_menu_loaded` keys off `is_home` and seeds
+      `menus/pom.toml` with the `recovery_pom_menu()` barebones fallback.
+  - [x] 34.2 Remove `TabKind::PrimaryOptionMenu`; make the Home Context a
+          `TabKind::MenuWorkspace` tab with menu name `pom`. Update
+          `TabState::pom`/`insert_pom_tab` to build a MenuWorkspace Home tab.
+    - Validates: menu-workspace Requirement 18.1
+  - [x] 34.3 Collapse the two render arms in `shell/render.rs` into one
+          `MenuWorkspace` arm (shared renderer); title-line `is_pom` keys off the
+          menu name `pom`, not the removed kind.
+    - Validates: menu-workspace Requirement 18.3, 18.5
+    - Note: `title_line_text`/`render_title_line` key off `is_home` (not the
+      menu name), which is stable before the menu loads.
+  - [x] 34.4 nav_stack POM fallback + END/RETURN unwind target the Home Menu
+          Workspace (menu `pom`); keymap `context_name_for_kind` resolves Home to
+          the `pom` context by menu name (no binding change).
+    - Validates: menu-workspace Requirement 18.4, 18.6
+    - Note: new `context_name_for_tab` resolves Home (`is_home`) to `pom` and
+      delegates otherwise to `context_name_for_kind`; a `set_active_tab_home`
+      helper drives the nav-stack POM/legacy/fallback reconstructions.
+  - [x] 34.5 Persistence: Home Context persists as `Menu { name: "pom" }`; remove
+          the POM `CustomWorkspace` arm from `descriptor_for_tab`. Retain
+          `WorkspaceKind::PrimaryOptionMenu` / `PersistedTabKind::PrimaryOptionMenu`
+          as legacy-read mappings only (`from_legacy` -> Home Menu descriptor);
+          new saves never emit them.
+    - Validates: menu-workspace Requirement 18.7, 18.8
+    - Note: both `descriptor_for_tab` and `descriptor_for_current_context` map
+      Home to `Menu{name:"pom"}` (stable regardless of loaded title);
+      `WorkspaceKind::PrimaryOptionMenu`/`PersistedTabKind::PrimaryOptionMenu`
+      kept read-only and route legacy sessions to `set_active_tab_home`.
+  - [x] 34.6 Retarget existing POM tests that name `TabKind::PrimaryOptionMenu`
+          to the Home Menu Workspace (kind MenuWorkspace + menu `pom`); add tests:
+          no `PrimaryOptionMenu` kind exists; fresh launch seeds barebones POM;
+          END/RETURN returns to Home; a legacy-POM session restores the Home
+          Context. verify.ps1 CLEAN (FULL, nextest); rebuild ffwb.exe; update TCR
+          Req 18; update project-master.
+    - Covers: menu-workspace Requirement 18 (all criteria; behaviour preserved)

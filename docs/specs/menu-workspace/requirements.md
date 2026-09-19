@@ -1012,3 +1012,82 @@ user menu file overrides it. Menu-bar menus are conventionally named with an
     theme-picker behaviour previously specified as theme-and-appearance
     Requirement 17.8-17.13 (CR-NR-077), now via the menu-bar mechanism rather
     than a bespoke popup.
+
+---
+
+### Requirement 18: Unified Menu Workspace (the POM is a Menu Workspace)
+
+**User Story:** As a maintainer, I want a SINGLE Menu Workspace concept instead
+of a separate Primary Option Menu type, so that the Home Context (POM) and every
+other menu behave identically and there is one code path to maintain -- the POM
+is simply the Menu Workspace whose menu is named `pom`, seeded with the compiled
+barebones baseline when no user menu file exists.
+
+**Source:** [CR-NR-082] Slice 1. Owner: "why do we have a
+TabKind::PrimaryOptionsMenu and TabKind::MenuWorkspace? There should be only one,
+their behaviour should be the same ... if the application configuration goes
+missing we should set up a POM with a set of barebones defaults." Owner decision:
+option (b) -- FULLY remove the separate POM kind.
+
+**Note:** This is a behaviour-PRESERVING unification (Slice 1 of CR-NR-082). It
+introduces no new user-visible menu behaviour; it removes the duplicate POM
+render arm / tab kind / persistence path. Named Workspaces (id/name/kind/menu),
+per-workspace menu-bar + keymap, and the per-workspace Profile store are LATER
+slices of CR-NR-082 and are NOT part of this requirement.
+
+#### Glossary additions
+
+- **Home_Menu_Name**: the reserved menu name `pom` identifying the Home Context
+  Menu Workspace. Opening the Home Context is opening the Menu Workspace named
+  `pom`.
+- **Unified_Menu_Workspace**: the single runtime Context kind that renders any
+  data-driven menu (formerly split across the `PrimaryOptionMenu` and
+  `MenuWorkspace` tab kinds).
+
+#### Acceptance Criteria
+
+1. THE workbench SHALL represent every data-driven menu -- including the Home
+   Context (POM) -- with a SINGLE Menu Workspace Context kind. The separate
+   Primary-Option-Menu tab kind (`TabKind::PrimaryOptionMenu`) SHALL be removed;
+   the Home Context SHALL be the Menu Workspace whose menu name is the
+   Home_Menu_Name (`pom`).
+2. THE Home Context Menu Workspace SHALL load its menu from `menus/pom.toml` when
+   present, and SHALL fall back to the compiled barebones Recovery_Baseline POM
+   (Requirement 12) when the file is absent or fails to parse -- identical to the
+   pre-unification `ensure_pom_menu_loaded` behaviour (a parse error surfaces a
+   non-blocking notice; an absent file is silent).
+3. THE unified Menu Workspace SHALL render every menu (Home or otherwise) through
+   the SINGLE shared menu renderer (Requirement 2), with identical option-column
+   layout, calendar behaviour (Requirement 16), option selection (Requirement 3),
+   chained navigation (Requirement 5), and Tab-order / focus behaviour
+   (Requirement 15). No menu SHALL have a distinct render path by virtue of being
+   the Home Context.
+4. THE always-present-Home guarantee SHALL be preserved: on launch, and after
+   END/RETURN unwinds to the origin, and as the universal navigation fallback,
+   the workbench SHALL ensure a Home Context Menu Workspace (menu `pom`) exists
+   and is reachable (startup-and-session Requirement 14.1; Requirement 14
+   Navigation_Stack), exactly as before unification.
+5. THE Title_Line and tab header SHALL present the Home Context identically to
+   before (its ISPF-style Home identity), derived from the Menu Workspace rather
+   than a distinct POM tab kind.
+6. THE per-Context keymap selection (function-keys-and-history Requirement 14.6,
+   `context_name_for_kind`) SHALL continue to resolve the Home Context to the
+   `pom` keymap context and every other menu to the `menu` keymap context, so no
+   key binding changes as a result of unification.
+7. SESSION persistence SHALL round-trip the Home Context and every other menu
+   through ONE Menu Workspace descriptor keyed by menu name (the Home Context as
+   menu name `pom`), reconciling the prior divergence where the POM persisted as
+   a `CustomWorkspace` kind and other menus as `Menu { name }`. Sessions written
+   before unification (a persisted `PrimaryOptionMenu` kind / `CustomWorkspace`
+   POM) SHALL still restore the Home Context without error (backward
+   compatibility, startup-and-session Requirement 21.10).
+8. THE overlapping Context enumerations SHALL be reconciled so the POM concept is
+   not duplicated: the runtime tab-kind enumeration SHALL NOT carry a separate
+   Primary-Option-Menu variant, and the session-layer Workspace_Kind /
+   legacy-persistence enumerations SHALL map the Home Context to the unified Menu
+   Workspace (menu `pom`) rather than a separate POM kind, while still reading
+   legacy sessions (criterion 18.7).
+9. THE unification SHALL be behaviour-preserving: every existing menu-workspace
+   and POM acceptance criterion (Requirements 2, 3, 5, 12, 14, 15, 16, 17) SHALL
+   continue to hold, verified by the existing tests continuing to pass (adjusted
+   only where they referenced the removed POM tab kind by name).

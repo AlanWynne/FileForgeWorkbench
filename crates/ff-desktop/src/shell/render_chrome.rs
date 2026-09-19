@@ -645,7 +645,7 @@ impl WorkbenchShell {
             self.tab_history.push(self.tabs.active_index());
             self.tabs.set_active(i);
             // Update key map context for new active tab -- Validates: Requirement 14.4
-            let ctx_name = context_name_for_kind(self.tabs.active_tab().kind);
+            let ctx_name = context_name_for_tab(self.tabs.active_tab());
             self.key_map_resolver.set_context(ctx_name);
             self.key_label_bar
                 .update(self.key_map_resolver.active_key_map());

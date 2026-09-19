@@ -41,7 +41,6 @@ pub(super) fn config_value_to_toml_value(v: ff_config::ConfigValue) -> Option<to
 /// Validates: Requirement 14.6
 pub(super) fn context_name_for_kind(kind: TabKind) -> Option<&'static str> {
     match kind {
-        TabKind::PrimaryOptionMenu => Some("pom"),
         TabKind::FileEditor | TabKind::Untitled => Some("editor"),
         TabKind::ConfigPanel => Some("config"),
         TabKind::FilesPanel => Some("files"),
@@ -55,6 +54,23 @@ pub(super) fn context_name_for_kind(kind: TabKind) -> Option<&'static str> {
         TabKind::ThemeEditor => Some("theme"),
         TabKind::MenusEditor => Some("menus"),
         TabKind::KeysEditor => Some("keys"),
+    }
+}
+
+/// Map a tab to its key-map context name.
+///
+/// After the CR-NR-082 Slice 1 unification the Home Context (POM) is a
+/// `MenuWorkspace` tab, so its context cannot be derived from `kind` alone:
+/// Home resolves to the `pom` context, while any other Menu Workspace uses
+/// the generic `menu` context. All non-menu kinds delegate to
+/// `context_name_for_kind`.
+///
+/// Validates: Requirement 14.6; menu-workspace Requirement 18.5
+pub(super) fn context_name_for_tab(tab: &crate::tab_state::TabState) -> Option<&'static str> {
+    if tab.is_home {
+        Some("pom")
+    } else {
+        context_name_for_kind(tab.kind)
     }
 }
 

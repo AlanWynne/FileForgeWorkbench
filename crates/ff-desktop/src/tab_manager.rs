@@ -384,9 +384,11 @@ impl TabManager {
         let _ = runtime;
     }
 
-    /// Transform the active tab in-place from `PrimaryOptionMenu` to a new kind.
+    /// Transform the active tab in-place from the Home Context (POM) to a new
+    /// kind.
     ///
-    /// No-op if the active tab is not a `PrimaryOptionMenu` tab.
+    /// No-op if the active tab is not the Home Context. Clears the `is_home`
+    /// marker so the tab becomes an ordinary Context of the requested kind.
     /// Validates: Requirement 14.6
     // CR-CH-022: superseded by the shell-level navigate_to (which transforms ANY
     // current tab in place and pushes the Navigation_Stack). Retained as a
@@ -394,15 +396,18 @@ impl TabManager {
     #[allow(dead_code)]
     pub fn transform_active_pom_tab(&mut self, kind: TabKind, title: &str) {
         let tab = &mut self.tabs[self.active];
-        if tab.kind == TabKind::PrimaryOptionMenu {
+        if tab.is_home {
             tab.kind = kind;
             tab.title = title.to_string();
+            tab.is_home = false;
+            tab.menu_workspace = None;
         }
     }
 
     /// Open a data-driven Menu Workspace backed by `<menus_dir>/<name>.toml`,
-    /// transforming the active tab in place when it is a `PrimaryOptionMenu` or
-    /// a `ConfigPanel` (so the POM -> Settings_Menu / Config chain stays on one
+    /// transforming the active tab in place when it is a `MenuWorkspace` (this
+    /// includes the Home Context) or a `ConfigPanel` (so the POM -> Settings_Menu
+    /// / Config chain stays on one
     /// tab and F3/END transforms back to the POM), otherwise
     /// opening (or activating) a dedicated tab.
     ///
@@ -421,10 +426,7 @@ impl TabManager {
         let active_kind = self.active_tab().kind;
         let transform_in_place = matches!(
             active_kind,
-            TabKind::PrimaryOptionMenu
-                | TabKind::ConfigPanel
-                | TabKind::MenuWorkspace
-                | TabKind::MenusEditor
+            TabKind::ConfigPanel | TabKind::MenuWorkspace | TabKind::MenusEditor
         );
         if transform_in_place {
             let file_path = menus_dir.join(format!("{name}.toml"));
@@ -434,6 +436,7 @@ impl TabManager {
             let tab = &mut self.tabs[self.active];
             tab.kind = TabKind::MenuWorkspace;
             tab.title = title;
+            tab.is_home = false;
             tab.menu_workspace = Some(mw_state);
         } else {
             self.open_menu_workspace_tab(name, menus_dir, limits, runtime);
@@ -563,14 +566,16 @@ mod tests {
         assert_eq!(mgr.tabs()[0].title, "[POM]");
     }
 
-    /// Validates: Requirement 14.1 — POM tab has kind PrimaryOptionMenu.
+    /// Validates: Requirement 14.1, menu-workspace 18.1 -- the Home tab is a
+    /// MenuWorkspace flagged `is_home`.
     #[test]
     fn pom_tab_has_kind_primary_option_menu() {
-        // Validates: Requirement 14.1
+        // Validates: Requirement 14.1; menu-workspace Requirement 18.1
         let runtime = Runtime::new().expect("runtime");
         let mut mgr = TabManager::new(&runtime, "");
         mgr.insert_pom_tab(&runtime);
-        assert_eq!(mgr.tabs()[0].kind, TabKind::PrimaryOptionMenu);
+        assert!(mgr.tabs()[0].is_home);
+        assert_eq!(mgr.tabs()[0].kind, TabKind::MenuWorkspace);
     }
 
     /// Validates: Requirement 14.1 — POM tab is inserted at index 0.
@@ -581,7 +586,7 @@ mod tests {
         let mut mgr = TabManager::new(&runtime, "");
         mgr.insert_pom_tab(&runtime);
         assert_eq!(mgr.active_index(), 0);
-        assert_eq!(mgr.tabs()[0].kind, TabKind::PrimaryOptionMenu);
+        assert!(mgr.tabs()[0].is_home);
     }
 
     /// Validates: Requirement 14.1 — inserting POM twice opens two POM tabs.
@@ -598,7 +603,7 @@ mod tests {
             count_after_first + 1,
             "second insert_pom_tab must open a new POM tab"
         );
-        assert_eq!(mgr.active_tab().kind, TabKind::PrimaryOptionMenu);
+        assert!(mgr.active_tab().is_home);
     }
 
     /// Validates: Requirement 14.9 — new_untitled_tab adds an Untitled tab.

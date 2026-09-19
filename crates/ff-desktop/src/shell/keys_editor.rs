@@ -45,7 +45,7 @@ impl WorkbenchShell {
         let requested = initial_kind
             .map(|k| k.trim().to_lowercase())
             .filter(|k| crate::keys_editor_panel::KIND_NAMES.contains(&k.as_str()));
-        let current_ctx = super::helpers::context_name_for_kind(self.tabs.active_tab().kind)
+        let current_ctx = super::helpers::context_name_for_tab(self.tabs.active_tab())
             .filter(|k| crate::keys_editor_panel::KIND_NAMES.contains(k))
             .map(|k| k.to_string());
         let kind = requested

@@ -2772,9 +2772,9 @@ coverage and confirm the shell behaviour is unchanged after the move.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 18.1 (CR-NR-082): single Menu Workspace kind; `TabKind::PrimaryOptionMenu` removed; Home Context = MenuWorkspace menu `pom` |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 18.2: Home Context loads `menus/pom.toml` else the compiled barebones Recovery_Baseline (parse error -> notice; absent -> silent) |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 18.3/18.5: Home renders via the single shared menu renderer; no distinct POM render path; title line unchanged |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 18.4/18.6: always-present Home guarantee + END/RETURN fallback + `pom` keymap context preserved after unification |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 18.7/18.8: Home persists as `Menu{name:pom}`; legacy POM sessions still restore; overlapping enums reconciled (legacy read-only) |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 18.9: unification is behaviour-preserving -- existing menu/POM tests pass (retargeted off the removed kind) |
+| `ff-desktop` | ✅ | `shell/tests.rs::home_context_is_a_menu_workspace_flagged_is_home`; `tab_manager.rs::pom_tab_has_kind_primary_option_menu` | menu-workspace Req 18.1 (CR-NR-082): single Menu Workspace kind; `TabKind::PrimaryOptionMenu` removed; Home Context = MenuWorkspace menu `pom` (is_home) |
+| `ff-desktop` | ✅ | `shell/tests.rs::home_context_seeds_barebones_menu_on_render` | menu-workspace Req 18.2: Home Context loads `menus/pom.toml` else the compiled barebones Recovery_Baseline (parse error -> notice; absent -> silent) |
+| `ff-desktop` | ✅ | `shell/tests.rs::home_context_title_line_shows_app_banner`, `full_shell_tab_reaches_settings_as_first_menu_item` | menu-workspace Req 18.3/18.5: Home renders via the single shared menu renderer; no distinct POM render path; title line unchanged |
+| `ff-desktop` | ✅ | `shell/tests.rs::end_from_drilled_menu_restores_home_context`, `home_context_resolves_to_pom_keymap_context` | menu-workspace Req 18.4/18.6: always-present Home guarantee + END/RETURN fallback + `pom` keymap context preserved after unification |
+| `ff-desktop` | ✅ | `shell/tests.rs::home_context_persists_as_menu_pom_descriptor` | menu-workspace Req 18.7/18.8: Home persists as `Menu{name:pom}`; legacy POM sessions still restore; overlapping enums reconciled (legacy read-only) |
+| `ff-desktop` | ✅ | full ff-desktop suite via `verify.ps1` (nextest) -- POM/menu tests retargeted off the removed kind pass | menu-workspace Req 18.9: unification is behaviour-preserving -- existing menu/POM tests pass (retargeted off the removed kind) |

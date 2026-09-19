@@ -57,9 +57,9 @@ pub(super) fn ensure_default_home_catalog(
     true
 }
 
-/// Ensure a `PrimaryOptionMenu` tab is present at index 0.
+/// Ensure a Home Context (POM) tab is present at index 0.
 ///
-/// If no tab of kind `PrimaryOptionMenu` exists, inserts one at index 0.
+/// If no Home Context (POM) tab exists, inserts one at index 0.
 /// Called after session restore so the POM is always reachable on startup.
 ///
 /// Validates: Requirement 14.1b
@@ -67,10 +67,7 @@ pub(super) fn ensure_pom_tab_present(
     tabs: &mut crate::tab_manager::TabManager,
     runtime: &tokio::runtime::Runtime,
 ) {
-    let has_pom = tabs
-        .tabs()
-        .iter()
-        .any(|t| t.kind == crate::tab_state::TabKind::PrimaryOptionMenu);
+    let has_pom = tabs.tabs().iter().any(|t| t.is_home);
     if !has_pom {
         tabs.insert_pom_tab(runtime);
     }
@@ -1293,7 +1290,8 @@ mod startup_tests {
         tabs.close_welcome_tab();
         tabs.insert_pom_tab(&runtime);
         assert_eq!(tabs.len(), 1);
-        assert_eq!(tabs.tabs()[0].kind, TabKind::PrimaryOptionMenu);
+        assert!(tabs.tabs()[0].is_home);
+        assert_eq!(tabs.tabs()[0].kind, TabKind::MenuWorkspace);
     }
 
     /// Validates: Requirement 14.1a -- session with POM tab: ensure_pom_tab_present is a no-op.
@@ -1312,7 +1310,7 @@ mod startup_tests {
             count_before,
             "must not add a second POM when one already exists"
         );
-        assert_eq!(tabs.tabs()[0].kind, TabKind::PrimaryOptionMenu);
+        assert!(tabs.tabs()[0].is_home);
     }
 
     /// Validates: Requirement 14.1b -- session without POM tab gets POM prepended at index 0.
@@ -1331,11 +1329,7 @@ mod startup_tests {
             count_before + 1,
             "must prepend a POM tab when none exists"
         );
-        assert_eq!(
-            tabs.tabs()[0].kind,
-            TabKind::PrimaryOptionMenu,
-            "POM must be at index 0"
-        );
+        assert!(tabs.tabs()[0].is_home, "POM must be at index 0");
     }
 
     /// Validates: Requirement 14.3 -- returned true signals caller to persist registry.

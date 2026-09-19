@@ -41,7 +41,7 @@ impl WorkbenchShell {
         let mut b = ff_command::CursorContext::builder();
 
         // (a) Focused Workspace context name.
-        if let Some(name) = context_name_for_kind(self.tabs.active_tab().kind) {
+        if let Some(name) = context_name_for_tab(self.tabs.active_tab()) {
             b = b.workspace_context(name);
         }
 
@@ -1144,11 +1144,10 @@ impl WorkbenchShell {
     ///
     /// Validates: menu-workspace Requirement 11.1, 11.2, 11.4, 11.5
     pub(super) fn open_menu_by_name(&mut self, name: &str) {
-        use crate::tab_state::TabKind;
         let lower = name.trim().to_lowercase();
         // Req 11.1 / 11.2: bare MENU and MENU POM go to the Home Context.
         if lower.is_empty() || lower == "pom" {
-            if self.tabs.active_tab().kind != TabKind::PrimaryOptionMenu {
+            if !self.tabs.active_tab().is_home {
                 self.tabs.insert_pom_tab(&self.runtime);
             }
             self.open_error = None;
@@ -1177,6 +1176,15 @@ impl WorkbenchShell {
     /// Validates: menu-workspace Requirement 3.1, 3.6, 10.1, 10.3, 10.6
     fn try_current_menu_option(&mut self, cmd: &str) -> bool {
         if self.tabs.active_tab().kind != crate::tab_state::TabKind::MenuWorkspace {
+            return false;
+        }
+        // The Home Context (POM) is a MenuWorkspace after CR-NR-082 Slice 1, but
+        // its Option_Keys are resolved by the dedicated `resolve_pom_option_key`
+        // path later in the chain (the Navigation_Origin resolver, Req 2.1e/5.7).
+        // Skipping Home here preserves the exact pre-Slice-1 dispatch behaviour
+        // and keeps `=`-origin chains (e.g. `=0.K`) resolving against the POM.
+        // Validates: menu-workspace Requirement 18.4, 18.9
+        if self.tabs.active_tab().is_home {
             return false;
         }
         // Extract the option (clone what we need) without holding the borrow.
@@ -1253,17 +1261,16 @@ impl WorkbenchShell {
         true
     }
 
-    /// Ensure the active POM tab carries a loaded `MenuWorkspaceState` backed by
-    /// `menus/pom.toml`, loading it lazily on first render. The POM keeps its
-    /// `TabKind::PrimaryOptionMenu` identity, `[POM]` title, and Title_Line
-    /// styling; only its option list becomes data-driven (menu-workspace Req
-    /// 2.1c, 2.1d). Idempotent: does nothing if the state is already present or
-    /// the active tab is not a POM.
+    /// Ensure the active Home tab carries a loaded `MenuWorkspaceState` backed
+    /// by `menus/pom.toml`, loading it lazily on first render. The Home Context
+    /// keeps its `is_home` identity, `[POM]` title, and Title_Line styling;
+    /// only its option list becomes data-driven (menu-workspace Req 2.1c, 2.1d).
+    /// Idempotent: does nothing if the state is already present or the active
+    /// tab is not the Home Context.
     ///
-    /// Validates: menu-workspace Requirement 2.1c, 2.1d
+    /// Validates: menu-workspace Requirement 2.1c, 2.1d, 18.2, 18.4
     pub(super) fn ensure_pom_menu_loaded(&mut self) {
-        use crate::tab_state::TabKind;
-        if self.tabs.active_tab().kind != TabKind::PrimaryOptionMenu {
+        if !self.tabs.active_tab().is_home {
             return;
         }
         if self.tabs.active_tab().menu_workspace.is_some() {
@@ -1356,8 +1363,7 @@ impl WorkbenchShell {
         }
 
         // Navigation_Origin: `=` pops to the POM before resolving segment 1.
-        if is_origin && self.tabs.active_tab().kind != crate::tab_state::TabKind::PrimaryOptionMenu
-        {
+        if is_origin && !self.tabs.active_tab().is_home {
             self.tabs.insert_pom_tab(&self.runtime);
             self.ensure_pom_menu_loaded();
         }
@@ -1386,7 +1392,6 @@ impl WorkbenchShell {
     ///
     /// Validates: menu-workspace Requirement 2.1e, 2.1i
     pub(super) fn resolve_pom_option_key(&mut self, upper: &str) -> Option<String> {
-        use crate::tab_state::TabKind;
         // Normalise: strip a single leading '=' for the fastpath form.
         let key = upper.strip_prefix('=').unwrap_or(upper);
         // Only single short keys are POM option keys (1-4 chars, no spaces).
@@ -1395,7 +1400,7 @@ impl WorkbenchShell {
         }
         // Ensure the active POM tab's menu is loaded so a fastpath resolves even
         // before the POM has rendered.
-        if self.tabs.active_tab().kind == TabKind::PrimaryOptionMenu {
+        if self.tabs.active_tab().is_home {
             self.ensure_pom_menu_loaded();
         }
         // Prefer a loaded POM tab's menu (respects user edits / hot-reload);
@@ -1407,7 +1412,7 @@ impl WorkbenchShell {
             .tabs
             .tabs()
             .iter()
-            .find(|t| t.kind == TabKind::PrimaryOptionMenu)
+            .find(|t| t.is_home)
             .and_then(|t| t.menu_workspace.as_ref())
             .and_then(|mw| mw.menu.clone())
             .or_else(|| {
