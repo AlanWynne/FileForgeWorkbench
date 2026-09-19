@@ -1365,6 +1365,73 @@ fn return_from_pom_with_other_tabs_closes_pom_not_app() {
     );
 }
 
+/// Validates: menu-workspace Requirement 14.10 (CR-CH-038) -- RETURN in a
+/// non-POM workspace navigates to the POM (Home Context) in ONE step, clearing
+/// the Navigation_Stack, even when the workspace was rooted directly (its root
+/// is NOT the POM). The workspace stays open (tab count unchanged), now Home.
+#[test]
+fn return_from_non_pom_navigates_to_pom() {
+    // Validates: menu-workspace Requirement 14.10
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    // A workspace rooted directly at a Files context (START <arg> style): a
+    // non-POM tab with an EMPTY nav stack (its root is Files, not the POM).
+    let idx = shell.tabs.active_index();
+    if let Some(tab) = shell.tabs.tabs_mut().get_mut(idx) {
+        tab.kind = TabKind::FilesPanel;
+        tab.is_home = false;
+        tab.title = "[FILES]".to_string();
+        tab.nav_stack.clear();
+    }
+    let before = shell.tabs.len();
+    assert!(
+        !shell.tabs.active_tab().is_home,
+        "precondition: not on the POM"
+    );
+
+    shell.handle_command("RETURN");
+
+    assert!(
+        shell.tabs.active_tab().is_home,
+        "RETURN in a non-POM workspace must land on the POM (Home Context)"
+    );
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::MenuWorkspace,
+        "the POM is a MenuWorkspace"
+    );
+    assert_eq!(
+        shell.tabs.len(),
+        before,
+        "RETURN to the POM must NOT close the workspace (tab count unchanged)"
+    );
+    assert!(
+        shell.tabs.active_tab().nav_stack.is_empty(),
+        "RETURN clears the Navigation_Stack"
+    );
+}
+
+/// Validates: menu-workspace Requirement 14.10 (CR-CH-038) -- RETURN in a
+/// drilled-in non-POM workspace (nav stack non-empty) also goes straight to the
+/// POM in one step, not one level back (that is END's job).
+#[test]
+fn return_from_drilled_in_non_pom_goes_straight_to_pom() {
+    // Validates: menu-workspace Requirement 14.10
+    let mut shell = make_shell();
+    // POM -> option 1 (Catalogs/Files) pushes the POM onto the stack, landing on
+    // a non-POM Context with a non-empty nav stack.
+    shell.handle_command("1");
+    assert!(
+        !shell.tabs.active_tab().is_home,
+        "precondition: drilled into a sub-context"
+    );
+    shell.handle_command("RETURN");
+    assert!(
+        shell.tabs.active_tab().is_home,
+        "RETURN from a drilled-in non-POM must jump straight to the POM"
+    );
+}
+
 /// Validates: Requirement 19.10 -- END command on FileExplorerPanel returns tab to POM.
 #[test]
 fn file_explorer_panel_end_command_returns_to_pom() {
@@ -6899,12 +6966,12 @@ fn full_shell_detach_sets_floating_and_records_floating_tab() {
 }
 
 /// Validates: menu-and-statusbar Requirement 18.3/18.9 (CR-CH-035, B045) --
-/// closing a Detached_Workspace (simulated by pushing its origin into
-/// redock_pending, exactly as the viewport close callback does) redocks the tab:
-/// is_floating cleared, FloatingTab removed, tab restored to its origin index.
+/// the DOCK command re-docks a Detached_Workspace to its origin index (CR-NR-088,
+/// the explicit re-attach now that Close runs RETURN): is_floating cleared,
+/// FloatingTab removed, tab restored to its origin index.
 #[test]
-fn full_shell_redock_restores_tab_at_origin() {
-    // Validates: menu-and-statusbar Requirement 18.3, 18.9
+fn full_shell_dock_command_redocks_tab_at_origin() {
+    // Validates: menu-and-statusbar Requirement 18.9, 18.13
     let mut harness = harness_shell();
     harness.state_mut().handle_command("START");
     harness.run();
@@ -6920,33 +6987,125 @@ fn full_shell_redock_restores_tab_at_origin() {
         "precondition: detached"
     );
 
-    // Simulate the OS-window close: the viewport callback pushes origin_index.
+    // Re-dock the detached workspace via the DOCK command run against its own
+    // context (as it would be typed in the detached window's command line).
+    let detach_idx = harness
+        .state()
+        .tabs
+        .index_of_id(detach_id)
+        .expect("detached tab exists");
+    let mut ctx = super::WorkspaceCommandContext::default();
     harness
         .state_mut()
-        .redock_pending
-        .lock()
-        .expect("redock lock")
-        .push(origin);
-    for _ in 0..3 {
-        harness.run();
-    }
+        .with_workspace_context(detach_idx, &mut ctx, |shell| {
+            shell.handle_command("DOCK");
+        });
     let state = harness.state();
     assert!(
         state.floating_tabs.is_empty(),
-        "redock must remove the FloatingTab"
+        "DOCK must remove the FloatingTab"
     );
     let idx = state
         .tabs
         .index_of_id(detach_id)
-        .expect("redocked tab still exists");
-    assert_eq!(
-        idx, origin,
-        "redock must restore the tab to its origin index"
-    );
+        .expect("re-docked tab still exists");
+    assert_eq!(idx, origin, "DOCK must restore the tab to its origin index");
     assert!(
         !state.tabs.tabs()[idx].is_floating,
-        "redocked tab must no longer be is_floating"
+        "re-docked tab must no longer be is_floating"
     );
+}
+
+/// Validates: menu-and-statusbar Requirement 18.11 (B068) -- a function key
+/// dispatched while a Detached_Workspace has focus acts on THAT window's
+/// context. F4 resolves to RETURN; dispatched in the detached context via the
+/// same `dispatch_key_command` path used by `dispatch_detached_function_key`, it
+/// returns the detached (non-POM) tab to its POM and leaves the primary tab
+/// untouched.
+#[test]
+fn detached_function_key_return_acts_on_its_tab() {
+    // Validates: menu-and-statusbar Requirement 18.11; function-keys 3.1
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("START"); // second tab (the "detached" one)
+    let primary_active = shell.tabs.active_index();
+    let detached = if primary_active == 0 { 1 } else { 0 };
+    // Make BOTH tabs distinct non-POM contexts so we can prove the detached
+    // RETURN changed ONLY the detached tab (the primary stays non-POM).
+    if let Some(t) = shell.tabs.tabs_mut().get_mut(detached) {
+        t.kind = TabKind::FilesPanel;
+        t.is_home = false;
+        t.title = "[FILES]".to_string();
+        t.nav_stack.clear();
+    }
+    if let Some(t) = shell.tabs.tabs_mut().get_mut(primary_active) {
+        t.kind = TabKind::ConfigPanel;
+        t.is_home = false;
+        t.title = "[CONFIG]".to_string();
+        t.nav_stack.clear();
+    }
+    let detached_id = shell.tabs.tabs()[detached].id;
+
+    // F4 resolves to the "RETURN" command via the key map (proven by
+    // egui_fkey_assigned_key_returns_command); a key-forwarded RETURN falls
+    // through dispatch_key_command -> handle_command("RETURN") -> nav_return.
+    // Dispatch it in the detached context exactly as dispatch_detached_function_key
+    // does, and assert it acted on the detached tab.
+    let mut ctx = super::WorkspaceCommandContext::default();
+    shell.with_workspace_context(detached, &mut ctx, |s| {
+        assert_eq!(
+            s.tabs.active_index(),
+            detached,
+            "swap installs detached active"
+        );
+        assert!(
+            !s.tabs.active_tab().is_home,
+            "detached is non-POM before RETURN"
+        );
+        s.handle_command("RETURN");
+        assert!(
+            s.tabs.active_tab().is_home,
+            "inside swap: RETURN must make the detached tab home"
+        );
+    });
+
+    let didx = shell
+        .tabs
+        .index_of_id(detached_id)
+        .expect("detached tab exists");
+    assert!(
+        shell.tabs.tabs()[didx].is_home,
+        "F4/RETURN in the detached window must return ITS tab to the POM"
+    );
+    assert!(
+        !shell.tabs.tabs()[primary_active].is_home,
+        "the primary tab must be untouched by the detached F-key (still non-POM)"
+    );
+    assert_eq!(
+        shell.tabs.tabs()[primary_active].kind,
+        TabKind::ConfigPanel,
+        "the primary tab's context is unchanged by the detached RETURN"
+    );
+    assert_eq!(
+        shell.tabs.active_index(),
+        primary_active,
+        "primary active tab restored after the detached F-key dispatch"
+    );
+}
+
+/// Validates: menu-and-statusbar Requirement 18.13 (CR-NR-088) -- DOCK on a
+/// workspace that is NOT detached is a no-op with a status message.
+#[test]
+fn full_shell_dock_on_non_detached_is_noop_with_message() {
+    // Validates: menu-and-statusbar Requirement 18.13
+    let mut harness = harness_shell();
+    assert!(!harness.state().tabs.active_tab().is_floating);
+    harness.state_mut().handle_command("DOCK");
+    assert!(
+        harness.state().open_error.is_some(),
+        "DOCK on a non-detached workspace must report a status message"
+    );
+    assert!(harness.state().floating_tabs.is_empty());
 }
 
 /// Validates: menu-and-statusbar Requirement 18.7 (CR-CH-035, B045) -- with 16

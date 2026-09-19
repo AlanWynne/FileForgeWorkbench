@@ -2586,6 +2586,21 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
       detached_command_acts_on_its_tab_not_the_primary. verify.ps1 CLEAN FULL
       nextest; ffwb.exe rebuilt.
       Covers: menu-and-statusbar Req 18.10.
+- [x] BS.detach3 B045+B068 / CR-CH-037, CR-CH-038, CR-NR-088, CR-NR-089
+      (Wave A cont.): detached-window bundle 2 -- RETURN goes to the POM
+      (non-POM) / closes the workspace (from a POM), END walks back one step
+      (CR-CH-038, menu-workspace 14.10); detached window Close (X) = RETURN on
+      its own context, no redock/no Alt+F4 (CR-CH-037); F-keys work in the
+      detached window targeting its context (B068); DOCK command re-docks to
+      origin + default Shift+F2 = DOCK, Base F2 = SPLIT (CR-NR-088); detached
+      window renders its own menu bar (CR-NR-089). Headless tests for RETURN
+      semantics / DOCK / F-key-in-context / close->return; real OS window +
+      visual menu bar MANUAL.
+      Covers: menu-and-statusbar Req 18.3/18.11/18.12/18.13; menu-workspace
+      14.10; function-keys-and-history 15.2. Tests return_from_non_pom_*,
+      detached_function_key_return_acts_on_its_tab, full_shell_dock_*,
+      key_map_default_global_has_full_shift_row (SF2=DOCK). Real OS-window close
+      + visual menu bar MANUAL. verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt.
 
 | Status | Count |
 |--------|-------|

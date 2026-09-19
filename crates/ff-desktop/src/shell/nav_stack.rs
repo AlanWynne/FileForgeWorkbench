@@ -303,21 +303,23 @@ impl WorkbenchShell {
     /// RETURN: collapse the active tab's Navigation_Stack to its ROOT Context in
     /// one step. When already at the root (empty stack), behaves as END-at-root.
     ///
-    /// Validates: menu-workspace Requirement 14.10
+    /// Validates: menu-workspace Requirement 14.10 (CR-CH-038)
     pub(super) fn nav_return(&mut self) {
-        let root = {
-            let stack = &mut self.tabs.active_tab_mut().nav_stack;
-            if stack.is_empty() {
-                None
-            } else {
-                let root = stack.first().cloned();
-                stack.clear();
-                root
-            }
-        };
-        match root {
-            Some(root) => self.reconstruct_context(&root),
-            None => self.close_workspace_or_exit(),
+        // CR-CH-038: RETURN targets the POM, not the tab's arbitrary root.
+        // - non-POM active tab -> navigate to the Home Context (POM) in one step,
+        //   clearing the Navigation_Stack, regardless of stack depth or whether
+        //   the workspace was rooted directly (START <arg>). The workspace stays
+        //   open, now showing the POM.
+        // - POM active tab -> close this one workspace (Option A: one workspace
+        //   per RETURN; exit when it is the last, CR-CH-016). This behaviour is
+        //   identical in a docked and a Detached_Workspace.
+        if self.tabs.active_tab().is_home {
+            self.close_workspace_or_exit();
+        } else {
+            self.tabs.active_tab_mut().nav_stack.clear();
+            self.set_active_tab_home();
+            // Entering the POM places focus on the command field.
+            self.command_field_focus_requested = true;
         }
     }
 

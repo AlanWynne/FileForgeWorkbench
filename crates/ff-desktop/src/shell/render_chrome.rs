@@ -220,7 +220,24 @@ impl WorkbenchShell {
     /// Validates: menu-workspace Requirement 17.1, 17.7
     pub(super) fn render_menu_bar(&mut self, ctx: &egui::Context) {
         let menu = self.resolve_menu_bar_menu();
-        self.render_menu_bar_from_menu(ctx, &menu);
+        self.render_menu_bar_from_menu(ctx, egui::Id::new("menu_bar"), &menu);
+    }
+
+    /// Render a Detached_Workspace's own Menu_Bar into its child viewport
+    /// (CR-NR-089, menu-and-statusbar Req 18.12). Uses a per-window-salted panel
+    /// id so it does not collide with the Primary_Window's `"menu_bar"` panel;
+    /// the same data-driven renderer is reused, and menu-item dispatch routes
+    /// through `handle_command` (so under the CR-CH-036 swap it acts on the
+    /// detached tab).
+    ///
+    /// Validates: menu-and-statusbar Requirement 18.12
+    pub(super) fn render_detached_menu_bar(
+        &mut self,
+        ctx: &egui::Context,
+        tab_id: crate::tab_state::TabId,
+    ) {
+        let menu = self.resolve_menu_bar_menu();
+        self.render_menu_bar_from_menu(ctx, egui::Id::new(("detached_menu_bar", tab_id.0)), &menu);
     }
 
     /// Resolve the active Menu_Bar `MenuFile` (menu-workspace Req 17.8,
@@ -261,9 +278,10 @@ impl WorkbenchShell {
     pub(super) fn render_menu_bar_from_menu(
         &mut self,
         ctx: &egui::Context,
+        panel_id: egui::Id,
         menu: &crate::menu_workspace::MenuFile,
     ) {
-        egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+        egui::TopBottomPanel::top(panel_id).show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 // Bar shows only options flagged for the menu bar (Req 17.2):
                 // e.g. a terminal `RETURN` option (show_in_menu_bar = false) is

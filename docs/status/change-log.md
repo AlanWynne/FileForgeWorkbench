@@ -22,6 +22,20 @@ Never delete a row â€” update `Status` in-place.
 
 New capabilities that did not previously exist.
 
+### CR-NR-089 -- Detached Workspace renders its own menu bar [B045]
+- **Date/Phase**: Phase (bug-sweep) (gate, Wave A cont.)
+- **Prompt**: (owner) "the detached window should also have its own menu bar visible?"
+- **Description**: A Detached_Workspace SHALL render its own Menu_Bar as part of its chrome, exactly like the Primary_Window (the same data-driven `render_menu_bar`), so its menu items are reachable in the detached window. The menu bar is rendered inside the child viewport under the per-window context swap (CR-CH-036), with a per-window-salted panel id so it does not collide with the Primary_Window's menu bar; selecting a menu item dispatches through `handle_command` and therefore acts on the DETACHED window's tab (command parity + per-window context).
+- **Status**: DONE
+- **Linked spec**: `docs/specs/menu-and-statusbar/requirements.md` Requirement 18 (new 18.12: detached menu bar); relates to menu-workspace Req 17 (Menu_Bar), CR-CH-036 (per-window context). Part of the B045 bundle.
+
+### CR-NR-088 -- DOCK command re-docks a Detached Workspace; default Shift+F2 = DOCK [B045]
+- **Date/Phase**: Phase (bug-sweep) (gate, Wave A cont.)
+- **Prompt**: (owner) "Perhaps we should have a 'DOCK' command that re-docks the workspace" + "The default key assignment F2 is split, the default shift+f2 should be 'DOCK'".
+- **Description**: Add a `DOCK` command that re-docks the CURRENT Detached_Workspace back into the Primary_Window's tab bar at its origin index (the faithful remove+reinsert from CR-CH-035 Req 18.9), clearing its floating state and dropping its FloatingTab. `DOCK` is typed in the detached window's OWN command line (it acts on that window via the CR-CH-036 context swap) or invoked via its default key binding. Since the window Close button now runs RETURN (CR-CH-037) instead of redocking, DOCK is the explicit re-attach affordance (command parity: every user action is a command). Default key map: Base F2 stays SPLIT; Shift+F2 (SF2) becomes DOCK (was SPLIT in the mirrored Shift row). DOCK is a no-op with a status message when the active workspace is not detached.
+- **Status**: DONE
+- **Linked spec**: `docs/specs/menu-and-statusbar/requirements.md` Requirement 18 (new 18.13: DOCK command + SF2 default); `docs/specs/function-keys-and-history/requirements.md` Requirement 15 (default key map: SF2 = DOCK). Relates to CR-CH-035 (redock mechanics), CR-CH-037 (close = RETURN). Part of the B045 bundle.
+
 ### CR-NR-087 -- Bare UP/DOWN (PF7/PF8) honour the active SCROLL amount (PAGE/HALF/MAX/CSR/DATA/n) [B046]
 - **Date/Phase**: Phase (bug-sweep) (gate, Wave 4a) -- PENDING GATE (owner scheduling)
 - **Prompt**: (from B046, owner) "Up Max and Down Max should not be bound ... they should be up and down only and only Down Max When we type m or max on the command line and press the up or down key". The ISPF model is that the `SCROLL ===>` field amount governs PF7/PF8: with `SCROLL MAX` active, UP/DOWN scroll to top/bottom; with `SCROLL HALF`, half a page; etc.
@@ -226,6 +240,22 @@ New capabilities that did not previously exist.
 ## Change Requests
 
 Modifications to existing behaviour that already works.
+
+### CR-CH-038 -- RETURN goes to the POM (non-POM) / closes the workspace (from a POM); END walks back one step [B045 bundle]
+- **Date/Phase**: Phase (bug-sweep) (gate, Wave A cont.)
+- **Prompt**: (owner) "RETURN in any workspace returns to the POM while end walks back one navigation step at a time" + "F4 from a POM closes the workspace ... return to the pom and again from the pom" + (Option A) one workspace closed per RETURN; the last one exits the app.
+- **Description**: Clarify + fix the RETURN vs END model so both are consistent everywhere (docked AND detached). END (F3) walks back ONE Navigation_Stack step; at a workspace root it closes that one workspace. RETURN (F4): WHEN the active Workspace is NOT the Home Context (POM), RETURN navigates that Workspace to its POM (Home Context) in one step (regardless of nav-stack depth or whether it was rooted directly via START); WHEN the active Workspace IS a POM, RETURN closes that one Workspace, and when it is the last open Workspace the application exits (Option A: one workspace closed per RETURN, not a recursive tear-down). Today `nav_return` collapses the tab's nav stack to its ROOT context (which for a START-rooted workspace is that context, not the POM) and at an empty stack closes the workspace -- so RETURN in a directly-rooted non-POM workspace does not reliably land on the POM. Fix: RETURN in a non-POM sets the active tab to the Home Context (POM) in place; RETURN in a POM closes the workspace / exits if last.
+- **Affects**: `ff-desktop` (shell/nav_stack.rs `nav_return`)
+- **Status**: DONE
+- **Linked spec**: `docs/specs/menu-workspace/requirements.md` Requirement 14 (Navigation_Stack; 14.10 RETURN revised); relates to CR-CH-016 (END/RETURN from POM), CR-CH-037 (detached close = RETURN). Part of the B045 detached-window bundle.
+
+### CR-CH-037 -- Detached window Close (X) behaves as RETURN on that window's context [B045]
+- **Date/Phase**: Phase (bug-sweep) (gate, Wave A cont.)
+- **Prompt**: (owner) "the close button should behave as if the return was issued in the workspace back to the pom and again from the pom" + "There is no need to assign alt+f4" + F4 in a detached window behaves the same as in a docked window.
+- **Description**: The detached OS window's Close button (X) SHALL behave exactly as issuing RETURN (F4) in that window's own Context: a non-POM detached workspace returns to its POM (the window STAYS open showing the POM); a detached POM workspace closes (per CR-CH-038 Option A -- and if it were the last open workspace the app exits, though in practice the primary window keeps the app alive). No special Alt+F4 binding is added (Alt+F4 stays unassigned in the key list); the close gesture simply runs `nav_return` on the detached window's context (via the CR-CH-036 `with_workspace_context` swap). This supersedes the CR-CH-035 close = redock behaviour (redock is now the explicit DOCK command, CR-NR-088).
+- **Affects**: `ff-desktop` (shell/update.rs floating-viewport close handler)
+- **Status**: DONE
+- **Linked spec**: `docs/specs/menu-and-statusbar/requirements.md` Requirement 18 (18.3 revised: close = RETURN, no longer redock); relates to CR-CH-038 (RETURN semantics), CR-CH-036 (per-window context), CR-NR-088 (DOCK). Fixes part of B045.
 
 ### CR-CH-036 -- Detached Workspaces are independent command contexts (own command line, scroll, dispatch) [B045]
 - **Date/Phase**: Phase (bug-sweep) (gate, Wave A cont.)

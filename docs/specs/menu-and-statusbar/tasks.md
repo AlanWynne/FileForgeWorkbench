@@ -542,3 +542,18 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-command` 
     - Covers: Requirement 18.10
   - [x] 34.5 Update TCR row 18.10; note the shared RETRIEVE ring allowance and the MANUAL real-OS-window part
     - Covers: Requirement 18.10
+
+
+- [ ] 35. Detached-window bundle 2: RETURN semantics, close=RETURN, F-keys, DOCK, menu bar (B068, CR-CH-037/038, CR-NR-088/089)
+  - [x] 35.1 Revise `nav_return` (CR-CH-038): non-POM active tab -> set_active_tab_home (POM, clear nav_stack); POM active tab -> close_workspace_or_exit (Option A). END unchanged. Tests: return_from_non_pom_navigates_to_pom, return_from_drilled_in_non_pom_goes_straight_to_pom, return_from_pom_with_other_tabs_closes_pom_not_app
+    - Covers: menu-workspace Req 14.10; menu-and-statusbar 18.3
+  - [x] 35.2 Detached close = RETURN (CR-CH-037): floating close_requested runs nav_return inside with_workspace_context; CancelClose only when the tab still resolves (RETURN navigated, window stays), else let close proceed; stale FloatingTabs dropped via retain(index_of_id). Removed the redock_pending close path + field
+    - Covers: menu-and-statusbar Req 18.3
+  - [x] 35.3 F-keys in detached window (B068): shared resolve_function_key_command(ctx); dispatch_detached_function_key(vctx) dispatches via dispatch_key_command within the swap so they target the detached tab. Test: detached_function_key_return_acts_on_its_tab
+    - Covers: menu-and-statusbar Req 18.11
+  - [x] 35.4 DOCK command (CR-NR-088): handle_command "DOCK" re-docks the active floating tab to origin_index (clear is_floating, move_tab, drop FloatingTab); status message when not detached. Default keymap SF2 = DOCK (Base F2 = SPLIT); updated the ff-keys default-map test. Tests: full_shell_dock_command_redocks_tab_at_origin, full_shell_dock_on_non_detached_is_noop_with_message
+    - Covers: menu-and-statusbar Req 18.13; function-keys-and-history Req 15.2
+  - [x] 35.5 Detached menu bar (CR-NR-089): render_detached_menu_bar renders the menu bar inside the detached viewport under the swap with a salted panel id (render_menu_bar_from_menu now takes a panel Id); item dispatch acts on the detached tab. Render exercised by the floating loop; visual MANUAL
+    - Covers: menu-and-statusbar Req 18.12
+  - [x] 35.6 Update TCR rows (18.3/18.11/18.12/18.13, menu-workspace 14.10, function-keys 15.2); real OS window + visual menu bar MANUAL
+    - Covers: the bundle

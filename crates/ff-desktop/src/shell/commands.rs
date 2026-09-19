@@ -312,6 +312,40 @@ impl WorkbenchShell {
             return;
         }
 
+        // === DOCK -- Validates: menu-and-statusbar Req 18.13 (CR-NR-088) ======
+        // Re-dock the CURRENT Detached_Workspace into the Primary_Window's tab
+        // bar at its origin index (the faithful remove+reinsert from Req 18.9),
+        // clearing its floating state and dropping its FloatingTab. Typed in the
+        // detached window's own command line it runs under the CR-CH-036 swap, so
+        // "the active tab" is the detached one. A no-op with a status message when
+        // the active workspace is not detached. This is the explicit re-attach
+        // (the window Close button now runs RETURN, not redock -- CR-CH-037).
+        if upper == "DOCK" {
+            let active_id = self.tabs.active_tab().id;
+            if !self.tabs.active_tab().is_floating {
+                self.open_error = Some("DOCK: the current workspace is not detached".to_string());
+                return;
+            }
+            if let Some(ft_pos) = self
+                .floating_tabs
+                .iter()
+                .position(|ft| ft.tab_id == active_id)
+            {
+                let ft = self.floating_tabs.remove(ft_pos);
+                if let Some(tab_idx) = self.tabs.index_of_id(active_id) {
+                    self.tabs.tabs_mut()[tab_idx].is_floating = false;
+                    self.tabs.move_tab(tab_idx, ft.origin_index);
+                }
+                self.open_error = None;
+            } else {
+                // is_floating but no FloatingTab record: clear the flag defensively.
+                let idx = self.tabs.active_index();
+                self.tabs.tabs_mut()[idx].is_floating = false;
+                self.open_error = None;
+            }
+            return;
+        }
+
         // ── HELP / F1 fallback — Validates: Requirement 18.1, 18.2;
         //    command-framework Requirement 12.8 (CR-NR-079) ————————————————————
         if upper == "HELP" {

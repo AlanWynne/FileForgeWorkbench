@@ -1304,3 +1304,51 @@ buffer-isolation + correct-target-dispatch logic is asserted headlessly.
 No architectural contradiction: this is the same synchronous-swap technique CR-CH-035 already uses
 for rendering, generalised to the command context; it keeps ONE command pipeline (avoids a second
 divergent code path) while giving each window an isolated command state.
+
+
+### B045 bundle 2 delta -- RETURN semantics, close=RETURN, F-keys, DOCK, detached menu bar
+
+Owner refinements after CR-CH-036 landed. All build on the CR-CH-036 `with_workspace_context`
+swap so detached and docked behaviour stay identical.
+
+1. **RETURN semantics (CR-CH-038, menu-workspace Req 14.10).** `nav_return` is changed from
+   "collapse to the tab's ROOT context" to a POM-targeted rule:
+   - non-POM active tab -> `set_active_tab_home()` (navigate to the Home Context / POM in place),
+     clearing `nav_stack`;
+   - POM active tab -> `close_workspace_or_exit()` (close this one workspace; exit if it is the
+     last). END (`nav_end`) is unchanged (pop one level; close at root). This makes RETURN "go to
+     the POM" from anywhere and "close one workspace" from a POM (Option A -- not recursive).
+
+2. **Detached close = RETURN (CR-CH-037, Req 18.3).** The floating-viewport `close_requested()`
+   handler no longer pushes to `redock_pending`; instead it runs `nav_return` INSIDE the window's
+   `with_workspace_context` swap (so RETURN acts on the detached tab). If RETURN returned the
+   detached workspace to its POM, the window stays open (the FloatingTab remains); if RETURN closed
+   the workspace (it was a POM), the tab is gone -- the floating loop's `index_of_id` lookup then
+   fails next frame and the FloatingTab is dropped, so the OS window closes. `CancelClose` is still
+   sent on the frame RETURN only navigated (window must stay), and NOT sent when the workspace was
+   closed (window is allowed to close). No Alt+F4 binding is added; Alt+F4 stays unassigned.
+   The old `redock_pending` path is removed (redock is now the DOCK command).
+
+3. **F-keys in the detached window (B068, Req 18.11).** The primary F-key detection block in
+   `update()` reads the primary `ctx`. Add an equivalent F-key detection inside the floating
+   viewport's frame, sourced from the child `vctx`, dispatched via `dispatch_key_command` WITHIN
+   the `with_workspace_context` swap so the bound command (e.g. F3=END, F4=RETURN) acts on the
+   detached tab. Same keymap + same merge-with-command-field behaviour as the primary window.
+
+4. **DOCK command + Shift+F2 (CR-NR-088, Req 18.13).** New `handle_command` arm `DOCK`: if the
+   active tab is `is_floating`, re-dock it -- find its FloatingTab, clear `is_floating`, `move_tab`
+   it to `origin_index` (the CR-CH-035 faithful redock), and drop the FloatingTab; else a status
+   message ("DOCK: the current workspace is not detached"). Typed in the detached window's command
+   line it runs under the swap so "the active tab" is the detached one. `ff-keys` default_global:
+   the Shift-row F2 entry changes from `SPLIT` to `DOCK` (Base F2 unchanged); the two default-map
+   tests update their expected Shift row (still 24 bindings).
+
+5. **Detached menu bar (CR-NR-089, Req 18.12).** Render `render_menu_bar` inside the detached
+   viewport under the swap, with a per-window-salted panel id (the shared renderer's fixed
+   `"menu_bar"` id is parameterised or a salted wrapper is used) so it does not collide with the
+   primary Menu_Bar; menu-item dispatch already routes through `handle_command`, so under the swap
+   it acts on the detached tab.
+
+Testability: RETURN semantics, DOCK, and F-key-in-context dispatch are all headless-testable
+through the shell (drive the command / a swapped F-key dispatch and assert the tab state). The
+real OS-window close gesture and the visual menu bar remain MANUAL (real multi-viewport window).

@@ -537,11 +537,6 @@ pub struct WorkbenchShell {
     ///
     /// Validates: Requirement 18.2
     detach_pending: Option<usize>,
-    /// Origin indices of floating tabs that have been closed and need redocking.
-    ///
-    /// Written by the floating viewport's close callback; read by the primary frame.
-    /// Validates: Requirement 18.3
-    redock_pending: Arc<Mutex<Vec<usize>>>,
 }
 
 impl WorkbenchShell {
@@ -786,7 +781,6 @@ impl WorkbenchShell {
             automation: ShellAutomationRegistry::new(),
             floating_tabs: Vec::new(),
             detach_pending: None,
-            redock_pending: Arc::new(Mutex::new(Vec::new())),
             session_start: chrono::Local::now(),
         }
     }

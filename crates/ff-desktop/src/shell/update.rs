@@ -25,7 +25,6 @@ use ff_fftest::AutomationRegistry as _;
 use ff_keys::FunctionKey;
 use ff_keys::{KeyModifier, ModifiedKey};
 use std::path::PathBuf;
-use std::sync::Arc;
 
 /// Create a default `"Home"` Native catalog pointing at `home_path` and register
 /// it in `registry`, but only when no Native catalogs exist yet.
@@ -347,34 +346,15 @@ impl eframe::App for WorkbenchShell {
             }
         }
 
-        // ── Redock pending — Validates: Requirement 18.3 ─────────────────────
-        let redock_indices: Vec<usize> = {
-            let mut guard = self.redock_pending.lock().expect("redock lock");
-            std::mem::take(&mut *guard)
-        };
-        for origin in redock_indices {
-            // Find the super::FloatingTab with this origin_index.
-            if let Some(ft_pos) = self
-                .floating_tabs
-                .iter()
-                .position(|ft| ft.origin_index == origin)
-            {
-                let ft = self.floating_tabs.remove(ft_pos);
-                // Resolve the tab's CURRENT index from its stable id (it may have
-                // shifted while other tabs detached/redocked).
-                if let Some(tab_idx) = self.tabs.index_of_id(ft.tab_id) {
-                    if let Some(tab) = self.tabs.tabs_mut().get_mut(tab_idx) {
-                        tab.is_floating = false;
-                    }
-                    // CR-CH-035 (Req 18.3/18.9): faithful redock -- move the tab
-                    // back to its origin index preserving the order of the other
-                    // tabs (remove+reinsert, not a positional swap). `move_tab`
-                    // clamps an origin beyond the current count to the end
-                    // (append, per 18.3).
-                    self.tabs.move_tab(tab_idx, ft.origin_index);
-                }
-            }
-        }
+        // === Drop stale Detached_Workspaces -- Validates: Requirement 18.3 ===
+        // CR-CH-037: the window Close button now runs RETURN (not redock). When
+        // RETURN closes a detached POM workspace, its tab is removed from the
+        // TabManager, so any FloatingTab whose stable id no longer resolves is
+        // stale -- drop it so its OS window is not re-created next frame. (Re-dock
+        // is now the explicit DOCK command, CR-NR-088, which drops the FloatingTab
+        // itself.)
+        self.floating_tabs
+            .retain(|ft| self.tabs.index_of_id(ft.tab_id).is_some());
         // File-backed active theme + hot-reload (CR-NR-074 Req 19.6). Resolve the
         // active theme file, and reload the palette when the file changes on disk
         // or when the configured active theme changes. This keeps the palette
@@ -716,41 +696,9 @@ impl eframe::App for WorkbenchShell {
         // ── Function key dispatch (Req 3.1, 3.2) ────────────────────────
         // Suppressed when a modal dialog is open so Ctrl/Shift/Alt combos inside
         // dialog text fields are not intercepted by the shell key map.
-        let fkey_cmd = if self.modal_open {
-            None
-        } else {
-            ctx.input(|i| {
-                let modifier = if i.modifiers.shift {
-                    KeyModifier::Shift
-                } else if i.modifiers.ctrl {
-                    KeyModifier::Ctrl
-                } else if i.modifiers.alt {
-                    KeyModifier::Alt
-                } else {
-                    KeyModifier::None
-                };
-                FunctionKey::ALL.iter().find_map(|&fk| {
-                    egui_fkey(fk).and_then(|ek| {
-                        if i.key_pressed(ek) {
-                            let mk = ModifiedKey { key: fk, modifier };
-                            self.key_map_resolver
-                                .active_key_map()
-                                .get(mk)
-                                .or_else(|| {
-                                    if modifier != KeyModifier::None {
-                                        self.key_map_resolver.active_key_map().get_plain(fk)
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .map(|b| b.command().to_string())
-                        } else {
-                            None
-                        }
-                    })
-                })
-            })
-        };
+        // CR-CH-037/B068: shared F-key resolution (also used by detached windows
+        // via `dispatch_detached_function_key`). Suppressed while a modal is open.
+        let fkey_cmd = self.resolve_function_key_command(ctx);
         if let Some(cmd) = fkey_cmd {
             // A shortcut binding may target any Command_Target, including a
             // user-defined command id (command-framework Requirement 8.5,
@@ -776,7 +724,6 @@ impl eframe::App for WorkbenchShell {
         for ft_idx in 0..self.floating_tabs.len() {
             let vid = self.floating_tabs[ft_idx].viewport_id;
             let tab_id = self.floating_tabs[ft_idx].tab_id;
-            let origin_index = self.floating_tabs[ft_idx].origin_index;
             // Resolve the live index from the stable id each frame.
             let Some(tab_index) = self.tabs.index_of_id(tab_id) else {
                 continue;
@@ -792,7 +739,6 @@ impl eframe::App for WorkbenchShell {
                     )
                 })
                 .unwrap_or_else(|| "FileForge Workbench".to_string());
-            let redock_tx = Arc::clone(&self.redock_pending);
             // CR-CH-036 (Req 18.10): move THIS window's independent command
             // context out so the render closure can borrow it (and `&mut self`)
             // without aliasing `self.floating_tabs`; put it back after the frame.
@@ -812,18 +758,31 @@ impl eframe::App for WorkbenchShell {
                              Deferred) -- this backend may not support multiple OS windows"
                         );
                     }
-                    // Detect OS-window close -> queue a redock at the origin index.
-                    if vctx.input(|i| i.viewport().close_requested()) {
-                        redock_tx.lock().expect("redock lock").push(origin_index);
-                        vctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-                    }
                     if tab_index >= self.tabs.len() {
                         return;
                     }
-                    // CR-CH-036: render + dispatch under this window's INDEPENDENT
-                    // command context (its own active tab + command line). The
-                    // whole existing pipeline runs against the detached tab.
+                    // CR-CH-037: the OS-window Close button behaves as RETURN on
+                    // THIS window's Context (not redock). A non-POM detached
+                    // workspace returns to its POM (window stays); a detached POM
+                    // closes the workspace (Option A). Detect the close request
+                    // here and apply it via `nav_return` inside the swap below.
+                    let close_requested = vctx.input(|i| i.viewport().close_requested());
+                    // CR-CH-036 (Req 18.10): render + dispatch under this window's
+                    // INDEPENDENT command context (its own active tab + command
+                    // line). The whole existing pipeline runs against the detached
+                    // tab. CR-CH-037/B068: the Close button and F-keys also apply
+                    // here so RETURN/END act on the detached tab.
                     self.with_workspace_context(tab_index, &mut cmd_ctx, |shell| {
+                        // CR-CH-037: window Close == RETURN on this Context.
+                        if close_requested {
+                            shell.nav_return();
+                        }
+                        // B068 (Req 18.11): dispatch F-keys pressed while THIS
+                        // detached window has focus, against this window's Context
+                        // (identical resolution to the Primary_Window path).
+                        shell.dispatch_detached_function_key(vctx);
+                        // CR-NR-089 (Req 18.12): this window's own Menu_Bar.
+                        shell.render_detached_menu_bar(vctx, tab_id);
                         // Title_Line (read-only chrome, Req 18.1).
                         egui::TopBottomPanel::top(egui::Id::new(("floating_title", tab_id.0)))
                             .show(vctx, |ui| {
@@ -844,6 +803,13 @@ impl eframe::App for WorkbenchShell {
                             shell.render_active_tab_body(vctx, ui);
                         });
                     });
+                    // After RETURN: if the tab still exists (RETURN navigated it
+                    // to its POM), keep the window open by cancelling the close;
+                    // if it is gone (RETURN closed the workspace), let the OS
+                    // window close (the FloatingTab is dropped below next frame).
+                    if close_requested && self.tabs.index_of_id(tab_id).is_some() {
+                        vctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+                    }
                 },
             );
             // Restore this window's context back onto the FloatingTab.
@@ -1266,6 +1232,61 @@ impl super::WorkbenchShell {
             if let Err(e) = store.save(&ring) {
                 ff_logging::log_warn!("[keys] command history save failed: {}", e);
             }
+        }
+    }
+
+    /// Resolve a function-key press from `ctx.input` to its bound command string
+    /// using the active key map, mirroring the Primary_Window's F-key detection.
+    /// Returns `None` when no F-key is pressed or the key is unbound. Suppressed
+    /// while a modal dialog is open.
+    ///
+    /// Validates: function-keys-and-history Requirement 3.1, 3.2; menu-and-statusbar 18.11
+    pub(super) fn resolve_function_key_command(&self, ctx: &egui::Context) -> Option<String> {
+        if self.modal_open {
+            return None;
+        }
+        ctx.input(|i| {
+            let modifier = if i.modifiers.shift {
+                KeyModifier::Shift
+            } else if i.modifiers.ctrl {
+                KeyModifier::Ctrl
+            } else if i.modifiers.alt {
+                KeyModifier::Alt
+            } else {
+                KeyModifier::None
+            };
+            FunctionKey::ALL.iter().find_map(|&fk| {
+                egui_fkey(fk).and_then(|ek| {
+                    if i.key_pressed(ek) {
+                        let mk = ModifiedKey { key: fk, modifier };
+                        self.key_map_resolver
+                            .active_key_map()
+                            .get(mk)
+                            .or_else(|| {
+                                if modifier != KeyModifier::None {
+                                    self.key_map_resolver.active_key_map().get_plain(fk)
+                                } else {
+                                    None
+                                }
+                            })
+                            .map(|b| b.command().to_string())
+                    } else {
+                        None
+                    }
+                })
+            })
+        })
+    }
+
+    /// B068 (menu-and-statusbar Req 18.11): dispatch a function key pressed while
+    /// a Detached_Workspace has OS focus, against THAT window's Context. Called
+    /// from inside the detached viewport's `with_workspace_context` swap, so the
+    /// resolved command acts on the detached tab (F3=END, F4=RETURN there).
+    /// Resolution is identical to the Primary_Window (same key map + the same
+    /// `dispatch_key_command` merge-with-command-field behaviour).
+    pub(super) fn dispatch_detached_function_key(&mut self, vctx: &egui::Context) {
+        if let Some(cmd) = self.resolve_function_key_command(vctx) {
+            self.dispatch_key_command(&cmd);
         }
     }
 }

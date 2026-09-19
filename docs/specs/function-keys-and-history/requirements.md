@@ -345,12 +345,13 @@ a shipped TOML file), mirroring the compiled Recovery_Baseline POM/Settings menu
 
 2. THE compiled default Global_Key_Map SHALL ALSO contain the following Shift
    (SHIFT + F-key) assignments. The Shift row mirrors the Base row except for the
-   four scroll-max variants and the Cursor binding:
+   four scroll-max variants, the Cursor binding, and Shift+F2 which is DOCK
+   (Base F2 is SPLIT; Shift+F2 = DOCK re-docks a Detached_Workspace, CR-NR-088):
 
 | Key       | Command   | Label     |
 |-----------|-----------|-----------|
 | Shift+F1  | HELP      | Help      |
-| Shift+F2  | SPLIT     | Split     |
+| Shift+F2  | DOCK      | Dock      |
 | Shift+F3  | END       | End       |
 | Shift+F4  | RETURN    | Return    |
 | Shift+F5  | RFIND     | RFind     |

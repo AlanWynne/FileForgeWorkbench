@@ -744,11 +744,21 @@ is created is if we type start"); reconciles Requirement 5 (Chained Navigation).
    command routing) and root the new tab there. WHEN `<arg>` cannot be resolved,
    THE shell SHALL open the new tab at the POM and report the unresolved argument
    in the status area.
-10. THE RETURN command SHALL remain distinct from END: RETURN collapses the
-    entire Navigation_Stack and returns to the tab's ROOT Context in one step
-    (the bottom of the stack), whereas END pops one level. WHEN RETURN is issued
-    at the root (empty stack), it behaves as END at the root (close / exit when
-    last), preserving Requirement 17.3/17.4 (CR-CH-016).
+10. THE RETURN command SHALL remain distinct from END, and (REVISED by CR-CH-038)
+    SHALL target the POM (Home Context) rather than the tab's arbitrary root:
+    - WHEN RETURN is issued in a Workspace that is NOT the Home Context (POM),
+      THE shell SHALL navigate that Workspace to its POM (Home Context) in one
+      step, clearing its Navigation_Stack, REGARDLESS of the stack depth or
+      whether the Workspace was rooted directly (e.g. via `START <arg>`). The
+      Workspace stays open, now showing the POM.
+    - WHEN RETURN is issued while the active Workspace IS a POM, THE shell SHALL
+      close that ONE Workspace; when it is the last open Workspace the
+      application terminates (Option A: one Workspace closed per RETURN, NOT a
+      recursive tear-down), preserving Requirement 17.3/17.4 (CR-CH-016).
+    END is unchanged: it pops ONE Navigation_Stack level, and at a Workspace root
+    closes that one Workspace (walk-back one step at a time). This RETURN
+    behaviour is IDENTICAL in a docked Workspace and a Detached_Workspace
+    (menu-and-statusbar Requirement 18.3/18.11).
 11. THE three former ad-hoc END mechanisms -- the global `pending_return_to_pom`
     flag, the `settings_panel.namespace_filter`-based END branch, and the
     `menus_editor_panel.opened_from_settings` boolean (B053) -- SHALL be removed

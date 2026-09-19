@@ -385,7 +385,10 @@ impl KeyMap {
         // Shift row: mirrors Base except the four scroll-max variants and Cursor.
         let shift: [(FunctionKey, &str, &str); 12] = [
             (FunctionKey::F1, "HELP", "Help"),
-            (FunctionKey::F2, "SPLIT", "Split"),
+            // CR-NR-088: Shift+F2 = DOCK (re-dock a Detached_Workspace); Base
+            // F2 stays SPLIT. This is the one Shift-row entry that does NOT
+            // mirror the Base row (besides the scroll-max + Cursor variants).
+            (FunctionKey::F2, "DOCK", "Dock"),
             (FunctionKey::F3, "END", "End"),
             (FunctionKey::F4, "RETURN", "Return"),
             (FunctionKey::F5, "RFIND", "RFind"),
@@ -684,12 +687,13 @@ mod tests {
 
     #[test]
     fn key_map_default_global_has_full_shift_row() {
-        // Validates: function-keys Requirement 15.2 (CR-CH-027) -- the Shift row
-        // mirrors Base except the four scroll-max variants and Cursor.
+        // Validates: function-keys Requirement 15.2 (CR-CH-027, CR-NR-088) -- the
+        // Shift row mirrors Base except the four scroll-max variants, Cursor, and
+        // Shift+F2 = DOCK (Base F2 = SPLIT).
         let map = KeyMap::default_global();
         let expected: [(FunctionKey, &str, &str); 12] = [
             (FunctionKey::F1, "HELP", "Help"),
-            (FunctionKey::F2, "SPLIT", "Split"),
+            (FunctionKey::F2, "DOCK", "Dock"),
             (FunctionKey::F3, "END", "End"),
             (FunctionKey::F4, "RETURN", "Return"),
             (FunctionKey::F5, "RFIND", "RFind"),

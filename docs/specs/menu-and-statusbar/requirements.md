@@ -445,10 +445,13 @@ or view content side-by-side independently.
      to the Primary_Window: the Title_Line SHALL update to reflect the tab's current state,
      the Primary_Command_Field SHALL accept commands, and all keyboard shortcuts SHALL work.
 
-3. WHEN a Detached_Workspace containing a tab is closed via the OS window close button,
-     THE shell SHALL redock the tab back into the Primary_Window's tab bar at its original
-     position index; IF that index exceeds the current tab count, THE tab SHALL be appended
-     at the end.
+3. WHEN a Detached_Workspace containing a tab is closed via the OS window close button (X /
+     Alt+F4), THE shell SHALL behave exactly as if RETURN (F4) were issued in that window's own
+     Context (CR-CH-037, CR-CH-038): a non-POM detached workspace returns to its POM (Home
+     Context) and the window STAYS open showing the POM; a detached POM workspace is closed (one
+     workspace per RETURN, per CR-CH-038). The close button SHALL NOT redock the workspace and
+     SHALL NOT require any Alt+F4 key binding (Alt+F4 remains unassigned in the key list). Re-docking
+     is performed by the explicit DOCK command (Requirement 18.13), not by closing the window.
 
 4. WHEN a tab is detached into a Detached_Workspace, THE Primary_Window's tab bar SHALL
      remove that tab's Tab_Header from the bar. WHEN the tab is redocked, THE Tab_Header
@@ -487,7 +490,26 @@ or view content side-by-side independently.
      (Command_Line_Outcome per Requirement 13 of command-framework: clear/restore/set) SHALL apply
      to that window's own field, and each window's status/error line SHALL reflect only its own last
      command. The command-line RETRIEVE history MAY remain a single shared ring across windows
-     (a documented allowance; per-window history is a future refinement). [B045] 
+     (a documented allowance; per-window history is a future refinement). [B045]
+
+11. WHEN a function key is pressed WHILE a Detached_Workspace has OS focus, THE shell SHALL
+     resolve and dispatch its bound command against THAT window's Context (its tab, command line,
+     navigation), identically to how the same key behaves in the Primary_Window. F3 (END) SHALL
+     walk back one navigation step in the detached window; F4 (RETURN) SHALL return it to its POM
+     (or close it when it is a POM). A detached window SHALL NOT be limited to typed commands only.
+     [B068]
+
+12. A Detached_Workspace SHALL render its own Menu_Bar as part of its chrome, using the same
+     data-driven menu-bar renderer as the Primary_Window, with a per-window-salted panel id so it
+     does not collide with the Primary_Window's Menu_Bar. Selecting a menu item in a Detached_Workspace
+     SHALL dispatch through the command layer and act on THAT window's tab. [CR-NR-089]
+
+13. THE shell SHALL provide a `DOCK` command that re-docks the CURRENT Detached_Workspace into the
+     Primary_Window's tab bar at its origin position index (remove-and-reinsert per Requirement 18.9),
+     clearing its floating state; WHEN the active Workspace is not detached, DOCK SHALL be a no-op with
+     a status message. DOCK SHALL be invocable from the detached window's own command line and via a
+     default key binding of Shift+F2 (Base F2 remains SPLIT). Because the window Close button runs
+     RETURN (Requirement 18.3), DOCK is the explicit re-attach action. [CR-NR-088]
 
 **User Story:** As an ISPF-familiar user, I want the full ISPF navigation model including a SCROLL ===> field, fastpath notation, split-screen capability, list panel LOCATE, and FTSO panel chrome, so that the workbench matches the ISPF navigation experience.
 
