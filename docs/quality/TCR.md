@@ -2740,7 +2740,7 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
 | `ff-desktop` | ✅ | `shell::tests::{key_command_merges_command_field_as_argument, key_command_with_empty_field_runs_bare_command, key_command_does_not_force_clear_command_field}` | command-framework Req 9.7/9.8/9.9/9.10 (B066): a key-bound command is invoked with the Command ===> field content as its argument (type `1` + F9=SWAP -> `SWAP 1`); empty field -> bare command; the field is not force-cleared. Implements the F-key portion of Req 9 (CR-NR-054, otherwise still PENDING GATE) |
-| `ff-desktop` | ✅ | `menu_workspace::render::tests::{wrap_description_short_is_single_line_no_indent, wrap_description_long_hangs_continuation_under_description, wrap_description_zero_budget_is_single_line, wrap_description_overlong_word_is_kept, option_row_job_wraps_with_hanging_indent, option_row_job_preserves_column_alignment}` | menu-workspace Req 2.1a (B065): a wrapped menu option description hang-indents under the description column (continuation lines prefixed by the key+command column width); first-line column alignment and the no-wrap path unchanged. Live narrow-window resize remains MANUAL |
+| `ff-desktop` | ✅ | `menu_workspace::render::tests::{option_prefix_job_holds_fixed_columns_and_does_not_wrap, option_prefix_jobs_share_width_across_rows}` | menu-workspace Req 2.1a (B065, 2nd-attempt fix): each option row is a `ui.horizontal` pair -- a non-wrapping key+command prefix Button + a separate wrapping description Label -- so a wrapped description hang-indents under the description column. The 1st attempt (single-galley char-budget) did not work at runtime. Pixel-exact wrap alignment is MANUAL/visual (test-plan 2.2c) |
 
 ### Phase (fkey-arg) -- B067 F12 RETRIEVE with a non-empty field (B066 regression fix)
 
@@ -2767,3 +2767,14 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | ✅ | `shell::tests::startup_missing_or_corrupt_history_is_empty_no_panic` | Req 6.5, 6.6: missing or corrupt history file degrades to an empty history without failing startup (warnings logged) |
 | `ff-desktop` | ✅ | `shell::tests::exit_saves_command_history_and_reloads` | Req 6.3, 6.7: on exit the shell writes the history via `HistoryStore` (atomic write), and a fresh shell reloads it; `persist_command_history` extracted for testability |
 | `ff-keys` | ✅ | `config_keys.rs::history_file_path_relative_to_user_data_dir` | Req 6.4: history file path resolves relative to the User_Data_Dir (default `command_history.toml`); `FFWB_HISTORY_PATH` override for test isolation |
+
+### Phase (workspace-unify) -- unified Menu Workspace / POM (menu-workspace Req 18, CR-NR-082 Slice 1)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 18.1 (CR-NR-082): single Menu Workspace kind; `TabKind::PrimaryOptionMenu` removed; Home Context = MenuWorkspace menu `pom` |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 18.2: Home Context loads `menus/pom.toml` else the compiled barebones Recovery_Baseline (parse error -> notice; absent -> silent) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 18.3/18.5: Home renders via the single shared menu renderer; no distinct POM render path; title line unchanged |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 18.4/18.6: always-present Home guarantee + END/RETURN fallback + `pom` keymap context preserved after unification |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 18.7/18.8: Home persists as `Menu{name:pom}`; legacy POM sessions still restore; overlapping enums reconciled (legacy read-only) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 18.9: unification is behaviour-preserving -- existing menu/POM tests pass (retargeted off the removed kind) |

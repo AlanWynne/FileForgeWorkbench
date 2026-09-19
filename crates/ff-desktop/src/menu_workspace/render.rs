@@ -111,119 +111,41 @@ pub(crate) fn format_option_row(option: &super::MenuOption, cmd_width: usize) ->
     )
 }
 
-/// The number of leading characters before the description column: the key
-/// column (4) + gutter (2) + the command column (`cmd_width`) + gutter (2).
-/// A wrapped description continuation is indented by this many spaces so it
-/// hangs under the description's start (B065).
-fn description_indent_chars(cmd_width: usize) -> usize {
-    4 + 2 + cmd_width + 2
+/// The monospace font used for menu option rows.
+fn option_font() -> egui::FontId {
+    egui::FontId::monospace(14.0)
 }
 
-/// Word-wrap `desc` onto lines no wider than `max_line_chars` CHARACTERS,
-/// prefixing every line AFTER the first with `indent` spaces so a wrapped
-/// description hangs under the description column rather than under the key
-/// column (B065). The first line carries NO indent (the key/command columns
-/// precede it on the same row).
+/// Build the NON-WRAPPING key+command prefix as a two-colour monospace
+/// `LayoutJob`: the key column (left-justified in 4) + gutter in `key_col`, then
+/// the command column (left-justified in `cmd_width`) + gutter in `command_col`.
+/// This is the fixed left part of an option row; the description is laid out
+/// SEPARATELY (B065) so wrapped description lines hang-indent under the
+/// description column rather than the row's left edge.
 ///
-/// Wrapping is word-based (splits on spaces); a single word longer than the
-/// budget is emitted on its own line rather than truncated. When `max_line_chars`
-/// is 0 (unknown/zero budget) the description is returned as a single line so
-/// the caller degrades to today's non-wrapped behaviour.
-///
-/// Validates: Requirement 2.1a (menu-workspace, wrap alignment, B065)
-fn wrap_description_with_indent(desc: &str, indent: usize, max_line_chars: usize) -> Vec<String> {
-    if max_line_chars == 0 {
-        return vec![desc.to_string()];
-    }
-    let indent_str: String = " ".repeat(indent);
-    let mut lines: Vec<String> = Vec::new();
-    let mut current = String::new();
-    let mut is_first_line = true;
-
-    let budget = |first: bool| -> usize {
-        // Continuation lines spend `indent` chars on the hanging indent.
-        if first {
-            max_line_chars
-        } else {
-            max_line_chars.saturating_sub(indent)
-        }
-    };
-
-    for word in desc.split_whitespace() {
-        let sep = if current.is_empty() { 0 } else { 1 };
-        if !current.is_empty()
-            && current.chars().count() + sep + word.chars().count() > budget(is_first_line)
-        {
-            // Flush the current line and start a new (indented) continuation.
-            lines.push(if is_first_line {
-                current.clone()
-            } else {
-                format!("{indent_str}{current}")
-            });
-            is_first_line = false;
-            current = word.to_string();
-        } else {
-            if !current.is_empty() {
-                current.push(' ');
-            }
-            current.push_str(word);
-        }
-    }
-    // Flush the trailing line.
-    lines.push(if is_first_line {
-        current
-    } else {
-        format!("{indent_str}{current}")
-    });
-    lines
-}
-
-/// Build a monospace `LayoutJob` for one option row where each of the three
-/// columns (key | command | description) is coloured independently, matching
-/// the POM's Legacy colour scheme. The column widths match `format_option_row`
-/// so alignment is identical to the plain-text formatter.
-///
-/// `max_desc_chars` is the character budget for the description column at the
-/// current width; when non-zero and the description is longer, the description
-/// wraps with a hanging indent so continuation lines align under the description
-/// column, not the key column (B065). Zero disables wrapping (single line).
-///
-/// Validates: Requirement 2.1a; Requirement 13.4, 13.5, 13.6
-fn option_row_job(
+/// Validates: Requirement 2.1a; Requirement 13.4, 13.5
+fn option_prefix_job(
     option: &super::MenuOption,
     cmd_width: usize,
-    max_desc_chars: usize,
     key_col: egui::Color32,
     command_col: egui::Color32,
-    desc_col: egui::Color32,
 ) -> egui::text::LayoutJob {
     let mut job = egui::text::LayoutJob::default();
     let fmt = |color: egui::Color32| egui::TextFormat {
-        font_id: egui::FontId::monospace(14.0),
+        font_id: option_font(),
         color,
         ..Default::default()
     };
-    // Key column: left-justified in 4, then two-space gutter.
+    // Never wrap the fixed columns.
+    job.wrap.max_width = f32::INFINITY;
     job.append(&format!("{:<4}", option.key), 0.0, fmt(key_col));
     job.append("  ", 0.0, fmt(key_col));
-    // Command column: left-justified in cmd_width, then two-space gutter.
     job.append(
         &format!("{:<width$}", option.command, width = cmd_width),
         0.0,
         fmt(command_col),
     );
     job.append("  ", 0.0, fmt(command_col));
-    // Description column, wrapped with a hanging indent (B065). Continuation
-    // lines carry `indent` leading spaces so they align under the description's
-    // first character rather than the row's left edge.
-    let indent = description_indent_chars(cmd_width);
-    let desc_lines = wrap_description_with_indent(&option.description, indent, max_desc_chars);
-    job.append(&desc_lines.join("\n"), 0.0, fmt(desc_col));
-    // We have already broken the description into lines at the character grid,
-    // prefixing continuations with the hanging indent. Disable egui's own
-    // wrapping so it honours OUR line breaks and does not re-wrap mid-word back
-    // to the row's left edge (which would defeat the hanging indent, B065).
-    job.wrap.max_width = f32::INFINITY;
     job
 }
 
@@ -375,65 +297,66 @@ pub fn render_menu_workspace(
                                 egui::Color32::GRAY,
                             )
                         };
-                        // Character budget for the row at the current width, so
-                        // a long description wraps with a hanging indent under
-                        // the description column (B065). Derived from the
-                        // available width and the monospace glyph advance; 0
-                        // when it cannot be determined (degrades to no-wrap).
-                        let max_row_chars = {
-                            let avail = ui.available_width();
-                            let glyph_w =
-                                ui.fonts(|f| f.glyph_width(&egui::FontId::monospace(14.0), '0'));
-                            if glyph_w > 0.0 && avail.is_finite() && avail > 0.0 {
-                                (avail / glyph_w).floor() as usize
-                            } else {
-                                0
-                            }
-                        };
-                        let job = option_row_job(
-                            option,
-                            cmd_width,
-                            max_row_chars,
-                            row_key_col,
-                            row_cmd_col,
-                            row_desc_col,
-                        );
+
+                        // B065: render the row as a horizontal pair -- a fixed,
+                        // non-wrapping key+command PREFIX (a real Button = the
+                        // focusable/clickable row focus stop, proven for the
+                        // CR-CH-023 Boundary_Policy) followed by the description
+                        // as a SEPARATE wrapping Label in the remaining width.
+                        // egui wraps the description within its own rect, so
+                        // continuation lines hang-indent under the description
+                        // column instead of the row's left edge (the previous
+                        // single-galley Button re-wrapped everything back to x0).
+                        let prefix_job =
+                            option_prefix_job(option, cmd_width, row_key_col, row_cmd_col);
+                        let desc = option.description.clone();
+                        let row_resp = ui
+                            .horizontal(|ui| {
+                                ui.spacing_mut().item_spacing.x = 0.0;
+                                let prefix_resp = if option.enabled {
+                                    ui.add(
+                                        egui::Button::new(prefix_job)
+                                            .fill(egui::Color32::TRANSPARENT)
+                                            .stroke(egui::Stroke::NONE),
+                                    )
+                                } else {
+                                    // Req 2.3 -- disabled: non-interactive, not a
+                                    // Tab stop (Req 15.4).
+                                    ui.add_enabled(false, egui::Label::new(prefix_job))
+                                };
+                                // Description wraps within the remaining width, so
+                                // continuation lines start at the description
+                                // column = a hanging indent (B065).
+                                ui.add(
+                                    egui::Label::new(
+                                        egui::RichText::new(&desc).monospace().color(row_desc_col),
+                                    )
+                                    .wrap(),
+                                );
+                                prefix_resp
+                            })
+                            .inner;
 
                         if option.enabled {
-                            // Req 2.2 -- clickable row (transparent button, like the POM).
-                            // `Response.id` IS the widget's keyboard-focus id in
-                            // egui, so capturing it here lets the shell
-                            // Boundary_Policy (CR-CH-023) request focus on the
-                            // first/last enabled option; egui-native Tab walks the
-                            // options in between. (B056: the previous `push_id`
-                            // wrapper captured the outer scope id, which is NOT the
-                            // focus id, so request_focus silently no-op'd.)
-                            let btn = egui::Button::new(job)
-                                .fill(egui::Color32::TRANSPARENT)
-                                .stroke(egui::Stroke::NONE);
-                            let resp = ui.add(btn);
-                            let opt_id = resp.id;
-                            // Req 16.10 (B056): a keyboard-focused option must show
-                            // a clear visual indicator. The transparent button
-                            // draws none, so paint a focus outline in the option
-                            // colour when it holds focus.
-                            if resp.has_focus() {
+                            let opt_id = row_resp.id;
+                            // Req 16.10 (B056): keyboard-focused option shows a
+                            // clear outline around the prefix (the focus widget).
+                            if row_resp.has_focus() {
                                 ui.painter().rect_stroke(
-                                    resp.rect.expand(1.0),
+                                    row_resp.rect.expand(1.0),
                                     egui::CornerRadius::same(2),
                                     egui::Stroke::new(1.5_f32, key_col),
                                     egui::StrokeKind::Outside,
                                 );
                                 // CR-CH-028 (Req 12.2): record the focused option
-                                // so the shell can build the Cursor_Context's
-                                // focused-control identity from its command/label.
+                                // for the Cursor_Context.
                                 result.focused_option = Some((
                                     opt_id,
                                     option.command.clone(),
                                     option.description.clone(),
                                 ));
                             }
-                            if resp.clicked() {
+                            if row_resp.clicked() {
                                 result.selected = Some(option.clone());
                             }
                             // Track first/last enabled option ids (Req 15.2/15.5).
@@ -441,10 +364,6 @@ pub fn render_menu_workspace(
                                 result.first_interior_id = Some(opt_id);
                             }
                             last_enabled_option_id = Some(opt_id);
-                        } else {
-                            // Req 2.3 -- disabled style, no interaction (and not a
-                            // Tab stop -- menu-workspace Req 15.4).
-                            ui.add_enabled(false, egui::Label::new(job));
                         }
                     }
                 });
@@ -672,112 +591,38 @@ mod tests {
         assert!(!c.use_today_reverse);
     }
 
-    // Validates: Requirement 2.1a -- coloured option row keeps the three columns
-    // aligned identically to the plain-text formatter (same widths).
+    // Validates: Requirement 2.1a (B065) -- the key+command PREFIX job holds the
+    // fixed columns (key left-justified in 4 + 2 gutter, command in cmd_width +
+    // 2 gutter) and NEVER wraps. The description is now a SEPARATE wrapping Label
+    // (hanging indent under the description column), so it is not part of the
+    // prefix job -- the wrap alignment itself is a rendered-widget property
+    // (verified manually / by egui layout, test-plan 2.2c).
     #[test]
-    fn option_row_job_preserves_column_alignment() {
+    fn option_prefix_job_holds_fixed_columns_and_does_not_wrap() {
+        let o = opt("1", "FILES", "Browse the catalog");
+        let w = command_column_width(&[o.clone()]);
+        let job = option_prefix_job(&o, w, egui::Color32::WHITE, egui::Color32::WHITE);
+        // The prefix text is exactly key(4) + "  " + command(w) + "  " -- i.e.
+        // the format_option_row prefix WITHOUT the description.
+        let expected_prefix = &format_option_row(&o, w)[..(4 + 2 + w + 2)];
+        assert_eq!(job.text, expected_prefix);
+        // The prefix never wraps.
+        assert_eq!(job.wrap.max_width, f32::INFINITY);
+        // No newlines in the prefix (single physical line).
+        assert!(!job.text.contains('\n'));
+    }
+
+    // Validates: Requirement 2.1a -- prefixes of different options share the same
+    // column width, so descriptions (rendered to the right of the prefix) all
+    // start at the SAME x-offset (the description column).
+    #[test]
+    fn option_prefix_jobs_share_width_across_rows() {
         let opts = vec![opt("1", "FILES", "Browse"), opt("22", "SETTINGS", "Config")];
         let w = command_column_width(&opts);
-        for o in &opts {
-            // max_desc_chars = 0 -> no wrapping, so the row matches the plain
-            // formatter exactly (single line).
-            let job = option_row_job(
-                o,
-                w,
-                0,
-                egui::Color32::WHITE,
-                egui::Color32::WHITE,
-                egui::Color32::WHITE,
-            );
-            // The job's concatenated text matches the plain formatter exactly.
-            assert_eq!(job.text, format_option_row(o, w));
-        }
-    }
-
-    // Validates: Requirement 2.1a (B065) -- a description that fits on one line
-    // is returned unwrapped with no indent.
-    #[test]
-    fn wrap_description_short_is_single_line_no_indent() {
-        let lines = wrap_description_with_indent("Browse files", 8, 40);
-        assert_eq!(lines, vec!["Browse files".to_string()]);
-    }
-
-    // Validates: Requirement 2.1a (B065) -- a long description wraps and every
-    // continuation line is prefixed with `indent` spaces so it hangs under the
-    // description column, not the key column.
-    #[test]
-    fn wrap_description_long_hangs_continuation_under_description() {
-        let indent = 8;
-        // Narrow budget forces wrapping.
-        let lines = wrap_description_with_indent("alpha beta gamma delta", indent, 12);
-        assert!(lines.len() >= 2, "expected the description to wrap");
-        // The FIRST line has no leading indent (key/command precede it).
-        assert!(!lines[0].starts_with(' '), "first line is not indented");
-        // EVERY continuation line begins with exactly `indent` spaces.
-        for cont in &lines[1..] {
-            assert!(
-                cont.starts_with(&" ".repeat(indent)),
-                "continuation must hang-indent by {indent} spaces, got: {cont:?}"
-            );
-            // ... and the char after the indent is not a space (real content).
-            assert_ne!(
-                cont.chars().nth(indent),
-                Some(' '),
-                "no extra padding beyond the hanging indent"
-            );
-        }
-    }
-
-    // Validates: Requirement 2.1a (B065) -- zero budget disables wrapping so the
-    // behaviour degrades to a single line (today's behaviour).
-    #[test]
-    fn wrap_description_zero_budget_is_single_line() {
-        let lines = wrap_description_with_indent("alpha beta gamma delta", 8, 0);
-        assert_eq!(lines, vec!["alpha beta gamma delta".to_string()]);
-    }
-
-    // Validates: Requirement 2.1a (B065) -- a single word longer than the budget
-    // is emitted on its own line rather than lost.
-    #[test]
-    fn wrap_description_overlong_word_is_kept() {
-        let lines = wrap_description_with_indent("short superlongwordthatexceeds end", 4, 10);
-        let joined: String = lines.join(" ");
-        assert!(
-            joined.contains("superlongwordthatexceeds"),
-            "long word retained"
-        );
-    }
-
-    // Validates: Requirement 2.1a (B065) -- the wrapped job's first physical line
-    // still places the description after the key+command columns (first-line
-    // alignment preserved), and the job contains newlines when it wraps.
-    #[test]
-    fn option_row_job_wraps_with_hanging_indent() {
-        let o = opt("1", "FILES", "a b c d e f g h i j k l m n o p");
-        let w = command_column_width(&[o.clone()]);
-        // Small budget forces the description to wrap.
-        let job = option_row_job(
-            &o,
-            w,
-            18,
-            egui::Color32::WHITE,
-            egui::Color32::WHITE,
-            egui::Color32::WHITE,
-        );
-        assert!(job.text.contains('\n'), "long description must wrap");
-        // The first physical line still starts with the key column.
-        let first_line = job.text.lines().next().unwrap();
-        assert!(
-            first_line.starts_with("1   "),
-            "first line keeps the key column"
-        );
-        // Continuation lines are indented to the description column.
-        let indent = description_indent_chars(w);
-        let cont = job.text.lines().nth(1).unwrap();
-        assert!(
-            cont.starts_with(&" ".repeat(indent)),
-            "continuation hangs under the description column"
-        );
+        let a = option_prefix_job(&opts[0], w, egui::Color32::WHITE, egui::Color32::WHITE);
+        let b = option_prefix_job(&opts[1], w, egui::Color32::WHITE, egui::Color32::WHITE);
+        // Same character length -> same monospace width -> descriptions align.
+        assert_eq!(a.text.chars().count(), b.text.chars().count());
     }
 
     // === CR-CH-023: menu-workspace interior tab order (Req 15) =============
