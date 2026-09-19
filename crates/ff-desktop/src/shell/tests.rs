@@ -2208,18 +2208,76 @@ fn key_command_with_empty_field_runs_bare_command() {
     assert!(shell.open_error.is_none());
 }
 
-/// Validates: command-framework Req 9.9 (B066) -- a key-forwarded invocation
-/// does NOT force-clear the command field; the invoked command decides. SWAP
-/// does not clear it, so `1` remains after the swap.
+/// Validates: command-framework Req 9.9 (revised, CR-CH-033), Req 13.1/13.3 --
+/// a SUCCESSFUL key-forwarded command clears the field (the Command_Line_Outcome
+/// default on success), so `1` does NOT remain after `1` + F9 (SWAP). This is
+/// the fix; it replaces the former `key_command_does_not_force_clear_command_field`.
 #[test]
-fn key_command_does_not_force_clear_command_field() {
+fn key_command_clears_command_field_after_success() {
     let mut shell = make_shell();
-    shell.handle_command("START");
+    shell.handle_command("START"); // ensure a second tab so SWAP 1 succeeds
     shell.command_text = "1".to_string();
     shell.dispatch_key_command("SWAP");
     assert_eq!(
-        shell.command_text, "1",
-        "the key-dispatch boundary must not force-clear the field (Req 9.9)"
+        shell.command_text, "",
+        "a successful key-forwarded command clears the field (Req 13.3 default Clear)"
+    );
+    assert!(shell.open_error.is_none());
+}
+
+/// Validates: command-framework Req 13.1/13.3 -- the Enter path applies the same
+/// Command_Line_Outcome default: a successful command clears the field.
+#[test]
+fn enter_path_clears_command_field_after_success() {
+    let mut shell = make_shell();
+    shell.handle_command("START");
+    shell.command_text = "SWAP 1".to_string();
+    shell.run_command_line("SWAP 1");
+    assert_eq!(
+        shell.command_text, "",
+        "a successful Enter-path command clears the field (Req 13.3)"
+    );
+}
+
+/// Validates: command-framework Req 13.2/13.3 -- an UNRESOLVED command (a typo)
+/// leaves the field for correction (Restore of the executed text), and a
+/// RESOLVED-but-errored command likewise restores it.
+#[test]
+fn unresolved_or_errored_command_restores_field_for_correction() {
+    // Unresolved: a gibberish command sets open_error -> Restore keeps the text.
+    let mut shell = make_shell();
+    shell.run_command_line("ZXQWV nonsense");
+    assert_eq!(
+        shell.command_text, "ZXQWV nonsense",
+        "an unresolved command keeps the typed text for correction (Req 13.2)"
+    );
+    assert!(shell.open_error.is_some());
+
+    // Resolved but errored: SWAP to an out-of-range tab restores the text.
+    let mut shell2 = make_shell();
+    shell2.command_text = "SWAP 999".to_string();
+    shell2.run_command_line("SWAP 999");
+    assert_eq!(
+        shell2.command_text, "SWAP 999",
+        "a resolved-but-failed command restores the executed text (Req 13.3)"
+    );
+    assert!(shell2.open_error.is_some());
+}
+
+/// Validates: command-framework Req 13.4 -- RETRIEVE returns `Set(<recalled>)`,
+/// so the recalled command lands in the field after a key-forwarded F12 with a
+/// non-empty field (preserves B067). The recall survives the outcome pass.
+#[test]
+fn key_command_retrieve_keeps_recalled_field() {
+    let mut shell = make_shell();
+    // Seed history with a recallable command.
+    shell.run_command_line("THEME legacy");
+    // Type something, then press the RETRIEVE key: merged `RETRIEVE <field>`.
+    shell.command_text = "LOC".to_string();
+    shell.dispatch_key_command("RETRIEVE");
+    assert_eq!(
+        shell.command_text, "THEME legacy",
+        "RETRIEVE recalls the most recent command INTO the field (Set outcome, Req 13.4)"
     );
 }
 

@@ -90,8 +90,12 @@ impl WorkbenchShell {
                     && !self.command_text.is_empty()
                 {
                     let cmd = self.command_text.trim().to_string();
-                    self.command_text.clear();
-                    self.handle_command(&cmd);
+                    // CR-CH-033 (Req 13.1): run through the single decision point
+                    // that applies the Command_Line_Outcome to the field (clear on
+                    // success, restore on error, or the command's explicit outcome
+                    // such as RETRIEVE's recall). The field is left intact during
+                    // dispatch so field-reading commands (RETRIEVE) still work.
+                    self.run_command_line(&cmd);
                     // Return focus to the command field after every command execution.
                     self.command_field_focus_requested = true;
                 }

@@ -165,6 +165,10 @@ pub struct WorkbenchShell {
     tabs: TabManager,
     /// ISPF-style command field text.
     command_text: String,
+    /// Per-dispatch Command_Line_Outcome stash: a command arm MAY set this to
+    /// override the default field disposition (e.g. RETRIEVE -> Set/Leave). It is
+    /// consumed and reset once per command-line run (CR-CH-033, Req 13.4).
+    pending_command_line_outcome: Option<command_line_outcome::CommandLineOutcome>,
     /// One-shot startup flag.
     started: bool,
     /// Files to open on the first frame (from CLI arguments).
@@ -661,6 +665,7 @@ impl WorkbenchShell {
             palette,
             tabs,
             command_text: String::new(),
+            pending_command_line_outcome: None,
             started: false,
             cli_files,
             pending_open,
@@ -1090,6 +1095,7 @@ pub(crate) fn load_context_maps_from_keymaps_dir(
     }
 }
 
+mod command_line_outcome;
 mod commands;
 mod configurator;
 mod external_adapter;

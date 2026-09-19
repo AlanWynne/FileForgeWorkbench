@@ -247,11 +247,16 @@ than requiring a separate command per variation.
    SHALL be invoked with no argument. This is the single general mechanism by
    which a typed value parameterises a key-invoked command (e.g. type `8`, press
    the DOWN key -> `DOWN 8`; type `LIST`, press the RETRIEVE key -> `RETRIEVE LIST`).
-9. THE framework SHALL NOT force-clear the `Command ===>` field after a
-   key-forwarded invocation; whether the field is cleared, replaced, or left
-   intact is the invoked command's own decision (e.g. a scroll or MENU command
-   clears the consumed argument, whereas RETRIEVE replaces the field with the
-   recalled command text).
+9. **(REVISED by CR-CH-033.)** THE disposition of the `Command ===>` field after
+   an invocation (whether typed + Enter or key-forwarded) SHALL be governed by
+   the Command_Line_Outcome of Requirement 13, applied identically on both input
+   paths. The framework SHALL NOT hardcode a per-path clear rule here; instead it
+   applies the outcome (default: clear on success, keep on unresolved, restore on
+   error; overridable per command). This makes `1` + F9 -> `SWAP 1` leave the
+   field empty exactly as `1` + Enter does, while letting a command that sets the
+   field (RETRIEVE) win. (SUPERSEDES the prior rule that the framework never
+   force-cleared the field; the earlier rule left a typed argument such as `1`
+   visible after `1` + F9, inconsistent with the Enter path.)
 10. A key-forwarded invocation SHALL be indistinguishable, from the command's
     point of view, from a typed `<command> <argument>` invocation: both deliver
     the same `arg` param, so a command needs no special handling for the two
@@ -337,3 +342,95 @@ than requiring a separate command per variation.
 7. WHEN a bound key or menu affordance dispatches a command that does not yet exist (is not built), THE workbench SHALL surface a single canonical "command not implemented yet" message rather than a bespoke per-command string. (The complementary "out of context" message -- a command that exists but is meaningless in the current Workspace -- is the responsibility of each command to emit as it is built, using the Cursor_Context, and is NOT owned by the dispatcher; it is out of scope for this slice.)
 
 8. THE context-sensitive HELP behaviour SHALL be the first consumer of the Cursor_Context (CR-NR-079): WHEN HELP is invoked (F1 or the `HELP` command) with a focused Menu_Option, THE resolved Help Topic_Key SHALL reflect that option (e.g. focus on the `FILES` option resolves the help topic for `FILES`), generalising the existing HELP `EditorContext` to read from the Cursor_Context. Absent a specific focused control, HELP SHALL behave as today (the existing "not available yet" fallback, function-keys-and-history Requirement 18).
+
+---
+
+### Requirement 13: Command_Line_Outcome (the command decides what returns to the Command Field)
+
+**User Story:** As a user, I want the command line to be cleared when I run a
+command, but I want each command to be able to decide what (if anything) goes
+back into it -- so that RETRIEVE can recall a command into the field, a command
+that fails can put itself back for me to edit, and a future command can offer a
+suggested next prompt -- and I want that same mechanism to be usable by macros
+(Lua, REXX) and by commands written in other languages, through an adequately
+documented contract.
+
+**Source:** CR-CH-033. Owner: "the command can decide what to do with the command
+line ... clear the command just before handing control to the command; the
+command then decides whether to put anything back ... if the handler cannot find
+the command it remains for typing correction; if the command itself errors (e.g.
+FIND does not find the string) it must populate the command back ... the most
+flexible design would allow the command to determine what goes back ... a command
+that could create suggested prompts ... LUA/REXX macro scripts should be able to
+address these ... commands written in other languages should be able to make use
+of this if adequately documented." Owner confirmed the sliced delivery and the
+serialisable data shape (confident it backs bridges for other languages).
+
+**Glossary additions:**
+- **Command_Line_Outcome** -- a value RETURNED by an invocation describing what
+  the `Command ===>` field should contain AFTER the command runs. Semantic model
+  (four variants): `Clear` (empty the field), `Restore` (put back exactly what
+  was executed -- for correction / retry), `Set(text)` (put arbitrary text back
+  -- e.g. RETRIEVE recall or a suggested prompt), `Leave` (do not touch the field
+  -- the command manages it itself).
+- **Outcome_Data_Shape** -- the serialisable representation of a
+  Command_Line_Outcome: a tagged object `{ "action": "clear" | "restore" | "set"
+  | "leave", "text": "<present only when action = set>" }`. It is the documented
+  public boundary that non-Rust producers (macros, external commands) emit; it
+  maps totally and losslessly to and from the native Command_Line_Outcome.
+
+#### Acceptance Criteria
+
+1. THE framework SHALL clear the `Command ===>` field JUST BEFORE handing control
+   to a RESOLVED command, then apply the command's Command_Line_Outcome AFTER the
+   command runs. This ordering is uniform across BOTH the typed-`Enter` path and
+   the key-forwarded (function-key / shortcut) path (command parity, Requirement
+   9.10): a command is invoked identically and its outcome applied identically
+   regardless of input source.
+
+2. WHEN a command cannot be RESOLVED (no matching handler / built-in / menu /
+   macro), THE framework SHALL NOT clear the field: the unresolved text SHALL
+   remain so the user can correct it. An unresolved command has no outcome
+   because it never ran.
+
+3. THE DEFAULT Command_Line_Outcome the framework applies when a command does not
+   return an explicit one SHALL be: `Clear` when the command SUCCEEDED; `Restore`
+   (the original executed text) when the command RESOLVED but reported an ERROR
+   (so, e.g., FIND that does not find its string comes back for editing). A
+   command MAY OVERRIDE either default by returning an explicit outcome.
+
+4. A command SHALL be able to RETURN an explicit Command_Line_Outcome that the
+   framework applies verbatim: `Clear`, `Restore`, `Set(text)`, or `Leave`. In
+   particular RETRIEVE SHALL return `Set(<recalled command>)` (and RETRIEVE LIST
+   its existing clear-and-open-picker behaviour), so recall is expressed through
+   this one mechanism rather than a special case.
+
+5. THE Command_Line_Outcome SHALL have a serialisable Outcome_Data_Shape (the
+   tagged `{action, text?}` object) with a TOTAL, LOSSLESS mapping in BOTH
+   directions to the native value: every native variant serialises to exactly one
+   data shape and every valid data shape deserialises to exactly one native
+   variant. An invalid or absent shape SHALL map to the framework DEFAULT
+   (criterion 3), never to a panic.
+
+6. THE Outcome_Data_Shape SHALL be the documented contract by which a NON-Rust
+   producer drives the command line: a Lua macro, a REXX macro, or an
+   out-of-process / other-language command (an `External` Command_Target,
+   Requirement 8) that emits a valid shape SHALL have it applied exactly as a
+   native command's returned outcome. The shape SHALL contain no Rust-specific
+   construct, so any producer able to emit a key/value object can conform.
+
+7. THE delivery SHALL be SLICED: Slice 1 -- the native Command_Line_Outcome and
+   its application at the single dispatch decision point on both paths, with the
+   default rules and RETRIEVE (`Set`) + FIND (error-`Restore`) as references
+   (criteria 1-4). Slice 2 -- the serialisable Outcome_Data_Shape and its total
+   round-trip mapping, documented as the public boundary (criterion 5, and the
+   documentation half of criterion 6). Slice 3+ -- per-engine bridges (Lua, then
+   External, then REXX) that map the shape to the native outcome (the enforcement
+   half of criterion 6), each gated WHEN that engine's execution exists (Lua and
+   External execution are deferred per Requirement 12; no REXX engine exists yet).
+
+8. THE Command_Line_Outcome contract SHALL NOT require any existing command to
+   change: a command that returns no outcome gets the default (criterion 3), so
+   the mechanism is ADDITIVE and behaviour-preserving except for the intended
+   change (a successful command now clears the field on both paths, fixing the
+   `1`-remains-after-`1`+F9 inconsistency).

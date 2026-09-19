@@ -1358,15 +1358,16 @@ and routes it through the same `execute_command` path as a typed line:
 key press (bound to command C)
   -> read Command ===> field contents F
   -> dispatch C with params { arg: F }   (identical to typing "C F" + Enter)
-  -> C decides whether to clear / replace / keep the field
+  -> apply C's Command_Line_Outcome to the field (Requirement 13)
 ```
 
 - Because parsing and dispatch are shared, a key-forwarded invocation and a typed
   `<command> <arg>` invocation are indistinguishable to the command
   (Requirement 9.10).
-- The framework never force-clears the field (Requirement 9.9); each command
-  decides: scroll and MENU commands clear the consumed argument, RETRIEVE
-  replaces the field with the recalled command text.
+- **(CR-CH-033, Requirement 13.)** The field disposition is governed by the
+  command's Command_Line_Outcome, applied identically on both the Enter and
+  key-forward paths (Requirement 9.9, revised). See the Command_Line_Outcome
+  design section below.
 
 ### No `ff-command` API change required
 
@@ -1684,3 +1685,100 @@ scroll setting for CSR cursor-relative scrolling), the CURSOR command, and
 `SPLIT H`/`SPLIT V` tiling are deferred (Slice 2b). This delta only guarantees the
 package is BUILT, THREADED, and DELIVERED to every handler, plus the HELP consumer
 and the not-implemented message.
+
+---
+
+## Section: Command_Line_Outcome (Requirement 13, CR-CH-033)
+
+The command line's post-invocation contents are governed by a value the command
+returns (or the framework defaults), applied at ONE decision point on both the
+Enter and key-forward paths. Delivered sliced.
+
+### Native model (Slice 1)
+
+```rust
+/// What the Command ===> field should contain after an invocation.
+/// Validates: command-framework Requirement 13.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CommandLineOutcome {
+    Clear,          // empty the field (default on success)
+    Restore,        // put back exactly what was executed (default on error)
+    Set(String),    // put arbitrary text back (RETRIEVE recall; suggested prompt)
+    Leave,          // do not touch the field
+}
+```
+
+Placement (Slice 1-2): `ff-desktop` (the shell owns the `Command ===>` field and
+the string-dispatch). It is the forerunner of a return value on the eventual
+`ff-command` `CommandHandler` trait; when command dispatch migrates to that trait
+(command-framework Req 8/9, still PENDING), the same enum becomes the trait's
+command-line return. No premature `ff-command` change is made now.
+
+### Application point
+
+The shell already has one place that runs a resolved command from the field: the
+Enter path (`render.rs`) and the key-forward path (`target_dispatch.rs
+::dispatch_key_command`), both of which call `handle_command`. The decision is
+centralised:
+
+```text
+run(field_text):
+  original = field_text
+  if not resolvable(field_text):        # Req 13.2
+      leave field as `original`         # correction; command never ran
+      return
+  clear field                           # Req 13.1 -- before handing control
+  outcome, errored = dispatch(field_text)   # command runs; may set field / error
+  effective = outcome.unwrap_or(if errored { Restore } else { Clear })  # Req 13.3
+  apply(effective, original)            # Clear=empty; Restore=original; Set(t)=t; Leave=noop
+```
+
+- `apply(Restore, original)` writes `original` back; `apply(Set(t), _)` writes
+  `t`; `apply(Clear, _)` empties; `apply(Leave, _)` does nothing.
+- RETRIEVE returns `Set(recalled)` (Req 13.4); RETRIEVE LIST keeps its
+  clear-and-open-picker behaviour. FIND is the error-`Restore` reference: on
+  not-found it reports an error and the DEFAULT (Req 13.3) restores the text --
+  no per-command code needed, though FIND MAY return `Restore` explicitly.
+- Today most command arms signal success/failure via `self.open_error`; Slice 1
+  derives `errored` from whether the arm set `open_error`, and lets an arm
+  optionally stash an explicit `CommandLineOutcome` (a shell field consumed once
+  per dispatch). Arms that do neither get the default -- ADDITIVE, behaviour
+  preserving except the intended clear-on-success (Req 13.8).
+
+### Serialisable Outcome_Data_Shape (Slice 2)
+
+```jsonc
+{ "action": "clear" }
+{ "action": "restore" }
+{ "action": "set", "text": "FIND foo" }
+{ "action": "leave" }
+```
+
+- `serde`-derived (or a hand-written total map) `to_data` / `from_data` with a
+  round-trip property: `from_data(to_data(x)) == x` for every variant, and
+  `from_data(invalid) == default` (never panics, Req 13.5). `Set` requires
+  `text`; a `set` without `text` maps to the default.
+- This is the documented public boundary (Req 13.6). It contains only a tagged
+  string + optional string, so a Lua table, a REXX stem, or an external process's
+  JSON stdout line can all express it. Round-trip tests are the Slice 2
+  deliverable; no non-Rust producer is wired yet.
+
+### Bridges (Slice 3+, per engine)
+
+Each bridge maps the Outcome_Data_Shape to `CommandLineOutcome` when its engine
+executes: Lua (macro return value / `workbench.command_line.*` helper), External
+(a result-channel field on the out-of-process protocol), then REXX. Gated
+individually WHEN the engine's execution lands (Lua/External deferred, Req 12; no
+REXX engine yet). No framework change is needed to add a new language -- only a
+bridge that emits the documented shape.
+
+### Tests
+
+- Slice 1 (shell): `key_command_clears_command_field_after_success` (empty after
+  `1` + SWAP), `enter_path_clears_command_field_after_success`,
+  `unresolved_command_keeps_field_for_correction`,
+  `errored_command_restores_field` (FIND-not-found leaves the command back),
+  `key_command_retrieve_keeps_recalled_field` (RETRIEVE `Set`). Replaces the old
+  `key_command_does_not_force_clear_command_field`.
+- Slice 2 (pure): `outcome_data_shape_round_trips_all_variants`,
+  `outcome_data_shape_set_requires_text`, `invalid_shape_maps_to_default`.

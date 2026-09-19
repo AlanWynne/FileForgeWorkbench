@@ -2510,3 +2510,30 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[x]` Phase (menu-desc-layout) COMPLETE | CR-CH-032: description-driven Menu_Workspace layout -- DONE: calendar visibility + option-column width follow the descriptions' natural one-line width (`natural_option_list_width`); 3-tier ladder (Tier1 calendar+one-line+trailing space; Tier2 calendar hidden+one-line; Tier3 calendar hidden+wrap); calendar hides BEFORE descriptions wrap; extra width trails right of the (unpinned) calendar; description `.wrap()` kept as the tier-3 fallback; removed the unused `OPTION_LIST_MIN_WIDTH` floor. Replaces the fixed-minimum fit rule of CR-CH-026. 4 pure + 3 harness tests; existing B060 calendar tests still pass. menu-workspace Req 16.7-16.11. verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. |
+
+## Phase (command-line-outcome) -- Command_Line_Outcome (CR-CH-033, command-framework Req 13 + Req 9.9 revised)
+
+> Owner: the command decides what returns to the command line -- clear before
+> handing control, the command puts back what it wants; unresolved -> keep for
+> correction; error -> restore; RETRIEVE -> Set; future "suggest" -> Set. Must be
+> serialisable so Lua/REXX/other-language bridges can drive it. Sliced.
+
+- [x] CLO.native command-framework Task 31 (Slice 1): native `CommandLineOutcome`
+      (`Clear`/`Restore`/`Set`/`Leave`) applied at one decision point on the Enter
+      and key-forward paths; defaults clear-on-success / keep-on-unresolved /
+      restore-on-error; RETRIEVE=`Set`, FIND=error-`Restore`. Fixes `1`+F9. Replaced
+      the old no-clear test.
+      Covers: command-framework Req 13.1-13.4, 13.8, 9.9 (revised), 9.10.
+- [x] CLO.shape command-framework Task 32 (Slice 2): serialisable `{action,text?}`
+      Outcome_Data_Shape + total round-trip mapping (invalid -> default, no panic);
+      round-trip tests; documented as the public boundary for future bridges.
+      verify.ps1 CLEAN; ffwb.exe rebuilt; TCR.
+      Covers: command-framework Req 13.5, 13.6 (docs half), 13.7.
+- [ ] CLO.bridges command-framework Task 33 (Slice 3+, LATER): Lua, then External,
+      then REXX bridges map the shape to the native outcome, each gated WHEN that
+      engine executes (Lua/External deferred Req 12; no REXX yet).
+      Covers: command-framework Req 13.6 (enforcement half), 13.7.
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (command-line-outcome) Slices 1-2 COMPLETE | CR-CH-033 (re-scoped): `Command_Line_Outcome` -- DONE (Slices 1-2): the command decides what returns to the `Command ===>` field via a returned `Clear`/`Restore`/`Set`/`Leave` (serialisable `{action,text?}`), applied on both Enter and key-forward paths; default clear-on-success / restore-on-error (covers unresolved typo + failed command). RETRIEVE=`Set`; fixes `1` remaining after `1`+F9. Slice 2 data-shape contract + round-trip tests documented as the public boundary. Slice 3+ (Lua/REXX/External bridges, CLO.bridges) PENDING per engine (Lua/External deferred Req 12; no REXX yet). command-framework Req 13 + Req 9.9 revised. verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. |

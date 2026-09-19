@@ -103,19 +103,28 @@ impl WorkbenchShell {
     /// (e.g. type `1`, press F9=SWAP -> `SWAP 1`; type `8`, press F8=DOWN ->
     /// `DOWN 8`). WHEN the field is empty the bare bound command runs unchanged
     /// (Req 9.8). Argument merging happens once, here at the shared key-dispatch
-    /// boundary (Req 9.7). The field is NOT force-cleared -- whether the invoked
-    /// command consumes/replaces/leaves it is the command's own decision
-    /// (Req 9.9); this fixes B066.
+    /// boundary (Req 9.7).
     ///
-    /// Validates: command-framework Requirement 9.7, 9.8, 9.9, 9.10
+    /// CR-CH-033 (Req 13.1, 9.9 revised): the invocation is wrapped by the
+    /// Command_Line_Outcome pass, so after it runs the field is CLEARED on
+    /// success (`1` does not remain after `1` + F9), RESTORED to the field
+    /// content the user typed on error (kept for correction), or set to a
+    /// command's explicit outcome (RETRIEVE recall). The field is left intact
+    /// DURING dispatch so field-reading commands (RETRIEVE) still work.
+    ///
+    /// Validates: command-framework Requirement 9.7, 9.8, 9.9, 9.10, 13.1-13.4
     pub(super) fn dispatch_key_command(&mut self, command: &str) {
-        let field = self.command_text.trim();
-        if field.is_empty() {
+        // `original` = what the user typed into the field; that is what a Restore
+        // brings back (not the synthesised `<command> <field>` merge).
+        let original = self.command_text.trim().to_string();
+        self.begin_command_line();
+        if original.is_empty() {
             self.dispatch_bound_command(command);
         } else {
-            let merged = format!("{} {}", command.trim(), field);
+            let merged = format!("{} {}", command.trim(), original);
             self.dispatch_bound_command(&merged);
         }
+        self.finish_command_line(&original);
     }
 
     /// Run a user Command_Definition by its id.

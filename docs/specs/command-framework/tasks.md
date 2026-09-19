@@ -491,3 +491,58 @@ This is a **Wave 2 (Platform Architecture)** sub-project. It depends on `ff-logg
     - Validates: Requirement 12.7, 12.8
   - [x] 30.4 Updated `docs/quality/TCR.md`: CR-CH-028 Req 12 rows -> PASS (12.6 MANUAL/deferred until first consumer); behaviour-preserving confirmed
     - Covers: Requirement 12 (all criteria)
+
+## Phase (command-line-outcome) -- Command_Line_Outcome (CR-CH-033, Req 13 + Req 9.9 revised)
+
+The command decides what returns to the `Command ===>` field via a returned
+Command_Line_Outcome (`Clear`/`Restore`/`Set`/`Leave`), applied at one decision
+point on both the Enter and key-forward paths. Delivered sliced.
+
+- [x] 31. Slice 1 -- native Command_Line_Outcome + application on both paths
+  - [x] 31.1 Add the `CommandLineOutcome` enum (`Clear`/`Restore`/`Set(String)`/
+          `Leave`) in `ff-desktop` (shell) with a one-per-dispatch stash a command
+          arm may set. Failing tests first.
+    - Validates: command-framework Requirement 13.4
+  - [x] 31.2 Centralise the field disposition: dispatch with the field INTACT
+          (so field-reading commands like RETRIEVE still work), then apply the
+          effective outcome -- explicit if returned, else the default (`Clear` on
+          success, `Restore` original text when `open_error` is set). An
+          UNRESOLVED command sets `open_error` -> Restore keeps the field for
+          correction. Applied identically on the Enter path (`render.rs`
+          -> `run_command_line`) and the key-forward path
+          (`target_dispatch.rs::dispatch_key_command` wraps begin/finish).
+    - Validates: command-framework Requirement 13.1, 13.2, 13.3, 9.9 (revised), 9.10
+    - Note: the spec's "clear just before handing control" is realised as
+      "dispatch with field intact, then set the field to the effective outcome"
+      -- observably identical, but it does not break commands that READ the field
+      during dispatch (RETRIEVE's LIST/empty trigger, Req 19.1).
+  - [x] 31.3 RETRIEVE returns `Set(<recalled>)` (RETRIEVE LIST / empty -> `Leave`);
+          FIND is the error-`Restore` reference (not-found -> default restores).
+    - Validates: command-framework Requirement 13.4, 13.3
+  - [x] 31.4 Replaced the old `key_command_does_not_force_clear_command_field`
+          test with `key_command_clears_command_field_after_success`,
+          `enter_path_clears_command_field_after_success`,
+          `unresolved_or_errored_command_restores_field_for_correction`, and
+          `key_command_retrieve_keeps_recalled_field`. The empty-field / merge
+          tests still pass.
+    - Validates: command-framework Requirement 13.1-13.4, 13.8
+
+- [x] 32. Slice 2 -- serialisable Outcome_Data_Shape + round-trip mapping
+  - [x] 32.1 Added `to_data`/`from_data` mapping `CommandLineOutcome` <-> the
+          tagged `{ "action", "text"? }` shape; total and lossless; unknown
+          action or `set` without `text` -> `None` (caller substitutes the
+          default); case-insensitive; never panics.
+    - Validates: command-framework Requirement 13.5
+  - [x] 32.2 Round-trip tests (`outcome_data_shape_round_trips_all_variants`,
+          `outcome_data_shape_set_requires_text`, `invalid_shape_maps_to_default`,
+          `outcome_data_action_is_case_insensitive`, `outcome_data_survives_toml_round_trip`,
+          `outcome_data_action_tags_are_stable`); the shape is documented in the
+          module as the public boundary for future Lua/REXX/External bridges.
+          verify.ps1 CLEAN (FULL, nextest); ffwb.exe rebuilt; TCR updated.
+    - Covers: command-framework Requirement 13.5, 13.6 (documentation half), 13.7
+
+- [ ] 33. Slice 3+ -- per-engine bridges (LATER, gated individually)
+  - [ ] 33.1 Lua bridge maps the Outcome_Data_Shape to `CommandLineOutcome` (WHEN
+          Lua execution lands, Req 12); then External; then REXX.
+    - Validates: command-framework Requirement 13.6 (enforcement half), 13.7
+    - BLOCKED: Lua/External execution deferred (Req 12); no REXX engine yet.
