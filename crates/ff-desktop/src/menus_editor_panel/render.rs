@@ -333,6 +333,64 @@ mod tests {
         }
     }
 
+    // Validates: menu-workspace Requirement 13 (B054) -- typing into the
+    // per-option Command and Description fields PERSISTS into the working
+    // MenuFile model. The reported bug was that these fields could not be typed
+    // into (the render iterated a clone / edits did not stick). The fix binds
+    // each TextEdit directly to `&mut option.command` / `&mut option.description`
+    // via `menu.options.iter_mut()`; this test focuses each field, injects a
+    // text event, runs a frame, and asserts the model captured the input.
+    #[test]
+    fn menus_editor_command_and_description_fields_accept_typed_input() {
+        use egui_kittest::Harness;
+        let state = fixture_state(2);
+        let mut harness = Harness::builder()
+            .with_size(egui::Vec2::new(1200.0, 900.0))
+            .build_ui_state(
+                |ui, state| {
+                    let _ = render(ui, state);
+                },
+                state,
+            );
+        harness.run();
+
+        // Type "X" into option 0's Command field.
+        let cmd_id = egui::Id::new(("menus_opt_command", 0usize));
+        harness.ctx.memory_mut(|m| m.request_focus(cmd_id));
+        harness.run();
+        harness
+            .input_mut()
+            .events
+            .push(egui::Event::Text("X".to_string()));
+        harness.run();
+
+        // Type "Y" into option 1's Description field.
+        let desc_id = egui::Id::new(("menus_opt_description", 1usize));
+        harness.ctx.memory_mut(|m| m.request_focus(desc_id));
+        harness.run();
+        harness
+            .input_mut()
+            .events
+            .push(egui::Event::Text("Y".to_string()));
+        harness.run();
+
+        let menu = harness
+            .state()
+            .working
+            .as_ref()
+            .expect("fixture loads a working menu");
+        assert!(
+            menu.options[0].command.contains('X'),
+            "typed input must persist into option 0 command (B054); got {:?}",
+            menu.options[0].command
+        );
+        assert!(
+            menu.options[1].description.contains('Y'),
+            "typed input must persist into option 1 description (B054); got {:?}",
+            menu.options[1].description
+        );
+    }
+
     // Validates: automated-dialog-testing Requirement 14.7 -- the stable-id
     // controls are visited by Tab in the correct VISUAL order (Title before the
     // first option's key, each option's key before its command/description/group,

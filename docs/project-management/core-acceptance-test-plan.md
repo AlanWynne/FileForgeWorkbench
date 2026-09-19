@@ -58,19 +58,19 @@ not blocking.
 
 | # | Step | Expected result | Req / Backing | Result |
 |---|------|-----------------|---------------|--------|
-| 1.1 | Launch the app. | Workbench opens with a POM workspace as the first tab; `Command ===>` line visible; status bar present. | startup-and-session 14.1 | [ ] |
-| 1.2 | Open a second workspace (type `2`/`FILES`, or `1`). | A new tab opens and becomes active; previous tab remains in the tab bar. | multi-tab-editor | [ ] |
-| 1.3 | Switch between tabs (click / keyboard). | Active tab changes; content swaps; no crash. | multi-tab-editor | [ ] |
-| 1.3a | At launch, press Tab repeatedly from the command field. | Focus enters the active Workspace's first control (POM: first enabled option), walks the interior in visual order, then the Menu_Bar, then wraps to the command field. Focus NEVER lands on a Status_Bar segment ("RUNNING", session start, "Ln x, Col y", encoding, line count, version label), the `SCROLL ===>` field, or a Key_Label_Bar F-key button. | B055 (FIXED); CR-CH-023 (AUTOMATED: full-shell egui_kittest tests + retest); menu-and-statusbar 16 | [ ] |
-| 1.3b | On a POM, press Tab from the command field through the whole cycle; then Shift+Tab back. | Command line -> each enabled POM option in order -> calendar `<` -> calendar `>` (calendar shown) -> Menu_Bar items -> wrap to command line. Disabled options are skipped. Shift+Tab reverses exactly. | CR-CH-023 (AUTOMATED: interior order + full-shell wrap/Shift+Tab harness tests; retest); menu-workspace 15; menu-and-statusbar 16 | [ ] |
-| 1.3c | Open the Menus Editor (`MENUS`); press Tab from the command field. | Command line -> Menu selector -> Title -> Show Calendar -> Group Headers -> Sep Space/Line/None -> per option (key -> Command -> Description -> Group -> on -> up -> down -> delete) -> Add Option -> Save -> New Name -> Save As -> Menu_Bar items -> wrap to command line. No SCROLL field or F-key button in the cycle. | CR-CH-023 (implemented, retest); menu-and-statusbar 16 | [ ] |
+| 1.1 | Launch the app. | Workbench opens with a POM workspace as the first tab; `Command ===>` line visible; status bar present. | startup-and-session 14.1 | [x] |
+| 1.2 | Open a second workspace (type `2`/`FILES`, or `1`). | A new tab opens and becomes active; previous tab remains in the tab bar. | multi-tab-editor | [x] |
+| 1.3 | Switch between tabs (click / keyboard). | Active tab changes; content swaps; no crash. | multi-tab-editor | [x] |
+| 1.3a | At launch, press Tab repeatedly from the command field. | Focus enters the active Workspace's first control (POM: first enabled option), walks the interior in visual order, then the Menu_Bar, then wraps to the command field. Focus NEVER lands on a Status_Bar segment ("RUNNING", session start, "Ln x, Col y", encoding, line count, version label), the `SCROLL ===>` field, or a Key_Label_Bar F-key button. | B055 (FIXED); CR-CH-023 (AUTOMATED: full-shell egui_kittest tests + retest); menu-and-statusbar 16 | [x] |
+| 1.3b | On a POM, press Tab from the command field through the whole cycle; then Shift+Tab back. | Command line -> each enabled POM option in order -> calendar `<` -> calendar `>` (calendar shown) -> Menu_Bar items -> wrap to command line. Disabled options are skipped. Shift+Tab reverses exactly. | CR-CH-023 (AUTOMATED: interior order + full-shell wrap/Shift+Tab harness tests; retest); menu-workspace 15; menu-and-statusbar 16 | [x] |
+| 1.3c | Open the Menus Editor (`MENUS`); press Tab from the command field. | Command line -> Menu selector -> Title -> Show Calendar -> Group Headers -> Sep Space/Line/None -> per option (key -> Command -> Description -> Group -> on -> up -> down -> delete) -> Add Option -> Save -> New Name -> Save As -> Menu_Bar items -> wrap to command line. No SCROLL field or F-key button in the cycle. | CR-CH-023 (implemented, retest); menu-and-statusbar 16 | [x] |
 | 1.3d | Open the Theme Editor (bare `THEME`); press Tab from the command field. | Command line -> Theme selector combo (NO invisible stop first) -> Set Active -> Reset to built-in -> (Confirm reset / Cancel when a reset is pending) -> New name field -> Copy -> Save As -> Save -> colour hex fields in order -> Menu_Bar items -> wrap to command line. No phantom/invisible focus stop between the command line and the Theme selector. | B057 (VERIFIED by owner); CR-CH-023 (AUTOMATED: full-shell egui_kittest test); menu-and-statusbar 16; theme-and-appearance 20.1 | [x] |
-| 1.3e | Open the CONFIG panel (`CONFIG`); press Tab from the command field. | Command line -> Filter field (NO invisible stop first) -> the per-key widgets in order -> Menu_Bar -> wrap. No phantom focus stop between the command line and the Filter field. | B058 (FIXED, CR-CH-025/config-tab, AUTOMATED: `full_shell_config_first_tab_focuses_filter_field`); menu-and-statusbar 16; configuration-system 20 | [ ] |
-| 1.4 | `SWAP n` on the command line (e.g. `SWAP 2`); also `SWAP 0`/`SWAP 999`/`SWAP xyz`. | `SWAP 1` -> first tab, `SWAP 2` -> second; out-of-range/invalid shows a clear error and does not switch. | B043 (FIXED, retest); multi-tab-editor 18.1, 18.2 | [ ] |
-| 1.5 | `SWAP LIST` (and bare `SWAP` with no split). | A selectable list of open tabs pops up (`n: title`); clicking a row OR typing a number + Enter switches; Escape cancels. | B043 (FIXED, retest); multi-tab-editor 18.3-18.7 | [ ] |
-| 1.6 | Close a tab via its close control. | Tab closes; a sensible neighbour becomes active; POM cannot be lost (at least one tab remains). | multi-tab-editor 3.8 | [ ] |
-| 1.7 | END (F3) from a POM tab when other tabs are open. | Closes only that POM Workspace and navigates to another open Workspace; the app does NOT exit. | CR-CH-016 (FIXED, retest) | [ ] |
-| 1.8 | END (F3) from a POM tab when it is the LAST tab open. | The application terminates. | CR-CH-016 (FIXED, retest) | [ ] |
+| 1.3e | Open the CONFIG panel (`CONFIG`); press Tab from the command field. | Command line -> Filter field (NO invisible stop first) -> the per-key widgets in order -> Menu_Bar -> wrap. No phantom focus stop between the command line and the Filter field. | B058 (FIXED, CR-CH-025/config-tab, AUTOMATED: `full_shell_config_first_tab_focuses_filter_field`); menu-and-statusbar 16; configuration-system 20 | [x] |
+| 1.4 | `SWAP n` on the command line (e.g. `SWAP 2`); also `SWAP 0`/`SWAP 999`/`SWAP xyz`. | `SWAP 1` -> first tab, `SWAP 2` -> second; out-of-range/invalid shows a clear error and does not switch. | B043 (FIXED, retest); multi-tab-editor 18.1, 18.2 | [x] |
+| 1.5 | `SWAP LIST` (and bare `SWAP` with no split). | A selectable list of open tabs pops up (`n: title`); clicking a row OR typing a number + Enter switches; Escape cancels. | B043 (FIXED, retest); multi-tab-editor 18.3-18.7 | [x] |
+| 1.6 | Close a tab via its close control. | Tab closes; a sensible neighbour becomes active; POM cannot be lost (at least one tab remains). | multi-tab-editor 3.8 | [x] |
+| 1.7 | END (F3) from a POM tab when other tabs are open. | Closes only that POM Workspace and navigates to another open Workspace; the app does NOT exit. | CR-CH-016 (FIXED, retest) | [x] |
+| 1.8 | END (F3) from a POM tab when it is the LAST tab open. | The application terminates. | CR-CH-016 (FIXED, retest) | [x] |
 | 1.9 | Detach a workspace via the tab right-click menu (Detach/Undock action). | A Detach/Undock action exists in the tab context menu; invoking it moves the workspace into a separate OS window (Detached Workspace); content intact. | B045; layout-and-docking 3.1 | [B] |
 | 1.10 | Detach by dragging a tab >20px outside the tab bar and releasing. | A new Detached Workspace is created at the release point; content intact. | B045; layout-and-docking 3.9 | [B] |
 | 1.11 | Re-dock the detached workspace (close its window or redock gesture). | It returns to the tab bar at its origin; content intact. | B045; layout-and-docking 3.5, 3.11 | [B] |
@@ -98,6 +98,7 @@ not blocking.
 | 2.9 | Create a menu "MyTools" with 2-3 option/command/description rows and Save. | The menu is saved as a menu definition file; no error. | CR-NR-068 (pending) | [B] |
 | 2.10 | Open the newly-saved menu. | Renders as a menu workspace with the entered rows; selecting an option runs its command. | CR-NR-068 (pending) | [B] |
 | 2.11 | Edit an existing menu (add/remove a row) and Save. | Changes persist and re-render. | CR-NR-068 (pending) | [B] |
+| 2.12 | Open the Menus editor (`MENUS`), select a menu, and type into an option's Key, Command, Description, and Group fields. | Every field accepts typed input and the edits persist across frames (the field is not frozen); Key uppercases on blur. | B054 (FIXED, AUTOMATED: `menus_editor_command_and_description_fields_accept_typed_input`, `menus_editor_every_stable_control_is_tab_reachable`) | [ ] |
 
 ---
 
@@ -151,6 +152,7 @@ Highest-priority known gap. Do it thoroughly.
 | 5.4 | Run a chained command sequence (STOP `.` vs PUSH `;` semantics). | Chain executes per CR-NR-057 rules (single shared chain executor). | command-framework 10, command-semantics 11 | [ ] |
 | 5.5 | Confirm a representative set of activities each have a command equivalent. | Core activities (open workspace, file ops, editor ops, settings) are reachable by command. | command-framework | [ ] |
 | 5.6 | Run a short list of commands as a batch/macro. | Commands run in sequence; results as expected. | batch-execution | [ ] |
+| 5.7 | Run a command with a mixed-case argument (e.g. `FIND 'MixedCase'`, `theme Default Legacy`, `find 'Error'` case-sensitive). | The VERB matches case-insensitively but the ARGUMENT reaches the handler with its ORIGINAL case (search strings, theme names preserved); a lowercase verb still resolves. | B062 (FIXED, AUTOMATED: `verb_arg_matches_case_insensitively_and_preserves_argument`, `command_arguments_preserve_case_in_history`, `parse_two_args_preserves_argument_case`, `mixed_case_theme_verb_and_argument_resolve`) | [ ] |
 
 ---
 
@@ -198,6 +200,19 @@ Settings workspace + commands (CR-NR-070).
 | 8.5 | Open the theme list (Settings / Theme editor). | Exactly FOUR built-ins: Default Dark, Default Light, Default High Contrast, Default Legacy. NO separate "Legacy (ISPF 3270)" entry. Saving a copy of Default Legacy under a new name adds it as a selectable user theme. | theme-and-appearance 18.1/18.3 (CR-CH-024, IMPLEMENTED + AUTOMATED: `builtin_themes_returns_four_entries`, `full_shell_theme_list_has_four_builtins`) | [ ] |
 | 8.3 | Invoke the Theme Settings workspace by command. | A command opens the Theme Settings workspace. | CR-NR-070 (pending) | [B] |
 | 8.4 | Create / edit / delete a theme setting in the Theme Settings workspace. | Theme settings can be created, edited, and deleted; changes take effect. | CR-NR-070 (pending) | [B] |
+
+---
+
+## Group 9 -- Configuration recovery: RESET BARE and profiles (Core)
+
+RESET BARE and Application_Profiles are CORE recovery behaviour. Covers B064
+(profile-aware config + active-profile reset) and CR-NR-083 (targeted / ALL).
+
+| # | Step | Expected result | Req / Backing | Result |
+|---|------|-----------------|---------------|--------|
+| 9.1 | Launch under a profile (`ffwb -p ispf`), change the theme, run `RESET BARE`, confirm the dialog. | The dialog names the active profile; on confirm the ACTIVE profile's config is archived and its theme resets to the Default Legacy baseline; other profiles are untouched; config is isolated per profile (`profiles/<name>/`). | B064 (FIXED, AUTOMATED: `execute_reset_bare_resets_theme_to_default_legacy`, `paths::tests::user_config_path_is_profile_aware`) | [ ] |
+| 9.2 | `RESET BARE <profile1> [<profile2> ...]` (a subset, including and excluding the active profile) and an unknown name. | Each named profile is resolved at `profiles/<slug>/` (case-insensitive, de-duplicated) and archived; the in-memory shell resets ONLY if the active profile is in the list; an unknown name errors with no dialog (all-or-nothing). | CR-NR-083 (AUTOMATED: `reset_bare::tests::resolve_named_*`, `reset_bare_unknown_named_profile_errors_without_dialog`) | [ ] |
+| 9.3 | `RESET BARE ALL`. | The confirmation dialog enumerates every profile (default base + each `profiles/<slug>/`); on confirm all are archived+reset. | CR-NR-083 (AUTOMATED: `reset_bare::tests::resolve_all_*`, `enumerate_profiles_under`) | [ ] |
 
 ---
 
