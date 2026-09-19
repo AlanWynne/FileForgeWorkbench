@@ -12,10 +12,10 @@ use super::MenuWorkspaceState;
 /// calendar is omitted for the frame (menu-workspace Req 16.3, CR-CH-026, B060).
 pub(crate) const CALENDAR_MIN_WIDTH: f32 = 180.0;
 
-/// Minimum readable width (px) reserved for the option list before the calendar
-/// may claim room. Guarantees the option columns are never squeezed below
-/// legibility when the calendar is shown (Req 16.6).
-pub(crate) const OPTION_LIST_MIN_WIDTH: f32 = 260.0;
+// CR-CH-032 removed the fixed OPTION_LIST_MIN_WIDTH reserve: the option-list
+// width is now driven by the descriptions' natural one-line width
+// (`natural_option_list_width`), not a hard minimum. The calendar-fit decision
+// (Tier 1) uses that natural width instead of a constant floor.
 
 /// Horizontal gap (px) between the option list and the calendar column.
 pub(crate) const CALENDAR_GAP: f32 = 32.0;
@@ -149,6 +149,71 @@ fn option_prefix_job(
     job
 }
 
+/// The prefix TEXT (key + gutter + command + gutter) for one option, matching
+/// exactly what `option_prefix_job` paints. Kept separate so the natural-width
+/// measurement lays out the same string the renderer draws.
+fn option_prefix_text(option: &super::MenuOption, cmd_width: usize) -> String {
+    format!(
+        "{:<4}  {:<width$}  ",
+        option.key,
+        option.command,
+        width = cmd_width,
+    )
+}
+
+/// Reduce per-row natural widths to the option list's Natural_Option_Width: the
+/// widest row (prefix + single-line description) plus a scrollbar allowance so
+/// the calendar-fit decision leaves room for the option-list vertical scrollbar
+/// when one is shown. Pure and deterministic (no `Ui`), so it is unit-testable.
+///
+/// `row_widths` yields each row's full single-line width in px (prefix galley
+/// width + description galley width). Empty -> just the scrollbar allowance.
+///
+/// Validates: menu-workspace Requirement 16.7 (CR-CH-032)
+fn natural_width_from_rows(
+    row_widths: impl IntoIterator<Item = f32>,
+    scrollbar_allowance: f32,
+) -> f32 {
+    let widest = row_widths
+        .into_iter()
+        .fold(0.0_f32, |acc, w| if w > acc { w } else { acc });
+    widest + scrollbar_allowance
+}
+
+/// Compute the option list's Natural_Option_Width in px: the width needed to
+/// render the WIDEST option row (fixed key+command prefix + its single-line
+/// description) with NO wrapping, plus an allowance for the option-list vertical
+/// scrollbar. Uncapped -- a very long description simply increases it (which may
+/// drop the layout to Tier 2/3; menu-workspace Req 16.7, 16.8).
+///
+/// Measures against the live `ui` fonts so the result matches what the renderer
+/// paints (the prefix and description both use `option_font()`).
+///
+/// Validates: menu-workspace Requirement 16.7 (CR-CH-032)
+fn natural_option_list_width(
+    options: &[super::MenuOption],
+    cmd_width: usize,
+    ui: &egui::Ui,
+) -> f32 {
+    let font = option_font();
+    let measure = |text: &str| -> f32 {
+        // Lay the text out with no wrap and read the galley's width.
+        ui.fonts(|f| {
+            let galley = f.layout_no_wrap(text.to_string(), font.clone(), egui::Color32::WHITE);
+            galley.size().x
+        })
+    };
+    let row_widths = options.iter().map(|o| {
+        let prefix_w = measure(&option_prefix_text(o, cmd_width));
+        let desc_w = measure(&o.description);
+        prefix_w + desc_w
+    });
+    // Scrollbar allowance: the theme's scrollbar width plus a small pad, so the
+    // Tier-1 calendar fit accounts for a scrollbar appearing on the option list.
+    let scrollbar_allowance = ui.spacing().scroll.bar_width + 4.0;
+    natural_width_from_rows(row_widths, scrollbar_allowance)
+}
+
 /// Render a Menu_Workspace: a centred Menu_Title, a three-column option list
 /// (key | command | description) on the left, and -- when the menu's
 /// `show_calendar` is true -- the live calendar on the right, laid out like the
@@ -212,23 +277,35 @@ pub fn render_menu_workspace(
     // is hidden (CR-CH-023; menu-workspace Req 15.6).
     let mut last_enabled_option_id: Option<egui::Id> = None;
 
-    // CR-CH-026 (B060): decide whether the calendar can be DISPLAYED this frame.
-    // The calendar is laid out in a reserved column to the RIGHT of the option
-    // list; if there is not enough horizontal room for both the option list (at
-    // a readable minimum) and the calendar, the calendar is OMITTED for this
-    // frame (Req 16.3) so it is never drawn off the visible edge. When omitted,
-    // its `<`/`>` ids are not reported (Req 16.4). This is computed from the
-    // current frame's available width only -- no persisted state.
+    // CR-CH-032: description-driven layout. Decide the Layout_Tier from the
+    // available width and the descriptions' NATURAL one-line width, replacing
+    // the fixed-minimum-constant fit rule of CR-CH-026 (Req 16.3/16.6). This is
+    // computed from the current frame's available width only -- no persisted
+    // state (Req 16.11).
+    //
+    //   Tier 1 (Req 16.8): show_calendar AND natural + GAP + CALENDAR_MIN fits
+    //           -> calendar shown; option column sized to `natural` so leftover
+    //              width trails as blank space to the RIGHT of the calendar
+    //              (calendar NOT pinned to the window edge).
+    //   Tier 2: else if natural fits -> calendar hidden; option column = full
+    //              width; descriptions stay on one line.
+    //   Tier 3: else -> calendar hidden; option column = full width; the
+    //              description Label wraps (Req 16.10 fallback) as a last resort.
+    //
+    // The calendar is thus hidden BEFORE any description wraps (Req 16.9): Tier 1
+    // is the only calendar-showing tier and it requires the full one-line width.
     let available_w = ui.available_width();
-    let display_calendar = menu.show_calendar
-        && available_w >= OPTION_LIST_MIN_WIDTH + CALENDAR_GAP + CALENDAR_MIN_WIDTH;
-    // When the calendar will be displayed, constrain the option list to the
-    // remaining width so it cannot push the calendar off-screen (Req 16.6);
-    // otherwise the option list may use the full width.
-    let option_list_max_w = if display_calendar {
-        (available_w - CALENDAR_GAP - CALENDAR_MIN_WIDTH).max(OPTION_LIST_MIN_WIDTH)
+    let natural_w = natural_option_list_width(&menu.options, cmd_width, ui);
+    let display_calendar =
+        menu.show_calendar && natural_w + CALENDAR_GAP + CALENDAR_MIN_WIDTH <= available_w;
+    // The option column's DEFINITE width (Req 16.8): the natural width in Tier 1
+    // (so the calendar sits just to its right, blank space trailing), the full
+    // available width otherwise (Tiers 2/3). Clamped to available_w so the
+    // column never exceeds the panel.
+    let option_col_w = if display_calendar {
+        natural_w.min(available_w)
     } else {
-        f32::INFINITY
+        available_w
     };
 
     ui.horizontal_top(|ui| {
@@ -236,14 +313,15 @@ pub fn render_menu_workspace(
         ui.vertical(|ui| {
             egui::ScrollArea::vertical()
                 .id_salt("menu_workspace_options")
-                .max_width(option_list_max_w)
+                .max_width(option_col_w)
                 .show(ui, |ui| {
-                    // Constrain the inner content so option rows wrap/scroll
-                    // within the reserved option column rather than expanding to
-                    // claim the calendar's space (Req 16.6, B060).
-                    if option_list_max_w.is_finite() {
-                        ui.set_max_width(option_list_max_w);
-                    }
+                    // Give the option list a DEFINITE width (Req 16.8): in Tier 1
+                    // this is the natural one-line width so descriptions do not
+                    // wrap and the calendar sits just to the right; in Tiers 2/3
+                    // it is the full available width (Tier 3 lets the description
+                    // Label wrap as the last-resort fallback, Req 16.10).
+                    ui.set_width(option_col_w);
+                    ui.set_max_width(option_col_w);
                     if menu.options.is_empty() {
                         // Req 2.6 -- empty options placeholder
                         ui.label("No options defined in this menu.");
@@ -625,6 +703,49 @@ mod tests {
         assert_eq!(a.text.chars().count(), b.text.chars().count());
     }
 
+    // === CR-CH-032: description-driven layout natural width (Req 16.7) =====
+
+    // Validates: menu-workspace Requirement 16.7 -- the prefix TEXT used for the
+    // natural-width measurement matches the painted prefix job (key(4) + gutter +
+    // command(cmd_width) + gutter), so measuring it reproduces the drawn layout.
+    #[test]
+    fn option_prefix_text_matches_prefix_job_text() {
+        let o = opt("1", "FILES", "Browse the catalog");
+        let w = command_column_width(&[o.clone()]);
+        let job = option_prefix_job(&o, w, egui::Color32::WHITE, egui::Color32::WHITE);
+        assert_eq!(option_prefix_text(&o, w), job.text);
+    }
+
+    // Validates: menu-workspace Requirement 16.7 -- Natural_Option_Width is the
+    // WIDEST row plus the scrollbar allowance.
+    #[test]
+    fn natural_width_is_widest_row_plus_scrollbar() {
+        // Rows of widths 100, 250, 180 -> widest 250 + allowance 12 = 262.
+        let w = natural_width_from_rows([100.0_f32, 250.0, 180.0], 12.0);
+        assert_eq!(w, 262.0);
+    }
+
+    // Validates: menu-workspace Requirement 16.7 -- a longer single-line
+    // description increases the natural width (uncapped).
+    #[test]
+    fn natural_width_grows_with_longer_description() {
+        let short = natural_width_from_rows([120.0_f32], 10.0);
+        let long = natural_width_from_rows([120.0_f32, 400.0], 10.0);
+        assert!(
+            long > short,
+            "a wider row must increase the natural width (uncapped): {long} !> {short}"
+        );
+        assert_eq!(long, 410.0);
+    }
+
+    // Validates: menu-workspace Requirement 16.7 -- empty option list yields just
+    // the scrollbar allowance (no rows to measure).
+    #[test]
+    fn natural_width_empty_is_scrollbar_allowance_only() {
+        let w = natural_width_from_rows(std::iter::empty(), 15.0);
+        assert_eq!(w, 15.0);
+    }
+
     // === CR-CH-023: menu-workspace interior tab order (Req 15) =============
 
     fn tab_opt(key: &str, enabled: bool) -> MenuOption {
@@ -858,5 +979,117 @@ mod tests {
                 "narrow menu's reported last interior {rect:?} must be within the clip {clip:?} (no off-screen stop)"
             );
         }
+    }
+
+    // === CR-CH-032: description-driven layout tiers (Req 16.7-16.11) =======
+
+    /// One calendar-ON menu with a SINGLE long-description option, rendered at
+    /// `panel_w`. Returns:
+    /// - `calendar_shown`: true when the reported last interior is NOT the option
+    ///   row (i.e. the calendar `>` button is the last interior -> calendar shown).
+    /// - `option_row_rect`: the first (only) enabled option row's on-screen rect
+    ///   (its width is the option-column width; its height reveals wrapping: one
+    ///   text line vs two+).
+    /// - `single_line_h`: the height of one text line of the same font, as a wrap
+    ///   threshold.
+    fn render_desc_tier_at_width(panel_w: f32) -> (bool, Option<egui::Rect>, f32, f32) {
+        use egui_kittest::Harness;
+        use std::cell::Cell;
+        use std::rc::Rc;
+        let shown = Rc::new(Cell::new(false));
+        let row_rect = Rc::new(Cell::new(None));
+        let line_h = Rc::new(Cell::new(0.0_f32));
+        // Total height the render laid out (grows when the description wraps).
+        let content_h = Rc::new(Cell::new(0.0_f32));
+        let shown_c = Rc::clone(&shown);
+        let row_rect_c = Rc::clone(&row_rect);
+        let line_h_c = Rc::clone(&line_h);
+        let content_h_c = Rc::clone(&content_h);
+        // A single option whose description is long enough that at a narrow width
+        // it MUST wrap, but at a wide width fits on one line. Calendar ON.
+        let mut state = make_state_with_options(vec![opt(
+            "1",
+            "FILES",
+            "Browse the virtual catalog and open datasets for view or edit here",
+        )]);
+        let mut harness = Harness::builder()
+            .with_size(egui::Vec2::new(panel_w, 800.0))
+            .build_ui(move |ui| {
+                // One text-line height for the option font, as the wrap threshold.
+                let lh = ui.fonts(|f| f.row_height(&option_font()));
+                line_h_c.set(lh);
+                let r = render_menu_workspace(&mut state, ui, 0, MenuColours::default());
+                // Calendar shown iff the reported last interior differs from the
+                // reported first interior (the single option row): when shown the
+                // last interior is the calendar `>` button, not the option.
+                let first = r.first_interior_id;
+                let last = r.last_interior_id;
+                shown_c.set(first.is_some() && last.is_some() && first != last);
+                if let Some(id) = first {
+                    if let Some(resp) = ui.ctx().read_response(id) {
+                        row_rect_c.set(Some(resp.rect));
+                    }
+                }
+                // Total laid-out height of everything the render added this frame
+                // -- reveals wrapping (a wrapped description makes the option area
+                // taller) without needing the description Label's private id.
+                content_h_c.set(ui.min_rect().height());
+            });
+        harness.run();
+        (shown.get(), row_rect.get(), line_h.get(), content_h.get())
+    }
+
+    // Validates: menu-workspace Req 16.8 (Tier 1) -- a WIDE window shows the
+    // calendar AND keeps the description on one line (the option row is a single
+    // text line high). The calendar sits to the right; the option column is at
+    // its natural width, so it does not span the whole (wide) panel.
+    #[test]
+    fn menu_wide_shows_calendar_and_one_line_descriptions() {
+        let (calendar_shown, row_rect, _line_h, _content_h) = render_desc_tier_at_width(1200.0);
+        assert!(
+            calendar_shown,
+            "Tier 1: a wide calendar-on menu must SHOW the calendar"
+        );
+        let rect = row_rect.expect("the option row must have an on-screen rect");
+        assert!(
+            rect.width() < 1100.0,
+            "Tier 1: the option column is at its natural width, not the full wide panel (width {})",
+            rect.width()
+        );
+    }
+
+    // Validates: menu-workspace Req 16.8 (Tier 2), 16.9 -- a MEDIUM window (fits
+    // the one-line descriptions but NOT alongside the calendar) HIDES the
+    // calendar and keeps the description on one line. Calendar hides BEFORE any
+    // wrap (16.9).
+    #[test]
+    fn menu_medium_hides_calendar_keeps_one_line() {
+        // Width chosen to sit between the natural one-line width and
+        // natural + gap + calendar-min: wide enough for one line, too narrow for
+        // the calendar too.
+        let (calendar_shown, _row_rect, _line_h, _content_h) = render_desc_tier_at_width(640.0);
+        assert!(
+            !calendar_shown,
+            "Tier 2: the calendar must be HIDDEN when it cannot fit alongside one-line descriptions"
+        );
+    }
+
+    // Validates: menu-workspace Req 16.8 (Tier 3), 16.9, 16.10 -- a NARROW window
+    // (too narrow even without the calendar) HIDES the calendar and lets the
+    // description WRAP to further lines (the last-resort fallback). The narrow
+    // render lays out MORE total height than the medium (one-line, calendar also
+    // hidden) render -- both have no calendar, so the extra height is the wrap.
+    #[test]
+    fn menu_narrow_hides_calendar_and_wraps() {
+        let (medium_shown, _r1, _l1, medium_h) = render_desc_tier_at_width(640.0);
+        let (narrow_shown, _r2, _l2, narrow_h) = render_desc_tier_at_width(220.0);
+        assert!(
+            !medium_shown && !narrow_shown,
+            "both the medium and narrow renders hide the calendar (Tier 2/3)"
+        );
+        assert!(
+            narrow_h > medium_h,
+            "Tier 3: the long description must WRAP (narrow content height {narrow_h} > medium one-line height {medium_h})"
+        );
     }
 }

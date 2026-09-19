@@ -597,3 +597,41 @@ Slice 3 -- per-named-workspace menu-bar/keymap -- gated later.)
           Context. verify.ps1 CLEAN (FULL, nextest); rebuild ffwb.exe; update TCR
           Req 18; update project-master.
     - Covers: menu-workspace Requirement 18 (all criteria; behaviour preserved)
+
+## Phase (menu-desc-layout) -- description-driven menu layout (CR-CH-032, Req 16.7-16.11)
+
+Behaviour change to the Menu_Workspace horizontal layout: the calendar's
+visibility and the option-column width follow the descriptions' natural one-line
+width. Calendar hides BEFORE descriptions wrap. Replaces the fixed-minimum fit
+rule of CR-CH-026 (Req 16.3/16.6). No API change; the calendar renderer and the
+B065 row-render are unchanged.
+
+- [x] 35. Description-driven menu layout (3-tier ladder)
+  - [x] 35.1 Add the pure `natural_option_list_width` helper in
+          `menu_workspace/render.rs` (widest key+command prefix + widest
+          single-line description, no wrap, + scrollbar allowance; uncapped).
+          Failing unit tests first.
+    - Validates: menu-workspace Requirement 16.7
+    - Note: split into a pure `natural_width_from_rows` (unit-testable, no `Ui`)
+      + `natural_option_list_width` (measures galleys against the live fonts).
+  - [x] 35.2 Replace the `display_calendar`/`option_list_max_w` decision in
+          `render_menu_workspace` with the 3-tier ladder: Tier 1 (calendar +
+          one-line, option column = natural width, trailing blank space to the
+          right of the calendar); Tier 2 (calendar hidden, option column = full
+          width, one line); Tier 3 (calendar hidden, full width, descriptions
+          wrap). Apply the option-column width as a DEFINITE width.
+    - Validates: menu-workspace Requirement 16.8, 16.9, 16.11
+    - Note: option column now uses `set_width` + `set_max_width` (definite
+      width); removed the unused `OPTION_LIST_MIN_WIDTH` const.
+  - [x] 35.3 Keep the description `.wrap()` as the tier-3 fallback (no wrap-mode
+          flag); confirm the focus contract (last interior = `>` when shown, else
+          last option) still keys off the tier-derived `display_calendar`.
+    - Validates: menu-workspace Requirement 16.10; Requirement 15.5, 15.6
+  - [x] 35.4 Add egui_kittest harness tests for the three tiers (wide = calendar
+          shown + option-column rect approx natural width + trailing space;
+          medium = calendar hidden + full width + no wrap; narrow = calendar
+          hidden + wrapped). Confirm existing B060 calendar tests + POM/menu
+          focus tests still pass. verify.ps1 CLEAN (FULL, nextest); rebuild
+          ffwb.exe; update TCR Req 16.7-16.11; update project-master; core
+          acceptance test-plan 2.2b/2.2d.
+    - Covers: menu-workspace Requirement 16.7-16.11 (behaviour-driven layout)

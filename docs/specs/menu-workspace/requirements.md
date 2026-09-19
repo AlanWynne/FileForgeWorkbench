@@ -862,10 +862,12 @@ regardless of panel width, falling outside the clip rect at narrow widths.
    POM, Settings, and any custom menu alike.
 
 3. WHEN a menu has `show_calendar = true` BUT the Menu_Workspace is too narrow
-   to fit the calendar alongside the option list (below a defined minimum), THE
-   renderer SHALL OMIT the calendar for that frame (rather than draw it clipped
-   or off-screen) and SHALL restore it on a later frame once there is room
-   (based solely on the current frame's available width, no persisted state).
+   to fit the calendar alongside the option list (below the description-driven
+   threshold of criterion 16.8, REVISED by CR-CH-032 -- formerly a fixed minimum
+   constant), THE renderer SHALL OMIT the calendar for that frame (rather than
+   draw it clipped or off-screen) and SHALL restore it on a later frame once
+   there is room (based solely on the current frame's available width, no
+   persisted state).
 
 4. WHEN the calendar is omitted for either reason in criterion 3 OR because
    `show_calendar = false`, THE renderer SHALL NOT include the calendar `<`/`>`
@@ -883,6 +885,65 @@ regardless of panel width, falling outside the clip rect at narrow widths.
    option list SHALL retain at least its readable natural width (or a scroll
    region) and the calendar SHALL occupy a reserved column to its right within
    the visible area.
+
+#### Description-driven layout (CR-CH-032)
+
+The following criteria REVISE how the calendar-fit decision and the option-column
+width are computed. They REPLACE the fixed-minimum-constant rule that criteria
+16.3 and 16.6 originally relied on (a constant `OPTION_LIST_MIN_WIDTH` reserve)
+with a decision DRIVEN BY the descriptions' natural one-line width. Criteria 16.1,
+16.2, 16.4, 16.5 (calendar default off; on-screen when shown; no phantom Tab
+stops when omitted; last Interior_Control is the `>` button) are UNCHANGED and
+continue to hold under the new decision.
+
+**Glossary additions:**
+- **Natural_Option_Width** -- the width (px) the option list needs to render its
+  WIDEST row entirely on ONE line: the fixed key+command prefix (Requirement
+  2.1a) plus the widest single-line description, measured with no wrapping, plus
+  an allowance for the option-list vertical scrollbar when one may be shown.
+- **Layout_Tier** -- the per-frame layout choice among Tier 1 (one-line
+  descriptions + calendar), Tier 2 (one-line descriptions, calendar hidden), and
+  Tier 3 (wrapped descriptions, calendar hidden), selected by criteria 16.8.
+
+7. THE renderer SHALL compute the Natural_Option_Width each frame from the menu's
+   options (widest key+command prefix + widest single-line description + the
+   option-list scrollbar allowance). The Natural_Option_Width SHALL be UNCAPPED
+   (a very long single description simply increases it; there is no maximum after
+   which a description is forced to wrap while width is still available).
+
+8. THE renderer SHALL select the Layout_Tier for the frame from the available
+   width `W`, the Natural_Option_Width `N`, the calendar gap `G`, the calendar
+   minimum width `C`, and `show_calendar`, in this PRIORITY ORDER:
+   - **Tier 1** WHEN `show_calendar` is true AND `N + G + C <= W`: show the
+     calendar; size the option column to `N`; lay the calendar immediately to
+     the right of the option column; any remaining width (`W - N - G -
+     calendar_width`) is left as blank space to the RIGHT of the calendar (the
+     calendar is NOT pinned to the right window edge).
+   - **Tier 2** OTHERWISE WHEN `N <= W`: HIDE the calendar and give the option
+     column the FULL available width `W`; descriptions remain on one line.
+   - **Tier 3** OTHERWISE (`N > W`, even with the calendar hidden): hide the
+     calendar, give the option column the full available width `W`, and allow
+     descriptions to WRAP to further lines.
+
+9. THE calendar-hide-before-description-wrap ordering of criterion 16.8 SHALL be
+   strict: descriptions SHALL NOT wrap while the calendar is still shown. That
+   is, the renderer SHALL never be in a state where the calendar is displayed AND
+   any description is wrapped -- hiding the calendar (Tier 2) always precedes
+   wrapping (Tier 3).
+
+10. IN Tiers 1 and 2 THE option column SHALL be allocated at least the
+    Natural_Option_Width, so no description wraps. The description control SHALL
+    RETAIN its wrapping capability (Requirement 2.1a, B065) as a fault-tolerant
+    fallback: "descriptions do not wrap in Tiers 1 and 2" is a CONSEQUENCE of the
+    width allocation, NOT a hard non-wrapping mode -- a width mis-measurement
+    SHALL degrade gracefully into a wrap rather than clip or overflow text off
+    the visible edge.
+
+11. THE Layout_Tier SHALL be recomputed each frame from the current available
+    width only (no persisted state), so widening or narrowing the window moves
+    between tiers reactively (e.g. narrowing crosses Tier 1 -> Tier 2 -> Tier 3;
+    widening reverses it), consistent with the no-persisted-state rule of
+    criterion 16.3.
 
 ---
 

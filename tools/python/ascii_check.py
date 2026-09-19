@@ -14,7 +14,7 @@ FILES = [
     r"docs\quality\TCR.md",
     r"docs\project-management\project-master\tasks.md",
 ]
-ALLOWED = set(range(0x00, 0x80)) | set(range(0x2500, 0x2580)) | {0x2705, 0x274C, 0x2B1C, 0x1F534}
+ALLOWED = set(range(0x00, 0x80)) | set(range(0x2500, 0x2580)) | {0x2705, 0x274C, 0x2B1C, 0x1F534, 0x1F532}
 BASE = r"C:\workspace\VSC\FileForgeWorkbench"
 
 

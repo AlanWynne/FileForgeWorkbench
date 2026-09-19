@@ -1211,6 +1211,96 @@ widths).
 
 ---
 
+## Design Delta: Description-driven Menu Layout (Requirement 16.7-16.11, CR-CH-032)
+
+Design delta to the CR-CH-026 delta above and Section 6 (Rendering). It REPLACES
+the fixed-minimum-constant fit rule (`OPTION_LIST_MIN_WIDTH + GAP +
+CALENDAR_MIN_WIDTH`) with a decision driven by the descriptions' natural one-line
+width.
+
+### Root cause of the current behaviour
+
+`render_menu_workspace` currently computes:
+```
+display_calendar   = show_calendar && available_w >= OPTION_LIST_MIN_WIDTH + GAP + CALENDAR_MIN_WIDTH
+option_list_max_w  = display_calendar ? (available_w - GAP - CALENDAR_MIN_WIDTH).max(OPTION_LIST_MIN_WIDTH) : INFINITY
+```
+The option `ScrollArea` uses `.max_width(option_list_max_w)` / `set_max_width`, a
+MAX not a fixed width, so it shrinks to content when descriptions are short --
+the calendar then follows the shrunk column, leaving blank space to its right.
+And when descriptions are long the fixed cap wraps them EVEN when hiding the
+calendar would have freed enough width to keep them on one line. Neither matches
+the owner's intent.
+
+### DM.C1 Natural width measurement (new pure helper)
+
+Add `natural_option_list_width(options: &[MenuOption], cmd_width: usize, fonts:
+&egui::text::Fonts) -> f32`: for each option lay out the prefix (`option_prefix_job`
+text) and the description as NON-WRAPPING galleys in `option_font()`, take the max
+row width (prefix galley width + description galley width), and add a scrollbar
+allowance (`ui.spacing().scroll.bar_width` + a small pad). Uncapped
+(Requirement 16.7). It reuses the existing `option_prefix_job` / `command_column_width`
+so the measured prefix matches what is painted. A thin pure variant that takes the
+per-row measured widths is unit-testable without a live `Ui` (the monospace metric
+is deterministic under the test fonts).
+
+### DM.C2 Three-tier decision (replaces display_calendar/option_list_max_w)
+
+Compute once per frame from `available_w` = `ui.available_width()`, `N` =
+Natural_Option_Width, `G` = `CALENDAR_GAP`, `C` = `CALENDAR_MIN_WIDTH`:
+```
+Tier 1 (calendar + one-line):  show_calendar && N + G + C <= available_w
+    -> display_calendar = true;  option_col_w = N
+Tier 2 (one-line, no calendar): else if N <= available_w
+    -> display_calendar = false; option_col_w = available_w
+Tier 3 (wrapped, no calendar):  else
+    -> display_calendar = false; option_col_w = available_w   (descriptions wrap)
+```
+`option_col_w` is applied to the option column as a DEFINITE width (`ui.set_width`
+/ `ScrollArea::max_width(option_col_w)` combined with an inner `set_width`) so:
+- in Tier 1 the column is exactly `N` (leftover width trails as blank space to the
+  RIGHT of the calendar -- the calendar is NOT pinned to the window edge,
+  Requirement 16.8 Tier 1);
+- in Tiers 2/3 the column is the full width.
+
+The calendar block is UNCHANGED (`add_space(GAP)` + `render_calendar(...)`), still
+gated on `display_calendar`; the focus-contract branch (`last_interior_id` = `>`
+id when shown, else last option) is UNCHANGED and now simply keys off the
+tier-derived `display_calendar` (Requirement 16.4, 16.5 preserved).
+
+### DM.C3 Wrap stays a fallback (Requirement 16.10)
+
+The row-render is UNCHANGED (B065: prefix Button + `Label::new(...).wrap()`). No
+wrap-mode flag is introduced. Because Tiers 1/2 give the column `>= N`, the
+`.wrap()` never fires there; in Tier 3 it fires naturally. A mis-measurement
+degrades into a wrap rather than clipping (fault tolerance).
+
+### DM.C4 Ordering invariant (Requirement 16.9)
+
+Because Tier 1 is the ONLY tier that shows the calendar and it requires the FULL
+one-line width `N` to also fit, the renderer can never be in "calendar shown AND
+a description wrapped": hiding (Tier 2) always precedes wrapping (Tier 3).
+
+### Tests (egui_kittest + pure, per testing.md)
+
+- `natural_option_list_width_*` (pure): widest row drives the width; longer
+  descriptions increase it; scrollbar allowance included.
+- `menu_wide_shows_calendar_and_one_line_descriptions` (harness, wide size): a
+  calendar-on menu with a long description reports the `>` id (calendar shown) AND
+  the option-column rect width is approximately `N` (< available), leaving trailing
+  space (Tier 1).
+- `menu_medium_hides_calendar_keeps_one_line` (harness, width between `N` and
+  `N+G+C`): calendar omitted (no `>` id), option column spans full width, no wrap
+  (Tier 2).
+- `menu_narrow_hides_calendar_and_wraps` (harness, width `< N`): calendar omitted,
+  descriptions wrap (Tier 3). Assert calendar-hidden before wrap via the tier
+  crossing (no frame shows calendar + a wrapped row).
+- Existing B060 tests (`menu_calendar_shown_when_wide_next_button_is_on_screen`,
+  `menu_calendar_omitted_when_too_narrow_no_calendar_tab_stops`) continue to hold
+  under the new decision (retargeted widths if needed).
+
+---
+
 ## Design Delta: Configurable Named Menu Bars (Requirement 17, CR-NR-080)
 
 The menu bar becomes a Menu_File rendered horizontally. The menu MODEL and

@@ -2483,3 +2483,30 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[x]` Phase (workspace-unify) COMPLETE | CR-NR-082 Slice 1: unified POM into one Menu Workspace kind -- DONE: removed `TabKind::PrimaryOptionMenu`; Home Context = `MenuWorkspace` flagged `is_home` (menu `pom` + barebones `recovery_pom_menu()` fallback); collapsed the two render arms into one; title-line/keymap/nav-fallback/persistence key off `is_home`; Home persists as `Menu{name:"pom"}`; legacy `WorkspaceKind`/`PersistedTabKind` POM enums retained read-only (route to Home); POM tests retargeted + 6 new Slice 1 tests. Behaviour preserved. menu-workspace Req 18. verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. Slices 2-4 (named workspaces / per-workspace menu-bar+keymap / Profile store) are later gates. |
+
+## Phase (menu-desc-layout) -- description-driven menu layout (CR-CH-032, menu-workspace Req 16.7-16.11)
+
+> Owner: keep descriptions on one line when there is room; put the calendar to
+> the right with room for a scrollbar; extra width trails right of the calendar
+> (not pinned). Narrowing HIDES the calendar first, giving its width to the
+> descriptions; only when descriptions still do not fit do they wrap. The
+> description Label keeps `.wrap()` as a fault-tolerant fallback (no-wrap is a
+> consequence of correct width allocation, not a hard mode). Replaces the
+> fixed-minimum fit rule of CR-CH-026.
+
+- [x] MDL.width menu-workspace Task 35.1: pure `natural_option_list_width` helper
+      (widest prefix + widest one-line description + scrollbar allowance; uncapped).
+      Covers: menu-workspace Req 16.7.
+- [x] MDL.tiers menu-workspace Task 35.2-35.3: replace the calendar-fit decision
+      with the 3-tier ladder (Tier1 calendar+one-line+trailing space; Tier2
+      calendar hidden+one-line; Tier3 calendar hidden+wrap); definite option-column
+      width; wrap stays the tier-3 fallback; focus contract keys off the tier.
+      Covers: menu-workspace Req 16.8-16.11.
+- [x] MDL.test menu-workspace Task 35.4: 3-tier egui_kittest tests + existing B060
+      calendar/POM/focus tests pass; verify.ps1 CLEAN; ffwb.exe rebuilt; TCR
+      Req 16.7-16.11; core acceptance test-plan 2.2b/2.2d.
+      Covers: menu-workspace Req 16.7-16.11.
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (menu-desc-layout) COMPLETE | CR-CH-032: description-driven Menu_Workspace layout -- DONE: calendar visibility + option-column width follow the descriptions' natural one-line width (`natural_option_list_width`); 3-tier ladder (Tier1 calendar+one-line+trailing space; Tier2 calendar hidden+one-line; Tier3 calendar hidden+wrap); calendar hides BEFORE descriptions wrap; extra width trails right of the (unpinned) calendar; description `.wrap()` kept as the tier-3 fallback; removed the unused `OPTION_LIST_MIN_WIDTH` floor. Replaces the fixed-minimum fit rule of CR-CH-026. 4 pure + 3 harness tests; existing B060 calendar tests still pass. menu-workspace Req 16.7-16.11. verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. |
