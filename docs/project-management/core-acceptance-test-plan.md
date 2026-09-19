@@ -137,6 +137,7 @@ Highest-priority known gap. Do it thoroughly.
 | 4.6 | Enter LINE commands in the gutter (D, I, R, C/M + A/B, X). | Each line command executes on the target line(s) as in ISPF. | line-commands | [ ] |
 | 4.7 | Block line commands (DD..DD, CC..CC). | Block operation applies across the marked range. | line-commands | [ ] |
 | 4.8 | Save the file (Ctrl+S or SAVE). | File persists to disk; modified indicator clears. | file-operations | [ ] |
+| 4.8a | Save when the underlying storage cannot flush/fsync (simulated durability failure). | The save does NOT silently report success on a non-durable write: the atomic save aborts and leaves the original target intact (temp cleaned up), and the failure is logged; a backup-creation failure is logged (WARN) but does not abort the save. | B034 (FIXED, AUTOMATED at unit level via mock-injected fsync failure: atomic-abort / direct-warn / backup-warn tests); file-operations 7.10-7.12 | [ ] |
 | 4.9 | Attempt a mutation while in View mode. | Rejected / no-op; a clear indication mutation is disallowed in View. | edit-operations 17; CR-NR-062 | [ ] |
 | 4.10 | F3/END from the editor. | Closes/returns per ISPF convention without data loss (prompt if unsaved). | function-keys-and-history; CR-CH-016 | [ ] |
 

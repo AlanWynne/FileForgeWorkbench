@@ -2537,3 +2537,21 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[x]` Phase (command-line-outcome) Slices 1-2 COMPLETE | CR-CH-033 (re-scoped): `Command_Line_Outcome` -- DONE (Slices 1-2): the command decides what returns to the `Command ===>` field via a returned `Clear`/`Restore`/`Set`/`Leave` (serialisable `{action,text?}`), applied on both Enter and key-forward paths; default clear-on-success / restore-on-error (covers unresolved typo + failed command). RETRIEVE=`Set`; fixes `1` remaining after `1`+F9. Slice 2 data-shape contract + round-trip tests documented as the public boundary. Slice 3+ (Lua/REXX/External bridges, CLO.bridges) PENDING per engine (Lua/External deferred Req 12; no REXX yet). command-framework Req 13 + Req 9.9 revised. verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. |
+
+## Phase (bug-sweep) -- outstanding-bug fix sweep (waves)
+
+> Owner: prioritise and fix all outstanding bugs with proper test cases captured
+> for each. Wave 0 (verify/close B054/B064/B062) DONE. Wave 1 = B034 (Critical
+> durability). Later waves: B035-B038 (logging family), B050, B044, B046, B045.
+
+- [x] BS.durability B034 / CR-NR-085 (Wave 1): `ff-file-ops` save path surfaces
+      durability failures -- AtomicWriteStrategy aborts+cleans-up on temp
+      flush/fsync failure (no rename), Direct/DeleteFirst log WARN on fsync
+      failure, backup-failure logs WARN (Req 7.5) instead of `let _ = e`.
+      file-operations Req 7.10-7.12. Mock-injected-failure unit tests.
+      Covers: file-operations Req 7.10, 7.11, 7.12.
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (bug-sweep) Wave 0 COMPLETE | B054 (menus-editor fields typable -- stale status + regression test), B064 (RESET BARE per-profile + ALL via CR-NR-083), B062 (command-arg case preserved via verb_arg -- stale deferred note). Test-plan rows 2.12, 5.7, Group 9. |
+| `[x]` Phase (bug-sweep) Wave 1 COMPLETE | B034 / CR-NR-085: save-durability failures surface -- DONE: AtomicWriteStrategy aborts+cleans temp on flush/fsync failure (no rename, logs); Direct/DeleteFirst log WARN (best-effort); backup-failure logs WARN (Req 7.5). file-operations Req 7.10-7.12. 5 mock-injected-failure tests (atomic aborts RED-then-green). verify.ps1 CLEAN FULL nextest. |

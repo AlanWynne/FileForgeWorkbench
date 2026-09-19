@@ -28,11 +28,18 @@ enum FailOn {
     Write,
     Rename,
     Delete,
+    /// Fail `VfsFile::flush()` (B034 durability-failure injection).
+    Flush,
+    /// Fail `VfsFile::sync_all()` / fsync (B034 durability-failure injection).
+    Fsync,
 }
 
 struct MockVfsFile {
     path: String,
     files: Arc<Mutex<HashMap<String, Vec<u8>>>>,
+    /// Shared with the provider so a `FailOn::Flush`/`Fsync` set on the provider
+    /// makes this open handle's flush/sync_all fail (B034 durability injection).
+    fail_on: Arc<Mutex<Option<FailOn>>>,
 }
 
 #[async_trait]
@@ -55,10 +62,24 @@ impl VfsFile for MockVfsFile {
     }
 
     async fn flush(&mut self) -> Result<(), VfsError> {
+        if let Some(FailOn::Flush) = &*self.fail_on.lock().unwrap() {
+            return Err(VfsError::Io {
+                uri: self.path.clone(),
+                operation: "flush".to_string(),
+                source: std::io::Error::new(std::io::ErrorKind::Other, "simulated flush failure"),
+            });
+        }
         Ok(())
     }
 
     async fn sync_all(&mut self) -> Result<(), VfsError> {
+        if let Some(FailOn::Fsync) = &*self.fail_on.lock().unwrap() {
+            return Err(VfsError::Io {
+                uri: self.path.clone(),
+                operation: "sync_all".to_string(),
+                source: std::io::Error::new(std::io::ErrorKind::Other, "simulated fsync failure"),
+            });
+        }
         Ok(())
     }
 
@@ -115,6 +136,7 @@ impl VfsProvider for MockVfsProvider {
         Ok(Box::new(MockVfsFile {
             path: path.to_string(),
             files: Arc::clone(&self.files),
+            fail_on: Arc::clone(&self.fail_on),
         }))
     }
 
@@ -510,4 +532,137 @@ async fn backup_write_failure_returns_backup_failed_error() {
     // Looking at the mock: read() only returns from files HashMap, doesn't check fail_on.
     // write() does check fail_on. So this test should work.
     assert!(result.is_err());
+}
+
+// === B034 / CR-NR-085: save-durability failures surface =====================
+
+// Validates: file-operations Requirement 7.10 -- when fsync (sync_all) of the
+// atomic temp file FAILS, the save aborts with an error, the temp file is
+// removed, and the target is NOT overwritten (a non-durable temp must never
+// replace the good target). This is the Critical B034 behaviour: previously the
+// fsync result was discarded (`let _ = file.sync_all()`) and the rename
+// proceeded regardless.
+#[tokio::test]
+async fn atomic_write_aborts_and_preserves_target_on_fsync_failure() {
+    let provider =
+        MockVfsProvider::new(VfsCapabilities::all()).with_file("/docs/file.txt", b"precious data");
+    let uri = ResourceUri::new("mock", "/docs/file.txt");
+    let strategy = AtomicWriteStrategy;
+
+    provider.set_fail_on(FailOn::Fsync);
+    let result = strategy.write(&provider, &uri, b"new content").await;
+
+    assert!(
+        result.is_err(),
+        "atomic write must return an error when fsync of the temp file fails"
+    );
+    // The original target is untouched -- the non-durable temp was NOT renamed over it.
+    assert_eq!(
+        provider.get_file("/docs/file.txt").as_deref(),
+        Some(&b"precious data"[..]),
+        "the good target must be preserved when fsync fails (no rename)"
+    );
+    // The temp file was cleaned up.
+    assert!(
+        !provider.file_exists("/docs/file.txt.tmp"),
+        "the non-durable temp file must be removed on fsync failure"
+    );
+}
+
+// Validates: file-operations Requirement 7.10 -- same abort behaviour when
+// flush() (not sync_all) fails on the atomic temp file.
+#[tokio::test]
+async fn atomic_write_aborts_and_preserves_target_on_flush_failure() {
+    let provider =
+        MockVfsProvider::new(VfsCapabilities::all()).with_file("/docs/file.txt", b"precious data");
+    let uri = ResourceUri::new("mock", "/docs/file.txt");
+    let strategy = AtomicWriteStrategy;
+
+    provider.set_fail_on(FailOn::Flush);
+    let result = strategy.write(&provider, &uri, b"new content").await;
+
+    assert!(
+        result.is_err(),
+        "atomic write must error when temp flush fails"
+    );
+    assert_eq!(
+        provider.get_file("/docs/file.txt").as_deref(),
+        Some(&b"precious data"[..]),
+        "the good target must be preserved when flush fails (no rename)"
+    );
+    assert!(!provider.file_exists("/docs/file.txt.tmp"));
+}
+
+// Validates: file-operations Requirement 7.10 -- a clean atomic write (no
+// injected failure) still succeeds and replaces the target (regression guard
+// that the durability checks did not break the happy path).
+#[tokio::test]
+async fn atomic_write_still_succeeds_when_fsync_ok() {
+    let provider = MockVfsProvider::new(VfsCapabilities::all()).with_file("/docs/file.txt", b"old");
+    let uri = ResourceUri::new("mock", "/docs/file.txt");
+    let strategy = AtomicWriteStrategy;
+
+    let result = strategy
+        .write(&provider, &uri, b"new durable content")
+        .await;
+    assert!(result.is_ok(), "a clean atomic write must still succeed");
+    assert_eq!(
+        provider.get_file("/docs/file.txt").as_deref(),
+        Some(&b"new durable content"[..]),
+        "the target must be updated on a successful durable write"
+    );
+    assert!(
+        !provider.file_exists("/docs/file.txt.tmp"),
+        "temp cleaned up"
+    );
+}
+
+// Validates: file-operations Requirement 7.11 -- the DIRECT strategy handles a
+// fsync failure of the written target gracefully (it does NOT panic and does
+// NOT lose the written content). The durability WARN emission itself needs a
+// running logging subsystem and is verified by code review / MANUAL; here we
+// prove the failure path is HANDLED (not swallowed into a crash) and the data
+// was written.
+#[tokio::test]
+async fn direct_write_handles_fsync_failure_without_panic() {
+    let provider = MockVfsProvider::new(VfsCapabilities::all());
+    let uri = ResourceUri::new("mock", "/docs/direct.txt");
+    let strategy = DirectWriteStrategy;
+
+    provider.set_fail_on(FailOn::Fsync);
+    let result = strategy.write(&provider, &uri, b"direct content").await;
+
+    // Non-atomic strategy: best-effort durability -- the write itself succeeded,
+    // so the content is present; the fsync failure is logged (WARN) not fatal.
+    assert!(
+        result.is_ok(),
+        "direct write remains best-effort on fsync failure (Req 7.11)"
+    );
+    assert_eq!(
+        provider.get_file("/docs/direct.txt").as_deref(),
+        Some(&b"direct content"[..]),
+        "direct write must not lose the written content"
+    );
+}
+
+// Validates: file-operations Requirement 7.11 -- the DELETE-FIRST strategy
+// likewise handles a fsync failure gracefully (best-effort durability).
+#[tokio::test]
+async fn delete_first_handles_fsync_failure_without_panic() {
+    let provider = MockVfsProvider::new(VfsCapabilities::all()).with_file("/docs/df.txt", b"old");
+    let uri = ResourceUri::new("mock", "/docs/df.txt");
+    let strategy = DeleteFirstStrategy;
+
+    provider.set_fail_on(FailOn::Fsync);
+    let result = strategy.write(&provider, &uri, b"df content").await;
+
+    assert!(
+        result.is_ok(),
+        "delete-first remains best-effort on fsync failure (Req 7.11)"
+    );
+    assert_eq!(
+        provider.get_file("/docs/df.txt").as_deref(),
+        Some(&b"df content"[..]),
+        "delete-first write must not lose the written content"
+    );
 }

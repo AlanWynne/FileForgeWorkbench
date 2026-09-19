@@ -59,13 +59,47 @@ impl PersistenceStrategy for AtomicWriteStrategy {
         let open_opts = ff_vfs::OpenOptions::read_write();
         match provider.open(&temp_path, open_opts).await {
             Ok(mut file) => {
-                // Step 3: Flush and fsync
-                let _ = file.flush().await;
-                let _ = file.sync_all().await;
-                let _ = file.close().await;
+                // Step 3: Flush and fsync. A flush/fsync FAILURE is FATAL for the
+                // atomic strategy (Req 7.10, B034): a non-durable temp must never
+                // be renamed over the good target. Abort, clean up the temp, and
+                // return an error rather than silently discarding the result.
+                if let Err(source) = file.flush().await {
+                    let _ = provider.delete(&temp_path, Default::default()).await;
+                    ff_logging::log_error!(
+                        "atomic save: flush of temp {temp_path} failed, aborting save (target preserved): {source}"
+                    );
+                    return Err(FileOpsError::VfsWriteError {
+                        operation: "atomic_write_flush".to_string(),
+                        uri: temp_uri.clone(),
+                        source,
+                    });
+                }
+                if let Err(source) = file.sync_all().await {
+                    let _ = provider.delete(&temp_path, Default::default()).await;
+                    ff_logging::log_error!(
+                        "atomic save: fsync of temp {temp_path} failed, aborting save (target preserved): {source}"
+                    );
+                    return Err(FileOpsError::VfsWriteError {
+                        operation: "atomic_write_fsync".to_string(),
+                        uri: temp_uri.clone(),
+                        source,
+                    });
+                }
+                // close() failure after a successful fsync is not fatal (data is
+                // already durable) but is logged rather than silently discarded.
+                if let Err(source) = file.close().await {
+                    ff_logging::log_warn!(
+                        "atomic save: close of temp {temp_path} failed after fsync (data already durable): {source}"
+                    );
+                }
             }
-            Err(_) => {
-                // If we can't open for fsync, continue anyway — data was written
+            Err(source) => {
+                // Cannot re-open for fsync: proceed with the rename (data was
+                // written) but log a WARN -- reduced crash-safety, consistent
+                // with Req 7.2 -- rather than silently continuing (Req 7.10).
+                ff_logging::log_warn!(
+                    "atomic save: could not re-open temp {temp_path} to fsync; proceeding with reduced crash-safety: {source}"
+                );
             }
         }
 
@@ -137,12 +171,24 @@ impl PersistenceStrategy for DeleteFirstStrategy {
                 source,
             })?;
 
-        // Step 3: Fsync
+        // Step 3: Fsync. Best-effort durability for this non-atomic strategy: a
+        // flush/fsync failure is logged WARN (Req 7.11, B034) rather than
+        // silently discarded, so a failed durability step is never invisible.
         let open_opts = ff_vfs::OpenOptions::read_write();
         if let Ok(mut file) = provider.open(&path, open_opts).await {
-            let _ = file.flush().await;
-            let _ = file.sync_all().await;
-            let _ = file.close().await;
+            if let Err(source) = file.flush().await {
+                ff_logging::log_warn!(
+                    "delete_first save: flush of {path} failed (reduced durability): {source}"
+                );
+            }
+            if let Err(source) = file.sync_all().await {
+                ff_logging::log_warn!(
+                    "delete_first save: fsync of {path} failed (reduced durability): {source}"
+                );
+            }
+            if let Err(source) = file.close().await {
+                ff_logging::log_warn!("delete_first save: close of {path} failed: {source}");
+            }
         }
 
         Ok(())
@@ -174,12 +220,24 @@ impl PersistenceStrategy for DirectWriteStrategy {
                 source,
             })?;
 
-        // Step 2: Fsync
+        // Step 2: Fsync. Best-effort durability for this non-atomic strategy: a
+        // flush/fsync failure is logged WARN (Req 7.11, B034) rather than
+        // silently discarded.
         let open_opts = ff_vfs::OpenOptions::read_write();
         if let Ok(mut file) = provider.open(&path, open_opts).await {
-            let _ = file.flush().await;
-            let _ = file.sync_all().await;
-            let _ = file.close().await;
+            if let Err(source) = file.flush().await {
+                ff_logging::log_warn!(
+                    "direct save: flush of {path} failed (reduced durability): {source}"
+                );
+            }
+            if let Err(source) = file.sync_all().await {
+                ff_logging::log_warn!(
+                    "direct save: fsync of {path} failed (reduced durability): {source}"
+                );
+            }
+            if let Err(source) = file.close().await {
+                ff_logging::log_warn!("direct save: close of {path} failed: {source}");
+            }
         }
 
         Ok(())

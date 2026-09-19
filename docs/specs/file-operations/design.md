@@ -676,6 +676,37 @@ pub struct DeleteFirstStrategy;
 pub struct DirectWriteStrategy;
 ```
 
+### Design Delta: Durability-failure handling (Requirement 7.10-7.12, CR-NR-085, B034)
+
+The three `PersistenceStrategy` impls currently discard the durability results
+with `let _ = file.flush()/.sync_all()/.close()`, and `save.rs` drops a failed
+backup with `let _ = e`. This delta makes those failures observable:
+
+- **AtomicWriteStrategy** (Req 7.10): after opening the temp file for fsync,
+  check `flush()` then `sync_all()`; on failure, `close()` best-effort, delete
+  the temp file, `log_error!`, and return `FileOpsError` BEFORE the rename (a
+  non-durable temp must never overwrite the good target). `close()` failure is
+  logged WARN but not fatal (data already fsynced). If the temp cannot be
+  RE-OPENED for fsync, `log_warn!` (reduced crash-safety, mirroring Req 7.2)
+  instead of silently continuing.
+- **DirectWriteStrategy / DeleteFirstStrategy** (Req 7.11): these are already
+  non-atomic; a `flush()`/`sync_all()` failure is `log_warn!`-ed (best-effort
+  durability). The write error itself already propagates; the durability WARN
+  ensures a failed fsync is not invisible. (These strategies return `Ok(())`
+  after the write per their existing contract; the WARN records the degraded
+  durability without changing the strategy's success semantics, which the owner
+  can tighten later if desired.)
+- **save.rs backup** (Req 7.12): replace `let _ = e` with `log_warn!("backup
+  failed for {uri}: {e}")` via `ff-logging` (already a dependency); the save
+  still proceeds (Req 7.5 unchanged).
+
+A new `FileOpsError` variant (or reuse of an existing write-error variant with a
+distinct `operation` tag like `atomic_write_fsync`) carries the fsync failure.
+Tests inject failures via a mock `VfsProvider`/file whose `flush`/`sync_all`
+returns `Err`, asserting: (a) atomic abort + temp cleanup + no rename; (b)
+direct/delete-first log the WARN; (c) backup failure logs WARN and the save still
+succeeds. The logging assertions use the `ff-logging` test capture sink.
+
 ### Read-Only Detection API
 
 ```rust

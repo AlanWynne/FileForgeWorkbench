@@ -200,6 +200,12 @@ This specification merges requirements from two primary sources and adapts them 
 8. THE system SHALL clean up temporary files left behind by interrupted Atomic_Write operations: on startup, any `.tmp` files matching the pattern used by the save strategy in known directories SHALL be logged as WARN and optionally removed.
 9. ALL write operations (temporary file creation, flush, rename) SHALL go through the VFS provider API -- the `ff-file-ops` crate SHALL NOT call platform filesystem APIs directly.
 
+10. **(CR-NR-085 / B034 -- durability-failure handling.)** THE durability steps of a save (flush, fsync/`sync_all`, close of the written file) SHALL NOT have their results silently discarded. For the ATOMIC strategy, IF flush or fsync of the temporary file FAILS, THE system SHALL abort the save with an error, remove the temporary file, and SHALL NOT perform the rename over the target (so a non-durable temp can never replace the good target); the failure SHALL be logged. IF the temporary file cannot be re-opened to fsync, THE system SHALL log a WARN-level diagnostic (reduced crash-safety, consistent with criterion 2) rather than silently continuing.
+
+11. FOR the direct-overwrite and delete-first strategies (already non-atomic), IF flush or fsync of the written target FAILS, THE system SHALL log a WARN-level diagnostic recording the failure; the save SHALL NOT report a clean, durable result when the durability step failed.
+
+12. THE backup-failure handling of criterion 5 SHALL be implemented as specified: a failed Backup_Copy SHALL emit a WARN-level log record (via the logging subsystem) and SHALL NOT abort the save. A silent `let _ = ...` discard of the backup error SHALL NOT satisfy criterion 5.
+
 ---
 
 ### Requirement 8: Read-Only Detection

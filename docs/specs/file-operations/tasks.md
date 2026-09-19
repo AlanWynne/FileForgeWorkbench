@@ -200,6 +200,29 @@ This is a **Wave 8 (File I/O and Session)** sub-project. It depends on `ff-vfs` 
   - [x] 15.10 Write integration test: Command registration and dispatch for all file commands
   - Covers: Cross-requirement interaction validation
 
+- [x] 16. Save-durability failure handling (CR-NR-085, B034)
+  - [x] 16.1 AtomicWriteStrategy: check `flush()`/`sync_all()` of the temp file; on
+        failure, delete the temp, `log_error!`, and return a `FileOpsError` BEFORE
+        the rename (non-durable temp never overwrites the target); a temp that
+        cannot be re-opened for fsync logs WARN not silent; post-fsync `close()`
+        failure logs WARN.
+    - Validates: Requirement 7.10
+  - [x] 16.2 Direct/DeleteFirst strategies: a `flush()`/`sync_all()`/`close()`
+        failure of the written target logs a WARN (best-effort durability), not a
+        silent `let _ =`.
+    - Validates: Requirement 7.11
+  - [x] 16.3 save.rs: replaced the `let _ = e` backup-failure discard with a
+        `log_warn!` via ff-logging (Req 7.5/7.12); the save still proceeds.
+    - Validates: Requirement 7.12
+  - [x] 16.4 Failing tests first: a mock VfsProvider/file whose `flush`/`sync_all`
+        returns `Err` (new `FailOn::Flush`/`Fsync`) drives -- (a) atomic abort +
+        temp cleanup + no rename + error (confirmed RED before the fix);
+        (b) direct/delete-first best-effort (no panic, content written);
+        (c) happy path still renames. The non-fatal-path WARN emission is MANUAL
+        (needs a running log subsystem). verify.ps1 CLEAN (FULL, nextest); TCR
+        Req 7.10-7.12.
+    - Covers: Requirement 7.10, 7.11, 7.12
+
 ---
 
 ## Property-Based Test Definitions

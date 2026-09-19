@@ -42,9 +42,11 @@ pub async fn execute_save(
         // Check if original exists first
         if provider.exists(uri.path()).await.unwrap_or(false) {
             if let Err(e) = create_backup(provider, uri, backup_config).await {
-                // Log warning but don't abort save
-                // In production this would use ff-logging WARN
-                let _ = e; // Intentionally ignored — backup failure is non-fatal
+                // Backup failure is non-fatal (Req 7.5) but MUST be logged, not
+                // silently discarded (Req 7.12, B034). The save proceeds.
+                ff_logging::log_warn!(
+                    "save: backup creation failed for {uri} (save proceeds): {e}"
+                );
             }
         }
     }
