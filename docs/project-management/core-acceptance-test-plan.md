@@ -181,7 +181,7 @@ relevant context (POM, editor View/Edit, File Explorer).
 | 7.1 | Press F1 in a context. | Context help opens showing the markdown help for the current context. | function-keys-and-history; CR-NR-071 (help content pending) | [B] |
 | 7.2 | Press F3/END in the editor, POM, and explorer. | Performs the mapped END/return action per context. F3 confirmed working; POM-not-last-tab case per CR-CH-016. | function-keys-and-history (works); CR-CH-016 (POM case) | [ ] |
 | 7.3 | Press F7 / F8 in a scrollable context. | Scroll up / down by one page (bare UP/DOWN). NOT to end-of-file. | navigation-commands 3.1/3.3; B046 (FIXED, retest) | [ ] |
-| 7.3a | Type `M` (or `MAX`) on the command line, then press UP / DOWN (or F7/F8). | Scrolls to the top / bottom (MAX modifier); MAX is a command-line action, not an F-key binding. | navigation-commands; B046 | [ ] |
+| 7.3a | Set the `SCROLL ===>` amount to MAX (type `SCROLL MAX`, or `M`/`MAX` where the field accepts it), then press UP / DOWN (or F7/F8). | Scrolls to the top / bottom of the document (the active SCROLL amount governs bare UP/DOWN, ISPF-style); with SCROLL PAGE it is one page, HALF a half page, n = n lines. MAX is a SCROLL-field amount, not an F-key binding. NOTE: currently bare UP/DOWN always scroll one page regardless of the SCROLL amount (nav_manager up_page/down_page ignores scroll_amount), so MAX-then-UP does NOT reach the top yet. | CR-NR-087 (PENDING GATE -- SCROLL-amount-aware UP/DOWN); navigation-commands Req 3.1/3.3; B046 | [F] |
 | 7.3b | Type a value in the `Command ===>` field then press an F-key bound to a command: e.g. `1` + F9 (SWAP), `2` + F9, `8` + F8 (DOWN); and press the F-key with an EMPTY field. | The F-key invokes its bound command with the field content as the argument -- observably identical to typing `<command> <field>` + Enter: `1` + F9 -> swap to workspace 1, `2` + F9 -> workspace 2, `8` + F8 -> page down 8. F9 with an empty field swaps to the previously active workspace (bare SWAP). It does NOT run bare `SWAP` (tab picker) when a value was typed. After the F-key command runs, the `Command ===>` field is CLEARED (e.g. `1` does not remain after `1` + F9) -- identical to `<command> <field>` + Enter -- EXCEPT when the command replaces the field (RETRIEVE recalls into it; see 7.8). | B066 (FIXED); CR-CH-033 (field cleared after key-forward unless replaced; AUTOMATED: `key_command_clears_command_field_after_success`, `key_command_retrieve_keeps_recalled_field`); command-framework Req 9.8/9.1/9.7/9.9/9.10; multi-tab-editor 18.1 | [ ] |
 | 7.4 | Press PF2 while editing. | Splits the screen at the cursor line into two independent editor halves. | menu-and-statusbar 11; B046 | [F] |
 | 7.5 | Press PF9 while split. | Swaps keyboard focus between the two split halves. | menu-and-statusbar 12; B046 | [F] |
@@ -257,7 +257,7 @@ fixed. Keep this map updated as rows are added.
 | B043 (SWAP command -- tab switching) | FIXED (retest 1.4/1.5) | 1.4, 1.5 |
 | B044 (Local Files per-entry skip) | PARTIAL: per-entry skip FIXED (retest 3.2); junctions -> CR-NR-072 | 3.2, 3.2a |
 | B045 (detach not wired) | OPEN | 1.9, 1.10, 1.11 |
-| B046 (function keys) | PARTIAL: F7/F8 defaults FIXED (retest 7.3/7.3a); rest OPEN | 7.1-7.7, 7.3a |
+| B046 (function keys) | PARTIAL: dispatch works + F7/F8 defaults FIXED (UP/DOWN); remnants parcelled to CRs -- configurable keylist = CR-NR-069, F1 help content = CR-NR-071, SCROLL-amount-aware UP/DOWN (MAX modifier) = CR-NR-087, PF2/PF9/PF3 split = menu-and-statusbar 11-14 | 7.1-7.8, 7.3a |
 | B047 (navigator file open resource-not-found) | FIXED (retest 3.3/3.12) | 3.3, 3.12 |
 | B055 (Tab lands on status bar segments before menu/POM) | FIXED (retest 1.3a) | 1.3a |
 | B057 (Theme Editor phantom Tab stop before selector combo) | VERIFIED (owner-confirmed) | 1.3d |
@@ -271,6 +271,7 @@ fixed. Keep this map updated as rows are added.
 | CR-CH-023 (unified tab-order: egui-native interior + shell boundary; chrome non-focusable) | IMPLEMENTED (retest 1.3a/1.3b/1.3c) | 1.3a, 1.3b, 1.3c |
 | CR-NR-071 (CORE context help content) | PENDING GATE | 7.1 |
 | CR-NR-072 (navigator junction/symlink expansion) | PENDING GATE | 3.2a |
+| CR-NR-087 (SCROLL-amount-aware bare UP/DOWN, B046 MAX modifier) | PENDING GATE | 7.3a |
 | CR-CH-016 (END/RETURN from POM) | FIXED (retest 1.7/1.8/4.10/7.2) | 1.7, 1.8, 4.10, 7.2 |
 | CR-NR-062 (View/Edit + context-menu commands) | PENDING GATE | 3.4, 3.5, 3.12, 4.1, 4.3, 4.9, 5.2 |
 | CR-NR-066 (`cd` focuses navigator) | PENDING GATE | 3.13 |

@@ -22,6 +22,13 @@ Never delete a row â€” update `Status` in-place.
 
 New capabilities that did not previously exist.
 
+### CR-NR-087 -- Bare UP/DOWN (PF7/PF8) honour the active SCROLL amount (PAGE/HALF/MAX/CSR/DATA/n) [B046]
+- **Date/Phase**: Phase (bug-sweep) (gate, Wave 4a) -- PENDING GATE (owner scheduling)
+- **Prompt**: (from B046, owner) "Up Max and Down Max should not be bound ... they should be up and down only and only Down Max When we type m or max on the command line and press the up or down key". The ISPF model is that the `SCROLL ===>` field amount governs PF7/PF8: with `SCROLL MAX` active, UP/DOWN scroll to top/bottom; with `SCROLL HALF`, half a page; etc.
+- **Description**: Today bare `UP`/`DOWN` always scroll exactly one page (`nav_manager.up`/`.down` call `up_page`/`down_page` and never consult `self.scroll_amount`), which is spec-compliant with navigation-commands Req 3.1/3.3 as currently written but does NOT implement the ISPF `SCROLL`-amount-governed behaviour the owner described for B046. Proposed: when `UP`/`DOWN` is issued with NO explicit numeric argument, scroll by the currently active `ScrollAmount` -- PAGE (one page, current default), HALF (half a page), MAX (to top/bottom), CSR (cursor-relative), DATA (data-relative), or n (n lines). An explicit `UP n`/`DOWN n` still overrides with a line count (Req 3.2/3.4 unchanged). This is why row 7.3a currently fails: MAX-then-UP does not scroll to top.
+- **Status**: PENDING GATE
+- **Linked spec**: `docs/specs/navigation-commands/requirements.md` Requirement 3 (criteria 3.1/3.3 revised + new 3.17 for SCROLL-amount-governed UP/DOWN); relates to `ff-desktop` `scroll_amount.rs` (`ScrollAmount`), `nav_manager.rs`, menu-and-statusbar Req 19 (SCROLL field). Completes a B046 remnant (the MAX modifier); does NOT re-bind PF7/PF8 (they stay UP/DOWN).
+
 ### CR-NR-086 -- Logging coverage for the I/O layers + user-visible logging-degradation indicator [B035, B036, B037, B038]
 - **Date/Phase**: Phase (bug-sweep) (gate, Wave 2)
 - **Prompt**: (bugs B035-B038, prioritised in the outstanding-bug sweep) "possible gaps in logging" -- the VFS core and remote connectors emit no log records; local-fs metadata failures are silently dropped with `.ok()`; and the logging fallback/drop diagnostics are captured but never shown to the user.
