@@ -156,6 +156,62 @@ impl WorkbenchShell {
         }
     }
 
+    /// Run `f` with the shell's command context temporarily switched to a
+    /// Detached_Workspace's tab and its independent buffers (CR-CH-036,
+    /// menu-and-statusbar Req 18.10). Saves the Primary_Window's active-tab index
+    /// and the six per-window shell fields, installs `tab_index` as active and
+    /// MOVES `ctx`'s buffers into the shell, runs `f` (which renders the detached
+    /// command field and dispatches through the UNCHANGED command pipeline), then
+    /// moves the (possibly command-modified) buffers back into `ctx` and restores
+    /// the saved index + fields. Because the caller (the immediate-viewport loop)
+    /// is synchronous, the whole existing pipeline transparently acts on the
+    /// detached tab with the detached window's command line.
+    ///
+    /// Validates: menu-and-statusbar Requirement 18.10
+    pub(super) fn with_workspace_context(
+        &mut self,
+        tab_index: usize,
+        ctx: &mut crate::shell::WorkspaceCommandContext,
+        f: impl FnOnce(&mut Self),
+    ) {
+        // Save the Primary_Window context.
+        let saved_active = self.tabs.active_index();
+        let saved_command_text = std::mem::take(&mut self.command_text);
+        let saved_scroll_text = std::mem::take(&mut self.scroll_field_text);
+        let saved_scroll_amount = self.scroll_amount.clone();
+        let saved_open_error = self.open_error.take();
+        let saved_focus_req = self.command_field_focus_requested;
+        let saved_outcome = self.pending_command_line_outcome.take();
+
+        // Install the detached window's context.
+        self.tabs.set_active(tab_index);
+        self.command_text = std::mem::take(&mut ctx.command_text);
+        self.scroll_field_text = std::mem::take(&mut ctx.scroll_field_text);
+        self.scroll_amount = ctx.scroll_amount.clone();
+        self.open_error = ctx.open_error.take();
+        self.command_field_focus_requested = ctx.command_field_focus_requested;
+        self.pending_command_line_outcome = ctx.pending_command_line_outcome.take();
+
+        f(self);
+
+        // Move the (possibly modified) detached-window buffers back into `ctx`.
+        ctx.command_text = std::mem::take(&mut self.command_text);
+        ctx.scroll_field_text = std::mem::take(&mut self.scroll_field_text);
+        ctx.scroll_amount = self.scroll_amount.clone();
+        ctx.open_error = self.open_error.take();
+        ctx.command_field_focus_requested = self.command_field_focus_requested;
+        ctx.pending_command_line_outcome = self.pending_command_line_outcome.take();
+
+        // Restore the Primary_Window context.
+        self.tabs.set_active(saved_active);
+        self.command_text = saved_command_text;
+        self.scroll_field_text = saved_scroll_text;
+        self.scroll_amount = saved_scroll_amount;
+        self.open_error = saved_open_error;
+        self.command_field_focus_requested = saved_focus_req;
+        self.pending_command_line_outcome = saved_outcome;
+    }
+
     pub(super) fn handle_command(&mut self, cmd: &str) {
         let upper = cmd.trim().to_uppercase();
 

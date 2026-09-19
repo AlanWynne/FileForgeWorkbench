@@ -332,10 +332,17 @@ impl eframe::App for WorkbenchShell {
                 tab.is_floating = true;
                 let tab_id = tab.id;
                 let vid = egui::ViewportId::from_hash_of(format!("floating_tab_{}", tab_id.0));
+                ff_logging::log_info!(
+                    "[shell] detach: tab {} (index {}) -> Detached_Workspace {:?}",
+                    tab_id.0,
+                    idx,
+                    vid
+                );
                 self.floating_tabs.push(super::FloatingTab {
                     viewport_id: vid,
                     tab_id,
                     origin_index: idx,
+                    cmd_ctx: super::WorkspaceCommandContext::default(),
                 });
             }
         }
@@ -786,10 +793,25 @@ impl eframe::App for WorkbenchShell {
                 })
                 .unwrap_or_else(|| "FileForge Workbench".to_string());
             let redock_tx = Arc::clone(&self.redock_pending);
+            // CR-CH-036 (Req 18.10): move THIS window's independent command
+            // context out so the render closure can borrow it (and `&mut self`)
+            // without aliasing `self.floating_tabs`; put it back after the frame.
+            let mut cmd_ctx = std::mem::take(&mut self.floating_tabs[ft_idx].cmd_ctx);
             ctx.show_viewport_immediate(
                 vid,
                 egui::ViewportBuilder::default().with_title(&title),
-                |vctx, _class| {
+                |vctx, class| {
+                    // CR-CH-035: if the backend does not support multiple
+                    // viewports, egui reports the child as an Embedded class and
+                    // no separate OS window appears. Surface that instead of
+                    // failing silently (the headless test harness reports
+                    // Embedded; the real glow/wgpu backend reports Immediate).
+                    if class != egui::ViewportClass::Immediate {
+                        ff_logging::log_warn!(
+                            "[shell] Detached_Workspace viewport is not Immediate (Embedded/\
+                             Deferred) -- this backend may not support multiple OS windows"
+                        );
+                    }
                     // Detect OS-window close -> queue a redock at the origin index.
                     if vctx.input(|i| i.viewport().close_requested()) {
                         redock_tx.lock().expect("redock lock").push(origin_index);
@@ -798,29 +820,36 @@ impl eframe::App for WorkbenchShell {
                     if tab_index >= self.tabs.len() {
                         return;
                     }
-                    // Title_Line for the detached tab (read-only chrome, Req 18.1).
-                    egui::TopBottomPanel::top(egui::Id::new(("floating_title", tab_index))).show(
-                        vctx,
-                        |ui| {
-                            ui.label(
-                                egui::RichText::new(super::title_line_text(
-                                    &self.tabs.tabs()[tab_index],
-                                ))
-                                .monospace()
-                                .strong(),
-                            );
-                        },
-                    );
-                    // Render the tab's REAL Context body by temporarily making it
-                    // the active tab (Req 18.2/18.8), then restoring.
-                    let saved_active = self.tabs.active_index();
-                    self.tabs.set_active(tab_index);
-                    egui::CentralPanel::default().show(vctx, |ui| {
-                        self.render_active_tab_body(vctx, ui);
+                    // CR-CH-036: render + dispatch under this window's INDEPENDENT
+                    // command context (its own active tab + command line). The
+                    // whole existing pipeline runs against the detached tab.
+                    self.with_workspace_context(tab_index, &mut cmd_ctx, |shell| {
+                        // Title_Line (read-only chrome, Req 18.1).
+                        egui::TopBottomPanel::top(egui::Id::new(("floating_title", tab_id.0)))
+                            .show(vctx, |ui| {
+                                ui.label(
+                                    egui::RichText::new(super::title_line_text(
+                                        shell.tabs.active_tab(),
+                                    ))
+                                    .monospace()
+                                    .strong(),
+                                );
+                            });
+                        // This window's OWN Command ===> field (Req 18.2/18.10),
+                        // ids salted per tab so they never collide with the
+                        // Primary_Window's or another detached window's field.
+                        shell.render_detached_command_field(vctx, tab_id);
+                        // The tab's REAL Context body (Req 18.8).
+                        egui::CentralPanel::default().show(vctx, |ui| {
+                            shell.render_active_tab_body(vctx, ui);
+                        });
                     });
-                    self.tabs.set_active(saved_active);
                 },
             );
+            // Restore this window's context back onto the FloatingTab.
+            if let Some(ft) = self.floating_tabs.get_mut(ft_idx) {
+                ft.cmd_ctx = cmd_ctx;
+            }
         }
 
         // ── Catalog Manager Dialog — Req 3.1–3.8 ──────────────────────────────

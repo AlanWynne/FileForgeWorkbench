@@ -142,9 +142,43 @@ impl CommandHandler for ConfigOpenHandler {
 
 // ── Detachable tab windows — Validates: Requirement 18.1–18.7 ──────────────
 
+/// The per-window command state that makes a Detached_Workspace an INDEPENDENT
+/// command context (CR-CH-036, menu-and-statusbar Req 18.10). Each detached
+/// window owns one: its own `Command ===>` buffer, SCROLL buffer/amount, status
+/// line, and the command-field focus + Command_Line_Outcome latches. The shell's
+/// own same-named fields serve as the Primary_Window's implicit context.
+///
+/// The command pipeline stays bound to the shell's fields; to dispatch for a
+/// detached window we temporarily swap this context into the shell (see
+/// `WorkbenchShell::with_workspace_context`), run the UNCHANGED pipeline, then
+/// swap the (possibly command-modified) buffers back -- so each window's command
+/// line acts only on its own tab.
+#[derive(Debug, Clone)]
+pub(crate) struct WorkspaceCommandContext {
+    pub command_text: String,
+    pub scroll_field_text: String,
+    pub scroll_amount: ScrollAmount,
+    pub open_error: Option<String>,
+    pub command_field_focus_requested: bool,
+    pub pending_command_line_outcome: Option<command_line_outcome::CommandLineOutcome>,
+}
+
+impl Default for WorkspaceCommandContext {
+    fn default() -> Self {
+        Self {
+            command_text: String::new(),
+            scroll_field_text: "PAGE".to_string(),
+            scroll_amount: ScrollAmount::default(),
+            open_error: None,
+            command_field_focus_requested: false,
+            pending_command_line_outcome: None,
+        }
+    }
+}
+
 /// Tracks a tab that has been detached into a floating OS window.
 ///
-/// Validates: Requirement 18.1, 18.2, 18.3
+/// Validates: Requirement 18.1, 18.2, 18.3, 18.10
 pub(crate) struct FloatingTab {
     /// egui viewport id allocated for this floating window.
     pub viewport_id: egui::ViewportId,
@@ -154,6 +188,9 @@ pub(crate) struct FloatingTab {
     pub tab_id: crate::tab_state::TabId,
     /// The tab index at the moment of detach -- used to restore position on redock.
     pub origin_index: usize,
+    /// This window's INDEPENDENT command context (CR-CH-036, Req 18.10): its own
+    /// command line, SCROLL, status, and focus/outcome latches.
+    pub cmd_ctx: WorkspaceCommandContext,
 }
 
 // ── WorkbenchShell ───────────────────────────────────────────────────────────

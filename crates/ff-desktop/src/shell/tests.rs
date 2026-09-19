@@ -925,6 +925,7 @@ fn floating_tab_limit_enforced_at_16() {
             viewport_id: egui::ViewportId::from_hash_of(format!("ft_{i}")),
             tab_id: crate::tab_state::TabId(i as u64),
             origin_index: i,
+            cmd_ctx: super::WorkspaceCommandContext::default(),
         });
     }
     // At limit: a new detach should be rejected.
@@ -946,6 +947,7 @@ fn floating_tab_origin_index_preserved() {
         viewport_id: egui::ViewportId::from_hash_of("test"),
         tab_id: crate::tab_state::TabId(3),
         origin_index: 3,
+        cmd_ctx: super::WorkspaceCommandContext::default(),
     };
     assert_eq!(ft.origin_index, 3);
     assert_eq!(ft.tab_id, crate::tab_state::TabId(3));
@@ -4040,6 +4042,7 @@ fn split_detach_at_limit_shows_error() {
             viewport_id: egui::ViewportId::from_hash_of(format!("limit_{i}")),
             tab_id: crate::tab_state::TabId(20_000 + i),
             origin_index: 0,
+            cmd_ctx: super::WorkspaceCommandContext::default(),
         });
     }
     shell.open_error = None;
@@ -6960,6 +6963,7 @@ fn full_shell_detach_rejected_at_16_window_limit() {
             viewport_id: vid,
             tab_id: crate::tab_state::TabId(10_000 + i),
             origin_index: 0,
+            cmd_ctx: super::WorkspaceCommandContext::default(),
         });
     }
     harness.state_mut().open_error = None;
@@ -6977,5 +6981,112 @@ fn full_shell_detach_rejected_at_16_window_limit() {
     assert!(
         harness.state().open_error.is_some(),
         "detach beyond the 16-window limit must report a status message"
+    );
+}
+
+// ── CR-CH-036 (B045): independent per-window command contexts ───────────────
+
+/// Validates: menu-and-statusbar Requirement 18.10 (CR-CH-036, B045) --
+/// `with_workspace_context` installs a detached window's buffers + active tab
+/// for the duration of the closure, then restores the Primary_Window's context
+/// exactly (active index + command_text + scroll + open_error + focus/outcome).
+#[test]
+fn with_workspace_context_saves_and_restores_primary_context() {
+    // Validates: menu-and-statusbar Requirement 18.10
+    let mut shell = make_shell();
+    shell.handle_command("START"); // a 2nd tab so we have index 1
+    let primary_active = shell.tabs.active_index();
+    shell.command_text = "PRIMARY".to_string();
+    shell.scroll_field_text = "HALF".to_string();
+    shell.open_error = Some("primary error".to_string());
+
+    let target = if primary_active == 0 { 1 } else { 0 };
+    let mut ctx = super::WorkspaceCommandContext {
+        command_text: "DETACHED".to_string(),
+        ..Default::default()
+    };
+    let mut observed_active = usize::MAX;
+    let mut observed_cmd = String::new();
+    shell.with_workspace_context(target, &mut ctx, |s| {
+        observed_active = s.tabs.active_index();
+        observed_cmd = s.command_text.clone();
+        // Mutate the detached context's command line inside the swap.
+        s.command_text = "DETACHED-EDITED".to_string();
+    });
+
+    // Inside the swap, the detached tab + its buffer were active.
+    assert_eq!(
+        observed_active, target,
+        "swap must install the detached tab as active"
+    );
+    assert_eq!(
+        observed_cmd, "DETACHED",
+        "swap must install the detached buffer"
+    );
+    // The mutation landed back in the context, not the primary shell.
+    assert_eq!(ctx.command_text, "DETACHED-EDITED", "ctx captures the edit");
+    // The Primary_Window context is fully restored.
+    assert_eq!(
+        shell.tabs.active_index(),
+        primary_active,
+        "active index restored"
+    );
+    assert_eq!(
+        shell.command_text, "PRIMARY",
+        "primary command_text restored"
+    );
+    assert_eq!(shell.scroll_field_text, "HALF", "primary scroll restored");
+    assert_eq!(
+        shell.open_error.as_deref(),
+        Some("primary error"),
+        "primary error restored"
+    );
+}
+
+/// Validates: menu-and-statusbar Requirement 18.10 (CR-CH-036, B045) -- a
+/// command submitted in a detached window's context acts on THAT window's tab
+/// and leaves the Primary_Window's command_text and active tab untouched
+/// (bidirectional isolation). Uses NAME (sets the active tab's workspace_name)
+/// as an observable per-tab effect.
+#[test]
+fn detached_command_acts_on_its_tab_not_the_primary() {
+    // Validates: menu-and-statusbar Requirement 18.10
+    let mut shell = make_shell();
+    shell.handle_command("START"); // second tab
+    let primary_active = shell.tabs.active_index();
+    let detached = if primary_active == 0 { 1 } else { 0 };
+    let detached_id = shell.tabs.tabs()[detached].id;
+
+    shell.command_text = "PRIMARY-TEXT".to_string();
+
+    // Submit `NAME DetachedName` inside the detached window's context.
+    let mut ctx = super::WorkspaceCommandContext::default();
+    shell.with_workspace_context(detached, &mut ctx, |s| {
+        s.run_command_line("NAME DetachedName");
+    });
+
+    // The detached tab got the name; the primary tab did not.
+    let detached_idx = shell
+        .tabs
+        .index_of_id(detached_id)
+        .expect("detached tab exists");
+    assert_eq!(
+        shell.tabs.tabs()[detached_idx].workspace_name.as_deref(),
+        Some("DetachedName"),
+        "command in the detached context must act on the detached tab"
+    );
+    assert!(
+        shell.tabs.tabs()[primary_active].workspace_name.is_none(),
+        "the primary tab must be untouched by the detached window's command"
+    );
+    // The Primary_Window's command line is preserved (no bleed).
+    assert_eq!(
+        shell.command_text, "PRIMARY-TEXT",
+        "primary command_text must be untouched by the detached command"
+    );
+    assert_eq!(
+        shell.tabs.active_index(),
+        primary_active,
+        "primary active tab must be restored after the detached dispatch"
     );
 }

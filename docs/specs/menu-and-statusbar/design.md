@@ -1242,3 +1242,65 @@ No architectural contradiction: this completes the deferred Phase AL/AO intent u
 supported immediate-viewport API; the detach/redock state machine (`detach_pending` /
 `FloatingTab` / `redock_pending`) is retained, only its viewport call and redock mechanics
 are corrected.
+
+
+### CR-CH-036 delta -- Detached Workspaces as independent command contexts (B045)
+
+CR-CH-035 made the detached window render real content via `show_viewport_immediate` + the
+"active-tab time-slice" (temporarily set the detached tab active, render, restore). But the
+shell has ONE `command_text` and ONE active-tab index, and the entire command pipeline
+(`run_command_line` -> `handle_command` -> `nav_manager`/`find_manager`/`exclude_manager`,
+`nav_stack.rs`, `cmd_engine`, `cursor_context_snapshot`) is hard-bound to
+`self.tabs.active_tab()` and `self.command_text`. So the detached window had no command field
+and the primary command line drove whatever was active -- the cross-window bleed the owner hit.
+
+Rewriting the dozens of `active_tab()`/`command_text` call sites to thread an explicit target
+would be large and risky. Instead, EXTEND the time-slice trick to the whole command context:
+
+1. **Per-window command context.** Introduce `WorkspaceCommandContext { command_text: String,
+   scroll_field_text: String, scroll_amount: ScrollAmount, open_error: Option<String>,
+   command_field_focus_requested: bool, pending_command_line_outcome: Option<CommandLineOutcome> }`.
+   Each `FloatingTab` owns one (its independent Command ===> buffer, SCROLL buffer, status line,
+   and focus/outcome latches). The Primary_Window keeps using the shell's existing fields (its
+   own implicit context).
+
+2. **Scoped context swap.** Add `WorkbenchShell::with_workspace_context(&mut self, tab_index,
+   &mut WorkspaceCommandContext, f: impl FnOnce(&mut Self))` that: saves the shell's active
+   index + the six shell fields; installs the detached tab as active and MOVES the FloatingTab's
+   buffers into the shell fields; runs `f` (which renders the detached command field and, on
+   Enter, calls the UNCHANGED `run_command_line`); then moves the (possibly command-modified)
+   buffers back into the FloatingTab and restores the saved active index + shell fields. Because
+   `show_viewport_immediate` is synchronous, the entire existing pipeline transparently operates
+   on the detached tab with the detached window's buffers -- no pipeline rewrite. `handle_command`,
+   the managers, `nav_stack`, and the Command_Line_Outcome application all "just work" because
+   `active_tab()` and `command_text` now transiently mean the detached window's.
+
+3. **Full chrome in the child viewport.** The floating loop renders, inside the swapped context:
+   Title_Line, the Primary_Command_Field (a `render_command_field`-equivalent), and optionally the
+   SCROLL field, all bound to the shell fields (which currently hold the window's buffers). The
+   command-field panel id and widget id are SALTED per window (`("command_field", tab_id)` /
+   `("command_field_input", tab_id)`) so they never collide with the primary field or other
+   detached windows.
+
+4. **Dispatch targeting.** On Enter in a detached command field, the closure calls
+   `self.run_command_line(&cmd)` from WITHIN the swap, so the command acts on the detached tab and
+   its Command_Line_Outcome applies to the detached window's `command_text`. The primary window's
+   field and status are untouched.
+
+5. **Shared vs per-window.** RETRIEVE history (`command_line_history`), the command registry,
+   engine, key map, zoom, notifications, and panel states remain single/global (documented). The
+   RETRIEVE ring being shared is an accepted allowance (Req 18.10); per-window history is a future
+   refinement. `key_map_resolver`/`key_label_bar` stay global for this slice (function keys act on
+   the focused window's context via the same swap when a detached window has focus -- a follow-up
+   if physical F-keys must target a specific detached window; the command FIELD independence is the
+   criterion this slice satisfies).
+
+Testability: the per-window independence is headless-testable through the shell -- drive a command
+into a detached window's context (via the swap helper / a test entry that submits to a FloatingTab's
+buffer) and assert it changed THAT tab and left the primary `command_text`/active tab untouched, and
+vice versa. The real multi-viewport OS windows remain MANUAL (testing.md exception), but the
+buffer-isolation + correct-target-dispatch logic is asserted headlessly.
+
+No architectural contradiction: this is the same synchronous-swap technique CR-CH-035 already uses
+for rendering, generalised to the command context; it keeps ONE command pipeline (avoids a second
+divergent code path) while giving each window an isolated command state.

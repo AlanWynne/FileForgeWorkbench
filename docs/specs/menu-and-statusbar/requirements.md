@@ -478,7 +478,16 @@ or view content side-by-side independently.
      count, THE tab SHALL be appended at the end (per 18.3). The tab's identity, content, cursor,
      modification state, and per-tab profile SHALL survive the detach/redock round-trip unchanged. [B045]
 
-### Requirement 19: ISPF Navigation Enhancements (SCROLL Field, Fastpath, Split Screen, List Panel LOCATE)
+10. Each Detached_Workspace SHALL be an INDEPENDENT command context. It SHALL render its OWN
+     Primary_Command_Field (and SCROLL field) whose contents are distinct from the Primary_Window's
+     and from every other Detached_Workspace. A command submitted in a Detached_Workspace's command
+     field SHALL act on THAT window's tab (its Context, cursor, navigation, edit profile), and a
+     command submitted in the Primary_Window SHALL act on the Primary_Window's active tab; neither
+     SHALL affect the other. Each window's command-field disposition after a command
+     (Command_Line_Outcome per Requirement 13 of command-framework: clear/restore/set) SHALL apply
+     to that window's own field, and each window's status/error line SHALL reflect only its own last
+     command. The command-line RETRIEVE history MAY remain a single shared ring across windows
+     (a documented allowance; per-window history is a future refinement). [B045] 
 
 **User Story:** As an ISPF-familiar user, I want the full ISPF navigation model including a SCROLL ===> field, fastpath notation, split-screen capability, list panel LOCATE, and FTSO panel chrome, so that the workbench matches the ISPF navigation experience.
 

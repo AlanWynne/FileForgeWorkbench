@@ -529,3 +529,16 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-command` 
     - Covers: Requirement 18.6
   - [x] 33.8 Update TCR rows 18.1-18.9 to their achieved status (PASS for headless-covered, MANUAL-with-reason for real OS window + drag-out)
     - Covers: Requirement 18 (all criteria)
+
+
+- [ ] 34. Detached Workspaces as independent command contexts (CR-CH-036, B045)
+  - [x] 34.1 Add `WorkspaceCommandContext` (command_text, scroll_field_text, scroll_amount, open_error, command_field_focus_requested, pending_command_line_outcome); give each `FloatingTab` one (default-initialised on detach)
+    - Covers: Requirement 18.10
+  - [x] 34.2 Add `WorkbenchShell::with_workspace_context(tab_index, &mut WorkspaceCommandContext, f)` scoped swap: save+install active index + the six shell fields, run f, move buffers back + restore. Unit test the save/restore round-trip (with_workspace_context_saves_and_restores_primary_context)
+    - Covers: Requirement 18.10
+  - [x] 34.3 Render the detached window's FULL chrome inside the immediate viewport under the swap: Title_Line + own Command ===> field (salted panel/widget ids per tab_id, own status line) via render_detached_command_field; Enter calls run_command_line within the swap
+    - Covers: Requirement 18.1, 18.2, 18.10
+  - [x] 34.4 Headless test: a command submitted to a detached window's context acts on THAT tab and leaves the primary command_text + active tab untouched (detached_command_acts_on_its_tab_not_the_primary)
+    - Covers: Requirement 18.10
+  - [x] 34.5 Update TCR row 18.10; note the shared RETRIEVE ring allowance and the MANUAL real-OS-window part
+    - Covers: Requirement 18.10

@@ -157,6 +157,58 @@ impl WorkbenchShell {
         });
     }
 
+    /// Render a Detached_Workspace's own `Command ===>` field into its child
+    /// viewport (CR-CH-036, menu-and-statusbar Req 18.10). Called from WITHIN
+    /// `with_workspace_context`, so `self.command_text` currently holds THIS
+    /// window's buffer and dispatch targets THIS window's tab. The panel and
+    /// widget ids are salted by `tab_id` so they never collide with the
+    /// Primary_Window's command field or another detached window's.
+    ///
+    /// Validates: menu-and-statusbar Requirement 18.10
+    pub(super) fn render_detached_command_field(
+        &mut self,
+        ctx: &egui::Context,
+        tab_id: crate::tab_state::TabId,
+    ) {
+        let panel_id = egui::Id::new(("detached_command_field", tab_id.0));
+        let cmd_id = egui::Id::new(("detached_command_field_input", tab_id.0));
+        egui::TopBottomPanel::top(panel_id).show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.label("Command ===>");
+                let response = ui.add(
+                    egui::TextEdit::singleline(&mut self.command_text)
+                        .id(cmd_id)
+                        .desired_width(f32::INFINITY)
+                        .font(egui::TextStyle::Monospace),
+                );
+                if self.command_field_focus_requested && !self.modal_open {
+                    self.command_field_focus_requested = false;
+                    ctx.memory_mut(|m| m.request_focus(cmd_id));
+                }
+                let field_has_focus = response.has_focus() || response.lost_focus();
+                if field_has_focus
+                    && ctx.input(|i| i.key_pressed(egui::Key::Enter))
+                    && !self.command_text.is_empty()
+                {
+                    let cmd = self.command_text.trim().to_string();
+                    // Dispatches through the SAME pipeline; because we are inside
+                    // `with_workspace_context`, it acts on this window's tab and
+                    // the Command_Line_Outcome applies to this window's buffer.
+                    self.run_command_line(&cmd);
+                    self.command_field_focus_requested = true;
+                }
+                // Status/error line for THIS window (its own open_error).
+                if let Some(err) = self.open_error.clone() {
+                    ui.separator();
+                    ui.colored_label(
+                        to_egui_color(self.palette.editor.accent),
+                        egui::RichText::new(err).monospace().small(),
+                    );
+                }
+            });
+        });
+    }
+
     // ── Key label bar ─────────────────────────────────────────────────────
 
     /// Render the ISPF-style function key label bar in the footer.

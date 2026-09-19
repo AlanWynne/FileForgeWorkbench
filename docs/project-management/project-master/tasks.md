@@ -2574,6 +2574,18 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
       so the Wave B Workspace Definition model swaps the source in one place.
       verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt.
       Covers: menu-and-statusbar Req 18.1-18.9.
+- [x] BS.detach2 B045 / CR-CH-036 (Wave A cont.): Detached Workspaces are
+      INDEPENDENT command contexts -- each FloatingTab owns a
+      WorkspaceCommandContext (command_text/scroll/open_error/focus/outcome);
+      the detached window renders its own Command ===> field (salted ids) and
+      dispatches through the UNCHANGED pipeline under a scoped context swap
+      (install detached tab as active + its buffers, run, restore). Stops the
+      cross-window command-line bleed the owner reported. Shared RETRIEVE ring
+      allowed (documented); real OS window MANUAL. Tests
+      with_workspace_context_saves_and_restores_primary_context +
+      detached_command_acts_on_its_tab_not_the_primary. verify.ps1 CLEAN FULL
+      nextest; ffwb.exe rebuilt.
+      Covers: menu-and-statusbar Req 18.10.
 
 | Status | Count |
 |--------|-------|

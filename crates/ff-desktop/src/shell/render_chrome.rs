@@ -416,6 +416,8 @@ impl WorkbenchShell {
         let mut close_left_of: Option<usize> = None;
         let mut close_right_of: Option<usize> = None;
         let mut close_unchanged = false;
+        // CR-CH-035 (Req 18.6): a tab whose header was dragged out of the bar.
+        let mut detach_drag_idx: Option<usize> = None;
 
         egui::TopBottomPanel::top("tab_bar")
             .min_height(24.0)
@@ -477,8 +479,10 @@ impl WorkbenchShell {
 
                         // CR-CH-023 Req 16.9: tab headers are clickable but not
                         // keyboard Tab stops (tab switching is via the SWAP
-                        // command / mouse). `Sense::CLICK` keeps the click and
-                        // removes the FOCUSABLE bit so egui-native Tab skips it.
+                        // command / mouse). CR-CH-035 (B045 drag-out, Req 18.6):
+                        // also sense DRAG so the header can be dragged out of the
+                        // bar to detach. `click_and_drag` keeps the click and
+                        // drag but egui skips it for keyboard Tab (not FOCUSABLE).
                         let btn =
                             egui::Button::new(egui::RichText::new(&label).color(color).monospace())
                                 .fill(bg)
@@ -488,11 +492,38 @@ impl WorkbenchShell {
                                     egui::Stroke::NONE
                                 })
                                 .min_size(egui::vec2(0.0, 24.0))
-                                .sense(egui::Sense::CLICK);
+                                .sense(egui::Sense::click_and_drag());
 
                         let resp = ui.add(btn);
                         if resp.clicked() {
                             activate_idx = Some(i);
+                        }
+                        // CR-CH-035 (Req 18.6): dragging a Tab_Header more than
+                        // 20px beyond the tab-bar boundary detaches it into a
+                        // Detached_Workspace. We detect the drag on release: if
+                        // the pointer moved >20px vertically below the bar (or the
+                        // total drag exceeded the threshold and ended outside the
+                        // bar rect), request a detach for this tab. The real
+                        // cross-window release position is applied by the OS; the
+                        // headless-testable part is "drag beyond threshold on a
+                        // tab header sets detach_pending".
+                        if resp.drag_stopped() {
+                            let bar_bottom = ui.max_rect().bottom();
+                            let released = ui
+                                .ctx()
+                                .input(|inp| inp.pointer.interact_pos())
+                                .unwrap_or(resp.rect.center());
+                            let moved = resp.drag_delta().length()
+                                + ui.ctx().input(|inp| {
+                                    inp.pointer
+                                        .press_origin()
+                                        .map(|o| (released - o).length())
+                                        .unwrap_or(0.0)
+                                });
+                            let outside_bar = released.y > bar_bottom + 20.0;
+                            if (outside_bar || moved > 20.0) && !tab.is_floating {
+                                detach_drag_idx = Some(i);
+                            }
                         }
                         // CR-CH-023: tab headers are no longer keyboard focus
                         // stops (Req 16.9), so there is no tab-header focus ring
@@ -693,6 +724,18 @@ impl WorkbenchShell {
                 if !self.tabs.tabs()[i].is_modified {
                     self.tabs.close_tab(i);
                 }
+            }
+        }
+        // CR-CH-035 (Req 18.6): a tab header dragged out of the bar detaches,
+        // subject to the shared 16-window limit. Sets detach_pending; the frame
+        // loop consumes it (same path as "Move to Other View" / SPLIT DETACH).
+        if let Some(i) = detach_drag_idx {
+            if self.floating_tabs.len() < 16 {
+                self.detach_pending = Some(i);
+                self.open_error = None;
+            } else {
+                self.open_error =
+                    Some("Maximum number of detached Workspaces (16) reached.".to_string());
             }
         }
     }
