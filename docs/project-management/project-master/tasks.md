@@ -2550,8 +2550,15 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
       failure, backup-failure logs WARN (Req 7.5) instead of `let _ = e`.
       file-operations Req 7.10-7.12. Mock-injected-failure unit tests.
       Covers: file-operations Req 7.10, 7.11, 7.12.
+- [x] BS.logging B035/B037/B038 / CR-NR-086 (Wave 2): I/O-layer logging coverage
+      -- ff-vfs dispatch WARN logs (B035), ff-connector-local-fs metadata-failure
+      DEBUG logs keeping graceful degradation (B037), ff-desktop status-bar
+      fallback/drop indicator (B038). B036 (remote connectors) reframed
+      forward-looking + deferred (no connector crates exist yet).
+      Covers: logging-subsystem Req 8.7, 9.6, 9.7, 9.8.
 
 | Status | Count |
 |--------|-------|
 | `[x]` Phase (bug-sweep) Wave 0 COMPLETE | B054 (menus-editor fields typable -- stale status + regression test), B064 (RESET BARE per-profile + ALL via CR-NR-083), B062 (command-arg case preserved via verb_arg -- stale deferred note). Test-plan rows 2.12, 5.7, Group 9. |
 | `[x]` Phase (bug-sweep) Wave 1 COMPLETE | B034 / CR-NR-085: save-durability failures surface -- DONE: AtomicWriteStrategy aborts+cleans temp on flush/fsync failure (no rename, logs); Direct/DeleteFirst log WARN (best-effort); backup-failure logs WARN (Req 7.5). file-operations Req 7.10-7.12. 5 mock-injected-failure tests (atomic aborts RED-then-green). verify.ps1 CLEAN FULL nextest. |
+| `[x]` Phase (bug-sweep) Wave 2 COMPLETE | B035/B037/B038 FIXED + B036 reframed/deferred / CR-NR-086: I/O-layer logging coverage -- DONE: ff-vfs dispatch WARN logs (B035), ff-connector-local-fs metadata-degradation DEBUG logs keeping graceful degradation (B037), ff-desktop status-bar fallback/drop `LOG!` indicator (B038); B036 (remote connectors) reframed as a binding forward-looking obligation (Req 9.8) + deferred (no connector crates exist). logging-subsystem Req 8.7/9.6-9.8. verify.ps1 CLEAN FULL nextest. |

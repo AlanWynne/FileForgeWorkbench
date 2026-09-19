@@ -24,6 +24,24 @@ use crate::types::{
 use crate::uri::ResourceUri;
 use crate::watch::WatchHandle;
 
+/// Log a VFS dispatch error at WARN and return it unchanged.
+///
+/// B035 (CR-NR-086, logging-subsystem Req 9.6): the VFS abstraction is the I/O
+/// core every file operation flows through; before this it emitted no records,
+/// so an underlying I/O failure lost its origin context as it crossed the layer.
+/// Every dispatch method routes its error through this helper so the operation
+/// and resource URI are always logged before the error propagates to the caller.
+fn log_vfs_err(operation: &str, uri: &ResourceUri, err: VfsError) -> VfsError {
+    ff_logging::log_warn!(
+        "[ff-vfs] {} failed for {}://{}: {}",
+        operation,
+        uri.scheme(),
+        uri.path(),
+        err
+    );
+    err
+}
+
 /// Top-level facade for all VFS operations.
 ///
 /// Routes operations to the correct provider based on the URI scheme.
@@ -84,7 +102,10 @@ impl Vfs {
     /// Addresses: Requirement 5 AC 2
     pub async fn read(&self, uri: &ResourceUri) -> Result<Vec<u8>, VfsError> {
         let provider = self.resolve_provider(uri)?;
-        provider.read(uri.path()).await
+        provider
+            .read(uri.path())
+            .await
+            .map_err(|e| log_vfs_err("read", uri, e))
     }
 
     /// Read resource content as an async byte stream.
@@ -103,7 +124,10 @@ impl Vfs {
     /// Addresses: Requirement 5 AC 2
     pub async fn write(&self, uri: &ResourceUri, data: &[u8]) -> Result<(), VfsError> {
         let provider = self.resolve_provider(uri)?;
-        provider.write(uri.path(), data).await
+        provider
+            .write(uri.path(), data)
+            .await
+            .map_err(|e| log_vfs_err("write", uri, e))
     }
 
     /// Delete a resource or container.
@@ -111,7 +135,10 @@ impl Vfs {
     /// Addresses: Requirement 5 AC 4
     pub async fn delete(&self, uri: &ResourceUri, options: DeleteOptions) -> Result<(), VfsError> {
         let provider = self.resolve_provider(uri)?;
-        provider.delete(uri.path(), options).await
+        provider
+            .delete(uri.path(), options)
+            .await
+            .map_err(|e| log_vfs_err("delete", uri, e))
     }
 
     /// Rename/move a resource within the same provider.
@@ -136,7 +163,10 @@ impl Vfs {
             });
         }
         let provider = self.resolve_provider(old_uri)?;
-        provider.rename(old_uri.path(), new_uri.path()).await
+        provider
+            .rename(old_uri.path(), new_uri.path())
+            .await
+            .map_err(|e| log_vfs_err("rename", old_uri, e))
     }
 
     /// Copy a resource from source to destination.
@@ -161,7 +191,10 @@ impl Vfs {
     /// Addresses: Requirement 6 AC 1
     pub async fn list(&self, uri: &ResourceUri) -> Result<Vec<VfsEntry>, VfsError> {
         let provider = self.resolve_provider(uri)?;
-        provider.list(uri.path()).await
+        provider
+            .list(uri.path())
+            .await
+            .map_err(|e| log_vfs_err("list", uri, e))
     }
 
     /// Create a directory/container.
@@ -185,7 +218,10 @@ impl Vfs {
     /// Addresses: Requirement 6 AC 4
     pub async fn stat(&self, uri: &ResourceUri) -> Result<VfsMetadata, VfsError> {
         let provider = self.resolve_provider(uri)?;
-        provider.stat(uri.path()).await
+        provider
+            .stat(uri.path())
+            .await
+            .map_err(|e| log_vfs_err("stat", uri, e))
     }
 
     /// Check if a resource exists.
@@ -570,6 +606,22 @@ mod tests {
         vfs.write(&uri, b"hello world").await.unwrap();
         let data = vfs.read(&uri).await.unwrap();
         assert_eq!(data, b"hello world");
+    }
+
+    // Validates: logging-subsystem Requirement 9.6 (B035, CR-NR-086) -- the VFS
+    // dispatch layer logs the error at WARN before returning it, and the error
+    // itself propagates UNCHANGED through the logging wrapper (the wrapper is
+    // transparent). The WARN emission needs a running log subsystem and is
+    // verified MANUALLY; this asserts the error round-trips correctly.
+    #[tokio::test]
+    async fn dispatch_error_propagates_unchanged_through_log_wrapper() {
+        let (vfs, _provider) = vfs_with_provider("mem");
+        let uri = ResourceUri::new("mem", "/does-not-exist.txt");
+        let result = vfs.read(&uri).await;
+        assert!(
+            matches!(result, Err(VfsError::NotFound { .. })),
+            "the NotFound error must propagate unchanged through log_vfs_err, got: {result:?}"
+        );
     }
 
     // Validates: Requirement 5 AC 2

@@ -18,6 +18,31 @@ use crate::toolchain_panel;
 use super::helpers::*;
 use super::WorkbenchShell;
 
+/// Compute the logging-degradation reason for the status-bar indicator (B038,
+/// CR-NR-086, logging-subsystem Req 8.7). Returns `Some(reason)` when logging
+/// has degraded -- the subsystem is in fallback (no-op) mode, or records have
+/// been dropped -- and `None` when logging is healthy (indicator hidden).
+///
+/// Pure so the decision is unit-testable without a running log subsystem; the
+/// live values are supplied by the caller via `ff_logging::is_fallback()` /
+/// `dropped_count()`.
+pub(crate) fn logging_degradation_reason(is_fallback: bool, dropped: u64) -> Option<String> {
+    if !is_fallback && dropped == 0 {
+        return None;
+    }
+    let mut reason = String::new();
+    if is_fallback {
+        reason.push_str("log file unavailable (fallback mode)");
+    }
+    if dropped > 0 {
+        if !reason.is_empty() {
+            reason.push_str("; ");
+        }
+        reason.push_str(&format!("{dropped} log record(s) dropped"));
+    }
+    Some(reason)
+}
+
 impl WorkbenchShell {
     pub(super) fn render_title_line(&self, ctx: &egui::Context) {
         use ff_theme::mode::VisualMode;
@@ -291,6 +316,38 @@ impl WorkbenchShell {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     // Non-interactive version label (B055: not a Tab focus stop).
                     ui.label("FileForge Workbench v0.1.0");
+
+                    // B038 (CR-NR-086, logging-subsystem Req 8.7): surface logging
+                    // DEGRADATION to the user. Shown only when the subsystem is in
+                    // fallback (no-op) mode -- the log file could not be created --
+                    // OR records have been dropped due to buffer overflow. Hidden
+                    // when logging is healthy. A non-interactive label (B055: not a
+                    // Tab focus stop), with a tooltip stating the reason.
+                    let reason = logging_degradation_reason(
+                        ff_logging::is_fallback(),
+                        ff_logging::dropped_count(),
+                    );
+                    if let Some(reason) = reason {
+                        ui.separator();
+                        let resp = ui
+                            .add(egui::Label::new(
+                                egui::RichText::new("LOG!")
+                                    .strong()
+                                    .color(egui::Color32::from_rgb(0xD2, 0x0F, 0x39)),
+                            ))
+                            .on_hover_text(format!("Logging degraded: {reason}"));
+                        // Register for automation / headless assertion (B038 test).
+                        self.automation.register_str(
+                            crate::automation::ids::LOGGING_DEGRADED,
+                            crate::automation::ControlState::with_value(&reason),
+                        );
+                        let _ = resp;
+                    } else {
+                        self.automation.register_str(
+                            crate::automation::ids::LOGGING_DEGRADED,
+                            crate::automation::ControlState::with_value(""),
+                        );
+                    }
                 });
             });
         });

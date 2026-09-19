@@ -118,19 +118,59 @@ pub async fn stat(path: &Path, follow_links: bool) -> Result<FileMetadata, VfsEr
         ResourceType::Other
     };
 
-    let modified = metadata.modified().ok();
-    let created = metadata.created().ok();
-    let accessed = metadata.accessed().ok();
+    // B037 (CR-NR-086, Req 9.7): timestamp fields are tolerated as None when the
+    // platform cannot provide them, but a FAILURE (as opposed to unsupported) is
+    // logged at DEBUG rather than silently discarded.
+    let modified = match metadata.modified() {
+        Ok(t) => Some(t),
+        Err(e) => {
+            ff_logging::log_debug!(
+                "[connector-local-fs] stat: modified-time unavailable for {}: {}",
+                uri,
+                e
+            );
+            None
+        }
+    };
+    let created = match metadata.created() {
+        Ok(t) => Some(t),
+        Err(e) => {
+            ff_logging::log_debug!(
+                "[connector-local-fs] stat: created-time unavailable for {}: {}",
+                uri,
+                e
+            );
+            None
+        }
+    };
+    let accessed = match metadata.accessed() {
+        Ok(t) => Some(t),
+        Err(e) => {
+            ff_logging::log_debug!(
+                "[connector-local-fs] stat: accessed-time unavailable for {}: {}",
+                uri,
+                e
+            );
+            None
+        }
+    };
 
     let permissions = extract_permissions(&metadata);
 
     let hidden = is_hidden(path);
 
     let symlink_target = if resource_type == ResourceType::Symlink {
-        tokio::fs::read_link(path)
-            .await
-            .ok()
-            .map(|p| p.to_string_lossy().to_string())
+        match tokio::fs::read_link(path).await {
+            Ok(p) => Some(p.to_string_lossy().to_string()),
+            Err(e) => {
+                ff_logging::log_debug!(
+                    "[connector-local-fs] stat: read_link failed for symlink {} (target omitted): {}",
+                    uri,
+                    e
+                );
+                None
+            }
+        }
     } else {
         None
     };

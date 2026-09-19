@@ -75,6 +75,7 @@ not blocking.
 | 1.10 | Detach by dragging a tab >20px outside the tab bar and releasing. | A new Detached Workspace is created at the release point; content intact. | B045; layout-and-docking 3.9 | [B] |
 | 1.11 | Re-dock the detached workspace (close its window or redock gesture). | It returns to the tab bar at its origin; content intact. | B045; layout-and-docking 3.5, 3.11 | [B] |
 | 1.12 | Exit and relaunch. | Session restores tabs/active workspace; POM present. | startup-and-session 14.1b | [ ] |
+| 1.13 | Run with the log directory unwritable (or force a log-buffer overflow) and view the status bar. | When logging has DEGRADED (fallback mode because the log file could not be created, or dropped-record count > 0), the status bar shows a logging-degradation indicator (e.g. `LOG!`); when logging is healthy nothing is shown. | B038 (FIXED, AUTOMATED: full-shell egui_kittest status-bar indicator present-when-degraded / absent-when-healthy); logging-subsystem 8.7 | [ ] |
 
 ---
 

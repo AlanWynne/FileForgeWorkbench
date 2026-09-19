@@ -2127,6 +2127,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "ff-core",
+ "ff-logging",
  "futures-core",
  "pin-project-lite",
  "pretty_assertions",

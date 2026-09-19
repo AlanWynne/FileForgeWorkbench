@@ -30,6 +30,11 @@ pub const STATUSBAR_ENCODING: &str = "statusbar.encoding";
 /// The modified indicator dot in the status bar.
 pub const STATUSBAR_MODIFIED: &str = "statusbar.modified";
 
+/// The logging-degradation indicator in the status bar (B038, CR-NR-086). Its
+/// value is the human-readable degradation reason (fallback and/or dropped
+/// count); empty string when logging is healthy (indicator hidden).
+pub const LOGGING_DEGRADED: &str = "statusbar.logging_degraded";
+
 // === Tab bar ================================================================
 
 /// A tab header button -- append the 0-based index, e.g. "tab.header.0".

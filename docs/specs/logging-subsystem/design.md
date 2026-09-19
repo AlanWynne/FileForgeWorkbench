@@ -916,3 +916,42 @@ The feature is turned on for debug-profile builds workspace-wide without a manua
 **Statement:** For any program, compiling with `dev-logging` absent SHALL produce identical observable behaviour to compiling with it present, except that no TRACE or DEBUG Log_Record is written. In particular, the sequence and content of INFO/WARN/ERROR records is unchanged, and no side effect that a caller relies on occurs inside a `log_trace!`/`log_debug!` argument (arguments must be side-effect free, which the no-op expansion enforces by not evaluating them).
 
 **Validates:** Requirement 13, criteria 2, 4, 6, 8.
+
+
+---
+
+## 13. I/O-layer logging coverage + degradation indicator (Requirement 8.7, 9.6-9.8; CR-NR-086; B035/B037/B038)
+
+These deltas live in the CONSUMER crates (`ff-vfs`, `ff-connector-local-fs`,
+`ff-desktop`); `ff-logging` itself is unchanged (the accessors already exist).
+
+- **B035 -- ff-vfs dispatch logging (Req 9.6).** `ff-vfs` gains `ff-logging` as a
+  dependency. The `Vfs` dispatch methods (`read`/`write`/`delete`/`rename`/`stat`/
+  `list`) `log_warn!` naming the operation and the resource URI on the error path
+  before returning `Err`. The abstraction previously emitted nothing, so an I/O
+  failure lost its origin as it crossed the layer.
+- **B037 -- ff-connector-local-fs metadata degradation (Req 9.7).** In
+  `provider.rs` the `entry.metadata().await.ok()`, `m.modified().ok()`,
+  `entry.file_type().await.ok()`, and `stat`'s `meta.modified().ok()`, and in
+  `metadata.rs` the `modified()/created()/accessed().ok()` and `read_link().ok()`,
+  are wrapped so a failure emits a `log_debug!` naming the entry/path and the
+  attribute, then falls back to the previous absent/partial value. The listing
+  still succeeds (graceful degradation preserved); the failure is no longer
+  invisible.
+- **B038 -- status-bar degradation indicator (Req 8.7).** The shell status-bar
+  render reads `ff_logging::is_fallback()` and `ff_logging::dropped_count()` each
+  frame; when either indicates degradation (fallback mode, or dropped > 0) it
+  paints a compact indicator (e.g. `LOG!` with a tooltip stating fallback and/or
+  the dropped count). When healthy, nothing is shown. `WorkbenchApp::logging_status()`
+  already captures the startup status; the drop count is read live.
+
+### Tests
+
+- B035/B037 log EMISSION requires a running subsystem and has no cross-crate
+  capture sink, so it is MANUAL (as accepted for CR-NR-085's non-fatal paths);
+  the graceful-degradation BEHAVIOUR (local-fs listing still returns entries when
+  a per-entry metadata read fails) is automated by a unit test with a crafted
+  directory.
+- B038 is automated with a full-shell `egui_kittest` test: force the drop counter
+  / fallback state and assert the status-bar indicator widget is present; assert
+  it is absent when healthy.

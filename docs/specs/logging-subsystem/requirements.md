@@ -162,6 +162,8 @@ The application's process model is also formally specified: the workbench runs a
 5. THE Log_Subsystem SHALL expose a thread-safe method to retrieve the current cumulative count of dropped records for diagnostic display in the UI status bar, returning a value of type unsigned integer that is safe to read from any thread without blocking.
 6. IF the Log_Subsystem receives a shutdown signal, THEN THE Log_Subsystem SHALL flush all buffered records to the Log_File within 5 seconds before completing shutdown, and SHALL not accept new log calls after the shutdown signal is received.
 
+7. **(CR-NR-086 / B038 -- surface logging degradation to the user.)** WHEN logging has DEGRADED -- either the subsystem is in fallback (no-op) mode because the Log_File could not be created (Requirement 1 fallback), OR the cumulative dropped-record count (criterion 5) is greater than zero -- THE Workbench status bar SHALL show a visible logging-degradation indicator (e.g. a "LOG!" marker with the fallback state and/or dropped count). WHEN logging is healthy (not fallback and zero drops), THE indicator SHALL NOT be shown. The values are read via the thread-safe accessors (`is_fallback()`, `dropped_count()`); previously they were captured but never rendered, so a silent degradation was invisible to the user.
+
 ---
 
 ### Requirement 9: Integration with Platform-Core Subsystems
@@ -177,6 +179,12 @@ The application's process model is also formally specified: the workbench runs a
 3. WHEN the file engine opens or processes a file through the virtual-file-system layer, THE file engine SHALL write a DEBUG-level Log_Record containing the resource URI and file size in bytes.
 4. WHEN the command executor processes a command via the command-framework, THE command executor SHALL write a TRACE-level Log_Record containing the command ID and parameters.
 5. IF a subsystem's log call occurs at a level below the configured minimum, THEN THE Log_Subsystem SHALL skip the call with negligible overhead (no string allocation, no lock acquisition beyond an atomic level check).
+
+6. **(CR-NR-086 / B035 -- VFS dispatch coverage.)** WHEN the Virtual_File_System dispatch layer (`ff-vfs`) returns an error from a resource operation (read, write, delete, rename, stat, list) to its caller, THE VFS layer SHALL first write a WARN-level Log_Record naming the operation and the resource URI, so an I/O failure flowing through the abstraction is never invisible (this specialises criterion 1 for the `ff-vfs` crate, which previously emitted no records).
+
+7. **(CR-NR-086 / B037 -- per-entry metadata degradation.)** WHEN a directory-listing or metadata operation in a VFS connector encounters a NON-FATAL per-entry failure that it deliberately tolerates (e.g. an entry whose size, type, timestamp, or symlink target cannot be read, so the operation continues with a partial/absent value rather than aborting), THE connector SHALL write a DEBUG-level Log_Record identifying the entry and the failed attribute, rather than silently discarding the error with `.ok()`. The graceful-degradation behaviour itself (the listing still succeeds) SHALL be preserved.
+
+8. **(CR-NR-086 / B036 -- connector logging is a framework obligation; forward-looking.)** EVERY VFS connector -- current and future (FTP/SFTP, cloud, mainframe, network-fs, and any connector built on the `ff-connector-extensibility` framework) -- SHALL emit Log_Records for its connect/authenticate failures and for recoverable I/O errors per criterion 1, so remote-access failures are diagnosable from the logs. NOTE (as of this requirement): only `ff-connector-local-fs` exists and is instrumented; the named remote connectors are NOT yet implemented, so this criterion is a BINDING OBLIGATION on each connector as it is built and is verified at that connector's own gate, not retroactively.
 
 ---
 

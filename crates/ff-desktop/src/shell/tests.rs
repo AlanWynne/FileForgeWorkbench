@@ -6738,3 +6738,52 @@ fn end_from_drilled_menu_restores_home_context() {
         "END from the drilled Settings menu must restore the Home Context"
     );
 }
+
+// === B038 / CR-NR-086: status-bar logging-degradation indicator (Req 8.7) ===
+
+// Validates: logging-subsystem Req 8.7 (B038) -- the pure decision function that
+// drives the status-bar indicator. Degraded (fallback and/or dropped>0) yields a
+// reason string; healthy (not fallback, zero dropped) yields None (hidden).
+#[test]
+fn logging_degradation_reason_covers_all_states() {
+    use super::render::logging_degradation_reason;
+    // Healthy -> hidden.
+    assert_eq!(logging_degradation_reason(false, 0), None);
+    // Fallback only.
+    let r = logging_degradation_reason(true, 0).expect("fallback -> degraded");
+    assert!(r.contains("fallback"), "reason names fallback: {r:?}");
+    // Dropped only.
+    let r = logging_degradation_reason(false, 5).expect("drops -> degraded");
+    assert!(
+        r.contains("5") && r.contains("dropped"),
+        "reason names drops: {r:?}"
+    );
+    // Both -> both reasons joined.
+    let r = logging_degradation_reason(true, 3).expect("both -> degraded");
+    assert!(
+        r.contains("fallback") && r.contains("3"),
+        "reason names both: {r:?}"
+    );
+}
+
+// Validates: logging-subsystem Req 8.7 (B038) -- in a full-shell render with a
+// HEALTHY logging subsystem (not initialised in tests -> not fallback, zero
+// dropped), the status bar does NOT show the degradation indicator (the
+// automation entry is registered empty). The DEGRADED render requires a real
+// fallback state (no test hook to force the global) and is verified MANUALLY.
+#[test]
+fn full_shell_status_bar_hides_logging_indicator_when_healthy() {
+    let mut harness = harness_shell();
+    harness.run();
+    let state = harness
+        .state()
+        .automation
+        .query_str(crate::automation::ids::LOGGING_DEGRADED)
+        .and_then(|s| s.value.clone());
+    // Registered as empty (indicator hidden) when logging is healthy.
+    assert_eq!(
+        state.as_deref(),
+        Some(""),
+        "logging-degradation indicator must be hidden (empty) when logging is healthy"
+    );
+}

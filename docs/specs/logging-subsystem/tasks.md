@@ -330,3 +330,34 @@ This is a **Wave 0 (Foundation)** sub-project with no upstream dependencies.
     - Validates: Requirement 13.2, 13.4, 13.6, 13.8
   - [ ] 25.8 Update `docs/quality/TCR.md`: set the CR-NR-058 logging-subsystem Req 13 rows to their correct status
     - Covers: Requirement 13 (all criteria)
+
+
+## Phase (bug-sweep Wave 2) -- I/O-layer logging coverage + degradation indicator (CR-NR-086, Req 8.7 / 9.6-9.8; B035/B036/B037/B038)
+
+- [x] 26. I/O-layer logging coverage + status-bar degradation indicator
+  - [x] 26.1 B035 (Req 9.6): add `ff-logging` to `ff-vfs`; `log_warn!` (operation +
+        URI) at the `Vfs` dispatch error boundary (read/write/delete/rename/stat/
+        list) before returning `Err`. Behaviour test (dispatch still returns the
+        error); log emission MANUAL.
+    - Validates: logging-subsystem Requirement 9.6
+  - [x] 26.2 B037 (Req 9.7): in `ff-connector-local-fs` `provider.rs`
+        (metadata/modified/file_type `.ok()` sites) and `metadata.rs`
+        (modified/created/accessed/read_link `.ok()`), `log_debug!` the entry +
+        failed attribute on failure, keeping graceful degradation. Unit test: a
+        listing still returns entries when a per-entry metadata read fails.
+    - Validates: logging-subsystem Requirement 9.7
+  - [x] 26.3 B038 (Req 8.7): the `ff-desktop` shell status bar reads
+        `ff_logging::is_fallback()`/`dropped_count()` and shows a degradation
+        indicator when fallback or dropped>0; nothing when healthy. Full-shell
+        `egui_kittest` test (present when degraded, absent when healthy).
+    - Validates: logging-subsystem Requirement 8.7
+  - [x] 26.4 B036 (Req 9.8): REFRAMED forward-looking + DEFERRED -- no FTP/SFTP/
+        cloud/mainframe connector crates exist yet (only local-fs + the
+        `ff-connector-extensibility` framework). Record the binding obligation in
+        the requirement; each connector proves it at its OWN gate when built. No
+        code now.
+    - Covers: logging-subsystem Requirement 9.8 (obligation recorded; per-connector
+      verification deferred)
+  - [x] 26.5 verify.ps1 CLEAN (FULL, nextest); rebuild ffwb.exe; TCR Req 8.7/9.6-9.8;
+        bugs.md B035/B037/B038 FIXED, B036 reframed+deferred; core test-plan.
+    - Covers: logging-subsystem Requirement 8.7, 9.6, 9.7, 9.8

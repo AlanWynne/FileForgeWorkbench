@@ -282,9 +282,35 @@ impl VfsProvider for LocalFsProvider {
                 VfsEntryType::Other
             };
 
-            let metadata = entry.metadata().await.ok();
+            // B037 (CR-NR-086, Req 9.7): a per-entry metadata failure is
+            // tolerated (size/modified fall back to None) but is no longer
+            // silently swallowed -- it is logged at DEBUG so a wrong/absent
+            // size or date has a diagnostic trail. The listing still succeeds.
+            let metadata = match entry.metadata().await {
+                Ok(m) => Some(m),
+                Err(e) => {
+                    ff_logging::log_debug!(
+                        "[connector-local-fs] list: metadata unavailable for '{}' under {} (size/modified omitted): {}",
+                        name,
+                        uri,
+                        e
+                    );
+                    None
+                }
+            };
             let size = metadata.as_ref().map(|m| m.len());
-            let modified = metadata.and_then(|m| m.modified().ok());
+            let modified = metadata.and_then(|m| match m.modified() {
+                Ok(t) => Some(t),
+                Err(e) => {
+                    ff_logging::log_debug!(
+                        "[connector-local-fs] list: modified-time unavailable for '{}' under {}: {}",
+                        name,
+                        uri,
+                        e
+                    );
+                    None
+                }
+            });
 
             entries.push(VfsEntry {
                 name,
@@ -447,7 +473,20 @@ impl VfsProvider for SearchProxy {
             .map_err(|e| map_io_error(e, "list", &uri))?
         {
             let name = entry.file_name().to_string_lossy().to_string();
-            let file_type = entry.file_type().await.ok();
+            // B037 (CR-NR-086, Req 9.7): tolerate a per-entry file_type failure
+            // (entry classified Other) but log it at DEBUG instead of silent .ok().
+            let file_type = match entry.file_type().await {
+                Ok(ft) => Some(ft),
+                Err(e) => {
+                    ff_logging::log_debug!(
+                        "[connector-local-fs] list: file_type unavailable for '{}' under {} (classified Other): {}",
+                        name,
+                        uri,
+                        e
+                    );
+                    None
+                }
+            };
 
             let entry_type = match file_type {
                 Some(ft) if ft.is_dir() => VfsEntryType::Directory,
@@ -482,9 +521,23 @@ impl VfsProvider for SearchProxy {
             VfsEntryType::Other
         };
 
+        // B037 (CR-NR-086, Req 9.7): a missing modified-time is tolerated (None)
+        // but logged at DEBUG rather than silently discarded.
+        let modified = match meta.modified() {
+            Ok(t) => Some(t),
+            Err(e) => {
+                ff_logging::log_debug!(
+                    "[connector-local-fs] stat: modified-time unavailable for {}: {}",
+                    uri,
+                    e
+                );
+                None
+            }
+        };
+
         Ok(VfsMetadata {
             size: Some(meta.len()),
-            modified: meta.modified().ok(),
+            modified,
             entry_type,
             extra: std::collections::HashMap::new(),
         })
@@ -641,6 +694,18 @@ mod tests {
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].name, "inner.txt");
         assert_eq!(entries[0].entry_type, VfsEntryType::File);
+        // B037 (CR-NR-086, Req 9.7) regression guard: the restructured metadata
+        // path (which now logs on failure instead of a bare `.ok()`) still
+        // populates size and modified on the normal success path.
+        assert_eq!(
+            entries[0].size,
+            Some(7),
+            "size must be populated for a readable entry"
+        );
+        assert!(
+            entries[0].modified.is_some(),
+            "modified-time must be populated for a readable entry"
+        );
     }
 
     #[tokio::test]
