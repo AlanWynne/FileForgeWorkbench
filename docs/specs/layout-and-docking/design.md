@@ -1591,16 +1591,33 @@ SAME `ff-layout::TabGroupTree`.
 
 ### 2c.3 Persistence (`tab_manager.rs` + `shell/update.rs` + `ff-session`)
 
-- `TabManager::layout_snapshot() -> Option<toml::Value>`: serialise the `TabGroupTree` (serde) plus
-  the `focused_group` id when split; `None` when unsplit (so an unsplit workbench writes no layout,
-  Req 14.12). `on_exit`/`save_with_workspace` stores it into `SessionState.layout` (LayoutSnapshot
-  `{ data, persona }`).
-- Restore (shell/update.rs restore path, AFTER tabs are reconstructed): if `layout` present, parse
-  the tree, reconcile ids against the restored store (drop dangling ids; place unreferenced store
-  tabs in the focused/first leaf -- Req 14.13), install it as `TabManager`'s tree + focused leaf
-  (Req 14.11). Absent/older session -> unsplit (Req 14.12), byte-identical to 2a/2b.
-- Backward-compat: `layout` is already `Option` with `#[serde(default)]`; no schema bump. A property
-  round-trip test (tree -> snapshot -> tree) plus a full-shell restore test.
+**Design refinement (approved during 2c.3 implementation):** the session restore path does NOT
+preserve `TabId`s across a restart -- `restore_workspace_descriptors` reopens tabs with FRESH ids,
+skips Menu descriptors, and guarantees the POM separately. Persisting the tree by per-leaf `TabId`
+would therefore restore against meaningless ids. So the snapshot persists the split STRUCTURE, not
+tab identities:
+
+- `TabManager::layout_snapshot() -> Option<toml::Value>`: when split, serialise a structural
+  descriptor -- the tree shape with each `Split` node's `direction` + `proportion`, each `Leaf`'s tab
+  COUNT, and the focused leaf's position (pre-order leaf index). `None` when unsplit (an unsplit
+  workbench writes no layout, Req 14.12). `save_with_workspace` reads `tabs.layout_snapshot()` and
+  stores it into `SessionState.layout` (LayoutSnapshot `{ data, persona }`); no new param.
+- `TabManager::restore_layout(value)`: rebuild the tree SHAPE from the descriptor, then distribute
+  the current (restored) store tabs across the leaves IN ORDER by the saved per-leaf counts (first N
+  to leaf 0, next M to leaf 1, ...). `sync_layout` then reconciles: any leftover store tabs (count
+  mismatch) go to the focused/first leaf and empty leaves collapse (Req 14.13 -- no tab lost, no
+  dangling id). Focused leaf set from the saved position (Req 14.11).
+- Restore hook (shell/update.rs restore path, AFTER tabs are reconstructed + POM ensured): capture
+  `state.layout` (owned) before the session borrow ends; if present, call `restore_layout`. Absent/
+  older session -> unsplit (Req 14.12), byte-identical to 2a/2b.
+- Backward-compat: `layout` is already `Option` with `#[serde(default)]`; no schema bump. Unit
+  round-trip tests (tree shape -> snapshot -> reconstructed shape; unsplit -> None; count mismatch
+  reconciled) plus a full-shell restore test.
+- Rationale for structure-not-ids: reproduces the saved split GEOMETRY (how many regions, their
+  direction/proportion, which is focused) robustly against the existing lossy/reordering restore,
+  which is what the user sees; exact per-tab placement across a restart is not meaningful when tab
+  identity does not survive. A future stable-id restore contract could refine this without changing
+  the persisted-structure format.
 
 ### 2c.4 Detached fold-in (`shell/mod.rs` + `shell/commands.rs` + `shell/update.rs`)
 

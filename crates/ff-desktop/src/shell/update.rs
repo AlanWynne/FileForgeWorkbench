@@ -155,6 +155,9 @@ impl eframe::App for WorkbenchShell {
                 let restored_any = !restore_descriptors.is_empty();
                 // Extract workspace path before any mutable borrows.
                 let ws_path_to_restore = state.active_workspace_path.clone();
+                // CR-NR-093 Slice 2c.3: capture the persisted split layout (owned)
+                // before the session borrow ends; applied AFTER tabs are rebuilt.
+                let layout_to_restore = state.layout.clone();
                 // Validates: Requirement 6.2 (view-zoom) -- restore global zoom offset.
                 if state.global_zoom_offset != 0 {
                     self.zoom = ff_zoom::ZoomState::from_persisted(
@@ -194,6 +197,21 @@ impl eframe::App for WorkbenchShell {
                     self.tabs.insert_pom_tab(&self.runtime);
                 } else {
                     ensure_pom_tab_present(&mut self.tabs, &self.runtime);
+                }
+                // CR-NR-093 Slice 2c.3 (Req 14.11): restore the split arrangement
+                // AFTER the tabs are reconstructed. The descriptor is identity-
+                // free (structure + per-leaf counts), so `restore_layout`
+                // distributes the restored store tabs across the saved tree shape
+                // and reconciles (Req 14.13). Absent layout -> stays unsplit
+                // (Req 14.12), byte-identical to Slice 2a/2b.
+                if let Some(layout) = &layout_to_restore {
+                    if let Ok(desc) = layout
+                        .data
+                        .clone()
+                        .try_into::<crate::tab_manager::LayoutDescriptor>()
+                    {
+                        self.tabs.restore_layout(&desc);
+                    }
                 }
                 // Validates: workspace-model Requirement 5.2, 5.3 -- restore active workspace.
                 // Done after session borrow ends to allow &mut self in open_workspace.

@@ -6,8 +6,8 @@
 //! Addresses: Requirement 18.10 — session save/restore wired into ff-desktop.
 
 use ff_session::session_state::{
-    DescriptorParams, DescriptorValue, PersistedTabKind, TabState as SessionTabState,
-    WorkspaceDescriptor, WorkspaceKind,
+    DescriptorParams, DescriptorValue, LayoutSnapshot, PersistedTabKind,
+    TabState as SessionTabState, WorkspaceDescriptor, WorkspaceKind,
 };
 use ff_session::{SessionFile, SessionState, UserDataDir};
 
@@ -281,6 +281,20 @@ impl SessionManager {
             }
         };
 
+        // CR-NR-093 Slice 2c.3 (Req 14.10): persist the split arrangement as an
+        // identity-free structural descriptor into the existing LayoutSnapshot
+        // slot. `None` when unsplit, so an unsplit workbench writes no layout
+        // and opens unsplit (Req 14.12). Serialisation failure degrades to no
+        // layout rather than losing the whole session.
+        let layout = tabs.layout_snapshot().and_then(|desc| {
+            toml::Value::try_from(&desc)
+                .ok()
+                .map(|data| LayoutSnapshot {
+                    data,
+                    persona: None,
+                })
+        });
+
         let state = SessionState {
             tabs: session_tabs,
             active_tab_id,
@@ -290,6 +304,7 @@ impl SessionManager {
             active_workspace_path,
             recent_palette_commands,
             search_history,
+            layout,
             ..SessionState::empty()
         };
         let _ = self.session_file.save(&state);
@@ -658,5 +673,73 @@ mod tests {
         mgr.session_file.save(&state).expect("save");
         let loaded = mgr.load();
         assert!(loaded.search_history.is_empty());
+    }
+
+    // === CR-NR-093 Slice 2c.3: split layout persistence round-trip ==========
+
+    /// Validates: layout-and-docking Req 14.10, 14.11 -- a split arrangement is
+    /// persisted into SessionState.layout on save and rebuilds the split on
+    /// restore (save -> TOML -> load -> restore_layout reproduces the shape).
+    #[test]
+    fn split_layout_round_trips_through_session() {
+        let tmp = TempDir::new().expect("tempdir");
+        let mgr = SessionManager::with_path(make_session_file(&tmp));
+        let runtime = Runtime::new().expect("runtime");
+
+        // A split TabManager: 2 tabs -> SPLIT (Vertical) -> 2 leaves.
+        let mut tabs = TabManager::new(&runtime, "one\n");
+        tabs.split_focused(ff_layout::SplitDirection::Vertical, &runtime);
+        let saved_shape = tabs.layout_snapshot().expect("split -> snapshot").shape;
+
+        // Save through the real path, then load back.
+        mgr.save_with_workspace(&tabs, 0, true, 200.0, None, Vec::new(), Vec::new(), None);
+        let loaded = mgr.load();
+        let layout = loaded.layout.expect("layout persisted");
+        let desc: crate::tab_manager::LayoutDescriptor =
+            layout.data.try_into().expect("layout deserialises");
+
+        // Restore into a fresh 2-tab manager: reproduces the same shape.
+        let mut restored = TabManager::new(&runtime, "one\n");
+        restored.new_untitled_tab(&runtime); // 2 store tabs to distribute
+        restored.restore_layout(&desc);
+        assert!(restored.is_split(), "restore rebuilds the split");
+        assert_eq!(
+            restored.layout_snapshot().expect("snapshot").shape,
+            saved_shape,
+            "persisted split shape round-trips through the session file"
+        );
+    }
+
+    /// Validates: layout-and-docking Req 14.12 -- an UNSPLIT workbench writes no
+    /// layout, so a restored session opens unsplit (byte-identical to 2a/2b).
+    #[test]
+    fn unsplit_workbench_persists_no_layout() {
+        let tmp = TempDir::new().expect("tempdir");
+        let mgr = SessionManager::with_path(make_session_file(&tmp));
+        let runtime = Runtime::new().expect("runtime");
+
+        let tabs = TabManager::new(&runtime, "one\n"); // unsplit
+        mgr.save_with_workspace(&tabs, 0, true, 200.0, None, Vec::new(), Vec::new(), None);
+        let loaded = mgr.load();
+        assert!(
+            loaded.layout.is_none(),
+            "an unsplit workbench must persist no layout"
+        );
+    }
+
+    /// Validates: layout-and-docking Req 14.12 -- an older session TOML with no
+    /// `layout` field loads without error (backward-compatible, serde default).
+    #[test]
+    fn older_session_without_layout_field_loads() {
+        let tmp = TempDir::new().expect("tempdir");
+        let path = make_session_file(&tmp);
+        // A minimal legacy session file: schema_version only, no `layout` key.
+        std::fs::write(&path, "schema_version = 1\n").expect("write legacy session");
+        let mgr = SessionManager::with_path(path);
+        let loaded = mgr.load();
+        assert!(
+            loaded.layout.is_none(),
+            "a session without a layout field must load with layout = None"
+        );
     }
 }

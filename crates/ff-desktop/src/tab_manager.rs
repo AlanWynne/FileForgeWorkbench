@@ -30,6 +30,42 @@ pub(crate) struct RenderFocusToken(TabGroupId);
 /// subsequent leaves increment from there (see `next_group_id`).
 const FIRST_SPLIT_GROUP_ID: u32 = 1;
 
+/// A persistable, IDENTITY-FREE descriptor of the split arrangement (CR-NR-093,
+/// Slice 2c.3). The session restore path does NOT preserve `TabId`s across a
+/// restart (tabs are reopened with fresh ids), so the layout is persisted by
+/// STRUCTURE -- the tree shape, each split's direction/proportion, and each
+/// leaf's tab COUNT -- rather than by tab identity. On restore the tree shape is
+/// rebuilt and the restored store tabs are distributed across the leaves in
+/// order by these counts (then reconciled by `sync_layout`).
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub(crate) enum LayoutShape {
+    /// A leaf region holding `count` tabs (in store order).
+    Leaf { count: usize },
+    /// A split of two child shapes.
+    Split {
+        /// Side-by-side (`true`) or stacked (`false`) -- serialised as a bool so
+        /// the descriptor does not depend on `ff-layout` enum serde naming.
+        horizontal: bool,
+        /// Relative size of the first child in [0.05, 0.95].
+        proportion: f32,
+        /// First (left/top) child shape.
+        first: Box<LayoutShape>,
+        /// Second (right/bottom) child shape.
+        second: Box<LayoutShape>,
+    },
+}
+
+/// The persisted layout descriptor: the split [`LayoutShape`] plus the focused
+/// leaf's pre-order index (CR-NR-093, Slice 2c.3). Serialised into
+/// `SessionState.layout`'s `data` field.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub(crate) struct LayoutDescriptor {
+    /// The structural shape of the split tree.
+    pub shape: LayoutShape,
+    /// Pre-order index of the focused leaf (0-based, left-to-right/top-to-bottom).
+    pub focused_leaf: usize,
+}
+
 /// Manages all open tabs and the active tab index.
 ///
 /// CR-NR-091 (B046 Slice 2a): the shell now models tab arrangement as a
@@ -439,6 +475,145 @@ impl TabManager {
         self.active = self.focused_active_index();
         self.previous_active = None;
         true
+    }
+
+    /// Persist the current split arrangement as an identity-free structural
+    /// descriptor (CR-NR-093, Slice 2c.3, Req 14.10). Returns `None` when unsplit
+    /// (an unsplit workbench writes no layout, Req 14.12). The descriptor records
+    /// the tree shape, per-split direction/proportion, per-leaf tab COUNT, and the
+    /// focused leaf's pre-order index -- NOT tab ids (which do not survive a
+    /// restart).
+    ///
+    /// Validates: layout-and-docking Requirement 14.10, 14.12
+    pub(crate) fn layout_snapshot(&self) -> Option<LayoutDescriptor> {
+        if !self.is_split() {
+            return None;
+        }
+        let shape = Self::shape_of(&self.layout);
+        // Focused leaf pre-order index.
+        let focused_leaf = self
+            .layout
+            .all_group_ids()
+            .iter()
+            .position(|id| *id == self.focused_group)
+            .unwrap_or(0);
+        Some(LayoutDescriptor {
+            shape,
+            focused_leaf,
+        })
+    }
+
+    /// Build the structural [`LayoutShape`] of a tree (CR-NR-093 helper).
+    fn shape_of(tree: &TabGroupTree) -> LayoutShape {
+        match tree {
+            TabGroupTree::Leaf(g) => LayoutShape::Leaf {
+                count: g.tabs.len(),
+            },
+            TabGroupTree::Split {
+                direction,
+                proportion,
+                first,
+                second,
+            } => LayoutShape::Split {
+                horizontal: matches!(direction, SplitDirection::Horizontal),
+                proportion: *proportion,
+                first: Box::new(Self::shape_of(first)),
+                second: Box::new(Self::shape_of(second)),
+            },
+        }
+    }
+
+    /// Restore a split arrangement from a persisted [`LayoutDescriptor`]
+    /// (CR-NR-093, Slice 2c.3, Req 14.11). Rebuilds the tree SHAPE and distributes
+    /// the CURRENT (restored) store tabs across the leaves in order by the saved
+    /// per-leaf counts; `sync_layout` then reconciles any count mismatch (leftover
+    /// store tabs go to the focused/first leaf; empty leaves collapse -- Req
+    /// 14.13). No-op when there are fewer than two tabs to place or the descriptor
+    /// is a single leaf (nothing to split).
+    ///
+    /// Validates: layout-and-docking Requirement 14.11, 14.13
+    pub(crate) fn restore_layout(&mut self, desc: &LayoutDescriptor) {
+        // Nothing to restore into an empty/single-tab store, or a non-split shape.
+        if self.tabs.len() < 2 || matches!(desc.shape, LayoutShape::Leaf { .. }) {
+            return;
+        }
+        // Store tab ids in current order; distributed across leaves by count.
+        let store_ids: Vec<String> = self.tabs.iter().map(|t| t.id.0.to_string()).collect();
+        let mut cursor = 0usize;
+        // Reset the group-id allocator so rebuilt leaves get fresh sequential ids.
+        self.next_group_id = FIRST_SPLIT_GROUP_ID;
+        let mut root_used = false;
+        let tree = self.build_from_shape(&desc.shape, &store_ids, &mut cursor, &mut root_used);
+        self.layout = tree;
+        // Any store tabs not yet placed (count mismatch) are appended to the
+        // first leaf so none is lost; sync_layout also handles this, but place
+        // them deterministically here first.
+        if cursor < store_ids.len() {
+            let leftover: Vec<String> = store_ids[cursor..].to_vec();
+            if let Some(first_leaf_id) = self.layout.all_group_ids().first().copied() {
+                if let Some(g) = self.layout.find_group_mut(first_leaf_id) {
+                    g.tabs.extend(leftover);
+                }
+            }
+        }
+        // Focus the saved leaf by pre-order index (clamped).
+        let leaves = self.layout.all_group_ids();
+        if !leaves.is_empty() {
+            self.focused_group = leaves[desc.focused_leaf.min(leaves.len() - 1)];
+        }
+        // Reconcile (clamp actives, drop empties, place orphans) and re-resolve
+        // the flat active through the focused leaf.
+        self.sync_layout();
+        if self.is_split() {
+            self.active = self.focused_active_index();
+        }
+    }
+
+    /// Recursively build a `TabGroupTree` from a [`LayoutShape`], consuming
+    /// `store_ids[*cursor..]` by each leaf's count (CR-NR-093 helper). The first
+    /// leaf built reuses [`ROOT_GROUP_ID`]; subsequent leaves allocate fresh ids.
+    fn build_from_shape(
+        &mut self,
+        shape: &LayoutShape,
+        store_ids: &[String],
+        cursor: &mut usize,
+        root_used: &mut bool,
+    ) -> TabGroupTree {
+        match shape {
+            LayoutShape::Leaf { count } => {
+                let end = (*cursor + *count).min(store_ids.len());
+                let ids: Vec<String> = store_ids[*cursor..end].to_vec();
+                *cursor = end;
+                let id = if *root_used {
+                    let gid = TabGroupId::new(self.next_group_id);
+                    self.next_group_id += 1;
+                    gid
+                } else {
+                    *root_used = true;
+                    ROOT_GROUP_ID
+                };
+                TabGroupTree::Leaf(TabGroup::new(id, ids))
+            }
+            LayoutShape::Split {
+                horizontal,
+                proportion,
+                first,
+                second,
+            } => {
+                let f = self.build_from_shape(first, store_ids, cursor, root_used);
+                let s = self.build_from_shape(second, store_ids, cursor, root_used);
+                TabGroupTree::Split {
+                    direction: if *horizontal {
+                        SplitDirection::Horizontal
+                    } else {
+                        SplitDirection::Vertical
+                    },
+                    proportion: proportion.clamp(0.05, 0.95),
+                    first: Box::new(f),
+                    second: Box::new(s),
+                }
+            }
+        }
     }
 
     /// Render-support (CR-NR-093): set `proportion` on the split node identified
@@ -1952,5 +2127,108 @@ mod tests {
         mgr.split_focused(SplitDirection::Horizontal, &runtime);
         let other = mgr.leaf_ids()[1];
         assert!(!mgr.move_tab_to_group(TabId(9_999), other));
+    }
+
+    // === CR-NR-093 Slice 2c.3: split persistence ============================
+
+    /// Validates: layout-and-docking Req 14.12 -- an unsplit manager produces no
+    /// layout snapshot (so the session writes no layout and opens unsplit).
+    #[test]
+    fn layout_snapshot_is_none_when_unsplit() {
+        let runtime = Runtime::new().expect("runtime");
+        let mgr = mgr_with_titled(&runtime, 3);
+        assert!(mgr.layout_snapshot().is_none());
+    }
+
+    /// Validates: layout-and-docking Req 14.10 -- a split produces a structural
+    /// snapshot capturing the tree shape, direction, and focused leaf.
+    #[test]
+    fn layout_snapshot_captures_shape_and_focus() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = mgr_with_titled(&runtime, 2);
+        mgr.split_focused(SplitDirection::Vertical, &runtime); // 2 leaves, focus = leaf 1
+        let snap = mgr.layout_snapshot().expect("split -> snapshot");
+        assert_eq!(snap.focused_leaf, 1, "focused leaf index recorded");
+        match snap.shape {
+            LayoutShape::Split {
+                horizontal,
+                first,
+                second,
+                ..
+            } => {
+                assert!(!horizontal, "SPLIT DOWN -> vertical (horizontal=false)");
+                assert!(matches!(*first, LayoutShape::Leaf { .. }));
+                assert!(matches!(*second, LayoutShape::Leaf { .. }));
+            }
+            _ => panic!("expected a Split shape"),
+        }
+    }
+
+    /// Validates: layout-and-docking Req 14.10, 14.11 -- snapshot -> restore
+    /// round-trips the tree SHAPE (structure + direction + leaf count) and the
+    /// focused leaf, distributing the current store tabs across the leaves.
+    #[test]
+    fn layout_snapshot_restore_round_trips_shape() {
+        let runtime = Runtime::new().expect("runtime");
+        // Build a depth-2 split: SPLIT (2 leaves), then SPLIT again (3 leaves).
+        let mut mgr = mgr_with_titled(&runtime, 3);
+        mgr.split_focused(SplitDirection::Horizontal, &runtime);
+        mgr.split_focused(SplitDirection::Vertical, &runtime);
+        let snap = mgr.layout_snapshot().expect("split -> snapshot");
+        let leaves_before = mgr.leaf_ids().len();
+
+        // A fresh manager with the same number of store tabs, then restore.
+        let mut restored = mgr_with_titled(&runtime, mgr.len());
+        assert!(!restored.is_split(), "starts unsplit");
+        restored.restore_layout(&snap);
+
+        assert!(restored.is_split(), "restore rebuilds the split");
+        assert_eq!(
+            restored.leaf_ids().len(),
+            leaves_before,
+            "restore reproduces the same number of leaves"
+        );
+        // The restored snapshot equals the original snapshot's shape (round-trip).
+        let snap2 = restored.layout_snapshot().expect("restored -> snapshot");
+        assert_eq!(snap2.shape, snap.shape, "tree shape round-trips");
+    }
+
+    /// Validates: layout-and-docking Req 14.13 -- restore is self-consistent when
+    /// the store has MORE tabs than the saved layout's total count: no tab is
+    /// lost (leftover tabs land in a leaf), and no leaf references a missing tab.
+    #[test]
+    fn restore_layout_reconciles_extra_store_tabs() {
+        let runtime = Runtime::new().expect("runtime");
+        // Snapshot from a 2-leaf split with 2 tabs total (1 each).
+        let mut src = mgr_with_titled(&runtime, 1);
+        src.split_focused(SplitDirection::Horizontal, &runtime); // leaf0=[T0], leaf1=[POM]
+        let snap = src.layout_snapshot().expect("snapshot");
+
+        // Restore into a manager with MORE tabs than the layout describes.
+        let mut restored = mgr_with_titled(&runtime, 5); // 5 store tabs
+        let before = restored.len();
+        restored.restore_layout(&snap);
+        // Every store tab is still present across the leaves (none lost).
+        let placed: usize = restored
+            .leaf_ids()
+            .iter()
+            .map(|id| restored.leaf_tab_store_indices(*id).len())
+            .sum();
+        assert_eq!(placed, before, "no store tab lost on restore");
+        assert_eq!(restored.len(), before, "store tab count unchanged");
+    }
+
+    /// Validates: layout-and-docking Req 14.12 -- restoring into a single-tab
+    /// store is a no-op (cannot split one tab into two regions).
+    #[test]
+    fn restore_layout_noop_with_single_tab() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut src = mgr_with_titled(&runtime, 2);
+        src.split_focused(SplitDirection::Horizontal, &runtime);
+        let snap = src.layout_snapshot().expect("snapshot");
+
+        let mut restored = mgr_with_titled(&runtime, 1); // only one tab
+        restored.restore_layout(&snap);
+        assert!(!restored.is_split(), "cannot restore a split into one tab");
     }
 }
