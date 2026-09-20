@@ -868,6 +868,83 @@ fn kind_title_derives_from_registry_and_user_override_wins() {
     );
 }
 
+/// Validates: workspace-kinds Requirement 4.3 (CR-NR-090 B.2) -- the key-map
+/// context for a tab is the Kind's configured `key_list` when set, else the
+/// Kind's base context name; behaviour-preserving for built-in Kinds.
+#[test]
+fn key_list_context_uses_kind_key_list_else_base() {
+    // Validates: workspace-kinds Requirement 4.3, 4.5
+    use crate::tab_state::{TabId, TabState};
+    use ff_document_model::new_document;
+    let mut shell = make_shell();
+
+    let editor = TabState::untitled(TabId(1), new_document(), 1);
+    // Built-in editor Kind: no key_list override -> base context "editor".
+    assert_eq!(
+        shell.key_list_context_for_tab(&editor).as_deref(),
+        Some("editor"),
+        "an unconfigured Kind uses its base keymap context"
+    );
+
+    // Override the editor Kind's key_list.
+    let dir = tempfile::tempdir().expect("tempdir");
+    std::fs::write(
+        dir.path().join("editor.toml"),
+        "name = \"editor\"\nmodelled_on = \"editor\"\ntitle = \"[EDITOR]\"\nkey_list = \"mf\"\n",
+    )
+    .unwrap();
+    shell.kind_registry = crate::workspace_kind::KindRegistry::load(dir.path());
+    assert_eq!(
+        shell.key_list_context_for_tab(&editor).as_deref(),
+        Some("mf"),
+        "a Kind's configured key_list selects that keymap context"
+    );
+}
+
+/// Validates: workspace-kinds Requirement 4.1/4.5 (CR-NR-090 B.2) -- the Menu_Bar
+/// for a tab is the Kind's configured `menu_bar` when set (loaded via the named
+/// -menu resolver), else the compiled default bar. Uses a temp menus dir so the
+/// configured bar resolves to a real file.
+#[test]
+fn menu_bar_uses_kind_menu_bar_else_default() {
+    // Validates: workspace-kinds Requirement 4.1, 4.5
+    use crate::tab_state::{TabId, TabState};
+    use ff_document_model::new_document;
+    let mut shell = make_shell();
+
+    // A menus dir with a custom bar file "mb-editor.toml".
+    let menus = tempfile::tempdir().expect("menus");
+    std::fs::write(
+        menus.path().join("mb-editor.toml"),
+        "title = \"EditorBar\"\n[[options]]\nkey=\"1\"\ncommand=\"FILES\"\ndescription=\"Files\"\n",
+    )
+    .unwrap();
+    shell.menus_dir_override = Some(menus.path().to_path_buf());
+
+    let editor = TabState::untitled(TabId(1), new_document(), 1);
+    // Default (no menu_bar override): resolves the compiled default bar (its
+    // title differs from our custom bar).
+    let default_bar = shell.resolve_menu_bar_menu_for(&editor);
+    assert_ne!(
+        default_bar.title, "EditorBar",
+        "an unconfigured Kind uses the compiled default bar, not the custom one"
+    );
+
+    // Override the editor Kind's menu_bar to "MB-Editor" (slug mb-editor).
+    let kinds = tempfile::tempdir().expect("kinds");
+    std::fs::write(
+        kinds.path().join("editor.toml"),
+        "name = \"editor\"\nmodelled_on = \"editor\"\ntitle = \"[EDITOR]\"\nmenu_bar = \"MB-Editor\"\n",
+    )
+    .unwrap();
+    shell.kind_registry = crate::workspace_kind::KindRegistry::load(kinds.path());
+    let configured_bar = shell.resolve_menu_bar_menu_for(&editor);
+    assert_eq!(
+        configured_bar.title, "EditorBar",
+        "a Kind's configured menu_bar resolves that named bar file"
+    );
+}
+
 /// Validates: menu-and-statusbar Requirement 17.10 (CR-CH-034, B050) -- a
 /// non-Home Menu_Workspace tab whose cached `tab.title` is STALE (left as a
 /// previous Context's label after an in-place context switch) still renders the

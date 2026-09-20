@@ -1027,6 +1027,24 @@ impl WorkbenchShell {
             _ => title_line_text(tab),
         }
     }
+
+    /// The key-map context name for a tab (CR-NR-090 B.2, workspace-kinds Req
+    /// 4.3): the active Kind's configured `key_list` when set, else the Kind's
+    /// base context name (`context_name_for_tab`). A `key_list` naming a context
+    /// with no loaded `keymaps/<name>.toml` map falls back to the global map via
+    /// the resolver's existing full-replacement precedence. Behaviour-preserving
+    /// for built-in Kinds (their default `key_list` is `None`).
+    pub(crate) fn key_list_context_for_tab(
+        &self,
+        tab: &crate::tab_state::TabState,
+    ) -> Option<String> {
+        let kind_name =
+            crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind, tab.is_home).stable_name();
+        if let Some(kl) = self.kind_registry.effective(kind_name).key_list.clone() {
+            return Some(kl);
+        }
+        context_name_for_tab(tab).map(|s| s.to_string())
+    }
 }
 
 /// - POM tab → app name + version

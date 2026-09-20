@@ -136,3 +136,74 @@ Catalogs -> `[CATALOGS]`).
 resolver in v1. When Lua/REXX Kind providers land, a resolver maps an external
 base to its command/behaviour; nothing in the B.1 schema or registry API changes.
 This is the owner's "build for built-in, flexible for external later".
+
+## 9. Slice B.2 delta -- per-Kind menu bar + key list
+
+B.2 wires the two presentation fields the B.1 `KindConfig` already carries
+(`menu_bar`, `key_list`) into the two existing resolver seams. No new model.
+
+### Menu bar seam
+
+`render_chrome.rs::resolve_menu_bar_menu(&self)` today always resolves the single
+`DEFAULT_MENU_BAR_NAME` ("MB-POM"). B.2:
+
+```rust
+fn resolve_menu_bar_menu_for(&self, tab: &TabState) -> MenuFile {
+    let kind_name = BuiltinKind::from_tab_kind(tab.kind, tab.is_home).stable_name();
+    let bar_name = self.kind_registry.effective(kind_name).menu_bar
+        .clone()
+        .unwrap_or_else(|| DEFAULT_MENU_BAR_NAME.to_string());
+    let slug = menu_bar_slug(&bar_name);
+    load_menu_file(menus_dir/<slug>.toml).unwrap_or_else(|_| default_menubar_menu())
+}
+```
+
+`render_menu_bar` (primary) passes the ACTIVE tab; `render_detached_menu_bar`
+passes the detached tab (it is called inside the CR-CH-036 swap, so "active" IS
+the detached tab -- it can keep calling the active-tab form). The existing
+`resolve_menu_bar_menu()` becomes a thin wrapper over `_for(active_tab)` so no
+call site outside changes. Fallback to the compiled default bar is unchanged
+(Req 4.1). Behaviour-preserving because every built-in Kind's default
+`menu_bar` is `None` -> `DEFAULT_MENU_BAR_NAME` (Req 4.5).
+
+### Key list seam
+
+The active key map is chosen by a context NAME fed to
+`KeyMapResolver::set_context(name)` (render_chrome.rs sets it on tab activation;
+the resolver picks `context_maps[name]` else the global map). Today the name is
+`context_name_for_tab(tab)` (the base kind context / `pom`). B.2 introduces:
+
+```rust
+fn key_list_context_for_tab(&self, tab: &TabState) -> Option<String> {
+    let kind_name = BuiltinKind::from_tab_kind(tab.kind, tab.is_home).stable_name();
+    let cfg = self.kind_registry.effective(kind_name);
+    cfg.key_list.clone()                      // Kind's configured key list, if any
+        .or_else(|| context_name_for_tab(tab).map(str::to_string)) // else base context
+}
+```
+
+Every site that calls `set_context(context_name_for_tab(tab))` (tab activation in
+render_chrome.rs, plus the navigate/START focus paths) routes through
+`key_list_context_for_tab` instead. A `key_list` naming a context with no loaded
+`keymaps/<name>.toml` map falls back to the global map via the resolver's
+existing precedence (Req 4.3) -- no new failure path. Behaviour-preserving
+because built-in defaults have `key_list = None` -> the base context name, i.e.
+today's behaviour (Req 4.5).
+
+### "Modelled on" inheritance (Req 4.4)
+
+A user Kind with `menu_bar: None` / `key_list: None` resolves to
+`DEFAULT_MENU_BAR_NAME` / its base context name -- i.e. the SAME as its base Kind
+(since the base also leaves them unset by default). An override on the user Kind
+wins. So inheritance is "unset => same as base; set => override", achieved purely
+by the `unwrap_or(base default)` in both seams; no explicit base-merge needed for
+these two fields in B.2.
+
+### Testability (B.2)
+
+Headless: assert `resolve_menu_bar_menu_for(tab)` picks the Kind's configured bar
+(and the default when unset); assert `key_list_context_for_tab(tab)` returns the
+Kind's `key_list` when set and the base context when unset; a full-shell test
+that switching to a Kind with a configured bar renders that bar's top-level
+items. The real menu-bar visual + a live keystroke remain covered by existing
+menu-bar / keymap tests (behaviour-preserving for unset Kinds).

@@ -31,7 +31,7 @@ New capabilities that did not previously exist.
   - **B.2** Per-Kind menu bar + key list wired through the existing `resolve_menu_bar_menu` + keymap-context seams (keyed on Kind name, built-in or user).
   - **B.3** Per-Kind profile attributes (edit-profile defaults, tab size, line endings) applied when a Workspace of that Kind opens.
   - **B.4** Kind configuration dialog ("New Kind modelled on <base>", edit built-in Kinds) + Settings menu entry + command (command parity) + RESET BARE compiled defaults.
-- **Status**: B.1 DONE (model + registry + built-in defaults + title-from-config; fixes Catalogs/[FILES] smell). B.2-B.4 PENDING GATE.
+- **Status**: B.1 DONE (model + registry + built-in defaults + title-from-config; fixes Catalogs/[FILES] smell). B.2 DONE (per-Kind menu bar via resolve_menu_bar_menu_for + key list via key_list_context_for_tab; behaviour-preserving for built-ins; workspace-kinds Req 4). B.3-B.4 PENDING GATE.
 - **Linked spec**: NEW `docs/specs/workspace-kinds/` (requirements/design/tasks). Delivers CR-NR-082 deferred slices (menu-workspace Req 18 note) + CR-NR-080 Slice C (menu-workspace Req 17.9). Relates to: function-keys-and-history Req 14.6 (`context_name_for_kind`, per-kind keymaps), CR-CH-027 (per-kind keymaps), ff-session `WorkspaceKind`/`WorkspaceDescriptor`, configuration-system Req 19 (RESET BARE defaults), CR-NR-078 (`WorkspaceContext` trait, reused by the B.4 editor). NOT to be confused with workspace-model (project workspaces). Window-tiling-on-detach idea remains a separate future CR (next free CR-NR id when it lands).
 
 ### CR-NR-089 -- Detached Workspace renders its own menu bar [B045]

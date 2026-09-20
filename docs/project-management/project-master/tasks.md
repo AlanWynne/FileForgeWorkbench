@@ -2625,9 +2625,13 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
       only presentation/profile overridden. External base unresolved-with-message
       in v1.
       Covers: workspace-kinds Req 1, 2, 3.
-- [ ] WK.2 (Slice B.2, PENDING GATE): per-Kind menu bar + key list wired through
-      the existing resolve_menu_bar_menu + keymap-context seams (keyed on Kind
-      name). Covers: workspace-kinds Req 4; menu-workspace 17.9 (Slice C).
+- [x] WK.2 (Slice B.2): per-Kind menu bar + key list wired through the
+      existing resolve_menu_bar_menu + keymap-context seams (keyed on Kind name):
+      resolve_menu_bar_menu_for(tab) = Kind.menu_bar else DEFAULT_MENU_BAR_NAME;
+      key_list_context_for_tab(tab) = Kind.key_list else base context. Modelled-on
+      inheritance = unset means same as base. Behaviour-preserving for built-ins.
+      Covers: workspace-kinds Req 4; menu-workspace 17.9 (Slice C); CR-NR-082
+      deferred per-kind menu-bar + keymap.
 - [ ] WK.3 (Slice B.3, PENDING GATE): per-Kind profile attributes (edit-profile
       defaults, tab size, line endings) applied on open. Covers: workspace-kinds
       Req 5.
@@ -2637,4 +2641,4 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 
 | Status | Count |
 |--------|-------|
-| `[ ]` Phase (workspace-kinds) Wave B (B.1 done) | CR-NR-090 configurable Workspace Kinds. B.1 DONE (KindConfig/BaseKind/KindProfile + KindRegistry + compiled built-in defaults + title-from-Kind-config; fixes Catalogs [CATALOGS] vs File Explorer [FILES] smell; external-ready BaseKind). B.2-B.4 PENDING GATE. NO Def layer (owner); user Kinds modelled on a built-in base. |
+| `[ ]` Phase (workspace-kinds) Wave B (B.1+B.2 done) | CR-NR-090 configurable Workspace Kinds. B.1 DONE (KindConfig/BaseKind/KindProfile + KindRegistry + compiled built-in defaults + title-from-Kind-config; fixes Catalogs [CATALOGS] vs File Explorer [FILES] smell; external-ready BaseKind). B.2 DONE (per-Kind menu bar via resolve_menu_bar_menu_for + key list via key_list_context_for_tab; behaviour-preserving for built-ins). B.3-B.4 PENDING GATE. NO Def layer (owner); user Kinds modelled on a built-in base. |

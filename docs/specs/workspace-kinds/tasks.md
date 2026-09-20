@@ -34,8 +34,25 @@ their gates). Slice B.1 below.
   - [x] 4.1 verify.ps1 CLEAN (FULL nextest); ffwb.exe rebuilt; TCR rows; change-log CR-NR-090 B.1 DONE; project-master WK.1; test-plan 2.4c
     - Covers: Slice B.1
 
-## Slice B.2 -- per-Kind menu bar + key list (PENDING GATE)
-- [ ] (tasks added at the B.2 gate)
+## Slice B.2 -- per-Kind menu bar + key list
+
+- [x] 5. Per-Kind menu bar
+  - [x] 5.1 Added `resolve_menu_bar_menu_for(&self, tab) -> MenuFile`: bar name = active Kind's effective `menu_bar` (registry) else `DEFAULT_MENU_BAR_NAME`; reuses the existing slug + loader + compiled fallback. `resolve_menu_bar_menu()` is now a wrapper over `_for(active_tab)`
+    - Covers: Requirement 4.1, 4.2
+  - [x] 5.2 Detached menu bar uses its own Kind's bar (render_detached_menu_bar -> resolve_menu_bar_menu -> active tab, which is the detached tab inside the CR-CH-036 swap)
+    - Covers: Requirement 4.2
+  - [x] 5.3 Headless test menu_bar_uses_kind_menu_bar_else_default (configured bar resolves via a temp menus dir; default when unset)
+    - Covers: Requirement 4.1, 4.4, 4.5
+- [x] 6. Per-Kind key list
+  - [x] 6.1 Added `key_list_context_for_tab(&self, tab) -> Option<String>`: the Kind's effective `key_list` if set, else `context_name_for_tab(tab)`
+    - Covers: Requirement 4.3
+  - [x] 6.2 Routed the tab-activation `set_context(...)` site (render_chrome) through `key_list_context_for_tab` (the only production set_context-by-tab site; navigate/START keep today's behaviour)
+    - Covers: Requirement 4.3
+  - [x] 6.3 Headless test key_list_context_uses_kind_key_list_else_base (configured key_list selects that context; unset -> base kind context; unknown -> global fallback via resolver precedence)
+    - Covers: Requirement 4.3, 4.4, 4.5
+- [x] 7. Slice B.2 close
+  - [x] 7.1 verify.ps1 CLEAN (FULL nextest); ffwb.exe rebuilt; TCR rows; change-log B.2 DONE; project-master WK.2; test-plan 2.7a
+    - Covers: Slice B.2
 
 ## Slice B.3 -- per-Kind profile attributes (PENDING GATE)
 - [ ] (tasks added at the B.3 gate)

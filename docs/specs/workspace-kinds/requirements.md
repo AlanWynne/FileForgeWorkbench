@@ -177,14 +177,49 @@ right label everywhere.
 
 <!-- ===================== SLICES B.2 - B.4 (to be gated when reached) ===================== -->
 
-### Requirement 4: Per-Kind menu bar and key list (Slice B.2 -- PENDING GATE)
+### Requirement 4: Per-Kind menu bar and key list (Slice B.2)
 
-*(Placeholder -- criteria to be finalised at the B.2 gate.)* A Workspace Kind's
-configured `menu_bar` and `key_list` SHALL drive the rendered Menu_Bar and the
-active key map for Workspaces of that Kind, generalising the existing per-kind
-keymap seam (function-keys Req 14.6) and the named menu-bar resolver
-(menu-workspace Req 17.9, CR-NR-080 Slice C). Delivers CR-NR-082's deferred
-per-workspace-kind menu-bar + keymap.
+**User Story:** As a user, I want each Workspace Kind to use its configured menu
+bar and key list, so a Kind (built-in or user-created) presents the menu and
+key bindings I assigned to it.
+
+**Source:** [CR-NR-090] Slice B.2; delivers CR-NR-082 deferred per-workspace-kind
+menu-bar + keymap and CR-NR-080 Slice C (menu-bar per kind).
+
+#### Acceptance Criteria
+
+1. WHEN the Menu_Bar is rendered for the active Workspace, THE bar SHALL be the
+   named menu given by the active Kind's effective `Kind_Config.menu_bar`
+   (resolved via the registry, keyed by the Kind's stable name); WHERE the Kind's
+   `menu_bar` is `None`, THE bar SHALL fall back to the compiled Default_Menu_Bar
+   name (`DEFAULT_MENU_BAR_NAME`), preserving current behaviour. Resolution reuses
+   the existing named-menu resolver (`resolve_menu_bar_menu` -> `menus/<slug>.toml`
+   with the compiled fallback, menu-workspace Req 17.8).
+
+2. WHEN the active Workspace changes (tab switch, navigate-in-place, open), THE
+   rendered Menu_Bar SHALL update to the newly-active Kind's configured bar. A
+   Detached_Workspace's own Menu_Bar (menu-and-statusbar Req 18.12) SHALL likewise
+   use ITS Kind's configured bar.
+
+3. WHEN the active Workspace's key map context is selected, THE context name SHALL
+   be the active Kind's effective `Kind_Config.key_list` WHERE set; WHERE
+   `key_list` is `None`, THE context SHALL be the Kind's base context name
+   (`context_name_for_kind` / `pom` for Home), preserving current per-kind keymap
+   behaviour (function-keys Req 14.6, CR-CH-027). The selected context resolves a
+   loaded `keymaps/<context>.toml` map exactly as today; a `key_list` naming a
+   context with no loaded map falls back to the global key map (existing
+   full-replacement precedence, function-keys Req 14.3/14.5).
+
+4. A user Kind modelled on a built-in base SHALL, by default (no `menu_bar` /
+   `key_list` override), present the SAME menu bar and key list as its base Kind
+   (the base's defaults), and SHALL present its OWN configured bar / key list
+   where the override is set -- so "modelled on" means "inherits the base's
+   presentation unless overridden".
+
+5. THE menu-bar and key-list resolution SHALL be behaviour-preserving for the
+   built-in Kinds with default (unset) `menu_bar` / `key_list`: no existing
+   menu-bar rendering or key binding SHALL change for a Kind that has not been
+   reconfigured.
 
 ### Requirement 5: Per-Kind profile attributes (Slice B.3 -- PENDING GATE)
 

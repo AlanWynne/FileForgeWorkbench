@@ -253,7 +253,28 @@ impl WorkbenchShell {
     ///
     /// Validates: menu-workspace Requirement 17.8
     pub(super) fn resolve_menu_bar_menu(&self) -> crate::menu_workspace::MenuFile {
-        let slug = menu_bar_slug(crate::menu_workspace::defaults::DEFAULT_MENU_BAR_NAME);
+        self.resolve_menu_bar_menu_for(self.tabs.active_tab())
+    }
+
+    /// Resolve the Menu_Bar `MenuFile` for a specific tab's Workspace Kind
+    /// (CR-NR-090 B.2, workspace-kinds Req 4.1/4.2). The bar name is the Kind's
+    /// effective `menu_bar` (from the registry) when set, else the compiled
+    /// `DEFAULT_MENU_BAR_NAME`; it is then loaded via the existing named-menu
+    /// resolver (`menus/<slug>.toml` with the compiled fallback). Behaviour-
+    /// preserving for built-in Kinds (their default `menu_bar` is `None`).
+    pub(super) fn resolve_menu_bar_menu_for(
+        &self,
+        tab: &crate::tab_state::TabState,
+    ) -> crate::menu_workspace::MenuFile {
+        let kind_name =
+            crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind, tab.is_home).stable_name();
+        let bar_name = self
+            .kind_registry
+            .effective(kind_name)
+            .menu_bar
+            .clone()
+            .unwrap_or_else(|| crate::menu_workspace::defaults::DEFAULT_MENU_BAR_NAME.to_string());
+        let slug = menu_bar_slug(&bar_name);
         let path = self.menus_dir().join(format!("{slug}.toml"));
         crate::menu_workspace::loader::load_menu_file(&path)
             .unwrap_or_else(|_| crate::menu_workspace::defaults::default_menubar_menu())
@@ -710,9 +731,12 @@ impl WorkbenchShell {
             // Track previous tab for END navigation -- Validates: Requirement 17.1
             self.tab_history.push(self.tabs.active_index());
             self.tabs.set_active(i);
-            // Update key map context for new active tab -- Validates: Requirement 14.4
-            let ctx_name = context_name_for_tab(self.tabs.active_tab());
-            self.key_map_resolver.set_context(ctx_name);
+            // Update key map context for the new active tab -- Validates:
+            // Requirement 14.4; CR-NR-090 B.2 (workspace-kinds Req 4.3): the
+            // context is the Kind's configured key_list if set, else the base
+            // kind context.
+            let ctx_name = self.key_list_context_for_tab(self.tabs.active_tab());
+            self.key_map_resolver.set_context(ctx_name.as_deref());
             self.key_label_bar
                 .update(self.key_map_resolver.active_key_map());
         }
