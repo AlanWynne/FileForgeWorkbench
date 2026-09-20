@@ -588,7 +588,8 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | 🔲 | -- | Req 18.12 (CR-NR-089, B045): a Detached_Workspace renders its own Menu_Bar (salted panel id via render_menu_bar_from_menu); item dispatch acts on the detached tab. Render exercised by the floating loop (no panic); the VISUAL menu bar in the real OS window is MANUAL |
 | `ff-desktop` | ✅ | `shell/tests.rs::{full_shell_dock_command_redocks_tab_at_origin, full_shell_dock_on_non_detached_is_noop_with_message}` | Req 18.13 (CR-NR-088, B045): DOCK command re-docks the current Detached_Workspace to its origin index; no-op-with-message when not detached |
 | `ff-desktop` | ✅ | `shell/tests.rs::{return_from_non_pom_navigates_to_pom, return_from_drilled_in_non_pom_goes_straight_to_pom, return_from_pom_with_other_tabs_closes_pom_not_app, end_at_empty_stack_last_tab_exits}` | menu-workspace Req 14.10 (CR-CH-038): RETURN in a non-POM navigates to the POM (clears nav_stack); RETURN in a POM closes that one workspace (exit if last). END unchanged (one step). Identical docked/detached |
-| `ff-keys` | ✅ | `key_map.rs::key_map_default_global_has_full_shift_row` | function-keys-and-history Req 15.2 (CR-NR-088): default Global_Key_Map Shift+F2 = DOCK (was SPLIT); Base F2 = SPLIT; still 24 default bindings |
+| `ff-keys` | ✅ | `key_map.rs::key_map_default_global_has_full_shift_row` | function-keys-and-history Req 15.2 (CR-NR-088, revised CR-CH-040): default Global_Key_Map Shift+F2 = DOCK; Base F2 = DETACH (was SPLIT); still 24 default bindings |
+| `ff-desktop` | ✅ | `shell/tests.rs::{detach_command_sets_detach_pending, split_detach_alias_still_detaches, bare_split_no_longer_detaches, detach_on_pom_tab_sets_detach_pending}`; `ff-keys key_map.rs::key_map_default_global_has_full_base_row` (F2=DETACH guard) | menu-and-statusbar Req 18.14 (CR-CH-040 / B046 Slice 1): `DETACH` command detaches the current Workspace (same path as former SPLIT/SPLIT DETACH); `SPLIT DETACH` is a deprecated alias; Base F2 rebound SPLIT -> DETACH (Shift+F2 stays DOCK); bare `SPLIT` no longer detaches (reserved for the Slice 2 in-window split); inert `SplitScreenState`/`UNSPLIT`/SWAP-split-focus retired |
 
 ### CR-NR-090 -- Configurable Workspace Kinds (Slice B.1)
 | Crate | Status | Test files | Notes |
@@ -1549,10 +1550,10 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | existing `nav_manager` LOCATE tests | Req 19.8: LOCATE accepts partial names on list panel |
 | `ff-desktop` | 🔲 | -- | Req 19.9: LOCATE scrolls panel so matching item is visible (manual UI verification) |
 | `ff-desktop` | ✅ | `scroll_amount.rs` unit tests | Req 19.10: scroll amounts HALF/CSR/MAX/DATA supported in all panel scroll commands |
-| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 19.11: PF2 splits screen at cursor line into two independent halves |
-| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 19.12: PF9 swaps focus between split-screen halves |
-| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 19.13: each split-screen half operates independently |
-| `ff-desktop` | ✅ | `shell/tests.rs` unit tests | Req 19.14: END (PF3) while split unsplits the screen |
+| `ff-desktop` | 🔴 | -- | Req 19.11 (REVISED CR-CH-040, B046 Slice 1): in-window split. The prior `SPLIT`/PF2 -> `SplitScreenState` implementation was INERT (created but never rendered) and is RETIRED in Slice 1; the verb SPLIT is reserved. The REAL in-window split (ff-layout TabGroupTree, relative proportions) is Slice 2 (deferred, separate future CR) -- NOT COVERED by design |
+| `ff-desktop` | 🔴 | -- | Req 19.12 (REVISED CR-CH-040): move focus between split regions -- deferred to Slice 2. The inert PF9-swaps-split-focus remnant is retired; PF9/`SWAP` keeps its tab-switcher role |
+| `ff-desktop` | 🔴 | -- | Req 19.13 (REVISED CR-CH-040): each split region independent (scroll/cursor) -- deferred to Slice 2 |
+| `ff-desktop` | 🔴 | -- | Req 19.14 (REVISED CR-CH-040): END while split unsplits -- deferred to Slice 2; the inert `UNSPLIT` command is retired in Slice 1 |
 
 
 ### Phase CA -- startup-and-session EARS Integration (Requirement 20)

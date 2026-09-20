@@ -968,8 +968,14 @@ impl WorkbenchShell {
             return;
         }
 
-        // ── SPLIT DETACH -- Validates: CX Requirement 3.1, 3.4 ──────────────
-        if upper == "SPLIT DETACH" {
+        // ── DETACH / SPLIT DETACH -- Validates: menu-and-statusbar Req 18.14 ──
+        // CR-CH-040 (B046 Slice 1): DETACH detaches the current Workspace into a
+        // Detached_Workspace (OS window). `SPLIT DETACH` is a DEPRECATED ALIAS of
+        // DETACH. The former editor-tab `SPLIT`-splits-screen behaviour (an inert,
+        // never-rendered `SplitScreenState`) is RETIRED; the bare verb `SPLIT` is
+        // reserved for a future real in-window split (Slice 2) and is no longer
+        // handled here (falls through to the normal command-resolution chain).
+        if upper == "DETACH" || upper == "SPLIT DETACH" {
             let idx = self.tabs.active_index();
             // CR-CH-035: the 16-window limit counts recorded FloatingTabs, the
             // single source of truth shared with the "Move to Other View" context
@@ -983,50 +989,18 @@ impl WorkbenchShell {
             }
             return;
         }
-        // ── SPLIT (no arg) -- Validates: CX Requirement 3.2, 3.3 ──────────────
-        // Non-editor tabs: detach (ISPF SPLIT heritage)
-        // Editor tabs: split-screen (Req 19.11 backward compat)
-        if upper == "SPLIT" {
-            let kind = self.tabs.active_tab().kind;
-            let is_editor = matches!(kind, TabKind::FileEditor | TabKind::Untitled);
-            if !is_editor {
-                let idx = self.tabs.active_index();
-                // CR-CH-035: count recorded FloatingTabs (shared limit source).
-                if self.floating_tabs.len() >= 16 {
-                    self.open_error =
-                        Some("Maximum number of detached Workspaces (16) reached.".to_string());
-                } else {
-                    self.detach_pending = Some(idx);
-                    self.open_error = None;
-                }
-                return;
-            }
-            // Editor tab: split-screen behaviour
-            // Split at current cursor line
-            let cursor_line = self.tabs.active_tab().cursor.cursor_line();
-            self.split_screen = Some(crate::scroll_amount::SplitScreenState::new(
-                (cursor_line as usize).saturating_sub(1),
-            ));
-            self.open_error = None;
-            return;
-        }
         if upper == "SWAP" || upper.starts_with("SWAP ") {
-            // SWAP is primarily the tab/workspace switcher (multi-tab-editor
-            // Req 18), and also retains the split-screen focus-swap behaviour
-            // for the no-argument case when a split is active (menu-and-statusbar
-            // Req 19.12). Parse the argument to decide.
+            // SWAP is the tab/workspace switcher (multi-tab-editor Req 18). Parse
+            // the argument to decide. (CR-CH-040: the former split-focus-swap
+            // branch for a bare SWAP is retired with the inert split model.)
             let arg = cmd.trim().get(4..).unwrap_or("").trim().to_string();
             let arg_upper = arg.to_uppercase();
 
             if arg.is_empty() {
-                // Bare SWAP: swap split focus if a split is active (Req 18.6);
-                // else toggle to the previously active workspace (Req 18.7,
+                // Bare SWAP: toggle to the previously active workspace (Req 18.7,
                 // CR-CH-031), falling back to the tab picker when there is no
                 // distinct previous tab (Req 18.10).
-                if let Some(ref mut ss) = self.split_screen {
-                    ss.swap_focus();
-                    self.open_error = None;
-                } else if let Some(prev) = self.tabs.previous_active_index() {
+                if let Some(prev) = self.tabs.previous_active_index() {
                     self.tabs.set_active(prev);
                     self.open_error = None;
                 } else {
@@ -1054,12 +1028,6 @@ impl WorkbenchShell {
                     "SWAP: invalid argument '{arg}'. Usage: SWAP <n>, SWAP LIST"
                 ));
             }
-            return;
-        }
-        if upper == "UNSPLIT" {
-            // Validates: Requirement 19.14 -- unsplit restores single-panel view
-            self.split_screen = None;
-            self.open_error = None;
             return;
         }
 

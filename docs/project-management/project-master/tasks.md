@@ -2672,3 +2672,25 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[x]` Phase (config-keynav) | CR-CH-039 / B069 -- Config View keyboard tree navigation, matching the File Navigator (pure reducer mirroring explorer_view::reduce_key + config_keyboard_effects driver + rendered cursor highlight; 8 reducer tests + full-shell egui_kittest). DONE; verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. |
+
+## Phase (split-rename) -- Rename SPLIT -> DETACH; retire inert ISPF split (CR-CH-040, B046 Slice 1)
+
+> Owner: SPLIT currently detaches (DOCK re-attaches); rename it DETACH and reserve
+> SPLIT for a real in-window split later. Slice 1 = rename + retire the inert
+> (never-rendered) ISPF SplitScreenState remnants. The real split (ff-layout
+> TabGroupTree, relative proportions) is Slice 2, a separate future CR.
+
+- [x] SR.1 (Slice 1): add `DETACH` command (detach path; `SPLIT DETACH` kept as a
+      deprecated alias; `DOCK` unchanged); retire the inert editor-tab `SPLIT`
+      branch + `UNSPLIT` + bare-`SWAP` split-focus branch; delete
+      `WorkbenchShell.split_screen` + `scroll_amount::SplitScreenState`; rebind
+      default Base F2 SPLIT -> DETACH (Shift+F2 stays DOCK). `SWAP n`/`SWAP LIST`/
+      bare-`SWAP` toggle unchanged; bare `SPLIT` unhandled (reserved for Slice 2).
+      Tests: detach_command_sets_detach_pending, split_detach_alias_still_detaches,
+      bare_split_no_longer_detaches, detach_on_pom_tab_sets_detach_pending,
+      key_map_default_global_has_full_base_row (F2=DETACH). verify.ps1 CLEAN FULL
+      nextest; ffwb.exe rebuilt. Covers: menu-and-statusbar Req 18.14, 19.11-19.14 (revision).
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (split-rename) | CR-CH-040 / B046 Slice 1 DONE -- renamed SPLIT->DETACH (alias SPLIT DETACH; DETACH/DOCK pair on F2/Shift+F2), retired inert ISPF SplitScreenState remnants, reserved SPLIT for the real in-window split (Slice 2, ff-layout TabGroupTree). verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. |

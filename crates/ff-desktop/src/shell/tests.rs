@@ -2394,28 +2394,47 @@ fn chained_fastpath_pops_to_pom_origin_from_non_pom() {
     );
 }
 
-/// Validates: Requirement 19.11 -- SPLIT command activates split screen.
+/// Validates: menu-and-statusbar Req 18.14 (CR-CH-040 / B046 Slice 1) -- DETACH
+/// detaches the current Workspace (sets detach_pending, subject to the 16-window
+/// limit), the primary verb renamed from the former SPLIT.
 #[test]
-fn split_command_activates_split_screen() {
-    // Validates: Requirement 19.11
+fn detach_command_sets_detach_pending() {
     let mut shell = make_shell();
-    assert!(shell.split_screen.is_none());
-    shell.handle_command("SPLIT");
-    assert!(shell.split_screen.is_some());
+    assert!(shell.detach_pending.is_none());
+    shell.handle_command("DETACH");
+    assert!(
+        shell.detach_pending.is_some(),
+        "DETACH must set detach_pending"
+    );
     assert!(shell.open_error.is_none());
 }
 
-/// Validates: Requirement 19.12 -- SWAP swaps focus between halves.
+/// Validates: menu-and-statusbar Req 18.14 -- `SPLIT DETACH` remains a deprecated
+/// ALIAS of DETACH.
 #[test]
-fn swap_command_swaps_split_focus() {
-    // Validates: Requirement 19.12
+fn split_detach_alias_still_detaches() {
+    let mut shell = make_shell();
+    shell.handle_command("SPLIT DETACH");
+    assert!(
+        shell.detach_pending.is_some(),
+        "SPLIT DETACH alias must still detach"
+    );
+    assert!(shell.open_error.is_none());
+}
+
+/// Validates: menu-and-statusbar Req 19.11 (revision, CR-CH-040) -- the bare verb
+/// SPLIT no longer detaches (the inert ISPF split is retired; SPLIT is reserved
+/// for the future in-window split). It falls through to the normal
+/// command-resolution chain, which reports it as not-yet-implemented, and does
+/// NOT set detach_pending.
+#[test]
+fn bare_split_no_longer_detaches() {
     let mut shell = make_shell();
     shell.handle_command("SPLIT");
-    let initial_half = shell.split_screen.as_ref().unwrap().active_half;
-    shell.handle_command("SWAP");
-    let swapped_half = shell.split_screen.as_ref().unwrap().active_half;
-    assert_ne!(initial_half, swapped_half);
-    assert!(shell.open_error.is_none());
+    assert!(
+        shell.detach_pending.is_none(),
+        "bare SPLIT must NOT detach (reserved for the Slice 2 in-window split)"
+    );
 }
 
 /// Validates: multi-tab-editor Requirement 18.7 -- bare SWAP with no split
@@ -2425,7 +2444,6 @@ fn swap_command_swaps_split_focus() {
 fn swap_without_split_or_previous_opens_tab_picker() {
     // Validates: Requirement 18.10 -- single tab (no Previous_Active_Tab) -> picker.
     let mut shell = make_shell();
-    assert!(shell.split_screen.is_none());
     assert_eq!(shell.tabs.len(), 1, "make_shell starts with one tab");
     shell.handle_command("SWAP");
     assert!(
@@ -2537,7 +2555,6 @@ fn key_command_merges_command_field_as_argument() {
 #[test]
 fn key_command_with_empty_field_runs_bare_command() {
     let mut shell = make_shell();
-    assert!(shell.split_screen.is_none());
     shell.command_text.clear();
     shell.dispatch_key_command("SWAP");
     assert!(
@@ -2661,49 +2678,6 @@ fn swap_list_opens_tab_picker() {
     shell.handle_command("SWAP LIST");
     assert!(shell.show_swap_list.is_some());
     assert!(shell.open_error.is_none());
-}
-
-/// Validates: multi-tab-editor Requirement 18.6 -- bare SWAP with an active
-/// split still swaps split focus (preserved behaviour, does not open picker).
-#[test]
-fn swap_bare_with_split_swaps_focus_not_picker() {
-    // Validates: Requirement 18.6
-    let mut shell = make_shell();
-    shell.handle_command("SPLIT");
-    let initial_half = shell.split_screen.as_ref().unwrap().active_half;
-    shell.handle_command("SWAP");
-    let swapped_half = shell.split_screen.as_ref().unwrap().active_half;
-    assert_ne!(initial_half, swapped_half);
-    assert!(
-        shell.show_swap_list.is_none(),
-        "with a split active, bare SWAP swaps focus and must NOT open the picker"
-    );
-}
-
-/// Validates: Requirement 19.14 -- UNSPLIT removes split screen.
-#[test]
-fn unsplit_command_removes_split_screen() {
-    // Validates: Requirement 19.14
-    let mut shell = make_shell();
-    shell.handle_command("SPLIT");
-    assert!(shell.split_screen.is_some());
-    shell.handle_command("UNSPLIT");
-    assert!(shell.split_screen.is_none());
-    assert!(shell.open_error.is_none());
-}
-
-/// Validates: Requirement 19.13 -- each half has independent scroll state.
-#[test]
-fn split_screen_halves_have_independent_scroll() {
-    // Validates: Requirement 19.13
-    use crate::scroll_amount::SplitScreenState;
-    let mut ss = SplitScreenState::new(12);
-    ss.top_scroll = 0;
-    ss.bottom_scroll = 12;
-    // Modify top half scroll independently
-    ss.top_scroll = 5;
-    assert_eq!(ss.top_scroll, 5);
-    assert_eq!(ss.bottom_scroll, 12); // bottom unchanged
 }
 
 // === Phase CA -- TSO Session Lifecycle Commands (Requirement 20) ===========
@@ -4271,9 +4245,10 @@ fn keys_kind_matching_is_case_insensitive() {
     );
 }
 
-/// Validates: CX Requirement 3.2 -- SPLIT on non-editor tab sets detach_pending.
+/// Validates: menu-and-statusbar Req 18.14 (CR-CH-040) -- DETACH on a non-editor
+/// (POM) tab sets detach_pending (formerly the bare SPLIT behaviour, now renamed).
 #[test]
-fn split_on_pom_tab_sets_detach_pending() {
+fn detach_on_pom_tab_sets_detach_pending() {
     let mut shell = make_shell();
     // Navigate to a POM tab via START command
     shell.handle_command("START");
@@ -4286,10 +4261,10 @@ fn split_on_pom_tab_sets_detach_pending() {
         .expect("POM tab must exist after START");
     shell.tabs.set_active(pom_idx);
     assert!(shell.tabs.active_tab().is_home);
-    shell.handle_command("SPLIT");
+    shell.handle_command("DETACH");
     assert!(
         shell.detach_pending.is_some(),
-        "SPLIT on POM tab should set detach_pending"
+        "DETACH on POM tab should set detach_pending"
     );
 }
 

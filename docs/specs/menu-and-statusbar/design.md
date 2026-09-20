@@ -1352,3 +1352,67 @@ swap so detached and docked behaviour stay identical.
 Testability: RETURN semantics, DOCK, and F-key-in-context dispatch are all headless-testable
 through the shell (drive the command / a swapped F-key dispatch and assert the tab state). The
 real OS-window close gesture and the visual menu bar remain MANUAL (real multi-viewport window).
+
+
+---
+
+## Design Delta: SPLIT -> DETACH rename + retire inert ISPF split (Requirement 18.14 + 19.11-19.14 revision, CR-CH-040 / B046 Slice 1)
+
+### Problem
+
+The `SPLIT` command is overloaded and misnamed:
+- On a NON-editor Workspace, `SPLIT` (and `SPLIT DETACH`) detach the Workspace into a
+  Detached_Workspace (OS window); `DOCK` re-attaches. This is the useful, working behaviour, but the
+  verb `SPLIT` does not communicate "detach into its own window".
+- On an EDITOR Workspace, `SPLIT` sets `scroll_amount::SplitScreenState` at the cursor line, and
+  `UNSPLIT` clears it, and bare `SWAP` flips its `active_half`. This state is INERT: a code audit
+  confirms NO render path (`render.rs`, `render_chrome.rs`, `editor_panel.rs`) reads `split_screen` or
+  any `SplitScreenState` field, so nothing visibly splits. It is dead weight that only confuses the
+  command surface.
+
+Separately, a proper VS-Code-style split model already exists but is UNWIRED: `ff-layout::TabGroupTree`
+(a binary tree of `Split { direction: SplitDirection, proportion: f32, first, second }` / `Leaf(TabGroup)`)
+is fully built and unit-tested in the `ff-layout` crate, but `ff-desktop` does not depend on `ff-layout`
+at all. That is the foundation for the real split (Slice 2), not the inert `SplitScreenState`.
+
+### Slice 1 scope (this delta)
+
+Rename + retire only. NO new split feature.
+
+1. **Rename the detach verb.** Add a `DETACH` command in `shell/commands.rs` that runs the exact detach
+   path the non-editor `SPLIT` / `SPLIT DETACH` arms run today (16-window limit check -> set
+   `detach_pending`). Keep `SPLIT DETACH` as a deprecated alias dispatching the same path. `DOCK` is
+   unchanged.
+2. **Retire the inert ISPF split.** Remove: the editor-tab branch of the `SPLIT` arm (the one that sets
+   `SplitScreenState`), the `UNSPLIT` arm, and the bare-`SWAP` `split_screen.swap_focus()` branch (bare
+   `SWAP` now always does the previous-tab toggle / picker). Delete the `split_screen` field from
+   `WorkbenchShell` and the `SplitScreenState` type from `scroll_amount.rs` (keep `ScrollAmount`).
+   `SWAP n` / `SWAP LIST` / bare-`SWAP` toggle are unchanged.
+3. **Reserve `SPLIT`.** After Slice 1 the bare verb `SPLIT` no longer detaches and has no editor-split
+   behaviour; it is unhandled at the shell level (falls through to the normal unresolved-command path)
+   until Slice 2 gives it the real in-window split. `SPLIT DETACH` still works (alias).
+4. **Key map.** In `ff-keys::key_map::default_global`, change Base F2 from `("SPLIT","Split")` to
+   `("DETACH","Detach")`. Shift+F2 stays `("DOCK","Dock")`. This preserves "F2 detaches" under the new
+   name and keeps the DETACH/DOCK antonym pair on F2 / Shift+F2.
+
+### Command-parity note
+
+`DETACH` and `DOCK` are both real dispatchable commands (command-driven principle); the F2 / Shift+F2
+bindings and the tab context-menu "Move to Other View" affordance all route through the same command
+path. No UI affordance bypasses the command layer.
+
+### Testing
+
+- `shell/commands.rs` unit tests: `detach_command_sets_detach_pending`,
+  `split_detach_alias_still_detaches`, `bare_split_no_longer_detaches`,
+  `unsplit_command_removed_is_unhandled` (or updated existing split/unsplit tests to the new behaviour),
+  `bare_swap_toggles_previous_tab_without_split`.
+- `ff-keys` unit test: `default_global` Base F2 = DETACH, Shift+F2 = DOCK (update the existing
+  `default_global` row-assertion tests that currently expect F2 = SPLIT).
+- The real OS-window detach appearance stays MANUAL (existing Req 18 exception).
+
+### Deferred (Slice 2, separate future CR)
+
+The real in-window split: make `ff-desktop` depend on `ff-layout`, render the active Workspace area
+through a `TabGroupTree`, and give `SPLIT` (or a direction-explicit verb) the divide-into-two-regions
+behaviour with relative proportions and a chosen new-region Context. Not in Slice 1.

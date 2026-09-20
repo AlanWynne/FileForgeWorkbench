@@ -30,7 +30,7 @@ use crate::find_manager::FindManager;
 use crate::nav_manager::NavManager;
 use crate::notification::{Notification, NotificationQueue, NotificationSender};
 use crate::plugin_manager_panel::PluginManagerPanelState;
-pub(crate) use crate::scroll_amount::{ScrollAmount, SplitScreenState};
+pub(crate) use crate::scroll_amount::ScrollAmount;
 use crate::session_manager::SessionManager;
 use crate::tab_manager::TabManager;
 use crate::toolchain_panel::ToolchainPanelState;
@@ -441,10 +441,6 @@ pub struct WorkbenchShell {
     ///
     /// Validates: Requirement 19.1, 19.2, 19.3
     pub(crate) scroll_amount: ScrollAmount,
-    /// Split screen state -- Some when split screen is active.
-    ///
-    /// Validates: Requirement 19.11, 19.12, 19.13, 19.14
-    pub(crate) split_screen: Option<SplitScreenState>,
     /// Text buffer for the SCROLL ===> field input.
     ///
     /// Validates: Requirement 19.1
@@ -791,7 +787,6 @@ impl WorkbenchShell {
             recent_palette_commands: Vec::new(),
             search_results_panel: crate::search_results_panel::SearchResultsPanelState::new(),
             scroll_amount: ScrollAmount::default(),
-            split_screen: None,
             scroll_field_text: "PAGE".to_string(),
             modal_open: false,
             reset_bare_confirm: None,

@@ -74,48 +74,12 @@ impl ScrollAmount {
     }
 }
 
-// === Split screen state =====================================================
-
-/// State for the split-screen mode (PF2/PF9/PF3).
-///
-/// Validates: Requirement 19.11, 19.12, 19.13, 19.14
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct SplitScreenState {
-    /// The line at which the screen was split (0-based).
-    pub split_line: usize,
-    /// Which half currently has focus (0 = top, 1 = bottom).
-    pub active_half: usize,
-    /// Scroll offset for the top half.
-    pub top_scroll: usize,
-    /// Scroll offset for the bottom half.
-    pub bottom_scroll: usize,
-    /// Cursor line in the top half.
-    pub top_cursor: usize,
-    /// Cursor line in the bottom half.
-    pub bottom_cursor: usize,
-}
-
-impl SplitScreenState {
-    /// Create a new split at the given line.
-    pub fn new(split_line: usize) -> Self {
-        Self {
-            split_line,
-            active_half: 0,
-            top_scroll: 0,
-            bottom_scroll: split_line,
-            top_cursor: 0,
-            bottom_cursor: split_line,
-        }
-    }
-
-    /// Swap focus between the two halves.
-    ///
-    /// Validates: Requirement 19.12
-    pub fn swap_focus(&mut self) {
-        self.active_half = 1 - self.active_half;
-    }
-}
+// CR-CH-040 (B046 Slice 1): the ISPF `SplitScreenState` (PF2/PF9/PF3 split at
+// the cursor line) was RETIRED. It was inert -- created by the `SPLIT` command
+// but never read by any render path, so nothing ever visibly split. The verb
+// `SPLIT` is reserved for a future REAL in-window split (Slice 2), which will be
+// built on the existing `ff-layout::TabGroupTree` (relative-proportion editor
+// groups), not on this type. `ScrollAmount` above is unaffected.
 
 #[cfg(test)]
 mod tests {
@@ -216,25 +180,5 @@ mod tests {
     fn default_is_page() {
         // Validates: Requirement 19.1 -- default scroll amount is PAGE
         assert_eq!(ScrollAmount::default(), ScrollAmount::Page);
-    }
-
-    #[test]
-    fn split_screen_new_sets_split_line() {
-        // Validates: Requirement 19.11
-        let s = SplitScreenState::new(12);
-        assert_eq!(s.split_line, 12);
-        assert_eq!(s.active_half, 0);
-        assert_eq!(s.bottom_scroll, 12);
-    }
-
-    #[test]
-    fn split_screen_swap_focus() {
-        // Validates: Requirement 19.12
-        let mut s = SplitScreenState::new(12);
-        assert_eq!(s.active_half, 0);
-        s.swap_focus();
-        assert_eq!(s.active_half, 1);
-        s.swap_focus();
-        assert_eq!(s.active_half, 0);
     }
 }

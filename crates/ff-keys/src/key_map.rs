@@ -367,7 +367,11 @@ impl KeyMap {
         // Base (unmodified) row: (key, command, label).
         let base: [(FunctionKey, &str, &str); 12] = [
             (FunctionKey::F1, "HELP", "Help"),
-            (FunctionKey::F2, "SPLIT", "Split"),
+            // CR-CH-040 (B046 Slice 1): Base F2 = DETACH (was SPLIT). The former
+            // SPLIT-detaches-a-window behaviour is renamed DETACH; DETACH/DOCK are
+            // the antonym pair on F2 / Shift+F2. The verb SPLIT is reserved for a
+            // future real in-window split.
+            (FunctionKey::F2, "DETACH", "Detach"),
             (FunctionKey::F3, "END", "End"),
             (FunctionKey::F4, "RETURN", "Return"),
             (FunctionKey::F5, "RFIND", "RFind"),
@@ -385,9 +389,10 @@ impl KeyMap {
         // Shift row: mirrors Base except the four scroll-max variants and Cursor.
         let shift: [(FunctionKey, &str, &str); 12] = [
             (FunctionKey::F1, "HELP", "Help"),
-            // CR-NR-088: Shift+F2 = DOCK (re-dock a Detached_Workspace); Base
-            // F2 stays SPLIT. This is the one Shift-row entry that does NOT
-            // mirror the Base row (besides the scroll-max + Cursor variants).
+            // CR-NR-088 + CR-CH-040: Shift+F2 = DOCK (re-dock a Detached_Workspace);
+            // Base F2 = DETACH (the DETACH/DOCK antonym pair). This is the one
+            // Shift-row entry that does NOT mirror the Base row (besides the
+            // scroll-max + Cursor variants).
             (FunctionKey::F2, "DOCK", "Dock"),
             (FunctionKey::F3, "END", "End"),
             (FunctionKey::F4, "RETURN", "Return"),
@@ -662,9 +667,10 @@ mod tests {
         // Validates: function-keys Requirement 15.1 (CR-CH-027) -- the full Base
         // (unmodified F-key) row with commands and labels.
         let map = KeyMap::default_global();
+        // CR-CH-040 (B046 Slice 1): Base F2 = DETACH (was SPLIT).
         let expected: [(FunctionKey, &str, &str); 12] = [
             (FunctionKey::F1, "HELP", "Help"),
-            (FunctionKey::F2, "SPLIT", "Split"),
+            (FunctionKey::F2, "DETACH", "Detach"),
             (FunctionKey::F3, "END", "End"),
             (FunctionKey::F4, "RETURN", "Return"),
             (FunctionKey::F5, "RFIND", "RFind"),
@@ -683,13 +689,21 @@ mod tests {
             assert_eq!(b.command(), cmd, "Base {key} command");
             assert_eq!(b.display_label(), label, "Base {key} label");
         }
+        // Explicit guard for the rename (default_global_base_f2_is_detach).
+        assert_eq!(
+            map.get(ModifiedKey::plain(FunctionKey::F2))
+                .expect("Base F2 bound")
+                .command(),
+            "DETACH",
+            "CR-CH-040: Base F2 is DETACH, not SPLIT"
+        );
     }
 
     #[test]
     fn key_map_default_global_has_full_shift_row() {
         // Validates: function-keys Requirement 15.2 (CR-CH-027, CR-NR-088) -- the
         // Shift row mirrors Base except the four scroll-max variants, Cursor, and
-        // Shift+F2 = DOCK (Base F2 = SPLIT).
+        // Shift+F2 = DOCK (Base F2 = DETACH, CR-CH-040).
         let map = KeyMap::default_global();
         let expected: [(FunctionKey, &str, &str); 12] = [
             (FunctionKey::F1, "HELP", "Help"),

@@ -508,8 +508,17 @@ or view content side-by-side independently.
      Primary_Window's tab bar at its origin position index (remove-and-reinsert per Requirement 18.9),
      clearing its floating state; WHEN the active Workspace is not detached, DOCK SHALL be a no-op with
      a status message. DOCK SHALL be invocable from the detached window's own command line and via a
-     default key binding of Shift+F2 (Base F2 remains SPLIT). Because the window Close button runs
-     RETURN (Requirement 18.3), DOCK is the explicit re-attach action. [CR-NR-088]
+     default key binding of Shift+F2 (Base F2 is `DETACH`, per Requirement 18.14). Because the window
+     Close button runs RETURN (Requirement 18.3), DOCK is the explicit re-attach action. [CR-NR-088]
+
+14. THE shell SHALL provide a `DETACH` command that detaches the CURRENT Workspace into a new
+     Detached_Workspace (identical behaviour to the former `SPLIT`-with-no-argument on a non-editor
+     Workspace and to `SPLIT DETACH`): subject to the 16-window limit (Requirement 18.7), it sets the
+     detach-pending state so the frame loop creates the Detached_Workspace. `DETACH` is the primary,
+     correctly-named verb; `SPLIT DETACH` SHALL remain a DEPRECATED ALIAS of `DETACH` for backward
+     compatibility. The default Base F2 key binding SHALL be `DETACH` (Shift+F2 remains `DOCK`, per
+     Requirement 18.13), forming the DETACH/DOCK antonym pair. The bare verb `SPLIT` SHALL NO LONGER
+     detach; it is reserved for a future real in-window split (Requirement 19.11-19.14 revision). [CR-CH-040]
 
 **User Story:** As an ISPF-familiar user, I want the full ISPF navigation model including a SCROLL ===> field, fastpath notation, split-screen capability, list panel LOCATE, and FTSO panel chrome, so that the workbench matches the ISPF navigation experience.
 
@@ -527,7 +536,17 @@ or view content side-by-side independently.
 8. WHEN `LOCATE name` is issued on a list panel and `name` is a partial string, THE system SHALL scroll to the first entry whose name begins with that partial string. [ISPF-4.3]
 9. WHEN `LOCATE name` is issued on any list panel, THE system SHALL scroll the panel so the matching item is visible, consistent with the existing LOCATE behaviour defined in navigation-commands. [ISPF-4.1]
 10. THE system SHALL support scroll amounts HALF, CSR, MAX, and DATA in addition to PAGE and numeric values, for all scroll commands (UP, DOWN, LEFT, RIGHT) in all panels. [TSO-4.2]
-11. WHEN PF2 is pressed while editing, THE system SHALL split the screen at the cursor line, displaying two independent editor halves. [ISPF-3.1]
-12. WHEN the screen is split, PF9 SHALL swap keyboard focus between the two split-screen halves. [ISPF-3.2]
-13. WHEN the screen is split, EACH half SHALL operate independently with its own command field, scroll position, and cursor state. [ISPF-3.3]
-14. WHEN END (PF3) is pressed while the screen is split, THE system SHALL unsplit the screen, restoring the single-panel view. [ISPF-3.4]
+11. THE system SHALL provide an in-window split that divides the Workspace area into two regions. [ISPF-3.1]
+     *(REVISED by CR-CH-040, Slice 1. The prior implementation -- Base `SPLIT` / PF2 setting an
+     `SplitScreenState` at the cursor line -- was INERT: the state was created but NO render path ever
+     read it, so nothing visibly split. Slice 1 RETIRES that inert model (the editor-tab `SPLIT` branch,
+     `UNSPLIT`, and the bare-`SWAP` split-focus branch are removed; the `SplitScreenState` type is
+     deleted) and RESERVES the verb `SPLIT`. The DETACH action formerly bound to `SPLIT`/PF2 is now the
+     `DETACH` command on Base F2 (Requirement 18.14). The REAL in-window split -- VS-Code-style editor
+     groups built on the existing `ff-layout::TabGroupTree` (a binary tree of horizontal/vertical splits
+     with RELATIVE proportions), a new region opening a chosen Context -- is Slice 2, a separate future
+     CR against `layout-and-docking` Requirement 2 (Tab_Groups). Until Slice 2 lands, criteria 19.11-19.14
+     are NOT COVERED by design, not by omission.)*
+12. WHEN the screen is split (Slice 2), a key/command SHALL move keyboard focus between the two regions. [ISPF-3.2] *(Deferred to Slice 2 per 19.11; the inert PF9-swaps-split-focus remnant is retired in Slice 1. PF9/`SWAP` retains its tab/workspace-switcher role.)*
+13. WHEN the screen is split (Slice 2), EACH region SHALL operate independently with its own scroll position and cursor state. [ISPF-3.3] *(Deferred to Slice 2 per 19.11.)*
+14. WHEN END (PF3) is pressed while the screen is split (Slice 2), THE system SHALL unsplit, restoring the single-region view. [ISPF-3.4] *(Deferred to Slice 2 per 19.11; the inert `UNSPLIT` command is retired in Slice 1.)*

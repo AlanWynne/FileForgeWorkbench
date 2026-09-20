@@ -557,3 +557,17 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-command` 
     - Covers: menu-and-statusbar Req 18.12
   - [x] 35.6 Update TCR rows (18.3/18.11/18.12/18.13, menu-workspace 14.10, function-keys 15.2); real OS window + visual menu bar MANUAL
     - Covers: the bundle
+
+- [x] 36. SPLIT -> DETACH rename + retire inert ISPF split (Requirement 18.14 + 19.11-19.14 revision, CR-CH-040 / B046 Slice 1)
+  - [x] 36.1 Add a `DETACH` command arm in `shell/commands.rs` running the detach path (16-window limit -> `detach_pending`); keep `SPLIT DETACH` as a deprecated alias dispatching the same path; `DOCK` unchanged
+    - Covers: Requirement 18.14
+  - [x] 36.2 Retire the inert ISPF split: remove the editor-tab branch of `SPLIT` (SplitScreenState), the `UNSPLIT` arm, and the bare-`SWAP` split-focus branch; the bare verb `SPLIT` no longer detaches (unhandled, reserved for Slice 2). `SWAP n` / `SWAP LIST` / bare-`SWAP` previous-tab toggle unchanged
+    - Covers: Requirement 19.11 (revision), 19.12, 19.14
+  - [x] 36.3 Delete `split_screen` field from `WorkbenchShell` and the `SplitScreenState` type from `scroll_amount.rs` (keep `ScrollAmount`); update/remove the split/unsplit/swap-split unit tests to the new behaviour
+    - Covers: Requirement 19.11 (revision)
+  - [x] 36.4 In `ff-keys::key_map::default_global`, change Base F2 from SPLIT to DETACH (Shift+F2 stays DOCK); update the `default_global` row-assertion tests that expect F2 = SPLIT
+    - Covers: Requirement 18.14
+  - [x] 36.5 Tests: `detach_command_sets_detach_pending`, `split_detach_alias_still_detaches`, `bare_split_no_longer_detaches`, `detach_on_pom_tab_sets_detach_pending`, `key_map_default_global_has_full_base_row` (F2=DETACH guard). Bare-SWAP-toggle stays covered by the existing `swap_bare_toggles_to_previously_active_tab`
+    - Covers: Requirement 18.14, 19.11-19.14
+  - [x] 36.6 verify.ps1 CLEAN (FULL nextest); ffwb.exe rebuilt; TCR rows; change-log CR-CH-040 DONE; project-master phase; test-plan rows (7.4-7.6 reframed: split-screen deferred to Slice 2, 7.3d added for DETACH)
+    - Covers: Slice 1 close
