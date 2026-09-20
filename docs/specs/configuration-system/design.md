@@ -1499,3 +1499,89 @@ Shell-side design (implemented in ff-desktop, cross-referenced here):
 The namespace-selector Settings_Menu and per-option `Settings_Namespace_View`
 (cw-requirements Req 9/10) are superseded; namespace filtering is reached only via
 `CONFIG <namespace>`.
+
+---
+
+## Design Delta: Config View Keyboard Tree Navigation (Requirement 21, CR-CH-039 / B069)
+
+### Problem
+
+The Config View (`config_panel.rs`, `TabKind::ConfigPanel`) renders a Filter field plus
+`egui::CollapsingHeader` namespace groups and per-key widgets, and relies ENTIRELY on egui-native
+focus/Tab and mouse clicks. It has no arrow-key handling and no keyboard selection state, so -
+unlike the File Navigator - the tree cannot be walked or expanded from the keyboard (B069). The
+owner requires it to behave like a standard tree control, matching the File Explorer.
+
+### Approach: mirror the File Explorer's tested reducer pattern
+
+The File Explorer already models tree keyboard behaviour as a PURE reducer
+(`explorer_view::reduce_key(model, sel, ExplorerKey) -> ExplorerEffect`) driven once per frame by
+`keyboard_effects(ui, ...)`. We adopt the SAME shape for the Config View rather than inventing a
+new one, so the two trees behave identically and both are unit-testable without rendering.
+
+New pieces in `config_panel` (the file is near the 400-line limit, so this lands in split modules
+per rust-standards; see Tasks):
+
+- `ConfigTreeNode` / row model: a flat, ordered `Vec` of `ConfigRow { id: ConfigNodeId, depth,
+  expandable, expanded }` computed from the schema-entry groups AFTER the current filter is
+  applied. `ConfigNodeId` is either `Namespace(String)` or `Key(String)`. This is the Config
+  analogue of `explorer_view::visible_rows` (Visible_Rows, Req 21.1).
+- `ConfigTreeCursor` on `ConfigPanelState`: `cursor: Option<ConfigNodeId>` (single-selection
+  Tree_Cursor, Req 21.2) plus the existing `collapsed: HashMap<String, bool>` reused as the
+  per-namespace expand state (already present; today only mouse-toggled via the CollapsingHeader).
+- `reduce_config_key(rows: &[ConfigRow], state: &mut ConfigPanelState, key: ConfigTreeKey) ->
+  ConfigTreeEffect` - the PURE reducer (Req 21.11). `ConfigTreeKey` = Up | Down | Left | Right |
+  Enter | Home | End. `ConfigTreeEffect` = None | Expand(ns) | Collapse(ns) | FocusKeyWidget(key).
+  Transition table follows Req 21.3-21.7 exactly and matches `explorer_view::reduce_key`:
+    - Down/Up: move cursor to next/previous row, clamped (no wrap).
+    - Right: collapsed group -> Expand(ns); expanded group -> cursor to first child key.
+    - Left: expanded group -> Collapse(ns); key or collapsed group -> cursor to parent namespace.
+    - Enter: group -> toggle expand/collapse; key -> FocusKeyWidget(key).
+    - Home/End: cursor to first/last row.
+- `config_keyboard_effects(ui, state)`: the per-frame driver (Config analogue of
+  `keyboard_effects`), called from the render ONLY when the tree region has keyboard focus and
+  neither the Filter field nor a key widget is focused (Req 21.9). It reads
+  `ui.input(key_pressed(...))` for the seven keys, runs the reducer, and applies effects
+  (set `collapsed`, move `cursor`, or `ui.memory_mut(|m| m.request_focus(key_widget_id))`).
+
+### Rendering
+
+The grouped render stays, with two changes:
+1. Replace the reliance on `CollapsingHeader`'s own open-state with the panel's `collapsed` map so
+   the keyboard and mouse share ONE expand state (needed for Right/Left/Enter to be authoritative).
+   A namespace header is drawn as an expandable row honouring `collapsed[ns]`; clicking it toggles
+   `collapsed[ns]` (same state the reducer writes), preserving existing mouse behaviour.
+2. Paint a selection highlight on the row whose `ConfigNodeId == state.cursor` (Req 21.8), mirroring
+   the File Navigator's `focused_catalog` `rect_stroke` highlight.
+
+Each key row keeps a stable widget id (already needed for Enter -> FocusKeyWidget, Req 21.6); the
+Filter field keeps `filter_field_id()` (B058) as the first interior focus stop, so the CR-CH-023
+Boundary_Policy is unchanged. Entering the tree from the Filter field via Down/Tab establishes the
+cursor on the first row (Req 21.2).
+
+### Focus model interaction
+
+- Tab-order / `WorkspaceContext::InteriorFocus` is UNCHANGED: the Filter field remains the single
+  reported interior stop (B058). Arrow navigation is a SEPARATE mode over the `cursor`, active only
+  when the tree has focus and the Filter/key widget does not (Req 21.9) - exactly the
+  `files_panel.rs` `focused_catalog` precedent (arrows act only when a catalog has focus).
+- Escape / Tab out of a key's editing widget returns control to the tree with the cursor retained
+  (Req 21.9). No change to END/F3 Navigation_Stack behaviour (Req 15.10 / 20).
+
+### Filter interaction
+
+When the filter changes Visible_Rows, the cursor is reconciled: kept if still visible, else moved
+to the nearest remaining row, else cleared (Req 21.10) - computed against the freshly filtered row
+list each frame.
+
+### File size / module split (rust-standards)
+
+`config_panel.rs` is already large. The tree model + reducer + driver go in a new
+`config_panel/tree.rs` (pure logic + its unit tests), and `config_panel.rs` becomes the render +
+state coordinator, keeping every file under the 400-line non-test limit. This split is a mechanical
+refactor with no behaviour change to the existing widgets.
+
+### No other design changes
+
+No schema, persistence, or command changes: `CONFIG` / `CONFIG <namespace>` (Req 20), session
+persistence (Req 15.9), and validation (Req 15.4/15.5) are untouched.

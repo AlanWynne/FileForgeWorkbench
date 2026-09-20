@@ -533,3 +533,89 @@ selector and per-option Settings_Namespace_View).
    `CustomWorkspace { workspace_kind = config, params = { namespace } }` Workspace_Descriptor
    (startup-and-session Requirement 21.3), with the namespace filter (if any) reapplied -- the same
    persistence contract Requirement 15.9 defines for the Config Workspace.
+
+---
+
+### Requirement 21: Config View Keyboard Tree Navigation
+
+**User Story:** As a workbench user, I want to navigate the Config View with the keyboard the
+same way I navigate the File Navigator tree -- arrow keys to move between namespace groups and
+keys, and to expand/collapse groups -- so that the configuration browser behaves like a standard
+tree control and I do not have to reach for the mouse.
+
+**Source:** [B069]; [CR-CH-039]; owner request ("The configuration workspace is a node tree, and
+should be navigable as a node tree very much like the file navigator node tree works ... bear in
+mind the expected behaviour of these kinds of trees and build to match"). Behavioural model: the
+File Explorer tree keyboard reducer (`explorer_view.rs`, file-tree-panel Requirement 20 / 24) and
+the standard desktop tree-control convention.
+
+**Glossary:**
+- **Config_Tree** -- the Config View rendered as a node tree: a level of NAMESPACE GROUP nodes
+  (each an expandable branch, e.g. `editor`, `logging`, `theme`) whose children are the KEY nodes
+  under that namespace (leaves, e.g. `editor.tab_size`).
+- **Tree_Cursor** -- the single keyboard-focused node in the Config_Tree (distinct from egui
+  widget focus and from the multi-select used elsewhere; the Config_Tree is single-selection).
+- **Visible_Rows** -- the ordered list of nodes currently drawn: every namespace group node, plus
+  the key nodes of each EXPANDED group, in display order (group, then its keys, then the next
+  group), after the search/filter (Requirement 15.7) is applied.
+
+#### Acceptance Criteria
+
+1. THE Config View SHALL present its content as a Config_Tree: a top level of expandable namespace
+   group nodes, each containing the configuration KEY nodes under that namespace prefix, ordered
+   the same way the existing grouped view orders them (namespaces sorted, keys sorted within a
+   group). The existing per-key widgets (value, provenance, Reset-to-Default), the search/filter,
+   and the Source File indicator (Requirement 15.3-15.8) are UNCHANGED; this requirement adds
+   keyboard navigation over that structure.
+
+2. THE Config View SHALL maintain a single Tree_Cursor identifying the keyboard-focused node.
+   WHEN the Config View is entered by Tab from the command field (the first interior stop is the
+   Filter field, per B058 / Requirement 20), pressing Down (or Tab past the Filter field into the
+   tree, consistent with the File Navigator) SHALL establish the Tree_Cursor on the first
+   Visible_Row if none is set.
+
+3. WHEN the Config_Tree has the keyboard and the Tree_Cursor is set, THE Config View SHALL respond
+   to Down Arrow by moving the Tree_Cursor to the NEXT Visible_Row and to Up Arrow by moving it to
+   the PREVIOUS Visible_Row, clamped at the first and last Visible_Row (no wrap), matching the File
+   Navigator tree.
+
+4. WHEN the Tree_Cursor is on a COLLAPSED namespace group node, THE Config View SHALL respond to
+   Right Arrow by EXPANDING that group (its key nodes become visible). WHEN the Tree_Cursor is on
+   an EXPANDED namespace group node, Right Arrow SHALL move the Tree_Cursor to that group's FIRST
+   key node (standard tree convention).
+
+5. WHEN the Tree_Cursor is on an EXPANDED namespace group node, THE Config View SHALL respond to
+   Left Arrow by COLLAPSING that group. WHEN the Tree_Cursor is on a key node (a leaf) OR a
+   collapsed group node, Left Arrow SHALL move the Tree_Cursor to that node's PARENT namespace
+   group node (a key's Left goes to its group; a collapsed group's Left is a no-op as it has no
+   parent level), matching the File Navigator tree.
+
+6. WHEN the Tree_Cursor is on a namespace group node, THE Config View SHALL respond to Enter by
+   TOGGLING that group's expand/collapse state. WHEN the Tree_Cursor is on a key node, Enter SHALL
+   move egui keyboard focus to that key's value-editing widget (checkbox / slider / combo / text
+   field) so the value can be edited, WITHOUT committing any change by itself.
+
+7. WHEN the Config_Tree has the keyboard and the Tree_Cursor is set, THE Config View SHALL respond
+   to Home by moving the Tree_Cursor to the FIRST Visible_Row and to End by moving it to the LAST
+   Visible_Row.
+
+8. THE node holding the Tree_Cursor SHALL be rendered with a visible selection indication
+   (highlight / outline) distinct from egui hover, so the keyboard position is always apparent
+   (matching the File Navigator's focused-node highlight).
+
+9. Arrow-key tree navigation SHALL be active ONLY when keyboard focus is in the Config_Tree, NOT
+   while the Filter field (or a key's editing widget) holds focus -- so typing in the Filter field
+   or a text value is never hijacked by navigation. Pressing Escape while a key's editing widget
+   holds focus (or Tab out of it) SHALL return control to the Config_Tree with the Tree_Cursor
+   retained.
+
+10. WHEN the search/filter (Requirement 15.7) changes the set of Visible_Rows, THE Config View
+    SHALL keep the Tree_Cursor on its node if still visible, otherwise move it to the nearest
+    remaining Visible_Row (or clear it when none remain), so navigation never points at a hidden
+    node.
+
+11. THE keyboard tree-navigation behaviour (Visible_Rows ordering, Up/Down/Left/Right/Enter/Home/
+    End transitions on the Config_Tree) SHALL be implemented as a PURE, unit-testable reducer over
+    an explicit tree + cursor model (mirroring `explorer_view::reduce_key`), so the transitions are
+    covered by automated tests independent of rendering; the rendered focus/selection behaviour
+    SHALL additionally have an `egui_kittest` test per the GUI Behaviour Testing rule.

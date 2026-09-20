@@ -145,7 +145,8 @@ impl WorkbenchShell {
         };
         let dir = self.workspace_kinds_dir();
         if let Err(e) = std::fs::create_dir_all(&dir) {
-            self.kinds_editor_panel.error = Some(format!("Could not create workspace-kinds dir: {e}"));
+            self.kinds_editor_panel.error =
+                Some(format!("Could not create workspace-kinds dir: {e}"));
             return;
         }
         let toml_text = match toml::to_string(&KindConfigToml::from(&cfg)) {

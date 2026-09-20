@@ -2650,3 +2650,25 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[x]` Phase (workspace-kinds) Wave B (B.1-B.4 done) | CR-NR-090 configurable Workspace Kinds -- COMPLETE. B.1 DONE (KindConfig/BaseKind/KindProfile + KindRegistry + compiled built-in defaults + title-from-Kind-config; fixes Catalogs [CATALOGS] vs File Explorer [FILES] smell; external-ready BaseKind). B.2 DONE (per-Kind menu bar via resolve_menu_bar_menu_for + key list via key_list_context_for_tab; behaviour-preserving for built-ins). B.3 DONE (per-Kind profile applied on open: edit_profile + new-buffer line_end_mode via apply_kind_profile_to_active; tab_size deferred). B.4 DONE (Kinds Editor Context [KINDS] + KINDS command + Settings W -> Kinds + Save-to-file + live reload + "New Kind modelled on <base>"; RESET BARE resets registry to built-in defaults + archives workspace-kinds/). NO Def layer (owner); user Kinds modelled on a built-in base. |
+
+## Phase (config-keynav) -- Config View keyboard tree navigation (CR-CH-039, B069)
+
+> Owner: the Configuration workspace is a node tree and MUST be navigable like the
+> File Navigator node tree (standard tree-control keyboard behaviour). Fixes B069.
+> Model: the File Explorer's tested pure reducer (`explorer_view::reduce_key`).
+
+- [x] CKN.1 Config View becomes a keyboard-navigable Config_Tree: a pure,
+      unit-tested tree model + reducer in `config_panel/tree.rs` (Visible_Rows;
+      Up/Down clamp; Right expand-or-first-child; Left collapse-or-parent; Enter
+      toggle-group / focus-key-widget; Home/End) mirroring
+      `explorer_view::reduce_key`; a `cursor` on `ConfigPanelState` reconciled
+      against the filter each frame; a per-frame `config_keyboard_effects` driver
+      active only when the tree (not the Filter field / a key widget) has focus;
+      a selection highlight on the cursor row; shared mouse+keyboard expand state.
+      Unit tests per transition + a full-shell egui_kittest rendered-focus test.
+      verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt.
+      Covers: configuration-system Req 21.
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (config-keynav) | CR-CH-039 / B069 -- Config View keyboard tree navigation, matching the File Navigator (pure reducer mirroring explorer_view::reduce_key + config_keyboard_effects driver + rendered cursor highlight; 8 reducer tests + full-shell egui_kittest). DONE; verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. |

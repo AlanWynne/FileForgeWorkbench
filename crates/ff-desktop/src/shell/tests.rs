@@ -6514,6 +6514,82 @@ fn full_shell_config_first_tab_focuses_filter_field() {
     );
 }
 
+// === CR-CH-039 / B069: Config View keyboard tree navigation =================
+
+// Validates: configuration-system Req 21.2/21.3/21.4/21.6/21.8/21.11 -- with the
+// Config View open and keyboard focus in the tree (not the Filter field), the
+// arrow keys drive a Tree_Cursor and expand/collapse namespace groups, matching
+// the File Navigator. Asserts on the model (cursor / collapsed) per the pure
+// reducer + rendered-focus contract; the full shell drives it end-to-end.
+#[test]
+fn full_shell_config_tree_arrows_navigate_and_expand() {
+    use crate::config_panel::ConfigNodeId;
+    use crate::tab_state::TabKind;
+
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("CONFIG");
+    for _ in 0..4 {
+        harness.run();
+    }
+    assert_eq!(
+        harness.state().tabs.active_tab().kind,
+        TabKind::ConfigPanel,
+        "CONFIG opens the flat Config panel"
+    );
+
+    // Give the tree the keyboard: surrender the command field's focus so nothing
+    // holds focus (the File-Navigator-style state in which the tree drives the
+    // arrows, per Req 21.9). Then Down establishes the cursor on the first row.
+    harness.ctx.memory_mut(|m| m.stop_text_input());
+    harness
+        .ctx
+        .memory_mut(|m| m.request_focus(egui::Id::new("config_tree_focus_none")));
+    // Clear that dummy focus so `tree_has_keyboard` sees "nothing focused".
+    harness
+        .ctx
+        .memory_mut(|m| m.surrender_focus(egui::Id::new("config_tree_focus_none")));
+
+    harness.press_key(egui::Key::ArrowDown);
+    harness.run();
+    let cursor = harness.state().config_panel.cursor.clone();
+    assert!(
+        matches!(cursor, Some(ConfigNodeId::Namespace(_))),
+        "first ArrowDown establishes the Tree_Cursor on the first namespace group, got {cursor:?}"
+    );
+    let ns = match cursor {
+        Some(ConfigNodeId::Namespace(ns)) => ns,
+        other => panic!("expected a namespace cursor, got {other:?}"),
+    };
+
+    // The first group starts expanded; Left collapses it (Req 21.5).
+    harness.press_key(egui::Key::ArrowLeft);
+    harness.run();
+    assert_eq!(
+        harness.state().config_panel.collapsed.get(&ns).copied(),
+        Some(true),
+        "ArrowLeft on an expanded group collapses it"
+    );
+
+    // Right re-expands the collapsed group (Req 21.4).
+    harness.press_key(egui::Key::ArrowRight);
+    harness.run();
+    assert_eq!(
+        harness.state().config_panel.collapsed.get(&ns).copied(),
+        Some(false),
+        "ArrowRight on a collapsed group expands it"
+    );
+
+    // Down moves the cursor off the first namespace (to its first child key, now
+    // that it is expanded) -- the cursor changes (Req 21.3).
+    harness.press_key(egui::Key::ArrowDown);
+    harness.run();
+    assert_ne!(
+        harness.state().config_panel.cursor,
+        Some(ConfigNodeId::Namespace(ns.clone())),
+        "ArrowDown moves the cursor off the first namespace group"
+    );
+}
+
 // === B059: every remaining workspace lands first Tab on its first interior ===
 
 // Shared assertion (CR-CH-023 / B059, workspace-conformance steering rule): open

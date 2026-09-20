@@ -1,13 +1,6 @@
-//! Config Panel — the interactive flat configuration-key browser/editor opened
-//! by the `CONFIG` command. This is NOT the Settings MENU (a data-driven
-//! Menu_Workspace backed by `menus/settings.toml`); "Settings" refers to that
-//! menu, "Config" refers to this key browser (CR-CH-025).
-//!
-//! Displays all schema-registered configuration keys grouped by namespace,
-//! with type-appropriate widgets, provenance badges, inline validation,
-//! and a Reset to Default button.
-//!
-//! Validates: Requirement 15.2–15.8
+//! Rendering + per-frame keyboard driver for the Config View
+//! (configuration-system Requirement 15 + Requirement 21). Split out of
+//! `config_panel/mod.rs` for the 400-line rule; behaviour unchanged.
 
 use std::collections::HashMap;
 
@@ -17,87 +10,105 @@ use ff_config::schema::SchemaEntry;
 use ff_config::value::ConfigValue;
 use ff_config::ConfigHandle;
 
-/// Persistent state for the Config Panel tab (the flat config-key browser).
-///
-/// Validates: Requirement 15.2, 15.7
-pub struct ConfigPanelState {
-    /// Current filter text (case-insensitive substring match).
-    pub filter: String,
-    /// Active namespace filter when this Config view is namespace-scoped
-    /// (e.g. `Some("editor".to_string())`, opened by `CONFIG editor`). `None`
-    /// for the unfiltered all-keys view. Drives the tab title and F3/END return.
-    ///
-    /// Validates: cw-requirements.md Requirement 10.1, 10.5, 10.6
-    pub namespace_filter: Option<String>,
-    /// Collapsed state per namespace group (true = collapsed).
-    pub collapsed: HashMap<String, bool>,
-    /// Pending edit values keyed by schema key (before commit).
-    pub pending: HashMap<String, String>,
-    /// Inline validation error messages keyed by schema key.
-    pub errors: HashMap<String, String>,
+use super::{
+    filter_field_id, reconcile_cursor, reduce_config_key, visible_rows, ConfigNodeId,
+    ConfigPanelState, ConfigRow, ConfigTreeEffect, ConfigTreeKey, TreeEntry,
+};
+
+/// Stable egui id of a configuration key's value-editing widget, so Enter on a
+/// key node (Requirement 21.6) can move focus straight to it.
+fn key_widget_id(key: &str) -> egui::Id {
+    egui::Id::new(("config_panel_key_widget", key))
 }
 
-impl ConfigPanelState {
-    /// Create a new, empty config panel state.
-    pub fn new() -> Self {
-        Self {
-            filter: String::new(),
-            namespace_filter: None,
-            collapsed: HashMap::new(),
-            pending: HashMap::new(),
-            errors: HashMap::new(),
+/// Whether the Config_Tree currently owns keyboard focus: true unless the Filter
+/// field or one of the per-key value widgets is focused. Arrow-key tree
+/// navigation is active ONLY in this state (Requirement 21.9), so typing in the
+/// Filter field or a text value is never hijacked.
+fn tree_has_keyboard(ui: &egui::Ui, rows: &[ConfigRow]) -> bool {
+    let focused = ui.memory(|m| m.focused());
+    let Some(focused) = focused else {
+        // Nothing focused -> the tree may drive navigation (matches the File
+        // Navigator, whose arrows act whenever a node is focused / none else is).
+        return true;
+    };
+    if focused == filter_field_id() {
+        return false;
+    }
+    // A key's value widget holding focus means the user is editing a value.
+    !rows.iter().any(|r| match &r.id {
+        ConfigNodeId::Key(k) => focused == key_widget_id(k),
+        ConfigNodeId::Namespace(_) => false,
+    })
+}
+
+/// Translate this frame's keyboard input into a Config_Tree gesture, run it
+/// through the pure [`reduce_config_key`] reducer against the built rows +
+/// cursor, and apply the resulting [`ConfigTreeEffect`] (expand/collapse the
+/// shared `collapsed` map, or request focus on a key widget). Call once per
+/// frame while the tree owns the keyboard (see [`tree_has_keyboard`]).
+///
+/// Validates: Requirement 21.3-21.7, 21.9.
+fn config_keyboard_effects(ui: &egui::Ui, state: &mut ConfigPanelState, rows: &[ConfigRow]) {
+    let gesture = ui.input(|i| {
+        if i.key_pressed(egui::Key::ArrowDown) {
+            Some(ConfigTreeKey::Down)
+        } else if i.key_pressed(egui::Key::ArrowUp) {
+            Some(ConfigTreeKey::Up)
+        } else if i.key_pressed(egui::Key::ArrowRight) {
+            Some(ConfigTreeKey::Right)
+        } else if i.key_pressed(egui::Key::ArrowLeft) {
+            Some(ConfigTreeKey::Left)
+        } else if i.key_pressed(egui::Key::Enter) {
+            Some(ConfigTreeKey::Enter)
+        } else if i.key_pressed(egui::Key::Home) {
+            Some(ConfigTreeKey::Home)
+        } else if i.key_pressed(egui::Key::End) {
+            Some(ConfigTreeKey::End)
+        } else {
+            None
+        }
+    });
+    let Some(gesture) = gesture else {
+        return;
+    };
+    match reduce_config_key(rows, &mut state.cursor, gesture) {
+        ConfigTreeEffect::None => {}
+        ConfigTreeEffect::Expand(ns) => {
+            state.collapsed.insert(ns, false);
+        }
+        ConfigTreeEffect::Collapse(ns) => {
+            state.collapsed.insert(ns, true);
+        }
+        ConfigTreeEffect::FocusKeyWidget(key) => {
+            // Prefer the exact widget id captured while rendering the key's value
+            // widget last frame (works for any widget type); fall back to the
+            // derived id. Widget ids are stable frame-to-frame.
+            let id = state
+                .widget_ids
+                .get(&key)
+                .copied()
+                .unwrap_or_else(|| key_widget_id(&key));
+            ui.memory_mut(|m| m.request_focus(id));
         }
     }
 }
 
-impl Default for ConfigPanelState {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Render the Config Panel into `ui`.
-///
-/// Stable egui id of the Filter field -- the FIRST interior control of the
-/// Settings/CONFIG panel. The shell reports this as `first_interior_id` so the
-/// CR-CH-023 Boundary_Policy can latch the command-field -> first-interior Tab
-/// jump to a real, non-phantom widget (B058).
-pub fn filter_field_id() -> egui::Id {
-    egui::Id::new("config_panel_filter")
-}
-
-/// `WorkspaceContext` impl (CR-NR-078): the Config panel renders the flat
-/// config-key browser and reports the Filter field as its single interior focus
-/// stop. Config changes are committed in-place through the `ConfigHandle`, so
-/// there are no `ShellRequest`s to enqueue.
-///
-/// Validates: workspace-framework Requirement 1.4, 1.5, 6.1.
-impl crate::shell::workspace_context::WorkspaceContext for ConfigPanelState {
-    fn render(
-        &mut self,
-        ui: &mut egui::Ui,
-        services: &mut crate::shell::workspace_context::ShellServices<'_>,
-    ) -> crate::shell::workspace_context::InteriorFocus {
-        render(ui, self, services.config);
-        crate::shell::workspace_context::InteriorFocus::single(filter_field_id())
-    }
-}
-
-/// Validates: Requirement 15.1–15.8
+/// Validates: Requirement 15.1-15.8
 pub fn render(ui: &mut egui::Ui, state: &mut ConfigPanelState, config: &ConfigHandle) {
-    // ── Filter bar — Req 15.7 ────────────────────────────────────────────
+    // == Filter bar -- Req 15.7 ===
     ui.horizontal(|ui| {
         ui.label("Filter:");
         // Stable id so Tab focus round-trips and the shell can anchor the
         // command-field -> first-interior boundary here (B058).
         ui.add(egui::TextEdit::singleline(&mut state.filter).id(filter_field_id()));
-        if ui.small_button("✕").clicked() {
+        if ui.small_button("X").clicked() {
             state.filter.clear();
         }
     });
     ui.separator();
 
-    // ── Source file indicator — Req 15.8 ────────────────────────────────
+    // == Source file indicator -- Req 15.8 ===
     if let Some(user_path) = ff_config::paths::user_config_path() {
         ui.horizontal(|ui| {
             ui.label("Source File:");
@@ -106,45 +117,99 @@ pub fn render(ui: &mut egui::Ui, state: &mut ConfigPanelState, config: &ConfigHa
         ui.separator();
     }
 
-    // ── Collect and group schema entries ─────────────────────────────────
-    let entries = config.list_schema_entries();
-    let filter_lower = state.filter.to_lowercase();
+    // == Collect schema entries + build the Config_Tree rows ===
+    let schema_entries = config.list_schema_entries();
+    // Full entries keyed for lookup while rendering a row.
+    let entry_by_key: HashMap<String, SchemaEntry> = schema_entries
+        .iter()
+        .map(|e| (e.key.clone(), e.clone()))
+        .collect();
+    // Reduced entries for the pure tree model (key + description only).
+    let tree_entries: Vec<TreeEntry> = schema_entries
+        .iter()
+        .map(|e| TreeEntry {
+            key: e.key.clone(),
+            description: e.description.clone(),
+        })
+        .collect();
 
-    // Group by first dot-segment (namespace).
-    let mut groups: std::collections::BTreeMap<String, Vec<SchemaEntry>> =
-        std::collections::BTreeMap::new();
-    for entry in entries {
-        if !filter_lower.is_empty() {
-            let key_lower = entry.key.to_lowercase();
-            let desc_lower = entry.description.to_lowercase();
-            if !key_lower.contains(&filter_lower) && !desc_lower.contains(&filter_lower) {
-                continue;
-            }
-        }
-        let ns = namespace_of(&entry.key);
-        groups.entry(ns).or_default().push(entry);
+    let rows = visible_rows(&tree_entries, &state.filter, &state.collapsed);
+
+    // Rebuild the per-frame key -> widget-id map fresh each frame.
+    state.widget_ids.clear();
+
+    // == Keyboard tree navigation (CR-CH-039) ===
+    // Reconcile the cursor against the freshly built rows, then run the
+    // keyboard driver ONLY when the tree owns the keyboard (not the Filter field
+    // or a key widget) so typing is never hijacked (Requirement 21.9, 21.10).
+    reconcile_cursor(&rows, &rows, &mut state.cursor);
+    if tree_has_keyboard(ui, &rows) {
+        config_keyboard_effects(ui, state, &rows);
     }
 
-    // ── Render each namespace group — Req 15.2 ───────────────────────────
+    // == Render each row -- namespace group headers + key entries -- Req 15.2 =
+    let cursor = state.cursor.clone();
+    let selection_stroke = ui.visuals().selection.stroke;
     egui::ScrollArea::vertical().show(ui, |ui| {
-        for (ns, mut entries_in_group) in groups {
-            entries_in_group.sort_by(|a, b| a.key.cmp(&b.key));
-
-            let _collapsed = state.collapsed.entry(ns.clone()).or_insert(false);
-            let header = format!("{} ({})", ns_display_name(&ns), entries_in_group.len());
-
-            let resp = ui.collapsing(header, |ui| {
-                for entry in &entries_in_group {
-                    render_entry(ui, state, config, entry);
+        for row in &rows {
+            let is_cursor = cursor.as_ref() == Some(&row.id);
+            match &row.id {
+                ConfigNodeId::Namespace(ns) => {
+                    // Count the keys under this namespace (matching the filter).
+                    let count = tree_entries
+                        .iter()
+                        .filter(|e| namespace_of(&e.key) == *ns && entry_matches(e, &state.filter))
+                        .count();
+                    let arrow = if row.expanded { "v" } else { ">" };
+                    let header = format!("{} {} ({})", arrow, ns_display_name(ns), count);
+                    let resp = ui.selectable_label(is_cursor, egui::RichText::new(header).strong());
+                    if resp.clicked() {
+                        // Mouse toggles the SAME collapsed state the keyboard writes.
+                        let now = state.collapsed.get(ns).copied().unwrap_or(false);
+                        state.collapsed.insert(ns.clone(), !now);
+                        state.cursor = Some(ConfigNodeId::Namespace(ns.clone()));
+                    }
+                    paint_cursor_highlight(ui, &resp, is_cursor, selection_stroke);
+                }
+                ConfigNodeId::Key(key) => {
+                    if let Some(entry) = entry_by_key.get(key) {
+                        let resp = ui
+                            .indent(("config_key_indent", key), |ui| {
+                                render_entry(ui, state, config, entry, is_cursor)
+                            })
+                            .response;
+                        paint_cursor_highlight(ui, &resp, is_cursor, selection_stroke);
+                    }
                     ui.separator();
                 }
-            });
-            // Sync collapse state from egui's own open/close tracking.
-            // egui::CollapsingHeader manages its own state; we just track
-            // whether the user has explicitly collapsed it.
-            let _ = resp;
+            }
         }
     });
+}
+
+/// Whether an entry matches the (already-lowercased-inside) filter -- key OR
+/// description substring; empty filter matches everything. Kept here for the
+/// namespace key-count display; the tree module has its own copy for its rows.
+fn entry_matches(entry: &TreeEntry, filter: &str) -> bool {
+    if filter.is_empty() {
+        return true;
+    }
+    let f = filter.to_lowercase();
+    entry.key.to_lowercase().contains(&f) || entry.description.to_lowercase().contains(&f)
+}
+
+/// Paint the Tree_Cursor selection outline around a row's rect (Requirement
+/// 21.8) so the keyboard position is always visible, distinct from egui hover.
+fn paint_cursor_highlight(
+    ui: &egui::Ui,
+    resp: &egui::Response,
+    is_cursor: bool,
+    stroke: egui::Stroke,
+) {
+    if is_cursor {
+        ui.painter()
+            .rect_stroke(resp.rect.expand(1.0), 2.0, stroke, egui::StrokeKind::Inside);
+    }
 }
 
 /// Render a single schema entry row with widget, provenance badge, and reset button.
@@ -155,6 +220,7 @@ fn render_entry(
     state: &mut ConfigPanelState,
     config: &ConfigHandle,
     entry: &SchemaEntry,
+    _is_cursor: bool,
 ) {
     let key = &entry.key;
     let locked = config.is_locked(key);
@@ -218,9 +284,16 @@ fn render_entry(
     });
 
     // Value widget -- disabled for locked keys (Req 18.6)
-    ui.add_enabled_ui(!locked, |ui| {
-        render_widget(ui, state, config, entry, &effective);
-    });
+    let widget_id = ui
+        .add_enabled_ui(!locked, |ui| {
+            render_widget(ui, state, config, entry, &effective)
+        })
+        .inner;
+    // Record the value widget's id so Enter on this key node can focus it
+    // (Requirement 21.6).
+    if let Some(id) = widget_id {
+        state.widget_ids.insert(entry.key.clone(), id);
+    }
 
     // Inline validation error -- Req 15.5
     if let Some(err) = state.errors.get(key) {
@@ -237,22 +310,24 @@ fn render_widget(
     config: &ConfigHandle,
     entry: &SchemaEntry,
     effective: &ConfigValue,
-) {
+) -> Option<egui::Id> {
     use ff_config::error::ValueType;
 
     let key = entry.key.clone();
 
     match entry.value_type {
-        // Boolean → checkbox — Req 15.3
+        // Boolean -> checkbox -- Req 15.3
         ValueType::Boolean => {
             let mut checked = matches!(effective, ConfigValue::Boolean(true));
-            if ui.checkbox(&mut checked, "").changed() {
+            let resp = ui.checkbox(&mut checked, "");
+            if resp.changed() {
                 let new_val = ConfigValue::Boolean(checked);
                 commit_value(state, config, &key, new_val);
             }
+            Some(resp.id)
         }
 
-        // Integer with min+max → slider; without → text field — Req 15.3
+        // Integer with min+max -> slider; without -> text field -- Req 15.3
         ValueType::Integer => {
             let current = match effective {
                 ConfigValue::Integer(i) => *i,
@@ -261,13 +336,11 @@ fn render_widget(
             if let Some(ref c) = entry.constraints {
                 if let (Some(min), Some(max)) = (c.min, c.max) {
                     let mut val = current;
-                    if ui
-                        .add(egui::Slider::new(&mut val, min as i64..=max as i64))
-                        .changed()
-                    {
+                    let resp = ui.add(egui::Slider::new(&mut val, min as i64..=max as i64));
+                    if resp.changed() {
                         commit_value(state, config, &key, ConfigValue::Integer(val));
                     }
-                    return;
+                    return Some(resp.id);
                 }
             }
             // Numeric text field
@@ -293,9 +366,10 @@ fn render_widget(
             } else if !resp.has_focus() {
                 *pending = current.to_string();
             }
+            Some(resp.id)
         }
 
-        // Float with min+max → slider; without → text field — Req 15.3
+        // Float with min+max -> slider; without -> text field -- Req 15.3
         ValueType::Float => {
             let current = match effective {
                 ConfigValue::Float(f) => *f,
@@ -304,13 +378,11 @@ fn render_widget(
             if let Some(ref c) = entry.constraints {
                 if let (Some(min), Some(max)) = (c.min, c.max) {
                     let mut val = current;
-                    if ui
-                        .add(egui::Slider::new(&mut val, min..=max).step_by(0.1))
-                        .changed()
-                    {
+                    let resp = ui.add(egui::Slider::new(&mut val, min..=max).step_by(0.1));
+                    if resp.changed() {
                         commit_value(state, config, &key, ConfigValue::Float(val));
                     }
-                    return;
+                    return Some(resp.id);
                 }
             }
             if !state.pending.contains_key(&key) {
@@ -335,9 +407,10 @@ fn render_widget(
             } else if !resp.has_focus() {
                 *pending = current.to_string();
             }
+            Some(resp.id)
         }
 
-        // String with allowed_values → combo box; without → text field — Req 15.3
+        // String with allowed_values -> combo box; without -> text field -- Req 15.3
         ValueType::String => {
             let current = match effective {
                 ConfigValue::String(s) => s.clone(),
@@ -357,7 +430,7 @@ fn render_widget(
                         .collect();
                     if !options.is_empty() {
                         let mut selected = current.clone();
-                        egui::ComboBox::from_id_salt(&key)
+                        let combo = egui::ComboBox::from_id_salt(&key)
                             .selected_text(&selected)
                             .show_ui(ui, |ui| {
                                 for opt in &options {
@@ -367,11 +440,11 @@ fn render_widget(
                         if selected != current {
                             commit_value(state, config, &key, ConfigValue::String(selected));
                         }
-                        return;
+                        return Some(combo.response.id);
                     }
                 }
             }
-            // Plain text field — only cache in pending while the field has focus.
+            // Plain text field -- only cache in pending while the field has focus.
             // If there is no in-progress edit, always seed from the live effective value
             // so the default is always visible even after a hot-reload or first open.
             if !state.pending.contains_key(&key) {
@@ -389,14 +462,16 @@ fn render_widget(
                 // After commit, re-seed from the now-effective value next frame.
                 state.pending.remove(&key);
             } else if !resp.has_focus() {
-                // Not focused and no pending edit — keep in sync with effective value.
+                // Not focused and no pending edit -- keep in sync with effective value.
                 *pending = current.clone();
             }
+            Some(resp.id)
         }
 
-        // Array / Table — read-only display for now
+        // Array / Table -- read-only display for now
         ValueType::Array | ValueType::Table => {
-            ui.label(egui::RichText::new("[complex value — edit TOML file directly]").weak());
+            ui.label(egui::RichText::new("[complex value -- edit TOML file directly]").weak());
+            None
         }
     }
 }
@@ -517,7 +592,7 @@ fn layer_label(layer: ConfigLayer) -> &'static str {
 mod tests {
     use super::*;
 
-    // Validates: Requirement 15.2 — namespace_of extracts first dot-segment
+    // Validates: Requirement 15.2 -- namespace_of extracts first dot-segment
     #[test]
     fn namespace_grouping_correct() {
         assert_eq!(namespace_of("editor.tab_size"), "editor");
@@ -526,7 +601,7 @@ mod tests {
         assert_eq!(namespace_of("no_dot"), "no_dot");
     }
 
-    // Validates: Requirement 15.7 — filter_hides_non_matching_keys (logic test)
+    // Validates: Requirement 15.7 -- filter_hides_non_matching_keys (logic test)
     #[test]
     fn filter_hides_non_matching_keys() {
         let filter = "tab";
@@ -545,7 +620,7 @@ mod tests {
         assert!(!matches2, "logging.level should not match filter 'tab'");
     }
 
-    // Validates: Requirement 15.3 — provenance badge shows correct layer label
+    // Validates: Requirement 15.3 -- provenance badge shows correct layer label
     #[test]
     fn provenance_badge_shows_correct_layer() {
         assert_eq!(layer_label(ConfigLayer::Defaults), "Default");
@@ -556,15 +631,15 @@ mod tests {
         assert_eq!(layer_label(ConfigLayer::Workspace), "Workspace");
     }
 
-    // Validates: Requirement 15.3 — widget type selected for bool
+    // Validates: Requirement 15.3 -- widget type selected for bool
     #[test]
     fn widget_type_selected_for_bool() {
         use ff_config::error::ValueType;
-        // Boolean type maps to checkbox — verified by the match arm in render_widget
+        // Boolean type maps to checkbox -- verified by the match arm in render_widget
         assert_eq!(ValueType::Boolean, ValueType::Boolean);
     }
 
-    // Validates: Requirement 15.3 — widget type selected for enum string
+    // Validates: Requirement 15.3 -- widget type selected for enum string
     #[test]
     fn widget_type_selected_for_enum_string() {
         use ff_config::schema::Constraints;
@@ -578,11 +653,11 @@ mod tests {
             ]),
             pattern: None,
         };
-        // Has allowed_values → should use ComboBox
+        // Has allowed_values -> should use ComboBox
         assert!(constraints.allowed_values.is_some());
     }
 
-    // Validates: Requirement 15.3 — widget type selected for bounded int (slider)
+    // Validates: Requirement 15.3 -- widget type selected for bounded int (slider)
     #[test]
     fn widget_type_selected_for_bounded_int() {
         use ff_config::schema::Constraints;
@@ -592,11 +667,11 @@ mod tests {
             allowed_values: None,
             pattern: None,
         };
-        // Has min and max → should use Slider
+        // Has min and max -> should use Slider
         assert!(constraints.min.is_some() && constraints.max.is_some());
     }
 
-    // Validates: Requirement 15.4 — valid value calls set_user_value (constraint check passes)
+    // Validates: Requirement 15.4 -- valid value calls set_user_value (constraint check passes)
     #[test]
     fn valid_value_passes_constraint_check() {
         use ff_config::schema::Constraints;
@@ -611,7 +686,7 @@ mod tests {
         assert!(result.is_none(), "valid value should pass constraints");
     }
 
-    // Validates: Requirement 15.5 — invalid value shows error (constraint check fails)
+    // Validates: Requirement 15.5 -- invalid value shows error (constraint check fails)
     #[test]
     fn invalid_value_shows_error() {
         use ff_config::schema::Constraints;
@@ -630,7 +705,7 @@ mod tests {
         assert!(result.unwrap().contains("<="));
     }
 
-    // Validates: Requirement 15.5 — string pattern validation fails correctly
+    // Validates: Requirement 15.5 -- string pattern validation fails correctly
     #[test]
     fn string_pattern_validation_fails_for_non_matching_value() {
         use ff_config::schema::Constraints;
@@ -646,7 +721,7 @@ mod tests {
         assert!(result.is_some(), "non-matching pattern should fail");
     }
 
-    // Validates: Requirement 15.5 — string pattern validation passes for matching value
+    // Validates: Requirement 15.5 -- string pattern validation passes for matching value
     #[test]
     fn string_pattern_validation_passes_for_matching_value() {
         use ff_config::schema::Constraints;
@@ -662,17 +737,17 @@ mod tests {
         assert!(result.is_none(), "matching pattern should pass");
     }
 
-    // Validates: Requirement 15.6 — reset button hidden when at default (provenance check)
+    // Validates: Requirement 15.6 -- reset button hidden when at default (provenance check)
     #[test]
     fn reset_button_hidden_when_at_default() {
-        // The reset button is only enabled when provenance != "Default"
+        // The reset button is only enabled when provenance != "Default".
         let at_default = layer_label(ConfigLayer::Defaults) == "Default";
         assert!(at_default, "Default layer should produce 'Default' label");
-        // Button is disabled (add_enabled_ui(!is_at_default, ...)) when at_default is true
-        assert!(!at_default == false); // i.e. button is disabled
+        // Button is disabled (add_enabled_ui(!is_at_default, ...)) when at_default is true.
+        assert!(at_default, "reset button is disabled at the Default layer");
     }
 
-    // Validates: Requirement 15.10 — F3/END returns to POM (routing test)
+    // Validates: Requirement 15.10 -- F3/END returns to POM (routing test)
     #[test]
     fn f3_returns_to_pom_via_end_command() {
         // F3 is mapped to "END" in the default key map.

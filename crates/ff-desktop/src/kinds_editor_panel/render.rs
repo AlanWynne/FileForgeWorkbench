@@ -33,7 +33,11 @@ pub fn render(ui: &mut egui::Ui, state: &mut KindsEditorState) -> KindsEditorAct
     let mut action = KindsEditorAction::None;
 
     ui.vertical_centered(|ui| {
-        ui.label(egui::RichText::new("Workspace Kinds Editor").strong().size(14.0));
+        ui.label(
+            egui::RichText::new("Workspace Kinds Editor")
+                .strong()
+                .size(14.0),
+        );
     });
     ui.add_space(4.0);
 
@@ -108,7 +112,11 @@ pub fn render(ui: &mut egui::Ui, state: &mut KindsEditorState) -> KindsEditorAct
             BaseKind::External(n) => format!("ext:{n}"),
         };
         ui.label(egui::RichText::new(base_label).monospace());
-        ui.label(egui::RichText::new("(create a new Kind to change the base)").weak().small());
+        ui.label(
+            egui::RichText::new("(create a new Kind to change the base)")
+                .weak()
+                .small(),
+        );
     });
     ui.horizontal(|ui| {
         ui.label("Title:");
@@ -140,11 +148,19 @@ pub fn render(ui: &mut egui::Ui, state: &mut KindsEditorState) -> KindsEditorAct
     }
     let mut lock = p.edit_profile.lock == ProfileLock::On;
     if ui.checkbox(&mut lock, "LOCK").changed() {
-        p.edit_profile.lock = if lock { ProfileLock::On } else { ProfileLock::Off };
+        p.edit_profile.lock = if lock {
+            ProfileLock::On
+        } else {
+            ProfileLock::Off
+        };
     }
     let mut hilite = p.edit_profile.hilite != HiliteMode::Off;
     if ui.checkbox(&mut hilite, "HILITE").changed() {
-        p.edit_profile.hilite = if hilite { HiliteMode::On } else { HiliteMode::Off };
+        p.edit_profile.hilite = if hilite {
+            HiliteMode::On
+        } else {
+            HiliteMode::Off
+        };
     }
     ui.horizontal(|ui| {
         ui.label("Tab size:");

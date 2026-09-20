@@ -253,6 +253,14 @@ New capabilities that did not previously exist.
 
 Modifications to existing behaviour that already works.
 
+### CR-CH-039 -- Keyboard arrow-key navigation of the Configuration workspace (consistent with the File Navigator tree) [B069]
+- **Date/Phase**: Phase (config-keynav) (gate)
+- **Prompt**: (owner) "In the File navigator the arrow keys Allow navigations up and down and expansion of the nodes. In the configuration workspace these keys do not work."
+- **Description**: The CONFIG flat key-browser (`config_panel.rs`, `TabKind::ConfigPanel`) has no keyboard navigation -- it relies entirely on egui-native focus/Tab and mouse clicks, so the arrow keys do nothing. This adds keyboard navigation consistent with the File Navigator tree: Up/Down move a keyboard row/group selection, Right/Left (or Enter) expand/collapse the highlighted namespace group, and the selection is visibly indicated. Brings the Config workspace into line with the File Explorer (`explorer_view.rs` ExplorerKey gestures) and the Catalogs panel (`files_panel.rs` focused_catalog nav).
+- **Affects**: `ff-desktop` (`config_panel/` -- split into `mod.rs` + `render.rs` + `tree.rs`).
+- **Status**: DONE (Phase config-keynav). The CONFIG view is now a keyboard-navigable Config_Tree matching the File Navigator: `config_panel/tree.rs` holds a pure model + reducer (`visible_rows`, `reduce_config_key` mirroring `explorer_view::reduce_key`, `reconcile_cursor`); `config_panel/render.rs` runs the per-frame `config_keyboard_effects` driver (Up/Down move a `cursor`, Right expands-or-first-child, Left collapses-or-parent, Enter toggles-group / focuses-key-widget, Home/End) ONLY when the tree has the keyboard (`tree_has_keyboard` -- not the Filter field or a key widget), paints the cursor-row highlight, and shares one `collapsed` map between mouse and keyboard. 8 reducer unit tests + full-shell `full_shell_config_tree_arrows_navigate_and_expand`. Closes B069. verify.ps1 CLEAN (FULL, nextest); ffwb.exe rebuilt. (config_panel.rs was split for the 400-line rule and its pre-existing non-ASCII replaced with ASCII per documentation.md.)
+- **Linked spec**: `docs/specs/configuration-system/requirements.md` Requirement 21 (Config View Keyboard Tree Navigation). Reveals a missing criterion surfaced by B069. Modelled on file-tree-panel Req 20 (Explorer keyboard navigation).
+
 ### CR-CH-038 -- RETURN goes to the POM (non-POM) / closes the workspace (from a POM); END walks back one step [B045 bundle]
 - **Date/Phase**: Phase (bug-sweep) (gate, Wave A cont.)
 - **Prompt**: (owner) "RETURN in any workspace returns to the POM while end walks back one navigation step at a time" + "F4 from a POM closes the workspace ... return to the pom and again from the pom" + (Option A) one workspace closed per RETURN; the last one exits the app.

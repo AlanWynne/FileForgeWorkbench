@@ -615,3 +615,24 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
           `docs/quality/TCR.md` Req 19.9-19.15 rows; update
           `docs/project-management/project-master/tasks.md` Phase (reset-bare-targets).
     - Covers: Requirement 19.9-19.15
+
+- [x] 35. Config View keyboard tree navigation (Requirement 21, CR-CH-039 / B069)
+  - [x] 35.1 Add `config_panel/tree.rs` with the pure tree model: `ConfigNodeId` (Namespace(String) | Key(String)), `ConfigRow { id, depth, expandable, expanded }`, and `visible_rows(entries, filter, collapsed) -> Vec<ConfigRow>` ordering namespaces sorted then keys sorted within each expanded group (Visible_Rows)
+    - Covers: Requirement 21.1
+  - [x] 35.2 Add the pure reducer `reduce_config_key(rows, &mut cursor, ConfigTreeKey) -> ConfigTreeEffect` (keys Up/Down/Left/Right/Enter/Home/End; effects None/Expand/Collapse/FocusKeyWidget) implementing the Req 21.3-21.7 transition table, mirroring `explorer_view::reduce_key`; unit tests for every transition
+    - Covers: Requirement 21.3, 21.4, 21.5, 21.6, 21.7, 21.11
+  - [x] 35.3 Add `cursor: Option<ConfigNodeId>` to `ConfigPanelState`; reconcile it against the filtered rows each frame (keep-if-visible else nearest else clear); establish it on first Down into the tree when unset
+    - Covers: Requirement 21.2, 21.10
+  - [x] 35.4 Add `config_keyboard_effects(ui, state, rows)` per-frame driver: read the seven keys, run the reducer, apply effects (write `collapsed`, move `cursor`, `request_focus` the key widget); active ONLY when the tree has focus and neither the Filter field nor a key widget is focused (`tree_has_keyboard`)
+    - Covers: Requirement 21.6, 21.9
+  - [x] 35.5 Render changes: drive namespace expand/collapse from the shared `collapsed` map (mouse click toggles the same state the reducer writes), and paint a selection highlight on the `cursor` row (`paint_cursor_highlight`, mirroring the File Navigator focused-node highlight); capture each key's value-widget id for Enter->focus
+    - Covers: Requirement 21.4, 21.5, 21.6, 21.8
+  - [x] 35.6 Filter-field typing never hijacked: `tree_has_keyboard` returns false while the Filter field or a key widget holds focus, so the driver does not run
+    - Covers: Requirement 21.9
+- [x] 36. Config keyboard-nav tests + close
+  - [x] 36.1 Unit tests (config_panel/tree.rs): Down/Up clamp at ends; Right expands a collapsed group then walks to first child; Left collapses then goes to parent; Enter toggles a group / focuses a key widget; Home/End jump to first/last; filter reconciliation keeps/moves/clears the cursor (8 tests, all PASS)
+    - Covers: Requirement 21.3, 21.4, 21.5, 21.6, 21.7, 21.10, 21.11
+  - [x] 36.2 Full-shell `egui_kittest` test `full_shell_config_tree_arrows_navigate_and_expand`: open CONFIG, put focus in the tree, ArrowDown establishes the cursor, Left collapses a group, Right re-expands it, Down moves off the group (rendered focus/selection behaviour)
+    - Covers: Requirement 21.8, 21.11
+  - [x] 36.3 verify.ps1 CLEAN (FULL nextest); ffwb.exe rebuilt; TCR rows -> PASS; change-log CR-CH-039 DONE + B069 FIXED; project-master phase entry; test-plan row. NOTE: config_panel.rs split into config_panel/{mod,render,tree}.rs for the 400-line rule; pre-existing non-ASCII in the file replaced with ASCII per documentation.md
+    - Covers: Requirement 21

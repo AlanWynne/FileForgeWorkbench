@@ -2724,6 +2724,28 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | 🔲 | -- | configuration-system Req 20.7: the Config View persists/restores as `CustomWorkspace { workspace_kind = config, params = { namespace } }` with the namespace reapplied. MANUAL: covered structurally by the existing config-descriptor persistence (Req 15.9 / `config_namespace_descriptor_round_trips`) tests; the `CONFIG`-entry-point round trip is verified manually pending a dedicated persistence test |
 | `ff-desktop` | ✅ | `shell::tests::settings_command_opens_menu_workspace_not_flat_panel`, `settings_menu_end_returns_to_pom` | B032 (closed by CR-CH-025): opening Settings is menu-name resolution of `SETTINGS`, not a bespoke verb; the Settings_Menu is a real Menu_Workspace |
 
+### CR-CH-039 -- Config View keyboard tree navigation (configuration-system Req 21, B069)
+
+> The Config View (`config_panel.rs`, `TabKind::ConfigPanel`) becomes a keyboard-
+> navigable node tree matching the File Navigator: Up/Down move a Tree_Cursor,
+> Right/Left expand/collapse or step to child/parent, Enter toggles a group or
+> focuses a key widget, Home/End jump to first/last -- via a pure reducer mirroring
+> `explorer_view::reduce_key`. Active only when the tree (not the Filter field or a
+> key widget) has focus. Fixes B069.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `config_panel::tree::tests::visible_rows_orders_namespaces_then_keys_and_honours_collapse`, `visible_rows_applies_filter_by_key_or_description` | configuration-system Req 21.1: the Config View presents its content as a Config_Tree (namespace group nodes with key-node children), ordered namespaces-sorted then keys-sorted, with the existing widgets/filter/source indicator unchanged |
+| `ff-desktop` | ✅ | `config_panel::tree::tests::down_up_move_and_clamp_no_wrap` | configuration-system Req 21.2/21.3: a single Tree_Cursor; Down/Up move to next/previous Visible_Row clamped (no wrap); entering the tree from the Filter field establishes the cursor on the first row |
+| `ff-desktop` | ✅ | `config_panel::tree::tests::right_expands_collapsed_group_then_steps_to_first_child` | configuration-system Req 21.4: Right on a collapsed group expands it; Right on an expanded group moves the cursor to its first key child |
+| `ff-desktop` | ✅ | `config_panel::tree::tests::left_collapses_expanded_group_and_key_goes_to_parent` | configuration-system Req 21.5: Left on an expanded group collapses it; Left on a key or collapsed group moves the cursor to the parent namespace group |
+| `ff-desktop` | ✅ | `config_panel::tree::tests::enter_toggles_group_and_focuses_key_widget` | configuration-system Req 21.6: Enter toggles a group's expand/collapse; Enter on a key focuses that key's value widget without committing a change |
+| `ff-desktop` | ✅ | `config_panel::tree::tests::home_and_end_jump_to_first_and_last` | configuration-system Req 21.7: Home/End move the cursor to the first/last Visible_Row |
+| `ff-desktop` | ✅ | `shell::tests::full_shell_config_tree_arrows_navigate_and_expand` | configuration-system Req 21.8: the cursor node is rendered with a visible selection highlight distinct from hover (egui_kittest) |
+| `ff-desktop` | ✅ | `shell::tests::full_shell_config_tree_arrows_navigate_and_expand` (driver gated by `tree_has_keyboard`) | configuration-system Req 21.9: arrow navigation is active only when the tree has focus, never while the Filter field or a key widget is focused; Escape/Tab out of a key widget returns to the tree with the cursor retained |
+| `ff-desktop` | ✅ | `config_panel::tree::tests::reconcile_cursor_keeps_moves_or_clears` | configuration-system Req 21.10: a filter change reconciles the cursor (keep-if-visible else nearest else clear) so it never points at a hidden node |
+| `ff-desktop` | ✅ | `config_panel::tree::tests` (reducer suite) + `shell::tests::full_shell_config_tree_arrows_navigate_and_expand` | configuration-system Req 21.11: the transitions are a pure unit-tested reducer (`config_panel/tree.rs`, mirroring `explorer_view::reduce_key`) plus an egui_kittest rendered-focus test |
+
 ### CR-CH-026 -- Calendar Visibility and Fit; Settings default off (menu-workspace Req 16, B060)
 
 > Fixes B060: a `show_calendar = true` menu drew the calendar (and its focusable
