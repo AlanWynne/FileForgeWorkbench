@@ -265,10 +265,72 @@ Profile store.
    produce the SAME initial Edit_Profile and (for new buffers) Line_End_Mode as
    before this slice.
 
-### Requirement 6: Kind configuration dialog + command + RESET BARE defaults (Slice B.4 -- PENDING GATE)
+### Requirement 6: Kind configuration Context (Slice B.4)
 
-*(Placeholder -- criteria to be finalised at the B.4 gate.)* THE workbench SHALL
-provide a Kind configuration Context (dialog) to edit a built-in Kind's config
-and to create a NEW user Kind "modelled on" a selected built-in base, reachable
-via a Settings menu entry and a command (command parity). RESET BARE SHALL
-restore the compiled default Kinds and drop user Kinds.
+**User Story:** As a user, I want a dialog to configure a Workspace Kind's title,
+menu bar, key list, and profile, and to create a NEW Kind modelled on an
+existing one, so I can tailor Kinds without hand-editing TOML.
+
+**Source:** [CR-NR-090] Slice B.4; makes B.1-B.3 user-facing. Modelled on the
+Keys Workspace / Menus Editor Context pattern (function-keys Req 22, menu
+-workspace Req 13): a pure render that stashes an action the shell applies.
+
+#### Acceptance Criteria
+
+1. THE workbench SHALL provide a Kinds Editor Context (a Workspace of a new
+   `Kinds Editor` kind, title `[KINDS]`) that presents a SELECTOR of the
+   configurable Workspace Kinds (built-in + user) and, for the selected Kind, an
+   editable form for its `Kind_Config`: `title`, `menu_bar`, `key_list`,
+   `modelled_on` (base), and `profile` (edit-profile toggles CAPS/NULLS/STATS/
+   LOCK/HILITE, `tab_size`, `line_end_mode`).
+
+2. THE Kinds Editor SHALL provide a "New Kind modelled on <base>" action that
+   creates a NEW user Kind whose `modelled_on` is a selected BUILT-IN base
+   (Requirement 1.3), with a user-entered unique `name`; the new Kind starts as a
+   copy of the base's presentation/profile that the user can then edit.
+
+3. WHEN the user Saves the selected Kind, THE workbench SHALL write its
+   `Kind_Config` to `<User_Data_Dir>/workspace-kinds/<name>.toml` and reload the
+   Kind_Registry so the change is live (tab titles / menu bar / key list / new
+   opens reflect it) WITHOUT a restart. Saving a built-in Kind writes a user
+   override file of the same name (Requirement 2.2).
+
+4. THE Kinds Editor SHALL be reachable BOTH by a command (`KINDS`, command
+   parity: the same code path whether typed or invoked from a menu) AND by a
+   Settings menu entry; opening it on the Home Context transforms in place (END/
+   RETURN returns to the POM), else opens/activates a dedicated tab, consistent
+   with the other editor Contexts.
+
+5. THE Kinds Editor render SHALL be a PURE function returning an editor Action;
+   all file writes and registry reloads SHALL be applied by the shell command
+   layer (mirroring the Keys / Menus / Theme editors), and the Context SHALL
+   participate in the unified Tab-order model (report its `InteriorFocus` via the
+   `WorkspaceContext` trait, CR-NR-078).
+
+6. THE `Kinds Editor` kind SHALL itself be a built-in Kind in the registry (its
+   own compiled default `Kind_Config`, title `[KINDS]`), so it is consistent with
+   every other Context.
+
+### Requirement 7: RESET BARE restores the compiled default Kinds (Slice B.4)
+
+**User Story:** As a user, I want RESET BARE to drop my Kind customisations back
+to the compiled defaults, consistent with how it resets menus/themes/config.
+
+**Source:** [CR-NR-090] Slice B.4; configuration-system Req 19.
+
+#### Acceptance Criteria
+
+1. WHEN RESET BARE resets a profile's in-memory state to the compiled baselines
+   (configuration-system Req 19.6), THE workbench SHALL also reset the
+   Kind_Registry to the compiled built-in defaults (dropping any loaded user
+   Kind overrides for the active profile) so Kinds return to their compiled
+   configuration.
+
+2. WHEN RESET BARE archives a profile's user data (configuration-system Req 19.5),
+   THE profile's `workspace-kinds/` directory SHALL be included in the archived
+   set (so user Kind files are moved to the timestamped archive, not deleted),
+   consistent with the treatment of `menus/` / `themes/` / config.
+
+3. THE compiled default Kind set SHALL always be present after RESET BARE (the
+   registry's built-in defaults, Requirement 2.1), so every Workspace Kind
+   remains resolvable.

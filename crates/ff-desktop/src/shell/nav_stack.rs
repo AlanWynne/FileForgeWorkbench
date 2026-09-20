@@ -88,6 +88,11 @@ impl WorkbenchShell {
                 p.insert("editor".to_string(), DescriptorValue::from("keys"));
                 p
             }),
+            TabKind::KindsEditor => custom(WorkspaceKind::CommandConfigurator, {
+                let mut p = DescriptorParams::new();
+                p.insert("editor".to_string(), DescriptorValue::from("kinds"));
+                p
+            }),
         }
     }
 
@@ -239,6 +244,9 @@ impl WorkbenchShell {
                     }
                     Some(DescriptorValue::String(e)) if e == "keys" => {
                         self.set_active_tab_context(TabKind::KeysEditor, "[KEYS]")
+                    }
+                    Some(DescriptorValue::String(e)) if e == "kinds" => {
+                        self.set_active_tab_context(TabKind::KindsEditor, "[KINDS]")
                     }
                     _ => self.set_active_tab_context(TabKind::CommandConfigurator, "[COMMANDS]"),
                 }

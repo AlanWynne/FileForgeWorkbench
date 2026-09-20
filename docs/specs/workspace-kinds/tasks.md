@@ -74,5 +74,38 @@ their gates). Slice B.1 below.
   - [x] 10.1 verify.ps1 CLEAN (FULL nextest); ffwb.exe rebuilt; TCR rows; change-log B.3 DONE; project-master WK.3; test-plan 4.8b
     - Covers: Slice B.3
 
-## Slice B.4 -- Kind config dialog + Settings entry + command + RESET BARE defaults (PENDING GATE)
-- [ ] (tasks added at the B.4 gate)
+## Slice B.4 -- Kinds Editor Context + command + Settings + RESET BARE
+
+### B.4a -- the Kinds Editor Context
+- [x] 11. New Kinds Editor kind + built-in registration
+  - [x] 11.1 Add `TabKind::KindsEditor` + `BuiltinKind::Kinds` (stable name "kinds", default title "[KINDS]"); wire from_tab_kind / context_name_for_kind / title_line_text / kind_title / nav_stack / session_manager arms + the compiled built-in default KindConfig
+    - Covers: Requirement 6.6
+  - [x] 11.2 Add `workspace_kinds_dir()` resolver (test override else <User_Data_Dir>/workspace-kinds/); used in the B.1 startup load and B.4 save
+    - Covers: Requirement 6.3
+- [x] 12. Kinds Editor panel (pure render + WorkspaceContext)
+  - [x] 12.1 `crate::kinds_editor_panel`: `KindsEditorState` (selected name, working KindConfig, kind-name list, new-kind sub-form, interior ids, pending_action) + `KindsEditorAction`
+    - Covers: Requirement 6.1, 6.2
+  - [x] 12.2 Pure `render(ui, &mut state) -> KindsEditorAction`: selector + editable fields (title/menu_bar/key_list/modelled_on/profile toggles+tab_size+line_end_mode) + "New Kind modelled on <base>" + Save; `impl WorkspaceContext` returning InteriorFocus
+    - Covers: Requirement 6.1, 6.2, 6.5
+- [x] 13. Shell wiring + command + Settings
+  - [x] 13.1 `shell/kinds_editor.rs`: `open_kinds_editor()` (navigate-in-place via Navigation_Stack) + `apply_kinds_editor_action()` (Save -> write workspace-kinds/<name>.toml + reload registry live; NewKind -> seed from base)
+    - Covers: Requirement 6.3, 6.4
+  - [x] 13.2 `KINDS` command arm -> open_kinds_editor (command parity); central-panel dispatch arm for TabKind::KindsEditor (owned-panel swap + drain pending_action)
+    - Covers: Requirement 6.4, 6.5
+  - [x] 13.3 Settings Recovery_Baseline option row (`W` -> KINDS) dispatching the KINDS command (menu == typed); Settings option-key tests updated
+    - Covers: Requirement 6.4
+- [x] 14. B.4a tests
+  - [x] 14.1 Headless: open_kinds_editor_activates_kinds_editor_context; kinds_editor_save_writes_file_and_reloads_registry; kinds_editor_new_kind_seeds_copy_modelled_on_base
+    - Covers: Requirement 6.1, 6.2, 6.3
+  - [x] 14.2 Full-shell first-Tab egui_kittest test full_shell_kinds_first_tab_focuses_first_interior (workspace-conformance): the Kinds Editor reports its first interior control
+    - Covers: Requirement 6.5
+
+### B.4b -- RESET BARE integration
+- [x] 15. RESET BARE
+  - [x] 15.1 reset_in_memory_to_baseline also resets kind_registry to with_builtin_defaults() (drop user overrides); the profile's workspace-kinds/ dir added to ARCHIVED_ITEMS
+    - Covers: Requirement 7.1, 7.2, 7.3
+  - [x] 15.2 Headless: reset_bare_restores_builtin_kind_registry (after execute_reset_bare with active profile, a prior user override title is gone); archived_items_includes_workspace_kinds; archive_config_moves_workspace_kinds_dir
+    - Covers: Requirement 7.1, 7.3
+- [x] 16. Slice B.4 close
+  - [x] 16.1 verify.ps1 CLEAN (FULL nextest); rebuild ffwb.exe; TCR rows; change-log B.4 DONE; project-master WK.4; test-plan rows
+    - Covers: Slice B.4

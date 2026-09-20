@@ -97,6 +97,12 @@ description = "Keys -- edit and save per-workspace key assignments"
 group = "Core"
 
 [[options]]
+key = "W"
+command = "Kinds"
+description = "Workspace kinds -- configure title, menu bar, key list, profile"
+group = "Core"
+
+[[options]]
 key = "R"
 command = "Reset bare"
 description = "Reset to barebones -- archive config and start fresh"
@@ -247,15 +253,16 @@ mod tests {
     fn recovery_settings_menu_has_barebones_options() {
         let menu = recovery_settings_menu();
         let keys: Vec<&str> = menu.options.iter().map(|o| o.key.as_str()).collect();
-        // CR-CH-025 + CR-CH-029: ordered A Config / T Theme / M Menus / K Keys
-        // (group Core), then R Reset-to-barebones (group Recovery). Affordances
-        // dispatch via the menu option = command path; `K -> KEYS` opens the
-        // Keys Workspace (function-keys Req 22).
-        assert_eq!(keys, vec!["A", "T", "M", "K", "R"]);
+        // CR-CH-025 + CR-CH-029 + CR-NR-090: ordered A Config / T Theme /
+        // M Menus / K Keys / W Kinds (group Core), then R Reset-to-barebones
+        // (group Recovery). Affordances dispatch via the menu option = command
+        // path; `K -> KEYS` opens the Keys Workspace (function-keys Req 22) and
+        // `W -> KINDS` opens the Workspace Kinds editor (workspace-kinds Req 6).
+        assert_eq!(keys, vec!["A", "T", "M", "K", "W", "R"]);
         let commands: Vec<&str> = menu.options.iter().map(|o| o.command.as_str()).collect();
         assert_eq!(
             commands,
-            vec!["Config", "Theme", "Menus", "Keys", "Reset bare"]
+            vec!["Config", "Theme", "Menus", "Keys", "Kinds", "Reset bare"]
         );
     }
 
@@ -400,29 +407,32 @@ mod tests {
             .expect("options array");
         assert_eq!(
             options.len(),
-            5,
-            "Recovery_Baseline Settings: A/T/M/K + the RESET BARE affordance"
+            6,
+            "Recovery_Baseline Settings: A/T/M/K/W + the RESET BARE affordance"
         );
-        // CR-CH-025 + CR-CH-029: ordered A CONFIG, T THEME, M MENUS, K KEYS
-        // (group Core), then R RESET BARE (group Recovery).
+        // CR-CH-025 + CR-CH-029 + CR-NR-090: ordered A CONFIG, T THEME, M MENUS,
+        // K KEYS, W KINDS (group Core), then R RESET BARE (group Recovery).
         let keys: Vec<&str> = options
             .iter()
             .filter_map(|o| o.get("key").and_then(|c| c.as_str()))
             .collect();
-        assert_eq!(keys, vec!["A", "T", "M", "K", "R"]);
+        assert_eq!(keys, vec!["A", "T", "M", "K", "W", "R"]);
         let commands: Vec<&str> = options
             .iter()
             .filter_map(|o| o.get("command").and_then(|c| c.as_str()))
             .collect();
         assert_eq!(
             commands,
-            vec!["Config", "Theme", "Menus", "Keys", "Reset bare"]
+            vec!["Config", "Theme", "Menus", "Keys", "Kinds", "Reset bare"]
         );
         let groups: Vec<&str> = options
             .iter()
             .filter_map(|o| o.get("group").and_then(|c| c.as_str()))
             .collect();
-        assert_eq!(groups, vec!["Core", "Core", "Core", "Core", "Recovery"]);
+        assert_eq!(
+            groups,
+            vec!["Core", "Core", "Core", "Core", "Core", "Recovery"]
+        );
     }
 
     // Validates: Requirement 11.1 (cw-requirements.md) -- title matches spec

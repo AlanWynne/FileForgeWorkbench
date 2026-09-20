@@ -25,6 +25,7 @@ mod fftest_cli;
 mod files_panel;
 mod find_manager;
 mod keys_editor_panel;
+mod kinds_editor_panel;
 mod macro_library_panel;
 mod menu_workspace;
 mod menus_editor_panel;

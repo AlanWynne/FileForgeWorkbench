@@ -40,11 +40,12 @@ pub enum BuiltinKind {
     Theme,
     Menus,
     Keys,
+    Kinds,
 }
 
 impl BuiltinKind {
     /// All built-in kinds (registry seeding + tests).
-    pub const ALL: [BuiltinKind; 14] = [
+    pub const ALL: [BuiltinKind; 15] = [
         BuiltinKind::Editor,
         BuiltinKind::Files,
         BuiltinKind::Catalogs,
@@ -59,6 +60,7 @@ impl BuiltinKind {
         BuiltinKind::Theme,
         BuiltinKind::Menus,
         BuiltinKind::Keys,
+        BuiltinKind::Kinds,
     ];
 
     /// The stable name for this built-in kind (the id used for keymaps, keymap
@@ -79,6 +81,7 @@ impl BuiltinKind {
             BuiltinKind::Theme => "theme",
             BuiltinKind::Menus => "menus",
             BuiltinKind::Keys => "keys",
+            BuiltinKind::Kinds => "kinds",
         }
     }
 
@@ -108,6 +111,7 @@ impl BuiltinKind {
             BuiltinKind::Theme => "[THEME]",
             BuiltinKind::Menus => "[MENUS]",
             BuiltinKind::Keys => "[KEYS]",
+            BuiltinKind::Kinds => "[KINDS]",
         }
     }
 
@@ -127,6 +131,7 @@ impl BuiltinKind {
             TabKind::ThemeEditor => BuiltinKind::Theme,
             TabKind::MenusEditor => BuiltinKind::Menus,
             TabKind::KeysEditor => BuiltinKind::Keys,
+            TabKind::KindsEditor => BuiltinKind::Kinds,
             TabKind::MenuWorkspace => {
                 if is_home {
                     BuiltinKind::Pom

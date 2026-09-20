@@ -68,6 +68,12 @@ pub enum TabKind {
     ///
     /// Validates: function-keys-and-history Requirement 22 (CR-CH-029)
     KeysEditor,
+    /// In-app Workspace Kinds editor Context (configure a Kind's title / menu
+    /// bar / key list / profile; create a new Kind modelled on a built-in base;
+    /// save to `workspace-kinds/<name>.toml`).
+    ///
+    /// Validates: workspace-kinds Requirement 6 (CR-NR-090 B.4)
+    KindsEditor,
 }
 
 /// A single undoable edit stored as the inverse operation to apply.

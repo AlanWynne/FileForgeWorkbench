@@ -268,3 +268,75 @@ Kind starts with `edit_profile.caps == On`; a subsequent `CAPS OFF` is not
 re-clobbered on the next frame; a NEW buffer of a Kind with `line_end_mode =
 "unicode"` opens Unicode while a LOADED file keeps its detected mode; a built-in
 Kind (default profile) opens with `EditProfile::default()` (unchanged).
+
+## 11. Slice B.4 delta -- Kinds Editor Context + command + Settings + RESET BARE
+
+B.4 makes B.1-B.3 user-facing. Modelled directly on the Keys Workspace
+(`keys_editor_panel` + `shell/keys_editor.rs`): a pure-render Context that stashes
+an action the shell applies, migrated to the `WorkspaceContext` trait.
+
+### New Context
+
+- `TabKind::KindsEditor` (new variant) + `BuiltinKind::KindsEditor` (stable name
+  `kinds`, title `[KINDS]`); its compiled default `KindConfig` is added to the
+  built-in table (Req 6.6). `from_tab_kind`/`context_name_for_kind`/
+  `title_line_text` gain the arm (title now via the registry, so only the
+  built-in default table + the TabKind mapping change).
+- `crate::kinds_editor_panel` module: `KindsEditorState` (selected kind name,
+  the editable `KindConfig` working copy, the list of kind names, a "new kind"
+  sub-form: name + base selector, `first_interior_id`/`last_interior_id`,
+  `pending_action: KindsEditorAction`), a pure `render(ui, &mut state) ->
+  KindsEditorAction`, and `impl WorkspaceContext` returning `InteriorFocus`.
+- `KindsEditorAction`: `None | SelectKind(name) | EditField(...) | NewKind{name,
+  base} | Save`.
+
+### Shell wiring (`shell/kinds_editor.rs`)
+
+- `open_kinds_editor()`: refresh the kind list from the registry, default the
+  selection, transform-in-place on Home else open/activate a `KindsEditor` tab
+  (same pattern as `open_keys_editor`).
+- `apply_kinds_editor_action(action)`: `Save` -> serialise the working
+  `KindConfig` to `KindConfigToml`, write `<workspace-kinds>/<name>.toml`
+  (a `workspace_kinds_dir()` resolver with a test override mirroring
+  `menus_dir_override`), then reload `self.kind_registry` from that dir so the
+  change is live (Req 6.3). `NewKind{name, base}` -> seed the working copy from
+  the base's compiled default with the new name + `modelled_on = Builtin(base)`.
+- `KINDS` command arm in `handle_command` -> `open_kinds_editor()` (Req 6.4,
+  command parity). A Settings Recovery_Baseline option row (e.g. `W` -> `KINDS`)
+  dispatches the same command (menu == typed).
+- Central-panel dispatch arm for `TabKind::KindsEditor` (owned-panel swap through
+  `render_workspace_context`, like Theme/Menus/Keys), draining `pending_action`
+  into `apply_kinds_editor_action`.
+
+### Persistence dir
+
+`workspace_kinds_dir()`: test override else `<User_Data_Dir>/workspace-kinds/`
+(mirrors `menus_dir`/`keymaps` resolvers). The B.1 startup registry load and the
+B.4 save/reload both use it.
+
+### RESET BARE (Req 7)
+
+- `reset_in_memory_to_baseline` (shell/reset_bare.rs) also does
+  `self.kind_registry = KindRegistry::with_builtin_defaults()` (drop user
+  overrides -> compiled defaults, Req 7.1/7.3).
+- The profile-archive step (configuration-system Req 19.5) already moves the
+  profile's data dirs; add `workspace-kinds/` to the archived set so user Kind
+  files are archived, not deleted (Req 7.2).
+
+### Testability (B.4)
+
+Headless: `open_kinds_editor` sets the active tab kind to `KindsEditor`;
+`apply_kinds_editor_action(Save)` writes the file and the reloaded registry
+reflects the edited title (assert via `kind_registry.effective`); `NewKind` seeds
+a copy modelled on the base; a full-shell first-Tab test (workspace-conformance
+rule) that the Kinds Editor reports its first interior control; RESET BARE resets
+the registry to built-in defaults. The dialog's visual layout is MANUAL only for
+pixel-exact appearance (the behaviour -- selection, edit, save, reload, focus --
+is harness-tested).
+
+### Slicing note
+
+B.4 is the largest slice. It MAY be delivered as B.4a (the Kinds Editor Context +
+KINDS command + Settings entry + Save/reload + New-Kind) and B.4b (RESET BARE
+integration), gated together but committed/reviewed in two steps if it aids
+review. The requirements (Req 6, 7) and tasks below cover the whole slice.

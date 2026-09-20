@@ -998,6 +998,16 @@ impl WorkbenchShell {
                     self.keys_editor_panel = panel;
                     self.apply_keys_editor_action(action);
                 }
+                TabKind::KindsEditor => {
+                    // Validates: workspace-kinds Req 6 (CR-NR-090 B.4); CR-NR-078
+                    // (framework). Owned-panel swap: render through the trait,
+                    // then apply the stashed action (save/select/new).
+                    let mut panel = std::mem::take(&mut self.kinds_editor_panel);
+                    self.render_workspace_context(ctx, ui, &mut panel);
+                    let action = std::mem::take(&mut panel.pending_action);
+                    self.kinds_editor_panel = panel;
+                    self.apply_kinds_editor_action(action);
+                }
                 TabKind::CommandConfigurator => {
                     // Validates: command-configurator Requirement 2.2-2.6
                     self.command_store.poll_reload();

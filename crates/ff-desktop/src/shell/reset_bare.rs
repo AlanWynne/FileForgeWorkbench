@@ -16,6 +16,9 @@ const ARCHIVED_ITEMS: &[&str] = &[
     "menus",
     "themes",
     "keymaps",
+    // CR-NR-090 B.4b: user Workspace Kind files are archived alongside the other
+    // config so RESET BARE returns to the compiled built-in Kind defaults.
+    "workspace-kinds",
     "session.toml",
     "config.toml",
     "catalogs.toml",
@@ -315,9 +318,16 @@ impl WorkbenchShell {
         }
     }
 
-    /// Reset the in-memory configuration, menus, theme, and catalog state to the
-    /// compiled baselines and reopen the Recovery_Baseline POM (Req 19.6).
+    /// Reset the in-memory configuration, menus, theme, catalog, and Workspace
+    /// Kind state to the compiled baselines and reopen the Recovery_Baseline POM
+    /// (Req 19.6; workspace-kinds Req 7).
     fn reset_in_memory_to_baseline(&mut self) {
+        // Workspace Kinds -> compiled built-in defaults (CR-NR-090 B.4b). The
+        // archived workspace-kinds/ files are moved aside above; the live
+        // registry must also drop any loaded user Kinds so titles / menu bars /
+        // key lists / profiles all recompute from the built-in defaults.
+        self.kind_registry = crate::workspace_kind::KindRegistry::with_builtin_defaults();
+
         // Theme -> Default Legacy baseline (the ISPF barebones aesthetic). B064:
         // clearing the archived files alone does NOT reset the theme, because the
         // running config_handle still holds the old theme keys in memory (and a
@@ -415,6 +425,38 @@ mod tests {
         assert!(!udd.join("session.toml").exists());
         assert!(!udd.join("config.toml").exists());
         assert!(!udd.join("catalogs.toml").exists());
+    }
+
+    // Validates: workspace-kinds Req 7 (CR-NR-090 B.4b) -- user Workspace Kind
+    // files are in the archived set, so RESET BARE moves them aside and the
+    // built-in Kind defaults are restored.
+    #[test]
+    fn archived_items_includes_workspace_kinds() {
+        assert!(
+            ARCHIVED_ITEMS.contains(&"workspace-kinds"),
+            "RESET BARE must archive the workspace-kinds/ directory"
+        );
+    }
+
+    // Validates: workspace-kinds Req 7 (CR-NR-090 B.4b) -- a user workspace-kinds
+    // file present at reset time is MOVED into the archive (not left live).
+    #[test]
+    fn archive_config_moves_workspace_kinds_dir() {
+        let dir = TempDir::new().expect("tempdir");
+        let udd = dir.path();
+        write_file(
+            &udd.join("workspace-kinds").join("mainframe-editor.toml"),
+            "name=\"mainframe-editor\"\nmodelled_on=\"editor\"\ntitle=\"[MF]\"",
+        );
+        let archive = archive_config(udd).expect("archive ok");
+        assert!(archive
+            .join("workspace-kinds")
+            .join("mainframe-editor.toml")
+            .exists());
+        assert!(
+            !udd.join("workspace-kinds").exists(),
+            "workspace-kinds/ must be moved out of the live dir"
+        );
     }
 
     // Validates: configuration-system Requirement 19.4 -- missing items are

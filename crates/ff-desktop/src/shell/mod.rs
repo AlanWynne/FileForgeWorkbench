@@ -317,6 +317,8 @@ pub struct WorkbenchShell {
     pub(crate) menus_editor_panel: crate::menus_editor_panel::MenusEditorState,
     /// Keys Editor Context state (function-keys Req 22, CR-CH-029).
     pub(crate) keys_editor_panel: crate::keys_editor_panel::KeysEditorState,
+    /// Kinds Editor Context state (workspace-kinds Req 6, CR-NR-090 B.4).
+    pub(crate) kinds_editor_panel: crate::kinds_editor_panel::KindsEditorState,
     /// Shell engine for external program execution (Detached / Captured).
     ///
     /// Backs the External Command_Target adapter: runs a program by name +
@@ -409,6 +411,9 @@ pub struct WorkbenchShell {
     /// `<User_Data_Dir>/keymaps/`); tests set it to a TempDir so Keys editor
     /// file operations are deterministic and isolated.
     keymaps_dir_override: Option<std::path::PathBuf>,
+    /// Test-only override for the workspace-kinds directory (CR-NR-090 B.4).
+    /// Production leaves this `None` (the real `<User_Data_Dir>/workspace-kinds/`).
+    workspace_kinds_dir_override: Option<std::path::PathBuf>,
     /// Last pixels_per_point applied by zoom — avoids overwriting OS DPI every frame.
     last_ppp: f32,
     /// True while the user is holding the mouse button down (window drag in progress).
@@ -751,6 +756,7 @@ impl WorkbenchShell {
             theme_editor_panel: crate::theme_editor_panel::ThemeEditorState::new(),
             menus_editor_panel: crate::menus_editor_panel::MenusEditorState::new(),
             keys_editor_panel: crate::keys_editor_panel::KeysEditorState::new(),
+            kinds_editor_panel: crate::kinds_editor_panel::KindsEditorState::default(),
             shell_engine: ff_shell::ShellEngine::new(ff_shell::ShellConfigProvider::new()),
             pending_external: None,
             files_panel: FilesPanelState::new(),
@@ -776,6 +782,7 @@ impl WorkbenchShell {
             themes_dir_override: None,
             menus_dir_override: None,
             keymaps_dir_override: None,
+            workspace_kinds_dir_override: None,
             last_ppp: 1.0,
             is_dragging: false,
             pending_ppp: None,
@@ -1018,7 +1025,8 @@ impl WorkbenchShell {
             | TabKind::CommandConfigurator
             | TabKind::ThemeEditor
             | TabKind::MenusEditor
-            | TabKind::KeysEditor => {
+            | TabKind::KeysEditor
+            | TabKind::KindsEditor => {
                 let name = crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind, tab.is_home)
                     .stable_name();
                 self.kind_registry.effective(name).title.clone()
@@ -1137,7 +1145,8 @@ pub(crate) fn title_line_text(tab: &crate::tab_state::TabState) -> String {
         | TabKind::CommandConfigurator
         | TabKind::ThemeEditor
         | TabKind::MenusEditor
-        | TabKind::KeysEditor => {
+        | TabKind::KeysEditor
+        | TabKind::KindsEditor => {
             // CR-NR-090 B.1: the label for a system/panel Kind is the Kind's
             // compiled default title, NOT the cached `tab.title`. This fixes the
             // Catalog Explorer (FilesPanel -> [CATALOGS]) vs File Explorer
@@ -1305,6 +1314,7 @@ mod external_adapter;
 /// Convert a `ff_config::ConfigValue` to a `toml::Value` for key-map parsing.
 mod helpers;
 mod keys_editor;
+mod kinds_editor;
 mod menus_editor;
 mod nav_stack;
 mod render;

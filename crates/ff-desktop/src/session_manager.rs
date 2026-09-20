@@ -98,6 +98,8 @@ fn descriptor_for_tab(
         // keymaps/<kind>.toml files, not as a restored tab (function-keys
         // Requirement 22.8, CR-CH-029).
         TabKind::KeysEditor => None,
+        // The Kinds Editor is likewise transient (CR-NR-090 B.4); not restored.
+        TabKind::KindsEditor => None,
         // Untitled buffers are not persisted (never were).
         TabKind::Untitled => None,
     }
@@ -218,7 +220,8 @@ impl SessionManager {
                 | TabKind::CommandConfigurator
                 | TabKind::ThemeEditor
                 | TabKind::MenusEditor
-                | TabKind::KeysEditor => None,
+                | TabKind::KeysEditor
+                | TabKind::KindsEditor => None,
             }
         };
         // Note: FileExplorerPanel active_tab_id is None (no URI to track)
@@ -273,7 +276,8 @@ impl SessionManager {
                 | TabKind::CommandConfigurator
                 | TabKind::ThemeEditor
                 | TabKind::MenusEditor
-                | TabKind::KeysEditor => None,
+                | TabKind::KeysEditor
+                | TabKind::KindsEditor => None,
             }
         };
 

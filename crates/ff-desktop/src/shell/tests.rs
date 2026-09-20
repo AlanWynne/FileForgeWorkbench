@@ -7456,3 +7456,173 @@ fn detached_command_acts_on_its_tab_not_the_primary() {
         "primary active tab must be restored after the detached dispatch"
     );
 }
+
+// === CR-NR-090 B.4: Kinds Editor Context (workspace-kinds Req 6) =============
+
+// Validates: workspace-kinds Req 6.1, 6.4 -- KINDS opens the Kinds Editor: the
+// active tab becomes the KindsEditor Context and the editor loads a working copy
+// (the active workspace's own Kind) so the panel has something to render.
+#[test]
+fn open_kinds_editor_activates_kinds_editor_context() {
+    use crate::tab_state::TabKind;
+
+    let mut shell = make_shell();
+    shell.open_kinds_editor();
+
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::KindsEditor,
+        "KINDS must navigate the active tab to the Kinds Editor Context"
+    );
+    assert!(
+        shell.kinds_editor_panel.working.is_some(),
+        "opening the editor must load a working Kind config"
+    );
+    assert!(
+        !shell.kinds_editor_panel.kind_names.is_empty(),
+        "the editor must offer the built-in Kind names to select from"
+    );
+}
+
+// Validates: workspace-kinds Req 6.3 -- Save writes workspace-kinds/<name>.toml
+// and reloading the registry from that dir reflects the edited title (the change
+// is live).
+#[test]
+fn kinds_editor_save_writes_file_and_reloads_registry() {
+    use crate::kinds_editor_panel::KindsEditorAction;
+    use tempfile::TempDir;
+
+    let mut shell = make_shell();
+    let dir = TempDir::new().expect("tempdir");
+    shell.workspace_kinds_dir_override = Some(dir.path().to_path_buf());
+
+    // Open the editor, select the editor Kind, edit its title, Save.
+    shell.open_kinds_editor();
+    shell.apply_kinds_editor_action(KindsEditorAction::SelectKind("editor".to_string()));
+    if let Some(cfg) = shell.kinds_editor_panel.working.as_mut() {
+        cfg.title = "[MY EDITOR]".to_string();
+    }
+    shell.apply_kinds_editor_action(KindsEditorAction::Save);
+
+    // The file exists on disk.
+    let path = dir.path().join("editor.toml");
+    assert!(path.exists(), "Save must write workspace-kinds/editor.toml");
+
+    // The live registry (reloaded by Save) reflects the edited title.
+    assert_eq!(
+        shell.kind_registry.effective("editor").title,
+        "[MY EDITOR]",
+        "Save must reload the registry so the edited title is live"
+    );
+
+    // A fresh load from the same dir also reflects it (round-trip).
+    let reloaded = crate::workspace_kind::KindRegistry::load(dir.path());
+    assert_eq!(reloaded.effective("editor").title, "[MY EDITOR]");
+}
+
+// Validates: workspace-kinds Req 6.2 -- "New Kind modelled on <base>" seeds a
+// working copy that is a COPY of the base's config, with the new name and
+// modelled_on = Builtin(base).
+#[test]
+fn kinds_editor_new_kind_seeds_copy_modelled_on_base() {
+    use crate::kinds_editor_panel::KindsEditorAction;
+    use crate::workspace_kind::{BaseKind, BuiltinKind};
+
+    let mut shell = make_shell();
+    shell.open_kinds_editor();
+    shell.apply_kinds_editor_action(KindsEditorAction::NewKind {
+        name: "mainframe-editor".to_string(),
+        base: BuiltinKind::Editor,
+    });
+
+    let working = shell
+        .kinds_editor_panel
+        .working
+        .as_ref()
+        .expect("new Kind must load a working copy");
+    assert_eq!(working.name, "mainframe-editor");
+    assert_eq!(
+        working.modelled_on,
+        BaseKind::Builtin(BuiltinKind::Editor),
+        "the new Kind must be modelled on the chosen built-in base"
+    );
+    // The seed copies the base's title (a copy, editable afterwards).
+    assert_eq!(working.title, BuiltinKind::Editor.default_title());
+    assert!(
+        shell
+            .kinds_editor_panel
+            .kind_names
+            .contains(&"mainframe-editor".to_string()),
+        "the new Kind name must be added to the selector list"
+    );
+}
+
+// Validates: workspace-kinds Req 7 (CR-NR-090 B.4b) -- a RESET BARE whose target
+// includes the active profile resets the live Kind registry to the compiled
+// built-in defaults (a user override is dropped).
+#[test]
+fn reset_bare_restores_builtin_kind_registry() {
+    use crate::shell::reset_bare::ResetBareTarget;
+    use crate::workspace_kind::{KindConfig, KindRegistry};
+    use tempfile::TempDir;
+
+    let mut shell = make_shell();
+
+    // Simulate a live registry carrying a user override of the editor title.
+    let kinds_dir = TempDir::new().expect("tempdir");
+    let toml = "name=\"editor\"\nmodelled_on=\"editor\"\ntitle=\"[OVERRIDDEN]\"";
+    std::fs::write(kinds_dir.path().join("editor.toml"), toml).expect("write");
+    shell.kind_registry = KindRegistry::load(kinds_dir.path());
+    assert_eq!(
+        shell.kind_registry.effective("editor").title,
+        "[OVERRIDDEN]",
+        "precondition: the live registry carries the user override"
+    );
+
+    // Execute RESET BARE against a throwaway target dir that includes the active
+    // profile (so the live in-memory reset path runs). archive_config on the
+    // empty dir is a harmless no-op.
+    let target_dir = TempDir::new().expect("tempdir");
+    let target = ResetBareTarget::single(
+        "(default)".to_string(),
+        target_dir.path().to_path_buf(),
+        true,
+    );
+    shell.execute_reset_bare(&target);
+
+    // The live registry is back to the compiled built-in default title.
+    assert_eq!(
+        shell.kind_registry.effective("editor").title,
+        KindConfig::builtin_default(crate::workspace_kind::BuiltinKind::Editor).title,
+        "RESET BARE must restore the built-in Kind defaults"
+    );
+}
+
+// Validates: workspace-conformance (CR-CH-023) + workspace-kinds Req 6.4 -- KINDS
+// opens the Kinds Editor and the FIRST Tab from the command field lands EXACTLY
+// on the reported first interior control, with no phantom stop.
+#[test]
+fn full_shell_kinds_first_tab_focuses_first_interior() {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("KINDS");
+    for _ in 0..4 {
+        harness.run();
+    }
+    let expected = harness.state().first_interior_id;
+    assert!(
+        expected.is_some(),
+        "Kinds Editor must report a first interior control"
+    );
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        Some(cmd_field_id()),
+        "command field holds focus on entering the Kinds Editor"
+    );
+    harness.press_key(egui::Key::Tab);
+    harness.run();
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        expected,
+        "first Tab in the Kinds Editor must focus the reported first interior, not a phantom stop"
+    );
+}

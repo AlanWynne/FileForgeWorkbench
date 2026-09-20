@@ -2638,10 +2638,15 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
       the Kind's line_end_mode (loaded files keep detected); tab_size carried but
       NOT applied to a per-tab size in B.3 (documented deferral). Behaviour-
       preserving for built-ins. Covers: workspace-kinds Req 5.
-- [ ] WK.4 (Slice B.4, PENDING GATE): Kind config dialog ("New Kind modelled on
-      <base>", edit built-ins) + Settings entry + command + RESET BARE defaults.
-      Covers: workspace-kinds Req 6.
+- [x] WK.4 (Slice B.4): Kinds Editor Context (TabKind::KindsEditor,
+      [KINDS]) modelled on the Keys Workspace -- selector + editable KindConfig
+      form + "New Kind modelled on <base>"; KINDS command (parity) + Settings
+      W -> Kinds entry; Save writes workspace-kinds/<name>.toml + reloads
+      registry live; RESET BARE resets the registry to built-in defaults +
+      archives the profile's workspace-kinds/ dir. B.4a (Context+command+
+      Settings+save) + B.4b (RESET BARE) both DONE. verify.ps1 CLEAN FULL
+      nextest; ffwb.exe rebuilt. Covers: workspace-kinds Req 6, 7.
 
 | Status | Count |
 |--------|-------|
-| `[ ]` Phase (workspace-kinds) Wave B (B.1-B.3 done) | CR-NR-090 configurable Workspace Kinds. B.1 DONE (KindConfig/BaseKind/KindProfile + KindRegistry + compiled built-in defaults + title-from-Kind-config; fixes Catalogs [CATALOGS] vs File Explorer [FILES] smell; external-ready BaseKind). B.2 DONE (per-Kind menu bar via resolve_menu_bar_menu_for + key list via key_list_context_for_tab; behaviour-preserving for built-ins). B.3 DONE (per-Kind profile applied on open: edit_profile + new-buffer line_end_mode via apply_kind_profile_to_active; tab_size deferred). B.4 PENDING GATE. NO Def layer (owner); user Kinds modelled on a built-in base. |
+| `[x]` Phase (workspace-kinds) Wave B (B.1-B.4 done) | CR-NR-090 configurable Workspace Kinds -- COMPLETE. B.1 DONE (KindConfig/BaseKind/KindProfile + KindRegistry + compiled built-in defaults + title-from-Kind-config; fixes Catalogs [CATALOGS] vs File Explorer [FILES] smell; external-ready BaseKind). B.2 DONE (per-Kind menu bar via resolve_menu_bar_menu_for + key list via key_list_context_for_tab; behaviour-preserving for built-ins). B.3 DONE (per-Kind profile applied on open: edit_profile + new-buffer line_end_mode via apply_kind_profile_to_active; tab_size deferred). B.4 DONE (Kinds Editor Context [KINDS] + KINDS command + Settings W -> Kinds + Save-to-file + live reload + "New Kind modelled on <base>"; RESET BARE resets registry to built-in defaults + archives workspace-kinds/). NO Def layer (owner); user Kinds modelled on a built-in base. |

@@ -399,6 +399,15 @@ impl WorkbenchShell {
             return;
         }
 
+        // ── KINDS -- Validates: workspace-kinds Requirement 6.4 (CR-NR-090 B.4)
+        // Open the Workspace Kinds Editor Context (command parity: the same path
+        // whether typed or dispatched from the Settings menu).
+        if upper == "KINDS" {
+            self.open_kinds_editor();
+            self.open_error = None;
+            return;
+        }
+
         // ── PFSHOW — Validates: Requirement 12.1–12.3 ——————————————————————
         if upper == "PFSHOW" {
             self.key_bar_visible = !self.key_bar_visible;
