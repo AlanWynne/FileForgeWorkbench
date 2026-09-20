@@ -419,6 +419,55 @@ impl TabManager {
         self.active = self.focused_active_index();
     }
 
+    /// Re-attach a re-docked tab into a Tab_Group leaf (CR-NR-093, Slice 2c.4,
+    /// Req 14.16). Used by the `DOCK` command when the Workspace is split: a
+    /// Detached_Workspace's tab, on re-dock, lands in a tree leaf rather than at
+    /// a flat index. The detached tab typically still sits in the leaf it was
+    /// detached from (detach only flags `is_floating`, it does not remove the tab
+    /// from the tree), so this focuses that owning leaf and makes the tab active
+    /// there. If the tab is in NO leaf (e.g. reconciled out), it is placed in the
+    /// focused leaf so it is never lost. Returns the leaf the tab ended up in, or
+    /// `None` when unsplit / the tab is unknown (the caller then uses the flat
+    /// re-dock path).
+    ///
+    /// Validates: layout-and-docking Requirement 14.16
+    pub(crate) fn dock_tab_into_leaf(&mut self, tab_id: TabId) -> Option<TabGroupId> {
+        if !self.is_split() {
+            return None;
+        }
+        let store_idx = self.index_of(tab_id)?;
+        let id_str = tab_id.0.to_string();
+        // Which leaf, if any, currently owns the tab?
+        let owner = self.layout.all_group_ids().into_iter().find(|gid| {
+            self.layout
+                .find_group(*gid)
+                .map(|g| g.tabs.contains(&id_str))
+                .unwrap_or(false)
+        });
+        match owner {
+            Some(leaf) => {
+                // Already in a leaf (its origin leaf): focus it and make active.
+                self.focus_leaf_and_activate(leaf, store_idx);
+                Some(leaf)
+            }
+            None => {
+                // Not in any leaf: place it in the focused leaf so it is not lost.
+                let target = self.focused_group;
+                if self.layout.find_group(target).is_some() {
+                    if let Some(g) = self.layout.find_group_mut(target) {
+                        g.tabs.push(id_str);
+                        g.active_tab = g.tabs.len() - 1;
+                    }
+                    self.sync_layout();
+                    self.active = self.focused_active_index();
+                    Some(target)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
     /// Move the tab `tab_id` into Tab_Group `target` (CR-NR-093, Slice 2c.2,
     /// Req 14.6). Removes the tab id from whichever leaf currently owns it,
     /// appends it to the target leaf, makes it the target's active tab, and

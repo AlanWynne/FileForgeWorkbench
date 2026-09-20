@@ -2759,12 +2759,13 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
       SessionState.layout (existing LayoutSnapshot, serde default, no schema bump); restore on launch
       after tabs; absent/older session opens unsplit. Round-trip + full-shell restore tests. Covers
       Req 14.10-14.13.
-- [ ] WS2C.4 (2c.4 detached fold-in): one FocusContext seam shared by with_workspace_context (detached)
-      and the in-window region swap; DOCK re-attaches into a tree leaf; Req 18 behaviour preserved.
-      No-regression tests. Covers Req 14.14-14.16.
-- [ ] WS2C.5 Close: verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR PASS; change-log CR-NR-093
+- [x] WS2C.4 (2c.4 detached fold-in): with_workspace_context documented as the single detached
+      Focus_Context seam (flat-active + command-buffer swap), counterpart of set_render_focus_leaf
+      (tree-focus); DOCK re-attaches into a tree leaf when split (dock_tab_into_leaf), flat origin when
+      unsplit; Req 18 behaviour preserved (no regression). Covers Req 14.14-14.16.
+- [x] WS2C.5 Close: verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR PASS; change-log CR-NR-093
       DONE; test-plan rows. Covers Req 14.
 
 | Status | Count |
 |--------|-------|
-| `[ ]` Phase (window-split-2c) | CR-NR-093 / B046 Slice 2c -- recursive nesting + drag-tab-between-groups + split persistence + detached fold-in, on the recursive ff-layout TabGroupTree + existing SessionState.layout. Four sub-slices 2c.1-2c.4. GATED. |
+| `[x]` Phase (window-split-2c) | CR-NR-093 / B046 Slice 2c DONE -- recursive nesting (2c.1) + drag-tab-between-groups (2c.2) + split persistence (2c.3) + detached fold-in (2c.4), on the recursive ff-layout TabGroupTree + existing SessionState.layout. All four sub-slices shipped; verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. |

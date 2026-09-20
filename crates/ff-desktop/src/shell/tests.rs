@@ -8055,3 +8055,118 @@ fn full_shell_split_tab_drag_state_clears_on_release() {
     assert!(harness.state().tabs.is_split());
     let _ = TabId(0);
 }
+
+// === CR-NR-093 Slice 2c.4: detached fold-in (DOCK into a split leaf) ========
+// The real OS detached window (its chrome, taskbar presence, cross-window move)
+// remains a justified-MANUAL row; these drive the headless detach/DOCK state
+// machine and assert the in-window re-attachment behaviour (Req 14.16), plus
+// that the unsplit re-dock path is unchanged (no Req 18 regression).
+
+/// Validates: layout-and-docking Requirement 14.16 -- when the Workspace is
+/// split, re-docking a Detached_Workspace re-attaches its tab into a tree LEAF
+/// (it stays split; the tab is a leaf member and no longer floating) rather than
+/// collapsing to a flat re-dock.
+#[test]
+fn full_shell_dock_into_split_reattaches_to_leaf() {
+    let mut harness = harness_shell();
+    // Create a split so there are two regions (root leaf + new POM leaf).
+    harness.state_mut().handle_command("SPLIT");
+    for _ in 0..3 {
+        harness.run();
+    }
+    assert!(harness.state().tabs.is_split(), "precondition: split");
+    // Detach the focused region's active tab into a Detached_Workspace.
+    let detach_id = harness.state().tabs.active_tab().id;
+    harness.state_mut().handle_command("SPLIT DETACH");
+    for _ in 0..3 {
+        harness.run();
+    }
+    assert_eq!(
+        harness.state().floating_tabs.len(),
+        1,
+        "precondition: one Detached_Workspace"
+    );
+
+    // DOCK it back, run against its own context (as typed in its command line).
+    let detach_idx = harness
+        .state()
+        .tabs
+        .index_of_id(detach_id)
+        .expect("detached tab exists");
+    let mut ctx = super::WorkspaceCommandContext::default();
+    harness
+        .state_mut()
+        .with_workspace_context(detach_idx, &mut ctx, |shell| {
+            shell.handle_command("DOCK");
+        });
+    for _ in 0..2 {
+        harness.run();
+    }
+    let state = harness.state();
+    assert!(
+        state.floating_tabs.is_empty(),
+        "DOCK must remove the FloatingTab"
+    );
+    let idx = state
+        .tabs
+        .index_of_id(detach_id)
+        .expect("re-docked tab still exists");
+    assert!(
+        !state.tabs.tabs()[idx].is_floating,
+        "re-docked tab must no longer be is_floating"
+    );
+    // The re-docked tab is a member of some tree leaf (in-window re-attachment).
+    let in_a_leaf = state.tabs.leaf_ids().iter().any(|leaf| {
+        state
+            .tabs
+            .leaf_tab_store_indices(*leaf)
+            .iter()
+            .any(|&i| state.tabs.tabs()[i].id == detach_id)
+    });
+    assert!(
+        in_a_leaf,
+        "Req 14.16: a re-docked tab must re-attach into a tree leaf when split"
+    );
+}
+
+/// Validates: layout-and-docking Requirement 14.15 -- the fold-in does NOT
+/// regress the UNSPLIT re-dock: with no split, DOCK still restores the tab to
+/// its flat origin index (the pre-2c.4 behaviour, via the else branch).
+#[test]
+fn full_shell_dock_unsplit_still_restores_flat_origin() {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("START");
+    harness.run();
+    assert!(!harness.state().tabs.is_split(), "precondition: unsplit");
+    let origin = harness.state().tabs.active_index();
+    let detach_id = harness.state().tabs.active_tab().id;
+    harness.state_mut().handle_command("SPLIT DETACH");
+    for _ in 0..3 {
+        harness.run();
+    }
+    let detach_idx = harness
+        .state()
+        .tabs
+        .index_of_id(detach_id)
+        .expect("detached tab exists");
+    let mut ctx = super::WorkspaceCommandContext::default();
+    harness
+        .state_mut()
+        .with_workspace_context(detach_idx, &mut ctx, |shell| {
+            shell.handle_command("DOCK");
+        });
+    let state = harness.state();
+    assert!(
+        state.floating_tabs.is_empty(),
+        "DOCK removes the FloatingTab"
+    );
+    let idx = state
+        .tabs
+        .index_of_id(detach_id)
+        .expect("re-docked tab exists");
+    assert_eq!(
+        idx, origin,
+        "unsplit DOCK must restore the flat origin index (no regression)"
+    );
+    assert!(!state.tabs.tabs()[idx].is_floating);
+}

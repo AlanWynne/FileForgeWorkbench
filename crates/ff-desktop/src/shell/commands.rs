@@ -174,7 +174,15 @@ impl WorkbenchShell {
         ctx: &mut crate::shell::WorkspaceCommandContext,
         f: impl FnOnce(&mut Self),
     ) {
-        // Save the Primary_Window context.
+        // CR-NR-093 Slice 2c.4 (Req 14.14/14.15): this is THE single Focus_Context
+        // seam for a Detached_Workspace -- the one place that installs "which tab
+        // is active + which per-window command buffers are live" and then restores
+        // the Primary_Window exactly. It is one of the two faces of the
+        // Focus_Context concept: this flat-active + command-buffer swap for a
+        // detached window, and `TabManager::set_render_focus_leaf` (the tree-focus
+        // swap) for an in-window region. Both are save/install/restore around a
+        // scoped render/dispatch; neither leaks state. Preserving this exact
+        // save/restore keeps all Req 18 detached behaviour intact (no regression).
         let saved_active = self.tabs.active_index();
         let saved_command_text = std::mem::take(&mut self.command_text);
         let saved_scroll_text = std::mem::take(&mut self.scroll_field_text);
@@ -183,7 +191,7 @@ impl WorkbenchShell {
         let saved_focus_req = self.command_field_focus_requested;
         let saved_outcome = self.pending_command_line_outcome.take();
 
-        // Install the detached window's context.
+        // Install the detached window's context (active tab via the seam).
         self.tabs.set_active(tab_index);
         self.command_text = std::mem::take(&mut ctx.command_text);
         self.scroll_field_text = std::mem::take(&mut ctx.scroll_field_text);
@@ -202,7 +210,7 @@ impl WorkbenchShell {
         ctx.command_field_focus_requested = self.command_field_focus_requested;
         ctx.pending_command_line_outcome = self.pending_command_line_outcome.take();
 
-        // Restore the Primary_Window context.
+        // Restore the Primary_Window context (active tab via the seam).
         self.tabs.set_active(saved_active);
         self.command_text = saved_command_text;
         self.scroll_field_text = saved_scroll_text;
@@ -334,7 +342,16 @@ impl WorkbenchShell {
                 let ft = self.floating_tabs.remove(ft_pos);
                 if let Some(tab_idx) = self.tabs.index_of_id(active_id) {
                     self.tabs.tabs_mut()[tab_idx].is_floating = false;
-                    self.tabs.move_tab(tab_idx, ft.origin_index);
+                    // CR-NR-093 Slice 2c.4 (Req 14.16): when the Workspace is
+                    // split, re-attach into a tree LEAF (the origin leaf if the
+                    // tab still sits there, else the focused leaf) rather than a
+                    // flat origin index. When unsplit, keep the exact prior flat
+                    // re-dock (move to the recorded origin index).
+                    if self.tabs.is_split() {
+                        self.tabs.dock_tab_into_leaf(active_id);
+                    } else {
+                        self.tabs.move_tab(tab_idx, ft.origin_index);
+                    }
                 }
                 self.open_error = None;
             } else {
