@@ -2607,3 +2607,34 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | `[x]` Phase (bug-sweep) Wave 0 COMPLETE | B054 (menus-editor fields typable -- stale status + regression test), B064 (RESET BARE per-profile + ALL via CR-NR-083), B062 (command-arg case preserved via verb_arg -- stale deferred note). Test-plan rows 2.12, 5.7, Group 9. |
 | `[x]` Phase (bug-sweep) Wave 1 COMPLETE | B034 / CR-NR-085: save-durability failures surface -- DONE: AtomicWriteStrategy aborts+cleans temp on flush/fsync failure (no rename, logs); Direct/DeleteFirst log WARN (best-effort); backup-failure logs WARN (Req 7.5). file-operations Req 7.10-7.12. 5 mock-injected-failure tests (atomic aborts RED-then-green). verify.ps1 CLEAN FULL nextest. |
 | `[x]` Phase (bug-sweep) Wave 2 COMPLETE | B035/B037/B038 FIXED + B036 reframed/deferred / CR-NR-086: I/O-layer logging coverage -- DONE: ff-vfs dispatch WARN logs (B035), ff-connector-local-fs metadata-degradation DEBUG logs keeping graceful degradation (B037), ff-desktop status-bar fallback/drop `LOG!` indicator (B038); B036 (remote connectors) reframed as a binding forward-looking obligation (Req 9.8) + deferred (no connector crates exist). logging-subsystem Req 8.7/9.6-9.8. verify.ps1 CLEAN FULL nextest. |
+
+## Phase (workspace-kinds) -- configurable Workspace Kinds (Wave B, CR-NR-090)
+
+> Owner: stop at Workspace Kind (NO Def layer); a dialog per Kind assigns
+> title/menu-bar/key-list/profile; a user can create a new Kind "modelled on" a
+> built-in base (flexibility of the def layer without the complexity); build for
+> built-in bases now but keep the model external-ready (future Lua/REXX Kinds).
+> Delivers CR-NR-082 deferred slices + CR-NR-080 Slice C. Sliced B.1-B.4.
+
+- [x] WK.1 (Slice B.1): Kind config data model (`KindConfig` + open `BaseKind`
+      Builtin/External + `KindProfile`) + `KindRegistry` with compiled built-in
+      defaults + TOML round-trip under `workspace-kinds/<name>.toml` + title
+      derived from the Kind's effective config (fixes the Catalog Explorer
+      `[CATALOGS]` vs File Explorer `[FILES]` shared-label smell). No new UI.
+      Runtime resolves a Kind to its base (single hop) for command/behaviour;
+      only presentation/profile overridden. External base unresolved-with-message
+      in v1.
+      Covers: workspace-kinds Req 1, 2, 3.
+- [ ] WK.2 (Slice B.2, PENDING GATE): per-Kind menu bar + key list wired through
+      the existing resolve_menu_bar_menu + keymap-context seams (keyed on Kind
+      name). Covers: workspace-kinds Req 4; menu-workspace 17.9 (Slice C).
+- [ ] WK.3 (Slice B.3, PENDING GATE): per-Kind profile attributes (edit-profile
+      defaults, tab size, line endings) applied on open. Covers: workspace-kinds
+      Req 5.
+- [ ] WK.4 (Slice B.4, PENDING GATE): Kind config dialog ("New Kind modelled on
+      <base>", edit built-ins) + Settings entry + command + RESET BARE defaults.
+      Covers: workspace-kinds Req 6.
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (workspace-kinds) Wave B (B.1 done) | CR-NR-090 configurable Workspace Kinds. B.1 DONE (KindConfig/BaseKind/KindProfile + KindRegistry + compiled built-in defaults + title-from-Kind-config; fixes Catalogs [CATALOGS] vs File Explorer [FILES] smell; external-ready BaseKind). B.2-B.4 PENDING GATE. NO Def layer (owner); user Kinds modelled on a built-in base. |

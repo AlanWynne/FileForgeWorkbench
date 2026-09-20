@@ -262,9 +262,13 @@ impl TabState {
         tab
     }
 
-    /// Create a Files Panel (Virtual Catalog Manager) tab.
+    /// Create a Files Panel (Virtual Catalog Manager / Catalog Explorer) tab.
+    ///
+    /// CR-NR-090 B.1: this is the Catalogs Kind; its title is `[CATALOGS]`,
+    /// distinct from the File Explorer's `[FILES]` (the display label is derived
+    /// from the Kind, but the cached title is kept consistent).
     pub fn files_panel(id: TabId, document: DocumentHandle) -> Self {
-        base_tab!(id, TabKind::FilesPanel, "[FILES]".to_string(), document)
+        base_tab!(id, TabKind::FilesPanel, "[CATALOGS]".to_string(), document)
     }
 
     /// Create a Config Panel tab (the flat config-key browser).

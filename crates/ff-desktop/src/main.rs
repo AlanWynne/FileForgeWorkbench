@@ -44,6 +44,7 @@ mod tab_state;
 mod theme_defaults;
 mod theme_editor_panel;
 mod toolchain_panel;
+mod workspace_kind;
 
 use anyhow::Context as _;
 use eframe::egui;

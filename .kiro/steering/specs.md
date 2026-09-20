@@ -92,6 +92,7 @@ The following specs exist under `docs/specs/`:
 - workbench-requirements-merge (architecture docs and validation reports -- no deliverable crate)
 - workflow-engine
 - workspace-framework (CR-NR-078: WorkspaceContext trait framework -- design proposal, gate pending)
+- workspace-kinds (CR-NR-090: configurable Workspace Kinds -- per-Kind title/menu-bar/key-list/profile + user Kinds "modelled on" a built-in base; sliced B.1-B.4; distinct from workspace-model)
 - workspace-model
 - accessibility
 - plugin-manager-ui

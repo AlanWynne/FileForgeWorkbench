@@ -590,6 +590,17 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `shell/tests.rs::{return_from_non_pom_navigates_to_pom, return_from_drilled_in_non_pom_goes_straight_to_pom, return_from_pom_with_other_tabs_closes_pom_not_app, end_at_empty_stack_last_tab_exits}` | menu-workspace Req 14.10 (CR-CH-038): RETURN in a non-POM navigates to the POM (clears nav_stack); RETURN in a POM closes that one workspace (exit if last). END unchanged (one step). Identical docked/detached |
 | `ff-keys` | ✅ | `key_map.rs::key_map_default_global_has_full_shift_row` | function-keys-and-history Req 15.2 (CR-NR-088): default Global_Key_Map Shift+F2 = DOCK (was SPLIT); Base F2 = SPLIT; still 24 default bindings |
 
+### CR-NR-090 -- Configurable Workspace Kinds (Slice B.1)
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `workspace_kind/tests.rs::{base_kind_builtin_tag_round_trips, base_kind_external_tag_round_trips, base_kind_unknown_tag_becomes_external}` | workspace-kinds Req 1.1/1.2 (CR-NR-090 B.1): KindConfig{name,modelled_on,title,menu_bar,key_list,profile} + open BaseKind (Builtin/External); External accepted by schema, unresolved-with-notice in v1 |
+| `ff-desktop` | ✅ | `workspace_kind/tests.rs::registry_load_flags_external_base_and_falls_back` | workspace-kinds Req 1.3 (B.1): user Kind modelled_on a built-in resolvable base; a non-built-in base is flagged-with-notice and falls back to a safe built-in (no crash) |
+| `ff-desktop` | ✅ | `workspace_kind/tests.rs::{tab_kind_maps_to_builtin_kind, registry_resolve_base_single_hop_for_builtin, builtin_stable_names_are_unique_and_round_trip}` | workspace-kinds Req 1.4/1.5 (B.1): runtime resolves a Kind to its base (single hop); a Kind's stable name is its id (from_tab_kind incl. POM/menu is_home split) |
+| `ff-desktop` | ✅ | `workspace_kind/tests.rs::{kind_config_toml_round_trips_builtin_base, kind_config_toml_round_trips_external_base}` | workspace-kinds Req 1.6 (B.1): KindConfig TOML round-trip via KindConfigToml incl. modelled_on Builtin+External tags |
+| `ff-desktop` | ✅ | `workspace_kind/tests.rs::{registry_builtin_defaults_resolve_every_kind, registry_load_adds_user_kind_and_overrides_builtin_by_name, registry_load_skips_unparseable_with_notice, registry_load_absent_dir_is_silent}` | workspace-kinds Req 2.1/2.2/2.3 (B.1): KindRegistry compiled built-in defaults; effective(name) total; user file overrides built-in by name; unparseable skipped with notice; absent dir silent; never crashes |
+| `ff-desktop` | ✅ | `workspace_kind/tests.rs::builtin_default_titles_distinguish_catalogs_from_files` | workspace-kinds Req 2.4 (B.1): compiled built-in default titles are distinct (Catalog Explorer [CATALOGS] vs File Explorer [FILES]) -- fixes the shared-label smell |
+| `ff-desktop` | ✅ | `shell/tests.rs::{kind_title_derives_from_registry_and_user_override_wins, title_line_files_panel_shows_files}` | workspace-kinds Req 3.1/3.2/3.3 (B.1): tab header + Title_Line derived from the Kind's effective config title via kind_title/title_line_text; workspace_name still overrides; user override applies live; POM banner + editor path unchanged |
+
 | `ff-desktop` | 🔲 | `shell.rs` unit tests | Req 8.1: Command field Enter-to-submit -- pressing Enter while field has focus executes the command |
 | `ff-desktop` | ✅ | `shell.rs` unit tests | Req 8.2: Command field Enter on empty field is a no-op |
 

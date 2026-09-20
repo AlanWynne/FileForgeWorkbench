@@ -1001,7 +1001,8 @@ mod tests {
         mgr.open_files_panel_tab(&runtime);
         let tab = mgr.active_tab();
         assert_eq!(tab.kind, TabKind::FilesPanel);
-        assert_eq!(tab.title, "[FILES]");
+        // CR-NR-090 B.1: the Virtual Catalog Manager (Catalogs Kind) title.
+        assert_eq!(tab.title, "[CATALOGS]");
     }
 
     /// Validates: Requirement 1.1 — opening FilesPanel twice does not duplicate it.

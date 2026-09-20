@@ -210,7 +210,7 @@ impl WorkbenchShell {
                 self.config_panel.namespace_filter = namespace;
                 self.set_active_tab_context(TabKind::ConfigPanel, &title);
             }
-            WorkspaceKind::Files => self.set_active_tab_context(TabKind::FilesPanel, "[FILES]"),
+            WorkspaceKind::Files => self.set_active_tab_context(TabKind::FilesPanel, "[CATALOGS]"),
             WorkspaceKind::FileExplorer => {
                 self.set_active_tab_context(TabKind::FileExplorerPanel, "[FILES]")
             }

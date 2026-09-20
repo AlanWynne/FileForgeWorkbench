@@ -784,15 +784,10 @@ impl eframe::App for WorkbenchShell {
                         // CR-NR-089 (Req 18.12): this window's own Menu_Bar.
                         shell.render_detached_menu_bar(vctx, tab_id);
                         // Title_Line (read-only chrome, Req 18.1).
+                        let detached_title = shell.kind_title(shell.tabs.active_tab());
                         egui::TopBottomPanel::top(egui::Id::new(("floating_title", tab_id.0)))
                             .show(vctx, |ui| {
-                                ui.label(
-                                    egui::RichText::new(super::title_line_text(
-                                        shell.tabs.active_tab(),
-                                    ))
-                                    .monospace()
-                                    .strong(),
-                                );
+                                ui.label(egui::RichText::new(detached_title).monospace().strong());
                             });
                         // This window's OWN Command ===> field (Req 18.2/18.10),
                         // ids salted per tab so they never collide with the

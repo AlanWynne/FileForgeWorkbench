@@ -46,7 +46,10 @@ pub(crate) fn logging_degradation_reason(is_fallback: bool, dropped: u64) -> Opt
 impl WorkbenchShell {
     pub(super) fn render_title_line(&self, ctx: &egui::Context) {
         use ff_theme::mode::VisualMode;
-        let text = super::title_line_text(self.tabs.active_tab());
+        // CR-NR-090 B.1: the Title_Line label comes from the Kind registry
+        // (kind_title) so a reconfigured/user Kind shows its configured title;
+        // Home banner / menu label / editor path are delegated inside kind_title.
+        let text = self.kind_title(self.tabs.active_tab());
         let is_legacy = self.palette.mode == VisualMode::Legacy;
         let is_pom = self.tabs.active_tab().is_home;
         egui::TopBottomPanel::top("title_line").show(ctx, |ui| {

@@ -818,12 +818,54 @@ fn title_line_config_panel_shows_config() {
 /// Validates: Requirement 17.6 -- FilesPanel tab shows tab title.
 #[test]
 fn title_line_files_panel_shows_files() {
-    // Validates: Requirement 17.6
+    // Validates: Requirement 17.6; workspace-kinds Req 2.4 (CR-NR-090 B.1) --
+    // the FilesPanel is the Virtual Catalog Manager (Catalog Explorer, POM
+    // option 1); its Kind title is now [CATALOGS], DISTINCT from the File
+    // Explorer's [FILES] (the shared-label smell is fixed).
     use crate::tab_state::{TabId, TabState};
     use ff_document_model::new_document;
     let tab = TabState::files_panel(TabId(5), new_document());
     let text = super::title_line_text(&tab);
-    assert_eq!(text, "[FILES]");
+    assert_eq!(text, "[CATALOGS]");
+}
+
+/// Validates: workspace-kinds Requirement 3.1, 2.4 (CR-NR-090 B.1) -- the shell
+/// derives a panel Kind's title from the Kind registry: the Catalog Explorer
+/// (FilesPanel) is [CATALOGS] and the File Explorer (FileExplorerPanel) is
+/// [FILES] (distinct), and a user Kind override changes the title live.
+#[test]
+fn kind_title_derives_from_registry_and_user_override_wins() {
+    // Validates: workspace-kinds Requirement 3.1, 2.4
+    use crate::tab_state::{TabId, TabState};
+    use ff_document_model::new_document;
+    let mut shell = make_shell();
+
+    let catalogs = TabState::files_panel(TabId(1), new_document());
+    let explorer = TabState::file_explorer_panel(TabId(2), new_document());
+    assert_eq!(
+        shell.kind_title(&catalogs),
+        "[CATALOGS]",
+        "the Catalog Explorer Kind title comes from the registry default"
+    );
+    assert_eq!(
+        shell.kind_title(&explorer),
+        "[FILES]",
+        "the File Explorer Kind title is distinct from Catalogs"
+    );
+
+    // A user override of the `catalogs` Kind changes the title live.
+    let dir = tempfile::tempdir().expect("tempdir");
+    std::fs::write(
+        dir.path().join("catalogs.toml"),
+        "name = \"catalogs\"\nmodelled_on = \"catalogs\"\ntitle = \"[MY CATS]\"\n",
+    )
+    .unwrap();
+    shell.kind_registry = crate::workspace_kind::KindRegistry::load(dir.path());
+    assert_eq!(
+        shell.kind_title(&catalogs),
+        "[MY CATS]",
+        "a user Kind override title is reflected live (no restart)"
+    );
 }
 
 /// Validates: menu-and-statusbar Requirement 17.10 (CR-CH-034, B050) -- a

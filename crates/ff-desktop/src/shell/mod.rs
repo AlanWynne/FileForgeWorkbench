@@ -297,6 +297,13 @@ pub struct WorkbenchShell {
     /// Validates: command-configurator Requirement 1, 4.3; menu-workspace
     /// Requirement 10.3
     pub(crate) command_store: crate::command_config::store::CommandStore,
+    /// Configurable Workspace Kind registry (CR-NR-090 B.1): the single source of
+    /// truth for each Kind's effective title (and, later, menu bar / key list /
+    /// profile). Loaded once at startup from `<User_Data_Dir>/workspace-kinds/`;
+    /// compiled built-in defaults guarantee it is never empty.
+    ///
+    /// Validates: workspace-kinds Requirement 2, 3
+    pub(crate) kind_registry: crate::workspace_kind::KindRegistry,
     /// Command Configurator Context UI state (list + edit form + delete confirm).
     ///
     /// Validates: command-configurator Requirement 2.1, 2.3
@@ -647,6 +654,23 @@ impl WorkbenchShell {
             crate::command_config::store::CommandStore::load(path)
         };
 
+        // Load the Workspace Kind registry (CR-NR-090 B.1): compiled built-in
+        // defaults plus any user Kinds under <User_Data_Dir>/workspace-kinds/.
+        // An absent dir leaves just the built-in defaults.
+        let kind_registry = {
+            let dir = dirs::data_dir()
+                .map(|base| base.join("FileForgeWorkbench").join("workspace-kinds"))
+                .unwrap_or_else(|| std::path::PathBuf::from("workspace-kinds"));
+            let reg = crate::workspace_kind::KindRegistry::load(&dir);
+            // Surface any non-blocking load notices (unparseable user Kind files,
+            // unresolved external bases) at WARN so a bad Workspace-Kind file is
+            // discoverable from the logs (CR-NR-090 B.1).
+            for notice in reg.notices() {
+                ff_logging::log_warn!("{}", notice);
+            }
+            reg
+        };
+
         // Notification channel -- Validates: notification-system Requirement 3.1, 3.3
         let (notification_tx, notification_rx) = std::sync::mpsc::sync_channel::<Notification>(64);
         let notification_queue =
@@ -721,6 +745,7 @@ impl WorkbenchShell {
             show_unsaved_workspace_dialog: false,
             config_handle,
             command_store,
+            kind_registry,
             command_configurator_panel:
                 crate::command_config::render::CommandConfiguratorState::new(),
             theme_editor_panel: crate::theme_editor_panel::ThemeEditorState::new(),
@@ -970,6 +995,38 @@ impl WorkbenchShell {
         }
         self.open_error = None;
     }
+
+    /// The effective title label for a tab, consulting the Workspace Kind
+    /// registry (CR-NR-090 B.1, workspace-kinds Req 3.1). For a system/panel Kind
+    /// it returns the Kind's CONFIGURED title (a user Kind override wins over the
+    /// compiled default); the Home Context (POM) app banner, a non-Home Menu
+    /// Workspace's loaded-menu label, and the file-editor path are delegated to
+    /// `title_line_text` unchanged. A per-tab `workspace_name` still takes
+    /// precedence and is applied by the caller (render_tab_bar), not here.
+    pub(crate) fn kind_title(&self, tab: &crate::tab_state::TabState) -> String {
+        use crate::tab_state::TabKind;
+        match tab.kind {
+            // Panel/system Kinds: prefer the registry's effective (possibly
+            // user-overridden) title, keyed by the Kind's stable name.
+            TabKind::FilesPanel
+            | TabKind::ConfigPanel
+            | TabKind::FileExplorerPanel
+            | TabKind::SearchResults
+            | TabKind::PluginManager
+            | TabKind::EventLog
+            | TabKind::MacroLibrary
+            | TabKind::CommandConfigurator
+            | TabKind::ThemeEditor
+            | TabKind::MenusEditor
+            | TabKind::KeysEditor => {
+                let name = crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind, tab.is_home)
+                    .stable_name();
+                self.kind_registry.effective(name).title.clone()
+            }
+            // Home banner / non-Home menu label / editor path are unchanged.
+            _ => title_line_text(tab),
+        }
+    }
 }
 
 /// - POM tab → app name + version
@@ -1002,7 +1059,18 @@ pub(crate) fn title_line_text(tab: &crate::tab_state::TabState) -> String {
         | TabKind::CommandConfigurator
         | TabKind::ThemeEditor
         | TabKind::MenusEditor
-        | TabKind::KeysEditor => tab.title.clone(),
+        | TabKind::KeysEditor => {
+            // CR-NR-090 B.1: the label for a system/panel Kind is the Kind's
+            // compiled default title, NOT the cached `tab.title`. This fixes the
+            // Catalog Explorer (FilesPanel -> [CATALOGS]) vs File Explorer
+            // (FileExplorerPanel -> [FILES]) shared-label smell. A user Kind's
+            // configured title (registry override) is applied by the shell's
+            // `kind_title` (which this free function cannot reach without a shell;
+            // the shell render path prefers `kind_title`).
+            crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind, tab.is_home)
+                .default_title()
+                .to_string()
+        }
         // CR-CH-034 / B050 (menu-and-statusbar Req 17.10): a non-Home
         // Menu_Workspace's label is derived from its CURRENTLY loaded menu, not
         // the cached `tab.title` (which an in-place context switch could leave

@@ -482,7 +482,11 @@ impl WorkbenchShell {
                                 .map(|mw| mw.tab_title())
                                 .unwrap_or_else(|| tab.title.clone())
                         } else {
-                            tab.title.clone()
+                            // CR-NR-090 B.1: derive the header from the Kind
+                            // registry (kind_title) so it reflects the Kind's
+                            // configured title (fixes the Catalogs/[FILES] smell)
+                            // and updates live when a Kind is reconfigured.
+                            self.kind_title(tab)
                         };
                         let label = if tab.is_modified {
                             format!("● {}", base_title)
