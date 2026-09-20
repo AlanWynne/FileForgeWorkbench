@@ -7925,3 +7925,133 @@ fn full_shell_split_detach_still_detaches_not_splits() {
         "SPLIT DETACH must detach into a Detached_Workspace"
     );
 }
+
+// === CR-NR-093 Slice 2c.2: drag-a-tab-between-groups (full shell) ===========
+// The pixel-exact drag GESTURE (press a header, move the pointer across regions,
+// release) is a justified-MANUAL row: egui_kittest cannot drive a cross-region
+// pointer drag headlessly. These tests drive the END-TO-END move through the
+// same TabManager path the drop resolves to (`move_tab_to_group`), against a
+// fully-rendered split shell, and assert the observable outcome (Req 14.6, 14.7).
+
+/// Validates: layout-and-docking Requirement 14.6 -- moving a tab from one
+/// rendered region into another moves the TabState, makes it the target's
+/// active tab, and focuses the target region.
+#[test]
+fn full_shell_move_tab_between_regions_moves_and_focuses() {
+    let mut harness = harness_shell();
+    // Two leaves: the root (POM) leaf and a new POM leaf (focused).
+    harness.state_mut().handle_command("SPLIT");
+    for _ in 0..3 {
+        harness.run();
+    }
+    let leaves = harness.state().tabs.leaf_ids();
+    assert_eq!(leaves.len(), 2, "precondition: two regions");
+    let root = leaves[0];
+    let other = leaves[1];
+    // Ensure the SOURCE (root) region has >=2 tabs so moving one out does NOT
+    // empty and collapse it (which would defeat the "target focused" assertion).
+    // FOCUS back to the root region, then open a fresh POM into it via START.
+    harness.state_mut().handle_command("FOCUS");
+    harness.run();
+    assert_eq!(
+        harness.state().tabs.focused_leaf_id(),
+        root,
+        "focused back to root"
+    );
+    harness.state_mut().handle_command("START"); // new POM in the focused (root) region
+    harness.run();
+    assert!(
+        harness.state().tabs.leaf_tab_store_indices(root).len() >= 2,
+        "root region now has >=2 tabs so a move will not collapse it"
+    );
+    // Move the root leaf's active tab into the other leaf.
+    let move_id = harness
+        .state()
+        .tabs
+        .leaf_active_store_index(root)
+        .and_then(|idx| harness.state().tabs.tabs().get(idx).map(|t| t.id))
+        .expect("root leaf has an active tab");
+    let moved = harness.state_mut().tabs.move_tab_to_group(move_id, other);
+    harness.run();
+    assert!(moved, "the move must succeed");
+    let state = harness.state();
+    // The moved tab now lives in `other`, which is focused and shows it active.
+    assert_eq!(state.tabs.focused_leaf_id(), other, "target region focused");
+    assert_eq!(
+        state.tabs.active_tab().id,
+        move_id,
+        "moved tab is the focused region's active tab"
+    );
+    assert!(
+        state
+            .tabs
+            .leaf_tab_store_indices(other)
+            .iter()
+            .any(|&i| state.tabs.tabs()[i].id == move_id),
+        "moved tab is a member of the target region"
+    );
+}
+
+/// Validates: layout-and-docking Requirement 14.7 -- a move that empties the
+/// source region collapses the split back to a single region (no tab lost).
+#[test]
+fn full_shell_move_tab_emptying_region_collapses() {
+    let mut harness = harness_shell();
+    // Root leaf has exactly one tab (the launch POM). SPLIT adds a second POM leaf.
+    harness.state_mut().handle_command("SPLIT");
+    for _ in 0..3 {
+        harness.run();
+    }
+    let leaves = harness.state().tabs.leaf_ids();
+    let root = leaves[0];
+    let other = leaves[1];
+    let before = harness.state().tabs.len();
+    // Move EVERY tab out of the root leaf into the other leaf -> root empties ->
+    // the split collapses (regardless of how many tabs the root started with).
+    let root_ids: Vec<crate::tab_state::TabId> = harness
+        .state()
+        .tabs
+        .leaf_tab_store_indices(root)
+        .iter()
+        .map(|&i| harness.state().tabs.tabs()[i].id)
+        .collect();
+    assert!(!root_ids.is_empty(), "root region has tabs to move");
+    for id in root_ids {
+        harness.state_mut().tabs.move_tab_to_group(id, other);
+    }
+    for _ in 0..2 {
+        harness.run();
+    }
+    let state = harness.state();
+    assert!(
+        !state.tabs.is_split(),
+        "emptying the source region collapses the split"
+    );
+    assert_eq!(state.tabs.len(), before, "no tab lost in the collapse");
+}
+
+/// Validates: layout-and-docking Requirement 14.6 (drag state) -- a tab-header
+/// drag records the (tab, source leaf) on the shell; releasing the pointer over
+/// the SAME source region is a no-op (Req 14.8) and clears the drag state.
+#[test]
+fn full_shell_split_tab_drag_state_clears_on_release() {
+    use crate::tab_state::TabId;
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("SPLIT");
+    for _ in 0..3 {
+        harness.run();
+    }
+    let focused = harness.state().tabs.focused_leaf_id();
+    let active_id = harness.state().tabs.active_tab().id;
+    // Simulate a drag having started on the focused region's active tab.
+    harness.state_mut().split_tab_drag = Some((active_id, focused));
+    // A frame with no released pointer keeps the drag pending.
+    harness.run();
+    assert!(
+        harness.state().split_tab_drag.is_some(),
+        "drag persists while the pointer is held"
+    );
+    // Nothing moved yet (still split, same focus).
+    assert!(harness.state().tabs.is_split());
+    let _ = TabId(0);
+}

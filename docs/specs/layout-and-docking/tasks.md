@@ -607,9 +607,9 @@ Coverage: 10 requirements, ~95 acceptance criteria, 10 correctness properties.
     - Covers: Requirement 14.4
   - [x] 20.3 (2c.1) Commands: nested `SPLIT`/`SPLIT RIGHT`/`SPLIT DOWN` split the focused leaf; `UNSPLIT`/END collapse the focused split; `FOCUS`/`FOCUS OTHER` cycle all leaves. Unit + full-shell egui_kittest (split to depth >=2, collapse inner preserving outer, focus cycles N leaves)
     - Covers: Requirement 14.1, 14.3, 14.5, 14.17
-  - [ ] 20.4 (2c.2) `TabManager::move_tab_to_group(tab_id, target_group)`: move a TabState between leaves by TabId, set target active + focus target, collapse source if emptied. Unit tests (move + source collapse; move to own group = no-op)
+  - [x] 20.4 (2c.2) `TabManager::move_tab_to_group(tab_id, target_group)`: move a TabState between leaves by TabId, set target active + focus target, collapse source if emptied. Unit tests (move + source collapse; move to own group = no-op)
     - Covers: Requirement 14.6, 14.7
-  - [ ] 20.5 (2c.2) Tab-header drag source + Drop_Zone render in `render_chrome.rs`/`render.rs`: drag a header, highlight the region under the pointer, drop onto another region invokes `move_tab_to_group`; drop OUTSIDE the workbench still DETACHES (existing gesture); drop onto own region = no-op. Full-shell egui_kittest for the move (headless drop), MANUAL for the pixel drag gesture
+  - [x] 20.5 (2c.2) Tab-header drag source + Drop_Zone render in `render.rs`: drag a header (`Sense::click_and_drag`, records `split_tab_drag`), highlight the region under the pointer (translucent accent Drop_Zone), drop onto another region invokes `move_tab_to_group` (`resolve_split_tab_drop` hit-tests the per-frame `split_leaf_rects`); drop OUTSIDE the workbench still DETACHES (existing tab-bar gesture); drop onto own region = no-op. Full-shell egui_kittest for the move (headless), MANUAL for the pixel drag gesture
     - Covers: Requirement 14.6, 14.8, 14.9, 14.17
   - [ ] 20.6 (2c.3) `TabManager::layout_snapshot()` / `restore_layout(snapshot)`: serialise the tree + focused leaf to a `toml::Value` (None when unsplit); restore reconciles ids (drop dangling, place unreferenced store tabs in focused/first leaf). Property round-trip test (tree -> snapshot -> tree)
     - Covers: Requirement 14.10, 14.13

@@ -652,7 +652,49 @@ impl WorkbenchShell {
         let tree = self.tabs.layout_tree().clone();
         let focused = self.tabs.focused_leaf_id();
         let full = ui.available_rect_before_wrap();
+        // CR-NR-093 Slice 2c.2: rebuild the per-frame leaf-rect map so a
+        // tab-header drag can be resolved to a drop target on release.
+        self.split_leaf_rects.clear();
         self.render_tree_node(ctx, ui, &tree, full, focused);
+        // Resolve a completed tab-header drag (drop) now that every leaf rect is
+        // known this frame (Req 14.6, 14.7, 14.8).
+        self.resolve_split_tab_drop(ctx);
+    }
+
+    /// Resolve an in-progress tab-header drag on release (CR-NR-093, Slice 2c.2).
+    ///
+    /// While `split_tab_drag` is set, on pointer release: if the pointer is over
+    /// a DIFFERENT leaf's recorded rect, move the dragged tab into that leaf
+    /// (Req 14.6); a drop over the tab's own leaf is a no-op (Req 14.8). Dropping
+    /// OUTSIDE every leaf rect (e.g. beyond the workbench) falls through to the
+    /// existing detach gesture handled by the tab bar, so it is left alone here.
+    /// The drag state is cleared on release regardless.
+    ///
+    /// Validates: layout-and-docking Requirement 14.6, 14.7, 14.8
+    fn resolve_split_tab_drop(&mut self, ctx: &egui::Context) {
+        let Some((tab_id, source_leaf)) = self.split_tab_drag else {
+            return;
+        };
+        // Still dragging? Keep the state and wait for release.
+        let pointer_released = ctx.input(|i| i.pointer.any_released());
+        if !pointer_released {
+            return;
+        }
+        // Release: clear the drag and, if over another leaf, perform the move.
+        self.split_tab_drag = None;
+        let Some(pos) = ctx.input(|i| i.pointer.interact_pos()) else {
+            return;
+        };
+        let target = self
+            .split_leaf_rects
+            .iter()
+            .find(|(_, r)| r.contains(pos))
+            .map(|(id, _)| *id);
+        if let Some(target) = target {
+            if target != source_leaf {
+                self.tabs.move_tab_to_group(tab_id, target);
+            }
+        }
     }
 
     /// Recursively render one `TabGroupTree` node into `rect` (CR-NR-093).
@@ -776,6 +818,10 @@ impl WorkbenchShell {
         );
         let body_rect = egui::Rect::from_min_max(egui::pos2(rect.min.x, bar_rect.max.y), rect.max);
 
+        // CR-NR-093 Slice 2c.2: record this leaf's rect so a tab-header drag can
+        // be resolved to a drop target on release (Req 14.6).
+        self.split_leaf_rects.push((leaf_id, rect));
+
         // === Per-leaf tab bar ===
         let indices = self.tabs.leaf_tab_store_indices(leaf_id);
         let active_store = self.tabs.leaf_active_store_index(leaf_id);
@@ -785,6 +831,8 @@ impl WorkbenchShell {
         let inactive_text = to_egui_color(self.palette.tab_bar.inactive_text);
 
         let mut clicked_store: Option<usize> = None;
+        // A tab-header drag that STARTED this frame in this region: (tab_id, leaf).
+        let mut drag_started: Option<(crate::tab_state::TabId, ff_layout::TabGroupId)> = None;
         let mut bar_ui = ui.new_child(
             egui::UiBuilder::new()
                 .max_rect(bar_rect)
@@ -796,6 +844,7 @@ impl WorkbenchShell {
             let Some(tab) = self.tabs.tabs().get(store_idx) else {
                 continue;
             };
+            let tab_id = tab.id;
             let is_active = Some(store_idx) == active_store;
             let base_title = self.kind_title(tab);
             let label = if tab.is_modified {
@@ -809,6 +858,8 @@ impl WorkbenchShell {
             } else {
                 inactive_text
             };
+            // CR-NR-093 Slice 2c.2: headers sense click AND drag so a tab can be
+            // dragged from one region and dropped onto another (Req 14.6).
             let btn = egui::Button::new(egui::RichText::new(&label).color(fg).monospace())
                 .fill(bg)
                 .stroke(if is_active {
@@ -817,10 +868,19 @@ impl WorkbenchShell {
                     egui::Stroke::NONE
                 })
                 .min_size(egui::vec2(0.0, tab_bar_h))
-                .sense(egui::Sense::click());
-            if bar_ui.add(btn).clicked() {
+                .sense(egui::Sense::click_and_drag());
+            let resp = bar_ui.add(btn);
+            if resp.clicked() {
                 clicked_store = Some(store_idx);
             }
+            if resp.drag_started() {
+                drag_started = Some((tab_id, leaf_id));
+            }
+        }
+        // Record a newly-started drag on the shell (resolved on release in
+        // resolve_split_tab_drop). A fresh drag_started supersedes any stale one.
+        if let Some(started) = drag_started {
+            self.split_tab_drag = Some(started);
         }
 
         // === Region body: render this leaf's active Context ===
@@ -848,6 +908,36 @@ impl WorkbenchShell {
                 egui::Stroke::new(2.0_f32, accent),
                 egui::StrokeKind::Inside,
             );
+        }
+
+        // === Drop_Zone highlight (Req 14.9) ===
+        // While a tab-header drag is in progress, mark the region under the
+        // pointer as the drop target (unless it is the tab's own region).
+        if let Some((_, source_leaf)) = self.split_tab_drag {
+            if source_leaf != leaf_id {
+                let over = ctx
+                    .input(|i| i.pointer.interact_pos())
+                    .map(|p| rect.contains(p))
+                    .unwrap_or(false);
+                if over {
+                    let accent = to_egui_color(self.palette.editor.accent);
+                    // A translucent fill + a thicker border so the drop target is
+                    // unambiguous before release.
+                    let fill = egui::Color32::from_rgba_unmultiplied(
+                        accent.r(),
+                        accent.g(),
+                        accent.b(),
+                        40,
+                    );
+                    ui.painter().rect_filled(rect, 0.0, fill);
+                    ui.painter().rect_stroke(
+                        rect,
+                        0.0,
+                        egui::Stroke::new(3.0_f32, accent),
+                        egui::StrokeKind::Inside,
+                    );
+                }
+            }
         }
 
         // === Focus routing (Req 14.5) ===

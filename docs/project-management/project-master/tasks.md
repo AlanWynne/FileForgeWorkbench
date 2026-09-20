@@ -2752,7 +2752,7 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
       empty-leaf collapse via remove_empty_groups; FOCUS cycles all leaves; recursive render tree-walk
       (Splitter per internal node, focused-leaf highlight at depth). Unit + full-shell tests. Covers
       Req 14.1-14.5, 14.17.
-- [ ] WS2C.2 (2c.2 drag-move): TabManager::move_tab_to_group + tab-header drag source + Drop_Zone
+- [x] WS2C.2 (2c.2 drag-move): TabManager::move_tab_to_group + tab-header drag source + Drop_Zone
       render; drop onto another region moves the tab (source collapses if empty); drop outside still
       detaches; own-region drop = no-op. Full-shell move test; drag gesture MANUAL. Covers Req 14.6-14.9.
 - [ ] WS2C.3 (2c.3 persistence): layout_snapshot/restore_layout on the tree; persist into

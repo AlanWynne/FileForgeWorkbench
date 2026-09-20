@@ -383,6 +383,64 @@ impl TabManager {
         self.active = self.focused_active_index();
     }
 
+    /// Move the tab `tab_id` into Tab_Group `target` (CR-NR-093, Slice 2c.2,
+    /// Req 14.6). Removes the tab id from whichever leaf currently owns it,
+    /// appends it to the target leaf, makes it the target's active tab, and
+    /// focuses the target. If the source leaf empties, it is collapsed via
+    /// `sync_layout` (`remove_empty_groups`, Req 14.7). No-op when unsplit, when
+    /// `target` is not a leaf, when `tab_id` is not in the store, or when the tab
+    /// already belongs to `target` (Req 14.8: a drop onto its own region).
+    ///
+    /// Returns `true` when a move actually happened.
+    ///
+    /// Validates: layout-and-docking Requirement 14.6, 14.7, 14.8
+    pub(crate) fn move_tab_to_group(&mut self, tab_id: TabId, target: TabGroupId) -> bool {
+        if !self.is_split() {
+            return false;
+        }
+        // The tab must exist in the store.
+        if self.index_of(tab_id).is_none() {
+            return false;
+        }
+        // The target must be a real leaf.
+        if self.layout.find_group(target).is_none() {
+            return false;
+        }
+        let id_str = tab_id.0.to_string();
+        // Find the leaf that currently owns the tab.
+        let owner = self.layout.all_group_ids().into_iter().find(|gid| {
+            self.layout
+                .find_group(*gid)
+                .map(|g| g.tabs.contains(&id_str))
+                .unwrap_or(false)
+        });
+        let Some(owner) = owner else {
+            return false; // not in any leaf (should not happen while split)
+        };
+        if owner == target {
+            return false; // Req 14.8: drop onto own region is a no-op
+        }
+        // Remove from the source leaf.
+        if let Some(src) = self.layout.find_group_mut(owner) {
+            src.tabs.retain(|s| *s != id_str);
+            if src.active_tab >= src.tabs.len() {
+                src.active_tab = src.tabs.len().saturating_sub(1);
+            }
+        }
+        // Append to the target leaf and make it active there.
+        if let Some(dst) = self.layout.find_group_mut(target) {
+            dst.tabs.push(id_str);
+            dst.active_tab = dst.tabs.len() - 1;
+        }
+        // Focus the target; sync collapses an emptied source (Req 14.7) and
+        // reconciles. Then point the flat active at the focused leaf's tab.
+        self.focused_group = target;
+        self.sync_layout();
+        self.active = self.focused_active_index();
+        self.previous_active = None;
+        true
+    }
+
     /// Render-support (CR-NR-093): set `proportion` on the split node identified
     /// by `first_leaf` (the first leaf id of its first child), clamped. Used by
     /// the recursive render walk so each Splitter drags its OWN node.
@@ -1813,5 +1871,86 @@ mod tests {
             ff_layout::TabGroupTree::Split { proportion, .. } => *proportion,
             ff_layout::TabGroupTree::Leaf(_) => f32::NAN,
         }
+    }
+
+    // === CR-NR-093 Slice 2c.2: move a tab between groups =====================
+
+    /// Validates: layout-and-docking Req 14.6 -- moving a tab to another leaf
+    /// removes it from the source, appends it to the target as the active tab,
+    /// and focuses the target.
+    #[test]
+    fn move_tab_to_group_moves_and_focuses_target() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = mgr_with_titled(&runtime, 2); // T0 T1 in the root leaf
+        mgr.set_active(0);
+        mgr.split_focused(SplitDirection::Horizontal, &runtime); // new POM leaf focused
+        let leaves = mgr.leaf_ids();
+        let root = leaves[0]; // holds T0 T1
+        let other = leaves[1]; // holds the new POM, currently focused
+                               // Move T0 from the root leaf into the other (POM) leaf.
+        let t0 = mgr.tabs().iter().find(|t| t.title == "T0").unwrap().id;
+        let moved = mgr.move_tab_to_group(t0, other);
+        assert!(moved, "move must succeed");
+        // Root leaf now holds only T1; the other leaf holds POM + T0.
+        assert_eq!(mgr.leaf_tab_store_indices(root).len(), 1);
+        assert_eq!(mgr.leaf_tab_store_indices(other).len(), 2);
+        // Target is focused and T0 is its active tab.
+        assert_eq!(mgr.focused_leaf_id(), other);
+        assert_eq!(mgr.active_tab().title, "T0");
+    }
+
+    /// Validates: layout-and-docking Req 14.7 -- a move that empties the source
+    /// leaf collapses the split (via sync_layout / remove_empty_groups).
+    #[test]
+    fn move_tab_emptying_source_collapses_split() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = mgr_with_titled(&runtime, 1); // T0 in the root leaf
+        mgr.split_focused(SplitDirection::Horizontal, &runtime); // root=[T0], other=[POM] focused
+        let leaves = mgr.leaf_ids();
+        let root = leaves[0];
+        let other = leaves[1];
+        // Move T0 (the root leaf's only tab) into the other leaf -> root empties.
+        let t0 = mgr.tabs().iter().find(|t| t.title == "T0").unwrap().id;
+        assert!(mgr.move_tab_to_group(t0, other));
+        assert!(
+            !mgr.is_split(),
+            "emptying the source leaf must collapse the split"
+        );
+        assert!(matches!(mgr.layout(), ff_layout::TabGroupTree::Leaf(_)));
+        // No tab lost: both T0 and the POM survive in the store.
+        assert!(mgr.tabs().iter().any(|t| t.title == "T0"));
+        assert!(mgr.tabs().iter().any(|t| t.is_home));
+        let _ = root;
+    }
+
+    /// Validates: layout-and-docking Req 14.8 -- a move to the leaf that already
+    /// owns the tab is a no-op (returns false, arrangement unchanged).
+    #[test]
+    fn move_tab_to_own_group_is_noop() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = mgr_with_titled(&runtime, 2); // T0 T1
+        mgr.set_active(0);
+        mgr.split_focused(SplitDirection::Horizontal, &runtime);
+        let root = mgr.leaf_ids()[0]; // holds T0 T1
+        let t0 = mgr.tabs().iter().find(|t| t.title == "T0").unwrap().id;
+        // T0 already lives in `root`; moving it there is a no-op.
+        let moved = mgr.move_tab_to_group(t0, root);
+        assert!(!moved, "move to own group must be a no-op (false)");
+        assert_eq!(mgr.leaf_tab_store_indices(root).len(), 2);
+    }
+
+    /// Validates: layout-and-docking Req 14.6 -- move is a no-op for an unknown
+    /// tab id or when unsplit.
+    #[test]
+    fn move_tab_noop_when_unsplit_or_unknown() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = mgr_with_titled(&runtime, 1);
+        // Unsplit: any move is a no-op.
+        let t0 = mgr.tabs()[0].id;
+        assert!(!mgr.move_tab_to_group(t0, ROOT_GROUP_ID));
+        // Split, then try an unknown tab id.
+        mgr.split_focused(SplitDirection::Horizontal, &runtime);
+        let other = mgr.leaf_ids()[1];
+        assert!(!mgr.move_tab_to_group(TabId(9_999), other));
     }
 }

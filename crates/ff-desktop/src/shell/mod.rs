@@ -545,6 +545,19 @@ pub struct WorkbenchShell {
     ///
     /// Validates: Requirement 18.2
     detach_pending: Option<usize>,
+
+    /// In-progress drag of a tab header between split regions (CR-NR-093, Slice
+    /// 2c.2). `Some((tab_id, source_leaf))` while a per-region tab header is being
+    /// dragged; resolved on release by hit-testing the pointer against the leaf
+    /// rects recorded in `split_leaf_rects`. `None` when no drag is active.
+    ///
+    /// Validates: layout-and-docking Requirement 14.6, 14.9
+    split_tab_drag: Option<(crate::tab_state::TabId, ff_layout::TabGroupId)>,
+
+    /// Per-frame accumulator of each rendered split leaf's screen rect, used to
+    /// resolve the drop target of a `split_tab_drag` on release (CR-NR-093).
+    /// Rebuilt every frame by the split render walk.
+    split_leaf_rects: Vec<(ff_layout::TabGroupId, egui::Rect)>,
 }
 
 impl WorkbenchShell {
@@ -808,6 +821,8 @@ impl WorkbenchShell {
             automation: ShellAutomationRegistry::new(),
             floating_tabs: Vec::new(),
             detach_pending: None,
+            split_tab_drag: None,
+            split_leaf_rects: Vec::new(),
             session_start: chrono::Local::now(),
         }
     }
