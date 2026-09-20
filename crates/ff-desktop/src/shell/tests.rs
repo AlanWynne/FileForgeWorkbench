@@ -7703,8 +7703,11 @@ fn full_shell_split_creates_two_groups_second_is_pom_and_focused() {
 
     let state = harness.state();
     assert!(state.tabs.is_split(), "SPLIT must create a split");
-    let split = state.tabs.split_state().expect("split state present");
-    assert_eq!(split.focused, 1, "focus moves to the new second group");
+    assert_eq!(
+        state.tabs.leaf_ids().len(),
+        2,
+        "first SPLIT produces two Tab_Group leaves"
+    );
     assert_eq!(
         state.tabs.len(),
         before + 1,
@@ -7719,75 +7722,77 @@ fn full_shell_split_creates_two_groups_second_is_pom_and_focused() {
     assert!(state.open_error.is_none());
 }
 
-/// Validates: layout-and-docking Requirement 13.4 -- SPLIT DOWN splits stacked
+/// Validates: layout-and-docking Requirement 14.4 -- SPLIT DOWN splits stacked
 /// (Vertical) rather than side-by-side.
 #[test]
 fn full_shell_split_down_is_vertical() {
-    use ff_layout::SplitDirection;
+    use ff_layout::{SplitDirection, TabGroupTree};
     let mut harness = harness_shell();
     harness.state_mut().handle_command("SPLIT DOWN");
     harness.run();
     let state = harness.state();
     assert!(state.tabs.is_split());
-    assert_eq!(
-        state.tabs.split_state().expect("split").direction,
-        SplitDirection::Vertical,
-        "SPLIT DOWN must produce a Vertical (stacked) split"
-    );
+    match state.tabs.layout_tree() {
+        TabGroupTree::Split { direction, .. } => assert_eq!(
+            *direction,
+            SplitDirection::Vertical,
+            "SPLIT DOWN must produce a Vertical (stacked) split"
+        ),
+        _ => panic!("expected a Split after SPLIT DOWN"),
+    }
 }
 
-/// Validates: layout-and-docking Requirement 13.2 -- exactly one split this
-/// slice: a second SPLIT is rejected with a status message and no new group.
+/// Validates: layout-and-docking Requirement 14.1 -- a second SPLIT NESTS (the
+/// Slice 2b "one split only" limit is removed): it adds a third leaf and a POM.
 #[test]
-fn full_shell_second_split_is_rejected_with_status() {
+fn full_shell_second_split_nests() {
     let mut harness = harness_shell();
     harness.state_mut().handle_command("SPLIT");
     harness.run();
+    assert_eq!(harness.state().tabs.leaf_ids().len(), 2);
     let after_first = harness.state().tabs.len();
-    harness.state_mut().open_error = None;
 
     harness.state_mut().handle_command("SPLIT");
     harness.run();
 
     let state = harness.state();
     assert_eq!(
+        state.tabs.leaf_ids().len(),
+        3,
+        "a second SPLIT must nest into a third leaf"
+    );
+    assert_eq!(
         state.tabs.len(),
-        after_first,
-        "a rejected second SPLIT must not add another tab"
+        after_first + 1,
+        "the nested SPLIT adds another POM tab"
     );
-    assert!(
-        state.open_error.is_some(),
-        "a rejected second SPLIT must report a status message"
-    );
+    assert!(state.open_error.is_none(), "nesting is not an error");
 }
 
-/// Validates: layout-and-docking Requirement 13.7 -- FOCUS moves focus to the
-/// other Tab_Group and the active tab follows the focused group.
+/// Validates: layout-and-docking Requirement 14.5 -- FOCUS moves focus to the
+/// next Tab_Group leaf and the active tab follows the focused leaf.
 #[test]
 fn full_shell_focus_flips_focused_group() {
     let mut harness = harness_shell();
     harness.state_mut().handle_command("SPLIT");
     harness.run();
-    // After SPLIT, group 1 (the new POM) is focused.
-    assert_eq!(
-        harness.state().tabs.split_state().expect("split").focused,
-        1
-    );
+    // After SPLIT, the new POM leaf is focused.
     let focused_pom_id = harness.state().tabs.active_tab().id;
+    let focused_leaf = harness.state().tabs.focused_leaf_id();
 
     harness.state_mut().handle_command("FOCUS");
     harness.run();
 
     let state = harness.state();
-    assert_eq!(
-        state.tabs.split_state().expect("split").focused,
-        0,
-        "FOCUS must flip to the first group"
+    assert_ne!(
+        state.tabs.focused_leaf_id(),
+        focused_leaf,
+        "FOCUS must move to a different leaf"
     );
     assert_ne!(
         state.tabs.active_tab().id,
         focused_pom_id,
-        "the active tab must follow the newly focused group"
+        "the active tab must follow the newly focused leaf"
     );
 }
 

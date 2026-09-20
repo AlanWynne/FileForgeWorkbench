@@ -1,0 +1,11 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+#
+# B070: removed the stale `content=[0,0], bom_type=1` seed. That input was a
+# TEST defect, not a detector defect: FF FE 00 00 is a valid UTF-32LE BOM, so
+# detect_bom correctly returns UTF-32LE. The property now excludes UTF-16LE
+# content beginning 00 00 via prop_assume!, so this seed is obsolete.

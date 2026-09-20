@@ -55,6 +55,18 @@ proptest! {
             _ => (BomEncoding::Utf32Be, BomEncoding::Utf32Be),
         };
 
+        // B070: the UTF-16LE BOM (FF FE) is a PREFIX of the UTF-32LE BOM
+        // (FF FE 00 00). If the random content that follows a UTF-16LE BOM
+        // begins with 00 00, the concatenated bytes form a valid UTF-32LE BOM,
+        // which detect_bom CORRECTLY classifies as UTF-32LE (Requirement 2.3;
+        // see unit test detect_bom_disambiguates_utf32le_from_utf16le_with_nul).
+        // That is not a detection error -- the shorter BOM genuinely became the
+        // longer one -- so exclude it from this property, whose intent is "a
+        // genuine UTF-16LE BOM is detected as UTF-16LE".
+        if bom_type == 1 {
+            prop_assume!(!(content.len() >= 2 && content[0] == 0x00 && content[1] == 0x00));
+        }
+
         let bom = bom_bytes(bom_encoding);
         let mut data = Vec::with_capacity(bom.len() + content.len());
         data.extend_from_slice(bom);

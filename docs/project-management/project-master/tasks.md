@@ -2740,3 +2740,31 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[x]` Phase (window-split) | CR-NR-092 / B046 Slice 2b DONE -- visible two-region in-window split (SPLIT/SPLIT RIGHT/SPLIT DOWN + draggable Splitter + FOCUS/UNSPLIT/END-collapse on the ff-layout TabGroupTree), one split only, new group = POM, not persisted; nesting/drag/persistence = Slice 2c. 7 unit + 9 full-shell egui_kittest tests; verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. |
+
+## Phase (window-split-2c) -- Split rework Slice 2c: nesting + drag-move + persistence + detached fold-in (CR-NR-093, B046 Slice 2c)
+
+> Owner-approved "full set": complete the split feature by closing the four Slice 2b deferrals on
+> the SAME ff-layout TabGroupTree (already recursive + serde) and the EXISTING
+> SessionState.layout slot. Four internally-gated sub-slices (2c.1-2c.4), each shippable alone.
+
+- [x] WS2C.1 (2c.1 nesting): make TabGroupTree the authoritative split model in TabManager (replace
+      the two-group SplitState); SPLIT on a split focused group nests to arbitrary depth; UNSPLIT/END/
+      empty-leaf collapse via remove_empty_groups; FOCUS cycles all leaves; recursive render tree-walk
+      (Splitter per internal node, focused-leaf highlight at depth). Unit + full-shell tests. Covers
+      Req 14.1-14.5, 14.17.
+- [ ] WS2C.2 (2c.2 drag-move): TabManager::move_tab_to_group + tab-header drag source + Drop_Zone
+      render; drop onto another region moves the tab (source collapses if empty); drop outside still
+      detaches; own-region drop = no-op. Full-shell move test; drag gesture MANUAL. Covers Req 14.6-14.9.
+- [ ] WS2C.3 (2c.3 persistence): layout_snapshot/restore_layout on the tree; persist into
+      SessionState.layout (existing LayoutSnapshot, serde default, no schema bump); restore on launch
+      after tabs; absent/older session opens unsplit. Round-trip + full-shell restore tests. Covers
+      Req 14.10-14.13.
+- [ ] WS2C.4 (2c.4 detached fold-in): one FocusContext seam shared by with_workspace_context (detached)
+      and the in-window region swap; DOCK re-attaches into a tree leaf; Req 18 behaviour preserved.
+      No-regression tests. Covers Req 14.14-14.16.
+- [ ] WS2C.5 Close: verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR PASS; change-log CR-NR-093
+      DONE; test-plan rows. Covers Req 14.
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (window-split-2c) | CR-NR-093 / B046 Slice 2c -- recursive nesting + drag-tab-between-groups + split persistence + detached fold-in, on the recursive ff-layout TabGroupTree + existing SessionState.layout. Four sub-slices 2c.1-2c.4. GATED. |

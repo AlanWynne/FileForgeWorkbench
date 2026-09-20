@@ -599,3 +599,25 @@ Coverage: 10 requirements, ~95 acceptance criteria, 10 correctness properties.
     - Covers: Requirement 13.11
   - [x] 19.8 Close: verify.ps1 CLEAN (FULL nextest); rebuild ffwb.exe; TCR rows PASS; change-log CR-NR-092 DONE; project-master phase; test-plan rows (new Group-1/Group-7 split rows)
     - Covers: Requirement 13
+
+- [ ] 20. Split Rework Slice 2c -- nesting + drag-move + persistence + detached fold-in (Requirement 14, CR-NR-093 / B046 Slice 2c)
+  - [x] 20.1 (2c.1) Make `TabGroupTree` the authoritative split model in `TabManager`: replace the Slice 2b `SplitState { groups: [GroupState; 2] }` with the recursive tree; `split_focused(direction)` splits the FOCUSED leaf to arbitrary depth (no "one split only" rejection); `unsplit()`/END/empty-leaf collapse the focused leaf via `remove_empty_groups`; `focus_other_group()` traverses all leaves; keep the store authoritative for content and `active_tab()` resolving through `focused_group`
+    - Covers: Requirement 14.1, 14.2, 14.3, 14.5
+  - [x] 20.2 (2c.1) Recursive render tree-walk in `shell/render.rs`: `render_tree_node(rect, node)` -- Leaf -> region (existing `render_split_region`); Split -> divide rect by proportion/direction, draggable Splitter per internal node (stable per-node egui Id), recurse; focused-leaf highlight at any depth
+    - Covers: Requirement 14.4
+  - [x] 20.3 (2c.1) Commands: nested `SPLIT`/`SPLIT RIGHT`/`SPLIT DOWN` split the focused leaf; `UNSPLIT`/END collapse the focused split; `FOCUS`/`FOCUS OTHER` cycle all leaves. Unit + full-shell egui_kittest (split to depth >=2, collapse inner preserving outer, focus cycles N leaves)
+    - Covers: Requirement 14.1, 14.3, 14.5, 14.17
+  - [ ] 20.4 (2c.2) `TabManager::move_tab_to_group(tab_id, target_group)`: move a TabState between leaves by TabId, set target active + focus target, collapse source if emptied. Unit tests (move + source collapse; move to own group = no-op)
+    - Covers: Requirement 14.6, 14.7
+  - [ ] 20.5 (2c.2) Tab-header drag source + Drop_Zone render in `render_chrome.rs`/`render.rs`: drag a header, highlight the region under the pointer, drop onto another region invokes `move_tab_to_group`; drop OUTSIDE the workbench still DETACHES (existing gesture); drop onto own region = no-op. Full-shell egui_kittest for the move (headless drop), MANUAL for the pixel drag gesture
+    - Covers: Requirement 14.6, 14.8, 14.9, 14.17
+  - [ ] 20.6 (2c.3) `TabManager::layout_snapshot()` / `restore_layout(snapshot)`: serialise the tree + focused leaf to a `toml::Value` (None when unsplit); restore reconciles ids (drop dangling, place unreferenced store tabs in focused/first leaf). Property round-trip test (tree -> snapshot -> tree)
+    - Covers: Requirement 14.10, 14.13
+  - [ ] 20.7 (2c.3) Wire persistence into `ff-session` + `shell/update.rs`: save the snapshot into `SessionState.layout` (existing `LayoutSnapshot`, `#[serde(default)]`, NO schema bump) on exit; restore on launch AFTER tabs reconstructed; absent/older session opens unsplit (byte-identical to 2a/2b). Full-shell restore test + older-session-loads-without-error test
+    - Covers: Requirement 14.10, 14.11, 14.12, 14.13
+  - [ ] 20.8 (2c.4) Introduce the `FocusContext` seam: one helper that installs active-tab + per-window command buffers, with `with_workspace_context` (detached) and the in-window region focus swap as its two callers. Detached behaviour (Req 18) preserved. Unit/full-shell proving no Req 18 regression
+    - Covers: Requirement 14.14, 14.15
+  - [ ] 20.9 (2c.4) `DOCK` re-attaches a detached tab INTO a tree leaf (origin leaf if present, else focused leaf) rather than a flat origin index. Full-shell egui_kittest (detach from a split, DOCK returns it to a leaf)
+    - Covers: Requirement 14.16
+  - [ ] 20.10 Close: verify.ps1 CLEAN (FULL nextest); rebuild ffwb.exe; TCR rows PASS; change-log CR-NR-093 DONE; project-master phase; test-plan rows updated
+    - Covers: Requirement 14

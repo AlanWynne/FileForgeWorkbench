@@ -1523,3 +1523,116 @@ Slice 2a already models the regions; 2a's `focused_group` already resolves "the 
 
 Recursive/nested splits (>1 split), drag-a-tab-between-groups, `LayoutState` session persistence of
 the split, and folding Detached_Workspaces into the same focus-context abstraction.
+
+---
+
+## Design Delta: Split Rework Slice 2c (Requirement 14, CR-NR-093 / B046 Slice 2c)
+
+### Goal
+
+Complete the split feature: remove the "one split only" limit (recursive nesting), let a tab be
+dragged between regions, persist the split across restarts, and unify detached windows with in-window
+regions. Delivered in four internally-gated sub-slices (2c.1-2c.4), each shippable alone, on the
+SAME `ff-layout::TabGroupTree`.
+
+### Builds directly on what already exists (verified in code)
+
+1. `ff-layout::TabGroupTree` (crates/ff-layout/src/tabs/group.rs) is ALREADY a recursive binary tree
+   (`Leaf(TabGroup)` | `Split { direction, proportion, first, second }`), derives serde
+   `Serialize`/`Deserialize`, and ships `remove_empty_groups` (collapses empty leaves / single-child
+   splits at ARBITRARY depth), `find_group`/`find_group_mut`, `all_group_ids`, `all_tabs`,
+   `total_tab_count`. Nesting and persistence are thus data-type-ready; the work is in `TabManager`,
+   render, commands, and session -- not the tree type.
+2. `SessionState` (crates/ff-session/src/session_state.rs) ALREADY has `layout: Option<LayoutSnapshot>`
+   (`{ data: toml::Value, persona: Option<String> }`) documented for "panel positions, tab groups,
+   splitters, persona", `#[serde(default)]` on the struct, schema_version=1 with a `migrate()` hook.
+   Persistence reuses this slot -- backward-compatible, NO schema bump.
+3. The Slice 2b render already walks a tree and swaps each leaf's active tab through
+   `render_active_tab_body` via a render-only focus token; detached windows already swap via
+   `with_workspace_context`. 2c generalises both.
+
+### 2c.1 Recursive nesting -- make the tree the model (`tab_manager.rs`)
+
+- REPLACE the Slice 2b hardcoded `split: Option<SplitState { groups: [GroupState; 2] }>` with the
+  `TabGroupTree` as the authoritative ARRANGEMENT model (the flat `TabState` store stays authoritative
+  for CONTENT). `TabManager` holds the tree (already present as `layout`) and a `focused_group:
+  TabGroupId`; per-leaf membership + active come from the tree's `TabGroup { tabs: Vec<String(id)>,
+  active_tab }`.
+- `split_focused(direction)`: locate the focused leaf, replace it in-tree with `Split { direction,
+  0.5, first: <that leaf>, second: Leaf(new group + POM tab) }`, focus the new leaf. No depth limit
+  (Req 14.1). Group ids from a monotonic `next_group_id`.
+- `unsplit()` / END-on-split / empty leaf: set the focused (or emptied) leaf's tabs empty / mark for
+  removal, then `self.layout = self.layout.take().remove_empty_groups()` and re-focus a surviving
+  leaf (Req 14.3). When one leaf remains the tree is a single `Leaf` (unsplit == 2a/2b).
+- `focus_other_group()` becomes focus-traversal over the ordered leaf list (`all_group_ids` gives
+  left-to-right/top-to-bottom order); `FOCUS`/`FOCUS OTHER` cycles (Req 14.5).
+- `sync_layout()` reconciliation (drop store-absent ids, clamp actives, collapse empties) already
+  exists; it generalises to the recursive tree unchanged in spirit.
+- `active_tab()`/`active_index()` still resolve through `focused_group` (Slice 2a shim) -- unchanged
+  call sites.
+
+### 2c.1 Render (`shell/render.rs`) -- recursive walk
+
+- Generalise `render_split_central` into a recursive `render_tree_node(rect, &TabGroupTree)`:
+  `Leaf` -> `render_split_region` (per-group tab bar + body + focus highlight, as 2b); `Split` ->
+  divide the rect by `proportion`/`direction`, draw a draggable Splitter at THIS node (writes the
+  clamped proportion back to THIS node by id/path), recurse into `first`/`second`. Depth-agnostic.
+
+### 2c.2 Drag-a-tab-between-groups (`shell/render_chrome.rs` + `render.rs` + `tab_manager.rs`)
+
+- The per-region tab bar (already drawn in `render_split_region`) makes each Tab_Header a drag SOURCE
+  (`Sense::click_and_drag`), carrying its `TabId`.
+- During a drag, each region computes a Drop_Zone rect and highlights the one under the pointer
+  (Req 14.9). On release over a DIFFERENT region: `TabManager::move_tab_to_group(tab_id, target_group)`
+  -- remove the id from the source leaf, push to the target leaf, set target active + focus target,
+  then `remove_empty_groups` if the source emptied (Req 14.6, 14.7). Release over own region = no-op.
+- The EXISTING >20px-outside-bar detach gesture (Req 13/18.6) stays: outside the workbench -> detach;
+  onto another region -> move (Req 14.8). The two are distinguished by drop location.
+
+### 2c.3 Persistence (`tab_manager.rs` + `shell/update.rs` + `ff-session`)
+
+- `TabManager::layout_snapshot() -> Option<toml::Value>`: serialise the `TabGroupTree` (serde) plus
+  the `focused_group` id when split; `None` when unsplit (so an unsplit workbench writes no layout,
+  Req 14.12). `on_exit`/`save_with_workspace` stores it into `SessionState.layout` (LayoutSnapshot
+  `{ data, persona }`).
+- Restore (shell/update.rs restore path, AFTER tabs are reconstructed): if `layout` present, parse
+  the tree, reconcile ids against the restored store (drop dangling ids; place unreferenced store
+  tabs in the focused/first leaf -- Req 14.13), install it as `TabManager`'s tree + focused leaf
+  (Req 14.11). Absent/older session -> unsplit (Req 14.12), byte-identical to 2a/2b.
+- Backward-compat: `layout` is already `Option` with `#[serde(default)]`; no schema bump. A property
+  round-trip test (tree -> snapshot -> tree) plus a full-shell restore test.
+
+### 2c.4 Detached fold-in (`shell/mod.rs` + `shell/commands.rs` + `shell/update.rs`)
+
+- Introduce a `FocusContext` seam: the SINGLE place that installs "which tab is active + which
+  per-window command buffers are live" for the duration of a render/dispatch. `with_workspace_context`
+  (detached) and the render-only focus swap (in-window region) become two callers of ONE helper
+  (Req 14.14). This removes the parallel swap logic, not the FloatingTab data.
+- Detached behaviour (Req 18) is preserved by keeping `FloatingTab`/viewport rendering; only the
+  active-tab/command-context SWAP is unified (Req 14.15). `DOCK` re-attaches into the tree: origin
+  leaf if it still exists, else the focused leaf (Req 14.16) -- replacing the flat origin-index reattach.
+- Scope guard: 2c.4 is a REFACTOR-toward-unification + the DOCK-into-region behaviour; it does NOT
+  add per-region command lines or detach-a-whole-region (those remain future work if desired).
+
+### Risks / decisions
+
+- Biggest risk is 2c.1 replacing `SplitState` with the tree as model: mitigated by keeping the store
+  authoritative for content and `active_tab()` resolving through `focused_group` (unchanged), and by
+  the full existing suite proving the unsplit path stays identical. 2c.4 is sequenced LAST (highest
+  coupling to the detached-window machinery); it can be deferred without blocking 2c.1-2c.3.
+- Splitter-at-each-node proportion write-back needs a stable per-node identity; use the node's
+  first-leaf group id (or a path) as the egui `Id` salt.
+
+### Testing
+
+- Unit (tab_manager + ff-layout): nested split to depth >=2; collapse the inner split preserving
+  outer leaves; move-tab-between-groups (+ source collapse); focus traversal over N>2 leaves;
+  layout snapshot round-trip through the tree; DOCK-into-leaf.
+- Full-shell `egui_kittest`: nested regions render; drag a tab from region A to region B moves it and
+  focuses B; a persisted layout restores split on launch; detached fold-in keeps Req 18 behaviour.
+- Justified-MANUAL: the pixel drag GESTURE and the real OS detached-window chrome.
+
+### Explicitly out of scope (future)
+
+Per-region command lines; detaching a whole split subtree as one window; cross-monitor layout
+snapshot; drag-reorder within a region beyond the move-between-groups gesture.

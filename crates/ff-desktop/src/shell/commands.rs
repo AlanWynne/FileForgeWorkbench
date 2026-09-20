@@ -1001,43 +1001,30 @@ impl WorkbenchShell {
         }
 
         // === SPLIT / UNSPLIT / FOCUS (CR-NR-092, B046 Slice 2b) ===
-        // In-window split of the Workspace area into two Tab_Groups. Every user
-        // action is a command (architecture Principle 2): the menu/keys route
-        // here too. `SPLIT DETACH` was already handled above, so a bare `SPLIT`
-        // (or `SPLIT RIGHT` / `SPLIT DOWN`) reaches this branch.
+        // In-window split of the Workspace area. Every user action is a command
+        // (architecture Principle 2): the menu/keys route here too. `SPLIT
+        // DETACH` was already handled above, so a bare `SPLIT` (or `SPLIT RIGHT`
+        // / `SPLIT DOWN`) reaches this branch. CR-NR-093 (Slice 2c.1): SPLIT now
+        // NESTS -- splitting an already-split focused group to arbitrary depth
+        // (the Slice 2b "one split only" rejection is removed).
         //
-        // Validates: layout-and-docking Requirement 13.1, 13.2, 13.3, 13.7, 13.9
+        // Validates: layout-and-docking Requirement 14.1, 14.2, 14.3, 14.5
         if upper == "SPLIT" || upper == "SPLIT RIGHT" || upper == "SPLIT VERTICAL DIVIDER" {
             // Side-by-side (left/right). Bare SPLIT defaults to horizontal.
-            if self
-                .tabs
-                .split_focused(ff_layout::SplitDirection::Horizontal, &self.runtime)
-            {
-                self.open_error = None;
-            } else {
-                // Req 13.2: exactly one split this slice.
-                self.open_error = Some(
-                    "SPLIT: the Workspace is already split (one split at a time).".to_string(),
-                );
-            }
+            self.tabs
+                .split_focused(ff_layout::SplitDirection::Horizontal, &self.runtime);
+            self.open_error = None;
             return;
         }
         if upper == "SPLIT DOWN" || upper == "SPLIT HORIZONTAL DIVIDER" {
             // Stacked (top/bottom).
-            if self
-                .tabs
-                .split_focused(ff_layout::SplitDirection::Vertical, &self.runtime)
-            {
-                self.open_error = None;
-            } else {
-                self.open_error = Some(
-                    "SPLIT: the Workspace is already split (one split at a time).".to_string(),
-                );
-            }
+            self.tabs
+                .split_focused(ff_layout::SplitDirection::Vertical, &self.runtime);
+            self.open_error = None;
             return;
         }
         if upper == "UNSPLIT" {
-            // Req 13.9: collapse the split (focused group survives). No-op /
+            // Req 14.3: collapse the split around the focused leaf. No-op /
             // status when not split.
             if self.tabs.is_split() {
                 self.tabs.unsplit();
@@ -1048,8 +1035,8 @@ impl WorkbenchShell {
             return;
         }
         if upper == "FOCUS" || upper == "FOCUS OTHER" {
-            // Req 13.7: move focus to the other Tab_Group. No-op / status when
-            // not split. No forced key binding this slice (command-line verb).
+            // Req 14.5: move focus to the NEXT Tab_Group leaf (cycles). No-op /
+            // status when not split. No forced key binding this slice.
             if self.tabs.is_split() {
                 self.tabs.focus_other_group();
                 self.open_error = None;

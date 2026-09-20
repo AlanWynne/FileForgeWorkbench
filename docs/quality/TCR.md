@@ -2820,6 +2820,32 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `shell::tests::{full_shell_focus_and_unsplit_on_unsplit_are_noops_with_status, full_shell_split_detach_still_detaches_not_splits}`; verify.ps1 CLEAN FULL (unsplit path = Slice 2a) | layout-and-docking Req 13.10: split NOT persisted in 2b (opens unsplit on restart); unsplit behaviour identical to Slice 2a |
 | `ff-desktop` | ✅ | unit (`tab_manager::tests::*split*`) + full-shell egui_kittest (`shell::tests::full_shell_split_*`) -- both layers covered | layout-and-docking Req 13.11: split model ops unit-tested + full-shell egui_kittest for the rendered two-region behaviour |
 
+### Phase (window-split-2c) -- Split rework Slice 2c: nesting + drag-move + persistence + detached fold-in (CR-NR-093, B046 Slice 2c)
+
+> Slice 2c completes the split on the recursive ff-layout TabGroupTree + the existing
+> SessionState.layout slot: arbitrary-depth nesting, drag-a-tab-between-groups, split persistence,
+> and folding Detached_Workspaces into one focus-context. Four sub-slices 2c.1-2c.4.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `tab_manager::tests::{second_split_nests_to_three_leaves, split_focused_creates_two_groups_second_is_pom}`; `ff-layout group.rs::tests::split_leaf_nests_an_already_split_tree_to_depth_two`; `shell::tests::full_shell_second_split_nests` | layout-and-docking Req 14.1: nested `SPLIT`/`SPLIT RIGHT`/`SPLIT DOWN` split the focused leaf to arbitrary depth (Slice 2b one-split limit removed) |
+| `ff-desktop` | ✅ | `tab_manager::tests::second_split_nests_to_three_leaves` (tree depth >= 3); model is `TabGroupTree` in `tab_manager.rs` | layout-and-docking Req 14.2: `TabGroupTree` is the authoritative arrangement model (not a fixed two-group struct); store stays authoritative for content |
+| `ff-desktop` | ✅ | `tab_manager::tests::{unsplit_collapses_to_single_leaf_preserving_survivor, closing_last_tab_of_a_group_auto_collapses}`; `shell::tests::{full_shell_unsplit_collapses_preserving_survivor, full_shell_end_while_split_collapses}` | layout-and-docking Req 14.3: closing a leaf's last tab / UNSPLIT / END collapses that leaf via `remove_empty_groups`, preserving other leaves; one leaf -> unsplit |
+| `ff-desktop` | ✅ | `shell::tests::{full_shell_split_renders_two_regions_and_command_acts_on_focused, full_shell_second_split_nests}` (recursive `render_tree_node` walk) | layout-and-docking Req 14.4: recursive render walk -- Splitter at each internal node, each leaf a region with its own tab bar, focused-leaf highlight at any depth |
+| `ff-desktop` | ✅ | `tab_manager::tests::focus_other_group_flips_focus_and_active_tab_follows`; `shell::tests::full_shell_focus_flips_focused_group` | layout-and-docking Req 14.5: `FOCUS`/`FOCUS OTHER` traverses ALL leaves in a defined order (generalises the 2b two-group flip) |
+| `ff-desktop` | 🔴 | -- | layout-and-docking Req 14.6: drag a Tab_Header and drop onto another region moves the TabState to that group (by TabId), makes it active, focuses the target |
+| `ff-desktop` | 🔴 | -- | layout-and-docking Req 14.7: a move that empties the source group collapses it via `remove_empty_groups` |
+| `ff-desktop` | 🔴 | -- | layout-and-docking Req 14.8: drag OUTSIDE the workbench still DETACHES; drop onto another region moves; drop onto own region is a no-op |
+| `ff-desktop` | 🔴 | -- | layout-and-docking Req 14.9: a Drop_Zone highlight marks the region under the pointer during a tab drag |
+| `ff-desktop` | 🔴 | -- | layout-and-docking Req 14.10: on exit the split arrangement (tree + per-node direction/proportion + per-leaf tab ids/active + focused leaf) is serialised into `SessionState.layout` |
+| `ff-desktop` | 🔴 | -- | layout-and-docking Req 14.11: on launch a persisted layout rebuilds the split tree (ids reconciled) and restores the focused leaf |
+| `ff-desktop` | 🔴 | -- | layout-and-docking Req 14.12: no persisted layout (older/unsplit session) opens UNSPLIT exactly as 2a/2b; backward-compatible (`#[serde(default)]`, no schema bump); older session.toml loads without error |
+| `ff-desktop` | 🔴 | -- | layout-and-docking Req 14.13: restore is self-consistent -- dangling layout ids dropped, unreferenced store tabs placed in the focused/first leaf; no tab lost |
+| `ff-desktop` | 🔴 | -- | layout-and-docking Req 14.14: one `FocusContext` seam serves both an in-window Focused_Group and a Detached_Workspace (generalised `with_workspace_context`); dispatch defined once |
+| `ff-desktop` | 🔴 | -- | layout-and-docking Req 14.15: existing Detached_Workspace behaviour (Req 18: detach/DOCK/16-limit/per-window command line/F-keys) intact after the fold-in (no regression) |
+| `ff-desktop` | 🔴 | -- | layout-and-docking Req 14.16: `DOCK` re-attaches a detached tab into a tree leaf (origin leaf if present, else focused leaf), not a flat origin index |
+| `ff-desktop` | ✅ | 2c.1: `tab_manager::tests::*` + `ff-layout split_leaf*` + `shell::tests::full_shell_split*`/`full_shell_second_split_nests` cover the nesting model + recursive render. (2c.2-2c.4 rows below remain until those sub-slices land.) drag GESTURE pixels + OS detached-window chrome stay justified-MANUAL | layout-and-docking Req 14.17: all 2c model ops unit-tested + full-shell egui_kittest for rendered behaviour; drag GESTURE pixels + OS detached-window chrome are justified-MANUAL |
+
 ### Phase (reset-bare-targets) -- targeted RESET BARE: named profile / ALL (CR-NR-083)
 
 | Crate | Status | Test files | Notes |

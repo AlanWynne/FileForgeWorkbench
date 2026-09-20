@@ -410,3 +410,111 @@ is where the command line, keys, and new-tab opens act. Slice 2b is limited to E
     model; the rendered two-region behaviour (both regions drawn, focused-group highlight, splitter
     present, command acts on focused group) SHALL have an `egui_kittest` full-shell test per the GUI
     Behaviour Testing rule.
+
+### Requirement 14: Split Rework Slice 2c -- Recursive Nesting, Drag-Move, Persistence, Detached Fold-in
+
+**User Story:** As a user, I want to split any region again (not just once), drag a tab from one
+region into another, have my split layout survive a restart, and treat a detached window as just
+another region of the same workbench -- so the split feature is complete, not a one-shot.
+
+**Source:** [B046] Slice 2c; owner: "full set." Completes the four capabilities Slice 2b deferred
+(Requirement 13.2 "one split only" and 13.10 "not persisted"). Builds on Requirement 13 (Slice 2b
+visible split) and Requirement 12 (Slice 2a layout-tree foundation).
+
+**Design note:** the `ff-layout::TabGroupTree` is ALREADY a recursive, serde-serialisable binary
+tree with `remove_empty_groups`. Slice 2c makes that tree (not the Slice 2b hardcoded two-group
+`SplitState`) the authoritative split model, and reuses the EXISTING `SessionState.layout:
+Option<LayoutSnapshot>` slot (documented for "tab groups, splitters, persona") for persistence. The
+unsplit path MUST remain byte-identical to Slice 2a/2b (a session with no layout, and a workbench
+with no split, behave exactly as before). Delivered in four internally-gated sub-slices
+(2c.1 nesting, 2c.2 drag-move, 2c.3 persistence, 2c.4 detached fold-in), each shippable alone.
+
+**Glossary (additions to Requirement 13):**
+- **Nested_Split**: a `TabGroupTree::Split` whose `first` or `second` child is itself a `Split`
+  (arbitrary depth).
+- **Drop_Zone**: a target region highlighted during a tab-header drag; dropping there moves the tab
+  into that region's Tab_Group (an edge Drop_Zone MAY create a new split around the target).
+- **Layout_Snapshot**: the persisted split arrangement (tree shape + direction + proportion per
+  internal node, per-leaf tab ids + active index, focused leaf id) stored in `SessionState.layout`.
+- **Focus_Context**: the unified abstraction over an in-window Focused_Group and a Detached_Workspace
+  -- both a "place a command/keys/new-tab act on," reached through the same active-tab-swap path.
+
+#### Acceptance Criteria -- 2c.1 Recursive nesting
+
+1. WHEN `SPLIT` / `SPLIT RIGHT` / `SPLIT DOWN` is issued while the Workspace is ALREADY split, THE
+   shell SHALL split the FOCUSED Tab_Group again (replacing that leaf with a new `Split` node whose
+   first child is the focused group and whose second child is a new POM group), to ARBITRARY depth --
+   removing the Slice 2b "one split only" rejection (Requirement 13.2 is superseded for 2c).
+
+2. THE authoritative split model SHALL be the `ff-layout::TabGroupTree` itself (not a fixed
+   two-element structure); `TabManager` SHALL maintain the tree and derive per-leaf membership from
+   it, so any number of leaves at any depth is representable. The flat `TabState` store keyed by
+   `TabId` SHALL remain authoritative for tab CONTENT (Requirement 12.2); the tree owns ARRANGEMENT.
+
+3. WHEN a leaf's last tab closes, or `UNSPLIT`/END collapses the focused leaf, THE shell SHALL
+   collapse exactly that leaf via `remove_empty_groups`, preserving every other leaf and its
+   proportion; when only one leaf remains the tree returns to a single `Leaf` (unsplit).
+
+4. THE render SHALL walk the full tree recursively, drawing a draggable Splitter at EACH internal
+   `Split` node and each `Leaf` as a region with its own tab bar (Requirement 13.4 generalised to
+   arbitrary depth); exactly one leaf is the Focused_Group (Requirement 13.6).
+
+5. `FOCUS` / `FOCUS OTHER` SHALL move focus among ALL leaves (a defined traversal order, e.g.
+   left-to-right/top-to-bottom leaf order), not just two (Requirement 13.7 generalised).
+
+#### Acceptance Criteria -- 2c.2 Drag a tab between groups
+
+6. THE user SHALL be able to drag a Tab_Header out of its region's tab bar and drop it onto another
+   region; on drop THE shell SHALL move that `TabState` from the source Tab_Group to the target
+   Tab_Group (by `TabId`; content unchanged), make it the target's active tab, and focus the target.
+
+7. WHEN the source Tab_Group becomes empty after a move, THE shell SHALL collapse it via
+   `remove_empty_groups` (Requirement 14.3), so a drag-out that empties a region removes that region.
+
+8. Dragging a tab beyond the workbench (the existing >20px-outside-bar gesture, Requirement 13/18.6)
+   SHALL still DETACH (create a Detached_Workspace), unchanged; the in-window move is the NEW
+   behaviour for a drop ONTO another region. A drop onto the tab's OWN region SHALL be a no-op.
+
+9. THE drag SHALL show a Drop_Zone highlight on the region under the pointer so the target is
+   unambiguous before release.
+
+#### Acceptance Criteria -- 2c.3 Split persistence
+
+10. ON exit, THE shell SHALL serialise the current split arrangement (tree shape, per-node direction
+    and proportion, per-leaf tab ids + active index, focused leaf id) into
+    `SessionState.layout` (the existing `LayoutSnapshot`), alongside the flat tab list.
+
+11. ON launch, WHEN a persisted `layout` is present and its referenced tab ids resolve against the
+    restored tab store, THE shell SHALL rebuild the split tree (reconciling any missing/extra ids as
+    `sync_layout` already does) and open split as saved; the focused leaf SHALL be restored.
+
+12. WHEN no `layout` is persisted (older session, or a workbench that was not split), THE shell SHALL
+    open UNSPLIT exactly as Slice 2a/2b (Requirement 13.10). The addition SHALL be backward-compatible
+    (`#[serde(default)]`, NO schema-version bump); an older `session.toml` SHALL load without error.
+
+13. THE persisted layout SHALL be self-consistent on restore: a tab id in the layout that no longer
+    exists in the tab store SHALL be dropped; a tab in the store not referenced by the layout SHALL
+    be placed in the focused (or first) leaf, so no tab is lost and no dangling id remains.
+
+#### Acceptance Criteria -- 2c.4 Detached fold-in
+
+14. THE shell SHALL model an in-window Focused_Group and a Detached_Workspace through ONE
+    Focus_Context abstraction: the SAME code path that swaps the active tab + per-window command
+    context for a region SHALL serve a detached window (generalising `with_workspace_context`), so
+    command/key/new-tab dispatch is defined once for both.
+
+15. THE existing Detached_Workspace behaviour (Requirement 18: detach via drag-out / "Move to Other
+    View" / `SPLIT DETACH`; `DOCK` re-attach; the 16-window limit; per-window command line; F-keys
+    act on the focused window) SHALL remain intact after the fold-in (no regression).
+
+16. WHEN a Detached_Workspace is re-docked (`DOCK`), THE shell SHALL re-attach its tab into a
+    Tab_Group of the tree (its origin leaf when still present, else the focused leaf), consistent
+    with the recursive model rather than a flat origin index.
+
+#### Acceptance Criteria -- coverage
+
+17. ALL 2c model operations (nested split/collapse, move-tab-between-groups, layout snapshot
+    to/from tree, focus traversal over N leaves, detached fold-in swap) SHALL have unit tests; the
+    rendered behaviour (recursive regions drawn, drag-drop move, focused highlight at depth, restore
+    from a persisted layout) SHALL have full-shell `egui_kittest` tests per the GUI Behaviour Testing
+    rule. The drag GESTURE pixels and the OS detached-window chrome remain justified-MANUAL rows.

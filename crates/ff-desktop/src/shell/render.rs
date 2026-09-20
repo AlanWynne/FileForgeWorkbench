@@ -632,121 +632,140 @@ impl WorkbenchShell {
         } // end !is_file_explorer
     }
 
-    /// Render the two-region split inside the CentralPanel (CR-NR-092, Slice 2b).
+    /// Render the recursive split inside the CentralPanel (CR-NR-093, Slice 2c.1).
     ///
-    /// Divides the available rect by the split direction and proportion, draws a
-    /// draggable Splitter between the regions (clamped so neither region falls
-    /// below [`ff_layout::MIN_TAB_GROUP_SIZE`]), and for EACH region draws that
-    /// group's own tab bar plus its active Context body via the shared
-    /// [`render_active_tab_body`](Self::render_active_tab_body). The focused
-    /// region is highlighted with a border (Req 13.6). Clicking a region's tab or
-    /// its body area focuses that region (Req 13.7, 13.8); dragging the Splitter
-    /// writes a clamped proportion (Req 13.5).
+    /// Walks the authoritative `TabGroupTree` to ARBITRARY depth: each internal
+    /// `Split` node divides its rect by direction/proportion with a draggable
+    /// Splitter; each `Leaf` is a region drawn by
+    /// [`render_split_region`](Self::render_split_region) (its own tab bar + the
+    /// active Context body via [`render_active_tab_body`], focused-leaf highlight).
+    /// A snapshot of the tree is cloned up front so the immutable walk can compute
+    /// rects while the per-leaf render borrows `&mut self`.
     ///
-    /// Validates: layout-and-docking Requirement 13.1, 13.4, 13.5, 13.6, 13.7, 13.8
+    /// Validates: layout-and-docking Requirement 14.1, 14.2, 14.4
     fn render_split_central(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-        use ff_layout::SplitDirection;
-
-        let (direction, proportion) = match self.tabs.split_state() {
-            Some(s) => (s.direction, s.proportion),
-            None => {
-                // Defensive: should not happen (caller checked is_split()).
-                self.render_active_tab_body(ctx, ui);
-                return;
-            }
-        };
-        let focused_group = self.tabs.split_focused_group().unwrap_or(0);
-
-        let full = ui.available_rect_before_wrap();
-        let horizontal = matches!(direction, SplitDirection::Horizontal);
-        let splitter_thickness = 6.0_f32;
-        let min = ff_layout::MIN_TAB_GROUP_SIZE;
-
-        // Compute the two region rects and the splitter rect from the proportion.
-        let (first_rect, splitter_rect, second_rect) = if horizontal {
-            let avail = (full.width() - splitter_thickness).max(0.0);
-            let mut first_w = (avail * proportion).clamp(0.0, avail);
-            // Keep both regions >= min where the space allows.
-            if avail >= 2.0 * min {
-                first_w = first_w.clamp(min, avail - min);
-            }
-            let x0 = full.min.x;
-            let x_split = x0 + first_w;
-            let first = egui::Rect::from_min_max(full.min, egui::pos2(x_split, full.max.y));
-            let split_r = egui::Rect::from_min_max(
-                egui::pos2(x_split, full.min.y),
-                egui::pos2(x_split + splitter_thickness, full.max.y),
-            );
-            let second = egui::Rect::from_min_max(
-                egui::pos2(x_split + splitter_thickness, full.min.y),
-                full.max,
-            );
-            (first, split_r, second)
-        } else {
-            let avail = (full.height() - splitter_thickness).max(0.0);
-            let mut first_h = (avail * proportion).clamp(0.0, avail);
-            if avail >= 2.0 * min {
-                first_h = first_h.clamp(min, avail - min);
-            }
-            let y0 = full.min.y;
-            let y_split = y0 + first_h;
-            let first = egui::Rect::from_min_max(full.min, egui::pos2(full.max.x, y_split));
-            let split_r = egui::Rect::from_min_max(
-                egui::pos2(full.min.x, y_split),
-                egui::pos2(full.max.x, y_split + splitter_thickness),
-            );
-            let second = egui::Rect::from_min_max(
-                egui::pos2(full.min.x, y_split + splitter_thickness),
-                full.max,
-            );
-            (first, split_r, second)
-        };
-
-        // Draw each region.
-        self.render_split_region(ctx, ui, 0, first_rect, focused_group == 0);
-        self.render_split_region(ctx, ui, 1, second_rect, focused_group == 1);
-
-        // Draggable Splitter (Req 13.5).
-        let splitter_id = ui.id().with("workspace_splitter");
-        let sense = egui::Sense::click_and_drag();
-        let resp = ui.interact(splitter_rect, splitter_id, sense);
-        let hovered = resp.hovered() || resp.dragged();
-        let visual = if hovered {
-            ui.visuals().widgets.active.bg_fill
-        } else {
-            ui.visuals().widgets.noninteractive.bg_stroke.color
-        };
-        ui.painter().rect_filled(splitter_rect, 0.0, visual);
-        if horizontal {
-            ctx.set_cursor_icon(if hovered {
-                egui::CursorIcon::ResizeHorizontal
-            } else {
-                egui::CursorIcon::Default
-            });
-        } else if hovered {
-            ctx.set_cursor_icon(egui::CursorIcon::ResizeVertical);
+        // Defensive: caller checked is_split(); a single leaf renders normally.
+        if !self.tabs.is_split() {
+            self.render_active_tab_body(ctx, ui);
+            return;
         }
-        if resp.dragged() {
-            if let Some(pos) = ctx.input(|i| i.pointer.interact_pos()) {
-                let new_prop = if horizontal {
-                    (pos.x - full.min.x) / full.width().max(1.0)
+        let tree = self.tabs.layout_tree().clone();
+        let focused = self.tabs.focused_leaf_id();
+        let full = ui.available_rect_before_wrap();
+        self.render_tree_node(ctx, ui, &tree, full, focused);
+    }
+
+    /// Recursively render one `TabGroupTree` node into `rect` (CR-NR-093).
+    fn render_tree_node(
+        &mut self,
+        ctx: &egui::Context,
+        ui: &mut egui::Ui,
+        node: &ff_layout::TabGroupTree,
+        rect: egui::Rect,
+        focused: ff_layout::TabGroupId,
+    ) {
+        use ff_layout::TabGroupTree;
+        match node {
+            TabGroupTree::Leaf(group) => {
+                self.render_split_region(ctx, ui, group.id, rect, group.id == focused);
+            }
+            TabGroupTree::Split {
+                direction,
+                proportion,
+                first,
+                second,
+            } => {
+                let horizontal = matches!(direction, ff_layout::SplitDirection::Horizontal);
+                let splitter_thickness = 6.0_f32;
+                let min = ff_layout::MIN_TAB_GROUP_SIZE;
+                let (first_rect, splitter_rect, second_rect) = if horizontal {
+                    let avail = (rect.width() - splitter_thickness).max(0.0);
+                    let mut first_w = (avail * *proportion).clamp(0.0, avail);
+                    if avail >= 2.0 * min {
+                        first_w = first_w.clamp(min, avail - min);
+                    }
+                    let x_split = rect.min.x + first_w;
+                    (
+                        egui::Rect::from_min_max(rect.min, egui::pos2(x_split, rect.max.y)),
+                        egui::Rect::from_min_max(
+                            egui::pos2(x_split, rect.min.y),
+                            egui::pos2(x_split + splitter_thickness, rect.max.y),
+                        ),
+                        egui::Rect::from_min_max(
+                            egui::pos2(x_split + splitter_thickness, rect.min.y),
+                            rect.max,
+                        ),
+                    )
                 } else {
-                    (pos.y - full.min.y) / full.height().max(1.0)
+                    let avail = (rect.height() - splitter_thickness).max(0.0);
+                    let mut first_h = (avail * *proportion).clamp(0.0, avail);
+                    if avail >= 2.0 * min {
+                        first_h = first_h.clamp(min, avail - min);
+                    }
+                    let y_split = rect.min.y + first_h;
+                    (
+                        egui::Rect::from_min_max(rect.min, egui::pos2(rect.max.x, y_split)),
+                        egui::Rect::from_min_max(
+                            egui::pos2(rect.min.x, y_split),
+                            egui::pos2(rect.max.x, y_split + splitter_thickness),
+                        ),
+                        egui::Rect::from_min_max(
+                            egui::pos2(rect.min.x, y_split + splitter_thickness),
+                            rect.max,
+                        ),
+                    )
                 };
-                self.tabs.set_split_proportion(new_prop);
+
+                // Recurse into children first (they draw regions + nested nodes).
+                self.render_tree_node(ctx, ui, first, first_rect, focused);
+                self.render_tree_node(ctx, ui, second, second_rect, focused);
+
+                // Draggable Splitter for THIS node (Req 14.4). Identity: the
+                // first leaf id of the first child (stable per node).
+                let node_key = first.all_group_ids().first().copied();
+                let splitter_id = ui
+                    .id()
+                    .with(("workspace_splitter", node_key.map(|k| k.value())));
+                let resp = ui.interact(splitter_rect, splitter_id, egui::Sense::click_and_drag());
+                let hovered = resp.hovered() || resp.dragged();
+                let visual = if hovered {
+                    ui.visuals().widgets.active.bg_fill
+                } else {
+                    ui.visuals().widgets.noninteractive.bg_stroke.color
+                };
+                ui.painter().rect_filled(splitter_rect, 0.0, visual);
+                if hovered {
+                    ctx.set_cursor_icon(if horizontal {
+                        egui::CursorIcon::ResizeHorizontal
+                    } else {
+                        egui::CursorIcon::ResizeVertical
+                    });
+                }
+                if resp.dragged() {
+                    if let (Some(pos), Some(key)) =
+                        (ctx.input(|i| i.pointer.interact_pos()), node_key)
+                    {
+                        let new_prop = if horizontal {
+                            (pos.x - rect.min.x) / rect.width().max(1.0)
+                        } else {
+                            (pos.y - rect.min.y) / rect.height().max(1.0)
+                        };
+                        self.tabs.set_node_proportion(key, new_prop);
+                    }
+                }
             }
         }
     }
 
-    /// Render one split region (CR-NR-092): a per-group tab bar in a strip at the
-    /// top of `rect`, then that group's active Context body below it, then a
+    /// Render one split region (CR-NR-093): a per-leaf tab bar in a strip at the
+    /// top of `rect`, then that leaf's active Context body below it, then a
     /// focus-highlight border if `is_focused`. Clicking a tab header or the body
-    /// focuses this region and activates the clicked tab (Req 13.7, 13.8).
+    /// focuses this region and activates the clicked tab (Req 14.5).
     fn render_split_region(
         &mut self,
         ctx: &egui::Context,
         ui: &mut egui::Ui,
-        group_idx: usize,
+        leaf_id: ff_layout::TabGroupId,
         rect: egui::Rect,
         is_focused: bool,
     ) {
@@ -757,9 +776,9 @@ impl WorkbenchShell {
         );
         let body_rect = egui::Rect::from_min_max(egui::pos2(rect.min.x, bar_rect.max.y), rect.max);
 
-        // === Per-group tab bar ===
-        let indices = self.tabs.split_group_indices(group_idx);
-        let active_store = self.tabs.split_group_active_index(group_idx);
+        // === Per-leaf tab bar ===
+        let indices = self.tabs.leaf_tab_store_indices(leaf_id);
+        let active_store = self.tabs.leaf_active_store_index(leaf_id);
         let active_bg = to_egui_color(self.palette.tab_bar.active_bg);
         let inactive_bg = to_egui_color(self.palette.tab_bar.inactive_bg);
         let active_text = to_egui_color(self.palette.tab_bar.active_text);
@@ -804,13 +823,13 @@ impl WorkbenchShell {
             }
         }
 
-        // === Region body: render this group's active Context ===
+        // === Region body: render this leaf's active Context ===
         let body_response = ui.interact(
             body_rect,
-            ui.id().with(("split_region_body", group_idx)),
+            ui.id().with(("split_region_body", leaf_id.value())),
             egui::Sense::click(),
         );
-        let token = self.tabs.set_render_focus_group(group_idx);
+        let token = self.tabs.set_render_focus_leaf(leaf_id);
         let mut body_ui = ui.new_child(
             egui::UiBuilder::new()
                 .max_rect(body_rect)
@@ -820,7 +839,7 @@ impl WorkbenchShell {
         self.render_active_tab_body(ctx, &mut body_ui);
         self.tabs.restore_render_focus(token);
 
-        // === Focus highlight (Req 13.6) ===
+        // === Focus highlight (Req 14.4) ===
         if is_focused {
             let accent = to_egui_color(self.palette.editor.accent);
             ui.painter().rect_stroke(
@@ -831,15 +850,13 @@ impl WorkbenchShell {
             );
         }
 
-        // === Focus routing (Req 13.7, 13.8) ===
+        // === Focus routing (Req 14.5) ===
         if let Some(store_idx) = clicked_store {
-            self.tabs.focus_group_and_activate(group_idx, store_idx);
+            self.tabs.focus_leaf_and_activate(leaf_id, store_idx);
         } else if body_response.clicked() {
             // Clicking anywhere in the region focuses it without changing its
             // active tab.
-            if let Some(store_idx) = self.tabs.split_group_active_index(group_idx) {
-                self.tabs.focus_group_and_activate(group_idx, store_idx);
-            }
+            self.tabs.focus_leaf(leaf_id);
         }
     }
 

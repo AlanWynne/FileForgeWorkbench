@@ -185,6 +185,47 @@ impl TabGroupTree {
             }
         }
     }
+
+    /// Replace the leaf whose group id is `target` with a `Split` node whose
+    /// `first` child is that leaf (unchanged) and whose `second` child is a new
+    /// `Leaf(new_group)`, using the given `direction` and `proportion`. Returns
+    /// `true` if the target leaf was found and split, `false` otherwise (the tree
+    /// is left unchanged when the id is not a leaf in this tree).
+    ///
+    /// This is the recursive-nesting primitive (CR-NR-093, Slice 2c.1): calling
+    /// it on an already-split tree splits whichever leaf is targeted, to
+    /// arbitrary depth.
+    pub fn split_leaf(
+        &mut self,
+        target: TabGroupId,
+        direction: SplitDirection,
+        proportion: f32,
+        new_group: TabGroup,
+    ) -> bool {
+        match self {
+            TabGroupTree::Leaf(group) => {
+                if group.id == target {
+                    // Move the current leaf into the first child; the new group
+                    // becomes the second child.
+                    let existing =
+                        std::mem::replace(group, TabGroup::new(TabGroupId(u32::MAX), Vec::new()));
+                    *self = TabGroupTree::Split {
+                        direction,
+                        proportion,
+                        first: Box::new(TabGroupTree::Leaf(existing)),
+                        second: Box::new(TabGroupTree::Leaf(new_group)),
+                    };
+                    true
+                } else {
+                    false
+                }
+            }
+            TabGroupTree::Split { first, second, .. } => {
+                first.split_leaf(target, direction, proportion, new_group.clone())
+                    || second.split_leaf(target, direction, proportion, new_group)
+            }
+        }
+    }
 }
 
 /// Direction of a tab group split.
@@ -280,6 +321,81 @@ mod tests {
         let group = tree.find_group_mut(TabGroupId(2)).unwrap();
         group.tabs.push("c.rs".to_string());
         assert_eq!(tree.find_group(TabGroupId(2)).unwrap().tab_count(), 2);
+    }
+
+    #[test]
+    fn split_leaf_on_single_leaf_creates_two_leaf_split() {
+        let mut tree = TabGroupTree::Leaf(TabGroup::new(TabGroupId(0), vec!["a".to_string()]));
+        let ok = tree.split_leaf(
+            TabGroupId(0),
+            SplitDirection::Horizontal,
+            0.5,
+            TabGroup::new(TabGroupId(1), vec!["b".to_string()]),
+        );
+        assert!(ok);
+        match tree {
+            TabGroupTree::Split {
+                direction,
+                proportion,
+                first,
+                second,
+            } => {
+                assert_eq!(direction, SplitDirection::Horizontal);
+                assert_eq!(proportion, 0.5);
+                assert_eq!(first.all_group_ids(), vec![TabGroupId(0)]);
+                assert_eq!(second.all_group_ids(), vec![TabGroupId(1)]);
+            }
+            _ => panic!("expected a Split after split_leaf"),
+        }
+    }
+
+    #[test]
+    fn split_leaf_nests_an_already_split_tree_to_depth_two() {
+        // Start: Split(0, 1). Split leaf 1 again -> Split(0, Split(1, 2)).
+        let mut tree = TabGroupTree::Split {
+            direction: SplitDirection::Horizontal,
+            proportion: 0.5,
+            first: Box::new(TabGroupTree::Leaf(TabGroup::new(
+                TabGroupId(0),
+                vec!["a".to_string()],
+            ))),
+            second: Box::new(TabGroupTree::Leaf(TabGroup::new(
+                TabGroupId(1),
+                vec!["b".to_string()],
+            ))),
+        };
+        let ok = tree.split_leaf(
+            TabGroupId(1),
+            SplitDirection::Vertical,
+            0.5,
+            TabGroup::new(TabGroupId(2), vec!["c".to_string()]),
+        );
+        assert!(ok);
+        // All three leaves present, in order.
+        assert_eq!(
+            tree.all_group_ids(),
+            vec![TabGroupId(0), TabGroupId(1), TabGroupId(2)]
+        );
+        // The second child is now itself a Split (nested).
+        match tree {
+            TabGroupTree::Split { second, .. } => {
+                assert!(matches!(*second, TabGroupTree::Split { .. }));
+            }
+            _ => panic!("expected outer Split"),
+        }
+    }
+
+    #[test]
+    fn split_leaf_unknown_id_leaves_tree_unchanged() {
+        let mut tree = TabGroupTree::Leaf(TabGroup::new(TabGroupId(0), vec!["a".to_string()]));
+        let ok = tree.split_leaf(
+            TabGroupId(99),
+            SplitDirection::Horizontal,
+            0.5,
+            TabGroup::new(TabGroupId(1), vec!["b".to_string()]),
+        );
+        assert!(!ok);
+        assert_eq!(tree.all_group_ids(), vec![TabGroupId(0)]);
     }
 
     #[test]
