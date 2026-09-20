@@ -439,6 +439,13 @@ impl WorkbenchShell {
     // ── Tab bar ──────────────────────────────────────────────────────────
 
     pub(super) fn render_tab_bar(&mut self, ctx: &egui::Context) {
+        // CR-NR-092 (Slice 2b): when the Workspace area is split, each region
+        // draws its OWN tab bar inside the split central panel
+        // (`render_split_central`), so the shared flat top tab bar is suppressed.
+        // The unsplit path below is byte-identical to Slice 2a.
+        if self.tabs.is_split() {
+            return;
+        }
         // Validates: Requirement 21.6 -- render_tab_bar reads the tab_bar.* palette
         // group (previously dead: bg reused ui.input_bg/panel_bg and text reused
         // editor.foreground). Active/inactive tabs now get distinct bg + text.

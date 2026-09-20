@@ -581,3 +581,21 @@ Coverage: 10 requirements, ~95 acceptance criteria, 10 correctness properties.
     - Covers: Requirement 12.8
   - [x] 18.7 Behaviour-identical proof + close: FULL existing suite green UNCHANGED (verify.ps1 CLEAN, FULL nextest -- no existing test modified); ffwb.exe rebuilt; TCR rows PASS; change-log CR-NR-091 DONE; project-master phase. No new user-facing test-plan row (invisible slice)
     - Covers: Requirement 12.7
+
+- [x] 19. Visible in-window split -- two Tab_Groups (Requirement 13, CR-NR-092 / B046 Slice 2b)
+  - [x] 19.1 `TabManager` split ops on the Slice 2a tree: `split_focused(direction)` (replace focused Leaf with a one-level `Split { direction, 0.5, <leaf>, <new leaf> }`; new group gets a fresh id + a POM tab; focus -> new group; reject a 2nd split with a status), `unsplit()` + auto-collapse via `remove_empty_groups`, `focus_other_group()`, `set_split_proportion(f32)` (clamped). Define the store<->tree consistency rule for the two-leaf case (tree owns group membership/active; store owns content by TabId)
+    - Covers: Requirement 13.1, 13.2, 13.9
+  - [x] 19.2 `active_tab()`/`active_index()` follow the focused group when a split exists (the Slice 2a shim already resolves through `focused_group`); verify the ~312 call sites still need no change
+    - Covers: Requirement 13.8
+  - [x] 19.3 Render tree-walk in `shell/render.rs`: Leaf -> region Ui + that group's tab bar + swap-in active tab + `render_active_tab_body`; Split -> divide rect by proportion+direction with a draggable Splitter (min 100 px), recurse (one level in 2b); paint focused-group highlight; splitter drag writes back the clamped proportion
+    - Covers: Requirement 13.4, 13.5, 13.6
+  - [x] 19.4 New-group default Context = Home (POM) so it is a usable Workspace, not an empty region
+    - Covers: Requirement 13.3
+  - [x] 19.5 Commands (parity): `SPLIT`/`SPLIT RIGHT` (Horizontal), `SPLIT DOWN` (Vertical) -> `split_focused`; `UNSPLIT` + END-on-split -> collapse; `FOCUS NEXT`/`FOCUS OTHER` -> `focus_other_group` (optional default key binding, owner choice at design); menu/key affordances invoke the commands
+    - Covers: Requirement 13.1, 13.7, 13.9
+  - [x] 19.6 Session format unchanged (split NOT persisted in 2b; opens unsplit on restart); unsplit behaviour identical to Slice 2a
+    - Covers: Requirement 13.10
+  - [x] 19.7 Tests: unit (split creates two-leaf Split w/ direction+proportion; 2nd SPLIT rejected; focus_other_group flips; unsplit/empty-collapse -> single leaf preserving survivor; active_tab follows focused group) + full-shell egui_kittest (two regions render, focused-group highlight, command acts on focused group, FOCUS verb flips, UNSPLIT collapses)
+    - Covers: Requirement 13.11
+  - [x] 19.8 Close: verify.ps1 CLEAN (FULL nextest); rebuild ffwb.exe; TCR rows PASS; change-log CR-NR-092 DONE; project-master phase; test-plan rows (new Group-1/Group-7 split rows)
+    - Covers: Requirement 13

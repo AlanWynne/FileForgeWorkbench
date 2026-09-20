@@ -2800,6 +2800,26 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | verify.ps1 CLEAN (FULL nextest) with NO existing test modified -- the behaviour-identical proof | layout-and-docking Req 12.7: NO user-visible change (no split command/render/key/menu; tab bar/Title_Line/Command Field/focus order unchanged) -- proven by the full existing suite passing unchanged |
 | `ff-desktop` | ✅ | `tab_manager.rs::tests::{layout_tree_is_single_leaf_on_new, layout_tree_mirrors_store_after_each_operation, layout_tree_mirrors_store_through_detach_redock_primitives}` | layout-and-docking Req 12.8: unit tests prove the single-leaf invariant + resolve-through-focused-group equivalence after each lifecycle operation |
 
+### Phase (window-split) -- Visible in-window split, two Tab_Groups (CR-NR-092, B046 Slice 2b)
+
+> Slice 2b: `SPLIT` divides the focused Tab_Group into two rendered regions with a draggable
+> Splitter (relative proportion); focus routes to one group; `UNSPLIT` collapses. Exactly one split
+> (nesting/persistence = Slice 2c). Builds on the Slice 2a layout-tree foundation (Req 12).
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `shell::tests::{full_shell_split_creates_two_groups_second_is_pom_and_focused, full_shell_split_down_is_vertical}`; `tab_manager::tests::split_focused_creates_two_groups_second_is_pom` | layout-and-docking Req 13.1: `SPLIT`/`SPLIT RIGHT` (Horizontal) + `SPLIT DOWN` (Vertical) split the focused group into a two-leaf `Split` node, default proportion 0.5 (command parity) |
+| `ff-desktop` | ✅ | `shell::tests::full_shell_second_split_is_rejected_with_status`; `tab_manager::tests::second_split_is_rejected` | layout-and-docking Req 13.2: a second `SPLIT` is rejected with a status message (one split only in 2b; no nesting) |
+| `ff-desktop` | ✅ | `shell::tests::full_shell_split_creates_two_groups_second_is_pom_and_focused` | layout-and-docking Req 13.3: the new Tab_Group opens the Home Context (POM) by default (a usable Workspace, not an empty region) |
+| `ff-desktop` | ✅ | `shell::tests::full_shell_split_renders_two_regions_and_command_acts_on_focused` (both regions render across frames) | layout-and-docking Req 13.4: both Tab_Groups render simultaneously via `render_active_tab_body`, each with its own tab bar, separated by a Splitter |
+| `ff-desktop` | 🔲 | `tab_manager::tests::set_split_proportion_clamps` (relative-proportion clamp + min-region math) | layout-and-docking Req 13.5: the Splitter adjusts the relative proportion by drag, min 100 px per region (relative, never pixel-absolute). MANUAL: the pixel-exact drag GESTURE on a painted rect is not headless-drivable; the clamp/min math is unit-tested |
+| `ff-desktop` | 🔲 | `shell::tests::full_shell_focus_flips_focused_group` (exactly one focused group; focus state observable) | layout-and-docking Req 13.6: the Focused_Group is visually indicated; exactly one focused at a time. MANUAL: the highlight BORDER appearance (rect_stroke pixels) is visual-only |
+| `ff-desktop` | ✅ | `shell::tests::full_shell_focus_flips_focused_group`; `tab_manager::tests::focus_other_group_flips_focus_and_active_tab_follows` | layout-and-docking Req 13.7: a command/key (`FOCUS`/`FOCUS OTHER`) moves focus between the two groups, updating the Focused_Group |
+| `ff-desktop` | ✅ | `shell::tests::full_shell_split_renders_two_regions_and_command_acts_on_focused`; `tab_manager::tests::opening_a_tab_while_split_targets_the_focused_group` | layout-and-docking Req 13.8: while split, the command line / keys / new-tab opens act on the Focused_Group's active tab (Slice 2a focus model) |
+| `ff-desktop` | ✅ | `shell::tests::{full_shell_unsplit_collapses_preserving_survivor, full_shell_end_while_split_collapses}`; `tab_manager::tests::{unsplit_collapses_to_single_leaf_preserving_survivor, closing_last_tab_of_a_group_auto_collapses}` | layout-and-docking Req 13.9: `UNSPLIT` / END-on-split / closing a group's last tab collapses to a single Leaf, preserving the survivor |
+| `ff-desktop` | ✅ | `shell::tests::{full_shell_focus_and_unsplit_on_unsplit_are_noops_with_status, full_shell_split_detach_still_detaches_not_splits}`; verify.ps1 CLEAN FULL (unsplit path = Slice 2a) | layout-and-docking Req 13.10: split NOT persisted in 2b (opens unsplit on restart); unsplit behaviour identical to Slice 2a |
+| `ff-desktop` | ✅ | unit (`tab_manager::tests::*split*`) + full-shell egui_kittest (`shell::tests::full_shell_split_*`) -- both layers covered | layout-and-docking Req 13.11: split model ops unit-tested + full-shell egui_kittest for the rendered two-region behaviour |
+
 ### Phase (reset-bare-targets) -- targeted RESET BARE: named profile / ALL (CR-NR-083)
 
 | Crate | Status | Test files | Notes |

@@ -620,9 +620,227 @@ impl WorkbenchShell {
         // Validates: Requirement 14.8 — central panel dispatches on tab kind
         if !is_file_explorer {
             egui::CentralPanel::default().show(ctx, |ui| {
-                self.render_active_tab_body(ctx, ui);
+                // CR-NR-092 (Slice 2b): when split, the central panel is divided
+                // into two regions, each with its own tab bar + Context body and
+                // a draggable Splitter between them (Req 13.1, 13.4, 13.5, 13.6).
+                if self.tabs.is_split() {
+                    self.render_split_central(ctx, ui);
+                } else {
+                    self.render_active_tab_body(ctx, ui);
+                }
             });
         } // end !is_file_explorer
+    }
+
+    /// Render the two-region split inside the CentralPanel (CR-NR-092, Slice 2b).
+    ///
+    /// Divides the available rect by the split direction and proportion, draws a
+    /// draggable Splitter between the regions (clamped so neither region falls
+    /// below [`ff_layout::MIN_TAB_GROUP_SIZE`]), and for EACH region draws that
+    /// group's own tab bar plus its active Context body via the shared
+    /// [`render_active_tab_body`](Self::render_active_tab_body). The focused
+    /// region is highlighted with a border (Req 13.6). Clicking a region's tab or
+    /// its body area focuses that region (Req 13.7, 13.8); dragging the Splitter
+    /// writes a clamped proportion (Req 13.5).
+    ///
+    /// Validates: layout-and-docking Requirement 13.1, 13.4, 13.5, 13.6, 13.7, 13.8
+    fn render_split_central(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        use ff_layout::SplitDirection;
+
+        let (direction, proportion) = match self.tabs.split_state() {
+            Some(s) => (s.direction, s.proportion),
+            None => {
+                // Defensive: should not happen (caller checked is_split()).
+                self.render_active_tab_body(ctx, ui);
+                return;
+            }
+        };
+        let focused_group = self.tabs.split_focused_group().unwrap_or(0);
+
+        let full = ui.available_rect_before_wrap();
+        let horizontal = matches!(direction, SplitDirection::Horizontal);
+        let splitter_thickness = 6.0_f32;
+        let min = ff_layout::MIN_TAB_GROUP_SIZE;
+
+        // Compute the two region rects and the splitter rect from the proportion.
+        let (first_rect, splitter_rect, second_rect) = if horizontal {
+            let avail = (full.width() - splitter_thickness).max(0.0);
+            let mut first_w = (avail * proportion).clamp(0.0, avail);
+            // Keep both regions >= min where the space allows.
+            if avail >= 2.0 * min {
+                first_w = first_w.clamp(min, avail - min);
+            }
+            let x0 = full.min.x;
+            let x_split = x0 + first_w;
+            let first = egui::Rect::from_min_max(full.min, egui::pos2(x_split, full.max.y));
+            let split_r = egui::Rect::from_min_max(
+                egui::pos2(x_split, full.min.y),
+                egui::pos2(x_split + splitter_thickness, full.max.y),
+            );
+            let second = egui::Rect::from_min_max(
+                egui::pos2(x_split + splitter_thickness, full.min.y),
+                full.max,
+            );
+            (first, split_r, second)
+        } else {
+            let avail = (full.height() - splitter_thickness).max(0.0);
+            let mut first_h = (avail * proportion).clamp(0.0, avail);
+            if avail >= 2.0 * min {
+                first_h = first_h.clamp(min, avail - min);
+            }
+            let y0 = full.min.y;
+            let y_split = y0 + first_h;
+            let first = egui::Rect::from_min_max(full.min, egui::pos2(full.max.x, y_split));
+            let split_r = egui::Rect::from_min_max(
+                egui::pos2(full.min.x, y_split),
+                egui::pos2(full.max.x, y_split + splitter_thickness),
+            );
+            let second = egui::Rect::from_min_max(
+                egui::pos2(full.min.x, y_split + splitter_thickness),
+                full.max,
+            );
+            (first, split_r, second)
+        };
+
+        // Draw each region.
+        self.render_split_region(ctx, ui, 0, first_rect, focused_group == 0);
+        self.render_split_region(ctx, ui, 1, second_rect, focused_group == 1);
+
+        // Draggable Splitter (Req 13.5).
+        let splitter_id = ui.id().with("workspace_splitter");
+        let sense = egui::Sense::click_and_drag();
+        let resp = ui.interact(splitter_rect, splitter_id, sense);
+        let hovered = resp.hovered() || resp.dragged();
+        let visual = if hovered {
+            ui.visuals().widgets.active.bg_fill
+        } else {
+            ui.visuals().widgets.noninteractive.bg_stroke.color
+        };
+        ui.painter().rect_filled(splitter_rect, 0.0, visual);
+        if horizontal {
+            ctx.set_cursor_icon(if hovered {
+                egui::CursorIcon::ResizeHorizontal
+            } else {
+                egui::CursorIcon::Default
+            });
+        } else if hovered {
+            ctx.set_cursor_icon(egui::CursorIcon::ResizeVertical);
+        }
+        if resp.dragged() {
+            if let Some(pos) = ctx.input(|i| i.pointer.interact_pos()) {
+                let new_prop = if horizontal {
+                    (pos.x - full.min.x) / full.width().max(1.0)
+                } else {
+                    (pos.y - full.min.y) / full.height().max(1.0)
+                };
+                self.tabs.set_split_proportion(new_prop);
+            }
+        }
+    }
+
+    /// Render one split region (CR-NR-092): a per-group tab bar in a strip at the
+    /// top of `rect`, then that group's active Context body below it, then a
+    /// focus-highlight border if `is_focused`. Clicking a tab header or the body
+    /// focuses this region and activates the clicked tab (Req 13.7, 13.8).
+    fn render_split_region(
+        &mut self,
+        ctx: &egui::Context,
+        ui: &mut egui::Ui,
+        group_idx: usize,
+        rect: egui::Rect,
+        is_focused: bool,
+    ) {
+        let tab_bar_h = 24.0_f32;
+        let bar_rect = egui::Rect::from_min_max(
+            rect.min,
+            egui::pos2(rect.max.x, (rect.min.y + tab_bar_h).min(rect.max.y)),
+        );
+        let body_rect = egui::Rect::from_min_max(egui::pos2(rect.min.x, bar_rect.max.y), rect.max);
+
+        // === Per-group tab bar ===
+        let indices = self.tabs.split_group_indices(group_idx);
+        let active_store = self.tabs.split_group_active_index(group_idx);
+        let active_bg = to_egui_color(self.palette.tab_bar.active_bg);
+        let inactive_bg = to_egui_color(self.palette.tab_bar.inactive_bg);
+        let active_text = to_egui_color(self.palette.tab_bar.active_text);
+        let inactive_text = to_egui_color(self.palette.tab_bar.inactive_text);
+
+        let mut clicked_store: Option<usize> = None;
+        let mut bar_ui = ui.new_child(
+            egui::UiBuilder::new()
+                .max_rect(bar_rect)
+                .layout(egui::Layout::left_to_right(egui::Align::Center)),
+        );
+        bar_ui.set_clip_rect(bar_rect);
+        for store_idx in &indices {
+            let store_idx = *store_idx;
+            let Some(tab) = self.tabs.tabs().get(store_idx) else {
+                continue;
+            };
+            let is_active = Some(store_idx) == active_store;
+            let base_title = self.kind_title(tab);
+            let label = if tab.is_modified {
+                format!("\u{25cf} {}", base_title)
+            } else {
+                base_title
+            };
+            let bg = if is_active { active_bg } else { inactive_bg };
+            let fg = if is_active {
+                active_text
+            } else {
+                inactive_text
+            };
+            let btn = egui::Button::new(egui::RichText::new(&label).color(fg).monospace())
+                .fill(bg)
+                .stroke(if is_active {
+                    egui::Stroke::new(1.0_f32, fg)
+                } else {
+                    egui::Stroke::NONE
+                })
+                .min_size(egui::vec2(0.0, tab_bar_h))
+                .sense(egui::Sense::click());
+            if bar_ui.add(btn).clicked() {
+                clicked_store = Some(store_idx);
+            }
+        }
+
+        // === Region body: render this group's active Context ===
+        let body_response = ui.interact(
+            body_rect,
+            ui.id().with(("split_region_body", group_idx)),
+            egui::Sense::click(),
+        );
+        let token = self.tabs.set_render_focus_group(group_idx);
+        let mut body_ui = ui.new_child(
+            egui::UiBuilder::new()
+                .max_rect(body_rect)
+                .layout(egui::Layout::top_down(egui::Align::Min)),
+        );
+        body_ui.set_clip_rect(body_rect);
+        self.render_active_tab_body(ctx, &mut body_ui);
+        self.tabs.restore_render_focus(token);
+
+        // === Focus highlight (Req 13.6) ===
+        if is_focused {
+            let accent = to_egui_color(self.palette.editor.accent);
+            ui.painter().rect_stroke(
+                rect,
+                0.0,
+                egui::Stroke::new(2.0_f32, accent),
+                egui::StrokeKind::Inside,
+            );
+        }
+
+        // === Focus routing (Req 13.7, 13.8) ===
+        if let Some(store_idx) = clicked_store {
+            self.tabs.focus_group_and_activate(group_idx, store_idx);
+        } else if body_response.clicked() {
+            // Clicking anywhere in the region focuses it without changing its
+            // active tab.
+            if let Some(store_idx) = self.tabs.split_group_active_index(group_idx) {
+                self.tabs.focus_group_and_activate(group_idx, store_idx);
+            }
+        }
     }
 
     /// Render the ACTIVE tab's Context body (the `match tab.kind` dispatch) into

@@ -2715,3 +2715,28 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[x]` Phase (layout-tree) | CR-NR-091 / B046 Slice 2a DONE -- invisible Shell Layout Tree foundation (ff-layout TabGroupTree single leaf + focus model + active_tab shim), behaviour-identical (full suite unchanged), before the visible split (Slice 2b). verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. |
+
+## Phase (window-split) -- Visible in-window split, two Tab_Groups (CR-NR-092, B046 Slice 2b)
+
+> Owner-approved: build the visible split on the Slice 2a ff-layout TabGroupTree
+> foundation; framework terminology (Tab_Group / split / Splitter); command parity.
+> Scope: EXACTLY ONE split (two leaves). Nesting + drag + LayoutState persistence +
+> detach fold-in = Slice 2c.
+
+- [x] WS.1 (Slice 2b): `SPLIT`/`SPLIT RIGHT`/`SPLIT DOWN` divide the focused
+      Tab_Group into two leaves (one `Split` node, proportion 0.5, direction
+      Horizontal/Vertical); a 2nd SPLIT is rejected with a status; the new group
+      opens a POM. Render the tree: each leaf draws its focused tab via
+      `render_active_tab_body` with its own tab bar; a draggable Splitter (min
+      100 px, relative proportion) separates them; the focused group is
+      highlighted. `FOCUS NEXT`/`FOCUS OTHER` moves focus; command line / keys /
+      new-tab opens act on the focused group (Slice 2a shim). `UNSPLIT` / END-on-
+      split / empty-group collapse returns to one leaf preserving the survivor.
+      Split NOT persisted in 2b. Unit tests (split/unsplit/focus/proportion/active
+      resolution) + full-shell egui_kittest (two regions, highlight, command acts
+      on focused group, FOCUS flips, UNSPLIT collapses). verify.ps1 CLEAN FULL
+      nextest; ffwb.exe rebuilt. Covers: layout-and-docking Req 13.
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (window-split) | CR-NR-092 / B046 Slice 2b DONE -- visible two-region in-window split (SPLIT/SPLIT RIGHT/SPLIT DOWN + draggable Splitter + FOCUS/UNSPLIT/END-collapse on the ff-layout TabGroupTree), one split only, new group = POM, not persisted; nesting/drag/persistence = Slice 2c. 7 unit + 9 full-shell egui_kittest tests; verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. |

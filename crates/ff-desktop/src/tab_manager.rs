@@ -9,11 +9,52 @@ use ff_layout::{TabGroup, TabGroupId, TabGroupTree};
 use ff_vfs::VfsProvider;
 use tokio::runtime::Runtime;
 
+use ff_layout::SplitDirection;
+
 use crate::tab_state::{TabId, TabKind, TabState};
 
-/// The `TabGroupId` of the sole Tab_Group in Slice 2a. The layout tree is always
-/// a single `Leaf` with this id (CR-NR-091; layout-and-docking Req 12.1/12.3).
+/// The `TabGroupId` of the root/first Tab_Group. When unsplit this is the sole
+/// group (CR-NR-091, Slice 2a). When split (CR-NR-092, Slice 2b) it is the FIRST
+/// child leaf; the second child gets [`SECOND_GROUP_ID`].
 const ROOT_GROUP_ID: TabGroupId = TabGroupId::new(0);
+
+/// The `TabGroupId` of the SECOND Tab_Group created by a split (CR-NR-092).
+const SECOND_GROUP_ID: TabGroupId = TabGroupId::new(1);
+
+/// One Tab_Group's membership within a split (CR-NR-092, Slice 2b). The flat
+/// `TabManager` store still owns every `TabState`; this records which tabs (by
+/// `TabId`) belong to the group and which is active WITHIN the group.
+#[derive(Debug, Clone)]
+pub(crate) struct GroupState {
+    /// The group's stable id ([`ROOT_GROUP_ID`] or [`SECOND_GROUP_ID`]).
+    pub id: TabGroupId,
+    /// The tabs in this group, in display order, by stable `TabId`.
+    pub tab_ids: Vec<TabId>,
+    /// Index into `tab_ids` of this group's active tab.
+    pub active: usize,
+}
+
+/// The visible split state (CR-NR-092, Slice 2b). `Some` iff the Workspace area
+/// is split into two Tab_Groups. Exactly one split is supported this slice
+/// (no nesting). When `None`, `TabManager` behaves identically to Slice 2a.
+#[derive(Debug, Clone)]
+pub(crate) struct SplitState {
+    /// Side-by-side (Horizontal) or stacked (Vertical).
+    pub direction: SplitDirection,
+    /// Relative size of the FIRST group in [0.05, 0.95].
+    pub proportion: f32,
+    /// The two groups: index 0 = first (left/top), index 1 = second (right/bottom).
+    pub groups: [GroupState; 2],
+    /// Which group is focused: 0 or 1.
+    pub focused: usize,
+}
+
+/// Opaque save token for the render-only focus swap (CR-NR-092). Returned by
+/// [`TabManager::set_render_focus_group`] and consumed by
+/// [`TabManager::restore_render_focus`] so the split render can draw a
+/// non-focused region's body without disturbing the authoritative focus.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct RenderFocusToken(TabGroupId);
 
 /// Manages all open tabs and the active tab index.
 ///
@@ -34,11 +75,17 @@ pub struct TabManager {
     /// `None` until a second distinct tab has been activated.
     previous_active: Option<usize>,
     next_id: u64,
-    /// The layout tree (CR-NR-091). Always a single `Leaf` in Slice 2a; a mirror
-    /// of the flat store kept in lockstep by [`sync_layout`](Self::sync_layout).
+    /// The layout tree (CR-NR-091). A single `Leaf` when unsplit; a one-level
+    /// `Split` of two leaves when split (CR-NR-092). Derived from the store (+
+    /// `split`) by [`sync_layout`](Self::sync_layout).
     layout: TabGroupTree,
-    /// The focused Tab_Group (CR-NR-091). Always [`ROOT_GROUP_ID`] in Slice 2a.
+    /// The focused Tab_Group (CR-NR-091). [`ROOT_GROUP_ID`] when unsplit; the
+    /// focused group's id when split (CR-NR-092).
     focused_group: TabGroupId,
+    /// The visible split state (CR-NR-092, Slice 2b). `None` == unsplit, in which
+    /// case `TabManager` behaves EXACTLY as Slice 2a. `Some` == one split of two
+    /// Tab_Groups. Not persisted this slice (Req 13.10).
+    split: Option<SplitState>,
 }
 
 impl TabManager {
@@ -59,6 +106,7 @@ impl TabManager {
             // Provisional single leaf; sync_layout below rebuilds it from the store.
             layout: TabGroupTree::Leaf(TabGroup::new(ROOT_GROUP_ID, Vec::new())),
             focused_group: ROOT_GROUP_ID,
+            split: None,
         };
         mgr.sync_layout();
         mgr
@@ -74,16 +122,75 @@ impl TabManager {
     ///
     /// Validates: layout-and-docking Requirement 12.1, 12.3, 12.5
     fn sync_layout(&mut self) {
-        let tab_ids: Vec<String> = self.tabs.iter().map(|t| t.id.0.to_string()).collect();
-        let active = if self.tabs.is_empty() {
-            0
-        } else {
-            self.active.min(self.tabs.len() - 1)
-        };
-        let mut group = TabGroup::new(ROOT_GROUP_ID, tab_ids);
-        group.active_tab = active;
-        self.layout = TabGroupTree::Leaf(group);
-        self.focused_group = ROOT_GROUP_ID;
+        match &self.split {
+            None => {
+                // Slice 2a path: a single Leaf mirroring the flat store. Byte-for
+                // -byte the pre-2b behaviour.
+                let tab_ids: Vec<String> = self.tabs.iter().map(|t| t.id.0.to_string()).collect();
+                let active = if self.tabs.is_empty() {
+                    0
+                } else {
+                    self.active.min(self.tabs.len() - 1)
+                };
+                let mut group = TabGroup::new(ROOT_GROUP_ID, tab_ids);
+                group.active_tab = active;
+                self.layout = TabGroupTree::Leaf(group);
+                self.focused_group = ROOT_GROUP_ID;
+            }
+            Some(_) => {
+                // Reconcile group membership against the store first: drop any
+                // ids no longer present (e.g. a tab closed), clamp actives. If a
+                // group becomes empty, collapse the split (Req 13.9). This keeps
+                // the split robust to store mutations without making every
+                // reorder primitive split-aware.
+                let store_ids: std::collections::HashSet<u64> =
+                    self.tabs.iter().map(|t| t.id.0).collect();
+                if let Some(split) = &mut self.split {
+                    for g in &mut split.groups {
+                        g.tab_ids.retain(|id| store_ids.contains(&id.0));
+                        if !g.tab_ids.is_empty() {
+                            g.active = g.active.min(g.tab_ids.len() - 1);
+                        }
+                    }
+                    let empty = split.groups.iter().position(|g| g.tab_ids.is_empty());
+                    if let Some(empty_idx) = empty {
+                        // One group emptied -> collapse to the other (Req 13.9).
+                        split.focused = 1 - empty_idx;
+                    }
+                }
+                // If a group is empty, perform the collapse (drops `self.split`).
+                let should_collapse = self
+                    .split
+                    .as_ref()
+                    .map(|s| s.groups.iter().any(|g| g.tab_ids.is_empty()))
+                    .unwrap_or(false);
+                if should_collapse {
+                    self.unsplit();
+                    return;
+                }
+                let split = self.split.as_ref().expect("split present");
+                // Slice 2b: a one-level Split of two leaves derived from the
+                // SplitState. The flat store still owns the TabStates; each leaf
+                // lists its own tabs by id.
+                let leaf = |g: &GroupState| {
+                    let ids: Vec<String> = g.tab_ids.iter().map(|id| id.0.to_string()).collect();
+                    let mut tg = TabGroup::new(g.id, ids);
+                    tg.active_tab = if g.tab_ids.is_empty() {
+                        0
+                    } else {
+                        g.active.min(g.tab_ids.len() - 1)
+                    };
+                    TabGroupTree::Leaf(tg)
+                };
+                self.layout = TabGroupTree::Split {
+                    direction: split.direction,
+                    proportion: split.proportion,
+                    first: Box::new(leaf(&split.groups[0])),
+                    second: Box::new(leaf(&split.groups[1])),
+                };
+                self.focused_group = split.groups[split.focused].id;
+            }
+        }
     }
 
     /// Resolve the store index of the focused Tab_Group's active tab (CR-NR-091,
@@ -118,6 +225,212 @@ impl TabManager {
         self.focused_group
     }
 
+    // === CR-NR-092 (B046 Slice 2b): visible in-window split ==================
+
+    /// True when the Workspace area is split into two Tab_Groups.
+    pub fn is_split(&self) -> bool {
+        self.split.is_some()
+    }
+
+    /// Read-only view of the split state (render layer), or `None` when unsplit.
+    pub(crate) fn split_state(&self) -> Option<&SplitState> {
+        self.split.as_ref()
+    }
+
+    /// The store index of a `TabId`, or `None`.
+    fn index_of(&self, id: TabId) -> Option<usize> {
+        self.tabs.iter().position(|t| t.id == id)
+    }
+
+    /// Split the focused Tab_Group into two, in `direction` (CR-NR-092, Req 13.1).
+    ///
+    /// When already split, this is a no-op returning `false` (one split only in
+    /// Slice 2b, Req 13.2 -- the caller shows a status). Otherwise: the current
+    /// tabs stay in the FIRST group; a new POM tab is created in the store and
+    /// becomes the sole tab of the SECOND group; focus moves to the second group
+    /// (Req 13.3). Returns `true` when a split was created.
+    ///
+    /// Validates: layout-and-docking Requirement 13.1, 13.2, 13.3
+    pub fn split_focused(&mut self, direction: SplitDirection, runtime: &Runtime) -> bool {
+        if self.split.is_some() {
+            return false; // Req 13.2: exactly one split this slice.
+        }
+        // First group = all current tabs, active = current active.
+        let first = GroupState {
+            id: ROOT_GROUP_ID,
+            tab_ids: self.tabs.iter().map(|t| t.id).collect(),
+            active: self.active.min(self.tabs.len().saturating_sub(1)),
+        };
+        // Second group = a fresh POM tab (Req 13.3).
+        let document = ff_document_model::new_document();
+        let new_id = TabId(self.next_id);
+        self.next_id += 1;
+        self.tabs.push(TabState::pom(new_id, document));
+        let second = GroupState {
+            id: SECOND_GROUP_ID,
+            tab_ids: vec![new_id],
+            active: 0,
+        };
+        self.split = Some(SplitState {
+            direction,
+            proportion: 0.5,
+            groups: [first, second],
+            focused: 1, // focus the new group (Req 13.3)
+        });
+        self.sync_layout();
+        let _ = runtime;
+        true
+    }
+
+    /// Collapse the split back to a single Tab_Group (CR-NR-092, Req 13.9).
+    ///
+    /// No-op when not split. The SURVIVING group is the focused one; its tabs (in
+    /// order) become the whole store's tab order and its active becomes the flat
+    /// active. Tabs from the other group are appended after the survivor's so no
+    /// open tab is lost. Returns to a single `Leaf`.
+    ///
+    /// Validates: layout-and-docking Requirement 13.9
+    pub fn unsplit(&mut self) {
+        let Some(split) = self.split.take() else {
+            return;
+        };
+        let survivor = &split.groups[split.focused];
+        let other = &split.groups[1 - split.focused];
+        // New flat order: survivor's tabs first (preserving its active), then the
+        // other group's tabs.
+        let mut order: Vec<TabId> = survivor.tab_ids.clone();
+        for id in &other.tab_ids {
+            if !order.contains(id) {
+                order.push(*id);
+            }
+        }
+        let active_id = survivor
+            .tab_ids
+            .get(survivor.active)
+            .copied()
+            .or_else(|| order.first().copied());
+        // Reorder the store to match `order` (stable: any store tab not listed --
+        // should not happen -- is appended).
+        let mut new_tabs: Vec<TabState> = Vec::with_capacity(self.tabs.len());
+        for id in &order {
+            if let Some(pos) = self.tabs.iter().position(|t| t.id == *id) {
+                new_tabs.push(self.tabs.remove(pos));
+            }
+        }
+        new_tabs.append(&mut self.tabs);
+        self.tabs = new_tabs;
+        self.active = active_id
+            .and_then(|id| self.index_of(id))
+            .unwrap_or(0)
+            .min(self.tabs.len().saturating_sub(1));
+        self.previous_active = None;
+        self.sync_layout();
+    }
+
+    /// Move focus to the OTHER Tab_Group (CR-NR-092, Req 13.7). No-op if unsplit.
+    ///
+    /// Validates: layout-and-docking Requirement 13.7
+    pub fn focus_other_group(&mut self) {
+        if let Some(split) = &mut self.split {
+            split.focused = 1 - split.focused;
+            self.sync_layout();
+        }
+    }
+
+    /// Set the split proportion of the FIRST group, clamped to [0.05, 0.95]
+    /// (CR-NR-092, Req 13.5). No-op if unsplit.
+    ///
+    /// Validates: layout-and-docking Requirement 13.5
+    pub fn set_split_proportion(&mut self, proportion: f32) {
+        if let Some(split) = &mut self.split {
+            split.proportion = proportion.clamp(0.05, 0.95);
+            self.sync_layout();
+        }
+    }
+
+    /// Render-support (CR-NR-092): the store indices of the tabs in group
+    /// `group_idx` (0 = first, 1 = second), in display order, paired with the
+    /// group-local position. Ids no longer present in the store are skipped
+    /// (reconciliation also drops them in `sync_layout`). Empty when unsplit or
+    /// `group_idx` out of range.
+    pub(crate) fn split_group_indices(&self, group_idx: usize) -> Vec<usize> {
+        let Some(split) = &self.split else {
+            return Vec::new();
+        };
+        let Some(group) = split.groups.get(group_idx) else {
+            return Vec::new();
+        };
+        group
+            .tab_ids
+            .iter()
+            .filter_map(|id| self.index_of(*id))
+            .collect()
+    }
+
+    /// Render-support (CR-NR-092): the store index of group `group_idx`'s active
+    /// tab, or `None` when unsplit / out of range / empty.
+    pub(crate) fn split_group_active_index(&self, group_idx: usize) -> Option<usize> {
+        let split = self.split.as_ref()?;
+        let group = split.groups.get(group_idx)?;
+        group
+            .tab_ids
+            .get(group.active)
+            .and_then(|id| self.index_of(*id))
+    }
+
+    /// Render-support (CR-NR-092): which group (0 or 1) is focused, or `None`
+    /// when unsplit.
+    pub(crate) fn split_focused_group(&self) -> Option<usize> {
+        self.split.as_ref().map(|s| s.focused)
+    }
+
+    /// Render-support (CR-NR-092, Req 13.7/13.8): focus group `group_idx` and
+    /// make the tab at store index `store_index` its active tab. Used when a tab
+    /// header in a specific region is clicked. No-op when unsplit or the index
+    /// does not resolve.
+    pub(crate) fn focus_group_and_activate(&mut self, group_idx: usize, store_index: usize) {
+        if self.split.is_none() {
+            return;
+        }
+        if let Some(split) = &mut self.split {
+            if group_idx <= 1 {
+                split.focused = group_idx;
+            }
+        }
+        // `activate` targets the focused group, so focusing first then activating
+        // routes the active change to the intended region.
+        self.activate(store_index);
+    }
+
+    /// Render-only (CR-NR-092): retarget `active_tab()` / `active_tab_mut()` at
+    /// group `group_idx`'s active tab, returning an opaque token to restore the
+    /// real focus resolution afterwards via [`restore_render_focus`]. This lets
+    /// the split render draw EACH region's body through the shared
+    /// `render_active_tab_body` (which reads `active_tab()`) WITHOUT mutating the
+    /// authoritative [`SplitState`] focus. `active_tab()` resolves through
+    /// `focused_group` against the (already-synced) layout tree, so pointing
+    /// `focused_group` at the region's leaf id is sufficient and side-effect
+    /// free. The caller MUST pair every call with `restore_render_focus`.
+    #[must_use = "restore the focus with restore_render_focus"]
+    pub(crate) fn set_render_focus_group(&mut self, group_idx: usize) -> RenderFocusToken {
+        let saved = RenderFocusToken(self.focused_group);
+        if let Some(id) = self
+            .split
+            .as_ref()
+            .and_then(|s| s.groups.get(group_idx))
+            .map(|g| g.id)
+        {
+            self.focused_group = id;
+        }
+        saved
+    }
+
+    /// Restore the focus resolution saved by [`set_render_focus_group`]
+    /// (CR-NR-092, render-only).
+    pub(crate) fn restore_render_focus(&mut self, token: RenderFocusToken) {
+        self.focused_group = token.0;
+    }
+
     /// Set the active tab index, recording the outgoing index as the
     /// Previous_Active_Tab (CR-CH-031, Req 18.9). The single internal seam every
     /// activation path uses. A no-op activation (same index) does NOT clobber
@@ -129,8 +442,34 @@ impl TabManager {
             self.previous_active = Some(self.active);
             self.active = clamped;
         }
-        // CR-NR-091: keep the layout mirror in lockstep with the store. Cheap
-        // (tab counts are tiny) and guarantees the single-leaf invariant.
+        // CR-NR-092: while split, the activation targets the FOCUSED group. Map
+        // the store index to a TabId; if that tab is already in the focused
+        // group, set the group's active to it; otherwise the tab was just opened
+        // (openers push to the store then activate the last index) -- add it to
+        // the focused group and make it active there. This keeps a split
+        // interaction (open/switch a tab) acting on the focused region (Req 13.8).
+        if self.split.is_some() {
+            if let Some(id) = self.tabs.get(clamped).map(|t| t.id) {
+                if let Some(split) = &mut self.split {
+                    let f = split.focused;
+                    let other = 1 - f;
+                    // If the tab belongs to the OTHER group, do not steal it;
+                    // just leave focus where it is (activation of an other-group
+                    // tab is not a Slice 2b interaction path).
+                    if !split.groups[other].tab_ids.contains(&id) {
+                        let g = &mut split.groups[f];
+                        match g.tab_ids.iter().position(|t| *t == id) {
+                            Some(pos) => g.active = pos,
+                            None => {
+                                g.tab_ids.push(id);
+                                g.active = g.tab_ids.len() - 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // CR-NR-091/092: keep the layout mirror in lockstep with the store.
         self.sync_layout();
     }
 
@@ -1227,5 +1566,153 @@ mod tests {
                 "active_tab() must equal the store tab at the active index"
             );
         }
+    }
+
+    // === CR-NR-092 (B046 Slice 2b): visible in-window split ==================
+
+    use ff_layout::SplitDirection;
+
+    /// Validates: layout-and-docking Req 13.1/13.3 -- SPLIT creates a two-leaf
+    /// Split node; the first group keeps the current tabs; the second is a new
+    /// POM tab; focus moves to the new (second) group.
+    #[test]
+    fn split_focused_creates_two_groups_second_is_pom() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = mgr_with_titled(&runtime, 2); // T0 T1, one group
+        assert!(!mgr.is_split());
+        let created = mgr.split_focused(SplitDirection::Horizontal, &runtime);
+        assert!(created, "first SPLIT must create a split");
+        assert!(mgr.is_split());
+        match mgr.layout() {
+            ff_layout::TabGroupTree::Split {
+                direction,
+                proportion,
+                first,
+                second,
+            } => {
+                assert_eq!(*direction, SplitDirection::Horizontal);
+                assert!((*proportion - 0.5).abs() < f32::EPSILON);
+                // First group keeps the two original tabs.
+                match first.as_ref() {
+                    ff_layout::TabGroupTree::Leaf(g) => assert_eq!(g.tabs.len(), 2),
+                    _ => panic!("first child must be a leaf"),
+                }
+                // Second group has exactly the new POM tab.
+                match second.as_ref() {
+                    ff_layout::TabGroupTree::Leaf(g) => assert_eq!(g.tabs.len(), 1),
+                    _ => panic!("second child must be a leaf"),
+                }
+            }
+            _ => panic!("layout must be a Split after split_focused"),
+        }
+        // Focus is on the new group -> active tab is the POM (is_home).
+        assert!(
+            mgr.active_tab().is_home,
+            "focus moves to the new group whose active tab is the POM"
+        );
+    }
+
+    /// Validates: layout-and-docking Req 13.2 -- a second SPLIT is rejected (one
+    /// split only in Slice 2b).
+    #[test]
+    fn second_split_is_rejected() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = mgr_with_titled(&runtime, 2);
+        assert!(mgr.split_focused(SplitDirection::Vertical, &runtime));
+        assert!(
+            !mgr.split_focused(SplitDirection::Horizontal, &runtime),
+            "a second SPLIT must be rejected (returns false)"
+        );
+    }
+
+    /// Validates: layout-and-docking Req 13.7/13.8 -- focus_other_group flips the
+    /// focused group, and active_tab() follows the focused group.
+    #[test]
+    fn focus_other_group_flips_focus_and_active_tab_follows() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = mgr_with_titled(&runtime, 1); // T0
+        mgr.split_focused(SplitDirection::Horizontal, &runtime);
+        // After split, focus is on the new POM group.
+        assert!(mgr.active_tab().is_home);
+        // Flip focus to the first group -> active tab is T0.
+        mgr.focus_other_group();
+        assert_eq!(mgr.active_tab().title, "T0");
+        // Flip back -> POM.
+        mgr.focus_other_group();
+        assert!(mgr.active_tab().is_home);
+    }
+
+    /// Validates: layout-and-docking Req 13.9 -- UNSPLIT collapses to a single
+    /// Leaf, preserving the focused (surviving) group's active tab.
+    #[test]
+    fn unsplit_collapses_to_single_leaf_preserving_survivor() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = mgr_with_titled(&runtime, 2); // T0 T1; active = T1 (last opened)
+        mgr.set_active(0); // make T0 the first group's active before splitting
+        assert_eq!(mgr.active_tab().title, "T0");
+        mgr.split_focused(SplitDirection::Horizontal, &runtime); // focus = POM group
+        mgr.focus_other_group(); // survivor = the T0/T1 group, active T0
+        assert_eq!(mgr.active_tab().title, "T0");
+        mgr.unsplit();
+        assert!(!mgr.is_split());
+        // Single leaf again.
+        assert!(matches!(mgr.layout(), ff_layout::TabGroupTree::Leaf(_)));
+        // The survivor's active tab (T0) is the active tab; the POM tab survives
+        // in the store (no open tab lost).
+        assert_eq!(mgr.active_tab().title, "T0");
+        assert!(
+            mgr.tabs().iter().any(|t| t.is_home),
+            "the other group's POM tab is preserved after unsplit"
+        );
+    }
+
+    /// Validates: layout-and-docking Req 13.9 -- closing the focused group's last
+    /// tab auto-collapses the split (via sync_layout reconciliation).
+    #[test]
+    fn closing_last_tab_of_a_group_auto_collapses() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = mgr_with_titled(&runtime, 1); // T0
+        mgr.split_focused(SplitDirection::Horizontal, &runtime); // second = POM, focused
+                                                                 // The focused (second) group has a single tab (POM). Close it from the
+                                                                 // store: find the POM tab's index and close_tab it.
+        let pom_idx = mgr.tabs().iter().position(|t| t.is_home).expect("pom");
+        mgr.close_tab(pom_idx);
+        assert!(
+            !mgr.is_split(),
+            "emptying a group collapses the split back to one region"
+        );
+        assert!(matches!(mgr.layout(), ff_layout::TabGroupTree::Leaf(_)));
+    }
+
+    /// Validates: layout-and-docking Req 13.5 -- set_split_proportion clamps to
+    /// [0.05, 0.95].
+    #[test]
+    fn set_split_proportion_clamps() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = mgr_with_titled(&runtime, 1);
+        mgr.split_focused(SplitDirection::Horizontal, &runtime);
+        mgr.set_split_proportion(2.0);
+        let p = mgr.split_state().expect("split").proportion;
+        assert!((p - 0.95).abs() < f32::EPSILON, "clamped to 0.95, got {p}");
+        mgr.set_split_proportion(-1.0);
+        let p = mgr.split_state().expect("split").proportion;
+        assert!((p - 0.05).abs() < f32::EPSILON, "clamped to 0.05, got {p}");
+    }
+
+    /// Validates: layout-and-docking Req 13.8 -- while split, opening a new tab
+    /// adds it to the FOCUSED group and makes it active there (does not touch the
+    /// other group).
+    #[test]
+    fn opening_a_tab_while_split_targets_the_focused_group() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = mgr_with_titled(&runtime, 1); // T0 in group 0
+        mgr.split_focused(SplitDirection::Horizontal, &runtime); // focus group 1 (POM)
+                                                                 // Open an untitled tab: it must join the focused (second) group.
+        mgr.new_untitled_tab(&runtime);
+        assert_eq!(mgr.active_tab().kind, TabKind::Untitled);
+        let split = mgr.split_state().expect("split");
+        // Second group now has POM + the new untitled = 2 tabs; first group still 1.
+        assert_eq!(split.groups[1].tab_ids.len(), 2);
+        assert_eq!(split.groups[0].tab_ids.len(), 1);
     }
 }

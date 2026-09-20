@@ -1440,3 +1440,86 @@ model and the feature at once. `ff-desktop` gains an `ff-layout` dependency (the
 - **Slice 2c:** recursive nesting, move-tab-between-groups, drag-to-rearrange, `LayoutState`
   session persistence, and folding Detached_Workspaces into the same focus-context abstraction
   (a detached window becomes a focus context whose layout tree lives in its own OS viewport).
+
+
+---
+
+## Design Delta: Visible In-Window Split (Requirement 13, CR-NR-092 / B046 Slice 2b)
+
+### Goal
+
+Make the Slice 2a layout tree VISIBLE: `SPLIT` divides the focused Tab_Group into two regions, both
+rendered at once with a draggable Splitter, focus routed to one group. Exactly one split in 2b.
+
+### Builds directly on what already exists
+
+Two facts from the codebase make this a bounded change rather than a rewrite:
+1. `render_central_panel` already delegates the active tab's content to `render_active_tab_body(ctx, ui)`.
+2. Detached windows already render a tab's real Context by installing it as active via a scoped
+   `with_workspace_context` swap and calling `render_active_tab_body` in a different `Ui`.
+
+Slice 2b generalises (2): to render two groups, for EACH leaf we install that leaf's focused tab as
+the active tab, call `render_active_tab_body` into that leaf's sub-`Ui`, then restore. The tree from
+Slice 2a already models the regions; 2a's `focused_group` already resolves "the active tab."
+
+### Model changes (`tab_manager.rs`, on the Slice 2a tree)
+
+- `TabGroup` gains its own active-tab index already (it has `active_tab`). Slice 2a keeps a single
+  leaf; 2b allows the tree to hold ONE `Split` node with two `Leaf` children.
+- New `TabManager` operations (thin wrappers over `ff-layout` tree edits + the focus model):
+  - `split_focused(direction)` -> replace the focused `Leaf` with a `Split { direction, 0.5, first:
+    <that leaf>, second: <new leaf> }`; the new leaf gets a fresh Tab_Group id and a new tab (POM by
+    default, Req 13.3); focus moves to the new group. Rejects a second split with a status (Req 13.2).
+  - `unsplit()` / auto-collapse -> `TabGroupTree::remove_empty_groups` + collapse the single
+    remaining `Split` to its surviving `Leaf`; focus to the survivor (Req 13.9).
+  - `focus_other_group()` -> flip `focused_group` between the two leaves (Req 13.7).
+  - `set_split_proportion(f32)` -> clamp + store on the `Split` node (Req 13.5).
+  - `active_tab()`/`active_index()` STILL resolve through `focused_group` (Slice 2a shim); with two
+    leaves they now resolve to the focused leaf's active tab -- the multi-group case the shim was
+    designed for. The ~312 call sites remain unchanged; they simply now follow the focused group.
+- The flat `tabs` store stays the single owner of `TabState` (identity/content); a tab belongs to
+  exactly one group's id-list. `sync_layout()` from 2a is REPLACED by explicit tree edits once a
+  split exists (the "rebuild single leaf from store" shortcut only applies while unsplit); with a
+  split, the store is still authoritative for `TabState`s but the tree owns the per-group id lists +
+  active indices. (Design task: define the store<->tree consistency rule for the two-leaf case; the
+  simplest is the tree owns group membership/active, the store owns content, keyed by TabId.)
+
+### Rendering (`shell/render.rs`)
+
+- Replace the single `CentralPanel { render_active_tab_body }` with a tree walk:
+  - `Leaf` -> allocate the region's `Ui`, draw the group's tab bar (its tabs, active highlight,
+    close buttons -- reuse the existing tab-bar renderer parameterised by group), then swap that
+    group's active tab in as the shell active tab and call `render_active_tab_body`.
+  - `Split { direction, proportion, .. }` -> split the available rect by `proportion` in `direction`
+    using egui (`SidePanel`/`TopBottomPanel` with a resizable splitter, or manual `child_ui` rects +
+    an interactive separator), recursing into each child. Only one level in 2b.
+- Paint a focused-group border/title highlight (Req 13.6). The Splitter drag writes back the new
+  proportion (Req 13.5), clamped to `MIN_TAB_GROUP_SIZE`.
+- The top-level chrome (Menu_Bar, Title_Line, single Command Field) stays as today and targets the
+  Focused_Group (Req 13.8) -- a per-group command line is NOT in scope for 2b (single shared command
+  line acting on the focused group; per-group command lines can come later like detached windows).
+
+### Commands (`shell/commands.rs`) -- command parity
+
+- `SPLIT` / `SPLIT RIGHT` (Horizontal), `SPLIT DOWN` (Vertical): call `split_focused`. `SPLIT` is the
+  verb reserved by CR-CH-040 (Slice 1); it now does the real in-window split. (`DETACH` remains the
+  OS-window action; `SPLIT DETACH` still aliases DETACH -- unchanged.)
+- `UNSPLIT`: collapse (Req 13.9). END on a split follows menu-and-statusbar Req 19.14.
+- `FOCUS NEXT` / `FOCUS OTHER` (name TBD at design): move focus between groups (Req 13.7); optional
+  default key binding (owner choice; e.g. a Shift+F-key) -- decided at design, not assumed here.
+- All are dispatchable commands; any menu/key affordance invokes the command (parity).
+
+### Testing
+
+- Unit (tab_manager + ff-layout): split creates a two-leaf `Split` with the right direction/
+  proportion; second `SPLIT` is rejected; `focus_other_group` flips the focus; `unsplit`/empty-group
+  collapse returns a single leaf preserving the survivor; `active_tab()` follows the focused group.
+- Full-shell `egui_kittest`: `SPLIT` then assert two group regions render, the focused group is
+  highlighted, a command/new tab acts on the focused group, `FOCUS`-verb flips it, `UNSPLIT`
+  collapses. Pixel-exact splitter drag geometry MAY be MANUAL (real pointer); the proportion-update
+  logic is unit-tested.
+
+### Explicitly deferred to Slice 2c
+
+Recursive/nested splits (>1 split), drag-a-tab-between-groups, `LayoutState` session persistence of
+the split, and folding Detached_Workspaces into the same focus-context abstraction.

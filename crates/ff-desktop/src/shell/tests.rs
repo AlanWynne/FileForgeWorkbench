@@ -7677,3 +7677,246 @@ fn full_shell_kinds_first_tab_focuses_first_interior() {
         "first Tab in the Kinds Editor must focus the reported first interior, not a phantom stop"
     );
 }
+
+// === CR-NR-092 (B046 Slice 2b): in-window split behaviour ===================
+// These drive the REAL WorkbenchShell headlessly (build_eframe) through the
+// SPLIT / FOCUS / UNSPLIT command path (command parity: the menu/keys route
+// here too) and assert the two-region split model + render. The pixel-exact
+// appearance of the Splitter and the focus-highlight border is a justified
+// MANUAL row; the behaviour (state, focus routing, collapse) is harness-tested.
+
+/// Validates: layout-and-docking Requirement 13.1, 13.3 -- SPLIT divides the
+/// Workspace into two Tab_Groups; the new (second) group is a fresh POM and
+/// receives focus.
+#[test]
+fn full_shell_split_creates_two_groups_second_is_pom_and_focused() {
+    use crate::tab_state::TabKind;
+    let mut harness = harness_shell();
+    assert!(
+        !harness.state().tabs.is_split(),
+        "precondition: not split at launch"
+    );
+    let before = harness.state().tabs.len();
+
+    harness.state_mut().handle_command("SPLIT");
+    harness.run();
+
+    let state = harness.state();
+    assert!(state.tabs.is_split(), "SPLIT must create a split");
+    let split = state.tabs.split_state().expect("split state present");
+    assert_eq!(split.focused, 1, "focus moves to the new second group");
+    assert_eq!(
+        state.tabs.len(),
+        before + 1,
+        "SPLIT adds exactly one new POM tab to the store"
+    );
+    // The focused (second) group's active tab is the new POM.
+    assert!(
+        state.tabs.active_tab().is_home,
+        "the focused new group's active tab is a POM"
+    );
+    assert_eq!(state.tabs.active_tab().kind, TabKind::MenuWorkspace);
+    assert!(state.open_error.is_none());
+}
+
+/// Validates: layout-and-docking Requirement 13.4 -- SPLIT DOWN splits stacked
+/// (Vertical) rather than side-by-side.
+#[test]
+fn full_shell_split_down_is_vertical() {
+    use ff_layout::SplitDirection;
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("SPLIT DOWN");
+    harness.run();
+    let state = harness.state();
+    assert!(state.tabs.is_split());
+    assert_eq!(
+        state.tabs.split_state().expect("split").direction,
+        SplitDirection::Vertical,
+        "SPLIT DOWN must produce a Vertical (stacked) split"
+    );
+}
+
+/// Validates: layout-and-docking Requirement 13.2 -- exactly one split this
+/// slice: a second SPLIT is rejected with a status message and no new group.
+#[test]
+fn full_shell_second_split_is_rejected_with_status() {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("SPLIT");
+    harness.run();
+    let after_first = harness.state().tabs.len();
+    harness.state_mut().open_error = None;
+
+    harness.state_mut().handle_command("SPLIT");
+    harness.run();
+
+    let state = harness.state();
+    assert_eq!(
+        state.tabs.len(),
+        after_first,
+        "a rejected second SPLIT must not add another tab"
+    );
+    assert!(
+        state.open_error.is_some(),
+        "a rejected second SPLIT must report a status message"
+    );
+}
+
+/// Validates: layout-and-docking Requirement 13.7 -- FOCUS moves focus to the
+/// other Tab_Group and the active tab follows the focused group.
+#[test]
+fn full_shell_focus_flips_focused_group() {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("SPLIT");
+    harness.run();
+    // After SPLIT, group 1 (the new POM) is focused.
+    assert_eq!(
+        harness.state().tabs.split_state().expect("split").focused,
+        1
+    );
+    let focused_pom_id = harness.state().tabs.active_tab().id;
+
+    harness.state_mut().handle_command("FOCUS");
+    harness.run();
+
+    let state = harness.state();
+    assert_eq!(
+        state.tabs.split_state().expect("split").focused,
+        0,
+        "FOCUS must flip to the first group"
+    );
+    assert_ne!(
+        state.tabs.active_tab().id,
+        focused_pom_id,
+        "the active tab must follow the newly focused group"
+    );
+}
+
+/// Validates: layout-and-docking Requirement 13.9 -- UNSPLIT collapses back to a
+/// single Tab_Group; the focused (survivor) group's active tab remains active
+/// and no open tab is lost.
+#[test]
+fn full_shell_unsplit_collapses_preserving_survivor() {
+    let mut harness = harness_shell();
+    let before = harness.state().tabs.len();
+    harness.state_mut().handle_command("SPLIT");
+    harness.run();
+    let split_count = harness.state().tabs.len();
+    assert_eq!(split_count, before + 1, "precondition: split added a POM");
+    // Group 1 (the new POM) is focused; it survives the collapse.
+    let survivor_id = harness.state().tabs.active_tab().id;
+
+    harness.state_mut().handle_command("UNSPLIT");
+    harness.run();
+
+    let state = harness.state();
+    assert!(!state.tabs.is_split(), "UNSPLIT must collapse the split");
+    assert_eq!(
+        state.tabs.len(),
+        split_count,
+        "UNSPLIT must not lose any open tab"
+    );
+    assert_eq!(
+        state.tabs.active_tab().id,
+        survivor_id,
+        "the focused group's active tab survives the collapse as the active tab"
+    );
+}
+
+/// Validates: layout-and-docking Requirement 13.9 -- while split, END collapses
+/// the split (the keyboard-friendly "close this region") rather than performing
+/// the usual per-tab Navigation_Stack pop.
+#[test]
+fn full_shell_end_while_split_collapses() {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("SPLIT");
+    harness.run();
+    assert!(harness.state().tabs.is_split(), "precondition: split");
+
+    harness.state_mut().handle_command("END");
+    harness.run();
+
+    assert!(
+        !harness.state().tabs.is_split(),
+        "END while split must collapse the split"
+    );
+}
+
+/// Validates: layout-and-docking Requirement 13.9, 13.10 -- FOCUS / UNSPLIT on
+/// an unsplit Workspace are no-ops with a status message (the split is a
+/// live-only arrangement; a fresh shell launches unsplit per 13.10).
+#[test]
+fn full_shell_focus_and_unsplit_on_unsplit_are_noops_with_status() {
+    let mut harness = harness_shell();
+    assert!(!harness.state().tabs.is_split());
+
+    harness.state_mut().handle_command("FOCUS");
+    harness.run();
+    assert!(
+        harness.state().open_error.is_some(),
+        "FOCUS on an unsplit Workspace reports a status message"
+    );
+    assert!(!harness.state().tabs.is_split());
+
+    harness.state_mut().open_error = None;
+    harness.state_mut().handle_command("UNSPLIT");
+    harness.run();
+    assert!(
+        harness.state().open_error.is_some(),
+        "UNSPLIT on an unsplit Workspace reports a status message"
+    );
+}
+
+/// Validates: layout-and-docking Requirement 13.1, 13.6, 13.8 -- while split the
+/// full shell renders two regions end-to-end without panic across several
+/// frames (the split central panel + per-region tab bars + focus highlight),
+/// and a command still acts on the focused region.
+#[test]
+fn full_shell_split_renders_two_regions_and_command_acts_on_focused() {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("SPLIT");
+    // Run several frames so the split central panel + both region bodies render.
+    for _ in 0..4 {
+        harness.run();
+    }
+    assert!(harness.state().tabs.is_split(), "still split after render");
+
+    // The focused (second) group is a POM; NAME acts on the focused region's
+    // active tab (Req 13.8), not the first group's tab.
+    let focused_id = harness.state().tabs.active_tab().id;
+    harness.state_mut().run_command_line("NAME FocusedRegion");
+    harness.run();
+    let state = harness.state();
+    let idx = state
+        .tabs
+        .index_of_id(focused_id)
+        .expect("focused tab exists");
+    assert_eq!(
+        state.tabs.tabs()[idx].workspace_name.as_deref(),
+        Some("FocusedRegion"),
+        "a command while split acts on the focused region's active tab"
+    );
+}
+
+/// Validates: layout-and-docking Requirement 13.10 (CR-CH-040 regression) --
+/// SPLIT DETACH is unchanged by the new SPLIT verbs: it still detaches the
+/// active Workspace (does NOT create an in-window split).
+#[test]
+fn full_shell_split_detach_still_detaches_not_splits() {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("START"); // keep a docked tab after detach
+    harness.run();
+    harness.state_mut().handle_command("SPLIT DETACH");
+    for _ in 0..3 {
+        harness.run();
+    }
+    let state = harness.state();
+    assert!(
+        !state.tabs.is_split(),
+        "SPLIT DETACH must not create an in-window split"
+    );
+    assert_eq!(
+        state.floating_tabs.len(),
+        1,
+        "SPLIT DETACH must detach into a Detached_Workspace"
+    );
+}

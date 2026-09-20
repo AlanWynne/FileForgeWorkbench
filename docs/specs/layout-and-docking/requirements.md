@@ -333,3 +333,80 @@ visible split (multiple leaves, splitter render, focus routing, split command) i
    resolve-through-focused-group equivalence: after each lifecycle operation, the tree is a single
    `Leaf` whose tab order and active tab match `TabManager`'s store, and `active_tab()` returns the
    focused group's active tab.
+
+
+---
+
+### Requirement 13: Visible In-Window Split (Slice 2b)
+
+**User Story:** As a user, I want to split the workbench's Workspace area into two side-by-side (or
+stacked) regions so I can see two Workspaces at once -- like VS Code editor groups or ISPF
+split-screen -- without detaching a window.
+
+**Source:** [B046] Slice 2b; owner: "creating tab groups is a great idea and extends the product
+very nicely." Builds on Requirement 12 (Slice 2a layout-tree foundation) and realises Requirement 2
+(Tab_Groups). Fulfils the deferred menu-and-statusbar Req 19.11-19.14 (CR-CH-040 reserved `SPLIT`).
+
+**Design note:** the split is rendered by walking the `TabGroupTree` and drawing each `Leaf`
+Tab_Group's focused tab through the EXISTING `render_active_tab_body` (the same path detached
+windows reuse), inside the region the tree allocates. The FOCUSED Tab_Group (Slice 2a focus model)
+is where the command line, keys, and new-tab opens act. Slice 2b is limited to EXACTLY ONE split
+(two leaves); recursive nesting, drag-tab-between-groups, and session persistence are Slice 2c.
+
+**Glossary:**
+- **Split**: A `TabGroupTree::Split { direction, proportion, first, second }` node dividing the area
+  into two child regions at a relative `proportion` in [0,1].
+- **Splitter**: The draggable boundary between the two regions that adjusts `proportion`.
+- **Focused_Group**: The Tab_Group (leaf) that receives command/key/new-tab input (Requirement 12.3),
+  visually indicated.
+
+#### Acceptance Criteria
+
+1. THE shell SHALL provide a `SPLIT` command that divides the Focused_Group into two Tab_Groups: a
+   `TabGroupTree::Split` node whose first child keeps the group's tabs and whose second child is a
+   new empty (or active-tab-cloned -- see 13.3) Tab_Group. `SPLIT` and `SPLIT RIGHT` SHALL use
+   `SplitDirection::Horizontal` (side-by-side); `SPLIT DOWN` SHALL use `SplitDirection::Vertical`
+   (stacked). The default proportion SHALL be 0.5. (Command parity: menu/keys invoke the command.)
+
+2. WHEN there is already one split (two leaves) and `SPLIT` is issued again, THE shell SHALL show a
+   non-blocking status message that only one split is supported in this slice and SHALL NOT create a
+   nested split (Slice 2b scope: exactly one split). Recursive nesting is Slice 2c.
+
+3. WHEN a `SPLIT` creates the second Tab_Group, THE new group SHALL open showing the Home Context
+   (POM) by default so the user chooses what to place there (ISPF-style), UNLESS the command
+   specifies otherwise. (The exact new-group Context MAY be refined during design; the default is a
+   usable Workspace, never an empty non-interactive region.)
+
+4. THE shell SHALL render BOTH Tab_Groups simultaneously: each region draws its focused tab's real
+   Context via the existing `render_active_tab_body`, with its OWN tab bar showing that group's tabs.
+   The two regions SHALL be separated by a draggable Splitter.
+
+5. THE Splitter SHALL adjust the split `proportion` by dragging, honouring a minimum region size of
+   `MIN_TAB_GROUP_SIZE` (100 logical pixels) in the split direction; dragging beyond the minimum
+   SHALL NOT shrink a region further. Sizing SHALL be RELATIVE (proportion), never pixel-absolute.
+
+6. THE Focused_Group SHALL be visually indicated (e.g. an active-border/title highlight) so the user
+   can see which region has the keyboard. Exactly one group is focused at a time.
+
+7. THE shell SHALL provide a command/key to move focus between the two Tab_Groups (framework verb,
+   e.g. `FOCUS NEXT` / `FOCUS OTHER`, and/or a default key binding). Moving focus SHALL update the
+   Focused_Group so subsequent commands, keys, and new-tab opens act on the newly focused group.
+
+8. WHILE split, the command line, function keys, and new-tab/open operations SHALL act on the
+   Focused_Group's active tab (resolved through the Slice 2a focus model), NOT on the other group.
+
+9. THE shell SHALL provide `UNSPLIT` (and END/close semantics on a split, per menu-and-statusbar Req
+   19.14) that collapses the split back to a single Tab_Group, preserving the surviving group's tabs
+   and active tab; the tree returns to a single `Leaf`. Closing the last tab of one group SHALL also
+   collapse the split (the surviving group becomes the whole area), reusing
+   `TabGroupTree::remove_empty_groups`.
+
+10. Slice 2b SHALL NOT change session persistence: a split layout is NOT persisted yet (on restart
+    the workbench opens unsplit); `LayoutState` serialization is Slice 2c. All existing single-group
+    behaviour (no split active) SHALL remain identical to Slice 2a.
+
+11. THE split model operations (create split, collapse/unsplit, move focus, adjust proportion,
+    resolve the focused group's active tab) SHALL be covered by unit tests on the tree + focus
+    model; the rendered two-region behaviour (both regions drawn, focused-group highlight, splitter
+    present, command acts on focused group) SHALL have an `egui_kittest` full-shell test per the GUI
+    Behaviour Testing rule.
