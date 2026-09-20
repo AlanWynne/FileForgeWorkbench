@@ -901,6 +901,94 @@ fn key_list_context_uses_kind_key_list_else_base() {
     );
 }
 
+/// Validates: workspace-kinds Requirement 5.1/5.4/5.5 (CR-NR-090 B.3) -- a new
+/// editor Workspace takes the active Kind's edit_profile at open; a built-in Kind
+/// with the default profile opens with EditProfile::default() (behaviour-
+/// preserving).
+#[test]
+fn new_editor_takes_kind_edit_profile_on_open() {
+    // Validates: workspace-kinds Requirement 5.1, 5.4, 5.5
+    use ff_edit_operations::CapsMode;
+    let mut shell = make_shell();
+
+    // Built-in editor Kind (default profile): a new untitled buffer opens with
+    // the neutral default edit profile (CAPS Off).
+    shell.shell_new_untitled();
+    assert_eq!(
+        shell.tabs.active_tab().edit_profile.caps,
+        CapsMode::Off,
+        "an unconfigured Kind opens with the default edit profile (behaviour-preserving)"
+    );
+
+    // Configure the editor Kind's profile to CAPS On.
+    let dir = tempfile::tempdir().expect("tempdir");
+    std::fs::write(
+        dir.path().join("editor.toml"),
+        "name = \"editor\"\nmodelled_on = \"editor\"\ntitle = \"[EDITOR]\"\n\
+         [profile.edit_profile]\ncaps = \"On\"\n",
+    )
+    .unwrap();
+    shell.kind_registry = crate::workspace_kind::KindRegistry::load(dir.path());
+
+    shell.shell_new_untitled();
+    assert_eq!(
+        shell.tabs.active_tab().edit_profile.caps,
+        CapsMode::On,
+        "a Kind with edit_profile CAPS On opens a new editor tab with CAPS On"
+    );
+
+    // A later per-tab toggle is NOT clobbered by opening a DIFFERENT tab.
+    shell.tabs.active_tab_mut().edit_profile.caps = CapsMode::Off;
+    let toggled_id = shell.tabs.active_tab().id;
+    shell.shell_new_untitled(); // open another tab
+    let toggled = shell
+        .tabs
+        .tabs()
+        .iter()
+        .find(|t| t.id == toggled_id)
+        .expect("toggled tab still open");
+    assert_eq!(
+        toggled.edit_profile.caps,
+        CapsMode::Off,
+        "profile is applied ONCE at open; a later per-tab toggle survives"
+    );
+}
+
+/// Validates: workspace-kinds Requirement 5.2 (CR-NR-090 B.3) -- a NEW/untitled
+/// buffer takes the Kind's line_end_mode default.
+#[test]
+fn new_buffer_takes_kind_line_end_mode() {
+    // Validates: workspace-kinds Requirement 5.2
+    use ff_document_model::LineEndMode;
+    let mut shell = make_shell();
+    let dir = tempfile::tempdir().expect("tempdir");
+    std::fs::write(
+        dir.path().join("editor.toml"),
+        "name = \"editor\"\nmodelled_on = \"editor\"\ntitle = \"[EDITOR]\"\n\
+         [profile]\nline_end_mode = \"unicode\"\n",
+    )
+    .unwrap();
+    shell.kind_registry = crate::workspace_kind::KindRegistry::load(dir.path());
+    shell.shell_new_untitled();
+    assert_eq!(
+        shell.tabs.active_tab().line_end_mode,
+        LineEndMode::Unicode,
+        "a new buffer takes the Kind's configured line_end_mode default"
+    );
+}
+
+/// Validates: workspace-kinds Requirement 5.2 (CR-NR-090 B.3) -- the
+/// line_end_from_name mapper.
+#[test]
+fn line_end_from_name_maps_unicode_else_default() {
+    // Validates: workspace-kinds Requirement 5.2
+    use ff_document_model::LineEndMode;
+    assert_eq!(super::line_end_from_name("unicode"), LineEndMode::Unicode);
+    assert_eq!(super::line_end_from_name("Unicode"), LineEndMode::Unicode);
+    assert_eq!(super::line_end_from_name("default"), LineEndMode::Default);
+    assert_eq!(super::line_end_from_name("anything"), LineEndMode::Default);
+}
+
 /// Validates: workspace-kinds Requirement 4.1/4.5 (CR-NR-090 B.2) -- the Menu_Bar
 /// for a tab is the Kind's configured `menu_bar` when set (loaded via the named
 /// -menu resolver), else the compiled default bar. Uses a temp menus dir so the

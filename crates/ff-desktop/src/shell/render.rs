@@ -603,7 +603,7 @@ impl WorkbenchShell {
                         // Navigate editor to the clicked diagnostic location.
                         // Req 16.7, 18.6 — open the file if not already open,
                         // then scroll to the target line.
-                        let _ = self.tabs.open_file(&file, &self.runtime);
+                        let _ = self.shell_open_file(&file);
                         self.nav_manager.locate(&line.to_string(), &mut self.tabs);
                         let _ = col; // column navigation deferred to Phase W follow-up
                     }
@@ -829,7 +829,7 @@ impl WorkbenchShell {
                             path,
                             line,
                         } => {
-                            if let Err(e) = self.tabs.open_file(&path, &self.runtime) {
+                            if let Err(e) = self.shell_open_file(&path) {
                                 self.open_error = Some(e);
                             } else {
                                 // Scroll to the matching line.

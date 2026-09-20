@@ -221,12 +221,49 @@ menu-bar + keymap and CR-NR-080 Slice C (menu-bar per kind).
    menu-bar rendering or key binding SHALL change for a Kind that has not been
    reconfigured.
 
-### Requirement 5: Per-Kind profile attributes (Slice B.3 -- PENDING GATE)
+### Requirement 5: Per-Kind profile attributes applied on open (Slice B.3)
 
-*(Placeholder -- criteria to be finalised at the B.3 gate.)* A Workspace Kind's
-`Kind_Profile` (edit-profile defaults CAPS/NULLS/STATS/LOCK/HILITE, tab size,
-line endings) SHALL be applied when a Workspace of that Kind is opened. Delivers
-CR-NR-082's deferred per-workspace Profile store.
+**User Story:** As a user, I want a Workspace Kind's profile defaults (its ISPF
+edit profile, and the default line endings for a new buffer) applied when a
+Workspace of that Kind is opened, so a Kind I configured for e.g. mainframe
+editing starts with CAPS ON without my having to set it each time.
+
+**Source:** [CR-NR-090] Slice B.3; delivers CR-NR-082's deferred per-workspace
+Profile store.
+
+#### Acceptance Criteria
+
+1. WHEN an EDITOR Workspace (a file-editor or untitled buffer) is OPENED, THE
+   workbench SHALL initialise that tab's Edit_Profile (CAPS/NULLS/STATS/LOCK/
+   HILITE) from the active Kind's effective `Kind_Profile.edit_profile` (via the
+   registry, keyed by the Kind's stable name). This applies ONCE at open, not on
+   every activation, so a user's subsequent per-tab toggle (e.g. `CAPS OFF`) is
+   NOT clobbered.
+
+2. WHEN a NEW / UNTITLED buffer is created, THE workbench SHALL set its
+   Line_End_Mode from the active Kind's effective `Kind_Profile.line_end_mode`
+   (mapping the stored name: `"default"` / `"unicode"`). WHEN a file is LOADED
+   from disk, its Line_End_Mode SHALL remain the mode DETECTED from the file
+   content (the file's real encoding wins over the Kind default); the Kind's
+   `line_end_mode` is a default for NEW buffers only.
+
+3. THE `Kind_Profile.tab_size` field SHALL be carried and editable (B.4) and
+   round-trip in the Kind file, but is NOT applied to a per-tab tab size in B.3
+   (there is no per-tab tab-size field; `editor.tab_size` remains a global config
+   key). This is a DOCUMENTED deferral -- applying a per-Kind tab size is picked
+   up when a per-tab tab-size exists (or via the B.4 dialog writing config); no
+   silent gap.
+
+4. A user Kind's `Kind_Profile` SHALL follow the same "modelled on" rule: WHERE
+   the user Kind does not set a profile value, the compiled default profile is
+   used (the built-in defaults are the neutral `EditProfile::default()` / tab
+   size / `"default"` line endings), so an unconfigured Kind opens exactly as
+   today (behaviour-preserving).
+
+5. THE profile application SHALL be behaviour-preserving for the built-in Kinds
+   with default profiles: opening an editor Workspace of a built-in Kind SHALL
+   produce the SAME initial Edit_Profile and (for new buffers) Line_End_Mode as
+   before this slice.
 
 ### Requirement 6: Kind configuration dialog + command + RESET BARE defaults (Slice B.4 -- PENDING GATE)
 

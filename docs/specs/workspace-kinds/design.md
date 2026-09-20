@@ -207,3 +207,64 @@ Kind's `key_list` when set and the base context when unset; a full-shell test
 that switching to a Kind with a configured bar renders that bar's top-level
 items. The real menu-bar visual + a live keystroke remain covered by existing
 menu-bar / keymap tests (behaviour-preserving for unset Kinds).
+
+## 10. Slice B.3 delta -- per-Kind profile attributes applied on open
+
+B.3 applies the `KindProfile` (from B.1) to a newly-opened Workspace. The
+applicable per-tab attributes are the ones that HAVE a per-tab home on
+`TabState`: `edit_profile: EditProfile` and `line_end_mode: LineEndMode`.
+`tab_size` has no per-tab field (it is the global `editor.tab_size` config key),
+so it is carried in the schema (dialog-editable in B.4) but NOT applied to a
+per-tab value in B.3 (Req 5.3, documented deferral).
+
+### Application seam
+
+Add `WorkbenchShell::apply_kind_profile_to_active(&mut self)`:
+
+```rust
+fn apply_kind_profile_to_active(&mut self) {
+    let kind_name = { let t = self.tabs.active_tab();
+        BuiltinKind::from_tab_kind(t.kind, t.is_home).stable_name() };
+    let profile = self.kind_registry.effective(kind_name).profile.clone();
+    let tab = self.tabs.active_tab_mut();
+    match tab.kind {
+        TabKind::Untitled => {                      // new buffer: edit profile + line-end default
+            tab.edit_profile = profile.edit_profile.clone();
+            tab.line_end_mode = line_end_from_name(&profile.line_end_mode);
+        }
+        TabKind::FileEditor => {                     // loaded file: edit profile only; keep detected line-end
+            tab.edit_profile = profile.edit_profile.clone();
+        }
+        _ => {}                                      // non-editor Kinds: edit profile is irrelevant
+    }
+}
+```
+
+`line_end_from_name("default"|"unicode")` maps to `LineEndMode` (default for any
+other value). Called ONCE right after a tab is created and made active, at the
+shell open seams:
+- `update.rs` frame handlers: `pending_open` (file open), `pending_new_file`
+  (new untitled), and the `cli_files` startup-open loop;
+- the search-result "OpenMatch" open (render.rs) and the toolchain diagnostic
+  open reuse `open_file` -> also apply.
+
+To keep it to ONE call site per open rather than scattering it, wrap the two
+TabManager creators used by the shell in thin shell methods
+`shell_open_file(path)` and `shell_new_untitled()` that call the TabManager
+method then `apply_kind_profile_to_active()`, and route the shell's open sites
+through them. (Direct `self.tabs.open_file` calls in the shell are replaced by
+`self.shell_open_file`.) This gives a single, testable application point and
+avoids per-call-site duplication.
+
+Applying ONCE at open (not on activation) means a user's later per-tab toggle
+(`CAPS OFF`) is preserved (Req 5.1). Loaded files keep their detected
+`line_end_mode` (Req 5.2). Built-in Kinds carry the neutral default profile, so
+opening is behaviour-preserving (Req 5.4/5.5).
+
+### Testability (B.3)
+
+Headless: a Kind whose profile sets `CAPS On` -> a new/opened editor tab of that
+Kind starts with `edit_profile.caps == On`; a subsequent `CAPS OFF` is not
+re-clobbered on the next frame; a NEW buffer of a Kind with `line_end_mode =
+"unicode"` opens Unicode while a LOADED file keeps its detected mode; a built-in
+Kind (default profile) opens with `EditProfile::default()` (unchanged).

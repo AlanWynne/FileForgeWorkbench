@@ -134,7 +134,7 @@ impl eframe::App for WorkbenchShell {
             if !cli_files.is_empty() {
                 // CLI args take precedence over session restore (Req 5 AC 6).
                 for path in cli_files {
-                    if let Err(e) = self.tabs.open_file(&path, &self.runtime) {
+                    if let Err(e) = self.shell_open_file(&path) {
                         self.open_error = Some(e);
                     } else {
                         self.open_error = None;
@@ -261,7 +261,7 @@ impl eframe::App for WorkbenchShell {
         let path = self.pending_open.lock().expect("pending lock").take();
         if let Some(p) = path {
             if !p.is_empty() {
-                if let Err(e) = self.tabs.open_file(&p, &self.runtime) {
+                if let Err(e) = self.shell_open_file(&p) {
                     self.open_error = Some(e);
                 } else {
                     self.open_error = None;
@@ -299,7 +299,7 @@ impl eframe::App for WorkbenchShell {
         }
         if self.pending_new_file {
             self.pending_new_file = false;
-            self.tabs.new_untitled_tab(&self.runtime);
+            self.shell_new_untitled();
         }
         // F3/END from the Files Panel (or another panel deferring an END) pops
         // one level of the tab's Navigation_Stack (menu-workspace Req 14.4,

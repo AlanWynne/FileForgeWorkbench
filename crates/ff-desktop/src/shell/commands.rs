@@ -1908,7 +1908,7 @@ impl WorkbenchShell {
                 } => match workspace_kind {
                     WorkspaceKind::Editor => {
                         if let Some(DescriptorValue::String(uri)) = params.get("uri") {
-                            if let Err(e) = self.tabs.open_file(uri, &self.runtime) {
+                            if let Err(e) = self.shell_open_file(uri) {
                                 self.open_error = Some(format!("Could not restore: {e}"));
                             }
                         }

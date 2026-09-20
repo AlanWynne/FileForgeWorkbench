@@ -1045,6 +1045,66 @@ impl WorkbenchShell {
         }
         context_name_for_tab(tab).map(|s| s.to_string())
     }
+
+    /// Apply the active tab's Workspace Kind profile to it (CR-NR-090 B.3,
+    /// workspace-kinds Req 5). Called ONCE right after a tab is created and made
+    /// active (via `shell_open_file` / `shell_new_untitled`), NOT on every
+    /// activation, so a later per-tab toggle is preserved (Req 5.1).
+    ///
+    /// - An editor tab (FileEditor or Untitled) takes the Kind's `edit_profile`.
+    /// - A NEW / Untitled buffer also takes the Kind's `line_end_mode` default; a
+    ///   LOADED file keeps the mode DETECTED from its content (Req 5.2).
+    /// - `tab_size` is carried in the profile but NOT applied here (no per-tab
+    ///   tab-size field; Req 5.3, documented deferral).
+    /// - Non-editor Kinds: no-op (edit profile is irrelevant).
+    pub(crate) fn apply_kind_profile_to_active(&mut self) {
+        use crate::tab_state::TabKind;
+        let kind_name = {
+            let t = self.tabs.active_tab();
+            crate::workspace_kind::BuiltinKind::from_tab_kind(t.kind, t.is_home).stable_name()
+        };
+        let profile = self.kind_registry.effective(kind_name).profile.clone();
+        let tab = self.tabs.active_tab_mut();
+        match tab.kind {
+            TabKind::Untitled => {
+                tab.edit_profile = profile.edit_profile.clone();
+                tab.line_end_mode = line_end_from_name(&profile.line_end_mode);
+            }
+            TabKind::FileEditor => {
+                // Loaded file: apply the edit profile but KEEP the detected
+                // line-end mode (the file's real encoding wins, Req 5.2).
+                tab.edit_profile = profile.edit_profile.clone();
+            }
+            _ => {}
+        }
+    }
+
+    /// Open a file into a new tab AND apply the resulting Kind's profile
+    /// (CR-NR-090 B.3). The single shell open-file seam; wraps
+    /// `TabManager::open_file`.
+    pub(crate) fn shell_open_file(&mut self, path: &str) -> Result<(), String> {
+        let result = self.tabs.open_file(path, &self.runtime);
+        if result.is_ok() {
+            self.apply_kind_profile_to_active();
+        }
+        result
+    }
+
+    /// Create a new untitled buffer AND apply the resulting Kind's profile
+    /// (CR-NR-090 B.3). The single shell new-untitled seam.
+    pub(crate) fn shell_new_untitled(&mut self) {
+        self.tabs.new_untitled_tab(&self.runtime);
+        self.apply_kind_profile_to_active();
+    }
+}
+
+/// Map a `Kind_Profile.line_end_mode` stored name to a `LineEndMode`
+/// (CR-NR-090 B.3). `"unicode"` -> Unicode; anything else -> Default.
+pub(crate) fn line_end_from_name(name: &str) -> ff_document_model::LineEndMode {
+    match name.trim().to_ascii_lowercase().as_str() {
+        "unicode" => ff_document_model::LineEndMode::Unicode,
+        _ => ff_document_model::LineEndMode::Default,
+    }
 }
 
 /// - POM tab → app name + version

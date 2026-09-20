@@ -54,8 +54,25 @@ their gates). Slice B.1 below.
   - [x] 7.1 verify.ps1 CLEAN (FULL nextest); ffwb.exe rebuilt; TCR rows; change-log B.2 DONE; project-master WK.2; test-plan 2.7a
     - Covers: Slice B.2
 
-## Slice B.3 -- per-Kind profile attributes (PENDING GATE)
-- [ ] (tasks added at the B.3 gate)
+## Slice B.3 -- per-Kind profile attributes applied on open
+
+- [x] 8. Apply the Kind profile on open
+  - [x] 8.1 Added `line_end_from_name(&str) -> LineEndMode` mapper ("unicode" else default); unit test line_end_from_name_maps_unicode_else_default
+    - Covers: Requirement 5.2
+  - [x] 8.2 Added `WorkbenchShell::apply_kind_profile_to_active()`: edit_profile from the Kind (Untitled + FileEditor); line_end_mode from the profile ONLY for Untitled (loaded files keep detected); non-editor kinds no-op; applied once at open
+    - Covers: Requirement 5.1, 5.2, 5.4
+  - [x] 8.3 Added shell wrappers `shell_open_file(path)` + `shell_new_untitled()` (TabManager call + apply_kind_profile_to_active); routed all shell open sites (update.rs pending_open + cli_files + pending_new_file; render.rs search-open + toolchain-open; commands.rs session-restore Editor) through them
+    - Covers: Requirement 5.1, 5.2
+- [x] 9. Tests + behaviour-preserving
+  - [x] 9.1 new_editor_takes_kind_edit_profile_on_open (CAPS On applied at open; a later per-tab toggle survives opening another tab; default Kind opens CAPS Off)
+    - Covers: Requirement 5.1
+  - [x] 9.2 new_buffer_takes_kind_line_end_mode (a Unicode Kind opens a new buffer Unicode) + line_end_from_name unit test
+    - Covers: Requirement 5.2
+  - [x] 9.3 built-in default profile opens with EditProfile::default() (asserted in new_editor_takes_kind_edit_profile_on_open)
+    - Covers: Requirement 5.4, 5.5
+- [x] 10. Slice B.3 close
+  - [x] 10.1 verify.ps1 CLEAN (FULL nextest); ffwb.exe rebuilt; TCR rows; change-log B.3 DONE; project-master WK.3; test-plan 4.8b
+    - Covers: Slice B.3
 
 ## Slice B.4 -- Kind config dialog + Settings entry + command + RESET BARE defaults (PENDING GATE)
 - [ ] (tasks added at the B.4 gate)

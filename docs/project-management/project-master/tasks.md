@@ -2632,13 +2632,16 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
       inheritance = unset means same as base. Behaviour-preserving for built-ins.
       Covers: workspace-kinds Req 4; menu-workspace 17.9 (Slice C); CR-NR-082
       deferred per-kind menu-bar + keymap.
-- [ ] WK.3 (Slice B.3, PENDING GATE): per-Kind profile attributes (edit-profile
-      defaults, tab size, line endings) applied on open. Covers: workspace-kinds
-      Req 5.
+- [x] WK.3 (Slice B.3): per-Kind profile applied on open --
+      apply_kind_profile_to_active sets a new/opened editor tab's edit_profile
+      from the Kind (once, not re-clobbering later toggles); a NEW buffer takes
+      the Kind's line_end_mode (loaded files keep detected); tab_size carried but
+      NOT applied to a per-tab size in B.3 (documented deferral). Behaviour-
+      preserving for built-ins. Covers: workspace-kinds Req 5.
 - [ ] WK.4 (Slice B.4, PENDING GATE): Kind config dialog ("New Kind modelled on
       <base>", edit built-ins) + Settings entry + command + RESET BARE defaults.
       Covers: workspace-kinds Req 6.
 
 | Status | Count |
 |--------|-------|
-| `[ ]` Phase (workspace-kinds) Wave B (B.1+B.2 done) | CR-NR-090 configurable Workspace Kinds. B.1 DONE (KindConfig/BaseKind/KindProfile + KindRegistry + compiled built-in defaults + title-from-Kind-config; fixes Catalogs [CATALOGS] vs File Explorer [FILES] smell; external-ready BaseKind). B.2 DONE (per-Kind menu bar via resolve_menu_bar_menu_for + key list via key_list_context_for_tab; behaviour-preserving for built-ins). B.3-B.4 PENDING GATE. NO Def layer (owner); user Kinds modelled on a built-in base. |
+| `[ ]` Phase (workspace-kinds) Wave B (B.1-B.3 done) | CR-NR-090 configurable Workspace Kinds. B.1 DONE (KindConfig/BaseKind/KindProfile + KindRegistry + compiled built-in defaults + title-from-Kind-config; fixes Catalogs [CATALOGS] vs File Explorer [FILES] smell; external-ready BaseKind). B.2 DONE (per-Kind menu bar via resolve_menu_bar_menu_for + key list via key_list_context_for_tab; behaviour-preserving for built-ins). B.3 DONE (per-Kind profile applied on open: edit_profile + new-buffer line_end_mode via apply_kind_profile_to_active; tab_size deferred). B.4 PENDING GATE. NO Def layer (owner); user Kinds modelled on a built-in base. |
