@@ -5,12 +5,26 @@
 
 use ff_connector_local_fs::LocalFsProvider;
 use ff_document_model::{new_document, BytePosition};
+use ff_layout::{TabGroup, TabGroupId, TabGroupTree};
 use ff_vfs::VfsProvider;
 use tokio::runtime::Runtime;
 
 use crate::tab_state::{TabId, TabKind, TabState};
 
+/// The `TabGroupId` of the sole Tab_Group in Slice 2a. The layout tree is always
+/// a single `Leaf` with this id (CR-NR-091; layout-and-docking Req 12.1/12.3).
+const ROOT_GROUP_ID: TabGroupId = TabGroupId::new(0);
+
 /// Manages all open tabs and the active tab index.
+///
+/// CR-NR-091 (B046 Slice 2a): the shell now models tab arrangement as a
+/// [`TabGroupTree`] (the `ff-layout` layout tree). In THIS slice the tree is
+/// always a single `Leaf` Tab_Group mirroring the flat store, so behaviour is
+/// identical to the pre-slice flat model. The flat `tabs`/`active`/`previous_active`
+/// remain the AUTHORITATIVE state; `layout` is a mirror rebuilt by
+/// [`TabManager::sync_layout`] after every mutation, and `active_tab()` /
+/// `active_index()` resolve THROUGH the focused group (which, with one leaf, is
+/// exactly `active`). The visible split (multiple leaves) is Slice 2b.
 pub struct TabManager {
     tabs: Vec<TabState>,
     active: usize,
@@ -20,6 +34,11 @@ pub struct TabManager {
     /// `None` until a second distinct tab has been activated.
     previous_active: Option<usize>,
     next_id: u64,
+    /// The layout tree (CR-NR-091). Always a single `Leaf` in Slice 2a; a mirror
+    /// of the flat store kept in lockstep by [`sync_layout`](Self::sync_layout).
+    layout: TabGroupTree,
+    /// The focused Tab_Group (CR-NR-091). Always [`ROOT_GROUP_ID`] in Slice 2a.
+    focused_group: TabGroupId,
 }
 
 impl TabManager {
@@ -32,12 +51,71 @@ impl TabManager {
         });
         let line_count = runtime.block_on(async { document.read().await.line_count() });
         let tab = TabState::untitled(TabId(0), document, line_count);
-        Self {
+        let mut mgr = Self {
             tabs: vec![tab],
             active: 0,
             previous_active: None,
             next_id: 1,
-        }
+            // Provisional single leaf; sync_layout below rebuilds it from the store.
+            layout: TabGroupTree::Leaf(TabGroup::new(ROOT_GROUP_ID, Vec::new())),
+            focused_group: ROOT_GROUP_ID,
+        };
+        mgr.sync_layout();
+        mgr
+    }
+
+    /// Rebuild the layout tree from the flat store (CR-NR-091, Slice 2a).
+    ///
+    /// In Slice 2a the tree is ALWAYS a single `Leaf` Tab_Group whose tab list
+    /// mirrors the store's tab order (by `TabId`, stringified) and whose
+    /// `active_tab` index mirrors `self.active`. Called at the end of every
+    /// mutating lifecycle method so the tree can never drift from the store.
+    /// The flat store remains authoritative; this keeps the mirror honest.
+    ///
+    /// Validates: layout-and-docking Requirement 12.1, 12.3, 12.5
+    fn sync_layout(&mut self) {
+        let tab_ids: Vec<String> = self.tabs.iter().map(|t| t.id.0.to_string()).collect();
+        let active = if self.tabs.is_empty() {
+            0
+        } else {
+            self.active.min(self.tabs.len() - 1)
+        };
+        let mut group = TabGroup::new(ROOT_GROUP_ID, tab_ids);
+        group.active_tab = active;
+        self.layout = TabGroupTree::Leaf(group);
+        self.focused_group = ROOT_GROUP_ID;
+    }
+
+    /// Resolve the store index of the focused Tab_Group's active tab (CR-NR-091,
+    /// Slice 2a). With a single leaf this is exactly `self.active`; the
+    /// resolution goes through the layout tree so the same code path serves the
+    /// multi-group case in Slice 2b. Falls back to `self.active` if the tree is
+    /// somehow out of sync (belt-and-braces; sync_layout keeps them equal).
+    ///
+    /// Validates: layout-and-docking Requirement 12.4
+    fn focused_active_index(&self) -> usize {
+        let resolved = self.layout.find_group(self.focused_group).and_then(|g| {
+            g.tabs
+                .get(g.active_tab)
+                .and_then(|id_str| id_str.parse::<u64>().ok())
+                .and_then(|id| self.tabs.iter().position(|t| t.id.0 == id))
+        });
+        resolved
+            .unwrap_or(self.active)
+            .min(self.tabs.len().saturating_sub(1))
+    }
+
+    /// The layout tree (CR-NR-091). Slice 2a: always a single `Leaf`. Exposed for
+    /// unit tests asserting the single-leaf invariant.
+    #[cfg(test)]
+    pub(crate) fn layout(&self) -> &TabGroupTree {
+        &self.layout
+    }
+
+    /// The focused Tab_Group id (CR-NR-091). Slice 2a: always [`ROOT_GROUP_ID`].
+    #[cfg(test)]
+    pub(crate) fn focused_group_id(&self) -> TabGroupId {
+        self.focused_group
     }
 
     /// Set the active tab index, recording the outgoing index as the
@@ -51,6 +129,9 @@ impl TabManager {
             self.previous_active = Some(self.active);
             self.active = clamped;
         }
+        // CR-NR-091: keep the layout mirror in lockstep with the store. Cheap
+        // (tab counts are tiny) and guarantees the single-leaf invariant.
+        self.sync_layout();
     }
 
     /// The tab index that was active immediately before the current one, or
@@ -67,9 +148,15 @@ impl TabManager {
         self.tabs.len()
     }
 
-    /// Active tab index.
+    /// Active tab index -- resolved through the focused Tab_Group (CR-NR-091).
+    ///
+    /// With the single-leaf layout of Slice 2a this equals `self.active`, so
+    /// every existing caller is unaffected. The resolution goes through the
+    /// layout tree so the same accessor serves the multi-group case later.
+    ///
+    /// Validates: layout-and-docking Requirement 12.4
     pub fn active_index(&self) -> usize {
-        self.active
+        self.focused_active_index()
     }
 
     /// Find the current index of the tab with the given stable `TabId`, or
@@ -96,14 +183,21 @@ impl TabManager {
         &mut self.tabs
     }
 
-    /// Mutable reference to the active tab.
+    /// Mutable reference to the active tab -- the focused Tab_Group's active tab
+    /// (CR-NR-091; single-leaf Slice 2a resolves to `self.active`).
+    ///
+    /// Validates: layout-and-docking Requirement 12.4
     pub fn active_tab_mut(&mut self) -> &mut TabState {
-        &mut self.tabs[self.active]
+        let idx = self.focused_active_index();
+        &mut self.tabs[idx]
     }
 
-    /// Immutable reference to the active tab.
+    /// Immutable reference to the active tab -- the focused Tab_Group's active
+    /// tab (CR-NR-091; single-leaf Slice 2a resolves to `self.active`).
+    ///
+    /// Validates: layout-and-docking Requirement 12.4
     pub fn active_tab(&self) -> &TabState {
-        &self.tabs[self.active]
+        &self.tabs[self.focused_active_index()]
     }
 
     /// Close the initial welcome/placeholder tab if it is the only tab and has no path.
@@ -119,6 +213,7 @@ impl TabManager {
             self.tabs.clear();
             self.active = 0;
             self.previous_active = None;
+            self.sync_layout(); // CR-NR-091
         }
     }
 
@@ -137,6 +232,7 @@ impl TabManager {
         // (CR-CH-031). Reset it rather than track the shift.
         self.active = 0;
         self.previous_active = None;
+        self.sync_layout(); // CR-NR-091
         let _ = runtime;
     }
 
@@ -556,6 +652,7 @@ impl TabManager {
             Some(p) if p > index => Some(p - 1),
             other => other,
         };
+        self.sync_layout(); // CR-NR-091
     }
 
     /// Remove and return the tab at `index`, repairing `active` /
@@ -580,6 +677,7 @@ impl TabManager {
             Some(p) if p > index => Some(p - 1),
             other => other,
         };
+        self.sync_layout(); // CR-NR-091
         tab
     }
 
@@ -599,6 +697,7 @@ impl TabManager {
         self.previous_active = self
             .previous_active
             .map(|p| if p >= idx { p + 1 } else { p });
+        self.sync_layout(); // CR-NR-091
     }
 
     /// Move the tab at `from` to position `to` (clamped to the valid range),
@@ -620,6 +719,7 @@ impl TabManager {
         if was_active {
             self.active = target;
         }
+        self.sync_layout(); // CR-NR-091 (after the final active assignment)
         target
     }
 }
@@ -1015,5 +1115,117 @@ mod tests {
         let count = mgr.len();
         mgr.open_files_panel_tab(&runtime);
         assert_eq!(mgr.len(), count, "second open must not add a duplicate");
+    }
+
+    // === CR-NR-091 (B046 Slice 2a): Shell Layout Tree foundation invariants ===
+
+    use ff_layout::TabGroupTree;
+
+    /// The leaf's `(tab-id list in order, active index)`, or panics if the tree
+    /// is not a single `Leaf` (the Slice 2a invariant).
+    fn leaf_snapshot(mgr: &TabManager) -> (Vec<u64>, usize) {
+        match mgr.layout() {
+            TabGroupTree::Leaf(g) => {
+                let ids: Vec<u64> = g.tabs.iter().map(|s| s.parse::<u64>().unwrap()).collect();
+                (ids, g.active_tab)
+            }
+            TabGroupTree::Split { .. } => panic!("Slice 2a invariant violated: tree is a Split"),
+        }
+    }
+
+    /// Assert the single-leaf invariant: the tree is one `Leaf` whose tab-id
+    /// order equals the store's tab order and whose active index equals the
+    /// store's active index; and `active_tab()` returns the focused group's
+    /// active tab (Req 12.4/12.8).
+    fn assert_layout_mirrors_store(mgr: &TabManager) {
+        let (leaf_ids, leaf_active) = leaf_snapshot(mgr);
+        let store_ids: Vec<u64> = mgr.tabs().iter().map(|t| t.id.0).collect();
+        assert_eq!(leaf_ids, store_ids, "leaf tab order must mirror the store");
+        assert_eq!(
+            leaf_active,
+            mgr.active_index(),
+            "leaf active index must mirror active_index()"
+        );
+        // active_tab() resolves through the focused group to the store tab.
+        let expected_id = store_ids[mgr.active_index()];
+        assert_eq!(
+            mgr.active_tab().id.0,
+            expected_id,
+            "active_tab() must resolve through the focused group"
+        );
+        assert_eq!(mgr.focused_group_id().value(), 0, "single leaf is group 0");
+    }
+
+    /// Validates: layout-and-docking Req 12.1/12.8 -- a fresh manager is a single
+    /// Leaf mirroring the store.
+    #[test]
+    fn layout_tree_is_single_leaf_on_new() {
+        let runtime = Runtime::new().expect("runtime");
+        let mgr = TabManager::new(&runtime, "hello\n");
+        assert_layout_mirrors_store(&mgr);
+    }
+
+    /// Validates: layout-and-docking Req 12.5/12.8 -- the single-leaf invariant
+    /// holds after each lifecycle operation (open/new/set_active/close).
+    #[test]
+    fn layout_tree_mirrors_store_after_each_operation() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = TabManager::new(&runtime, "");
+        assert_layout_mirrors_store(&mgr);
+
+        mgr.insert_pom_tab(&runtime);
+        assert_layout_mirrors_store(&mgr);
+
+        mgr.new_untitled_tab(&runtime);
+        assert_layout_mirrors_store(&mgr);
+
+        mgr.open_files_panel_tab(&runtime);
+        assert_layout_mirrors_store(&mgr);
+
+        mgr.set_active(0);
+        assert_layout_mirrors_store(&mgr);
+
+        mgr.set_active(2);
+        assert_layout_mirrors_store(&mgr);
+
+        mgr.close_tab(1);
+        assert_layout_mirrors_store(&mgr);
+    }
+
+    /// Validates: layout-and-docking Req 12.5 -- the invariant survives the
+    /// detach/redock reorder primitives (remove_at / insert_at / move_tab).
+    #[test]
+    fn layout_tree_mirrors_store_through_detach_redock_primitives() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = mgr_with_titled(&runtime, 4); // T0 T1 T2 T3
+        assert_layout_mirrors_store(&mgr);
+
+        let t1 = mgr.remove_at(1); // [T0 T2 T3]
+        assert_layout_mirrors_store(&mgr);
+
+        mgr.insert_at(mgr.len(), t1); // [T0 T2 T3 T1]
+        assert_layout_mirrors_store(&mgr);
+
+        let from = mgr.tabs().iter().position(|t| t.title == "T1").unwrap();
+        mgr.move_tab(from, 1); // back to origin
+        assert_layout_mirrors_store(&mgr);
+    }
+
+    /// Validates: layout-and-docking Req 12.4 -- active_tab() returns EXACTLY the
+    /// store tab at active_index() (behaviour-identical shim), for every active
+    /// index in a multi-tab manager.
+    #[test]
+    fn active_tab_resolves_through_focused_group_for_all_indices() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = mgr_with_titled(&runtime, 4);
+        for i in 0..mgr.len() {
+            mgr.set_active(i);
+            assert_eq!(mgr.active_index(), i);
+            assert_eq!(
+                mgr.active_tab().title,
+                format!("T{i}"),
+                "active_tab() must equal the store tab at the active index"
+            );
+        }
     }
 }

@@ -39,6 +39,7 @@ ff-fftest = { path = "../ff-fftest" }
 ff-global-search = { path = "../ff-global-search" }
 ff-plugin = { path = "../ff-plugin" }
 ff-shell = { path = "../ff-shell" }
+ff-layout = { path = "../ff-layout" }
 anyhow = { workspace = true }
 arboard = "3"
 tokio = { workspace = true }

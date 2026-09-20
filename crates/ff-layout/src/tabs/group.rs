@@ -9,7 +9,7 @@ pub struct TabGroupId(pub(crate) u32);
 
 impl TabGroupId {
     /// Creates a new tab group ID from a raw value.
-    pub fn new(id: u32) -> Self {
+    pub const fn new(id: u32) -> Self {
         Self(id)
     }
 

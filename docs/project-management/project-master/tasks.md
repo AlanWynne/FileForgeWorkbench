@@ -2694,3 +2694,24 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[x]` Phase (split-rename) | CR-CH-040 / B046 Slice 1 DONE -- renamed SPLIT->DETACH (alias SPLIT DETACH; DETACH/DOCK pair on F2/Shift+F2), retired inert ISPF SplitScreenState remnants, reserved SPLIT for the real in-window split (Slice 2, ff-layout TabGroupTree). verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. |
+
+## Phase (layout-tree) -- Shell Layout Tree foundation, invisible refactor (CR-NR-091, B046 Slice 2a)
+
+> Owner-approved: framework terminology (Tab_Group / split / Splitter / Persona; PANEL dropped);
+> command parity; do the invisible layout-tree foundation FIRST, alone, behaviour-identical, before
+> any visible split. Three-layer design: tab store / layout tree (ff-layout TabGroupTree) / focus
+> model. Slice 2b (visible two-region split) and 2c (nesting + persistence + detach fold-in) later.
+
+- [x] LT.1 (Slice 2a): `ff-desktop` depends on `ff-layout`; `TabManager` gained an
+      internal `TabGroupTree` (always a single `Leaf` this slice) + `focused_group`;
+      `sync_layout()` mirrors the leaf from the flat store after every lifecycle
+      op; `active_tab()`/`active_tab_mut()`/`active_index()` resolve through the
+      focused group (behaviour-identical shim -- none of the ~312 call sites changed);
+      session format unchanged. Invariant tests prove the single-leaf invariant +
+      resolve-through-focused-group equivalence. NO user-visible change; whole
+      existing suite green UNCHANGED. verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt.
+      Covers: layout-and-docking Req 12.
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (layout-tree) | CR-NR-091 / B046 Slice 2a DONE -- invisible Shell Layout Tree foundation (ff-layout TabGroupTree single leaf + focus model + active_tab shim), behaviour-identical (full suite unchanged), before the visible split (Slice 2b). verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. |

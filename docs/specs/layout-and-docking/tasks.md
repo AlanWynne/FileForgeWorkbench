@@ -565,3 +565,19 @@ Coverage: 10 requirements, ~95 acceptance criteria, 10 correctness properties.
 | | 10.5 Status bar persona display | 15.5 |
 | | 10.6 Drop indicator placement precision | 15.6, 11.7 |
 | | 10.7 Minimized panel icon in zone header | 15.7 |
+
+- [x] 18. Shell Layout Tree foundation -- invisible refactor (Requirement 12, CR-NR-091 / B046 Slice 2a)
+  - [x] 18.1 Added `ff-layout` as a dependency of `ff-desktop` (Cargo.toml); builds clean. (Made `TabGroupId::new` a `const fn` in ff-layout so a `const ROOT_GROUP_ID` is possible.)
+    - Covers: Requirement 12.1
+  - [x] 18.2 Added internal `layout: TabGroupTree` + `focused_group: TabGroupId` to `TabManager`, initialised as a single `Leaf` mirroring the initial tab store
+    - Covers: Requirement 12.1, 12.3
+  - [x] 18.3 Added a private `sync_layout()` that rebuilds the single leaf from the store (tab ids in order + active index); called at the end of every mutating lifecycle method (`activate` -- which the per-kind openers + `open_file` route through -- plus `close_welcome_tab`, `insert_pom_tab`, `close_tab`, `remove_at`, `insert_at`, `move_tab`)
+    - Covers: Requirement 12.5
+  - [x] 18.4 Re-implemented `active_tab()` / `active_tab_mut()` / `active_index()` to resolve through the focused group's active tab (`focused_active_index()`); returns the same tab as the store for a single leaf. No external call site changed (~312 sites unaffected)
+    - Covers: Requirement 12.2, 12.4
+  - [x] 18.5 Session save/restore unchanged (still persists the flat tab list; leaf implied on load) -- no session_manager change
+    - Covers: Requirement 12.6
+  - [x] 18.6 Unit tests: `layout_tree_is_single_leaf_on_new`, `layout_tree_mirrors_store_after_each_operation`, `layout_tree_mirrors_store_through_detach_redock_primitives`, `active_tab_resolves_through_focused_group_for_all_indices`
+    - Covers: Requirement 12.8
+  - [x] 18.7 Behaviour-identical proof + close: FULL existing suite green UNCHANGED (verify.ps1 CLEAN, FULL nextest -- no existing test modified); ffwb.exe rebuilt; TCR rows PASS; change-log CR-NR-091 DONE; project-master phase. No new user-facing test-plan row (invisible slice)
+    - Covers: Requirement 12.7

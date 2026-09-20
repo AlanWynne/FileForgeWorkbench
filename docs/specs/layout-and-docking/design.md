@@ -1371,3 +1371,72 @@ All shortcuts are registered with `ff-command::ShortcutRegistry` and can be rema
 | Tab cancel (return) | Within 30px of tab bar | Requirement 7 criterion 12 |
 | Drag-to-float (outside window) | 20px beyond window boundary | Requirement 3 criterion 9 |
 | Drop indicator appearance | 16ms (one frame at 60 FPS) | Requirement 7 criterion 5 |
+
+
+---
+
+## Design Delta: Shell Layout Tree Foundation (Requirement 12, CR-NR-091 / B046 Slice 2a)
+
+### Goal
+
+Introduce the layout tree into the shell as an INVISIBLE refactor: behaviour-identical to today,
+no user-facing change, so the architecture step ships de-risked before any visible split (Slice 2b).
+
+### The three-layer model
+
+Today `TabManager` conflates three concerns. Slice 2a separates them (the split that makes the
+later visible feature small):
+
+1. **Tab store** -- `TabManager` keeps its flat `Vec<TabState>` + `next_id` + the detach/redock
+   primitives (`remove_at`/`insert_at`/`move_tab`). This owns identity + content, keyed by `TabId`.
+   Unchanged by this slice.
+2. **Layout tree** -- a new `ff_layout::TabGroupTree` field on `TabManager`. In Slice 2a it is
+   ALWAYS a single `TabGroupTree::Leaf(TabGroup)` whose `tabs` mirror the store's tab order and
+   whose `active_tab` index mirrors the store's active index. `ff-layout`'s `TabGroup` keys tabs by
+   `String`; the shell stores the `TabId`'s numeric value as that string (`tab.id.0.to_string()`)
+   so no `ff-layout` type change is needed for the foundation.
+3. **Focus model** -- a `focused_group: TabGroupId` on `TabManager`. In Slice 2a there is exactly
+   one group, so it always names that group. "The active tab" is resolved as: focused group ->
+   its `active_tab` index -> the `TabId` at that index -> the `TabState` in the store.
+
+### The compatibility shim (why nothing else changes)
+
+There are ~312 call sites of `active_tab()` / `active_tab_mut()` / `active_index()` across
+`ff-desktop`. Slice 2a keeps those three methods on `TabManager` but re-implements them to resolve
+THROUGH the focused group. For a single-leaf tree this returns exactly the same tab as today, so
+none of the 312 call sites -- and none of the command/render/focus/session code -- changes. The
+tree is kept in lockstep with the store INSIDE the existing lifecycle methods (`activate`,
+`open_file`, the per-kind openers, `close_tab`, `remove_at`, `insert_at`, `move_tab`,
+`insert_pom_tab`, `close_welcome_tab`): each already mutates the flat store + active index, and now
+also updates the single leaf's `tabs`/`active_tab` to match. Because the leaf is a pure mirror,
+the simplest correct implementation rebuilds the leaf from the store after each mutation (the tab
+counts here are tiny; correctness over micro-optimisation).
+
+Invariant (unit-tested, Req 12.8): after every lifecycle operation the tree is a single `Leaf`
+whose `tabs` equals `store.tabs.map(|t| t.id)` in order, whose `active_tab` equals the store's
+active index, and `active_tab()` returns `store.tabs[active_index()]`.
+
+### What Slice 2a deliberately does NOT do
+
+- No `SplitDirection`/`Split` node is ever created (single leaf only).
+- No render change: the central panel still renders `active_tab()` exactly as now.
+- No new command, key, or menu; `SWAP`/detach/redock/`previous_active` semantics unchanged.
+- Session format unchanged: save/restore still persists the flat tab list (Req 12.6). The tree is
+  reconstructed as a single leaf on load. Persisting the tree (`LayoutState`) is Slice 2c.
+
+### Why route through `ff-layout` rather than a bespoke shell tree
+
+`ff-layout::TabGroupTree` is already built, unit-tested, serde-ready, and is the model the visible
+split (Slice 2b) and persistence (Slice 2c) will use. Adopting it now -- even constrained to one
+leaf -- means Slice 2b adds `Split` nodes to an already-wired model instead of introducing the
+model and the feature at once. `ff-desktop` gains an `ff-layout` dependency (the dependency arrow
+`ff-layout <- ff-desktop` is already the intended architecture per `ff-layout` lib docs).
+
+### Deferred to later slices (recorded, not built here)
+
+- **Slice 2b:** the visible two-region split -- a framework `SPLIT` verb (command parity) creates a
+  `Split` node; render two leaves with a draggable `Splitter` at a relative proportion; route
+  focus/commands/keys to the focused group; a close/collapse verb; focus-move-between-groups verb.
+- **Slice 2c:** recursive nesting, move-tab-between-groups, drag-to-rearrange, `LayoutState`
+  session persistence, and folding Detached_Workspaces into the same focus-context abstraction
+  (a detached window becomes a focus context whose layout tree lives in its own OS viewport).

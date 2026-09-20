@@ -264,3 +264,72 @@ tab is in the main window or detached independently.
 4. WHEN the Legacy theme is active, THE Title_Line in a Detached Workspace SHALL use the same blue background / white text styling as the docked Title_Line (menu-and-statusbar Requirement 17.8).
 
 5. THE Detached Workspace title bar (OS chrome) SHALL display the Title_Line content followed by " -- FileForge Workbench" (menu-and-statusbar Requirement 18.5).
+
+
+---
+
+### Requirement 12: Shell Layout Tree Foundation (Slice 2a)
+
+**User Story:** As a workbench maintainer, I want the shell's tab management to be backed by a
+layout tree (starting as a single group) instead of a flat list, so that in-window splits can be
+added later without a pipeline rewrite -- and I want this foundation to change NOTHING that the
+user can observe, so it is safe to land before any visible split feature.
+
+**Source:** [B046] Slice 2a; owner: "creating tab groups is a great idea ... build the invisible
+layout-tree foundation first, alone, behaviour-identical." Wires the existing but unused
+`ff-layout::TabGroupTree` (Requirement 2) into `ff-desktop`.
+
+**Design note (three-layer model):** the shell separates (1) a TAB STORE (owns `TabState`s by
+`TabId`), (2) a LAYOUT TREE (`ff-layout::TabGroupTree`: `Leaf(TabGroup)` regions and `Split`
+nodes with a `SplitDirection` and relative `proportion`), and (3) a FOCUS MODEL (which Tab_Group
+is focused; "the active tab" = the focused group's active tab). Slice 2a delivers layers 1-3 with
+the tree constrained to a SINGLE leaf, so it is behaviour-identical to today's flat model. The
+visible split (multiple leaves, splitter render, focus routing, split command) is Slice 2b.
+
+**Glossary:**
+- **Tab_Group**: A leaf region of the layout tree holding an ordered list of tabs (by `TabId`) and
+  the index of its active tab. In Slice 2a there is exactly one.
+- **Layout_Tree**: The shell's `TabGroupTree` instance modelling how Tab_Groups are split. In Slice
+  2a it is always a single `Leaf`.
+- **Focused_Group**: The Tab_Group whose active tab is "the active tab" the command/render/focus
+  pipeline operates on. In Slice 2a it is always the sole group.
+
+#### Acceptance Criteria
+
+1. THE `ff-desktop` shell SHALL depend on the `ff-layout` crate and hold a `TabGroupTree` as the
+   authoritative model of Tab_Group arrangement. On startup and after any operation in Slice 2a,
+   the tree SHALL be a single `Leaf` Tab_Group containing all open tabs in their existing order.
+
+2. THE `TabManager` SHALL retain a single flat store of `TabState`s keyed by stable `TabId`
+   (identity + content), UNCHANGED by this slice; the layout tree SHALL reference tabs by `TabId`,
+   not by cloning `TabState`.
+
+3. THE `TabManager` SHALL maintain a `Focused_Group` identifier. WHEN the layout tree is a single
+   `Leaf` (always, in Slice 2a), the Focused_Group SHALL be that leaf.
+
+4. THE existing `TabManager` accessors `active_tab()`, `active_tab_mut()`, and `active_index()`
+   SHALL be RESOLVED THROUGH the Focused_Group's active tab (Focused_Group -> active `TabId` ->
+   store), and SHALL return EXACTLY the same tab they return today for every single-group layout.
+   No caller of these accessors SHALL require modification in Slice 2a.
+
+5. EVERY tab-lifecycle operation (`open_file`, `new_untitled_tab`, the per-kind openers,
+   `close_tab`, `remove_at`, `insert_at`, `move_tab`, `set_active`, `previous_active_index`) SHALL
+   keep the layout tree's single Tab_Group consistent with the store (same tab set, same order,
+   same active tab, same previous-active semantics) so that all existing behaviour -- including
+   detach/redock (menu-and-statusbar Req 18) and bare-SWAP toggle (multi-tab-editor Req 18.7) --
+   is preserved bit-for-bit.
+
+6. THE layout tree model SHALL be serialization-ready (it reuses `ff-layout`'s serde-derived
+   `TabGroupTree`), but Slice 2a SHALL NOT change the on-disk session format: session save/restore
+   SHALL continue to persist the flat tab list exactly as today (the single-group tree is implied).
+   Persisting the tree is deferred to a later slice.
+
+7. Slice 2a SHALL introduce NO user-visible change: NO split command, NO splitter rendering, NO new
+   key binding, NO new menu entry, and NO change to the tab bar, Title_Line, Command Field, focus
+   order, or any panel. This requirement is satisfied only if the FULL existing test suite passes
+   unchanged and a manual smoke test shows identical behaviour.
+
+8. THE foundation SHALL be covered by unit tests proving the single-leaf invariant and the
+   resolve-through-focused-group equivalence: after each lifecycle operation, the tree is a single
+   `Leaf` whose tab order and active tab match `TabManager`'s store, and `active_tab()` returns the
+   focused group's active tab.

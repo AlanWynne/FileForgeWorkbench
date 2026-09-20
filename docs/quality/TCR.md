@@ -2783,6 +2783,23 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `shell/workspace_context.rs` module doc + `docs/specs/workspace-framework/design.md` section 10 | Req 4.1/4.2: `WorkspaceContext` (ff-desktop) is layered above `ff-layout::DockablePanel` (Option Y); `ff-layout` stays GUI-independent |
 | `ff-desktop` | ✅ | `shell::tests::workspace_context_render_is_host_agnostic` | Req 6.1/6.2: `render` is host-agnostic -- the Config Context renders correctly into a non-central-panel `Ui` and returns the same `InteriorFocus` (detach-ready), without building the detach feature |
 
+### Phase (layout-tree) -- Shell Layout Tree foundation, invisible refactor (CR-NR-091, B046 Slice 2a)
+
+> Slice 2a of the split rework: `TabManager` gains an internal `ff-layout::TabGroupTree`
+> (single `Leaf` in this slice) + a `focused_group`; `active_tab()`/`active_index()` resolve
+> through the focused group. Behaviour-IDENTICAL -- the whole existing suite must pass unchanged
+> and there is no user-visible change. The visible split is Slice 2b.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `tab_manager.rs::tests::layout_tree_is_single_leaf_on_new` | layout-and-docking Req 12.1: shell depends on `ff-layout` and holds a `TabGroupTree` that is always a single `Leaf` of all open tabs (Slice 2a) |
+| `ff-desktop` | ✅ | `tab_manager.rs::tests::layout_tree_is_single_leaf_on_new` (leaf mirrors store, group 0 focused) | layout-and-docking Req 12.2/12.3: flat `TabState` store keyed by `TabId` unchanged; tree references tabs by id; a `focused_group` names the sole leaf |
+| `ff-desktop` | ✅ | `tab_manager.rs::tests::active_tab_resolves_through_focused_group_for_all_indices` | layout-and-docking Req 12.4: `active_tab()`/`active_tab_mut()`/`active_index()` resolve through the focused group and return the same tab as today (no call-site changes) |
+| `ff-desktop` | ✅ | `tab_manager.rs::tests::{layout_tree_mirrors_store_after_each_operation, layout_tree_mirrors_store_through_detach_redock_primitives}` | layout-and-docking Req 12.5: every lifecycle op (open/new/close/remove_at/insert_at/move_tab/set_active) keeps the single leaf consistent with the store; detach/redock + bare-SWAP toggle preserved |
+| `ff-desktop` | ✅ | code review: no session_manager change; verify.ps1 CLEAN (session round-trip tests unchanged) | layout-and-docking Req 12.6: session format unchanged (flat tab list persisted; leaf implied on load); tree persistence deferred to Slice 2c |
+| `ff-desktop` | ✅ | verify.ps1 CLEAN (FULL nextest) with NO existing test modified -- the behaviour-identical proof | layout-and-docking Req 12.7: NO user-visible change (no split command/render/key/menu; tab bar/Title_Line/Command Field/focus order unchanged) -- proven by the full existing suite passing unchanged |
+| `ff-desktop` | ✅ | `tab_manager.rs::tests::{layout_tree_is_single_leaf_on_new, layout_tree_mirrors_store_after_each_operation, layout_tree_mirrors_store_through_detach_redock_primitives}` | layout-and-docking Req 12.8: unit tests prove the single-leaf invariant + resolve-through-focused-group equivalence after each lifecycle operation |
+
 ### Phase (reset-bare-targets) -- targeted RESET BARE: named profile / ALL (CR-NR-083)
 
 | Crate | Status | Test files | Notes |

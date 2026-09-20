@@ -1485,6 +1485,7 @@ dependencies = [
  "ff-global-search",
  "ff-help",
  "ff-keys",
+ "ff-layout",
  "ff-logging",
  "ff-navigation-commands",
  "ff-plugin",
