@@ -1653,3 +1653,187 @@ tab identities:
 
 Per-region command lines; detaching a whole split subtree as one window; cross-monitor layout
 snapshot; drag-reorder within a region beyond the move-between-groups gesture.
+
+---
+
+## Design Delta: Per-Region Command Lines (Requirement 15, CR-NR-094 / B046 Slice 2d)
+
+### Goal
+
+Give each in-window split region its own `Command ===>` line so a command runs against a specific
+region without moving focus first, reusing the per-window command machinery Detached_Workspaces
+already use. Unsplit behaviour is byte-identical to today.
+
+### Builds directly on what already exists (verified in code)
+
+1. `WorkspaceCommandContext` (shell/mod.rs) already encapsulates a per-window command line: {
+   command_text, scroll_field_text, scroll_amount, open_error, command_field_focus_requested,
+   pending_command_line_outcome }. Each `FloatingTab` holds one.
+2. `WorkbenchShell::with_workspace_context(tab_index, &mut ctx, |shell| ...)` (shell/commands.rs)
+   swaps a `WorkspaceCommandContext` + the active tab into the shell, runs the UNCHANGED pipeline,
+   and swaps back -- so a command acts on that context's tab. This is exactly what a region needs.
+3. `render_detached_command_field(ctx, tab_id)` (shell/render.rs) is the per-window `Command ===>`
+   field render (salted id, Enter -> `run_command_line`, own status line). A region field mirrors it
+   into the region's `ui`.
+4. `render_split_region` (shell/render.rs) already renders each leaf's tab bar + body + focus
+   highlight and has the leaf id in hand.
+
+### Where per-region contexts live and stay in lockstep (Req 15.5)
+
+- Store a `HashMap<TabGroupId, WorkspaceCommandContext>` on the shell (`region_cmd_ctx`), keyed by
+  leaf id. NOT on `TabManager` (which stays GUI-agnostic and identity-free for persistence); the
+  shell owns command-field state, consistent with the top-level fields living on the shell.
+- Lifecycle, reconciled once per frame in the split render (cheap, deterministic): after the tree is
+  known, (a) INSERT a default `WorkspaceCommandContext` for any leaf id present in
+  `tabs.leaf_ids()` but absent from the map (a new `SPLIT` leaf gets a fresh context, Req 15.5);
+  (b) RETAIN only entries whose key is still a current leaf id (a collapsed/merged leaf's context is
+  dropped, Req 15.5). Because leaf ids are allocated monotonically and never reused within a split
+  session, a moved tab (Req 14.6) changes leaf MEMBERSHIP but not leaf IDENTITY, so command text does
+  NOT travel with a moved tab -- it belongs to the leaf, not the tab (Req 15.5). On full unsplit the
+  map is cleared (single leaf -> top-level field path).
+
+### Render (shell/render.rs) -- per-region field in `render_split_region`
+
+- Reserve a command-line strip at the BOTTOM of each region rect (mirror of the top tab-bar strip):
+  region rect = [tab bar (24px)] / [body] / [command line (~24px)]. Body rect shrinks by the command
+  strip height.
+- Render the field by temporarily swapping the leaf's `WorkspaceCommandContext` into the shell around
+  a `render_detached_command_field`-style body, OR (cleaner) factor the detached field body into a
+  shared `render_command_field_into(ui, cmd_id_salt, ctx_fields)` helper used by BOTH the detached
+  window and the region. Field `egui::Id` salted by leaf id (`("region_command_field_input",
+  leaf.value())`) -- stable per leaf (Req 15.7).
+- On Enter with non-empty text: dispatch via `with_workspace_context(<leaf active store index>, &mut
+  region_ctx, |shell| shell.run_command_line(cmd))` -- the SAME path the detached window uses, so the
+  command acts on the region's active tab (Req 15.2) and the outcome/status lands in the region's own
+  ctx (Req 15.3). After dispatch, FOCUS that leaf (`focus_leaf`, Req 15.4).
+- The borrow dance: `region_cmd_ctx` is a shell field; take the ctx out (`std::mem::take` / remove),
+  run `with_workspace_context`, put it back -- exactly how the detached loop moves `cmd_ctx` out of
+  `floating_tabs[i]` for the frame and restores it after.
+
+### Top-level command field while split (Req 15.6)
+
+- DECISION: while split, the top-level `render_command_field` (the single `Command ===>` panel) is
+  SUPPRESSED (not rendered), because every region now carries its own; rendering both would be
+  ambiguous (which does the shared one target?). When unsplit, the top-level field renders exactly as
+  today -- byte-identical. This keeps a single, unambiguous command line per visible region.
+- Consequence: the shell-level `command_text` / SCROLL / `open_error` are used only in the unsplit
+  case; while split they are dormant (the region contexts own the state). The focused region's
+  context is the one a function-key / Key_Label_Bar action targets (F-keys resolve against the
+  focused leaf's active tab, unchanged).
+
+### Tab-order / Boundary_Policy (Req 15.7)
+
+- Each Region_Command_Line field is FOCUSABLE with a stable salted id. Within a region, Tab order is:
+  region command field -> region interior controls (the body Context's first..last interior) -> next
+  region / menu bar, following the existing CR-CH-023 model. Because the split render already draws
+  regions in leaf order, the natural egui Tab traversal visits each region's command field then its
+  body. The full-shell first-Tab conformance test (per workspace-conformance rule) is extended to the
+  split case: Tab from a region command field lands on that region's first interior control (no
+  phantom stop). Detailed boundary wiring is implemented in the render arm and locked by the test.
+
+### Model support
+
+- No `TabManager` change required beyond what 2c already exposes (`leaf_ids`, `focused_leaf_id`,
+  `leaf_active_store_index`, `focus_leaf`). Per-region command state is shell-side only.
+
+### Testing
+
+- Unit (shell-level, headless): region_cmd_ctx lifecycle -- SPLIT inserts a fresh context; collapse
+  drops it; move-tab-between-regions does not carry command text; unsplit clears the map.
+- Full-shell `egui_kittest`: with a 2-region split, set region A's command field text + submit a
+  command that has an observable per-tab effect (e.g. `NAME`) and assert it acted on region A's tab
+  (not B) and B's field text is untouched; submit in the non-focused region and assert it acts there
+  AND focuses it (Req 15.4); first-Tab-from-region-command-field conformance (Req 15.7).
+- Justified-MANUAL: pixel-exact field placement/sizing only.
+
+### Risks / decisions
+
+- Screen real estate: two command strips (tab bar + command line) per region reduce body height;
+  acceptable and matches the detached-window chrome. Deep nesting shrinks regions -- the existing
+  `MIN_TAB_GROUP_SIZE` (100px) clamp bounds this; a region below the min simply shows less body.
+- Suppressing the top-level field while split is the key UX decision (above); it avoids a
+  "which region does the shared line target?" ambiguity, which is exactly the confusion this CR fixes.
+- Per-region state is transient (not persisted, Req 15.8), matching detached `cmd_ctx`.
+
+---
+
+## CR-CH-041: Instance Owns Chrome; Region Is Placement; Placement Is Derived (Requirement 16)
+
+This is a MODEL-REFRAMING slice, not new machinery. It assigns each already-existing piece to a
+single owner and defines how they compose. No new crate; no on-disk format change. It reconciles the
+CR-CH-040 Slice 2 open question ("is a Panel a layout region, a Kind-like preset, or both?") in
+favour of: a region is geometry/placement; chrome belongs to the instance.
+
+### Three roles, one home per attribute
+
+| Role | Type today | Owns |
+|------|-----------|------|
+| Workspace instance | `TabState` (runtime) / `Workspace_Descriptor` (persist) | Kind, instance id (`TabId`), title, menu bar, keylist, command line, scroll, opening command |
+| Region | `TabGroupTree::Leaf(TabGroup)` (`ff-layout`) | geometry (position, size), region id (`TabGroupId`), hosts a set of instances, shows one |
+| Placement | derived (not a stored field) | which region leaf, or which detached OS window, the instance is drawn in |
+
+The instance is authoritative for CONTENT and CHROME; the tree is authoritative for ARRANGEMENT
+(unchanged from Req 12/14). Placement is the projection of the tree onto a given instance: "the leaf
+that currently references this `TabId`" (docked) or "the `FloatingTab` that references it" (detached).
+
+### Placement is derived, never double-stored (Req 16.6)
+
+- `Workspace_Descriptor` (startup-and-session Req 21) persists WHAT an instance is: `MenuWorkspace{name}`
+  or `CustomWorkspace{workspace_kind, params}`. It gains NO placement field.
+- The split `Layout_Snapshot` (Req 14.10-14.13) persists WHERE instances sit: the identity-free
+  `LayoutShape`/`LayoutDescriptor` (tree shape + per-node direction/proportion + per-leaf tab COUNT +
+  focused-leaf index).
+- On restore the shell reconstructs instances from descriptors (existing path), then `restore_layout`
+  distributes them across the rebuilt tree shape by count, and `sync_layout` reconciles (leftover ->
+  first leaf, empties collapse -- Req 14.13). An instance's placement is then READ from the tree, not
+  stored on it. WHERE no `Layout_Snapshot` is present (unsplit / older session), every instance's
+  placement is the single docked region (byte-identical to today). The layout is the single source of
+  truth for placement; the two persisted models cannot disagree because only one holds placement.
+
+### Chrome renders at the placement (Req 16.2-16.4)
+
+The render walk (`render_tree_node`, CR-NR-093) already draws each leaf's active tab body via
+`render_active_tab_body` inside the leaf's rect. Under CR-CH-041 the per-leaf render draws the placed
+instance's FULL `Tab_Window_Chrome` (menu-and-statusbar Req 17) inside that rect, top to bottom:
+menu bar (workspace-kinds Req 4, resolved for the instance's Kind), Title_Line, command line
+(the per-region `WorkspaceCommandContext` of CR-NR-094 Req 15), then the Context body. This unifies
+three code paths that already draw chrome:
+
+- unsplit single instance: the region is the whole central panel -> chrome occupies the top bar as
+  today (the only visible-behaviour-preserving path; the app-level `render_menu_bar` / top
+  `render_command_field` become "the sole region's instance chrome");
+- split region: same chrome drawn per leaf (CR-NR-094 already did this for the command line; B.2
+  already resolves the menu bar per Kind -- this slice states they render together, in-region);
+- detached window: already renders its own chrome (menu-and-statusbar Req 18.10 command line, 18.12
+  menu bar) -- now described as "the instance's chrome at the Detached placement".
+
+Net rendering change from today: when SPLIT, each region gains its instance's menu bar + Title_Line
+above its (already-present, CR-NR-094) command line, and the app-level top menu bar is suppressed
+while split (mirroring how CR-NR-094 suppresses the top command field while split). Unsplit is
+unchanged.
+
+### Focus contract (Req 16.8, menu-and-statusbar Req 16.15)
+
+Each in-region menu bar and command field carries a STABLE `egui::Id` salted per instance/region
+(the command field salting already exists from CR-NR-094 Req 15.7; the menu bar gains the same
+per-region salt, as the detached menu bar already does per CR-NR-089). The SINGLE shell-level
+Boundary_Policy (menu-and-statusbar Req 16, criteria 3-8/14) still governs Tab/Shift+Tab; no
+per-instance focus ring is introduced. Each region that reports interior focus stops satisfies the
+workspace-conformance rule with its own full-shell first-Tab `egui_kittest` test.
+
+### One tab system (Req 16.7, workspace-kinds Req 4.6)
+
+Core keeps exactly one tab system: the `TabGroupTree` hosting instances. No universal
+"tab-container on/off" field is added to `Kind_Config`. A Kind needing an internal tabbed body
+implements it inside the Kind (it MAY reuse a `TabGroupTree` privately); that composition is opaque
+to the core tab/region model. This bounds "modelled on": `Kind_Config` overrides presentation +
+profile; richer internal structure lives in Kind code.
+
+### Design decisions deferred to implementation
+
+- Exact salt scheme for the per-region menu bar id (reuse the CR-NR-094 leaf salt).
+- Whether the unsplit path literally routes through the same `render_region_chrome` helper as a
+  1-leaf tree or keeps the current top-bar code (either is acceptable if 16.3 byte-identical holds;
+  prefer the single helper to avoid two chrome code paths).
+- No change to `DockablePanel` (plugin panels are unaffected; this is the Workspace-instance chrome
+  path, not the dock-zone panel path).

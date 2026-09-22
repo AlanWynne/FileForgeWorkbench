@@ -8214,3 +8214,550 @@ fn full_shell_file_explorer_in_split_region_keeps_split() {
         "the split still has the same number of regions"
     );
 }
+
+// === CR-NR-094 Slice 2d: per-region command-line context lifecycle ==========
+
+/// Validates: layout-and-docking Req 15.5 -- reconcile inserts a fresh
+/// per-region command context for each split leaf, and the map is empty when
+/// unsplit.
+#[test]
+fn region_cmd_ctx_inserted_per_leaf_on_split() {
+    let mut harness = harness_shell();
+    // Unsplit: reconcile leaves the map empty.
+    harness.state_mut().reconcile_region_cmd_ctx();
+    assert!(
+        harness.state().region_cmd_ctx.is_empty(),
+        "unsplit workbench has no per-region contexts"
+    );
+    // Split -> two leaves -> two contexts after reconcile.
+    harness.state_mut().handle_command("SPLIT");
+    harness.state_mut().reconcile_region_cmd_ctx();
+    let leaves = harness.state().tabs.leaf_ids();
+    assert_eq!(leaves.len(), 2, "precondition: two leaves");
+    for leaf in &leaves {
+        assert!(
+            harness.state().region_cmd_ctx.contains_key(leaf),
+            "each leaf must get a per-region command context"
+        );
+    }
+    assert_eq!(harness.state().region_cmd_ctx.len(), 2);
+}
+
+/// Validates: layout-and-docking Req 15.5 -- collapsing the split drops the
+/// per-region contexts; a full unsplit clears the whole map.
+#[test]
+fn region_cmd_ctx_cleared_on_unsplit() {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("SPLIT");
+    harness.state_mut().reconcile_region_cmd_ctx();
+    assert!(
+        !harness.state().region_cmd_ctx.is_empty(),
+        "split populated the map"
+    );
+    // Collapse back to a single region.
+    harness.state_mut().handle_command("UNSPLIT");
+    harness.state_mut().reconcile_region_cmd_ctx();
+    assert!(
+        harness.state().region_cmd_ctx.is_empty(),
+        "unsplit must clear all per-region command contexts"
+    );
+}
+
+/// Validates: layout-and-docking Req 15.5 -- command text belongs to the LEAF,
+/// not a tab: moving a tab between regions does not carry the region's command
+/// text with it (the source leaf keeps its own context; the map stays keyed by
+/// leaf id).
+#[test]
+fn region_cmd_ctx_text_does_not_travel_with_moved_tab() {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("SPLIT");
+    harness.state_mut().reconcile_region_cmd_ctx();
+    let leaves = harness.state().tabs.leaf_ids();
+    let (a, b) = (leaves[0], leaves[1]);
+    // Put distinct command text in each region's context.
+    harness
+        .state_mut()
+        .region_cmd_ctx
+        .get_mut(&a)
+        .unwrap()
+        .command_text = "TEXT_A".to_string();
+    harness
+        .state_mut()
+        .region_cmd_ctx
+        .get_mut(&b)
+        .unwrap()
+        .command_text = "TEXT_B".to_string();
+    // Move a tab from region A to region B (if A has a movable tab).
+    if let Some(store_idx) = harness.state().tabs.leaf_active_store_index(a) {
+        let tab_id = harness.state().tabs.tabs()[store_idx].id;
+        harness.state_mut().tabs.move_tab_to_group(tab_id, b);
+    }
+    harness.state_mut().reconcile_region_cmd_ctx();
+    // Whichever leaves still exist keep their OWN text; no B text leaked into A.
+    if harness.state().region_cmd_ctx.contains_key(&b) {
+        assert_eq!(
+            harness.state().region_cmd_ctx[&b].command_text,
+            "TEXT_B",
+            "region B keeps its own command text; moved tab does not carry text"
+        );
+    }
+    if harness.state().region_cmd_ctx.contains_key(&a) {
+        assert_eq!(
+            harness.state().region_cmd_ctx[&a].command_text,
+            "TEXT_A",
+            "region A keeps its own command text"
+        );
+    }
+}
+
+// === CR-NR-094 Slice 2d: per-region command lines (full shell) ==============
+
+/// The salted egui id of a split region's own `Command ===>` field. MUST match
+/// the id built in `render_region_command_field` so focus assertions round-trip.
+fn region_cmd_field_id(leaf: ff_layout::TabGroupId) -> egui::Id {
+    egui::Id::new(("region_command_field_input", leaf.value()))
+}
+
+/// Drive a region's command line end-to-end: focus that region's field, put
+/// `cmd` in its context, press Enter, and settle. Mirrors what a user typing in
+/// the region field and pressing Enter does, without needing per-character
+/// keystroke injection (the field body reads its bound `command_text`).
+fn submit_region_command(
+    harness: &mut egui_kittest::Harness<'_, super::WorkbenchShell>,
+    leaf: ff_layout::TabGroupId,
+    cmd: &str,
+) {
+    let field_id = region_cmd_field_id(leaf);
+    harness.ctx.memory_mut(|m| m.request_focus(field_id));
+    harness
+        .state_mut()
+        .region_cmd_ctx
+        .get_mut(&leaf)
+        .expect("region has a command context")
+        .command_text = cmd.to_string();
+    harness.run();
+    harness.press_key(egui::Key::Enter);
+    harness.run();
+}
+
+/// Validates: layout-and-docking Req 15.2 -- while split, the single top-level
+/// command field is suppressed (each region carries its own); unsplitting
+/// restores it.
+#[test]
+fn full_shell_split_suppresses_top_level_command_field_unsplit_restores() {
+    let mut harness = harness_shell();
+    // Unsplit: the top-level command field exists and holds focus.
+    assert_eq!(harness.ctx.memory(|m| m.focused()), Some(cmd_field_id()));
+
+    harness.state_mut().handle_command("SPLIT");
+    for _ in 0..4 {
+        harness.run();
+    }
+    // Split: the top-level command field id is no longer a live widget, so
+    // requesting focus on it does not stick (the panel was not rendered).
+    harness.ctx.memory_mut(|m| m.request_focus(cmd_field_id()));
+    harness.run();
+    assert_ne!(
+        harness.ctx.memory(|m| m.focused()),
+        Some(cmd_field_id()),
+        "top-level command field must be suppressed while split"
+    );
+
+    harness.state_mut().handle_command("UNSPLIT");
+    for _ in 0..4 {
+        harness.run();
+    }
+    // Unsplit again: the top-level field is rendered and focusable once more.
+    harness.ctx.memory_mut(|m| m.request_focus(cmd_field_id()));
+    harness.run();
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        Some(cmd_field_id()),
+        "top-level command field must be restored after unsplit"
+    );
+}
+
+/// Validates: layout-and-docking Req 15.3, 15.7 -- a command submitted in a
+/// region's own command line acts on THAT region's active tab, not another
+/// region's, and focuses the submitting region.
+#[test]
+fn full_shell_region_command_acts_on_its_own_region() {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("SPLIT");
+    for _ in 0..4 {
+        harness.run();
+    }
+    let leaves = harness.state().tabs.leaf_ids();
+    assert_eq!(leaves.len(), 2, "precondition: two regions");
+    let (a, b) = (leaves[0], leaves[1]);
+    let a_tab = harness
+        .state()
+        .tabs
+        .leaf_active_store_index(a)
+        .map(|i| harness.state().tabs.tabs()[i].id)
+        .expect("region A active tab");
+    let b_tab = harness
+        .state()
+        .tabs
+        .leaf_active_store_index(b)
+        .map(|i| harness.state().tabs.tabs()[i].id)
+        .expect("region B active tab");
+
+    // Submit NAME in region A's command line.
+    submit_region_command(&mut harness, a, "NAME RegionA");
+    // Submit a DIFFERENT NAME in region B's command line.
+    submit_region_command(&mut harness, b, "NAME RegionB");
+
+    let state = harness.state();
+    let a_idx = state.tabs.index_of_id(a_tab).expect("A tab exists");
+    let b_idx = state.tabs.index_of_id(b_tab).expect("B tab exists");
+    assert_eq!(
+        state.tabs.tabs()[a_idx].workspace_name.as_deref(),
+        Some("RegionA"),
+        "region A's command must name region A's tab"
+    );
+    assert_eq!(
+        state.tabs.tabs()[b_idx].workspace_name.as_deref(),
+        Some("RegionB"),
+        "region B's command must name region B's tab, not A's"
+    );
+    // The last submit (region B) focuses region B (Req 15.7).
+    assert_eq!(
+        state.tabs.focused_leaf_id(),
+        b,
+        "submitting in a region focuses that region"
+    );
+}
+
+/// Validates: layout-and-docking Req 15.4, 15.6 -- each region's command text
+/// and status are isolated: text typed in region A does not appear in region B,
+/// and each region keeps its own text across frames while the split lives.
+#[test]
+fn full_shell_region_command_text_and_status_are_isolated() {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("SPLIT");
+    for _ in 0..4 {
+        harness.run();
+    }
+    let leaves = harness.state().tabs.leaf_ids();
+    let (a, b) = (leaves[0], leaves[1]);
+    harness
+        .state_mut()
+        .region_cmd_ctx
+        .get_mut(&a)
+        .unwrap()
+        .command_text = "ONLY_A".to_string();
+    harness
+        .state_mut()
+        .region_cmd_ctx
+        .get_mut(&b)
+        .unwrap()
+        .command_text = "ONLY_B".to_string();
+    // Render several frames; the per-region contexts must persist unchanged.
+    for _ in 0..4 {
+        harness.run();
+    }
+    assert_eq!(
+        harness.state().region_cmd_ctx[&a].command_text,
+        "ONLY_A",
+        "region A keeps its own command text across frames"
+    );
+    assert_eq!(
+        harness.state().region_cmd_ctx[&b].command_text,
+        "ONLY_B",
+        "region B text is isolated from region A"
+    );
+}
+
+/// Validates: layout-and-docking Req 15.7 -- submitting in a NON-focused region
+/// acts on that region and moves focus to it.
+#[test]
+fn full_shell_region_command_from_non_focused_region_acts_and_focuses() {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("SPLIT");
+    for _ in 0..4 {
+        harness.run();
+    }
+    let leaves = harness.state().tabs.leaf_ids();
+    let (a, b) = (leaves[0], leaves[1]);
+    // After SPLIT the NEW leaf (b) is focused; a is not focused.
+    assert_eq!(
+        harness.state().tabs.focused_leaf_id(),
+        b,
+        "precondition: region B focused after SPLIT"
+    );
+    let a_tab = harness
+        .state()
+        .tabs
+        .leaf_active_store_index(a)
+        .map(|i| harness.state().tabs.tabs()[i].id)
+        .expect("region A active tab");
+    submit_region_command(&mut harness, a, "NAME FromUnfocused");
+    let state = harness.state();
+    let a_idx = state.tabs.index_of_id(a_tab).expect("A tab exists");
+    assert_eq!(
+        state.tabs.tabs()[a_idx].workspace_name.as_deref(),
+        Some("FromUnfocused"),
+        "a non-focused region's command acts on that region"
+    );
+    assert_eq!(
+        state.tabs.focused_leaf_id(),
+        a,
+        "submitting in a non-focused region focuses it (Req 15.7)"
+    );
+}
+
+/// Validates: layout-and-docking Req 15.8 -- per-region command state is
+/// transient: it is not persisted, so a fresh unsplit->split cycle starts every
+/// region with an empty command line.
+#[test]
+fn full_shell_region_command_state_is_transient() {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("SPLIT");
+    for _ in 0..3 {
+        harness.run();
+    }
+    let leaves = harness.state().tabs.leaf_ids();
+    harness
+        .state_mut()
+        .region_cmd_ctx
+        .get_mut(&leaves[0])
+        .unwrap()
+        .command_text = "STALE".to_string();
+    // Collapse and re-split: the map is cleared and rebuilt fresh.
+    harness.state_mut().handle_command("UNSPLIT");
+    harness.state_mut().reconcile_region_cmd_ctx();
+    harness.state_mut().handle_command("SPLIT");
+    harness.state_mut().reconcile_region_cmd_ctx();
+    for leaf in harness.state().tabs.leaf_ids() {
+        assert_eq!(
+            harness.state().region_cmd_ctx[&leaf].command_text,
+            "",
+            "a re-split region starts with an empty command line (transient)"
+        );
+    }
+}
+
+/// Validates: layout-and-docking Req 15.9 (CR-CH-023 phantom-stop class) -- each
+/// region's command field is a real, stable Tab stop: focusing its salted id
+/// sticks (the id round-trips through egui focus, i.e. it names a live widget).
+#[test]
+fn full_shell_region_command_field_is_a_stable_tab_stop() {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("SPLIT");
+    for _ in 0..4 {
+        harness.run();
+    }
+    for leaf in harness.state().tabs.leaf_ids() {
+        let field_id = region_cmd_field_id(leaf);
+        harness.ctx.memory_mut(|m| m.request_focus(field_id));
+        harness.run();
+        assert_eq!(
+            harness.ctx.memory(|m| m.focused()),
+            Some(field_id),
+            "region {leaf:?} command field must be a real, focusable Tab stop (no phantom id)"
+        );
+    }
+}
+
+// === CR-CH-041: derived Placement (shell-level, Detached vs Docked) =========
+
+/// Validates: layout-and-docking Req 16.5/16.6 -- a tab recorded in the shell's
+/// floating set has Placement::Detached; Detached takes precedence over any
+/// docked-leaf resolution.
+#[test]
+fn placement_of_detached_tab_is_detached() {
+    use crate::tab_manager::Placement;
+    let mut shell = make_shell();
+    let tab_id = shell.tabs.active_tab().id;
+    // Fabricate a FloatingTab for the active tab (the detach mechanics are tested
+    // elsewhere; here we assert the derived Placement reads the floating set).
+    shell.floating_tabs.push(super::FloatingTab {
+        viewport_id: egui::ViewportId::from_hash_of("placement_detached"),
+        tab_id,
+        origin_index: 0,
+        cmd_ctx: super::WorkspaceCommandContext::default(),
+    });
+    assert_eq!(
+        shell.placement_of(tab_id),
+        Placement::Detached,
+        "a tab in floating_tabs resolves to Detached"
+    );
+}
+
+/// Validates: layout-and-docking Req 16.6 -- an ordinary (non-floating) tab has
+/// Placement::Docked in the root leaf when the Workspace is unsplit; placement
+/// is derived, not stored.
+#[test]
+fn placement_of_docked_tab_is_docked_root_when_unsplit() {
+    use crate::tab_manager::Placement;
+    let shell = make_shell();
+    let tab_id = shell.tabs.active_tab().id;
+    assert_eq!(
+        shell.placement_of(tab_id),
+        Placement::Docked {
+            leaf: ff_layout::TabGroupId::new(0)
+        },
+        "unsplit docked tab resolves to the root leaf"
+    );
+}
+
+// === CR-CH-041 IRP-b: per-instance chrome renders in-region ================
+
+/// The salted egui id of a split region's own menu-bar scope (CR-CH-041 IRP-b).
+/// MUST match the `push_id` scope used in `render_region_menu_bar` so tests can
+/// assert per-region chrome without colliding across regions.
+fn region_menu_scope_id(leaf: ff_layout::TabGroupId) -> egui::Id {
+    egui::Id::new(("region_menu_bar", leaf.value()))
+}
+
+/// Validates: layout-and-docking Req 16.2/16.3 -- while split, the single
+/// app-level menu bar and Title_Line are SUPPRESSED (each region draws its
+/// own); unsplitting restores the app-level chrome. Mirrors the existing
+/// top-level command-field suppression test.
+#[test]
+fn full_shell_split_suppresses_app_level_menu_bar_and_title_unsplit_restores() {
+    let mut harness = harness_shell();
+    // Unsplit: the app-level menu bar rendered and captured a first-button id.
+    let app_menu_first = harness.state().menu_first_id;
+    assert!(
+        app_menu_first.is_some(),
+        "precondition: unsplit app-level menu bar captured a first-button id"
+    );
+    harness.state_mut().handle_command("SPLIT");
+    for _ in 0..4 {
+        harness.run();
+    }
+    // While split: the app-level menu-bar first-button id (captured pre-split) is
+    // no longer a live, focusable widget -- the app-level bar was suppressed.
+    if let Some(app_first) = app_menu_first {
+        harness.ctx.memory_mut(|m| m.request_focus(app_first));
+        harness.run();
+        assert_ne!(
+            harness.ctx.memory(|m| m.focused()),
+            Some(app_first),
+            "app-level menu bar must be suppressed while split"
+        );
+    }
+
+    harness.state_mut().handle_command("UNSPLIT");
+    for _ in 0..4 {
+        harness.run();
+    }
+    assert!(
+        harness.state().menu_first_id.is_some(),
+        "app-level menu bar must be restored after unsplit"
+    );
+}
+
+/// Validates: layout-and-docking Req 16.4/16.5/16.6 -- the derived Placement of
+/// a Workspace instance is Docked{leaf} while it sits in a split region, and
+/// Detached once it is in a floating window; the SAME instance id keeps a
+/// coherent placement across the transition (placement is derived, not stored).
+#[test]
+fn full_shell_placement_tracks_split_region_then_detached() {
+    use crate::tab_manager::Placement;
+    let mut harness = harness_shell();
+    // Split: the focused region's active instance is Docked in a real leaf.
+    harness.state_mut().handle_command("SPLIT");
+    for _ in 0..4 {
+        harness.run();
+    }
+    assert!(harness.state().tabs.is_split(), "precondition: split");
+    let focused_leaf = harness.state().tabs.focused_leaf_id();
+    let inst = harness.state().tabs.active_tab().id;
+    assert_eq!(
+        harness.state().placement_of(inst),
+        Placement::Docked { leaf: focused_leaf },
+        "a split region's active instance is Docked in that region's leaf"
+    );
+
+    // Collapse the split, then detach the (now sole) instance: placement flips to
+    // Detached, keyed by the SAME instance id (fabricate the FloatingTab record,
+    // as detach mechanics are covered elsewhere).
+    harness.state_mut().handle_command("UNSPLIT");
+    for _ in 0..3 {
+        harness.run();
+    }
+    let inst2 = harness.state().tabs.active_tab().id;
+    harness.state_mut().floating_tabs.push(super::FloatingTab {
+        viewport_id: egui::ViewportId::from_hash_of("placement_flip"),
+        tab_id: inst2,
+        origin_index: 0,
+        cmd_ctx: super::WorkspaceCommandContext::default(),
+    });
+    assert_eq!(
+        harness.state().placement_of(inst2),
+        Placement::Detached,
+        "once in a floating window the instance's placement is Detached"
+    );
+}
+
+/// Validates: layout-and-docking Req 16.2/16.8, menu-and-statusbar Req 16.15 --
+/// while split, EACH region renders its own instance's menu bar in-region, and
+/// that bar participates in focus (its buttons are live, focusable widgets with
+/// per-region-salted ids -- no phantom stop, no second focus ring). The
+/// app-level bar is suppressed, so the live menu-bar first-button id belongs to
+/// a region.
+#[test]
+fn full_shell_split_region_menu_bar_is_live_and_focusable() {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("SPLIT");
+    for _ in 0..4 {
+        harness.run();
+    }
+    assert!(harness.state().tabs.is_split(), "precondition: split");
+    // The per-region menu bar renders through the shared renderer, which captures
+    // menu_first_id from the LAST bar drawn (a region's, since the app-level bar
+    // is suppressed while split). That id must be a live, focusable widget.
+    let menu_first = harness.state().menu_first_id;
+    assert!(
+        menu_first.is_some(),
+        "a region menu bar must render and capture a first-button id while split"
+    );
+    if let Some(id) = menu_first {
+        harness.ctx.memory_mut(|m| m.request_focus(id));
+        harness.run();
+        assert_eq!(
+            harness.ctx.memory(|m| m.focused()),
+            Some(id),
+            "the in-region menu bar's first button must be a live, focusable Tab stop"
+        );
+    }
+    // Each region's menu-bar scope id is distinct (per-leaf salt), so no two
+    // regions collide (the workspace-conformance stable-id contract).
+    let leaves = harness.state().tabs.leaf_ids();
+    assert_eq!(leaves.len(), 2, "two regions");
+    assert_ne!(
+        region_menu_scope_id(leaves[0]),
+        region_menu_scope_id(leaves[1]),
+        "per-region menu-bar scope ids must be distinct (no collision)"
+    );
+}
+
+/// Validates: layout-and-docking Req 16.7, workspace-kinds Req 4.6 -- core
+/// provides exactly ONE tab system (the Region/TabGroupTree) and adds NO
+/// intra-workspace "tab-container" attribute to a Kind's configuration. This is
+/// a STRUCTURAL guard: `KindConfig` is destructured to its exact documented
+/// field set, so adding a tab-container-style field to `KindConfig` (the way a
+/// universal in-workspace tab list would be modelled) breaks this test and
+/// forces a conscious spec revisit. A Kind that wants internal composition does
+/// it privately in its own code (it may reuse a TabGroupTree internally), never
+/// via a core `KindConfig` field.
+#[test]
+fn kind_config_has_no_core_tab_container_field() {
+    use crate::workspace_kind::{BuiltinKind, KindConfig};
+    let cfg = KindConfig::builtin_default(BuiltinKind::Editor);
+    // Exhaustive destructure: if a field is ADDED or REMOVED from KindConfig this
+    // fails to compile, catching an accidental core tab-container attribute
+    // (Req 16.7 / 4.6) at build time. The bound names document the allowed set.
+    let KindConfig {
+        name: _,
+        modelled_on: _,
+        title: _,
+        menu_bar: _,
+        key_list: _,
+        profile: _,
+    } = cfg;
+    // (No `tabs` / `tab_container` / `children` field exists -- that is the point.)
+}

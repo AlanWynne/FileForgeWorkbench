@@ -558,6 +558,19 @@ pub struct WorkbenchShell {
     /// resolve the drop target of a `split_tab_drag` on release (CR-NR-093).
     /// Rebuilt every frame by the split render walk.
     split_leaf_rects: Vec<(ff_layout::TabGroupId, egui::Rect)>,
+
+    /// Per-region command-line contexts, keyed by split leaf id (CR-NR-094,
+    /// Slice 2d). While the Workspace is split, each region (leaf) has its OWN
+    /// `Command ===>` line, SCROLL, and status via its own
+    /// `WorkspaceCommandContext` -- the in-window analogue of a
+    /// Detached_Workspace's `cmd_ctx`. Reconciled with the tree each frame by
+    /// [`reconcile_region_cmd_ctx`](Self::reconcile_region_cmd_ctx): a fresh
+    /// context is inserted for a new leaf, a collapsed/merged leaf's context is
+    /// dropped, and the whole map is cleared when unsplit. Transient (never
+    /// persisted), matching detached windows.
+    ///
+    /// Validates: layout-and-docking Requirement 15.3, 15.5
+    region_cmd_ctx: std::collections::HashMap<ff_layout::TabGroupId, WorkspaceCommandContext>,
 }
 
 impl WorkbenchShell {
@@ -823,6 +836,7 @@ impl WorkbenchShell {
             detach_pending: None,
             split_tab_drag: None,
             split_leaf_rects: Vec::new(),
+            region_cmd_ctx: std::collections::HashMap::new(),
             session_start: chrono::Local::now(),
         }
     }

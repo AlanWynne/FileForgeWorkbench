@@ -340,3 +340,26 @@ B.4 is the largest slice. It MAY be delivered as B.4a (the Kinds Editor Context 
 KINDS command + Settings entry + Save/reload + New-Kind) and B.4b (RESET BARE
 integration), gated together but committed/reviewed in two steps if it aids
 review. The requirements (Req 6, 7) and tasks below cover the whole slice.
+
+---
+
+## CR-CH-041 delta: menu bar / key list resolved for the instance and rendered in-region
+
+CR-CH-041 does not change the Kind resolution mechanism (Req 4 `resolve_menu_bar_menu` +
+keymap-context); it fixes the OWNERSHIP framing:
+
+- The menu bar and key list are resolved FOR THE WORKSPACE INSTANCE from its active Kind's config
+  (unchanged resolution), and the resolved menu bar is rendered INSIDE the instance's placement
+  (its region or detached window), per layout-and-docking Requirement 16.2 -- not as a single
+  application-level bar. Unsplit single-instance = the region is the whole window, so the bar
+  occupies the top exactly as today (behaviour-preserving). Split = each region renders the menu bar
+  of the instance placed in it.
+- New Requirement 4.6 records the boundary: a Kind MAY define an internal composition (its own
+  tabbed/multi-region body) as the Kind's own concern; core provides ONE tab system
+  (`TabGroupTree` hosting instances, layout-and-docking Req 16.7) and adds NO "tab-container on/off"
+  field to `Kind_Config`. A Kind needing internal structure reuses a `TabGroupTree` privately as an
+  implementation detail.
+
+No `Kind_Config` schema change, no new field, no new registry behaviour. The B.2 menu-bar/key-list
+wiring simply keys on the instance's Kind (as already specified) and draws the bar at the instance's
+placement (the render change lives in `ff-desktop`, layout-and-docking design CR-CH-041 section).

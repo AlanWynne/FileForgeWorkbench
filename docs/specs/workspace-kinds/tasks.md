@@ -109,3 +109,11 @@ their gates). Slice B.1 below.
 - [x] 16. Slice B.4 close
   - [x] 16.1 verify.ps1 CLEAN (FULL nextest); rebuild ffwb.exe; TCR rows; change-log B.4 DONE; project-master WK.4; test-plan rows
     - Covers: Slice B.4
+
+- [x] 17. CR-CH-041: menu bar / key list resolved for the instance, rendered in-region (Requirement 4.6)
+  - [x] 17.1 The B.2 menu-bar resolution keys on the instance's Kind (`resolve_menu_bar_menu_for`); the resolved bar renders at the instance's placement via the shared `render_menu_bar_into_ui` (in `render_region_menu_bar` for a split region), not as an app-level bar. No `KindConfig` schema change.
+    - Covers: Requirement 4.6 (in-region rendering framing); layout-and-docking Requirement 16.2
+  - [x] 17.2 Guarded the boundary: `kind_config_has_no_core_tab_container_field` structurally proves `KindConfig` has NO tab-container field; a Kind's internal composition is private (may reuse a `TabGroupTree` internally).
+    - Covers: Requirement 4.6; layout-and-docking Requirement 16.7
+  - [x] 17.3 Close: TCR Req 4.6 row PASS; verify.ps1 CLEAN FULL nextest; change-log CR-CH-041 DONE (shared with layout-and-docking task 22.8).
+    - Covers: Requirement 4.6

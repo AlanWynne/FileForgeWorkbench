@@ -370,6 +370,17 @@ The terms below are used across this requirement:
       Workspace obtains correct Tab behaviour solely by rendering its controls in visual order,
       without adding any per-Workspace focus code.
 
+15. *(CR-CH-041 -- per-instance in-region chrome.)* WHEN a Workspace instance renders its own chrome
+      (menu bar, Title_Line, command line) INSIDE its placement -- a split region or a detached window,
+      per layout-and-docking Requirement 16.2 -- that chrome SHALL still satisfy the SINGLE shell-level
+      Boundary_Policy of criteria 3-8 and the workspace-conformance rule: each rendered command field
+      and menu bar SHALL carry a STABLE `egui::Id` (salted per instance/region so multiple placed
+      instances do not collide), and Tab / Shift+Tab SHALL move between an instance's command field,
+      its interior controls, and its menu bar with NO phantom stop. Rendering chrome per instance
+      SHALL NOT introduce a second, per-Workspace focus ring; it is a specialisation of criterion 14,
+      not an exception. WHEN the Workspace area is UNSPLIT (a single instance filling the main window),
+      the Tab-order behaviour SHALL be byte-identical to today (the region is the whole window).
+
 ---
 
 ### Requirement 17: Tab Window Chrome -- Title Line and Command Line per Tab

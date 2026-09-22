@@ -13,6 +13,16 @@ The workspace model is implemented in the `ff-session` crate (extended) and wire
 `ff-desktop`. It does not introduce a new library crate -- it extends the existing session
 and configuration layers.
 
+> **Terminology note (CR-CH-041) -- two distinct senses of "Workspace":** This spec owns the
+> PROJECT sense of "Workspace" -- a `.ffwb-workspace` file of root directories + project settings +
+> MRU, of which AT MOST ONE is active (the `Active_Workspace`). This is UNRELATED to the tab-level
+> WORKSPACE INSTANCE (the unit of work shown as a tab: `TabState` at runtime, a `Workspace_Descriptor`
+> when persisted -- startup-and-session Requirement 21), which owns its own chrome and placement
+> (layout-and-docking Requirement 16, workspace-kinds). The two never share a type or a file: a
+> project Workspace has no tabs or chrome of its own, and a tab-level Workspace instance is not a
+> project. Where this spec says "Workspace" it always means the PROJECT sense; the tab-level sense is
+> always written "Workspace instance". New criteria in either spec must not blur the two.
+
 **Source references:**
 - **WB** = Workbench Architecture Brief -- workspace layer concept
 - **GAP** = Phase BQ gap-analysis.md section 2.1 (Multi-Root Workspaces, High priority)

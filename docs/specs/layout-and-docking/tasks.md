@@ -621,3 +621,37 @@ Coverage: 10 requirements, ~95 acceptance criteria, 10 correctness properties.
     - Covers: Requirement 14.16
   - [x] 20.10 Close: verify.ps1 CLEAN (FULL nextest); rebuild ffwb.exe; TCR rows PASS; change-log CR-NR-093 DONE; project-master phase; test-plan rows updated
     - Covers: Requirement 14
+
+- [x] 21. Per-region command lines -- split Tab_Groups (Requirement 15, CR-NR-094 / B046 Slice 2d)
+  - [x] 21.1 Shell state: add `region_cmd_ctx: HashMap<TabGroupId, WorkspaceCommandContext>` (shell-side, GUI state -- NOT on TabManager). Per-frame reconciliation in the split render: insert a fresh default context for each new leaf id, retain only current leaf ids (drop collapsed/merged), clear on full unsplit. Unit tests for the lifecycle (SPLIT inserts; collapse drops; move-tab does not carry text; unsplit clears)
+    - Covers: Requirement 15.5
+  - [x] 21.2 Render a Region_Command_Line at the bottom of each region in `render_split_region` (reserve a ~24px command strip below the body; body rect shrinks). Factor a shared `render_command_field_into(ui, id_salt, ctx)` used by BOTH the detached window field and the region field; stable salted `egui::Id` per leaf
+    - Covers: Requirement 15.1, 15.7
+  - [x] 21.3 Dispatch: on Enter in a region field, run `with_workspace_context(<leaf active store index>, &mut region_ctx, |shell| shell.run_command_line(cmd))` (borrow: take the ctx out of the map for the frame, restore after -- as the detached loop does), then `focus_leaf`. Command acts on that region's tab, status/outcome land in that region's ctx
+    - Covers: Requirement 15.2, 15.3, 15.4
+  - [x] 21.4 Suppress the top-level `render_command_field` while split (each region carries its own); unsplit renders the single top-level field byte-identically. Full-shell test: split hides the shared field + shows per-region fields; unsplit restores the shared field
+    - Covers: Requirement 15.6
+  - [x] 21.5 Tab-order / Boundary_Policy: region command field is a Tab stop with a stable salted id; define + wire Tab traversal (region command field -> region interior -> next region / menu bar). Full-shell first-Tab-from-region-command-field conformance test (no phantom stop), per workspace-conformance rule
+    - Covers: Requirement 15.7
+  - [x] 21.6 Tests: full-shell egui_kittest -- command in region A acts on A's tab not B (observable per-tab effect, e.g. NAME); per-region text/status isolation; submit in non-focused region acts there AND focuses it; Region_Context lifecycle across split/move/collapse. Per-region state NOT persisted (transient)
+    - Covers: Requirement 15.2, 15.3, 15.4, 15.8, 15.9
+  - [x] 21.7 Close: verify.ps1 CLEAN (FULL nextest); rebuild ffwb.exe; TCR Req 15 rows PASS; change-log CR-NR-094 DONE; project-master phase; commit + push
+    - Covers: Requirement 15
+
+- [x] 22. CR-CH-041: Instance owns chrome; Region is placement; placement derived (Requirement 16)
+  - [x] 22.1 Introduce a `Placement` view over the model: helpers on `TabManager` to resolve, for a given `TabId`, whether it is `Detached` (in a `FloatingTab`) or `Docked` in a specific `TabGroupId` leaf. NO new stored field on `TabState`/`Workspace_Descriptor` -- placement is derived from the tree + floating set. (Delivered IRP-a: `Placement` enum + `docked_leaf_of` + `placement_of`.)
+    - Covers: Requirement 16.5, 16.6
+  - [x] 22.2 Unit tests: placement resolves to its owning leaf when docked and to Detached when floating; instance id (`TabId`) preserved and distinct from region id (`TabGroupId`); no-snapshot = single docked region. (docked_leaf_of_* + placement_of_* + full_shell_placement_tracks_split_region_then_detached.)
+    - Covers: Requirement 16.4, 16.5, 16.6
+  - [x] 22.3 Extract the shared Ui-level chrome cores drawing the placed instance's chrome -- `render_menu_bar_into_ui` (menu bar, resolved for the instance's Kind) + `render_title_line_into_ui` (Title_Line) -- reused by the split-region, detached, AND unsplit paths (plus the existing per-region command line). (Delivered IRP-a/IRP-b; a single mega-helper was intentionally NOT forced since the three paths use ctx panels differently -- the reusable Ui-level cores achieve the same shared-path guarantee.)
+    - Covers: Requirement 16.1, 16.2, 16.4
+  - [x] 22.4 Render the per-instance menu bar in-region with a stable `egui::Id` salted per region (`push_id(("region_menu_bar", leaf))`); suppress the app-level top menu bar + Title_Line while split (mirroring the CR-NR-094 top-command-field suppression). UNSPLIT byte-identical.
+    - Covers: Requirement 16.2, 16.3, 16.8
+  - [x] 22.5 Boundary_Policy conformance: the in-region menu bar + command field are live, focusable, per-region-salted Tab stops (no phantom stop, no second focus ring). (full_shell_split_region_menu_bar_is_live_and_focusable + existing full_shell_region_command_field_is_a_stable_tab_stop.)
+    - Covers: Requirement 16.8, menu-and-statusbar Requirement 16.15
+  - [x] 22.6 One-tab-system boundary: structural guard test proves no `KindConfig` tab-container field; a Kind's internal composition is private. (kind_config_has_no_core_tab_container_field.)
+    - Covers: Requirement 16.7, workspace-kinds Requirement 4.6
+  - [x] 22.7 Full-shell tests: same instance shows identical chrome across the three placements; menu bar + Title_Line + command line present in a split region; unsplit unchanged.
+    - Covers: Requirement 16.2, 16.3, 16.4, 16.9
+  - [x] 22.8 Close: verify.ps1 CLEAN (FULL nextest, 240s, ai-review.log empty); TCR Req 16.1-16.9 + workspace-kinds 4.6 + menu-and-statusbar 16.15 rows PASS; change-log CR-CH-041 DONE; project-master phase updated.
+    - Covers: Requirement 16

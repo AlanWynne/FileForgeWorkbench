@@ -76,6 +76,28 @@ pub(crate) struct LayoutDescriptor {
 /// [`TabManager::sync_layout`] after every mutation, and `active_tab()` /
 /// `active_index()` resolve THROUGH the focused group (which, with one leaf, is
 /// exactly `active`). The visible split (multiple leaves) is Slice 2b.
+/// Where a Workspace instance is currently drawn (CR-CH-041, Req 16.3/16.5/16.6).
+///
+/// Placement is a DERIVED view over the authoritative models -- the shell's
+/// floating-window set (Detached) and the [`TabManager`]'s layout tree (Docked
+/// in a leaf) -- NOT a field stored on `TabState` or persisted on a
+/// `Workspace_Descriptor`. The instance owns its chrome; Placement only says
+/// where that chrome is rendered this frame.
+// CR-CH-041: the derived Placement model (Req 16.5/16.6), returned by
+// `WorkbenchShell::placement_of` and exercised by unit + full-shell tests. The
+// split render resolves leaves directly from the tree, so in the lib/bin clippy
+// scope (which does not see test consumers) this reads as unused; `allow` keeps
+// the canonical model type without a false dead-code warning.
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Placement {
+    /// The instance is in its own OS window (a `FloatingTab`).
+    Detached,
+    /// The instance is docked in the main window, in the given layout-tree leaf.
+    /// When unsplit the leaf is [`ROOT_GROUP_ID`] (the whole central panel).
+    Docked { leaf: TabGroupId },
+}
+
 pub struct TabManager {
     tabs: Vec<TabState>,
     active: usize,
@@ -718,6 +740,25 @@ impl TabManager {
             .get(group.active_tab)
             .and_then(|s| s.parse::<u64>().ok())
             .and_then(|raw| self.tabs.iter().position(|t| t.id.0 == raw))
+    }
+
+    /// The `TabGroupTree` leaf that currently owns `tab_id`, or `None`
+    /// (CR-CH-041, Req 16.5/16.6). This is the DOCKED half of an instance's
+    /// derived Placement: the leaf is the geometry slot the instance sits in.
+    /// When unsplit the sole leaf is [`ROOT_GROUP_ID`], so a present tab resolves
+    /// to the root leaf. Returns `None` only when `tab_id` is not referenced by
+    /// any leaf (e.g. it is detached, or unknown). Placement is DERIVED here from
+    /// the authoritative layout tree -- it is never stored on `TabState`.
+    pub(crate) fn docked_leaf_of(&self, tab_id: TabId) -> Option<TabGroupId> {
+        // Must be a real store tab first (an unknown id has no placement).
+        self.index_of(tab_id)?;
+        let id_str = tab_id.0.to_string();
+        self.layout.all_group_ids().into_iter().find(|gid| {
+            self.layout
+                .find_group(*gid)
+                .map(|g| g.tabs.contains(&id_str))
+                .unwrap_or(false)
+        })
     }
 
     /// Render-support (CR-NR-093, Req 14.6 focus routing): focus leaf `id` and
@@ -2161,6 +2202,66 @@ mod tests {
         let moved = mgr.move_tab_to_group(t0, root);
         assert!(!moved, "move to own group must be a no-op (false)");
         assert_eq!(mgr.leaf_tab_store_indices(root).len(), 2);
+    }
+
+    // === CR-CH-041: derived Placement (docked leaf resolution) ===============
+
+    /// Validates: layout-and-docking Req 16.6 -- when unsplit, a present tab's
+    /// docked leaf is the sole ROOT leaf (the whole central panel).
+    #[test]
+    fn docked_leaf_of_resolves_root_when_unsplit() {
+        let runtime = Runtime::new().expect("runtime");
+        let mgr = mgr_with_titled(&runtime, 2); // T0 T1 in the single root leaf
+        for t in mgr.tabs() {
+            assert_eq!(
+                mgr.docked_leaf_of(t.id),
+                Some(ROOT_GROUP_ID),
+                "unsplit: every tab is docked in the root leaf"
+            );
+        }
+    }
+
+    /// Validates: layout-and-docking Req 16.5/16.6 -- when split, each tab's
+    /// docked leaf is the specific leaf that references it, and the instance id
+    /// (TabId) resolves through the tree independently of the leaf id.
+    #[test]
+    fn docked_leaf_of_resolves_owning_leaf_when_split() {
+        let runtime = Runtime::new().expect("runtime");
+        let mut mgr = mgr_with_titled(&runtime, 2); // T0 T1
+        mgr.set_active(0);
+        mgr.split_focused(SplitDirection::Horizontal, &runtime); // new POM leaf focused
+        let leaves = mgr.leaf_ids();
+        let root = leaves[0]; // holds T0 T1
+        let other = leaves[1]; // holds the new POM
+        let t0 = mgr.tabs().iter().find(|t| t.title == "T0").unwrap().id;
+        let pom = mgr.tabs().iter().find(|t| t.is_home).unwrap().id;
+        assert_eq!(
+            mgr.docked_leaf_of(t0),
+            Some(root),
+            "T0 lives in the root leaf"
+        );
+        assert_eq!(
+            mgr.docked_leaf_of(pom),
+            Some(other),
+            "the split-created POM lives in the other leaf"
+        );
+        // The instance ids are distinct from the leaf ids (different types/values):
+        // moving T0 into `other` keeps its TabId but changes its docked leaf.
+        assert!(mgr.move_tab_to_group(t0, other));
+        assert_eq!(
+            mgr.docked_leaf_of(t0),
+            Some(other),
+            "after the move, T0's docked leaf follows it; its TabId is unchanged"
+        );
+    }
+
+    /// Validates: layout-and-docking Req 16.6 -- an unknown tab id has no
+    /// placement (the accessor is total: None, never a panic or a wrong leaf).
+    #[test]
+    fn docked_leaf_of_unknown_tab_is_none() {
+        let runtime = Runtime::new().expect("runtime");
+        let mgr = mgr_with_titled(&runtime, 1);
+        assert_eq!(mgr.docked_leaf_of(TabId(999_999)), None);
     }
 
     /// Validates: layout-and-docking Req 14.6 -- move is a no-op for an unknown

@@ -186,20 +186,38 @@ key bindings I assigned to it.
 **Source:** [CR-NR-090] Slice B.2; delivers CR-NR-082 deferred per-workspace-kind
 menu-bar + keymap and CR-NR-080 Slice C (menu-bar per kind).
 
+**CR-CH-041 alignment (instance owns chrome; menu bar renders in-region):** the
+menu bar and key list below are resolved FOR THE WORKSPACE INSTANCE from its
+active Kind's config, and the resolved menu bar is rendered INSIDE the instance's
+placement (its region or its detached window), not as a single shared
+application-level bar (layout-and-docking Requirement 16.1, 16.2). For a docked,
+unsplit single instance the region is the whole main window, so the instance's
+menu bar occupies the top bar exactly as today (behaviour-preserving,
+layout-and-docking Requirement 16.3). "Active Workspace" below therefore means
+"the Workspace instance being rendered in a given placement"; when the area is
+split, EACH region resolves and renders the menu bar of the instance placed in
+it. The resolution mechanism (`resolve_menu_bar_menu`, keymap context) is
+unchanged; only the ownership/placement framing is made explicit.
+
 #### Acceptance Criteria
 
-1. WHEN the Menu_Bar is rendered for the active Workspace, THE bar SHALL be the
-   named menu given by the active Kind's effective `Kind_Config.menu_bar`
+1. WHEN the Menu_Bar is rendered for a Workspace instance, THE bar SHALL be the
+   named menu given by that instance's active Kind's effective `Kind_Config.menu_bar`
    (resolved via the registry, keyed by the Kind's stable name); WHERE the Kind's
    `menu_bar` is `None`, THE bar SHALL fall back to the compiled Default_Menu_Bar
    name (`DEFAULT_MENU_BAR_NAME`), preserving current behaviour. Resolution reuses
    the existing named-menu resolver (`resolve_menu_bar_menu` -> `menus/<slug>.toml`
-   with the compiled fallback, menu-workspace Req 17.8).
+   with the compiled fallback, menu-workspace Req 17.8). THE resolved Menu_Bar
+   SHALL be rendered INSIDE the instance's placement (its region or detached
+   window), per layout-and-docking Requirement 16.2, NOT as a single shared
+   application-level bar.
 
-2. WHEN the active Workspace changes (tab switch, navigate-in-place, open), THE
-   rendered Menu_Bar SHALL update to the newly-active Kind's configured bar. A
-   Detached_Workspace's own Menu_Bar (menu-and-statusbar Req 18.12) SHALL likewise
-   use ITS Kind's configured bar.
+2. WHEN the active Workspace instance changes (tab switch, navigate-in-place,
+   open), THE rendered Menu_Bar SHALL update to the newly-active instance's Kind's
+   configured bar. A Detached_Workspace's own Menu_Bar (menu-and-statusbar Req
+   18.12) SHALL likewise use ITS instance's Kind's configured bar. WHEN the area
+   is split, EACH region SHALL render the Menu_Bar of the instance placed in that
+   region (layout-and-docking Requirement 16.2/16.4).
 
 3. WHEN the active Workspace's key map context is selected, THE context name SHALL
    be the active Kind's effective `Kind_Config.key_list` WHERE set; WHERE
@@ -220,6 +238,18 @@ menu-bar + keymap and CR-NR-080 Slice C (menu-bar per kind).
    built-in Kinds with default (unset) `menu_bar` / `key_list`: no existing
    menu-bar rendering or key binding SHALL change for a Kind that has not been
    reconfigured.
+
+6. A Workspace Kind MAY define an INTERNAL composition (e.g. its own tabbed or
+   multi-region body) as part of its own design and implementation; such internal
+   composition is the KIND's concern, NOT the core tab/region model. THE core
+   SHALL provide exactly one tab system (the Region / `TabGroupTree` that hosts
+   Workspace instances, layout-and-docking Requirement 16.7) and SHALL NOT add a
+   universal "tab-container on/off" attribute to `Kind_Config`. A Kind that needs
+   an internal composition MAY reuse a `TabGroupTree` internally as an
+   implementation detail, invisible to and unmanaged by the core tab/region model.
+   (This bounds the "modelled on" flexibility: a Kind overrides presentation and
+   profile via `Kind_Config`; richer internal structure lives in the Kind's code,
+   not in a core-managed field.)
 
 ### Requirement 5: Per-Kind profile attributes applied on open (Slice B.3)
 

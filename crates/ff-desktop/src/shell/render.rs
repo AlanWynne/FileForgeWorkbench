@@ -44,15 +44,71 @@ pub(crate) fn logging_degradation_reason(is_fallback: bool, dropped: u64) -> Opt
 }
 
 impl WorkbenchShell {
+    /// The derived [`Placement`](crate::tab_manager::Placement) of the Workspace
+    /// instance `tab_id` (CR-CH-041, Req 16.5/16.6). Detached takes precedence:
+    /// a tab recorded in `floating_tabs` is in its own OS window; otherwise it is
+    /// Docked in the layout-tree leaf that owns it (the root leaf when unsplit).
+    /// Falls back to `Docked { root }` when the tab is neither floating nor found
+    /// in any leaf (should not happen for a live tab; keeps the accessor total).
+    ///
+    /// Placement is DERIVED every call from the floating set + layout tree; it is
+    /// never stored on the instance or persisted on its `Workspace_Descriptor`
+    /// (the layout snapshot is the single source of truth for placement).
+    // CR-CH-041: the public model accessor for an instance's derived Placement
+    // (Req 16.5/16.6), validated by unit + full-shell tests. The in-window split
+    // render resolves the leaf directly from the tree walk (so it does not call
+    // this), but it is the canonical Placement query for the detached-fold-in
+    // path and callers that hold only a TabId; `allow(dead_code)` because the
+    // lib/bin clippy scope does not see its test consumers.
+    #[allow(dead_code)]
+    pub(super) fn placement_of(
+        &self,
+        tab_id: crate::tab_state::TabId,
+    ) -> crate::tab_manager::Placement {
+        use crate::tab_manager::Placement;
+        if self.floating_tabs.iter().any(|ft| ft.tab_id == tab_id) {
+            return Placement::Detached;
+        }
+        match self.tabs.docked_leaf_of(tab_id) {
+            Some(leaf) => Placement::Docked { leaf },
+            None => Placement::Docked {
+                leaf: ff_layout::TabGroupId::new(0),
+            },
+        }
+    }
+
     pub(super) fn render_title_line(&self, ctx: &egui::Context) {
+        // CR-CH-041 IRP-b: the app-level Title_Line is the unsplit single
+        // instance's chrome; it delegates to the shared Ui-level painter so the
+        // split-region path (which draws the SAME Title_Line for the instance
+        // placed in each region) is byte-identical. The active tab is the sole
+        // docked instance when unsplit.
+        let tab_index = self.tabs.active_index();
+        egui::TopBottomPanel::top("title_line").show(ctx, |ui| {
+            self.render_title_line_into_ui(ui, tab_index);
+        });
+    }
+
+    /// Paint the Title_Line for the tab at `tab_index` INTO an existing `Ui`
+    /// (CR-CH-041 IRP-b: the ctx-panel-free core of [`render_title_line`]).
+    ///
+    /// The app-level unsplit path wraps this in a `TopBottomPanel` (byte-identical
+    /// to before the extraction, passing the active tab); the split-region path
+    /// calls it directly for the instance placed in each region so every region
+    /// shows its own instance's Title_Line. Home banner / editor path / menu
+    /// label styling is preserved (delegated through `kind_title`).
+    pub(super) fn render_title_line_into_ui(&self, ui: &mut egui::Ui, tab_index: usize) {
         use ff_theme::mode::VisualMode;
+        let Some(tab) = self.tabs.tabs().get(tab_index) else {
+            return;
+        };
         // CR-NR-090 B.1: the Title_Line label comes from the Kind registry
         // (kind_title) so a reconfigured/user Kind shows its configured title;
         // Home banner / menu label / editor path are delegated inside kind_title.
-        let text = self.kind_title(self.tabs.active_tab());
+        let text = self.kind_title(tab);
         let is_legacy = self.palette.mode == VisualMode::Legacy;
-        let is_pom = self.tabs.active_tab().is_home;
-        egui::TopBottomPanel::top("title_line").show(ctx, |ui| {
+        let is_pom = tab.is_home;
+        {
             if is_pom {
                 // POM title: black background, blue text, centered
                 let bg = egui::Color32::BLACK;
@@ -79,7 +135,7 @@ impl WorkbenchShell {
                 ui.painter().rect_filled(rect, 0.0, bg);
                 ui.colored_label(fg, egui::RichText::new(text).monospace());
             }
-        });
+        }
     }
 
     // ── Command field ────────────────────────────────────────────────────
@@ -175,41 +231,88 @@ impl WorkbenchShell {
     ) {
         let panel_id = egui::Id::new(("detached_command_field", tab_id.0));
         let cmd_id = egui::Id::new(("detached_command_field_input", tab_id.0));
-        egui::TopBottomPanel::top(panel_id).show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.label("Command ===>");
-                let response = ui.add(
-                    egui::TextEdit::singleline(&mut self.command_text)
-                        .id(cmd_id)
-                        .desired_width(f32::INFINITY)
-                        .font(egui::TextStyle::Monospace),
-                );
-                if self.command_field_focus_requested && !self.modal_open {
-                    self.command_field_focus_requested = false;
-                    ctx.memory_mut(|m| m.request_focus(cmd_id));
-                }
-                let field_has_focus = response.has_focus() || response.lost_focus();
-                if field_has_focus
-                    && ctx.input(|i| i.key_pressed(egui::Key::Enter))
-                    && !self.command_text.is_empty()
-                {
-                    let cmd = self.command_text.trim().to_string();
-                    // Dispatches through the SAME pipeline; because we are inside
-                    // `with_workspace_context`, it acts on this window's tab and
-                    // the Command_Line_Outcome applies to this window's buffer.
-                    self.run_command_line(&cmd);
-                    self.command_field_focus_requested = true;
-                }
-                // Status/error line for THIS window (its own open_error).
-                if let Some(err) = self.open_error.clone() {
-                    ui.separator();
-                    ui.colored_label(
-                        to_egui_color(self.palette.editor.accent),
-                        egui::RichText::new(err).monospace().small(),
-                    );
-                }
-            });
+        let accent = to_egui_color(self.palette.editor.accent);
+        let modal_open = self.modal_open;
+        // The detached field's buffers are the shell's own fields right now
+        // (installed by `with_workspace_context`). Render the shared body against
+        // them via short-lived local bindings, then reflect focus/submit back.
+        let mut command_text = std::mem::take(&mut self.command_text);
+        let mut focus_requested = self.command_field_focus_requested;
+        let open_error = self.open_error.clone();
+        let submitted = egui::TopBottomPanel::top(panel_id)
+            .show(ctx, |ui| {
+                Self::render_command_field_body(
+                    ctx,
+                    ui,
+                    cmd_id,
+                    &mut command_text,
+                    &mut focus_requested,
+                    modal_open,
+                    accent,
+                    open_error.as_deref(),
+                )
+            })
+            .inner;
+        self.command_text = command_text;
+        self.command_field_focus_requested = focus_requested;
+        if let Some(cmd) = submitted {
+            // Dispatches through the SAME pipeline; because we are inside
+            // `with_workspace_context`, it acts on this window's tab and the
+            // Command_Line_Outcome applies to this window's buffer.
+            self.run_command_line(&cmd);
+            self.command_field_focus_requested = true;
+        }
+    }
+
+    /// Shared `Command ===>` field body used by BOTH the Detached_Workspace
+    /// command line (Req 18.10) and each in-window split region's command line
+    /// (CR-NR-094, Req 15.1-15.9). It borrows only the field's own state -- never
+    /// `&mut self` -- so a caller can bind it to whichever command context owns
+    /// the region (the shell's fields for a detached window, or an entry of
+    /// `region_cmd_ctx` for a split leaf). Returns `Some(command)` when the user
+    /// pressed Enter on a non-empty line this frame; the caller performs the
+    /// dispatch against the correct tab. The `cmd_id` MUST be a stable, per-region
+    /// salted id so focus round-trips and Tab-order stay deterministic (B056).
+    ///
+    /// Validates: layout-and-docking Requirement 15.1, 15.2, 15.3, 15.9
+    #[allow(clippy::too_many_arguments)]
+    fn render_command_field_body(
+        ctx: &egui::Context,
+        ui: &mut egui::Ui,
+        cmd_id: egui::Id,
+        command_text: &mut String,
+        focus_requested: &mut bool,
+        modal_open: bool,
+        accent: egui::Color32,
+        open_error: Option<&str>,
+    ) -> Option<String> {
+        let mut submitted = None;
+        ui.horizontal(|ui| {
+            ui.label("Command ===>");
+            let response = ui.add(
+                egui::TextEdit::singleline(command_text)
+                    .id(cmd_id)
+                    .desired_width(f32::INFINITY)
+                    .font(egui::TextStyle::Monospace),
+            );
+            if *focus_requested && !modal_open {
+                *focus_requested = false;
+                ctx.memory_mut(|m| m.request_focus(cmd_id));
+            }
+            let field_has_focus = response.has_focus() || response.lost_focus();
+            if field_has_focus
+                && ctx.input(|i| i.key_pressed(egui::Key::Enter))
+                && !command_text.is_empty()
+            {
+                submitted = Some(command_text.trim().to_string());
+            }
+            // Status/error line for THIS region (its own open_error).
+            if let Some(err) = open_error {
+                ui.separator();
+                ui.colored_label(accent, egui::RichText::new(err).monospace().small());
+            }
         });
+        submitted
     }
 
     // ── Key label bar ─────────────────────────────────────────────────────
@@ -654,6 +757,9 @@ impl WorkbenchShell {
             self.render_active_tab_body(ctx, ui);
             return;
         }
+        // CR-NR-094 Slice 2d: keep the per-region command-line contexts in
+        // lockstep with the current leaves before rendering the regions.
+        self.reconcile_region_cmd_ctx();
         let tree = self.tabs.layout_tree().clone();
         let focused = self.tabs.focused_leaf_id();
         let full = ui.available_rect_before_wrap();
@@ -664,6 +770,33 @@ impl WorkbenchShell {
         // Resolve a completed tab-header drag (drop) now that every leaf rect is
         // known this frame (Req 14.6, 14.7, 14.8).
         self.resolve_split_tab_drop(ctx);
+    }
+
+    /// Reconcile the per-region command-line context map with the current split
+    /// leaves (CR-NR-094, Slice 2d, Req 15.5). Inserts a fresh default
+    /// `WorkspaceCommandContext` for any leaf id that lacks one, and drops any
+    /// entry whose leaf no longer exists (collapsed/merged). Because leaf ids are
+    /// allocated monotonically and never reused within a split session, a moved
+    /// tab (Req 14.6) changes leaf MEMBERSHIP but not leaf IDENTITY, so command
+    /// text stays with the leaf and never travels with a moved tab.
+    ///
+    /// Validates: layout-and-docking Requirement 15.5
+    pub(super) fn reconcile_region_cmd_ctx(&mut self) {
+        if !self.tabs.is_split() {
+            // Unsplit: no per-region contexts (the single top-level field is used).
+            if !self.region_cmd_ctx.is_empty() {
+                self.region_cmd_ctx.clear();
+            }
+            return;
+        }
+        let leaves: std::collections::HashSet<ff_layout::TabGroupId> =
+            self.tabs.leaf_ids().into_iter().collect();
+        // Drop contexts for leaves that no longer exist.
+        self.region_cmd_ctx.retain(|id, _| leaves.contains(id));
+        // Insert a fresh context for any new leaf.
+        for id in leaves {
+            self.region_cmd_ctx.entry(id).or_default();
+        }
     }
 
     /// Resolve an in-progress tab-header drag on release (CR-NR-093, Slice 2c.2).
@@ -817,11 +950,37 @@ impl WorkbenchShell {
         is_focused: bool,
     ) {
         let tab_bar_h = 24.0_f32;
+        let menu_bar_h = 24.0_f32;
+        let title_h = 20.0_f32;
+        let cmd_field_h = 24.0_f32;
+        // CR-CH-041 (Req 16.2): a split region draws the FULL per-instance chrome
+        // of the instance placed in it, top to bottom: tab bar, then the
+        // instance's Kind menu bar, then its Title_Line, then the Context body,
+        // then this region's own `Command ===>` line (CR-NR-094). Strips are
+        // clamped so a very short region degrades gracefully (bodies shrink).
         let bar_rect = egui::Rect::from_min_max(
             rect.min,
             egui::pos2(rect.max.x, (rect.min.y + tab_bar_h).min(rect.max.y)),
         );
-        let body_rect = egui::Rect::from_min_max(egui::pos2(rect.min.x, bar_rect.max.y), rect.max);
+        let menu_rect = egui::Rect::from_min_max(
+            egui::pos2(rect.min.x, bar_rect.max.y),
+            egui::pos2(rect.max.x, (bar_rect.max.y + menu_bar_h).min(rect.max.y)),
+        );
+        let title_rect = egui::Rect::from_min_max(
+            egui::pos2(rect.min.x, menu_rect.max.y),
+            egui::pos2(rect.max.x, (menu_rect.max.y + title_h).min(rect.max.y)),
+        );
+        // CR-NR-094 Slice 2d (Req 15.1): reserve a bottom strip for THIS region's
+        // own `Command ===>` line. The body occupies the space between the
+        // Title_Line and the command strip.
+        let cmd_rect = egui::Rect::from_min_max(
+            egui::pos2(rect.min.x, (rect.max.y - cmd_field_h).max(title_rect.max.y)),
+            rect.max,
+        );
+        let body_rect = egui::Rect::from_min_max(
+            egui::pos2(rect.min.x, title_rect.max.y),
+            egui::pos2(rect.max.x, cmd_rect.min.y),
+        );
 
         // CR-NR-093 Slice 2c.2: record this leaf's rect so a tab-header drag can
         // be resolved to a drop target on release (Req 14.6).
@@ -888,6 +1047,28 @@ impl WorkbenchShell {
             self.split_tab_drag = Some(started);
         }
 
+        // === Per-region menu bar (CR-CH-041, Req 16.2) ===
+        // The instance placed in this region owns its menu bar; resolve it from
+        // that instance's Kind and draw it into the region's menu strip via the
+        // shared Ui-level renderer (the same one the app-level and detached bars
+        // use). The bar is scoped by leaf id so its widget ids are per-region and
+        // never collide with another region's or the (suppressed-while-split)
+        // app-level bar.
+        self.render_region_menu_bar(ui, leaf_id, menu_rect);
+
+        // === Per-region Title_Line (CR-CH-041, Req 16.2) ===
+        // The instance's Title_Line, drawn into the region's title strip via the
+        // shared Ui-level painter (byte-identical styling to the app-level one).
+        if let Some(store_idx) = active_store {
+            let mut title_ui = ui.new_child(
+                egui::UiBuilder::new()
+                    .max_rect(title_rect)
+                    .layout(egui::Layout::top_down(egui::Align::Min)),
+            );
+            title_ui.set_clip_rect(title_rect);
+            self.render_title_line_into_ui(&mut title_ui, store_idx);
+        }
+
         // === Region body: render this leaf's active Context ===
         let body_response = ui.interact(
             body_rect,
@@ -903,6 +1084,9 @@ impl WorkbenchShell {
         body_ui.set_clip_rect(body_rect);
         self.render_active_tab_body(ctx, &mut body_ui);
         self.tabs.restore_render_focus(token);
+
+        // === Per-region command line (CR-NR-094 Slice 2d, Req 15.1-15.9) ===
+        self.render_region_command_field(ctx, ui, leaf_id, cmd_rect);
 
         // === Focus highlight (Req 14.4) ===
         if is_focused {
@@ -953,6 +1137,120 @@ impl WorkbenchShell {
             // active tab.
             self.tabs.focus_leaf(leaf_id);
         }
+    }
+
+    /// Render the per-region menu bar into `menu_rect` for the instance placed in
+    /// leaf `leaf_id` (CR-CH-041, Req 16.2). The bar is the instance's Kind menu
+    /// bar (resolved via `resolve_menu_bar_menu_for` -- workspace-kinds Req 4),
+    /// drawn through the shared Ui-level renderer inside a per-leaf-salted id
+    /// scope so its widget ids never collide with another region's bar or the
+    /// (suppressed-while-split) app-level bar. No-op when the leaf has no active
+    /// tab (an empty region degrades gracefully).
+    ///
+    /// Validates: layout-and-docking Requirement 16.2, 16.4, 16.8
+    fn render_region_menu_bar(
+        &mut self,
+        ui: &mut egui::Ui,
+        leaf_id: ff_layout::TabGroupId,
+        menu_rect: egui::Rect,
+    ) {
+        let Some(store_idx) = self.tabs.leaf_active_store_index(leaf_id) else {
+            return;
+        };
+        let Some(tab) = self.tabs.tabs().get(store_idx) else {
+            return;
+        };
+        let menu = self.resolve_menu_bar_menu_for(tab);
+        let mut menu_ui = ui.new_child(
+            egui::UiBuilder::new()
+                .max_rect(menu_rect)
+                .layout(egui::Layout::left_to_right(egui::Align::Center)),
+        );
+        menu_ui.set_clip_rect(menu_rect);
+        // Per-region id scope so menu button ids are salted by leaf (Req 16.8:
+        // stable, non-colliding ids; the workspace-conformance no-phantom-stop
+        // contract). The shared renderer also updates menu_first_id/menu_last_id;
+        // while split the app-level bar is suppressed so the focused region's bar
+        // is the live one the Boundary_Policy uses.
+        menu_ui.push_id(("region_menu_bar", leaf_id.value()), |ui| {
+            self.render_menu_bar_into_ui(ui, &menu);
+        });
+    }
+
+    /// Render one split region's own `Command ===>` line into `cmd_rect` and, on
+    /// Enter, dispatch the command against THAT region's active tab (CR-NR-094,
+    /// Slice 2d, Req 15.1-15.9).
+    ///
+    /// The region's command context is taken out of `region_cmd_ctx` for the
+    /// duration of the render/dispatch so the shared field body (which borrows
+    /// only the field state, never `&mut self`) can be bound to it, and dispatch
+    /// can route through `with_workspace_context` -- the SAME Focus_Context seam
+    /// the Detached_Workspace uses -- installing the region's active tab and its
+    /// command buffers, running the UNCHANGED pipeline, then swapping the
+    /// (possibly command-modified) buffers back. The context is reinstated into
+    /// the map afterwards so its text/status/scroll persist across frames while
+    /// the split lives (Req 15.4, 15.6). Submitting a non-focused region's line
+    /// also focuses that region (Req 15.7).
+    ///
+    /// The widget id is salted by `leaf_id` so it is a stable, per-region Tab
+    /// stop that never collides with another region or the top-level field
+    /// (B056, Req 15.9).
+    ///
+    /// Validates: layout-and-docking Requirement 15.1, 15.2, 15.3, 15.4, 15.6, 15.7, 15.9
+    fn render_region_command_field(
+        &mut self,
+        ctx: &egui::Context,
+        ui: &mut egui::Ui,
+        leaf_id: ff_layout::TabGroupId,
+        cmd_rect: egui::Rect,
+    ) {
+        // Take this region's context out of the map so the shared body can borrow
+        // its fields without also borrowing `self`. Reconciliation guarantees an
+        // entry exists for every current leaf, but be defensive.
+        let mut region_ctx = self.region_cmd_ctx.remove(&leaf_id).unwrap_or_default();
+        let cmd_id = egui::Id::new(("region_command_field_input", leaf_id.value()));
+        let accent = to_egui_color(self.palette.editor.accent);
+        let modal_open = self.modal_open;
+
+        let mut command_text = std::mem::take(&mut region_ctx.command_text);
+        let mut focus_requested = region_ctx.command_field_focus_requested;
+        let open_error = region_ctx.open_error.clone();
+
+        let mut field_ui = ui.new_child(
+            egui::UiBuilder::new()
+                .max_rect(cmd_rect)
+                .layout(egui::Layout::left_to_right(egui::Align::Center)),
+        );
+        field_ui.set_clip_rect(cmd_rect);
+        let submitted = Self::render_command_field_body(
+            ctx,
+            &mut field_ui,
+            cmd_id,
+            &mut command_text,
+            &mut focus_requested,
+            modal_open,
+            accent,
+            open_error.as_deref(),
+        );
+
+        region_ctx.command_text = command_text;
+        region_ctx.command_field_focus_requested = focus_requested;
+
+        if let Some(cmd) = submitted {
+            // Dispatch against this region's active tab through the shared
+            // Focus_Context seam. Focus the region first so a submit from a
+            // non-focused region acts on and focuses that region (Req 15.7).
+            self.tabs.focus_leaf(leaf_id);
+            if let Some(store_index) = self.tabs.leaf_active_store_index(leaf_id) {
+                self.with_workspace_context(store_index, &mut region_ctx, |shell| {
+                    shell.run_command_line(&cmd);
+                });
+            }
+            region_ctx.command_field_focus_requested = true;
+        }
+
+        // Reinstate the (possibly modified) context so it persists across frames.
+        self.region_cmd_ctx.insert(leaf_id, region_ctx);
     }
 
     /// Render the ACTIVE tab's Context body (the `match tab.kind` dispatch) into

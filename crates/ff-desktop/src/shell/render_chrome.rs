@@ -303,64 +303,85 @@ impl WorkbenchShell {
         menu: &crate::menu_workspace::MenuFile,
     ) {
         egui::TopBottomPanel::top(panel_id).show(ctx, |ui| {
-            egui::menu::bar(ui, |ui| {
-                // Bar shows only options flagged for the menu bar (Req 17.2):
-                // e.g. a terminal `RETURN` option (show_in_menu_bar = false) is
-                // kept in the vertical POM but hidden from the horizontal bar.
-                let bar_options: Vec<&crate::menu_workspace::MenuOption> =
-                    menu.options.iter().filter(|o| o.show_in_menu_bar).collect();
-                let last_index = bar_options.len().saturating_sub(1);
-                for (i, option) in bar_options.iter().enumerate() {
-                    // A DYNAMIC source (e.g. `THEME LIST`) generates its children
-                    // at runtime (Req 17.10); otherwise PEEK the referenced menu's
-                    // options (Req 17.3). Empty peek => a plain direct command.
-                    let dynamic = self.dynamic_menu_options(&option.command);
-                    let peeked = if dynamic.is_some() {
-                        Vec::new()
-                    } else {
-                        self.peek_menu_options(&option.command)
-                    };
-                    // Bar buttons are labelled by the option's COMMAND (the verb
-                    // the user would type), not its description (CR-NR-080).
-                    let btn = ui.menu_button(option.command.clone(), |ui| {
-                        if let Some(children) = &dynamic {
-                            // Dynamic children (Req 17.10, 17.11): labelled by the
-                            // theme name (description), dispatch `THEME <name>`.
-                            for child in children {
-                                if ui.button(child.description.clone()).clicked() {
-                                    self.handle_command(&child.command);
-                                    ui.close_menu();
-                                }
-                            }
-                        } else if peeked.is_empty() {
-                            // Non-menu command: one item that dispatches it (Req 17.4).
-                            if ui.button(option.command.clone()).clicked() {
-                                self.handle_command(&option.command);
+            self.render_menu_bar_into_ui(ui, menu);
+        });
+    }
+
+    /// Render a `MenuFile` as a horizontal menu bar of dropdown buttons INTO an
+    /// existing `Ui` (CR-CH-041 IRP-a: the ctx-level-panel-free core of
+    /// [`render_menu_bar_from_menu`]).
+    ///
+    /// This is the reusable building block: [`render_menu_bar_from_menu`] wraps
+    /// it in a `TopBottomPanel` for the ctx-level Primary_Window / detached bars
+    /// (byte-identical to before this extraction), and the in-region chrome path
+    /// (IRP-b) will call it directly inside a split region's sub-`Ui`. Behaviour
+    /// -- including the `menu_first_id` / `menu_last_id` Boundary_Policy capture
+    /// (Req 17.6) and command-parity dispatch -- is unchanged; only the surface
+    /// it draws into differs.
+    ///
+    /// Validates: menu-workspace Requirement 17.1, 17.3, 17.4, 17.5, 17.6
+    pub(super) fn render_menu_bar_into_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        menu: &crate::menu_workspace::MenuFile,
+    ) {
+        egui::menu::bar(ui, |ui| {
+            // Bar shows only options flagged for the menu bar (Req 17.2):
+            // e.g. a terminal `RETURN` option (show_in_menu_bar = false) is
+            // kept in the vertical POM but hidden from the horizontal bar.
+            let bar_options: Vec<&crate::menu_workspace::MenuOption> =
+                menu.options.iter().filter(|o| o.show_in_menu_bar).collect();
+            let last_index = bar_options.len().saturating_sub(1);
+            for (i, option) in bar_options.iter().enumerate() {
+                // A DYNAMIC source (e.g. `THEME LIST`) generates its children
+                // at runtime (Req 17.10); otherwise PEEK the referenced menu's
+                // options (Req 17.3). Empty peek => a plain direct command.
+                let dynamic = self.dynamic_menu_options(&option.command);
+                let peeked = if dynamic.is_some() {
+                    Vec::new()
+                } else {
+                    self.peek_menu_options(&option.command)
+                };
+                // Bar buttons are labelled by the option's COMMAND (the verb
+                // the user would type), not its description (CR-NR-080).
+                let btn = ui.menu_button(option.command.clone(), |ui| {
+                    if let Some(children) = &dynamic {
+                        // Dynamic children (Req 17.10, 17.11): labelled by the
+                        // theme name (description), dispatch `THEME <name>`.
+                        for child in children {
+                            if ui.button(child.description.clone()).clicked() {
+                                self.handle_command(&child.command);
                                 ui.close_menu();
                             }
-                        } else {
-                            // Peeked submenu options: each is labelled by its
-                            // COMMAND and dispatches that command (Req 17.3,
-                            // 17.4, command parity) -- consistent with the
-                            // top-level buttons.
-                            for child in &peeked {
-                                if ui.button(child.command.clone()).clicked() {
-                                    self.handle_command(&child.command);
-                                    ui.close_menu();
-                                }
+                        }
+                    } else if peeked.is_empty() {
+                        // Non-menu command: one item that dispatches it (Req 17.4).
+                        if ui.button(option.command.clone()).clicked() {
+                            self.handle_command(&option.command);
+                            ui.close_menu();
+                        }
+                    } else {
+                        // Peeked submenu options: each is labelled by its
+                        // COMMAND and dispatches that command (Req 17.3,
+                        // 17.4, command parity) -- consistent with the
+                        // top-level buttons.
+                        for child in &peeked {
+                            if ui.button(child.command.clone()).clicked() {
+                                self.handle_command(&child.command);
+                                ui.close_menu();
                             }
                         }
-                    });
-                    // CR-CH-023 Boundary_Policy: capture the FIRST and LAST
-                    // top-level button ids for the next frame (Req 17.6).
-                    if i == 0 {
-                        self.menu_first_id = Some(btn.response.id);
                     }
-                    if i == last_index {
-                        self.menu_last_id = Some(btn.response.id);
-                    }
+                });
+                // CR-CH-023 Boundary_Policy: capture the FIRST and LAST
+                // top-level button ids for the next frame (Req 17.6).
+                if i == 0 {
+                    self.menu_first_id = Some(btn.response.id);
                 }
-            });
+                if i == last_index {
+                    self.menu_last_id = Some(btn.response.id);
+                }
+            }
         });
     }
 

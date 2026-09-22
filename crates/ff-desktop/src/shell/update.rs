@@ -696,12 +696,30 @@ impl eframe::App for WorkbenchShell {
                 }
             }
         }
-        self.render_menu_bar(ctx);
+        // CR-CH-041 (Req 16.2): the menu bar is chrome OWNED BY THE INSTANCE and
+        // rendered at its placement. While split, each region draws its own
+        // instance's menu bar (see `render_split_region`), so the single
+        // app-level menu bar is suppressed -- exactly as the top-level command
+        // field is (below). Unsplit behaviour is byte-identical to before.
+        if !self.tabs.is_split() {
+            self.render_menu_bar(ctx);
+        }
         // Validates: Requirement 2.5 -- clear stale automation entries at frame start.
         self.automation.begin_frame();
         self.render_tab_bar(ctx);
-        self.render_title_line(ctx);
-        self.render_command_field(ctx);
+        // CR-CH-041 (Req 16.2): the Title_Line is likewise per-instance chrome;
+        // suppressed at the app level while split (each region draws its own).
+        if !self.tabs.is_split() {
+            self.render_title_line(ctx);
+        }
+        // CR-NR-094 Slice 2d (Req 15.1, 15.2): while the Workbench is split, each
+        // region carries its OWN `Command ===>` line (rendered inside every split
+        // region), so the single top-level command field is suppressed to avoid
+        // an ambiguous "which region does this line target?" shared field. Unsplit
+        // behaviour is byte-identical to before.
+        if !self.tabs.is_split() {
+            self.render_command_field(ctx);
+        }
         self.render_key_label_bar(ctx);
         self.render_status_bar(ctx);
 

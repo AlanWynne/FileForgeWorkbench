@@ -438,6 +438,9 @@ with no split, behave exactly as before). Delivered in four internally-gated sub
   internal node, per-leaf tab ids + active index, focused leaf id) stored in `SessionState.layout`.
 - **Focus_Context**: the unified abstraction over an in-window Focused_Group and a Detached_Workspace
   -- both a "place a command/keys/new-tab act on," reached through the same active-tab-swap path.
+  *(CR-CH-041 reframing: a Focus_Context is a PLACEMENT of a Workspace instance -- the region leaf or
+  the OS window the instance is currently drawn in -- NOT a chrome owner. The command line, menu bar,
+  and keylist that act there belong to the INSTANCE, not to the place; see Requirement 16.)*
 
 #### Acceptance Criteria -- 2c.1 Recursive nesting
 
@@ -518,3 +521,188 @@ with no split, behave exactly as before). Delivered in four internally-gated sub
     rendered behaviour (recursive regions drawn, drag-drop move, focused highlight at depth, restore
     from a persisted layout) SHALL have full-shell `egui_kittest` tests per the GUI Behaviour Testing
     rule. The drag GESTURE pixels and the OS detached-window chrome remain justified-MANUAL rows.
+
+### Requirement 15: Per-Region Command Lines for Split Tab_Groups
+
+**User Story:** As a user, when the Workspace is split I want EACH region to have its own
+`Command ===>` line so I can run a command against a specific region directly, without first moving
+focus, and so it is unambiguous which region a command applies to.
+
+**Source:** [B046] Slice 2d; owner: "each split window should have its own command line relevant to
+that workspace." Deferred out of CR-NR-093 (design.md 2c.4 "out of scope: per-region command
+lines"). Builds on Requirement 13/14 (visible split) and reuses menu-and-statusbar Requirement 18.10
+(a Detached_Workspace already has its own independent command context).
+
+**Design note:** the machinery already exists -- a `WorkspaceCommandContext` (command_text, scroll,
+status/open_error, focus + outcome latches) per window, swapped into the shell via
+`with_workspace_context(tab_index, &mut ctx, |shell| ...)` so the UNCHANGED command pipeline runs
+against that window's tab. This requirement gives each in-window split LEAF its own
+`WorkspaceCommandContext` and renders a per-region command field, dispatched through the same path.
+
+**CR-CH-041 reframing (ownership, not mechanism):** the criteria below say "each region has its own
+command line," which was the framing before the instance/region/placement model was locked. Under
+CR-CH-041 the command line is owned by the WORKSPACE INSTANCE and rendered at the instance's
+PLACEMENT (the region leaf it currently occupies, or its detached window); a region does NOT own a
+command line -- it hosts the instance whose command line is drawn there. The mechanism is unchanged
+(one `WorkspaceCommandContext` per placed instance, dispatched via `with_workspace_context`), and
+every criterion 15.1-15.9 still holds as written when "the region's command line" is read as "the
+command line of the instance placed in that region." Requirement 16 states the general principle;
+this note records that Requirement 15 is a specialisation of it, not a competing model. In
+particular, per CR-CH-041 the instance also renders its menu bar and Title_Line in the same region
+(Requirement 16), so a split region shows the placed instance's FULL chrome, not just its command
+line.
+
+**Glossary (additions to Requirement 13/14):**
+- **Region_Command_Line**: the `Command ===>` field rendered inside a split region, bound to that
+  region's `WorkspaceCommandContext`.
+- **Region_Context**: a split leaf's `WorkspaceCommandContext` (its own command_text, SCROLL,
+  status, focus/outcome latches), the in-window analogue of a Detached_Workspace's `cmd_ctx`.
+
+#### Acceptance Criteria
+
+1. WHILE the Workspace is split, EACH region (each `TabGroupTree` leaf) SHALL render its OWN
+   `Command ===>` field (a Region_Command_Line) within that region, in addition to the region's tab
+   bar and Context body.
+
+2. WHEN a command is submitted (Enter) in a region's Region_Command_Line, THE shell SHALL dispatch
+   it against THAT region's active tab -- regardless of which region currently holds keyboard focus
+   -- by running the existing command pipeline under that region's Region_Context (via the same
+   `with_workspace_context` swap a Detached_Workspace uses). The command SHALL NOT act on any other
+   region's tab.
+
+3. EACH region SHALL maintain its OWN command text, SCROLL amount, and status/error line in its
+   Region_Context; text typed in one region's field SHALL NOT appear in another region's field, and
+   a status/error produced by one region's command SHALL show only in that region.
+
+4. Submitting a command in a region's Region_Command_Line SHALL also FOCUS that region (make it the
+   Focused_Group), so subsequent keys/new-tab opens act there, consistent with Requirement 14.5/14.8.
+
+5. THE per-region Region_Context SHALL stay in lockstep with the tree across split model changes: a
+   new leaf (from `SPLIT`) SHALL get a fresh Region_Context; a collapsed/merged leaf's Region_Context
+   SHALL be discarded; moving a tab between regions (Requirement 14.6) SHALL NOT carry command text
+   between regions. No Region_Context SHALL leak to an unrelated leaf.
+
+6. WHEN the Workspace is UNSPLIT (single leaf), THE shell SHALL render the single top-level
+   `Command ===>` field exactly as today (byte-identical behaviour); per-region command lines apply
+   ONLY while split. (Design MAY choose to hide or repurpose the top-level field while split; the
+   chosen behaviour SHALL be specified in design.md and SHALL NOT change the unsplit case.)
+
+7. THE Region_Command_Line SHALL participate in the workspace tab-order / Boundary_Policy model per
+   the workspace-conformance rule: a region's field has a STABLE `egui::Id` (salted per leaf), and
+   the design SHALL define how Tab moves between a region's command field, its interior controls, and
+   the menu bar so no phantom stop is introduced. (The exact focus contract is a design decision;
+   this criterion requires it be defined and tested, not left implicit.)
+
+8. Per-region command state SHALL NOT be persisted across restart in this slice (transient, like the
+   detached windows' `cmd_ctx`); the split STRUCTURE persistence (Requirement 14.10-14.13) is
+   unchanged. (If persistence of region command text is desired later, it is a separate requirement.)
+
+9. ALL per-region command-line behaviour (a region field renders per leaf; a region command acts on
+   that region's tab not another; per-region command text/status isolation; submit-focuses-region;
+   Region_Context lifecycle across split/move/collapse) SHALL be covered by unit + full-shell
+   `egui_kittest` tests. Pixel-exact field placement is a justified-MANUAL exception only.
+
+---
+
+### Requirement 16: Workspace Instance Owns Its Chrome; Region Is Placement; Placement Is Derived
+
+**User Story:** As a user, I want each Workspace to be a self-contained unit that carries its own
+title, menu bar, keylist, and command line wherever it is shown -- whether it fills the whole window,
+sits in a split region, or floats in a detached window -- so the experience is uniform and it is
+always unambiguous which Workspace a command, menu, or key acts on.
+
+**Source:** [CR-CH-041] owner: "regions should be an attribute of an instance of a workspace ... the
+instance should have all the attributes of title, menubar, keylist, command line"; "regions as an
+attribute of a workspace instance: whether it is detached, docked and its position and size";
+"we must render the kinds instance menu bar inside the workspace instance"; "placement is derived
+from the layout snapshot on restore, not double-stored on the descriptor"; and "the complexity of a
+workspace window having tabs will be left to the design and build of a workspace kind, i.e. internal
+to the workspace kind not part of the core." This requirement states the unifying principle that
+Requirement 14.14 (Focus_Context) and Requirement 15 (per-region command lines) are specialisations
+of; it also finalises the CR-CH-040 Slice 2 open question ("is a Panel a layout region, a Kind-like
+preset, or both?") in favour of: a region is geometry/placement; chrome belongs to the instance.
+
+**Design note (no mechanism change):** this reframes OWNERSHIP, not machinery. The command-line
+per-window context (`WorkspaceCommandContext` + `with_workspace_context`), the per-Kind menu bar and
+keylist resolution (workspace-kinds Requirement 4), the `TabGroupTree` arrangement model
+(Requirement 12/13/14), the `Workspace_Descriptor` persistence (startup-and-session Requirement 21),
+and the split `Layout_Snapshot` (Requirement 14.10-14.13) all already exist. Requirement 16 assigns
+each of these to exactly one owner and defines how they compose. The UNSPLIT single-instance case is
+visually and behaviourally identical to today (the region is the whole main window), so this
+requirement is behaviour-preserving for the common case.
+
+**Glossary (additions):**
+- **Workspace_Instance**: the tab-level Workspace -- the unit of work. It is `TabState` at runtime
+  and a `Workspace_Descriptor` (startup-and-session Requirement 21) when persisted. It owns its Kind,
+  a unique instance id, and its chrome (title, menu bar, keylist, command line, scroll). NOT the
+  project Workspace of `workspace-model` (a `.ffwb-workspace` of roots + settings + MRU), which is a
+  separate, unrelated concept that keeps the "Workspace" name only in that spec.
+- **Region**: a leaf of the `TabGroupTree` -- a geometry/placement slot with a position, a size, and
+  an id, that HOSTS a set of Workspace_Instances and shows one at a time. A Region is NOT an owner of
+  a menu bar, keylist, or command line.
+- **Placement**: the attribute of a Workspace_Instance describing WHERE it is currently drawn. It has
+  two forms: `Detached` (its own OS window) or `Docked { position, size }` (a `TabGroupTree` region
+  leaf, whose position/size come from the tree). Placement is DERIVED, not independently stored (see
+  criterion 16.6).
+
+#### Acceptance Criteria
+
+1. THE tab-level Workspace_Instance SHALL be the owner of its chrome: its title, menu bar, keylist,
+   and command line (and its SCROLL field) SHALL be attributes resolved FOR THE INSTANCE (title and
+   menu bar and keylist via its Kind's effective config -- workspace-kinds Requirement 3 and 4;
+   command line via its own command context). A Region SHALL NOT own any of these; it contributes
+   only geometry (position, size) and identity.
+
+2. THE full per-instance chrome -- menu bar, Title_Line, and command line, in that order (the
+   Tab_Window_Chrome of menu-and-statusbar Requirement 17) -- SHALL be rendered INSIDE the
+   instance's placement (its region, or its detached window), NOT as a single shared application-level
+   bar. WHILE the Workspace area is split, there SHALL be no shared top-level menu bar or command
+   line spanning regions; each region draws the FULL chrome of the instance placed in it.
+
+3. WHEN the Workspace area is UNSPLIT (a single instance filling the main window), THE instance's
+   chrome SHALL occupy the top of the main window exactly as today (the region is the whole window),
+   so criterion 16.2 changes rendering OWNERSHIP without changing the unsplit APPEARANCE or
+   behaviour (behaviour-preserving; consistent with Requirement 15.6).
+
+4. THE three placements of a Workspace_Instance -- docked-filling-the-window, docked-in-a-split-region,
+   and detached-in-an-OS-window -- SHALL render the SAME per-instance chrome through the SAME path;
+   the only difference between them SHALL be the instance's Placement. (This generalises the
+   Requirement 14.14 Focus_Context: an in-window region and a detached window are two Placements of an
+   instance, not two kinds of chrome owner.)
+
+5. EACH Workspace_Instance SHALL carry a stable, unique instance id (the `TabId`), distinct from its
+   Region's id (the `TabGroupId`): the instance id identifies the unit of work and its content; the
+   Region id identifies the geometry slot. Moving an instance between regions (Requirement 14.6) or
+   detaching/redocking it SHALL preserve the instance id and its chrome.
+
+6. THE instance's Placement SHALL be DERIVED from the persisted split `Layout_Snapshot`
+   (Requirement 14.10-14.13) on restore, and SHALL NOT be duplicated on the `Workspace_Descriptor`
+   (startup-and-session Requirement 21). The `Workspace_Descriptor` persists WHAT the instance is
+   (its Kind + params); the `Layout_Snapshot` persists WHERE instances sit (the tree shape). On
+   restore the shell SHALL reconstruct instances from their descriptors, then resolve each instance's
+   Placement from the restored layout tree; WHERE no `Layout_Snapshot` is present (unsplit, or an
+   older session), every instance's Placement SHALL be the single docked region exactly as today.
+   The two persisted models SHALL NOT disagree: the layout is the single source of truth for
+   placement, reconciled against the descriptor set as `sync_layout` already does (no instance lost,
+   no dangling placement -- consistent with Requirement 14.13).
+
+7. CORE SHALL provide exactly ONE tab system: the Region / `TabGroupTree` that hosts Workspace_Instances.
+   CORE SHALL NOT provide a mechanism for a single Workspace_Instance to contain its own tab list, and
+   SHALL NOT add a universal "tab-container on/off" attribute to Workspace Kinds. A Workspace Kind that
+   requires an internal tabbed / multi-region composition SHALL implement it WITHIN the Kind (it MAY
+   reuse a `TabGroupTree` internally as an implementation detail), and that composition is the Kind's
+   own concern, invisible to and unmanaged by the core tab/region model.
+
+8. THE per-instance in-region chrome SHALL satisfy the shell-level Boundary_Policy and the
+   workspace-conformance focus contract (menu-and-statusbar Requirement 16): each rendered command
+   field and menu bar SHALL have a STABLE `egui::Id` (salted per instance/region so multiple placed
+   instances do not collide), and Tab / Shift+Tab SHALL move between an instance's command field, its
+   interior controls, and its menu bar with NO phantom stop. This is a specialisation of the
+   workspace-conformance rule, not an exception to it.
+
+9. ALL Requirement 16 behaviour (instance owns chrome; chrome renders at the instance's placement and
+   not as a shared bar; unsplit appearance unchanged; the same chrome across the three placements;
+   instance id preserved across move/detach/redock; placement derived from the layout snapshot and not
+   double-stored; core provides no intra-workspace tab system) SHALL be covered by unit tests on the
+   model and full-shell `egui_kittest` tests on the rendered behaviour, per the GUI Behaviour Testing
+   rule. Pixel-exact chrome placement and the OS detached-window frame remain justified-MANUAL rows.

@@ -2769,3 +2769,49 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[x]` Phase (window-split-2c) | CR-NR-093 / B046 Slice 2c DONE -- recursive nesting (2c.1) + drag-tab-between-groups (2c.2) + split persistence (2c.3) + detached fold-in (2c.4), on the recursive ff-layout TabGroupTree + existing SessionState.layout. All four sub-slices shipped; verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. |
+
+## Phase (window-split-2d) -- Per-region command lines for split Tab_Groups (CR-NR-094, B046 Slice 2d)
+
+> Owner-requested after 2c: each in-window split region gets its OWN Command ===> line so a command
+> runs against a specific region without moving focus. Reuses the per-window WorkspaceCommandContext
+> + with_workspace_context machinery Detached_Workspaces already use. Deferred out of CR-NR-093.
+
+- [x] WS2D.1 Per-leaf WorkspaceCommandContext map on the shell (region_cmd_ctx), reconciled each
+      frame with the tree (fresh on SPLIT, dropped on collapse, no text carried by a moved tab,
+      cleared on unsplit). Covers Req 15.5.
+- [x] WS2D.2 Render a Region_Command_Line per region (shared field body helper with the detached
+      window; stable salted egui Id); suppress the top-level field while split, byte-identical when
+      unsplit. Covers Req 15.1, 15.6, 15.7.
+- [x] WS2D.3 Dispatch a region field via with_workspace_context against that region's active tab
+      (acts on that region only; status/text isolated per region; submit focuses the region). Covers
+      Req 15.2, 15.3, 15.4.
+- [x] WS2D.4 Tab-order/Boundary_Policy conformance for region command fields + full-shell tests
+      (region command acts on its tab not another; isolation; non-focused submit; lifecycle). Covers
+      Req 15.7, 15.9.
+- [x] WS2D.5 Close: verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR Req 15 PASS; change-log
+      CR-NR-094 DONE. Covers Req 15.
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (window-split-2d) | CR-NR-094 / B046 Slice 2d DONE -- per-region command lines for split Tab_Groups: each leaf gets its own Command ===> line + WorkspaceCommandContext (shell-side region_cmd_ctx reconciled each frame), dispatched via with_workspace_context against that region's active tab; shared field-body helper reused by the detached window; top-level field suppressed while split; per-region state transient. verify.ps1 CLEAN FULL nextest (9270 passed); ffwb.exe rebuilt. |
+
+## Phase (instance-region-placement) -- CR-CH-041 (instance owns chrome; region is placement; placement derived)
+
+> Reframes the model so a Workspace INSTANCE owns its chrome (title, menu bar, keylist, command
+> line, scroll, opening command) and a REGION is only geometry/placement; per-instance chrome
+> (including the Kind menu bar) renders IN-REGION; placement (`Detached | Docked{position,size}`) is
+> DERIVED from the layout snapshot, not double-stored on the Workspace_Descriptor; core provides one
+> tab system (intra-workspace tabs are a Kind's own concern). Behaviour-preserving when unsplit.
+
+- [x] IRP.1 Placement view over the model (derive Detached vs Docked{leaf} for a TabId; no stored placement field; instance id distinct from region id). Covers layout-and-docking Req 16.5, 16.6.
+- [x] IRP.2 Placement derived (no-snapshot = single docked root region, byte-identical). Covers layout-and-docking Req 16.6.
+- [x] IRP.3 Shared Ui-level chrome cores (render_menu_bar_into_ui + render_title_line_into_ui) reused by unsplit, split-region, and detached paths. Covers layout-and-docking Req 16.1, 16.2, 16.4; workspace-kinds Req 4.6.
+- [x] IRP.4 Per-instance menu bar rendered in-region with a stable salted egui Id; app-level bar + Title_Line suppressed while split; unsplit byte-identical. Covers layout-and-docking Req 16.2, 16.3, 16.8.
+- [x] IRP.5 Boundary_Policy / workspace-conformance conformance for in-region chrome (live focusable per-region-salted ids; no phantom stop; no second focus ring). Covers layout-and-docking Req 16.8; menu-and-statusbar Req 16.15.
+- [x] IRP.6 One-tab-system boundary enforced (structural guard: no KindConfig tab-container field; Kind internal composition is private). Covers layout-and-docking Req 16.7; workspace-kinds Req 4.6.
+- [x] IRP.7 Full-shell tests: same instance, identical chrome across the three placements; unsplit unchanged. Covers layout-and-docking Req 16.9.
+- [x] IRP.8 Close: verify.ps1 CLEAN FULL nextest (240s, ai-review.log empty); TCR rows PASS; change-log CR-CH-041 DONE. Covers layout-and-docking Req 16; workspace-kinds Req 4.6; menu-and-statusbar Req 16.15.
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (instance-region-placement) | CR-CH-041 DONE. 8 tasks (IRP.1-IRP.8), 2 sub-slices (IRP-a behaviour-identical foundation + IRP-b visible in-region chrome). 11 criteria PASS: layout-and-docking Req 16.1-16.9, workspace-kinds Req 4.6, menu-and-statusbar Req 16.15. Consolidated CR-NR-094 (Req 15) + workspace-kinds Req 4 under one principle; added placement + one-tab-system boundary. verify.ps1 CLEAN FULL nextest; no existing test modified. |
