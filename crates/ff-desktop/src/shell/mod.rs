@@ -571,6 +571,16 @@ pub struct WorkbenchShell {
     ///
     /// Validates: layout-and-docking Requirement 15.3, 15.5
     region_cmd_ctx: std::collections::HashMap<ff_layout::TabGroupId, WorkspaceCommandContext>,
+
+    /// The FOCUSED split region's menu-bar first-button id, captured each frame
+    /// by the split render (B073). While split, the shell drives Tab within the
+    /// focused region as a two-stop cycle -- region command field <-> this
+    /// menu-first button -- consuming Tab so egui-native traversal never walks
+    /// into ANOTHER region. `None` when unsplit or the focused region has no
+    /// menu bar.
+    ///
+    /// Validates: layout-and-docking Requirement 16.8; menu-and-statusbar Req 16.15
+    focused_region_menu_first: Option<egui::Id>,
 }
 
 impl WorkbenchShell {
@@ -837,6 +847,7 @@ impl WorkbenchShell {
             split_tab_drag: None,
             split_leaf_rects: Vec::new(),
             region_cmd_ctx: std::collections::HashMap::new(),
+            focused_region_menu_first: None,
             session_start: chrono::Local::now(),
         }
     }

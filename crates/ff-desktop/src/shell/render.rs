@@ -43,6 +43,58 @@ pub(crate) fn logging_degradation_reason(is_fallback: bool, dropped: u64) -> Opt
     Some(reason)
 }
 
+/// The five stacked strip rects of a split region, top to bottom (CR-CH-041 +
+/// B072). Extracted as a pure value so the chrome ORDER is unit-testable without
+/// egui: tab bar, menu bar, Title_Line, command line, then the Context body.
+pub(crate) struct SplitRegionRects {
+    pub bar_rect: egui::Rect,
+    pub menu_rect: egui::Rect,
+    pub title_rect: egui::Rect,
+    pub cmd_rect: egui::Rect,
+    pub body_rect: egui::Rect,
+}
+
+/// Compute a split region's stacked chrome strips from its outer `rect`
+/// (CR-CH-041 Req 16.2, B072). TOP TO BOTTOM: tab bar (24), menu bar (24),
+/// Title_Line (20), command line (24), then the Context body fills the
+/// remainder. This matches the unsplit / detached ISPF chrome order -- the
+/// command line sits directly UNDER the Title_Line and ABOVE the body, NOT at
+/// the region bottom (the B072 defect). Each strip is clamped to `rect.max.y`
+/// so a very short region degrades gracefully (the body simply shrinks toward
+/// empty rather than overflowing).
+pub(crate) fn split_region_strip_rects(rect: egui::Rect) -> SplitRegionRects {
+    let tab_bar_h = 24.0_f32;
+    let menu_bar_h = 24.0_f32;
+    let title_h = 20.0_f32;
+    let cmd_field_h = 24.0_f32;
+    let bar_rect = egui::Rect::from_min_max(
+        rect.min,
+        egui::pos2(rect.max.x, (rect.min.y + tab_bar_h).min(rect.max.y)),
+    );
+    let menu_rect = egui::Rect::from_min_max(
+        egui::pos2(rect.min.x, bar_rect.max.y),
+        egui::pos2(rect.max.x, (bar_rect.max.y + menu_bar_h).min(rect.max.y)),
+    );
+    let title_rect = egui::Rect::from_min_max(
+        egui::pos2(rect.min.x, menu_rect.max.y),
+        egui::pos2(rect.max.x, (menu_rect.max.y + title_h).min(rect.max.y)),
+    );
+    // Command line strip: directly UNDER the Title_Line (B072), not at the bottom.
+    let cmd_rect = egui::Rect::from_min_max(
+        egui::pos2(rect.min.x, title_rect.max.y),
+        egui::pos2(rect.max.x, (title_rect.max.y + cmd_field_h).min(rect.max.y)),
+    );
+    // The Context body fills the remainder below the command line.
+    let body_rect = egui::Rect::from_min_max(egui::pos2(rect.min.x, cmd_rect.max.y), rect.max);
+    SplitRegionRects {
+        bar_rect,
+        menu_rect,
+        title_rect,
+        cmd_rect,
+        body_rect,
+    }
+}
+
 impl WorkbenchShell {
     /// The derived [`Placement`](crate::tab_manager::Placement) of the Workspace
     /// instance `tab_id` (CR-CH-041, Req 16.5/16.6). Detached takes precedence:
@@ -760,6 +812,9 @@ impl WorkbenchShell {
         // CR-NR-094 Slice 2d: keep the per-region command-line contexts in
         // lockstep with the current leaves before rendering the regions.
         self.reconcile_region_cmd_ctx();
+        // B073: reset the focused-region menu-first anchor; the focused region's
+        // menu render (below) re-captures it this frame.
+        self.focused_region_menu_first = None;
         let tree = self.tabs.layout_tree().clone();
         let focused = self.tabs.focused_leaf_id();
         let full = ui.available_rect_before_wrap();
@@ -949,38 +1004,20 @@ impl WorkbenchShell {
         rect: egui::Rect,
         is_focused: bool,
     ) {
-        let tab_bar_h = 24.0_f32;
-        let menu_bar_h = 24.0_f32;
-        let title_h = 20.0_f32;
-        let cmd_field_h = 24.0_f32;
-        // CR-CH-041 (Req 16.2): a split region draws the FULL per-instance chrome
-        // of the instance placed in it, top to bottom: tab bar, then the
-        // instance's Kind menu bar, then its Title_Line, then the Context body,
-        // then this region's own `Command ===>` line (CR-NR-094). Strips are
-        // clamped so a very short region degrades gracefully (bodies shrink).
-        let bar_rect = egui::Rect::from_min_max(
-            rect.min,
-            egui::pos2(rect.max.x, (rect.min.y + tab_bar_h).min(rect.max.y)),
-        );
-        let menu_rect = egui::Rect::from_min_max(
-            egui::pos2(rect.min.x, bar_rect.max.y),
-            egui::pos2(rect.max.x, (bar_rect.max.y + menu_bar_h).min(rect.max.y)),
-        );
-        let title_rect = egui::Rect::from_min_max(
-            egui::pos2(rect.min.x, menu_rect.max.y),
-            egui::pos2(rect.max.x, (menu_rect.max.y + title_h).min(rect.max.y)),
-        );
-        // CR-NR-094 Slice 2d (Req 15.1): reserve a bottom strip for THIS region's
-        // own `Command ===>` line. The body occupies the space between the
-        // Title_Line and the command strip.
-        let cmd_rect = egui::Rect::from_min_max(
-            egui::pos2(rect.min.x, (rect.max.y - cmd_field_h).max(title_rect.max.y)),
-            rect.max,
-        );
-        let body_rect = egui::Rect::from_min_max(
-            egui::pos2(rect.min.x, title_rect.max.y),
-            egui::pos2(rect.max.x, cmd_rect.min.y),
-        );
+        // CR-CH-041 (Req 16.2) + B072: a split region draws the FULL per-instance
+        // chrome of the instance placed in it, TOP TO BOTTOM in the SAME order as
+        // the unsplit / detached placements (ISPF order): tab bar, then the
+        // instance's Kind menu bar, then its Title_Line, then this region's own
+        // `Command ===>` line, then the Context body. The rect math is a PURE
+        // helper (`split_region_strip_rects`) so the ordering is unit-testable
+        // without egui (B072 regression guard).
+        let SplitRegionRects {
+            bar_rect,
+            menu_rect,
+            title_rect,
+            cmd_rect,
+            body_rect,
+        } = split_region_strip_rects(rect);
 
         // CR-NR-093 Slice 2c.2: record this leaf's rect so a tab-header drag can
         // be resolved to a drop target on release (Req 14.6).
@@ -1031,7 +1068,7 @@ impl WorkbenchShell {
                 } else {
                     egui::Stroke::NONE
                 })
-                .min_size(egui::vec2(0.0, tab_bar_h))
+                .min_size(egui::vec2(0.0, bar_rect.height()))
                 .sense(egui::Sense::click_and_drag());
             let resp = bar_ui.add(btn);
             if resp.clicked() {
@@ -1175,6 +1212,13 @@ impl WorkbenchShell {
         menu_ui.push_id(("region_menu_bar", leaf_id.value()), |ui| {
             self.render_menu_bar_into_ui(ui, &menu);
         });
+        // B073: if THIS is the focused region, record its menu-bar first-button id
+        // so the shell can include it in the focused-region Tab cycle (keeping Tab
+        // inside the region). `render_menu_bar_into_ui` just set `menu_first_id`
+        // for the bar it drew; capture it for the focused leaf only.
+        if self.tabs.focused_leaf_id() == leaf_id {
+            self.focused_region_menu_first = self.menu_first_id;
+        }
     }
 
     /// Render one split region's own `Command ===>` line into `cmd_rect` and, on

@@ -183,6 +183,14 @@ impl WorkbenchShell {
         // swap) for an in-window region. Both are save/install/restore around a
         // scoped render/dispatch; neither leaks state. Preserving this exact
         // save/restore keeps all Req 18 detached behaviour intact (no regression).
+        // B074: save the Primary_Window's active tab by STABLE `TabId`, not by
+        // index. A command dispatched under the swap can CHANGE THE TAB COUNT
+        // (e.g. `=0.m` triggers `insert_pom_tab`, which inserts a tab at index 0
+        // and shifts every existing index up). Restoring a saved INDEX would then
+        // land on a DIFFERENT tab, leaking the detached command's effect into the
+        // Primary_Window. Restoring by id resolves back to the SAME tab regardless
+        // of inserts/removes inside the closure.
+        let saved_active_id = self.tabs.active_tab().id;
         let saved_active = self.tabs.active_index();
         let saved_command_text = std::mem::take(&mut self.command_text);
         let saved_scroll_text = std::mem::take(&mut self.scroll_field_text);
@@ -210,8 +218,15 @@ impl WorkbenchShell {
         ctx.command_field_focus_requested = self.command_field_focus_requested;
         ctx.pending_command_line_outcome = self.pending_command_line_outcome.take();
 
-        // Restore the Primary_Window context (active tab via the seam).
-        self.tabs.set_active(saved_active);
+        // Restore the Primary_Window context (active tab via the seam). B074:
+        // resolve the saved TabId back to its CURRENT index (it may have shifted
+        // if the closure changed the tab count); fall back to the clamped old
+        // index only if that tab was closed inside the closure.
+        let restore_index = self
+            .tabs
+            .index_of_id(saved_active_id)
+            .unwrap_or_else(|| saved_active.min(self.tabs.len().saturating_sub(1)));
+        self.tabs.set_active(restore_index);
         self.command_text = saved_command_text;
         self.scroll_field_text = saved_scroll_text;
         self.scroll_amount = saved_scroll_amount;

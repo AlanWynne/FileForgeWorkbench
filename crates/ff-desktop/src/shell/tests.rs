@@ -8761,3 +8761,141 @@ fn kind_config_has_no_core_tab_container_field() {
     } = cfg;
     // (No `tabs` / `tab_container` / `children` field exists -- that is the point.)
 }
+
+/// Validates: menu-and-statusbar Req 18.10 (CR-CH-036), B074 -- a chained menu
+/// fastpath (`=0.m`) dispatched under a detached window's context must NOT change
+/// the Primary_Window's active tab, even though `=0` inserts a POM tab (shifting
+/// indices). `with_workspace_context` restores the primary by STABLE TabId, so
+/// the primary returns to the SAME tab regardless of the insert.
+#[test]
+fn detached_chained_fastpath_does_not_change_primary_active_tab() {
+    let mut shell = make_shell();
+    // Make the PRIMARY active tab a NON-home (untitled editor) tab: `=` inside the
+    // swap only triggers insert_pom_tab when the active tab is not Home, which is
+    // the index-shifting path B074 fixes.
+    shell.shell_new_untitled(); // a non-home editor tab; becomes active
+    let primary_active_id = shell.tabs.active_tab().id;
+    let primary_kind_before = shell.tabs.active_tab().kind;
+    let tab_count_before = shell.tabs.len();
+    assert!(
+        !shell.tabs.active_tab().is_home,
+        "precondition: primary active tab is non-home"
+    );
+
+    // Detach target: a different tab (the first one, the startup POM).
+    let detached_index = 0usize;
+    assert_ne!(
+        shell.tabs.tabs()[detached_index].id,
+        primary_active_id,
+        "detached target must differ from the primary active tab"
+    );
+
+    // Dispatch the chained fastpath under the detached window's context.
+    let mut ctx = super::WorkspaceCommandContext::default();
+    shell.with_workspace_context(detached_index, &mut ctx, |s| {
+        s.run_command_line("=0.M");
+    });
+
+    // The Primary_Window's active tab is STILL the same instance (by id) and its
+    // Context is unchanged -- the detached `=0.M` did not leak into the primary.
+    assert_eq!(
+        shell.tabs.active_tab().id,
+        primary_active_id,
+        "primary active tab must be unchanged after a detached chained fastpath (B074)"
+    );
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        primary_kind_before,
+        "primary active tab's Context/kind must be unchanged (B074)"
+    );
+    // A POM tab may have been inserted by =0 inside the swap; that is a tab-count
+    // change, which is exactly what would have corrupted an index-based restore.
+    let _ = tab_count_before;
+}
+
+/// Validates: layout-and-docking Req 16.2, B072 -- a split region's command line
+/// renders directly UNDER the Title_Line and ABOVE the body (ISPF order), NOT at
+/// the region bottom. Pure test on the strip-rect math (no egui needed).
+#[test]
+fn split_region_command_line_is_under_title_above_body() {
+    use super::render::split_region_strip_rects;
+    // A tall region (e.g. a full-height split half).
+    let region = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(600.0, 900.0));
+    let r = split_region_strip_rects(region);
+    // Top-to-bottom order: tab bar -> menu bar -> Title_Line -> command line -> body.
+    assert!(
+        r.bar_rect.min.y <= r.menu_rect.min.y,
+        "tab bar above menu bar"
+    );
+    assert!(
+        r.menu_rect.min.y <= r.title_rect.min.y,
+        "menu bar above title"
+    );
+    assert!(
+        r.title_rect.max.y <= r.cmd_rect.min.y,
+        "command line is BELOW the Title_Line"
+    );
+    assert!(
+        r.cmd_rect.max.y <= r.body_rect.min.y,
+        "command line is ABOVE the body (B072: not at the region bottom)"
+    );
+    // The command line must NOT be pinned to the region bottom.
+    assert!(
+        r.cmd_rect.max.y < region.max.y,
+        "command line must not sit at the region bottom (B072)"
+    );
+    // The body fills the remainder down to the region bottom.
+    assert_eq!(
+        r.body_rect.max.y, region.max.y,
+        "body extends to region bottom"
+    );
+}
+
+/// Validates: menu-and-statusbar Req 16.15, layout-and-docking Req 16.8, B073 --
+/// while split, Tab/Shift+Tab focus cycling stays WITHIN the focused region and
+/// never lands on ANOTHER region's controls. Regression guard for "Tab escapes
+/// the active workspace onto other workspaces".
+#[test]
+fn full_shell_split_tab_stays_within_focused_region() {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("SPLIT");
+    for _ in 0..4 {
+        harness.run();
+    }
+    let leaves = harness.state().tabs.leaf_ids();
+    assert_eq!(leaves.len(), 2, "precondition: two regions");
+    let focused = harness.state().tabs.focused_leaf_id();
+    let other = *leaves.iter().find(|l| **l != focused).expect("other leaf");
+    let other_cmd = region_cmd_field_id(other);
+
+    // Focus the FOCUSED region's command field, then press Tab several times.
+    let focused_cmd = region_cmd_field_id(focused);
+    harness.ctx.memory_mut(|m| m.request_focus(focused_cmd));
+    harness.run();
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        Some(focused_cmd),
+        "precondition: focused region's command field has focus"
+    );
+
+    // Tab repeatedly: focus must NEVER land on the OTHER region's command field.
+    for _ in 0..8 {
+        harness.press_key(egui::Key::Tab);
+        harness.run();
+        assert_ne!(
+            harness.ctx.memory(|m| m.focused()),
+            Some(other_cmd),
+            "Tab must not cross into another region while split (B073)"
+        );
+    }
+    // Shift+Tab likewise stays out of the other region.
+    for _ in 0..8 {
+        harness.press_key_modifiers(egui::Modifiers::SHIFT, egui::Key::Tab);
+        harness.run();
+        assert_ne!(
+            harness.ctx.memory(|m| m.focused()),
+            Some(other_cmd),
+            "Shift+Tab must not cross into another region while split (B073)"
+        );
+    }
+}

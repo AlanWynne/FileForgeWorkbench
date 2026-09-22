@@ -507,7 +507,20 @@ impl eframe::App for WorkbenchShell {
             || self.show_swap_list.is_some()
             || self.show_unsaved_workspace_dialog
             || !matches!(self.files_panel.dialog, files_panel::FilesDialogState::None);
-        {
+        // B073: while the Workspace is split, the shell OWNS Tab entirely and
+        // keeps focus WITHIN the focused region -- egui-native traversal would
+        // otherwise walk across all regions (the top-level command field is
+        // suppressed, so the unsplit Boundary_Policy below never engages). Cycle
+        // the focused region's two stable stops: its command field <-> its
+        // menu-bar first button. Consuming Tab here means egui never receives it,
+        // so it cannot cross into another region. Switching regions is by
+        // FOCUS / click, not Tab (matches the owner's expectation).
+        let handled_split_tab = if self.tabs.is_split() && !self.modal_open {
+            self.handle_split_region_tab(ctx)
+        } else {
+            false
+        };
+        if !self.tabs.is_split() && !handled_split_tab {
             let is_file_explorer = self.tabs.active_tab().kind == TabKind::FileExplorerPanel;
             let cmd_id = egui::Id::new("command_field_input");
             let cmd_has_focus = ctx.memory(|m| m.focused() == Some(cmd_id));
@@ -1319,6 +1332,63 @@ impl super::WorkbenchShell {
         if let Some(cmd) = self.resolve_function_key_command(vctx) {
             self.dispatch_key_command(&cmd);
         }
+    }
+
+    /// B073: while split, keep Tab/Shift+Tab focus WITHIN the focused region.
+    ///
+    /// Returns `true` when it handled (consumed) a Tab press. The focused region
+    /// has two stable, shell-owned Tab stops: its command field
+    /// (`("region_command_field_input", focused_leaf)`) and its menu-bar first
+    /// button (captured in `focused_region_menu_first`). Tab toggles between them;
+    /// Shift+Tab toggles the other way. The Tab event is CONSUMED so egui-native
+    /// traversal never receives it and therefore cannot walk into another region.
+    /// If focus is not currently on either of the focused region's stops (e.g. it
+    /// is in the region body or elsewhere), Tab re-anchors it to the focused
+    /// region's command field -- so Tab always lands back inside the focused
+    /// region, never in a sibling region. Interior body controls remain reachable
+    /// by mouse; region switching is via FOCUS / click (owner's expectation).
+    ///
+    /// Validates: layout-and-docking Requirement 16.8; menu-and-statusbar Req 16.15
+    fn handle_split_region_tab(&mut self, ctx: &egui::Context) -> bool {
+        // Detect + consume Tab in one input pass (consuming during detection is
+        // essential so egui's `give_to_next` focus machinery never latches it --
+        // the same discipline the unsplit Boundary_Policy uses, B056).
+        let (tab, shift) = ctx.input_mut(|i| {
+            let pressed = i.key_pressed(egui::Key::Tab);
+            let shift = i.modifiers.shift;
+            if pressed {
+                i.events.retain(|e| {
+                    !matches!(
+                        e,
+                        egui::Event::Key {
+                            key: egui::Key::Tab,
+                            ..
+                        }
+                    )
+                });
+            }
+            (pressed, shift)
+        });
+        if !tab {
+            return false;
+        }
+        let focused_leaf = self.tabs.focused_leaf_id();
+        let cmd_id = egui::Id::new(("region_command_field_input", focused_leaf.value()));
+        let menu_first = self.focused_region_menu_first;
+        let current = ctx.memory(|m| m.focused());
+
+        // Two-stop cycle within the focused region: command field <-> menu-first.
+        // Forward: cmd -> menu -> cmd. Reverse: cmd -> menu -> cmd (symmetric with
+        // only two stops). When focus is on neither stop, anchor to the command
+        // field so Tab always returns INTO the focused region.
+        let target = match (current, menu_first) {
+            (Some(c), Some(mf)) if c == cmd_id => mf,
+            (Some(c), Some(_)) if Some(c) == menu_first => cmd_id,
+            _ => cmd_id,
+        };
+        let _ = shift; // symmetric two-stop cycle; Shift+Tab uses the same toggle
+        ctx.memory_mut(|m| m.request_focus(target));
+        true
     }
 }
 
