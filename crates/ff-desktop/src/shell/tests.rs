@@ -8170,3 +8170,47 @@ fn full_shell_dock_unsplit_still_restores_flat_origin() {
     );
     assert!(!state.tabs.tabs()[idx].is_floating);
 }
+
+// === B071: File Explorer in a split region stays in its region ==============
+
+/// Validates: layout-and-docking Req 13.4/14.4 (B071) -- when the Workspace is
+/// split and a region's Context is switched to the File Explorer, the split MUST
+/// remain (the explorer renders inside its region, not full-window). Before the
+/// fix, `render_central_panel`'s `is_file_explorer` branch took over the whole
+/// window and bypassed the split render.
+#[test]
+fn full_shell_file_explorer_in_split_region_keeps_split() {
+    use crate::tab_state::TabKind;
+    let mut harness = harness_shell();
+    // Split: focus moves to the new POM region.
+    harness.state_mut().handle_command("SPLIT");
+    for _ in 0..3 {
+        harness.run();
+    }
+    assert!(harness.state().tabs.is_split(), "precondition: split");
+    let leaves_before = harness.state().tabs.leaf_ids().len();
+
+    // Navigate the focused region's Context to the File Explorer in place.
+    harness.state_mut().handle_command("FILES");
+    for _ in 0..3 {
+        harness.run();
+    }
+
+    let state = harness.state();
+    // The focused region is now a File Explorer...
+    assert_eq!(
+        state.tabs.active_tab().kind,
+        TabKind::FileExplorerPanel,
+        "the focused region switched to the File Explorer"
+    );
+    // ...but the Workspace is STILL split (not collapsed to full screen).
+    assert!(
+        state.tabs.is_split(),
+        "B071: a File Explorer region must NOT collapse the split to full screen"
+    );
+    assert_eq!(
+        state.tabs.leaf_ids().len(),
+        leaves_before,
+        "the split still has the same number of regions"
+    );
+}

@@ -581,7 +581,12 @@ impl WorkbenchShell {
             }
         }
 
-        let is_file_explorer = self.tabs.active_tab().kind == TabKind::FileExplorerPanel;
+        // CR-NR-093 B071: the ctx-level full-window File Explorer only applies
+        // when the Workspace is NOT split. While split, the File Explorer renders
+        // INSIDE its region (via render_active_tab_body's FileExplorerPanel arm),
+        // so the split must stay visible -- do not take the full-window branch.
+        let is_file_explorer =
+            self.tabs.active_tab().kind == TabKind::FileExplorerPanel && !self.tabs.is_split();
         // CR-NR-060 Slice A: the NavModel-backed modern explorer is the sole File
         // Explorer content (legacy inline tree retired).
         // ── Toolchain Panel (bottom dock) ────────────────────────────────
@@ -1205,7 +1210,16 @@ impl WorkbenchShell {
                     self.honour_interior_focus_latch(ctx, Some(id), Some(id));
                 }
                 TabKind::FileExplorerPanel => {
-                    // Rendered above in the is_file_explorer block -- unreachable here
+                    // Unsplit: rendered as a full-window ctx-level panel by
+                    // render_central_panel (the is_file_explorer branch), so this
+                    // arm is skipped. Split (CR-NR-093 B071): the ctx-level branch
+                    // is suppressed, so render the File Explorer HERE, inside this
+                    // region's `ui`, keeping the split visible (Req 13.4/14.4).
+                    if self.tabs.is_split() {
+                        self.nav_explorer_seed();
+                        let effects = self.render_nav_explorer_body(ui);
+                        self.apply_nav_explorer_effects(ctx, effects);
+                    }
                 }
                 TabKind::MacroLibrary => {
                     // Validates: lua-macro-engine Requirement 12.1-12.8
@@ -1363,9 +1377,24 @@ impl WorkbenchShell {
     ///
     /// Validates: Requirement 24.1, 24.3, 24.5, 24.7, 24.9
     fn render_nav_explorer(&mut self, ctx: &egui::Context) {
-        use crate::explorer_view::{
-            keyboard_effects, render_tree, resolve_open, ExplorerEffect, OpenTarget,
-        };
+        // CR-NR-093 B071: the File Explorer is now rendered in THREE parts --
+        // seed (state), body (into a Ui), apply (effects + dialogs) -- so it can
+        // render either as this full-window CentralPanel (unsplit) OR inside a
+        // split region's Ui (via render_active_tab_body). This ctx-level path is
+        // the unsplit case; behaviour is unchanged.
+        self.nav_explorer_seed();
+        let mut effects = Vec::new();
+        egui::CentralPanel::default().show(ctx, |ui| {
+            effects = self.render_nav_explorer_body(ui);
+        });
+        self.apply_nav_explorer_effects(ctx, effects);
+    }
+
+    /// Seed the modern File Explorer's NavModel on first display (CR-NR-093 B071
+    /// split of `render_nav_explorer`): associate the Local Files root URI and
+    /// load its children via the provider, and populate the Catalogs root from
+    /// the registry. Idempotent -- a no-op once `children_loaded` is set.
+    fn nav_explorer_seed(&mut self) {
         use crate::nav_model::list_via_provider;
 
         // Seed the Local Files root on first display: associate its URI and load
@@ -1414,28 +1443,45 @@ impl WorkbenchShell {
                 n.children_loaded = true;
             }
         }
+    }
 
+    /// Render the modern File Explorer tree into `ui` and return the interaction
+    /// effects to apply (CR-NR-093 B071 split of `render_nav_explorer`). Used by
+    /// both the full-window (unsplit) path and a split region's Ui.
+    fn render_nav_explorer_body(
+        &mut self,
+        ui: &mut egui::Ui,
+    ) -> Vec<crate::explorer_view::ExplorerEffect> {
+        use crate::explorer_view::{keyboard_effects, render_tree};
         let mut effects = Vec::new();
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.label(egui::RichText::new("File Explorer").monospace().strong());
-            ui.separator();
-            // Keyboard navigation (Req 8/20) when the explorer is hovered/
-            // focused, then mouse interactions from the tree.
-            if ui.rect_contains_pointer(ui.max_rect()) {
-                effects.extend(keyboard_effects(
-                    ui,
-                    &self.nav_model,
-                    &mut self.nav_selection,
-                ));
-            }
-            effects.extend(render_tree(
+        ui.label(egui::RichText::new("File Explorer").monospace().strong());
+        ui.separator();
+        // Keyboard navigation (Req 8/20) when the explorer is hovered/
+        // focused, then mouse interactions from the tree.
+        if ui.rect_contains_pointer(ui.max_rect()) {
+            effects.extend(keyboard_effects(
                 ui,
                 &self.nav_model,
                 &mut self.nav_selection,
-                &self.palette,
             ));
-        });
+        }
+        effects.extend(render_tree(
+            ui,
+            &self.nav_model,
+            &mut self.nav_selection,
+            &self.palette,
+        ));
+        effects
+    }
 
+    /// Apply the File Explorer interaction effects and render its modal dialogs
+    /// (CR-NR-093 B071 split of `render_nav_explorer`).
+    fn apply_nav_explorer_effects(
+        &mut self,
+        ctx: &egui::Context,
+        effects: Vec<crate::explorer_view::ExplorerEffect>,
+    ) {
+        use crate::explorer_view::{resolve_open, ExplorerEffect, OpenTarget};
         // Apply interaction effects outside the render borrow.
         for eff in effects {
             match eff {
