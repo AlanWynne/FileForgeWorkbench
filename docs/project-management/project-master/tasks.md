@@ -2889,13 +2889,13 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 > and split command fields. Behaviour-additive. Spec-gate complete; impl pending
 > approval.
 
-- [ ] CHA.1 Requirements gate -- function-keys Req 23 (Up/Down arrow history stepping), design delta, tasks (function-keys Task 45), TCR NOT COVERED rows, change-log CR-NR-096.
-- [ ] CHA.2 Failing tests first: `ff-command` step-newer unit tests; full-shell Up-recalls-older / Down-restores-in-progress / arrows-ignored-when-unfocused / up-shares-pointer-with-retrieve. Covers function-keys Req 23.1/23.2/23.3/23.5/23.7.
-- [ ] CHA.3 `RetrieveState` step-newer + `CommandLineHistory::retrieve_newer` + restore-in-progress result; Up reuses the existing `retrieve` (shared pointer). Covers function-keys Req 23.1/23.2/23.3.
-- [ ] CHA.4 `render_command_field_body` returns a focus-gated Up/Down history-step signal; shell + swapped detached/region callers drive it and capture/restore the In_Progress_Line. Covers function-keys Req 23.6/23.9/23.10.
-- [ ] CHA.5 Focus-gating (no Tab / SCROLL-body hijack); stepping never records; non-RETRIEVE submit resets the pointer. Covers function-keys Req 23.7/23.8.
-- [ ] CHA.6 Close: verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR Req 23 PASS. Covers function-keys Req 23.
+- [x] CHA.1 Requirements gate -- function-keys Req 23 (Up/Down arrow history stepping), design delta, tasks (function-keys Task 45), TCR NOT COVERED rows, change-log CR-NR-096.
+- [x] CHA.2 Failing tests first: `ff-command` step-newer unit tests; full-shell Up-recalls-older / Down-restores-in-progress / arrows-ignored-when-unfocused / up-shares-pointer-with-retrieve. Covers function-keys Req 23.1/23.2/23.3/23.5/23.7.
+- [x] CHA.3 `RetrieveState` step-newer + `CommandLineHistory::retrieve_newer` + restore-in-progress result; Up reuses the existing `retrieve` (shared pointer). Covers function-keys Req 23.1/23.2/23.3.
+- [x] CHA.4 `render_command_field_body` returns a focus-gated Up/Down history-step signal; shell + swapped detached/region callers drive it and capture/restore the In_Progress_Line. Covers function-keys Req 23.6/23.9/23.10.
+- [x] CHA.5 Focus-gating (no Tab / SCROLL-body hijack); stepping never records; non-RETRIEVE submit resets the pointer. Covers function-keys Req 23.7/23.8.
+- [x] CHA.6 Close: verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR Req 23 PASS. Covers function-keys Req 23.
 
 | Status | Count |
 |--------|-------|
-| `[ ]` Phase (cmdline-history-arrows) | CR-NR-096 -- SPEC DONE (gate complete): function-keys Req 23.1-23.10 (Up=older/==RETRIEVE, Down=newer/restore-in-progress, focus-gated, shared across shell/detached/split fields, coexists with RETRIEVE pointer, no Tab/body-scroll hijack). Impl pending approval: function-keys Task 45 (`ff-command` step-newer + shell focus-gated arrow drive). Builds on CR-NR-084 (CommandLineHistory) + CR-NR-054/19 (RETRIEVE). Behaviour-additive. |
+| `[x]` Phase (cmdline-history-arrows) | CR-NR-096 DONE: function-keys Req 23.1-23.10 (Up=older/==RETRIEVE, Down=newer/restore-in-progress, focus-gated, shared across shell/detached/split fields, coexists with RETRIEVE pointer, no Tab/body-scroll hijack). Impl: `ff-command` `RetrieveState::retrieve_newer` + `RetrieveNewerResult` + `CommandLineHistory::retrieve_newer`/`is_at_initial` (Up reuses `retrieve`, shared pointer); shell `render_command_field_body` returns `CommandFieldSignal{submitted,history_step}`; single `step_command_history` helper drives shared history + `command_line_in_progress`, wired into all 3 command-field paths (primary/detached/split via `with_workspace_context`). 6 new `ff-command` tests + 4 full-shell egui_kittest tests; verify.ps1 CLEAN FULL nextest (9301 passed, 0 failed). Behaviour-additive. Builds on CR-NR-084 (CommandLineHistory) + CR-NR-054/19 (RETRIEVE). |

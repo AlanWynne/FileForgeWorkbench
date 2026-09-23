@@ -6701,6 +6701,150 @@ fn full_shell_config_first_tab_focuses_filter_field() {
     );
 }
 
+// === CR-NR-096: Up/Down arrow command-history stepping ======================
+
+/// Seed the shared Command_Line_History with the given commands in order, so
+/// the LAST element is the most-recent (index 0) entry. Records directly on the
+/// processor-owned history (bypassing dispatch side effects) exactly as a real
+/// submission's `record` would.
+fn seed_history(harness: &mut egui_kittest::Harness<super::WorkbenchShell>, cmds: &[&str]) {
+    for c in cmds {
+        harness.state_mut().command_line_history.record(c);
+    }
+}
+
+/// Validates: Requirement 23.1, 23.6, 23.10 -- with the command field focused,
+/// the first Up captures the (empty) in-progress line and recalls the most-recent
+/// entry into the field WITHOUT executing it; a second Up steps one entry older.
+#[test]
+fn command_field_up_recalls_older_history() {
+    let mut harness = harness_shell();
+    seed_history(&mut harness, &["THEME legacy", "LOCATE 1"]);
+    // Focus is on the command field on entry (Req 16.1a); confirm the gate.
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        Some(cmd_field_id()),
+        "command field holds focus on POM entry"
+    );
+    // First Up -> most-recent entry (Req 23.1).
+    harness.press_key(egui::Key::ArrowUp);
+    harness.run();
+    assert_eq!(
+        harness.state().command_text,
+        "LOCATE 1",
+        "first Up recalls the most-recent history entry"
+    );
+    // Second Up -> one entry older (Req 23.1, shared single-step recall).
+    harness.press_key(egui::Key::ArrowUp);
+    harness.run();
+    assert_eq!(
+        harness.state().command_text,
+        "THEME legacy",
+        "second Up steps to the older entry"
+    );
+    // The recalled command is only placed, never executed (still on POM).
+    assert!(
+        harness.state().tabs.active_tab().is_home,
+        "recall must not execute the command (Req 23.10)"
+    );
+}
+
+/// Validates: Requirement 23.2, 23.3, 23.6 -- Down steps newer, and stepping past
+/// the newest entry restores the In_Progress_Line captured at the cycle start.
+#[test]
+fn command_field_down_restores_in_progress_line() {
+    let mut harness = harness_shell();
+    seed_history(&mut harness, &["THEME legacy", "LOCATE 1"]);
+    // Type an in-progress line before starting the cycle.
+    harness.state_mut().command_text = "IN PROGRESS".to_string();
+    harness.run();
+    // Up twice: LOCATE 1 (newest) then THEME legacy (older).
+    harness.press_key(egui::Key::ArrowUp);
+    harness.run();
+    harness.press_key(egui::Key::ArrowUp);
+    harness.run();
+    assert_eq!(harness.state().command_text, "THEME legacy");
+    // Down: back to the newer entry (Req 23.2).
+    harness.press_key(egui::Key::ArrowDown);
+    harness.run();
+    assert_eq!(
+        harness.state().command_text,
+        "LOCATE 1",
+        "Down steps one entry newer"
+    );
+    // Down again: past the newest -> restore the in-progress line (Req 23.3).
+    harness.press_key(egui::Key::ArrowDown);
+    harness.run();
+    assert_eq!(
+        harness.state().command_text,
+        "IN PROGRESS",
+        "Down past newest restores the captured in-progress line"
+    );
+    // A further Down at initial is a no-op (Req 23.3 second sentence).
+    harness.press_key(egui::Key::ArrowDown);
+    harness.run();
+    assert_eq!(
+        harness.state().command_text,
+        "IN PROGRESS",
+        "Down at initial position is a no-op"
+    );
+}
+
+/// Validates: Requirement 23.7 -- when the command field does NOT have focus,
+/// Up/Down are NOT hijacked for history (the field content is left unchanged).
+#[test]
+fn arrows_ignored_when_command_field_not_focused() {
+    let mut harness = harness_shell();
+    seed_history(&mut harness, &["THEME legacy", "LOCATE 1"]);
+    // Move focus off the command field (Tab lands on the first interior control).
+    harness.press_key(egui::Key::Tab);
+    harness.run();
+    assert_ne!(
+        harness.ctx.memory(|m| m.focused()),
+        Some(cmd_field_id()),
+        "precondition: focus is no longer on the command field"
+    );
+    let before = harness.state().command_text.clone();
+    harness.press_key(egui::Key::ArrowUp);
+    harness.run();
+    assert_eq!(
+        harness.state().command_text,
+        before,
+        "Up must not touch the command field when it is unfocused (Req 23.7)"
+    );
+}
+
+/// Validates: Requirement 23.1, 23.8 -- the arrow gesture shares the SAME
+/// Retrieve_Pointer as the RETRIEVE command: an Up followed by a RETRIEVE
+/// continues stepping older from where the arrow left off, and the arrow records
+/// nothing in history.
+#[test]
+fn up_shares_pointer_with_retrieve() {
+    let mut harness = harness_shell();
+    seed_history(&mut harness, &["THEME legacy", "LOCATE 1"]);
+    let len_before = harness.state().command_line_history.len();
+    // Up recalls the newest (LOCATE 1) and advances the shared pointer.
+    harness.press_key(egui::Key::ArrowUp);
+    harness.run();
+    assert_eq!(harness.state().command_text, "LOCATE 1");
+    // RETRIEVE now steps to the OLDER entry (shared pointer), not back to newest.
+    // Use the full command-line path so the Command_Line_Outcome (Set(recalled))
+    // is applied to the field, exactly as an Enter/F12 submission would.
+    harness.state_mut().run_command_line("RETRIEVE");
+    harness.run();
+    assert_eq!(
+        harness.state().command_text,
+        "THEME legacy",
+        "RETRIEVE continues from the arrow's pointer position (shared pointer)"
+    );
+    // The arrow gesture recorded nothing new (Req 23.8).
+    assert_eq!(
+        harness.state().command_line_history.len(),
+        len_before,
+        "arrow stepping must not add history entries"
+    );
+}
+
 // === CR-CH-039 / B069: Config View keyboard tree navigation =================
 
 // Validates: configuration-system Req 21.2/21.3/21.4/21.6/21.8/21.11 -- with the

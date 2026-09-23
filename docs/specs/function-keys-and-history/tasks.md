@@ -738,32 +738,32 @@ Behaviour-additive; TDD (failing tests first). Shares the existing
 `CommandLineHistory` / Retrieve_Pointer (CR-NR-084). Do NOT start until the gate
 is approved.
 
-- [ ] 45. Up/Down arrows step command history on a focused command field
-  - [ ] 45.1 Write failing `ff-command` unit tests FIRST for the step-newer path:
+- [x] 45. Up/Down arrows step command history on a focused command field
+  - [x] 45.1 Write failing `ff-command` unit tests FIRST for the step-newer path:
           `retrieve_newer_steps_toward_newest`,
           `retrieve_newer_at_index_0_signals_restore_in_progress`,
           `retrieve_newer_at_initial_is_noop`, `up_then_down_round_trips_pointer`,
           `retrieve_newer_on_empty_history_is_noop`.
     - Validates: function-keys Requirement 23.2, 23.3, 23.5
-  - [ ] 45.2 Add `RetrieveState` step-newer (AtIndex(n)->AtIndex(n-1); AtIndex(0)->
+  - [x] 45.2 Add `RetrieveState` step-newer (AtIndex(n)->AtIndex(n-1); AtIndex(0)->
           Initial + restore-in-progress signal; Initial = no-op) + a result
           variant/return type for restore-in-progress; add
           `CommandLineHistory::retrieve_newer(field_text)`. Up reuses the existing
           `retrieve` (older) unchanged so it shares the pointer with RETRIEVE.
     - Validates: function-keys Requirement 23.1, 23.2, 23.3
-  - [ ] 45.3 In `render_command_field_body`, when the field HAS focus, detect
+  - [x] 45.3 In `render_command_field_body`, when the field HAS focus, detect
           Up/Down and return a history-step signal (alongside the existing submit
           signal); the shell callers (shell field + swapped detached/region
           context) drive `retrieve` / `retrieve_newer`, capture the
           In_Progress_Line on cycle start, and restore it on step-past-newest.
     - Validates: function-keys Requirement 23.1, 23.2, 23.3, 23.6, 23.9, 23.10
-  - [ ] 45.4 Focus-gating: arrows drive history ONLY while the command field has
+  - [x] 45.4 Focus-gating: arrows drive history ONLY while the command field has
           focus; otherwise Up/Down keep their existing meaning (menu option nav /
           editor caret / SCROLL body per CR-NR-087) and never affect Tab/Shift+Tab
           (Boundary_Policy). Stepping never records; a non-RETRIEVE submit resets
           the pointer.
     - Validates: function-keys Requirement 23.7, 23.8
-  - [ ] 45.5 Full-shell egui_kittest tests: `command_field_up_recalls_older_history`,
+  - [x] 45.5 Full-shell egui_kittest tests: `command_field_up_recalls_older_history`,
           `command_field_down_restores_in_progress_line`,
           `arrows_ignored_when_command_field_not_focused`,
           `up_shares_pointer_with_retrieve`. verify.ps1 CLEAN FULL nextest; rebuild

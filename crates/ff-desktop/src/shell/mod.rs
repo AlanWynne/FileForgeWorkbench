@@ -241,6 +241,15 @@ pub struct WorkbenchShell {
     /// layer (CR-NR-084, Option B). The shell forwards every submitted command
     /// line to it (`record`) and drives recall through it (`retrieve`).
     command_line_history: CommandLineHistory,
+    /// The In_Progress_Line captured at the start of an arrow-history cycle
+    /// (CR-NR-096, function-keys-and-history Requirement 23). The FIRST Up of a
+    /// cycle stores the current field text here (before recalling the newest
+    /// entry); when Down steps NEWER past the newest entry the workbench restores
+    /// this text and clears the store. `None` when no History_Cycle is active.
+    /// Shared like `command_line_history` because a single shared Retrieve_Pointer
+    /// means at most one cycle is active at a time across all command fields
+    /// (Req 23.9).
+    command_line_in_progress: Option<String>,
     /// Persistence store for the command-line history (function-keys-and-history
     /// Requirement 6). Resolved once at startup to
     /// `<User_Data_Dir>/command_history.toml` (or the `FFWB_HISTORY_PATH`
@@ -766,6 +775,7 @@ impl WorkbenchShell {
             cmd_registry,
             cmd_engine: CommandEngine::new(),
             command_line_history,
+            command_line_in_progress: None,
             history_store,
             find_manager: FindManager::new(),
             nav_manager: NavManager::new(),

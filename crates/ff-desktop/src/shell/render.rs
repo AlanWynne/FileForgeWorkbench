@@ -18,6 +18,31 @@ use crate::toolchain_panel;
 use super::helpers::*;
 use super::WorkbenchShell;
 
+/// Direction of an arrow-history step requested by a focused command field
+/// (CR-NR-096, function-keys-and-history Requirement 23).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum HistoryStep {
+    /// Up arrow -- recall an OLDER entry (same as RETRIEVE, Req 23.1).
+    Older,
+    /// Down arrow -- step NEWER / restore the In_Progress_Line (Req 23.2, 23.3).
+    Newer,
+}
+
+/// What a single frame of the shared command-field body observed: an optional
+/// submitted command line (Enter) and/or an optional arrow-history step. Enter
+/// and a history step are mutually exclusive within a frame (Enter wins). The
+/// caller -- which owns the shared command processor history and In_Progress_Line
+/// -- acts on whichever signal is present.
+///
+/// Validates: function-keys-and-history Requirement 23.9 (one behaviour, every field)
+#[derive(Debug, Clone, Default)]
+pub(super) struct CommandFieldSignal {
+    /// `Some(command)` when the user pressed Enter on a non-empty line this frame.
+    pub submitted: Option<String>,
+    /// `Some(direction)` when the user pressed Up/Down while the field had focus.
+    pub history_step: Option<HistoryStep>,
+}
+
 /// Compute the logging-degradation reason for the status-bar indicator (B038,
 /// CR-NR-086, logging-subsystem Req 8.7). Returns `Some(reason)` when logging
 /// has degraded -- the subsystem is in fallback (no-op) mode, or records have
@@ -231,6 +256,25 @@ impl WorkbenchShell {
                     // Return focus to the command field after every command execution.
                     self.command_field_focus_requested = true;
                 }
+                // CR-NR-096 (Req 23.1, 23.2, 23.7): while the command field has
+                // focus, Up/Down step the shared Command_History. egui's
+                // single-line TextEdit does not consume the arrow keys, so we
+                // intercept them here. A submit this frame takes precedence
+                // (never both). Only the FOCUSED field acts, so a background
+                // window's field never hijacks arrows meant for the body.
+                else if field_has_focus {
+                    let (up, down) = ctx.input(|i| {
+                        (
+                            i.key_pressed(egui::Key::ArrowUp),
+                            i.key_pressed(egui::Key::ArrowDown),
+                        )
+                    });
+                    if up {
+                        self.step_command_history(HistoryStep::Older);
+                    } else if down {
+                        self.step_command_history(HistoryStep::Newer);
+                    }
+                }
 
                 // ── SCROLL ===> field — Validates: Requirement 19.1, 19.2, 19.3 ──
                 ui.separator();
@@ -287,7 +331,7 @@ impl WorkbenchShell {
         let mut command_text = std::mem::take(&mut self.command_text);
         let mut focus_requested = self.command_field_focus_requested;
         let open_error = self.open_error.clone();
-        let submitted = egui::TopBottomPanel::top(panel_id)
+        let signal = egui::TopBottomPanel::top(panel_id)
             .show(ctx, |ui| {
                 Self::render_command_field_body(
                     ctx,
@@ -303,12 +347,17 @@ impl WorkbenchShell {
             .inner;
         self.command_text = command_text;
         self.command_field_focus_requested = focus_requested;
-        if let Some(cmd) = submitted {
+        if let Some(cmd) = signal.submitted {
             // Dispatches through the SAME pipeline; because we are inside
             // `with_workspace_context`, it acts on this window's tab and the
             // Command_Line_Outcome applies to this window's buffer.
             self.run_command_line(&cmd);
             self.command_field_focus_requested = true;
+        } else if let Some(step) = signal.history_step {
+            // CR-NR-096 (Req 23.9): the SAME arrow-history behaviour. We are
+            // inside `with_workspace_context`, so `self.command_text` is this
+            // window's buffer; the history/In_Progress_Line are shared.
+            self.step_command_history(step);
         }
     }
 
@@ -322,7 +371,8 @@ impl WorkbenchShell {
     /// dispatch against the correct tab. The `cmd_id` MUST be a stable, per-region
     /// salted id so focus round-trips and Tab-order stay deterministic (B056).
     ///
-    /// Validates: layout-and-docking Requirement 15.1, 15.2, 15.3, 15.9
+    /// Validates: layout-and-docking Requirement 15.1, 15.2, 15.3, 15.9;
+    /// function-keys-and-history Requirement 23.1, 23.2, 23.7, 23.9
     #[allow(clippy::too_many_arguments)]
     fn render_command_field_body(
         ctx: &egui::Context,
@@ -333,8 +383,8 @@ impl WorkbenchShell {
         modal_open: bool,
         accent: egui::Color32,
         open_error: Option<&str>,
-    ) -> Option<String> {
-        let mut submitted = None;
+    ) -> CommandFieldSignal {
+        let mut signal = CommandFieldSignal::default();
         ui.horizontal(|ui| {
             ui.label("Command ===>");
             let response = ui.add(
@@ -352,7 +402,26 @@ impl WorkbenchShell {
                 && ctx.input(|i| i.key_pressed(egui::Key::Enter))
                 && !command_text.is_empty()
             {
-                submitted = Some(command_text.trim().to_string());
+                signal.submitted = Some(command_text.trim().to_string());
+            }
+            // CR-NR-096 (Req 23.1, 23.2, 23.7): Up/Down step the Command_History
+            // ONLY while this field has keyboard focus. egui's single-line
+            // `TextEdit` does not consume the arrow keys, so we intercept them
+            // here and report the gesture to the caller (which owns the shared
+            // command processor history + In_Progress_Line). Enter takes
+            // precedence -- a submit this frame is never also a history step.
+            if field_has_focus && signal.submitted.is_none() {
+                let (up, down) = ctx.input(|i| {
+                    (
+                        i.key_pressed(egui::Key::ArrowUp),
+                        i.key_pressed(egui::Key::ArrowDown),
+                    )
+                });
+                if up {
+                    signal.history_step = Some(HistoryStep::Older);
+                } else if down {
+                    signal.history_step = Some(HistoryStep::Newer);
+                }
             }
             // Status/error line for THIS region (its own open_error).
             if let Some(err) = open_error {
@@ -360,7 +429,7 @@ impl WorkbenchShell {
                 ui.colored_label(accent, egui::RichText::new(err).monospace().small());
             }
         });
-        submitted
+        signal
     }
 
     // ── Key label bar ─────────────────────────────────────────────────────
@@ -1262,7 +1331,7 @@ impl WorkbenchShell {
                 .layout(egui::Layout::left_to_right(egui::Align::Center)),
         );
         field_ui.set_clip_rect(cmd_rect);
-        let submitted = Self::render_command_field_body(
+        let signal = Self::render_command_field_body(
             ctx,
             &mut field_ui,
             cmd_id,
@@ -1276,7 +1345,7 @@ impl WorkbenchShell {
         region_ctx.command_text = command_text;
         region_ctx.command_field_focus_requested = focus_requested;
 
-        if let Some(cmd) = submitted {
+        if let Some(cmd) = signal.submitted {
             // Dispatch against this region's active tab through the shared
             // Focus_Context seam. Focus the region first so a submit from a
             // non-focused region acts on and focuses that region (Req 15.7).
@@ -1287,6 +1356,16 @@ impl WorkbenchShell {
                 });
             }
             region_ctx.command_field_focus_requested = true;
+        } else if let Some(step) = signal.history_step {
+            // CR-NR-096 (Req 23.9): the SAME arrow-history behaviour for a split
+            // region. Route through the Focus_Context seam so `self.command_text`
+            // is this region's buffer while stepping; the history and the
+            // In_Progress_Line are shared across all fields.
+            if let Some(store_index) = self.tabs.leaf_active_store_index(leaf_id) {
+                self.with_workspace_context(store_index, &mut region_ctx, |shell| {
+                    shell.step_command_history(step);
+                });
+            }
         }
 
         // Reinstate the (possibly modified) context so it persists across frames.

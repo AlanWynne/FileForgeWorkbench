@@ -254,6 +254,26 @@ pub enum RetrieveResult {
     },
 }
 
+/// Result of a step-NEWER (Down arrow) history step (CR-NR-096, Requirement 23).
+///
+/// The inverse of [`RetrieveResult`]'s step-older recall: Down moves the pointer
+/// toward the most-recent entry, and stepping past the newest entry returns to
+/// the initial position and asks the caller to restore the In_Progress_Line.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RetrieveNewerResult {
+    /// Recalled a newer entry; place it in the command field.
+    Recalled {
+        /// The recalled command string.
+        command: String,
+    },
+    /// Stepped past the newest entry: the pointer returned to its initial
+    /// position; the caller SHALL restore the In_Progress_Line (Requirement 23.3).
+    RestoreInProgress,
+    /// The pointer was already at the initial position (no active cycle) or the
+    /// history is empty: a no-op; leave the field unchanged (Requirement 23.3/23.5).
+    NoNewer,
+}
+
 /// The state of the RETRIEVE pointer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum PointerState {
@@ -317,6 +337,37 @@ impl RetrieveState {
                     RetrieveResult::Recalled {
                         command: history.get(next).unwrap().command().to_string(),
                     }
+                }
+            }
+        }
+    }
+
+    /// Execute one step-NEWER (Down arrow) transition -- the inverse of
+    /// [`Self::retrieve`] (CR-NR-096, Requirement 23.2/23.3).
+    ///
+    /// - `AtIndex(n)` with `n > 0` -> `AtIndex(n-1)`, recalling that newer entry.
+    /// - `AtIndex(0)` -> `Initial`, signalling `RestoreInProgress` so the caller
+    ///   restores the pre-cycle In_Progress_Line.
+    /// - `Initial` (no active cycle) or empty history -> `NoNewer` (no-op).
+    ///
+    /// Does NOT consult the field text (there is no LIST trigger on Down); it
+    /// only walks the pointer newer.
+    pub fn retrieve_newer(&mut self, history: &CommandLineRing) -> RetrieveNewerResult {
+        if history.is_empty() {
+            return RetrieveNewerResult::NoNewer;
+        }
+        match &self.state {
+            PointerState::Initial => RetrieveNewerResult::NoNewer,
+            PointerState::AtIndex(0) => {
+                // Stepped past the newest entry: end the cycle, restore in-progress.
+                self.state = PointerState::Initial;
+                RetrieveNewerResult::RestoreInProgress
+            }
+            PointerState::AtIndex(current) => {
+                let newer = current - 1;
+                self.state = PointerState::AtIndex(newer);
+                RetrieveNewerResult::Recalled {
+                    command: history.get(newer).unwrap().command().to_string(),
                 }
             }
         }
@@ -408,9 +459,27 @@ impl CommandLineHistory {
         self.pointer.retrieve(&self.ring, field_text)
     }
 
+    /// Execute one step-NEWER (Down arrow) history step (CR-NR-096, Requirement
+    /// 23.2/23.3). The inverse of [`Self::retrieve`]: moves the shared
+    /// Retrieve_Pointer toward the newest entry, or returns `RestoreInProgress`
+    /// when it steps past the newest, or `NoNewer` when already at initial /
+    /// empty. Shares the SAME pointer as `retrieve` / RETRIEVE so Up and Down
+    /// (and F12) stay in sync.
+    pub fn retrieve_newer(&mut self) -> RetrieveNewerResult {
+        self.pointer.retrieve_newer(&self.ring)
+    }
+
     /// Reset the retrieve pointer to its initial position.
     pub fn reset(&mut self) {
         self.pointer.reset();
+    }
+
+    /// Whether the shared Retrieve_Pointer is at its initial (no active cycle)
+    /// position. Used by the arrow-history caller to decide whether the current
+    /// Up begins a new History_Cycle (and must capture the In_Progress_Line)
+    /// (CR-NR-096, Requirement 23.6).
+    pub fn is_at_initial(&self) -> bool {
+        self.pointer.is_at_initial()
     }
 
     /// Point the retrieve pointer at a specific index (0 = most recent), used
@@ -592,6 +661,135 @@ mod tests {
             state.retrieve(&ring, "LIST"),
             RetrieveResult::ShowList {
                 entries: vec!["CMD1".to_string(), "CMD2".to_string()]
+            }
+        );
+    }
+
+    // === CR-NR-096: step-newer (Down arrow) history stepping ================
+
+    #[test]
+    fn retrieve_newer_steps_toward_newest() {
+        // Validates: function-keys Requirement 23.2 -- Down steps one entry newer.
+        // `make_ring` puts the FIRST arg at ring index 0 (newest): here CMD1@0,
+        // CMD2@1, CMD3@2, so `retrieve` (older) walks CMD1 -> CMD2 -> CMD3.
+        let ring = make_ring(&["CMD1", "CMD2", "CMD3"]);
+        let mut state = RetrieveState::new();
+        // Step older twice: index 0 (CMD1) then index 1 (CMD2).
+        assert_eq!(
+            state.retrieve(&ring, ""),
+            RetrieveResult::Recalled {
+                command: "CMD1".to_string()
+            }
+        );
+        assert_eq!(
+            state.retrieve(&ring, ""),
+            RetrieveResult::Recalled {
+                command: "CMD2".to_string()
+            }
+        );
+        // Now Down (newer) goes back to index 0 (CMD1).
+        assert_eq!(
+            state.retrieve_newer(&ring),
+            RetrieveNewerResult::Recalled {
+                command: "CMD1".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn retrieve_newer_at_index_0_signals_restore_in_progress() {
+        // Validates: function-keys Requirement 23.3 -- Down past the newest entry
+        // returns the pointer to initial and asks to restore the in-progress line.
+        let ring = make_ring(&["CMD1", "CMD2"]); // CMD1@0 (newest), CMD2@1
+        let mut state = RetrieveState::new();
+        // Step to index 0 (newest = CMD1).
+        assert_eq!(
+            state.retrieve(&ring, ""),
+            RetrieveResult::Recalled {
+                command: "CMD1".to_string()
+            }
+        );
+        // Down from index 0 -> restore in-progress, pointer back to initial.
+        assert_eq!(
+            state.retrieve_newer(&ring),
+            RetrieveNewerResult::RestoreInProgress
+        );
+        assert!(state.is_at_initial(), "pointer returns to initial");
+    }
+
+    #[test]
+    fn retrieve_newer_at_initial_is_noop() {
+        // Validates: function-keys Requirement 23.3 -- Down at initial is a no-op.
+        let ring = make_ring(&["CMD1", "CMD2"]);
+        let mut state = RetrieveState::new();
+        assert_eq!(state.retrieve_newer(&ring), RetrieveNewerResult::NoNewer);
+        assert!(state.is_at_initial());
+    }
+
+    #[test]
+    fn up_then_down_round_trips_pointer() {
+        // Validates: function-keys Requirement 23.1/23.2 -- Up (older) then Down
+        // (newer) round-trips the shared pointer. `make_ring` puts A@0 (newest),
+        // B@1, C@2.
+        let ring = make_ring(&["A", "B", "C"]);
+        let mut state = RetrieveState::new();
+        assert_eq!(
+            state.retrieve(&ring, ""),
+            RetrieveResult::Recalled {
+                command: "A".to_string()
+            }
+        ); // index 0
+        assert_eq!(
+            state.retrieve(&ring, ""),
+            RetrieveResult::Recalled {
+                command: "B".to_string()
+            }
+        ); // index 1
+        assert_eq!(
+            state.retrieve_newer(&ring),
+            RetrieveNewerResult::Recalled {
+                command: "A".to_string()
+            }
+        ); // back to index 0
+        assert_eq!(
+            state.retrieve_newer(&ring),
+            RetrieveNewerResult::RestoreInProgress
+        ); // past newest
+        assert!(state.is_at_initial());
+    }
+
+    #[test]
+    fn retrieve_newer_on_empty_history_is_noop() {
+        // Validates: function-keys Requirement 23.5 -- empty history: Down no-op.
+        let ring = CommandLineRing::new(200);
+        let mut state = RetrieveState::new();
+        assert_eq!(state.retrieve_newer(&ring), RetrieveNewerResult::NoNewer);
+    }
+
+    #[test]
+    fn owner_retrieve_newer_shares_pointer_with_retrieve() {
+        // Validates: function-keys Requirement 23.1/23.9 -- the CommandLineHistory
+        // owner's retrieve_newer shares the SAME pointer as retrieve.
+        let mut h = CommandLineHistory::new(200);
+        h.record("CMD1");
+        h.record("CMD2"); // most-recent-first: CMD2, CMD1
+        assert_eq!(
+            h.retrieve(""),
+            RetrieveResult::Recalled {
+                command: "CMD2".to_string()
+            }
+        );
+        assert_eq!(
+            h.retrieve(""),
+            RetrieveResult::Recalled {
+                command: "CMD1".to_string()
+            }
+        );
+        // Down (newer) via the owner walks back to CMD2 on the shared pointer.
+        assert_eq!(
+            h.retrieve_newer(),
+            RetrieveNewerResult::Recalled {
+                command: "CMD2".to_string()
             }
         );
     }

@@ -3052,13 +3052,13 @@ coverage and confirm the shell behaviour is unchanged after the move.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-command` | 🔴 | -- | function-keys Req 23.1: Up recalls one entry older via the SAME `retrieve` (older) path RETRIEVE uses; shared Retrieve_Pointer |
-| `ff-command` | 🔴 | -- | function-keys Req 23.2: Down steps one entry NEWER (`RetrieveState` step-newer / `CommandLineHistory::retrieve_newer`) |
-| `ff-command` | 🔴 | -- | function-keys Req 23.3: Down past newest restores the In_Progress_Line and returns the pointer to initial; further Down at initial is a no-op |
-| `ff-command` | 🔴 | -- | function-keys Req 23.4: Up at the oldest entry leaves the field unchanged, pointer stays at oldest |
-| `ff-command` | 🔴 | -- | function-keys Req 23.5: empty history -> Up/Down are no-ops |
-| `ff-desktop` | 🔴 | -- | function-keys Req 23.6: first Up captures the current field text as the In_Progress_Line before recalling newest |
-| `ff-desktop` | 🔴 | -- | function-keys Req 23.7: arrows drive history ONLY while the command field has focus; otherwise Up/Down keep menu-nav/editor/SCROLL meaning; never hijack Tab/Shift+Tab Boundary_Policy |
-| `ff-desktop` | 🔴 | -- | function-keys Req 23.8: stepping never records; a non-RETRIEVE submit resets the pointer |
-| `ff-desktop` | 🔴 | -- | function-keys Req 23.9: defined once and applied to shell + detached + split Region_Command_Line fields (shared render body + per-context history) |
-| `ff-desktop` | 🔴 | -- | function-keys Req 23.10: recalled command is placed in the field WITHOUT executing (like RETRIEVE) |
+| `ff-command` | ✅ | `command_line_history.rs` unit tests | function-keys Req 23.1: Up recalls one entry older via the SAME `retrieve` (older) path RETRIEVE uses; shared Retrieve_Pointer -- `up_then_down_round_trips_pointer`, `owner_retrieve_newer_shares_pointer_with_retrieve`, shell `command_field_up_recalls_older_history`, `up_shares_pointer_with_retrieve` |
+| `ff-command` | ✅ | `command_line_history.rs` unit tests | function-keys Req 23.2: Down steps one entry NEWER (`RetrieveState::retrieve_newer` / `CommandLineHistory::retrieve_newer`) -- `retrieve_newer_steps_toward_newest`, shell `command_field_down_restores_in_progress_line` |
+| `ff-command` | ✅ | `command_line_history.rs` unit tests | function-keys Req 23.3: Down past newest restores the In_Progress_Line and returns the pointer to initial; further Down at initial is a no-op -- `retrieve_newer_at_index_0_signals_restore_in_progress`, `retrieve_newer_at_initial_is_noop`, shell `command_field_down_restores_in_progress_line` |
+| `ff-command` | ✅ | `command_line_history.rs` unit tests | function-keys Req 23.4: Up at the oldest entry leaves the field unchanged, pointer stays at oldest (NoOlderHistory; mirrors Req 5.4) -- `successive_retrieves_cycle_backward` |
+| `ff-command` | ✅ | `command_line_history.rs` unit tests | function-keys Req 23.5: empty history -> Up/Down are no-ops -- `retrieve_newer_on_empty_history_is_noop`, `retrieve_from_empty_history` |
+| `ff-desktop` | ✅ | `shell/tests.rs` egui_kittest | function-keys Req 23.6: first Up captures the current field text as the In_Progress_Line before recalling newest -- `command_field_down_restores_in_progress_line` |
+| `ff-desktop` | ✅ | `shell/tests.rs` egui_kittest | function-keys Req 23.7: arrows drive history ONLY while the command field has focus; otherwise Up/Down keep menu-nav/editor/SCROLL meaning; never hijack Tab/Shift+Tab Boundary_Policy -- `arrows_ignored_when_command_field_not_focused` |
+| `ff-desktop` | ✅ | `shell/tests.rs` egui_kittest | function-keys Req 23.8: stepping never records; a non-RETRIEVE submit resets the pointer -- `up_shares_pointer_with_retrieve` (history length unchanged after stepping) |
+| `ff-desktop` | ✅ | `shell/render.rs` shared `render_command_field_body` + `step_command_history` | function-keys Req 23.9: defined once and applied to shell + detached + split Region_Command_Line fields (shared render body returns `CommandFieldSignal`; single `step_command_history` helper drives shared history under `with_workspace_context`) |
+| `ff-desktop` | ✅ | `shell/tests.rs` egui_kittest | function-keys Req 23.10: recalled command is placed in the field WITHOUT executing (like RETRIEVE) -- `command_field_up_recalls_older_history` (asserts still on POM after recall) |

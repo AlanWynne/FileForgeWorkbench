@@ -235,6 +235,67 @@ impl WorkbenchShell {
         self.pending_command_line_outcome = saved_outcome;
     }
 
+    /// Drive one arrow-history step against the shared command-processor
+    /// Command_Line_History (CR-NR-096, function-keys-and-history Requirement 23).
+    ///
+    /// Called from every command-field render path (shell primary, detached, and
+    /// split region) with THIS field's live `command_text` bound to `self`
+    /// (detached/split callers run inside `with_workspace_context`, so
+    /// `self.command_text` is the region's buffer). The history and the
+    /// In_Progress_Line are shared, matching the single shared Retrieve_Pointer
+    /// (Req 23.9), so the behaviour is defined exactly once here.
+    ///
+    /// - Up (`HistoryStep::Older`): on the FIRST step of a cycle (pointer at
+    ///   initial) capture the current field text as the In_Progress_Line
+    ///   (Req 23.6), then recall one entry older (Req 23.1). At the oldest entry
+    ///   the field is left unchanged (Req 23.4); an empty history is a no-op
+    ///   (Req 23.5).
+    /// - Down (`HistoryStep::Newer`): recall one entry newer (Req 23.2); stepping
+    ///   past the newest entry restores the In_Progress_Line and ends the cycle
+    ///   (Req 23.3); a Down with the pointer already at initial is a no-op.
+    ///
+    /// The recalled command is only PLACED in the field, never executed
+    /// (Req 23.10), and the gesture records nothing in history (Req 23.8).
+    pub(super) fn step_command_history(&mut self, step: super::render::HistoryStep) {
+        use super::render::HistoryStep;
+        match step {
+            HistoryStep::Older => {
+                // Req 23.6: capture the in-progress line at the start of a cycle.
+                if self.command_line_history.is_at_initial() {
+                    self.command_line_in_progress = Some(self.command_text.clone());
+                }
+                match self.command_line_history.retrieve(&self.command_text) {
+                    ff_command::RetrieveResult::Recalled { command } => {
+                        self.command_text = command;
+                    }
+                    // Oldest reached, empty history, or the LIST overlay trigger:
+                    // leave the field unchanged for the arrow gesture (Req 23.4,
+                    // 23.5). Arrow-Up never opens the LIST overlay (that is the
+                    // RETRIEVE-verb path); if the field happens to hold "LIST"
+                    // we simply leave it, which is harmless.
+                    ff_command::RetrieveResult::ShowList { .. }
+                    | ff_command::RetrieveResult::HistoryEmpty
+                    | ff_command::RetrieveResult::NoOlderHistory => {}
+                }
+            }
+            HistoryStep::Newer => match self.command_line_history.retrieve_newer() {
+                ff_command::RetrieveNewerResult::Recalled { command } => {
+                    self.command_text = command;
+                }
+                ff_command::RetrieveNewerResult::RestoreInProgress => {
+                    // Req 23.3: past the newest entry -> restore what the user had
+                    // typed when the cycle began (possibly empty), end the cycle.
+                    if let Some(in_progress) = self.command_line_in_progress.take() {
+                        self.command_text = in_progress;
+                    }
+                }
+                // Req 23.3 (second sentence) / 23.5: no active cycle or empty
+                // history -> no-op.
+                ff_command::RetrieveNewerResult::NoNewer => {}
+            },
+        }
+    }
+
     pub(super) fn handle_command(&mut self, cmd: &str) {
         let upper = cmd.trim().to_uppercase();
 

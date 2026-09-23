@@ -87,7 +87,8 @@ pub mod error;
 // ─── Public API Re-exports ──────────────────────────────────────────────────
 
 pub use command_line_history::{
-    CommandLineEntry, CommandLineHistory, CommandLineRing, RetrieveResult, RetrieveState,
+    CommandLineEntry, CommandLineHistory, CommandLineRing, RetrieveNewerResult, RetrieveResult,
+    RetrieveState,
 };
 pub use command_target::{
     execute_target, resolve_target, target_from_toml, target_to_toml, CommandTarget, ExternalMode,
