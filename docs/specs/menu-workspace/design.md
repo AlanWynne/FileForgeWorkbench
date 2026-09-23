@@ -1653,3 +1653,25 @@ needed). Docs already updated. No new crate.
   the `POM` command opens the Home Context and bare `START` does the same;
   `START =<path>` / `START <arg>` forms unchanged.
 - Existing menu / B050 stale-title / focus-conformance tests stay green.
+
+---
+
+## Design Delta: POM opens via Menu_Name resolution, not a bespoke command arm (Requirement 20.5 revised, CR-CH-044)
+
+Small delta pairing with command-framework Requirement 15. The `POM` menu-open
+intercept in `handle_command` is retired; `POM` resolves as `Menu { name: "pom" }`
+through the single Target_Resolution classifier (the shell resolver's
+`menu_name_target` already recognises the built-in `pom` and `settings` names),
+opening/returning to the Home Context via the menu opener (`open_menu_by_name`,
+placement owned by the command per CR-CH-043 Req 19.5). This makes the POM open
+exactly like `SETTINGS` and any user menu -- one path, no POM special case in
+dispatch.
+
+`START` is unaffected: it remains the sole tab-creator (menu-workspace Req
+14.8-14.9); its handler creates the new tab and routes `<arg>` through the same
+classifier. The load-time "always have >=1 POM" guarantee (Req 18.4) is the only
+POM special case and is unchanged.
+
+Behaviour-preserving: typing `POM` still opens the Home Context; the POM tab
+header (`POM`) and Title_Line (pom.toml Menu_Title) already derive from the menu
+name/title (CR-CH-042), so nothing observable changes.

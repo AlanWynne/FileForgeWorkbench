@@ -1366,6 +1366,14 @@ and centered, and drops the duplicate.
    is the Menu_Name of the `pom` menu, which is why the general Tab_Header rule
    (criterion 4) yields `POM` -- the header comes from the command/menu name, not
    from a POM special case.
+   (REVISED by CR-CH-044: `POM` is NOT a bespoke command arm -- it RESOLVES as a
+   Menu_Name (`Menu { name: "pom" }`) through the single Target_Resolution
+   classifier, exactly as `SETTINGS` resolves to the `settings` menu (Requirement
+   11.11) and any user menu name resolves to its menu. The hardcoded `POM`
+   intercept in `handle_command` is retired; opening the Home Context is
+   Menu_Name resolution like every other menu. `START` remains a distinct command
+   -- the sole tab-creator with argument forms -- and is NOT retired; see
+   command-framework Requirement 15.)
 6. THE Tab_Header derivation of criterion 4 SHALL be the SAME single code path
    for the POM and every other Menu Workspace (and SHALL sit alongside the
    general per-Kind header derivation for non-menu Contexts, workspace-kinds

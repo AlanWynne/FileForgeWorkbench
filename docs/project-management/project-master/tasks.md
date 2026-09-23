@@ -2857,3 +2857,25 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[ ]` Phase (title-chrome-align) | CR-CH-042 -- SPEC DONE (gate complete): menu-workspace Req 20.1-20.9 (single config-driven centered Menu_Title on the Title_Line; duplicate body heading removed; POM short tab `POM`; `POM` command + `START` alias), menu-and-statusbar Req 17.3/17.6 revised + 17.11 added (POM Title_Line = menu title not banner; uniform centered menu title; body heading removed). Impl pending approval: menu-workspace Task 37 (37.1-37.7), menu-and-statusbar Task 33. Behaviour-preserving; app name/version stays in the About dialog. |
+
+## Phase (dispatch-classifier) -- CR-CH-044 (typed handle_command through the CommandTarget classifier; retire menu-open intercepts)
+
+> Make the TYPED command line route through the EXISTING `resolve_target`
+> 5-variant classifier (the same the click / keybind seam uses, CR-CH-043) for the
+> menu / custom-workspace / macro / external classification, and retire the
+> hardcoded menu-open intercepts. `POM` becomes a Menu_Name resolution
+> (`Menu { "pom" }`); `SETTINGS` already is; `START` stays the sole tab-creator.
+> Function_Verbs (editor/nav/profile/find/split/swap/workspace) keep their
+> behaviour -- migrating them all is a later slice. Resolution order + shadowing
+> (Req 8.3/8.10) preserved; behaviour-preserving. Spec-gate complete; impl pending
+> approval.
+
+- [ ] DC.1 Requirements gate -- command-framework Req 15 (typed path via classifier; retire menu-open intercepts; START retained; order/shadowing preserved), menu-workspace Req 20.5 revised (POM as Menu_Name), design deltas, tasks (command-framework Task 35, menu-workspace Task 38), TCR NOT COVERED rows, change-log CR-CH-044.
+- [ ] DC.2 Failing tests first: typed `POM` opens Home via Menu_Name; `SETTINGS` unchanged; built-in shadows same-named menu on typed path; `START` still creates tab + resolves arg. Covers command-framework Req 15.1/15.2/15.3/15.5.
+- [ ] DC.3 Route the post-Function_Verb token through `resolve_target` + `dispatch_command_target`; delete the `POM` arm. Covers command-framework Req 15.1/15.2/15.6.
+- [ ] DC.4 Retain `START`, the Function_Verbs, the CommandEngine fallthrough, and the unresolved error. Covers command-framework Req 15.3/15.4/15.7.
+- [ ] DC.5 Close: order/shadowing (Req 8.3/8.10) + Command_Line_Outcome (Req 13) unchanged; full existing shell/menu/fastpath suites green (behaviour-preserving); verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR Req 15 PASS. Covers command-framework Req 15.8.
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (dispatch-classifier) | CR-CH-044 -- SPEC DONE (gate complete): command-framework Req 15.1-15.8 (typed handle_command routes through the resolve_target 5-variant classifier for menu/custom-workspace/macro/external; menu-open intercepts retired; POM -> Menu_Name; START retained as tab-creator; Function_Verbs unchanged; order + shadowing preserved), menu-workspace Req 20.5 revised (POM as Menu_Name resolution). Impl pending approval: command-framework Task 35, menu-workspace Task 38. Continuation of CR-CH-043 + CR-CH-025; reuses existing classifier; behaviour-preserving. |

@@ -502,3 +502,106 @@ the convergence; the Menu Workspace half is menu-workspace Requirement 19.
    acceptance criteria (and their tests) SHALL continue to hold, adjusted only
    where a test asserted the now-removed per-affordance branch or the removed
    name router by name rather than by observable effect.
+
+---
+
+### Requirement 15: The typed command line resolves through the single Target_Resolution classifier (retire the hardcoded menu-open intercepts)
+
+**User Story:** As a maintainer, I want the typed `Command ===>` line to be
+CLASSIFIED by the one Target_Resolution mechanism -- menu vs custom workspace vs
+function vs macro vs external -- rather than by a long hand-written list of
+`if command == "..."` intercepts, so that a command "knowing" what it is (a menu,
+a built-in workspace, a macro, an external program) is the resolved
+Command_Target variant, decided in ONE place; and so that opening a menu (POM,
+SETTINGS, any user menu) is a Menu_Name resolution, not a bespoke command arm.
+
+**Source:** [CR-CH-044]. Owner: "The command handler does some analysis on a
+command. It decides if the command is a menu option or an actual command ... the
+command should know if it is a menu workspace or a custom workspace and behave
+accordingly. But this could be handled by the command handler? We don't need a
+'Settings' command as such -- the command handler just needs to evaluate a
+command and decide if it is a menu or an inbuilt custom command or a macro found
+in a macro library or even an external command. The settings, pom and start
+commands can just be evaluated to the appropriate menu?" Direct continuation of
+CR-CH-043 (dumb dispatcher / command owns effect) and CR-CH-025 (keyword-less
+menu-name resolution); builds on the EXISTING `resolve_target` 5-variant
+classifier and `execute_target` Function/Deferred split (Requirement 8).
+
+**Note:** The `resolve_target` classifier (Requirement 8.3) and its five
+Command_Target variants (Menu, CustomWorkspace, Function, Macro, External) ALREADY
+EXIST and the CLICK / keyboard-binding seam already routes through them
+(`dispatch_bound_command` -> `dispatch_command_target`, CR-CH-043). This
+requirement makes the TYPED `handle_command` path do the same for the classes the
+classifier owns, and removes the duplicated menu-open intercepts. It is a rewiring
+plus deletion, NOT a change to resolution semantics: the resolution ORDER and the
+shadowing rule (Requirement 8.10) are preserved exactly, and every command string
+that resolves today resolves identically after.
+
+#### Glossary additions
+
+- **Menu_Open_Intercept**: a hardcoded `handle_command` arm whose sole effect is
+  to open/return to a menu workspace (today: the `POM` arm). Its behaviour is
+  exactly a Menu_Name resolution, so it is redundant with the classifier.
+- **Function_Verb**: a `handle_command` arm whose effect is an internal function
+  or in-place side effect (editor/navigation/profile/find/exclude/split/swap/
+  workspace commands: `EDIT`, `LOCATE`, `TOP`, `FIND`, `CAPS`, `SPLIT`, `SWAP`,
+  `WORKSPACE`, etc.). These correspond to the `Function` Command_Target variant
+  (or remain shell-level side effects) and are NOT menu-open intercepts.
+
+#### Acceptance Criteria
+
+1. AFTER the current-menu Option_Key stage (Requirement 8.3 stage 1, applied by
+   the shell before the classifier -- unchanged), THE typed `handle_command` path
+   SHALL classify the command string through the SINGLE `resolve_target`
+   mechanism (Requirement 8.3 stages 2-5) and dispatch the resulting
+   Command_Target by variant (Menu / CustomWorkspace / Function / Macro /
+   External), the SAME classifier and dispatch the click / keyboard-binding seam
+   uses (CR-CH-043). The classification decision (what the command IS) SHALL live
+   in ONE place, not in scattered per-command arms.
+2. THE hardcoded Menu_Open_Intercept(s) SHALL be RETIRED: the `POM` command arm
+   SHALL be removed and `POM` SHALL resolve as a Menu_Name (`Menu { name: "pom" }`)
+   through the classifier, opening/returning to the Home Context. `SETTINGS`
+   already resolves as a Menu_Name (Requirement 8.11, CR-CH-025) and SHALL
+   continue to do so via the same path -- there is no `SETTINGS` command arm to
+   remove, confirming the pattern. Opening ANY menu (POM, Settings, user) SHALL be
+   Menu_Name resolution, with placement owned by the menu-opening command
+   (CR-CH-043 Requirement 14.3 / menu-workspace Requirement 19.5).
+3. THE `START` command SHALL be RETAINED as a distinct command, because it is the
+   sole tab-creator with argument forms (`START`, `START =<path>`, `START <arg>`;
+   menu-workspace Requirement 14.8-14.9). Its EFFECT is "create a new tab, then
+   evaluate `<arg>` through the same classifier", so the classifier does the
+   `<arg>` work while the new-tab effect belongs to `START`. `START` is NOT a
+   Menu_Open_Intercept and is not retired.
+4. THE Function_Verbs (editor, navigation, profile, find/exclude, split/focus/
+   swap, workspace, and stub verbs) SHALL keep their existing behaviour. WHERE a
+   verb is a registered Command_ID it MAY be reached as the `Function` variant of
+   the classifier; WHERE it is a shell-level in-place side effect it MAY remain a
+   shell branch. This requirement does NOT mandate rewriting every Function_Verb
+   through `resolve_target` in this slice -- only that the MENU / CustomWorkspace /
+   Macro / External CLASSIFICATION is unified and the menu-open intercepts retired.
+   (A later slice MAY migrate more Function_Verbs to registered Command_IDs; that
+   is out of scope here.)
+5. THE resolution ORDER and shadowing rule (Requirement 8.3 / 8.10) SHALL be
+   preserved EXACTLY: current-menu Option_Key (stage 1) > built-in command /
+   Command_ID (stage 2) > menu-name (stage 3) > macro (stage 4) > unresolved
+   error. A built-in command SHALL still shadow a same-named menu; a menu SHALL
+   still shadow a same-named macro; matching SHALL remain case-insensitive. No
+   command string that resolves today SHALL change which stage claims it.
+6. WHEN the classifier returns a Command_Target, THE typed path SHALL route it
+   through the SAME `dispatch_command_target` / `execute_target` split the bound
+   path uses: a `Function` target is dispatched via the command registry; a
+   `Menu` / `CustomWorkspace` / `External` / `Macro` target is carried out by the
+   shell (opening the workspace / running the process / running the macro), with
+   placement owned by the command (CR-CH-043). The Command_Line_Outcome contract
+   (Requirement 13) SHALL be applied identically, unchanged.
+7. WHEN a typed string resolves to NO Command_Target and is not a Function_Verb
+   or editor-pipeline verb the shell still owns, THE shell SHALL surface the
+   unresolved-command error (Requirement 8.8), exactly as today. The final
+   CommandEngine fallthrough SHALL be preserved for the verbs it still owns.
+8. THE change SHALL be BEHAVIOUR-PRESERVING: every command string that resolves
+   today (every retired menu-open intercept, every retained Function_Verb, every
+   menu-name, every fastpath, every editor/nav verb) SHALL produce an IDENTICAL
+   observable result afterwards. Existing command-framework, menu-workspace,
+   command-semantics, and shell tests SHALL continue to hold, adjusted only where
+   a test asserted the removed `POM` intercept by its internal shape rather than
+   by observable effect (opening the Home Context).

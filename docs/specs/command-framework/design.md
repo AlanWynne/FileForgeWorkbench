@@ -1861,3 +1861,100 @@ Requirement 19's files (one implementation satisfies both halves).
 - `menu_option_click_runs_handle_command_path` -- the click path no longer takes a
   target pre-branch (asserted via observable effect, not internal call shape).
 - Existing B075 / menu-name / focus tests continue to pass unchanged.
+
+---
+
+## Design Delta: Typed path routes through the Target_Resolution classifier; retire menu-open intercepts (Requirement 15, CR-CH-044)
+
+Design delta to the "Unified command-resolution chain" delta (CR-CH-025) and the
+CR-CH-043 delta. Makes the TYPED `handle_command` path consume the SAME
+`resolve_target` classifier the click / keyboard-binding seam already uses, and
+removes the redundant menu-open intercepts. Behaviour-preserving; the resolution
+order and shadowing rule are unchanged.
+
+### As-is
+
+`WorkbenchShell::handle_command` (`shell/commands.rs`, ~1000 lines) runs:
+1. history record;
+2. stage 1 `try_current_menu_option` (current-menu Option_Key);
+3. a LONG hand-written list of ~60 `if upper == "..."` / `verb_arg(...)` arms --
+   a MENU-OPEN intercept (`POM` -> `insert_pom_tab`), the TAB-CREATOR (`START`),
+   and many Function_Verbs (EDIT, END, RETURN, FILES, CATALOGS, PLUGINS, LOG,
+   MACROS, SEARCH, COMMANDS, MENUS, KEYS, KINDS, CONFIG, THEME, LOCATE/TOP/
+   BOTTOM/UP/DOWN/LEFT/RIGHT/SORT, EXCLUDE/SHOW/RESET, FIND/RFIND/CHANGE/RCHANGE,
+   CAPS/NULLS/STATS/LOCK/PROFILE/HILITE, SCROLL, NAME, DETACH, SPLIT/UNSPLIT/
+   FOCUS, SWAP, AUTONUM/NUM, SUBMIT/TIME/STATUS/CREATE/REPLACE/BROWSE/VIEW/
+   COMPARE, WORKSPACE, ...), plus `resolve_pom_option_key` and
+   `try_chained_fastpath`;
+4. stage 3 `try_menu_name_dispatch` (menu-name -- where `SETTINGS` already
+   resolves, CR-CH-025);
+5. stage 5 CommandEngine fallthrough (`cmd_engine.execute_command_line`).
+
+Meanwhile `ff-command::resolve_target` ALREADY classifies a string into the five
+`CommandTarget` variants (order: user-cmd -> builtin-workspace -> registered
+Command_ID -> menu-name -> macro -> error) and `execute_target` splits into
+`Function` (dispatched in-crate) vs `Deferred` (shell opens the workspace / runs
+the process). The click seam (`dispatch_bound_command` -> `resolve_and_dispatch_command`
+-> `dispatch_command_target`) already uses them (CR-CH-043).
+
+### To-be
+
+- **The typed path consults the classifier for the menu/workspace/macro/external
+  classes.** After stage 1 (`try_current_menu_option`, unchanged), a token that
+  is not an editor-pipeline/side-effect verb the shell still owns is handed to
+  `resolve_target`; the resulting `CommandTarget` is dispatched through the
+  EXISTING `dispatch_command_target` (the same router the click seam uses). This
+  is the ONE place that decides "menu vs custom-workspace vs function vs macro vs
+  external".
+- **Retire the `POM` menu-open intercept.** Delete the `if upper == "POM"` arm;
+  `POM` resolves as `Menu { name: "pom" }` via the classifier's menu-name stage
+  (the shell resolver's `menu_name_target` already recognises the built-in `pom`/
+  `settings` names) and opens the Home Context through the menu opener (placement
+  owned by the command, CR-CH-043). `SETTINGS` already resolves this way -- no arm
+  to remove -- which is the model.
+- **`START` stays.** It remains its own arm because it is the sole tab-creator;
+  its handler creates the new tab, then routes `<arg>` through the SAME classifier
+  (`start_new_workspace` already resolves `<arg>` via `resolve_pom_option_key` /
+  `handle_command` -- it continues to, now landing on the unified path).
+- **Function_Verbs stay.** The editor / navigation / profile / find / exclude /
+  split / swap / workspace / stub arms keep their behaviour. Where they are
+  registered Command_IDs they are already reachable as `Function`; where they are
+  shell side effects they remain shell branches. This slice does NOT migrate them
+  all through `resolve_target` (that is a later, separate slice) -- it unifies the
+  MENU/CustomWorkspace/Macro/External classification and retires the menu-open
+  intercepts only. The ordering is preserved: the Function_Verb arms that must win
+  over a same-named menu (shadowing, Req 8.10) stay ABOVE the classifier's
+  menu-name stage in evaluation order, exactly as today.
+
+### Preserved invariants
+
+- Resolution ORDER + shadowing (Req 8.3 / 8.10): current-menu key > built-in /
+  Command_ID > menu-name > macro > error; built-in beats same-named menu; menu
+  beats same-named macro; case-insensitive.
+- Command_Line_Outcome (Req 13) applied identically on both paths.
+- `START` tab-creation forms; the CommandEngine fallthrough for the verbs it owns;
+  the unresolved-command error.
+- Every command string that resolves today resolves identically (behaviour-
+  preserving, Req 15.8).
+
+### Files touched (implementation, when built)
+
+`shell/commands.rs` (`handle_command`: insert the classifier dispatch after the
+Function_Verb arms that must shadow menus, delete the `POM` arm; `START` retained),
+`shell/target_dispatch.rs` (`dispatch_command_target` / `resolve_and_dispatch_command`
+reused by the typed path -- likely no change), `command_config.rs`
+(`ShellTargetResolver` already provides `menu_name_target` for `pom`/`settings`).
+No `ff-command` API change. No new crate.
+
+### Tests
+
+- `typed_pom_resolves_as_menu_name_opens_home_context` -- typing `POM` opens the
+  Home Context (no bespoke arm); observably identical to before.
+- `typed_settings_still_opens_settings_menu_in_place` -- `SETTINGS` unchanged.
+- `builtin_verb_shadows_same_named_menu_on_typed_path` -- a built-in still beats a
+  user menu of the same name (Req 8.10 preserved on the typed path).
+- `start_still_creates_tab_and_resolves_arg` -- `START`, `START =<path>`,
+  `START <arg>` unchanged.
+- A broad behaviour-preservation sweep: the existing shell command tests (EDIT,
+  FILES, END, RETURN, THEME, SWAP, FIND, EXCLUDE, WORKSPACE, TIME, ... and the
+  menu/menu-name/fastpath suites) stay green unchanged.

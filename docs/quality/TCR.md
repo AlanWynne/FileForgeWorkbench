@@ -3023,3 +3023,22 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | 🔴 | -- | menu-workspace Req 20.8 / menu-and-statusbar Req 17.10: in-place context switch shows the new Menu_Title immediately (live-derived, never stale) |
 | `ff-desktop` | 🔴 | -- | menu-workspace Req 20.9: behaviour-preserving -- option layout, calendar tiers (Req 16), and focus contract unchanged by heading removal + title re-source |
 | `ff-desktop` | 🔴 | -- | menu-workspace Req 20.10: standardised theme-driven menu heading for ALL menus (POM look) from `primary_menu_bg`/`menu_bar_fg` tokens; no hardcoded POM colours, no is_home styling branch; Theme Workspace caters for it |
+
+### Phase (dispatch-classifier) -- CR-CH-044 (typed handle_command through the CommandTarget classifier; retire menu-open intercepts)
+
+> Typed command line routes through the existing `resolve_target` 5-variant
+> classifier for menu/custom-workspace/macro/external classification; menu-open
+> intercepts retired; POM -> Menu_Name; START retained; Function_Verbs unchanged;
+> order + shadowing preserved. Behaviour-preserving; impl pending gate approval.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | command-framework Req 15.1: typed handle_command classifies via `resolve_target` + `dispatch_command_target` after stage-1 Option_Key; classification lives in one place |
+| `ff-desktop` | 🔴 | -- | command-framework Req 15.2: `POM` menu-open intercept retired; `POM` resolves as `Menu{pom}` (like `SETTINGS`); opening any menu is Menu_Name resolution |
+| `ff-desktop` | 🔴 | -- | command-framework Req 15.3: `START` retained as sole tab-creator (arg forms); routes `<arg>` through the same classifier; not retired |
+| `ff-desktop` | 🔴 | -- | command-framework Req 15.4: Function_Verbs (editor/nav/profile/find/split/swap/workspace/stubs) keep behaviour; not all migrated through resolve_target this slice |
+| `ff-desktop` | 🔴 | -- | command-framework Req 15.5: resolution order + shadowing (Req 8.3/8.10) preserved exactly; built-in beats same-named menu on the typed path; case-insensitive |
+| `ff-desktop` | 🔴 | -- | command-framework Req 15.6: classified target routed through the same dispatch_command_target/execute_target split (Function dispatched, Menu/CW/External/Macro shell-carried); Command_Line_Outcome (Req 13) unchanged |
+| `ff-desktop` | 🔴 | -- | command-framework Req 15.7: unresolved-command error + CommandEngine fallthrough preserved for the verbs the shell still owns |
+| `ff-desktop` | 🔴 | -- | command-framework Req 15.8: behaviour-preserving -- every command string that resolves today resolves identically; existing shell/menu/fastpath tests stay green |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 20.5 (revised): typing `POM` opens the Home Context via Menu_Name resolution (no bespoke arm); START retained |

@@ -719,3 +719,18 @@ NOT start until the gate is approved.
           ffwb.exe; TCR menu-workspace Req 20 + menu-and-statusbar Req 17.3/17.6/17.11
           PASS; update project-master; core acceptance test-plan.
     - Covers: menu-workspace Requirement 20; menu-and-statusbar Requirement 17 (revised)
+
+## Phase dispatch-classifier (CR-CH-044) -- POM opens via Menu_Name resolution
+
+Implemented by the one slice in `docs/specs/command-framework/tasks.md` Task 35
+(the typed path routes through the classifier). This task records the
+menu-workspace obligation. Do NOT start until the gate is approved.
+
+- [ ] 38. POM resolves as a Menu_Name (retire the bespoke POM command arm)
+  - [ ] 38.1 The `POM` hardcoded `handle_command` arm is removed; typing `POM`
+          resolves as `Menu { "pom" }` and opens/returns to the Home Context via
+          `open_menu_by_name` (placement owned by the command, CR-CH-043 Req 19.5),
+          exactly as `SETTINGS` resolves to the settings menu. `START` retained as
+          the tab-creator. Behaviour-preserving (POM tab header + Title_Line
+          already derive from the menu, CR-CH-042).
+    - Validates: menu-workspace Requirement 20.5 (revised); command-framework Requirement 15.2
