@@ -3062,3 +3062,21 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | ✅ | `shell/tests.rs` egui_kittest | function-keys Req 23.8: stepping never records; a non-RETRIEVE submit resets the pointer -- `up_shares_pointer_with_retrieve` (history length unchanged after stepping) |
 | `ff-desktop` | ✅ | `shell/render.rs` shared `render_command_field_body` + `step_command_history` | function-keys Req 23.9: defined once and applied to shell + detached + split Region_Command_Line fields (shared render body returns `CommandFieldSignal`; single `step_command_history` helper drives shared history under `with_workspace_context`) |
 | `ff-desktop` | ✅ | `shell/tests.rs` egui_kittest | function-keys Req 23.10: recalled command is placed in the field WITHOUT executing (like RETRIEVE) -- `command_field_up_recalls_older_history` (asserts still on POM after recall) |
+
+### Phase (cmdline-position) -- CR-NR-095 per-Kind command-line position (workspace-kinds Req 8)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | workspace-kinds Req 8.1: `Kind_Profile` carries `Command_Line_Position` (Top/Bottom), default Top |
+| `ff-desktop` | 🔴 | -- | workspace-kinds Req 8.2: `command_line_position` round-trips TOML (`"top"`/`"bottom"`, `#[serde(default)]` -> Top when absent) |
+| `ff-desktop` | 🔴 | -- | workspace-kinds Req 8.3: unsplit primary command field rendered top vs bottom per active Kind; field behaviour identical in both |
+| `ff-desktop` | 🔴 | -- | workspace-kinds Req 8.4: split region command line placed top-under-Title_Line or region-foot per that region's Kind (pure `split_region_strip_rects`) |
+| `ff-desktop` | 🔴 | -- | workspace-kinds Req 8.5: detached window command line placed per the detached instance's Kind position |
+| `ff-desktop` | 🔴 | -- | workspace-kinds Req 8.6: position resolved from the active Kind's effective profile via the registry (modelled-on default = Top) |
+| `ff-desktop` | 🔴 | -- | workspace-kinds Req 8.7: Kinds Editor Top/Bottom control bound to the working profile; Save persists via the existing write+reload action |
+| `ff-desktop` | 🔴 | -- | workspace-kinds Req 8.8: RESET BARE returns every Kind's position to the compiled default (Top) |
+| `ff-desktop` | 🔴 | -- | workspace-kinds Req 8.9: `COMMAND TOP`/`COMMAND BOTTOM` set position, bare `COMMAND` toggles; unknown arg -> non-blocking error, position unchanged (case-insensitive) |
+| `ff-desktop` | 🔴 | -- | workspace-kinds Req 8.10: `COMMAND` updates the active Kind's position in the registry -> takes effect next frame; no parallel per-tab state |
+| `ff-desktop` | 🔴 | -- | workspace-kinds Req 8.11: `COMMAND` persists via the same write-file+reload path as the Kinds Editor Save (survives restart) |
+| `ff-desktop` | 🔴 | -- | workspace-kinds Req 8.12: `COMMAND` routed through the dispatcher (command parity); shares one position-setting seam with the editor; does not collide with `COMMANDS` |
+| `ff-desktop` | 🔴 | -- | workspace-kinds Req 8.13: `COMMAND` in a detached window / focused split region changes THAT instance's Kind position (per-window/region command context) |

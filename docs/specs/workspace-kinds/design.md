@@ -363,3 +363,152 @@ keymap-context); it fixes the OWNERSHIP framing:
 No `Kind_Config` schema change, no new field, no new registry behaviour. The B.2 menu-bar/key-list
 wiring simply keys on the instance's Kind (as already specified) and draws the bar at the instance's
 placement (the render change lives in `ff-desktop`, layout-and-docking design CR-CH-041 section).
+
+## CR-NR-095 delta -- per-Kind command-line position (Top | Bottom)
+
+Adds a `Command_Line_Position` attribute to `Kind_Profile` and applies it in the
+three existing command-line render paths. No new crate; no new module; no schema
+break.
+
+### Data model
+
+- New enum in `workspace_kind/mod.rs`:
+  ```rust
+  #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+  #[serde(rename_all = "lowercase")]
+  pub enum CommandLinePosition {
+      #[default]
+      Top,
+      Bottom,
+  }
+  ```
+  `#[serde(rename_all = "lowercase")]` gives the stable `"top"` / `"bottom"`
+  spellings (Req 8.2). `Default = Top` preserves current behaviour (Req 8.1).
+- `KindProfile` gains `pub command_line_position: CommandLinePosition`. Because
+  `KindProfile` already carries `#[serde(default)]` at the struct level AND
+  `KindConfigToml.profile` is `#[serde(default)]`, a pre-existing Kind file with
+  no `command_line_position` key loads as `Top` automatically -- no `From` change
+  beyond the field being cloned with the rest of the profile. `KindProfile::default()`
+  sets it to `Top`.
+
+### Resolution seam (Req 8.6)
+
+Render paths resolve the position exactly as Requirement 5 resolves the edit
+profile: `self.kind_registry.effective(kind_name).profile.command_line_position`,
+where `kind_name = BuiltinKind::from_tab_kind(tab.kind, tab.is_home).stable_name()`
+for the instance being rendered. A small `WorkbenchShell` helper
+(`command_line_position_for(tab_index) -> CommandLinePosition`) centralises this
+so all three paths share one lookup and it is unit-testable.
+
+### Application in the three render paths
+
+1. UNSPLIT (`shell/render.rs::render_command_field`, called from `update.rs` when
+   `!is_split()`): choose `egui::TopBottomPanel::top("command_field")` vs
+   `::bottom("command_field")` from the active tab's position. The panel BODY
+   (the `ui.horizontal` with the Command/SCROLL fields) is unchanged; only the
+   panel constructor differs. (Req 8.3)
+
+2. SPLIT region (`shell/render.rs::split_region_strip_rects` +
+   `render_region_command_field`): `split_region_strip_rects` becomes
+   position-aware -- it already returns `SplitRegionRects { bar, menu, title,
+   cmd, body }`. Add a `CommandLinePosition` parameter: for `Top` the layout is
+   unchanged (cmd strip under the Title_Line, body fills the remainder, the B072
+   default); for `Bottom` the body fills the space under the Title_Line and the
+   cmd strip is the last strip at `rect.max.y - cmd_field_h` with the body ending
+   at the cmd strip top. The helper stays PURE (egui-free) so the ordering is
+   unit-testable for BOTH positions (mirrors the existing
+   `split_region_command_line_is_under_title_above_body` test with a Bottom
+   counterpart). (Req 8.4)
+
+3. DETACHED (`shell/render.rs::render_detached_command_field`): choose
+   `TopBottomPanel::top(panel_id)` vs `::bottom(panel_id)` from the detached
+   instance's Kind position, mirroring the unsplit rule. (Req 8.5)
+
+Field behaviour (submit signal, focus latch, SCROLL field, CR-NR-096 history
+arrows, Boundary_Policy Tab-order) is untouched in all three paths -- the shared
+`render_command_field_body` and the unsplit `render_command_field` interior are
+not modified except for the panel top/bottom choice; the SCROLL/Tab wiring is
+inside the panel body and independent of its screen position. (Req 8.3)
+
+### Kinds Editor (Req 8.7)
+
+`kinds_editor_panel/render.rs` binds a Top/Bottom control (a two-variant
+`ComboBox` or a pair of `selectable_value`s, stable id `kinds_editor_cmdline_pos`)
+directly to `cfg.profile.command_line_position` on the mutable working
+`KindConfig`, exactly like `cfg.title` / `edit_optional`. The existing
+`KindsEditorAction::Save` path already writes `workspace-kinds/<name>.toml` and
+reloads the registry -- no new action variant, no bespoke setter (command/action
+seam preserved).
+
+### RESET BARE (Req 8.8)
+
+No new code. RESET BARE resets `kind_registry` to `with_builtin_defaults()`
+(existing B.4b wiring), and each built-in default's profile is
+`KindProfile::default()` whose `command_line_position` is `Top`. A test asserts a
+user Kind saved with `Bottom` returns to `Top` after RESET BARE.
+
+### COMMAND command -- runtime position change (Req 8.9-8.13)
+
+A new primary command `COMMAND` changes the active Workspace's Kind
+`Command_Line_Position` at runtime, mirroring ISPF:
+
+- `COMMAND TOP` -> set Top; `COMMAND BOTTOM` -> set Bottom; bare `COMMAND` ->
+  toggle. Verb + argument case-insensitive; an unknown argument sets a
+  non-blocking `open_error` and leaves the position unchanged (Req 8.9).
+
+Dispatch (`shell/commands.rs::handle_command`): add an arm matched as
+`upper == "COMMAND"` (toggle) or `upper.starts_with("COMMAND ")` (TOP/BOTTOM
+arg). This MUST be ordered so it does NOT shadow, and is not shadowed by, the
+existing `COMMANDS` arm (`upper == "COMMANDS"`): note `"COMMANDS" != "COMMAND"`
+and `"COMMANDS".starts_with("COMMAND ")` is false, so the two are disjoint; place
+the `COMMAND` arm adjacent to `COMMANDS` with a comment. (Req 8.12)
+
+ONE position-setting seam: a helper
+`set_active_command_line_position(pos: CommandLinePosition)` (and a
+`toggle_active_command_line_position()`) on `WorkbenchShell` that:
+1. resolves the active instance's Kind stable name (the same
+   `BuiltinKind::from_tab_kind(tab.kind, tab.is_home).stable_name()` seam used by
+   `apply_kind_profile_to_active` and `command_line_position_for`);
+2. updates that Kind's `profile.command_line_position` in the `kind_registry`
+   (mutable registry access -- a small `set_command_line_position(name, pos)` on
+   `KindRegistry`, or reuse the editor's write path);
+3. persists via the SAME write-`workspace-kinds/<name>.toml` + reload-registry
+   action the Kinds Editor Save uses (Req 8.11), so the change survives restart.
+
+The Kinds Editor Save (Req 8.7) and the `COMMAND` command both call this one seam
+(command parity, Req 8.12) -- the editor via its `KindsEditorAction::Save`, the
+command via the helper directly. Taking effect "next frame" is automatic: the
+render paths read `command_line_position_for(...)` every frame from the registry
+(Req 8.10).
+
+Per-window / per-region (Req 8.13): because `handle_command` runs under
+`with_workspace_context` for a detached window or split region, "the active
+instance" the helper resolves is THAT window's / region's active tab -- so
+`COMMAND BOTTOM` typed in a detached window changes that instance's Kind, exactly
+like any other command typed there. No extra plumbing.
+
+Testability additions: `command_top_sets_position_top`,
+`command_bottom_sets_position_bottom`, `command_bare_toggles_position`,
+`command_unknown_arg_sets_error_and_leaves_position`, `command_singular_does_not_shadow_commands_plural`;
+a full-shell test that `COMMAND BOTTOM` then a frame moves the unsplit command
+field to the bottom.
+
+### Testability
+
+- TOML round-trip: `command_line_position` absent -> `Top`; `"bottom"` ->
+  `Bottom`; serialised back to `"bottom"`.
+- Pure `split_region_strip_rects` for both positions (Top: cmd above body;
+  Bottom: cmd is the last strip, body above it).
+- Full-shell egui_kittest: with a Kind configured `Bottom`, the unsplit command
+  field panel is at the bottom (assert on panel rect / that the command field id
+  is below the body region), and the Boundary_Policy first-Tab still lands on the
+  same interior control (placement does not change Tab-order).
+- RESET BARE returns `command_line_position` to `Top`.
+
+### No design changes elsewhere
+
+Beyond the new `COMMAND` dispatch arm (Req 8.9-8.13, above), the
+`with_workspace_context` seam, command history, and Boundary_Policy are
+unchanged. The placement itself is a Kind-profile attribute plumbed from the
+profile into the three existing render paths; the `COMMAND` command and the Kinds
+Editor toggle share one position-setting seam.

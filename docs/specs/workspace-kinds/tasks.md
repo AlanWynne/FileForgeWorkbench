@@ -117,3 +117,74 @@ their gates). Slice B.1 below.
     - Covers: Requirement 4.6; layout-and-docking Requirement 16.7
   - [x] 17.3 Close: TCR Req 4.6 row PASS; verify.ps1 CLEAN FULL nextest; change-log CR-CH-041 DONE (shared with layout-and-docking task 22.8).
     - Covers: Requirement 4.6
+
+### CR-NR-095 -- per-Kind command-line position (Top | Bottom)
+
+- [ ] 18. Per-Kind command-line position
+  - [ ] 18.1 Write failing tests FIRST: `ff-desktop` `workspace_kind` unit tests
+          for the new attribute -- `command_line_position_defaults_to_top`,
+          `kind_profile_toml_roundtrips_command_line_position` (absent -> Top;
+          `"bottom"` -> Bottom; re-serialises to `"bottom"`); pure-helper tests
+          `split_region_command_line_at_bottom_when_position_bottom` (cmd strip is
+          the last strip, body above it) alongside the existing
+          `split_region_command_line_is_under_title_above_body`.
+    - Validates: Requirement 8.1, 8.2, 8.4
+  - [ ] 18.2 Add `CommandLinePosition { Top, Bottom }` enum (Serialize/Deserialize
+          `rename_all = "lowercase"`, `Default = Top`) and
+          `KindProfile.command_line_position` (default Top); confirm it round-trips
+          via the existing `KindConfigToml` `#[serde(default)]` profile (no `From`
+          change beyond the clone).
+    - Validates: Requirement 8.1, 8.2
+  - [ ] 18.3 Add `WorkbenchShell::command_line_position_for(tab_index)` resolving
+          the active Kind's effective profile position via `kind_registry.effective`
+          (same seam as `apply_kind_profile_to_active`).
+    - Validates: Requirement 8.6
+  - [ ] 18.4 UNSPLIT path: `render_command_field` chooses `TopBottomPanel::top`
+          vs `::bottom` from the active tab's position; body unchanged.
+    - Validates: Requirement 8.3
+  - [ ] 18.5 SPLIT path: make `split_region_strip_rects` position-aware (add a
+          `CommandLinePosition` param); Top = current (cmd under Title_Line), Bottom
+          = cmd is the last strip at region foot with the body above it; keep the
+          helper pure. `render_region_command_field` passes the region instance's
+          position.
+    - Validates: Requirement 8.4
+  - [ ] 18.6 DETACHED path: `render_detached_command_field` chooses top/bottom
+          panel from the detached instance's Kind position.
+    - Validates: Requirement 8.5
+  - [ ] 18.7 Kinds Editor: add a Top/Bottom control (stable id
+          `kinds_editor_cmdline_pos`) bound to
+          `cfg.profile.command_line_position`; Save persists via the existing
+          write-file + reload action (no new action variant).
+    - Validates: Requirement 8.7
+  - [ ] 18.8 RESET BARE test: a user Kind saved with `Bottom` returns to `Top`
+          after RESET BARE (no new code -- registry default restore).
+    - Validates: Requirement 8.8
+  - [ ] 18.9 Full-shell egui_kittest: a Kind configured `Bottom` renders the
+          unsplit command field at the bottom, and first-Tab from the command field
+          still lands on the same reported interior (placement does not change
+          Boundary_Policy Tab-order).
+    - Validates: Requirement 8.3
+  - [ ] 18.11 Add the position-setting seam:
+          `WorkbenchShell::set_active_command_line_position(pos)` +
+          `toggle_active_command_line_position()` (resolve active Kind name ->
+          update registry `profile.command_line_position` -> persist via the same
+          write-file + reload path the Kinds Editor Save uses). Route the Kinds
+          Editor Save (18.7) through the SAME registry-update+persist path (one
+          seam, command parity).
+    - Validates: Requirement 8.10, 8.11, 8.12
+  - [ ] 18.12 Add the `COMMAND` dispatch arm in `handle_command`: `COMMAND TOP` /
+          `COMMAND BOTTOM` (case-insensitive arg) set position; bare `COMMAND`
+          toggles; unknown arg -> non-blocking `open_error`, position unchanged.
+          Order adjacent to `COMMANDS` so neither shadows the other; comment the
+          disjointness.
+    - Validates: Requirement 8.9, 8.12
+  - [ ] 18.13 Tests: `command_top_sets_position_top`,
+          `command_bottom_sets_position_bottom`, `command_bare_toggles_position`,
+          `command_unknown_arg_sets_error_and_leaves_position`,
+          `command_singular_does_not_shadow_commands_plural`; full-shell
+          `command_bottom_moves_unsplit_field_to_bottom`; per-window/region:
+          `command_in_detached_window_changes_that_instance_kind` (Req 8.13).
+    - Validates: Requirement 8.9, 8.12, 8.13
+  - [ ] 18.14 Close: verify.ps1 CLEAN FULL nextest; rebuild ffwb.exe; TCR Req 8
+          rows PASS; project-master phase DONE; change-log CR-NR-095 DONE.
+    - Covers: Requirement 8

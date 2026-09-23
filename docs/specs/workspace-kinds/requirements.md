@@ -364,3 +364,119 @@ to the compiled defaults, consistent with how it resets menus/themes/config.
 3. THE compiled default Kind set SHALL always be present after RESET BARE (the
    registry's built-in defaults, Requirement 2.1), so every Workspace Kind
    remains resolvable.
+
+<!-- ===================== CR-NR-095 (per-Kind command-line position) ===================== -->
+
+### Requirement 8: Per-Kind command-line position (Top or Bottom)
+
+**User Story:** As a user, I want each Workspace Kind to place its
+`Command ===>` line either at the TOP (under the Title_Line, the current
+behaviour) or at the BOTTOM of the Workspace, mirroring the ISPF option to put
+the command line at the top or bottom of a panel, so a Kind can match the
+mainframe layout its users expect.
+
+**Source:** [CR-NR-095]. Owner: "you can instruct ISPF to have the command line
+at the top or the bottom ... include this as a configurable attribute of a
+workspace kind." Builds on Requirement 5 (per-Kind profile attributes), CR-CH-041
+(per-instance chrome placement), CR-NR-094 (per-region command line), and B072
+(the split command line's default is directly under the Title_Line).
+
+#### Glossary additions
+
+- **Command_Line_Position**: a per-Kind `Kind_Profile` attribute with exactly two
+  values, `Top` and `Bottom`. `Top` places the `Command ===>` line under the
+  Title_Line and above the Context body (the existing behaviour); `Bottom` places
+  it below the Context body, at the foot of the Workspace (above the app
+  Key_Label_Bar / status bar when those are present).
+- **COMMAND command**: the primary command that changes the active Workspace's
+  `Command_Line_Position` at runtime, mirroring ISPF: `COMMAND TOP` sets Top,
+  `COMMAND BOTTOM` sets Bottom, and bare `COMMAND` TOGGLES between the two. It
+  updates the active instance's Kind `Command_Line_Position` (the same
+  attribute) so the change takes effect immediately and, being a Kind profile
+  value, persists to that Kind's file.
+
+#### Acceptance Criteria
+
+1. THE `Kind_Profile` SHALL carry a `Command_Line_Position` attribute whose value
+   is `Top` or `Bottom`, defaulting to `Top` so every existing Kind's layout is
+   unchanged unless explicitly configured otherwise.
+
+2. THE `Command_Line_Position` SHALL round-trip through the Kind file's TOML
+   `[profile]` table under a stable key (`command_line_position`) with a stable
+   string spelling (`"top"` / `"bottom"`), using `#[serde(default)]` so a Kind
+   file written before this attribute existed loads as `Top` (no schema break,
+   consistent with Requirement 1's stable-schema rule).
+
+3. WHEN an UNSPLIT Workspace instance is rendered AND its active Kind's
+   `Command_Line_Position` is `Top`, THE workbench SHALL render the primary
+   `Command ===>` field at the top (its current placement); WHEN the position is
+   `Bottom`, THE workbench SHALL render the same field at the bottom of the
+   Workspace. Field behaviour (submit, focus, SCROLL field, history arrows,
+   Boundary_Policy Tab-order) SHALL be identical in both positions -- only the
+   vertical placement differs.
+
+4. WHEN a Workspace is SPLIT, EACH region's own `Command ===>` line
+   (Requirement CR-NR-094 / layout-and-docking Req 15) SHALL be placed according
+   to the Kind of the instance shown in THAT region: `Top` places the region
+   command strip directly under that region's Title_Line (the B072 default),
+   `Bottom` places it at the foot of that region, below the region body. The
+   region chrome order and rect math SHALL remain a pure, unit-testable helper.
+
+5. WHEN a Workspace is DETACHED into its own OS window, its `Command ===>` line
+   SHALL be placed according to the detached instance's Kind
+   `Command_Line_Position`, consistent with the unsplit rule (criterion 3).
+
+6. THE `Command_Line_Position` SHALL be resolved from the active Kind's effective
+   `Kind_Profile` via the Kind_Registry keyed by the instance's Kind stable name
+   (the same resolution seam Requirement 5 uses), so a reconfigured or user Kind
+   takes effect without a per-tab copy and WHERE a user Kind does not set the
+   value the compiled default (`Top`) is used (the "modelled on" rule,
+   Requirement 5.4).
+
+7. THE Kinds Editor Context (Requirement 6) SHALL expose a control to view and
+   change the selected Kind's `Command_Line_Position` (Top/Bottom), binding to the
+   working `Kind_Config` like the other editable fields; Saving SHALL persist it
+   via the existing write-file + reload-registry action so the change takes effect
+   for subsequently rendered instances of that Kind. The change SHALL flow through
+   the Kinds Editor's existing Save action path (no bespoke bypass of the
+   command/action seam).
+
+8. WHEN RESET BARE restores the compiled default Kinds (Requirement 7), THE
+   `Command_Line_Position` of every Kind SHALL return to its compiled default
+   (`Top`), since it is part of the default `Kind_Profile` restored by the
+   registry's built-in defaults (no separate reset path required).
+
+9. WHEN the user submits `COMMAND TOP`, THE workbench SHALL set the active
+   Workspace's Kind `Command_Line_Position` to `Top`; WHEN the user submits
+   `COMMAND BOTTOM`, it SHALL set it to `Bottom`; WHEN the user submits bare
+   `COMMAND` (verb only), it SHALL TOGGLE the active Kind's position (Top ->
+   Bottom, Bottom -> Top). The verb is case-insensitive and the argument
+   (`TOP` / `BOTTOM`) is case-insensitive; an unrecognised argument SHALL produce
+   a non-blocking error status and leave the position unchanged.
+
+10. THE `COMMAND` command SHALL take effect on the NEXT render frame (the primary
+    command field moves to the new position immediately), by updating the active
+    Kind's `Command_Line_Position` in the Kind_Registry -- the SAME attribute
+    Requirement 8.1-8.6 render from -- so no parallel per-tab position state is
+    introduced.
+
+11. BECAUSE `Command_Line_Position` is a Kind_Profile value, the `COMMAND` command
+    SHALL persist the change to the active Kind's file (the same write-file +
+    reload-registry path the Kinds Editor Save uses, Requirement 8.7), so the new
+    position survives a restart and applies to subsequently opened instances of
+    that Kind. (This is the ISPF "profile setting" behaviour; a change to one
+    instance's Kind position is a change to that Kind.)
+
+12. THE `COMMAND` command SHALL be a first-class primary command routed through
+    the same command dispatcher as every other primary command (architecture-brief
+    Principle 2, command parity), so the Kinds Editor toggle (Requirement 8.7),
+    the `COMMAND` command, menus, and future bindings all converge on ONE
+    position-setting code path. `COMMAND` (singular) SHALL NOT collide with the
+    existing `COMMANDS` (plural, Command Configurator) verb: `COMMANDS` is matched
+    exactly / by its own prefix and is unaffected.
+
+13. WHEN the active Workspace is a Detached_Workspace or a focused split region,
+    the `COMMAND` command typed in THAT command field SHALL change the position of
+    the Kind of THAT instance (resolved through the same per-window / per-region
+    command context used for all commands, CR-CH-036 / CR-NR-094), consistent with
+    where any other command typed there acts.
