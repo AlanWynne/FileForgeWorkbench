@@ -150,7 +150,6 @@ impl WorkbenchShell {
     /// shows its own instance's Title_Line. Home banner / editor path / menu
     /// label styling is preserved (delegated through `kind_title`).
     pub(super) fn render_title_line_into_ui(&self, ui: &mut egui::Ui, tab_index: usize) {
-        use ff_theme::mode::VisualMode;
         let Some(tab) = self.tabs.tabs().get(tab_index) else {
             return;
         };
@@ -158,52 +157,32 @@ impl WorkbenchShell {
         // (kind_title) so a reconfigured/user Kind shows its configured title;
         // Home banner / menu label / editor path are delegated inside kind_title.
         let text = self.kind_title(tab);
-        let is_legacy = self.palette.mode == VisualMode::Legacy;
-        let is_pom = tab.is_home;
-        // CR-CH-042 (menu-workspace Req 20.2; menu-and-statusbar Req 17.11): EVERY
-        // Menu Workspace Title_Line is CENTERED, uniform for the POM, Settings, and
-        // user menus (the former POM-centered vs Settings-left inconsistency is
-        // removed). Non-menu Contexts (editor path, panel Kind title) stay
-        // left-aligned.
+        // CR-CH-042: the Menu Workspace Title_Line uses ONE THEME-DRIVEN, centered
+        // "menu heading" look standardised on the POM aesthetic for EVERY menu --
+        // the POM, Settings, and user menus alike (owner: "standardise on the POM
+        // look and feel"). The colours come from the theme tokens
+        // `primary_menu_bg` / `menu_bar_fg` (the ISPF "primary menu / screen
+        // heading" pair), so the Theme Workspace already caters for it -- there
+        // are NO hardcoded POM colours and NO `is_home` branch. Non-menu Contexts
+        // (editor path, panel Kind title) keep the left-aligned Title_Line.
         let is_menu_workspace = tab.kind == crate::tab_state::TabKind::MenuWorkspace;
-        {
-            if is_pom {
-                // POM title: black background, blue text, centered (theme concern).
-                let bg = egui::Color32::BLACK;
-                let fg = egui::Color32::from_rgb(0x00, 0x55, 0xFF);
-                let rect = ui.max_rect();
-                ui.painter().rect_filled(rect, 0.0, bg);
-                ui.centered_and_justified(|ui| {
-                    ui.colored_label(fg, egui::RichText::new(&text).monospace().strong());
-                });
-            } else if is_menu_workspace {
-                // CR-CH-042: a non-Home Menu Workspace (Settings / user menu) is
-                // CENTERED like the POM, using the theme's Title_Line colours
-                // (Legacy blue-bg/white per Req 17.8, else accent-tinted per 21.5).
-                let bg = to_egui_color(self.palette.ui.primary_menu_bg);
-                let fg = to_egui_color(self.palette.ui.menu_bar_fg);
-                let rect = ui.max_rect();
-                ui.painter().rect_filled(rect, 0.0, bg);
-                ui.centered_and_justified(|ui| {
-                    ui.colored_label(fg, egui::RichText::new(&text).monospace());
-                });
-            } else if is_legacy {
-                // Validates: Requirement 17.8 — Legacy: blue bg, white text
-                let bg = to_egui_color(self.palette.ui.primary_menu_bg);
-                let fg = to_egui_color(self.palette.ui.menu_bar_fg);
-                let rect = ui.available_rect_before_wrap();
-                ui.painter().rect_filled(rect, 0.0, bg);
-                ui.colored_label(fg, egui::RichText::new(text).monospace());
-            } else {
-                // Validates: Requirement 21.5 -- non-Legacy title line paints the
-                // accent-tinted primary_menu_bg background with menu_bar_fg text,
-                // mirroring the Legacy branch (previously flat / no fill).
-                let bg = to_egui_color(self.palette.ui.primary_menu_bg);
-                let fg = to_egui_color(self.palette.ui.menu_bar_fg);
-                let rect = ui.available_rect_before_wrap();
-                ui.painter().rect_filled(rect, 0.0, bg);
-                ui.colored_label(fg, egui::RichText::new(text).monospace());
-            }
+        let bg = to_egui_color(self.palette.ui.primary_menu_bg);
+        let fg = to_egui_color(self.palette.ui.menu_bar_fg);
+        if is_menu_workspace {
+            // Menu heading: themed fill + centered, strong monospace title. One
+            // path for the POM and every other menu (menu-workspace Req 20.2,
+            // menu-and-statusbar Req 17.11).
+            let rect = ui.max_rect();
+            ui.painter().rect_filled(rect, 0.0, bg);
+            ui.centered_and_justified(|ui| {
+                ui.colored_label(fg, egui::RichText::new(&text).monospace().strong());
+            });
+        } else {
+            // Non-menu Contexts (editor path / panel Kind title): themed fill,
+            // left-aligned (Req 17.8 Legacy / Req 21.5 non-Legacy -- same tokens).
+            let rect = ui.available_rect_before_wrap();
+            ui.painter().rect_filled(rect, 0.0, bg);
+            ui.colored_label(fg, egui::RichText::new(text).monospace());
         }
     }
 

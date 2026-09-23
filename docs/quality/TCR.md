@@ -3022,3 +3022,4 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | 🔴 | -- | menu-workspace Req 20.7 / menu-and-statusbar Req 17.4/17.5/17.6: non-menu Title_Line unchanged (editor path/[Untitled]; panel Kind title) |
 | `ff-desktop` | 🔴 | -- | menu-workspace Req 20.8 / menu-and-statusbar Req 17.10: in-place context switch shows the new Menu_Title immediately (live-derived, never stale) |
 | `ff-desktop` | 🔴 | -- | menu-workspace Req 20.9: behaviour-preserving -- option layout, calendar tiers (Req 16), and focus contract unchanged by heading removal + title re-source |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 20.10: standardised theme-driven menu heading for ALL menus (POM look) from `primary_menu_bg`/`menu_bar_fg` tokens; no hardcoded POM colours, no is_home styling branch; Theme Workspace caters for it |

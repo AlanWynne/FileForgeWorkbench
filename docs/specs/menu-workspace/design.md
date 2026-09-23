@@ -1581,12 +1581,18 @@ The POM tab header (`shell/render_chrome.rs`, ~line 538) also routes through
   `is_home` early-return of the app banner is REMOVED (Req 20.3): the POM title
   now comes from `menus/pom.toml` (`FileForge Workbench -- Primary Option Menu`)
   the same way Settings comes from `settings.toml` (`Settings`).
-- **Center every Menu Workspace Title_Line uniformly.** `render_title_line_into_ui`
-  centers the label for ALL Menu_Workspace tabs (generalising the current
-  `is_pom` centered branch to `tab.kind == MenuWorkspace`), so Settings is
-  centered like the POM; the POM keeps its black-bg/blue styling only as a
-  theme concern (unchanged), the centering becomes uniform. Non-menu Contexts
-  (editor path, panel Kind title) keep their existing left-aligned Title_Line
+- **One standardised, theme-driven menu heading for ALL menus (Req 20.10).**
+  `render_title_line_into_ui` collapses to ONE `is_menu_workspace` branch: a
+  filled heading bar + centered strong monospace title, coloured from the THEME
+  tokens `primary_menu_bg` / `menu_bar_fg` (the ISPF primary-menu heading pair).
+  The former POM-only HARDCODED `Color32::BLACK` / `#0055FF` literals are removed
+  and there is NO `is_home` styling branch -- the POM, Settings, and user menus
+  render the identical themed heading (owner: "standardise on the POM look and
+  feel"). Because it is theme-token-driven, the Theme Workspace
+  (theme-and-appearance Req 20) already caters for it -- editing those two tokens
+  restyles the heading for every menu -- and the theme contrast guard keeps the
+  `menu_bar_fg / primary_menu_bg` pair WCAG-AA legible. Non-menu Contexts (editor
+  path, panel Kind title) keep their existing themed left-aligned Title_Line
   (Req 20.7).
 - **Remove the duplicate body heading (Req 20.1, m&s 17.11).** Delete the
   `ui.vertical_centered(... RichText::new(&menu.title) ...)` block + its

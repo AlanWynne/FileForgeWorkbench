@@ -1389,3 +1389,19 @@ and centered, and drops the duplicate.
    the body-heading and re-sourcing the Title_Line SHALL NOT alter the option
    list layout decisions, the calendar fit tiers (Requirement 16), or the focus
    contract; the removed heading simply frees vertical space above the options.
+10. *(CR-CH-042 -- standardised, theme-driven menu heading.)* THE Menu Workspace
+    Title_Line SHALL render as ONE standardised "menu heading" look for EVERY menu
+    (the POM, Settings, and user menus alike), modelled on the POM aesthetic: a
+    filled heading bar with the centered Menu_Title. Its colours SHALL come from
+    the THEME tokens `primary_menu_bg` (background) and `menu_bar_fg`
+    (foreground) -- the ISPF "primary menu / screen heading" pair
+    (theme-and-appearance) -- so there SHALL be NO hardcoded POM colours and NO
+    `is_home` styling branch. Because the look is theme-token-driven, the Theme
+    Workspace (theme-and-appearance Requirement 20) already caters for it: editing
+    `primary_menu_bg` / `menu_bar_fg` in a theme restyles the menu heading for all
+    menus, and the theme contrast guard (theme-and-appearance contrast rules) keeps
+    the `menu_bar_fg / primary_menu_bg` pair WCAG-AA legible in every theme. The
+    former POM-only hardcoded black-background / blue-text styling is removed in
+    favour of this standardised themed heading. Non-menu Title_Lines keep their
+    existing themed left-aligned rendering (menu-and-statusbar Requirement 17.7/17.8,
+    21.5).
