@@ -77,16 +77,23 @@ InteriorFocus` RETURNS the focus contract, and the shell dispatches it through
 latch on one code path. An implementor CANNOT compile without returning
 `InteriorFocus` (use `InteriorFocus::none()` for the deliberate no-interior case).
 
-Migrated so far (phase 1): Config panel, Theme Editor, Menus Editor, and the
-MenuWorkspace (POM + Settings + user menus). The MenuWorkspace routes its focus
-contract through the shared `WorkbenchShell::apply_interior_focus` helper rather
-than the `ShellServices`-only trait, because its render carries menu-specific
-calendar inputs/outputs -- an accepted, documented variance; it still uses the
-SAME `InteriorFocus` type and the SAME single latch path.
+Migration COMPLETE (phase 1 + WF.6, CR-NR-078). `impl WorkspaceContext` +
+`render_workspace_context` dispatch: Config panel, Theme Editor, Menus Editor,
+Keys Editor, Kinds Editor, Plugin Manager, Event Log, Macro Library, Command
+Configurator, Search Results. Routed through the shared
+`WorkbenchShell::apply_interior_focus` helper (SAME `InteriorFocus` type + SAME
+single latch path) because their render carries inputs the `ShellServices`-only
+trait cannot express: the MenuWorkspace (POM + Settings + user menus; menu-specific
+calendar io), the Editor Context (renders the active `TabState` with
+shell-entangled inputs), and the Files Panel (own command field + bespoke
+`files_panel_cmd` -> tree Tab redirect). The Editor and Files Panel are the two
+documented `InteriorFocus::none()` no-interior cases (exception 2 below).
 
-NOT yet migrated (still on the manual wiring below until their later phase):
-Plugin Manager, Event Log, Macro Library, Search Results, Command Configurator,
-and the two special cases FilesPanel and FileEditor.
+There are therefore NO unmigrated arms: EVERY central-panel arm either implements
+`WorkspaceContext` (dispatched via `render_workspace_context`) or calls
+`apply_interior_focus` with an explicit `InteriorFocus`. The "Legacy manual rule"
+section below is retained only as guidance for any future arm added before it is
+converted -- it should not be needed.
 
 ## When adding a NEW workspace
 

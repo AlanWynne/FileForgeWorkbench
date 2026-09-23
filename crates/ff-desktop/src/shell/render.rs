@@ -781,6 +781,7 @@ impl WorkbenchShell {
                 notifications: &self.notification_queue,
                 themes_dir: self.themes_dir(),
                 menus_dir: self.menus_dir(),
+                command_store: &self.command_store,
                 requests: &mut requests,
             };
             context.render(ui, &mut services)
@@ -1561,8 +1562,34 @@ impl WorkbenchShell {
                         files_panel::FilesPanelAction::NavigateInto(_) => {}
                         files_panel::FilesPanelAction::None => {}
                     }
+                    // CR-NR-078 WF.6 special case (task 8.2): the Files Panel
+                    // (Catalog Explorer Context) has its OWN internal
+                    // "Command ===>" field and a bespoke Tab redirect
+                    // (files_panel_cmd -> first catalog node via
+                    // `tree_focus_requested`, B024/Req 20.1) handled in
+                    // `render_central_panel`, NOT the shell command-field ->
+                    // first-interior latch. It has no shell-latched interior Tab
+                    // stop, so it reports `InteriorFocus::none()` EXPLICITLY
+                    // through the single latch path (workspace-conformance rule
+                    // exception 2) rather than silently leaving the anchors unset.
+                    self.apply_interior_focus(
+                        ctx,
+                        crate::shell::workspace_context::InteriorFocus::none(),
+                    );
                 }
                 TabKind::FileEditor | TabKind::Untitled => {
+                    // CR-NR-078 WF.6 special case (task 8.2): the Editor Context
+                    // renders the ACTIVE `TabState` (not a shell-owned panel) and
+                    // needs shell-entangled inputs (cmd_engine, exclude_manager,
+                    // runtime, the mutable tab) that do not fit the
+                    // `ShellServices`-only trait, so it is NOT a `WorkspaceContext`
+                    // implementor. Its body is a native egui multiline surface
+                    // with its OWN internal focus/caret model and its own
+                    // "Command ===>" line; it has NO shell-latched interior Tab
+                    // stop. It therefore reports `InteriorFocus::none()`
+                    // EXPLICITLY through the single latch path, documenting the
+                    // deliberate no-interior case (workspace-conformance rule
+                    // exception 2) rather than silently leaving the anchors unset.
                     let tab_id = self.tabs.active_tab().id;
                     let scroll_amount = self.scroll_amount.clone();
                     let tab = self.tabs.active_tab_mut();
@@ -1577,6 +1604,10 @@ impl WorkbenchShell {
                     ) {
                         self.open_error = Some(err);
                     }
+                    self.apply_interior_focus(
+                        ctx,
+                        crate::shell::workspace_context::InteriorFocus::none(),
+                    );
                 }
                 TabKind::ConfigPanel => {
                     // Validates: Requirement 15.1-15.3; CR-NR-078 (framework).
@@ -1588,97 +1619,40 @@ impl WorkbenchShell {
                     self.config_panel = panel;
                 }
                 TabKind::PluginManager => {
-                    // Validates: plugin-manager-ui Requirement 1.1-1.6
-                    crate::plugin_manager_panel::render(ui, &mut self.plugin_manager_panel);
-                    // CR-CH-023 (B059): Filter field is the first/last interior.
-                    let id = crate::plugin_manager_panel::filter_field_id();
-                    self.first_interior_id = Some(id);
-                    self.last_interior_id = Some(id);
-                    self.honour_interior_focus_latch(ctx, Some(id), Some(id));
+                    // Validates: plugin-manager-ui Requirement 1.1-1.6;
+                    // CR-NR-078 WF.6 (framework). Owned-panel swap: render
+                    // through the trait, which reports InteriorFocus (Filter
+                    // field) and honours the latch on the single path.
+                    let mut panel = std::mem::take(&mut self.plugin_manager_panel);
+                    self.render_workspace_context(ctx, ui, &mut panel);
+                    self.plugin_manager_panel = panel;
                 }
                 TabKind::EventLog => {
-                    // Validates: notification-system Requirement 2.1-2.6
-                    let first_interior_ev = crate::event_log_panel::render(
-                        ui,
-                        &mut self.event_log_panel,
-                        &self.notification_queue,
-                    );
-                    if self.event_log_panel.clear_requested {
-                        self.event_log_panel.clear_requested = false;
-                        self.notification_queue.lock().expect("queue").clear();
-                    }
-                    // CR-CH-023 (B059): the level-filter combo is the first
-                    // interior; its fresh id is returned by the render.
-                    self.first_interior_id = first_interior_ev;
-                    self.last_interior_id = first_interior_ev;
-                    self.honour_interior_focus_latch(ctx, first_interior_ev, first_interior_ev);
+                    // Validates: notification-system Requirement 2.1-2.6;
+                    // CR-NR-078 WF.6 (framework). Owned-panel swap: the trait
+                    // render applies any Clear-Log request against the shared
+                    // queue and reports the level-filter combo as the interior.
+                    let mut panel = std::mem::take(&mut self.event_log_panel);
+                    self.render_workspace_context(ctx, ui, &mut panel);
+                    self.event_log_panel = panel;
                 }
                 TabKind::SearchResults => {
-                    // Validates: global-search Requirement 1.1, 4.1
+                    // Validates: global-search Requirement 1.1, 4.1;
+                    // CR-NR-078 WF.6 (framework). Compute the search roots and
+                    // stage them on the panel BEFORE dispatch (the trait render
+                    // only receives ShellServices), owned-panel swap through the
+                    // framework (reports the query-field interior + honours the
+                    // latch), then apply the stashed outcome shell-side.
                     let roots = collect_search_roots(
                         &self.files_panel.registry,
                         self.active_workspace.as_ref(),
                     );
-                    let outcome = crate::search_results_panel::render(
-                        ui,
-                        &mut self.search_results_panel,
-                        &roots,
-                        &self.runtime,
-                    );
-                    match outcome {
-                        crate::search_results_panel::SearchPanelOutcome::OpenMatch {
-                            path,
-                            line,
-                        } => {
-                            if let Err(e) = self.shell_open_file(&path) {
-                                self.open_error = Some(e);
-                            } else {
-                                // Scroll to the matching line.
-                                let idx = self.tabs.active_index();
-                                if let Some(tab) = self.tabs.tabs_mut().get_mut(idx) {
-                                    tab.viewport.scroll_to_line(
-                                        line.saturating_sub(1).max(1),
-                                        &tab.cursor.clone(),
-                                    );
-                                }
-                            }
-                        }
-                        crate::search_results_panel::SearchPanelOutcome::ReplaceAll => {
-                            let unsaved: Vec<String> = self
-                                .tabs
-                                .tabs()
-                                .iter()
-                                .filter(|t| t.is_modified)
-                                .filter_map(|t| t.path.clone())
-                                .collect();
-                            let req = self.search_results_panel.build_request(roots).ok();
-                            if let Some(r) = req {
-                                let results = self.search_results_panel.results.clone();
-                                match ff_global_search::GlobalReplaceEngine::replace_all(
-                                    &results,
-                                    &r,
-                                    &self.search_results_panel.replace_text.clone(),
-                                    &unsaved,
-                                ) {
-                                    Ok((summary, _conflicts)) => {
-                                        self.open_error = Some(format!(
-                                            "Replaced {} occurrence(s) in {} file(s)",
-                                            summary.replacements, summary.files_modified
-                                        ));
-                                    }
-                                    Err(e) => {
-                                        self.open_error = Some(format!("Replace failed: {e}"));
-                                    }
-                                }
-                            }
-                        }
-                        _ => {}
-                    }
-                    // CR-CH-023 (B059): the Search query field is the first/last interior.
-                    let id = crate::search_results_panel::query_field_id();
-                    self.first_interior_id = Some(id);
-                    self.last_interior_id = Some(id);
-                    self.honour_interior_focus_latch(ctx, Some(id), Some(id));
+                    let mut panel = std::mem::take(&mut self.search_results_panel);
+                    panel.search_roots = roots.clone();
+                    self.render_workspace_context(ctx, ui, &mut panel);
+                    let outcome = std::mem::take(&mut panel.pending_outcome);
+                    self.search_results_panel = panel;
+                    self.apply_search_outcome(roots, outcome);
                 }
                 TabKind::FileExplorerPanel => {
                     // Unsplit: rendered as a full-window ctx-level panel by
@@ -1693,34 +1667,15 @@ impl WorkbenchShell {
                     }
                 }
                 TabKind::MacroLibrary => {
-                    // Validates: lua-macro-engine Requirement 12.1-12.8
-                    let action =
-                        crate::macro_library_panel::render(ui, &mut self.macro_library_panel);
-                    match action {
-                        crate::macro_library_panel::MacroLibraryAction::Edit(path) => {
-                            let mut p = ff_command::CommandParams::new();
-                            p.insert("path", path.as_str());
-                            let _ = self.dispatch.execute_command("file.open", p);
-                        }
-                        crate::macro_library_panel::MacroLibraryAction::Run(_path) => {
-                            self.open_error = Some("Lua execution not yet available".to_string());
-                        }
-                        crate::macro_library_panel::MacroLibraryAction::Delete(path) => {
-                            if let Err(e) = std::fs::remove_file(&path) {
-                                self.open_error = Some(format!("Delete failed: {e}"));
-                            } else {
-                                let dirs = self.macro_dirs();
-                                self.macro_library_panel.refresh(&dirs);
-                                self.open_error = None;
-                            }
-                        }
-                        crate::macro_library_panel::MacroLibraryAction::None => {}
-                    }
-                    // CR-CH-023 (B059): the Filter field is the first/last interior.
-                    let id = crate::macro_library_panel::filter_field_id();
-                    self.first_interior_id = Some(id);
-                    self.last_interior_id = Some(id);
-                    self.honour_interior_focus_latch(ctx, Some(id), Some(id));
+                    // Validates: lua-macro-engine Requirement 12.1-12.8;
+                    // CR-NR-078 WF.6 (framework). Owned-panel swap: render
+                    // through the trait (reports the Filter field interior +
+                    // honours the latch), then apply the stashed action.
+                    let mut panel = std::mem::take(&mut self.macro_library_panel);
+                    self.render_workspace_context(ctx, ui, &mut panel);
+                    let action = std::mem::take(&mut panel.pending_action);
+                    self.macro_library_panel = panel;
+                    self.apply_macro_library_action(action);
                 }
                 TabKind::MenuWorkspace => {
                     // Validates: menu-workspace Requirement 2.1-2.6, 2.1a-2.1c,
@@ -1819,20 +1774,18 @@ impl WorkbenchShell {
                     self.apply_kinds_editor_action(action);
                 }
                 TabKind::CommandConfigurator => {
-                    // Validates: command-configurator Requirement 2.2-2.6
+                    // Validates: command-configurator Requirement 2.2-2.6;
+                    // CR-NR-078 WF.6 (framework). poll_reload the store first
+                    // (mutable), then owned-panel swap: the trait render reads
+                    // the settled store from ShellServices, reports the "Add"
+                    // button interior + honours the latch, and stashes the
+                    // action the shell applies after put-back.
                     self.command_store.poll_reload();
-                    let action = crate::command_config::render::render(
-                        ui,
-                        &mut self.command_configurator_panel,
-                        &self.command_store,
-                    );
+                    let mut panel = std::mem::take(&mut self.command_configurator_panel);
+                    self.render_workspace_context(ctx, ui, &mut panel);
+                    let action = std::mem::take(&mut panel.pending_action);
+                    self.command_configurator_panel = panel;
                     self.apply_configurator_action(action);
-                    // CR-CH-023 (B059): the "Add" button is the first interior
-                    // (its fresh id captured by the render onto panel state).
-                    let id = self.command_configurator_panel.first_interior_id;
-                    self.first_interior_id = id;
-                    self.last_interior_id = id;
-                    self.honour_interior_focus_latch(ctx, id, id);
                 }
             }
         }

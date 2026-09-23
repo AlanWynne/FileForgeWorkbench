@@ -129,6 +129,11 @@ pub struct ShellServices<'a> {
     pub themes_dir: PathBuf,
     /// Resolved menus directory (`<user_data>/menus`).
     pub menus_dir: PathBuf,
+    /// Read access to the user-defined command store (the Command Configurator
+    /// Context renders its definition table from this). The shell calls
+    /// `poll_reload` before building `ShellServices`, so this is a settled
+    /// read-only view for the frame.
+    pub command_store: &'a crate::command_config::store::CommandStore,
     /// Requests the Context enqueues; drained by the shell after `render`.
     pub requests: &'a mut Vec<ShellRequest>,
 }

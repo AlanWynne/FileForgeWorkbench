@@ -82,6 +82,14 @@ pub struct SearchResultsPanelState {
     pub history: Vec<String>,
     /// Whether the history dropdown is open.
     pub history_open: bool,
+    /// Search roots the shell computes each frame and stages here BEFORE the
+    /// `WorkspaceContext` render, so the trait render (which only receives
+    /// `ShellServices`) can pass them to the free `render` (CR-NR-078 WF.6).
+    pub search_roots: Vec<String>,
+    /// Outcome produced by the last render, stashed for the shell to apply after
+    /// the owned panel is put back (CR-NR-078 WF.6). Applying OpenMatch/ReplaceAll
+    /// needs shell state (tabs, registry), so it is drained shell-side.
+    pub pending_outcome: crate::search_results_panel::render::SearchPanelOutcome,
 }
 
 impl SearchResultsPanelState {
@@ -100,6 +108,8 @@ impl SearchResultsPanelState {
             replace_confirm: ReplaceConfirm::None,
             history: Vec::new(),
             history_open: false,
+            search_roots: Vec::new(),
+            pending_outcome: crate::search_results_panel::render::SearchPanelOutcome::None,
         }
     }
 

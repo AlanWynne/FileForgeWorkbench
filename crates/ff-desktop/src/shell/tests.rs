@@ -7134,6 +7134,76 @@ fn full_shell_command_configurator_first_tab_focuses_interior() {
     assert_first_tab_lands_on_reported_interior("COMMANDS", "Command Configurator");
 }
 
+// === CR-NR-078 WF.6 (task 8.2): FileEditor + FilesPanel no-interior cases ===
+
+// Validates: workspace-framework Requirement 3.4; menu-and-statusbar Req 16.3
+// (CR-CH-023) -- the Editor Context is a documented no-interior special case: it
+// renders a native egui text body with its own caret/focus model and reports
+// `InteriorFocus::none()` EXPLICITLY through the single latch path. The shell
+// must therefore leave `first_interior_id`/`last_interior_id` as None (no phantom
+// stop), rather than silently leaving them unset by an arm that forgot to wire
+// the focus contract.
+#[test]
+fn full_shell_file_editor_reports_no_interior_focus() {
+    use crate::tab_state::TabKind;
+    let mut harness = harness_shell();
+    // Open a fresh Untitled editor buffer (same path an editor tab takes).
+    harness.state_mut().shell_new_untitled();
+    for _ in 0..4 {
+        harness.run();
+    }
+    assert!(
+        matches!(
+            harness.state().tabs.active_tab().kind,
+            TabKind::Untitled | TabKind::FileEditor
+        ),
+        "shell_new_untitled opens an editor Context"
+    );
+    assert_eq!(
+        harness.state().first_interior_id,
+        None,
+        "Editor Context is a documented no-interior case: first_interior_id stays None"
+    );
+    assert_eq!(
+        harness.state().last_interior_id,
+        None,
+        "Editor Context is a documented no-interior case: last_interior_id stays None"
+    );
+}
+
+// Validates: workspace-framework Requirement 3.4; menu-and-statusbar Req 16.3
+// (CR-CH-023) -- the Files Panel (Catalog Explorer Context) is a documented
+// no-interior special case for the SHELL latch: it has its own internal
+// "Command ===>" field and a bespoke Tab redirect to the first catalog node
+// (B024/Req 20.1) handled outside the first-interior latch. It reports
+// `InteriorFocus::none()` EXPLICITLY, so the shell anchors stay None (no phantom
+// stop) even though the panel is interactive.
+#[test]
+fn full_shell_files_panel_reports_no_interior_focus() {
+    use crate::tab_state::TabKind;
+    let mut harness = harness_shell();
+    // CATALOGS navigates the active tab to the Files Panel (Catalog Explorer).
+    harness.state_mut().handle_command("CATALOGS");
+    for _ in 0..4 {
+        harness.run();
+    }
+    assert_eq!(
+        harness.state().tabs.active_tab().kind,
+        TabKind::FilesPanel,
+        "CATALOGS opens the Files Panel (Catalog Explorer Context)"
+    );
+    assert_eq!(
+        harness.state().first_interior_id,
+        None,
+        "Files Panel is a documented no-interior case for the shell latch: first_interior_id stays None"
+    );
+    assert_eq!(
+        harness.state().last_interior_id,
+        None,
+        "Files Panel is a documented no-interior case for the shell latch: last_interior_id stays None"
+    );
+}
+
 // Validates: menu-workspace Req 16.1, 16.4 (CR-CH-026, B060) -- the Settings
 // Menu_Workspace defaults the calendar OFF, so Tab from the command field walks
 // ONLY the option rows and then the Menu_Bar; there are NO extra "invisible"
@@ -7388,6 +7458,7 @@ fn workspace_context_render_is_host_agnostic() {
     let config = init(ConfigInitOptions::new().with_hot_reload(false)).expect("config init");
     let runtime = Runtime::new().expect("runtime");
     let notifications = Arc::new(Mutex::new(NotificationQueue::new()));
+    let command_store = crate::command_config::store::CommandStore::default();
 
     let focus_seen: Rc<Cell<InteriorFocus>> = Rc::new(Cell::new(InteriorFocus::none()));
     let focus_for_ui = Rc::clone(&focus_seen);
@@ -7405,6 +7476,7 @@ fn workspace_context_render_is_host_agnostic() {
                 notifications: &notifications,
                 themes_dir: std::path::PathBuf::from("."),
                 menus_dir: std::path::PathBuf::from("."),
+                command_store: &command_store,
                 requests: &mut requests,
             };
             let focus = panel.render(ui, &mut services);

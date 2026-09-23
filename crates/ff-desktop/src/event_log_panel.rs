@@ -19,6 +19,10 @@ pub struct EventLogPanelState {
     pub selected_index: Option<usize>,
     /// Set to true when the user clicks Clear Log.
     pub clear_requested: bool,
+    /// FIRST interior Tab stop (the level-filter combo), captured fresh each
+    /// frame by the `WorkspaceContext` render and reported to the shell
+    /// Boundary_Policy (CR-NR-078 WF.6, CR-CH-023 B059).
+    pub first_interior_id: Option<egui::Id>,
 }
 
 impl EventLogPanelState {
@@ -28,6 +32,7 @@ impl EventLogPanelState {
             text_filter: String::new(),
             selected_index: None,
             clear_requested: false,
+            first_interior_id: None,
         }
     }
 }
@@ -166,5 +171,35 @@ fn level_colour(level: NotificationLevel) -> egui::Color32 {
         NotificationLevel::Success => egui::Color32::from_rgb(0x4C, 0xAF, 0x50),
         NotificationLevel::Warning => egui::Color32::from_rgb(0xFF, 0x98, 0x00),
         NotificationLevel::Error => egui::Color32::from_rgb(0xF4, 0x43, 0x36),
+    }
+}
+
+/// `WorkspaceContext` impl (CR-NR-078 WF.6): render the Event Log against the
+/// shared notification queue, apply a pending Clear-Log request in place (via
+/// `services.notifications`, identical to the pre-framework shell handling), and
+/// report the level-filter combo as the FIRST and LAST interior control.
+///
+/// Validates: workspace-framework Requirement 1.4, 1.5, 6.1;
+/// notification-system Requirement 2.6.
+impl crate::shell::workspace_context::WorkspaceContext for EventLogPanelState {
+    fn render(
+        &mut self,
+        ui: &mut egui::Ui,
+        services: &mut crate::shell::workspace_context::ShellServices<'_>,
+    ) -> crate::shell::workspace_context::InteriorFocus {
+        let first_interior = render(ui, self, services.notifications);
+        self.first_interior_id = first_interior;
+        if self.clear_requested {
+            self.clear_requested = false;
+            services
+                .notifications
+                .lock()
+                .expect("notification queue lock")
+                .clear();
+        }
+        crate::shell::workspace_context::InteriorFocus {
+            first: first_interior,
+            last: first_interior,
+        }
     }
 }

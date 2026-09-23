@@ -16,9 +16,10 @@ use super::store::CommandStore;
 /// An action produced by the Command Configurator render, applied by the shell.
 ///
 /// Validates: command-configurator Requirement 2.3, 2.4, 2.5.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum ConfiguratorAction {
     /// No action this frame.
+    #[default]
     None,
     /// The user asked to commit the currently open edit form (add or edit).
     Save,
@@ -44,6 +45,11 @@ pub struct CommandConfiguratorState {
     /// first-interior Tab jump to a real widget (CR-CH-023, B059). Transient
     /// render output; not serialised.
     pub first_interior_id: Option<egui::Id>,
+    /// Action produced by the last render, stashed for the shell to apply after
+    /// the owned panel is put back (CR-NR-078 WF.6). Applying Save/Delete needs
+    /// the shell's mutable `CommandStore`, so it is drained shell-side rather
+    /// than inside `render`. Transient; not serialised.
+    pub pending_action: ConfiguratorAction,
 }
 
 impl CommandConfiguratorState {
@@ -180,6 +186,28 @@ pub fn render(
     }
 
     action
+}
+
+/// `WorkspaceContext` impl (CR-NR-078 WF.6): render the Command Configurator
+/// against the read-only `CommandStore` from `ShellServices`, stash the produced
+/// [`ConfiguratorAction`] on `pending_action` for the shell to apply (Save/Delete
+/// mutate the store), and report the "Add" button as the FIRST and LAST interior
+/// control.
+///
+/// Validates: workspace-framework Requirement 1.4, 1.5, 6.1;
+/// command-configurator Requirement 2.2, 2.3.
+impl crate::shell::workspace_context::WorkspaceContext for CommandConfiguratorState {
+    fn render(
+        &mut self,
+        ui: &mut egui::Ui,
+        services: &mut crate::shell::workspace_context::ShellServices<'_>,
+    ) -> crate::shell::workspace_context::InteriorFocus {
+        self.pending_action = render(ui, self, services.command_store);
+        crate::shell::workspace_context::InteriorFocus {
+            first: self.first_interior_id,
+            last: self.first_interior_id,
+        }
+    }
 }
 
 /// Display label for the External execution mode column; blank for non-External.

@@ -70,12 +70,36 @@ green and leave `verify.ps1` clean (behaviour-preserving, Requirement 1.5 / 3.1)
     - Covers: Requirement 1-6 (phase-1 criteria)
   - [x] 7.3 verify.ps1 CLEAN (FULL, nextest); rebuild ffwb.exe; change-log CR-NR-078 phase-1 -> DONE
 
-## Later phase (NOT phase 1 -- scheduled after the proof)
+## Later phase (WF.6 -- scheduled after the proof) -- DONE
 
-- [ ] 8. Migrate the remaining Contexts to `WorkspaceContext`
-  - [ ] 8.1 Plugin Manager, Event Log, Macro Library, Search Results, Command Configurator (each already reports a first interior post-B059)
+- [x] 8. Migrate the remaining Contexts to `WorkspaceContext`
+  - [x] 8.1 Plugin Manager, Event Log, Macro Library, Search Results, Command Configurator (each already reported a first interior post-B059)
+    - Each now `impl WorkspaceContext` and is dispatched via `render_workspace_context`
+      (owned-panel swap). Action-returning panels (Macro Library, Command
+      Configurator, Search Results) stash their action/outcome on a
+      `pending_*` field the shell drains after put-back; Event Log applies its
+      Clear-Log request in place via `services.notifications`; Plugin Manager is
+      action-free. `ShellServices` gained a read-only `command_store` for the
+      Command Configurator. Behaviour-preserving: the existing
+      `assert_first_tab_lands_on_reported_interior` tests remain green.
     - Covers: Requirement 1.4
-  - [ ] 8.2 Special cases: FilesPanel (reconcile B024 catalog-focus with `InteriorFocus`) and FileEditor (editor body id or documented `none()`), each with a dedicated full-shell test
+  - [x] 8.2 Special cases: FilesPanel and FileEditor
+    - Both are documented no-interior cases (workspace-conformance exception 2):
+      the Editor Context renders the active `TabState` (shell-entangled inputs,
+      native body focus) and the Files Panel has its own command field + bespoke
+      `files_panel_cmd` -> tree Tab redirect (B024/Req 20.1). Each arm reports
+      `InteriorFocus::none()` EXPLICITLY through the single `apply_interior_focus`
+      latch path. New full-shell tests: `full_shell_file_editor_reports_no_interior_focus`,
+      `full_shell_files_panel_reports_no_interior_focus`.
     - Covers: Requirement 3.4
-  - [ ] 8.3 Remove the `match kind` render arms entirely (full trait dispatch); update the steering rule to cite the trait as the sole enforcement mechanism
+  - [x] 8.3 Single latch path for every arm; steering rule updated
+    - The `match kind` arms are NOT deleted: MenuWorkspace, FileEditor and
+      FilesPanel legitimately cannot fit the `ShellServices`-only trait (extra
+      inputs / entangled state), so they route their focus contract through the
+      shared `apply_interior_focus` helper -- the SAME single latch path used by
+      the trait dispatch. Every arm therefore either implements `WorkspaceContext`
+      (dispatched via `render_workspace_context`) or calls `apply_interior_focus`
+      with an explicit `InteriorFocus` (including the documented `none()` cases),
+      so no arm can silently leave the anchors unset. Steering rule
+      `workspace-conformance.md` updated to record the completed migration set.
     - Covers: Requirement 3.3

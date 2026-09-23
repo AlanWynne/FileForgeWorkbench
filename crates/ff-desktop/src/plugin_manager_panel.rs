@@ -197,6 +197,23 @@ pub fn render(ui: &mut egui::Ui, state: &mut PluginManagerPanelState) {
     });
 }
 
+/// `WorkspaceContext` impl (CR-NR-078 WF.6): render the Plugin Manager and
+/// report its interior focus. The Filter field is the FIRST and LAST interior
+/// control (its id is stable), so egui-native Tab walks any controls in between.
+///
+/// Validates: workspace-framework Requirement 1.4, 1.5, 6.1;
+/// plugin-manager-ui Requirement 1.6.
+impl crate::shell::workspace_context::WorkspaceContext for PluginManagerPanelState {
+    fn render(
+        &mut self,
+        ui: &mut egui::Ui,
+        _services: &mut crate::shell::workspace_context::ShellServices<'_>,
+    ) -> crate::shell::workspace_context::InteriorFocus {
+        render(ui, self);
+        crate::shell::workspace_context::InteriorFocus::single(filter_field_id())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

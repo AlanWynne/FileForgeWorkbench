@@ -7,8 +7,10 @@ use eframe::egui;
 use super::state::{ReplaceConfirm, SearchPhase, SearchResultsPanelState};
 
 /// Outcome returned from `render()` each frame.
+#[derive(Default)]
 pub enum SearchPanelOutcome {
     /// Nothing happened.
+    #[default]
     None,
     /// User clicked a match -- open file at this path and line.
     OpenMatch { path: String, line: u64 },
@@ -281,6 +283,31 @@ pub fn render(
     }
 
     outcome
+}
+
+/// `WorkspaceContext` impl (CR-NR-078 WF.6): render the Search Results panel
+/// against the staged `search_roots` (the shell computes them from the catalog
+/// registry / active workspace and stores them on the panel each frame before
+/// dispatch) and the runtime from `ShellServices`, stash the produced
+/// [`SearchPanelOutcome`] on `pending_outcome` for the shell to apply
+/// (OpenMatch/ReplaceAll need tabs + registry), and report the query field as
+/// the FIRST and LAST interior control.
+///
+/// Validates: workspace-framework Requirement 1.4, 1.5, 6.1;
+/// global-search Requirement 1.1, 4.1.
+impl crate::shell::workspace_context::WorkspaceContext for SearchResultsPanelState {
+    fn render(
+        &mut self,
+        ui: &mut egui::Ui,
+        services: &mut crate::shell::workspace_context::ShellServices<'_>,
+    ) -> crate::shell::workspace_context::InteriorFocus {
+        // `search_roots` was staged by the shell before dispatch; take it so the
+        // borrow does not overlap the `&mut self` render call, then restore it.
+        let roots = std::mem::take(&mut self.search_roots);
+        self.pending_outcome = render(ui, self, &roots, services.runtime);
+        self.search_roots = roots;
+        crate::shell::workspace_context::InteriorFocus::single(query_field_id())
+    }
 }
 
 /// Spawn a background search task and transition the panel to Running.

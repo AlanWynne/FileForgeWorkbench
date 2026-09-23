@@ -23,9 +23,10 @@ pub struct MacroEntry {
 /// Action returned by the Macro Library panel render function.
 ///
 /// Validates: lua-macro-engine Requirement 12.3
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum MacroLibraryAction {
     /// No action this frame.
+    #[default]
     None,
     /// User clicked Run for the given macro path.
     Run(String),
@@ -47,6 +48,11 @@ pub struct MacroLibraryPanelState {
     ///
     /// Validates: lua-macro-engine Requirement 12.2
     pub entries: Vec<MacroEntry>,
+    /// Action produced by the last render, stashed for the shell to apply after
+    /// the owned panel is put back (CR-NR-078 WF.6). The shell needs its own
+    /// state (`macro_dirs()` for refresh, `file.open`) to apply Edit/Run/Delete,
+    /// so the action is drained shell-side rather than inside `render`.
+    pub pending_action: MacroLibraryAction,
 }
 
 impl MacroLibraryPanelState {
@@ -55,6 +61,7 @@ impl MacroLibraryPanelState {
         Self {
             filter: String::new(),
             entries: Vec::new(),
+            pending_action: MacroLibraryAction::None,
         }
     }
 
@@ -177,6 +184,24 @@ pub fn render(ui: &mut egui::Ui, state: &mut MacroLibraryPanelState) -> MacroLib
     });
 
     action
+}
+
+/// `WorkspaceContext` impl (CR-NR-078 WF.6): render the Macro Library, stash the
+/// produced [`MacroLibraryAction`] on `pending_action` for the shell to apply
+/// (Edit/Run/Delete need shell state -- `macro_dirs()`, `file.open`), and report
+/// the Filter field as the FIRST and LAST interior control.
+///
+/// Validates: workspace-framework Requirement 1.4, 1.5, 6.1;
+/// lua-macro-engine Requirement 12.4.
+impl crate::shell::workspace_context::WorkspaceContext for MacroLibraryPanelState {
+    fn render(
+        &mut self,
+        ui: &mut egui::Ui,
+        _services: &mut crate::shell::workspace_context::ShellServices<'_>,
+    ) -> crate::shell::workspace_context::InteriorFocus {
+        self.pending_action = render(ui, self);
+        crate::shell::workspace_context::InteriorFocus::single(filter_field_id())
+    }
 }
 
 #[cfg(test)]
