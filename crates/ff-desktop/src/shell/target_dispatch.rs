@@ -175,9 +175,13 @@ impl WorkbenchShell {
                 self.handle_command(command_id);
             }
             CommandTarget::Menu { name } => {
-                // A Menu_Target opens the referenced Menu_Workspace via the same
-                // path as the MENU command (menu-workspace Requirement 10.4, 11.5).
-                self.open_menu_by_name(name);
+                // A Menu_Target opens the referenced Menu_Workspace via the SAME
+                // routing as the typed MENU / menu-name path, honouring the
+                // settings/pom special cases so a CLICKED option matches a typed
+                // command (B075: previously called open_menu_by_name directly,
+                // which opened a generic new tab for Settings instead of the
+                // in-place Settings menu). (menu-workspace Requirement 10.4, 11.5)
+                self.open_named_menu(name);
             }
             CommandTarget::CustomWorkspace { workspace_kind, .. } => {
                 self.open_error = Some(format!(

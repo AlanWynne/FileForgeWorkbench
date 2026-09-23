@@ -5139,6 +5139,61 @@ fn settings_command_opens_menu_workspace_not_flat_panel() {
     );
 }
 
+// Validates: B075 -- clicking the POM "Settings" option (the menu-option
+// dispatch seam) must open the Settings menu IN PLACE (Navigation_Stack push,
+// no new tab), IDENTICAL to typing `SETTINGS` -- NOT a generic new Menu
+// Workspace tab. Root cause was the click path (dispatch_command_target's Menu
+// arm -> open_menu_by_name) bypassing the settings/pom special-casing that the
+// typed path (try_menu_name_dispatch) applies.
+#[test]
+fn clicking_pom_settings_option_opens_settings_menu_in_place() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    // Ensure the ACTIVE tab is the POM (Home Context), as when the user is on
+    // the POM. `make_shell` starts with a bare welcome tab, so open a POM via
+    // START and make it the active context.
+    shell.handle_command("START");
+    assert!(
+        shell.tabs.active_tab().is_home,
+        "precondition: active tab is the POM"
+    );
+    let tabs_before = shell.tabs.len();
+
+    // The POM option 0 command is "Settings" (mixed case). Dispatch it exactly
+    // as the option-click seam does (resolve_and_dispatch_command -> fallthrough
+    // handle_command), via the shared dispatch_bound_command entry point.
+    shell.dispatch_bound_command("Settings");
+
+    // Must navigate IN PLACE to the Settings menu: same tab count, active tab is
+    // the Settings Menu_Workspace, and END can return (nav stack pushed).
+    assert_eq!(
+        shell.tabs.len(),
+        tabs_before,
+        "clicking Settings must navigate in place, not open a new tab (B075)"
+    );
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::MenuWorkspace,
+        "clicking Settings must land on a Menu_Workspace"
+    );
+    assert!(
+        !shell.tabs.active_tab().is_home,
+        "clicking Settings must leave the POM Home Context"
+    );
+    let title_is_settings = shell
+        .tabs
+        .active_tab()
+        .menu_workspace
+        .as_ref()
+        .and_then(|mw| mw.menu.as_ref())
+        .map(|m| m.title.eq_ignore_ascii_case("Settings"))
+        .unwrap_or(false);
+    assert!(
+        title_is_settings,
+        "clicking Settings must open the SETTINGS menu (title 'Settings'), not a generic menu (B075)"
+    );
+}
+
 // === CR-CH-025: unified resolution chain (menu-name + chaining + CONFIG) ====
 
 // Validates: command-framework Req 8.13 / menu-workspace Req 11.7, 11.11 --

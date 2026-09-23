@@ -1363,6 +1363,29 @@ impl WorkbenchShell {
             .unwrap_or_else(crate::theme_defaults::themes_dir)
     }
 
+    /// Open a resolved menu by name, honouring the built-in special cases
+    /// (B075). This is the SINGLE routing point shared by the typed menu-name
+    /// path (`try_menu_name_dispatch`) and the menu-option CLICK / command-target
+    /// path (`dispatch_command_target`'s `Menu` arm), so a clicked option and a
+    /// typed command open the SAME workspace the SAME way:
+    ///
+    /// - `settings` -> `open_settings_menu()` (navigate IN PLACE via the
+    ///   Navigation_Stack, reconstructing the Settings menu on the current tab),
+    /// - `pom` -> the Home Context,
+    /// - any other name -> the generic `open_menu_by_name`.
+    ///
+    /// Before B075 the click path called `open_menu_by_name("settings")` directly,
+    /// which opened a GENERIC new menu tab instead of the in-place Settings menu.
+    ///
+    /// Validates: menu-workspace Requirement 10.4, 11.5; B075
+    pub(super) fn open_named_menu(&mut self, name: &str) {
+        match name.trim().to_ascii_lowercase().as_str() {
+            "pom" => self.open_menu_by_name("pom"),
+            "settings" => self.open_settings_menu(),
+            _ => self.open_menu_by_name(name),
+        }
+    }
+
     /// Open (or return to) a menu by name.
     ///
     /// An empty name or `POM` opens/returns to the Home Context (POM); any other
@@ -1473,12 +1496,9 @@ impl WorkbenchShell {
             _ => return false,
         };
         // Open the named menu through its proper opener so the Navigation_Stack
-        // (CR-CH-022) and Settings/POM chrome are preserved.
-        match name.as_str() {
-            "pom" => self.open_menu_by_name("pom"),
-            "settings" => self.open_settings_menu(),
-            other => self.open_menu_by_name(other),
-        }
+        // (CR-CH-022) and Settings/POM chrome are preserved. Shared with the
+        // menu-option CLICK seam via `open_named_menu` (B075).
+        self.open_named_menu(&name);
         // Trailing token: activate the option keyed by it on the now-open menu
         // (Req 11.7). Re-dispatch so it hits the stage-1 Option_Key lookup.
         let trailing = rest.trim();
