@@ -555,19 +555,19 @@ by ONE implementation slice, tracked in detail in
 This task records the command-framework acceptance obligations for that slice.
 Behaviour-preserving; TDD; do NOT start until the gate is approved.
 
-- [ ] 34. Command owns menu-vs-workspace placement; selection == command execution
-  - [ ] 34.1 Every affordance (typed, function key, click, menu-bar, Tab+Enter)
+- [x] 34. Command owns menu-vs-workspace placement; selection == command execution
+  - [x] 34.1 Every affordance (typed, function key, click, menu-bar, Tab+Enter)
           reduces to `handle_command(command_string)` with no private per-affordance
           dispatch pre-branch (Selection_Equals_Command).
     - Validates: command-framework Requirement 14.1, 14.2
-  - [ ] 34.2 The in-place-vs-new-tab decision lives in the command handlers
+  - [x] 34.2 The in-place-vs-new-tab decision lives in the command handlers
           (`SETTINGS` / `POM` / user-menu commands), not in the Menu Workspace and
           not in the `open_named_menu` name router; `dispatch_command_target`'s
           `Menu` arm invokes the owning command. Assert the resolution chain
           (Req 8.3), shadowing rule (Req 8.10), and Command_Line_Outcome (Req 13)
           are unchanged.
     - Validates: command-framework Requirement 14.3, 14.4, 14.5
-  - [ ] 34.3 Behaviour-preserving: existing command-framework / menu-workspace /
+  - [x] 34.3 Behaviour-preserving: existing command-framework / menu-workspace /
           workspace-kinds tests stay green, adjusted only where a test asserted the
           removed per-affordance branch or the name router by name rather than by
           observable effect. (Implementation + verify + TCR handled in

@@ -1377,22 +1377,22 @@ impl WorkbenchShell {
     /// Before B075 the click path called `open_menu_by_name("settings")` directly,
     /// which opened a GENERIC new menu tab instead of the in-place Settings menu.
     ///
-    /// Validates: menu-workspace Requirement 10.4, 11.5; B075
-    pub(super) fn open_named_menu(&mut self, name: &str) {
-        match name.trim().to_ascii_lowercase().as_str() {
-            "pom" => self.open_menu_by_name("pom"),
-            "settings" => self.open_settings_menu(),
-            _ => self.open_menu_by_name(name),
-        }
-    }
-
     /// Open (or return to) a menu by name.
     ///
-    /// An empty name or `POM` opens/returns to the Home Context (POM); any other
-    /// name opens the data-driven Menu_Workspace backed by `menus/<name>.toml`,
-    /// with a missing file shown in the load-error state.
+    /// This is the single menu-OPENING command: it OWNS the in-place-vs-new-tab
+    /// placement for each menu (CR-CH-043, menu-workspace Req 19.5,
+    /// command-framework Req 14.3/14.4). An empty name or `POM` returns to the
+    /// Home Context in place; `SETTINGS` navigates the current Workspace to the
+    /// Settings menu in place (the B075 behaviour, now owned here rather than by
+    /// a dispatcher-level name router); any other name opens the data-driven
+    /// Menu_Workspace backed by `menus/<name>.toml` in a new tab, with a missing
+    /// file shown in the load-error state. Because placement lives HERE, the
+    /// menu-option CLICK seam, the typed menu-name path, and the
+    /// `CommandTarget::Menu` dispatch all route through this one command and get
+    /// identical placement -- no separate `open_named_menu` router.
     ///
-    /// Validates: menu-workspace Requirement 11.1, 11.2, 11.4, 11.5
+    /// Validates: menu-workspace Requirement 10.4, 11.1, 11.2, 11.4, 11.5, 19.5;
+    /// command-framework Requirement 14.3, 14.4; B075
     pub(super) fn open_menu_by_name(&mut self, name: &str) {
         let lower = name.trim().to_lowercase();
         // Req 11.1 / 11.2: bare MENU and MENU POM go to the Home Context.
@@ -1401,6 +1401,12 @@ impl WorkbenchShell {
                 self.tabs.insert_pom_tab(&self.runtime);
             }
             self.open_error = None;
+            return;
+        }
+        // CR-CH-043 (Req 19.5, B075): the Settings menu navigates IN PLACE. This
+        // command owns that effect; the launching menu / affordance does not.
+        if lower == "settings" {
+            self.open_settings_menu();
             return;
         }
         // Req 11.2: open menus/<name>.toml (SETTINGS -> settings.toml by file name).
@@ -1428,17 +1434,21 @@ impl WorkbenchShell {
         if self.tabs.active_tab().kind != crate::tab_state::TabKind::MenuWorkspace {
             return false;
         }
-        // The Home Context (POM) is a MenuWorkspace after CR-NR-082 Slice 1, but
-        // its Option_Keys are resolved by the dedicated `resolve_pom_option_key`
-        // path later in the chain (the Navigation_Origin resolver, Req 2.1e/5.7).
-        // Skipping Home here preserves the exact pre-Slice-1 dispatch behaviour
-        // and keeps `=`-origin chains (e.g. `=0.K`) resolving against the POM.
-        // Validates: menu-workspace Requirement 18.4, 18.9
-        if self.tabs.active_tab().is_home {
-            return false;
-        }
-        // Extract the option (clone what we need) without holding the borrow.
-        let resolved: Option<(Option<ff_command::CommandTarget>, String)> = self
+        // CR-CH-043 (menu-workspace Req 19.2): this is the ONE current-menu
+        // Option_Key resolver, applied to the ACTIVE menu regardless of
+        // `is_home`. The Home Context (POM) is a MenuWorkspace (CR-NR-082 Slice
+        // 1), so a bare Option_Key typed while the POM is active is resolved
+        // HERE, exactly as for the Settings menu or any user menu -- there is no
+        // longer a separate POM-only resolver at this stage. (The
+        // `resolve_pom_option_key` path remains for the Navigation_Origin `=`
+        // fastpath -- e.g. `=0.K` chains resolving against the POM from ANOTHER
+        // workspace -- which is a distinct concern from the active-menu lookup.)
+        //
+        // Extract the option's inline target + command (clone what we need)
+        // without holding the borrow, then activate it through the single
+        // Option-Selection path shared with the click seam.
+        // Validates: menu-workspace Requirement 3.1, 18.4, 19.1, 19.2
+        let resolved: Option<(Option<ff_command::CommandTarget>, String, String)> = self
             .tabs
             .active_tab()
             .menu_workspace
@@ -1447,28 +1457,54 @@ impl WorkbenchShell {
             .and_then(|menu| {
                 crate::menu_workspace::commands::find_option(cmd.trim(), menu)
                     .ok()
-                    .map(|opt| (opt.target.clone(), opt.command.clone()))
+                    .map(|opt| (opt.target.clone(), opt.command.clone(), opt.key.clone()))
             });
-        let Some((target, option_cmd)) = resolved else {
+        let Some((target, option_cmd, option_key)) = resolved else {
             // Not an Option_Key of this menu: fall through (Req 3.6). A disabled
             // option (find_option Err) also falls through; the chain will report
             // an unresolved command if nothing else matches.
             return false;
         };
+        // Guard against a self-referential loop: an option whose command is its
+        // own key (e.g. a menu with `key = "X"`, `command = "X"`) would recurse
+        // into this same resolver forever. When the resolved command equals the
+        // option key, treat it as "no command command" and fall through so a
+        // built-in / menu-name stage can claim it instead. (Mirrors the guard
+        // the POM fastpath applied.)
+        if target.is_none() && option_cmd.trim().eq_ignore_ascii_case(option_key.trim()) {
+            return false;
+        }
+        self.activate_menu_option(target.as_ref(), &option_cmd);
+        true
+    }
+
+    /// The single Option-Selection activation step (CR-CH-043, menu-workspace
+    /// Req 19.1/19.3/19.4; command-framework Req 14.1). Given a selected menu
+    /// option's inline `target` (if any) and its `command` string, execute it:
+    /// an inline `[options.target]` (Req 10.6) is dispatched through the command
+    /// pipeline; otherwise the option's command string is resolved-and-dispatched
+    /// (falling through to `handle_command`). This is shared by the current-menu
+    /// Option_Key resolver (typed / Tab+Enter) and the option-CLICK seam so that
+    /// selecting an option is observably identical to executing its command --
+    /// the Menu Workspace is a dumb dispatcher and does not choose placement.
+    pub(super) fn activate_menu_option(
+        &mut self,
+        target: Option<&ff_command::CommandTarget>,
+        command: &str,
+    ) {
         // Req 10.6: an inline [options.target] wins over `command`.
         if let Some(target) = target {
-            self.dispatch_command_target(&target);
-            return true;
+            self.dispatch_command_target(target);
+            return;
         }
         // Req 10.1/10.3: resolve the option's command to a user-owned target and
         // dispatch it; otherwise handle the raw command string (Req 10.2).
-        match self.resolve_and_dispatch_command(&option_cmd) {
+        match self.resolve_and_dispatch_command(command) {
             super::target_dispatch::ResolveOutcome::Dispatched => {}
             super::target_dispatch::ResolveOutcome::FallThrough => {
-                self.handle_command(&option_cmd);
+                self.handle_command(command);
             }
         }
-        true
     }
 
     /// Stage 3 of the command-resolution chain (CR-CH-025, command-framework
@@ -1495,10 +1531,12 @@ impl WorkbenchShell {
             Some(ff_command::CommandTarget::Menu { name }) => name,
             _ => return false,
         };
-        // Open the named menu through its proper opener so the Navigation_Stack
-        // (CR-CH-022) and Settings/POM chrome are preserved. Shared with the
-        // menu-option CLICK seam via `open_named_menu` (B075).
-        self.open_named_menu(&name);
+        // Open the named menu through the single menu-opening command, which
+        // OWNS per-menu placement (pom/settings in place, others new tab --
+        // CR-CH-043 Req 19.5). Shared with the menu-option CLICK seam and the
+        // `CommandTarget::Menu` dispatch, so all three get identical placement
+        // with no dispatcher-level name router (replaces `open_named_menu`).
+        self.open_menu_by_name(&name);
         // Trailing token: activate the option keyed by it on the now-open menu
         // (Req 11.7). Re-dispatch so it hits the stage-1 Option_Key lookup.
         let trailing = rest.trim();

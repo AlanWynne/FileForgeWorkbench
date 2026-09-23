@@ -176,12 +176,14 @@ impl WorkbenchShell {
             }
             CommandTarget::Menu { name } => {
                 // A Menu_Target opens the referenced Menu_Workspace via the SAME
-                // routing as the typed MENU / menu-name path, honouring the
-                // settings/pom special cases so a CLICKED option matches a typed
-                // command (B075: previously called open_menu_by_name directly,
-                // which opened a generic new tab for Settings instead of the
-                // in-place Settings menu). (menu-workspace Requirement 10.4, 11.5)
-                self.open_named_menu(name);
+                // single menu-opening command as the typed MENU / menu-name path.
+                // `open_menu_by_name` OWNS the placement per menu (pom/settings
+                // in place, others new tab -- CR-CH-043 Req 19.5 / command-
+                // framework Req 14.3/14.4), so a CLICKED option matches a typed
+                // command with no dispatcher-level name router (this replaces the
+                // former `open_named_menu` router that produced the B075
+                // divergence). (menu-workspace Requirement 10.4, 11.5, 19.5)
+                self.open_menu_by_name(name);
             }
             CommandTarget::CustomWorkspace { workspace_kind, .. } => {
                 self.open_error = Some(format!(

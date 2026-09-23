@@ -5194,6 +5194,140 @@ fn clicking_pom_settings_option_opens_settings_menu_in_place() {
     );
 }
 
+// === CR-CH-043: one Option-Selection path (menu is a dumb dispatcher) =======
+
+// Small helpers describing the observable landing state of a menu selection, so
+// two selection means can be compared for "identical result" (Req 19.2 / 14.2)
+// without depending on internal dispatch shape.
+#[cfg(test)]
+fn active_menu_title(shell: &super::WorkbenchShell) -> Option<String> {
+    shell
+        .tabs
+        .active_tab()
+        .menu_workspace
+        .as_ref()
+        .and_then(|mw| mw.menu.as_ref())
+        .map(|m| m.title.clone())
+}
+
+// Validates: menu-workspace Requirement 19.1, 19.2; command-framework
+// Requirement 14.1, 14.2 -- selecting the POM "Settings" option by CLICK
+// (dispatch_bound_command, the option-click seam) and by TYPING `SETTINGS` land
+// on an IDENTICAL result: same tab count (in place), same Menu_Workspace kind,
+// same "Settings" title, both off the Home Context. This is the convergence:
+// one Option-Selection path, POM == Settings, click == typed.
+#[test]
+fn pom_settings_click_equals_typed_settings() {
+    use crate::tab_state::TabKind;
+
+    // Path A: click the POM "Settings" option (command "Settings").
+    let mut click = make_shell();
+    click.handle_command("START");
+    assert!(click.tabs.active_tab().is_home, "precondition: POM active");
+    let tabs_before_click = click.tabs.len();
+    click.dispatch_bound_command("Settings");
+
+    // Path B: type `SETTINGS` from the POM.
+    let mut typed = make_shell();
+    typed.handle_command("START");
+    assert!(typed.tabs.active_tab().is_home, "precondition: POM active");
+    let tabs_before_typed = typed.tabs.len();
+    typed.handle_command("SETTINGS");
+
+    // Identical observable landing state.
+    assert_eq!(
+        click.tabs.len(),
+        tabs_before_click,
+        "click Settings must navigate in place"
+    );
+    assert_eq!(
+        typed.tabs.len(),
+        tabs_before_typed,
+        "typed SETTINGS must navigate in place"
+    );
+    assert_eq!(
+        click.tabs.active_tab().kind,
+        TabKind::MenuWorkspace,
+        "click lands on a Menu_Workspace"
+    );
+    assert_eq!(
+        typed.tabs.active_tab().kind,
+        TabKind::MenuWorkspace,
+        "typed lands on a Menu_Workspace"
+    );
+    assert!(!click.tabs.active_tab().is_home, "click leaves the POM");
+    assert!(!typed.tabs.active_tab().is_home, "typed leaves the POM");
+    assert_eq!(
+        active_menu_title(&click),
+        active_menu_title(&typed),
+        "click Settings and typed SETTINGS must open the SAME menu (Req 19.2 / 14.2)"
+    );
+    assert_eq!(
+        active_menu_title(&click).as_deref(),
+        Some("Settings"),
+        "both must land on the Settings menu"
+    );
+}
+
+// Validates: menu-workspace Requirement 19.1, 19.2; command-framework
+// Requirement 14.1 -- selecting a POM Option_Key by TYPING the key and by
+// CLICKING the row (dispatch_bound_command with that option's command) give an
+// IDENTICAL result. Uses POM option 1 (command `Catalogs`, navigates in place).
+// Proves the POM option-key path and the click path are the one resolver (POM
+// is no longer a separate resolver from non-POM menus). The option's command is
+// read from the loaded POM menu so the test tracks the real defaults.
+#[test]
+fn pom_option_key_type_and_click_same_result() {
+    // Discover POM option 1's real command from the loaded menu (defaults:
+    // `Catalogs`), so "type the key" and "click the row" use the same option.
+    let mut probe = make_shell();
+    probe.handle_command("START");
+    probe.ensure_pom_menu_loaded();
+    let option1_command = probe
+        .tabs
+        .active_tab()
+        .menu_workspace
+        .as_ref()
+        .and_then(|mw| mw.menu.as_ref())
+        .and_then(|m| m.options.iter().find(|o| o.key == "1"))
+        .map(|o| o.command.clone())
+        .expect("POM must have an option with key 1");
+
+    // Path A: type the POM option key `1`.
+    let mut typed = make_shell();
+    typed.handle_command("START");
+    assert!(typed.tabs.active_tab().is_home, "precondition: POM active");
+    let tabs_before_typed = typed.tabs.len();
+    typed.handle_command("1");
+
+    // Path B: click POM option 1 (dispatch its command through the click seam).
+    let mut click = make_shell();
+    click.handle_command("START");
+    assert!(click.tabs.active_tab().is_home, "precondition: POM active");
+    let tabs_before_click = click.tabs.len();
+    click.dispatch_bound_command(&option1_command);
+
+    assert_eq!(
+        typed.tabs.len(),
+        tabs_before_typed,
+        "typed `1` navigates in place"
+    );
+    assert_eq!(
+        click.tabs.len(),
+        tabs_before_click,
+        "click of option 1 navigates in place"
+    );
+    assert_eq!(
+        typed.tabs.active_tab().kind,
+        click.tabs.active_tab().kind,
+        "typing the POM option key `1` and clicking its row must land on the same kind (Req 19.2 / 14.1)"
+    );
+    assert!(
+        !typed.tabs.active_tab().is_home,
+        "typed `1` must leave the POM Home Context"
+    );
+}
+
 // === CR-CH-025: unified resolution chain (menu-name + chaining + CONFIG) ====
 
 // Validates: command-framework Req 8.13 / menu-workspace Req 11.7, 11.11 --

@@ -328,21 +328,15 @@ impl eframe::App for WorkbenchShell {
         }
 
         // Process deferred Menu_Workspace option click.
-        // Validates: menu-workspace Requirement 3.2, 10.1, 10.3, 10.6
+        // CR-CH-043 (menu-workspace Req 19.1/19.3, command-framework Req 14.1):
+        // a CLICK activates the option through the SAME single Option-Selection
+        // path as a typed Option_Key -- `activate_menu_option`, which honours an
+        // inline [options.target] (Req 10.6) inside the command pipeline and
+        // otherwise resolves-and-dispatches the option's command (falling through
+        // to `handle_command`). There is no click-only dispatch pre-branch.
+        // Validates: menu-workspace Requirement 3.2, 10.1, 10.3, 10.6, 19.1, 19.3
         if let Some(option) = self.pending_menu_option.take() {
-            if let Some(target) = option.target.clone() {
-                // Req 10.6: inline [options.target] wins over `command`.
-                self.dispatch_command_target(&target);
-            } else {
-                // Req 10.1/10.3: resolve to a user-owned target, else fall
-                // through to the existing pipeline (Req 10.2).
-                match self.resolve_and_dispatch_command(&option.command) {
-                    super::target_dispatch::ResolveOutcome::Dispatched => {}
-                    super::target_dispatch::ResolveOutcome::FallThrough => {
-                        self.handle_command(&option.command);
-                    }
-                }
-            }
+            self.activate_menu_option(option.target.as_ref(), &option.command);
         }
         if let Some(idx) = self.detach_pending.take() {
             if let Some(tab) = self.tabs.tabs_mut().get_mut(idx) {
