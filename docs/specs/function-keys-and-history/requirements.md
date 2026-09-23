@@ -617,3 +617,79 @@ The following six Modifier_Layers apply to each physical function key. A binding
 7. THE Keys Workspace SHALL participate in the unified tab-order model (CR-CH-023, workspace-conformance): it SHALL report its interior focus contract via the `WorkspaceContext` trait (workspace-framework Requirement 1), with the workspace-kind dropdown as the FIRST interior control, and SHALL ship a full-shell first-Tab `egui_kittest` test asserting the first Tab from the command field lands on the dropdown (no phantom stop).
 
 8. THE Keys Workspace SHALL be a transient editing Context (like the Theme editor and Menus editor): it is NOT restored as a tab on next launch; the persisted artefacts are the `keymaps/<kind>.toml` files it writes.
+
+---
+
+### Requirement 23: Up/Down Arrow History Stepping on a Focused Command Field
+
+**User Story:** As a command-line user, I want the Up and Down arrow keys to step
+through my command history one entry at a time WHILE the command line has focus --
+Up recalling older commands (the same as RETRIEVE) and Down moving back toward my
+newest / in-progress line -- so that the ISPF command line behaves like a
+familiar shell/readline history without my having to type RETRIEVE.
+
+**Source:** CR-NR-096. Owner: "When focus is on the command line, up and down
+arrows do the same as retrieve moving up and down the command history 1 at a
+time." Builds on the Command_Line_History owned by the command processor
+(Requirement 6; CR-NR-084) and the RETRIEVE single-step recall (Requirement 5,
+Requirement 19); coexists with the shell Boundary_Policy (menu-and-statusbar
+Requirement 16) and the SCROLL-governed body navigation (CR-NR-087).
+
+#### Glossary additions
+
+- **In_Progress_Line**: the text the user had typed into the command field before
+  starting an arrow-history cycle (may be empty). Restored when Down steps past
+  the newest history entry.
+- **History_Cycle**: an active sequence of history steps sharing one
+  Retrieve_Pointer position, started by the first Up (or RETRIEVE) and ended when
+  a non-RETRIEVE command is submitted (Requirement 5.5) or the pointer returns to
+  its initial position.
+
+#### Acceptance Criteria
+
+1. WHEN the Primary_Command_Field HAS keyboard focus AND the user presses the Up
+   arrow, THE workbench SHALL recall the previous (older) Command_History entry
+   into the field, stepping the Retrieve_Pointer exactly ONE entry older -- the
+   SAME single-step-older recall the RETRIEVE command performs (Requirement 5.2,
+   5.3), sharing the SAME Retrieve_Pointer so Up and RETRIEVE/F12 stay in sync.
+2. WHEN the Primary_Command_Field HAS keyboard focus AND the user presses the
+   Down arrow, THE workbench SHALL step the Retrieve_Pointer exactly ONE entry
+   NEWER and recall that entry into the field. This is the inverse of Up.
+3. WHEN Down steps NEWER past the most recent history entry (the pointer would
+   move before the newest entry), THE workbench SHALL restore the In_Progress_Line
+   (the text present when the History_Cycle began, possibly empty) into the field
+   and return the Retrieve_Pointer to its initial position, ending the
+   History_Cycle. A further Down with the pointer already at the initial position
+   SHALL be a no-op (the field is left as-is).
+4. WHEN Up is pressed AND the Retrieve_Pointer is already at the OLDEST entry,
+   THE workbench SHALL leave the field content unchanged and keep the pointer at
+   the oldest entry (mirrors Requirement 5.4; no error dialog is required for the
+   arrow gesture, though a non-blocking status message MAY be shown).
+5. WHEN Command_History is EMPTY, Up and Down on a focused command field SHALL be
+   no-ops (the field is left unchanged), consistent with Requirement 5.7.
+6. THE first Up of a History_Cycle SHALL capture the current field text as the
+   In_Progress_Line before recalling the newest entry, so that Down can later
+   restore exactly what the user had typed (criterion 3).
+7. THE arrow-history gesture SHALL apply ONLY WHILE the command field has
+   keyboard focus. WHEN the command field does NOT have focus, Up/Down SHALL
+   retain their existing meaning for whatever control/body has focus (e.g.
+   Menu_Workspace option navigation, editor caret movement, or SCROLL-governed
+   body scrolling per CR-NR-087) and SHALL NOT be hijacked for history. The
+   gesture SHALL NOT interfere with the Tab/Shift+Tab Boundary_Policy
+   (menu-and-statusbar Requirement 16): arrows drive history, never focus
+   traversal.
+8. WHEN the user submits any command other than RETRIEVE (by Enter or a
+   function key), THE Retrieve_Pointer SHALL reset to its initial position
+   (Requirement 5.5), so the next Up starts a fresh History_Cycle from the newest
+   entry. The Up/Down gesture SHALL NOT itself record anything in Command_History
+   (only an actual submission records, Requirement 8).
+9. THE Up/Down arrow history behaviour SHALL be defined ONCE and apply uniformly
+   to EVERY Primary_Command_Field instance: the shell command field, each
+   Detached_Workspace command field, and each split Region_Command_Line (all of
+   which share the command-field render path). Each such field drives the SAME
+   command processor Command_Line_History and Retrieve_Pointer that its Context's
+   RETRIEVE/Enter path uses (per-window/per-region command context, CR-CH-036 /
+   CR-NR-094).
+10. THE recalled command SHALL be placed in the field WITHOUT executing it
+    (identical to RETRIEVE, Requirement 5.1): the user may edit it and press Enter
+    to run, or continue stepping.

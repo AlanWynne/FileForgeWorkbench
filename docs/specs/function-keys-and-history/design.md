@@ -1840,3 +1840,78 @@ cover the composed owner: record+dedup, RETRIEVE-verb exclusion (including the
 B067 merged form), pointer step-back / reset, `RETRIEVE <n>` and LIST. The shell
 tests migrate to the forwarding API but assert identical observable behaviour
 (recall, no-history-pollution, LIST overlay) -- proving no behaviour change.
+
+---
+
+## Design Delta: Up/Down arrow history stepping on a focused command field (Requirement 23, CR-NR-096)
+
+Adds Up = step-older (== RETRIEVE) and Down = step-newer on a FOCUSED
+Primary_Command_Field, sharing the existing `CommandLineHistory` /
+Retrieve_Pointer (CR-NR-084). Behaviour-additive; no existing criterion changes.
+
+### The gap in today's model
+
+`RetrieveState` (`ff-command::command_line_history`) only steps OLDER: `Initial ->
+AtIndex(0) -> AtIndex(1) -> ...` and reports `NoOlderHistory` at the end. There is
+NO step-newer path (Down) and no notion of an In_Progress_Line to restore when
+stepping past the newest entry. RETRIEVE/F12 is one-directional by design.
+
+### To-be
+
+- **`RetrieveState` gains a step-newer transition (Req 23.2/23.3).** Add
+  `retrieve_newer(history) -> RetrieveResult`-style stepping: from `AtIndex(n>0)`
+  go to `AtIndex(n-1)` and recall that entry; from `AtIndex(0)` go to `Initial`
+  and signal "restore the In_Progress_Line"; from `Initial` it is a no-op. A new
+  result variant (e.g. `RestoreInProgress`) or a small dedicated return type
+  distinguishes "recalled an entry" from "restore the pre-cycle text". The
+  existing `retrieve` (older) is unchanged; Up reuses it verbatim so Up and
+  RETRIEVE share one pointer (Req 23.1).
+- **In_Progress_Line capture (Req 23.6).** The shell captures the current field
+  text when a History_Cycle begins (the first Up while `is_at_initial()`), stores
+  it (a shell/`WorkspaceCommandContext` field), and restores it when
+  `retrieve_newer` returns to `Initial` (Req 23.3). A non-RETRIEVE submit
+  (`record`) already resets the pointer (CR-NR-084), which also ends the cycle;
+  the stored In_Progress_Line is then stale and re-captured on the next cycle.
+- **`CommandLineHistory` wrapper.** Add a `retrieve_newer(field_text)` (mirroring
+  `retrieve`) so the shell drives both directions through the one owner, keeping
+  the pointer authoritative in the processor layer.
+- **Shell drives the gesture, focus-gated (Req 23.7).** `render_command_field_body`
+  is an associated fn WITHOUT `&mut self`, so it cannot reach
+  `command_line_history`. It already returns a submit signal; extend the pattern:
+  the body detects, WHEN the field `has_focus()`, `key_pressed(ArrowUp)` /
+  `key_pressed(ArrowDown)` and returns a `HistoryStep::Older` / `HistoryStep::Newer`
+  signal (alongside the existing submit `Option<String>`), OR the shell callers
+  read the same input right after rendering the body while they hold the field id
+  and `&mut self`. The shell caller (which owns the relevant `CommandLineHistory`
+  -- the shell field, or the swapped-in detached/region context per CR-CH-036 /
+  CR-NR-094) then calls `retrieve`/`retrieve_newer` and writes the result into the
+  field, capturing/restoring the In_Progress_Line. Because all three command
+  fields route through the ONE body + the per-context history, the behaviour is
+  defined once (Req 23.9).
+- **No Tab / body-scroll interference (Req 23.7).** A singleline `egui::TextEdit`
+  does not consume Up/Down, so intercepting them only WHILE the field has focus is
+  safe and does not touch the Boundary_Policy (Tab/Shift+Tab) or the SCROLL body
+  navigation (which acts only when the body/editor has focus, CR-NR-087).
+- **No recording on step (Req 23.8).** Stepping never calls `record`; only an
+  Enter/function-key submission records and resets the pointer, exactly as today.
+
+### Files touched (implementation, when built)
+
+`ff-command/src/command_line_history.rs` (`RetrieveState` step-newer +
+`CommandLineHistory::retrieve_newer` + a result variant / return type for
+restore-in-progress; unit tests), `ff-desktop/src/shell/render.rs`
+(`render_command_field_body` returns a history-step signal when the focused field
+sees Up/Down), `ff-desktop/src/shell/commands.rs` (drive `retrieve`/`retrieve_newer`
+and the In_Progress_Line capture/restore at the shell + swapped-context callers).
+No new crate.
+
+### Tests
+
+- `ff-command`: `retrieve_newer_steps_toward_newest`, `retrieve_newer_at_index_0_signals_restore_in_progress`,
+  `retrieve_newer_at_initial_is_noop`, `up_then_down_round_trips_pointer`,
+  `retrieve_newer_on_empty_history_is_noop`.
+- `ff-desktop` (full-shell egui_kittest): `command_field_up_recalls_older_history`,
+  `command_field_down_restores_in_progress_line`,
+  `arrows_ignored_when_command_field_not_focused` (a Menu_Workspace option-nav /
+  body still gets the arrows), `up_shares_pointer_with_retrieve` (Up then F12
+  continues one step older, not restart).

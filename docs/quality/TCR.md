@@ -3042,3 +3042,23 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | ✅ | `shell::tests::unknown_token_is_unresolved_not_a_menu` + CommandEngine tests | command-framework Req 15.7: unresolved-command error + CommandEngine fallthrough preserved for the verbs the shell still owns |
 | `ff-desktop` | ✅ | full `pom` suite (54 passed) + verify.ps1 FULL | command-framework Req 15.8: behaviour-preserving -- existing shell/menu/fastpath tests stay green (POM arm removal) |
 | `ff-desktop` | ✅ | `shell::tests::typed_pom_resolves_as_menu_name_opens_home_context`, `keyword_less_pom_menu_name_opens_home_context` | menu-workspace Req 20.5 (revised): typing `POM` opens the Home Context via Menu_Name resolution (no bespoke arm); START retained |
+
+### Phase (cmdline-history-arrows) -- CR-NR-096 (Up/Down arrow history stepping on a focused command field)
+
+> Up = step-older (== RETRIEVE), Down = step-newer / restore in-progress line,
+> one entry at a time, on a FOCUSED command field; shares the existing
+> CommandLineHistory / Retrieve_Pointer (CR-NR-084); focus-gated; defined once for
+> shell / detached / split fields. Behaviour-additive; impl pending gate approval.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-command` | 🔴 | -- | function-keys Req 23.1: Up recalls one entry older via the SAME `retrieve` (older) path RETRIEVE uses; shared Retrieve_Pointer |
+| `ff-command` | 🔴 | -- | function-keys Req 23.2: Down steps one entry NEWER (`RetrieveState` step-newer / `CommandLineHistory::retrieve_newer`) |
+| `ff-command` | 🔴 | -- | function-keys Req 23.3: Down past newest restores the In_Progress_Line and returns the pointer to initial; further Down at initial is a no-op |
+| `ff-command` | 🔴 | -- | function-keys Req 23.4: Up at the oldest entry leaves the field unchanged, pointer stays at oldest |
+| `ff-command` | 🔴 | -- | function-keys Req 23.5: empty history -> Up/Down are no-ops |
+| `ff-desktop` | 🔴 | -- | function-keys Req 23.6: first Up captures the current field text as the In_Progress_Line before recalling newest |
+| `ff-desktop` | 🔴 | -- | function-keys Req 23.7: arrows drive history ONLY while the command field has focus; otherwise Up/Down keep menu-nav/editor/SCROLL meaning; never hijack Tab/Shift+Tab Boundary_Policy |
+| `ff-desktop` | 🔴 | -- | function-keys Req 23.8: stepping never records; a non-RETRIEVE submit resets the pointer |
+| `ff-desktop` | 🔴 | -- | function-keys Req 23.9: defined once and applied to shell + detached + split Region_Command_Line fields (shared render body + per-context history) |
+| `ff-desktop` | 🔴 | -- | function-keys Req 23.10: recalled command is placed in the field WITHOUT executing (like RETRIEVE) |

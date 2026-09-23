@@ -2879,3 +2879,23 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[x]` Phase (dispatch-classifier) | CR-CH-044 DONE: command-framework Req 15.1-15.8 (typed handle_command routes through the resolve_target 5-variant classifier; the `POM` menu-open intercept retired -> `POM` resolves as `Menu{pom}` via stage-3 menu-name; START retained as tab-creator; Function_Verbs unchanged; order + shadowing preserved), menu-workspace Req 20.5 revised (POM as Menu_Name). Impl: removed the `if upper == "POM"` arm in `handle_command` (falls through to `try_menu_name_dispatch` -> `open_menu_by_name("pom")`). 3 new tests (typed_pom_resolves_as_menu_name_opens_home_context, typed_settings_still_opens_settings_menu_in_place, start_still_creates_tab_and_resolves_arg); full `pom` suite (54) + verify.ps1 CLEAN FULL nextest (9291 passed, 0 failed); no existing test's behaviour changed. Behaviour-preserving. |
+
+## Phase (cmdline-history-arrows) -- CR-NR-096 (Up/Down arrow history stepping on a focused command field)
+
+> WHEN the command field has focus, Up recalls older history (== RETRIEVE) and
+> Down steps newer / restores the in-progress line, one entry at a time, sharing
+> the existing `CommandLineHistory` / Retrieve_Pointer (CR-NR-084). Focus-gated
+> (no Tab / body-scroll hijack); defined once and applied to the shell, detached,
+> and split command fields. Behaviour-additive. Spec-gate complete; impl pending
+> approval.
+
+- [ ] CHA.1 Requirements gate -- function-keys Req 23 (Up/Down arrow history stepping), design delta, tasks (function-keys Task 45), TCR NOT COVERED rows, change-log CR-NR-096.
+- [ ] CHA.2 Failing tests first: `ff-command` step-newer unit tests; full-shell Up-recalls-older / Down-restores-in-progress / arrows-ignored-when-unfocused / up-shares-pointer-with-retrieve. Covers function-keys Req 23.1/23.2/23.3/23.5/23.7.
+- [ ] CHA.3 `RetrieveState` step-newer + `CommandLineHistory::retrieve_newer` + restore-in-progress result; Up reuses the existing `retrieve` (shared pointer). Covers function-keys Req 23.1/23.2/23.3.
+- [ ] CHA.4 `render_command_field_body` returns a focus-gated Up/Down history-step signal; shell + swapped detached/region callers drive it and capture/restore the In_Progress_Line. Covers function-keys Req 23.6/23.9/23.10.
+- [ ] CHA.5 Focus-gating (no Tab / SCROLL-body hijack); stepping never records; non-RETRIEVE submit resets the pointer. Covers function-keys Req 23.7/23.8.
+- [ ] CHA.6 Close: verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR Req 23 PASS. Covers function-keys Req 23.
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (cmdline-history-arrows) | CR-NR-096 -- SPEC DONE (gate complete): function-keys Req 23.1-23.10 (Up=older/==RETRIEVE, Down=newer/restore-in-progress, focus-gated, shared across shell/detached/split fields, coexists with RETRIEVE pointer, no Tab/body-scroll hijack). Impl pending approval: function-keys Task 45 (`ff-command` step-newer + shell focus-gated arrow drive). Builds on CR-NR-084 (CommandLineHistory) + CR-NR-054/19 (RETRIEVE). Behaviour-additive. |
