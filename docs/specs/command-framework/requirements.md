@@ -434,3 +434,71 @@ serialisable data shape (confident it backs bridges for other languages).
    the mechanism is ADDITIVE and behaviour-preserving except for the intended
    change (a successful command now clears the field on both paths, fixing the
    `1`-remains-after-`1`+F9 inconsistency).
+
+---
+
+### Requirement 14: Selection-Equals-Command; the command owns menu-vs-workspace behaviour
+
+**User Story:** As a maintainer, I want selecting a menu option to be nothing more
+than executing that option's command, and I want each COMMAND -- not the menu, not
+a dispatcher-level router -- to own whether its effect is an in-place navigation
+or a new workspace tab, so that there is exactly one path from any selection to
+its effect and adding or changing a command's behaviour never requires touching
+the menu dispatch code.
+
+**Source:** [CR-CH-043]. Owner: "selecting an option on a menu should not be any
+different from executing a command. the menu workspace should not care if the
+option being selected is into another menu workspace or another custom workspace.
+it should just execute the command. The command should know that it is executing
+a menu workspace and behave accordingly." This is the command-framework half of
+the convergence; the Menu Workspace half is menu-workspace Requirement 19.
+
+**Glossary additions:**
+- **Selection_Equals_Command**: the principle that every user affordance which
+  selects/invokes a command (a typed line, a function key, a clicked menu option,
+  a menu-bar pick, a Tab+Enter on an option) reduces to the SAME single act --
+  executing a command string through the dispatch pipeline (`handle_command`) --
+  so no affordance has a private dispatch path.
+- **Effect_Ownership**: the rule that a command's Command_Target variant and its
+  handler decide the command's effect (in-place navigation vs a new tab, which
+  Context to build, what to persist); the invoking affordance does not.
+
+#### Acceptance Criteria
+
+1. THE framework SHALL treat selecting/invoking a command from ANY affordance --
+   a typed `Command ===>` line + Enter, a function-key / shortcut press, a clicked
+   Menu_Option, a menu-bar pick, or Tab + Enter/Space on a Menu_Option -- as the
+   SAME single act: executing the command string through the one dispatch pipeline
+   (Requirement 2; `handle_command`). No affordance SHALL carry a private dispatch
+   pre-branch that another affordance for the same command does not (command
+   parity extended to selection, building on Requirement 9.10). This is
+   Selection_Equals_Command.
+2. WHERE two affordances select the SAME command with the SAME argument, THEIR
+   observable result SHALL be identical (e.g. clicking the POM `Settings` option,
+   typing `SETTINGS`, and a function key bound to `SETTINGS` all produce the same
+   Settings menu in the same placement).
+3. EACH command SHALL OWN its own effect (Effect_Ownership): whether invoking it
+   navigates the CURRENT workspace in place or opens a NEW workspace tab SHALL be
+   decided by the command's handler (and its Command_Target variant), NOT by the
+   affordance that invoked it and NOT by a dispatcher-level name router. A
+   menu-opening command SHALL "know" it is opening a Menu_Workspace and apply its
+   own in-place-vs-new-tab behaviour; the menu or command line that launched it
+   SHALL be unaffected by that choice.
+4. THE dispatcher-level menu-name router that currently selects the effect for a
+   Menu_Target by name (in-place for the Settings menu and the Home Context, a new
+   tab otherwise) SHALL be REMOVED as a routing decision and its behaviour folded
+   into the individual command handlers (criterion 3), so that the mapping from a
+   Menu_Target to its placement lives with the command, not in a shared branch the
+   Menu Workspace or the key-dispatch seam calls. This preserves the observable
+   B075 behaviour (clicking POM `Settings` opens Settings in place) while removing
+   the router that produced the divergence.
+5. THE Target_Resolution chain (Requirement 8.3) and the Command_Line_Outcome
+   contract (Requirement 13) SHALL be UNCHANGED by this requirement: convergence
+   changes WHERE the in-place-vs-new-tab decision lives and removes the private
+   per-affordance branches; it does not change the resolution order, the shadowing
+   rule (Requirement 8.10), or how the command line is cleared/restored.
+6. THE convergence SHALL be behaviour-preserving for every already-built command
+   and option: existing command-framework, menu-workspace, and workspace-kinds
+   acceptance criteria (and their tests) SHALL continue to hold, adjusted only
+   where a test asserted the now-removed per-affordance branch or the removed
+   name router by name rather than by observable effect.

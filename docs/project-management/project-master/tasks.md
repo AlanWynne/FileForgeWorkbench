@@ -2815,3 +2815,24 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[x]` Phase (instance-region-placement) | CR-CH-041 DONE. 8 tasks (IRP.1-IRP.8), 2 sub-slices (IRP-a behaviour-identical foundation + IRP-b visible in-region chrome). 11 criteria PASS: layout-and-docking Req 16.1-16.9, workspace-kinds Req 4.6, menu-and-statusbar Req 16.15. Consolidated CR-NR-094 (Req 15) + workspace-kinds Req 4 under one principle; added placement + one-tab-system boundary. verify.ps1 CLEAN FULL nextest; no existing test modified. |
+
+## Phase (menu-dispatch-converge) -- CR-CH-043 (one Option-Selection path; command owns menu-vs-workspace behaviour)
+
+> Converge every menu-option selection (POM click, Settings click, menu-bar, key,
+> typed) onto ONE `handle_command` path. The Menu Workspace becomes a dumb
+> dispatcher; each COMMAND owns its own in-place-vs-new-tab effect. Structural fix
+> for the B056-B059 / B075 divergent-dispatch class; supersedes the B075
+> `open_named_menu` router patch. Behaviour-preserving; spec-gate complete, impl
+> pending approval. One implementation slice satisfies both menu-workspace Req 19
+> and command-framework Req 14.
+
+- [ ] MDC.1 Requirements gate -- menu-workspace Req 19 (one Option-Selection path; dumb dispatcher), command-framework Req 14 (Selection-Equals-Command; command owns placement), design deltas in both design.md, tasks (menu-workspace Task 36, command-framework Task 34), TCR NOT COVERED rows, change-log CR-CH-043.
+- [ ] MDC.2 Failing full-shell tests first: POM `Settings` click == typed `SETTINGS` (in place); POM Option_Key type == click (same result). Covers menu-workspace Req 19.1/19.2; command-framework Req 14.1/14.2.
+- [ ] MDC.3 One current-menu Option_Key resolver (collapse `try_current_menu_option` + `resolve_pom_option_key`); POM and non-POM share it; `=` fastpath preserved. Covers menu-workspace Req 19.2/19.4; command-framework Req 14.1.
+- [ ] MDC.4 Click path calls `handle_command(option.command)` (drop the click-only target pre-branch); inline `[options.target]` resolved in-pipeline. Covers menu-workspace Req 19.3.
+- [ ] MDC.5 Fold `open_named_menu` name-switch into the command handlers (`SETTINGS` in place, `POM` Home, user-menu new tab); `Menu` target arm + `try_menu_name_dispatch` invoke the owning command. Covers menu-workspace Req 19.5; command-framework Req 14.3/14.4.
+- [ ] MDC.6 Close: disabled/unresolved messages on the one path; existing menu-workspace / B075 / workspace-conformance focus suite green (behaviour-preserving); verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR menu-workspace Req 19 + command-framework Req 14 PASS. Covers menu-workspace Req 19.6-19.8; command-framework Req 14.5/14.6.
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (menu-dispatch-converge) | CR-CH-043 -- SPEC DONE (gate complete): menu-workspace Req 19.1-19.8 (one Option-Selection path; dumb dispatcher; POM == Settings == user menu; click == typed), command-framework Req 14.1-14.6 (Selection-Equals-Command; command owns in-place-vs-new-tab; `open_named_menu` router folded into command handlers). Impl pending approval: menu-workspace Task 36, command-framework Task 34 (one slice, 6 MDC.1-MDC.6). Supersedes the B075 router patch; behaviour-preserving. |

@@ -546,3 +546,30 @@ point on both the Enter and key-forward paths. Delivered sliced.
           Lua execution lands, Req 12); then External; then REXX.
     - Validates: command-framework Requirement 13.6 (enforcement half), 13.7
     - BLOCKED: Lua/External execution deferred (Req 12); no REXX engine yet.
+
+## Phase menu-dispatch-converge (CR-CH-043) -- Selection-Equals-Command
+
+Requirement 14 (this spec's half) and menu-workspace Requirement 19 are satisfied
+by ONE implementation slice, tracked in detail in
+`docs/specs/menu-workspace/tasks.md` task 36 (shared `ff-desktop` shell dispatch).
+This task records the command-framework acceptance obligations for that slice.
+Behaviour-preserving; TDD; do NOT start until the gate is approved.
+
+- [ ] 34. Command owns menu-vs-workspace placement; selection == command execution
+  - [ ] 34.1 Every affordance (typed, function key, click, menu-bar, Tab+Enter)
+          reduces to `handle_command(command_string)` with no private per-affordance
+          dispatch pre-branch (Selection_Equals_Command).
+    - Validates: command-framework Requirement 14.1, 14.2
+  - [ ] 34.2 The in-place-vs-new-tab decision lives in the command handlers
+          (`SETTINGS` / `POM` / user-menu commands), not in the Menu Workspace and
+          not in the `open_named_menu` name router; `dispatch_command_target`'s
+          `Menu` arm invokes the owning command. Assert the resolution chain
+          (Req 8.3), shadowing rule (Req 8.10), and Command_Line_Outcome (Req 13)
+          are unchanged.
+    - Validates: command-framework Requirement 14.3, 14.4, 14.5
+  - [ ] 34.3 Behaviour-preserving: existing command-framework / menu-workspace /
+          workspace-kinds tests stay green, adjusted only where a test asserted the
+          removed per-affordance branch or the name router by name rather than by
+          observable effect. (Implementation + verify + TCR handled in
+          menu-workspace task 36.5.)
+    - Validates: command-framework Requirement 14.6

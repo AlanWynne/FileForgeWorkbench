@@ -274,6 +274,11 @@ or clicking its row, so that the associated command is executed immediately.
    SHALL display the message `Option '<key>' is not available.` and take no
    further action.
 
+> **CR-CH-043 note:** All means of selection in criteria 1-3 (typed key, click,
+> Tab + Enter/Space) resolve to ONE Option_Dispatch_Path -- executing the
+> option's Option_Command through the standard pipeline -- shared by the POM and
+> every other menu. See Requirement 19.
+
 ---
 
 ### Requirement 4: Default Menu Files and Hot-Reload
@@ -454,7 +459,10 @@ consistent mechanism.
 
 1. WHEN a Menu_Option is selected, THE shell SHALL resolve the option's
    `command` value to a Command_Target via Target_Resolution (command-framework
-   Requirement 8.3) and execute that target.
+   Requirement 8.3) and execute that target. (REVISED by CR-CH-043: this
+   resolution happens on the single Option_Dispatch_Path via `handle_command`,
+   shared by every means of selection and by the POM and every other menu -- the
+   Menu Workspace does not resolve the target kind itself; see Requirement 19.)
 2. THE existing Menu_File format (Requirement 1) SHALL remain valid unchanged: a
    `command` value that is a bare command string SHALL resolve to an equivalent
    Command_Target and produce the same observable result as before
@@ -476,6 +484,13 @@ consistent mechanism.
    (command-framework Requirement 8.7); WHEN both `command` and
    `[options.target]` are present, THE loader SHALL use `[options.target]` and
    log a DEBUG-level record noting that `command` was ignored for that option.
+
+> **CR-CH-043 note:** The inline `[options.target]` capability (criterion 6) is
+> preserved, but it is applied within the single command pipeline rather than by
+> a click-only dispatch fork (Requirement 19.3; command-framework Requirement
+> 8.6). A menu option that opens another menu (criterion 4, a Menu_Target) does
+> so because the COMMAND it runs owns that effect, not because the Menu Workspace
+> inspects the target (Requirement 19.4-19.5).
 
 ---
 
@@ -1162,3 +1177,100 @@ slices of CR-NR-082 and are NOT part of this requirement.
    and POM acceptance criterion (Requirements 2, 3, 5, 12, 14, 15, 16, 17) SHALL
    continue to hold, verified by the existing tests continuing to pass (adjusted
    only where they referenced the removed POM tab kind by name).
+
+---
+
+### Requirement 19: One Option-Selection Path (the Menu Workspace is a dumb dispatcher)
+
+**User Story:** As a maintainer, I want selecting an option in ANY Menu Workspace
+-- the POM, the Settings menu, or a user menu -- to flow through ONE piece of
+code regardless of how it was triggered (click, key, Tab+Enter, menu bar, or a
+typed command), so that a POM option click is not handled differently from a
+Settings option click, and the phantom-stop / divergent-dispatch class of bug
+(B056-B059, B075) cannot recur because there is only one path to get wrong.
+
+**Source:** [CR-CH-043]. Owner: "a POM option click should not be any different
+from a settings option click, they should be handled by the same code, they are
+both menu workspaces. Also selecting an option on a menu should not be any
+different from executing a command. the menu workspace should not care if the
+option being selected is into another menu workspace or another custom workspace.
+it should just execute the command. The command should know that it is executing
+a menu workspace and behave accordingly." Supersedes the B075 `open_named_menu`
+router patch (which narrowed but did not remove the divergence).
+
+**Note:** This requirement UNIFIES the dispatch behaviour; it introduces no new
+user-visible option behaviour. It reconciles the divergence in which POM option
+keys were resolved by one path (the Navigation_Origin POM fastpath) and non-POM
+menu option keys by another (the current-menu Option_Key lookup that skipped the
+Home Context), and in which a mouse CLICK ran a pre-branch (inline target /
+user-target resolution) that a typed key did not. After this requirement, all of
+these resolve to the same single act: execute the option's command string.
+
+#### Glossary additions
+
+- **Option_Selection**: the act of choosing a Menu_Option by ANY means -- typing
+  its Option_Key and pressing Enter, clicking its row, tabbing to it and pressing
+  Enter/Space, picking it from a rendered menu bar, or a chained/fastpath form
+  that lands on it.
+- **Option_Dispatch_Path**: the single code path that turns an Option_Selection
+  into the execution of that option's Option_Command.
+
+#### Acceptance Criteria
+
+1. THE shell SHALL provide ONE Option_Dispatch_Path shared by every
+   Option_Selection means (click, Option_Key + Enter, Tab + Enter/Space, menu-bar
+   pick, and a typed command that lands on an option), such that all means with
+   the SAME target option produce an IDENTICAL observable result. Selecting an
+   option SHALL be defined as executing that option's Option_Command through the
+   standard command pipeline (`handle_command`), i.e. Option_Selection is
+   observably identical to typing the Option_Command in the `Command ===>` field
+   and pressing Enter (Requirement 3.2; command-framework Requirement 14).
+2. THE Option_Dispatch_Path SHALL be the SAME for the Home Context (POM) and for
+   every non-Home Menu Workspace (Settings, user menus). The former split -- POM
+   Option_Keys resolved by the Navigation_Origin POM resolver while non-POM
+   Option_Keys were resolved by a separate current-menu lookup that skipped the
+   Home Context -- SHALL be removed: ONE current-menu Option_Key resolver SHALL
+   look up the selected key against the ACTIVE menu (whether that menu is `pom`,
+   `settings`, or a user menu) and dispatch its Option_Command. A POM option
+   click SHALL therefore run the same code as a Settings option click.
+3. THE mouse-CLICK Option_Selection path SHALL NOT run any dispatch pre-branch
+   that the typed path does not: a click SHALL resolve to the option's
+   Option_Command and call `handle_command(Option_Command)` exactly as a typed
+   Option_Key does. The former click-only pre-step (dispatching an inline
+   `[options.target]` or a resolved user Command_Target BEFORE reaching
+   `handle_command`) SHALL be removed as a separate click path; the inline-target
+   capability of Requirement 10.6 SHALL be preserved by resolving it within the
+   single command pipeline (command-framework Requirement 8.6), not by a
+   click-only fork.
+4. THE Menu Workspace SHALL act as a DUMB dispatcher: it SHALL NOT decide the
+   KIND of the target (another menu, a custom workspace, a function, a macro, or
+   an external program) and SHALL NOT decide whether the effect is an in-place
+   navigation or a new tab. Its sole responsibility on an Option_Selection SHALL
+   be to determine the selected option's Option_Command and hand it to
+   `handle_command`. The Navigation_Origin `=` fastpath semantics (Requirement 5)
+   and the `<menu> <key>` chaining (Requirement 11.7) SHALL be preserved as
+   command-string parsing, not as separate dispatch paths.
+5. THE decision of in-place navigation VERSUS opening a new tab SHALL be owned by
+   the COMMAND that the option runs (command-framework Requirement 14.3), NOT by
+   the Menu Workspace and NOT by a dispatcher-level name router. Specifically, the
+   `open_named_menu` routing that today chooses `open_settings_menu` (in place)
+   for `settings`, the Home Context for `pom`, and `open_menu_by_name` (new tab)
+   otherwise SHALL be folded into the respective command handlers, so that after
+   this requirement a menu-opening command "knows" it is opening a menu workspace
+   and applies its own in-place-vs-new-tab behaviour, while the menu that launched
+   it is unaffected by that choice.
+6. WHEN a selected option is `enabled = false`, THE single Option_Dispatch_Path
+   SHALL display `Option '<key>' is not available.` and take no further action,
+   for EVERY means of selection and for POM and non-POM menus alike
+   (Requirement 3.7 applied uniformly on the one path).
+7. WHEN a selected option's Option_Command cannot be resolved by any stage of the
+   command-resolution chain (command-framework Requirement 8.3), THE single
+   Option_Dispatch_Path SHALL surface the unresolved-command error naming the
+   command and leave the Workspace unchanged (Requirement 3.6 / 10.5), for every
+   means of selection.
+8. THE unification SHALL be behaviour-preserving for every already-built option:
+   the existing menu-workspace acceptance criteria (Requirements 3, 5, 10, 11,
+   14, 15, 16, 18) and the workspace-conformance first-Tab focus tests SHALL
+   continue to hold. In particular, clicking the POM `Settings` option SHALL open
+   the Settings menu IN PLACE (the B075 behaviour), now achieved by the command
+   owning that effect (criterion 5) rather than by the `open_named_menu` router.

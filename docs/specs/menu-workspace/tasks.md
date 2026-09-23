@@ -635,3 +635,48 @@ B065 row-render are unchanged.
           ffwb.exe; update TCR Req 16.7-16.11; update project-master; core
           acceptance test-plan 2.2b/2.2d.
     - Covers: menu-workspace Requirement 16.7-16.11 (behaviour-driven layout)
+
+## Phase menu-dispatch-converge (CR-CH-043) -- one Option-Selection path
+
+One implementation slice satisfies BOTH menu-workspace Requirement 19 and
+command-framework Requirement 14 (the two halves of the convergence). Behaviour-
+preserving; TDD (failing full-shell test first). Do NOT start until the gate is
+approved.
+
+- [ ] 36. Converge all Option_Selection onto one `handle_command` path
+  - [ ] 36.1 Write the failing full-shell egui_kittest tests FIRST:
+          `full_shell_pom_settings_click_equals_typed_settings` (clicking POM
+          `Settings` and typing `SETTINGS` reach the SAME in-place Settings menu --
+          same active tab id + descriptor), and
+          `full_shell_pom_option_key_and_click_same_result` (typing a POM
+          Option_Key and clicking its row give identical results). Confirm they
+          FAIL against the current divergent code (red).
+    - Validates: menu-workspace Requirement 19.1, 19.2; command-framework Requirement 14.1, 14.2
+  - [ ] 36.2 Collapse `try_current_menu_option` (non-POM, skips `is_home`) and
+          `resolve_pom_option_key` (POM only) into ONE current-menu Option_Key
+          resolver that looks the key up against the ACTIVE menu regardless of
+          `is_home` and dispatches its `command` via `handle_command`. Preserve
+          the `=` Navigation_Origin fastpath as command-string parsing feeding the
+          same resolver (`=0.K` still resolves against the POM).
+    - Validates: menu-workspace Requirement 19.2, 19.4; command-framework Requirement 14.1
+  - [ ] 36.3 Remove the click-only pre-branch in `shell/update.rs`: a clicked
+          option resolves to `option.command` and calls
+          `handle_command(option.command)`, identical to a typed key. Preserve the
+          inline `[options.target]` capability (Req 10.6) by resolving it inside
+          the pipeline, not via a click-only fork.
+    - Validates: menu-workspace Requirement 19.3; command-framework Requirement 14.1
+  - [ ] 36.4 Fold the `open_named_menu` name-switch into the command handlers:
+          `SETTINGS` owns in-place (`open_settings_menu`), `POM` owns Home Context,
+          user-menu commands own new tab (`open_menu_by_name`). The
+          `CommandTarget::Menu { name }` arm and `try_menu_name_dispatch` invoke
+          the owning command rather than choosing placement. Remove
+          `open_named_menu` as a placement router.
+    - Validates: menu-workspace Requirement 19.5; command-framework Requirement 14.3, 14.4
+  - [ ] 36.5 Confirm the disabled-option message (Req 3.7 / 19.6) and the
+          unresolved-command error (Req 3.6 / 10.5 / 19.7) are emitted on the one
+          path for every affordance. Run the full existing menu-workspace / B075 /
+          workspace-conformance focus suite -- all must stay green (behaviour-
+          preserving, Req 19.8 / 14.6). verify.ps1 CLEAN (FULL, nextest); rebuild
+          ffwb.exe; update TCR Req 19.1-19.8 + command-framework 14.1-14.6; update
+          project-master; core acceptance test-plan.
+    - Covers: menu-workspace Requirement 19; command-framework Requirement 14

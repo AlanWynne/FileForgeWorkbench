@@ -1458,3 +1458,86 @@ seeds the barebones POM menu, that END/RETURN returns to the Home Menu Workspace
 and that a legacy session with a persisted POM restores the Home Context. No new
 user-visible menu behaviour. Slices 2-4 (named workspaces, per-workspace
 menu-bar/keymap, Profile store) build on this single kind.
+
+---
+
+## Design Delta: One Option-Selection Path (Requirement 19, CR-CH-043)
+
+Behaviour-preserving convergence of the divergent option-dispatch paths onto ONE
+`handle_command`-based path. Pairs with command-framework Requirement 14 (the
+command-framework half). No new user-visible option behaviour; it removes the
+per-affordance and POM-vs-non-POM forks that caused the B056-B059 / B075 class.
+
+### As-is (the divergence being removed)
+
+Selecting the SAME logical option can take THREE different code shapes today:
+
+- **Typed Option_Key, non-POM menu:** `handle_command` stage 1
+  `try_current_menu_option(cmd)` (`shell/commands.rs`) -- but it EARLY-RETURNS
+  `false` when `active_tab().is_home`, so it never handles POM keys.
+- **Typed Option_Key, POM:** falls past stage 1, through the shell intercepts, to
+  `resolve_pom_option_key(&upper)` (the Navigation_Origin POM fastpath) which
+  looks the key up against the loaded `pom` menu / on-disk `pom.toml` / compiled
+  default and re-enters `handle_command(pom_command)`.
+- **Mouse CLICK (any menu):** `shell/update.rs` (~line 331) takes
+  `pending_menu_option`; if `option.target` is set it calls
+  `dispatch_command_target(&target)` DIRECTLY; else
+  `resolve_and_dispatch_command(&option.command)` -> on `FallThrough` ->
+  `handle_command(&option.command)`. So a click runs a pre-branch (inline target
+  / user-target resolution) that a typed key does not.
+
+Menu-vs-tab placement is then chosen by a DISPATCHER-level router: the
+`CommandTarget::Menu { name }` arm of `dispatch_command_target` and
+`try_menu_name_dispatch` both call `open_named_menu(name)`, which switches on the
+NAME -- `pom` -> Home Context, `settings` -> `open_settings_menu()` (in place),
+else `open_menu_by_name()` (new tab). That router is the B075 patch: it narrowed
+the click/typed divergence for Settings but left the decision in a shared branch
+rather than in the command.
+
+### To-be (one path; command owns placement)
+
+- **One current-menu Option_Key resolver.** Replace the `try_current_menu_option`
+  (non-POM only) + `resolve_pom_option_key` (POM only) pair with a SINGLE resolver
+  that looks the selected key up against the ACTIVE menu regardless of `is_home`
+  (POM, Settings, or user menu) and dispatches the option's `command` via
+  `handle_command`. The Navigation_Origin `=` fastpath (Requirement 5) stays a
+  command-STRING parsing concern feeding the same resolver, not a second path;
+  `=`-origin chains against the POM (e.g. `=0.K`) keep resolving because the POM
+  is just the active/home menu the resolver consults.
+- **Click == typed.** In `shell/update.rs`, drop the `option.target` /
+  `resolve_and_dispatch_command` pre-branch; a click resolves the row to its
+  `option.command` and calls `handle_command(option.command)` -- identical to
+  typing the key. The inline `[options.target]` capability (Requirement 10.6) is
+  preserved by resolving it inside the pipeline (the resolver still consults the
+  option's target when present), not by a click-only fork.
+- **Command owns in-place-vs-new-tab.** Fold `open_named_menu`'s name switch into
+  the command handlers: the `SETTINGS` command owns "navigate in place"
+  (`open_settings_menu`), `POM` owns "Home Context", a user-menu-opening command
+  owns "new tab" (`open_menu_by_name` / `open_menu_workspace_tab`). The
+  `CommandTarget::Menu { name }` dispatch and the typed-name path both route
+  through those commands, so the placement decision lives with the command; the
+  Menu Workspace and the key-dispatch seam no longer choose it.
+- **The menu is a dumb dispatcher.** After this delta the Menu Workspace's only
+  job on selection is: find the option's `command` and call `handle_command`. It
+  does not inspect the target kind and does not choose placement.
+
+### Preserved invariants
+
+- Observable B075 behaviour (clicking POM `Settings` opens Settings IN PLACE) --
+  now because the `SETTINGS` command owns that effect.
+- `=` Navigation_Origin semantics (Requirement 5), `<menu> <key>` chaining
+  (Requirement 11.7), disabled-option message (Requirement 3.7), and the
+  unresolved-command error (Requirement 3.6 / 10.5) -- all now emitted on the one
+  path for every affordance.
+- The workspace-conformance first-Tab focus contract is unaffected: this delta
+  changes dispatch wiring, not the render arms' `first_interior_id` /
+  `honour_interior_focus_latch` reporting.
+
+### Files touched (implementation, when built)
+
+`shell/commands.rs` (collapse the two resolvers into one; `SETTINGS`/`POM`/menu
+commands own placement), `shell/target_dispatch.rs` (`Menu` arm + `open_named_menu`
+folded into the command handlers), `shell/update.rs` (click path calls
+`handle_command(option.command)`), `menu_workspace/nav_stack.rs`
+(`open_settings_menu` in-place vs `open_menu_by_name` new-tab now selected by the
+command). No new crate dependency; reuses existing helpers.

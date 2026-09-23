@@ -1782,3 +1782,82 @@ bridge that emits the documented shape.
   `key_command_does_not_force_clear_command_field`.
 - Slice 2 (pure): `outcome_data_shape_round_trips_all_variants`,
   `outcome_data_shape_set_requires_text`, `invalid_shape_maps_to_default`.
+
+---
+
+## Design Delta: Selection-Equals-Command; command owns placement (Requirement 14, CR-CH-043)
+
+Design delta to Section "Command Dispatch" and the CR-CH-025 "Unified
+command-resolution chain" delta. Pairs with menu-workspace Requirement 19 (the
+Menu Workspace half). Behaviour-preserving: it removes per-affordance dispatch
+forks and the dispatcher-level menu-name router, moving the in-place-vs-new-tab
+decision into the command handlers. It does NOT change the resolution chain
+(Requirement 8.3), the shadowing rule (Requirement 8.10), or Command_Line_Outcome
+(Requirement 13).
+
+### Principle
+
+Every affordance that selects/invokes a command -- a typed line, a function key,
+a clicked Menu_Option, a menu-bar pick, Tab+Enter on an option -- reduces to ONE
+act: `handle_command(command_string)`. No affordance keeps a private dispatch
+pre-branch (Selection_Equals_Command, Requirement 14.1-14.2). The COMMAND, via its
+handler and Command_Target variant, owns its own effect -- in-place navigation vs a
+new tab, which Context to build (Effect_Ownership, Requirement 14.3).
+
+### As-is (forks to remove)
+
+- The mouse-click seam (`shell/update.rs`) dispatches an inline `option.target`
+  or a resolved user target BEFORE `handle_command`; the typed key does not.
+- POM Option_Keys go through `resolve_pom_option_key`; non-POM through
+  `try_current_menu_option` (which skips the Home Context) -- two resolvers for
+  the same act.
+- `open_named_menu(name)` (called by `dispatch_command_target`'s `Menu` arm and
+  by `try_menu_name_dispatch`) is a NAME-switch router choosing placement
+  (`settings` -> in place, `pom` -> Home, else new tab). That is a
+  dispatcher-level decision, not the command's.
+
+### To-be
+
+- **`dispatch_command_target` stays the variant router, not the placement router.**
+  The `CommandTarget::Menu { name }` arm invokes the menu-OPENING COMMAND for that
+  name (the `MENU <name>` command path / the command that owns the menu) rather
+  than calling `open_named_menu` to pick placement. Placement then comes from that
+  command's handler.
+- **The name switch folds into the commands.** `SETTINGS` owns in-place
+  (`open_settings_menu`); `POM` owns Home Context; a user-menu command owns new
+  tab (`open_menu_by_name`). `open_named_menu` as a shared placement branch is
+  removed; any remaining shared helper is a thin "dispatch the MENU command",
+  not a placement decision.
+- **Function-key / shortcut parity is unchanged in shape.** `dispatch_key_command`
+  still merges the field arg and wraps the invocation in the Command_Line_Outcome
+  pass (Requirement 13); it now reaches the SAME single option/command path the
+  click and typed paths use, so no key-vs-click divergence remains.
+
+### Preserved
+
+- Target_Resolution order and the shadowing rule (Requirement 8.3 / 8.10):
+  built-in > menu-name > macro, first match wins, case-insensitive.
+- Command_Line_Outcome application (Requirement 13) at the one decision point on
+  both paths.
+- Observable B075 behaviour (clicking POM `Settings` -> Settings in place), now
+  owned by the `SETTINGS` command.
+
+### Files touched (implementation, when built)
+
+`shell/target_dispatch.rs` (`Menu` arm invokes the menu command; `open_named_menu`
+router folded away), `shell/commands.rs` (one option-key resolver; `SETTINGS` /
+`POM` / user-menu commands own placement), `shell/update.rs` (click ->
+`handle_command(option.command)`). No `ff-command` API change in this delta; the
+convergence is in the `ff-desktop` shell dispatch. Shared with menu-workspace
+Requirement 19's files (one implementation satisfies both halves).
+
+### Tests
+
+- `full_shell_pom_settings_click_equals_typed_settings` -- clicking POM `Settings`
+  and typing `SETTINGS` land on the same in-place Settings menu (same active tab,
+  same descriptor), proving Selection_Equals_Command + Effect_Ownership.
+- `full_shell_pom_option_key_and_click_same_result` -- typing a POM Option_Key and
+  clicking its row produce identical results (one resolver).
+- `menu_option_click_runs_handle_command_path` -- the click path no longer takes a
+  target pre-branch (asserted via observable effect, not internal call shape).
+- Existing B075 / menu-name / focus tests continue to pass unchanged.

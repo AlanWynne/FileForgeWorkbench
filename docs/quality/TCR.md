@@ -2979,3 +2979,27 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | ✅ | full Req 16 suite (`placement_of_*`, `docked_leaf_of_*`, `full_shell_split_*`, `full_shell_placement_*`, `kind_config_has_no_core_tab_container_field`) | layout-and-docking Req 16.9: full Req 16 behaviour covered by unit + full-shell egui_kittest; pixel-exact chrome placement + OS detached frame remain justified-MANUAL |
 | `ff-desktop` | ✅ | `shell::tests::kind_config_has_no_core_tab_container_field` | workspace-kinds Req 4.6: a Kind MAY define internal composition (its concern); structural guard proves core adds no universal tab-container attribute to `KindConfig` |
 | `ff-desktop` | ✅ | `shell::tests::full_shell_split_region_menu_bar_is_live_and_focusable` | menu-and-statusbar Req 16.15: per-instance in-region chrome participates in the single Boundary_Policy (per-region-salted id, live focusable, no phantom stop, no second focus ring); unsplit Tab-order byte-identical (full suite unchanged) |
+
+### Phase (menu-dispatch-converge) -- CR-CH-043 (one Option-Selection path; command owns menu-vs-workspace behaviour)
+
+> Converge every menu-option selection onto one `handle_command` path; the Menu
+> Workspace is a dumb dispatcher; each command owns its in-place-vs-new-tab
+> effect. One implementation slice satisfies both menu-workspace Req 19 and
+> command-framework Req 14. Behaviour-preserving; impl pending gate approval.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 19.1: one Option_Dispatch_Path shared by click / key / Tab+Enter / menu-bar / typed; selection == `handle_command(command)` |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 19.2: POM and non-POM menus share the one current-menu Option_Key resolver (collapses `try_current_menu_option` + `resolve_pom_option_key`); POM click == Settings click |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 19.3: click path calls `handle_command(option.command)` with no click-only pre-branch; inline `[options.target]` resolved in-pipeline (Req 10.6 preserved) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 19.4: Menu Workspace is a dumb dispatcher (does not decide target kind or placement); `=` fastpath + `<menu> <key>` chaining preserved as string parsing |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 19.5: command owns in-place-vs-new-tab; `open_named_menu` name-switch folded into the `SETTINGS`/`POM`/user-menu command handlers |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 19.6: disabled-option message emitted on the one path for every affordance (POM + non-POM) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 19.7: unresolved-command error emitted on the one path for every affordance |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 19.8: behaviour-preserving -- existing menu-workspace / B075 / workspace-conformance focus tests stay green; POM `Settings` click opens Settings in place |
+| `ff-desktop` | 🔴 | -- | command-framework Req 14.1: every affordance reduces to `handle_command(command_string)`; no private per-affordance dispatch pre-branch (Selection_Equals_Command) |
+| `ff-desktop` | 🔴 | -- | command-framework Req 14.2: two affordances selecting the same command with the same argument produce identical observable results |
+| `ff-desktop` | 🔴 | -- | command-framework Req 14.3: each command owns its effect (in-place nav vs new tab), decided by the handler / Command_Target variant, not the affordance (Effect_Ownership) |
+| `ff-desktop` | 🔴 | -- | command-framework Req 14.4: the dispatcher-level menu-name router (`open_named_menu`) removed as a routing decision; folded into the command handlers (B075 behaviour preserved) |
+| `ff-desktop` | 🔴 | -- | command-framework Req 14.5: Target_Resolution chain (Req 8.3), shadowing rule (Req 8.10), and Command_Line_Outcome (Req 13) unchanged by the convergence |
+| `ff-desktop` | 🔴 | -- | command-framework Req 14.6: behaviour-preserving -- existing command-framework / menu-workspace / workspace-kinds tests stay green (adjusted only where they asserted the removed branch/router by name) |
