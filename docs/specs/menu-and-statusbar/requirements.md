@@ -401,8 +401,14 @@ know what I am looking at and can issue commands without hunting for the input f
      row and the Primary_Command_Field. It SHALL NOT be editable by the user.
 
 3. WHEN the active tab is a Home Context (POM) tab, THE Title_Line SHALL display the
-     application name and version in the format:
-     `FileForge Workbench  vX.Y.Z`
+     POM's Menu_Title from `menus/pom.toml` (or the compiled Recovery_Baseline POM
+     title when no user file exists), CENTERED, per criterion 11.
+     (REVISED by CR-CH-042: the Title_Line NO LONGER shows the hardcoded application
+     banner `FileForge Workbench  vX.Y.Z`. The title is now single-sourced from the
+     menu configuration file and centered, consistent with every other Menu Workspace,
+     removing the former duplicate banner. The application name/version remains
+     available elsewhere in the shell -- e.g. an About affordance or the status area --
+     and is not lost. See menu-workspace Requirement 20.)
 
 4. WHEN the active tab is a file editor tab with an open file, THE Title_Line SHALL display
      the full absolute path of the open file.
@@ -410,8 +416,11 @@ know what I am looking at and can issue commands without hunting for the input f
 5. WHEN the active tab is a file editor tab with no file open (untitled), THE Title_Line
      SHALL display `[Untitled]`.
 
-6. WHEN the active tab is any other tab kind (Settings, Catalog Explorer Context, etc.), THE Title_Line
-     SHALL display the tab's title string.
+6. WHEN the active tab is any other tab kind (Catalog Explorer Context, etc.), THE Title_Line
+     SHALL display the tab's title string. (For a Menu_Workspace Context -- the POM,
+     Settings, or any user menu -- the Title_Line displays the Menu_Title, centered,
+     per criterion 11, REVISED by CR-CH-042: this replaces the former non-Home menu
+     `[<UPPERCASE TITLE>]` bracketed form and the left-aligned rendering.)
 
 7. THE Title_Line SHALL be styled using the active theme's primary text colour and SHALL
      be visually distinct from the editor content area (e.g., different background or a
@@ -435,6 +444,18 @@ know what I am looking at and can issue commands without hunting for the input f
      rather than from a cached title string that a mutation path could leave unupdated. A
      user-assigned `workspace_name` (CX Requirement 1.4), when set, SHALL still take
      precedence; the file-editor path (Requirement 17.4/17.5) is unchanged. [B050]
+
+11. *(CR-CH-042 -- single config-driven centered Menu Workspace title.)* WHEN the
+     active tab is a Menu_Workspace Context (the POM, the Settings menu, or any user
+     menu), THE Title_Line SHALL display that menu's Menu_Title (the Menu_File `title`
+     field, raw -- not bracketed, not force-uppercased), CENTERED on the line, using
+     the SAME format for every menu including the POM and Settings. THE separate
+     centered Menu_Title heading previously rendered inside the menu body ABOVE the
+     option list SHALL be REMOVED, so a Menu Workspace shows its title in exactly ONE
+     position (the Title_Line) and the former doubled banner is eliminated. This
+     revises criteria 3 and 6 for the Menu_Workspace case; the Title_Line styling
+     (criterion 7/8) and the in-place live-derivation guarantee (criterion 10) are
+     unchanged. See menu-workspace Requirement 20.
 
 ---
 

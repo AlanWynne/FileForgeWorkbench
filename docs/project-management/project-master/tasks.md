@@ -2836,3 +2836,24 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[x]` Phase (menu-dispatch-converge) | CR-CH-043 DONE: menu-workspace Req 19.1-19.8 (one Option-Selection path; dumb dispatcher; POM == Settings == user menu; click == typed via `activate_menu_option`), command-framework Req 14.1-14.6 (Selection-Equals-Command; command owns in-place-vs-new-tab; `open_named_menu` router removed, folded into `open_menu_by_name`). One slice (MDC.1-MDC.6): `try_current_menu_option` unified (no `is_home` skip) + shared `activate_menu_option` (typed/click) + `open_menu_by_name` owns placement. 2 new full-shell tests (`pom_settings_click_equals_typed_settings`, `pom_option_key_type_and_click_same_result`); verify.ps1 CLEAN FULL nextest (9285 passed, 0 failed, 546s); no existing test modified. Supersedes the B075 router patch; behaviour-preserving. |
+
+## Phase (title-chrome-align) -- CR-CH-042 (single config-driven centered title; short POM tab; POM command)
+
+> De-duplicate the doubled Menu Workspace title into ONE centered, config-sourced
+> Title_Line (remove the second body heading above the options); make the POM tab
+> a short `POM` label; add a first-class `POM` command with `START` as its alias.
+> Behaviour-preserving for options/navigation/calendar/Tab-order. Spec-gate
+> complete; impl pending approval. One slice satisfies menu-workspace Req 20 and
+> menu-and-statusbar Req 17.3/17.6/17.11.
+
+- [ ] TCA.1 Requirements gate -- menu-workspace Req 20 (single centered config title; body heading removed; POM short tab; POM command + START alias), menu-and-statusbar Req 17.3/17.6 revised + 17.11 added, design deltas, tasks (menu-workspace Task 37, menu-and-statusbar Task 33), TCR NOT COVERED rows, change-log CR-CH-042.
+- [ ] TCA.2 Failing full-shell tests first: POM Title_Line == menu title (not banner); POM tab header == `POM`; `POM` opens Home + bare `START` alias. Covers menu-workspace Req 20.2/20.3/20.4/20.5; m&s 17.3.
+- [ ] TCA.3 Re-source the Title_Line for a Menu_Workspace (incl. POM) from the live `menu.title`; remove the POM is_home app-banner early return. Covers menu-workspace Req 20.1/20.2/20.3/20.8; m&s 17.11.
+- [ ] TCA.4 Center all Menu_Workspace Title_Lines uniformly (generalise the POM `is_pom` centered branch). Covers menu-workspace Req 20.2/20.7; m&s 17.11.
+- [ ] TCA.5 Remove the duplicate centered `menu.title` body heading above the option list; confirm calendar-fit (Req 16) + focus contract untouched. Covers menu-workspace Req 20.1/20.9; m&s 17.11.
+- [ ] TCA.6 POM tab short label `POM`; `POM` first-class Home opener + registered, `START` bare alias (preserve START forms). Covers menu-workspace Req 20.4/20.5/20.6; Req 14.8.
+- [ ] TCA.7 Close: existing menu / B050 / workspace-conformance focus tests green (behaviour-preserving); verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR menu-workspace Req 20 + m&s Req 17.3/17.6/17.11 PASS. Covers menu-workspace Req 20; menu-and-statusbar Req 17 (revised).
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (title-chrome-align) | CR-CH-042 -- SPEC DONE (gate complete): menu-workspace Req 20.1-20.9 (single config-driven centered Menu_Title on the Title_Line; duplicate body heading removed; POM short tab `POM`; `POM` command + `START` alias), menu-and-statusbar Req 17.3/17.6 revised + 17.11 added (POM Title_Line = menu title not banner; uniform centered menu title; body heading removed). Impl pending approval: menu-workspace Task 37 (37.1-37.7), menu-and-statusbar Task 33. Behaviour-preserving; app name/version stays in the About dialog. |

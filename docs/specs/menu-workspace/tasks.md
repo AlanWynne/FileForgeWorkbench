@@ -680,3 +680,42 @@ approved.
           ffwb.exe; update TCR Req 19.1-19.8 + command-framework 14.1-14.6; update
           project-master; core acceptance test-plan.
     - Covers: menu-workspace Requirement 19; command-framework Requirement 14
+
+## Phase title-chrome-align (CR-CH-042) -- single config-driven centered title + short POM tab + POM command
+
+One slice satisfies menu-workspace Requirement 20 and menu-and-statusbar
+Requirement 17.3/17.6/17.11. Behaviour-preserving; TDD (failing tests first). Do
+NOT start until the gate is approved.
+
+- [ ] 37. Single config-driven centered Menu Workspace title; short POM tab; POM command
+  - [ ] 37.1 Write failing full-shell egui_kittest tests FIRST:
+          `full_shell_pom_title_line_shows_menu_title_not_banner` (POM Title_Line
+          text == loaded `menus/pom.toml` title, not `FileForge Workbench v...`),
+          `pom_tab_header_is_short_label` (POM tab header == `POM`),
+          `pom_command_opens_home_context` + bare `START` alias equivalence.
+          Confirm they FAIL (red).
+    - Validates: menu-workspace Requirement 20.2, 20.3, 20.4, 20.5; menu-and-statusbar Req 17.3
+  - [ ] 37.2 Re-source the Title_Line for a Menu_Workspace (incl. the POM) from the
+          LIVE loaded `menu.title` (raw) in `title_line_text` / `kind_title`
+          (`shell/mod.rs`); remove the POM `is_home` app-banner early return.
+    - Validates: menu-workspace Requirement 20.1, 20.2, 20.3, 20.8; menu-and-statusbar Req 17.11
+  - [ ] 37.3 Center the Title_Line for ALL `TabKind::MenuWorkspace` tabs uniformly
+          in `render_title_line_into_ui` (`shell/render.rs`), generalising the
+          current POM `is_pom` centered branch; keep POM theme styling; non-menu
+          Contexts keep their existing Title_Line rendering.
+    - Validates: menu-workspace Requirement 20.2, 20.7; menu-and-statusbar Req 17.11
+  - [ ] 37.4 Remove the duplicate centered `menu.title` body heading (+ its
+          `add_space`) above the option list in `menu_workspace/render.rs`; confirm
+          the Layout_Tier / calendar-fit (Req 16) and focus contract are untouched.
+    - Validates: menu-workspace Requirement 20.1, 20.9; menu-and-statusbar Req 17.11
+  - [ ] 37.5 POM tab header short label `POM` (`shell/render_chrome.rs` Home-tab
+          path; `TabState::pom` / derivation per Req 20.6); other tabs unchanged.
+    - Validates: menu-workspace Requirement 20.4, 20.6
+  - [ ] 37.6 Make `POM` the first-class Home opener + register it; accept bare
+          `START` as its alias (preserve `START =<path>` / `START <arg>` forms).
+    - Validates: menu-workspace Requirement 20.5; Requirement 14.8
+  - [ ] 37.7 Close: existing menu / B050 stale-title / workspace-conformance focus
+          tests green (behaviour-preserving); verify.ps1 CLEAN FULL nextest; rebuild
+          ffwb.exe; TCR menu-workspace Req 20 + menu-and-statusbar Req 17.3/17.6/17.11
+          PASS; update project-master; core acceptance test-plan.
+    - Covers: menu-workspace Requirement 20; menu-and-statusbar Requirement 17 (revised)

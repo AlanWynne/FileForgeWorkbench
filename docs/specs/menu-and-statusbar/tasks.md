@@ -571,3 +571,23 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-command` 
     - Covers: Requirement 18.14, 19.11-19.14
   - [x] 36.6 verify.ps1 CLEAN (FULL nextest); ffwb.exe rebuilt; TCR rows; change-log CR-CH-040 DONE; project-master phase; test-plan rows (7.4-7.6 reframed: split-screen deferred to Slice 2, 7.3d added for DETACH)
     - Covers: Slice 1 close
+
+## Phase title-chrome-align (CR-CH-042) -- single config-driven centered Menu Workspace Title_Line
+
+The Title_Line change (Requirement 17.3/17.6/17.11 revised) is implemented by the
+one slice tracked in `docs/specs/menu-workspace/tasks.md` Task 37 (shared
+`ff-desktop` shell render). This task records this spec's acceptance obligations.
+Do NOT start until the gate is approved.
+
+- [ ] 33. Menu Workspace Title_Line = single centered config-driven Menu_Title
+  - [ ] 33.1 POM Title_Line shows the loaded `menus/pom.toml` Menu_Title (not the
+          hardcoded `FileForge Workbench vX.Y.Z` banner), centered.
+    - Validates: menu-and-statusbar Requirement 17.3
+  - [ ] 33.2 Every Menu_Workspace Title_Line (POM, Settings, user menu) shows the
+          raw Menu_Title, centered, one uniform format; the duplicate centered
+          body heading above the option list is removed.
+    - Validates: menu-and-statusbar Requirement 17.6, 17.11
+  - [ ] 33.3 Non-menu Title_Line cases unchanged (editor path/[Untitled]; panel
+          Kind title); in-place live-derivation (17.10) holds; About dialog still
+          shows the app name/version. (Impl + verify + TCR in menu-workspace Task 37.7.)
+    - Validates: menu-and-statusbar Requirement 17.4, 17.5, 17.6, 17.10

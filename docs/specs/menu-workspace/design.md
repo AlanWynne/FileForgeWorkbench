@@ -1541,3 +1541,102 @@ folded into the command handlers), `shell/update.rs` (click path calls
 `handle_command(option.command)`), `menu_workspace/nav_stack.rs`
 (`open_settings_menu` in-place vs `open_menu_by_name` new-tab now selected by the
 command). No new crate dependency; reuses existing helpers.
+
+---
+
+## Design Delta: Single config-driven centered title + short POM tab + POM command (Requirement 20, CR-CH-042)
+
+De-duplicates the doubled Menu Workspace title into ONE centered, config-sourced
+Title_Line; makes the POM tab a short `POM` label; adds a first-class `POM`
+command with `START` as its alias. Pairs with menu-and-statusbar Req 17 (3/6/11
+revised/added). Behaviour-preserving for options/navigation/calendar/Tab-order.
+
+### As-is (the duplication being removed)
+
+For a Menu Workspace the title renders TWICE:
+- **Title_Line** (`shell/render.rs::render_title_line_into_ui`, ~line 132): text
+  from `WorkbenchShell::kind_title` -> for a Menu Workspace it delegates to the
+  free fn `title_line_text` (`shell/mod.rs`, ~line 1159). POM (`tab.is_home`) =>
+  hardcoded `format!("FileForge Workbench  v{}", CARGO_PKG_VERSION)`; a non-Home
+  menu => `mw.tab_title()` = `[<UPPERCASE menu.title>]`. The POM branch paints a
+  black-bg / blue centered label (`is_pom`); the non-POM branch paints
+  left-aligned. This is the POM-centered vs Settings-left inconsistency.
+- **Menu body heading** (`menu_workspace/render.rs`, ~line 258, "Req 2.1 --
+  Menu_Title centred"): `ui.vertical_centered(|ui| ui.label(RichText::new(&menu
+  .title).strong().size(14.0)))` -- the raw `MenuFile.title`, centered, ABOVE the
+  option list. POM => `FileForge Workbench -- Primary Option Menu`; Settings =>
+  `Settings`.
+
+The POM tab header (`shell/render_chrome.rs`, ~line 538) also routes through
+`kind_title` -> the app banner, so the POM tab shows the long banner. `TabState
+::pom` caches `title = "[POM]"` but that string is currently never displayed.
+
+### To-be
+
+- **Title_Line is the single title, sourced from the menu file, centered
+  (Req 20.1/20.2, m&s 17.11).** `title_line_text` (and `kind_title`) for a
+  Menu_Workspace -- INCLUDING the POM -- returns the LIVE loaded `menu.title` raw
+  string (not bracketed, not uppercased), falling back to the compiled
+  Recovery_Baseline title / cached title when no menu is loaded. The POM
+  `is_home` early-return of the app banner is REMOVED (Req 20.3): the POM title
+  now comes from `menus/pom.toml` (`FileForge Workbench -- Primary Option Menu`)
+  the same way Settings comes from `settings.toml` (`Settings`).
+- **Center every Menu Workspace Title_Line uniformly.** `render_title_line_into_ui`
+  centers the label for ALL Menu_Workspace tabs (generalising the current
+  `is_pom` centered branch to `tab.kind == MenuWorkspace`), so Settings is
+  centered like the POM; the POM keeps its black-bg/blue styling only as a
+  theme concern (unchanged), the centering becomes uniform. Non-menu Contexts
+  (editor path, panel Kind title) keep their existing left-aligned Title_Line
+  (Req 20.7).
+- **Remove the duplicate body heading (Req 20.1, m&s 17.11).** Delete the
+  `ui.vertical_centered(... RichText::new(&menu.title) ...)` block + its
+  `add_space` in `menu_workspace/render.rs`; the option list moves up. The
+  Layout_Tier / calendar-fit computation (CR-CH-032, Req 16) and the focus
+  contract are untouched (Req 20.9) -- only the heading row is gone.
+- **Short POM tab label `POM` (Req 20.4/20.6).** The POM tab header stops showing
+  the app banner. `TabState::pom` already caches `"[POM]"`; the render_chrome
+  tab-header path for the Home tab returns a short `POM` label (e.g. the cached
+  short label, or derived from the POM command per Req 20.6) rather than
+  `kind_title`'s banner. Other tabs' short labels are unchanged.
+- **`POM` command + `START` alias (Req 20.5).** A `POM` command already exists
+  (`shell/commands.rs`, `if upper == "POM"` -> `insert_pom_tab`). Make it the
+  first-class Home opener and accept `START` (bare) as its alias for opening the
+  Home Context, preserving START's tab-creation forms (`START =<path>` / `START
+  <arg>`, menu-workspace Req 14.8-14.9). Register `POM` for dispatch parity so a
+  menu option / key / typed command can invoke it. The POM tab's short label is
+  derivable from this command (Req 20.6).
+
+### Preserved invariants
+
+- Editor Title_Line = path / `[Untitled]`; panel Title_Line = Kind title
+  (Req 20.7; m&s 17.4/17.5/17.6 non-menu part).
+- In-place live-derivation (m&s 17.10 / CR-CH-034): the single title is derived
+  from the live loaded menu, never a stale cached string (Req 20.8).
+- Option selection, `=` navigation, calendar tiers, Tab-order (Req 3/5/16/19)
+  unchanged (Req 20.9).
+- The application name/version is not lost; it remains available in an About
+  affordance / status area (not the POM Title_Line).
+
+### Files touched (implementation, when built)
+
+`shell/mod.rs` (`title_line_text` / `kind_title`: Menu_Workspace incl. POM ->
+live `menu.title`; remove is_home banner), `shell/render.rs`
+(`render_title_line_into_ui`: center all Menu_Workspace titles),
+`shell/render_chrome.rs` (POM tab short `POM` label), `menu_workspace/render.rs`
+(remove the centered body-heading block), `shell/commands.rs` (`POM` command as
+Home opener + `START` alias; register `POM`), `tab_state.rs` (POM short label if
+needed). Docs already updated. No new crate.
+
+### Tests
+
+- `full_shell_pom_title_line_shows_menu_title_not_banner` -- POM Title_Line text
+  == the loaded `menus/pom.toml` title, NOT `FileForge Workbench  v...`.
+- `full_shell_menu_workspace_title_is_centered_for_pom_and_settings` -- both the
+  POM and Settings Title_Line use the centered path (same format).
+- `menu_body_has_no_duplicate_title_heading` -- the option-list render no longer
+  emits the centered `menu.title` heading above the options.
+- `pom_tab_header_is_short_label` -- the POM tab header == `POM`, not the banner.
+- `pom_command_opens_home_context` + `start_is_alias_of_pom_for_bare_form` --
+  the `POM` command opens the Home Context and bare `START` does the same;
+  `START =<path>` / `START <arg>` forms unchanged.
+- Existing menu / B050 stale-title / focus-conformance tests stay green.

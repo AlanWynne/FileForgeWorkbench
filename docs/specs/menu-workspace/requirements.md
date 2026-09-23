@@ -745,6 +745,10 @@ is created is if we type start"); reconciles Requirement 5 (Chained Navigation).
    This restates Requirement 5.7/5.10 in stack terms.
 8. THE `START` command SHALL be the ONLY command that creates a new tab (a new
    Workspace with its own Navigation_Stack). Its forms:
+   (CR-CH-042: a first-class `POM` command opens/returns to the Home Context and
+   `START` is accepted as its alias; the POM tab derives its short-form `POM`
+   label from this command -- see Requirement 20.5/20.6. The START tab-creation
+   forms below are unchanged.)
    - `START` (no argument): a new tab rooted at the POM Context, Navigation_Stack
      empty (END closes it, or exits when last).
    - `START =<path>`: a new tab rooted at the POM, then navigated along `<path>`
@@ -1274,3 +1278,103 @@ these resolve to the same single act: execute the option's command string.
    continue to hold. In particular, clicking the POM `Settings` option SHALL open
    the Settings menu IN PLACE (the B075 behaviour), now achieved by the command
    owning that effect (criterion 5) rather than by the `open_named_menu` router.
+
+---
+
+### Requirement 20: Single config-driven centered title; short-form POM tab; POM command
+
+**User Story:** As a user, I want a Menu Workspace to show ONE title -- sourced
+from its menu configuration file and centered -- instead of two near-identical
+banners (the Title_Line above the command line AND a second heading above the
+options); I want the POM's tab heading to be a short form like every other
+workspace's tab; and I want the POM to be command-addressable like every other
+workspace, so the whole title chrome is consistent and config-driven.
+
+**Source:** [CR-CH-042]. Owner: "On the POM the tab text is 'FileForge Workbench
+v0.1.0'. There is also a heading above the command line of the same text, and
+another heading above the options taken from the menu config file 'FileForge
+Workbench -- Primary Option Menu'. The Settings menu follows a different format:
+the heading above the command line just says 'SETTINGS' (not centered like the
+POM), and the heading above the options just says 'Settings'. This doubling up of
+title is redundant -- one should be removed, the title should come from the menu
+configuration file, and should be centered on the line. Also the Tab heading
+should be a short form even for the POM. Other workspaces' tab heading comes from
+the command; the POM has no command except perhaps start. Perhaps add a command
+'POM' with an alias 'START', and then the POM tab heading could be 'POM'."
+
+**Note:** This aligns the title chrome; it removes redundant/inconsistent titles
+and regularises the POM. It does NOT change option behaviour or navigation. The
+current state (context-gathered): a Menu Workspace renders its `MenuFile.title`
+as a CENTERED heading above the options (`menu_workspace/render.rs`, "Req 2.1 --
+Menu_Title centred") AND the shell Title_Line above the command line shows a
+SEPARATE string -- for the POM the hardcoded app banner
+`FileForge Workbench  vX.Y.Z` (via `title_line_text` is_home early-return), for a
+non-POM menu the bracketed uppercased menu title `[<TITLE>]` (via `tab_title()`).
+The POM tab header also shows the long app banner. This requirement makes the
+Title_Line the single title for a Menu Workspace, sourced from the config file
+and centered, and drops the duplicate.
+
+#### Glossary additions
+
+- **Menu_Title**: the `title` field of a Menu_File (Requirement 1), the single
+  human-readable name of that menu (e.g. `FileForge Workbench -- Primary Option
+  Menu`, `Settings`).
+- **Short_Tab_Label**: the concise text shown on a Workspace's Tab_Header, as
+  distinct from the full Title_Line title.
+
+#### Acceptance Criteria
+
+1. THE Menu_Title (the Menu_File `title`) SHALL be the SINGLE source of a Menu
+   Workspace's displayed title. A Menu Workspace SHALL render its title in
+   EXACTLY ONE position; the previous duplication -- the centered heading above
+   the option list AND a separate Title_Line above the command line -- SHALL be
+   removed so only one remains. (Decided at the gate: the surviving position is
+   the shell Title_Line above the command line; see criterion 2. The separate
+   centered `menu.title` heading above the option list in the menu body is
+   REMOVED.)
+2. WHEN a Menu Workspace (the POM, the Settings menu, or any user menu) is the
+   active/rendered Context, THE Title_Line SHALL display that menu's Menu_Title
+   text, CENTERED on the line, using the same format for EVERY menu including the
+   POM and Settings (the current POM-centered vs Settings-left inconsistency is
+   removed). The Title_Line text SHALL be the raw Menu_Title (not bracketed, not
+   force-uppercased), so the POM shows its configured title (e.g. `FileForge
+   Workbench -- Primary Option Menu`) and Settings shows `Settings`.
+3. THE POM Title_Line SHALL NO LONGER display the hardcoded application banner
+   `FileForge Workbench  vX.Y.Z`; it SHALL display the POM Menu_Title from
+   `menus/pom.toml` (or the compiled Recovery_Baseline POM title when no user
+   file exists), consistent with criterion 2. (This REVISES menu-and-statusbar
+   Requirement 17.3, which is amended in lock-step; the application name/version
+   remains available elsewhere in the shell -- e.g. an About affordance or the
+   status area -- and is not lost, but it is no longer the POM Title_Line.)
+4. THE Tab_Header label of the POM (Home Context) SHALL be a Short_Tab_Label
+   consistent with how other workspaces derive their short tab labels, NOT the
+   long application banner. THE POM Short_Tab_Label SHALL be `POM`.
+5. THE workbench SHALL provide a `POM` command that opens (or returns to) the
+   Home Context, so the POM is command-addressable like every other workspace
+   (command parity, architecture-brief Principle 2). `START` SHALL be accepted as
+   an ALIAS that opens the Home Context (its existing tab-creation forms of
+   menu-workspace Requirement 14.8-14.9 are preserved: bare `START` and `START
+   =<path>` / `START <arg>`; the bare form is the POM-opening alias). The `POM`
+   command SHALL be registered/dispatchable by name (command parity) so a menu
+   option, key binding, or typed command can invoke it.
+6. THE POM Short_Tab_Label (criterion 4) SHALL be derivable from the POM's
+   command (`POM`), the same mechanism by which other workspace tabs derive their
+   short labels from their opening command (ties to workspace-kinds Requirement 3
+   title derivation and menu-and-statusbar Requirement 17.10 live-title
+   derivation), so the POM is no longer a special long-banner case.
+7. THE single-title change SHALL preserve the existing Title_Line behaviour for
+   NON-menu Contexts unchanged: a file editor Title_Line still shows the file
+   path / `[Untitled]` (menu-and-statusbar Requirement 17.4/17.5) and a
+   system/panel Context still shows its Kind title (Requirement 17.6;
+   workspace-kinds Requirement 3), so only the Menu Workspace title source and
+   the duplicate-heading removal change.
+8. THE in-place context-switch guarantee (menu-and-statusbar Requirement 17.10 /
+   CR-CH-034) SHALL continue to hold with the single title: after an in-place
+   Context switch, the Title_Line SHALL reflect the NEW Context's Menu_Title
+   immediately, never a stale title, derived from the live loaded menu rather
+   than a cached string.
+9. THE change SHALL be behaviour-preserving for menu option selection,
+   navigation, calendar, and Tab-order (Requirements 3, 5, 15, 16, 19): removing
+   the body-heading and re-sourcing the Title_Line SHALL NOT alter the option
+   list layout decisions, the calendar fit tiers (Requirement 16), or the focus
+   contract; the removed heading simply frees vertical space above the options.

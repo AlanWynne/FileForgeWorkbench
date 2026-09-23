@@ -3003,3 +3003,22 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | ✅ | `shell::tests::dispatch_menu_target_pom_opens_home_context`, `clicking_pom_settings_option_opens_settings_menu_in_place` | command-framework Req 14.4: the `open_named_menu` router removed as a routing decision; folded into the command handlers (B075 behaviour preserved) |
 | `ff-desktop` | ✅ | full `menu` suite incl. `unknown_token_is_unresolved_not_a_menu`, `settings_t_chains_to_theme_editor` | command-framework Req 14.5: Target_Resolution chain (Req 8.3), shadowing rule (Req 8.10), and Command_Line_Outcome (Req 13) unchanged by the convergence |
 | `ff-desktop` | ✅ | full `menu` suite (184 passed, 0 failed); verify.ps1 FULL | command-framework Req 14.6: behaviour-preserving -- existing command-framework / menu-workspace / workspace-kinds tests stay green |
+
+### Phase (title-chrome-align) -- CR-CH-042 (single config-driven centered title; short POM tab; POM command)
+
+> De-duplicate the doubled Menu Workspace title into ONE centered config-sourced
+> Title_Line (remove the body heading); short POM tab `POM`; `POM` command +
+> `START` alias. One slice satisfies menu-workspace Req 20 and menu-and-statusbar
+> Req 17.3/17.6/17.11. Behaviour-preserving; impl pending gate approval.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 20.1: Menu_Title is the single title source; a Menu Workspace renders its title in exactly one position (the duplicate body heading removed) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 20.2 / menu-and-statusbar Req 17.11: every Menu_Workspace (POM/Settings/user) Title_Line shows the raw Menu_Title, centered, one uniform format |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 20.3 / menu-and-statusbar Req 17.3: POM Title_Line shows the pom.toml Menu_Title, NOT the hardcoded `FileForge Workbench vX.Y.Z` banner |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 20.4: POM Tab_Header is the Short_Tab_Label `POM`, not the long app banner |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 20.5: `POM` command opens/returns to the Home Context and is registered/dispatchable; `START` (bare) is an alias; START tab-creation forms preserved |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 20.6: POM Short_Tab_Label derivable from the `POM` command (same mechanism as other tabs) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 20.7 / menu-and-statusbar Req 17.4/17.5/17.6: non-menu Title_Line unchanged (editor path/[Untitled]; panel Kind title) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 20.8 / menu-and-statusbar Req 17.10: in-place context switch shows the new Menu_Title immediately (live-derived, never stale) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 20.9: behaviour-preserving -- option layout, calendar tiers (Req 16), and focus contract unchanged by heading removal + title re-source |

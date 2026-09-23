@@ -1416,3 +1416,46 @@ path. No UI affordance bypasses the command layer.
 The real in-window split: make `ff-desktop` depend on `ff-layout`, render the active Workspace area
 through a `TabGroupTree`, and give `SPLIT` (or a direction-explicit verb) the divide-into-two-regions
 behaviour with relative proportions and a chosen new-region Context. Not in Slice 1.
+
+---
+
+## Design Delta: Single config-driven centered Menu Workspace Title_Line (Requirement 17.3/17.6/17.11, CR-CH-042)
+
+Design delta to Section 10 (Tab Window Chrome -- Title Line). The full design of
+the change lives in `menu-workspace/design.md` (Requirement 20 delta); this delta
+records the Title_Line-side decisions this spec owns.
+
+### Change
+
+For a Menu_Workspace Context (POM, Settings, user menu), the Title_Line (the
+read-only line above the Primary_Command_Field) displays the menu's Menu_Title
+(the `MenuFile.title` field, raw) CENTERED, using one uniform format for every
+menu. This REPLACES:
+- the POM Title_Line hardcoded application banner `FileForge Workbench  vX.Y.Z`
+  (Requirement 17.3, revised), and
+- the non-Home menu bracketed / left-aligned `[<UPPERCASE TITLE>]` form
+  (Requirement 17.6, revised).
+
+The separate centered Menu_Title heading previously drawn INSIDE the menu body
+above the option list is removed (owned by menu-workspace Req 20 / its design
+delta), so a Menu Workspace shows its title in exactly one position -- the
+Title_Line.
+
+### Preserved
+
+- Non-menu Title_Line cases are unchanged: file editor => path / `[Untitled]`
+  (17.4/17.5); system/panel Context => Kind title (17.6 non-menu part).
+- Title_Line styling (17.7) and the Legacy blue-bg/white-text rule (17.8) are
+  unchanged; the POM's black-bg/blue styling is a theme concern and stays.
+- The in-place live-derivation guarantee (17.10 / CR-CH-034): the Menu_Title is
+  read from the LIVE loaded menu each frame, never a stale cached string.
+- The application name/version is not lost: it remains available via the About
+  dialog (Section 6 of this design) and/or the status area; it is simply no
+  longer the POM Title_Line.
+
+### Implementation note
+
+The shell renders the Title_Line (`ff-desktop` `shell/render.rs
+::render_title_line_into_ui`, string from `shell/mod.rs::title_line_text` /
+`kind_title`); the centering generalises the existing POM `is_pom` centered
+branch to all `TabKind::MenuWorkspace` tabs. No `ff-menu-statusbar` API change.
