@@ -776,14 +776,28 @@ impl WorkbenchShell {
         }
 
         if let Some(arg) = verb_arg(cmd, "UP") {
-            self.nav_manager.up(parse_optional_u64(arg), &mut self.tabs);
+            // CR-NR-087 (Req 3.17/3.23): an explicit numeric `UP n` overrides the
+            // SCROLL amount; a bare `UP` scrolls by the active `SCROLL ===>`
+            // amount (PAGE default preserves the prior one-page behaviour).
+            match parse_optional_u64(arg) {
+                Some(n) => self.nav_manager.up(Some(n), &mut self.tabs),
+                None => self
+                    .nav_manager
+                    .up_by_amount(&self.scroll_amount, &mut self.tabs),
+            }
             self.open_error = None;
             return;
         }
 
         if let Some(arg) = verb_arg(cmd, "DOWN") {
-            self.nav_manager
-                .down(parse_optional_u64(arg), &mut self.tabs);
+            // CR-NR-087 (Req 3.17/3.23): numeric `DOWN n` overrides; bare `DOWN`
+            // scrolls by the active SCROLL amount.
+            match parse_optional_u64(arg) {
+                Some(n) => self.nav_manager.down(Some(n), &mut self.tabs),
+                None => self
+                    .nav_manager
+                    .down_by_amount(&self.scroll_amount, &mut self.tabs),
+            }
             self.open_error = None;
             return;
         }

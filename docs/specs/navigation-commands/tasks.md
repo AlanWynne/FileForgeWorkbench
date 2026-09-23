@@ -396,15 +396,15 @@ This is a **Wave 5 (Command Engine)** sub-project that depends on `ff-viewport-s
 Shell-level wiring (the `SCROLL ===>` field / `ScrollAmount` is `ff-desktop`
 state). TDD; behaviour-additive; default PAGE preserves current behaviour.
 
-- [ ] SAU.1 Write failing tests FIRST: a pure `resolve_scroll(amount, visible_count, top_line, cursor_line, max_top_line, dir) -> new_top_line` helper covering every ScrollAmount in BOTH directions with clamping (PAGE/DATA -> +/- visible_count; HALF -> +/- max(1,vc/2); Lines(n) -> +/- n; MAX -> 1 (UP) / max_top_line (DOWN); CSR -> cursor_line clamped). Plus nav_manager tests that a no-arg UP/DOWN with each amount lands the expected top_line.
+- [x] SAU.1 Write failing tests FIRST: a pure `resolve_scroll(amount, visible_count, top_line, cursor_line, max_top_line, dir) -> new_top_line` helper covering every ScrollAmount in BOTH directions with clamping (PAGE/DATA -> +/- visible_count; HALF -> +/- max(1,vc/2); Lines(n) -> +/- n; MAX -> 1 (UP) / max_top_line (DOWN); CSR -> cursor_line clamped). Plus nav_manager tests that a no-arg UP/DOWN with each amount lands the expected top_line.
   - Validates: Requirement 3.17-3.22
-- [ ] SAU.2 Implement the pure resolve helper (in `scroll_amount.rs` or `nav_manager.rs`); make `ScrollAmount::to_line_count` live (drop `#[allow(dead_code)]`) or fold into the helper.
+- [x] SAU.2 Implement the pure resolve helper (in `scroll_amount.rs` or `nav_manager.rs`); make `ScrollAmount::to_line_count` live (drop `#[allow(dead_code)]`) or fold into the helper.
   - Validates: Requirement 3.18, 3.19, 3.20
-- [ ] SAU.3 Add a `NavManager` entry taking the resolved `ScrollAmount` + `visible_count` (+ cursor_line): PAGE/DATA -> up_page/down_page; HALF/Lines -> up_lines/down_lines; MAX -> top/bottom; CSR -> cursor-top clamp.
+- [x] SAU.3 Add a `NavManager` entry taking the resolved `ScrollAmount` + `visible_count` (+ cursor_line): PAGE/DATA -> up_page/down_page; HALF/Lines -> up_lines/down_lines; MAX -> top/bottom; CSR -> cursor-top clamp.
   - Validates: Requirement 3.21, 3.22
-- [ ] SAU.4 Wire `shell/commands.rs` UP/DOWN: numeric arg overrides (unchanged, Req 3.2/3.4/3.23); NO numeric arg -> pass `self.scroll_amount` + the active tab's `visible_count`/`cursor_line`. No error for any amount; SCROLL field unchanged.
+- [x] SAU.4 Wire `shell/commands.rs` UP/DOWN: numeric arg overrides (unchanged, Req 3.2/3.4/3.23); NO numeric arg -> pass `self.scroll_amount` + the active tab's `visible_count`/`cursor_line`. No error for any amount; SCROLL field unchanged.
   - Validates: Requirement 3.17, 3.23
-- [ ] SAU.5 Full-shell egui_kittest: set SCROLL MAX then UP -> top_line == 1 (the B046 row 7.3a case); SCROLL HALF then DOWN -> top_line advances by ~half a page; SCROLL PAGE (default) unchanged.
+- [x] SAU.5 Full-shell egui_kittest: set SCROLL MAX then UP -> top_line == 1 (the B046 row 7.3a case); SCROLL HALF then DOWN -> top_line advances by ~half a page; SCROLL PAGE (default) unchanged.
   - Validates: Requirement 3.18, 3.19, 3.21
-- [ ] SAU.6 Close: verify.ps1 CLEAN FULL nextest; rebuild ffwb.exe; TCR Req 3.17-3.23 PASS; project-master phase DONE; change-log CR-NR-087 DONE; core-acceptance-test-plan row 7.3a -> retest.
+- [x] SAU.6 Close: verify.ps1 CLEAN FULL nextest; rebuild ffwb.exe; TCR Req 3.17-3.23 PASS; project-master phase DONE; change-log CR-NR-087 DONE; core-acceptance-test-plan row 7.3a -> retest.
   - Covers: Requirement 3.17-3.23

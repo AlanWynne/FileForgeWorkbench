@@ -11,6 +11,57 @@ use tokio::runtime::Runtime;
 
 use crate::tab_manager::TabManager;
 
+use crate::scroll_amount::ScrollAmount;
+
+/// Direction of a no-argument scroll (CR-NR-087).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScrollDir {
+    Up,
+    Down,
+}
+
+/// The concrete scroll action a no-argument `UP`/`DOWN` resolves to once the
+/// active `ScrollAmount` and the viewport metrics are known (CR-NR-087,
+/// navigation-commands Req 3.17-3.22). Pure/`Eq` so the mapping is unit-testable
+/// without egui or a live viewport.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScrollAction {
+    /// Scroll by `n` lines in the command's direction (PAGE/DATA/HALF/Lines).
+    Lines(u64),
+    /// Jump to the top of the document (`UP` + MAX).
+    ToTop,
+    /// Jump to the last page (`DOWN` + MAX).
+    ToBottom,
+    /// Position the current cursor line at the top of the viewport (CSR).
+    CursorToTop,
+}
+
+/// Resolve a no-argument `UP`/`DOWN` to a concrete [`ScrollAction`] from the
+/// active `ScrollAmount`, the viewport's `visible_count`, and the direction
+/// (CR-NR-087, Req 3.17-3.22). PURE: no viewport mutation, no egui.
+///
+/// - PAGE / DATA -> `Lines(visible_count)` (one screen; DATA == page here).
+/// - HALF        -> `Lines(max(1, visible_count / 2))`.
+/// - Lines(n)    -> `Lines(n)`.
+/// - MAX         -> `ToTop` for Up, `ToBottom` for Down.
+/// - CSR         -> `CursorToTop`.
+pub fn resolve_scroll_action(
+    amount: &ScrollAmount,
+    visible_count: u64,
+    dir: ScrollDir,
+) -> ScrollAction {
+    match amount {
+        ScrollAmount::Page | ScrollAmount::Data => ScrollAction::Lines(visible_count.max(1)),
+        ScrollAmount::Half => ScrollAction::Lines((visible_count / 2).max(1)),
+        ScrollAmount::Lines(n) => ScrollAction::Lines((*n).max(1)),
+        ScrollAmount::Max => match dir {
+            ScrollDir::Up => ScrollAction::ToTop,
+            ScrollDir::Down => ScrollAction::ToBottom,
+        },
+        ScrollAmount::Csr => ScrollAction::CursorToTop,
+    }
+}
+
 /// Bridges navigation commands to the active tab's viewport and cursor.
 pub struct NavManager {
     config: NavigationConfig,
@@ -110,6 +161,56 @@ impl NavManager {
         match arg {
             Some(n) => ScrollCommands::down_lines(&mut tab.viewport, &mut tab.cursor, n),
             None => ScrollCommands::down_page(&mut tab.viewport, &mut tab.cursor, &self.config),
+        }
+    }
+
+    /// Execute a no-argument `UP` governed by the active `ScrollAmount`
+    /// (CR-NR-087, Req 3.17-3.22). Numeric `UP n` still goes through [`up`](Self::up).
+    pub fn up_by_amount(&self, amount: &ScrollAmount, tabs: &mut TabManager) {
+        let tab = tabs.active_tab_mut();
+        let vc = tab.viewport.visible_count();
+        match resolve_scroll_action(amount, vc, ScrollDir::Up) {
+            ScrollAction::Lines(n) => {
+                ScrollCommands::up_lines(&mut tab.viewport, &mut tab.cursor, n)
+            }
+            ScrollAction::ToTop => ScrollCommands::top(&mut tab.viewport, &mut tab.cursor),
+            ScrollAction::ToBottom => {
+                let lc = tab.line_count;
+                ScrollCommands::bottom(&mut tab.viewport, &mut tab.cursor, lc)
+            }
+            ScrollAction::CursorToTop => Self::scroll_cursor_to_top(tab),
+        }
+    }
+
+    /// Execute a no-argument `DOWN` governed by the active `ScrollAmount`
+    /// (CR-NR-087, Req 3.17-3.22). Numeric `DOWN n` still goes through [`down`](Self::down).
+    pub fn down_by_amount(&self, amount: &ScrollAmount, tabs: &mut TabManager) {
+        let tab = tabs.active_tab_mut();
+        let vc = tab.viewport.visible_count();
+        match resolve_scroll_action(amount, vc, ScrollDir::Down) {
+            ScrollAction::Lines(n) => {
+                ScrollCommands::down_lines(&mut tab.viewport, &mut tab.cursor, n)
+            }
+            ScrollAction::ToTop => ScrollCommands::top(&mut tab.viewport, &mut tab.cursor),
+            ScrollAction::ToBottom => {
+                let lc = tab.line_count;
+                ScrollCommands::bottom(&mut tab.viewport, &mut tab.cursor, lc)
+            }
+            ScrollAction::CursorToTop => Self::scroll_cursor_to_top(tab),
+        }
+    }
+
+    /// CSR: scroll so the current `cursor_line` becomes the topmost visible line
+    /// (Req 3.22), reusing the existing clamped `up_lines`/`down_lines` so the
+    /// viewport's clamping (Req 3.11/3.12) applies. Computes the signed delta
+    /// between the current `top_line` and the target and scrolls that many lines.
+    fn scroll_cursor_to_top(tab: &mut crate::tab_state::TabState) {
+        let target = tab.cursor.cursor_line().max(1);
+        let current_top = tab.viewport.top_line();
+        if target < current_top {
+            ScrollCommands::up_lines(&mut tab.viewport, &mut tab.cursor, current_top - target);
+        } else if target > current_top {
+            ScrollCommands::down_lines(&mut tab.viewport, &mut tab.cursor, target - current_top);
         }
     }
 
@@ -238,5 +339,152 @@ mod tests {
         nav.bottom(&mut tabs);
         let tab = tabs.active_tab();
         assert_eq!(tab.viewport.top_line(), tab.viewport.max_top_line());
+    }
+
+    // === CR-NR-087: no-argument UP/DOWN honour the active SCROLL amount ======
+
+    /// Validates: navigation-commands Req 3.18/3.19/3.20 -- PAGE/DATA/HALF/Lines
+    /// resolve to a line count in both directions.
+    #[test]
+    fn resolve_scroll_action_line_amounts() {
+        use ScrollAmount::*;
+        for dir in [ScrollDir::Up, ScrollDir::Down] {
+            assert_eq!(
+                resolve_scroll_action(&Page, 20, dir),
+                ScrollAction::Lines(20)
+            );
+            assert_eq!(
+                resolve_scroll_action(&Data, 20, dir),
+                ScrollAction::Lines(20)
+            );
+            assert_eq!(
+                resolve_scroll_action(&Half, 20, dir),
+                ScrollAction::Lines(10)
+            );
+            // Half clamps to at least 1 line.
+            assert_eq!(resolve_scroll_action(&Half, 1, dir), ScrollAction::Lines(1));
+            assert_eq!(
+                resolve_scroll_action(&Lines(7), 20, dir),
+                ScrollAction::Lines(7)
+            );
+        }
+    }
+
+    /// Validates: navigation-commands Req 3.21 -- MAX resolves to ToTop for Up,
+    /// ToBottom for Down.
+    #[test]
+    fn resolve_scroll_action_max_is_directional() {
+        assert_eq!(
+            resolve_scroll_action(&ScrollAmount::Max, 20, ScrollDir::Up),
+            ScrollAction::ToTop
+        );
+        assert_eq!(
+            resolve_scroll_action(&ScrollAmount::Max, 20, ScrollDir::Down),
+            ScrollAction::ToBottom
+        );
+    }
+
+    /// Validates: navigation-commands Req 3.22 -- CSR resolves to CursorToTop in
+    /// both directions.
+    #[test]
+    fn resolve_scroll_action_csr_is_cursor_to_top() {
+        assert_eq!(
+            resolve_scroll_action(&ScrollAmount::Csr, 20, ScrollDir::Up),
+            ScrollAction::CursorToTop
+        );
+        assert_eq!(
+            resolve_scroll_action(&ScrollAmount::Csr, 20, ScrollDir::Down),
+            ScrollAction::CursorToTop
+        );
+    }
+
+    /// Validates: navigation-commands Req 3.21 -- SCROLL MAX then UP scrolls to
+    /// the top of the document (the B046 row 7.3a case).
+    #[test]
+    fn up_by_amount_max_scrolls_to_top() {
+        let content: String = (1..=50).map(|i| format!("line {i}\n")).collect();
+        let (mut tabs, _rt) = make_tabs(&content);
+        {
+            let tab = tabs.active_tab_mut();
+            tab.viewport.set_visible_count(10);
+            ScrollCommands::down_lines(&mut tab.viewport, &mut tab.cursor, 30);
+        }
+        assert!(tabs.active_tab().viewport.top_line() > 1, "precondition");
+        let nav = NavManager::new();
+        nav.up_by_amount(&ScrollAmount::Max, &mut tabs);
+        assert_eq!(tabs.active_tab().viewport.top_line(), 1);
+    }
+
+    /// Validates: navigation-commands Req 3.21 -- SCROLL MAX then DOWN scrolls to
+    /// the last page.
+    #[test]
+    fn down_by_amount_max_scrolls_to_bottom() {
+        let content: String = (1..=50).map(|i| format!("line {i}\n")).collect();
+        let (mut tabs, _rt) = make_tabs(&content);
+        {
+            let tab = tabs.active_tab_mut();
+            tab.viewport.set_visible_count(10);
+        }
+        let nav = NavManager::new();
+        nav.down_by_amount(&ScrollAmount::Max, &mut tabs);
+        let tab = tabs.active_tab();
+        assert_eq!(tab.viewport.top_line(), tab.viewport.max_top_line());
+    }
+
+    /// Validates: navigation-commands Req 3.19 -- SCROLL HALF then DOWN advances
+    /// by half a page.
+    #[test]
+    fn down_by_amount_half_advances_half_page() {
+        let content: String = (1..=100).map(|i| format!("line {i}\n")).collect();
+        let (mut tabs, _rt) = make_tabs(&content);
+        {
+            let tab = tabs.active_tab_mut();
+            tab.viewport.set_visible_count(20);
+        }
+        let before = tabs.active_tab().viewport.top_line();
+        let nav = NavManager::new();
+        nav.down_by_amount(&ScrollAmount::Half, &mut tabs);
+        let after = tabs.active_tab().viewport.top_line();
+        assert_eq!(after - before, 10, "half of visible_count 20 == 10 lines");
+    }
+
+    /// Validates: navigation-commands Req 3.18 -- SCROLL PAGE (default) then DOWN
+    /// advances by one full page (unchanged default behaviour).
+    #[test]
+    fn down_by_amount_page_advances_full_page() {
+        let content: String = (1..=100).map(|i| format!("line {i}\n")).collect();
+        let (mut tabs, _rt) = make_tabs(&content);
+        {
+            let tab = tabs.active_tab_mut();
+            tab.viewport.set_visible_count(20);
+        }
+        let before = tabs.active_tab().viewport.top_line();
+        let nav = NavManager::new();
+        nav.down_by_amount(&ScrollAmount::Page, &mut tabs);
+        let after = tabs.active_tab().viewport.top_line();
+        assert_eq!(after - before, 20, "one page == visible_count 20 lines");
+    }
+
+    /// Validates: navigation-commands Req 3.22 -- SCROLL CSR then UP puts the
+    /// cursor line at the top of the viewport.
+    #[test]
+    fn up_by_amount_csr_scrolls_cursor_to_top() {
+        let content: String = (1..=100).map(|i| format!("line {i}\n")).collect();
+        let (mut tabs, _rt) = make_tabs(&content);
+        {
+            let tab = tabs.active_tab_mut();
+            tab.viewport.set_visible_count(20);
+            // Scroll down so top_line is well past 1, then place the cursor on a
+            // line ABOVE the current top so CSR must scroll up to it.
+            ScrollCommands::down_lines(&mut tab.viewport, &mut tab.cursor, 40);
+            tab.cursor.set_position(15, 1);
+        }
+        let nav = NavManager::new();
+        nav.up_by_amount(&ScrollAmount::Csr, &mut tabs);
+        assert_eq!(
+            tabs.active_tab().viewport.top_line(),
+            15,
+            "CSR positions the cursor line at the top"
+        );
     }
 }

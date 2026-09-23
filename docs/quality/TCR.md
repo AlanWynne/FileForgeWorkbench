@@ -3085,10 +3085,10 @@ coverage and confirm the shell behaviour is unchanged after the move.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | -- | navigation-commands Req 3.17: no-arg UP/DOWN scroll amount governed by the active Scroll_Amount (SCROLL field); default PAGE == prior behaviour |
-| `ff-desktop` | 🔴 | -- | navigation-commands Req 3.18: PAGE/DATA -> scroll by visible_count (one screen) |
-| `ff-desktop` | 🔴 | -- | navigation-commands Req 3.19: HALF -> scroll by max(1, visible_count/2) |
-| `ff-desktop` | 🔴 | -- | navigation-commands Req 3.20: numeric Scroll_Amount n -> scroll by n lines (== UP n / DOWN n) |
-| `ff-desktop` | 🔴 | -- | navigation-commands Req 3.21: MAX -> UP to top (top_line=1), DOWN to bottom (max_top_line), clamped |
-| `ff-desktop` | 🔴 | -- | navigation-commands Req 3.22: CSR -> top_line = cursor_line, clamped |
-| `ff-desktop` | 🔴 | -- | navigation-commands Req 3.23: explicit UP n/DOWN n overrides the Scroll_Amount; no-arg never errors and leaves the SCROLL field unchanged |
+| `ff-desktop` | ✅ | `shell::tests::{command_up_with_scroll_max_scrolls_to_top, command_down_with_scroll_half_advances_half_page}` | navigation-commands Req 3.17: no-arg UP/DOWN scroll amount governed by the active Scroll_Amount (SCROLL field); default PAGE == prior behaviour |
+| `ff-desktop` | ✅ | `nav_manager::tests::{resolve_scroll_action_line_amounts, down_by_amount_page_advances_full_page}` | navigation-commands Req 3.18: PAGE/DATA -> scroll by visible_count (one screen) |
+| `ff-desktop` | ✅ | `nav_manager::tests::{resolve_scroll_action_line_amounts, down_by_amount_half_advances_half_page}`; `shell::tests::command_down_with_scroll_half_advances_half_page` | navigation-commands Req 3.19: HALF -> scroll by max(1, visible_count/2) |
+| `ff-desktop` | ✅ | `nav_manager::tests::resolve_scroll_action_line_amounts` | navigation-commands Req 3.20: numeric Scroll_Amount n -> scroll by n lines (== UP n / DOWN n) |
+| `ff-desktop` | ✅ | `nav_manager::tests::{resolve_scroll_action_max_is_directional, up_by_amount_max_scrolls_to_top, down_by_amount_max_scrolls_to_bottom}`; `shell::tests::command_up_with_scroll_max_scrolls_to_top` | navigation-commands Req 3.21: MAX -> UP to top (top_line=1), DOWN to bottom (max_top_line), clamped |
+| `ff-desktop` | ✅ | `nav_manager::tests::{resolve_scroll_action_csr_is_cursor_to_top, up_by_amount_csr_scrolls_cursor_to_top}` | navigation-commands Req 3.22: CSR -> top_line = cursor_line, clamped |
+| `ff-desktop` | ✅ | `shell::tests::command_down_n_overrides_scroll_amount` (+ existing `scroll_command_*` for the SCROLL field) | navigation-commands Req 3.23: explicit UP n/DOWN n overrides the Scroll_Amount; no-arg never errors and leaves the SCROLL field unchanged |

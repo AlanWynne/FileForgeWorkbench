@@ -2324,6 +2324,90 @@ fn scroll_command_accepts_all_extended_amounts() {
     }
 }
 
+// === CR-NR-087: bare UP/DOWN via handle_command honour the SCROLL amount =====
+
+/// Validates: navigation-commands Req 3.21/3.17 -- with the SCROLL amount set to
+/// MAX, a bare `UP` command (the shell wiring end-to-end) scrolls the active
+/// tab's viewport to the top of the document (the B046 row 7.3a case).
+#[test]
+fn command_up_with_scroll_max_scrolls_to_top() {
+    use crate::scroll_amount::ScrollAmount;
+    let mut shell = make_shell();
+    // A scrollable editor tab: many display lines, a small viewport scrolled down.
+    shell.shell_new_untitled();
+    {
+        let tab = shell.tabs.active_tab_mut();
+        tab.line_count = 200;
+        tab.viewport.set_total_display_lines(200);
+        tab.viewport.set_visible_count(20);
+        ff_navigation_commands::ScrollCommands::down_lines(&mut tab.viewport, &mut tab.cursor, 80);
+    }
+    assert!(
+        shell.tabs.active_tab().viewport.top_line() > 1,
+        "precondition: scrolled down"
+    );
+    shell.handle_command("SCROLL MAX");
+    assert_eq!(shell.scroll_amount, ScrollAmount::Max);
+    shell.handle_command("UP");
+    assert_eq!(
+        shell.tabs.active_tab().viewport.top_line(),
+        1,
+        "bare UP with SCROLL MAX scrolls to the top (CR-NR-087, B046 row 7.3a)"
+    );
+    assert!(shell.open_error.is_none(), "no error from bare UP");
+    // The SCROLL amount is unchanged by the scroll (Req 3.23).
+    assert_eq!(shell.scroll_amount, ScrollAmount::Max);
+}
+
+/// Validates: navigation-commands Req 3.19 -- a bare `DOWN` command with SCROLL
+/// HALF advances the viewport by half a page (shell wiring).
+#[test]
+fn command_down_with_scroll_half_advances_half_page() {
+    use crate::scroll_amount::ScrollAmount;
+    let mut shell = make_shell();
+    shell.shell_new_untitled();
+    {
+        let tab = shell.tabs.active_tab_mut();
+        tab.line_count = 200;
+        tab.viewport.set_total_display_lines(200);
+        tab.viewport.set_visible_count(20);
+    }
+    shell.handle_command("SCROLL HALF");
+    assert_eq!(shell.scroll_amount, ScrollAmount::Half);
+    let before = shell.tabs.active_tab().viewport.top_line();
+    shell.handle_command("DOWN");
+    let after = shell.tabs.active_tab().viewport.top_line();
+    assert_eq!(
+        after - before,
+        10,
+        "bare DOWN with SCROLL HALF advances 10 lines"
+    );
+}
+
+/// Validates: navigation-commands Req 3.23 -- an explicit numeric `DOWN n`
+/// overrides the active SCROLL amount (here MAX), scrolling exactly n lines
+/// rather than to the bottom.
+#[test]
+fn command_down_n_overrides_scroll_amount() {
+    let mut shell = make_shell();
+    shell.shell_new_untitled();
+    {
+        let tab = shell.tabs.active_tab_mut();
+        tab.line_count = 200;
+        tab.viewport.set_total_display_lines(200);
+        tab.viewport.set_visible_count(20);
+    }
+    shell.handle_command("SCROLL MAX");
+    let before = shell.tabs.active_tab().viewport.top_line();
+    shell.handle_command("DOWN 5");
+    let after = shell.tabs.active_tab().viewport.top_line();
+    assert_eq!(
+        after - before,
+        5,
+        "explicit DOWN 5 overrides SCROLL MAX (scrolls 5 lines, not to bottom)"
+    );
+}
+
 /// Validates: Requirement 19.3 -- scroll amount retained across command submissions.
 #[test]
 fn scroll_amount_retained_across_commands() {

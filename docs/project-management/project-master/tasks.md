@@ -2933,12 +2933,12 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 > current behaviour. Shell-level wiring of the existing `ScrollAmount` +
 > `ScrollCommands`; navigation-commands Req 3.17-3.23.
 
-- [ ] SAU.1 Requirements gate -- navigation-commands Req 3.1/3.3 revised + Req 3.17-3.23, design delta, tasks (Phase scroll-amount-updown), TCR NOT COVERED rows, change-log CR-NR-087.
-- [ ] SAU.2 Failing tests first: pure resolve helper for every ScrollAmount x direction with clamping; nav_manager no-arg UP/DOWN landing tests. Covers Req 3.17-3.22.
-- [ ] SAU.3 Implement resolve helper + NavManager entry (PAGE/DATA page; HALF half; Lines n; MAX top/bottom; CSR cursor-top). Covers Req 3.18-3.22.
-- [ ] SAU.4 Wire shell UP/DOWN: no-arg consults `self.scroll_amount` + viewport visible_count/cursor_line; numeric arg overrides; no error, SCROLL field unchanged. Covers Req 3.17/3.23.
-- [ ] SAU.5 Full-shell egui_kittest (SCROLL MAX then UP -> top; HALF then DOWN -> half; PAGE default unchanged); verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR Req 3.17-3.23 PASS; core-acceptance row 7.3a retest. Covers Req 3.17-3.23.
+- [x] SAU.1 Requirements gate -- navigation-commands Req 3.1/3.3 revised + Req 3.17-3.23, design delta, tasks (Phase scroll-amount-updown), TCR NOT COVERED rows, change-log CR-NR-087.
+- [x] SAU.2 Failing tests first: pure resolve helper for every ScrollAmount x direction with clamping; nav_manager no-arg UP/DOWN landing tests. Covers Req 3.17-3.22.
+- [x] SAU.3 Implement resolve helper + NavManager entry (PAGE/DATA page; HALF half; Lines n; MAX top/bottom; CSR cursor-top). Covers Req 3.18-3.22.
+- [x] SAU.4 Wire shell UP/DOWN: no-arg consults `self.scroll_amount` + viewport visible_count/cursor_line; numeric arg overrides; no error, SCROLL field unchanged. Covers Req 3.17/3.23.
+- [x] SAU.5 Full-shell egui_kittest (SCROLL MAX then UP -> top; HALF then DOWN -> half; PAGE default unchanged); verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR Req 3.17-3.23 PASS; core-acceptance row 7.3a retest. Covers Req 3.17-3.23.
 
 | Status | Count |
 |--------|-------|
-| `[ ]` Phase (scroll-amount-updown) | CR-NR-087 -- SPEC DONE (gate authored, PENDING APPROVAL): navigation-commands Req 3.1/3.3 revised + Req 3.17-3.23 (no-argument UP/DOWN scroll by the active SCROLL amount PAGE/HALF/MAX/CSR/DATA/n; numeric arg overrides; MAX = top/bottom; CSR = cursor-top; default PAGE preserves current behaviour; PF7/PF8 not re-bound). Impl pending approval: navigation-commands Phase (scroll-amount-updown). Shell wiring of the existing `ScrollAmount`/`to_line_count` + `ScrollCommands`. Completes B046 remnant (row 7.3a). |
+| `[x]` Phase (scroll-amount-updown) | CR-NR-087 DONE: navigation-commands Req 3.1/3.3 revised + Req 3.17-3.23 (no-argument UP/DOWN scroll by the active SCROLL amount PAGE/HALF/MAX/CSR/DATA/n; numeric arg overrides; MAX = top/bottom; CSR = cursor-top; default PAGE preserves current behaviour; PF7/PF8 not re-bound). Impl: pure `resolve_scroll_action` (ScrollAmount x direction -> ScrollAction) + `NavManager::up_by_amount`/`down_by_amount` (Lines/ToTop/ToBottom/CursorToTop via existing `ScrollCommands`); shell UP/DOWN dispatch consults `self.scroll_amount` on the no-arg path, numeric arg overrides. 8 nav_manager + 3 shell tests. verify.ps1 CLEAN FULL nextest. Completes B046 remnant (row 7.3a). |
