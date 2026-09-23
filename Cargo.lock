@@ -1936,6 +1936,7 @@ dependencies = [
 name = "ff-rust-toolchain"
 version = "0.1.0"
 dependencies = [
+ "dirs",
  "ff-toolchain-api",
  "serde_json",
  "tempfile",

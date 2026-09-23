@@ -133,7 +133,11 @@ pub fn cargo_bin_dir() -> Option<PathBuf> {
     }
     #[cfg(not(target_os = "windows"))]
     {
-        dirs_next::home_dir().map(|h| h.join(".cargo").join("bin"))
+        // Use the workspace `dirs` crate (already a repo-wide dependency) for a
+        // cross-platform home directory. Fixes B076: `dirs_next` was referenced
+        // here but never declared, so Unix builds failed with an unresolved
+        // crate while Windows compiled the USERPROFILE arm instead.
+        dirs::home_dir().map(|h| h.join(".cargo").join("bin"))
     }
 }
 

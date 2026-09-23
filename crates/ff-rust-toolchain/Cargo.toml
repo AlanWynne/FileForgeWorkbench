@@ -11,6 +11,7 @@ ff-toolchain-api = { path = "../ff-toolchain-api" }
 serde_json.workspace = true
 which = "8"
 thiserror.workspace = true
+dirs = { workspace = true }
 
 [dev-dependencies]
 tempfile.workspace = true
