@@ -1010,7 +1010,13 @@ fn line_end_from_name_maps_unicode_else_default() {
 /// configured bar resolves to a real file.
 #[test]
 fn menu_bar_uses_kind_menu_bar_else_default() {
-    // Validates: workspace-kinds Requirement 4.1, 4.5
+    // Validates: workspace-kinds Requirement 4.1, 4.5;
+    // menu-workspace Requirement 17.9 (CR-NR-080 Slice C -- a Menu_Bar assigned
+    // to a workspace Kind renders for instances of that kind; an unassigned kind
+    // falls back to the Default_Menu_Bar). The per-Kind `menu_bar` field
+    // (CR-NR-090) + `resolve_menu_bar_menu_for` (CR-CH-041, used by both the
+    // app-level `render_menu_bar` and the split-region `render_region_menu_bar`)
+    // together deliver Slice C.
     use crate::tab_state::{TabId, TabState};
     use ff_document_model::new_document;
     let mut shell = make_shell();

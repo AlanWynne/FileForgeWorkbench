@@ -2326,8 +2326,14 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
       falls back; authorable via the Menus Editor (same slugging). verify.ps1 CLEAN;
       ffwb.exe rebuilt.
       Covers: menu-workspace Req 17.8.
-- [ ] MB.C menu-workspace Task 32: Slice C (LATER) -- per-workspace-kind menu-bar
-      assignment (config kind -> bar name, mirroring keymaps CR-CH-027).
+- [x] MB.C menu-workspace Task 32: Slice C -- per-workspace-kind menu-bar
+      assignment. DELIVERED by the per-Kind `menu_bar` field (CR-NR-090) +
+      `resolve_menu_bar_menu_for` (CR-CH-041), which both the app-level
+      `render_menu_bar` and the split-region `render_region_menu_bar` call: a
+      Kind's effective `menu_bar` name resolves that named bar file, else the
+      `DEFAULT_MENU_BAR_NAME`, mirroring the per-kind keymaps pattern (CR-CH-027).
+      Test `menu_bar_uses_kind_menu_bar_else_default` (annotated menu-workspace
+      Req 17.9). No new code needed for CR-NR-080 closure.
       Covers: menu-workspace Req 17.9.
 - [x] MB.D menu-workspace Task 33: Slice D -- dynamic option sources: `THEME LIST`
       yields a Themes dropdown generated from `list_all_themes` (`dynamic_menu_options`),
@@ -2338,7 +2344,7 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 
 | Status | Count |
 |--------|-------|
-| `[ ]` Phase (menu-bar) | Configurable named menu bars (CR-NR-080, supersedes CR-NR-077) -- SPEC DONE: menu-workspace Req 17.1-17.11. Slice A (MB.A, Task 30) DONE: data-driven horizontal bar (`DEFAULT_MENUBAR_TOML` + `default_menubar_menu`; `render_menu_bar_from_menu` peek-dropdowns via `peek_menu_options`; leaf dispatch = command parity; first/last button ids preserved for CR-CH-023; `MENU_BAR_TOP_LEVEL_LABELS` removed); menu-workspace Req 17.1-17.4/17.6/17.7 PASS, 17.5 MANUAL (egui-native); verify.ps1 CLEAN; ffwb.exe rebuilt. Slices B-D (MB.B-MB.D, Tasks 31-33) LATER |
+| `[x]` Phase (menu-bar) | Configurable named menu bars (CR-NR-080, supersedes CR-NR-077) DONE -- all four slices: A data-driven horizontal peek-dropdown bar (`default_menubar_menu`/`render_menu_bar_from_menu`/`peek_menu_options`; leaf dispatch = command parity; first/last button ids for CR-CH-023; `MENU_BAR_TOP_LEVEL_LABELS` removed); B named + editable bar files (`resolve_menu_bar_menu` loads `menus/<slug>.toml`, user file overrides compiled default); C per-workspace-kind assignment (per-Kind `menu_bar` name via `resolve_menu_bar_menu_for`, CR-NR-090 + CR-CH-041, used by app-level + split-region render, mirrors keymaps CR-CH-027); D dynamic option sources (`THEME LIST` -> Themes dropdown from `list_all_themes`, delivers ex-CR-NR-077). menu-workspace Req 17.1-17.11 (17.5 MANUAL egui-native); TCR CR-NR-080 rows PASS; verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt. |
 
 ## Phase (app-profile) -- Application Profiles (CR-NR-081, startup-and-session Requirement 22)
 

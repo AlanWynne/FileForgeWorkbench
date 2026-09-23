@@ -540,8 +540,8 @@
   - [x] 31.1 `resolve_menu_bar_menu()` resolves the default bar name (`DEFAULT_MENU_BAR_NAME` = `MB-POM`, slug `mb-pom`) to `menus/<slug>.toml` via the loader; a user file OVERRIDES the compiled default (`default_menubar_menu` = barebones POM), else falls back to it. `render_menu_bar` calls it. `MB-` naming convention (not enforced); the file uses the same slugging as the Menus Editor so it is authorable there + round-trips `show_in_menu_bar` via the serialiser. Tests: `resolve_menu_bar_falls_back_to_compiled_default`, `resolve_menu_bar_loads_user_file_when_present`.
     - Covers: Requirement 17.8
 
-- [ ] 32. Slice C: per-workspace-kind menu-bar assignment (LATER)
-  - [ ] 32.1 Config mapping workspace-kind (context name) -> menu-bar name, mirroring the keymaps per-kind pattern (CR-CH-027); active tab kind selects the bar; default bar when unassigned
+- [x] 32. Slice C: per-workspace-kind menu-bar assignment
+  - [x] 32.1 Per-workspace-kind menu-bar name -> bar file, mirroring the keymaps per-kind pattern (CR-CH-027); the active tab's Kind selects the bar, default bar when unassigned. DELIVERED by the per-Kind `menu_bar` field (CR-NR-090) + `resolve_menu_bar_menu_for` (CR-CH-041), used by the app-level `render_menu_bar` and the split-region `render_region_menu_bar`. Test `menu_bar_uses_kind_menu_bar_else_default`.
     - Covers: Requirement 17.9
 
 - [x] 33. Slice D: dynamic option sources -> Themes dropdown (delivers ex-CR-NR-077)
