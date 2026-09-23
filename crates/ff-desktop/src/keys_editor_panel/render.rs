@@ -39,10 +39,8 @@ impl crate::shell::workspace_context::WorkspaceContext for KeysEditorState {
 pub fn render(ui: &mut egui::Ui, state: &mut KeysEditorState) -> KeysEditorAction {
     let mut action = KeysEditorAction::None;
 
-    ui.vertical_centered(|ui| {
-        ui.label(egui::RichText::new("Keys Editor").strong().size(14.0));
-    });
-    ui.add_space(4.0);
+    // CR-CH-045 (Req 17.14): the in-body "Keys Editor" title was removed; the
+    // Context title now shows once, centered, on the Title_Line.
 
     // --- Workspace-kind selector (the "name" that links the key list) -----
     // Reset the reported first-interior id each frame; the combo below sets it.

@@ -830,6 +830,94 @@ fn title_line_config_panel_shows_config() {
     assert_eq!(text, "[CONFIG]");
 }
 
+/// Validates: menu-and-statusbar Requirement 17.12, 17.13 (CR-CH-045) -- the
+/// Title_Line for the covered editor/config + read-only panel Contexts uses the
+/// descriptive Title-Case display name (via `title_line_display`), while the
+/// low-level `title_line_text` (the Tab_Header-tag derivation) is unchanged.
+#[test]
+fn title_line_display_shows_descriptive_title_case_for_covered_contexts() {
+    use crate::tab_state::{TabId, TabState};
+    use ff_document_model::new_document;
+    let shell = make_shell();
+
+    let config = TabState::config_panel(TabId(1), new_document());
+    assert_eq!(
+        shell.title_line_display(&config).as_deref(),
+        Some("Configuration"),
+        "Config Context Title_Line shows the descriptive display name"
+    );
+
+    let plugins = TabState::plugin_manager(TabId(2), new_document());
+    assert_eq!(
+        shell.title_line_display(&plugins).as_deref(),
+        Some("Plugin Manager")
+    );
+
+    let log = TabState::event_log(TabId(3), new_document());
+    assert_eq!(shell.title_line_display(&log).as_deref(), Some("Event Log"));
+
+    let macros = TabState::macro_library(TabId(4), new_document());
+    assert_eq!(
+        shell.title_line_display(&macros).as_deref(),
+        Some("Macro Library")
+    );
+
+    let catalogs = TabState::files_panel(TabId(5), new_document());
+    assert_eq!(
+        shell.title_line_display(&catalogs).as_deref(),
+        Some("Catalog Explorer")
+    );
+}
+
+/// Validates: menu-and-statusbar Requirement 17.12 (CR-CH-045) -- the file-editor
+/// path and the POM/Menu Contexts are NOT routed through `title_line_display`
+/// (they keep their existing path / Menu_Title derivation), so the helper returns
+/// `None` for them.
+#[test]
+fn title_line_display_is_none_for_editor_and_menu_contexts() {
+    use crate::tab_state::{TabId, TabState};
+    use ff_document_model::new_document;
+    let shell = make_shell();
+
+    let untitled = TabState::untitled(TabId(1), new_document(), 0);
+    assert_eq!(
+        shell.title_line_display(&untitled),
+        None,
+        "the editor Context keeps its path/[Untitled] Title_Line, not a display name"
+    );
+
+    let pom = TabState::pom(TabId(2), new_document());
+    assert_eq!(
+        shell.title_line_display(&pom),
+        None,
+        "the POM keeps its Menu_Title-centered Title_Line (CR-CH-042), not this helper"
+    );
+}
+
+/// Validates: menu-and-statusbar Requirement 17.13 (CR-CH-045) -- a USER Kind
+/// title override still wins for the Title_Line display (workspace-kinds Req 3),
+/// taking precedence over the descriptive default display name.
+#[test]
+fn title_line_display_honours_user_kind_override() {
+    use crate::tab_state::{TabId, TabState};
+    use ff_document_model::new_document;
+    let dir = tempfile::tempdir().expect("tempdir");
+    std::fs::write(
+        dir.path().join("theme.toml"),
+        "name = \"theme\"\nmodelled_on = \"theme\"\ntitle = \"My Palette\"\n",
+    )
+    .expect("write kind");
+    let mut shell = make_shell();
+    shell.kind_registry = crate::workspace_kind::KindRegistry::load(dir.path());
+
+    let theme = TabState::theme_editor(TabId(1), new_document());
+    assert_eq!(
+        shell.title_line_display(&theme).as_deref(),
+        Some("My Palette"),
+        "a user Kind title override wins over the default display name"
+    );
+}
+
 /// Validates: Requirement 17.6 -- FilesPanel tab shows tab title.
 #[test]
 fn title_line_files_panel_shows_files() {

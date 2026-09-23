@@ -131,6 +131,57 @@ fn builtin_default_titles_distinguish_catalogs_from_files() {
     );
 }
 
+/// Validates: menu-and-statusbar Requirement 17.13 (CR-CH-045) -- each Kind has a
+/// descriptive Title-Case display name for the centered Title_Line, DISTINCT from
+/// the terse bracketed `[XXX]` Tab_Header tag (`default_title`).
+#[test]
+fn builtin_display_titles_are_descriptive_title_case_and_distinct_from_tab_tags() {
+    // The covered editor/config + read-only panel Kinds.
+    assert_eq!(BuiltinKind::Config.display_title(), "Configuration");
+    assert_eq!(BuiltinKind::Theme.display_title(), "Theme Editor");
+    assert_eq!(BuiltinKind::Menus.display_title(), "Menu Editor");
+    assert_eq!(BuiltinKind::Keys.display_title(), "Key Assignments Editor");
+    assert_eq!(BuiltinKind::Kinds.display_title(), "Workspace Kinds Editor");
+    assert_eq!(
+        BuiltinKind::Commands.display_title(),
+        "Command Configurator"
+    );
+    assert_eq!(BuiltinKind::Catalogs.display_title(), "Catalog Explorer");
+    assert_eq!(BuiltinKind::Files.display_title(), "File Explorer");
+    assert_eq!(BuiltinKind::Search.display_title(), "Search Results");
+    assert_eq!(BuiltinKind::Plugins.display_title(), "Plugin Manager");
+    assert_eq!(BuiltinKind::Log.display_title(), "Event Log");
+    assert_eq!(BuiltinKind::Macros.display_title(), "Macro Library");
+
+    // The display title is descriptive (no brackets), unlike the tab tag.
+    for k in [
+        BuiltinKind::Config,
+        BuiltinKind::Theme,
+        BuiltinKind::Menus,
+        BuiltinKind::Keys,
+        BuiltinKind::Kinds,
+        BuiltinKind::Commands,
+        BuiltinKind::Catalogs,
+        BuiltinKind::Files,
+        BuiltinKind::Search,
+        BuiltinKind::Plugins,
+        BuiltinKind::Log,
+        BuiltinKind::Macros,
+    ] {
+        assert!(
+            !k.display_title().contains('['),
+            "{} display title must not be a bracketed tag",
+            k.stable_name()
+        );
+        assert_ne!(
+            k.display_title(),
+            k.default_title(),
+            "{} display title must differ from its [XXX] tab tag",
+            k.stable_name()
+        );
+    }
+}
+
 // === Registry ===============================================================
 
 /// Validates: workspace-kinds Requirement 2.1; design P1 -- the built-in registry

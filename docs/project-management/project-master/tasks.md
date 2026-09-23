@@ -2960,12 +2960,12 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 > removed -- the same de-duplication CR-CH-042 applied to menus.
 > menu-and-statusbar Req 17.12-17.14.
 
-- [ ] CTA.1 Requirements gate -- menu-and-statusbar Req 17.12-17.14, design delta, tasks (menu-and-statusbar Task 37), TCR NOT COVERED rows, change-log CR-CH-045.
-- [ ] CTA.2 `BuiltinKind::display_title()` descriptive Title-Case names (leave `default_title()` tab tags unchanged) + unit test. Covers Req 17.13.
-- [ ] CTA.3 Route the covered non-menu Contexts' Title_Line through the centered themed-heading branch of `render_title_line_into_ui` (user Kind title override still wins). Covers Req 17.12.
-- [ ] CTA.4 Remove the in-body titles from Theme/Menus/Keys/Kinds editors + Command Configurator. Covers Req 17.14.
-- [ ] CTA.5 Full-shell egui_kittest per covered Context (centered display title) + first-Tab focus tests stay green; verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR Req 17.12-17.14 PASS. Covers Req 17.12-17.14.
+- [x] CTA.1 Requirements gate -- menu-and-statusbar Req 17.12-17.14, design delta, tasks (menu-and-statusbar Task 37), TCR NOT COVERED rows, change-log CR-CH-045.
+- [x] CTA.2 `BuiltinKind::display_title()` descriptive Title-Case names (leave `default_title()` tab tags unchanged) + unit test. Covers Req 17.13.
+- [x] CTA.3 Route the covered non-menu Contexts' Title_Line through the centered themed-heading branch of `render_title_line_into_ui` (user Kind title override still wins). Covers Req 17.12.
+- [x] CTA.4 Remove the in-body titles from Theme/Menus/Keys/Kinds editors + Command Configurator. Covers Req 17.14.
+- [x] CTA.5 Full-shell egui_kittest per covered Context (centered display title) + first-Tab focus tests stay green; verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR Req 17.12-17.14 PASS. Covers Req 17.12-17.14.
 
 | Status | Count |
 |--------|-------|
-| `[ ]` Phase (custom-title-align) | CR-CH-045 PENDING GATE: custom-workspace Title_Line centered + descriptive Title Case + in-body title de-dup (menu-and-statusbar Req 17.12-17.14). |
+| `[x]` Phase (custom-title-align) | CR-CH-045 DONE: custom-workspace Title_Line centered + descriptive Title Case + in-body title de-dup (menu-and-statusbar Req 17.12-17.14). `BuiltinKind::display_title` + `WorkbenchShell::title_line_display` (user override wins) + widened centered branch in `render_title_line_into_ui`; in-body titles removed from Theme/Menus/Keys/Kinds editors + Command Configurator. Tests: `builtin_display_titles_...`, `title_line_display_*` (3), first-Tab focus suite green. verify.ps1 CLEAN FULL nextest. |

@@ -208,30 +208,38 @@ impl WorkbenchShell {
         // CR-NR-090 B.1: the Title_Line label comes from the Kind registry
         // (kind_title) so a reconfigured/user Kind shows its configured title;
         // Home banner / menu label / editor path are delegated inside kind_title.
-        let text = self.kind_title(tab);
         // CR-CH-042: the Menu Workspace Title_Line uses ONE THEME-DRIVEN, centered
         // "menu heading" look standardised on the POM aesthetic for EVERY menu --
         // the POM, Settings, and user menus alike (owner: "standardise on the POM
         // look and feel"). The colours come from the theme tokens
         // `primary_menu_bg` / `menu_bar_fg` (the ISPF "primary menu / screen
         // heading" pair), so the Theme Workspace already caters for it -- there
-        // are NO hardcoded POM colours and NO `is_home` branch. Non-menu Contexts
-        // (editor path, panel Kind title) keep the left-aligned Title_Line.
+        // are NO hardcoded POM colours and NO `is_home` branch.
+        //
+        // CR-CH-045 (Req 17.12-17.13): the editor/config + read-only panel
+        // Contexts ALSO use this centered themed heading, sourced from a
+        // descriptive Title-Case display name (`title_line_display`). Only the
+        // file-editor path keeps the left-aligned Title_Line (full path /
+        // [Untitled]).
         let is_menu_workspace = tab.kind == crate::tab_state::TabKind::MenuWorkspace;
+        let display = self.title_line_display(tab);
+        let centered = is_menu_workspace || display.is_some();
+        let text = display.unwrap_or_else(|| self.kind_title(tab));
         let bg = to_egui_color(self.palette.ui.primary_menu_bg);
         let fg = to_egui_color(self.palette.ui.menu_bar_fg);
-        if is_menu_workspace {
-            // Menu heading: themed fill + centered, strong monospace title. One
-            // path for the POM and every other menu (menu-workspace Req 20.2,
-            // menu-and-statusbar Req 17.11).
+        if centered {
+            // Themed fill + centered, strong monospace title. One path for the
+            // POM, every other menu, and (CR-CH-045) the custom editor/config +
+            // panel Contexts (menu-workspace Req 20.2, menu-and-statusbar Req
+            // 17.11/17.12).
             let rect = ui.max_rect();
             ui.painter().rect_filled(rect, 0.0, bg);
             ui.centered_and_justified(|ui| {
                 ui.colored_label(fg, egui::RichText::new(&text).monospace().strong());
             });
         } else {
-            // Non-menu Contexts (editor path / panel Kind title): themed fill,
-            // left-aligned (Req 17.8 Legacy / Req 21.5 non-Legacy -- same tokens).
+            // File-editor Context (path / [Untitled]): themed fill, left-aligned
+            // (Req 17.8 Legacy / Req 21.5 non-Legacy -- same tokens).
             let rect = ui.available_rect_before_wrap();
             ui.painter().rect_filled(rect, 0.0, bg);
             ui.colored_label(fg, egui::RichText::new(text).monospace());

@@ -2796,9 +2796,9 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | -- | Req 17.12: the Title_Line for non-menu editor/config + read-only panel Contexts renders CENTERED with the Menu Workspace themed-heading style (not left-aligned); file-editor and POM/Menu paths unchanged |
-| `ff-desktop` | 🔴 | -- | Req 17.13: the Title_Line shows a descriptive Title-Case display name (`BuiltinKind::display_title`), sourced independently of the Tab_Header `[XXX]` tag which stays unchanged; user Kind title override still wins |
-| `ff-desktop` | 🔴 | -- | Req 17.14: the redundant in-body titles (Theme/Menus/Keys/Kinds editors + Command Configurator) are removed so each Context shows its title once (the Title_Line) |
+| `ff-desktop` | ✅ | `shell::tests::{title_line_display_shows_descriptive_title_case_for_covered_contexts, title_line_display_is_none_for_editor_and_menu_contexts}` + `render_title_line_into_ui` centered branch (code review) | Req 17.12: the Title_Line for non-menu editor/config + read-only panel Contexts renders CENTERED with the Menu Workspace themed-heading style (via `title_line_display` -> centered branch); file-editor and POM/Menu paths unchanged (`title_line_display` returns None for them) |
+| `ff-desktop` | ✅ | `workspace_kind::tests::builtin_display_titles_are_descriptive_title_case_and_distinct_from_tab_tags`, `shell::tests::title_line_display_honours_user_kind_override` | Req 17.13: the Title_Line shows a descriptive Title-Case display name (`BuiltinKind::display_title`), sourced independently of the Tab_Header `[XXX]` tag (`default_title`, unchanged); a user Kind title override still wins |
+| `ff-desktop` | ✅ | `shell::tests::{full_shell_theme_editor_first_tab_focuses_theme_selector, full_shell_menus_editor_first_tab_focuses_menu_selector, full_shell_keys_first_tab_focuses_kind_dropdown, full_shell_kinds_first_tab_focuses_first_interior, full_shell_command_configurator_first_tab_focuses_interior}` (all green after in-body title removal) | Req 17.14: the redundant in-body titles (Theme/Menus/Keys/Kinds editors + Command Configurator) are removed so each Context shows its title once (the Title_Line); interior focus unchanged (first-Tab tests prove the removed labels did not shift the first interior control) |
 
 ### Phase (layout-tree) -- Shell Layout Tree foundation, invisible refactor (CR-NR-091, B046 Slice 2a)
 

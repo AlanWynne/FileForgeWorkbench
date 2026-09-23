@@ -1173,6 +1173,48 @@ impl WorkbenchShell {
         }
     }
 
+    /// The Title_Line heading text for the editor/config + read-only panel
+    /// Contexts covered by CR-CH-045 (menu-and-statusbar Req 17.12/17.13), and
+    /// `None` for every other Context (Home/Menu/editor keep their existing
+    /// derivation). For a covered Kind: a USER title override (a registry
+    /// `effective(name).title` that differs from the compiled `[XXX]`
+    /// `default_title`) WINS; otherwise the descriptive Title-Case
+    /// `display_title` is used. This keeps the Tab_Header `[XXX]` tag
+    /// (`kind_title`) intact while giving the centered Title_Line a descriptive,
+    /// de-bracketed heading.
+    pub(crate) fn title_line_display(&self, tab: &crate::tab_state::TabState) -> Option<String> {
+        use crate::tab_state::TabKind;
+        // Only the covered non-menu, non-editor Contexts get the descriptive
+        // centered heading; everything else returns None (unchanged behaviour).
+        let covered = matches!(
+            tab.kind,
+            TabKind::ConfigPanel
+                | TabKind::ThemeEditor
+                | TabKind::MenusEditor
+                | TabKind::KeysEditor
+                | TabKind::KindsEditor
+                | TabKind::CommandConfigurator
+                | TabKind::FilesPanel
+                | TabKind::FileExplorerPanel
+                | TabKind::SearchResults
+                | TabKind::PluginManager
+                | TabKind::EventLog
+                | TabKind::MacroLibrary
+        );
+        if !covered {
+            return None;
+        }
+        let builtin = crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind, tab.is_home);
+        let effective = self.kind_registry.effective(builtin.stable_name());
+        // A user override (effective title != the compiled [XXX] tag) wins;
+        // otherwise use the descriptive display title.
+        if effective.title != builtin.default_title() {
+            Some(effective.title.clone())
+        } else {
+            Some(builtin.display_title().to_string())
+        }
+    }
+
     /// The short Tab_Header label for a tab (the text on its tab-bar button),
     /// centralised so the render path has one source (CR-CH-042).
     ///

@@ -47,10 +47,8 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
     // buttons (select / add / delete / move / save / save as) produce actions.
     let mut action = MenusEditorAction::None;
 
-    ui.vertical_centered(|ui| {
-        ui.label(egui::RichText::new("Menus Editor").strong().size(14.0));
-    });
-    ui.add_space(4.0);
+    // CR-CH-045 (Req 17.14): the in-body "Menus Editor" title was removed; the
+    // Context title now shows once, centered, on the Title_Line.
 
     // --- Menu selector --------------------------------------------------
     // Reset the reported first-interior id each frame; the combo below sets it.

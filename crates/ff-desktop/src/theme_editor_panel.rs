@@ -245,10 +245,8 @@ pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAct
     let mut action = ThemeEditorAction::None;
     let mut token_action = ThemeEditorAction::None;
 
-    ui.vertical_centered(|ui| {
-        ui.label(egui::RichText::new("Theme Editor").strong().size(14.0));
-    });
-    ui.add_space(4.0);
+    // CR-CH-045 (Req 17.14): the in-body "Theme Editor" title was removed; the
+    // Context title now shows once, centered, on the Title_Line.
 
     // --- Theme selector -------------------------------------------------
     // Reset the reported first-interior id each frame; the combo below sets it

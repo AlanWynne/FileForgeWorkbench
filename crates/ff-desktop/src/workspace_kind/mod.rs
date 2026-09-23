@@ -115,6 +115,33 @@ impl BuiltinKind {
         }
     }
 
+    /// The descriptive, Title-Case DISPLAY name for the centered Title_Line
+    /// (CR-CH-045, menu-and-statusbar Req 17.13). This is DISTINCT from
+    /// [`default_title`], which is the terse bracketed `[XXX]` Tab_Header tag
+    /// (the ISPF tab label, B016) and stays unchanged. `Editor`, `Pom`, and
+    /// `Menu` retain their existing Title_Line derivation (file path / Menu_Title)
+    /// and are not routed through this helper, so their display names simply
+    /// mirror the tab tag here for completeness.
+    pub fn display_title(self) -> &'static str {
+        match self {
+            BuiltinKind::Editor => "Editor",
+            BuiltinKind::Files => "File Explorer",
+            BuiltinKind::Catalogs => "Catalog Explorer",
+            BuiltinKind::Config => "Configuration",
+            BuiltinKind::Search => "Search Results",
+            BuiltinKind::Plugins => "Plugin Manager",
+            BuiltinKind::Log => "Event Log",
+            BuiltinKind::Macros => "Macro Library",
+            BuiltinKind::Menu => "Menu",
+            BuiltinKind::Pom => "Primary Option Menu",
+            BuiltinKind::Commands => "Command Configurator",
+            BuiltinKind::Theme => "Theme Editor",
+            BuiltinKind::Menus => "Menu Editor",
+            BuiltinKind::Keys => "Key Assignments Editor",
+            BuiltinKind::Kinds => "Workspace Kinds Editor",
+        }
+    }
+
     /// Map a runtime `TabKind` (+ `is_home` for the POM split) to a built-in kind.
     /// A `MenuWorkspace` that is the Home Context maps to `Pom`, otherwise `Menu`.
     pub fn from_tab_kind(kind: TabKind, is_home: bool) -> BuiltinKind {

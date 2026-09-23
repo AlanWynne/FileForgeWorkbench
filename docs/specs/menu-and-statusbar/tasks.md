@@ -592,23 +592,23 @@ Do NOT start until the gate is approved.
           shows the app name/version. (Impl + verify + TCR in menu-workspace Task 37.7.)
     - Validates: menu-and-statusbar Requirement 17.4, 17.5, 17.6, 17.10
 
-- [ ] 37. Custom-workspace Title_Line conforms to the Menu Workspace title (CR-CH-045)
-  - [ ] 37.1 Add `BuiltinKind::display_title()` returning a descriptive Title-Case
+- [x] 37. Custom-workspace Title_Line conforms to the Menu Workspace title (CR-CH-045)
+  - [x] 37.1 Add `BuiltinKind::display_title()` returning a descriptive Title-Case
           name per Kind (Configuration, Theme Editor, Menu Editor, Key Assignments
           Editor, Workspace Kinds Editor, Command Configurator, Catalog Explorer,
           File Explorer, Search Results, Plugin Manager, Event Log, Macro Library);
           leave `default_title()` (`[XXX]` tab tags) unchanged. Unit test.
     - Validates: menu-and-statusbar Requirement 17.13
-  - [ ] 37.2 Route the Title_Line for the covered non-menu Contexts through the
+  - [x] 37.2 Route the Title_Line for the covered non-menu Contexts through the
           CENTERED themed-heading branch of `render_title_line_into_ui`, sourcing
           text from the display title (user Kind title override still wins);
           file-editor and POM/Menu paths unchanged.
     - Validates: menu-and-statusbar Requirement 17.12
-  - [ ] 37.3 Remove the in-body titles from Theme Editor, Menu Editor, Key
+  - [x] 37.3 Remove the in-body titles from Theme Editor, Menu Editor, Key
           Assignments Editor, Workspace Kinds Editor, and Command Configurator so
           each shows its title once (the Title_Line).
     - Validates: menu-and-statusbar Requirement 17.14
-  - [ ] 37.4 Full-shell egui_kittest: each covered Context's Title_Line reports the
+  - [x] 37.4 Full-shell egui_kittest: each covered Context's Title_Line reports the
           expected centered display title; existing first-Tab focus tests stay green
           (interior focus unchanged after in-body title removal). Update TCR.
     - Validates: menu-and-statusbar Requirement 17.12, 17.13, 17.14

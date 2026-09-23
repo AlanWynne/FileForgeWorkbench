@@ -69,10 +69,11 @@ pub fn render(
 ) -> ConfiguratorAction {
     let mut action = ConfiguratorAction::None;
 
-    // Header + Add action (Requirement 2.3).
+    // Header + Add action (Requirement 2.3). CR-CH-045 (Req 17.14): the in-body
+    // "Command Configurator" heading was removed (the Context title shows once,
+    // centered, on the Title_Line); the Add button row is retained.
     state.first_interior_id = None;
     ui.horizontal(|ui| {
-        ui.heading("Command Configurator");
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let add = ui.button("Add");
             // The "Add" button is the first interior Tab stop (B059).

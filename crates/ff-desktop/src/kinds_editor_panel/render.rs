@@ -32,14 +32,8 @@ impl crate::shell::workspace_context::WorkspaceContext for KindsEditorState {
 pub fn render(ui: &mut egui::Ui, state: &mut KindsEditorState) -> KindsEditorAction {
     let mut action = KindsEditorAction::None;
 
-    ui.vertical_centered(|ui| {
-        ui.label(
-            egui::RichText::new("Workspace Kinds Editor")
-                .strong()
-                .size(14.0),
-        );
-    });
-    ui.add_space(4.0);
+    // CR-CH-045 (Req 17.14): the in-body "Workspace Kinds Editor" title was
+    // removed; the Context title now shows once, centered, on the Title_Line.
 
     // --- Kind selector (FIRST interior control) --------------------------
     state.first_interior_id = None;
