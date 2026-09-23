@@ -580,25 +580,25 @@ Behaviour-preserving; TDD (failing tests first). Reuses the EXISTING
 `resolve_target` classifier + `dispatch_command_target`. Do NOT start until the
 gate is approved.
 
-- [ ] 35. Route the typed handle_command path through the CommandTarget classifier; retire the menu-open intercepts
-  - [ ] 35.1 Write failing tests FIRST: `typed_pom_resolves_as_menu_name_opens_home_context`
+- [x] 35. Route the typed handle_command path through the CommandTarget classifier; retire the menu-open intercepts
+  - [x] 35.1 Write failing tests FIRST: `typed_pom_resolves_as_menu_name_opens_home_context`
           (typing `POM` opens the Home Context after the `POM` arm is removed),
           `typed_settings_still_opens_settings_menu_in_place`,
           `builtin_verb_shadows_same_named_menu_on_typed_path`,
           `start_still_creates_tab_and_resolves_arg`. Confirm the POM one FAILS
           only if the arm is naively deleted without the classifier wiring (red).
     - Validates: command-framework Requirement 15.1, 15.2, 15.3, 15.5
-  - [ ] 35.2 In `handle_command`, after the Function_Verb arms that must shadow
+  - [x] 35.2 In `handle_command`, after the Function_Verb arms that must shadow
           menus (Req 8.10 order preserved), route the remaining token through
           `resolve_target` + `dispatch_command_target` (the same path the click
           seam uses). Delete the `if upper == "POM"` menu-open arm; `POM` resolves
           as `Menu { "pom" }`.
     - Validates: command-framework Requirement 15.1, 15.2, 15.6
-  - [ ] 35.3 Keep `START` as the tab-creator (route its `<arg>` through the same
+  - [x] 35.3 Keep `START` as the tab-creator (route its `<arg>` through the same
           classifier); keep the Function_Verbs and the CommandEngine fallthrough;
           keep the unresolved-command error.
     - Validates: command-framework Requirement 15.3, 15.4, 15.7
-  - [ ] 35.4 Confirm the resolution order + shadowing (Req 8.3/8.10) and
+  - [x] 35.4 Confirm the resolution order + shadowing (Req 8.3/8.10) and
           Command_Line_Outcome (Req 13) are unchanged; run the full existing shell
           command / menu / menu-name / fastpath suites -- all green
           (behaviour-preserving). verify.ps1 CLEAN FULL nextest; rebuild ffwb.exe;

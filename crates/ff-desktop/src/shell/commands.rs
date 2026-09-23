@@ -297,16 +297,16 @@ impl WorkbenchShell {
             return;
         }
 
-        if upper == "POM" {
-            // Validates: Requirement 14.10, 14.14, 20.5 -- the POM command opens
-            // the Home Context. It is the first-class Home opener; bare `START`
-            // (below) is its alias (menu-workspace Req 20.5). Dispatchable by name
-            // through this handler (command parity). The POM tab derives its short
-            // `POM` label from this command (Req 20.6, via `tab_header_label`).
-            self.tabs.insert_pom_tab(&self.runtime);
-            self.open_error = None;
-            return;
-        }
+        // CR-CH-044 (command-framework Req 15.2; menu-workspace Req 20.5 revised):
+        // the hardcoded `POM` menu-open intercept is RETIRED. `POM` now resolves
+        // as a Menu_Name (`Menu { name: "pom" }`) through the single
+        // Target_Resolution classifier -- it falls through to the stage-3
+        // `try_menu_name_dispatch` below, which opens/returns to the Home Context
+        // via `open_menu_by_name("pom")` (in place, no duplicate tab), exactly as
+        // `SETTINGS` resolves to the settings menu. This makes opening the POM one
+        // path with every other menu, with no POM special case in dispatch. The
+        // POM tab short label / Title_Line still derive from the menu name/title
+        // (CR-CH-042). `START` (below) remains the sole tab-creator.
 
         if let Some(arg) = verb_arg(cmd, "START") {
             // Validates: menu-workspace Requirement 14.8, 14.9 (CR-CH-022) --

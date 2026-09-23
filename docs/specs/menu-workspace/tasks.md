@@ -726,8 +726,8 @@ Implemented by the one slice in `docs/specs/command-framework/tasks.md` Task 35
 (the typed path routes through the classifier). This task records the
 menu-workspace obligation. Do NOT start until the gate is approved.
 
-- [ ] 38. POM resolves as a Menu_Name (retire the bespoke POM command arm)
-  - [ ] 38.1 The `POM` hardcoded `handle_command` arm is removed; typing `POM`
+- [x] 38. POM resolves as a Menu_Name (retire the bespoke POM command arm)
+  - [x] 38.1 The `POM` hardcoded `handle_command` arm is removed; typing `POM`
           resolves as `Menu { "pom" }` and opens/returns to the Home Context via
           `open_menu_by_name` (placement owned by the command, CR-CH-043 Req 19.5),
           exactly as `SETTINGS` resolves to the settings menu. `START` retained as

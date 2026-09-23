@@ -7366,6 +7366,89 @@ fn pom_command_and_bare_start_open_home_context() {
     );
 }
 
+// === CR-CH-044: typed path via the CommandTarget classifier =================
+
+/// Validates: command-framework Req 15.1/15.2/15.8; menu-workspace Req 20.5
+/// (revised) -- typing `POM` resolves as a Menu_Name (`Menu{pom}`) through the
+/// classifier (the stage-3 menu-name path) and lands on the Home Context, WITHOUT
+/// a bespoke `POM` intercept arm. This is behaviour-preserving: the retired arm
+/// and the menu-name path both open the Home Context via the same
+/// `open_menu_by_name("pom")` effect.
+#[test]
+fn typed_pom_resolves_as_menu_name_opens_home_context() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("START"); // ensure a POM exists and is active
+    assert!(shell.tabs.active_tab().is_home, "precondition: on the POM");
+    shell.handle_command("SETTINGS"); // leave the POM (in place)
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::MenuWorkspace);
+    assert!(!shell.tabs.active_tab().is_home, "left the POM");
+
+    shell.handle_command("POM");
+    assert!(
+        shell.tabs.active_tab().is_home,
+        "typing POM must land on the Home Context via Menu_Name resolution (no bespoke arm)"
+    );
+}
+
+/// Validates: command-framework Req 15.2/15.8 -- `SETTINGS` still opens the
+/// Settings menu in place on the typed path (unchanged; it was always a
+/// Menu_Name resolution, the model this CR applies to POM).
+#[test]
+fn typed_settings_still_opens_settings_menu_in_place() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("START");
+    let tabs_before = shell.tabs.len();
+    shell.handle_command("SETTINGS");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::MenuWorkspace);
+    assert!(!shell.tabs.active_tab().is_home, "left the POM");
+    assert_eq!(
+        shell.tabs.len(),
+        tabs_before,
+        "SETTINGS navigates in place (no new tab)"
+    );
+    let title_is_settings = shell
+        .tabs
+        .active_tab()
+        .menu_workspace
+        .as_ref()
+        .and_then(|mw| mw.menu.as_ref())
+        .map(|m| m.title.eq_ignore_ascii_case("Settings"))
+        .unwrap_or(false);
+    assert!(title_is_settings, "must be the Settings menu");
+}
+
+/// Validates: command-framework Req 15.3 -- `START` remains the sole tab-creator
+/// and is NOT retired: bare START opens a fresh POM tab (Home), and START with a
+/// resolvable arg roots the new tab at that Context.
+#[test]
+fn start_still_creates_tab_and_resolves_arg() {
+    use crate::tab_state::TabKind;
+    // Bare START -> new POM tab (Home).
+    let mut a = make_shell();
+    let before = a.tabs.len();
+    a.handle_command("START");
+    assert!(a.tabs.active_tab().is_home, "bare START roots at the POM");
+    assert!(
+        a.tabs.len() >= before,
+        "START creates a tab (is the tab-creator)"
+    );
+
+    // START <arg> roots the new tab directly at the resolved Context.
+    let mut b = make_shell();
+    b.handle_command("START SETTINGS");
+    assert_eq!(
+        b.tabs.active_tab().kind,
+        TabKind::MenuWorkspace,
+        "START SETTINGS roots the new tab at the Settings menu"
+    );
+    assert!(
+        !b.tabs.active_tab().is_home,
+        "START SETTINGS is not the POM"
+    );
+}
+
 /// Validates: menu-workspace Requirement 18.6 -- the Home Context resolves to the
 /// `pom` keymap context, while a non-Home Menu Workspace resolves to `menu`.
 #[test]
