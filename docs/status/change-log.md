@@ -917,8 +917,8 @@ Modifications to existing behaviour that already works.
 - **Date/Phase**: Phase CV (pre-gate, depends on CR-NR-045)
 - **Prompt**: "We need a full review of the current options in the POM... perhaps we need to create menu options for those that can be grouped."
 - **Description**: Review the current 9 POM options (0-8) against all implemented functionality. Revise the option list with logical grouping, adding entries for JES (job monitor), Search (global search), and Batch (batch execution) which currently have no POM entry. Define the default `menus/pom.toml` content. Update `startup-and-session` Req 14.3 accordingly.
-- **Status**: IN PROGRESS
-- **Linked spec**: `docs/specs/startup-and-session/requirements.md` Req 14.3 (revision), `docs/specs/menu-workspace/cv-requirements.md` (new)
+- **Status**: DISCARDED (owner decision). The POM is now DELIBERATELY MINIMALIST (compiled Recovery_Baseline `DEFAULT_POM_TOML`: `0` Settings / `1` Catalogs / `2` Files / `3` Help / `X` Return -- menu_workspace/defaults.rs, CR-NR-080). The owner's direction is to thoroughly TEST the minimalist option set first and only consider adding options (JES / Search / Batch / grouping) at a later stage, as a fresh change request when that work is scheduled. This CR's "expand + group the POM now" premise no longer holds; the POM is also fully user-editable (menus/pom.toml overrides the compiled default) so adding options needs no code change. Not to be implemented as written; revive as a NEW CR if/when POM expansion is scheduled.
+- **Linked spec**: `docs/specs/startup-and-session/requirements.md` Req 14.3 (POM default option list); `docs/specs/menu-workspace/cv-requirements.md` (historical). POM options are config-driven (menu-workspace Req 2) -- expansion is a menu-content change, not a code change.
 
 ### CR-NR-049 -- FFTest Context Inspection and Automatic Bug Logging
 - **Date/Phase**: Phase CZ (pre-gate)
