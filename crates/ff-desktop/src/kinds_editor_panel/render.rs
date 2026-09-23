@@ -171,6 +171,29 @@ pub fn render(ui: &mut egui::Ui, state: &mut KindsEditorState) -> KindsEditorAct
             p.line_end_mode = if unicode { "unicode" } else { "default" }.to_string();
         }
     });
+    // CR-NR-095 (Req 8.7): Command line position (Top/Bottom) bound directly to
+    // the working profile; Save persists it via the same write+reload path.
+    ui.horizontal(|ui| {
+        use crate::workspace_kind::CommandLinePosition;
+        ui.label("Command line:");
+        egui::ComboBox::from_id_salt("kinds_editor_cmdline_pos")
+            .selected_text(match p.command_line_position {
+                CommandLinePosition::Top => "Top",
+                CommandLinePosition::Bottom => "Bottom",
+            })
+            .show_ui(ui, |ui| {
+                ui.selectable_value(
+                    &mut p.command_line_position,
+                    CommandLinePosition::Top,
+                    "Top",
+                );
+                ui.selectable_value(
+                    &mut p.command_line_position,
+                    CommandLinePosition::Bottom,
+                    "Bottom",
+                );
+            });
+    });
 
     ui.separator();
     ui.horizontal(|ui| {

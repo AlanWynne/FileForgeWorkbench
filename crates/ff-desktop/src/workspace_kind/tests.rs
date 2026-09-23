@@ -238,3 +238,59 @@ fn registry_load_absent_dir_is_silent() {
     assert!(reg.notices().is_empty());
     assert_eq!(reg.effective("pom").title, "[POM]");
 }
+
+// === CR-NR-095: per-Kind command-line position (Top | Bottom) ===============
+
+/// Validates: workspace-kinds Requirement 8.1 -- the default command-line
+/// position is Top so every existing Kind's layout is unchanged.
+#[test]
+fn command_line_position_defaults_to_top() {
+    assert_eq!(
+        KindProfile::default().command_line_position,
+        CommandLinePosition::Top
+    );
+    // And the compiled built-in default carries Top.
+    let cfg = KindConfig::builtin_default(BuiltinKind::Editor);
+    assert_eq!(cfg.profile.command_line_position, CommandLinePosition::Top);
+}
+
+/// Validates: workspace-kinds Requirement 8.2 -- `command_line_position`
+/// round-trips through the Kind TOML with the stable `"top"`/`"bottom"` spelling,
+/// and (via `#[serde(default)]`) a file with no such key loads as Top.
+#[test]
+fn kind_profile_toml_roundtrips_command_line_position() {
+    // Bottom serialises to "bottom" and round-trips.
+    let mut cfg = KindConfig::builtin_default(BuiltinKind::Editor);
+    cfg.profile.command_line_position = CommandLinePosition::Bottom;
+    let toml_str = toml::to_string(&KindConfigToml::from(&cfg)).expect("serialise");
+    assert!(
+        toml_str.contains("command_line_position = \"bottom\""),
+        "expected stable lowercase spelling in TOML: {toml_str}"
+    );
+    let back: KindConfig = toml::from_str::<KindConfigToml>(&toml_str)
+        .expect("parse")
+        .into();
+    assert_eq!(
+        back.profile.command_line_position,
+        CommandLinePosition::Bottom
+    );
+
+    // A profile table WITHOUT the key loads as Top (serde default; no schema break).
+    let legacy = r#"
+name = "editor"
+modelled_on = "editor"
+title = "[EDIT]"
+
+[profile]
+tab_size = 8
+line_end_mode = "default"
+"#;
+    let parsed: KindConfig = toml::from_str::<KindConfigToml>(legacy)
+        .expect("parse legacy")
+        .into();
+    assert_eq!(
+        parsed.profile.command_line_position,
+        CommandLinePosition::Top,
+        "a Kind file predating the attribute must load as Top"
+    );
+}

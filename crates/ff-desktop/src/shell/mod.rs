@@ -1166,6 +1166,27 @@ impl WorkbenchShell {
         }
     }
 
+    /// The `Command_Line_Position` for the instance in the tab at `tab_index`
+    /// (CR-NR-095, Req 8.6). Resolves from that tab's Kind's effective profile via
+    /// the registry, the same resolution seam
+    /// [`apply_kind_profile_to_active`](Self::apply_kind_profile_to_active) uses.
+    /// Falls back to `Top` when the tab index is out of range (keeps the accessor
+    /// total; a missing Kind resolves to a built-in default whose position is Top).
+    pub(crate) fn command_line_position_for(
+        &self,
+        tab_index: usize,
+    ) -> crate::workspace_kind::CommandLinePosition {
+        let Some(tab) = self.tabs.tabs().get(tab_index) else {
+            return crate::workspace_kind::CommandLinePosition::Top;
+        };
+        let kind_name =
+            crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind, tab.is_home).stable_name();
+        self.kind_registry
+            .effective(kind_name)
+            .profile
+            .command_line_position
+    }
+
     /// Open a file into a new tab AND apply the resulting Kind's profile
     /// (CR-NR-090 B.3). The single shell open-file seam; wraps
     /// `TabManager::open_file`.

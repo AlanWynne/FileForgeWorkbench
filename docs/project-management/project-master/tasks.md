@@ -2911,15 +2911,15 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 > B072 (split command line default). Behaviour-additive; default Top preserves
 > current layout.
 
-- [ ] CLP.1 Requirements gate -- workspace-kinds Req 8 (per-Kind command-line position), design delta, tasks (workspace-kinds Task 18), TCR NOT COVERED rows, change-log CR-NR-095.
-- [ ] CLP.2 Failing tests first: KindProfile TOML round-trip for `command_line_position`; pure `split_region_strip_rects` Bottom layout. Covers Req 8.1/8.2/8.4.
-- [ ] CLP.3 `CommandLinePosition` enum + `KindProfile.command_line_position` (default Top) + `command_line_position_for` resolution helper. Covers Req 8.1/8.2/8.6.
-- [ ] CLP.4 Apply in the three render paths: unsplit top/bottom panel, split-region position-aware strip rects, detached top/bottom panel. Covers Req 8.3/8.4/8.5.
-- [ ] CLP.5 Kinds Editor Top/Bottom control bound to the working profile (Save via the shared position-setting seam). Covers Req 8.7.
-- [ ] CLP.6 RESET BARE returns position to Top (test; no new code). Covers Req 8.8.
-- [ ] CLP.7 `COMMAND` primary command: `COMMAND TOP` / `COMMAND BOTTOM` set, bare `COMMAND` toggles the active instance's Kind position via one shared seam (persists to the Kind file); ordered so it does not collide with `COMMANDS`. Covers Req 8.9-8.13.
-- [ ] CLP.8 Close: full-shell egui_kittest (Bottom renders at foot, Tab-order unchanged; `COMMAND BOTTOM` moves the field); verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR Req 8 PASS. Covers Req 8.
+- [x] CLP.1 Requirements gate -- workspace-kinds Req 8 (per-Kind command-line position), design delta, tasks (workspace-kinds Task 18), TCR NOT COVERED rows, change-log CR-NR-095.
+- [x] CLP.2 Failing tests first: KindProfile TOML round-trip for `command_line_position`; pure `split_region_strip_rects` Bottom layout. Covers Req 8.1/8.2/8.4.
+- [x] CLP.3 `CommandLinePosition` enum + `KindProfile.command_line_position` (default Top) + `command_line_position_for` resolution helper. Covers Req 8.1/8.2/8.6.
+- [x] CLP.4 Apply in the three render paths: unsplit top/bottom panel, split-region position-aware strip rects, detached top/bottom panel. Covers Req 8.3/8.4/8.5.
+- [x] CLP.5 Kinds Editor Top/Bottom control bound to the working profile (Save via the shared position-setting seam). Covers Req 8.7.
+- [x] CLP.6 RESET BARE returns position to Top (test; no new code). Covers Req 8.8.
+- [x] CLP.7 `COMMAND` primary command: `COMMAND TOP` / `COMMAND BOTTOM` set, bare `COMMAND` toggles the active instance's Kind position via one shared seam (persists to the Kind file); ordered so it does not collide with `COMMANDS`. Covers Req 8.9-8.13.
+- [x] CLP.8 Close: full-shell egui_kittest (Bottom renders at foot, Tab-order unchanged; `COMMAND BOTTOM` moves the field); verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR Req 8 PASS. Covers Req 8.
 
 | Status | Count |
 |--------|-------|
-| `[ ]` Phase (cmdline-position) | CR-NR-095 -- SPEC DONE (gate authored, PENDING APPROVAL): workspace-kinds Req 8.1-8.13 (Command_Line_Position Top/Bottom Kind_Profile attribute; TOML round-trip with `#[serde(default)]`; applied in unsplit/split-region/detached render paths resolved per instance; Kinds Editor toggle; RESET BARE -> Top; plus the ISPF `COMMAND` / `COMMAND TOP` / `COMMAND BOTTOM` runtime command sharing one position-setting seam and persisting to the Kind file). Impl pending approval: workspace-kinds Task 18. Behaviour-additive, default Top. Builds on CR-NR-090 + CR-CH-041 + CR-NR-094 + B072. |
+| `[x]` Phase (cmdline-position) | CR-NR-095 DONE: workspace-kinds Req 8.1-8.13 (Command_Line_Position Top/Bottom Kind_Profile attribute; TOML round-trip with `#[serde(default)]`; applied in unsplit/split-region/detached render paths resolved per instance via `command_line_position_for`; Kinds Editor toggle; RESET BARE -> Top; the ISPF `COMMAND` / `COMMAND TOP` / `COMMAND BOTTOM` runtime command sharing one `set_active_command_line_position` seam with the editor and persisting to the Kind file via `persist_kind_config`; `COMMAND` disjoint from `COMMANDS`). Impl: `CommandLinePosition` enum + `KindProfile.command_line_position`; position-aware `split_region_strip_rects`; COMMAND dispatch arm. ~10 new tests (2 workspace_kind unit + split Top/Bottom + 5 COMMAND + RESET-BARE + full-shell geometry); verify.ps1 CLEAN FULL nextest (9311 passed, 0 failed). Behaviour-additive, default Top. Builds on CR-NR-090 + CR-CH-041 + CR-NR-094 + B072. |

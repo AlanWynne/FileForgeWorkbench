@@ -143,26 +143,62 @@ impl WorkbenchShell {
             self.kinds_editor_panel.error = Some("No Kind selected".to_string());
             return;
         };
-        let dir = self.workspace_kinds_dir();
-        if let Err(e) = std::fs::create_dir_all(&dir) {
-            self.kinds_editor_panel.error =
-                Some(format!("Could not create workspace-kinds dir: {e}"));
-            return;
-        }
-        let toml_text = match toml::to_string(&KindConfigToml::from(&cfg)) {
-            Ok(t) => t,
-            Err(e) => {
-                self.kinds_editor_panel.error = Some(format!("Serialise failed: {e}"));
-                return;
+        match self.persist_kind_config(&cfg) {
+            Ok(()) => {
+                self.kinds_editor_panel.error =
+                    Some(format!("Saved workspace-kinds/{}.toml", cfg.name));
             }
-        };
-        let path = dir.join(format!("{}.toml", cfg.name));
-        if let Err(e) = std::fs::write(&path, toml_text) {
-            self.kinds_editor_panel.error = Some(format!("Save failed: {e}"));
-            return;
+            Err(e) => self.kinds_editor_panel.error = Some(e),
         }
-        // Reload the registry from the dir so the change is live (Req 6.3).
+    }
+
+    /// Serialise `cfg` to `workspace-kinds/<name>.toml` and reload the registry so
+    /// the change is live. THE single write+reload seam shared by the Kinds Editor
+    /// Save (Req 6.3) and the `COMMAND` command's position change (CR-NR-095
+    /// Req 8.11) so both persist through one code path. Returns a human-readable
+    /// error string on failure (the caller decides how to surface it).
+    pub(super) fn persist_kind_config(&mut self, cfg: &KindConfig) -> Result<(), String> {
+        let dir = self.workspace_kinds_dir();
+        std::fs::create_dir_all(&dir)
+            .map_err(|e| format!("Could not create workspace-kinds dir: {e}"))?;
+        let toml_text = toml::to_string(&KindConfigToml::from(cfg))
+            .map_err(|e| format!("Serialise failed: {e}"))?;
+        let path = dir.join(format!("{}.toml", cfg.name));
+        std::fs::write(&path, toml_text).map_err(|e| format!("Save failed: {e}"))?;
+        // Reload the registry from the dir so the change is live.
         self.kind_registry = KindRegistry::load(&dir);
-        self.kinds_editor_panel.error = Some(format!("Saved workspace-kinds/{}.toml", cfg.name));
+        Ok(())
+    }
+
+    /// Set the ACTIVE Workspace's Kind `Command_Line_Position` to `position`
+    /// (CR-NR-095, Req 8.9/8.10/8.11) and persist it. Resolves the active tab's
+    /// Kind stable name (the same seam as `command_line_position_for`), updates
+    /// that Kind's effective config's profile, and writes+reloads via
+    /// `persist_kind_config` so the change takes effect next frame AND survives a
+    /// restart. Because dispatch runs under `with_workspace_context` for a
+    /// detached window / split region, the "active" tab is THAT instance's tab
+    /// (Req 8.13). One shared seam with the Kinds Editor (Req 8.12).
+    pub(super) fn set_active_command_line_position(
+        &mut self,
+        position: crate::workspace_kind::CommandLinePosition,
+    ) {
+        let kind_name = {
+            let t = self.tabs.active_tab();
+            crate::workspace_kind::BuiltinKind::from_tab_kind(t.kind, t.is_home).stable_name()
+        };
+        let mut cfg = self.kind_registry.effective(kind_name).clone();
+        cfg.profile.command_line_position = position;
+        if let Err(e) = self.persist_kind_config(&cfg) {
+            self.open_error = Some(e);
+        } else {
+            self.open_error = None;
+        }
+    }
+
+    /// Toggle the ACTIVE Workspace's Kind `Command_Line_Position` (bare `COMMAND`,
+    /// Req 8.9). Reads the current effective position and sets the opposite.
+    pub(super) fn toggle_active_command_line_position(&mut self) {
+        let current = self.command_line_position_for(self.tabs.active_index());
+        self.set_active_command_line_position(current.toggled());
     }
 }

@@ -80,14 +80,21 @@ pub(crate) struct SplitRegionRects {
 }
 
 /// Compute a split region's stacked chrome strips from its outer `rect`
-/// (CR-CH-041 Req 16.2, B072). TOP TO BOTTOM: tab bar (24), menu bar (24),
-/// Title_Line (20), command line (24), then the Context body fills the
-/// remainder. This matches the unsplit / detached ISPF chrome order -- the
-/// command line sits directly UNDER the Title_Line and ABOVE the body, NOT at
-/// the region bottom (the B072 defect). Each strip is clamped to `rect.max.y`
-/// so a very short region degrades gracefully (the body simply shrinks toward
-/// empty rather than overflowing).
-pub(crate) fn split_region_strip_rects(rect: egui::Rect) -> SplitRegionRects {
+/// (CR-CH-041 Req 16.2, B072; CR-NR-095 Req 8.4). The top strips are always
+/// TOP TO BOTTOM: tab bar (24), menu bar (24), Title_Line (20). The command line
+/// (24) is placed per `position`:
+/// - `Top` (default): directly UNDER the Title_Line and ABOVE the body -- the
+///   unsplit / detached ISPF order, NOT the region bottom (the B072 fix).
+/// - `Bottom`: the LAST strip, pinned to the region foot, with the body filling
+///   the space between the Title_Line and the command line.
+///
+/// Each strip is clamped to `rect.max.y` so a very short region degrades
+/// gracefully (the body shrinks toward empty rather than overflowing).
+pub(crate) fn split_region_strip_rects(
+    rect: egui::Rect,
+    position: crate::workspace_kind::CommandLinePosition,
+) -> SplitRegionRects {
+    use crate::workspace_kind::CommandLinePosition;
     let tab_bar_h = 24.0_f32;
     let menu_bar_h = 24.0_f32;
     let title_h = 20.0_f32;
@@ -104,13 +111,33 @@ pub(crate) fn split_region_strip_rects(rect: egui::Rect) -> SplitRegionRects {
         egui::pos2(rect.min.x, menu_rect.max.y),
         egui::pos2(rect.max.x, (menu_rect.max.y + title_h).min(rect.max.y)),
     );
-    // Command line strip: directly UNDER the Title_Line (B072), not at the bottom.
-    let cmd_rect = egui::Rect::from_min_max(
-        egui::pos2(rect.min.x, title_rect.max.y),
-        egui::pos2(rect.max.x, (title_rect.max.y + cmd_field_h).min(rect.max.y)),
-    );
-    // The Context body fills the remainder below the command line.
-    let body_rect = egui::Rect::from_min_max(egui::pos2(rect.min.x, cmd_rect.max.y), rect.max);
+    let (cmd_rect, body_rect) = match position {
+        CommandLinePosition::Top => {
+            // Command line directly UNDER the Title_Line (B072); body below it.
+            let cmd_rect = egui::Rect::from_min_max(
+                egui::pos2(rect.min.x, title_rect.max.y),
+                egui::pos2(rect.max.x, (title_rect.max.y + cmd_field_h).min(rect.max.y)),
+            );
+            let body_rect =
+                egui::Rect::from_min_max(egui::pos2(rect.min.x, cmd_rect.max.y), rect.max);
+            (cmd_rect, body_rect)
+        }
+        CommandLinePosition::Bottom => {
+            // Command line is the LAST strip at the region foot; body fills the
+            // space between the Title_Line and the command line. Clamp the command
+            // strip top so a very short region does not push it above the title.
+            let cmd_top = (rect.max.y - cmd_field_h).max(title_rect.max.y);
+            let cmd_rect = egui::Rect::from_min_max(
+                egui::pos2(rect.min.x, cmd_top),
+                egui::pos2(rect.max.x, rect.max.y),
+            );
+            let body_rect = egui::Rect::from_min_max(
+                egui::pos2(rect.min.x, title_rect.max.y),
+                egui::pos2(rect.max.x, cmd_rect.min.y),
+            );
+            (cmd_rect, body_rect)
+        }
+    };
     SplitRegionRects {
         bar_rect,
         menu_rect,
@@ -214,7 +241,16 @@ impl WorkbenchShell {
     // ── Command field ────────────────────────────────────────────────────
 
     pub(super) fn render_command_field(&mut self, ctx: &egui::Context) {
-        egui::TopBottomPanel::top("command_field").show(ctx, |ui| {
+        // CR-NR-095 (Req 8.3): place the primary command field at the top or the
+        // bottom per the active instance's Kind Command_Line_Position. The panel
+        // BODY is identical either way; only the panel constructor differs.
+        use crate::workspace_kind::CommandLinePosition;
+        let position = self.command_line_position_for(self.tabs.active_index());
+        let panel = match position {
+            CommandLinePosition::Top => egui::TopBottomPanel::top("command_field"),
+            CommandLinePosition::Bottom => egui::TopBottomPanel::bottom("command_field"),
+        };
+        panel.show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.label("Command ===>");
                 let cmd_id = egui::Id::new("command_field_input");
@@ -325,13 +361,22 @@ impl WorkbenchShell {
         let cmd_id = egui::Id::new(("detached_command_field_input", tab_id.0));
         let accent = to_egui_color(self.palette.editor.accent);
         let modal_open = self.modal_open;
+        // CR-NR-095 (Req 8.5): place the detached window's command field per the
+        // detached instance's Kind position. We are inside `with_workspace_context`,
+        // so the active tab IS this detached instance.
+        use crate::workspace_kind::CommandLinePosition;
+        let position = self.command_line_position_for(self.tabs.active_index());
         // The detached field's buffers are the shell's own fields right now
         // (installed by `with_workspace_context`). Render the shared body against
         // them via short-lived local bindings, then reflect focus/submit back.
         let mut command_text = std::mem::take(&mut self.command_text);
         let mut focus_requested = self.command_field_focus_requested;
         let open_error = self.open_error.clone();
-        let signal = egui::TopBottomPanel::top(panel_id)
+        let panel = match position {
+            CommandLinePosition::Top => egui::TopBottomPanel::top(panel_id),
+            CommandLinePosition::Bottom => egui::TopBottomPanel::bottom(panel_id),
+        };
+        let signal = panel
             .show(ctx, |ui| {
                 Self::render_command_field_body(
                     ctx,
@@ -1076,13 +1121,22 @@ impl WorkbenchShell {
         // `Command ===>` line, then the Context body. The rect math is a PURE
         // helper (`split_region_strip_rects`) so the ordering is unit-testable
         // without egui (B072 regression guard).
+        // CR-NR-095 (Req 8.4): the command line's position is that of the Kind
+        // of the instance shown in THIS region (its active tab), resolved via the
+        // same registry seam as everywhere else. Falls back to Top when the leaf
+        // has no active tab.
+        let region_cmd_position = self
+            .tabs
+            .leaf_active_store_index(leaf_id)
+            .map(|idx| self.command_line_position_for(idx))
+            .unwrap_or(crate::workspace_kind::CommandLinePosition::Top);
         let SplitRegionRects {
             bar_rect,
             menu_rect,
             title_rect,
             cmd_rect,
             body_rect,
-        } = split_region_strip_rects(rect);
+        } = split_region_strip_rects(rect, region_cmd_position);
 
         // CR-NR-093 Slice 2c.2: record this leaf's rect so a tab-header drag can
         // be resolved to a drop target on release (Req 14.6).

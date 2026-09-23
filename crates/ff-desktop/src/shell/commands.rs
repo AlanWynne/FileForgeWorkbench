@@ -607,6 +607,34 @@ impl WorkbenchShell {
             return;
         }
 
+        // CR-NR-095 (Req 8.9-8.13): the ISPF `COMMAND` command moves the active
+        // Workspace's command line. `COMMAND TOP` / `COMMAND BOTTOM` set the
+        // position; bare `COMMAND` toggles it. It updates the active instance's
+        // Kind Command_Line_Position via the SAME position-setting seam the Kinds
+        // Editor uses (persists to the Kind file), so it takes effect next frame
+        // and survives restart. Checked BEFORE `COMMANDS` (plural); the two are
+        // disjoint (`"COMMANDS" != "COMMAND"` and does not start with `"COMMAND "`),
+        // so neither shadows the other (Req 8.12).
+        if upper == "COMMAND" {
+            self.toggle_active_command_line_position();
+            return;
+        }
+        if let Some(arg) = upper.strip_prefix("COMMAND ") {
+            use crate::workspace_kind::CommandLinePosition;
+            let arg = arg.trim();
+            match arg {
+                "TOP" => self.set_active_command_line_position(CommandLinePosition::Top),
+                "BOTTOM" => self.set_active_command_line_position(CommandLinePosition::Bottom),
+                other => {
+                    // Req 8.9: unknown argument -> non-blocking error, unchanged.
+                    self.open_error = Some(format!(
+                        "COMMAND: '{other}' is not a valid position (TOP or BOTTOM)"
+                    ));
+                }
+            }
+            return;
+        }
+
         if upper == "COMMANDS" {
             // Validates: command-configurator Requirement 2.1, 2.7; menu-workspace
             // Req 14.2 (CR-CH-022) -- navigate the current tab in place.

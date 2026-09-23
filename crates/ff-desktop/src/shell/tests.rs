@@ -6543,6 +6543,69 @@ fn full_shell_first_tab_focuses_reported_first_interior() {
     );
 }
 
+// Validates: workspace-kinds Req 8.3 (CR-NR-095) -- with the active Kind's
+// Command_Line_Position set to Bottom (via the COMMAND command), the unsplit
+// primary command field renders in the LOWER half of the window, and the
+// first-Tab Boundary_Policy is unchanged (still lands on the reported first
+// interior). Uses a throwaway kinds dir so the persist write is isolated.
+#[test]
+fn full_shell_command_bottom_moves_unsplit_field_to_bottom() {
+    use crate::workspace_kind::CommandLinePosition;
+    use tempfile::TempDir;
+    let mut harness = harness_shell();
+    let dir = TempDir::new().expect("tempdir");
+    harness.state_mut().workspace_kinds_dir_override = Some(dir.path().to_path_buf());
+
+    // Baseline: command field is focused and near the TOP of the window.
+    assert_eq!(harness.ctx.memory(|m| m.focused()), Some(cmd_field_id()));
+    let screen = harness.ctx.screen_rect();
+    let top_rect = harness
+        .ctx
+        .read_response(cmd_field_id())
+        .map(|r| r.rect)
+        .expect("command field has a rect");
+    assert!(
+        top_rect.center().y < screen.center().y,
+        "baseline: command field is in the upper half (Top default)"
+    );
+
+    // Move it to the bottom via the command.
+    harness.state_mut().handle_command("COMMAND BOTTOM");
+    for _ in 0..3 {
+        harness.run();
+    }
+    assert_eq!(
+        harness
+            .state()
+            .command_line_position_for(harness.state().tabs.active_index()),
+        CommandLinePosition::Bottom,
+        "COMMAND BOTTOM set the active Kind position to Bottom"
+    );
+    let bottom_rect = harness
+        .ctx
+        .read_response(cmd_field_id())
+        .map(|r| r.rect)
+        .expect("command field still has a rect after moving");
+    assert!(
+        bottom_rect.center().y > screen.center().y,
+        "command field now renders in the lower half of the window (Bottom)"
+    );
+
+    // Boundary_Policy unchanged: first Tab from the command field still lands on
+    // the reported first interior control (placement does not alter Tab-order).
+    harness.ctx.memory_mut(|m| m.request_focus(cmd_field_id()));
+    harness.run();
+    let expected_first = harness.state().first_interior_id;
+    assert!(expected_first.is_some(), "POM reports a first interior");
+    harness.press_key(egui::Key::Tab);
+    harness.run();
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        expected_first,
+        "first Tab still focuses the reported first interior with the field at the bottom"
+    );
+}
+
 // Validates: menu-and-statusbar Req 16.5 (B056) -- tabbing through the POM
 // interior and past the last interior control lands focus EXACTLY on the first
 // menu-bar button (Settings), so Enter there opens Settings (not File Catalogs).
@@ -8090,6 +8153,154 @@ fn kinds_editor_save_writes_file_and_reloads_registry() {
     assert_eq!(reloaded.effective("editor").title, "[MY EDITOR]");
 }
 
+// === CR-NR-095: COMMAND command sets/toggles command-line position ==========
+
+/// The active tab's Kind stable name (for asserting its effective position).
+fn active_kind_name(shell: &super::WorkbenchShell) -> &'static str {
+    let t = shell.tabs.active_tab();
+    crate::workspace_kind::BuiltinKind::from_tab_kind(t.kind, t.is_home).stable_name()
+}
+
+/// Validates: workspace-kinds Req 8.9 -- `COMMAND TOP` / `COMMAND BOTTOM` set the
+/// active Kind's command-line position.
+#[test]
+fn command_top_and_bottom_set_position() {
+    use crate::workspace_kind::CommandLinePosition;
+    use tempfile::TempDir;
+    let mut shell = make_shell();
+    let dir = TempDir::new().expect("tempdir");
+    shell.workspace_kinds_dir_override = Some(dir.path().to_path_buf());
+    let name = active_kind_name(&shell);
+
+    shell.handle_command("COMMAND BOTTOM");
+    assert_eq!(
+        shell
+            .kind_registry
+            .effective(name)
+            .profile
+            .command_line_position,
+        CommandLinePosition::Bottom,
+        "COMMAND BOTTOM sets the active Kind position to Bottom"
+    );
+    shell.handle_command("COMMAND TOP");
+    assert_eq!(
+        shell
+            .kind_registry
+            .effective(name)
+            .profile
+            .command_line_position,
+        CommandLinePosition::Top,
+        "COMMAND TOP sets it back to Top"
+    );
+}
+
+/// Validates: workspace-kinds Req 8.9 -- bare `COMMAND` toggles the position;
+/// case-insensitive verb + argument.
+#[test]
+fn command_bare_toggles_position() {
+    use crate::workspace_kind::CommandLinePosition;
+    use tempfile::TempDir;
+    let mut shell = make_shell();
+    let dir = TempDir::new().expect("tempdir");
+    shell.workspace_kinds_dir_override = Some(dir.path().to_path_buf());
+    let name = active_kind_name(&shell);
+
+    // Default is Top; bare COMMAND -> Bottom; again -> Top. Lower-case verb too.
+    shell.handle_command("command");
+    assert_eq!(
+        shell
+            .kind_registry
+            .effective(name)
+            .profile
+            .command_line_position,
+        CommandLinePosition::Bottom
+    );
+    shell.handle_command("COMMAND");
+    assert_eq!(
+        shell
+            .kind_registry
+            .effective(name)
+            .profile
+            .command_line_position,
+        CommandLinePosition::Top
+    );
+    // Case-insensitive argument.
+    shell.handle_command("command bottom");
+    assert_eq!(
+        shell
+            .kind_registry
+            .effective(name)
+            .profile
+            .command_line_position,
+        CommandLinePosition::Bottom
+    );
+}
+
+/// Validates: workspace-kinds Req 8.9 -- an unknown argument sets a non-blocking
+/// error and leaves the position unchanged.
+#[test]
+fn command_unknown_arg_sets_error_and_leaves_position() {
+    use crate::workspace_kind::CommandLinePosition;
+    use tempfile::TempDir;
+    let mut shell = make_shell();
+    let dir = TempDir::new().expect("tempdir");
+    shell.workspace_kinds_dir_override = Some(dir.path().to_path_buf());
+    let name = active_kind_name(&shell);
+
+    shell.handle_command("COMMAND SIDEWAYS");
+    assert!(
+        shell
+            .open_error
+            .as_deref()
+            .unwrap_or("")
+            .contains("SIDEWAYS"),
+        "unknown arg names the offending value in a non-blocking error"
+    );
+    assert_eq!(
+        shell
+            .kind_registry
+            .effective(name)
+            .profile
+            .command_line_position,
+        CommandLinePosition::Top,
+        "position unchanged after an unknown argument"
+    );
+}
+
+/// Validates: workspace-kinds Req 8.11 -- `COMMAND` persists the change to the
+/// Kind file (a fresh registry load from the same dir sees Bottom).
+#[test]
+fn command_persists_position_to_kind_file() {
+    use crate::workspace_kind::CommandLinePosition;
+    use tempfile::TempDir;
+    let mut shell = make_shell();
+    let dir = TempDir::new().expect("tempdir");
+    shell.workspace_kinds_dir_override = Some(dir.path().to_path_buf());
+    let name = active_kind_name(&shell);
+
+    shell.handle_command("COMMAND BOTTOM");
+    let reloaded = crate::workspace_kind::KindRegistry::load(dir.path());
+    assert_eq!(
+        reloaded.effective(name).profile.command_line_position,
+        CommandLinePosition::Bottom,
+        "COMMAND BOTTOM must persist to workspace-kinds/<name>.toml (survives reload)"
+    );
+}
+
+/// Validates: workspace-kinds Req 8.12 -- `COMMAND` (singular) does not shadow
+/// `COMMANDS` (plural): `COMMANDS` still opens the Command Configurator.
+#[test]
+fn command_singular_does_not_shadow_commands_plural() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.handle_command("COMMANDS");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::CommandConfigurator,
+        "COMMANDS (plural) still opens the Command Configurator, not the COMMAND arm"
+    );
+}
+
 // Validates: workspace-kinds Req 6.2 -- "New Kind modelled on <base>" seeds a
 // working copy that is a COPY of the base's config, with the new name and
 // modelled_on = Builtin(base).
@@ -8165,6 +8376,51 @@ fn reset_bare_restores_builtin_kind_registry() {
         shell.kind_registry.effective("editor").title,
         KindConfig::builtin_default(crate::workspace_kind::BuiltinKind::Editor).title,
         "RESET BARE must restore the built-in Kind defaults"
+    );
+}
+
+// Validates: workspace-kinds Req 8.8 (CR-NR-095) -- RESET BARE returns every
+// Kind's Command_Line_Position to the compiled default (Top). No separate reset
+// path: it falls out of the registry rebuild from with_builtin_defaults().
+#[test]
+fn reset_bare_returns_command_line_position_to_top() {
+    use crate::shell::reset_bare::ResetBareTarget;
+    use crate::workspace_kind::{CommandLinePosition, KindRegistry};
+    use tempfile::TempDir;
+
+    let mut shell = make_shell();
+
+    // A live registry where the editor Kind was saved with Bottom.
+    let kinds_dir = TempDir::new().expect("tempdir");
+    let toml = "name=\"editor\"\nmodelled_on=\"editor\"\ntitle=\"[EDIT]\"\n\n[profile]\ncommand_line_position=\"bottom\"";
+    std::fs::write(kinds_dir.path().join("editor.toml"), toml).expect("write");
+    shell.kind_registry = KindRegistry::load(kinds_dir.path());
+    assert_eq!(
+        shell
+            .kind_registry
+            .effective("editor")
+            .profile
+            .command_line_position,
+        CommandLinePosition::Bottom,
+        "precondition: the live registry carries Bottom"
+    );
+
+    let target_dir = TempDir::new().expect("tempdir");
+    let target = ResetBareTarget::single(
+        "(default)".to_string(),
+        target_dir.path().to_path_buf(),
+        true,
+    );
+    shell.execute_reset_bare(&target);
+
+    assert_eq!(
+        shell
+            .kind_registry
+            .effective("editor")
+            .profile
+            .command_line_position,
+        CommandLinePosition::Top,
+        "RESET BARE must return the command-line position to the compiled default (Top)"
     );
 }
 
@@ -9338,9 +9594,10 @@ fn detached_chained_fastpath_does_not_change_primary_active_tab() {
 #[test]
 fn split_region_command_line_is_under_title_above_body() {
     use super::render::split_region_strip_rects;
+    use crate::workspace_kind::CommandLinePosition;
     // A tall region (e.g. a full-height split half).
     let region = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(600.0, 900.0));
-    let r = split_region_strip_rects(region);
+    let r = split_region_strip_rects(region, CommandLinePosition::Top);
     // Top-to-bottom order: tab bar -> menu bar -> Title_Line -> command line -> body.
     assert!(
         r.bar_rect.min.y <= r.menu_rect.min.y,
@@ -9367,6 +9624,40 @@ fn split_region_command_line_is_under_title_above_body() {
     assert_eq!(
         r.body_rect.max.y, region.max.y,
         "body extends to region bottom"
+    );
+}
+
+/// Validates: workspace-kinds Req 8.4 (CR-NR-095) -- when a region's Kind has
+/// Command_Line_Position::Bottom, the command line is the LAST strip at the
+/// region foot and the body sits ABOVE it (below the Title_Line). Pure test.
+#[test]
+fn split_region_command_line_at_bottom_when_position_bottom() {
+    use super::render::split_region_strip_rects;
+    use crate::workspace_kind::CommandLinePosition;
+    let region = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(600.0, 900.0));
+    let r = split_region_strip_rects(region, CommandLinePosition::Bottom);
+    // Chrome order unchanged at the top: tab bar -> menu bar -> Title_Line.
+    assert!(
+        r.bar_rect.min.y <= r.menu_rect.min.y,
+        "tab bar above menu bar"
+    );
+    assert!(
+        r.menu_rect.min.y <= r.title_rect.min.y,
+        "menu bar above title"
+    );
+    // Body sits directly under the Title_Line now (command line is NOT here).
+    assert!(
+        r.title_rect.max.y <= r.body_rect.min.y,
+        "body starts under the Title_Line when the command line is at the bottom"
+    );
+    // Command line is the LAST strip, below the body, pinned to the region foot.
+    assert!(
+        r.body_rect.max.y <= r.cmd_rect.min.y,
+        "command line is BELOW the body when position is Bottom"
+    );
+    assert_eq!(
+        r.cmd_rect.max.y, region.max.y,
+        "command line sits at the region bottom when position is Bottom"
     );
 }
 

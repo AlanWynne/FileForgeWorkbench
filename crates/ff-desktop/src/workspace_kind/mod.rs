@@ -179,6 +179,30 @@ impl BaseKind {
     }
 }
 
+/// Where a Workspace Kind places its `Command ===>` line (CR-NR-095, Req 8).
+/// `Top` (the default) puts it under the Title_Line, above the Context body (the
+/// existing behaviour); `Bottom` puts it below the body, at the foot of the
+/// Workspace. Serialises to the stable lowercase spelling `"top"` / `"bottom"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum CommandLinePosition {
+    /// Command line under the Title_Line, above the body (current default).
+    #[default]
+    Top,
+    /// Command line at the foot of the Workspace, below the body.
+    Bottom,
+}
+
+impl CommandLinePosition {
+    /// The opposite position (for the bare `COMMAND` toggle, Req 8.9).
+    pub fn toggled(self) -> Self {
+        match self {
+            CommandLinePosition::Top => CommandLinePosition::Bottom,
+            CommandLinePosition::Bottom => CommandLinePosition::Top,
+        }
+    }
+}
+
 /// The profile attributes a Kind carries (applied on open in B.3; inert in B.1).
 /// Extensible: theme override / default view-edit mode / working dir are future.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -191,6 +215,10 @@ pub struct KindProfile {
     /// Line-end mode name ("default" | "unicode"), kept as a string so the
     /// persisted schema is stable without depending on ff-document-model here.
     pub line_end_mode: String,
+    /// Where this Kind places its `Command ===>` line (CR-NR-095, Req 8.1).
+    /// Defaults to `Top`; round-trips via the struct-level `#[serde(default)]`
+    /// so a Kind file predating this attribute loads as `Top` (Req 8.2).
+    pub command_line_position: CommandLinePosition,
 }
 
 impl Default for KindProfile {
@@ -199,6 +227,7 @@ impl Default for KindProfile {
             edit_profile: EditProfile::default(),
             tab_size: 8,
             line_end_mode: "default".to_string(),
+            command_line_position: CommandLinePosition::default(),
         }
     }
 }
