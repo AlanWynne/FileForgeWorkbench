@@ -758,21 +758,36 @@ fn key_label_bar_updates_on_key_map_change() {
 
 // ── Phase AL: Title Line tests ─────────────────────────────────────────
 
-/// Validates: Requirement 17.3 -- POM tab Title_Line shows app name and version.
+/// Validates: Requirement 17.3 (REVISED by CR-CH-042) / menu-workspace Req 20.3 --
+/// the POM tab Title_Line shows the POM Menu_Title, NOT the hardcoded application
+/// banner + version. With a menu loaded it is the raw pom.toml title; with a bare
+/// POM tab (no menu yet) it is the `[POM]` cached fallback. Either way it must not
+/// be the `FileForge Workbench  vX.Y.Z` banner.
 #[test]
-fn title_line_pom_tab_shows_app_name_and_version() {
-    // Validates: Requirement 17.3
+fn title_line_pom_tab_shows_menu_title_not_banner() {
+    // Validates: menu-and-statusbar Requirement 17.3; menu-workspace Requirement 20.3
     use crate::tab_state::{TabId, TabState};
     use ff_document_model::new_document;
-    let tab = TabState::pom(TabId(1), new_document());
-    let text = super::title_line_text(&tab);
+    // Bare POM tab (no loaded menu): the cached fallback, not the banner.
+    let bare = TabState::pom(TabId(1), new_document());
+    let bare_text = super::title_line_text(&bare);
     assert!(
-        text.contains("FileForge Workbench"),
-        "must contain app name: {text}"
+        !bare_text.contains(env!("CARGO_PKG_VERSION")),
+        "POM Title_Line must not carry the version banner: {bare_text}"
     );
-    assert!(
-        text.contains(env!("CARGO_PKG_VERSION")),
-        "must contain version: {text}"
+    assert_eq!(
+        bare_text, "[POM]",
+        "bare POM falls back to the cached [POM]"
+    );
+
+    // With the compiled Recovery_Baseline POM menu loaded: the raw Menu_Title.
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
+    let loaded_text = super::title_line_text(shell.tabs.active_tab());
+    assert_eq!(
+        loaded_text, "FileForge Workbench -- Primary Option Menu",
+        "loaded POM Title_Line is the pom.toml Menu_Title (not the app banner)"
     );
 }
 
@@ -1055,7 +1070,11 @@ fn title_line_menu_workspace_uses_loaded_menu_not_stale_title() {
     )
     .expect("write");
     let mw = MenuWorkspaceState::load(f.path());
-    assert_eq!(mw.tab_title(), "[SETTINGS]", "sanity: loaded menu label");
+    assert_eq!(
+        mw.tab_title(),
+        "[SETTINGS]",
+        "sanity: loaded menu tab label"
+    );
 
     let mut tab = TabState::menu_workspace_tab(TabId(7), new_document(), mw);
     // Simulate an in-place context switch that updated the loaded menu but left
@@ -1063,11 +1082,15 @@ fn title_line_menu_workspace_uses_loaded_menu_not_stale_title() {
     tab.title = "[FILES]".to_string();
     tab.is_home = false;
 
+    // CR-CH-042 (Req 17.11): the Title_Line now shows the RAW Menu_Title
+    // ("Settings"), not the bracketed tab label -- but it is still LIVE-derived
+    // from the loaded menu, never the stale cached tab.title (the B050 / Req
+    // 17.10 guarantee this test protects).
     let text = super::title_line_text(&tab);
     assert_eq!(
-        text, "[SETTINGS]",
-        "Title_Line must derive a non-Home Menu_Workspace label from its loaded \
-         menu, not the stale cached tab.title"
+        text, "Settings",
+        "Title_Line must derive a Menu_Workspace label from its loaded menu \
+         (raw Menu_Title), not the stale cached tab.title"
     );
 }
 
@@ -7253,13 +7276,93 @@ fn home_context_seeds_barebones_menu_on_render() {
 /// Home Context with the app banner, derived from the Menu Workspace (is_home),
 /// not a distinct POM tab kind.
 #[test]
-fn home_context_title_line_shows_app_banner() {
+fn home_context_title_line_shows_menu_title_not_banner() {
+    // CR-CH-042 (menu-workspace Req 20.2/20.3; menu-and-statusbar Req 17.3):
+    // the POM Title_Line shows the loaded pom.toml Menu_Title, NOT the hardcoded
+    // "FileForge Workbench  vX.Y.Z" application banner. (Revises the former
+    // home_context_title_line_shows_app_banner assertion.)
     let mut shell = make_shell();
     shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
     let text = super::title_line_text(shell.tabs.active_tab());
     assert!(
-        text.starts_with("FileForge Workbench  v"),
-        "Home Context title line must be the app banner, got: {text:?}"
+        !text.starts_with("FileForge Workbench  v"),
+        "POM Title_Line must NOT be the app banner (CR-CH-042), got: {text:?}"
+    );
+    // The loaded compiled Recovery_Baseline POM title.
+    assert_eq!(
+        text, "FileForge Workbench -- Primary Option Menu",
+        "POM Title_Line must be the loaded pom.toml Menu_Title"
+    );
+}
+
+/// Validates: menu-workspace Req 20.2; menu-and-statusbar Req 17.11 -- both the
+/// POM and the Settings menu Title_Line derive from their loaded Menu_Title (the
+/// raw title, not bracketed/uppercased), one uniform source. This is the pure
+/// `title_line_text` derivation; the centering is asserted at the render site.
+#[test]
+fn pom_and_settings_title_line_derive_from_loaded_menu_title() {
+    use crate::menu_workspace::MenuWorkspaceState;
+    use crate::tab_state::{TabId, TabState};
+    use ff_document_model::new_document;
+    use std::io::Write;
+
+    // POM: loaded pom.toml title, raw (not bracketed).
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
+    let pom_text = super::title_line_text(shell.tabs.active_tab());
+    assert_eq!(pom_text, "FileForge Workbench -- Primary Option Menu");
+
+    // Settings: a loaded menu titled "Settings" -> the Title_Line shows the RAW
+    // title "Settings" (CR-CH-042 replaces the former "[SETTINGS]" bracketed form).
+    let mut f = tempfile::NamedTempFile::new().expect("tempfile");
+    f.write_all(b"title = \"Settings\"\n[[options]]\nkey=\"A\"\ncommand=\"CONFIG\"\ndescription=\"Config\"\n")
+        .expect("write");
+    let mw = MenuWorkspaceState::load(f.path());
+    let tab = TabState::menu_workspace_tab(TabId(9), new_document(), mw);
+    let set_text = super::title_line_text(&tab);
+    assert_eq!(
+        set_text, "Settings",
+        "Settings Title_Line must be the raw Menu_Title, not [SETTINGS]"
+    );
+}
+
+/// Validates: menu-workspace Req 20.4/20.6 -- the POM (Home Context) Tab_Header
+/// shows the Short_Tab_Label "POM", not the long application banner. Asserted via
+/// the shared `tab_header_label` helper that the render_chrome tab bar uses.
+#[test]
+fn pom_tab_header_is_short_label_pom() {
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
+    let label = shell.tab_header_label(shell.tabs.active_tab());
+    assert_eq!(
+        label, "POM",
+        "the POM tab header must be the short label 'POM', not the app banner"
+    );
+}
+
+/// Validates: menu-workspace Req 20.5 -- the `POM` command opens/returns to the
+/// Home Context, and bare `START` is an alias that also lands on the Home
+/// Context. START's tab-creation forms (Req 14.8) are exercised elsewhere.
+#[test]
+fn pom_command_and_bare_start_open_home_context() {
+    // POM command.
+    let mut a = make_shell();
+    a.handle_command("EDIT somefile"); // move off any initial POM (best effort)
+    a.handle_command("POM");
+    assert!(
+        a.tabs.active_tab().is_home,
+        "the POM command must land on the Home Context"
+    );
+
+    // Bare START alias.
+    let mut b = make_shell();
+    b.handle_command("START");
+    assert!(
+        b.tabs.active_tab().is_home,
+        "bare START (alias of POM) must land on the Home Context"
     );
 }
 

@@ -1593,11 +1593,17 @@ The POM tab header (`shell/render_chrome.rs`, ~line 538) also routes through
   `add_space` in `menu_workspace/render.rs`; the option list moves up. The
   Layout_Tier / calendar-fit computation (CR-CH-032, Req 16) and the focus
   contract are untouched (Req 20.9) -- only the heading row is gone.
-- **Short POM tab label `POM` (Req 20.4/20.6).** The POM tab header stops showing
-  the app banner. `TabState::pom` already caches `"[POM]"`; the render_chrome
-  tab-header path for the Home tab returns a short `POM` label (e.g. the cached
-  short label, or derived from the POM command per Req 20.6) rather than
-  `kind_title`'s banner. Other tabs' short labels are unchanged.
+- **Uniform command/Menu_Name-derived tab header, NO POM branch (Req 20.4/20.6).**
+  `tab_header_label` derives EVERY Menu Workspace tab header from the Menu_Name --
+  the backing `menus/<name>.toml` stem, uppercased (`MenuWorkspaceState
+  ::menu_name_label()`): `pom` -> `POM`, `settings` -> `SETTINGS`,
+  `reports` -> `REPORTS`. The POM is NOT special-cased: there is NO `if
+  tab.is_home` branch in the header path; `POM` falls out because the POM is the
+  menu named `pom` (the name its opening command uses). The former app-banner POM
+  header disappears as a consequence. Non-menu Contexts keep the Kind-registry
+  header (`kind_title`). The only sanctioned POM special case anywhere is the
+  load-time "always have >=1 POM instance" guarantee -- never in title/header
+  derivation.
 - **`POM` command + `START` alias (Req 20.5).** A `POM` command already exists
   (`shell/commands.rs`, `if upper == "POM"` -> `insert_pom_tab`). Make it the
   first-class Home opener and accept `START` (bare) as its alias for opening the
@@ -1635,7 +1641,8 @@ needed). Docs already updated. No new crate.
   POM and Settings Title_Line use the centered path (same format).
 - `menu_body_has_no_duplicate_title_heading` -- the option-list render no longer
   emits the centered `menu.title` heading above the options.
-- `pom_tab_header_is_short_label` -- the POM tab header == `POM`, not the banner.
+- `pom_tab_header_is_short_label_pom` -- the POM tab header == `POM`, derived by
+  the general Menu_Name rule (no POM branch), not the banner.
 - `pom_command_opens_home_context` + `start_is_alias_of_pom_for_bare_form` --
   the `POM` command opens the Home Context and bare `START` does the same;
   `START =<path>` / `START <arg>` forms unchanged.

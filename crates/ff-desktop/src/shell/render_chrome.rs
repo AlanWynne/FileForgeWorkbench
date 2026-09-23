@@ -508,35 +508,10 @@ impl WorkbenchShell {
                         } else {
                             inactive_text
                         };
-                        // Validates: CX Requirement 1.4 -- show workspace_name in tab header
-                        let base_title = if let Some(ref name) = tab.workspace_name {
-                            match tab.kind {
-                                crate::tab_state::TabKind::FileEditor
-                                | crate::tab_state::TabKind::Untitled => {
-                                    format!("{}: {}", name, tab.title)
-                                }
-                                _ => format!("[{}]", name),
-                            }
-                        } else if tab.kind == crate::tab_state::TabKind::MenuWorkspace
-                            && !tab.is_home
-                        {
-                            // CR-CH-034 / B050 (Req 17.10): derive a non-Home
-                            // Menu_Workspace header from its CURRENTLY loaded
-                            // menu so an in-place context switch can never leave
-                            // the tab header showing the previous Context's
-                            // label. The cached title is the fallback only when
-                            // no menu is loaded.
-                            tab.menu_workspace
-                                .as_ref()
-                                .map(|mw| mw.tab_title())
-                                .unwrap_or_else(|| tab.title.clone())
-                        } else {
-                            // CR-NR-090 B.1: derive the header from the Kind
-                            // registry (kind_title) so it reflects the Kind's
-                            // configured title (fixes the Catalogs/[FILES] smell)
-                            // and updates live when a Kind is reconfigured.
-                            self.kind_title(tab)
-                        };
+                        // The Tab_Header short label, centralised in
+                        // `tab_header_label` (CR-CH-042): workspace_name > POM
+                        // short `POM` > non-Home menu `[TITLE]` > Kind title.
+                        let base_title = self.tab_header_label(tab);
                         let label = if tab.is_modified {
                             format!("● {}", base_title)
                         } else {

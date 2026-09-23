@@ -1346,22 +1346,33 @@ and centered, and drops the duplicate.
    Requirement 17.3, which is amended in lock-step; the application name/version
    remains available elsewhere in the shell -- e.g. an About affordance or the
    status area -- and is not lost, but it is no longer the POM Title_Line.)
-4. THE Tab_Header label of the POM (Home Context) SHALL be a Short_Tab_Label
-   consistent with how other workspaces derive their short tab labels, NOT the
-   long application banner. THE POM Short_Tab_Label SHALL be `POM`.
+4. THE Tab_Header label of EVERY Menu Workspace SHALL be derived by ONE uniform
+   rule with NO POM-specific branch: the Menu_Name (the backing
+   `menus/<name>.toml` stem -- the name the OPENING COMMAND uses), uppercased.
+   The POM is NOT a special case here: it is the Menu Workspace named `pom`, so
+   the same rule yields `POM`; the Settings menu yields `SETTINGS`; a user menu
+   `reports.toml` yields `REPORTS`. There SHALL be NO code that checks
+   `is_home` (or any POM flag) to force the header to `POM` -- the label falls
+   out of the general Menu_Name derivation. The former long application-banner
+   POM header is removed as a consequence of applying the general rule.
 5. THE workbench SHALL provide a `POM` command that opens (or returns to) the
-   Home Context, so the POM is command-addressable like every other workspace
+   Home Context, so the POM is command-addressable like every other menu
    (command parity, architecture-brief Principle 2). `START` SHALL be accepted as
    an ALIAS that opens the Home Context (its existing tab-creation forms of
    menu-workspace Requirement 14.8-14.9 are preserved: bare `START` and `START
    =<path>` / `START <arg>`; the bare form is the POM-opening alias). The `POM`
    command SHALL be registered/dispatchable by name (command parity) so a menu
-   option, key binding, or typed command can invoke it.
-6. THE POM Short_Tab_Label (criterion 4) SHALL be derivable from the POM's
-   command (`POM`), the same mechanism by which other workspace tabs derive their
-   short labels from their opening command (ties to workspace-kinds Requirement 3
-   title derivation and menu-and-statusbar Requirement 17.10 live-title
-   derivation), so the POM is no longer a special long-banner case.
+   option, key binding, or typed command can invoke it. The command name `POM`
+   is the Menu_Name of the `pom` menu, which is why the general Tab_Header rule
+   (criterion 4) yields `POM` -- the header comes from the command/menu name, not
+   from a POM special case.
+6. THE Tab_Header derivation of criterion 4 SHALL be the SAME single code path
+   for the POM and every other Menu Workspace (and SHALL sit alongside the
+   general per-Kind header derivation for non-menu Contexts, workspace-kinds
+   Requirement 3). The ONLY sanctioned POM-specific behaviour in the whole
+   workbench is the load-time guarantee that at least one POM instance exists
+   (menu-workspace Requirement 18.4 / startup-and-session Requirement 14.1);
+   title and tab-header derivation SHALL contain no POM special case.
 7. THE single-title change SHALL preserve the existing Title_Line behaviour for
    NON-menu Contexts unchanged: a file editor Title_Line still shows the file
    path / `[Untitled]` (menu-and-statusbar Requirement 17.4/17.5) and a

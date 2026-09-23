@@ -3016,9 +3016,9 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | 🔴 | -- | menu-workspace Req 20.1: Menu_Title is the single title source; a Menu Workspace renders its title in exactly one position (the duplicate body heading removed) |
 | `ff-desktop` | 🔴 | -- | menu-workspace Req 20.2 / menu-and-statusbar Req 17.11: every Menu_Workspace (POM/Settings/user) Title_Line shows the raw Menu_Title, centered, one uniform format |
 | `ff-desktop` | 🔴 | -- | menu-workspace Req 20.3 / menu-and-statusbar Req 17.3: POM Title_Line shows the pom.toml Menu_Title, NOT the hardcoded `FileForge Workbench vX.Y.Z` banner |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 20.4: POM Tab_Header is the Short_Tab_Label `POM`, not the long app banner |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 20.4: EVERY Menu Workspace Tab_Header derives from the uppercased Menu_Name (menus/<name>.toml stem = opening command name) by one rule with NO is_home/POM branch; POM -> POM, settings -> SETTINGS |
 | `ff-desktop` | 🔴 | -- | menu-workspace Req 20.5: `POM` command opens/returns to the Home Context and is registered/dispatchable; `START` (bare) is an alias; START tab-creation forms preserved |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 20.6: POM Short_Tab_Label derivable from the `POM` command (same mechanism as other tabs) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 20.6: one shared Tab_Header code path for POM and every menu (no POM special case); only sanctioned POM special case is the load-time >=1-instance guarantee, never in title/header derivation |
 | `ff-desktop` | 🔴 | -- | menu-workspace Req 20.7 / menu-and-statusbar Req 17.4/17.5/17.6: non-menu Title_Line unchanged (editor path/[Untitled]; panel Kind title) |
 | `ff-desktop` | 🔴 | -- | menu-workspace Req 20.8 / menu-and-statusbar Req 17.10: in-place context switch shows the new Menu_Title immediately (live-derived, never stale) |
 | `ff-desktop` | 🔴 | -- | menu-workspace Req 20.9: behaviour-preserving -- option layout, calendar tiers (Req 16), and focus contract unchanged by heading removal + title re-source |

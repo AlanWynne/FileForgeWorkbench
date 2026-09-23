@@ -298,7 +298,11 @@ impl WorkbenchShell {
         }
 
         if upper == "POM" {
-            // Validates: Requirement 14.10, 14.14 -- POM opens a new POM tab.
+            // Validates: Requirement 14.10, 14.14, 20.5 -- the POM command opens
+            // the Home Context. It is the first-class Home opener; bare `START`
+            // (below) is its alias (menu-workspace Req 20.5). Dispatchable by name
+            // through this handler (command parity). The POM tab derives its short
+            // `POM` label from this command (Req 20.6, via `tab_header_label`).
             self.tabs.insert_pom_tab(&self.runtime);
             self.open_error = None;
             return;
@@ -1547,11 +1551,12 @@ impl WorkbenchShell {
     }
 
     /// Ensure the active Home tab carries a loaded `MenuWorkspaceState` backed
-    /// by `menus/pom.toml`, loading it lazily on first render. The Home Context
-    /// keeps its `is_home` identity, `[POM]` title, and Title_Line styling;
-    /// only its option list becomes data-driven (menu-workspace Req 2.1c, 2.1d).
-    /// Idempotent: does nothing if the state is already present or the active
-    /// tab is not the Home Context.
+    /// by `menus/pom.toml`, loading it lazily on first render. After CR-CH-042 the
+    /// Home Context's Title_Line and Tab_Header are DERIVED like any other Menu
+    /// Workspace -- the raw Menu_Title on the Title_Line and the uppercased
+    /// Menu_Name (`POM`) on the tab -- from this loaded state; only the load-time
+    /// "always have a POM" guarantee is POM-specific. Idempotent: does nothing if
+    /// the state is already present or the active tab is not the Home Context.
     ///
     /// Validates: menu-workspace Requirement 2.1c, 2.1d, 18.2, 18.4
     pub(super) fn ensure_pom_menu_loaded(&mut self) {

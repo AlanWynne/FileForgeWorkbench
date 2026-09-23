@@ -207,6 +207,29 @@ impl MenuWorkspaceState {
             .map(|m| format!("[{}]", m.title.to_uppercase()))
             .unwrap_or_else(|| "[MENU]".to_string())
     }
+
+    /// The RAW loaded Menu_Title (the `MenuFile.title` field, unbracketed and not
+    /// force-uppercased), or `None` when no menu is loaded. This is the single
+    /// title source for a Menu Workspace's Title_Line (CR-CH-042, menu-workspace
+    /// Requirement 20.2) -- distinct from `tab_title()`, which brackets/uppercases
+    /// for the compact tab-bar label.
+    pub fn menu_title(&self) -> Option<String> {
+        self.menu.as_ref().map(|m| m.title.clone())
+    }
+
+    /// The Menu_Name: the file stem of the backing `menus/<name>.toml`
+    /// (e.g. `pom`, `settings`), uppercased. This is the name the OPENING COMMAND
+    /// uses (`POM` opens `pom`, `SETTINGS` opens `settings`), so it is the
+    /// command-derived Tab_Header label for a Menu Workspace -- uniform for the
+    /// POM and every other menu, with NO POM-specific branch (CR-CH-042).
+    /// Returns `None` when the stem cannot be derived.
+    pub fn menu_name_label(&self) -> Option<String> {
+        self.file_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_uppercase())
+    }
 }
 
 // === Tests ==================================================================

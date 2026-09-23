@@ -255,11 +255,13 @@ pub fn render_menu_workspace(
         Some(menu) => menu.clone(),
     };
 
-    // Req 2.1 -- Menu_Title centred
-    ui.vertical_centered(|ui| {
-        ui.label(egui::RichText::new(&menu.title).strong().size(14.0));
-    });
-    ui.add_space(4.0);
+    // CR-CH-042 (menu-workspace Req 20.1; menu-and-statusbar Req 17.11): the
+    // centered Menu_Title heading that USED to render here (above the option
+    // list) is REMOVED. The Menu_Title is now shown ONCE, on the shell Title_Line
+    // above the command line (centered, config-driven), so the former doubled
+    // banner is eliminated and the option list starts higher. The `menu.title`
+    // field is still the single title source -- consumed by the Title_Line
+    // (`title_line_text`), not here.
 
     // Req 9.3 -- soft-limit advisory, non-blocking, above the list
     if let Some(advisory) = &state.advisory {

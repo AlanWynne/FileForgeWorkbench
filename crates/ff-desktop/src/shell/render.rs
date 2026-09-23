@@ -160,15 +160,32 @@ impl WorkbenchShell {
         let text = self.kind_title(tab);
         let is_legacy = self.palette.mode == VisualMode::Legacy;
         let is_pom = tab.is_home;
+        // CR-CH-042 (menu-workspace Req 20.2; menu-and-statusbar Req 17.11): EVERY
+        // Menu Workspace Title_Line is CENTERED, uniform for the POM, Settings, and
+        // user menus (the former POM-centered vs Settings-left inconsistency is
+        // removed). Non-menu Contexts (editor path, panel Kind title) stay
+        // left-aligned.
+        let is_menu_workspace = tab.kind == crate::tab_state::TabKind::MenuWorkspace;
         {
             if is_pom {
-                // POM title: black background, blue text, centered
+                // POM title: black background, blue text, centered (theme concern).
                 let bg = egui::Color32::BLACK;
                 let fg = egui::Color32::from_rgb(0x00, 0x55, 0xFF);
                 let rect = ui.max_rect();
                 ui.painter().rect_filled(rect, 0.0, bg);
                 ui.centered_and_justified(|ui| {
                     ui.colored_label(fg, egui::RichText::new(&text).monospace().strong());
+                });
+            } else if is_menu_workspace {
+                // CR-CH-042: a non-Home Menu Workspace (Settings / user menu) is
+                // CENTERED like the POM, using the theme's Title_Line colours
+                // (Legacy blue-bg/white per Req 17.8, else accent-tinted per 21.5).
+                let bg = to_egui_color(self.palette.ui.primary_menu_bg);
+                let fg = to_egui_color(self.palette.ui.menu_bar_fg);
+                let rect = ui.max_rect();
+                ui.painter().rect_filled(rect, 0.0, bg);
+                ui.centered_and_justified(|ui| {
+                    ui.colored_label(fg, egui::RichText::new(&text).monospace());
                 });
             } else if is_legacy {
                 // Validates: Requirement 17.8 — Legacy: blue bg, white text

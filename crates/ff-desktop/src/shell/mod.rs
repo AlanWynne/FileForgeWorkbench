@@ -1071,6 +1071,40 @@ impl WorkbenchShell {
         }
     }
 
+    /// The short Tab_Header label for a tab (the text on its tab-bar button),
+    /// centralised so the render path has one source (CR-CH-042).
+    ///
+    /// Precedence: a user-assigned `workspace_name` (CX Req 1.4) wins; then a
+    /// Menu Workspace derives its header from its Menu_Name (the backing
+    /// `menus/<name>.toml` stem, uppercased -- what the OPENING COMMAND names,
+    /// e.g. `POM`/`SETTINGS`), UNIFORMLY for the POM and every other menu with NO
+    /// POM-specific branch; otherwise a system/panel Kind uses the Kind registry
+    /// title (`kind_title`). The POM is NOT special here -- it is the menu named
+    /// `pom`, so it derives `POM` by the same rule as any menu. Distinct from the
+    /// Title_Line (`title_line_text`), which shows the full raw Menu_Title.
+    pub(crate) fn tab_header_label(&self, tab: &crate::tab_state::TabState) -> String {
+        use crate::tab_state::TabKind;
+        if let Some(ref name) = tab.workspace_name {
+            return match tab.kind {
+                TabKind::FileEditor | TabKind::Untitled => format!("{}: {}", name, tab.title),
+                _ => format!("[{}]", name),
+            };
+        }
+        if tab.kind == TabKind::MenuWorkspace {
+            // A Menu Workspace's header is its Menu_Name (the opening command's
+            // name), uppercased: `pom` -> POM, `settings` -> SETTINGS. Same rule
+            // for the POM and every other menu; no `is_home` branch. Falls back
+            // to the cached title only when the menu name cannot be derived.
+            return tab
+                .menu_workspace
+                .as_ref()
+                .and_then(|mw| mw.menu_name_label())
+                .unwrap_or_else(|| tab.title.clone());
+        }
+        // CR-NR-090 B.1: system/panel Kinds derive from the Kind registry.
+        self.kind_title(tab)
+    }
+
     /// The key-map context name for a tab (CR-NR-090 B.2, workspace-kinds Req
     /// 4.3): the active Kind's configured `key_list` when set, else the Kind's
     /// base context name (`context_name_for_tab`). A `key_list` naming a context
@@ -1158,11 +1192,12 @@ pub(crate) fn line_end_from_name(name: &str) -> ff_document_model::LineEndMode {
 /// Validates: Requirement 17.3, 17.4, 17.5, 17.6
 pub(crate) fn title_line_text(tab: &crate::tab_state::TabState) -> String {
     use crate::tab_state::TabKind;
-    // The Home Context (POM) is a MenuWorkspace tab but shows the app banner.
-    // Validates: Requirement 17.3; menu-workspace Requirement 18.6
-    if tab.is_home {
-        return format!("FileForge Workbench  v{}", env!("CARGO_PKG_VERSION"));
-    }
+    // CR-CH-042 (menu-workspace Req 20.2/20.3; menu-and-statusbar Req 17.3/17.11):
+    // the Home Context (POM) is a Menu Workspace and its Title_Line is its loaded
+    // Menu_Title (from pom.toml), NOT the hardcoded application banner. It shares
+    // the SAME derivation as every other Menu Workspace below (the raw
+    // Menu_Title), so the POM and Settings are one uniform title source. The
+    // application name/version now lives in the About dialog / status area.
     match tab.kind {
         TabKind::FileEditor => tab
             .path
@@ -1193,14 +1228,17 @@ pub(crate) fn title_line_text(tab: &crate::tab_state::TabState) -> String {
                 .default_title()
                 .to_string()
         }
-        // CR-CH-034 / B050 (menu-and-statusbar Req 17.10): a non-Home
-        // Menu_Workspace's label is derived from its CURRENTLY loaded menu, not
-        // the cached `tab.title` (which an in-place context switch could leave
-        // stale). Falls back to the cached title only when no menu is loaded.
+        // CR-CH-034 / B050 (menu-and-statusbar Req 17.10) + CR-CH-042 (Req
+        // 17.11): a Menu_Workspace's Title_Line -- the POM, Settings, or any user
+        // menu -- is the RAW loaded Menu_Title (single config-driven source), not
+        // bracketed/uppercased and not a hardcoded banner. It is derived from the
+        // CURRENTLY loaded menu each frame so an in-place context switch can never
+        // leave it stale. Falls back to the cached `tab.title` only when no menu
+        // is loaded yet (e.g. a fresh POM before its menu loads -> "[POM]").
         TabKind::MenuWorkspace => tab
             .menu_workspace
             .as_ref()
-            .map(|mw| mw.tab_title())
+            .and_then(|mw| mw.menu_title())
             .unwrap_or_else(|| tab.title.clone()),
     }
 }
