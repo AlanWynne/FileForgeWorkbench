@@ -1459,3 +1459,72 @@ The shell renders the Title_Line (`ff-desktop` `shell/render.rs
 ::render_title_line_into_ui`, string from `shell/mod.rs::title_line_text` /
 `kind_title`); the centering generalises the existing POM `is_pom` centered
 branch to all `TabKind::MenuWorkspace` tabs. No `ff-menu-statusbar` API change.
+
+---
+
+## Design Delta: Custom-workspace Title_Line conforms to the Menu Workspace title (Requirement 17.12-17.14, CR-CH-045)
+
+Design delta to Section 10 (Tab Window Chrome -- Title Line) and the CR-CH-042
+delta above. Extends the centered themed-heading Title_Line -- introduced for
+Menu Workspaces by CR-CH-042 -- to the editor/config and read-only panel
+Contexts, and removes their redundant in-body titles.
+
+### Change
+
+`render_title_line_into_ui` (`shell/render.rs`) today has two branches: a
+CENTERED themed heading for `TabKind::MenuWorkspace`, and a LEFT-ALIGNED themed
+line for every other (non-editor path) Context. CR-CH-045 widens the centered
+branch to also cover the non-menu system/panel and editor/config Kinds
+(Configuration, Theme Editor, Menu Editor, Key Assignments Editor, Workspace
+Kinds Editor, Command Configurator, Catalog Explorer, File Explorer, Search
+Results, Plugin Manager, Event Log, Macro Library). The file-editor path
+(full path / `[Untitled]`, left-aligned) is UNCHANGED, and the POM/Menu path is
+unchanged.
+
+### Two distinct title strings (Requirement 17.13)
+
+The bracketed uppercase tag from `BuiltinKind::default_title()` (`[CONFIG]`,
+`[THEME]`, ...) is the ISPF-style **Tab_Header** label (B016) and MUST stay for
+the tab-bar button. The Title_Line now needs a SEPARATE descriptive Title-Case
+**display name**. Introduce `BuiltinKind::display_title(self) -> &'static str`
+(in `workspace_kind/mod.rs`) returning e.g. "Configuration", "Theme Editor",
+"Menu Editor", "Key Assignments Editor", "Workspace Kinds Editor", "Command
+Configurator", "Catalog Explorer", "File Explorer", "Search Results", "Plugin
+Manager", "Event Log", "Macro Library". `default_title()` (tab tags) is untouched.
+
+Title_Line text derivation (a `title_line_display(tab) -> String` helper, or an
+extension of `kind_title`): for the covered Kinds, prefer a user Kind title
+override where present (workspace-kinds Req 3, precedence preserved), else the
+`display_title()` of the Kind. `tab_header_label`/`kind_title` (tab tags) are NOT
+rerouted -- only the Title_Line render reads the display title.
+
+### In-body title removal (Requirement 17.14)
+
+Delete the `ui.label(...)`/`ui.heading(...)` title at the top of each panel body:
+`theme_editor_panel::render` ("Theme Editor"), `menus_editor_panel/render`
+("Menus Editor"), `keys_editor_panel/render` ("Keys Editor"),
+`kinds_editor_panel/render` ("Workspace Kinds Editor"), `command_config/render`
+(heading "Command Configurator"). The Config panel has no in-body title (no
+change there beyond the Title_Line). This mirrors the CR-CH-042 menu-body-heading
+removal, so each Context shows its title once (the Title_Line).
+
+### Preserved
+
+- Title_Line styling tokens (17.7) and the Legacy blue-bg/white-text rule (17.8):
+  the covered Contexts already used the same `primary_menu_bg`/`menu_bar_fg`
+  fill -- only the alignment (left -> centered) and the text (tag -> display
+  name) change.
+- The in-place live-derivation guarantee (17.10 / CR-CH-034): the Title_Line is
+  still derived from live Kind state each frame, not a cached string.
+- Focus/Tab behaviour (CR-CH-023 / CR-NR-078): the Title_Line is non-interactive
+  and not a Tab stop; removing an in-body label does not change the reported
+  `InteriorFocus` (the first interior control is unchanged for every panel).
+- No `ff-menu-statusbar` API change; the work is entirely in `ff-desktop`.
+
+### Testing
+
+Full-shell `egui_kittest` assertions that the Title_Line for each covered Context
+reports the expected centered display title, plus a unit test on
+`BuiltinKind::display_title()`. The existing first-Tab focus tests remain green
+(interior focus unchanged), proving the in-body title removal did not shift the
+first interior control.

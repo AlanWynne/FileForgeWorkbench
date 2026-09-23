@@ -457,6 +457,34 @@ know what I am looking at and can issue commands without hunting for the input f
      (criterion 7/8) and the in-place live-derivation guarantee (criterion 10) are
      unchanged. See menu-workspace Requirement 20.
 
+12. *(CR-CH-045 -- custom-workspace Title_Line conforms to the Menu Workspace title.)*
+     WHEN the active tab is a non-menu, non-editor system/panel or editor/config Context
+     (Configuration, Theme Editor, Menu Editor, Key Assignments Editor, Workspace Kinds
+     Editor, Command Configurator, Catalog Explorer, File Explorer, Search Results, Plugin
+     Manager, Event Log, Macro Library), THE Title_Line SHALL render that Context's title
+     CENTERED using the SAME themed strong-monospace heading style as a Menu_Workspace
+     (criterion 11), NOT the former left-aligned rendering. The Title_Line styling tokens
+     (criterion 7/8) and the in-place live-derivation guarantee (criterion 10) are unchanged.
+     This revises criterion 6 for these Contexts. The Home Context (POM) and Menu_Workspace
+     Contexts (criterion 11) and the file-editor path (criteria 4/5) are UNCHANGED.
+
+13. *(CR-CH-045.)* THE title displayed on the Title_Line for the Contexts in criterion 12
+     SHALL be a descriptive, Title-Case display name (e.g. "Configuration", "Theme Editor",
+     "Menu Editor", "Key Assignments Editor", "Workspace Kinds Editor", "Command
+     Configurator"), sourced independently of the Tab_Header label. THE Tab_Header label
+     SHALL remain the terse bracketed uppercase tag (e.g. `[CONFIG]`, `[THEME]`; the
+     ISPF-style tab tag of B016 and `BuiltinKind::default_title`), UNCHANGED. A user Kind
+     override of the title (workspace-kinds Req 3) SHALL continue to take precedence for
+     both the Tab_Header and the Title_Line where it applies.
+
+14. *(CR-CH-045.)* WHERE a Context in criterion 12 currently renders its own title as a
+     heading/label INSIDE its content body (Theme Editor, Menu Editor, Key Assignments
+     Editor, Workspace Kinds Editor, Command Configurator), THAT in-body title SHALL be
+     REMOVED, so the Context shows its title in exactly ONE position (the Title_Line),
+     eliminating the doubled banner -- the same de-duplication criterion 11 applied to
+     Menu Workspaces. Contexts with no in-body title (e.g. Configuration) are unaffected
+     by this criterion; their Title_Line still conforms per criterion 12/13.
+
 ---
 
 ### Requirement 18: Detachable Tab Windows

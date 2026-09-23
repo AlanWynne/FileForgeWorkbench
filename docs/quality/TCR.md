@@ -2787,6 +2787,19 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `shell::tests::{full_shell_file_editor_reports_no_interior_focus, full_shell_files_panel_reports_no_interior_focus}` | Req 3.4 (WF.6 8.2): FileEditor (native `TabState` body, shell-entangled inputs) and FilesPanel (own command field + bespoke `files_panel_cmd` -> tree Tab redirect, B024/Req 20.1) are documented no-interior cases; each arm reports `InteriorFocus::none()` EXPLICITLY through the single latch path (`first_interior_id`/`last_interior_id` stay None) |
 | `ff-desktop` | ✅ | code review + the full first-Tab suite green (every workspace) | Req 3.3 (WF.6 8.3): the `match kind` arms are retained (MenuWorkspace/Editor/FilesPanel cannot fit the `ShellServices`-only trait) but EVERY arm now routes its focus contract through the single path -- `render_workspace_context` (trait dispatch) or `apply_interior_focus` (explicit `InteriorFocus`, including documented `none()`); no arm can silently leave the anchors unset |
 
+### CR-CH-045 -- Custom-workspace Title_Line conforms to the Menu Workspace title
+
+> The editor/config and read-only panel Contexts render their Title_Line CENTERED
+> with the Menu Workspace themed-heading style, sourced from a descriptive
+> Title-Case display name (distinct from the `[XXX]` tab tag), and their redundant
+> in-body titles are removed. Display-only; focus/data behaviour unchanged.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | Req 17.12: the Title_Line for non-menu editor/config + read-only panel Contexts renders CENTERED with the Menu Workspace themed-heading style (not left-aligned); file-editor and POM/Menu paths unchanged |
+| `ff-desktop` | 🔴 | -- | Req 17.13: the Title_Line shows a descriptive Title-Case display name (`BuiltinKind::display_title`), sourced independently of the Tab_Header `[XXX]` tag which stays unchanged; user Kind title override still wins |
+| `ff-desktop` | 🔴 | -- | Req 17.14: the redundant in-body titles (Theme/Menus/Keys/Kinds editors + Command Configurator) are removed so each Context shows its title once (the Title_Line) |
+
 ### Phase (layout-tree) -- Shell Layout Tree foundation, invisible refactor (CR-NR-091, B046 Slice 2a)
 
 > Slice 2a of the split rework: `TabManager` gains an internal `ff-layout::TabGroupTree`

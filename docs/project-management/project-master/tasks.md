@@ -2948,3 +2948,24 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[x]` Phase (scroll-amount-updown) | CR-NR-087 DONE: navigation-commands Req 3.1/3.3 revised + Req 3.17-3.23 (no-argument UP/DOWN scroll by the active SCROLL amount PAGE/HALF/MAX/CSR/DATA/n; numeric arg overrides; MAX = top/bottom; CSR = cursor-top; default PAGE preserves current behaviour; PF7/PF8 not re-bound). Impl: pure `resolve_scroll_action` (ScrollAmount x direction -> ScrollAction) + `NavManager::up_by_amount`/`down_by_amount` (Lines/ToTop/ToBottom/CursorToTop via existing `ScrollCommands`); shell UP/DOWN dispatch consults `self.scroll_amount` on the no-arg path, numeric arg overrides. 8 nav_manager + 3 shell tests. verify.ps1 CLEAN FULL nextest. Completes B046 remnant (row 7.3a). |
+
+## Phase (custom-title-align) -- CR-CH-045: custom-workspace Title_Line conforms to the Menu Workspace title
+
+> The editor/config and read-only panel Contexts (Configuration, Theme Editor,
+> Menu Editor, Key Assignments Editor, Workspace Kinds Editor, Command
+> Configurator, Catalog Explorer, File Explorer, Search Results, Plugin Manager,
+> Event Log, Macro Library) render their Title_Line CENTERED with the same themed
+> heading style as a Menu Workspace, sourced from a descriptive Title-Case display
+> name (distinct from the `[XXX]` tab tag), and their redundant in-body titles are
+> removed -- the same de-duplication CR-CH-042 applied to menus.
+> menu-and-statusbar Req 17.12-17.14.
+
+- [ ] CTA.1 Requirements gate -- menu-and-statusbar Req 17.12-17.14, design delta, tasks (menu-and-statusbar Task 37), TCR NOT COVERED rows, change-log CR-CH-045.
+- [ ] CTA.2 `BuiltinKind::display_title()` descriptive Title-Case names (leave `default_title()` tab tags unchanged) + unit test. Covers Req 17.13.
+- [ ] CTA.3 Route the covered non-menu Contexts' Title_Line through the centered themed-heading branch of `render_title_line_into_ui` (user Kind title override still wins). Covers Req 17.12.
+- [ ] CTA.4 Remove the in-body titles from Theme/Menus/Keys/Kinds editors + Command Configurator. Covers Req 17.14.
+- [ ] CTA.5 Full-shell egui_kittest per covered Context (centered display title) + first-Tab focus tests stay green; verify.ps1 CLEAN FULL nextest; ffwb.exe rebuilt; TCR Req 17.12-17.14 PASS. Covers Req 17.12-17.14.
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (custom-title-align) | CR-CH-045 PENDING GATE: custom-workspace Title_Line centered + descriptive Title Case + in-body title de-dup (menu-and-statusbar Req 17.12-17.14). |
