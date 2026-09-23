@@ -141,13 +141,13 @@ All commands are registered with the command framework and dispatched through th
 
 #### Acceptance Criteria
 
-3.1. WHEN `UP` is issued with no argument, THE system SHALL scroll the Viewport up by one screen height (one page of `visible_count` lines). [FFE-CMD-17]
+3.1. WHEN `UP` is issued with no argument, THE system SHALL scroll the Viewport up by the amount governed by the active Scroll_Amount (criteria 3.17-3.22). (REVISED by CR-NR-087: previously always one page; PAGE remains the default Scroll_Amount, so the default behaviour is unchanged.) [FFE-CMD-17]
 
-3.2. WHEN `UP n` is issued with a positive integer, THE system SHALL scroll the Viewport up by `n` lines. [FFE-CMD-17]
+3.2. WHEN `UP n` is issued with a positive integer, THE system SHALL scroll the Viewport up by `n` lines, overriding the active Scroll_Amount. [FFE-CMD-17]
 
-3.3. WHEN `DOWN` is issued with no argument, THE system SHALL scroll the Viewport down by one screen height (one page of `visible_count` lines). [FFE-CMD-17]
+3.3. WHEN `DOWN` is issued with no argument, THE system SHALL scroll the Viewport down by the amount governed by the active Scroll_Amount (criteria 3.17-3.22). (REVISED by CR-NR-087: previously always one page; PAGE remains the default.) [FFE-CMD-17]
 
-3.4. WHEN `DOWN n` is issued with a positive integer, THE system SHALL scroll the Viewport down by `n` lines. [FFE-CMD-17]
+3.4. WHEN `DOWN n` is issued with a positive integer, THE system SHALL scroll the Viewport down by `n` lines, overriding the active Scroll_Amount. [FFE-CMD-17]
 
 3.5. WHEN `LEFT` is issued with no argument, THE system SHALL scroll the Viewport left by the configured default horizontal scroll amount. [FFE-CMD-17]
 
@@ -172,6 +172,22 @@ All commands are registered with the command framework and dispatched through th
 3.15. THE default horizontal scroll amount SHALL be configurable via `editor.navigation.horizontal_scroll_columns` in the configuration system. The default SHALL be 8 columns. [WB]
 
 3.16. WHEN `TOP` or `BOTTOM` is issued, THE system SHALL also update `cursor_line` to the first or last line of the document respectively, and reset `cursor_column` to 1. [FFE-CMD-17], [SCI-EDIT-2.2]
+
+<!-- ===================== CR-NR-087 (SCROLL-amount-governed UP/DOWN) ===================== -->
+
+3.17. THE amount that a no-argument `UP` / `DOWN` scrolls SHALL be governed by the active Scroll_Amount (the `SCROLL ===>` field value, menu-and-statusbar Requirement 19): one of PAGE, HALF, MAX, CSR, DATA, or a numeric line count `n`. The default Scroll_Amount is PAGE, so a workbench started with the default SCROLL field behaves exactly as before this requirement (one page). [WB, B046]
+
+3.18. WHEN the active Scroll_Amount is PAGE or DATA, THE system SHALL scroll a no-argument `UP` / `DOWN` by `visible_count` lines (one screen height). (DATA is treated as one page in this workbench; the ISPF one-line-overlap nuance is a documented simplification, not implemented here.) [WB, B046]
+
+3.19. WHEN the active Scroll_Amount is HALF, THE system SHALL scroll a no-argument `UP` / `DOWN` by `max(1, visible_count / 2)` lines. [WB, B046]
+
+3.20. WHEN the active Scroll_Amount is a numeric line count `n`, THE system SHALL scroll a no-argument `UP` / `DOWN` by `n` lines (identical to `UP n` / `DOWN n`). [WB, B046]
+
+3.21. WHEN the active Scroll_Amount is MAX, THE system SHALL scroll a no-argument `UP` to the first line of the document (`top_line = 1`, as `TOP`) and a no-argument `DOWN` to the last page (`top_line = max_top_line`, as `BOTTOM`), clamped per criteria 3.11/3.12 with no error. [WB, B046]
+
+3.22. WHEN the active Scroll_Amount is CSR, THE system SHALL scroll a no-argument `UP` / `DOWN` so that the current `cursor_line` becomes the topmost visible line (`top_line = cursor_line`), clamped per criteria 3.11/3.12. (This is the deterministic cursor-relative rule used in this workbench; when the caret is in the command field rather than the body the current `cursor_line` is used unchanged.) [WB, B046]
+
+3.23. An explicit numeric argument (`UP n` / `DOWN n`, criteria 3.2/3.4) SHALL always override the active Scroll_Amount; the Scroll_Amount governs ONLY the no-argument form. The no-argument `UP`/`DOWN` SHALL NOT record an error for any Scroll_Amount value and SHALL leave the Scroll_Amount unchanged. [WB, B046]
 
 ---
 

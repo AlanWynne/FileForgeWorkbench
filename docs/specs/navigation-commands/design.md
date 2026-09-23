@@ -1229,3 +1229,72 @@ Requirement 20 adds only argument parsing inside the existing scroll command
 handlers plus a small helper (e.g. `fn parse_scroll_amount(arg: &str) ->
 ScrollAmount { Page, Lines(u32), Max }`). No change to the `BoundsManager` or
 other public API.
+
+## Design Delta: no-argument UP/DOWN honour the active SCROLL amount (Requirement 3.17-3.23, CR-NR-087)
+
+This delta completes the B046 SCROLL-amount behaviour. It is COMPLEMENTARY to the
+CR-NR-054 delta above: CR-NR-054 governs an EXPLICIT argument (`DOWN 8`, `DOWN MAX`)
+that OVERRIDES; CR-NR-087 governs the NO-ARGUMENT form (`DOWN` alone), which now
+consults the persistent `SCROLL ===>` field value (the shell's `ScrollAmount`,
+`crates/ff-desktop/src/scroll_amount.rs`) instead of always scrolling one page.
+
+### Where the amount comes from
+
+The `ScrollAmount` is SHELL state (the `SCROLL ===>` field, menu-and-statusbar
+Req 19), not navigation-commands state. The wiring lives in `ff-desktop`:
+
+- `shell/commands.rs` UP/DOWN dispatch: today `verb_arg(cmd, "UP")` ->
+  `nav_manager.up(parse_optional_u64(arg), &mut tabs)`. When the arg IS a numeric
+  line count, that path is unchanged (Req 3.2/3.4/3.23 override). When there is NO
+  numeric arg, the shell resolves the active `self.scroll_amount` into a concrete
+  scroll for the active tab's viewport and calls the appropriate `NavManager` entry.
+
+- `ScrollAmount::to_line_count(page_lines)` ALREADY EXISTS (currently
+  `#[allow(dead_code)]`): Page/Data -> page_lines, Half -> max(1, page_lines/2),
+  Csr -> 1, Max -> u64::MAX, Lines(n) -> n. CR-NR-087 makes it live. (The `Csr ->
+  1` mapping is replaced by the cursor-relative rule below; `Max -> u64::MAX` is
+  interpreted by the caller as "scroll to the clamped extreme", i.e. TOP/BOTTOM.)
+
+### NavManager wiring (ff-desktop)
+
+Add a `NavManager` entry that takes the resolved `ScrollAmount` + the viewport's
+`visible_count` and dispatches:
+
+- PAGE / DATA  -> `up_page` / `down_page` (existing; == `visible_count` lines).
+- HALF         -> `up_lines` / `down_lines` with `max(1, visible_count / 2)`.
+- Lines(n)     -> `up_lines` / `down_lines` with `n` (same as `UP n`).
+- MAX          -> `ScrollCommands::top` (UP) / `bottom` (DOWN) -- reuse the
+                  TOP/BOTTOM end-state logic (Req 3.21), clamped (Req 3.11/3.12).
+- CSR          -> set `top_line = cursor_line` via a small clamp helper
+                  (`ScrollCommands` gains `to_cursor_top` or the shell computes
+                  the delta and calls `up_lines`/`down_lines`), clamped (Req 3.22).
+
+The shell reads `visible_count` and `cursor_line` from the active tab's viewport
+(`viewport.visible_count()`, `cursor.cursor_line()`) -- both already public.
+
+### Purity / testability
+
+The amount-resolution decision (ScrollAmount + visible_count -> a scroll action)
+is a PURE mapping, unit-testable without egui. Prefer a small pure helper (in
+`ff-desktop` `scroll_amount.rs` or `nav_manager.rs`) e.g.
+`resolve_scroll(amount, visible_count, top_line, cursor_line, max_top_line, dir)
+-> new_top_line`, tested for every variant in both directions, with clamping.
+The existing `ScrollCommands` clamping (Property 5) is unchanged.
+
+### No `ff-navigation-commands` public API change required
+
+The line-count and TOP/BOTTOM entry points already exist in `ScrollCommands`.
+CSR may add ONE small clamp helper if the delta cannot be expressed with the
+existing `up_lines`/`down_lines`; otherwise no new public API. The `ScrollAmount`
+enum and `to_line_count` already exist in `ff-desktop`. This CR is primarily
+WIRING (consult the field on the no-arg path) plus tests; PF7/PF8 stay bound to
+UP/DOWN (no key re-binding).
+
+### Interaction notes
+
+- Default `ScrollAmount` is PAGE, so an unconfigured workbench is byte-identical
+  to pre-CR-NR-087 behaviour (Req 3.17/3.18).
+- CR-NR-096 (Up/Down arrow history on a focused command field) is unaffected:
+  those arrows drive command history ONLY while the command field has focus and
+  never reach the body scroll; the SCROLL-amount UP/DOWN here is the primary
+  `UP`/`DOWN` COMMAND (and PF7/PF8), which act on the body.

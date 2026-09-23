@@ -3080,3 +3080,15 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | ✅ | `shell::tests::command_persists_position_to_kind_file` | workspace-kinds Req 8.11: `COMMAND` persists via the same write-file+reload path as the Kinds Editor Save (survives reload) |
 | `ff-desktop` | ✅ | `shell::tests::command_singular_does_not_shadow_commands_plural` (+ shared `set_active_command_line_position` seam used by editor Save and COMMAND) | workspace-kinds Req 8.12: `COMMAND` routed through the dispatcher (command parity); shares one position-setting seam; does not collide with `COMMANDS` |
 | `ff-desktop` | ✅ | `set_active_command_line_position` resolves the ACTIVE tab under `with_workspace_context` (per-window/region), same seam proven by `detached_command_acts_on_its_tab_not_the_primary` | workspace-kinds Req 8.13: `COMMAND` in a detached window / focused split region changes THAT instance's Kind position |
+
+### Phase (scroll-amount-updown) -- CR-NR-087 no-argument UP/DOWN honour the active SCROLL amount (navigation-commands Req 3.17-3.23)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | navigation-commands Req 3.17: no-arg UP/DOWN scroll amount governed by the active Scroll_Amount (SCROLL field); default PAGE == prior behaviour |
+| `ff-desktop` | 🔴 | -- | navigation-commands Req 3.18: PAGE/DATA -> scroll by visible_count (one screen) |
+| `ff-desktop` | 🔴 | -- | navigation-commands Req 3.19: HALF -> scroll by max(1, visible_count/2) |
+| `ff-desktop` | 🔴 | -- | navigation-commands Req 3.20: numeric Scroll_Amount n -> scroll by n lines (== UP n / DOWN n) |
+| `ff-desktop` | 🔴 | -- | navigation-commands Req 3.21: MAX -> UP to top (top_line=1), DOWN to bottom (max_top_line), clamped |
+| `ff-desktop` | 🔴 | -- | navigation-commands Req 3.22: CSR -> top_line = cursor_line, clamped |
+| `ff-desktop` | 🔴 | -- | navigation-commands Req 3.23: explicit UP n/DOWN n overrides the Scroll_Amount; no-arg never errors and leaves the SCROLL field unchanged |
