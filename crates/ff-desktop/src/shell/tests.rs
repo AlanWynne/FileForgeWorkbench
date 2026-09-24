@@ -4632,18 +4632,30 @@ fn restore_multiple_descriptors_opens_each_workspace() {
     assert!(kinds.contains(&TabKind::EventLog));
 }
 
-/// Validates: Requirement 21.9 -- an unknown / not-yet-wired descriptor is
-/// skipped without panicking, and subsequent descriptors still restore.
+/// Validates: Requirement 21.4 (CR-CH-012) -- a persisted non-POM Menu_Workspace
+/// descriptor is RE-OPENED on restore (backed by `menus/<name>.toml`), not
+/// dropped; and restore continues past it to the following descriptor.
 #[test]
-fn restore_skips_menu_descriptor_but_continues() {
+fn restore_reopens_menu_descriptor_and_continues() {
     use crate::tab_state::TabKind;
     use ff_session::session_state::{DescriptorParams, WorkspaceDescriptor, WorkspaceKind};
 
+    // Isolated menus dir with a user menu `reports.toml`.
+    let menus = tempfile::TempDir::new().expect("tempdir");
+    std::fs::create_dir_all(menus.path()).expect("mkdir");
+    std::fs::write(
+        menus.path().join("reports.toml"),
+        "title = \"Reports\"\n\n[[options]]\nkey = \"1\"\ncommand = \"Files\"\ndescription = \"Reports files\"\n",
+    )
+    .expect("write menu");
+
     let mut shell = make_shell();
+    shell.menus_dir_override = Some(menus.path().to_path_buf());
+
     let descriptors = vec![
-        // Menu descriptor: not yet wired (needs the MENU command, DB.4) -- must be skipped.
+        // Menu descriptor: must be RE-OPENED (Req 21.4), not skipped.
         WorkspaceDescriptor::Menu {
-            name: "custom".to_string(),
+            name: "reports".to_string(),
         },
         // A following descriptor must still restore.
         WorkspaceDescriptor::CustomWorkspace {
@@ -4652,13 +4664,92 @@ fn restore_skips_menu_descriptor_but_continues() {
         },
     ];
     shell.restore_workspace_descriptors(&descriptors);
+
+    // The menu tab was reopened, backed by reports.toml (title "Reports").
+    assert!(
+        shell.tabs.tabs().iter().any(|t| {
+            t.kind == TabKind::MenuWorkspace
+                && t.menu_workspace
+                    .as_ref()
+                    .and_then(|mw| mw.menu.as_ref())
+                    .map(|m| m.title.eq_ignore_ascii_case("Reports"))
+                    .unwrap_or(false)
+        }),
+        "a persisted Menu descriptor must be re-opened from menus/<name>.toml (Req 21.4)"
+    );
+    // And restore continued to the following descriptor.
     assert!(
         shell
             .tabs
             .tabs()
             .iter()
             .any(|t| t.kind == TabKind::FilesPanel),
-        "restore must continue past a skipped Menu descriptor"
+        "restore must continue past the re-opened Menu descriptor"
+    );
+}
+
+/// Validates: Requirement 21.4 (CR-CH-012) -- when the persisted menu's backing
+/// `menus/<name>.toml` is ABSENT on restore, the Workspace is still opened (in
+/// the menu load-error state) rather than dropped.
+#[test]
+fn restore_menu_descriptor_missing_file_opens_load_error_not_dropped() {
+    use crate::tab_state::TabKind;
+    use ff_session::session_state::WorkspaceDescriptor;
+
+    // Isolated (empty) menus dir -- the named file does not exist.
+    let menus = tempfile::TempDir::new().expect("tempdir");
+    std::fs::create_dir_all(menus.path()).expect("mkdir");
+
+    let mut shell = make_shell();
+    shell.menus_dir_override = Some(menus.path().to_path_buf());
+
+    shell.restore_workspace_descriptors(&[WorkspaceDescriptor::Menu {
+        name: "gone".to_string(),
+    }]);
+
+    assert!(
+        shell
+            .tabs
+            .tabs()
+            .iter()
+            .any(|t| t.kind == TabKind::MenuWorkspace),
+        "a Menu descriptor with a missing file must open (load-error state), not be dropped (Req 21.4)"
+    );
+}
+
+/// Validates: Requirement 21.4 (CR-CH-012) -- the persisted POM Menu descriptor
+/// is NOT reopened here as an extra menu tab; the POM-always-present guarantee
+/// (Req 21.8) owns the Home Context, so restoring `Menu{name:"pom"}` must not
+/// create a second/duplicate menu workspace.
+#[test]
+fn restore_pom_menu_descriptor_is_left_to_the_pom_guarantee() {
+    use crate::tab_state::TabKind;
+    use ff_session::session_state::WorkspaceDescriptor;
+
+    let menus = tempfile::TempDir::new().expect("tempdir");
+    std::fs::create_dir_all(menus.path()).expect("mkdir");
+    let mut shell = make_shell();
+    shell.menus_dir_override = Some(menus.path().to_path_buf());
+
+    let before = shell.tabs.tabs().len();
+    shell.restore_workspace_descriptors(&[WorkspaceDescriptor::Menu {
+        name: "pom".to_string(),
+    }]);
+    // The pom descriptor is handled by the separate POM guarantee, not by the
+    // menu-reopen path, so it adds no new tab here.
+    assert_eq!(
+        shell.tabs.tabs().len(),
+        before,
+        "restoring Menu{{name:pom}} must not open an extra menu tab (POM guarantee owns Home)"
+    );
+    // No non-home MenuWorkspace tab was created for "pom".
+    assert!(
+        !shell
+            .tabs
+            .tabs()
+            .iter()
+            .any(|t| t.kind == TabKind::MenuWorkspace && !t.is_home),
+        "restoring the POM descriptor must not create a non-home menu tab"
     );
 }
 

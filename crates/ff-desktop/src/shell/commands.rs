@@ -2127,12 +2127,25 @@ impl WorkbenchShell {
 
         for descriptor in descriptors {
             match descriptor {
-                WorkspaceDescriptor::Menu { name: _name } => {
-                    // Menu Workspaces open via the MENU command (menu-workspace
-                    // Requirement 11), wired in DB.4. Until then, a persisted
-                    // menu (other than the POM, which is guaranteed separately)
-                    // is skipped rather than dropped incorrectly.
-                    // Req 21.4 restore lands with the MENU command wiring (DB.4).
+                WorkspaceDescriptor::Menu { name } => {
+                    // CR-CH-012 (Req 21.4): re-open a persisted Menu_Workspace
+                    // backed by `menus/<name>.toml`. The POM is NOT reopened here
+                    // -- the Home Context is guaranteed at index 0 by the separate
+                    // POM-always-present guarantee (Req 21.8 / ensure_pom_tab_present),
+                    // so restoring `Menu{name:"pom"}` here would create a duplicate.
+                    // For any other menu we use the SAME framework opener the typed
+                    // / click paths use (open_menu_workspace_tab), which loads the
+                    // user file, or opens the load-error state when the file is
+                    // absent (menu-workspace Req 1.5) rather than dropping the tab.
+                    // Built-in menus stay code-only (CR-CH-021): no file is written.
+                    if !name.eq_ignore_ascii_case("pom") {
+                        let menus_dir = self.menus_dir();
+                        let limits = crate::menu_workspace::loader::option_limits_from_config(
+                            &self.config_handle,
+                        );
+                        self.tabs
+                            .open_menu_workspace_tab(name, &menus_dir, limits, &self.runtime);
+                    }
                 }
                 WorkspaceDescriptor::CustomWorkspace {
                     workspace_kind,
