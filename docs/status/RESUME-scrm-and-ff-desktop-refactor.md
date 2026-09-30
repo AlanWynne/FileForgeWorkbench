@@ -94,6 +94,46 @@ The third panel-extraction wave (DECOMP.3, decomposition-tasks.md task 11) lande
   (1292 lines; now that ff-catalog-registry is a crate, its only `crate::` dep is
   the adapter re-export), sliced by sub-dialog (New/Edit/Delete).
 
+## DECOMPOSITION WAVE 4 -- ff-catalog-dialog -- SCOPED CLEAN, awaiting owner full gate (2026-09-30)
+
+The fourth panel-extraction wave (DECOMP.4, decomposition-tasks.md tasks 12-16)
+landed:
+- New crate `crates/ff-catalog-dialog/`: the New/Edit/Delete virtual-catalog modal
+  dialogs, sliced into one module each -- `new_dialog.rs` (NewCatalogForm,
+  DialogOutcome, validate, build_catalog, render + field renderers; 25 tests),
+  `edit_dialog.rs` (EditCatalogForm, validate_edit, render_edit; 9 tests),
+  `delete_dialog.rs` (DeleteChoice, DeleteCatalogConfirm, render_delete,
+  execute_delete with Home-catalog protection; 8 tests), and `lib.rs` (shared
+  `pub(crate) catalog_type_label` + public re-exports). Deps: ff-catalog-registry,
+  ff-dscatalog, egui. 44 tests total.
+- `ff-desktop/src/catalog_manager_dialog.rs` is now a 12-line THIN ADAPTER:
+  `pub use ff_catalog_dialog::*;` so every `crate::catalog_manager_dialog::*`
+  reference (files_panel, shell/render, shell/update) resolves unchanged.
+- `ff-catalog-dialog` added as a path dep in `ff-desktop/Cargo.toml`.
+- Measurement: catalog_manager_dialog.rs 1292 -> 12 lines; ff-desktop
+  ~52,788 -> ~51,508 (-1280, owner to confirm exact total).
+- Scoped gate CLEAN (2026-09-30): `cargo fmt -p ff-catalog-dialog -p ff-desktop
+  -- --check` exit 0; `cargo clippy -p ff-catalog-dialog -p ff-desktop
+  -- -D warnings` exit 0 (0 warnings); `cargo nextest run -p ff-catalog-dialog
+  -p ff-desktop` -> 1191 tests run, 1191 passed, 0 skipped. Logs:
+  tools\logs\decomp4-fmt-scoped.txt / decomp4-clippy.txt / decomp4-nextest.txt.
+- PRE-EXISTING gate blockers (NOT DECOMP.4) FIXED in the same session (owner
+  approved as a separate cleanup):
+  - ff-pdf-export declared `#[cfg(feature = "protected")] pub mod protected;`
+    with no `protected.rs`. Created the missing module: a GENERIC
+    `protect_pdf` / `export_pdf_protected` (owner-password encryption,
+    copy-enabled + edit-locked, optional user password, optional content-hash
+    embedded in /Info) that operates on plain PDF bytes / pages instead of the
+    SCRM-specific types the ff-scrm `pdf_protected` uses. lopdf aligned 0.34 ->
+    0.36 to match ff-scrm. `cargo test -p ff-pdf-export --features protected`
+    7/7 pass; `clippy --features protected -- -D warnings` exit 0.
+  - Formatting drift in the prior-batch markdown-viewer crates (ff-md-viewer,
+    ff-mdx-app, ff-mdx-installer, ff-mdx-plugin) absorbed with `cargo fmt`.
+  - Workspace-wide `cargo fmt --check` now exit 0.
+- AWAITING owner's full verify.ps1 gate to mark Wave 4 DONE (owner-confirmed).
+- NEXT decomposition candidate: DECOMP.5 -- explorer substrate
+  (`ff-context-menu`, `ff-nav-model`, `ff-explorer-view`).
+
 ## One-line status
 
 Owner APPROVED requirements AND the full gate package. BUILD IN PROGRESS.

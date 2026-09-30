@@ -33,7 +33,13 @@ impl FileTree {
 
         for entry in root_files {
             let selected = self.selected.as_deref() == Some(&entry.full_path);
-            if ui.add(egui::SelectableLabel::new(selected, format!("📄 {}", entry.relative_path))).clicked() {
+            if ui
+                .add(egui::Button::selectable(
+                    selected,
+                    format!("📄 {}", entry.relative_path),
+                ))
+                .clicked()
+            {
                 self.selected = Some(entry.full_path.clone());
                 clicked = Some(entry.full_path.clone());
             }
@@ -44,10 +50,19 @@ impl FileTree {
                 .default_open(true)
                 .show(ui, |ui| {
                     for entry in entries {
-                        let file_name = entry.relative_path.rsplit('/').next()
+                        let file_name = entry
+                            .relative_path
+                            .rsplit('/')
+                            .next()
                             .unwrap_or(&entry.relative_path);
                         let selected = self.selected.as_deref() == Some(&entry.full_path);
-                        if ui.add(egui::SelectableLabel::new(selected, format!("📄 {file_name}"))).clicked() {
+                        if ui
+                            .add(egui::Button::selectable(
+                                selected,
+                                format!("📄 {file_name}"),
+                            ))
+                            .clicked()
+                        {
                             self.selected = Some(entry.full_path.clone());
                             clicked = Some(entry.full_path.clone());
                         }

@@ -103,7 +103,7 @@ impl MdxApp {
             ui.separator();
             ui.menu_button("💾 Export", |ui| {
                 if ui.button("Export as HTML…").clicked() {
-                    ui.close_menu();
+                    ui.close();
                     if let Some(src) = self.viewer.current_path().cloned() {
                         if let Some(dst) = save_file("html") {
                             let title = src
@@ -113,9 +113,7 @@ impl MdxApp {
                             let md = std::fs::read_to_string(&src).unwrap_or_default();
                             let body = render_to_html(&md);
                             match export_html_file(&body, title, &dst) {
-                                Ok(_) => {
-                                    self.status = format!("HTML saved: {}", dst.display())
-                                }
+                                Ok(_) => self.status = format!("HTML saved: {}", dst.display()),
                                 Err(e) => self.status = format!("Export error: {e}"),
                             }
                         }

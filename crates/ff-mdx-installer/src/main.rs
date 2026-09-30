@@ -121,7 +121,10 @@ fn add_to_user_path(dir: &PathBuf) -> anyhow::Result<()> {
     let env = hkcu.open_subkey_with_flags("Environment", KEY_READ | KEY_WRITE)?;
     let current: String = env.get_value("Path").unwrap_or_default();
     let dir_str = dir.display().to_string();
-    if !current.split(';').any(|p| p.trim().eq_ignore_ascii_case(&dir_str)) {
+    if !current
+        .split(';')
+        .any(|p| p.trim().eq_ignore_ascii_case(&dir_str))
+    {
         let new_path = if current.is_empty() {
             dir_str
         } else {

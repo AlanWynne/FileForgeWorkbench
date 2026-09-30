@@ -82,6 +82,7 @@ ff-desktop.
 | 1 | ff-theme-editor (Theme Editor Context) | 54,545 -> 54,120 (-425) | not remeasured (see note) | CLEAN (owner-confirmed full verify.ps1) | 2026-09-29 |
 | 2 | ff-toolchain-panel (Toolchain bottom-dock panel) | 54,120 -> 53,576 (-544) | not remeasured (see note) | scoped CLEAN; full verify.ps1 = owner hand-off | 2026-09-29 |
 | 3 | ff-catalog-registry (catalog registry model) | 53,576 -> ~52,788 (-788) | not remeasured (see note) | CLEAN (owner-confirmed full verify.ps1: 9452/9452) | 2026-09-30 |
+| 4 | ff-catalog-dialog (New/Edit/Delete catalog dialogs) | ~52,788 -> ~51,508 (-1280) | not remeasured (see note) | scoped CLEAN (nextest 1191/1191); full verify.ps1 = owner hand-off | 2026-09-30 |
 
 ### Wave 1 -- ff-theme-editor (2026-09-29)
 
@@ -223,3 +224,55 @@ so the scoped gate was deferred; it ran clean once the terminal recovered.)
 The OWNER ran the full `verify.ps1` gate on 2026-09-30 and reported CLEAN (FULL
 nextest: 9452 run, 9452 passed, 0 failed; empty ai-review.log). Wave 3 is DONE
 (owner-confirmed), not merely scoped-clean.
+
+### Wave 4 -- ff-catalog-dialog (2026-09-30)
+
+Extracted the New / Edit / Delete virtual-catalog modal dialogs from
+`ff-desktop/src/catalog_manager_dialog.rs` (1292 lines) into a new
+`ff-catalog-dialog` crate. The dialogs' only `crate::` dependency was
+`catalog_registry`, extracted in Wave 3, so the move is clean: the crate depends
+on `ff-catalog-registry`, `ff-dscatalog` (repository initialisation on create),
+and `egui`. Editing the catalog dialogs now recompiles only this crate, not the
+whole `ffwb` binary.
+
+Sliced by sub-dialog into one module each (also satisfying the 400-line source
+limit):
+- `new_dialog.rs`: `NewCatalogForm`, `DialogOutcome`, `validate`, `build_catalog`,
+  `render` + the three type-specific field renderers, and 25 tests.
+- `edit_dialog.rs`: `EditCatalogForm`, `validate_edit`, `render_edit`, and 9 tests.
+- `delete_dialog.rs`: `DeleteChoice`, `DeleteCatalogConfirm`, `render_delete`,
+  `execute_delete` (with Home-catalog protection), and 8 tests.
+- `lib.rs`: the shared `pub(crate) catalog_type_label` helper (used by New + Edit)
+  and the public re-exports that reproduce the old flat module surface.
+
+`ff-desktop/src/catalog_manager_dialog.rs` is now a 12-line thin adapter that
+`pub use`s `ff_catalog_dialog::*`, so every existing
+`crate::catalog_manager_dialog::*` reference (files_panel, shell/render,
+shell/update) resolves unchanged. `ff-catalog-dialog` added as a path dep in
+`ff-desktop/Cargo.toml`.
+
+Behaviour-preserving: no observable change. `catalog_manager_dialog.rs`
+1292 -> 12 lines; `ff-desktop` ~52,788 -> ~51,508 lines (estimate from the
+file-level delta; owner to confirm exact total at gate time).
+
+Scoped gate (Kiro-run, cargo nextest -- logs in tools\logs\decomp4-*.txt):
+- `cargo fmt -p ff-catalog-dialog -p ff-desktop -- --check` -> exit 0.
+- `cargo clippy -p ff-catalog-dialog -p ff-desktop -- -D warnings` -> exit 0
+  (both crates checked, 0 warnings).
+- `cargo nextest run -p ff-catalog-dialog -p ff-desktop` -> 1191 tests run,
+  1191 passed, 0 skipped (the crate's 44 tests plus the ff-desktop suite; the
+  catalog_manager_dialog consumer tests pass unchanged against the re-export).
+
+NOTE (unrelated pre-existing gate blockers, FIXED this session): a workspace-wide
+`cargo fmt --check` had been failing on formatting drift in the prior-batch
+markdown-viewer crates (`ff-md-viewer`, `ff-mdx-app`, `ff-mdx-installer`,
+`ff-mdx-plugin`) and on an unresolved feature-gated module in `ff-pdf-export`
+(`#[cfg(feature = "protected")] pub mod protected;` with no `protected.rs`).
+Both were resolved as an owner-approved cleanup alongside Wave 4: a GENERIC
+`ff-pdf-export/src/protected.rs` was written (owner-password encryption operating
+on plain PDF bytes/pages, decoupled from SCRM types; lopdf aligned to 0.36; 7
+tests pass, clippy-clean under the feature), and the viewer-crate drift was
+absorbed with `cargo fmt`. Workspace `cargo fmt --check` is now exit 0.
+
+The owner's full `verify.ps1` gate remains the hand-off that marks Wave 4 DONE
+(owner-confirmed).

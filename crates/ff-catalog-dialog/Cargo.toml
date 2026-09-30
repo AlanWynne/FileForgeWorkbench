@@ -1,0 +1,16 @@
+[package]
+name = "ff-catalog-dialog"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Virtual catalog New/Edit/Delete modal dialogs (egui) for FileForgeWorkbench"
+
+[dependencies]
+ff-catalog-registry = { path = "../ff-catalog-registry" }
+ff-dscatalog = { path = "../ff-dscatalog" }
+egui = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+pretty_assertions = { workspace = true }

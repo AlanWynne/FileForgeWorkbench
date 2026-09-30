@@ -42,6 +42,9 @@ impl FileWatcher {
             }
         });
 
-        Ok(Self { _watcher: watcher, rx: debounced_rx })
+        Ok(Self {
+            _watcher: watcher,
+            rx: debounced_rx,
+        })
     }
 }

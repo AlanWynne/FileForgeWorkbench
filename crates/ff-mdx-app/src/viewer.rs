@@ -13,8 +13,8 @@ pub struct MarkdownViewer {
 impl MarkdownViewer {
     pub fn load(&mut self, path: &Path, root: &Option<PathBuf>) {
         self.current_path = Some(path.to_path_buf());
-        self.markdown = std::fs::read_to_string(path)
-            .unwrap_or_else(|e| format!("Error reading file: {e}"));
+        self.markdown =
+            std::fs::read_to_string(path).unwrap_or_else(|e| format!("Error reading file: {e}"));
         self.title = root
             .as_ref()
             .and_then(|r| path.strip_prefix(r).ok())

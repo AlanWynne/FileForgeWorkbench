@@ -68,6 +68,7 @@ members = [
     "crates/ff-theme-editor",
     "crates/ff-toolchain-panel",
     "crates/ff-catalog-registry",
+    "crates/ff-catalog-dialog",
     "crates/ff-dataset-alloc-dialog",
     "crates/ff-desktop",
     "crates/ff-toolchain-api",
@@ -106,10 +107,14 @@ serde_json = "1"
 crc32fast = "1"
 anyhow = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal"] }
-egui = "0.31"
-eframe = { version = "0.31", features = ["default_fonts"] }
-pulldown-cmark = { version = "0.12", default-features = false, features = ["html"] }
-notify = { version = "7", default-features = false, features = ["macos_fsevent"] }
-egui_commonmark = { version = "0.19", features = ["pulldown_cmark"] }
+egui = "0.33"
+eframe = { version = "0.33", features = ["default_fonts"] }
+pulldown-cmark = { version = "0.12", default-features = false, features = [
+    "html",
+] }
+notify = { version = "7", default-features = false, features = [
+    "macos_fsevent",
+] }
+egui_commonmark = { version = "0.22", features = ["pulldown_cmark"] }
 rfd = "0.15"
 zip = { version = "2", default-features = false, features = ["deflate"] }

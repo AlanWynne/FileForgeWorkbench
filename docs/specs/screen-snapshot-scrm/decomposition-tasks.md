@@ -75,25 +75,44 @@ catalog_manager_dialog -- all via `crate::catalog_registry::*`, so a thin
 catalog_registry (extracted in Wave 3); external `eframe::egui`. Three logical
 sub-dialogs. Sliced by sub-dialog so each move is small and independently green.
 
-- [ ] 12. Create the `ff-catalog-dialog` crate scaffold (empty lib + Cargo.toml)
-  - [ ] 12.1 Add `crates/ff-catalog-dialog/` (deps: ff-catalog-registry, egui) and
+- [x] 12. Create the `ff-catalog-dialog` crate scaffold (empty lib + Cargo.toml)
+  - [x] 12.1 Add `crates/ff-catalog-dialog/` (deps: ff-catalog-registry, egui) and
         register in workspace `members`. Empty `src/lib.rs`. (Req 19.1)
-- [ ] 13. Move the New-Catalog sub-dialog into the crate
-  - [ ] 13.1 Move `NewCatalogForm` + `DialogOutcome` + `validate` + `build_catalog`
+    - DONE: Cargo.toml deps ff-catalog-registry + ff-dscatalog (repository init on
+      create) + egui; dev-deps tempfile + pretty_assertions. Registered in members.
+- [x] 13. Move the New-Catalog sub-dialog into the crate
+  - [x] 13.1 Move `NewCatalogForm` + `DialogOutcome` + `validate` + `build_catalog`
         + `render` + `render_mainframe/posix/native_fields` + `catalog_type_label`
         and their unit tests; ASCII comments. (Req 19.1, 19.3)
-- [ ] 14. Move the Edit-Catalog sub-dialog into the crate
-  - [ ] 14.1 Move `EditCatalogForm` + `validate_edit` + `render_edit` and tests.
+    - DONE in `new_dialog.rs` (DialogOutcome + NewCatalogForm live here; shared
+      `catalog_type_label` promoted to `lib.rs` as `pub(crate)`, used by New+Edit).
+      25 New-dialog tests moved. ASCII-only.
+- [x] 14. Move the Edit-Catalog sub-dialog into the crate
+  - [x] 14.1 Move `EditCatalogForm` + `validate_edit` + `render_edit` and tests.
         (Req 19.1, 19.3)
-- [ ] 15. Move the Delete-Catalog sub-dialog into the crate
-  - [ ] 15.1 Move `DeleteChoice` + `DeleteCatalogConfirm` + `render_delete` +
+    - DONE in `edit_dialog.rs`; 9 Edit-dialog tests moved. ASCII-only.
+- [x] 15. Move the Delete-Catalog sub-dialog into the crate
+  - [x] 15.1 Move `DeleteChoice` + `DeleteCatalogConfirm` + `render_delete` +
         `execute_delete` and tests. (Req 19.1, 19.3)
-- [ ] 16. Thin-adapter + gate for the catalog dialog
-  - [ ] 16.1 Replace `ff-desktop/src/catalog_manager_dialog.rs` with
+    - DONE in `delete_dialog.rs`; 8 Delete-dialog tests moved (incl. Home-catalog
+      protection Req 14.6/14.7). ASCII-only.
+- [x] 16. Thin-adapter + gate for the catalog dialog
+  - [x] 16.1 Replace `ff-desktop/src/catalog_manager_dialog.rs` with
         `pub use ff_catalog_dialog::*;`; add path dep. Verify files_panel.rs,
         shell/render.rs, shell/update.rs references resolve unchanged. (Req 19.2)
-  - [ ] 16.2 Scoped gate (`-p ff-catalog-dialog -p ff-desktop`); baseline row +
+    - DONE: 1292 -> 12-line adapter; all three consumers compile and their tests
+      pass unchanged against the re-export.
+  - [x] 16.2 Scoped gate (`-p ff-catalog-dialog -p ff-desktop`); baseline row +
         TCR update; hand off full verify.ps1. (Req 19.3, 19.4)
+    - DONE (scoped CLEAN 2026-09-30): `cargo fmt -p ff-catalog-dialog -p ff-desktop
+      -- --check` exit 0; `clippy -p ff-catalog-dialog -p ff-desktop -- -D warnings`
+      exit 0; `nextest -p ff-catalog-dialog -p ff-desktop` 1191/1191 passed
+      (crate's 44 tests + ff-desktop suite). Owner full verify.ps1 = hand-off.
+    - NOTE: pre-existing gate blockers (unrelated to DECOMP.4) were FIXED in the
+      same session: created the missing `ff-pdf-export/src/protected.rs` (generic
+      owner-password encryption module; feature builds, clippy-clean, 7 tests) and
+      absorbed prior-batch markdown-viewer fmt drift with `cargo fmt`. Workspace
+      `cargo fmt --check` is now exit 0.
 
 ## Wave 5 -- explorer_view substrate + panel
 

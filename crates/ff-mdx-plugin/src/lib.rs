@@ -3,8 +3,8 @@ mod viewer;
 use std::sync::Arc;
 
 use ff_plugin::{
-    Capability, FileForgePlugin, PluginContext, PluginError, PluginMetadata,
-    Version, ViewersCapability,
+    Capability, FileForgePlugin, PluginContext, PluginError, PluginMetadata, Version,
+    ViewersCapability,
 };
 
 pub use viewer::MdxFileViewer;
@@ -36,10 +36,22 @@ impl Default for MdxPlugin {
 }
 
 impl FileForgePlugin for MdxPlugin {
-    fn metadata(&self) -> &PluginMetadata { &self.metadata }
-    fn plugin_capabilities(&self) -> &[Capability] { &self.capabilities }
-    fn initialize(&mut self, _ctx: Arc<PluginContext>) -> Result<(), PluginError> { Ok(()) }
-    fn activate(&mut self) -> Result<(), PluginError> { Ok(()) }
-    fn deactivate(&mut self) -> Result<(), PluginError> { Ok(()) }
-    fn shutdown(&mut self) -> Result<(), PluginError> { Ok(()) }
+    fn metadata(&self) -> &PluginMetadata {
+        &self.metadata
+    }
+    fn plugin_capabilities(&self) -> &[Capability] {
+        &self.capabilities
+    }
+    fn initialize(&mut self, _ctx: Arc<PluginContext>) -> Result<(), PluginError> {
+        Ok(())
+    }
+    fn activate(&mut self) -> Result<(), PluginError> {
+        Ok(())
+    }
+    fn deactivate(&mut self) -> Result<(), PluginError> {
+        Ok(())
+    }
+    fn shutdown(&mut self) -> Result<(), PluginError> {
+        Ok(())
+    }
 }

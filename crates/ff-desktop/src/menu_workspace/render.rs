@@ -197,11 +197,13 @@ fn natural_option_list_width(
 ) -> f32 {
     let font = option_font();
     let measure = |text: &str| -> f32 {
-        // Lay the text out with no wrap and read the galley's width.
-        ui.fonts(|f| {
-            let galley = f.layout_no_wrap(text.to_string(), font.clone(), egui::Color32::WHITE);
-            galley.size().x
-        })
+        let mut job = egui::text::LayoutJob::simple_singleline(
+            text.to_string(),
+            font.clone(),
+            egui::Color32::WHITE,
+        );
+        job.wrap.max_width = f32::INFINITY;
+        ui.painter().layout_job(job).size().x
     };
     let row_widths = options.iter().map(|o| {
         let prefix_w = measure(&option_prefix_text(o, cmd_width));

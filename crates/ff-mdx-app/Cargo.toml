@@ -15,7 +15,7 @@ ff-md-viewer = { path = "../ff-md-viewer" }
 ff-html-export = { path = "../ff-html-export" }
 egui.workspace = true
 eframe.workspace = true
-egui_commonmark = { version = "0.19", features = ["pulldown_cmark"] }
+egui_commonmark.workspace = true
 anyhow.workspace = true
 rfd = "0.15"
 

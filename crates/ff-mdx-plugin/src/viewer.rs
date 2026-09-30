@@ -1,5 +1,5 @@
-use ff_viewers::trait_def::FileViewer;
 use ff_md_viewer::render_to_html;
+use ff_viewers::trait_def::FileViewer;
 
 pub struct MdxFileViewer;
 

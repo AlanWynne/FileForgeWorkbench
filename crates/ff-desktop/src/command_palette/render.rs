@@ -219,26 +219,30 @@ fn render_entry(ui: &mut egui::Ui, entry: &PaletteEntry, is_selected: bool, quer
         ui.painter().galley(name_pos, name_galley, name_color);
 
         // Category label -- Validates: Requirement 3.1
-        let cat_galley = ui.fonts(|f| {
-            f.layout_no_wrap(
+        let cat_galley = {
+            let mut job = egui::text::LayoutJob::simple_singleline(
                 entry.category.clone(),
                 egui::FontId::proportional(10.0),
                 cat_color,
-            )
-        });
+            );
+            job.wrap.max_width = f32::INFINITY;
+            ui.painter().layout_job(job)
+        };
         let cat_x = name_pos.x + (rect.width() * 0.5).min(200.0);
         ui.painter()
             .galley(egui::pos2(cat_x, name_pos.y), cat_galley, cat_color);
 
         // Shortcut right-aligned -- Validates: Requirement 3.1
         if let Some(ref sc) = entry.shortcut {
-            let sc_galley = ui.fonts(|f| {
-                f.layout_no_wrap(
+            let sc_galley = {
+                let mut job = egui::text::LayoutJob::simple_singleline(
                     sc.clone(),
                     egui::FontId::monospace(10.0),
                     egui::Color32::GRAY,
-                )
-            });
+                );
+                job.wrap.max_width = f32::INFINITY;
+                ui.painter().layout_job(job)
+            };
             let sc_x = rect.right() - sc_galley.rect.width() - 4.0;
             ui.painter()
                 .galley(egui::pos2(sc_x, name_pos.y), sc_galley, egui::Color32::GRAY);
@@ -270,9 +274,13 @@ fn build_highlighted_text(
     }
 
     if match_pos.is_empty() || query.is_empty() {
-        return ui.fonts(|f| {
-            f.layout_no_wrap(text.to_string(), egui::FontId::monospace(12.0), base_color)
-        });
+        let mut job = egui::text::LayoutJob::simple_singleline(
+            text.to_string(),
+            egui::FontId::monospace(12.0),
+            base_color,
+        );
+        job.wrap.max_width = f32::INFINITY;
+        return ui.painter().layout_job(job);
     }
 
     let mut job = egui::text::LayoutJob::default();
@@ -292,7 +300,7 @@ fn build_highlighted_text(
             },
         );
     }
-    ui.fonts(|f| f.layout_job(job))
+    ui.painter().layout_job(job)
 }
 
 /// Rebuild `state.filtered` from `all_entries` based on the current query.

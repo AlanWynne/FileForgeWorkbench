@@ -27,8 +27,7 @@ impl PdfDocument {
     }
 
     pub fn build(&self) -> Vec<u8> {
-        let page_lines: Vec<Vec<String>> =
-            self.pages.iter().map(|p| p.lines.clone()).collect();
+        let page_lines: Vec<Vec<String>> = self.pages.iter().map(|p| p.lines.clone()).collect();
         build_pdf(&page_lines)
     }
 }

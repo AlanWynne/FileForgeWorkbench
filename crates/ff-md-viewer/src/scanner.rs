@@ -1,9 +1,20 @@
 use std::path::{Path, PathBuf};
 
 const EXCLUDED: &[&str] = &[
-    "node_modules", ".git", ".vscode", "__pycache__",
-    ".next", "dist", "build", "bin", "obj", ".vs", ".hg", ".svn",
-    ".kiro", "target",
+    "node_modules",
+    ".git",
+    ".vscode",
+    "__pycache__",
+    ".next",
+    "dist",
+    "build",
+    "bin",
+    "obj",
+    ".vs",
+    ".hg",
+    ".svn",
+    ".kiro",
+    "target",
 ];
 
 #[derive(Debug, Clone)]
@@ -24,7 +35,9 @@ impl Scanner {
 }
 
 fn scan_dir(dir: &Path, root: &Path, out: &mut Vec<FileEntry>) {
-    let Ok(read) = std::fs::read_dir(dir) else { return };
+    let Ok(read) = std::fs::read_dir(dir) else {
+        return;
+    };
     for entry in read.flatten() {
         let path = entry.path();
         let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
@@ -37,7 +50,10 @@ fn scan_dir(dir: &Path, root: &Path, out: &mut Vec<FileEntry>) {
                 .strip_prefix(root)
                 .map(|p| p.to_string_lossy().replace('\\', "/"))
                 .unwrap_or_default();
-            out.push(FileEntry { relative_path: relative, full_path: path });
+            out.push(FileEntry {
+                relative_path: relative,
+                full_path: path,
+            });
         }
     }
 }
