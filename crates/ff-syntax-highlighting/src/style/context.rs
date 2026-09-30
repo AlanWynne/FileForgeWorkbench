@@ -321,7 +321,10 @@ mod tests {
         assert_eq!(ctx.state(), LexerState(1));
         // Verify token start moved
         assert_eq!(ctx.start_position(), BytePosition(2));
-        // Drop ctx to release borrow, then check data
+        // Drop ctx to release its borrow of `data` before reading `data` below.
+        // `drop` of a non-Drop type still ends the borrow by taking ownership;
+        // the lint is about no Drop glue running, which is fine here.
+        #[allow(clippy::drop_non_drop)]
         drop(ctx);
         // forward() wrote style 3 at positions 0 and 1
         assert_eq!(data[0], 3);

@@ -1562,13 +1562,15 @@ mod tests {
     #[test]
     fn visible_entries_name_sort_groups_dirs_before_files() {
         // Validates: Requirement 10.7
-        let mut s = ContentAreaState::default();
-        s.entries = vec![
-            make_entry("zebra.txt", "File", "", "", false),
-            make_entry("alpha", "Directory", "", "", true),
-            make_entry("mango.txt", "File", "", "", false),
-            make_entry("beta", "Directory", "", "", true),
-        ];
+        let s = ContentAreaState {
+            entries: vec![
+                make_entry("zebra.txt", "File", "", "", false),
+                make_entry("alpha", "Directory", "", "", true),
+                make_entry("mango.txt", "File", "", "", false),
+                make_entry("beta", "Directory", "", "", true),
+            ],
+            ..Default::default()
+        };
         let names: Vec<&str> = s
             .visible_entries()
             .iter()
@@ -1581,12 +1583,14 @@ mod tests {
     #[test]
     fn visible_entries_name_sort_dirs_are_alphabetical_within_group() {
         // Validates: Requirement 10.7
-        let mut s = ContentAreaState::default();
-        s.entries = vec![
-            make_entry("Zebra", "Directory", "", "", true),
-            make_entry("alpha", "Directory", "", "", true),
-            make_entry("Mango", "Directory", "", "", true),
-        ];
+        let s = ContentAreaState {
+            entries: vec![
+                make_entry("Zebra", "Directory", "", "", true),
+                make_entry("alpha", "Directory", "", "", true),
+                make_entry("Mango", "Directory", "", "", true),
+            ],
+            ..Default::default()
+        };
         let names: Vec<&str> = s
             .visible_entries()
             .iter()
@@ -1600,13 +1604,15 @@ mod tests {
     #[test]
     fn visible_entries_type_sort_does_not_force_dir_grouping() {
         // Validates: Requirement 10.7 (grouping only applies to Name column)
-        let mut s = ContentAreaState::default();
-        s.entries = vec![
-            make_entry("b_file", "PS", "", "", false),
-            make_entry("a_dir", "Directory", "", "", true),
-        ];
-        s.sort_col = SortColumn::Type;
-        s.sort_dir = SortDir::Ascending;
+        let s = ContentAreaState {
+            entries: vec![
+                make_entry("b_file", "PS", "", "", false),
+                make_entry("a_dir", "Directory", "", "", true),
+            ],
+            sort_col: SortColumn::Type,
+            sort_dir: SortDir::Ascending,
+            ..Default::default()
+        };
         let types: Vec<&str> = s
             .visible_entries()
             .iter()
@@ -1620,12 +1626,14 @@ mod tests {
     #[test]
     fn visible_entries_sorts_by_name_ascending_by_default() {
         // Validates: Requirement 10.2
-        let mut s = ContentAreaState::default();
-        s.entries = vec![
-            make_entry("zebra.txt", "File", "1 KB", "2024-01-03", false),
-            make_entry("alpha.txt", "File", "2 KB", "2024-01-01", false),
-            make_entry("mango.txt", "File", "3 KB", "2024-01-02", false),
-        ];
+        let s = ContentAreaState {
+            entries: vec![
+                make_entry("zebra.txt", "File", "1 KB", "2024-01-03", false),
+                make_entry("alpha.txt", "File", "2 KB", "2024-01-01", false),
+                make_entry("mango.txt", "File", "3 KB", "2024-01-02", false),
+            ],
+            ..Default::default()
+        };
         let names: Vec<&str> = s
             .visible_entries()
             .iter()
@@ -1660,12 +1668,14 @@ mod tests {
     #[test]
     fn visible_entries_sorts_by_name_descending() {
         // Validates: Requirement 10.2
-        let mut s = ContentAreaState::default();
-        s.entries = vec![
-            make_entry("alpha.txt", "File", "", "", false),
-            make_entry("zebra.txt", "File", "", "", false),
-        ];
-        s.sort_dir = SortDir::Descending;
+        let s = ContentAreaState {
+            entries: vec![
+                make_entry("alpha.txt", "File", "", "", false),
+                make_entry("zebra.txt", "File", "", "", false),
+            ],
+            sort_dir: SortDir::Descending,
+            ..Default::default()
+        };
         let names: Vec<&str> = s
             .visible_entries()
             .iter()
@@ -1678,13 +1688,15 @@ mod tests {
     #[test]
     fn visible_entries_sorts_by_type_column() {
         // Validates: Requirement 10.2
-        let mut s = ContentAreaState::default();
-        s.entries = vec![
-            make_entry("b", "PS", "", "", false),
-            make_entry("a", "Directory", "", "", true),
-        ];
-        s.sort_col = SortColumn::Type;
-        s.sort_dir = SortDir::Ascending;
+        let s = ContentAreaState {
+            entries: vec![
+                make_entry("b", "PS", "", "", false),
+                make_entry("a", "Directory", "", "", true),
+            ],
+            sort_col: SortColumn::Type,
+            sort_dir: SortDir::Ascending,
+            ..Default::default()
+        };
         let types: Vec<&str> = s
             .visible_entries()
             .iter()
@@ -1697,13 +1709,15 @@ mod tests {
     #[test]
     fn visible_entries_filters_by_name_case_insensitive() {
         // Validates: Requirement 10.6
-        let mut s = ContentAreaState::default();
-        s.entries = vec![
-            make_entry("README.md", "File", "", "", false),
-            make_entry("main.rs", "File", "", "", false),
-            make_entry("Cargo.toml", "File", "", "", false),
-        ];
-        s.content_filter = "readme".to_string();
+        let s = ContentAreaState {
+            entries: vec![
+                make_entry("README.md", "File", "", "", false),
+                make_entry("main.rs", "File", "", "", false),
+                make_entry("Cargo.toml", "File", "", "", false),
+            ],
+            content_filter: "readme".to_string(),
+            ..Default::default()
+        };
         let visible = s.visible_entries();
         assert_eq!(visible.len(), 1);
         assert_eq!(visible[0].name, "README.md");
@@ -1713,11 +1727,13 @@ mod tests {
     #[test]
     fn visible_entries_empty_filter_shows_all() {
         // Validates: Requirement 10.6
-        let mut s = ContentAreaState::default();
-        s.entries = vec![
-            make_entry("a", "File", "", "", false),
-            make_entry("b", "File", "", "", false),
-        ];
+        let s = ContentAreaState {
+            entries: vec![
+                make_entry("a", "File", "", "", false),
+                make_entry("b", "File", "", "", false),
+            ],
+            ..Default::default()
+        };
         assert_eq!(s.visible_entries().len(), 2);
     }
 
@@ -1725,9 +1741,11 @@ mod tests {
     #[test]
     fn visible_entries_filter_no_match_returns_empty() {
         // Validates: Requirement 10.6
-        let mut s = ContentAreaState::default();
-        s.entries = vec![make_entry("hello.txt", "File", "", "", false)];
-        s.content_filter = "zzz".to_string();
+        let s = ContentAreaState {
+            entries: vec![make_entry("hello.txt", "File", "", "", false)],
+            content_filter: "zzz".to_string(),
+            ..Default::default()
+        };
         assert!(s.visible_entries().is_empty());
     }
 
@@ -1735,8 +1753,10 @@ mod tests {
     #[test]
     fn breadcrumb_display_at_root_shows_catalog_name() {
         // Validates: Requirement 10.5
-        let mut s = ContentAreaState::default();
-        s.selected_catalog = Some("PAYROLL".to_string());
+        let s = ContentAreaState {
+            selected_catalog: Some("PAYROLL".to_string()),
+            ..Default::default()
+        };
         assert_eq!(s.breadcrumb_display(), "PAYROLL");
     }
 
@@ -1744,8 +1764,10 @@ mod tests {
     #[test]
     fn breadcrumb_display_includes_path_segments() {
         // Validates: Requirement 10.5
-        let mut s = ContentAreaState::default();
-        s.selected_catalog = Some("MYCAT".to_string());
+        let mut s = ContentAreaState {
+            selected_catalog: Some("MYCAT".to_string()),
+            ..Default::default()
+        };
         s.push_path("src");
         s.push_path("lib");
         assert_eq!(s.breadcrumb_display(), "MYCAT / src / lib");
@@ -1807,8 +1829,10 @@ mod tests {
     #[test]
     fn push_path_appends_segment() {
         // Validates: Requirement 10.4
-        let mut s = ContentAreaState::default();
-        s.selected_catalog = Some("CAT".to_string());
+        let mut s = ContentAreaState {
+            selected_catalog: Some("CAT".to_string()),
+            ..Default::default()
+        };
         s.push_path("subdir");
         assert_eq!(s.path_segments, vec!["subdir"]);
         assert_eq!(s.breadcrumb_display(), "CAT / subdir");

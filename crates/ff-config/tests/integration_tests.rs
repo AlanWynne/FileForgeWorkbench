@@ -119,7 +119,7 @@ fn e2e_full_initialization_with_all_layers_and_provenance() {
     assert_eq!(effective.provenance.source_file, Some(workspace_path));
 
     // editor.word_wrap: only in System layer → System wins
-    assert_eq!(handle.get_bool("editor.word_wrap").unwrap(), false);
+    assert!(!handle.get_bool("editor.word_wrap").unwrap());
     let wp_eff = handle.get_with_provenance("editor.word_wrap").unwrap();
     assert_eq!(wp_eff.provenance.layer, ConfigLayer::System);
 
@@ -171,7 +171,7 @@ fn e2e_hot_reload_cycle_callback_invoked_with_changed_keys() {
 
     // Verify initial values
     assert_eq!(handle.get_int("editor.tab_size").unwrap(), 4);
-    assert_eq!(handle.get_bool("editor.word_wrap").unwrap(), true);
+    assert!(handle.get_bool("editor.word_wrap").unwrap());
     assert_eq!(handle.get_string("theme.active").unwrap(), "dark");
 
     // Register a callback that tracks invocations
@@ -203,7 +203,7 @@ fn e2e_hot_reload_cycle_callback_invoked_with_changed_keys() {
 
     // Verify new values are effective
     assert_eq!(handle.get_int("editor.tab_size").unwrap(), 2);
-    assert_eq!(handle.get_bool("editor.word_wrap").unwrap(), true); // unchanged
+    assert!(handle.get_bool("editor.word_wrap").unwrap()); // unchanged
     assert_eq!(handle.get_string("theme.active").unwrap(), "light");
 
     // Verify callback was invoked
@@ -323,7 +323,7 @@ fn e2e_project_load_and_unload_lifecycle() {
 
     // Before project load: User values
     assert_eq!(handle.get_int("editor.tab_size").unwrap(), 4);
-    assert_eq!(handle.get_bool("editor.word_wrap").unwrap(), true);
+    assert!(handle.get_bool("editor.word_wrap").unwrap());
     assert_eq!(handle.get_string("logging.level").unwrap(), "info");
 
     // Load project
@@ -339,7 +339,7 @@ fn e2e_project_load_and_unload_lifecycle() {
     assert_eq!(handle.get_int("editor.tab_size").unwrap(), 2);
     assert_eq!(handle.get_string("logging.level").unwrap(), "debug");
     // word_wrap only in User layer, still effective
-    assert_eq!(handle.get_bool("editor.word_wrap").unwrap(), true);
+    assert!(handle.get_bool("editor.word_wrap").unwrap());
 
     // Unload project
     let unload_event = handle.unload_project();
@@ -353,7 +353,7 @@ fn e2e_project_load_and_unload_lifecycle() {
     // Values revert to User layer
     assert_eq!(handle.get_int("editor.tab_size").unwrap(), 4);
     assert_eq!(handle.get_string("logging.level").unwrap(), "info");
-    assert_eq!(handle.get_bool("editor.word_wrap").unwrap(), true);
+    assert!(handle.get_bool("editor.word_wrap").unwrap());
 }
 
 // ============================================================================

@@ -63,7 +63,7 @@ proptest! {
         let last_row = total_rows - 1;
         let last_row_start = layout.row_start_offset(last_row);
         let last_row_bytes = doc_len - last_row_start;
-        let full_rows = if total_rows > 1 { total_rows - 1 } else { 0 };
+        let full_rows = total_rows.saturating_sub(1);
         let total_bytes = full_rows * bpr_val + last_row_bytes;
         prop_assert_eq!(total_bytes, doc_len);
     }
@@ -209,7 +209,7 @@ proptest! {
         let mut expected = Vec::new();
         if pattern.len() <= data.len() {
             for i in 0..=(data.len() - pattern.len()) {
-                if &data[i..i + pattern.len()] == &pattern[..] {
+                if data[i..i + pattern.len()] == pattern[..] {
                     expected.push(i as u64);
                 }
             }

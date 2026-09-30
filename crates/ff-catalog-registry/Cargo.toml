@@ -1,0 +1,18 @@
+[package]
+name = "ff-catalog-registry"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Virtual catalog registry (types + registry + persistence) for FileForgeWorkbench"
+
+[dependencies]
+ff-dscatalog = { path = "../ff-dscatalog" }
+ff-file-tree = { path = "../ff-file-tree" }
+ff-vfs = { path = "../ff-vfs" }
+serde = { workspace = true }
+toml = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

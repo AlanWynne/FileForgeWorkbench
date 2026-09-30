@@ -59,6 +59,7 @@ impl WorkbenchShell {
             TabKind::SearchResults => custom(WorkspaceKind::Search, DescriptorParams::new()),
             TabKind::PluginManager => custom(WorkspaceKind::PluginManager, DescriptorParams::new()),
             TabKind::EventLog => custom(WorkspaceKind::EventLog, DescriptorParams::new()),
+            TabKind::ScrmViewer => custom(WorkspaceKind::ScrmViewer, DescriptorParams::new()),
             TabKind::MacroLibrary => custom(WorkspaceKind::MacroLibrary, DescriptorParams::new()),
             TabKind::CommandConfigurator => {
                 custom(WorkspaceKind::CommandConfigurator, DescriptorParams::new())
@@ -93,6 +94,13 @@ impl WorkbenchShell {
                 p.insert("editor".to_string(), DescriptorValue::from("kinds"));
                 p
             }),
+            // The Help Context is transient (CR-NR-097): it is not persisted as
+            // its own descriptor. If a descriptor is ever requested for it (it
+            // should not be, since session persistence skips it), map to the Home
+            // Context so a restore lands on the POM rather than an empty tab.
+            TabKind::HelpContext => WorkspaceDescriptor::Menu {
+                name: "pom".to_string(),
+            },
         }
     }
 
@@ -121,7 +129,7 @@ impl WorkbenchShell {
     }
 
     /// Set the active tab's kind + title in place (no push, no new tab).
-    fn set_active_tab_context(&mut self, kind: TabKind, title: &str) {
+    pub(super) fn set_active_tab_context(&mut self, kind: TabKind, title: &str) {
         let tab = self.tabs.active_tab_mut();
         tab.kind = kind;
         tab.title = title.to_string();
@@ -135,7 +143,7 @@ impl WorkbenchShell {
     /// `ensure_pom_menu_loaded` re-seeds `pom.toml` (or the barebones fallback).
     ///
     /// Validates: menu-workspace Requirement 18.2, 18.4
-    fn set_active_tab_home(&mut self) {
+    pub(super) fn set_active_tab_home(&mut self) {
         {
             let tab = self.tabs.active_tab_mut();
             tab.kind = TabKind::MenuWorkspace;
@@ -226,6 +234,9 @@ impl WorkbenchShell {
                 self.set_active_tab_context(TabKind::PluginManager, "[PLUGINS]")
             }
             WorkspaceKind::EventLog => self.set_active_tab_context(TabKind::EventLog, "[LOG]"),
+            WorkspaceKind::ScrmViewer => {
+                self.set_active_tab_context(TabKind::ScrmViewer, "[REPLAY]")
+            }
             WorkspaceKind::MacroLibrary => {
                 self.set_active_tab_context(TabKind::MacroLibrary, "[MACROS]")
             }
@@ -279,6 +290,11 @@ impl WorkbenchShell {
         // CR-CH-023 Req 16.1a: entering a Workspace context places focus on the
         // command field.
         self.command_field_focus_requested = true;
+        // CR-NR-098 Wave 2 (Req 9.1, 9.5): a Context transition is the single
+        // "screen changed" choke point. When automatic capture is enabled, snap
+        // the newly-shown Context. A no-op otherwise, so navigation is never
+        // interrupted.
+        self.auto_capture_active_context();
     }
 
     /// Convenience: navigate the current tab to a parameterless CustomWorkspace

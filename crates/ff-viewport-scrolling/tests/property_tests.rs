@@ -167,11 +167,7 @@ proptest! {
         let restored = VerticalScrollbar::fraction_to_top_line(fraction, max_top);
 
         // Round-trip should be within ±1 due to floating point
-        let diff = if restored > top_line {
-            restored - top_line
-        } else {
-            top_line - restored
-        };
+        let diff = restored.abs_diff(top_line);
         prop_assert!(diff <= 1, "round-trip diff {} > 1 (top={}, restored={})", diff, top_line, restored);
     }
 }

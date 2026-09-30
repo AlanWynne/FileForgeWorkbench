@@ -242,6 +242,7 @@ mod tests {
             show_pom: true,
             global_zoom_offset: 0,
             key_bar_visible: true,
+            key_bar_scope: "base".to_string(),
             file_explorer_sidebar_width: 200.0,
             active_workspace_path: None,
             recent_palette_commands: Vec::new(),

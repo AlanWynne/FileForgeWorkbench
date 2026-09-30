@@ -1,0 +1,27 @@
+[package]
+name = "ff-mdx-installer"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Self-extracting egui installer for ffmdx"
+
+[[bin]]
+name = "ffmdx-setup"
+path = "src/main.rs"
+
+[dependencies]
+egui.workspace = true
+eframe.workspace = true
+anyhow.workspace = true
+zip = { version = "2", default-features = false, features = ["deflate"] }
+dirs.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.52"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

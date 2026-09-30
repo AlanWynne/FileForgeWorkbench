@@ -624,8 +624,10 @@ mod tests {
 
         let before_count = queue.jobs.read().unwrap().len();
 
-        let mut filter = JobFilter::default();
-        filter.owner = Some("alice".to_string());
+        let filter = JobFilter {
+            owner: Some("alice".to_string()),
+            ..Default::default()
+        };
         let results = queue.query(&filter);
         assert_eq!(results.len(), 1);
 

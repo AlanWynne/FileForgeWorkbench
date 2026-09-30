@@ -72,13 +72,27 @@ impl ContentLoader {
         None
     }
 
-    /// Discover all `.help.md` files in the given directory (non-recursive).
+    /// Discover all `.help.md` files in the given directory, recursing into
+    /// subdirectories.
+    ///
+    /// Shipped content is grouped into subfolders (`commands/`, `line-commands/`,
+    /// `modes/`, `features/`) for maintainability, so discovery must walk the
+    /// tree, not just the top level (CR-NR-097, design D1).
     pub fn discover_files(dir: &Path) -> Vec<PathBuf> {
         let mut files = Vec::new();
+        Self::discover_into(dir, &mut files);
+        files.sort();
+        files
+    }
+
+    /// Recursive worker for [`discover_files`].
+    fn discover_into(dir: &Path, files: &mut Vec<PathBuf>) {
         if let Ok(entries) = std::fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if path.is_file() {
+                if path.is_dir() {
+                    Self::discover_into(&path, files);
+                } else if path.is_file() {
                     if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                         if name.ends_with(".help.md") {
                             files.push(path);
@@ -87,8 +101,6 @@ impl ContentLoader {
                 }
             }
         }
-        files.sort();
-        files
     }
 
     /// Load all `.help.md` files from the resolved directory.
@@ -215,6 +227,22 @@ mod tests {
         assert!(topic.body().contains("/app/help"));
         assert!(topic.body().contains("/user/data/help"));
         assert!(topic.body().contains("not installed"));
+    }
+
+    // Validates: Requirement 17.1 (CR-NR-097) — discovery recurses into subdirs
+    #[test]
+    fn discover_files_recurses_into_subdirectories() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("index.help.md"), "content").unwrap();
+        let sub = temp.path().join("commands");
+        fs::create_dir_all(&sub).unwrap();
+        fs::write(sub.join("find.help.md"), "content").unwrap();
+        let deeper = sub.join("nested");
+        fs::create_dir_all(&deeper).unwrap();
+        fs::write(deeper.join("more.help.md"), "content").unwrap();
+
+        let files = ContentLoader::discover_files(temp.path());
+        assert_eq!(files.len(), 3, "must find files in nested subdirectories");
     }
 
     // Validates: Requirement 5.1 — load_all returns error when directory missing

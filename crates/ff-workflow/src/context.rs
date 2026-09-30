@@ -210,8 +210,8 @@ mod tests {
     #[test]
     fn set_and_get_float_value() {
         let mut ctx = WorkflowContext::new();
-        ctx.set("ratio", ContextValue::Float(3.14));
-        assert_eq!(ctx.get_float("ratio"), Some(3.14));
+        ctx.set("ratio", ContextValue::Float(2.5));
+        assert_eq!(ctx.get_float("ratio"), Some(2.5));
     }
 
     #[test]

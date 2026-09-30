@@ -244,20 +244,31 @@ perform the next safe step rather than only describing it.
 9. Update `docs/quality/TCR.md` -- set each covered row to its correct status.
 10. Record a concise summary: requirements implemented, files changed, commands
     run, test results, known limitations, follow-ups.
-11. Run `tools\powershell\verify.ps1` (fmt-check, clippy, and the test suite via
-    cargo-nextest; it clears tools\logs\*.log first and accumulates any
-    problems into ai-review.log). Use `-Fast` for a quick inner-loop signal only
-    (see `testing.md`); the completion gate REQUIRES a clean full run without
-    `-Fast` so proptests keep their >=100-iteration coverage.
-12. While `tools\logs\ai-review.log` contains errors: fix every reported problem,
-    then rerun `verify.ps1`.
+11. Run ONLY the SCOPED build/tests for the crate(s) this change touched, and
+    read their output before proceeding:
+    `cargo check -p <crate>`, `cargo test -p <crate>`, `cargo clippy -p <crate>`,
+    `cargo fmt`. NEVER run `--workspace` builds/tests or `verify.ps1` -- those
+    are the owner's MANUAL step (see below). Do NOT block on a multi-minute run.
+12. While the SCOPED checks report errors attributable to this change: fix and
+    rerun the scoped checks. Stop the loop once the scoped checks are clean.
 13. Compact history.
-14. Stop -- describe what was done and what is next.
+14. Stop and HAND OFF: state that scoped checks are clean, list EXACTLY which
+    scoped commands you ran, and PROMPT the owner to run the full gate manually
+    (`powershell -ExecutionPolicy Bypass -File tools\powershell\verify.ps1`)
+    outside Kiro. Then wait. When the owner reports back "clean" or pastes
+    failures, act on that feedback (fix reported problems with scoped checks,
+    then hand off again). Do NOT self-certify the full gate.
 
-Definition of done (code): all criteria satisfied; `cargo fmt -- --check` passes;
-`cargo build` succeeds; `cargo clippy -- -D warnings` clean; all relevant tests
-pass; TCR updated for every criterion touched; docs updated where behaviour
-changed; no secrets/artefacts/unrelated changes; `verify.ps1` exits clean.
+Definition of done (code):
+- **Code-complete (Kiro-certified)**: all criteria satisfied; `cargo fmt -- --check`
+  passes; the touched crate(s) compile (`cargo check -p <crate>`), lint clean
+  (`cargo clippy -p <crate>`), and their tests pass (`cargo test -p <crate>`);
+  TCR updated for every criterion touched; docs updated where behaviour changed;
+  no secrets/artefacts/unrelated changes. At this point Kiro STOPS and hands off.
+- **Done (owner-confirmed)**: the owner has run the full `verify.ps1` gate
+  manually outside Kiro and reported it clean (empty `ai-review.log`). Only then
+  is the task DONE. Kiro never runs the full gate itself and never claims "done"
+  on scoped checks alone -- it claims "code-complete pending full gate".
 
 Stop for human review when: requirements are contradictory or materially
 ambiguous; a public interface or persisted format must change; an architecture

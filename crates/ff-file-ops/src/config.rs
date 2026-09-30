@@ -72,10 +72,10 @@ mod tests {
     #[test]
     fn default_values_are_sane() {
         assert_eq!(defaults::SAVE_STRATEGY, "atomic");
-        assert!(!defaults::BACKUP_ENABLED);
+        const { assert!(!defaults::BACKUP_ENABLED) };
         assert_eq!(defaults::RECENT_FILES_MAX_COUNT, 10);
         assert_eq!(defaults::ASYNC_THRESHOLD_BYTES, 1_048_576);
-        assert!(defaults::CHECK_MODIFIED_TIME);
-        assert!(defaults::UNSAVED_PROMPT);
+        const { assert!(defaults::CHECK_MODIFIED_TIME) };
+        const { assert!(defaults::UNSAVED_PROMPT) };
     }
 }

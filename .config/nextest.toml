@@ -1,0 +1,7 @@
+# nextest configuration.
+#
+# slow-timeout: mark a test SLOW after `period`, and after `terminate-after`
+# such periods forcibly TERMINATE it and report a TIMEOUT (instead of hanging
+# the whole run forever). This lets a stuck test be named and the suite finish.
+[profile.default]
+slow-timeout = { period = "30s", terminate-after = 2 }

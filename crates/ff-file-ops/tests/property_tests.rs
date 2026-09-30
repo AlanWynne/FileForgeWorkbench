@@ -26,7 +26,7 @@ proptest! {
         let mut list = RecentFilesList::new(max_count);
 
         for (uri_idx, is_add) in &ops {
-            let uri = ResourceUri::new("local", &format!("/file{}.txt", uri_idx));
+            let uri = ResourceUri::new("local", format!("/file{}.txt", uri_idx));
 
             if *is_add {
                 list.add(uri);
@@ -60,7 +60,7 @@ proptest! {
 
         for idx in &add_indices {
             let uri_idx = idx % pool_size;
-            let uri = ResourceUri::new("local", &format!("/file{}.txt", uri_idx));
+            let uri = ResourceUri::new("local", format!("/file{}.txt", uri_idx));
             list.add(uri);
 
             // INVARIANT: no duplicate URIs in the list
@@ -81,7 +81,7 @@ proptest! {
         // After adding, the most recently added URI is always at index 0
         if let Some(last_idx) = add_indices.last() {
             let uri_idx = last_idx % pool_size;
-            let expected_uri = ResourceUri::new("local", &format!("/file{}.txt", uri_idx));
+            let expected_uri = ResourceUri::new("local", format!("/file{}.txt", uri_idx));
             prop_assert_eq!(
                 &list.list()[0],
                 &expected_uri,

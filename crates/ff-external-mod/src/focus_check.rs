@@ -172,8 +172,10 @@ mod tests {
     #[test]
     fn check_document_skips_when_disabled() {
         // Validates: Requirement 9.5 — check_on_focus config
-        let mut config = ExternalModConfig::default();
-        config.check_on_focus = false;
+        let config = ExternalModConfig {
+            check_on_focus: false,
+            ..Default::default()
+        };
         let checker = FocusGainedChecker::new(&config);
         let old_mtime = SystemTime::UNIX_EPOCH;
         let new_mtime = SystemTime::now();
@@ -244,8 +246,10 @@ mod tests {
     #[test]
     fn check_all_returns_empty_when_disabled() {
         // Validates: Requirement 9.5
-        let mut config = ExternalModConfig::default();
-        config.check_on_focus = false;
+        let config = ExternalModConfig {
+            check_on_focus: false,
+            ..Default::default()
+        };
         let checker = FocusGainedChecker::new(&config);
         let tracker = make_tracker_with_doc(DocumentId(1), SystemTime::UNIX_EPOCH);
 

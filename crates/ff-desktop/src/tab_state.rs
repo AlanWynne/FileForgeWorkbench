@@ -74,6 +74,16 @@ pub enum TabKind {
     ///
     /// Validates: workspace-kinds Requirement 6 (CR-NR-090 B.4)
     KindsEditor,
+    /// Context-sensitive Help Context -- displays the resolved help topic
+    /// (F1 / HELP). Rendered via `HelpContextPanel` (a `WorkspaceContext`).
+    ///
+    /// Validates: context-help Requirement 18.2 (CR-NR-097)
+    HelpContext,
+    /// Screen Collection Replay viewer Context (CAPTURE REPLAY). Rendered via
+    /// `ScrmViewerState` (a `WorkspaceContext`).
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 16.1 (CR-NR-098)
+    ScrmViewer,
 }
 
 /// A single undoable edit stored as the inverse operation to apply.
@@ -320,6 +330,13 @@ impl TabState {
     /// Validates: notification-system Requirement 2.1
     pub fn event_log(id: TabId, document: DocumentHandle) -> Self {
         base_tab!(id, TabKind::EventLog, "[LOG]".to_string(), document)
+    }
+
+    /// Create a SCRM Replay viewer tab.
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 16.1 (CR-NR-098)
+    pub fn scrm_viewer(id: TabId, document: DocumentHandle) -> Self {
+        base_tab!(id, TabKind::ScrmViewer, "[REPLAY]".to_string(), document)
     }
 
     /// Create a Macro Library panel tab.

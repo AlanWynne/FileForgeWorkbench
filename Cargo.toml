@@ -63,12 +63,25 @@ members = [
     "crates/ff-file-tree",
     "crates/ff-compare-merge",
     "crates/ff-jes",
+    "crates/ff-screen-model",
+    "crates/ff-scrm",
+    "crates/ff-theme-editor",
+    "crates/ff-toolchain-panel",
+    "crates/ff-catalog-registry",
+    "crates/ff-dataset-alloc-dialog",
     "crates/ff-desktop",
     "crates/ff-toolchain-api",
     "crates/ff-gcc-toolchain",
     "crates/ff-rust-toolchain",
     "crates/ff-fftest",
     "crates/ff-global-search",
+    # Viewer / Exporter family
+    "crates/ff-md-viewer",
+    "crates/ff-html-export",
+    "crates/ff-pdf-export",
+    "crates/ff-mdx-app",
+    "crates/ff-mdx-installer",
+    "crates/ff-mdx-plugin",
 ]
 
 [workspace.package]
@@ -95,3 +108,8 @@ anyhow = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal"] }
 egui = "0.31"
 eframe = { version = "0.31", features = ["default_fonts"] }
+pulldown-cmark = { version = "0.12", default-features = false, features = ["html"] }
+notify = { version = "7", default-features = false, features = ["macos_fsevent"] }
+egui_commonmark = { version = "0.19", features = ["pulldown_cmark"] }
+rfd = "0.15"
+zip = { version = "2", default-features = false, features = ["deflate"] }

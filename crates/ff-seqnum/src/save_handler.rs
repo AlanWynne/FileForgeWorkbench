@@ -156,8 +156,10 @@ mod tests {
             .side_table
             .store_stripped_values(0, Some("000100"), None);
 
-        let mut config = SeqNumConfig::default();
-        config.restore_on_save = true;
+        let config = SeqNumConfig {
+            restore_on_save: true,
+            ..Default::default()
+        };
 
         let decision = prepare_save_content(&doc, &state, &config);
         match decision {
@@ -177,8 +179,10 @@ mod tests {
             lines: vec!["test".to_string()],
         };
         let state = SeqNumState::new();
-        let mut config = SeqNumConfig::default();
-        config.restore_on_save = true;
+        let config = SeqNumConfig {
+            restore_on_save: true,
+            ..Default::default()
+        };
 
         let decision = prepare_save_content(&doc, &state, &config);
         assert_eq!(decision, SaveContentDecision::SaveAsIs);

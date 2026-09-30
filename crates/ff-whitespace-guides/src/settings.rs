@@ -129,8 +129,10 @@ mod tests {
 
     #[test]
     fn is_whitespace_visible_returns_true_for_non_invisible() {
-        let mut settings = WhitespaceSettings::default();
-        settings.visibility = WhitespaceVisibility::VisibleAlways;
+        let settings = WhitespaceSettings {
+            visibility: WhitespaceVisibility::VisibleAlways,
+            ..Default::default()
+        };
         assert!(settings.is_whitespace_visible());
     }
 
@@ -142,8 +144,10 @@ mod tests {
 
     #[test]
     fn has_indent_guides_returns_true_for_real() {
-        let mut settings = WhitespaceSettings::default();
-        settings.indent_guide_mode = IndentGuideMode::Real;
+        let settings = WhitespaceSettings {
+            indent_guide_mode: IndentGuideMode::Real,
+            ..Default::default()
+        };
         assert!(settings.has_indent_guides());
     }
 
@@ -155,8 +159,10 @@ mod tests {
 
     #[test]
     fn has_edge_indicator_returns_true_for_line() {
-        let mut settings = WhitespaceSettings::default();
-        settings.edge_mode = EdgeMode::Line;
+        let settings = WhitespaceSettings {
+            edge_mode: EdgeMode::Line,
+            ..Default::default()
+        };
         assert!(settings.has_edge_indicator());
     }
 

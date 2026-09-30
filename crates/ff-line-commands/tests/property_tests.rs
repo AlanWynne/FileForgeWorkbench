@@ -3,6 +3,10 @@
 //! Each property test validates correctness properties from the design document.
 //! Uses proptest with a minimum of 100 iterations per property.
 
+// CR-CH-048: index-based loops here read clearly against the property being
+// checked; the iterator rewrite clippy suggests is less legible for these tests.
+#![allow(clippy::needless_range_loop)]
+
 use proptest::prelude::*;
 
 use ff_document_model::{BytePosition, Document};

@@ -65,7 +65,7 @@ fn arb_plugin_name() -> impl Strategy<Value = String> {
 /// Strategy to generate a subset of distinct layers (2-6 layers, each unique).
 fn arb_distinct_layers_with_values() -> impl Strategy<Value = Vec<(ConfigLayer, ConfigValue)>> {
     // Generate a random permutation of all layers, then take 2-6
-    let all_layers = vec![
+    let all_layers = [
         ConfigLayer::Defaults,
         ConfigLayer::System,
         ConfigLayer::User,
@@ -77,7 +77,7 @@ fn arb_distinct_layers_with_values() -> impl Strategy<Value = Vec<(ConfigLayer, 
         let count = count.min(all_layers.len());
         all_layers[..count]
             .iter()
-            .zip(values.into_iter())
+            .zip(values)
             .map(|(l, v)| (*l, v))
             .collect::<Vec<_>>()
     })
@@ -723,7 +723,7 @@ proptest! {
 /// Strategy: generate 2-6 layers, each with a random subset of keys defined.
 fn arb_layers_with_key_subsets() -> impl Strategy<Value = Vec<(ConfigLayer, PathBuf, ConfigValue)>>
 {
-    let all_layers = vec![
+    let all_layers = [
         (ConfigLayer::Defaults, PathBuf::from("defaults.toml")),
         (ConfigLayer::System, PathBuf::from("system.toml")),
         (ConfigLayer::User, PathBuf::from("user.toml")),
@@ -740,8 +740,8 @@ fn arb_layers_with_key_subsets() -> impl Strategy<Value = Vec<(ConfigLayer, Path
             let count = count.min(all_layers.len());
             all_layers[..count]
                 .iter()
-                .zip(values.into_iter())
-                .zip(include.into_iter())
+                .zip(values)
+                .zip(include)
                 .filter(|((_, _), inc)| *inc)
                 .map(|(((layer, path), val), _)| (*layer, path.clone(), val))
                 .collect::<Vec<_>>()

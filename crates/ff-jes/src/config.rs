@@ -81,15 +81,19 @@ mod tests {
 
     #[test]
     fn zero_initiator_count_is_invalid() {
-        let mut config = JesConfig::default();
-        config.initiator_count = 0;
+        let config = JesConfig {
+            initiator_count: 0,
+            ..Default::default()
+        };
         assert!(config.validate().is_err());
     }
 
     #[test]
     fn zero_scheduler_poll_is_invalid() {
-        let mut config = JesConfig::default();
-        config.scheduler_poll_ms = 0;
+        let config = JesConfig {
+            scheduler_poll_ms: 0,
+            ..Default::default()
+        };
         assert!(config.validate().is_err());
     }
 }

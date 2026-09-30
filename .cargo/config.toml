@@ -6,11 +6,17 @@
 # behaviour or release output. They affect only local build performance and are
 # fully reversible (delete this file to restore stock cargo defaults).
 
-# Note on linkers: LLVM lld ships with the toolchain as rust-lld and is faster
-# than the default MSVC link.exe, but switching linkers workspace-wide is a
-# heavier change with more failure surface. It is intentionally NOT enabled
-# here; the profile tuning below is the safe, high-value win. Revisit lld-link
-# separately if link time becomes the dominant cost.
+# Note on linkers: LLVM lld ships with the toolchain as rust-lld. It is NOT
+# enabled here, and a measured spike (CR-CH-047 follow-up, 2026-09-24) showed
+# why: on this Windows/MSVC toolchain (rustc 1.98, LLVM 22) an A/B of the
+# ff-desktop test-binary INCREMENTAL relink was ~2x SLOWER under rust-lld
+# (lld-link) than the default MSVC link.exe -- 23.3s vs 12.2s. MSVC link.exe's
+# incremental linking beats lld's full relink for a single Windows binary; lld's
+# usual win is Linux / cold full links, not Windows incremental. So rust-lld is
+# a REGRESSION for this workload and is deliberately left off. The `-C
+# linker-flavor=lld-link -C linker=rust-lld` rustflags DID link correctly (so it
+# is available if a future Linux/CI path wants it), it is just slower here.
+# The profile tuning below remains the safe, high-value local win.
 
 # Development/test profile: keep builds cheap to (re)compile.
 [profile.dev]

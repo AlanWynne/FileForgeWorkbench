@@ -408,6 +408,14 @@ impl KeyMap {
         for (key, cmd, label) in shift {
             map.set(ModifiedKey::shift(key), KeyBinding::with_label(cmd, label));
         }
+        // CR-CH-046 (Requirement 15.7): the ONLY default binding outside the Base
+        // and Shift rows -- Alt+F1 cycles the Key_Label_Bar scope via PFSHOW so
+        // the feature is reachable by keyboard out of the box. Code-only, restored
+        // by RESET BARE (which reverts to this compiled default).
+        map.set(
+            ModifiedKey::alt(FunctionKey::F1),
+            KeyBinding::with_label("PFSHOW", "PFSHOW"),
+        );
         map
     }
 }
@@ -730,21 +738,37 @@ mod tests {
 
     #[test]
     fn key_map_default_global_binds_exactly_base_and_shift_f1_to_f12() {
-        // Validates: function-keys Requirement 15.3 -- Ctrl/Alt layers and keys
-        // beyond F12 are unassigned in the baseline (24 bindings: 12 Base + 12
-        // Shift). No Ctrl/Alt bindings exist by default.
+        // Validates: function-keys Requirement 15.3 (amended by CR-CH-046) --
+        // Ctrl/Alt/AltGr/Ctrl+Shift layers and keys beyond F12 are unassigned in
+        // the baseline EXCEPT the single Alt+F1 = PFSHOW default (Req 15.7). So
+        // the default map has 25 bindings: 12 Base + 12 Shift + AF1.
         let map = KeyMap::default_global();
-        assert_eq!(map.len(), 24, "default map = 12 Base + 12 Shift");
+        assert_eq!(
+            map.len(),
+            25,
+            "default map = 12 Base + 12 Shift + AF1=PFSHOW"
+        );
         for key in FunctionKey::ALL {
-            // No Ctrl or Alt bindings in the default.
+            // No Ctrl bindings in the default.
             assert!(
                 map.get(ModifiedKey::ctrl(key)).is_none(),
                 "Ctrl+{key} must be unassigned by default"
             );
-            assert!(
-                map.get(ModifiedKey::alt(key)).is_none(),
-                "Alt+{key} must be unassigned by default"
-            );
+            // No Alt bindings EXCEPT Alt+F1 (CR-CH-046, Req 15.7).
+            if key == FunctionKey::F1 {
+                assert_eq!(
+                    map.get(ModifiedKey::alt(key))
+                        .expect("Alt+F1 must be bound to PFSHOW by default")
+                        .command(),
+                    "PFSHOW",
+                    "CR-CH-046: Alt+F1 default is PFSHOW"
+                );
+            } else {
+                assert!(
+                    map.get(ModifiedKey::alt(key)).is_none(),
+                    "Alt+{key} must be unassigned by default (only Alt+F1 is bound)"
+                );
+            }
             // Keys beyond F12 have no Base or Shift binding either.
             let num = key.number();
             if num > 12 {
@@ -758,6 +782,18 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn default_global_binds_alt_f1_to_pfshow() {
+        // Validates: function-keys Requirement 15.7, 12.14 (CR-CH-046) -- Alt+F1
+        // defaults to PFSHOW with the label "PFSHOW".
+        let map = KeyMap::default_global();
+        let binding = map
+            .get(ModifiedKey::alt(FunctionKey::F1))
+            .expect("Alt+F1 must be bound by default");
+        assert_eq!(binding.command(), "PFSHOW");
+        assert_eq!(binding.display_label(), "PFSHOW");
     }
 
     #[test]

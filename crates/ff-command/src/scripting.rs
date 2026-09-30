@@ -215,8 +215,8 @@ mod tests {
             LuaValue::Integer(42)
         );
         assert_eq!(
-            param_value_to_lua(&ParamValue::Float(3.14)),
-            LuaValue::Number(3.14)
+            param_value_to_lua(&ParamValue::Float(2.5)),
+            LuaValue::Number(2.5)
         );
         assert_eq!(
             param_value_to_lua(&ParamValue::Boolean(true)),

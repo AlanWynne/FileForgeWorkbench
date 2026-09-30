@@ -402,8 +402,7 @@ fn is_shell_command(cmd: &str) -> bool {
         || upper == "RESET EXCLUDED"
         || upper == "RESET ALL"
         || upper == "PFSHOW"
-        || upper == "PFSHOW ON"
-        || upper == "PFSHOW OFF"
+        || upper.starts_with("PFSHOW ")
         || upper == "END"
         || upper == "RETURN"
         || upper == "KEYS"
@@ -415,7 +414,7 @@ fn is_shell_command(cmd: &str) -> bool {
 
 // ── Phase AC: POM option list reorganisation tests ──────────────────────
 
-/// Validates: Requirement 14.3 -- POM has exactly 9 built-in options (0-8).
+// Validates: Requirement 14.3 -- POM has exactly 9 built-in options (0-8).
 // POM option-list/label tests removed: the POM option list is now data-driven
 // from menus/pom.toml (menu-workspace Req 2.1c-2.1i, CR-CH-018) and is covered
 // by the menu_workspace defaults/loader/render tests.
@@ -6620,13 +6619,290 @@ fn status_bar_segments_are_not_tab_focus_stops() {
     );
 }
 
-// === CR-CH-023: chrome (Key_Label_Bar F-key buttons) not Tab focus stops =====
+// === CR-CH-046: PFSHOW single-line, modifier-scope cycling ===================
+
+#[test]
+fn pfshow_cycle_off_base_shift_ctrl_alt_off() {
+    // Validates: function-keys-and-history Requirement 12.8 -- bare PFSHOW cycles
+    // Off -> Base -> Shift -> Ctrl -> Alt -> Off and wraps.
+    use super::KeyBarScope;
+    let mut shell = make_shell();
+    // Force a known starting mode: Off.
+    shell.handle_command("PFSHOW OFF");
+    assert!(!shell.key_bar_visible, "start Off");
+
+    shell.handle_command("PFSHOW"); // Off -> Base
+    assert!(shell.key_bar_visible);
+    assert_eq!(shell.key_bar_scope, KeyBarScope::Base);
+
+    shell.handle_command("PFSHOW"); // Base -> Shift
+    assert!(shell.key_bar_visible);
+    assert_eq!(shell.key_bar_scope, KeyBarScope::Shift);
+
+    shell.handle_command("PFSHOW"); // Shift -> Ctrl
+    assert_eq!(shell.key_bar_scope, KeyBarScope::Ctrl);
+
+    shell.handle_command("PFSHOW"); // Ctrl -> Alt
+    assert_eq!(shell.key_bar_scope, KeyBarScope::Alt);
+
+    shell.handle_command("PFSHOW"); // Alt -> Off
+    assert!(!shell.key_bar_visible, "Alt wraps to Off");
+
+    shell.handle_command("PFSHOW"); // Off -> Base (wrap)
+    assert!(shell.key_bar_visible);
+    assert_eq!(shell.key_bar_scope, KeyBarScope::Base);
+}
+
+#[test]
+fn pfshow_scope_args_jump_to_scope_and_show() {
+    // Validates: function-keys-and-history Requirement 12.9 -- PFSHOW BASE/SHIFT/
+    // CTRL/ALT jump directly to that scope and make the bar visible.
+    use super::KeyBarScope;
+    let mut shell = make_shell();
+    shell.handle_command("PFSHOW OFF");
+
+    shell.handle_command("PFSHOW SHIFT");
+    assert!(shell.key_bar_visible);
+    assert_eq!(shell.key_bar_scope, KeyBarScope::Shift);
+
+    shell.handle_command("PFSHOW OFF");
+    shell.handle_command("PFSHOW ALT");
+    assert!(shell.key_bar_visible, "scope arg turns the bar on");
+    assert_eq!(shell.key_bar_scope, KeyBarScope::Alt);
+
+    shell.handle_command("PFSHOW CTRL");
+    assert_eq!(shell.key_bar_scope, KeyBarScope::Ctrl);
+
+    shell.handle_command("PFSHOW BASE");
+    assert_eq!(shell.key_bar_scope, KeyBarScope::Base);
+}
+
+#[test]
+fn pfshow_scope_arg_is_case_insensitive() {
+    // Validates: function-keys-and-history Requirement 12.9 -- case-insensitive.
+    use super::KeyBarScope;
+    let mut shell = make_shell();
+    shell.handle_command("pfshow shift");
+    assert_eq!(shell.key_bar_scope, KeyBarScope::Shift);
+    shell.handle_command("PfShow Alt");
+    assert_eq!(shell.key_bar_scope, KeyBarScope::Alt);
+}
+
+#[test]
+fn pfshow_on_off_idempotent_no_error() {
+    // Validates: function-keys-and-history Requirement 12.1, 12.2, 12.6, 12.7 --
+    // ON when visible / OFF when hidden are no-ops with no error.
+    let mut shell = make_shell();
+    shell.handle_command("PFSHOW ON");
+    assert!(shell.key_bar_visible);
+    shell.handle_command("PFSHOW ON"); // already visible
+    assert!(shell.key_bar_visible);
+    assert!(
+        shell.open_error.is_none(),
+        "ON-when-visible is not an error"
+    );
+
+    shell.handle_command("PFSHOW OFF");
+    assert!(!shell.key_bar_visible);
+    shell.handle_command("PFSHOW OFF"); // already hidden
+    assert!(!shell.key_bar_visible);
+    assert!(
+        shell.open_error.is_none(),
+        "OFF-when-hidden is not an error"
+    );
+}
+
+#[test]
+fn pfshow_on_from_off_retains_scope() {
+    // Validates: function-keys-and-history Requirement 12.1 -- PFSHOW ON restores
+    // the last scope (retained across OFF).
+    use super::KeyBarScope;
+    let mut shell = make_shell();
+    shell.handle_command("PFSHOW CTRL"); // scope = Ctrl, visible
+    shell.handle_command("PFSHOW OFF"); // hidden, scope retained
+    shell.handle_command("PFSHOW ON"); // visible again at Ctrl
+    assert!(shell.key_bar_visible);
+    assert_eq!(shell.key_bar_scope, KeyBarScope::Ctrl);
+}
+
+#[test]
+fn pfshow_unknown_arg_leaves_mode_unchanged_and_sets_error() {
+    // Validates: function-keys-and-history Requirement 12.13 -- unknown argument
+    // is a non-fatal error and does not change the mode.
+    use super::KeyBarScope;
+    let mut shell = make_shell();
+    shell.handle_command("PFSHOW SHIFT");
+    let before_visible = shell.key_bar_visible;
+    let before_scope = shell.key_bar_scope;
+
+    shell.handle_command("PFSHOW FOO");
+    assert_eq!(shell.key_bar_visible, before_visible, "mode unchanged");
+    assert_eq!(shell.key_bar_scope, before_scope, "scope unchanged");
+    assert_eq!(shell.key_bar_scope, KeyBarScope::Shift);
+    assert!(
+        shell.open_error.is_some(),
+        "unknown PFSHOW arg must set a non-fatal error"
+    );
+}
+
+#[test]
+fn alt_f1_default_dispatches_pfshow_cycle() {
+    // Validates: function-keys-and-history Requirement 15.7, 12.14 -- the default
+    // AF1 = PFSHOW binding reaches the PFSHOW command. Simulate the key by
+    // dispatching the command bound to Alt+F1 in the active (default) map.
+    use super::KeyBarScope;
+    use ff_keys::{FunctionKey, ModifiedKey};
+    let mut shell = make_shell();
+    let cmd = shell
+        .key_map_resolver
+        .active_key_map()
+        .get(ModifiedKey::alt(FunctionKey::F1))
+        .expect("Alt+F1 bound by default")
+        .command()
+        .to_string();
+    assert_eq!(cmd, "PFSHOW", "default AF1 command is PFSHOW");
+
+    shell.handle_command("PFSHOW OFF"); // known start
+    shell.handle_command(&cmd); // as if Alt+F1 pressed -> cycle Off -> Base
+    assert!(shell.key_bar_visible);
+    assert_eq!(shell.key_bar_scope, KeyBarScope::Base);
+}
+
+#[test]
+fn key_bar_scope_maps_modifier_segment_and_parse() {
+    // Validates: function-keys-and-history Requirement 12.9, 12.10 -- scope maps
+    // to the right modifier layer, exposes the Scope_Segment label, and parses
+    // case-insensitively (used by the command and by session restore).
+    use super::KeyBarScope;
+    use ff_keys::KeyModifier;
+
+    assert_eq!(KeyBarScope::Base.to_modifier(), KeyModifier::None);
+    assert_eq!(KeyBarScope::Shift.to_modifier(), KeyModifier::Shift);
+    assert_eq!(KeyBarScope::Ctrl.to_modifier(), KeyModifier::Ctrl);
+    assert_eq!(KeyBarScope::Alt.to_modifier(), KeyModifier::Alt);
+
+    assert_eq!(KeyBarScope::Base.segment_label(), "Base");
+    assert_eq!(KeyBarScope::Shift.segment_label(), "Shift");
+    assert_eq!(KeyBarScope::Ctrl.segment_label(), "Ctrl");
+    assert_eq!(KeyBarScope::Alt.segment_label(), "Alt");
+
+    assert_eq!(KeyBarScope::parse("base"), Some(KeyBarScope::Base));
+    assert_eq!(KeyBarScope::parse("SHIFT"), Some(KeyBarScope::Shift));
+    assert_eq!(KeyBarScope::parse(" ctrl "), Some(KeyBarScope::Ctrl));
+    assert_eq!(KeyBarScope::parse("Alt"), Some(KeyBarScope::Alt));
+    assert_eq!(KeyBarScope::parse("bogus"), None);
+
+    // persist_name round-trips through parse.
+    for scope in [
+        KeyBarScope::Base,
+        KeyBarScope::Shift,
+        KeyBarScope::Ctrl,
+        KeyBarScope::Alt,
+    ] {
+        assert_eq!(KeyBarScope::parse(scope.persist_name()), Some(scope));
+    }
+}
+
+/// Render the single-row Key_Label_Bar for each scope into a headless harness
+/// and confirm the real render path runs without panic (CR-CH-046). The
+/// non-focusability of the slots is guarded by
+/// `key_label_bar_buttons_are_not_tab_focus_stops`; pixel-exact styling of the
+/// Scope_Segment/divider is the documented MANUAL row.
+///
+/// Validates: function-keys-and-history Requirement 12.10, 13.1
+#[test]
+fn key_label_bar_renders_single_row_for_each_scope() {
+    use egui_kittest::Harness;
+    for arg in ["BASE", "SHIFT", "CTRL", "ALT"] {
+        let mut shell = make_shell();
+        shell.handle_command(&format!("PFSHOW {arg}"));
+        assert!(shell.key_bar_visible, "PFSHOW {arg} shows the bar");
+        let mut harness = Harness::builder()
+            .with_size(egui::Vec2::new(1200.0, 200.0))
+            .build(move |ctx| {
+                shell.render_key_label_bar(ctx);
+            });
+        harness.run();
+        // Reaching here means the single-row render path executed for this scope
+        // without panicking.
+    }
+}
+
+// === B077: RESET BARE confirmation dialog traps keyboard focus ===============
 //
-// Req 16.9: the Key_Label_Bar F-key buttons duplicate physical function keys
-// and MUST NOT be keyboard focus stops. They remain mouse-clickable. Regression
-// guard: render the real render_key_label_bar into a headless harness with a
-// single focusable sentinel AFTER it; pressing Tab must keep focus on the single
-// sentinel (never a key-bar button), so at most one distinct id is ever focused.
+// accessibility Req 2.3: when a modal dialog is open, keyboard focus is trapped
+// within it and Tab must NOT move focus to background elements. The RESET BARE
+// popup previously left `modal_open` unset on the frame it opened (it was set
+// only later in update()), so the background Boundary_Policy still consumed Tab.
+
+/// Opening the RESET BARE dialog sets `modal_open` on the SAME frame, so the
+/// background Tab handling is suppressed (the root cause of B077).
+///
+/// Validates: accessibility Requirement 2.3 (modal focus trap)
+#[test]
+fn full_shell_reset_bare_dialog_sets_modal_open_and_focuses_a_button() {
+    let mut harness = harness_shell();
+    // Open the confirmation dialog via the real command path.
+    harness.state_mut().handle_command("RESET BARE");
+    harness.run();
+
+    // The dialog is open and the shell is in modal mode on this frame.
+    assert!(
+        harness.state().reset_bare_confirm.is_some(),
+        "RESET BARE must open the confirmation dialog"
+    );
+    assert!(
+        harness.state().modal_open,
+        "opening the RESET BARE dialog must set modal_open so background Tab is trapped (B077)"
+    );
+
+    // Focus is inside the dialog, NOT on the background command field.
+    let focused = harness.ctx.memory(|m| m.focused());
+    assert!(
+        focused.is_some(),
+        "the modal must hold keyboard focus (initial focus on Cancel)"
+    );
+    assert_ne!(
+        focused,
+        Some(cmd_field_id()),
+        "focus must be in the dialog, not the background command field (B077)"
+    );
+}
+
+/// While the RESET BARE dialog is open, pressing Tab keeps focus inside the
+/// dialog and never returns to the background command field.
+///
+/// Validates: accessibility Requirement 2.3 (Tab does not escape the modal)
+#[test]
+fn full_shell_reset_bare_dialog_tab_stays_within_modal() {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("RESET BARE");
+    harness.run();
+    assert!(harness.state().modal_open, "dialog open");
+
+    // Tab several times; focus must never land on the background command field.
+    for _ in 0..6 {
+        harness.press_key(egui::Key::Tab);
+        harness.run();
+        assert_ne!(
+            harness.ctx.memory(|m| m.focused()),
+            Some(cmd_field_id()),
+            "Tab must not escape the RESET BARE modal to the background command field (B077)"
+        );
+        assert!(
+            harness.state().modal_open,
+            "modal stays open while Tabbing (until Confirm/Cancel)"
+        );
+    }
+}
+
+// === CR-CH-023 / CR-CH-046: chrome (Key_Label_Bar slots) not Tab focus stops =
+//
+// Req 16.9 / 12.10: the Key_Label_Bar slots duplicate physical function keys and
+// MUST NOT be keyboard focus stops (they remain mouse-clickable). This guards the
+// single-row render (CR-CH-046) via the real render_key_label_bar into a headless
+// harness with a single focusable sentinel AFTER it; pressing Tab must keep focus
+// on the sentinel, so at most one distinct id is ever focused.
 #[test]
 fn key_label_bar_buttons_are_not_tab_focus_stops() {
     use egui_kittest::Harness;
@@ -8794,6 +9070,288 @@ fn full_shell_kinds_first_tab_focuses_first_interior() {
     );
 }
 
+// === CR-NR-097: context-help content pipeline + F1 display ==================
+// These drive the REAL WorkbenchShell headlessly and exercise the display
+// pipeline: the shell-owned registry, the Help Context render arm, the first-Tab
+// focus contract, dynamic-topic generation, and the missing-topic diagnostics.
+
+// Validates: context-help Req 18.5 (CR-NR-097) + workspace-conformance --
+// the FIRST Tab from the command field lands EXACTLY on the Help_Search field.
+#[test]
+fn full_shell_help_first_tab_focuses_search_field() {
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("HELP");
+    for _ in 0..4 {
+        harness.run();
+    }
+    let expected = harness.state().first_interior_id;
+    assert!(
+        expected.is_some(),
+        "Help Context must report a first interior control"
+    );
+    assert_eq!(
+        expected,
+        Some(crate::help_context::help_search_field_id()),
+        "the reported first interior must be the Help_Search field"
+    );
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        Some(cmd_field_id()),
+        "command field holds focus on entering the Help Context"
+    );
+    harness.press_key(egui::Key::Tab);
+    harness.run();
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        expected,
+        "first Tab in the Help Context must focus the Help_Search field, not a phantom stop"
+    );
+}
+
+// Validates: context-help Req 18.1 -- HELP opens the Help Context (single
+// shell-owned registry; no per-call empty registry).
+#[test]
+fn help_command_opens_help_context() {
+    let mut shell = make_shell();
+    shell.handle_command("HELP");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        crate::tab_state::TabKind::HelpContext,
+        "HELP opens the Help Context"
+    );
+}
+
+// Validates: menu-workspace Req 14.4 (B079) -- F1/HELP is a PUSH navigation, so
+// END/F3 from the Help Context returns to the Context Help was opened from
+// rather than closing the last Workspace and exiting the app.
+#[test]
+fn end_from_help_context_returns_to_previous_context_not_exit() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
+    assert!(shell.tabs.active_tab().is_home, "start on the Home Context");
+    let tabs_before = shell.tabs.len();
+
+    // F1 / HELP opens the Help Context (pushing the Home Context onto the stack).
+    shell.handle_command("HELP");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::HelpContext,
+        "HELP opens the Help Context"
+    );
+    assert_eq!(
+        shell.tabs.len(),
+        tabs_before,
+        "HELP transforms the active tab in place; it does not open a new tab"
+    );
+
+    // F3 / END must pop back to the previous Context (POM Home), not exit.
+    shell.handle_command("END");
+    assert!(
+        shell.tabs.active_tab().is_home,
+        "END from the Help Context must restore the previous (Home) Context"
+    );
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::MenuWorkspace,
+        "the restored Context is the POM Menu_Workspace"
+    );
+    assert_eq!(
+        shell.tabs.len(),
+        tabs_before,
+        "END from Help must not close the Workspace (no app exit)"
+    );
+}
+
+// Validates: menu-workspace Req 14.4 (B079) -- HELP opened from a drilled-in
+// Context (e.g. Settings) returns to THAT Context on END, not the POM.
+#[test]
+fn end_from_help_returns_to_drilled_context() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
+    // Drill into Settings first (POM pushed onto the stack).
+    shell.handle_command("SETTINGS");
+    assert!(!shell.tabs.active_tab().is_home, "on the Settings menu");
+
+    // HELP from Settings pushes Settings; END returns to Settings, not the POM.
+    shell.handle_command("HELP");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::HelpContext);
+    shell.handle_command("END");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::MenuWorkspace,
+        "END from Help returns to the Settings Menu_Workspace"
+    );
+    assert!(
+        !shell.tabs.active_tab().is_home,
+        "returned Context is the drilled Settings menu, not the Home POM"
+    );
+}
+
+// Validates: menu-workspace Req 14.4 (B079) -- navigating between help topics
+// (index -> a command topic) does NOT stack Help-on-Help frames, so a single
+// END still returns to the pre-Help Context.
+#[test]
+fn navigating_between_help_topics_does_not_stack_help_frames() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
+    // Open the index, then a second topic while already in Help.
+    shell.handle_command("HELP");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::HelpContext);
+    shell.handle_command("HELP FIND");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::HelpContext,
+        "still in the Help Context after a second HELP"
+    );
+    // A single END returns to the pre-Help Context (Home), proving only one
+    // frame was pushed.
+    shell.handle_command("END");
+    assert!(
+        shell.tabs.active_tab().is_home,
+        "one END returns to Home; help topic navigation did not stack frames"
+    );
+}
+
+// Validates: context-help Req 18.2 -- a resolved file-based topic is displayed.
+#[test]
+fn help_command_displays_file_based_topic() {
+    use ff_help::{HelpTopic, TopicKey, TopicSource};
+    let mut shell = make_shell();
+    shell.seed_help_registry_for_test(vec![HelpTopic::new(
+        TopicKey::command("CHANGE"),
+        "CHANGE Command".to_string(),
+        "Find and replace.".to_string(),
+        TopicSource::FileBased {
+            file_path: std::path::PathBuf::from("change.help.md"),
+        },
+    )]);
+    shell.handle_command("HELP CHANGE");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        crate::tab_state::TabKind::HelpContext
+    );
+    let shown = shell
+        .help_panel_for_test()
+        .model()
+        .current_topic_key()
+        .cloned();
+    assert_eq!(shown, Some(TopicKey::command("CHANGE")));
+}
+
+// Validates: context-help Req 18.3 -- the dynamic index topic is generated and
+// displayed even though it is not a file-based topic.
+#[test]
+fn help_command_generates_index_topic() {
+    use ff_help::TopicKey;
+    let mut shell = make_shell();
+    shell.handle_command("HELP");
+    let key = shell
+        .help_panel_for_test()
+        .model()
+        .current_topic_key()
+        .cloned();
+    assert_eq!(key, Some(TopicKey::index()));
+    let body = shell
+        .help_panel_for_test()
+        .model()
+        .current_topic()
+        .unwrap()
+        .body()
+        .to_string();
+    assert!(body.contains("Help Index"), "index body: {body}");
+}
+
+// Validates: context-help Req 18.4, 19.1, 19.2 -- an unresolved non-dynamic key
+// shows the index with a message AND records a miss (no command error only).
+#[test]
+fn help_missing_topic_shows_index_and_records_miss() {
+    let mut shell = make_shell();
+    // Empty registry (make_shell finds no shipped help beside the test binary):
+    // HELP CHANGE resolves cmd:CHANGE, which is absent -> miss + index message.
+    shell.handle_command("HELP CHANGE");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        crate::tab_state::TabKind::HelpContext,
+        "a missing topic still opens the Help Context (index), not just an error"
+    );
+    assert!(
+        shell.open_error.is_none(),
+        "a missing topic must not surface as a command-line error"
+    );
+    assert_eq!(
+        shell.help_missing_count("cmd:CHANGE"),
+        1,
+        "the miss must be tallied"
+    );
+    let body = shell
+        .help_panel_for_test()
+        .model()
+        .current_topic()
+        .unwrap()
+        .body()
+        .to_string();
+    assert!(
+        body.contains("Help not yet available") && body.contains("cmd:CHANGE"),
+        "index-with-message must name the unresolved topic: {body}"
+    );
+}
+
+// Validates: context-help Req 19.3, 19.4 -- HELP MISSING reports the tally with
+// EXPECTED/UNEXPECTED classification.
+#[test]
+fn help_missing_report_classifies_topics() {
+    let mut shell = make_shell();
+    shell.handle_command("HELP CHANGE"); // EXPECTED (in the promised set)
+    shell.handle_command("HELP ZZZUNKNOWN"); // UNEXPECTED (no requirement)
+    shell.handle_command("HELP MISSING");
+    let body = shell
+        .help_panel_for_test()
+        .model()
+        .current_topic()
+        .unwrap()
+        .body()
+        .to_string();
+    assert!(body.contains("cmd:CHANGE"), "report lists CHANGE: {body}");
+    assert!(
+        body.contains("EXPECTED"),
+        "report classifies EXPECTED: {body}"
+    );
+    assert!(
+        body.contains("cmd:ZZZUNKNOWN") && body.contains("UNEXPECTED"),
+        "report classifies the unknown key UNEXPECTED: {body}"
+    );
+}
+
+// Validates: context-help Req 19.5 -- reaching a miss writes to NO project doc.
+#[test]
+fn help_miss_does_not_write_project_docs() {
+    let bugs = std::path::Path::new("../../docs/status/bugs.md");
+    let changelog = std::path::Path::new("../../docs/status/change-log.md");
+    let bugs_before = std::fs::metadata(bugs).map(|m| m.len()).ok();
+    let changelog_before = std::fs::metadata(changelog).map(|m| m.len()).ok();
+
+    let mut shell = make_shell();
+    shell.handle_command("HELP SOMETHINGMISSING");
+    shell.handle_command("HELP MISSING");
+
+    let bugs_after = std::fs::metadata(bugs).map(|m| m.len()).ok();
+    let changelog_after = std::fs::metadata(changelog).map(|m| m.len()).ok();
+    assert_eq!(
+        bugs_before, bugs_after,
+        "bugs.md must be untouched by a miss"
+    );
+    assert_eq!(
+        changelog_before, changelog_after,
+        "change-log.md must be untouched by a miss"
+    );
+}
+
 // === CR-NR-092 (B046 Slice 2b): in-window split behaviour ===================
 // These drive the REAL WorkbenchShell headlessly (build_eframe) through the
 // SPLIT / FOCUS / UNSPLIT command path (command parity: the menu/keys route
@@ -10049,4 +10607,393 @@ fn full_shell_split_tab_stays_within_focused_region() {
             "Shift+Tab must not cross into another region while split (B073)"
         );
     }
+}
+
+// === CR-NR-098 Wave 1: SNAPSHOT command + POM ScreenProvider ===============
+
+/// Validates: screen-snapshot-scrm Req 4.1, 2.1 -- SNAPSHOT on the POM renders
+/// the Home Context's logical screen to selectable text containing the POM
+/// title and option descriptions.
+#[test]
+fn snapshot_text_for_active_pom_contains_menu_content() {
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
+    let (text, format) = shell
+        .snapshot_text_for_active("")
+        .expect("POM is capturable");
+    assert_eq!(format, ff_screen_model::SnapshotFormat::PlainText);
+    assert!(
+        text.contains("Primary Option Menu"),
+        "snapshot must contain the POM title; got: {text}"
+    );
+}
+
+/// Validates: screen-snapshot-scrm Req 4.4 -- a format argument selects the
+/// renderer (MARKDOWN produces a fenced code block / heading).
+#[test]
+fn snapshot_text_for_active_markdown_format_arg() {
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
+    let (text, format) = shell
+        .snapshot_text_for_active("MARKDOWN")
+        .expect("POM is capturable");
+    assert_eq!(format, ff_screen_model::SnapshotFormat::Markdown);
+    assert!(text.contains("```"), "markdown must contain a fenced block");
+}
+
+/// Validates: screen-snapshot-scrm Req 6.3 -- an unknown format argument is an
+/// error, not a panic or a silent no-op.
+#[test]
+fn snapshot_unknown_format_is_error() {
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
+    let result = shell.snapshot_text_for_active("bogus");
+    assert!(result.is_err(), "unknown format must be an error");
+}
+
+/// Validates: screen-snapshot-scrm Req 6.1, 6.2 -- the SNAPSHOT command sets a
+/// confirmation status message in the command area.
+#[test]
+fn snapshot_command_sets_status_message() {
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
+    shell.handle_command("SNAPSHOT");
+    let msg = shell.open_error.as_deref().unwrap_or("");
+    assert!(
+        msg.contains("Snapshot"),
+        "SNAPSHOT must confirm the outcome in the command area; got: {msg:?}"
+    );
+}
+
+/// Validates: screen-snapshot-scrm Req 4.1-4.6, 6.1 (full shell) -- typing
+/// SNAPSHOT into the real shell command path on the POM produces selectable
+/// text of the POM's fields and confirms via the status area. This is the
+/// end-to-end proof that the command routes through the single dispatch path
+/// and captures the live Home Context.
+#[test]
+fn full_shell_snapshot_on_pom_captures_selectable_text() {
+    let mut harness = harness_shell();
+    // The startup Context is the POM (Home). Snapshot it via the command path.
+    harness.state_mut().handle_command("SNAPSHOT TEXT");
+    harness.run();
+    // The pure capture path returns the POM's selectable text.
+    let (text, _fmt) = harness
+        .state()
+        .snapshot_text_for_active("TEXT")
+        .expect("startup POM is capturable");
+    assert!(
+        text.contains("Primary Option Menu"),
+        "full-shell SNAPSHOT must capture the POM title as selectable text; got: {text}"
+    );
+    // And the command reported a confirmation.
+    let msg = harness.state().open_error.as_deref().unwrap_or("");
+    assert!(
+        msg.contains("Snapshot"),
+        "SNAPSHOT must set a confirmation status; got: {msg:?}"
+    );
+}
+
+// === CR-NR-098 Wave 2: CAPTURE lifecycle + auto-capture + SCRM viewer =======
+
+/// Validates: screen-snapshot-scrm Req 7.1, 7.7 -- CAPTURE START opens a
+/// collection and CAPTURE STATUS reports it.
+#[test]
+fn capture_start_then_status_reports_active_collection() {
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
+    shell.handle_command("CAPTURE START Repro");
+    shell.handle_command("CAPTURE STATUS");
+    let msg = shell.open_error.as_deref().unwrap_or("");
+    assert!(
+        msg.contains("Repro"),
+        "STATUS must name the collection; got: {msg:?}"
+    );
+}
+
+/// Validates: screen-snapshot-scrm Req 8.1, 8.2 -- CAPTURE SCREEN appends a
+/// capture of the active (POM) Context.
+#[test]
+fn capture_screen_appends_capture() {
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
+    shell.handle_command("CAPTURE START C");
+    shell.handle_command("CAPTURE SCREEN");
+    let msg = shell.open_error.as_deref().unwrap_or("");
+    assert!(msg.contains("Captured screen 1"), "got: {msg:?}");
+    shell.handle_command("CAPTURE LIST");
+    let listing = shell.open_error.as_deref().unwrap_or("");
+    assert!(
+        listing.contains("1."),
+        "LIST enumerates the capture; got: {listing:?}"
+    );
+}
+
+/// Validates: screen-snapshot-scrm Req 9.1, 9.5 -- with automatic capture on
+/// (CAPTURE START enables it), navigating the Home Context to another Context
+/// records a capture at the transition choke point (navigate_to).
+#[test]
+fn auto_capture_records_on_navigation() {
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
+    // START enables auto-capture and captures nothing yet by itself.
+    shell.handle_command("CAPTURE START Flow");
+    // Navigate the POM to another Context: the transition hook fires a capture.
+    shell.handle_command("FILES");
+    shell.handle_command("CAPTURE STATUS");
+    let msg = shell.open_error.as_deref().unwrap_or("");
+    // At least one capture was recorded automatically on the transition.
+    assert!(
+        msg.contains("capture(s)") && !msg.contains("0 capture(s)"),
+        "auto-capture must record on navigation; status: {msg:?}"
+    );
+}
+
+/// Validates: screen-snapshot-scrm Req 10.1, 16.1 -- CAPTURE REPLAY with no
+/// collection reports nothing to replay (does not open an empty viewer).
+#[test]
+fn capture_replay_without_collection_reports_nothing() {
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
+    shell.handle_command("CAPTURE REPLAY");
+    let msg = shell.open_error.as_deref().unwrap_or("");
+    assert!(msg.contains("No screen collection"), "got: {msg:?}");
+}
+
+/// Validates: screen-snapshot-scrm Req 10.1, 16.1 -- CAPTURE REPLAY navigates to
+/// the SCRM viewer Context when a collection exists.
+#[test]
+fn capture_replay_opens_viewer_when_collection_exists() {
+    use crate::tab_state::TabKind;
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
+    shell.handle_command("CAPTURE START C");
+    shell.handle_command("CAPTURE SCREEN");
+    shell.handle_command("CAPTURE REPLAY");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::ScrmViewer,
+        "CAPTURE REPLAY opens the SCRM viewer Context"
+    );
+}
+
+/// Validates: screen-snapshot-scrm Req 16.1, 16.2 (workspace-conformance) --
+/// the SCRM viewer Context reports a first interior control and the FIRST Tab
+/// from the command field lands EXACTLY on it (no phantom stop). Mandatory
+/// full-shell first-Tab focus test for the new Context.
+#[test]
+fn full_shell_scrm_viewer_first_tab_focuses_first_control() {
+    let mut harness = harness_shell();
+    // Seed a collection with one capture of the POM, then open the viewer.
+    harness.state_mut().handle_command("CAPTURE START C");
+    harness.state_mut().handle_command("CAPTURE SCREEN");
+    harness.state_mut().handle_command("CAPTURE REPLAY");
+    for _ in 0..4 {
+        harness.run();
+    }
+    let expected = harness.state().first_interior_id;
+    assert!(
+        expected.is_some(),
+        "SCRM viewer must report a first interior control"
+    );
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        Some(cmd_field_id()),
+        "command field holds focus on entering the SCRM viewer"
+    );
+    harness.press_key(egui::Key::Tab);
+    harness.run();
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        expected,
+        "first Tab in the SCRM viewer must focus the reported first interior, not a phantom stop"
+    );
+}
+
+// === CR-NR-098 Wave 3: CAPTURE EXPORT + SAVE/LOAD persistence ===============
+
+/// Seed a shell with an isolated screen-collections dir and a one-capture POM
+/// collection. Returns the shell and the TempDir (kept alive by the caller).
+fn make_shell_with_scrm_dir() -> (super::WorkbenchShell, tempfile::TempDir) {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let mut shell = make_shell();
+    shell.scrm_dir_override = Some(dir.path().to_path_buf());
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
+    shell.handle_command("CAPTURE START Repro");
+    shell.handle_command("CAPTURE SCREEN");
+    (shell, dir)
+}
+
+/// Validates: screen-snapshot-scrm Req 12.1, 11.1 -- CAPTURE EXPORT TEXT writes
+/// a text file under the screen-collections dir.
+#[test]
+fn capture_export_text_writes_file() {
+    let (mut shell, dir) = make_shell_with_scrm_dir();
+    shell.handle_command("CAPTURE EXPORT TEXT flow.txt");
+    let msg = shell.open_error.as_deref().unwrap_or("");
+    assert!(msg.contains("exported"), "got: {msg:?}");
+    let path = dir.path().join("flow.txt");
+    assert!(
+        path.exists(),
+        "export file must exist at {}",
+        path.display()
+    );
+    let body = std::fs::read_to_string(&path).expect("read export");
+    assert!(
+        body.contains("Repro"),
+        "export contains the collection name"
+    );
+}
+
+/// Validates: screen-snapshot-scrm Req 12.2 -- CAPTURE EXPORT MD writes markdown.
+#[test]
+fn capture_export_markdown_writes_file() {
+    let (mut shell, dir) = make_shell_with_scrm_dir();
+    shell.handle_command("CAPTURE EXPORT MD flow.md");
+    let path = dir.path().join("flow.md");
+    assert!(path.exists());
+    let body = std::fs::read_to_string(&path).expect("read export");
+    assert!(
+        body.contains("# Repro"),
+        "markdown has the collection heading"
+    );
+}
+
+/// Validates: screen-snapshot-scrm Req 12.5, 11.1 -- CAPTURE SAVE writes the
+/// native archive and CAPTURE LOAD reads it back into the active session.
+#[test]
+fn capture_save_then_load_round_trips_collection() {
+    let (mut shell, dir) = make_shell_with_scrm_dir();
+    shell.handle_command("CAPTURE SAVE repro.ffscrm");
+    let path = dir.path().join("repro.ffscrm");
+    assert!(path.exists(), "archive must exist at {}", path.display());
+    // Purge the active collection, then LOAD it back.
+    shell.handle_command("CAPTURE PURGE");
+    assert!(!shell.scrm.is_active(), "purged");
+    shell.handle_command("CAPTURE LOAD repro.ffscrm");
+    let msg = shell.open_error.as_deref().unwrap_or("");
+    assert!(msg.contains("Loaded collection"), "got: {msg:?}");
+    assert!(
+        shell.scrm.is_active(),
+        "collection reloaded into the session"
+    );
+}
+
+/// Validates: screen-snapshot-scrm Req 12.4, 12.6 -- CAPTURE EXPORT PDF writes a
+/// real PDF file with selectable text (a %PDF header and a Tj text operator),
+/// not a rasterised image.
+#[test]
+fn capture_export_pdf_writes_selectable_pdf() {
+    let (mut shell, dir) = make_shell_with_scrm_dir();
+    shell.handle_command("CAPTURE EXPORT PDF out.pdf");
+    let msg = shell.open_error.as_deref().unwrap_or("");
+    assert!(msg.contains("exported"), "got: {msg:?}");
+    let path = dir.path().join("out.pdf");
+    assert!(path.exists(), "PDF file must exist at {}", path.display());
+    let bytes = std::fs::read(&path).expect("read pdf");
+    let head = String::from_utf8_lossy(&bytes[..bytes.len().min(16)]);
+    assert!(head.starts_with("%PDF-"), "real PDF header; got: {head:?}");
+    let full = String::from_utf8_lossy(&bytes);
+    assert!(
+        full.contains(" Tj"),
+        "PDF has selectable text operators (not raster)"
+    );
+}
+
+/// Validates: screen-snapshot-scrm Req 11.1 -- CAPTURE EXPORT with no active
+/// collection reports the empty state (no panic, no file).
+#[test]
+fn capture_export_without_collection_reports_empty() {
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
+    shell.handle_command("CAPTURE EXPORT TEXT");
+    let msg = shell.open_error.as_deref().unwrap_or("");
+    assert!(msg.contains("No active screen collection"), "got: {msg:?}");
+}
+
+/// Validates: screen-snapshot-scrm Req 14.1-14.4, 20.4 -- CAPTURE EVIDENCE
+/// writes an evidence package JSON with the test-case id, pass/fail status, and
+/// a content hash.
+#[test]
+fn capture_evidence_writes_package_with_hash() {
+    let (mut shell, dir) = make_shell_with_scrm_dir();
+    shell.handle_command("CAPTURE EVIDENCE TC-42 PASS ev.json");
+    let msg = shell.open_error.as_deref().unwrap_or("");
+    assert!(msg.contains("Evidence package written"), "got: {msg:?}");
+    let path = dir.path().join("ev.json");
+    assert!(
+        path.exists(),
+        "evidence file must exist at {}",
+        path.display()
+    );
+    let body = std::fs::read_to_string(&path).expect("read evidence");
+    assert!(body.contains("TC-42"), "test-case id recorded");
+    assert!(body.contains("\"pass\""), "pass status recorded");
+    assert!(
+        body.contains("sha256:"),
+        "content hash recorded (tamper-evidence)"
+    );
+}
+
+/// Validates: screen-snapshot-scrm Req 14.1 -- CAPTURE EVIDENCE with no active
+/// collection reports the empty state.
+#[test]
+fn capture_evidence_without_collection_reports_empty() {
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
+    shell.handle_command("CAPTURE EVIDENCE");
+    let msg = shell.open_error.as_deref().unwrap_or("");
+    assert!(msg.contains("No active screen collection"), "got: {msg:?}");
+}
+
+/// Validates: screen-snapshot-scrm Req 20.1, 20.2 -- CAPTURE EXPORT PDF
+/// PROTECTED writes an encrypted (edit-locked) PDF file.
+#[test]
+fn capture_export_pdf_protected_writes_encrypted_pdf() {
+    let (mut shell, dir) = make_shell_with_scrm_dir();
+    shell.handle_command("CAPTURE EXPORT PDF PROTECTED my-owner-pw locked.pdf");
+    let msg = shell.open_error.as_deref().unwrap_or("");
+    assert!(msg.contains("Protected PDF written"), "got: {msg:?}");
+    let path = dir.path().join("locked.pdf");
+    assert!(
+        path.exists(),
+        "protected PDF must exist at {}",
+        path.display()
+    );
+    let bytes = std::fs::read(&path).expect("read pdf");
+    assert!(bytes.starts_with(b"%PDF-"), "valid PDF header");
+    // The document is encrypted: it carries an /Encrypt reference in the trailer.
+    let full = String::from_utf8_lossy(&bytes);
+    assert!(
+        full.contains("/Encrypt"),
+        "protected PDF carries an /Encrypt dict"
+    );
+}
+
+/// Validates: screen-snapshot-scrm Req 20.2 -- CAPTURE EXPORT PDF PROTECTED with
+/// no owner password uses a default (still produces an encrypted file).
+#[test]
+fn capture_export_pdf_protected_default_owner_password() {
+    let (mut shell, dir) = make_shell_with_scrm_dir();
+    shell.handle_command("CAPTURE EXPORT PDF PROTECTED");
+    let msg = shell.open_error.as_deref().unwrap_or("");
+    assert!(msg.contains("Protected PDF written"), "got: {msg:?}");
+    // Default file name is <stem>-protected.pdf under the scrm dir.
+    let entries: Vec<_> = std::fs::read_dir(dir.path())
+        .expect("read dir")
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_name().to_string_lossy().ends_with(".pdf"))
+        .collect();
+    assert!(!entries.is_empty(), "a protected PDF file was written");
 }

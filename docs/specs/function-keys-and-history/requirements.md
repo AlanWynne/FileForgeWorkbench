@@ -245,37 +245,47 @@ All function key assignments route through the command framework -- pressing a f
 
 ### Requirement 12: PFSHOW Command -- Key Label Bar Visibility Toggle
 
-**User Story:** As a workbench user, I want to show or hide the Key Label Bar with a command, so that I can reclaim screen space when I know my key assignments or reveal them when I need a reminder.
+**User Story:** As a workbench user, I want to show or hide the Key Label Bar with a command, and cycle through which modifier layer (Base, Shift, Ctrl, Alt) it displays, so that I can reclaim screen space when I know my key assignments, reveal them when I need a reminder, and inspect the bindings of any modifier layer.
 
-**Source:** New requirement -- ISPF-style PFSHOW command.
+**Source:** New requirement -- ISPF-style PFSHOW command. Criteria 12.8-12.13 added by CR-CH-046 (single-line, modifier-scope cycling).
+
+**Key_Label_Bar_Scope (CR-CH-046):** The Key_Label_Bar has a MODE that is one of five values -- `Off`, `Base`, `Shift`, `Ctrl`, `Alt`. When the mode is not `Off`, the bar is visible and displays the F-key bindings of the corresponding modifier layer of the active Key_Map on a SINGLE line (Requirement 13, revised): `Base` = plain F-keys, `Shift` = SHIFT+F-keys, `Ctrl` = CTRL+F-keys, `Alt` = ALT+F-keys. The four visible modes are collectively the Key_Label_Bar_Scope. The legacy boolean "visible" state (criteria 12.1-12.7) is preserved as a projection: visible == mode is not `Off`.
 
 #### Acceptance Criteria
 
-1. WHEN the user submits the primary command `PFSHOW ON`, THE workbench SHALL make the Key_Label_Bar visible in the footer region if it is not already visible.
-2. WHEN the user submits the primary command `PFSHOW OFF`, THE workbench SHALL hide the Key_Label_Bar from the footer region.
-3. WHEN the user submits the primary command `PFSHOW` with no argument, THE workbench SHALL toggle the Key_Label_Bar visibility: if currently visible it SHALL be hidden; if currently hidden it SHALL be made visible.
-4. THE PFSHOW visibility state SHALL be persisted in the session state so that the Key_Label_Bar is restored to its last-known visibility on the next workbench launch.
+1. WHEN the user submits the primary command `PFSHOW ON`, THE workbench SHALL make the Key_Label_Bar visible in the footer region if it is not already visible. WHEN it becomes visible from a hidden (`Off`) state, THE workbench SHALL set the mode to the last non-`Off` scope if one is known, otherwise to `Base` (criterion 12.9 governs which scope is shown).
+2. WHEN the user submits the primary command `PFSHOW OFF`, THE workbench SHALL hide the Key_Label_Bar from the footer region (mode set to `Off`).
+3. WHEN the user submits the primary command `PFSHOW` with no argument, THE workbench SHALL advance the Key_Label_Bar mode through the fixed cycle `Off -> Base -> Shift -> Ctrl -> Alt -> Off` (criterion 12.8 is authoritative for the cycle order). (REVISED by CR-CH-046: bare `PFSHOW` cycles the five-state mode rather than toggling a boolean; the old two-state toggle is superseded.)
+4. THE PFSHOW state SHALL be persisted in the session state -- BOTH whether the bar is visible AND the current Key_Label_Bar_Scope -- so that the Key_Label_Bar is restored to its last-known visibility and scope on the next workbench launch. (REVISED by CR-CH-046: the persisted state now includes the scope, not just visibility.)
 5. THE `PFSHOW` command SHALL be registered in the command framework with Command_ID `"keys.pfshow"` and SHALL be invocable from the Primary_Command_Field.
 6. WHEN `PFSHOW ON` is issued and the bar is already visible, THE workbench SHALL produce no visible change and SHALL NOT emit an error.
 7. WHEN `PFSHOW OFF` is issued and the bar is already hidden, THE workbench SHALL produce no visible change and SHALL NOT emit an error.
+8. WHEN the user submits bare `PFSHOW` repeatedly starting from the hidden (`Off`) state, THE workbench SHALL visit the modes in exactly this order and wrap: `Off -> Base -> Shift -> Ctrl -> Alt -> Off -> Base -> ...`. Each non-`Off` mode makes the bar visible and selects that modifier layer; the `Off` mode hides the bar. (CR-CH-046.)
+9. WHEN the user submits `PFSHOW BASE`, `PFSHOW SHIFT`, `PFSHOW CTRL`, or `PFSHOW ALT`, THE workbench SHALL set the Key_Label_Bar_Scope directly to `Base`, `Shift`, `Ctrl`, or `Alt` respectively AND make the bar visible if it is hidden, regardless of the current mode. The scope keyword SHALL be matched case-insensitively. (CR-CH-046.)
+10. WHEN the Key_Label_Bar is visible, THE workbench SHALL render it on a SINGLE line consisting of a leading Scope_Segment showing the current scope name (`Base` / `Shift` / `Ctrl` / `Alt`) followed by the F-key label slots of that modifier layer, separated by a divider consistent with the active theme (e.g. `Base | F1 Help | F2 Detach | ...`). (CR-CH-046; see Requirement 13, revised.)
+
+14. THE compiled default Global_Key_Map SHALL bind Alt+F1 to `PFSHOW` so the PFSHOW cycle is reachable by keyboard out of the box; this default is restored by `RESET BARE`. (CR-CH-046; see Requirement 15.7 for the authoritative default-map criterion.)
+11. THE F-key labels shown for the current scope SHALL be derived from the active Key_Map's bindings for that modifier layer (Base = `get_plain`; Shift/Ctrl/Alt = the corresponding `ModifiedKey` binding), using the same label-derivation and blank-slot rules as Requirement 4 (criteria 4.4, 4.5) and Requirement 13.2. A key unassigned in the selected layer SHALL show a blank label but SHALL keep its slot. (CR-CH-046.)
+12. WHEN the active Key_Map changes (profile switch, hot-reload, tab/context change) while the Key_Label_Bar is visible, THE single-line display for the current scope SHALL update within the same rendering frame (unchanged from Requirement 4.6 / 13.5, now applied to the single-scope row). (CR-CH-046.)
+13. WHEN an unrecognised PFSHOW argument is submitted (e.g. `PFSHOW FOO`), THE workbench SHALL leave the Key_Label_Bar mode unchanged and SHALL surface a clear, non-fatal error message; it SHALL NOT crash. (CR-CH-046.)
 
 ---
 
-### Requirement 13: Key Label Bar -- Two-Row Layout for 24 Keys
+### Requirement 13: Key Label Bar -- Single-Row, Per-Scope Layout
 
-**User Story:** As a workbench user, I want the Key Label Bar to display all 24 function key assignments across two rows at the bottom of the window, so that I can see the full set of available shortcuts at a glance.
+**User Story:** As a workbench user, I want the Key Label Bar to display one modifier layer's function key assignments on a single line at the bottom of the window, with the layer name shown, so that the footer stays compact and I can switch which layer (Base, Shift, Ctrl, Alt) I am inspecting with PFSHOW.
 
-**Source:** New requirement -- extension of Requirement 4 to support F1-F24 in a two-row layout.
+**Source:** New requirement -- extension of Requirement 4. REVISED by CR-CH-046 from the earlier two-row (F1-F12 / F13-F24) layout to a SINGLE row that shows ONE modifier scope's F-key labels at a time (Base / Shift / Ctrl / Alt), selected by the PFSHOW command (Requirement 12, criteria 12.8-12.13). This realises the change anticipated by the Phase DE reconciliation note (retire the second F13-F24 row in favour of a single F1-F12 row plus modifier-layer indicators).
 
-**Reconciliation note (Phase DE, CR-CH-014):** The Key_Configuration_Dialog redesign (Requirement 20) restricts the editable physical range to F1 to F12. Requirement 20.15 states the Key_Label_Bar continues to display the Base F1 to F12 bindings. This Requirement 13 (two rows, F13-F24 in the second row) predates that redesign and is retained for backward compatibility with any Global_Key_Map still using F13-F24 identifiers (Requirement 1.3). A future change request should decide whether the second F13-F24 row is retired in favour of a single F1-F12 row plus modifier-layer indicators; that decision is out of scope for CR-CH-014 and is not made here.
+**Reconciliation note (Phase DE, CR-CH-014; superseded by CR-CH-046):** The Key_Configuration_Dialog redesign (Requirement 20) restricts the editable physical range to F1 to F12. The earlier two-row layout (F13-F24 in a second row) is RETIRED by CR-CH-046: the bar now shows a single row for one modifier layer of F1-F12 at a time, with the layer selected via PFSHOW. Global_Key_Maps that still define F13-F24 identifiers remain valid configuration (Requirement 1.3) but those keys are not shown on the single-row bar; the editable/displayed physical range is F1-F12 across the modifier layers, consistent with Requirement 20.15.
 
 #### Acceptance Criteria
 
-1. THE Key_Label_Bar SHALL display function key assignments in two rows of up to 12 slots each: the first row SHALL display F1-F12 and the second row SHALL display F13-F24.
-2. WHEN a function key has no assignment in the active Key_Map, THE Key_Label_Bar SHALL display that key's slot as blank (key name shown, label area empty) rather than omitting the slot entirely, so that the two-row grid layout is preserved.
-3. THE Key_Label_Bar SHALL display each slot as a pair: the key name (e.g., "F3") followed by the short label (e.g., "END"), separated by a space or visual divider consistent with the active theme.
-4. THE two-row layout SHALL be rendered in the workbench footer region below the main editing surface, occupying at most two lines of display height.
-5. WHEN the Key_Label_Bar is visible and the active Key_Map changes, THE two-row display SHALL update within the same rendering frame.
+1. THE Key_Label_Bar SHALL display, when visible, a SINGLE row for the current Key_Label_Bar_Scope (Requirement 12): a leading Scope_Segment naming the scope (`Base` / `Shift` / `Ctrl` / `Alt`) followed by up to 12 F-key slots (F1-F12) of that modifier layer. (REVISED by CR-CH-046: single row per scope, replacing the two-row F1-F24 layout.)
+2. WHEN a function key has no assignment in the active Key_Map for the current scope's modifier layer, THE Key_Label_Bar SHALL display that key's slot as blank (key name shown, label area empty) rather than omitting the slot entirely, so that the single-row grid layout is preserved.
+3. THE Key_Label_Bar SHALL display each slot as a pair: the key name (e.g., "F3") followed by the short label (e.g., "End"), separated by a space or visual divider consistent with the active theme; the Scope_Segment SHALL be separated from the first slot by the same divider (e.g. `Base | F1 Help | ...`).
+4. THE single-row layout SHALL be rendered in the workbench footer region below the main editing surface, occupying at most ONE line of display height. (REVISED by CR-CH-046: at most one line, was two.)
+5. WHEN the Key_Label_Bar is visible and the active Key_Map changes, THE single-row display for the current scope SHALL update within the same rendering frame.
 
 ---
 
@@ -366,7 +376,8 @@ a shipped TOML file), mirroring the compiled Recovery_Baseline POM/Settings menu
 3. THE built-in default assignments for the CTRL, ALT, ALTGR, and CTRL+SHIFT
    modifier layers, and for physical keys beyond F12, SHALL be unassigned in the
    baseline default map, leaving those slots blank in the Key_Label_Bar until the
-   user configures them.
+   user configures them, WITH THE SINGLE EXCEPTION of Alt+F1 (AF1) which is bound
+   to `PFSHOW` (criterion 15.7, CR-CH-046).
 
 4. THE built-in default key map SHALL be overridable by the user: a
    `[global_key_map]` section in the user configuration file, OR a per-context
@@ -376,6 +387,15 @@ a shipped TOML file), mirroring the compiled Recovery_Baseline POM/Settings menu
 
 5. THE built-in default key map SHALL be documented in the workbench help system
    under Topic_Key `"feature:function_keys"`.
+
+7. THE compiled default Global_Key_Map SHALL bind Alt+F1 (`ModifiedKey` `AF1`) to
+   the command `PFSHOW` (label `PFSHOW`), so that pressing Alt+F1 cycles the
+   Key_Label_Bar scope per Requirement 12 out of the box. This is the ONLY
+   default binding in the CTRL/ALT/ALTGR/CTRL+SHIFT layers (criterion 15.3), and
+   like every other default binding it is CODE-ONLY (compiled, never written to
+   disk) and is restored by `RESET BARE` (configuration-system Requirement 19),
+   which clears user overrides so the compiled default -- including AF1 = PFSHOW
+   -- applies again. (CR-CH-046.)
 
 6. NOTE on commands referenced by the default map (SPLIT, RETURN, RFIND, RCHANGE,
    UP, DOWN, SWAP, LEFT, RIGHT, RETRIEVE, HELP, END, and the yet-to-be-built

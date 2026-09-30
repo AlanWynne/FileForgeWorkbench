@@ -398,10 +398,12 @@ mod tests {
     #[test]
     fn title_line_format_with_rows() {
         // Validates: Requirement 16.2
-        let mut state = SdsfPanelState::default();
-        state.total_rows = 47;
-        state.first_visible_row = 0;
-        state.page_size = 25;
+        let state = SdsfPanelState {
+            total_rows: 47,
+            first_visible_row: 0,
+            page_size: 25,
+            ..Default::default()
+        };
         let title = state.title_line();
         assert!(title.contains("Row 1 to 25 of 47"), "got: {title}");
     }
@@ -417,10 +419,12 @@ mod tests {
     #[test]
     fn title_line_clamps_last_row() {
         // Validates: Requirement 16.2
-        let mut state = SdsfPanelState::default();
-        state.total_rows = 10;
-        state.first_visible_row = 8;
-        state.page_size = 25;
+        let state = SdsfPanelState {
+            total_rows: 10,
+            first_visible_row: 8,
+            page_size: 25,
+            ..Default::default()
+        };
         let title = state.title_line();
         assert!(title.contains("Row 9 to 10 of 10"), "got: {title}");
     }
@@ -516,8 +520,10 @@ mod tests {
     #[test]
     fn command_input_field_is_writable() {
         // Validates: Requirement 16.22
-        let mut state = SdsfPanelState::default();
-        state.command_input = "PREFIX PAY".to_string();
+        let state = SdsfPanelState {
+            command_input: "PREFIX PAY".to_string(),
+            ..Default::default()
+        };
         assert_eq!(state.command_input, "PREFIX PAY");
     }
 }

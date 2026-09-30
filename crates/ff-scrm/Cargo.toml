@@ -1,0 +1,22 @@
+[package]
+name = "ff-scrm"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Screen Collection and Replay Manager for FileForgeWorkbench (CR-NR-098): collection/capture model, persistence, replay engine, exporters, evidence packages. No egui."
+
+[dependencies]
+ff-screen-model = { path = "../ff-screen-model" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+zip = { version = "2", default-features = false, features = ["deflate"] }
+sha2 = "0.10"
+lopdf = "0.36"
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

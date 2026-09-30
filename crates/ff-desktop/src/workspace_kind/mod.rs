@@ -166,6 +166,13 @@ impl BuiltinKind {
                     BuiltinKind::Menu
                 }
             }
+            // The Help Context is transient and not a configurable Workspace
+            // Kind (CR-NR-097); it never routes through the Kind title path.
+            // Map to the neutral Editor base for the exhaustive match.
+            TabKind::HelpContext => BuiltinKind::Editor,
+            // The SCRM Replay viewer is transient and not a configurable Kind
+            // (CR-NR-098); map to the neutral Editor base for the exhaustive match.
+            TabKind::ScrmViewer => BuiltinKind::Editor,
         }
     }
 }

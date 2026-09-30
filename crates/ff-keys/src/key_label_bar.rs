@@ -7,8 +7,26 @@
 //! Row 0: F1–F12  (indices 0–11)
 //! Row 1: F13–F24 (indices 12–23)
 
-use crate::function_key::FunctionKey;
+use crate::function_key::{FunctionKey, KeyModifier, ModifiedKey};
 use crate::key_map::KeyMap;
+
+/// The 12 physical function keys shown on the single-row Key_Label_Bar
+/// (F1-F12), in display order. CR-CH-046: the bar shows one modifier layer of
+/// these 12 keys at a time.
+const SINGLE_ROW_KEYS: [FunctionKey; 12] = [
+    FunctionKey::F1,
+    FunctionKey::F2,
+    FunctionKey::F3,
+    FunctionKey::F4,
+    FunctionKey::F5,
+    FunctionKey::F6,
+    FunctionKey::F7,
+    FunctionKey::F8,
+    FunctionKey::F9,
+    FunctionKey::F10,
+    FunctionKey::F11,
+    FunctionKey::F12,
+];
 
 /// A single slot in the Key Label Bar display model.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -89,6 +107,43 @@ impl KeyLabelBarModel {
         for slot in &mut self.slots {
             slot.label = key_map
                 .get_plain(slot.key)
+                .map(|binding| binding.display_label().to_string());
+        }
+    }
+
+    /// Build a single-row model (F1-F12) for one modifier layer.
+    ///
+    /// CR-CH-046: the Key_Label_Bar shows ONE modifier scope at a time on a
+    /// single line. `Base` reads the plain (unmodified) bindings; `Shift`,
+    /// `Ctrl`, and `Alt` read the corresponding `ModifiedKey` bindings. Keys
+    /// unassigned in the selected layer produce a blank slot (label `None`), so
+    /// the fixed 12-slot layout is preserved.
+    ///
+    /// Validates: Requirement 13.1, 13.2; Requirement 12.11
+    pub fn row_for_modifier(key_map: &KeyMap, modifier: KeyModifier) -> Self {
+        let slots = SINGLE_ROW_KEYS
+            .iter()
+            .map(|&key| {
+                let label = key_map
+                    .get(ModifiedKey { key, modifier })
+                    .map(|binding| binding.display_label().to_string());
+                KeyLabelSlot { key, label }
+            })
+            .collect();
+        Self { slots }
+    }
+
+    /// Refresh a single-row model's labels from a new key map for the given
+    /// modifier layer, keeping the same 12 slots.
+    ///
+    /// Validates: Requirement 12.12, 13.5
+    pub fn update_for_modifier(&mut self, key_map: &KeyMap, modifier: KeyModifier) {
+        for slot in &mut self.slots {
+            slot.label = key_map
+                .get(ModifiedKey {
+                    key: slot.key,
+                    modifier,
+                })
                 .map(|binding| binding.display_label().to_string());
         }
     }
@@ -198,5 +253,92 @@ mod tests {
         let model = KeyLabelBarModel::from_key_map(&KeyMap::empty("empty"));
         assert_eq!(model.assigned_slots().count(), 0);
         assert_eq!(model.slots().len(), 24);
+    }
+
+    // ── CR-CH-046: single-row-per-modifier model ─────────────────────────
+
+    fn make_scope_map() -> KeyMap {
+        let mut map = KeyMap::empty("scope");
+        // Base F1, Shift F3, Ctrl F5, Alt F1 assigned in distinct layers.
+        map.set(ModifiedKey::plain(FunctionKey::F1), KeyBinding::new("HELP"));
+        map.set(ModifiedKey::shift(FunctionKey::F3), KeyBinding::new("SWAP"));
+        map.set(ModifiedKey::ctrl(FunctionKey::F5), KeyBinding::new("COPY"));
+        map.set(ModifiedKey::alt(FunctionKey::F1), KeyBinding::new("PFSHOW"));
+        map
+    }
+
+    #[test]
+    fn row_for_modifier_produces_12_slots_f1_to_f12() {
+        // Validates: Requirement 13.1 — single row of F1-F12
+        let model = KeyLabelBarModel::row_for_modifier(&make_scope_map(), KeyModifier::None);
+        assert_eq!(model.slots().len(), 12);
+        assert_eq!(model.slots()[0].key, FunctionKey::F1);
+        assert_eq!(model.slots()[11].key, FunctionKey::F12);
+    }
+
+    #[test]
+    fn row_for_modifier_base_reads_plain_bindings() {
+        // Validates: Requirement 12.11 — Base reads the plain (unmodified) layer
+        let model = KeyLabelBarModel::row_for_modifier(&make_scope_map(), KeyModifier::None);
+        assert_eq!(
+            model.slot_for(FunctionKey::F1).unwrap().label.as_deref(),
+            Some("HELP")
+        );
+        // F3 is only in the Shift layer -> blank in the Base row.
+        assert_eq!(model.slot_for(FunctionKey::F3).unwrap().label, None);
+    }
+
+    #[test]
+    fn row_for_modifier_shift_reads_shift_bindings() {
+        // Validates: Requirement 12.11 — Shift reads the SF* layer
+        let model = KeyLabelBarModel::row_for_modifier(&make_scope_map(), KeyModifier::Shift);
+        assert_eq!(
+            model.slot_for(FunctionKey::F3).unwrap().label.as_deref(),
+            Some("SWAP")
+        );
+        // F1 is only in the Base/Alt layers -> blank in the Shift row.
+        assert_eq!(model.slot_for(FunctionKey::F1).unwrap().label, None);
+    }
+
+    #[test]
+    fn row_for_modifier_ctrl_and_alt_read_their_layers() {
+        // Validates: Requirement 12.11 — Ctrl reads CF*, Alt reads AF*
+        let ctrl = KeyLabelBarModel::row_for_modifier(&make_scope_map(), KeyModifier::Ctrl);
+        assert_eq!(
+            ctrl.slot_for(FunctionKey::F5).unwrap().label.as_deref(),
+            Some("COPY")
+        );
+        let alt = KeyLabelBarModel::row_for_modifier(&make_scope_map(), KeyModifier::Alt);
+        assert_eq!(
+            alt.slot_for(FunctionKey::F1).unwrap().label.as_deref(),
+            Some("PFSHOW")
+        );
+    }
+
+    #[test]
+    fn row_for_modifier_unassigned_key_is_blank_slot() {
+        // Validates: Requirement 13.2 — unassigned key keeps its slot, blank label
+        let model = KeyLabelBarModel::row_for_modifier(&make_scope_map(), KeyModifier::Alt);
+        // Only Alt+F1 is assigned; every other slot is present but blank.
+        assert_eq!(model.slots().len(), 12);
+        assert_eq!(model.slot_for(FunctionKey::F7).unwrap().label, None);
+        assert_eq!(model.assigned_slots().count(), 1);
+    }
+
+    #[test]
+    fn update_for_modifier_refreshes_labels_and_keeps_modifier() {
+        // Validates: Requirement 12.12, 13.5 — update refreshes for the same layer
+        let mut model = KeyLabelBarModel::row_for_modifier(&make_scope_map(), KeyModifier::None);
+        assert_eq!(
+            model.slot_for(FunctionKey::F1).unwrap().label.as_deref(),
+            Some("HELP")
+        );
+        let mut new_map = KeyMap::empty("new");
+        new_map.set(ModifiedKey::plain(FunctionKey::F1), KeyBinding::new("QUIT"));
+        model.update_for_modifier(&new_map, KeyModifier::None);
+        assert_eq!(
+            model.slot_for(FunctionKey::F1).unwrap().label.as_deref(),
+            Some("QUIT")
+        );
     }
 }

@@ -113,9 +113,11 @@ mod tests {
     #[test]
     fn open_resets_state_and_sets_open_true() {
         // Validates: command-palette Requirement 1.1
-        let mut state = CommandPaletteState::default();
-        state.query = "old query".to_string();
-        state.selected_index = 3;
+        let mut state = CommandPaletteState {
+            query: "old query".to_string(),
+            selected_index: 3,
+            ..Default::default()
+        };
         state.open();
         assert!(state.open);
         assert!(state.query.is_empty());
@@ -141,9 +143,11 @@ mod tests {
     #[test]
     fn select_next_wraps_at_bottom() {
         // Validates: command-palette Requirement 4.3
-        let mut state = CommandPaletteState::default();
-        state.filtered = vec![entry("a", "A", true), entry("b", "B", true)];
-        state.selected_index = 1;
+        let mut state = CommandPaletteState {
+            filtered: vec![entry("a", "A", true), entry("b", "B", true)],
+            selected_index: 1,
+            ..Default::default()
+        };
         state.select_next();
         assert_eq!(state.selected_index, 0);
     }
@@ -152,9 +156,11 @@ mod tests {
     #[test]
     fn select_prev_wraps_at_top() {
         // Validates: command-palette Requirement 4.3
-        let mut state = CommandPaletteState::default();
-        state.filtered = vec![entry("a", "A", true), entry("b", "B", true)];
-        state.selected_index = 0;
+        let mut state = CommandPaletteState {
+            filtered: vec![entry("a", "A", true), entry("b", "B", true)],
+            selected_index: 0,
+            ..Default::default()
+        };
         state.select_prev();
         assert_eq!(state.selected_index, 1);
     }
@@ -163,9 +169,11 @@ mod tests {
     #[test]
     fn selected_entry_returns_highlighted_entry() {
         // Validates: command-palette Requirement 4.3
-        let mut state = CommandPaletteState::default();
-        state.filtered = vec![entry("a", "Alpha", true), entry("b", "Beta", true)];
-        state.selected_index = 1;
+        let state = CommandPaletteState {
+            filtered: vec![entry("a", "Alpha", true), entry("b", "Beta", true)],
+            selected_index: 1,
+            ..Default::default()
+        };
         assert_eq!(state.selected_entry().unwrap().display_name, "Beta");
     }
 }

@@ -1,0 +1,17 @@
+[package]
+name = "ff-pdf-export"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Generic PDF export: hand-written PDF 1.7 writer, optional lopdf encryption"
+
+[dependencies]
+anyhow.workspace = true
+
+# Optional: lopdf for owner-password encryption (same pattern as ff-scrm)
+lopdf = { version = "0.34", optional = true }
+
+[features]
+default = []
+protected = ["dep:lopdf"]

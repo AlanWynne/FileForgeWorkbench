@@ -579,9 +579,9 @@ mod tests {
         s.set_rownum(true);
         let serialised = s.serialise();
         let restored = SdsfSetSettings::deserialise(&serialised);
-        assert_eq!(restored.action_display, true);
+        assert!(restored.action_display);
         assert_eq!(restored.main_panel, "ST");
-        assert_eq!(restored.rownum_on, true);
+        assert!(restored.rownum_on);
     }
 
     #[test]

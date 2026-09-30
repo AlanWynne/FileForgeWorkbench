@@ -251,7 +251,7 @@ mod tests {
         let d2 = LintDiagnostic::new(DiagnosticCode::GdgRollOff, 5, (0, 10), "b");
         let d3 = LintDiagnostic::new(DiagnosticCode::UnresolvedDsn, 10, (0, 10), "c");
 
-        let mut diags = vec![d3.clone(), d1.clone(), d2.clone()];
+        let mut diags = [d3.clone(), d1.clone(), d2.clone()];
         diags.sort();
         assert_eq!(diags[0].line, 5);
         assert_eq!(diags[0].severity, DiagnosticSeverity::Info); // GdgRollOff is Info

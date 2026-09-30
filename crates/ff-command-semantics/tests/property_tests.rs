@@ -358,7 +358,7 @@ proptest! {
         prop_assert!(effective <= 72, "effective {} > 72 for input {}", effective, input);
 
         // If input is in range, value is unchanged
-        if input >= 1 && input <= 72 {
+        if (1..=72).contains(&input) {
             prop_assert_eq!(effective, input as u32);
         }
 

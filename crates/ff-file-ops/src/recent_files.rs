@@ -178,7 +178,7 @@ mod tests {
     fn set_max_count_truncates_if_over() {
         let mut list = RecentFilesList::new(10);
         for i in 0..5 {
-            list.add(ResourceUri::new("local", &format!("/file{i}.txt")));
+            list.add(ResourceUri::new("local", format!("/file{i}.txt")));
         }
         assert_eq!(list.len(), 5);
         list.set_max_count(3);

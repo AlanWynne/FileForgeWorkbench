@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Session Start Buffer Clear",
+      "trigger": "SessionStart",
+      "description": "Clears the terminal/PSReadLine buffer once at the start of each session so no stale or previously poisoned output can bleed into or visually mangle the first commands of the new session. Runs as a single non-interactive pwsh7 invocation (no chaining), per tooling.md.",
+      "action": {
+        "type": "command",
+        "command": "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"try { [Console]::Clear() } catch { }\"",
+        "timeout": 15
+      }
+    }
+  ]
+}

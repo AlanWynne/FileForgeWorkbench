@@ -433,7 +433,7 @@ mod tests {
         let handle = create_plugin_config_handle(&store, &schema, "sql-viewer").unwrap();
 
         let result = handle.get_bool("enabled");
-        assert_eq!(result.unwrap(), true);
+        assert!(result.unwrap());
     }
 
     // Validates: Requirement 8.2

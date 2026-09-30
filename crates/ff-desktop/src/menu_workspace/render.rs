@@ -680,7 +680,7 @@ mod tests {
     #[test]
     fn option_prefix_job_holds_fixed_columns_and_does_not_wrap() {
         let o = opt("1", "FILES", "Browse the catalog");
-        let w = command_column_width(&[o.clone()]);
+        let w = command_column_width(std::slice::from_ref(&o));
         let job = option_prefix_job(&o, w, egui::Color32::WHITE, egui::Color32::WHITE);
         // The prefix text is exactly key(4) + "  " + command(w) + "  " -- i.e.
         // the format_option_row prefix WITHOUT the description.
@@ -713,7 +713,7 @@ mod tests {
     #[test]
     fn option_prefix_text_matches_prefix_job_text() {
         let o = opt("1", "FILES", "Browse the catalog");
-        let w = command_column_width(&[o.clone()]);
+        let w = command_column_width(std::slice::from_ref(&o));
         let job = option_prefix_job(&o, w, egui::Color32::WHITE, egui::Color32::WHITE);
         assert_eq!(option_prefix_text(&o, w), job.text);
     }

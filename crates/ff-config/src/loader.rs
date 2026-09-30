@@ -226,7 +226,7 @@ level = "info"
             r#"
 string_val = "hello"
 int_val = 42
-float_val = 3.14
+float_val = 3.25
 bool_val = true
 array_val = [1, 2, 3]
 
@@ -243,7 +243,7 @@ nested_key = "nested"
             Some(&ConfigValue::String("hello".to_string()))
         );
         assert_eq!(table.get("int_val"), Some(&ConfigValue::Integer(42)));
-        assert_eq!(table.get("float_val"), Some(&ConfigValue::Float(3.14)));
+        assert_eq!(table.get("float_val"), Some(&ConfigValue::Float(3.25)));
         assert_eq!(table.get("bool_val"), Some(&ConfigValue::Boolean(true)));
         assert_eq!(
             table.get("array_val"),

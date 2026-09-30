@@ -375,7 +375,7 @@ mod tests {
             ConfigError::WatcherError {
                 details: "err".to_string(),
             },
-            ConfigError::Io(std::io::Error::new(std::io::ErrorKind::Other, "io")),
+            ConfigError::Io(std::io::Error::other("io")),
             ConfigError::SchemaConflict {
                 key: "k".to_string(),
                 details: "conflict".to_string(),

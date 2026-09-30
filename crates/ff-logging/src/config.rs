@@ -237,8 +237,10 @@ mod tests {
     #[test]
     fn validate_clamps_max_file_size_below_minimum() {
         // Validates: Requirement 5.3
-        let mut config = LogConfig::default();
-        config.max_file_size_mb = 0;
+        let mut config = LogConfig {
+            max_file_size_mb: 0,
+            ..Default::default()
+        };
         let warnings = config.validate();
         assert_eq!(config.max_file_size_mb, 1);
         assert_eq!(warnings.len(), 1);
@@ -248,8 +250,10 @@ mod tests {
     #[test]
     fn validate_clamps_max_file_size_above_maximum() {
         // Validates: Requirement 5.3
-        let mut config = LogConfig::default();
-        config.max_file_size_mb = 2000;
+        let mut config = LogConfig {
+            max_file_size_mb: 2000,
+            ..Default::default()
+        };
         let warnings = config.validate();
         assert_eq!(config.max_file_size_mb, 1024);
         assert_eq!(warnings.len(), 1);
@@ -259,8 +263,10 @@ mod tests {
     #[test]
     fn validate_clamps_max_retained_files_below_minimum() {
         // Validates: Requirement 5.8
-        let mut config = LogConfig::default();
-        config.max_retained_files = 0;
+        let mut config = LogConfig {
+            max_retained_files: 0,
+            ..Default::default()
+        };
         let warnings = config.validate();
         assert_eq!(config.max_retained_files, 1);
         assert_eq!(warnings.len(), 1);
@@ -270,8 +276,10 @@ mod tests {
     #[test]
     fn validate_clamps_max_retained_files_above_maximum() {
         // Validates: Requirement 5.8
-        let mut config = LogConfig::default();
-        config.max_retained_files = 200;
+        let mut config = LogConfig {
+            max_retained_files: 200,
+            ..Default::default()
+        };
         let warnings = config.validate();
         assert_eq!(config.max_retained_files, 100);
         assert_eq!(warnings.len(), 1);
@@ -289,9 +297,11 @@ mod tests {
     #[test]
     fn validate_clamps_both_values_when_both_out_of_range() {
         // Validates: Requirement 5.3, 5.8
-        let mut config = LogConfig::default();
-        config.max_file_size_mb = 0;
-        config.max_retained_files = 999;
+        let mut config = LogConfig {
+            max_file_size_mb: 0,
+            max_retained_files: 999,
+            ..Default::default()
+        };
         let warnings = config.validate();
         assert_eq!(config.max_file_size_mb, 1);
         assert_eq!(config.max_retained_files, 100);
@@ -301,9 +311,11 @@ mod tests {
     #[test]
     fn validate_preserves_boundary_values() {
         // Validates: Requirement 5.3, 5.8
-        let mut config = LogConfig::default();
-        config.max_file_size_mb = 1;
-        config.max_retained_files = 1;
+        let mut config = LogConfig {
+            max_file_size_mb: 1,
+            max_retained_files: 1,
+            ..Default::default()
+        };
         let warnings = config.validate();
         assert_eq!(config.max_file_size_mb, 1);
         assert_eq!(config.max_retained_files, 1);
@@ -358,8 +370,10 @@ mod tests {
     #[test]
     fn set_level_from_str_defaults_to_info_on_invalid_value() {
         // Validates: Requirement 3.4
-        let mut config = LogConfig::default();
-        config.level = LogLevel::Error; // set to something other than Info
+        let mut config = LogConfig {
+            level: LogLevel::Error,
+            ..Default::default()
+        }; // set to something other than Info
 
         let warning = config.set_level_from_str("banana");
         assert_eq!(config.level, LogLevel::Info);
@@ -397,8 +411,10 @@ mod tests {
     #[test]
     fn set_level_from_str_handles_empty_string() {
         // Validates: Requirement 3.4
-        let mut config = LogConfig::default();
-        config.level = LogLevel::Error;
+        let mut config = LogConfig {
+            level: LogLevel::Error,
+            ..Default::default()
+        };
 
         let warning = config.set_level_from_str("");
         assert_eq!(config.level, LogLevel::Info);

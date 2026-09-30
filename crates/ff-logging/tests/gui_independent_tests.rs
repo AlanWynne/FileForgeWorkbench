@@ -20,11 +20,11 @@ fn collect_production_source_files(dir: &Path) -> Vec<std::path::PathBuf> {
             let path = entry.path();
             if path.is_dir() {
                 // Skip the tests directory — we only care about production code
-                if path.file_name().map_or(false, |n| n == "tests") {
+                if path.file_name().is_some_and(|n| n == "tests") {
                     continue;
                 }
                 files.extend(collect_production_source_files(&path));
-            } else if path.extension().map_or(false, |ext| ext == "rs") {
+            } else if path.extension().is_some_and(|ext| ext == "rs") {
                 files.push(path);
             }
         }
@@ -251,7 +251,7 @@ fn logging_writes_exclusively_to_log_file_not_console() {
     let log_files: Vec<_> = fs::read_dir(tmp.path())
         .expect("failed to read log directory")
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().map_or(false, |ext| ext == "log"))
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "log"))
         .collect();
 
     assert!(

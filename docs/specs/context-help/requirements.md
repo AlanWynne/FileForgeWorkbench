@@ -430,6 +430,80 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 
 ---
 
+### Requirement 17: Shipped Help Content Set
+
+**User Story:** As a workbench user, I want the workbench to ship with a complete set of authored help content, so that pressing F1 or issuing HELP shows real help instead of a "not yet available" message.
+
+**Source:** CR-NR-097. Realises the content promised by Requirements 7-12 (which specify the topic keys and per-topic structure) by committing the actual authored `.help.md` files. Cross-references: Requirement 5 (content format -- unchanged).
+
+#### Acceptance Criteria
+
+17.1. THE workbench SHALL ship a `help/` directory of `.help.md` files (the format defined in Requirement 5), discoverable at the default location (a), the directory containing the workbench binary, so that a default installation has help content without additional configuration. [CR-NR-097]
+
+17.2. THE shipped help content SHALL include a `Topic_Key` `"index"` topic and a `"getting_started"` topic (Requirement 11.5, 12.1). [CR-NR-097]
+
+17.3. THE shipped help content SHALL include a `"cmd:<NAME>"` topic, structured per Requirement 7.2 (Syntax, Description, Modifiers, Examples, See Also), for each primary command currently recognised by the command processor, including at minimum: FIND, RFIND, CHANGE, RCHANGE, EXCLUDE, SHOW, RESET, LOCATE, SAVE, CANCEL, END, UP, DOWN, TOP, BOTTOM, UNDO, REDO, HEX, HELP, KEYS, and the menu-option commands POM, SETTINGS, FILES. [CR-NR-097]
+
+17.4. THE shipped help content SHALL include a `"line:<CMD>"` topic per Requirement 8.2 for each line command family in Requirement 8.3, plus the `"line:index"` summary topic (Requirement 8.4). [CR-NR-097]
+
+17.5. THE shipped help content SHALL include the mode topics of Requirement 11.1 (`"mode:browse"`, `"mode:edit"`, `"mode:view"`, `"mode:hex"`, `"mode:preview"`, `"mode:grid_browse"`, `"mode:grid_edit"`). [CR-NR-097]
+
+17.6. THE shipped help content SHALL include a first tranche of feature topics from Requirement 11.3 covering at minimum: `"feature:undo"`, `"feature:macros"`, `"feature:function_keys"`, `"feature:command_history"`, `"feature:tabs"`, `"feature:docking"`, and `"feature:configuration"`. [CR-NR-097]
+
+17.7. THE shipped help content SHALL include a macro API overview topic `"feature:macros"` per Requirement 9.1-9.2. [CR-NR-097]
+
+17.8. EVERY cross-reference link `[text](topic_key)` in the shipped content SHALL resolve to a `Topic_Key` that is present in the shipped set OR generated dynamically (index, function_keys); there SHALL be no dangling cross-references in shipped content. [CR-NR-097]
+
+17.9. THE shipped help content files SHALL contain only the characters permitted by the project documentation character-set rule (plain ASCII, with the Markdown exceptions that rule allows). [CR-NR-097]
+
+---
+
+### Requirement 18: Help Content Pipeline and F1 Display
+
+**User Story:** As a workbench user, when I press F1 or issue HELP, I want the resolved topic to be displayed in a Help Context, so that context-sensitive help actually appears rather than resolving a topic key that is then discarded.
+
+**Source:** CR-NR-097. Cross-references: Requirement 1 (F1 activation), Requirement 2 (panel display -- re-phrased onto the WorkspaceContext framework), Requirement 6 (registry), Requirement 13 (HELP command); `framework-conformance` (single dispatch, WorkspaceContext focus latch).
+
+#### Acceptance Criteria
+
+18.1. THE Workbench SHALL load the shipped `help/` directory (resolved per Requirement 5.1) exactly once during startup into a single shell-owned Help_Topic_Registry, and SHALL reuse that registry for every subsequent F1 press and HELP invocation. THE Workbench SHALL NOT construct a fresh empty registry per HELP invocation. [CR-NR-097]
+
+18.2. WHEN F1 is pressed or HELP is issued and the Context_Detector resolves a `Topic_Key` that exists in the shell-owned registry, THE Workbench SHALL open the Help Context displaying that topic (title, breadcrumb, and rendered Markdown body). [CR-NR-097]
+
+18.3. WHEN the resolved `Topic_Key` is `"index"` or `"feature:function_keys"` (the dynamically generated topics), THE Workbench SHALL generate the topic at display time (Requirements 12, 15) and display it, even though it is not a file-based topic. [CR-NR-097]
+
+18.4. WHEN the resolved `Topic_Key` is not present in the registry and is not a dynamically generated topic, THE Workbench SHALL open the Help Context displaying the Help_Index together with a message naming the unresolved topic (consistent with Requirement 13.7), rather than only setting a command-error string. [CR-NR-097]
+
+18.5. THE Help Context SHALL be rendered as a Workspace Context that implements the `WorkspaceContext` trait and is dispatched through `render_workspace_context`, reporting its interior focus via the returned `InteriorFocus`; the FIRST interior focus stop SHALL be the Help_Search field, carrying a stable `egui::Id`. [CR-NR-097, workspace-conformance]
+
+18.6. THE HELP primary command and the F1 activation SHALL both route through the single command-dispatch path (they SHALL NOT introduce a dispatch path that bypasses `resolve_target` / `dispatch_command_target`), and the Help menu items SHALL invoke the HELP command rather than calling help internals directly. [CR-NR-097, framework-conformance]
+
+18.7. THE F1 press and the HELP command SHALL remain excluded from command history and undo (preserving Requirements 1.10 and 13.10) after this wiring. [CR-NR-097]
+
+---
+
+### Requirement 19: Missing-Topic Diagnostics
+
+**User Story:** As a workbench developer, I want the help system to record every time F1 or HELP resolves a topic that has no content, so that I can trace which help topics real usage actually reaches and prioritise authoring, and so that a resolved topic outside the promised content set is surfaced as a genuine coverage gap rather than silently ignored.
+
+**Source:** CR-NR-097 (owner: "we should log this message somehow so that we can trace what help needs to be built"). Cross-references: `logging-subsystem` (WARN diagnostics); the triage rule in `workflow.md` (why misses are NOT auto-filed as bugs/requirements).
+
+#### Acceptance Criteria
+
+19.1. WHEN the Help_System resolves a `Topic_Key` that is absent from the Help_Topic_Registry and is not one of the dynamically generated topics (`"index"`, `"feature:function_keys"`), THE Help_System SHALL emit a WARN-level log entry via the logging subsystem naming the unresolved `Topic_Key` and the human label. [CR-NR-097]
+
+19.2. THE Help_System SHALL maintain a per-session Missing_Topic_Tally that records each distinct unresolved `Topic_Key` and the number of times it was requested during the session. [CR-NR-097]
+
+19.3. THE Workbench SHALL provide a `HELP MISSING` command that reports the current Missing_Topic_Tally (each unresolved `Topic_Key` with its request count) in the Help Context. [CR-NR-097]
+
+19.4. THE `HELP MISSING` report SHALL classify each tallied key into one of two classes: (a) EXPECTED -- the key belongs to the shipped/promised content set of Requirement 17 (authoring not yet complete, tracked by CR-NR-097); or (b) UNEXPECTED -- the key is a coverage gap that no requirement promised (a candidate for deliberate triage as a bug or new requirement). [CR-NR-097]
+
+19.5. THE Help_System SHALL NOT automatically create, modify, or append entries to any project-management document (`docs/status/bugs.md`, `docs/status/change-log.md`, or any spec file) in response to a missing-topic event. Escalation of an UNEXPECTED miss to a bug or new requirement SHALL be a deliberate, human-initiated action through the normal triage process. [CR-NR-097]
+
+19.6. THE Missing_Topic_Tally SHALL be session-scoped and in-memory; it SHALL NOT be persisted across workbench restarts. (Longitudinal collection, if ever required, is a separate future requirement.) [CR-NR-097]
+
+---
+
 ## Cross-Reference Summary
 
 | Dependency | Relationship |

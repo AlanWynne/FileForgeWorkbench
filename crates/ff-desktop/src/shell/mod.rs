@@ -15,7 +15,7 @@ use ff_command::{
 use ff_command_semantics::CommandEngine;
 use ff_config::ConfigHandle;
 use ff_core::WorkbenchApp;
-use ff_keys::{HistoryStore, KeyLabelBarModel, KeyMap, KeyMapResolver};
+use ff_keys::{HistoryStore, KeyLabelBarModel, KeyMap, KeyMapResolver, KeyModifier};
 use ff_theme::ThemePalette;
 use ff_zoom::{ZoomConfig, ZoomState};
 use tokio::runtime::Runtime;
@@ -35,6 +35,73 @@ use crate::session_manager::SessionManager;
 use crate::tab_manager::TabManager;
 use crate::toolchain_panel::ToolchainPanelState;
 use ff_session::{load_workspace, save_workspace, WorkspaceState};
+
+// ── Key_Label_Bar scope (CR-CH-046) ──────────────────────────────────────────
+
+/// Which modifier layer the Key_Label_Bar shows when visible (CR-CH-046).
+///
+/// The bar's overall mode is the pair `(key_bar_visible, key_bar_scope)`:
+/// when hidden the bar is "Off" and `key_bar_scope` retains the last-shown scope
+/// so `PFSHOW ON` can restore it. `Base` shows the plain F-keys, `Shift` the
+/// SHIFT layer, `Ctrl` the CTRL layer, and `Alt` the ALT layer.
+///
+/// Validates: function-keys-and-history Requirement 12.8-12.12, Requirement 13.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum KeyBarScope {
+    /// Base (unmodified) F-keys.
+    #[default]
+    Base,
+    /// SHIFT + F-keys.
+    Shift,
+    /// CTRL + F-keys.
+    Ctrl,
+    /// ALT + F-keys.
+    Alt,
+}
+
+impl KeyBarScope {
+    /// The `KeyModifier` layer this scope displays.
+    pub(crate) fn to_modifier(self) -> KeyModifier {
+        match self {
+            KeyBarScope::Base => KeyModifier::None,
+            KeyBarScope::Shift => KeyModifier::Shift,
+            KeyBarScope::Ctrl => KeyModifier::Ctrl,
+            KeyBarScope::Alt => KeyModifier::Alt,
+        }
+    }
+
+    /// The leading Scope_Segment label shown on the Key_Label_Bar.
+    pub(crate) fn segment_label(self) -> &'static str {
+        match self {
+            KeyBarScope::Base => "Base",
+            KeyBarScope::Shift => "Shift",
+            KeyBarScope::Ctrl => "Ctrl",
+            KeyBarScope::Alt => "Alt",
+        }
+    }
+
+    /// The lowercase name used for session persistence (`"base"` etc.).
+    pub(crate) fn persist_name(self) -> &'static str {
+        match self {
+            KeyBarScope::Base => "base",
+            KeyBarScope::Shift => "shift",
+            KeyBarScope::Ctrl => "ctrl",
+            KeyBarScope::Alt => "alt",
+        }
+    }
+
+    /// Parse a scope from a persisted/command name (case-insensitive). Returns
+    /// `None` for an unrecognised value (caller decides the fallback).
+    pub(crate) fn parse(s: &str) -> Option<Self> {
+        match s.trim().to_ascii_uppercase().as_str() {
+            "BASE" => Some(KeyBarScope::Base),
+            "SHIFT" => Some(KeyBarScope::Shift),
+            "CTRL" => Some(KeyBarScope::Ctrl),
+            "ALT" => Some(KeyBarScope::Alt),
+            _ => None,
+        }
+    }
+}
 
 // ── Built-in command handlers ────────────────────────────────────────────────
 
@@ -270,6 +337,11 @@ pub struct WorkbenchShell {
     ///
     /// Validates: Requirement 12.4
     key_bar_visible: bool,
+    /// Which modifier layer the Key Label Bar shows when visible (CR-CH-046).
+    /// Retained across hide/show so `PFSHOW ON` restores the last scope.
+    ///
+    /// Validates: Requirement 12.4, 12.8-12.12
+    key_bar_scope: KeyBarScope,
     /// History of previously active tab indices for END navigation.
     ///
     /// Validates: Requirement 17.1
@@ -423,6 +495,11 @@ pub struct WorkbenchShell {
     /// Test-only override for the workspace-kinds directory (CR-NR-090 B.4).
     /// Production leaves this `None` (the real `<User_Data_Dir>/workspace-kinds/`).
     workspace_kinds_dir_override: Option<std::path::PathBuf>,
+    /// Test-only override for the screen-collections directory (CR-NR-098 Wave 3).
+    /// Production leaves this `None` (the real `<User_Data_Dir>/screen-collections/`);
+    /// tests set it to a TempDir so CAPTURE EXPORT/SAVE/LOAD file operations are
+    /// deterministic and isolated.
+    scrm_dir_override: Option<std::path::PathBuf>,
     /// Last pixels_per_point applied by zoom — avoids overwriting OS DPI every frame.
     last_ppp: f32,
     /// True while the user is holding the mouse button down (window drag in progress).
@@ -462,10 +539,31 @@ pub struct WorkbenchShell {
     /// Carries the profile list the dialog names and the execute path resets. No
     /// configuration is archived or reset until the user confirms.
     reset_bare_confirm: Option<reset_bare::ResetBareTarget>,
+    /// One-shot: true for the first frame the RESET BARE dialog is open, so it
+    /// can request initial keyboard focus on the Cancel button (B077,
+    /// accessibility Req 2.3 -- modal focus trap; Cancel is the safe default).
+    reset_bare_focus_requested: bool,
     /// Config Panel state (the flat config-key browser opened by `CONFIG`).
     ///
     /// Validates: Requirement 15.1, 15.2
     config_panel: ConfigPanelState,
+    /// The single shell-owned Help Topic Registry, loaded ONCE at startup from
+    /// the shipped `help/` directory (plus command-metadata topics). Reused by
+    /// every F1 press / HELP invocation -- the shell never news an empty registry
+    /// per call.
+    ///
+    /// Validates: context-help Requirement 18.1 (CR-NR-097)
+    help_registry: std::sync::Arc<ff_help::HelpTopicRegistry>,
+    /// The Help Context panel (renders the resolved topic; a `WorkspaceContext`).
+    ///
+    /// Validates: context-help Requirement 18.2, 18.5 (CR-NR-097)
+    help_context_panel: crate::help_context::HelpContextPanel,
+    /// Session-scoped, in-memory tally of help topics that were requested but not
+    /// found (distinct Topic_Key -> request count). Not persisted; never written
+    /// to any project document.
+    ///
+    /// Validates: context-help Requirement 19.2, 19.6 (CR-NR-097)
+    help_missing_tally: std::collections::HashMap<String, u32>,
     /// Plugin Manager panel state.
     ///
     /// Validates: plugin-manager-ui Requirement 1.1
@@ -478,6 +576,17 @@ pub struct WorkbenchShell {
     ///
     /// Validates: notification-system Requirement 2.2
     event_log_panel: EventLogPanelState,
+
+    /// Screen Collection and Replay Manager session: the active screen
+    /// Collection and automatic-capture mode (CR-NR-098, Wave 2).
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 7, 8, 9.
+    scrm: crate::scrm_session::ScrmSession,
+
+    /// The SCRM Replay viewer Context state (CR-NR-098, Wave 2).
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 16.
+    scrm_viewer: crate::scrm_viewer_panel::ScrmViewerState,
     /// Notification channel receiver -- drained each frame.
     ///
     /// Validates: notification-system Requirement 1.1
@@ -717,6 +826,43 @@ impl WorkbenchShell {
             reg
         };
 
+        // Load the Help Topic Registry ONCE (context-help Req 18.1, CR-NR-097):
+        // the shipped `help/` `.help.md` content set. Searched, in order: the
+        // exe-dir `help/` (installed layout), the exe-dir `../../help` (the dev
+        // `target/<profile>/` -> workspace-root `help/` fallback), and the
+        // user-data `help/`. An absent directory leaves an empty registry (F1
+        // then reports "help not yet available" and records the miss).
+        let help_registry = {
+            let mut search_paths: Vec<std::path::PathBuf> = Vec::new();
+            if let Ok(exe) = std::env::current_exe() {
+                if let Some(exe_dir) = exe.parent() {
+                    search_paths.push(exe_dir.join("help"));
+                    search_paths.push(exe_dir.join("..").join("..").join("help"));
+                }
+            }
+            if let Some(data_dir) = dirs::data_dir() {
+                search_paths.push(data_dir.join("FileForgeWorkbench").join("help"));
+            }
+            let registry = ff_help::HelpTopicRegistry::new();
+            let loader = ff_help::ContentLoader::new(search_paths);
+            match loader.load_all() {
+                Ok(result) => {
+                    for (path, warning) in &result.warnings {
+                        ff_logging::log_warn!(
+                            "[help] content: failed to parse {} -- {}",
+                            path.display(),
+                            warning
+                        );
+                    }
+                    registry.load_file_topics(result.topics);
+                }
+                Err(e) => {
+                    ff_logging::log_warn!("[help] content: {}", e);
+                }
+            }
+            std::sync::Arc::new(registry)
+        };
+
         // Notification channel -- Validates: notification-system Requirement 3.1, 3.3
         let (notification_tx, notification_rx) = std::sync::mpsc::sync_channel::<Notification>(64);
         let notification_queue =
@@ -783,6 +929,7 @@ impl WorkbenchShell {
             key_map_resolver,
             key_label_bar,
             key_bar_visible: true,
+            key_bar_scope: KeyBarScope::Base,
             tab_history: Vec::new(),
             show_history_list: None,
             show_swap_list: None,
@@ -825,6 +972,7 @@ impl WorkbenchShell {
             menus_dir_override: None,
             keymaps_dir_override: None,
             workspace_kinds_dir_override: None,
+            scrm_dir_override: None,
             last_ppp: 1.0,
             is_dragging: false,
             pending_ppp: None,
@@ -836,10 +984,19 @@ impl WorkbenchShell {
             scroll_field_text: "PAGE".to_string(),
             modal_open: false,
             reset_bare_confirm: None,
+            reset_bare_focus_requested: false,
+            help_context_panel: crate::help_context::HelpContextPanel::new(
+                help_registry.clone(),
+                ff_help::HelpConfig::default(),
+            ),
+            help_registry,
+            help_missing_tally: std::collections::HashMap::new(),
             config_panel: ConfigPanelState::new(),
             plugin_manager_panel: PluginManagerPanelState::new(),
             macro_library_panel: crate::macro_library_panel::MacroLibraryPanelState::new(),
             event_log_panel: EventLogPanelState::new(),
+            scrm: crate::scrm_session::ScrmSession::default(),
+            scrm_viewer: crate::scrm_viewer_panel::ScrmViewerState::default(),
             notification_rx,
             notification_tx,
             notification_queue,
@@ -1405,6 +1562,10 @@ pub(crate) fn title_line_text(tab: &crate::tab_state::TabState) -> String {
             .as_ref()
             .and_then(|mw| mw.menu_title())
             .unwrap_or_else(|| tab.title.clone()),
+        // The Help Context uses its cached title ("[HELP]"). CR-NR-097.
+        TabKind::HelpContext => tab.title.clone(),
+        // The SCRM Replay viewer uses its cached title ("[REPLAY]"). CR-NR-098.
+        TabKind::ScrmViewer => tab.title.clone(),
     }
 }
 
@@ -1549,6 +1710,7 @@ mod command_line_outcome;
 mod commands;
 mod configurator;
 mod external_adapter;
+mod help;
 /// Convert a `ff_config::ConfigValue` to a `toml::Value` for key-map parsing.
 mod helpers;
 mod keys_editor;

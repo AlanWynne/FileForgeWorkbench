@@ -64,8 +64,10 @@ fn full_open_modify_detect_prompt_reload_cycle() {
 /// Validates: Requirements 3.3, 5.1, 5.2
 #[test]
 fn auto_reload_for_clean_buffer() {
-    let mut config = ExternalModConfig::default();
-    config.policy = ReloadPolicy::Auto;
+    let config = ExternalModConfig {
+        policy: ReloadPolicy::Auto,
+        ..Default::default()
+    };
     let mut detector = ExternalModificationDetector::new(config);
 
     let doc_id = DocumentId(1);
@@ -94,8 +96,10 @@ fn auto_reload_for_clean_buffer() {
 /// Validates: Requirements 3.4, 5.6
 #[test]
 fn dirty_buffer_protection_auto_policy_falls_back_to_prompt() {
-    let mut config = ExternalModConfig::default();
-    config.policy = ReloadPolicy::Auto;
+    let config = ExternalModConfig {
+        policy: ReloadPolicy::Auto,
+        ..Default::default()
+    };
     let mut detector = ExternalModificationDetector::new(config);
 
     let doc_id = DocumentId(1);
@@ -292,8 +296,10 @@ fn configuration_hot_reload_changes_behaviour() {
 
     // Hot-reload: change to Ignore policy
     detector.mark_responded(doc_id, new_mtime);
-    let mut new_config = ExternalModConfig::default();
-    new_config.policy = ReloadPolicy::Ignore;
+    let new_config = ExternalModConfig {
+        policy: ReloadPolicy::Ignore,
+        ..Default::default()
+    };
     detector.update_config(new_config);
 
     // Next event with new mtime uses Ignore policy

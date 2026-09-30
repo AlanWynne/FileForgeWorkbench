@@ -205,6 +205,30 @@ None -- all crates compile and pass.
 | `ff-desktop` | 🔴 | -- | Req 14.44: calendar restored on the next frame when the area is >= CALENDAR_MIN_RENDER_SIZE; decision from current-frame available area only -- DEFERRED (CR-NR-059) |
 | `ff-desktop` | 🔴 | -- | Req 14.45: hiding the calendar does not mutate `pom_calendar_offset` / current-day state; restored calendar shows the same month -- DEFERRED (CR-NR-059) |
 
+<!-- CR-NR-097: context-help content set + F1 display pipeline + missing-topic diagnostics -->
+| `ff-help` | ✅ | `tests/shipped_content_tests.rs` | context-help Req 17.1: workbench ships a `help/` directory of `.help.md` files at the default location (`shipped_content_contains_every_promised_topic` loads it) |
+| `ff-help` | ✅ | `tests/shipped_content_tests.rs` | context-help Req 17.2: shipped content includes `index` (dynamic) and `getting_started` topics |
+| `ff-help` | ✅ | `tests/shipped_content_tests.rs` | context-help Req 17.3: shipped `cmd:<NAME>` topics for the recognised command set (`shipped_content_contains_every_promised_topic`) |
+| `ff-help` | ✅ | `tests/shipped_content_tests.rs` | context-help Req 17.4: shipped `line:<CMD>` topics + `line:index` summary |
+| `ff-help` | ✅ | `tests/shipped_content_tests.rs` | context-help Req 17.5: shipped `mode:*` topics (browse/edit/view/hex/preview/grid_browse/grid_edit) |
+| `ff-help` | ✅ | `tests/shipped_content_tests.rs` | context-help Req 17.6: shipped first-tranche `feature:*` topics (undo/macros/function_keys/command_history/tabs/docking/configuration) |
+| `ff-help` | ✅ | `tests/shipped_content_tests.rs` | context-help Req 17.7: shipped macro API overview `feature:macros` |
+| `ff-help` | ✅ | `tests/shipped_content_tests.rs` | context-help Req 17.8: no dangling cross-references in shipped content (`shipped_content_has_no_dangling_cross_references`) |
+| `ff-help` | ✅ | `tests/shipped_content_tests.rs` | context-help Req 17.9: shipped content files are ASCII (`shipped_content_files_are_ascii`) |
+| `ff-desktop` | ✅ | `shell/tests.rs` `help_command_opens_help_context` | context-help Req 18.1: `help/` loaded ONCE at startup into a single shell-owned registry, reused per HELP/F1 (no per-call empty registry) |
+| `ff-desktop` | ✅ | `shell/tests.rs` `help_command_displays_file_based_topic` | context-help Req 18.2: resolved file-based topic opens the Help Context |
+| `ff-desktop` | ✅ | `shell/tests.rs` `help_command_generates_index_topic` | context-help Req 18.3: dynamic keys (`index`, `feature:function_keys`) generated at display time and shown |
+| `ff-desktop` | ✅ | `shell/tests.rs` `help_missing_topic_shows_index_and_records_miss` | context-help Req 18.4: unresolved non-dynamic key shows the index with an unrecognised-topic message (not only `open_error`) |
+| `ff-desktop` | ✅ | `shell/tests.rs` `full_shell_help_first_tab_focuses_search_field` | context-help Req 18.5: Help Context is a `WorkspaceContext` via `render_workspace_context`; first InteriorFocus = Help_Search field (stable egui::Id), no phantom stop |
+| `ff-desktop` | ✅ | `shell/commands.rs` (HELP routes via `run_command` dispatch; `if upper == "HELP"` intercept removed; POM/menu "Help" option dispatches the HELP command) | context-help Req 18.6: HELP + F1 route through the single command-dispatch path; Help menu invokes the HELP command |
+| `ff-help` | ✅ | `commands::tests::help_not_recorded_in_history` / `help_not_undoable` | context-help Req 18.7: HELP + F1 remain excluded from command history and undo |
+| `ff-desktop` | ✅ | `shell/tests.rs` `help_missing_topic_shows_index_and_records_miss` | context-help Req 19.1: non-dynamic help miss emits a WARN naming the Topic_Key + label (WARN via ff-logging on the same miss path asserted for tally) |
+| `ff-desktop` | ✅ | `shell/tests.rs` `help_missing_topic_shows_index_and_records_miss` | context-help Req 19.2: per-session in-memory `MissingTopicTally` (distinct key -> count) |
+| `ff-desktop` | ✅ | `shell/tests.rs` `help_missing_report_classifies_topics` | context-help Req 19.3: `HELP MISSING` reports the tally in the Help Context |
+| `ff-desktop` | ✅ | `shell/tests.rs` `help_missing_report_classifies_topics` | context-help Req 19.4: `HELP MISSING` classifies each key EXPECTED (Req 17 set) vs UNEXPECTED |
+| `ff-desktop` | ✅ | `shell/tests.rs` `help_miss_does_not_write_project_docs` | context-help Req 19.5: miss path performs NO writes to bugs.md/change-log.md/specs |
+| `ff-desktop` | ✅ | `shell/tests.rs` `help_miss_does_not_write_project_docs` (tally is an in-memory `HashMap` field, never persisted) | context-help Req 19.6: Missing_Topic_Tally is session-scoped, not persisted across restarts |
+
 | `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 6.8: no exclusions → display list equals all lines in order |
 | `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 6.1, 6.2: single exclusion block produces one placeholder row |
 | `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 6.1: two separate blocks produce two placeholder rows |
@@ -388,6 +412,7 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | code review: `self.palette` population changed in main.rs/update.rs only; no render call sites touched | Req 19.8: existing rendering call sites unchanged; palette field remains the single source of truth |
 | `ff-desktop` | ✅ | `shell/tests.rs::themes_command_opens_theme_editor`, `themes_command_transforms_pom_tab_in_place` | Req 20.1/20.2/20.10: Theme Editor Context opens via a `THEMES` command; Settings menu "Theme Editor" item dispatches the same command; POM transform-in-place |
 | `ff-desktop` | ✅ | `theme_editor_panel.rs::load_working_initialises_hex_buffers`, `all_editable_tokens_have_labels`; render shows swatch + inline invalid-hex | Req 20.3: editable token list shows current hex; invalid hex rejected inline without corrupting the theme |
+| `ff-desktop` | 🔲 | -- | Req 20.3 (B078): the hex field shows the full `#RRGGBB`/`#RRGGBBAA` value. Fix: token rows moved from `egui::Grid` (which ignores `TextEdit::desired_width`, collapsing the cell to ~4.5 chars) to a plain per-row `ui.horizontal` + `add_sized` label + `desired_width(140.0)` field (the honoured pattern, per keys_editor_panel). MANUAL: field/text width is pixel-exact layout geometry (testing.md MANUAL exception -- not headless-assertable); verify no truncation of a 9-char value |
 | `ff-desktop` | ✅ | `shell/tests.rs::theme_editor_copy_creates_new_named_theme_file` | Req 20.4: Copy_Theme creates a new named theme file initialised from the source (built-in unaltered) |
 | `ff-desktop` | ✅ | `shell/tests.rs::theme_editor_save_writes_edited_colour_to_disk`, `theme_editor_save_as_writes_new_file` | Req 20.5: Save / Save_As write the theme to `themes/<slug>.toml` via the serialiser (edited colour persists) |
 | `ff-desktop` | ✅ | `shell/tests.rs::theme_editor_save_on_builtin_does_not_write_builtin`, `theme_editor_save_as_after_edit_writes_file_b052` | Req 20.5 (REVISED CR-CH-019 / B052): Save on a built-in redirects to Save As (never writes a built-in); Save As works after editing a token (button action not clobbered by token lost_focus) |
@@ -2085,6 +2110,7 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `shell::tests::key_config_dialog_escape_closes_dialog` | Req 2.1, 2.3: KeyConfigDialog closes on Escape |
 | `ff-desktop` | ✅ | `shell::tests::dataset_alloc_dialog_has_cancel_path` | Req 2.1, 2.3: DatasetAllocDialog has Cancel path reachable by keyboard |
 | `ff-desktop` | ✅ | `shell::tests::modal_open_flag_suppresses_shell_tab_cycle` | Req 2.3: modal_open flag traps focus within dialog |
+| `ff-desktop` | ✅ | `shell::tests::{full_shell_reset_bare_dialog_sets_modal_open_and_focuses_a_button, full_shell_reset_bare_dialog_tab_stays_within_modal}` | Req 2.3 (B077): RESET BARE confirmation is an `egui::Modal` that sets `modal_open` on the frame it opens, focuses Cancel, and traps Tab within the dialog (background Tab no longer moves) |
 | `ff-config` | ✅ | `keys.rs` unit tests | Req 5.2: accessibility.reduce_motion config key registered with unique path |
 | `ff-desktop` | ✅ | `main::tests::reduce_motion_config_key_is_registered_in_schema` | Req 5.2: accessibility.reduce_motion registered in built-in schema |
 | `ff-desktop` | ✅ | `shell::tests::reduce_motion_scroll_is_immediate_jump` | Req 5.3: reduce_motion config key readable; scroll is immediate jump |
@@ -3110,3 +3136,68 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | ✅ | `nav_manager::tests::{resolve_scroll_action_max_is_directional, up_by_amount_max_scrolls_to_top, down_by_amount_max_scrolls_to_bottom}`; `shell::tests::command_up_with_scroll_max_scrolls_to_top` | navigation-commands Req 3.21: MAX -> UP to top (top_line=1), DOWN to bottom (max_top_line), clamped |
 | `ff-desktop` | ✅ | `nav_manager::tests::{resolve_scroll_action_csr_is_cursor_to_top, up_by_amount_csr_scrolls_cursor_to_top}` | navigation-commands Req 3.22: CSR -> top_line = cursor_line, clamped |
 | `ff-desktop` | ✅ | `shell::tests::command_down_n_overrides_scroll_amount` (+ existing `scroll_command_*` for the SCROLL field) | navigation-commands Req 3.23: explicit UP n/DOWN n overrides the Scroll_Amount; no-arg never errors and leaves the SCROLL field unchanged |
+
+### Phase (pfshow-scope-cycle) -- CR-CH-046 PFSHOW single-line modifier-scope cycling (function-keys-and-history Req 12.8-12.13, Req 13 revised)
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-keys` | ✅ | `key_label_bar::tests::{row_for_modifier_produces_12_slots_f1_to_f12, row_for_modifier_base_reads_plain_bindings}` | Req 13.1: Key_Label_Bar shows a single 12-slot row (F1-F12) for one modifier layer via `KeyLabelBarModel::row_for_modifier` |
+| `ff-keys` | ✅ | `key_label_bar::tests::row_for_modifier_unassigned_key_is_blank_slot` | Req 13.2: unassigned key in the selected layer is a blank slot (not omitted); grid preserved |
+| `ff-keys` | ✅ | `key_label_bar::tests::{row_for_modifier_shift_reads_shift_bindings, row_for_modifier_ctrl_and_alt_read_their_layers}` | Req 12.11: labels for the current scope derived from the layer's bindings (Base=get_plain; Shift/Ctrl/Alt=ModifiedKey), reusing display_label |
+| `ff-keys` | ✅ | `key_map::tests::{default_global_binds_alt_f1_to_pfshow, key_map_default_global_binds_exactly_base_and_shift_f1_to_f12}` | Req 15.3 (amended)/15.7/12.14: compiled default_global() binds AF1 (Alt+F1) = PFSHOW as the sole Ctrl/Alt/AltGr/Ctrl+Shift default; code-only, restored by RESET BARE |
+| `ff-desktop` | ✅ | `shell::tests::alt_f1_default_dispatches_pfshow_cycle` | Req 15.7/12.14: pressing Alt+F1 with the default map dispatches the PFSHOW cycle |
+| `ff-desktop` | ✅ | `shell::tests::pfshow_cycle_off_base_shift_ctrl_alt_off` | Req 12.8: bare PFSHOW cycles Off -> Base -> Shift -> Ctrl -> Alt -> Off (wraps) |
+| `ff-desktop` | ✅ | `shell::tests::{pfshow_scope_args_jump_to_scope_and_show, pfshow_scope_arg_is_case_insensitive}` | Req 12.9: PFSHOW BASE/SHIFT/CTRL/ALT jump to scope and show (case-insensitive) |
+| `ff-desktop` | ✅ | `shell::tests::{pfshow_on_off_idempotent_no_error, pfshow_on_from_off_retains_scope}` | Req 12.1/12.2: PFSHOW ON shows at last/Base scope; PFSHOW OFF hides |
+| `ff-desktop` | ✅ | `shell::tests::pfshow_on_off_idempotent_no_error` | Req 12.6/12.7: PFSHOW ON when visible / OFF when hidden are no-ops, no error |
+| `ff-desktop` | ✅ | `shell::tests::pfshow_unknown_arg_leaves_mode_unchanged_and_sets_error` | Req 12.13: unknown PFSHOW arg leaves mode unchanged + non-fatal error, no crash |
+| `ff-desktop` | ✅ | `shell::tests::{key_label_bar_renders_single_row_for_each_scope, key_bar_scope_maps_modifier_segment_and_parse}` | Req 12.10/13.1/13.3/13.4: single-line render with leading Scope_Segment (`Base | F1 Help | ...`); at most one line |
+| `ff-desktop` | ✅ | `shell::tests::key_label_bar_buttons_are_not_tab_focus_stops` | Req 12.10 / CR-CH-023: single-row F-key slots remain non-focusable (Tab does not land on them) |
+| `ff-keys` | ✅ | `key_label_bar::tests::update_for_modifier_refreshes_labels_and_keeps_modifier` | Req 12.12/13.5: single-row display updates within the same frame when the active Key_Map changes |
+| `ff-desktop` | ✅ | `session_manager::tests::key_bar_scope_round_trips_through_session` | Req 12.4: `(key_bar_visible, key_bar_scope)` persist and restore across sessions |
+| `ff-desktop` | 🔲 | -- | Req 13.3 (styling): pixel-exact divider/theme styling of the Scope_Segment and slots -- MANUAL (appearance only, not headless-assertable) |
+
+### Phase (scrm-eval) -- CR-NR-098: Screen Snapshot + SCRM (NOT COVERED; gate design phase, owner approved requirements)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-screen-model` | ✅ | `render::tests::all_formats_preserve_visible_field_text`; `tests/property_tests.rs::every_format_preserves_field_values` | Req 1.1/1.2: capture is selectable text derived from Screen_Model, never a raster |
+| `ff-screen-model` | ✅ | `tests/property_tests.rs::every_format_preserves_field_values` | Req 1.4: text-bearing render keeps screen content as selectable text (collection export tested in ff-scrm) |
+| `ff-screen-model` | ✅ | `tests::screen_provider_yields_model` | Req 2.1: ScreenProvider trait returns the current Screen_Model |
+| `ff-screen-model` | ✅ | crate has no egui / no ff-scrm dependency (Cargo.toml: serde only) | Req 2.4: ScreenProvider + Screen_Model live in a crate with no egui / no ff-scrm dep |
+| `ff-screen-model` | ✅ | `model::tests::{screen_model_builder_collects_title_and_fields, default_dimensions_are_24_by_80, field_attributes_can_be_marked_sensitive, colour_defaults_to_default_variant}` | Req 3.1-3.8: Screen_Model preserves text/field/colour/highlight/protection attrs, cursor, dimensions, logical elements |
+| `ff-screen-model` | ✅ | `render::{tests,ansi::tests,markdown::tests,html::tests,yaml::tests}` | Req 4.2-4.6: PlainText/Ansi/Markdown/Html/Yaml renderers |
+| `ff-screen-model` | ✅ | `render::tests::{unicode_frame_uses_box_chars, ascii_fallback_uses_ascii_frame, default_render_options_use_unicode}`; `render::ansi::tests::coloured_field_emits_sgr_and_keeps_plain_text`; `tests::parse_arg_maps_verbs_and_aliases` | Req 5.1-5.5: box-drawing default + ASCII fallback, ANSI SGR colours, model-only, SnapshotFormat set |
+| `ff-screen-model` | ✅ | `model::tests::field_attributes_can_be_marked_sensitive`; `render::yaml::tests::sensitive_field_flag_emitted` | Req 13.5: per-field sensitive attribute on the Screen_Model |
+| `ff-scrm` | ✅ | `model::tests::append_capture_assigns_sequential_numbers` (create/id/name; stop/status are shell-side Wave 2) | Req 7.1-7.4 (engine): collection create/id/name/notes/persist |
+| `ff-scrm` | ✅ | `model::tests::append_capture_assigns_sequential_numbers` (auto-start-default is shell-side Wave 2) | Req 8.2-8.3 (engine): manual capture append, sequential numbering |
+| `ff-scrm` | ✅ | `rules::tests::{rule_matches_on_screen_name_case_insensitive, ruleset_captures_if_any_rule_fires}` (auto-hook is shell-side Wave 2) | Req 9.7-9.9 (engine): capture rules, conditions, multiple rules |
+| `ff-scrm` | ✅ | `replay::tests::{navigation_clamps_at_ends, speed_is_clamped_positive, elapsed_between_consecutive_captures, filter_by_dialog_state_selects_matching_only}` | Req 10.2-10.7 (engine): replay sequence/navigation/autoplay/speed/timestamps/elapsed |
+| `ff-scrm` | ✅ | `export::tests::{text_export_includes_capture_and_value, markdown_export_has_heading, html_export_is_a_document}` | Req 12.1-12.3, 12.5: text/md/html exporters, native zip archive layout |
+| `ff-scrm` | ✅ | `rules::tests::{masking_hides_sensitive_field, masking_by_label_rule}`; `export::tests::text_export_masks_when_on` | Req 13.1-13.4: sensitive classification (Context-marked OR rule), masking, with/without |
+| `ff-scrm` | ✅ | `model::tests::capture_carries_dialog_state`; `replay::tests::filter_by_dialog_state_selects_matching_only` (state-transition export is Wave 3) | Req 15.1-15.3 (engine): DIDL state recorded/stored; replay filter by state |
+| `ff-scrm` | ✅ | `persist::tests::archive_round_trips_collection_header`; `tests/property_tests.rs::collection_round_trips_through_archive` | Req 17.1-17.3: ScreenCollection + ScreenCapture data model; archive as persisted format |
+| `ff-scrm` | ✅ | `tests/property_tests.rs::supports_ten_thousand_captures`; `persist::tests::journal_recovers_latest_snapshot` | Req 18.1, 18.4: >=10,000 captures; crash recovery for active collection |
+| `ff-scrm` | ✅ | `evidence::tests::content_hash_is_stable_and_sensitive`; `pdf_protected::tests::content_hash_is_embedded_value` | Req 20.4: content hash embedded for tamper-evidence (Wave 3 DONE) |
+| `ff-desktop` | ✅ | `shell::tests::{snapshot_command_sets_status_message, full_shell_snapshot_on_pom_captures_selectable_text, snapshot_unknown_format_is_error}` | Req 4.1, 6.1-6.3: SNAPSHOT default + clipboard delivery + status + not-capturable/unknown-format path |
+| `ff-desktop` | ✅ | `screen_snapshot::tests::*`; `shell::tests::snapshot_text_for_active_pom_contains_menu_content` (capture reads MenuWorkspaceState via screen_snapshot, not egui; core-packaged) | Req 2.2-2.3, 2.5: capture via ScreenProvider only; not-capturable report; core packaging |
+| `ff-desktop` | ✅ | `shell::tests::auto_capture_records_on_navigation` | Req 9.1, 9.5 (hook): auto-capture on Context transition at navigate_to choke point |
+| `ff-desktop` | 🔴 | -- | Req 9.2-9.4, 9.6-9.9 (shell): key-triggered model-diff guard + configurable interval + conditional-rule wiring (engine rules exist; shell wiring deferred) |
+| `ff-desktop` | ✅ | `shell::tests::{snapshot_text_for_active_markdown_format_arg, full_shell_snapshot_on_pom_captures_selectable_text}` | Req 11.2-11.4 (SNAPSHOT): SNAPSHOT verbs via the single handle_command dispatch path + command parity |
+| `ff-desktop` | ✅ | `shell::tests::{capture_start_then_status_reports_active_collection, capture_screen_appends_capture, capture_replay_opens_viewer_when_collection_exists}` | Req 11.1 (Wave 2): CAPTURE START/STOP/SCREEN/STATUS/LIST/PURGE/REPLAY via the single dispatch path |
+| `ff-desktop` | ✅ | `shell::tests::{capture_export_text_writes_file, capture_save_then_load_round_trips_collection}` | Req 11.1 (Wave 3): CAPTURE OPEN/SAVE/LOAD/EXPORT commands (persistence + export wiring) |
+| `ff-scrm` | ✅ | `pdf::tests::{pdf_has_header_and_trailer, pdf_contains_selectable_text_operators, pdf_page_count_is_title_index_plus_captures, pdf_masks_sensitive_when_on}` | Req 12.4, 12.6 (engine): PDF title/index/per-capture pages with real selectable text (Tj), not raster |
+| `ff-desktop` | ✅ | `shell::tests::capture_export_pdf_writes_selectable_pdf` | Req 12.4, 12.6 (command): CAPTURE EXPORT PDF writes a %PDF with selectable text |
+| `ff-scrm` | ✅ | `evidence::tests::{build_populates_provenance, build_records_test_case_and_status, content_hash_is_stable_and_sensitive}` | Req 14.1-14.4, 20.4 (engine): evidence package fields + test-case id + pass/fail + content hash |
+| `ff-desktop` | ✅ | `shell::tests::{capture_evidence_writes_package_with_hash, capture_evidence_without_collection_reports_empty}` | Req 14.1-14.4 (command): CAPTURE EVIDENCE writes package JSON with hash |
+| `ff-desktop` | 🔴 | -- | Req 14.5: evidence-as-protected-PDF (deferred add-on); Req 15.4: state-transition history export (deferred) |
+| `ff-desktop` | 🔴 | -- | Req 15.3: replay filtering by dialog state |
+| `ff-desktop` | ✅ | `shell::tests::full_shell_scrm_viewer_first_tab_focuses_first_control`; `scrm_viewer_panel::tests::*` | Req 16.1-16.3: SCRM viewer as WorkspaceContext, InteriorFocus first-Tab test, descriptor persistence |
+| `ff-desktop` | ✅ | `scrm_session::tests::*`; `shell::tests::{capture_screen_appends_capture, capture_start_then_status_reports_active_collection}` | Req 7.1-7.7, 8.1-8.4 (shell): collection lifecycle + manual capture + auto-start default |
+| `ff-desktop` | ✅ | `scrm_viewer_panel::tests::current_screen_text_reflects_capture`; `shell::tests::capture_replay_opens_viewer_when_collection_exists` | Req 10.1-10.8 (shell): replay navigation + selectable-text screen render in the viewer |
+| `ff-desktop` | 🔴 | -- | Req 18.2-18.3: capture does not visibly interrupt; async export/off-frame write |
+| `ff-screen-model` / `ff-scrm` | ✅ | crate structure: SCRM engine lives entirely in `ff-screen-model` + `ff-scrm`; ff-desktop holds only thin Context/command wiring (verified in Cargo.toml deps + module map) | Req 19.1/19.2/19.5/19.6: SCRM engine in new crates; ff-desktop depends on them only for thin wiring; ScreenProvider seam is the extraction template; no parallel dispatch/nav/focus/persistence mechanism |
+| `ff-desktop` | 🔲 | Behaviour-preserving panel extraction waves (design.md Wave 4+) tracked in `docs/project-management/ffdesktop-decomposition-baseline.md`; each wave = verify.ps1 CLEAN + before/after line/rebuild measurement. Baseline recorded 2026-09-26 (54,545 lines, 5.17 s incr rebuild). Wave 1 (ff-theme-editor) DONE 2026-09-29 (owner-confirmed full verify.ps1 CLEAN): ff-desktop 54,545 -> 54,120 (-425); scoped gate CLEAN (nextest -p ff-desktop 1225/1225, clippy -D warnings, fmt). Wave 2 (ff-toolchain-panel) SCOPED CLEAN 2026-09-29 (toolchain_panel.rs 559 -> 15; ff-desktop 54,120 -> ~53,576; nextest -p ff-toolchain-panel -p ff-desktop 1225/1225), owner full gate pending. Wave 3 (ff-catalog-registry, DECOMP.3) DONE 2026-09-30, owner-confirmed full verify.ps1 CLEAN (9452/9452, empty ai-review.log): catalog_registry.rs 801 -> 13 thin `pub use` adapter; ff-desktop ~53,576 -> ~52,788 (-788); the crate holds the model + 22 tests egui-free. Next candidate: catalog_manager_dialog.rs (DECOMP.4). | Req 19.3/19.4: each extraction wave is behaviour-preserving (full gate green, no observable change) and reduces ff-desktop size, measured before/after (ongoing -- one row per wave) |
+| `ff-scrm` | ✅ | `pdf_protected::tests::{protected_pdf_is_encrypted, protected_pdf_has_pdf_header, protected_pdf_accepts_optional_user_password, content_hash_is_embedded_value}` | Req 20.1-20.5 (engine): owner-password encryption + copy-allow/edit-lock permissions + optional user password + embedded content hash |
+| `ff-desktop` | ✅ | `shell::tests::{capture_export_pdf_protected_writes_encrypted_pdf, capture_export_pdf_protected_default_owner_password}` | Req 20.1, 20.2, 20.7 (command): CAPTURE EXPORT PDF PROTECTED writes an /Encrypt-locked PDF |
+| `ff-desktop` | 🔴 | -- | Req 20.4a: optional digital signature (deferred configurable add-on) |
+| `ff-desktop` | ✅ | `shell::tests::{capture_export_text_writes_file, capture_export_markdown_writes_file, capture_save_then_load_round_trips_collection, capture_export_without_collection_reports_empty}` | Req 11.1 (Wave 3): CAPTURE EXPORT TEXT/MD/HTML + SAVE/LOAD/OPEN via the single dispatch path |

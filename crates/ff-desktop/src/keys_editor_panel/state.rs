@@ -150,7 +150,7 @@ mod tests {
         assert!(KIND_NAMES.contains(&"editor"));
         assert!(KIND_NAMES.contains(&"config"));
         assert!(
-            KIND_NAMES.contains(&"keys") == false,
+            !KIND_NAMES.contains(&"keys"),
             "the editor does not list itself"
         );
         assert_eq!(KIND_NAMES.len(), 12);

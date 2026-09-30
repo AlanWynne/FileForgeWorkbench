@@ -391,7 +391,7 @@ async fn concurrency_limit_queues_excess_tasks() {
     // Spawn 5 tasks — only 2 should run concurrently
     let mut handles = Vec::new();
     for i in 0..5 {
-        let uri = ResourceUri::new("test", &format!("/file{}.txt", i));
+        let uri = ResourceUri::new("test", format!("/file{}.txt", i));
         let h = service.spawn_load(vfs.clone(), uri, LoadOptions::default(), callback.clone());
         handles.push(h);
     }
@@ -513,13 +513,13 @@ async fn multiple_concurrent_loads_and_saves_complete_successfully() {
     // Spawn loads
     for i in 0..4 {
         let callback: ChunkCallback = Arc::new(|_| {});
-        let uri = ResourceUri::new("test", &format!("/load{}.txt", i));
+        let uri = ResourceUri::new("test", format!("/load{}.txt", i));
         handles.push(service.spawn_load(vfs.clone(), uri, LoadOptions::default(), callback));
     }
 
     // Spawn saves
     for i in 0..4 {
-        let uri = ResourceUri::new("test", &format!("/save{}.txt", i));
+        let uri = ResourceUri::new("test", format!("/save{}.txt", i));
         let doc_source = Arc::new(TestDocumentSource::new(format!("new {}", i).into_bytes()));
         handles.push(service.spawn_save(vfs.clone(), uri, doc_source, SaveOptions::default()));
     }

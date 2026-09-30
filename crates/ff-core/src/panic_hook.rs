@@ -252,8 +252,8 @@ mod tests {
             handle.join().expect("thread should join cleanly");
         }
 
-        // Main thread still functional
-        assert!(2 + 2 == 4, "main thread should still be operational");
+        // Main thread still functional: reaching here after all worker threads
+        // joined cleanly is the assertion (no constant-value assert needed).
     }
 
     /// Validates: Requirement 7.5 — panic hook never panics itself

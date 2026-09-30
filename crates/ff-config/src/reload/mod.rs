@@ -1388,7 +1388,7 @@ mod tests {
         }
 
         // Wait for debounce window to elapse
-        thread::sleep(Duration::from_millis((debounce_ms + 100) as u64));
+        thread::sleep(Duration::from_millis(debounce_ms + 100));
 
         // Poll -- should get at most one coalesced event
         let changes = manager.watcher_mut().unwrap().poll_changes();

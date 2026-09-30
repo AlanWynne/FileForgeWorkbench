@@ -1,0 +1,14 @@
+[package]
+name = "ff-theme-editor"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Theme Editor Context for FileForgeWorkbench (CR-NR-098 decomposition Wave 1): pure state + egui render + ThemeEditorAction. No shell dependency."
+
+[dependencies]
+ff-theme = { path = "../ff-theme" }
+egui = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }

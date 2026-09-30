@@ -63,7 +63,7 @@ fn error_variant_strategy() -> impl Strategy<Value = VfsError> {
             VfsError::Io {
                 uri,
                 operation: op,
-                source: std::io::Error::new(std::io::ErrorKind::Other, msg),
+                source: std::io::Error::other(msg),
             }
         }),
         short_scheme().prop_map(|scheme| VfsError::DuplicateScheme { scheme }),

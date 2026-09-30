@@ -1,0 +1,14 @@
+[package]
+name = "ff-screen-model"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Logical screen model + ScreenProvider trait + text/ANSI/Markdown/HTML/YAML renderers for FileForgeWorkbench screen capture (CR-NR-098). No egui, no SCRM logic."
+
+[dependencies]
+serde = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }

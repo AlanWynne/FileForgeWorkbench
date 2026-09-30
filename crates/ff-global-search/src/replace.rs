@@ -225,8 +225,13 @@ mod tests {
                 line_text: "foo bar".to_string(),
             }],
         };
-        let (summary, conflicts) =
-            GlobalReplaceEngine::replace_all(&[fm], &req("foo"), "baz", &[path.clone()]).unwrap();
+        let (summary, conflicts) = GlobalReplaceEngine::replace_all(
+            &[fm],
+            &req("foo"),
+            "baz",
+            std::slice::from_ref(&path),
+        )
+        .unwrap();
         assert_eq!(summary.files_modified, 0);
         assert_eq!(conflicts.paths, vec![path]);
         assert_eq!(

@@ -294,7 +294,7 @@ mod tests {
     #[test]
     fn strip_document_skips_already_blank_lines() {
         // Validates: Requirement 5.8
-        let lines = vec![
+        let lines = [
             make_80col_line("000100", " CODE.", "00000100"),
             make_80col_line("      ", " CODE.", "        "),
             make_80col_line("000300", " CODE.", "00000300"),

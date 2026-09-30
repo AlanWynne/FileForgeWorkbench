@@ -1,0 +1,16 @@
+[package]
+name = "ff-toolchain-panel"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Compiler toolchain status panel (pure render + state) for FileForgeWorkbench"
+
+[dependencies]
+ff-toolchain-api = { path = "../ff-toolchain-api" }
+ff-gcc-toolchain = { path = "../ff-gcc-toolchain" }
+ff-rust-toolchain = { path = "../ff-rust-toolchain" }
+egui = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }

@@ -769,3 +769,95 @@ is approved.
           `up_shares_pointer_with_retrieve`. verify.ps1 CLEAN FULL nextest; rebuild
           ffwb.exe; update TCR Req 23; update project-master.
     - Covers: function-keys Requirement 23
+
+## Phase (pfshow-scope-cycle) -- PFSHOW single-line, modifier-scope cycling (CR-CH-046)
+
+Builds ON the framework (framework-conformance): same `key_bar_visible` state
+plus a new `key_bar_scope`, same `render_key_label_bar` render arm (now one row),
+same PFSHOW intercept in `handle_command`, same session-persistence model.
+
+- [x] 46. `KeyLabelBarModel` single-row-per-modifier builder (ff-keys)
+  - [x] 46.1 Write failing unit tests FIRST in `key_label_bar.rs`:
+          `row_for_modifier_base_reads_plain_bindings`,
+          `row_for_modifier_shift_reads_sf_bindings`,
+          `row_for_modifier_ctrl_and_alt_read_their_layers`,
+          `row_for_modifier_produces_12_slots_f1_to_f12`,
+          `row_for_modifier_unassigned_key_is_blank_slot`,
+          `update_for_modifier_refreshes_labels_and_keeps_modifier`.
+    - Validates: Requirement 13.1, 13.2; Requirement 12.11
+  - [x] 46.2 Add `KeyLabelBarModel::row_for_modifier(key_map, modifier)` and
+          `update_for_modifier(key_map, modifier)` reading
+          `key_map.get(ModifiedKey { key, modifier })`; F1-F12 only; blank slot
+          for unassigned; reuse `KeyBinding::display_label()`. Retain the existing
+          two-row helpers for backward compatibility.
+    - Validates: Requirement 13.1, 13.2; Requirement 12.11
+  - [x] 46.3 Add the default `AF1 = PFSHOW` binding to `KeyMap::default_global()`
+          (`ModifiedKey::alt(F1)` -> `with_label("PFSHOW", "PFSHOW")`). Write/adjust
+          failing tests FIRST: `default_global_binds_alt_f1_to_pfshow`, and update
+          the existing count/exclusivity tests
+          (`key_map_default_global_binds_exactly_base_and_shift_f1_to_f12`) to
+          expect the one extra AF1 binding (25 total) and assert AF1 = PFSHOW is
+          the sole Ctrl/Alt/AltGr/Ctrl+Shift default.
+    - Validates: Requirement 15.3 (amended), 15.7; Requirement 12.14
+  - Covers: Requirement 13.1, 13.2; Requirement 12.11, 12.14; Requirement 15.3, 15.7
+
+- [x] 47. `KeyBarScope` state + PFSHOW cycle/parse (ff-desktop shell)
+  - [x] 47.1 Write failing shell unit tests FIRST: `pfshow_cycle_off_base_shift_ctrl_alt_off`
+          (bare PFSHOW visits the five modes in order and wraps),
+          `pfshow_base_shift_ctrl_alt_jump_to_scope_and_show`,
+          `pfshow_scope_arg_is_case_insensitive`,
+          `pfshow_on_from_off_restores_last_scope_else_base`,
+          `pfshow_on_when_visible_is_noop_no_error`,
+          `pfshow_off_when_hidden_is_noop_no_error`,
+          `pfshow_unknown_arg_leaves_mode_unchanged_sets_error`.
+    - Validates: Requirement 12.1, 12.2, 12.6, 12.7, 12.8, 12.9, 12.13
+  - [x] 47.2 Add `KeyBarScope` enum (`Base`/`Shift`/`Ctrl`/`Alt`) with
+          `to_modifier()` and `segment_label()`; add `key_bar_scope: KeyBarScope`
+          shell field (init from session); implement the five-state `next()`
+          cycle and the argument parse in the PFSHOW intercept in
+          `shell/commands.rs` (replaces the boolean toggle for the bare form,
+          adds BASE/SHIFT/CTRL/ALT). Unknown arg -> `open_error`, mode unchanged.
+    - Validates: Requirement 12.1, 12.2, 12.3, 12.8, 12.9, 12.13
+  - [x] 47.3 Add a full-shell `egui_kittest` test `alt_f1_dispatches_pfshow_cycle`
+          asserting that pressing Alt+F1 (with the compiled default map) invokes
+          the PFSHOW cycle (Key_Label_Bar mode advances Off -> Base), proving the
+          default AF1 binding reaches the command. (RESET BARE restores this
+          binding automatically since it reverts to `default_global()`; no
+          `reset_bare.rs` change.)
+    - Validates: Requirement 15.7, 12.14, 12.8
+  - Covers: Requirement 12.1, 12.2, 12.3, 12.6, 12.7, 12.8, 12.9, 12.13, 12.14
+
+- [x] 48. Single-line render with Scope_Segment (ff-desktop render.rs)
+  - [x] 48.1 Write a failing full-shell `egui_kittest` test FIRST:
+          `pfshow_base_renders_single_row_with_base_segment` (Scope_Segment text
+          present, one row) and extend the non-focusable guard
+          `key_label_bar_single_row_slots_are_not_tab_focus_stops`.
+    - Validates: Requirement 12.10, 13.1, 13.3, 13.4; CR-CH-023 (non-focusable)
+  - [x] 48.2 Rewrite `render_key_label_bar` to render ONE `ui.horizontal` row: a
+          non-interactive Scope_Segment label (`key_bar_scope.segment_label()`)
+          then the 12 slots from `KeyLabelBarModel::row_for_modifier(active_map,
+          key_bar_scope.to_modifier())`. Keep the CR-CH-023 click-only `Label`
+          sense (non-focusable); click dispatches the shown modifier binding.
+    - Validates: Requirement 12.10, 12.12, 13.1, 13.3, 13.4, 13.5
+  - Covers: Requirement 12.10, 12.12, 13.1, 13.3, 13.4, 13.5
+
+- [x] 49. Persist the scope (ff-session + ff-desktop)
+  - [x] 49.1 Write a failing session round-trip test FIRST:
+          `key_bar_scope_round_trips_through_session` (visible + scope survive).
+    - Validates: Requirement 12.4
+  - [x] 49.2 Add `key_bar_scope: String` (serde default `"base"`) to
+          `ff-session` `SessionState`; thread through `session_manager.rs`
+          save/restore; restore both `key_bar_visible` and `key_bar_scope` in
+          `shell/update.rs`; unknown/absent -> `Base`.
+    - Validates: Requirement 12.4
+  - Covers: Requirement 12.4
+
+- [x] 50. Verify, TCR, docs
+  - [x] 50.1 `cargo fmt`, `cargo clippy -- -D warnings`, scoped tests
+          (`ff-keys`, `ff-desktop`), then `verify.ps1` FULL nextest; clear
+          `tools\logs\ai-review.log`; rebuild ffwb.exe.
+  - [x] 50.2 Update `docs/quality/TCR.md` rows for Requirement 12.8-12.13 and the
+          revised Req 13 to PASS/MANUAL as appropriate; update
+          `docs/project-management/project-master/tasks.md`; flip change-log
+          CR-CH-046 to DONE and the acceptance-test rows 7.9-7.11 as appropriate.
+  - Covers: Requirement 12.8-12.13, Requirement 13.1-13.5

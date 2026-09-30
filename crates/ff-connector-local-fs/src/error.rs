@@ -220,7 +220,7 @@ mod tests {
     // Validates: Requirement 7 AC 8
     #[test]
     fn map_io_error_unknown_kind_produces_vfs_io() {
-        let io_err = io::Error::new(ErrorKind::Other, "some unknown error");
+        let io_err = io::Error::other("some unknown error");
         let vfs_err = map_io_error(io_err, "stat", "vfs://local/file.txt");
         match vfs_err {
             VfsError::Io { uri, operation, .. } => {

@@ -545,8 +545,8 @@ mod tests {
 
     #[test]
     fn param_value_float_variant_works() {
-        let val = ParamValue::Float(3.14);
-        assert_eq!(val, ParamValue::Float(3.14));
+        let val = ParamValue::Float(2.5);
+        assert_eq!(val, ParamValue::Float(2.5));
     }
 
     #[test]

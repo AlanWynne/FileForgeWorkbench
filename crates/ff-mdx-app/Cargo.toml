@@ -1,0 +1,26 @@
+[package]
+name = "ff-mdx-app"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Standalone Markdown Explorer — ffmdx.exe"
+
+[[bin]]
+name = "ffmdx"
+path = "src/main.rs"
+
+[dependencies]
+ff-md-viewer = { path = "../ff-md-viewer" }
+ff-html-export = { path = "../ff-html-export" }
+egui.workspace = true
+eframe.workspace = true
+egui_commonmark = { version = "0.19", features = ["pulldown_cmark"] }
+anyhow.workspace = true
+rfd = "0.15"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

@@ -481,6 +481,10 @@ impl VfsProvider for CatalogVfsProvider {
 }
 
 #[cfg(test)]
+// CR-CH-048: these test helpers wrap a non-Sync CatalogRegistry in Arc<RwLock<>>
+// purely for single-threaded test setup; the Arc is never sent across threads,
+// so clippy's arc_with_non_send_sync does not indicate a real problem here.
+#[allow(clippy::arc_with_non_send_sync)]
 mod tests {
     use super::*;
     use crate::catalog::CatalogMount;

@@ -174,17 +174,17 @@ cargo test -p ff-desktop scroll_down_clamps # single crate, specific test
 cargo test -p ff-desktop -- --nocapture     # single crate, show stdout
 ```
 
-### Background full-workspace test (non-blocking)
-Prefer `verify.ps1` (below) for the full gate. If you need a raw background run,
-fire it and read the log later. Do NOT pipe through `tail` -- it suppresses
-output until the process exits. Prefer nextest for the aggregated summary.
+### Full-workspace runs are the owner's, not Kiro's (non-blocking by design)
+Kiro does NOT run full-workspace builds/tests. The full gate (`verify.ps1`) and
+any `--workspace` run are the OWNER's manual step, run outside Kiro, so Kiro is
+never blocked on a multi-minute run and the connection never drops mid-wait. The
+command below is documented for the OWNER's reference (or a future explicit "run
+this in the background and read the log" instruction from the owner) -- it is not
+part of Kiro's normal loop:
 ```bat
+REM OWNER-run reference only; Kiro uses scoped -p checks instead.
 start /B cargo nextest run --workspace > tools\logs\test-run.txt 2>&1
-REM fallback if nextest is not installed:
-REM start /B cargo test --workspace > tools\logs\test-run.txt 2>&1
 type tools\logs\test-run.txt
-tasklist | findstr cargo                      REM check if still running
-powershell "Get-Content tools\logs\test-run.txt -Tail 20"
 ```
 
 ### Scoped test map
@@ -194,7 +194,7 @@ powershell "Get-Content tools\logs\test-run.txt -Tail 20"
 | Plugin Manager UI | `cargo test -p ff-desktop -p ff-plugin` |
 | Notification System | `cargo test -p ff-desktop` |
 | Compiler Toolchain (MockToolchain) | `cargo test -p ff-toolchain-api` |
-| Full baseline check | `verify.ps1` (see below) |
+| Full baseline check | `verify.ps1` -- OWNER-run manual gate, not a Kiro command |
 
 ### Full-workspace verification -- verify.ps1 (cargo-nextest)
 The canonical gate is `tools\powershell\verify.ps1`. It runs three steps --
@@ -208,21 +208,65 @@ faster than serial `cargo test` on this ~9000-test / 69-crate workspace. If
 nextest is absent, verify.ps1 falls back to `cargo test --workspace`
 automatically -- no behaviour change, just slower.
 
+### Gate scopes (CR-CH-047)
+`verify.ps1` supports three TEST scopes. `cargo fmt --check` and
+`cargo clippy --workspace` run in ALL of them; only the test step's package set
+changes. Pick the scope by workload:
+
 ```powershell
-# Full gate (proptests use their configured >=100 iterations):
+# COMPLETION GATE (default, no switch): full --workspace, all 68 crates.
+# The ONLY scope that qualifies as "done". ~4-5 min.
 powershell -ExecutionPolicy Bypass -File tools\powershell\verify.ps1
 
-# Fast developer inner-loop signal (PROPTEST_CASES=32 -- NOT the full gate):
+# ROUTINE gate: the ffwb app dependency-closure only (--workspace --exclude
+# <orphans>). Skips the ~35 workspace crates NOT yet wired into ff-desktop.
+# ~2-3x faster. PARTIAL -- not the completion gate.
+powershell -ExecutionPolicy Bypass -File tools\powershell\verify.ps1 -AppOnly
+
+# INNER LOOP: a single crate (cargo nextest run -p <name>). PARTIAL.
+powershell -ExecutionPolicy Bypass -File tools\powershell\verify.ps1 -Crate ff-keys
+
+# Fast proptest signal (PROPTEST_CASES=32). Orthogonal -- composes with any scope.
 powershell -ExecutionPolicy Bypass -File tools\powershell\verify.ps1 -Fast
 ```
 
+The `-AppOnly` exclude list is DERIVED at runtime -- all workspace members MINUS
+the `ff-desktop` dependency closure (`cargo metadata` minus `cargo tree -p
+ff-desktop`) -- so it NEVER drifts: a crate wired into ff-desktop automatically
+re-enters `-AppOnly`, and no shipping crate is ever silently skipped. If the
+derivation fails, `-AppOnly` falls back to the full `--workspace` (never a wrong
+subset). The chosen scope is recorded per run in `verify.history.csv` (a `scope`
+column) and drives a scope-aware ETA.
+
 Rules:
-- The `-Fast` switch is for quick iteration only. Declaring a task complete or a
-  phase done REQUIRES a clean full run (no `-Fast`), so proptests keep their
-  mandated >=100-iteration coverage.
-- After any run, read `tools\logs\ai-review.log` before claiming success. Empty
-  == clean; any lines == fix and rerun.
+- **The full gate (`verify.ps1`, DEFAULT full run) is the OWNER's MANUAL step,
+  NOT a Kiro command.** Kiro NEVER runs `verify.ps1` or any `--workspace`
+  build/test -- those are the multi-minute runs that block Kiro and drop the
+  connection. Kiro runs ONLY the scoped `-p <crate>` checks for what it changed,
+  then hands off (see "Full-gate hand-off" below). The owner runs the full gate
+  outside Kiro and reports the result back.
+- **Completion is two-staged.** Kiro certifies "code-complete pending full gate"
+  when its scoped checks are clean; the task is "done" only after the owner runs
+  the full `verify.ps1` and confirms a clean run (empty `ai-review.log`). A clean
+  scoped run is NOT sufficient to claim "done" -- but it IS all Kiro runs.
+- The full run still matters for the not-yet-integrated ("orphan") crates and for
+  proptests keeping their mandated >=100 iterations; that is precisely why it is
+  run manually by the owner rather than skipped.
 - Install nextest once with: `cargo install --locked cargo-nextest`.
+
+### Full-gate hand-off (Kiro <-> owner protocol)
+This replaces Kiro ever running the full gate:
+1. Kiro finishes a task's scoped checks (`cargo check/test/clippy -p <crate>`,
+   `cargo fmt`) and confirms they are clean.
+2. Kiro STOPS and prints the hand-off: which scoped commands it ran, and the
+   exact full-gate command for the owner to run outside Kiro:
+   `powershell -ExecutionPolicy Bypass -File tools\powershell\verify.ps1`
+3. The OWNER runs the full gate manually and either replies "clean" or pastes the
+   contents of `tools\logs\ai-review.log` / the failing output.
+4. Kiro acts on that feedback: if clean, the task is DONE; if failures, Kiro fixes
+   them (scoped checks only) and hands off again at step 1.
+Kiro must NOT proceed to declare a task/phase/CR complete until step 3 returns
+clean. Kiro must NOT run `verify.ps1` itself to "save a round-trip".
 
 Direct nextest use (outside the script) is also available:
 ```bash
@@ -258,10 +302,11 @@ rg "\.unwrap\(\)|\.expect\(" crates/ --glob "!**/tests/**"   # unwrap in lib cod
 3. cargo test -p <crate>         # confirm NEW test fails (red)
 4. [write minimum implementation]
 5. cargo test -p <crate>         # confirm test passes (green)
-6. cargo clippy -- -D warnings   # no new lint violations
+6. cargo clippy -p <crate>       # no new lint violations, scoped
 7. cargo fmt                     # format before committing
-8. verify.ps1                    # full gate (nextest); check ai-review.log
+8. HAND OFF -> owner runs the full gate manually (see below)
 ```
-Never skip step 3. Step 8 is the full verification gate (`verify.ps1`, or
-`-Fast` for a quick inner-loop signal); check `ai-review.log` before committing
-or declaring a phase complete.
+Never skip step 3. Steps 1-7 are ALL Kiro runs: SCOPED to the crate(s) touched,
+so every command returns in seconds, not minutes. Step 8 is NOT a Kiro command:
+Kiro stops after the scoped checks are clean and PROMPTS the owner to run the
+full gate outside Kiro. See "Full-gate hand-off" below.

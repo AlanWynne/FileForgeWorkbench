@@ -161,13 +161,10 @@ mod tests {
     // Validates: Requirement 4.6
     #[test]
     fn core_layer_compiles_without_shell_layer() {
-        // If this test compiles and runs, ff-core has no Shell Layer dependencies.
-        // The Cargo.toml for ff-core lists only ff-logging (Foundation Layer) as
-        // an ff-* dependency, which is correct for the Core Layer.
-        assert!(
-            true,
-            "ff-core compiled successfully without Shell Layer — layer rule holds"
-        );
+        // The assertion IS that this test compiles and runs: ff-core has no Shell
+        // Layer dependencies. The Cargo.toml for ff-core lists only ff-logging
+        // (Foundation Layer) as an ff-* dependency, which is correct for the Core
+        // Layer. No runtime assert is needed (a constant-true assert is a lint).
     }
 
     /// Verifies that ff-core depends only on Foundation Layer ff-* crates.
@@ -188,10 +185,7 @@ mod tests {
         // If any such dependency were added, either:
         // 1. cargo check would fail (crate doesn't exist), or
         // 2. A circular dependency would be detected and rejected.
-        assert!(
-            true,
-            "ff-core depends only on ff-logging (Foundation Layer)"
-        );
+        // The assertion IS that this crate compiles; no runtime assert needed.
     }
 
     /// Verifies the Foundation Layer (ff-logging) has zero ff-* dependencies.
@@ -206,10 +200,7 @@ mod tests {
         // ff-logging Cargo.toml [dependencies] section contains:
         //   chrono, crossbeam-channel, thiserror, dirs, toml
         // Zero ff-* crates. This is verified by `cargo check -p ff-logging`
-        // succeeding without any other workspace member.
-        assert!(
-            true,
-            "ff-logging has zero ff-* dependencies — Foundation Layer rule holds"
-        );
+        // succeeding without any other workspace member. The compile IS the
+        // assertion; no runtime constant-true assert needed.
     }
 }

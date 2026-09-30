@@ -1915,3 +1915,147 @@ No new crate.
   `arrows_ignored_when_command_field_not_focused` (a Menu_Workspace option-nav /
   body still gets the arrows), `up_shares_pointer_with_retrieve` (Up then F12
   continues one step older, not restart).
+
+---
+
+## Design Changes: PFSHOW single-line, modifier-scope cycling (CR-CH-046)
+
+Validates: Requirement 12 (criteria 12.8-12.13), Requirement 13 (single-row-per-scope revision).
+
+This delta REVISES sections 6.1 (PFSHOW Command) and 6.2 (Key Label Bar layout)
+above. It builds ON the existing framework (framework-conformance rule): the same
+`key_bar_visible` state, the same `render_key_label_bar` render arm, the same
+PFSHOW intercept in `handle_command`, and the same session-persistence model.
+No core mechanism (CommandTarget dispatch, navigation, focus latch, descriptor
+persistence) changes.
+
+### 1. Key_Label_Bar_Scope model
+
+The Key_Label_Bar mode is a five-state cycle. It is modelled as a small enum plus
+the existing boolean, so persistence and the "visible" projection stay simple:
+
+```rust
+// ff-desktop shell state (shell/state.rs or shell/mod.rs)
+/// Which modifier layer the Key_Label_Bar shows when visible (CR-CH-046).
+/// Base = plain F-keys, Shift = SF*, Ctrl = CF*, Alt = AF*.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum KeyBarScope {
+    #[default]
+    Base,
+    Shift,
+    Ctrl,
+    Alt,
+}
+```
+
+The bar's overall mode is the pair `(key_bar_visible: bool, key_bar_scope:
+KeyBarScope)`:
+- `key_bar_visible == false` -> the `Off` mode (bar hidden); `key_bar_scope`
+  retains the last-shown scope so `PFSHOW ON` can restore it (criterion 12.1).
+- `key_bar_visible == true` -> the bar shows `key_bar_scope`.
+
+`KeyBarScope` maps 1:1 onto `ff_keys::KeyModifier` (`None`/`Shift`/`Ctrl`/`Alt`)
+via a `to_modifier()` helper, and exposes a `segment_label()` (`"Base"` /
+`"Shift"` / `"Ctrl"` / `"Alt"`) for the leading Scope_Segment.
+
+### 1a. Default Alt+F1 = PFSHOW binding (Requirement 15.3 amended, 15.7)
+
+`KeyMap::default_global()` (ff-keys `key_map.rs`) adds ONE binding beyond the
+existing Base + Shift F1-F12 rows: `AF1` (`ModifiedKey::alt(FunctionKey::F1)`)
+bound to `KeyBinding::with_label("PFSHOW", "PFSHOW")`. This is the only default
+in the Ctrl/Alt/AltGr/Ctrl+Shift layers. It is code-only (compiled, never a TOML
+file), so `RESET BARE` -- which clears user overrides and reverts to the compiled
+default -- restores it automatically; no change to `reset_bare.rs` is needed
+(RESET BARE already archives `keymaps/` and falls back to `default_global()`).
+The default-map count assertions in the existing ff-keys tests (currently "24 =
+12 Base + 12 Shift", e.g. `key_map_default_global_binds_exactly_base_and_shift_f1_to_f12`)
+MUST be updated to expect the one extra AF1 binding and to assert AF1 = PFSHOW.
+
+### 2. Bare PFSHOW cycle (criterion 12.8)
+
+Bare `PFSHOW` advances a single state machine over `Off -> Base -> Shift -> Ctrl
+-> Alt -> Off`. Implemented as a `next()` on the combined mode:
+
+```
+Off        -> (visible=true,  scope=Base)
+Base       -> (visible=true,  scope=Shift)
+Shift      -> (visible=true,  scope=Ctrl)
+Ctrl       -> (visible=true,  scope=Alt)
+Alt        -> (visible=false)            // Off
+```
+
+The old boolean toggle (criterion 12.3, pre-CR-CH-046) is superseded; the intercept
+now calls this cycle for the bare form.
+
+### 3. PFSHOW argument parsing (criteria 12.1, 12.2, 12.9, 12.13)
+
+The PFSHOW intercept in `handle_command` matches (case-insensitively) on the
+argument token after `PFSHOW`:
+- (none)  -> cycle (section 2)
+- `ON`    -> visible=true; scope = last non-Off scope, else Base
+- `OFF`   -> visible=false
+- `BASE`  -> visible=true, scope=Base
+- `SHIFT` -> visible=true, scope=Shift
+- `CTRL`  -> visible=true, scope=Ctrl
+- `ALT`   -> visible=true, scope=Alt
+- anything else -> unchanged + `open_error` set to a non-fatal message
+  (criterion 12.13).
+
+This remains a content change to the existing intercept, not a new dispatch path.
+The batch-runner "requires interactive/dialog" set (`batch/runner.rs`) keeps
+`PFSHOW` classified as before (the new args do not change its batch treatment).
+
+### 4. KeyLabelBarModel: single row for a chosen modifier (Requirement 13 revised, 12.10-12.12)
+
+`KeyLabelBarModel` gains a scope-aware builder so the model holds ONE row of 12
+slots (F1-F12) for a chosen `KeyModifier`, reading
+`key_map.get(ModifiedKey { key, modifier })` instead of only `get_plain`:
+
+```rust
+impl KeyLabelBarModel {
+    /// Build a single 12-slot row (F1-F12) for the given modifier layer.
+    pub fn row_for_modifier(key_map: &KeyMap, modifier: KeyModifier) -> Self { ... }
+    /// Refresh the row's labels from a new key map, keeping the modifier.
+    pub fn update_for_modifier(&mut self, key_map: &KeyMap, modifier: KeyModifier) { ... }
+}
+```
+
+Label derivation and blank-slot rules are unchanged (Requirement 4.4/4.5,
+13.2). The existing two-row helpers (`row0`/`row1`, `from_key_map`) are retained
+for backward compatibility with any current callers/tests but are no longer used
+by the shell footer render; the shell now builds the model for
+`key_bar_scope.to_modifier()`.
+
+### 5. render_key_label_bar: one line with a Scope_Segment (criteria 12.10, 13.1-13.4)
+
+`render_key_label_bar` (shell/render.rs) renders a SINGLE `ui.horizontal` row:
+first a non-interactive Scope_Segment label (`key_bar_scope.segment_label()`),
+then the 12 F-key slots for the current modifier. The slots keep the CR-CH-023
+contract: they are mouse-clickable `Label`s with a click-only `Sense` (NOT
+`Button`), so they remain non-focusable and are never Tab stops. Clicking a slot
+still routes through `dispatch_key_command` using the binding for that
+`ModifiedKey` (the click dispatches the modifier-layer command shown, consistent
+with what the user sees).
+
+### 6. Session persistence (criterion 12.4 revised)
+
+`ff-session` `SessionState` gains a `key_bar_scope: String` field (serde default
+`"base"`), alongside the existing `key_bar_visible`. `session_manager.rs`
+save/restore threads the scope through; `shell/update.rs` restores both on
+startup. Serialisation uses the lowercase scope names (`"base"`/`"shift"`/
+`"ctrl"`/`"alt"`); an unknown/absent value falls back to `Base`. This is an
+additive field on the existing descriptor-adjacent session state, not a new
+persistence format.
+
+### 7. Testing (GUI Behaviour Testing rule)
+
+- `ff-keys`: unit tests for `row_for_modifier` / `update_for_modifier` (Base and
+  each modifier layer; blank slots for unassigned; label derivation).
+- `ff-desktop` shell unit tests: the PFSHOW cycle order (12.8), each explicit
+  scope arg (12.9), ON/OFF idempotence (12.6/12.7), unknown-arg error (12.13),
+  and the persisted `(visible, scope)` round-trip (12.4).
+- `ff-desktop` `egui_kittest`: a headless render of `render_key_label_bar` for a
+  chosen scope asserting the Scope_Segment text is present and that the F-key
+  slots remain non-focusable (Tab does not land on them -- extends the existing
+  `key_label_bar_buttons_are_not_tab_focus_stops` guard to the single-row form).
+  Pixel-exact divider styling remains MANUAL.

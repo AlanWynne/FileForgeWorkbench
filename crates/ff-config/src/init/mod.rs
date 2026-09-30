@@ -513,14 +513,8 @@ mod tests {
         assert_eq!(handle.get_int("editor.tab_size").unwrap(), 4);
         assert_eq!(handle.get_string("editor.indent_style").unwrap(), "space");
         assert_eq!(handle.get_string("editor.line_endings").unwrap(), "lf");
-        assert_eq!(
-            handle.get_bool("editor.trim_trailing_whitespace").unwrap(),
-            false
-        );
-        assert_eq!(
-            handle.get_bool("editor.insert_final_newline").unwrap(),
-            true
-        );
+        assert!(!handle.get_bool("editor.trim_trailing_whitespace").unwrap());
+        assert!(handle.get_bool("editor.insert_final_newline").unwrap());
         assert_eq!(handle.get_string("logging.level").unwrap(), "info");
         assert_eq!(handle.get_string("logging.directory").unwrap(), "");
         assert_eq!(handle.get_int("logging.max_file_size_mb").unwrap(), 10);

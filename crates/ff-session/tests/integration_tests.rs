@@ -260,15 +260,15 @@ fn window_geometry_display_disconnect_fallback() {
         display_id: Some("secondary-disconnected".to_string()),
     };
 
-    let restored = restore_geometry(&geom, &[primary.clone()]);
+    let restored = restore_geometry(&geom, std::slice::from_ref(&primary));
 
     // Should be visible on primary display
     assert!(is_visible_on(&restored, &primary));
     // Should be centred
     let expected_x = (1920 - 1200) / 2;
     let expected_y = (1080 - 800) / 2;
-    assert_eq!(restored.x, expected_x as i32);
-    assert_eq!(restored.y, expected_y as i32);
+    assert_eq!(restored.x, expected_x);
+    assert_eq!(restored.y, expected_y);
 }
 
 /// Integration test: Hot-reload of session configuration.

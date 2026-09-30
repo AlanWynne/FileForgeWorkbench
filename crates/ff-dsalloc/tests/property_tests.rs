@@ -2,6 +2,12 @@
 //!
 //! These tests verify universal properties hold across all inputs using proptest.
 
+// CR-CH-048: `prop::char::ranges` takes a Cow<[RangeInclusive<char>]>, so a
+// single-range slice `&[('A'..='Z')]` is exactly the intended argument; clippy's
+// single_range_in_vec_init suggestion (collect into a Vec<char>) would change the
+// semantics, so the lint is suppressed for this proptest file.
+#![allow(clippy::single_range_in_vec_init)]
+
 use proptest::prelude::*;
 
 use ff_dsalloc::dsn::DatasetName;

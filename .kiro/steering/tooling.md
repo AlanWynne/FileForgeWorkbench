@@ -8,15 +8,111 @@ inclusion: always
 Both interpreters are installed; use these explicit paths so the correct engine
 runs regardless of what is on PATH:
 
-- PowerShell 7: `C:\tools\powershell7\pwsh.exe` (7.6.x). PREFER this over the
-  default Windows PowerShell 5.1. 5.1 loads a machine profile that prints a
-  Postgres/credentials banner to the terminal, mangling captured output; invoke
-  `pwsh.exe -NoProfile` to avoid it. Use pwsh 7 for `.ps1` tools.
+- PowerShell 7: `C:\tools\powershell7\pwsh.exe` (7.6.x). ALWAYS use this, never
+  the default Windows PowerShell 5.1. The Postgres/credentials banner comes ONLY
+  from the 5.1 machine profile; pwsh 7 has a separate profile and does NOT print
+  it. So the fix for the banner is simply "use pwsh7" -- `-NoProfile` is not
+  required to avoid the banner (though it is still preferred for a clean, fast,
+  deterministic session). Use pwsh 7 for `.ps1` tools.
 - Python 3: `C:\tools\python\python.exe` (3.13.x). Use for `.py` tools.
 
 Write reusable scripts in either language and save them under
 `C:\workspace\VSC\FileForgeWorkbench\tools\` (see Location and reuse below) so
 they are not rebuilt every session.
+
+## Terminal Invocation -- BE PRE-EMPTIVE, NOT RE-ACTIVE (mandatory)
+
+The FIRST command MUST already be in a clean form. "Mangled output" (commands
+echoed character-by-character, another command glued to the front,
+`Exit Code: -1`) is caused by long/complex one-liners in an interactive
+PSReadLine session and by chaining unrelated steps. Do NOT run a risky command,
+watch it mangle, then recover with a log file -- that reactive path is the very
+failure we are eliminating. Prevent the mangling at the FIRST command.
+
+### The clean-form decision -- apply BEFORE issuing any shell command
+
+```
+Is it file inspection (read / find / count / grep)?
+    -> YES: use a dedicated tool (read_file / grep_search / list_directory /
+            file_search). Do NOT touch the shell at all.
+    -> NO: continue.
+Is it a bare project-toolchain command (cargo / git / gh / rustc / rustup /
+python / py), or `type <logfile>` to read a log back?
+    -> YES: run it directly, single-purpose, no ';' and no piped formatting.
+    -> NO: run it via the NON-INTERACTIVE pwsh7 wrapper (see below), OR put the
+           logic in a tools/ script and run the script + read its log.
+```
+
+### The rules (each is now MECHANICALLY ENFORCED -- see the guard hook below)
+
+1. **Prefer the dedicated tools over the shell for inspection.** Use `read_file`,
+   `grep_search`, `list_directory`, `file_search` instead of `Get-Content`,
+   `Select-String`, `Get-ChildItem`, `Measure-Object`. Most "count lines / find
+   files / read a file" needs have a tool and never touch the terminal.
+
+2. **Use pwsh 7, non-interactively, for any non-toolchain shell command.** Run it
+   EXACTLY as:
+   `C:\tools\powershell7\pwsh.exe -NoProfile -NonInteractive -Command "<command>"`
+   pwsh7 removes the Postgres/credentials banner (the 5.1 machine profile is not
+   loaded); `-NonInteractive` stops the PSReadLine echo/prediction that causes the
+   character-by-character mangling; `-NoProfile` keeps the session clean and fast.
+   Bare `cargo`/`git`/`python` etc. are the ONLY exception and may run without the
+   wrapper.
+
+3. **One command, one job.** NEVER `;`-chain steps, NEVER pipe into
+   `Format-Table`/`Select-Object`, NEVER put inline `$( ... )` subexpressions on
+   the same line. If logic is needed, put it in a `tools/` script and run the
+   script (see Script Output). A `;`-chained line is a hard violation.
+
+4. **NEVER chain a process-cleanup / kill step onto a real command.** Killing
+   stale `pwsh`/`cargo` processes on the same line is a primary source of the
+   glued-command echo. If cleanup is ever needed, run it as its OWN separate
+   invocation. A kill glued onto another command is a hard violation.
+
+5. **For any script or multi-step logic, redirect to a log and read the log**
+   (see "Script Output -- MANDATORY STDOUT CAPTURE" below). Do not try to parse
+   rich stdout inline.
+
+6. **If a command is ever refused by the guard hook, do NOT re-issue the same
+   form.** Switch to a dedicated tool, the pwsh7 wrapper, or a `tools/` script +
+   log. Re-issuing the same interactive one-liner reproduces the same mangling.
+
+### The guard hook -- enforcement, not just convention
+
+`.kiro/hooks/pwsh-clean-output-guard.json` is a `PreToolUse` hook on the shell
+tool. Before ANY shell command runs, it invokes
+`tools/python/pwsh_command_guard.py`, which classifies the command:
+
+- **allow (silent)** -- the clean pwsh7 wrapper form, or a bare safe toolchain
+  leader (`cargo`/`git`/`gh`/`rustc`/`rustup`/`python`/`py`/`type`).
+- **ask (owner confirms first)** -- a bare inspection cmdlet
+  (`Get-Content`/`Select-String`/`Get-ChildItem`/`Measure-Object` or an alias), a
+  `Format-Table`/`Select-Object` pipe, or any other command that is neither the
+  clean wrapper nor a safe toolchain leader.
+- **block (exit 2, command does not run)** -- a `;`-chained line, or a
+  process-kill (`Stop-Process`/`taskkill`/`kill`) glued onto a command.
+
+The guard makes the rules above a guardrail rather than a hope. When it fires,
+read its reason, fix the command to the clean form, and proceed -- do NOT argue
+with it or retry the rejected form. The guard is self-tested by
+`tools/python/pwsh_command_guard_selftest.py` (run it after editing the guard).
+
+### The session-start clear -- buffer hygiene, once per session
+
+`.kiro/hooks/session-start-buffer-clear.json` is a `SessionStart` hook that runs
+`Clear-Host` (via the clean non-interactive pwsh7 form) ONCE at the start of each
+session. Its job is buffer hygiene: it wipes any stale or previously poisoned
+PSReadLine output so it cannot bleed into or visually mangle the first commands
+of the new session.
+
+This is deliberately NOT a per-command clear. A `clear` prepended to a real
+command would be a `;`-chained two-step line -- the guard hook hard-blocks that,
+and rightly so, because chaining is itself a mangling trigger. A screen clear
+also only wipes what is already displayed; it does not stop PSReadLine from
+re-rendering the NEXT command. Prevention of per-command mangling is the job of
+`-NonInteractive` (rule 2), not of clearing the screen. So: clear ONCE at
+session start for a clean slate, and rely on the non-interactive wrapper for
+every command after that. Never glue a clear onto another command.
 
 ## When to use a project tool
 Use this whenever a task needs a script, data transformation, report generator,

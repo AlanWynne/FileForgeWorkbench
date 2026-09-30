@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Pwsh Clean-Output Guard",
+      "trigger": "PreToolUse",
+      "description": "Pre-emptively inspects every shell command before it runs and blocks or asks-to-confirm any form likely to produce mangled output (';'-chains, process-kill glue, bare interactive inspection one-liners), steering toward the non-interactive pwsh7 form mandated by tooling.md.",
+      "matcher": "execute_pwsh|executeBash|execute_bash",
+      "action": {
+        "type": "command",
+        "command": "C:\\tools\\python\\python.exe C:\\workspace\\VSC\\FileForgeWorkbench\\tools\\python\\pwsh_command_guard.py",
+        "timeout": 30
+      }
+    }
+  ]
+}

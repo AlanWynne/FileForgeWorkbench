@@ -416,7 +416,7 @@ mod tests {
 
         // Both values should be updated atomically
         assert_eq!(handle.get_int("editor.tab_size").unwrap(), 2);
-        assert_eq!(handle.get_bool("editor.word_wrap").unwrap(), false);
+        assert!(!handle.get_bool("editor.word_wrap").unwrap());
     }
 
     // Validates: Requirement 3.5 -- load_project through ConfigHandle works correctly
@@ -554,7 +554,6 @@ mod tests {
         if let toml::Value::Table(ref map) = root {
             if let Some(toml::Value::Table(ref editor)) = map.get("editor") {
                 assert!(!editor.contains_key("tab_size"));
-                return;
             }
         }
 

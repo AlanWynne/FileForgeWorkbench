@@ -6,7 +6,7 @@ use eframe::egui;
 
 use crate::primary_option_menu;
 use ff_core::LifecyclePhase;
-use ff_keys::FunctionKey;
+use ff_keys::{FunctionKey, KeyLabelBarModel};
 
 use crate::catalog_manager_dialog::{self, NewCatalogForm};
 use crate::dataset_alloc_dialog::{self};
@@ -489,73 +489,84 @@ impl WorkbenchShell {
 
     /// Render the ISPF-style function key label bar in the footer.
     ///
-    /// Shows only assigned slots as `Fn label` pairs.
-    /// Validates: Requirement 4.1, 4.2, 4.3
+    /// CR-CH-046: renders a SINGLE line showing ONE modifier layer's F1-F12
+    /// labels, prefixed with a Scope_Segment naming the current scope
+    /// (`Base` / `Shift` / `Ctrl` / `Alt`), e.g. `Base | F1 Help | F2 Detach | ...`.
+    /// The scope is chosen by the PFSHOW command (`key_bar_scope`).
+    ///
+    /// Validates: Requirement 12.10, 12.11, 12.12; Requirement 13.1, 13.3-13.5
     pub(super) fn render_key_label_bar(&mut self, ctx: &egui::Context) {
         if !self.key_bar_visible {
             return;
         }
         let key_color = to_egui_color(self.palette.editor.accent);
         let label_color = to_egui_color(self.palette.editor.foreground);
+        let modifier = self.key_bar_scope.to_modifier();
+        // Build the single-row model for the active scope from the active map.
+        let row =
+            KeyLabelBarModel::row_for_modifier(self.key_map_resolver.active_key_map(), modifier);
         let mut clicked_key: Option<FunctionKey> = None;
         egui::TopBottomPanel::bottom("key_label_bar").show(ctx, |ui| {
-            for row in [self.key_label_bar.row0(), self.key_label_bar.row1()] {
-                ui.horizontal(|ui| {
-                    for slot in row {
-                        let key = slot.key;
-                        let btn_text = if let Some(lbl) = &slot.label {
-                            format!("{} {}", key.display_name(), lbl)
-                        } else {
-                            key.display_name().to_string()
-                        };
-                        let enabled = slot.label.is_some();
-                        let tooltip = self
-                            .key_map_resolver
-                            .active_key_map()
-                            .get_plain(key)
-                            .map(|b| b.command().to_string())
-                            .unwrap_or_default();
-                        // CR-CH-023 Req 16.9: the Key_Label_Bar slots are
-                        // clickable but MUST NOT be keyboard Tab stops (they
-                        // duplicate the physical function keys). A plain
-                        // `Button` senses `CLICK | FOCUSABLE`; rendering a
-                        // `Label` with a click-only Sense (no FOCUSABLE bit)
-                        // keeps the mouse click while removing the widget from
-                        // egui-native Tab traversal.
-                        let text = egui::RichText::new(&btn_text)
-                            .color(if enabled { label_color } else { key_color })
-                            .monospace()
-                            .small();
-                        let resp = if enabled {
-                            ui.add(egui::Label::new(text).sense(egui::Sense::CLICK))
-                        } else {
-                            // Disabled slots are pure display (never a Tab stop
-                            // and not clickable).
-                            ui.add(egui::Label::new(text))
-                        };
-                        if enabled && !tooltip.is_empty() {
-                            resp.clone().on_hover_text(&tooltip);
-                        }
-                        if resp.clicked() && enabled {
-                            clicked_key = Some(key);
-                        }
+            ui.horizontal(|ui| {
+                // Leading Scope_Segment (non-interactive) naming the layer.
+                ui.add(egui::Label::new(
+                    egui::RichText::new(self.key_bar_scope.segment_label())
+                        .color(label_color)
+                        .monospace()
+                        .small()
+                        .strong(),
+                ));
+                for slot in row.slots() {
+                    let key = slot.key;
+                    let btn_text = if let Some(lbl) = &slot.label {
+                        format!("| {} {}", key.display_name(), lbl)
+                    } else {
+                        format!("| {}", key.display_name())
+                    };
+                    let enabled = slot.label.is_some();
+                    let tooltip = self
+                        .key_map_resolver
+                        .active_key_map()
+                        .get(ff_keys::ModifiedKey { key, modifier })
+                        .map(|b| b.command().to_string())
+                        .unwrap_or_default();
+                    // CR-CH-023 Req 16.9: the Key_Label_Bar slots are clickable
+                    // but MUST NOT be keyboard Tab stops (they duplicate the
+                    // physical function keys). Rendering a `Label` with a
+                    // click-only Sense (no FOCUSABLE bit) keeps the mouse click
+                    // while removing the widget from egui-native Tab traversal.
+                    let text = egui::RichText::new(&btn_text)
+                        .color(if enabled { label_color } else { key_color })
+                        .monospace()
+                        .small();
+                    let resp = if enabled {
+                        ui.add(egui::Label::new(text).sense(egui::Sense::CLICK))
+                    } else {
+                        // Blank slots are pure display (never a Tab stop, not
+                        // clickable), preserving the fixed grid (Req 13.2).
+                        ui.add(egui::Label::new(text))
+                    };
+                    if enabled && !tooltip.is_empty() {
+                        resp.clone().on_hover_text(&tooltip);
                     }
-                });
-            }
+                    if resp.clicked() && enabled {
+                        clicked_key = Some(key);
+                    }
+                }
+            });
         });
         if let Some(key) = clicked_key {
             if let Some(cmd) = self
                 .key_map_resolver
                 .active_key_map()
-                .get_plain(key)
+                .get(ff_keys::ModifiedKey { key, modifier })
                 .map(|b| b.command().to_string())
             {
-                // A clicked key-label bar slot is treated as if the function
-                // key was pressed (function-keys Req 16.1): route it through the
-                // shared key-dispatch so the Command ===> field content is
-                // merged as the argument (Req 9.8, B066), then Target_Resolution
-                // runs a user-defined command id's target (Req 4.4) or falls
-                // through to the pipeline (Req 10.2).
+                // A clicked slot is treated as if that modifier+function key was
+                // pressed (function-keys Req 16.1): route through the shared
+                // key-dispatch so the Command ===> field content is merged as the
+                // argument (Req 9.8, B066), then Target_Resolution runs the
+                // command's target (Req 4.4) or falls through (Req 10.2).
                 self.dispatch_key_command(&cmd);
             }
         }
@@ -1617,6 +1628,15 @@ impl WorkbenchShell {
                         crate::shell::workspace_context::InteriorFocus::none(),
                     );
                 }
+                TabKind::HelpContext => {
+                    // Help Context (CR-NR-097, context-help Req 18.2/18.5):
+                    // owned-panel swap through the WorkspaceContext trait, which
+                    // reports the Help_Search field as the first interior and
+                    // honours the latch on the single path.
+                    let mut panel = std::mem::take(&mut self.help_context_panel);
+                    self.render_workspace_context(ctx, ui, &mut panel);
+                    self.help_context_panel = panel;
+                }
                 TabKind::ConfigPanel => {
                     // Validates: Requirement 15.1-15.3; CR-NR-078 (framework).
                     // Migrated to the WorkspaceContext trait: owned-panel swap
@@ -1643,6 +1663,18 @@ impl WorkbenchShell {
                     let mut panel = std::mem::take(&mut self.event_log_panel);
                     self.render_workspace_context(ctx, ui, &mut panel);
                     self.event_log_panel = panel;
+                }
+                TabKind::ScrmViewer => {
+                    // Validates: screen-snapshot-scrm Req 10, 16 (CR-NR-098).
+                    // Stage the active Collection onto the viewer BEFORE dispatch
+                    // (the trait render only receives ShellServices), then the
+                    // owned-panel swap through the framework applies the focus
+                    // latch (reports the First button as the interior).
+                    let collection = self.scrm.active_collection().cloned();
+                    let mut panel = std::mem::take(&mut self.scrm_viewer);
+                    panel.set_collection(collection);
+                    self.render_workspace_context(ctx, ui, &mut panel);
+                    self.scrm_viewer = panel;
                 }
                 TabKind::SearchResults => {
                     // Validates: global-search Requirement 1.1, 4.1;

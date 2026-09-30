@@ -40,6 +40,11 @@ ff-global-search = { path = "../ff-global-search" }
 ff-plugin = { path = "../ff-plugin" }
 ff-shell = { path = "../ff-shell" }
 ff-layout = { path = "../ff-layout" }
+ff-screen-model = { path = "../ff-screen-model" }
+ff-scrm = { path = "../ff-scrm" }
+ff-theme-editor = { path = "../ff-theme-editor" }
+ff-toolchain-panel = { path = "../ff-toolchain-panel" }
+ff-catalog-registry = { path = "../ff-catalog-registry" }
 anyhow = { workspace = true }
 arboard = "3"
 tokio = { workspace = true }

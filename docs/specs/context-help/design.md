@@ -1207,3 +1207,168 @@ The following properties are designed for verification with the `proptest` crate
 6. **Thread-safe registry with RwLock** -- Allows concurrent reads from multiple threads (rendering, search) while serializing writes (plugin registration, hot-reload). Matches the workbench concurrency model.
 
 7. **Navigation stack clears on close** -- Per ISPF convention, each F1 press starts a fresh help session. Users do not accumulate unbounded history across multiple help invocations.
+
+---
+
+## CR-NR-097 Delta: Shipped Content Set + F1 Display Pipeline (Requirements 17, 18)
+
+This delta records the design decisions for authoring the shipped help content and
+for the shell-side pipeline that loads it and displays a resolved topic. It does
+NOT contradict the earlier design; it makes concrete the two pieces that were left
+implicit (the actual content files, and how the shell displays a resolved topic),
+and it re-phrases the panel-integration decision onto the current framework.
+
+### D1. Help content is a shipped directory of `.help.md` files (no change to Requirement 5)
+
+The storage format is unchanged and already specified: a `help/` DIRECTORY of
+Markdown `.help.md` files (NOT a single monolithic file, NOT an HTML tree), each
+file holding one or more topics delimited by `<!-- TOPIC: <key> -->` /
+`<!-- TITLE: ... -->` (HTML-comment delimiter; YAML front-matter is the accepted
+alternative). Topics are indexed by `Topic_Key`; cross-references are Markdown
+links whose target is a `Topic_Key` (`[FIND](cmd:FIND)`); the egui shell renders
+Markdown to styled text. This delta only COMMITS the authored files.
+
+Authoring layout (grouped by category for maintainability; the loader is
+directory-recursive so grouping is a convenience, not a contract):
+
+```
+help/
+  index.help.md              # getting_started + any hand-authored index prose
+                             #   (the "index" topic itself is generated -- D3)
+  commands/
+    find.help.md             # cmd:FIND, cmd:RFIND (aliases share a file)
+    change.help.md           # cmd:CHANGE, cmd:RCHANGE
+    navigation.help.md       # cmd:UP/DOWN/TOP/BOTTOM/LOCATE
+    session.help.md          # cmd:SAVE/CANCEL/END/UNDO/REDO
+    display.help.md          # cmd:HEX/EXCLUDE/SHOW/RESET
+    menu-options.help.md     # cmd:POM, cmd:SETTINGS, cmd:FILES, cmd:HELP, cmd:KEYS
+  line-commands/
+    line-index.help.md       # line:index summary table
+    line-basic.help.md       # line:D/I/R/C/CC/M/MM/A/B/X/... per Req 8.3
+  modes/
+    modes.help.md            # mode:browse/edit/view/hex/preview/grid_browse/grid_edit
+  features/
+    undo.help.md             # feature:undo
+    macros.help.md           # feature:macros (also HELP MACRO / HELP API)
+    function-keys.help.md     # feature:function_keys prose (TABLE is generated -- D3)
+    command-history.help.md   # feature:command_history
+    tabs.help.md             # feature:tabs
+    docking.help.md          # feature:docking
+    configuration.help.md     # feature:configuration
+```
+
+Content authoring is verified structurally, not by prose: a test asserts every
+`Topic_Key` promised by Requirement 17 is present after load, and that no
+cross-reference in shipped content is dangling (Req 17.8). Files are ASCII per the
+documentation character-set rule (Req 17.9).
+
+### D2. The shell owns ONE registry, loaded once at startup
+
+Today `shell/commands.rs` does `let registry = HelpTopicRegistry::new();` inside
+the `HELP` arm on every invocation -- an empty registry that can never contain a
+topic, which is exactly why `resolve_with_fallback` returns
+`"Help not yet available..."`. The fix (Req 18.1):
+
+- The shell holds a single `help_registry: Arc<HelpTopicRegistry>` field,
+  populated once during startup by loading the resolved `help/` directory
+  (`ContentLoader::resolve_directory` per Req 5.1 -> `load_directory`), then
+  augmented with command-metadata topics and (later) plugin topics.
+- The `HELP`/F1 handler borrows that shared registry instead of newing one.
+- `ContentLoader` already exists; the only new `ff-help` surface is a thin
+  convenience entry (e.g. `HelpService::load_default(config) -> Arc<HelpTopicRegistry>`)
+  if one is not already present -- wiring, not new subsystems.
+
+### D3. Dynamic topics resolve at display time
+
+`index` and `feature:function_keys` are NOT authored as files; they are produced by
+the existing `DynamicGenerator` (`generate_index`, `generate_function_keys`) at
+display time (Req 18.3), so the index always reflects the loaded set and the
+function-key table always reflects the live Key_Map. The display path checks: is
+the resolved key one of the dynamic keys? generate it. Else look it up in the
+registry. Else fall back to the generated index with an "unrecognised topic"
+message (Req 18.4).
+
+### D4. Panel integration RE-PHRASED: `WorkspaceContext`, not `DockablePanel` (framework conformance)
+
+The "Layout and Docking" integration section above (and design Decision 5) predates
+the `WorkspaceContext` framework (CR-NR-078) and the workspace tab-order conformance
+rule (CR-CH-023). Per `framework-conformance` and `workspace-conformance`, the Help
+panel MUST be a Workspace Context:
+
+- Implement `WorkspaceContext` for the Help Context; its
+  `render(&mut self, ui, &mut ShellServices) -> InteriorFocus` returns the focus
+  contract, dispatched by the shell through `render_workspace_context` (the single
+  focus-latch path). Do NOT hand-write a per-arm focus ring, and do NOT implement
+  `DockablePanel` directly for focus purposes.
+- The FIRST interior focus stop is the Help_Search field, which carries a stable
+  `egui::Id` (e.g. `egui::Id::new("help_search_field")`); because the panel content
+  (topic body, nav controls) is variable, the search field MAY serve as both the
+  first and last interior stop, with egui-native Tab walking the controls between
+  (the pattern the conformance rule documents).
+- The `HelpPanelModel` remains the GUI-free state holder; the Context's `render`
+  reads it and draws, exactly as Decision 5 intended -- only the focus/dispatch
+  contract changes to the framework's.
+
+This is a re-phrasing of pre-framework wording onto the current framework (recorded
+in `change-log.md` CR-NR-097), not a framework change: no new dispatch path, no
+second navigation stack, no new persistence format.
+
+### D5. Single dispatch path for HELP and F1 (framework conformance)
+
+HELP is a command resolved through `resolve_target` and dispatched via
+`target_dispatch.rs` (a `Function` target); F1 is the reserved shortcut that invokes
+the same command; Help menu items invoke the HELP command rather than calling help
+internals (Req 18.6). The existing `if upper == "HELP"` inline arm in `commands.rs`
+is replaced by dispatch through the standard path as part of this wiring (closing a
+pre-framework intercept, consistent with framework-conformance Principle 1). HELP
+and F1 stay out of command history and undo (Req 18.7), preserving Req 1.10 / 13.10.
+
+### D6. Testing delta
+
+- Content-set test (Req 17): load the shipped `help/`; assert every promised
+  `Topic_Key` is present; assert zero dangling cross-references; assert ASCII.
+- Pipeline test (Req 18.1-18.4): a shell-level test that the registry is loaded
+  once and reused, that a resolved file-based topic displays, that `index` /
+  `feature:function_keys` generate-and-display, and that an unknown key shows the
+  index-with-message rather than only an `open_error`.
+- Full-shell first-Tab focus test (Req 18.5, MANDATORY per workspace-conformance):
+  `build_eframe` harness, open the Help Context, assert `first_interior_id` is the
+  Help_Search field and the FIRST Tab from the command field lands on it (no
+  phantom stop). Model on `full_shell_config_first_tab_focuses_filter_field`.
+
+### D7. Missing-topic diagnostics (Requirement 19)
+
+The single choke point for a help miss already exists:
+`ContextDetector::resolve_with_fallback` returns
+`Err("Help not yet available for <label> [topic-key: <key>]")` precisely when the
+resolved key is absent from the registry. The diagnostics attach at that seam and
+at the shell display path (which also knows the dynamic keys), so a miss is defined
+once, not scattered.
+
+- **WARN log (Req 19.1).** On a miss that is not a dynamic key, emit one WARN via
+  `ff-logging` naming the `Topic_Key` and label. This is the trace the owner asked
+  for -- it shows which topics F1/HELP actually reach in real use.
+- **Session tally (Req 19.2, 19.6).** A shell-owned `MissingTopicTally`
+  (`HashMap<TopicKey, u32>`), in-memory and session-scoped (NOT persisted). Each
+  miss increments the count for its key. This lives on the shell alongside the
+  `Arc<HelpTopicRegistry>` (D2), not in a file, so runtime behaviour never mutates
+  the repo.
+- **`HELP MISSING` report (Req 19.3, 19.4).** A HELP subcommand (routed through the
+  same single dispatch path as the rest of HELP, per D5) that renders the tally in
+  the Help Context. Each row is classified EXPECTED (key is in the Requirement 17
+  promised set -> authoring backlog, already tracked by CR-NR-097) or UNEXPECTED
+  (key no requirement promised -> a real coverage gap, a triage candidate). The
+  "promised set" is the same set the content-set test (D6) checks, so the two share
+  one source of truth for which keys are expected.
+- **No auto-filing (Req 19.5).** The report only DISPLAYS candidates; it never
+  writes to `bugs.md` / `change-log.md` / specs. Escalating an UNEXPECTED miss is a
+  human triage decision. Rationale: an EXPECTED miss is not a new defect or
+  requirement -- it is a not-yet-done item already owned by CR-NR-097, so
+  auto-filing would flood the tracking docs with duplicates of one known item
+  (exactly the noise `workflow.md` triage avoids). Only UNEXPECTED misses carry new
+  information, and those are surfaced for a person to triage deliberately.
+
+Testing (Req 19): unit-test the tally (distinct-key counting, increment on repeat);
+unit-test the EXPECTED/UNEXPECTED classification against a known promised set; a
+shell test that a miss increments the tally and emits a WARN and does NOT touch any
+docs file; a `HELP MISSING` display test.

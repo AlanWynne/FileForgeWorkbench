@@ -3,6 +3,10 @@
 //! These tests verify critical invariants of the platform core using
 //! randomized input generation via proptest.
 
+// CR-CH-048: index-based loops here read clearly against the property being
+// checked; the iterator rewrite clippy suggests is less legible for these tests.
+#![allow(clippy::needless_range_loop)]
+
 use proptest::prelude::*;
 use std::collections::HashSet;
 use std::sync::Arc;

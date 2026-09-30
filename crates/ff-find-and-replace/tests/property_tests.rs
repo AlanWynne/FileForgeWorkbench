@@ -19,7 +19,7 @@ fn document_with_pattern() -> impl Strategy<Value = (String, String)> {
     // Generate a document and pick a sub-string of it
     "[a-zA-Z0-9 ]{10,200}".prop_flat_map(|doc: String| {
         let doc_len = doc.len();
-        let max_start = if doc_len > 5 { doc_len - 5 } else { 0 };
+        let max_start = doc_len.saturating_sub(5);
         (Just(doc.clone()), 0..=max_start).prop_map(move |(d, start)| {
             let end = (start + 3).min(d.len());
             let term = d[start..end].to_string();

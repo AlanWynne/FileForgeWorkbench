@@ -221,13 +221,14 @@ mod tests {
 
     #[test]
     fn shell_request_helpers_enqueue() {
-        let mut reqs: Vec<ShellRequest> = Vec::new();
         // Build a ShellServices with only the requests field exercised; the
         // other fields are not needed for this pure-enqueue test, so we cannot
         // construct the full struct here without a shell. Instead assert the
         // request variants and the panel-contract type compile and behave.
-        reqs.push(ShellRequest::Command("THEME".to_string()));
-        reqs.push(ShellRequest::OpenFile("/tmp/x".to_string()));
+        let reqs: Vec<ShellRequest> = vec![
+            ShellRequest::Command("THEME".to_string()),
+            ShellRequest::OpenFile("/tmp/x".to_string()),
+        ];
         assert_eq!(reqs.len(), 2);
         assert!(matches!(reqs[0], ShellRequest::Command(_)));
         // NoInteriorContext returns none() (compile-level contract check).

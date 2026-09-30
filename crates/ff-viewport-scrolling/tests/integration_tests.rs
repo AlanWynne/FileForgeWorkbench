@@ -68,7 +68,7 @@ fn viewport_with_display_line_mapping() {
             doc_line * 2 - 1
         }
         fn display_to_doc(&self, display_line: u64) -> u64 {
-            (display_line + 1) / 2
+            display_line.div_ceil(2)
         }
         fn is_visible(&self, _doc_line: u64) -> bool {
             true

@@ -248,8 +248,7 @@ mod tests {
         // This will try the invalid path, fail, then try platform default.
         // On CI/test environments the platform default should succeed.
         let result = resolve_log_directory(&config);
-        if result.is_ok() {
-            let resolved = result.unwrap();
+        if let Ok(resolved) = result {
             assert_eq!(resolved, default_log_directory());
         }
         // If the platform default also fails (e.g., unusual CI env), Err is valid

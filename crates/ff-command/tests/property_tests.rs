@@ -122,7 +122,7 @@ fn param_value_strategy() -> impl Strategy<Value = ParamValue> {
         (-1000.0f64..1000.0f64)
             .prop_filter("must be finite", |f| f.is_finite())
             .prop_map(ParamValue::Float),
-        "[a-zA-Z0-9 _]{0,50}".prop_map(|s| ParamValue::String(s)),
+        "[a-zA-Z0-9 _]{0,50}".prop_map(ParamValue::String),
     ];
     leaf
 }
@@ -358,7 +358,7 @@ proptest! {
         prop_assert!(clamped <= 10000);
 
         // Values within range are unchanged
-        if value >= 10 && value <= 10000 {
+        if (10..=10000).contains(&value) {
             prop_assert_eq!(clamped, value as usize);
         }
 

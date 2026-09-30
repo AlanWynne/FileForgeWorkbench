@@ -57,8 +57,8 @@ mod tests {
     #[test]
     fn config_value_float_equality() {
         // Validates: Requirement 1.4 — Float values compare numerically
-        let a = ConfigValue::Float(3.14);
-        let b = ConfigValue::Float(3.14);
+        let a = ConfigValue::Float(3.25);
+        let b = ConfigValue::Float(3.25);
         let c = ConfigValue::Float(2.71);
         assert_eq!(a, b);
         assert_ne!(a, c);

@@ -462,3 +462,74 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
 | Req 16: Help System Configuration | AC 16.1 | Task 11 |
 | Req 16: Help System Configuration | AC 16.2 | Task 11 |
 | Req 16: Help System Configuration | AC 16.3 | Task 11 |
+
+---
+
+## CR-NR-097 Tasks: Shipped Content Set + F1 Display Pipeline (Requirements 17, 18)
+
+- [x] 16. Author the shipped help content set (Requirement 17)
+  - [ ] 16.1 Create the `help/` directory layout (commands/, line-commands/, modes/, features/) per design D1
+  - [ ] 16.2 Author `getting_started` and the hand-authored index prose in `help/index.help.md`
+  - [ ] 16.3 Author `cmd:<NAME>` topics (Syntax/Description/Modifiers/Examples/See Also per Req 7.2) for the Req 17.3 command set, grouping aliases into one file
+  - [ ] 16.4 Author `line:<CMD>` topics per Req 8.2 for the Req 8.3 families, plus the `line:index` summary table
+  - [ ] 16.5 Author the `mode:*` topics (Req 17.5) and the first-tranche `feature:*` topics (Req 17.6, 17.7) including the macro API overview
+  - [ ] 16.6 Write a content-set test: load the shipped `help/`, assert every Req 17 Topic_Key is present, assert zero dangling cross-references (Req 17.8), assert ASCII (Req 17.9)
+  - Covers: Requirement 17 (17.1-17.9)
+
+- [x] 17. Wire the content pipeline and F1 display (Requirement 18)
+  - [ ] 17.1 Add/confirm a thin `ff-help` entry that loads a directory into an `Arc<HelpTopicRegistry>` (reuse `ContentLoader`); add command-metadata topic registration
+  - [ ] 17.2 Give the shell a single `help_registry: Arc<HelpTopicRegistry>` field loaded ONCE at startup (Req 18.1); resolve the directory per Req 5.1
+  - [ ] 17.3 Replace the per-invocation `HelpTopicRegistry::new()` in the HELP/F1 handler with the shared registry; open the Help Context on a resolved topic (Req 18.2)
+  - [ ] 17.4 Route the dynamic keys (`index`, `feature:function_keys`) through `DynamicGenerator` at display time (Req 18.3)
+  - [ ] 17.5 On an unresolved, non-dynamic key, display the generated index with an "unrecognised topic" message instead of only `open_error` (Req 18.4)
+  - [ ] 17.6 Implement the Help Context as a `WorkspaceContext` returning `InteriorFocus` (first stop = Help_Search field with a stable `egui::Id`); dispatch via `render_workspace_context` (Req 18.5)
+  - [ ] 17.7 Route HELP + F1 through the single command-dispatch path; make Help menu items invoke the HELP command; remove the pre-framework `if upper == "HELP"` intercept (Req 18.6)
+  - [ ] 17.8 Confirm HELP + F1 remain excluded from command history and undo after the rewire (Req 18.7)
+  - [ ] 17.9 Write the shell pipeline tests: registry loaded once and reused; file-based topic displays; dynamic topic generates-and-displays; unknown key shows index-with-message
+  - [ ] 17.10 Write the MANDATORY full-shell `egui_kittest` first-Tab focus test: first Tab from the command field lands on the Help_Search field, no phantom stop (Req 18.5, workspace-conformance)
+  - Covers: Requirement 18 (18.1-18.7)
+
+### CR-NR-097 Requirement Coverage Mapping
+
+| Requirement | Acceptance Criterion | Task |
+|-------------|---------------------|------|
+| Req 17: Shipped Help Content Set | AC 17.1 | Task 16 |
+| Req 17: Shipped Help Content Set | AC 17.2 | Task 16 |
+| Req 17: Shipped Help Content Set | AC 17.3 | Task 16 |
+| Req 17: Shipped Help Content Set | AC 17.4 | Task 16 |
+| Req 17: Shipped Help Content Set | AC 17.5 | Task 16 |
+| Req 17: Shipped Help Content Set | AC 17.6 | Task 16 |
+| Req 17: Shipped Help Content Set | AC 17.7 | Task 16 |
+| Req 17: Shipped Help Content Set | AC 17.8 | Task 16 |
+| Req 17: Shipped Help Content Set | AC 17.9 | Task 16 |
+| Req 18: Content Pipeline + F1 Display | AC 18.1 | Task 17 |
+| Req 18: Content Pipeline + F1 Display | AC 18.2 | Task 17 |
+| Req 18: Content Pipeline + F1 Display | AC 18.3 | Task 17 |
+| Req 18: Content Pipeline + F1 Display | AC 18.4 | Task 17 |
+| Req 18: Content Pipeline + F1 Display | AC 18.5 | Task 17 |
+| Req 18: Content Pipeline + F1 Display | AC 18.6 | Task 17 |
+| Req 18: Content Pipeline + F1 Display | AC 18.7 | Task 17 |
+
+---
+
+## CR-NR-097 Tasks (cont.): Missing-Topic Diagnostics (Requirement 19)
+
+- [x] 18. Missing-topic diagnostics (Requirement 19)
+  - [ ] 18.1 On a non-dynamic help miss (at the `resolve_with_fallback` / display seam), emit a WARN via `ff-logging` naming the Topic_Key and label (Req 19.1)
+  - [ ] 18.2 Add a shell-owned in-memory `MissingTopicTally` (distinct Topic_Key -> request count), session-scoped, not persisted (Req 19.2, 19.6)
+  - [ ] 18.3 Implement `HELP MISSING` (routed through the single HELP dispatch path) to render the tally in the Help Context (Req 19.3)
+  - [ ] 18.4 Classify each tallied key EXPECTED (in the Req 17 promised set) vs UNEXPECTED (coverage gap) using the same promised-set source as the content-set test (Req 19.4)
+  - [ ] 18.5 Ensure the miss path performs NO writes to bugs.md / change-log.md / spec files (Req 19.5) -- assert this in a test
+  - [ ] 18.6 Tests: tally counting/increment; EXPECTED/UNEXPECTED classification; miss emits WARN + increments tally + touches no docs; HELP MISSING display
+  - Covers: Requirement 19 (19.1-19.6)
+
+### CR-NR-097 Requirement Coverage Mapping (cont.)
+
+| Requirement | Acceptance Criterion | Task |
+|-------------|---------------------|------|
+| Req 19: Missing-Topic Diagnostics | AC 19.1 | Task 18 |
+| Req 19: Missing-Topic Diagnostics | AC 19.2 | Task 18 |
+| Req 19: Missing-Topic Diagnostics | AC 19.3 | Task 18 |
+| Req 19: Missing-Topic Diagnostics | AC 19.4 | Task 18 |
+| Req 19: Missing-Topic Diagnostics | AC 19.5 | Task 18 |
+| Req 19: Missing-Topic Diagnostics | AC 19.6 | Task 18 |

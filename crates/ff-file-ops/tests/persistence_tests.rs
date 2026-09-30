@@ -66,7 +66,7 @@ impl VfsFile for MockVfsFile {
             return Err(VfsError::Io {
                 uri: self.path.clone(),
                 operation: "flush".to_string(),
-                source: std::io::Error::new(std::io::ErrorKind::Other, "simulated flush failure"),
+                source: std::io::Error::other("simulated flush failure"),
             });
         }
         Ok(())
@@ -77,7 +77,7 @@ impl VfsFile for MockVfsFile {
             return Err(VfsError::Io {
                 uri: self.path.clone(),
                 operation: "sync_all".to_string(),
-                source: std::io::Error::new(std::io::ErrorKind::Other, "simulated fsync failure"),
+                source: std::io::Error::other("simulated fsync failure"),
             });
         }
         Ok(())
@@ -129,7 +129,7 @@ impl VfsProvider for MockVfsProvider {
     }
 
     fn capabilities(&self) -> VfsCapabilities {
-        self.capabilities.clone()
+        self.capabilities
     }
 
     async fn open(&self, path: &str, _options: OpenOptions) -> Result<Box<dyn VfsFile>, VfsError> {
@@ -163,7 +163,7 @@ impl VfsProvider for MockVfsProvider {
             return Err(VfsError::Io {
                 uri: path.to_string(),
                 operation: "write".to_string(),
-                source: std::io::Error::new(std::io::ErrorKind::Other, "simulated write failure"),
+                source: std::io::Error::other("simulated write failure"),
             });
         }
         self.files
@@ -186,7 +186,7 @@ impl VfsProvider for MockVfsProvider {
             return Err(VfsError::Io {
                 uri: path.to_string(),
                 operation: "delete".to_string(),
-                source: std::io::Error::new(std::io::ErrorKind::Other, "simulated delete failure"),
+                source: std::io::Error::other("simulated delete failure"),
             });
         }
         self.files.lock().unwrap().remove(path);
@@ -198,7 +198,7 @@ impl VfsProvider for MockVfsProvider {
             return Err(VfsError::Io {
                 uri: old_path.to_string(),
                 operation: "rename".to_string(),
-                source: std::io::Error::new(std::io::ErrorKind::Other, "simulated rename failure"),
+                source: std::io::Error::other("simulated rename failure"),
             });
         }
         if !self.capabilities.rename {

@@ -165,6 +165,26 @@ impl HelpPanelModel {
         Ok(())
     }
 
+    /// Open the panel and display an already-built topic that is NOT looked up
+    /// in the registry.
+    ///
+    /// Used for dynamically generated topics (the Help Index, the function-key
+    /// table) and for shell-composed topics (an index-with-message, the
+    /// `HELP MISSING` report) whose content is produced at display time rather
+    /// than loaded from a `.help.md` file.
+    ///
+    /// Validates: context-help Requirement 18.3, 18.4 (CR-NR-097).
+    pub fn show_generated(&mut self, topic: HelpTopic) {
+        self.navigation.push(topic.key().clone());
+        self.breadcrumb = Self::compute_breadcrumb(&topic);
+        self.toc_entries = Self::extract_toc(&topic);
+        self.current_topic = Some(topic);
+        self.is_open = true;
+        self.scroll_offset = 0;
+        self.search_query.clear();
+        self.search_results.clear();
+    }
+
     /// Close the Help Panel and clear navigation history.
     pub fn close(&mut self) {
         self.is_open = false;
@@ -552,6 +572,30 @@ mod tests {
     }
 
     // Validates: Requirement 5.5 — Topic not found error
+    #[test]
+    fn show_generated_displays_topic_without_registry_lookup() {
+        // Validates: Requirement 18.3 -- a generated topic (absent from the
+        // registry) is displayed directly.
+        let registry = Arc::new(HelpTopicRegistry::new());
+        let mut model = HelpPanelModel::new(registry, HelpConfig::default());
+        let topic = HelpTopic::new(
+            TopicKey::index(),
+            "Help Index".to_string(),
+            "# Help Index\n\ngenerated body".to_string(),
+            crate::topic::TopicSource::FileBased {
+                file_path: std::path::PathBuf::from("<dynamic>"),
+            },
+        );
+        model.show_generated(topic);
+        assert!(model.is_open());
+        assert_eq!(model.current_topic_key(), Some(&TopicKey::index()));
+        assert!(model
+            .current_topic()
+            .unwrap()
+            .body()
+            .contains("generated body"));
+    }
+
     #[test]
     fn show_topic_returns_error_for_missing_key() {
         let registry = Arc::new(HelpTopicRegistry::new());

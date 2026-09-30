@@ -295,7 +295,7 @@ proptest! {
 fn arbitrary_context_value() -> impl Strategy<Value = ContextValue> {
     prop_oneof![
         any::<i64>().prop_map(ContextValue::Integer),
-        "[a-zA-Z0-9 ]{0,20}".prop_map(|s| ContextValue::String(s)),
+        "[a-zA-Z0-9 ]{0,20}".prop_map(ContextValue::String),
         any::<bool>().prop_map(ContextValue::Boolean),
         proptest::collection::vec(any::<u8>(), 0..32).prop_map(ContextValue::Bytes),
         proptest::collection::vec("[a-z]{1,5}".prop_map(|s| s), 0..5)

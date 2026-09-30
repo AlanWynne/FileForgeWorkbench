@@ -216,8 +216,8 @@ fn concurrent_shortcut_registration() {
                 let binding = ShortcutBinding::Single(KeyChord::new(modifiers, *key));
                 let id_str = format!("thread{}.key{:?}", thread_idx, key);
                 let id =
-                    CommandId::new(&id_str.to_lowercase().replace(' ', "_")).unwrap_or_else(|| {
-                        CommandId::new(&format!("t{}.k{}", thread_idx, thread_idx)).unwrap()
+                    CommandId::new(id_str.to_lowercase().replace(' ', "_")).unwrap_or_else(|| {
+                        CommandId::new(format!("t{}.k{}", thread_idx, thread_idx)).unwrap()
                     });
                 let _ = reg.register(binding, id);
             }

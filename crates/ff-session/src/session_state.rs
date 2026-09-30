@@ -60,6 +60,13 @@ pub struct SessionState {
     #[serde(default = "default_true")]
     pub key_bar_visible: bool,
 
+    /// Which modifier scope the Key_Label_Bar shows: `"base"` / `"shift"` /
+    /// `"ctrl"` / `"alt"` (CR-CH-046). Unknown/absent falls back to `"base"`.
+    ///
+    /// Addresses: Requirement 12.4 (function-keys-and-history) — PFSHOW scope persisted.
+    #[serde(default = "default_key_bar_scope")]
+    pub key_bar_scope: String,
+
     /// Width of the File Explorer Panel sidebar in logical pixels.
     ///
     /// Addresses: Requirement 23.9 (file-tree-panel) -- sidebar width persisted.
@@ -99,6 +106,10 @@ fn default_sidebar_width() -> f32 {
     200.0
 }
 
+fn default_key_bar_scope() -> String {
+    "base".to_string()
+}
+
 impl Default for SessionState {
     fn default() -> Self {
         Self {
@@ -113,6 +124,7 @@ impl Default for SessionState {
             show_pom: true,
             global_zoom_offset: 0,
             key_bar_visible: true,
+            key_bar_scope: default_key_bar_scope(),
             file_explorer_sidebar_width: 200.0,
             active_workspace_path: None,
             recent_palette_commands: Vec::new(),
@@ -217,6 +229,8 @@ pub enum WorkspaceKind {
     MacroLibrary,
     /// The Command Configurator Context (command-configurator sub-project).
     CommandConfigurator,
+    /// The Screen Collection Replay viewer Context (CR-NR-098, SCRM).
+    ScrmViewer,
     /// The Home Context / Primary Option Menu.
     ///
     /// Present so a POM opened as a Custom Workspace round-trips; note the POM

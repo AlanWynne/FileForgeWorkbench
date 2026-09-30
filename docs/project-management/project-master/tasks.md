@@ -2969,3 +2969,93 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[x]` Phase (custom-title-align) | CR-CH-045 DONE: custom-workspace Title_Line centered + descriptive Title Case + in-body title de-dup (menu-and-statusbar Req 17.12-17.14). `BuiltinKind::display_title` + `WorkbenchShell::title_line_display` (user override wins) + widened centered branch in `render_title_line_into_ui`; in-body titles removed from Theme/Menus/Keys/Kinds editors + Command Configurator. Tests: `builtin_display_titles_...`, `title_line_display_*` (3), first-Tab focus suite green. verify.ps1 CLEAN FULL nextest. |
+
+## Phase (pfshow-scope-cycle) -- CR-CH-046: PFSHOW single-line, modifier-scope cycling
+> The Key_Label_Bar becomes a SINGLE line showing one modifier layer's F-key
+> labels prefixed with a scope name (`Base | F1 Help | F2 Detach | ...`). Bare
+> `PFSHOW` cycles OFF -> Base -> Shift -> Ctrl -> Alt -> OFF; new params
+> `PFSHOW BASE|SHIFT|CTRL|ALT` jump to a scope; ON/OFF keep their meaning. The
+> two-row F1-F24 bar is retired (the Req 13 reconciliation note's anticipated
+> change). Builds ON the framework: same `key_bar_visible` + new `key_bar_scope`,
+> same render arm, same PFSHOW intercept, same session persistence.
+> function-keys-and-history Req 12.8-12.13 + Req 13 (revised single-row).
+- [x] PSC.1 Requirements gate -- function-keys-and-history Req 12 (12.8-12.13) + Req 13 revised single-row, design delta, tasks (Phase pfshow-scope-cycle, Tasks 46-50), TCR NOT COVERED rows, change-log CR-CH-046, core-acceptance rows 7.9-7.11.
+- [x] PSC.2 `KeyLabelBarModel::row_for_modifier`/`update_for_modifier` (single 12-slot row for a chosen KeyModifier) + default `AF1 = PFSHOW` in `KeyMap::default_global()` + ff-keys unit tests (incl. updated count/exclusivity). Covers Req 13.1/13.2, 12.11, 12.14, 15.3/15.7.
+- [x] PSC.3 `KeyBarScope` enum + shell `key_bar_scope` field + PFSHOW five-state cycle and BASE/SHIFT/CTRL/ALT/ON/OFF parse in `shell/commands.rs` + shell unit tests. Covers Req 12.1/12.2/12.3/12.6/12.7/12.8/12.9/12.13.
+- [x] PSC.4 Rewrite `render_key_label_bar` to one row with a Scope_Segment (non-focusable per CR-CH-023) + full-shell egui_kittest. Covers Req 12.10/12.12, 13.1/13.3/13.4/13.5.
+- [x] PSC.5 Persist `key_bar_scope` in `ff-session` SessionState + session round-trip test; restore in `shell/update.rs`. Covers Req 12.4.
+- [x] PSC.6 verify.ps1 CLEAN FULL nextest; clear ai-review.log; rebuild ffwb.exe; TCR Req 12.8-12.13 + Req 13 PASS; flip change-log CR-CH-046 to DONE and acceptance rows 7.9-7.11. Covers Req 12.8-12.13, 13.1-13.5.
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (pfshow-scope-cycle) | CR-CH-046 DONE: PFSHOW single-line modifier-scope cycling (Base/Shift/Ctrl/Alt) replacing the two-row on/off bar; default Alt+F1 = PFSHOW (Req 15.7). `KeyLabelBarModel::row_for_modifier`, `KeyBarScope` + `handle_pfshow` cycle/scope parse, single-row `render_key_label_bar` with Scope_Segment (CR-CH-023 non-focusable preserved), `key_bar_scope` session persistence. function-keys-and-history Req 12.8-12.14 + Req 13 revised + Req 15.3/15.7. verify.ps1 FULL nextest CLEAN (9349 passed). |
+
+## Phase (help-content) -- CR-NR-097: author help content + wire F1 to display it
+
+> The `ff-help` engine and F1/HELP wiring already resolve a Topic_Key, but the
+> registry ships empty so `resolve_with_fallback` returns "Help not yet available".
+> This phase (1) authors the shipped `help/` `.help.md` content set the existing
+> Requirements 7-12 call for, and (2) adds the shell pipeline: load `help/` once at
+> startup into a shell-owned `Arc<HelpTopicRegistry>`, and display the resolved
+> topic in a Help Context (a `WorkspaceContext`, framework-conformant), replacing
+> the per-invocation empty registry. Storage format is UNCHANGED (context-help
+> Req 5: a directory of Markdown `.help.md` files, not a single file, not HTML).
+> context-help Requirements 17 (shipped content set) + 18 (pipeline + F1 display).
+
+- [x] HC.1 Requirements gate -- context-help Req 17 + Req 18 + Req 19, design delta (D1-D7), tasks (context-help Tasks 16-18), TCR NOT COVERED rows, change-log CR-NR-097, core-acceptance rows.
+- [x] HC.2 Author the shipped `help/` content set (index/getting_started, cmd:*, line:* + line:index, mode:*, first-tranche feature:*) with no dangling cross-references, ASCII. Covers Req 17.1-17.9.
+- [x] HC.3 Shell owns one `Arc<HelpTopicRegistry>` loaded once at startup (directory resolved per Req 5.1) + command-metadata topics. Covers Req 18.1.
+- [x] HC.4 HELP/F1 handler uses the shared registry and opens the Help Context on the resolved topic; dynamic keys (index, feature:function_keys) generate at display time; unknown key shows index-with-message. Covers Req 18.2-18.4.
+- [x] HC.5 Help Context implemented as a `WorkspaceContext` (InteriorFocus first = Help_Search field, stable egui::Id) dispatched via `render_workspace_context`; HELP + F1 route through the single dispatch path; Help menu invokes the HELP command; remove the `if upper == "HELP"` intercept. Covers Req 18.5-18.7.
+- [x] HC.6 Missing-topic diagnostics: WARN log + session-scoped `MissingTopicTally` on a non-dynamic miss; `HELP MISSING` report classifying EXPECTED (Req 17 promised set) vs UNEXPECTED; NO auto-writes to bugs.md/change-log.md/specs. Covers Req 19.1-19.6.
+- [x] HC.7 Tests: content-set assertions; shell pipeline (loaded once/reused, file-based displays, dynamic generates, unknown shows index); missing-topic tally + classification + no-doc-write assertion; MANDATORY full-shell first-Tab focus test on the Help Context. Full gate verified in a real terminal: fmt clean, clippy --workspace -D warnings exit 0, nextest --workspace 9363 passed / 0 failed. Covers Req 17-19.
+
+### Phase (scrm-eval) -- CR-NR-098: Screen Snapshot Service + SCRM (delivered with the ff-desktop decomposition)
+
+> Text-first (copy/paste-able, NOT raster) logical screen capture + Screen
+> Collection/Replay Manager, built as the first extracted vertical of the
+> ff-desktop decomposition. New crates `ff-screen-model` (Screen_Model +
+> ScreenProvider + text/ANSI/Markdown/HTML/YAML renderers) and `ff-scrm`
+> (collection/replay/export/evidence), with thin `ff-desktop` wiring (commands,
+> auto-capture hook at reconstruct_context, SCRM viewer WorkspaceContext).
+> Includes a PROTECTED, tamper-evident PDF export (copy-enabled, edit-locked).
+> Requirements + design + tasks gated; owner approved requirements. NO code until
+> the full gate package is approved.
+> Spec: `docs/specs/screen-snapshot-scrm/` (requirements.md Req 1-20, design.md,
+> tasks.md).
+
+- [x] SCRM.0 New crate `ff-screen-model` (Screen_Model, ScreenProvider, 5 renderers, SnapshotFormat). Covers Req 2.1, 3.1-3.8, 4.2-4.6, 5.1-5.5, 13.5, 1.1-1.2. DONE: TDD, 23 tests (22 unit + 1 proptest); verify.ps1 FULL nextest CLEAN (9404 passed).
+- [x] SCRM.1 New crate `ff-scrm` (Collection/Capture model, zip archive persistence, crash-recovery, capture+masking rules, replay state machine, text/md/html exporters). Covers Req 7-10 (engine), 12.1-12.3, 12.5, 13, 15.1-15.3, 17, 18.1, 18.4. DONE: TDD, 18 tests (16 unit + 2 proptests incl. 10k-capture round-trip); verify.ps1 FULL nextest CLEAN.
+- [x] SCRM.2 ff-desktop: SNAPSHOT commands (Function targets) + POM ScreenProvider + clipboard delivery + full-shell egui_kittest. Covers Req 4.1, 6.1-6.3, 11.2-11.4, 2.2-2.3. DONE: screen_snapshot module (POM ScreenProvider), SNAPSHOT [TEXT|ANSI|MARKDOWN|MD|HTML|YAML|AI] intercept via handle_command, clipboard delivery + status; 9 tests (4 module + 4 unit + 1 full-shell egui_kittest). Wave 1.
+- [x] SCRM.3 ff-desktop: CAPTURE lifecycle commands + auto-capture hook (navigate_to Context-transition choke point). Covers Req 7.1-7.7, 8.1-8.4, 9.1, 9.5, 11.1. DONE: scrm_session.rs (ScrmSession) + handle_capture (START/STOP/SCREEN/STATUS/LIST/PURGE/REPLAY) + auto_capture_active_context hooked in navigate_to; auto-start default collection on first capture. Wave 2. (Note: conditional-capture rules Req 9.7-9.9 and off-frame async write Req 18.3 land in the ff-scrm engine already; wiring configurable interval/rules into the shell + async write deferred to a later slice with a note.)
+- [x] SCRM.4 ff-desktop: SCRM viewer Context (WorkspaceKind::ScrmViewer, WorkspaceContext, InteriorFocus, mandatory first-Tab test) + CAPTURE REPLAY. Covers Req 10.1-10.8, 16.1-16.3. DONE: scrm_viewer_panel.rs (ScrmViewerState + WorkspaceContext, First/Prev/Next/Last, selectable-text screen render, stable first-control id) + full Context wiring + full_shell_scrm_viewer_first_tab_focuses_first_control. Wave 2. (DIDL replay filter Req 15.3 exists in the ff-scrm engine; shell UI toggle deferred to a later slice.)
+- [x] SCRM.5 Exporters wired to commands + evidence packages + PDF (hand-written selectable-text PDF writer). Covers Req 12.1-12.4, 12.6, 14.1-14.4. DONE: CAPTURE EXPORT TEXT/MD/HTML/PDF + CAPTURE SAVE/LOAD/OPEN + CAPTURE EVIDENCE; ff-scrm pdf.rs (dependency-free PDF 1.7, Base-14 Courier, real Tj selectable text) + evidence.rs (EvidencePackage + sha256 content_hash). Wave 3. (State-transition-history export Req 15.4 deferred -- DIDL history export is a later slice.)
+- [x] SCRM.6 Protected/tamper-evident PDF (owner-password edit-lock + copy-allow via lopdf, optional read password, content hash) + pre-slice checkpoint. Covers Req 20.1-20.7. DONE: checkpoint PASSED (lopdf 0.36 encryption module writes owner-password + permission-flag encryption); ff-scrm pdf_protected.rs (printpdf-free base + lopdf EncryptionState V2, Permissions copy-allow/edit-lock, optional user password, /Info content hash, trailer /ID); CAPTURE EXPORT PDF PROTECTED command. Wave 3. (Digital signature Req 20.4a and evidence-as-protected-PDF Req 14.5 wiring are deferred configurable add-ons.)
+- [ ] SCRM.7 TCR flips per criterion + full verify.ps1 CLEAN per wave + ff-desktop line/rebuild reduction measured before/after. Covers Req 19.4 + all above. IN PROGRESS: TCR flipped for all built SCRM criteria (Waves 0-3, incl. stale Req 20.4 content-hash row corrected to PASS); each SCRM wave landed with a full verify.ps1 CLEAN run. Req 19.4 BASELINE recorded 2026-09-26 in `docs/project-management/ffdesktop-decomposition-baseline.md` (91 files / 54,545 lines / 5.17 s single-file incr rebuild). The actual reduction is delivered by the behaviour-preserving panel-extraction waves (design.md Wave 4+); each wave appends a before/after row to the baseline doc. Wave 1 (ff-theme-editor) in progress.
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (scrm-eval) | CR-NR-098 PENDING GATE: requirements (Req 1-20) + design + tasks drafted, owner approved requirements. 2 new crates + thin ff-desktop wiring. Not yet built. |
+
+### Phase (ffdesktop-decomp) -- CR-NR-098 Req 19.3/19.4: ff-desktop panel/module extraction waves
+
+> Behaviour-preserving REFACTOR waves that move pure panel/model code out of the
+> `ff-desktop` binary crate into separately-compiled library crates, each leaving
+> a thin `pub use` adapter so existing `crate::<module>::*` references resolve
+> unchanged. No requirements gate (covered by existing Req 19.3/19.4). Each wave:
+> new crate + thin adapter + scoped Kiro gate + owner full verify.ps1 + before/after
+> row in `ffdesktop-decomposition-baseline.md`. Sliced task breakdown:
+> `docs/specs/screen-snapshot-scrm/decomposition-tasks.md` (each `[ ]` = one crate
+> + one adapter + one scoped gate).
+
+- [x] DECOMP.1 Extract Theme Editor -> `ff-theme-editor` crate (pure model + render + 4 tests; WorkspaceContext adapter stays). ff-desktop 54,545 -> 54,120 (-425). Owner full verify.ps1 CLEAN 2026-09-29. Wave 1.
+- [x] DECOMP.2 Extract Toolchain Panel -> `ff-toolchain-panel` crate (state + render + 10 tests; bottom dock, no WorkspaceContext). ff-desktop 54,120 -> 53,576 (-544). Scoped CLEAN; owner full verify.ps1 pending. Wave 2.
+- [x] DECOMP.3 Extract `catalog_registry` -> `ff-catalog-registry` crate (pure model + 22 tests, egui-free, zero crate:: coupling; ff-desktop adapter `pub use ff_catalog_registry::*;`). catalog_registry.rs 801 -> 13; ff-desktop ~53,576 -> ~52,788 (-788). Owner full verify.ps1 CLEAN 2026-09-30 (9452/9452, empty ai-review.log). Unblocks DECOMP.4. Wave 3. (decomposition-tasks.md task 11)
+- [ ] DECOMP.4 Extract `catalog_manager_dialog` -> `ff-catalog-dialog` crate, sliced by sub-dialog (New/Edit/Delete). Depends on DECOMP.3. Wave 4. (tasks 12-16)
+- [ ] DECOMP.5 Extract explorer substrate + view -> `ff-context-menu`, `ff-nav-model`, `ff-explorer-view`. Wave 5. (tasks 17-19)
+- [ ] DECOMP.6 Extract editor substrate + panel -> `ff-scroll-amount`, `ff-exclude-manager`, `ff-editor-panel` (tab_state stays shell-side). Wave 6. (tasks 20-22)
+- [ ] DECOMP.7 Extract `dataset_alloc_dialog` -> `ff-dataset-alloc-dialog` + Files Panel body -> `ff-files-panel` (shell-entangled glue stays). Wave 7. (tasks 23-24)
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (ffdesktop-decomp) | CR-NR-098 Req 19.3/19.4 panel-extraction waves. DECOMP.1 + DECOMP.3 DONE (owner full verify.ps1 CLEAN: ff-theme-editor, ff-catalog-registry). DECOMP.2 (ff-toolchain-panel) scoped CLEAN, owner full gate pending. DECOMP.4-7 sliced small in decomposition-tasks.md (tasks 12-24), each = one crate + one thin adapter + one scoped gate. Next: DECOMP.4 (ff-catalog-dialog). |

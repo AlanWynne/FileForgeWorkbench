@@ -28,7 +28,7 @@ proptest! {
         let proportion = splitter.proportion;
 
         // Proportion must be in [0.0, 1.0]
-        prop_assert!(proportion >= 0.0 && proportion <= 1.0,
+        prop_assert!((0.0..=1.0).contains(&proportion),
             "Proportion {} is outside [0.0, 1.0]", proportion);
 
         // If total_size can satisfy both minimums, enforce them

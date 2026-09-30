@@ -369,7 +369,7 @@ mod paragraph_boundaries {
             // Feature: navigation-commands, Property 6: paragraph boundary correctness
             let total = lines.len() as u64;
             let clamped_start = start_line.min(total);
-            let line_refs: Vec<&str> = lines.iter().map(|s| *s).collect();
+            let line_refs: Vec<&str> = lines.to_vec();
             let excluded = vec![false; lines.len()];
 
             let mut viewport = ViewportModel::with_line_count(total);
@@ -406,7 +406,7 @@ mod paragraph_boundaries {
             // Feature: navigation-commands, Property 6: paragraph boundary correctness
             let total = lines.len() as u64;
             let clamped_start = start_line.min(total);
-            let line_refs: Vec<&str> = lines.iter().map(|s| *s).collect();
+            let line_refs: Vec<&str> = lines.to_vec();
             let excluded = vec![false; lines.len()];
 
             let mut viewport = ViewportModel::with_line_count(total);

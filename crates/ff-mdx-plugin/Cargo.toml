@@ -1,0 +1,16 @@
+[package]
+name = "ff-mdx-plugin"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "FileForgeWorkbench plugin: Markdown viewer and exporter"
+
+[dependencies]
+ff-md-viewer = { path = "../ff-md-viewer" }
+ff-html-export = { path = "../ff-html-export" }
+ff-plugin = { path = "../ff-plugin" }
+ff-viewers = { path = "../ff-viewers" }
+ff-logging = { path = "../ff-logging" }
+toml.workspace = true
+anyhow.workspace = true

@@ -49,7 +49,7 @@ proptest! {
         // The persona's layout defines the structure; the engine merges tabs in.
         // Here we verify the persona manager returns a valid layout that can
         // accept tabs.
-        prop_assert!(target_layout.tab_groups.all_group_ids().len() >= 1,
+        prop_assert!(!target_layout.tab_groups.all_group_ids().is_empty(),
             "Persona layout must have at least one tab group");
 
         // Simulate the engine's tab redistribution: all tabs go to the

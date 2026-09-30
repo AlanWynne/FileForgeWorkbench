@@ -230,9 +230,10 @@ mod tests {
     #[test]
     fn box_dyn_plugin_can_be_stored_in_vec() {
         // Validates: Requirement 1.6
-        let mut plugins: Vec<Box<dyn FileForgePlugin>> = Vec::new();
-        plugins.push(Box::new(MockPlugin::new("a")));
-        plugins.push(Box::new(MockPlugin::new("b")));
+        let plugins: Vec<Box<dyn FileForgePlugin>> = vec![
+            Box::new(MockPlugin::new("a")),
+            Box::new(MockPlugin::new("b")),
+        ];
         assert_eq!(plugins.len(), 2);
         assert_eq!(plugins[0].metadata().name, "a");
         assert_eq!(plugins[1].metadata().name, "b");

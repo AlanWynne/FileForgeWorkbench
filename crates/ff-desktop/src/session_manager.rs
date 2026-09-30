@@ -66,6 +66,7 @@ fn descriptor_for_tab(
         TabKind::SearchResults => custom(WorkspaceKind::Search, DescriptorParams::new()),
         TabKind::PluginManager => custom(WorkspaceKind::PluginManager, DescriptorParams::new()),
         TabKind::EventLog => custom(WorkspaceKind::EventLog, DescriptorParams::new()),
+        TabKind::ScrmViewer => custom(WorkspaceKind::ScrmViewer, DescriptorParams::new()),
         TabKind::MacroLibrary => custom(WorkspaceKind::MacroLibrary, DescriptorParams::new()),
         TabKind::CommandConfigurator => {
             // Validates: command-configurator Requirement 2.1; startup-and-session
@@ -100,6 +101,8 @@ fn descriptor_for_tab(
         TabKind::KeysEditor => None,
         // The Kinds Editor is likewise transient (CR-NR-090 B.4); not restored.
         TabKind::KindsEditor => None,
+        // The Help Context is transient (CR-NR-097); F1/HELP reopen it on demand.
+        TabKind::HelpContext => None,
         // Untitled buffers are not persisted (never were).
         TabKind::Untitled => None,
     }
@@ -189,12 +192,13 @@ impl SessionManager {
     /// Validates: Requirement 3.1 (view-zoom) — global zoom offset persisted.
     /// Validates: Requirement 12.4 (function-keys-and-history) — key_bar_visible persisted.
     /// Validates: Requirement 23.9 (file-tree-panel) — sidebar_width persisted.
-    #[allow(dead_code)]
+    #[allow(dead_code, clippy::too_many_arguments)]
     pub fn save(
         &self,
         tabs: &TabManager,
         zoom_offset: i32,
         key_bar_visible: bool,
+        key_bar_scope: &str,
         file_explorer_sidebar_width: f32,
         config_namespace: Option<&str>,
     ) {
@@ -221,7 +225,9 @@ impl SessionManager {
                 | TabKind::ThemeEditor
                 | TabKind::MenusEditor
                 | TabKind::KeysEditor
-                | TabKind::KindsEditor => None,
+                | TabKind::KindsEditor
+                | TabKind::HelpContext
+                | TabKind::ScrmViewer => None,
             }
         };
         // Note: FileExplorerPanel active_tab_id is None (no URI to track)
@@ -231,6 +237,7 @@ impl SessionManager {
             active_tab_id,
             global_zoom_offset: zoom_offset,
             key_bar_visible,
+            key_bar_scope: key_bar_scope.to_string(),
             file_explorer_sidebar_width,
             ..SessionState::empty()
         };
@@ -248,6 +255,7 @@ impl SessionManager {
         tabs: &TabManager,
         zoom_offset: i32,
         key_bar_visible: bool,
+        key_bar_scope: &str,
         file_explorer_sidebar_width: f32,
         active_workspace_path: Option<String>,
         recent_palette_commands: Vec<String>,
@@ -277,7 +285,9 @@ impl SessionManager {
                 | TabKind::ThemeEditor
                 | TabKind::MenusEditor
                 | TabKind::KeysEditor
-                | TabKind::KindsEditor => None,
+                | TabKind::KindsEditor
+                | TabKind::HelpContext
+                | TabKind::ScrmViewer => None,
             }
         };
 
@@ -300,6 +310,7 @@ impl SessionManager {
             active_tab_id,
             global_zoom_offset: zoom_offset,
             key_bar_visible,
+            key_bar_scope: key_bar_scope.to_string(),
             file_explorer_sidebar_width,
             active_workspace_path,
             recent_palette_commands,
@@ -392,7 +403,7 @@ mod tests {
         let runtime = Runtime::new().expect("runtime");
         let tabs = TabManager::new(&runtime, "welcome\n");
 
-        mgr.save(&tabs, 0, true, 200.0, None);
+        mgr.save(&tabs, 0, true, "base", 200.0, None);
 
         let loaded = mgr.load();
         assert!(
@@ -624,6 +635,31 @@ mod tests {
         );
     }
 
+    /// Validates: Requirement 12.4 (function-keys-and-history, CR-CH-046) --
+    /// the Key_Label_Bar scope is persisted and restored across sessions.
+    #[test]
+    fn key_bar_scope_round_trips_through_session() {
+        // Validates: Requirement 12.4 (CR-CH-046)
+        let tmp = TempDir::new().expect("tempdir");
+        let mgr = SessionManager::with_path(make_session_file(&tmp));
+
+        let state = SessionState {
+            key_bar_visible: true,
+            key_bar_scope: "ctrl".to_string(),
+            ..SessionState::empty()
+        };
+        mgr.session_file.save(&state).expect("save");
+        let loaded = mgr.load();
+        assert_eq!(
+            loaded.key_bar_scope, "ctrl",
+            "key_bar_scope must survive the round-trip"
+        );
+
+        // Absent/unknown value falls back to the serde default "base".
+        let default_state = SessionState::empty();
+        assert_eq!(default_state.key_bar_scope, "base", "default scope is base");
+    }
+
     /// Validates: Requirement 23.9 (file-tree-panel) — sidebar_width round-trips through session.
     #[test]
     fn file_explorer_sidebar_width_round_trips_through_session() {
@@ -692,7 +728,17 @@ mod tests {
         let saved_shape = tabs.layout_snapshot().expect("split -> snapshot").shape;
 
         // Save through the real path, then load back.
-        mgr.save_with_workspace(&tabs, 0, true, 200.0, None, Vec::new(), Vec::new(), None);
+        mgr.save_with_workspace(
+            &tabs,
+            0,
+            true,
+            "base",
+            200.0,
+            None,
+            Vec::new(),
+            Vec::new(),
+            None,
+        );
         let loaded = mgr.load();
         let layout = loaded.layout.expect("layout persisted");
         let desc: crate::tab_manager::LayoutDescriptor =
@@ -719,7 +765,17 @@ mod tests {
         let runtime = Runtime::new().expect("runtime");
 
         let tabs = TabManager::new(&runtime, "one\n"); // unsplit
-        mgr.save_with_workspace(&tabs, 0, true, 200.0, None, Vec::new(), Vec::new(), None);
+        mgr.save_with_workspace(
+            &tabs,
+            0,
+            true,
+            "base",
+            200.0,
+            None,
+            Vec::new(),
+            Vec::new(),
+            None,
+        );
         let loaded = mgr.load();
         assert!(
             loaded.layout.is_none(),

@@ -3,6 +3,10 @@
 //! These tests validate correctness properties that must hold across
 //! all valid inputs, using the proptest framework.
 
+// CR-CH-048: index-based loops here read clearly against the property being
+// checked; the iterator rewrite clippy suggests is less legible for these tests.
+#![allow(clippy::needless_range_loop)]
+
 use proptest::prelude::*;
 use std::collections::HashSet;
 

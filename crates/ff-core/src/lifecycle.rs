@@ -500,7 +500,7 @@ mod tests {
     fn subsystem_criticality_clone_and_copy() {
         // Validates: Requirement 1.5 — types are Copy + Clone for ergonomic use
         let original = SubsystemCriticality::Critical;
-        let cloned = original.clone();
+        let cloned = original;
         let copied = original;
         assert_eq!(original, cloned);
         assert_eq!(original, copied);
@@ -556,7 +556,7 @@ mod tests {
     fn startup_order_clone_and_copy() {
         // Validates: Requirement 1.5 — types are Copy + Clone for ergonomic use
         let original = StartupOrder::Commands;
-        let cloned = original.clone();
+        let cloned = original;
         let copied = original;
         assert_eq!(original, cloned);
         assert_eq!(original, copied);
@@ -604,7 +604,7 @@ mod tests {
     fn lifecycle_phase_clone_and_copy() {
         // Validates: Requirement 1.5 — LifecyclePhase is Copy + Clone
         let original = LifecyclePhase::Running;
-        let cloned = original.clone();
+        let cloned = original;
         let copied = original;
         assert_eq!(original, cloned);
         assert_eq!(original, copied);

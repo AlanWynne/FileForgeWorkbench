@@ -545,7 +545,7 @@ mod tests {
         let access = ConfigAccess::new(&store, &schema);
 
         let result = access.get_bool("editor.word_wrap");
-        assert_eq!(result.unwrap(), true);
+        assert!(result.unwrap());
     }
 
     // Validates: Requirement 9.4 -- get_bool returns UndefinedKey for missing key
@@ -571,7 +571,7 @@ mod tests {
         let access = ConfigAccess::new(&store, &schema);
 
         let result = access.get_bool("editor.word_wrap");
-        assert_eq!(result.unwrap(), false);
+        assert!(!result.unwrap());
     }
 
     // ==================================================================
@@ -827,7 +827,7 @@ mod tests {
         let access = ConfigAccess::new(&store, &schema);
 
         let result = access.get_bool("editor.word_wrap");
-        assert_eq!(result.unwrap(), true);
+        assert!(result.unwrap());
     }
 
     // Validates: Requirement 9.9 -- get_array type mismatch falls back to schema default

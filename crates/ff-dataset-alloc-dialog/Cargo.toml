@@ -1,0 +1,13 @@
+[package]
+name = "ff-dataset-alloc-dialog"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Dataset allocation dialog (pure state + validation + egui render) for FileForgeWorkbench (CR-NR-098 decomposition Wave 3). No shell dependency."
+
+[dependencies]
+egui = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }

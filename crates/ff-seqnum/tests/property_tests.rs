@@ -102,7 +102,7 @@ proptest! {
             lines.push(format!("{:06} body text here", (i + 1) * 100));
         }
         for _ in matching_count..total_lines {
-            lines.push(format!("ABCDEF body text here"));
+            lines.push("ABCDEF body text here".to_string());
         }
 
         let line_refs: Vec<&str> = lines.iter().map(|s| s.as_str()).collect();
@@ -379,7 +379,7 @@ proptest! {
         prop_assert!(clamped >= 50, "Clamped value {} < 50", clamped);
         prop_assert!(clamped <= 100, "Clamped value {} > 100", clamped);
 
-        if value >= 50 && value <= 100 {
+        if (50..=100).contains(&value) {
             prop_assert_eq!(clamped, value);
         }
     }

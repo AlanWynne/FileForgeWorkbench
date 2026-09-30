@@ -28,14 +28,18 @@ use ff_file_ops::{
 
 // --- Mock VFS Provider ---
 
+/// Shared in-memory file store for the mock VFS (content + mtime by path).
+/// Aliased to keep the type simple (CR-CH-048: clippy type_complexity).
+type MockFileStore = Arc<Mutex<HashMap<String, (Vec<u8>, SystemTime)>>>;
+
 struct MockVfs {
-    files: Arc<Mutex<HashMap<String, (Vec<u8>, SystemTime)>>>,
+    files: MockFileStore,
     capabilities: VfsCapabilities,
 }
 
 struct MockFile {
     path: String,
-    files: Arc<Mutex<HashMap<String, (Vec<u8>, SystemTime)>>>,
+    files: MockFileStore,
 }
 
 #[async_trait]
@@ -97,7 +101,7 @@ impl VfsProvider for MockVfs {
         "mock"
     }
     fn capabilities(&self) -> VfsCapabilities {
-        self.capabilities.clone()
+        self.capabilities
     }
     async fn open(&self, path: &str, _options: OpenOptions) -> Result<Box<dyn VfsFile>, VfsError> {
         Ok(Box::new(MockFile {

@@ -167,6 +167,10 @@ impl eframe::App for WorkbenchShell {
                 }
                 // Validates: Requirement 12.4 (function-keys-and-history) -- restore PFSHOW state.
                 self.key_bar_visible = state.key_bar_visible;
+                // CR-CH-046: restore the persisted Key_Label_Bar scope (unknown /
+                // absent falls back to Base).
+                self.key_bar_scope = super::KeyBarScope::parse(&state.key_bar_scope)
+                    .unwrap_or(super::KeyBarScope::Base);
                 // Validates: Requirement 23.9 (file-tree-panel) -- restore sidebar width.
                 if state.file_explorer_sidebar_width >= 120.0 {
                     self.file_explorer_panel_width = state.file_explorer_sidebar_width;
@@ -500,6 +504,13 @@ impl eframe::App for WorkbenchShell {
             || self.show_history_list.is_some()
             || self.show_swap_list.is_some()
             || self.show_unsaved_workspace_dialog
+            // B077: the RESET BARE confirmation and the external-run confirmation
+            // are modal too. They set `modal_open` again later in this same frame,
+            // but the Tab/Boundary_Policy below reads the flag NOW -- so they MUST
+            // be included here or background Tab keeps running while the popup is
+            // open (accessibility Req 2.3 -- modal focus trap).
+            || self.reset_bare_confirm.is_some()
+            || self.pending_external.is_some()
             || !matches!(self.files_panel.dialog, files_panel::FilesDialogState::None);
         // B073: while the Workspace is split, the shell OWNS Tab entirely and
         // keeps focus WITHIN the focused region -- egui-native traversal would
@@ -1054,36 +1065,56 @@ impl eframe::App for WorkbenchShell {
                 .as_ref()
                 .map(|t| t.profiles.iter().map(|(name, _)| name.clone()).collect())
                 .unwrap_or_default();
-            egui::Window::new("Reset to barebones?")
-                .collapsible(false)
-                .resizable(false)
-                .show(ctx, |ui| {
-                    ui.label(
-                        "This archives the current configuration and reopens the \
-                         workbench in a minimal barebones state.",
-                    );
-                    if profile_names.len() == 1 {
-                        ui.label(format!("Profile to be reset: {}", profile_names[0]));
-                    } else {
-                        ui.label(format!("{} profiles will be reset:", profile_names.len()));
-                        for name in &profile_names {
-                            ui.label(format!("    - {name}"));
-                        }
+            // B077: render as an `egui::Modal` so the background is dimmed and
+            // input is captured by the dialog (accessibility Req 2.3 -- modal
+            // focus trap). Focus lands on Cancel on the first frame; Tab cycles
+            // between Cancel and Confirm; Escape cancels.
+            let focus_cancel = self.reset_bare_focus_requested;
+            self.reset_bare_focus_requested = false;
+            let modal = egui::Modal::new(egui::Id::new("reset_bare_modal")).show(ctx, |ui| {
+                ui.set_max_width(460.0);
+                ui.heading("Reset to barebones?");
+                ui.label(
+                    "This archives the current configuration and reopens the \
+                     workbench in a minimal barebones state.",
+                );
+                if profile_names.len() == 1 {
+                    ui.label(format!("Profile to be reset: {}", profile_names[0]));
+                } else {
+                    ui.label(format!("{} profiles will be reset:", profile_names.len()));
+                    for name in &profile_names {
+                        ui.label(format!("    - {name}"));
                     }
-                    ui.label(
-                        "Each profile's menus, themes, session, config and catalogs \
-                         are MOVED (not deleted) to a timestamped folder under that \
-                         profile's config-archive/ so you can recover them later.",
-                    );
-                    ui.horizontal(|ui| {
-                        if ui.button("Confirm reset").clicked() {
-                            confirm_clicked = true;
-                        }
-                        if ui.button("Cancel").clicked() {
-                            cancel_clicked = true;
-                        }
-                    });
+                }
+                ui.label(
+                    "Each profile's menus, themes, session, config and catalogs \
+                     are MOVED (not deleted) to a timestamped folder under that \
+                     profile's config-archive/ so you can recover them later.",
+                );
+                ui.horizontal(|ui| {
+                    // Cancel is first and the safe default -- it receives initial
+                    // focus (B077). Its stable id anchors the modal focus trap.
+                    let cancel = ui
+                        .add(egui::Button::new("Cancel").min_size(egui::vec2(96.0, 0.0)))
+                        .on_hover_text("Close without changing any configuration");
+                    let confirm =
+                        ui.add(egui::Button::new("Confirm reset").min_size(egui::vec2(120.0, 0.0)));
+                    if focus_cancel {
+                        cancel.request_focus();
+                    }
+                    if cancel.clicked() {
+                        cancel_clicked = true;
+                    }
+                    if confirm.clicked() {
+                        confirm_clicked = true;
+                    }
                 });
+            });
+            // Escape (or clicking the dimmed background) cancels -- the safe
+            // default that leaves configuration untouched (Req 19.3).
+            if modal.should_close() {
+                cancel_clicked = true;
+            }
             if confirm_clicked {
                 self.modal_open = false;
                 if let Some(target) = self.reset_bare_confirm.take() {
@@ -1238,6 +1269,7 @@ impl eframe::App for WorkbenchShell {
                 &self.tabs,
                 self.zoom.offset().value(),
                 self.key_bar_visible,
+                self.key_bar_scope.persist_name(),
                 self.file_explorer_panel_width,
                 ws_path,
                 self.recent_palette_commands.clone(),

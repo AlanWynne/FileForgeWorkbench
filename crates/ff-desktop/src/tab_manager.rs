@@ -1079,6 +1079,25 @@ impl TabManager {
         let _ = runtime;
     }
 
+    /// Open the SCRM Replay viewer tab (CAPTURE REPLAY).
+    ///
+    /// If a ScrmViewer tab already exists, activates it instead of inserting a
+    /// duplicate.
+    /// Validates: screen-snapshot-scrm Requirement 16.1 (CR-NR-098)
+    pub fn open_scrm_viewer_tab(&mut self, runtime: &Runtime) {
+        if let Some(idx) = self.tabs.iter().position(|t| t.kind == TabKind::ScrmViewer) {
+            self.activate(idx);
+            return;
+        }
+        let document = ff_document_model::new_document();
+        let id = TabId(self.next_id);
+        self.next_id += 1;
+        let tab = crate::tab_state::TabState::scrm_viewer(id, document);
+        self.tabs.push(tab);
+        self.activate(self.tabs.len() - 1);
+        let _ = runtime;
+    }
+
     /// Open the Macro Library panel tab (POM option 6 / MACROS / =6).
     ///
     /// If a MacroLibrary tab already exists, activates it instead of inserting a duplicate.

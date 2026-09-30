@@ -55,6 +55,11 @@ pub(super) fn context_name_for_kind(kind: TabKind) -> Option<&'static str> {
         TabKind::MenusEditor => Some("menus"),
         TabKind::KeysEditor => Some("keys"),
         TabKind::KindsEditor => Some("kinds"),
+        // The Help Context has no dedicated key-map context (CR-NR-097); F1/HELP
+        // are handled by the shell HELP path, not a context key map.
+        TabKind::HelpContext => None,
+        // The SCRM Replay viewer has no dedicated key-map context (CR-NR-098).
+        TabKind::ScrmViewer => None,
     }
 }
 
@@ -169,6 +174,44 @@ pub(super) fn strip_all_suffix(s: &str) -> (&str, bool) {
         (s[..s.len() - 4].trim_end(), true)
     } else {
         (s, false)
+    }
+}
+
+/// Turn a Collection name into a filesystem-safe file stem: keep alphanumerics,
+/// dash and underscore; replace every other character with `_`. An empty result
+/// falls back to `collection`. Used to derive default CAPTURE EXPORT/SAVE names.
+///
+/// Validates: screen-snapshot-scrm Requirement 11.1 (default export/save names).
+pub(super) fn sanitise_stem(name: &str) -> String {
+    let s: String = name
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    let trimmed = s.trim_matches('_').to_string();
+    if trimmed.is_empty() {
+        "collection".to_string()
+    } else {
+        trimmed
+    }
+}
+
+/// Short human label for a snapshot format, used in the SNAPSHOT status message.
+///
+/// Validates: screen-snapshot-scrm Requirement 6.2.
+pub(super) fn snapshot_format_label(format: ff_screen_model::SnapshotFormat) -> &'static str {
+    use ff_screen_model::SnapshotFormat;
+    match format {
+        SnapshotFormat::PlainText => "text",
+        SnapshotFormat::Ansi => "ANSI",
+        SnapshotFormat::Markdown => "Markdown",
+        SnapshotFormat::Html => "HTML",
+        SnapshotFormat::Yaml => "YAML",
     }
 }
 

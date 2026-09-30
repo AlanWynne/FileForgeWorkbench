@@ -1,0 +1,10 @@
+[package]
+name = "ff-html-export"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Generic HTML export: renders content to standalone HTML files"
+
+[dependencies]
+anyhow.workspace = true

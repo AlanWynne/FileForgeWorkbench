@@ -75,6 +75,7 @@ The following specs exist under `docs/specs/`:
 - platform-core
 - plugin-architecture
 - record-selection-criteria
+- screen-snapshot-scrm (CR-NR-098: Screen Snapshot Service + Screen Collection/Replay Manager -- logical copy/paste-able TEXT capture, NOT raster; delivered together with the ff-desktop decomposition. Requirements drafted, gate pending owner approval; design/tasks not yet written)
 - sequence-numbers
 - shell-command
 - startup-and-session
