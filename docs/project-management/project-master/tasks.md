@@ -936,6 +936,45 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 
 ---
 
+### Phase CR-NR-101 -- Markdown Rendering Configuration
+
+> New sub-project `markdown-rendering`. New crate `ff-md-style`: configurable Markdown
+> element styling (TOML config), consumed by FFWB + ffmdx and the HTML/PDF export paths.
+> Composes `ff-theme` Colour_Tokens for colour; owns markdown typography/layout. Drives
+> BOTH the egui `CommonMarkViewer` path and the `ff-md-viewer` HTML/CSS path from one config.
+> Gate complete (requirements.md, design.md, tasks.md); implementation NOT started.
+> (Phase code uses the CR number to avoid collision with the existing two-letter DA/DB.)
+
+- [ ] NR101.1 Scaffold `ff-md-style` crate; workspace member; config schema structs + built-in default (markdown-rendering Tasks 1-2)
+- [ ] NR101.2 Colour token references + resolution against ThemePalette (Task 3)
+- [ ] NR101.3 Loader: partial-definition merge, per-value validation/clamp, round-trip (Task 4)
+- [ ] NR101.4 CSS emitter (full fidelity, self-contained) + `ff-html-export::build_standalone_html_with_css` (Tasks 5-6)
+- [ ] NR101.5 egui style mapping (feature `egui`): heading sizes, body colour, default_width, indentation_spaces, syntax theme (Task 7)
+- [ ] NR101.6 Hot-reload + change notification; theme-change re-resolution (Task 8)
+- [ ] NR101.7 Export-defaults/discoverability; both-paths-driven conformance test; TCR update (Tasks 9-11)
+
+### Phase CR-NR-102 -- Rebuild ffmdx as a cut-down FFWB
+
+> New sub-project `ffmdx-app`. New shared crate `ff-app-bootstrap` (common startup for
+> `ffwb` + `ffmdx`). Rebuild `ff-mdx-app` to consume `ff-config` (own config home),
+> `ff-theme`, `ff-logging`, `ff-session`, `ff-help`, and markdown-rendering (`ff-md-style`).
+> `ff-keys` deferred. Gate complete (requirements.md, design.md, tasks.md); implementation
+> NOT started. Depends on CR-NR-101 for the markdown rendering step.
+> (Phase code uses the CR number to avoid collision with the existing two-letter DA/DB.)
+
+- [ ] NR102.1 Scaffold `ff-app-bootstrap` (foundation-only deps); options/result types; dependency-boundary test (ffmdx-app Task 1)
+- [ ] NR102.2 Bootstrap sequence (logging -> config -> theme) + apply fonts/palette to egui (Tasks 2-3)
+- [ ] NR102.3 Refactor `ffwb` main.rs onto the bootstrap -- behaviour-preserving (Task 4)
+- [ ] NR102.4 ffmdx config environment -- own config home + schema keys (Task 5)
+- [ ] NR102.5 ffmdx markdown rendering via `ff-md-style` (egui + CSS export) (Task 6) -- depends on CR-NR-101
+- [ ] NR102.6 ffmdx theme inheritance in chrome; Visual_Mode switch; theme discovery (Task 7)
+- [ ] NR102.7 ffmdx logging integration (Task 8)
+- [ ] NR102.8 ffmdx session persistence -- window/folder/file (Task 9)
+- [ ] NR102.9 ffmdx Help/About surface; keybindings stay hardcoded (ff-keys deferred) (Task 10)
+- [ ] NR102.10 Cut-down surface boundary enforced; preserve existing behaviours; TCR update (Tasks 11-12)
+
+---
+
 ## Summary (superseded -- see final summary below)
 
 > This table was current after Phase BS. See the final summary at the bottom of this file for the up-to-date state.
@@ -3059,3 +3098,79 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[ ]` Phase (ffdesktop-decomp) | CR-NR-098 Req 19.3/19.4 panel-extraction waves. DECOMP.1 + DECOMP.3 DONE (owner full verify.ps1 CLEAN: ff-theme-editor, ff-catalog-registry). DECOMP.2 (ff-toolchain-panel) + DECOMP.4 (ff-catalog-dialog) scoped CLEAN, owner full gate pending. DECOMP.5-7 sliced small in decomposition-tasks.md (tasks 17-24), each = one crate + one thin adapter + one scoped gate. Next: DECOMP.5 (explorer substrate: ff-context-menu, ff-nav-model, ff-explorer-view). |
+
+## Phase (markdown-compliance) -- CR-CH-049: bring the Markdown Viewer family into gate/TDD/framework compliance
+
+> The Markdown Explorer/Viewer crates (`ff-md-viewer`, `ff-mdx-plugin`,
+> `ff-mdx-app`, `ff-mdx-installer`) were brought into the workspace with NO
+> requirements gate and ZERO tests, non-ASCII in `.rs` source, library `anyhow`
+> leakage, and no shell wiring (audit `.agents/tasks/markdown-compliance-audit.md`).
+> This phase back-fills the gate (custom-file-viewers Req 11-17), fixes the ASCII
+> violations (Part A, done), and adds TDD coverage + the rust-standards hardening,
+> then wires the in-shell plugin ON the existing framework (single command
+> dispatch; WorkspaceContext/InteriorFocus only if surfaced as a Context). The
+> standalone app and installer are out-of-shell (bound by testing/rust-standards/
+> documentation, not the in-shell framework).
+> Spec: `docs/specs/custom-file-viewers/` (requirements.md Req 11-17, design.md
+> Delta D1-D5, tasks.md Tasks 12-21).
+
+- [ ] MDC.1 Requirements gate -- custom-file-viewers Req 11-17, design Delta D1-D5, tasks 12-21, this master phase, TCR NOT COVERED rows, change-log CR-CH-049. (This draft; awaiting owner approval before any implementation.)
+- [ ] MDC.2 ASCII cleanup across the four crates' `.rs` + `ff-mdx-app` Cargo.toml (DONE in Part A, pre-gate mechanical fix; zero non-ASCII matches). Covers documentation.md; audit F05/F06/F07/F14; tasks.md 12.
+- [ ] MDC.3 ff-md-viewer unit tests -- `render_to_html` option set, `Scanner::scan` exclusions/filter/normalisation/sort, `FileWatcher` `md` predicate + ~400ms debounce. Covers Req 11, 12, 15; tasks.md 13-15.
+- [ ] MDC.4 ff-mdx-plugin + ff-mdx-installer + ff-mdx-app unit tests -- `MdxFileViewer` can_render/render/metadata, installer PATH-dedup predicate, extracted app helpers. Covers Req 13, 16.2/16.6, 17; tasks.md 16-18.
+- [ ] MDC.5 ff-mdx-app egui_kittest GUI tests -- file-tree selection, side-panel filter, viewer load/empty-state, Ctrl+O/F5, watcher-driven reload; rfd dialogs MANUAL. Covers Req 16; tasks.md 19.
+- [ ] MDC.6 rust-standards hardening -- `thiserror` MdViewerError in ff-md-viewer (retire library `anyhow`), private `FileWatcher.rx` + accessor, `///` docs, split long MdxApp methods, `CARGO_PKG_VERSION`, resolve `FileTree::set_files`, logging-or-drop in the plugin. Covers audit F08-F13/F15; tasks.md 20.
+- [ ] MDC.7 Shell integration ON the framework -- register MdxPlugin/MdxFileViewer in the ff-viewers registry, reachable only via the single command-dispatch path (PREVIEW); menus/shortcuts invoke the same command; WorkspaceContext/InteriorFocus + full-shell first-Tab test IF surfaced as a Context. Covers Req 14; audit F03/F04; tasks.md 21.
+- [ ] MDC.8 TCR flips per criterion + scoped Kiro gate clean (`-p ff-md-viewer -p ff-mdx-plugin -p ff-mdx-app -p ff-mdx-installer -p ff-viewers -p ff-desktop`), then owner full verify.ps1. Covers Req 11-17.
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (markdown-compliance) | CR-CH-049 PENDING GATE: back-fill the gate + TDD + framework wiring for the Markdown Viewer family (ff-md-viewer, ff-mdx-plugin, ff-mdx-app, ff-mdx-installer). custom-file-viewers Req 11-17 + design Delta D1-D5 + tasks 12-21 drafted. Part A ASCII cleanup done; implementation (MDC.3-8) pending owner approval. |
+
+## Phase (help-markdown-eval) -- CR-NR-100: render Help content via Markdown formatting (not raw monospace text)
+
+> The in-app Help display draws help bodies as raw MONOSPACE TEXT
+> (`crates/ff-desktop/src/help_context.rs`), even though help content is Markdown
+> (`.help.md`; `ff-help` carries RAW Markdown by design). CR-NR-100 re-evaluates
+> the Help requirements to render the body WITH Markdown formatting, reusing the
+> CR-CH-049 Markdown machinery WHERE it fits the framework. EVALUATION: the
+> rendering target (direct egui Markdown widgets vs HTML view vs ff-viewers
+> ViewerPanel reuse) is an OPEN design question resolved in design.md; egui does
+> not render HTML natively, so `render_to_html`'s fragment is not directly usable.
+> SEQUENCED AFTER the ff-desktop decoupling (DECOMP waves, CR-NR-098 Req 19.3/19.4)
+> AND after Task 21 / custom-file-viewers Requirement 14 (viewer-to-shell seam).
+> Spec: `docs/specs/context-help/` (requirements.md Req 20, design.md "Markdown
+> Help Rendering (CR-NR-100)", tasks.md Tasks 19-21).
+
+- [ ] HMD.1 Requirements gate -- context-help Req 20, design "Markdown Help Rendering (CR-NR-100)" delta (options A/B/C + recommendation), tasks 19-21, this master phase, TCR NOT COVERED rows, change-log CR-NR-100. (This draft; awaiting owner approval before any implementation.) Delivers context-help Req 20.1-20.8.
+- [ ] HMD.2 Resolve the rendering-target decision with the owner and lock the chosen option + external-link policy in design.md. Delivers context-help Req 20.7 (informs 20.2/20.3/20.5). ORDERED AFTER the ff-desktop decomposition; may run at the gate before implementation.
+- [ ] HMD.3 Implement Markdown rendering in the Help Context (replace the monospace `ui.label` body draw; element set per Req 5.3 + ff-md-viewer extensions; internal links drive Help navigation; graceful monospace fallback; ON the framework). Delivers context-help Req 20.1-20.5, 20.8. ORDERED AFTER the ff-desktop decomposition AND after Task 21 / custom-file-viewers Req 14.
+- [ ] HMD.4 Tests -- unit (format/mapping where applicable) + full-shell `egui_kittest` asserting formatted output (a heading renders as a heading, not literal `#`) + confirm the existing Help first-Tab focus test still passes. Delivers context-help Req 20.1/20.2/20.3/20.4/20.6. ORDERED AFTER the ff-desktop decomposition AND after Task 21 / custom-file-viewers Req 14.
+- [ ] HMD.5 Help link-target resolution (CR-NR-100 refinement) -- pure `classify_help_link` + `heading_slug` + `resolve_fragment` (Topic_Key first, slug fallback); wire file links / cross-file anchors / same-file anchors onto the EXISTING Help_Navigation_Stack (`follow_link`); graceful degradation (missing anchor -> top, missing topic/file -> "topic not found"); unit tests + full-shell egui_kittest (same-file anchor navigates+pushes stack; cross-file anchor loads+positions). Delivers context-help Req 20.9-20.14. Pure helpers may run with HMD.2; navigation wiring + egui_kittest ORDERED AFTER the ff-desktop decoupling WITH HMD.3. NOT blocked by Task 21 (Option A direct egui). (context-help tasks.md Task 22.)
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (help-markdown-eval) | CR-NR-100 PENDING GATE: re-evaluate Help display to render Markdown-formatted help (context-help Req 20.1-20.14 + design delta + tasks 19-22). EVALUATION only; implementation ORDERED AFTER the ff-desktop decoupling (DECOMP waves) and AFTER Task 21 / custom-file-viewers Req 14 (for the rendering); the Req 20.9-20.14 link/anchor navigation is NOT Task-21-blocked. Rendering-target (Option A/B/C) stays open per CR-NR-100; the link-fragment-resolution extension is SETTLED (standard Markdown syntax, resolver-only meaning). |
+
+## Phase (markdown-link-nav) -- CR-CH-050: Markdown Viewer link navigation (external web links, .md-file links, same-file + cross-file anchors)
+
+> The Markdown Viewer family (custom-file-viewers Req 11-17) specifies NOTHING
+> about link-click behaviour. CR-CH-050 adds Requirement 18: external `http(s)://`
+> links open the OS browser; `.md`-file links load/navigate to the target
+> document; HTML-style `#anchor` fragments jump within the same document, and
+> `other.md#anchor` loads+positions in another document. SETTLED design: this is
+> a RESOLUTION + click-navigation extension on STANDARD Markdown link syntax --
+> no parse-syntax change (files stay portable). Fragment resolves to an explicit
+> inline-HTML anchor id or a GitHub-style heading slug. Standalone-app + pure
+> helpers are NOT Task-21-blocked; the in-shell seam IS. All queued behind the
+> ff-desktop decoupling. Spec: `docs/specs/custom-file-viewers/` (requirements.md
+> Req 18, design.md "Markdown Viewer Link Navigation (CR-CH-050)" L1-L7, tasks.md
+> Tasks 22-24).
+
+- [ ] MLN.1 Requirements gate -- custom-file-viewers Req 18, design delta L1-L7, tasks 22-24, this master phase, TCR NOT COVERED rows, change-log CR-CH-050. (This draft; awaiting owner approval before any implementation.)
+- [ ] MLN.2 Pure helpers + standalone ff-mdx-app link navigation (NOT Task-21-blocked) -- `classify_link`, `resolve_markdown_link` (root-escape guard), `heading_slug`, `resolve_anchor`; app loads `.md`-file links, scrolls same-file anchors, loads+positions cross-file anchors, opens external links in the browser; unit tests + egui_kittest; browser launch MANUAL. Delivers Req 18.1-18.4, 18.6-18.9 (standalone). custom-file-viewers tasks.md Tasks 22-23.
+- [ ] MLN.3 In-shell markdown viewer link navigation ON the framework (BLOCKED: Req 14 / Task 21) -- link activation via the single command-dispatch path / PREVIEW, reusing the Task 22 helpers; behaviour matches criteria 1-9; no bespoke dispatcher. Delivers Req 18.5. ORDERED AFTER the ff-desktop decoupling AND Task 21. custom-file-viewers tasks.md Task 24.
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (markdown-link-nav) | CR-CH-050 PENDING GATE: Markdown Viewer link navigation (custom-file-viewers Req 18 + design delta + tasks 22-24). SETTLED: resolution-only extension on standard Markdown link syntax (no parse change). Standalone-app + pure helpers NOT Task-21-blocked; in-shell seam IS. Queued behind the ff-desktop decoupling. Implementation pending owner approval. |

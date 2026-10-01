@@ -92,7 +92,7 @@ graph TD
 
 | Component | Responsibility |
 |-----------|---------------|
-| **ViewerRegistry** | Central map of Viewer_Key → `Box<dyn FileViewer>`; thread-safe; handles registration/deregistration |
+| **ViewerRegistry** | Central map of Viewer_Key -> `Box<dyn FileViewer>`; thread-safe; handles registration/deregistration |
 | **ViewerPanel** | `DockablePanel` implementation; hosts active viewer's rendered output; manages visibility and dock state |
 | **ContentSelector** | Determines which viewer (if any) should handle a given resource via extension, MIME, sniffing, or language profile |
 | **RefreshController** | Debounces document changes and VFS watch events; calls `on_content_changed` on the active viewer |
@@ -220,7 +220,7 @@ pub trait FileViewer: Send + Sync {
 ///
 /// Addresses: Requirement 1, all criteria
 pub struct ViewerRegistry {
-    /// Map of viewer_key → viewer instance (behind Arc<RwLock> for thread safety)
+    /// Map of viewer_key -> viewer instance (behind Arc<RwLock> for thread safety)
     viewers: Arc<RwLock<HashMap<ViewerKey, ViewerEntry>>>,
 }
 
@@ -385,7 +385,7 @@ pub struct ContentSelector {
 ```rust
 /// Parsed action from a PREVIEW command invocation.
 ///
-/// Addresses: Requirement 3, criteria 1–6
+/// Addresses: Requirement 3, criteria 1-6
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PreviewCommandAction {
     /// Toggle viewer: activate default if off, deactivate if on
@@ -753,11 +753,11 @@ pub enum ViewerError {
 ### Dependency Direction Summary
 
 ```
-ff-logging ← ff-config ← ff-viewers ← ff-desktop
-ff-plugin  ← ff-viewers
-ff-layout  ← ff-viewers
-ff-command ← ff-viewers
-ff-vfs     ← ff-viewers
+ff-logging <- ff-config <- ff-viewers <- ff-desktop
+ff-plugin  <- ff-viewers
+ff-layout  <- ff-viewers
+ff-command <- ff-viewers
+ff-vfs     <- ff-viewers
 ```
 
 ---
@@ -780,7 +780,7 @@ auto_offer = true
 default_position = "split-right"
 
 # Split ratio (viewer fraction) when default_position is a split variant.
-# Range: 0.1–0.9. Default: 0.5
+# Range: 0.1-0.9. Default: 0.5
 # Addresses: Requirement 10, criterion 1 (split_ratio)
 split_ratio = 0.5
 
@@ -809,8 +809,8 @@ has_header = true
 |---------|--------|---------------|--------------|
 | `auto_offer` | `true` | `true` + WARN | N/A (boolean) |
 | `default_position` | `"split-right"` | `"split-right"` + WARN | N/A (enum) |
-| `split_ratio` | `0.5` | `0.5` + WARN | Clamp to [0.1–0.9] + WARN |
-| `refresh_debounce_ms` | `300` | `300` + WARN | Clamp to [50–5000] + WARN |
+| `split_ratio` | `0.5` | `0.5` + WARN | Clamp to [0.1-0.9] + WARN |
+| `refresh_debounce_ms` | `300` | `300` + WARN | Clamp to [50-5000] + WARN |
 
 ---
 
@@ -872,7 +872,7 @@ These properties are suitable for property-based testing with `proptest`. They v
 
 ```rust
 // proptest strategy: generate arbitrary strings (ASCII and non-ASCII)
-// assertion: ViewerKey::new(s).is_ok() ⟺ s matches regex ^[a-z0-9-]{1,64}$
+// assertion: ViewerKey::new(s).is_ok()  iff  s matches regex ^[a-z0-9-]{1,64}$
 ```
 
 ### Property 3: Deregistration Removes Viewer Completely
@@ -1022,10 +1022,10 @@ Addresses: Requirement 3, criterion 7
 ## Appendix E: Refresh Timing Diagram
 
 ```
-Time ──────────────────────────────────────────────────────▶
+Time ──────────────────────────────────────────────────────>
 
 Editor:    [edit]  [edit]  [edit]          (quiet)
-                                    ◀─300ms─▶
+                                    <─300ms─>
 RefreshCtrl: reset  reset  reset         │ fire │
                                               │
 Background:                                   ├─ VFS read
@@ -1039,3 +1039,273 @@ Main Thread:                                         └─ update ViewerPanel
 - Only after 300ms of silence does the refresh trigger
 - Refresh runs on background task; main thread continues rendering
 - If refresh takes >100ms, WARN is logged (Requirement 8, criterion 5)
+
+---
+
+## Design Delta: Markdown Viewer Family (CR-CH-049)
+
+This delta covers the Markdown Viewer crates brought into the workspace
+(`ff-md-viewer`, `ff-mdx-plugin`, `ff-mdx-app`, `ff-mdx-installer`) and backs
+Requirements 11-17. The core `ff-viewers` design above (Sections 1-9) is
+UNCHANGED by this delta; the markdown crates sit alongside and (for the in-shell
+piece) plug into the `FileViewer` seam already specified.
+
+### D1. ff-md-viewer library -- render / scan / watch
+
+`ff-md-viewer` is a pure, egui-free library with three concerns, one module each:
+
+- `renderer.rs` -- `render_to_html(markdown: &str) -> String` wrapping
+  `pulldown-cmark` with the fixed option set (tables, footnotes, strikethrough,
+  tasklists, smart punctuation). Pure and deterministic; unit-tested directly
+  (Requirement 11).
+- `scanner.rs` -- `Scanner::scan(root) -> Vec<FileEntry>` recursive walk with the
+  `EXCLUDED` directory list, the `md`-extension filter, backslash-to-forward-slash
+  relative-path normalisation, and the final lexicographic sort (Requirement 12).
+  Pure given a filesystem root; unit-tested with `tempfile::TempDir` fixtures.
+- `watcher.rs` -- `FileWatcher` wrapping `notify`, with a background debounce
+  thread coalescing a ~400ms burst and forwarding `md`-only modify events
+  (Requirement 15).
+
+**Error handling (replaces leaked `anyhow`).** `rust-standards.md` requires
+library crates to use `thiserror`, not `anyhow`. `FileWatcher::new` currently
+returns `anyhow::Result<Self>`, leaking `anyhow` from a library. The design
+introduces a crate-local error enum:
+
+```rust
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum MdViewerError {
+    #[error("[md-viewer] watch: failed to create watcher -- {0}")]
+    WatcherCreate(String),
+    #[error("[md-viewer] watch: failed to watch '{path}' -- {reason}")]
+    WatchPath { path: String, reason: String },
+}
+```
+
+`FileWatcher::new` returns `Result<Self, MdViewerError>`, wrapping the underlying
+`notify::Error`. `render_to_html` and `Scanner::scan` are infallible (they return
+`String` / `Vec<FileEntry>` and treat unreadable directories as empty, per
+Requirement 12 criterion 6), so they do not need the error type. This is the
+chosen approach over keeping `anyhow` because the crate is a library consumed by
+`ff-mdx-app` and `ff-mdx-plugin`; `thiserror` gives callers typed, matchable
+errors.
+
+**Encapsulation.** `FileWatcher.rx` is currently a `pub` field on a type that
+owns a live watcher thread (not a plain data container). The design makes `rx`
+private and exposes `fn changes(&self) -> &crossbeam_channel::Receiver<PathBuf>`
+(rust-standards: prefer accessors over `pub` fields). `FileEntry`'s two data
+fields remain `pub` -- it is a legitimate plain-data container. All public items
+gain `///` docs.
+
+`FileTree::set_files` in `ff-mdx-app` (which currently only clears selection and
+ignores its `_files` argument) is resolved: either implemented to pre-index the
+new file set or removed in favour of the existing per-frame `show(files)` call,
+with its intent documented. This is a code-cleanliness decision internal to the
+app and does not change observable behaviour.
+
+### D2. ff-mdx-plugin -- the in-shell FileViewer seam
+
+`ff-mdx-plugin` is the bridge into the shell. `MdxFileViewer` implements the
+`ff-viewers` `FileViewer` trait (Requirements 1-2 above): `viewer_key =
+"mdx-markdown"`, extensions `md`/`markdown`, MIME `text/markdown` /
+`text/x-markdown`, `can_render` by URI suffix, and `render` decoding bytes
+UTF-8-lossy then calling `ff_md_viewer::render_to_html` (Requirement 13).
+
+**Registration and invocation (build ON framework mechanism 1).** When the shell
+integrates the plugin, `MdxPlugin`/`MdxFileViewer` is registered into the
+`ff-viewers` Viewer_Registry during plugin `initialize` (the existing
+`register_plugin` path, Requirement 5 above). Activation is reached ONLY through
+the single command-dispatch path: the existing `PREVIEW` command
+(`viewer.preview`, Requirement 3) resolves and activates the `"mdx-markdown"`
+viewer like any other registered viewer -- `PREVIEW mdx-markdown`, or `PREVIEW`
+auto-selection by extension (Requirement 6). No new Command_Id dispatch mechanism
+and no bespoke `if upper == "..."` intercept are introduced; menus/shortcuts
+that offer the markdown viewer invoke that same `PREVIEW` command (command
+parity, workflow.md 1b). This closes the audit's F03 (plugin not wired, no
+command parity) without inventing a parallel path.
+
+The current capability/description drift between `MdxPlugin` metadata
+(`mime_types: ["text/markdown"]`) and `MdxFileViewer` (both markdown MIME types)
+is reconciled so the advertised capability matches the viewer's declared types
+(Requirement 13 criterion 5). The declared-but-unused `ff-logging` dependency is
+either exercised at the plugin lifecycle seams (initialize/activate/shutdown) or
+dropped from `Cargo.toml` (audit F15).
+
+**Focus model (build ON framework mechanism 5).** The `FileViewer::render`
+returns an HTML `String` rendered inside the existing `ViewerPanel`
+(`DockablePanel`), so the plugin itself has no interior Tab stops to own. IF a
+future change surfaces the markdown viewer as its OWN shell `Context` (rather
+than inside the shared `ViewerPanel`), that Context MUST go through
+`WorkspaceContext::render -> InteriorFocus` dispatched by
+`render_workspace_context`, reporting its first interior control with a stable
+`egui::Id`, and ship the mandatory full-shell first-Tab `egui_kittest` test
+(workspace-conformance). It MUST NOT hand-wire a per-arm focus ring. No such
+Context exists today; this is the forward constraint, not current work.
+
+### D3. ff-mdx-app -- standalone binary, explicitly OUTSIDE the in-shell framework
+
+`ff-mdx-app` (`ffmdx.exe`) is a separate `eframe::App` with its own OS window,
+toolbar, left file-tree side panel, central viewer, and `rfd` native dialogs. It
+is DELIBERATELY outside the in-shell framework: it has no command dispatcher, no
+`WorkspaceContext`, and no shell Tab-order model, and it is not required to adopt
+them. It IS bound by `testing.md` (its GUI behaviours get `egui_kittest` tests),
+`rust-standards.md`, and `documentation.md`.
+
+Design cleanups for standards conformance (no behaviour change): split the long
+`MdxApp::toolbar` and `eframe::App::update` methods into focused helpers (toolbar
+buttons, export action, shortcut handling, side-panel filter) to meet the
+~40-line function guideline (audit F11); replace the hardcoded `"ffmdx v0.1"`
+label with `env!("CARGO_PKG_VERSION")` (audit F12); extract the pure helpers
+(filter predicate, drop-path classification, viewer-title `strip_prefix` logic)
+so they are unit-testable without a harness (Requirement 16 criterion 6). The
+`rfd` folder/save dialogs stay `MANUAL` (OS-native, justified exception).
+
+### D4. ff-mdx-installer -- standalone binary, OUTSIDE the in-shell framework
+
+`ff-mdx-installer` unzips a bundled payload and, on Windows, appends the install
+directory to the per-user PATH (`HKCU\Environment`). The design extracts the
+PATH-dedup predicate (split on `;`, trim, `eq_ignore_ascii_case`) into a pure
+function so it is unit-testable without touching the real registry (Requirement
+17); the registry write itself stays `MANUAL` (real OS side effect, justified
+exception). No framework interaction -- this is an out-of-shell installer bound
+only by the three standards.
+
+### D5. Areas needing NO design change
+
+- The core `ff-viewers` framework (trait, registry, panel, selector, refresh,
+  config) is unchanged -- the markdown viewer is a consumer of the existing
+  `FileViewer`/registry/`PREVIEW` seams, not a modification of them.
+- `ff-html-export` (used by the app's "Export as HTML" action) is unchanged.
+- The framework's 300ms `refresh_debounce_ms` (Requirement 9) is unchanged; the
+  markdown viewer's ~400ms file-watcher debounce is a separate as-built mechanism
+  inside `ff-md-viewer` and does not alter the framework setting.
+
+---
+
+## Design Delta: Markdown Viewer Link Navigation (CR-CH-050)
+
+This delta backs Requirement 18 (Markdown Viewer Link Navigation). It adds
+link-click behaviour to the Markdown viewer family; the core `ff-viewers`
+framework (Sections 1-10) and the CR-CH-049 delta (D1-D5) are UNCHANGED.
+
+### L1. Link-target classification + anchor resolution (pure, in `ff-md-viewer`)
+
+A pure, egui-free helper classifies a link destination string so the SAME logic
+is reused by the standalone app and (later) the in-shell seam:
+
+```rust
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MdLinkTarget {
+    /// http(s):// URL -- open externally, never load as a document.
+    External(String),
+    /// A relative or absolute .md / .markdown file, with an optional #anchor.
+    /// fragment == None => open at top (Req 18.2); Some => cross-file anchor (Req 18.7).
+    MarkdownFile { path: String, fragment: Option<String> },
+    /// A same-file #anchor (no file part) -- jump within the current document (Req 18.6).
+    SameFileAnchor(String),
+    /// Anything else -- ignored (no navigation) (Req 18.6 "Other").
+    Other(String),
+}
+
+/// Pure classifier -- unit-tested without a harness (Requirement 18 criteria 1,2,6,7).
+pub fn classify_link(dest: &str) -> MdLinkTarget;
+```
+
+Rules: a destination beginning `http://` / `https://` is `External`; a
+destination whose path component ends `.md` / `.markdown` is `MarkdownFile`
+(splitting off any `#anchor` into `fragment`); a destination that is a bare
+`#anchor` with no file part is `SameFileAnchor`; everything else is `Other`.
+
+**Anchor resolution (Req 18.8/18.9).** A fragment resolves WITHIN a target
+document in this order:
+
+```rust
+/// GitHub-style heading slug: lowercase, spaces -> '-', punctuation stripped.
+pub fn heading_slug(heading: &str) -> String;
+
+/// Resolve an anchor to a scroll target: an explicit anchor id if present
+/// (a standard inline `<a id="...">`), else a matching heading slug,
+/// else None (caller positions at top).
+/// Pure, unit-testable (Requirement 18 criteria 8, 9).
+pub fn resolve_anchor(doc_markdown: &str, anchor: &str) -> Option<AnchorPos>;
+```
+
+SETTLED decision -- RESOLUTION, not parse syntax: `[text](#anchor)`,
+`[text](other.md)`, and `[text](other.md#anchor)` are standard, portable Markdown
+link forms; only our resolver assigns navigation meaning to the fragment, so
+files stay valid Markdown that other tools render normally. The explicit-anchor
+form (an inline `<a id="...">`) is STANDARD inline HTML inside Markdown and needs
+no parse-syntax extension; where present it is honoured, otherwise the GitHub-style
+heading slug is used. A bespoke custom-parse-syntax anchor marker was considered
+and REJECTED for portability. A missing anchor returns `None` and the caller
+positions at the TOP of the document (Req 18.9).
+
+### L2. Path resolution relative to the current document
+
+`MarkdownFile` targets resolve against the DIRECTORY of the currently displayed
+document (an absolute target is used as-is). A pure
+`resolve_markdown_link(current_doc_dir: &Path, target: &str, root: Option<&Path>)
+-> Result<PathBuf, MdLinkError>` helper performs the join + normalisation and,
+when a `root` is supplied (the standalone app's scanned folder), REJECTS a
+resolved path that escapes `root` (Requirement 18 criterion 3). It is pure and
+unit-testable (no filesystem writes; existence is checked by the caller so a
+missing target is a status message, not a panic).
+
+### L3. External-link behaviour
+
+`External` targets open in the OS default browser. The standalone `ff-mdx-app`
+uses an OS-open mechanism (e.g. the `open`/`webbrowser`-style launch already
+available to the app, or `ctx.open_url`); because the actual browser launch is a
+real OS side effect it is a justified `MANUAL` test exception per testing.md --
+the CLASSIFICATION (`classify_link` returns `External`) is unit-tested, the launch
+itself is MANUAL. A design option (recorded here, owner to confirm) is to confirm
+before opening; the default is open-directly.
+
+### L4. Standalone app behaviour (ff-mdx-app, out-of-shell)
+
+On activating a `MarkdownFile` link with no fragment, `ff-mdx-app` resolves the
+path (L2), loads the file, and updates the viewer to the resolved document at its
+TOP (Requirement 18 criterion 2/4); it MAY also update the file-tree selection to
+the resolved file. On a `MarkdownFile` link WITH a fragment (cross-file anchor,
+criterion 7), it loads the target THEN positions at `resolve_anchor` (L1), falling
+back to the top if the anchor is missing (criterion 9). A `SameFileAnchor`
+(criterion 6) scrolls to `resolve_anchor` within the CURRENTLY displayed document
+without loading another file. A missing/unreadable file target leaves the current
+document displayed and shows a status message (criterion 3). An `External` link
+opens the browser (L3). An `Other` target is ignored. The link activation is
+driven from the viewer render (the markdown render surface surfaces the activated
+link destination to the app), kept in a pure-helper-plus-thin-glue shape so the
+classification/anchor resolution is harness-free unit-tested and the click wiring
+is covered by `egui_kittest` tests: clicking a `.md` link loads the target;
+clicking a same-file anchor scrolls to it; clicking a cross-file anchor
+loads+positions.
+
+### L5. In-shell behaviour -- ON the framework (blocked by Task 21 / Req 14)
+
+IF/when the markdown viewer is surfaced in-shell via the `ff-viewers` seam,
+link activation MUST stay on the framework: it is reached through the single
+command-dispatch path / the existing `PREVIEW` integration (Requirement 14), not
+a bespoke dispatcher. A `.md`-file link navigates the in-shell viewer to the
+resolved document using the SAME `classify_link` / `resolve_markdown_link` /
+`resolve_anchor` helpers (L1/L2); same-file and cross-file anchors behave as in
+L4; an external link opens the OS browser. The in-shell behaviour matches
+criteria 1-9. This portion is `[Depends on custom-file-viewers Req 14 / Task 21]`
+and is NOT implemented ahead of that seam. The standalone-app portion (L4) is NOT
+blocked by Task 21.
+
+### L6. Relationship to context-help (CR-NR-100)
+
+`context-help` Requirement 20.9-20.12 solves the SAME link-navigation question
+for the help system, but help links resolve to `Topic_Key`s via the
+Help_Navigation_Stack (help topics are keyed by `Topic_Key`, not filename),
+whereas the viewer navigates to FILES on disk. The two share the conceptual model
+(external vs file vs fragment) but NOT the resolution target; they are coordinated
+(CR-CH-050 + CR-NR-100) and do not share a code path.
+
+### L7. Areas needing NO design change
+
+- The core `ff-viewers` framework, the `FileViewer` trait, and the CR-CH-049
+  render pipeline (`render_to_html`) are unchanged -- link navigation is behaviour
+  layered on top of the existing render surface, not a trait change.
+- The framework refresh debounce and the viewer's live-reload watcher are
+  unchanged.

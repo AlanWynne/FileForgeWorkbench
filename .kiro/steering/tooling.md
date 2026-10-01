@@ -36,11 +36,15 @@ Is it file inspection (read / find / count / grep)?
     -> YES: use a dedicated tool (read_file / grep_search / list_directory /
             file_search). Do NOT touch the shell at all.
     -> NO: continue.
-Is it a bare project-toolchain command (cargo / git / gh / rustc / rustup /
-python / py), or `type <logfile>` to read a log back?
+Is it a bare project-toolchain command (cargo / rustc / rustup / python / py),
+or `type <logfile>` to read a log back?
     -> YES: run it directly, single-purpose, no ';' and no piped formatting.
     -> NO: run it via the NON-INTERACTIVE pwsh7 wrapper (see below), OR put the
            logic in a tools/ script and run the script + read its log.
+           NOTE: `git` and `gh` go HERE, not the YES branch. They are frequently
+           long (commit messages, many flags, paths) and sometimes interactive
+           (pager, editor, prompts) -- exactly what trips the PSReadLine mangling
+           -- so they MUST go through the non-interactive pwsh7 wrapper.
 ```
 
 ### The rules (each is now MECHANICALLY ENFORCED -- see the guard hook below)
@@ -56,8 +60,11 @@ python / py), or `type <logfile>` to read a log back?
    pwsh7 removes the Postgres/credentials banner (the 5.1 machine profile is not
    loaded); `-NonInteractive` stops the PSReadLine echo/prediction that causes the
    character-by-character mangling; `-NoProfile` keeps the session clean and fast.
-   Bare `cargo`/`git`/`python` etc. are the ONLY exception and may run without the
-   wrapper.
+   Bare short, non-interactive toolchain leaders
+   (`cargo`/`rustc`/`rustup`/`python`/`py`/`type`) are the ONLY exception and may
+   run without the wrapper. `git` and `gh` are NOT exceptions: they were the one
+   unprotected lane where a command got swallowed by the terminal, so they MUST
+   use the wrapper like any other command.
 
 3. **One command, one job.** NEVER `;`-chain steps, NEVER pipe into
    `Format-Table`/`Select-Object`, NEVER put inline `$( ... )` subexpressions on
@@ -84,11 +91,13 @@ tool. Before ANY shell command runs, it invokes
 `tools/python/pwsh_command_guard.py`, which classifies the command:
 
 - **allow (silent)** -- the clean pwsh7 wrapper form, or a bare safe toolchain
-  leader (`cargo`/`git`/`gh`/`rustc`/`rustup`/`python`/`py`/`type`).
+  leader (`cargo`/`rustc`/`rustup`/`python`/`py`/`type`). `git` and `gh` are NOT
+  on this list -- they must use the clean wrapper and so classify as `ask` when
+  run bare.
 - **ask (owner confirms first)** -- a bare inspection cmdlet
   (`Get-Content`/`Select-String`/`Get-ChildItem`/`Measure-Object` or an alias), a
-  `Format-Table`/`Select-Object` pipe, or any other command that is neither the
-  clean wrapper nor a safe toolchain leader.
+  `Format-Table`/`Select-Object` pipe, a bare `git`/`gh` command, or any other
+  command that is neither the clean wrapper nor a safe toolchain leader.
 - **block (exit 2, command does not run)** -- a `;`-chained line, or a
   process-kill (`Stop-Process`/`taskkill`/`kill`) glued onto a command.
 

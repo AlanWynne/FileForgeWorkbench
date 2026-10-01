@@ -7,7 +7,15 @@ license.workspace = true
 description = "Markdown file scanning, rendering, and live-reload watching"
 
 [dependencies]
-pulldown-cmark = { version = "0.12", default-features = false, features = ["html"] }
-notify = { version = "7", default-features = false, features = ["macos_fsevent"] }
+pulldown-cmark = { version = "0.12", default-features = false, features = [
+    "html",
+] }
+notify = { version = "7", default-features = false, features = [
+    "macos_fsevent",
+] }
 crossbeam-channel.workspace = true
-anyhow.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+pretty_assertions.workspace = true

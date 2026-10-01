@@ -1,0 +1,26 @@
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Menu  RefList  RefMode  Utilities  Help                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                               Edit Entry Panel                              │
+│Command ===>                                                                 │
+│                                                                             │
+│ISPF Library:                                                                │
+│   Project . . . ________CIW2                                                │
+│   Group . . . . ________ . . . ________ . . . ________ . . . ________       │
+│   Type  . . . . ________                                                    │
+│   Member  . . . ________  (Blank or pattern for member selection list)      │
+│                                                                             │
+│Other Partitioned, Sequential or VSAM Data Set, or z/OS UNIX file:           │
+│   Name . . . . . ____________________________________________               │
+│   Volume Serial . .           (If not cataloged)                            │
+│                                                                             │
+│                                        Options                              │
+│PDSE Generation  . . .                     Confirm Cancel/Move/Replace       │
+│Initial Macro  . . . .                     Mixed Mode                        │
+│Profile Name . . . . .                     Preserve VB record length         │
+│Format Name  . . . . .                                                       │
+│Data Set Password  . .                  Data Encoding                        │
+│Record Length  . . . .                     1. ASCII                          │
+│Line Command Table . .                     2. UTF-8                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘

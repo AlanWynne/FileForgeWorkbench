@@ -1,4 +1,4 @@
-﻿# Implementation Plan: Context-Sensitive Help System (`ff-help`)
+# Implementation Plan: Context-Sensitive Help System (`ff-help`)
 
 ## Overview
 
@@ -42,7 +42,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
   - [x] 3.9 Implement missing directory handling -- when help directory not found or contains no `.help.md` files, produce a built-in minimal help page explaining expected file locations
   - [x] 3.10 Implement hot-reload detection -- subscribe to VFS file-watcher events for the help directory, reload affected topics on file modification without restart
   - [x] 3.11 Write unit tests for: directory resolution order, file discovery, delimiter parsing (HTML comment and YAML), Markdown element extraction, missing directory graceful handling, multi-topic file parsing
-  - Covers: Requirement 5 (AC 5.1–5.7)
+  - Covers: Requirement 5 (AC 5.1-5.7)
 
 - [x] 4. Context resolution engine
   - [x] 4.1 Define `ContextDetector` struct with methods to inspect current editor state and resolve the most relevant TopicKey
@@ -55,7 +55,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
   - [x] 4.8 Implement fallback resolution -- when no specific context can be determined, resolve to `"index"` (Help_Index)
   - [x] 4.9 Implement resolution priority order: (1) focused command field with command name, (2) focused prefix area with line command, (3) active special mode, (4) Help_Index fallback
   - [x] 4.10 Write unit tests for: command field with command, empty command field, prefix area with line command, mode-only context, no-context fallback, resolution priority when multiple contexts exist
-  - Covers: Requirement 1 (AC 1.1–1.5, 1.7, 1.9)
+  - Covers: Requirement 1 (AC 1.1-1.5, 1.7, 1.9)
 
 - [x] 5. Help Panel model
   - [x] 5.1 Define `HelpPanelModel` struct with fields: current_topic (Option<HelpTopic>), is_open (bool), breadcrumb (Vec<BreadcrumbEntry>), scroll_offset (usize), toc_entries (Vec<TocEntry>), toc_visible (bool)
@@ -70,7 +70,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
   - [x] 5.10 Implement narrow-width detection -- when panel width below 200px, set a flag for the UI to display resize suggestion
   - [x] 5.11 Implement DockablePanel trait -- provide panel_id, title, default_zone (Right), preferred_width_ratio (from config, default 0.35)
   - [x] 5.12 Write unit tests for: open/close state transitions, breadcrumb derivation, TOC extraction from headings, toggle behaviour, scroll bounds clamping, narrow-width detection
-  - Covers: Requirement 2 (AC 2.1–2.10)
+  - Covers: Requirement 2 (AC 2.1-2.10)
 
 - [x] 6. Navigation -- back, forward, and index
   - [x] 6.1 Define `NavigationStack` struct with fields: history (Vec<TopicKey>), pointer (usize)
@@ -83,7 +83,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
   - [x] 6.8 Implement `NavigationStack::go_to_index()` -- navigate to Help_Index topic regardless of current position, push onto stack
   - [x] 6.9 Implement cross-reference link handling -- when user activates a `[text](topic_key)` link, push linked topic onto navigation stack
   - [x] 6.10 Write unit tests for: push/back/forward sequences, truncation on branch, clear on reopen, go_to_index from mid-stack, can_go_back/forward boundary conditions
-  - Covers: Requirement 3 (AC 3.1–3.6)
+  - Covers: Requirement 3 (AC 3.1-3.6)
 
 - [x] 7. Search and filter
   - [x] 7.1 Define `HelpSearch` struct with fields: index (SearchIndex), min_query_length (usize, default 2)
@@ -96,7 +96,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
   - [x] 7.8 Implement no-results handling -- when query produces zero results, return empty Vec (UI displays "No help topics found" message)
   - [x] 7.9 Implement incremental index update -- when topics are added/removed (hot-reload, plugin changes), update the SearchIndex without full rebuild
   - [x] 7.10 Write unit tests for: query below minimum length rejected, exact title match ranked first, case-insensitive matching, no-results for unmatched query, excerpt extraction, relevance ordering, incremental update after topic add/remove
-  - Covers: Requirement 4 (AC 4.1–4.5)
+  - Covers: Requirement 4 (AC 4.1-4.5)
 
 - [x] 8. Help Topic Registry
   - [x] 8.1 Define `HelpTopicRegistry` struct with fields: topics (HashMap<TopicKey, HelpTopic>), lock (RwLock for thread-safety)
@@ -112,7 +112,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
   - [x] 8.11 Implement `HelpTopicRegistry::topics_by_category(cat: TopicCategory) -> Vec<&HelpTopic>` -- filtered iteration for Help Index category display
   - [x] 8.12 Implement thread-safety -- wrap internal HashMap with `RwLock<HashMap<TopicKey, HelpTopic>>` for concurrent read/write access
   - [x] 8.13 Write unit tests for: register/unregister, O(1) lookup, priority override (runtime > file), fallback on empty help_text, category filtering, thread-safe concurrent access
-  - Covers: Requirement 6 (AC 6.1–6.7)
+  - Covers: Requirement 6 (AC 6.1-6.7)
 
 - [x] 9. Plugin-contributed help registration
   - [x] 9.1 Define `PluginHelpProvider` trait with methods: `register_topics(&self, registry: &mut HelpTopicRegistry)`, `plugin_id(&self) -> &str`
@@ -127,26 +127,26 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
 - [x] 10. Dynamic content generation
   - [x] 10.1 Define `DynamicContentGenerator` trait with method `generate(registry: &HelpTopicRegistry) -> HelpTopic`
   - [x] 10.2 Implement `FunctionKeyHelpGenerator` -- generate the `"feature:function_keys"` topic dynamically from active Shortcut_Registry and Key_Map
-  - [x] 10.3 Implement function key table generation -- produce Markdown table with columns: Key, Command, Label for all assigned keys F1–F24
+  - [x] 10.3 Implement function key table generation -- produce Markdown table with columns: Key, Command, Label for all assigned keys F1-F24
   - [x] 10.4 Implement profile-aware generation -- when Profile_Key_Map is active, show profile key map and note which profile is active
   - [x] 10.5 Implement empty key map handling -- when no keys assigned, display configuration guidance message
   - [x] 10.6 Implement `HelpIndexGenerator` -- generate the `"index"` topic dynamically from all registered topics, organised by category
   - [x] 10.7 Implement Help_Index category sections -- Getting Started, Primary Commands (alphabetical), Line Commands (compact table), Modes, Features, Configuration, Function Keys, Macro API
   - [x] 10.8 Implement Help_Index footer -- display workbench application name and version at bottom
   - [x] 10.9 Write unit tests for: function key table generation with various key maps, profile-active annotation, empty key map message, index category organisation, alphabetical command listing
-  - Covers: Requirement 12 (AC 12.1–12.4), Requirement 15 (AC 15.1–15.4)
+  - Covers: Requirement 12 (AC 12.1-12.4), Requirement 15 (AC 15.1-15.4)
 
 - [x] 11. Configuration
   - [x] 11.1 Define `HelpConfig` struct with fields: directory (Option<PathBuf>), panel_width_ratio (f32, default 0.35), panel_position (DockPosition, default Right), search_highlight (bool, default true)
   - [x] 11.2 Implement `Default` for `HelpConfig` -- panel_width_ratio=0.35, panel_position=Right, search_highlight=true, directory=None
   - [x] 11.3 Define `DockPosition` enum with variants: Right, Left, Bottom
   - [x] 11.4 Implement configuration key registration for `[help]` TOML section: `directory`, `panel_width_ratio`, `panel_position`, `search_highlight`
-  - [x] 11.5 Implement validation for `panel_width_ratio` -- reject values outside 0.2–0.5 range, emit WARN log, apply default 0.35
+  - [x] 11.5 Implement validation for `panel_width_ratio` -- reject values outside 0.2-0.5 range, emit WARN log, apply default 0.35
   - [x] 11.6 Implement validation for `panel_position` -- reject unrecognised values, emit WARN log, apply default "right"
   - [x] 11.7 Implement hot-reload listener -- subscribe to configuration-system change events for `[help]` section keys, apply new values without restart
   - [x] 11.8 Implement hot-reload effect propagation -- notify HelpPanelModel of width/position changes, notify ContentLoader of directory changes
   - [x] 11.9 Write unit tests for: default values, valid config parsing, panel_width_ratio validation (out-of-range), panel_position validation (invalid string), hot-reload updates applied
-  - Covers: Requirement 16 (AC 16.1–16.3)
+  - Covers: Requirement 16 (AC 16.1-16.3)
 
 - [x] 12. Command registration -- HELP command and F1 activation
   - [x] 12.1 Register HELP as a primary command in the command framework with command_id "HELP", aliases: none
@@ -165,7 +165,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
   - [x] 12.14 Implement history exclusion -- HELP command and F1 presses not added to command history, not recorded as undoable transactions
   - [x] 12.15 Implement mode validity -- HELP command valid in Browse, Edit, View, Hex, Preview, and all FileForge special modes
   - [x] 12.16 Write unit tests for: HELP no-args opens index, HELP CHANGE opens cmd:CHANGE, HELP LINECOMMANDS opens line:index, HELP OFF closes panel, unrecognised topic shows index with message, F1 toggle behaviour, history exclusion, reserved shortcut non-overridable
-  - Covers: Requirement 1 (AC 1.1, 1.6, 1.8, 1.10), Requirement 13 (AC 13.1–13.10)
+  - Covers: Requirement 1 (AC 1.1, 1.6, 1.8, 1.10), Requirement 13 (AC 13.1-13.10)
 
 - [x] 13. Help Menu integration
   - [x] 13.1 Define `HelpMenuModel` struct providing menu item definitions for the Help menu bar entry
@@ -177,7 +177,13 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
   - [x] 13.7 Implement "About FileForgeWorkbench" action -- produce AboutInfo struct with application name, version, build date, Rust compiler version, license
   - [x] 13.8 Define `AboutInfo` struct with fields: app_name, version, build_date, rust_version, license
   - [x] 13.9 Write unit tests for: menu item list completeness, each action dispatches correct topic, AboutInfo population
-  - Covers: Requirement 14 (AC 14.1–14.6)
+  - [ ] 13.10 (CR-CH-051) Expand `AboutInfo` with author/credit, copyright, license_reference (Option), and homepage (Option) fields, sourced at compile time (`CARGO_PKG_AUTHORS`, `CARGO_PKG_LICENSE`, `CARGO_PKG_HOMEPAGE`/`CARGO_PKG_REPOSITORY`, build-script build-date/rustc). Ensure the binary crate's `Cargo.toml` (or `[workspace.package]`) sets `authors`, `license` (SPDX), and `homepage`/`repository` so the fields populate.
+    - Validates: Requirement 14.6 (revised), 14.7, 14.8
+  - [ ] 13.11 (CR-CH-051) Render the expanded About modal: labelled rows for author/credit, copyright (ASCII `(C)`), and license (SPDX + license_reference link when present); show homepage when present; OMIT any absent optional field rather than render an empty row.
+    - Validates: Requirement 14.7, 14.8
+  - [ ] 13.12 (CR-CH-051) Write tests: unit test that `AboutInfo` population yields all mandatory fields non-empty and ASCII-only, and that an absent optional source yields `None`/omission; `egui_kittest` behaviour test that the About dialog shows the author/credit line, copyright, and license, and omits an absent optional field.
+    - Validates: Requirement 14.6 (revised), 14.7, 14.8
+  - Covers: Requirement 14 (AC 14.1-14.8)
 
 - [x] 14. Property-based tests
   - [x] 14.1 Write PBT: Context resolution determinism property
@@ -227,8 +233,8 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
 - **Statement:** When both a file-based topic and a runtime-registered topic (from CommandRegistry or plugin) exist for the same TopicKey, the registry always returns the runtime-registered version. When the runtime registration is removed, the file-based content becomes visible again.
 - **Strategy:** Generate:
   - TopicKey: random valid key from all prefix categories
-  - File-based topic: random body content (10–500 chars)
-  - Runtime topic: different random body content (10–500 chars)
+  - File-based topic: random body content (10-500 chars)
+  - Runtime topic: different random body content (10-500 chars)
   - Operation sequence: register file-based, then register runtime, then optionally unregister runtime
 - **Invariant:** (1) After both registered: `registry.get(key).source == Runtime`. (2) After runtime unregistered: `registry.get(key).source == FileBased` and body matches original file-based content. (3) Runtime topic is never lost -- it is always preferred while registered.
 
@@ -238,8 +244,8 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
 
 - **Statement:** For any sequence of push, back, and forward operations on the NavigationStack, the stack maintains these invariants: (1) back() followed by forward() returns to the same topic, (2) push after back truncates forward history, (3) the current topic always reflects the pointer position.
 - **Strategy:** Generate:
-  - Topic sequence: 5–50 random TopicKeys
-  - Operation sequence: 20–200 interleaved push/back/forward operations
+  - Topic sequence: 5-50 random TopicKeys
+  - Operation sequence: 20-200 interleaved push/back/forward operations
 - **Invariant:** After every operation: (1) `can_go_back()` iff pointer > 0. (2) `can_go_forward()` iff pointer < history.len() - 1. (3) If `back()` returns Some(k), then immediate `forward()` returns the topic we just left. (4) After `push(new)` when pointer is not at head, forward history is discarded.
 
 ### Property 4: Search Relevance Ranking Monotonicity
@@ -248,8 +254,8 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
 
 - **Statement:** For any search query, if a topic has an exact title match it always ranks higher than a topic with only a body match. Topics with heading matches always rank between title matches and body-only matches. The ranking is a total order -- no two results with different match types have inverted relative positions.
 - **Strategy:** Generate:
-  - Query string: random 2–20 character substring
-  - Topic set: 10–100 topics, some with query in title, some in headings, some in body only, some with no match
+  - Query string: random 2-20 character substring
+  - Topic set: 10-100 topics, some with query in title, some in headings, some in body only, some with no match
   - Execute search
 - **Invariant:** For all pairs (a, b) in results: if a.match_type is Title and b.match_type is Body, then a.relevance_score > b.relevance_score. If a.match_type is Heading and b.match_type is Body, then a.relevance_score > b.relevance_score. Non-matching topics never appear in results.
 
@@ -259,8 +265,8 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
 
 - **Statement:** For any valid `.help.md` content containing N topic delimiter blocks, parsing always produces exactly N HelpTopic objects, each with the correct TopicKey and title as specified in the delimiter, and with body content containing all Markdown elements from between delimiters.
 - **Strategy:** Generate:
-  - Topic count: 1–10 per file
-  - Per topic: random topic_key (valid format), random title (1–100 chars), random Markdown body (headings, lists, code blocks, bold, links -- 1–50 elements)
+  - Topic count: 1-10 per file
+  - Per topic: random topic_key (valid format), random title (1-100 chars), random Markdown body (headings, lists, code blocks, bold, links -- 1-50 elements)
   - Serialise to `.help.md` format using `<!-- TOPIC: key -->` / `<!-- TITLE: title -->` delimiters
   - Parse back
 - **Invariant:** `parse(serialize(topics)).len() == topics.len()`. For each parsed topic: `parsed[i].key == topics[i].key` and `parsed[i].title == topics[i].title`. Body content round-trips without loss of semantic structure.
@@ -282,7 +288,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
 - **Statement:** When the Help Panel is open showing topic T, pressing F1 with context resolving to T closes the panel. Pressing F1 again (same context) reopens it showing T. This toggle cycle is idempotent: N consecutive F1 presses with same context alternate between open and closed states perfectly.
 - **Strategy:** Generate:
   - Initial topic: random valid TopicKey
-  - F1 press count: 2–20 consecutive presses with same resolved context
+  - F1 press count: 2-20 consecutive presses with same resolved context
 - **Invariant:** After press k: panel is open if k is odd, closed if k is even (1-indexed). The displayed topic when open is always T. No state corruption accumulates across toggles.
 
 ### Property 8: Plugin Registration/Unregistration Symmetry
@@ -291,8 +297,8 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
 
 - **Statement:** For any plugin that registers N topics during initialize, unregistering that plugin removes exactly those N topics and no others. The registry state after register-then-unregister is identical to the state before registration (for keys that had no prior file-based content) or reverts to the file-based version (for keys that did).
 - **Strategy:** Generate:
-  - Pre-existing file-based topics: 5–30 random topics
-  - Plugin topics: 3–15 random topics, some with keys overlapping file-based topics, some unique
+  - Pre-existing file-based topics: 5-30 random topics
+  - Plugin topics: 3-15 random topics, some with keys overlapping file-based topics, some unique
   - Sequence: register plugin topics, then unregister plugin
 - **Invariant:** After unregister: (1) topics with keys unique to the plugin are completely removed (`registry.contains(key) == false`). (2) Topics with keys that had file-based counterparts revert to the file-based version (`registry.get(key).source == FileBased`). (3) All other topics are unchanged.
 
@@ -312,9 +318,9 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
 
 - **Statement:** An incrementally-updated search index (via topic add/remove after initial build) produces identical query results to a freshly-built index from the same final topic set. Hot-reloading or plugin changes never cause the search index to diverge from a full rebuild.
 - **Strategy:** Generate:
-  - Initial topic set: 10–50 random topics
-  - Mutations: 5–20 random add/remove operations
-  - Query set: 5–15 random search queries
+  - Initial topic set: 10-50 random topics
+  - Mutations: 5-20 random add/remove operations
+  - Query set: 5-15 random search queries
 - **Invariant:** For each query: `incremental_index.query(q) == fresh_index.query(q)` where fresh_index is built from scratch on the final topic set. Result sets are identical in content and ordering.
 
 ---
@@ -533,3 +539,64 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
 | Req 19: Missing-Topic Diagnostics | AC 19.4 | Task 18 |
 | Req 19: Missing-Topic Diagnostics | AC 19.5 | Task 18 |
 | Req 19: Missing-Topic Diagnostics | AC 19.6 | Task 18 |
+
+---
+
+## CR-NR-100 Tasks: Markdown-Rendered Help Content (Requirement 20)
+
+These tasks RE-EVALUATE and then (later) implement rendering the Help Context body
+with Markdown formatting instead of raw monospace text. They are SEQUENCED AFTER the
+ongoing ff-desktop decoupling AND after Task 21 / custom-file-viewers Requirement 14.
+Do NOT begin implementation (Task 20) ahead of those dependencies; Task 19 (the
+evaluation/decision) may proceed at the gate.
+
+- [ ] 19. Resolve the Markdown help rendering-target decision with the owner and lock it in design.md
+  - [ ] 19.1 Confirm the recommended Option A (direct egui Markdown widgets) vs Option B (HTML view over `render_to_html`) vs Option C (reuse the ff-viewers ViewerPanel / `MdxFileViewer` post-Task 21); record the owner's choice and the external-link policy in `design.md` (section "Markdown Help Rendering (CR-NR-100)")
+  - [ ] 19.2 If Option A is confirmed, select the egui Markdown widget dependency and verify its element coverage against Requirement 20.2 (headings, lists, inline/fenced code, tables, task lists, strikethrough, smart punctuation); record any gaps
+    - SEQUENCING: this decision task may run at the gate; it blocks Task 20 (implementation)
+  - Covers: Requirement 20.7 (and informs 20.2, 20.3, 20.5)
+
+- [ ] 20. Implement Markdown rendering in the Help Context (per the confirmed option)
+  - [ ] 20.1 Replace the raw monospace `ui.label(RichText::new(topic.body()).monospace())` body draw in `help_context.rs` with the confirmed Markdown rendering, behind a small internal seam so the renderer can be swapped later
+  - [ ] 20.2 Support the Requirement 5.3 element set plus the ff-md-viewer extension set (tables, footnotes, strikethrough, task lists, smart punctuation) in the rendered output
+  - [ ] 20.3 Wire internal `[text](topic_key)` link activation to Help navigation (`HelpPanelModel::follow_link` / navigation stack), and apply the design.md external-link policy; do NOT treat external links as Help topics
+  - [ ] 20.4 Implement graceful fallback to the current monospace rendering when Markdown rendering fails or is unavailable
+  - [ ] 20.5 Keep rendering ON the framework: HELP/F1 stay on the single command-dispatch path; if Option C, go through the ff-viewers PREVIEW integration (custom-file-viewers Req 14), NOT a bespoke renderer or dispatch seam; preserve the WorkspaceContext/InteriorFocus contract (Help_Search field as first interior stop)
+    - SEQUENCING: BLOCKED on / ORDERED AFTER the ff-desktop decoupling (DECOMP waves, CR-NR-098 Req 19.3/19.4) AND Task 21 (custom-file-viewers Requirement 14). Do NOT implement ahead of those.
+  - Covers: Requirement 20.1, 20.2, 20.3, 20.4, 20.5, 20.6, 20.8
+
+- [ ] 21. Tests for Markdown-rendered help
+  - [ ] 21.1 Unit tests (where a helper is introduced): content-format / Markdown-to-egui mapping (heading maps to heading, fenced block maps to code, internal link maps to a Help navigation action, malformed body falls back to monospace)
+  - [ ] 21.2 Full-shell / Help-Context `egui_kittest` test asserting the Help Context shows FORMATTED output -- e.g. a `# Heading` is rendered as a heading element, NOT as the literal `#` in a monospace block (proves Req 20.1/20.2 by behaviour, not pixels)
+  - [ ] 21.3 Confirm the existing `full_shell_help_first_tab_focuses_search_field` test still passes after the rendering change (proves Req 20.6 -- the focus contract survives)
+    - NOTE: pixel-exact Markdown appearance (colour/spacing) is the only justified-MANUAL part; link-activation and heading-rendering behaviour are harness-tested.
+    - SEQUENCING: ORDERED AFTER the ff-desktop decoupling and Task 21 / custom-file-viewers Req 14, with Task 20.
+  - Covers: Requirement 20.1, 20.2, 20.3, 20.4, 20.6
+
+- [ ] 22. Help link-target resolution -- file links and HTML-style anchors (CR-NR-100 refinement)
+  - [ ] 22.1 Implement the pure classifier `classify_help_link(dest) -> HelpLinkTarget` (External / bare Topic_Key / File-no-fragment / cross-file-anchor File{file,fragment} / SameFileAnchor), unit-tested first (red). Covers Requirement 20.9, 20.10, 20.11, 20.12
+  - [ ] 22.2 Implement `heading_slug(heading)` (GitHub-style slug) and `resolve_fragment(fragment, file_topic_keys, headings)` (Topic_Key first, heading-slug fallback), unit-tested. Covers Requirement 20.13
+  - [ ] 22.3 Wire resolution onto the EXISTING Help navigation seam: a file link resolves to the file's primary/first topic; a cross-file anchor opens the file then positions at the resolved topic/heading; a same-file anchor positions within the current content; all via `HelpPanelModel::follow_link` / Help_Navigation_Stack. NO new dispatch/navigation mechanism. Covers Requirement 20.9, 20.10, 20.11
+  - [ ] 22.4 Implement graceful degradation: missing anchor -> top of target; missing topic/file -> existing "Help topic not found" affordance (Req 5.5); never crash. Unit-tested. Covers Requirement 20.14
+  - [ ] 22.5 Full-shell / Help-Context `egui_kittest` tests: clicking a SAME-FILE anchor (`[x](#cmd:CHANGE)`) navigates within the current content and pushes the Help_Navigation_Stack; clicking a CROSS-FILE anchor (`[x](other.help.md#key)`) loads the target then positions at the topic. Harness-tested, not manual. Covers Requirement 20.9, 20.10, 20.11
+    - SEQUENCING: the pure helpers (22.1/22.2/22.4) may be built with Task 19; the navigation wiring + egui_kittest (22.3/22.5) are ORDERED AFTER the ff-desktop decoupling (DECOMP waves) WITH Task 20. These help-link tasks are NOT blocked by custom-file-viewers Task 21 (help rendering uses Option A, direct egui).
+  - Covers: Requirement 20.9, 20.10, 20.11, 20.12, 20.13, 20.14
+
+### CR-NR-100 Requirement Coverage Mapping
+
+| Requirement | Acceptance Criterion | Task |
+|-------------|---------------------|------|
+| Req 20: Markdown-Rendered Help Content | AC 20.1 | Tasks 20, 21 |
+| Req 20: Markdown-Rendered Help Content | AC 20.2 | Tasks 19, 20, 21 |
+| Req 20: Markdown-Rendered Help Content | AC 20.3 | Tasks 20, 21 |
+| Req 20: Markdown-Rendered Help Content | AC 20.4 | Tasks 20, 21 |
+| Req 20: Markdown-Rendered Help Content | AC 20.5 | Task 20 |
+| Req 20: Markdown-Rendered Help Content | AC 20.6 | Tasks 20, 21 |
+| Req 20: Markdown-Rendered Help Content | AC 20.7 | Task 19 |
+| Req 20: Markdown-Rendered Help Content | AC 20.8 | Task 20 |
+| Req 20: Markdown-Rendered Help Content | AC 20.9 (file link -> primary topic) | Tasks 22.1, 22.3, 22.5 |
+| Req 20: Markdown-Rendered Help Content | AC 20.10 (cross-file anchor) | Tasks 22.1, 22.2, 22.3, 22.5 |
+| Req 20: Markdown-Rendered Help Content | AC 20.11 (same-file anchor) | Tasks 22.1, 22.2, 22.3, 22.5 |
+| Req 20: Markdown-Rendered Help Content | AC 20.12 (bare Topic_Key / external unchanged) | Task 22.1 |
+| Req 20: Markdown-Rendered Help Content | AC 20.13 (heading-slug fallback) | Task 22.2 |
+| Req 20: Markdown-Rendered Help Content | AC 20.14 (graceful degradation) | Task 22.4 |

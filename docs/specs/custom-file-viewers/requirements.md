@@ -217,8 +217,223 @@ The key principle is **view-only rendering**: a viewer is always a read-only rep
 1. THE workbench configuration SHALL accept a `[viewers]` section with the following optional keys:
    - `auto_offer`: boolean, default `true` -- whether to display the auto-detection notification when a resource with a matching viewer is opened.
    - `default_position`: string enum (`"split-right"`, `"split-bottom"`, `"tab"`, `"float"`), default `"split-right"` -- where the Viewer_Panel opens relative to the editor when activated.
-   - `split_ratio`: float 0.1–0.9, default `0.5` -- default split ratio (viewer fraction) when `default_position` is a split variant.
+   - `split_ratio`: float 0.1-0.9, default `0.5` -- default split ratio (viewer fraction) when `default_position` is a split variant.
    - `refresh_debounce_ms`: positive integer, default `300` -- debounce interval for viewer refresh after document changes.
 2. WHEN a `[viewers]` configuration key contains an invalid value, THE system SHALL emit a configuration warning via the logging subsystem and apply the default for that key.
 3. THE `[viewers]` configuration SHALL support hot-reload: changes to the configuration file SHALL be picked up without restarting the application, applying to the next viewer activation.
 4. INDIVIDUAL viewers MAY define their own configuration sub-sections under `[viewers.<viewer-key>]` (e.g., `[viewers.asa-report]`), which the platform passes to the viewer during initialization. The `FileViewer` trait SHALL include an optional `configure(&mut self, config: &toml::Value)` method with a default no-op implementation.
+
+---
+
+## Markdown Viewer Addendum (CR-CH-049)
+
+### Scope note -- in-shell vs out-of-shell deliverables
+
+Requirements 11 onward specify the **Markdown Viewer family** that was brought
+into the workspace (crates `ff-md-viewer`, `ff-mdx-plugin`, `ff-mdx-app`,
+`ff-mdx-installer`) and is being brought into compliance with the project
+standards. They were originally written with no requirements gate (see the audit
+`.agents/tasks/markdown-compliance-audit.md`); these criteria back-fill that gate.
+
+Two of the four deliverables are **out-of-shell**:
+
+- The standalone **`ff-mdx-app`** binary (`ffmdx.exe`) is its own `eframe::App`
+  with its own OS window and `rfd`-based native dialogs. It is NOT bound by the
+  in-shell framework rules (single command dispatch, `WorkspaceContext` /
+  `InteriorFocus`). It IS fully bound by `testing.md` (TDD + `egui_kittest`),
+  `rust-standards.md`, and `documentation.md`.
+- The **`ff-mdx-installer`** binary is likewise out-of-shell; it is bound by the
+  same three standards but not the in-shell framework.
+
+The in-shell integration seam is the **`ff-mdx-plugin`** `MdxFileViewer`
+(implementing the `ff-viewers` `FileViewer` trait defined in Requirements 1-10
+above). When the markdown viewer is surfaced in the shell it MUST build ON the
+existing framework: it is invoked through the single command-dispatch path
+(framework-conformance mechanism 1), and IF it is ever rendered as a shell
+Context it participates in the `WorkspaceContext::render -> InteriorFocus` focus
+model (framework-conformance mechanism 5; workspace-conformance). No new dispatch
+path or focus mechanism is introduced.
+
+Note on refresh debounce: the framework refresh debounce (Requirement 9, default
+300ms) and the markdown viewer's own live-reload file-watcher debounce (~400ms,
+Requirement 15 below) are DISTINCT mechanisms. The ~400ms figure is the as-built
+coalescing window of `ff-md-viewer`'s `FileWatcher`; it is NOT the framework's
+300ms `refresh_debounce_ms` and the two are not conflated.
+
+---
+
+### Requirement 11: Markdown-to-HTML Rendering
+
+**User Story:** As a workbench user, I want Markdown rendered to HTML with the
+common CommonMark extensions enabled, so that tables, footnotes, strikethrough,
+task lists, and smart punctuation display correctly.
+
+**Source:** CR-CH-049 remediation of `ff-md-viewer::render_to_html`. [as-built]
+
+#### Acceptance Criteria
+
+1. THE `ff-md-viewer` crate SHALL expose a pure function `render_to_html(markdown: &str) -> String` that converts Markdown source text to an HTML fragment string.
+2. THE `render_to_html` function SHALL enable the following pulldown-cmark extension options when parsing: tables (`ENABLE_TABLES`), footnotes (`ENABLE_FOOTNOTES`), strikethrough (`ENABLE_STRIKETHROUGH`), task lists (`ENABLE_TASKLISTS`), and smart punctuation (`ENABLE_SMART_PUNCTUATION`).
+3. WHEN `render_to_html` receives Markdown containing a table, a footnote reference, strikethrough text, a task-list item, or straight quotes, THE emitted HTML SHALL reflect the corresponding extension output (a `<table>`, a footnote anchor, a `<del>`/strikethrough element, a checkbox list item, and smart-punctuation characters respectively).
+4. WHEN `render_to_html` receives an empty string, THE function SHALL return an empty (or whitespace-only) HTML fragment without error.
+
+---
+
+### Requirement 12: Markdown Folder Scanning
+
+**User Story:** As a workbench user, I want a folder scanned for Markdown files
+with build/VCS directories excluded and results in a stable order, so that the
+file list is predictable and free of irrelevant entries.
+
+**Source:** CR-CH-049 remediation of `ff-md-viewer::Scanner::scan`. [as-built]
+
+#### Acceptance Criteria
+
+1. THE `ff-md-viewer` crate SHALL expose `Scanner::scan(root: &Path) -> Vec<FileEntry>` that walks `root` recursively and returns one `FileEntry` per Markdown file found.
+2. THE scan SHALL include ONLY files whose extension is exactly `md` (case-sensitive match on the extension), and SHALL exclude all other files.
+3. THE scan SHALL NOT descend into any directory whose name appears in the excluded-directory list: `node_modules`, `.git`, `.vscode`, `__pycache__`, `.next`, `dist`, `build`, `bin`, `obj`, `.vs`, `.hg`, `.svn`, `.kiro`, `target`.
+4. EACH `FileEntry` SHALL carry a `relative_path` (the path relative to `root`) with the OS path separator normalised from backslash (`\`) to forward-slash (`/`), and a `full_path` (the absolute path on disk).
+5. THE returned `Vec<FileEntry>` SHALL be sorted in ascending lexicographic order by `relative_path`.
+6. WHEN `root` cannot be read (does not exist or is not a directory), THE scan SHALL return an empty vector rather than erroring or panicking.
+
+---
+
+### Requirement 13: Markdown FileViewer Plugin Behaviour
+
+**User Story:** As a plugin consumer, I want the Markdown `FileViewer`
+implementation to declare the file types it handles and render UTF-8 content
+safely, so that it integrates with the `ff-viewers` registry like any other
+viewer.
+
+**Source:** CR-CH-049 remediation of `ff-mdx-plugin::MdxFileViewer`. [as-built]
+
+#### Acceptance Criteria
+
+1. THE `ff-mdx-plugin` crate SHALL provide `MdxFileViewer` implementing the `ff-viewers` `FileViewer` trait, with a stable `viewer_key` of `"mdx-markdown"`, a display name, and a description.
+2. THE `MdxFileViewer` SHALL declare `supported_extensions` of `["md", "markdown"]` and `supported_mime_types` of `["text/markdown", "text/x-markdown"]`.
+3. WHEN `can_render(uri, content_sample)` is called with a `uri` ending in `.md` or `.markdown`, THE method SHALL return `true`; for any other `uri` suffix it SHALL return `false`.
+4. WHEN `render(content)` is called, THE method SHALL decode `content` as UTF-8 using lossy decoding (invalid byte sequences replaced, never panicking) and return the HTML produced by `render_to_html`.
+5. THE `MdxPlugin` capability metadata (advertised MIME types and display name) SHALL be consistent with the `MdxFileViewer`'s declared `supported_mime_types` and display name.
+
+---
+
+### Requirement 14: Markdown Plugin Shell Integration via the Single Dispatch Path
+
+**User Story:** As a workbench user, I want to invoke the Markdown viewer the
+same way as every other action, so that the typed command line, menus, and
+shortcuts all reach it through one consistent path.
+
+**Source:** CR-CH-049; framework-conformance mechanism 1; workflow.md 1b command
+parity. [framework]
+
+#### Acceptance Criteria
+
+1. WHEN the Markdown viewer is integrated into the shell, THE `MdxPlugin` / `MdxFileViewer` SHALL be registered with the shell's plugin/viewer registry (the `ff-viewers` Viewer_Registry) so it is discoverable via `PREVIEW LIST` and activatable by its Viewer_Key.
+2. THE markdown viewer SHALL be invokable only through a registered Command_Id resolved by the single command-dispatch path (`ff_command::resolve_target` -> `dispatch_command_target`); it SHALL NOT be wired through a bespoke `if upper == "..."` intercept or any parallel dispatcher.
+3. ANY menu item, toolbar button, or keyboard shortcut that activates the markdown viewer SHALL invoke that same registered command (command parity) rather than calling the viewer logic directly.
+
+---
+
+### Requirement 15: Markdown Live Reload (File-Watcher Debounce)
+
+**User Story:** As a workbench user, I want the open Markdown document to reload
+automatically when its file changes on disk, without reloading on every
+intermediate write, so that the view stays current without flicker.
+
+**Source:** CR-CH-049 remediation of `ff-md-viewer::FileWatcher`. [as-built]
+
+#### Acceptance Criteria
+
+1. THE `ff-md-viewer` crate SHALL provide a `FileWatcher` that watches a root directory recursively and emits the path of a changed Markdown file on a receiver channel.
+2. THE `FileWatcher` SHALL emit a path ONLY for file-modify events whose path has the `md` extension; events for other files SHALL be ignored.
+3. THE `FileWatcher` SHALL coalesce (debounce) a burst of change events for a ~400ms quiet window, emitting a single path (the most recent) after the burst settles. This ~400ms window is the viewer's own as-built live-reload debounce and is DISTINCT from the framework's 300ms `refresh_debounce_ms` (Requirement 9).
+4. WHEN a watched Markdown file that is currently open in the viewer is changed on disk, THE host (standalone app or shell integration) SHALL reload that file's content and refresh the rendered output; a change to a file that is NOT currently open SHALL NOT change the displayed document.
+
+---
+
+### Requirement 16: Standalone Markdown Explorer (ff-mdx-app) UI Behaviour
+
+**User Story:** As a user of the standalone `ffmdx` Markdown Explorer, I want to
+open a folder, browse and filter the Markdown files, select one to view, and use
+keyboard shortcuts, so that I can navigate documentation quickly.
+
+**Source:** CR-CH-049 remediation of `ff-mdx-app`; out-of-shell, bound by
+testing.md GUI behaviour rules. [as-built]
+
+#### Acceptance Criteria
+
+1. WHEN the user clicks a file entry in the file tree, THE tree SHALL mark that entry selected and return the clicked file's `full_path` to the caller for loading.
+2. THE side panel SHALL provide a text filter field that narrows the displayed file list to entries whose `relative_path` contains the filter text, matched case-insensitively; an empty filter SHALL show all files.
+3. WHEN no file is selected, THE viewer area SHALL display an empty-state placeholder; WHEN a file is selected, THE viewer area SHALL display that file's rendered Markdown with its relative-path title.
+4. WHEN the user presses Ctrl+O, THE app SHALL open the folder picker; WHEN the user presses F5, THE app SHALL rescan the current folder.
+5. WHEN the `FileWatcher` reports a change to the file currently open in the viewer, THE app SHALL reload and re-render that file; a change to any other file SHALL NOT alter the displayed document.
+6. THE native folder-open and HTML-save dialogs (`rfd`) are OS-native and are a justified `MANUAL` test exception per testing.md; the pure helpers around them (filter predicate, drop-path classification, title `strip_prefix` logic) SHALL be extracted and unit-tested.
+
+---
+
+### Requirement 17: Markdown Installer PATH De-duplication
+
+**User Story:** As a user installing `ffmdx`, I want the installer to add the
+install directory to my user PATH without duplicating an entry that is already
+present, so that my PATH does not accumulate duplicate or conflicting entries.
+
+**Source:** CR-CH-049 remediation of `ff-mdx-installer`. [as-built]
+
+#### Acceptance Criteria
+
+1. WHEN the installer adds the install directory to the per-user PATH (`HKCU\Environment`), THE installer SHALL first check whether an entry case-insensitively equal to the install directory (after trimming surrounding whitespace) already exists among the `;`-separated PATH entries.
+2. IF a matching entry already exists, THE installer SHALL leave the PATH unchanged (no duplicate appended).
+3. IF no matching entry exists, THE installer SHALL append the install directory, joining with `;` only when the existing PATH is non-empty.
+4. THE PATH-dedup predicate SHALL be factored into a pure, unit-testable function; the actual `HKCU\Environment` registry write is a justified `MANUAL` test exception per testing.md (real OS side effect).
+
+---
+
+### Requirement 18: Markdown Viewer Link Navigation
+
+**User Story:** As a user viewing Markdown in the viewer, I want clicking a link
+to behave sensibly -- an external web link opens in my browser, and a link to
+another Markdown document loads that document in the viewer -- so that I can
+navigate between related documents and reach web references without the viewer
+breaking or treating a web URL as a file.
+
+**Source:** CR-CH-050 (owner question: does Markdown support links to external
+websites, and links to other markdown files such that clicking navigates to that
+file). Markdown link SYNTAX (`[text](url)`, `[text](./other.md)`) parses in
+pulldown-cmark and becomes an `<a href>`, but the CLICK BEHAVIOUR (open browser
+for external, load/navigate for a `.md`-file link) is APPLICATION logic the
+viewer must implement -- it is NOT provided for free by Markdown. Cross-references:
+Requirement 11 (`render_to_html`), Requirement 13 (`MdxFileViewer`), Requirement
+14 (in-shell invocation via the single dispatch path), Requirement 16 (standalone
+`ff-mdx-app` UI); `context-help` Requirement 20.9-20.12 (the parallel help file-link
+model); `framework-conformance` (single command-dispatch path for the in-shell seam).
+
+**Scope note:** The STANDALONE `ff-mdx-app` portion of this requirement is
+out-of-shell and is NOT blocked by Task 21. The IN-SHELL portion (link activation
+when the markdown viewer is surfaced through the `ff-viewers` seam) IS marked
+`[Depends on custom-file-viewers Req 14 / Task 21]`.
+
+**Design decision -- extend RESOLUTION, not parse syntax (CR-CH-050, SETTLED):**
+The owner asked for HTML-anchor-style navigation (jump within the same document,
+and jump to a location in another document). This is delivered by extending
+RESOLUTION + CLICK-NAVIGATION semantics ONLY, NOT parse syntax: `[text](#anchor)`,
+`[text](other.md)`, and `[text](other.md#anchor)` are ALREADY standard, portable
+Markdown link forms, so files stay valid Markdown that other tools still render
+as ordinary links -- only OUR resolver assigns navigation meaning to the fragment.
+A heavier custom-parse-syntax option was considered and REJECTED for portability.
+Criteria 6-9 specify the fragment-resolution behaviour on the standard
+`[text](target#fragment)` form; no new markup is required. The fragment resolves
+to an explicit anchor id (if one is present in the document as ordinary inline
+HTML, which is itself standard Markdown) or, failing that, a GitHub-style heading
+slug.
+
+#### Acceptance Criteria
+
+1. WHEN rendered markdown in the viewer contains an EXTERNAL `http(s)://` link and the user activates it, THE viewer SHALL open that URL in the OS default browser (or, per a stated config/design choice, confirm before opening) and SHALL NEVER navigate the viewer to it as a document file.
+2. WHEN rendered markdown contains a relative or absolute link to another `.md` / `.markdown` FILE WITHOUT a fragment and the user activates it, THE viewer SHALL resolve the target path RELATIVE TO the directory of the currently displayed document (an absolute target is used as-is), load that file, and update the displayed document to the resolved file's rendered markdown at its TOP.
+3. THE link-target resolution SHALL guard against escaping an intended root where a root is applicable (e.g. the scanned folder in the standalone app) and SHALL handle a MISSING or unreadable target gracefully -- showing a status message and leaving the current document displayed, never panicking or crashing.
+4. WHEN the user activates a `.md`-file link in the standalone `ff-mdx-app`, THE app SHALL update the viewer to the resolved file and MAY update the file-tree selection to that file.
+5. IF/WHEN the markdown viewer is surfaced in-shell via the `ff-viewers` seam, link activation SHALL remain ON the framework -- reached through the single command-dispatch path / the existing `PREVIEW` integration (Requirement 14), NOT a bespoke dispatcher -- and the in-shell file-navigation behaviour SHALL match criteria 1-9. [Depends on custom-file-viewers Req 14 / Task 21]
+6. WHEN rendered markdown contains a SAME-FILE anchor link of the form `[text](#<anchor>)` (an HTML-style fragment with no filename and no scheme) and the user activates it, THE viewer SHALL scroll/navigate to the location the anchor addresses WITHIN the currently displayed document, without loading a different file.
+7. WHEN rendered markdown contains a CROSS-FILE anchor link of the form `[text](path/to/other.md#<anchor>)` and the user activates it, THE viewer SHALL first load the resolved target file (per criterion 2's path resolution) and THEN position at the location the anchor addresses within that newly displayed document.
+8. THE viewer SHALL resolve an `<anchor>` fragment (criteria 6 and 7) to, in order: (a) an EXPLICIT anchor id if one is present in the document as standard inline HTML (e.g. `<a id="...">`, which is ordinary Markdown and needs no parse-syntax extension); otherwise (b) a GitHub-style auto-generated heading SLUG (so `#my-section` finds the `## My Section` heading).
+9. WHEN an `<anchor>` fragment (same-file per 6 or cross-file per 7) cannot be resolved to any explicit anchor or heading slug in the target document, THE viewer SHALL position at the TOP of the target document (loading it first for a cross-file link) and SHALL NOT crash; a missing cross-file FILE is handled per criterion 3.

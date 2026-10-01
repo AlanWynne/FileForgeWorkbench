@@ -55,12 +55,19 @@ INSPECTION_ALIASES = (
 )
 
 # Commands that are fine to run directly WITHOUT the pwsh7 wrapper: the project
-# build/test/vcs toolchain. These do not go through PSReadLine mangling the same
-# way long inspection one-liners do, and wrapping them adds no value.
+# build/test toolchain. These are short, non-interactive, single-purpose commands
+# that do not trip the PSReadLine echo/prediction mangling the way long or
+# interactive one-liners do, and wrapping them adds no value.
+#
+# NOTE: `git` and `gh` are DELIBERATELY NOT here. They were the one lane left
+# unprotected by the -NonInteractive wrapper, and that is exactly where a git
+# command got "swallowed by the terminal": git commands are frequently long
+# (commit messages, many flags, paths) and can be interactive (pager, editor,
+# prompts), which is precisely what triggers the PSReadLine mangling. Removing
+# them from the allow-list routes them through case 3c -> "ask", steering them
+# to the clean non-interactive pwsh7 wrapper form like every other command.
 ALLOWED_BARE_LEADERS = (
     "cargo",
-    "git",
-    "gh",
     "rustc",
     "rustup",
     "python",
@@ -121,15 +128,12 @@ def classify(cmd):
     if ";" in cmd:
         return (
             "block",
-            "chains multiple steps with ';'. tooling.md rule 3/4: one command, "
-            "one job -- no ';'-chained cleanup or multi-stage lines. Split into "
-            "separate invocations.",
+            "';'-chained line (tooling.md 3/4: one command, one job).",
         )
     if re.search(r"stop-process|taskkill|\bkill\b|\bspps\b", cmd_lower):
         return (
             "block",
-            "includes a process-kill step. tooling.md rule 4: never chain a kill "
-            "step onto a real command; run cleanup as its own invocation.",
+            "process-kill glued onto a command (tooling.md 4).",
         )
 
     # --- 2. Allowed clean forms. ---
@@ -147,10 +151,8 @@ def classify(cmd):
     ):
         return (
             "ask",
-            "uses a file-inspection cmdlet (Get-Content/Select-String/"
-            "Get-ChildItem/Measure-Object or an alias). tooling.md requires the "
-            "dedicated tools (read_file/grep_search/list_directory/file_search) "
-            "instead of the shell for inspection.",
+            "inspection cmdlet (tooling.md 1: use read_file/grep_search/"
+            "list_directory/file_search instead).",
         )
 
     # 3b. Multi-stage formatting pipe -- long interactive one-liner mangling.
@@ -159,18 +161,16 @@ def classify(cmd):
     ):
         return (
             "ask",
-            "pipes into Format-Table/Select-Object. tooling.md rule 3: put such "
-            "logic in a tools/ script and read its log, do not format inline.",
+            "Format-Table/Select-Object pipe (tooling.md 3: script it + read "
+            "the log).",
         )
 
     # 3c. Any other bare shell command that is not the clean wrapper and not a
     #     known-safe toolchain leader: ask, and steer toward the clean form.
     return (
         "ask",
-        "command does not use the mandated non-interactive pwsh7 form "
-        f"({CLEAN_PREFIX} -NoProfile -NonInteractive -Command \"...\") and is "
-        "not a recognised bare toolchain command (cargo/git/etc.). Re-issue it "
-        "in the clean form, or run it as a tools/ script that logs its output.",
+        "not the pwsh7 wrapper or a bare toolchain leader (tooling.md 2: wrap "
+        "with pwsh7 -NoProfile -NonInteractive, or script it).",
     )
 
 
@@ -192,18 +192,14 @@ def main():
         return 0
 
     if decision == "block":
-        sys.stderr.write(
-            "BLOCKED (pre-emptive mangled-output guard): " + reason + "\n"
-        )
+        sys.stderr.write("Guard BLOCK: " + reason + "\n")
         return 2
 
     # decision == "ask"
     out = {
         "hookSpecificOutput": {
             "permissionDecision": "ask",
-            "permissionDecisionReason": (
-                "Pre-emptive mangled-output guard: " + reason
-            ),
+            "permissionDecisionReason": "Guard: " + reason,
         }
     }
     sys.stdout.write(json.dumps(out))

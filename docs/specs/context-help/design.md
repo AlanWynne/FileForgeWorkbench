@@ -22,7 +22,7 @@ Wave 9 -- Desktop Integration
 
 ┌──────────────────────────────────────────────────────────────┐
 │              Shell Layer: ff-desktop (egui)                    │
-│   Renders HelpPanel via DockablePanel::render; Markdown → UI  │
+│   Renders HelpPanel via DockablePanel::render; Markdown -> UI  │
 ├──────────────────────────────────────────────────────────────┤
 │         ff-help (THIS CRATE -- Wave 9)                         │
 │   Context detection, topic registry, navigation, search,      │
@@ -66,7 +66,7 @@ Wave 9 -- Desktop Integration
 
 | Crate | Usage |
 |-------|-------|
-| `ff-desktop` | Renders Help Panel content (Markdown → styled text) via `DockablePanel::render` |
+| `ff-desktop` | Renders Help Panel content (Markdown -> styled text) via `DockablePanel::render` |
 | `ff-menu-statusbar` | Help_Menu items dispatch into this crate's commands |
 
 
@@ -87,10 +87,10 @@ graph TD
     end
 
     subgraph "ff-help"
-        CD[ContextDetector<br/>focus + command + mode → TopicKey]
-        TR[HelpTopicRegistry<br/>TopicKey → HelpTopic, thread-safe]
+        CD[ContextDetector<br/>focus + command + mode -> TopicKey]
+        TR[HelpTopicRegistry<br/>TopicKey -> HelpTopic, thread-safe]
         CL[ContentLoader<br/>.help.md file parser + indexer]
-        HR[HotReloader<br/>VFS watcher → re-index]
+        HR[HotReloader<br/>VFS watcher -> re-index]
         NS[NavigationStack<br/>back/forward history]
         SE[SearchEngine<br/>keyword search + ranking]
         HP[HelpPanelModel<br/>current topic, breadcrumb, TOC]
@@ -161,7 +161,7 @@ crates/ff-help/
 │   ├── lib.rs                  # Public API re-exports, crate docs
 │   ├── topic.rs                # HelpTopic, TopicKey, TopicSource, HelpContent
 │   ├── registry.rs             # HelpTopicRegistry -- thread-safe indexed store
-│   ├── context.rs              # ContextDetector -- focus/command/mode → TopicKey
+│   ├── context.rs              # ContextDetector -- focus/command/mode -> TopicKey
 │   ├── loader.rs               # ContentLoader -- .help.md file parser
 │   ├── hot_reload.rs           # HotReloader -- VFS watcher integration
 │   ├── search.rs               # SearchEngine -- keyword search + relevance ranking
@@ -201,7 +201,7 @@ crates/ff-help/
 ```rust
 /// A typed identifier for a help topic. Determines the lookup key in the registry.
 /// Format: `"<namespace>:<identifier>"` or bare identifiers for special topics.
-/// Addresses: Requirement 1 (1.2–1.7), Requirement 6 (6.1, 6.3)
+/// Addresses: Requirement 1 (1.2-1.7), Requirement 6 (6.1, 6.3)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TopicKey(String);
 
@@ -249,7 +249,7 @@ impl TopicKey {
 
 ```rust
 /// A single unit of help content -- one topic per command, line command, feature, or mode.
-/// Addresses: Requirement 5 (5.1–5.6), Requirement 6 (6.1–6.7)
+/// Addresses: Requirement 5 (5.1-5.6), Requirement 6 (6.1-6.7)
 #[derive(Debug, Clone)]
 pub struct HelpTopic {
     /// The unique topic key for registry lookup.
@@ -283,7 +283,7 @@ impl HelpTopic {
 
 ```rust
 /// The body content of a help topic, stored as raw Markdown.
-/// The GUI shell is responsible for rendering Markdown → styled text.
+/// The GUI shell is responsible for rendering Markdown -> styled text.
 /// Addresses: Requirement 5 (5.3)
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HelpContent {
@@ -341,7 +341,7 @@ pub enum TopicSource {
 
 ```rust
 /// The current state of the Help Panel, driving rendering decisions.
-/// Addresses: Requirement 2 (2.1–2.10), Requirement 3 (3.1–3.6)
+/// Addresses: Requirement 2 (2.1-2.10), Requirement 3 (3.1-3.6)
 #[derive(Debug, Clone)]
 pub struct HelpPanelState {
     /// Whether the Help Panel is currently visible.
@@ -356,7 +356,7 @@ pub struct HelpPanelState {
     search_query: String,
     /// Search results (empty if no active search).
     search_results: Vec<SearchResult>,
-    /// Vertical scroll position within the current topic (0.0–1.0).
+    /// Vertical scroll position within the current topic (0.0-1.0).
     scroll_position: f32,
     /// Whether the TOC sidebar is expanded.
     toc_expanded: bool,
@@ -381,7 +381,7 @@ impl HelpPanelState {
 ```rust
 /// A back/forward navigation history for the Help Panel.
 /// Each topic visit pushes onto the stack. Back/forward traverse without removing entries.
-/// Addresses: Requirement 3 (3.1–3.6)
+/// Addresses: Requirement 3 (3.1-3.6)
 #[derive(Debug, Clone)]
 pub struct NavigationStack {
     /// Ordered history of visited topics.
@@ -428,7 +428,7 @@ impl NavigationStack {
 ```rust
 /// The top-level help index content -- auto-generated from the registry.
 /// Lists all topic categories with navigable links.
-/// Addresses: Requirement 12 (12.1–12.4)
+/// Addresses: Requirement 12 (12.1-12.4)
 #[derive(Debug, Clone)]
 pub struct HelpIndex {
     /// Getting started topic link.
@@ -468,7 +468,7 @@ pub struct IndexEntry {
 
 ```rust
 /// A single result from a help topic search.
-/// Addresses: Requirement 4 (4.1–4.5)
+/// Addresses: Requirement 4 (4.1-4.5)
 #[derive(Debug, Clone)]
 pub struct SearchResult {
     /// The matching topic's key.
@@ -503,7 +503,7 @@ pub enum MatchLocation {
 ```rust
 /// Snapshot of the current editor context used by ContextDetector to resolve a TopicKey.
 /// Provided by the shell layer at the moment F1 is pressed or HELP is invoked.
-/// Addresses: Requirement 1 (1.1–1.9)
+/// Addresses: Requirement 1 (1.1-1.9)
 #[derive(Debug, Clone)]
 pub struct ContextState {
     /// Current content of the command input field (trimmed).
@@ -543,12 +543,12 @@ pub enum EditorMode {
 
 ```rust
 /// Typed configuration for the help subsystem, loaded from [help] TOML section.
-/// Addresses: Requirement 16 (16.1–16.3)
+/// Addresses: Requirement 16 (16.1-16.3)
 #[derive(Debug, Clone, PartialEq)]
 pub struct HelpConfig {
     /// Custom path to help content directory. None uses default search locations.
     pub directory: Option<String>,
-    /// Help Panel width as a fraction of window width (0.2–0.5, default 0.35).
+    /// Help Panel width as a fraction of window width (0.2-0.5, default 0.35).
     pub panel_width_ratio: f32,
     /// Default dock zone for the Help Panel ("right", "left", "bottom").
     pub panel_position: HelpPanelPosition,
@@ -586,18 +586,18 @@ pub enum HelpPanelPosition {
 ```rust
 /// Inspects the current editor state and resolves the most relevant TopicKey.
 /// Implements best-effort context detection: command input > prefix area > mode > fallback to index.
-/// Addresses: Requirement 1 (1.1–1.9)
+/// Addresses: Requirement 1 (1.1-1.9)
 pub struct ContextDetector;
 
 impl ContextDetector {
     /// Resolve the most relevant TopicKey from the given context state.
     ///
     /// Priority order:
-    /// 1. Command input field focused + contains recognisable command → `cmd:<NAME>`
-    /// 2. Command input field focused + empty → `index`
-    /// 3. Prefix area focused + contains line command → `line:<CMD>`
-    /// 4. Active special mode (Hex, Preview, Grid_*) → `mode:<MODE>`
-    /// 5. Fallback → `index`
+    /// 1. Command input field focused + contains recognisable command -> `cmd:<NAME>`
+    /// 2. Command input field focused + empty -> `index`
+    /// 3. Prefix area focused + contains line command -> `line:<CMD>`
+    /// 4. Active special mode (Hex, Preview, Grid_*) -> `mode:<MODE>`
+    /// 5. Fallback -> `index`
     pub fn resolve(state: &ContextState) -> TopicKey;
 
     /// Determine if F1 should toggle the Help Panel closed (same topic redisplay).
@@ -612,13 +612,13 @@ impl ContextDetector {
 ```rust
 /// Thread-safe store of all help topics, indexed by TopicKey.
 /// Supports O(1) lookup, keyword search, and runtime registration/deregistration.
-/// Addresses: Requirement 6 (6.1–6.7)
+/// Addresses: Requirement 6 (6.1-6.7)
 pub struct HelpTopicRegistry {
-    /// TopicKey → HelpTopic mapping (RwLock for concurrent read access).
+    /// TopicKey -> HelpTopic mapping (RwLock for concurrent read access).
     topics: Arc<RwLock<HashMap<TopicKey, HelpTopic>>>,
-    /// Alias → TopicKey mapping for alternative lookups.
+    /// Alias -> TopicKey mapping for alternative lookups.
     aliases: Arc<RwLock<HashMap<String, TopicKey>>>,
-    /// Plugin ID → set of TopicKeys contributed by that plugin (for cleanup).
+    /// Plugin ID -> set of TopicKeys contributed by that plugin (for cleanup).
     plugin_topics: Arc<RwLock<HashMap<String, Vec<TopicKey>>>>,
 }
 
@@ -671,7 +671,7 @@ impl HelpTopicRegistry {
 
 ```rust
 /// Parses `.help.md` files and produces HelpTopic instances for registry population.
-/// Addresses: Requirement 5 (5.1–5.6)
+/// Addresses: Requirement 5 (5.1-5.6)
 pub struct ContentLoader;
 
 impl ContentLoader {
@@ -707,7 +707,7 @@ pub struct ContentLoadResult {
 
 ```rust
 /// Keyword search across all loaded help topics with relevance ranking.
-/// Addresses: Requirement 4 (4.1–4.5)
+/// Addresses: Requirement 4 (4.1-4.5)
 pub struct SearchEngine;
 
 impl SearchEngine {
@@ -720,7 +720,7 @@ impl SearchEngine {
     /// Returns the best MatchLocation or None if no match.
     fn match_topic(topic: &HelpTopic, query: &str) -> Option<(MatchLocation, String)>;
 
-    /// Extract a context excerpt around the first match position (±40 chars).
+    /// Extract a context excerpt around the first match position (+/-40 chars).
     fn extract_excerpt(text: &str, query: &str) -> String;
 }
 ```
@@ -729,7 +729,7 @@ impl SearchEngine {
 
 ```rust
 /// Generates help topics dynamically at display time (not stored in registry).
-/// Addresses: Requirement 15 (15.1–15.4)
+/// Addresses: Requirement 15 (15.1-15.4)
 pub struct DynamicGenerator;
 
 impl DynamicGenerator {
@@ -741,7 +741,7 @@ impl DynamicGenerator {
     ) -> HelpTopic;
 
     /// Generate the Help Index topic from the current registry state.
-    /// Addresses: Requirement 12 (12.1–12.4)
+    /// Addresses: Requirement 12 (12.1-12.4)
     pub fn generate_index(
         registry: &HelpTopicRegistry,
         app_version: &str,
@@ -754,7 +754,7 @@ impl DynamicGenerator {
 ```rust
 /// The core model for the Help Panel -- manages display state, navigation, search.
 /// The GUI shell reads this model to render the panel content.
-/// Addresses: Requirement 2 (2.1–2.10), Requirement 3 (3.1–3.6)
+/// Addresses: Requirement 2 (2.1-2.10), Requirement 3 (3.1-3.6)
 pub struct HelpPanelModel {
     state: HelpPanelState,
     registry: Arc<HelpTopicRegistry>,
@@ -808,7 +808,7 @@ impl HelpPanelModel {
 ```rust
 /// Command handler for the HELP primary command.
 /// Routes `HELP`, `HELP <topic>`, `HELP LINECOMMANDS`, `HELP KEYS`, `HELP OFF`, etc.
-/// Addresses: Requirement 13 (13.1–13.10)
+/// Addresses: Requirement 13 (13.1-13.10)
 pub struct HelpCommandHandler {
     panel: Arc<Mutex<HelpPanelModel>>,
     context_detector: ContextDetector,
@@ -824,13 +824,13 @@ impl HelpCommandHandler {
     /// Parse the HELP command arguments and dispatch to the appropriate action.
     ///
     /// Routing rules:
-    /// - No args → show Help Index
-    /// - `OFF` → close Help Panel
-    /// - `LINECOMMANDS` → show `"line:index"` topic
-    /// - `KEYS` → show dynamically generated function key topic
-    /// - `MACRO` or `API` → show `"feature:macros"` topic
-    /// - `CONFIG` or `CONFIGURATION` → show `"feature:configuration"` topic
-    /// - `<name>` → try `"cmd:<NAME>"`, then `"feature:<name>"`, then unrecognised message
+    /// - No args -> show Help Index
+    /// - `OFF` -> close Help Panel
+    /// - `LINECOMMANDS` -> show `"line:index"` topic
+    /// - `KEYS` -> show dynamically generated function key topic
+    /// - `MACRO` or `API` -> show `"feature:macros"` topic
+    /// - `CONFIG` or `CONFIGURATION` -> show `"feature:configuration"` topic
+    /// - `<name>` -> try `"cmd:<NAME>"`, then `"feature:<name>"`, then unrecognised message
     fn resolve_help_argument(&self, args: &str) -> HelpAction;
 }
 
@@ -950,7 +950,7 @@ pub enum HelpError {
 
 Integration notes:
 - F1 is registered as a **reserved shortcut** via `ShortcutRegistry::register_reserved()` -- cannot be overridden by plugins or user key maps
-- `help.show` and `help.command` do NOT produce undo records (`is_undoable() → false`)
+- `help.show` and `help.command` do NOT produce undo records (`is_undoable() -> false`)
 - `help.show` and `help.command` are NOT added to command history (Requirement 1.10, 13.10)
 - The system reads `CommandMetadata.help_text` and `help_syntax` fields from all registered commands to auto-populate the topic registry (Requirement 6.2, 6.3)
 
@@ -998,7 +998,7 @@ The help system reads from the `[help]` TOML configuration section:
 | Key | Type | Default | Effect |
 |-----|------|---------|--------|
 | `help.directory` | `String` | *(none)* | Custom path to help content directory |
-| `help.panel_width_ratio` | `f32` | `0.35` | Help Panel width as fraction of window (0.2–0.5) |
+| `help.panel_width_ratio` | `f32` | `0.35` | Help Panel width as fraction of window (0.2-0.5) |
 | `help.panel_position` | `String` | `"right"` | Default dock zone: `"right"`, `"left"`, `"bottom"` |
 | `help.search_highlight` | `bool` | `true` | Highlight search matches in content |
 
@@ -1027,7 +1027,7 @@ The help system uses a read-only accessor trait to query the active key map:
 /// Trait for reading key map state -- implemented by ff-keys, consumed by ff-help.
 /// Decouples ff-help from ff-keys implementation details.
 pub trait KeyMapAccess: Send + Sync {
-    /// Returns all assigned function key bindings (F1–F24).
+    /// Returns all assigned function key bindings (F1-F24).
     fn function_key_bindings(&self) -> Vec<FunctionKeyBinding>;
     /// Returns the name of the active profile (if any).
     fn active_profile_name(&self) -> Option<String>;
@@ -1114,13 +1114,13 @@ The following properties are designed for verification with the `proptest` crate
 
 **Validates: Requirements 5.2, 5.4**
 
-**Strategy:** Generate `.help.md` content with 1–10 randomly generated topic blocks using valid delimiter syntax. Parse and verify the count, keys, and titles match.
+**Strategy:** Generate `.help.md` content with 1-10 randomly generated topic blocks using valid delimiter syntax. Parse and verify the count, keys, and titles match.
 
 ---
 
 ### Property 7: Help Panel Toggle Behaviour
 
-**Statement:** If the Help Panel is open displaying topic T, and `toggle(T)` is called, the panel closes. If `toggle(U)` is called where U ≠ T, the panel navigates to U and remains open.
+**Statement:** If the Help Panel is open displaying topic T, and `toggle(T)` is called, the panel closes. If `toggle(U)` is called where U != T, the panel navigates to U and remains open.
 
 **Validates: Requirements 1.6, 2.4**
 
@@ -1130,7 +1130,7 @@ The following properties are designed for verification with the `proptest` crate
 
 ### Property 8: Help Config Validation and Fallback
 
-**Statement:** For any raw configuration values, `HelpConfig` construction with invalid values (panel_width_ratio outside 0.2–0.5, unrecognised panel_position) applies defaults and logs a warning, never panics or produces an unusable config.
+**Statement:** For any raw configuration values, `HelpConfig` construction with invalid values (panel_width_ratio outside 0.2-0.5, unrecognised panel_position) applies defaults and logs a warning, never panics or produces an unusable config.
 
 **Validates: Requirements 16.1, 16.2**
 
@@ -1150,11 +1150,11 @@ The following properties are designed for verification with the `proptest` crate
 
 ### Property 10: Search Minimum Query Length Enforcement
 
-**Statement:** For any query string with length < 2, `SearchEngine::search()` returns an empty result set. For any query with length ≥ 2, the result set contains only topics whose title, headings, body, or aliases contain the query as a case-insensitive substring.
+**Statement:** For any query string with length < 2, `SearchEngine::search()` returns an empty result set. For any query with length >= 2, the result set contains only topics whose title, headings, body, or aliases contain the query as a case-insensitive substring.
 
 **Validates: Requirements 4.1, 4.2, 4.5**
 
-**Strategy:** Generate queries of length 0–1 and assert empty results. Generate queries of length 2+ with a known topic set and verify all results contain the query substring (case-insensitive) in at least one searchable field.
+**Strategy:** Generate queries of length 0-1 and assert empty results. Generate queries of length 2+ with a known topic set and verify all results contain the query substring (case-insensitive) in at least one searchable field.
 
 ---
 
@@ -1185,7 +1185,7 @@ The following properties are designed for verification with the `proptest` crate
 
 - **Unit tests**: `#[cfg(test)] mod tests` block at the bottom of each source module, testing individual functions in isolation
 - **Property-based tests**: `proptest` crate with minimum 256 cases per property; 11 properties defined covering all major subsystem behaviours
-- **Integration tests**: `tests/integration.rs` for end-to-end scenarios (F1 press → context detection → registry lookup → panel state update)
+- **Integration tests**: `tests/integration.rs` for end-to-end scenarios (F1 press -> context detection -> registry lookup -> panel state update)
 - **Test doubles**: `MockKeyMapAccess` for function key generation; `MockConfigAccess` for config tests; in-memory `HelpTopicRegistry` with pre-loaded topics for all non-I/O tests
 - **File I/O tests**: Use `tempfile::TempDir` with synthetic `.help.md` files for ContentLoader and HotReloader tests
 - **No GUI testing in this crate**: All panel logic is testable via `HelpPanelModel` state assertions; actual Markdown rendering is the shell's responsibility
@@ -1194,7 +1194,7 @@ The following properties are designed for verification with the `proptest` crate
 
 ## Design Decisions and Rationale
 
-1. **Markdown as help content format** -- Chosen over plain text for richer formatting (code blocks, links, headings) while remaining easy to author and version-control. The GUI shell handles Markdown→styled rendering; the core crate stores raw Markdown.
+1. **Markdown as help content format** -- Chosen over plain text for richer formatting (code blocks, links, headings) while remaining easy to author and version-control. The GUI shell handles Markdown->styled rendering; the core crate stores raw Markdown.
 
 2. **Topic delimiter syntax** (`<!-- TOPIC: key -->`) -- Uses HTML comments rather than YAML front-matter to allow multiple topics per file without complex parsing. Valid Markdown that renderers ignore.
 
@@ -1372,3 +1372,326 @@ Testing (Req 19): unit-test the tally (distinct-key counting, increment on repea
 unit-test the EXPECTED/UNEXPECTED classification against a known promised set; a
 shell test that a miss increments the tally and emits a WARN and does NOT touch any
 docs file; a `HELP MISSING` display test.
+
+---
+
+## Markdown Help Rendering (CR-NR-100)
+
+This delta EVALUATES rendering the Help Context body with Markdown formatting
+instead of raw monospace text (Requirement 20). It is a PROPOSAL: it lays out the
+rendering-target options and RECOMMENDS one, but the final choice is an open design
+question for the owner to confirm (criterion 20.7). It does NOT contradict the
+earlier design; it concretises the display seam that D4 (Help Context render) and
+Requirement 18.2 established.
+
+### M1. Current text-rendering approach (what exists today)
+
+Help content is already Markdown and already carried RAW through the engine:
+
+- `ff-help` parses `.help.md` topics (`content_parser.rs`), and `HelpPanelModel`
+  stores the body UNRENDERED -- `HelpTopic.body()` returns the raw Markdown string
+  (design Decisions 1 and 5: "the core crate stores raw Markdown"; "content is data,
+  not code").
+- The shell-side Help Context (`crates/ff-desktop/src/help_context.rs`,
+  `HelpContextPanel::render`) draws the body with a single
+  `ui.label(egui::RichText::new(topic.body()).monospace())` inside a vertical
+  `ScrollArea`. The in-source comment there states the monospace label is a
+  placeholder and "a richer Markdown renderer is a later enhancement." THIS is the
+  exact seam Requirement 20 targets.
+- The HELP/F1 pipeline (`crates/ff-desktop/src/shell/help.rs`) loads one shell-owned
+  `Arc<HelpTopicRegistry>` at startup, resolves a topic, and opens the Help Context
+  (D2-D5). HELP routes through the single command-dispatch path. None of that
+  pipeline changes for Req 20; only the body-drawing call inside the Help Context
+  `render` is replaced by a Markdown-aware rendering, with a monospace fallback.
+
+### M2. The rendering-target options (with tradeoffs)
+
+The available Markdown machinery (CR-CH-049) is `ff-md-viewer::render_to_html`
+(pulldown-cmark -> an HTML FRAGMENT string, with tables/footnotes/strikethrough/
+task-lists/smart-punctuation enabled) and `ff-mdx-plugin::MdxFileViewer` (the
+ff-viewers `FileViewer` for md/markdown, rendering via `render_to_html`).
+
+CRITICAL TARGET GAP: egui does NOT render HTML natively. An HTML fragment from
+`render_to_html` therefore cannot be dropped into the Help Context `ui` directly;
+it needs an HTML-capable surface. This gap drives the option analysis.
+
+- **Option A -- Direct egui Markdown widgets.** Render the raw Markdown STRAIGHT to
+  egui widgets with an egui-native Markdown widget (e.g. an `egui_commonmark`-style
+  renderer), inside the Help Context `render`. No HTML intermediary, so the
+  HTML-vs-egui gap does not arise. Fits the existing Help Context render path (just
+  replaces the one `ui.label(...monospace())` call). Does NOT hard-depend on the
+  Task 21 viewer-to-shell seam for the rendering itself. Tradeoff: introduces a new
+  rendering dependency (an egui Markdown widget crate) and its feature set must be
+  checked against Req 20.2 (tables, task lists, etc.); link activation must be
+  wired to Help navigation (Req 20.3). This keeps help rendering a Help-Context
+  concern rather than a viewer concern.
+
+- **Option B -- `render_to_html` + an HTML view.** Reuse `ff-md-viewer::render_to_html`
+  and display the HTML fragment in an HTML/webview surface. Tradeoff: egui has no
+  native HTML renderer, so this needs a webview or an HTML-rendering widget -- a
+  heavy dependency (an embedded browser or a substantial HTML layout engine),
+  disproportionate to a help panel, and awkward to drive headlessly in
+  `egui_kittest`. Likely OUT OF SCOPE for the Help Context. Recorded for
+  completeness.
+
+- **Option C -- Reuse the ff-viewers ViewerPanel / `MdxFileViewer` (post-Task 21).**
+  Once the viewer-to-shell seam exists (custom-file-viewers Req 14 / Task 21),
+  surface help bodies through the SAME PREVIEW path the Markdown viewer uses, so
+  help and file preview share one Markdown rendering. Tradeoff: INHERITS the Task 21
+  / Req 14 dependency (the seam does not exist yet -- `ff-desktop` has no ff-viewers
+  / ff-mdx-plugin dependency and no PREVIEW wiring), AND inherits the same
+  HTML-fragment-vs-egui target gap unless the ViewerPanel itself resolves it. It is
+  the most framework-consistent LONGER-TERM convergence, but cannot land before
+  Task 21 and the ff-desktop decoupling.
+
+### M3. Dependencies and sequencing
+
+Regardless of option, implementation is ORDERED AFTER two things (criterion 20.8):
+
+- the ff-desktop DECOUPLING work -- the DECOMP waves (CR-NR-098 Req 19.3/19.4 in
+  `docs/project-management/project-master/tasks.md`); the owner wants decoupling
+  finished before wiring new rendering into `ff-desktop`; and
+- Task 21 / custom-file-viewers Requirement 14 -- the viewer-to-shell seam. Option C
+  depends on it hard; Options A/B do not strictly need it for rendering but should
+  not pre-empt the decoupling.
+
+So: specify + task-list now (this gate), implement later.
+
+### M4. Recommendation (for owner confirmation -- NOT finalised)
+
+RECOMMEND Option A (direct egui Markdown widgets) for the Help Context body:
+
+- It avoids the HTML-fragment-vs-egui target gap entirely (no webview).
+- It does NOT hard-depend on the Task 21 viewer-to-shell seam, so once the
+  decoupling is done the Help render can proceed on its own schedule.
+- It is a localised change to the one `help_context.rs` draw call, preserving the
+  rest of the pipeline (D2-D5) and the WorkspaceContext/InteriorFocus contract
+  (Req 20.6).
+- Option C remains the longer-term convergence target IF/WHEN Task 21 lands and the
+  owner wants help and file-preview to share one renderer; the design should keep
+  the rendering behind a small internal seam so a later switch from A to C is a
+  localised change.
+
+RATIONALE FOR THE LOWER-COUPLING CHOICE (owner-endorsed, CR-NR-100): Option A is
+preferred specifically because it DECOUPLES help markdown rendering from the Task 21
+viewer-to-shell seam. It needs only the one localised `help_context.rs` draw-call
+change, carries NO hard Task 21 dependency, and keeps a clean path to switch to
+Option C (ff-viewers ViewerPanel reuse) later if/when the viewer framework is wired
+into the shell. That lower-coupling choice matches the owner's priority of finishing
+the ff-desktop decoupling BEFORE wiring new subsystems into `ff-desktop`. Option A is
+therefore the recommended-pending-owner-confirmation design direction; Option C is
+recorded as the future-consolidation path, not a prerequisite.
+
+Internal cross-reference links (`[text](topic_key)`) activate Help navigation
+(Req 20.3) via the existing `HelpPanelModel::follow_link` / navigation stack; the
+egui Markdown widget's link callback is wired to that, NOT to a web open. External
+`http(s)` links default to display-only (not treated as Help topics); whether to
+open them in the OS browser is deferred to the implementation decision and recorded
+when Option A is confirmed. On any rendering error, fall back to the current
+monospace `ui.label` of the raw body (Req 20.4).
+
+### M5. Framework conformance -- do NOT add a parallel path
+
+Per `framework-conformance`: HELP and F1 continue to route through the single
+command-dispatch path (`resolve_target` / `dispatch_command_target`); the Help
+Context remains a `WorkspaceContext` dispatched via `render_workspace_context`
+(no second focus mechanism). Markdown rendering is a CHANGE TO HOW THE BODY IS
+DRAWN inside that existing Context, not a new dispatch seam and not a new renderer
+pipeline parallel to ff-viewers. If Option C is later chosen, help bodies go through
+the ff-viewers PREVIEW integration (Req 14), reusing the framework's one viewer
+path -- again not a bespoke parallel renderer.
+
+### M6. Testing delta
+
+- Unit test (where applicable): if a content-format detection or Markdown-to-egui
+  mapping helper is introduced, unit-test it (e.g. a heading line maps to a heading
+  element, a fenced block maps to a code element, an internal link maps to a Help
+  navigation action, a malformed body falls back to monospace).
+- Rendered-panel `egui_kittest` test (MANDATORY per testing.md GUI rule): a
+  full-shell / Help-Context harness test asserting the Help Context shows FORMATTED
+  output -- e.g. a `# Heading` line is rendered as a heading element (or otherwise
+  NOT as the literal `#` character in a monospace block), proving Req 20.1/20.2 by
+  behaviour, not by pixels. The existing full-shell first-Tab focus test
+  (`full_shell_help_first_tab_focuses_search_field`) continues to pass, proving
+  Req 20.6 (the focus contract survives the rendering change).
+- Link-navigation tests (Req 20.9-20.14): unit tests for `classify_help_link`
+  (external vs bare Topic_Key vs file vs cross-file-anchor vs same-file-anchor),
+  `heading_slug`, and `resolve_fragment` (Topic_Key first, slug fallback, missing
+  -> top-of-target); plus `egui_kittest` behaviour tests -- clicking a SAME-FILE
+  anchor (`[x](#cmd:CHANGE)`) navigates within the current content and pushes the
+  Help_Navigation_Stack, and clicking a CROSS-FILE anchor (`[x](other.help.md#key)`)
+  loads the target then positions at the topic. These are harness-tested, not
+  manual.
+- MANUAL is reserved only for pixel-exact Markdown appearance (colour/spacing),
+  which asserts the model/structure instead; link-activation and heading-rendering
+  behaviour are harness-tested, not manual.
+
+### M7. Link-target resolution (CR-NR-100 refinement -- Req 20.9-20.14)
+
+Help links fall into FIVE target classes, resolved by the egui Markdown widget's
+link callback (the renderer walks pulldown-cmark events and surfaces each link's
+destination string; the Help Context owns the click -> navigate mapping, NOT a
+web open). This is the exact seam that makes Option A (direct egui rendering)
+sufficient: the renderer hands the destination to the Help Context, which
+classifies and dispatches it onto the EXISTING `HelpPanelModel::follow_link` /
+Help_Navigation_Stack. No new dispatch path, no second navigation stack.
+
+EXTENSION DIRECTION (SETTLED, owner-confirmed): HTML-anchor-style navigation
+(same-file `#anchor` and cross-file `other.md#anchor`) is delivered by extending
+RESOLUTION semantics ONLY, NOT parse syntax. `[text](#anchor)`,
+`[text](other.help.md)`, and `[text](other.help.md#anchor)` are ALREADY standard,
+portable Markdown link forms, so `.help.md` files stay standard Markdown that any
+other tool renders as ordinary links; only OUR resolver assigns navigation meaning
+to the fragment (primarily a Topic_Key, matching the `<!-- TOPIC: topic_key -->`
+markers of Req 5.2, with a heading-slug fallback). A custom-parse-syntax option
+(a bespoke anchor marker) was considered and REJECTED for portability. No new
+markup is introduced.
+
+Classification of a link destination string `dest`:
+
+1. **External** -- `dest` begins with `http://` or `https://` (Req 20.12). NOT a
+   topic/file/anchor. Default policy: display-only / open in the OS browser per
+   the policy recorded when Option A is confirmed (M4). Never routed to
+   `follow_link`.
+2. **Bare Topic_Key** -- `dest` has no leading `#`, no `.help.md` / `.md` filename
+   component, and no scheme (e.g. `cmd:CHANGE`, `index`, `line:CC`) (Req 20.12 /
+   20.3, UNCHANGED). Parsed with `TopicKey::parse` and passed to
+   `HelpPanelModel::follow_link`.
+3. **File link (no fragment)** -- `dest` ends in `.help.md` or `.md` with no
+   `#fragment` (e.g. `setup.help.md`) (Req 20.9). Resolves to the file's PRIMARY
+   topic -- the FIRST topic defined in that file by delimiter order (Requirement
+   5.2). Because the registry is keyed by `Topic_Key`, not filename, resolution
+   maps the filename to its topics via a filename -> topic-keys index built at
+   load time (`ContentLoader` already records which `Topic_Key`s each file
+   contributed -- `loaded_files: HashMap<PathBuf, Vec<TopicKey>>` in `tasks.md`
+   Task 3.1); the first entry is the primary topic. The resolved `Topic_Key` goes
+   through `follow_link`.
+4. **Cross-file anchor** -- `dest` is `<file>.help.md#<fragment>` or
+   `<file>.md#<fragment>` (e.g. `setup.help.md#config:theme`) (Req 20.10). The
+   file part selects the content file; the fragment is resolved WITHIN that file
+   as a Topic_Key FIRST (against the file's contributed topic-key set), falling
+   back to a heading slug (class 6 below). Load/open the file THEN position at the
+   resolved topic/heading, via `follow_link`.
+5. **Same-file anchor** -- `dest` is `#<fragment>` with no filename and no scheme
+   (e.g. `#cmd:CHANGE`) (Req 20.11). The fragment is resolved WITHIN the CURRENT
+   topic's source file as a Topic_Key FIRST, falling back to a heading slug.
+   Positions within the current content and pushes `follow_link`.
+
+6. **Heading-slug fallback (Req 20.13)** -- for classes 4 and 5, a fragment that
+   is NOT a known Topic_Key is matched against a GitHub-style auto-generated slug
+   of the Markdown headings in the target content (lowercase, spaces -> hyphens,
+   punctuation stripped), e.g. `#my-section` matches `## My Section`. The
+   Topic_Key form is the PRIMARY help convention; the slug is the fallback.
+
+Resolution helpers (pure, unit-testable without a harness; first red tests for
+Task 22):
+- `classify_help_link(dest: &str) -> HelpLinkTarget` (enum: `External(url)`,
+  `TopicKey(key)`, `File { file, fragment: None }`, `File { file, fragment:
+  Some(frag) }`, `SameFileAnchor(frag)`).
+- `heading_slug(heading: &str) -> String` (GitHub-style slug) and a
+  `resolve_fragment(fragment, file_topic_keys, headings) -> FragmentResolution`
+  that tries Topic_Key then slug.
+
+The filename -> primary/first-topic, filename+fragment -> topic, and
+fragment -> slug resolution reuse the existing load-time file/topic index plus the
+parsed heading list the content loader already extracts; no new registry
+structure is required.
+
+Unresolvable target (Req 20.14): a missing ANCHOR within an otherwise-resolved
+target positions at the TOP of that target (its primary topic); a missing TOPIC
+or FILE shows the existing "Help topic not found" affordance (Req 5.5) with a link
+back to the Help_Index -- the same miss path Req 18.4 / 19 already use -- rather
+than failing the display or navigating away.
+
+Framework note: ALL classes route Help navigation through the ONE existing seam
+(`follow_link` / Help_Navigation_Stack). The only new code is the pure classifier,
+the slug helper, and the file/anchor -> topic lookup over the already-recorded
+load-time index. This stays Option A (no viewer dependency, no Task 21 dependency
+for the help-internal navigation) and preserves the WorkspaceContext/InteriorFocus
+contract (Req 20.6).
+
+---
+
+## CR-CH-051 Delta: About dialog -- author credit + richer metadata (Requirement 14.6-14.8)
+
+This delta expands the `AboutInfo` content model behind the "About FileForgeWorkbench"
+Help_Menu action. It does NOT change the dispatch mechanism (the About action remains
+a Help_Menu item invoking the HELP/menu command path, D5); it only enriches the DATA
+the modal displays, per revised criterion 14.6 and new criteria 14.7-14.8.
+
+### A1. AboutInfo field set (revised)
+
+`AboutInfo` is a GUI-free data struct built once at display time from COMPILE-TIME
+sources (no runtime I/O, nothing user-editable). Fields:
+
+```rust
+/// Metadata shown in the About FileForgeWorkbench dialog.
+/// Addresses: context-help Requirement 14.6, 14.7, 14.8 (CR-CH-051)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AboutInfo {
+    /// Application display name (e.g. "FileForgeWorkbench").
+    pub app_name: String,
+    /// Semantic version, from CARGO_PKG_VERSION.
+    pub version: String,
+    /// Build date, from a build-time env var (build script / vergen).
+    pub build_date: String,
+    /// Rust compiler version used for the build (build script).
+    pub rust_version: String,
+    /// Author / credit line, from CARGO_PKG_AUTHORS (Req 14.7).
+    pub authors: String,
+    /// Copyright notice (Req 14.7). Derived from authors + year, or a
+    /// dedicated copyright metadata value if one is defined.
+    pub copyright: String,
+    /// Licence SPDX identifier or full name, from CARGO_PKG_LICENSE (Req 14.8).
+    pub license: String,
+    /// Optional reference to the full licence text (path/URL) (Req 14.8).
+    pub license_reference: Option<String>,
+    /// Optional project homepage or repository URL, from CARGO_PKG_HOMEPAGE
+    /// or CARGO_PKG_REPOSITORY (Req 14.8).
+    pub homepage: Option<String>,
+}
+```
+
+### A2. Compile-time sources (no runtime I/O)
+
+- `app_name`, `version`, `authors`, `license` come from Cargo package metadata via
+  `env!("CARGO_PKG_NAME")` / `env!("CARGO_PKG_VERSION")` / `env!("CARGO_PKG_AUTHORS")`
+  / `env!("CARGO_PKG_LICENSE")`. The crate's `Cargo.toml` SHALL carry `authors`,
+  `license` (SPDX), and `homepage`/`repository` so these are populated; where the
+  workspace sets them via `[workspace.package]`, the binary crate inherits them.
+- `homepage`/`license_reference` come from `env!("CARGO_PKG_HOMEPAGE")` /
+  `env!("CARGO_PKG_REPOSITORY")` (whichever is defined).
+- `build_date` and `rust_version` come from build-time environment captured by a
+  build script (the existing/added `vergen`-style build metadata already noted for
+  the pre-existing version/build-date fields).
+- `copyright` is composed at build time from the author(s) and the build year
+  (e.g. `"(C) <year> <authors>"`), or taken from a dedicated metadata value if the
+  project defines one. ASCII `(C)` is used, not a non-ASCII copyright glyph, per the
+  documentation character-set rule.
+- Per criterion 14.8, a field whose source metadata is ABSENT at build time
+  (e.g. no homepage set) is modelled as `Option` and OMITTED from the rendered
+  dialog rather than shown empty; the present fields still render.
+
+### A3. Rendering and framework conformance
+
+- The About modal reads an `AboutInfo` and renders the fields as labelled rows; the
+  licence row shows the SPDX id/name plus the `license_reference` link when present,
+  and the homepage row shows the URL when present. This is a modal dialog (as 14.6
+  already specifies), not a Workspace Context, so the `WorkspaceContext`/
+  `InteriorFocus` contract does not apply to it; it follows the existing modal-dialog
+  conventions of the shell.
+- The About action stays a Help_Menu item invoking the single command path (D5);
+  no new dispatch path is introduced.
+
+### A4. Testing delta
+
+- Unit tests (pure): `AboutInfo` population from the compile-time values yields all
+  mandatory fields non-empty (app_name, version, build_date, rust_version, authors,
+  copyright, license); an absent optional source (homepage/license_reference) yields
+  `None` and is therefore omittable (Req 14.8). Assert ASCII-only content (no
+  non-ASCII copyright glyph).
+- GUI behaviour (`egui_kittest`, per testing.md): opening the About dialog shows the
+  author/credit line, the copyright notice, and the licence; a build with an absent
+  optional field does not render an empty row for it. Pixel-exact appearance is the
+  only MANUAL aspect; the presence/absence of each field is asserted on the model/
+  rendered structure, not pixels.

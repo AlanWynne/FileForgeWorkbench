@@ -5,7 +5,7 @@ static PAYLOAD: &[u8] = include_bytes!("payload.zip");
 fn main() -> anyhow::Result<()> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_title("ffmdx — Installer")
+            .with_title("ffmdx -- Installer")
             .with_inner_size([520.0, 300.0])
             .with_resizable(false),
         ..Default::default()
@@ -18,13 +18,18 @@ fn main() -> anyhow::Result<()> {
     .map_err(|e| anyhow::anyhow!("{e}"))
 }
 
+/// The installer's current stage.
 #[derive(PartialEq)]
 enum Stage {
+    /// Awaiting the user to start the installation.
     Ready,
+    /// Installation succeeded, carrying a success message.
     Done(String),
+    /// Installation failed, carrying the error text.
     Failed(String),
 }
 
+/// The installer application state.
 struct InstallerApp {
     install_dir: String,
     stage: Stage,
@@ -65,7 +70,7 @@ impl eframe::App for InstallerApp {
                 }
                 Stage::Done(msg) => {
                     ui.label(
-                        egui::RichText::new(format!("✅  {msg}"))
+                        egui::RichText::new(format!("[OK]  {msg}"))
                             .color(egui::Color32::from_rgb(100, 200, 100)),
                     );
                     ui.add_space(8.0);
@@ -76,7 +81,7 @@ impl eframe::App for InstallerApp {
                 }
                 Stage::Failed(e) => {
                     ui.label(
-                        egui::RichText::new(format!("❌  {e}"))
+                        egui::RichText::new(format!("[FAILED]  {e}"))
                             .color(egui::Color32::from_rgb(220, 80, 80)),
                     );
                     if ui.button("Retry").clicked() {
@@ -112,6 +117,27 @@ fn install(dir: PathBuf) -> anyhow::Result<String> {
     Ok(format!("Installed to {}", dir.display()))
 }
 
+/// Returns whether `dir` already appears among the `;`-separated entries of
+/// `current`, matched case-insensitively after trimming surrounding whitespace.
+fn path_already_contains(current: &str, dir: &str) -> bool {
+    current
+        .split(';')
+        .any(|p| p.trim().eq_ignore_ascii_case(dir.trim()))
+}
+
+/// Append `dir` to the `;`-separated `current` PATH, joining with `;` only when
+/// `current` is non-empty. If `dir` is already present (case-insensitive,
+/// trimmed), `current` is returned unchanged.
+fn append_to_path(current: &str, dir: &str) -> String {
+    if path_already_contains(current, dir) {
+        current.to_string()
+    } else if current.is_empty() {
+        dir.to_string()
+    } else {
+        format!("{current};{dir}")
+    }
+}
+
 #[cfg(windows)]
 fn add_to_user_path(dir: &Path) -> anyhow::Result<()> {
     use winreg::enums::{HKEY_CURRENT_USER, KEY_READ, KEY_WRITE};
@@ -121,16 +147,47 @@ fn add_to_user_path(dir: &Path) -> anyhow::Result<()> {
     let env = hkcu.open_subkey_with_flags("Environment", KEY_READ | KEY_WRITE)?;
     let current: String = env.get_value("Path").unwrap_or_default();
     let dir_str = dir.display().to_string();
-    if !current
-        .split(';')
-        .any(|p| p.trim().eq_ignore_ascii_case(&dir_str))
-    {
-        let new_path = if current.is_empty() {
-            dir_str
-        } else {
-            format!("{current};{dir_str}")
-        };
+    let new_path = append_to_path(&current, &dir_str);
+    if new_path != current {
         env.set_value("Path", &new_path)?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{append_to_path, path_already_contains};
+
+    #[test]
+    fn existing_case_insensitive_trimmed_entry_is_detected() {
+        // Validates: Requirement 17.1
+        let current = r"C:\other; c:\programs\FFMDX ;C:\more";
+        assert!(path_already_contains(current, r"C:\Programs\ffmdx"));
+    }
+
+    #[test]
+    fn existing_entry_leaves_path_unchanged() {
+        // Validates: Requirement 17.2
+        let current = r"C:\other;C:\programs\ffmdx";
+        assert_eq!(append_to_path(current, r"C:\programs\ffmdx"), current);
+    }
+
+    #[test]
+    fn new_entry_is_appended_with_semicolon_when_path_non_empty() {
+        // Validates: Requirement 17.3
+        let current = r"C:\other";
+        assert_eq!(
+            append_to_path(current, r"C:\programs\ffmdx"),
+            r"C:\other;C:\programs\ffmdx"
+        );
+    }
+
+    #[test]
+    fn new_entry_has_no_leading_semicolon_when_path_empty() {
+        // Validates: Requirement 17.3
+        assert_eq!(
+            append_to_path("", r"C:\programs\ffmdx"),
+            r"C:\programs\ffmdx"
+        );
+    }
 }

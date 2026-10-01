@@ -56,6 +56,7 @@ The following specs exist under `docs/specs/`:
 - file-formatter (File-AID-inspired record-structure View/Edit plugin -- CR-NR-061, design-input only, gate not yet run)
 - file-operations
 - file-tree-panel
+- ffmdx-app (CR-NR-102: rebuild standalone ffmdx as a cut-down FFWB -- inherits ff-theme/ff-config/ff-logging/ff-session/ff-help via a shared ff-app-bootstrap crate; consumes markdown-rendering; requirements drafted, gate pending)
 - fileforge-integration
 - find-and-replace
 - function-keys-and-history
@@ -69,6 +70,7 @@ The following specs exist under `docs/specs/`:
 - line-wrap-toggle
 - logging-subsystem
 - lua-macro-engine
+- markdown-rendering (CR-NR-101: configurable Markdown element styling -- TOML config consumed by FFWB + ffmdx + HTML/PDF export; composes ff-theme Colour_Tokens, owns markdown typography/layout; requirements drafted, gate pending)
 - menu-and-statusbar
 - multi-tab-editor
 - navigation-commands

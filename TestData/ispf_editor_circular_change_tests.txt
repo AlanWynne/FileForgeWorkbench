@@ -1,0 +1,24 @@
+000010 CHANGE 'ALPHA01' 'BRAVO01' ALL CHARS 181 240     | VERIFY: 2 changes; both P01 fixtures read BRAVO01.                                                                        P01=ALPHA01
+000020 CHANGE 'BRAVO01' 'ALPHA01' ALL CHARS 181 240     | VERIFY: 2 changes; both P01 fixtures read ALPHA01 again.                                                                  P01=ALPHA01
+000030 C 'RED02' 'BLU02' ALL WORD 181 240               | VERIFY: 2 whole-word changes; embedded XRED02X stays unchanged.                                                           P02=RED02 XRED02X
+000040 C 'BLU02' 'RED02' ALL WORD 181 240               | VERIFY: 2 changes restored; embedded XRED02X was never changed.                                                           P02=RED02 XRED02X
+000050 CHANGE 'PRE03' 'ALT03' ALL PREFIX 181 240        | VERIFY: 4 prefix changes, two words on each P03 fixture.                                                                  P03=PRE03_ONE PRE03_TWO
+000060 CHANGE 'ALT03' 'PRE03' ALL PREFIX 181 240        | VERIFY: 4 prefix changes restored to the original P03 text.                                                               P03=PRE03_ONE PRE03_TWO
+000070 CHANGE 'TAIL04' 'END_04' ALL SUFFIX 181 240      | VERIFY: 4 suffix changes, two words on each P04 fixture.                                                                  P04=ONE-TAIL04 TWO-TAIL04
+000080 CHANGE 'END_04' 'TAIL04' ALL SUFFIX 181 240      | VERIFY: 4 suffix changes restored to the original P04 text.                                                               P04=ONE-TAIL04 TWO-TAIL04
+000090 CHANGE 'FIRST05' 'CHANGED' FIRST CHARS 181 240   | VERIFY: 1 change; only the first P05 occurrence in the file changes.                                                      P05=FIRST05
+000100 CHANGE 'CHANGED' 'FIRST05' FIRST CHARS 181 240   | VERIFY: 1 change; the first P05 occurrence is restored.                                                                   P05=FIRST05
+000110 CHANGE 'LAST_06' 'ALTER06' LAST CHARS 181 240    | VERIFY: 1 change; only the last P06 occurrence in the file changes.                                                       P06=LAST_06
+000120 CHANGE 'ALTER06' 'LAST_06' LAST CHARS 181 240    | VERIFY: 1 change; the last P06 occurrence is restored.                                                                    P06=LAST_06
+000130 CHANGE '1234507' '7654307' ALL CHARS 181 240     | VERIFY: 4 numeric-string changes across the two P07 fixtures.                                                             P07=1234507/1234507
+000140 CHANGE '7654307' '1234507' ALL CHARS 181 240     | VERIFY: 4 numeric-string changes restored.                                                                                P07=1234507/1234507
+000150 CHANGE 'MIXED08' 'mixed08' ALL CHARS 181 240     | VERIFY: 2 case-sensitive source strings are converted to lowercase.                                                       P08=MIXED08 Mixed08
+000160 CHANGE 'mixed08' 'MIXED08' ALL CHARS 181 240     | VERIFY: 2 lowercase strings restored; Mixed08 remains unchanged.                                                          P08=MIXED08 Mixed08
+000170 CHANGE 'AA  BB09' 'CC  DD09' ALL CHARS 181 240   | VERIFY: 2 changes; the two embedded blanks are preserved.                                                                 P09=AA  BB09
+000180 CHANGE 'CC  DD09' 'AA  BB09' ALL CHARS 181 240   | VERIFY: 2 changes restored with the same two embedded blanks.                                                             P09=AA  BB09
+000190 CHANGE 'EDGE10' 'LIMIT10' ALL CHARS 185 191      | VERIFY: 2 changes only where EDGE10 starts in column 185.                                                                 P10=EDGE10 OUTSIDE=EDGE10
+000200 CHANGE 'LIMIT10' 'EDGE10' ALL CHARS 185 191      | VERIFY: 2 column-limited changes restored; OUTSIDE values stayed unchanged.                                               P10=EDGE10 OUTSIDE=EDGE10
+000210 CHANGE 'DOT.11' 'HASH11' ALL CHARS 181 240       | VERIFY: 2 literal punctuation-bearing strings are changed.                                                                P11=DOT.11
+000220 CHANGE 'HASH11' 'DOT.11' ALL CHARS 181 240       | VERIFY: 2 punctuation-bearing strings restored.                                                                           P11=DOT.11
+000230 CHANGE 'FINAL12' 'CYCLE12' ALL WORD 181 240      | VERIFY: 2 whole-word changes; file is temporarily different.                                                              P12=FINAL12
+000240 CHANGE 'CYCLE12' 'FINAL12' ALL WORD 181 240      | VERIFY: 2 changes restored; entire file now matches its starting text.                                                    P12=FINAL12

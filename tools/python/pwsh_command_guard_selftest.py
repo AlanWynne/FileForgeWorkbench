@@ -33,8 +33,17 @@ CASES = [
     ),
     # Bare toolchain -> allow
     ("cargo test -p ff-desktop", "allow"),
-    ("git status", "allow"),
     ("type tools\\logs\\out.txt", "allow"),
+    # git/gh are NOT bare-allowed (they were the unprotected lane that swallowed
+    # commands); they must route to the clean non-interactive wrapper -> ask.
+    ("git status", "ask"),
+    ("git commit -m \"a long message with several words\"", "ask"),
+    ("gh pr create --title x --body y", "ask"),
+    # git IS allowed when run through the clean non-interactive pwsh7 wrapper.
+    (
+        r'C:\tools\powershell7\pwsh.exe -NoProfile -NonInteractive -Command "git status"',
+        "allow",
+    ),
     # Inspection cmdlet on the shell -> ask (should have used a tool)
     ("Get-Content Cargo.toml", "ask"),
     ("Select-String -Path *.rs -Pattern foo", "ask"),

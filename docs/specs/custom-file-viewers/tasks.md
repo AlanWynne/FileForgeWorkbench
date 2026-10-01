@@ -1,4 +1,4 @@
-﻿# Implementation Plan: Custom File Viewers (`ff-viewers`)
+# Implementation Plan: Custom File Viewers (`ff-viewers`)
 
 ## Overview
 
@@ -24,7 +24,7 @@ This task plan implements the `ff-viewers` crate -- the extensible file viewer f
   - [x] 2.2 Add object-safety compile-time assertion (`fn _assert_object_safe(_: &dyn FileViewer) {}`)
   - [x] 2.3 Verify immutability constraints: `render` takes `&self` and `&[u8]`; only `on_content_changed` and `configure` take `&mut self`
   - [x] 2.4 Write unit tests: trait object construction compiles, default `configure` is no-op, method signatures enforce read-only render
-    - Validates: Requirement 2 AC 1–5; Requirement 8 AC 1
+    - Validates: Requirement 2 AC 1-5; Requirement 8 AC 1
 
 - [x] 3. Viewer Registry
   - [x] 3.1 Implement `src/registry.rs` -- define `ViewerRegistry` struct with `Arc<RwLock<HashMap<String, Box<dyn FileViewer>>>>` storage
@@ -34,7 +34,7 @@ This task plan implements the `ff-viewers` crate -- the extensible file viewer f
   - [x] 3.5 Implement `list_viewers()` -- return Vec of (key, display_name, description, supported_extensions) tuples for all registered viewers
   - [x] 3.6 Implement `contains()` and `viewer_count()` utility accessors
   - [x] 3.7 Write unit tests for register/deregister/lookup lifecycle, duplicate key rejection, key format validation, thread-safety (spawn multiple threads)
-    - Validates: Requirement 1 AC 1–7
+    - Validates: Requirement 1 AC 1-7
   - [x] 3.8 Write property test: Viewer_Key format validation (Property 1) -- generate strings, assert only valid keys (lowercase ASCII + digits + hyphens, non-empty) are accepted
     - Validates: Requirement 1 AC 1
   - [x] 3.9 Write property test: registry uniqueness (Property 2) -- register N viewers with unique keys, then attempt duplicate registration, assert DuplicateKey error
@@ -47,7 +47,7 @@ This task plan implements the `ff-viewers` crate -- the extensible file viewer f
   - [x] 4.4 Implement `src/built_in/image.rs` -- `ImageViewer` struct implementing `FileViewer` with key `"image"`, extensions `["png", "jpg", "jpeg", "gif", "bmp", "webp"]`, stub `render` with placeholder/error display
   - [x] 4.5 Implement `src/built_in/csv_table.rs` -- `CsvTableViewer` struct implementing `FileViewer` with key `"csv-table"`, extensions `["csv", "tsv"]`, MIME `["text/csv"]`, stub `render` with grid layout
   - [x] 4.6 Write unit tests: all built-in viewers implement FileViewer correctly, `register_built_in_viewers` populates registry with 4 entries, each viewer returns correct key/name/extensions
-    - Validates: Requirement 4 AC 1–5
+    - Validates: Requirement 4 AC 1-5
   - [x] 4.7 Write property test: built-in viewer keys are stable and unique (Property 3) -- assert all 4 built-in keys are distinct, non-empty, and format-compliant
     - Validates: Requirement 4 AC 5; Requirement 1 AC 1
 
@@ -59,7 +59,7 @@ This task plan implements the `ff-viewers` crate -- the extensible file viewer f
   - [x] 5.5 Implement `PREVIEW OFF` -- deactivate active viewer, hide Viewer_Panel
   - [x] 5.6 Implement `PREVIEW LIST` -- display all registered viewers with key, display name, and description
   - [x] 5.7 Write unit tests: command ID registration, toggle on/off, explicit key activation, OFF hides panel, LIST returns all viewers, invalid key returns warning
-    - Validates: Requirement 3 AC 1–9
+    - Validates: Requirement 3 AC 1-9
   - [x] 5.8 Write property test: PREVIEW command never produces an Undo_Record (Property 4) -- issue various PREVIEW commands, assert no undo state is generated
     - Validates: Requirement 3 AC 9
 
@@ -68,7 +68,7 @@ This task plan implements the `ff-viewers` crate -- the extensible file viewer f
   - [x] 6.2 Implement `deregister_viewer` function -- remove plugin viewer by key, close any active Viewer_Panel using that viewer
   - [x] 6.3 Implement plugin shutdown hook -- auto-deregister all viewers contributed by the shutting-down plugin, close affected panels gracefully
   - [x] 6.4 Write unit tests: plugin registration succeeds, duplicate key from plugin rejected, deregistration closes panel, shutdown auto-deregisters all plugin viewers
-    - Validates: Requirement 5 AC 1–6
+    - Validates: Requirement 5 AC 1-6
   - [x] 6.5 Write property test: plugin viewer lifecycle (Property 5) -- register then deregister plugin viewers in random order, assert registry consistency (no dangling keys, count correct)
     - Validates: Requirement 5 AC 2, AC 3
 
@@ -79,7 +79,7 @@ This task plan implements the `ff-viewers` crate -- the extensible file viewer f
   - [x] 7.4 Implement selection priority: language profile > extension match > content sniff > none
   - [x] 7.5 Implement notification suppression tracking -- record dismissed viewer offers per resource per session
   - [x] 7.6 Write unit tests: extension match works, language profile overrides extension, content sniff fallback, no match returns None, dismissed notification not re-shown
-    - Validates: Requirement 6 AC 1–6
+    - Validates: Requirement 6 AC 1-6
   - [x] 7.7 Write property test: selection priority ordering (Property 6) -- when language profile defines a default, it always wins over extension match; when no profile, extension wins over content sniff
     - Validates: Requirement 6 AC 1, AC 2
 
@@ -90,9 +90,9 @@ This task plan implements the `ff-viewers` crate -- the extensible file viewer f
   - [x] 8.4 Implement `render_content()` -- delegate to active FileViewer's `render` method, passing content as `&[u8]` and egui Ui reference
   - [x] 8.5 Implement read-only input filtering -- reject keyboard/mouse input that would modify document, allow clipboard copy
   - [x] 8.6 Write unit tests: panel_id is "viewer", default zone is Center, title includes viewer key, visibility toggle preserves position, no editing affordances exposed
-    - Validates: Requirement 7 AC 1–7; Requirement 8 AC 2, AC 3
+    - Validates: Requirement 7 AC 1-7; Requirement 8 AC 2, AC 3
   - [x] 8.7 Write property test: Viewer_Panel never exposes mutable content (Property 7) -- render with various content inputs, assert no mutation path exists on the byte slice
-    - Validates: Requirement 8 AC 1–3
+    - Validates: Requirement 8 AC 1-3
 
 - [x] 9. Viewer refresh and debounce logic
   - [x] 9.1 Implement `src/refresh.rs` -- define `RefreshController` struct with configurable debounce interval (default 300ms)
@@ -101,18 +101,18 @@ This task plan implements the `ff-viewers` crate -- the extensible file viewer f
   - [x] 9.4 Implement error resilience -- catch panics/errors from `on_content_changed`, log warning, display stale-content indicator in panel
   - [x] 9.5 Implement background refresh -- ensure `on_content_changed` runs off the UI thread, never blocking editor input
   - [x] 9.6 Write unit tests: debounce groups rapid changes, single refresh after quiet period, external change triggers refresh, error in viewer shows stale indicator, refresh does not block UI thread
-    - Validates: Requirement 9 AC 1–6
+    - Validates: Requirement 9 AC 1-6
   - [x] 9.7 Write property test: debounce coalesces rapid edits (Property 8) -- generate sequences of N edits within debounce window, assert only 1 refresh call occurs per quiet period
     - Validates: Requirement 9 AC 2, AC 3
 
 - [x] 10. Viewer configuration
-  - [x] 10.1 Implement `src/config.rs` -- define `ViewerConfig` struct with fields: `auto_offer` (bool, default true), `default_position` (enum, default "split-right"), `split_ratio` (f32, 0.1–0.9, default 0.5), `refresh_debounce_ms` (u32, default 300)
+  - [x] 10.1 Implement `src/config.rs` -- define `ViewerConfig` struct with fields: `auto_offer` (bool, default true), `default_position` (enum, default "split-right"), `split_ratio` (f32, 0.1-0.9, default 0.5), `refresh_debounce_ms` (u32, default 300)
   - [x] 10.2 Implement TOML parsing for `[viewers]` section -- validate values, emit warning and apply defaults for invalid entries
   - [x] 10.3 Implement hot-reload support -- detect config file changes, apply new values to next viewer activation without restart
   - [x] 10.4 Implement per-viewer config sub-sections -- parse `[viewers.<viewer-key>]` and pass `toml::Value` to viewer's `configure()` method
   - [x] 10.5 Write unit tests: default config values, valid TOML parsing, invalid values fall back to defaults with warning, hot-reload picks up changes, per-viewer config passed to viewer
-    - Validates: Requirement 10 AC 1–4
-  - [x] 10.6 Write property test: configuration validation bounds (Property 9) -- generate split_ratio values, assert only 0.1–0.9 accepted; generate debounce_ms values, assert only positive integers accepted
+    - Validates: Requirement 10 AC 1-4
+  - [x] 10.6 Write property test: configuration validation bounds (Property 9) -- generate split_ratio values, assert only 0.1-0.9 accepted; generate debounce_ms values, assert only positive integers accepted
     - Validates: Requirement 10 AC 1, AC 2
 
 - [x] 11. Read-only enforcement integration
@@ -125,11 +125,119 @@ This task plan implements the `ff-viewers` crate -- the extensible file viewer f
 
 ---
 
+## Markdown Viewer Family tasks (CR-CH-049)
+
+These tasks bring the Markdown Viewer crates (`ff-md-viewer`, `ff-mdx-plugin`,
+`ff-mdx-app`, `ff-mdx-installer`) into compliance, back-filling the gate for
+Requirements 11-17. They are independently completable and reference the
+criteria they satisfy. TDD applies: write the failing test first (red), then the
+minimum implementation (green). None are pre-checked.
+
+- [x] 12. ASCII cleanup across the markdown crates (done in Part A, pending gate)
+  - [x] 12.1 Replace em dash / en dash / ellipsis / emoji in `.rs` and `Cargo.toml` of `ff-mdx-app`, `ff-mdx-plugin`, `ff-mdx-installer` per documentation.md
+    - DONE IN PART A of this run (pre-gate mechanical fix): em dash -> `--`, ellipsis -> `...`, emoji removed/replaced across app.rs, file_tree.rs, viewer.rs, plugin viewer.rs, installer main.rs, and ff-mdx-app Cargo.toml. Non-ASCII scan returned zero matches.
+    - Validates: documentation.md (Rust source ASCII-only); audit F05, F06, F07, F14
+
+- [x] 13. Unit tests for ff-md-viewer render_to_html
+  - [x] 13.1 Unit tests assert the enabled extension output: table -> `<table>`, footnote reference -> footnote anchor, strikethrough -> `<del>`, task-list item -> checkbox list item, straight quotes -> smart-punctuation; empty input -> empty fragment
+    - Validates: Requirement 11.1, 11.2, 11.3, 11.4
+
+- [x] 14. Unit tests for ff-md-viewer Scanner::scan
+  - [x] 14.1 Unit tests over `tempfile::TempDir` fixtures: only `.md` included; excluded directories not descended; `relative_path` normalised backslash->forward-slash + absolute `full_path`; results sorted lexicographically; missing/non-directory root returns an empty vector
+    - Validates: Requirement 12.1, 12.2, 12.3, 12.4, 12.5, 12.6
+
+- [x] 15. Unit tests for ff-md-viewer FileWatcher predicate and debounce
+  - [x] 15.1 Extracted the `md`-extension predicate (`is_markdown_path`) into a pure testable function; test rejects non-`md` paths
+    - Validates: Requirement 15.2
+  - [x] 15.2 Extracted the burst coalescing (`coalesce_burst`) and tested deterministically: a burst yields the single most-recent path; empty burst yields None
+    - Validates: Requirement 15.1, 15.3
+
+- [x] 16. Unit tests for ff-mdx-plugin MdxFileViewer
+  - [x] 16.1 Unit tests: `viewer_key == "mdx-markdown"`; declared extensions/MIME; `can_render` true for `.md`/`.markdown` and false otherwise; `render` on non-UTF-8 bytes does not panic and returns HTML; `MdxPlugin` capability metadata matches the viewer's MIME types/display name
+    - Validates: Requirement 13.1, 13.2, 13.3, 13.4, 13.5
+
+- [x] 17. Unit tests for ff-mdx-installer PATH de-duplication
+  - [x] 17.1 Factored the PATH-dedup predicate (`path_already_contains`) and `append_to_path` into pure functions; tests assert existing case-insensitive/trimmed match leaves PATH unchanged; new entry appended; `;` join only when PATH is non-empty
+    - Validates: Requirement 17.1, 17.2, 17.3, 17.4
+
+- [x] 18. Extract and unit-test ff-mdx-app pure helpers
+  - [x] 18.1 Extracted the filter predicate (`filter_matches`), drop-path classification (`classify_drop`), viewer-title logic (`relative_title`), and reload decision (`should_reload`) into pure functions in `helpers.rs`; unit-tested each
+    - Validates: Requirement 16.2, 16.6
+
+- [x] 19. egui_kittest GUI tests for ff-mdx-app
+  - [x] 19.1 Harness test: clicking a file-tree entry marks it selected and returns its `full_path`
+    - Validates: Requirement 16.1
+  - [x] 19.2 Harness test: the side-panel filter narrows the file list case-insensitively; empty filter shows all
+    - Validates: Requirement 16.2
+  - [x] 19.3 Harness test: empty-state placeholder when no file selected; rendered Markdown with relative-path title when selected
+    - Validates: Requirement 16.3
+  - [x] 19.4 Harness test (build_eframe): F5 rescans the current folder. Ctrl+O opens the rfd native folder picker and is recorded MANUAL (OS-native dialog)
+    - Validates: Requirement 16.4
+  - [x] 19.5 Watcher reload decision tested via the pure `should_reload` helper: change to the open file reloads; change to another file does not
+    - Validates: Requirement 16.5, 15.4
+  - [x] 19.6 Recorded the `rfd` folder/save dialogs as MANUAL in TCR with the OS-native-dialog reason
+    - Validates: Requirement 16.6
+
+- [x] 20. rust-standards hardening of ff-md-viewer and the markdown crates
+  - [x] 20.1 Introduced the `thiserror` `MdViewerError` enum in `ff-md-viewer` (`error.rs`); `FileWatcher::new` returns it; removed the `anyhow` dependency from the library
+    - Validates: rust-standards.md (libraries use thiserror); audit F08
+  - [x] 20.2 Made `FileWatcher.rx` private with a `changes(&self) -> &Receiver<PathBuf>` accessor; added `///` docs to the public items (`FileEntry`, `Scanner`, `FileWatcher`, `MdViewerError`, `MdxApp`, `MdxPlugin`, `MdxFileViewer`, installer types)
+    - Validates: rust-standards.md (accessors over pub fields; doc every public item); audit F09, F10
+  - [x] 20.3 Split `MdxApp::toolbar`/`update` into focused helpers (`open_folder_dialog`, `refresh_current_folder`, `export_current_as_html`, `handle_shortcuts`); used `env!("CARGO_PKG_VERSION")` for the version label; resolved `FileTree::set_files` to reconcile selection against the new file set (documented)
+    - Validates: rust-standards.md (function length); audit F11, F12, F13
+  - [x] 20.4 Added `ff-logging` log calls at the `MdxPlugin` lifecycle seams (initialize/activate/deactivate/shutdown), keeping the dependency justified
+    - Validates: audit F15
+
+- [ ] 21. Shell integration of the markdown viewer on the framework
+  - BLOCKED (surfaced to owner): `ff-desktop` does NOT currently depend on `ff-viewers` or `ff-mdx-plugin`, and there is no viewer-to-shell seam in the shell (no ViewerRegistry construction, no PREVIEW command wired into `resolve_target`/`dispatch_command_target`). The `ff-viewers` framework exists and is tested only in isolation. Wiring it in is a framework-integration change touching the ff-desktop command-dispatch seam -- per the owner's instruction, stopped and surfaced rather than improvised. Req 14 TCR rows remain NOT COVERED.
+  - [ ] 21.1 Register `MdxPlugin`/`MdxFileViewer` with the `ff-viewers` Viewer_Registry so it appears in `PREVIEW LIST` and is activatable by Viewer_Key
+    - Validates: Requirement 14.1
+  - [ ] 21.2 Ensure the viewer is reached only through the single command-dispatch path (the existing `PREVIEW` command); no bespoke intercept or parallel dispatcher
+    - Validates: Requirement 14.2
+  - [ ] 21.3 Ensure any menu/toolbar/shortcut affordance invokes the same `PREVIEW` command (command parity)
+    - Validates: Requirement 14.3
+  - [ ] 21.4 IF the viewer is surfaced as its own shell Context, implement `WorkspaceContext::render -> InteriorFocus` (stable first-control `egui::Id`) dispatched via `render_workspace_context`, and add the mandatory full-shell first-Tab `egui_kittest` test
+    - Validates: Requirement 14 (framework-conformance mechanism 5; workspace-conformance)
+
+---
+
+## Markdown Viewer Link Navigation tasks (CR-CH-050)
+
+These tasks implement Requirement 18 (external/web links, `.md`-file links,
+same-file and cross-file HTML-style anchors). The pure helpers and the STANDALONE
+`ff-mdx-app` behaviour are NOT blocked by Task 21; the IN-SHELL link activation
+IS `[Depends on Req 14 / Task 21]`. TDD applies: failing test first. All queued
+behind the ff-desktop decoupling per the owner's finish-decoupling-first priority.
+`[ ]` only.
+
+- [ ] 22. Pure link classification and anchor resolution in ff-md-viewer (not Task-21-blocked)
+  - [ ] 22.1 Implement `classify_link(dest) -> MdLinkTarget` (External / MarkdownFile{path,fragment} / SameFileAnchor / Other); unit-tested first (red)
+    - Validates: Requirement 18.1, 18.2, 18.6, 18.7
+  - [ ] 22.2 Implement `resolve_markdown_link(current_doc_dir, target, root)` (relative-to-current-doc join, absolute as-is, reject root-escape when a root is given); unit-tested
+    - Validates: Requirement 18.2, 18.3, 18.7
+  - [ ] 22.3 Implement `heading_slug(heading)` (GitHub-style slug) and `resolve_anchor(doc_markdown, anchor)` (explicit anchor id if present else heading slug else None->top); unit-tested. Record the optional non-standard explicit-anchor-marker extension as design-gated, default = heading slug
+    - Validates: Requirement 18.8, 18.9
+- [ ] 23. Standalone ff-mdx-app link navigation + GUI tests (out-of-shell, not Task-21-blocked)
+  - [ ] 23.1 On a `MarkdownFile` (no fragment) activation: resolve path (22.2), load file, update viewer to top; optionally update tree selection. On missing/unreadable target: status message, keep current doc. Unit-test the decision helper
+    - Validates: Requirement 18.2, 18.3, 18.4
+  - [ ] 23.2 On a `SameFileAnchor`: scroll to `resolve_anchor` within the current doc. On a cross-file `MarkdownFile{fragment}`: load target then position at `resolve_anchor`; missing anchor -> top. Unit-test the decision helpers
+    - Validates: Requirement 18.6, 18.7, 18.9
+  - [ ] 23.3 On an `External` link: open the OS default browser (classification unit-tested; the browser launch itself is MANUAL -- OS side effect, justified exception). `Other` targets ignored
+    - Validates: Requirement 18.1
+  - [ ] 23.4 egui_kittest tests: clicking a `.md` link loads the target; clicking a SAME-FILE anchor scrolls to it; clicking a CROSS-FILE anchor loads then positions at the anchor
+    - Validates: Requirement 18.2, 18.6, 18.7
+- [ ] 24. In-shell markdown viewer link navigation ON the framework (BLOCKED: Req 14 / Task 21)
+  - BLOCKED on the viewer-to-shell seam (same dependency as Task 21). Do NOT implement ahead of it.
+  - [ ] 24.1 When the markdown viewer is surfaced in-shell, reach link activation through the single command-dispatch path / existing PREVIEW integration (Req 14); reuse the Task 22 pure helpers; file/anchor/external behaviour matches criteria 1-9; no bespoke dispatcher
+    - Validates: Requirement 18.5 (and 18.1-18.3, 18.6-18.9 in-shell)
+
+---
+
 ## Acceptance Criteria Coverage
 
 | Requirement | Criteria | Covered by Task(s) |
 |-------------|----------|---------------------|
-| Req 1: Viewer Registry | AC 1 (Viewer_Key → Box\<dyn FileViewer\>) | 3.1–3.2, 3.8 |
+| Req 1: Viewer Registry | AC 1 (Viewer_Key -> Box\<dyn FileViewer\>) | 3.1-3.2, 3.8 |
 | Req 1: Viewer Registry | AC 2 (thread-safe) | 3.1, 3.7 |
 | Req 1: Viewer Registry | AC 3 (built-ins before plugins) | 4.1, 4.6 |
 | Req 1: Viewer Registry | AC 4 (runtime plugin registration) | 6.1 |
@@ -203,9 +311,9 @@ This task plan implements the `ff-viewers` crate -- the extensible file viewer f
 | P4 | PREVIEW command never produces an Undo_Record | 5.8 | Req 3 AC 9 |
 | P5 | Plugin viewer lifecycle: register/deregister in random order maintains registry consistency | 6.5 | Req 5 AC 2, AC 3 |
 | P6 | Selection priority: language profile > extension > content sniff | 7.7 | Req 6 AC 1, AC 2 |
-| P7 | Viewer_Panel never exposes mutable content reference | 8.7 | Req 8 AC 1–3 |
-| P8 | Debounce coalesces rapid edits: N edits within window → 1 refresh call | 9.7 | Req 9 AC 2, AC 3 |
-| P9 | Configuration validation: split_ratio 0.1–0.9 only, debounce_ms positive only | 10.6 | Req 10 AC 1, AC 2 |
+| P7 | Viewer_Panel never exposes mutable content reference | 8.7 | Req 8 AC 1-3 |
+| P8 | Debounce coalesces rapid edits: N edits within window -> 1 refresh call | 9.7 | Req 9 AC 2, AC 3 |
+| P9 | Configuration validation: split_ratio 0.1-0.9 only, debounce_ms positive only | 10.6 | Req 10 AC 1, AC 2 |
 | P10 | Read-only invariant: no document mutation during Viewer_Mode regardless of input | 11.4 | Req 8 AC 3, AC 4 |
 
 ---

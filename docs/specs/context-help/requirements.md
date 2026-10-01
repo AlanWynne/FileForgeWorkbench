@@ -131,7 +131,7 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 
 **User Story:** As a workbench user, I want to search across all help content by keyword, so that I can find relevant topics even when I do not know the exact command name or topic title.
 
-**Source:** [FFE-HELP] Requirement 3.4–3.5 (extracted as separate requirement for clarity).
+**Source:** [FFE-HELP] Requirement 3.4-3.5 (extracted as separate requirement for clarity).
 
 #### Acceptance Criteria
 
@@ -256,7 +256,7 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 
 **User Story:** As a macro developer, I want comprehensive help for the Lua macro API available through the help system, so that I can write macros using the correct function names, parameters, and return values without consulting external documentation.
 
-**Source:** [FFE-HELP] Requirement 7.3–7.4 (expanded). Cross-references: `lua-macro-engine` (macro API).
+**Source:** [FFE-HELP] Requirement 7.3-7.4 (expanded). Cross-references: `lua-macro-engine` (macro API).
 
 #### Acceptance Criteria
 
@@ -374,7 +374,7 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 
 **User Story:** As a desktop user, I want the Help menu to provide access to help topics, the about dialog, and key bindings reference, so that I can discover help features through the standard menu system.
 
-**Source:** [FFE-HELP] Requirement 10. Cross-references: `menu-and-statusbar` (menu bar layout).
+**Source:** [FFE-HELP] Requirement 10. Cross-references: `menu-and-statusbar` (menu bar layout; Requirement 13 is the authoritative About Dialog spec).
 
 #### Acceptance Criteria
 
@@ -388,7 +388,7 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 
 14.5. WHEN "Key Bindings" is selected, THE Workbench SHALL open the Help_Panel displaying the current function key and keyboard shortcut reference (equivalent to `HELP KEYS`). [FFE-HELP]
 
-14.6. WHEN "About FileForgeWorkbench" is selected, THE Workbench SHALL display a modal dialog showing the application name, version, build date, Rust compiler version, and license information. [FFE-HELP]
+14.6. WHEN "About FileForgeWorkbench" is selected, THE Workbench SHALL display the modal About dialog. The content and behaviour of that dialog are specified authoritatively by `menu-and-statusbar` Requirement 13 (Help > About Dialog) -- which covers the application name, version, creator credit, AI-assistant credit, copyright, description, licence, and project URL -- and are NOT duplicated here. This criterion only requires that the context-help Help_Menu "About FileForgeWorkbench" item opens that same dialog via the single command path. [FFE-HELP] (Cross-reference added by CR-CH-051: the About content set, including author credit and licence, lives in menu-and-statusbar Requirement 13; see that spec. This removes the earlier thin duplicate field list here.)
 
 ---
 
@@ -402,7 +402,7 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 
 15.1. THE Help_System SHALL generate the function keys help topic (Topic_Key `"feature:function_keys"`) dynamically at display time from the active Shortcut_Registry and Key_Map (Global_Key_Map or Profile_Key_Map). [FFE-HELP]
 
-15.2. THE dynamically generated topic SHALL display a table with columns: Key, Command, and Label -- listing all assigned function keys F1–F24 and common keyboard shortcuts. [FFE-HELP]
+15.2. THE dynamically generated topic SHALL display a table with columns: Key, Command, and Label -- listing all assigned function keys F1-F24 and common keyboard shortcuts. [FFE-HELP]
 
 15.3. WHEN a language profile is active and provides a Profile_Key_Map, THE generated topic SHALL show the profile key map and note which profile is active. [FFE-HELP]
 
@@ -420,7 +420,7 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 
 16.1. THE workbench configuration SHALL accept a `[help]` section containing the following keys:
   - `directory` (string) -- custom path to the help content directory. WHEN absent, the default search locations SHALL be used. [FFE-HELP]
-  - `panel_width_ratio` (float, range 0.2–0.5, default 0.35) -- Help_Panel width as a fraction of the window width when docked to a side zone. [FFE-HELP]
+  - `panel_width_ratio` (float, range 0.2-0.5, default 0.35) -- Help_Panel width as a fraction of the window width when docked to a side zone. [FFE-HELP]
   - `panel_position` (string, values `"right"` | `"left"` | `"bottom"`, default `"right"`) -- default dock zone for the Help_Panel. [FFE-HELP, adapted]
   - `search_highlight` (boolean, default true) -- whether to highlight search matches in help content. [WB]
 
@@ -504,6 +504,50 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 
 ---
 
+### Requirement 20: Markdown-Rendered Help Content
+
+**User Story:** As a workbench user, I want help content displayed WITH its Markdown formatting (headings, lists, code, tables, links, emphasis) rather than as raw monospace text, so that help is readable and the structure the author intended is visible.
+
+**Source:** CR-NR-100 (owner: "Help files are markdown files. Currently help is working displaying the help as text, but perhaps we should also re-evaluate the help requirements to use the markdown viewer?"). This is an EVALUATION/re-evaluation of the display seam that Requirement 18.2 introduced. Cross-references: Requirement 2.6 (formatted text with headings/lists/code/links -- unchanged), Requirement 3 (navigation) and Requirement 5.3 (Markdown element + cross-reference link set -- unchanged), Requirement 18 (content pipeline + Help Context render seam); `custom-file-viewers` Requirement 14 (Markdown Plugin Shell Integration via the single dispatch path), the `ff-md-viewer` renderer option set, and `framework-conformance` (single command-dispatch path / ff-viewers PREVIEW).
+
+**Note on scope:** This requirement RE-EVALUATES how the Help Context renders its already-raw-Markdown body. The CHOICE of rendering target (direct egui Markdown widgets vs an HTML view over `render_to_html` vs reuse of the ff-viewers ViewerPanel once Task 21 lands) is an OPEN DESIGN QUESTION resolved in `design.md` (see criterion 20.7), NOT locked here. Criteria that depend on the viewer-to-shell seam are marked `[Depends on custom-file-viewers Req 14 / Task 21]`.
+
+**Note on link-target resolution (CR-NR-100, refined):** Criterion 20.3 established that an INTERNAL `[text](topic_key)` link activates Help navigation and that EXTERNAL `http(s)://` links are never treated as topic navigation. Criteria 20.9-20.14 (added by the CR-NR-100 refinement) complete the link-target model by covering (a) a link whose target is a `.help.md` / `.md` FILENAME, (b) an HTML-style `#<anchor>` fragment that may address a location in the SAME file or in a DIFFERENT file, and (c) a heading-slug fallback. Authors naturally write such file and anchor links; without these criteria they would be unclassified. All link navigation here continues to go through the EXISTING Help navigation seam (the Help_Navigation_Stack, Requirement 3.1 / 3.3); no new dispatch or navigation mechanism is introduced. Help-internal topic/file/anchor navigation does NOT depend on custom-file-viewers Task 21 and is implementable with the recommended Option A (direct egui rendering) per the design.
+
+**Design decision -- extend RESOLUTION, not parse syntax (CR-NR-100, SETTLED):** The `[text](target#fragment)` form (including `[text](#fragment)` for a same-file anchor and `[text](other.help.md#fragment)` for a cross-file anchor) is ALREADY standard, portable Markdown link syntax. This feature assigns navigation MEANING to the fragment in OUR resolver ONLY; it does NOT introduce any new parse syntax. Consequently `.help.md` files remain standard Markdown that any other tool still renders as ordinary links -- only the Help resolver interprets the fragment as a Topic_Key (primary convention, matching the existing `<!-- TOPIC: topic_key -->` markers of Requirement 5.2) or, failing that, as a heading slug. A heavier custom-parse-syntax option was considered and REJECTED for portability. The criteria below are therefore framed on the standard `[text](target#fragment)` form; no new markup is required.
+
+#### Acceptance Criteria
+
+20.1. WHEN the Help_System displays a help topic whose body is Markdown, THE Help display SHALL render that body WITH Markdown formatting applied, NOT as a single raw monospace block of the literal Markdown source. [CR-NR-100]
+
+20.2. THE rendered help display SHALL support, at minimum, the Markdown elements already specified for help content in Requirement 5.3: section headings (`#` / `##`), bullet and numbered lists, inline code, fenced code blocks, bold/emphasis, and cross-reference links `[text](topic_key)`; and SHALL additionally support the `ff-md-viewer` CommonMark extension set where present in content: tables, footnotes, strikethrough, task lists, and smart punctuation. [CR-NR-100]
+
+20.3. WHEN rendered help content contains an INTERNAL cross-reference link of the form `[text](topic_key)` (a Topic_Key target per Requirement 5.3), THE Help_System SHALL treat activation of that link as Help navigation to the referenced topic (consistent with Requirement 3.3 and pushing onto the Help_Navigation_Stack per Requirement 3.1), rather than as an external web navigation. THE handling of EXTERNAL links (e.g. `http(s)://` URLs) SHALL be specified in `design.md` (open external vs ignore vs display-only) and SHALL NOT be treated as a Help topic navigation. [CR-NR-100]
+
+20.4. IF Markdown rendering fails or the Markdown renderer is unavailable at display time, THE Help_System SHALL fall back GRACEFULLY to the current plain-text (monospace) rendering of the raw body so that help remains readable, and SHALL NOT fail the Help display. [CR-NR-100]
+
+20.5. THE Markdown help rendering SHALL integrate THROUGH THE FRAMEWORK: it SHALL continue to be reached through the single command-dispatch path (HELP / F1 per Requirement 18.6), and IF rendering is surfaced via the Markdown viewer, it SHALL go through the ff-viewers PREVIEW integration (custom-file-viewers Requirement 14) rather than introducing a bespoke parallel renderer or a dispatch seam that bypasses `resolve_target` / `dispatch_command_target`. [CR-NR-100, framework-conformance] [Depends on custom-file-viewers Req 14 / Task 21 only if the viewer-surfaced path is chosen]
+
+20.6. THE Help Context SHALL continue to satisfy its existing render-seam contract after this change: it remains a `WorkspaceContext` dispatched through `render_workspace_context`, reporting its interior focus via the returned `InteriorFocus` with the Help_Search field as the first interior stop (Requirement 18.5, workspace-conformance); introducing Markdown rendering SHALL NOT remove or bypass that focus contract. [CR-NR-100, workspace-conformance]
+
+20.7. THE rendering-target APPROACH -- (a) direct egui Markdown widgets rendering Markdown straight to egui, (b) an HTML view over `ff-md-viewer::render_to_html` (noting that egui does not render HTML natively), or (c) reuse of the ff-viewers ViewerPanel / `MdxFileViewer` once the viewer-to-shell seam exists -- SHALL be resolved as an OPEN DESIGN QUESTION in `design.md` with a recommended option for owner confirmation, BEFORE implementation. This criterion is satisfied by recording and resolving that decision in `design.md`; it does NOT itself lock a rendering technology. [CR-NR-100]
+
+20.8. THE implementation of Markdown help rendering SHALL be SEQUENCED to occur AFTER (a) the ff-desktop decoupling work (the DECOMP waves, CR-NR-098 Req 19.3/19.4) and (b) the viewer-to-shell integration of Task 21 / custom-file-viewers Requirement 14, where the chosen approach depends on that seam. This requirement MAY be specified and task-listed now; its code SHALL NOT be implemented ahead of those dependencies. [CR-NR-100] [Depends on custom-file-viewers Req 14 / Task 21 and on the ff-desktop decoupling]
+
+20.9. WHEN rendered help content contains a cross-reference link whose target is a `.help.md` or `.md` FILENAME WITHOUT a fragment (e.g. `[Setup](setup.help.md)`), THE Help_System SHALL resolve that link to the PRIMARY topic of that file -- the first topic defined in the file by delimiter order (Requirement 5.2) -- and navigate to it via the Help_Navigation_Stack (pushing per Requirement 3.1 / 3.3), rather than treating the filename as a bare Topic_Key or as an external web navigation. [CR-NR-100]
+
+20.10. WHEN rendered help content contains a CROSS-FILE anchor link whose target is a `.help.md` or `.md` FILENAME WITH a `#<fragment>` (e.g. `[Setup](setup.help.md#config:theme)`), THE Help_System SHALL open that content file and navigate to the location the fragment addresses within it, THEN position there, via the Help_Navigation_Stack. The fragment SHALL be resolved as a Topic_Key FIRST (the primary help convention, matching the `<!-- TOPIC: topic_key -->` markers of Requirement 5.2); IF no topic in that file has that Topic_Key, the fragment SHALL be resolved as a heading slug within that file (per criterion 20.13). [CR-NR-100]
+
+20.11. WHEN rendered help content contains a SAME-FILE anchor link of the form `[text](#<fragment>)` (an HTML-style fragment with no filename and no scheme, e.g. `[See CHANGE](#cmd:CHANGE)`), THE Help_System SHALL navigate to the location the fragment addresses within the CURRENTLY displayed topic's source file and push that navigation onto the Help_Navigation_Stack (Requirement 3.1 / 3.3). The fragment SHALL be resolved as a Topic_Key FIRST (matching the `<!-- TOPIC: topic_key -->` markers of Requirement 5.2); IF no topic in the current file has that Topic_Key, the fragment SHALL be resolved as a heading slug within the current content (per criterion 20.13). [CR-NR-100]
+
+20.12. A BARE `[text](topic_key)` link (a Topic_Key target with no leading `#`, no `.help.md` / `.md` filename, and no `http(s)://` scheme) SHALL continue to be handled as Help navigation to that Topic_Key exactly as specified in criterion 20.3 (UNCHANGED by this refinement); and an EXTERNAL `http(s)://` link SHALL continue to be handled per the design decision recorded under criterion 20.3 and SHALL NEVER be treated as topic, file, or anchor navigation. [CR-NR-100]
+
+20.13. THE Help_System SHALL support a heading-slug form of fragment resolution for criteria 20.10 and 20.11: a fragment that is not a known Topic_Key SHALL be matched against a GitHub-style auto-generated slug of the Markdown headings in the target content (e.g. `#my-section` matches a `## My Section` heading). The Topic_Key form remains the PRIMARY help convention; heading-slug resolution is the fallback. [CR-NR-100]
+
+20.14. WHEN a help link target (a bare Topic_Key per 20.12, a file link per 20.9, a cross-file anchor per 20.10, or a same-file anchor per 20.11) cannot be fully resolved, THE Help_System SHALL degrade gracefully: a missing ANCHOR within an otherwise-resolved target SHALL position at the TOP of that target (its primary topic); a missing TOPIC or FILE SHALL show the existing "Help topic not found" affordance (Requirement 5.5, with a link back to the Help_Index). In no case SHALL an unresolvable link fail the Help display or crash. [CR-NR-100]
+
+---
+
 ## Cross-Reference Summary
 
 | Dependency | Relationship |
@@ -517,3 +561,4 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 | `line-commands` | Context detection for prefix-area line commands; help topics for each line command |
 | `lua-macro-engine` | Macro API function help registration; `"feature:macros"` topic |
 | `menu-and-statusbar` | Help_Menu is part of the workbench menu bar |
+| `custom-file-viewers` | Markdown-rendered help (Req 20) may reuse the ff-viewers PREVIEW integration / `MdxFileViewer`; depends on Requirement 14 / Task 21 (viewer-to-shell seam) |

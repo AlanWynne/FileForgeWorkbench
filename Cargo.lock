@@ -2202,10 +2202,12 @@ dependencies = [
 name = "ff-md-viewer"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "crossbeam-channel",
  "notify 7.0.0",
+ "pretty_assertions",
  "pulldown-cmark 0.12.2",
+ "tempfile",
+ "thiserror 2.0.20",
 ]
 
 [[package]]
@@ -2216,9 +2218,12 @@ dependencies = [
  "eframe",
  "egui",
  "egui_commonmark",
+ "egui_kittest",
  "ff-html-export",
  "ff-md-viewer",
+ "pretty_assertions",
  "rfd 0.15.4",
+ "tempfile",
 ]
 
 [[package]]

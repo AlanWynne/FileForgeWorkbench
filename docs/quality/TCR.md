@@ -228,6 +228,26 @@ None -- all crates compile and pass.
 | `ff-desktop` | ✅ | `shell/tests.rs` `help_missing_report_classifies_topics` | context-help Req 19.4: `HELP MISSING` classifies each key EXPECTED (Req 17 set) vs UNEXPECTED |
 | `ff-desktop` | ✅ | `shell/tests.rs` `help_miss_does_not_write_project_docs` | context-help Req 19.5: miss path performs NO writes to bugs.md/change-log.md/specs |
 | `ff-desktop` | ✅ | `shell/tests.rs` `help_miss_does_not_write_project_docs` (tally is an in-memory `HashMap` field, never persisted) | context-help Req 19.6: Missing_Topic_Tally is session-scoped, not persisted across restarts |
+<!-- CR-CH-051: About dialog author credit + richer metadata (PENDING GATE; implementation later) -->
+| `ff-help` | 🔴 | -- | context-help Req 14.6 (revised): About dialog shows at minimum app name, version, build date, Rust compiler version, and licence (`AboutInfo` population unit test) |
+| `ff-help` | 🔴 | -- | context-help Req 14.7: About dialog credits the author (author/credit line + copyright notice), sourced at compile time from package metadata, nothing hard-coded in a render path |
+| `ff-desktop` | 🔴 | -- | context-help Req 14.8: About dialog shows licence (SPDX/name + reference) and project homepage/repository when defined, from compile-time metadata; absent optional fields are omitted, not blank (`egui_kittest` behaviour test) |
+<!-- CR-NR-100: Markdown-rendered help content (BLOCKED: ordered after the ff-desktop decoupling + Task 21 / custom-file-viewers Req 14) -->
+| `ff-desktop` | 🔴 | -- | context-help Req 20.1: help body rendered WITH Markdown formatting, not as a raw monospace block |
+| `ff-desktop` | 🔴 | -- | context-help Req 20.2: rendered help supports headings/lists/inline+fenced code/bold/emphasis/links + tables/footnotes/strikethrough/task-lists/smart-punctuation |
+| `ff-desktop` | 🔴 | -- | context-help Req 20.3: internal `[text](topic_key)` links drive Help navigation (not external web nav); external links per design policy |
+| `ff-desktop` | 🔴 | -- | context-help Req 20.4: graceful fallback to monospace rendering when Markdown rendering fails/unavailable |
+| `ff-desktop` | 🔴 | -- | context-help Req 20.5: rendering integrates through the framework (single dispatch path; ff-viewers PREVIEW if viewer-surfaced), no parallel renderer/dispatch seam |
+| `ff-desktop` | 🔴 | -- | context-help Req 20.6: Help Context remains a WorkspaceContext via render_workspace_context with Help_Search first InteriorFocus after the rendering change |
+| `ff-desktop` | 🔴 | -- | context-help Req 20.7: rendering-target approach (egui Markdown widgets vs HTML view vs ViewerPanel reuse) resolved as an open design question in design.md before implementation |
+| `ff-desktop` | 🔴 | -- | context-help Req 20.8: implementation sequenced after the ff-desktop decoupling (DECOMP waves) and after Task 21 / custom-file-viewers Req 14 |
+<!-- CR-NR-100 refinement: help file-name + HTML-style anchor links (NOT Task-21-blocked; queued behind the ff-desktop decoupling) -->
+| `ff-help` | 🔴 | -- | context-help Req 20.9: a `.help.md`/`.md` file link (no fragment) resolves to the file's primary/first topic and navigates via the Help_Navigation_Stack (`classify_help_link` unit test) |
+| `ff-help` | 🔴 | -- | context-help Req 20.10: a cross-file anchor `other.help.md#frag` opens the file then positions at the fragment (Topic_Key first, heading-slug fallback) |
+| `ff-help` | 🔴 | -- | context-help Req 20.11: a same-file anchor `[x](#frag)` navigates within the current content and pushes the Help_Navigation_Stack (egui_kittest click test) |
+| `ff-help` | 🔴 | -- | context-help Req 20.12: a bare `[text](topic_key)` link (20.3) and an external `http(s)://` link remain unchanged -- never treated as file/anchor nav (`classify_help_link` unit test) |
+| `ff-help` | 🔴 | -- | context-help Req 20.13: heading-slug fallback -- a non-Topic_Key fragment matches a GitHub-style heading slug (`heading_slug`/`resolve_fragment` unit test) |
+| `ff-help` | 🔴 | -- | context-help Req 20.14: graceful degradation -- missing anchor positions at top of target; missing topic/file shows "Help topic not found" (Req 5.5); never crash |
 
 | `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 6.8: no exclusions → display list equals all lines in order |
 | `ff-desktop` | ✅ | `editor_panel.rs` unit tests | Req 6.1, 6.2: single exclusion block produces one placeholder row |
@@ -3201,3 +3221,90 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | ✅ | `shell::tests::{capture_export_pdf_protected_writes_encrypted_pdf, capture_export_pdf_protected_default_owner_password}` | Req 20.1, 20.2, 20.7 (command): CAPTURE EXPORT PDF PROTECTED writes an /Encrypt-locked PDF |
 | `ff-desktop` | 🔴 | -- | Req 20.4a: optional digital signature (deferred configurable add-on) |
 | `ff-desktop` | ✅ | `shell::tests::{capture_export_text_writes_file, capture_export_markdown_writes_file, capture_save_then_load_round_trips_collection, capture_export_without_collection_reports_empty}` | Req 11.1 (Wave 3): CAPTURE EXPORT TEXT/MD/HTML + SAVE/LOAD/OPEN via the single dispatch path |
+
+### Markdown Viewer family -- CR-CH-049 (custom-file-viewers Req 11-17)
+
+<!-- CR-CH-049: Markdown Viewer family gate back-fill. Tasks 13-20 implemented and PASS (scoped tests green). Req 14 (shell integration, Task 21) remains NOT COVERED: ff-desktop does not yet depend on ff-viewers and has no viewer-to-shell seam; wiring it is a framework-integration change surfaced to the owner. -->
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-md-viewer` | ✅ | `renderer::tests::*` | custom-file-viewers Req 11.1: `render_to_html(&str) -> String` exposed |
+| `ff-md-viewer` | ✅ | `renderer::tests::{table_markdown_produces_a_table_element, footnote_reference_produces_a_footnote_anchor, strikethrough_produces_a_del_element, task_list_item_produces_a_checkbox_input, straight_quotes_become_smart_punctuation}` | Req 11.2: render enables tables/footnotes/strikethrough/tasklists/smart-punctuation options |
+| `ff-md-viewer` | ✅ | `renderer::tests::*` | Req 11.3: extension output present (`<table>`, footnote anchor, `<del>`, checkbox item, smart punctuation) |
+| `ff-md-viewer` | ✅ | `renderer::tests::empty_input_yields_empty_fragment` | Req 11.4: empty input yields empty/whitespace fragment, no error |
+| `ff-md-viewer` | ✅ | `scanner::tests::includes_only_md_files` | Req 12.1: `Scanner::scan(root) -> Vec<FileEntry>` recursive walk |
+| `ff-md-viewer` | ✅ | `scanner::tests::includes_only_md_files` | Req 12.2: only files with exact `md` extension included |
+| `ff-md-viewer` | ✅ | `scanner::tests::excluded_directories_are_not_descended` | Req 12.3: excluded directory list not descended (node_modules/.git/target/etc.) |
+| `ff-md-viewer` | ✅ | `scanner::tests::relative_path_uses_forward_slashes_and_full_path_is_absolute` | Req 12.4: `relative_path` normalised backslash->forward-slash; `full_path` absolute |
+| `ff-md-viewer` | ✅ | `scanner::tests::results_are_sorted_lexicographically` | Req 12.5: results sorted ascending lexicographic by `relative_path` |
+| `ff-md-viewer` | ✅ | `scanner::tests::unreadable_root_returns_empty_vector` | Req 12.6: unreadable/non-directory root returns empty vector (no panic) |
+| `ff-md-viewer` | ✅ | `watcher::tests::burst_coalesces_to_most_recent_path` | Req 15.1: `FileWatcher` emits changed `.md` path on a receiver channel |
+| `ff-md-viewer` | ✅ | `watcher::tests::markdown_path_predicate_accepts_only_md_extension` | Req 15.2: only `md`-extension modify events emitted |
+| `ff-md-viewer` | ✅ | `watcher::tests::{burst_coalesces_to_most_recent_path, empty_burst_coalesces_to_none}` | Req 15.3: ~400ms burst coalesced to a single most-recent path (distinct from framework 300ms) |
+| `ff-mdx-app` | ✅ | `helpers::tests::reload_only_when_changed_file_is_the_open_file` | Req 15.4: change to the open file reloads/refreshes; change to another file does not |
+| `ff-mdx-plugin` | ✅ | `viewer::tests::viewer_key_is_stable` | Req 13.1: `MdxFileViewer` implements `FileViewer` with viewer_key `"mdx-markdown"` + name/description |
+| `ff-mdx-plugin` | ✅ | `viewer::tests::declares_markdown_extensions_and_mime_types` | Req 13.2: `supported_extensions` md/markdown, `supported_mime_types` text/markdown + text/x-markdown |
+| `ff-mdx-plugin` | ✅ | `viewer::tests::can_render_matches_md_and_markdown_suffixes_only` | Req 13.3: `can_render` true for `.md`/`.markdown` URIs, false otherwise |
+| `ff-mdx-plugin` | ✅ | `viewer::tests::render_on_invalid_utf8_does_not_panic_and_returns_html` | Req 13.4: `render` decodes UTF-8-lossy (no panic) and returns `render_to_html` output |
+| `ff-mdx-plugin` | ✅ | `tests::plugin_metadata_matches_viewer_display_name_and_mime_types` | Req 13.5: `MdxPlugin` capability metadata consistent with viewer MIME types/display name |
+| `ff-desktop` | 🔴 | -- | Req 14.1: MdxPlugin/MdxFileViewer registered in ff-viewers registry (appears in PREVIEW LIST, activatable by key) -- BLOCKED: ff-desktop has no ff-viewers dependency/seam yet (Task 21, framework integration surfaced to owner) |
+| `ff-desktop` | 🔴 | -- | Req 14.2: viewer reached only via the single command-dispatch path (PREVIEW); no bespoke intercept/parallel dispatcher -- BLOCKED (Task 21) |
+| `ff-desktop` | 🔴 | -- | Req 14.3: menu/toolbar/shortcut affordances invoke the same PREVIEW command (command parity) -- BLOCKED (Task 21) |
+| `ff-desktop` | 🔴 | -- | Req 14 (framework): IF surfaced as a Context, WorkspaceContext::render -> InteriorFocus + full-shell first-Tab egui_kittest test (currently N/A -- no Context yet) -- BLOCKED (Task 21) |
+| `ff-mdx-app` | ✅ | `file_tree::tests::clicking_a_file_entry_selects_it_and_returns_full_path` | Req 16.1: file-tree click marks selection and returns clicked `full_path` (egui_kittest) |
+| `ff-mdx-app` | ✅ | `file_tree::tests::{filter_narrows_displayed_entries_case_insensitively, empty_filter_shows_all_entries}`; `helpers::tests::{empty_filter_matches_everything, filter_is_case_insensitive_substring}` | Req 16.2: side-panel filter narrows list case-insensitively; empty shows all (egui_kittest + pure predicate) |
+| `ff-mdx-app` | ✅ | `viewer::tests::{empty_state_placeholder_shown_when_no_file_selected, loaded_file_shows_relative_path_title}` | Req 16.3: empty-state placeholder vs rendered Markdown with relative-path title (egui_kittest) |
+| `ff-mdx-app` | ✅ 🔲 | `app::tests::pressing_f5_rescans_the_current_folder` | Req 16.4: F5 rescans current folder (egui_kittest, PASS); Ctrl+O opens the rfd folder picker -- MANUAL (OS-native dialog, justified exception) |
+| `ff-mdx-app` | ✅ | `helpers::tests::reload_only_when_changed_file_is_the_open_file` | Req 16.5: watcher change to open file reloads; change to another file does not (pure decision helper) |
+| `ff-mdx-app` | ✅ 🔲 | `helpers::tests::{markdown_file_drop_opens_parent, non_markdown_file_drop_is_ignored, relative_title_strips_root_and_normalises_separators, relative_title_falls_back_to_full_path_outside_root}` | Req 16.6: pure helpers (filter/drop-path/title) unit-tested (PASS); rfd dialogs MANUAL (OS-native dialog, justified exception) |
+| `ff-mdx-installer` | ✅ | `tests::existing_case_insensitive_trimmed_entry_is_detected` | Req 17.1: PATH-dedup checks case-insensitive/whitespace-trimmed match among `;`-separated entries |
+| `ff-mdx-installer` | ✅ | `tests::existing_entry_leaves_path_unchanged` | Req 17.2: existing matching entry leaves PATH unchanged |
+| `ff-mdx-installer` | ✅ | `tests::{new_entry_is_appended_with_semicolon_when_path_non_empty, new_entry_has_no_leading_semicolon_when_path_empty}` | Req 17.3: new entry appended, `;`-joined only when PATH non-empty |
+| `ff-mdx-installer` | ✅ 🔲 | `tests::*` | Req 17.4: dedup predicate pure/unit-tested (PASS); HKCU\Environment write MANUAL (real OS side effect, justified exception) |
+
+<!-- CR-CH-050: Markdown Viewer link navigation (external/web, .md-file, same-file + cross-file anchors). Standalone-app + pure helpers NOT Task-21-blocked; in-shell seam (Req 18.5) IS. Queued behind the ff-desktop decoupling. -->
+| `ff-mdx-app` | 🔴 | -- | custom-file-viewers Req 18.1: external `http(s)://` link opens the OS default browser, never navigated as a file (classification unit-tested; browser launch MANUAL -- OS side effect) |
+| `ff-md-viewer` | 🔴 | -- | Req 18.2: `.md`/`.markdown` file link (no fragment) resolves relative to the current doc dir and loads the target at top (`classify_link`/`resolve_markdown_link` unit test) |
+| `ff-md-viewer` | 🔴 | -- | Req 18.3: path resolution guards root-escape where a root applies; missing/unreadable target shows a status message, keeps current doc, no crash (unit test) |
+| `ff-mdx-app` | 🔴 | -- | Req 18.4: standalone app loads the resolved `.md`-file link into the viewer and MAY update tree selection (egui_kittest) |
+| `ff-desktop` | 🔴 | -- | Req 18.5: in-shell link activation stays ON the framework (single dispatch path / PREVIEW, Req 14); file/anchor/external behaviour matches criteria 1-9 -- BLOCKED (Task 21, no viewer-to-shell seam yet) |
+| `ff-mdx-app` | 🔴 | -- | Req 18.6: same-file anchor `[x](#anchor)` scrolls within the current document, no file load (egui_kittest click test) |
+| `ff-mdx-app` | 🔴 | -- | Req 18.7: cross-file anchor `[x](other.md#anchor)` loads the target then positions at the anchor (egui_kittest) |
+| `ff-md-viewer` | 🔴 | -- | Req 18.8: anchor resolves to an explicit inline-HTML anchor id if present, else a GitHub-style heading slug (`heading_slug`/`resolve_anchor` unit test) |
+| `ff-md-viewer` | 🔴 | -- | Req 18.9: unresolvable anchor positions at the top of the target (loading first for cross-file); no crash (unit test) |
+
+<!-- CR-NR-101: markdown-rendering -- configurable Markdown element styling (ff-md-style). Gate complete; implementation NOT started. -->
+
+### Markdown Rendering (CR-NR-101, Phase DA) -- NOT COVERED (implementation not started)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-md-style` | 🔴 | -- | markdown-rendering Req 1.1-1.7: load Markdown_Style_File via ff-config; default when absent; invalid-TOML retention; per-value fallback; partial definitions; layered override; parse/serialise round-trip |
+| `ff-md-style` | 🔴 | -- | markdown-rendering Req 2.1-2.6: Heading_Scale H1-H6 Element_Styles (size/bold/italic/colour-ref); omitted colour -> body; monotonic default sizes; size clamp 6-72; H1/H2 underline rule default |
+| `ff-md-style` | 🔴 | -- | markdown-rendering Req 3.1-3.6: body/inline/link Element_Styles (font-stack refs, emphasis/strong/strikethrough, inline-code bg/fg refs, link accent + underline); size clamp |
+| `ff-md-style` | 🔴 | -- | markdown-rendering Req 4.1-4.5: list indent + item spacing Layout_Tokens; blockquote Element_Style (border/bg/padding/italic); task-list checkbox style; negative-value fallback |
+| `ff-md-style` | 🔴 | -- | markdown-rendering Req 5.1-5.6: Code_Block_Theme (bg/fg refs, padding, mono font); optional syntax colour set; enabled+language -> highlight; disabled/no-language -> plain; enable flag default on; intent parity across paths |
+| `ff-md-style` | 🔴 | -- | markdown-rendering Req 6.1-6.4: table Element_Style (border/padding/header); zebra flag default off; horizontal-rule style; negative-value fallback |
+| `ff-md-style` | 🔴 | -- | markdown-rendering Req 7.1-7.5: max content width Layout_Token; width 0 -> full width; block-spacing tokens; centring when viewport wider; range clamp |
+| `ff-md-style` | 🔴 | -- | markdown-rendering Req 8.1-8.6: colours are ColourTokenRefs into ff-theme; resolve for active VisualMode; re-resolve on mode change; unknown-ref fallback+warn; no parallel palette; non-colour tokens owned directly |
+| `ff-md-style` | 🔴 | -- | markdown-rendering Req 9.1-9.6: egui style mapping + CSS emission from ONE config; every element addressed by both paths; documented approximation for capability gaps; updated config used next render; self-contained CSS |
+| `ff-md-style` | 🔴 | -- | markdown-rendering Req 10.1-10.5: hot-reload callback + atomic swap; re-resolution on theme palette-change; change-notification epoch; invalid reload retains previous |
+| `ff-md-style` | 🔴 | -- | markdown-rendering Req 11.1-11.5: built-in default good out of the box; default references theme tokens; export-defaults with comments; discover user file on reload/start; default not auto-written to disk |
+| `ff-html-export` | 🔴 | -- | markdown-rendering Req 9.2: `build_standalone_html_with_css` injects emitted CSS; `build_standalone_html` retained (backward compatible) |
+
+<!-- CR-NR-102: ffmdx-app -- rebuild ffmdx as a cut-down FFWB via ff-app-bootstrap. Gate complete; implementation NOT started. -->
+
+### ffmdx App (CR-NR-102, Phase DB) -- NOT COVERED (implementation not started)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-app-bootstrap` | 🔴 | -- | ffmdx-app Req 1.1, 1.2, 1.4, 1.5: shared bootstrap sequence (logging -> config -> theme -> apply to egui); invoked by ffmdx; per-app identity params; no editor/shell deps |
+| `ff-desktop` | 🔴 | -- | ffmdx-app Req 1.3: ffwb refactored onto the shared bootstrap with no observable behaviour change (existing startup tests still pass + same-effective-config assertion) |
+| `ff-app-bootstrap` | 🔴 | -- | ffmdx-app Req 3.2: apply_to_egui sets Visuals + fonts from the resolved palette before the first frame |
+| `ff-mdx-app` | 🔴 | -- | ffmdx-app Req 2.1-2.6: own config home via ff-config; TOML load + layered/hot-reload; absent fallback+DEBUG; invalid-TOML retention; required keys with defaults; no cross-writes with ffwb |
+| `ff-mdx-app` | 🔴 | -- | ffmdx-app Req 3.1, 3.3-3.6: load active theme via ff-theme; chrome uses theme tokens (no hardcoded colours); runtime Visual_Mode switch; hot-reload re-apply; theme discovery |
+| `ff-mdx-app` | 🔴 | -- | ffmdx-app Req 4.1-4.5: init ff-logging via bootstrap; dev-logging gate honoured; logged records at open/view/export/error seams; config-driven level; init-failure degrades non-fatally |
+| `ff-mdx-app` | 🔴 | -- | ffmdx-app Req 5.1-5.6: persist/restore window geometry + last folder + last file via ff-session; restore when present; missing-path empty state+DEBUG; CLI folder precedence; update+save on change/exit |
+| `ff-mdx-app` | 🔴 | -- | ffmdx-app Req 6.1-6.4: render via ff-md-style egui mapping; HTML export via build_standalone_html_with_css + emit_css; re-render on style/mode change; no independent styling |
+| `ff-mdx-app` | 🔴 | -- | ffmdx-app Req 7.1-7.4: cut-down About/Help surface reachable from toolbar; Ctrl+O/F5 stay hardcoded; ff-keys deferral recorded; no ff-keys dependency |
+| `ff-mdx-app` | 🔴 | -- | ffmdx-app Req 8.1-8.4: dependency allow-list enforced (no editor/command/vfs/toolchain/plugin/layout deps); cut-down feature set; preserve existing behaviours (scan, F5, drag-drop, filter, export) |
