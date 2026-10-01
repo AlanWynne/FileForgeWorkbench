@@ -681,15 +681,15 @@ fn render_section(
                     resp.context_menu(|ui| {
                         if ui.button("Properties").clicked() {
                             *ctx.action = Some(FilesPanelAction::EditCatalog(cat.name.clone()));
-                            ui.close_menu();
+                            ui.close();
                         }
                         if ui.button("Allocate Dataset").clicked() {
                             *ctx.action = Some(FilesPanelAction::AllocateDataset(cat.name.clone()));
-                            ui.close_menu();
+                            ui.close();
                         }
                         if ui.button("Delete Catalog").clicked() {
                             *ctx.action = Some(FilesPanelAction::DeleteCatalog(cat.name.clone()));
-                            ui.close_menu();
+                            ui.close();
                         }
                     });
                 }

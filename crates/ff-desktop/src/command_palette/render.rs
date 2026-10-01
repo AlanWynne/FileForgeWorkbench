@@ -76,7 +76,9 @@ pub fn render_command_palette(
     }
 
     // Centered window -- Validates: Requirement 1.1
-    let screen = ctx.screen_rect();
+    // egui 0.33: screen_rect() split into viewport_rect()/content_rect(); use
+    // content_rect() for the usable area to center the palette window within.
+    let screen = ctx.content_rect();
     let win_width = (screen.width() * 0.5).clamp(400.0, 700.0);
     let win_x = screen.center().x - win_width / 2.0;
     let win_y = screen.top() + screen.height() * 0.15;

@@ -457,7 +457,7 @@ mod tests {
         // focusable it would show up as an extra distinct focus stop.
         let mut focused: Vec<egui::Id> = Vec::new();
         for _ in 0..12 {
-            harness.press_key(egui::Key::Tab);
+            harness.key_press(egui::Key::Tab);
             harness.run();
             if let Some(id) = harness.ctx.memory(|m| m.focused()) {
                 focused.push(id);
@@ -504,9 +504,9 @@ mod tests {
             });
         // Tab once -> focus the first focusable widget (the `<` button), then
         // activate it with Enter.
-        harness.press_key(egui::Key::Tab);
+        harness.key_press(egui::Key::Tab);
         harness.run();
-        harness.press_key(egui::Key::Enter);
+        harness.key_press(egui::Key::Enter);
         harness.run();
         harness.run();
         assert_eq!(

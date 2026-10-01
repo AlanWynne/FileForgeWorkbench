@@ -245,11 +245,11 @@ fn render_entry(
         // Key + description
         // Validates: Requirement 14.2 -- selectable key name and description
         ui.vertical(|ui| {
-            ui.add(egui::SelectableLabel::new(
+            ui.add(egui::Button::selectable(
                 false,
                 egui::RichText::new(key.as_str()).monospace(),
             ));
-            ui.add(egui::SelectableLabel::new(
+            ui.add(egui::Button::selectable(
                 false,
                 egui::RichText::new(entry.description.as_str())
                     .small()
@@ -264,7 +264,7 @@ fn render_entry(
             } else {
                 egui::Color32::from_rgb(120, 180, 120)
             };
-            ui.add(egui::SelectableLabel::new(
+            ui.add(egui::Button::selectable(
                 false,
                 egui::RichText::new(provenance_label)
                     .small()

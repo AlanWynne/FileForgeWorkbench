@@ -46,6 +46,7 @@ ff-theme-editor = { path = "../ff-theme-editor" }
 ff-toolchain-panel = { path = "../ff-toolchain-panel" }
 ff-catalog-registry = { path = "../ff-catalog-registry" }
 ff-catalog-dialog = { path = "../ff-catalog-dialog" }
+ff-context-menu = { path = "../ff-context-menu" }
 anyhow = { workspace = true }
 arboard = "3"
 tokio = { workspace = true }
@@ -61,12 +62,12 @@ chrono = { version = "0.4", default-features = false, features = [
 ] }
 regex = "1"
 dirs = { workspace = true }
-egui-file-dialog = "0.9"
+egui-file-dialog = "0.12"
 
 [build-dependencies]
 winres = "0.1"
 
 [dev-dependencies]
-egui_kittest = { version = "0.31", features = ["eframe"] }
+egui_kittest = { version = "0.33", features = ["eframe"] }
 pretty_assertions = { workspace = true }
 tempfile = { workspace = true }

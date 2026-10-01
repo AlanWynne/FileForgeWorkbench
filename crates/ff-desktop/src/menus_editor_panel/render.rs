@@ -283,7 +283,7 @@ mod tests {
             );
         let mut order: Vec<egui::Id> = Vec::new();
         for _ in 0..presses {
-            harness.press_key(egui::Key::Tab);
+            harness.key_press(egui::Key::Tab);
             harness.run();
             if let Some(id) = harness.ctx.memory(|m| m.focused()) {
                 order.push(id);

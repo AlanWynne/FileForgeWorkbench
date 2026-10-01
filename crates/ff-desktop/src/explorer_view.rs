@@ -587,7 +587,7 @@ pub fn render_tree(
                 let resp = ui
                     .horizontal(|ui| {
                         ui.add_space(indent);
-                        ui.add(egui::SelectableLabel::new(is_selected, text))
+                        ui.add(egui::Button::selectable(is_selected, text))
                     })
                     .inner;
 
@@ -654,48 +654,48 @@ fn context_menu_ui(ui: &mut egui::Ui, row: &VisibleRow) -> Option<ExplorerEffect
     // expand/collapse instead.
     if !row.expandable && ui.button("Open").clicked() {
         chosen = Some(ExplorerEffect::Open(row.id));
-        ui.close_menu();
+        ui.close();
     }
     if ui.button("Copy").clicked() {
         // Mark the selection (or this node) for a file copy (Req 21.1).
         chosen = Some(ExplorerEffect::MarkCopy(row.id));
-        ui.close_menu();
+        ui.close();
     }
     if ui.button("Paste").clicked() {
         // Paste the file clipboard into this node's directory (Req 21.2/21.3).
         chosen = Some(ExplorerEffect::Paste(row.id));
-        ui.close_menu();
+        ui.close();
     }
     if ui.button("Copy Full Path").clicked() {
         chosen = Some(ExplorerEffect::CopyPath(row.id));
-        ui.close_menu();
+        ui.close();
     }
     if ui.button("Reveal in File Manager").clicked() {
         chosen = Some(ExplorerEffect::Reveal(row.id));
-        ui.close_menu();
+        ui.close();
     }
     ui.separator();
     if ui.button("Rename").clicked() {
         chosen = Some(ExplorerEffect::Rename(row.id));
-        ui.close_menu();
+        ui.close();
     }
     if ui.button("Delete").clicked() {
         chosen = Some(ExplorerEffect::Delete(row.id));
-        ui.close_menu();
+        ui.close();
     }
     if ui.button("New File").clicked() {
         chosen = Some(ExplorerEffect::NewChild {
             anchor: row.id,
             is_dir: false,
         });
-        ui.close_menu();
+        ui.close();
     }
     if ui.button("New Folder").clicked() {
         chosen = Some(ExplorerEffect::NewChild {
             anchor: row.id,
             is_dir: true,
         });
-        ui.close_menu();
+        ui.close();
     }
     chosen
 }

@@ -6600,7 +6600,7 @@ fn status_bar_segments_are_not_tab_focus_stops() {
     // Press Tab a few times and collect every widget that receives focus.
     let mut focused_ids: Vec<egui::Id> = Vec::new();
     for _ in 0..8 {
-        harness.press_key(egui::Key::Tab);
+        harness.key_press(egui::Key::Tab);
         harness.run();
         if let Some(id) = harness.ctx.memory(|m| m.focused()) {
             focused_ids.push(id);
@@ -6882,7 +6882,7 @@ fn full_shell_reset_bare_dialog_tab_stays_within_modal() {
 
     // Tab several times; focus must never land on the background command field.
     for _ in 0..6 {
-        harness.press_key(egui::Key::Tab);
+        harness.key_press(egui::Key::Tab);
         harness.run();
         assert_ne!(
             harness.ctx.memory(|m| m.focused()),
@@ -6920,7 +6920,7 @@ fn key_label_bar_buttons_are_not_tab_focus_stops() {
 
     let mut focused_ids: Vec<egui::Id> = Vec::new();
     for _ in 0..10 {
-        harness.press_key(egui::Key::Tab);
+        harness.key_press(egui::Key::Tab);
         harness.run();
         if let Some(id) = harness.ctx.memory(|m| m.focused()) {
             focused_ids.push(id);
@@ -6961,7 +6961,7 @@ fn cmd_field_id() -> egui::Id {
 
 /// Press Tab, run a frame, return the focused id (if any).
 fn tab_and_focus(harness: &mut egui_kittest::Harness<super::WorkbenchShell>) -> Option<egui::Id> {
-    harness.press_key(egui::Key::Tab);
+    harness.key_press(egui::Key::Tab);
     harness.run();
     harness.ctx.memory(|m| m.focused())
 }
@@ -7046,7 +7046,7 @@ fn full_shell_shift_tab_from_command_field_goes_to_menu_bar() {
     let mut harness = harness_shell();
     assert_eq!(harness.ctx.memory(|m| m.focused()), Some(cmd_field_id()));
     // Shift down, press Tab, release: egui_kittest sends modifiers via events.
-    harness.press_key_modifiers(egui::Modifiers::SHIFT, egui::Key::Tab);
+    harness.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::Tab);
     harness.run();
     let after = harness.ctx.memory(|m| m.focused());
     assert!(
@@ -7079,7 +7079,7 @@ fn full_shell_first_tab_focuses_reported_first_interior() {
         expected_first.is_some(),
         "POM must report a first interior control (first option)"
     );
-    harness.press_key(egui::Key::Tab);
+    harness.key_press(egui::Key::Tab);
     harness.run();
     assert_eq!(
         harness.ctx.memory(|m| m.focused()),
@@ -7103,7 +7103,7 @@ fn full_shell_command_bottom_moves_unsplit_field_to_bottom() {
 
     // Baseline: command field is focused and near the TOP of the window.
     assert_eq!(harness.ctx.memory(|m| m.focused()), Some(cmd_field_id()));
-    let screen = harness.ctx.screen_rect();
+    let screen = harness.ctx.content_rect();
     let top_rect = harness
         .ctx
         .read_response(cmd_field_id())
@@ -7142,7 +7142,7 @@ fn full_shell_command_bottom_moves_unsplit_field_to_bottom() {
     harness.run();
     let expected_first = harness.state().first_interior_id;
     assert!(expected_first.is_some(), "POM reports a first interior");
-    harness.press_key(egui::Key::Tab);
+    harness.key_press(egui::Key::Tab);
     harness.run();
     assert_eq!(
         harness.ctx.memory(|m| m.focused()),
@@ -7166,7 +7166,7 @@ fn full_shell_tab_reaches_settings_as_first_menu_item() {
     // Settings (first) button, never a later one (File Catalogs, etc.).
     let mut reached_menu_first = false;
     for _ in 0..40 {
-        harness.press_key(egui::Key::Tab);
+        harness.key_press(egui::Key::Tab);
         harness.run();
         let f = harness.ctx.memory(|m| m.focused());
         if f == menu_first {
@@ -7213,7 +7213,7 @@ fn full_shell_menus_editor_first_tab_focuses_menu_selector() {
         Some(cmd_field_id()),
         "command field holds focus on entering the Menus Editor"
     );
-    harness.press_key(egui::Key::Tab);
+    harness.key_press(egui::Key::Tab);
     harness.run();
     assert_eq!(
         harness.ctx.memory(|m| m.focused()),
@@ -7256,7 +7256,7 @@ fn full_shell_theme_editor_first_tab_focuses_theme_selector() {
         Some(cmd_field_id()),
         "command field holds focus on entering the Theme Editor"
     );
-    harness.press_key(egui::Key::Tab);
+    harness.key_press(egui::Key::Tab);
     harness.run();
     assert_eq!(
         harness.ctx.memory(|m| m.focused()),
@@ -7300,7 +7300,7 @@ fn full_shell_config_first_tab_focuses_filter_field() {
         Some(cmd_field_id()),
         "command field holds focus on entering the CONFIG panel"
     );
-    harness.press_key(egui::Key::Tab);
+    harness.key_press(egui::Key::Tab);
     harness.run();
     assert_eq!(
         harness.ctx.memory(|m| m.focused()),
@@ -7335,7 +7335,7 @@ fn command_field_up_recalls_older_history() {
         "command field holds focus on POM entry"
     );
     // First Up -> most-recent entry (Req 23.1).
-    harness.press_key(egui::Key::ArrowUp);
+    harness.key_press(egui::Key::ArrowUp);
     harness.run();
     assert_eq!(
         harness.state().command_text,
@@ -7343,7 +7343,7 @@ fn command_field_up_recalls_older_history() {
         "first Up recalls the most-recent history entry"
     );
     // Second Up -> one entry older (Req 23.1, shared single-step recall).
-    harness.press_key(egui::Key::ArrowUp);
+    harness.key_press(egui::Key::ArrowUp);
     harness.run();
     assert_eq!(
         harness.state().command_text,
@@ -7367,13 +7367,13 @@ fn command_field_down_restores_in_progress_line() {
     harness.state_mut().command_text = "IN PROGRESS".to_string();
     harness.run();
     // Up twice: LOCATE 1 (newest) then THEME legacy (older).
-    harness.press_key(egui::Key::ArrowUp);
+    harness.key_press(egui::Key::ArrowUp);
     harness.run();
-    harness.press_key(egui::Key::ArrowUp);
+    harness.key_press(egui::Key::ArrowUp);
     harness.run();
     assert_eq!(harness.state().command_text, "THEME legacy");
     // Down: back to the newer entry (Req 23.2).
-    harness.press_key(egui::Key::ArrowDown);
+    harness.key_press(egui::Key::ArrowDown);
     harness.run();
     assert_eq!(
         harness.state().command_text,
@@ -7381,7 +7381,7 @@ fn command_field_down_restores_in_progress_line() {
         "Down steps one entry newer"
     );
     // Down again: past the newest -> restore the in-progress line (Req 23.3).
-    harness.press_key(egui::Key::ArrowDown);
+    harness.key_press(egui::Key::ArrowDown);
     harness.run();
     assert_eq!(
         harness.state().command_text,
@@ -7389,7 +7389,7 @@ fn command_field_down_restores_in_progress_line() {
         "Down past newest restores the captured in-progress line"
     );
     // A further Down at initial is a no-op (Req 23.3 second sentence).
-    harness.press_key(egui::Key::ArrowDown);
+    harness.key_press(egui::Key::ArrowDown);
     harness.run();
     assert_eq!(
         harness.state().command_text,
@@ -7405,7 +7405,7 @@ fn arrows_ignored_when_command_field_not_focused() {
     let mut harness = harness_shell();
     seed_history(&mut harness, &["THEME legacy", "LOCATE 1"]);
     // Move focus off the command field (Tab lands on the first interior control).
-    harness.press_key(egui::Key::Tab);
+    harness.key_press(egui::Key::Tab);
     harness.run();
     assert_ne!(
         harness.ctx.memory(|m| m.focused()),
@@ -7413,7 +7413,7 @@ fn arrows_ignored_when_command_field_not_focused() {
         "precondition: focus is no longer on the command field"
     );
     let before = harness.state().command_text.clone();
-    harness.press_key(egui::Key::ArrowUp);
+    harness.key_press(egui::Key::ArrowUp);
     harness.run();
     assert_eq!(
         harness.state().command_text,
@@ -7432,7 +7432,7 @@ fn up_shares_pointer_with_retrieve() {
     seed_history(&mut harness, &["THEME legacy", "LOCATE 1"]);
     let len_before = harness.state().command_line_history.len();
     // Up recalls the newest (LOCATE 1) and advances the shared pointer.
-    harness.press_key(egui::Key::ArrowUp);
+    harness.key_press(egui::Key::ArrowUp);
     harness.run();
     assert_eq!(harness.state().command_text, "LOCATE 1");
     // RETRIEVE now steps to the OLDER entry (shared pointer), not back to newest.
@@ -7488,7 +7488,7 @@ fn full_shell_config_tree_arrows_navigate_and_expand() {
         .ctx
         .memory_mut(|m| m.surrender_focus(egui::Id::new("config_tree_focus_none")));
 
-    harness.press_key(egui::Key::ArrowDown);
+    harness.key_press(egui::Key::ArrowDown);
     harness.run();
     let cursor = harness.state().config_panel.cursor.clone();
     assert!(
@@ -7501,7 +7501,7 @@ fn full_shell_config_tree_arrows_navigate_and_expand() {
     };
 
     // The first group starts expanded; Left collapses it (Req 21.5).
-    harness.press_key(egui::Key::ArrowLeft);
+    harness.key_press(egui::Key::ArrowLeft);
     harness.run();
     assert_eq!(
         harness.state().config_panel.collapsed.get(&ns).copied(),
@@ -7510,7 +7510,7 @@ fn full_shell_config_tree_arrows_navigate_and_expand() {
     );
 
     // Right re-expands the collapsed group (Req 21.4).
-    harness.press_key(egui::Key::ArrowRight);
+    harness.key_press(egui::Key::ArrowRight);
     harness.run();
     assert_eq!(
         harness.state().config_panel.collapsed.get(&ns).copied(),
@@ -7520,7 +7520,7 @@ fn full_shell_config_tree_arrows_navigate_and_expand() {
 
     // Down moves the cursor off the first namespace (to its first child key, now
     // that it is expanded) -- the cursor changes (Req 21.3).
-    harness.press_key(egui::Key::ArrowDown);
+    harness.key_press(egui::Key::ArrowDown);
     harness.run();
     assert_ne!(
         harness.state().config_panel.cursor,
@@ -7550,7 +7550,7 @@ fn assert_first_tab_lands_on_reported_interior(command: &str, workspace: &str) {
         Some(cmd_field_id()),
         "command field holds focus on entering {workspace}"
     );
-    harness.press_key(egui::Key::Tab);
+    harness.key_press(egui::Key::Tab);
     harness.run();
     assert_eq!(
         harness.ctx.memory(|m| m.focused()),
@@ -7694,7 +7694,7 @@ fn full_shell_settings_tab_walks_options_only_no_calendar_stops() {
 
     // First Tab from the command field lands EXACTLY on the reported first
     // interior (no phantom stop before it).
-    harness.press_key(egui::Key::Tab);
+    harness.key_press(egui::Key::Tab);
     harness.run();
     assert_eq!(
         harness.ctx.memory(|m| m.focused()),
@@ -7713,7 +7713,7 @@ fn full_shell_settings_tab_walks_options_only_no_calendar_stops() {
         if f == last {
             saw_last = true;
         }
-        harness.press_key(egui::Key::Tab);
+        harness.key_press(egui::Key::Tab);
         harness.run();
         if harness.ctx.memory(|m| m.focused()) == Some(cmd_field_id()) {
             break;
@@ -7845,7 +7845,7 @@ fn full_shell_keys_first_tab_focuses_kind_dropdown() {
         Some(cmd_field_id()),
         "command field holds focus on entering the Keys Workspace"
     );
-    harness.press_key(egui::Key::Tab);
+    harness.key_press(egui::Key::Tab);
     harness.run();
     assert_eq!(
         harness.ctx.memory(|m| m.focused()),
@@ -9061,7 +9061,7 @@ fn full_shell_kinds_first_tab_focuses_first_interior() {
         Some(cmd_field_id()),
         "command field holds focus on entering the Kinds Editor"
     );
-    harness.press_key(egui::Key::Tab);
+    harness.key_press(egui::Key::Tab);
     harness.run();
     assert_eq!(
         harness.ctx.memory(|m| m.focused()),
@@ -9099,7 +9099,7 @@ fn full_shell_help_first_tab_focuses_search_field() {
         Some(cmd_field_id()),
         "command field holds focus on entering the Help Context"
     );
-    harness.press_key(egui::Key::Tab);
+    harness.key_press(egui::Key::Tab);
     harness.run();
     assert_eq!(
         harness.ctx.memory(|m| m.focused()),
@@ -10010,7 +10010,7 @@ fn submit_region_command(
         .expect("region has a command context")
         .command_text = cmd.to_string();
     harness.run();
-    harness.press_key(egui::Key::Enter);
+    harness.key_press(egui::Key::Enter);
     harness.run();
 }
 
@@ -10589,7 +10589,7 @@ fn full_shell_split_tab_stays_within_focused_region() {
 
     // Tab repeatedly: focus must NEVER land on the OTHER region's command field.
     for _ in 0..8 {
-        harness.press_key(egui::Key::Tab);
+        harness.key_press(egui::Key::Tab);
         harness.run();
         assert_ne!(
             harness.ctx.memory(|m| m.focused()),
@@ -10599,7 +10599,7 @@ fn full_shell_split_tab_stays_within_focused_region() {
     }
     // Shift+Tab likewise stays out of the other region.
     for _ in 0..8 {
-        harness.press_key_modifiers(egui::Modifiers::SHIFT, egui::Key::Tab);
+        harness.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::Tab);
         harness.run();
         assert_ne!(
             harness.ctx.memory(|m| m.focused()),
@@ -10809,7 +10809,7 @@ fn full_shell_scrm_viewer_first_tab_focuses_first_control() {
         Some(cmd_field_id()),
         "command field holds focus on entering the SCRM viewer"
     );
-    harness.press_key(egui::Key::Tab);
+    harness.key_press(egui::Key::Tab);
     harness.run();
     assert_eq!(
         harness.ctx.memory(|m| m.focused()),

@@ -1,0 +1,9 @@
+[package]
+name = "ff-context-menu"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "File classification + OS-integration helpers for the File Explorer (FileForgeWorkbench)"
+
+[dependencies]

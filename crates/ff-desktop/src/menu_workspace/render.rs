@@ -795,7 +795,7 @@ mod tests {
             order.push(id);
         }
         for _ in 0..presses {
-            harness.press_key(egui::Key::Tab);
+            harness.key_press(egui::Key::Tab);
             harness.run();
             if let Some(id) = harness.ctx.memory(|m| m.focused()) {
                 order.push(id);
@@ -1020,7 +1020,7 @@ mod tests {
             .with_size(egui::Vec2::new(panel_w, 800.0))
             .build_ui(move |ui| {
                 // One text-line height for the option font, as the wrap threshold.
-                let lh = ui.fonts(|f| f.row_height(&option_font()));
+                let lh = ui.fonts_mut(|f| f.row_height(&option_font()));
                 line_h_c.set(lh);
                 let r = render_menu_workspace(&mut state, ui, 0, MenuColours::default());
                 // Calendar shown iff the reported last interior differs from the

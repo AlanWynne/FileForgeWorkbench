@@ -325,7 +325,7 @@ impl WorkbenchShell {
         ui: &mut egui::Ui,
         menu: &crate::menu_workspace::MenuFile,
     ) {
-        egui::menu::bar(ui, |ui| {
+        egui::MenuBar::new().ui(ui, |ui| {
             // Bar shows only options flagged for the menu bar (Req 17.2):
             // e.g. a terminal `RETURN` option (show_in_menu_bar = false) is
             // kept in the vertical POM but hidden from the horizontal bar.
@@ -351,14 +351,14 @@ impl WorkbenchShell {
                         for child in children {
                             if ui.button(child.description.clone()).clicked() {
                                 self.handle_command(&child.command);
-                                ui.close_menu();
+                                ui.close();
                             }
                         }
                     } else if peeked.is_empty() {
                         // Non-menu command: one item that dispatches it (Req 17.4).
                         if ui.button(option.command.clone()).clicked() {
                             self.handle_command(&option.command);
-                            ui.close_menu();
+                            ui.close();
                         }
                     } else {
                         // Peeked submenu options: each is labelled by its
@@ -368,7 +368,7 @@ impl WorkbenchShell {
                         for child in &peeked {
                             if ui.button(child.command.clone()).clicked() {
                                 self.handle_command(&child.command);
-                                ui.close_menu();
+                                ui.close();
                             }
                         }
                     }
@@ -599,34 +599,34 @@ impl WorkbenchShell {
                             // ── Universal items (all tab kinds) — Req 14.15a ──
                             if ui.button("Close").clicked() {
                                 close_idx = Some(i);
-                                ui.close_menu();
+                                ui.close();
                             }
                             ui.add_enabled_ui(tab_count_inner > 1, |ui| {
                                 if ui.button("Close All BUT This").clicked() {
                                     close_all_but = Some(i);
-                                    ui.close_menu();
+                                    ui.close();
                                 }
                             });
                             ui.add_enabled_ui(i > 0, |ui| {
                                 if ui.button("Close All to the Left").clicked() {
                                     close_left_of = Some(i);
-                                    ui.close_menu();
+                                    ui.close();
                                 }
                             });
                             ui.add_enabled_ui(i < tab_count_inner - 1, |ui| {
                                 if ui.button("Close All to the Right").clicked() {
                                     close_right_of = Some(i);
-                                    ui.close_menu();
+                                    ui.close();
                                 }
                             });
                             if ui.button("Close All Unchanged").clicked() {
                                 close_unchanged = true;
-                                ui.close_menu();
+                                ui.close();
                             }
                             ui.separator();
                             if ui.button("Clone to Other Tab").clicked() {
                                 // stub — deferred
-                                ui.close_menu();
+                                ui.close();
                             }
                             if ui.button("Move to Other View").clicked() {
                                 // Validates: Requirement 18.1, 18.7
@@ -637,19 +637,19 @@ impl WorkbenchShell {
                                         "Maximum 16 floating windows already open.".to_string(),
                                     );
                                 }
-                                ui.close_menu();
+                                ui.close();
                             }
                             ui.separator();
                             if ui.button("Pin Tab").clicked() {
                                 // stub — deferred
-                                ui.close_menu();
+                                ui.close();
                             }
 
                             // ── Exit — Req 14.15a, 14.38 (all tab kinds) ─────
                             ui.separator();
                             if ui.button("Exit").clicked() {
                                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                                ui.close_menu();
+                                ui.close();
                             }
 
                             // ── File-editor-only items — Req 14.15b ──────────
@@ -660,25 +660,25 @@ impl WorkbenchShell {
                                     if let Some(path) = self.tabs.tabs()[i].path.as_deref() {
                                         open_containing_folder(path, FolderOpenMode::Explorer);
                                     }
-                                    ui.close_menu();
+                                    ui.close();
                                 }
                                 if ui.button("Open Containing Folder in CMD").clicked() {
                                     if let Some(path) = self.tabs.tabs()[i].path.as_deref() {
                                         open_containing_folder(path, FolderOpenMode::Cmd);
                                     }
-                                    ui.close_menu();
+                                    ui.close();
                                 }
                                 if ui.button("Open Containing Folder in PowerShell").clicked() {
                                     if let Some(path) = self.tabs.tabs()[i].path.as_deref() {
                                         open_containing_folder(path, FolderOpenMode::PowerShell);
                                     }
-                                    ui.close_menu();
+                                    ui.close();
                                 }
                                 if ui.button("Open Containing Folder in Terminal").clicked() {
                                     if let Some(path) = self.tabs.tabs()[i].path.as_deref() {
                                         open_containing_folder(path, FolderOpenMode::Terminal);
                                     }
-                                    ui.close_menu();
+                                    ui.close();
                                 }
                                 ui.separator();
                                 if ui.button("Copy Name to Clipboard").clicked() {
@@ -687,24 +687,24 @@ impl WorkbenchShell {
                                     {
                                         ui.ctx().copy_text(title);
                                     }
-                                    ui.close_menu();
+                                    ui.close();
                                 }
                                 if ui.button("Copy Path to Clipboard").clicked() {
                                     if let Some(path) = self.tabs.tabs()[i].path.clone() {
                                         ui.ctx().copy_text(path);
                                     }
-                                    ui.close_menu();
+                                    ui.close();
                                 }
                                 ui.separator();
                                 if ui.button("Save").clicked() {
                                     // handled after menu closes via pending action
-                                    ui.close_menu();
+                                    ui.close();
                                 }
                                 if ui.button("Save As").clicked() {
-                                    ui.close_menu();
+                                    ui.close();
                                 }
                                 if ui.button("Reload").clicked() {
-                                    ui.close_menu();
+                                    ui.close();
                                 }
                             }
                         });
@@ -719,11 +719,11 @@ impl WorkbenchShell {
                     bar_resp.context_menu(|ui| {
                         if ui.button("New").clicked() {
                             self.pending_new_pom = true;
-                            ui.close_menu();
+                            ui.close();
                         }
                         if ui.button("New File").clicked() {
                             self.pending_new_file = true;
-                            ui.close_menu();
+                            ui.close();
                         }
                     });
                 });
