@@ -1736,6 +1736,7 @@ dependencies = [
  "ff-document-model",
  "ff-dscatalog",
  "ff-edit-operations",
+ "ff-editor-panel",
  "ff-exclude-manager",
  "ff-exclude-show-filter",
  "ff-explorer-view",
@@ -1849,6 +1850,18 @@ dependencies = [
  "thiserror 2.0.20",
  "toml 0.8.23",
  "unicode-segmentation",
+]
+
+[[package]]
+name = "ff-editor-panel"
+version = "0.1.0"
+dependencies = [
+ "ff-document-model",
+ "ff-exclude-show-filter",
+ "ff-scroll-amount",
+ "ff-viewport-scrolling",
+ "pretty_assertions",
+ "tokio",
 ]
 
 [[package]]
