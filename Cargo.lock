@@ -1737,6 +1737,7 @@ dependencies = [
  "ff-dscatalog",
  "ff-edit-operations",
  "ff-exclude-show-filter",
+ "ff-explorer-view",
  "ff-fftest",
  "ff-file-tree",
  "ff-find-and-replace",
@@ -1868,6 +1869,19 @@ dependencies = [
  "proptest",
  "regex",
  "thiserror 2.0.20",
+]
+
+[[package]]
+name = "ff-explorer-view"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "ff-context-menu",
+ "ff-file-tree",
+ "ff-nav-model",
+ "ff-theme",
+ "ff-vfs",
 ]
 
 [[package]]
