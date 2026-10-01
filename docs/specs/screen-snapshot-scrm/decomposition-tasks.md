@@ -149,14 +149,36 @@ shell-entangled (TabId/TabState/UndoEntry are the shell's runtime tab model) and
 STAYS in ff-desktop; the editor crate takes it as a generic/param or the render
 free-function keeps its `&mut TabState` signature via a re-exported type.
 
-- [ ] 20. Extract `scroll_amount` -> `ff-scroll-amount` crate (leaf). Thin adapter
+- [x] 20. Extract `scroll_amount` -> `ff-scroll-amount` crate (leaf). Thin adapter
         + scoped gate. (Req 19.1-19.4)
-- [ ] 21. Extract `exclude_manager` -> `ff-exclude-manager` crate (leaf). Thin
+        - DONE: verbatim move (true clean leaf, zero `crate::` refs); ff-desktop
+          `scroll_amount.rs` is a `pub use ff_scroll_amount::*;` shim.
+- [x] 21. Extract `exclude_manager` -> `ff-exclude-manager` crate. Thin
         adapter + scoped gate. (Req 19.1-19.4)
-- [ ] 22. Extract the pure editor render/scroll helpers from `editor_panel` into
+        - DONE as a CLEAN-SEAM refactor (not the plain leaf the heading implied):
+          the crate is keyed on a plain `u64` tab id and takes a lazy
+          `impl FnOnce() -> Vec<String>` line snapshot, so it depends on NEITHER
+          `tab_state`/`tab_manager` NOR tokio/ff-document-model. The
+          `TabManager`/runtime `snapshot_lines` glue stays as the ~40-line
+          ff-desktop adapter (which owns `crate::exclude_manager::ExcludeManager`
+          via `pub use`). Lazy closure chosen over an eager `Vec` to preserve the
+          snapshot-on-rebuild-only behaviour.
+- [x] 22. Extract the pure editor render/scroll helpers from `editor_panel` into
         `ff-editor-panel`, keeping `tab_state`-entangled glue in ff-desktop as the
         adapter. Slice by helper group if the move exceeds one reviewable step.
         Thin adapter + scoped gate. (Req 19.1-19.4)
+        - DONE: moved the pure helpers (build_display_list, scroll_by_amount,
+          line_char_count, extract_selected_text, normalise_selection,
+          cursor_byte_position, DisplayRow, geometry consts) + their pure tests
+          into `ff-editor-panel`. `TabState`/`TabId`/`UndoEntry` STAY in ff-desktop
+          (no shared-types crate, no dependency inversion, no generics). The
+          `render` entry point stays as the ff-desktop adapter, split into
+          `editor_panel/{mod.rs,input.rs,paint.rs}` to keep each file under the
+          400 non-test line limit; the adapter re-exports the moved helpers so
+          `super::`/`crate::editor_panel::` references resolve unchanged.
+        - DEFERRED: wiring the live editor onto the existing editor-aspect crates
+          (retiring the inline edit/undo/selection/clipboard logic) is a separate
+          gated stream, CR-NR-099, to be done when editor testing begins.
 
 ## Wave 7 -- files_panel (last; depends on Waves 3-4)
 
