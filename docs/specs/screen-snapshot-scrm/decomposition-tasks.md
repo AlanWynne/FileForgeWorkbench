@@ -186,14 +186,79 @@ free-function keeps its `&mut TabState` signature via a re-exported type.
 `catalog_registry` (Wave 3), and `dataset_alloc_dialog` (836). Extract
 dataset_alloc_dialog first, then the panel.
 
-- [ ] 23. Extract `dataset_alloc_dialog` -> `ff-dataset-alloc-dialog` crate
-        (depends on ff-catalog-registry + egui). Thin adapter + scoped gate.
-        (Req 19.1-19.4)
-- [ ] 24. Extract the pure Files Panel body -> `ff-files-panel`, keeping the
+- [x] 23. Extract `dataset_alloc_dialog` -> `ff-dataset-alloc-dialog` crate
+        (depends on egui only -- verified clean leaf, zero `crate::` refs).
+        Thin adapter + scoped gate. (Req 19.1-19.4)
+    - DONE: verbatim move of `Dsorg`, `Recfm`, `AllocDatasetForm`,
+      `AllocOutcome`, `AllocParams`, `validate`, `validate_for_catalog`, `render`
+      (+ all 38 `#[cfg(test)]` tests and `// Validates:` annotations) into the
+      pre-scaffolded crate. Non-test body (418 lines) split by concern to respect
+      the 400-line limit: `form.rs` (types + form), `validate.rs` (params +
+      validation), `render.rs` (egui dialog); `lib.rs` is a thin coordinator that
+      re-exports the flat public surface + hosts the test module. `eframe::egui`
+      became direct `egui::` paths (crate depends on `egui` directly). ASCII-only.
+    - DONE: `ff-desktop/src/dataset_alloc_dialog.rs` is now
+      `pub use ff_dataset_alloc_dialog::*;`; `mod dataset_alloc_dialog;` kept in
+      main.rs; added `ff-dataset-alloc-dialog` to ff-desktop `[dependencies]`.
+      Every `crate::dataset_alloc_dialog::*` path in files_panel / shell/render /
+      shell/update / shell/tests resolves unchanged against the re-export.
+    - DONE: scoped gate run from the worktree root --
+      `cargo fmt -p ff-dataset-alloc-dialog -p ff-desktop -- --check` (clean, no
+      diff); `cargo clippy -p ff-dataset-alloc-dialog -p ff-desktop --tests --
+      -D warnings` (clean); `cargo nextest run -p ff-dataset-alloc-dialog
+      -p ff-desktop` (test profile compiled clean in 2m41s; all 38
+      ff-dataset-alloc-dialog tests PASS; ff-desktop tests PASS including the
+      dataset-alloc and shell integration tests exercising the shim).
+- [x] 24. Extract the pure Files Panel body -> `ff-files-panel`, keeping the
         shell-entangled parts (dialog state machine, resolve_and_open_dataset
         shell wiring) as the adapter. Slice by concern (tree render / dialog
         dispatch / dataset resolution) if the move exceeds one reviewable step.
         Thin adapter + scoped gate. (Req 19.1-19.4)
+    - DONE: the entire files_panel.rs non-test body (verified self-contained --
+      only `crate::` refs were the three already-extracted siblings
+      catalog_registry / catalog_manager_dialog / dataset_alloc_dialog, and a
+      self-reference to `ContentEntry`; NO TabState/TabManager/shell-type refs)
+      moved into a NEW `ff-files-panel` crate (deps: ff-catalog-registry,
+      ff-catalog-dialog, ff-dataset-alloc-dialog, ff-dscatalog, egui; NOT
+      ff-desktop). Split by concern to respect the 400 non-test-line limit:
+      `state.rs` (SectionState, FilesPanelAction, FilesDialogState, SortColumn,
+      SortDir, ContentEntry, ContentAreaState), `resolve.rs` (FilesPanelState +
+      new/create_dataset_file/resolve_dataset_path/resolve_and_open_dataset/
+      load_entries_from_catalog/native_platform_label), `tree.rs` (render +
+      render_catalog_tree + SectionCtx + render_section), `content.rs`
+      (render_content_area, pub(crate)), `menus.rs` (all context-menu item sets),
+      `forms.rs` (inline-form structs); `lib.rs` is a thin coordinator re-export +
+      hosts `#[cfg(test)] mod tests;`, `tests.rs` holds all moved tests verbatim
+      with every `// Validates:` annotation. Import rewrites: `crate::catalog_*`
+      -> `ff_catalog_*`, `crate::dataset_alloc_dialog` -> `ff_dataset_alloc_dialog`,
+      `crate::files_panel::ContentEntry` -> local; `use eframe::egui;` dropped (the
+      crate depends on `egui` directly, referenced as an extern path). User-visible
+      glyphs (folder/page icons, sort arrows, em dashes in UI strings) preserved
+      BYTE-IDENTICAL via `\u{...}` escapes so .rs stays ASCII with NO observable
+      change. Added `FilesPanelState: Default` (behaviour-neutral, satisfies the
+      lib-crate new_without_default lint).
+    - DONE: `ff-desktop/src/files_panel.rs` is now `pub use ff_files_panel::*;`;
+      `mod files_panel;` kept in main.rs; added `ff-files-panel` to the workspace
+      members and ff-desktop `[dependencies]`. Every `crate::files_panel::*` path
+      in shell/mod, shell/render, shell/update (incl. `ContentEntry`,
+      `FilesPanelState::create_dataset_file`, all `FilesPanelAction`/
+      `FilesDialogState` variants) resolves unchanged against the re-export.
+    - SCOPED GATE (run from the worktree root before the degraded-shell cut-off):
+      `cargo clippy -p ff-files-panel --tests -- -D warnings` CLEAN (Finished, 0
+      warnings); `cargo clippy -p ff-desktop --tests -- -D warnings` CLEAN
+      (Finished, 0 warnings, no files_panel/unused/error lines). `cargo check -p
+      ff-files-panel --tests` compiled (the lone `content::*` empty-reexport
+      warning was then removed from lib.rs). Files were authored in rustfmt
+      style; all moved tests are verbatim.
+    - DONE (full scoped gate, from the worktree root): `cargo fmt -p
+      ff-files-panel -p ff-desktop -- --check` CLEAN (no diffs); `cargo clippy -p
+      ff-files-panel -p ff-desktop --tests -- -D warnings` CLEAN (Finished, 0
+      warnings on either crate); `cargo nextest run -p ff-files-panel -p
+      ff-desktop` -> `997 tests run: 997 passed, 0 skipped`. The prior-session
+      nextest stall is fixed by `leak-timeout = "500ms"` in `.config/nextest.toml`
+      (nextest now exits on its own after the last test instead of blocking on a
+      leaked Windows child-process / stdout-pipe handle). Wave 7 (final
+      decomposition wave) COMPLETE.
 
 ## Notes
 

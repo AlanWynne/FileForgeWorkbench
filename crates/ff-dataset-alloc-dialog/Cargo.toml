@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "Dataset allocation dialog (pure state + validation + egui render) for FileForgeWorkbench (CR-NR-098 decomposition Wave 3). No shell dependency."
+description = "Dataset allocation dialog (pure state + validation + egui render) for FileForgeWorkbench (CR-NR-098 decomposition Wave 7). No shell dependency."
 
 [dependencies]
 egui = { workspace = true }
