@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 static PAYLOAD: &[u8] = include_bytes!("payload.zip");
 
@@ -113,7 +113,7 @@ fn install(dir: PathBuf) -> anyhow::Result<String> {
 }
 
 #[cfg(windows)]
-fn add_to_user_path(dir: &PathBuf) -> anyhow::Result<()> {
+fn add_to_user_path(dir: &Path) -> anyhow::Result<()> {
     use winreg::enums::{HKEY_CURRENT_USER, KEY_READ, KEY_WRITE};
     use winreg::RegKey;
 

@@ -705,13 +705,48 @@ impl WorkbenchShell {
     /// Construct the shell with an already-initialised `WorkbenchApp`.
     ///
     /// `cli_files` contains absolute paths collected from command-line arguments;
-    /// they are opened as tabs on the first rendered frame.
+    /// they are opened as tabs on the first rendered frame. The command-line
+    /// History_Store is resolved from `resolve_history_path()`; this delegates to
+    /// `new_with_history_store` with that resolved store.
     pub fn new(
         app: WorkbenchApp,
         runtime: Runtime,
         palette: ThemePalette,
         cli_files: Vec<String>,
         config_handle: ConfigHandle,
+    ) -> Self {
+        // Production path: resolve the command-line History_Store from the
+        // profile-aware UserDataDir (honouring the `FFWB_HISTORY_PATH` override).
+        let history_store = resolve_history_path().map(HistoryStore::new);
+        Self::new_with_history_store(
+            app,
+            runtime,
+            palette,
+            cli_files,
+            config_handle,
+            history_store,
+        )
+    }
+
+    /// Construct the shell with an explicitly supplied command-line History_Store
+    /// instead of resolving it from `resolve_history_path()`.
+    ///
+    /// This is the injection seam that lets tests point the history at a specific
+    /// file DIRECTLY, rather than via the process-global `FFWB_HISTORY_PATH`
+    /// environment variable. Threads cannot race on an injected value the way they
+    /// race on a shared env var, so history-persistence tests built on this seam
+    /// are robust under plain `cargo test` (shared-process, multi-thread), not only
+    /// under `nextest` (process-per-test). Passing `None` yields an empty,
+    /// non-persisting history. `new` delegates here with the resolved store.
+    ///
+    /// Validates: function-keys-and-history Requirement 6 (persistence seam)
+    pub(crate) fn new_with_history_store(
+        app: WorkbenchApp,
+        runtime: Runtime,
+        palette: ThemePalette,
+        cli_files: Vec<String>,
+        config_handle: ConfigHandle,
+        history_store: Option<HistoryStore>,
     ) -> Self {
         let welcome = "Welcome to FileForge Workbench\n\nUse File > Open to open a file.\n";
         let tabs = TabManager::new(&runtime, welcome);
@@ -893,9 +928,8 @@ impl WorkbenchShell {
         }
 
         // Command-line history persistence (function-keys-and-history Req 6):
-        // resolve the store, load any persisted history, and seed the owner.
+        // load any persisted history from the supplied store and seed the owner.
         // Missing/corrupt file -> empty history, no failure (Req 6.5, 6.6).
-        let history_store = resolve_history_path().map(HistoryStore::new);
         let mut command_line_history = CommandLineHistory::new(500);
         if let Some(store) = &history_store {
             let (ring, warnings) = store.load(500);
