@@ -1732,6 +1732,7 @@ dependencies = [
  "ff-connector-local-fs",
  "ff-context-menu",
  "ff-core",
+ "ff-dataset-alloc-dialog",
  "ff-display-line-mapping",
  "ff-document-model",
  "ff-dscatalog",

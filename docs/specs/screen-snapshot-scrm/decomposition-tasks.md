@@ -186,9 +186,29 @@ free-function keeps its `&mut TabState` signature via a re-exported type.
 `catalog_registry` (Wave 3), and `dataset_alloc_dialog` (836). Extract
 dataset_alloc_dialog first, then the panel.
 
-- [ ] 23. Extract `dataset_alloc_dialog` -> `ff-dataset-alloc-dialog` crate
-        (depends on ff-catalog-registry + egui). Thin adapter + scoped gate.
-        (Req 19.1-19.4)
+- [x] 23. Extract `dataset_alloc_dialog` -> `ff-dataset-alloc-dialog` crate
+        (depends on egui only -- verified clean leaf, zero `crate::` refs).
+        Thin adapter + scoped gate. (Req 19.1-19.4)
+    - DONE: verbatim move of `Dsorg`, `Recfm`, `AllocDatasetForm`,
+      `AllocOutcome`, `AllocParams`, `validate`, `validate_for_catalog`, `render`
+      (+ all 38 `#[cfg(test)]` tests and `// Validates:` annotations) into the
+      pre-scaffolded crate. Non-test body (418 lines) split by concern to respect
+      the 400-line limit: `form.rs` (types + form), `validate.rs` (params +
+      validation), `render.rs` (egui dialog); `lib.rs` is a thin coordinator that
+      re-exports the flat public surface + hosts the test module. `eframe::egui`
+      became direct `egui::` paths (crate depends on `egui` directly). ASCII-only.
+    - DONE: `ff-desktop/src/dataset_alloc_dialog.rs` is now
+      `pub use ff_dataset_alloc_dialog::*;`; `mod dataset_alloc_dialog;` kept in
+      main.rs; added `ff-dataset-alloc-dialog` to ff-desktop `[dependencies]`.
+      Every `crate::dataset_alloc_dialog::*` path in files_panel / shell/render /
+      shell/update / shell/tests resolves unchanged against the re-export.
+    - DONE: scoped gate run from the worktree root --
+      `cargo fmt -p ff-dataset-alloc-dialog -p ff-desktop -- --check` (clean, no
+      diff); `cargo clippy -p ff-dataset-alloc-dialog -p ff-desktop --tests --
+      -D warnings` (clean); `cargo nextest run -p ff-dataset-alloc-dialog
+      -p ff-desktop` (test profile compiled clean in 2m41s; all 38
+      ff-dataset-alloc-dialog tests PASS; ff-desktop tests PASS including the
+      dataset-alloc and shell integration tests exercising the shim).
 - [ ] 24. Extract the pure Files Panel body -> `ff-files-panel`, keeping the
         shell-entangled parts (dialog state machine, resolve_and_open_dataset
         shell wiring) as the adapter. Slice by concern (tree render / dialog
