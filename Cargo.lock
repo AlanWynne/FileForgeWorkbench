@@ -1754,6 +1754,7 @@ dependencies = [
  "ff-rust-toolchain",
  "ff-screen-model",
  "ff-scrm",
+ "ff-scroll-amount",
  "ff-session",
  "ff-shell",
  "ff-theme",
@@ -2335,6 +2336,10 @@ dependencies = [
  "thiserror 2.0.20",
  "zip",
 ]
+
+[[package]]
+name = "ff-scroll-amount"
+version = "0.1.0"
 
 [[package]]
 name = "ff-select"

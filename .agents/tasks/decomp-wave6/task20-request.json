@@ -1,0 +1,28 @@
+{
+  "task": "DECOMP Wave 6, Task 20 -- scroll_amount -> ff-scroll-amount (true clean leaf)",
+  "iteration": "first",
+  "status": "IMPLEMENTED_BUT_UNVERIFIED_AND_UNCOMMITTED",
+  "blocker": "The agent terminal/shell integration failed mid-task: every execute command (bare cargo, the clean pwsh7 -NoProfile -NonInteractive wrapper, and even 'echo probe') returns Exit Code -1 with no output and does not actually run. The scoped gate could not be run to completion and the work could not be committed from this session. Code edits (done via file tools) are complete and verified by re-reading the files.",
+  "files_added": [
+    "crates/ff-scroll-amount/Cargo.toml",
+    "crates/ff-scroll-amount/src/lib.rs"
+  ],
+  "files_changed": [
+    "Cargo.toml (workspace members: added \"crates/ff-scroll-amount\" immediately before \"crates/ff-desktop\")",
+    "crates/ff-desktop/Cargo.toml (added ff-scroll-amount = { path = \"../ff-scroll-amount\" } to [dependencies])",
+    "crates/ff-desktop/src/scroll_amount.rs (replaced module body with re-export shim)"
+  ],
+  "move_detail": "crates/ff-desktop/src/scroll_amount.rs moved verbatim into crates/ff-scroll-amount/src/lib.rs including the full #[cfg(test)] mod tests. All // Validates: Requirement 19.x annotations preserved. ScrollAmount enum + parse/display/display_string/to_line_count unchanged. ASCII-only (verified via grep [^\\x00-\\x7F] -> no matches). The CR-CH-040 SplitScreenState comment block was carried verbatim.",
+  "reexport_form": "crates/ff-desktop/src/scroll_amount.rs is now a doc-commented shim containing `pub use ff_scroll_amount::*;`. This keeps every crate::scroll_amount::ScrollAmount consumer (nav_manager.rs, shell/commands.rs, shell/render.rs, editor_panel.rs, shell/mod.rs's `pub(crate) use crate::scroll_amount::ScrollAmount;`, shell/tests.rs) resolving unchanged. `mod scroll_amount;` in main.rs is unchanged.",
+  "new_crate_deps": "none (ff-scroll-amount has no [dependencies] and no [dev-dependencies] -- the moved tests use only std + super::*). Package fields inherited from [workspace.package] via .workspace = true, matching the ff-theme-editor pattern.",
+  "scoped_gate": {
+    "intended_commands": [
+      "cargo fmt -p ff-scroll-amount -p ff-desktop -- --check",
+      "cargo clippy -p ff-scroll-amount -p ff-desktop --tests -- -D warnings",
+      "cargo nextest run -p ff-scroll-amount -p ff-desktop"
+    ],
+    "results": "NOT COMPLETED. `cargo check -p ff-scroll-amount` was observed to begin compiling the new crate successfully (streamed 'Checking ff-scroll-amount') before the terminal degraded. `cargo fmt ... --check` produced an empty diff log (consistent with pass, but not confirmed by exit code). clippy began compiling dependencies but the run was cut off; no completion/error marker was captured. nextest and the remaining runs could not execute at all (terminal returning Exit Code -1 for every command, including 'echo probe'). NONE of the three gate commands can be certified complete.",
+    "note_for_reviewer": "The scoped gate must be re-run by the owner/next session once the terminal is working: cargo fmt -p ff-scroll-amount -p ff-desktop -- --check ; cargo clippy -p ff-scroll-amount -p ff-desktop --tests -- -D warnings ; cargo nextest run -p ff-scroll-amount -p ff-desktop. The change is a pure verbatim leaf move + re-export shim, so it is expected to be clean, but this has NOT been proven."
+  },
+  "commit": "NOT COMMITTED -- git could not be run (terminal failure). The worktree changes are on disk and need `git -C <worktree> add -A && git commit`."
+}

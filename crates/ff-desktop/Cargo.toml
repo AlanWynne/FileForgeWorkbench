@@ -50,6 +50,7 @@ ff-context-menu = { path = "../ff-context-menu" }
 ff-posix-provider = { path = "../ff-posix-provider" }
 ff-nav-model = { path = "../ff-nav-model" }
 ff-explorer-view = { path = "../ff-explorer-view" }
+ff-scroll-amount = { path = "../ff-scroll-amount" }
 anyhow = { workspace = true }
 arboard = "3"
 tokio = { workspace = true }

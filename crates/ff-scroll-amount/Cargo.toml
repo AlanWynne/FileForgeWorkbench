@@ -1,0 +1,7 @@
+[package]
+name = "ff-scroll-amount"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "SCROLL field value model (ScrollAmount) for FileForgeWorkbench (CR-NR-098 decomposition Wave 6): pure leaf, no dependencies."
