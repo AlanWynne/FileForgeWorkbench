@@ -134,6 +134,65 @@ landed:
 - NEXT decomposition candidate: DECOMP.5 -- explorer substrate
   (`ff-context-menu`, `ff-nav-model`, `ff-explorer-view`).
 
+## DECOMPOSITION WAVE 5 -- explorer substrate -- SCOPED CLEAN, awaiting owner full gate (2026-10-01)
+
+The fifth panel-extraction wave (DECOMP.5, decomposition-tasks.md tasks 17-19
+plus a prereq Task 0) landed on branch `decomp-wave5` (worktree
+`.worktrees/decomp-wave5`), based on `decomp-and-scrm-wave` at a5bae43 (DECOMP.4).
+Leaves-first extraction of the File Explorer substrate into FOUR new crates:
+
+- New crate `crates/ff-context-menu/` (Task 17): file classification +
+  OS-integration helpers (`FileClass`, `classify_file`, ...); std-only, no deps;
+  15 tests moved with the module. `ff-desktop/src/context_menu.rs` 317 -> 3-line
+  `pub use ff_context_menu::*;` adapter.
+- New crate `crates/ff-posix-provider/` (Task 0, prereq for Task 18): the POSIX
+  VFS provider (`PosixProvider`, scheme `posix`, LocalFsProvider-backed,
+  root-jailed). This resolved the PosixProvider DECISION: ff-vfs does NOT export
+  a `PosixProvider` (it has a different `PosixNativeProvider` with an infallible
+  `new()`), and the nav_model tests assert the fallible, root-jailed
+  ff-desktop `PosixProvider`; so it was extracted to its own leaf crate rather
+  than redirecting the tests to a different type. `resolve_posix_path` /
+  `to_posix_path` promoted to `pub`; comments converted to ASCII.
+  `ff-desktop/src/posix_provider.rs` 407 -> 3-line adapter.
+- New crate `crates/ff-nav-model/` (Task 18): `NavModel` over ff-file-tree + the
+  VFS Namespace_Mapping. Its 5 test provider sites rewired
+  `crate::posix_provider::PosixProvider` -> `ff_posix_provider::PosixProvider`
+  (dev-dep); no test weakened. `ff-desktop/src/nav_model.rs` 836 -> 3-line adapter.
+- New crate `crates/ff-explorer-view/` (Task 19): the NavModel-backed File
+  Explorer view + interaction core (egui). `crate::nav_model` -> `ff_nav_model`
+  and `crate::context_menu` -> `ff_context_menu` rewritten so the crate is
+  self-contained. `ff-desktop/src/explorer_view.rs` 1086 -> 3-line adapter.
+  KNOWN FOLLOW-UP: ff-explorer-view/src/lib.rs holds ~767 non-test lines,
+  exceeding the 400-line guideline; this was a behaviour-preserving move and is
+  NOT re-sliced here (a future `_state`/`_render` split is a separate refactor).
+- Each new crate is a `ff-desktop` path dependency and a workspace member.
+- PRE-EXISTING gate blocker FIXED in the same wave (folded into the Task 17
+  commit, owner approved as "option 1"): the base branch's `ff-desktop` TEST
+  build was broken because the workspace moved to egui 0.33 but
+  `ff-desktop/Cargo.toml` still pinned `egui_kittest = 0.31` and
+  `egui-file-dialog = 0.9`, pulling a SECOND egui (0.31) into the test build (186
+  type errors from dual-egui) and then 41 egui-0.33 API errors + 46 deprecation
+  warnings. Fix: `egui_kittest` 0.31 -> 0.33, `egui-file-dialog` 0.9 -> 0.12, plus
+  the egui_kittest API rename (`press_key` -> `key_press`, `press_key_modifiers`
+  -> `key_press_modifiers`), `ui.fonts()` -> `ui.fonts_mut()` for `row_height`,
+  and the egui 0.33 deprecations (`SelectableLabel::new` -> `Button::selectable`,
+  `close_menu` -> `close`, `menu::bar` -> `MenuBar::new().ui`, `screen_rect` ->
+  `content_rect`).
+- Scoped gate CLEAN (2026-10-01): `cargo fmt -p ff-explorer-view -p ff-nav-model
+  -p ff-context-menu -p ff-posix-provider -p ff-desktop -- --check` exit 0;
+  `cargo clippy` on the same set `--tests -- -D warnings` exit 0 (0 warnings);
+  `cargo nextest run` on the same set -> 1147 tests run, 1147 passed, 0 skipped
+  (across 5 binaries; the moved tests now run in their new crates).
+- AWAITING owner's full verify.ps1 gate to mark Wave 5 DONE (owner-confirmed).
+  NOTE for the owner: the egui-0.33 fix repairs ff-desktop's closure, but the
+  full `--workspace` gate may surface the SAME egui-0.33 pins
+  (`egui_kittest` 0.31 / `egui-file-dialog` 0.9) in OTHER orphan crates outside
+  ff-desktop's dependency closure; if verify.ps1 fails there, that is additional
+  egui-0.33 migration scope to decide on separately.
+- NEXT decomposition candidate: DECOMP.6 -- editor_panel substrate
+  (`ff-scroll-amount`, `ff-exclude-manager`, `ff-editor-panel`; tab_state stays
+  in ff-desktop), per decomposition-tasks.md Wave 6.
+
 ## One-line status
 
 Owner APPROVED requirements AND the full gate package. BUILD IN PROGRESS.

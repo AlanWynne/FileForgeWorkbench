@@ -114,19 +114,32 @@ sub-dialogs. Sliced by sub-dialog so each move is small and independently green.
       absorbed prior-batch markdown-viewer fmt drift with `cargo fmt`. Workspace
       `cargo fmt --check` is now exit 0.
 
-## Wave 5 -- explorer_view substrate + panel
+## Wave 5 -- explorer_view substrate + panel (DONE, scoped-clean 2026-10-01)
 
-`explorer_view.rs` (1150 lines) couples to `nav_model` (833 lines) and
-`context_menu` (317 lines). Extract both leaves first, then the view.
+`explorer_view.rs` (1086 lines) couples to `nav_model` (836 lines) and
+`context_menu` (317 lines). Extract both leaves first, then the view. During the
+coupling re-check, `nav_model`'s tests were found to depend on `posix_provider`
+(a `crate::`-free leaf), so `posix_provider` was extracted first as Task 0 (a
+prereq leaf for Task 18).
 
-- [ ] 17. Extract `context_menu` -> `ff-context-menu` crate (leaf: FileClass +
-        classify_file). Thin adapter + scoped gate. (Req 19.1-19.4)
-- [ ] 18. Extract `nav_model` -> `ff-nav-model` crate (NavModel on ff-file-tree).
-        Confirm its own `crate::` coupling first; extract any leaf it needs.
-        Thin adapter + scoped gate. (Req 19.1-19.4)
-- [ ] 19. Extract `explorer_view` -> `ff-explorer-view` crate (depends on
-        ff-nav-model + ff-context-menu + ff-vfs + egui). Thin adapter + scoped
-        gate. (Req 19.1-19.4)
+- [x] 0. Extract `posix_provider` -> `ff-posix-provider` crate (leaf: PosixProvider,
+        LocalFsProvider-backed, root-jailed; `resolve_posix_path`/`to_posix_path`
+        promoted to `pub`; comments converted to ASCII). Thin adapter + scoped
+        gate. posix_provider.rs 407 -> 3 lines. (Req 19.1-19.4)
+- [x] 17. Extract `context_menu` -> `ff-context-menu` crate (leaf: FileClass +
+        classify_file; std-only, 15 tests). Thin adapter + scoped gate.
+        context_menu.rs 317 -> 3 lines. (Req 19.1-19.4)
+- [x] 18. Extract `nav_model` -> `ff-nav-model` crate (NavModel on ff-file-tree).
+        Its 5 test provider sites rewired `crate::posix_provider::PosixProvider`
+        -> `ff_posix_provider::PosixProvider` (dev-dep ff-posix-provider). Thin
+        adapter + scoped gate. nav_model.rs 836 -> 3 lines. (Req 19.1-19.4)
+- [x] 19. Extract `explorer_view` -> `ff-explorer-view` crate (depends on
+        ff-nav-model + ff-context-menu + ff-file-tree + ff-theme + ff-vfs + egui +
+        eframe; `crate::nav_model`/`crate::context_menu` rewritten to the crate
+        paths). Thin adapter + scoped gate. explorer_view.rs 1086 -> 3 lines.
+        NOTE: ff-explorer-view/src/lib.rs holds ~767 non-test lines, exceeding the
+        400-line guideline -- behaviour-preserving move, recorded as a known
+        follow-up (future _state/_render split), NOT re-sliced here. (Req 19.1-19.4)
 
 ## Wave 6 -- editor_panel substrate + panel (hardest; TabState stays)
 
