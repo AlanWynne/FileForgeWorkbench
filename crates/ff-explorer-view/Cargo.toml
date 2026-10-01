@@ -1,0 +1,16 @@
+[package]
+name = "ff-explorer-view"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "NavModel-backed File Explorer view + interaction core (egui) for FileForgeWorkbench"
+
+[dependencies]
+ff-nav-model = { path = "../ff-nav-model" }
+ff-context-menu = { path = "../ff-context-menu" }
+ff-file-tree = { path = "../ff-file-tree" }
+ff-theme = { path = "../ff-theme" }
+ff-vfs = { path = "../ff-vfs" }
+egui = { workspace = true }
+eframe = { workspace = true }
