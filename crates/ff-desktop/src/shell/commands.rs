@@ -1201,9 +1201,11 @@ impl WorkbenchShell {
 
         // ── EXCLUDE / SHOW / RESET ────────────────────────────────────────────
         if upper == "EXCLUDE ALL" || upper == "X ALL" {
-            let msg = self
-                .exclude_manager
-                .exclude_all(&mut self.tabs, &self.runtime);
+            let tab = self.tabs.active_tab();
+            let (tab_id, line_count) = (tab.id.0, tab.line_count as usize);
+            let msg = self.exclude_manager.exclude_all(tab_id, line_count, || {
+                crate::exclude_manager::snapshot_lines(tab, &self.runtime)
+            });
             self.open_error = info_or_error(&msg);
             return;
         }
@@ -1216,19 +1218,29 @@ impl WorkbenchShell {
                 cmd.trim()[2..].trim()
             };
             let (text, all_flag) = strip_all_suffix(rest);
+            let tab = self.tabs.active_tab();
+            let (tab_id, line_count) = (tab.id.0, tab.line_count as usize);
             let msg = if all_flag {
                 self.exclude_manager
-                    .exclude_text_all(text, &mut self.tabs, &self.runtime)
+                    .exclude_text_all(text, tab_id, line_count, || {
+                        crate::exclude_manager::snapshot_lines(tab, &self.runtime)
+                    })
             } else {
                 self.exclude_manager
-                    .exclude_text(text, &mut self.tabs, &self.runtime)
+                    .exclude_text(text, tab_id, line_count, || {
+                        crate::exclude_manager::snapshot_lines(tab, &self.runtime)
+                    })
             };
             self.open_error = info_or_error(&msg);
             return;
         }
 
         if upper == "SHOW ALL" || upper == "INCLUDE ALL" {
-            let msg = self.exclude_manager.show_all(&mut self.tabs, &self.runtime);
+            let tab = self.tabs.active_tab();
+            let (tab_id, line_count) = (tab.id.0, tab.line_count as usize);
+            let msg = self.exclude_manager.show_all(tab_id, line_count, || {
+                crate::exclude_manager::snapshot_lines(tab, &self.runtime)
+            });
             self.open_error = info_or_error(&msg);
             return;
         }
@@ -1239,9 +1251,13 @@ impl WorkbenchShell {
             } else {
                 cmd.trim()[8..].trim()
             };
+            let tab = self.tabs.active_tab();
+            let (tab_id, line_count) = (tab.id.0, tab.line_count as usize);
             let msg = self
                 .exclude_manager
-                .show_text(rest, &mut self.tabs, &self.runtime);
+                .show_text(rest, tab_id, line_count, || {
+                    crate::exclude_manager::snapshot_lines(tab, &self.runtime)
+                });
             self.open_error = info_or_error(&msg);
             return;
         }
@@ -1255,9 +1271,11 @@ impl WorkbenchShell {
             } else {
                 ResetVariant::Default
             };
-            let msg = self
-                .exclude_manager
-                .reset(variant, &mut self.tabs, &self.runtime);
+            let tab = self.tabs.active_tab();
+            let (tab_id, line_count) = (tab.id.0, tab.line_count as usize);
+            let msg = self.exclude_manager.reset(variant, tab_id, line_count, || {
+                crate::exclude_manager::snapshot_lines(tab, &self.runtime)
+            });
             self.open_error = info_or_error(&msg);
             return;
         }

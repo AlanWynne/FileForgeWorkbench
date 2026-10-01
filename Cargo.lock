@@ -1736,6 +1736,7 @@ dependencies = [
  "ff-document-model",
  "ff-dscatalog",
  "ff-edit-operations",
+ "ff-exclude-manager",
  "ff-exclude-show-filter",
  "ff-explorer-view",
  "ff-fftest",
@@ -1857,6 +1858,15 @@ dependencies = [
  "pretty_assertions",
  "proptest",
  "thiserror 2.0.20",
+]
+
+[[package]]
+name = "ff-exclude-manager"
+version = "0.1.0"
+dependencies = [
+ "ff-display-line-mapping",
+ "ff-exclude-show-filter",
+ "pretty_assertions",
 ]
 
 [[package]]

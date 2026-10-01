@@ -444,7 +444,7 @@ pub fn render(
     });
 
     // ── Build display list (interleave placeholders for exclusion blocks) ──
-    let blocks = exclude_manager.exclusion_blocks(tab_id);
+    let blocks = exclude_manager.exclusion_blocks(tab_id.0);
     let display_rows = build_display_list(top_line, end_line, tab.line_count, &lines, &blocks);
 
     // ── Paint lines ──────────────────────────────────────────────────────────

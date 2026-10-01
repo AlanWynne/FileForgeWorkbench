@@ -75,6 +75,7 @@ members = [
     "crates/ff-nav-model",
     "crates/ff-explorer-view",
     "crates/ff-scroll-amount",
+    "crates/ff-exclude-manager",
     "crates/ff-desktop",
     "crates/ff-toolchain-api",
     "crates/ff-gcc-toolchain",

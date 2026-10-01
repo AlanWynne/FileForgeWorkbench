@@ -1,0 +1,17 @@
+[package]
+name = "ff-editor-panel"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "GUI-independent editor-panel helpers for FileForgeWorkbench (CR-NR-098 decomposition Wave 6, Task 22): display-list building, scroll-amount translation, selection/cursor geometry. The egui render surface and TabState-entangled wiring stay in ff-desktop; full editor re-architecture is deferred to CR-NR-099."
+
+[dependencies]
+ff-document-model = { path = "../ff-document-model" }
+ff-viewport-scrolling = { path = "../ff-viewport-scrolling" }
+ff-scroll-amount = { path = "../ff-scroll-amount" }
+ff-exclude-show-filter = { path = "../ff-exclude-show-filter" }
+
+[dev-dependencies]
+tokio = { workspace = true }
+pretty_assertions = { workspace = true }

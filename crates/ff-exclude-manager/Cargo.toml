@@ -1,0 +1,14 @@
+[package]
+name = "ff-exclude-manager"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Per-tab EXCLUDE/SHOW/RESET engine store for FileForgeWorkbench (CR-NR-098 decomposition Wave 6): pure logic over ff-exclude-show-filter + ff-display-line-mapping, no shell/runtime dependency."
+
+[dependencies]
+ff-display-line-mapping = { path = "../ff-display-line-mapping" }
+ff-exclude-show-filter = { path = "../ff-exclude-show-filter" }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
