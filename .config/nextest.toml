@@ -3,5 +3,12 @@
 # slow-timeout: mark a test SLOW after `period`, and after `terminate-after`
 # such periods forcibly TERMINATE it and report a TIMEOUT (instead of hanging
 # the whole run forever). This lets a stuck test be named and the suite finish.
+# leak-timeout: after a test finishes, nextest briefly waits for any child
+# process / inherited stdout-stderr pipe handle to close. On Windows a test that
+# spawns a subprocess can leave that handle open, which makes nextest BLOCK after
+# the last test (all tests pass, but the run never returns until Ctrl+C). Bounding
+# the wait makes nextest give up on the leaked handle and exit on its own, so the
+# run completes non-interactively (fixes the allcargo.bat / workflow-step stall).
 [profile.default]
 slow-timeout = { period = "30s", terminate-after = 2 }
+leak-timeout = "500ms"

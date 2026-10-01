@@ -54,6 +54,7 @@ ff-explorer-view = { path = "../ff-explorer-view" }
 ff-scroll-amount = { path = "../ff-scroll-amount" }
 ff-exclude-manager = { path = "../ff-exclude-manager" }
 ff-editor-panel = { path = "../ff-editor-panel" }
+ff-files-panel = { path = "../ff-files-panel" }
 anyhow = { workspace = true }
 arboard = "3"
 tokio = { workspace = true }

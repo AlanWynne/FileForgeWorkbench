@@ -1,0 +1,18 @@
+[package]
+name = "ff-files-panel"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Virtual catalog Files Panel (tree + content area + dialog-form state) for FileForgeWorkbench (CR-NR-098 decomposition Wave 7). No shell dependency."
+
+[dependencies]
+ff-catalog-registry = { path = "../ff-catalog-registry" }
+ff-catalog-dialog = { path = "../ff-catalog-dialog" }
+ff-dataset-alloc-dialog = { path = "../ff-dataset-alloc-dialog" }
+ff-dscatalog = { path = "../ff-dscatalog" }
+egui = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+pretty_assertions = { workspace = true }

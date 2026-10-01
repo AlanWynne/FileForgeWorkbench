@@ -77,6 +77,7 @@ members = [
     "crates/ff-scroll-amount",
     "crates/ff-exclude-manager",
     "crates/ff-editor-panel",
+    "crates/ff-files-panel",
     "crates/ff-desktop",
     "crates/ff-toolchain-api",
     "crates/ff-gcc-toolchain",

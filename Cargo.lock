@@ -1743,6 +1743,7 @@ dependencies = [
  "ff-explorer-view",
  "ff-fftest",
  "ff-file-tree",
+ "ff-files-panel",
  "ff-find-and-replace",
  "ff-gcc-toolchain",
  "ff-global-search",
@@ -1969,6 +1970,19 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.20",
+]
+
+[[package]]
+name = "ff-files-panel"
+version = "0.1.0"
+dependencies = [
+ "egui",
+ "ff-catalog-dialog",
+ "ff-catalog-registry",
+ "ff-dataset-alloc-dialog",
+ "ff-dscatalog",
+ "pretty_assertions",
+ "tempfile",
 ]
 
 [[package]]
