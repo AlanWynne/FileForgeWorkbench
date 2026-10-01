@@ -1,0 +1,16 @@
+[package]
+name = "ff-posix-provider"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "POSIX VFS provider (scheme posix, root-jailed local FS) for FileForgeWorkbench"
+
+[dependencies]
+ff-connector-local-fs = { path = "../ff-connector-local-fs" }
+ff-vfs = { path = "../ff-vfs" }
+async-trait = "0.1"
+tokio = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }

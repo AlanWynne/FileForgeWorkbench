@@ -1,0 +1,18 @@
+[package]
+name = "ff-nav-model"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "File Explorer navigation model (NavModel over ff-file-tree) for FileForgeWorkbench"
+
+[dependencies]
+ff-file-tree = { path = "../ff-file-tree" }
+ff-vfs = { path = "../ff-vfs" }
+tokio = { workspace = true }
+
+[dev-dependencies]
+ff-posix-provider = { path = "../ff-posix-provider" }
+async-trait = "0.1"
+tempfile = { workspace = true }
+pretty_assertions = { workspace = true }

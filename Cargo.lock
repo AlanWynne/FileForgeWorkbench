@@ -1746,8 +1746,10 @@ dependencies = [
  "ff-keys",
  "ff-layout",
  "ff-logging",
+ "ff-nav-model",
  "ff-navigation-commands",
  "ff-plugin",
+ "ff-posix-provider",
  "ff-rust-toolchain",
  "ff-screen-model",
  "ff-scrm",
@@ -2224,6 +2226,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ff-nav-model"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "ff-file-tree",
+ "ff-posix-provider",
+ "ff-vfs",
+ "pretty_assertions",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "ff-navigation-commands"
 version = "0.1.0"
 dependencies = [
@@ -2256,6 +2271,17 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.20",
  "toml 0.8.23",
+]
+
+[[package]]
+name = "ff-posix-provider"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "ff-connector-local-fs",
+ "ff-vfs",
+ "pretty_assertions",
+ "tokio",
 ]
 
 [[package]]

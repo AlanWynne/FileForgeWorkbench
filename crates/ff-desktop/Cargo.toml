@@ -47,6 +47,8 @@ ff-toolchain-panel = { path = "../ff-toolchain-panel" }
 ff-catalog-registry = { path = "../ff-catalog-registry" }
 ff-catalog-dialog = { path = "../ff-catalog-dialog" }
 ff-context-menu = { path = "../ff-context-menu" }
+ff-posix-provider = { path = "../ff-posix-provider" }
+ff-nav-model = { path = "../ff-nav-model" }
 anyhow = { workspace = true }
 arboard = "3"
 tokio = { workspace = true }
