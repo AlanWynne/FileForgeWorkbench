@@ -29,19 +29,25 @@
 # pulled from GitHub and run unchanged on any machine. No absolute paths baked in.
 # This bash script is the Linux/macOS counterpart to tools/ffwb-gate.ps1.
 #
-# OUTPUTS under tools/logs/ (git-ignored):
-#   gate.combined.log   : all messages, filtered as described above
-#   ai-review.log       : only errors/warnings/failures (empty == clean gate)
-#   cargo.*.log         : the raw, unfiltered per-step output
-#   verify.history.csv  : one appended row per run (survives *.log cleanup)
-#   verify.timing.log   : per-step timing for the run
-#   verify.diag.log     : append-only phase/watchdog diagnostics
+# OUTPUTS under tools/logs/ (git-ignored) -- names match tools/ffwb-gate.ps1:
+#   ffwb-gate.final.report.log : all messages, filtered as described above
+#   ffwb-gate.review.log       : only errors/warnings/failures (empty == clean)
+#   cargo.*.log                : the raw, unfiltered per-step output
+#   ffwb-gate.history.csv      : one appended row per run (survives *.log cleanup)
+#   ffwb-gate.timing.log       : per-step timing for the run
+#   ffwb-gate.diag.log         : append-only phase/watchdog diagnostics
+#
+# At the end of EVERY run (clean or not) the full ffwb-gate.final.report.log is
+# echoed to the terminal, mirroring tools/ffwb-gate.ps1.
 #
 # Usage:
 #   tools/ffwb-gate.sh                 # full --workspace completion gate
 #   tools/ffwb-gate.sh --fast          # PROPTEST_CASES=32 quick signal (PARTIAL)
 #   tools/ffwb-gate.sh --app-only      # app dependency closure only (PARTIAL)
 #   tools/ffwb-gate.sh --crate ff-keys # single crate (PARTIAL)
+#
+# A bad invocation (unknown arg, or --app-only + --crate together) exits BEFORE
+# any cleanup or logging, so it never produces or disturbs a report.
 
 set -u
 
@@ -87,8 +93,15 @@ if [ "$APP_ONLY" -eq 1 ] && [ -n "$CRATE" ]; then
     exit 2
 fi
 
-# Clean only *.log so the .csv history survives across runs.
+# Clean every per-run artifact so the report always reflects THIS run and no
+# stale output can bleed in: all *.log files (ffwb-gate.final.report.log,
+# ffwb-gate.review.log, cargo.*.log, ffwb-gate.timing.log, ffwb-gate.diag.log)
+# AND the live progress snapshot (ffwb-gate.progress.txt, if present). The
+# history CSV (ffwb-gate.history.csv) is DELIBERATELY preserved -- it accumulates
+# one row per run and drives the ETA/history logic. This runs only AFTER the
+# bad-invocation guards above, so an invalid command line produces no report.
 rm -f "$LOGS"/*.log
+rm -f "$LOGS/ffwb-gate.progress.txt"
 
 export CARGO_TERM_COLOR=never
 
@@ -158,11 +171,11 @@ elif [ "$APP_ONLY" -eq 1 ]; then
     fi
 fi
 
-COMBINED="$LOGS/gate.combined.log"
-REVIEW="$LOGS/ai-review.log"
-TIMING="$LOGS/verify.timing.log"
-DIAG="$LOGS/verify.diag.log"
-HISTORY="$LOGS/verify.history.csv"
+COMBINED="$LOGS/ffwb-gate.final.report.log"
+REVIEW="$LOGS/ffwb-gate.review.log"
+TIMING="$LOGS/ffwb-gate.timing.log"
+DIAG="$LOGS/ffwb-gate.diag.log"
+HISTORY="$LOGS/ffwb-gate.history.csv"
 
 # Per-step watchdog seconds (override via VERIFY_STEP_TIMEOUT_SECS).
 STEP_TIMEOUT="${VERIFY_STEP_TIMEOUT_SECS:-1800}"
@@ -235,7 +248,7 @@ run_step() {
 
 # --- Run ---------------------------------------------------------------------
 OVERALL_START=$(date +%s)
-echo "Verify run started: $(date '+%Y-%m-%d %H:%M:%S')  mode=$MODE  runner=$RUNNER  scope=$SCOPE_LABEL" >"$TIMING"
+echo "ffwb-gate run started: $(date '+%Y-%m-%d %H:%M:%S')  mode=$MODE  runner=$RUNNER  scope=$SCOPE_LABEL" >"$TIMING"
 write_diag "RUN START  mode=$MODE  runner=$RUNNER  scope=$SCOPE_LABEL  step_timeout=${STEP_TIMEOUT}s"
 if [ "$SCOPE" != "workspace" ] || [ "$SCOPE_LABEL" = "workspace (app-only-fallback)" ]; then
     echo "ffwb-gate: SCOPE = $SCOPE_LABEL. PARTIAL gate, NOT the completion gate -- declaring done/releasing REQUIRES a clean plain 'ffwb-gate.sh' (full --workspace)." >&2
@@ -305,7 +318,7 @@ else
     TESTS_RUN=$((TESTS_PASSED + TESTS_FAILED))
 fi
 
-# --- Accumulate problems into ai-review.log (empty == clean) ----------------
+# --- Accumulate problems into ffwb-gate.review.log (empty == clean) ---------
 grep -hE '^error|^warning|FAILED|^[[:space:]]*FAIL[[:space:]]|tests? run:.*failed|test result: FAILED' \
     "$LOGS"/cargo.*.log 2>/dev/null \
     | grep -Ev '0 failed|failed:[[:space:]]*0' \
@@ -325,7 +338,7 @@ fi
     echo ""
     echo "tests: $COUNT_SUMMARY"
     printf '%-16s %ss\n' "TOTAL" "$ELAPSED"
-    echo "Verify run finished: $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "ffwb-gate run finished: $(date '+%Y-%m-%d %H:%M:%S')"
 } >>"$TIMING"
 
 # --- Verdict -----------------------------------------------------------------
@@ -354,13 +367,27 @@ echo "$(date '+%Y-%m-%d %H:%M:%S'),$MODE,$SCOPE,$RUNNER,$FMT_SECS,$CLP_SECS,$TST
 # Remove the internal per-step scratch files (exit code / timed-out flag).
 rm -f "$LOGS/.last_step_code" "$LOGS/.step_timed_out"
 
+# --- Echo the combined report to the terminal --------------------------------
+# Dump the full ffwb-gate.final.report.log so the whole filtered run (sections,
+# group/summary outcomes, warnings, errors, and the verdict) is visible in the
+# terminal without opening the file. Runs on EVERY verdict path below.
+echo ""
+echo "===== ffwb-gate.final.report.log ====="
+if [ -f "$COMBINED" ]; then
+    cat "$COMBINED"
+else
+    echo "(ffwb-gate.final.report.log not found at $COMBINED)" >&2
+fi
+echo "===== end ffwb-gate.final.report.log ====="
+echo ""
+
 if [ "$VERDICT" = "CLEAN" ]; then
-    echo "ffwb-gate: CLEAN ($MODE, $RUNNER, $SCOPE) -- $COUNT_SUMMARY. See tools/logs/gate.combined.log / verify.timing.log."
+    echo "ffwb-gate: CLEAN ($MODE, $RUNNER, $SCOPE) -- $COUNT_SUMMARY. See tools/logs/ffwb-gate.final.report.log / ffwb-gate.timing.log."
     exit 0
 elif [ "$VERDICT" = "TIMEOUT" ]; then
-    echo "ffwb-gate: TIMEOUT -- a step ran past the ${STEP_TIMEOUT}s watchdog and was terminated (assumed hung). See tools/logs/verify.diag.log." >&2
+    echo "ffwb-gate: TIMEOUT -- a step ran past the ${STEP_TIMEOUT}s watchdog and was terminated (assumed hung). See tools/logs/ffwb-gate.diag.log." >&2
     exit 1
 else
-    echo "ffwb-gate: ISSUES FOUND ($REVIEW_LINES line(s)) -- see tools/logs/ai-review.log and tools/logs/gate.combined.log ($COUNT_SUMMARY)." >&2
+    echo "ffwb-gate: ISSUES FOUND ($REVIEW_LINES line(s)) -- see tools/logs/ffwb-gate.review.log and tools/logs/ffwb-gate.final.report.log ($COUNT_SUMMARY)." >&2
     exit 1
 fi

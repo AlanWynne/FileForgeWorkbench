@@ -4,11 +4,8 @@
     FileForgeWorkbench unified verification gate (cross-platform PowerShell).
 
 .DESCRIPTION
-    THE single verification gate for the workspace. It replaces the former
-    `tools\allcargo.bat` driver and `tools\powershell\verify.ps1` -- which
-    duplicated each other's work (allcargo ran the whole suite and THEN invoked
-    verify.ps1, recompiling and re-running the tests a second time). This script
-    runs each phase EXACTLY ONCE:
+    THE single verification gate for the workspace. This script
+    runs each phase:
 
       1. cargo fmt --check          (formatting; no compile)
       2. cargo clippy --workspace   (compile-check + lint)
@@ -22,6 +19,7 @@
       - per-test success lines   ("<name> ... ok" from cargo test;
                                   "        PASS [   ...]" from cargo nextest)
       - blank / whitespace-only lines
+	  
     It KEEPS:
       - group / summary success lines ("test result: ok. N passed; ...",
         nextest "Summary [...] N tests run: N passed", "Finished", "Compiling",
@@ -37,13 +35,13 @@
     `tools/ffwb-gate.sh` provides the same gate for plain bash on Linux/macOS.
 
     OUTPUTS under tools/logs/ (git-ignored):
-      - gate.combined.log   : all messages, filtered as described above
-      - ai-review.log       : only errors/warnings/failures (empty == clean gate)
-      - cargo.*.log         : the raw, unfiltered per-step output
-      - verify.progress.txt : live single-file progress snapshot (overwritten)
-      - verify.history.csv  : one appended row per run (survives *.log cleanup)
-      - verify.timing.log   : per-step timing for the run
-      - verify.diag.log     : append-only phase/watchdog diagnostics
+      - ffwb-gate.final.report.log : all messages, filtered as described above
+      - ffwb-gate.review.log       : only errors/warnings/failures (empty == clean gate)
+      - cargo.*.log                : the raw, unfiltered per-step output
+      - ffwb-gate.progress.txt     : live single-file progress snapshot (overwritten)
+      - ffwb-gate.history.csv      : one appended row per run (survives *.log cleanup)
+      - ffwb-gate.timing.log       : per-step timing for the run
+      - ffwb-gate.diag.log         : append-only phase/watchdog diagnostics
 
 .PARAMETER Fast
     Developer inner-loop mode: PROPTEST_CASES=32 for a quick signal. NOT the full
@@ -89,10 +87,14 @@ $logs     = Join-Path $toolsDir "logs"
 Set-Location $repo
 New-Item -ItemType Directory -Force -Path $logs | Out-Null
 
-# Clean only *.log so the .csv history and .txt progress markers persist across
-# runs. (ai-review.log, gate.combined.log, and the cargo.*.log step logs are all
-# *.log and are recreated below.)
+# Clean every per-run artifact so the report always reflects THIS run and no
+# stale output can bleed in: all *.log files (ffwb-gate.final.report.log,
+# ffwb-gate.review.log, cargo.*.log, ffwb-gate.timing.log, ffwb-gate.diag.log)
+# AND the live progress snapshot (ffwb-gate.progress.txt). The history CSV
+# (ffwb-gate.history.csv) is DELIBERATELY preserved -- it accumulates one row per
+# run and drives the ETA/history logic.
 Remove-Item -Path (Join-Path $logs "*.log") -ErrorAction SilentlyContinue
+Remove-Item -Path (Join-Path $logs "ffwb-gate.progress.txt") -ErrorAction SilentlyContinue
 
 # Cargo emits ANSI-coloured status to stderr; disable colour so the captured
 # logs are clean plain text on every platform.
@@ -158,20 +160,20 @@ if ($Crate) {
     $scopeLabel = "workspace (full completion gate)"
 }
 
-$timingLog   = Join-Path $logs "verify.timing.log"
-$progressTxt = Join-Path $logs "verify.progress.txt"
-$historyCsv  = Join-Path $logs "verify.history.csv"
-$diagLog     = Join-Path $logs "verify.diag.log"
-$combined    = Join-Path $logs "gate.combined.log"
-$review      = Join-Path $logs "ai-review.log"
+$timingLog   = Join-Path $logs "ffwb-gate.timing.log"
+$progressTxt = Join-Path $logs "ffwb-gate.progress.txt"
+$historyCsv  = Join-Path $logs "ffwb-gate.history.csv"
+$diagLog     = Join-Path $logs "ffwb-gate.diag.log"
+$combined    = Join-Path $logs "ffwb-gate.final.report.log"
+$review      = Join-Path $logs "ffwb-gate.review.log"
 
 # Per-step watchdog. If a step runs longer than this without finishing, assume it
 # is hung (stuck package-cache lock, never-terminating test, or a cargo prompt)
-# and forcibly terminate it. Overridable via VERIFY_STEP_TIMEOUT_SECS.
+# and forcibly terminate it. Overridable via FFWB_GATE_STEP_TIMEOUT_SECS.
 $stepTimeoutSecs = 1800
-if ($env:VERIFY_STEP_TIMEOUT_SECS) {
+if ($env:FFWB_GATE_STEP_TIMEOUT_SECS) {
     $parsed = 0
-    if ([int]::TryParse($env:VERIFY_STEP_TIMEOUT_SECS, [ref]$parsed) -and $parsed -gt 0) {
+    if ([int]::TryParse($env:FFWB_GATE_STEP_TIMEOUT_SECS, [ref]$parsed) -and $parsed -gt 0) {
         $stepTimeoutSecs = $parsed
     }
 }
@@ -185,7 +187,7 @@ function Write-Diag {
 $overallStart = Get-Date
 $mode   = if ($Fast) { "FAST" } else { "FULL" }
 $runner = if ($haveNextest) { "nextest" } else { "cargo test (fallback)" }
-"Verify run started: $($overallStart.ToString('yyyy-MM-dd HH:mm:ss'))  mode=$mode  runner=$runner  scope=$scopeLabel" | Out-File -FilePath $timingLog
+"ffwb-gate run started: $($overallStart.ToString('yyyy-MM-dd HH:mm:ss'))  mode=$mode  runner=$runner  scope=$scopeLabel" | Out-File -FilePath $timingLog
 Write-Diag "RUN START  mode=$mode  runner=$runner  scope=$scopeLabel  step_timeout=${stepTimeoutSecs}s  pid=$PID"
 if ($scope -ne "workspace") {
     Write-Host "ffwb-gate: SCOPE = $scopeLabel. This is a PARTIAL gate, NOT the completion gate -- declaring a task/phase done or releasing REQUIRES a clean plain 'ffwb-gate.ps1' (full --workspace)." -ForegroundColor Yellow
@@ -354,7 +356,7 @@ function Invoke-TestStep {
         $inPhase = ((Get-Date) - $stepStart).TotalSeconds
         if ($inPhase -ge $stepTimeoutSecs) {
             Write-Diag "WATCHDOG  $Name exceeded ${stepTimeoutSecs}s at count=$(if($done){$done}else{0})/$(if($total){$total}else{'?'}) -- terminating (assumed hung)."
-            Write-Progress-Snapshot -Phase "$Name (TIMED OUT)" -PhaseStart $stepStart -Extra "watchdog     : killed after ${stepTimeoutSecs}s (see verify.diag.log)"
+            Write-Progress-Snapshot -Phase "$Name (TIMED OUT)" -PhaseStart $stepStart -Extra "watchdog     : killed after ${stepTimeoutSecs}s (see ffwb-gate.diag.log)"
             Stop-JobTree $job
             $timedOut = $true
             break
@@ -406,7 +408,7 @@ function Invoke-TestStep {
         Write-Diag "PHASE END    $Name  result=TIMED_OUT  elapsed=$(Format-Hms $elapsed)"
     } elseif (-not $sawStarting) {
         Write-Diag "PHASE END    $Name  result=NO_TESTS_RAN (build/manifest error before tests; see cargo.test.stderr.log)  elapsed=$(Format-Hms $elapsed)"
-        Write-Host "ffwb-gate: test step exited WITHOUT running any tests -- a build or manifest error occurred. See tools/logs/cargo.test.stderr.log and verify.diag.log." -ForegroundColor Yellow
+        Write-Host "ffwb-gate: test step exited WITHOUT running any tests -- a build or manifest error occurred. See tools/logs/cargo.test.stderr.log and ffwb-gate.diag.log." -ForegroundColor Yellow
     } else {
         Write-Diag "PHASE END    $Name  result=finished  elapsed=$(Format-Hms $elapsed)"
     }
@@ -423,9 +425,9 @@ $clpElapsed = Invoke-SimpleStep -Name "cargo clippy" -Command "cargo clippy --wo
 
 $eta = Get-EtaSeconds
 if ($eta) {
-    Write-Host ("ffwb-gate: test phase expected ~{0} (median of recent {1} runs). Watch tools/logs/verify.progress.txt." -f (Format-Hms ([TimeSpan]::FromSeconds($eta))), $mode)
+    Write-Host ("ffwb-gate: test phase expected ~{0} (median of recent {1} runs). Watch tools/logs/ffwb-gate.progress.txt." -f (Format-Hms ([TimeSpan]::FromSeconds($eta))), $mode)
 } else {
-    Write-Host "ffwb-gate: no history yet for an ETA; watch tools/logs/verify.progress.txt for live test count."
+    Write-Host "ffwb-gate: no history yet for an ETA; watch tools/logs/ffwb-gate.progress.txt for live test count."
 }
 
 $scopeArgsStr = ($scopeArgs -join " ")
@@ -437,7 +439,7 @@ if ($haveNextest) {
 
 # --- Build the combined, filtered log ---------------------------------------
 # (The raw per-step logs are the *.stdout/*.stderr files captured above; fold
-# filtered copies into gate.combined.log so one file carries the whole run.)
+# filtered copies into ffwb-gate.final.report.log so one file carries the whole run.)
 "ffwb-gate combined log -- $($overallStart.ToString('yyyy-MM-dd HH:mm:ss'))  mode=$mode  runner=$runner  scope=$scopeLabel" |
     Out-File -FilePath $combined -Encoding utf8
 Add-Section -Title "cargo fmt --check (stdout)"       -RawLog $fmtOut
@@ -469,7 +471,7 @@ if ($haveNextest) {
     if ($any) { $testsPassed = $passed; $testsFailed = $failed; $testsRun = $passed + $failed }
 }
 
-# --- Accumulate problems into ai-review.log (empty == clean) ----------------
+# --- Accumulate problems into ffwb-gate.review.log (empty == clean) ----------------
 $patterns = @("^error", "^warning", "\bFAILED\b", "^\s*FAIL\s", "tests? run:.*failed", "test result: FAILED")
 Get-ChildItem -Path $logs -Filter "cargo.*.log" |
     Select-String -Pattern $patterns |
@@ -484,7 +486,7 @@ $countSummary = if ($testsRun -ne $null) { "$testsRun run, $testsPassed passed, 
 "tests: $countSummary" | Tee-Object -FilePath $timingLog -Append | Out-Null
 ("{0,-16} {1:hh\:mm\:ss\.fff} ({2:N1}s)" -f "TOTAL", $overallElapsed, $overallElapsed.TotalSeconds) |
     Tee-Object -FilePath $timingLog -Append | Out-Null
-"Verify run finished: $($overallEnd.ToString('yyyy-MM-dd HH:mm:ss'))" | Tee-Object -FilePath $timingLog -Append | Out-Null
+"ffwb-gate run finished: $($overallEnd.ToString('yyyy-MM-dd HH:mm:ss'))" | Tee-Object -FilePath $timingLog -Append | Out-Null
 
 # --- Verdict + history row ---------------------------------------------------
 $reviewLines = @(Get-Content $review -ErrorAction SilentlyContinue)
@@ -544,13 +546,27 @@ $row | Out-File -FilePath $historyCsv -Encoding ascii -Append
 
 Write-Progress-Snapshot -Phase "finished ($verdict)" -PhaseStart $overallStart -Extra "tests_run   : $countSummary"
 
+# --- Echo the combined report to the terminal --------------------------------
+# Dump the full ffwb-gate.final.report.log so the whole filtered run (sections,
+# group/summary outcomes, warnings, errors, and the verdict) is visible in the
+# terminal without opening the file.
+Write-Host ""
+Write-Host "===== ffwb-gate.final.report.log =====" -ForegroundColor Cyan
+if (Test-Path $combined) {
+    Get-Content -Path $combined -ErrorAction SilentlyContinue | Write-Host
+} else {
+    Write-Host "(ffwb-gate.final.report.log not found at $combined)" -ForegroundColor Yellow
+}
+Write-Host "===== end ffwb-gate.final.report.log =====" -ForegroundColor Cyan
+Write-Host ""
+
 if ($verdict -eq "CLEAN") {
-    Write-Host "ffwb-gate: CLEAN ($mode, $runner, $scope) -- $countSummary. See tools/logs/gate.combined.log / verify.timing.log." -ForegroundColor Green
+    Write-Host "ffwb-gate: CLEAN ($mode, $runner, $scope) -- $countSummary. See tools/logs/ffwb-gate.final.report.log / ffwb-gate.timing.log." -ForegroundColor Green
     exit 0
 } elseif ($verdict -eq "TIMEOUT") {
-    Write-Host "ffwb-gate: TIMEOUT -- a step ran past the ${stepTimeoutSecs}s watchdog and was terminated (assumed hung). See tools/logs/verify.diag.log." -ForegroundColor Red
+    Write-Host "ffwb-gate: TIMEOUT -- a step ran past the ${stepTimeoutSecs}s watchdog and was terminated (assumed hung). See tools/logs/ffwb-gate.diag.log." -ForegroundColor Red
     exit 1
 } else {
-    Write-Host "ffwb-gate: ISSUES FOUND ($($reviewLines.Count) line(s)) -- see tools/logs/ai-review.log and tools/logs/gate.combined.log ($countSummary)." -ForegroundColor Red
+    Write-Host "ffwb-gate: ISSUES FOUND ($($reviewLines.Count) line(s)) -- see tools/logs/ffwb-gate.review.log and tools/logs/ffwb-gate.final.report.log ($countSummary)." -ForegroundColor Red
     exit 1
 }
