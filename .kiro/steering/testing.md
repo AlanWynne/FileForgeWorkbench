@@ -175,7 +175,7 @@ cargo test -p ff-desktop -- --nocapture     # single crate, show stdout
 ```
 
 ### Full-workspace runs are the owner's, not Kiro's (non-blocking by design)
-Kiro does NOT run full-workspace builds/tests. The full gate (`verify.ps1`) and
+Kiro does NOT run full-workspace builds/tests. The full gate (`ffwb-gate.ps1`) and
 any `--workspace` run are the OWNER's manual step, run outside Kiro, so Kiro is
 never blocked on a multi-minute run and the connection never drops mid-wait. The
 command below is documented for the OWNER's reference (or a future explicit "run
@@ -194,41 +194,53 @@ type tools\logs\test-run.txt
 | Plugin Manager UI | `cargo test -p ff-desktop -p ff-plugin` |
 | Notification System | `cargo test -p ff-desktop` |
 | Compiler Toolchain (MockToolchain) | `cargo test -p ff-toolchain-api` |
-| Full baseline check | `verify.ps1` -- OWNER-run manual gate, not a Kiro command |
+| Full baseline check | `ffwb-gate.ps1` -- OWNER-run manual gate, not a Kiro command |
 
-### Full-workspace verification -- verify.ps1 (cargo-nextest)
-The canonical gate is `tools\powershell\verify.ps1`. It runs three steps --
-`cargo fmt --check`, `cargo clippy --workspace`, and the test suite -- capturing
-each step's output to `tools\logs\` and accumulating any errors/warnings into
+### Full-workspace verification -- ffwb-gate.ps1 (cargo-nextest)
+The canonical gate is `tools\ffwb-gate.ps1` (the merged, portable replacement for
+the former `allcargo.bat` + `powershell\verify.ps1`, which duplicated each other's
+work). It runs three steps -- `cargo fmt --check`, `cargo clippy --workspace`, and
+the test suite -- EXACTLY ONCE each, capturing each step's output to `tools\logs\`.
+It writes a combined `tools\logs\gate.combined.log` (every message EXCEPT per-test
+`... ok` / nextest `PASS` lines and blank lines -- so group/summary successes,
+warnings, and errors remain) and accumulates problems into
 `tools\logs\ai-review.log` (an empty file means the gate is clean).
+
+The repo root is derived from the script's own location, so it is portable: pull
+the repo on any machine and run it unchanged. A sibling `tools\ffwb-gate.sh`
+provides the same gate for bash on Linux/macOS; `ffwb-gate.ps1` itself runs on
+Windows, Linux, and macOS via pwsh.
 
 Tests run via `cargo-nextest` when installed: it executes every test binary
 across all cores in parallel and prints one aggregated summary, which is much
 faster than serial `cargo test` on this ~9000-test / 69-crate workspace. If
-nextest is absent, verify.ps1 falls back to `cargo test --workspace`
+nextest is absent, ffwb-gate falls back to `cargo test --workspace`
 automatically -- no behaviour change, just slower.
 
 ### Gate scopes (CR-CH-047)
-`verify.ps1` supports three TEST scopes. `cargo fmt --check` and
+`ffwb-gate.ps1` supports three TEST scopes. `cargo fmt --check` and
 `cargo clippy --workspace` run in ALL of them; only the test step's package set
 changes. Pick the scope by workload:
 
 ```powershell
-# COMPLETION GATE (default, no switch): full --workspace, all 68 crates.
+# COMPLETION GATE (default, no switch): full --workspace, all crates.
 # The ONLY scope that qualifies as "done". ~4-5 min.
-powershell -ExecutionPolicy Bypass -File tools\powershell\verify.ps1
+pwsh -ExecutionPolicy Bypass -File tools\ffwb-gate.ps1
 
 # ROUTINE gate: the ffwb app dependency-closure only (--workspace --exclude
-# <orphans>). Skips the ~35 workspace crates NOT yet wired into ff-desktop.
+# <orphans>). Skips the workspace crates NOT yet wired into ff-desktop.
 # ~2-3x faster. PARTIAL -- not the completion gate.
-powershell -ExecutionPolicy Bypass -File tools\powershell\verify.ps1 -AppOnly
+pwsh -ExecutionPolicy Bypass -File tools\ffwb-gate.ps1 -AppOnly
 
 # INNER LOOP: a single crate (cargo nextest run -p <name>). PARTIAL.
-powershell -ExecutionPolicy Bypass -File tools\powershell\verify.ps1 -Crate ff-keys
+pwsh -ExecutionPolicy Bypass -File tools\ffwb-gate.ps1 -Crate ff-keys
 
 # Fast proptest signal (PROPTEST_CASES=32). Orthogonal -- composes with any scope.
-powershell -ExecutionPolicy Bypass -File tools\powershell\verify.ps1 -Fast
+pwsh -ExecutionPolicy Bypass -File tools\ffwb-gate.ps1 -Fast
 ```
+
+On Linux/macOS the same scopes are `--app-only`, `--crate <name>`, and `--fast`
+on `tools/ffwb-gate.sh`.
 
 The `-AppOnly` exclude list is DERIVED at runtime -- all workspace members MINUS
 the `ff-desktop` dependency closure (`cargo metadata` minus `cargo tree -p
@@ -239,15 +251,15 @@ subset). The chosen scope is recorded per run in `verify.history.csv` (a `scope`
 column) and drives a scope-aware ETA.
 
 Rules:
-- **The full gate (`verify.ps1`, DEFAULT full run) is the OWNER's MANUAL step,
-  NOT a Kiro command.** Kiro NEVER runs `verify.ps1` or any `--workspace`
+- **The full gate (`ffwb-gate.ps1`, DEFAULT full run) is the OWNER's MANUAL step,
+  NOT a Kiro command.** Kiro NEVER runs `ffwb-gate.ps1` or any `--workspace`
   build/test -- those are the multi-minute runs that block Kiro and drop the
   connection. Kiro runs ONLY the scoped `-p <crate>` checks for what it changed,
   then hands off (see "Full-gate hand-off" below). The owner runs the full gate
   outside Kiro and reports the result back.
 - **Completion is two-staged.** Kiro certifies "code-complete pending full gate"
   when its scoped checks are clean; the task is "done" only after the owner runs
-  the full `verify.ps1` and confirms a clean run (empty `ai-review.log`). A clean
+  the full `ffwb-gate.ps1` and confirms a clean run (empty `ai-review.log`). A clean
   scoped run is NOT sufficient to claim "done" -- but it IS all Kiro runs.
 - The full run still matters for the not-yet-integrated ("orphan") crates and for
   proptests keeping their mandated >=100 iterations; that is precisely why it is
@@ -260,13 +272,14 @@ This replaces Kiro ever running the full gate:
    `cargo fmt`) and confirms they are clean.
 2. Kiro STOPS and prints the hand-off: which scoped commands it ran, and the
    exact full-gate command for the owner to run outside Kiro:
-   `powershell -ExecutionPolicy Bypass -File tools\powershell\verify.ps1`
+   `pwsh -ExecutionPolicy Bypass -File tools\ffwb-gate.ps1`
+   (Linux/macOS: `./tools/ffwb-gate.sh`)
 3. The OWNER runs the full gate manually and either replies "clean" or pastes the
    contents of `tools\logs\ai-review.log` / the failing output.
 4. Kiro acts on that feedback: if clean, the task is DONE; if failures, Kiro fixes
    them (scoped checks only) and hands off again at step 1.
 Kiro must NOT proceed to declare a task/phase/CR complete until step 3 returns
-clean. Kiro must NOT run `verify.ps1` itself to "save a round-trip".
+clean. Kiro must NOT run `ffwb-gate.ps1` itself to "save a round-trip".
 
 Direct nextest use (outside the script) is also available:
 ```bash

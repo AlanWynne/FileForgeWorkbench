@@ -2,7 +2,7 @@
 """Reliable cargo gate runner (CR-NR-097 helper).
 
 The interactive PowerShell session in this environment intermittently stops
-flushing stdout, which makes it impossible to observe `cargo`/`verify.ps1`
+flushing stdout, which makes it impossible to observe `cargo`/`ffwb-gate`
 results. This driver runs the gate steps with ``subprocess.run`` (which captures
 child output directly, independent of any shell), writes each step's full output
 to ``tools/logs/`` and a compact summary to ``tools/logs/run_checks-summary.txt``,

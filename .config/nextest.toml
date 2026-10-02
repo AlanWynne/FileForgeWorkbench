@@ -8,7 +8,7 @@
 # spawns a subprocess can leave that handle open, which makes nextest BLOCK after
 # the last test (all tests pass, but the run never returns until Ctrl+C). Bounding
 # the wait makes nextest give up on the leaked handle and exit on its own, so the
-# run completes non-interactively (fixes the allcargo.bat / workflow-step stall).
+# run completes non-interactively (fixes the ffwb-gate / workflow-step stall).
 [profile.default]
 slow-timeout = { period = "30s", terminate-after = 2 }
 leak-timeout = "500ms"

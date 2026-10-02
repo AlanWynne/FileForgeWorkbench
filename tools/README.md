@@ -30,6 +30,60 @@ Each reusable tool should include:
 
 ## Available tools
 
+### `ffwb-gate.ps1` / `ffwb-gate.sh` -- Unified verification gate
+
+THE single verification gate. It replaces the former `allcargo.bat` driver and
+`powershell/verify.ps1` (both now deleted), which duplicated each other's work --
+`allcargo.bat` ran the whole suite and THEN called `verify.ps1`, recompiling and
+re-running every test a second time. `ffwb-gate` runs each phase EXACTLY ONCE:
+`cargo fmt --check`, `cargo clippy --workspace`, and the test suite (cargo-nextest
+when installed, otherwise `cargo test`).
+
+It writes ONE combined log of every message EXCEPT the noise: per-test success
+lines (`<name> ... ok` from cargo test and the `        PASS [   ...]` lines from
+cargo nextest) and blank lines are filtered out, so only section headers,
+group/summary successes (e.g. `test result: ok. N passed`, the nextest `Summary`
+line, `Compiling`/`Finished`), warnings, and errors remain.
+
+It also carries the full feature set of the old `verify.ps1`: the `-AppOnly`,
+`-Crate`, and `-Fast` scopes, a live single-file progress snapshot, an appended
+run-history CSV, a median-based test-phase ETA, and a per-step watchdog that
+terminates a hung step.
+
+The repo root is derived from the script's own location, so these are fully
+portable: pull the repo on any machine and run them unchanged.
+
+- `ffwb-gate.ps1` -- Windows, Linux, and macOS via PowerShell (pwsh):
+
+  ```
+  pwsh -ExecutionPolicy Bypass -File tools/ffwb-gate.ps1
+  pwsh -ExecutionPolicy Bypass -File tools/ffwb-gate.ps1 -Fast
+  pwsh -ExecutionPolicy Bypass -File tools/ffwb-gate.ps1 -AppOnly
+  pwsh -ExecutionPolicy Bypass -File tools/ffwb-gate.ps1 -Crate ff-keys
+  ```
+
+- `ffwb-gate.sh` -- Linux and macOS via bash:
+
+  ```
+  ./tools/ffwb-gate.sh
+  ./tools/ffwb-gate.sh --fast
+  ./tools/ffwb-gate.sh --app-only
+  ./tools/ffwb-gate.sh --crate ff-keys
+  ```
+
+Outputs (under `tools/logs/`, git-ignored):
+
+- `gate.combined.log` -- all messages, per-test pass/ok and blank lines filtered out.
+- `ai-review.log` -- only errors/warnings/failures (empty means a clean gate).
+- `cargo.*.log` -- the raw, unfiltered per-step output.
+- `verify.history.csv` -- one appended row per run (survives the `*.log` cleanup).
+- `verify.timing.log` / `verify.diag.log` -- per-run timing and phase/watchdog diagnostics.
+- `verify.progress.txt` (PowerShell) -- live single-file progress snapshot during a run.
+
+`-Fast` / `--fast` sets `PROPTEST_CASES=32` for a quick developer signal and is
+NOT the full completion gate; nor are `-AppOnly`/`--app-only` or
+`-Crate`/`--crate`. Only the default full `--workspace` run is the completion gate.
+
 ### `python/logging_inventory.py` -- Logging inventory and gap report
 
 Read-only static scan of every `*.rs` under `crates/`. Regenerates a Markdown

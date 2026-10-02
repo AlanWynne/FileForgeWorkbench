@@ -1,4 +1,4 @@
-"""Report the current state of a running verify.ps1 gate, PowerShell-profile-free.
+"""Report the current state of a running ffwb-gate run, PowerShell-profile-free.
 
 Usage:
   python tools/python/scrm_gate_status.py            # one-shot status snapshot
@@ -6,7 +6,7 @@ Usage:
                                                       # ai-review.log appears, then report
 
 Reads:
-  tools/logs/verify.progress.txt   (phase/elapsed written by verify.ps1)
+  tools/logs/verify.progress.txt   (phase/elapsed written by ffwb-gate.ps1)
   tools/logs/ai-review.log         (empty == clean gate; any lines == problems)
   tools/logs/scrm-verify-full.log  (full redirected run output; tail shown)
 

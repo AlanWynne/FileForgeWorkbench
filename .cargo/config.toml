@@ -1,6 +1,6 @@
 # Workspace build tuning for faster dev-loop and verification.
 #
-# Rationale (see tools/powershell/verify.ps1 and .kiro/steering/testing.md):
+# Rationale (see tools/ffwb-gate.ps1 and .kiro/steering/testing.md):
 # the verification bottleneck is the test phase over ~9000 tests across 69
 # crates. These settings reduce per-run compile cost without changing test
 # behaviour or release output. They affect only local build performance and are

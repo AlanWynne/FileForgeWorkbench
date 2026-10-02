@@ -247,14 +247,14 @@ perform the next safe step rather than only describing it.
 11. Run ONLY the SCOPED build/tests for the crate(s) this change touched, and
     read their output before proceeding:
     `cargo check -p <crate>`, `cargo test -p <crate>`, `cargo clippy -p <crate>`,
-    `cargo fmt`. NEVER run `--workspace` builds/tests or `verify.ps1` -- those
+    `cargo fmt`. NEVER run `--workspace` builds/tests or `ffwb-gate.ps1` -- those
     are the owner's MANUAL step (see below). Do NOT block on a multi-minute run.
 12. While the SCOPED checks report errors attributable to this change: fix and
     rerun the scoped checks. Stop the loop once the scoped checks are clean.
 13. Compact history.
 14. Stop and HAND OFF: state that scoped checks are clean, list EXACTLY which
     scoped commands you ran, and PROMPT the owner to run the full gate manually
-    (`powershell -ExecutionPolicy Bypass -File tools\powershell\verify.ps1`)
+    (`pwsh -ExecutionPolicy Bypass -File tools\ffwb-gate.ps1`)
     outside Kiro. Then wait. When the owner reports back "clean" or pastes
     failures, act on that feedback (fix reported problems with scoped checks,
     then hand off again). Do NOT self-certify the full gate.
@@ -265,7 +265,7 @@ Definition of done (code):
   (`cargo clippy -p <crate>`), and their tests pass (`cargo test -p <crate>`);
   TCR updated for every criterion touched; docs updated where behaviour changed;
   no secrets/artefacts/unrelated changes. At this point Kiro STOPS and hands off.
-- **Done (owner-confirmed)**: the owner has run the full `verify.ps1` gate
+- **Done (owner-confirmed)**: the owner has run the full `ffwb-gate.ps1` gate
   manually outside Kiro and reported it clean (empty `ai-review.log`). Only then
   is the task DONE. Kiro never runs the full gate itself and never claims "done"
   on scoped checks alone -- it claims "code-complete pending full gate".
