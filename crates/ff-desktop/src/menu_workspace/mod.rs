@@ -11,6 +11,7 @@ pub mod defaults;
 pub mod loader;
 pub mod render;
 pub mod serialiser;
+pub mod validate;
 
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;

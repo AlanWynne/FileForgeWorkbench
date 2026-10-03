@@ -19,7 +19,10 @@ pub use tree::{
     ConfigTreeKey, TreeEntry,
 };
 
+mod commit;
+mod keyboard;
 mod render;
+mod widgets;
 pub use render::render;
 
 /// Persistent state for the Config Panel tab (the flat config-key browser).
