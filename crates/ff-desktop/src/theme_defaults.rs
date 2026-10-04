@@ -128,6 +128,8 @@ pub fn builtin_palette_by_name(name: &str) -> Option<ThemePalette> {
         // colours are reachable only under `Default Legacy` (and via the
         // `THEME Legacy` shorthand).
         "Default Legacy" => Some(defaults::default_legacy_palette()),
+        // CR-CH-056: Legacy Soft, a softer phosphor variant of Legacy.
+        "Legacy Soft" => Some(defaults::legacy_soft_palette()),
         _ => None,
     }
 }
@@ -141,8 +143,9 @@ pub fn builtin_palette_by_name(name: &str) -> Option<ThemePalette> {
 ///   (b) otherwise a BUILT-IN SHORTHAND omitting the `Default ` prefix:
 ///       `dark`->`Default Dark`, `light`->`Default Light`,
 ///       `high contrast`/`high_contrast`/`high-contrast`->`Default High Contrast`,
-///       `legacy`->`Default Legacy`. The shorthand only succeeds if that built-in
-///       name is present in `available`.
+///       `legacy`->`Default Legacy`, and (CR-CH-056)
+///       `legacy soft`/`legacy-soft`/`legacy_soft`->`Legacy Soft`. The shorthand
+///       only succeeds if that built-in name is present in `available`.
 /// Returns `None` when nothing matches (the caller leaves the theme unchanged
 /// and reports "does not exist", Req 17.5).
 ///
@@ -163,6 +166,8 @@ pub fn resolve_theme_arg(arg: &str, available: &[String]) -> Option<String> {
         "dark" => "Default Dark",
         "light" => "Default Light",
         "high contrast" => "Default High Contrast",
+        // CR-CH-056: `legacy soft` must match before the bare `legacy` shorthand.
+        "legacy soft" => "Legacy Soft",
         "legacy" => "Default Legacy",
         _ => return None,
     };
@@ -215,6 +220,7 @@ mod tests {
             "Default Light".to_string(),
             "Default High Contrast".to_string(),
             "Default Legacy".to_string(),
+            "Legacy Soft".to_string(),
         ]
     }
 
@@ -245,6 +251,30 @@ mod tests {
         // Legacy shorthand resolves to Default Legacy (no separate ISPF built-in).
         assert_eq!(
             resolve_theme_arg("Legacy", &a).as_deref(),
+            Some("Default Legacy")
+        );
+    }
+
+    // Validates: theme Req 17.2b -- the `legacy soft` shorthand resolves to the
+    // Legacy Soft built-in across separator variants, distinct from bare `legacy`.
+    #[test]
+    fn resolve_theme_arg_legacy_soft_shorthand() {
+        let a = builtins();
+        assert_eq!(
+            resolve_theme_arg("Legacy Soft", &a).as_deref(),
+            Some("Legacy Soft")
+        );
+        assert_eq!(
+            resolve_theme_arg("legacy-soft", &a).as_deref(),
+            Some("Legacy Soft")
+        );
+        assert_eq!(
+            resolve_theme_arg("legacy_soft", &a).as_deref(),
+            Some("Legacy Soft")
+        );
+        // Bare `legacy` still resolves to Default Legacy, not Legacy Soft.
+        assert_eq!(
+            resolve_theme_arg("legacy", &a).as_deref(),
             Some("Default Legacy")
         );
     }

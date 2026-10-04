@@ -20,16 +20,20 @@ pub struct ThemeInfo {
     pub base: Option<String>,
 }
 
-/// Names of the built-in themes (CR-CH-024: four total). `Default Legacy` carries
-/// the ISPF 3270 legacy colours and is BOTH a selectable built-in and the
-/// compiled Fallback_Theme (Req 18.1/18.2/18.3). The former separate
+/// Names of the built-in themes (CR-CH-056: FIVE total). `Default Dark` /
+/// `Default Light` are Solarized instances; `Default Legacy` carries the ISPF
+/// 3270 legacy colours (toned primary-menu band) and is BOTH a selectable
+/// built-in and the compiled Fallback_Theme (Req 18.1/18.2/18.3); `Legacy Soft`
+/// is a softer phosphor variant of Legacy. The former separate
 /// `Legacy (ISPF 3270)` built-in was removed as redundant -- the legacy look now
-/// lives only under `Default Legacy`; `THEME Legacy` resolves to it via shorthand.
+/// lives only under `Default Legacy`; `THEME Legacy` resolves to it via shorthand
+/// and `THEME Legacy Soft` resolves to `Legacy Soft`.
 pub const BUILTIN_THEME_NAMES: &[&str] = &[
     "Default Dark",
     "Default Light",
     "Default High Contrast",
     "Default Legacy",
+    "Legacy Soft",
 ];
 
 /// Return `ThemeInfo` entries for all built-in themes.
@@ -162,17 +166,21 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    fn builtin_themes_returns_four_entries() {
+    fn builtin_themes_returns_five_entries() {
         // Validates: Requirement 14.2, 14.6; theme-and-appearance Req 18.3
-        // (CR-CH-024: four built-ins -- Default Dark/Light/High Contrast/Legacy;
-        // the separate Legacy (ISPF 3270) built-in was removed).
+        // (CR-CH-056: FIVE built-ins -- Default Dark/Light [Solarized],
+        // High Contrast, Default Legacy, Legacy Soft).
         let themes = builtin_themes();
-        assert_eq!(themes.len(), 4);
+        assert_eq!(themes.len(), 5);
         assert!(themes.iter().all(|t| t.is_builtin));
         assert!(themes.iter().all(|t| t.path.is_none()));
         assert!(
             !themes.iter().any(|t| t.name == "Legacy (ISPF 3270)"),
             "Legacy (ISPF 3270) is no longer a built-in (CR-CH-024)"
+        );
+        assert!(
+            themes.iter().any(|t| t.name == "Legacy Soft"),
+            "Legacy Soft is a built-in (CR-CH-056)"
         );
     }
 
@@ -192,7 +200,7 @@ mod tests {
         // Validates: Requirement 14.6 — built-ins always present; Req 18.3.
         let dir = PathBuf::from("/nonexistent/themes/dir");
         let themes = list_all_themes(&dir);
-        assert_eq!(themes.len(), 4);
+        assert_eq!(themes.len(), 5);
         assert!(themes.iter().all(|t| t.is_builtin));
     }
 
@@ -248,7 +256,7 @@ mod tests {
         std::fs::write(dir.path().join("custom.toml"), r#"name = "Custom""#).unwrap();
 
         let themes = list_all_themes(dir.path());
-        assert_eq!(themes.len(), 5); // 4 built-in (incl. Default Legacy) + 1 user
+        assert_eq!(themes.len(), 6); // 5 built-in (incl. Legacy Soft) + 1 user
         assert!(themes.iter().any(|t| t.name == "Custom" && !t.is_builtin));
         // No theme appears more than once (Req 19.2a).
         let mut names: Vec<&str> = themes.iter().map(|t| t.name.as_str()).collect();
@@ -281,7 +289,7 @@ mod tests {
             matches[0].is_builtin,
             "the built-in entry wins over the user file"
         );
-        assert_eq!(themes.len(), 4, "shadowing user file adds nothing");
+        assert_eq!(themes.len(), 5, "shadowing user file adds nothing");
     }
 
     // Validates: Requirement 19.2a -- is_builtin_theme identifies built-in names.

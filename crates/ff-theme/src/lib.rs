@@ -36,6 +36,9 @@ pub mod token;
 /// Theme palette structures organised by colour group.
 pub mod palette;
 
+/// egui-native chrome layer (CR-CH-056): the `egui::Style` a Theme produces.
+pub mod chrome_style;
+
 /// Style slot system: 256 indexed entries with font/colour/attribute combinations.
 pub mod style_slot;
 
@@ -72,6 +75,12 @@ pub mod error;
 /// Built-in default palettes for all three visual modes.
 pub mod defaults;
 
+/// Solarized built-in palette builders (CR-CH-056): Default Dark / Light.
+pub mod defaults_solarized;
+
+/// Legacy Soft built-in palette builder (CR-CH-056).
+pub mod defaults_legacy_soft;
+
 /// Theme change event types and notification.
 pub mod event;
 
@@ -83,6 +92,7 @@ pub mod contrast;
 
 // ─── Public API Re-exports ──────────────────────────────────────────────────
 
+pub use chrome_style::ChromeStyle;
 pub use colour::ColourRGBA;
 pub use contrast::{check_theme_contrast, ContrastWarning};
 pub use design_tokens::{

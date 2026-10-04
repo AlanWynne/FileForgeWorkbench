@@ -97,43 +97,44 @@ pub fn serialise(palette: &ThemePalette) -> String {
     write_colour(&mut out, "drop_target", palette.tab_bar.drop_target);
     out.push('\n');
 
-    // Chrome colours
-    out.push_str("# Editor chrome colours (line numbers, margins)\n");
+    // Gutter colours (persisted under the `[chrome]` section -- unchanged file
+    // format in Phase 1; the in-memory group was renamed chrome -> gutter).
+    out.push_str("# Editor gutter colours (line numbers, margins)\n");
     out.push_str("[chrome]\n");
     write_colour(
         &mut out,
         "cursor_row_border",
-        palette.chrome.cursor_row_border,
+        palette.gutter.cursor_row_border,
     );
     write_colour(
         &mut out,
         "cursor_column_indicator",
-        palette.chrome.cursor_column_indicator,
+        palette.gutter.cursor_column_indicator,
     );
     write_colour(
         &mut out,
         "line_number_foreground",
-        palette.chrome.line_number_fg,
+        palette.gutter.line_number_fg,
     );
     write_colour(
         &mut out,
         "line_number_background",
-        palette.chrome.line_number_bg,
+        palette.gutter.line_number_bg,
     );
     write_colour(
         &mut out,
         "fold_margin_background",
-        palette.chrome.fold_margin_bg,
+        palette.gutter.fold_margin_bg,
     );
     write_colour(
         &mut out,
         "fold_margin_foreground",
-        palette.chrome.fold_margin_fg,
+        palette.gutter.fold_margin_fg,
     );
     write_colour(
         &mut out,
         "margin_separator",
-        palette.chrome.margin_separator,
+        palette.gutter.margin_separator,
     );
     out.push('\n');
 
@@ -351,8 +352,8 @@ mod tests {
         // Validates: Requirement 9.5
         let palette = defaults::dark_palette();
         let toml_str = serialise(&palette);
-        // Editor background should be opaque #RRGGBB format
-        assert!(toml_str.contains("\"#1E1E2E\""));
+        // Editor background is Solarized base03 #002B36, opaque #RRGGBB format.
+        assert!(toml_str.contains("\"#002B36\""));
     }
 
     #[test]
@@ -366,7 +367,7 @@ mod tests {
         assert_eq!(original.syntax, round_tripped.syntax);
         assert_eq!(original.file_tree, round_tripped.file_tree);
         assert_eq!(original.tab_bar, round_tripped.tab_bar);
-        assert_eq!(original.chrome, round_tripped.chrome);
+        assert_eq!(original.gutter, round_tripped.gutter);
         assert_eq!(original.decorations, round_tripped.decorations);
         assert_eq!(original.ui, round_tripped.ui);
     }

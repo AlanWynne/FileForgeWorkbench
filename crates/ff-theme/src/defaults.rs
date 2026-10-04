@@ -3,76 +3,74 @@
 //! These defaults are compiled into the binary so the workbench can
 //! always start even if no theme file is available on disk.
 
+use crate::chrome_style::ChromeStyle;
 use crate::colour::ColourRGBA;
 use crate::design_tokens::DesignTokens;
 use crate::element::ElementColourMap;
 use crate::font::FontConfig;
 use crate::mode::VisualMode;
 use crate::palette::{
-    ChromeColours, DecorationColours, EditorColours, FileTreeColours, IndicatorColours,
+    DecorationColours, EditorColours, FileTreeColours, GutterColours, IndicatorColours,
     SyntaxColours, TabBarColours, ThemePalette, UiColours,
 };
 use crate::style_slot::{StyleSlot, StyleSlotTable};
 
+/// Derive the egui-native chrome layer for a palette from its retained chrome
+/// groups (Phase 1: `ui`/`tab_bar`/`editor` + design + mode). Keeps the chrome
+/// layer consistent with the authoring groups so Phase 1 has no visible change.
+fn chrome_style_for(
+    ui: &UiColours,
+    tab_bar: &TabBarColours,
+    editor: &EditorColours,
+    design: &DesignTokens,
+    mode: VisualMode,
+) -> ChromeStyle {
+    ChromeStyle::from_palette_parts(ui, tab_bar, editor, design, mode)
+}
+
 /// Build the default dark mode palette.
+///
+/// CR-CH-056 Phase 2: the `Default Dark` built-in is now a Solarized Dark
+/// instance (name and `VisualMode::Dark` retained). The colour data lives in the
+/// sibling `defaults_solarized` module.
 pub fn dark_palette() -> ThemePalette {
-    ThemePalette {
-        name: "Default Dark".to_string(),
-        mode: VisualMode::Dark,
-        editor: dark_editor_colours(),
-        syntax: dark_syntax_colours(),
-        file_tree: dark_file_tree_colours(),
-        tab_bar: dark_tab_bar_colours(),
-        chrome: dark_chrome_colours(),
-        decorations: dark_decoration_colours(),
-        indicators: dark_indicator_colours(),
-        ui: dark_ui_colours(),
-        style_slots: default_style_slot_table(VisualMode::Dark),
-        fonts: FontConfig::default(),
-        design: DesignTokens::default(),
-        elements: ElementColourMap::new(),
-    }
+    crate::defaults_solarized::solarized_dark_palette()
 }
 
 /// Build the default light mode palette.
+///
+/// CR-CH-056 Phase 2: the `Default Light` built-in is now a Solarized Light
+/// instance (name and `VisualMode::Light` retained). The colour data lives in
+/// the sibling `defaults_solarized` module.
 pub fn light_palette() -> ThemePalette {
-    ThemePalette {
-        name: "Default Light".to_string(),
-        mode: VisualMode::Light,
-        editor: light_editor_colours(),
-        syntax: light_syntax_colours(),
-        file_tree: light_file_tree_colours(),
-        tab_bar: light_tab_bar_colours(),
-        chrome: light_chrome_colours(),
-        decorations: light_decoration_colours(),
-        indicators: light_indicator_colours(),
-        ui: light_ui_colours(),
-        style_slots: default_style_slot_table(VisualMode::Light),
-        fonts: FontConfig::default(),
-        design: DesignTokens::default(),
-        elements: ElementColourMap::new(),
-    }
+    crate::defaults_solarized::solarized_light_palette()
 }
 
 /// Build the default high-contrast mode palette.
 ///
 /// All foreground/background pairs meet WCAG AAA (7:1) contrast ratio.
 pub fn high_contrast_palette() -> ThemePalette {
+    let editor = high_contrast_editor_colours();
+    let tab_bar = high_contrast_tab_bar_colours();
+    let ui = high_contrast_ui_colours();
+    let design = DesignTokens::default();
+    let chrome_style = chrome_style_for(&ui, &tab_bar, &editor, &design, VisualMode::HighContrast);
     ThemePalette {
         name: "Default High Contrast".to_string(),
         mode: VisualMode::HighContrast,
-        editor: high_contrast_editor_colours(),
+        editor,
         syntax: high_contrast_syntax_colours(),
         file_tree: high_contrast_file_tree_colours(),
-        tab_bar: high_contrast_tab_bar_colours(),
-        chrome: high_contrast_chrome_colours(),
+        tab_bar,
+        gutter: high_contrast_gutter_colours(),
         decorations: high_contrast_decoration_colours(),
         indicators: high_contrast_indicator_colours(),
-        ui: high_contrast_ui_colours(),
+        ui,
         style_slots: default_style_slot_table(VisualMode::HighContrast),
         fonts: FontConfig::default(),
-        design: DesignTokens::default(),
+        design,
         elements: ElementColourMap::new(),
+        chrome_style,
     }
 }
 
@@ -87,21 +85,27 @@ pub fn high_contrast_palette() -> ThemePalette {
 /// - Green  — success and positive status
 /// - White  — intense headings and titles
 pub fn legacy_palette() -> ThemePalette {
+    let editor = legacy_editor_colours();
+    let tab_bar = legacy_tab_bar_colours();
+    let ui = legacy_ui_colours();
+    let design = DesignTokens::default();
+    let chrome_style = chrome_style_for(&ui, &tab_bar, &editor, &design, VisualMode::Legacy);
     ThemePalette {
         name: "Legacy (ISPF 3270)".to_string(),
         mode: VisualMode::Legacy,
-        editor: legacy_editor_colours(),
+        editor,
         syntax: legacy_syntax_colours(),
         file_tree: legacy_file_tree_colours(),
-        tab_bar: legacy_tab_bar_colours(),
-        chrome: legacy_chrome_colours(),
+        tab_bar,
+        gutter: legacy_gutter_colours(),
         decorations: legacy_decoration_colours(),
         indicators: legacy_indicator_colours(),
-        ui: legacy_ui_colours(),
+        ui,
         style_slots: default_style_slot_table(VisualMode::Legacy),
         fonts: FontConfig::default(),
-        design: DesignTokens::default(),
+        design,
         elements: ElementColourMap::new(),
+        chrome_style,
     }
 }
 
@@ -137,231 +141,20 @@ pub fn fallback_palette() -> ThemePalette {
     default_legacy_palette()
 }
 
-// ─── Dark Mode Colours ──────────────────────────────────────────────────────
-
-fn dark_editor_colours() -> EditorColours {
-    EditorColours {
-        background: ColourRGBA::rgb(30, 30, 46),
-        foreground: ColourRGBA::rgb(205, 214, 244),
-        accent: ColourRGBA::rgb(137, 180, 250),
-        muted: ColourRGBA::rgb(108, 112, 134),
-        modified_indicator: ColourRGBA::rgb(249, 226, 175),
-        current_line_background: ColourRGBA::rgb(45, 45, 65),
-        selection_secondary_background: ColourRGBA::rgba(137, 180, 250, 50),
-    }
+/// Build the `Legacy Soft` built-in: a softer phosphor variant of the Legacy
+/// ISPF look (CR-CH-056 Phase 2). The colour data lives in the sibling
+/// `defaults_legacy_soft` module.
+///
+/// Validates: theme-and-appearance Requirement 18.3
+pub fn legacy_soft_palette() -> ThemePalette {
+    crate::defaults_legacy_soft::legacy_soft_palette()
 }
 
-fn dark_syntax_colours() -> SyntaxColours {
-    SyntaxColours {
-        keyword: ColourRGBA::rgb(203, 166, 247),
-        comment: ColourRGBA::rgb(108, 112, 134),
-        string: ColourRGBA::rgb(166, 227, 161),
-        number: ColourRGBA::rgb(250, 179, 135),
-        operator: ColourRGBA::rgb(148, 226, 213),
-        type_name: ColourRGBA::rgb(249, 226, 175),
-        function: ColourRGBA::rgb(137, 180, 250),
-        macro_name: ColourRGBA::rgb(245, 194, 231),
-        preprocessor: ColourRGBA::rgb(242, 205, 205),
-        default_text: ColourRGBA::rgb(205, 214, 244),
-    }
-}
-
-fn dark_file_tree_colours() -> FileTreeColours {
-    FileTreeColours {
-        binary: ColourRGBA::rgb(243, 139, 168),
-        structured: ColourRGBA::rgb(137, 180, 250),
-        text: ColourRGBA::rgb(205, 214, 244),
-        unknown: ColourRGBA::rgb(108, 112, 134),
-        directory: ColourRGBA::rgb(249, 226, 175),
-        symlink: ColourRGBA::rgb(148, 226, 213),
-    }
-}
-
-fn dark_tab_bar_colours() -> TabBarColours {
-    TabBarColours {
-        // CR-CH-020 Req 21.3: accent-tinted active tab, distinct from inactive.
-        active_bg: ColourRGBA::rgb(46, 58, 82), // #2E3A52 -- Mocha base toward accent
-        inactive_bg: ColourRGBA::rgb(24, 24, 37), // #181825
-        active_text: ColourRGBA::rgb(205, 214, 244), // #CDD6F4 -- 7.88:1 on active_bg
-        inactive_text: ColourRGBA::rgb(108, 112, 134), // #6C7086 -- 3.59:1 on inactive_bg (UI)
-        modified_indicator: ColourRGBA::rgb(249, 226, 175),
-        close_button: ColourRGBA::rgb(108, 112, 134),
-        drop_target: ColourRGBA::rgba(137, 180, 250, 80),
-    }
-}
-
-fn dark_chrome_colours() -> ChromeColours {
-    ChromeColours {
-        cursor_row_border: ColourRGBA::rgb(69, 71, 90),
-        cursor_column_indicator: ColourRGBA::rgb(69, 71, 90),
-        line_number_fg: ColourRGBA::rgb(108, 112, 134),
-        line_number_bg: ColourRGBA::rgb(30, 30, 46),
-        fold_margin_bg: ColourRGBA::rgb(30, 30, 46),
-        fold_margin_fg: ColourRGBA::rgb(108, 112, 134),
-        margin_separator: ColourRGBA::rgb(49, 50, 68),
-    }
-}
-
-fn dark_decoration_colours() -> DecorationColours {
-    DecorationColours {
-        search_highlight: ColourRGBA::rgba(249, 226, 175, 80),
-        error_underline: ColourRGBA::rgb(243, 139, 168),
-        warning_underline: ColourRGBA::rgb(250, 179, 135),
-        info_underline: ColourRGBA::rgb(137, 180, 250),
-        change_added: ColourRGBA::rgb(166, 227, 161),
-        change_modified: ColourRGBA::rgb(249, 226, 175),
-        change_deleted: ColourRGBA::rgb(243, 139, 168),
-        bookmark: ColourRGBA::rgb(137, 180, 250),
-    }
-}
-
-fn dark_indicator_colours() -> IndicatorColours {
-    IndicatorColours {
-        find_match: ColourRGBA::rgba(249, 226, 175, 60),
-        brace_match: ColourRGBA::rgb(166, 227, 161),
-        brace_mismatch: ColourRGBA::rgb(243, 139, 168),
-        hotspot_underline: ColourRGBA::rgb(137, 180, 250),
-        user_defined: [ColourRGBA::rgb(108, 112, 134); 32],
-    }
-}
-
-fn dark_ui_colours() -> UiColours {
-    UiColours {
-        panel_bg: ColourRGBA::rgb(24, 24, 37),
-        panel_fg: ColourRGBA::rgb(205, 214, 244),
-        panel_border: ColourRGBA::rgb(49, 50, 68),
-        // CR-CH-020 Req 21.1: raised surface (#2A2A3C), distinct from window
-        // (#181825) and input (#1E1E2E) for a 3-level hierarchy.
-        button_bg: ColourRGBA::rgb(42, 42, 60),
-        button_fg: ColourRGBA::rgb(205, 214, 244),
-        button_hover: ColourRGBA::rgb(69, 71, 90),
-        input_bg: ColourRGBA::rgb(30, 30, 46),
-        input_border: ColourRGBA::rgb(69, 71, 90),
-        input_fg: ColourRGBA::rgb(205, 214, 244),
-        scrollbar_track: ColourRGBA::rgb(24, 24, 37),
-        scrollbar_thumb: ColourRGBA::rgb(69, 71, 90),
-        tooltip_bg: ColourRGBA::rgb(49, 50, 68),
-        tooltip_fg: ColourRGBA::rgb(205, 214, 244),
-        menu_bar_fg: ColourRGBA::rgb(205, 214, 244),
-        // CR-CH-020 Req 21.4: accent-tinted title bar (#28344A); text 8.64:1.
-        primary_menu_bg: ColourRGBA::rgb(40, 52, 74),
-        // CR-CH-020 Req 21.2: focus ring is the Catppuccin accent #89B4FA.
-        focus_ring: ColourRGBA::rgb(137, 180, 250),
-    }
-}
-
-// ─── Light Mode Colours ─────────────────────────────────────────────────────
-
-fn light_editor_colours() -> EditorColours {
-    EditorColours {
-        background: ColourRGBA::rgb(239, 241, 245),
-        foreground: ColourRGBA::rgb(76, 79, 105),
-        accent: ColourRGBA::rgb(30, 102, 245),
-        muted: ColourRGBA::rgb(140, 143, 161),
-        modified_indicator: ColourRGBA::rgb(223, 142, 29),
-        current_line_background: ColourRGBA::rgb(220, 224, 232),
-        selection_secondary_background: ColourRGBA::rgba(30, 102, 245, 40),
-    }
-}
-
-fn light_syntax_colours() -> SyntaxColours {
-    SyntaxColours {
-        keyword: ColourRGBA::rgb(136, 57, 239),
-        comment: ColourRGBA::rgb(140, 143, 161),
-        string: ColourRGBA::rgb(64, 160, 43),
-        number: ColourRGBA::rgb(254, 100, 11),
-        operator: ColourRGBA::rgb(23, 146, 153),
-        type_name: ColourRGBA::rgb(223, 142, 29),
-        function: ColourRGBA::rgb(30, 102, 245),
-        macro_name: ColourRGBA::rgb(234, 118, 203),
-        preprocessor: ColourRGBA::rgb(210, 15, 57),
-        default_text: ColourRGBA::rgb(76, 79, 105),
-    }
-}
-
-fn light_file_tree_colours() -> FileTreeColours {
-    FileTreeColours {
-        binary: ColourRGBA::rgb(210, 15, 57),
-        structured: ColourRGBA::rgb(30, 102, 245),
-        text: ColourRGBA::rgb(76, 79, 105),
-        unknown: ColourRGBA::rgb(140, 143, 161),
-        directory: ColourRGBA::rgb(223, 142, 29),
-        symlink: ColourRGBA::rgb(23, 146, 153),
-    }
-}
-
-fn light_tab_bar_colours() -> TabBarColours {
-    TabBarColours {
-        // CR-CH-020 Req 21.3: accent-tinted active tab (#D0DBF7); text 5.76:1.
-        active_bg: ColourRGBA::rgb(208, 219, 247), // #D0DBF7
-        inactive_bg: ColourRGBA::rgb(230, 233, 239), // #E6E9EF
-        active_text: ColourRGBA::rgb(76, 79, 105),
-        inactive_text: ColourRGBA::rgb(90, 94, 120), // #5A5E78 -- 3:1 on inactive_bg
-        modified_indicator: ColourRGBA::rgb(223, 142, 29),
-        close_button: ColourRGBA::rgb(140, 143, 161),
-        drop_target: ColourRGBA::rgba(30, 102, 245, 60),
-    }
-}
-
-fn light_chrome_colours() -> ChromeColours {
-    ChromeColours {
-        cursor_row_border: ColourRGBA::rgb(188, 192, 204),
-        cursor_column_indicator: ColourRGBA::rgb(188, 192, 204),
-        line_number_fg: ColourRGBA::rgb(100, 104, 124), // darkened from 140,143,161 -- 3.0:1 on bg
-        line_number_bg: ColourRGBA::rgb(239, 241, 245),
-        fold_margin_bg: ColourRGBA::rgb(239, 241, 245),
-        fold_margin_fg: ColourRGBA::rgb(100, 104, 124),
-        margin_separator: ColourRGBA::rgb(204, 208, 218),
-    }
-}
-
-fn light_decoration_colours() -> DecorationColours {
-    DecorationColours {
-        search_highlight: ColourRGBA::rgba(223, 142, 29, 60),
-        error_underline: ColourRGBA::rgb(210, 15, 57),
-        warning_underline: ColourRGBA::rgb(254, 100, 11),
-        info_underline: ColourRGBA::rgb(30, 102, 245),
-        change_added: ColourRGBA::rgb(64, 160, 43),
-        change_modified: ColourRGBA::rgb(223, 142, 29),
-        change_deleted: ColourRGBA::rgb(210, 15, 57),
-        bookmark: ColourRGBA::rgb(30, 102, 245),
-    }
-}
-
-fn light_indicator_colours() -> IndicatorColours {
-    IndicatorColours {
-        find_match: ColourRGBA::rgba(223, 142, 29, 50),
-        brace_match: ColourRGBA::rgb(64, 160, 43),
-        brace_mismatch: ColourRGBA::rgb(210, 15, 57),
-        hotspot_underline: ColourRGBA::rgb(30, 102, 245),
-        user_defined: [ColourRGBA::rgb(140, 143, 161); 32],
-    }
-}
-
-fn light_ui_colours() -> UiColours {
-    UiColours {
-        panel_bg: ColourRGBA::rgb(230, 233, 239),
-        panel_fg: ColourRGBA::rgb(76, 79, 105),
-        panel_border: ColourRGBA::rgb(204, 208, 218),
-        // CR-CH-020 Req 21.1: raised surface (#DCE0E8) -- 3-level hierarchy
-        // window #E6E9EF -> raised #DCE0E8 -> input #EFF1F5.
-        button_bg: ColourRGBA::rgb(220, 224, 232),
-        button_fg: ColourRGBA::rgb(76, 79, 105),
-        button_hover: ColourRGBA::rgb(188, 192, 204),
-        input_bg: ColourRGBA::rgb(239, 241, 245),
-        input_border: ColourRGBA::rgb(188, 192, 204),
-        input_fg: ColourRGBA::rgb(76, 79, 105),
-        scrollbar_track: ColourRGBA::rgb(230, 233, 239),
-        scrollbar_thumb: ColourRGBA::rgb(188, 192, 204),
-        tooltip_bg: ColourRGBA::rgb(204, 208, 218),
-        tooltip_fg: ColourRGBA::rgb(76, 79, 105),
-        menu_bar_fg: ColourRGBA::rgb(76, 79, 105),
-        // CR-CH-020 Req 21.4: accent-tinted title bar (#DCE6FB); text 6.37:1.
-        primary_menu_bg: ColourRGBA::rgb(220, 230, 251),
-        // CR-CH-020 Req 21.2: focus ring is the Catppuccin Latte accent #1E66F5.
-        focus_ring: ColourRGBA::rgb(30, 102, 245),
-    }
-}
+// ─── Dark / Light Mode Colours ──────────────────────────────────────────────
+// CR-CH-056 Phase 2: the Default Dark / Default Light built-ins are Solarized
+// instances; their colour builders live in `defaults_solarized.rs`. The former
+// Catppuccin builders here were removed when `dark_palette()` / `light_palette()`
+// began delegating to the sibling module.
 
 // ─── High-Contrast Mode Colours ─────────────────────────────────────────────
 // All fg/bg pairs achieve WCAG AAA (7:1) contrast ratio minimum.
@@ -416,8 +209,8 @@ fn high_contrast_tab_bar_colours() -> TabBarColours {
     }
 }
 
-fn high_contrast_chrome_colours() -> ChromeColours {
-    ChromeColours {
+fn high_contrast_gutter_colours() -> GutterColours {
+    GutterColours {
         cursor_row_border: ColourRGBA::rgb(255, 255, 255),
         cursor_column_indicator: ColourRGBA::rgb(255, 255, 255),
         line_number_fg: ColourRGBA::rgb(170, 170, 170),
@@ -491,6 +284,9 @@ fn high_contrast_ui_colours() -> UiColours {
 const ISPF_BG: ColourRGBA = ColourRGBA::rgb(0, 0, 0);
 const ISPF_BG_ALT: ColourRGBA = ColourRGBA::rgb(0, 0, 28);
 const ISPF_BLUE: ColourRGBA = ColourRGBA::rgb(0, 0, 170); // normal text / labels
+                                                          // Toned-down primary option-menu / title band (CR-CH-056 Req 13.2, amended from
+                                                          // the full ISPF structural blue #0000AA to a muted deep navy #000060).
+const ISPF_MENU_BAND: ColourRGBA = ColourRGBA::rgb(0, 0, 96); // #000060
 const ISPF_TURQUOISE: ColourRGBA = ColourRGBA::rgb(0, 170, 170); // input fields
 const ISPF_YELLOW: ColourRGBA = ColourRGBA::rgb(170, 170, 0); // commands / actions
 const ISPF_RED: ColourRGBA = ColourRGBA::rgb(170, 0, 0); // errors
@@ -586,8 +382,8 @@ fn legacy_tab_bar_colours() -> TabBarColours {
     }
 }
 
-fn legacy_chrome_colours() -> ChromeColours {
-    ChromeColours {
+fn legacy_gutter_colours() -> GutterColours {
+    GutterColours {
         // Cursor row border is Turquoise — marks the active input position
         cursor_row_border: ISPF_TURQUOISE,
         cursor_column_indicator: ISPF_TURQUOISE,
@@ -664,8 +460,12 @@ fn legacy_ui_colours() -> UiColours {
         tooltip_fg: ISPF_TURQUOISE_HI,
         // Menu bar top-level items are White — heading / title emphasis
         menu_bar_fg: ISPF_WHITE_HI,
-        // Primary menu / screen heading background is Blue -- ISPF structural colour
-        primary_menu_bg: ISPF_BLUE,
+        // Primary menu / screen heading background: TONED DOWN from the full
+        // ISPF structural blue (#0000AA) to a muted deep navy (#000060) by
+        // CR-CH-056 Req 13.2 (amended), so the title band is less harsh while
+        // keeping the ISPF structural-blue role. All OTHER Legacy colours are
+        // byte-identical.
+        primary_menu_bg: ISPF_MENU_BAND,
         // Focus ring is Yellow -- command / action colour, visible on black
         focus_ring: ISPF_YELLOW_HI,
     }
@@ -789,8 +589,8 @@ mod tests {
         assert_eq!(palette.ui.input_fg, ColourRGBA::rgb(0, 255, 255));
         // Menu bar text is White
         assert_eq!(palette.ui.menu_bar_fg, ColourRGBA::rgb(255, 255, 255));
-        // Primary menu background is Blue
-        assert_eq!(palette.ui.primary_menu_bg, ColourRGBA::rgb(0, 0, 170));
+        // Primary menu background: toned deep navy #000060 (CR-CH-056 Req 13.2).
+        assert_eq!(palette.ui.primary_menu_bg, ColourRGBA::rgb(0, 0, 96));
     }
 
     // Validates: theme-and-appearance Requirement 18.1 -- Default Legacy has the
@@ -806,7 +606,7 @@ mod tests {
         assert_eq!(default_legacy.syntax, legacy.syntax);
         assert_eq!(default_legacy.file_tree, legacy.file_tree);
         assert_eq!(default_legacy.tab_bar, legacy.tab_bar);
-        assert_eq!(default_legacy.chrome, legacy.chrome);
+        assert_eq!(default_legacy.gutter, legacy.gutter);
         assert_eq!(default_legacy.decorations, legacy.decorations);
         assert_eq!(default_legacy.indicators, legacy.indicators);
         assert_eq!(default_legacy.ui, legacy.ui);
@@ -849,9 +649,9 @@ mod tests {
         let p = legacy_palette();
         assert_eq!(p.syntax.comment, ISPF_BLUE_HI);
         assert_eq!(p.file_tree.unknown, ISPF_BLUE_HI);
-        assert_eq!(p.chrome.fold_margin_fg, ISPF_BLUE_HI);
-        assert_eq!(p.chrome.margin_separator, ISPF_BLUE_HI);
-        assert_eq!(p.chrome.line_number_fg, ISPF_BLUE_HI);
+        assert_eq!(p.gutter.fold_margin_fg, ISPF_BLUE_HI);
+        assert_eq!(p.gutter.margin_separator, ISPF_BLUE_HI);
+        assert_eq!(p.gutter.line_number_fg, ISPF_BLUE_HI);
         // The bright blue clears the >= 3:1 UI-component bar on black; the dim
         // #0000AA it replaced does not.
         let black = ColourRGBA::rgb(0, 0, 0);
@@ -876,53 +676,48 @@ mod tests {
         assert_eq!(p.editor.accent, ColourRGBA::rgb(255, 255, 0)); // yellow command
         assert_eq!(p.ui.input_fg, ColourRGBA::rgb(0, 255, 255)); // turquoise inputs
         assert_eq!(p.ui.menu_bar_fg, ColourRGBA::rgb(255, 255, 255)); // white
-        assert_eq!(p.ui.primary_menu_bg, ColourRGBA::rgb(0, 0, 170)); // blue title bar
+        assert_eq!(p.ui.primary_menu_bg, ColourRGBA::rgb(0, 0, 96)); // toned navy title band
     }
 
-    // Validates: Requirement 21.1 -- Dark chrome has a 3-level surface hierarchy
-    // (window #181825, raised #2A2A3C, input #1E1E2E) with distinct values.
+    // Validates: Requirement 23.7 -- the Solarized Dark built-in presents a
+    // three-level surface hierarchy (window base, raised, inset) with distinct
+    // values. The concrete Solarized values are asserted in defaults_solarized.
     #[test]
     fn dark_chrome_has_three_level_surface_hierarchy() {
         let p = dark_palette();
-        assert_eq!(p.ui.panel_bg, ColourRGBA::rgb(24, 24, 37)); // #181825
-        assert_eq!(p.ui.button_bg, ColourRGBA::rgb(42, 42, 60)); // #2A2A3C
-        assert_eq!(p.ui.input_bg, ColourRGBA::rgb(30, 30, 46)); // #1E1E2E
         assert_ne!(p.ui.panel_bg, p.ui.button_bg);
         assert_ne!(p.ui.button_bg, p.ui.input_bg);
         assert_ne!(p.ui.panel_bg, p.ui.input_bg);
     }
 
-    // Validates: Requirement 21.1 -- Light chrome 3-level surface hierarchy.
+    // Validates: Requirement 23.7 -- Solarized Light 3-level surface hierarchy.
     #[test]
     fn light_chrome_has_three_level_surface_hierarchy() {
         let p = light_palette();
-        assert_eq!(p.ui.panel_bg, ColourRGBA::rgb(230, 233, 239)); // #E6E9EF
-        assert_eq!(p.ui.button_bg, ColourRGBA::rgb(220, 224, 232)); // #DCE0E8
-        assert_eq!(p.ui.input_bg, ColourRGBA::rgb(239, 241, 245)); // #EFF1F5
         assert_ne!(p.ui.panel_bg, p.ui.button_bg);
         assert_ne!(p.ui.button_bg, p.ui.input_bg);
         assert_ne!(p.ui.panel_bg, p.ui.input_bg);
     }
 
-    // Validates: Requirement 21.2 -- the focus ring is the theme accent colour
-    // for Dark and Light (not a generic blue).
+    // Validates: Requirement 23.8 -- the focus ring is the theme accent colour
+    // (Solarized blue) for Dark and Light.
     #[test]
     fn dark_and_light_focus_ring_is_accent() {
         let dark = dark_palette();
-        assert_eq!(dark.ui.focus_ring, dark.editor.accent); // #89B4FA
+        assert_eq!(dark.ui.focus_ring, dark.editor.accent);
+        assert_eq!(dark.ui.focus_ring, ColourRGBA::rgb(0x26, 0x8B, 0xD2));
         let light = light_palette();
-        assert_eq!(light.ui.focus_ring, light.editor.accent); // #1E66F5
+        assert_eq!(light.ui.focus_ring, light.editor.accent);
+        assert_eq!(light.ui.focus_ring, ColourRGBA::rgb(0x26, 0x8B, 0xD2));
     }
 
-    // Validates: Requirement 21.3 -- active tab is accent-tinted and distinct
+    // Validates: Requirement 23.9 -- active tab is accent-tinted and distinct
     // from the inactive tab, for Dark and Light.
     #[test]
     fn dark_and_light_active_tab_is_distinct_and_accented() {
         let dark = dark_palette();
-        assert_eq!(dark.tab_bar.active_bg, ColourRGBA::rgb(46, 58, 82)); // #2E3A52
         assert_ne!(dark.tab_bar.active_bg, dark.tab_bar.inactive_bg);
         let light = light_palette();
-        assert_eq!(light.tab_bar.active_bg, ColourRGBA::rgb(208, 219, 247)); // #D0DBF7
         assert_ne!(light.tab_bar.active_bg, light.tab_bar.inactive_bg);
     }
 
@@ -957,11 +752,74 @@ mod tests {
         }
     }
 
-    // Validates: Requirement 21.8 -- High Contrast is unchanged; it still meets
-    // its stronger bar and produces no warnings.
+    // Validates: Requirement 21.8 / 23.11 -- High Contrast is unchanged; it still
+    // meets its stronger bar and produces no warnings.
     #[test]
     fn high_contrast_unchanged_no_warnings() {
         let warnings = crate::check_theme_contrast(&high_contrast_palette());
         assert!(warnings.is_empty(), "HC warnings: {warnings:?}");
+    }
+
+    // === CR-CH-056 Phase 2 (Task 30) =========================================
+
+    // Validates: Requirement 13.2 -- the Legacy primary option-menu / title band
+    // is toned from the full ISPF blue #0000AA to the muted navy #000060.
+    #[test]
+    fn legacy_primary_menu_band_is_toned_navy() {
+        assert_eq!(
+            legacy_palette().ui.primary_menu_bg,
+            ColourRGBA::rgb(0, 0, 96)
+        );
+        // The toned value is NOT the former full-intensity ISPF structural blue.
+        assert_ne!(
+            legacy_palette().ui.primary_menu_bg,
+            ColourRGBA::rgb(0, 0, 170)
+        );
+    }
+
+    // Validates: Requirement 18.1 / 13.2 -- EVERY Legacy colour OTHER than the
+    // toned primary-menu band is byte-identical to the historical ISPF palette.
+    #[test]
+    fn legacy_non_band_colours_are_byte_identical() {
+        let p = legacy_palette();
+        // Editor group (unchanged).
+        assert_eq!(p.editor.background, ISPF_BG);
+        assert_eq!(p.editor.foreground, ISPF_GREEN_HI);
+        assert_eq!(p.editor.accent, ISPF_YELLOW_HI);
+        assert_eq!(p.editor.muted, ISPF_BLUE);
+        // ui group: everything except primary_menu_bg is unchanged.
+        assert_eq!(p.ui.panel_bg, ISPF_BG);
+        assert_eq!(p.ui.panel_fg, ISPF_TURQUOISE_HI);
+        assert_eq!(p.ui.panel_border, ISPF_BLUE);
+        assert_eq!(p.ui.button_bg, ISPF_BG_ALT);
+        assert_eq!(p.ui.button_fg, ISPF_YELLOW);
+        assert_eq!(p.ui.input_border, ISPF_TURQUOISE);
+        assert_eq!(p.ui.input_fg, ISPF_TURQUOISE_HI);
+        assert_eq!(p.ui.menu_bar_fg, ISPF_WHITE_HI);
+        assert_eq!(p.ui.focus_ring, ISPF_YELLOW_HI);
+        // The ONLY changed ui field is the toned band.
+        assert_eq!(p.ui.primary_menu_bg, ColourRGBA::rgb(0, 0, 96));
+    }
+
+    // Validates: Requirement 23.5 (Task 30.3) -- the Legacy ChromeStyle carries
+    // the ISPF slider colours (turquoise track #00AAAA, yellow handle #FFFF00) so
+    // the Phase 1 slider regression (near-black on black) is resolved WITHOUT a
+    // seam hack. Track = ui.input_border (turquoise); handle stroke = editor
+    // accent (yellow).
+    #[test]
+    fn legacy_chrome_style_carries_ispf_slider_colours() {
+        let chrome = legacy_palette().chrome_style;
+        let v = &chrome.style.visuals;
+        // Slider track (inactive widget fill) is ISPF turquoise, not near-black.
+        assert_eq!(
+            v.widgets.inactive.bg_fill,
+            egui::Color32::from_rgb(0, 170, 170)
+        );
+        assert_ne!(v.widgets.inactive.bg_fill, egui::Color32::BLACK);
+        // Handle stroke is ISPF yellow.
+        assert_eq!(
+            v.widgets.inactive.fg_stroke.color,
+            egui::Color32::from_rgb(255, 255, 0)
+        );
     }
 }

@@ -63,10 +63,11 @@ fn menu_bar_has_file_catalogs_menu() {
     );
 }
 
-/// Validates: menu-workspace Req 17.2 (CR-NR-080) -- the barebones menu bar
-/// includes a Help entry and EXCLUDES the terminal RETURN option.
+/// Validates: menu-workspace Req 17.2 (CR-NR-080, revised CR-CH-052) -- the
+/// barebones menu bar includes a Help entry and EXCLUDES the terminal option
+/// (key X, command X after CR-CH-052; show_in_menu_bar = false).
 #[test]
-fn menu_bar_has_help_and_excludes_return() {
+fn menu_bar_has_help_and_excludes_terminate_option() {
     let menu = crate::menu_workspace::defaults::default_menubar_menu();
     let bar_cmds: Vec<String> = menu
         .options
@@ -78,9 +79,17 @@ fn menu_bar_has_help_and_excludes_return() {
         bar_cmds.iter().any(|c| c == "Help"),
         "the barebones menu bar must include a Help entry"
     );
+    // The terminate option (key X) is hidden from the bar; its command is `X`
+    // after CR-CH-052 (was `Return`). Assert the hidden X option is not on the bar.
+    let bar_keys: Vec<String> = menu
+        .options
+        .iter()
+        .filter(|o| o.show_in_menu_bar)
+        .map(|o| o.key.clone())
+        .collect();
     assert!(
-        !bar_cmds.iter().any(|c| c == "Return"),
-        "RETURN must be excluded from the menu bar (show_in_menu_bar = false)"
+        !bar_keys.iter().any(|k| k == "X"),
+        "the terminate (X) option must be excluded from the menu bar (show_in_menu_bar = false)"
     );
 }
 
@@ -846,7 +855,7 @@ fn context_key_maps_invalid_key_skipped() {
 #[test]
 fn mixed_case_theme_verb_and_argument_resolve() {
     let mut shell = make_shell();
-    shell.handle_command("theme Default Dark");
+    shell.dispatch_command_string("theme Default Dark");
     assert_eq!(
         shell.palette.name, "Default Dark",
         "lowercase verb + cased theme name must resolve and preserve the name"
@@ -893,7 +902,7 @@ fn menu_colours_are_legacy_scheme_when_legacy_palette_active() {
 fn settings_namespace_filter_applied_on_open() {
     // CR-CH-025: `SETTINGS <ns>` is superseded by `CONFIG <ns>`.
     let mut shell = make_shell();
-    shell.handle_command("CONFIG editor");
+    shell.dispatch_command_string("CONFIG editor");
     assert_eq!(
         shell.config_panel.namespace_filter.as_deref(),
         Some("editor"),
@@ -911,7 +920,7 @@ fn settings_namespace_filter_applied_on_open() {
 fn settings_all_view_has_no_namespace_filter() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("CONFIG");
+    shell.dispatch_command_string("CONFIG");
     assert!(shell.config_panel.namespace_filter.is_none());
     assert_eq!(shell.config_panel.filter, "");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::ConfigPanel);
@@ -1160,7 +1169,7 @@ fn set_theme_disables_follow_os_so_selection_is_not_clobbered() {
     );
 
     // Explicitly choose a theme.
-    shell.handle_command("THEME legacy");
+    shell.dispatch_command_string("THEME legacy");
     assert_eq!(shell.palette.mode, VisualMode::Legacy);
 
     // The explicit selection must have disabled follow_os so the per-frame
@@ -1192,18 +1201,18 @@ fn theme_command_sets_mode() {
     let mut shell = make_shell();
     // Start from a known mode. `THEME <mode>` sets `self.palette.mode`
     // (in-memory) which is the observable effect asserted here.
-    shell.handle_command("THEME dark");
+    shell.dispatch_command_string("THEME dark");
     assert_eq!(shell.palette.mode, VisualMode::Dark);
 
-    shell.handle_command("THEME legacy");
+    shell.dispatch_command_string("THEME legacy");
     assert_eq!(shell.palette.mode, VisualMode::Legacy);
 
     // Underscore and hyphen spellings both resolve to High Contrast.
-    shell.handle_command("THEME high_contrast");
+    shell.dispatch_command_string("THEME high_contrast");
     assert_eq!(shell.palette.mode, VisualMode::HighContrast);
-    shell.handle_command("THEME light");
+    shell.dispatch_command_string("THEME light");
     assert_eq!(shell.palette.mode, VisualMode::Light);
-    shell.handle_command("THEME high-contrast");
+    shell.dispatch_command_string("THEME high-contrast");
     assert_eq!(shell.palette.mode, VisualMode::HighContrast);
 
     // set_theme persists theme.active to the real user config; remove the
@@ -1220,7 +1229,7 @@ fn theme_command_sets_mode() {
 fn theme_command_is_case_insensitive() {
     use ff_theme::mode::VisualMode;
     let mut shell = make_shell();
-    shell.handle_command("theme LeGaCy");
+    shell.dispatch_command_string("theme LeGaCy");
     assert_eq!(shell.palette.mode, VisualMode::Legacy);
     let _ = shell
         .config_handle
@@ -1235,9 +1244,9 @@ fn theme_command_bare_opens_theme_editor() {
     use crate::tab_state::TabKind;
     use ff_theme::mode::VisualMode;
     let mut shell = make_shell();
-    shell.handle_command("THEME light");
+    shell.dispatch_command_string("THEME light");
     assert_eq!(shell.palette.mode, VisualMode::Light);
-    shell.handle_command("THEME");
+    shell.dispatch_command_string("THEME");
     assert_eq!(
         shell.tabs.active_tab().kind,
         TabKind::ThemeEditor,
@@ -1257,9 +1266,9 @@ fn theme_command_bare_opens_theme_editor() {
 fn theme_command_unknown_name_errors_and_keeps_theme() {
     use ff_theme::mode::VisualMode;
     let mut shell = make_shell();
-    shell.handle_command("THEME light");
+    shell.dispatch_command_string("THEME light");
     assert_eq!(shell.palette.mode, VisualMode::Light);
-    shell.handle_command("THEME banana");
+    shell.dispatch_command_string("THEME banana");
     // Theme unchanged; does-not-exist message surfaced.
     assert_eq!(shell.palette.mode, VisualMode::Light);
     let msg = shell.open_error.clone().unwrap_or_default();
@@ -1285,7 +1294,7 @@ fn title_line_macro_library_shows_macros() {
 fn keys_with_kind_preselects_that_kind() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("KEYS editor");
+    shell.dispatch_command_string("KEYS editor");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::KeysEditor);
     assert_eq!(
         shell.keys_editor_panel.selected_kind.as_deref(),
@@ -1299,7 +1308,7 @@ fn keys_with_kind_preselects_that_kind() {
 fn keys_with_unknown_kind_shows_status_message() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("KEYS unknownkind");
+    shell.dispatch_command_string("KEYS unknownkind");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::KeysEditor);
     let err = shell.keys_editor_panel.error.as_deref().unwrap_or("");
     assert!(
@@ -1312,7 +1321,7 @@ fn keys_with_unknown_kind_shows_status_message() {
 #[test]
 fn keys_kind_matching_is_case_insensitive() {
     let mut shell = make_shell();
-    shell.handle_command("KEYS EDITOR");
+    shell.dispatch_command_string("KEYS EDITOR");
     assert_eq!(
         shell.keys_editor_panel.selected_kind.as_deref(),
         Some("editor"),
@@ -1413,7 +1422,7 @@ fn menu_command_returns_to_home_context() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
     // Move off the POM first.
-    shell.handle_command("COMMANDS");
+    shell.dispatch_command_string("COMMANDS");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::CommandConfigurator);
     shell.handle_command("MENU");
     assert!(shell.tabs.active_tab().is_home);
@@ -1460,7 +1469,7 @@ fn settings_t_chains_to_theme_editor() {
 fn settings_namespace_opens_filtered_flat_panel() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("CONFIG editor");
+    shell.dispatch_command_string("CONFIG editor");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::ConfigPanel);
     assert_eq!(
         shell.config_panel.namespace_filter.as_deref(),
@@ -1477,7 +1486,7 @@ fn settings_namespace_opens_filtered_flat_panel() {
 fn menus_command_opens_menus_editor() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("MENUS");
+    shell.dispatch_command_string("MENUS");
     assert_eq!(
         shell.tabs.active_tab().kind,
         TabKind::MenusEditor,
@@ -1505,7 +1514,7 @@ fn execute_reset_bare_resets_theme_to_default_legacy() {
     let mut shell = make_shell();
     // Start on a NON-Legacy built-in theme (a built-in resolves without a file,
     // which is exactly the case that previously survived the reset).
-    shell.handle_command("THEME Default Dark");
+    shell.dispatch_command_string("THEME Default Dark");
     assert_eq!(shell.palette.name, "Default Dark");
 
     let target = shell
@@ -1650,7 +1659,7 @@ fn menus_editor_end_returns_to_origin() {
     use crate::tab_state::TabKind;
     // POM -> MENUS -> END returns to the POM (stack had [POM]).
     let mut shell = make_shell();
-    shell.handle_command("MENUS");
+    shell.dispatch_command_string("MENUS");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::MenusEditor);
     shell.handle_command("END");
     assert!(
@@ -1663,7 +1672,7 @@ fn menus_editor_end_returns_to_origin() {
     let mut shell = make_shell();
     shell.handle_command("SETTINGS");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::MenuWorkspace);
-    shell.handle_command("MENUS");
+    shell.dispatch_command_string("MENUS");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::MenusEditor);
     shell.handle_command("END");
     assert_eq!(
@@ -1708,7 +1717,7 @@ fn settings_reset_bare_affordance_dispatches_command() {
 fn themes_command_opens_theme_editor() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("THEME");
+    shell.dispatch_command_string("THEME");
     assert_eq!(
         shell.tabs.active_tab().kind,
         TabKind::ThemeEditor,
@@ -1730,7 +1739,7 @@ fn theme_editor_edit_token_updates_working_and_previews() {
     use crate::theme_editor_panel::{EditableToken, ThemeEditorAction};
     use ff_theme::ColourRGBA;
     let mut shell = make_shell();
-    shell.handle_command("THEME");
+    shell.dispatch_command_string("THEME");
     let red = ColourRGBA::rgb(255, 0, 0);
     shell.apply_theme_editor_action(ThemeEditorAction::EditToken(EditableToken::UiPanelBg, red));
     // Working copy updated.
@@ -1747,7 +1756,7 @@ fn theme_editor_reset_loads_builtin_baseline() {
     use crate::theme_editor_panel::{EditableToken, ThemeEditorAction};
     use ff_theme::ColourRGBA;
     let mut shell = make_shell();
-    shell.handle_command("THEME");
+    shell.dispatch_command_string("THEME");
     // Point the editor at Default Legacy and mutate the working copy.
     shell.apply_theme_editor_action(ThemeEditorAction::EditToken(
         EditableToken::EditorForeground,
@@ -1770,7 +1779,7 @@ fn theme_editor_reset_loads_builtin_baseline() {
 fn theme_editor_reset_non_builtin_errors() {
     use crate::theme_editor_panel::ThemeEditorAction;
     let mut shell = make_shell();
-    shell.handle_command("THEME");
+    shell.dispatch_command_string("THEME");
     shell.apply_theme_editor_action(ThemeEditorAction::Reset("My Custom Theme".to_string()));
     assert!(
         shell.theme_editor_panel.error.is_some(),
@@ -1785,7 +1794,7 @@ fn theme_editor_copy_creates_new_named_theme_file() {
     use crate::theme_editor_panel::ThemeEditorAction;
     let mut shell = make_shell();
     let _dir = point_themes_at_temp(&mut shell);
-    shell.handle_command("THEME");
+    shell.dispatch_command_string("THEME");
     shell.apply_theme_editor_action(ThemeEditorAction::Copy("my-theme".to_string()));
     // The new file exists and the editor now targets it.
     let themes = shell.dir_overrides.themes.clone().unwrap();
@@ -1814,7 +1823,7 @@ fn theme_editor_save_writes_edited_colour_to_disk() {
     use ff_theme::{ColourRGBA, ThemePalette};
     let mut shell = make_shell();
     let _dir = point_themes_at_temp(&mut shell);
-    shell.handle_command("THEME");
+    shell.dispatch_command_string("THEME");
     // Copy to a user theme so we edit/save without touching a built-in.
     shell.apply_theme_editor_action(ThemeEditorAction::Copy("edited".to_string()));
     // Edit a token and Save.
@@ -1838,7 +1847,7 @@ fn theme_editor_save_as_writes_new_file() {
     use crate::theme_editor_panel::ThemeEditorAction;
     let mut shell = make_shell();
     let _dir = point_themes_at_temp(&mut shell);
-    shell.handle_command("THEME");
+    shell.dispatch_command_string("THEME");
     shell.apply_theme_editor_action(ThemeEditorAction::SaveAs("saved-as".to_string()));
     let themes = shell.dir_overrides.themes.clone().unwrap();
     assert!(themes.join("saved-as.toml").exists());
@@ -1855,7 +1864,7 @@ fn theme_editor_set_active_swaps_palette_and_persists() {
     use crate::theme_editor_panel::ThemeEditorAction;
     let mut shell = make_shell();
     let _dir = point_themes_at_temp(&mut shell);
-    shell.handle_command("THEME");
+    shell.dispatch_command_string("THEME");
     // Copy a distinctly-coloured user theme, then set it active.
     shell.apply_theme_editor_action(ThemeEditorAction::Copy("active-me".to_string()));
     shell.apply_theme_editor_action(ThemeEditorAction::SetActive("active-me".to_string()));
@@ -1883,7 +1892,7 @@ fn theme_editor_save_as_after_edit_writes_file_b052() {
     use ff_theme::ColourRGBA;
     let mut shell = make_shell();
     let _dir = point_themes_at_temp(&mut shell);
-    shell.handle_command("THEME");
+    shell.dispatch_command_string("THEME");
     // Simulate: user edited a token, then clicked Save As. The editor emits the
     // button action (SaveAs) this frame, not the token edit.
     shell.apply_theme_editor_action(ThemeEditorAction::EditToken(
@@ -1906,7 +1915,7 @@ fn theme_editor_does_not_materialise_builtins() {
     let dir = tempfile::TempDir::new().expect("tempdir");
     crate::theme_defaults::ensure_default_theme_files(dir.path());
     shell.dir_overrides.themes = Some(dir.path().join("themes"));
-    shell.handle_command("THEME");
+    shell.dispatch_command_string("THEME");
     let themes = dir.path().join("themes");
     for slug in ["default-dark", "default-high-contrast", "default-legacy"] {
         assert!(
@@ -1923,12 +1932,12 @@ fn theme_editor_list_has_no_duplicates() {
     let mut shell = make_shell();
     let _dir = point_themes_at_temp(&mut shell);
     // Add a user theme, then copy a built-in (also a user theme now).
-    shell.handle_command("THEME");
+    shell.dispatch_command_string("THEME");
     shell.apply_theme_editor_action(crate::theme_editor_panel::ThemeEditorAction::Copy(
         "mine".to_string(),
     ));
     // Re-open to refresh the list.
-    shell.handle_command("THEME");
+    shell.dispatch_command_string("THEME");
     let list = &shell.theme_editor_panel.available;
     let mut sorted = list.clone();
     sorted.sort();
@@ -1966,7 +1975,7 @@ fn theme_editor_save_on_builtin_does_not_write_builtin() {
     use crate::theme_editor_panel::ThemeEditorAction;
     let mut shell = make_shell();
     let _dir = point_themes_at_temp(&mut shell);
-    shell.handle_command("THEME");
+    shell.dispatch_command_string("THEME");
     // The editor opens with the active theme selected (a built-in in the default
     // config). Save with an empty name buffer must not write a built-in file and
     // must surface a message.
@@ -2036,12 +2045,12 @@ fn keys_editor_save_writes_keymaps_file_for_kind() {
 fn full_shell_theme_shorthand_selects_default_builtins() {
     use ff_theme::mode::VisualMode;
     let mut harness = harness_shell();
-    harness.state_mut().handle_command("THEME Dark");
+    harness.state_mut().dispatch_command_string("THEME Dark");
     harness.run();
     assert_eq!(harness.state().palette.mode, VisualMode::Dark);
     assert_eq!(harness.state().palette.name, "Default Dark");
 
-    harness.state_mut().handle_command("THEME Legacy");
+    harness.state_mut().dispatch_command_string("THEME Legacy");
     harness.run();
     assert_eq!(harness.state().palette.mode, VisualMode::Legacy);
     assert_eq!(
@@ -2057,12 +2066,12 @@ fn full_shell_theme_shorthand_selects_default_builtins() {
 fn full_shell_theme_unknown_leaves_theme_unchanged() {
     use ff_theme::mode::VisualMode;
     let mut harness = harness_shell();
-    harness.state_mut().handle_command("THEME Light");
+    harness.state_mut().dispatch_command_string("THEME Light");
     harness.run();
     assert_eq!(harness.state().palette.mode, VisualMode::Light);
     harness
         .state_mut()
-        .handle_command("THEME does-not-exist-xyz");
+        .dispatch_command_string("THEME does-not-exist-xyz");
     harness.run();
     assert_eq!(
         harness.state().palette.mode,
@@ -2084,7 +2093,7 @@ fn full_shell_bare_theme_opens_editor_and_end_returns() {
     let mut harness = harness_shell();
     // Start on the POM.
     assert!(harness.state().tabs.active_tab().is_home);
-    harness.state_mut().handle_command("THEME");
+    harness.state_mut().dispatch_command_string("THEME");
     harness.run();
     assert_eq!(
         harness.state().tabs.active_tab().kind,
@@ -2115,10 +2124,11 @@ fn full_shell_themes_command_is_removed() {
     );
 }
 
-// Validates: theme Req 18.1/18.3 (CR-CH-024) -- exactly four built-in themes are
-// listed, and none is named "Legacy (ISPF 3270)".
+// Validates: theme Req 18.1/18.3 (CR-CH-056) -- exactly FIVE built-in themes are
+// listed (Solarized Default Dark/Light, High Contrast, Default Legacy, Legacy
+// Soft), and none is named "Legacy (ISPF 3270)".
 #[test]
-fn full_shell_theme_list_has_four_builtins() {
+fn full_shell_theme_list_has_five_builtins() {
     let harness = harness_shell();
     let themes_dir = harness.state().themes_dir();
     let builtins: Vec<String> = ff_theme::list_all_themes(&themes_dir)
@@ -2128,11 +2138,12 @@ fn full_shell_theme_list_has_four_builtins() {
         .collect();
     assert_eq!(
         builtins.len(),
-        4,
-        "exactly four built-ins; got {builtins:?}"
+        5,
+        "exactly five built-ins; got {builtins:?}"
     );
     assert!(!builtins.iter().any(|n| n == "Legacy (ISPF 3270)"));
     assert!(builtins.iter().any(|n| n == "Default Legacy"));
+    assert!(builtins.iter().any(|n| n == "Legacy Soft"));
 }
 
 // === CR-NR-082 Slice 1: Unified Menu Workspace (Requirement 18) =============
