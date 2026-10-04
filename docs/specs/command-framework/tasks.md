@@ -641,3 +641,22 @@ macro. Command-level contract; no dispatch-mechanism change. TDD, scoped checks.
       (all criteria).
 - [ ] CC.7 Update `docs/quality/TCR.md`: set the command-framework Req 16 rows to
       their correct status. Validates: Requirement 16 (all criteria).
+
+---
+
+## Phase (nav-ladder-semantics) -- CR-CH-052: uniform `=` reinitialise-to-POM (Requirement 10.2 revised, 10.14)
+
+> GATE AUTHORED. The IMPLEMENTATION slice is enumerated once in
+> `docs/specs/menu-workspace/tasks.md` Phase (nav-ladder-semantics) tasks 39-47
+> (the dispatch/nav work lives in `ff-desktop`). This block records the
+> command-framework obligation. Do NOT start until the gate is approved.
+
+- [ ] 30. `=` reinitialise-to-POM applied once at the front door
+  - [ ] 30.1 The single front-door `=` step (`shell/dispatch.rs`) reinitialises the
+          active tab to the POM (FFCMD_Root) and runs the remainder against FFCMD,
+          BEFORE target resolution and the Active_Environment; the three former
+          ad-hoc `=` sites are consolidated into it (menu-workspace tasks 39, 44).
+    - Validates: command-framework Requirement 10.2 (revised), 10.14 (new)
+  - [ ] 30.2 Update `docs/quality/TCR.md`: set the CR-CH-052 command-framework Req 10
+          rows to their correct status.
+    - Covers: Requirement 10.2 (revised), 10.14

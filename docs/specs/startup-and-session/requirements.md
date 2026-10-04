@@ -363,7 +363,7 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 
 11. WHEN the user types `CLOSE` in any `Command ===>` field and presses Enter, THE shell SHALL close the current tab (following unsaved-changes rules). [ISPF-POM]
 
-12. WHEN the user types `EXIT`, `=X`, or presses Ctrl+X in any `Command ===>` field, THE shell SHALL initiate the application exit sequence. [ISPF-POM]
+12. WHEN the `EXIT`, `QUIT`, or `LOGOFF` command is issued in any `Command ===>` field (whether typed, or invoked by whatever function key the keys configuration currently binds to that command -- command-framework Req 5), THE shell SHALL initiate the UNCONDITIONAL application exit sequence. (REVISED by CR-CH-052: `=X` is REMOVED from the unconditional-app-exit set. `=X` instead reinitialises the active tab to the POM and runs `X` against the FFCMD environment, which CLOSES the current Workspace; the application terminates only when the closed Workspace is the LAST open Workspace -- menu-workspace Req 14.14. Criteria are stated in terms of the BOUND COMMAND, never a hardwired Ctrl+X: a key bound to `EXIT` exits unconditionally, a key bound to `=X` closes the Workspace.) [ISPF-POM, CR-CH-052]
 
 13. THE Home Context (POM) tab title in the tab bar SHALL be displayed as `[POM]` to distinguish it from file tabs. [ISPF-POM]
 
@@ -455,8 +455,7 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 
 39. WHEN the Primary Option Menu is displayed, each numbered option entry (0–8) SHALL be rendered as an interactive button/hyperlink that the user can activate by mouse click or by tabbing to it and pressing Enter. WHEN an option button is activated, THE shell SHALL perform the same navigation action as typing that option number into the `Command ===>` field and pressing Enter. [ISPF-POM]
 
-40. WHEN the Primary Option Menu is displayed, the exit line SHALL be rendered as the text `Enter X to Terminate using log/list defaults` as an interactive button/hyperlink. WHEN it is activated by mouse click or by tabbing to it and pressing Enter, THE shell SHALL initiate the application exit sequence. [ISPF-POM]
-   *(Changed from "Enter X to close application" -- updated to ISPF-authentic wording.)*
+40. WHEN the Primary Option Menu is displayed, the terminate line SHALL be the ordinary data-driven POM option whose default Option_Command is the uniform `X` command (menu-workspace Req 1g, 14.13), rendered as an interactive button/hyperlink. WHEN it is activated by mouse click or by tabbing to it and pressing Enter, THE shell SHALL dispatch the `X` command, which -- the POM being at its Tab_Visual_Root -- CLOSES the Workspace and terminates the application ONLY WHEN it is the last open Workspace. (REVISED by CR-CH-052: the behaviour is close-workspace / exit-when-last, NOT an unconditional application exit; the POM is not special-cased. The default POM option command is `X`, not `RETURN`.) [ISPF-POM, CR-CH-052]
 
 41. THE calendar panel header SHALL be rendered as `<   MonthName  YYYY   >` where `<` and `>` are interactive hotspot buttons flanking the centred month-and-year text. [ISPF-POM]
 
@@ -470,6 +469,8 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 
 45. WHEN the calendar panel is omitted per criterion 14.43, THE shell SHALL NOT alter the calendar's underlying state (selected-month offset, current-day tracking) so that restoring the calendar per criterion 14.44 SHALL display the same month that would have been shown had it never been omitted. [ISPF-POM]
    *(DEFERRED -- CR-NR-059. Hiding the calendar is a render-time decision only and SHALL NOT mutate the `pom_calendar_offset` or any related calendar state.)*
+
+46. (NEW, CR-CH-052.) Closing a Workspace -- by bare `X` at its Tab_Visual_Root, by `=X`, by END on an empty Navigation_Stack, or by RETURN at the Tab_Visual_Root (menu-workspace Req 14.4/14.5/14.10/14.13/14.14) -- SHALL terminate the application ONLY WHEN the closed Workspace is the LAST open Workspace; otherwise the Workspace closes and focus moves to a remaining Workspace. Only `EXIT`, `QUIT`, and `LOGOFF` initiate an UNCONDITIONAL application exit (criterion 14.12, Req 20.3). The close path SHALL be the SAME for a docked Workspace and a Detached_Workspace (menu-and-statusbar Req 18.3/18.11). [ISPF-POM, CR-CH-052]
 
 ---
 
@@ -539,7 +540,7 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 
 1. WHEN the workbench session starts, THE status bar SHALL display the session start timestamp in the format `Started: HH:MM` (or `Started: HH:MM:SS` if configured). [TSO-1.2]
 2. WHEN the workbench session ends (exit sequence initiated), THE system SHALL record the session end timestamp and display a logoff message in the format `Logoff at HH:MM -- session duration: Xm Ys` in the status area before closing. [TSO-1.3]
-3. WHEN the user types `LOGOFF` in any `Command ===>` field and presses Enter, THE system SHALL initiate the application exit sequence, identical to `EXIT` or `=X`. [TSO-1.4]
+3. WHEN the user types `LOGOFF` in any `Command ===>` field and presses Enter, THE system SHALL initiate the UNCONDITIONAL application exit sequence, identical to `EXIT` or `QUIT`. (REVISED by CR-CH-052: `=X` is NO LONGER equivalent to `EXIT`/`LOGOFF`; `=X` closes the current Workspace and exits only when it is the last -- Req 14.12/14.46, menu-workspace Req 14.14. `LOGOFF`/`EXIT`/`QUIT` remain unconditional application exit.) [TSO-1.4, CR-CH-052]
 4. WHEN the user types `TIME` in any `Command ===>` field and presses Enter, THE system SHALL display the current date and time in the status bar or command response area in the format `Date: YYYY-MM-DD  Time: HH:MM:SS  Day: DDD`. [TSO-2.4]
 5. WHEN the user types `STATUS` in any `Command ===>` field and presses Enter, THE system SHALL route to the FFW-JES job status panel (equivalent to `=JES` or the SDSF ST panel). [TSO-2.5]
 6. WHEN the user types `STATUS jobname` with an optional job name argument, THE system SHALL route to the FFW-JES panel filtered to show only jobs matching `jobname`. [TSO-2.5]

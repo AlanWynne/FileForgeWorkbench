@@ -2133,3 +2133,130 @@ non-interactive path reachable from a single typed line via a macro. The shared
 helper + the `interactive` flag land first (small), then RESET BARE adopts it as
 the reference consumer; future confirmables (overwrite-SAVE, delete) adopt the
 same helper. No `CommandTarget` / `resolve_target` / navigation-stack change.
+
+---
+
+## Design Delta: Uniform `=` reinitialise-to-POM and X / END / RETURN navigation-ladder semantics (Requirement 10 revised + 10.14, CR-CH-052)
+
+This delta builds ON the single front door (framework mechanism 1) and the per-tab
+Navigation_Stack (mechanism 3). It adds NO new dispatch path, NO second navigation
+stack, and does NOT reshape `CommandTarget`, `WorkspaceContext`, `InteriorFocus`,
+or `WorkspaceDescriptor`. It is the SEMANTIC follow-on to the behaviour-neutral
+B080 "one front door" delta above, and it owns the deferred DELETION half of B080
+Step 7.
+
+### Two distinct roots
+
+- **FFCMD_Root** = the POM. A property of the FFCMD command environment, GLOBAL
+  and always available regardless of launch (even `FFWB -EDIT`, which roots the
+  FIRST tab's visual root at an editor, leaves the POM reachable). The `=` family
+  targets this.
+- **Tab_Visual_Root** = the Context a tab was STARTed at (the POM by default; or
+  `<context>` for `START <context>`). This is the BOTTOM of that tab's
+  Navigation_Stack. Bare `X`, END, and RETURN target THIS per-tab root.
+
+Terminology used throughout: the Navigation_Stack BOTTOM = Tab_Visual_Root;
+navigation CLIMBS (push on top); END descends ONE rung toward the bottom; a
+collapse (`X`/RETURN) drops to the Tab_Visual_Root; `=` drops to the FFCMD_Root.
+The ambiguous word "top" meaning "home" is avoided.
+
+### One `=` reinitialise-to-POM step at the single front door
+
+Add ONE `=` prelude step at the TOP of `dispatch_command_string`
+(`crates/ff-desktop/src/shell/dispatch.rs`), BEFORE `run_command_prelude` /
+`resolve_target` / the Active_Environment step:
+
+```
+if let Some(rest) = raw.trim_start().strip_prefix('=') {
+    self.reinitialise_active_tab_to_pom();      // nav_stack -> empty, root = POM
+    return self.dispatch_command_string(rest.trim()); // run remainder vs FFCMD
+}
+```
+
+- "reinitialise to the POM" means: clear the active tab's Navigation_Stack and
+  reconstruct the POM (FFCMD_Root) in place -- NOT the per-tab Tab_Visual_Root.
+  This keeps the original command-framework Req 10.2 POM-origin meaning (the
+  per-tab-root interpretation is NOT adopted) and matches command-environments
+  Req 3.2/3.2a (the Active_Environment never receives a `=`-prefixed string).
+- This step REPLACES the three ad-hoc `=` sites: the EXIT-family `=X` literal in
+  `try_exit_family` (`commands_ladder_a.rs`), the chained-fastpath origin pop in
+  `try_chained_fastpath` (`commands_fastpath.rs`), and the `resolve_pom_option_key`
+  strip-`=` (`commands_fastpath.rs`). After this, those consumers see an
+  already-stripped remainder; no `=` reaches them.
+- `=1` (any `=<option-key>`) therefore resolves as a POM option from ANY tab
+  regardless of how the tab was started, because `=` first reinitialises to the
+  POM. `=X` = reinitialise-to-POM then `X` against FFCMD = close-workspace /
+  exit-when-last (no literal `=X` match remains).
+
+### X / END / RETURN mapped to nav_stack operations (per-tab, uniform)
+
+| Command (FFCMD) | Stack state | Operation | nav_stack method |
+|-----------------|-------------|-----------|------------------|
+| `X` | non-empty | collapse to Tab_Visual_Root | NEW `nav_collapse_to_visual_root()`: clear stack + reconstruct root in place |
+| `X` | empty (at root) | close Workspace, exit when last | `close_workspace_or_exit()` (already exits only when `tabs.len() <= 1`) |
+| `=X` | (any) | front-door `=` reinit-to-POM, then `X` at POM root | `close_workspace_or_exit()` |
+| END | non-empty | pop ONE rung | `nav_end()` (UNCHANGED) |
+| END | empty | close Workspace, exit when last | `nav_end()` -> `close_workspace_or_exit()` (UNCHANGED) |
+| RETURN | non-empty | collapse to Tab_Visual_Root | `nav_collapse_to_visual_root()` (converges with bare `X`) |
+| RETURN | empty (at root) | close Workspace, exit when last | `close_workspace_or_exit()` |
+
+- `X` is handled as a ladder/prelude verb for now (like EXIT/END/RETURN), NOT yet
+  a registered Command_ID -- consistent with the wiring-standard Known Caveat that
+  command registration still means a ladder verb until the verb table lands. Remove
+  the `"X"` and `"=X"` literals from `try_exit_family`, leaving EXIT/QUIT/LOGOFF as
+  the unconditional-app-exit verbs.
+- RETURN is REPOINTED from `nav_return` (collapse-to-POM, CR-CH-038) to
+  collapse-to-Tab_Visual_Root, removing the last POM special-case.
+- The POM `menus/pom.toml` / Recovery_Baseline (`DEFAULT_POM_TOML`) option `X`
+  command changes from `RETURN` to `X` (code-only compiled default, NEVER written
+  to disk, CR-CH-021 preserved).
+
+### Editor (FFEDIT) exception -- environment ownership, not a POM special-case
+
+Bare `X` on an editor Context stays FFEDIT EXCLUDE (command-environments Req 5.1,
+CR-CH-053 E8), because the Active_Environment gets first crack and EXCLUDE is an
+FFEDIT-owned editor verb. `=X` is the uniform escape from the editor
+(reinitialise-to-POM + close via FFCMD), reachable because `=` is stripped and
+addressed to FFCMD before the Active_Environment is consulted.
+
+### Detached_Workspace parity
+
+`X`-at-root and `=X` close a Detached_Workspace via the SAME
+`close_workspace_or_exit` path as a docked Workspace (menu-and-statusbar Req
+18.3/18.11); exit still occurs only on the last close.
+
+### Reroute the three nav callers through the front door, then delete the dead arms
+
+Change `self.handle_command(x)` to `self.dispatch_command_string(x)` at the three
+callers that bypass the front door (so `resolve_target` runs for them):
+- POM option-key recursion (`commands.rs` `resolve_pom_option_key` re-entry, ~L163),
+- chained-segment loop (`commands_fastpath.rs` `try_chained_fastpath`, ~L128),
+- START reconstruction (`nav_stack.rs` `apply_start_command`, ~L231).
+
+Recursion safety: the front door runs `resolve_target`; the Function terminal
+still re-enters via `handle_command` (not the front door), so no infinite recursion
+is introduced (the existing B080 rationale is preserved).
+
+After the reroute, every in-scope verb reaches `resolve_target` ->
+`builtin_workspace_target` -> `dispatch_command_target` (the CustomWorkspace arm
+calling the identical shell open method as each ladder arm), so the 11 superseded
+arms become genuinely DEAD and are deleted: KEYS, KINDS (`commands_ladder_a.rs`);
+CONFIG, FILES/=FILES, GSEARCH/SEARCH, COMMANDS, MENUS, LOG, CATALOGS/FILE CATALOGS,
+PLUGINS, MACROS (`commands_ladder_b.rs`); plus the bare-THEME branch
+(`commands.rs run_command_ladder`, keeping `THEME <name>`). This is the deferred
+half of B080 Step 7, now owned by CR-CH-052.
+
+### App exit only on last close (mechanism preserved)
+
+No new mechanism: `close_workspace_or_exit` already runs `file.exit` only when
+`tabs.len() <= 1`. X-at-root, `=X`, END-at-empty, and RETURN-at-root all route to
+it. The former unconditional `=X` app-exit (startup-and-session Req 14.12/14.40,
+TSO Req 20.3) is removed; only EXIT/QUIT/LOGOFF remain unconditional.
+
+### Framework conformance
+
+Mechanism 1 (single front door): the `=` step and all three reroutes land on
+`dispatch_command_string`; no parallel dispatcher, no new `if upper == "..."`
+intercept outside the seam. Mechanism 3 (per-tab Navigation_Stack): `X`/`=X`/END/
+RETURN operate on the ACTIVE tab's `nav_stack`; no second stack. Public framework
+types are unchanged, so this is NOT a framework change beyond approving CR-CH-052.

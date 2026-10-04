@@ -2467,6 +2467,32 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | 🔴 | -- | command-environments Req 12.8: UNDO extracts the inline Ctrl+Z logic into a verb; REDO is a NEW feature (no redo stack today), built in slice 2 w/ undo-redo-transactions |
 | `ff-desktop` | 🔴 | -- | command-environments Req 12.9: verbs reachable by reserved keys AND typing, identical result; one front door, no second dispatcher |
 
+### Phase (nav-ladder-semantics) -- CR-CH-052 (uniform `=` reinitialise-to-POM + X / =X / END / RETURN; no POM special-casing)
+
+> GATE AUTHORED; implementation pending owner approval. Two roots: FFCMD_Root (the
+> global POM, targeted by `=`/`=X`) vs the per-tab Tab_Visual_Root (targeted by
+> bare `X`, END, RETURN). `=X` closes the Workspace (exit when last), NOT the app;
+> FFEDIT bare `X` stays EXCLUDE (environment-ownership exception). All rows are
+> GUI/focus/nav behaviour drivable headlessly via full-shell `egui_kittest`
+> (`build_eframe`), so none is MANUAL. Builds ON the single front door + per-tab
+> nav stack; no framework change.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | command-framework Req 10.2 (revised, CR-CH-052): a `=`-prefixed command reinitialises the active tab to the POM (FFCMD_Root), then runs the remainder against FFCMD; the Active_Environment never receives a `=`-prefixed string; `=1` resolves a POM option from any tab |
+| `ff-desktop` | 🔴 | -- | command-framework Req 10.14 (new): the `=` reinitialise-to-POM step is applied EXACTLY ONCE at the single front door (`dispatch_command_string`), before resolution and the Active_Environment; the three former ad-hoc `=` sites are consolidated |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 1g (revised): the POM `X` option default command is `X` (not `RETURN`); selecting it dispatches the uniform `X`; POM not special-cased; default stays code-only, never written to disk |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 14.13 (new): bare `X` collapses the tab to its Tab_Visual_Root when the nav stack is non-empty, closes the Workspace at the root (exit when last); FFEDIT bare `X` = EXCLUDE carve-out (full-shell egui_kittest across POM + START SETTINGS) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 14.14 (new): `=X` reinitialises to the POM then runs `X` against FFCMD = close-workspace / exit-when-last (NOT app exit); identical whether or not the active env owns bare `X` |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 14.15 (new): X/=X/END/RETURN identical for every Context incl. POM; sole exception = an active env owning bare `X` (FFEDIT EXCLUDE); `=`/`=X` target FFCMD_Root, bare `X`/END/RETURN target Tab_Visual_Root |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 14.16 (new): `X`-at-root / `=X` close a Detached_Workspace via the same close-workspace-or-exit path as docked (exit when last); full-shell egui_kittest |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 14.10 (revised, supersedes CR-CH-038): RETURN collapses to the tab's Tab_Visual_Root (not the POM) when non-empty, closes at the root (exit when last); POM no longer the universal return target |
+| `ff-desktop` | 🔴 | -- | startup-and-session Req 14.12 (revised): EXIT/QUIT/LOGOFF are the unconditional app-exit verbs; `=X` removed from that set; criteria in terms of the bound command, not a hardwired Ctrl+X |
+| `ff-desktop` | 🔴 | -- | startup-and-session Req 14.40 (revised): the POM terminate line is the data-driven `X` option; activating it closes the Workspace / exits when last (not unconditional exit) |
+| `ff-desktop` | 🔴 | -- | startup-and-session Req 14.46 (new): closing a Workspace (X-at-root / =X / END-at-empty / RETURN-at-root) exits the app ONLY when it is the last; docked == detached close path |
+| `ff-desktop` | 🔴 | -- | startup-and-session Req 20.3 (revised): LOGOFF == EXIT/QUIT (unconditional app exit); `=X` no longer equivalent (it closes the Workspace, exits when last) |
+| `ff-desktop` | 🔴 | -- | CR-CH-052 (deferred B080 Step 7 deletion): the three nav callers (POM option-key recursion, chained-segment loop, START reconstruction) route through the front door; the 11 superseded ladder arms + bare-THEME branch deleted; each in-scope verb still reaches the identical shell open via resolve_target |
+
 ### Phase DB -- Command Configurator (CR-NR-052, new sub-project)
 
 | Crate | Status | Test files | Notes |

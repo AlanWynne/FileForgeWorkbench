@@ -191,3 +191,24 @@ separate implementation instruction is given.
     - Covers: Requirement 22.10
   - [x] 35.7 Update `docs/quality/TCR.md` (Req 22.1-22.10 rows -> status); verify.ps1 CLEAN (FULL, nextest); rebuild ffwb.exe.
     - Covers: Requirement 22 (all criteria)
+
+---
+
+## Phase (nav-ladder-semantics) -- CR-CH-052: `=X` closes the Workspace, not the application (Requirement 14.12/14.40/14.46, Req 20.3 revised)
+
+> GATE AUTHORED. The IMPLEMENTATION slice is enumerated once in
+> `docs/specs/menu-workspace/tasks.md` Phase (nav-ladder-semantics) tasks 39-47.
+> This block records the startup-and-session obligation. Do NOT start until the
+> gate is approved.
+
+- [ ] 36. `=X` is close-workspace / exit-when-last; only EXIT/QUIT/LOGOFF are unconditional
+  - [ ] 36.1 Confirm the shell removes `=X` from the unconditional-app-exit set: `=X`
+          reinitialises the active tab to the POM and runs `X` against FFCMD, closing
+          the Workspace and terminating the application ONLY when it is the last open
+          Workspace (via `close_workspace_or_exit`). EXIT/QUIT/LOGOFF remain
+          unconditional. Behaviour stated in terms of the bound command (command-
+          framework Req 5), never a hardwired Ctrl+X.
+    - Validates: startup-and-session Req 14.12 (revised), 14.40 (revised), 14.46 (new), Req 20.3 (revised)
+  - [ ] 36.2 Update `docs/quality/TCR.md`: set the CR-CH-052 startup-and-session rows
+          to their correct status.
+    - Covers: Req 14.12 (revised), 14.40 (revised), 14.46 (new), 20.3 (revised)

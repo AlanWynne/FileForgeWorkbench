@@ -1675,3 +1675,60 @@ POM special case and is unchanged.
 Behaviour-preserving: typing `POM` still opens the Home Context; the POM tab
 header (`POM`) and Title_Line (pom.toml Menu_Title) already derive from the menu
 name/title (CR-CH-042), so nothing observable changes.
+
+---
+
+## Design Delta: Uniform X / =X / END / RETURN semantics -- no POM special-casing (Requirement 1g revised, 14.10 revised, 14.13-14.16, CR-CH-052)
+
+Design delta to the "Per-Tab Navigation_Stack (CR-CH-022)" delta (Section/Req 14)
+and the "One Option-Selection Path (CR-CH-043)" delta. It makes the workspace
+exit/return model Context-agnostic. The full dispatch-side design (the one
+front-door `=` reinitialise-to-POM step, the `nav_collapse_to_visual_root` helper,
+the three-caller reroute, and the dead-arm deletion) lives in the command-framework
+design.md delta "Uniform `=` reinitialise-to-POM and X / END / RETURN
+navigation-ladder semantics (CR-CH-052)"; this delta records the menu-side pieces.
+
+### Two roots (shared with command-framework)
+
+- FFCMD_Root = the global POM (targeted by `=`/`=X`); always available regardless
+  of launch.
+- Tab_Visual_Root = the Context a tab was STARTed at (the BOTTOM of its
+  Navigation_Stack); targeted by bare `X`, END, and RETURN.
+
+### POM option `X` default command: `RETURN` -> `X`
+
+The compiled `DEFAULT_POM_TOML` / Recovery_Baseline POM option default command
+changes from `RETURN` to `X` (Req 1g). It stays a code-only compiled default,
+NEVER written to disk (CR-CH-021 preserved). Selecting the POM `X` option
+dispatches the uniform `X` command exactly as typing `X` does (CR-CH-043 Req 19.5
+one-path discipline).
+
+### Uniform X / RETURN as nav_stack collapse
+
+- Bare `X` (FFCMD): collapse the active tab to its Tab_Visual_Root when the
+  Navigation_Stack is non-empty; close the Workspace (exit when last) when already
+  at the Tab_Visual_Root.
+- RETURN: REPOINTED from the CR-CH-038 collapse-to-POM to collapse-to-Tab_Visual_Root,
+  converging with bare `X` on a non-empty stack; at the Tab_Visual_Root RETURN
+  closes the Workspace (exit when last). This removes the last POM-targeted
+  navigation special-case; the former `nav_return` POM jump is retired in favour of
+  the shared `nav_collapse_to_visual_root` helper.
+- `=X`: the front-door `=` step reinitialises the active tab to the POM
+  (FFCMD_Root), then `X` runs against FFCMD and closes the Workspace (exit when
+  last). `=X` is NOT an unconditional application exit.
+- END: UNCHANGED (pop one rung; close at empty; exit when last) -- Req 14.4/14.5.
+
+### FFEDIT exception (environment ownership)
+
+Bare `X` on an editor Context remains FFEDIT EXCLUDE (command-environments Req 5.1,
+CR-CH-053 E8): the Active_Environment claims bare `X` before FFCMD, so the uniform
+FFCMD `X` is not reached in the editor. `=X` remains the uniform escape (it
+addresses FFCMD, never the Active_Environment). This is a deliberate,
+documented environment-ownership exception, NOT a POM-style special-case; Req 14.13
+carves it out explicitly and Req 14.15 names it as the sole exception.
+
+### Detached_Workspace parity
+
+Closing a Detached_Workspace by `X`-at-root or `=X` uses the same
+close-workspace-or-exit path as a docked Workspace (menu-and-statusbar Req
+18.3/18.11), per Req 14.16.

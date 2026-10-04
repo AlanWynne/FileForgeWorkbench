@@ -3222,6 +3222,33 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 |--------|-------|
 | `[~]` Phase (keyboard-command-unification) | CR-CH-054 GATE AUTHORED: keyboard->command dispatch (cmd-framework Req 17) + FFEDIT CUA verbs (command-environments Req 12). Ctrl+S point-fix DONE (956/0); slices 1-2 pending owner approval. |
 
+### Phase (nav-ladder-semantics) -- CR-CH-052 Uniform `=` reinitialise-to-POM + X / =X / END / RETURN (no POM special-casing)
+
+> ONE uniform, Context-agnostic navigation/exit model for every Workspace, plus
+> the deferred DELETION half of B080 Step 7. Two distinct roots: the FFCMD_Root
+> (the global POM, targeted by `=`/`=X`) and the per-tab Tab_Visual_Root (targeted
+> by bare `X`, END, RETURN). `=<cmd>` reinitialises the active tab to the POM then
+> runs `<cmd>` against FFCMD; `=X` = close-workspace / exit-when-last (NOT app
+> exit); bare `X` collapses to the Tab_Visual_Root then closes at the root; RETURN
+> folds into collapse-to-Tab_Visual_Root (revising CR-CH-038); END unchanged
+> (pop one). FFEDIT bare `X` stays EXCLUDE (environment ownership exception); POM
+> default option `X` command changes `RETURN`->`X`. Builds ON mechanism 1 (single
+> front door) + mechanism 3 (per-tab nav stack); no new dispatch path, no second
+> nav stack, no public-type change. Spec: command-framework Req 10.2(rev)/10.14,
+> menu-workspace Req 1g(rev)/14.10(rev)/14.13-14.16, startup-and-session Req
+> 14.12(rev)/14.40(rev)/14.46/20.3(rev).
+
+- [ ] NLS.1 Requirements gate -- command-framework Req 10.2(rev)/10.14, menu-workspace Req 1g(rev)/14.10(rev)/14.13-14.16, startup-and-session Req 14.12(rev)/14.40(rev)/14.46/20.3(rev), the two design.md deltas, menu-workspace tasks 39-47 (+ command-framework task 30, startup-and-session task 36 cross-refs), this master phase, TCR NOT COVERED rows, change-log CR-CH-052. (Authored; awaiting owner approval before any code.)
+- [ ] NLS.2 Front-door `=` reinitialise-to-POM step + consolidate the three ad-hoc `=` sites (menu-workspace tasks 39, 44). Delivers command-framework Req 10.2(rev)/10.14.
+- [ ] NLS.3 Uniform `X` command + `nav_collapse_to_visual_root` helper; RETURN repointed to collapse-to-Tab_Visual_Root; POM option `X` default `RETURN`->`X`; remove `X`/`=X` literals from `try_exit_family` (tasks 40-42). Delivers menu-workspace Req 1g(rev)/14.10(rev)/14.13.
+- [ ] NLS.4 startup-and-session rewording -- `=X` close-workspace/exit-when-last; EXIT/QUIT/LOGOFF unconditional; bound-command phrasing (task 43). Delivers startup-and-session Req 14.12(rev)/14.40(rev)/14.46/20.3(rev).
+- [ ] NLS.5 Reroute the three nav callers (POM option-key recursion, chained-segment loop, START reconstruction) through the front door; delete the 11 dead ladder arms + bare-THEME branch (tasks 44-45). Delivers the deferred B080 Step 7 deletion half.
+- [ ] NLS.6 Tests -- repoint old-semantics tests; full-shell `egui_kittest` uniform X/=X/END across POM AND `START SETTINGS`, app-exit-only-on-last-close, FFEDIT-EXCLUDE carve-out, Detached_Workspace close (tasks 46-47). Delivers menu-workspace Req 14.13-14.16.
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (nav-ladder-semantics) | CR-CH-052 GATE AUTHORED: uniform `=` reinitialise-to-POM + X / =X / END / RETURN with no POM special-casing; owns the deferred B080 Step 7 ladder-arm deletion. Two roots (FFCMD_Root = POM vs per-tab Tab_Visual_Root); `=X` = close-workspace/exit-when-last (not app exit); FFEDIT bare `X` = EXCLUDE exception. Builds ON the single front door + per-tab nav stack; no framework change. Pending owner approval before any code. |
+
 ### Phase (localization) -- CR-NR-103 Localization / i18n (Fluent catalogue + ui.locale + per-locale alias data)
 
 > Additive presentation layer making FFWB convertible to other human languages.

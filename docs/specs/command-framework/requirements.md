@@ -274,11 +274,12 @@ than requiring a separate command per variation.
 
 - **Context_Navigation_Stack**: A per-Workbench return stack of Contexts that RETURN (END/F3) pops. Session state only; never persisted, never undoable. [CR-NR-057]
 - **Navigation_Origin**: The Context at the bottom of the Context_Navigation_Stack for a navigation produced by a command chain: the POM when the chain begins with `=`, otherwise the Context active when the command was issued. [CR-NR-057]
+- **FFCMD_Root**: The POM (Primary Option Menu). It is a property of the FFCMD command environment, GLOBAL and ALWAYS AVAILABLE regardless of how the application was launched (even `FFWB -EDIT`, which roots the FIRST tab's visual root at an editor, leaves the POM reachable). The `=` family targets the FFCMD_Root. DISTINCT from the per-tab Tab_Visual_Root (menu-workspace Req 14). [CR-CH-052]
 
 #### Acceptance Criteria
 
 1. THE framework SHALL maintain a per-Workbench Context_Navigation_Stack of Contexts that RETURN (END/F3) pops.
-2. WHEN a navigation chain begins with `=`, THE Navigation_Origin SHALL be the POM (Home Context).
+2. WHEN a command begins with `=`, THE shell SHALL FIRST reinitialise the active tab's Context_Navigation_Stack to the FFCMD_Root (the POM), THEN execute the remainder of the command AGAINST THE FFCMD command environment (not the Active_Environment such as FFEDIT/FFLINE), as if issued from the POM. The Navigation_Origin of any chain so produced SHALL therefore be the POM (FFCMD_Root). (REVISED by CR-CH-052: the ORIGIN meaning is UNCHANGED -- `=` still means "begin from the POM" -- but the criterion now states the two precisions explicitly: (a) `=` reinitialises the stack to the POM FFCMD_Root, which is GLOBAL and always available regardless of how the tab or application was started, and is NOT the per-tab Tab_Visual_Root; and (b) the remainder is addressed to the FFCMD environment, so an Active_Environment NEVER receives a `=`-prefixed string. This keeps the original Req 10.2 POM-origin meaning and aligns with command-environments Req 3.2/3.2a.)
 3. WHEN a navigation command does not begin with `=`, THE Navigation_Origin SHALL be the Workspace or Context active when the command was issued.
 4. THE Navigation_Origin SHALL always be the bottom entry of the Context_Navigation_Stack for the navigation produced by the chain.
 5. WHEN a chain segment reached via a `;` (PUSH) separator opens or changes a Context, THE framework SHALL push the prior (intermediate) Context onto the Context_Navigation_Stack before switching.
@@ -290,6 +291,7 @@ than requiring a separate command per variation.
 11. THE Context_Navigation_Stack SHALL have a configurable maximum depth via `navigation.stack_max_depth` (positive integer, default 32); WHEN a push would exceed the maximum, THE framework SHALL drop the oldest entry and log one WARN-level record.
 12. THE Context_Navigation_Stack SHALL be session state only: it SHALL NOT be persisted across sessions and SHALL NOT be recorded as an undoable transaction.
 13. A single unchained navigation command SHALL behave as a STOP (`.`) invocation for stack purposes: it SHALL push only the Navigation_Origin, so one RETURN returns to the origin.
+14. THE `=` reinitialise-to-POM step (criterion 10.2) SHALL be applied EXACTLY ONCE, at the single command front door (`dispatch_command_string`, framework mechanism 1), BEFORE target resolution and BEFORE the Active_Environment is consulted, so that every command seam -- the typed command line, a key-forwarded command, a menu or menu-bar option, a chained segment, a POM option fastpath key (`=<key>`), and START reconstruction -- observes the IDENTICAL `=` semantics. No seam SHALL implement its own ad-hoc `=` handling. (NEW, CR-CH-052: consolidates the former three `=` sites -- the EXIT-family `=X` literal, the chained-fastpath origin pop, and the POM option-key strip-`=` -- into one front-door step; builds ON mechanism 1 and the per-tab Navigation_Stack of Requirement 10, adding no new dispatch path and no second navigation stack.)
 
 ---
 

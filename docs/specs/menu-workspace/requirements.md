@@ -188,13 +188,20 @@ and a `Command ===>` field -- so that the pattern is immediately familiar.
     Option_Command exactly as a mouse click does (per Requirement 2.1e).
     (CR-CH-018.)
 1g. THE terminate action SHALL be an ordinary data-driven `menus/pom.toml`
-    option (default Option_Key `X`, Option_Command `RETURN`) -- NOT a bespoke
-    exit line. Selecting it dispatches the `RETURN` command, which returns to the
-    Home Context from any Workspace and, when issued from the POM as the only
-    Workspace, terminates the application (function-keys-and-history Req 17.3/
-    17.4; consistent with `=X`). The previous bespoke "Enter X to Terminate"
-    line, `PomAction::Exit`, and `FocusStop::PomExit` special-casing SHALL be
-    removed. (CR-CH-018.)
+    option (default Option_Key `X`, Option_Command `X`) -- NOT a bespoke exit
+    line. (REVISED by CR-CH-052: the default POM option command changes from
+    `RETURN` to `X`.) Selecting it dispatches the uniform `X` command (Req
+    14.13), which collapses the current tab to its Tab_Visual_Root when the
+    Navigation_Stack is non-empty and CLOSES the Workspace when already at the
+    Tab_Visual_Root, terminating the application only when it is the LAST open
+    Workspace. The POM SHALL NOT be special-cased: bare `X` on the POM behaves
+    exactly as bare `X` on any other Workspace Context (it is NOT a "return to
+    Home" no-op). The default `menus/pom.toml` is a code-only compiled default
+    (`DEFAULT_POM_TOML` / Recovery_Baseline) that is NEVER written to disk
+    (CR-CH-021 preserved); only its compiled `X` option command changes. The
+    previous bespoke "Enter X to Terminate" line, `PomAction::Exit`, and
+    `FocusStop::PomExit` special-casing SHALL remain removed. (CR-CH-018,
+    CR-CH-052.)
 1h. EVERY Option_Command in the default `menus/pom.toml` SHALL resolve through
     the shell command pipeline by command NAME (independent of any key). WHERE a
     needed command name does not already resolve, the command dispatcher SHALL be
@@ -705,8 +712,9 @@ is created is if we type start"); reconciles Requirement 5 (Chained Navigation).
 
 | Term | Definition |
 |------|-----------|
-| **Navigation_Stack** | An ordered, per-tab list of `WorkspaceDescriptor` entries recording the Contexts traversed to reach the current one. The current Context is NOT on the stack; the stack holds only the ancestors, most-recent last. |
+| **Navigation_Stack** | An ordered, per-tab list of `WorkspaceDescriptor` entries recording the Contexts traversed to reach the current one. The current Context is NOT on the stack; the stack holds only the ancestors, most-recent last. The BOTTOM of the Navigation_Stack is the Tab_Visual_Root. |
 | **Navigate_Here** | The single operation that changes a tab's Context: it pushes the current Context's descriptor onto that tab's Navigation_Stack and transforms the tab in place to the new Context. |
+| **Tab_Visual_Root** | The Context a tab was STARTed at and the BOTTOM of that tab's Navigation_Stack: the POM by default (`START` bare), or the named Context when the tab was created via `START <context>`. END pops one rung down toward it; the uniform `X` command and RETURN collapse the tab to it. DISTINCT from the FFCMD_Root (command-framework Req 10): the FFCMD_Root is the global POM targeted by the `=` family, whereas the Tab_Visual_Root is this tab's own starting Context. For a tab started at the POM the two coincide; for a tab created by `START <context>` they differ. Terminology: navigation CLIMBS (pushes a Context on top); END descends ONE rung toward the Tab_Visual_Root; a collapse (`X`/RETURN) drops to the Tab_Visual_Root; `=` drops to the FFCMD_Root. [CR-CH-052] |
 
 #### Acceptance Criteria
 
@@ -763,21 +771,26 @@ is created is if we type start"); reconciles Requirement 5 (Chained Navigation).
    command routing) and root the new tab there. WHEN `<arg>` cannot be resolved,
    THE shell SHALL open the new tab at the POM and report the unresolved argument
    in the status area.
-10. THE RETURN command SHALL remain distinct from END, and (REVISED by CR-CH-038)
-    SHALL target the POM (Home Context) rather than the tab's arbitrary root:
-    - WHEN RETURN is issued in a Workspace that is NOT the Home Context (POM),
-      THE shell SHALL navigate that Workspace to its POM (Home Context) in one
-      step, clearing its Navigation_Stack, REGARDLESS of the stack depth or
-      whether the Workspace was rooted directly (e.g. via `START <arg>`). The
-      Workspace stays open, now showing the POM.
-    - WHEN RETURN is issued while the active Workspace IS a POM, THE shell SHALL
-      close that ONE Workspace; when it is the last open Workspace the
-      application terminates (Option A: one Workspace closed per RETURN, NOT a
-      recursive tear-down), preserving Requirement 17.3/17.4 (CR-CH-016).
-    END is unchanged: it pops ONE Navigation_Stack level, and at a Workspace root
+10. THE RETURN command SHALL remain distinct from END, and (REVISED by CR-CH-052,
+    superseding the CR-CH-038 POM-targeted rule) SHALL target the active tab's
+    Tab_Visual_Root rather than the POM. This removes the last POM special-case:
+    RETURN is NO LONGER POM-targeted; it converges with the uniform `X` command
+    (criterion 14.13) when the Navigation_Stack is non-empty.
+    - WHEN RETURN is issued AND the active tab's Navigation_Stack is NON-EMPTY,
+      THE shell SHALL collapse that tab to its Tab_Visual_Root in one step
+      (clearing the Navigation_Stack and reconstructing the root Context in
+      place), REGARDLESS of the stack depth. The Workspace stays open, now
+      showing its Tab_Visual_Root.
+    - WHEN RETURN is issued AND the active tab is ALREADY at its Tab_Visual_Root
+      (empty Navigation_Stack), THE shell SHALL close that ONE Workspace; when it
+      is the last open Workspace the application terminates (one Workspace closed
+      per RETURN, NOT a recursive tear-down), preserving Requirement 17.3/17.4
+      (CR-CH-016).
+    END is unchanged: it pops ONE Navigation_Stack level, and at a Tab_Visual_Root
     closes that one Workspace (walk-back one step at a time). This RETURN
     behaviour is IDENTICAL in a docked Workspace and a Detached_Workspace
-    (menu-and-statusbar Requirement 18.3/18.11).
+    (menu-and-statusbar Requirement 18.3/18.11). (REVISES CR-CH-038, which made
+    RETURN collapse to the POM; the POM is no longer the universal return target.)
 11. THE three former ad-hoc END mechanisms -- the global `pending_return_to_pom`
     flag, the `settings_panel.namespace_filter`-based END branch, and the
     `menus_editor_panel.opened_from_settings` boolean (B053) -- SHALL be removed
@@ -785,6 +798,48 @@ is created is if we type start"); reconciles Requirement 5 (Chained Navigation).
 12. THE tab Title_Line and tab-header title SHALL reflect the current Context
     after every Navigate_Here and every END pop, so the header never goes stale
     (consistent with menu-and-statusbar Req 17; related to B050).
+13. (NEW, CR-CH-052 -- the uniform bare `X` command.) WHEN the `X` command is
+    issued against the FFCMD command environment AND the active tab's
+    Navigation_Stack is NON-EMPTY, THE shell SHALL collapse the tab to its
+    Tab_Visual_Root in a single action (clear the Navigation_Stack and
+    reconstruct the root Context in place). WHEN the Navigation_Stack is EMPTY
+    (the tab is already at its Tab_Visual_Root), THE shell SHALL CLOSE the
+    Workspace; WHEN the closed Workspace is the LAST open Workspace, THE shell
+    SHALL terminate the application (reusing the close-workspace-or-exit path, so
+    the application exits ONLY on the last close). This behaviour SHALL be
+    IDENTICAL for EVERY Workspace Context, including the Home Context (POM): no
+    Context carries a bespoke `X` rule. EXCEPTION (deliberate environment
+    ownership, NOT a POM-style special-case): WHERE the Active_Environment OWNS
+    bare `X` as its own verb -- specifically FFEDIT, in which bare `X` is EXCLUDE
+    (command-environments Req 5.1, CR-CH-053 E8) -- the Active_Environment claims
+    bare `X` first and this uniform FFCMD `X` is NOT reached; `=X` (criterion
+    14.14) remains the uniform escape that reinitialises to the POM and closes
+    via FFCMD. On every NON-editor Context bare `X` reaches this uniform FFCMD
+    `X`.
+14. (NEW, CR-CH-052 -- the `=X` command.) WHEN the `=X` command is issued, THE
+    shell SHALL FIRST reinitialise the active tab's Navigation_Stack to the POM
+    (FFCMD_Root, command-framework Req 10.2), THEN run `X` against the FFCMD
+    command environment; being at the FFCMD_Root with an empty Navigation_Stack,
+    `X` CLOSES the Workspace, and the application terminates ONLY WHEN it is the
+    last open Workspace. `=X` SHALL NOT initiate an unconditional application
+    exit, and SHALL behave identically whether or not the Active_Environment owns
+    bare `X` (because `=` addresses FFCMD and the Active_Environment never
+    receives a `=`-prefixed string, command-framework Req 10.2 / command-
+    environments Req 3.2a). `=X` is therefore the uniform escape from an editor
+    Context whose bare `X` is EXCLUDE.
+15. (NEW, CR-CH-052 -- no POM special-casing.) THE `X` / `=X` / END / RETURN
+    model SHALL be identical for every Workspace Context, including the Home
+    Context (POM). No Context SHALL carry a bespoke exit, return, or close rule,
+    with the SOLE documented exception of criterion 14.13 (an Active_Environment
+    that OWNS bare `X`, e.g. FFEDIT EXCLUDE). The verbs target roots as follows:
+    `=`/`=X` target the FFCMD_Root (the global POM); bare `X`, END, and RETURN
+    target the active tab's own Tab_Visual_Root.
+16. (NEW, CR-CH-052 -- Detached_Workspace parity.) WHEN `X`-at-Tab_Visual_Root or
+    `=X` closes a Detached_Workspace, THE shell SHALL close it via the SAME
+    close-workspace-or-exit path used for a docked Workspace, preserving the
+    docked == detached guarantee (menu-and-statusbar Req 18.3/18.11); when the
+    closed Detached_Workspace is the last open Workspace the application
+    terminates.
 
 ---
 
