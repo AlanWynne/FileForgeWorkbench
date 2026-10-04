@@ -1,0 +1,17 @@
+[package]
+name = "ff-i18n"
+version = "0.1.0"
+edition = "2021"
+description = "GUI-free localization message-catalogue mechanism and lookup seam for FileForgeWorkbench"
+authors = ["FileForge Contributors"]
+
+[dependencies]
+ff-logging = { path = "../ff-logging" }
+fluent = "0.17"
+fluent-bundle = "0.16"
+unic-langid = "0.9"
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+pretty_assertions = { workspace = true }

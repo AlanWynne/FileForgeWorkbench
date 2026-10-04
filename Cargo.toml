@@ -9,6 +9,7 @@ members = [
     "crates/ff-completion",
     "crates/ff-command-semantics",
     "crates/ff-config",
+    "crates/ff-i18n",
     "crates/ff-connector-extensibility",
     "crates/ff-connector-local-fs",
     "crates/ff-core",

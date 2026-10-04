@@ -3461,16 +3461,16 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-config` | 🔴 | -- | localization Req 1.4: `ui.locale` change notified via existing CallbackRegistry::on_reload, no new config mechanism |
 | `ff-config` | 🔴 | -- | localization Req 1.5: `ui.locale` reload callback reloads BOTH message catalogue and per-locale/per-environment alias catalogue |
 | `ff-config` | 🔴 | -- | localization Req 1.6: out-of-schema locale falls back to "en" and logs WARN (defence-in-depth) |
-| `ff-i18n` | 🔴 | -- | localization Req 2.1: Fluent (fluent-bundle/fluent + unic-langid) catalogue mechanism with `{ $arg }` placeables |
-| `ff-i18n` | 🔴 | -- | localization Req 2.2: Message_Catalogue authored as per-locale `.ftl` DATA files, not compiled into Rust |
-| `ff-i18n` | 🔴 | -- | localization Req 2.3: `.ftl` files for the active locale loaded into a Fluent bundle at startup and on `ui.locale` reload |
-| `ff-i18n` | 🔴 | -- | localization Req 2.4: `.ftl` parse error retains prior catalogue (or Identity_Base), WARNs, never crashes/blank |
-| `ff-i18n` | 🔴 | -- | localization Req 2.5: English Identity_Base catalogue always present, loadable with no other locale installed |
-| `ff-i18n` | 🔴 | -- | localization Req 3.1: Catalogue_Lookup_Seam exposes `t(key)` and argument-bearing `t_args(key, args)` |
-| `ff-i18n` | 🔴 | -- | localization Req 3.2: key present in active locale returns that locale's string; absent falls back to Identity_Base English |
-| `ff-i18n` | 🔴 | -- | localization Req 3.3: key absent in both active + Identity_Base returns the key itself and WARNs (never blank) |
-| `ff-i18n` | 🔴 | -- | localization Req 3.4: seam callable from egui render code without changing egui APIs (literal -> `t("key")` swap) |
-| `ff-i18n` | 🔴 | -- | localization Req 3.5: Catalogue_Lookup_Seam is GUI-free in its own crate, usable by non-GUI crates/tests |
+| `ff-i18n` | ✅ | `crates/ff-i18n/src/tests.rs` | localization Req 2.1: Fluent (fluent-bundle/fluent + unic-langid) catalogue mechanism with `{ $arg }` placeables |
+| `ff-i18n` | ✅ | `crates/ff-i18n/src/tests.rs` | localization Req 2.2: Message_Catalogue authored as per-locale `.ftl` DATA files, not compiled into Rust |
+| `ff-i18n` | ✅ | `crates/ff-i18n/src/tests.rs` | localization Req 2.3: `.ftl` files for the active locale loaded into a Fluent bundle at startup and on `ui.locale` reload |
+| `ff-i18n` | ✅ | `crates/ff-i18n/src/tests.rs` | localization Req 2.4: `.ftl` parse error retains prior catalogue (or Identity_Base), WARNs, never crashes/blank |
+| `ff-i18n` | ✅ | `crates/ff-i18n/src/tests.rs` | localization Req 2.5: English Identity_Base catalogue always present, loadable with no other locale installed |
+| `ff-i18n` | ✅ | `crates/ff-i18n/src/tests.rs` | localization Req 3.1: Catalogue_Lookup_Seam exposes `t(key)` and argument-bearing `t_args(key, args)` |
+| `ff-i18n` | ✅ | `crates/ff-i18n/src/tests.rs` | localization Req 3.2: key present in active locale returns that locale's string; absent falls back to Identity_Base English |
+| `ff-i18n` | ✅ | `crates/ff-i18n/src/tests.rs` | localization Req 3.3: key absent in both active + Identity_Base returns the key itself and WARNs (never blank) |
+| `ff-i18n` | 🔴 | -- | localization Req 3.4: seam callable from egui render code without changing egui APIs (literal -> `t("key")` swap) -- deferred to Task 8 (egui render extraction); seam returns owned String so no egui API change is needed |
+| `ff-i18n` | ✅ | `crates/ff-i18n/src/tests.rs` | localization Req 3.5: Catalogue_Lookup_Seam is GUI-free in its own crate, usable by non-GUI crates/tests |
 | `ff-desktop` | 🔴 | -- | localization Req 4.1: localise only user-facing TEXT (chrome, labels, menu titles/descriptions, status/error, help, dialogs, buttons) |
 | `ff-desktop` | 🔴 | -- | localization Req 4.2: do NOT localise command VERBS / stable identifiers (canonical verbs, menu `command` values, config keys, Topic_Key, command_id) |
 | `ff-desktop` | 🔴 | -- | localization Req 4.3: where text + verb coexist, only the description localises; `command` value unchanged (verb/text split) |

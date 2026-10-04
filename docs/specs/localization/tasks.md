@@ -12,20 +12,20 @@ TDD applies: write the failing test first, then the minimum implementation, per
 
 ## Phase 1 -- Mechanism, config key, English base, lookup seam, alias loader
 
-- [ ] 1. Create the `ff-i18n` crate (catalogue mechanism + lookup seam)
-  - [ ] 1.1 Scaffold the GUI-free `ff-i18n` crate with `fluent-bundle` / `fluent`
+- [x] 1. Create the `ff-i18n` crate (catalogue mechanism + lookup seam)
+  - [x] 1.1 Scaffold the GUI-free `ff-i18n` crate with `fluent-bundle` / `fluent`
         / `unic-langid` deps and an `I18nError` thiserror enum. Satisfies Req
         2.1, 3.5.
-  - [ ] 1.2 Implement `Locale` (parse from the `ui.locale` string; `en` identity
+  - [x] 1.2 Implement `Locale` (parse from the `ui.locale` string; `en` identity
         constant) and `Catalogue` holding per-locale Fluent bundles plus the
         always-present English Identity_Base bundle. Satisfies Req 2.3, 2.5.
-  - [ ] 1.3 Implement `load(locale)` discovering and parsing per-locale `.ftl`
+  - [x] 1.3 Implement `load(locale)` discovering and parsing per-locale `.ftl`
         files; on parse error retain the prior catalogue / fall back to English
         and WARN. Satisfies Req 2.2, 2.4.
-  - [ ] 1.4 Implement the Catalogue_Lookup_Seam `t(key)` and the argument-bearing
+  - [x] 1.4 Implement the Catalogue_Lookup_Seam `t(key)` and the argument-bearing
         `t_args(key, args)`, with active-locale -> Identity_Base -> key-string
         fallback and a WARN on a both-missing key. Satisfies Req 3.1, 3.2, 3.3.
-  - [ ] 1.5 Hold the active catalogue behind a shared swappable handle so lookup
+  - [x] 1.5 Hold the active catalogue behind a shared swappable handle so lookup
         is a free call with no per-call catalogue threading. Satisfies Req 3.4.
 
 - [ ] 2. Add the `ui.locale` config key in `ff-config`
@@ -40,10 +40,10 @@ TDD applies: write the failing test first, then the minimum implementation, per
   - [ ] 2.4 Add the defence-in-depth fallback: an out-of-schema locale value
         falls back to `"en"` and WARNs. Satisfies Req 1.6.
 
-- [ ] 3. Ship the English Identity_Base catalogue and prove the seam
-  - [ ] 3.1 Author the initial `i18n/en/` `.ftl` catalogue (the baseline keys the
+- [x] 3. Ship the English Identity_Base catalogue and prove the seam
+  - [x] 3.1 Author the initial `i18n/en/` `.ftl` catalogue (the baseline keys the
         first converted sites need) as DATA. Satisfies Req 2.2, 2.5.
-  - [ ] 3.2 Add a seam smoke test: `t("key")` resolves the English string;
+  - [x] 3.2 Add a seam smoke test: `t("key")` resolves the English string;
         behaviour at `ui.locale = "en"` is unchanged. Satisfies Req 3.2, 10.2.
 
 - [ ] 4. Per-environment, per-locale alias-catalogue LOADER (no new mechanism)
